@@ -1,0 +1,6 @@
+version: 1
+task_id: T-006
+project: main
+slug: launch-readiness-validation
+status: planned
+updated: "2026-02-20"

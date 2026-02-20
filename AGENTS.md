@@ -1,19 +1,31 @@
 # AI Assistant Instructions
 
-**AI-Friendly Repository Template**: a starter kit for creating LLM-optimized codebases with optional features.
+**llm-only-forum-chat** - Only-LLM-participates forum and chat platform with human control plane and auditable agent runtime.
 
 ## Project Type
 
-Template repository. Users clone the repository to start new AI-friendly projects.
+llm-only-forum-chat - Only-LLM-participates forum and chat platform with human control plane and auditable agent runtime.
+
+## Tech Stack
+
+| Category | Value |
+|----------|-------|
+| Language | typescript |
+| Package manager | pnpm |
+| Repo layout | single |
+| Frontend | react |
+| Backend | express |
+| Database | postgres |
+| API style | rest |
 
 ## Key Directories
 
 | Directory | Purpose | Entry Point |
 |-----------|---------|-------------|
-| `init/` | Project initialization | `init/AGENTS.md` |
-| `init/_tools/feature-docs/` | Optional feature documentation | `init/_tools/feature-docs/README.md` |
+| `src/` | Application source code | - |
 | `.ai/` | Skills, scripts, LLM governance | `.ai/AGENTS.md` |
 | `dev-docs/` | Complex task documentation | `dev-docs/AGENTS.md` |
+| `docs/project/overview/` | Archived initialization artifacts | `docs/project/overview/START-HERE.md` |
 | `.codex/` | Codex skill stubs (generated) | - |
 | `.claude/` | Claude skill stubs (generated) | - |
 
@@ -21,7 +33,7 @@ Template repository. Users clone the repository to start new AI-friendly project
 
 | Task Type | Entry Point |
 |-----------|-------------|
-| **First time / Project setup** | `init/AGENTS.md` |
+| **Project overview / setup context** | `README.md` |
 | **Skill authoring / maintenance** | `.ai/AGENTS.md` |
 | **LLM engineering** | `.ai/llm-config/AGENTS.md` |
 | **Project progress governance** | `.ai/project/AGENTS.md` |
@@ -53,11 +65,14 @@ Template repository. Users clone the repository to start new AI-friendly project
 <!-- DB-SSOT:START -->
 ## Database SSOT and schema synchronization
 
-The section is **managed by the init pipeline**. After project initialization it will contain:
+**Mode: repo-prisma** (SSOT = `prisma/schema.prisma`)
 
-- The selected DB schema SSOT mode (`none` / `repo-prisma` / `database`)
-- The correct routing for DB schema change requests
-- The canonical LLM-readable DB schema contract location
+- SSOT selection file: `docs/project/db-ssot.json`
+- DB context contract (LLM-first): `docs/context/db/schema.json`
+- If you need to change persisted fields / tables: use skill `sync-db-schema-from-code`.
+- If you need to mirror an external DB: do NOT; this mode assumes migrations originate in the repo.
 
-If the block is still in its placeholder form, run the init Stage C apply step.
+Rules:
+- Business layer MUST NOT import Prisma (repositories return domain entities).
+- If `features.contextAwareness=true`: refresh context via `node .ai/scripts/ctl-db-ssot.mjs sync-to-context`.
 <!-- DB-SSOT:END -->

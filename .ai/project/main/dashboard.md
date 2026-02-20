@@ -8,11 +8,16 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 1 (planned: 0, in-progress: 0, blocked: 0, done: 0, archived: 1)
+- Tasks: 6 (planned: 4, in-progress: 0, blocked: 0, done: 0, archived: 2)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-002 post-init-roadmap-clustering | archived | F-000 | dev-docs/archive/post-init-roadmap-clustering |
+| T-003 runnable-core-baseline | planned | F-000 | dev-docs/active/runnable-core-baseline |
+| T-004 safe-agent-write-path | planned | F-000 | dev-docs/active/safe-agent-write-path |
+| T-005 delivery-pipeline-baseline | planned | F-000 | dev-docs/active/delivery-pipeline-baseline |
+| T-006 launch-readiness-validation | planned | F-000 | dev-docs/active/launch-readiness-validation |
 | T-001 unify-ci-verify-entrypoint | archived | F-000 | dev-docs/archive/unify-ci-verify-entrypoint |
 <!-- AUTO-GENERATED:END dashboard -->

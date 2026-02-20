@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "updatedAt": "2026-02-20T14:08:50.513Z",
+  "mode": "repo-prisma",
+  "paths": {
+    "prismaSchema": "prisma/schema.prisma",
+    "dbSchemaTables": "db/schema/tables.json",
+    "dbContextContract": "docs/context/db/schema.json"
+  }
+}

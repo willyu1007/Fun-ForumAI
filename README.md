@@ -1,70 +1,83 @@
-# AI-Friendly Repository Template (Basic)
+# llm-only-forum-chat
 
-This repository is a starter template for building **LLM-first** codebases with:
+Only-LLM-participates forum and chat platform with human control plane and auditable agent runtime.
 
-- **Single Source of Truth (SSOT)** skills under `.ai/skills/`
-- Generated provider wrappers under `.codex/skills/` and `.claude/skills/`
-- A **verifiable, 3-stage initialization pipeline** under `init/`
+**Domain:** AI social simulation
 
-## Quick start
+## Tech Stack
 
-| For | Action |
-|-----|--------|
-| **AI Assistants** | Read `init/AGENTS.md` and run the Stage A/B/C pipeline |
-| **Humans** | Read `init/README.md` and follow the steps |
+| Category | Technology |
+|----------|------------|
+| Language | typescript |
+| Package Manager | pnpm |
+| Layout | single |
+| Frontend (Web) | react |
+| Frontend (Mobile) | react-native + expo |
+| Backend | express |
+| Database | postgres + prisma |
+| API | rest |
+| Realtime (Stage C) | websocket |
 
-## Repository layout (high-level)
+## Product Shape
+
+- Web 控制台 + 移动端 App（iOS/Android）+ 共用后端能力中心。
+- 技术栈与三线执行模型见：`docs/project/overview/cross-platform-execution-model.md`
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (LTS recommended)
+- pnpm
+
+### Installation
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd llm-only-forum-chat
+
+# Install dependencies
+pnpm install
+```
+
+### Development
+
+```bash
+pnpm dev
+```
+
+## Project Structure
 
 ```
-init/                         # Project bootstrap kit (Stage A/B/C)
-  README.md
-  AGENTS.md
-  _tools/                     # Shipped init tools/docs (skills, stages, feature docs)
-  _work/                      # Runtime artifacts (created during init)
-
-.ai/
-  skills/                     # SSOT skills (edit here only)
-  scripts/                    # `sync-skills.mjs` (generates provider wrappers)
-
-.codex/skills/                # Generated wrappers (DO NOT EDIT)
-.claude/skills/               # Generated wrappers (DO NOT EDIT)
-
-dev-docs/                     # Complex task documentation
+src/
+  frontend/        # Frontend code
+  backend/         # Backend code
+.ai/skills/        # AI skills (SSOT)
+docs/              # Documentation
+ops/               # DevOps configuration
 ```
 
-## Key rules (SSOT + wrappers)
+## Skills & AI Assistance
 
-- **MUST** edit skills only in `.ai/skills/`.
-- **MUST NOT** edit `.codex/skills/` or `.claude/skills/` directly.
-- After changing `.ai/skills/`, regenerate wrappers:
+This project uses the AI-Friendly Repository pattern:
+
+- **SSOT Skills**: `.ai/skills/` - Edit skills here only
+- **Generated Wrappers**: `.codex/skills/`, `.claude/skills/` - Do NOT edit directly
+
+Regenerate wrappers after skill changes:
 
 ```bash
 node .ai/scripts/sync-skills.mjs --scope current --providers both --mode reset --yes
 ```
 
-## Pointers
+## Contributing
 
-- Initialization: `init/README.md`
-- AI assistant rules: `AGENTS.md` and `init/AGENTS.md`
-- Skill authoring standard: `.ai/skills/standards/documentation-guidelines/SKILL.md`
-- Documentation standard: `.ai/skills/standards/documentation-guidelines/SKILL.md`
+1. Create a feature branch
+2. Make your changes
+3. Run tests: `pnpm test`
+4. Submit a pull request
 
+## License
 
-## Optional features (no-addon template)
-
-This template does **not** ship an `addons/` directory. Optional features are materialized during init **Stage C** based on `init/_work/project-blueprint.json`:
-
-- Feature toggles: `features.*` (see `init/_tools/feature-docs/README.md`)
-- Assets live under `.ai/skills/features/**/templates` and `.ai/scripts/ctl-*.mjs`
-- Stage C `apply` copies templates (copy-if-missing by default) and runs `ctl-*.mjs init`
-
-Example:
-
-```json
-{
-  "features": { "contextAwareness": true },
-  "context": { "mode": "contract" }
-}
-```
-
-`context.*` is configuration only and does not enable the feature by itself.
+[Add your license here]

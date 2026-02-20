@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "updatedAt": "2026-02-20T14:08:50.401Z",
+  "model": "k8s",
+  "k8s": {
+    "tool": "helm"
+  },
+  "environments": [
+    {
+      "id": "dev",
+      "description": "Development",
+      "canDeploy": true,
+      "requiresApproval": false
+    },
+    {
+      "id": "staging",
+      "description": "Staging",
+      "canDeploy": true,
+      "requiresApproval": true
+    },
+    {
+      "id": "prod",
+      "description": "Production",
+      "canDeploy": true,
+      "requiresApproval": true
+    }
+  ],
+  "services": [],
+  "history": []
+}

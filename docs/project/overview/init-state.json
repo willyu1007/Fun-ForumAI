@@ -1,0 +1,195 @@
+{
+  "version": 1,
+  "language": "zh",
+  "stage": "complete",
+  "createdAt": "2026-02-20T07:24:02.625Z",
+  "stage-a": {
+    "mustAsk": {
+      "terminologyAlignment": {
+        "asked": true,
+        "answered": true,
+        "writtenTo": "init/_work/stage-a-docs/domain-glossary.md"
+      },
+      "onePurpose": {
+        "asked": true,
+        "answered": true,
+        "writtenTo": "init/_work/stage-a-docs/requirements.md"
+      },
+      "userRoles": {
+        "asked": true,
+        "answered": true,
+        "writtenTo": "init/_work/stage-a-docs/requirements.md"
+      },
+      "mustRequirements": {
+        "asked": true,
+        "answered": true,
+        "writtenTo": "init/_work/stage-a-docs/requirements.md"
+      },
+      "outOfScope": {
+        "asked": true,
+        "answered": true,
+        "writtenTo": "init/_work/stage-a-docs/requirements.md"
+      },
+      "userJourneys": {
+        "asked": true,
+        "answered": true,
+        "writtenTo": "init/_work/stage-a-docs/requirements.md"
+      },
+      "constraints": {
+        "asked": true,
+        "answered": true,
+        "writtenTo": "init/_work/stage-a-docs/requirements.md"
+      },
+      "successMetrics": {
+        "asked": true,
+        "answered": true,
+        "writtenTo": "init/_work/stage-a-docs/requirements.md"
+      }
+    },
+    "docsWritten": {
+      "requirements": true,
+      "nfr": true,
+      "glossary": true,
+      "riskQuestions": true
+    },
+    "validated": true,
+    "userApproved": true,
+    "docsFingerprint": "96652d1cae16f4bf7a09c43f2c3a2f5526e15e2b35182f46a1162f3f050e6783"
+  },
+  "stage-b": {
+    "drafted": true,
+    "validated": true,
+    "packsReviewed": true,
+    "userApproved": true,
+    "blueprintFingerprint": "ebad94c1b6d1d4042c812747c30bdb0dd9164e10ccb14069de51450fe969eddf",
+    "packsReviewedFingerprint": "ebad94c1b6d1d4042c812747c30bdb0dd9164e10ccb14069de51450fe969eddf",
+    "approvedBlueprintFingerprint": "ebad94c1b6d1d4042c812747c30bdb0dd9164e10ccb14069de51450fe969eddf"
+  },
+  "stage-c": {
+    "scaffoldApplied": true,
+    "configsGenerated": true,
+    "manifestUpdated": true,
+    "wrappersSynced": true,
+    "skillRetentionReviewed": true,
+    "userApproved": true,
+    "appliedBlueprintFingerprint": "ebad94c1b6d1d4042c812747c30bdb0dd9164e10ccb14069de51450fe969eddf",
+    "appliedProviders": "both",
+    "skillRetentionTablePath": "init/_work/skill-retention-table.template.md",
+    "skillRetentionTableFingerprint": "b83f4e6faf75fdf0373b56bed90bba0fbd7b3910f1f2d536affe49e2ff5be935"
+  },
+  "history": [
+    {
+      "timestamp": "2026-02-20T07:24:02.626Z",
+      "event": "init_started",
+      "details": "Initialization started"
+    },
+    {
+      "timestamp": "2026-02-20T07:24:02.649Z",
+      "event": "llm_language_set",
+      "details": "llm.language set to \"zh-CN\""
+    },
+    {
+      "timestamp": "2026-02-20T07:28:14.314Z",
+      "event": "must_ask_updated",
+      "details": "mustAsk.terminologyAlignment updated"
+    },
+    {
+      "timestamp": "2026-02-20T07:28:14.344Z",
+      "event": "must_ask_updated",
+      "details": "mustAsk.onePurpose updated"
+    },
+    {
+      "timestamp": "2026-02-20T07:28:14.371Z",
+      "event": "must_ask_updated",
+      "details": "mustAsk.userRoles updated"
+    },
+    {
+      "timestamp": "2026-02-20T07:28:14.397Z",
+      "event": "must_ask_updated",
+      "details": "mustAsk.mustRequirements updated"
+    },
+    {
+      "timestamp": "2026-02-20T07:28:14.425Z",
+      "event": "must_ask_updated",
+      "details": "mustAsk.outOfScope updated"
+    },
+    {
+      "timestamp": "2026-02-20T07:28:14.451Z",
+      "event": "must_ask_updated",
+      "details": "mustAsk.userJourneys updated"
+    },
+    {
+      "timestamp": "2026-02-20T07:28:14.477Z",
+      "event": "must_ask_updated",
+      "details": "mustAsk.constraints updated"
+    },
+    {
+      "timestamp": "2026-02-20T07:28:14.502Z",
+      "event": "must_ask_updated",
+      "details": "mustAsk.successMetrics updated"
+    },
+    {
+      "timestamp": "2026-02-20T07:28:18.590Z",
+      "event": "stage_a_validated",
+      "details": "Stage A docs validated"
+    },
+    {
+      "timestamp": "2026-02-20T13:02:20.537Z",
+      "event": "stage_a_validated",
+      "details": "Stage A docs validated"
+    },
+    {
+      "timestamp": "2026-02-20T13:12:14.683Z",
+      "event": "stage_a_validated",
+      "details": "Stage A docs validated"
+    },
+    {
+      "timestamp": "2026-02-20T13:48:50.418Z",
+      "event": "stage_a_validated",
+      "details": "Stage A docs validated"
+    },
+    {
+      "timestamp": "2026-02-20T13:49:34.591Z",
+      "event": "stage_a_approved",
+      "details": "Stage A approved by user"
+    },
+    {
+      "timestamp": "2026-02-20T13:53:29.296Z",
+      "event": "stage_b_validated",
+      "details": "Stage B blueprint validated"
+    },
+    {
+      "timestamp": "2026-02-20T14:03:19.034Z",
+      "event": "stage_b_validated",
+      "details": "Stage B blueprint validated"
+    },
+    {
+      "timestamp": "2026-02-20T14:03:19.052Z",
+      "event": "packs_reviewed",
+      "details": "Packs reviewed"
+    },
+    {
+      "timestamp": "2026-02-20T14:08:23.012Z",
+      "event": "stage_b_approved",
+      "details": "Stage B approved by user"
+    },
+    {
+      "timestamp": "2026-02-20T14:08:50.803Z",
+      "event": "stage_c_applied",
+      "details": "Stage C apply completed"
+    },
+    {
+      "timestamp": "2026-02-20T14:09:14.641Z",
+      "event": "skill_retention_reviewed",
+      "details": "Skill retention confirmed (no deletions)"
+    },
+    {
+      "timestamp": "2026-02-20T14:14:27.941Z",
+      "event": "init_completed",
+      "details": "Initialization completed"
+    }
+  ],
+  "llm": {
+    "language": "zh-CN"
+  }
+}

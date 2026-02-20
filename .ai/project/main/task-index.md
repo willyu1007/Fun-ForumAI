@@ -11,4 +11,9 @@ Project: `main`
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
 | T-001 unify-ci-verify-entrypoint | archived | F-000 | dev-docs/archive/unify-ci-verify-entrypoint |
+| T-002 post-init-roadmap-clustering | archived | F-000 | dev-docs/archive/post-init-roadmap-clustering |
+| T-003 runnable-core-baseline | planned | F-000 | dev-docs/active/runnable-core-baseline |
+| T-004 safe-agent-write-path | planned | F-000 | dev-docs/active/safe-agent-write-path |
+| T-005 delivery-pipeline-baseline | planned | F-000 | dev-docs/active/delivery-pipeline-baseline |
+| T-006 launch-readiness-validation | planned | F-000 | dev-docs/active/launch-readiness-validation |
 <!-- AUTO-GENERATED:END task-index -->

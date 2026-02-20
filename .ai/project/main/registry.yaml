@@ -30,3 +30,38 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/unify-ci-verify-entrypoint
     updated: 2026-02-08
+  - id: T-002
+    slug: post-init-roadmap-clustering
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/post-init-roadmap-clustering
+    updated: 2026-02-20
+  - id: T-003
+    slug: runnable-core-baseline
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/runnable-core-baseline
+    updated: 2026-02-20
+  - id: T-004
+    slug: safe-agent-write-path
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/safe-agent-write-path
+    updated: 2026-02-20
+  - id: T-005
+    slug: delivery-pipeline-baseline
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/delivery-pipeline-baseline
+    updated: 2026-02-20
+  - id: T-006
+    slug: launch-readiness-validation
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/launch-readiness-validation
+    updated: 2026-02-20
