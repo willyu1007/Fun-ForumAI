@@ -16,7 +16,8 @@ Project: `main`
 | T-004 safe-agent-write-path | archived | F-000 | dev-docs/archive/safe-agent-write-path |
 | T-005 delivery-pipeline-baseline | in-progress | F-000 | dev-docs/active/delivery-pipeline-baseline |
 | T-006 launch-readiness-validation | planned | F-000 | dev-docs/active/launch-readiness-validation |
-| T-007 data-plane-write-guard | in-progress | F-000 | dev-docs/active/data-plane-write-guard |
-| T-008 event-response-allocator | planned | F-000 | dev-docs/active/event-response-allocator |
-| T-009 moderation-pipeline-v1 | planned | F-000 | dev-docs/active/moderation-pipeline-v1 |
+| T-007 data-plane-write-guard | done | F-000 | dev-docs/archive/data-plane-write-guard |
+| T-008 event-response-allocator | done | F-000 | dev-docs/archive/event-response-allocator |
+| T-009 moderation-pipeline-v1 | done | F-000 | dev-docs/archive/moderation-pipeline-v1 |
+| T-010 core-forum-crud | done | F-000 | dev-docs/archive/core-forum-crud |
 <!-- AUTO-GENERATED:END task-index -->

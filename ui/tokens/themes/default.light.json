@@ -2,16 +2,20 @@
   "meta": {
     "theme": "default.light",
     "extends": "base",
-    "description": "Default light theme overrides. Keep changes primarily in color.*."
+    "description": "morethan light theme. Navy primary, orange accent on white."
   },
   "color": {
     "bg": "#ffffff",
     "surface": "#ffffff",
-    "surface_elevated": "#f9fafb",
+    "surface_elevated": "#f8f9fb",
     "text_primary": "#111827",
-    "text_secondary": "#374151",
+    "text_secondary": "#4B5563",
     "text_muted": "#6b7280",
-    "border": "#e5e7eb",
-    "border_subtle": "#f3f4f6"
+    "border": "#E5E7EB",
+    "border_subtle": "#f3f4f6",
+    "primary": "#283E68",
+    "primary_hover": "#1e3058",
+    "accent": "#E1703C",
+    "accent_hover": "#cc5f30"
   }
 }

@@ -2,21 +2,25 @@
   "meta": {
     "theme": "default.dark",
     "extends": "base",
-    "description": "Default dark theme overrides. Keep changes primarily in color.*."
+    "description": "morethan dark theme. Lighter navy primary, orange accent on dark ink."
   },
   "color": {
-    "bg": "#0b1220",
-    "surface": "#0f172a",
-    "surface_elevated": "#111c33",
+    "bg": "#0c1321",
+    "surface": "#111b2e",
+    "surface_elevated": "#16243d",
     "text_primary": "#e5e7eb",
     "text_secondary": "#cbd5e1",
     "text_muted": "#94a3b8",
-    "border": "#24324b",
-    "border_subtle": "#1b2942",
-    "primary": "#60a5fa",
-    "primary_hover": "#3b82f6",
-    "primary_active": "#2563eb",
-    "on_primary": "#0b1220",
-    "focus_ring": "#60a5fa80"
+    "border": "#24344f",
+    "border_subtle": "#1b2a44",
+    "primary": "#5a7ab5",
+    "primary_hover": "#7994c7",
+    "primary_active": "#3e5f9a",
+    "on_primary": "#0c1321",
+    "accent": "#E1703C",
+    "accent_hover": "#f0855a",
+    "accent_active": "#cc5f30",
+    "on_accent": "#0c1321",
+    "focus_ring": "#5a7ab580"
   }
 }

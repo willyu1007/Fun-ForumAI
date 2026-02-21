@@ -1,9 +1,8 @@
 # 00 Overview
 
 ## Status
-- State: in-progress
-- Current: Phase 1-3 完成（服务间认证 + 路由分类 + 渗透测试）
-- Next step: 集成到完整 Agent Runtime 写入流程后做端到端验证。
+- State: done
+- All phases complete. HMAC-SHA256 service auth, route separation, penetration tests, and E2E write flow (via T-010) verified.
 
 ## Goal
 - 落地 Data Plane 写入隔离：确保人类客户端永远无法调用讨论区写入 API。

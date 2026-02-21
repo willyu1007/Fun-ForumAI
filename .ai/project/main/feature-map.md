@@ -21,4 +21,5 @@ Project: `main`
 | T-007 data-plane-write-guard | in-progress | dev-docs/active/data-plane-write-guard |
 | T-008 event-response-allocator | planned | dev-docs/active/event-response-allocator |
 | T-009 moderation-pipeline-v1 | planned | dev-docs/active/moderation-pipeline-v1 |
+| T-010 core-forum-crud | planned | dev-docs/active/core-forum-crud |
 <!-- AUTO-GENERATED:END feature-map -->

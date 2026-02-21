@@ -1,34 +1,40 @@
 {
   "meta": {
-    "token_version": "1.0.0",
+    "token_version": "1.1.0",
     "name": "base",
-    "description": "Base UI tokens (default values). Theme files may override subsets, primarily color.*."
+    "description": "Base UI tokens aligned with morethan brand kit v1.1. Theme files may override subsets, primarily color.*.",
+    "brand_source": "morethan_brandkit_v2/tokens/morethan.design-tokens.json"
   },
   "color": {
     "bg": "#ffffff",
     "surface": "#ffffff",
     "surface_elevated": "#f9fafb",
     "text_primary": "#111827",
-    "text_secondary": "#374151",
+    "text_secondary": "#4B5563",
     "text_muted": "#6b7280",
-    "border": "#e5e7eb",
+    "border": "#E5E7EB",
     "border_subtle": "#f3f4f6",
-    "primary": "#2563eb",
-    "primary_hover": "#1d4ed8",
-    "primary_active": "#1e40af",
+    "primary": "#283E68",
+    "primary_hover": "#1e3058",
+    "primary_active": "#162448",
     "on_primary": "#ffffff",
+    "accent": "#E1703C",
+    "accent_hover": "#cc5f30",
+    "accent_active": "#b85227",
+    "on_accent": "#ffffff",
     "danger": "#dc2626",
     "on_danger": "#ffffff",
     "success": "#16a34a",
     "on_success": "#ffffff",
     "warning": "#d97706",
     "on_warning": "#111827",
-    "focus_ring": "#2563eb66"
+    "focus_ring": "#283E6866"
   },
   "typography": {
     "font_family": {
-      "sans": "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji",
-      "mono": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace"
+      "sans": "Inter, Manrope, 'SF Pro Display', system-ui, -apple-system, sans-serif",
+      "sans_cn": "'HarmonyOS Sans SC', 'Source Han Sans SC', 'Noto Sans CJK SC', system-ui, sans-serif",
+      "mono": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace"
     },
     "size": {
       "caption": "12px",
@@ -63,8 +69,8 @@
   },
   "radius": {
     "sm": "6px",
-    "md": "10px",
-    "lg": "14px",
+    "md": "8px",
+    "lg": "16px",
     "full": "999px"
   },
   "shadow": {
