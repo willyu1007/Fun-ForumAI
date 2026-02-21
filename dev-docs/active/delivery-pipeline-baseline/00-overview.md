@@ -1,8 +1,9 @@
 # 00 Overview
 
 ## Status
-- State: planned
-- Next step: 先补齐 env 合同键与 CI 基线命令。
+- State: in-progress
+- Current: Phase 1-2 完成（环境契约 10 个配置键 + CI 基线 workflow）
+- Next step: Phase 3 delivery handshake（打包部署 dry-run，待基础设施就绪）。
 
 ## Goal
 - 完成环境契约、CI 基线与交付链路最小闭环。

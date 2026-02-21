@@ -1,16 +1,28 @@
 # 04 Verification
 
-## Automated checks
-- `rg -n "cross-platform-execution-model" dev-docs/active/*/00-overview.md`（应命中 4 个 active 任务）。
-- `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`（通过；仅保留历史 archive 缺失告警）。
-- `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`（通过）。
+## Checks run
 
-## Manual smoke checks
-- 检查本子任务实现范围与 dev-docs/active/delivery-pipeline-baseline/roadmap.md 一致。
-- 检查是否误改其他 cluster 的核心实现。
+### 2026-02-21 — Phase 1: Environment contract
 
-## Rollout / Backout (if applicable)
-- Rollout:
-  - 按 dev-docs/active/delivery-pipeline-baseline/roadmap.md 阶段推进。
-- Backout:
-  - 以阶段提交为回滚单元。
+| Check | Result |
+|-------|--------|
+| env/contract.yaml has all app config keys | PASS (10 variables) |
+| Sensitive keys marked (`DATABASE_URL`, `JWT_SECRET`, `SERVICE_AUTH_SECRET`) | PASS |
+| Defaults provided for non-sensitive keys | PASS |
+
+### 2026-02-21 — Phase 2: CI baseline
+
+| Check | Result |
+|-------|--------|
+| .github/workflows/ci.yml uses real pnpm commands | PASS |
+| CI job: typecheck | Configured |
+| CI job: lint | Configured |
+| CI job: test | Configured |
+| CI job: build | Configured |
+| CI job: db:validate | Configured |
+| CI job: governance lint | Configured (separate job) |
+| Local full suite passes | PASS |
+
+### Pending
+- [ ] CI workflow dry-run on GitHub (push to branch and verify)
+- [ ] Phase 3: packaging/deploy dry-run

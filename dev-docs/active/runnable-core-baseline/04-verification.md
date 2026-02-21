@@ -1,16 +1,19 @@
 # 04 Verification
 
-## Automated checks
-- `rg -n "cross-platform-execution-model" dev-docs/active/*/00-overview.md`（应命中 4 个 active 任务）。
-- `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`（通过；仅保留历史 archive 缺失告警）。
-- `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`（通过）。
+## Checks run
 
-## Manual smoke checks
-- 检查本子任务实现范围与 dev-docs/active/runnable-core-baseline/roadmap.md 一致。
-- 检查是否误改其他 cluster 的核心实现。
+### 2026-02-21 — Phase 1-3 综合验证
 
-## Rollout / Backout (if applicable)
-- Rollout:
-  - 按 dev-docs/active/runnable-core-baseline/roadmap.md 阶段推进。
-- Backout:
-  - 以阶段提交为回滚单元。
+| Check | Command | Result |
+|-------|---------|--------|
+| TypeScript typecheck | `pnpm typecheck` | PASS |
+| ESLint | `pnpm lint` | PASS |
+| Vitest (5 tests) | `pnpm test` | PASS |
+| Vite build | `pnpm build` | PASS (636ms, 329KB JS) |
+| Prisma validate | `pnpm db:validate` | PASS |
+| Backend health | `curl localhost:4000/health` | PASS (`{ data: { status: "ok" } }`) |
+| Backend /v1/health | `curl localhost:4000/v1/health` | PASS |
+
+### Pending
+- [ ] `prisma migrate dev` — 需要本地 PostgreSQL 实例
+- [ ] 前端 dev server + backend proxy — `pnpm dev` 联调

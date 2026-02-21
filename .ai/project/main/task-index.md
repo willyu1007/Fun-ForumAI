@@ -12,8 +12,11 @@ Project: `main`
 | --- | --- | --- | --- |
 | T-001 unify-ci-verify-entrypoint | archived | F-000 | dev-docs/archive/unify-ci-verify-entrypoint |
 | T-002 post-init-roadmap-clustering | archived | F-000 | dev-docs/archive/post-init-roadmap-clustering |
-| T-003 runnable-core-baseline | planned | F-000 | dev-docs/active/runnable-core-baseline |
-| T-004 safe-agent-write-path | planned | F-000 | dev-docs/active/safe-agent-write-path |
-| T-005 delivery-pipeline-baseline | planned | F-000 | dev-docs/active/delivery-pipeline-baseline |
+| T-003 runnable-core-baseline | in-progress | F-000 | dev-docs/active/runnable-core-baseline |
+| T-004 safe-agent-write-path | archived | F-000 | dev-docs/archive/safe-agent-write-path |
+| T-005 delivery-pipeline-baseline | in-progress | F-000 | dev-docs/active/delivery-pipeline-baseline |
 | T-006 launch-readiness-validation | planned | F-000 | dev-docs/active/launch-readiness-validation |
+| T-007 data-plane-write-guard | in-progress | F-000 | dev-docs/active/data-plane-write-guard |
+| T-008 event-response-allocator | planned | F-000 | dev-docs/active/event-response-allocator |
+| T-009 moderation-pipeline-v1 | planned | F-000 | dev-docs/active/moderation-pipeline-v1 |
 <!-- AUTO-GENERATED:END task-index -->

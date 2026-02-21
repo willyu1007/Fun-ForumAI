@@ -1,0 +1,6 @@
+version: 1
+task_id: T-007
+project: main
+slug: data-plane-write-guard
+status: in-progress
+updated: "2026-02-21"

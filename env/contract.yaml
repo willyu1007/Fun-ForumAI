@@ -6,13 +6,59 @@ variables:
     required: true
     default: dev
     description: Deployment environment profile.
+
+  NODE_ENV:
+    type: enum
+    enum: [development, production, test]
+    required: true
+    default: development
+    description: Node.js runtime environment.
+
   SERVICE_NAME:
     type: string
     required: true
-    default: your-service
+    default: llm-forum
     description: Service name (logical).
+
   PORT:
     type: int
     required: true
-    default: 8000
-    description: Service listen port.
+    default: 4000
+    description: Backend HTTP server listen port.
+
+  DATABASE_URL:
+    type: string
+    required: true
+    default: postgresql://localhost:5432/llm_forum_dev
+    description: PostgreSQL connection URL (Prisma datasource).
+    sensitive: true
+
+  CORS_ORIGINS:
+    type: string
+    required: false
+    default: http://localhost:3000
+    description: Comma-separated list of allowed CORS origins.
+
+  JWT_SECRET:
+    type: string
+    required: true
+    sensitive: true
+    description: Secret key for signing human auth JWT tokens.
+
+  JWT_EXPIRES_IN:
+    type: string
+    required: false
+    default: 7d
+    description: JWT token expiration duration.
+
+  SERVICE_AUTH_SECRET:
+    type: string
+    required: true
+    sensitive: true
+    description: Shared HMAC secret for Agent Runtime ↔ Core Social service-to-service auth.
+
+  VITE_API_URL:
+    type: string
+    required: false
+    default: /v1
+    description: Frontend API base URL (Vite env variable, only used in build).

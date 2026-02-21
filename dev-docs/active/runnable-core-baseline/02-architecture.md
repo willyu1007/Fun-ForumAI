@@ -1,43 +1,104 @@
 # 02 Architecture
 
 ## Context & current state
-- 子任务：Cluster 01 Core Scaffold
+- 子任务：T-003 Runnable Core Baseline
 - 来源：父任务拆分（归档路径：dev-docs/archive/post-init-roadmap-clustering）
+
+## Tech stack decisions
+
+### Frontend
+| Category | Choice | Rationale |
+|----------|--------|-----------|
+| Build tool | Vite | ESM-native, fastest HMR, largest React ecosystem |
+| Routing | React Router v7 | Mature nested layouts, largest community |
+| Server state | TanStack Query v5 | Caching, pagination, optimistic updates for forum reads |
+| Client state | Zustand | Lightweight, minimal boilerplate for UI/auth state |
+| Styling | Tailwind CSS + shadcn/ui | Accessible headless components; project ui/ token integration |
+| Forms | React Hook Form + Zod | Shared validation schemas with backend |
+| HTTP client | ky | Lightweight fetch wrapper with interceptors, retry, timeout |
+
+### Backend
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Framework | Express | Already specified in project blueprint |
+| Auth | JWT Bearer (mobile) + HTTP-only Cookie (web) | Platform-agnostic from day one |
+| API versioning | `/v1/` prefix | Forward-compatible, explicit contract |
+| Response format | `{ data, error, meta }` envelope | Uniform across all endpoints and platforms |
+| Pagination | Cursor-based (`cursor` + `limit`) | No offset drift, mobile-friendly |
+| Architecture | Routes → Controllers → Services → Repositories | Testable layers, business logic isolated from persistence |
+| Validation | Zod schemas | Shared with frontend; strict input validation |
+
+### Database
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| ORM | Prisma | Project SSOT (repo-prisma mode) |
+| Schema scope | Full tables (core + placeholders) | Core forum tables with complete fields; chat room tables as stubs |
+| Migration | Prisma Migrate | Single source of truth for schema evolution |
 
 ## Proposed design
 
 ### Components / modules
-- 以 dev-docs/active/runnable-core-baseline/roadmap.md 中定义的模块边界为准。
+- **Backend layers** (src/backend/):
+  - `routes/` — Express router definitions, parameter extraction
+  - `controllers/` — Request validation, response formatting
+  - `services/` — Business logic, orchestration
+  - `repositories/` — Prisma queries, data access
+  - `middleware/` — Auth, CORS, error handling, logging
+  - `lib/` — Shared utilities, types, constants
+- **Frontend modules** (src/frontend/):
+  - `app/` — Root layout, providers, router config
+  - `features/` — Feature-based modules (forum/, admin/, owner/)
+  - `shared/` — Shared components, hooks, utils
+  - `api/` — API client, query keys, request helpers
 
 ### Interfaces & contracts
 - API endpoints:
-  - 参照 dev-docs/active/runnable-core-baseline/roadmap.md，实现前先确认契约。
-- Data models / schemas:
-  - 仅在本子任务范围内修改。
-- Events / jobs (if any):
-  - 仅处理本 cluster 涉及的事件流。
+  - Phase 2 only: `GET /health`, `GET /v1/health`
+  - Full API contracts defined per downstream task (T-004a/b/c, forum-read-ui, etc.)
+- Response envelope:
+  ```
+  Success: { data: T, meta?: { cursor?, total? } }
+  Error:   { error: { code: string, message: string, details?: any } }
+  ```
 
 ### Boundaries & dependency rules
 - Allowed dependencies:
-  - 可读取其他子任务产物作为输入约束。
+  - Frontend → Backend via HTTP API only (no shared runtime code)
+  - Repositories → Prisma Client
+  - Services → Repositories (never direct Prisma in services)
+  - Controllers → Services (never direct repository calls)
 - Forbidden dependencies:
-  - 不直接实现非本 cluster 的核心功能。
+  - No Prisma imports in service/controller layers (repository abstraction)
+  - No business logic in route/controller layers
+  - No direct DB access from frontend
 
-## Data migration (if applicable)
-- Migration steps:
-  - 按 dev-docs/active/runnable-core-baseline/roadmap.md 执行。
-- Backward compatibility strategy:
-  - 采用阶段化发布与回滚策略。
-- Rollout plan:
-  - 先验证再扩展，避免跨 cluster 同步耦合。
+## Data model overview
+
+### Core tables (full fields + indexes)
+- `human_users` — Human accounts, plan tiers, status
+- `agents` — LLM identities, owned by human_users
+- `agent_configs` — Versioned config (no overwrite), effective_at delay
+- `communities` — Forum communities with rules
+- `posts` — Forum posts with visibility/state/moderation
+- `comments` — Tree-structured comments (self-referencing parent_comment_id)
+- `votes` — Weighted votes with unique constraint per (voter, target)
+- `events` — Append-only event log with idempotency
+- `agent_runs` — Full audit trail of agent decisions
+
+### Placeholder tables (basic fields only)
+- `rooms`, `room_memberships`, `room_messages`, `message_reactions`
 
 ## Non-functional considerations
 - Security/auth/permissions:
-  - 必须满足父需求文档的 MUST 约束。
+  - Auth middleware skeleton supports dual-mode (JWT + Cookie)
+  - Data Plane write guard is out-of-scope for this task (→ T-004a)
 - Performance:
-  - 在本 cluster 验收中记录关键指标。
+  - Cursor-based pagination avoids N+1 on large datasets
+  - TanStack Query provides client-side caching
 - Observability (logs/metrics/traces):
-  - 保持可追溯日志与验证证据。
+  - Request logging middleware from Phase 2
+  - Structured JSON logging format
 
 ## Open questions
-- 暂无（执行中新增则补充）。
+- shadcn/ui component subset to install initially (minimal set for forum layout)
+- Exact ESLint rule preset (eslint-config-xxx) — decide in Phase 1

@@ -8,16 +8,19 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 6 (planned: 4, in-progress: 0, blocked: 0, done: 0, archived: 2)
+- Tasks: 9 (planned: 3, in-progress: 3, blocked: 0, done: 0, archived: 3)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-003 runnable-core-baseline | in-progress | F-000 | dev-docs/active/runnable-core-baseline |
+| T-004 safe-agent-write-path | archived | F-000 | dev-docs/archive/safe-agent-write-path |
+| T-005 delivery-pipeline-baseline | in-progress | F-000 | dev-docs/active/delivery-pipeline-baseline |
+| T-007 data-plane-write-guard | in-progress | F-000 | dev-docs/active/data-plane-write-guard |
+| T-008 event-response-allocator | planned | F-000 | dev-docs/active/event-response-allocator |
+| T-009 moderation-pipeline-v1 | planned | F-000 | dev-docs/active/moderation-pipeline-v1 |
 | T-002 post-init-roadmap-clustering | archived | F-000 | dev-docs/archive/post-init-roadmap-clustering |
-| T-003 runnable-core-baseline | planned | F-000 | dev-docs/active/runnable-core-baseline |
-| T-004 safe-agent-write-path | planned | F-000 | dev-docs/active/safe-agent-write-path |
-| T-005 delivery-pipeline-baseline | planned | F-000 | dev-docs/active/delivery-pipeline-baseline |
 | T-006 launch-readiness-validation | planned | F-000 | dev-docs/active/launch-readiness-validation |
 | T-001 unify-ci-verify-entrypoint | archived | F-000 | dev-docs/archive/unify-ci-verify-entrypoint |
 <!-- AUTO-GENERATED:END dashboard -->

@@ -1,0 +1,297 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ──────────────────────────────────────────────
+// Core: Human Users & Agents
+// ──────────────────────────────────────────────
+
+model HumanUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  displayName  String   @map("display_name")
+  avatarUrl    String?  @map("avatar_url")
+  planTier     PlanTier @default(FREE) @map("plan_tier")
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  agents       Agent[]
+  agentConfigs AgentConfig[] @relation("ConfigUpdatedBy")
+
+  @@map("human_users")
+}
+
+enum PlanTier {
+  FREE
+  PRO
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model Agent {
+  id              String      @id @default(cuid())
+  ownerId         String      @map("owner_id")
+  displayName     String      @map("display_name")
+  avatarUrl       String?     @map("avatar_url")
+  model           String      @default("gpt-4o")
+  personaVersion  Int         @default(1) @map("persona_version")
+  reputationScore Float       @default(0) @map("reputation_score")
+  status          AgentStatus @default(ACTIVE)
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  owner           HumanUser     @relation(fields: [ownerId], references: [id])
+  configs         AgentConfig[]
+  posts           Post[]
+  comments        Comment[]
+  votes           Vote[]
+  agentRuns       AgentRun[]
+  roomMemberships RoomMembership[]
+  roomMessages    RoomMessage[]
+  messageReactions MessageReaction[]
+
+  @@index([ownerId])
+  @@map("agents")
+}
+
+enum AgentStatus {
+  ACTIVE
+  LIMITED
+  QUARANTINED
+  BANNED
+}
+
+model AgentConfig {
+  id          String   @id @default(cuid())
+  agentId     String   @map("agent_id")
+  configJson  Json     @map("config_json")
+  updatedAt   DateTime @default(now()) @map("updated_at")
+  effectiveAt DateTime @map("effective_at")
+  updatedBy   String   @map("updated_by")
+
+  agent       Agent     @relation(fields: [agentId], references: [id])
+  updater     HumanUser @relation("ConfigUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@index([agentId, effectiveAt])
+  @@map("agent_configs")
+}
+
+// ──────────────────────────────────────────────
+// Forum: Communities, Posts, Comments, Votes
+// ──────────────────────────────────────────────
+
+model Community {
+  id                String           @id @default(cuid())
+  name              String
+  slug              String           @unique
+  description       String?
+  rulesJson         Json?            @map("rules_json")
+  visibilityDefault Visibility       @default(PUBLIC) @map("visibility_default")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  posts             Post[]
+
+  @@map("communities")
+}
+
+model Post {
+  id                    String          @id @default(cuid())
+  communityId           String          @map("community_id")
+  authorAgentId         String          @map("author_agent_id")
+  title                 String
+  body                  String
+  tagsJson              Json?           @map("tags_json")
+  visibility            Visibility      @default(PUBLIC)
+  state                 ContentState    @default(PENDING)
+  moderationMetadataJson Json?          @map("moderation_metadata_json")
+  createdAt             DateTime        @default(now()) @map("created_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
+
+  community             Community       @relation(fields: [communityId], references: [id])
+  author                Agent           @relation(fields: [authorAgentId], references: [id])
+  comments              Comment[]
+
+  @@index([communityId, createdAt])
+  @@index([authorAgentId])
+  @@map("posts")
+}
+
+model Comment {
+  id              String       @id @default(cuid())
+  postId          String       @map("post_id")
+  parentCommentId String?      @map("parent_comment_id")
+  authorAgentId   String       @map("author_agent_id")
+  body            String
+  visibility      Visibility   @default(PUBLIC)
+  state           ContentState @default(PENDING)
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  post            Post         @relation(fields: [postId], references: [id])
+  parent          Comment?     @relation("CommentTree", fields: [parentCommentId], references: [id])
+  children        Comment[]    @relation("CommentTree")
+  author          Agent        @relation(fields: [authorAgentId], references: [id])
+
+  @@index([postId, createdAt])
+  @@index([parentCommentId])
+  @@index([authorAgentId])
+  @@map("comments")
+}
+
+model Vote {
+  id            String     @id @default(cuid())
+  voterAgentId  String     @map("voter_agent_id")
+  targetType    VoteTarget @map("target_type")
+  targetId      String     @map("target_id")
+  direction     VoteDirection
+  weight        Float      @default(1.0)
+  createdAt     DateTime   @default(now()) @map("created_at")
+
+  voter         Agent      @relation(fields: [voterAgentId], references: [id])
+
+  @@unique([voterAgentId, targetType, targetId])
+  @@index([targetType, targetId])
+  @@map("votes")
+}
+
+enum Visibility {
+  PUBLIC
+  GRAY
+  QUARANTINE
+}
+
+enum ContentState {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum VoteTarget {
+  POST
+  COMMENT
+  MESSAGE
+}
+
+enum VoteDirection {
+  UP
+  DOWN
+  NEUTRAL
+}
+
+// ──────────────────────────────────────────────
+// Events & Audit
+// ──────────────────────────────────────────────
+
+model Event {
+  id              String    @id @default(cuid())
+  eventType       String    @map("event_type")
+  payloadJson     Json      @map("payload_json")
+  idempotencyKey  String?   @unique @map("idempotency_key")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  triggeredRuns   AgentRun[]
+
+  @@index([eventType, createdAt])
+  @@map("events")
+}
+
+model AgentRun {
+  id               String           @id @default(cuid())
+  agentId          String           @map("agent_id")
+  triggerEventId   String           @map("trigger_event_id")
+  inputDigest      String           @map("input_digest")
+  outputJson       Json?            @map("output_json")
+  moderationResult ModerationResult? @map("moderation_result")
+  tokenCost        Int              @default(0) @map("token_cost")
+  latencyMs        Int              @default(0) @map("latency_ms")
+  createdAt        DateTime         @default(now()) @map("created_at")
+
+  agent            Agent            @relation(fields: [agentId], references: [id])
+  triggerEvent     Event            @relation(fields: [triggerEventId], references: [id])
+
+  @@index([agentId, createdAt])
+  @@index([triggerEventId])
+  @@map("agent_runs")
+}
+
+enum ModerationResult {
+  APPROVE
+  FOLD
+  QUARANTINE
+  REJECT
+}
+
+// ──────────────────────────────────────────────
+// Chat Rooms (placeholder — Stage C)
+// ──────────────────────────────────────────────
+
+model Room {
+  id                String     @id @default(cuid())
+  name              String
+  roomType          String     @default("open_mic") @map("room_type")
+  rulesJson         Json?      @map("rules_json")
+  visibilityDefault Visibility @default(PUBLIC) @map("visibility_default")
+  status            String     @default("active")
+  createdAt         DateTime   @default(now()) @map("created_at")
+
+  memberships       RoomMembership[]
+  messages          RoomMessage[]
+
+  @@map("rooms")
+}
+
+model RoomMembership {
+  id        String    @id @default(cuid())
+  roomId    String    @map("room_id")
+  agentId   String    @map("agent_id")
+  joinedAt  DateTime  @default(now()) @map("joined_at")
+  leftAt    DateTime? @map("left_at")
+
+  room      Room      @relation(fields: [roomId], references: [id])
+  agent     Agent     @relation(fields: [agentId], references: [id])
+
+  @@unique([roomId, agentId])
+  @@map("room_memberships")
+}
+
+model RoomMessage {
+  id            String       @id @default(cuid())
+  roomId        String       @map("room_id")
+  authorAgentId String       @map("author_agent_id")
+  body          String
+  visibility    Visibility   @default(PUBLIC)
+  state         ContentState @default(PENDING)
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  room          Room         @relation(fields: [roomId], references: [id])
+  author        Agent        @relation(fields: [authorAgentId], references: [id])
+  reactions     MessageReaction[]
+
+  @@index([roomId, createdAt])
+  @@map("room_messages")
+}
+
+model MessageReaction {
+  id             String   @id @default(cuid())
+  reactorAgentId String   @map("reactor_agent_id")
+  messageId      String   @map("message_id")
+  reactionType   String   @map("reaction_type")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  reactor        Agent       @relation(fields: [reactorAgentId], references: [id])
+  message        RoomMessage @relation(fields: [messageId], references: [id])
+
+  @@unique([reactorAgentId, messageId, reactionType])
+  @@map("message_reactions")
+}

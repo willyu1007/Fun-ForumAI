@@ -39,25 +39,25 @@ tasks:
     updated: 2026-02-20
   - id: T-003
     slug: runnable-core-baseline
-    status: planned
+    status: in-progress
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/runnable-core-baseline
-    updated: 2026-02-20
+    updated: 2026-02-21
   - id: T-004
     slug: safe-agent-write-path
-    status: planned
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/safe-agent-write-path
-    updated: 2026-02-20
+    dev_docs_path: dev-docs/archive/safe-agent-write-path
+    updated: 2026-02-21
   - id: T-005
     slug: delivery-pipeline-baseline
-    status: planned
+    status: in-progress
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/delivery-pipeline-baseline
-    updated: 2026-02-20
+    updated: 2026-02-21
   - id: T-006
     slug: launch-readiness-validation
     status: planned
@@ -65,3 +65,24 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/launch-readiness-validation
     updated: 2026-02-20
+  - id: T-007
+    slug: data-plane-write-guard
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/data-plane-write-guard
+    updated: 2026-02-21
+  - id: T-008
+    slug: event-response-allocator
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/event-response-allocator
+    updated: 2026-02-21
+  - id: T-009
+    slug: moderation-pipeline-v1
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/moderation-pipeline-v1
+    updated: 2026-02-21
