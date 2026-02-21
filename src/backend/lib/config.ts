@@ -7,7 +7,7 @@ export const config = {
     origins: env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],
   },
   db: {
-    url: env.DATABASE_URL || 'postgresql://localhost:5432/llm_forum_dev',
+    url: env.DATABASE_URL || `postgresql://${env.USER ?? 'postgres'}@localhost:5432/llm_forum_dev`,
   },
   auth: {
     jwtSecret: env.JWT_SECRET || 'dev-jwt-secret-change-in-production',

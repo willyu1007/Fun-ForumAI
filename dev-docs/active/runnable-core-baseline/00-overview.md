@@ -1,9 +1,8 @@
 # 00 Overview
 
 ## Status
-- State: in-progress
-- Current phase: Phase 1-3 完成（脚本、前后端骨架、DB schema）
-- Next step: 等待本地 PostgreSQL 可用后执行 `prisma migrate dev` 生成首个 migration。
+- State: done
+- All phases complete. DB migrated, backend + frontend verified, 252 tests passing.
 
 ## Goal
 - 完成可运行的最小前后端与全量 DB 基线。
@@ -28,6 +27,6 @@
 - Dependency note: 为 Lane C（Mobile App）提供统一 API 与数据契约基线。
 
 ## Acceptance criteria (high level)
-- [ ] roadmap 中分期目标全部完成。
-- [ ] 验收标准与回滚策略有执行记录。
-- [ ] 结果可被下游 cluster 复用或消费。
+- [x] roadmap 中分期目标全部完成。
+- [x] 验收标准与回滚策略有执行记录。
+- [x] 结果可被下游 cluster 复用或消费。

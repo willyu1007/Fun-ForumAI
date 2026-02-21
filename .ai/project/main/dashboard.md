@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 10 (planned: 1, in-progress: 2, blocked: 0, done: 4, archived: 3)
+- Tasks: 10 (planned: 1, in-progress: 1, blocked: 0, done: 5, archived: 3)
 
 ## Recent tasks
 
@@ -19,7 +19,7 @@ Project: `main`
 | T-008 event-response-allocator | done | F-000 | dev-docs/archive/event-response-allocator |
 | T-007 data-plane-write-guard | done | F-000 | dev-docs/archive/data-plane-write-guard |
 | T-005 delivery-pipeline-baseline | in-progress | F-000 | dev-docs/active/delivery-pipeline-baseline |
-| T-003 runnable-core-baseline | in-progress | F-000 | dev-docs/active/runnable-core-baseline |
+| T-003 runnable-core-baseline | done | F-000 | dev-docs/active/runnable-core-baseline |
 | T-006 launch-readiness-validation | planned | F-000 | dev-docs/active/launch-readiness-validation |
 | T-004 safe-agent-write-path | archived | F-000 | dev-docs/archive/safe-agent-write-path |
 | T-002 post-init-roadmap-clustering | archived | F-000 | dev-docs/archive/post-init-roadmap-clustering |

@@ -39,7 +39,7 @@ tasks:
     updated: 2026-02-20
   - id: T-003
     slug: runnable-core-baseline
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/runnable-core-baseline

@@ -1,7 +1,7 @@
 # 03 Implementation Notes
 
 ## Status
-- Current status: in-progress
+- Current status: done
 - Last updated: 2026-02-21
 
 ## What changed
@@ -64,10 +64,17 @@
 - Prisma 7 不再支持 schema 内 `url` 配置，改用 prisma.config.ts（计划中未预见）
 - vitest 配置独立为 vitest.config.ts（而非内嵌在 vite.config.ts）
 
+### 2026-02-21 — Phase 3 completion: DB migration
+- 创建本地 PostgreSQL 数据库 `llm_forum_dev`
+- 更新 `prisma.config.ts` 和 `config.ts` 中的默认连接字符串使用 `$USER` 环境变量
+- 执行 `prisma migrate dev --name init` 成功，生成迁移 `20260221054450_init`
+- 13 张业务表全部在数据库中就位（9 核心 + 4 聊天室占位）
+- 后端 health endpoint 和全部 API 路由验证通过
+
 ## Known issues / follow-ups
-- 需要本地 PostgreSQL 实例来运行 `prisma migrate dev`
 - eslint-plugin-react-hooks 7 与 ESLint 10 有 peer dependency 警告（不影响功能）
 - shadcn/ui 组件尚未安装（需要时按需添加）
+- 生产环境需通过 DATABASE_URL 环境变量配置连接字符串
 
 ## Pitfalls / dead ends (do not repeat)
 - Keep the detailed log in 05-pitfalls.md (append-only).

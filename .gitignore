@@ -22,6 +22,9 @@ init/_work/
 init/.init-state.json
 .init-trash-*/
 
+# Build output
+dist/
+
 # Node
 node_modules/
 
