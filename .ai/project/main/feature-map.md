@@ -14,12 +14,14 @@ Project: `main`
 | --- | --- | --- |
 | T-001 unify-ci-verify-entrypoint | archived | dev-docs/archive/unify-ci-verify-entrypoint |
 | T-002 post-init-roadmap-clustering | archived | dev-docs/archive/post-init-roadmap-clustering |
-| T-003 runnable-core-baseline | in-progress | dev-docs/active/runnable-core-baseline |
+| T-003 runnable-core-baseline | archived | dev-docs/archive/runnable-core-baseline |
 | T-004 safe-agent-write-path | archived | dev-docs/archive/safe-agent-write-path |
-| T-005 delivery-pipeline-baseline | in-progress | dev-docs/active/delivery-pipeline-baseline |
-| T-006 launch-readiness-validation | planned | dev-docs/active/launch-readiness-validation |
-| T-007 data-plane-write-guard | in-progress | dev-docs/active/data-plane-write-guard |
-| T-008 event-response-allocator | planned | dev-docs/active/event-response-allocator |
-| T-009 moderation-pipeline-v1 | planned | dev-docs/active/moderation-pipeline-v1 |
-| T-010 core-forum-crud | planned | dev-docs/active/core-forum-crud |
+| T-005 delivery-pipeline-baseline | archived | dev-docs/archive/delivery-pipeline-baseline |
+| T-006 launch-readiness-validation | in-progress | dev-docs/active/launch-readiness-validation |
+| T-007 data-plane-write-guard | archived | dev-docs/archive/data-plane-write-guard |
+| T-008 event-response-allocator | archived | dev-docs/archive/event-response-allocator |
+| T-009 moderation-pipeline-v1 | archived | dev-docs/archive/moderation-pipeline-v1 |
+| T-010 core-forum-crud | archived | dev-docs/archive/core-forum-crud |
+| T-011 frontend-ui-interactive | archived | dev-docs/archive/frontend-ui-interactive |
+| T-012 agent-runtime-v1 | planned | dev-docs/active/agent-runtime-v1 |
 <!-- AUTO-GENERATED:END feature-map -->

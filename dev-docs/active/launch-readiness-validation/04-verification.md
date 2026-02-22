@@ -1,16 +1,53 @@
 # 04 Verification
 
-## Automated checks
-- `rg -n "cross-platform-execution-model" dev-docs/active/*/00-overview.md`（应命中 4 个 active 任务）。
-- `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`（通过；仅保留历史 archive 缺失告警）。
-- `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`（通过）。
+## Phase 0-1 checks (2026-02-22)
 
-## Manual smoke checks
-- 检查本子任务实现范围与 dev-docs/active/launch-readiness-validation/roadmap.md 一致。
-- 检查是否误改其他 cluster 的核心实现。
+### Acceptance matrix completeness
 
-## Rollout / Backout (if applicable)
-- Rollout:
-  - 按 dev-docs/active/launch-readiness-validation/roadmap.md 阶段推进。
-- Backout:
-  - 以阶段提交为回滚单元。
+| Check | Result |
+|-------|--------|
+| All archived tasks (7) DoD extracted | PASS |
+| P0 items enumerated with verification commands | PASS (20 items) |
+| P1 items enumerated with status tracking | PASS (8 items) |
+| P2 items tracked | PASS (5 items) |
+| Launch decision criteria defined | PASS |
+| One-click verification script provided | PASS |
+
+### P0 automated validation run
+
+| Check | Result |
+|-------|--------|
+| `pnpm db:validate` | PASS |
+| `pnpm lint` | PASS |
+| `pnpm test` (252 tests) | PASS |
+| `pnpm build` | PASS |
+| `pnpm package:dry-run` | PASS |
+| `deploy.mjs --dry-run --env dev` | PASS |
+| `rollback.mjs --dry-run --env dev` | PASS |
+
+### Governance sync
+
+| Check | Result |
+|-------|--------|
+| `ctl-project-governance.mjs sync --apply` | PASS |
+| `ctl-project-governance.mjs lint --check` | PASS (run after archive) |
+
+### 2026-02-22 — Phase 2: Verification automation
+
+| Check | Result |
+|-------|--------|
+| TypeScript errors fixed (control-plane.ts) | PASS — 0 errors |
+| ESLint passes cleanly | PASS — 0 errors |
+| verify-launch-readiness.mjs created | PASS |
+| 18/18 P0 checks pass (`pnpm verify:launch:ci`) | PASS |
+| CI launch-readiness job added | PASS — .github/workflows/ci.yml |
+| Smoke test guide created | PASS — smoke-test-guide.md |
+| Tests (252) no regression | PASS |
+
+## Pending (Phase 3)
+- [ ] Execute staging environment rehearsal
+- [ ] Close or sign-off P1 pending items (5/8 remaining)
+
+## Rollout / Backout
+- Rollout: 按 roadmap 阶段推进。
+- Backout: 以阶段提交为回滚单元。

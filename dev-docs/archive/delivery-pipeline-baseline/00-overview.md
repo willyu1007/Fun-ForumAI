@@ -1,9 +1,10 @@
 # 00 Overview
 
 ## Status
-- State: in-progress
-- Current: Phase 1-2 完成（环境契约 10 个配置键 + CI 基线 workflow）
-- Next step: Phase 3 delivery handshake（打包部署 dry-run，待基础设施就绪）。
+- State: done
+- Phase 1 (env contract): 完成 — 10 个配置键，敏感键标记，环境对齐。
+- Phase 2 (CI baseline): 完成 — lint/typecheck/test/build/db:validate + governance lint。
+- Phase 3 (delivery handshake): 完成 — packaging/deploy/rollback dry-run 全部可执行。
 
 ## Goal
 - 完成环境契约、CI 基线与交付链路最小闭环。
@@ -23,6 +24,6 @@
 - Dependency note: 统一 CI/CD 与环境契约，服务三线交付一致性。
 
 ## Acceptance criteria (high level)
-- [ ] roadmap 中分期目标全部完成。
-- [ ] 验收标准与回滚策略有执行记录。
-- [ ] 结果可被下游 cluster 复用或消费。
+- [x] roadmap 中分期目标全部完成。
+- [x] 验收标准与回滚策略有执行记录。
+- [x] 结果可被下游 cluster 复用或消费。

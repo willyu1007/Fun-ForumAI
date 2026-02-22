@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+.ai
+.codex
+.claude
+.cursor
+dev-docs
+docs
+*.md
+.env*
+.github
+ops
+release
+ci

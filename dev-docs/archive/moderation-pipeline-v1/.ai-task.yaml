@@ -2,9 +2,5 @@ version: 1
 task_id: T-009
 project: main
 slug: moderation-pipeline-v1
-status: done
-updated: "2026-02-21"
-parent: T-004 (split, archived)
-depends_on:
-  - T-003
-  - T-007
+status: archived
+updated: "2026-02-22"

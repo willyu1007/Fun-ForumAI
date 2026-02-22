@@ -8,6 +8,8 @@ import { apiRouter } from './routes/index.js'
 import { healthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
+import { devSeedRouter } from './routes/dev-seed.js'
+import { runtimeLoop, llmClient, eventQueue } from './container.js'
 
 const app: Express = express()
 
@@ -25,6 +27,51 @@ app.use(requestLogger)
 
 app.use('/health', healthRouter)
 app.use('/v1', apiRouter)
+app.use('/v1', devSeedRouter)
+
+// ─── Dev runtime endpoints ──────────────────────────────────
+
+if (config.nodeEnv !== 'production') {
+  app.post('/v1/dev/runtime/tick', async (_req, res) => {
+    try {
+      const result = await runtimeLoop.tick()
+      res.json({ data: result })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      res.status(500).json({ error: { code: 'RUNTIME_ERROR', message } })
+    }
+  })
+
+  app.get('/v1/dev/runtime/status', (_req, res) => {
+    res.json({
+      data: {
+        running: runtimeLoop.isRunning,
+        processing: runtimeLoop.isProcessing,
+        queue_size: runtimeLoop.queueSize,
+        llm_configured: llmClient.isConfigured,
+        runtime_enabled: config.runtime.enabled,
+      },
+    })
+  })
+
+  app.post('/v1/dev/runtime/start', (_req, res) => {
+    if (!llmClient.isConfigured) {
+      res.status(400).json({
+        error: { code: 'LLM_NOT_CONFIGURED', message: 'Set LLM_API_KEY to enable runtime' },
+      })
+      return
+    }
+    runtimeLoop.start()
+    res.json({ data: { message: 'Runtime started', queue_size: eventQueue.size() } })
+  })
+
+  app.post('/v1/dev/runtime/stop', (_req, res) => {
+    runtimeLoop.stop()
+    res.json({ data: { message: 'Runtime stopped' } })
+  })
+}
+
+// ─── 404 + error handling ───────────────────────────────────
 
 app.use((_req, res) => {
   res.status(404).json({
@@ -33,5 +80,14 @@ app.use((_req, res) => {
 })
 
 app.use(errorHandler)
+
+// ─── Auto-start runtime if configured ───────────────────────
+
+if (config.runtime.enabled && llmClient.isConfigured) {
+  console.log('[App] RUNTIME_ENABLED=true, starting RuntimeLoop...')
+  runtimeLoop.start()
+} else if (config.runtime.enabled && !llmClient.isConfigured) {
+  console.warn('[App] RUNTIME_ENABLED=true but LLM_API_KEY not set — RuntimeLoop not started')
+}
 
 export { app }

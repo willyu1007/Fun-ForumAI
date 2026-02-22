@@ -23,6 +23,20 @@
 | CI job: governance lint | Configured (separate job) |
 | Local full suite passes | PASS |
 
+### 2026-02-22 — Phase 3: Delivery handshake
+
+| Check | Result |
+|-------|--------|
+| Dockerfile exists and valid syntax | PASS (ops/packaging/services/llm-forum.Dockerfile) |
+| .dockerignore created | PASS |
+| Packaging registry has target | PASS (llm-forum) |
+| Deploy config has service | PASS (llm-forum) |
+| `pnpm package:dry-run` | PASS — all prerequisites ✓, Ready: YES |
+| `deploy.mjs --dry-run --env dev` | PASS — env contract ✓, Ready: YES |
+| `deploy.mjs --dry-run --env staging` | PASS — env contract ✓, approval required |
+| `rollback.mjs --dry-run --env dev` | PASS — rollback plan generated |
+| `ctl-release.mjs status` | PASS — semantic v0.0.0, changelog enabled |
+| Test suite (252 tests) | PASS — no regressions |
+
 ### Pending
 - [ ] CI workflow dry-run on GitHub (push to branch and verify)
-- [ ] Phase 3: packaging/deploy dry-run

@@ -12,12 +12,14 @@ Project: `main`
 | --- | --- | --- | --- |
 | T-001 unify-ci-verify-entrypoint | archived | F-000 | dev-docs/archive/unify-ci-verify-entrypoint |
 | T-002 post-init-roadmap-clustering | archived | F-000 | dev-docs/archive/post-init-roadmap-clustering |
-| T-003 runnable-core-baseline | done | F-000 | dev-docs/active/runnable-core-baseline |
+| T-003 runnable-core-baseline | archived | F-000 | dev-docs/archive/runnable-core-baseline |
 | T-004 safe-agent-write-path | archived | F-000 | dev-docs/archive/safe-agent-write-path |
-| T-005 delivery-pipeline-baseline | in-progress | F-000 | dev-docs/active/delivery-pipeline-baseline |
-| T-006 launch-readiness-validation | planned | F-000 | dev-docs/active/launch-readiness-validation |
-| T-007 data-plane-write-guard | done | F-000 | dev-docs/archive/data-plane-write-guard |
-| T-008 event-response-allocator | done | F-000 | dev-docs/archive/event-response-allocator |
-| T-009 moderation-pipeline-v1 | done | F-000 | dev-docs/archive/moderation-pipeline-v1 |
-| T-010 core-forum-crud | done | F-000 | dev-docs/archive/core-forum-crud |
+| T-005 delivery-pipeline-baseline | archived | F-000 | dev-docs/archive/delivery-pipeline-baseline |
+| T-006 launch-readiness-validation | in-progress | F-000 | dev-docs/active/launch-readiness-validation |
+| T-007 data-plane-write-guard | archived | F-000 | dev-docs/archive/data-plane-write-guard |
+| T-008 event-response-allocator | archived | F-000 | dev-docs/archive/event-response-allocator |
+| T-009 moderation-pipeline-v1 | archived | F-000 | dev-docs/archive/moderation-pipeline-v1 |
+| T-010 core-forum-crud | archived | F-000 | dev-docs/archive/core-forum-crud |
+| T-011 frontend-ui-interactive | archived | F-000 | dev-docs/archive/frontend-ui-interactive |
+| T-012 agent-runtime-v1 | planned | F-000 | dev-docs/active/agent-runtime-v1 |
 <!-- AUTO-GENERATED:END task-index -->

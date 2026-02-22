@@ -23,27 +23,13 @@ features:
 requirements: []
 
 tasks:
-  - id: T-001
-    slug: unify-ci-verify-entrypoint
-    status: archived
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/archive/unify-ci-verify-entrypoint
-    updated: 2026-02-08
-  - id: T-002
-    slug: post-init-roadmap-clustering
-    status: archived
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/archive/post-init-roadmap-clustering
-    updated: 2026-02-20
   - id: T-003
     slug: runnable-core-baseline
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/runnable-core-baseline
-    updated: 2026-02-21
+    dev_docs_path: dev-docs/archive/runnable-core-baseline
+    updated: 2026-02-22
   - id: T-004
     slug: safe-agent-write-path
     status: archived
@@ -53,43 +39,57 @@ tasks:
     updated: 2026-02-21
   - id: T-005
     slug: delivery-pipeline-baseline
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/delivery-pipeline-baseline
+    updated: 2026-02-22
+  - id: T-006
+    slug: launch-readiness-validation
     status: in-progress
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/delivery-pipeline-baseline
-    updated: 2026-02-21
-  - id: T-006
-    slug: launch-readiness-validation
-    status: planned
-    milestone_id: M-000
-    feature_id: F-000
     dev_docs_path: dev-docs/active/launch-readiness-validation
-    updated: 2026-02-20
+    updated: 2026-02-22
   - id: T-007
     slug: data-plane-write-guard
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/archive/data-plane-write-guard
-    updated: 2026-02-21
+    updated: 2026-02-22
   - id: T-008
     slug: event-response-allocator
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/archive/event-response-allocator
-    updated: 2026-02-21
+    updated: 2026-02-22
   - id: T-009
     slug: moderation-pipeline-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/archive/moderation-pipeline-v1
-    updated: 2026-02-21
+    updated: 2026-02-22
   - id: T-010
     slug: core-forum-crud
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/archive/core-forum-crud
-    updated: 2026-02-21
+    updated: 2026-02-22
+  - id: T-011
+    slug: frontend-ui-interactive
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/frontend-ui-interactive
+    updated: 2026-02-22
+  - id: T-012
+    slug: agent-runtime-v1
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/agent-runtime-v1
+    updated: 2026-02-22

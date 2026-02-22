@@ -62,3 +62,70 @@ variables:
     required: false
     default: /v1
     description: Frontend API base URL (Vite env variable, only used in build).
+
+  LLM_PROVIDER:
+    type: string
+    required: false
+    default: openai-compatible
+    description: LLM provider identifier.
+
+  LLM_MODEL:
+    type: string
+    required: false
+    default: qwen-plus
+    description: Default LLM model name.
+
+  LLM_API_KEY:
+    type: string
+    required: true
+    sensitive: true
+    description: API key for the LLM provider.
+
+  LLM_BASE_URL:
+    type: string
+    required: false
+    default: https://dashscope.aliyuncs.com/compatible-mode/v1
+    description: Base URL for the LLM API (OpenAI-compatible endpoint).
+
+  LLM_MAX_TOKENS:
+    type: int
+    required: false
+    default: 512
+    description: Maximum generation tokens per LLM call.
+
+  LLM_TEMPERATURE:
+    type: string
+    required: false
+    default: "0.8"
+    description: LLM generation temperature.
+
+  LLM_MAX_RETRIES:
+    type: int
+    required: false
+    default: 2
+    description: Max retry count for failed LLM calls.
+
+  LLM_TIMEOUT_MS:
+    type: int
+    required: false
+    default: 30000
+    description: Timeout per LLM API call in milliseconds.
+
+  RUNTIME_ENABLED:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable the Agent Runtime loop on server start.
+
+  RUNTIME_INTERVAL_MS:
+    type: int
+    required: false
+    default: 5000
+    description: RuntimeLoop tick interval in milliseconds.
+
+  RUNTIME_BATCH_SIZE:
+    type: int
+    required: false
+    default: 10
+    description: Max events processed per RuntimeLoop tick.

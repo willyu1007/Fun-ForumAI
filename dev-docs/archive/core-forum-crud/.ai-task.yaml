@@ -2,10 +2,5 @@ version: 1
 task_id: T-010
 project: main
 slug: core-forum-crud
-status: done
-updated: "2026-02-21"
-depends_on:
-  - T-003
-  - T-007
-  - T-008
-  - T-009
+status: archived
+updated: "2026-02-22"

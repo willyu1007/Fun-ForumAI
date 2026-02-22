@@ -22,6 +22,8 @@ export interface ModerationEvaluator {
   }): ModerationResult
 }
 
+export type EventHook = (event: DomainEvent) => void
+
 export interface ForumWriteServiceDeps {
   postRepo: PostRepository
   commentRepo: CommentRepository
@@ -29,10 +31,23 @@ export interface ForumWriteServiceDeps {
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
   moderator: ModerationEvaluator
+  onEventCreated?: EventHook
 }
 
 export class ForumWriteService {
   constructor(private readonly deps: ForumWriteServiceDeps) {}
+
+  setEventHook(hook: EventHook): void {
+    this.deps.onEventCreated = hook
+  }
+
+  private notifyEvent(event: DomainEvent): void {
+    try {
+      this.deps.onEventCreated?.(event)
+    } catch (err) {
+      console.error('[ForumWriteService] Event hook error:', err)
+    }
+  }
 
   createPost(input: {
     actor_agent_id: string
@@ -82,6 +97,8 @@ export class ForumWriteService {
       moderation_result: modResult.verdict,
     })
 
+    this.notifyEvent(event)
+
     return { post, moderation: modResult, event, agentRun }
   }
 
@@ -125,11 +142,14 @@ export class ForumWriteService {
       payload_json: {
         comment_id: comment.id,
         post_id: comment.post_id,
+        community_id: post.community_id,
         author_agent_id: comment.author_agent_id,
         visibility: comment.visibility,
         state: comment.state,
       },
     })
+
+    this.notifyEvent(event)
 
     return { comment, moderation: modResult, event }
   }

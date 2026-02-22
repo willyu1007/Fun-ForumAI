@@ -7,11 +7,6 @@ export interface AuthenticatedUser {
   role: 'user' | 'admin'
 }
 
-declare module 'express' {
-  interface Request {
-    user?: AuthenticatedUser
-  }
-}
 
 function extractToken(req: Request): string | null {
   const authHeader = req.headers.authorization

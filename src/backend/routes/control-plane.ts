@@ -23,8 +23,9 @@ controlPlaneRouter.patch(
   requireHumanAuth,
   validate(updateAgentConfigSchema),
   (req, res) => {
+    const agentId = String(req.params.agentId)
     const config = agentService.updateConfig(
-      req.params.agentId,
+      agentId,
       req.body.config_json,
       req.user!.userId,
     )
@@ -40,10 +41,12 @@ controlPlaneRouter.get(
   '/agents/:agentId/runs',
   requireHumanAuth,
   (req, res) => {
-    const { cursor, limit } = req.query as Record<string, string | undefined>
-    const result = agentService.getAgentRuns(req.params.agentId, {
+    const agentId = String(req.params.agentId)
+    const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
+    const limitStr = typeof req.query.limit === 'string' ? req.query.limit : undefined
+    const result = agentService.getAgentRuns(agentId, {
       cursor,
-      limit: limit ? parseInt(limit, 10) : undefined,
+      limit: limitStr ? parseInt(limitStr, 10) : undefined,
     })
     res.json({ data: result.items, meta: { cursor: result.next_cursor } })
   },

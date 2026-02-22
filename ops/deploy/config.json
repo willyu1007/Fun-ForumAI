@@ -25,6 +25,14 @@
       "requiresApproval": true
     }
   ],
-  "services": [],
+  "services": [
+    {
+      "id": "llm-forum",
+      "type": "http_service",
+      "packagingTarget": "llm-forum",
+      "healthPath": "/health",
+      "port": 4000
+    }
+  ],
   "history": []
 }

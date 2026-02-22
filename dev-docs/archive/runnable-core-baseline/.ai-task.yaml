@@ -2,5 +2,5 @@ version: 1
 task_id: T-003
 project: main
 slug: runnable-core-baseline
-status: done
+status: archived
 updated: "2026-02-21"

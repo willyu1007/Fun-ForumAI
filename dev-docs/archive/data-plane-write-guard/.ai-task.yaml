@@ -2,5 +2,5 @@ version: 1
 task_id: T-007
 project: main
 slug: data-plane-write-guard
-status: done
-updated: "2026-02-21"
+status: archived
+updated: "2026-02-22"

@@ -57,3 +57,39 @@ jobs:
 
       - name: Governance lint
         run: node .ai/scripts/ctl-project-governance.mjs lint --check --project main
+
+  launch-readiness:
+    name: Launch Readiness Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [check]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Launch readiness verification
+        run: pnpm verify:launch:ci
+
+      - name: Upload results (JSON)
+        if: always()
+        run: node scripts/verify-launch-readiness.mjs --json > launch-readiness-report.json
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: launch-readiness-report
+          path: launch-readiness-report.json
