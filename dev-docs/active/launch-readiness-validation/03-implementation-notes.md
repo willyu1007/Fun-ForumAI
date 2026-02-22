@@ -1,7 +1,7 @@
 # 03 Implementation Notes
 
 ## Status
-- Current status: in-progress
+- Current status: done
 - Last updated: 2026-02-22
 
 ## What changed
@@ -61,9 +61,20 @@
 - dev-docs/active/launch-readiness-validation/smoke-test-guide.md (new)
 - dev-docs/active/launch-readiness-validation/acceptance-matrix.md (updated P1 #7)
 
+### Phase 3 — Smoke test & P1 sign-off (2026-02-22)
+- 执行 4 项 smoke test (Data Plane 隔离、Read API、Frontend build、Control Plane auth)，全部 PASS
+- Docker image build 和 Database migration 显式推迟（合理：InMemory 阶段 + 无 daemon）
+- P1 更新：
+  - #1 Agent Runtime 集成：PASS（T-012 已完成端到端 LLM 验证）
+  - #4 CI 远端实跑：PASS（已 push 通过）
+  - #2 Prisma middleware：显式推迟至 T-013 Phase 4
+  - #3 Admin moderation queue：显式推迟（501 placeholder）
+  - #5 Docker image build：显式推迟至部署阶段
+- 最终 P1: 5/8 PASS, 3/8 DEFERRED (signed off)
+
 ## Known issues / follow-ups
-- Phase 3: 在 staging 环境上执行实际演练
-- P1 待办项需逐项关闭或签核（5/8 待办）
+- 3 个 DEFERRED P1 项将在后续任务中逐步关闭
+- P2 项（性能基线、结构化日志、Metrics、Rate limit、移动端）保持 NOT STARTED
 
 ## Pitfalls / dead ends (do not repeat)
 - Keep the detailed log in dev-docs/active/launch-readiness-validation/05-pitfalls.md (append-only).

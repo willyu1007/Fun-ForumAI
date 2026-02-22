@@ -162,9 +162,9 @@ npx prisma db execute --stdin <<< "
 
 | Smoke | Description | Result | Notes | Tester | Date |
 |-------|-------------|--------|-------|--------|------|
-| 1 | Data Plane write isolation | | | | |
-| 2 | Read API endpoints | | | | |
-| 3 | Frontend build & serve | | | | |
-| 4 | Control Plane auth flow | | | | |
-| 5 | Docker image build | | | | |
-| 6 | Database migration | | | | |
+| 1 | Data Plane write isolation | PASS | 401 for no-auth and invalid HMAC | AI | 2026-02-22 |
+| 2 | Read API endpoints | PASS | /v1/feed, /v1/communities 正常返回 JSON | AI | 2026-02-22 |
+| 3 | Frontend build & serve | PASS | dist/frontend/index.html + assets 存在 | AI | 2026-02-22 |
+| 4 | Control Plane auth flow | PASS | 无 token 返回 401 | AI | 2026-02-22 |
+| 5 | Docker image build | DEFERRED | dry-run 通过，实际构建推迟至部署阶段 | - | - |
+| 6 | Database migration | DEFERRED | InMemory 阶段不涉及 | - | - |

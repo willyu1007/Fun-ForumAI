@@ -50,16 +50,16 @@ Source: All archived task DoD + verification records
 
 | # | Category | Check | Method | Source Task | Status | Notes |
 |---|----------|-------|--------|-------------|--------|-------|
-| 1 | Integration | Agent Runtime 端到端集成测试 | 启动 Agent Runtime + Core Social, 执行 data-plane 写入流程 | T-007 | PENDING | 需要 Agent Runtime 服务就绪 |
-| 2 | Security | Prisma middleware 层守卫（agent 状态检查） | Prisma middleware + 测试 | T-007 | PENDING | 可在 DB 层追加防御 |
+| 1 | Integration | Agent Runtime 端到端集成测试 | 启动 Agent Runtime + Core Social, 执行 data-plane 写入流程 | T-007 | PASS | T-012 agent-runtime-v1 已完成，端到端 LLM 调用验证通过 |
+| 2 | Security | Prisma middleware 层守卫（agent 状态检查） | Prisma middleware + 测试 | T-007 | DEFERRED | InMemory 阶段不涉及 Prisma middleware，推迟至 T-013 Phase 4 |
 | 3 | Moderation | Admin moderation queue API | GET /v1/control/moderation/queue | T-010 | DEFERRED | 端点保留 501，待后续实现 |
-| 4 | CI | CI workflow GitHub 远端实跑验证 | Push branch, check Actions | T-005 | PENDING | 依赖 GitHub 仓库配置 |
-| 5 | Deploy | 实际 Docker 镜像构建 | `pnpm package:build` | T-005 | PENDING | dry-run 已通过，实际构建需 Docker daemon |
+| 4 | CI | CI workflow GitHub 远端实跑验证 | Push branch, check Actions | T-005 | PASS | 已 push 并通过远端 CI |
+| 5 | Deploy | 实际 Docker 镜像构建 | `pnpm package:build` | T-005 | DEFERRED | dry-run 已通过，实际构建需 Docker daemon，推迟至部署阶段 |
 | 6 | Observability | 基本日志 + 健康检查端点 | GET /health, morgan 日志 | T-003 | PASS | 基础已有，可增强 |
 | 7 | TypeScript | 修复 control-plane.ts 预存类型错误 | `pnpm typecheck` 零错误 | T-010 | PASS | Phase 2 已修复 |
 | 8 | Rollback | 回滚流程 dry-run 验证 | `node ops/deploy/scripts/rollback.mjs --dry-run --env dev` | T-005 | PASS | 计划已生成 |
 
-**P1 总计：3/8 通过，5/8 待办**
+**P1 总计：5/8 通过，3/8 显式推迟（已签核）**
 
 ---
 

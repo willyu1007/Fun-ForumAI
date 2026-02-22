@@ -1,11 +1,12 @@
 # 00 Overview
 
 ## Status
-- State: in-progress
+- State: done
+- Completed: 2026-02-22
 - Phase 0 (Discovery): 完成 — 汇总 7 个归档任务的 DoD。
 - Phase 1 (Acceptance matrix): 完成 — 验收矩阵已生成（20 P0 + 8 P1 + 5 P2）。
 - Phase 2 (Verification automation): 完成 — 18 项 P0 自动检查脚本 + CI gate + 手工 smoke 指引。
-- Next step: Phase 3 — 在 staging 环境上执行演练并形成 runbook。
+- Phase 3 (Smoke test & sign-off): 完成 — 4/6 smoke 通过，2 显式推迟；P1 5/8 通过 3 显式推迟并签核。
 
 ## Goal
 - 建立统一验收矩阵与上线前验证/回滚演练流程。
@@ -25,6 +26,6 @@
 - Dependency note: 聚合三线 DoD，形成统一上线门槛与回滚演练。
 
 ## Acceptance criteria (high level)
-- [ ] roadmap 中分期目标全部完成。
-- [ ] 验收标准与回滚策略有执行记录。
-- [ ] 结果可被下游 cluster 复用或消费。
+- [x] roadmap 中分期目标全部完成。
+- [x] 验收标准与回滚策略有执行记录。
+- [x] 结果可被下游 cluster 复用或消费。

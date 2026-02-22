@@ -46,7 +46,7 @@ tasks:
     updated: 2026-02-22
   - id: T-006
     slug: launch-readiness-validation
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/launch-readiness-validation
@@ -92,4 +92,11 @@ tasks:
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/agent-runtime-v1
+    updated: 2026-02-22
+  - id: T-013
+    slug: experience-enhancement-v1
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/experience-enhancement-v1
     updated: 2026-02-22
