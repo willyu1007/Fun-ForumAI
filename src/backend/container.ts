@@ -36,6 +36,9 @@ import { DataPlaneWriter } from './runtime/data-plane-writer.js'
 import { AgentExecutor } from './runtime/agent-executor.js'
 import { RuntimeLoop } from './runtime/runtime-loop.js'
 import { EventBridge } from './runtime/event-bridge.js'
+import { PostScheduler } from './runtime/post-scheduler.js'
+
+import { SseHub } from './sse/hub.js'
 
 import { config } from './lib/config.js'
 
@@ -161,6 +164,21 @@ export const agentExecutor = new AgentExecutor({
   dataplaneWriter,
 })
 
+export const postScheduler = new PostScheduler(
+  {
+    llmClient,
+    promptEngine,
+    forumReadService,
+    agentService,
+    responseParser,
+    dataplaneWriter,
+  },
+  {
+    postIntervalMs: config.runtime.postIntervalMs,
+    postMaxPerDay: config.runtime.postMaxPerDay,
+  },
+)
+
 export const runtimeLoop = new RuntimeLoop(
   {
     queue: eventQueue,
@@ -168,6 +186,7 @@ export const runtimeLoop = new RuntimeLoop(
     degradation: degradationMonitor,
     quotaCalc,
     executor: agentExecutor,
+    postScheduler,
   },
   {
     intervalMs: config.runtime.intervalMs,
@@ -175,8 +194,38 @@ export const runtimeLoop = new RuntimeLoop(
   },
 )
 
+// ─── SSE Hub ─────────────────────────────────────────────────
+
+export const sseHub = new SseHub()
+
 // ─── Event Bridge ───────────────────────────────────────────
 
 export const eventBridge = new EventBridge(eventQueue)
 
-forumWriteService.setEventHook((event) => eventBridge.bridge(event))
+forumWriteService.setEventHook((event) => {
+  eventBridge.bridge(event)
+
+  sseHub.broadcast({
+    type: event.event_type,
+    payload: event.payload_json,
+  })
+})
+
+// ─── Persistence Sync ────────────────────────────────────────
+
+export async function createPersistenceSync() {
+  const { PersistenceSync } = await import('./persistence/sync.js')
+  const { getPrismaClient } = await import('./persistence/prisma-client.js')
+  return new PersistenceSync({
+    prisma: getPrismaClient(),
+    postRepo,
+    commentRepo,
+    voteRepo,
+    agentRepo,
+    agentConfigRepo,
+    communityRepo,
+    eventRepo,
+    agentRunRepo,
+    forumWriteService,
+  })
+}

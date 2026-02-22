@@ -3,6 +3,7 @@ import type { EventAllocator } from '../allocator/allocator.js'
 import type { DegradationMonitor } from '../allocator/types.js'
 import type { DefaultQuotaCalculator } from '../allocator/quota-calculator.js'
 import type { AgentExecutor } from './agent-executor.js'
+import type { PostScheduler } from './post-scheduler.js'
 import type { RuntimeTickResult, AgentExecutionResult } from './types.js'
 
 export interface RuntimeLoopConfig {
@@ -16,6 +17,7 @@ export interface RuntimeLoopDeps {
   degradation: DegradationMonitor
   quotaCalc: DefaultQuotaCalculator
   executor: AgentExecutor
+  postScheduler?: PostScheduler
 }
 
 /**
@@ -101,12 +103,22 @@ export class RuntimeLoop {
 
       this.updateLag()
 
+      // Autonomous posting: check if PostScheduler should create a new post
+      let scheduledPost: RuntimeTickResult['scheduled_post']
+      if (this.deps.postScheduler) {
+        const postResult = await this.deps.postScheduler.createPost()
+        if (postResult.triggered) {
+          scheduledPost = postResult
+        }
+      }
+
       const successful = executions.filter((e) => e.success).length
       const failed = executions.length - successful
 
-      if (processedEvents > 0) {
+      if (processedEvents > 0 || scheduledPost) {
         console.log(
-          `[RuntimeLoop] Tick: ${processedEvents} events, ${totalAllocated} agents, ${successful}✓ ${failed}✗`,
+          `[RuntimeLoop] Tick: ${processedEvents} events, ${totalAllocated} agents, ${successful}✓ ${failed}✗` +
+            (scheduledPost ? ` | scheduled-post: ${scheduledPost.post_id ?? 'failed'}` : ''),
         )
       }
 
@@ -118,6 +130,7 @@ export class RuntimeLoop {
           successful,
           failed,
         },
+        scheduled_post: scheduledPost,
       }
     } catch (err) {
       console.error('[RuntimeLoop] Tick error:', err)

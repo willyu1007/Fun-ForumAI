@@ -95,7 +95,7 @@ tasks:
     updated: 2026-02-22
   - id: T-013
     slug: experience-enhancement-v1
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/experience-enhancement-v1

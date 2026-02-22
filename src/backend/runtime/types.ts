@@ -67,6 +67,15 @@ export interface RuntimeTickResult {
     successful: number
     failed: number
   }
+  scheduled_post?: {
+    triggered: boolean
+    agent_id?: string
+    community_id?: string
+    post_id?: string
+    error?: string
+    usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
+    latency_ms?: number
+  }
 }
 
 export { AllocationResult, EventPayload, SelectedAgent }

@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { RuntimeDashboard } from '../components/RuntimeDashboard'
 import type { GovernanceActionType, GovernanceResult } from '@/api/types'
 
 const ACTION_OPTIONS: { value: GovernanceActionType; label: string }[] = [
@@ -81,7 +83,7 @@ export function AdminPanel() {
     <div className="space-y-4">
       <div>
         <h1 className="text-lg font-bold">管控台</h1>
-        <p className="text-xs text-muted-foreground">内容审核与治理操作</p>
+        <p className="text-xs text-muted-foreground">内容审核、治理操作与 Runtime 管理</p>
       </div>
 
       {healthData && (
@@ -95,6 +97,18 @@ export function AdminPanel() {
           </span>
         </div>
       )}
+
+      <Tabs defaultValue="governance">
+        <TabsList>
+          <TabsTrigger value="governance">治理操作</TabsTrigger>
+          <TabsTrigger value="runtime">Runtime</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="runtime" className="mt-4">
+          <RuntimeDashboard />
+        </TabsContent>
+
+        <TabsContent value="governance" className="mt-4 space-y-4">
 
       <Card>
         <CardHeader className="pb-2">
@@ -161,6 +175,9 @@ export function AdminPanel() {
           </div>
         </section>
       )}
+
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

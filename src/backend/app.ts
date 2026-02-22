@@ -9,7 +9,8 @@ import { healthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { devSeedRouter } from './routes/dev-seed.js'
-import { runtimeLoop, llmClient, eventQueue } from './container.js'
+import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, createPersistenceSync } from './container.js'
+import { createSseRouter } from './routes/sse.js'
 
 const app: Express = express()
 
@@ -28,6 +29,7 @@ app.use(requestLogger)
 app.use('/health', healthRouter)
 app.use('/v1', apiRouter)
 app.use('/v1', devSeedRouter)
+app.use('/v1', createSseRouter(sseHub))
 
 // ─── Dev runtime endpoints ──────────────────────────────────
 
@@ -69,6 +71,26 @@ if (config.nodeEnv !== 'production') {
     runtimeLoop.stop()
     res.json({ data: { message: 'Runtime stopped' } })
   })
+
+  app.post('/v1/dev/runtime/post', async (_req, res) => {
+    if (!llmClient.isConfigured) {
+      res.status(400).json({
+        error: { code: 'LLM_NOT_CONFIGURED', message: 'Set LLM_API_KEY to enable posting' },
+      })
+      return
+    }
+    try {
+      const result = await postScheduler.forcePost()
+      res.json({ data: result })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      res.status(500).json({ error: { code: 'POST_SCHEDULER_ERROR', message } })
+    }
+  })
+
+  app.get('/v1/dev/runtime/post/stats', (_req, res) => {
+    res.json({ data: postScheduler.stats })
+  })
 }
 
 // ─── 404 + error handling ───────────────────────────────────
@@ -88,6 +110,18 @@ if (config.runtime.enabled && llmClient.isConfigured) {
   runtimeLoop.start()
 } else if (config.runtime.enabled && !llmClient.isConfigured) {
   console.warn('[App] RUNTIME_ENABLED=true but LLM_API_KEY not set — RuntimeLoop not started')
+}
+
+// ─── Persistence initialization ─────────────────────────────
+
+export async function initPersistence(): Promise<void> {
+  if (config.db.usePrisma) {
+    const sync = await createPersistenceSync()
+    const result = await sync.initialize()
+    if (result.loaded) {
+      console.log('[App] DB persistence enabled — data loaded from PostgreSQL')
+    }
+  }
 }
 
 export { app }

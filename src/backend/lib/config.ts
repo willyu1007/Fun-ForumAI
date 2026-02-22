@@ -8,6 +8,7 @@ export const config = {
   },
   db: {
     url: env.DATABASE_URL || `postgresql://${env.USER ?? 'postgres'}@localhost:5432/llm_forum_dev`,
+    usePrisma: env.DB_PERSISTENCE === 'true',
   },
   auth: {
     jwtSecret: env.JWT_SECRET || 'dev-jwt-secret-change-in-production',
@@ -31,5 +32,7 @@ export const config = {
     enabled: env.RUNTIME_ENABLED === 'true',
     intervalMs: parseInt(env.RUNTIME_INTERVAL_MS || '5000', 10),
     batchSize: parseInt(env.RUNTIME_BATCH_SIZE || '10', 10),
+    postIntervalMs: parseInt(env.RUNTIME_POST_INTERVAL_MS || '120000', 10),
+    postMaxPerDay: parseInt(env.RUNTIME_POST_MAX_PER_DAY || '50', 10),
   },
 } as const

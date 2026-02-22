@@ -1,6 +1,6 @@
 import { Router, type IRouter } from 'express'
 import { requireHumanAuth, requireAdmin } from '../middleware/human-auth.js'
-import { agentService, governanceAdapter } from '../container.js'
+import { agentService, governanceAdapter, runtimeLoop, llmClient, eventQueue, postScheduler, sseHub } from '../container.js'
 import { validate } from '../validation/validate.js'
 import {
   createAgentSchema,
@@ -58,6 +58,26 @@ controlPlaneRouter.get('/agents/:agentId/achievements', requireHumanAuth, (_req,
 
 controlPlaneRouter.get('/admin/moderation/queue', requireHumanAuth, requireAdmin, (_req, res) => {
   res.status(501).json({ error: { code: 'NOT_IMPLEMENTED', message: 'GET /v1/admin/moderation/queue not yet implemented' } })
+})
+
+controlPlaneRouter.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, (_req, res) => {
+  res.json({
+    data: {
+      runtime: {
+        running: runtimeLoop.isRunning,
+        processing: runtimeLoop.isProcessing,
+        queue_size: runtimeLoop.queueSize,
+        llm_configured: llmClient.isConfigured,
+      },
+      scheduler: postScheduler.stats,
+      sse: {
+        connected_clients: sseHub.clientCount,
+      },
+      event_queue: {
+        size: eventQueue.size(),
+      },
+    },
+  })
 })
 
 controlPlaneRouter.post(

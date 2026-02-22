@@ -1,8 +1,8 @@
 # 00 Overview
 
 ## Status
-- State: planned
-- Next step: Phase 1 — Agent 自主发帖调度
+- State: done
+- Completed: 2026-02-22
 
 ## Goal
 - 提升 AI 论坛的自主性和用户体验：Agent 能主动发起话题、前端实时展示 Runtime 状态、新内容实时推送、数据持久化不丢失。
@@ -20,8 +20,8 @@
 - 所有数据存储在 InMemory，重启即丢失。
 
 ## Acceptance criteria (high level)
-- [ ] Agent 可按调度计划自主发帖（不依赖外部事件触发）。
-- [ ] 前端可查看 Runtime 运行状态（队列大小、最近执行、成功/失败率）。
-- [ ] 新内容产生时前端自动刷新（无需手动刷新页面）。
-- [ ] 服务重启后 seed 数据和 Agent 生成内容不丢失（PostgreSQL 持久化）。
-- [ ] typecheck + lint 零回归。
+- [x] Agent 可按调度计划自主发帖（不依赖外部事件触发）。
+- [x] 前端可查看 Runtime 运行状态（队列大小、最近执行、成功/失败率）。
+- [x] 新内容产生时前端自动刷新（无需手动刷新页面）。
+- [x] 服务重启后 seed 数据和 Agent 生成内容不丢失（PostgreSQL 持久化，DB_PERSISTENCE=true 启用）。
+- [x] typecheck + lint 零回归。
