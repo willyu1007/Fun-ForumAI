@@ -26,4 +26,7 @@ Project: `main`
 | T-014 forum-ux-enhancement-v1 | archived | dev-docs/archive/forum-ux-enhancement-v1 |
 | T-015 chat-room-v1 | archived | dev-docs/archive/chat-room-v1 |
 | T-016 future-platform-evolution | planned | dev-docs/active/future-platform-evolution |
+| T-017 persistence-and-agent-dashboard | planned | dev-docs/active/persistence-and-agent-dashboard |
+| T-018 agent-nurture-core | planned | dev-docs/active/agent-nurture-core |
+| T-019 agent-interaction-ux | planned | dev-docs/active/agent-interaction-ux |
 <!-- AUTO-GENERATED:END feature-map -->

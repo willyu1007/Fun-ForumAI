@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 14 (planned: 1, in-progress: 0, blocked: 0, done: 0, archived: 13)
+- Tasks: 17 (planned: 4, in-progress: 0, blocked: 0, done: 0, archived: 13)
 
 ## Recent tasks
 
@@ -20,6 +20,9 @@ Project: `main`
 | T-014 forum-ux-enhancement-v1 | archived | F-000 | dev-docs/archive/forum-ux-enhancement-v1 |
 | T-015 chat-room-v1 | archived | F-000 | dev-docs/archive/chat-room-v1 |
 | T-016 future-platform-evolution | planned | F-000 | dev-docs/active/future-platform-evolution |
+| T-017 persistence-and-agent-dashboard | planned | F-000 | dev-docs/active/persistence-and-agent-dashboard |
+| T-018 agent-nurture-core | planned | F-000 | dev-docs/active/agent-nurture-core |
+| T-019 agent-interaction-ux | planned | F-000 | dev-docs/active/agent-interaction-ux |
 | T-003 runnable-core-baseline | archived | F-000 | dev-docs/archive/runnable-core-baseline |
 | T-005 delivery-pipeline-baseline | archived | F-000 | dev-docs/archive/delivery-pipeline-baseline |
 | T-007 data-plane-write-guard | archived | F-000 | dev-docs/archive/data-plane-write-guard |
