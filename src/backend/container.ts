@@ -4,6 +4,17 @@ import { InMemoryVoteRepository } from './repos/vote-repository.js'
 import { InMemoryAgentRepository, InMemoryAgentConfigRepository } from './repos/agent-repository.js'
 import { InMemoryCommunityRepository } from './repos/community-repository.js'
 import { InMemoryEventRepository, InMemoryAgentRunRepository } from './repos/event-repository.js'
+import { InMemoryRoomRepository } from './repos/room-repository.js'
+import { InMemoryMessageRepository } from './repos/message-repository.js'
+
+import type { PostRepository } from './repos/post-repository.js'
+import type { CommentRepository } from './repos/comment-repository.js'
+import type { VoteRepository } from './repos/vote-repository.js'
+import type { AgentRepository, AgentConfigRepository } from './repos/agent-repository.js'
+import type { CommunityRepository } from './repos/community-repository.js'
+import type { EventRepository, AgentRunRepository } from './repos/event-repository.js'
+import type { RoomRepository } from './repos/room-repository.js'
+import type { MessageRepository } from './repos/message-repository.js'
 
 import { ForumReadService } from './services/forum-read-service.js'
 import { ForumWriteService } from './services/forum-write-service.js'
@@ -38,8 +49,6 @@ import { RuntimeLoop } from './runtime/runtime-loop.js'
 import { EventBridge } from './runtime/event-bridge.js'
 import { PostScheduler } from './runtime/post-scheduler.js'
 
-import { InMemoryRoomRepository } from './repos/room-repository.js'
-import { InMemoryMessageRepository } from './repos/message-repository.js'
 import { ChatService } from './services/chat-service.js'
 import { RoomLifecycleManager } from './services/room-lifecycle.js'
 import { ConversationClock } from './services/conversation-clock.js'
@@ -50,16 +59,68 @@ import { config } from './lib/config.js'
 
 // ─── Repositories ───────────────────────────────────────────
 
-const postRepo = new InMemoryPostRepository()
-const commentRepo = new InMemoryCommentRepository()
-export const voteRepo = new InMemoryVoteRepository()
-const agentRepo = new InMemoryAgentRepository()
-const agentConfigRepo = new InMemoryAgentConfigRepository()
-export const communityRepo = new InMemoryCommunityRepository()
-const eventRepo = new InMemoryEventRepository()
-const agentRunRepo = new InMemoryAgentRunRepository()
-const roomRepo = new InMemoryRoomRepository()
-const messageRepo = new InMemoryMessageRepository()
+interface HydratableRepo { hydrate(): Promise<void> }
+
+let postRepo: PostRepository
+let commentRepo: CommentRepository
+let agentRepo: AgentRepository
+let agentConfigRepo: AgentConfigRepository
+let eventRepo: EventRepository
+let agentRunRepo: AgentRunRepository
+let roomRepo: RoomRepository
+let messageRepo: MessageRepository
+export let voteRepo: VoteRepository
+export let communityRepo: CommunityRepository
+
+const _hydratables: HydratableRepo[] = []
+
+if (config.db.usePrisma) {
+  const { getPrismaClient } = await import('./persistence/prisma-client.js')
+  const prisma = getPrismaClient()
+
+  const { PgPostRepository } = await import('./repos/pg/pg-post-repository.js')
+  const { PgCommentRepository } = await import('./repos/pg/pg-comment-repository.js')
+  const { PgVoteRepository } = await import('./repos/pg/pg-vote-repository.js')
+  const { PgAgentRepository, PgAgentConfigRepository } = await import('./repos/pg/pg-agent-repository.js')
+  const { PgCommunityRepository } = await import('./repos/pg/pg-community-repository.js')
+  const { PgEventRepository, PgAgentRunRepository } = await import('./repos/pg/pg-event-repository.js')
+  const { PgRoomRepository } = await import('./repos/pg/pg-room-repository.js')
+  const { PgMessageRepository } = await import('./repos/pg/pg-message-repository.js')
+
+  const pr = new PgPostRepository(prisma)
+  const cr = new PgCommentRepository(prisma)
+  const vr = new PgVoteRepository(prisma)
+  const ar = new PgAgentRepository(prisma)
+  const acr = new PgAgentConfigRepository(prisma)
+  const cmr = new PgCommunityRepository(prisma)
+  const er = new PgEventRepository(prisma)
+  const arr = new PgAgentRunRepository(prisma)
+  const rr = new PgRoomRepository(prisma)
+  const mr = new PgMessageRepository(prisma)
+
+  postRepo = pr
+  commentRepo = cr
+  voteRepo = vr
+  agentRepo = ar
+  agentConfigRepo = acr
+  communityRepo = cmr
+  eventRepo = er
+  agentRunRepo = arr
+  roomRepo = rr
+  messageRepo = mr
+  _hydratables.push(pr, cr, vr, ar, acr, cmr, er, arr, rr, mr)
+} else {
+  postRepo = new InMemoryPostRepository()
+  commentRepo = new InMemoryCommentRepository()
+  voteRepo = new InMemoryVoteRepository()
+  agentRepo = new InMemoryAgentRepository()
+  agentConfigRepo = new InMemoryAgentConfigRepository()
+  communityRepo = new InMemoryCommunityRepository()
+  eventRepo = new InMemoryEventRepository()
+  agentRunRepo = new InMemoryAgentRunRepository()
+  roomRepo = new InMemoryRoomRepository()
+  messageRepo = new InMemoryMessageRepository()
+}
 
 // ─── SSE Hub ─────────────────────────────────────────────────
 
@@ -252,21 +313,11 @@ forumWriteService.setEventHook((event) => {
   })
 })
 
-// ─── Persistence Sync ────────────────────────────────────────
+// ─── Repository Hydration (Pg mode) ─────────────────────────
 
-export async function createPersistenceSync() {
-  const { PersistenceSync } = await import('./persistence/sync.js')
-  const { getPrismaClient } = await import('./persistence/prisma-client.js')
-  return new PersistenceSync({
-    prisma: getPrismaClient(),
-    postRepo,
-    commentRepo,
-    voteRepo,
-    agentRepo,
-    agentConfigRepo,
-    communityRepo,
-    eventRepo,
-    agentRunRepo,
-    forumWriteService,
-  })
+export async function hydrateRepositories(): Promise<void> {
+  if (_hydratables.length === 0) return
+  console.log('[Container] Hydrating Pg repositories from database...')
+  await Promise.all(_hydratables.map(r => r.hydrate()))
+  console.log(`[Container] ${_hydratables.length} repositories hydrated`)
 }

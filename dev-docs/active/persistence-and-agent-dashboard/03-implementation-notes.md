@@ -1,6 +1,6 @@
 # 03 Implementation Notes
 
-## Status: planned
+## Status: in-progress
 
 （实施时逐 Phase 更新本文件）
 
@@ -22,9 +22,23 @@
 - Room.created_by_agent_id 从可选改为必填，通过 migration 中的 backfill 逻辑处理已有数据
 - 保留 RoomMessage 的 visibility/state 字段（与 Post/Comment 一致），即使 InMemory 版本未使用
 
-## Phase 2 — Pg Repository 实现
+## Phase 2 — Pg Repository 实现 + InMemory→Pg 切换
 
-_待实施_
+**完成**
+
+### 变更
+- 新增 `src/backend/repos/pg/` 目录，8 个 Pg Repository 实现:
+  - pg-agent-repository (PgAgentRepository + PgAgentConfigRepository)
+  - pg-post-repository, pg-comment-repository, pg-vote-repository
+  - pg-community-repository, pg-event-repository (+ PgAgentRunRepository)
+  - pg-room-repository, pg-message-repository
+- `container.ts` — 条件化: `DB_PERSISTENCE=true` → Pg repos, 否则 InMemory; 导出 `hydrateRepositories()`
+- `app.ts` — `initPersistence()` 改为调用 `hydrateRepositories()` 替代旧 PersistenceSync
+- `repos/index.ts` — 增加 Pg repo 重导出
+
+### 设计决策
+- cache-first + write-through: 读同步走缓存，写先更新缓存再 fire-and-forget 写 Postgres
+- 每个 Pg repo 暴露 `hydrate(): Promise<void>` 用于启动预热
 
 ## Phase 3 — Agent Dashboard
 

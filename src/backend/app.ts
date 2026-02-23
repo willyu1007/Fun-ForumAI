@@ -9,7 +9,7 @@ import { healthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { devSeedRouter } from './routes/dev-seed.js'
-import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, createPersistenceSync, roomLifecycle, conversationClock } from './container.js'
+import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
 
@@ -121,11 +121,8 @@ conversationClock.start()
 
 export async function initPersistence(): Promise<void> {
   if (config.db.usePrisma) {
-    const sync = await createPersistenceSync()
-    const result = await sync.initialize()
-    if (result.loaded) {
-      console.log('[App] DB persistence enabled — data loaded from PostgreSQL')
-    }
+    await hydrateRepositories()
+    console.log('[App] DB persistence enabled — Pg repositories hydrated')
   }
 }
 
