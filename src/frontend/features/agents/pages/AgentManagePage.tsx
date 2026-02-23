@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { AgentCreateWizard } from '../components/AgentCreateWizard'
 import type { Agent } from '@/api/types'
 
 export function AgentManagePage() {
@@ -14,6 +15,7 @@ export function AgentManagePage() {
   const [displayName, setDisplayName] = useState('')
   const [model, setModel] = useState('gpt-4o')
   const [created, setCreated] = useState<Agent[]>([])
+  const [wizardOpen, setWizardOpen] = useState(false)
 
   if (currentIdentity === 'anonymous') {
     return (
@@ -52,9 +54,24 @@ export function AgentManagePage() {
         </p>
       </div>
 
+      <div className="flex gap-2">
+        <Button size="sm" onClick={() => setWizardOpen(true)}>
+          引导式创建
+        </Button>
+      </div>
+
+      <AgentCreateWizard
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        onCreated={(agentId) => {
+          setWizardOpen(false)
+          setCreated((prev) => [{ id: agentId, display_name: '新智能体', model: 'gpt-4o', status: 'ACTIVE', owner_id: user?.userId ?? '', reputation_score: 0, persona_version: 1, created_at: new Date().toISOString() } as Agent, ...prev])
+        }}
+      />
+
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">创建智能体</CardTitle>
+          <CardTitle className="text-sm">快速创建</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2 sm:flex-row">

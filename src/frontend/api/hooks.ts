@@ -21,6 +21,17 @@ import type {
   CostSummary,
   BudgetTierOption,
   RoomStatus,
+  AgentGrowthInfo,
+  AgentTraitInfo,
+  AgentCreditInfo,
+  GrowthEventInfo,
+  TraitDefinition,
+  CreditEventInfo,
+  LevelTableEntry,
+  InstructionInfo,
+  InstructionTemplate,
+  StyleSettings,
+  PromptOverrides,
 } from './types'
 
 export const queryKeys = {
@@ -318,5 +329,195 @@ export function useChangeBudgetTier(agentId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.agentDashboard(agentId) })
     },
+  })
+}
+
+// ─── Interaction UX hooks ───────────────────────────────────
+
+export function useAgentStyle(agentId: string) {
+  return useQuery({
+    queryKey: ['agentStyle', agentId] as const,
+    queryFn: () => api.get(`agents/${agentId}/style`).json<ApiResponse<StyleSettings>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useUpdateAgentStyle(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (style: Partial<StyleSettings>) =>
+      api.patch(`agents/${agentId}/style`, { json: style }).json<ApiResponse<unknown>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['agentStyle', agentId] })
+    },
+  })
+}
+
+export function useAgentInstructions(agentId: string) {
+  return useQuery({
+    queryKey: ['agentInstructions', agentId] as const,
+    queryFn: () => api.get(`agents/${agentId}/instructions`).json<ApiResponse<InstructionInfo[]>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useCreateInstruction(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { name: string; trigger_type: string; trigger_params?: unknown; body: string; priority?: number }) =>
+      api.post(`agents/${agentId}/instructions`, { json: data }).json<ApiResponse<{ id: string }>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['agentInstructions', agentId] })
+    },
+  })
+}
+
+export function useUpdateInstruction(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; name?: string; trigger_type?: string; trigger_params?: unknown; body?: string; priority?: number }) =>
+      api.patch(`agents/${agentId}/instructions/${id}`, { json: data }).json<ApiResponse<unknown>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['agentInstructions', agentId] })
+    },
+  })
+}
+
+export function useDeleteInstruction(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.delete(`agents/${agentId}/instructions/${id}`).json<ApiResponse<unknown>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['agentInstructions', agentId] })
+    },
+  })
+}
+
+export function useToggleInstruction(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.post(`agents/${agentId}/instructions/${id}/toggle`).json<ApiResponse<{ enabled: boolean }>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['agentInstructions', agentId] })
+    },
+  })
+}
+
+export function useInstructionTemplates() {
+  return useQuery({
+    queryKey: ['instructionTemplates'] as const,
+    queryFn: () => api.get('instruction-templates').json<ApiResponse<InstructionTemplate[]>>(),
+    staleTime: Infinity,
+  })
+}
+
+export function useAgentPromptOverrides(agentId: string) {
+  return useQuery({
+    queryKey: ['agentPromptOverrides', agentId] as const,
+    queryFn: () => api.get(`agents/${agentId}/prompt-overrides`).json<ApiResponse<PromptOverrides>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useUpdatePromptOverrides(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (overrides: PromptOverrides) =>
+      api.patch(`agents/${agentId}/prompt-overrides`, { json: overrides }).json<ApiResponse<unknown>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['agentPromptOverrides', agentId] })
+    },
+  })
+}
+
+// ─── Nurture hooks ──────────────────────────────────────────
+
+export function useAgentGrowth(agentId: string) {
+  return useQuery({
+    queryKey: ['agentGrowth', agentId] as const,
+    queryFn: () => api.get(`agents/${agentId}/growth`).json<ApiResponse<AgentGrowthInfo>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useAgentTraits(agentId: string) {
+  return useQuery({
+    queryKey: ['agentTraits', agentId] as const,
+    queryFn: () => api.get(`agents/${agentId}/traits`).json<ApiResponse<AgentTraitInfo[]>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useTraitDefinitions() {
+  return useQuery({
+    queryKey: ['traitDefinitions'] as const,
+    queryFn: () => api.get('trait-definitions').json<ApiResponse<TraitDefinition[]>>(),
+    staleTime: Infinity,
+  })
+}
+
+export function useEquipTrait(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (traitCode: string) =>
+      api.post(`agents/${agentId}/traits/${traitCode}/equip`).json<ApiResponse<unknown>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['agentTraits', agentId] })
+      qc.invalidateQueries({ queryKey: ['agentDashboard', agentId] })
+    },
+  })
+}
+
+export function useUnequipTrait(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (traitCode: string) =>
+      api.post(`agents/${agentId}/traits/${traitCode}/unequip`).json<ApiResponse<unknown>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['agentTraits', agentId] })
+      qc.invalidateQueries({ queryKey: ['agentDashboard', agentId] })
+    },
+  })
+}
+
+export function useAgentCredit(agentId: string) {
+  return useQuery({
+    queryKey: ['agentCredit', agentId] as const,
+    queryFn: () => api.get(`agents/${agentId}/credit`).json<ApiResponse<AgentCreditInfo>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useAgentCreditEvents(agentId: string) {
+  return useQuery({
+    queryKey: ['agentCreditEvents', agentId] as const,
+    queryFn: () => api.get(`agents/${agentId}/credit-events?limit=20`).json<ApiResponse<CreditEventInfo[]>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useAgentGrowthEvents(agentId: string) {
+  return useQuery({
+    queryKey: ['agentGrowthEvents', agentId] as const,
+    queryFn: () => api.get(`agents/${agentId}/growth-events?limit=50`).json<ApiResponse<GrowthEventInfo[]>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useAgentMilestones(agentId: string) {
+  return useQuery({
+    queryKey: ['agentMilestones', agentId] as const,
+    queryFn: () => api.get(`agents/${agentId}/milestones`).json<ApiResponse<string[]>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useLevelTable() {
+  return useQuery({
+    queryKey: ['levelTable'] as const,
+    queryFn: () => api.get('growth/level-table').json<ApiResponse<LevelTableEntry[]>>(),
+    staleTime: Infinity,
   })
 }

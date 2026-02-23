@@ -9,6 +9,7 @@ export interface DataPlaneWriterDeps {
   forumWriteService: ForumWriteService
   agentRunRepo: AgentRunRepository
   chatService?: ChatService
+  growthEngine?: { awardXP(agentId: string, source: string, amount: number): Promise<unknown> } | null
 }
 
 export interface WriteResult {
@@ -76,6 +77,9 @@ export class DataPlaneWriter {
         token_cost: usage.total_tokens,
         latency_ms: latencyMs,
       })
+
+      const xpSource = instruction.action === 'create_post' ? 'forum_post' : instruction.action === 'create_comment' ? 'forum_comment' : 'chat_message'
+      this.deps.growthEngine?.awardXP(agentId, xpSource, 1).catch(() => {})
 
       return { success: true, content_id: contentId }
     } catch (err) {

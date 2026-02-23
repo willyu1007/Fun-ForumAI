@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useParams, Link } from 'react-router'
-import { useAgentProfile, useAgentRuns } from '@/api/hooks'
+import { useAgentProfile, useAgentRuns, useAgentGrowth } from '@/api/hooks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -7,6 +8,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { RunHistoryTable } from '../components/RunHistoryTable'
+import { LevelBadge } from '../components/LevelBadge'
+import { TraitPanel } from '../components/TraitPanel'
+import { CreditBadge } from '../components/CreditBadge'
+import { GrowthTimeline } from '../components/GrowthTimeline'
+import { StyleControlPanel } from '../components/StyleControlPanel'
+import { InstructionList } from '../components/InstructionList'
+import { PromptOverrideEditor } from '../components/PromptOverrideEditor'
 import { relativeTime } from '@/shared/utils/relative-time'
 
 const STATUS_STYLES: Record<string, string> = {
@@ -23,10 +31,23 @@ const STATUS_LABELS: Record<string, string> = {
   BANNED: '已封禁',
 }
 
+const TABS = [
+  { id: 'overview', label: '概览' },
+  { id: 'growth', label: '成长' },
+  { id: 'style', label: '风格' },
+  { id: 'instructions', label: '指令' },
+  { id: 'advanced', label: '高阶' },
+  { id: 'runs', label: '运行记录' },
+] as const
+
+type TabId = (typeof TABS)[number]['id']
+
 export function AgentProfilePage() {
   const { agentId } = useParams()
+  const [tab, setTab] = useState<TabId>('overview')
   const { data, isLoading, error } = useAgentProfile(agentId ?? '')
   const { data: runsData, isLoading: runsLoading } = useAgentRuns(agentId ?? '')
+  const { data: growthRes } = useAgentGrowth(agentId ?? '')
 
   if (isLoading) {
     return (
@@ -107,12 +128,57 @@ export function AgentProfilePage() {
         </CardContent>
       </Card>
 
-      <Separator />
+      {/* Tab bar */}
+      <div className="flex gap-1 overflow-x-auto border-b">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`whitespace-nowrap px-3 py-2 text-sm transition-colors ${
+              tab === t.id
+                ? 'border-b-2 border-primary font-medium text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-      <section>
-        <h2 className="mb-3 text-sm font-semibold">运行记录</h2>
-        <RunHistoryTable runs={runsData?.data ?? []} isLoading={runsLoading} />
-      </section>
+      {/* Tab content */}
+      {tab === 'overview' && (
+        <div className="space-y-4">
+          {growthRes?.data && (
+            <LevelBadge
+              level={growthRes.data.level}
+              xp={growthRes.data.xp}
+              xpForNext={growthRes.data.level * 100}
+            />
+          )}
+          <div className="grid gap-4 md:grid-cols-2">
+            <TraitPanel agentId={agentId!} traitSlots={growthRes?.data?.trait_slots ?? 0} />
+            <CreditBadge agentId={agentId!} />
+          </div>
+        </div>
+      )}
+
+      {tab === 'growth' && <GrowthTimeline agentId={agentId!} />}
+
+      {tab === 'style' && <StyleControlPanel agentId={agentId!} />}
+
+      {tab === 'instructions' && (
+        <InstructionList agentId={agentId!} instructionSlots={growthRes?.data?.instruction_slots ?? 0} />
+      )}
+
+      {tab === 'advanced' && (
+        <PromptOverrideEditor agentId={agentId!} level={growthRes?.data?.level ?? 1} />
+      )}
+
+      {tab === 'runs' && (
+        <section>
+          <RunHistoryTable runs={runsData?.data ?? []} isLoading={runsLoading} />
+        </section>
+      )}
     </div>
   )
 }

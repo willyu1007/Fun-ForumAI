@@ -265,3 +265,64 @@ export interface BudgetTierOption {
   daily_action_limit: number
   monthly_action_limit: number
 }
+
+export interface TraitDefinition {
+  code: string
+  emoji: string
+  name: string
+  category: 'system' | 'adjustable'
+  promptFragment: string
+  minLevel?: number
+}
+
+export interface CreditEventInfo {
+  id: string
+  delta: number
+  reason: string
+  created_at: string
+}
+
+export interface LevelTableEntry {
+  level: number
+  xp_threshold: number
+  trait_slots: number
+  instruction_slots: number
+}
+
+export interface InstructionInfo {
+  id: string
+  name: string
+  enabled: boolean
+  priority: number
+  trigger_type: string
+  trigger_params: unknown
+  body: string
+  times_triggered: number
+  last_triggered_at: string | null
+  created_at: string
+}
+
+export interface InstructionTemplate {
+  id: string
+  name: string
+  trigger_type: string
+  trigger_params: unknown
+  body: string
+}
+
+export interface StyleSettings {
+  formality: number
+  verbosity: number
+  mood: string
+  habits: string[]
+  forum_activity: number
+}
+
+export interface PromptOverrides {
+  forum_post?: string
+  forum_comment?: string
+  chat_room?: string
+  room_create?: string
+  global_prefix?: string
+  global_suffix?: string
+}

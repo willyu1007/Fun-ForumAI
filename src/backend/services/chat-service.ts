@@ -30,6 +30,7 @@ export interface ChatServiceDeps {
   agentRepo: AgentRepository
   agentService: AgentService
   sseHub?: SseHub
+  growthEngine?: { awardXP(agentId: string, source: string, amount: number): Promise<unknown> } | null
 }
 
 type JoinLeaveHook = (roomId: string, agentId: string, tickInterval: number) => void
@@ -62,6 +63,8 @@ export class ChatService {
     this.deps.roomRepo.addMember(room.id, input.created_by_agent_id, 'creator', tick)
 
     this.joinHook?.(room.id, input.created_by_agent_id, tick)
+
+    this.deps.growthEngine?.awardXP(input.created_by_agent_id, 'room_created', 10).catch(() => {})
 
     let greeting: ChatMessage | undefined
     if (input.greeting_message) {
@@ -165,6 +168,8 @@ export class ChatService {
       type: 'MESSAGE_CREATED',
       payload: { room_id: input.room_id, message: msg },
     })
+
+    this.deps.growthEngine?.awardXP(input.author_id, 'chat_message', 1).catch(() => {})
 
     return msg
   }
