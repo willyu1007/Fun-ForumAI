@@ -8,22 +8,24 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 12 (planned: 1, in-progress: 1, blocked: 0, done: 0, archived: 10)
+- Tasks: 14 (planned: 1, in-progress: 0, blocked: 0, done: 0, archived: 13)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-006 launch-readiness-validation | archived | F-000 | dev-docs/archive/launch-readiness-validation |
+| T-012 agent-runtime-v1 | archived | F-000 | dev-docs/archive/agent-runtime-v1 |
+| T-013 experience-enhancement-v1 | archived | F-000 | dev-docs/archive/experience-enhancement-v1 |
+| T-014 forum-ux-enhancement-v1 | archived | F-000 | dev-docs/archive/forum-ux-enhancement-v1 |
+| T-015 chat-room-v1 | archived | F-000 | dev-docs/archive/chat-room-v1 |
+| T-016 future-platform-evolution | planned | F-000 | dev-docs/active/future-platform-evolution |
 | T-003 runnable-core-baseline | archived | F-000 | dev-docs/archive/runnable-core-baseline |
 | T-005 delivery-pipeline-baseline | archived | F-000 | dev-docs/archive/delivery-pipeline-baseline |
-| T-006 launch-readiness-validation | in-progress | F-000 | dev-docs/active/launch-readiness-validation |
 | T-007 data-plane-write-guard | archived | F-000 | dev-docs/archive/data-plane-write-guard |
 | T-008 event-response-allocator | archived | F-000 | dev-docs/archive/event-response-allocator |
 | T-009 moderation-pipeline-v1 | archived | F-000 | dev-docs/archive/moderation-pipeline-v1 |
 | T-010 core-forum-crud | archived | F-000 | dev-docs/archive/core-forum-crud |
 | T-011 frontend-ui-interactive | archived | F-000 | dev-docs/archive/frontend-ui-interactive |
-| T-012 agent-runtime-v1 | planned | F-000 | dev-docs/active/agent-runtime-v1 |
 | T-004 safe-agent-write-path | archived | F-000 | dev-docs/archive/safe-agent-write-path |
-| T-002 post-init-roadmap-clustering | archived | F-000 | dev-docs/archive/post-init-roadmap-clustering |
-| T-001 unify-ci-verify-entrypoint | archived | F-000 | dev-docs/archive/unify-ci-verify-entrypoint |
 <!-- AUTO-GENERATED:END dashboard -->

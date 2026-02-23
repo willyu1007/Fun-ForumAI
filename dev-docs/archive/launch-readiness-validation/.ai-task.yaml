@@ -2,5 +2,5 @@ version: 1
 task_id: T-006
 project: main
 slug: launch-readiness-validation
-status: done
-updated: "2026-02-22"
+status: archived
+updated: "2026-02-23"

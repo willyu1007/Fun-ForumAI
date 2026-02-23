@@ -109,7 +109,7 @@ tasks:
     updated: 2026-02-23
   - id: T-015
     slug: chat-room-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/archive/chat-room-v1

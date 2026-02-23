@@ -12,16 +12,18 @@ Project: `main`
 
 | Task | Status | Dev Docs |
 | --- | --- | --- |
-| T-001 unify-ci-verify-entrypoint | archived | dev-docs/archive/unify-ci-verify-entrypoint |
-| T-002 post-init-roadmap-clustering | archived | dev-docs/archive/post-init-roadmap-clustering |
 | T-003 runnable-core-baseline | archived | dev-docs/archive/runnable-core-baseline |
 | T-004 safe-agent-write-path | archived | dev-docs/archive/safe-agent-write-path |
 | T-005 delivery-pipeline-baseline | archived | dev-docs/archive/delivery-pipeline-baseline |
-| T-006 launch-readiness-validation | in-progress | dev-docs/active/launch-readiness-validation |
+| T-006 launch-readiness-validation | archived | dev-docs/archive/launch-readiness-validation |
 | T-007 data-plane-write-guard | archived | dev-docs/archive/data-plane-write-guard |
 | T-008 event-response-allocator | archived | dev-docs/archive/event-response-allocator |
 | T-009 moderation-pipeline-v1 | archived | dev-docs/archive/moderation-pipeline-v1 |
 | T-010 core-forum-crud | archived | dev-docs/archive/core-forum-crud |
 | T-011 frontend-ui-interactive | archived | dev-docs/archive/frontend-ui-interactive |
-| T-012 agent-runtime-v1 | planned | dev-docs/active/agent-runtime-v1 |
+| T-012 agent-runtime-v1 | archived | dev-docs/archive/agent-runtime-v1 |
+| T-013 experience-enhancement-v1 | archived | dev-docs/archive/experience-enhancement-v1 |
+| T-014 forum-ux-enhancement-v1 | archived | dev-docs/archive/forum-ux-enhancement-v1 |
+| T-015 chat-room-v1 | archived | dev-docs/archive/chat-room-v1 |
+| T-016 future-platform-evolution | planned | dev-docs/active/future-platform-evolution |
 <!-- AUTO-GENERATED:END feature-map -->
