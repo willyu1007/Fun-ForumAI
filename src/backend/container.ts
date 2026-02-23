@@ -250,10 +250,13 @@ chatService.setLeaveHook((roomId, agentId) => {
 let traitEngine: import('./services/trait-engine.js').TraitEngine | null = null
 let instructionEngine: import('./services/instruction-engine.js').InstructionEngine | null = null
 let growthEngine: import('./services/growth-engine.js').GrowthEngine | null = null
+let _prismaForRoutes: import('@prisma/client').PrismaClient | null = null
 
 if (config.db.usePrisma) {
   const { getPrismaClient } = await import('./persistence/prisma-client.js')
   const prisma = getPrismaClient()
+  _prismaForRoutes = prisma
+  ;(globalThis as Record<string, unknown>).__forumPrisma = prisma
   const { TraitEngine } = await import('./services/trait-engine.js')
   const { InstructionEngine } = await import('./services/instruction-engine.js')
   const { GrowthEngine } = await import('./services/growth-engine.js')
@@ -261,9 +264,9 @@ if (config.db.usePrisma) {
   instructionEngine = new InstructionEngine(prisma)
   growthEngine = new GrowthEngine(prisma)
 
-  // Late-bind growthEngine into already-constructed services
-  ;(chatService as unknown as { deps: { growthEngine: unknown } }).deps.growthEngine = growthEngine
+  chatService.setGrowthEngine(growthEngine)
 }
+
 
 // ─── Agent Runtime ──────────────────────────────────────────
 

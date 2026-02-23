@@ -3,13 +3,16 @@ import { GrowthEngine } from '../services/growth-engine.js'
 import { TraitEngine } from '../services/trait-engine.js'
 import { CreditService } from '../services/credit-service.js'
 import { InstructionEngine } from '../services/instruction-engine.js'
-import { getPrismaClient } from '../persistence/prisma-client.js'
-import { config } from '../lib/config.js'
+import type { PrismaClient } from '@prisma/client'
+
+function getPrismaOrNull(): PrismaClient | null {
+  return ((globalThis as Record<string, unknown>).__forumPrisma as PrismaClient) ?? null
+}
 
 export const agentGrowthRouter: IRouter = Router()
 
 function getLazySingletons() {
-  const prisma = config.db.usePrisma ? getPrismaClient() : null
+  const prisma = getPrismaOrNull()
   return {
     growth: new GrowthEngine(prisma),
     traits: new TraitEngine(prisma),
@@ -169,11 +172,11 @@ agentGrowthRouter.get('/instruction-level-gates', (_req, res) => {
 // ─── Style (T-019) ──────────────────────────────────────────
 
 agentGrowthRouter.get('/agents/:agentId/style', async (req, res) => {
-  if (!config.db.usePrisma) {
+  if (!getPrismaOrNull()) {
     res.json({ data: { formality: 3, verbosity: 3, mood: 'neutral', habits: [], forum_activity: 3 } })
     return
   }
-  const prisma = getPrismaClient()
+  const prisma = getPrismaOrNull()!
   const agentConfig = await prisma.agentConfig.findFirst({
     where: { agentId: req.params.agentId },
     orderBy: { effectiveAt: 'desc' },
@@ -192,11 +195,11 @@ agentGrowthRouter.get('/agents/:agentId/style', async (req, res) => {
 })
 
 agentGrowthRouter.patch('/agents/:agentId/style', async (req, res) => {
-  if (!config.db.usePrisma) {
+  if (!getPrismaOrNull()) {
     res.json({ data: { message: 'updated' } })
     return
   }
-  const prisma = getPrismaClient()
+  const prisma = getPrismaOrNull()!
   const agentConfig = await prisma.agentConfig.findFirst({
     where: { agentId: req.params.agentId },
     orderBy: { effectiveAt: 'desc' },
@@ -216,7 +219,7 @@ agentGrowthRouter.patch('/agents/:agentId/style', async (req, res) => {
         agentId: req.params.agentId,
         configJson: { style: newStyle },
         effectiveAt: now,
-        updatedBy: 'system',
+        updatedBy: 'dev-seed',
       },
     })
   }
@@ -235,11 +238,11 @@ const DANGEROUS_PATTERNS = [
 ]
 
 agentGrowthRouter.get('/agents/:agentId/prompt-overrides', async (req, res) => {
-  if (!config.db.usePrisma) {
+  if (!getPrismaOrNull()) {
     res.json({ data: {} })
     return
   }
-  const prisma = getPrismaClient()
+  const prisma = getPrismaOrNull()!
   const agentConfig = await prisma.agentConfig.findFirst({
     where: { agentId: req.params.agentId },
     orderBy: { effectiveAt: 'desc' },
@@ -249,12 +252,12 @@ agentGrowthRouter.get('/agents/:agentId/prompt-overrides', async (req, res) => {
 })
 
 agentGrowthRouter.patch('/agents/:agentId/prompt-overrides', async (req, res) => {
-  if (!config.db.usePrisma) {
+  if (!getPrismaOrNull()) {
     res.json({ data: { message: 'updated' } })
     return
   }
 
-  const prisma = getPrismaClient()
+  const prisma = getPrismaOrNull()!
 
   const growth = await prisma.agentGrowth.findUnique({ where: { agentId: req.params.agentId } })
   if (!growth || growth.level < 4) {
@@ -295,10 +298,11 @@ agentGrowthRouter.patch('/agents/:agentId/prompt-overrides', async (req, res) =>
         agentId: req.params.agentId,
         configJson: { prompt_overrides: overrides },
         effectiveAt: now,
-        updatedBy: 'system',
+        updatedBy: 'dev-seed',
       },
     })
   }
 
   res.json({ data: { message: 'updated' } })
 })
+

@@ -1,6 +1,11 @@
 import { Router, type IRouter } from 'express'
+import type { PrismaClient } from '@prisma/client'
 import { config } from '../lib/config.js'
 import { agentService, forumWriteService, communityRepo, chatService } from '../container.js'
+
+function getPrismaOrNull(): PrismaClient | null {
+  return ((globalThis as Record<string, unknown>).__forumPrisma as PrismaClient) ?? null
+}
 
 const devSeedRouter: IRouter = Router()
 
@@ -116,6 +121,22 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
   }
 
   try {
+    const prisma = getPrismaOrNull()
+    if (prisma) {
+      for (const ownerId of ['dev-user-001', 'dev-admin-001', 'dev-seed']) {
+        await prisma.humanUser.upsert({
+          where: { id: ownerId },
+          update: {},
+          create: {
+            id: ownerId,
+            email: `${ownerId}@dev.local`,
+            passwordHash: 'dev-seed-no-login',
+            displayName: ownerId,
+          },
+        })
+      }
+    }
+
     const result: Record<string, string[]> = {
       communities: [],
       agents: [],

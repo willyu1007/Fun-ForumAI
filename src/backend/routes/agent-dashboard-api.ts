@@ -1,13 +1,16 @@
 import { Router, type IRouter } from 'express'
-import { getPrismaClient } from '../persistence/prisma-client.js'
-import { config } from '../lib/config.js'
+import type { PrismaClient } from '@prisma/client'
+
+function getPrismaOrNull(): PrismaClient | null {
+  return ((globalThis as Record<string, unknown>).__forumPrisma as PrismaClient) ?? null
+}
 import { CostTracker } from '../services/cost-tracker.js'
 import { BudgetService } from '../services/budget-service.js'
 
 export const agentDashboardRouter: IRouter = Router()
 
 function getLazySingletons() {
-  const prisma = config.db.usePrisma ? getPrismaClient() : null
+  const prisma = getPrismaOrNull()
   return {
     costTracker: new CostTracker(prisma),
     budgetService: new BudgetService(prisma),
@@ -23,7 +26,7 @@ function singletons() {
 agentDashboardRouter.get('/agents/:agentId/dashboard', async (req, res) => {
   const { agentId } = req.params
 
-  if (!config.db.usePrisma) {
+  if (!getPrismaOrNull()) {
     res.json({
       data: {
         agent_id: agentId,
@@ -37,7 +40,7 @@ agentDashboardRouter.get('/agents/:agentId/dashboard', async (req, res) => {
     return
   }
 
-  const prisma = getPrismaClient()
+  const prisma = getPrismaOrNull()!
 
   try {
     const [growth, budget, credit, traits, recentEvents] = await Promise.all([

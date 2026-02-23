@@ -49,6 +49,10 @@ export class ChatService {
     this.leaveHook = hook
   }
 
+  setGrowthEngine(engine: ChatServiceDeps['growthEngine']): void {
+    (this.deps as { growthEngine: ChatServiceDeps['growthEngine'] }).growthEngine = engine
+  }
+
   createRoom(input: CreateRoomInput): { room: Room; greeting?: ChatMessage } {
     if (this.deps.roomRepo.findBySlug(input.slug)) {
       throw new ValidationError(`Room slug "${input.slug}" already exists`)
