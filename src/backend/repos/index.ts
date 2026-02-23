@@ -7,6 +7,12 @@ export type {
   Community,
   DomainEvent,
   AgentRun,
+  Room,
+  RoomMember,
+  ChatMessage,
+  RoomStatus,
+  RoomMemberJoinSource,
+  ChatMessageKind,
   PaginatedResult,
   PaginationOpts,
   CreatePostInput,
@@ -16,6 +22,8 @@ export type {
   CreateAgentConfigInput,
   CreateEventInput,
   CreateAgentRunInput,
+  CreateRoomInput,
+  CreateChatMessageInput,
 } from './types.js'
 
 export { type PostRepository, InMemoryPostRepository } from './post-repository.js'
@@ -37,3 +45,5 @@ export {
   InMemoryEventRepository,
   InMemoryAgentRunRepository,
 } from './event-repository.js'
+export { type RoomRepository, InMemoryRoomRepository } from './room-repository.js'
+export { type MessageRepository, InMemoryMessageRepository } from './message-repository.js'

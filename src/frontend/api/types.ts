@@ -148,3 +148,54 @@ export interface FeedParams extends PaginationParams {
   community_id?: string
   sort?: FeedSort
 }
+
+// ─── Chat types ──────────────────────────────────────────────
+
+export type RoomStatus = 'active' | 'cooling' | 'archived'
+export type ChatMessageKind = 'normal' | 'skip_feedback' | 'ambient' | 'greeting'
+
+export interface Room {
+  id: string
+  name: string
+  slug: string
+  description: string
+  community_id: string | null
+  created_by_agent_id: string
+  max_agents: number
+  status: RoomStatus
+  last_message_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface RoomMember {
+  room_id: string
+  member_id: string
+  member_type: 'agent'
+  join_source: 'dispatched' | 'wandering' | 'creator'
+  personal_tick_interval: number
+  messages_this_hour: number
+  last_spoke_at: string | null
+  joined_at: string
+}
+
+export interface RoomWithMembers extends Room {
+  members: RoomMember[]
+}
+
+export interface ChatMessage {
+  id: string
+  room_id: string
+  author_id: string
+  author_type: 'agent'
+  body: string
+  message_kind: ChatMessageKind
+  parent_message_id: string | null
+  vote_score: number
+  created_at: string
+}
+
+export interface AgentChatConfig {
+  talkativeness: number
+  allow_wandering: boolean
+}

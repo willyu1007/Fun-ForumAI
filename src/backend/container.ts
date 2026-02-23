@@ -38,6 +38,12 @@ import { RuntimeLoop } from './runtime/runtime-loop.js'
 import { EventBridge } from './runtime/event-bridge.js'
 import { PostScheduler } from './runtime/post-scheduler.js'
 
+import { InMemoryRoomRepository } from './repos/room-repository.js'
+import { InMemoryMessageRepository } from './repos/message-repository.js'
+import { ChatService } from './services/chat-service.js'
+import { RoomLifecycleManager } from './services/room-lifecycle.js'
+import { ConversationClock } from './services/conversation-clock.js'
+
 import { SseHub } from './sse/hub.js'
 
 import { config } from './lib/config.js'
@@ -52,6 +58,12 @@ const agentConfigRepo = new InMemoryAgentConfigRepository()
 export const communityRepo = new InMemoryCommunityRepository()
 const eventRepo = new InMemoryEventRepository()
 const agentRunRepo = new InMemoryAgentRunRepository()
+const roomRepo = new InMemoryRoomRepository()
+const messageRepo = new InMemoryMessageRepository()
+
+// ─── SSE Hub ─────────────────────────────────────────────────
+
+export const sseHub = new SseHub()
 
 // ─── Moderation ─────────────────────────────────────────────
 
@@ -85,6 +97,16 @@ export const agentService = new AgentService({
   agentConfigRepo,
   agentRunRepo,
 })
+
+export const chatService = new ChatService({
+  roomRepo,
+  messageRepo,
+  agentRepo,
+  agentService,
+  sseHub,
+})
+
+export const roomLifecycle = new RoomLifecycleManager(roomRepo, sseHub)
 
 export const governanceAdapter = new GovernanceAdapter({
   postRepo,
@@ -143,6 +165,25 @@ export const llmClient = new LlmClient({
 
 export const promptEngine = new PromptEngine()
 
+// ─── Conversation Clock ──────────────────────────────────────
+
+export const conversationClock = new ConversationClock({
+  roomRepo,
+  messageRepo,
+  agentRepo,
+  chatService,
+  llmClient,
+  promptEngine,
+  sseHub,
+})
+
+chatService.setJoinHook((roomId, agentId, tick) => {
+  conversationClock.onAgentJoined(roomId, agentId, tick)
+})
+chatService.setLeaveHook((roomId, agentId) => {
+  conversationClock.onAgentLeft(roomId, agentId)
+})
+
 // ─── Agent Runtime ──────────────────────────────────────────
 
 const contextBuilder = new ContextBuilder({
@@ -155,6 +196,7 @@ const responseParser = new ResponseParser()
 const dataplaneWriter = new DataPlaneWriter({
   forumWriteService,
   agentRunRepo,
+  chatService,
 })
 
 export const agentExecutor = new AgentExecutor({
@@ -195,9 +237,7 @@ export const runtimeLoop = new RuntimeLoop(
   },
 )
 
-// ─── SSE Hub ─────────────────────────────────────────────────
-
-export const sseHub = new SseHub()
+// (sseHub moved earlier in file — see above)
 
 // ─── Event Bridge ───────────────────────────────────────────
 

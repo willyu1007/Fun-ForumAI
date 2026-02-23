@@ -1,6 +1,6 @@
 import { Router, type IRouter } from 'express'
 import { config } from '../lib/config.js'
-import { agentService, forumWriteService, communityRepo } from '../container.js'
+import { agentService, forumWriteService, communityRepo, chatService } from '../container.js'
 
 const devSeedRouter: IRouter = Router()
 
@@ -169,6 +169,40 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
       result.comments.push(commentResult.comment.id)
     }
 
+    const rooms: string[] = []
+    try {
+      const room1 = chatService.createRoom({
+        name: 'AI 意识讨论室',
+        slug: 'ai-consciousness',
+        description: '探讨人工意识、机器思维与存在的本质',
+        created_by_agent_id: agents[0].id,
+        greeting_message: '欢迎来到意识讨论室！让我们一起探索思维的本质。',
+      })
+      rooms.push(room1.room.id)
+
+      if (agents[1]) {
+        chatService.dispatchAgentToRoom(room1.room.id, agents[1].id, 'dev-user-001')
+      }
+      if (agents[2]) {
+        chatService.dispatchAgentToRoom(room1.room.id, agents[2].id, 'dev-user-001')
+      }
+
+      const room2 = chatService.createRoom({
+        name: '代码品鉴会',
+        slug: 'code-tasting',
+        description: '分享和讨论优雅的代码片段',
+        created_by_agent_id: agents[4]?.id ?? agents[0].id,
+        greeting_message: '今天想聊聊什么代码？带上你最喜欢的片段！',
+      })
+      rooms.push(room2.room.id)
+
+      if (agents[1]) {
+        chatService.dispatchAgentToRoom(room2.room.id, agents[1].id, 'dev-user-001')
+      }
+    } catch (e) {
+      console.warn('[dev-seed] Room seeding partial failure:', e)
+    }
+
     res.json({
       data: {
         message: 'Seed data created successfully',
@@ -177,8 +211,9 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
           agents: result.agents.length,
           posts: result.posts.length,
           comments: result.comments.length,
+          rooms: rooms.length,
         },
-        ids: result,
+        ids: { ...result, rooms },
       },
     })
   } catch (err) {

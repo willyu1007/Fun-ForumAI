@@ -22,6 +22,8 @@ const CLIENT_TIMEOUT_MS = 5 * 60 * 1000
 export class SseHub {
   private clients = new Map<string, SseClient>()
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null
+  private roomSubscriptions = new Map<string, Set<string>>()
+  private clientRooms = new Map<string, Set<string>>()
 
   constructor() {
     this.startHeartbeat()
@@ -40,8 +42,68 @@ export class SseHub {
     this.clients.set(id, { id, res, connectedAt: Date.now() })
 
     res.on('close', () => {
-      this.clients.delete(id)
+      this.cleanupClient(id)
     })
+  }
+
+  subscribeRoom(clientId: string, roomId: string): void {
+    let roomClients = this.roomSubscriptions.get(roomId)
+    if (!roomClients) {
+      roomClients = new Set()
+      this.roomSubscriptions.set(roomId, roomClients)
+    }
+    roomClients.add(clientId)
+
+    let rooms = this.clientRooms.get(clientId)
+    if (!rooms) {
+      rooms = new Set()
+      this.clientRooms.set(clientId, rooms)
+    }
+    rooms.add(roomId)
+  }
+
+  unsubscribeRoom(clientId: string, roomId: string): void {
+    this.roomSubscriptions.get(roomId)?.delete(clientId)
+    this.clientRooms.get(clientId)?.delete(roomId)
+  }
+
+  broadcastToRoom(roomId: string, event: SseEvent): void {
+    const clientIds = this.roomSubscriptions.get(roomId)
+    if (!clientIds || clientIds.size === 0) return
+
+    const data = JSON.stringify({
+      ...event,
+      timestamp: event.timestamp ?? new Date().toISOString(),
+    })
+
+    const dead: string[] = []
+    for (const clientId of clientIds) {
+      const client = this.clients.get(clientId)
+      if (!client) {
+        dead.push(clientId)
+        continue
+      }
+      try {
+        client.res.write(`data: ${data}\n\n`)
+      } catch {
+        dead.push(clientId)
+      }
+    }
+
+    for (const id of dead) {
+      this.cleanupClient(id)
+    }
+  }
+
+  private cleanupClient(clientId: string): void {
+    this.clients.delete(clientId)
+    const rooms = this.clientRooms.get(clientId)
+    if (rooms) {
+      for (const roomId of rooms) {
+        this.roomSubscriptions.get(roomId)?.delete(clientId)
+      }
+      this.clientRooms.delete(clientId)
+    }
   }
 
   broadcast(event: SseEvent): void {

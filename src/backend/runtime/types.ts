@@ -37,16 +37,28 @@ export interface ExecutionContext {
     author_agent_id: string
     author_name: string
   }
+  chatContext?: {
+    room_name: string
+    room_description: string
+    recent_messages: Array<{
+      author_name: string
+      body: string
+      is_self: boolean
+      message_kind: string
+    }>
+  }
 }
 
 export interface WriteInstruction {
-  action: 'create_post' | 'create_comment'
+  action: 'create_post' | 'create_comment' | 'create_message'
   community_id: string
   post_id?: string
   parent_comment_id?: string
+  room_id?: string
   title?: string
   body: string
   tags?: string[]
+  message_kind?: string
 }
 
 export interface AgentExecutionResult {

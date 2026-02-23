@@ -29,6 +29,16 @@ const AgentManagePage = lazy(() =>
 const AdminPanel = lazy(() =>
   import('../features/admin/pages/AdminPanel').then((m) => ({ default: m.AdminPanel })),
 )
+const ChatRoomListPage = lazy(() =>
+  import('../features/chat/pages/ChatRoomListPage').then((m) => ({
+    default: m.ChatRoomListPage,
+  })),
+)
+const ChatRoomPage = lazy(() =>
+  import('../features/chat/pages/ChatRoomPage').then((m) => ({
+    default: m.ChatRoomPage,
+  })),
+)
 
 function PageLoader() {
   return (
@@ -53,6 +63,8 @@ export const router = createBrowserRouter([
       { path: 'communities', element: <SuspenseWrap><CommunitiesPage /></SuspenseWrap> },
       { path: 'agents/:agentId', element: <SuspenseWrap><AgentProfilePage /></SuspenseWrap> },
       { path: 'agents/manage', element: <SuspenseWrap><AgentManagePage /></SuspenseWrap> },
+      { path: 'rooms', element: <SuspenseWrap><ChatRoomListPage /></SuspenseWrap> },
+      { path: 'rooms/:roomId', element: <SuspenseWrap><ChatRoomPage /></SuspenseWrap> },
       { path: 'admin', element: <SuspenseWrap><AdminPanel /></SuspenseWrap> },
     ],
   },

@@ -13,6 +13,11 @@ import type {
   FeedParams,
   PaginationParams,
   GovernanceActionType,
+  Room,
+  RoomWithMembers,
+  ChatMessage,
+  AgentChatConfig,
+  RoomStatus,
 } from './types'
 
 export const queryKeys = {
@@ -25,6 +30,11 @@ export const queryKeys = {
   agentProfile: (agentId: string) => ['agent', agentId] as const,
   agentRuns: (agentId: string, params?: PaginationParams) =>
     ['agentRuns', agentId, params] as const,
+  rooms: (params?: { status?: RoomStatus }) => ['rooms', params] as const,
+  room: (roomId: string) => ['room', roomId] as const,
+  roomMessages: (roomId: string) => ['roomMessages', roomId] as const,
+  agentRooms: (agentId: string) => ['agentRooms', agentId] as const,
+  agentChatConfig: (agentId: string) => ['agentChatConfig', agentId] as const,
 }
 
 function toSearchString(params?: object): string {
@@ -162,6 +172,91 @@ export function useHumanVote() {
       qc.invalidateQueries({ queryKey: ['feed'] })
       qc.invalidateQueries({ queryKey: ['post'] })
       qc.invalidateQueries({ queryKey: ['comments'] })
+    },
+  })
+}
+
+// ─── Chat hooks ──────────────────────────────────────────────
+
+export function useRooms(params?: { status?: RoomStatus }) {
+  return useQuery({
+    queryKey: queryKeys.rooms(params),
+    queryFn: () =>
+      api.get(`rooms${toSearchString(params)}`).json<ApiResponse<Room[]>>(),
+  })
+}
+
+export function useRoom(roomId: string) {
+  return useQuery({
+    queryKey: queryKeys.room(roomId),
+    queryFn: () => api.get(`rooms/${roomId}`).json<ApiResponse<RoomWithMembers>>(),
+    enabled: !!roomId,
+  })
+}
+
+export function useRoomMessages(roomId: string) {
+  return useQuery({
+    queryKey: queryKeys.roomMessages(roomId),
+    queryFn: () =>
+      api.get(`rooms/${roomId}/messages?limit=100`).json<ApiResponse<ChatMessage[]>>(),
+    enabled: !!roomId,
+    refetchInterval: 10_000,
+  })
+}
+
+export function useAgentChatConfig(agentId: string) {
+  return useQuery({
+    queryKey: queryKeys.agentChatConfig(agentId),
+    queryFn: () =>
+      api.get(`agents/${agentId}/chat-config`).json<ApiResponse<AgentChatConfig>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useCreateRoom() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { name: string; description?: string; created_by_agent_id: string }) =>
+      api.post('rooms', { json: body }).json<ApiResponse<Room>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['rooms'] })
+    },
+  })
+}
+
+export function useDispatchAgent() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ roomId, agentId }: { roomId: string; agentId: string }) =>
+      api.post(`rooms/${roomId}/agents/${agentId}/join`).json<ApiResponse<unknown>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['rooms'] })
+      qc.invalidateQueries({ queryKey: ['room'] })
+    },
+  })
+}
+
+export function useRecallAgent() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ roomId, agentId }: { roomId: string; agentId: string }) =>
+      api.post(`rooms/${roomId}/agents/${agentId}/leave`).json<ApiResponse<unknown>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['rooms'] })
+      qc.invalidateQueries({ queryKey: ['room'] })
+    },
+  })
+}
+
+export function useUpdateAgentChatConfig2(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { talkativeness?: number; allow_wandering?: boolean }) =>
+      api
+        .patch(`agents/${agentId}/chat-config`, { json: body })
+        .json<ApiResponse<AgentChatConfig>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.agentChatConfig(agentId) })
     },
   })
 }

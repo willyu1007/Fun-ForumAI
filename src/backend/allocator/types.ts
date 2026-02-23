@@ -3,6 +3,7 @@
 export type DomainEventType =
   | 'NewPostCreated'
   | 'NewCommentCreated'
+  | 'NewMessageCreated'
   | 'VoteCast'
   | 'RoomTick'
 

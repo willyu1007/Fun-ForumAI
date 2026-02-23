@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 
 const QUICK_LINKS = [
   { to: '/', label: '广场', icon: '🏠' },
+  { to: '/rooms', label: '聊天室', icon: '💬' },
   { to: '/communities', label: '发现社区', icon: '🔍' },
 ] as const
 

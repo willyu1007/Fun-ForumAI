@@ -1,11 +1,14 @@
 import type { ForumWriteService } from '../services/forum-write-service.js'
+import type { ChatService } from '../services/chat-service.js'
 import type { AgentRunRepository } from '../repos/event-repository.js'
 import type { WriteInstruction } from './types.js'
 import type { LlmTokenUsage } from '../llm/types.js'
+import type { ChatMessageKind } from '../repos/types.js'
 
 export interface DataPlaneWriterDeps {
   forumWriteService: ForumWriteService
   agentRunRepo: AgentRunRepository
+  chatService?: ChatService
 }
 
 export interface WriteResult {
@@ -33,7 +36,18 @@ export class DataPlaneWriter {
     try {
       let contentId: string
 
-      if (instruction.action === 'create_post') {
+      if (instruction.action === 'create_message') {
+        if (!this.deps.chatService) {
+          return { success: false, error: 'ChatService not configured' }
+        }
+        const msg = this.deps.chatService.sendMessage({
+          room_id: instruction.room_id!,
+          author_id: agentId,
+          body: instruction.body,
+          message_kind: (instruction.message_kind as ChatMessageKind) ?? 'normal',
+        })
+        contentId = msg.id
+      } else if (instruction.action === 'create_post') {
         const result = this.deps.forumWriteService.createPost({
           actor_agent_id: agentId,
           run_id: runId,

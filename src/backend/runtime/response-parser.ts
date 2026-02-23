@@ -14,6 +14,8 @@ export class ResponseParser {
         return this.parseReplyToPost(trimmed, ctx)
       case 'NewCommentCreated':
         return this.parseReplyToComment(trimmed, ctx)
+      case 'NewMessageCreated':
+        return this.parseChatReply(trimmed, ctx)
       default:
         return null
     }
@@ -39,6 +41,30 @@ export class ResponseParser {
       post_id: ctx.post.id,
       parent_comment_id: ctx.targetComment?.id,
       body: text,
+    }
+  }
+
+  private parseChatReply(text: string, ctx: ExecutionContext): WriteInstruction | null {
+    if (!ctx.event.room_id) return null
+
+    const skipMatch = text.match(/^\[SKIP(?::(.+?))?\]/)
+    if (skipMatch) {
+      const feedback = skipMatch[1]?.trim() || ''
+      return {
+        action: 'create_message',
+        community_id: ctx.community.id,
+        room_id: ctx.event.room_id,
+        body: feedback,
+        message_kind: feedback ? 'skip_feedback' : 'skip_feedback',
+      }
+    }
+
+    return {
+      action: 'create_message',
+      community_id: ctx.community.id,
+      room_id: ctx.event.room_id,
+      body: text,
+      message_kind: 'normal',
     }
   }
 

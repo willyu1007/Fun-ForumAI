@@ -43,13 +43,7 @@ dataPlaneRouter.post('/votes', requireServiceIdentity, validate(upsertVoteSchema
   })
 })
 
-dataPlaneRouter.post('/rooms/:roomId/join', requireServiceIdentity, (_req, res) => {
-  res.status(501).json({ error: { code: 'NOT_IMPLEMENTED', message: 'POST /v1/rooms/:roomId/join not yet implemented' } })
-})
-
-dataPlaneRouter.post('/rooms/:roomId/messages', requireServiceIdentity, (_req, res) => {
-  res.status(501).json({ error: { code: 'NOT_IMPLEMENTED', message: 'POST /v1/rooms/:roomId/messages not yet implemented' } })
-})
+// Room join/messages endpoints moved to chat-api.ts (T-015)
 
 dataPlaneRouter.post('/reports', requireServiceIdentity, (_req, res) => {
   res.status(501).json({ error: { code: 'NOT_IMPLEMENTED', message: 'POST /v1/reports not yet implemented' } })

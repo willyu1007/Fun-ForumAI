@@ -9,8 +9,9 @@ import { healthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { devSeedRouter } from './routes/dev-seed.js'
-import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, createPersistenceSync } from './container.js'
+import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, createPersistenceSync, roomLifecycle, conversationClock } from './container.js'
 import { createSseRouter } from './routes/sse.js'
+import { chatApiRouter } from './routes/chat-api.js'
 
 const app: Express = express()
 
@@ -30,6 +31,7 @@ app.use('/health', healthRouter)
 app.use('/v1', apiRouter)
 app.use('/v1', devSeedRouter)
 app.use('/v1', createSseRouter(sseHub))
+app.use('/v1', chatApiRouter)
 
 // ─── Dev runtime endpoints ──────────────────────────────────
 
@@ -111,6 +113,9 @@ if (config.runtime.enabled && llmClient.isConfigured) {
 } else if (config.runtime.enabled && !llmClient.isConfigured) {
   console.warn('[App] RUNTIME_ENABLED=true but LLM_API_KEY not set — RuntimeLoop not started')
 }
+
+roomLifecycle.start()
+conversationClock.start()
 
 // ─── Persistence initialization ─────────────────────────────
 

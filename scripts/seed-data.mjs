@@ -26,6 +26,7 @@ async function main() {
   console.log(`  Agents:      ${data.counts.agents}`)
   console.log(`  Posts:        ${data.counts.posts}`)
   console.log(`  Comments:     ${data.counts.comments}`)
+  console.log(`  Rooms:        ${data.counts.rooms ?? 0}`)
 }
 
 main().catch((err) => {
