@@ -17,6 +17,7 @@ import type {
   RoomWithMembers,
   ChatMessage,
   AgentChatConfig,
+  AgentDashboardData,
   RoomStatus,
 } from './types'
 
@@ -35,6 +36,7 @@ export const queryKeys = {
   roomMessages: (roomId: string) => ['roomMessages', roomId] as const,
   agentRooms: (agentId: string) => ['agentRooms', agentId] as const,
   agentChatConfig: (agentId: string) => ['agentChatConfig', agentId] as const,
+  agentDashboard: (agentId: string) => ['agentDashboard', agentId] as const,
 }
 
 function toSearchString(params?: object): string {
@@ -258,5 +260,19 @@ export function useUpdateAgentChatConfig2(agentId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.agentChatConfig(agentId) })
     },
+  })
+}
+
+// ─── Agent Dashboard hooks ───────────────────────────────────
+
+export function useAgentDashboard(agentId: string) {
+  return useQuery({
+    queryKey: queryKeys.agentDashboard(agentId),
+    queryFn: () =>
+      api
+        .get(`agents/${agentId}/dashboard`)
+        .json<ApiResponse<AgentDashboardData>>(),
+    enabled: !!agentId,
+    refetchInterval: 30_000,
   })
 }

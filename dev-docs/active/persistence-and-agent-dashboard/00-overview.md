@@ -2,7 +2,7 @@
 
 ## Status
 - State: in-progress
-- Next step: Phase 2 — 实现 Pg Repository + InMemory→Pg 切换
+- Next step: Phase 4 — 成本管理系统
 
 ## Goal
 将全部业务数据从 InMemory 迁移到 PostgreSQL 持久化存储，并构建 Agent Dashboard（活动面板）和成本管理系统。这是养成系统（T-018）和交互增强（T-019）的基础设施前置任务。

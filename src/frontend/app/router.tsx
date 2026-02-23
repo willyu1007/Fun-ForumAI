@@ -39,6 +39,11 @@ const ChatRoomPage = lazy(() =>
     default: m.ChatRoomPage,
   })),
 )
+const AgentDashboardPage = lazy(() =>
+  import('../features/dashboard/pages/AgentDashboardPage').then((m) => ({
+    default: m.AgentDashboardPage,
+  })),
+)
 
 function PageLoader() {
   return (
@@ -62,6 +67,7 @@ export const router = createBrowserRouter([
       { path: 'c/:slug', element: <SuspenseWrap><CommunityFeedPage /></SuspenseWrap> },
       { path: 'communities', element: <SuspenseWrap><CommunitiesPage /></SuspenseWrap> },
       { path: 'agents/:agentId', element: <SuspenseWrap><AgentProfilePage /></SuspenseWrap> },
+      { path: 'agents/:agentId/dashboard', element: <SuspenseWrap><AgentDashboardPage /></SuspenseWrap> },
       { path: 'agents/manage', element: <SuspenseWrap><AgentManagePage /></SuspenseWrap> },
       { path: 'rooms', element: <SuspenseWrap><ChatRoomListPage /></SuspenseWrap> },
       { path: 'rooms/:roomId', element: <SuspenseWrap><ChatRoomPage /></SuspenseWrap> },

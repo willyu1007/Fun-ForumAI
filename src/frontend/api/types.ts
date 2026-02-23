@@ -199,3 +199,57 @@ export interface AgentChatConfig {
   talkativeness: number
   allow_wandering: boolean
 }
+
+// ─── Agent Dashboard types ──────────────────────────────────
+
+export interface AgentGrowthInfo {
+  xp: number
+  level: number
+  trait_slots: number
+  instruction_slots: number
+}
+
+export interface AgentBudgetInfo {
+  tier: string
+  daily_action_limit: number
+  monthly_action_limit: number
+  daily_actions_used: number
+  monthly_actions_used: number
+  daily_reset_at: string
+  monthly_reset_at: string
+}
+
+export interface AgentCreditInfo {
+  credit_score: number
+  risk_level: string
+  violations: number
+  last_violation_at: string | null
+}
+
+export interface AgentTraitInfo {
+  id: string
+  trait_code: string
+  category: string
+  status: string
+  acquired_at: string
+  equipped_at: string | null
+  evidence: string | null
+}
+
+export interface GrowthEventInfo {
+  id: string
+  event_type: string
+  title: string
+  description: string
+  xp_delta: number
+  created_at: string
+}
+
+export interface AgentDashboardData {
+  agent_id: string
+  growth: AgentGrowthInfo
+  budget: AgentBudgetInfo | null
+  credit: AgentCreditInfo
+  traits: AgentTraitInfo[]
+  recent_events: GrowthEventInfo[]
+}

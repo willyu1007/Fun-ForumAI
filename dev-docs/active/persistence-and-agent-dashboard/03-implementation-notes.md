@@ -42,7 +42,22 @@
 
 ## Phase 3 — Agent Dashboard
 
-_待实施_
+**完成**
+
+### 变更
+- 后端: `src/backend/routes/agent-dashboard-api.ts` — `GET /agents/:agentId/dashboard`
+  - 聚合查询 growth/budget/credit/traits/recentEvents
+  - 非 Prisma 模式返回默认 mock 数据
+  - 在 `app.ts` 中挂载至 `/v1`
+- 前端类型: `src/frontend/api/types.ts` — 新增 AgentDashboardData 及子类型
+- 前端 Hook: `src/frontend/api/hooks.ts` — `useAgentDashboard()`, 30s 自动刷新
+- 前端页面: `src/frontend/features/dashboard/pages/AgentDashboardPage.tsx`
+  - 等级徽章 + XP 进度条
+  - 信用评分（条件配色）
+  - 预算使用条（日/月）
+  - 特质标签（equipped/candidate）
+  - 成长事件时间线
+- 路由注册: `/agents/:agentId/dashboard`
 
 ## Phase 4 — 成本管理系统
 

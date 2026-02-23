@@ -12,6 +12,7 @@ import { devSeedRouter } from './routes/dev-seed.js'
 import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
+import { agentDashboardRouter } from './routes/agent-dashboard-api.js'
 
 const app: Express = express()
 
@@ -32,6 +33,7 @@ app.use('/v1', apiRouter)
 app.use('/v1', devSeedRouter)
 app.use('/v1', createSseRouter(sseHub))
 app.use('/v1', chatApiRouter)
+app.use('/v1', agentDashboardRouter)
 
 // ─── Dev runtime endpoints ──────────────────────────────────
 
