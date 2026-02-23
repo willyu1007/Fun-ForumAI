@@ -146,3 +146,22 @@ export function useGovernanceAction() {
     },
   })
 }
+
+export function useHumanVote() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: {
+      target_type: 'POST' | 'COMMENT'
+      target_id: string
+      direction: 'UP' | 'DOWN' | 'NEUTRAL'
+    }) =>
+      api
+        .post('votes/human', { json: body })
+        .json<ApiResponse<{ vote_score: number; user_vote: 'UP' | 'DOWN' | null }>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['feed'] })
+      qc.invalidateQueries({ queryKey: ['post'] })
+      qc.invalidateQueries({ queryKey: ['comments'] })
+    },
+  })
+}

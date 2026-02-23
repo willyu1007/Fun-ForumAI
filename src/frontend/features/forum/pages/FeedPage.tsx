@@ -1,18 +1,44 @@
 import { useState } from 'react'
-import { useFeed, useHealth } from '@/api/hooks'
+import { useInfiniteQuery } from '@tanstack/react-query'
+import { useHealth } from '@/api/hooks'
+import { api } from '@/api/client'
 import { PostCard } from '../components/PostCard'
 import { PostCompact } from '../components/PostCompact'
 import { FeedToolbar, type SortMode } from '../components/FeedToolbar'
+import { NewContentBanner } from '../components/NewContentBanner'
+import { LoadMore } from '@/shared/components/LoadMore'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
+import { useSseNewCounts } from '@/api/use-sse'
 import { Skeleton } from '@/components/ui/skeleton'
+import type { PostWithMeta, ApiResponse } from '@/api/types'
 
 export function FeedPage() {
   const [sort, setSort] = useState<SortMode>('hot')
   const { error: healthError } = useHealth()
-  const { data, isLoading, error } = useFeed()
   const { view } = useFeedViewStore()
+  const { newPostCount, clearNewPosts } = useSseNewCounts()
 
-  const posts = data?.data ?? []
+  const {
+    data,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['feed', { sort }],
+    queryFn: ({ pageParam }) => {
+      const sp = new URLSearchParams()
+      sp.set('sort', sort)
+      sp.set('limit', '20')
+      if (pageParam) sp.set('cursor', pageParam)
+      return api.get(`feed?${sp.toString()}`).json<ApiResponse<PostWithMeta[]> & { meta: { cursor: string | null } }>()
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.meta?.cursor ?? undefined,
+  })
+
+  const posts = data?.pages.flatMap((p) => p.data) ?? []
 
   return (
     <div className="space-y-3">
@@ -23,6 +49,13 @@ export function FeedPage() {
       )}
 
       <FeedToolbar sort={sort} onSortChange={setSort} />
+
+      <NewContentBanner
+        count={newPostCount}
+        label="条新帖"
+        onRefresh={clearNewPosts}
+        queryKey={['feed']}
+      />
 
       {isLoading && (
         <div className="space-y-2">
@@ -56,6 +89,12 @@ export function FeedPage() {
           ),
         )}
       </div>
+
+      <LoadMore
+        hasMore={!!hasNextPage}
+        isLoading={isFetchingNextPage}
+        onLoadMore={() => fetchNextPage()}
+      />
     </div>
   )
 }

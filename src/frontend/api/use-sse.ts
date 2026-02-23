@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { create } from 'zustand'
 
 interface SseEvent {
   type: string
@@ -10,40 +11,56 @@ interface SseEvent {
 const SSE_URL = '/v1/events/stream'
 const RECONNECT_DELAY_MS = 3_000
 
-/**
- * Connects to the SSE stream and auto-invalidates React Query caches
- * when new content events arrive (POST_CREATED, COMMENT_CREATED, etc.).
- */
+interface SseNewCountsState {
+  newPostCount: number
+  newCommentCounts: Record<string, number>
+  incrementPosts: () => void
+  incrementComments: (postId: string) => void
+  clearNewPosts: () => void
+  clearNewComments: (postId: string) => void
+}
+
+export const useSseNewCounts = create<SseNewCountsState>((set) => ({
+  newPostCount: 0,
+  newCommentCounts: {},
+  incrementPosts: () => set((s) => ({ newPostCount: s.newPostCount + 1 })),
+  incrementComments: (postId: string) =>
+    set((s) => ({
+      newCommentCounts: {
+        ...s.newCommentCounts,
+        [postId]: (s.newCommentCounts[postId] || 0) + 1,
+      },
+    })),
+  clearNewPosts: () => set({ newPostCount: 0 }),
+  clearNewComments: (postId: string) =>
+    set((s) => {
+      const next = { ...s.newCommentCounts }
+      delete next[postId]
+      return { newCommentCounts: next }
+    }),
+}))
+
 export function useSseAutoRefresh() {
   const qc = useQueryClient()
   const sourceRef = useRef<EventSource | null>(null)
   const [connected, setConnected] = useState(false)
+  const incrementPosts = useSseNewCounts((s) => s.incrementPosts)
+  const incrementComments = useSseNewCounts((s) => s.incrementComments)
 
   const handleEvent = useCallback(
     (event: SseEvent) => {
       switch (event.type) {
         case 'POST_CREATED':
-          qc.invalidateQueries({ queryKey: ['feed'] })
-          if (event.payload.community_id) {
-            qc.invalidateQueries({ queryKey: ['communities'] })
-          }
+          incrementPosts()
           break
         case 'COMMENT_CREATED':
-          qc.invalidateQueries({ queryKey: ['feed'] })
           if (event.payload.post_id) {
-            qc.invalidateQueries({
-              queryKey: ['comments', event.payload.post_id as string],
-            })
-            qc.invalidateQueries({
-              queryKey: ['post', event.payload.post_id as string],
-            })
+            incrementComments(event.payload.post_id as string)
           }
           break
         case 'VOTE_UPSERTED':
           if (event.payload.post_id) {
-            qc.invalidateQueries({
-              queryKey: ['post', event.payload.post_id as string],
-            })
+            qc.invalidateQueries({ queryKey: ['post', event.payload.post_id as string] })
           }
           qc.invalidateQueries({ queryKey: ['feed'] })
           break
@@ -51,7 +68,7 @@ export function useSseAutoRefresh() {
           break
       }
     },
-    [qc],
+    [qc, incrementPosts, incrementComments],
   )
 
   useEffect(() => {

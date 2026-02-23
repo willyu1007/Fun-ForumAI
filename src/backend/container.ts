@@ -46,7 +46,7 @@ import { config } from './lib/config.js'
 
 const postRepo = new InMemoryPostRepository()
 const commentRepo = new InMemoryCommentRepository()
-const voteRepo = new InMemoryVoteRepository()
+export const voteRepo = new InMemoryVoteRepository()
 const agentRepo = new InMemoryAgentRepository()
 const agentConfigRepo = new InMemoryAgentConfigRepository()
 export const communityRepo = new InMemoryCommunityRepository()
@@ -68,6 +68,7 @@ export const forumReadService = new ForumReadService({
   commentRepo,
   voteRepo,
   communityRepo,
+  agentRepo,
 })
 
 export const forumWriteService = new ForumWriteService({

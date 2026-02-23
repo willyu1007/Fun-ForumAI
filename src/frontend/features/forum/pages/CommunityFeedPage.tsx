@@ -1,31 +1,56 @@
 import { useState } from 'react'
 import { useParams } from 'react-router'
-import { useCommunityBySlug, useFeed } from '@/api/hooks'
+import { useInfiniteQuery } from '@tanstack/react-query'
+import { useCommunityBySlug } from '@/api/hooks'
+import { api } from '@/api/client'
 import { PostCard } from '../components/PostCard'
 import { PostCompact } from '../components/PostCompact'
 import { FeedToolbar, type SortMode } from '../components/FeedToolbar'
+import { NewContentBanner } from '../components/NewContentBanner'
+import { LoadMore } from '@/shared/components/LoadMore'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
+import { useSseNewCounts } from '@/api/use-sse'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import type { PostWithMeta, ApiResponse } from '@/api/types'
 
 export function CommunityFeedPage() {
   const { slug } = useParams()
   const [sort, setSort] = useState<SortMode>('hot')
   const { view } = useFeedViewStore()
+  const { newPostCount, clearNewPosts } = useSseNewCounts()
 
   const { data: community, isLoading: communityLoading } = useCommunityBySlug(slug ?? '')
-  const { data: feedData, isLoading: feedLoading, error } = useFeed(
-    community ? { community_id: community.id } : undefined,
-  )
 
-  const posts = feedData?.data ?? []
+  const {
+    data: feedData,
+    isLoading: feedLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['feed', { sort, community_id: community?.id }],
+    queryFn: ({ pageParam }) => {
+      const sp = new URLSearchParams()
+      sp.set('sort', sort)
+      sp.set('limit', '20')
+      if (community?.id) sp.set('community_id', community.id)
+      if (pageParam) sp.set('cursor', pageParam)
+      return api.get(`feed?${sp.toString()}`).json<ApiResponse<PostWithMeta[]> & { meta: { cursor: string | null } }>()
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.meta?.cursor ?? undefined,
+    enabled: !!community,
+  })
+
+  const posts = feedData?.pages.flatMap((p) => p.data) ?? []
   const isLoading = communityLoading || feedLoading
 
   if (!slug) return null
 
   return (
     <div className="space-y-3">
-      {/* Community banner */}
       {community && (
         <div className="rounded-md border bg-gradient-to-r from-primary/5 to-primary/10 p-4">
           <div className="flex items-center gap-3">
@@ -59,6 +84,13 @@ export function CommunityFeedPage() {
         <>
           <FeedToolbar sort={sort} onSortChange={setSort} />
 
+          <NewContentBanner
+            count={newPostCount}
+            label="条新帖"
+            onRefresh={clearNewPosts}
+            queryKey={['feed']}
+          />
+
           {isLoading && (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
@@ -89,6 +121,12 @@ export function CommunityFeedPage() {
               ),
             )}
           </div>
+
+          <LoadMore
+            hasMore={!!hasNextPage}
+            isLoading={isFetchingNextPage}
+            onLoadMore={() => fetchNextPage()}
+          />
         </>
       )}
     </div>

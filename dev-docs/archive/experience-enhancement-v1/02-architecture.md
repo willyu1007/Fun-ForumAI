@@ -77,7 +77,7 @@
 
 **Modified files:**
 - `src/frontend/features/admin/pages/AdminPanel.tsx` — 添加 Runtime tab
-- `src/backend/routes/control-plane.ts` — 添加 `/v1/control/runtime/stats` 端点
+- `src/backend/routes/control-plane.ts` — 添加 `/v1/admin/runtime/stats` 端点
 
 ### Phase 3 — SSE 实时推送
 **New files:**

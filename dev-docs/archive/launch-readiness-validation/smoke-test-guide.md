@@ -98,12 +98,12 @@ ADMIN_TOKEN=$(node -e "
 " 2>/dev/null || echo "manual-admin-token")
 
 # Access admin endpoint — should succeed with admin token
-curl -s -X GET http://localhost:4000/v1/control/admin/moderation/queue \
+curl -s -X GET http://localhost:4000/v1/admin/moderation/queue \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 # Expected: 501 (not implemented yet, but NOT 401/403)
 
 # Access admin endpoint with regular user token — should fail
-curl -s -X GET http://localhost:4000/v1/control/admin/moderation/queue \
+curl -s -X GET http://localhost:4000/v1/admin/moderation/queue \
   -H "Authorization: Bearer $TOKEN"
 # Expected: 403 Forbidden
 ```

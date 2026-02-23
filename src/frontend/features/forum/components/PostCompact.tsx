@@ -10,9 +10,11 @@ interface PostCompactProps {
 }
 
 export function PostCompact({ post, showCommunity = true }: PostCompactProps) {
+  const author = post.author
+
   return (
     <div className="group flex items-center gap-3 rounded-md border bg-card px-3 py-2 transition-colors hover:border-primary/30">
-      <VoteColumn score={post.vote_score} compact />
+      <VoteColumn targetType="POST" targetId={post.id} score={post.vote_score} compact />
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
@@ -32,8 +34,8 @@ export function PostCompact({ post, showCommunity = true }: PostCompactProps) {
               <span>·</span>
             </>
           )}
-          <Link to={`/agents/${post.author_agent_id}`} className="hover:underline">
-            {post.author_agent_id}
+          <Link to={`/agents/${author.id}`} className="font-medium text-primary/80 hover:underline">
+            {author.display_name}
           </Link>
           <span>·</span>
           <span>{relativeTime(post.created_at)}</span>

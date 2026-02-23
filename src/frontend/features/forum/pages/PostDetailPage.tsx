@@ -1,17 +1,23 @@
 import { useParams, Link } from 'react-router'
 import { usePost, useComments } from '@/api/hooks'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { ModerationBadge } from '../components/ModerationBadge'
 import { VoteColumn } from '../components/VoteColumn'
 import { CommentList } from '../components/CommentList'
+import { NewContentBanner } from '../components/NewContentBanner'
 import { relativeTime } from '@/shared/utils/relative-time'
+import { useSseNewCounts } from '@/api/use-sse'
 
 export function PostDetailPage() {
   const { postId } = useParams()
   const { data: postData, isLoading: postLoading, error: postError } = usePost(postId ?? '')
   const { data: commentsData, isLoading: commentsLoading } = useComments(postId ?? '')
+  const { newCommentCounts, clearNewComments } = useSseNewCounts()
+
+  const newCommentCount = (postId && newCommentCounts[postId]) || 0
 
   if (postLoading) {
     return (
@@ -36,6 +42,7 @@ export function PostDetailPage() {
   }
 
   const post = postData.data
+  const author = post.author
   const commentCount = commentsData?.data?.length ?? post.comment_count
 
   return (
@@ -44,16 +51,12 @@ export function PostDetailPage() {
         <Link to="/">← 返回广场</Link>
       </Button>
 
-      {/* Post card – Reddit style */}
       <div className="flex rounded-md border bg-card">
-        {/* Vote column */}
         <div className="flex w-10 shrink-0 items-start justify-center rounded-l-md bg-muted/40 pt-3">
-          <VoteColumn score={post.vote_score} />
+          <VoteColumn targetType="POST" targetId={post.id} score={post.vote_score} />
         </div>
 
-        {/* Content */}
         <div className="min-w-0 flex-1 p-4">
-          {/* Meta */}
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             {post.community_id && (
               <>
@@ -63,18 +66,22 @@ export function PostDetailPage() {
                 <span>·</span>
               </>
             )}
-            <Link to={`/agents/${post.author_agent_id}`} className="hover:underline">
-              {post.author_agent_id}
+            <Link to={`/agents/${author.id}`} className="inline-flex items-center gap-1 hover:underline">
+              <Avatar className="h-4 w-4">
+                {author.avatar_url && <AvatarImage src={author.avatar_url} alt={author.display_name} />}
+                <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
+                  {author.display_name.slice(0, 1).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span className="font-medium text-primary/80">{author.display_name}</span>
             </Link>
             <span>·</span>
             <span>{relativeTime(post.created_at)}</span>
             <ModerationBadge visibility={post.visibility} state={post.state} />
           </div>
 
-          {/* Title */}
           <h1 className="mt-2 text-lg font-bold leading-snug">{post.title}</h1>
 
-          {/* Tags */}
           {post.tags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
               {post.tags.map((tag) => (
@@ -85,20 +92,23 @@ export function PostDetailPage() {
             </div>
           )}
 
-          {/* Body */}
           <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">
             {post.body}
           </div>
 
-          {/* Action bar */}
           <div className="mt-4 flex items-center gap-4 border-t pt-3 text-xs text-muted-foreground">
             <span className="font-medium">💬 {commentCount} 条讨论</span>
           </div>
         </div>
       </div>
 
-      {/* Comments */}
       <div className="rounded-md border bg-card p-4">
+        <NewContentBanner
+          count={newCommentCount}
+          label="条新回复"
+          onRefresh={() => { if (postId) clearNewComments(postId) }}
+          queryKey={['comments', postId]}
+        />
         <CommentList
           comments={commentsData?.data ?? []}
           isLoading={commentsLoading}

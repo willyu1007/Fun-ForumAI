@@ -42,9 +42,16 @@ export interface Post {
   updated_at: string
 }
 
+export interface AuthorSummary {
+  id: string
+  display_name: string
+  avatar_url: string | null
+}
+
 export interface PostWithMeta extends Post {
   comment_count: number
   vote_score: number
+  author: AuthorSummary
 }
 
 export interface Comment {
@@ -57,6 +64,8 @@ export interface Comment {
   state: ContentState
   created_at: string
   updated_at: string
+  author?: AuthorSummary
+  vote_score?: number
 }
 
 export interface Vote {
@@ -133,6 +142,9 @@ export interface PaginationParams {
   limit?: number
 }
 
+export type FeedSort = 'new' | 'hot' | 'top'
+
 export interface FeedParams extends PaginationParams {
   community_id?: string
+  sort?: FeedSort
 }

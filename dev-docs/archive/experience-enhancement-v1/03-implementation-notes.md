@@ -26,7 +26,7 @@
 ### Phase 3 — Runtime Dashboard (2026-02-22)
 - `src/frontend/features/admin/components/RuntimeDashboard.tsx` (new): Runtime status cards, tick/post/start/stop controls, execution results
 - `src/frontend/features/admin/pages/AdminPanel.tsx`: Added Runtime tab via Tabs component
-- `src/backend/routes/control-plane.ts`: Added `/v1/control/admin/runtime/stats` endpoint
+- `src/backend/routes/control-plane.ts`: Added `/v1/admin/runtime/stats` endpoint
 
 ### Phase 4 — PostgreSQL 持久化 (2026-02-22)
 - `src/backend/persistence/prisma-client.ts` (new): Lazy PrismaClient with pg adapter
