@@ -253,3 +253,15 @@ export interface AgentDashboardData {
   traits: AgentTraitInfo[]
   recent_events: GrowthEventInfo[]
 }
+
+export interface CostSummary {
+  total_tokens_in: number
+  total_tokens_out: number
+  action_count: number
+  by_action_type: Record<string, { tokens_in: number; tokens_out: number; count: number }>
+}
+
+export interface BudgetTierOption {
+  daily_action_limit: number
+  monthly_action_limit: number
+}

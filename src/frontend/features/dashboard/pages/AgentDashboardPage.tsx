@@ -1,5 +1,6 @@
 import { useParams } from 'react-router'
 import { useAgentProfile, useAgentDashboard } from '../../../api/hooks'
+import { CostReviewPanel } from '../components/CostReviewPanel'
 
 export function AgentDashboardPage() {
   const { agentId } = useParams<{ agentId: string }>()
@@ -148,6 +149,9 @@ export function AgentDashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Cost Review Panel */}
+      <CostReviewPanel agentId={agentId!} budget={dash.budget} />
 
       {/* Growth Events Timeline */}
       <div className="rounded-xl border bg-card p-5">

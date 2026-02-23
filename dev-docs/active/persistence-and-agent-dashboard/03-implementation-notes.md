@@ -61,4 +61,17 @@
 
 ## Phase 4 — 成本管理系统
 
-_待实施_
+**完成**
+
+### 变更
+- 后端: `src/backend/services/budget-service.ts` — BudgetService（档位管理、限额检查、用量递增、重置）
+- 后端: `src/backend/services/cost-tracker.ts` — CostTracker（记录 token 消耗、成本汇总）
+- 后端 API 扩展: `agent-dashboard-api.ts` 新增:
+  - `GET /agents/:agentId/cost-review?days=N` — 成本汇总
+  - `POST /agents/:agentId/budget/init` — 初始化预算
+  - `PATCH /agents/:agentId/budget/tier` — 切换预算档位
+  - `GET /budget/tiers` — 可用档位列表
+- 前端类型: +CostSummary, +BudgetTierOption
+- 前端 Hooks: +useAgentCostReview, +useBudgetTiers, +useInitBudget, +useChangeBudgetTier
+- 前端组件: `CostReviewPanel.tsx` — 预算档位切换 + 成本统计面板
+- 集成: AgentDashboardPage 中嵌入 CostReviewPanel
