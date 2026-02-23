@@ -245,11 +245,27 @@ chatService.setLeaveHook((roomId, agentId) => {
   conversationClock.onAgentLeft(roomId, agentId)
 })
 
+// ─── Nurture Engines (optional, Prisma-only) ────────────────
+
+let traitEngine: import('./services/trait-engine.js').TraitEngine | null = null
+let instructionEngine: import('./services/instruction-engine.js').InstructionEngine | null = null
+
+if (config.db.usePrisma) {
+  const { getPrismaClient } = await import('./persistence/prisma-client.js')
+  const prisma = getPrismaClient()
+  const { TraitEngine } = await import('./services/trait-engine.js')
+  const { InstructionEngine } = await import('./services/instruction-engine.js')
+  traitEngine = new TraitEngine(prisma)
+  instructionEngine = new InstructionEngine(prisma)
+}
+
 // ─── Agent Runtime ──────────────────────────────────────────
 
 const contextBuilder = new ContextBuilder({
   forumReadService,
   agentService,
+  traitEngine,
+  instructionEngine,
 })
 
 const responseParser = new ResponseParser()

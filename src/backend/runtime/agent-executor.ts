@@ -38,7 +38,8 @@ export class AgentExecutor {
     const start = Date.now()
 
     try {
-      const ctx = this.deps.contextBuilder.build(event, agent)
+      let ctx = this.deps.contextBuilder.build(event, agent)
+      ctx = await this.deps.contextBuilder.enrichWithLayers(ctx)
 
       const templateId = this.pickTemplate(event, ctx)
       const variables = this.buildVariables(ctx)
@@ -113,6 +114,10 @@ export class AgentExecutor {
       community_rules: ctx.community.rules
         ? `## 社区规则\n${ctx.community.rules}`
         : '',
+      layer_growth: ctx.layers?.layer1_growth ?? '',
+      layer_style: ctx.layers?.layer2_style ?? '',
+      layer_instructions: ctx.layers?.layer3_instructions ?? '',
+      layer_overrides: ctx.layers?.layer4_overrides ?? '',
     }
 
     if (ctx.post) {

@@ -8,6 +8,13 @@ export interface AgentPersona {
   language: string
 }
 
+export interface PromptLayers {
+  layer1_growth?: string
+  layer2_style?: string
+  layer3_instructions?: string
+  layer4_overrides?: string
+}
+
 export interface ExecutionContext {
   event: EventPayload
   agent: SelectedAgent
@@ -47,6 +54,7 @@ export interface ExecutionContext {
       message_kind: string
     }>
   }
+  layers?: PromptLayers
 }
 
 export interface WriteInstruction {
