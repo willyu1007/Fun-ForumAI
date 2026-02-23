@@ -130,14 +130,14 @@ tasks:
     updated: 2026-02-23
   - id: T-018
     slug: agent-nurture-core
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/agent-nurture-core
     updated: 2026-02-23
   - id: T-019
     slug: agent-interaction-ux
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/agent-interaction-ux
