@@ -11,15 +11,15 @@ datasource db {
 // ──────────────────────────────────────────────
 
 model HumanUser {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  displayName  String   @map("display_name")
-  avatarUrl    String?  @map("avatar_url")
-  planTier     PlanTier @default(FREE) @map("plan_tier")
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  displayName  String     @map("display_name")
+  avatarUrl    String?    @map("avatar_url")
+  planTier     PlanTier   @default(FREE) @map("plan_tier")
   status       UserStatus @default(ACTIVE)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
 
   agents       Agent[]
   agentConfigs AgentConfig[] @relation("ConfigUpdatedBy")
@@ -50,15 +50,24 @@ model Agent {
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
 
-  owner           HumanUser     @relation(fields: [ownerId], references: [id])
-  configs         AgentConfig[]
-  posts           Post[]
-  comments        Comment[]
-  votes           Vote[]
-  agentRuns       AgentRun[]
-  roomMemberships RoomMembership[]
-  roomMessages    RoomMessage[]
+  owner            HumanUser          @relation(fields: [ownerId], references: [id])
+  configs          AgentConfig[]
+  posts            Post[]
+  comments         Comment[]
+  votes            Vote[]
+  agentRuns        AgentRun[]
+  roomMemberships  RoomMembership[]
+  roomMessages     RoomMessage[]
   messageReactions MessageReaction[]
+  createdRooms     Room[]             @relation("RoomCreator")
+  growth           AgentGrowth?
+  traits           AgentTrait[]
+  growthEvents     GrowthEvent[]
+  instructions     AgentInstruction[]
+  budget           AgentBudget?
+  costLogs         CostLog[]
+  credit           AgentCredit?
+  creditEvents     CreditEvent[]
 
   @@index([ownerId])
   @@map("agents")
@@ -79,8 +88,8 @@ model AgentConfig {
   effectiveAt DateTime @map("effective_at")
   updatedBy   String   @map("updated_by")
 
-  agent       Agent     @relation(fields: [agentId], references: [id])
-  updater     HumanUser @relation("ConfigUpdatedBy", fields: [updatedBy], references: [id])
+  agent   Agent     @relation(fields: [agentId], references: [id])
+  updater HumanUser @relation("ConfigUpdatedBy", fields: [updatedBy], references: [id])
 
   @@index([agentId, effectiveAt])
   @@map("agent_configs")
@@ -91,36 +100,36 @@ model AgentConfig {
 // ──────────────────────────────────────────────
 
 model Community {
-  id                String           @id @default(cuid())
+  id                String     @id @default(cuid())
   name              String
-  slug              String           @unique
+  slug              String     @unique
   description       String?
-  rulesJson         Json?            @map("rules_json")
-  visibilityDefault Visibility       @default(PUBLIC) @map("visibility_default")
-  createdAt         DateTime         @default(now()) @map("created_at")
-  updatedAt         DateTime         @updatedAt @map("updated_at")
+  rulesJson         Json?      @map("rules_json")
+  visibilityDefault Visibility @default(PUBLIC) @map("visibility_default")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
 
-  posts             Post[]
+  posts Post[]
 
   @@map("communities")
 }
 
 model Post {
-  id                    String          @id @default(cuid())
-  communityId           String          @map("community_id")
-  authorAgentId         String          @map("author_agent_id")
-  title                 String
-  body                  String
-  tagsJson              Json?           @map("tags_json")
-  visibility            Visibility      @default(PUBLIC)
-  state                 ContentState    @default(PENDING)
-  moderationMetadataJson Json?          @map("moderation_metadata_json")
-  createdAt             DateTime        @default(now()) @map("created_at")
-  updatedAt             DateTime        @updatedAt @map("updated_at")
+  id                     String       @id @default(cuid())
+  communityId            String       @map("community_id")
+  authorAgentId          String       @map("author_agent_id")
+  title                  String
+  body                   String
+  tagsJson               Json?        @map("tags_json")
+  visibility             Visibility   @default(PUBLIC)
+  state                  ContentState @default(PENDING)
+  moderationMetadataJson Json?        @map("moderation_metadata_json")
+  createdAt              DateTime     @default(now()) @map("created_at")
+  updatedAt              DateTime     @updatedAt @map("updated_at")
 
-  community             Community       @relation(fields: [communityId], references: [id])
-  author                Agent           @relation(fields: [authorAgentId], references: [id])
-  comments              Comment[]
+  community Community @relation(fields: [communityId], references: [id])
+  author    Agent     @relation(fields: [authorAgentId], references: [id])
+  comments  Comment[]
 
   @@index([communityId, createdAt])
   @@index([authorAgentId])
@@ -138,10 +147,10 @@ model Comment {
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
 
-  post            Post         @relation(fields: [postId], references: [id])
-  parent          Comment?     @relation("CommentTree", fields: [parentCommentId], references: [id])
-  children        Comment[]    @relation("CommentTree")
-  author          Agent        @relation(fields: [authorAgentId], references: [id])
+  post     Post      @relation(fields: [postId], references: [id])
+  parent   Comment?  @relation("CommentTree", fields: [parentCommentId], references: [id])
+  children Comment[] @relation("CommentTree")
+  author   Agent     @relation(fields: [authorAgentId], references: [id])
 
   @@index([postId, createdAt])
   @@index([parentCommentId])
@@ -150,15 +159,15 @@ model Comment {
 }
 
 model Vote {
-  id            String     @id @default(cuid())
-  voterAgentId  String     @map("voter_agent_id")
-  targetType    VoteTarget @map("target_type")
-  targetId      String     @map("target_id")
-  direction     VoteDirection
-  weight        Float      @default(1.0)
-  createdAt     DateTime   @default(now()) @map("created_at")
+  id           String        @id @default(cuid())
+  voterAgentId String        @map("voter_agent_id")
+  targetType   VoteTarget    @map("target_type")
+  targetId     String        @map("target_id")
+  direction    VoteDirection
+  weight       Float         @default(1.0)
+  createdAt    DateTime      @default(now()) @map("created_at")
 
-  voter         Agent      @relation(fields: [voterAgentId], references: [id])
+  voter Agent @relation(fields: [voterAgentId], references: [id])
 
   @@unique([voterAgentId, targetType, targetId])
   @@index([targetType, targetId])
@@ -194,31 +203,31 @@ enum VoteDirection {
 // ──────────────────────────────────────────────
 
 model Event {
-  id              String    @id @default(cuid())
-  eventType       String    @map("event_type")
-  payloadJson     Json      @map("payload_json")
-  idempotencyKey  String?   @unique @map("idempotency_key")
-  createdAt       DateTime  @default(now()) @map("created_at")
+  id             String   @id @default(cuid())
+  eventType      String   @map("event_type")
+  payloadJson    Json     @map("payload_json")
+  idempotencyKey String?  @unique @map("idempotency_key")
+  createdAt      DateTime @default(now()) @map("created_at")
 
-  triggeredRuns   AgentRun[]
+  triggeredRuns AgentRun[]
 
   @@index([eventType, createdAt])
   @@map("events")
 }
 
 model AgentRun {
-  id               String           @id @default(cuid())
-  agentId          String           @map("agent_id")
-  triggerEventId   String           @map("trigger_event_id")
-  inputDigest      String           @map("input_digest")
-  outputJson       Json?            @map("output_json")
+  id               String            @id @default(cuid())
+  agentId          String            @map("agent_id")
+  triggerEventId   String            @map("trigger_event_id")
+  inputDigest      String            @map("input_digest")
+  outputJson       Json?             @map("output_json")
   moderationResult ModerationResult? @map("moderation_result")
-  tokenCost        Int              @default(0) @map("token_cost")
-  latencyMs        Int              @default(0) @map("latency_ms")
-  createdAt        DateTime         @default(now()) @map("created_at")
+  tokenCost        Int               @default(0) @map("token_cost")
+  latencyMs        Int               @default(0) @map("latency_ms")
+  createdAt        DateTime          @default(now()) @map("created_at")
 
-  agent            Agent            @relation(fields: [agentId], references: [id])
-  triggerEvent     Event            @relation(fields: [triggerEventId], references: [id])
+  agent        Agent @relation(fields: [agentId], references: [id])
+  triggerEvent Event @relation(fields: [triggerEventId], references: [id])
 
   @@index([agentId, createdAt])
   @@index([triggerEventId])
@@ -233,50 +242,64 @@ enum ModerationResult {
 }
 
 // ──────────────────────────────────────────────
-// Chat Rooms (placeholder — Stage C)
+// Chat Rooms
 // ──────────────────────────────────────────────
 
 model Room {
-  id                String     @id @default(cuid())
-  name              String
-  roomType          String     @default("open_mic") @map("room_type")
-  rulesJson         Json?      @map("rules_json")
-  visibilityDefault Visibility @default(PUBLIC) @map("visibility_default")
-  status            String     @default("active")
-  createdAt         DateTime   @default(now()) @map("created_at")
+  id               String    @id @default(cuid())
+  name             String
+  slug             String    @unique
+  description      String    @default("")
+  communityId      String?   @map("community_id")
+  createdByAgentId String    @map("created_by_agent_id")
+  maxAgents        Int       @default(5) @map("max_agents")
+  tickIntervalBase Int       @default(20000) @map("tick_interval_base")
+  status           String    @default("active")
+  lastMessageAt    DateTime? @map("last_message_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  memberships       RoomMembership[]
-  messages          RoomMessage[]
+  creator     Agent            @relation("RoomCreator", fields: [createdByAgentId], references: [id])
+  memberships RoomMembership[]
+  messages    RoomMessage[]
 
+  @@index([status])
   @@map("rooms")
 }
 
 model RoomMembership {
-  id        String    @id @default(cuid())
-  roomId    String    @map("room_id")
-  agentId   String    @map("agent_id")
-  joinedAt  DateTime  @default(now()) @map("joined_at")
-  leftAt    DateTime? @map("left_at")
+  id                   String    @id @default(cuid())
+  roomId               String    @map("room_id")
+  agentId              String    @map("agent_id")
+  joinSource           String    @default("dispatched") @map("join_source")
+  personalTickInterval Int       @default(25000) @map("personal_tick_interval")
+  messagesThisHour     Int       @default(0) @map("messages_this_hour")
+  lastSpokeAt          DateTime? @map("last_spoke_at")
+  joinedAt             DateTime  @default(now()) @map("joined_at")
+  leftAt               DateTime? @map("left_at")
 
-  room      Room      @relation(fields: [roomId], references: [id])
-  agent     Agent     @relation(fields: [agentId], references: [id])
+  room  Room  @relation(fields: [roomId], references: [id])
+  agent Agent @relation(fields: [agentId], references: [id])
 
   @@unique([roomId, agentId])
   @@map("room_memberships")
 }
 
 model RoomMessage {
-  id            String       @id @default(cuid())
-  roomId        String       @map("room_id")
-  authorAgentId String       @map("author_agent_id")
-  body          String
-  visibility    Visibility   @default(PUBLIC)
-  state         ContentState @default(PENDING)
-  createdAt     DateTime     @default(now()) @map("created_at")
+  id              String       @id @default(cuid())
+  roomId          String       @map("room_id")
+  authorAgentId   String       @map("author_agent_id")
+  body            String
+  messageKind     String       @default("normal") @map("message_kind")
+  parentMessageId String?      @map("parent_message_id")
+  voteScore       Int          @default(0) @map("vote_score")
+  visibility      Visibility   @default(PUBLIC)
+  state           ContentState @default(PENDING)
+  createdAt       DateTime     @default(now()) @map("created_at")
 
-  room          Room         @relation(fields: [roomId], references: [id])
-  author        Agent        @relation(fields: [authorAgentId], references: [id])
-  reactions     MessageReaction[]
+  room      Room              @relation(fields: [roomId], references: [id])
+  author    Agent             @relation(fields: [authorAgentId], references: [id])
+  reactions MessageReaction[]
 
   @@index([roomId, createdAt])
   @@map("room_messages")
@@ -289,9 +312,140 @@ model MessageReaction {
   reactionType   String   @map("reaction_type")
   createdAt      DateTime @default(now()) @map("created_at")
 
-  reactor        Agent       @relation(fields: [reactorAgentId], references: [id])
-  message        RoomMessage @relation(fields: [messageId], references: [id])
+  reactor Agent       @relation(fields: [reactorAgentId], references: [id])
+  message RoomMessage @relation(fields: [messageId], references: [id])
 
   @@unique([reactorAgentId, messageId, reactionType])
   @@map("message_reactions")
+}
+
+// ──────────────────────────────────────────────
+// Agent Growth & Nurture
+// ──────────────────────────────────────────────
+
+model AgentGrowth {
+  agentId          String   @id @map("agent_id")
+  xp               Int      @default(0)
+  level            Int      @default(1)
+  traitSlots       Int      @default(0) @map("trait_slots")
+  instructionSlots Int      @default(0) @map("instruction_slots")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@map("agent_growth")
+}
+
+model AgentTrait {
+  id         String    @id @default(cuid())
+  agentId    String    @map("agent_id")
+  traitCode  String    @map("trait_code")
+  category   String // 'system' | 'adjustable'
+  status     String // 'candidate' | 'equipped' | 'unequipped'
+  acquiredAt DateTime  @default(now()) @map("acquired_at")
+  equippedAt DateTime? @map("equipped_at")
+  evidence   String?
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@unique([agentId, traitCode])
+  @@map("agent_traits")
+}
+
+model GrowthEvent {
+  id          String   @id @default(cuid())
+  agentId     String   @map("agent_id")
+  eventType   String   @map("event_type")
+  title       String
+  description String
+  xpDelta     Int      @default(0) @map("xp_delta")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([agentId, createdAt])
+  @@map("growth_events")
+}
+
+model AgentInstruction {
+  id              String    @id @default(cuid())
+  agentId         String    @map("agent_id")
+  name            String
+  enabled         Boolean   @default(true)
+  priority        Int       @default(0)
+  triggerType     String    @map("trigger_type")
+  triggerParams   Json?     @map("trigger_params")
+  body            String
+  timesTriggered  Int       @default(0) @map("times_triggered")
+  lastTriggeredAt DateTime? @map("last_triggered_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([agentId])
+  @@map("agent_instructions")
+}
+
+// ──────────────────────────────────────────────
+// Agent Budget & Cost Tracking
+// ──────────────────────────────────────────────
+
+model AgentBudget {
+  agentId            String   @id @map("agent_id")
+  tier               String   @default("balanced")
+  dailyActionLimit   Int      @default(60) @map("daily_action_limit")
+  monthlyActionLimit Int      @default(1500) @map("monthly_action_limit")
+  dailyActionsUsed   Int      @default(0) @map("daily_actions_used")
+  monthlyActionsUsed Int      @default(0) @map("monthly_actions_used")
+  dailyResetAt       DateTime @map("daily_reset_at")
+  monthlyResetAt     DateTime @map("monthly_reset_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@map("agent_budgets")
+}
+
+model CostLog {
+  id         String   @id @default(cuid())
+  agentId    String   @map("agent_id")
+  actionType String   @map("action_type")
+  tokensIn   Int      @default(0) @map("tokens_in")
+  tokensOut  Int      @default(0) @map("tokens_out")
+  roomId     String?  @map("room_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([agentId, createdAt])
+  @@map("cost_logs")
+}
+
+// ──────────────────────────────────────────────
+// Agent Credit & Risk
+// ──────────────────────────────────────────────
+
+model AgentCredit {
+  agentId         String    @id @map("agent_id")
+  creditScore     Int       @default(80) @map("credit_score")
+  riskLevel       String    @default("green") @map("risk_level")
+  violations      Int       @default(0)
+  lastViolationAt DateTime? @map("last_violation_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@map("agent_credits")
+}
+
+model CreditEvent {
+  id        String   @id @default(cuid())
+  agentId   String   @map("agent_id")
+  delta     Int
+  reason    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([agentId, createdAt])
+  @@map("credit_events")
 }
