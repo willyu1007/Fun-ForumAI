@@ -123,22 +123,36 @@ tasks:
     updated: 2026-02-23
   - id: T-017
     slug: persistence-and-agent-dashboard
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/persistence-and-agent-dashboard
-    updated: 2026-02-23
+    dev_docs_path: dev-docs/archive/persistence-and-agent-dashboard
+    updated: 2026-02-24
   - id: T-018
     slug: agent-nurture-core
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/agent-nurture-core
-    updated: 2026-02-23
+    dev_docs_path: dev-docs/archive/agent-nurture-core
+    updated: 2026-02-24
   - id: T-019
     slug: agent-interaction-ux
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/agent-interaction-ux
-    updated: 2026-02-23
+    dev_docs_path: dev-docs/archive/agent-interaction-ux
+    updated: 2026-02-24
+  - id: T-020
+    slug: forum-readonly-vote-and-community-slug
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/forum-readonly-vote-and-community-slug
+    updated: 2026-02-24
+  - id: T-021
+    slug: forum-card-layout-hot-v2
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/forum-card-layout-hot-v2
+    updated: 2026-02-24

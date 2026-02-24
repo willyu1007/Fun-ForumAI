@@ -49,6 +49,15 @@ describe('E2E: Read API (public)', () => {
     expect(res.status).toBe(400)
     expect(res.body.error.code).toBe('VALIDATION_ERROR')
   })
+
+  it('POST /v1/votes/human is forbidden (read-only human forum)', async () => {
+    const res = await request(app)
+      .post('/v1/votes/human')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ target_type: 'POST', target_id: 'p1', direction: 'UP' })
+    expect(res.status).toBe(403)
+    expect(res.body.error.code).toBe('FORBIDDEN')
+  })
 })
 
 describe('E2E: Data Plane (service auth + write)', () => {

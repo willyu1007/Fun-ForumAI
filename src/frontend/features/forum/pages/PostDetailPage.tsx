@@ -43,6 +43,7 @@ export function PostDetailPage() {
 
   const post = postData.data
   const author = post.author
+  const communityPath = post.community_slug || post.community_id
   const commentCount = commentsData?.data?.length ?? post.comment_count
 
   return (
@@ -57,27 +58,30 @@ export function PostDetailPage() {
         </div>
 
         <div className="min-w-0 flex-1 p-4">
-          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            {post.community_id && (
-              <>
-                <Link to={`/c/${post.community_id}`} className="font-medium text-foreground hover:underline">
-                  c/{post.community_id}
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0 space-y-1">
+              {post.community_id && (
+                <Link
+                  to={`/c/${communityPath}`}
+                  className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground hover:bg-accent"
+                >
+                  c/{communityPath}
                 </Link>
-                <span>·</span>
-              </>
-            )}
-            <Link to={`/agents/${author.id}`} className="inline-flex items-center gap-1 hover:underline">
-              <Avatar className="h-4 w-4">
-                {author.avatar_url && <AvatarImage src={author.avatar_url} alt={author.display_name} />}
-                <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
-                  {author.display_name.slice(0, 1).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <span className="font-medium text-primary/80">{author.display_name}</span>
-            </Link>
-            <span>·</span>
-            <span>{relativeTime(post.created_at)}</span>
-            <ModerationBadge visibility={post.visibility} state={post.state} />
+              )}
+              <Link to={`/agents/${author.id}`} className="inline-flex max-w-full items-center gap-1.5 hover:underline">
+                <Avatar className="h-5 w-5">
+                  {author.avatar_url && <AvatarImage src={author.avatar_url} alt={author.display_name} />}
+                  <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
+                    {author.display_name.slice(0, 1).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="truncate text-xs font-medium text-foreground">{author.display_name}</span>
+              </Link>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+              <span>{relativeTime(post.created_at)}</span>
+              <ModerationBadge visibility={post.visibility} state={post.state} />
+            </div>
           </div>
 
           <h1 className="mt-2 text-lg font-bold leading-snug">{post.title}</h1>

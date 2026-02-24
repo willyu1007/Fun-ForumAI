@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { Link } from 'react-router'
+import { MessageSquareDotIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ModerationBadge } from './ModerationBadge'
-import { VoteColumn } from './VoteColumn'
-import { relativeTime } from '@/shared/utils/relative-time'
+import { relativeTime, relativeTimeShort } from '@/shared/utils/relative-time'
 import type { PostWithMeta } from '@/api/types'
 
 interface PostCardProps {
@@ -17,62 +19,82 @@ function getInitials(name: string): string {
 
 export function PostCard({ post, showCommunity = true }: PostCardProps) {
   const author = post.author
+  const communityPath = post.community_slug || post.community_id
+  const [expanded, setExpanded] = useState(false)
+  const canExpand = post.body.length > 140
 
   return (
-    <div className="group flex rounded-md border bg-card transition-colors hover:border-primary/30">
-      <div className="flex w-10 shrink-0 items-start justify-center rounded-l-md bg-muted/40 pt-2">
-        <VoteColumn targetType="POST" targetId={post.id} score={post.vote_score} />
+    <div className="group grid grid-cols-[4rem_minmax(0,1fr)] grid-rows-[auto_auto] overflow-hidden rounded-lg border bg-card transition-colors hover:border-primary/30">
+      <div className="flex items-center justify-center bg-muted/40 px-1 py-2">
+        <div className="flex flex-col items-center">
+          <span aria-hidden className="text-sm leading-none">🔥</span>
+          <span className="text-sm font-bold tabular-nums text-foreground">{post.heat_score}</span>
+        </div>
       </div>
 
-      <div className="min-w-0 flex-1 px-3 py-2">
-        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-          {showCommunity && post.community_id && (
-            <>
-              <Link
-                to={`/c/${post.community_id}`}
-                className="font-medium text-foreground hover:underline"
-              >
-                c/{post.community_id}
-              </Link>
-              <span>·</span>
-            </>
-          )}
+      <div className="min-w-0 px-2.5 py-2 sm:px-3 sm:py-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          <Link to={`/posts/${post.id}`} className="min-w-[180px] flex-1">
+            <h3 className="truncate text-[15px] font-semibold leading-snug text-foreground transition-colors group-hover:text-primary sm:text-sm">
+              {post.title}
+            </h3>
+          </Link>
           <Link
             to={`/agents/${author.id}`}
-            className="inline-flex items-center gap-1 hover:underline"
+            className="inline-flex max-w-full items-center gap-1.5 hover:underline"
           >
-            <Avatar className="h-4 w-4">
+            <Avatar className="h-5 w-5">
               {author.avatar_url && <AvatarImage src={author.avatar_url} alt={author.display_name} />}
-              <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
+              <AvatarFallback className="bg-primary/10 text-[9px] text-primary">
                 {getInitials(author.display_name)}
               </AvatarFallback>
             </Avatar>
-            <span className="font-medium text-primary/80">{author.display_name}</span>
+            <span className="max-w-28 truncate font-medium text-foreground">{author.display_name}</span>
           </Link>
           <span>·</span>
-          <span>{relativeTime(post.created_at)}</span>
+          <span>发布于 {relativeTime(post.created_at)}</span>
           <ModerationBadge visibility={post.visibility} state={post.state} />
         </div>
 
-        <Link to={`/posts/${post.id}`} className="block">
-          <h3 className="mt-1 text-sm font-semibold leading-snug text-foreground group-hover:text-primary transition-colors">
-            {post.title}
-          </h3>
-        </Link>
-
-        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+        <p
+          className={cn(
+            'mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm',
+            expanded ? 'whitespace-pre-wrap' : 'line-clamp-2',
+          )}
+        >
           {post.body}
         </p>
 
-        <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
+        {canExpand && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="mt-1 text-xs font-medium text-primary/80 transition-colors hover:text-primary"
+          >
+            {expanded ? '收起全文' : '展开全文'}
+          </button>
+        )}
+      </div>
+
+      <div className="flex items-center justify-center border-t border-border/40 bg-muted/40 px-1 py-1 text-[10px] leading-tight text-muted-foreground">
+        <span className="inline-flex items-center gap-1 whitespace-nowrap">
+          <MessageSquareDotIcon className="size-2.5 shrink-0" />
+          <span>{post.last_reply_at ? relativeTimeShort(post.last_reply_at) : '--'}</span>
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/40 px-2.5 py-1.5 text-xs text-muted-foreground sm:px-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1 px-0.5 py-0.5">👍 {post.vote_up}</span>
+          <span className="inline-flex items-center gap-1 px-0.5 py-0.5">👎 {post.vote_down}</span>
           <Link
             to={`/posts/${post.id}`}
-            className="flex items-center gap-1 rounded px-1.5 py-0.5 transition-colors hover:bg-accent"
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 transition-colors hover:bg-accent"
           >
-            💬 {post.comment_count} 条讨论
+            💬 {post.comment_count} 讨论
           </Link>
           {post.tags.length > 0 && (
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               {post.tags.slice(0, 3).map((tag) => (
                 <Badge key={tag} variant="secondary" className="px-1.5 py-0 text-[10px]">
                   {tag}
@@ -80,6 +102,18 @@ export function PostCard({ post, showCommunity = true }: PostCardProps) {
               ))}
             </div>
           )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Link
+            to={`/c/${communityPath}`}
+            className={cn(
+              'inline-flex items-center rounded-full bg-muted px-2 py-0.5 font-medium text-foreground hover:bg-accent',
+              !showCommunity && 'hidden',
+            )}
+          >
+            {post.community_name}
+          </Link>
         </div>
       </div>
     </div>

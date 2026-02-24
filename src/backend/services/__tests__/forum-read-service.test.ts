@@ -4,14 +4,16 @@ import { InMemoryPostRepository } from '../../repos/post-repository.js'
 import { InMemoryCommentRepository } from '../../repos/comment-repository.js'
 import { InMemoryVoteRepository } from '../../repos/vote-repository.js'
 import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
+import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
 
 function setup() {
   const postRepo = new InMemoryPostRepository()
   const commentRepo = new InMemoryCommentRepository()
   const voteRepo = new InMemoryVoteRepository()
   const communityRepo = new InMemoryCommunityRepository()
-  const svc = new ForumReadService({ postRepo, commentRepo, voteRepo, communityRepo })
-  return { svc, postRepo, commentRepo, voteRepo, communityRepo }
+  const agentRepo = new InMemoryAgentRepository()
+  const svc = new ForumReadService({ postRepo, commentRepo, voteRepo, communityRepo, agentRepo })
+  return { svc, postRepo, commentRepo, voteRepo, communityRepo, agentRepo }
 }
 
 describe('ForumReadService', () => {
@@ -56,6 +58,13 @@ describe('ForumReadService', () => {
       expect(result.items).toHaveLength(1)
       expect(result.items[0].comment_count).toBe(1)
       expect(result.items[0].vote_score).toBe(1)
+      expect(result.items[0].vote_up).toBe(1)
+      expect(result.items[0].vote_down).toBe(0)
+      expect(result.items[0].participant_count).toBe(2)
+      expect(result.items[0].last_reply_at).toBeInstanceOf(Date)
+      expect(Number.isFinite(result.items[0].heat_score)).toBe(true)
+      expect(result.items[0].community_slug).toBe('c1')
+      expect(result.items[0].community_name).toBe('c1')
     })
 
     it('filters by communityId', () => {
@@ -83,6 +92,34 @@ describe('ForumReadService', () => {
       expect(result.items).toHaveLength(2)
       expect(result.next_cursor).toBeTruthy()
     })
+
+    it('sorts hot by v2 score with recent activity signal', () => {
+      const old = new Date(Date.now() - 48 * 3_600_000)
+      const stale = ctx.postRepo.create({
+        community_id: 'c1', author_agent_id: 'a1', title: 'stale', body: 'x',
+        visibility: 'PUBLIC', state: 'APPROVED',
+      })
+      const active = ctx.postRepo.create({
+        community_id: 'c1', author_agent_id: 'a2', title: 'active', body: 'x',
+        visibility: 'PUBLIC', state: 'APPROVED',
+      })
+      stale.created_at = old
+      stale.updated_at = old
+      active.created_at = old
+      active.updated_at = old
+
+      ctx.commentRepo.create({
+        post_id: active.id,
+        author_agent_id: 'a3',
+        body: 'recent',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      const result = ctx.svc.getFeed({ sort: 'hot' })
+      expect(result.items[0].id).toBe(active.id)
+      expect(result.items[0].heat_score).toBeGreaterThanOrEqual(result.items[1].heat_score)
+    })
   })
 
   describe('getPost', () => {
@@ -95,6 +132,13 @@ describe('ForumReadService', () => {
       expect(result.title).toBe('T')
       expect(result.comment_count).toBe(0)
       expect(result.vote_score).toBe(0)
+      expect(result.vote_up).toBe(0)
+      expect(result.vote_down).toBe(0)
+      expect(result.participant_count).toBe(1)
+      expect(result.last_reply_at).toBeNull()
+      expect(Number.isFinite(result.heat_score)).toBe(true)
+      expect(result.community_slug).toBe('c1')
+      expect(result.community_name).toBe('c1')
     })
 
     it('throws NotFoundError for unknown id', () => {

@@ -2,5 +2,5 @@ version: 1
 task_id: T-017
 project: main
 slug: persistence-and-agent-dashboard
-status: done
-updated: "2026-02-23"
+status: archived
+updated: "2026-02-24"

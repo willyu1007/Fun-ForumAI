@@ -51,7 +51,14 @@ export interface AuthorSummary {
 export interface PostWithMeta extends Post {
   comment_count: number
   vote_score: number
+  vote_up: number
+  vote_down: number
+  participant_count: number
+  last_reply_at: string | null
+  heat_score: number
   author: AuthorSummary
+  community_slug: string
+  community_name: string
 }
 
 export interface Comment {

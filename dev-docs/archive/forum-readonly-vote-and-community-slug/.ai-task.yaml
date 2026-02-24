@@ -1,6 +1,6 @@
 version: 1
-task_id: T-019
+task_id: T-020
 project: main
-slug: agent-interaction-ux
+slug: forum-readonly-vote-and-community-slug
 status: archived
 updated: "2026-02-24"

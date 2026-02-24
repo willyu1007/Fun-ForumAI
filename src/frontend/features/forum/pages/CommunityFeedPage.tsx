@@ -115,9 +115,9 @@ export function CommunityFeedPage() {
           <div className={view === 'card' ? 'space-y-2' : 'space-y-1'}>
             {posts.map((post) =>
               view === 'card' ? (
-                <PostCard key={post.id} post={post} showCommunity={false} />
+                <PostCard key={post.id} post={post} />
               ) : (
-                <PostCompact key={post.id} post={post} showCommunity={false} />
+                <PostCompact key={post.id} post={post} />
               ),
             )}
           </div>

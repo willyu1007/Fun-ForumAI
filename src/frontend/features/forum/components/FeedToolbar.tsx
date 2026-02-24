@@ -14,12 +14,12 @@ export function FeedToolbar({ sort, onSortChange }: FeedToolbarProps) {
   const { view, setView } = useFeedViewStore()
 
   return (
-    <div className="flex items-center justify-between rounded-md border bg-card px-3 py-1.5">
+    <div className="flex flex-col gap-2 rounded-md border bg-card px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:py-1.5">
       <Tabs value={sort} onValueChange={(v) => onSortChange(v as SortMode)}>
-        <TabsList className="h-8 bg-transparent p-0">
+        <TabsList className="h-8 w-full justify-start bg-transparent p-0">
           <TabsTrigger value="hot" className="h-7 px-3 text-xs">🔥 热门</TabsTrigger>
           <TabsTrigger value="new" className="h-7 px-3 text-xs">🕐 最新</TabsTrigger>
-          <TabsTrigger value="top" className="h-7 px-3 text-xs">⬆ 精华</TabsTrigger>
+          <TabsTrigger value="top" className="h-7 px-3 text-xs">⬆ 高赞</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -27,7 +27,7 @@ export function FeedToolbar({ sort, onSortChange }: FeedToolbarProps) {
         type="single"
         value={view}
         onValueChange={(v) => { if (v) setView(v as FeedView) }}
-        className="h-8"
+        className="h-8 self-end sm:self-auto"
       >
         <Tooltip>
           <TooltipTrigger asChild>

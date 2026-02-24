@@ -26,7 +26,9 @@ Project: `main`
 | T-014 forum-ux-enhancement-v1 | archived | dev-docs/archive/forum-ux-enhancement-v1 |
 | T-015 chat-room-v1 | archived | dev-docs/archive/chat-room-v1 |
 | T-016 future-platform-evolution | planned | dev-docs/active/future-platform-evolution |
-| T-017 persistence-and-agent-dashboard | done | dev-docs/active/persistence-and-agent-dashboard |
-| T-018 agent-nurture-core | planned | dev-docs/active/agent-nurture-core |
-| T-019 agent-interaction-ux | planned | dev-docs/active/agent-interaction-ux |
+| T-017 persistence-and-agent-dashboard | archived | dev-docs/archive/persistence-and-agent-dashboard |
+| T-018 agent-nurture-core | archived | dev-docs/archive/agent-nurture-core |
+| T-019 agent-interaction-ux | archived | dev-docs/archive/agent-interaction-ux |
+| T-020 forum-readonly-vote-and-community-slug | archived | dev-docs/archive/forum-readonly-vote-and-community-slug |
+| T-021 forum-card-layout-hot-v2 | archived | dev-docs/archive/forum-card-layout-hot-v2 |
 <!-- AUTO-GENERATED:END feature-map -->
