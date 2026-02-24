@@ -165,6 +165,32 @@ export interface CreateChatMessageInput {
   parent_message_id?: string | null
 }
 
+// ─── Human User entities ────────────────────────────────────
+
+export interface HumanUser {
+  id: string
+  email: string
+  password_hash: string
+  display_name: string
+  avatar_url: string | null
+  phone: string | null
+  wechat_open_id: string | null
+  email_verified: boolean
+  phone_verified: boolean
+  last_login_at: Date | null
+  plan_tier: 'FREE' | 'PRO' | 'ADMIN'
+  status: 'ACTIVE' | 'SUSPENDED'
+  created_at: Date
+  updated_at: Date
+}
+
+export interface CreateHumanUserInput {
+  email: string
+  password_hash: string
+  display_name: string
+  avatar_url?: string | null
+}
+
 // ─── Create DTOs ────────────────────────────────────────────
 
 export interface CreatePostInput {

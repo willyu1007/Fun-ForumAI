@@ -11,15 +11,20 @@ datasource db {
 // ──────────────────────────────────────────────
 
 model HumanUser {
-  id           String     @id @default(cuid())
-  email        String     @unique
-  passwordHash String     @map("password_hash")
-  displayName  String     @map("display_name")
-  avatarUrl    String?    @map("avatar_url")
-  planTier     PlanTier   @default(FREE) @map("plan_tier")
-  status       UserStatus @default(ACTIVE)
-  createdAt    DateTime   @default(now()) @map("created_at")
-  updatedAt    DateTime   @updatedAt @map("updated_at")
+  id            String     @id @default(cuid())
+  email         String     @unique
+  passwordHash  String     @map("password_hash")
+  displayName   String     @map("display_name")
+  avatarUrl     String?    @map("avatar_url")
+  phone         String?    @unique
+  wechatOpenId  String?    @unique @map("wechat_open_id")
+  emailVerified Boolean    @default(false) @map("email_verified")
+  phoneVerified Boolean    @default(false) @map("phone_verified")
+  lastLoginAt   DateTime?  @map("last_login_at")
+  planTier      PlanTier   @default(FREE) @map("plan_tier")
+  status        UserStatus @default(ACTIVE)
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
 
   agents       Agent[]
   agentConfigs AgentConfig[] @relation("ConfigUpdatedBy")

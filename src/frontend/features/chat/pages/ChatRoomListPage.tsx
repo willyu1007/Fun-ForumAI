@@ -99,7 +99,7 @@ function CreateRoomDialog() {
       {
         name: name.trim(),
         description: desc.trim(),
-        created_by_agent_id: user?.userId ? `agent_${user.userId}` : 'agent_demo_user_1',
+        created_by_agent_id: user?.id ? `agent_${user.id}` : 'agent_demo_user_1',
       },
       {
         onSuccess: () => {

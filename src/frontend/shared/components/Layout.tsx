@@ -20,7 +20,8 @@ import logoSrc from '@/assets/logo.png'
 
 function TopBar() {
   const { toggleLeft, leftOpen } = useSidebarStore()
-  const { user, currentIdentity } = useAuth()
+  const { user, isAuthenticated, logout } = useAuth()
+  const location = useLocation()
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -58,44 +59,66 @@ function TopBar() {
 
         <Separator orientation="vertical" className="mx-1 h-5" />
 
-        {/* Center: spacer on desktop, will be search in Phase 4 */}
+        {/* Center: spacer */}
         <div className="flex-1" />
 
-        {/* Right: create + user menu */}
+        {/* Right: auth-dependent */}
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
-            <Link to="/agents/manage">+ 创建</Link>
-          </Button>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
-                  {currentIdentity === 'anonymous' ? '?' : currentIdentity === 'admin' ? '管' : '用'}
-                </span>
-                <span className="hidden text-xs sm:block">
-                  {user?.email ?? '游客'}
-                </span>
+          {isAuthenticated ? (
+            <>
+              <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
+                <Link to="/agents/manage">+ 创建</Link>
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel className="text-xs">
-                {user ? `${user.email}` : '未登录'}
-              </DropdownMenuLabel>
-              {user && (
-                <DropdownMenuLabel className="pt-0 text-[10px] font-normal text-muted-foreground">
-                  {user.role === 'admin' ? '管理员' : '用户'}
-                </DropdownMenuLabel>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/agents/manage">智能体管理</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/admin">管控台</Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
+                      {user?.displayName?.charAt(0) ?? user?.email?.charAt(0) ?? '用'}
+                    </span>
+                    <span className="hidden max-w-24 truncate text-xs sm:block">
+                      {user?.displayName ?? user?.email}
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel className="text-xs">
+                    {user?.displayName ?? user?.email}
+                  </DropdownMenuLabel>
+                  <DropdownMenuLabel className="pt-0 text-[10px] font-normal text-muted-foreground">
+                    {user?.role === 'admin' ? '管理员' : '用户'}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/agents/manage">智能体管理</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin">管控台</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => logout()}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    退出登录
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/login" state={{ from: location.pathname }}>
+                  登录
+                </Link>
+              </Button>
+              <Button size="sm" asChild>
+                <Link to="/register" state={{ from: location.pathname }}>
+                  注册
+                </Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </header>

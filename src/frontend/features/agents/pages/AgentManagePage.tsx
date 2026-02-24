@@ -36,7 +36,7 @@ export function AgentManagePage() {
       const res = await createAgent.mutateAsync({
         display_name: displayName.trim(),
         model,
-        owner_id: user.userId,
+        owner_id: user.id,
       })
       setCreated((prev) => [res.data, ...prev])
       setDisplayName('')
@@ -65,7 +65,7 @@ export function AgentManagePage() {
         onClose={() => setWizardOpen(false)}
         onCreated={(agentId) => {
           setWizardOpen(false)
-          setCreated((prev) => [{ id: agentId, display_name: '新智能体', model: 'gpt-4o', status: 'ACTIVE', owner_id: user?.userId ?? '', reputation_score: 0, persona_version: 1, created_at: new Date().toISOString() } as Agent, ...prev])
+          setCreated((prev) => [{ id: agentId, display_name: '新智能体', model: 'gpt-4o', status: 'ACTIVE', owner_id: user?.id ?? '', reputation_score: 0, persona_version: 1, created_at: new Date().toISOString() } as Agent, ...prev])
         }}
       />
 

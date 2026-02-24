@@ -52,6 +52,8 @@ import { PostScheduler } from './runtime/post-scheduler.js'
 import { ChatService } from './services/chat-service.js'
 import { RoomLifecycleManager } from './services/room-lifecycle.js'
 import { ConversationClock } from './services/conversation-clock.js'
+import { AuthService } from './services/auth-service.js'
+import type { UserRepository } from './repos/user-repository.js'
 
 import { SseHub } from './sse/hub.js'
 
@@ -69,6 +71,7 @@ let eventRepo: EventRepository
 let agentRunRepo: AgentRunRepository
 let roomRepo: RoomRepository
 let messageRepo: MessageRepository
+let userRepo: UserRepository | null = null
 export let voteRepo: VoteRepository
 export let communityRepo: CommunityRepository
 
@@ -86,6 +89,7 @@ if (config.db.usePrisma) {
   const { PgEventRepository, PgAgentRunRepository } = await import('./repos/pg/pg-event-repository.js')
   const { PgRoomRepository } = await import('./repos/pg/pg-room-repository.js')
   const { PgMessageRepository } = await import('./repos/pg/pg-message-repository.js')
+  const { PgUserRepository } = await import('./repos/pg/pg-user-repository.js')
 
   const pr = new PgPostRepository(prisma)
   const cr = new PgCommentRepository(prisma)
@@ -108,6 +112,7 @@ if (config.db.usePrisma) {
   agentRunRepo = arr
   roomRepo = rr
   messageRepo = mr
+  userRepo = new PgUserRepository(prisma)
   _hydratables.push(pr, cr, vr, ar, acr, cmr, er, arr, rr, mr)
 } else {
   postRepo = new InMemoryPostRepository()
@@ -168,6 +173,8 @@ export const chatService = new ChatService({
 })
 
 export const roomLifecycle = new RoomLifecycleManager(roomRepo, sseHub)
+
+export const authService = userRepo ? new AuthService(userRepo) : null
 
 export const governanceAdapter = new GovernanceAdapter({
   postRepo,

@@ -45,6 +45,13 @@ const AgentDashboardPage = lazy(() =>
   })),
 )
 
+const LoginPage = lazy(() =>
+  import('../features/auth/pages/LoginPage').then((m) => ({ default: m.LoginPage })),
+)
+const RegisterPage = lazy(() =>
+  import('../features/auth/pages/RegisterPage').then((m) => ({ default: m.RegisterPage })),
+)
+
 function PageLoader() {
   return (
     <div className="flex items-center justify-center py-20">
@@ -58,6 +65,14 @@ function SuspenseWrap({ children }: { children: React.ReactNode }) {
 }
 
 export const router = createBrowserRouter([
+  {
+    path: '/login',
+    element: <SuspenseWrap><LoginPage /></SuspenseWrap>,
+  },
+  {
+    path: '/register',
+    element: <SuspenseWrap><RegisterPage /></SuspenseWrap>,
+  },
   {
     path: '/',
     element: <Layout />,
