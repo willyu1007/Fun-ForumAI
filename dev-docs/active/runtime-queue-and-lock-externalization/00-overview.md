@@ -2,7 +2,7 @@
 
 ## Status
 - State: in-progress
-- Next step: 进入 Phase 3（双实例 smoke + staging 灰度验证），补齐回退 runbook。
+- Next step: 本地 Phase 3 smoke 已完成，进入 staging 灰度与回退 runbook 演练。
 
 ## Goal
 将运行时核心状态从进程内存外置为共享基础设施，使 Runtime 在多实例部署下保持一致性与可回退。

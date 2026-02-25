@@ -20,6 +20,16 @@
   - `dev/runtime/status` 与 `admin/runtime/stats` 增加 `is_leader`、backend 信息
 - 运行生命周期补齐：
   - `server.ts` 关停时停止 runtime/scheduler，并执行 runtime infra close/release
+- Phase 3 本地执行（2026-02-25）：
+  - 启动 2 个 backend 实例（`4101/4102`）共享同一 Redis（`redis-memory-server`）。
+  - 向 node1 注入 15 个事件后并发触发两节点 `POST /v1/dev/runtime/tick`：
+    - Round1: node1 `processed_events=10`, node2 `processed_events=0`
+    - Round2: node1 `processed_events=5`, node2 `processed_events=0`
+    - 队列从 15 下降到 0（无重复消费）
+  - 轮询 Redis leader key 75 秒，观察到：
+    - `t023:leader:room-lifecycle`、`t023:leader:conversation-clock` 始终由单一 owner 持有（pid=43035）
+  - 回退演练（本地）：
+    - 启动 in-memory 模式实例（`4103`），`/v1/admin/runtime/stats` 返回 `queue_backend=in-memory`、`leader_backend=in-memory`
 
 ## Files/modules touched (high level)
 - `src/backend/runtime/`
@@ -31,6 +41,7 @@
 - `env/`
 - `package.json`
 - `pnpm-lock.yaml`
+- `/tmp/t023-node3.log`（本地验证日志，非仓库文件）
 
 ## Decisions & tradeoffs
 - Decision:
@@ -54,7 +65,7 @@
 
 ## Known issues / follow-ups
 - `pnpm typecheck` 仍有大量既有历史错误（前端 unused、Prisma 模型漂移、chat-api 类型）；不由本任务引入。
-- 仍需完成双实例 smoke（重复消费/单活）与 staging 灰度 runbook 验证。
+- 本地双实例 smoke 已完成；仍需在 staging（真实 Redis + Pg 持久层）完成灰度与 runbook 演练。
 
 ## Pitfalls / dead ends (do not repeat)
 - Keep the detailed log in `05-pitfalls.md` (append-only).

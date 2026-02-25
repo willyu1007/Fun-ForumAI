@@ -40,3 +40,21 @@ This file exists to prevent repeating mistakes within this task.
   - `src/backend/runtime/event-queue.ts`
   - `src/backend/runtime/leader-elector.ts`
   - `pnpm -s typecheck`
+
+### 2026-02-25 - Leader lock sampling window false-negative
+- Symptom:
+  - 初次检查 `t023:leader:*` 返回空集合，误以为 scheduler leader 未生效。
+- Context:
+  - 本地 Phase 3 验证时，room-lifecycle tick 周期为 60s，leader TTL 为 15s。
+- What we tried:
+  - 单次 `keys t023:leader:*` 采样。
+- Why it failed (or current hypothesis):
+  - 采样时刻落在 TTL 过期到下一次 tick 之间，锁自然为空窗。
+- Fix / workaround (if any):
+  - 改为 75s 连续采样（1s 间隔）捕捉 TTL 窗口。
+- Prevention (how to avoid repeating it):
+  - 对短租约锁验证必须采用窗口采样或事件日志，而非单点读取。
+- References (paths/commands/log keywords):
+  - `RUNTIME_LEADER_TTL_MS=15000`
+  - `room-lifecycle interval=60000`
+  - `t023:leader:room-lifecycle`

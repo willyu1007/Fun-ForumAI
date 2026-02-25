@@ -25,3 +25,28 @@
   - Result: pass (30 files, 262 tests)
 - `pnpm -s typecheck`
   - Result: fail (existing baseline issues outside T-023 scope: frontend unused symbol, allocator config event type drift, Prisma model/type mismatch, chat-api query typing)
+
+## Phase 3 local rollout rehearsal (2026-02-25)
+- Environment:
+  - Redis: `redis-memory-server` @ `127.0.0.1:50821`
+  - Node1: `PORT=4101` + `RUNTIME_QUEUE_BACKEND=redis` + `RUNTIME_LEADER_BACKEND=redis`
+  - Node2: `PORT=4102` + same redis config
+- Command summary:
+  - Seed events: `POST /v1/dev/seed` (node1) → 15 events enqueued
+  - Parallel ticks (4 rounds): node1+node2 `POST /v1/dev/runtime/tick`
+  - Runtime stats: `GET /v1/admin/runtime/stats` (both nodes)
+  - Leader-key observation: poll `t023:leader:*` for 75s
+  - Backout rehearsal: launch `PORT=4103` with `RUNTIME_QUEUE_BACKEND=in-memory` + `RUNTIME_LEADER_BACKEND=in-memory`
+- Observed results:
+  - Queue consumption:
+    - Round1: node1 processed 10, node2 processed 0
+    - Round2: node1 processed 5, node2 processed 0
+    - Final: both processed 0, queue size=0
+  - Runtime single-active:
+    - At each round only one node processed events; the peer consistently returned `processed_events=0`
+  - Scheduler single-active evidence:
+    - `t023:leader:room-lifecycle` and `t023:leader:conversation-clock` sampled with single owner pid (`43035`) during TTL window
+  - Backout evidence:
+    - in-memory node `/v1/admin/runtime/stats` returned `queue_backend=in-memory`, `leader_backend=in-memory`, `is_leader=true`
+- Notes:
+  - LLM key absent in local rehearsal; executor attempts returned 401 but queue ack/dequeue and leader behavior remained verifiable.
