@@ -24,13 +24,13 @@ describe('ForumReadService', () => {
   })
 
   describe('getFeed', () => {
-    it('returns empty feed', () => {
-      const result = ctx.svc.getFeed({})
+    it('returns empty feed', async () => {
+      const result = await ctx.svc.getFeed({})
       expect(result.items).toHaveLength(0)
     })
 
-    it('returns approved posts with meta', () => {
-      const post = ctx.postRepo.create({
+    it('returns approved posts with meta', async () => {
+      const post = await ctx.postRepo.create({
         community_id: 'c1',
         author_agent_id: 'a1',
         title: 'Hello',
@@ -39,7 +39,7 @@ describe('ForumReadService', () => {
         state: 'APPROVED',
       })
 
-      ctx.commentRepo.create({
+      await ctx.commentRepo.create({
         post_id: post.id,
         author_agent_id: 'a2',
         body: 'Nice!',
@@ -54,7 +54,7 @@ describe('ForumReadService', () => {
         direction: 'UP',
       })
 
-      const result = ctx.svc.getFeed({})
+      const result = await ctx.svc.getFeed({})
       expect(result.items).toHaveLength(1)
       expect(result.items[0].comment_count).toBe(1)
       expect(result.items[0].vote_score).toBe(1)
@@ -67,48 +67,68 @@ describe('ForumReadService', () => {
       expect(result.items[0].community_name).toBe('c1')
     })
 
-    it('filters by communityId', () => {
-      ctx.postRepo.create({
-        community_id: 'c1', author_agent_id: 'a1', title: 'A', body: 'B',
-        visibility: 'PUBLIC', state: 'APPROVED',
+    it('filters by communityId', async () => {
+      await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'A',
+        body: 'B',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
       })
-      ctx.postRepo.create({
-        community_id: 'c2', author_agent_id: 'a1', title: 'C', body: 'D',
-        visibility: 'PUBLIC', state: 'APPROVED',
+      await ctx.postRepo.create({
+        community_id: 'c2',
+        author_agent_id: 'a1',
+        title: 'C',
+        body: 'D',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
       })
 
-      const result = ctx.svc.getFeed({ communityId: 'c1' })
+      const result = await ctx.svc.getFeed({ communityId: 'c1' })
       expect(result.items).toHaveLength(1)
     })
 
-    it('respects limit', () => {
+    it('respects limit', async () => {
       for (let i = 0; i < 5; i++) {
-        ctx.postRepo.create({
-          community_id: 'c1', author_agent_id: 'a1', title: `P${i}`, body: 'B',
-          visibility: 'PUBLIC', state: 'APPROVED',
+        await ctx.postRepo.create({
+          community_id: 'c1',
+          author_agent_id: 'a1',
+          title: `P${i}`,
+          body: 'B',
+          visibility: 'PUBLIC',
+          state: 'APPROVED',
         })
       }
-      const result = ctx.svc.getFeed({ limit: 2 })
+      const result = await ctx.svc.getFeed({ limit: 2 })
       expect(result.items).toHaveLength(2)
       expect(result.next_cursor).toBeTruthy()
     })
 
-    it('sorts hot by v2 score with recent activity signal', () => {
+    it('sorts hot by v2 score with recent activity signal', async () => {
       const old = new Date(Date.now() - 48 * 3_600_000)
-      const stale = ctx.postRepo.create({
-        community_id: 'c1', author_agent_id: 'a1', title: 'stale', body: 'x',
-        visibility: 'PUBLIC', state: 'APPROVED',
+      const stale = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'stale',
+        body: 'x',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
       })
-      const active = ctx.postRepo.create({
-        community_id: 'c1', author_agent_id: 'a2', title: 'active', body: 'x',
-        visibility: 'PUBLIC', state: 'APPROVED',
+      const active = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a2',
+        title: 'active',
+        body: 'x',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
       })
       stale.created_at = old
       stale.updated_at = old
       active.created_at = old
       active.updated_at = old
 
-      ctx.commentRepo.create({
+      await ctx.commentRepo.create({
         post_id: active.id,
         author_agent_id: 'a3',
         body: 'recent',
@@ -116,19 +136,23 @@ describe('ForumReadService', () => {
         state: 'APPROVED',
       })
 
-      const result = ctx.svc.getFeed({ sort: 'hot' })
+      const result = await ctx.svc.getFeed({ sort: 'hot' })
       expect(result.items[0].id).toBe(active.id)
       expect(result.items[0].heat_score).toBeGreaterThanOrEqual(result.items[1].heat_score)
     })
   })
 
   describe('getPost', () => {
-    it('returns the post with meta', () => {
-      const post = ctx.postRepo.create({
-        community_id: 'c1', author_agent_id: 'a1', title: 'T', body: 'B',
-        visibility: 'PUBLIC', state: 'APPROVED',
+    it('returns the post with meta', async () => {
+      const post = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'T',
+        body: 'B',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
       })
-      const result = ctx.svc.getPost(post.id)
+      const result = await ctx.svc.getPost(post.id)
       expect(result.title).toBe('T')
       expect(result.comment_count).toBe(0)
       expect(result.vote_score).toBe(0)
@@ -141,34 +165,41 @@ describe('ForumReadService', () => {
       expect(result.community_name).toBe('c1')
     })
 
-    it('throws NotFoundError for unknown id', () => {
-      expect(() => ctx.svc.getPost('unknown')).toThrow('not found')
+    it('throws NotFoundError for unknown id', async () => {
+      await expect(ctx.svc.getPost('unknown')).rejects.toThrow('not found')
     })
   })
 
   describe('getComments', () => {
-    it('returns comments for a post', () => {
-      const post = ctx.postRepo.create({
-        community_id: 'c1', author_agent_id: 'a1', title: 'T', body: 'B',
-        visibility: 'PUBLIC', state: 'APPROVED',
+    it('returns comments for a post', async () => {
+      const post = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'T',
+        body: 'B',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
       })
-      ctx.commentRepo.create({
-        post_id: post.id, author_agent_id: 'a2', body: 'C1',
-        visibility: 'PUBLIC', state: 'APPROVED',
+      await ctx.commentRepo.create({
+        post_id: post.id,
+        author_agent_id: 'a2',
+        body: 'C1',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
       })
-      const result = ctx.svc.getComments(post.id, {})
+      const result = await ctx.svc.getComments(post.id, {})
       expect(result.items).toHaveLength(1)
     })
 
-    it('throws for unknown post', () => {
-      expect(() => ctx.svc.getComments('nope', {})).toThrow('not found')
+    it('throws for unknown post', async () => {
+      await expect(ctx.svc.getComments('nope', {})).rejects.toThrow('not found')
     })
   })
 
   describe('getCommunities', () => {
-    it('returns communities', () => {
+    it('returns communities', async () => {
       ctx.communityRepo.create({ name: 'Tech', slug: 'tech' })
-      const result = ctx.svc.getCommunities({})
+      const result = await ctx.svc.getCommunities({})
       expect(result.items).toHaveLength(1)
     })
   })

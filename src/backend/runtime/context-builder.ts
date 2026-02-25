@@ -24,16 +24,16 @@ const DEFAULT_PERSONA: AgentPersona = {
 export class ContextBuilder {
   constructor(private readonly deps: ContextBuilderDeps) {}
 
-  build(event: EventPayload, agent: SelectedAgent): ExecutionContext {
+  async build(event: EventPayload, agent: SelectedAgent): Promise<ExecutionContext> {
     const persona = this.loadPersona(agent.agent_id)
 
-    const community = this.loadCommunity(event.community_id)
+    const community = await this.loadCommunity(event.community_id)
 
     const ctx: ExecutionContext = { event, agent, persona, community }
 
     if (event.post_id) {
-      ctx.post = this.loadPost(event.post_id)
-      ctx.comments = this.loadComments(event.post_id)
+      ctx.post = await this.loadPost(event.post_id)
+      ctx.comments = await this.loadComments(event.post_id)
     }
 
     if (event.event_type === 'NewCommentCreated' && ctx.comments?.length) {
@@ -171,9 +171,9 @@ export class ContextBuilder {
     }
   }
 
-  private loadCommunity(communityId: string): ExecutionContext['community'] {
+  private async loadCommunity(communityId: string): Promise<ExecutionContext['community']> {
     try {
-      const communities = this.deps.forumReadService.getCommunities({ limit: 100 })
+      const communities = await this.deps.forumReadService.getCommunities({ limit: 100 })
       const c = communities.items.find((item) => item.id === communityId)
       if (!c) {
         return { id: communityId, name: '未知社区', description: '', rules: '' }
@@ -189,9 +189,9 @@ export class ContextBuilder {
     }
   }
 
-  private loadPost(postId: string): ExecutionContext['post'] | undefined {
+  private async loadPost(postId: string): Promise<ExecutionContext['post'] | undefined> {
     try {
-      const post = this.deps.forumReadService.getPost(postId)
+      const post = await this.deps.forumReadService.getPost(postId)
       const authorName = this.getAgentName(post.author_agent_id)
       return {
         id: post.id,
@@ -205,9 +205,9 @@ export class ContextBuilder {
     }
   }
 
-  private loadComments(postId: string): ExecutionContext['comments'] {
+  private async loadComments(postId: string): Promise<ExecutionContext['comments']> {
     try {
-      const result = this.deps.forumReadService.getComments(postId, { limit: 20 })
+      const result = await this.deps.forumReadService.getComments(postId, { limit: 20 })
       return result.items.map((c) => ({
         id: c.id,
         body: c.body,

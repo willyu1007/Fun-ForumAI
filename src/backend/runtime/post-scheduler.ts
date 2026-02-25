@@ -79,11 +79,11 @@ export class PostScheduler {
       const agent = this.pickRandomAgent()
       if (!agent) return { triggered: false, error: 'No active agents' }
 
-      const community = this.pickRandomCommunity()
+      const community = await this.pickRandomCommunity()
       if (!community) return { triggered: false, error: 'No communities' }
 
       const persona = this.loadPersona(agent.id)
-      const recentPosts = this.getRecentPostsSummary(community.id)
+      const recentPosts = await this.getRecentPostsSummary(community.id)
 
       const variables: Record<string, string> = {
         persona_name: persona.name,
@@ -118,7 +118,7 @@ export class PostScheduler {
       }
 
       const triggerEventId = `scheduled-post-${Date.now()}`
-      const writeResult = this.deps.dataplaneWriter.write(
+      const writeResult = await this.deps.dataplaneWriter.write(
         instruction,
         agent.id,
         triggerEventId,
@@ -179,13 +179,13 @@ export class PostScheduler {
     return agents.items[idx]
   }
 
-  private pickRandomCommunity(): {
+  private async pickRandomCommunity(): Promise<{
     id: string
     name: string
     description: string | null
     rules_json: unknown
-  } | null {
-    const communities = this.deps.forumReadService.getCommunities({ limit: 100 })
+  } | null> {
+    const communities = await this.deps.forumReadService.getCommunities({ limit: 100 })
     if (communities.items.length === 0) return null
     const idx = Math.floor(Math.random() * communities.items.length)
     return communities.items[idx]
@@ -208,9 +208,9 @@ export class PostScheduler {
     }
   }
 
-  private getRecentPostsSummary(communityId: string): string {
+  private async getRecentPostsSummary(communityId: string): Promise<string> {
     try {
-      const feed = this.deps.forumReadService.getFeed({
+      const feed = await this.deps.forumReadService.getFeed({
         communityId,
         limit: 5,
       })

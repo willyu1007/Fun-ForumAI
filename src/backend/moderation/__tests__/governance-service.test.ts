@@ -3,86 +3,88 @@ import { GovernanceService } from '../governance-service.js'
 import type { GovernanceAction, GovernanceResult } from '../types.js'
 
 describe('GovernanceService', () => {
-  it('approve → PUBLIC/APPROVED', () => {
+  it('approve -> PUBLIC/APPROVED', async () => {
     const gov = new GovernanceService()
-    const r = gov.execute({
+    const result = await gov.execute({
       action: 'approve',
       target_type: 'post',
       target_id: 'post-1',
       admin_user_id: 'admin-1',
     })
-    expect(r.success).toBe(true)
-    expect(r.new_visibility).toBe('PUBLIC')
-    expect(r.new_state).toBe('APPROVED')
+    expect(result.success).toBe(true)
+    expect(result.new_visibility).toBe('PUBLIC')
+    expect(result.new_state).toBe('APPROVED')
   })
 
-  it('fold → GRAY/APPROVED', () => {
+  it('fold -> GRAY/APPROVED', async () => {
     const gov = new GovernanceService()
-    const r = gov.execute({
+    const result = await gov.execute({
       action: 'fold',
       target_type: 'comment',
       target_id: 'comment-1',
       admin_user_id: 'admin-1',
     })
-    expect(r.new_visibility).toBe('GRAY')
-    expect(r.new_state).toBe('APPROVED')
+    expect(result.new_visibility).toBe('GRAY')
+    expect(result.new_state).toBe('APPROVED')
   })
 
-  it('quarantine → QUARANTINE/PENDING', () => {
+  it('quarantine -> QUARANTINE/PENDING', async () => {
     const gov = new GovernanceService()
-    const r = gov.execute({
+    const result = await gov.execute({
       action: 'quarantine',
       target_type: 'post',
       target_id: 'post-1',
       admin_user_id: 'admin-1',
     })
-    expect(r.new_visibility).toBe('QUARANTINE')
-    expect(r.new_state).toBe('PENDING')
+    expect(result.new_visibility).toBe('QUARANTINE')
+    expect(result.new_state).toBe('PENDING')
   })
 
-  it('reject → QUARANTINE/REJECTED', () => {
+  it('reject -> QUARANTINE/REJECTED', async () => {
     const gov = new GovernanceService()
-    const r = gov.execute({
+    const result = await gov.execute({
       action: 'reject',
       target_type: 'post',
       target_id: 'post-1',
       admin_user_id: 'admin-1',
     })
-    expect(r.new_visibility).toBe('QUARANTINE')
-    expect(r.new_state).toBe('REJECTED')
+    expect(result.new_visibility).toBe('QUARANTINE')
+    expect(result.new_state).toBe('REJECTED')
   })
 
-  it('ban_agent succeeds (no visibility change)', () => {
+  it('ban_agent succeeds (no visibility change)', async () => {
     const gov = new GovernanceService()
-    const r = gov.execute({
+    const result = await gov.execute({
       action: 'ban_agent',
       target_type: 'agent',
       target_id: 'agent-bad',
       admin_user_id: 'admin-1',
       reason: 'Repeated violations',
     })
-    expect(r.success).toBe(true)
-    expect(r.new_visibility).toBeUndefined()
-    expect(r.new_state).toBeUndefined()
+    expect(result.success).toBe(true)
+    expect(result.new_visibility).toBeUndefined()
+    expect(result.new_state).toBeUndefined()
   })
 
-  it('unban_agent succeeds', () => {
+  it('unban_agent succeeds', async () => {
     const gov = new GovernanceService()
-    const r = gov.execute({
+    const result = await gov.execute({
       action: 'unban_agent',
       target_type: 'agent',
       target_id: 'agent-redeemed',
       admin_user_id: 'admin-1',
     })
-    expect(r.success).toBe(true)
+    expect(result.success).toBe(true)
   })
 
-  it('calls onPersist callback for audit trail', () => {
+  it('calls onPersist callback for audit trail', async () => {
     const log: { action: GovernanceAction; result: GovernanceResult }[] = []
     const gov = new GovernanceService({
-      onPersist: (action, result) => log.push({ action, result }),
+      onPersist: (action, result) => {
+        log.push({ action, result })
+      },
     })
-    gov.execute({
+    await gov.execute({
       action: 'approve',
       target_type: 'post',
       target_id: 'post-1',

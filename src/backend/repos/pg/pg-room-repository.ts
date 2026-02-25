@@ -1,17 +1,17 @@
-import { randomUUID } from 'node:crypto'
-import type {
-  PrismaClient,
-  Room as PrismaRoom,
-  RoomMembership as PrismaMembership,
+import {
+  Prisma,
+  type PrismaClient,
+  type Room as PrismaRoom,
+  type RoomMembership as PrismaMembership,
 } from '@prisma/client'
 import type {
-  Room,
-  RoomMember,
   CreateRoomInput,
   PaginatedResult,
   PaginationOpts,
-  RoomStatus,
+  Room,
+  RoomMember,
   RoomMemberJoinSource,
+  RoomStatus,
 } from '../types.js'
 import type { RoomRepository } from '../room-repository.js'
 
@@ -24,7 +24,7 @@ function paginate<T extends { id: string }>(
 ): PaginatedResult<T> {
   let start = 0
   if (opts.cursor) {
-    const idx = items.findIndex((i) => i.id === opts.cursor)
+    const idx = items.findIndex((item) => item.id === opts.cursor)
     start = idx >= 0 ? idx + 1 : 0
   }
   const page = items.slice(start, start + opts.limit)
@@ -36,196 +36,172 @@ function paginate<T extends { id: string }>(
 }
 
 export class PgRoomRepository implements RoomRepository {
-  private rooms = new Map<string, Room>()
-  private members = new Map<string, RoomMember[]>()
-
   constructor(private readonly prisma: PrismaClient) {}
 
-  async hydrate(): Promise<void> {
-    const [roomRows, memberRows] = await Promise.all([
-      this.prisma.room.findMany(),
-      this.prisma.roomMembership.findMany({ where: { leftAt: null } }),
-    ])
-    for (const row of roomRows) {
-      this.rooms.set(row.id, this.roomToDomain(row))
-      if (!this.members.has(row.id)) this.members.set(row.id, [])
-    }
-    for (const row of memberRows) {
-      const list = this.members.get(row.roomId) ?? []
-      list.push(this.memberToDomain(row))
-      this.members.set(row.roomId, list)
-    }
+  // DB-first mode: no local cache to hydrate.
+  async hydrate(): Promise<void> {}
+
+  async create(input: CreateRoomInput): Promise<Room> {
+    const row = await this.prisma.room.create({
+      data: {
+        name: input.name,
+        slug: input.slug,
+        description: input.description,
+        communityId: input.community_id ?? null,
+        createdByAgentId: input.created_by_agent_id,
+        maxAgents: SYSTEM_MAX_AGENTS,
+        tickIntervalBase: SYSTEM_TICK_BASE,
+        status: 'active',
+      },
+    })
+    return this.roomToDomain(row)
   }
 
-  create(input: CreateRoomInput): Room {
-    const id = randomUUID()
-    const now = new Date()
-    const room: Room = {
-      id,
-      name: input.name,
-      slug: input.slug,
-      description: input.description,
-      community_id: input.community_id ?? null,
-      created_by_agent_id: input.created_by_agent_id,
-      max_agents: SYSTEM_MAX_AGENTS,
-      tick_interval_base: SYSTEM_TICK_BASE,
-      status: 'active',
-      last_message_at: null,
-      created_at: now,
-      updated_at: now,
-    }
-    this.rooms.set(id, room)
-    this.members.set(id, [])
-    this.prisma.room
-      .create({
-        data: {
-          id,
-          name: room.name,
-          slug: room.slug,
-          description: room.description,
-          communityId: room.community_id,
-          createdByAgentId: room.created_by_agent_id,
-          maxAgents: room.max_agents,
-          tickIntervalBase: room.tick_interval_base,
-          status: room.status,
-          createdAt: now,
-          updatedAt: now,
-        },
-      })
-      .catch((err) => console.error('[PgRoomRepo] create error:', err))
-    return room
+  async findById(id: string): Promise<Room | null> {
+    const row = await this.prisma.room.findUnique({ where: { id } })
+    return row ? this.roomToDomain(row) : null
   }
 
-  findById(id: string): Room | null {
-    return this.rooms.get(id) ?? null
+  async findBySlug(slug: string): Promise<Room | null> {
+    const row = await this.prisma.room.findUnique({ where: { slug } })
+    return row ? this.roomToDomain(row) : null
   }
 
-  findBySlug(slug: string): Room | null {
-    for (const room of this.rooms.values()) {
-      if (room.slug === slug) return room
-    }
-    return null
-  }
-
-  list(opts: PaginationOpts & { status?: RoomStatus }): PaginatedResult<Room> {
-    let items = Array.from(this.rooms.values())
-    if (opts.status) {
-      items = items.filter((r) => r.status === opts.status)
-    }
-    items.sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+  async list(
+    opts: PaginationOpts & { status?: RoomStatus },
+  ): Promise<PaginatedResult<Room>> {
+    const rows = await this.prisma.room.findMany({
+      where: opts.status ? { status: opts.status } : undefined,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })
+    const items = rows.map((row) => this.roomToDomain(row))
     return paginate(items, opts)
   }
 
-  updateStatus(id: string, status: RoomStatus): Room | null {
-    const room = this.rooms.get(id)
-    if (!room) return null
-    room.status = status
-    room.updated_at = new Date()
-    this.prisma.room
-      .update({ where: { id }, data: { status, updatedAt: room.updated_at } })
-      .catch((err) => console.error('[PgRoomRepo] updateStatus error:', err))
-    return room
+  async updateStatus(id: string, status: RoomStatus): Promise<Room | null> {
+    try {
+      const row = await this.prisma.room.update({
+        where: { id },
+        data: { status, updatedAt: new Date() },
+      })
+      return this.roomToDomain(row)
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError
+        && error.code === 'P2025'
+      ) {
+        return null
+      }
+      throw error
+    }
   }
 
-  updateLastMessageAt(id: string, at: Date): void {
-    const room = this.rooms.get(id)
-    if (!room) return
-    room.last_message_at = at
-    room.updated_at = at
-    this.prisma.room
-      .update({ where: { id }, data: { lastMessageAt: at, updatedAt: at } })
-      .catch((err) => console.error('[PgRoomRepo] updateLastMessageAt error:', err))
+  async updateLastMessageAt(id: string, at: Date): Promise<void> {
+    await this.prisma.room
+      .update({
+        where: { id },
+        data: { lastMessageAt: at, updatedAt: at },
+      })
+      .catch(() => undefined)
   }
 
-  addMember(
+  async addMember(
     roomId: string,
     memberId: string,
     joinSource: RoomMemberJoinSource,
     tickInterval: number,
-  ): RoomMember {
-    const list = this.members.get(roomId) ?? []
-    const member: RoomMember = {
-      room_id: roomId,
-      member_id: memberId,
-      member_type: 'agent',
-      join_source: joinSource,
-      personal_tick_interval: tickInterval,
-      messages_this_hour: 0,
-      last_spoke_at: null,
-      joined_at: new Date(),
-    }
-    list.push(member)
-    this.members.set(roomId, list)
-    this.prisma.roomMembership
-      .create({
-        data: {
-          roomId,
-          agentId: memberId,
-          joinSource,
-          personalTickInterval: tickInterval,
-          joinedAt: member.joined_at,
-        },
-      })
-      .catch((err) => console.error('[PgRoomRepo] addMember error:', err))
-    return member
+  ): Promise<RoomMember> {
+    const joinedAt = new Date()
+    const row = await this.prisma.roomMembership.upsert({
+      where: { roomId_agentId: { roomId, agentId: memberId } },
+      create: {
+        roomId,
+        agentId: memberId,
+        joinSource,
+        personalTickInterval: tickInterval,
+        messagesThisHour: 0,
+        lastSpokeAt: null,
+        joinedAt,
+        leftAt: null,
+      },
+      update: {
+        joinSource,
+        personalTickInterval: tickInterval,
+        messagesThisHour: 0,
+        lastSpokeAt: null,
+        joinedAt,
+        leftAt: null,
+      },
+    })
+    return this.memberToDomain(row)
   }
 
-  removeMember(roomId: string, memberId: string): boolean {
-    const list = this.members.get(roomId)
-    if (!list) return false
-    const idx = list.findIndex((m) => m.member_id === memberId)
-    if (idx < 0) return false
-    list.splice(idx, 1)
+  async removeMember(roomId: string, memberId: string): Promise<boolean> {
     const now = new Date()
-    this.prisma.roomMembership
-      .updateMany({
-        where: { roomId, agentId: memberId, leftAt: null },
-        data: { leftAt: now },
-      })
-      .catch((err) => console.error('[PgRoomRepo] removeMember error:', err))
-    return true
+    const result = await this.prisma.roomMembership.updateMany({
+      where: { roomId, agentId: memberId, leftAt: null },
+      data: { leftAt: now },
+    })
+    return result.count > 0
   }
 
-  getMembers(roomId: string): RoomMember[] {
-    return this.members.get(roomId) ?? []
+  async getMembers(roomId: string): Promise<RoomMember[]> {
+    const rows = await this.prisma.roomMembership.findMany({
+      where: { roomId, leftAt: null },
+      orderBy: [{ joinedAt: 'asc' }, { id: 'asc' }],
+    })
+    return rows.map((row) => this.memberToDomain(row))
   }
 
-  isMember(roomId: string, memberId: string): boolean {
-    return this.getMembers(roomId).some((m) => m.member_id === memberId)
+  async isMember(roomId: string, memberId: string): Promise<boolean> {
+    const count = await this.prisma.roomMembership.count({
+      where: { roomId, agentId: memberId, leftAt: null },
+    })
+    return count > 0
   }
 
-  getMember(roomId: string, memberId: string): RoomMember | null {
-    return this.getMembers(roomId).find((m) => m.member_id === memberId) ?? null
+  async getMember(roomId: string, memberId: string): Promise<RoomMember | null> {
+    const row = await this.prisma.roomMembership.findFirst({
+      where: { roomId, agentId: memberId, leftAt: null },
+    })
+    return row ? this.memberToDomain(row) : null
   }
 
-  countMembers(roomId: string): number {
-    return this.getMembers(roomId).length
-  }
-
-  getAvailableRooms(): Room[] {
-    return Array.from(this.rooms.values()).filter((r) => {
-      if (r.status !== 'active') return false
-      return this.countMembers(r.id) < r.max_agents
+  async countMembers(roomId: string): Promise<number> {
+    return this.prisma.roomMembership.count({
+      where: { roomId, leftAt: null },
     })
   }
 
-  getRoomsByAgent(agentId: string): Room[] {
-    const result: Room[] = []
-    for (const [roomId, list] of this.members) {
-      if (list.some((m) => m.member_id === agentId)) {
-        const room = this.rooms.get(roomId)
-        if (room) result.push(room)
+  async getAvailableRooms(): Promise<Room[]> {
+    const rows = await this.prisma.room.findMany({
+      where: { status: 'active' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })
+    const rooms = rows.map((row) => this.roomToDomain(row))
+    const available: Room[] = []
+    for (const room of rooms) {
+      const memberCount = await this.countMembers(room.id)
+      if (memberCount < room.max_agents) {
+        available.push(room)
       }
     }
-    return result
+    return available
   }
 
-  countAgentRooms(agentId: string): number {
-    let count = 0
-    for (const list of this.members.values()) {
-      if (list.some((m) => m.member_id === agentId)) count++
-    }
-    return count
+  async getRoomsByAgent(agentId: string): Promise<Room[]> {
+    const rows = await this.prisma.roomMembership.findMany({
+      where: { agentId, leftAt: null },
+      include: { room: true },
+      orderBy: [{ joinedAt: 'desc' }, { id: 'desc' }],
+    })
+    return rows.map((row) => this.roomToDomain(row.room))
+  }
+
+  async countAgentRooms(agentId: string): Promise<number> {
+    return this.prisma.roomMembership.count({
+      where: { agentId, leftAt: null },
+    })
   }
 
   private roomToDomain(row: PrismaRoom): Room {

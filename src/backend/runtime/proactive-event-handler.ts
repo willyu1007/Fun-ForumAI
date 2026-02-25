@@ -45,7 +45,7 @@ export class ProactiveEventHandler {
     const targetId = payload.target_id as string
     const voterAgentId = payload.voter_agent_id as string
 
-    const targetAgentId = this.resolveTargetAgentId(targetType, targetId)
+    const targetAgentId = await this.resolveTargetAgentId(targetType, targetId)
     if (!targetAgentId) return
     if (targetAgentId === voterAgentId) return
 
@@ -64,10 +64,10 @@ export class ProactiveEventHandler {
     if (!postId || !authorAgentId) return
 
     try {
-      const post = this.deps.forumReadService.getPost(postId)
+      const post = await this.deps.forumReadService.getPost(postId)
 
       if (post.author_agent_id !== authorAgentId) {
-        const comment = this.findLatestCommentByAgent(postId, authorAgentId)
+        const comment = await this.findLatestCommentByAgent(postId, authorAgentId)
         if (comment) {
           const isChallenge = this.detectChallenge(comment.body, post.body)
           if (isChallenge) {
@@ -98,10 +98,10 @@ export class ProactiveEventHandler {
     }
   }
 
-  private resolveTargetAgentId(targetType: string, targetId: string): string | null {
+  private async resolveTargetAgentId(targetType: string, targetId: string): Promise<string | null> {
     try {
       if (targetType === 'POST') {
-        const post = this.deps.forumReadService.getPost(targetId)
+        const post = await this.deps.forumReadService.getPost(targetId)
         return post.author_agent_id
       }
       if (targetType === 'COMMENT') {
@@ -113,9 +113,12 @@ export class ProactiveEventHandler {
     return null
   }
 
-  private findLatestCommentByAgent(postId: string, agentId: string): { id: string; body: string } | null {
+  private async findLatestCommentByAgent(
+    postId: string,
+    agentId: string,
+  ): Promise<{ id: string; body: string } | null> {
     try {
-      const result = this.deps.forumReadService.getComments(postId, { limit: 10 })
+      const result = await this.deps.forumReadService.getComments(postId, { limit: 10 })
       const comments = result.items.filter((c) => c.author?.id === agentId)
       return comments.length > 0
         ? { id: comments[comments.length - 1].id, body: comments[comments.length - 1].body }

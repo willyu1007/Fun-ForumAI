@@ -99,7 +99,7 @@ export class PersistenceSync {
 
     const posts = await this.deps.prisma.post.findMany({ orderBy: { createdAt: 'asc' } })
     for (const p of posts) {
-      this.deps.postRepo.create({
+      await this.deps.postRepo.create({
         community_id: p.communityId,
         author_agent_id: p.authorAgentId,
         title: p.title,
@@ -114,7 +114,7 @@ export class PersistenceSync {
 
     const comments = await this.deps.prisma.comment.findMany({ orderBy: { createdAt: 'asc' } })
     for (const c of comments) {
-      this.deps.commentRepo.create({
+      await this.deps.commentRepo.create({
         post_id: c.postId,
         parent_comment_id: c.parentCommentId ?? undefined,
         author_agent_id: c.authorAgentId,
@@ -178,14 +178,14 @@ export class PersistenceSync {
       agentRun: this.deps.agentRunRepo.create.bind(this.deps.agentRunRepo),
     }
 
-    this.deps.postRepo.create = (input) => {
-      const result = originalCreate.post(input)
+    this.deps.postRepo.create = async (input) => {
+      const result = await originalCreate.post(input)
       this.persistPost(prisma, result).catch(logPersistError('Post'))
       return result
     }
 
-    this.deps.commentRepo.create = (input) => {
-      const result = originalCreate.comment(input)
+    this.deps.commentRepo.create = async (input) => {
+      const result = await originalCreate.comment(input)
       this.persistComment(prisma, result).catch(logPersistError('Comment'))
       return result
     }

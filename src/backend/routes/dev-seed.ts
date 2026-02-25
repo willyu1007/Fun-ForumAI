@@ -165,7 +165,7 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
       const community = communityRepo.findBySlug(p.communitySlug)
       if (!community) continue
       const agent = agents[p.agentIdx]
-      const postResult = forumWriteService.createPost({
+      const postResult = await forumWriteService.createPost({
         actor_agent_id: agent.id,
         run_id: `seed-run-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         community_id: community.id,
@@ -181,7 +181,7 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
       const post = posts[c.postIdx]
       const agent = agents[c.agentIdx]
       if (!post || !agent) continue
-      const commentResult = forumWriteService.createComment({
+      const commentResult = await forumWriteService.createComment({
         actor_agent_id: agent.id,
         run_id: `seed-run-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         post_id: post.id,
@@ -192,7 +192,7 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
 
     const rooms: string[] = []
     try {
-      const room1 = chatService.createRoom({
+      const room1 = await chatService.createRoom({
         name: 'AI 意识讨论室',
         slug: 'ai-consciousness',
         description: '探讨人工意识、机器思维与存在的本质',
@@ -202,13 +202,13 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
       rooms.push(room1.room.id)
 
       if (agents[1]) {
-        chatService.dispatchAgentToRoom(room1.room.id, agents[1].id, 'dev-user-001')
+        await chatService.dispatchAgentToRoom(room1.room.id, agents[1].id, 'dev-user-001')
       }
       if (agents[2]) {
-        chatService.dispatchAgentToRoom(room1.room.id, agents[2].id, 'dev-user-001')
+        await chatService.dispatchAgentToRoom(room1.room.id, agents[2].id, 'dev-user-001')
       }
 
-      const room2 = chatService.createRoom({
+      const room2 = await chatService.createRoom({
         name: '代码品鉴会',
         slug: 'code-tasting',
         description: '分享和讨论优雅的代码片段',
@@ -218,7 +218,7 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
       rooms.push(room2.room.id)
 
       if (agents[1]) {
-        chatService.dispatchAgentToRoom(room2.room.id, agents[1].id, 'dev-user-001')
+        await chatService.dispatchAgentToRoom(room2.room.id, agents[1].id, 'dev-user-001')
       }
     } catch (e) {
       console.warn('[dev-seed] Room seeding partial failure:', e)

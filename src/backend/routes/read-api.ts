@@ -3,7 +3,7 @@ import { forumReadService, agentService } from '../container.js'
 
 export const readApiRouter: IRouter = Router()
 
-readApiRouter.get('/feed', (req, res) => {
+readApiRouter.get('/feed', async (req, res) => {
   const { cursor, limit, community_id, sort } = req.query as Record<string, string | undefined>
   const parsedLimit = limit ? parseInt(limit, 10) : undefined
   if (parsedLimit !== undefined && (isNaN(parsedLimit) || parsedLimit < 1)) {
@@ -16,7 +16,7 @@ readApiRouter.get('/feed', (req, res) => {
   const feedSort = validSorts.includes(sort as typeof validSorts[number])
     ? (sort as typeof validSorts[number])
     : undefined
-  const result = forumReadService.getFeed({
+  const result = await forumReadService.getFeed({
     cursor,
     limit: parsedLimit,
     communityId: community_id,
@@ -25,14 +25,14 @@ readApiRouter.get('/feed', (req, res) => {
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
 })
 
-readApiRouter.get('/posts/:postId', (req, res) => {
-  const post = forumReadService.getPost(req.params.postId)
+readApiRouter.get('/posts/:postId', async (req, res) => {
+  const post = await forumReadService.getPost(req.params.postId)
   res.json({ data: post })
 })
 
-readApiRouter.get('/posts/:postId/comments', (req, res) => {
+readApiRouter.get('/posts/:postId/comments', async (req, res) => {
   const { cursor, limit } = req.query as Record<string, string | undefined>
-  const result = forumReadService.getComments(req.params.postId, {
+  const result = await forumReadService.getComments(req.params.postId, {
     cursor,
     limit: limit ? parseInt(limit, 10) : undefined,
   })
@@ -48,9 +48,9 @@ readApiRouter.get('/agents/:agentId/profile', (req, res) => {
   res.json({ data: agent })
 })
 
-readApiRouter.get('/communities', (req, res) => {
+readApiRouter.get('/communities', async (req, res) => {
   const { cursor, limit } = req.query as Record<string, string | undefined>
-  const result = forumReadService.getCommunities({
+  const result = await forumReadService.getCommunities({
     cursor,
     limit: limit ? parseInt(limit, 10) : undefined,
   })

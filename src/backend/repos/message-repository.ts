@@ -6,14 +6,14 @@ import type {
 } from './types.js'
 
 export interface MessageRepository {
-  create(input: CreateChatMessageInput): ChatMessage
-  findById(id: string): ChatMessage | null
-  findByRoom(roomId: string, opts: PaginationOpts): PaginatedResult<ChatMessage>
-  getLatestMessages(roomId: string, limit: number): ChatMessage[]
-  countByRoom(roomId: string): number
-  countByAuthorInRoomThisHour(roomId: string, authorId: string): number
-  countByRoomThisHour(roomId: string): number
-  countByAuthorGlobalThisHour(authorId: string): number
+  create(input: CreateChatMessageInput): Promise<ChatMessage>
+  findById(id: string): Promise<ChatMessage | null>
+  findByRoom(roomId: string, opts: PaginationOpts): Promise<PaginatedResult<ChatMessage>>
+  getLatestMessages(roomId: string, limit: number): Promise<ChatMessage[]>
+  countByRoom(roomId: string): Promise<number>
+  countByAuthorInRoomThisHour(roomId: string, authorId: string): Promise<number>
+  countByRoomThisHour(roomId: string): Promise<number>
+  countByAuthorGlobalThisHour(authorId: string): Promise<number>
 }
 
 let counter = 0
@@ -25,7 +25,7 @@ export class InMemoryMessageRepository implements MessageRepository {
   private messages = new Map<string, ChatMessage>()
   private byRoom = new Map<string, string[]>()
 
-  create(input: CreateChatMessageInput): ChatMessage {
+  async create(input: CreateChatMessageInput): Promise<ChatMessage> {
     const msg: ChatMessage = {
       id: cuid(),
       room_id: input.room_id,
@@ -44,11 +44,11 @@ export class InMemoryMessageRepository implements MessageRepository {
     return msg
   }
 
-  findById(id: string): ChatMessage | null {
+  async findById(id: string): Promise<ChatMessage | null> {
     return this.messages.get(id) ?? null
   }
 
-  findByRoom(roomId: string, opts: PaginationOpts): PaginatedResult<ChatMessage> {
+  async findByRoom(roomId: string, opts: PaginationOpts): Promise<PaginatedResult<ChatMessage>> {
     const ids = this.byRoom.get(roomId) ?? []
     const items = ids
       .map((id) => this.messages.get(id)!)
@@ -56,7 +56,7 @@ export class InMemoryMessageRepository implements MessageRepository {
     return paginate(items, opts)
   }
 
-  getLatestMessages(roomId: string, limit: number): ChatMessage[] {
+  async getLatestMessages(roomId: string, limit: number): Promise<ChatMessage[]> {
     const ids = this.byRoom.get(roomId) ?? []
     return ids
       .map((id) => this.messages.get(id)!)
@@ -64,11 +64,11 @@ export class InMemoryMessageRepository implements MessageRepository {
       .slice(-limit)
   }
 
-  countByRoom(roomId: string): number {
+  async countByRoom(roomId: string): Promise<number> {
     return (this.byRoom.get(roomId) ?? []).length
   }
 
-  countByAuthorInRoomThisHour(roomId: string, authorId: string): number {
+  async countByAuthorInRoomThisHour(roomId: string, authorId: string): Promise<number> {
     const oneHourAgo = Date.now() - 60 * 60 * 1000
     const ids = this.byRoom.get(roomId) ?? []
     return ids.reduce((count, id) => {
@@ -78,7 +78,7 @@ export class InMemoryMessageRepository implements MessageRepository {
     }, 0)
   }
 
-  countByRoomThisHour(roomId: string): number {
+  async countByRoomThisHour(roomId: string): Promise<number> {
     const oneHourAgo = Date.now() - 60 * 60 * 1000
     const ids = this.byRoom.get(roomId) ?? []
     return ids.reduce((count, id) => {
@@ -88,7 +88,7 @@ export class InMemoryMessageRepository implements MessageRepository {
     }, 0)
   }
 
-  countByAuthorGlobalThisHour(authorId: string): number {
+  async countByAuthorGlobalThisHour(authorId: string): Promise<number> {
     const oneHourAgo = Date.now() - 60 * 60 * 1000
     let count = 0
     for (const m of this.messages.values()) {

@@ -6,8 +6,8 @@ import { createPostSchema, createCommentSchema, upsertVoteSchema } from '../vali
 
 export const dataPlaneRouter: IRouter = Router()
 
-dataPlaneRouter.post('/posts', requireServiceIdentity, validate(createPostSchema), (req, res) => {
-  const result = forumWriteService.createPost(req.body)
+dataPlaneRouter.post('/posts', requireServiceIdentity, validate(createPostSchema), async (req, res) => {
+  const result = await forumWriteService.createPost(req.body)
   res.status(201).json({
     data: result.post,
     meta: {
@@ -21,8 +21,8 @@ dataPlaneRouter.post('/posts', requireServiceIdentity, validate(createPostSchema
   })
 })
 
-dataPlaneRouter.post('/comments', requireServiceIdentity, validate(createCommentSchema), (req, res) => {
-  const result = forumWriteService.createComment(req.body)
+dataPlaneRouter.post('/comments', requireServiceIdentity, validate(createCommentSchema), async (req, res) => {
+  const result = await forumWriteService.createComment(req.body)
   res.status(201).json({
     data: result.comment,
     meta: {
@@ -35,8 +35,8 @@ dataPlaneRouter.post('/comments', requireServiceIdentity, validate(createComment
   })
 })
 
-dataPlaneRouter.post('/votes', requireServiceIdentity, validate(upsertVoteSchema), (req, res) => {
-  const result = forumWriteService.upsertVote(req.body)
+dataPlaneRouter.post('/votes', requireServiceIdentity, validate(upsertVoteSchema), async (req, res) => {
+  const result = await forumWriteService.upsertVote(req.body)
   res.status(201).json({
     data: result.vote,
     meta: { event_id: result.event.id },

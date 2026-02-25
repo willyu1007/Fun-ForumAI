@@ -1,10 +1,9 @@
-import { randomUUID } from 'node:crypto'
-import type { PrismaClient, Post as PrismaPost } from '@prisma/client'
+import { Prisma, type Post as PrismaPost, type PrismaClient } from '@prisma/client'
 import type {
-  Post,
   CreatePostInput,
   PaginatedResult,
   PaginationOpts,
+  Post,
 } from '../types.js'
 import type { PostRepository } from '../post-repository.js'
 
@@ -14,7 +13,7 @@ function paginate<T extends { id: string }>(
 ): PaginatedResult<T> {
   let start = 0
   if (opts.cursor) {
-    const idx = items.findIndex((i) => i.id === opts.cursor)
+    const idx = items.findIndex((item) => item.id === opts.cursor)
     start = idx >= 0 ? idx + 1 : 0
   }
   const page = items.slice(start, start + opts.limit)
@@ -25,106 +24,92 @@ function paginate<T extends { id: string }>(
   return { items: page, next_cursor }
 }
 
-export class PgPostRepository implements PostRepository {
-  private cache = new Map<string, Post>()
+function isNotFoundError(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
+}
 
+export class PgPostRepository implements PostRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async hydrate(): Promise<void> {
-    const rows = await this.prisma.post.findMany()
-    for (const row of rows) {
-      this.cache.set(row.id, this.toDomain(row))
-    }
+  // DB-first mode: no local cache to hydrate.
+  async hydrate(): Promise<void> {}
+
+  async create(input: CreatePostInput): Promise<Post> {
+    const row = await this.prisma.post.create({
+      data: {
+        communityId: input.community_id,
+        authorAgentId: input.author_agent_id,
+        title: input.title,
+        body: input.body,
+        tagsJson: (input.tags ?? []) as Prisma.InputJsonValue,
+        visibility: input.visibility,
+        state: input.state,
+        moderationMetadataJson:
+          (input.moderation_metadata ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+      },
+    })
+    return this.toDomain(row)
   }
 
-  create(input: CreatePostInput): Post {
-    const id = randomUUID()
-    const now = new Date()
-    const post: Post = {
-      id,
-      community_id: input.community_id,
-      author_agent_id: input.author_agent_id,
-      title: input.title,
-      body: input.body,
-      tags: input.tags ?? [],
-      visibility: input.visibility,
-      state: input.state,
-      moderation_metadata: input.moderation_metadata ?? null,
-      created_at: now,
-      updated_at: now,
-    }
-    this.cache.set(id, post)
-    this.prisma.post
-      .create({
-        data: {
-          id,
-          communityId: post.community_id,
-          authorAgentId: post.author_agent_id,
-          title: post.title,
-          body: post.body,
-          tagsJson: post.tags,
-          visibility: post.visibility,
-          state: post.state,
-          moderationMetadataJson: post.moderation_metadata,
-          createdAt: now,
-          updatedAt: now,
-        },
-      })
-      .catch((err) => console.error('[PgPostRepo] create error:', err))
-    return post
+  async findById(id: string): Promise<Post | null> {
+    const row = await this.prisma.post.findUnique({ where: { id } })
+    return row ? this.toDomain(row) : null
   }
 
-  findById(id: string): Post | null {
-    return this.cache.get(id) ?? null
-  }
-
-  findPublic(
+  async findPublic(
     opts: PaginationOpts & { communityId?: string },
-  ): PaginatedResult<Post> {
-    let items = Array.from(this.cache.values())
-      .filter((p) => p.state === 'APPROVED')
-      .filter((p) => p.visibility === 'PUBLIC' || p.visibility === 'GRAY')
-
-    if (opts.communityId) {
-      items = items.filter((p) => p.community_id === opts.communityId)
-    }
-
-    items.sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+  ): Promise<PaginatedResult<Post>> {
+    const rows = await this.prisma.post.findMany({
+      where: {
+        state: 'APPROVED',
+        visibility: { in: ['PUBLIC', 'GRAY'] },
+        ...(opts.communityId ? { communityId: opts.communityId } : {}),
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })
+    const items = rows.map((row) => this.toDomain(row))
     return paginate(items, opts)
   }
 
-  findByAuthor(agentId: string, opts: PaginationOpts): PaginatedResult<Post> {
-    const items = Array.from(this.cache.values())
-      .filter((p) => p.author_agent_id === agentId)
-      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+  async findByAuthor(
+    agentId: string,
+    opts: PaginationOpts,
+  ): Promise<PaginatedResult<Post>> {
+    const rows = await this.prisma.post.findMany({
+      where: { authorAgentId: agentId },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })
+    const items = rows.map((row) => this.toDomain(row))
     return paginate(items, opts)
   }
 
-  updateVisibility(id: string, visibility: Post['visibility']): Post | null {
-    const post = this.cache.get(id)
-    if (!post) return null
-    post.visibility = visibility
-    post.updated_at = new Date()
-    this.prisma.post
-      .update({
+  async updateVisibility(
+    id: string,
+    visibility: Post['visibility'],
+  ): Promise<Post | null> {
+    try {
+      const row = await this.prisma.post.update({
         where: { id },
-        data: { visibility, updatedAt: post.updated_at },
+        data: { visibility, updatedAt: new Date() },
       })
-      .catch((err) =>
-        console.error('[PgPostRepo] updateVisibility error:', err),
-      )
-    return post
+      return this.toDomain(row)
+    } catch (error) {
+      if (isNotFoundError(error)) return null
+      throw error
+    }
   }
 
-  updateState(id: string, state: Post['state']): Post | null {
-    const post = this.cache.get(id)
-    if (!post) return null
-    post.state = state
-    post.updated_at = new Date()
-    this.prisma.post
-      .update({ where: { id }, data: { state, updatedAt: post.updated_at } })
-      .catch((err) => console.error('[PgPostRepo] updateState error:', err))
-    return post
+  async updateState(id: string, state: Post['state']): Promise<Post | null> {
+    try {
+      const row = await this.prisma.post.update({
+        where: { id },
+        data: { state, updatedAt: new Date() },
+      })
+      return this.toDomain(row)
+    } catch (error) {
+      if (isNotFoundError(error)) return null
+      throw error
+    }
   }
 
   private toDomain(row: PrismaPost): Post {

@@ -1,12 +1,12 @@
 import type { Post, CreatePostInput, PaginatedResult, PaginationOpts } from './types.js'
 
 export interface PostRepository {
-  create(input: CreatePostInput): Post
-  findById(id: string): Post | null
-  findPublic(opts: PaginationOpts & { communityId?: string }): PaginatedResult<Post>
-  findByAuthor(agentId: string, opts: PaginationOpts): PaginatedResult<Post>
-  updateVisibility(id: string, visibility: Post['visibility']): Post | null
-  updateState(id: string, state: Post['state']): Post | null
+  create(input: CreatePostInput): Promise<Post>
+  findById(id: string): Promise<Post | null>
+  findPublic(opts: PaginationOpts & { communityId?: string }): Promise<PaginatedResult<Post>>
+  findByAuthor(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<Post>>
+  updateVisibility(id: string, visibility: Post['visibility']): Promise<Post | null>
+  updateState(id: string, state: Post['state']): Promise<Post | null>
 }
 
 let counter = 0
@@ -17,7 +17,7 @@ function cuid(): string {
 export class InMemoryPostRepository implements PostRepository {
   private store = new Map<string, Post>()
 
-  create(input: CreatePostInput): Post {
+  async create(input: CreatePostInput): Promise<Post> {
     const now = new Date()
     const post: Post = {
       id: cuid(),
@@ -36,11 +36,11 @@ export class InMemoryPostRepository implements PostRepository {
     return post
   }
 
-  findById(id: string): Post | null {
+  async findById(id: string): Promise<Post | null> {
     return this.store.get(id) ?? null
   }
 
-  findPublic(opts: PaginationOpts & { communityId?: string }): PaginatedResult<Post> {
+  async findPublic(opts: PaginationOpts & { communityId?: string }): Promise<PaginatedResult<Post>> {
     let items = Array.from(this.store.values())
       .filter((p) => p.state === 'APPROVED')
       .filter((p) => p.visibility === 'PUBLIC' || p.visibility === 'GRAY')
@@ -53,14 +53,14 @@ export class InMemoryPostRepository implements PostRepository {
     return paginate(items, opts)
   }
 
-  findByAuthor(agentId: string, opts: PaginationOpts): PaginatedResult<Post> {
+  async findByAuthor(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<Post>> {
     const items = Array.from(this.store.values())
       .filter((p) => p.author_agent_id === agentId)
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
     return paginate(items, opts)
   }
 
-  updateVisibility(id: string, visibility: Post['visibility']): Post | null {
+  async updateVisibility(id: string, visibility: Post['visibility']): Promise<Post | null> {
     const post = this.store.get(id)
     if (!post) return null
     post.visibility = visibility
@@ -68,7 +68,7 @@ export class InMemoryPostRepository implements PostRepository {
     return post
   }
 
-  updateState(id: string, state: Post['state']): Post | null {
+  async updateState(id: string, state: Post['state']): Promise<Post | null> {
     const post = this.store.get(id)
     if (!post) return null
     post.state = state

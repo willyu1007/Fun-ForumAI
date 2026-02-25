@@ -39,16 +39,21 @@ function setup(modResult: ModerationResult = CLEAN_RESULT) {
   const agentRunRepo = new InMemoryAgentRunRepository()
   const moderator: ModerationEvaluator = { evaluate: () => modResult }
   const svc = new ForumWriteService({
-    postRepo, commentRepo, voteRepo, eventRepo, agentRunRepo, moderator,
+    postRepo,
+    commentRepo,
+    voteRepo,
+    eventRepo,
+    agentRunRepo,
+    moderator,
   })
   return { svc, postRepo, commentRepo, voteRepo, eventRepo, agentRunRepo }
 }
 
 describe('ForumWriteService', () => {
   describe('createPost', () => {
-    it('creates a post with moderation results', () => {
+    it('creates a post with moderation results', async () => {
       const { svc, postRepo, eventRepo } = setup()
-      const result = svc.createPost({
+      const result = await svc.createPost({
         actor_agent_id: 'a1',
         run_id: 'run_1',
         community_id: 'c1',
@@ -63,13 +68,13 @@ describe('ForumWriteService', () => {
       expect(result.event.event_type).toBe('POST_CREATED')
       expect(result.agentRun.agent_id).toBe('a1')
 
-      expect(postRepo.findById(result.post.id)).toBeTruthy()
+      expect(await postRepo.findById(result.post.id)).toBeTruthy()
       expect(eventRepo.findById(result.event.id)).toBeTruthy()
     })
 
-    it('applies moderation visibility when content is risky', () => {
+    it('applies moderation visibility when content is risky', async () => {
       const { svc } = setup(GRAY_RESULT)
-      const result = svc.createPost({
+      const result = await svc.createPost({
         actor_agent_id: 'a1',
         run_id: 'run_1',
         community_id: 'c1',
@@ -80,24 +85,30 @@ describe('ForumWriteService', () => {
       expect(result.post.state).toBe('PENDING')
     })
 
-    it('throws on empty title', () => {
+    it('throws on empty title', async () => {
       const { svc } = setup()
-      expect(() =>
+      await expect(
         svc.createPost({
-          actor_agent_id: 'a1', run_id: 'r1', community_id: 'c1',
-          title: '  ', body: 'OK',
+          actor_agent_id: 'a1',
+          run_id: 'r1',
+          community_id: 'c1',
+          title: '  ',
+          body: 'OK',
         }),
-      ).toThrow('Title is required')
+      ).rejects.toThrow('Title is required')
     })
 
-    it('throws on empty body', () => {
+    it('throws on empty body', async () => {
       const { svc } = setup()
-      expect(() =>
+      await expect(
         svc.createPost({
-          actor_agent_id: 'a1', run_id: 'r1', community_id: 'c1',
-          title: 'OK', body: '',
+          actor_agent_id: 'a1',
+          run_id: 'r1',
+          community_id: 'c1',
+          title: 'OK',
+          body: '',
         }),
-      ).toThrow('Body is required')
+      ).rejects.toThrow('Body is required')
     })
   })
 
@@ -105,57 +116,79 @@ describe('ForumWriteService', () => {
     let ctx: ReturnType<typeof setup>
     let postId: string
 
-    beforeEach(() => {
+    beforeEach(async () => {
       ctx = setup()
-      const post = ctx.postRepo.create({
-        community_id: 'c1', author_agent_id: 'a0', title: 'T', body: 'B',
-        visibility: 'PUBLIC', state: 'APPROVED',
+      const post = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a0',
+        title: 'T',
+        body: 'B',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
       })
       postId = post.id
     })
 
-    it('creates a comment on an existing post', () => {
-      const result = ctx.svc.createComment({
-        actor_agent_id: 'a1', run_id: 'r1', post_id: postId, body: 'Great!',
+    it('creates a comment on an existing post', async () => {
+      const result = await ctx.svc.createComment({
+        actor_agent_id: 'a1',
+        run_id: 'r1',
+        post_id: postId,
+        body: 'Great!',
       })
       expect(result.comment.body).toBe('Great!')
       expect(result.event.event_type).toBe('COMMENT_CREATED')
     })
 
-    it('supports nested comments', () => {
-      const parent = ctx.svc.createComment({
-        actor_agent_id: 'a1', run_id: 'r1', post_id: postId, body: 'Parent',
+    it('supports nested comments', async () => {
+      const parent = await ctx.svc.createComment({
+        actor_agent_id: 'a1',
+        run_id: 'r1',
+        post_id: postId,
+        body: 'Parent',
       })
-      const child = ctx.svc.createComment({
-        actor_agent_id: 'a2', run_id: 'r2', post_id: postId,
-        parent_comment_id: parent.comment.id, body: 'Reply',
+      const child = await ctx.svc.createComment({
+        actor_agent_id: 'a2',
+        run_id: 'r2',
+        post_id: postId,
+        parent_comment_id: parent.comment.id,
+        body: 'Reply',
       })
       expect(child.comment.parent_comment_id).toBe(parent.comment.id)
     })
 
-    it('throws for nonexistent post', () => {
-      expect(() =>
+    it('throws for nonexistent post', async () => {
+      await expect(
         ctx.svc.createComment({
-          actor_agent_id: 'a1', run_id: 'r1', post_id: 'nope', body: 'Hi',
+          actor_agent_id: 'a1',
+          run_id: 'r1',
+          post_id: 'nope',
+          body: 'Hi',
         }),
-      ).toThrow('not found')
+      ).rejects.toThrow('not found')
     })
 
-    it('throws for nonexistent parent comment', () => {
-      expect(() =>
+    it('throws for nonexistent parent comment', async () => {
+      await expect(
         ctx.svc.createComment({
-          actor_agent_id: 'a1', run_id: 'r1', post_id: postId,
-          parent_comment_id: 'nope', body: 'Hi',
+          actor_agent_id: 'a1',
+          run_id: 'r1',
+          post_id: postId,
+          parent_comment_id: 'nope',
+          body: 'Hi',
         }),
-      ).toThrow('not found')
+      ).rejects.toThrow('not found')
     })
 
-    it('throws on empty body', () => {
-      expect(() =>
+    it('throws on empty body', async () => {
+      await expect(
         ctx.svc.createComment({
-          actor_agent_id: 'a1', run_id: 'r1', post_id: postId, body: '',
+          actor_agent_id: 'a1',
+          run_id: 'r1',
+          post_id: postId,
+          body: '',
         }),
-      ).toThrow('Body is required')
+      ).rejects.toThrow('Body is required')
     })
   })
 
@@ -163,50 +196,69 @@ describe('ForumWriteService', () => {
     let ctx: ReturnType<typeof setup>
     let postId: string
 
-    beforeEach(() => {
+    beforeEach(async () => {
       ctx = setup()
-      const post = ctx.postRepo.create({
-        community_id: 'c1', author_agent_id: 'a0', title: 'T', body: 'B',
-        visibility: 'PUBLIC', state: 'APPROVED',
+      const post = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a0',
+        title: 'T',
+        body: 'B',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
       })
       postId = post.id
     })
 
-    it('creates a vote and emits an event', () => {
-      const result = ctx.svc.upsertVote({
-        actor_agent_id: 'a1', run_id: 'r1',
-        target_type: 'POST', target_id: postId, direction: 'UP',
+    it('creates a vote and emits an event', async () => {
+      const result = await ctx.svc.upsertVote({
+        actor_agent_id: 'a1',
+        run_id: 'r1',
+        target_type: 'POST',
+        target_id: postId,
+        direction: 'UP',
       })
       expect(result.vote.direction).toBe('UP')
       expect(result.event.event_type).toBe('VOTE_CAST')
     })
 
-    it('throws for nonexistent post target', () => {
-      expect(() =>
+    it('throws for nonexistent post target', async () => {
+      await expect(
         ctx.svc.upsertVote({
-          actor_agent_id: 'a1', run_id: 'r1',
-          target_type: 'POST', target_id: 'nope', direction: 'UP',
+          actor_agent_id: 'a1',
+          run_id: 'r1',
+          target_type: 'POST',
+          target_id: 'nope',
+          direction: 'UP',
         }),
-      ).toThrow('not found')
+      ).rejects.toThrow('not found')
     })
 
-    it('throws for nonexistent comment target', () => {
-      expect(() =>
+    it('throws for nonexistent comment target', async () => {
+      await expect(
         ctx.svc.upsertVote({
-          actor_agent_id: 'a1', run_id: 'r1',
-          target_type: 'COMMENT', target_id: 'nope', direction: 'UP',
+          actor_agent_id: 'a1',
+          run_id: 'r1',
+          target_type: 'COMMENT',
+          target_id: 'nope',
+          direction: 'UP',
         }),
-      ).toThrow('not found')
+      ).rejects.toThrow('not found')
     })
 
-    it('upserts the same vote from the same agent', () => {
-      ctx.svc.upsertVote({
-        actor_agent_id: 'a1', run_id: 'r1',
-        target_type: 'POST', target_id: postId, direction: 'UP',
+    it('upserts the same vote from the same agent', async () => {
+      await ctx.svc.upsertVote({
+        actor_agent_id: 'a1',
+        run_id: 'r1',
+        target_type: 'POST',
+        target_id: postId,
+        direction: 'UP',
       })
-      const result = ctx.svc.upsertVote({
-        actor_agent_id: 'a1', run_id: 'r2',
-        target_type: 'POST', target_id: postId, direction: 'DOWN',
+      const result = await ctx.svc.upsertVote({
+        actor_agent_id: 'a1',
+        run_id: 'r2',
+        target_type: 'POST',
+        target_id: postId,
+        direction: 'DOWN',
       })
       expect(result.vote.direction).toBe('DOWN')
     })

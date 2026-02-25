@@ -16,13 +16,23 @@ import type {
  * MVP: pure logic mapping with a pluggable persistence callback.
  */
 export class GovernanceService {
-  private onPersist?: (action: GovernanceAction, result: GovernanceResult) => void
+  private onPersist?: (
+    action: GovernanceAction,
+    result: GovernanceResult,
+  ) => void | Promise<void>
 
-  constructor(opts?: { onPersist?: (action: GovernanceAction, result: GovernanceResult) => void }) {
+  constructor(
+    opts?: {
+      onPersist?: (
+        action: GovernanceAction,
+        result: GovernanceResult,
+      ) => void | Promise<void>
+    },
+  ) {
     this.onPersist = opts?.onPersist
   }
 
-  execute(action: GovernanceAction): GovernanceResult {
+  async execute(action: GovernanceAction): Promise<GovernanceResult> {
     const mapping = ACTION_MAPPING[action.action]
     if (!mapping) {
       return { success: false, action: action.action, target_id: action.target_id }
@@ -36,7 +46,7 @@ export class GovernanceService {
       new_state: mapping.state,
     }
 
-    this.onPersist?.(action, result)
+    await this.onPersist?.(action, result)
 
     return result
   }

@@ -41,11 +41,11 @@ export class RoomLifecycleManager {
 
     const now = Date.now()
 
-    const activeRooms = this.roomRepo.list({ limit: 200, status: 'active' })
+    const activeRooms = await this.roomRepo.list({ limit: 200, status: 'active' })
     for (const room of activeRooms.items) {
       const lastActivity = room.last_message_at?.getTime() ?? room.created_at.getTime()
       if (now - lastActivity > COOLING_THRESHOLD_MS) {
-        this.roomRepo.updateStatus(room.id, 'cooling')
+        await this.roomRepo.updateStatus(room.id, 'cooling')
         this.sseHub.broadcastToRoom(room.id, {
           type: 'ROOM_STATUS_CHANGED',
           payload: { room_id: room.id, status: 'cooling' },
@@ -54,14 +54,14 @@ export class RoomLifecycleManager {
       }
     }
 
-    const coolingRooms = this.roomRepo.list({ limit: 200, status: 'cooling' })
+    const coolingRooms = await this.roomRepo.list({ limit: 200, status: 'cooling' })
     for (const room of coolingRooms.items) {
       const lastActivity = room.last_message_at?.getTime() ?? room.created_at.getTime()
       if (now - lastActivity > ARCHIVE_THRESHOLD_MS) {
-        this.roomRepo.updateStatus(room.id, 'archived')
-        const members = this.roomRepo.getMembers(room.id)
+        await this.roomRepo.updateStatus(room.id, 'archived')
+        const members = await this.roomRepo.getMembers(room.id)
         for (const member of members) {
-          this.roomRepo.removeMember(room.id, member.member_id)
+          await this.roomRepo.removeMember(room.id, member.member_id)
         }
         this.sseHub.broadcastToRoom(room.id, {
           type: 'ROOM_STATUS_CHANGED',

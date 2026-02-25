@@ -62,14 +62,14 @@ export class ForumReadService {
     return { slug: community.slug, name: community.name }
   }
 
-  private listAllVisibleComments(postId: string): Comment[] {
+  private async listAllVisibleComments(postId: string): Promise<Comment[]> {
     const all: Comment[] = []
     let cursor: string | undefined
     let safety = 0
 
     while (safety < 1000) {
       safety += 1
-      const page = this.deps.commentRepo.findByPost(postId, { cursor, limit: 200 })
+      const page = await this.deps.commentRepo.findByPost(postId, { cursor, limit: 200 })
       all.push(...page.items)
       if (!page.next_cursor || page.next_cursor === cursor) {
         break
@@ -95,9 +95,9 @@ export class ForumReadService {
     return Math.round(raw)
   }
 
-  private toPostWithMeta(post: Post, nowMs: number): PostWithMeta {
+  private async toPostWithMeta(post: Post, nowMs: number): Promise<PostWithMeta> {
     const voteSummary = this.deps.voteRepo.countByTarget('POST', post.id)
-    const visibleComments = this.listAllVisibleComments(post.id)
+    const visibleComments = await this.listAllVisibleComments(post.id)
     const participantIds = new Set<string>([post.author_agent_id])
     for (const comment of visibleComments) {
       participantIds.add(comment.author_agent_id)
@@ -106,7 +106,7 @@ export class ForumReadService {
       ? visibleComments[visibleComments.length - 1].created_at
       : null
     const community = this.resolveCommunityMeta(post.community_id)
-    const commentCount = this.deps.commentRepo.countByPost(post.id)
+    const commentCount = await this.deps.commentRepo.countByPost(post.id)
     const activityAt = lastReplyAt ?? post.created_at
 
     return {
@@ -130,21 +130,23 @@ export class ForumReadService {
     }
   }
 
-  getFeed(opts: {
+  async getFeed(opts: {
     cursor?: string
     limit?: number
     communityId?: string
     sort?: FeedSort
-  }): PaginatedResult<PostWithMeta> {
+  }): Promise<PaginatedResult<PostWithMeta>> {
     const limit = Math.min(opts.limit ?? 20, 100)
-    const result = this.deps.postRepo.findPublic({
+    const result = await this.deps.postRepo.findPublic({
       cursor: opts.cursor,
       limit: opts.sort && opts.sort !== 'new' ? 500 : limit,
       communityId: opts.communityId,
     })
     const nowMs = Date.now()
 
-    let items: PostWithMeta[] = result.items.map((post) => this.toPostWithMeta(post, nowMs))
+    let items: PostWithMeta[] = await Promise.all(
+      result.items.map((post) => this.toPostWithMeta(post, nowMs)),
+    )
 
     if (opts.sort === 'hot') {
       items.sort((a, b) => {
@@ -167,22 +169,22 @@ export class ForumReadService {
     return { items, next_cursor }
   }
 
-  getPost(postId: string): PostWithMeta {
-    const post = this.deps.postRepo.findById(postId)
+  async getPost(postId: string): Promise<PostWithMeta> {
+    const post = await this.deps.postRepo.findById(postId)
     if (!post) throw new NotFoundError('Post', postId)
 
     return this.toPostWithMeta(post, Date.now())
   }
 
-  getComments(
+  async getComments(
     postId: string,
     opts: { cursor?: string; limit?: number },
-  ): PaginatedResult<CommentWithAuthor> {
-    const post = this.deps.postRepo.findById(postId)
+  ): Promise<PaginatedResult<CommentWithAuthor>> {
+    const post = await this.deps.postRepo.findById(postId)
     if (!post) throw new NotFoundError('Post', postId)
 
     const limit = Math.min(opts.limit ?? 20, 100)
-    const result = this.deps.commentRepo.findByPost(postId, {
+    const result = await this.deps.commentRepo.findByPost(postId, {
       cursor: opts.cursor,
       limit,
     })
@@ -196,10 +198,10 @@ export class ForumReadService {
     return { items, next_cursor: result.next_cursor }
   }
 
-  getCommunities(opts: {
+  async getCommunities(opts: {
     cursor?: string
     limit?: number
-  }): PaginatedResult<Community> {
+  }): Promise<PaginatedResult<Community>> {
     const limit = Math.min(opts.limit ?? 20, 100)
     return this.deps.communityRepo.findAll({ cursor: opts.cursor, limit })
   }

@@ -9,23 +9,23 @@ import type {
 } from './types.js'
 
 export interface RoomRepository {
-  create(input: CreateRoomInput): Room
-  findById(id: string): Room | null
-  findBySlug(slug: string): Room | null
-  list(opts: PaginationOpts & { status?: RoomStatus }): PaginatedResult<Room>
-  updateStatus(id: string, status: RoomStatus): Room | null
-  updateLastMessageAt(id: string, at: Date): void
+  create(input: CreateRoomInput): Promise<Room>
+  findById(id: string): Promise<Room | null>
+  findBySlug(slug: string): Promise<Room | null>
+  list(opts: PaginationOpts & { status?: RoomStatus }): Promise<PaginatedResult<Room>>
+  updateStatus(id: string, status: RoomStatus): Promise<Room | null>
+  updateLastMessageAt(id: string, at: Date): Promise<void>
 
-  addMember(roomId: string, memberId: string, joinSource: RoomMemberJoinSource, tickInterval: number): RoomMember
-  removeMember(roomId: string, memberId: string): boolean
-  getMembers(roomId: string): RoomMember[]
-  isMember(roomId: string, memberId: string): boolean
-  getMember(roomId: string, memberId: string): RoomMember | null
-  countMembers(roomId: string): number
+  addMember(roomId: string, memberId: string, joinSource: RoomMemberJoinSource, tickInterval: number): Promise<RoomMember>
+  removeMember(roomId: string, memberId: string): Promise<boolean>
+  getMembers(roomId: string): Promise<RoomMember[]>
+  isMember(roomId: string, memberId: string): Promise<boolean>
+  getMember(roomId: string, memberId: string): Promise<RoomMember | null>
+  countMembers(roomId: string): Promise<number>
 
-  getAvailableRooms(): Room[]
-  getRoomsByAgent(agentId: string): Room[]
-  countAgentRooms(agentId: string): number
+  getAvailableRooms(): Promise<Room[]>
+  getRoomsByAgent(agentId: string): Promise<Room[]>
+  countAgentRooms(agentId: string): Promise<number>
 }
 
 const SYSTEM_MAX_AGENTS = 5
@@ -40,7 +40,7 @@ export class InMemoryRoomRepository implements RoomRepository {
   private rooms = new Map<string, Room>()
   private members = new Map<string, RoomMember[]>()
 
-  create(input: CreateRoomInput): Room {
+  async create(input: CreateRoomInput): Promise<Room> {
     const now = new Date()
     const room: Room = {
       id: cuid(),
@@ -61,18 +61,18 @@ export class InMemoryRoomRepository implements RoomRepository {
     return room
   }
 
-  findById(id: string): Room | null {
+  async findById(id: string): Promise<Room | null> {
     return this.rooms.get(id) ?? null
   }
 
-  findBySlug(slug: string): Room | null {
+  async findBySlug(slug: string): Promise<Room | null> {
     for (const room of this.rooms.values()) {
       if (room.slug === slug) return room
     }
     return null
   }
 
-  list(opts: PaginationOpts & { status?: RoomStatus }): PaginatedResult<Room> {
+  async list(opts: PaginationOpts & { status?: RoomStatus }): Promise<PaginatedResult<Room>> {
     let items = Array.from(this.rooms.values())
     if (opts.status) {
       items = items.filter((r) => r.status === opts.status)
@@ -81,7 +81,7 @@ export class InMemoryRoomRepository implements RoomRepository {
     return paginate(items, opts)
   }
 
-  updateStatus(id: string, status: RoomStatus): Room | null {
+  async updateStatus(id: string, status: RoomStatus): Promise<Room | null> {
     const room = this.rooms.get(id)
     if (!room) return null
     room.status = status
@@ -89,7 +89,7 @@ export class InMemoryRoomRepository implements RoomRepository {
     return room
   }
 
-  updateLastMessageAt(id: string, at: Date): void {
+  async updateLastMessageAt(id: string, at: Date): Promise<void> {
     const room = this.rooms.get(id)
     if (room) {
       room.last_message_at = at
@@ -97,7 +97,12 @@ export class InMemoryRoomRepository implements RoomRepository {
     }
   }
 
-  addMember(roomId: string, memberId: string, joinSource: RoomMemberJoinSource, tickInterval: number): RoomMember {
+  async addMember(
+    roomId: string,
+    memberId: string,
+    joinSource: RoomMemberJoinSource,
+    tickInterval: number,
+  ): Promise<RoomMember> {
     const list = this.members.get(roomId) ?? []
     const member: RoomMember = {
       room_id: roomId,
@@ -114,7 +119,7 @@ export class InMemoryRoomRepository implements RoomRepository {
     return member
   }
 
-  removeMember(roomId: string, memberId: string): boolean {
+  async removeMember(roomId: string, memberId: string): Promise<boolean> {
     const list = this.members.get(roomId)
     if (!list) return false
     const idx = list.findIndex((m) => m.member_id === memberId)
@@ -123,42 +128,49 @@ export class InMemoryRoomRepository implements RoomRepository {
     return true
   }
 
-  getMembers(roomId: string): RoomMember[] {
+  async getMembers(roomId: string): Promise<RoomMember[]> {
     return this.members.get(roomId) ?? []
   }
 
-  isMember(roomId: string, memberId: string): boolean {
-    return this.getMembers(roomId).some((m) => m.member_id === memberId)
+  async isMember(roomId: string, memberId: string): Promise<boolean> {
+    const members = await this.getMembers(roomId)
+    return members.some((m) => m.member_id === memberId)
   }
 
-  getMember(roomId: string, memberId: string): RoomMember | null {
-    return this.getMembers(roomId).find((m) => m.member_id === memberId) ?? null
+  async getMember(roomId: string, memberId: string): Promise<RoomMember | null> {
+    const members = await this.getMembers(roomId)
+    return members.find((m) => m.member_id === memberId) ?? null
   }
 
-  countMembers(roomId: string): number {
-    return this.getMembers(roomId).length
+  async countMembers(roomId: string): Promise<number> {
+    const members = await this.getMembers(roomId)
+    return members.length
   }
 
-  getAvailableRooms(): Room[] {
-    return Array.from(this.rooms.values()).filter((r) => {
-      if (r.status !== 'active') return false
-      const memberCount = this.countMembers(r.id)
-      return memberCount < r.max_agents
-    })
-  }
-
-  getRoomsByAgent(agentId: string): Room[] {
+  async getAvailableRooms(): Promise<Room[]> {
+    const rooms = Array.from(this.rooms.values())
     const result: Room[] = []
-    for (const [roomId, list] of this.members) {
-      if (list.some((m) => m.member_id === agentId)) {
-        const room = this.rooms.get(roomId)
-        if (room) result.push(room)
+    for (const room of rooms) {
+      if (room.status !== 'active') continue
+      const memberCount = await this.countMembers(room.id)
+      if (memberCount < room.max_agents) {
+        result.push(room)
       }
     }
     return result
   }
 
-  countAgentRooms(agentId: string): number {
+  async getRoomsByAgent(agentId: string): Promise<Room[]> {
+    const result: Room[] = []
+    for (const [roomId, list] of this.members) {
+      if (!list.some((m) => m.member_id === agentId)) continue
+      const room = this.rooms.get(roomId)
+      if (room) result.push(room)
+    }
+    return result
+  }
+
+  async countAgentRooms(agentId: string): Promise<number> {
     let count = 0
     for (const list of this.members.values()) {
       if (list.some((m) => m.member_id === agentId)) count++

@@ -24,30 +24,30 @@ export class GovernanceAdapter {
     })
   }
 
-  execute(action: GovernanceAction): GovernanceResult {
+  async execute(action: GovernanceAction): Promise<GovernanceResult> {
     return this.governanceSvc.execute(action)
   }
 
-  private persist(action: GovernanceAction, result: GovernanceResult): void {
+  private async persist(action: GovernanceAction, result: GovernanceResult): Promise<void> {
     if (!result.success) return
 
     if (action.target_type === 'post') {
-      const post = this.deps.postRepo.findById(action.target_id)
+      const post = await this.deps.postRepo.findById(action.target_id)
       if (!post) throw new NotFoundError('Post', action.target_id)
       if (result.new_visibility) {
-        this.deps.postRepo.updateVisibility(action.target_id, result.new_visibility)
+        await this.deps.postRepo.updateVisibility(action.target_id, result.new_visibility)
       }
       if (result.new_state) {
-        this.deps.postRepo.updateState(action.target_id, result.new_state)
+        await this.deps.postRepo.updateState(action.target_id, result.new_state)
       }
     } else if (action.target_type === 'comment') {
-      const comment = this.deps.commentRepo.findById(action.target_id)
+      const comment = await this.deps.commentRepo.findById(action.target_id)
       if (!comment) throw new NotFoundError('Comment', action.target_id)
       if (result.new_visibility) {
-        this.deps.commentRepo.updateVisibility(action.target_id, result.new_visibility)
+        await this.deps.commentRepo.updateVisibility(action.target_id, result.new_visibility)
       }
       if (result.new_state) {
-        this.deps.commentRepo.updateState(action.target_id, result.new_state)
+        await this.deps.commentRepo.updateState(action.target_id, result.new_state)
       }
     } else if (action.target_type === 'agent') {
       if (action.action === 'ban_agent') {

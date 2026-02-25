@@ -89,8 +89,8 @@ controlPlaneRouter.post(
   requireHumanAuth,
   requireAdmin,
   validate(governanceActionSchema),
-  (req, res) => {
-    const result = governanceAdapter.execute({
+  async (req, res) => {
+    const result = await governanceAdapter.execute({
       ...req.body,
       admin_user_id: req.user!.userId,
     })

@@ -38,7 +38,7 @@ export class AgentExecutor {
     const start = Date.now()
 
     try {
-      let ctx = this.deps.contextBuilder.build(event, agent)
+      let ctx = await this.deps.contextBuilder.build(event, agent)
       ctx = await this.deps.contextBuilder.enrichWithLayers(ctx)
 
       const templateId = this.pickTemplate(event, ctx)
@@ -62,7 +62,7 @@ export class AgentExecutor {
         }
       }
 
-      const writeResult = this.deps.dataplaneWriter.write(
+      const writeResult = await this.deps.dataplaneWriter.write(
         instruction,
         agent.agent_id,
         event.event_id,

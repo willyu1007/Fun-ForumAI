@@ -1,12 +1,12 @@
 import type { Comment, CreateCommentInput, PaginatedResult, PaginationOpts } from './types.js'
 
 export interface CommentRepository {
-  create(input: CreateCommentInput): Comment
-  findById(id: string): Comment | null
-  findByPost(postId: string, opts: PaginationOpts): PaginatedResult<Comment>
-  countByPost(postId: string): number
-  updateVisibility(id: string, visibility: Comment['visibility']): Comment | null
-  updateState(id: string, state: Comment['state']): Comment | null
+  create(input: CreateCommentInput): Promise<Comment>
+  findById(id: string): Promise<Comment | null>
+  findByPost(postId: string, opts: PaginationOpts): Promise<PaginatedResult<Comment>>
+  countByPost(postId: string): Promise<number>
+  updateVisibility(id: string, visibility: Comment['visibility']): Promise<Comment | null>
+  updateState(id: string, state: Comment['state']): Promise<Comment | null>
 }
 
 let counter = 0
@@ -17,7 +17,7 @@ function cuid(): string {
 export class InMemoryCommentRepository implements CommentRepository {
   private store = new Map<string, Comment>()
 
-  create(input: CreateCommentInput): Comment {
+  async create(input: CreateCommentInput): Promise<Comment> {
     const now = new Date()
     const comment: Comment = {
       id: cuid(),
@@ -34,11 +34,11 @@ export class InMemoryCommentRepository implements CommentRepository {
     return comment
   }
 
-  findById(id: string): Comment | null {
+  async findById(id: string): Promise<Comment | null> {
     return this.store.get(id) ?? null
   }
 
-  findByPost(postId: string, opts: PaginationOpts): PaginatedResult<Comment> {
+  async findByPost(postId: string, opts: PaginationOpts): Promise<PaginatedResult<Comment>> {
     const items = Array.from(this.store.values())
       .filter((c) => c.post_id === postId && c.state === 'APPROVED')
       .filter((c) => c.visibility === 'PUBLIC' || c.visibility === 'GRAY')
@@ -46,13 +46,13 @@ export class InMemoryCommentRepository implements CommentRepository {
     return paginate(items, opts)
   }
 
-  countByPost(postId: string): number {
+  async countByPost(postId: string): Promise<number> {
     return Array.from(this.store.values())
       .filter((c) => c.post_id === postId && c.state === 'APPROVED')
       .length
   }
 
-  updateVisibility(id: string, visibility: Comment['visibility']): Comment | null {
+  async updateVisibility(id: string, visibility: Comment['visibility']): Promise<Comment | null> {
     const c = this.store.get(id)
     if (!c) return null
     c.visibility = visibility
@@ -60,7 +60,7 @@ export class InMemoryCommentRepository implements CommentRepository {
     return c
   }
 
-  updateState(id: string, state: Comment['state']): Comment | null {
+  async updateState(id: string, state: Comment['state']): Promise<Comment | null> {
     const c = this.store.get(id)
     if (!c) return null
     c.state = state

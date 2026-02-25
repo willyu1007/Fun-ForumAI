@@ -1,5 +1,4 @@
-import { randomUUID } from 'node:crypto'
-import type { PrismaClient, Comment as PrismaComment } from '@prisma/client'
+import { Prisma, type Comment as PrismaComment, type PrismaClient } from '@prisma/client'
 import type {
   Comment,
   CreateCommentInput,
@@ -14,7 +13,7 @@ function paginate<T extends { id: string }>(
 ): PaginatedResult<T> {
   let start = 0
   if (opts.cursor) {
-    const idx = items.findIndex((i) => i.id === opts.cursor)
+    const idx = items.findIndex((item) => item.id === opts.cursor)
     start = idx >= 0 ? idx + 1 : 0
   }
   const page = items.slice(start, start + opts.limit)
@@ -25,102 +24,84 @@ function paginate<T extends { id: string }>(
   return { items: page, next_cursor }
 }
 
-export class PgCommentRepository implements CommentRepository {
-  private cache = new Map<string, Comment>()
+function isNotFoundError(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
+}
 
+export class PgCommentRepository implements CommentRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async hydrate(): Promise<void> {
-    const rows = await this.prisma.comment.findMany()
-    for (const row of rows) {
-      this.cache.set(row.id, this.toDomain(row))
-    }
+  // DB-first mode: no local cache to hydrate.
+  async hydrate(): Promise<void> {}
+
+  async create(input: CreateCommentInput): Promise<Comment> {
+    const row = await this.prisma.comment.create({
+      data: {
+        postId: input.post_id,
+        parentCommentId: input.parent_comment_id ?? null,
+        authorAgentId: input.author_agent_id,
+        body: input.body,
+        visibility: input.visibility,
+        state: input.state,
+      },
+    })
+    return this.toDomain(row)
   }
 
-  create(input: CreateCommentInput): Comment {
-    const id = randomUUID()
-    const now = new Date()
-    const comment: Comment = {
-      id,
-      post_id: input.post_id,
-      parent_comment_id: input.parent_comment_id ?? null,
-      author_agent_id: input.author_agent_id,
-      body: input.body,
-      visibility: input.visibility,
-      state: input.state,
-      created_at: now,
-      updated_at: now,
-    }
-    this.cache.set(id, comment)
-    this.prisma.comment
-      .create({
-        data: {
-          id,
-          postId: comment.post_id,
-          parentCommentId: comment.parent_comment_id,
-          authorAgentId: comment.author_agent_id,
-          body: comment.body,
-          visibility: comment.visibility,
-          state: comment.state,
-          createdAt: now,
-          updatedAt: now,
-        },
-      })
-      .catch((err) => console.error('[PgCommentRepo] create error:', err))
-    return comment
+  async findById(id: string): Promise<Comment | null> {
+    const row = await this.prisma.comment.findUnique({ where: { id } })
+    return row ? this.toDomain(row) : null
   }
 
-  findById(id: string): Comment | null {
-    return this.cache.get(id) ?? null
-  }
-
-  findByPost(postId: string, opts: PaginationOpts): PaginatedResult<Comment> {
-    const items = Array.from(this.cache.values())
-      .filter((c) => c.post_id === postId && c.state === 'APPROVED')
-      .filter((c) => c.visibility === 'PUBLIC' || c.visibility === 'GRAY')
-      .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
+  async findByPost(
+    postId: string,
+    opts: PaginationOpts,
+  ): Promise<PaginatedResult<Comment>> {
+    const rows = await this.prisma.comment.findMany({
+      where: {
+        postId,
+        state: 'APPROVED',
+        visibility: { in: ['PUBLIC', 'GRAY'] },
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    })
+    const items = rows.map((row) => this.toDomain(row))
     return paginate(items, opts)
   }
 
-  countByPost(postId: string): number {
-    return Array.from(this.cache.values()).filter(
-      (c) => c.post_id === postId && c.state === 'APPROVED',
-    ).length
+  async countByPost(postId: string): Promise<number> {
+    return this.prisma.comment.count({
+      where: { postId, state: 'APPROVED' },
+    })
   }
 
-  updateVisibility(
+  async updateVisibility(
     id: string,
     visibility: Comment['visibility'],
-  ): Comment | null {
-    const comment = this.cache.get(id)
-    if (!comment) return null
-    comment.visibility = visibility
-    comment.updated_at = new Date()
-    this.prisma.comment
-      .update({
+  ): Promise<Comment | null> {
+    try {
+      const row = await this.prisma.comment.update({
         where: { id },
-        data: { visibility, updatedAt: comment.updated_at },
+        data: { visibility, updatedAt: new Date() },
       })
-      .catch((err) =>
-        console.error('[PgCommentRepo] updateVisibility error:', err),
-      )
-    return comment
+      return this.toDomain(row)
+    } catch (error) {
+      if (isNotFoundError(error)) return null
+      throw error
+    }
   }
 
-  updateState(id: string, state: Comment['state']): Comment | null {
-    const comment = this.cache.get(id)
-    if (!comment) return null
-    comment.state = state
-    comment.updated_at = new Date()
-    this.prisma.comment
-      .update({
+  async updateState(id: string, state: Comment['state']): Promise<Comment | null> {
+    try {
+      const row = await this.prisma.comment.update({
         where: { id },
-        data: { state, updatedAt: comment.updated_at },
+        data: { state, updatedAt: new Date() },
       })
-      .catch((err) =>
-        console.error('[PgCommentRepo] updateState error:', err),
-      )
-    return comment
+      return this.toDomain(row)
+    } catch (error) {
+      if (isNotFoundError(error)) return null
+      throw error
+    }
   }
 
   private toDomain(row: PrismaComment): Comment {

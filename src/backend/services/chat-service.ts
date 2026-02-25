@@ -53,18 +53,18 @@ export class ChatService {
     (this.deps as { growthEngine: ChatServiceDeps['growthEngine'] }).growthEngine = engine
   }
 
-  createRoom(input: CreateRoomInput): { room: Room; greeting?: ChatMessage } {
-    if (this.deps.roomRepo.findBySlug(input.slug)) {
+  async createRoom(input: CreateRoomInput): Promise<{ room: Room; greeting?: ChatMessage }> {
+    if (await this.deps.roomRepo.findBySlug(input.slug)) {
       throw new ValidationError(`Room slug "${input.slug}" already exists`)
     }
 
     const agent = this.deps.agentRepo.findById(input.created_by_agent_id)
     if (!agent) throw new NotFoundError('Agent', input.created_by_agent_id)
 
-    const room = this.deps.roomRepo.create(input)
+    const room = await this.deps.roomRepo.create(input)
 
     const tick = this.getAgentTickInterval(input.created_by_agent_id)
-    this.deps.roomRepo.addMember(room.id, input.created_by_agent_id, 'creator', tick)
+    await this.deps.roomRepo.addMember(room.id, input.created_by_agent_id, 'creator', tick)
 
     this.joinHook?.(room.id, input.created_by_agent_id, tick)
 
@@ -72,20 +72,20 @@ export class ChatService {
 
     let greeting: ChatMessage | undefined
     if (input.greeting_message) {
-      greeting = this.deps.messageRepo.create({
+      greeting = await this.deps.messageRepo.create({
         room_id: room.id,
         author_id: input.created_by_agent_id,
         body: input.greeting_message,
         message_kind: 'greeting',
       })
-      this.deps.roomRepo.updateLastMessageAt(room.id, greeting.created_at)
+      await this.deps.roomRepo.updateLastMessageAt(room.id, greeting.created_at)
     }
 
     return { room, greeting }
   }
 
-  dispatchAgentToRoom(roomId: string, agentId: string, ownerId: string): RoomMember {
-    const room = this.deps.roomRepo.findById(roomId)
+  async dispatchAgentToRoom(roomId: string, agentId: string, ownerId: string): Promise<RoomMember> {
+    const room = await this.deps.roomRepo.findById(roomId)
     if (!room) throw new NotFoundError('Room', roomId)
     if (room.status === 'archived') throw new ValidationError('Cannot join an archived room')
 
@@ -93,16 +93,16 @@ export class ChatService {
     if (!agent) throw new NotFoundError('Agent', agentId)
     if (agent.owner_id !== ownerId) throw new ForbiddenError('You do not own this agent')
 
-    if (this.deps.roomRepo.isMember(roomId, agentId)) {
+    if (await this.deps.roomRepo.isMember(roomId, agentId)) {
       throw new ValidationError('Agent is already a member of this room')
     }
 
-    const memberCount = this.deps.roomRepo.countMembers(roomId)
+    const memberCount = await this.deps.roomRepo.countMembers(roomId)
     if (memberCount >= room.max_agents) {
       throw new ValidationError('Room is full')
     }
 
-    const agentRoomCount = this.deps.roomRepo.countAgentRooms(agentId)
+    const agentRoomCount = await this.deps.roomRepo.countAgentRooms(agentId)
     if (agentRoomCount >= MAX_ROOMS_PER_AGENT) {
       throw new ValidationError(
         `Agent has reached the maximum of ${MAX_ROOMS_PER_AGENT} rooms. Use leave-and-join to switch.`,
@@ -110,7 +110,7 @@ export class ChatService {
     }
 
     const tick = this.getAgentTickInterval(agentId)
-    const member = this.deps.roomRepo.addMember(roomId, agentId, 'dispatched', tick)
+    const member = await this.deps.roomRepo.addMember(roomId, agentId, 'dispatched', tick)
 
     this.deps.sseHub?.broadcastToRoom(roomId, {
       type: 'ROOM_MEMBER_JOINED',
@@ -121,19 +121,19 @@ export class ChatService {
     return member
   }
 
-  recallAgentFromRoom(roomId: string, agentId: string, ownerId: string): void {
-    const room = this.deps.roomRepo.findById(roomId)
+  async recallAgentFromRoom(roomId: string, agentId: string, ownerId: string): Promise<void> {
+    const room = await this.deps.roomRepo.findById(roomId)
     if (!room) throw new NotFoundError('Room', roomId)
 
     const agent = this.deps.agentRepo.findById(agentId)
     if (!agent) throw new NotFoundError('Agent', agentId)
     if (agent.owner_id !== ownerId) throw new ForbiddenError('You do not own this agent')
 
-    if (!this.deps.roomRepo.isMember(roomId, agentId)) {
+    if (!await this.deps.roomRepo.isMember(roomId, agentId)) {
       throw new ValidationError('Agent is not a member of this room')
     }
 
-    this.deps.roomRepo.removeMember(roomId, agentId)
+    await this.deps.roomRepo.removeMember(roomId, agentId)
 
     this.deps.sseHub?.broadcastToRoom(roomId, {
       type: 'ROOM_MEMBER_LEFT',
@@ -143,25 +143,30 @@ export class ChatService {
     this.leaveHook?.(roomId, agentId)
   }
 
-  leaveAndJoin(leaveRoomId: string, joinRoomId: string, agentId: string, ownerId: string): RoomMember {
-    this.recallAgentFromRoom(leaveRoomId, agentId, ownerId)
+  async leaveAndJoin(
+    leaveRoomId: string,
+    joinRoomId: string,
+    agentId: string,
+    ownerId: string,
+  ): Promise<RoomMember> {
+    await this.recallAgentFromRoom(leaveRoomId, agentId, ownerId)
     return this.dispatchAgentToRoom(joinRoomId, agentId, ownerId)
   }
 
-  sendMessage(input: CreateChatMessageInput): ChatMessage {
-    const room = this.deps.roomRepo.findById(input.room_id)
+  async sendMessage(input: CreateChatMessageInput): Promise<ChatMessage> {
+    const room = await this.deps.roomRepo.findById(input.room_id)
     if (!room) throw new NotFoundError('Room', input.room_id)
     if (room.status === 'archived') throw new ValidationError('Cannot send messages to an archived room')
 
-    if (!this.deps.roomRepo.isMember(input.room_id, input.author_id)) {
+    if (!await this.deps.roomRepo.isMember(input.room_id, input.author_id)) {
       throw new ValidationError('Author is not a member of this room')
     }
 
-    const msg = this.deps.messageRepo.create(input)
-    this.deps.roomRepo.updateLastMessageAt(input.room_id, msg.created_at)
+    const msg = await this.deps.messageRepo.create(input)
+    await this.deps.roomRepo.updateLastMessageAt(input.room_id, msg.created_at)
 
     if (room.status === 'cooling') {
-      this.deps.roomRepo.updateStatus(room.id, 'active')
+      await this.deps.roomRepo.updateStatus(room.id, 'active')
       this.deps.sseHub?.broadcastToRoom(input.room_id, {
         type: 'ROOM_STATUS_CHANGED',
         payload: { room_id: room.id, status: 'active' },
@@ -178,33 +183,33 @@ export class ChatService {
     return msg
   }
 
-  getRooms(opts: PaginationOpts & { status?: Room['status'] }): PaginatedResult<Room> {
+  async getRooms(opts: PaginationOpts & { status?: Room['status'] }): Promise<PaginatedResult<Room>> {
     return this.deps.roomRepo.list(opts)
   }
 
-  getRoom(roomId: string): Room & { members: RoomMember[] } {
-    const room = this.deps.roomRepo.findById(roomId)
+  async getRoom(roomId: string): Promise<Room & { members: RoomMember[] }> {
+    const room = await this.deps.roomRepo.findById(roomId)
     if (!room) throw new NotFoundError('Room', roomId)
-    const members = this.deps.roomRepo.getMembers(roomId)
+    const members = await this.deps.roomRepo.getMembers(roomId)
     return { ...room, members }
   }
 
-  getMessages(roomId: string, opts: PaginationOpts): PaginatedResult<ChatMessage> {
-    const room = this.deps.roomRepo.findById(roomId)
+  async getMessages(roomId: string, opts: PaginationOpts): Promise<PaginatedResult<ChatMessage>> {
+    const room = await this.deps.roomRepo.findById(roomId)
     if (!room) throw new NotFoundError('Room', roomId)
     return this.deps.messageRepo.findByRoom(roomId, opts)
   }
 
-  getAvailableRooms(): Room[] {
+  async getAvailableRooms(): Promise<Room[]> {
     return this.deps.roomRepo.getAvailableRooms()
   }
 
-  getRoomsByAgent(agentId: string): Room[] {
+  async getRoomsByAgent(agentId: string): Promise<Room[]> {
     return this.deps.roomRepo.getRoomsByAgent(agentId)
   }
 
-  getLeastActiveRoom(agentId: string): Room | null {
-    const rooms = this.deps.roomRepo.getRoomsByAgent(agentId)
+  async getLeastActiveRoom(agentId: string): Promise<Room | null> {
+    const rooms = await this.deps.roomRepo.getRoomsByAgent(agentId)
     if (rooms.length === 0) return null
 
     return rooms.reduce((least, room) => {

@@ -25,13 +25,13 @@ export interface WriteResult {
 export class DataPlaneWriter {
   constructor(private readonly deps: DataPlaneWriterDeps) {}
 
-  write(
+  async write(
     instruction: WriteInstruction,
     agentId: string,
     triggerEventId: string,
     usage: LlmTokenUsage,
     latencyMs: number,
-  ): WriteResult {
+  ): Promise<WriteResult> {
     const runId = `runtime-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
 
     try {
@@ -41,7 +41,7 @@ export class DataPlaneWriter {
         if (!this.deps.chatService) {
           return { success: false, error: 'ChatService not configured' }
         }
-        const msg = this.deps.chatService.sendMessage({
+        const msg = await this.deps.chatService.sendMessage({
           room_id: instruction.room_id!,
           author_id: agentId,
           body: instruction.body,
@@ -49,7 +49,7 @@ export class DataPlaneWriter {
         })
         contentId = msg.id
       } else if (instruction.action === 'create_post') {
-        const result = this.deps.forumWriteService.createPost({
+        const result = await this.deps.forumWriteService.createPost({
           actor_agent_id: agentId,
           run_id: runId,
           community_id: instruction.community_id,
@@ -59,7 +59,7 @@ export class DataPlaneWriter {
         })
         contentId = result.post.id
       } else {
-        const result = this.deps.forumWriteService.createComment({
+        const result = await this.deps.forumWriteService.createComment({
           actor_agent_id: agentId,
           run_id: runId,
           post_id: instruction.post_id!,

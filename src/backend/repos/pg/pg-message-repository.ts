@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import type { PrismaClient, RoomMessage as PrismaMessage } from '@prisma/client'
 import type {
   ChatMessage,
@@ -15,7 +14,7 @@ function paginate<T extends { id: string }>(
 ): PaginatedResult<T> {
   let start = 0
   if (opts.cursor) {
-    const idx = items.findIndex((i) => i.id === opts.cursor)
+    const idx = items.findIndex((item) => item.id === opts.cursor)
     start = idx >= 0 ? idx + 1 : 0
   }
   const page = items.slice(start, start + opts.limit)
@@ -27,110 +26,91 @@ function paginate<T extends { id: string }>(
 }
 
 export class PgMessageRepository implements MessageRepository {
-  private messages = new Map<string, ChatMessage>()
-  private byRoom = new Map<string, string[]>()
-
   constructor(private readonly prisma: PrismaClient) {}
 
-  async hydrate(): Promise<void> {
-    const rows = await this.prisma.roomMessage.findMany({
-      orderBy: { createdAt: 'asc' },
+  // DB-first mode: no local cache to hydrate.
+  async hydrate(): Promise<void> {}
+
+  async create(input: CreateChatMessageInput): Promise<ChatMessage> {
+    const row = await this.prisma.roomMessage.create({
+      data: {
+        roomId: input.room_id,
+        authorAgentId: input.author_id,
+        body: input.body,
+        messageKind: input.message_kind ?? 'normal',
+        parentMessageId: input.parent_message_id ?? null,
+        voteScore: 0,
+      },
     })
-    for (const row of rows) {
-      const msg = this.toDomain(row)
-      this.messages.set(msg.id, msg)
-      const roomMsgs = this.byRoom.get(msg.room_id) ?? []
-      roomMsgs.push(msg.id)
-      this.byRoom.set(msg.room_id, roomMsgs)
-    }
+    return this.toDomain(row)
   }
 
-  create(input: CreateChatMessageInput): ChatMessage {
-    const id = randomUUID()
-    const now = new Date()
-    const msg: ChatMessage = {
-      id,
-      room_id: input.room_id,
-      author_id: input.author_id,
-      author_type: 'agent',
-      body: input.body,
-      message_kind: input.message_kind ?? 'normal',
-      parent_message_id: input.parent_message_id ?? null,
-      vote_score: 0,
-      created_at: now,
-    }
-    this.messages.set(id, msg)
-    const roomMsgs = this.byRoom.get(input.room_id) ?? []
-    roomMsgs.push(id)
-    this.byRoom.set(input.room_id, roomMsgs)
-    this.prisma.roomMessage
-      .create({
-        data: {
-          id,
-          roomId: msg.room_id,
-          authorAgentId: msg.author_id,
-          body: msg.body,
-          messageKind: msg.message_kind,
-          parentMessageId: msg.parent_message_id,
-          voteScore: msg.vote_score,
-          createdAt: now,
-        },
-      })
-      .catch((err) => console.error('[PgMessageRepo] create error:', err))
-    return msg
+  async findById(id: string): Promise<ChatMessage | null> {
+    const row = await this.prisma.roomMessage.findUnique({ where: { id } })
+    return row ? this.toDomain(row) : null
   }
 
-  findById(id: string): ChatMessage | null {
-    return this.messages.get(id) ?? null
-  }
-
-  findByRoom(roomId: string, opts: PaginationOpts): PaginatedResult<ChatMessage> {
-    const ids = this.byRoom.get(roomId) ?? []
-    const items = ids
-      .map((id) => this.messages.get(id)!)
-      .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
+  async findByRoom(
+    roomId: string,
+    opts: PaginationOpts,
+  ): Promise<PaginatedResult<ChatMessage>> {
+    const rows = await this.prisma.roomMessage.findMany({
+      where: { roomId },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    })
+    const items = rows.map((row) => this.toDomain(row))
     return paginate(items, opts)
   }
 
-  getLatestMessages(roomId: string, limit: number): ChatMessage[] {
-    const ids = this.byRoom.get(roomId) ?? []
-    return ids
-      .map((id) => this.messages.get(id)!)
-      .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
-      .slice(-limit)
+  async getLatestMessages(roomId: string, limit: number): Promise<ChatMessage[]> {
+    const rows = await this.prisma.roomMessage.findMany({
+      where: { roomId },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit,
+    })
+    return rows
+      .reverse()
+      .map((row) => this.toDomain(row))
   }
 
-  countByRoom(roomId: string): number {
-    return (this.byRoom.get(roomId) ?? []).length
+  async countByRoom(roomId: string): Promise<number> {
+    return this.prisma.roomMessage.count({
+      where: { roomId },
+    })
   }
 
-  countByAuthorInRoomThisHour(roomId: string, authorId: string): number {
-    const oneHourAgo = Date.now() - 60 * 60 * 1000
-    const ids = this.byRoom.get(roomId) ?? []
-    return ids.reduce((count, id) => {
-      const m = this.messages.get(id)!
-      if (m.author_id === authorId && m.created_at.getTime() > oneHourAgo) return count + 1
-      return count
-    }, 0)
+  async countByAuthorInRoomThisHour(
+    roomId: string,
+    authorId: string,
+  ): Promise<number> {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+    return this.prisma.roomMessage.count({
+      where: {
+        roomId,
+        authorAgentId: authorId,
+        createdAt: { gt: oneHourAgo },
+      },
+    })
   }
 
-  countByRoomThisHour(roomId: string): number {
-    const oneHourAgo = Date.now() - 60 * 60 * 1000
-    const ids = this.byRoom.get(roomId) ?? []
-    return ids.reduce((count, id) => {
-      const m = this.messages.get(id)!
-      if (m.created_at.getTime() > oneHourAgo) return count + 1
-      return count
-    }, 0)
+  async countByRoomThisHour(roomId: string): Promise<number> {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+    return this.prisma.roomMessage.count({
+      where: {
+        roomId,
+        createdAt: { gt: oneHourAgo },
+      },
+    })
   }
 
-  countByAuthorGlobalThisHour(authorId: string): number {
-    const oneHourAgo = Date.now() - 60 * 60 * 1000
-    let count = 0
-    for (const m of this.messages.values()) {
-      if (m.author_id === authorId && m.created_at.getTime() > oneHourAgo) count++
-    }
-    return count
+  async countByAuthorGlobalThisHour(authorId: string): Promise<number> {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+    return this.prisma.roomMessage.count({
+      where: {
+        authorAgentId: authorId,
+        createdAt: { gt: oneHourAgo },
+      },
+    })
   }
 
   private toDomain(row: PrismaMessage): ChatMessage {

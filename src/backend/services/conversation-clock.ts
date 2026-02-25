@@ -47,15 +47,7 @@ export class ConversationClock {
   start(): void {
     if (this.running) return
     this.running = true
-
-    const activeRooms = this.deps.roomRepo.list({ limit: 200, status: 'active' })
-    for (const room of activeRooms.items) {
-      const members = this.deps.roomRepo.getMembers(room.id)
-      for (const member of members) {
-        this.scheduleAgent(room.id, member.member_id, member.personal_tick_interval)
-      }
-    }
-    console.log(`[ConversationClock] Started with ${this.timers.size} agent timers`)
+    void this.bootstrap()
   }
 
   stop(): void {
@@ -87,6 +79,25 @@ export class ConversationClock {
   }
 
   onRoomStatusChanged(roomId: string, status: string): void {
+    void this.syncRoomStatus(roomId, status)
+  }
+
+  private async bootstrap(): Promise<void> {
+    try {
+      const activeRooms = await this.deps.roomRepo.list({ limit: 200, status: 'active' })
+      for (const room of activeRooms.items) {
+        const members = await this.deps.roomRepo.getMembers(room.id)
+        for (const member of members) {
+          this.scheduleAgent(room.id, member.member_id, member.personal_tick_interval)
+        }
+      }
+      console.log(`[ConversationClock] Started with ${this.timers.size} agent timers`)
+    } catch (err) {
+      console.error('[ConversationClock] Bootstrap failed:', err)
+    }
+  }
+
+  private async syncRoomStatus(roomId: string, status: string): Promise<void> {
     if (status === 'archived' || status === 'cooling') {
       for (const [key, t] of this.timers) {
         if (t.roomId === roomId) {
@@ -95,7 +106,7 @@ export class ConversationClock {
         }
       }
     } else if (status === 'active') {
-      const members = this.deps.roomRepo.getMembers(roomId)
+      const members = await this.deps.roomRepo.getMembers(roomId)
       for (const member of members) {
         const key = this.timerKey(roomId, member.member_id)
         if (!this.timers.has(key)) {
@@ -130,18 +141,18 @@ export class ConversationClock {
       }
     }
 
-    const room = this.deps.roomRepo.findById(roomId)
+    const room = await this.deps.roomRepo.findById(roomId)
     if (!room || room.status !== 'active') {
       this.onAgentLeft(roomId, agentId)
       return
     }
 
-    if (!this.deps.roomRepo.isMember(roomId, agentId)) {
+    if (!await this.deps.roomRepo.isMember(roomId, agentId)) {
       this.onAgentLeft(roomId, agentId)
       return
     }
 
-    if (!this.checkRateLimits(roomId, agentId)) {
+    if (!await this.checkRateLimits(roomId, agentId)) {
       this.scheduleAgent(roomId, agentId, tickInterval)
       return
     }
@@ -157,13 +168,13 @@ export class ConversationClock {
       if (result.kind === 'skip_feedback' && result.body) {
         let retries = 0
         let found = false
-        const otherMembers = this.deps.roomRepo.getMembers(roomId)
+        const otherMembers = (await this.deps.roomRepo.getMembers(roomId))
           .filter((m) => m.member_id !== agentId)
           .sort(() => Math.random() - 0.5)
 
         for (const other of otherMembers) {
           if (retries >= MAX_SKIP_RETRIES) break
-          if (!this.checkRateLimits(roomId, other.member_id)) continue
+          if (!await this.checkRateLimits(roomId, other.member_id)) continue
 
           this.deps.sseHub.broadcastToRoom(roomId, {
             type: 'AGENT_TYPING',
@@ -172,7 +183,7 @@ export class ConversationClock {
 
           const altResult = await this.generateMessage(roomId, other.member_id)
           if (altResult.kind === 'normal') {
-            this.postMessage(roomId, other.member_id, altResult.body, 'normal')
+            await this.postMessage(roomId, other.member_id, altResult.body, 'normal')
             found = true
             break
           }
@@ -180,13 +191,13 @@ export class ConversationClock {
         }
 
         if (!found) {
-          this.postMessage(roomId, agentId, result.body, 'skip_feedback')
+          await this.postMessage(roomId, agentId, result.body, 'skip_feedback')
         }
       } else if (result.kind === 'normal') {
-        this.postMessage(roomId, agentId, result.body, 'normal')
+        await this.postMessage(roomId, agentId, result.body, 'normal')
       } else {
         const ambient = AMBIENT_MESSAGES[Math.floor(Math.random() * AMBIENT_MESSAGES.length)]
-        this.postMessage(roomId, agentId, ambient, 'ambient')
+        await this.postMessage(roomId, agentId, ambient, 'ambient')
       }
     } catch (err) {
       console.error(`[ConversationClock] Generate error for ${agentId}:`, err)
@@ -200,14 +211,14 @@ export class ConversationClock {
     this.scheduleAgent(roomId, agentId, tickInterval)
   }
 
-  private checkRateLimits(roomId: string, agentId: string): boolean {
-    const agentRoom = this.deps.messageRepo.countByAuthorInRoomThisHour(roomId, agentId)
+  private async checkRateLimits(roomId: string, agentId: string): Promise<boolean> {
+    const agentRoom = await this.deps.messageRepo.countByAuthorInRoomThisHour(roomId, agentId)
     if (agentRoom >= MAX_MSG_PER_AGENT_PER_ROOM_HOUR) return false
 
-    const agentGlobal = this.deps.messageRepo.countByAuthorGlobalThisHour(agentId)
+    const agentGlobal = await this.deps.messageRepo.countByAuthorGlobalThisHour(agentId)
     if (agentGlobal >= MAX_MSG_PER_AGENT_GLOBAL_HOUR) return false
 
-    const roomTotal = this.deps.messageRepo.countByRoomThisHour(roomId)
+    const roomTotal = await this.deps.messageRepo.countByRoomThisHour(roomId)
     if (roomTotal >= MAX_MSG_PER_ROOM_HOUR) return false
 
     return true
@@ -217,11 +228,11 @@ export class ConversationClock {
     roomId: string,
     agentId: string,
   ): Promise<{ kind: 'normal' | 'skip_feedback' | 'empty'; body: string }> {
-    const room = this.deps.roomRepo.findById(roomId)
+    const room = await this.deps.roomRepo.findById(roomId)
     const agent = this.deps.agentRepo.findById(agentId)
     if (!room || !agent) return { kind: 'empty', body: '' }
 
-    const recentMsgs = this.deps.messageRepo.getLatestMessages(roomId, 10)
+    const recentMsgs = await this.deps.messageRepo.getLatestMessages(roomId, 10)
     const recentText = recentMsgs
       .map((m) => {
         const a = this.deps.agentRepo.findById(m.author_id)
@@ -258,9 +269,14 @@ export class ConversationClock {
     return { kind: 'normal', body: content }
   }
 
-  private postMessage(roomId: string, agentId: string, body: string, kind: ChatMessageKind): void {
+  private async postMessage(
+    roomId: string,
+    agentId: string,
+    body: string,
+    kind: ChatMessageKind,
+  ): Promise<void> {
     try {
-      this.deps.chatService.sendMessage({
+      await this.deps.chatService.sendMessage({
         room_id: roomId,
         author_id: agentId,
         body,
