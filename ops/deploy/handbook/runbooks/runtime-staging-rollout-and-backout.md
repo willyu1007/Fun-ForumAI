@@ -11,8 +11,9 @@
   - `RUNTIME_QUEUE_BACKEND=redis`
   - `RUNTIME_LEADER_BACKEND=redis`
   - `RUNTIME_REDIS_URL` is set
-- You can address two replicas individually (for example, by `kubectl port-forward`).
+- You have `kubectl` access to staging cluster (for auto node discovery), or you can address two replicas individually.
 - You have one admin auth token (or admin credentials).
+  - For dev/local non-production mode, you can use `--dev-auth` in smoke script (no real login).
 - Optional for active injection smoke:
   - `SERVICE_AUTH_SECRET`
   - one valid `community_id`
@@ -22,25 +23,36 @@
 1. Run deployment readiness dry-run.
 2. Run leader-only smoke check.
 3. Run event-injection smoke check.
-4. Record evidence in `dev-docs/active/runtime-queue-and-lock-externalization/04-verification.md`.
-5. Execute backout rehearsal.
+4. Record evidence in `dev-docs/active/runtime-queue-and-lock-externalization/04-verification.md`, then execute backout rehearsal.
 
 ## 1) Deployment readiness dry-run
 ```bash
 node ops/deploy/scripts/deploy.mjs --env staging --dry-run
 ```
 
-## 2) Identify two replicas (example)
+## 2) Leader-only smoke check (auto node discovery, recommended)
 ```bash
-# Example only. Replace namespace/labels with real values.
-kubectl get pods -n <namespace> -l app=<service>
-
-# Forward two pods to local ports.
-kubectl port-forward -n <namespace> pod/<pod-a> 4101:4000
-kubectl port-forward -n <namespace> pod/<pod-b> 4102:4000
+node scripts/runtime-staging-smoke.mjs \
+  --discover-nodes-k8s \
+  --k8s-namespace app-staging \
+  --k8s-label-selector app=llm-forum \
+  --admin-token <ADMIN_TOKEN> \
+  --sample-duration-ms 90000 \
+  --poll-ms 3000
 ```
 
-## 3) Leader-only smoke check
+Dev/local variant (no admin login JWT):
+```bash
+node scripts/runtime-staging-smoke.mjs \
+  --discover-nodes-k8s \
+  --k8s-namespace app-staging \
+  --k8s-label-selector app=llm-forum \
+  --dev-auth \
+  --sample-duration-ms 90000 \
+  --poll-ms 3000
+```
+
+Fallback (manual node URLs if cluster discovery is unavailable):
 ```bash
 node scripts/runtime-staging-smoke.mjs \
   --node1-url http://127.0.0.1:4101 \
@@ -56,12 +68,13 @@ Expected:
 - at least one single-leader sample
 - backend reported as `redis/redis` on both nodes
 
-## 4) Event-injection smoke check (optional but recommended)
+## 3) Event-injection smoke check (optional but recommended)
 ```bash
 SERVICE_AUTH_SECRET=<SERVICE_AUTH_SECRET> \
 node scripts/runtime-staging-smoke.mjs \
-  --node1-url http://127.0.0.1:4101 \
-  --node2-url http://127.0.0.1:4102 \
+  --discover-nodes-k8s \
+  --k8s-namespace app-staging \
+  --k8s-label-selector app=llm-forum \
   --admin-token <ADMIN_TOKEN> \
   --inject-posts \
   --community-id <COMMUNITY_ID> \
@@ -76,7 +89,7 @@ Expected:
 - queue drains back to baseline within wait window
 - no dual-leader sample
 
-## 5) Backout rehearsal
+## 4) Backout rehearsal
 ### Configuration rollback
 - Set:
   - `RUNTIME_QUEUE_BACKEND=in-memory`

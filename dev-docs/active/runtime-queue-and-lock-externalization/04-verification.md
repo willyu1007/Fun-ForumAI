@@ -56,3 +56,39 @@
   - Result: pass (CLI usage and args rendered correctly)
 - `node scripts/runtime-staging-smoke.mjs --node1-url http://127.0.0.1:4101 --node2-url http://127.0.0.1:4102 --admin-token dummy --dry-run`
   - Result: pass (execution plan rendered without network side effects)
+- `node scripts/runtime-staging-smoke.mjs --node1-url http://127.0.0.1:4101 --node2-url http://127.0.0.1:4102 --dev-auth --dry-run`
+  - Result: pass (`--dev-auth` token path works, no real login required in dev)
+- `node scripts/runtime-staging-smoke.mjs --discover-nodes-k8s --dev-auth --dry-run`
+  - Result: fail (expected in current workstation): `kubectl` attempted default API `http://localhost:8080`, connection refused
+  - Interpretation: script auto-discovery path is wired; blocked by missing kube context/cluster access, not by smoke script logic
+
+## No-kube local replacement smoke (2026-02-25)
+- Context:
+  - No staging kube context available on workstation.
+  - Executed equivalent dual-node smoke locally with shared Redis backend.
+- Environment:
+  - Temporary Redis: `redis-memory-server` at `127.0.0.1:59902`
+  - Node1: `PORT=4101`, `RUNTIME_QUEUE_BACKEND=redis`, `RUNTIME_LEADER_BACKEND=redis`, `RUNTIME_ENABLED=true`
+  - Node2: `PORT=4102`, same runtime redis config
+  - Auth path: `--dev-auth` (base64 dev admin token), no real admin login
+- Leader-only smoke:
+  - Command:
+    - `node scripts/runtime-staging-smoke.mjs --node1-url http://127.0.0.1:4101 --node2-url http://127.0.0.1:4102 --dev-auth --sample-duration-ms 30000 --poll-ms 2000`
+  - Result: pass
+  - Evidence summary:
+    - `dualLeaderSamples=0`
+    - `singleLeaderSamples=15`
+    - `queueDrained=true`
+    - Final leader state stable (`node2.isLeader=true`, `node1.isLeader=false`)
+- Injection smoke:
+  - Seed:
+    - `POST /v1/dev/seed` on node1 returned valid `community_id`/`agent_id`
+  - Command:
+    - `SERVICE_AUTH_SECRET=dev-service-secret-change-in-production node scripts/runtime-staging-smoke.mjs --node1-url http://127.0.0.1:4101 --node2-url http://127.0.0.1:4102 --dev-auth --inject-posts --community-id comm_1772010107842_1 --actor-agent-id agent_1772010107842_1 --event-count 8 --sample-duration-ms 30000 --poll-ms 2000 --wait-drain-ms 90000`
+  - Result: pass
+  - Evidence summary:
+    - `dualLeaderSamples=0`
+    - `singleLeaderSamples=15`
+    - `queueDrained=true` after injection
+- Notes:
+  - During run, conversation clock emitted expected LLM 401 logs due dummy API key; does not affect queue/leader correctness validation.

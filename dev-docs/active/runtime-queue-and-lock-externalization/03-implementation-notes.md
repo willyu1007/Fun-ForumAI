@@ -33,10 +33,17 @@
 - Staging 执行准备（2026-02-25）：
   - 新增 staging smoke 脚本：`scripts/runtime-staging-smoke.mjs`
   - 新增运维 runbook：`ops/deploy/handbook/runbooks/runtime-staging-rollout-and-backout.md`
+  - smoke 脚本新增 `--dev-auth`（development 下可免登录生成 admin dev token）
+  - smoke 脚本新增 `--discover-nodes-k8s`：
+    - 可通过 `kubectl get pods` 自动发现两实例并自动 `port-forward`
+    - 支持覆盖参数：`--k8s-namespace` / `--k8s-label-selector` / `--k8s-context` / `--k8s-pod-1` / `--k8s-pod-2`
   - 脚本支持两类验证：
     - leader-only 观测（无 dual leader）
     - 注入 post 事件并验证队列回落
   - 脚本支持回退前后 backend 断言（`redis` 或 `any`）
+- 无 kube 环境替代验证（2026-02-25）：
+  - 在无 staging kube context 条件下，已执行本地双节点 + 共享 Redis 的等价 smoke。
+  - 结果：leader-only 与 injection 两类 smoke 均 PASS（详见 `04-verification.md`）。
 
 ## Files/modules touched (high level)
 - `src/backend/runtime/`
