@@ -2,5 +2,5 @@ version: 1
 task_id: T-025
 project: main
 slug: sse-cluster-broadcast-foundation
-status: in-progress
-updated: "2026-02-25"
+status: done
+updated: "2026-02-26"

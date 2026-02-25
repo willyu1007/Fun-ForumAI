@@ -75,8 +75,8 @@
 | TS 错误修复 | — | 修复 6 处类型/未使用变量错误 | E2E 期间发现的实际 bug |
 
 ## Open issues
-- AgentRun 记录扩展：当前 AgentRun 的 `action_type` 枚举需要扩展以支持 `private_chat`
-- AgentBudget 消耗集成：`sendMessage` 中应调用 budget 消耗逻辑（待现有 budget service 接口确认）
+- ~~AgentRun 记录扩展~~ → 已集成：`sendMessage` 创建 `PrivateChatMessage` Event + AgentRun（2026-02-25）
+- ~~AgentBudget 消耗集成~~ → 已集成：`sendMessage` 中 `checkBudget` + `recordAction` + `CostTracker.record`（2026-02-25）
 - Prompt template 版本：Layer 变量添加到 v1 模板中（严格来说应为 v2，但当前无消费者依赖旧版本）
 - 首发帖追踪持久化：当前 in-memory，重启后可能重复触发首发帖通知（低优先级）
 - 质疑检测升级：V2 可考虑用 LLM 判断评论语义是否构成质疑

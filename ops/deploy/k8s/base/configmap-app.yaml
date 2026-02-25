@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: forum-app-config
+  namespace: funforum
+data:
+  NODE_ENV: production
+  PORT: "4000"
+  CORS_ORIGINS: https://forum.example.com
+  DB_PERSISTENCE: "true"
+  RUNTIME_ENABLED: "true"
+  RUNTIME_QUEUE_BACKEND: redis
+  RUNTIME_LEADER_BACKEND: redis
+  SSE_BROADCAST_BACKEND: redis
+  LLM_PROVIDER: openai-compatible
+  LLM_MODEL: qwen-plus
+  LLM_BASE_URL: https://dashscope.aliyuncs.com/compatible-mode/v1

@@ -1,7 +1,7 @@
 # 03 Implementation Notes
 
 ## Status
-- Current status: `in-progress`
+- Current status: `done`
 - Last updated: 2026-02-25
 
 ## What changed
@@ -61,9 +61,10 @@
     - 前端兼容性风险低；仍需补充 staging 双实例实流验证。
 
 ## Known issues / follow-ups
-- 需与 T-023/T-024 对齐灰度顺序，避免并发改造冲突。
-- 真实 staging 仍未验证（当前机器无 kube context），需在可用 staging 环境执行跨实例 smoke。
-- 需补充 WebSocket 迁移触发门槛文档（与监控指标绑定）。
+- ~~需与 T-023/T-024 对齐灰度顺序~~ → T-023 已归档为 done，T-024 Phase 1 已完成。
+- ~~真实 staging 仍未验证~~ → staging K8s 双实例 SSE fanout smoke 已通过（2026-02-25）。
+- ~~需补充 WebSocket 迁移触发门槛文档~~ → 已产出 `ws-migration-threshold.md`（2026-02-25）。
+- 后续可改进项（非阻塞）：Redis 断连自动重连、慢客户端背压策略、fanout lag 端到端监控面板建设。
 
 ## Pitfalls / dead ends (do not repeat)
 - Keep the detailed log in `05-pitfalls.md` (append-only).

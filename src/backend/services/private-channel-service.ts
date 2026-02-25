@@ -1,8 +1,11 @@
 import type { LlmClient } from '../llm/llm-client.js'
 import type { LlmMessage } from '../llm/types.js'
 import type { AgentService } from './agent-service.js'
+import type { BudgetService } from './budget-service.js'
+import type { CostTracker } from './cost-tracker.js'
 import type { PrivateChannelRepository } from '../repos/private-channel-repository.js'
 import type { MemoryRepository } from '../repos/memory-repository.js'
+import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type {
   PrivateSession,
   PrivateMessage,
@@ -30,6 +33,10 @@ export interface PrivateChannelServiceDeps {
   memoryRepo: MemoryRepository
   agentService: AgentService
   llmClient: LlmClient
+  eventRepo: EventRepository
+  agentRunRepo: AgentRunRepository
+  budgetService: BudgetService | null
+  costTracker: CostTracker | null
 }
 
 export class PrivateChannelService {
@@ -94,21 +101,30 @@ export class PrivateChannelService {
       throw new ValidationError('Message content cannot be empty')
     }
 
+    const agent = this.deps.agentService.getAgent(session.agent_id)
+    if (!agent) throw new NotFoundError('Agent', session.agent_id)
+
+    if (this.deps.budgetService) {
+      const budget = await this.deps.budgetService.checkBudget(session.agent_id)
+      if (!budget.allowed) {
+        throw new ValidationError(`Agent budget exhausted: ${budget.reason}`)
+      }
+    }
+
     const humanMsg = await this.deps.channelRepo.createMessage({
       session_id: sessionId,
       author_type: 'HUMAN',
       content: content.trim(),
     })
 
-    const agent = this.deps.agentService.getAgent(session.agent_id)
-    if (!agent) throw new NotFoundError('Agent', session.agent_id)
-
     const messages = await this.buildChatMessages(session, content.trim())
+    const startMs = Date.now()
     const llmResponse = await this.deps.llmClient.chat({
       messages,
       model: agent.model,
       temperature: 0.8,
     })
+    const latencyMs = Date.now() - startMs
 
     const agentReply = await this.deps.channelRepo.createMessage({
       session_id: sessionId,
@@ -116,10 +132,51 @@ export class PrivateChannelService {
       content: llmResponse.content,
     })
 
+    this.recordAuditTrail(session, content.trim(), llmResponse, latencyMs)
+
     return {
       human_message: humanMsg,
       agent_reply: agentReply,
       token_cost: llmResponse.usage.total_tokens,
+    }
+  }
+
+  private recordAuditTrail(
+    session: PrivateSession,
+    inputContent: string,
+    llmResponse: { content: string; usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } },
+    latencyMs: number,
+  ): void {
+    const agentId = session.agent_id
+
+    try {
+      const event = this.deps.eventRepo.create({
+        event_type: 'PrivateChatMessage',
+        payload_json: { session_id: session.id, agent_id: agentId },
+      })
+
+      this.deps.agentRunRepo.create({
+        agent_id: agentId,
+        trigger_event_id: event.id,
+        input_digest: `private_chat|session:${session.id}|len:${inputContent.length}`,
+        output_json: { reply_len: llmResponse.content.length, session_id: session.id },
+        token_cost: llmResponse.usage.total_tokens,
+        latency_ms: latencyMs,
+      })
+    } catch (err) {
+      console.error('[PrivateChannel] AgentRun record failed:', err)
+    }
+
+    if (this.deps.budgetService) {
+      this.deps.budgetService.recordAction(agentId).catch((err) =>
+        console.error('[PrivateChannel] Budget record failed:', err),
+      )
+    }
+
+    if (this.deps.costTracker) {
+      this.deps.costTracker.record(agentId, 'private_chat', llmResponse.usage).catch((err) =>
+        console.error('[PrivateChannel] Cost record failed:', err),
+      )
     }
   }
 

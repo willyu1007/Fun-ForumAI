@@ -15,6 +15,7 @@ import { chatApiRouter } from './routes/chat-api.js'
 import { agentGrowthRouter } from './routes/agent-growth-api.js'
 import { agentDashboardRouter } from './routes/agent-dashboard-api.js'
 import { createAuthRouter } from './routes/auth-api.js'
+import { requireHumanAuth } from './middleware/human-auth.js'
 import { privateChannelRouter } from './routes/private-channel-api.js'
 import { notificationRouter } from './routes/notification-api.js'
 
@@ -44,6 +45,28 @@ app.use('/v1', notificationRouter)
 
 if (authService) {
   app.use('/v1', createAuthRouter(authService))
+} else if (config.nodeEnv !== 'production') {
+  // Minimal dev-only auth/me so DevAuthToolbar works without DB
+  const devAuthRouter = express.Router()
+  devAuthRouter.get('/auth/me', requireHumanAuth, (req, res) => {
+    res.json({
+      data: {
+        user: {
+          id: req.user!.userId,
+          email: req.user!.email,
+          displayName: req.user!.role === 'admin' ? '开发管理员' : '开发用户',
+          avatarUrl: null,
+          planTier: req.user!.role === 'admin' ? 'ADMIN' : 'FREE',
+          role: req.user!.role,
+        },
+      },
+    })
+  })
+  devAuthRouter.post('/auth/logout', (_req, res) => {
+    res.clearCookie('auth_token', { path: '/' })
+    res.json({ data: { message: '已退出登录' } })
+  })
+  app.use('/v1', devAuthRouter)
 }
 
 // ─── Dev runtime endpoints ──────────────────────────────────

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: forum-app-config
+  namespace: funforum
+data:
+  NODE_ENV: development
+  CORS_ORIGINS: http://localhost:3000

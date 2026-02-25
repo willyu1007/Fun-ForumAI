@@ -420,6 +420,11 @@ if (config.db.usePrisma) {
     agentService,
   })
 
+  const { BudgetService } = await import('./services/budget-service.js')
+  const { CostTracker } = await import('./services/cost-tracker.js')
+  const budgetService = new BudgetService(prisma)
+  const costTracker = new CostTracker(prisma)
+
   const { PrivateChannelService } = await import('./services/private-channel-service.js')
   const { PrivateChannelScheduler } = await import('./runtime/private-channel-scheduler.js')
 
@@ -428,6 +433,10 @@ if (config.db.usePrisma) {
     memoryRepo,
     agentService,
     llmClient,
+    eventRepo,
+    agentRunRepo,
+    budgetService,
+    costTracker,
   })
 
   privateChannelScheduler = new PrivateChannelScheduler({

@@ -117,3 +117,26 @@ E2E 测试脚本: `scripts/e2e-private-channel.mjs` — **46/46 全部通过**
 - LLM 消息发送需要 `LLM_API_KEY` 环境变量（无 key 时返回 500，属预期行为）
 - 完整 DB 功能需要 `DB_PERSISTENCE=true` 环境变量
 - 前端 2 个预存 TS 错误（`AgentCreateWizard.tsx`、`StyleControlPanel.tsx`）未修复（不属于本任务范围）
+
+### AgentRun / Budget / Cost 集成验证 (2026-02-25)
+
+| Check | Method | Status |
+|-------|--------|--------|
+| AgentRun 创建 | Code review + unit tests | **pass** — `sendMessage` 创建 `PrivateChatMessage` Event + AgentRun |
+| BudgetService.checkBudget | Code review + unit tests | **pass** — LLM 调用前检查，超限返回 400 |
+| BudgetService.recordAction | Code review + unit tests | **pass** — LLM 调用后扣减 |
+| CostTracker.record | Code review + unit tests | **pass** — `private_chat` action_type 记录 token 消耗 |
+| Container DI | Code review | **pass** — `eventRepo`、`agentRunRepo`、`BudgetService`、`CostTracker` 注入 |
+| 全量单元测试 | `pnpm test` | **pass** — 31 files, 266 tests |
+| Lint | ReadLints | **pass** — 0 errors |
+
+### Staging LLM E2E 验证 (2026-02-25)
+
+| Check | Method | Status |
+|-------|--------|--------|
+| K8s pod 存活 | `kubectl get pods` | **pass** — 2 replicas running |
+| 创建私聊会话 | `POST /v1/agents/:id/chat/sessions` | **pass** — 201, session ACTIVE |
+| 发送消息 | `POST .../messages` | **blocked** — LLM API key 过期 (Aliyun DashScope 401) |
+| 代码链路 | 请求成功到达 LLM API | **pass** — 流程完整，仅 key 过期 |
+
+**结论**：代码层面所有集成已完成。LLM 端到端验证需在 API key 更新后复测。

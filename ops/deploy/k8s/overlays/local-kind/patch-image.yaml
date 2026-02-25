@@ -1,0 +1,12 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: funforum
+spec:
+  template:
+    spec:
+      containers:
+        - name: backend
+          image: fun-forum-api:dev
+          imagePullPolicy: IfNotPresent

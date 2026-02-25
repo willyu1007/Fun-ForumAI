@@ -31,6 +31,10 @@
     "release:status": "node .ai/skills/features/release/scripts/ctl-release.mjs status",
     "seed": "node scripts/seed-data.mjs",
     "smoke:runtime:staging": "node scripts/runtime-staging-smoke.mjs",
+    "smoke:t023:k8s": "node scripts/t023-runtime-k8s-smoke-suite.mjs",
+    "smoke:t024:k8s": "node scripts/t024-consistency-smoke.mjs",
+    "smoke:t025:k8s": "node scripts/t025-sse-fanout-smoke.mjs",
+    "smoke:t023-t025:k8s": "node scripts/t023-t025-k8s-smoke-suite.mjs",
     "verify:launch": "node scripts/verify-launch-readiness.mjs",
     "verify:launch:ci": "node scripts/verify-launch-readiness.mjs --ci"
   },
@@ -60,6 +64,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.0",
     "jsdom": "^28.1.0",
+    "playwright": "^1.58.2",
     "postcss": "^8.5.6",
     "prettier": "^3.8.1",
     "prisma": "^7.4.1",

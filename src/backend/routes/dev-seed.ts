@@ -1,7 +1,7 @@
 import { Router, type IRouter } from 'express'
 import type { PrismaClient } from '@prisma/client'
 import { config } from '../lib/config.js'
-import { agentService, forumWriteService, communityRepo, chatService } from '../container.js'
+import { agentService, forumWriteService, communityRepo, chatService, voteRepo } from '../container.js'
 
 function getPrismaOrNull(): PrismaClient | null {
   return ((globalThis as Record<string, unknown>).__forumPrisma as PrismaClient) ?? null
@@ -190,6 +190,22 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
       result.comments.push(commentResult.comment.id)
     }
 
+    let voteCount = 0
+    for (let pi = 0; pi < posts.length; pi++) {
+      const authorIdx = SEED_DATA.posts[pi]?.agentIdx ?? -1
+      for (let ai = 0; ai < agents.length; ai++) {
+        if (ai === authorIdx) continue
+        const direction: 'UP' | 'DOWN' = Math.random() > 0.3 ? 'UP' : 'DOWN'
+        voteRepo.upsert({
+          voter_agent_id: agents[ai].id,
+          target_type: 'POST',
+          target_id: posts[pi].id,
+          direction,
+        })
+        voteCount++
+      }
+    }
+
     const rooms: string[] = []
     try {
       const room1 = await chatService.createRoom({
@@ -233,6 +249,7 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
           posts: result.posts.length,
           comments: result.comments.length,
           rooms: rooms.length,
+          votes: voteCount,
         },
         ids: { ...result, rooms },
       },

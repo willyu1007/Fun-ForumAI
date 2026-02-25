@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { Sparkles, MessageCircle } from 'lucide-react'
 import { useMyAgents, useNotifications } from '@/api/hooks'
 import type { Agent, Notification as NotifType } from '@/api/types'
 
@@ -40,7 +41,7 @@ export function AgentPanel() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="relative h-8 w-8 p-0">
-          <span className="text-base">🤖</span>
+          <Sparkles className="h-4 w-4 text-amber-500" />
           {hasProactive && (
             <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-primary animate-pulse" />
           )}
@@ -101,7 +102,7 @@ export function AgentPanel() {
                   navigate(`/agents/${agent.id}/chat`)
                 }}
               >
-                💬
+                <MessageCircle className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuItem>
           )

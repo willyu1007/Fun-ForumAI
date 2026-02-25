@@ -165,11 +165,11 @@ tasks:
     updated: 2026-02-25
   - id: T-023
     slug: runtime-queue-and-lock-externalization
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/runtime-queue-and-lock-externalization
-    updated: 2026-02-25
+    dev_docs_path: dev-docs/archive/runtime-queue-and-lock-externalization
+    updated: 2026-02-26
   - id: T-024
     slug: pg-repository-consistency-hardening
     status: planned
@@ -179,8 +179,15 @@ tasks:
     updated: 2026-02-25
   - id: T-025
     slug: sse-cluster-broadcast-foundation
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/sse-cluster-broadcast-foundation
-    updated: 2026-02-25
+    updated: 2026-02-26
+  - id: T-026
+    slug: k8s-local-cloud-overlays-bootstrap
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/k8s-local-cloud-overlays-bootstrap
+    updated: 2026-02-26

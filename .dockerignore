@@ -1,7 +1,9 @@
 node_modules
 dist
 .git
-.ai
+.ai/*
+!.ai/llm-config
+!.ai/llm-config/**
 .codex
 .claude
 .cursor

@@ -1,21 +1,23 @@
+import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
+import { Home, MessageSquare, Compass, Sparkles, ShieldCheck, Hash } from 'lucide-react'
 import { useCommunities } from '@/api/hooks'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 
 const QUICK_LINKS = [
-  { to: '/', label: '广场', icon: '🏠' },
-  { to: '/rooms', label: '聊天室', icon: '💬' },
-  { to: '/communities', label: '发现社区', icon: '🔍' },
+  { to: '/', label: '广场', icon: <Home className="h-4 w-4" /> },
+  { to: '/rooms', label: '聊天室', icon: <MessageSquare className="h-4 w-4" /> },
+  { to: '/communities', label: '发现社区', icon: <Compass className="h-4 w-4" /> },
 ] as const
 
 const MANAGE_LINKS = [
-  { to: '/agents/manage', label: '智能体管理', icon: '🤖' },
-  { to: '/admin', label: '管控台', icon: '🛡️' },
+  { to: '/agents/manage', label: '智能体管理', icon: <Sparkles className="h-4 w-4 text-amber-500" /> },
+  { to: '/admin', label: '管控台', icon: <ShieldCheck className="h-4 w-4" /> },
 ] as const
 
-function SidebarLink({ to, label, icon, active }: { to: string; label: string; icon: string; active: boolean }) {
+function SidebarLink({ to, label, icon, active }: { to: string; label: string; icon: ReactNode; active: boolean }) {
   return (
     <Link
       to={to}
@@ -26,7 +28,7 @@ function SidebarLink({ to, label, icon, active }: { to: string; label: string; i
           : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
       )}
     >
-      <span className="text-base leading-none">{icon}</span>
+      <span className="shrink-0">{icon}</span>
       <span className="truncate">{label}</span>
     </Link>
   )
@@ -55,7 +57,7 @@ export function LeftSidebar() {
                 key={c.id}
                 to={`/c/${c.slug}`}
                 label={c.name}
-                icon="💬"
+                icon={<Hash className="h-4 w-4" />}
                 active={pathname === `/c/${c.slug}`}
               />
             ))}

@@ -44,9 +44,11 @@
     - 代码变更面扩大，但避免了“仓储层已异步、服务层仍同步”的中间不一致状态。
 
 ## Known issues / follow-ups
-- 需在 staging 双实例环境执行一致性 smoke（帖子/评论/房间/消息读写 + 重启后视图一致性）。
-- 需补充性能基线与慢查询分析，必要时在 Prisma schema 中追加索引并验证收益。
+- ~~需在 staging 双实例环境执行一致性 smoke~~ → staging K8s 双实例 smoke 已通过（2026-02-25）。
+- ~~需补充性能基线与慢查询分析~~ → 性能基线已采集（2026-02-25），详见 `04-verification.md`。当前索引覆盖完整，无慢查询。建议在数据量 >10K 后复测分页效率。
 - 全仓 `pnpm typecheck` 当前存在与本任务无关的既有错误（前端与若干 Prisma 模型漂移），本次仅确保改造文件 lint+tests 通过。
+- Phase 2（分页优化：内存分页 → DB cursor）可按需启动。
+- Community/Agent/Event/Vote 仓储仍使用进程内缓存，属后续任务范围。
 
 ## Pitfalls / dead ends (do not repeat)
 - Keep the detailed log in `05-pitfalls.md` (append-only).

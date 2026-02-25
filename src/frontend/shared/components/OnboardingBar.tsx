@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { useNotifications, useMarkNotificationRead } from '@/api/hooks'
+import { useAuth } from '@/shared/hooks/use-auth'
 
 const DISMISSED_KEY = 'forumAI_onboarding_dismissed'
 
 export function OnboardingBar() {
+  const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const { data } = useNotifications()
   const markRead = useMarkNotificationRead()
@@ -33,7 +35,7 @@ export function OnboardingBar() {
     }
   }, [dismissed])
 
-  if (dismissed || !firstPostNotif) return null
+  if (!isAuthenticated || dismissed || !firstPostNotif) return null
 
   const handleChat = () => {
     markRead.mutate(firstPostNotif.id)
@@ -49,7 +51,7 @@ export function OnboardingBar() {
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-primary/5 backdrop-blur-sm">
+    <div className="fixed bottom-12 left-0 right-0 z-40 border-t bg-primary/5 backdrop-blur-sm">
       <div className="mx-auto max-w-3xl flex items-center gap-3 px-4 py-3">
         <span className="text-lg">🎉</span>
         <div className="flex-1 min-w-0">

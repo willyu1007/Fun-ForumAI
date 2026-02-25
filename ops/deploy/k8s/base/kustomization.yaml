@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: funforum
+resources:
+  - namespace.yaml
+  - configmap-app.yaml
+  - secret-app.template.yaml
+  - deployment-backend.yaml
+  - service-backend.yaml
+  - ingress.yaml

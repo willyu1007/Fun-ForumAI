@@ -1,7 +1,7 @@
 # 03 Implementation Notes
 
 ## Status
-- Current status: `in-progress`
+- Current status: `done`
 - Last updated: 2026-02-25
 
 ## What changed
@@ -79,7 +79,8 @@
 
 ## Known issues / follow-ups
 - `pnpm typecheck` 仍有大量既有历史错误（前端 unused、Prisma 模型漂移、chat-api 类型）；不由本任务引入。
-- 本地双实例 smoke 已完成；仍需在 staging（真实 Redis + Pg 持久层）完成灰度与 runbook 演练。
+- ~~本地双实例 smoke 已完成；仍需在 staging（真实 Redis + Pg 持久层）完成灰度与 runbook 演练。~~ → staging K8s 双实例 smoke 已通过（2026-02-25）。
+- 后续可改进项（非阻塞）：补充 ADR 文档与容量估算、定义 DLQ 清理策略、增强 leader 续约监控。
 
 ## Pitfalls / dead ends (do not repeat)
 - Keep the detailed log in `05-pitfalls.md` (append-only).

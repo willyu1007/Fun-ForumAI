@@ -24,12 +24,14 @@ RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
 COPY pnpm-lock.yaml package.json ./
 RUN pnpm install --frozen-lockfile --prod
+RUN npm install -g prisma@7.4.1
 
 COPY prisma ./prisma
 RUN pnpm db:generate
 
 COPY --from=builder /app/dist/frontend ./dist/frontend
 COPY src/backend ./src/backend
+COPY .ai/llm-config ./.ai/llm-config
 
 USER node
 EXPOSE 4000

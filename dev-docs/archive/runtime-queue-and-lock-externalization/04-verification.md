@@ -92,3 +92,23 @@
     - `queueDrained=true` after injection
 - Notes:
   - During run, conversation clock emitted expected LLM 401 logs due dummy API key; does not affect queue/leader correctness validation.
+
+## Kind local cluster smoke (2026-02-25)
+- Environment:
+  - context: `kind-funforum`
+  - namespace: `funforum`
+  - backend replicas: 2
+  - runtime backend: redis/redis
+- Command (leader-only):
+  - `node scripts/runtime-staging-smoke.mjs --discover-nodes-k8s --k8s-context kind-funforum --k8s-namespace funforum --k8s-label-selector app.kubernetes.io/name=backend --dev-auth --sample-duration-ms 30000 --poll-ms 2000`
+  - Result: pass (`dualLeaderSamples=0`, `singleLeaderSamples=15`)
+- Command (injection):
+  - `node scripts/runtime-staging-smoke.mjs --discover-nodes-k8s --k8s-context kind-funforum --k8s-namespace funforum --k8s-label-selector app.kubernetes.io/name=backend --dev-auth --inject-posts --service-auth-secret REPLACE_ME --community-id 6ef7a19f-32a2-4cfc-9ff1-7ad7bb96ee05 --actor-agent-id 21b67e25-0728-446a-9df1-3dc890397128 --event-count 8 --sample-duration-ms 30000 --poll-ms 2000 --wait-drain-ms 90000`
+  - Result: pass (`queueDrained=true`, no dual leader)
+
+## Reusable script run (2026-02-25)
+- `pnpm smoke:t023:k8s`
+  - Result: pass (leader smoke + injection smoke)
+  - Notes:
+    - Auto-discovery of backend pods via `--discover-nodes-k8s`
+    - Auto-resolution of `community_id` and `actor_agent_id` from Postgres

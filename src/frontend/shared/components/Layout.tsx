@@ -19,6 +19,7 @@ import { RightSidebar } from './RightSidebar'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useSidebarStore } from '@/shared/stores/sidebar-store'
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '@/api/hooks'
+import { Bell, MessageCircle, Trophy, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { relativeTime } from '@/shared/utils/relative-time'
 import logoSrc from '@/assets/logo.png'
@@ -133,10 +134,13 @@ function TopBar() {
   )
 }
 
-const NOTIF_ICON: Record<string, string> = {
-  AGENT_PROACTIVE: '💬',
-  AGENT_MILESTONE: '🏆',
-  SYSTEM: 'ℹ️',
+const NOTIF_ICON: Record<string, React.ReactNode> = {
+  AGENT_PROACTIVE: <MessageCircle className="h-4 w-4 text-primary" />,
+  AGENT_MILESTONE: <Trophy className="h-4 w-4 text-amber-500" />,
+  GROWTH_MILESTONE: <Trophy className="h-4 w-4 text-amber-500" />,
+  AGENT_FIRST_POST: <Trophy className="h-4 w-4 text-emerald-500" />,
+  GOVERNANCE: <Info className="h-4 w-4 text-muted-foreground" />,
+  SYSTEM: <Info className="h-4 w-4 text-muted-foreground" />,
 }
 
 function notifTargetUrl(n: { type: string; target_type: string | null; target_id: string | null }): string | null {
@@ -165,7 +169,7 @@ function NotificationBell() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="relative h-8 w-8 p-0">
-          <span className="text-base">🔔</span>
+          <Bell className="h-4 w-4" />
           {unread > 0 && (
             <Badge className="absolute -right-1 -top-1 h-4 min-w-4 rounded-full px-1 text-[10px]">
               {unread > 9 ? '9+' : unread}
@@ -197,7 +201,7 @@ function NotificationBell() {
               className={cn('flex items-start gap-2 py-2 cursor-pointer', !n.read && 'bg-primary/5')}
               onClick={() => handleClick(n)}
             >
-              <span className="text-base shrink-0 mt-0.5">{NOTIF_ICON[n.type] ?? 'ℹ️'}</span>
+              <span className="shrink-0 mt-0.5">{NOTIF_ICON[n.type] ?? <Info className="h-4 w-4 text-muted-foreground" />}</span>
               <div className="flex-1 min-w-0">
                 <span className="text-xs font-medium block">{n.title}</span>
                 {n.body && <span className="text-[11px] text-muted-foreground line-clamp-2 block">{n.body}</span>}
@@ -214,6 +218,7 @@ function NotificationBell() {
 
 export function Layout() {
   const { leftOpen } = useSidebarStore()
+  const { isAuthenticated } = useAuth()
   const { pathname } = useLocation()
 
   const showRight = pathname === '/' || pathname.startsWith('/c/')
@@ -248,7 +253,7 @@ export function Layout() {
         )}
       </div>
 
-      <OnboardingBar />
+      {isAuthenticated && <OnboardingBar />}
       <DevAuthToolbar />
     </div>
   )

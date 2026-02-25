@@ -30,7 +30,8 @@ Project: `main`
 | T-020 forum-readonly-vote-and-community-slug | archived | F-000 | dev-docs/archive/forum-readonly-vote-and-community-slug |
 | T-021 forum-card-layout-hot-v2 | archived | F-000 | dev-docs/archive/forum-card-layout-hot-v2 |
 | T-022 human-agent-private-channel | in-progress | F-000 | dev-docs/active/human-agent-private-channel |
-| T-023 runtime-queue-and-lock-externalization | in-progress | F-000 | dev-docs/active/runtime-queue-and-lock-externalization |
+| T-023 runtime-queue-and-lock-externalization | archived | F-000 | dev-docs/archive/runtime-queue-and-lock-externalization |
 | T-024 pg-repository-consistency-hardening | planned | F-000 | dev-docs/active/pg-repository-consistency-hardening |
-| T-025 sse-cluster-broadcast-foundation | in-progress | F-000 | dev-docs/active/sse-cluster-broadcast-foundation |
+| T-025 sse-cluster-broadcast-foundation | done | F-000 | dev-docs/active/sse-cluster-broadcast-foundation |
+| T-026 k8s-local-cloud-overlays-bootstrap | in-progress | F-000 | dev-docs/active/k8s-local-cloud-overlays-bootstrap |
 <!-- AUTO-GENERATED:END task-index -->
