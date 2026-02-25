@@ -22,6 +22,8 @@
   - Coverage: 本地全局广播、本地房间广播、跨实例全局 fanout、跨实例房间 fanout + 去重
 - `pnpm -s eslint src/backend/container.ts src/backend/lib/config.ts src/backend/routes/control-plane.ts src/backend/routes/sse.ts src/backend/sse/hub.ts src/backend/sse/contracts.ts src/backend/sse/adapters/local-broadcast-adapter.ts src/backend/sse/adapters/redis-pubsub-broadcast-adapter.ts src/backend/sse/__tests__/hub.test.ts`
   - Result: pass
+- `pnpm -s eslint src/frontend/api/use-sse.ts src/frontend/app/sse-context.ts src/frontend/app/sse-provider.tsx src/frontend/features/admin/components/RuntimeDashboard.tsx`
+  - Result: pass
 - `pnpm -s test`
   - Result: pass (31 files, 266 tests)
 

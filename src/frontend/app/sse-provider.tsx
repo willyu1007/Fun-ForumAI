@@ -2,10 +2,10 @@ import { useSseAutoRefresh } from '@/api/use-sse'
 import { SseContext } from './sse-context'
 
 export function SseProvider({ children }: { children: React.ReactNode }) {
-  const { connected } = useSseAutoRefresh()
+  const sseStatus = useSseAutoRefresh()
 
   return (
-    <SseContext.Provider value={{ connected }}>
+    <SseContext.Provider value={sseStatus}>
       {children}
     </SseContext.Provider>
   )

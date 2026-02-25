@@ -20,6 +20,12 @@ interface RuntimeStats {
   }
   sse: {
     connected_clients: number
+    subscribed_rooms: number
+    broadcast_backend: 'local' | 'redis'
+    broadcast_published: number
+    broadcast_received: number
+    broadcast_dropped: number
+    broadcast_last_error: string | null
   }
   event_queue: {
     size: number
@@ -88,7 +94,8 @@ function useDevRuntimeStatus() {
 
 export function RuntimeDashboard() {
   const qc = useQueryClient()
-  const { connected: sseConnected } = useSseStatus()
+  const sseStatus = useSseStatus()
+  const sseConnected = sseStatus.connected
   const { data: adminStats } = useRuntimeStats()
   const { data: devStatus } = useDevRuntimeStatus()
 
@@ -146,7 +153,7 @@ export function RuntimeDashboard() {
           title="SSE 连接"
           value={String(stats?.sse.connected_clients ?? 0)}
           variant={sseConnected ? 'success' : 'muted'}
-          detail={sseConnected ? '已连接' : '未连接'}
+          detail={`客户端状态: ${formatSsePhase(sseStatus.phase)}`}
         />
       </div>
 
@@ -180,6 +187,23 @@ export function RuntimeDashboard() {
           {startMutation.isError && (
             <p className="text-xs text-destructive">{startMutation.error.message}</p>
           )}
+
+          <div className="rounded border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+            <p>
+              SSE backend: {stats?.sse.broadcast_backend ?? '-'} · rooms: {stats?.sse.subscribed_rooms ?? 0} · reconnect attempts: {sseStatus.reconnectAttempts}
+            </p>
+            <p>
+              published: {stats?.sse.broadcast_published ?? 0} · received: {stats?.sse.broadcast_received ?? 0} · dropped: {stats?.sse.broadcast_dropped ?? 0}
+            </p>
+            <p>
+              last event: {sseStatus.lastEventType ?? '-'} · next retry: {sseStatus.nextRetryInMs ? `${sseStatus.nextRetryInMs}ms` : '-'}
+            </p>
+            {(sseStatus.lastError || stats?.sse.broadcast_last_error) && (
+              <p className="text-amber-700">
+                errors: {sseStatus.lastError ?? '-'} / broker: {stats?.sse.broadcast_last_error ?? '-'}
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -293,4 +317,17 @@ function PostResultCard({ result }: { result: PostResult }) {
 function formatTime(ts: number): string {
   if (!ts) return '-'
   return new Date(ts).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
+function formatSsePhase(phase: 'connecting' | 'connected' | 'reconnecting' | 'offline'): string {
+  switch (phase) {
+    case 'connected':
+      return '已连接'
+    case 'reconnecting':
+      return '重连中'
+    case 'offline':
+      return '离线'
+    default:
+      return '连接中'
+  }
 }

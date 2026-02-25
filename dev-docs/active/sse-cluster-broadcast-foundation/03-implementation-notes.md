@@ -24,6 +24,10 @@
 - 新增单测：
   - `src/backend/sse/__tests__/hub.test.ts`
   - 覆盖本地广播、房间订阅、跨实例 fanout、去重（防本实例重复投递）。
+- 完成前端 Phase 3 容错与诊断增强（保持调用兼容）：
+  - `use-sse.ts` 增加指数退避重连（含 jitter）与 online/offline 事件感知
+  - `SseContext` 扩展连接诊断字段（phase/reconnectAttempts/lastError/lastEventType）
+  - Admin Runtime Dashboard 增加 SSE backend 与 fanout 指标展示
 
 ## Files/modules touched (high level)
 - `src/backend/sse/`
@@ -32,6 +36,10 @@
 - `src/backend/container.ts`
 - `src/backend/lib/config.ts`
 - `env/`
+- `src/frontend/api/use-sse.ts`
+- `src/frontend/app/sse-context.ts`
+- `src/frontend/app/sse-provider.tsx`
+- `src/frontend/features/admin/components/RuntimeDashboard.tsx`
 
 ## Decisions & tradeoffs
 - Decision:
@@ -46,11 +54,11 @@
 
 ## Deviations from plan
 - Change:
-  - 本轮未改动前端 `use-sse.ts` 重连策略，仅先完成后端 cluster 广播基础。
+  - 本轮前端未引入新接口，仅扩展上下文诊断字段并增强重连策略。
   - Why:
-    - 先收敛跨实例正确性，再做客户端容错细化可降低联调复杂度。
+    - 需保持现有页面调用兼容，避免扩大改造面。
   - Impact:
-    - 前端兼容性风险低；后续仍需补充客户端侧可观测增强和 staging 演练。
+    - 前端兼容性风险低；仍需补充 staging 双实例实流验证。
 
 ## Known issues / follow-ups
 - 需与 T-023/T-024 对齐灰度顺序，避免并发改造冲突。
