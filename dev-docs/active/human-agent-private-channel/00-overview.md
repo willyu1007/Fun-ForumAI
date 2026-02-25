@@ -11,7 +11,7 @@
 - Phase 6 (Frontend: Agent Panel & Notifications): **done** — AgentPanel + NotificationBell 增强 + OnboardingBar + /me/agents API
 - Phase 7 (End-to-End Verification): **done** — 46/46 E2E tests pass, TS compile clean, lint clean
 - Phase 7+ (AgentRun/Budget/Cost 集成): **done** — sendMessage 审计记录 + 预算检查/扣减 + 成本追踪
-- Remaining: LLM API key 更新后复测端到端消息发送
+- LLM E2E 验证: **pass** — Staging 多轮对话成功，Agent 人格一致，token 消耗正常
 
 ## Goal
 为人类与 Agent 建立私有交互通道，实现三层递进价值：

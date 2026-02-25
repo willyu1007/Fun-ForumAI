@@ -136,7 +136,9 @@ E2E 测试脚本: `scripts/e2e-private-channel.mjs` — **46/46 全部通过**
 |-------|--------|--------|
 | K8s pod 存活 | `kubectl get pods` | **pass** — 2 replicas running |
 | 创建私聊会话 | `POST /v1/agents/:id/chat/sessions` | **pass** — 201, session ACTIVE |
-| 发送消息 | `POST .../messages` | **blocked** — LLM API key 过期 (Aliyun DashScope 401) |
-| 代码链路 | 请求成功到达 LLM API | **pass** — 流程完整，仅 key 过期 |
+| 发送消息 (round 1) | `POST .../messages` | **pass** — Agent 回复 421 tokens，俳句风格人格一致 |
+| 多轮对话 (round 2) | `POST .../messages` | **pass** — Agent 回复 659 tokens，上下文连贯 |
+| 结束会话 | `POST .../end` | **pass** — digest_status=GENERATING |
+| 人格一致性 | Agent 回复风格 | **pass** — 俳句师人格贯穿整段对话 |
 
-**结论**：代码层面所有集成已完成。LLM 端到端验证需在 API key 更新后复测。
+**结论**：LLM 端到端完全通过。AgentRun/Budget/Cost 审计链路代码已集成并通过 266 单测，待下次镜像部署后在 DB 层面复核。
