@@ -1,7 +1,8 @@
 # 00 Overview — future-platform-evolution (T-016)
 
 ## Status
-- State: planned (backlog — 长期演进路线，非立即执行)
+- State: planned
+- 说明: backlog — 长期演进路线，非立即执行
 - 前置: T-015 chat-room-v1 完成后开始逐项推进
 
 ## Goal
@@ -92,15 +93,29 @@
 **依赖**: T-015 完成
 **改动范围**: Prisma schema、PersistenceSync 扩展、InMemory repos 的 hydration
 
-### E-09 WebSocket 升级
+### E-09 WebSocket 升级（条件触发）
 **优先级**: Low
 **来源**: 架构演进
-**描述**: 如果 SSE + REST POST 的延迟或连接管理在规模化后不足，升级到 WebSocket——
+**描述**: 当 SSE 无法满足双向高频实时需求时，升级到 WebSocket——
 - 使用 `ws` 库
 - SseHub 抽象为 RealtimeHub（支持 SSE 和 WS 两种后端）
 - 前端 use-sse.ts 抽象为 use-realtime.ts
-**依赖**: 实际性能瓶颈出现时
+**触发条件（任一满足）**:
+- 明确需要客户端高频上行实时事件（presence、ack、typing、实时协作写入）
+- SSE 在业务峰值下出现明显连接/推送瓶颈，且经调优后仍无法满足目标
+**前置依赖**:
+- T-023 runtime-queue-and-lock-externalization（运行时状态外置）
+- T-024 pg-repository-consistency-hardening（多实例数据一致性）
+- T-025 sse-cluster-broadcast-foundation（SSE 跨实例广播）
 **改动范围**: SseHub → RealtimeHub、use-sse.ts → use-realtime.ts
+**本轮决议（2026-02-25）**: 暂不直接升级 WebSocket，先完成多实例一致性基础改造。
+
+### E-12 SSE 多实例广播增强
+**优先级**: High
+**来源**: 2026-02-25 架构评审
+**描述**: 保持 SSE 协议不变，引入跨实例广播通道（Redis Pub/Sub 或等价消息层），保证多副本部署下事件一致推送。
+**依赖**: T-023（运行时状态外置）建议先行；可与 T-024 并行
+**改动范围**: SseHub、事件广播链路、部署配置（消息中间件）
 
 ### E-10 1:1 私密聊天
 **优先级**: Low
@@ -120,3 +135,23 @@
 - 本任务包不直接产出代码——它是规划仓库
 - 每个演进项在实施前需拆分为独立任务（含完整 task bundle）
 - 优先级和顺序可根据产品反馈调整
+
+## 执行顺序建议（2026-02-25）
+
+### Wave 1（先行，串行）
+1. **T-023 runtime-queue-and-lock-externalization**
+   - 目标: 先解决多实例下事件消费与调度单活一致性
+   - 出口门槛: 双实例无重复消费、定时任务单活可观测、具备快速回退
+
+### Wave 2（并行）
+2. **T-024 pg-repository-consistency-hardening**
+   - 目标: 消除 Pg 仓储内存主读导致的实例间数据分叉
+   - 与 T-025 关系: 可并行，但共享 staging 验证窗口
+
+3. **T-025 sse-cluster-broadcast-foundation**
+   - 目标: 保持 SSE 协议不变，补齐跨实例广播能力
+   - 与 T-024 关系: 可并行，但建议在 T-023 验证稳定后启动
+
+### Wave 3（条件触发）
+4. **E-09 WebSocket 升级（条件触发）**
+   - 触发方式: 以 T-025 输出的指标门槛（双向实时需求或 SSE 瓶颈）作为 go/no-go 决策依据

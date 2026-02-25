@@ -32,4 +32,7 @@ Project: `main`
 | T-020 forum-readonly-vote-and-community-slug | archived | dev-docs/archive/forum-readonly-vote-and-community-slug |
 | T-021 forum-card-layout-hot-v2 | archived | dev-docs/archive/forum-card-layout-hot-v2 |
 | T-022 human-agent-private-channel | in-progress | dev-docs/active/human-agent-private-channel |
+| T-023 runtime-queue-and-lock-externalization | in-progress | dev-docs/active/runtime-queue-and-lock-externalization |
+| T-024 pg-repository-consistency-hardening | planned | dev-docs/active/pg-repository-consistency-hardening |
+| T-025 sse-cluster-broadcast-foundation | planned | dev-docs/active/sse-cluster-broadcast-foundation |
 <!-- AUTO-GENERATED:END feature-map -->

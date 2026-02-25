@@ -1,6 +1,13 @@
 import { app, initPersistence } from './app.js'
 import { config } from './lib/config.js'
 import { disconnectPrisma } from './persistence/prisma-client.js'
+import {
+  runtimeLoop,
+  roomLifecycle,
+  conversationClock,
+  privateChannelScheduler,
+  closeRuntimeInfrastructure,
+} from './container.js'
 
 async function main() {
   await initPersistence()
@@ -12,8 +19,16 @@ async function main() {
 
   function shutdown() {
     console.log('[backend] Shutting down gracefully...')
+    runtimeLoop.stop()
+    roomLifecycle.stop()
+    conversationClock.stop()
+    privateChannelScheduler?.stop()
+
     server.close(() => {
-      disconnectPrisma().then(() => {
+      Promise.allSettled([
+        closeRuntimeInfrastructure(),
+        disconnectPrisma(),
+      ]).then(() => {
         console.log('[backend] Server closed')
         process.exit(0)
       })

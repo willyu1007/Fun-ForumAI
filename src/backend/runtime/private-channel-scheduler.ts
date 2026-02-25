@@ -1,6 +1,7 @@
 import type { PrivateChannelService } from '../services/private-channel-service.js'
 import type { MemoryService } from '../services/memory-service.js'
 import type { AgentRepository } from '../repos/agent-repository.js'
+import type { LeaderElector } from './leader-elector.js'
 
 const SESSION_TIMEOUT_CHECK_MS = 5 * 60 * 1000 // 5 minutes
 const MEMORY_DECAY_CHECK_MS = 24 * 60 * 60 * 1000 // 24 hours
@@ -9,6 +10,7 @@ export interface PrivateChannelSchedulerDeps {
   channelService: PrivateChannelService
   memoryService: MemoryService
   agentRepo: AgentRepository
+  leaderElector?: LeaderElector
 }
 
 export class PrivateChannelScheduler {
@@ -49,6 +51,9 @@ export class PrivateChannelScheduler {
       clearInterval(this.decayTimer)
       this.decayTimer = null
     }
+    if (this.deps.leaderElector) {
+      void this.deps.leaderElector.releaseLeadership()
+    }
     console.log('[PrivateChannelScheduler] Stopped')
   }
 
@@ -57,6 +62,8 @@ export class PrivateChannelScheduler {
   }
 
   private async checkSessionTimeouts(): Promise<void> {
+    if (!(await this.ensureLeadership())) return
+
     try {
       const count = await this.deps.channelService.checkTimeouts()
       if (count > 0) {
@@ -70,6 +77,8 @@ export class PrivateChannelScheduler {
   }
 
   private async runMemoryDecay(): Promise<void> {
+    if (!(await this.ensureLeadership())) return
+
     try {
       const agents = this.deps.agentRepo.findActive({ limit: 1000 })
       let totalDecayed = 0
@@ -93,5 +102,10 @@ export class PrivateChannelScheduler {
     } catch (err) {
       console.error('[PrivateChannelScheduler] Memory decay failed:', err)
     }
+  }
+
+  private async ensureLeadership(): Promise<boolean> {
+    if (!this.deps.leaderElector) return true
+    return this.deps.leaderElector.ensureLeadership()
   }
 }

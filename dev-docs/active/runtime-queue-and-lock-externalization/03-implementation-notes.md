@@ -1,0 +1,60 @@
+# 03 Implementation Notes
+
+## Status
+- Current status: `in-progress`
+- Last updated: 2026-02-25
+
+## What changed
+- 已落地 Runtime Queue/Leader 抽象与实现：
+  - `RuntimeEventQueue` + `InMemoryRuntimeEventQueue` + `RedisStreamRuntimeEventQueue`
+  - `LeaderElector` + `InMemoryLeaderElector` + `RedisLeaderElector`
+- Runtime 主链路接入完成：
+  - `RuntimeLoop` 改为 handle-based ack/retry 语义，并支持 leader gating
+  - `EventBridge` 改为 async enqueue
+  - `PrivateChannelScheduler` / `RoomLifecycleManager` / `ConversationClock` 增加 leader gating
+- `container.ts` 完成 shared/in-memory 双模式注入：
+  - `RUNTIME_QUEUE_BACKEND` / `RUNTIME_LEADER_BACKEND` feature flag
+  - Redis 连接失败自动回退 in-memory
+  - 各 scheduler 使用独立 leader key（`leader:<scope>`）
+- 控制面可观测增强：
+  - `dev/runtime/status` 与 `admin/runtime/stats` 增加 `is_leader`、backend 信息
+- 运行生命周期补齐：
+  - `server.ts` 关停时停止 runtime/scheduler，并执行 runtime infra close/release
+
+## Files/modules touched (high level)
+- `src/backend/runtime/`
+- `src/backend/container.ts`
+- `src/backend/server.ts`
+- `src/backend/lib/config.ts`
+- `src/backend/routes/control-plane.ts`
+- `src/backend/app.ts`
+- `env/`
+- `package.json`
+- `pnpm-lock.yaml`
+
+## Decisions & tradeoffs
+- Decision:
+  - 先做状态外置与单活保障，再推进传输层升级评估。
+  - 采用 Redis Streams + Redis lease（保持 at-least-once + 业务幂等）。
+  - leader 采用按组件分 key（runtime-loop / room-lifecycle / conversation-clock / private-channel）。
+  - Rationale:
+    - 当前主要风险在执行一致性，不在协议本身。
+    - 分组件 key 可避免单模块停止时误释放全局锁，降低耦合。
+  - Alternatives considered:
+    - 直接升级 WebSocket（被拒绝，风险收益比不优）。
+    - 单一全局 leader key（放弃，stop/release 生命周期耦合更高）。
+
+## Deviations from plan
+- Change:
+  - 在 discovery 文档未补 ADR 前先完成了可运行代码路径（Redis + fallback）。
+  - Why:
+    - 用户要求直接开始实施 T-023。
+  - Impact:
+    - 当前已具备执行基础；后续需补 ADR 与容量估算文档闭环。
+
+## Known issues / follow-ups
+- `pnpm typecheck` 仍有大量既有历史错误（前端 unused、Prisma 模型漂移、chat-api 类型）；不由本任务引入。
+- 仍需完成双实例 smoke（重复消费/单活）与 staging 灰度 runbook 验证。
+
+## Pitfalls / dead ends (do not repeat)
+- Keep the detailed log in `05-pitfalls.md` (append-only).

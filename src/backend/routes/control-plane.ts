@@ -1,6 +1,7 @@
 import { Router, type IRouter } from 'express'
 import { requireHumanAuth, requireAdmin } from '../middleware/human-auth.js'
 import { agentService, governanceAdapter, runtimeLoop, llmClient, eventQueue, postScheduler, sseHub } from '../container.js'
+import { config } from '../lib/config.js'
 import { validate } from '../validation/validate.js'
 import {
   createAgentSchema,
@@ -60,21 +61,26 @@ controlPlaneRouter.get('/admin/moderation/queue', requireHumanAuth, requireAdmin
   res.status(501).json({ error: { code: 'NOT_IMPLEMENTED', message: 'GET /v1/admin/moderation/queue not yet implemented' } })
 })
 
-controlPlaneRouter.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, (_req, res) => {
+controlPlaneRouter.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, async (_req, res) => {
+  const queueSize = await runtimeLoop.getQueueSize()
+  const eventQueueSize = await eventQueue.size()
   res.json({
     data: {
       runtime: {
         running: runtimeLoop.isRunning,
         processing: runtimeLoop.isProcessing,
-        queue_size: runtimeLoop.queueSize,
+        queue_size: queueSize,
+        is_leader: runtimeLoop.isLeader,
         llm_configured: llmClient.isConfigured,
+        queue_backend: config.runtime.queueBackend,
+        leader_backend: config.runtime.leaderBackend,
       },
       scheduler: postScheduler.stats,
       sse: {
         connected_clients: sseHub.clientCount,
       },
       event_queue: {
-        size: eventQueue.size(),
+        size: eventQueueSize,
       },
     },
   })

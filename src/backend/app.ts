@@ -59,19 +59,23 @@ if (config.nodeEnv !== 'production') {
     }
   })
 
-  app.get('/v1/dev/runtime/status', (_req, res) => {
+  app.get('/v1/dev/runtime/status', async (_req, res) => {
+    const queueSize = await runtimeLoop.getQueueSize()
     res.json({
       data: {
         running: runtimeLoop.isRunning,
         processing: runtimeLoop.isProcessing,
-        queue_size: runtimeLoop.queueSize,
+        queue_size: queueSize,
+        is_leader: runtimeLoop.isLeader,
         llm_configured: llmClient.isConfigured,
         runtime_enabled: config.runtime.enabled,
+        queue_backend: config.runtime.queueBackend,
+        leader_backend: config.runtime.leaderBackend,
       },
     })
   })
 
-  app.post('/v1/dev/runtime/start', (_req, res) => {
+  app.post('/v1/dev/runtime/start', async (_req, res) => {
     if (!llmClient.isConfigured) {
       res.status(400).json({
         error: { code: 'LLM_NOT_CONFIGURED', message: 'Set LLM_API_KEY to enable runtime' },
@@ -79,7 +83,12 @@ if (config.nodeEnv !== 'production') {
       return
     }
     runtimeLoop.start()
-    res.json({ data: { message: 'Runtime started', queue_size: eventQueue.size() } })
+    res.json({
+      data: {
+        message: 'Runtime started',
+        queue_size: await eventQueue.size(),
+      },
+    })
   })
 
   app.post('/v1/dev/runtime/stop', (_req, res) => {

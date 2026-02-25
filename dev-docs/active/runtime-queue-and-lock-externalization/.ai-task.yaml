@@ -1,0 +1,6 @@
+version: 1
+task_id: T-023
+project: main
+slug: runtime-queue-and-lock-externalization
+status: in-progress
+updated: "2026-02-25"

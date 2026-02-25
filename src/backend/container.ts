@@ -25,9 +25,9 @@ import { ModerationService } from './moderation/moderation-service.js'
 import { DefaultRuleFilter } from './moderation/rule-filter.js'
 import { KeywordRiskClassifier } from './moderation/risk-classifier.js'
 import { DefaultDecisionEngine } from './moderation/decision-engine.js'
+import { Redis } from 'ioredis'
 
 import {
-  InMemoryEventQueue,
   EventAllocator,
   InMemoryAdmissionGate,
   DefaultQuotaCalculator,
@@ -48,6 +48,16 @@ import { AgentExecutor } from './runtime/agent-executor.js'
 import { RuntimeLoop } from './runtime/runtime-loop.js'
 import { EventBridge } from './runtime/event-bridge.js'
 import { PostScheduler } from './runtime/post-scheduler.js'
+import {
+  InMemoryRuntimeEventQueue,
+  RedisStreamRuntimeEventQueue,
+  type RuntimeEventQueue,
+} from './runtime/event-queue.js'
+import {
+  InMemoryLeaderElector,
+  RedisLeaderElector,
+  type LeaderElector,
+} from './runtime/leader-elector.js'
 
 import { ChatService } from './services/chat-service.js'
 import { RoomLifecycleManager } from './services/room-lifecycle.js'
@@ -139,6 +149,65 @@ const moderator = new ModerationService({
   decisionEngine: new DefaultDecisionEngine(),
 })
 
+// ─── Runtime Infra (Queue + Leader election) ───────────────
+
+let runtimeRedis: Redis | null = null
+
+const needsRuntimeRedis = config.runtime.queueBackend === 'redis' || config.runtime.leaderBackend === 'redis'
+if (needsRuntimeRedis) {
+  if (!config.runtime.redisUrl) {
+    console.warn('[RuntimeInfra] Redis backend requested but RUNTIME_REDIS_URL/REDIS_URL is empty. Falling back to in-memory runtime infra.')
+  } else {
+    const redis = new Redis(config.runtime.redisUrl, {
+      lazyConnect: true,
+      connectTimeout: config.runtime.redisConnectTimeoutMs,
+      maxRetriesPerRequest: 1,
+    })
+    try {
+      await redis.connect()
+      await redis.ping()
+      runtimeRedis = redis
+      console.log('[RuntimeInfra] Connected to Redis runtime backend')
+    } catch (err) {
+      console.warn('[RuntimeInfra] Failed to connect Redis runtime backend, fallback to in-memory:', err)
+      await redis.quit().catch(() => undefined)
+      runtimeRedis = null
+    }
+  }
+}
+
+function runtimeKey(suffix: string): string {
+  return `${config.runtime.redisPrefix}:${suffix}`
+}
+
+function createLeaderElector(scope: string): LeaderElector {
+  if (config.runtime.leaderBackend === 'redis' && runtimeRedis) {
+    return new RedisLeaderElector(runtimeRedis, {
+      key: runtimeKey(`leader:${scope}`),
+      ttlMs: config.runtime.leaderTtlMs,
+    })
+  }
+  return new InMemoryLeaderElector()
+}
+
+export const eventQueue: RuntimeEventQueue =
+  config.runtime.queueBackend === 'redis' && runtimeRedis
+    ? new RedisStreamRuntimeEventQueue(runtimeRedis, {
+        streamKey: runtimeKey('queue:events'),
+        deadLetterStreamKey: runtimeKey('queue:events:dlq'),
+        consumerGroup: 'runtime-loop',
+        consumerName: `${process.pid}-${Math.random().toString(36).slice(2, 8)}`,
+        visibilityTimeoutMs: config.runtime.queueVisibilityTimeoutMs,
+        maxRetries: config.runtime.queueMaxRetries,
+        pollTimeoutMs: config.runtime.queuePollTimeoutMs,
+      })
+    : new InMemoryRuntimeEventQueue()
+
+const runtimeLoopLeaderElector = createLeaderElector('runtime-loop')
+const roomLifecycleLeaderElector = createLeaderElector('room-lifecycle')
+const conversationClockLeaderElector = createLeaderElector('conversation-clock')
+const privateChannelLeaderElector = createLeaderElector('private-channel')
+
 // ─── Core Services ──────────────────────────────────────────
 
 export const forumReadService = new ForumReadService({
@@ -172,7 +241,7 @@ export const chatService = new ChatService({
   sseHub,
 })
 
-export const roomLifecycle = new RoomLifecycleManager(roomRepo, sseHub)
+export const roomLifecycle = new RoomLifecycleManager(roomRepo, sseHub, roomLifecycleLeaderElector)
 
 export const authService = userRepo ? new AuthService(userRepo) : null
 
@@ -183,8 +252,6 @@ export const governanceAdapter = new GovernanceAdapter({
 })
 
 // ─── Allocator Pipeline ─────────────────────────────────────
-
-export const eventQueue = new InMemoryEventQueue()
 
 const allocatorAgentRepo: AllocatorAgentRepo = {
   getCandidates(communityId: string): AgentCandidate[] {
@@ -243,6 +310,7 @@ export const conversationClock = new ConversationClock({
   llmClient,
   promptEngine,
   sseHub,
+  leaderElector: conversationClockLeaderElector,
 })
 
 chatService.setJoinHook((roomId, agentId, tick) => {
@@ -317,6 +385,7 @@ if (config.db.usePrisma) {
     channelService,
     memoryService,
     agentRepo,
+    leaderElector: privateChannelLeaderElector,
   })
 
   chatService.setGrowthEngine(growthEngine)
@@ -373,6 +442,7 @@ export const runtimeLoop = new RuntimeLoop(
     quotaCalc,
     executor: agentExecutor,
     postScheduler,
+    leaderElector: runtimeLoopLeaderElector,
   },
   {
     intervalMs: config.runtime.intervalMs,
@@ -406,4 +476,17 @@ export async function hydrateRepositories(): Promise<void> {
   console.log('[Container] Hydrating Pg repositories from database...')
   await Promise.all(_hydratables.map(r => r.hydrate()))
   console.log(`[Container] ${_hydratables.length} repositories hydrated`)
+}
+
+export async function closeRuntimeInfrastructure(): Promise<void> {
+  const electors = [runtimeLoopLeaderElector, roomLifecycleLeaderElector, conversationClockLeaderElector, privateChannelLeaderElector]
+  const uniqueElectors = Array.from(new Set(electors))
+  await Promise.allSettled(uniqueElectors.map((elector) => elector.releaseLeadership()))
+
+  await eventQueue.close()
+
+  if (runtimeRedis) {
+    await runtimeRedis.quit()
+    runtimeRedis = null
+  }
 }

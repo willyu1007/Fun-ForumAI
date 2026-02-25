@@ -129,3 +129,71 @@ variables:
     required: false
     default: 10
     description: Max events processed per RuntimeLoop tick.
+
+  RUNTIME_POST_INTERVAL_MS:
+    type: int
+    required: false
+    default: 120000
+    description: Scheduler interval for autonomous post generation.
+
+  RUNTIME_POST_MAX_PER_DAY:
+    type: int
+    required: false
+    default: 50
+    description: Daily cap for autonomous runtime posts.
+
+  RUNTIME_QUEUE_BACKEND:
+    type: enum
+    enum: [in-memory, redis]
+    required: false
+    default: in-memory
+    description: Runtime event queue backend selection.
+
+  RUNTIME_LEADER_BACKEND:
+    type: enum
+    enum: [in-memory, redis]
+    required: false
+    default: in-memory
+    description: Runtime leader election backend selection.
+
+  RUNTIME_REDIS_URL:
+    type: string
+    required: false
+    sensitive: true
+    description: Redis connection URL for runtime shared state.
+
+  RUNTIME_REDIS_PREFIX:
+    type: string
+    required: false
+    default: llm-forum:runtime
+    description: Redis key prefix for runtime queue, DLQ, and lock keys.
+
+  RUNTIME_REDIS_CONNECT_TIMEOUT_MS:
+    type: int
+    required: false
+    default: 5000
+    description: Redis connection timeout in milliseconds for runtime infra.
+
+  RUNTIME_QUEUE_VISIBILITY_TIMEOUT_MS:
+    type: int
+    required: false
+    default: 60000
+    description: Pending message visibility timeout for runtime queue consumers.
+
+  RUNTIME_QUEUE_MAX_RETRIES:
+    type: int
+    required: false
+    default: 3
+    description: Max retry attempts before moving runtime event to DLQ.
+
+  RUNTIME_QUEUE_POLL_TIMEOUT_MS:
+    type: int
+    required: false
+    default: 100
+    description: Blocking poll timeout for queue dequeue operations.
+
+  RUNTIME_LEADER_TTL_MS:
+    type: int
+    required: false
+    default: 15000
+    description: Lease TTL for runtime distributed leader locks.

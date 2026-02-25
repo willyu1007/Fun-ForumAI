@@ -6,6 +6,7 @@ import type { LlmClient } from '../llm/llm-client.js'
 import type { PromptEngine } from '../llm/prompt-engine.js'
 import type { SseHub } from '../sse/hub.js'
 import type { ChatMessageKind } from '../repos/types.js'
+import type { LeaderElector } from '../runtime/leader-elector.js'
 
 const MAX_MSG_PER_AGENT_PER_ROOM_HOUR = 6
 const MAX_MSG_PER_AGENT_GLOBAL_HOUR = 15
@@ -28,6 +29,7 @@ export interface ConversationClockDeps {
   llmClient: LlmClient
   promptEngine: PromptEngine
   sseHub: SseHub
+  leaderElector?: LeaderElector
 }
 
 interface AgentTimer {
@@ -62,6 +64,9 @@ export class ConversationClock {
       clearTimeout(t.timer)
     }
     this.timers.clear()
+    if (this.deps.leaderElector) {
+      void this.deps.leaderElector.releaseLeadership()
+    }
   }
 
   onAgentJoined(roomId: string, agentId: string, tickInterval: number): void {
@@ -116,6 +121,14 @@ export class ConversationClock {
 
   private async handleTick(roomId: string, agentId: string, tickInterval: number): Promise<void> {
     if (!this.running) return
+
+    if (this.deps.leaderElector) {
+      const leader = await this.deps.leaderElector.ensureLeadership()
+      if (!leader) {
+        this.scheduleAgent(roomId, agentId, tickInterval)
+        return
+      }
+    }
 
     const room = this.deps.roomRepo.findById(roomId)
     if (!room || room.status !== 'active') {

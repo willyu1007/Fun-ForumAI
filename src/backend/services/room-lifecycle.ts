@@ -1,5 +1,6 @@
 import type { RoomRepository } from '../repos/room-repository.js'
 import type { SseHub } from '../sse/hub.js'
+import type { LeaderElector } from '../runtime/leader-elector.js'
 
 const COOLING_THRESHOLD_MS = 30 * 60 * 1000
 const ARCHIVE_THRESHOLD_MS = 4 * 60 * 60 * 1000
@@ -11,11 +12,14 @@ export class RoomLifecycleManager {
   constructor(
     private readonly roomRepo: RoomRepository,
     private readonly sseHub: SseHub,
+    private readonly leaderElector?: LeaderElector,
   ) {}
 
   start(): void {
     if (this.timer) return
-    this.timer = setInterval(() => this.tick(), TICK_INTERVAL_MS)
+    this.timer = setInterval(() => {
+      void this.tick()
+    }, TICK_INTERVAL_MS)
     console.log('[RoomLifecycle] Started (60s interval)')
   }
 
@@ -24,9 +28,17 @@ export class RoomLifecycleManager {
       clearInterval(this.timer)
       this.timer = null
     }
+    if (this.leaderElector) {
+      void this.leaderElector.releaseLeadership()
+    }
   }
 
-  tick(): void {
+  async tick(): Promise<void> {
+    if (this.leaderElector) {
+      const leader = await this.leaderElector.ensureLeadership()
+      if (!leader) return
+    }
+
     const now = Date.now()
 
     const activeRooms = this.roomRepo.list({ limit: 200, status: 'active' })

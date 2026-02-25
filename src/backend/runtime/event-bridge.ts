@@ -1,6 +1,6 @@
-import type { EventQueue } from '../allocator/event-queue.js'
 import type { EventPayload, DomainEventType } from '../allocator/types.js'
 import type { DomainEvent } from '../repos/types.js'
+import type { RuntimeEventQueue } from './event-queue.js'
 
 /**
  * Maps DomainEvent (from ForumWriteService) event types
@@ -17,7 +17,7 @@ const EVENT_TYPE_MAP: Record<string, DomainEventType> = {
  * EventPayload format and enqueues them for the allocator.
  */
 export class EventBridge {
-  constructor(private readonly queue: EventQueue) {}
+  constructor(private readonly queue: RuntimeEventQueue) {}
 
   /**
    * Convert a DomainEvent + payload to EventPayload and enqueue it.
@@ -41,7 +41,13 @@ export class EventBridge {
       created_at: event.created_at.toISOString(),
     }
 
-    this.queue.enqueue(eventPayload)
-    console.log(`[EventBridge] Enqueued ${eventType} (${event.id}), queue size: ${this.queue.size()}`)
+    void this.queue.enqueue(eventPayload)
+      .then(async () => {
+        const size = await this.queue.size()
+        console.log(`[EventBridge] Enqueued ${eventType} (${event.id}), queue size: ${size}`)
+      })
+      .catch((err) => {
+        console.error(`[EventBridge] Failed to enqueue event ${event.id}:`, err)
+      })
   }
 }

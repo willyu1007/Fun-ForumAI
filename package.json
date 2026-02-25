@@ -85,6 +85,7 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "helmet": "^8.1.0",
+    "ioredis": "^5.8.1",
     "jsonwebtoken": "^9.0.3",
     "ky": "^1.14.3",
     "lucide-react": "^0.575.0",

@@ -1,10 +1,11 @@
-import type { EventQueue } from '../allocator/event-queue.js'
 import type { EventAllocator } from '../allocator/allocator.js'
 import type { DegradationMonitor } from '../allocator/types.js'
 import type { DefaultQuotaCalculator } from '../allocator/quota-calculator.js'
 import type { AgentExecutor } from './agent-executor.js'
 import type { PostScheduler } from './post-scheduler.js'
 import type { RuntimeTickResult, AgentExecutionResult } from './types.js'
+import type { LeaderElector } from './leader-elector.js'
+import type { RuntimeEventQueue } from './event-queue.js'
 
 export interface RuntimeLoopConfig {
   intervalMs: number
@@ -12,12 +13,13 @@ export interface RuntimeLoopConfig {
 }
 
 export interface RuntimeLoopDeps {
-  queue: EventQueue
+  queue: RuntimeEventQueue
   allocator: EventAllocator
   degradation: DegradationMonitor
   quotaCalc: DefaultQuotaCalculator
   executor: AgentExecutor
   postScheduler?: PostScheduler
+  leaderElector?: LeaderElector
 }
 
 /**
@@ -30,6 +32,7 @@ export class RuntimeLoop {
   private timer: ReturnType<typeof setInterval> | null = null
   private running = false
   private processing = false
+  private lastKnownQueueSize = 0
 
   constructor(
     private readonly deps: RuntimeLoopDeps,
@@ -52,6 +55,9 @@ export class RuntimeLoop {
       clearInterval(this.timer)
       this.timer = null
     }
+    if (this.deps.leaderElector) {
+      void this.deps.leaderElector.releaseLeadership()
+    }
     console.log('[RuntimeLoop] Stopped')
   }
 
@@ -64,12 +70,28 @@ export class RuntimeLoop {
   }
 
   get queueSize(): number {
-    return this.deps.queue.size()
+    return this.lastKnownQueueSize
+  }
+
+  get isLeader(): boolean {
+    return this.deps.leaderElector?.isLeader ?? true
+  }
+
+  async getQueueSize(): Promise<number> {
+    this.lastKnownQueueSize = await this.deps.queue.size()
+    return this.lastKnownQueueSize
   }
 
   async tick(): Promise<RuntimeTickResult> {
     if (this.processing) {
       return emptyResult()
+    }
+
+    if (this.deps.leaderElector) {
+      const leader = await this.deps.leaderElector.ensureLeadership()
+      if (!leader) {
+        return emptyResult()
+      }
     }
 
     this.processing = true
@@ -81,27 +103,39 @@ export class RuntimeLoop {
       const { queue, allocator, quotaCalc, executor } = this.deps
 
       for (let i = 0; i < this.cfg.batchSize; i++) {
-        this.updateLag()
+        await this.updateLag()
 
-        const event = queue.dequeue()
-        if (!event) break
+        const handle = await queue.dequeue()
+        if (!handle) break
+        const event = handle.event
 
         processedEvents++
-        const allocationResult = allocator.allocate(event)
+        try {
+          const allocationResult = allocator.allocate(event)
 
-        if (allocationResult.agents.length === 0) continue
+          if (allocationResult.agents.length === 0) {
+            await handle.ack()
+            continue
+          }
 
-        totalAllocated += allocationResult.agents.length
+          totalAllocated += allocationResult.agents.length
 
-        if (event.post_id) {
-          quotaCalc.recordThreadAllocation(event.post_id, allocationResult.agents.length)
+          if (event.post_id) {
+            quotaCalc.recordThreadAllocation(event.post_id, allocationResult.agents.length)
+          }
+
+          const results = await executor.execute(event, allocationResult)
+          executions.push(...results)
+          await handle.ack()
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err)
+          console.error(`[RuntimeLoop] Failed to process event ${event.event_id}: ${message}`)
+          await handle.retry(message)
         }
-
-        const results = await executor.execute(event, allocationResult)
-        executions.push(...results)
       }
 
-      this.updateLag()
+      await this.updateLag()
+      this.lastKnownQueueSize = await queue.size()
 
       // Autonomous posting: check if PostScheduler should create a new post
       let scheduledPost: RuntimeTickResult['scheduled_post']
@@ -144,8 +178,8 @@ export class RuntimeLoop {
     }
   }
 
-  private updateLag(): void {
-    const oldest = this.deps.queue.oldestTimestampMs()
+  private async updateLag(): Promise<void> {
+    const oldest = await this.deps.queue.oldestTimestampMs()
     if (oldest === null) {
       this.deps.degradation.reportLag(0)
       return
