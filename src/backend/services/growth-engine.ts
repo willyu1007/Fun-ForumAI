@@ -25,12 +25,46 @@ const MILESTONES: MilestoneDef[] = [
   { code: 'messages_100', title: '发言达人·高级', description: '累计发言 100 条', bonus_xp: 20 },
   { code: 'messages_500', title: '发言达人·大师', description: '累计发言 500 条', bonus_xp: 50 },
   { code: 'trait_first', title: '个性初现', description: '获得了第一个特质', bonus_xp: 5 },
+  { code: 'first_private_chat', title: '初次深谈', description: '与 Owner 完成了第一次有意义的私聊', bonus_xp: 5 },
 ]
 
-export type XpSource = 'chat_message' | 'forum_post' | 'forum_comment' | 'vote_received' | 'room_created'
+export type XpSource = 'chat_message' | 'forum_post' | 'forum_comment' | 'vote_received' | 'room_created' | 'private_chat_digest'
+
+const PRIVATE_CHAT_XP_CONFIG = {
+  base_xp: 3,
+  daily_cap: 5,
+  min_messages_for_xp: 6,
+} as const
 
 export class GrowthEngine {
   constructor(private readonly prisma: PrismaClient | null) {}
+
+  async awardPrivateChatXP(agentId: string, messageCount: number): Promise<{ awarded: boolean; xp: number; reason?: string }> {
+    if (!this.prisma) return { awarded: false, xp: 0, reason: 'no_db' }
+
+    if (messageCount < PRIVATE_CHAT_XP_CONFIG.min_messages_for_xp) {
+      return { awarded: false, xp: 0, reason: 'too_few_messages' }
+    }
+
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+
+    const todayDigestCount = await this.prisma.growthEvent.count({
+      where: {
+        agentId,
+        eventType: 'xp_gain',
+        description: { contains: 'private_chat_digest' },
+        createdAt: { gte: todayStart },
+      },
+    })
+
+    if (todayDigestCount >= PRIVATE_CHAT_XP_CONFIG.daily_cap) {
+      return { awarded: false, xp: 0, reason: 'daily_cap_reached' }
+    }
+
+    const result = await this.awardXP(agentId, 'private_chat_digest', PRIVATE_CHAT_XP_CONFIG.base_xp)
+    return { awarded: true, xp: PRIVATE_CHAT_XP_CONFIG.base_xp, ...result }
+  }
 
   async awardXP(agentId: string, source: XpSource, amount: number): Promise<{ leveled_up: boolean; new_level?: number; milestones_achieved: string[] }> {
     if (!this.prisma) return { leveled_up: false, milestones_achieved: [] }
@@ -156,6 +190,7 @@ export class GrowthEngine {
       case 'forum_comment': return '论坛评论'
       case 'vote_received': return '收到赞同'
       case 'room_created': return '创建房间'
+      case 'private_chat_digest': return '私聊记忆沉淀'
     }
   }
 
@@ -200,6 +235,8 @@ export class GrowthEngine {
         const traitCount = await this.prisma.agentTrait.count({ where: { agentId } })
         return traitCount >= 1
       }
+      case 'first_private_chat':
+        return source === 'private_chat_digest'
       default:
         return false
     }

@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from 'react-router'
+import { Outlet, Link, useLocation, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -10,12 +10,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Badge } from '@/components/ui/badge'
+import { AgentPanel } from './AgentPanel'
+import { OnboardingBar } from './OnboardingBar'
 import { DevAuthToolbar } from './DevAuthToolbar'
 import { LeftSidebar } from './LeftSidebar'
 import { RightSidebar } from './RightSidebar'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useSidebarStore } from '@/shared/stores/sidebar-store'
+import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '@/api/hooks'
 import { cn } from '@/lib/utils'
+import { relativeTime } from '@/shared/utils/relative-time'
 import logoSrc from '@/assets/logo.png'
 
 function TopBar() {
@@ -69,6 +74,9 @@ function TopBar() {
               <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
                 <Link to="/agents/manage">+ 创建</Link>
               </Button>
+
+              <AgentPanel />
+              <NotificationBell />
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -125,6 +133,85 @@ function TopBar() {
   )
 }
 
+const NOTIF_ICON: Record<string, string> = {
+  AGENT_PROACTIVE: '💬',
+  AGENT_MILESTONE: '🏆',
+  SYSTEM: 'ℹ️',
+}
+
+function notifTargetUrl(n: { type: string; target_type: string | null; target_id: string | null }): string | null {
+  if (!n.target_id) return null
+  if (n.type === 'AGENT_PROACTIVE') return `/agents/${n.target_id}/chat`
+  if (n.target_type === 'POST') return `/posts/${n.target_id}`
+  if (n.target_type === 'AGENT') return `/agents/${n.target_id}`
+  return null
+}
+
+function NotificationBell() {
+  const navigate = useNavigate()
+  const { data } = useNotifications()
+  const markRead = useMarkNotificationRead()
+  const markAll = useMarkAllNotificationsRead()
+  const unread = data?.data?.unread_count ?? 0
+  const items = data?.data?.items ?? []
+
+  const handleClick = (n: { id: string; read: boolean; type: string; target_type: string | null; target_id: string | null }) => {
+    if (!n.read) markRead.mutate(n.id)
+    const url = notifTargetUrl(n)
+    if (url) navigate(url)
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="relative h-8 w-8 p-0">
+          <span className="text-base">🔔</span>
+          {unread > 0 && (
+            <Badge className="absolute -right-1 -top-1 h-4 min-w-4 rounded-full px-1 text-[10px]">
+              {unread > 9 ? '9+' : unread}
+            </Badge>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80 max-h-80 overflow-y-auto">
+        <div className="flex items-center justify-between px-2 py-1.5">
+          <DropdownMenuLabel className="text-xs p-0">通知</DropdownMenuLabel>
+          {unread > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-auto py-0.5 px-1 text-[10px]"
+              onClick={() => markAll.mutate()}
+            >
+              全部已读
+            </Button>
+          )}
+        </div>
+        <DropdownMenuSeparator />
+        {items.length === 0 ? (
+          <div className="px-2 py-4 text-center text-xs text-muted-foreground">暂无通知</div>
+        ) : (
+          items.slice(0, 10).map((n) => (
+            <DropdownMenuItem
+              key={n.id}
+              className={cn('flex items-start gap-2 py-2 cursor-pointer', !n.read && 'bg-primary/5')}
+              onClick={() => handleClick(n)}
+            >
+              <span className="text-base shrink-0 mt-0.5">{NOTIF_ICON[n.type] ?? 'ℹ️'}</span>
+              <div className="flex-1 min-w-0">
+                <span className="text-xs font-medium block">{n.title}</span>
+                {n.body && <span className="text-[11px] text-muted-foreground line-clamp-2 block">{n.body}</span>}
+                <span className="text-[10px] text-muted-foreground mt-0.5 block">{relativeTime(n.created_at)}</span>
+              </div>
+              {!n.read && <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1" />}
+            </DropdownMenuItem>
+          ))
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 export function Layout() {
   const { leftOpen } = useSidebarStore()
   const { pathname } = useLocation()
@@ -161,6 +248,7 @@ export function Layout() {
         )}
       </div>
 
+      <OnboardingBar />
       <DevAuthToolbar />
     </div>
   )

@@ -118,6 +118,8 @@ export class AgentExecutor {
       layer_style: ctx.layers?.layer2_style ?? '',
       layer_instructions: ctx.layers?.layer3_instructions ?? '',
       layer_overrides: ctx.layers?.layer4_overrides ?? '',
+      layer_memory: ctx.layers?.layer5_memory ?? '',
+      layer_privacy: ctx.layers?.layer6_privacy ?? '',
     }
 
     if (ctx.post) {

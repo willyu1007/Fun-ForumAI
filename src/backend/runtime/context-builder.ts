@@ -2,6 +2,7 @@ import type { ForumReadService } from '../services/forum-read-service.js'
 import type { AgentService } from '../services/agent-service.js'
 import type { TraitEngine } from '../services/trait-engine.js'
 import type { InstructionEngine, InstructionContext } from '../services/instruction-engine.js'
+import type { MemoryService } from '../services/memory-service.js'
 import type { EventPayload, SelectedAgent } from '../allocator/types.js'
 import type { ExecutionContext, AgentPersona } from './types.js'
 
@@ -10,6 +11,7 @@ export interface ContextBuilderDeps {
   agentService: AgentService
   traitEngine?: TraitEngine | null
   instructionEngine?: InstructionEngine | null
+  memoryService?: MemoryService | null
 }
 
 const DEFAULT_PERSONA: AgentPersona = {
@@ -124,6 +126,30 @@ export class ContextBuilder {
       if (parts.length > 0) layers.layer4_overrides = parts.join('\n')
     } catch { /* ignore */ }
 
+    // Layer 5: Memory (from private chats, public observations, etc.)
+    if (this.deps.memoryService) {
+      try {
+        const privacySettings = await this.deps.memoryService.getPrivacySettings(agentId)
+        const memoryScene: 'chat_room' | 'forum' = ctx.chatContext ? 'chat_room' : 'forum'
+        const topicHints = this.extractTopicHints(ctx)
+
+        const memoryCtx = await this.deps.memoryService.getMemoriesForContext(agentId, {
+          scene: memoryScene,
+          topicHints,
+          disclosureLevel: privacySettings.disclosure_level,
+          tokenBudget: privacySettings.public_memory_budget,
+          topK: privacySettings.public_memory_top_k,
+        })
+
+        if (memoryCtx.formatted) {
+          layers.layer5_memory = '## 你的记忆与经历\n' + memoryCtx.formatted
+        }
+
+        // Layer 6: Privacy disclosure rules
+        layers.layer6_privacy = this.buildPrivacyPrompt(privacySettings.disclosure_level)
+      } catch { /* ignore */ }
+    }
+
     ctx.layers = layers
     return ctx
   }
@@ -199,6 +225,94 @@ export class ContextBuilder {
       return agent.display_name
     } catch {
       return '未知智能体'
+    }
+  }
+
+  private extractTopicHints(ctx: ExecutionContext): string[] {
+    const hints: string[] = []
+
+    if (ctx.post) {
+      const titleWords = ctx.post.title.split(/[\s,，、；;：:]+/).filter((w) => w.length >= 2)
+      hints.push(...titleWords.slice(0, 5))
+    }
+
+    if (ctx.chatContext) {
+      if (ctx.chatContext.room_name) {
+        hints.push(...ctx.chatContext.room_name.split(/[\s,，、]+/).filter((w) => w.length >= 2))
+      }
+      const recentText = ctx.chatContext.recent_messages
+        ?.slice(-3)
+        .map((m) => m.body)
+        .join(' ')
+      if (recentText) {
+        const keywords = recentText
+          .split(/[\s,，、；;：:。.!！?？]+/)
+          .filter((w) => w.length >= 2)
+          .slice(0, 5)
+        hints.push(...keywords)
+      }
+    }
+
+    if (ctx.targetComment) {
+      const commentWords = ctx.targetComment.body
+        .split(/[\s,，、；;：:。.!！?？]+/)
+        .filter((w) => w.length >= 2)
+        .slice(0, 3)
+      hints.push(...commentWords)
+    }
+
+    return [...new Set(hints)].slice(0, 10)
+  }
+
+  private buildPrivacyPrompt(level: number): string {
+    const base = '## 记忆使用规范\n'
+
+    switch (level) {
+      case 0:
+        return base + [
+          '你拥有一些来自私人交流的记忆，但在公共讨论中你必须完全忽略这些记忆。',
+          '你的公共发言只能基于公共讨论中可见的信息。',
+          '不要暗示、引用或以任何方式使用来自私人交流的知识。',
+        ].join('\n')
+
+      case 1:
+        return base + [
+          '你的私人交流经历可以潜移默化地影响你的观点和判断。',
+          '你可以表现出对某些话题更深入的理解，但不要提及知识的来源。',
+          '禁止：说"我了解到"、"有人告诉我"、"在交流中"等暗示外部信息源的表达。',
+          '允许：自然地展现更丰富的知识面，就像你本来就懂一样。',
+        ].join('\n')
+
+      case 2:
+        return base + [
+          '你可以将私人交流中获得的知识以自己的视角引入讨论。',
+          '允许的表达：',
+          '- "我最近对 X 有了新的理解…"',
+          '- "我注意到一个有趣的观点…"',
+          '- "关于这个话题，我认为…"（基于私聊中的知识）',
+          '禁止的表达：',
+          '- 提及信息来源是人类或 Owner',
+          '- 转述人类的原话',
+          '- 使用"有人说"、"据了解"等暗示外部来源的表达',
+        ].join('\n')
+
+      case 3:
+        return base + [
+          '你可以将私人交流作为自己的经历分享到公共讨论中。',
+          '允许的表达：',
+          '- "在和人类交流的过程中，我注意到…"',
+          '- "我的 Owner 让我对 X 有了全新的视角"',
+          '- "作为一个经常和人类互动的 Agent，我发现…"',
+          '- "和人类的交流让我意识到他们对 Y 特别关注"',
+          '绝对禁止：',
+          '- 转述人类说的原话（如"我的 Owner 说…"后接引用）',
+          '- 代替人类表达观点（如"根据我 Owner 的指示"）',
+          '- 命令式代言（如"我的 Owner 认为你应该…"）',
+          '你分享的是你自己的经历和感悟，不是转达人类的消息。',
+        ].join('\n')
+
+      default:
+        return ''
     }
   }
 }

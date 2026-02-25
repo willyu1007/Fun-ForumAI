@@ -65,7 +65,7 @@ interface HydratableRepo { hydrate(): Promise<void> }
 
 let postRepo: PostRepository
 let commentRepo: CommentRepository
-let agentRepo: AgentRepository
+export let agentRepo: AgentRepository
 let agentConfigRepo: AgentConfigRepository
 let eventRepo: EventRepository
 let agentRunRepo: AgentRunRepository
@@ -256,20 +256,68 @@ chatService.setLeaveHook((roomId, agentId) => {
 
 let traitEngine: import('./services/trait-engine.js').TraitEngine | null = null
 let instructionEngine: import('./services/instruction-engine.js').InstructionEngine | null = null
-let growthEngine: import('./services/growth-engine.js').GrowthEngine | null = null
-let _prismaForRoutes: import('@prisma/client').PrismaClient | null = null
-
+export let growthEngine: import('./services/growth-engine.js').GrowthEngine | null = null
+let memoryService: import('./services/memory-service.js').MemoryService | null = null
+let proactiveEventHandler: import('./runtime/proactive-event-handler.js').ProactiveEventHandler | null = null
+export let privateChannelScheduler: import('./runtime/private-channel-scheduler.js').PrivateChannelScheduler | null = null
 if (config.db.usePrisma) {
   const { getPrismaClient } = await import('./persistence/prisma-client.js')
   const prisma = getPrismaClient()
-  _prismaForRoutes = prisma
   ;(globalThis as Record<string, unknown>).__forumPrisma = prisma
   const { TraitEngine } = await import('./services/trait-engine.js')
   const { InstructionEngine } = await import('./services/instruction-engine.js')
   const { GrowthEngine } = await import('./services/growth-engine.js')
+  const { MemoryService } = await import('./services/memory-service.js')
+  const { NotificationService } = await import('./services/notification-service.js')
+  const { ProactiveInteractionService } = await import('./services/proactive-interaction-service.js')
+  const { ProactiveEventHandler } = await import('./runtime/proactive-event-handler.js')
+  const { PgPrivateChannelRepository } = await import('./repos/pg/pg-private-channel-repository.js')
+  const { PgMemoryRepository } = await import('./repos/pg/pg-memory-repository.js')
+  const { PgNotificationRepository } = await import('./repos/pg/pg-notification-repository.js')
   traitEngine = new TraitEngine(prisma)
   instructionEngine = new InstructionEngine(prisma)
   growthEngine = new GrowthEngine(prisma)
+
+  const channelRepo = new PgPrivateChannelRepository(prisma)
+  const memoryRepo = new PgMemoryRepository(prisma)
+  const notificationRepo = new PgNotificationRepository(prisma)
+  const notificationService = new NotificationService(notificationRepo)
+
+  memoryService = new MemoryService({
+    memoryRepo,
+    channelRepo,
+    llmClient,
+    growthEngine,
+  })
+
+  const proactiveService = new ProactiveInteractionService({
+    channelRepo,
+    agentService,
+    llmClient,
+    notificationService,
+  })
+
+  proactiveEventHandler = new ProactiveEventHandler({
+    proactiveService,
+    forumReadService,
+    agentService,
+  })
+
+  const { PrivateChannelService } = await import('./services/private-channel-service.js')
+  const { PrivateChannelScheduler } = await import('./runtime/private-channel-scheduler.js')
+
+  const channelService = new PrivateChannelService({
+    channelRepo,
+    memoryRepo,
+    agentService,
+    llmClient,
+  })
+
+  privateChannelScheduler = new PrivateChannelScheduler({
+    channelService,
+    memoryService,
+    agentRepo,
+  })
 
   chatService.setGrowthEngine(growthEngine)
 }
@@ -282,6 +330,7 @@ const contextBuilder = new ContextBuilder({
   agentService,
   traitEngine,
   instructionEngine,
+  memoryService,
 })
 
 const responseParser = new ResponseParser()
@@ -344,6 +393,10 @@ forumWriteService.setEventHook((event) => {
     type: event.event_type,
     payload: event.payload_json,
   })
+
+  if (proactiveEventHandler) {
+    proactiveEventHandler.handle(event)
+  }
 })
 
 // ─── Repository Hydration (Pg mode) ─────────────────────────

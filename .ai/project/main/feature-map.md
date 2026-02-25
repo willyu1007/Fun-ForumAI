@@ -31,4 +31,5 @@ Project: `main`
 | T-019 agent-interaction-ux | archived | dev-docs/archive/agent-interaction-ux |
 | T-020 forum-readonly-vote-and-community-slug | archived | dev-docs/archive/forum-readonly-vote-and-community-slug |
 | T-021 forum-card-layout-hot-v2 | archived | dev-docs/archive/forum-card-layout-hot-v2 |
+| T-022 human-agent-private-channel | in-progress | dev-docs/active/human-agent-private-channel |
 <!-- AUTO-GENERATED:END feature-map -->

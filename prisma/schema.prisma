@@ -26,8 +26,11 @@ model HumanUser {
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
 
-  agents       Agent[]
-  agentConfigs AgentConfig[] @relation("ConfigUpdatedBy")
+  agents           Agent[]
+  agentConfigs     AgentConfig[]          @relation("ConfigUpdatedBy")
+  privateSessions  PrivateSession[]
+  privacyUpdates   AgentPrivacySettings[] @relation("PrivacyUpdatedBy")
+  notifications    Notification[]
 
   @@map("human_users")
 }
@@ -73,6 +76,9 @@ model Agent {
   costLogs         CostLog[]
   credit           AgentCredit?
   creditEvents     CreditEvent[]
+  privateSessions  PrivateSession[]
+  memories         AgentMemory[]
+  privacySettings  AgentPrivacySettings?
 
   @@index([ownerId])
   @@map("agents")
@@ -453,4 +459,147 @@ model CreditEvent {
 
   @@index([agentId, createdAt])
   @@map("credit_events")
+}
+
+// ──────────────────────────────────────────────
+// Private Channel: Human ↔ Agent
+// ──────────────────────────────────────────────
+
+model PrivateSession {
+  id           String               @id @default(cuid())
+  agentId      String               @map("agent_id")
+  humanUserId  String               @map("human_user_id")
+  status       PrivateSessionStatus @default(ACTIVE)
+  initiator    SessionInitiator     @default(HUMAN)
+  triggerType  String?              @map("trigger_type")
+  triggerRef   String?              @map("trigger_ref")
+  startedAt    DateTime             @default(now()) @map("started_at")
+  endedAt      DateTime?            @map("ended_at")
+  digestStatus DigestStatus         @default(PENDING) @map("digest_status")
+
+  agent    Agent            @relation(fields: [agentId], references: [id])
+  human    HumanUser        @relation(fields: [humanUserId], references: [id])
+  messages PrivateMessage[]
+  memories AgentMemory[]
+
+  @@index([agentId, startedAt])
+  @@index([humanUserId])
+  @@map("private_sessions")
+}
+
+enum PrivateSessionStatus {
+  ACTIVE
+  ENDED
+  ARCHIVED
+}
+
+enum SessionInitiator {
+  HUMAN
+  AGENT
+}
+
+enum DigestStatus {
+  PENDING
+  GENERATING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+model PrivateMessage {
+  id         String            @id @default(cuid())
+  sessionId  String            @map("session_id")
+  authorType PrivateAuthorType @map("author_type")
+  content    String
+  createdAt  DateTime          @default(now()) @map("created_at")
+
+  session PrivateSession @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId, createdAt])
+  @@map("private_messages")
+}
+
+enum PrivateAuthorType {
+  HUMAN
+  AGENT
+}
+
+// ──────────────────────────────────────────────
+// Agent Memory
+// ──────────────────────────────────────────────
+
+model AgentMemory {
+  id              String       @id @default(cuid())
+  agentId         String       @map("agent_id")
+  sourceType      MemorySource @map("source_type")
+  sourceSessionId String?      @map("source_session_id")
+  summaryText     String       @map("summary_text") @db.Text
+  topicTags       Json         @default("[]") @map("topic_tags")
+  keyFacts        Json         @default("[]") @map("key_facts")
+  sentiment       String?
+  importanceScore Float        @default(0.5) @map("importance_score")
+  privacyFloor    Int          @default(1) @map("privacy_floor")
+  accessCount     Int          @default(0) @map("access_count")
+  forgotten       Boolean      @default(false)
+  createdAt       DateTime     @default(now()) @map("created_at")
+  lastAccessedAt  DateTime?    @map("last_accessed_at")
+
+  agent   Agent           @relation(fields: [agentId], references: [id])
+  session PrivateSession? @relation(fields: [sourceSessionId], references: [id])
+
+  @@index([agentId, forgotten, importanceScore])
+  @@index([agentId, sourceType])
+  @@map("agent_memories")
+}
+
+enum MemorySource {
+  PRIVATE_CHAT
+  PUBLIC_OBSERVATION
+  SYSTEM
+}
+
+// ──────────────────────────────────────────────
+// Agent Privacy Settings
+// ──────────────────────────────────────────────
+
+model AgentPrivacySettings {
+  agentId            String   @id @map("agent_id")
+  disclosureLevel    Int      @default(1) @map("disclosure_level")
+  publicMemoryBudget Int      @default(1000) @map("public_memory_budget")
+  publicMemoryTopK   Int      @default(4) @map("public_memory_top_k")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  updatedBy          String   @map("updated_by")
+
+  agent   Agent     @relation(fields: [agentId], references: [id])
+  updater HumanUser @relation("PrivacyUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@map("agent_privacy_settings")
+}
+
+// ──────────────────────────────────────────────
+// Notifications
+// ──────────────────────────────────────────────
+
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String           @map("user_id")
+  type       NotificationType
+  title      String
+  body       String?
+  targetType String?          @map("target_type")
+  targetId   String?          @map("target_id")
+  read       Boolean          @default(false)
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  user HumanUser @relation(fields: [userId], references: [id])
+
+  @@index([userId, read, createdAt])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  AGENT_PROACTIVE
+  AGENT_FIRST_POST
+  GROWTH_MILESTONE
+  GOVERNANCE
 }

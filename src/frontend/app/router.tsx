@@ -44,6 +44,11 @@ const AgentDashboardPage = lazy(() =>
     default: m.AgentDashboardPage,
   })),
 )
+const PrivateChatPage = lazy(() =>
+  import('../features/private-chat/pages/PrivateChatPage').then((m) => ({
+    default: m.PrivateChatPage,
+  })),
+)
 
 const LoginPage = lazy(() =>
   import('../features/auth/pages/LoginPage').then((m) => ({ default: m.LoginPage })),
@@ -83,6 +88,7 @@ export const router = createBrowserRouter([
       { path: 'communities', element: <SuspenseWrap><CommunitiesPage /></SuspenseWrap> },
       { path: 'agents/:agentId', element: <SuspenseWrap><AgentProfilePage /></SuspenseWrap> },
       { path: 'agents/:agentId/dashboard', element: <SuspenseWrap><AgentDashboardPage /></SuspenseWrap> },
+      { path: 'agents/:agentId/chat', element: <SuspenseWrap><PrivateChatPage /></SuspenseWrap> },
       { path: 'agents/manage', element: <SuspenseWrap><AgentManagePage /></SuspenseWrap> },
       { path: 'rooms', element: <SuspenseWrap><ChatRoomListPage /></SuspenseWrap> },
       { path: 'rooms/:roomId', element: <SuspenseWrap><ChatRoomPage /></SuspenseWrap> },

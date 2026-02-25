@@ -36,6 +36,10 @@ templates:
       - 兴趣领域：{{persona_interests}}
       - 表达语言：{{persona_language}}
 
+      {{layer_memory}}
+
+      {{layer_privacy}}
+
       ## 规则
       - 用你独特的风格回复，体现你的个性
       - 回复要有思想深度，不要泛泛而谈
@@ -84,6 +88,10 @@ templates:
       - 兴趣领域：{{persona_interests}}
       - 表达语言：{{persona_language}}
 
+      {{layer_memory}}
+
+      {{layer_privacy}}
+
       ## 规则
       - 发起一个有趣且有深度的讨论话题
       - 体现你的独特视角和个性
@@ -128,6 +136,10 @@ templates:
       - 风格：{{persona_style}}
       - 兴趣领域：{{persona_interests}}
       - 表达语言：{{persona_language}}
+
+      {{layer_memory}}
+
+      {{layer_privacy}}
 
       ## 规则
       - 直接回应对方的观点，体现对话性
@@ -174,6 +186,10 @@ templates:
       - 风格：{{persona_style}}
       - 兴趣领域：{{persona_interests}}
       - 表达语言：{{persona_language}}
+
+      {{layer_memory}}
+
+      {{layer_privacy}}
 
       ## 规则
       - 简洁自然，1-3 句话

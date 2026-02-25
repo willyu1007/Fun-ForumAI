@@ -8,12 +8,13 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 19 (planned: 1, in-progress: 0, blocked: 0, done: 0, archived: 18)
+- Tasks: 20 (planned: 1, in-progress: 1, blocked: 0, done: 0, archived: 18)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-022 human-agent-private-channel | in-progress | F-000 | dev-docs/active/human-agent-private-channel |
 | T-017 persistence-and-agent-dashboard | archived | F-000 | dev-docs/archive/persistence-and-agent-dashboard |
 | T-018 agent-nurture-core | archived | F-000 | dev-docs/archive/agent-nurture-core |
 | T-019 agent-interaction-ux | archived | F-000 | dev-docs/archive/agent-interaction-ux |

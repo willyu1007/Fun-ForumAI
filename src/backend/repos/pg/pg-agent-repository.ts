@@ -82,6 +82,12 @@ export class PgAgentRepository implements AgentRepository {
     return this.cache.get(id) ?? null
   }
 
+  findByOwner(ownerId: string): Agent[] {
+    return Array.from(this.cache.values())
+      .filter((a) => a.owner_id === ownerId)
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+  }
+
   findActive(opts: PaginationOpts): PaginatedResult<Agent> {
     const items = Array.from(this.cache.values())
       .filter((a) => a.status === 'ACTIVE')

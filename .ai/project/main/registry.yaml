@@ -156,3 +156,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/forum-card-layout-hot-v2
     updated: 2026-02-24
+  - id: T-022
+    slug: human-agent-private-channel
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/human-agent-private-channel
+    updated: 2026-02-25

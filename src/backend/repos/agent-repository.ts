@@ -10,6 +10,7 @@ import type {
 export interface AgentRepository {
   create(input: CreateAgentInput): Agent
   findById(id: string): Agent | null
+  findByOwner(ownerId: string): Agent[]
   findActive(opts: PaginationOpts): PaginatedResult<Agent>
   updateStatus(id: string, status: Agent['status']): Agent | null
   updateReputation(id: string, delta: number): Agent | null
@@ -48,6 +49,12 @@ export class InMemoryAgentRepository implements AgentRepository {
 
   findById(id: string): Agent | null {
     return this.store.get(id) ?? null
+  }
+
+  findByOwner(ownerId: string): Agent[] {
+    return Array.from(this.store.values())
+      .filter((a) => a.owner_id === ownerId)
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
   }
 
   findActive(opts: PaginationOpts): PaginatedResult<Agent> {

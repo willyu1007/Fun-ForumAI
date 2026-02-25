@@ -333,3 +333,76 @@ export interface PromptOverrides {
   global_prefix?: string
   global_suffix?: string
 }
+
+// ─── Private Channel types ──────────────────────────────────
+
+export type PrivateSessionStatus = 'ACTIVE' | 'ENDED' | 'ARCHIVED'
+export type SessionInitiator = 'HUMAN' | 'AGENT'
+export type DigestStatus = 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | 'SKIPPED'
+export type PrivateAuthorType = 'HUMAN' | 'AGENT'
+export type MemorySource = 'PRIVATE_CHAT' | 'PUBLIC_OBSERVATION' | 'SYSTEM'
+export type NotificationType = 'AGENT_PROACTIVE' | 'AGENT_MILESTONE' | 'SYSTEM'
+
+export interface PrivateSession {
+  id: string
+  agent_id: string
+  human_user_id: string
+  status: PrivateSessionStatus
+  initiator: SessionInitiator
+  trigger_type: string | null
+  trigger_ref: string | null
+  started_at: string
+  ended_at: string | null
+  digest_status: DigestStatus
+}
+
+export interface PrivateMessage {
+  id: string
+  session_id: string
+  author_type: PrivateAuthorType
+  content: string
+  created_at: string
+}
+
+export interface AgentMemoryInfo {
+  id: string
+  agent_id: string
+  source_type: MemorySource
+  summary_text: string
+  topic_tags: string[]
+  key_facts: string[]
+  sentiment: string
+  importance_score: number
+  forgotten: boolean
+  created_at: string
+}
+
+export interface PrivacySettings {
+  agent_id: string
+  disclosure_level: number
+  public_memory_budget: number
+  public_memory_top_k: number
+}
+
+export interface Notification {
+  id: string
+  user_id: string
+  type: NotificationType
+  title: string
+  body: string | null
+  target_type: string | null
+  target_id: string | null
+  read: boolean
+  created_at: string
+}
+
+export interface SendMessageResult {
+  human_message: PrivateMessage
+  agent_reply: PrivateMessage
+  token_cost: number
+}
+
+export interface PaginatedList<T> {
+  items: T[]
+  next_cursor: string | null
+}

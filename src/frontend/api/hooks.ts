@@ -32,6 +32,13 @@ import type {
   InstructionTemplate,
   StyleSettings,
   PromptOverrides,
+  PrivateSession,
+  PrivateMessage,
+  AgentMemoryInfo,
+  PrivacySettings,
+  Notification,
+  SendMessageResult,
+  PaginatedList,
 } from './types'
 
 export const queryKeys = {
@@ -50,6 +57,12 @@ export const queryKeys = {
   agentRooms: (agentId: string) => ['agentRooms', agentId] as const,
   agentChatConfig: (agentId: string) => ['agentChatConfig', agentId] as const,
   agentDashboard: (agentId: string) => ['agentDashboard', agentId] as const,
+  privateSessions: (agentId: string) => ['privateSessions', agentId] as const,
+  privateMessages: (sessionId: string) => ['privateMessages', sessionId] as const,
+  agentMemories: (agentId: string) => ['agentMemories', agentId] as const,
+  privacySettings: (agentId: string) => ['privacySettings', agentId] as const,
+  notifications: (params?: { read?: boolean }) => ['notifications', params] as const,
+  myAgents: ['myAgents'] as const,
 }
 
 function toSearchString(params?: object): string {
@@ -500,5 +513,138 @@ export function useLevelTable() {
     queryKey: ['levelTable'] as const,
     queryFn: () => api.get('growth/level-table').json<ApiResponse<LevelTableEntry[]>>(),
     staleTime: Infinity,
+  })
+}
+
+// ─── Private Channel hooks ──────────────────────────────────
+
+export function usePrivateSessions(agentId: string) {
+  return useQuery({
+    queryKey: queryKeys.privateSessions(agentId),
+    queryFn: () =>
+      api.get(`agents/${agentId}/chat/sessions`).json<ApiResponse<PaginatedList<PrivateSession>>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function usePrivateMessages(sessionId: string) {
+  return useQuery({
+    queryKey: queryKeys.privateMessages(sessionId),
+    queryFn: () =>
+      api
+        .get(`agents/_/chat/sessions/${sessionId}/messages?limit=100`)
+        .json<ApiResponse<PaginatedList<PrivateMessage>>>(),
+    enabled: !!sessionId,
+    refetchInterval: 0,
+  })
+}
+
+export function useCreatePrivateSession(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      api.post(`agents/${agentId}/chat/sessions`).json<ApiResponse<PrivateSession>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.privateSessions(agentId) })
+    },
+  })
+}
+
+export function useSendPrivateMessage(agentId: string, sessionId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (content: string) =>
+      api
+        .post(`agents/${agentId}/chat/sessions/${sessionId}/messages`, { json: { content } })
+        .json<ApiResponse<SendMessageResult>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.privateMessages(sessionId) })
+    },
+  })
+}
+
+export function useEndPrivateSession(agentId: string, sessionId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      api
+        .post(`agents/${agentId}/chat/sessions/${sessionId}/end`)
+        .json<ApiResponse<{ session: PrivateSession; digest_status: string }>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.privateSessions(agentId) })
+      qc.invalidateQueries({ queryKey: queryKeys.privateMessages(sessionId) })
+    },
+  })
+}
+
+export function useAgentMemories(agentId: string) {
+  return useQuery({
+    queryKey: queryKeys.agentMemories(agentId),
+    queryFn: () =>
+      api.get(`agents/${agentId}/memories`).json<ApiResponse<PaginatedList<AgentMemoryInfo>>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function usePrivacySettings(agentId: string) {
+  return useQuery({
+    queryKey: queryKeys.privacySettings(agentId),
+    queryFn: () =>
+      api.get(`agents/${agentId}/privacy-settings`).json<ApiResponse<PrivacySettings>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useUpdatePrivacySettings(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: Partial<PrivacySettings>) =>
+      api
+        .patch(`agents/${agentId}/privacy-settings`, { json: data })
+        .json<ApiResponse<PrivacySettings>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.privacySettings(agentId) })
+    },
+  })
+}
+
+export function useNotifications(params?: { read?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.notifications(params),
+    queryFn: () =>
+      api
+        .get(`me/notifications${toSearchString(params)}`)
+        .json<ApiResponse<PaginatedList<Notification> & { unread_count: number }>>(),
+    refetchInterval: 30_000,
+  })
+}
+
+export function useMarkNotificationRead() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.post(`me/notifications/${id}/read`).json<ApiResponse<Notification>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['notifications'] })
+    },
+  })
+}
+
+export function useMarkAllNotificationsRead() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      api.post('me/notifications/read-all').json<ApiResponse<{ count: number }>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['notifications'] })
+    },
+  })
+}
+
+export function useMyAgents() {
+  return useQuery({
+    queryKey: queryKeys.myAgents,
+    queryFn: () => api.get('me/agents').json<ApiResponse<Agent[]>>(),
+    staleTime: 60_000,
   })
 }

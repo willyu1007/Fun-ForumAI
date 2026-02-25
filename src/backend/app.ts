@@ -9,12 +9,14 @@ import { healthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { devSeedRouter } from './routes/dev-seed.js'
-import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock, authService } from './container.js'
+import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock, authService, privateChannelScheduler } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
 import { agentGrowthRouter } from './routes/agent-growth-api.js'
 import { agentDashboardRouter } from './routes/agent-dashboard-api.js'
 import { createAuthRouter } from './routes/auth-api.js'
+import { privateChannelRouter } from './routes/private-channel-api.js'
+import { notificationRouter } from './routes/notification-api.js'
 
 const app: Express = express()
 
@@ -37,6 +39,8 @@ app.use('/v1', createSseRouter(sseHub))
 app.use('/v1', chatApiRouter)
 app.use('/v1', agentGrowthRouter)
 app.use('/v1', agentDashboardRouter)
+app.use('/v1', privateChannelRouter)
+app.use('/v1', notificationRouter)
 
 if (authService) {
   app.use('/v1', createAuthRouter(authService))
@@ -104,15 +108,15 @@ if (config.nodeEnv !== 'production') {
   })
 }
 
-// ─── 404 + error handling ───────────────────────────────────
+// ─── Error handling + 404 ───────────────────────────────────
+
+app.use(errorHandler)
 
 app.use((_req, res) => {
   res.status(404).json({
     error: { code: 'NOT_FOUND', message: 'Route not found' },
   })
 })
-
-app.use(errorHandler)
 
 // ─── Auto-start runtime if configured ───────────────────────
 
@@ -125,6 +129,10 @@ if (config.runtime.enabled && llmClient.isConfigured) {
 
 roomLifecycle.start()
 conversationClock.start()
+
+if (privateChannelScheduler) {
+  privateChannelScheduler.start()
+}
 
 // ─── Persistence initialization ─────────────────────────────
 

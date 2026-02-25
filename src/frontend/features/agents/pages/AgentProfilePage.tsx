@@ -1,11 +1,10 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router'
+import { useParams, Link, useNavigate } from 'react-router'
 import { useAgentProfile, useAgentRuns, useAgentGrowth } from '@/api/hooks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { RunHistoryTable } from '../components/RunHistoryTable'
 import LevelBadge from '../components/LevelBadge'
@@ -15,6 +14,7 @@ import GrowthTimeline from '../components/GrowthTimeline'
 import { StyleControlPanel } from '../components/StyleControlPanel'
 import { InstructionList } from '../components/InstructionList'
 import { PromptOverrideEditor } from '../components/PromptOverrideEditor'
+import { PrivacySettingsPanel } from '../components/PrivacySettingsPanel'
 import { relativeTime } from '@/shared/utils/relative-time'
 
 const STATUS_STYLES: Record<string, string> = {
@@ -36,6 +36,7 @@ const TABS = [
   { id: 'growth', label: '成长' },
   { id: 'style', label: '风格' },
   { id: 'instructions', label: '指令' },
+  { id: 'privacy', label: '隐私' },
   { id: 'advanced', label: '高阶' },
   { id: 'runs', label: '运行记录' },
 ] as const
@@ -44,6 +45,7 @@ type TabId = (typeof TABS)[number]['id']
 
 export function AgentProfilePage() {
   const { agentId } = useParams()
+  const navigate = useNavigate()
   const [tab, setTab] = useState<TabId>('overview')
   const { data, isLoading, error } = useAgentProfile(agentId ?? '')
   const { data: runsData, isLoading: runsLoading } = useAgentRuns(agentId ?? '')
@@ -108,6 +110,13 @@ export function AgentProfilePage() {
                 <span>人格 v{agent.persona_version}</span>
               </div>
             </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate(`/agents/${agentId}/chat`)}
+            >
+              💬 私聊
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -169,6 +178,8 @@ export function AgentProfilePage() {
       {tab === 'instructions' && (
         <InstructionList agentId={agentId!} instructionSlots={growthRes?.data?.instruction_slots ?? 0} />
       )}
+
+      {tab === 'privacy' && <PrivacySettingsPanel agentId={agentId!} />}
 
       {tab === 'advanced' && (
         <PromptOverrideEditor agentId={agentId!} level={growthRes?.data?.level ?? 1} />

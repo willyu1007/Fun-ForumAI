@@ -13,6 +13,8 @@ export interface PromptLayers {
   layer2_style?: string
   layer3_instructions?: string
   layer4_overrides?: string
+  layer5_memory?: string
+  layer6_privacy?: string
 }
 
 export interface ExecutionContext {
