@@ -30,6 +30,7 @@
     "rollback:dry-run": "node ops/deploy/scripts/rollback.mjs --dry-run",
     "release:status": "node .ai/skills/features/release/scripts/ctl-release.mjs status",
     "seed": "node scripts/seed-data.mjs",
+    "smoke:runtime:staging": "node scripts/runtime-staging-smoke.mjs",
     "verify:launch": "node scripts/verify-launch-readiness.mjs",
     "verify:launch:ci": "node scripts/verify-launch-readiness.mjs --ci"
   },

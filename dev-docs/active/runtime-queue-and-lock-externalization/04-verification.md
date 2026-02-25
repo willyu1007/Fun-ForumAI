@@ -50,3 +50,9 @@
     - in-memory node `/v1/admin/runtime/stats` returned `queue_backend=in-memory`, `leader_backend=in-memory`, `is_leader=true`
 - Notes:
   - LLM key absent in local rehearsal; executor attempts returned 401 but queue ack/dequeue and leader behavior remained verifiable.
+
+## Staging execution assets validation (2026-02-25)
+- `node scripts/runtime-staging-smoke.mjs --help`
+  - Result: pass (CLI usage and args rendered correctly)
+- `node scripts/runtime-staging-smoke.mjs --node1-url http://127.0.0.1:4101 --node2-url http://127.0.0.1:4102 --admin-token dummy --dry-run`
+  - Result: pass (execution plan rendered without network side effects)

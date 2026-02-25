@@ -30,6 +30,13 @@
     - `t023:leader:room-lifecycle`、`t023:leader:conversation-clock` 始终由单一 owner 持有（pid=43035）
   - 回退演练（本地）：
     - 启动 in-memory 模式实例（`4103`），`/v1/admin/runtime/stats` 返回 `queue_backend=in-memory`、`leader_backend=in-memory`
+- Staging 执行准备（2026-02-25）：
+  - 新增 staging smoke 脚本：`scripts/runtime-staging-smoke.mjs`
+  - 新增运维 runbook：`ops/deploy/handbook/runbooks/runtime-staging-rollout-and-backout.md`
+  - 脚本支持两类验证：
+    - leader-only 观测（无 dual leader）
+    - 注入 post 事件并验证队列回落
+  - 脚本支持回退前后 backend 断言（`redis` 或 `any`）
 
 ## Files/modules touched (high level)
 - `src/backend/runtime/`
