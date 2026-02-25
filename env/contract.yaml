@@ -197,3 +197,28 @@ variables:
     required: false
     default: 15000
     description: Lease TTL for runtime distributed leader locks.
+
+  SSE_BROADCAST_BACKEND:
+    type: enum
+    enum: [local, redis]
+    required: false
+    default: local
+    description: SSE broadcast backend selection for cross-instance fanout.
+
+  SSE_REDIS_URL:
+    type: string
+    required: false
+    sensitive: true
+    description: Redis connection URL for SSE cluster broadcast backend.
+
+  SSE_REDIS_CHANNEL:
+    type: string
+    required: false
+    default: llm-forum:sse:broadcast
+    description: Redis Pub/Sub channel name for SSE broadcast envelopes.
+
+  SSE_REDIS_CONNECT_TIMEOUT_MS:
+    type: int
+    required: false
+    default: 5000
+    description: Redis connection timeout in milliseconds for SSE broadcast backend.

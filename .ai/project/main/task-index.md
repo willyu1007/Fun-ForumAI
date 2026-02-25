@@ -32,5 +32,5 @@ Project: `main`
 | T-022 human-agent-private-channel | in-progress | F-000 | dev-docs/active/human-agent-private-channel |
 | T-023 runtime-queue-and-lock-externalization | in-progress | F-000 | dev-docs/active/runtime-queue-and-lock-externalization |
 | T-024 pg-repository-consistency-hardening | planned | F-000 | dev-docs/active/pg-repository-consistency-hardening |
-| T-025 sse-cluster-broadcast-foundation | planned | F-000 | dev-docs/active/sse-cluster-broadcast-foundation |
+| T-025 sse-cluster-broadcast-foundation | in-progress | F-000 | dev-docs/active/sse-cluster-broadcast-foundation |
 <!-- AUTO-GENERATED:END task-index -->

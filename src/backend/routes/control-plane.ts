@@ -76,9 +76,7 @@ controlPlaneRouter.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, a
         leader_backend: config.runtime.leaderBackend,
       },
       scheduler: postScheduler.stats,
-      sse: {
-        connected_clients: sseHub.clientCount,
-      },
+      sse: sseHub.getStats(),
       event_queue: {
         size: eventQueueSize,
       },

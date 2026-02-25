@@ -66,6 +66,8 @@ import { AuthService } from './services/auth-service.js'
 import type { UserRepository } from './repos/user-repository.js'
 
 import { SseHub } from './sse/hub.js'
+import { LocalSseBroadcastAdapter } from './sse/adapters/local-broadcast-adapter.js'
+import { RedisPubSubSseBroadcastAdapter } from './sse/adapters/redis-pubsub-broadcast-adapter.js'
 
 import { config } from './lib/config.js'
 
@@ -139,7 +141,9 @@ if (config.db.usePrisma) {
 
 // ─── SSE Hub ─────────────────────────────────────────────────
 
-export const sseHub = new SseHub()
+export const sseHub = new SseHub({
+  instanceId: `sse-${process.pid}-${Math.random().toString(36).slice(2, 8)}`,
+})
 
 // ─── Moderation ─────────────────────────────────────────────
 
@@ -152,6 +156,8 @@ const moderator = new ModerationService({
 // ─── Runtime Infra (Queue + Leader election) ───────────────
 
 let runtimeRedis: Redis | null = null
+let sseRedisPublisher: Redis | null = null
+let sseRedisSubscriber: Redis | null = null
 
 const needsRuntimeRedis = config.runtime.queueBackend === 'redis' || config.runtime.leaderBackend === 'redis'
 if (needsRuntimeRedis) {
@@ -175,6 +181,49 @@ if (needsRuntimeRedis) {
     }
   }
 }
+
+const needsSseRedis = config.sse.broadcastBackend === 'redis'
+if (needsSseRedis) {
+  if (!config.sse.redisUrl) {
+    console.warn('[SSE] Redis broadcast requested but SSE_REDIS_URL/RUNTIME_REDIS_URL/REDIS_URL is empty. Falling back to local broadcast.')
+  } else {
+    const publisher = new Redis(config.sse.redisUrl, {
+      lazyConnect: true,
+      connectTimeout: config.sse.redisConnectTimeoutMs,
+      maxRetriesPerRequest: 1,
+    })
+    const subscriber = publisher.duplicate({
+      lazyConnect: true,
+      connectTimeout: config.sse.redisConnectTimeoutMs,
+      maxRetriesPerRequest: 1,
+    })
+
+    try {
+      await Promise.all([publisher.connect(), subscriber.connect()])
+      await publisher.ping()
+      sseRedisPublisher = publisher
+      sseRedisSubscriber = subscriber
+      console.log('[SSE] Connected to Redis broadcast backend')
+    } catch (err) {
+      console.warn('[SSE] Failed to connect Redis broadcast backend, falling back to local:', err)
+      await Promise.allSettled([publisher.quit(), subscriber.quit()])
+      sseRedisPublisher = null
+      sseRedisSubscriber = null
+    }
+  }
+}
+
+const sseBroadcastAdapter =
+  config.sse.broadcastBackend === 'redis' && sseRedisPublisher && sseRedisSubscriber
+    ? new RedisPubSubSseBroadcastAdapter({
+        channel: config.sse.redisChannel,
+        publisher: sseRedisPublisher,
+        subscriber: sseRedisSubscriber,
+      })
+    : new LocalSseBroadcastAdapter()
+
+await sseHub.setBroadcastAdapter(sseBroadcastAdapter)
+console.log(`[SSE] Broadcast backend: ${sseBroadcastAdapter.backend}`)
 
 function runtimeKey(suffix: string): string {
   return `${config.runtime.redisPrefix}:${suffix}`
@@ -483,7 +532,17 @@ export async function closeRuntimeInfrastructure(): Promise<void> {
   const uniqueElectors = Array.from(new Set(electors))
   await Promise.allSettled(uniqueElectors.map((elector) => elector.releaseLeadership()))
 
+  await sseHub.close()
   await eventQueue.close()
+
+  if (sseRedisSubscriber) {
+    await sseRedisSubscriber.quit()
+    sseRedisSubscriber = null
+  }
+  if (sseRedisPublisher) {
+    await sseRedisPublisher.quit()
+    sseRedisPublisher = null
+  }
 
   if (runtimeRedis) {
     await runtimeRedis.quit()

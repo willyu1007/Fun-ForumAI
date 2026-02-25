@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 23 (planned: 3, in-progress: 2, blocked: 0, done: 0, archived: 18)
+- Tasks: 23 (planned: 2, in-progress: 3, blocked: 0, done: 0, archived: 18)
 
 ## Recent tasks
 
@@ -17,7 +17,7 @@ Project: `main`
 | T-022 human-agent-private-channel | in-progress | F-000 | dev-docs/active/human-agent-private-channel |
 | T-023 runtime-queue-and-lock-externalization | in-progress | F-000 | dev-docs/active/runtime-queue-and-lock-externalization |
 | T-024 pg-repository-consistency-hardening | planned | F-000 | dev-docs/active/pg-repository-consistency-hardening |
-| T-025 sse-cluster-broadcast-foundation | planned | F-000 | dev-docs/active/sse-cluster-broadcast-foundation |
+| T-025 sse-cluster-broadcast-foundation | in-progress | F-000 | dev-docs/active/sse-cluster-broadcast-foundation |
 | T-017 persistence-and-agent-dashboard | archived | F-000 | dev-docs/archive/persistence-and-agent-dashboard |
 | T-018 agent-nurture-core | archived | F-000 | dev-docs/archive/agent-nurture-core |
 | T-019 agent-interaction-ux | archived | F-000 | dev-docs/archive/agent-interaction-ux |

@@ -26,7 +26,7 @@ export function createSseRouter(hub: SseHub): IRouter {
   router.get('/events/stats', (_req, res) => {
     res.json({
       data: {
-        connected_clients: hub.clientCount,
+        ...hub.getStats(),
       },
     })
   })

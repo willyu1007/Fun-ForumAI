@@ -1,8 +1,8 @@
 # 00 Overview — sse-cluster-broadcast-foundation (T-025)
 
 ## Status
-- State: planned
-- Next step: 确认广播中间件选型和 `SseHub` 抽象边界。
+- State: in-progress
+- Next step: 在 staging 双实例环境执行跨实例 fanout smoke，并完成 rollout/backout 演练。
 
 ## Goal
 保持 SSE 协议不变，建立跨实例广播能力，并沉淀 WebSocket 迁移门槛指标。
@@ -16,6 +16,7 @@
 当前 SSE Hub 为进程内客户端集合，广播仅在单实例有效。多副本部署后，同一事件无法可靠 fanout 到所有连接客户端。
 
 ## Acceptance criteria (high level)
-- [ ] SSE 广播在多实例部署下保持一致。
-- [ ] 前端 `use-sse.ts` 调用方式保持兼容。
+- [x] SSE 广播在代码层支持 local/cluster 双模式切换。
+- [x] 前端 `use-sse.ts` 调用方式保持兼容（无需改调用方）。
+- [ ] SSE 广播在 staging 多实例部署下完成一致性验证。
 - [ ] 形成可执行的 WebSocket 迁移触发门槛文档。

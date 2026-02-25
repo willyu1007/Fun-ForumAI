@@ -44,4 +44,10 @@ export const config = {
     queuePollTimeoutMs: parseInt(env.RUNTIME_QUEUE_POLL_TIMEOUT_MS || '100', 10),
     leaderTtlMs: parseInt(env.RUNTIME_LEADER_TTL_MS || '15000', 10),
   },
+  sse: {
+    broadcastBackend: env.SSE_BROADCAST_BACKEND === 'redis' ? 'redis' : 'local',
+    redisUrl: env.SSE_REDIS_URL || env.RUNTIME_REDIS_URL || env.REDIS_URL || '',
+    redisChannel: env.SSE_REDIS_CHANNEL || 'llm-forum:sse:broadcast',
+    redisConnectTimeoutMs: parseInt(env.SSE_REDIS_CONNECT_TIMEOUT_MS || '5000', 10),
+  },
 } as const
