@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/api/hooks'
 import type { ChatMessage } from '@/api/types'
+import type { SseConnectionPhase } from '@/api/use-sse'
 
 interface SseEvent {
   type: string
@@ -10,14 +11,41 @@ interface SseEvent {
 }
 
 const RECONNECT_DELAY_MS = 3_000
+const MAX_RECONNECT_ATTEMPTS = 10
+
+type RoomSseEventType =
+  | 'MESSAGE_CREATED'
+  | 'ROOM_MEMBER_JOINED'
+  | 'ROOM_MEMBER_LEFT'
+  | 'ROOM_STATUS_CHANGED'
+  | 'AGENT_TYPING'
+  | 'AGENT_STOP_TYPING'
+
+const ROOM_EVENT_TYPES = new Set<string>([
+  'MESSAGE_CREATED', 'ROOM_MEMBER_JOINED', 'ROOM_MEMBER_LEFT',
+  'ROOM_STATUS_CHANGED', 'AGENT_TYPING', 'AGENT_STOP_TYPING',
+])
+
+function isRoomSseEvent(event: SseEvent): event is SseEvent & { type: RoomSseEventType } {
+  return ROOM_EVENT_TYPES.has(event.type)
+}
+
+export interface ChatRoomSseStatus {
+  phase: SseConnectionPhase
+  reconnectAttempts: number
+}
 
 export function useChatRoomSse(roomId: string) {
   const qc = useQueryClient()
   const sourceRef = useRef<EventSource | null>(null)
+  const retriesRef = useRef(0)
   const [typingAgents, setTypingAgents] = useState<Set<string>>(new Set())
+  const [status, setStatus] = useState<ChatRoomSseStatus>({ phase: 'connecting', reconnectAttempts: 0 })
 
   const handleEvent = useCallback(
     (event: SseEvent) => {
+      if (!isRoomSseEvent(event)) return
+
       switch (event.type) {
         case 'MESSAGE_CREATED': {
           const msg = event.payload.message as ChatMessage
@@ -64,13 +92,23 @@ export function useChatRoomSse(roomId: string) {
   useEffect(() => {
     if (!roomId) return
 
-    let reconnectTimer: ReturnType<typeof setTimeout>
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+    let aborted = false
+    retriesRef.current = 0
 
     function connect() {
+      if (aborted) return
       if (sourceRef.current) sourceRef.current.close()
+
+      setStatus({ phase: retriesRef.current > 0 ? 'reconnecting' : 'connecting', reconnectAttempts: retriesRef.current })
 
       const es = new EventSource(`/v1/events/stream?rooms=${roomId}`)
       sourceRef.current = es
+
+      es.onopen = () => {
+        retriesRef.current = 0
+        setStatus({ phase: 'connected', reconnectAttempts: 0 })
+      }
 
       es.onmessage = (msg) => {
         try {
@@ -78,21 +116,33 @@ export function useChatRoomSse(roomId: string) {
           if (data.type === 'connected') return
           handleEvent(data)
         } catch {
-          // ignore
+          /* malformed SSE frame */
         }
       }
 
       es.onerror = () => {
         es.close()
         sourceRef.current = null
-        reconnectTimer = setTimeout(connect, RECONNECT_DELAY_MS)
+
+        if (aborted) return
+
+        if (retriesRef.current >= MAX_RECONNECT_ATTEMPTS) {
+          setStatus({ phase: 'offline', reconnectAttempts: retriesRef.current })
+          return
+        }
+
+        retriesRef.current += 1
+        const delay = RECONNECT_DELAY_MS * Math.min(retriesRef.current, 5)
+        setStatus({ phase: 'reconnecting', reconnectAttempts: retriesRef.current })
+        reconnectTimer = setTimeout(connect, delay)
       }
     }
 
     connect()
 
     return () => {
-      clearTimeout(reconnectTimer)
+      aborted = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
       if (sourceRef.current) {
         sourceRef.current.close()
         sourceRef.current = null
@@ -100,5 +150,5 @@ export function useChatRoomSse(roomId: string) {
     }
   }, [roomId, handleEvent])
 
-  return { typingAgents }
+  return { typingAgents, status }
 }

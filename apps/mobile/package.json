@@ -8,17 +8,25 @@
     "dev:ios": "expo start --ios",
     "dev:android": "expo start --android",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"No mobile tests yet\""
+    "test": "jest --passWithNoTests"
   },
   "dependencies": {
+    "@react-navigation/bottom-tabs": "^7.15.2",
+    "@react-navigation/native": "^7.1.31",
+    "@react-navigation/native-stack": "^7.14.2",
     "expo": "~53.0.17",
     "expo-secure-store": "~14.2.4",
     "react": "19.0.0",
     "react-native": "0.79.5",
+    "react-native-safe-area-context": "^5.7.0",
+    "react-native-screens": "^4.24.0",
     "react-native-sse": "^1.2.1"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/react": "^19.0.0",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.6",
     "typescript": "^5.4.0"
   }
 }

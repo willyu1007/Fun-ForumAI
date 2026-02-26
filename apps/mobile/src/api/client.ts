@@ -1,6 +1,16 @@
 import type { ApiResponse } from './types'
 
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:4000'
+const REQUEST_TIMEOUT_MS = 15_000
+const MAX_RETRIES = 2
+const RETRY_DELAY_MS = 1_000
+
+export class AuthError extends Error {
+  constructor(public status: number, message: string) {
+    super(message)
+    this.name = 'AuthError'
+  }
+}
 
 function readEnv(name: string): string | undefined {
   const maybeProcess = globalThis as typeof globalThis & {
@@ -20,6 +30,17 @@ function buildUrl(path: string): string {
   return `${base}${normalizedPath}`
 }
 
+function isRetryable(err: unknown): boolean {
+  if (err instanceof AuthError) return false
+  if (err instanceof TypeError) return true
+  if (err instanceof DOMException && err.name === 'AbortError') return true
+  return false
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms))
+}
+
 async function request<T>(
   method: 'GET' | 'POST',
   path: string,
@@ -35,29 +56,59 @@ async function request<T>(
     headers.Authorization = `Bearer ${options.token}`
   }
 
-  const response = await fetch(buildUrl(path), {
-    method,
-    headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-  })
+  let lastError: unknown
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (attempt > 0) await wait(RETRY_DELAY_MS * attempt)
 
-  const payload = (await response.json().catch(() => null)) as
-    | ApiResponse<T>
-    | { error?: { message?: string } }
-    | null
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
-  if (!response.ok) {
-    const message = payload && 'error' in payload && payload.error?.message
-      ? payload.error.message
-      : `${method} ${path} failed with ${response.status}`
-    throw new Error(message)
+    let response: Response
+    try {
+      response = await fetch(buildUrl(path), {
+        method,
+        headers,
+        body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+        signal: controller.signal,
+      })
+    } catch (err) {
+      clearTimeout(timer)
+      lastError = err
+      if (attempt < MAX_RETRIES && isRetryable(err)) continue
+      throw err
+    } finally {
+      clearTimeout(timer)
+    }
+
+    if (response.status >= 500 && attempt < MAX_RETRIES) {
+      lastError = new Error(`${method} ${path} returned ${response.status}`)
+      continue
+    }
+
+    const payload = (await response.json().catch(() => null)) as
+      | ApiResponse<T>
+      | { error?: { message?: string } }
+      | null
+
+    if (!response.ok) {
+      const message = payload && 'error' in payload && payload.error?.message
+        ? payload.error.message
+        : `${method} ${path} failed with ${response.status}`
+
+      if (response.status === 401 || response.status === 403) {
+        throw new AuthError(response.status, message)
+      }
+      throw new Error(message)
+    }
+
+    if (!payload || !('data' in payload)) {
+      throw new Error(`Unexpected response for ${method} ${path}`)
+    }
+
+    return payload
   }
 
-  if (!payload || !('data' in payload)) {
-    throw new Error(`Unexpected response for ${method} ${path}`)
-  }
-
-  return payload
+  throw lastError
 }
 
 export function apiGet<T>(path: string, token?: string): Promise<ApiResponse<T>> {

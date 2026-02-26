@@ -205,3 +205,38 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/app-adaptation-discussion
     updated: 2026-02-26
+  - id: T-029
+    slug: mobile-ux-hardening
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/mobile-ux-hardening
+    updated: 2026-02-26
+  - id: T-030
+    slug: mobile-navigation-and-routing
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/mobile-navigation-and-routing
+    updated: 2026-02-26
+  - id: T-031
+    slug: mobile-test-automation
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/mobile-test-automation
+    updated: 2026-02-26
+  - id: T-032
+    slug: frontend-sse-resilience
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/frontend-sse-resilience
+    updated: 2026-02-26
+  - id: T-033
+    slug: realtime-protocol-evaluation
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/realtime-protocol-evaluation
+    updated: 2026-02-26

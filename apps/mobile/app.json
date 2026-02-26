@@ -4,10 +4,28 @@
     "slug": "fun-forum-ai",
     "version": "1.0.0",
     "orientation": "portrait",
+    "scheme": "funforum",
     "platforms": ["ios", "android"],
     "updates": {
       "fallbackToCacheTimeout": 0
     },
-    "assetBundlePatterns": ["**/*"]
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "bundleIdentifier": "ai.funforum.app",
+      "associatedDomains": ["applinks:funforum.ai"]
+    },
+    "android": {
+      "package": "ai.funforum.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "https", "host": "funforum.ai", "pathPrefix": "/" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    }
   }
 }

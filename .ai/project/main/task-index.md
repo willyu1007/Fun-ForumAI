@@ -36,4 +36,9 @@ Project: `main`
 | T-026 k8s-local-cloud-overlays-bootstrap | in-progress | F-000 | dev-docs/active/k8s-local-cloud-overlays-bootstrap |
 | T-027 typecheck-remediation-baseline | archived | F-000 | dev-docs/archive/typecheck-remediation-baseline |
 | T-028 app-adaptation-discussion | in-progress | F-000 | dev-docs/active/app-adaptation-discussion |
+| T-029 mobile-ux-hardening | planned | F-000 | dev-docs/active/mobile-ux-hardening |
+| T-030 mobile-navigation-and-routing | planned | F-000 | dev-docs/active/mobile-navigation-and-routing |
+| T-031 mobile-test-automation | done | F-000 | dev-docs/active/mobile-test-automation |
+| T-032 frontend-sse-resilience | done | F-000 | dev-docs/active/frontend-sse-resilience |
+| T-033 realtime-protocol-evaluation | done | F-000 | dev-docs/active/realtime-protocol-evaluation |
 <!-- AUTO-GENERATED:END task-index -->

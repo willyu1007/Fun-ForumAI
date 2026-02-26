@@ -97,3 +97,16 @@
   - `checks.sessionOwnerConnected=true`
   - `checks.privateMessageEvent=true`
   - `checks.privateSessionEndedEvent=true`
+
+13. Post-bugfix verification（代码审查后修复验证）
+- `pnpm -s typecheck` => PASS
+- `pnpm -s test` => PASS (31 suites / 268 tests)
+- `pnpm -s mobile:typecheck` => PASS
+- E2E smoke v3 (Postgres + mock LLM) 全链路验证:
+  - registerWithoutToken=PASS, login=PASS
+  - createAgent=PASS, createRoom=PASS
+  - anonymousRoomSse=PASS, sessionAnonymous401=PASS, sessionNonOwner403=PASS
+  - startSession=PASS, sendPrivateMessage=PASS (2x PRIVATE_MESSAGE_CREATED)
+  - sessionOwnerConnected=PASS, privateMessageEvent=PASS
+  - endSession=PASS, privateSessionEndedEvent=PASS
+  - 后端日志干净（无 FK 错误、无异常）

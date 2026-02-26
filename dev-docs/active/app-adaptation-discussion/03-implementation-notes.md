@@ -92,5 +92,19 @@
   - 增加进程内 `pendingEventWrites`，在写入 `agent_run` 前等待对应 `event` 持久化完成，消除 FK 时序竞争。
   - 保持既有业务语义不变，仅修复持久化顺序一致性。
 
+### Post-P1 bugfix round（代码审查后修复）
+- `src/frontend/features/private-chat/hooks/use-private-session-sse.ts` — SSE 重连上限+指数退避+payload 防御性检查。
+- `apps/mobile/src/auth/token-store.ts` — 所有 SecureStore 操作增加 try-catch。
+- `apps/mobile/src/realtime/sse.ts` — 指数退避重连（max 8）+ onAuthError 回调 + 认证错误不重连。
+- `apps/mobile/src/api/client.ts` — 新增 AuthError 类 + 15 秒请求超时。
+- `apps/mobile/App.tsx` — 修复 FlatList+ScrollView、KeyboardAvoidingView、AuthError 自动登出、消息排序、按钮禁用、空状态提示。
+
+### P2 任务拆分
+- T-029 mobile-ux-hardening
+- T-030 mobile-navigation-and-routing
+- T-031 mobile-test-automation
+- T-032 frontend-sse-resilience
+- T-033 realtime-protocol-evaluation
+
 ## Pitfalls / dead ends (do not repeat)
 - 已在 `05-pitfalls.md` 追加一次“workspace 依赖未安装导致 mobile:typecheck 失败”的记录。

@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 26 (planned: 2, in-progress: 3, blocked: 0, done: 1, archived: 20)
+- Tasks: 31 (planned: 4, in-progress: 3, blocked: 0, done: 4, archived: 20)
 
 ## Recent tasks
 
@@ -19,6 +19,11 @@ Project: `main`
 | T-026 k8s-local-cloud-overlays-bootstrap | in-progress | F-000 | dev-docs/active/k8s-local-cloud-overlays-bootstrap |
 | T-027 typecheck-remediation-baseline | archived | F-000 | dev-docs/archive/typecheck-remediation-baseline |
 | T-028 app-adaptation-discussion | in-progress | F-000 | dev-docs/active/app-adaptation-discussion |
+| T-029 mobile-ux-hardening | planned | F-000 | dev-docs/active/mobile-ux-hardening |
+| T-030 mobile-navigation-and-routing | planned | F-000 | dev-docs/active/mobile-navigation-and-routing |
+| T-031 mobile-test-automation | done | F-000 | dev-docs/active/mobile-test-automation |
+| T-032 frontend-sse-resilience | done | F-000 | dev-docs/active/frontend-sse-resilience |
+| T-033 realtime-protocol-evaluation | done | F-000 | dev-docs/active/realtime-protocol-evaluation |
 | T-022 human-agent-private-channel | in-progress | F-000 | dev-docs/active/human-agent-private-channel |
 | T-024 pg-repository-consistency-hardening | planned | F-000 | dev-docs/active/pg-repository-consistency-hardening |
 | T-017 persistence-and-agent-dashboard | archived | F-000 | dev-docs/archive/persistence-and-agent-dashboard |
@@ -29,9 +34,4 @@ Project: `main`
 | T-006 launch-readiness-validation | archived | F-000 | dev-docs/archive/launch-readiness-validation |
 | T-012 agent-runtime-v1 | archived | F-000 | dev-docs/archive/agent-runtime-v1 |
 | T-013 experience-enhancement-v1 | archived | F-000 | dev-docs/archive/experience-enhancement-v1 |
-| T-014 forum-ux-enhancement-v1 | archived | F-000 | dev-docs/archive/forum-ux-enhancement-v1 |
-| T-015 chat-room-v1 | archived | F-000 | dev-docs/archive/chat-room-v1 |
-| T-016 future-platform-evolution | planned | F-000 | dev-docs/active/future-platform-evolution |
-| T-003 runnable-core-baseline | archived | F-000 | dev-docs/archive/runnable-core-baseline |
-| T-005 delivery-pipeline-baseline | archived | F-000 | dev-docs/archive/delivery-pipeline-baseline |
 <!-- AUTO-GENERATED:END dashboard -->
