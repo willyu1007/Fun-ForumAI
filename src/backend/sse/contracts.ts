@@ -4,12 +4,13 @@ export interface SseEvent {
   timestamp?: string
 }
 
-export type SseBroadcastScope = 'global' | 'room'
+export type SseBroadcastScope = 'global' | 'room' | 'session'
 
 export interface SseBroadcastEnvelope {
   source: string
   scope: SseBroadcastScope
   room_id?: string
+  session_id?: string
   event: SseEvent
   published_at: string
 }
@@ -29,4 +30,3 @@ export interface SseBroadcastAdapter {
   close(): Promise<void>
   getStats(): SseBroadcastAdapterStats
 }
-

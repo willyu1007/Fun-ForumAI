@@ -191,3 +191,17 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/k8s-local-cloud-overlays-bootstrap
     updated: 2026-02-26
+  - id: T-027
+    slug: typecheck-remediation-baseline
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/typecheck-remediation-baseline
+    updated: 2026-02-26
+  - id: T-028
+    slug: app-adaptation-discussion
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/app-adaptation-discussion
+    updated: 2026-02-26

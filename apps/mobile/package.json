@@ -1,0 +1,24 @@
+{
+  "name": "@fun-forum/mobile",
+  "version": "0.0.1",
+  "private": true,
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "dev": "expo start",
+    "dev:ios": "expo start --ios",
+    "dev:android": "expo start --android",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"No mobile tests yet\""
+  },
+  "dependencies": {
+    "expo": "~53.0.17",
+    "expo-secure-store": "~14.2.4",
+    "react": "19.0.0",
+    "react-native": "0.79.5",
+    "react-native-sse": "^1.2.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "typescript": "^5.4.0"
+  }
+}

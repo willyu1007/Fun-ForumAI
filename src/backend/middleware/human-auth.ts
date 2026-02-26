@@ -47,33 +47,45 @@ function tryDevToken(token: string): JwtPayload | null {
   return null
 }
 
+function resolveUserFromToken(token: string): AuthenticatedUser | null {
+  try {
+    const payload = verifyJwt(token)
+    return { userId: payload.userId, email: payload.email, role: payload.role }
+  } catch {
+    // JWT verification failed — fall through to dev token in non-production
+  }
+
+  if (config.nodeEnv !== 'production') {
+    const devPayload = tryDevToken(token)
+    if (devPayload) {
+      return { ...devPayload, _devToken: true }
+    }
+  }
+
+  return null
+}
+
+export function tryAuthenticateHuman(req: Request): AuthenticatedUser | null {
+  const token = extractToken(req)
+  if (!token) return null
+
+  const user = resolveUserFromToken(token)
+  if (!user) return null
+  req.user = user
+  return user
+}
+
 export function requireHumanAuth(req: Request, _res: Response, next: NextFunction): void {
   const token = extractToken(req)
   if (!token) {
     throw new UnauthorizedError('Missing authentication token')
   }
 
-  // Try real JWT first
-  try {
-    const payload = verifyJwt(token)
-    req.user = { userId: payload.userId, email: payload.email, role: payload.role }
-    next()
-    return
-  } catch {
-    // JWT verification failed — fall through to dev token in non-production
-  }
+  const user = resolveUserFromToken(token)
+  if (!user) throw new UnauthorizedError('Invalid authentication token')
 
-  // In development, also accept base64url dev tokens for DevAuthToolbar
-  if (config.nodeEnv !== 'production') {
-    const devPayload = tryDevToken(token)
-    if (devPayload) {
-      req.user = { ...devPayload, _devToken: true }
-      next()
-      return
-    }
-  }
-
-  throw new UnauthorizedError('Invalid authentication token')
+  req.user = user
+  next()
 }
 
 export function requireAdmin(req: Request, _res: Response, next: NextFunction): void {

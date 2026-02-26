@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import type { PrismaClient, Community as PrismaCommunity } from '@prisma/client'
+import {
+  Prisma,
+  type PrismaClient,
+  type Community as PrismaCommunity,
+} from '@prisma/client'
 import type { Community, PaginatedResult, PaginationOpts } from '../types.js'
 import type { CommunityRepository } from '../community-repository.js'
 
@@ -62,7 +66,10 @@ export class PgCommunityRepository implements CommunityRepository {
           name: community.name,
           slug: community.slug,
           description: community.description,
-          rulesJson: community.rules_json,
+          rulesJson:
+            community.rules_json === null
+              ? Prisma.DbNull
+              : (community.rules_json as Prisma.InputJsonValue),
           visibilityDefault: community.visibility_default,
           createdAt: now,
           updatedAt: now,
@@ -104,7 +111,12 @@ export class PgCommunityRepository implements CommunityRepository {
     const data: Record<string, unknown> = { updatedAt: c.updated_at }
     if (patch.name !== undefined) data.name = patch.name
     if (patch.description !== undefined) data.description = patch.description
-    if (patch.rules_json !== undefined) data.rulesJson = patch.rules_json
+    if (patch.rules_json !== undefined) {
+      data.rulesJson =
+        patch.rules_json === null
+          ? Prisma.DbNull
+          : (patch.rules_json as Prisma.InputJsonValue)
+    }
     if (patch.visibility_default !== undefined) data.visibilityDefault = patch.visibility_default
     this.prisma.community
       .update({ where: { id }, data })

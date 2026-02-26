@@ -26,7 +26,7 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
   const updateStyle = useUpdateAgentStyle(agentId)
 
   const [local, setLocal] = useState<StyleSettings | null>(null)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (data?.data) setLocal(data.data)
@@ -34,13 +34,18 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
 
   const save = useCallback(
     (next: StyleSettings) => {
-      clearTimeout(timerRef.current)
+      if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(() => updateStyle.mutate(next), 600)
     },
     [updateStyle],
   )
 
-  useEffect(() => () => clearTimeout(timerRef.current), [])
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    },
+    [],
+  )
 
   const patch = useCallback(
     (partial: Partial<StyleSettings>) => {

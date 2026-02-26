@@ -6,7 +6,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { useCreateAgent, useUpdateAgentStyle } from '@/api/hooks'
+import { useCreateAgent } from '@/api/hooks'
 import type { StyleSettings } from '@/api/types'
 
 interface AgentCreateWizardProps {
@@ -74,7 +74,6 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
   const [creating, setCreating] = useState(false)
 
   const createAgent = useCreateAgent()
-  const updateStyle = useUpdateAgentStyle('')
 
   const reset = () => {
     setStep(0)

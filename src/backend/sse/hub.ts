@@ -27,6 +27,8 @@ export class SseHub {
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null
   private roomSubscriptions = new Map<string, Set<string>>()
   private clientRooms = new Map<string, Set<string>>()
+  private sessionSubscriptions = new Map<string, Set<string>>()
+  private clientSessions = new Map<string, Set<string>>()
   private broadcastAdapter: SseBroadcastAdapter | null = null
 
   constructor(options: SseHubOptions = {}) {
@@ -93,21 +95,62 @@ export class SseHub {
     }
   }
 
+  subscribeSession(clientId: string, sessionId: string): void {
+    let sessionClients = this.sessionSubscriptions.get(sessionId)
+    if (!sessionClients) {
+      sessionClients = new Set()
+      this.sessionSubscriptions.set(sessionId, sessionClients)
+    }
+    sessionClients.add(clientId)
+
+    let sessions = this.clientSessions.get(clientId)
+    if (!sessions) {
+      sessions = new Set()
+      this.clientSessions.set(clientId, sessions)
+    }
+    sessions.add(sessionId)
+  }
+
+  unsubscribeSession(clientId: string, sessionId: string): void {
+    const sessionClients = this.sessionSubscriptions.get(sessionId)
+    if (sessionClients) {
+      sessionClients.delete(clientId)
+      if (sessionClients.size === 0) {
+        this.sessionSubscriptions.delete(sessionId)
+      }
+    }
+
+    const sessions = this.clientSessions.get(clientId)
+    if (sessions) {
+      sessions.delete(sessionId)
+      if (sessions.size === 0) {
+        this.clientSessions.delete(clientId)
+      }
+    }
+  }
+
   broadcastToRoom(roomId: string, event: SseEvent): void {
     const normalized = this.normalizeEvent(event)
     this.broadcastToRoomLocal(roomId, normalized)
-    this.publishToCluster('room', normalized, roomId)
+    this.publishToCluster('room', normalized, { roomId })
+  }
+
+  broadcastToSession(sessionId: string, event: SseEvent): void {
+    const normalized = this.normalizeEvent(event)
+    this.broadcastToSessionLocal(sessionId, normalized)
+    this.publishToCluster('session', normalized, { sessionId })
   }
 
   broadcast(event: SseEvent): void {
     const normalized = this.normalizeEvent(event)
     this.broadcastLocal(normalized)
-    this.publishToCluster('global', normalized)
+    this.publishToCluster('global', normalized, {})
   }
 
   getStats(): {
     connected_clients: number
     subscribed_rooms: number
+    subscribed_sessions: number
     broadcast_backend: SseBroadcastAdapterStats['backend']
     broadcast_published: number
     broadcast_received: number
@@ -124,6 +167,7 @@ export class SseHub {
     return {
       connected_clients: this.clientCount,
       subscribed_rooms: this.roomSubscriptions.size,
+      subscribed_sessions: this.sessionSubscriptions.size,
       broadcast_backend: stats.backend,
       broadcast_published: stats.published,
       broadcast_received: stats.received,
@@ -186,6 +230,31 @@ export class SseHub {
     }
   }
 
+  private broadcastToSessionLocal(sessionId: string, event: SseEvent): void {
+    const clientIds = this.sessionSubscriptions.get(sessionId)
+    if (!clientIds || clientIds.size === 0) return
+
+    const data = JSON.stringify(event)
+    const dead: string[] = []
+
+    for (const clientId of clientIds) {
+      const client = this.clients.get(clientId)
+      if (!client) {
+        dead.push(clientId)
+        continue
+      }
+      try {
+        client.res.write(`data: ${data}\n\n`)
+      } catch {
+        dead.push(clientId)
+      }
+    }
+
+    for (const id of dead) {
+      this.cleanupClient(id)
+    }
+  }
+
   private broadcastLocal(event: SseEvent): void {
     const data = JSON.stringify(event)
 
@@ -210,6 +279,12 @@ export class SseHub {
     if (rooms) {
       for (const roomId of Array.from(rooms)) {
         this.unsubscribeRoom(clientId, roomId)
+      }
+    }
+    const sessions = this.clientSessions.get(clientId)
+    if (sessions) {
+      for (const sessionId of Array.from(sessions)) {
+        this.unsubscribeSession(clientId, sessionId)
       }
     }
   }
@@ -252,13 +327,18 @@ export class SseHub {
     }
   }
 
-  private publishToCluster(scope: SseBroadcastScope, event: SseEvent, roomId?: string): void {
+  private publishToCluster(
+    scope: SseBroadcastScope,
+    event: SseEvent,
+    target: { roomId?: string; sessionId?: string },
+  ): void {
     if (!this.broadcastAdapter) return
 
     const envelope: SseBroadcastEnvelope = {
       source: this.instanceId,
       scope,
-      room_id: roomId,
+      room_id: target.roomId,
+      session_id: target.sessionId,
       event,
       published_at: new Date().toISOString(),
     }
@@ -276,6 +356,12 @@ export class SseHub {
     if (envelope.scope === 'room') {
       if (!envelope.room_id) return
       this.broadcastToRoomLocal(envelope.room_id, event)
+      return
+    }
+
+    if (envelope.scope === 'session') {
+      if (!envelope.session_id) return
+      this.broadcastToSessionLocal(envelope.session_id, event)
       return
     }
 

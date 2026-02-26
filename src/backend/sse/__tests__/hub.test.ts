@@ -138,6 +138,28 @@ describe('SseHub', () => {
     expect(collectEvents(r2)).toEqual([])
   })
 
+  it('broadcasts session events only to subscribed local clients', () => {
+    const hub = new SseHub({ instanceId: 'hub-session' })
+    hubsToClose.push(hub)
+
+    const r1 = new StubResponse()
+    const r2 = new StubResponse()
+    hub.addClient('c1', r1 as unknown as Response)
+    hub.addClient('c2', r2 as unknown as Response)
+    hub.subscribeSession('c1', 'session-1')
+
+    hub.broadcastToSession('session-1', {
+      type: 'PRIVATE_MESSAGE_CREATED',
+      payload: { session_id: 'session-1' },
+    })
+
+    expect(collectEvents(r1)).toEqual([expect.objectContaining({
+      type: 'PRIVATE_MESSAGE_CREATED',
+      payload: { session_id: 'session-1' },
+    })])
+    expect(collectEvents(r2)).toEqual([])
+  })
+
   it('fans out global events across hubs via broadcast adapter without local duplication', async () => {
     const hub1 = new SseHub({ instanceId: 'hub-1' })
     const hub2 = new SseHub({ instanceId: 'hub-2' })
@@ -182,6 +204,42 @@ describe('SseHub', () => {
 
     expect(collectEvents(r1)).toEqual([expect.objectContaining({ type: 'MESSAGE_CREATED', payload: { room_id: 'room-9', id: 'm-1' } })])
     expect(collectEvents(r2)).toEqual([expect.objectContaining({ type: 'MESSAGE_CREATED', payload: { room_id: 'room-9', id: 'm-1' } })])
+    expect(collectEvents(r3)).toEqual([])
+  })
+
+  it('fans out session-scoped events across hubs while honoring session subscriptions', async () => {
+    const hub1 = new SseHub({ instanceId: 'hub-1' })
+    const hub2 = new SseHub({ instanceId: 'hub-2' })
+    hubsToClose.push(hub1, hub2)
+
+    await hub1.setBroadcastAdapter(new MemoryBusBroadcastAdapter())
+    await hub2.setBroadcastAdapter(new MemoryBusBroadcastAdapter())
+
+    const r1 = new StubResponse()
+    const r2 = new StubResponse()
+    const r3 = new StubResponse()
+    hub1.addClient('c1', r1 as unknown as Response)
+    hub2.addClient('c2', r2 as unknown as Response)
+    hub2.addClient('c3', r3 as unknown as Response)
+
+    hub1.subscribeSession('c1', 'session-9')
+    hub2.subscribeSession('c2', 'session-9')
+    hub2.subscribeSession('c3', 'session-other')
+
+    hub1.broadcastToSession('session-9', {
+      type: 'PRIVATE_MESSAGE_CREATED',
+      payload: { session_id: 'session-9', id: 'pm-1' },
+    })
+    await flushAsync()
+
+    expect(collectEvents(r1)).toEqual([expect.objectContaining({
+      type: 'PRIVATE_MESSAGE_CREATED',
+      payload: { session_id: 'session-9', id: 'pm-1' },
+    })])
+    expect(collectEvents(r2)).toEqual([expect.objectContaining({
+      type: 'PRIVATE_MESSAGE_CREATED',
+      payload: { session_id: 'session-9', id: 'pm-1' },
+    })])
     expect(collectEvents(r3)).toEqual([])
   })
 })

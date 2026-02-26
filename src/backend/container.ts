@@ -376,6 +376,10 @@ let instructionEngine: import('./services/instruction-engine.js').InstructionEng
 export let growthEngine: import('./services/growth-engine.js').GrowthEngine | null = null
 let memoryService: import('./services/memory-service.js').MemoryService | null = null
 let proactiveEventHandler: import('./runtime/proactive-event-handler.js').ProactiveEventHandler | null = null
+export let privateChannelServices: {
+  channelService: import('./services/private-channel-service.js').PrivateChannelService
+  memoryService: import('./services/memory-service.js').MemoryService
+} | null = null
 export let privateChannelScheduler: import('./runtime/private-channel-scheduler.js').PrivateChannelScheduler | null = null
 if (config.db.usePrisma) {
   const { getPrismaClient } = await import('./persistence/prisma-client.js')
@@ -437,7 +441,12 @@ if (config.db.usePrisma) {
     agentRunRepo,
     budgetService,
     costTracker,
+    sseHub,
   })
+  privateChannelServices = {
+    channelService,
+    memoryService: memoryService!,
+  }
 
   privateChannelScheduler = new PrivateChannelScheduler({
     channelService,

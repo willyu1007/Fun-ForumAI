@@ -19,6 +19,7 @@ import { relativeTime } from '@/shared/utils/relative-time'
 import type { PrivateSession, PrivateMessage } from '@/api/types'
 import { MessageInput } from '../components/MessageInput'
 import { SessionSidebar } from '../components/SessionSidebar'
+import { usePrivateSessionSse } from '../hooks/use-private-session-sse'
 
 export function PrivateChatPage() {
   const { agentId } = useParams<{ agentId: string }>()
@@ -183,6 +184,7 @@ function ChatThread({
   const sendMessage = useSendPrivateMessage(agentId, sessionId)
   const endSession = useEndPrivateSession(agentId, sessionId)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  usePrivateSessionSse(sessionId, agentId)
 
   const messages: PrivateMessage[] = msgData?.data?.items ?? []
 

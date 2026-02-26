@@ -1,56 +1,17 @@
 import { Router, type IRouter } from 'express'
-import type { PrismaClient } from '@prisma/client'
 import { requireHumanAuth } from '../middleware/human-auth.js'
-import { PrivateChannelService } from '../services/private-channel-service.js'
-import { MemoryService } from '../services/memory-service.js'
-import { PgPrivateChannelRepository } from '../repos/pg/pg-private-channel-repository.js'
-import { PgMemoryRepository } from '../repos/pg/pg-memory-repository.js'
-import { agentService, llmClient, growthEngine } from '../container.js'
+import { privateChannelServices } from '../container.js'
 import { AppError, ValidationError } from '../lib/errors.js'
 
-function getPrismaOrNull(): PrismaClient | null {
-  return ((globalThis as Record<string, unknown>).__forumPrisma as PrismaClient) ?? null
-}
-
-let _services: {
-  channelService: PrivateChannelService
-  memoryService: MemoryService
-} | null = null
-
 function getServices() {
-  if (_services) return _services
-
-  const prisma = getPrismaOrNull()
-  if (!prisma) return null
-
-  const channelRepo = new PgPrivateChannelRepository(prisma)
-  const memoryRepo = new PgMemoryRepository(prisma)
-
-  const memoryService = new MemoryService({
-    memoryRepo,
-    channelRepo,
-    llmClient,
-    growthEngine,
-  })
-
-  const channelService = new PrivateChannelService({
-    channelRepo,
-    memoryRepo,
-    agentService,
-    llmClient,
-  })
-
-  _services = { channelService, memoryService }
-  return _services
+  return privateChannelServices
 }
 
 export const privateChannelRouter: IRouter = Router()
 
-privateChannelRouter.use(requireHumanAuth)
-
 // ─── Session endpoints ──────────────────────────────────────
 
-privateChannelRouter.post('/agents/:agentId/chat/sessions', async (req, res) => {
+privateChannelRouter.post('/agents/:agentId/chat/sessions', requireHumanAuth, async (req, res) => {
   const services = getServices()
   if (!services) {
     res.status(503).json({ error: { code: 'DB_UNAVAILABLE', message: 'Database not available' } })
@@ -59,7 +20,7 @@ privateChannelRouter.post('/agents/:agentId/chat/sessions', async (req, res) => 
 
   try {
     const session = await services.channelService.createSession(
-      req.params.agentId,
+      String(req.params.agentId),
       req.user!.userId,
     )
     res.status(201).json({ data: session })
@@ -68,7 +29,7 @@ privateChannelRouter.post('/agents/:agentId/chat/sessions', async (req, res) => 
   }
 })
 
-privateChannelRouter.get('/agents/:agentId/chat/sessions', async (req, res) => {
+privateChannelRouter.get('/agents/:agentId/chat/sessions', requireHumanAuth, async (req, res) => {
   const services = getServices()
   if (!services) {
     res.json({ data: { items: [], next_cursor: null } })
@@ -80,7 +41,7 @@ privateChannelRouter.get('/agents/:agentId/chat/sessions', async (req, res) => {
     const cursor = req.query.cursor as string | undefined
     const status = req.query.status as string | undefined
 
-    const result = await services.channelService.listSessions(req.params.agentId, {
+    const result = await services.channelService.listSessions(String(req.params.agentId), {
       limit,
       cursor,
       status: status as 'ACTIVE' | 'ENDED' | 'ARCHIVED' | undefined,
@@ -95,6 +56,7 @@ privateChannelRouter.get('/agents/:agentId/chat/sessions', async (req, res) => {
 
 privateChannelRouter.post(
   '/agents/:agentId/chat/sessions/:sessionId/messages',
+  requireHumanAuth,
   async (req, res) => {
     const services = getServices()
     if (!services) {
@@ -110,7 +72,7 @@ privateChannelRouter.post(
 
     try {
       const result = await services.channelService.sendMessage(
-        req.params.sessionId,
+        String(req.params.sessionId),
         req.user!.userId,
         content,
       )
@@ -123,6 +85,7 @@ privateChannelRouter.post(
 
 privateChannelRouter.get(
   '/agents/:agentId/chat/sessions/:sessionId/messages',
+  requireHumanAuth,
   async (req, res) => {
     const services = getServices()
     if (!services) {
@@ -133,7 +96,7 @@ privateChannelRouter.get(
     try {
       const limit = Math.min(parseInt(String(req.query.limit ?? '50'), 10), 100)
       const cursor = req.query.cursor as string | undefined
-      const result = await services.channelService.getMessages(req.params.sessionId, {
+      const result = await services.channelService.getMessages(String(req.params.sessionId), {
         limit,
         cursor,
       })
@@ -148,6 +111,7 @@ privateChannelRouter.get(
 
 privateChannelRouter.post(
   '/agents/:agentId/chat/sessions/:sessionId/end',
+  requireHumanAuth,
   async (req, res) => {
     const services = getServices()
     if (!services) {
@@ -157,7 +121,7 @@ privateChannelRouter.post(
 
     try {
       const session = await services.channelService.endSession(
-        req.params.sessionId,
+        String(req.params.sessionId),
         req.user!.userId,
       )
 
@@ -174,7 +138,7 @@ privateChannelRouter.post(
 
 // ─── Memory endpoints ───────────────────────────────────────
 
-privateChannelRouter.get('/agents/:agentId/memories', async (req, res) => {
+privateChannelRouter.get('/agents/:agentId/memories', requireHumanAuth, async (req, res) => {
   const services = getServices()
   if (!services) {
     res.json({ data: { items: [], next_cursor: null } })
@@ -189,7 +153,7 @@ privateChannelRouter.get('/agents/:agentId/memories', async (req, res) => {
       : req.query.forgotten === 'false' ? false
       : undefined
 
-    const result = await services.memoryService.listMemories(req.params.agentId, {
+    const result = await services.memoryService.listMemories(String(req.params.agentId), {
       limit,
       cursor,
       source_type: sourceType as 'PRIVATE_CHAT' | 'PUBLIC_OBSERVATION' | 'SYSTEM' | undefined,
@@ -203,12 +167,12 @@ privateChannelRouter.get('/agents/:agentId/memories', async (req, res) => {
 
 // ─── Privacy settings ───────────────────────────────────────
 
-privateChannelRouter.get('/agents/:agentId/privacy-settings', async (req, res) => {
+privateChannelRouter.get('/agents/:agentId/privacy-settings', requireHumanAuth, async (req, res) => {
   const services = getServices()
   if (!services) {
     res.json({
       data: {
-        agent_id: req.params.agentId,
+        agent_id: String(req.params.agentId),
         disclosure_level: 1,
         public_memory_budget: 1000,
         public_memory_top_k: 4,
@@ -218,14 +182,14 @@ privateChannelRouter.get('/agents/:agentId/privacy-settings', async (req, res) =
   }
 
   try {
-    const settings = await services.memoryService.getPrivacySettings(req.params.agentId)
+    const settings = await services.memoryService.getPrivacySettings(String(req.params.agentId))
     res.json({ data: settings })
   } catch (err) {
     handleError(res, err)
   }
 })
 
-privateChannelRouter.patch('/agents/:agentId/privacy-settings', async (req, res) => {
+privateChannelRouter.patch('/agents/:agentId/privacy-settings', requireHumanAuth, async (req, res) => {
   const services = getServices()
   if (!services) {
     res.status(503).json({ error: { code: 'DB_UNAVAILABLE', message: 'Database not available' } })
@@ -243,7 +207,7 @@ privateChannelRouter.patch('/agents/:agentId/privacy-settings', async (req, res)
     }
 
     const settings = await services.memoryService.updatePrivacySettings(
-      req.params.agentId,
+      String(req.params.agentId),
       req.user!.userId,
       {
         disclosure_level: disclosure_level !== undefined ? Number(disclosure_level) : undefined,
@@ -259,7 +223,7 @@ privateChannelRouter.patch('/agents/:agentId/privacy-settings', async (req, res)
 
 // ─── My Agents ───────────────────────────────────────────────
 
-privateChannelRouter.get('/me/agents', async (req, res) => {
+privateChannelRouter.get('/me/agents', requireHumanAuth, async (req, res) => {
   try {
     const { agentRepo: repo } = await import('../container.js')
     const agents = repo.findByOwner(req.user!.userId)

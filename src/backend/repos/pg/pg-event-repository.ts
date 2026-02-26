@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import type {
-  PrismaClient,
-  Event as PrismaEvent,
-  AgentRun as PrismaAgentRun,
+import {
+  Prisma,
+  type PrismaClient,
+  type Event as PrismaEvent,
+  type AgentRun as PrismaAgentRun,
 } from '@prisma/client'
 import type {
   DomainEvent,
@@ -30,6 +31,10 @@ function paginate<T extends { id: string }>(
       : null
   return { items: page, next_cursor }
 }
+
+// Tracks in-flight event writes so dependent agent_run inserts can wait
+// for FK target persistence in the same process.
+const pendingEventWrites = new Map<string, Promise<void>>()
 
 export class PgEventRepository implements EventRepository {
   private cache = new Map<string, DomainEvent>()
@@ -67,17 +72,27 @@ export class PgEventRepository implements EventRepository {
     if (event.idempotency_key) {
       this.idempotencyIndex.set(event.idempotency_key, id)
     }
-    this.prisma.event
+    const persistPromise = this.prisma.event
       .create({
         data: {
           id,
           eventType: event.event_type,
-          payloadJson: event.payload_json,
+          payloadJson: event.payload_json as Prisma.InputJsonValue,
           idempotencyKey: event.idempotency_key,
           createdAt: now,
         },
       })
-      .catch((err) => console.error('[PgEventRepo] create error:', err))
+      .then(() => undefined)
+      .catch((err) => {
+        console.error('[PgEventRepo] create error:', err)
+        throw err
+      })
+      .finally(() => {
+        pendingEventWrites.delete(id)
+      })
+
+    pendingEventWrites.set(id, persistPromise)
+    void persistPromise.catch(() => undefined)
     return event
   }
 
@@ -129,21 +144,40 @@ export class PgAgentRunRepository implements AgentRunRepository {
       created_at: now,
     }
     this.cache.set(id, run)
-    this.prisma.agentRun
-      .create({
-        data: {
-          id,
-          agentId: run.agent_id,
-          triggerEventId: run.trigger_event_id,
-          inputDigest: run.input_digest,
-          outputJson: run.output_json,
-          moderationResult: run.moderation_result,
-          tokenCost: run.token_cost,
-          latencyMs: run.latency_ms,
-          createdAt: now,
-        },
-      })
-      .catch((err) => console.error('[PgAgentRunRepo] create error:', err))
+
+    const persistRun = () =>
+      this.prisma.agentRun
+        .create({
+          data: {
+            id,
+            agentId: run.agent_id,
+            triggerEventId: run.trigger_event_id,
+            inputDigest: run.input_digest,
+            outputJson:
+              run.output_json === null
+                ? Prisma.DbNull
+                : (run.output_json as Prisma.InputJsonValue),
+            moderationResult: run.moderation_result,
+            tokenCost: run.token_cost,
+            latencyMs: run.latency_ms,
+            createdAt: now,
+          },
+        })
+        .catch((err) => console.error('[PgAgentRunRepo] create error:', err))
+
+    const pendingEventPersist = pendingEventWrites.get(run.trigger_event_id)
+    if (pendingEventPersist) {
+      void pendingEventPersist
+        .then(() => persistRun())
+        .catch((err) => {
+          console.error(
+            '[PgAgentRunRepo] skipped create because trigger event persistence failed:',
+            err,
+          )
+        })
+    } else {
+      void persistRun()
+    }
     return run
   }
 

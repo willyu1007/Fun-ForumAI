@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import type {
-  PrismaClient,
-  Agent as PrismaAgent,
-  AgentConfig as PrismaAgentConfig,
+import {
+  Prisma,
+  type PrismaClient,
+  type Agent as PrismaAgent,
+  type AgentConfig as PrismaAgentConfig,
 } from '@prisma/client'
 import type {
   Agent,
@@ -178,7 +179,7 @@ export class PgAgentConfigRepository implements AgentConfigRepository {
         data: {
           id,
           agentId: config.agent_id,
-          configJson: config.config_json,
+          configJson: config.config_json as Prisma.InputJsonValue,
           updatedAt: now,
           effectiveAt: now,
           updatedBy: config.updated_by,

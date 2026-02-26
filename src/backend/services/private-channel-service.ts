@@ -6,6 +6,7 @@ import type { CostTracker } from './cost-tracker.js'
 import type { PrivateChannelRepository } from '../repos/private-channel-repository.js'
 import type { MemoryRepository } from '../repos/memory-repository.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
+import type { SseHub } from '../sse/hub.js'
 import type {
   PrivateSession,
   PrivateMessage,
@@ -37,6 +38,7 @@ export interface PrivateChannelServiceDeps {
   agentRunRepo: AgentRunRepository
   budgetService: BudgetService | null
   costTracker: CostTracker | null
+  sseHub?: SseHub | null
 }
 
 export class PrivateChannelService {
@@ -81,6 +83,11 @@ export class PrivateChannelService {
     )
     if (!updated) throw new NotFoundError('PrivateSession', sessionId)
 
+    this.deps.sseHub?.broadcastToSession(sessionId, {
+      type: 'PRIVATE_SESSION_ENDED',
+      payload: { session_id: sessionId, session: updated },
+    })
+
     return updated
   }
 
@@ -116,6 +123,10 @@ export class PrivateChannelService {
       author_type: 'HUMAN',
       content: content.trim(),
     })
+    this.deps.sseHub?.broadcastToSession(sessionId, {
+      type: 'PRIVATE_MESSAGE_CREATED',
+      payload: { session_id: sessionId, message: humanMsg },
+    })
 
     const messages = await this.buildChatMessages(session, content.trim())
     const startMs = Date.now()
@@ -130,6 +141,10 @@ export class PrivateChannelService {
       session_id: sessionId,
       author_type: 'AGENT',
       content: llmResponse.content,
+    })
+    this.deps.sseHub?.broadcastToSession(sessionId, {
+      type: 'PRIVATE_MESSAGE_CREATED',
+      payload: { session_id: sessionId, message: agentReply },
     })
 
     this.recordAuditTrail(session, content.trim(), llmResponse, latencyMs)

@@ -21,6 +21,7 @@ interface RuntimeStats {
   sse: {
     connected_clients: number
     subscribed_rooms: number
+    subscribed_sessions: number
     broadcast_backend: 'local' | 'redis'
     broadcast_published: number
     broadcast_received: number
@@ -190,7 +191,7 @@ export function RuntimeDashboard() {
 
           <div className="rounded border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
             <p>
-              SSE backend: {stats?.sse.broadcast_backend ?? '-'} · rooms: {stats?.sse.subscribed_rooms ?? 0} · reconnect attempts: {sseStatus.reconnectAttempts}
+              SSE backend: {stats?.sse.broadcast_backend ?? '-'} · rooms: {stats?.sse.subscribed_rooms ?? 0} · sessions: {stats?.sse.subscribed_sessions ?? 0} · reconnect attempts: {sseStatus.reconnectAttempts}
             </p>
             <p>
               published: {stats?.sse.broadcast_published ?? 0} · received: {stats?.sse.broadcast_received ?? 0} · dropped: {stats?.sse.broadcast_dropped ?? 0}

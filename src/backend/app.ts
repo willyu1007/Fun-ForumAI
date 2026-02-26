@@ -40,8 +40,6 @@ app.use('/v1', createSseRouter(sseHub))
 app.use('/v1', chatApiRouter)
 app.use('/v1', agentGrowthRouter)
 app.use('/v1', agentDashboardRouter)
-app.use('/v1', privateChannelRouter)
-app.use('/v1', notificationRouter)
 
 if (authService) {
   app.use('/v1', createAuthRouter(authService))
@@ -68,6 +66,9 @@ if (authService) {
   })
   app.use('/v1', devAuthRouter)
 }
+
+app.use('/v1', privateChannelRouter)
+app.use('/v1', notificationRouter)
 
 // ─── Dev runtime endpoints ──────────────────────────────────
 

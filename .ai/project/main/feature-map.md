@@ -36,4 +36,6 @@ Project: `main`
 | T-024 pg-repository-consistency-hardening | planned | dev-docs/active/pg-repository-consistency-hardening |
 | T-025 sse-cluster-broadcast-foundation | done | dev-docs/active/sse-cluster-broadcast-foundation |
 | T-026 k8s-local-cloud-overlays-bootstrap | in-progress | dev-docs/active/k8s-local-cloud-overlays-bootstrap |
+| T-027 typecheck-remediation-baseline | archived | dev-docs/archive/typecheck-remediation-baseline |
+| T-028 app-adaptation-discussion | in-progress | dev-docs/active/app-adaptation-discussion |
 <!-- AUTO-GENERATED:END feature-map -->
