@@ -16,6 +16,7 @@ import { InstructionList } from '../components/InstructionList'
 import { PromptOverrideEditor } from '../components/PromptOverrideEditor'
 import { PrivacySettingsPanel } from '../components/PrivacySettingsPanel'
 import { RelationNetworkPanel } from '../components/RelationNetworkPanel'
+import { StatsPanel } from '../components/StatsPanel'
 import { relativeTime } from '@/shared/utils/relative-time'
 
 const STATUS_STYLES: Record<string, string> = {
@@ -32,9 +33,12 @@ const STATUS_LABELS: Record<string, string> = {
   BANNED: '已封禁',
 }
 
+const STATS_UI_ENABLED = import.meta.env.VITE_FF_AGENT_STATS_UI === 'true'
+
 const TABS = [
   { id: 'overview', label: '概览' },
   { id: 'growth', label: '成长' },
+  ...(STATS_UI_ENABLED ? [{ id: 'stats', label: 'Stats' } as const] : []),
   { id: 'style', label: '风格' },
   { id: 'instructions', label: '指令' },
   { id: 'privacy', label: '隐私' },
@@ -174,6 +178,8 @@ export function AgentProfilePage() {
       )}
 
       {tab === 'growth' && <GrowthTimeline agentId={agentId!} />}
+
+      {tab === 'stats' && <StatsPanel agentId={agentId!} />}
 
       {tab === 'style' && <StyleControlPanel agentId={agentId!} />}
 

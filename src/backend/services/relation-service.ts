@@ -7,8 +7,11 @@ import type { GrowthEngine } from './growth-engine.js'
 import type { PostRepository } from '../repos/post-repository.js'
 import type { CommentRepository } from '../repos/comment-repository.js'
 import type { RoomRepository } from '../repos/room-repository.js'
+import type { MessageRepository } from '../repos/message-repository.js'
+import type { StatsService } from './stats-service.js'
 import { RelationEngine, type RelationPairStats } from './relation-engine.js'
 import { RelationMetrics } from './relation-metrics.js'
+import { config } from '../lib/config.js'
 
 const DAYS_7_MS = 7 * 24 * 60 * 60 * 1000
 const ACTIVE_RELATION_STATES: RelationState[] = ['shadow', 'effective']
@@ -42,6 +45,8 @@ export interface RelationServiceDeps {
   postRepo?: PostRepository
   commentRepo?: CommentRepository
   roomRepo?: RoomRepository
+  messageRepo?: MessageRepository
+  statsService?: StatsService | null
   relationEngine?: RelationEngine
   metrics?: RelationMetrics
 }
@@ -196,6 +201,57 @@ export class RelationService {
     }
   }
 
+  async onVoteEvent(event: DomainEvent): Promise<void> {
+    const payload = event.payload_json
+    const voterAgentId = typeof payload.voter_agent_id === 'string' ? payload.voter_agent_id : ''
+    const targetType = typeof payload.target_type === 'string' ? payload.target_type : ''
+    const targetId = typeof payload.target_id === 'string' ? payload.target_id : ''
+    const direction = typeof payload.direction === 'string' ? payload.direction : ''
+
+    if (!voterAgentId || !targetType || !targetId || !direction) return
+
+    let targetAgentId = ''
+    if (targetType === 'POST' && this.deps.postRepo) {
+      const post = await this.deps.postRepo.findById(targetId)
+      targetAgentId = post?.author_agent_id ?? ''
+    } else if (targetType === 'COMMENT' && this.deps.commentRepo) {
+      const comment = await this.deps.commentRepo.findById(targetId)
+      targetAgentId = comment?.author_agent_id ?? ''
+    } else if (targetType === 'MESSAGE' && this.deps.messageRepo) {
+      const message = await this.deps.messageRepo.findById(targetId)
+      targetAgentId = message?.author_id ?? ''
+    }
+
+    if (!targetAgentId || targetAgentId === voterAgentId) return
+
+    let repeat = 1
+    if (config.features.agentStatsVotePolicy && this.deps.statsService) {
+      const voteKnobs = this.deps.statsService.getDerivedSync(voterAgentId).vote
+      if (direction === 'DOWN' && voteKnobs.p_down_given_vote > 0.7) {
+        repeat = 2
+      } else if (direction === 'UP' && voteKnobs.p_vote > 0.7) {
+        repeat = 2
+      }
+    }
+
+    const signalType = direction === 'DOWN' ? 'safety_warning' : 'forum_reply'
+    for (let i = 0; i < repeat; i++) {
+      await this.ingestSignal({
+        from_agent_id: voterAgentId,
+        to_agent_id: targetAgentId,
+        event_type: signalType,
+        source_type: 'vote_cast',
+        source_ref_id: targetId,
+        idempotency_key: `vote:${event.id}:${i}:${voterAgentId}:${targetAgentId}:${direction}`,
+        payload: {
+          target_type: targetType,
+          target_id: targetId,
+          direction,
+        },
+      })
+    }
+  }
+
   async onPrivateDigestCompleted(_agentId: string, _sessionId: string): Promise<void> {
     // Private digest currently has no deterministic peer-agent anchor.
     // Keep this hook for pipeline completeness and future pair extraction.
@@ -326,11 +382,20 @@ export class RelationService {
     const now = new Date()
 
     const existing = existingOverride ?? await this.deps.relationRepo.getRelation(fromAgentId, toAgentId)
-    const [stats, personaScore, safetyScore] = await Promise.all([
+    let [stats, personaScore, safetyScore] = await Promise.all([
       this.computePairStats(fromAgentId, toAgentId, now),
       this.computePersonaScore(fromAgentId, toAgentId),
       this.computeSafetyScore(fromAgentId, toAgentId),
     ])
+
+    if (config.features.agentStatsRelationPolicy && this.deps.statsService) {
+      const knobs = this.deps.statsService.getDerivedSync(fromAgentId).relation_policy
+      stats = applyRelationPolicyToPairStats(stats, {
+        pos_multiplier: knobs.pos_multiplier,
+        neg_multiplier: knobs.neg_multiplier,
+      })
+      personaScore = clamp01(personaScore * (0.9 + 0.2 * clamp01((knobs.challenge_valence + 1) / 2)))
+    }
 
     const capacityAllowed = await this.isCapacityAllowed(fromAgentId, existing)
 
@@ -550,6 +615,23 @@ function resolveHint(selfState?: RelationState, reverseState?: RelationState): P
   if (selfState === 'effective') return 'following'
   if (reverseState === 'effective') return 'follower'
   return 'none'
+}
+
+function applyRelationPolicyToPairStats(
+  stats: RelationPairStats,
+  policy: { pos_multiplier: number; neg_multiplier: number },
+): RelationPairStats {
+  const pos = Math.max(0.8, policy.pos_multiplier)
+  const neg = Math.max(0.8, policy.neg_multiplier)
+  return {
+    ...stats,
+    co_presence_count: Math.round(stats.co_presence_count * pos),
+    reciprocal_reply_count: Math.round(stats.reciprocal_reply_count * pos),
+    interaction_count_7d: Math.round(stats.interaction_count_7d * pos),
+    warning_count_24h: Math.round(stats.warning_count_24h * neg),
+    warning_count_7d: Math.round(stats.warning_count_7d * neg),
+    severe_count_7d: Math.round(stats.severe_count_7d * Math.max(1, neg * 0.5)),
+  }
 }
 
 function extractStyle(config: Record<string, unknown>): {

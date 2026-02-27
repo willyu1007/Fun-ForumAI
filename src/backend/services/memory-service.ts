@@ -4,6 +4,7 @@ import type { MemoryRepository } from '../repos/memory-repository.js'
 import type { GrowthEngine } from './growth-engine.js'
 import type { NurtureOrchestrator } from './nurture-orchestrator.js'
 import type { RelationService } from './relation-service.js'
+import type { StatsService } from './stats-service.js'
 import type {
   AgentMemory,
   AgentPrivacySettingsEntity,
@@ -25,6 +26,7 @@ export interface MemoryServiceDeps {
   growthEngine?: GrowthEngine | null
   nurtureOrchestrator?: NurtureOrchestrator | null
   relationService?: RelationService | null
+  statsService?: StatsService | null
 }
 
 export interface MemoryForContext {
@@ -118,6 +120,17 @@ export class MemoryService {
     },
   ): Promise<MemoryForContext> {
     const allMemories = await this.deps.memoryRepo.findActiveMemories(agentId, {})
+    let effectiveTopK = opts.topK
+    let effectiveBudget = opts.tokenBudget
+
+    if (config.features.agentStatsBehavior && this.deps.statsService) {
+      const knobs = this.deps.statsService.getDerivedSync(agentId, {
+        privacy_top_k: opts.topK,
+        privacy_budget: opts.tokenBudget,
+      })
+      effectiveTopK = knobs.memory.effective_top_k
+      effectiveBudget = knobs.memory.effective_budget
+    }
 
     let filtered = allMemories
     if (opts.scene !== 'private_chat') {
@@ -136,9 +149,9 @@ export class MemoryService {
     const selected: AgentMemory[] = []
     const usedPrimaryTags = new Set<string>()
     for (const item of scored) {
-      if (selected.length >= opts.topK) break
+      if (selected.length >= effectiveTopK) break
       const primaryTag = item.memory.topic_tags[0]?.toLowerCase() ?? ''
-      if (primaryTag && usedPrimaryTags.has(primaryTag) && selected.length < opts.topK - 1) {
+      if (primaryTag && usedPrimaryTags.has(primaryTag) && selected.length < effectiveTopK - 1) {
         continue
       }
       selected.push(item.memory)
@@ -151,7 +164,7 @@ export class MemoryService {
     const budgetFiltered: AgentMemory[] = []
     for (const m of selected) {
       const estimatedTokens = Math.ceil(m.summary_text.length / 3)
-      if (totalTokens + estimatedTokens > opts.tokenBudget) break
+      if (totalTokens + estimatedTokens > effectiveBudget) break
       budgetFiltered.push(m)
       totalTokens += estimatedTokens
     }
@@ -272,14 +285,23 @@ export class MemoryService {
   }
 
   async decayAndForget(agentId: string): Promise<{ decayed: number; forgotten: number }> {
-    const decayed = await this.deps.memoryRepo.batchDecay(agentId, DECAY_FACTOR_PER_DAY)
+    let decayPerDay = DECAY_FACTOR_PER_DAY
+    let forgetThreshold = FORGET_THRESHOLD
+
+    if (config.features.agentStatsBehavior && this.deps.statsService) {
+      const knobs = this.deps.statsService.getDerivedSync(agentId)
+      decayPerDay = knobs.memory.decay_per_day
+      forgetThreshold = knobs.memory.forget_threshold
+    }
+
+    const decayed = await this.deps.memoryRepo.batchDecay(agentId, decayPerDay)
 
     const allActive = await this.deps.memoryRepo.findActiveMemories(agentId, {})
     let forgotten = 0
     for (const m of allActive) {
       const boost = Math.log2(m.access_count + 1) * 0.02
       const effective = m.importance_score + boost
-      if (effective < FORGET_THRESHOLD) {
+      if (effective < forgetThreshold) {
         await this.deps.memoryRepo.markForgotten(m.id)
         forgotten++
       }

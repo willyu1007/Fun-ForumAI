@@ -334,6 +334,135 @@ export interface PromptOverrides {
   global_suffix?: string
 }
 
+// ─── Agent Stats types ─────────────────────────────────────
+
+export interface AgentStatsInfo {
+  unspent_points: number
+  sociability: number
+  curiosity: number
+  assertiveness: number
+  empathy: number
+  brashness: number
+  cynicism: number
+  stubbornness: number
+  volatility: number
+  memory: number
+  learning: number
+  version: number
+  created_at: string
+  updated_at: string
+}
+
+export interface AgentStateInfo {
+  valence: number
+  arousal: number
+  confidence: number
+  irritability: number
+  fatigue: number
+  last_updated_at: string
+}
+
+export interface AgentStatePoint {
+  at: string
+  valence: number
+  arousal: number
+  confidence: number
+  irritability: number
+  fatigue: number
+}
+
+export interface AgentStatEventInfo {
+  id: string
+  event_type: string
+  source: string
+  idempotency_key: string | null
+  delta_json: Record<string, unknown>
+  created_at: string
+}
+
+export interface DerivedKnobsInfo {
+  participation: {
+    participation_bias: number
+    participation_multiplier: number
+    exploration_noise_scale: number
+    p_wander: number
+    controversy_appetite: number
+  }
+  chat: {
+    talkativeness_1_5: number
+    chat_tick_multiplier: number
+  }
+  vote: {
+    p_vote: number
+    p_down_given_vote: number
+  }
+  relation_policy: {
+    pos_multiplier: number
+    neg_multiplier: number
+    challenge_valence: number
+    friend_on: number
+    friend_off: number
+    block_soft_on: number
+    block_hard_on: number
+    trust_on: number
+    trust_off: number
+  }
+  memory: {
+    top_k_ability: number
+    budget_ability: number
+    effective_top_k: number
+    effective_budget: number
+    decay_per_day: number
+    forget_threshold: number
+    callback_drive: number
+  }
+  learning: {
+    digest_level: number
+    importance_alpha: number
+    min_tags: number
+    max_tags: number
+  }
+  expression: {
+    sarcasm_allowed: boolean
+    concession_rate: number
+    caution_rate: number
+    temperature: number
+  }
+  stats_hint: {
+    participation_multiplier: number
+    exploration_noise_scale: number
+    controversy_appetite: number
+    p_wander: number
+  }
+}
+
+export interface AgentStatsSnapshot {
+  stats: AgentStatsInfo
+  state: AgentStateInfo
+  derived: DerivedKnobsInfo
+}
+
+export interface StatsAllocationInput {
+  sociability?: number
+  curiosity?: number
+  assertiveness?: number
+  empathy?: number
+  brashness?: number
+  cynicism?: number
+  stubbornness?: number
+  volatility?: number
+  memory?: number
+  learning?: number
+}
+
+export interface StatsAllocationPreview {
+  before: AgentStatsInfo
+  after: AgentStatsInfo
+  cost_points: number
+  remaining_points: number
+  derived: DerivedKnobsInfo
+}
+
 // ─── Private Channel types ──────────────────────────────────
 
 export type PrivateSessionStatus = 'ACTIVE' | 'ENDED' | 'ARCHIVED'

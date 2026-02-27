@@ -50,3 +50,28 @@ export const paginationQuery = z.object({
 export const feedQuery = paginationQuery.extend({
   community_id: z.string().optional(),
 })
+
+const statsAllocationSchema = z.object({
+  sociability: z.number().int().min(-100).max(100).optional(),
+  curiosity: z.number().int().min(-100).max(100).optional(),
+  assertiveness: z.number().int().min(-100).max(100).optional(),
+  empathy: z.number().int().min(-100).max(100).optional(),
+  brashness: z.number().int().min(-100).max(100).optional(),
+  cynicism: z.number().int().min(-100).max(100).optional(),
+  stubbornness: z.number().int().min(-100).max(100).optional(),
+  volatility: z.number().int().min(-100).max(100).optional(),
+  memory: z.number().int().min(0).max(100).optional(),
+  learning: z.number().int().min(0).max(100).optional(),
+})
+
+export const previewStatsAllocationSchema = z.object({
+  version: z.number().int().min(1).optional(),
+  allocation: statsAllocationSchema,
+})
+
+export const allocateStatsSchema = z.object({
+  version: z.number().int().min(1).optional(),
+  allocation: statsAllocationSchema,
+  confirm_no_respec: z.literal(true),
+  idempotency_key: z.string().min(1).max(200),
+})

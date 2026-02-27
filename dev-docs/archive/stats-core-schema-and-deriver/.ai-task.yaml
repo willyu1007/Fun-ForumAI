@@ -1,0 +1,6 @@
+version: 1
+task_id: T-040
+project: main
+slug: stats-core-schema-and-deriver
+status: archived
+updated: "2026-02-27"

@@ -18,6 +18,7 @@ import { createAuthRouter } from './routes/auth-api.js'
 import { requireHumanAuth } from './middleware/human-auth.js'
 import { privateChannelRouter } from './routes/private-channel-api.js'
 import { notificationRouter } from './routes/notification-api.js'
+import { agentStatsRouter } from './routes/agent-stats-api.js'
 
 const app: Express = express()
 
@@ -69,6 +70,7 @@ if (authService) {
 
 app.use('/v1', privateChannelRouter)
 app.use('/v1', notificationRouter)
+app.use('/v1', agentStatsRouter)
 
 // ─── Dev runtime endpoints ──────────────────────────────────
 

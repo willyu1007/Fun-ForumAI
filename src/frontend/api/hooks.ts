@@ -42,6 +42,12 @@ import type {
   Notification,
   SendMessageResult,
   PaginatedList,
+  AgentStatsSnapshot,
+  AgentStatEventInfo,
+  AgentStatePoint,
+  StatsAllocationInput,
+  StatsAllocationPreview,
+  DerivedKnobsInfo,
 } from './types'
 
 export const queryKeys = {
@@ -60,6 +66,11 @@ export const queryKeys = {
   agentRooms: (agentId: string) => ['agentRooms', agentId] as const,
   agentChatConfig: (agentId: string) => ['agentChatConfig', agentId] as const,
   agentDashboard: (agentId: string) => ['agentDashboard', agentId] as const,
+  agentStats: (agentId: string) => ['agentStats', agentId] as const,
+  agentStatsEvents: (agentId: string, params?: { limit?: number; cursor?: string }) =>
+    ['agentStatsEvents', agentId, params] as const,
+  agentStateTimeline: (agentId: string, hours: number) => ['agentStateTimeline', agentId, hours] as const,
+  agentDerivedKnobs: (agentId: string, scene: string) => ['agentDerivedKnobs', agentId, scene] as const,
   privateSessions: (agentId: string) => ['privateSessions', agentId] as const,
   privateMessages: (sessionId: string) => ['privateMessages', sessionId] as const,
   agentMemories: (agentId: string) => ['agentMemories', agentId] as const,
@@ -328,6 +339,66 @@ export function useChangeBudgetTier(agentId: string) {
       api.patch(`agents/${agentId}/budget/tier`, { json: { tier } }).json<ApiResponse<unknown>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.agentDashboard(agentId) })
+    },
+  })
+}
+
+// ─── Stats hooks ────────────────────────────────────────────
+
+export function useAgentStats(agentId: string) {
+  return useQuery({
+    queryKey: queryKeys.agentStats(agentId),
+    queryFn: () =>
+      api.get(`agents/${agentId}/stats`).json<ApiResponse<AgentStatsSnapshot>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useAgentStatsEvents(agentId: string, params?: { limit?: number; cursor?: string }) {
+  return useQuery({
+    queryKey: queryKeys.agentStatsEvents(agentId, params),
+    queryFn: () =>
+      api.get(`agents/${agentId}/stats/events${toSearchString(params)}`)
+        .json<ApiResponse<{ items: AgentStatEventInfo[]; next_cursor: string | null }>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useAgentStateTimeline(agentId: string, hours = 24) {
+  return useQuery({
+    queryKey: queryKeys.agentStateTimeline(agentId, hours),
+    queryFn: () =>
+      api.get(`agents/${agentId}/stats/state-timeline?hours=${hours}`).json<ApiResponse<AgentStatePoint[]>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useAgentDerivedKnobs(agentId: string, scene: 'forum' | 'chat' | 'relation' | 'vote' | 'memory') {
+  return useQuery({
+    queryKey: queryKeys.agentDerivedKnobs(agentId, scene),
+    queryFn: () =>
+      api.get(`agents/${agentId}/stats/derived?scene=${scene}`).json<ApiResponse<DerivedKnobsInfo>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function usePreviewStatsAllocation(agentId: string) {
+  return useMutation({
+    mutationFn: (body: { allocation: StatsAllocationInput; version?: number }) =>
+      api.post(`agents/${agentId}/stats/preview-allocation`, { json: body }).json<ApiResponse<StatsAllocationPreview>>(),
+  })
+}
+
+export function useAllocateStats(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { allocation: StatsAllocationInput; version?: number; confirm_no_respec: true; idempotency_key: string }) =>
+      api.post(`agents/${agentId}/stats/allocate`, { json: body }).json<ApiResponse<AgentStatsSnapshot & { spent_points: number; remaining_points: number; deduped: boolean }>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.agentStats(agentId) })
+      qc.invalidateQueries({ queryKey: ['agentStatsEvents', agentId] })
+      qc.invalidateQueries({ queryKey: ['agentStateTimeline', agentId] })
+      qc.invalidateQueries({ queryKey: ['agentDerivedKnobs', agentId] })
     },
   })
 }

@@ -32,6 +32,15 @@ export type {
   RelationEventSeverity,
   CreateAgentRelationEventInput,
   UpsertAgentRelationInput,
+  AgentStatsScene,
+  AgentStats,
+  AgentState,
+  AgentStatEvent,
+  AgentStatEventType,
+  CreateAgentStatEventInput,
+  SaveAgentStatsInput,
+  SaveAgentStateInput,
+  AgentStatePoint,
 } from './types.js'
 
 export { type PostRepository, InMemoryPostRepository } from './post-repository.js'
@@ -59,6 +68,10 @@ export {
   type RelationRepository,
   InMemoryRelationRepository,
 } from './relation-repository.js'
+export {
+  type StatsRepository,
+  InMemoryStatsRepository,
+} from './stats-repository.js'
 
 export { PgPostRepository } from './pg/pg-post-repository.js'
 export { PgCommentRepository } from './pg/pg-comment-repository.js'
@@ -69,3 +82,4 @@ export { PgEventRepository, PgAgentRunRepository } from './pg/pg-event-repositor
 export { PgRoomRepository } from './pg/pg-room-repository.js'
 export { PgMessageRepository } from './pg/pg-message-repository.js'
 export { PgRelationRepository } from './pg/pg-relation-repository.js'
+export { PgStatsRepository } from './pg/pg-stats-repository.js'

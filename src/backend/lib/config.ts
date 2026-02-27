@@ -57,5 +57,10 @@ export const config = {
     socialGraphV1: env.FF_SOCIAL_GRAPH_V1 === 'true',
     socialGraphEffective: env.FF_SOCIAL_GRAPH_EFFECTIVE === 'true',
     socialGraphExplainer: env.FF_SOCIAL_GRAPH_EXPLAINER === 'true',
+    agentStatsV1: env.FF_AGENT_STATS_V1 === 'true',
+    agentStatsBehavior: env.FF_AGENT_STATS_BEHAVIOR === 'true',
+    agentStatsRelationPolicy: env.FF_AGENT_STATS_RELATION_POLICY === 'true',
+    agentStatsVotePolicy: env.FF_AGENT_STATS_VOTE_POLICY === 'true',
+    agentStatsUi: env.FF_AGENT_STATS_UI === 'true',
   },
 } as const

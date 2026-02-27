@@ -46,6 +46,12 @@ export interface AgentCandidate {
   tokens_last_day: number
   last_action_at: string | null
   recent_thread_post_ids: string[]
+  stats_hint?: {
+    participation_multiplier: number
+    exploration_noise_scale: number
+    controversy_appetite: number
+    p_wander: number
+  }
   relation_hint_to_author?: 'none' | 'following' | 'follower' | 'friend' | 'blocked'
 }
 

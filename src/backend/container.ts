@@ -6,6 +6,7 @@ import { InMemoryCommunityRepository } from './repos/community-repository.js'
 import { InMemoryEventRepository, InMemoryAgentRunRepository } from './repos/event-repository.js'
 import { InMemoryRoomRepository } from './repos/room-repository.js'
 import { InMemoryMessageRepository } from './repos/message-repository.js'
+import { InMemoryStatsRepository } from './repos/stats-repository.js'
 
 import type { PostRepository } from './repos/post-repository.js'
 import type { CommentRepository } from './repos/comment-repository.js'
@@ -16,6 +17,7 @@ import type { EventRepository, AgentRunRepository } from './repos/event-reposito
 import type { RoomRepository } from './repos/room-repository.js'
 import type { MessageRepository } from './repos/message-repository.js'
 import type { RelationRepository } from './repos/relation-repository.js'
+import type { StatsRepository } from './repos/stats-repository.js'
 
 import { ForumReadService } from './services/forum-read-service.js'
 import { ForumWriteService } from './services/forum-write-service.js'
@@ -69,6 +71,7 @@ import { ConversationClock } from './services/conversation-clock.js'
 import { AuthService } from './services/auth-service.js'
 import { RelationService } from './services/relation-service.js'
 import { RelationMetrics } from './services/relation-metrics.js'
+import { StatsService } from './services/stats-service.js'
 import type { UserRepository } from './repos/user-repository.js'
 
 import { SseHub } from './sse/hub.js'
@@ -94,8 +97,10 @@ let roomRepo: RoomRepository
 let messageRepo: MessageRepository
 let relationRepo: RelationRepository | null = null
 let userRepo: UserRepository | null = null
+let statsRepo: StatsRepository
 export let voteRepo: VoteRepository
 export let communityRepo: CommunityRepository
+export let statsService: StatsService | null = null
 
 const _hydratables: HydratableRepo[] = []
 
@@ -113,6 +118,7 @@ if (config.db.usePrisma) {
   const { PgMessageRepository } = await import('./repos/pg/pg-message-repository.js')
   const { PgUserRepository } = await import('./repos/pg/pg-user-repository.js')
   const { PgRelationRepository } = await import('./repos/pg/pg-relation-repository.js')
+  const { PgStatsRepository } = await import('./repos/pg/pg-stats-repository.js')
 
   const pr = new PgPostRepository(prisma)
   const cr = new PgCommentRepository(prisma)
@@ -125,6 +131,7 @@ if (config.db.usePrisma) {
   const rr = new PgRoomRepository(prisma)
   const mr = new PgMessageRepository(prisma)
   const relr = new PgRelationRepository(prisma)
+  const sr = new PgStatsRepository(prisma)
 
   postRepo = pr
   commentRepo = cr
@@ -137,8 +144,9 @@ if (config.db.usePrisma) {
   roomRepo = rr
   messageRepo = mr
   relationRepo = relr
+  statsRepo = sr
   userRepo = new PgUserRepository(prisma)
-  _hydratables.push(pr, cr, vr, ar, acr, cmr, er, arr, rr, mr)
+  _hydratables.push(pr, cr, vr, ar, acr, cmr, er, arr, rr, mr, sr)
 } else {
   postRepo = new InMemoryPostRepository()
   commentRepo = new InMemoryCommentRepository()
@@ -151,6 +159,7 @@ if (config.db.usePrisma) {
   roomRepo = new InMemoryRoomRepository()
   messageRepo = new InMemoryMessageRepository()
   relationRepo = null
+  statsRepo = new InMemoryStatsRepository()
 }
 
 // ─── SSE Hub ─────────────────────────────────────────────────
@@ -298,12 +307,20 @@ export const agentService = new AgentService({
   agentRunRepo,
 })
 
+statsService = new StatsService({
+  statsRepo,
+  agentRepo,
+  agentService,
+  growthEngine: null,
+})
+
 export const chatService = new ChatService({
   roomRepo,
   messageRepo,
   agentRepo,
   agentService,
   sseHub,
+  statsService,
 })
 
 export const roomLifecycle = new RoomLifecycleManager(roomRepo, sseHub, roomLifecycleLeaderElector)
@@ -322,6 +339,9 @@ const allocatorAgentRepo: AllocatorAgentRepo = {
   getCandidates(communityId: string, authorAgentId?: string): AgentCandidate[] {
     const agents = agentRepo.findActive({ limit: 100 })
     return agents.items.map((a) => ({
+      stats_hint: config.features.agentStatsBehavior && statsService
+        ? statsService.getDerivedSync(a.id).stats_hint
+        : undefined,
       relation_hint_to_author: config.features.socialGraphEffective && authorAgentId && relationService
         ? relationService.getPairHintSync(a.id, authorAgentId)
         : undefined,
@@ -426,6 +446,7 @@ if (config.db.usePrisma) {
   traitEngine = new TraitEngine(prisma)
   instructionEngine = new InstructionEngine(prisma)
   growthEngine = new GrowthEngine(prisma)
+  statsService?.setGrowthEngine(growthEngine)
   if (relationRepo) {
     relationService = new RelationService({
       relationRepo,
@@ -436,6 +457,8 @@ if (config.db.usePrisma) {
       postRepo,
       commentRepo,
       roomRepo,
+      messageRepo,
+      statsService,
       metrics: new RelationMetrics(),
     })
   }
@@ -458,6 +481,7 @@ if (config.db.usePrisma) {
     growthEngine,
     nurtureOrchestrator,
     relationService,
+    statsService,
   })
 
   if (memoryService) {
@@ -542,6 +566,7 @@ promptLayerService = new PromptLayerService({
   traitEngine,
   instructionEngine,
   memoryService,
+  statsService,
 })
 conversationClock.setPromptLayerService(promptLayerService)
 
@@ -622,9 +647,19 @@ forumWriteService.setEventHook((event) => {
   if (proactiveEventHandler) {
     proactiveEventHandler.handle(event)
   }
+  if (config.features.agentStatsV1 && statsService) {
+    statsService.onDomainEvent(event).catch((err) => {
+      console.error('[Container] Stats state update failed:', err)
+    })
+  }
   if (config.features.socialGraphV1 && relationService && event.event_type === 'COMMENT_CREATED') {
     relationService.onForumCommentEvent(event).catch((err) => {
       console.error('[Container] Relation forum signal failed:', err)
+    })
+  }
+  if (config.features.socialGraphV1 && config.features.agentStatsVotePolicy && relationService && event.event_type === 'VOTE_CAST') {
+    relationService.onVoteEvent(event).catch((err) => {
+      console.error('[Container] Relation vote signal failed:', err)
     })
   }
   if (config.features.publicObservationMemory && publicObservationEventHandler) {

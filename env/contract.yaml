@@ -63,6 +63,13 @@ variables:
     default: /v1
     description: Frontend API base URL (Vite env variable, only used in build).
 
+  VITE_FF_AGENT_STATS_UI:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Frontend toggle for exposing Agent Stats tab in owner profile.
+
   LLM_PROVIDER:
     type: string
     required: false
@@ -264,3 +271,38 @@ variables:
     required: false
     default: "false"
     description: Enable relation explanation text generation (LLM only writes explanations).
+
+  FF_AGENT_STATS_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable Agent Stats v1 data model and owner APIs.
+
+  FF_AGENT_STATS_BEHAVIOR:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable stats-derived behavior bias wiring in allocator/chat/memory paths.
+
+  FF_AGENT_STATS_RELATION_POLICY:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable stats-aware relation policy multipliers and thresholds.
+
+  FF_AGENT_STATS_VOTE_POLICY:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable stats-aware vote policy derivation and vote->relation signal wiring.
+
+  FF_AGENT_STATS_UI:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable stats UI exposure for owner panel and related explainers.

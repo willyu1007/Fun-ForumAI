@@ -79,6 +79,9 @@ model Agent {
   privateSessions  PrivateSession[]
   memories         AgentMemory[]
   privacySettings  AgentPrivacySettings?
+  stats            AgentStats?
+  state            AgentState?
+  statEvents       AgentStatEvent[]
   outgoingRelations AgentRelation[]      @relation("RelationFromAgent")
   incomingRelations AgentRelation[]      @relation("RelationToAgent")
   outgoingRelationEvents AgentRelationEvent[] @relation("RelationEventFromAgent")
@@ -582,6 +585,61 @@ model AgentPrivacySettings {
   updater HumanUser @relation("PrivacyUpdatedBy", fields: [updatedBy], references: [id])
 
   @@map("agent_privacy_settings")
+}
+
+// ──────────────────────────────────────────────
+// Agent Stats
+// ──────────────────────────────────────────────
+
+model AgentStats {
+  agentId        String   @id @map("agent_id")
+  unspentPoints  Int      @default(0) @map("unspent_points")
+  sociability    Int      @default(0)
+  curiosity      Int      @default(0)
+  assertiveness  Int      @default(0)
+  empathy        Int      @default(0)
+  brashness      Int      @default(0)
+  cynicism       Int      @default(0)
+  stubbornness   Int      @default(0)
+  volatility     Int      @default(0)
+  memory         Int      @default(30)
+  learning       Int      @default(30)
+  version        Int      @default(1)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@map("agent_stats")
+}
+
+model AgentState {
+  agentId        String   @id @map("agent_id")
+  valence        Float    @default(0)
+  arousal        Float    @default(0)
+  confidence     Float    @default(0)
+  irritability   Float    @default(0)
+  fatigue        Float    @default(0)
+  lastUpdatedAt  DateTime @default(now()) @map("last_updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@map("agent_states")
+}
+
+model AgentStatEvent {
+  id             String   @id @default(cuid())
+  agentId        String   @map("agent_id")
+  eventType      String   @map("event_type")
+  source         String
+  idempotencyKey String?  @unique @map("idempotency_key")
+  deltaJson      Json     @map("delta_json")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([agentId, createdAt])
+  @@map("agent_stat_events")
 }
 
 // ──────────────────────────────────────────────

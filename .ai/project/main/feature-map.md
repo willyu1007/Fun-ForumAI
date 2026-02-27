@@ -31,14 +31,14 @@ Project: `main`
 | T-019 agent-interaction-ux | archived | dev-docs/archive/agent-interaction-ux |
 | T-020 forum-readonly-vote-and-community-slug | archived | dev-docs/archive/forum-readonly-vote-and-community-slug |
 | T-021 forum-card-layout-hot-v2 | archived | dev-docs/archive/forum-card-layout-hot-v2 |
-| T-022 human-agent-private-channel | done | dev-docs/active/human-agent-private-channel |
+| T-022 human-agent-private-channel | archived | dev-docs/archive/human-agent-private-channel |
 | T-023 runtime-queue-and-lock-externalization | archived | dev-docs/archive/runtime-queue-and-lock-externalization |
 | T-024 pg-repository-consistency-hardening | in-progress | dev-docs/active/pg-repository-consistency-hardening |
-| T-025 sse-cluster-broadcast-foundation | done | dev-docs/active/sse-cluster-broadcast-foundation |
+| T-025 sse-cluster-broadcast-foundation | archived | dev-docs/archive/sse-cluster-broadcast-foundation |
 | T-026 k8s-local-cloud-overlays-bootstrap | in-progress | dev-docs/active/k8s-local-cloud-overlays-bootstrap |
 | T-027 typecheck-remediation-baseline | archived | dev-docs/archive/typecheck-remediation-baseline |
 | T-028 app-adaptation-discussion | in-progress | dev-docs/active/app-adaptation-discussion |
-| T-029 mobile-ux-hardening | done | dev-docs/active/mobile-ux-hardening |
+| T-029 mobile-ux-hardening | archived | dev-docs/archive/mobile-ux-hardening |
 | T-030 mobile-navigation-and-routing | done | dev-docs/active/mobile-navigation-and-routing |
 | T-031 mobile-test-automation | done | dev-docs/active/mobile-test-automation |
 | T-032 frontend-sse-resilience | done | dev-docs/active/frontend-sse-resilience |
@@ -49,4 +49,12 @@ Project: `main`
 | T-037 agent-social-graph-core | archived | dev-docs/archive/agent-social-graph-core |
 | T-038 agent-social-graph-behavior-integration | archived | dev-docs/archive/agent-social-graph-behavior-integration |
 | T-039 agent-social-graph-consistency-hardening | archived | dev-docs/archive/agent-social-graph-consistency-hardening |
+
+### F-010 Agent Stats System
+
+| Task | Status | Dev Docs |
+| --- | --- | --- |
+| T-040 stats-core-schema-and-deriver | archived | dev-docs/archive/stats-core-schema-and-deriver |
+| T-041 stats-behavior-relation-vote-wiring | archived | dev-docs/archive/stats-behavior-relation-vote-wiring |
+| T-042 stats-web-panel-onboarding-explainer | archived | dev-docs/archive/stats-web-panel-onboarding-explainer |
 <!-- AUTO-GENERATED:END feature-map -->

@@ -332,6 +332,96 @@ export interface Notification {
   created_at: Date
 }
 
+// ─── Agent stats entities ──────────────────────────────────
+
+export type AgentStatsScene = 'forum' | 'chat' | 'relation' | 'vote' | 'memory'
+export type AgentStatEventType =
+  | 'POINTS_GRANTED'
+  | 'POINTS_SPENT'
+  | 'STATE_UPDATED'
+  | 'LEVEL_SYNC'
+  | 'SYSTEM_SEED'
+
+export interface AgentStats {
+  agent_id: string
+  unspent_points: number
+  sociability: number
+  curiosity: number
+  assertiveness: number
+  empathy: number
+  brashness: number
+  cynicism: number
+  stubbornness: number
+  volatility: number
+  memory: number
+  learning: number
+  version: number
+  created_at: Date
+  updated_at: Date
+}
+
+export interface AgentState {
+  agent_id: string
+  valence: number
+  arousal: number
+  confidence: number
+  irritability: number
+  fatigue: number
+  last_updated_at: Date
+}
+
+export interface AgentStatEvent {
+  id: string
+  agent_id: string
+  event_type: AgentStatEventType | string
+  source: string
+  idempotency_key: string | null
+  delta_json: Record<string, unknown>
+  created_at: Date
+}
+
+export interface CreateAgentStatEventInput {
+  agent_id: string
+  event_type: AgentStatEventType | string
+  source: string
+  idempotency_key?: string | null
+  delta_json: Record<string, unknown>
+}
+
+export interface SaveAgentStatsInput {
+  agent_id: string
+  unspent_points: number
+  sociability: number
+  curiosity: number
+  assertiveness: number
+  empathy: number
+  brashness: number
+  cynicism: number
+  stubbornness: number
+  volatility: number
+  memory: number
+  learning: number
+  expected_version: number
+}
+
+export interface SaveAgentStateInput {
+  agent_id: string
+  valence: number
+  arousal: number
+  confidence: number
+  irritability: number
+  fatigue: number
+}
+
+export interface AgentStatePoint {
+  at: Date
+  valence: number
+  arousal: number
+  confidence: number
+  irritability: number
+  fatigue: number
+}
+
 // ─── Social graph entities ─────────────────────────────────
 
 export interface AgentRelation {

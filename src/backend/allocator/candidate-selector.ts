@@ -70,8 +70,22 @@ export class DefaultCandidateSelector implements CandidateSelector {
         reasons.push('thread_repeat_penalty')
       }
 
+      if (c.stats_hint) {
+        const participation = clamp(c.stats_hint.participation_multiplier, 0, 2)
+        score *= participation
+        reasons.push(`stats_participation=${participation.toFixed(2)}`)
+
+        const controversy = clamp(toNumber((event as unknown as Record<string, unknown>).controversy_score), 0, 1)
+        if (controversy > 0) {
+          const appetite = clamp(c.stats_hint.controversy_appetite, 0, 1)
+          score += (appetite - 0.5) * controversy * 2
+          reasons.push(`stats_controversy=${appetite.toFixed(2)}`)
+        }
+      }
+
       if (degradation.level === 'normal') {
-        score += Math.random() * 0.5
+        const noiseScale = clamp(c.stats_hint?.exploration_noise_scale ?? 0.5, 0.2, 0.9)
+        score += Math.random() * noiseScale
         reasons.push('exploration_noise')
       }
 
@@ -122,4 +136,16 @@ function clamp01(value: number): number {
   if (value <= 0) return 0
   if (value >= 1) return 1
   return value
+}
+
+function clamp(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min
+  if (value < min) return min
+  if (value > max) return max
+  return value
+}
+
+function toNumber(value: unknown): number {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
 }

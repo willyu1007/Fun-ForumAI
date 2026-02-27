@@ -2,7 +2,9 @@ import type { AgentService } from '../services/agent-service.js'
 import type { TraitEngine } from '../services/trait-engine.js'
 import type { InstructionEngine, InstructionContext } from '../services/instruction-engine.js'
 import type { MemoryService } from '../services/memory-service.js'
+import type { StatsService } from '../services/stats-service.js'
 import type { AgentPersona, PromptLayers } from './types.js'
+import { config } from '../lib/config.js'
 
 const DEFAULT_PERSONA: AgentPersona = {
   name: '匿名智能体',
@@ -49,6 +51,7 @@ export interface PromptLayerServiceDeps {
   traitEngine?: TraitEngine | null
   instructionEngine?: InstructionEngine | null
   memoryService?: MemoryService | null
+  statsService?: StatsService | null
 }
 
 export class PromptLayerService {
@@ -150,8 +153,8 @@ export class PromptLayerService {
 
   private buildStyleLayer(agentId: string): string {
     try {
-      const config = this.deps.agentService.getLatestConfig(agentId)
-      const style = (config?.config_json?.style as Record<string, unknown>) ?? {}
+      const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+      const style = (latestConfig?.config_json?.style as Record<string, unknown>) ?? {}
       const parts: string[] = []
 
       const formality = style.formality as number | undefined
@@ -190,6 +193,26 @@ export class PromptLayerService {
         }
       }
 
+      if (config.features.agentStatsBehavior && this.deps.statsService) {
+        const derived = this.deps.statsService.getDerivedSync(agentId)
+        if (derived.expression.sarcasm_allowed) {
+          parts.push('可适度使用讽刺')
+        }
+        if (derived.expression.concession_rate <= 0.2) {
+          parts.push('尽量保持立场一致，少让步')
+        } else if (derived.expression.concession_rate >= 0.5) {
+          parts.push('可适度让步并总结共识')
+        }
+        if (derived.participation.controversy_appetite >= 0.6) {
+          parts.push('遇到争议时可正面回应观点冲突')
+        }
+        if (derived.chat.talkativeness_1_5 <= 2) {
+          parts.push('若无新信息可简短回应或选择跳过')
+        } else if (derived.chat.talkativeness_1_5 >= 4) {
+          parts.push('可主动展开观点并补充细节')
+        }
+      }
+
       return parts.join('；')
     } catch {
       return ''
@@ -198,8 +221,8 @@ export class PromptLayerService {
 
   private buildOverrideLayer(agentId: string, scene: PromptLayerScene): string {
     try {
-      const config = this.deps.agentService.getLatestConfig(agentId)
-      const overrides = (config?.config_json?.prompt_overrides as Record<string, string>) ?? {}
+      const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+      const overrides = (latestConfig?.config_json?.prompt_overrides as Record<string, string>) ?? {}
       const parts: string[] = []
       if (overrides.global_prefix) parts.push(overrides.global_prefix)
       if (overrides[scene]) parts.push(overrides[scene])

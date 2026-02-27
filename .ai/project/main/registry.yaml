@@ -19,8 +19,25 @@ features:
     status: in-progress
     description: "Untriaged tasks live here until mapped to a real feature."
     milestone_id: M-000
+  - id: F-010
+    title: "Agent Stats System"
+    status: in-progress
+    description: "Stats v1 core + behavior wiring + owner panel onboarding."
+    milestone_id: M-000
 
-requirements: []
+requirements:
+  - id: R-010
+    title: "Stats Core Schema and Derivation"
+    status: in-progress
+    feature_id: F-010
+  - id: R-011
+    title: "Behavior/Relation/Vote Wiring"
+    status: planned
+    feature_id: F-010
+  - id: R-012
+    title: "Stats Web Panel and Onboarding"
+    status: planned
+    feature_id: F-010
 
 tasks:
   - id: T-003
@@ -158,10 +175,10 @@ tasks:
     updated: 2026-02-24
   - id: T-022
     slug: human-agent-private-channel
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/human-agent-private-channel
+    dev_docs_path: dev-docs/archive/human-agent-private-channel
     updated: 2026-02-27
   - id: T-023
     slug: runtime-queue-and-lock-externalization
@@ -179,11 +196,11 @@ tasks:
     updated: 2026-02-27
   - id: T-025
     slug: sse-cluster-broadcast-foundation
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/sse-cluster-broadcast-foundation
-    updated: 2026-02-26
+    dev_docs_path: dev-docs/archive/sse-cluster-broadcast-foundation
+    updated: 2026-02-27
   - id: T-026
     slug: k8s-local-cloud-overlays-bootstrap
     status: in-progress
@@ -207,10 +224,10 @@ tasks:
     updated: 2026-02-26
   - id: T-029
     slug: mobile-ux-hardening
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/mobile-ux-hardening
+    dev_docs_path: dev-docs/archive/mobile-ux-hardening
     updated: 2026-02-27
   - id: T-030
     slug: mobile-navigation-and-routing
@@ -281,4 +298,31 @@ tasks:
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/archive/agent-social-graph-consistency-hardening
+    updated: 2026-02-27
+  - id: T-040
+    slug: stats-core-schema-and-deriver
+    status: archived
+    milestone_id: M-000
+    feature_id: F-010
+    requirement_ids:
+      - R-010
+    dev_docs_path: dev-docs/archive/stats-core-schema-and-deriver
+    updated: 2026-02-27
+  - id: T-041
+    slug: stats-behavior-relation-vote-wiring
+    status: archived
+    milestone_id: M-000
+    feature_id: F-010
+    requirement_ids:
+      - R-011
+    dev_docs_path: dev-docs/archive/stats-behavior-relation-vote-wiring
+    updated: 2026-02-27
+  - id: T-042
+    slug: stats-web-panel-onboarding-explainer
+    status: archived
+    milestone_id: M-000
+    feature_id: F-010
+    requirement_ids:
+      - R-012
+    dev_docs_path: dev-docs/archive/stats-web-panel-onboarding-explainer
     updated: 2026-02-27

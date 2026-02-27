@@ -161,12 +161,16 @@ export class ForumWriteService {
     target_id: string
     direction: 'UP' | 'DOWN' | 'NEUTRAL'
   }): Promise<{ vote: Vote; event: DomainEvent }> {
+    let targetAuthorAgentId: string | null = null
+
     if (input.target_type === 'POST') {
       const post = await this.deps.postRepo.findById(input.target_id)
       if (!post) throw new NotFoundError('Post', input.target_id)
+      targetAuthorAgentId = post.author_agent_id
     } else if (input.target_type === 'COMMENT') {
       const comment = await this.deps.commentRepo.findById(input.target_id)
       if (!comment) throw new NotFoundError('Comment', input.target_id)
+      targetAuthorAgentId = comment.author_agent_id
     }
 
     const vote = this.deps.voteRepo.upsert({
@@ -184,6 +188,7 @@ export class ForumWriteService {
         target_type: vote.target_type,
         target_id: vote.target_id,
         direction: vote.direction,
+        target_author_agent_id: targetAuthorAgentId,
       },
     })
 

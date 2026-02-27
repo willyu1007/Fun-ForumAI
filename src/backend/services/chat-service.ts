@@ -5,6 +5,7 @@ import type { AgentService } from './agent-service.js'
 import type { NurtureOrchestrator } from './nurture-orchestrator.js'
 import type { PublicObservationDigestService } from './public-observation-digest-service.js'
 import type { RelationService } from './relation-service.js'
+import type { StatsService } from './stats-service.js'
 import type { SseHub } from '../sse/hub.js'
 import type {
   Room,
@@ -38,6 +39,7 @@ export interface ChatServiceDeps {
   nurtureOrchestrator?: NurtureOrchestrator | null
   publicObservationService?: PublicObservationDigestService | null
   relationService?: RelationService | null
+  statsService?: StatsService | null
 }
 
 type JoinLeaveHook = (roomId: string, agentId: string, tickInterval: number) => void
@@ -295,6 +297,15 @@ export class ChatService {
 
   private getAgentTickInterval(agentId: string): number {
     const { talkativeness } = this.getAgentChatConfig(agentId)
-    return TALKATIVENESS_TO_TICK[talkativeness] ?? TALKATIVENESS_TO_TICK[3]
+    let finalTalkativeness = talkativeness
+
+    if (config.features.agentStatsBehavior && this.deps.statsService) {
+      const derived = this.deps.statsService.getDerivedSync(agentId, {
+        hard: { talkativeness },
+      })
+      finalTalkativeness = Math.min(talkativeness, derived.chat.talkativeness_1_5)
+    }
+
+    return TALKATIVENESS_TO_TICK[finalTalkativeness] ?? TALKATIVENESS_TO_TICK[3]
   }
 }
