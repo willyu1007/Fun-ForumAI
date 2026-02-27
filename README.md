@@ -47,6 +47,41 @@ pnpm install
 pnpm dev
 ```
 
+### Database Workflows
+
+#### Local Development (Docker PostgreSQL)
+
+```bash
+pnpm db:local:up
+pnpm db:local:wait
+pnpm db:migrate:dev
+```
+
+Quick status/logs/cleanup:
+
+```bash
+pnpm db:local:status
+pnpm db:local:logs
+pnpm db:local:down
+```
+
+One-command local boot + migrate:
+
+```bash
+pnpm db:local:migrate
+```
+
+#### Deployment / CI (existing managed PostgreSQL)
+
+Use your environment-provided `DATABASE_URL` and apply versioned migrations only:
+
+```bash
+pnpm db:migrate:status
+pnpm db:migrate:deploy
+```
+
+Do not use `db:local:*` scripts in staging/production.
+
 ## Project Structure
 
 ```

@@ -1,7 +1,7 @@
 # 00 Overview — pg-repository-consistency-hardening (T-024)
 
 ## Status
-- State: in_progress
+- State: in-progress
 - Next step: staging smoke + 性能基线已完成；Phase 2（分页优化/索引调优）可按需启动；Phase 4（feature flag）待评估。
 
 ## Goal

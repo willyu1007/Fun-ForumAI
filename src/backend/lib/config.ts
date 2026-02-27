@@ -50,4 +50,9 @@ export const config = {
     redisChannel: env.SSE_REDIS_CHANNEL || 'llm-forum:sse:broadcast',
     redisConnectTimeoutMs: parseInt(env.SSE_REDIS_CONNECT_TIMEOUT_MS || '5000', 10),
   },
+  features: {
+    layerStackV2: env.FF_LAYER_STACK_V2 === 'true',
+    nurturePipelineV2: env.FF_NURTURE_PIPELINE_V2 === 'true',
+    publicObservationMemory: env.FF_PUBLIC_OBSERVATION_MEMORY === 'true',
+  },
 } as const

@@ -3,8 +3,10 @@ import type { AgentService } from '../services/agent-service.js'
 import type { TraitEngine } from '../services/trait-engine.js'
 import type { InstructionEngine, InstructionContext } from '../services/instruction-engine.js'
 import type { MemoryService } from '../services/memory-service.js'
+import type { PromptLayerService } from './prompt-layer-service.js'
 import type { EventPayload, SelectedAgent } from '../allocator/types.js'
 import type { ExecutionContext, AgentPersona } from './types.js'
+import { config } from '../lib/config.js'
 
 export interface ContextBuilderDeps {
   forumReadService: ForumReadService
@@ -12,6 +14,7 @@ export interface ContextBuilderDeps {
   traitEngine?: TraitEngine | null
   instructionEngine?: InstructionEngine | null
   memoryService?: MemoryService | null
+  promptLayerService?: PromptLayerService | null
 }
 
 const DEFAULT_PERSONA: AgentPersona = {
@@ -50,6 +53,34 @@ export class ContextBuilder {
   }
 
   async enrichWithLayers(ctx: ExecutionContext): Promise<ExecutionContext> {
+    if (config.features.layerStackV2 && this.deps.promptLayerService) {
+      try {
+        const scene = ctx.chatContext
+          ? 'chat_room'
+          : ctx.targetComment
+            ? 'forum_comment'
+            : 'forum_post'
+        const conversationText = this.composeConversationText(ctx)
+        const topicHints = this.extractTopicHints(ctx)
+
+        ctx.layers = await this.deps.promptLayerService.composeLayers({
+          agentId: ctx.agent.agent_id,
+          scene,
+          conversationText,
+          topicHints,
+          threadComments: ctx.comments?.map((c) => ({
+            id: c.id,
+            author_agent_id: c.author_agent_id,
+            body: c.body,
+          })),
+          targetCommentId: ctx.targetComment?.id,
+        })
+        return ctx
+      } catch {
+        // Fall through to legacy layer path on any failure.
+      }
+    }
+
     const agentId = ctx.agent.agent_id
     const layers: import('./types.js').PromptLayers = {}
 
@@ -152,6 +183,20 @@ export class ContextBuilder {
 
     ctx.layers = layers
     return ctx
+  }
+
+  private composeConversationText(ctx: ExecutionContext): string {
+    if (ctx.chatContext?.recent_messages?.length) {
+      return ctx.chatContext.recent_messages.map((m) => m.body).join(' ')
+    }
+    if (ctx.targetComment) {
+      const thread = ctx.comments?.map((c) => c.body).join(' ') ?? ''
+      return `${thread} ${ctx.targetComment.body}`.trim()
+    }
+    if (ctx.post) {
+      return `${ctx.post.title} ${ctx.post.body}`.trim()
+    }
+    return ''
   }
 
   private loadPersona(agentId: string): AgentPersona {

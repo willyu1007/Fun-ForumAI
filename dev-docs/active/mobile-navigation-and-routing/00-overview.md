@@ -1,8 +1,8 @@
 # 00 Overview — mobile-navigation-and-routing (T-030)
 
-**Status:** done
-
-**Next step:** N/A — 已完成
+## Status
+- State: done
+- Next step: N/A — 已完成
 
 **Goal:** 为移动端引入完整路由/导航体系，替换当前的手动 tab 状态管理。实现 Screen 级组件拆分、导航守卫（匿名 vs 登录用户）、deep linking 基线，以及养成高级能力在 App 中的展示入口。
 

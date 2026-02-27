@@ -1,12 +1,15 @@
 import type { RoomRepository } from '../repos/room-repository.js'
 import type { MessageRepository } from '../repos/message-repository.js'
 import type { AgentRepository } from '../repos/agent-repository.js'
+import type { AgentService } from './agent-service.js'
 import type { ChatService } from './chat-service.js'
 import type { LlmClient } from '../llm/llm-client.js'
 import type { PromptEngine } from '../llm/prompt-engine.js'
+import type { PromptLayerService } from '../runtime/prompt-layer-service.js'
 import type { SseHub } from '../sse/hub.js'
 import type { ChatMessageKind } from '../repos/types.js'
 import type { LeaderElector } from '../runtime/leader-elector.js'
+import { config } from '../lib/config.js'
 
 const MAX_MSG_PER_AGENT_PER_ROOM_HOUR = 6
 const MAX_MSG_PER_AGENT_GLOBAL_HOUR = 15
@@ -25,10 +28,12 @@ export interface ConversationClockDeps {
   roomRepo: RoomRepository
   messageRepo: MessageRepository
   agentRepo: AgentRepository
+  agentService: AgentService
   chatService: ChatService
   llmClient: LlmClient
   promptEngine: PromptEngine
   sseHub: SseHub
+  promptLayerService?: PromptLayerService | null
   leaderElector?: LeaderElector
 }
 
@@ -43,6 +48,10 @@ export class ConversationClock {
   private running = false
 
   constructor(private readonly deps: ConversationClockDeps) {}
+
+  setPromptLayerService(service: PromptLayerService | null): void {
+    ;(this.deps as { promptLayerService?: PromptLayerService | null }).promptLayerService = service
+  }
 
   start(): void {
     if (this.running) return
@@ -245,14 +254,63 @@ export class ConversationClock {
       return { kind: 'normal', body: `[${agent.display_name}] 聊天测试消息` }
     }
 
+    const persona = this.resolvePersona(agentId, agent.display_name)
+    let layers: {
+      layer_growth: string
+      layer_style: string
+      layer_instructions: string
+      layer_overrides: string
+      layer_memory: string
+      layer_privacy: string
+    } = {
+      layer_growth: '',
+      layer_style: '',
+      layer_instructions: '',
+      layer_overrides: '',
+      layer_memory: '',
+      layer_privacy: '',
+    }
+
+    if (config.features.layerStackV2 && this.deps.promptLayerService) {
+      try {
+        const member = await this.deps.roomRepo.getMember(roomId, agentId)
+        const topicHints = this.extractTopicHints(room.name, recentMsgs.map((m) => m.body))
+        const composed = await this.deps.promptLayerService.composeLayers({
+          agentId,
+          scene: 'chat_room',
+          conversationText: recentMsgs.map((m) => m.body).join(' '),
+          topicHints,
+          roomMemberState: member
+            ? { joined_at: member.joined_at, last_spoke_at: member.last_spoke_at }
+            : undefined,
+        })
+        layers = {
+          layer_growth: composed.layer1_growth ?? '',
+          layer_style: composed.layer2_style ?? '',
+          layer_instructions: composed.layer3_instructions ?? '',
+          layer_overrides: composed.layer4_overrides ?? '',
+          layer_memory: composed.layer5_memory ?? '',
+          layer_privacy: composed.layer6_privacy ?? '',
+        }
+      } catch {
+        // Fall back to base values if layer composition fails.
+      }
+    }
+
     const variables: Record<string, string> = {
-      persona_name: agent.display_name,
-      persona_style: '友善而富有洞察力',
-      persona_interests: '多元话题',
-      persona_language: '中文',
+      persona_name: persona.name,
+      persona_style: config.features.layerStackV2 ? persona.style : '友善而富有洞察力',
+      persona_interests: config.features.layerStackV2 ? persona.interests.join('、') : '多元话题',
+      persona_language: persona.language,
       room_name: room.name,
       room_description: room.description || '',
       recent_messages: recentText || '（房间刚刚创建，还没有对话）',
+      layer_growth: layers.layer_growth,
+      layer_style: layers.layer_style,
+      layer_instructions: layers.layer_instructions,
+      layer_overrides: layers.layer_overrides,
+      layer_memory: layers.layer_memory,
+      layer_privacy: layers.layer_privacy,
     }
 
     const messages = this.deps.promptEngine.render('agent-chat-reply', variables)
@@ -289,5 +347,38 @@ export class ConversationClock {
 
   private timerKey(roomId: string, agentId: string): string {
     return `${roomId}:${agentId}`
+  }
+
+  private resolvePersona(agentId: string, fallbackName: string): {
+    name: string
+    style: string
+    interests: string[]
+    language: string
+  } {
+    try {
+      const cfg = this.deps.agentService.getLatestConfig(agentId)
+      const p = (cfg?.config_json?.persona as Record<string, unknown> | undefined) ?? {}
+      return {
+        name: (p.name as string) || fallbackName,
+        style: (p.style as string) || '友善而富有洞察力',
+        interests: Array.isArray(p.interests) ? (p.interests as string[]) : ['多元话题'],
+        language: (p.language as string) || '中文',
+      }
+    } catch {
+      return {
+        name: fallbackName,
+        style: '友善而富有洞察力',
+        interests: ['多元话题'],
+        language: '中文',
+      }
+    }
+  }
+
+  private extractTopicHints(roomName: string, messageBodies: string[]): string[] {
+    const text = `${roomName} ${messageBodies.join(' ')}`
+    return text
+      .split(/[\s,，、；;：:。.!！?？]+/)
+      .filter((w) => w.length >= 2)
+      .slice(0, 10)
   }
 }

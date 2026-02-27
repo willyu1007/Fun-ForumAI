@@ -9,6 +9,21 @@ function getServices() {
 
 export const privateChannelRouter: IRouter = Router()
 
+async function assertAgentOwner(
+  agentId: string,
+  userId: string,
+): Promise<{ ok: true } | { ok: false; status: number; code: string; message: string }> {
+  const { agentRepo } = await import('../container.js')
+  const agent = agentRepo.findById(agentId)
+  if (!agent) {
+    return { ok: false, status: 404, code: 'NOT_FOUND', message: `Agent ${agentId} not found` }
+  }
+  if (agent.owner_id !== userId) {
+    return { ok: false, status: 403, code: 'FORBIDDEN', message: 'Not your agent' }
+  }
+  return { ok: true }
+}
+
 // ─── Session endpoints ──────────────────────────────────────
 
 privateChannelRouter.post('/agents/:agentId/chat/sessions', requireHumanAuth, async (req, res) => {
@@ -19,6 +34,12 @@ privateChannelRouter.post('/agents/:agentId/chat/sessions', requireHumanAuth, as
   }
 
   try {
+    const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
+    if (!ownership.ok) {
+      res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+      return
+    }
+
     const session = await services.channelService.createSession(
       String(req.params.agentId),
       req.user!.userId,
@@ -37,6 +58,12 @@ privateChannelRouter.get('/agents/:agentId/chat/sessions', requireHumanAuth, asy
   }
 
   try {
+    const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
+    if (!ownership.ok) {
+      res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+      return
+    }
+
     const limit = Math.min(parseInt(String(req.query.limit ?? '20'), 10), 50)
     const cursor = req.query.cursor as string | undefined
     const status = req.query.status as string | undefined
@@ -146,9 +173,17 @@ privateChannelRouter.get('/agents/:agentId/memories', requireHumanAuth, async (r
   }
 
   try {
+    const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
+    if (!ownership.ok) {
+      res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+      return
+    }
+
     const limit = Math.min(parseInt(String(req.query.limit ?? '20'), 10), 50)
     const cursor = req.query.cursor as string | undefined
     const sourceType = req.query.source_type as string | undefined
+    const sourceRefType = req.query.source_ref_type as string | undefined
+    const sourceRefId = req.query.source_ref_id as string | undefined
     const forgotten = req.query.forgotten === 'true' ? true
       : req.query.forgotten === 'false' ? false
       : undefined
@@ -157,6 +192,8 @@ privateChannelRouter.get('/agents/:agentId/memories', requireHumanAuth, async (r
       limit,
       cursor,
       source_type: sourceType as 'PRIVATE_CHAT' | 'PUBLIC_OBSERVATION' | 'SYSTEM' | undefined,
+      source_ref_type: sourceRefType,
+      source_ref_id: sourceRefId,
       forgotten,
     })
     res.json({ data: result })
@@ -182,6 +219,12 @@ privateChannelRouter.get('/agents/:agentId/privacy-settings', requireHumanAuth, 
   }
 
   try {
+    const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
+    if (!ownership.ok) {
+      res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+      return
+    }
+
     const settings = await services.memoryService.getPrivacySettings(String(req.params.agentId))
     res.json({ data: settings })
   } catch (err) {
@@ -197,6 +240,12 @@ privateChannelRouter.patch('/agents/:agentId/privacy-settings', requireHumanAuth
   }
 
   try {
+    const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
+    if (!ownership.ok) {
+      res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+      return
+    }
+
     const { disclosure_level, public_memory_budget, public_memory_top_k } = req.body ?? {}
 
     if (disclosure_level !== undefined) {
@@ -216,6 +265,40 @@ privateChannelRouter.patch('/agents/:agentId/privacy-settings', requireHumanAuth
       },
     )
     res.json({ data: settings })
+  } catch (err) {
+    handleError(res, err)
+  }
+})
+
+privateChannelRouter.get('/agents/:agentId/public-observations', requireHumanAuth, async (req, res) => {
+  const services = getServices()
+  if (!services) {
+    res.json({ data: { items: [], next_cursor: null } })
+    return
+  }
+
+  try {
+    const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
+    if (!ownership.ok) {
+      res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+      return
+    }
+
+    const limit = Math.min(parseInt(String(req.query.limit ?? '20'), 10), 50)
+    const cursor = req.query.cursor as string | undefined
+    const sourceRefType = req.query.source_ref_type as string | undefined
+    const sourceRefId = req.query.source_ref_id as string | undefined
+
+    const result = await services.memoryService.listMemories(String(req.params.agentId), {
+      limit,
+      cursor,
+      source_type: 'PUBLIC_OBSERVATION',
+      source_ref_type: sourceRefType,
+      source_ref_id: sourceRefId,
+      forgotten: false,
+    })
+
+    res.json({ data: result })
   } catch (err) {
     handleError(res, err)
   }

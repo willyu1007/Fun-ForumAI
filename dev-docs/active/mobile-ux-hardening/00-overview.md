@@ -1,7 +1,8 @@
 # 00 Overview — mobile-ux-hardening (T-029)
 
-**Status:** done
-**Next step:** 归档
+## Status
+- State: done
+- Next step: 归档
 
 ## Goal
 

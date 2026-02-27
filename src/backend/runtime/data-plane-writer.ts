@@ -1,15 +1,18 @@
 import type { ForumWriteService } from '../services/forum-write-service.js'
 import type { ChatService } from '../services/chat-service.js'
 import type { AgentRunRepository } from '../repos/event-repository.js'
+import type { NurtureOrchestrator } from '../services/nurture-orchestrator.js'
 import type { WriteInstruction } from './types.js'
 import type { LlmTokenUsage } from '../llm/types.js'
 import type { ChatMessageKind } from '../repos/types.js'
+import { config } from '../lib/config.js'
 
 export interface DataPlaneWriterDeps {
   forumWriteService: ForumWriteService
   agentRunRepo: AgentRunRepository
   chatService?: ChatService
   growthEngine?: { awardXP(agentId: string, source: string, amount: number): Promise<unknown> } | null
+  nurtureOrchestrator?: NurtureOrchestrator | null
 }
 
 export interface WriteResult {
@@ -78,8 +81,15 @@ export class DataPlaneWriter {
         latency_ms: latencyMs,
       })
 
-      const xpSource = instruction.action === 'create_post' ? 'forum_post' : instruction.action === 'create_comment' ? 'forum_comment' : 'chat_message'
-      this.deps.growthEngine?.awardXP(agentId, xpSource, 1).catch(() => {})
+      if (instruction.action !== 'create_message') {
+        const xpSource = instruction.action === 'create_post' ? 'forum_post' : 'forum_comment'
+
+        if (config.features.nurturePipelineV2 && this.deps.nurtureOrchestrator) {
+          this.deps.nurtureOrchestrator.onContentProduced(agentId, xpSource, 1).catch(() => {})
+        } else {
+          this.deps.growthEngine?.awardXP(agentId, xpSource, 1).catch(() => {})
+        }
+      }
 
       return { success: true, content_id: contentId }
     } catch (err) {

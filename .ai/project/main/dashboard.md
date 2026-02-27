@@ -8,30 +8,30 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 31 (planned: 4, in-progress: 3, blocked: 0, done: 4, archived: 20)
+- Tasks: 34 (planned: 1, in-progress: 6, blocked: 0, done: 7, archived: 20)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-022 human-agent-private-channel | done | F-000 | dev-docs/active/human-agent-private-channel |
+| T-024 pg-repository-consistency-hardening | in-progress | F-000 | dev-docs/active/pg-repository-consistency-hardening |
+| T-029 mobile-ux-hardening | done | F-000 | dev-docs/active/mobile-ux-hardening |
+| T-030 mobile-navigation-and-routing | done | F-000 | dev-docs/active/mobile-navigation-and-routing |
+| T-034 abc-layer-stack-unification | in-progress | F-000 | dev-docs/active/abc-layer-stack-unification |
+| T-035 abc-growth-nurture-closure | in-progress | F-000 | dev-docs/active/abc-growth-nurture-closure |
+| T-036 abc-public-observation-memory | in-progress | F-000 | dev-docs/active/abc-public-observation-memory |
 | T-023 runtime-queue-and-lock-externalization | archived | F-000 | dev-docs/archive/runtime-queue-and-lock-externalization |
 | T-025 sse-cluster-broadcast-foundation | done | F-000 | dev-docs/active/sse-cluster-broadcast-foundation |
 | T-026 k8s-local-cloud-overlays-bootstrap | in-progress | F-000 | dev-docs/active/k8s-local-cloud-overlays-bootstrap |
 | T-027 typecheck-remediation-baseline | archived | F-000 | dev-docs/archive/typecheck-remediation-baseline |
 | T-028 app-adaptation-discussion | in-progress | F-000 | dev-docs/active/app-adaptation-discussion |
-| T-029 mobile-ux-hardening | planned | F-000 | dev-docs/active/mobile-ux-hardening |
-| T-030 mobile-navigation-and-routing | planned | F-000 | dev-docs/active/mobile-navigation-and-routing |
 | T-031 mobile-test-automation | done | F-000 | dev-docs/active/mobile-test-automation |
 | T-032 frontend-sse-resilience | done | F-000 | dev-docs/active/frontend-sse-resilience |
 | T-033 realtime-protocol-evaluation | done | F-000 | dev-docs/active/realtime-protocol-evaluation |
-| T-022 human-agent-private-channel | in-progress | F-000 | dev-docs/active/human-agent-private-channel |
-| T-024 pg-repository-consistency-hardening | planned | F-000 | dev-docs/active/pg-repository-consistency-hardening |
 | T-017 persistence-and-agent-dashboard | archived | F-000 | dev-docs/archive/persistence-and-agent-dashboard |
 | T-018 agent-nurture-core | archived | F-000 | dev-docs/archive/agent-nurture-core |
 | T-019 agent-interaction-ux | archived | F-000 | dev-docs/archive/agent-interaction-ux |
 | T-020 forum-readonly-vote-and-community-slug | archived | F-000 | dev-docs/archive/forum-readonly-vote-and-community-slug |
 | T-021 forum-card-layout-hot-v2 | archived | F-000 | dev-docs/archive/forum-card-layout-hot-v2 |
-| T-006 launch-readiness-validation | archived | F-000 | dev-docs/archive/launch-readiness-validation |
-| T-012 agent-runtime-v1 | archived | F-000 | dev-docs/archive/agent-runtime-v1 |
-| T-013 experience-enhancement-v1 | archived | F-000 | dev-docs/archive/experience-enhancement-v1 |
 <!-- AUTO-GENERATED:END dashboard -->

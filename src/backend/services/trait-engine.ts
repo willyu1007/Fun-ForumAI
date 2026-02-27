@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client'
+import type { PrismaClient, Prisma } from '@prisma/client'
 
 interface TraitDef {
   code: string
@@ -145,7 +145,31 @@ export class TraitEngine {
         return (rejectedPosts + rejectedComments) >= 5
       }
       case 'slow_starter':
-        return false
+      {
+        const since = new Date()
+        since.setDate(since.getDate() - 30)
+        const memberships = await this.prisma.roomMembership.findMany({
+          where: {
+            agentId,
+            joinedAt: { gte: since },
+            lastSpokeAt: { not: null },
+          },
+          select: { joinedAt: true, lastSpokeAt: true },
+        })
+        if (memberships.length < 5) return false
+
+        const delays = memberships
+          .map((m) => (m.lastSpokeAt ? m.lastSpokeAt.getTime() - m.joinedAt.getTime() : 0))
+          .filter((ms) => ms >= 0)
+          .sort((a, b) => a - b)
+        if (delays.length < 5) return false
+
+        const mid = Math.floor(delays.length / 2)
+        const median = delays.length % 2 === 0
+          ? (delays[mid - 1] + delays[mid]) / 2
+          : delays[mid]
+        return median >= 8 * 60 * 1000
+      }
       default:
         return false
     }
@@ -163,17 +187,87 @@ export class TraitEngine {
         return count >= 30
       }
       case 'debater': {
+        const comments = await this.prisma.comment.findMany({
+          where: { authorAgentId: agentId },
+          select: { id: true },
+        })
+        if (comments.length < 30) return false
+        const commentIds = comments.map((c) => c.id)
         const upvotes = await this.prisma.vote.count({
-          where: { targetType: 'COMMENT', direction: 'UP' },
+          where: { targetType: 'COMMENT', direction: 'UP', targetId: { in: commentIds } },
         })
         return upvotes >= 20
       }
-      case 'warmheart':
-        return false
+      case 'warmheart': {
+        const since = new Date()
+        since.setDate(since.getDate() - 30)
+
+        const [postCount, commentCount, msgCount] = await Promise.all([
+          this.prisma.post.count({ where: { authorAgentId: agentId, createdAt: { gte: since } } }),
+          this.prisma.comment.count({ where: { authorAgentId: agentId, createdAt: { gte: since } } }),
+          this.prisma.roomMessage.count({ where: { authorAgentId: agentId, createdAt: { gte: since } } }),
+        ])
+
+        const total = postCount + commentCount + msgCount
+        if (total < 40) return false
+
+        const [rejectedPosts, rejectedComments, rejectedMessages] = await Promise.all([
+          this.prisma.post.count({
+            where: { authorAgentId: agentId, createdAt: { gte: since }, state: { in: ['REJECTED'] } },
+          }),
+          this.prisma.comment.count({
+            where: { authorAgentId: agentId, createdAt: { gte: since }, state: { in: ['REJECTED'] } },
+          }),
+          this.prisma.roomMessage.count({
+            where: { authorAgentId: agentId, createdAt: { gte: since }, state: { in: ['REJECTED'] } },
+          }),
+        ])
+        const rejected = rejectedPosts + rejectedComments + rejectedMessages
+        const rejectionRate = rejected / Math.max(total, 1)
+        if (rejectionRate > 0.05) return false
+
+        const [posts, comments, messages] = await Promise.all([
+          this.prisma.post.findMany({ where: { authorAgentId: agentId, createdAt: { gte: since } }, select: { id: true } }),
+          this.prisma.comment.findMany({ where: { authorAgentId: agentId, createdAt: { gte: since } }, select: { id: true } }),
+          this.prisma.roomMessage.findMany({ where: { authorAgentId: agentId, createdAt: { gte: since } }, select: { id: true } }),
+        ])
+
+        const postIds = posts.map((p) => p.id)
+        const commentIds = comments.map((c) => c.id)
+        const messageIds = messages.map((m) => m.id)
+        const voteTargets: Prisma.VoteWhereInput[] = [
+          ...(postIds.length ? [{ targetType: 'POST' as const, targetId: { in: postIds } }] : []),
+          ...(commentIds.length ? [{ targetType: 'COMMENT' as const, targetId: { in: commentIds } }] : []),
+          ...(messageIds.length ? [{ targetType: 'MESSAGE' as const, targetId: { in: messageIds } }] : []),
+        ]
+        if (voteTargets.length === 0) return false
+
+        const [upvotes, downvotes] = await Promise.all([
+          this.prisma.vote.count({
+            where: {
+              direction: 'UP',
+              createdAt: { gte: since },
+              OR: voteTargets,
+            },
+          }),
+          this.prisma.vote.count({
+            where: {
+              direction: 'DOWN',
+              createdAt: { gte: since },
+              OR: voteTargets,
+            },
+          }),
+        ])
+
+        if (upvotes < 15) return false
+        return downvotes / Math.max(upvotes, 1) <= 0.4
+      }
       case 'philosopher': {
-        const longPosts = await this.prisma.post.count({
+        const posts = await this.prisma.post.findMany({
           where: { authorAgentId: agentId },
+          select: { body: true },
         })
+        const longPosts = posts.filter((p) => p.body.length >= 280).length
         return longPosts >= 5
       }
       case 'comedian': {

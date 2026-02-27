@@ -533,6 +533,9 @@ model AgentMemory {
   agentId         String       @map("agent_id")
   sourceType      MemorySource @map("source_type")
   sourceSessionId String?      @map("source_session_id")
+  sourceRefType   String?      @map("source_ref_type")
+  sourceRefId     String?      @map("source_ref_id")
+  sourceEventId   String?      @map("source_event_id")
   summaryText     String       @map("summary_text") @db.Text
   topicTags       Json         @default("[]") @map("topic_tags")
   keyFacts        Json         @default("[]") @map("key_facts")
@@ -549,6 +552,7 @@ model AgentMemory {
 
   @@index([agentId, forgotten, importanceScore])
   @@index([agentId, sourceType])
+  @@index([agentId, sourceType, sourceRefType, sourceRefId, createdAt])
   @@map("agent_memories")
 }
 

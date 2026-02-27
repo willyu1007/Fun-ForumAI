@@ -2,5 +2,5 @@ version: 1
 task_id: T-024
 project: main
 slug: pg-repository-consistency-hardening
-status: in_progress
+status: in-progress
 updated: "2026-02-25"

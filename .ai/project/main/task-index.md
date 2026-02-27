@@ -29,16 +29,19 @@ Project: `main`
 | T-019 agent-interaction-ux | archived | F-000 | dev-docs/archive/agent-interaction-ux |
 | T-020 forum-readonly-vote-and-community-slug | archived | F-000 | dev-docs/archive/forum-readonly-vote-and-community-slug |
 | T-021 forum-card-layout-hot-v2 | archived | F-000 | dev-docs/archive/forum-card-layout-hot-v2 |
-| T-022 human-agent-private-channel | in-progress | F-000 | dev-docs/active/human-agent-private-channel |
+| T-022 human-agent-private-channel | done | F-000 | dev-docs/active/human-agent-private-channel |
 | T-023 runtime-queue-and-lock-externalization | archived | F-000 | dev-docs/archive/runtime-queue-and-lock-externalization |
-| T-024 pg-repository-consistency-hardening | planned | F-000 | dev-docs/active/pg-repository-consistency-hardening |
+| T-024 pg-repository-consistency-hardening | in-progress | F-000 | dev-docs/active/pg-repository-consistency-hardening |
 | T-025 sse-cluster-broadcast-foundation | done | F-000 | dev-docs/active/sse-cluster-broadcast-foundation |
 | T-026 k8s-local-cloud-overlays-bootstrap | in-progress | F-000 | dev-docs/active/k8s-local-cloud-overlays-bootstrap |
 | T-027 typecheck-remediation-baseline | archived | F-000 | dev-docs/archive/typecheck-remediation-baseline |
 | T-028 app-adaptation-discussion | in-progress | F-000 | dev-docs/active/app-adaptation-discussion |
-| T-029 mobile-ux-hardening | planned | F-000 | dev-docs/active/mobile-ux-hardening |
-| T-030 mobile-navigation-and-routing | planned | F-000 | dev-docs/active/mobile-navigation-and-routing |
+| T-029 mobile-ux-hardening | done | F-000 | dev-docs/active/mobile-ux-hardening |
+| T-030 mobile-navigation-and-routing | done | F-000 | dev-docs/active/mobile-navigation-and-routing |
 | T-031 mobile-test-automation | done | F-000 | dev-docs/active/mobile-test-automation |
 | T-032 frontend-sse-resilience | done | F-000 | dev-docs/active/frontend-sse-resilience |
 | T-033 realtime-protocol-evaluation | done | F-000 | dev-docs/active/realtime-protocol-evaluation |
+| T-034 abc-layer-stack-unification | in-progress | F-000 | dev-docs/active/abc-layer-stack-unification |
+| T-035 abc-growth-nurture-closure | in-progress | F-000 | dev-docs/active/abc-growth-nurture-closure |
+| T-036 abc-public-observation-memory | in-progress | F-000 | dev-docs/active/abc-public-observation-memory |
 <!-- AUTO-GENERATED:END task-index -->

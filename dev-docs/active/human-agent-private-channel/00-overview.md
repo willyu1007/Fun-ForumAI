@@ -1,7 +1,7 @@
 # 00 Overview — human-agent-private-channel (T-022)
 
 ## Status
-- State: **done**
+- State: done
 - Phase 0 (Discovery & Alignment): **done** — D1-D18 全部 resolved
 - Phase 1 (Data Layer): **done** — Schema + migration + repositories
 - Phase 2 (Core Services): **done** — PrivateChannelService + MemoryService + NotificationService + API Routes + GrowthEngine 扩展

@@ -2,13 +2,16 @@ import type { LlmClient } from '../llm/llm-client.js'
 import type { PrivateChannelRepository } from '../repos/private-channel-repository.js'
 import type { MemoryRepository } from '../repos/memory-repository.js'
 import type { GrowthEngine } from './growth-engine.js'
+import type { NurtureOrchestrator } from './nurture-orchestrator.js'
 import type {
   AgentMemory,
   AgentPrivacySettingsEntity,
   PaginatedResult,
   PaginationOpts,
   MemorySource,
+  CreateAgentMemoryInput,
 } from '../repos/types.js'
+import { config } from '../lib/config.js'
 
 const DECAY_FACTOR_PER_DAY = 0.995
 const FORGET_THRESHOLD = 0.05
@@ -19,6 +22,7 @@ export interface MemoryServiceDeps {
   channelRepo: PrivateChannelRepository
   llmClient: LlmClient
   growthEngine?: GrowthEngine | null
+  nurtureOrchestrator?: NurtureOrchestrator | null
 }
 
 export interface MemoryForContext {
@@ -77,7 +81,11 @@ export class MemoryService {
 
       await this.deps.channelRepo.updateDigestStatus(sessionId, 'COMPLETED')
 
-      if (this.deps.growthEngine) {
+      if (config.features.nurturePipelineV2 && this.deps.nurtureOrchestrator) {
+        this.deps.nurtureOrchestrator.onPrivateDigestCompleted(session.agent_id, msgCount).catch((err) => {
+          console.error('[MemoryService] Nurture pipeline failed:', err)
+        })
+      } else if (this.deps.growthEngine) {
         this.deps.growthEngine.awardPrivateChatXP(session.agent_id, msgCount).catch((err) => {
           console.error('[MemoryService] XP award failed:', err)
         })
@@ -110,12 +118,26 @@ export class MemoryService {
 
     const scored = filtered.map((m) => {
       const tagMatchScore = this.computeTagMatch(m.topic_tags, opts.topicHints)
-      const combinedScore = tagMatchScore * 0.6 + m.importance_score * 0.4
+      const ageDays = Math.max(0, (Date.now() - m.created_at.getTime()) / (24 * 60 * 60 * 1000))
+      const recencyBoost = Math.max(0, 1 - ageDays / 7) * 0.15
+      const combinedScore = tagMatchScore * 0.45 + m.importance_score * 0.4 + recencyBoost
       return { memory: m, score: combinedScore }
     })
 
     scored.sort((a, b) => b.score - a.score)
-    const selected = scored.slice(0, opts.topK).map((s) => s.memory)
+    const selected: AgentMemory[] = []
+    const usedPrimaryTags = new Set<string>()
+    for (const item of scored) {
+      if (selected.length >= opts.topK) break
+      const primaryTag = item.memory.topic_tags[0]?.toLowerCase() ?? ''
+      if (primaryTag && usedPrimaryTags.has(primaryTag) && selected.length < opts.topK - 1) {
+        continue
+      }
+      selected.push(item.memory)
+      if (primaryTag) {
+        usedPrimaryTags.add(primaryTag)
+      }
+    }
 
     let totalTokens = 0
     const budgetFiltered: AgentMemory[] = []
@@ -148,9 +170,41 @@ export class MemoryService {
 
   async listMemories(
     agentId: string,
-    opts: PaginationOpts & { source_type?: MemorySource; forgotten?: boolean },
+    opts: PaginationOpts & {
+      source_type?: MemorySource
+      forgotten?: boolean
+      source_ref_type?: string
+      source_ref_id?: string
+    },
   ): Promise<PaginatedResult<AgentMemory>> {
     return this.deps.memoryRepo.listMemories(agentId, opts)
+  }
+
+  async createPublicObservationMemory(input: {
+    agent_id: string
+    source_ref_type: string
+    source_ref_id: string
+    source_event_id?: string
+    summary_text: string
+    topic_tags: string[]
+    key_facts: string[]
+    sentiment?: string | null
+    importance_score: number
+  }): Promise<AgentMemory> {
+    const data: CreateAgentMemoryInput = {
+      agent_id: input.agent_id,
+      source_type: 'PUBLIC_OBSERVATION',
+      source_ref_type: input.source_ref_type,
+      source_ref_id: input.source_ref_id,
+      source_event_id: input.source_event_id ?? null,
+      summary_text: input.summary_text,
+      topic_tags: input.topic_tags,
+      key_facts: input.key_facts,
+      sentiment: input.sentiment ?? null,
+      importance_score: input.importance_score,
+      privacy_floor: 0,
+    }
+    return this.deps.memoryRepo.createMemory(data)
   }
 
   async getPrivacySettings(agentId: string): Promise<AgentPrivacySettingsEntity> {

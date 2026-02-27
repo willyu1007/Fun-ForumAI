@@ -9,7 +9,7 @@ import { healthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { devSeedRouter } from './routes/dev-seed.js'
-import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock, authService, privateChannelScheduler } from './container.js'
+import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, promptLayerService, agentService, promptEngine } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
 import { agentGrowthRouter } from './routes/agent-growth-api.js'
@@ -139,6 +139,84 @@ if (config.nodeEnv !== 'production') {
   app.get('/v1/dev/runtime/post/stats', (_req, res) => {
     res.json({ data: postScheduler.stats })
   })
+
+  app.post('/v1/dev/prompts/render', async (req, res) => {
+    try {
+      const body = req.body as {
+        agent_id?: string
+        template_id?: string
+        scene?: 'forum_post' | 'forum_comment' | 'chat_room'
+        conversation_text?: string
+        topic_hints?: string[]
+        room_member_last_spoke_at?: string | null
+        variables?: Record<string, string>
+      }
+
+      if (!body.agent_id || !body.template_id || !body.scene) {
+        res.status(400).json({
+          error: { code: 'VALIDATION_ERROR', message: 'agent_id, template_id and scene are required' },
+        })
+        return
+      }
+
+      if (!promptLayerService) {
+        res.status(503).json({
+          error: { code: 'SERVICE_UNAVAILABLE', message: 'PromptLayerService not initialized' },
+        })
+        return
+      }
+
+      const persona = promptLayerService.getPersona(body.agent_id)
+      const layers = await promptLayerService.composeLayers({
+        agentId: body.agent_id,
+        scene: body.scene,
+        conversationText: body.conversation_text ?? '',
+        topicHints: body.topic_hints ?? [],
+        roomMemberState: body.room_member_last_spoke_at !== undefined
+          ? { last_spoke_at: body.room_member_last_spoke_at ? new Date(body.room_member_last_spoke_at) : null }
+          : undefined,
+      })
+
+      const defaults: Record<string, string> = {
+        persona_name: persona.name,
+        persona_style: persona.style,
+        persona_interests: persona.interests.join('、'),
+        persona_language: persona.language,
+        community_name: '调试社区',
+        community_description: '',
+        community_rules: '',
+        post_title: '调试标题',
+        post_body: body.conversation_text ?? '调试内容',
+        post_author: agentService.getAgent(body.agent_id).display_name,
+        existing_comments: '',
+        thread_context: '',
+        target_comment_author: '调试对象',
+        target_comment_body: body.conversation_text ?? '调试评论',
+        room_name: '调试房间',
+        room_description: '',
+        recent_messages: body.conversation_text ?? '（无）',
+        layer_growth: layers.layer1_growth ?? '',
+        layer_style: layers.layer2_style ?? '',
+        layer_instructions: layers.layer3_instructions ?? '',
+        layer_overrides: layers.layer4_overrides ?? '',
+        layer_memory: layers.layer5_memory ?? '',
+        layer_privacy: layers.layer6_privacy ?? '',
+      }
+
+      const variables = { ...defaults, ...(body.variables ?? {}) }
+      const messages = promptEngine.render(body.template_id, variables)
+
+      res.json({
+        data: {
+          layers,
+          messages,
+        },
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      res.status(500).json({ error: { code: 'PROMPT_RENDER_FAILED', message } })
+    }
+  })
 }
 
 // ─── Error handling + 404 ───────────────────────────────────
@@ -165,6 +243,10 @@ conversationClock.start()
 
 if (privateChannelScheduler) {
   privateChannelScheduler.start()
+}
+
+if (nurtureScheduler) {
+  nurtureScheduler.start()
 }
 
 // ─── Persistence initialization ─────────────────────────────

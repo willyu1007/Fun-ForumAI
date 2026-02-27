@@ -285,6 +285,9 @@ export interface AgentMemory {
   agent_id: string
   source_type: MemorySource
   source_session_id: string | null
+  source_ref_type: string | null
+  source_ref_id: string | null
+  source_event_id: string | null
   summary_text: string
   topic_tags: string[]
   key_facts: string[]
@@ -338,6 +341,9 @@ export interface CreateAgentMemoryInput {
   agent_id: string
   source_type: MemorySource
   source_session_id?: string | null
+  source_ref_type?: string | null
+  source_ref_id?: string | null
+  source_event_id?: string | null
   summary_text: string
   topic_tags: string[]
   key_facts: string[]

@@ -2,6 +2,8 @@ import type { RoomRepository } from '../repos/room-repository.js'
 import type { MessageRepository } from '../repos/message-repository.js'
 import type { AgentRepository } from '../repos/agent-repository.js'
 import type { AgentService } from './agent-service.js'
+import type { NurtureOrchestrator } from './nurture-orchestrator.js'
+import type { PublicObservationDigestService } from './public-observation-digest-service.js'
 import type { SseHub } from '../sse/hub.js'
 import type {
   Room,
@@ -13,6 +15,7 @@ import type {
   PaginationOpts,
 } from '../repos/types.js'
 import { NotFoundError, ValidationError, ForbiddenError } from '../lib/errors.js'
+import { config } from '../lib/config.js'
 
 const MAX_ROOMS_PER_AGENT = 3
 
@@ -31,6 +34,8 @@ export interface ChatServiceDeps {
   agentService: AgentService
   sseHub?: SseHub
   growthEngine?: { awardXP(agentId: string, source: string, amount: number): Promise<unknown> } | null
+  nurtureOrchestrator?: NurtureOrchestrator | null
+  publicObservationService?: PublicObservationDigestService | null
 }
 
 type JoinLeaveHook = (roomId: string, agentId: string, tickInterval: number) => void
@@ -51,6 +56,14 @@ export class ChatService {
 
   setGrowthEngine(engine: ChatServiceDeps['growthEngine']): void {
     (this.deps as { growthEngine: ChatServiceDeps['growthEngine'] }).growthEngine = engine
+  }
+
+  setNurtureOrchestrator(orchestrator: NurtureOrchestrator | null): void {
+    ;(this.deps as { nurtureOrchestrator: NurtureOrchestrator | null }).nurtureOrchestrator = orchestrator
+  }
+
+  setPublicObservationService(service: PublicObservationDigestService | null): void {
+    ;(this.deps as { publicObservationService: PublicObservationDigestService | null }).publicObservationService = service
   }
 
   async createRoom(input: CreateRoomInput): Promise<{ room: Room; greeting?: ChatMessage }> {
@@ -178,7 +191,19 @@ export class ChatService {
       payload: { room_id: input.room_id, message: msg },
     })
 
-    this.deps.growthEngine?.awardXP(input.author_id, 'chat_message', 1).catch(() => {})
+    if (config.features.nurturePipelineV2 && this.deps.nurtureOrchestrator) {
+      this.deps.nurtureOrchestrator.onContentProduced(input.author_id, 'chat_message', 1).catch(() => {})
+    } else {
+      this.deps.growthEngine?.awardXP(input.author_id, 'chat_message', 1).catch(() => {})
+    }
+
+    if (config.features.publicObservationMemory && this.deps.publicObservationService) {
+      this.deps.publicObservationService.onRoomMessage({
+        roomId: input.room_id,
+        messageId: msg.id,
+        authorAgentId: input.author_id,
+      }).catch(() => {})
+    }
 
     return msg
   }

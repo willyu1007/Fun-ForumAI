@@ -23,6 +23,9 @@ export class PgMemoryRepository implements MemoryRepository {
         agentId: input.agent_id,
         sourceType: input.source_type,
         sourceSessionId: input.source_session_id ?? null,
+        sourceRefType: input.source_ref_type ?? null,
+        sourceRefId: input.source_ref_id ?? null,
+        sourceEventId: input.source_event_id ?? null,
         summaryText: input.summary_text,
         topicTags: input.topic_tags,
         keyFacts: input.key_facts,
@@ -41,11 +44,18 @@ export class PgMemoryRepository implements MemoryRepository {
 
   async listMemories(
     agentId: string,
-    opts: PaginationOpts & { source_type?: MemorySource; forgotten?: boolean },
+    opts: PaginationOpts & {
+      source_type?: MemorySource
+      forgotten?: boolean
+      source_ref_type?: string
+      source_ref_id?: string
+    },
   ): Promise<PaginatedResult<AgentMemory>> {
     const where: Record<string, unknown> = { agentId }
     if (opts.source_type) where.sourceType = opts.source_type
     if (opts.forgotten !== undefined) where.forgotten = opts.forgotten
+    if (opts.source_ref_type) where.sourceRefType = opts.source_ref_type
+    if (opts.source_ref_id) where.sourceRefId = opts.source_ref_id
 
     const rows = await this.prisma.agentMemory.findMany({
       where,
@@ -156,6 +166,9 @@ export class PgMemoryRepository implements MemoryRepository {
       agent_id: row.agentId,
       source_type: row.sourceType,
       source_session_id: row.sourceSessionId,
+      source_ref_type: row.sourceRefType,
+      source_ref_id: row.sourceRefId,
+      source_event_id: row.sourceEventId,
       summary_text: row.summaryText,
       topic_tags: Array.isArray(row.topicTags) ? (row.topicTags as string[]) : [],
       key_facts: Array.isArray(row.keyFacts) ? (row.keyFacts as string[]) : [],

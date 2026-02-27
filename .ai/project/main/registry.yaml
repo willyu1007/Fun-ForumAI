@@ -158,11 +158,11 @@ tasks:
     updated: 2026-02-24
   - id: T-022
     slug: human-agent-private-channel
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/human-agent-private-channel
-    updated: 2026-02-25
+    updated: 2026-02-27
   - id: T-023
     slug: runtime-queue-and-lock-externalization
     status: archived
@@ -172,11 +172,11 @@ tasks:
     updated: 2026-02-26
   - id: T-024
     slug: pg-repository-consistency-hardening
-    status: planned
+    status: in-progress
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/pg-repository-consistency-hardening
-    updated: 2026-02-25
+    updated: 2026-02-27
   - id: T-025
     slug: sse-cluster-broadcast-foundation
     status: done
@@ -207,18 +207,18 @@ tasks:
     updated: 2026-02-26
   - id: T-029
     slug: mobile-ux-hardening
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/mobile-ux-hardening
-    updated: 2026-02-26
+    updated: 2026-02-27
   - id: T-030
     slug: mobile-navigation-and-routing
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/mobile-navigation-and-routing
-    updated: 2026-02-26
+    updated: 2026-02-27
   - id: T-031
     slug: mobile-test-automation
     status: done
@@ -240,3 +240,24 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/realtime-protocol-evaluation
     updated: 2026-02-26
+  - id: T-034
+    slug: abc-layer-stack-unification
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/abc-layer-stack-unification
+    updated: 2026-02-27
+  - id: T-035
+    slug: abc-growth-nurture-closure
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/abc-growth-nurture-closure
+    updated: 2026-02-27
+  - id: T-036
+    slug: abc-public-observation-memory
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/abc-public-observation-memory
+    updated: 2026-02-27

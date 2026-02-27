@@ -222,3 +222,24 @@ variables:
     required: false
     default: 5000
     description: Redis connection timeout in milliseconds for SSE broadcast backend.
+
+  FF_LAYER_STACK_V2:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable shared prompt layer composition for runtime and chatroom paths.
+
+  FF_NURTURE_PIPELINE_V2:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable nurture orchestrator realtime/scheduled closure pipeline.
+
+  FF_PUBLIC_OBSERVATION_MEMORY:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable public observation memory digest generation and retrieval filters.

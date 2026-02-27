@@ -42,6 +42,7 @@ import { LlmClient } from './llm/llm-client.js'
 import { PromptEngine } from './llm/prompt-engine.js'
 
 import { ContextBuilder } from './runtime/context-builder.js'
+import { PromptLayerService } from './runtime/prompt-layer-service.js'
 import { ResponseParser } from './runtime/response-parser.js'
 import { DataPlaneWriter } from './runtime/data-plane-writer.js'
 import { AgentExecutor } from './runtime/agent-executor.js'
@@ -60,6 +61,8 @@ import {
 } from './runtime/leader-elector.js'
 
 import { ChatService } from './services/chat-service.js'
+import { NurtureOrchestrator } from './services/nurture-orchestrator.js'
+import { PublicObservationDigestService } from './services/public-observation-digest-service.js'
 import { RoomLifecycleManager } from './services/room-lifecycle.js'
 import { ConversationClock } from './services/conversation-clock.js'
 import { AuthService } from './services/auth-service.js'
@@ -70,6 +73,8 @@ import { LocalSseBroadcastAdapter } from './sse/adapters/local-broadcast-adapter
 import { RedisPubSubSseBroadcastAdapter } from './sse/adapters/redis-pubsub-broadcast-adapter.js'
 
 import { config } from './lib/config.js'
+import { NurtureScheduler } from './runtime/nurture-scheduler.js'
+import { PublicObservationEventHandler } from './runtime/public-observation-event-handler.js'
 
 // ─── Repositories ───────────────────────────────────────────
 
@@ -256,6 +261,7 @@ const runtimeLoopLeaderElector = createLeaderElector('runtime-loop')
 const roomLifecycleLeaderElector = createLeaderElector('room-lifecycle')
 const conversationClockLeaderElector = createLeaderElector('conversation-clock')
 const privateChannelLeaderElector = createLeaderElector('private-channel')
+const nurtureLeaderElector = createLeaderElector('nurture')
 
 // ─── Core Services ──────────────────────────────────────────
 
@@ -355,10 +361,12 @@ export const conversationClock = new ConversationClock({
   roomRepo,
   messageRepo,
   agentRepo,
+  agentService,
   chatService,
   llmClient,
   promptEngine,
   sseHub,
+  promptLayerService: null,
   leaderElector: conversationClockLeaderElector,
 })
 
@@ -375,6 +383,11 @@ let traitEngine: import('./services/trait-engine.js').TraitEngine | null = null
 let instructionEngine: import('./services/instruction-engine.js').InstructionEngine | null = null
 export let growthEngine: import('./services/growth-engine.js').GrowthEngine | null = null
 let memoryService: import('./services/memory-service.js').MemoryService | null = null
+export let promptLayerService: PromptLayerService | null = null
+export let nurtureOrchestrator: NurtureOrchestrator | null = null
+export let nurtureScheduler: NurtureScheduler | null = null
+let publicObservationDigestService: PublicObservationDigestService | null = null
+let publicObservationEventHandler: PublicObservationEventHandler | null = null
 let proactiveEventHandler: import('./runtime/proactive-event-handler.js').ProactiveEventHandler | null = null
 export let privateChannelServices: {
   channelService: import('./services/private-channel-service.js').PrivateChannelService
@@ -398,6 +411,11 @@ if (config.db.usePrisma) {
   traitEngine = new TraitEngine(prisma)
   instructionEngine = new InstructionEngine(prisma)
   growthEngine = new GrowthEngine(prisma)
+  nurtureOrchestrator = new NurtureOrchestrator({
+    agentRepo,
+    growthEngine,
+    traitEngine,
+  })
 
   const channelRepo = new PgPrivateChannelRepository(prisma)
   const memoryRepo = new PgMemoryRepository(prisma)
@@ -409,7 +427,21 @@ if (config.db.usePrisma) {
     channelRepo,
     llmClient,
     growthEngine,
+    nurtureOrchestrator,
   })
+
+  if (memoryService) {
+    publicObservationDigestService = new PublicObservationDigestService({
+      llmClient,
+      forumReadService,
+      roomRepo,
+      messageRepo,
+      memoryService,
+    })
+    publicObservationEventHandler = new PublicObservationEventHandler({
+      digestService: publicObservationDigestService,
+    })
+  }
 
   const proactiveService = new ProactiveInteractionService({
     channelRepo,
@@ -456,8 +488,24 @@ if (config.db.usePrisma) {
   })
 
   chatService.setGrowthEngine(growthEngine)
+  chatService.setNurtureOrchestrator(nurtureOrchestrator)
+  chatService.setPublicObservationService(publicObservationDigestService)
+
+  if (config.features.nurturePipelineV2 && nurtureOrchestrator) {
+    nurtureScheduler = new NurtureScheduler({
+      orchestrator: nurtureOrchestrator,
+      leaderElector: nurtureLeaderElector,
+    })
+  }
 }
 
+promptLayerService = new PromptLayerService({
+  agentService,
+  traitEngine,
+  instructionEngine,
+  memoryService,
+})
+conversationClock.setPromptLayerService(promptLayerService)
 
 // ─── Agent Runtime ──────────────────────────────────────────
 
@@ -467,6 +515,7 @@ const contextBuilder = new ContextBuilder({
   traitEngine,
   instructionEngine,
   memoryService,
+  promptLayerService,
 })
 
 const responseParser = new ResponseParser()
@@ -476,6 +525,7 @@ const dataplaneWriter = new DataPlaneWriter({
   agentRunRepo,
   chatService,
   growthEngine,
+  nurtureOrchestrator,
 })
 
 export const agentExecutor = new AgentExecutor({
@@ -534,6 +584,9 @@ forumWriteService.setEventHook((event) => {
   if (proactiveEventHandler) {
     proactiveEventHandler.handle(event)
   }
+  if (config.features.publicObservationMemory && publicObservationEventHandler) {
+    publicObservationEventHandler.handle(event)
+  }
 })
 
 // ─── Repository Hydration (Pg mode) ─────────────────────────
@@ -546,7 +599,13 @@ export async function hydrateRepositories(): Promise<void> {
 }
 
 export async function closeRuntimeInfrastructure(): Promise<void> {
-  const electors = [runtimeLoopLeaderElector, roomLifecycleLeaderElector, conversationClockLeaderElector, privateChannelLeaderElector]
+  const electors = [
+    runtimeLoopLeaderElector,
+    roomLifecycleLeaderElector,
+    conversationClockLeaderElector,
+    privateChannelLeaderElector,
+    nurtureLeaderElector,
+  ]
   const uniqueElectors = Array.from(new Set(electors))
   await Promise.allSettled(uniqueElectors.map((elector) => elector.releaseLeadership()))
 

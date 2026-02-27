@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-02-23T09:29:37.762Z",
+  "updatedAt": "2026-02-27T07:06:23.304Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -33,6 +33,24 @@
       ]
     },
     {
+      "name": "DigestStatus",
+      "values": [
+        "PENDING",
+        "GENERATING",
+        "COMPLETED",
+        "FAILED",
+        "SKIPPED"
+      ]
+    },
+    {
+      "name": "MemorySource",
+      "values": [
+        "PRIVATE_CHAT",
+        "PUBLIC_OBSERVATION",
+        "SYSTEM"
+      ]
+    },
+    {
       "name": "ModerationResult",
       "values": [
         "APPROVE",
@@ -42,11 +60,42 @@
       ]
     },
     {
+      "name": "NotificationType",
+      "values": [
+        "AGENT_PROACTIVE",
+        "AGENT_FIRST_POST",
+        "GROWTH_MILESTONE",
+        "GOVERNANCE"
+      ]
+    },
+    {
       "name": "PlanTier",
       "values": [
         "FREE",
         "PRO",
         "ADMIN"
+      ]
+    },
+    {
+      "name": "PrivateAuthorType",
+      "values": [
+        "HUMAN",
+        "AGENT"
+      ]
+    },
+    {
+      "name": "PrivateSessionStatus",
+      "values": [
+        "ACTIVE",
+        "ENDED",
+        "ARCHIVED"
+      ]
+    },
+    {
+      "name": "SessionInitiator",
+      "values": [
+        "HUMAN",
+        "AGENT"
       ]
     },
     {
@@ -299,6 +348,15 @@
           "references": []
         },
         {
+          "field": "memories",
+          "to": "AgentMemory",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "messageReactions",
           "to": "MessageReaction",
           "optional": false,
@@ -323,6 +381,24 @@
         {
           "field": "posts",
           "to": "Post",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "privacySettings",
+          "to": "AgentPrivacySettings",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "privateSessions",
+          "to": "PrivateSession",
           "optional": false,
           "list": true,
           "relationName": null,
@@ -930,6 +1006,363 @@
           "map": null
         }
       ]
+    },
+    {
+      "name": "AgentMemory",
+      "dbName": "agent_memories",
+      "schema": null,
+      "columns": [
+        {
+          "name": "accessCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "access_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "forgotten",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "importanceScore",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "importance_score",
+          "dbType": null,
+          "default": "0.5",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "keyFacts",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "key_facts",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "lastAccessedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "last_accessed_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "privacyFloor",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "privacy_floor",
+          "dbType": null,
+          "default": "1",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sentiment",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceEventId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_event_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceRefId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_ref_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceRefType",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_ref_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceSessionId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_session_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceType",
+          "type": "MemorySource",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "summaryText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "summary_text",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "topicTags",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "topic_tags",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "session",
+          "to": "PrivateSession",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "sourceSessionId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "forgotten",
+            "importanceScore"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "sourceType",
+            "sourceRefType",
+            "sourceRefId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "sourceType"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "AgentPrivacySettings",
+      "dbName": "agent_privacy_settings",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "disclosureLevel",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "disclosure_level",
+          "dbType": null,
+          "default": "1",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicMemoryBudget",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "public_memory_budget",
+          "dbType": null,
+          "default": "1000",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicMemoryTopK",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "public_memory_top_k",
+          "dbType": null,
+          "default": "4",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedBy",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_by",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "updater",
+          "to": "HumanUser",
+          "optional": false,
+          "list": false,
+          "relationName": "PrivacyUpdatedBy",
+          "fields": [
+            "updatedBy"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": []
     },
     {
       "name": "AgentRun",
@@ -1937,6 +2370,17 @@
           "unique": true
         },
         {
+          "name": "emailVerified",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "email_verified",
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "id",
           "type": "String",
           "nullable": false,
@@ -1948,6 +2392,17 @@
           "unique": false
         },
         {
+          "name": "lastLoginAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "last_login_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "passwordHash",
           "type": "String",
           "nullable": false,
@@ -1955,6 +2410,28 @@
           "dbName": "password_hash",
           "dbType": null,
           "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "phone",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "phoneVerified",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "phone_verified",
+          "dbType": null,
+          "default": "false",
           "primaryKey": false,
           "unique": false
         },
@@ -1990,6 +2467,17 @@
           "default": null,
           "primaryKey": false,
           "unique": false
+        },
+        {
+          "name": "wechatOpenId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "wechat_open_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
         }
       ],
       "relations": [
@@ -2005,6 +2493,33 @@
         {
           "field": "agents",
           "to": "Agent",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "notifications",
+          "to": "Notification",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "privacyUpdates",
+          "to": "AgentPrivacySettings",
+          "optional": false,
+          "list": true,
+          "relationName": "PrivacyUpdatedBy",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "privateSessions",
+          "to": "PrivateSession",
           "optional": false,
           "list": true,
           "relationName": null,
@@ -2110,6 +2625,139 @@
             "reactorAgentId",
             "messageId",
             "reactionType"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "Notification",
+      "dbName": "notifications",
+      "schema": null,
+      "columns": [
+        {
+          "name": "body",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "read",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "target_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetType",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "target_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "type",
+          "type": "NotificationType",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "userId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "user",
+          "to": "HumanUser",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "userId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "userId",
+            "read",
+            "createdAt"
           ],
           "name": null,
           "map": null
@@ -2294,6 +2942,276 @@
           "fields": [
             "communityId",
             "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "PrivateMessage",
+      "dbName": "private_messages",
+      "schema": null,
+      "columns": [
+        {
+          "name": "authorType",
+          "type": "PrivateAuthorType",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "content",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "sessionId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "session_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "session",
+          "to": "PrivateSession",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "sessionId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "sessionId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "PrivateSession",
+      "dbName": "private_sessions",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "digestStatus",
+          "type": "DigestStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": "digest_status",
+          "dbType": null,
+          "default": "PENDING",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "endedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "ended_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "humanUserId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "human_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "initiator",
+          "type": "SessionInitiator",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "HUMAN",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "startedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "started_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "PrivateSessionStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "ACTIVE",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "triggerRef",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "trigger_ref",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "triggerType",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "trigger_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "human",
+          "to": "HumanUser",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "humanUserId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "memories",
+          "to": "AgentMemory",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "messages",
+          "to": "PrivateMessage",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "startedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "humanUserId"
           ],
           "name": null,
           "map": null
