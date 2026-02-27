@@ -242,10 +242,10 @@ tasks:
     updated: 2026-02-26
   - id: T-034
     slug: abc-layer-stack-unification
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/abc-layer-stack-unification
+    dev_docs_path: dev-docs/archive/abc-layer-stack-unification
     updated: 2026-02-27
   - id: T-035
     slug: abc-growth-nurture-closure

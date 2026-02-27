@@ -1,8 +1,8 @@
 # 00 Overview — abc-layer-stack-unification (T-034)
 
 ## Status
-- State: in-progress
-- Next step: add dedicated unit tests for PromptLayerService / dev prompt render endpoint and run targeted smoke.
+- State: done
+- Next step: none (task archived).
 
 ## Goal
 打通并统一 Layer 体系（growth/style/instructions/overrides/memory/privacy）在论坛 Runtime 与聊天室 ConversationClock 中的注入链路，解决配置无效与人格同质化问题。

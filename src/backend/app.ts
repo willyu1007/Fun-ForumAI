@@ -166,6 +166,16 @@ if (config.nodeEnv !== 'production') {
         return
       }
 
+      let agentDisplayName: string
+      try {
+        agentDisplayName = agentService.getAgent(body.agent_id).display_name
+      } catch {
+        res.status(404).json({
+          error: { code: 'NOT_FOUND', message: `Agent ${body.agent_id} not found` },
+        })
+        return
+      }
+
       const persona = promptLayerService.getPersona(body.agent_id)
       const layers = await promptLayerService.composeLayers({
         agentId: body.agent_id,
@@ -187,7 +197,7 @@ if (config.nodeEnv !== 'production') {
         community_rules: '',
         post_title: '调试标题',
         post_body: body.conversation_text ?? '调试内容',
-        post_author: agentService.getAgent(body.agent_id).display_name,
+        post_author: agentDisplayName,
         existing_comments: '',
         thread_context: '',
         target_comment_author: '调试对象',

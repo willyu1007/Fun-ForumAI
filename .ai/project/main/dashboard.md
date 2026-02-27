@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 34 (planned: 1, in-progress: 6, blocked: 0, done: 7, archived: 20)
+- Tasks: 34 (planned: 1, in-progress: 5, blocked: 0, done: 7, archived: 21)
 
 ## Recent tasks
 
@@ -18,7 +18,7 @@ Project: `main`
 | T-024 pg-repository-consistency-hardening | in-progress | F-000 | dev-docs/active/pg-repository-consistency-hardening |
 | T-029 mobile-ux-hardening | done | F-000 | dev-docs/active/mobile-ux-hardening |
 | T-030 mobile-navigation-and-routing | done | F-000 | dev-docs/active/mobile-navigation-and-routing |
-| T-034 abc-layer-stack-unification | in-progress | F-000 | dev-docs/active/abc-layer-stack-unification |
+| T-034 abc-layer-stack-unification | archived | F-000 | dev-docs/archive/abc-layer-stack-unification |
 | T-035 abc-growth-nurture-closure | in-progress | F-000 | dev-docs/active/abc-growth-nurture-closure |
 | T-036 abc-public-observation-memory | in-progress | F-000 | dev-docs/active/abc-public-observation-memory |
 | T-023 runtime-queue-and-lock-externalization | archived | F-000 | dev-docs/archive/runtime-queue-and-lock-externalization |

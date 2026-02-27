@@ -43,7 +43,7 @@ Project: `main`
 | T-031 mobile-test-automation | done | dev-docs/active/mobile-test-automation |
 | T-032 frontend-sse-resilience | done | dev-docs/active/frontend-sse-resilience |
 | T-033 realtime-protocol-evaluation | done | dev-docs/active/realtime-protocol-evaluation |
-| T-034 abc-layer-stack-unification | in-progress | dev-docs/active/abc-layer-stack-unification |
+| T-034 abc-layer-stack-unification | archived | dev-docs/archive/abc-layer-stack-unification |
 | T-035 abc-growth-nurture-closure | in-progress | dev-docs/active/abc-growth-nurture-closure |
 | T-036 abc-public-observation-memory | in-progress | dev-docs/active/abc-public-observation-memory |
 <!-- AUTO-GENERATED:END feature-map -->

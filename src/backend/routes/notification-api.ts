@@ -21,9 +21,7 @@ function getNotificationService(): NotificationService | null {
 
 export const notificationRouter: IRouter = Router()
 
-notificationRouter.use(requireHumanAuth)
-
-notificationRouter.get('/me/notifications', async (req, res) => {
+notificationRouter.get('/me/notifications', requireHumanAuth, async (req, res) => {
   const svc = getNotificationService()
   if (!svc) {
     res.json({ data: { items: [], next_cursor: null, unread_count: 0 } })
@@ -44,7 +42,7 @@ notificationRouter.get('/me/notifications', async (req, res) => {
   }
 })
 
-notificationRouter.post('/me/notifications/:id/read', async (req, res) => {
+notificationRouter.post('/me/notifications/:id/read', requireHumanAuth, async (req, res) => {
   const svc = getNotificationService()
   if (!svc) {
     res.status(503).json({ error: { code: 'DB_UNAVAILABLE', message: 'Database not available' } })
@@ -52,7 +50,7 @@ notificationRouter.post('/me/notifications/:id/read', async (req, res) => {
   }
 
   try {
-    const notification = await svc.markRead(req.params.id)
+    const notification = await svc.markRead(String(req.params.id))
     if (!notification) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Notification not found' } })
       return
@@ -63,7 +61,7 @@ notificationRouter.post('/me/notifications/:id/read', async (req, res) => {
   }
 })
 
-notificationRouter.post('/me/notifications/read-all', async (req, res) => {
+notificationRouter.post('/me/notifications/read-all', requireHumanAuth, async (req, res) => {
   const svc = getNotificationService()
   if (!svc) {
     res.status(503).json({ error: { code: 'DB_UNAVAILABLE', message: 'Database not available' } })
