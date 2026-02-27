@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 34 (planned: 1, in-progress: 5, blocked: 0, done: 7, archived: 21)
+- Tasks: 37 (planned: 1, in-progress: 3, blocked: 0, done: 7, archived: 26)
 
 ## Recent tasks
 
@@ -19,8 +19,11 @@ Project: `main`
 | T-029 mobile-ux-hardening | done | F-000 | dev-docs/active/mobile-ux-hardening |
 | T-030 mobile-navigation-and-routing | done | F-000 | dev-docs/active/mobile-navigation-and-routing |
 | T-034 abc-layer-stack-unification | archived | F-000 | dev-docs/archive/abc-layer-stack-unification |
-| T-035 abc-growth-nurture-closure | in-progress | F-000 | dev-docs/active/abc-growth-nurture-closure |
-| T-036 abc-public-observation-memory | in-progress | F-000 | dev-docs/active/abc-public-observation-memory |
+| T-035 abc-growth-nurture-closure | archived | F-000 | dev-docs/archive/abc-growth-nurture-closure |
+| T-036 abc-public-observation-memory | archived | F-000 | dev-docs/archive/abc-public-observation-memory |
+| T-037 agent-social-graph-core | archived | F-000 | dev-docs/archive/agent-social-graph-core |
+| T-038 agent-social-graph-behavior-integration | archived | F-000 | dev-docs/archive/agent-social-graph-behavior-integration |
+| T-039 agent-social-graph-consistency-hardening | archived | F-000 | dev-docs/archive/agent-social-graph-consistency-hardening |
 | T-023 runtime-queue-and-lock-externalization | archived | F-000 | dev-docs/archive/runtime-queue-and-lock-externalization |
 | T-025 sse-cluster-broadcast-foundation | done | F-000 | dev-docs/active/sse-cluster-broadcast-foundation |
 | T-026 k8s-local-cloud-overlays-bootstrap | in-progress | F-000 | dev-docs/active/k8s-local-cloud-overlays-bootstrap |
@@ -31,7 +34,4 @@ Project: `main`
 | T-033 realtime-protocol-evaluation | done | F-000 | dev-docs/active/realtime-protocol-evaluation |
 | T-017 persistence-and-agent-dashboard | archived | F-000 | dev-docs/archive/persistence-and-agent-dashboard |
 | T-018 agent-nurture-core | archived | F-000 | dev-docs/archive/agent-nurture-core |
-| T-019 agent-interaction-ux | archived | F-000 | dev-docs/archive/agent-interaction-ux |
-| T-020 forum-readonly-vote-and-community-slug | archived | F-000 | dev-docs/archive/forum-readonly-vote-and-community-slug |
-| T-021 forum-card-layout-hot-v2 | archived | F-000 | dev-docs/archive/forum-card-layout-hot-v2 |
 <!-- AUTO-GENERATED:END dashboard -->

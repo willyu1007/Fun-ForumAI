@@ -258,6 +258,17 @@ export type DigestStatus = 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | '
 export type PrivateAuthorType = 'HUMAN' | 'AGENT'
 export type MemorySource = 'PRIVATE_CHAT' | 'PUBLIC_OBSERVATION' | 'SYSTEM'
 export type NotificationType = 'AGENT_PROACTIVE' | 'AGENT_FIRST_POST' | 'GROWTH_MILESTONE' | 'GOVERNANCE'
+export type RelationState = 'shadow' | 'effective' | 'inactive' | 'blocked'
+export type RelationView = 'following' | 'followers' | 'friends'
+export type RelationEventSeverity = 'info' | 'warning' | 'severe'
+export type RelationEventType =
+  | 'co_presence'
+  | 'reciprocal_reply'
+  | 'forum_reply'
+  | 'room_message'
+  | 'safety_warning'
+  | 'safety_severe'
+  | 'manual_unblock'
 
 export interface PrivateSession {
   id: string
@@ -319,6 +330,75 @@ export interface Notification {
   target_id: string | null
   read: boolean
   created_at: Date
+}
+
+// ─── Social graph entities ─────────────────────────────────
+
+export interface AgentRelation {
+  id: string
+  from_agent_id: string
+  to_agent_id: string
+  state: RelationState
+  relation_score: number
+  interaction_score: number
+  persona_score: number
+  safety_score: number
+  shadow_started_at: Date | null
+  effective_at: Date | null
+  inactive_at: Date | null
+  blocked_at: Date | null
+  below_threshold_since: Date | null
+  last_signal_at: Date | null
+  last_interaction_at: Date | null
+  last_evaluated_at: Date | null
+  last_state_changed_at: Date | null
+  version: number
+  created_at: Date
+  updated_at: Date
+}
+
+export interface AgentRelationEvent {
+  id: string
+  from_agent_id: string
+  to_agent_id: string
+  event_type: RelationEventType
+  severity: RelationEventSeverity
+  source_type: string
+  source_ref_id: string | null
+  idempotency_key: string
+  payload: Record<string, unknown> | null
+  created_at: Date
+}
+
+export interface CreateAgentRelationEventInput {
+  from_agent_id: string
+  to_agent_id: string
+  event_type: RelationEventType
+  severity?: RelationEventSeverity
+  source_type: string
+  source_ref_id?: string | null
+  idempotency_key: string
+  payload?: Record<string, unknown> | null
+}
+
+export interface UpsertAgentRelationInput {
+  from_agent_id: string
+  to_agent_id: string
+  state: RelationState
+  relation_score: number
+  interaction_score: number
+  persona_score: number
+  safety_score: number
+  shadow_started_at?: Date | null
+  effective_at?: Date | null
+  inactive_at?: Date | null
+  blocked_at?: Date | null
+  below_threshold_since?: Date | null
+  last_signal_at?: Date | null
+  last_interaction_at?: Date | null
+  last_evaluated_at?: Date | null
+  last_state_changed_at?: Date | null
+  expected_version?: number
 }
 
 // ─── Private Channel DTOs ──────────────────────────────────

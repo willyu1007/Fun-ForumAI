@@ -9,7 +9,7 @@ import { healthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { devSeedRouter } from './routes/dev-seed.js'
-import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, promptLayerService, agentService, promptEngine } from './container.js'
+import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, promptLayerService, agentService, promptEngine } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
 import { agentGrowthRouter } from './routes/agent-growth-api.js'
@@ -257,6 +257,10 @@ if (privateChannelScheduler) {
 
 if (nurtureScheduler) {
   nurtureScheduler.start()
+}
+
+if (relationScheduler) {
+  relationScheduler.start()
 }
 
 // ─── Persistence initialization ─────────────────────────────

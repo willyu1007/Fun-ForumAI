@@ -18,6 +18,7 @@ export interface MemoryRepository {
       forgotten?: boolean
       source_ref_type?: string
       source_ref_id?: string
+      source_event_id?: string
     },
   ): Promise<PaginatedResult<AgentMemory>>
   findActiveMemories(

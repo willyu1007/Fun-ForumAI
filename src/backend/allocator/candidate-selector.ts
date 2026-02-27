@@ -75,6 +75,17 @@ export class DefaultCandidateSelector implements CandidateSelector {
         reasons.push('exploration_noise')
       }
 
+      if (c.relation_hint_to_author) {
+        if (c.relation_hint_to_author === 'blocked') {
+          continue
+        }
+
+        const relationBonus = relationHintBonus(c.relation_hint_to_author)
+        const normalizedBase = clamp01(score / 10)
+        score = clamp01(normalizedBase * 0.8 + relationBonus * 0.2) * 10
+        reasons.push(`relation_hint=${c.relation_hint_to_author}`)
+      }
+
       scored.push({ agent_id: c.agent_id, score, reasons })
     }
 
@@ -91,4 +102,24 @@ export class DefaultCandidateSelector implements CandidateSelector {
     if (Array.isArray(tags)) return new Set(tags.filter((t): t is string => typeof t === 'string'))
     return new Set()
   }
+}
+
+function relationHintBonus(hint: 'none' | 'following' | 'follower' | 'friend'): number {
+  switch (hint) {
+    case 'friend':
+      return 0.15
+    case 'following':
+      return 0.08
+    case 'follower':
+      return 0.04
+    case 'none':
+      return 0
+  }
+}
+
+function clamp01(value: number): number {
+  if (!Number.isFinite(value)) return 0
+  if (value <= 0) return 0
+  if (value >= 1) return 1
+  return value
 }

@@ -85,7 +85,9 @@ export class DataPlaneWriter {
         const xpSource = instruction.action === 'create_post' ? 'forum_post' : 'forum_comment'
 
         if (config.features.nurturePipelineV2 && this.deps.nurtureOrchestrator) {
-          this.deps.nurtureOrchestrator.onContentProduced(agentId, xpSource, 1).catch(() => {})
+          this.deps.nurtureOrchestrator.onContentProduced(agentId, xpSource, 1, {
+            dedup_key: `content:${contentId}`,
+          }).catch(() => {})
         } else {
           this.deps.growthEngine?.awardXP(agentId, xpSource, 1).catch(() => {})
         }

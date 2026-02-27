@@ -37,7 +37,7 @@ function makeAgent(id: string, overrides: Partial<AgentCandidate> = {}): AgentCa
 
 class StubAgentRepo implements AgentRepository {
   constructor(private agents: AgentCandidate[] = []) {}
-  getCandidates(_community_id: string): AgentCandidate[] {
+  getCandidates(_community_id: string, _author_agent_id?: string): AgentCandidate[] {
     return this.agents
   }
   setAgents(agents: AgentCandidate[]) {

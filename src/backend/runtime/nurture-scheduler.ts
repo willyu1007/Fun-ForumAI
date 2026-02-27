@@ -10,6 +10,7 @@ export interface NurtureSchedulerDeps {
 
 export class NurtureScheduler {
   private timer: ReturnType<typeof setInterval> | null = null
+  private startupTimer: ReturnType<typeof setTimeout> | null = null
   private running = false
 
   constructor(private readonly deps: NurtureSchedulerDeps) {}
@@ -23,7 +24,10 @@ export class NurtureScheduler {
       NURTURE_RECONCILE_INTERVAL_MS,
     )
 
-    setTimeout(() => void this.reconcile(), 60_000)
+    this.startupTimer = setTimeout(() => {
+      this.startupTimer = null
+      void this.reconcile()
+    }, 60_000)
 
     console.log('[NurtureScheduler] Started (reconcile every 6h)')
   }
@@ -35,6 +39,11 @@ export class NurtureScheduler {
     if (this.timer) {
       clearInterval(this.timer)
       this.timer = null
+    }
+
+    if (this.startupTimer) {
+      clearTimeout(this.startupTimer)
+      this.startupTimer = null
     }
 
     if (this.deps.leaderElector) {

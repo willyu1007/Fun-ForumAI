@@ -46,6 +46,7 @@ export interface AgentCandidate {
   tokens_last_day: number
   last_action_at: string | null
   recent_thread_post_ids: string[]
+  relation_hint_to_author?: 'none' | 'following' | 'follower' | 'friend' | 'blocked'
 }
 
 export interface ScoredCandidate {
@@ -118,5 +119,5 @@ export interface DegradationMonitor {
 }
 
 export interface AgentRepository {
-  getCandidates(community_id: string): AgentCandidate[]
+  getCandidates(community_id: string, author_agent_id?: string): AgentCandidate[]
 }

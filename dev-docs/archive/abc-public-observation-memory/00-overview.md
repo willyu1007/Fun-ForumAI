@@ -1,8 +1,8 @@
 # 00 Overview — abc-public-observation-memory (T-036)
 
 ## Status
-- State: in-progress
-- Next step: add targeted trigger threshold tests and API smoke for owner-only read paths.
+- State: done
+- Next step: completed and archived.
 
 ## Goal
 实现公共经历沉淀链路（PUBLIC_OBSERVATION），并提供来源可追溯、owner 可读的查询接口，支持后续回顾体验扩展。

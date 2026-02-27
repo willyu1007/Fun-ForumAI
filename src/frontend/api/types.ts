@@ -406,3 +406,29 @@ export interface PaginatedList<T> {
   items: T[]
   next_cursor: string | null
 }
+
+// ─── Social Graph types ────────────────────────────────────
+
+export type AgentRelationState = 'shadow' | 'effective' | 'inactive' | 'blocked'
+export type AgentRelationView = 'following' | 'followers' | 'friends'
+
+export interface AgentRelationItem {
+  relation_id: string
+  pair_agent_id: string
+  direction: 'outgoing' | 'incoming' | 'mutual'
+  state: AgentRelationState
+  relation_score: number
+  interaction_score: number
+  persona_score: number
+  safety_score: number
+  shadow_started_at: string | null
+  effective_at: string | null
+  blocked_at: string | null
+  updated_at: string
+}
+
+export interface AgentRelationSummary {
+  following: { shadow: number; effective: number; inactive: number; blocked: number }
+  followers: { shadow: number; effective: number; inactive: number; blocked: number }
+  friends: number
+}

@@ -1,10 +1,14 @@
 import { Router, type IRouter } from 'express'
 import { requireHumanAuth } from '../middleware/human-auth.js'
-import { privateChannelServices } from '../container.js'
+import { privateChannelServices, relationService } from '../container.js'
 import { AppError, ValidationError } from '../lib/errors.js'
 
 function getServices() {
   return privateChannelServices
+}
+
+function getRelationService() {
+  return relationService
 }
 
 export const privateChannelRouter: IRouter = Router()
@@ -166,16 +170,16 @@ privateChannelRouter.post(
 // ─── Memory endpoints ───────────────────────────────────────
 
 privateChannelRouter.get('/agents/:agentId/memories', requireHumanAuth, async (req, res) => {
-  const services = getServices()
-  if (!services) {
-    res.json({ data: { items: [], next_cursor: null } })
-    return
-  }
-
   try {
     const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
     if (!ownership.ok) {
       res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+      return
+    }
+
+    const services = getServices()
+    if (!services) {
+      res.json({ data: { items: [], next_cursor: null } })
       return
     }
 
@@ -271,16 +275,16 @@ privateChannelRouter.patch('/agents/:agentId/privacy-settings', requireHumanAuth
 })
 
 privateChannelRouter.get('/agents/:agentId/public-observations', requireHumanAuth, async (req, res) => {
-  const services = getServices()
-  if (!services) {
-    res.json({ data: { items: [], next_cursor: null } })
-    return
-  }
-
   try {
     const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
     if (!ownership.ok) {
       res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+      return
+    }
+
+    const services = getServices()
+    if (!services) {
+      res.json({ data: { items: [], next_cursor: null } })
       return
     }
 
@@ -299,6 +303,72 @@ privateChannelRouter.get('/agents/:agentId/public-observations', requireHumanAut
     })
 
     res.json({ data: result })
+  } catch (err) {
+    handleError(res, err)
+  }
+})
+
+privateChannelRouter.get('/agents/:agentId/relations', requireHumanAuth, async (req, res) => {
+  try {
+    const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
+    if (!ownership.ok) {
+      res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+      return
+    }
+
+    const service = getRelationService()
+    if (!service) {
+      res.json({ data: { items: [], next_cursor: null }, meta: { degraded: true } })
+      return
+    }
+
+    const viewRaw = String(req.query.view ?? 'following')
+    const view = (viewRaw === 'following' || viewRaw === 'followers' || viewRaw === 'friends')
+      ? viewRaw
+      : 'following'
+    const stateRaw = req.query.state as string | undefined
+    const state = stateRaw && (stateRaw === 'shadow' || stateRaw === 'effective' || stateRaw === 'inactive' || stateRaw === 'blocked')
+      ? stateRaw
+      : undefined
+    const limit = Math.min(parseInt(String(req.query.limit ?? '20'), 10), 100)
+    const cursor = req.query.cursor as string | undefined
+
+    const data = await service.listRelations(String(req.params.agentId), {
+      view,
+      state,
+      limit,
+      cursor,
+    })
+
+    res.json({ data, meta: { degraded: false } })
+  } catch (err) {
+    handleError(res, err)
+  }
+})
+
+privateChannelRouter.get('/agents/:agentId/relations/summary', requireHumanAuth, async (req, res) => {
+  try {
+    const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
+    if (!ownership.ok) {
+      res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+      return
+    }
+
+    const service = getRelationService()
+    if (!service) {
+      res.json({
+        data: {
+          following: { shadow: 0, effective: 0, inactive: 0, blocked: 0 },
+          followers: { shadow: 0, effective: 0, inactive: 0, blocked: 0 },
+          friends: 0,
+        },
+        meta: { degraded: true },
+      })
+      return
+    }
+
+    const data = await service.getSummary(String(req.params.agentId))
+    res.json({ data, meta: { degraded: false } })
   } catch (err) {
     handleError(res, err)
   }

@@ -4,6 +4,7 @@ import type { AgentRepository } from '../repos/agent-repository.js'
 import type { AgentService } from './agent-service.js'
 import type { NurtureOrchestrator } from './nurture-orchestrator.js'
 import type { PublicObservationDigestService } from './public-observation-digest-service.js'
+import type { RelationService } from './relation-service.js'
 import type { SseHub } from '../sse/hub.js'
 import type {
   Room,
@@ -36,6 +37,7 @@ export interface ChatServiceDeps {
   growthEngine?: { awardXP(agentId: string, source: string, amount: number): Promise<unknown> } | null
   nurtureOrchestrator?: NurtureOrchestrator | null
   publicObservationService?: PublicObservationDigestService | null
+  relationService?: RelationService | null
 }
 
 type JoinLeaveHook = (roomId: string, agentId: string, tickInterval: number) => void
@@ -64,6 +66,10 @@ export class ChatService {
 
   setPublicObservationService(service: PublicObservationDigestService | null): void {
     ;(this.deps as { publicObservationService: PublicObservationDigestService | null }).publicObservationService = service
+  }
+
+  setRelationService(service: RelationService | null): void {
+    ;(this.deps as { relationService: RelationService | null }).relationService = service
   }
 
   async createRoom(input: CreateRoomInput): Promise<{ room: Room; greeting?: ChatMessage }> {
@@ -192,7 +198,9 @@ export class ChatService {
     })
 
     if (config.features.nurturePipelineV2 && this.deps.nurtureOrchestrator) {
-      this.deps.nurtureOrchestrator.onContentProduced(input.author_id, 'chat_message', 1).catch(() => {})
+      this.deps.nurtureOrchestrator.onContentProduced(input.author_id, 'chat_message', 1, {
+        dedup_key: `message:${msg.id}`,
+      }).catch(() => {})
     } else {
       this.deps.growthEngine?.awardXP(input.author_id, 'chat_message', 1).catch(() => {})
     }
@@ -203,6 +211,10 @@ export class ChatService {
         messageId: msg.id,
         authorAgentId: input.author_id,
       }).catch(() => {})
+    }
+
+    if (config.features.socialGraphV1 && this.deps.relationService) {
+      this.deps.relationService.onRoomMessage(input.room_id, msg.id, input.author_id).catch(() => {})
     }
 
     return msg

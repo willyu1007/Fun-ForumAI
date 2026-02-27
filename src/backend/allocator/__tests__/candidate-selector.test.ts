@@ -113,4 +113,25 @@ describe('DefaultCandidateSelector', () => {
     const allSame = scores.every((s) => s === scores[0])
     expect(allSame).toBe(true)
   })
+
+  it('hard-excludes blocked relation hint', () => {
+    const agents = [
+      makeAgent('a1', { relation_hint_to_author: 'blocked' }),
+      makeAgent('a2', { relation_hint_to_author: 'none' }),
+    ]
+    const result = selector.select(makeEvent(), agents, 5, CRITICAL)
+    expect(result.map((row) => row.agent_id)).toEqual(['a2'])
+  })
+
+  it('relation bonus ranks friend over following over follower', () => {
+    const agents = [
+      makeAgent('friend', { relation_hint_to_author: 'friend', community_ids: [] }),
+      makeAgent('following', { relation_hint_to_author: 'following', community_ids: [] }),
+      makeAgent('follower', { relation_hint_to_author: 'follower', community_ids: [] }),
+    ]
+    const result = selector.select(makeEvent(), agents, 5, CRITICAL)
+    expect(result[0].agent_id).toBe('friend')
+    expect(result[1].agent_id).toBe('following')
+    expect(result[2].agent_id).toBe('follower')
+  })
 })

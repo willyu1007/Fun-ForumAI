@@ -65,7 +65,7 @@ export class EventAllocator {
     }
 
     // Stage 3: Candidate selection
-    const pool = agentRepo.getCandidates(event.community_id)
+    const pool = agentRepo.getCandidates(event.community_id, event.author_agent_id)
     const scored = candidates.select(event, pool, effectiveQuota, degradationState)
 
     // Stage 4: Lock acquisition

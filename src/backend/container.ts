@@ -15,6 +15,7 @@ import type { CommunityRepository } from './repos/community-repository.js'
 import type { EventRepository, AgentRunRepository } from './repos/event-repository.js'
 import type { RoomRepository } from './repos/room-repository.js'
 import type { MessageRepository } from './repos/message-repository.js'
+import type { RelationRepository } from './repos/relation-repository.js'
 
 import { ForumReadService } from './services/forum-read-service.js'
 import { ForumWriteService } from './services/forum-write-service.js'
@@ -66,6 +67,8 @@ import { PublicObservationDigestService } from './services/public-observation-di
 import { RoomLifecycleManager } from './services/room-lifecycle.js'
 import { ConversationClock } from './services/conversation-clock.js'
 import { AuthService } from './services/auth-service.js'
+import { RelationService } from './services/relation-service.js'
+import { RelationMetrics } from './services/relation-metrics.js'
 import type { UserRepository } from './repos/user-repository.js'
 
 import { SseHub } from './sse/hub.js'
@@ -75,6 +78,7 @@ import { RedisPubSubSseBroadcastAdapter } from './sse/adapters/redis-pubsub-broa
 import { config } from './lib/config.js'
 import { NurtureScheduler } from './runtime/nurture-scheduler.js'
 import { PublicObservationEventHandler } from './runtime/public-observation-event-handler.js'
+import { RelationScheduler } from './runtime/relation-scheduler.js'
 
 // ─── Repositories ───────────────────────────────────────────
 
@@ -88,6 +92,7 @@ let eventRepo: EventRepository
 let agentRunRepo: AgentRunRepository
 let roomRepo: RoomRepository
 let messageRepo: MessageRepository
+let relationRepo: RelationRepository | null = null
 let userRepo: UserRepository | null = null
 export let voteRepo: VoteRepository
 export let communityRepo: CommunityRepository
@@ -107,6 +112,7 @@ if (config.db.usePrisma) {
   const { PgRoomRepository } = await import('./repos/pg/pg-room-repository.js')
   const { PgMessageRepository } = await import('./repos/pg/pg-message-repository.js')
   const { PgUserRepository } = await import('./repos/pg/pg-user-repository.js')
+  const { PgRelationRepository } = await import('./repos/pg/pg-relation-repository.js')
 
   const pr = new PgPostRepository(prisma)
   const cr = new PgCommentRepository(prisma)
@@ -118,6 +124,7 @@ if (config.db.usePrisma) {
   const arr = new PgAgentRunRepository(prisma)
   const rr = new PgRoomRepository(prisma)
   const mr = new PgMessageRepository(prisma)
+  const relr = new PgRelationRepository(prisma)
 
   postRepo = pr
   commentRepo = cr
@@ -129,6 +136,7 @@ if (config.db.usePrisma) {
   agentRunRepo = arr
   roomRepo = rr
   messageRepo = mr
+  relationRepo = relr
   userRepo = new PgUserRepository(prisma)
   _hydratables.push(pr, cr, vr, ar, acr, cmr, er, arr, rr, mr)
 } else {
@@ -142,6 +150,7 @@ if (config.db.usePrisma) {
   agentRunRepo = new InMemoryAgentRunRepository()
   roomRepo = new InMemoryRoomRepository()
   messageRepo = new InMemoryMessageRepository()
+  relationRepo = null
 }
 
 // ─── SSE Hub ─────────────────────────────────────────────────
@@ -262,6 +271,7 @@ const roomLifecycleLeaderElector = createLeaderElector('room-lifecycle')
 const conversationClockLeaderElector = createLeaderElector('conversation-clock')
 const privateChannelLeaderElector = createLeaderElector('private-channel')
 const nurtureLeaderElector = createLeaderElector('nurture')
+const relationLeaderElector = createLeaderElector('relation')
 
 // ─── Core Services ──────────────────────────────────────────
 
@@ -309,9 +319,12 @@ export const governanceAdapter = new GovernanceAdapter({
 // ─── Allocator Pipeline ─────────────────────────────────────
 
 const allocatorAgentRepo: AllocatorAgentRepo = {
-  getCandidates(communityId: string): AgentCandidate[] {
+  getCandidates(communityId: string, authorAgentId?: string): AgentCandidate[] {
     const agents = agentRepo.findActive({ limit: 100 })
     return agents.items.map((a) => ({
+      relation_hint_to_author: config.features.socialGraphEffective && authorAgentId && relationService
+        ? relationService.getPairHintSync(a.id, authorAgentId)
+        : undefined,
       agent_id: a.id,
       status: a.status.toLowerCase() as AgentCandidate['status'],
       tags: [],
@@ -384,6 +397,8 @@ let instructionEngine: import('./services/instruction-engine.js').InstructionEng
 export let growthEngine: import('./services/growth-engine.js').GrowthEngine | null = null
 let memoryService: import('./services/memory-service.js').MemoryService | null = null
 export let promptLayerService: PromptLayerService | null = null
+export let relationService: RelationService | null = null
+export let relationScheduler: RelationScheduler | null = null
 export let nurtureOrchestrator: NurtureOrchestrator | null = null
 export let nurtureScheduler: NurtureScheduler | null = null
 let publicObservationDigestService: PublicObservationDigestService | null = null
@@ -411,6 +426,20 @@ if (config.db.usePrisma) {
   traitEngine = new TraitEngine(prisma)
   instructionEngine = new InstructionEngine(prisma)
   growthEngine = new GrowthEngine(prisma)
+  if (relationRepo) {
+    relationService = new RelationService({
+      relationRepo,
+      agentRepo,
+      agentService,
+      traitEngine,
+      growthEngine,
+      postRepo,
+      commentRepo,
+      roomRepo,
+      metrics: new RelationMetrics(),
+    })
+  }
+
   nurtureOrchestrator = new NurtureOrchestrator({
     agentRepo,
     growthEngine,
@@ -428,6 +457,7 @@ if (config.db.usePrisma) {
     llmClient,
     growthEngine,
     nurtureOrchestrator,
+    relationService,
   })
 
   if (memoryService) {
@@ -490,11 +520,19 @@ if (config.db.usePrisma) {
   chatService.setGrowthEngine(growthEngine)
   chatService.setNurtureOrchestrator(nurtureOrchestrator)
   chatService.setPublicObservationService(publicObservationDigestService)
+  chatService.setRelationService(relationService)
 
   if (config.features.nurturePipelineV2 && nurtureOrchestrator) {
     nurtureScheduler = new NurtureScheduler({
       orchestrator: nurtureOrchestrator,
       leaderElector: nurtureLeaderElector,
+    })
+  }
+
+  if (config.features.socialGraphV1 && relationService) {
+    relationScheduler = new RelationScheduler({
+      relationService,
+      leaderElector: relationLeaderElector,
     })
   }
 }
@@ -584,6 +622,11 @@ forumWriteService.setEventHook((event) => {
   if (proactiveEventHandler) {
     proactiveEventHandler.handle(event)
   }
+  if (config.features.socialGraphV1 && relationService && event.event_type === 'COMMENT_CREATED') {
+    relationService.onForumCommentEvent(event).catch((err) => {
+      console.error('[Container] Relation forum signal failed:', err)
+    })
+  }
   if (config.features.publicObservationMemory && publicObservationEventHandler) {
     publicObservationEventHandler.handle(event)
   }
@@ -605,6 +648,7 @@ export async function closeRuntimeInfrastructure(): Promise<void> {
     conversationClockLeaderElector,
     privateChannelLeaderElector,
     nurtureLeaderElector,
+    relationLeaderElector,
   ]
   const uniqueElectors = Array.from(new Set(electors))
   await Promise.allSettled(uniqueElectors.map((elector) => elector.releaseLeadership()))

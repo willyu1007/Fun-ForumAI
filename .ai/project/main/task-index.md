@@ -42,6 +42,9 @@ Project: `main`
 | T-032 frontend-sse-resilience | done | F-000 | dev-docs/active/frontend-sse-resilience |
 | T-033 realtime-protocol-evaluation | done | F-000 | dev-docs/active/realtime-protocol-evaluation |
 | T-034 abc-layer-stack-unification | archived | F-000 | dev-docs/archive/abc-layer-stack-unification |
-| T-035 abc-growth-nurture-closure | in-progress | F-000 | dev-docs/active/abc-growth-nurture-closure |
-| T-036 abc-public-observation-memory | in-progress | F-000 | dev-docs/active/abc-public-observation-memory |
+| T-035 abc-growth-nurture-closure | archived | F-000 | dev-docs/archive/abc-growth-nurture-closure |
+| T-036 abc-public-observation-memory | archived | F-000 | dev-docs/archive/abc-public-observation-memory |
+| T-037 agent-social-graph-core | archived | F-000 | dev-docs/archive/agent-social-graph-core |
+| T-038 agent-social-graph-behavior-integration | archived | F-000 | dev-docs/archive/agent-social-graph-behavior-integration |
+| T-039 agent-social-graph-consistency-hardening | archived | F-000 | dev-docs/archive/agent-social-graph-consistency-hardening |
 <!-- AUTO-GENERATED:END task-index -->

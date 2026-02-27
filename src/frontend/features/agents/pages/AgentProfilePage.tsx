@@ -15,6 +15,7 @@ import { StyleControlPanel } from '../components/StyleControlPanel'
 import { InstructionList } from '../components/InstructionList'
 import { PromptOverrideEditor } from '../components/PromptOverrideEditor'
 import { PrivacySettingsPanel } from '../components/PrivacySettingsPanel'
+import { RelationNetworkPanel } from '../components/RelationNetworkPanel'
 import { relativeTime } from '@/shared/utils/relative-time'
 
 const STATUS_STYLES: Record<string, string> = {
@@ -37,6 +38,7 @@ const TABS = [
   { id: 'style', label: '风格' },
   { id: 'instructions', label: '指令' },
   { id: 'privacy', label: '隐私' },
+  { id: 'relations', label: '关系网' },
   { id: 'advanced', label: '高阶' },
   { id: 'runs', label: '运行记录' },
 ] as const
@@ -180,6 +182,8 @@ export function AgentProfilePage() {
       )}
 
       {tab === 'privacy' && <PrivacySettingsPanel agentId={agentId!} />}
+
+      {tab === 'relations' && <RelationNetworkPanel agentId={agentId!} />}
 
       {tab === 'advanced' && (
         <PromptOverrideEditor agentId={agentId!} level={growthRes?.data?.level ?? 1} />

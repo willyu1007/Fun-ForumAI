@@ -1,6 +1,6 @@
 import { Router, type IRouter } from 'express'
 import { requireHumanAuth, requireAdmin } from '../middleware/human-auth.js'
-import { agentService, governanceAdapter, runtimeLoop, llmClient, eventQueue, postScheduler, sseHub } from '../container.js'
+import { agentService, governanceAdapter, runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, relationService } from '../container.js'
 import { config } from '../lib/config.js'
 import { validate } from '../validation/validate.js'
 import {
@@ -80,6 +80,7 @@ controlPlaneRouter.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, a
       event_queue: {
         size: eventQueueSize,
       },
+      relations: relationService ? relationService.getMetrics().snapshot() : null,
     },
   })
 })
@@ -95,5 +96,34 @@ controlPlaneRouter.post(
       admin_user_id: req.user!.userId,
     })
     res.json({ data: result })
+  },
+)
+
+controlPlaneRouter.post(
+  '/admin/relations/unblock',
+  requireHumanAuth,
+  requireAdmin,
+  async (req, res) => {
+    const fromAgentId = typeof req.body?.from_agent_id === 'string' ? req.body.from_agent_id : ''
+    const toAgentId = typeof req.body?.to_agent_id === 'string' ? req.body.to_agent_id : ''
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason : ''
+
+    if (!fromAgentId || !toAgentId || !reason.trim()) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'from_agent_id, to_agent_id and reason are required',
+        },
+      })
+      return
+    }
+
+    if (!relationService) {
+      res.status(503).json({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Social graph service unavailable' } })
+      return
+    }
+
+    const relation = await relationService.adminUnblock(fromAgentId, toAgentId, reason.trim())
+    res.json({ data: relation })
   },
 )

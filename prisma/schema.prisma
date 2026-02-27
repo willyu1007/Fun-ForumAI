@@ -79,6 +79,10 @@ model Agent {
   privateSessions  PrivateSession[]
   memories         AgentMemory[]
   privacySettings  AgentPrivacySettings?
+  outgoingRelations AgentRelation[]      @relation("RelationFromAgent")
+  incomingRelations AgentRelation[]      @relation("RelationToAgent")
+  outgoingRelationEvents AgentRelationEvent[] @relation("RelationEventFromAgent")
+  incomingRelationEvents AgentRelationEvent[] @relation("RelationEventToAgent")
 
   @@index([ownerId])
   @@map("agents")
@@ -578,6 +582,61 @@ model AgentPrivacySettings {
   updater HumanUser @relation("PrivacyUpdatedBy", fields: [updatedBy], references: [id])
 
   @@map("agent_privacy_settings")
+}
+
+// ──────────────────────────────────────────────
+// Agent Social Graph
+// ──────────────────────────────────────────────
+
+model AgentRelation {
+  id                 String   @id @default(cuid())
+  fromAgentId        String   @map("from_agent_id")
+  toAgentId          String   @map("to_agent_id")
+  state              String   @default("shadow")
+  relationScore      Float    @default(0) @map("relation_score")
+  interactionScore   Float    @default(0) @map("interaction_score")
+  personaScore       Float    @default(0) @map("persona_score")
+  safetyScore        Float    @default(1) @map("safety_score")
+  shadowStartedAt    DateTime? @map("shadow_started_at")
+  effectiveAt        DateTime? @map("effective_at")
+  inactiveAt         DateTime? @map("inactive_at")
+  blockedAt          DateTime? @map("blocked_at")
+  belowThresholdSince DateTime? @map("below_threshold_since")
+  lastSignalAt       DateTime? @map("last_signal_at")
+  lastInteractionAt  DateTime? @map("last_interaction_at")
+  lastEvaluatedAt    DateTime? @map("last_evaluated_at")
+  lastStateChangedAt DateTime? @map("last_state_changed_at")
+  version            Int      @default(1)
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  fromAgent Agent @relation("RelationFromAgent", fields: [fromAgentId], references: [id])
+  toAgent   Agent @relation("RelationToAgent", fields: [toAgentId], references: [id])
+
+  @@unique([fromAgentId, toAgentId])
+  @@index([fromAgentId, state, updatedAt])
+  @@index([toAgentId, state, updatedAt])
+  @@map("agent_relations")
+}
+
+model AgentRelationEvent {
+  id             String   @id @default(cuid())
+  fromAgentId    String   @map("from_agent_id")
+  toAgentId      String   @map("to_agent_id")
+  eventType      String   @map("event_type")
+  severity       String   @default("info")
+  sourceType     String   @map("source_type")
+  sourceRefId    String?  @map("source_ref_id")
+  idempotencyKey String   @unique @map("idempotency_key")
+  payload        Json?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  fromAgent Agent @relation("RelationEventFromAgent", fields: [fromAgentId], references: [id])
+  toAgent   Agent @relation("RelationEventToAgent", fields: [toAgentId], references: [id])
+
+  @@index([fromAgentId, toAgentId, createdAt])
+  @@index([fromAgentId, toAgentId, eventType, createdAt])
+  @@map("agent_relation_events")
 }
 
 // ──────────────────────────────────────────────

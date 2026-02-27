@@ -49,6 +49,7 @@ export class PgMemoryRepository implements MemoryRepository {
       forgotten?: boolean
       source_ref_type?: string
       source_ref_id?: string
+      source_event_id?: string
     },
   ): Promise<PaginatedResult<AgentMemory>> {
     const where: Record<string, unknown> = { agentId }
@@ -56,6 +57,7 @@ export class PgMemoryRepository implements MemoryRepository {
     if (opts.forgotten !== undefined) where.forgotten = opts.forgotten
     if (opts.source_ref_type) where.sourceRefType = opts.source_ref_type
     if (opts.source_ref_id) where.sourceRefId = opts.source_ref_id
+    if (opts.source_event_id) where.sourceEventId = opts.source_event_id
 
     const rows = await this.prisma.agentMemory.findMany({
       where,

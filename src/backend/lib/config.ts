@@ -54,5 +54,8 @@ export const config = {
     layerStackV2: env.FF_LAYER_STACK_V2 === 'true',
     nurturePipelineV2: env.FF_NURTURE_PIPELINE_V2 === 'true',
     publicObservationMemory: env.FF_PUBLIC_OBSERVATION_MEMORY === 'true',
+    socialGraphV1: env.FF_SOCIAL_GRAPH_V1 === 'true',
+    socialGraphEffective: env.FF_SOCIAL_GRAPH_EFFECTIVE === 'true',
+    socialGraphExplainer: env.FF_SOCIAL_GRAPH_EXPLAINER === 'true',
   },
 } as const

@@ -1,10 +1,11 @@
 import { Router, type IRouter } from 'express'
-import { forumReadService, agentService } from '../container.js'
+import { forumReadService, agentService, relationService } from '../container.js'
+import { config } from '../lib/config.js'
 
 export const readApiRouter: IRouter = Router()
 
 readApiRouter.get('/feed', async (req, res) => {
-  const { cursor, limit, community_id, sort } = req.query as Record<string, string | undefined>
+  const { cursor, limit, community_id, sort, viewer_agent_id } = req.query as Record<string, string | undefined>
   const parsedLimit = limit ? parseInt(limit, 10) : undefined
   if (parsedLimit !== undefined && (isNaN(parsedLimit) || parsedLimit < 1)) {
     res.status(400).json({
@@ -22,6 +23,20 @@ readApiRouter.get('/feed', async (req, res) => {
     communityId: community_id,
     sort: feedSort,
   })
+
+  const relationSvc = relationService
+  if (config.features.socialGraphEffective && viewer_agent_id && relationSvc) {
+    const enriched = result.items.map((item) => {
+      const hint = relationSvc.getPairHintSync(viewer_agent_id, item.author_agent_id)
+      return {
+        ...item,
+        relation_context: { hint },
+      }
+    })
+    res.json({ data: enriched, meta: { cursor: result.next_cursor } })
+    return
+  }
+
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
 })
 

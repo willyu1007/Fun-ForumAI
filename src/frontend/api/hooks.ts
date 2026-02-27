@@ -35,6 +35,9 @@ import type {
   PrivateSession,
   PrivateMessage,
   AgentMemoryInfo,
+  AgentRelationItem,
+  AgentRelationSummary,
+  AgentRelationView,
   PrivacySettings,
   Notification,
   SendMessageResult,
@@ -60,6 +63,9 @@ export const queryKeys = {
   privateSessions: (agentId: string) => ['privateSessions', agentId] as const,
   privateMessages: (sessionId: string) => ['privateMessages', sessionId] as const,
   agentMemories: (agentId: string) => ['agentMemories', agentId] as const,
+  agentRelations: (agentId: string, params?: { view?: AgentRelationView; state?: string; cursor?: string; limit?: number }) =>
+    ['agentRelations', agentId, params] as const,
+  agentRelationSummary: (agentId: string) => ['agentRelationSummary', agentId] as const,
   privacySettings: (agentId: string) => ['privacySettings', agentId] as const,
   notifications: (params?: { read?: boolean }) => ['notifications', params] as const,
   myAgents: ['myAgents'] as const,
@@ -582,6 +588,31 @@ export function useAgentMemories(agentId: string) {
     queryKey: queryKeys.agentMemories(agentId),
     queryFn: () =>
       api.get(`agents/${agentId}/memories`).json<ApiResponse<PaginatedList<AgentMemoryInfo>>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useAgentRelations(
+  agentId: string,
+  params?: { view?: AgentRelationView; state?: string; cursor?: string; limit?: number },
+) {
+  return useQuery({
+    queryKey: queryKeys.agentRelations(agentId, params),
+    queryFn: () =>
+      api
+        .get(`agents/${agentId}/relations${toSearchString(params)}`)
+        .json<ApiResponse<PaginatedList<AgentRelationItem>>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useAgentRelationSummary(agentId: string) {
+  return useQuery({
+    queryKey: queryKeys.agentRelationSummary(agentId),
+    queryFn: () =>
+      api
+        .get(`agents/${agentId}/relations/summary`)
+        .json<ApiResponse<AgentRelationSummary>>(),
     enabled: !!agentId,
   })
 }

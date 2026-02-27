@@ -1,32 +1,104 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PublicObservationDigestService } from '../public-observation-digest-service.js'
 
-describe('PublicObservationDigestService', () => {
-  it('creates forum observation when threshold is met and cooldown passed', async () => {
-    const createPublicObservationMemory = vi.fn().mockResolvedValue(undefined)
-    const listMemories = vi.fn().mockResolvedValue({ items: [], next_cursor: null })
+interface MemoryListOpts {
+  source_type?: string
+  source_ref_type?: string
+  source_ref_id?: string
+  source_event_id?: string
+}
 
-    const service = new PublicObservationDigestService({
-      llmClient: { isConfigured: false } as never,
-      forumReadService: {
-        getPost: vi.fn().mockResolvedValue({
-          id: 'p1',
-          title: 't',
-          body: 'b',
-          participant_count: 4,
-          heat_score: 35,
-        }),
-        getComments: vi.fn().mockResolvedValue({
-          items: Array.from({ length: 12 }).map((_, i) => ({ body: `c${i + 1}` })),
-          next_cursor: null,
-        }),
-      } as never,
-      roomRepo: {} as never,
-      messageRepo: {} as never,
-      memoryService: {
-        listMemories,
-        createPublicObservationMemory,
-      } as never,
+function makeForumService(params: {
+  commentCount: number
+  participantCount: number
+  heatScore: number
+  listMemoriesImpl?: (opts: MemoryListOpts) => Promise<{ items: Array<{ created_at: Date }>; next_cursor: null }>
+}) {
+  const createPublicObservationMemory = vi.fn().mockResolvedValue(undefined)
+  const listMemories = vi.fn((_: string, opts: MemoryListOpts) => {
+    if (params.listMemoriesImpl) return params.listMemoriesImpl(opts)
+    return Promise.resolve({ items: [], next_cursor: null as null })
+  })
+
+  const service = new PublicObservationDigestService({
+    llmClient: { isConfigured: false } as never,
+    forumReadService: {
+      getPost: vi.fn().mockResolvedValue({
+        id: 'p1',
+        title: 't',
+        body: 'b',
+        participant_count: params.participantCount,
+        heat_score: params.heatScore,
+      }),
+      getComments: vi.fn().mockResolvedValue({
+        items: Array.from({ length: params.commentCount }).map((_, i) => ({ body: `c${i + 1}` })),
+        next_cursor: null,
+      }),
+    } as never,
+    roomRepo: {} as never,
+    messageRepo: {} as never,
+    memoryService: {
+      listMemories,
+      createPublicObservationMemory,
+    } as never,
+  })
+
+  return { service, createPublicObservationMemory, listMemories }
+}
+
+function makeRoomService(params: {
+  messageCount: number
+  roomCreatedAt: Date
+  listMemoriesImpl?: (opts: MemoryListOpts) => Promise<{ items: Array<{ created_at: Date }>; next_cursor: null }>
+}) {
+  const createPublicObservationMemory = vi.fn().mockResolvedValue(undefined)
+  const listMemories = vi.fn((_: string, opts: MemoryListOpts) => {
+    if (params.listMemoriesImpl) return params.listMemoriesImpl(opts)
+    return Promise.resolve({ items: [], next_cursor: null as null })
+  })
+
+  const service = new PublicObservationDigestService({
+    llmClient: { isConfigured: false } as never,
+    forumReadService: {} as never,
+    roomRepo: {
+      findById: vi.fn().mockResolvedValue({
+        id: 'r1',
+        name: 'room',
+        description: '',
+        created_at: params.roomCreatedAt,
+      }),
+    } as never,
+    messageRepo: {
+      countByRoom: vi.fn().mockResolvedValue(params.messageCount),
+      getLatestMessages: vi.fn().mockResolvedValue(Array.from({ length: 80 }).map((_, i) => ({ body: `m${i + 1}` }))),
+    } as never,
+    memoryService: {
+      listMemories,
+      createPublicObservationMemory,
+    } as never,
+  })
+
+  return { service, createPublicObservationMemory, listMemories }
+}
+
+describe('PublicObservationDigestService', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-02-27T08:00:00.000Z'))
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('forum does not trigger when comment_count=11 and other thresholds are unmet', async () => {
+    const { service, createPublicObservationMemory } = makeForumService({
+      commentCount: 11,
+      participantCount: 3,
+      heatScore: 29,
     })
 
     await service.onForumEvent({
@@ -37,53 +109,202 @@ describe('PublicObservationDigestService', () => {
       created_at: new Date(),
     })
 
-    expect(listMemories).toHaveBeenCalled()
-    expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
-    expect(createPublicObservationMemory.mock.calls[0][0]).toMatchObject({
-      agent_id: 'a1',
-      source_ref_type: 'post',
-      source_ref_id: 'p1',
-    })
+    expect(createPublicObservationMemory).not.toHaveBeenCalled()
   })
 
-  it('skips room observation when cooldown has not elapsed', async () => {
-    const createPublicObservationMemory = vi.fn().mockResolvedValue(undefined)
-    const listMemories = vi.fn().mockResolvedValue({
-      items: [
-        {
-          created_at: new Date(),
-        },
-      ],
-      next_cursor: null,
+  it('forum triggers when comment_count=12', async () => {
+    const { service, createPublicObservationMemory } = makeForumService({
+      commentCount: 12,
+      participantCount: 1,
+      heatScore: 0,
     })
 
-    const service = new PublicObservationDigestService({
-      llmClient: { isConfigured: false } as never,
-      forumReadService: {} as never,
-      roomRepo: {
-        findById: vi.fn().mockResolvedValue({
-          id: 'r1',
-          name: 'room',
-          description: '',
-          created_at: new Date(Date.now() - 40 * 60 * 1000),
-        }),
-      } as never,
-      messageRepo: {
-        countByRoom: vi.fn().mockResolvedValue(90),
-        getLatestMessages: vi.fn().mockResolvedValue([{ body: 'm1' }]),
-      } as never,
-      memoryService: {
-        listMemories,
-        createPublicObservationMemory,
-      } as never,
+    await service.onForumEvent({
+      id: 'evt-2',
+      event_type: 'POST_CREATED',
+      payload_json: { post_id: 'p1', author_agent_id: 'a1' },
+      idempotency_key: null,
+      created_at: new Date(),
     })
 
-    await service.onRoomMessage({
-      roomId: 'r1',
-      messageId: 'm1',
-      authorAgentId: 'a1',
+    expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
+  })
+
+  it('forum triggers when participant_count=4', async () => {
+    const { service, createPublicObservationMemory } = makeForumService({
+      commentCount: 0,
+      participantCount: 4,
+      heatScore: 0,
+    })
+
+    await service.onForumEvent({
+      id: 'evt-3',
+      event_type: 'COMMENT_CREATED',
+      payload_json: { post_id: 'p1', author_agent_id: 'a1' },
+      idempotency_key: null,
+      created_at: new Date(),
+    })
+
+    expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
+  })
+
+  it('forum triggers when heat_score=30', async () => {
+    const { service, createPublicObservationMemory } = makeForumService({
+      commentCount: 0,
+      participantCount: 1,
+      heatScore: 30,
+    })
+
+    await service.onForumEvent({
+      id: 'evt-4',
+      event_type: 'POST_CREATED',
+      payload_json: { post_id: 'p1', author_agent_id: 'a1' },
+      idempotency_key: null,
+      created_at: new Date(),
+    })
+
+    expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
+  })
+
+  it('room does not trigger when message_count=79', async () => {
+    const now = new Date('2026-02-27T08:00:00.000Z')
+    const { service, createPublicObservationMemory } = makeRoomService({
+      messageCount: 79,
+      roomCreatedAt: new Date(now.getTime() - 10 * 60 * 1000),
+    })
+
+    await service.onRoomMessage({ roomId: 'r1', messageId: 'm-1', authorAgentId: 'a1' })
+
+    expect(createPublicObservationMemory).not.toHaveBeenCalled()
+  })
+
+  it('room triggers when message_count=80', async () => {
+    const now = new Date('2026-02-27T08:00:00.000Z')
+    const { service, createPublicObservationMemory } = makeRoomService({
+      messageCount: 80,
+      roomCreatedAt: new Date(now.getTime() - 5 * 60 * 1000),
+    })
+
+    await service.onRoomMessage({ roomId: 'r1', messageId: 'm-2', authorAgentId: 'a1' })
+
+    expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
+  })
+
+  it('room threshold branch requires active_minutes>=30 when messages=40', async () => {
+    const now = new Date('2026-02-27T08:00:00.000Z')
+
+    const notTriggering = makeRoomService({
+      messageCount: 40,
+      roomCreatedAt: new Date(now.getTime() - 29 * 60 * 1000),
+    })
+    await notTriggering.service.onRoomMessage({ roomId: 'r1', messageId: 'm-3', authorAgentId: 'a1' })
+    expect(notTriggering.createPublicObservationMemory).not.toHaveBeenCalled()
+
+    const triggering = makeRoomService({
+      messageCount: 40,
+      roomCreatedAt: new Date(now.getTime() - 30 * 60 * 1000),
+    })
+    await triggering.service.onRoomMessage({ roomId: 'r1', messageId: 'm-4', authorAgentId: 'a1' })
+    expect(triggering.createPublicObservationMemory).toHaveBeenCalledTimes(1)
+  })
+
+  it('cooldown boundary allows digest when now-last_created_at equals cooldown exactly', async () => {
+    const now = new Date('2026-02-27T08:00:00.000Z')
+    const lastCreatedAt = new Date(now.getTime() - 6 * 60 * 60 * 1000)
+    const { service, createPublicObservationMemory } = makeForumService({
+      commentCount: 12,
+      participantCount: 1,
+      heatScore: 0,
+      listMemoriesImpl: async (opts) => {
+        if (opts.source_event_id) {
+          return { items: [], next_cursor: null }
+        }
+        return { items: [{ created_at: lastCreatedAt }], next_cursor: null }
+      },
+    })
+
+    await service.onForumEvent({
+      id: 'evt-5',
+      event_type: 'POST_CREATED',
+      payload_json: { post_id: 'p1', author_agent_id: 'a1' },
+      idempotency_key: null,
+      created_at: new Date(),
+    })
+
+    expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
+  })
+
+  it('skips duplicate replay when source_event_id already exists', async () => {
+    const { service, createPublicObservationMemory } = makeForumService({
+      commentCount: 12,
+      participantCount: 1,
+      heatScore: 0,
+      listMemoriesImpl: async (opts) => {
+        if (opts.source_event_id === 'evt-dup') {
+          return { items: [{ created_at: new Date() }], next_cursor: null }
+        }
+        return { items: [], next_cursor: null }
+      },
+    })
+
+    await service.onForumEvent({
+      id: 'evt-dup',
+      event_type: 'POST_CREATED',
+      payload_json: { post_id: 'p1', author_agent_id: 'a1' },
+      idempotency_key: null,
+      created_at: new Date(),
     })
 
     expect(createPublicObservationMemory).not.toHaveBeenCalled()
+  })
+
+  it('rechecks cooldown before write to prevent TOCTOU duplicates', async () => {
+    let cooldownCheckCount = 0
+    const { service, createPublicObservationMemory } = makeForumService({
+      commentCount: 12,
+      participantCount: 1,
+      heatScore: 0,
+      listMemoriesImpl: async (opts) => {
+        if (opts.source_event_id) {
+          return { items: [], next_cursor: null }
+        }
+        cooldownCheckCount += 1
+        if (cooldownCheckCount === 1) {
+          return { items: [], next_cursor: null }
+        }
+        return { items: [{ created_at: new Date() }], next_cursor: null }
+      },
+    })
+
+    await service.onForumEvent({
+      id: 'evt-toctou',
+      event_type: 'POST_CREATED',
+      payload_json: { post_id: 'p1', author_agent_id: 'a1' },
+      idempotency_key: null,
+      created_at: new Date(),
+    })
+
+    expect(createPublicObservationMemory).not.toHaveBeenCalled()
+  })
+
+  it('fails open when dedup/cooldown checks error (does not crash or block)', async () => {
+    const { service, createPublicObservationMemory } = makeForumService({
+      commentCount: 12,
+      participantCount: 1,
+      heatScore: 0,
+      listMemoriesImpl: async (_opts) => {
+        throw new Error('temporary read failure')
+      },
+    })
+
+    await expect(service.onForumEvent({
+      id: 'evt-fail-open',
+      event_type: 'POST_CREATED',
+      payload_json: { post_id: 'p1', author_agent_id: 'a1' },
+      idempotency_key: null,
+      created_at: new Date(),
+    })).resolves.toBeUndefined()
+
+    expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
   })
 })

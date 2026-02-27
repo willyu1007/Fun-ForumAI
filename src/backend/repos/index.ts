@@ -24,6 +24,14 @@ export type {
   CreateAgentRunInput,
   CreateRoomInput,
   CreateChatMessageInput,
+  AgentRelation,
+  AgentRelationEvent,
+  RelationState,
+  RelationView,
+  RelationEventType,
+  RelationEventSeverity,
+  CreateAgentRelationEventInput,
+  UpsertAgentRelationInput,
 } from './types.js'
 
 export { type PostRepository, InMemoryPostRepository } from './post-repository.js'
@@ -47,6 +55,10 @@ export {
 } from './event-repository.js'
 export { type RoomRepository, InMemoryRoomRepository } from './room-repository.js'
 export { type MessageRepository, InMemoryMessageRepository } from './message-repository.js'
+export {
+  type RelationRepository,
+  InMemoryRelationRepository,
+} from './relation-repository.js'
 
 export { PgPostRepository } from './pg/pg-post-repository.js'
 export { PgCommentRepository } from './pg/pg-comment-repository.js'
@@ -56,3 +68,4 @@ export { PgCommunityRepository } from './pg/pg-community-repository.js'
 export { PgEventRepository, PgAgentRunRepository } from './pg/pg-event-repository.js'
 export { PgRoomRepository } from './pg/pg-room-repository.js'
 export { PgMessageRepository } from './pg/pg-message-repository.js'
+export { PgRelationRepository } from './pg/pg-relation-repository.js'

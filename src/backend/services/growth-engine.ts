@@ -30,6 +30,10 @@ const MILESTONES: MilestoneDef[] = [
 
 export type XpSource = 'chat_message' | 'forum_post' | 'forum_comment' | 'vote_received' | 'room_created' | 'private_chat_digest'
 
+interface XpAwardOptions {
+  dedup_key?: string
+}
+
 const PRIVATE_CHAT_XP_CONFIG = {
   base_xp: 3,
   daily_cap: 5,
@@ -39,7 +43,11 @@ const PRIVATE_CHAT_XP_CONFIG = {
 export class GrowthEngine {
   constructor(private readonly prisma: PrismaClient | null) {}
 
-  async awardPrivateChatXP(agentId: string, messageCount: number): Promise<{ awarded: boolean; xp: number; reason?: string }> {
+  async awardPrivateChatXP(
+    agentId: string,
+    messageCount: number,
+    opts: XpAwardOptions = {},
+  ): Promise<{ awarded: boolean; xp: number; reason?: string }> {
     if (!this.prisma) return { awarded: false, xp: 0, reason: 'no_db' }
 
     if (messageCount < PRIVATE_CHAT_XP_CONFIG.min_messages_for_xp) {
@@ -62,11 +70,21 @@ export class GrowthEngine {
       return { awarded: false, xp: 0, reason: 'daily_cap_reached' }
     }
 
-    const result = await this.awardXP(agentId, 'private_chat_digest', PRIVATE_CHAT_XP_CONFIG.base_xp)
+    const result = await this.awardXP(
+      agentId,
+      'private_chat_digest',
+      PRIVATE_CHAT_XP_CONFIG.base_xp,
+      opts,
+    )
     return { awarded: true, xp: PRIVATE_CHAT_XP_CONFIG.base_xp, ...result }
   }
 
-  async awardXP(agentId: string, source: XpSource, amount: number): Promise<{ leveled_up: boolean; new_level?: number; milestones_achieved: string[] }> {
+  async awardXP(
+    agentId: string,
+    source: XpSource,
+    amount: number,
+    opts: XpAwardOptions = {},
+  ): Promise<{ leveled_up: boolean; new_level?: number; milestones_achieved: string[] }> {
     if (!this.prisma) return { leveled_up: false, milestones_achieved: [] }
 
     let growth = await this.prisma.agentGrowth.findUnique({ where: { agentId } })
@@ -96,7 +114,7 @@ export class GrowthEngine {
         agentId,
         eventType: 'xp_gain',
         title: this.sourceTitle(source),
-        description: `${source} → +${amount} XP`,
+        description: this.buildXpDescription(source, amount, opts.dedup_key),
         xpDelta: amount,
       },
     })
@@ -138,6 +156,26 @@ export class GrowthEngine {
     }
 
     return { leveled_up: leveledUp, new_level: leveledUp ? newLevelEntry.level : undefined, milestones_achieved: milestones }
+  }
+
+  async hasRecentXpDedupKey(agentId: string, dedupKey: string, windowMs: number): Promise<boolean> {
+    if (!this.prisma) return false
+
+    const normalizedKey = dedupKey.trim()
+    if (!normalizedKey) return false
+
+    const since = new Date(Date.now() - Math.max(windowMs, 0))
+    const existing = await this.prisma.growthEvent.findFirst({
+      where: {
+        agentId,
+        eventType: 'xp_gain',
+        description: { contains: `dedup_key=${normalizedKey}` },
+        createdAt: { gte: since },
+      },
+      select: { id: true },
+    })
+
+    return Boolean(existing)
   }
 
   async getGrowth(agentId: string): Promise<{ xp: number; level: number; trait_slots: number; instruction_slots: number }> {
@@ -192,6 +230,12 @@ export class GrowthEngine {
       case 'room_created': return '创建房间'
       case 'private_chat_digest': return '私聊记忆沉淀'
     }
+  }
+
+  private buildXpDescription(source: XpSource, amount: number, dedupKey?: string): string {
+    const normalizedKey = dedupKey?.trim()
+    if (!normalizedKey) return `${source} → +${amount} XP`
+    return `${source} → +${amount} XP | dedup_key=${normalizedKey}`
   }
 
   private async checkMilestones(agentId: string, source: XpSource): Promise<MilestoneDef[]> {

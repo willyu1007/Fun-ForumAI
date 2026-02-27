@@ -36,10 +36,13 @@ export class PublicObservationDigestService {
 
       if (!shouldDigest) return
 
-      const cooledDown = await this.isCooledDown(agentId, 'post', postId, FORUM_COOLDOWN_MS)
-      if (!cooledDown) return
+      if (!await this.shouldProceedByEventDedup(agentId, event.id)) return
+      if (!await this.shouldProceedByCooldown(agentId, 'post', postId, FORUM_COOLDOWN_MS)) return
 
       const summary = await this.summarizeForum(post.title, post.body, comments.items.map((c) => c.body))
+
+      // Re-check cooldown before write to avoid TOCTOU during long LLM calls.
+      if (!await this.shouldProceedByCooldown(agentId, 'post', postId, FORUM_COOLDOWN_MS)) return
 
       await this.deps.memoryService.createPublicObservationMemory({
         agent_id: agentId,
@@ -71,8 +74,8 @@ export class PublicObservationDigestService {
       const shouldDigest = messageCount >= 80 || (activeMinutes >= 30 && messageCount >= 40)
       if (!shouldDigest) return
 
-      const cooledDown = await this.isCooledDown(input.authorAgentId, 'room', input.roomId, ROOM_COOLDOWN_MS)
-      if (!cooledDown) return
+      if (!await this.shouldProceedByEventDedup(input.authorAgentId, input.messageId)) return
+      if (!await this.shouldProceedByCooldown(input.authorAgentId, 'room', input.roomId, ROOM_COOLDOWN_MS)) return
 
       const messages = await this.deps.messageRepo.getLatestMessages(input.roomId, 80)
       const summary = await this.summarizeRoom(
@@ -80,6 +83,9 @@ export class PublicObservationDigestService {
         room.description || '',
         messages.map((m) => m.body),
       )
+
+      // Re-check cooldown before write to avoid TOCTOU during long LLM calls.
+      if (!await this.shouldProceedByCooldown(input.authorAgentId, 'room', input.roomId, ROOM_COOLDOWN_MS)) return
 
       await this.deps.memoryService.createPublicObservationMemory({
         agent_id: input.authorAgentId,
@@ -94,6 +100,35 @@ export class PublicObservationDigestService {
       })
     } catch (err) {
       console.error('[PublicObservationDigestService] onRoomMessage failed:', err)
+    }
+  }
+
+  private async shouldProceedByEventDedup(agentId: string, sourceEventId: string): Promise<boolean> {
+    try {
+      const existing = await this.deps.memoryService.listMemories(agentId, {
+        limit: 1,
+        source_type: 'PUBLIC_OBSERVATION',
+        source_event_id: sourceEventId,
+        forgotten: false,
+      })
+      return existing.items.length === 0
+    } catch (err) {
+      console.warn('[PublicObservationDigestService] event dedup check failed, fallback to continue:', err)
+      return true
+    }
+  }
+
+  private async shouldProceedByCooldown(
+    agentId: string,
+    sourceRefType: string,
+    sourceRefId: string,
+    cooldownMs: number,
+  ): Promise<boolean> {
+    try {
+      return await this.isCooledDown(agentId, sourceRefType, sourceRefId, cooldownMs)
+    } catch (err) {
+      console.warn('[PublicObservationDigestService] cooldown check failed, fallback to continue:', err)
+      return true
     }
   }
 

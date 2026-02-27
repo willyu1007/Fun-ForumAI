@@ -1,0 +1,6 @@
+version: 1
+task_id: T-039
+project: main
+slug: agent-social-graph-consistency-hardening
+status: archived
+updated: "2026-02-27"

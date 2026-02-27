@@ -3,6 +3,7 @@ import type { PrivateChannelRepository } from '../repos/private-channel-reposito
 import type { MemoryRepository } from '../repos/memory-repository.js'
 import type { GrowthEngine } from './growth-engine.js'
 import type { NurtureOrchestrator } from './nurture-orchestrator.js'
+import type { RelationService } from './relation-service.js'
 import type {
   AgentMemory,
   AgentPrivacySettingsEntity,
@@ -23,6 +24,7 @@ export interface MemoryServiceDeps {
   llmClient: LlmClient
   growthEngine?: GrowthEngine | null
   nurtureOrchestrator?: NurtureOrchestrator | null
+  relationService?: RelationService | null
 }
 
 export interface MemoryForContext {
@@ -82,13 +84,19 @@ export class MemoryService {
       await this.deps.channelRepo.updateDigestStatus(sessionId, 'COMPLETED')
 
       if (config.features.nurturePipelineV2 && this.deps.nurtureOrchestrator) {
-        this.deps.nurtureOrchestrator.onPrivateDigestCompleted(session.agent_id, msgCount).catch((err) => {
+        this.deps.nurtureOrchestrator.onPrivateDigestCompleted(session.agent_id, msgCount, {
+          dedup_key: `session:${session.id}`,
+        }).catch((err) => {
           console.error('[MemoryService] Nurture pipeline failed:', err)
         })
       } else if (this.deps.growthEngine) {
         this.deps.growthEngine.awardPrivateChatXP(session.agent_id, msgCount).catch((err) => {
           console.error('[MemoryService] XP award failed:', err)
         })
+      }
+
+      if (config.features.socialGraphV1 && this.deps.relationService) {
+        this.deps.relationService.onPrivateDigestCompleted(session.agent_id, session.id).catch(() => {})
       }
 
       return memory
@@ -175,6 +183,7 @@ export class MemoryService {
       forgotten?: boolean
       source_ref_type?: string
       source_ref_id?: string
+      source_event_id?: string
     },
   ): Promise<PaginatedResult<AgentMemory>> {
     return this.deps.memoryRepo.listMemories(agentId, opts)
@@ -191,12 +200,22 @@ export class MemoryService {
     sentiment?: string | null
     importance_score: number
   }): Promise<AgentMemory> {
+    const sourceEventId = input.source_event_id?.trim() || undefined
+    if (sourceEventId) {
+      try {
+        const existing = await this.findPublicObservationByEventId(input.agent_id, sourceEventId)
+        if (existing) return existing
+      } catch (err) {
+        console.warn('[MemoryService] public observation dedup precheck failed, fallback to create:', err)
+      }
+    }
+
     const data: CreateAgentMemoryInput = {
       agent_id: input.agent_id,
       source_type: 'PUBLIC_OBSERVATION',
       source_ref_type: input.source_ref_type,
       source_ref_id: input.source_ref_id,
-      source_event_id: input.source_event_id ?? null,
+      source_event_id: sourceEventId ?? null,
       summary_text: input.summary_text,
       topic_tags: input.topic_tags,
       key_facts: input.key_facts,
@@ -204,7 +223,18 @@ export class MemoryService {
       importance_score: input.importance_score,
       privacy_floor: 0,
     }
-    return this.deps.memoryRepo.createMemory(data)
+
+    try {
+      return await this.deps.memoryRepo.createMemory(data)
+    } catch (err) {
+      if (!sourceEventId || !isUniqueConstraintError(err)) {
+        throw err
+      }
+
+      const existing = await this.findPublicObservationByEventId(input.agent_id, sourceEventId)
+      if (existing) return existing
+      throw err
+    }
   }
 
   async getPrivacySettings(agentId: string): Promise<AgentPrivacySettingsEntity> {
@@ -301,6 +331,25 @@ export class MemoryService {
       importance_score: 0.5,
     }
   }
+
+  private async findPublicObservationByEventId(agentId: string, sourceEventId: string): Promise<AgentMemory | null> {
+    const result = await this.deps.memoryRepo.listMemories(agentId, {
+      limit: 1,
+      source_type: 'PUBLIC_OBSERVATION',
+      source_event_id: sourceEventId,
+      forgotten: false,
+    })
+    return result.items[0] ?? null
+  }
+}
+
+function isUniqueConstraintError(err: unknown): boolean {
+  return Boolean(
+    err &&
+    typeof err === 'object' &&
+    'code' in err &&
+    (err as { code?: string }).code === 'P2002',
+  )
 }
 
 const DIGEST_SYSTEM_PROMPT = `你是一个 AI Agent，刚刚结束了与你的 Owner（人类持有者）的一次私人对话。
