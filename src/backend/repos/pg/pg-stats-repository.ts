@@ -155,8 +155,11 @@ export class PgStatsRepository implements StatsRepository {
         throw err
       }
 
-      const row = await this.prisma.agentStatEvent.findUnique({
-        where: { idempotencyKey: input.idempotency_key },
+      const row = await this.prisma.agentStatEvent.findFirst({
+        where: {
+          agentId: input.agent_id,
+          idempotencyKey: input.idempotency_key,
+        },
       })
       if (!row) throw err
 
@@ -165,8 +168,13 @@ export class PgStatsRepository implements StatsRepository {
   }
 
   async findEventByIdempotencyKey(agentId: string, idempotencyKey: string): Promise<AgentStatEvent | null> {
-    const row = await this.prisma.agentStatEvent.findUnique({ where: { idempotencyKey } })
-    if (!row || row.agentId !== agentId) return null
+    const row = await this.prisma.agentStatEvent.findFirst({
+      where: {
+        agentId,
+        idempotencyKey,
+      },
+    })
+    if (!row) return null
     return this.eventToDomain(row)
   }
 

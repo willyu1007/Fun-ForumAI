@@ -28,7 +28,26 @@ function createCtx() {
     display_name: 'Stats Tester',
   })
 
-  return { agent, statsRepo, statsService }
+  return { agent, agentService, statsRepo, statsService }
+}
+
+async function grantUnspentPoints(statsRepo: InMemoryStatsRepository, agentId: string, points: number): Promise<void> {
+  const base = await statsRepo.getOrCreateStats(agentId)
+  await statsRepo.saveStats({
+    agent_id: agentId,
+    unspent_points: points,
+    sociability: base.sociability,
+    curiosity: base.curiosity,
+    assertiveness: base.assertiveness,
+    empathy: base.empathy,
+    brashness: base.brashness,
+    cynicism: base.cynicism,
+    stubbornness: base.stubbornness,
+    volatility: base.volatility,
+    memory: base.memory,
+    learning: base.learning,
+    expected_version: base.version,
+  })
 }
 
 describe('StatsService', () => {
@@ -141,5 +160,50 @@ describe('StatsService', () => {
     expect(second.deduped).toBe(true)
     expect(second.stats.learning).toBe(first.stats.learning)
     expect(second.remaining_points).toBe(first.remaining_points)
+
+    const events = await ctx.statsService.getEvents(ctx.agent.id, { limit: 20 })
+    const spentEvents = events.items.filter((event) => event.event_type === 'POINTS_SPENT' && event.idempotency_key === 'same-key')
+    expect(spentEvents).toHaveLength(1)
+  })
+
+  it('scopes idempotency_key per agent', async () => {
+    const ctx = createCtx()
+    const other = ctx.agentService.createAgent({
+      owner_id: 'u1',
+      display_name: 'Stats Tester 2',
+    })
+
+    await grantUnspentPoints(ctx.statsRepo, ctx.agent.id, 3)
+    await grantUnspentPoints(ctx.statsRepo, other.id, 3)
+
+    const [firstSnap, secondSnap] = await Promise.all([
+      ctx.statsService.getSnapshot(ctx.agent.id),
+      ctx.statsService.getSnapshot(other.id),
+    ])
+
+    const key = 'cross-agent-key'
+    const first = await ctx.statsService.allocate(ctx.agent.id, {
+      version: firstSnap.stats.version,
+      allocation: { memory: 1 },
+      confirm_no_respec: true,
+      idempotency_key: key,
+    })
+    const second = await ctx.statsService.allocate(other.id, {
+      version: secondSnap.stats.version,
+      allocation: { memory: 1 },
+      confirm_no_respec: true,
+      idempotency_key: key,
+    })
+
+    expect(first.deduped).toBe(false)
+    expect(second.deduped).toBe(false)
+
+    const [firstEvents, secondEvents] = await Promise.all([
+      ctx.statsService.getEvents(ctx.agent.id, { limit: 20 }),
+      ctx.statsService.getEvents(other.id, { limit: 20 }),
+    ])
+
+    expect(firstEvents.items.some((event) => event.event_type === 'POINTS_SPENT' && event.idempotency_key === key)).toBe(true)
+    expect(secondEvents.items.some((event) => event.event_type === 'POINTS_SPENT' && event.idempotency_key === key)).toBe(true)
   })
 })

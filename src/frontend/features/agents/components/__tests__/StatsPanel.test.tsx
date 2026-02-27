@@ -195,7 +195,7 @@ function setupHooks(options: HookSetupOptions = {}) {
     error: options.allocateError ?? null,
   } as never)
 
-  return { snapshot, previewMutate, allocateMutate }
+  return { snapshot, previewMutate, previewReset, allocateMutate }
 }
 
 describe('StatsPanel', () => {
@@ -226,6 +226,7 @@ describe('StatsPanel', () => {
 
     const input = screen.getAllByRole('spinbutton')[0]
     fireEvent.change(input, { target: { value: '1' } })
+    fireEvent.click(screen.getByRole('button', { name: '预览分配' }))
 
     const confirmButton = screen.getByRole('button', { name: '确认分配' }) as HTMLButtonElement
     expect(confirmButton.disabled).toBe(true)
@@ -245,6 +246,27 @@ describe('StatsPanel', () => {
     expect(payload.version).toBe(7)
     expect(payload.allocation.sociability).toBe(1)
     expect(payload.idempotency_key).toMatch(/^stats-ui-agent-1-/)
+  })
+
+  it('invalidates preview when draft changes and forces re-preview', () => {
+    const snapshot = buildSnapshot()
+    const previewData = buildPreview(snapshot)
+    const { previewReset } = setupHooks({ previewData })
+    render(<StatsPanel agentId="agent-1" />)
+
+    const input = screen.getAllByRole('spinbutton')[0]
+    fireEvent.change(input, { target: { value: '1' } })
+    fireEvent.click(screen.getByRole('button', { name: '预览分配' }))
+    fireEvent.click(screen.getByRole('checkbox'))
+
+    const confirmButton = screen.getByRole('button', { name: '确认分配' }) as HTMLButtonElement
+    expect(confirmButton.disabled).toBe(false)
+
+    fireEvent.change(input, { target: { value: '2' } })
+
+    expect(previewReset).toHaveBeenCalled()
+    expect(confirmButton.disabled).toBe(true)
+    expect(screen.getByText('草稿已变更，请重新预览后再提交。')).toBeTruthy()
   })
 
   it('renders preview summary from preview response', () => {

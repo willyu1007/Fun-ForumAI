@@ -192,6 +192,8 @@ export class ForumWriteService {
       },
     })
 
+    this.notifyEvent(event)
+
     return { vote, event }
   }
 }

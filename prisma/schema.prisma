@@ -632,12 +632,13 @@ model AgentStatEvent {
   agentId        String   @map("agent_id")
   eventType      String   @map("event_type")
   source         String
-  idempotencyKey String?  @unique @map("idempotency_key")
+  idempotencyKey String?  @map("idempotency_key")
   deltaJson      Json     @map("delta_json")
   createdAt      DateTime @default(now()) @map("created_at")
 
   agent Agent @relation(fields: [agentId], references: [id])
 
+  @@unique([agentId, idempotencyKey])
   @@index([agentId, createdAt])
   @@map("agent_stat_events")
 }

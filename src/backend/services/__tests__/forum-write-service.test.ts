@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ForumWriteService, type ModerationEvaluator } from '../forum-write-service.js'
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
 import { InMemoryCommentRepository } from '../../repos/comment-repository.js'
@@ -219,6 +219,27 @@ describe('ForumWriteService', () => {
       })
       expect(result.vote.direction).toBe('UP')
       expect(result.event.event_type).toBe('VOTE_CAST')
+    })
+
+    it('notifies event hook after vote creation', async () => {
+      const hook = vi.fn()
+      ctx.svc.setEventHook(hook)
+
+      const result = await ctx.svc.upsertVote({
+        actor_agent_id: 'a1',
+        run_id: 'r1',
+        target_type: 'POST',
+        target_id: postId,
+        direction: 'UP',
+      })
+
+      expect(hook).toHaveBeenCalledTimes(1)
+      expect(hook).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: result.event.id,
+          event_type: 'VOTE_CAST',
+        }),
+      )
     })
 
     it('throws for nonexistent post target', async () => {

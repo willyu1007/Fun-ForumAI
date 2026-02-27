@@ -37,11 +37,11 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
 
   const [draft, setDraft] = useState<StatsAllocationInput>({})
   const [confirmedNoRespec, setConfirmedNoRespec] = useState(false)
+  const [previewSignature, setPreviewSignature] = useState<string | null>(null)
 
-  const hasDraft = useMemo(
-    () => Object.values(draft).some((value) => typeof value === 'number' && value !== 0),
-    [draft],
-  )
+  const normalizedDraft = useMemo(() => normalizeDraft(draft), [draft])
+  const currentDraftSignature = useMemo(() => draftSignature(normalizedDraft), [normalizedDraft])
+  const hasDraft = useMemo(() => Object.keys(normalizedDraft).length > 0, [normalizedDraft])
 
   if (statsQuery.isLoading) {
     return (
@@ -68,15 +68,18 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
 
   const derived = statsData.derived
   const previewData = previewMutation.data?.data
+  const previewIsStale = previewSignature !== null && previewSignature !== currentDraftSignature
 
   const onPreview = () => {
-    previewMutation.mutate({ allocation: draft, version: statsData.stats.version })
+    if (!hasDraft) return
+    setPreviewSignature(currentDraftSignature)
+    previewMutation.mutate({ allocation: normalizedDraft, version: statsData.stats.version })
   }
 
   const onAllocate = () => {
     allocateMutation.mutate(
       {
-        allocation: draft,
+        allocation: normalizedDraft,
         version: statsData.stats.version,
         confirm_no_respec: true,
         idempotency_key: `stats-ui-${agentId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -84,6 +87,7 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
       {
         onSuccess: () => {
           setDraft({})
+          setPreviewSignature(null)
           setConfirmedNoRespec(false)
           previewMutation.reset()
         },
@@ -128,6 +132,8 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
                     onChange={(event) => {
                       const next = Number(event.target.value)
                       setDraft((prev) => ({ ...prev, [field.key]: Number.isFinite(next) ? next : 0 }))
+                      setConfirmedNoRespec(false)
+                      previewMutation.reset()
                     }}
                     className="mt-1 w-full rounded-md border bg-background px-2 py-1"
                   />
@@ -140,10 +146,23 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
             <Button type="button" variant="outline" onClick={onPreview} disabled={!hasDraft || previewMutation.isPending}>
               预览分配
             </Button>
-            <Button type="button" onClick={onAllocate} disabled={!previewData || !confirmedNoRespec || allocateMutation.isPending}>
+            <Button
+              type="button"
+              onClick={onAllocate}
+              disabled={!previewData || previewIsStale || !confirmedNoRespec || allocateMutation.isPending}
+            >
               确认分配
             </Button>
-            <Button type="button" variant="ghost" onClick={() => { setDraft({}); previewMutation.reset() }}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setDraft({})
+                setPreviewSignature(null)
+                setConfirmedNoRespec(false)
+                previewMutation.reset()
+              }}
+            >
               清空草稿
             </Button>
           </div>
@@ -164,6 +183,9 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
               <p>预估 talkativeness：<span className="font-medium">{previewData.derived.chat.talkativeness_1_5}</span></p>
               <p>预估记忆 budget/topK：<span className="font-medium">{previewData.derived.memory.effective_budget}/{previewData.derived.memory.effective_top_k}</span></p>
             </div>
+          )}
+          {previewIsStale && (
+            <p className="text-sm text-amber-700">草稿已变更，请重新预览后再提交。</p>
           )}
 
           {previewMutation.isError && (
@@ -227,5 +249,22 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+function normalizeDraft(draft: StatsAllocationInput): StatsAllocationInput {
+  const normalized: StatsAllocationInput = {}
+  for (const [rawKey, rawValue] of Object.entries(draft)) {
+    if (typeof rawValue !== 'number' || !Number.isFinite(rawValue)) continue
+    const value = Math.trunc(rawValue)
+    if (value === 0) continue
+    normalized[rawKey as keyof StatsAllocationInput] = value
+  }
+  return normalized
+}
+
+function draftSignature(draft: StatsAllocationInput): string {
+  return JSON.stringify(
+    Object.entries(draft).sort(([keyA], [keyB]) => keyA.localeCompare(keyB)),
   )
 }
