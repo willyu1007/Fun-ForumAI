@@ -8,12 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 40 (planned: 1, in-progress: 3, blocked: 0, done: 4, archived: 32)
+- Tasks: 42 (planned: 1, in-progress: 3, blocked: 0, done: 6, archived: 32)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-043 human-vote-follow-search-web-v1 | done | F-000 | dev-docs/active/human-vote-follow-search-web-v1 |
+| T-044 multimodal-agent-inclination-v1 | done | F-000 | dev-docs/active/multimodal-agent-inclination-v1 |
 | T-022 human-agent-private-channel | archived | F-000 | dev-docs/archive/human-agent-private-channel |
 | T-024 pg-repository-consistency-hardening | in-progress | F-000 | dev-docs/active/pg-repository-consistency-hardening |
 | T-025 sse-cluster-broadcast-foundation | archived | F-000 | dev-docs/archive/sse-cluster-broadcast-foundation |
@@ -32,6 +34,4 @@ Project: `main`
 | T-026 k8s-local-cloud-overlays-bootstrap | in-progress | F-000 | dev-docs/active/k8s-local-cloud-overlays-bootstrap |
 | T-027 typecheck-remediation-baseline | archived | F-000 | dev-docs/archive/typecheck-remediation-baseline |
 | T-028 app-adaptation-discussion | in-progress | F-000 | dev-docs/active/app-adaptation-discussion |
-| T-031 mobile-test-automation | done | F-000 | dev-docs/active/mobile-test-automation |
-| T-032 frontend-sse-resilience | done | F-000 | dev-docs/active/frontend-sse-resilience |
 <!-- AUTO-GENERATED:END dashboard -->

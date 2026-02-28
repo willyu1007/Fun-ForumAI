@@ -2,6 +2,8 @@ import type {
   PostRepository,
   CommentRepository,
   VoteRepository,
+  HumanVoteRepository,
+  PostMediaRepository,
   CommunityRepository,
   AgentRepository,
   Post,
@@ -15,8 +17,16 @@ export interface ForumReadServiceDeps {
   postRepo: PostRepository
   commentRepo: CommentRepository
   voteRepo: VoteRepository
+  humanVoteRepo: HumanVoteRepository
+  postMediaRepo: PostMediaRepository
   communityRepo: CommunityRepository
   agentRepo: AgentRepository
+}
+
+export interface PostMediaSummary {
+  asset_id: string
+  media_url: string
+  mime_type: string
 }
 
 export interface AuthorSummary {
@@ -30,20 +40,38 @@ export interface PostWithMeta extends Post {
   vote_score: number
   vote_up: number
   vote_down: number
+  agent_vote_score: number
+  agent_vote_up: number
+  agent_vote_down: number
+  human_vote_score: number
+  human_vote_up: number
+  human_vote_down: number
+  weighted_vote_score: number
+  viewer_human_vote_direction: 'UP' | 'DOWN' | 'NEUTRAL' | null
   participant_count: number
   last_reply_at: Date | null
   heat_score: number
   author: AuthorSummary
   community_slug: string
   community_name: string
+  media: PostMediaSummary[]
 }
 
 export interface CommentWithAuthor extends Comment {
   author: AuthorSummary
   vote_score: number
+  agent_vote_score: number
+  agent_vote_up: number
+  agent_vote_down: number
+  human_vote_score: number
+  human_vote_up: number
+  human_vote_down: number
+  weighted_vote_score: number
+  viewer_human_vote_direction: 'UP' | 'DOWN' | 'NEUTRAL' | null
 }
 
 export type FeedSort = 'new' | 'hot' | 'top'
+const HUMAN_VOTE_WEIGHT = 0.35
 
 export class ForumReadService {
   constructor(private readonly deps: ForumReadServiceDeps) {}
@@ -95,8 +123,49 @@ export class ForumReadService {
     return Math.round(raw)
   }
 
-  private async toPostWithMeta(post: Post, nowMs: number): Promise<PostWithMeta> {
-    const voteSummary = this.deps.voteRepo.countByTarget('POST', post.id)
+  private getDetailedVoteSummary(
+    targetType: 'POST' | 'COMMENT',
+    targetId: string,
+    viewerUserId?: string,
+  ): {
+    agent: { up: number; down: number; score: number }
+    human: { up: number; down: number; score: number }
+    weighted_score: number
+    viewer_direction: 'UP' | 'DOWN' | 'NEUTRAL' | null
+  } {
+    const agent = this.deps.voteRepo.countByTarget(targetType, targetId)
+    const human = this.deps.humanVoteRepo.countByTarget(targetType, targetId)
+    const weighted_score = Number((agent.score + human.score * HUMAN_VOTE_WEIGHT).toFixed(2))
+    const viewer_direction = viewerUserId
+      ? this.deps.humanVoteRepo.findByVoterAndTarget(viewerUserId, targetType, targetId)?.direction ?? null
+      : null
+
+    return { agent, human, weighted_score, viewer_direction }
+  }
+
+  private paginateRanked<T extends { id: string }>(
+    items: T[],
+    opts: { cursor?: string; limit: number },
+  ): PaginatedResult<T> {
+    let start = 0
+    if (opts.cursor) {
+      const idx = items.findIndex((item) => item.id === opts.cursor)
+      start = idx >= 0 ? idx + 1 : 0
+    }
+    const page = items.slice(start, start + opts.limit)
+    const next_cursor = page.length === opts.limit && start + opts.limit < items.length
+      ? page[page.length - 1].id
+      : null
+    return { items: page, next_cursor }
+  }
+
+  private async toPostWithMeta(
+    post: Post,
+    nowMs: number,
+    viewerUserId?: string,
+    media: PostMediaSummary[] = [],
+  ): Promise<PostWithMeta> {
+    const votes = this.getDetailedVoteSummary('POST', post.id, viewerUserId)
     const visibleComments = await this.listAllVisibleComments(post.id)
     const participantIds = new Set<string>([post.author_agent_id])
     for (const comment of visibleComments) {
@@ -112,13 +181,21 @@ export class ForumReadService {
     return {
       ...post,
       comment_count: commentCount,
-      vote_score: voteSummary.score,
-      vote_up: voteSummary.up,
-      vote_down: voteSummary.down,
+      vote_score: votes.weighted_score,
+      vote_up: votes.agent.up,
+      vote_down: votes.agent.down,
+      agent_vote_score: votes.agent.score,
+      agent_vote_up: votes.agent.up,
+      agent_vote_down: votes.agent.down,
+      human_vote_score: votes.human.score,
+      human_vote_up: votes.human.up,
+      human_vote_down: votes.human.down,
+      weighted_vote_score: votes.weighted_score,
+      viewer_human_vote_direction: votes.viewer_direction,
       participant_count: participantIds.size,
       last_reply_at: lastReplyAt,
       heat_score: this.calculateHeatScore({
-        voteScore: voteSummary.score,
+        voteScore: votes.weighted_score,
         commentCount,
         participantCount: participantIds.size,
         activityAt,
@@ -127,6 +204,7 @@ export class ForumReadService {
       author: this.resolveAuthor(post.author_agent_id),
       community_slug: community.slug,
       community_name: community.name,
+      media,
     }
   }
 
@@ -135,17 +213,31 @@ export class ForumReadService {
     limit?: number
     communityId?: string
     sort?: FeedSort
+    authorAgentIds?: string[]
+    viewerUserId?: string
   }): Promise<PaginatedResult<PostWithMeta>> {
     const limit = Math.min(opts.limit ?? 20, 100)
+    const rankedSort = opts.sort === 'hot' || opts.sort === 'top'
     const result = await this.deps.postRepo.findPublic({
-      cursor: opts.cursor,
-      limit: opts.sort && opts.sort !== 'new' ? 500 : limit,
+      cursor: rankedSort ? undefined : opts.cursor,
+      limit: rankedSort ? 500 : limit,
       communityId: opts.communityId,
+      authorAgentIds: opts.authorAgentIds,
     })
     const nowMs = Date.now()
 
+    const mediaByPost = this.deps.postMediaRepo.findByPostIds(result.items.map((post) => post.id))
     let items: PostWithMeta[] = await Promise.all(
-      result.items.map((post) => this.toPostWithMeta(post, nowMs)),
+      result.items.map((post) => this.toPostWithMeta(
+        post,
+        nowMs,
+        opts.viewerUserId,
+        (mediaByPost[post.id] ?? []).map((item) => ({
+          asset_id: item.asset_id,
+          media_url: item.media_url,
+          mime_type: item.mime_type,
+        })),
+      )),
     )
 
     if (opts.sort === 'hot') {
@@ -156,29 +248,37 @@ export class ForumReadService {
         const activityB = (b.last_reply_at ?? b.created_at).getTime()
         return activityB - activityA
       })
-      items = items.slice(0, limit)
+      return this.paginateRanked(items, {
+        cursor: opts.cursor,
+        limit,
+      })
     } else if (opts.sort === 'top') {
       items.sort((a, b) => b.vote_score - a.vote_score || b.created_at.getTime() - a.created_at.getTime())
-      items = items.slice(0, limit)
+      return this.paginateRanked(items, {
+        cursor: opts.cursor,
+        limit,
+      })
     }
-
-    const next_cursor = opts.sort && opts.sort !== 'new'
-      ? (items.length === limit ? items[items.length - 1].id : null)
-      : result.next_cursor
-
-    return { items, next_cursor }
+    return { items, next_cursor: result.next_cursor }
   }
 
-  async getPost(postId: string): Promise<PostWithMeta> {
+  async getPost(postId: string, viewerUserId?: string): Promise<PostWithMeta> {
     const post = await this.deps.postRepo.findById(postId)
     if (!post) throw new NotFoundError('Post', postId)
 
-    return this.toPostWithMeta(post, Date.now())
+    const media = this.deps.postMediaRepo.findByPostId(post.id).map((item) => ({
+      asset_id: item.asset_id,
+      media_url: item.media_url,
+      mime_type: item.mime_type,
+    }))
+
+    return this.toPostWithMeta(post, Date.now(), viewerUserId, media)
   }
 
   async getComments(
     postId: string,
     opts: { cursor?: string; limit?: number },
+    viewerUserId?: string,
   ): Promise<PaginatedResult<CommentWithAuthor>> {
     const post = await this.deps.postRepo.findById(postId)
     if (!post) throw new NotFoundError('Post', postId)
@@ -189,11 +289,22 @@ export class ForumReadService {
       limit,
     })
 
-    const items: CommentWithAuthor[] = result.items.map((c) => ({
-      ...c,
-      author: this.resolveAuthor(c.author_agent_id),
-      vote_score: this.deps.voteRepo.countByTarget('COMMENT', c.id).score,
-    }))
+    const items: CommentWithAuthor[] = result.items.map((c) => {
+      const votes = this.getDetailedVoteSummary('COMMENT', c.id, viewerUserId)
+      return {
+        ...c,
+        author: this.resolveAuthor(c.author_agent_id),
+        vote_score: votes.weighted_score,
+        agent_vote_score: votes.agent.score,
+        agent_vote_up: votes.agent.up,
+        agent_vote_down: votes.agent.down,
+        human_vote_score: votes.human.score,
+        human_vote_up: votes.human.up,
+        human_vote_down: votes.human.down,
+        weighted_vote_score: votes.weighted_score,
+        viewer_human_vote_direction: votes.viewer_direction,
+      }
+    })
 
     return { items, next_cursor: result.next_cursor }
   }
@@ -209,7 +320,21 @@ export class ForumReadService {
   getVoteSummary(
     targetType: 'POST' | 'COMMENT' | 'MESSAGE',
     targetId: string,
-  ): { up: number; down: number; score: number } {
-    return this.deps.voteRepo.countByTarget(targetType, targetId)
+  ): { up: number; down: number; score: number; weighted_score: number; human_up: number; human_down: number; human_score: number } {
+    if (targetType === 'MESSAGE') {
+      const messageVotes = this.deps.voteRepo.countByTarget(targetType, targetId)
+      return { ...messageVotes, weighted_score: messageVotes.score, human_up: 0, human_down: 0, human_score: 0 }
+    }
+    const agent = this.deps.voteRepo.countByTarget(targetType, targetId)
+    const human = this.deps.humanVoteRepo.countByTarget(targetType, targetId)
+    return {
+      up: agent.up,
+      down: agent.down,
+      score: agent.score,
+      weighted_score: Number((agent.score + human.score * HUMAN_VOTE_WEIGHT).toFixed(2)),
+      human_up: human.up,
+      human_down: human.down,
+      human_score: human.score,
+    }
   }
 }

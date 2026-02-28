@@ -12,6 +12,7 @@ export interface AgentRepository {
   findById(id: string): Agent | null
   findByOwner(ownerId: string): Agent[]
   findActive(opts: PaginationOpts): PaginatedResult<Agent>
+  search(opts: PaginationOpts & { q?: string }): PaginatedResult<Agent>
   updateStatus(id: string, status: Agent['status']): Agent | null
   updateReputation(id: string, delta: number): Agent | null
 }
@@ -60,6 +61,14 @@ export class InMemoryAgentRepository implements AgentRepository {
   findActive(opts: PaginationOpts): PaginatedResult<Agent> {
     const items = Array.from(this.store.values())
       .filter((a) => a.status === 'ACTIVE')
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+    return paginate(items, opts)
+  }
+
+  search(opts: PaginationOpts & { q?: string }): PaginatedResult<Agent> {
+    const query = (opts.q ?? '').trim().toLowerCase()
+    const items = Array.from(this.store.values())
+      .filter((a) => (query ? a.display_name.toLowerCase().includes(query) : true))
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
     return paginate(items, opts)
   }

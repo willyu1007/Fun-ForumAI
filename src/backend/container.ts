@@ -1,6 +1,10 @@
 import { InMemoryPostRepository } from './repos/post-repository.js'
 import { InMemoryCommentRepository } from './repos/comment-repository.js'
 import { InMemoryVoteRepository } from './repos/vote-repository.js'
+import { InMemoryHumanVoteRepository } from './repos/human-vote-repository.js'
+import { InMemoryHumanFollowRepository } from './repos/human-follow-repository.js'
+import { InMemoryInclinationAssetRepository } from './repos/inclination-asset-repository.js'
+import { InMemoryPostMediaRepository } from './repos/post-media-repository.js'
 import { InMemoryAgentRepository, InMemoryAgentConfigRepository } from './repos/agent-repository.js'
 import { InMemoryCommunityRepository } from './repos/community-repository.js'
 import { InMemoryEventRepository, InMemoryAgentRunRepository } from './repos/event-repository.js'
@@ -11,6 +15,10 @@ import { InMemoryStatsRepository } from './repos/stats-repository.js'
 import type { PostRepository } from './repos/post-repository.js'
 import type { CommentRepository } from './repos/comment-repository.js'
 import type { VoteRepository } from './repos/vote-repository.js'
+import type { HumanVoteRepository } from './repos/human-vote-repository.js'
+import type { HumanFollowRepository } from './repos/human-follow-repository.js'
+import type { InclinationAssetRepository } from './repos/inclination-asset-repository.js'
+import type { PostMediaRepository } from './repos/post-media-repository.js'
 import type { AgentRepository, AgentConfigRepository } from './repos/agent-repository.js'
 import type { CommunityRepository } from './repos/community-repository.js'
 import type { EventRepository, AgentRunRepository } from './repos/event-repository.js'
@@ -23,6 +31,10 @@ import { ForumReadService } from './services/forum-read-service.js'
 import { ForumWriteService } from './services/forum-write-service.js'
 import { AgentService } from './services/agent-service.js'
 import { GovernanceAdapter } from './services/governance-adapter.js'
+import { HumanParticipationService } from './services/human-participation-service.js'
+import { InclinationAssetService } from './services/inclination-asset-service.js'
+import { LocalStorageAdapter, S3StorageAdapter, type StorageAdapter } from './services/storage-adapter.js'
+import { VisionSummaryService } from './services/vision-summary-service.js'
 
 import { ModerationService } from './moderation/moderation-service.js'
 import { DefaultRuleFilter } from './moderation/rule-filter.js'
@@ -99,6 +111,10 @@ let relationRepo: RelationRepository | null = null
 let userRepo: UserRepository | null = null
 let statsRepo: StatsRepository
 export let voteRepo: VoteRepository
+export let humanVoteRepo: HumanVoteRepository
+export let humanFollowRepo: HumanFollowRepository
+export let inclinationAssetRepo: InclinationAssetRepository
+export let postMediaRepo: PostMediaRepository
 export let communityRepo: CommunityRepository
 export let statsService: StatsService | null = null
 
@@ -111,6 +127,10 @@ if (config.db.usePrisma) {
   const { PgPostRepository } = await import('./repos/pg/pg-post-repository.js')
   const { PgCommentRepository } = await import('./repos/pg/pg-comment-repository.js')
   const { PgVoteRepository } = await import('./repos/pg/pg-vote-repository.js')
+  const { PgHumanVoteRepository } = await import('./repos/pg/pg-human-vote-repository.js')
+  const { PgHumanFollowRepository } = await import('./repos/pg/pg-human-follow-repository.js')
+  const { PgInclinationAssetRepository } = await import('./repos/pg/pg-inclination-asset-repository.js')
+  const { PgPostMediaRepository } = await import('./repos/pg/pg-post-media-repository.js')
   const { PgAgentRepository, PgAgentConfigRepository } = await import('./repos/pg/pg-agent-repository.js')
   const { PgCommunityRepository } = await import('./repos/pg/pg-community-repository.js')
   const { PgEventRepository, PgAgentRunRepository } = await import('./repos/pg/pg-event-repository.js')
@@ -123,6 +143,10 @@ if (config.db.usePrisma) {
   const pr = new PgPostRepository(prisma)
   const cr = new PgCommentRepository(prisma)
   const vr = new PgVoteRepository(prisma)
+  const hvr = new PgHumanVoteRepository(prisma)
+  const hfr = new PgHumanFollowRepository(prisma)
+  const iar = new PgInclinationAssetRepository(prisma)
+  const pmr = new PgPostMediaRepository(prisma)
   const ar = new PgAgentRepository(prisma)
   const acr = new PgAgentConfigRepository(prisma)
   const cmr = new PgCommunityRepository(prisma)
@@ -136,6 +160,10 @@ if (config.db.usePrisma) {
   postRepo = pr
   commentRepo = cr
   voteRepo = vr
+  humanVoteRepo = hvr
+  humanFollowRepo = hfr
+  inclinationAssetRepo = iar
+  postMediaRepo = pmr
   agentRepo = ar
   agentConfigRepo = acr
   communityRepo = cmr
@@ -146,11 +174,15 @@ if (config.db.usePrisma) {
   relationRepo = relr
   statsRepo = sr
   userRepo = new PgUserRepository(prisma)
-  _hydratables.push(pr, cr, vr, ar, acr, cmr, er, arr, rr, mr, sr)
+  _hydratables.push(pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, cmr, er, arr, rr, mr, sr)
 } else {
   postRepo = new InMemoryPostRepository()
   commentRepo = new InMemoryCommentRepository()
   voteRepo = new InMemoryVoteRepository()
+  humanVoteRepo = new InMemoryHumanVoteRepository()
+  humanFollowRepo = new InMemoryHumanFollowRepository()
+  inclinationAssetRepo = new InMemoryInclinationAssetRepository()
+  postMediaRepo = new InMemoryPostMediaRepository()
   agentRepo = new InMemoryAgentRepository()
   agentConfigRepo = new InMemoryAgentConfigRepository()
   communityRepo = new InMemoryCommunityRepository()
@@ -288,6 +320,8 @@ export const forumReadService = new ForumReadService({
   postRepo,
   commentRepo,
   voteRepo,
+  humanVoteRepo,
+  postMediaRepo,
   communityRepo,
   agentRepo,
 })
@@ -331,6 +365,16 @@ export const governanceAdapter = new GovernanceAdapter({
   postRepo,
   commentRepo,
   agentRepo,
+})
+
+export const humanParticipationService = new HumanParticipationService({
+  postRepo,
+  commentRepo,
+  voteRepo,
+  humanVoteRepo,
+  humanFollowRepo,
+  agentRepo,
+  eventRepo,
 })
 
 // ─── Allocator Pipeline ─────────────────────────────────────
@@ -387,6 +431,31 @@ export const llmClient = new LlmClient({
 })
 
 export const promptEngine = new PromptEngine()
+
+const inclinationAssetStorage: StorageAdapter =
+  config.inclinationAssets.storageBackend === 's3' &&
+  config.inclinationAssets.s3.bucket
+    ? new S3StorageAdapter({
+        bucket: config.inclinationAssets.s3.bucket,
+        region: config.inclinationAssets.s3.region,
+        endpoint: config.inclinationAssets.s3.endpoint || undefined,
+        forcePathStyle: config.inclinationAssets.s3.forcePathStyle,
+        accessKeyId: config.inclinationAssets.s3.accessKeyId || undefined,
+        secretAccessKey: config.inclinationAssets.s3.secretAccessKey || undefined,
+        publicBaseUrl: config.inclinationAssets.publicBaseUrl || undefined,
+      })
+    : new LocalStorageAdapter({
+        baseDir: config.inclinationAssets.localDir,
+      })
+
+const visionSummaryService = new VisionSummaryService(llmClient)
+export const inclinationAssetService = new InclinationAssetService({
+  agentRepo,
+  inclinationRepo: inclinationAssetRepo,
+  postMediaRepo,
+  storage: inclinationAssetStorage,
+  visionSummaryService,
+})
 
 // ─── Conversation Clock ──────────────────────────────────────
 
@@ -589,6 +658,7 @@ const dataplaneWriter = new DataPlaneWriter({
   chatService,
   growthEngine,
   nurtureOrchestrator,
+  inclinationAssetService,
 })
 
 export const agentExecutor = new AgentExecutor({
@@ -607,6 +677,7 @@ export const postScheduler = new PostScheduler(
     agentService,
     responseParser,
     dataplaneWriter,
+    inclinationAssetService,
   },
   {
     postIntervalMs: config.runtime.postIntervalMs,

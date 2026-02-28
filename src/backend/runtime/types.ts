@@ -69,6 +69,9 @@ export interface WriteInstruction {
   body: string
   tags?: string[]
   message_kind?: string
+  media_asset_id?: string
+  media_url?: string
+  media_mime_type?: string
 }
 
 export interface AgentExecutionResult {

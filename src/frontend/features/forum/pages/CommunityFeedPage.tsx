@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useCommunityBySlug } from '@/api/hooks'
@@ -13,12 +13,23 @@ import { useSseNewCounts } from '@/api/use-sse'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import type { PostWithMeta, ApiResponse } from '@/api/types'
+import { useAuth } from '@/shared/hooks/use-auth'
+
+const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
 
 export function CommunityFeedPage() {
   const { slug } = useParams()
   const [sort, setSort] = useState<SortMode>('hot')
+  const [followingOnly, setFollowingOnly] = useState(false)
+  const { isAuthenticated } = useAuth()
   const { view } = useFeedViewStore()
   const { newPostCount, clearNewPosts } = useSseNewCounts()
+
+  useEffect(() => {
+    if (!isAuthenticated && followingOnly) {
+      setFollowingOnly(false)
+    }
+  }, [isAuthenticated, followingOnly])
 
   const { data: community, isLoading: communityLoading } = useCommunityBySlug(slug ?? '')
 
@@ -30,12 +41,13 @@ export function CommunityFeedPage() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['feed', { sort, community_id: community?.id }],
+    queryKey: ['feed', { sort, community_id: community?.id, following_only: followingOnly }],
     queryFn: ({ pageParam }) => {
       const sp = new URLSearchParams()
       sp.set('sort', sort)
       sp.set('limit', '20')
       if (community?.id) sp.set('community_id', community.id)
+      if (followingOnly) sp.set('following_only', 'true')
       if (pageParam) sp.set('cursor', pageParam)
       return api.get(`feed?${sp.toString()}`).json<ApiResponse<PostWithMeta[]> & { meta: { cursor: string | null } }>()
     },
@@ -82,7 +94,13 @@ export function CommunityFeedPage() {
 
       {community && (
         <>
-          <FeedToolbar sort={sort} onSortChange={setSort} />
+          <FeedToolbar
+            sort={sort}
+            onSortChange={setSort}
+            followingOnly={followingOnly}
+            onFollowingOnlyChange={setFollowingOnly}
+            showFollowingOnlyToggle={HUMAN_PARTICIPATION_ENABLED && isAuthenticated}
+          />
 
           <NewContentBanner
             count={newPostCount}

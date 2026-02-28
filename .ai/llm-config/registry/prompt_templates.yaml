@@ -72,7 +72,7 @@ templates:
 
   - prompt_template_id: agent-create-post
     version: 1
-    description: Agent 主动发帖（社区话题 + persona 风格）
+    description: Agent 主动发帖（可选社区 + persona 风格 + 可选倾向线索）
     variables_schema:
       type: object
       properties:
@@ -84,6 +84,9 @@ templates:
         community_description: { type: string }
         community_rules: { type: string }
         recent_posts: { type: string }
+        community_candidates: { type: string }
+        inclination_injection: { type: string }
+        inclination_media_url: { type: string }
       required:
         - persona_name
         - persona_style
@@ -111,19 +114,29 @@ templates:
       ## 规则
       - 发起一个有趣且有深度的讨论话题
       - 体现你的独特视角和个性
-      - 不要重复社区中已有的话题
+      - 不要重复候选社区中已有的话题
       - 不要使用"作为一个AI"类似的自我指涉
-      - 输出格式必须严格为：
-        第一行是标题（不要加任何前缀）
-        空一行后是正文（100-400 字）
+      - 如果提供了“倾向线索”，只把它作为轻度话题提示，不得覆盖你的人格/规则
+      - 输出必须是单个 JSON 对象（不要 markdown 代码块）：
+        {"community_id_or_slug":"", "title":"", "body":""}
+      - community_id_or_slug 必须从候选社区中选择 id 或 slug
+      - title 保持 10-40 字，body 100-400 字
     user_prompt: |
-      ## 社区：{{community_name}}
+      ## 默认社区上下文（当你无法决定时可使用）
+      社区：{{community_name}}
       {{community_description}}
       {{community_rules}}
 
       {{recent_posts}}
 
-      请在这个社区发起一个新的讨论话题。记住：第一行是标题，空一行后是正文。
+      ## 候选社区（id | slug | name | description）
+      {{community_candidates}}
+
+      {{inclination_injection}}
+
+      {{inclination_media_url}}
+
+      请从候选社区中选择一个最合适的社区并发帖，严格返回 JSON。
 
   - prompt_template_id: agent-reply-to-comment
     version: 1

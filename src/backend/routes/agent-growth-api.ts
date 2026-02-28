@@ -4,12 +4,27 @@ import { TraitEngine } from '../services/trait-engine.js'
 import { CreditService } from '../services/credit-service.js'
 import { InstructionEngine } from '../services/instruction-engine.js'
 import type { PrismaClient } from '@prisma/client'
+import { agentService } from '../container.js'
+import { requireHumanAuth } from '../middleware/human-auth.js'
+import { ForbiddenError } from '../lib/errors.js'
 
 function getPrismaOrNull(): PrismaClient | null {
   return ((globalThis as Record<string, unknown>).__forumPrisma as PrismaClient) ?? null
 }
 
 export const agentGrowthRouter: IRouter = Router()
+
+function assertOwner(agentId: string, userId: string): void {
+  const agent = agentService.getAgent(agentId)
+  if (agent.owner_id !== userId) {
+    throw new ForbiddenError('Not your agent')
+  }
+}
+
+function asParam(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return value[0] ?? ''
+  return value ?? ''
+}
 
 function getLazySingletons() {
   const prisma = getPrismaOrNull()
@@ -103,8 +118,10 @@ agentGrowthRouter.get('/agents/:agentId/credit-events', async (req, res) => {
 
 // ─── Instructions (T-019) ────────────────────────────────────
 
-agentGrowthRouter.get('/agents/:agentId/instructions', async (req, res) => {
-  const instructions = await singletons().instructions.getInstructions(req.params.agentId)
+agentGrowthRouter.get('/agents/:agentId/instructions', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
+  assertOwner(agentId, req.user!.userId)
+  const instructions = await singletons().instructions.getInstructions(agentId)
   res.json({
     data: instructions.map(i => ({
       id: i.id,
@@ -121,8 +138,10 @@ agentGrowthRouter.get('/agents/:agentId/instructions', async (req, res) => {
   })
 })
 
-agentGrowthRouter.post('/agents/:agentId/instructions', async (req, res) => {
-  const result = await singletons().instructions.createInstruction(req.params.agentId, {
+agentGrowthRouter.post('/agents/:agentId/instructions', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
+  assertOwner(agentId, req.user!.userId)
+  const result = await singletons().instructions.createInstruction(agentId, {
     name: req.body.name,
     trigger_type: req.body.trigger_type,
     trigger_params: req.body.trigger_params,
@@ -136,8 +155,11 @@ agentGrowthRouter.post('/agents/:agentId/instructions', async (req, res) => {
   res.status(201).json({ data: { id: result.id } })
 })
 
-agentGrowthRouter.patch('/agents/:agentId/instructions/:instructionId', async (req, res) => {
-  const result = await singletons().instructions.updateInstruction(req.params.instructionId, {
+agentGrowthRouter.patch('/agents/:agentId/instructions/:instructionId', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
+  assertOwner(agentId, req.user!.userId)
+  const instructionId = asParam(req.params.instructionId)
+  const result = await singletons().instructions.updateInstruction(instructionId, {
     name: req.body.name,
     trigger_type: req.body.trigger_type,
     trigger_params: req.body.trigger_params,
@@ -151,13 +173,19 @@ agentGrowthRouter.patch('/agents/:agentId/instructions/:instructionId', async (r
   res.json({ data: { message: 'updated' } })
 })
 
-agentGrowthRouter.delete('/agents/:agentId/instructions/:instructionId', async (req, res) => {
-  await singletons().instructions.deleteInstruction(req.params.instructionId)
+agentGrowthRouter.delete('/agents/:agentId/instructions/:instructionId', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
+  assertOwner(agentId, req.user!.userId)
+  const instructionId = asParam(req.params.instructionId)
+  await singletons().instructions.deleteInstruction(instructionId)
   res.json({ data: { message: 'deleted' } })
 })
 
-agentGrowthRouter.post('/agents/:agentId/instructions/:instructionId/toggle', async (req, res) => {
-  const enabled = await singletons().instructions.toggleInstruction(req.params.instructionId)
+agentGrowthRouter.post('/agents/:agentId/instructions/:instructionId/toggle', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
+  assertOwner(agentId, req.user!.userId)
+  const instructionId = asParam(req.params.instructionId)
+  const enabled = await singletons().instructions.toggleInstruction(instructionId)
   res.json({ data: { enabled } })
 })
 
@@ -171,14 +199,16 @@ agentGrowthRouter.get('/instruction-level-gates', (_req, res) => {
 
 // ─── Style (T-019) ──────────────────────────────────────────
 
-agentGrowthRouter.get('/agents/:agentId/style', async (req, res) => {
+agentGrowthRouter.get('/agents/:agentId/style', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
+  assertOwner(agentId, req.user!.userId)
   if (!getPrismaOrNull()) {
     res.json({ data: { formality: 3, verbosity: 3, mood: 'neutral', habits: [], forum_activity: 3 } })
     return
   }
   const prisma = getPrismaOrNull()!
   const agentConfig = await prisma.agentConfig.findFirst({
-    where: { agentId: req.params.agentId },
+    where: { agentId },
     orderBy: { effectiveAt: 'desc' },
   })
   const configJson = (agentConfig?.configJson as Record<string, unknown>) ?? {}
@@ -194,14 +224,16 @@ agentGrowthRouter.get('/agents/:agentId/style', async (req, res) => {
   })
 })
 
-agentGrowthRouter.patch('/agents/:agentId/style', async (req, res) => {
+agentGrowthRouter.patch('/agents/:agentId/style', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
+  assertOwner(agentId, req.user!.userId)
   if (!getPrismaOrNull()) {
     res.json({ data: { message: 'updated' } })
     return
   }
   const prisma = getPrismaOrNull()!
   const agentConfig = await prisma.agentConfig.findFirst({
-    where: { agentId: req.params.agentId },
+    where: { agentId },
     orderBy: { effectiveAt: 'desc' },
   })
   const existing = (agentConfig?.configJson as Record<string, unknown>) ?? {}
@@ -216,7 +248,7 @@ agentGrowthRouter.patch('/agents/:agentId/style', async (req, res) => {
   } else {
     await prisma.agentConfig.create({
       data: {
-        agentId: req.params.agentId,
+        agentId,
         configJson: { style: newStyle },
         effectiveAt: now,
         updatedBy: 'dev-seed',
@@ -237,21 +269,25 @@ const DANGEROUS_PATTERNS = [
   /disregard/i,
 ]
 
-agentGrowthRouter.get('/agents/:agentId/prompt-overrides', async (req, res) => {
+agentGrowthRouter.get('/agents/:agentId/prompt-overrides', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
+  assertOwner(agentId, req.user!.userId)
   if (!getPrismaOrNull()) {
     res.json({ data: {} })
     return
   }
   const prisma = getPrismaOrNull()!
   const agentConfig = await prisma.agentConfig.findFirst({
-    where: { agentId: req.params.agentId },
+    where: { agentId },
     orderBy: { effectiveAt: 'desc' },
   })
   const configJson = (agentConfig?.configJson as Record<string, unknown>) ?? {}
   res.json({ data: configJson.prompt_overrides ?? {} })
 })
 
-agentGrowthRouter.patch('/agents/:agentId/prompt-overrides', async (req, res) => {
+agentGrowthRouter.patch('/agents/:agentId/prompt-overrides', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
+  assertOwner(agentId, req.user!.userId)
   if (!getPrismaOrNull()) {
     res.json({ data: { message: 'updated' } })
     return
@@ -259,7 +295,7 @@ agentGrowthRouter.patch('/agents/:agentId/prompt-overrides', async (req, res) =>
 
   const prisma = getPrismaOrNull()!
 
-  const growth = await prisma.agentGrowth.findUnique({ where: { agentId: req.params.agentId } })
+  const growth = await prisma.agentGrowth.findUnique({ where: { agentId } })
   if (!growth || growth.level < 4) {
     res.status(403).json({ error: { code: 'LEVEL_TOO_LOW', message: 'Prompt overrides require Lv.4+' } })
     return
@@ -281,7 +317,7 @@ agentGrowthRouter.patch('/agents/:agentId/prompt-overrides', async (req, res) =>
   }
 
   const agentConfig = await prisma.agentConfig.findFirst({
-    where: { agentId: req.params.agentId },
+    where: { agentId },
     orderBy: { effectiveAt: 'desc' },
   })
   const existing = (agentConfig?.configJson as Record<string, unknown>) ?? {}
@@ -295,7 +331,7 @@ agentGrowthRouter.patch('/agents/:agentId/prompt-overrides', async (req, res) =>
   } else {
     await prisma.agentConfig.create({
       data: {
-        agentId: req.params.agentId,
+        agentId,
         configJson: { prompt_overrides: overrides },
         effectiveAt: now,
         updatedBy: 'dev-seed',
@@ -305,4 +341,3 @@ agentGrowthRouter.patch('/agents/:agentId/prompt-overrides', async (req, res) =>
 
   res.json({ data: { message: 'updated' } })
 })
-

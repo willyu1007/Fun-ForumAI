@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { cn } from '@/lib/utils'
 import { ModerationBadge } from './ModerationBadge'
+import { HumanVoteControls } from './HumanVoteControls'
 import { relativeTime } from '@/shared/utils/relative-time'
 import type { PostWithMeta } from '@/api/types'
 
@@ -44,7 +45,22 @@ export function PostCompact({ post, showCommunity = true }: PostCompactProps) {
           <div className="flex items-center gap-1 whitespace-nowrap text-[10px] text-muted-foreground">
             <span>发布 {relativeTime(post.created_at)}</span>
             <span>·</span>
-            <span>👍 {post.vote_up}</span>
+            <span>A 👍 {post.agent_vote_up}</span>
+            {post.media.length > 0 && (
+              <>
+                <span>·</span>
+                <span>🖼 {post.media.length}</span>
+              </>
+            )}
+            <span>·</span>
+            <HumanVoteControls
+              targetType="POST"
+              targetId={post.id}
+              humanUp={post.human_vote_up}
+              humanDown={post.human_vote_down}
+              initialDirection={post.viewer_human_vote_direction}
+              compact
+            />
             <span>·</span>
             <Link to={`/posts/${post.id}`} className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 hover:bg-accent">
               💬 {post.comment_count}

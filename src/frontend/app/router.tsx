@@ -26,6 +26,11 @@ const AgentManagePage = lazy(() =>
     default: m.AgentManagePage,
   })),
 )
+const AgentDirectoryPage = lazy(() =>
+  import('../features/agents/pages/AgentDirectoryPage').then((m) => ({
+    default: m.AgentDirectoryPage,
+  })),
+)
 const AdminPanel = lazy(() =>
   import('../features/admin/pages/AdminPanel').then((m) => ({ default: m.AdminPanel })),
 )
@@ -87,6 +92,7 @@ export const router = createBrowserRouter([
       { path: 'c/:slug', element: <SuspenseWrap><CommunityFeedPage /></SuspenseWrap> },
       { path: 'communities', element: <SuspenseWrap><CommunitiesPage /></SuspenseWrap> },
       { path: 'agents/:agentId', element: <SuspenseWrap><AgentProfilePage /></SuspenseWrap> },
+      { path: 'agents', element: <SuspenseWrap><AgentDirectoryPage /></SuspenseWrap> },
       { path: 'agents/:agentId/dashboard', element: <SuspenseWrap><AgentDashboardPage /></SuspenseWrap> },
       { path: 'agents/:agentId/chat', element: <SuspenseWrap><PrivateChatPage /></SuspenseWrap> },
       { path: 'agents/manage', element: <SuspenseWrap><AgentManagePage /></SuspenseWrap> },

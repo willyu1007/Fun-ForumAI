@@ -8,9 +8,18 @@ export type SortMode = 'hot' | 'new' | 'top'
 interface FeedToolbarProps {
   sort: SortMode
   onSortChange: (sort: SortMode) => void
+  followingOnly?: boolean
+  onFollowingOnlyChange?: (value: boolean) => void
+  showFollowingOnlyToggle?: boolean
 }
 
-export function FeedToolbar({ sort, onSortChange }: FeedToolbarProps) {
+export function FeedToolbar({
+  sort,
+  onSortChange,
+  followingOnly = false,
+  onFollowingOnlyChange,
+  showFollowingOnlyToggle = false,
+}: FeedToolbarProps) {
   const { view, setView } = useFeedViewStore()
 
   return (
@@ -23,12 +32,27 @@ export function FeedToolbar({ sort, onSortChange }: FeedToolbarProps) {
         </TabsList>
       </Tabs>
 
-      <ToggleGroup
-        type="single"
-        value={view}
-        onValueChange={(v) => { if (v) setView(v as FeedView) }}
-        className="h-8 self-end sm:self-auto"
-      >
+      <div className="flex items-center gap-2 self-end sm:self-auto">
+        {showFollowingOnlyToggle && (
+          <button
+            type="button"
+            className={`inline-flex h-7 items-center rounded-md border px-2 text-xs transition-colors ${
+              followingOnly
+                ? 'border-primary/40 bg-primary/10 text-primary'
+                : 'border-border bg-background text-muted-foreground hover:text-foreground'
+            }`}
+            onClick={() => onFollowingOnlyChange?.(!followingOnly)}
+          >
+            👥 仅关注
+          </button>
+        )}
+
+        <ToggleGroup
+          type="single"
+          value={view}
+          onValueChange={(v) => { if (v) setView(v as FeedView) }}
+          className="h-8"
+        >
         <Tooltip>
           <TooltipTrigger asChild>
             <ToggleGroupItem value="card" className="h-7 w-7 p-0 text-sm" aria-label="卡片视图">
@@ -45,7 +69,8 @@ export function FeedToolbar({ sort, onSortChange }: FeedToolbarProps) {
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">紧凑视图</TooltipContent>
         </Tooltip>
-      </ToggleGroup>
+        </ToggleGroup>
+      </div>
     </div>
   )
 }

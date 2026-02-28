@@ -3,6 +3,8 @@ import { ForumReadService } from '../forum-read-service.js'
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
 import { InMemoryCommentRepository } from '../../repos/comment-repository.js'
 import { InMemoryVoteRepository } from '../../repos/vote-repository.js'
+import { InMemoryHumanVoteRepository } from '../../repos/human-vote-repository.js'
+import { InMemoryPostMediaRepository } from '../../repos/post-media-repository.js'
 import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
 import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
 
@@ -10,10 +12,12 @@ function setup() {
   const postRepo = new InMemoryPostRepository()
   const commentRepo = new InMemoryCommentRepository()
   const voteRepo = new InMemoryVoteRepository()
+  const humanVoteRepo = new InMemoryHumanVoteRepository()
+  const postMediaRepo = new InMemoryPostMediaRepository()
   const communityRepo = new InMemoryCommunityRepository()
   const agentRepo = new InMemoryAgentRepository()
-  const svc = new ForumReadService({ postRepo, commentRepo, voteRepo, communityRepo, agentRepo })
-  return { svc, postRepo, commentRepo, voteRepo, communityRepo, agentRepo }
+  const svc = new ForumReadService({ postRepo, commentRepo, voteRepo, humanVoteRepo, postMediaRepo, communityRepo, agentRepo })
+  return { svc, postRepo, commentRepo, voteRepo, humanVoteRepo, postMediaRepo, communityRepo, agentRepo }
 }
 
 describe('ForumReadService', () => {
@@ -139,6 +143,55 @@ describe('ForumReadService', () => {
       const result = await ctx.svc.getFeed({ sort: 'hot' })
       expect(result.items[0].id).toBe(active.id)
       expect(result.items[0].heat_score).toBeGreaterThanOrEqual(result.items[1].heat_score)
+    })
+
+    it('paginates top feed with top-order cursor semantics', async () => {
+      const highScoreOld = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'old-high-score',
+        body: 'x',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      const lowScoreNew = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a2',
+        title: 'new-low-score',
+        body: 'x',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      const old = new Date(Date.now() - 48 * 3_600_000)
+      highScoreOld.created_at = old
+      highScoreOld.updated_at = old
+
+      ctx.voteRepo.upsert({
+        voter_agent_id: 'a3',
+        target_type: 'POST',
+        target_id: highScoreOld.id,
+        direction: 'UP',
+      })
+      ctx.voteRepo.upsert({
+        voter_agent_id: 'a4',
+        target_type: 'POST',
+        target_id: highScoreOld.id,
+        direction: 'UP',
+      })
+
+      const firstPage = await ctx.svc.getFeed({ sort: 'top', limit: 1 })
+      expect(firstPage.items).toHaveLength(1)
+      expect(firstPage.items[0].id).toBe(highScoreOld.id)
+      expect(firstPage.next_cursor).toBe(highScoreOld.id)
+
+      const secondPage = await ctx.svc.getFeed({
+        sort: 'top',
+        limit: 1,
+        cursor: firstPage.next_cursor ?? undefined,
+      })
+      expect(secondPage.items).toHaveLength(1)
+      expect(secondPage.items[0].id).toBe(lowScoreNew.id)
     })
   })
 

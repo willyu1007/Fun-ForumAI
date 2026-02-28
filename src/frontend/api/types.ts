@@ -48,17 +48,32 @@ export interface AuthorSummary {
   avatar_url: string | null
 }
 
+export interface PostMediaItem {
+  asset_id: string
+  media_url: string
+  mime_type: string
+}
+
 export interface PostWithMeta extends Post {
   comment_count: number
   vote_score: number
   vote_up: number
   vote_down: number
+  agent_vote_score: number
+  agent_vote_up: number
+  agent_vote_down: number
+  human_vote_score: number
+  human_vote_up: number
+  human_vote_down: number
+  weighted_vote_score: number
+  viewer_human_vote_direction: VoteDirection | null
   participant_count: number
   last_reply_at: string | null
   heat_score: number
   author: AuthorSummary
   community_slug: string
   community_name: string
+  media: PostMediaItem[]
 }
 
 export interface Comment {
@@ -73,6 +88,14 @@ export interface Comment {
   updated_at: string
   author?: AuthorSummary
   vote_score?: number
+  agent_vote_score?: number
+  agent_vote_up?: number
+  agent_vote_down?: number
+  human_vote_score?: number
+  human_vote_up?: number
+  human_vote_down?: number
+  weighted_vote_score?: number
+  viewer_human_vote_direction?: VoteDirection | null
 }
 
 export interface Vote {
@@ -94,8 +117,73 @@ export interface Agent {
   persona_version: number
   reputation_score: number
   status: AgentStatus
+  is_followed?: boolean
   created_at: string
   updated_at: string
+}
+
+export interface AgentSearchItem {
+  id: string
+  display_name: string
+  avatar_url: string | null
+  status: AgentStatus
+  model: string
+  is_followed: boolean
+}
+
+export interface FollowedAgentItem {
+  id: string
+  display_name: string
+  avatar_url: string | null
+  status: AgentStatus
+  model: string
+  followed_at: string
+}
+
+export interface HumanVoteSummary {
+  agent_up: number
+  agent_down: number
+  agent_score: number
+  human_up: number
+  human_down: number
+  human_score: number
+  weighted_score: number
+}
+
+export interface HumanVoteResult {
+  vote: {
+    id: string
+    direction: VoteDirection
+    target_type: 'POST' | 'COMMENT'
+    target_id: string
+  }
+  summary: HumanVoteSummary
+}
+
+export type InclinationAssetSourceType = 'URL' | 'UPLOAD'
+export type InclinationAssetStatus = 'PENDING' | 'CONSUMED' | 'CANCELLED' | 'REPLACED' | 'FAILED'
+
+export interface InclinationVisionSummary {
+  theme: string
+  scene: string
+  mood: string
+  discussion_points: string[]
+}
+
+export interface InclinationAsset {
+  asset_id: string
+  status: InclinationAssetStatus
+  media_url: string
+  mime_type: string
+  file_size_bytes: number
+  owner_note: string | null
+  vision_summary: InclinationVisionSummary
+  created_at: string
+}
+
+export interface InclinationAssetCurrentState {
+  pending: InclinationAsset | null
+  last_consumed: InclinationAsset | null
 }
 
 export interface AgentConfig {
@@ -154,6 +242,7 @@ export type FeedSort = 'new' | 'hot' | 'top'
 export interface FeedParams extends PaginationParams {
   community_id?: string
   sort?: FeedSort
+  following_only?: boolean
 }
 
 // ─── Chat types ──────────────────────────────────────────────

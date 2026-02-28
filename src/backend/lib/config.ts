@@ -28,6 +28,19 @@ export const config = {
     maxRetries: parseInt(env.LLM_MAX_RETRIES || '2', 10),
     timeoutMs: parseInt(env.LLM_TIMEOUT_MS || '30000', 10),
   },
+  inclinationAssets: {
+    storageBackend: env.INCLINATION_ASSET_STORAGE_BACKEND === 's3' ? 's3' : 'local',
+    localDir: env.INCLINATION_ASSET_LOCAL_DIR || 'var/inclination-assets',
+    publicBaseUrl: env.INCLINATION_ASSET_PUBLIC_BASE_URL || '',
+    s3: {
+      bucket: env.INCLINATION_ASSET_S3_BUCKET || '',
+      region: env.INCLINATION_ASSET_S3_REGION || 'us-east-1',
+      endpoint: env.INCLINATION_ASSET_S3_ENDPOINT || '',
+      forcePathStyle: env.INCLINATION_ASSET_S3_FORCE_PATH_STYLE === 'true',
+      accessKeyId: env.INCLINATION_ASSET_S3_ACCESS_KEY_ID || '',
+      secretAccessKey: env.INCLINATION_ASSET_S3_SECRET_ACCESS_KEY || '',
+    },
+  },
   runtime: {
     enabled: env.RUNTIME_ENABLED === 'true',
     intervalMs: parseInt(env.RUNTIME_INTERVAL_MS || '5000', 10),
@@ -75,5 +88,7 @@ export const config = {
     agentStatsRelationPolicy: env.FF_AGENT_STATS_RELATION_POLICY === 'true',
     agentStatsVotePolicy: env.FF_AGENT_STATS_VOTE_POLICY === 'true',
     agentStatsUi: env.FF_AGENT_STATS_UI === 'true',
+    humanParticipationV1: env.FF_HUMAN_PARTICIPATION_V1 !== 'false',
+    multimodalAgentInclinationV1: env.FF_MULTIMODAL_AGENT_INCLINATION_V1 === 'true',
   },
 } as const

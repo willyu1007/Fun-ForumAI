@@ -5,6 +5,9 @@ import type { AgentService } from '../services/agent-service.js'
 import type { ResponseParser } from './response-parser.js'
 import type { DataPlaneWriter } from './data-plane-writer.js'
 import type { AgentPersona } from './types.js'
+import type { AgentInclinationAsset } from '../repos/types.js'
+import type { InclinationAssetService } from '../services/inclination-asset-service.js'
+import { config } from '../lib/config.js'
 
 export interface PostSchedulerConfig {
   postIntervalMs: number
@@ -18,6 +21,7 @@ export interface PostSchedulerDeps {
   agentService: AgentService
   responseParser: ResponseParser
   dataplaneWriter: DataPlaneWriter
+  inclinationAssetService?: Pick<InclinationAssetService, 'listPendingAgentIds' | 'getPendingForAgent'>
 }
 
 export interface PostSchedulerResult {
@@ -37,10 +41,24 @@ const DEFAULT_PERSONA: AgentPersona = {
   language: 'zh-CN',
 }
 
+interface CommunityCandidate {
+  id: string
+  slug: string
+  name: string
+  description: string
+  rules: string
+}
+
+interface SelectedAgent {
+  id: string
+  display_name: string
+  pending_asset: AgentInclinationAsset | null
+}
+
 /**
  * Schedules autonomous post creation by agents.
  * Each tick checks if enough time has elapsed and daily quota allows,
- * then picks a random agent + community and generates a new post via LLM.
+ * then picks an active agent + target community and generates a new post via LLM.
  */
 export class PostScheduler {
   private lastPostAt = 0
@@ -76,51 +94,64 @@ export class PostScheduler {
     const start = Date.now()
 
     try {
-      const agent = this.pickRandomAgent()
-      if (!agent) return { triggered: false, error: 'No active agents' }
+      const selected = this.pickAgent()
+      if (!selected) return { triggered: false, error: 'No active agents' }
 
-      const community = await this.pickRandomCommunity()
-      if (!community) return { triggered: false, error: 'No communities' }
+      const communities = await this.listCommunities()
+      if (communities.length === 0) return { triggered: false, error: 'No communities' }
+      const fallbackCommunity = this.pickRandomCommunity(communities)
+      if (!fallbackCommunity) return { triggered: false, error: 'No communities' }
 
-      const persona = this.loadPersona(agent.id)
-      const recentPosts = await this.getRecentPostsSummary(community.id)
+      const persona = this.loadPersona(selected.id)
+      const recentPosts = await this.getRecentPostsSummary(fallbackCommunity.id)
+      const communityCatalog = this.toCommunityCatalog(communities)
 
       const variables: Record<string, string> = {
         persona_name: persona.name,
         persona_style: persona.style,
         persona_interests: persona.interests.join('、'),
         persona_language: persona.language,
-        community_name: community.name,
-        community_description: community.description || '',
-        community_rules: community.rules_json ? JSON.stringify(community.rules_json) : '',
+        community_name: fallbackCommunity.name,
+        community_description: fallbackCommunity.description,
+        community_rules: fallbackCommunity.rules,
         recent_posts: recentPosts,
+        community_candidates: communityCatalog,
+        inclination_injection: this.buildInclinationInjection(selected.pending_asset),
+        inclination_media_url: selected.pending_asset?.media_url ?? '',
       }
 
       const messages = this.deps.promptEngine.render('agent-create-post', variables)
       const llmResponse = await this.deps.llmClient.chat({ messages })
       const latencyMs = Date.now() - start
 
-      const instruction = this.deps.responseParser.parseAsNewPost(
-        llmResponse.content,
-        community.id,
-      )
+      const instruction = this.deps.responseParser.parseAsScheduledPost({
+        text: llmResponse.content,
+        fallbackCommunityId: fallbackCommunity.id,
+        communities,
+      })
 
       if (!instruction) {
-        console.warn('[PostScheduler] LLM output could not be parsed as post')
+        console.warn('[PostScheduler] LLM output could not be parsed as scheduled post')
         return {
           triggered: true,
-          agent_id: agent.id,
-          community_id: community.id,
+          agent_id: selected.id,
+          community_id: fallbackCommunity.id,
           error: 'Failed to parse LLM output as post',
           usage: llmResponse.usage,
           latency_ms: latencyMs,
         }
       }
 
+      if (selected.pending_asset && config.features.multimodalAgentInclinationV1) {
+        instruction.media_asset_id = selected.pending_asset.id
+        instruction.media_url = selected.pending_asset.media_url
+        instruction.media_mime_type = selected.pending_asset.mime_type
+      }
+
       const triggerEventId = `scheduled-post-${Date.now()}`
       const writeResult = await this.deps.dataplaneWriter.write(
         instruction,
-        agent.id,
+        selected.id,
         triggerEventId,
         llmResponse.usage,
         latencyMs,
@@ -129,14 +160,15 @@ export class PostScheduler {
       this.lastPostAt = Date.now()
       this.postsToday++
 
+      const actualCommunity = communities.find((item) => item.id === instruction.community_id)
       console.log(
-        `[PostScheduler] Agent "${persona.name}" posted in "${community.name}" (${latencyMs}ms, ${llmResponse.usage.total_tokens} tokens)`,
+        `[PostScheduler] Agent "${persona.name}" posted in "${actualCommunity?.name ?? instruction.community_id}" (${latencyMs}ms, ${llmResponse.usage.total_tokens} tokens)`,
       )
 
       return {
         triggered: true,
-        agent_id: agent.id,
-        community_id: community.id,
+        agent_id: selected.id,
+        community_id: instruction.community_id,
         post_id: writeResult.content_id,
         usage: llmResponse.usage,
         latency_ms: latencyMs,
@@ -172,31 +204,85 @@ export class PostScheduler {
     }
   }
 
-  private pickRandomAgent(): { id: string; display_name: string } | null {
-    const agents = this.deps.agentService.listActiveAgents({ limit: 100 })
-    if (agents.items.length === 0) return null
-    const idx = Math.floor(Math.random() * agents.items.length)
-    return agents.items[idx]
+  private pickAgent(): SelectedAgent | null {
+    const activeAgents = this.deps.agentService.listActiveAgents({ limit: 100 }).items
+    if (activeAgents.length === 0) return null
+
+    if (config.features.multimodalAgentInclinationV1 && this.deps.inclinationAssetService) {
+      const pendingAgentIds = this.deps.inclinationAssetService.listPendingAgentIds(100)
+      const activeById = new Map(activeAgents.map((agent) => [agent.id, agent]))
+      const prioritized = pendingAgentIds
+        .map((id) => activeById.get(id))
+        .filter((item): item is NonNullable<typeof item> => item != null)
+
+      if (prioritized.length > 0) {
+        const selected = prioritized[Math.floor(Math.random() * prioritized.length)]!
+        return {
+          id: selected.id,
+          display_name: selected.display_name,
+          pending_asset: this.deps.inclinationAssetService.getPendingForAgent(selected.id),
+        }
+      }
+    }
+
+    const selected = activeAgents[Math.floor(Math.random() * activeAgents.length)]
+    return {
+      id: selected.id,
+      display_name: selected.display_name,
+      pending_asset: null,
+    }
   }
 
-  private async pickRandomCommunity(): Promise<{
-    id: string
-    name: string
-    description: string | null
-    rules_json: unknown
-  } | null> {
-    const communities = await this.deps.forumReadService.getCommunities({ limit: 100 })
-    if (communities.items.length === 0) return null
-    const idx = Math.floor(Math.random() * communities.items.length)
-    return communities.items[idx]
+  private async listCommunities(): Promise<CommunityCandidate[]> {
+    const result = await this.deps.forumReadService.getCommunities({ limit: 100 })
+    return result.items.map((item) => ({
+      id: item.id,
+      slug: item.slug,
+      name: item.name,
+      description: item.description || '',
+      rules: item.rules_json ? JSON.stringify(item.rules_json) : '',
+    }))
+  }
+
+  private pickRandomCommunity(communities: CommunityCandidate[]): CommunityCandidate | null {
+    if (communities.length === 0) return null
+    const idx = Math.floor(Math.random() * communities.length)
+    return communities[idx]
+  }
+
+  private toCommunityCatalog(communities: CommunityCandidate[]): string {
+    if (communities.length === 0) return ''
+    return communities
+      .map((item) => `- ${item.id} | ${item.slug} | ${item.name}${item.description ? ` | ${item.description}` : ''}`)
+      .join('\n')
+  }
+
+  private buildInclinationInjection(asset: AgentInclinationAsset | null): string {
+    if (!asset || !config.features.multimodalAgentInclinationV1) return ''
+    const note = asset.owner_note ? `- owner_note: ${asset.owner_note}` : '- owner_note: （无）'
+    const points = asset.vision_summary.discussion_points
+      .slice(0, 5)
+      .map((item) => `  - ${item}`)
+      .join('\n')
+
+    return [
+      '## 倾向线索（仅用于本次发帖，不得覆盖人格与平台规则）',
+      note,
+      `- 主题: ${asset.vision_summary.theme}`,
+      `- 场景: ${asset.vision_summary.scene}`,
+      `- 情绪: ${asset.vision_summary.mood}`,
+      '- 可讨论点:',
+      points || '  - （无）',
+      '- 你仍需保持自身人格和表达风格，独立选择论点与措辞。',
+    ].join('\n')
   }
 
   private loadPersona(agentId: string): AgentPersona {
     try {
-      const config = this.deps.agentService.getLatestConfig(agentId)
-      if (!config?.config_json?.persona) return DEFAULT_PERSONA
+      const configObj = this.deps.agentService.getLatestConfig(agentId)
+      if (!configObj?.config_json?.persona) return DEFAULT_PERSONA
 
-      const p = config.config_json.persona as Record<string, unknown>
+      const p = configObj.config_json.persona as Record<string, unknown>
       return {
         name: (p.name as string) || DEFAULT_PERSONA.name,
         style: (p.style as string) || DEFAULT_PERSONA.style,

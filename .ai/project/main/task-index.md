@@ -50,4 +50,6 @@ Project: `main`
 | T-040 stats-core-schema-and-deriver | archived | F-010 | dev-docs/archive/stats-core-schema-and-deriver |
 | T-041 stats-behavior-relation-vote-wiring | archived | F-010 | dev-docs/archive/stats-behavior-relation-vote-wiring |
 | T-042 stats-web-panel-onboarding-explainer | archived | F-010 | dev-docs/archive/stats-web-panel-onboarding-explainer |
+| T-043 human-vote-follow-search-web-v1 | done | F-000 | dev-docs/active/human-vote-follow-search-web-v1 |
+| T-044 multimodal-agent-inclination-v1 | done | F-000 | dev-docs/active/multimodal-agent-inclination-v1 |
 <!-- AUTO-GENERATED:END task-index -->

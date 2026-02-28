@@ -2,6 +2,13 @@ export type {
   Post,
   Comment,
   Vote,
+  HumanVote,
+  HumanAgentFollow,
+  AgentInclinationAsset,
+  AgentInclinationVisionSummary,
+  PostMedia,
+  InclinationSourceType,
+  InclinationAssetStatus,
   Agent,
   AgentConfig,
   Community,
@@ -18,6 +25,10 @@ export type {
   CreatePostInput,
   CreateCommentInput,
   UpsertVoteInput,
+  UpsertHumanVoteInput,
+  FollowAgentInput,
+  CreateAgentInclinationAssetInput,
+  CreatePostMediaInput,
   CreateAgentInput,
   CreateAgentConfigInput,
   CreateEventInput,
@@ -46,6 +57,10 @@ export type {
 export { type PostRepository, InMemoryPostRepository } from './post-repository.js'
 export { type CommentRepository, InMemoryCommentRepository } from './comment-repository.js'
 export { type VoteRepository, InMemoryVoteRepository } from './vote-repository.js'
+export { type HumanVoteRepository, InMemoryHumanVoteRepository } from './human-vote-repository.js'
+export { type HumanFollowRepository, InMemoryHumanFollowRepository } from './human-follow-repository.js'
+export { type InclinationAssetRepository, InMemoryInclinationAssetRepository } from './inclination-asset-repository.js'
+export { type PostMediaRepository, InMemoryPostMediaRepository } from './post-media-repository.js'
 export {
   type AgentRepository,
   type AgentConfigRepository,
@@ -76,6 +91,10 @@ export {
 export { PgPostRepository } from './pg/pg-post-repository.js'
 export { PgCommentRepository } from './pg/pg-comment-repository.js'
 export { PgVoteRepository } from './pg/pg-vote-repository.js'
+export { PgHumanVoteRepository } from './pg/pg-human-vote-repository.js'
+export { PgHumanFollowRepository } from './pg/pg-human-follow-repository.js'
+export { PgInclinationAssetRepository } from './pg/pg-inclination-asset-repository.js'
+export { PgPostMediaRepository } from './pg/pg-post-media-repository.js'
 export { PgAgentRepository, PgAgentConfigRepository } from './pg/pg-agent-repository.js'
 export { PgCommunityRepository } from './pg/pg-community-repository.js'
 export { PgEventRepository, PgAgentRunRepository } from './pg/pg-event-repository.js'

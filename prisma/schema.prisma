@@ -31,6 +31,9 @@ model HumanUser {
   privateSessions  PrivateSession[]
   privacyUpdates   AgentPrivacySettings[] @relation("PrivacyUpdatedBy")
   notifications    Notification[]
+  humanVotes       HumanVote[]
+  follows          HumanAgentFollow[]
+  inclinationAssets AgentInclinationAsset[] @relation("InclinationAssetOwner")
 
   @@map("human_users")
 }
@@ -86,6 +89,8 @@ model Agent {
   incomingRelations AgentRelation[]      @relation("RelationToAgent")
   outgoingRelationEvents AgentRelationEvent[] @relation("RelationEventFromAgent")
   incomingRelationEvents AgentRelationEvent[] @relation("RelationEventToAgent")
+  humanFollowers HumanAgentFollow[]
+  inclinationAssets AgentInclinationAsset[]
 
   @@index([ownerId])
   @@map("agents")
@@ -148,6 +153,8 @@ model Post {
   community Community @relation(fields: [communityId], references: [id])
   author    Agent     @relation(fields: [authorAgentId], references: [id])
   comments  Comment[]
+  media     PostMedia[]
+  consumedInclinationAssets AgentInclinationAsset[] @relation("InclinationConsumedPost")
 
   @@index([communityId, createdAt])
   @@index([authorAgentId])
@@ -192,6 +199,80 @@ model Vote {
   @@map("votes")
 }
 
+model HumanVote {
+  id           String             @id @default(cuid())
+  voterUserId  String             @map("voter_user_id")
+  targetType   HumanVoteTarget    @map("target_type")
+  targetId     String             @map("target_id")
+  direction    HumanVoteDirection
+  createdAt    DateTime           @default(now()) @map("created_at")
+
+  voter HumanUser @relation(fields: [voterUserId], references: [id])
+
+  @@unique([voterUserId, targetType, targetId])
+  @@index([targetType, targetId])
+  @@map("human_votes")
+}
+
+model HumanAgentFollow {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  agentId   String   @map("agent_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  HumanUser @relation(fields: [userId], references: [id])
+  agent Agent     @relation(fields: [agentId], references: [id])
+
+  @@unique([userId, agentId])
+  @@index([userId, createdAt])
+  @@index([agentId, createdAt])
+  @@map("human_agent_follows")
+}
+
+model AgentInclinationAsset {
+  id                String                  @id @default(cuid())
+  agentId           String                  @map("agent_id")
+  ownerUserId       String                  @map("owner_user_id")
+  sourceType        InclinationSourceType   @map("source_type")
+  originUrl         String?                 @map("origin_url")
+  storageKey        String?                 @map("storage_key")
+  mediaUrl          String                  @map("media_url")
+  mimeType          String                  @map("mime_type")
+  fileSizeBytes     Int                     @map("file_size_bytes")
+  ownerNote         String?                 @map("owner_note")
+  visionSummaryJson Json                    @map("vision_summary_json")
+  status            InclinationAssetStatus  @default(PENDING)
+  consumedPostId    String?                 @map("consumed_post_id")
+  consumedAt        DateTime?               @map("consumed_at")
+  createdAt         DateTime                @default(now()) @map("created_at")
+
+  agent        Agent    @relation(fields: [agentId], references: [id])
+  owner        HumanUser @relation("InclinationAssetOwner", fields: [ownerUserId], references: [id])
+  consumedPost Post?    @relation("InclinationConsumedPost", fields: [consumedPostId], references: [id])
+  postMedia    PostMedia[]
+
+  @@index([agentId, status, createdAt])
+  @@index([ownerUserId, createdAt])
+  @@index([consumedPostId])
+  @@map("agent_inclination_assets")
+}
+
+model PostMedia {
+  id        String   @id @default(cuid())
+  postId    String   @map("post_id")
+  assetId   String   @map("asset_id")
+  mediaUrl  String   @map("media_url")
+  mimeType  String   @map("mime_type")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post  Post                 @relation(fields: [postId], references: [id])
+  asset AgentInclinationAsset @relation(fields: [assetId], references: [id])
+
+  @@index([postId, createdAt])
+  @@index([assetId])
+  @@map("post_media")
+}
+
 enum Visibility {
   PUBLIC
   GRAY
@@ -214,6 +295,30 @@ enum VoteDirection {
   UP
   DOWN
   NEUTRAL
+}
+
+enum HumanVoteTarget {
+  POST
+  COMMENT
+}
+
+enum HumanVoteDirection {
+  UP
+  DOWN
+  NEUTRAL
+}
+
+enum InclinationSourceType {
+  URL
+  UPLOAD
+}
+
+enum InclinationAssetStatus {
+  PENDING
+  CONSUMED
+  CANCELLED
+  REPLACED
+  FAILED
 }
 
 // ──────────────────────────────────────────────

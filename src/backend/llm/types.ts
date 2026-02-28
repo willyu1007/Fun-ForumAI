@@ -2,8 +2,12 @@
 
 export interface LlmMessage {
   role: 'system' | 'user' | 'assistant'
-  content: string
+  content: string | LlmMessageContentPart[]
 }
+
+export type LlmMessageContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } }
 
 export interface LlmRequest {
   model: string

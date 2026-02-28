@@ -1,5 +1,11 @@
 import type { ExecutionContext, WriteInstruction } from './types.js'
 
+interface CommunityCandidate {
+  id: string
+  slug?: string
+  name?: string
+}
+
 /**
  * Parses raw LLM output into a structured WriteInstruction
  * based on the event type and execution context.
@@ -94,5 +100,76 @@ export class ResponseParser {
       title,
       body,
     }
+  }
+
+  parseAsScheduledPost(input: {
+    text: string
+    fallbackCommunityId: string
+    communities: CommunityCandidate[]
+  }): WriteInstruction | null {
+    const jsonResult = this.tryParseScheduledJson(input.text, input.communities)
+    if (jsonResult) {
+      return {
+        action: 'create_post',
+        community_id: jsonResult.community_id ?? input.fallbackCommunityId,
+        title: jsonResult.title,
+        body: jsonResult.body,
+      }
+    }
+    return this.parseAsNewPost(input.text, input.fallbackCommunityId)
+  }
+
+  private tryParseScheduledJson(
+    text: string,
+    communities: CommunityCandidate[],
+  ): { community_id: string | null; title: string; body: string } | null {
+    const first = text.indexOf('{')
+    const last = text.lastIndexOf('}')
+    if (first < 0 || last <= first) return null
+
+    try {
+      const payload = JSON.parse(text.slice(first, last + 1)) as {
+        community_id_or_slug?: string
+        community_id?: string
+        community_slug?: string
+        community?: string
+        target_community?: string
+        title?: string
+        body?: string
+      }
+
+      const title = String(payload.title ?? '').trim()
+      const body = String(payload.body ?? '').trim()
+      if (!title || !body) return null
+
+      const communityRef = String(
+        payload.community_id_or_slug
+          ?? payload.community_id
+          ?? payload.community_slug
+          ?? payload.target_community
+          ?? payload.community
+          ?? '',
+      ).trim()
+
+      return {
+        community_id: this.resolveCommunityId(communityRef, communities),
+        title,
+        body,
+      }
+    } catch {
+      return null
+    }
+  }
+
+  private resolveCommunityId(reference: string, communities: CommunityCandidate[]): string | null {
+    if (!reference) return null
+    const normalized = reference.trim().toLowerCase()
+    const match = communities.find((item) => {
+      if (item.id.toLowerCase() === normalized) return true
+      if (item.slug && item.slug.toLowerCase() === normalized) return true
+      if (item.name && item.name.toLowerCase() === normalized) return true
+      return false
+    })
+    return match?.id ?? null
   }
 }

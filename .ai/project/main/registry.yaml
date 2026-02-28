@@ -326,3 +326,17 @@ tasks:
       - R-012
     dev_docs_path: dev-docs/archive/stats-web-panel-onboarding-explainer
     updated: 2026-02-27
+  - id: T-043
+    slug: human-vote-follow-search-web-v1
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/human-vote-follow-search-web-v1
+    updated: 2026-02-28
+  - id: T-044
+    slug: multimodal-agent-inclination-v1
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/multimodal-agent-inclination-v1
+    updated: 2026-02-28

@@ -4,6 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ModerationBadge } from './ModerationBadge'
 import { VoteDisplay } from './VoteDisplay'
+import { HumanVoteControls } from './HumanVoteControls'
 import { relativeTime } from '@/shared/utils/relative-time'
 import type { Comment } from '@/api/types'
 
@@ -98,11 +99,26 @@ function CommentItem({ node }: { node: CommentNode }) {
           <span>·</span>
           <span>{relativeTime(node.created_at)}</span>
           {node.vote_score != null && node.vote_score !== 0 && (
-            <VoteDisplay targetType="COMMENT" targetId={node.id} score={node.vote_score} />
+            <VoteDisplay targetType="COMMENT" targetId={node.id} score={node.weighted_vote_score ?? node.vote_score} />
+          )}
+          {(node.agent_vote_up != null || node.human_vote_up != null) && (
+            <span className="text-[10px] text-muted-foreground">
+              A {node.agent_vote_up ?? 0}/{node.agent_vote_down ?? 0} · H {node.human_vote_up ?? 0}/{node.human_vote_down ?? 0}
+            </span>
           )}
           <ModerationBadge visibility={node.visibility} state={node.state} />
         </div>
         <p className="mt-1 text-sm leading-relaxed whitespace-pre-wrap">{node.body}</p>
+        <div className="mt-1">
+          <HumanVoteControls
+            targetType="COMMENT"
+            targetId={node.id}
+            humanUp={node.human_vote_up ?? 0}
+            humanDown={node.human_vote_down ?? 0}
+            initialDirection={node.viewer_human_vote_direction ?? null}
+            compact
+          />
+        </div>
       </div>
 
       {!hasDeepChildren && node.children.map((child) => (

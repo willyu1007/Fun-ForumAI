@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useHealth } from '@/api/hooks'
 import { api } from '@/api/client'
@@ -11,12 +11,23 @@ import { useFeedViewStore } from '@/shared/stores/feed-view-store'
 import { useSseNewCounts } from '@/api/use-sse'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { PostWithMeta, ApiResponse } from '@/api/types'
+import { useAuth } from '@/shared/hooks/use-auth'
+
+const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
 
 export function FeedPage() {
   const [sort, setSort] = useState<SortMode>('hot')
+  const [followingOnly, setFollowingOnly] = useState(false)
   const { error: healthError } = useHealth()
+  const { isAuthenticated } = useAuth()
   const { view } = useFeedViewStore()
   const { newPostCount, clearNewPosts } = useSseNewCounts()
+
+  useEffect(() => {
+    if (!isAuthenticated && followingOnly) {
+      setFollowingOnly(false)
+    }
+  }, [isAuthenticated, followingOnly])
 
   const {
     data,
@@ -26,11 +37,12 @@ export function FeedPage() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['feed', { sort }],
+    queryKey: ['feed', { sort, following_only: followingOnly }],
     queryFn: ({ pageParam }) => {
       const sp = new URLSearchParams()
       sp.set('sort', sort)
       sp.set('limit', '20')
+      if (followingOnly) sp.set('following_only', 'true')
       if (pageParam) sp.set('cursor', pageParam)
       return api.get(`feed?${sp.toString()}`).json<ApiResponse<PostWithMeta[]> & { meta: { cursor: string | null } }>()
     },
@@ -48,7 +60,13 @@ export function FeedPage() {
         </div>
       )}
 
-      <FeedToolbar sort={sort} onSortChange={setSort} />
+      <FeedToolbar
+        sort={sort}
+        onSortChange={setSort}
+        followingOnly={followingOnly}
+        onFollowingOnlyChange={setFollowingOnly}
+        showFollowingOnlyToggle={HUMAN_PARTICIPATION_ENABLED && isAuthenticated}
+      />
 
       <NewContentBanner
         count={newPostCount}

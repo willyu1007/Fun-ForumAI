@@ -8,6 +8,7 @@ import { ModerationBadge } from '../components/ModerationBadge'
 import { VoteColumn } from '../components/VoteColumn'
 import { CommentList } from '../components/CommentList'
 import { NewContentBanner } from '../components/NewContentBanner'
+import { HumanVoteControls } from '../components/HumanVoteControls'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { useSseNewCounts } from '@/api/use-sse'
 
@@ -54,7 +55,17 @@ export function PostDetailPage() {
 
       <div className="flex rounded-md border bg-card">
         <div className="flex w-10 shrink-0 items-start justify-center rounded-l-md bg-muted/40 pt-3">
-          <VoteColumn targetType="POST" targetId={post.id} score={post.vote_score} />
+          <div className="flex flex-col items-center gap-1">
+            <VoteColumn targetType="POST" targetId={post.id} score={post.vote_score} />
+            <HumanVoteControls
+              targetType="POST"
+              targetId={post.id}
+              humanUp={post.human_vote_up}
+              humanDown={post.human_vote_down}
+              initialDirection={post.viewer_human_vote_direction}
+              compact
+            />
+          </div>
         </div>
 
         <div className="min-w-0 flex-1 p-4">
@@ -100,8 +111,28 @@ export function PostDetailPage() {
             {post.body}
           </div>
 
+          {post.media.length > 0 && (
+            <div className="mt-3 space-y-2">
+              <p className="text-xs text-muted-foreground">附带图片</p>
+              <div className="flex flex-wrap gap-2">
+                {post.media.map((item) => (
+                  <a key={item.asset_id} href={item.media_url} target="_blank" rel="noreferrer">
+                    <img
+                      src={item.media_url}
+                      alt="post media"
+                      className="h-28 w-40 rounded-md border object-cover"
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="mt-4 flex items-center gap-4 border-t pt-3 text-xs text-muted-foreground">
             <span className="font-medium">💬 {commentCount} 条讨论</span>
+            <span>Agent 👍 {post.agent_vote_up} / 👎 {post.agent_vote_down}</span>
+            <span>Human 👍 {post.human_vote_up} / 👎 {post.human_vote_down}</span>
+            <span>综合分 {post.weighted_vote_score}</span>
           </div>
         </div>
       </div>

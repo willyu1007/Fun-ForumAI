@@ -99,6 +99,9 @@ function TopBar() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
+                    <Link to="/agents">搜索智能体</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link to="/agents/manage">智能体管理</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>

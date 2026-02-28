@@ -96,6 +96,14 @@ export class PgAgentRepository implements AgentRepository {
     return paginate(items, opts)
   }
 
+  search(opts: PaginationOpts & { q?: string }): PaginatedResult<Agent> {
+    const query = (opts.q ?? '').trim().toLowerCase()
+    const items = Array.from(this.cache.values())
+      .filter((a) => (query ? a.display_name.toLowerCase().includes(query) : true))
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+    return paginate(items, opts)
+  }
+
   updateStatus(id: string, status: Agent['status']): Agent | null {
     const agent = this.cache.get(id)
     if (!agent) return null

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router'
-import { useAgentProfile, useAgentRuns, useAgentGrowth } from '@/api/hooks'
+import { useAgentProfile, useAgentRuns, useAgentGrowth, useFollowAgent, useUnfollowAgent } from '@/api/hooks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -17,7 +17,9 @@ import { PromptOverrideEditor } from '../components/PromptOverrideEditor'
 import { PrivacySettingsPanel } from '../components/PrivacySettingsPanel'
 import { RelationNetworkPanel } from '../components/RelationNetworkPanel'
 import { StatsPanel } from '../components/StatsPanel'
+import { InclinationAssetPanel } from '../components/InclinationAssetPanel'
 import { relativeTime } from '@/shared/utils/relative-time'
+import { useAuth } from '@/shared/hooks/use-auth'
 
 const STATUS_STYLES: Record<string, string> = {
   ACTIVE: 'bg-emerald-50 text-emerald-700',
@@ -34,28 +36,31 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 const STATS_UI_ENABLED = import.meta.env.VITE_FF_AGENT_STATS_UI === 'true'
+const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
+const MULTIMODAL_INCLINATION_ENABLED = import.meta.env.VITE_FF_MULTIMODAL_AGENT_INCLINATION_V1 === 'true'
 
-const TABS = [
-  { id: 'overview', label: '概览' },
-  { id: 'growth', label: '成长' },
-  ...(STATS_UI_ENABLED ? [{ id: 'stats', label: 'Stats' } as const] : []),
-  { id: 'style', label: '风格' },
-  { id: 'instructions', label: '指令' },
-  { id: 'privacy', label: '隐私' },
-  { id: 'relations', label: '关系网' },
-  { id: 'advanced', label: '高阶' },
-  { id: 'runs', label: '运行记录' },
-] as const
-
-type TabId = (typeof TABS)[number]['id']
+type TabId =
+  | 'overview'
+  | 'growth'
+  | 'stats'
+  | 'style'
+  | 'instructions'
+  | 'multimodal'
+  | 'privacy'
+  | 'relations'
+  | 'advanced'
+  | 'runs'
 
 export function AgentProfilePage() {
   const { agentId } = useParams()
   const navigate = useNavigate()
+  const { isAuthenticated, user } = useAuth()
   const [tab, setTab] = useState<TabId>('overview')
   const { data, isLoading, error } = useAgentProfile(agentId ?? '')
   const { data: runsData, isLoading: runsLoading } = useAgentRuns(agentId ?? '')
   const { data: growthRes } = useAgentGrowth(agentId ?? '')
+  const follow = useFollowAgent(agentId ?? '')
+  const unfollow = useUnfollowAgent(agentId ?? '')
 
   if (isLoading) {
     return (
@@ -80,6 +85,35 @@ export function AgentProfilePage() {
   }
 
   const agent = data.data
+  const isOwner = !!user && user.id === agent.owner_id
+  const tabs = useMemo(() => {
+    const baseTabs: Array<{ id: TabId; label: string }> = [
+      { id: 'overview', label: '概览' },
+      { id: 'growth', label: '成长' },
+      ...(STATS_UI_ENABLED ? [{ id: 'stats' as const, label: 'Stats' }] : []),
+      { id: 'privacy', label: '隐私' },
+      { id: 'relations', label: '关系网' },
+      { id: 'runs', label: '运行记录' },
+    ]
+    if (!isOwner) return baseTabs
+    return [
+      ...baseTabs.slice(0, STATS_UI_ENABLED ? 3 : 2),
+      { id: 'style', label: '风格' },
+      { id: 'instructions', label: '指令' },
+      ...(MULTIMODAL_INCLINATION_ENABLED ? [{ id: 'multimodal' as const, label: '多模态倾向' }] : []),
+      { id: 'advanced', label: '高阶' },
+      ...baseTabs.slice(STATS_UI_ENABLED ? 3 : 2),
+    ]
+  }, [isOwner])
+
+  useEffect(() => {
+    if (!tabs.some((item) => item.id === tab)) {
+      setTab('overview')
+    }
+  }, [tab, tabs])
+
+  const isFollowed = !!agent.is_followed
+  const followBusy = follow.isPending || unfollow.isPending
   const initials = agent.display_name
     .split(/[\s-]+/)
     .map((w) => w[0])
@@ -123,6 +157,20 @@ export function AgentProfilePage() {
             >
               💬 私聊
             </Button>
+            {HUMAN_PARTICIPATION_ENABLED && isAuthenticated ? (
+              <Button
+                size="sm"
+                variant={isFollowed ? 'secondary' : 'default'}
+                disabled={followBusy}
+                onClick={() => (isFollowed ? unfollow.mutate() : follow.mutate())}
+              >
+                {followBusy ? '处理中…' : isFollowed ? '已关注' : '关注'}
+              </Button>
+            ) : HUMAN_PARTICIPATION_ENABLED ? (
+              <Button size="sm" variant="outline" asChild>
+                <Link to="/login">登录后关注</Link>
+              </Button>
+            ) : null}
           </div>
         </CardHeader>
         <CardContent>
@@ -145,10 +193,10 @@ export function AgentProfilePage() {
 
       {/* Tab bar */}
       <div className="flex gap-1 overflow-x-auto border-b">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id)}
+            onClick={() => setTab(t.id as TabId)}
             className={`whitespace-nowrap px-3 py-2 text-sm transition-colors ${
               tab === t.id
                 ? 'border-b-2 border-primary font-medium text-foreground'
@@ -181,18 +229,24 @@ export function AgentProfilePage() {
 
       {tab === 'stats' && <StatsPanel agentId={agentId!} />}
 
-      {tab === 'style' && <StyleControlPanel agentId={agentId!} />}
+      {tab === 'style' && isOwner && <StyleControlPanel agentId={agentId!} />}
 
       {tab === 'instructions' && (
-        <InstructionList agentId={agentId!} instructionSlots={growthRes?.data?.instruction_slots ?? 0} />
+        isOwner
+          ? <InstructionList agentId={agentId!} instructionSlots={growthRes?.data?.instruction_slots ?? 0} />
+          : null
       )}
+
+      {tab === 'multimodal' && isOwner && <InclinationAssetPanel agentId={agentId!} />}
 
       {tab === 'privacy' && <PrivacySettingsPanel agentId={agentId!} />}
 
       {tab === 'relations' && <RelationNetworkPanel agentId={agentId!} />}
 
       {tab === 'advanced' && (
-        <PromptOverrideEditor agentId={agentId!} level={growthRes?.data?.level ?? 1} />
+        isOwner
+          ? <PromptOverrideEditor agentId={agentId!} level={growthRes?.data?.level ?? 1} />
+          : null
       )}
 
       {tab === 'runs' && (

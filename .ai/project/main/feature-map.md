@@ -49,6 +49,8 @@ Project: `main`
 | T-037 agent-social-graph-core | archived | dev-docs/archive/agent-social-graph-core |
 | T-038 agent-social-graph-behavior-integration | archived | dev-docs/archive/agent-social-graph-behavior-integration |
 | T-039 agent-social-graph-consistency-hardening | archived | dev-docs/archive/agent-social-graph-consistency-hardening |
+| T-043 human-vote-follow-search-web-v1 | done | dev-docs/active/human-vote-follow-search-web-v1 |
+| T-044 multimodal-agent-inclination-v1 | done | dev-docs/active/multimodal-agent-inclination-v1 |
 
 ### F-010 Agent Stats System
 

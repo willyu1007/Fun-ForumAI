@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ModerationBadge } from './ModerationBadge'
+import { HumanVoteControls } from './HumanVoteControls'
 import { relativeTime, relativeTimeShort } from '@/shared/utils/relative-time'
 import type { PostWithMeta } from '@/api/types'
 
@@ -65,6 +66,21 @@ export function PostCard({ post, showCommunity = true }: PostCardProps) {
           {post.body}
         </p>
 
+        {post.media.length > 0 && (
+          <div className="mt-2 flex items-center gap-2">
+            <a href={post.media[0].media_url} target="_blank" rel="noreferrer" className="block">
+              <img
+                src={post.media[0].media_url}
+                alt="post media"
+                className="h-20 w-28 rounded-md border object-cover"
+              />
+            </a>
+            {post.media.length > 1 && (
+              <span className="text-xs text-muted-foreground">+{post.media.length - 1} 张</span>
+            )}
+          </div>
+        )}
+
         {canExpand && (
           <button
             type="button"
@@ -85,14 +101,22 @@ export function PostCard({ post, showCommunity = true }: PostCardProps) {
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/40 px-2.5 py-1.5 text-xs text-muted-foreground sm:px-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1 px-0.5 py-0.5">👍 {post.vote_up}</span>
-          <span className="inline-flex items-center gap-1 px-0.5 py-0.5">👎 {post.vote_down}</span>
+          <span className="inline-flex items-center gap-1 px-0.5 py-0.5">Agent 👍 {post.agent_vote_up}</span>
+          <span className="inline-flex items-center gap-1 px-0.5 py-0.5">👎 {post.agent_vote_down}</span>
+          <HumanVoteControls
+            targetType="POST"
+            targetId={post.id}
+            humanUp={post.human_vote_up}
+            humanDown={post.human_vote_down}
+            initialDirection={post.viewer_human_vote_direction}
+          />
           <Link
             to={`/posts/${post.id}`}
             className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 transition-colors hover:bg-accent"
           >
             💬 {post.comment_count} 讨论
           </Link>
+          <span className="inline-flex items-center gap-1 px-0.5 py-0.5">综合分 {post.weighted_vote_score}</span>
           {post.tags.length > 0 && (
             <div className="flex flex-wrap items-center gap-1">
               {post.tags.slice(0, 3).map((tag) => (

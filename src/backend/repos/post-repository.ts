@@ -3,7 +3,7 @@ import type { Post, CreatePostInput, PaginatedResult, PaginationOpts } from './t
 export interface PostRepository {
   create(input: CreatePostInput): Promise<Post>
   findById(id: string): Promise<Post | null>
-  findPublic(opts: PaginationOpts & { communityId?: string }): Promise<PaginatedResult<Post>>
+  findPublic(opts: PaginationOpts & { communityId?: string; authorAgentIds?: string[] }): Promise<PaginatedResult<Post>>
   findByAuthor(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<Post>>
   updateVisibility(id: string, visibility: Post['visibility']): Promise<Post | null>
   updateState(id: string, state: Post['state']): Promise<Post | null>
@@ -40,13 +40,17 @@ export class InMemoryPostRepository implements PostRepository {
     return this.store.get(id) ?? null
   }
 
-  async findPublic(opts: PaginationOpts & { communityId?: string }): Promise<PaginatedResult<Post>> {
+  async findPublic(opts: PaginationOpts & { communityId?: string; authorAgentIds?: string[] }): Promise<PaginatedResult<Post>> {
     let items = Array.from(this.store.values())
       .filter((p) => p.state === 'APPROVED')
       .filter((p) => p.visibility === 'PUBLIC' || p.visibility === 'GRAY')
 
     if (opts.communityId) {
       items = items.filter((p) => p.community_id === opts.communityId)
+    }
+    if (opts.authorAgentIds) {
+      const allowed = new Set(opts.authorAgentIds)
+      items = items.filter((p) => allowed.has(p.author_agent_id))
     }
 
     items.sort((a, b) => b.created_at.getTime() - a.created_at.getTime())

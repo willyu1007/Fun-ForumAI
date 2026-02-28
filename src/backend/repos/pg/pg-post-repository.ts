@@ -57,13 +57,17 @@ export class PgPostRepository implements PostRepository {
   }
 
   async findPublic(
-    opts: PaginationOpts & { communityId?: string },
+    opts: PaginationOpts & { communityId?: string; authorAgentIds?: string[] },
   ): Promise<PaginatedResult<Post>> {
+    if (opts.authorAgentIds && opts.authorAgentIds.length === 0) {
+      return { items: [], next_cursor: null }
+    }
     const rows = await this.prisma.post.findMany({
       where: {
         state: 'APPROVED',
         visibility: { in: ['PUBLIC', 'GRAY'] },
         ...(opts.communityId ? { communityId: opts.communityId } : {}),
+        ...(opts.authorAgentIds ? { authorAgentId: { in: opts.authorAgentIds } } : {}),
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     })
