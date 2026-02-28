@@ -82,7 +82,7 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
         allocation: normalizedDraft,
         version: statsData.stats.version,
         confirm_no_respec: true,
-        idempotency_key: `stats-ui-${agentId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        idempotency_key: `stats-ui-${agentId}-${crypto.randomUUID()}`,
       },
       {
         onSuccess: () => {

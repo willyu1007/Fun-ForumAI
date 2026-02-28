@@ -41,6 +41,11 @@ export interface RelationRepository {
     states: RelationState[],
     limit: number,
   ): Promise<AgentRelation[]>
+
+  adminUnblockTx?(
+    eventInput: CreateAgentRelationEventInput,
+    relationInput: UpsertAgentRelationInput,
+  ): Promise<{ event: AgentRelationEvent; relation: AgentRelation }>
 }
 
 let counter = 0

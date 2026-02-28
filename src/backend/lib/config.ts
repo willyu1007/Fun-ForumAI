@@ -50,6 +50,19 @@ export const config = {
     redisChannel: env.SSE_REDIS_CHANNEL || 'llm-forum:sse:broadcast',
     redisConnectTimeoutMs: parseInt(env.SSE_REDIS_CONNECT_TIMEOUT_MS || '5000', 10),
   },
+  publicObservation: {
+    forumCooldownMs: parseInt(env.PO_FORUM_COOLDOWN_MS || String(6 * 3600_000), 10),
+    roomCooldownMs: parseInt(env.PO_ROOM_COOLDOWN_MS || String(3 * 3600_000), 10),
+    forumCommentThreshold: parseInt(env.PO_FORUM_COMMENT_THRESHOLD || '12', 10),
+    forumParticipantThreshold: parseInt(env.PO_FORUM_PARTICIPANT_THRESHOLD || '4', 10),
+    forumHeatThreshold: parseInt(env.PO_FORUM_HEAT_THRESHOLD || '30', 10),
+    roomMessageThreshold: parseInt(env.PO_ROOM_MSG_THRESHOLD || '80', 10),
+    roomActiveMinThreshold: parseInt(env.PO_ROOM_ACTIVE_MIN_THRESHOLD || '30', 10),
+    roomActiveMinMsgThreshold: parseInt(env.PO_ROOM_ACTIVE_MIN_MSG_THRESHOLD || '40', 10),
+  },
+  controversy: {
+    keywords: (env.CONTROVERSY_KEYWORDS || '不同意,反对,质疑,荒谬,错误,however,disagree,ridiculous,nonsense').split(','),
+  },
   features: {
     layerStackV2: env.FF_LAYER_STACK_V2 === 'true',
     nurturePipelineV2: env.FF_NURTURE_PIPELINE_V2 === 'true',

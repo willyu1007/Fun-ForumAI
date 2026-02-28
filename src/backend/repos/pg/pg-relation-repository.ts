@@ -151,32 +151,30 @@ export class PgRelationRepository implements RelationRepository {
     agentId: string,
     opts: PaginationOpts,
   ): Promise<PaginatedResult<AgentRelation>> {
-    const outgoing = await this.prisma.agentRelation.findMany({
-      where: {
-        fromAgentId: agentId,
-        state: 'effective',
-      },
-      orderBy: { updatedAt: 'desc' },
-    })
+    const take = opts.limit + 1
+    const offset = opts.cursor ? 1 : 0
 
-    const toAgentIds = outgoing.map((r) => r.toAgentId)
-    if (toAgentIds.length === 0) {
-      return { items: [], next_cursor: null }
+    const rows = await this.prisma.$queryRaw<PrismaRelation[]>`
+      SELECT r1.*
+      FROM agent_relations r1
+      JOIN agent_relations r2
+        ON r1."to_agent_id" = r2."from_agent_id"
+        AND r1."from_agent_id" = r2."to_agent_id"
+      WHERE r1."from_agent_id" = ${agentId}
+        AND r1.state = 'effective'
+        AND r2.state = 'effective'
+      ORDER BY r1."updated_at" DESC
+      LIMIT ${take}
+      OFFSET ${offset}
+    `
+
+    const mapped = rows.map((row) => this.rawRelationToDomain(row))
+    const hasMore = mapped.length > opts.limit
+    const page = hasMore ? mapped.slice(0, opts.limit) : mapped
+    return {
+      items: page,
+      next_cursor: hasMore ? page[page.length - 1].id : null,
     }
-
-    const reverse = await this.prisma.agentRelation.findMany({
-      where: {
-        fromAgentId: { in: toAgentIds },
-        toAgentId: agentId,
-        state: 'effective',
-      },
-      select: { fromAgentId: true },
-    })
-    const reverseSet = new Set(reverse.map((row) => row.fromAgentId))
-
-    const mutual = outgoing.filter((row) => reverseSet.has(row.toAgentId)).map((row) => this.relationToDomain(row))
-
-    return paginateInMemory(mutual, opts)
   }
 
   async countOutgoingByStates(agentId: string, states: RelationState[]): Promise<number> {
@@ -233,6 +231,40 @@ export class PgRelationRepository implements RelationRepository {
     return rows.map((row) => this.eventToDomain(row))
   }
 
+  async adminUnblockTx(
+    eventInput: CreateAgentRelationEventInput,
+    relationInput: UpsertAgentRelationInput,
+  ): Promise<{ event: AgentRelationEvent; relation: AgentRelation }> {
+    const [eventRow, relationRow] = await this.prisma.$transaction([
+      this.prisma.agentRelationEvent.create({
+        data: {
+          fromAgentId: eventInput.from_agent_id,
+          toAgentId: eventInput.to_agent_id,
+          eventType: eventInput.event_type,
+          severity: eventInput.severity ?? 'info',
+          sourceType: eventInput.source_type,
+          sourceRefId: eventInput.source_ref_id ?? null,
+          idempotencyKey: eventInput.idempotency_key,
+          payload: (eventInput.payload ?? undefined) as Prisma.InputJsonValue | undefined,
+        },
+      }),
+      this.prisma.agentRelation.update({
+        where: {
+          fromAgentId_toAgentId: {
+            fromAgentId: relationInput.from_agent_id,
+            toAgentId: relationInput.to_agent_id,
+          },
+        },
+        data: buildRelationUpdate(relationInput, true),
+      }),
+    ])
+
+    return {
+      event: this.eventToDomain(eventRow),
+      relation: this.relationToDomain(relationRow),
+    }
+  }
+
   async listRelationsByStates(states: RelationState[], limit: number): Promise<AgentRelation[]> {
     const rows = await this.prisma.agentRelation.findMany({
       where: {
@@ -243,6 +275,31 @@ export class PgRelationRepository implements RelationRepository {
     })
 
     return rows.map((row) => this.relationToDomain(row))
+  }
+
+  private rawRelationToDomain(row: Record<string, unknown>): AgentRelation {
+    return {
+      id: row.id as string,
+      from_agent_id: row.from_agent_id as string,
+      to_agent_id: row.to_agent_id as string,
+      state: row.state as RelationState,
+      relation_score: row.relation_score as number,
+      interaction_score: row.interaction_score as number,
+      persona_score: row.persona_score as number,
+      safety_score: row.safety_score as number,
+      shadow_started_at: row.shadow_started_at as Date | null,
+      effective_at: row.effective_at as Date | null,
+      inactive_at: row.inactive_at as Date | null,
+      blocked_at: row.blocked_at as Date | null,
+      below_threshold_since: row.below_threshold_since as Date | null,
+      last_signal_at: row.last_signal_at as Date | null,
+      last_interaction_at: row.last_interaction_at as Date | null,
+      last_evaluated_at: row.last_evaluated_at as Date | null,
+      last_state_changed_at: row.last_state_changed_at as Date | null,
+      version: row.version as number,
+      created_at: row.created_at as Date,
+      updated_at: row.updated_at as Date,
+    }
   }
 
   private relationToDomain(row: PrismaRelation): AgentRelation {
@@ -327,24 +384,6 @@ function paginate(items: AgentRelation[], limit: number): PaginatedResult<AgentR
     items: page,
     next_cursor: hasMore ? page[page.length - 1].id : null,
   }
-}
-
-function paginateInMemory(
-  items: AgentRelation[],
-  opts: PaginationOpts,
-): PaginatedResult<AgentRelation> {
-  let start = 0
-  if (opts.cursor) {
-    const idx = items.findIndex((item) => item.id === opts.cursor)
-    start = idx >= 0 ? idx + 1 : 0
-  }
-
-  const page = items.slice(start, start + opts.limit)
-  const next_cursor = page.length === opts.limit && start + opts.limit < items.length
-    ? page[page.length - 1].id
-    : null
-
-  return { items: page, next_cursor }
 }
 
 function toJsonObjectOrNull(value: unknown): Record<string, unknown> | null {

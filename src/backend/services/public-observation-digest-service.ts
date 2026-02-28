@@ -4,9 +4,7 @@ import type { ForumReadService } from './forum-read-service.js'
 import type { RoomRepository } from '../repos/room-repository.js'
 import type { MessageRepository } from '../repos/message-repository.js'
 import type { MemoryService } from './memory-service.js'
-
-const FORUM_COOLDOWN_MS = 6 * 60 * 60 * 1000
-const ROOM_COOLDOWN_MS = 3 * 60 * 60 * 1000
+import { config } from '../lib/config.js'
 
 export interface PublicObservationDigestServiceDeps {
   llmClient: LlmClient
@@ -29,20 +27,21 @@ export class PublicObservationDigestService {
       const post = await this.deps.forumReadService.getPost(postId)
       const comments = await this.deps.forumReadService.getComments(postId, { limit: 120 })
 
+      const po = config.publicObservation
       const shouldDigest =
-        comments.items.length >= 12 ||
-        post.participant_count >= 4 ||
-        post.heat_score >= 30
+        comments.items.length >= po.forumCommentThreshold ||
+        post.participant_count >= po.forumParticipantThreshold ||
+        post.heat_score >= po.forumHeatThreshold
 
       if (!shouldDigest) return
 
       if (!await this.shouldProceedByEventDedup(agentId, event.id)) return
-      if (!await this.shouldProceedByCooldown(agentId, 'post', postId, FORUM_COOLDOWN_MS)) return
+      if (!await this.shouldProceedByCooldown(agentId, 'post', postId, po.forumCooldownMs)) return
 
       const summary = await this.summarizeForum(post.title, post.body, comments.items.map((c) => c.body))
 
       // Re-check cooldown before write to avoid TOCTOU during long LLM calls.
-      if (!await this.shouldProceedByCooldown(agentId, 'post', postId, FORUM_COOLDOWN_MS)) return
+      if (!await this.shouldProceedByCooldown(agentId, 'post', postId, po.forumCooldownMs)) return
 
       await this.deps.memoryService.createPublicObservationMemory({
         agent_id: agentId,
@@ -69,13 +68,14 @@ export class PublicObservationDigestService {
       const room = await this.deps.roomRepo.findById(input.roomId)
       if (!room) return
 
+      const po = config.publicObservation
       const messageCount = await this.deps.messageRepo.countByRoom(input.roomId)
       const activeMinutes = Math.max(0, (Date.now() - room.created_at.getTime()) / 60_000)
-      const shouldDigest = messageCount >= 80 || (activeMinutes >= 30 && messageCount >= 40)
+      const shouldDigest = messageCount >= po.roomMessageThreshold || (activeMinutes >= po.roomActiveMinThreshold && messageCount >= po.roomActiveMinMsgThreshold)
       if (!shouldDigest) return
 
       if (!await this.shouldProceedByEventDedup(input.authorAgentId, input.messageId)) return
-      if (!await this.shouldProceedByCooldown(input.authorAgentId, 'room', input.roomId, ROOM_COOLDOWN_MS)) return
+      if (!await this.shouldProceedByCooldown(input.authorAgentId, 'room', input.roomId, po.roomCooldownMs)) return
 
       const messages = await this.deps.messageRepo.getLatestMessages(input.roomId, 80)
       const summary = await this.summarizeRoom(
@@ -85,7 +85,7 @@ export class PublicObservationDigestService {
       )
 
       // Re-check cooldown before write to avoid TOCTOU during long LLM calls.
-      if (!await this.shouldProceedByCooldown(input.authorAgentId, 'room', input.roomId, ROOM_COOLDOWN_MS)) return
+      if (!await this.shouldProceedByCooldown(input.authorAgentId, 'room', input.roomId, po.roomCooldownMs)) return
 
       await this.deps.memoryService.createPublicObservationMemory({
         agent_id: input.authorAgentId,

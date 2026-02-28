@@ -68,19 +68,29 @@ export class NurtureOrchestrator {
   }
 
   async reconcileActiveAgents(limit = 1000): Promise<{ scanned: number; reconciled: number }> {
-    const agents = this.deps.agentRepo.findActive({ limit })
     let reconciled = 0
+    let scanned = 0
+    let cursor: string | undefined
 
-    for (const agent of agents.items) {
-      try {
-        await this.reconcileAgent(agent.id)
-        reconciled += 1
-      } catch {
-        // keep processing remaining agents
+    while (scanned < limit) {
+      const pageSize = Math.min(limit - scanned, 200)
+      const page = this.deps.agentRepo.findActive({ limit: pageSize, cursor })
+
+      for (const agent of page.items) {
+        scanned++
+        try {
+          await this.reconcileAgent(agent.id)
+          reconciled++
+        } catch {
+          // keep processing remaining agents
+        }
       }
+
+      if (!page.next_cursor || page.items.length === 0) break
+      cursor = page.next_cursor
     }
 
-    return { scanned: agents.items.length, reconciled }
+    return { scanned, reconciled }
   }
 
   private async evaluateTraits(agentId: string): Promise<void> {

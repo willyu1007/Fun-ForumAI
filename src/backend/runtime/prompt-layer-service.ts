@@ -13,17 +13,7 @@ const DEFAULT_PERSONA: AgentPersona = {
   language: 'zh-CN',
 }
 
-const CONTROVERSY_KEYWORDS = [
-  '不同意',
-  '反对',
-  '质疑',
-  '荒谬',
-  '错误',
-  'however',
-  'disagree',
-  'ridiculous',
-  'nonsense',
-]
+const CONTROVERSY_KEYWORDS = config.controversy.keywords
 
 export type PromptLayerScene = 'forum_post' | 'forum_comment' | 'chat_room' | 'private_chat'
 
@@ -87,8 +77,8 @@ export class PromptLayerService {
         if (fragments) {
           layers.layer1_growth = fragments
         }
-      } catch {
-        // best effort only
+      } catch (err) {
+        console.warn('[PromptLayerService] trait layer failed for agent', agentId, err)
       }
     }
 
@@ -111,8 +101,8 @@ export class PromptLayerService {
         if (matched.length > 0) {
           layers.layer3_instructions = '## 特别指令\n' + matched.map((m) => `- ${m.body}`).join('\n')
         }
-      } catch {
-        // best effort only
+      } catch (err) {
+        console.warn('[PromptLayerService] instruction layer failed for agent', agentId, err)
       }
     }
 
@@ -143,8 +133,8 @@ export class PromptLayerService {
         }
 
         layers.layer6_privacy = this.buildPrivacyPrompt(privacySettings.disclosure_level)
-      } catch {
-        // best effort only
+      } catch (err) {
+        console.warn('[PromptLayerService] memory layer failed for agent', agentId, err)
       }
     }
 

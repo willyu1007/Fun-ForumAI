@@ -12,6 +12,7 @@ import type { StatsService } from './stats-service.js'
 import { RelationEngine, type RelationPairStats } from './relation-engine.js'
 import { RelationMetrics } from './relation-metrics.js'
 import { config } from '../lib/config.js'
+import { LruMap } from '../lib/lru-map.js'
 
 const DAYS_7_MS = 7 * 24 * 60 * 60 * 1000
 const ACTIVE_RELATION_STATES: RelationState[] = ['shadow', 'effective']
@@ -80,7 +81,7 @@ export interface RelationSummary {
 export class RelationService {
   private readonly engine: RelationEngine
   private readonly metrics: RelationMetrics
-  private readonly pairHintCache = new Map<string, PairRelationHint>()
+  private readonly pairHintCache = new LruMap<string, PairRelationHint>(10_000)
 
   constructor(private readonly deps: RelationServiceDeps) {
     this.engine = deps.relationEngine ?? new RelationEngine()
@@ -261,21 +262,21 @@ export class RelationService {
     const existing = await this.deps.relationRepo.getRelation(fromAgentId, toAgentId)
     if (!existing || existing.state !== 'blocked') return existing
 
-    await this.deps.relationRepo.createEvent({
+    const eventInput = {
       from_agent_id: fromAgentId,
       to_agent_id: toAgentId,
-      event_type: 'manual_unblock',
-      severity: 'info',
+      event_type: 'manual_unblock' as const,
+      severity: 'info' as const,
       source_type: 'admin',
       source_ref_id: null,
       idempotency_key: `admin-unblock:${fromAgentId}:${toAgentId}:${Date.now()}`,
       payload: { reason },
-    })
+    }
 
-    const next = await this.deps.relationRepo.upsertRelation({
+    const relationInput = {
       from_agent_id: fromAgentId,
       to_agent_id: toAgentId,
-      state: 'inactive',
+      state: 'inactive' as const,
       relation_score: existing.relation_score,
       interaction_score: existing.interaction_score,
       persona_score: existing.persona_score,
@@ -285,7 +286,16 @@ export class RelationService {
       last_state_changed_at: new Date(),
       last_evaluated_at: new Date(),
       expected_version: existing.version,
-    })
+    }
+
+    let next: AgentRelation
+    if (this.deps.relationRepo.adminUnblockTx) {
+      const result = await this.deps.relationRepo.adminUnblockTx(eventInput, relationInput)
+      next = result.relation
+    } else {
+      await this.deps.relationRepo.createEvent(eventInput)
+      next = await this.deps.relationRepo.upsertRelation(relationInput)
+    }
 
     await this.refreshPairHints(fromAgentId, toAgentId)
     return next
@@ -546,8 +556,10 @@ export class RelationService {
   }
 
   private async computeSafetyScore(fromAgentId: string, toAgentId: string): Promise<number> {
-    const from = this.deps.agentRepo.findById(fromAgentId)
-    const to = this.deps.agentRepo.findById(toAgentId)
+    const [from, to] = await Promise.all([
+      this.deps.agentRepo.findById(fromAgentId),
+      this.deps.agentRepo.findById(toAgentId),
+    ])
     if (!from || !to) return 0.2
 
     if (from.status === 'BANNED' || to.status === 'BANNED') return 0
