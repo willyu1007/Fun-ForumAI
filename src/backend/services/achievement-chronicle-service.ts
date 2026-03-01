@@ -112,17 +112,19 @@ export class AchievementChronicleService {
     }
 
     const limit = clampLimit(opts.limit, 20, 100)
-    const raw = await this.deps.chronicleRepo.findByAgent(agentId, {
-      cursor: opts.cursor,
-      limit: Math.min(limit * 5, 300),
-    })
+    const [raw, foldedCount] = await Promise.all([
+      this.deps.chronicleRepo.findByAgent(agentId, {
+        cursor: opts.cursor,
+        limit: Math.min(limit * 5, 300),
+      }),
+      this.deps.chronicleRepo.countFoldedByAgent(agentId, { perDayCap: 10 }),
+    ])
 
     if (opts.include_folded) {
-      const density = applyDensity(raw.items, 10)
       return {
         items: raw.items.slice(0, limit),
         next_cursor: raw.next_cursor,
-        folded_count: density.folded_count,
+        folded_count: foldedCount,
       }
     }
 
@@ -130,7 +132,7 @@ export class AchievementChronicleService {
     return {
       items: density.items.slice(0, limit),
       next_cursor: raw.next_cursor,
-      folded_count: density.folded_count,
+      folded_count: foldedCount,
     }
   }
 

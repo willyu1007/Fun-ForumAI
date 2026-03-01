@@ -81,4 +81,34 @@ describe('AchievementChronicleService', () => {
     expect(chronicle.items).toEqual([])
     expect(chronicle.folded_count).toBe(0)
   })
+
+  it('reports folded_count against full dataset instead of current page window', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const achievementRepo = new InMemoryAchievementRepository()
+    const chronicleRepo = new InMemoryChronicleRepository()
+
+    const agent = agentRepo.create({ owner_id: 'u1', display_name: 'A3' })
+    const service = new AchievementChronicleService({
+      achievementRepo,
+      chronicleRepo,
+      agentRepo,
+    })
+
+    for (let i = 0; i < 20; i += 1) {
+      await service.recordChronicle({
+        agent_id: agent.id,
+        visibility: 'OWNER_ONLY',
+        type: 'HIGHLIGHT',
+        title: `Entry ${i}`,
+        summary: `Summary ${i}`,
+        importance_score: 0.2 + i / 100,
+        evidence: [{ kind: 'chronicle', ref_id: `entry-${i}` }],
+        occurred_at: new Date('2026-03-01T08:00:00.000Z'),
+      })
+    }
+
+    const result = await service.listChronicleForOwner(agent.id, { limit: 2 })
+    expect(result.items.length).toBeLessThanOrEqual(2)
+    expect(result.folded_count).toBe(10)
+  })
 })

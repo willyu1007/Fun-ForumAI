@@ -91,6 +91,63 @@ describe('AchievementsOrchestrator', () => {
     expect(forumTier1?.visibility).toBe('OWNER_ONLY')
   })
 
+  it('respects cooldown window before granting next tier for private digest achievements', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const achievementRepo = new InMemoryAchievementRepository()
+    const chronicleRepo = new InMemoryChronicleRepository()
+
+    const agent = agentRepo.create({ owner_id: 'u1', display_name: 'A4' })
+    const chronicleService = new AchievementChronicleService({
+      achievementRepo,
+      chronicleRepo,
+      agentRepo,
+    })
+
+    const orchestrator = new AchievementsOrchestrator({
+      agentRepo,
+      achievementRepo,
+      chronicleRepo,
+      chronicleService,
+    })
+
+    const start = new Date('2026-03-01T00:00:00.000Z')
+    for (let i = 0; i < 5; i += 1) {
+      await orchestrator.processSignal({
+        kind: 'private_digest',
+        agent_id: agent.id,
+        dedup_key: `digest:${i}`,
+        evidence: [{ kind: 'private_digest', ref_id: `session-${i}` }],
+        occurred_at: new Date(start.getTime() + i * 5 * 60 * 1000),
+      })
+    }
+
+    const beforeCooldown = await achievementRepo.findByAgent(agent.id, { limit: 50 })
+    const digestTier1 = beforeCooldown.items.find(
+      (item) => item.code === 'private_digest_keeper' && item.tier === 1,
+    )
+    const digestTier2Before = beforeCooldown.items.find(
+      (item) => item.code === 'private_digest_keeper' && item.tier === 2,
+    )
+
+    expect(digestTier1).toBeTruthy()
+    expect(digestTier2Before).toBeFalsy()
+
+    await orchestrator.processSignal({
+      kind: 'private_digest',
+      agent_id: agent.id,
+      dedup_key: 'digest:after-cooldown',
+      evidence: [{ kind: 'private_digest', ref_id: 'session-after-cooldown' }],
+      occurred_at: new Date('2026-03-01T06:30:00.000Z'),
+    })
+
+    const afterCooldown = await achievementRepo.findByAgent(agent.id, { limit: 50 })
+    const digestTier2After = afterCooldown.items.find(
+      (item) => item.code === 'private_digest_keeper' && item.tier === 2,
+    )
+
+    expect(digestTier2After).toBeTruthy()
+  })
+
   it('applies owner density cap (<=10/day) with folded_count', async () => {
     const agentRepo = new InMemoryAgentRepository()
     const achievementRepo = new InMemoryAchievementRepository()
@@ -119,5 +176,42 @@ describe('AchievementsOrchestrator', () => {
     const result = await chronicleService.listChronicleForOwner(agent.id, { limit: 30 })
     expect(result.items.length).toBeLessThanOrEqual(10)
     expect(result.folded_count).toBe(2)
+  })
+
+  it('keeps batch achievements public when required evidence kinds are present', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const achievementRepo = new InMemoryAchievementRepository()
+    const chronicleRepo = new InMemoryChronicleRepository()
+
+    const agent = agentRepo.create({ owner_id: 'u1', display_name: 'A5' })
+    const chronicleService = new AchievementChronicleService({
+      achievementRepo,
+      chronicleRepo,
+      agentRepo,
+    })
+
+    const orchestrator = new AchievementsOrchestrator({
+      agentRepo,
+      achievementRepo,
+      chronicleRepo,
+      chronicleService,
+    })
+
+    const now = new Date('2026-03-01T08:00:00.000Z')
+    await orchestrator.runDailyBatch(now)
+    await orchestrator.runWeeklyBatch(now)
+
+    const achievements = await achievementRepo.findByAgent(agent.id, { limit: 50 })
+    const dailySpotlight = achievements.items.find(
+      (item) => item.code === 'chronicle_spotlight' && item.tier === 1,
+    )
+    const weeklyCrossScene = achievements.items.find(
+      (item) => item.code === 'cross_scene_actor' && item.tier === 1,
+    )
+
+    expect(dailySpotlight).toBeTruthy()
+    expect(dailySpotlight?.visibility).toBe('PUBLIC')
+    expect(weeklyCrossScene).toBeTruthy()
+    expect(weeklyCrossScene?.visibility).toBe('PUBLIC')
   })
 })

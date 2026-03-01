@@ -8,24 +8,12 @@ import type {
 } from '../types.js'
 import type { AchievementRepository } from '../achievement-repository.js'
 
-function paginate<T extends { id: string }>(
-  items: T[],
-  opts: PaginationOpts,
-): PaginatedResult<T> {
-  let start = 0
-  if (opts.cursor) {
-    const idx = items.findIndex((item) => item.id === opts.cursor)
-    start = idx >= 0 ? idx + 1 : 0
-  }
-  const page = items.slice(start, start + opts.limit)
-  const next_cursor = page.length === opts.limit && start + opts.limit < items.length
-    ? page[page.length - 1].id
-    : null
-  return { items: page, next_cursor }
-}
-
 function isUniqueError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
+}
+
+function isMissingCursorError(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
 }
 
 function toEvidence(value: Prisma.JsonValue): AgentAchievement['evidence'] {
@@ -92,15 +80,42 @@ export class PgAchievementRepository implements AchievementRepository {
     agentId: string,
     opts: PaginationOpts & { visibility?: AchievementVisibility[] },
   ): Promise<PaginatedResult<AgentAchievement>> {
-    const rows = await this.prisma.agentAchievement.findMany({
+    const baseQuery = {
       where: {
         agentId,
         ...(opts.visibility ? { visibility: { in: opts.visibility } } : {}),
       },
       orderBy: [{ achievedAt: 'desc' }, { id: 'desc' }],
-    })
+      take: opts.limit + 1,
+    } satisfies Prisma.AgentAchievementFindManyArgs
 
-    return paginate(rows.map((row) => this.toDomain(row)), opts)
+    let rows: PrismaAchievement[]
+
+    if (opts.cursor) {
+      try {
+        rows = await this.prisma.agentAchievement.findMany({
+          ...baseQuery,
+          cursor: { id: opts.cursor },
+          skip: 1,
+        })
+      } catch (error) {
+        if (!isMissingCursorError(error)) throw error
+        rows = await this.prisma.agentAchievement.findMany(baseQuery)
+      }
+    } else {
+      rows = await this.prisma.agentAchievement.findMany(baseQuery)
+    }
+
+    const hasMore = rows.length > opts.limit
+    const pageRows = hasMore ? rows.slice(0, opts.limit) : rows
+    const next_cursor = hasMore && pageRows.length > 0
+      ? pageRows[pageRows.length - 1].id
+      : null
+
+    return {
+      items: pageRows.map((row) => this.toDomain(row)),
+      next_cursor,
+    }
   }
 
   private toDomain(row: PrismaAchievement): AgentAchievement {

@@ -9,24 +9,12 @@ import type {
 } from '../types.js'
 import type { ChronicleRepository } from '../chronicle-repository.js'
 
-function paginate<T extends { id: string }>(
-  items: T[],
-  opts: PaginationOpts,
-): PaginatedResult<T> {
-  let start = 0
-  if (opts.cursor) {
-    const idx = items.findIndex((item) => item.id === opts.cursor)
-    start = idx >= 0 ? idx + 1 : 0
-  }
-  const page = items.slice(start, start + opts.limit)
-  const next_cursor = page.length === opts.limit && start + opts.limit < items.length
-    ? page[page.length - 1].id
-    : null
-  return { items: page, next_cursor }
-}
-
 function isUniqueError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
+}
+
+function isMissingCursorError(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
 }
 
 function toEvidence(value: Prisma.JsonValue): ChronicleEntry['evidence'] {
@@ -100,24 +88,90 @@ export class PgChronicleRepository implements ChronicleRepository {
       to?: Date
     },
   ): Promise<PaginatedResult<ChronicleEntry>> {
-    const rows = await this.prisma.chronicleEntry.findMany({
-      where: {
-        agentId,
-        ...(opts.visibility ? { visibility: { in: opts.visibility } } : {}),
-        ...(opts.types ? { type: { in: opts.types } } : {}),
-        ...(opts.from || opts.to
-          ? {
-              occurredAt: {
-                ...(opts.from ? { gte: opts.from } : {}),
-                ...(opts.to ? { lte: opts.to } : {}),
-              },
-            }
-          : {}),
-      },
-      orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
-    })
+    const where = {
+      agentId,
+      ...(opts.visibility ? { visibility: { in: opts.visibility } } : {}),
+      ...(opts.types ? { type: { in: opts.types } } : {}),
+      ...(opts.from || opts.to
+        ? {
+            occurredAt: {
+              ...(opts.from ? { gte: opts.from } : {}),
+              ...(opts.to ? { lte: opts.to } : {}),
+            },
+          }
+        : {}),
+    } satisfies Prisma.ChronicleEntryWhereInput
 
-    return paginate(rows.map((row) => this.toDomain(row)), opts)
+    const baseQuery = {
+      where,
+      orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
+      take: opts.limit + 1,
+    } satisfies Prisma.ChronicleEntryFindManyArgs
+
+    let rows: PrismaChronicleEntry[]
+
+    if (opts.cursor) {
+      try {
+        rows = await this.prisma.chronicleEntry.findMany({
+          ...baseQuery,
+          cursor: { id: opts.cursor },
+          skip: 1,
+        })
+      } catch (error) {
+        if (!isMissingCursorError(error)) throw error
+        rows = await this.prisma.chronicleEntry.findMany(baseQuery)
+      }
+    } else {
+      rows = await this.prisma.chronicleEntry.findMany(baseQuery)
+    }
+
+    const hasMore = rows.length > opts.limit
+    const pageRows = hasMore ? rows.slice(0, opts.limit) : rows
+    const next_cursor = hasMore && pageRows.length > 0
+      ? pageRows[pageRows.length - 1].id
+      : null
+
+    return {
+      items: pageRows.map((row) => this.toDomain(row)),
+      next_cursor,
+    }
+  }
+
+  async countFoldedByAgent(
+    agentId: string,
+    opts: { perDayCap: number; visibility?: AchievementVisibility[]; types?: ChronicleType[] },
+  ): Promise<number> {
+    const perDayCap = Math.max(1, Math.trunc(opts.perDayCap))
+    const conditions: Prisma.Sql[] = [
+      Prisma.sql`"agent_id" = ${agentId}`,
+    ]
+
+    if (opts.visibility && opts.visibility.length > 0) {
+      conditions.push(Prisma.sql`"visibility" IN (${Prisma.join(opts.visibility)})`)
+    }
+    if (opts.types && opts.types.length > 0) {
+      conditions.push(Prisma.sql`"type" IN (${Prisma.join(opts.types)})`)
+    }
+
+    const whereSql = conditions.length > 0
+      ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`
+      : Prisma.empty
+
+    const rows = await this.prisma.$queryRaw<Array<{ folded: bigint | number | string | null }>>(Prisma.sql`
+      SELECT COALESCE(SUM(GREATEST(day_count - ${perDayCap}, 0)), 0) AS folded
+      FROM (
+        SELECT COUNT(*)::int AS day_count
+        FROM "chronicle_entries"
+        ${whereSql}
+        GROUP BY DATE_TRUNC('day', "occurred_at")
+      ) AS daily
+    `)
+
+    const raw = rows[0]?.folded ?? 0
+    if (typeof raw === 'number') return raw
+    if (typeof raw === 'bigint') return Number(raw)
+    if (typeof raw === 'string') return Number.parseInt(raw, 10) || 0
+    return 0
   }
 
   async countByAgent(

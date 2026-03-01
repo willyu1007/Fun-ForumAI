@@ -200,6 +200,7 @@ export class AchievementsOrchestrator {
 
     let cursor: string | undefined
     let scanned = 0
+    const dayKey = startOfDay(now).toISOString().slice(0, 10)
 
     while (true) {
       const page = this.deps.agentRepo.findActive({ cursor, limit: 100 })
@@ -210,8 +211,11 @@ export class AchievementsOrchestrator {
         await this.processSignal({
           kind: 'batch_daily',
           agent_id: agent.id,
-          dedup_key: `batch-daily:${startOfDay(now).toISOString().slice(0, 10)}`,
-          evidence: [{ kind: 'activity', ref_id: startOfDay(now).toISOString().slice(0, 10) }],
+          dedup_key: `batch-daily:${dayKey}`,
+          evidence: [
+            { kind: 'activity', ref_id: dayKey },
+            { kind: 'chronicle', ref_id: `day:${dayKey}` },
+          ],
         })
       }
 
@@ -227,6 +231,7 @@ export class AchievementsOrchestrator {
 
     let cursor: string | undefined
     let scanned = 0
+    const weekKey = startOfWeek(now).toISOString().slice(0, 10)
 
     while (true) {
       const page = this.deps.agentRepo.findActive({ cursor, limit: 100 })
@@ -237,8 +242,12 @@ export class AchievementsOrchestrator {
         await this.processSignal({
           kind: 'batch_weekly',
           agent_id: agent.id,
-          dedup_key: `batch-weekly:${startOfWeek(now).toISOString().slice(0, 10)}`,
-          evidence: [{ kind: 'activity', ref_id: startOfWeek(now).toISOString().slice(0, 10) }],
+          dedup_key: `batch-weekly:${weekKey}`,
+          evidence: [
+            { kind: 'activity', ref_id: weekKey },
+            { kind: 'cross_scene', ref_id: `week:${weekKey}` },
+            { kind: 'chronicle', ref_id: `week:${weekKey}` },
+          ],
         })
       }
 
@@ -258,6 +267,15 @@ export class AchievementsOrchestrator {
     const occurredAt = signal.occurred_at ?? new Date()
     const evidence = signal.evidence ?? []
     const signalTag = `${SIGNAL_TAG_PREFIX}${signal.kind}`
+    const existingAchievements = await this.deps.achievementRepo.findByAgent(signal.agent_id, { limit: 200 })
+    const latestAwardByCode = new Map<string, Date>()
+
+    for (const achievement of existingAchievements.items) {
+      const prev = latestAwardByCode.get(achievement.code)
+      if (!prev || prev.getTime() < achievement.achieved_at.getTime()) {
+        latestAwardByCode.set(achievement.code, achievement.achieved_at)
+      }
+    }
 
     await this.deps.chronicleService.recordChronicle({
       agent_id: signal.agent_id,
@@ -290,6 +308,10 @@ export class AchievementsOrchestrator {
     const metric = await this.collectMetrics(signal.agent_id)
 
     for (const definition of definitions) {
+      if (this.isInCooldown(definition, occurredAt, latestAwardByCode)) {
+        continue
+      }
+
       const value = metric[definition.metric]
       if (value < definition.threshold) continue
 
@@ -322,6 +344,8 @@ export class AchievementsOrchestrator {
 
       if (!granted.created) continue
 
+      latestAwardByCode.set(definition.code, granted.achievement.achieved_at)
+
       await this.deps.chronicleService.recordChronicle({
         agent_id: signal.agent_id,
         visibility,
@@ -351,6 +375,17 @@ export class AchievementsOrchestrator {
         },
       })
     }
+  }
+
+  private isInCooldown(
+    definition: AchievementDefinition,
+    occurredAt: Date,
+    latestAwardByCode: Map<string, Date>,
+  ): boolean {
+    if (definition.cooldownMs <= 0) return false
+    const latestAward = latestAwardByCode.get(definition.code)
+    if (!latestAward) return false
+    return occurredAt.getTime() - latestAward.getTime() < definition.cooldownMs
   }
 
   private async hasAllPrerequisites(agentId: string, definition: AchievementDefinition): Promise<boolean> {

@@ -23,6 +23,10 @@ export interface ChronicleRepository {
     agentId: string,
     opts?: { visibility?: AchievementVisibility[]; types?: ChronicleType[]; since?: Date },
   ): Promise<number>
+  countFoldedByAgent(
+    agentId: string,
+    opts: { perDayCap: number; visibility?: AchievementVisibility[]; types?: ChronicleType[] },
+  ): Promise<number>
 }
 
 let counter = 0
@@ -129,5 +133,31 @@ export class InMemoryChronicleRepository implements ChronicleRepository {
       .filter((item) => (typeSet ? typeSet.has(item.type) : true))
       .filter((item) => (opts?.since ? item.occurred_at >= opts.since : true))
       .length
+  }
+
+  async countFoldedByAgent(
+    agentId: string,
+    opts: { perDayCap: number; visibility?: AchievementVisibility[]; types?: ChronicleType[] },
+  ): Promise<number> {
+    const perDayCap = Math.max(1, Math.trunc(opts.perDayCap))
+    const visibilitySet = opts.visibility ? new Set(opts.visibility) : null
+    const typeSet = opts.types ? new Set(opts.types) : null
+    const dayCounts = new Map<string, number>()
+
+    for (const item of this.store.values()) {
+      if (item.agent_id !== agentId) continue
+      if (visibilitySet && !visibilitySet.has(item.visibility)) continue
+      if (typeSet && !typeSet.has(item.type)) continue
+      const key = item.occurred_at.toISOString().slice(0, 10)
+      dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1)
+    }
+
+    let folded = 0
+    for (const count of dayCounts.values()) {
+      if (count > perDayCap) {
+        folded += count - perDayCap
+      }
+    }
+    return folded
   }
 }
