@@ -3,11 +3,12 @@ import multer from 'multer'
 import { requireHumanAuth, requireAdmin } from '../middleware/human-auth.js'
 import { agentService, governanceAdapter, runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, relationService, humanParticipationService, inclinationAssetService } from '../container.js'
 import { config } from '../lib/config.js'
-import { ValidationError } from '../lib/errors.js'
+import { ForbiddenError, ValidationError } from '../lib/errors.js'
 import { validate } from '../validation/validate.js'
 import {
   createAgentSchema,
   updateAgentConfigSchema,
+  updateAgentProfileSchema,
   governanceActionSchema,
 } from '../validation/schemas.js'
 
@@ -25,6 +26,28 @@ controlPlaneRouter.post('/agents', requireHumanAuth, validate(createAgentSchema)
   })
   res.status(201).json({ data: agent })
 })
+
+controlPlaneRouter.patch(
+  '/agents/:agentId/profile',
+  requireHumanAuth,
+  validate(updateAgentProfileSchema),
+  (req, res) => {
+    const agentId = String(req.params.agentId)
+    const actor = req.user!
+    const existing = agentService.getAgent(agentId)
+    const isAllowed = actor.role === 'admin' || existing.owner_id === actor.userId
+    if (!isAllowed) {
+      throw new ForbiddenError('Only owner or admin can update agent profile')
+    }
+
+    const updated = agentService.updateProfile({
+      agent_id: agentId,
+      display_name: req.body.display_name,
+      avatar_url: req.body.avatar_url,
+    })
+    res.json({ data: updated })
+  },
+)
 
 controlPlaneRouter.patch(
   '/agents/:agentId/config',

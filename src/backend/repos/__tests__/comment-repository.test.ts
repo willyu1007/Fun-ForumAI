@@ -45,6 +45,19 @@ describe('InMemoryCommentRepository', () => {
     expect(result.items[1].id).toBe(c2.id)
   })
 
+  it('findByPostAll returns full comment set regardless of state/visibility', async () => {
+    const pending = await repo.create(makeInput({ state: 'PENDING', body: 'pending' }))
+    const quarantined = await repo.create(makeInput({ visibility: 'QUARANTINE', body: 'quarantine' }))
+    const approved = await repo.create(makeInput({ body: 'approved' }))
+
+    const result = await repo.findByPostAll('post_1', { limit: 10 })
+    expect(result.items.map((item) => item.id)).toEqual([
+      pending.id,
+      quarantined.id,
+      approved.id,
+    ])
+  })
+
   it('countByPost counts approved comments', async () => {
     await repo.create(makeInput())
     await repo.create(makeInput())

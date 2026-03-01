@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { InstructionContext } from '../../services/instruction-engine.js'
+import { config } from '../../lib/config.js'
 import { PromptLayerService } from '../prompt-layer-service.js'
+import type { PromptLayerServiceDeps } from '../prompt-layer-service.js'
 
 describe('PromptLayerService', () => {
   it('composes layer1~layer6 and computes instruction context signals', async () => {
@@ -30,10 +32,10 @@ describe('PromptLayerService', () => {
             },
           },
         })),
-      } as any,
+      } as unknown as PromptLayerServiceDeps['agentService'],
       traitEngine: {
         getTraitPromptFragments: vi.fn(async () => 'growth-fragment'),
-      } as any,
+      } as unknown as PromptLayerServiceDeps['traitEngine'],
       instructionEngine: {
         matchInstructions: vi.fn(async (_agentId: string, ctx: InstructionContext) => {
           capture.ctx = ctx
@@ -41,7 +43,7 @@ describe('PromptLayerService', () => {
             { id: 'inst-1', name: '提示1', body: '保持礼貌', priority: 1 },
           ]
         }),
-      } as any,
+      } as unknown as PromptLayerServiceDeps['instructionEngine'],
       memoryService: {
         getPrivacySettings: vi.fn(async () => ({
           agent_id: 'agent-1',
@@ -55,7 +57,7 @@ describe('PromptLayerService', () => {
           memories: [],
           formatted: 'memory-fragment',
         })),
-      } as any,
+      } as unknown as PromptLayerServiceDeps['memoryService'],
     })
 
     const layers = await service.composeLayers({
@@ -96,13 +98,13 @@ describe('PromptLayerService', () => {
       agentService: {
         getAgent: vi.fn(() => ({ id: 'agent-2', display_name: 'Layer Bot 2' })),
         getLatestConfig: vi.fn(() => ({ config_json: {} })),
-      } as any,
+      } as unknown as PromptLayerServiceDeps['agentService'],
       instructionEngine: {
         matchInstructions: vi.fn(async (_agentId: string, ctx: InstructionContext) => {
           capture.ctx = ctx
           return []
         }),
-      } as any,
+      } as unknown as PromptLayerServiceDeps['instructionEngine'],
     })
 
     const layers = await service.composeLayers({
@@ -128,22 +130,22 @@ describe('PromptLayerService', () => {
         getLatestConfig: vi.fn(() => {
           throw new Error('missing config')
         }),
-      } as any,
+      } as unknown as PromptLayerServiceDeps['agentService'],
       traitEngine: {
         getTraitPromptFragments: vi.fn(async () => {
           throw new Error('trait unavailable')
         }),
-      } as any,
+      } as unknown as PromptLayerServiceDeps['traitEngine'],
       instructionEngine: {
         matchInstructions: vi.fn(async () => {
           throw new Error('instruction unavailable')
         }),
-      } as any,
+      } as unknown as PromptLayerServiceDeps['instructionEngine'],
       memoryService: {
         getPrivacySettings: vi.fn(async () => {
           throw new Error('privacy unavailable')
         }),
-      } as any,
+      } as unknown as PromptLayerServiceDeps['memoryService'],
     })
 
     const persona = service.getPersona('missing-agent')
@@ -157,5 +159,42 @@ describe('PromptLayerService', () => {
         conversationText: 'hello world',
       }),
     ).resolves.toEqual({})
+  })
+
+  it('emits structured PromptAudit logs only when FF_PROMPT_AUDIT_V1 is enabled', async () => {
+    const service = new PromptLayerService({
+      agentService: {
+        getAgent: vi.fn(() => ({ id: 'agent-audit', display_name: 'Audit Bot' })),
+        getLatestConfig: vi.fn(() => ({ config_json: {} })),
+      } as unknown as PromptLayerServiceDeps['agentService'],
+    })
+
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalFlag = featureFlags.promptAuditV1
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+
+    try {
+      featureFlags.promptAuditV1 = false
+      const off = await service.composeLayersWithAudit({
+        agentId: 'agent-audit',
+        scene: 'forum_post',
+        conversationText: '普通内容',
+      })
+      expect(off.audit.version).toBe('v1')
+      expect(infoSpy).not.toHaveBeenCalled()
+
+      featureFlags.promptAuditV1 = true
+      const on = await service.composeLayersWithAudit({
+        agentId: 'agent-audit',
+        scene: 'forum_post',
+        conversationText: '普通内容',
+      })
+      expect(on.audit.version).toBe('v1')
+      expect(infoSpy).toHaveBeenCalled()
+      expect(String(infoSpy.mock.calls[0][0])).toContain('[PromptAudit]')
+    } finally {
+      featureFlags.promptAuditV1 = originalFlag
+      infoSpy.mockRestore()
+    }
   })
 })

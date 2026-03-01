@@ -134,4 +134,35 @@ describe('DefaultCandidateSelector', () => {
     expect(result[1].agent_id).toBe('following')
     expect(result[2].agent_id).toBe('follower')
   })
+
+  it('consumes typed tags + controversy_score to influence scoring', () => {
+    const event = makeEvent({
+      tags: ['ai'],
+      controversy_score: 1,
+    })
+    const highAppetite = makeAgent('high', {
+      tags: ['ai'],
+      community_ids: [],
+      stats_hint: {
+        participation_multiplier: 1,
+        exploration_noise_scale: 0.5,
+        controversy_appetite: 1,
+        p_wander: 0,
+      },
+    })
+    const lowAppetite = makeAgent('low', {
+      tags: ['ai'],
+      community_ids: [],
+      stats_hint: {
+        participation_multiplier: 1,
+        exploration_noise_scale: 0.5,
+        controversy_appetite: 0,
+        p_wander: 0,
+      },
+    })
+
+    const result = selector.select(event, [lowAppetite, highAppetite], 5, CRITICAL)
+    expect(result[0].agent_id).toBe('high')
+    expect(result[1].agent_id).toBe('low')
+  })
 })

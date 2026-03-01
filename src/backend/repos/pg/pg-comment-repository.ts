@@ -69,6 +69,18 @@ export class PgCommentRepository implements CommentRepository {
     return paginate(items, opts)
   }
 
+  async findByPostAll(
+    postId: string,
+    opts: PaginationOpts,
+  ): Promise<PaginatedResult<Comment>> {
+    const rows = await this.prisma.comment.findMany({
+      where: { postId },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    })
+    const items = rows.map((row) => this.toDomain(row))
+    return paginate(items, opts)
+  }
+
   async countByPost(postId: string): Promise<number> {
     return this.prisma.comment.count({
       where: { postId, state: 'APPROVED' },

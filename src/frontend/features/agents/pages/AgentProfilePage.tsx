@@ -61,31 +61,8 @@ export function AgentProfilePage() {
   const { data: growthRes } = useAgentGrowth(agentId ?? '')
   const follow = useFollowAgent(agentId ?? '')
   const unfollow = useUnfollowAgent(agentId ?? '')
-
-  if (isLoading) {
-    return (
-      <div className="space-y-3">
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className="h-32 rounded-md" />
-      </div>
-    )
-  }
-
-  if (error || !data?.data) {
-    return (
-      <div className="space-y-3">
-        <Button variant="ghost" size="sm" asChild className="h-7 text-xs">
-          <Link to="/">← 返回</Link>
-        </Button>
-        <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-          未找到该智能体。
-        </div>
-      </div>
-    )
-  }
-
-  const agent = data.data
-  const isOwner = !!user && user.id === agent.owner_id
+  const agent = data?.data
+  const isOwner = !!user && !!agent && user.id === agent.owner_id
   const tabs = useMemo(() => {
     const baseTabs: Array<{ id: TabId; label: string }> = [
       { id: 'overview', label: '概览' },
@@ -112,9 +89,32 @@ export function AgentProfilePage() {
     }
   }, [tab, tabs])
 
-  const isFollowed = !!agent.is_followed
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="h-32 rounded-md" />
+      </div>
+    )
+  }
+
+  if (error || !data?.data) {
+    return (
+      <div className="space-y-3">
+        <Button variant="ghost" size="sm" asChild className="h-7 text-xs">
+          <Link to="/">← 返回</Link>
+        </Button>
+        <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
+          未找到该智能体。
+        </div>
+      </div>
+    )
+  }
+
+  const safeAgent = data.data
+  const isFollowed = !!safeAgent.is_followed
   const followBusy = follow.isPending || unfollow.isPending
-  const initials = agent.display_name
+  const initials = safeAgent.display_name
     .split(/[\s-]+/)
     .map((w) => w[0])
     .join('')
@@ -137,17 +137,17 @@ export function AgentProfilePage() {
             </Avatar>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <CardTitle className="text-base">{agent.display_name}</CardTitle>
-                <Badge variant="outline" className={STATUS_STYLES[agent.status] ?? ''}>
-                  {STATUS_LABELS[agent.status] ?? agent.status}
+                <CardTitle className="text-base">{safeAgent.display_name}</CardTitle>
+                <Badge variant="outline" className={STATUS_STYLES[safeAgent.status] ?? ''}>
+                  {STATUS_LABELS[safeAgent.status] ?? safeAgent.status}
                 </Badge>
               </div>
               <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                <span>{agent.model}</span>
+                <span>{safeAgent.model}</span>
                 <span>·</span>
-                <span>声誉 {agent.reputation_score}</span>
+                <span>声誉 {safeAgent.reputation_score}</span>
                 <span>·</span>
-                <span>人格 v{agent.persona_version}</span>
+                <span>人格 v{safeAgent.persona_version}</span>
               </div>
             </div>
             <Button
@@ -177,15 +177,15 @@ export function AgentProfilePage() {
           <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">
             <div>
               <span className="text-muted-foreground">所有者</span>
-              <p className="font-medium">{agent.owner_id}</p>
+              <p className="font-medium">{safeAgent.owner_id}</p>
             </div>
             <div>
               <span className="text-muted-foreground">创建于</span>
-              <p className="font-medium">{relativeTime(agent.created_at)}</p>
+              <p className="font-medium">{relativeTime(safeAgent.created_at)}</p>
             </div>
             <div>
               <span className="text-muted-foreground">ID</span>
-              <p className="font-mono text-[10px]">{agent.id}</p>
+              <p className="font-mono text-[10px]">{safeAgent.id}</p>
             </div>
           </div>
         </CardContent>

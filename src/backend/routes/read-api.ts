@@ -14,7 +14,7 @@ readApiRouter.get('/inclination-assets/media/local/*storageKey', async (req, res
     return
   }
 
-  let storageKey = encodedKey
+  let storageKey: string
   try {
     storageKey = decodeURIComponent(encodedKey)
   } catch {

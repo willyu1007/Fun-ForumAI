@@ -1,5 +1,6 @@
 import type { LlmClient } from '../llm/llm-client.js'
 import type { LlmMessage } from '../llm/types.js'
+import type { PromptEngine } from '../llm/prompt-engine.js'
 import type { AgentService } from './agent-service.js'
 import type { BudgetService } from './budget-service.js'
 import type { CostTracker } from './cost-tracker.js'
@@ -7,6 +8,7 @@ import type { PrivateChannelRepository } from '../repos/private-channel-reposito
 import type { MemoryRepository } from '../repos/memory-repository.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { SseHub } from '../sse/hub.js'
+import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
 import type {
   PrivateSession,
   PrivateMessage,
@@ -34,6 +36,8 @@ export interface PrivateChannelServiceDeps {
   memoryRepo: MemoryRepository
   agentService: AgentService
   llmClient: LlmClient
+  promptEngine?: PromptEngine | null
+  promptOrchestrator?: PromptOrchestrator | null
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
   budgetService: BudgetService | null
@@ -43,6 +47,11 @@ export interface PrivateChannelServiceDeps {
 
 export class PrivateChannelService {
   constructor(private readonly deps: PrivateChannelServiceDeps) {}
+
+  bindPromptOrchestrator(promptEngine: PromptEngine, promptOrchestrator: PromptOrchestrator): void {
+    ;(this.deps as { promptEngine?: PromptEngine | null }).promptEngine = promptEngine
+    ;(this.deps as { promptOrchestrator?: PromptOrchestrator | null }).promptOrchestrator = promptOrchestrator
+  }
 
   async createSession(agentId: string, humanUserId: string): Promise<PrivateSession> {
     const agent = this.deps.agentService.getAgent(agentId)
@@ -128,7 +137,7 @@ export class PrivateChannelService {
       payload: { session_id: sessionId, message: humanMsg },
     })
 
-    const messages = await this.buildChatMessages(session, content.trim())
+    const messages = await this.buildMessagesForReply(session, content.trim())
     const startMs = Date.now()
     const llmResponse = await this.deps.llmClient.chat({
       messages,
@@ -271,6 +280,70 @@ export class PrivateChannelService {
 
     chatMessages.push({ role: 'user', content: currentMessage })
     return chatMessages
+  }
+
+  private async buildMessagesForReply(
+    session: PrivateSession,
+    currentMessage: string,
+  ): Promise<LlmMessage[]> {
+    if (
+      this.deps.promptEngine &&
+      this.deps.promptOrchestrator?.isSceneEnabled('private_chat')
+    ) {
+      try {
+        return await this.buildChatMessagesWithOrchestrator(session, currentMessage)
+      } catch (err) {
+        console.warn('[PrivateChannel] PromptOrchestrator compose failed, fallback to legacy path:', err)
+      }
+    }
+    return this.buildChatMessages(session, currentMessage)
+  }
+
+  private async buildChatMessagesWithOrchestrator(
+    session: PrivateSession,
+    currentMessage: string,
+  ): Promise<LlmMessage[]> {
+    const history = await this.deps.channelRepo.listMessages(session.id, { limit: 20 })
+    const conversationText = [...history.items.map((item) => item.content), currentMessage].join(' ').trim()
+    const topicHints = currentMessage
+      .split(/[\s,，、；;：:。.!！?？]+/)
+      .filter((item) => item.length >= 2)
+      .slice(0, 10)
+
+    const composed = await this.deps.promptOrchestrator!.compose({
+      agentId: session.agent_id,
+      scene: 'private_chat',
+      conversationText,
+      topicHints,
+      shortTermState: `session:${session.id}|messages:${history.items.length}`,
+      shortTermStateUpdatedAt: session.started_at,
+    })
+
+    const recentMessages = history.items
+      .map((item) => `${item.author_type === 'HUMAN' ? 'Owner' : composed.persona.name}：${item.content}`)
+      .join('\n')
+
+    const variables: Record<string, string> = {
+      persona_name: composed.persona.name,
+      persona_style: composed.persona.style,
+      persona_interests: composed.persona.interests.join('、'),
+      persona_language: composed.persona.language,
+      owner_display_name: 'Owner',
+      session_context: `session_id=${session.id}`,
+      recent_messages: recentMessages || '（这是第一次私聊消息）',
+      latest_user_message: currentMessage,
+      layer_growth: composed.layers.layer1_growth ?? '',
+      layer_style: composed.layers.layer2_style ?? '',
+      layer_instructions: composed.layers.layer3_instructions ?? '',
+      layer_community: composed.layers.layer_community ?? '',
+      layer_relationship: composed.layers.layer_relationship ?? '',
+      layer_showrunner: composed.layers.layer_showrunner ?? '',
+      layer_overrides: composed.layers.layer4_overrides ?? '',
+      layer_memory: composed.layers.layer5_memory ?? '',
+      layer_privacy: composed.layers.layer6_privacy ?? '',
+    }
+
+    return this.deps.promptEngine!.render('agent-private-chat-reply', variables)
   }
 
   private async loadMemoriesForPrivateChat(agentId: string): Promise<string | null> {

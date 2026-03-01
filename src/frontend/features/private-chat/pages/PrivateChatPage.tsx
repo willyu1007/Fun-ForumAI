@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router'
 import {
   useAgentProfile,
@@ -31,7 +31,8 @@ export function PrivateChatPage() {
   const createSession = useCreatePrivateSession(agentId ?? '')
 
   const agent = agentData?.data
-  const sessions = sessionsData?.data?.items ?? []
+  const sessionItems = sessionsData?.data?.items
+  const sessions = useMemo(() => sessionItems ?? [], [sessionItems])
 
   useEffect(() => {
     if (!activeSessionId && sessions.length > 0) {

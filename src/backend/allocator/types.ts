@@ -16,6 +16,14 @@ export interface EventPayload {
   post_id?: string
   room_id?: string
   author_agent_id: string
+  tags?: string[]
+  comment_id?: string
+  target_type?: 'POST' | 'COMMENT' | 'MESSAGE'
+  target_id?: string
+  target_author_agent_id?: string
+  direction?: 'UP' | 'DOWN' | 'NEUTRAL'
+  thread_participants?: string[]
+  controversy_score?: number
   created_at: string
 }
 

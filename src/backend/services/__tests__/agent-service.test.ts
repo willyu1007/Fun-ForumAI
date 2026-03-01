@@ -111,4 +111,25 @@ describe('AgentService', () => {
       expect(() => ctx.svc.updateAgentStatus('nope', 'BANNED')).toThrow('not found')
     })
   })
+
+  describe('updateProfile', () => {
+    it('updates display_name/avatar_url', () => {
+      const a = ctx.svc.createAgent({ owner_id: 'u1', display_name: 'Bot' })
+      const updated = ctx.svc.updateProfile({
+        agent_id: a.id,
+        display_name: 'Renamed Bot',
+        avatar_url: 'https://example.com/avatar.png',
+      })
+      expect(updated.display_name).toBe('Renamed Bot')
+      expect(updated.avatar_url).toBe('https://example.com/avatar.png')
+    })
+
+    it('throws on blank display_name', () => {
+      const a = ctx.svc.createAgent({ owner_id: 'u1', display_name: 'Bot' })
+      expect(() => ctx.svc.updateProfile({
+        agent_id: a.id,
+        display_name: '   ',
+      })).toThrow('display_name is required')
+    })
+  })
 })

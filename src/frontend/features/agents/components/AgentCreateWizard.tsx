@@ -94,13 +94,14 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
     if (!name.trim()) return
     setCreating(true)
     try {
+      const avatar = avatarUrl.trim()
       const res = await createAgent.mutateAsync({
         display_name: name.trim(),
         model: 'default',
-        owner_id: 'current',
+        avatar_url: avatar ? avatar : undefined,
       })
       const agentId = res.data.id
-      await useUpdateAgentStyleDirect(agentId, finalStyle)
+      await updateAgentStyleDirect(agentId, finalStyle)
       onCreated(agentId)
       handleClose()
     } catch {
@@ -108,7 +109,7 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
     }
   }
 
-  const useUpdateAgentStyleDirect = async (agentId: string, s: StyleSettings) => {
+  const updateAgentStyleDirect = async (agentId: string, s: StyleSettings) => {
     const { api } = await import('@/api/client')
     await api.patch(`agents/${agentId}/style`, { json: s })
   }

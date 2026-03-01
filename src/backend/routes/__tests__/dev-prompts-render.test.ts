@@ -60,13 +60,16 @@ describe('POST /v1/dev/prompts/render', () => {
     expect(res.body.error.code).toBe('NOT_FOUND')
   })
 
-  it('renders forum template with layer1~layer6 content injected', async () => {
+  it('renders forum template with orchestrator layers injected', async () => {
     const agentId = await createAgent(devApp, 'T034 Forum Bot')
 
     const markers = {
       layer_growth: '[L1_GROWTH]',
       layer_style: '[L2_STYLE]',
       layer_instructions: '[L3_INSTRUCTIONS]',
+      layer_community: '[L_COMMUNITY]',
+      layer_relationship: '[L_RELATIONSHIP]',
+      layer_showrunner: '[L_SHOWRUNNER]',
       layer_overrides: '[L4_OVERRIDES]',
       layer_memory: '[L5_MEMORY]',
       layer_privacy: '[L6_PRIVACY]',
@@ -89,18 +92,32 @@ describe('POST /v1/dev/prompts/render', () => {
     expect(systemMessage?.content).toContain(markers.layer_growth)
     expect(systemMessage?.content).toContain(markers.layer_style)
     expect(systemMessage?.content).toContain(markers.layer_instructions)
+    expect(systemMessage?.content).toContain(markers.layer_community)
+    expect(systemMessage?.content).toContain(markers.layer_relationship)
+    expect(systemMessage?.content).toContain(markers.layer_showrunner)
     expect(systemMessage?.content).toContain(markers.layer_overrides)
     expect(systemMessage?.content).toContain(markers.layer_memory)
     expect(systemMessage?.content).toContain(markers.layer_privacy)
+    expect(res.body.data.audit).toMatchObject({
+      version: 'v1',
+      scene: 'forum_post',
+    })
+    expect(Array.isArray(res.body.data.audit.includedLayerIds)).toBe(true)
+    expect(res.body.data.audit).toHaveProperty('tokenEstimates')
+    expect(res.body.data.audit).toHaveProperty('lintWarnings')
+    expect(res.body.data.audit).toHaveProperty('trimReasons')
   })
 
-  it('renders chat template with layer1~layer6 content injected', async () => {
+  it('renders chat template with orchestrator layers injected', async () => {
     const agentId = await createAgent(devApp, 'T034 Chat Bot')
 
     const markers = {
       layer_growth: '{CHAT_L1}',
       layer_style: '{CHAT_L2}',
       layer_instructions: '{CHAT_L3}',
+      layer_community: '{CHAT_COMMUNITY}',
+      layer_relationship: '{CHAT_REL}',
+      layer_showrunner: '{CHAT_SHOW}',
       layer_overrides: '{CHAT_L4}',
       layer_memory: '{CHAT_L5}',
       layer_privacy: '{CHAT_L6}',
@@ -123,9 +140,53 @@ describe('POST /v1/dev/prompts/render', () => {
     expect(systemMessage?.content).toContain(markers.layer_growth)
     expect(systemMessage?.content).toContain(markers.layer_style)
     expect(systemMessage?.content).toContain(markers.layer_instructions)
+    expect(systemMessage?.content).toContain(markers.layer_community)
+    expect(systemMessage?.content).toContain(markers.layer_relationship)
+    expect(systemMessage?.content).toContain(markers.layer_showrunner)
     expect(systemMessage?.content).toContain(markers.layer_overrides)
     expect(systemMessage?.content).toContain(markers.layer_memory)
     expect(systemMessage?.content).toContain(markers.layer_privacy)
+  })
+
+  it('supports private_chat, proactive_dm and scheduled_post scenes', async () => {
+    const agentId = await createAgent(devApp, 'T034 Multi Scene Bot')
+    const cases: Array<{
+      scene: 'private_chat' | 'proactive_dm' | 'scheduled_post'
+      template_id: string
+      conversation_text: string
+    }> = [
+      {
+        scene: 'private_chat',
+        template_id: 'agent-private-chat-reply',
+        conversation_text: '我今天有点纠结，想听你的建议。',
+      },
+      {
+        scene: 'proactive_dm',
+        template_id: 'agent-proactive-dm-opening',
+        conversation_text: '你的帖子刚被点赞了，想聊聊后续观点。',
+      },
+      {
+        scene: 'scheduled_post',
+        template_id: 'agent-create-post',
+        conversation_text: '最近社区都在讨论模型评测基准。',
+      },
+    ]
+
+    for (const item of cases) {
+      const res = await request(devApp)
+        .post('/v1/dev/prompts/render')
+        .send({
+          agent_id: agentId,
+          template_id: item.template_id,
+          scene: item.scene,
+          conversation_text: item.conversation_text,
+        })
+
+      expect(res.status).toBe(200)
+      expect(res.body.data.audit.scene).toBe(item.scene)
+      expect(Array.isArray(res.body.data.messages)).toBe(true)
+      expect(res.body.data.messages.length).toBeGreaterThan(0)
+    }
   })
 
   it('does not expose dev prompt render route in production mode', async () => {

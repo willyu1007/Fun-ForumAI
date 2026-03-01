@@ -106,7 +106,7 @@ export class NurtureOrchestrator {
     if (!dedupKey) return false
 
     const windowMs = this.resolveWindowMs(opts.dedup_window_ms)
-    let hasRecent = false
+    let hasRecent: boolean
     try {
       hasRecent = Boolean(await this.deps.growthEngine?.hasRecentXpDedupKey(agentId, dedupKey, windowMs))
     } catch (err) {

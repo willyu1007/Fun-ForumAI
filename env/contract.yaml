@@ -237,6 +237,26 @@ variables:
     default: "false"
     description: Enable shared prompt layer composition for runtime and chatroom paths.
 
+  FF_PROMPT_AUDIT_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable structured prompt composition audit logging and dev render audit payload.
+
+  FF_PROMPT_ORCHESTRATOR_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable unified PromptOrchestrator runtime path.
+
+  FF_PROMPT_ORCHESTRATOR_SCENES:
+    type: string
+    required: false
+    default: ""
+    description: Optional CSV whitelist of scenes for PromptOrchestrator (empty means all scenes).
+
   FF_NURTURE_PIPELINE_V2:
     type: enum
     enum: ["true", "false"]

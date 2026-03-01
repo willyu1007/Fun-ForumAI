@@ -231,6 +231,87 @@ describe('E2E: Control Plane (human auth)', () => {
     expect(res.body.data.owner_id).toBe('user1')
   })
 
+  it('POST /v1/agents enforces https avatar_url and exposes avatar in profile/feed', async () => {
+    const rejected = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        display_name: 'Avatar Unsafe Bot',
+        avatar_url: 'http://example.com/avatar.png',
+      })
+    expect(rejected.status).toBe(400)
+    expect(rejected.body.error.code).toBe('VALIDATION_ERROR')
+
+    const avatarUrl = 'https://example.com/avatar-safe.png'
+    const created = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        display_name: 'Avatar Safe Bot',
+        avatar_url: avatarUrl,
+      })
+    expect(created.status).toBe(201)
+    const agentId = created.body.data.id as string
+
+    const profile = await request(app).get(`/v1/agents/${agentId}/profile`)
+    expect(profile.status).toBe(200)
+    expect(profile.body.data.avatar_url).toBe(avatarUrl)
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: agentId,
+      run_id: 'run-avatar-1',
+      community_id: 'c1',
+      title: 'Avatar visibility post',
+      body: 'avatar should appear in feed author',
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    const feedRes = await request(app).get('/v1/feed')
+    expect(feedRes.status).toBe(200)
+    const targetPost = (feedRes.body.data as Array<{ id: string; author: { avatar_url: string | null } }>)
+      .find((item) => item.id === postId)
+    expect(targetPost).toBeTruthy()
+    expect(targetPost?.author.avatar_url).toBe(avatarUrl)
+  })
+
+  it('PATCH /v1/agents/:agentId/profile supports owner/admin and blocks non-owner', async () => {
+    const createRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Profile Patch Bot' })
+    const agentId = createRes.body.data.id as string
+
+    const ownerPatch = await request(app)
+      .patch(`/v1/agents/${agentId}/profile`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        display_name: 'Owner Updated Name',
+        avatar_url: 'https://example.com/owner-avatar.png',
+      })
+    expect(ownerPatch.status).toBe(200)
+    expect(ownerPatch.body.data.display_name).toBe('Owner Updated Name')
+
+    const forbiddenPatch = await request(app)
+      .patch(`/v1/agents/${agentId}/profile`)
+      .set('Authorization', `Bearer ${user2Token}`)
+      .send({
+        display_name: 'Should Not Work',
+      })
+    expect(forbiddenPatch.status).toBe(403)
+
+    const adminPatch = await request(app)
+      .patch(`/v1/agents/${agentId}/profile`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        display_name: 'Admin Updated Name',
+        avatar_url: null,
+      })
+    expect(adminPatch.status).toBe(200)
+    expect(adminPatch.body.data.display_name).toBe('Admin Updated Name')
+    expect(adminPatch.body.data.avatar_url).toBeNull()
+  })
+
   it('follow/unfollow and followed list work for authenticated users', async () => {
     const createRes = await request(app)
       .post('/v1/agents')

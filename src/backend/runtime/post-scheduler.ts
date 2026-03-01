@@ -7,6 +7,7 @@ import type { DataPlaneWriter } from './data-plane-writer.js'
 import type { AgentPersona } from './types.js'
 import type { AgentInclinationAsset } from '../repos/types.js'
 import type { InclinationAssetService } from '../services/inclination-asset-service.js'
+import type { PromptOrchestrator } from './prompt-orchestrator.js'
 import { config } from '../lib/config.js'
 
 export interface PostSchedulerConfig {
@@ -22,6 +23,7 @@ export interface PostSchedulerDeps {
   responseParser: ResponseParser
   dataplaneWriter: DataPlaneWriter
   inclinationAssetService?: Pick<InclinationAssetService, 'listPendingAgentIds' | 'getPendingForAgent'>
+  promptOrchestrator?: PromptOrchestrator | null
 }
 
 export interface PostSchedulerResult {
@@ -105,6 +107,60 @@ export class PostScheduler {
       const persona = this.loadPersona(selected.id)
       const recentPosts = await this.getRecentPostsSummary(fallbackCommunity.id)
       const communityCatalog = this.toCommunityCatalog(communities)
+      let composedLayers: {
+        layer_growth: string
+        layer_style: string
+        layer_instructions: string
+        layer_community: string
+        layer_relationship: string
+        layer_showrunner: string
+        layer_overrides: string
+        layer_memory: string
+        layer_privacy: string
+      } = {
+        layer_growth: '',
+        layer_style: '',
+        layer_instructions: '',
+        layer_community: '',
+        layer_relationship: '',
+        layer_showrunner: '',
+        layer_overrides: '',
+        layer_memory: '',
+        layer_privacy: '',
+      }
+
+      if (this.deps.promptOrchestrator?.isSceneEnabled('scheduled_post')) {
+        try {
+          const composed = await this.deps.promptOrchestrator.compose({
+            agentId: selected.id,
+            scene: 'scheduled_post',
+            conversationText: `${recentPosts}\n${communityCatalog}`.trim(),
+            topicHints: [fallbackCommunity.name, ...persona.interests].slice(0, 10),
+            communityHardRule: fallbackCommunity.rules,
+            communitySoftCulture: fallbackCommunity.description,
+            sceneRule: '你正在主动发起新的论坛帖子',
+            shortTermState: `recent_posts_len=${recentPosts.length}`,
+            shortTermStateUpdatedAt: new Date(),
+          })
+          persona.name = composed.persona.name
+          persona.style = composed.persona.style
+          persona.interests = composed.persona.interests
+          persona.language = composed.persona.language
+          composedLayers = {
+            layer_growth: composed.layers.layer1_growth ?? '',
+            layer_style: composed.layers.layer2_style ?? '',
+            layer_instructions: composed.layers.layer3_instructions ?? '',
+            layer_community: composed.layers.layer_community ?? '',
+            layer_relationship: composed.layers.layer_relationship ?? '',
+            layer_showrunner: composed.layers.layer_showrunner ?? '',
+            layer_overrides: composed.layers.layer4_overrides ?? '',
+            layer_memory: composed.layers.layer5_memory ?? '',
+            layer_privacy: composed.layers.layer6_privacy ?? '',
+          }
+        } catch {
+          // Fall back to template-only behavior when orchestration fails.
+        }
+      }
 
       const variables: Record<string, string> = {
         persona_name: persona.name,
@@ -118,6 +174,15 @@ export class PostScheduler {
         community_candidates: communityCatalog,
         inclination_injection: this.buildInclinationInjection(selected.pending_asset),
         inclination_media_url: selected.pending_asset?.media_url ?? '',
+        layer_growth: composedLayers.layer_growth,
+        layer_style: composedLayers.layer_style,
+        layer_instructions: composedLayers.layer_instructions,
+        layer_community: composedLayers.layer_community,
+        layer_relationship: composedLayers.layer_relationship,
+        layer_showrunner: composedLayers.layer_showrunner,
+        layer_overrides: composedLayers.layer_overrides,
+        layer_memory: composedLayers.layer_memory,
+        layer_privacy: composedLayers.layer_privacy,
       }
 
       const messages = this.deps.promptEngine.render('agent-create-post', variables)
@@ -157,6 +222,19 @@ export class PostScheduler {
         latencyMs,
       )
 
+      if (!writeResult.success || !writeResult.content_id) {
+        const writeError = writeResult.error ?? 'Failed to persist generated post'
+        console.warn(`[PostScheduler] Generated post was not persisted: ${writeError}`)
+        return {
+          triggered: true,
+          agent_id: selected.id,
+          community_id: instruction.community_id,
+          usage: llmResponse.usage,
+          latency_ms: latencyMs,
+          error: writeError,
+        }
+      }
+
       this.lastPostAt = Date.now()
       this.postsToday++
 
@@ -172,7 +250,6 @@ export class PostScheduler {
         post_id: writeResult.content_id,
         usage: llmResponse.usage,
         latency_ms: latencyMs,
-        error: writeResult.error,
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'

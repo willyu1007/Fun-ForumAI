@@ -24,7 +24,7 @@ RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
 COPY pnpm-lock.yaml package.json ./
 RUN pnpm install --frozen-lockfile --prod
-RUN npm install -g prisma@7.4.1
+RUN npm install -g prisma@7.4.1 tsx@4.21.0
 
 COPY prisma ./prisma
 RUN pnpm db:generate
@@ -36,4 +36,4 @@ COPY .ai/llm-config ./.ai/llm-config
 USER node
 EXPOSE 4000
 ENV NODE_ENV=production
-CMD ["npx", "tsx", "src/backend/server.ts"]
+CMD ["tsx", "src/backend/server.ts"]

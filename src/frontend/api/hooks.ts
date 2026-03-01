@@ -178,7 +178,7 @@ export function useCommunityBySlug(slug: string) {
 export function useCreateAgent() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { display_name: string; model: string; owner_id: string }) =>
+    mutationFn: (body: { display_name: string; model?: string; avatar_url?: string }) =>
       api.post('agents', { json: body }).json<ApiResponse<Agent>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['feed'] })

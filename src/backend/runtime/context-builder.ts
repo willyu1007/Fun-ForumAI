@@ -4,6 +4,7 @@ import type { TraitEngine } from '../services/trait-engine.js'
 import type { InstructionEngine, InstructionContext } from '../services/instruction-engine.js'
 import type { MemoryService } from '../services/memory-service.js'
 import type { PromptLayerService } from './prompt-layer-service.js'
+import type { PromptOrchestrator } from './prompt-orchestrator.js'
 import type { EventPayload, SelectedAgent } from '../allocator/types.js'
 import type { ExecutionContext, AgentPersona } from './types.js'
 import { config } from '../lib/config.js'
@@ -15,6 +16,7 @@ export interface ContextBuilderDeps {
   instructionEngine?: InstructionEngine | null
   memoryService?: MemoryService | null
   promptLayerService?: PromptLayerService | null
+  promptOrchestrator?: PromptOrchestrator | null
 }
 
 const DEFAULT_PERSONA: AgentPersona = {
@@ -40,8 +42,7 @@ export class ContextBuilder {
     }
 
     if (event.event_type === 'NewCommentCreated' && ctx.comments?.length) {
-      const payload = event as EventPayload & { comment_id?: string }
-      const targetId = (payload as unknown as Record<string, string>).comment_id
+      const targetId = event.comment_id
       if (targetId) {
         ctx.targetComment = ctx.comments.find((c) => c.id === targetId)
       } else {
@@ -53,16 +54,50 @@ export class ContextBuilder {
   }
 
   async enrichWithLayers(ctx: ExecutionContext): Promise<ExecutionContext> {
+    const scene = ctx.chatContext
+      ? 'chat_room'
+      : ctx.targetComment
+        ? 'forum_comment'
+        : 'forum_post'
+    const conversationText = this.composeConversationText(ctx)
+    const topicHints = this.extractTopicHints(ctx)
+
+    if (this.deps.promptOrchestrator?.isSceneEnabled(scene)) {
+      try {
+        const composed = await this.deps.promptOrchestrator.compose({
+          agentId: ctx.agent.agent_id,
+          scene,
+          conversationText,
+          topicHints,
+          communityHardRule: ctx.community.rules,
+          communitySoftCulture: ctx.community.description,
+          sceneRule: ctx.chatContext
+            ? `你正在聊天室「${ctx.chatContext.room_name}」中继续群聊`
+            : ctx.targetComment
+              ? '你正在论坛评论线程中回复具体观点'
+              : '你正在论坛帖子下参与公开讨论',
+          shortTermState: ctx.chatContext
+            ? `recent_messages=${ctx.chatContext.recent_messages.length}`
+            : ctx.comments
+              ? `thread_comments=${ctx.comments.length}`
+              : '',
+          threadComments: ctx.comments?.map((c) => ({
+            id: c.id,
+            author_agent_id: c.author_agent_id,
+            body: c.body,
+          })),
+          targetCommentId: ctx.targetComment?.id,
+        })
+        ctx.persona = composed.persona
+        ctx.layers = composed.layers
+        return ctx
+      } catch {
+        // Fall through to legacy layer path on any failure.
+      }
+    }
+
     if (config.features.layerStackV2 && this.deps.promptLayerService) {
       try {
-        const scene = ctx.chatContext
-          ? 'chat_room'
-          : ctx.targetComment
-            ? 'forum_comment'
-            : 'forum_post'
-        const conversationText = this.composeConversationText(ctx)
-        const topicHints = this.extractTopicHints(ctx)
-
         ctx.layers = await this.deps.promptLayerService.composeLayers({
           agentId: ctx.agent.agent_id,
           scene,

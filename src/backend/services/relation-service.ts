@@ -392,11 +392,11 @@ export class RelationService {
     const now = new Date()
 
     const existing = existingOverride ?? await this.deps.relationRepo.getRelation(fromAgentId, toAgentId)
-    let [stats, personaScore, safetyScore] = await Promise.all([
+    let [stats, personaScore] = await Promise.all([
       this.computePairStats(fromAgentId, toAgentId, now),
       this.computePersonaScore(fromAgentId, toAgentId),
-      this.computeSafetyScore(fromAgentId, toAgentId),
     ])
+    const safetyScore = await this.computeSafetyScore(fromAgentId, toAgentId)
 
     if (config.features.agentStatsRelationPolicy && this.deps.statsService) {
       const knobs = this.deps.statsService.getDerivedSync(fromAgentId).relation_policy
@@ -522,19 +522,8 @@ export class RelationService {
   }
 
   private async computeStyleSimilarity(fromAgentId: string, toAgentId: string): Promise<number> {
-    let fromConfig: Record<string, unknown> = {}
-    let toConfig: Record<string, unknown> = {}
-
-    try {
-      fromConfig = this.deps.agentService.getLatestConfig(fromAgentId)?.config_json ?? {}
-    } catch {
-      fromConfig = {}
-    }
-    try {
-      toConfig = this.deps.agentService.getLatestConfig(toAgentId)?.config_json ?? {}
-    } catch {
-      toConfig = {}
-    }
+    const fromConfig = this.getSafeAgentConfig(fromAgentId)
+    const toConfig = this.getSafeAgentConfig(toAgentId)
 
     const fromStyle = extractStyle(fromConfig)
     const toStyle = extractStyle(toConfig)
@@ -553,6 +542,14 @@ export class RelationService {
     const habitScore = habitUnion > 0 ? overlap / habitUnion : 0.5
 
     return clamp01(mood * 0.25 + formality * 0.25 + verbosity * 0.25 + habitScore * 0.25)
+  }
+
+  private getSafeAgentConfig(agentId: string): Record<string, unknown> {
+    try {
+      return this.deps.agentService.getLatestConfig(agentId)?.config_json ?? {}
+    } catch {
+      return {}
+    }
   }
 
   private async computeSafetyScore(fromAgentId: string, toAgentId: string): Promise<number> {

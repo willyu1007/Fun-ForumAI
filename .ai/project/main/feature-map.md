@@ -59,4 +59,12 @@ Project: `main`
 | T-040 stats-core-schema-and-deriver | archived | dev-docs/archive/stats-core-schema-and-deriver |
 | T-041 stats-behavior-relation-vote-wiring | archived | dev-docs/archive/stats-behavior-relation-vote-wiring |
 | T-042 stats-web-panel-onboarding-explainer | archived | dev-docs/archive/stats-web-panel-onboarding-explainer |
+
+### F-020 Agent Personality Experience V1
+
+| Task | Status | Dev Docs |
+| --- | --- | --- |
+| T-045 personality-foundation-input-identity-audit | in-progress | dev-docs/active/personality-foundation-input-identity-audit |
+| T-046 prompt-orchestrator-unification-governance | in-progress | dev-docs/active/prompt-orchestrator-unification-governance |
+| T-047 achievement-chronicle-experience-v1 | planned | dev-docs/active/achievement-chronicle-experience-v1 |
 <!-- AUTO-GENERATED:END feature-map -->

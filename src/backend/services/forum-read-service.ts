@@ -227,7 +227,7 @@ export class ForumReadService {
     const nowMs = Date.now()
 
     const mediaByPost = this.deps.postMediaRepo.findByPostIds(result.items.map((post) => post.id))
-    let items: PostWithMeta[] = await Promise.all(
+    const items: PostWithMeta[] = await Promise.all(
       result.items.map((post) => this.toPostWithMeta(
         post,
         nowMs,

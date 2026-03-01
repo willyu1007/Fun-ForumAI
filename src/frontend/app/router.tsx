@@ -1,78 +1,22 @@
-import { lazy, Suspense } from 'react'
 import { createBrowserRouter } from 'react-router'
 import { Layout } from '../shared/components/Layout'
-
-const FeedPage = lazy(() =>
-  import('../features/forum/pages/FeedPage').then((m) => ({ default: m.FeedPage })),
-)
-const PostDetailPage = lazy(() =>
-  import('../features/forum/pages/PostDetailPage').then((m) => ({ default: m.PostDetailPage })),
-)
-const CommunitiesPage = lazy(() =>
-  import('../features/forum/pages/CommunitiesPage').then((m) => ({ default: m.CommunitiesPage })),
-)
-const CommunityFeedPage = lazy(() =>
-  import('../features/forum/pages/CommunityFeedPage').then((m) => ({
-    default: m.CommunityFeedPage,
-  })),
-)
-const AgentProfilePage = lazy(() =>
-  import('../features/agents/pages/AgentProfilePage').then((m) => ({
-    default: m.AgentProfilePage,
-  })),
-)
-const AgentManagePage = lazy(() =>
-  import('../features/agents/pages/AgentManagePage').then((m) => ({
-    default: m.AgentManagePage,
-  })),
-)
-const AgentDirectoryPage = lazy(() =>
-  import('../features/agents/pages/AgentDirectoryPage').then((m) => ({
-    default: m.AgentDirectoryPage,
-  })),
-)
-const AdminPanel = lazy(() =>
-  import('../features/admin/pages/AdminPanel').then((m) => ({ default: m.AdminPanel })),
-)
-const ChatRoomListPage = lazy(() =>
-  import('../features/chat/pages/ChatRoomListPage').then((m) => ({
-    default: m.ChatRoomListPage,
-  })),
-)
-const ChatRoomPage = lazy(() =>
-  import('../features/chat/pages/ChatRoomPage').then((m) => ({
-    default: m.ChatRoomPage,
-  })),
-)
-const AgentDashboardPage = lazy(() =>
-  import('../features/dashboard/pages/AgentDashboardPage').then((m) => ({
-    default: m.AgentDashboardPage,
-  })),
-)
-const PrivateChatPage = lazy(() =>
-  import('../features/private-chat/pages/PrivateChatPage').then((m) => ({
-    default: m.PrivateChatPage,
-  })),
-)
-
-const LoginPage = lazy(() =>
-  import('../features/auth/pages/LoginPage').then((m) => ({ default: m.LoginPage })),
-)
-const RegisterPage = lazy(() =>
-  import('../features/auth/pages/RegisterPage').then((m) => ({ default: m.RegisterPage })),
-)
-
-function PageLoader() {
-  return (
-    <div className="flex items-center justify-center py-20">
-      <div className="text-sm text-muted-foreground">加载中…</div>
-    </div>
-  )
-}
-
-function SuspenseWrap({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<PageLoader />}>{children}</Suspense>
-}
+import {
+  AdminPanel,
+  AgentDashboardPage,
+  AgentDirectoryPage,
+  AgentManagePage,
+  AgentProfilePage,
+  ChatRoomListPage,
+  ChatRoomPage,
+  CommunitiesPage,
+  CommunityFeedPage,
+  FeedPage,
+  LoginPage,
+  PostDetailPage,
+  PrivateChatPage,
+  RegisterPage,
+  SuspenseWrap,
+} from './route-components'
 
 export const router = createBrowserRouter([
   {

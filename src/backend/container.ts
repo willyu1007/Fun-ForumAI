@@ -58,6 +58,7 @@ import { PromptEngine } from './llm/prompt-engine.js'
 
 import { ContextBuilder } from './runtime/context-builder.js'
 import { PromptLayerService } from './runtime/prompt-layer-service.js'
+import { PromptOrchestrator } from './runtime/prompt-orchestrator.js'
 import { ResponseParser } from './runtime/response-parser.js'
 import { DataPlaneWriter } from './runtime/data-plane-writer.js'
 import { AgentExecutor } from './runtime/agent-executor.js'
@@ -107,7 +108,7 @@ let eventRepo: EventRepository
 let agentRunRepo: AgentRunRepository
 let roomRepo: RoomRepository
 let messageRepo: MessageRepository
-let relationRepo: RelationRepository | null = null
+let relationRepo: RelationRepository | null
 let userRepo: UserRepository | null = null
 let statsRepo: StatsRepository
 export let voteRepo: VoteRepository
@@ -469,6 +470,7 @@ export const conversationClock = new ConversationClock({
   promptEngine,
   sseHub,
   promptLayerService: null,
+  promptOrchestrator: null,
   leaderElector: conversationClockLeaderElector,
 })
 
@@ -486,6 +488,7 @@ let instructionEngine: import('./services/instruction-engine.js').InstructionEng
 export let growthEngine: import('./services/growth-engine.js').GrowthEngine | null = null
 let memoryService: import('./services/memory-service.js').MemoryService | null = null
 export let promptLayerService: PromptLayerService | null = null
+export let promptOrchestrator: PromptOrchestrator | null = null
 export let relationService: RelationService | null = null
 export let relationScheduler: RelationScheduler | null = null
 export let nurtureOrchestrator: NurtureOrchestrator | null = null
@@ -493,6 +496,7 @@ export let nurtureScheduler: NurtureScheduler | null = null
 let publicObservationDigestService: PublicObservationDigestService | null = null
 let publicObservationEventHandler: PublicObservationEventHandler | null = null
 let proactiveEventHandler: import('./runtime/proactive-event-handler.js').ProactiveEventHandler | null = null
+let proactiveInteractionService: import('./services/proactive-interaction-service.js').ProactiveInteractionService | null = null
 export let privateChannelServices: {
   channelService: import('./services/private-channel-service.js').PrivateChannelService
   memoryService: import('./services/memory-service.js').MemoryService
@@ -566,7 +570,7 @@ if (config.db.usePrisma) {
     })
   }
 
-  const proactiveService = new ProactiveInteractionService({
+  proactiveInteractionService = new ProactiveInteractionService({
     channelRepo,
     agentService,
     llmClient,
@@ -574,7 +578,7 @@ if (config.db.usePrisma) {
   })
 
   proactiveEventHandler = new ProactiveEventHandler({
-    proactiveService,
+    proactiveService: proactiveInteractionService,
     forumReadService,
     agentService,
   })
@@ -592,6 +596,7 @@ if (config.db.usePrisma) {
     memoryRepo,
     agentService,
     llmClient,
+    promptEngine,
     eventRepo,
     agentRunRepo,
     budgetService,
@@ -637,7 +642,17 @@ promptLayerService = new PromptLayerService({
   memoryService,
   statsService,
 })
+promptOrchestrator = new PromptOrchestrator({
+  promptLayerService,
+})
 conversationClock.setPromptLayerService(promptLayerService)
+conversationClock.setPromptOrchestrator(promptOrchestrator)
+if (privateChannelServices) {
+  privateChannelServices.channelService.bindPromptOrchestrator(promptEngine, promptOrchestrator)
+}
+if (proactiveInteractionService) {
+  proactiveInteractionService.bindPromptOrchestrator(promptEngine, promptOrchestrator)
+}
 
 // ─── Agent Runtime ──────────────────────────────────────────
 
@@ -648,6 +663,7 @@ const contextBuilder = new ContextBuilder({
   instructionEngine,
   memoryService,
   promptLayerService,
+  promptOrchestrator,
 })
 
 const responseParser = new ResponseParser()
@@ -678,6 +694,7 @@ export const postScheduler = new PostScheduler(
     responseParser,
     dataplaneWriter,
     inclinationAssetService,
+    promptOrchestrator,
   },
   {
     postIntervalMs: config.runtime.postIntervalMs,
@@ -705,7 +722,10 @@ export const runtimeLoop = new RuntimeLoop(
 
 // ─── Event Bridge ───────────────────────────────────────────
 
-export const eventBridge = new EventBridge(eventQueue)
+export const eventBridge = new EventBridge(eventQueue, {
+  postRepo,
+  commentRepo,
+})
 
 forumWriteService.setEventHook((event) => {
   eventBridge.bridge(event)
