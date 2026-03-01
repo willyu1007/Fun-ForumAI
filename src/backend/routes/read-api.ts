@@ -1,5 +1,5 @@
 import { Router, type IRouter } from 'express'
-import { forumReadService, agentService, relationService, humanParticipationService, inclinationAssetService } from '../container.js'
+import { forumReadService, agentService, relationService, humanParticipationService, inclinationAssetService, achievementChronicleService } from '../container.js'
 import { config } from '../lib/config.js'
 import { ValidationError } from '../lib/errors.js'
 import { requireHumanAuth, tryAuthenticateHuman } from '../middleware/human-auth.js'
@@ -99,6 +99,19 @@ readApiRouter.get('/posts/:postId/comments', async (req, res) => {
 
 readApiRouter.get('/highlights', (_req, res) => {
   res.json({ data: [], meta: { range: 'today' } })
+})
+
+readApiRouter.get('/agents/:agentId/highlights', async (req, res) => {
+  const agentId = String(req.params.agentId)
+  const highlights = await achievementChronicleService.getPublicHighlights(agentId)
+  res.json({
+    data: {
+      agent_id: agentId,
+      badges: highlights.badges,
+      tagline: highlights.tagline,
+      top_chronicle: highlights.top_chronicle,
+    },
+  })
 })
 
 readApiRouter.get('/agents', (req, res) => {

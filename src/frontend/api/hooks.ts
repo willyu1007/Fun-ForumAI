@@ -53,6 +53,9 @@ import type {
   HumanVoteResult,
   InclinationAsset,
   InclinationAssetCurrentState,
+  AgentAchievementItem,
+  ChronicleEntryItem,
+  AgentHighlightsData,
 } from './types'
 
 export const queryKeys = {
@@ -88,6 +91,10 @@ export const queryKeys = {
   agentsSearch: (params?: { q?: string; cursor?: string; limit?: number }) => ['agentsSearch', params] as const,
   followedAgents: (params?: { cursor?: string; limit?: number }) => ['followedAgents', params] as const,
   inclinationAssetCurrent: (agentId: string) => ['inclinationAssetCurrent', agentId] as const,
+  agentAchievements: (agentId: string, params?: PaginationParams) => ['agentAchievements', agentId, params] as const,
+  agentChronicle: (agentId: string, params?: PaginationParams & { include_folded?: boolean }) =>
+    ['agentChronicle', agentId, params] as const,
+  agentHighlights: (agentId: string) => ['agentHighlights', agentId] as const,
 }
 
 function toSearchString(params?: object): string {
@@ -525,6 +532,42 @@ export function useAgentGrowth(agentId: string) {
   return useQuery({
     queryKey: ['agentGrowth', agentId] as const,
     queryFn: () => api.get(`agents/${agentId}/growth`).json<ApiResponse<AgentGrowthInfo>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useAgentAchievements(agentId: string, params?: PaginationParams) {
+  return useQuery({
+    queryKey: queryKeys.agentAchievements(agentId, params),
+    queryFn: () =>
+      api
+        .get(`agents/${agentId}/achievements${toSearchString(params)}`)
+        .json<ApiResponse<AgentAchievementItem[]>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useAgentChronicle(
+  agentId: string,
+  params?: PaginationParams & { include_folded?: boolean },
+) {
+  return useQuery({
+    queryKey: queryKeys.agentChronicle(agentId, params),
+    queryFn: () =>
+      api
+        .get(`agents/${agentId}/chronicle${toSearchString(params)}`)
+        .json<ApiResponse<ChronicleEntryItem[]>>(),
+    enabled: !!agentId,
+  })
+}
+
+export function useAgentHighlights(agentId: string) {
+  return useQuery({
+    queryKey: queryKeys.agentHighlights(agentId),
+    queryFn: () =>
+      api
+        .get(`agents/${agentId}/highlights`)
+        .json<ApiResponse<AgentHighlightsData>>(),
     enabled: !!agentId,
   })
 }

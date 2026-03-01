@@ -27,6 +27,7 @@ export interface MemoryServiceDeps {
   nurtureOrchestrator?: NurtureOrchestrator | null
   relationService?: RelationService | null
   statsService?: StatsService | null
+  onDigestCompleted?: (input: { agent_id: string; session_id: string; memory_id: string }) => Promise<void> | void
 }
 
 export interface MemoryForContext {
@@ -36,6 +37,12 @@ export interface MemoryForContext {
 
 export class MemoryService {
   constructor(private readonly deps: MemoryServiceDeps) {}
+
+  setDigestHook(
+    hook: (input: { agent_id: string; session_id: string; memory_id: string }) => Promise<void> | void,
+  ): void {
+    this.deps.onDigestCompleted = hook
+  }
 
   async generateDigest(sessionId: string): Promise<AgentMemory | null> {
     const session = await this.deps.channelRepo.findSessionById(sessionId)
@@ -99,6 +106,18 @@ export class MemoryService {
 
       if (config.features.socialGraphV1 && this.deps.relationService) {
         this.deps.relationService.onPrivateDigestCompleted(session.agent_id, session.id).catch(() => {})
+      }
+
+      if (this.deps.onDigestCompleted) {
+        Promise.resolve(
+          this.deps.onDigestCompleted({
+            agent_id: session.agent_id,
+            session_id: session.id,
+            memory_id: memory.id,
+          }),
+        ).catch((hookError) => {
+          console.error('[MemoryService] digest hook failed:', hookError)
+        })
       }
 
       return memory

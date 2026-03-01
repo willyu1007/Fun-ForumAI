@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-01T02:10:53Z`
+Generated at (UTC): `2026-03-01T14:21:22Z`
 
 ## Environments
 - `dev`, `prod`, `staging`
@@ -14,6 +14,8 @@ Generated at (UTC): `2026-03-01T02:10:53Z`
 | `APP_ENV` | `active` | `enum` | yes | no | `dev` | `` | `*` | `` | `` | `` | Deployment environment profile. |
 | `CORS_ORIGINS` | `active` | `string` | no | no | `http://localhost:3000` | `` | `*` | `` | `` | `` | Comma-separated list of allowed CORS origins. |
 | `DATABASE_URL` | `active` | `string` | yes | no | `postgresql://localhost:5432/llm_forum_dev` | `` | `*` | `` | `` | `` | PostgreSQL connection URL (Prisma datasource). |
+| `FF_ACHIEVEMENT_CHRONICLE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable achievement + chronicle write pipeline and owner/admin read surfaces. |
+| `FF_ACHIEVEMENT_PUBLIC_HIGHLIGHTS` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable public highlights endpoint and feed/profile badge/tagline exposure. |
 | `FF_AGENT_STATS_BEHAVIOR` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable stats-derived behavior bias wiring in allocator/chat/memory paths. |
 | `FF_AGENT_STATS_RELATION_POLICY` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable stats-aware relation policy multipliers and thresholds. |
 | `FF_AGENT_STATS_UI` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable stats UI exposure for owner panel and related explainers. |

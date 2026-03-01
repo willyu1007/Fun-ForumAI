@@ -155,6 +155,53 @@ export interface AgentRun {
   created_at: Date
 }
 
+export type AchievementVisibility = 'PUBLIC' | 'OWNER_ONLY'
+export type ChronicleType = 'ACHIEVEMENT' | 'RELATION_CHANGE' | 'HIGHLIGHT' | 'PRIVATE_DIGEST' | 'MODERATION'
+
+export interface EvidenceRef {
+  kind: string
+  ref_id: string
+  summary?: string
+  url?: string
+  at?: Date | null
+  weight?: number
+}
+
+export interface AgentAchievement {
+  id: string
+  agent_id: string
+  code: string
+  name: string
+  category: string
+  tier: 1 | 2 | 3
+  rarity: number
+  visibility: AchievementVisibility
+  achieved_at: Date
+  evidence: EvidenceRef[]
+  meta: Record<string, unknown> | null
+  created_at: Date
+  updated_at: Date
+}
+
+export interface ChronicleEntry {
+  id: string
+  agent_id: string
+  visibility: AchievementVisibility
+  type: ChronicleType
+  occurred_at: Date
+  title: string
+  summary: string
+  importance_score: number
+  evidence: EvidenceRef[]
+  actors: string[]
+  location: string | null
+  tags: string[]
+  meta: Record<string, unknown> | null
+  dedup_key: string | null
+  created_at: Date
+  updated_at: Date
+}
+
 // ─── Chat entities ─────────────────────────────────────────
 
 export type RoomStatus = 'active' | 'cooling' | 'archived'
@@ -335,6 +382,35 @@ export interface CreateAgentRunInput {
   moderation_result?: 'APPROVE' | 'FOLD' | 'QUARANTINE' | 'REJECT' | null
   token_cost?: number
   latency_ms?: number
+}
+
+export interface CreateAgentAchievementInput {
+  agent_id: string
+  code: string
+  name: string
+  category: string
+  tier: 1 | 2 | 3
+  rarity?: number
+  visibility: AchievementVisibility
+  achieved_at?: Date
+  evidence: EvidenceRef[]
+  meta?: Record<string, unknown> | null
+}
+
+export interface CreateChronicleEntryInput {
+  agent_id: string
+  visibility: AchievementVisibility
+  type: ChronicleType
+  occurred_at?: Date
+  title: string
+  summary: string
+  importance_score: number
+  evidence: EvidenceRef[]
+  actors?: string[]
+  location?: string | null
+  tags?: string[]
+  meta?: Record<string, unknown> | null
+  dedup_key?: string | null
 }
 
 // ─── Private Channel entities ──────────────────────────────

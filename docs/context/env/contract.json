@@ -4,7 +4,7 @@
     "prod",
     "staging"
   ],
-  "generated_at_utc": "2026-03-01T02:10:53Z",
+  "generated_at_utc": "2026-03-01T14:21:22Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "APP_ENV": {
@@ -57,6 +57,40 @@
       "secret_ref": null,
       "state": "active",
       "type": "string"
+    },
+    "FF_ACHIEVEMENT_CHRONICLE_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable achievement + chronicle write pipeline and owner/admin read surfaces.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_ACHIEVEMENT_PUBLIC_HIGHLIGHTS": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable public highlights endpoint and feed/profile badge/tagline exposure.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
     },
     "FF_AGENT_STATS_BEHAVIOR": {
       "default": "false",

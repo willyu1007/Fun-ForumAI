@@ -66,5 +66,5 @@ Project: `main`
 | --- | --- | --- |
 | T-045 personality-foundation-input-identity-audit | in-progress | dev-docs/active/personality-foundation-input-identity-audit |
 | T-046 prompt-orchestrator-unification-governance | in-progress | dev-docs/active/prompt-orchestrator-unification-governance |
-| T-047 achievement-chronicle-experience-v1 | planned | dev-docs/active/achievement-chronicle-experience-v1 |
+| T-047 achievement-chronicle-experience-v1 | in-progress | dev-docs/active/achievement-chronicle-experience-v1 |
 <!-- AUTO-GENERATED:END feature-map -->

@@ -11,6 +11,8 @@ import { InMemoryEventRepository, InMemoryAgentRunRepository } from './repos/eve
 import { InMemoryRoomRepository } from './repos/room-repository.js'
 import { InMemoryMessageRepository } from './repos/message-repository.js'
 import { InMemoryStatsRepository } from './repos/stats-repository.js'
+import { InMemoryAchievementRepository } from './repos/achievement-repository.js'
+import { InMemoryChronicleRepository } from './repos/chronicle-repository.js'
 
 import type { PostRepository } from './repos/post-repository.js'
 import type { CommentRepository } from './repos/comment-repository.js'
@@ -26,6 +28,8 @@ import type { RoomRepository } from './repos/room-repository.js'
 import type { MessageRepository } from './repos/message-repository.js'
 import type { RelationRepository } from './repos/relation-repository.js'
 import type { StatsRepository } from './repos/stats-repository.js'
+import type { AchievementRepository } from './repos/achievement-repository.js'
+import type { ChronicleRepository } from './repos/chronicle-repository.js'
 
 import { ForumReadService } from './services/forum-read-service.js'
 import { ForumWriteService } from './services/forum-write-service.js'
@@ -85,6 +89,8 @@ import { AuthService } from './services/auth-service.js'
 import { RelationService } from './services/relation-service.js'
 import { RelationMetrics } from './services/relation-metrics.js'
 import { StatsService } from './services/stats-service.js'
+import { AchievementChronicleService } from './services/achievement-chronicle-service.js'
+import { AchievementsOrchestrator } from './services/achievements-orchestrator.js'
 import type { UserRepository } from './repos/user-repository.js'
 
 import { SseHub } from './sse/hub.js'
@@ -95,6 +101,7 @@ import { config } from './lib/config.js'
 import { NurtureScheduler } from './runtime/nurture-scheduler.js'
 import { PublicObservationEventHandler } from './runtime/public-observation-event-handler.js'
 import { RelationScheduler } from './runtime/relation-scheduler.js'
+import { AchievementsScheduler } from './runtime/achievements-scheduler.js'
 
 // ─── Repositories ───────────────────────────────────────────
 
@@ -111,6 +118,8 @@ let messageRepo: MessageRepository
 let relationRepo: RelationRepository | null
 let userRepo: UserRepository | null = null
 let statsRepo: StatsRepository
+let achievementRepo: AchievementRepository
+let chronicleRepo: ChronicleRepository
 export let voteRepo: VoteRepository
 export let humanVoteRepo: HumanVoteRepository
 export let humanFollowRepo: HumanFollowRepository
@@ -118,6 +127,8 @@ export let inclinationAssetRepo: InclinationAssetRepository
 export let postMediaRepo: PostMediaRepository
 export let communityRepo: CommunityRepository
 export let statsService: StatsService | null = null
+export let achievementsOrchestrator: AchievementsOrchestrator | null = null
+export let achievementsScheduler: AchievementsScheduler | null = null
 
 const _hydratables: HydratableRepo[] = []
 
@@ -140,6 +151,8 @@ if (config.db.usePrisma) {
   const { PgUserRepository } = await import('./repos/pg/pg-user-repository.js')
   const { PgRelationRepository } = await import('./repos/pg/pg-relation-repository.js')
   const { PgStatsRepository } = await import('./repos/pg/pg-stats-repository.js')
+  const { PgAchievementRepository } = await import('./repos/pg/pg-achievement-repository.js')
+  const { PgChronicleRepository } = await import('./repos/pg/pg-chronicle-repository.js')
 
   const pr = new PgPostRepository(prisma)
   const cr = new PgCommentRepository(prisma)
@@ -157,6 +170,8 @@ if (config.db.usePrisma) {
   const mr = new PgMessageRepository(prisma)
   const relr = new PgRelationRepository(prisma)
   const sr = new PgStatsRepository(prisma)
+  const achar = new PgAchievementRepository(prisma)
+  const chr = new PgChronicleRepository(prisma)
 
   postRepo = pr
   commentRepo = cr
@@ -174,8 +189,10 @@ if (config.db.usePrisma) {
   messageRepo = mr
   relationRepo = relr
   statsRepo = sr
+  achievementRepo = achar
+  chronicleRepo = chr
   userRepo = new PgUserRepository(prisma)
-  _hydratables.push(pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, cmr, er, arr, rr, mr, sr)
+  _hydratables.push(pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, cmr, er, arr, rr, mr, sr, achar, chr)
 } else {
   postRepo = new InMemoryPostRepository()
   commentRepo = new InMemoryCommentRepository()
@@ -193,6 +210,8 @@ if (config.db.usePrisma) {
   messageRepo = new InMemoryMessageRepository()
   relationRepo = null
   statsRepo = new InMemoryStatsRepository()
+  achievementRepo = new InMemoryAchievementRepository()
+  chronicleRepo = new InMemoryChronicleRepository()
 }
 
 // ─── SSE Hub ─────────────────────────────────────────────────
@@ -314,8 +333,15 @@ const conversationClockLeaderElector = createLeaderElector('conversation-clock')
 const privateChannelLeaderElector = createLeaderElector('private-channel')
 const nurtureLeaderElector = createLeaderElector('nurture')
 const relationLeaderElector = createLeaderElector('relation')
+const achievementsLeaderElector = createLeaderElector('achievements')
 
 // ─── Core Services ──────────────────────────────────────────
+
+export const achievementChronicleService = new AchievementChronicleService({
+  achievementRepo,
+  chronicleRepo,
+  agentRepo,
+})
 
 export const forumReadService = new ForumReadService({
   postRepo,
@@ -325,6 +351,7 @@ export const forumReadService = new ForumReadService({
   postMediaRepo,
   communityRepo,
   agentRepo,
+  achievementChronicleService,
 })
 
 export const forumWriteService = new ForumWriteService({
@@ -376,6 +403,14 @@ export const humanParticipationService = new HumanParticipationService({
   humanFollowRepo,
   agentRepo,
   eventRepo,
+})
+
+achievementsOrchestrator = new AchievementsOrchestrator({
+  agentRepo,
+  relationRepo,
+  achievementRepo,
+  chronicleRepo,
+  chronicleService: achievementChronicleService,
 })
 
 // ─── Allocator Pipeline ─────────────────────────────────────
@@ -534,6 +569,9 @@ if (config.db.usePrisma) {
       statsService,
       metrics: new RelationMetrics(),
     })
+    if (achievementsOrchestrator) {
+      relationService.setStateChangeHook((input) => achievementsOrchestrator!.processRelationStateChange(input))
+    }
   }
 
   nurtureOrchestrator = new NurtureOrchestrator({
@@ -556,6 +594,9 @@ if (config.db.usePrisma) {
     relationService,
     statsService,
   })
+  if (memoryService && achievementsOrchestrator) {
+    memoryService.setDigestHook((input) => achievementsOrchestrator!.processPrivateDigest(input))
+  }
 
   if (memoryService) {
     publicObservationDigestService = new PublicObservationDigestService({
@@ -631,6 +672,24 @@ if (config.db.usePrisma) {
     relationScheduler = new RelationScheduler({
       relationService,
       leaderElector: relationLeaderElector,
+    })
+  }
+}
+
+if (achievementsOrchestrator) {
+  governanceAdapter.setExecutedHook(({ action, target_agent_id }) =>
+    achievementsOrchestrator!.processGovernanceResult({
+      target_agent_id,
+      action: action.action,
+      source_ref_id: action.target_id,
+      admin_user_id: action.admin_user_id,
+    }),
+  )
+
+  if (config.features.achievementChronicleV1) {
+    achievementsScheduler = new AchievementsScheduler({
+      orchestrator: achievementsOrchestrator,
+      leaderElector: achievementsLeaderElector,
     })
   }
 }
@@ -729,6 +788,12 @@ export const eventBridge = new EventBridge(eventQueue, {
 
 forumWriteService.setEventHook((event) => {
   eventBridge.bridge(event)
+
+  if (achievementsOrchestrator) {
+    achievementsOrchestrator.processDomainEvent(event).catch((err) => {
+      console.error('[Container] Achievement orchestrator event ingest failed:', err)
+    })
+  }
 
   sseHub.broadcast({
     type: event.event_type,

@@ -257,6 +257,20 @@ variables:
     default: ""
     description: Optional CSV whitelist of scenes for PromptOrchestrator (empty means all scenes).
 
+  FF_ACHIEVEMENT_CHRONICLE_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable achievement + chronicle write pipeline and owner/admin read surfaces.
+
+  FF_ACHIEVEMENT_PUBLIC_HIGHLIGHTS:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable public highlights endpoint and feed/profile badge/tagline exposure.
+
   FF_NURTURE_PIPELINE_V2:
     type: enum
     enum: ["true", "false"]

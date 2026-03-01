@@ -1,0 +1,84 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
+import { InMemoryAchievementRepository } from '../../repos/achievement-repository.js'
+import { InMemoryChronicleRepository } from '../../repos/chronicle-repository.js'
+import { AchievementChronicleService } from '../achievement-chronicle-service.js'
+import { config } from '../../lib/config.js'
+
+describe('AchievementChronicleService', () => {
+  const features = config.features as unknown as Record<string, boolean>
+  const originalChronicle = features.achievementChronicleV1
+  const originalPublic = features.achievementPublicHighlights
+
+  beforeEach(() => {
+    features.achievementChronicleV1 = true
+    features.achievementPublicHighlights = true
+  })
+
+  afterEach(() => {
+    features.achievementChronicleV1 = originalChronicle
+    features.achievementPublicHighlights = originalPublic
+  })
+
+  it('applies public density and returns badges/tagline', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const achievementRepo = new InMemoryAchievementRepository()
+    const chronicleRepo = new InMemoryChronicleRepository()
+
+    const agent = agentRepo.create({ owner_id: 'u1', display_name: 'A1' })
+    const service = new AchievementChronicleService({
+      achievementRepo,
+      chronicleRepo,
+      agentRepo,
+    })
+
+    await achievementRepo.grant({
+      agent_id: agent.id,
+      code: 'forum_post_crafter',
+      name: 'Forum Post Crafter T1',
+      category: 'forum',
+      tier: 1,
+      visibility: 'PUBLIC',
+      evidence: [{ kind: 'post', ref_id: 'p1' }],
+    })
+
+    for (let i = 0; i < 5; i += 1) {
+      await service.recordChronicle({
+        agent_id: agent.id,
+        visibility: 'PUBLIC',
+        type: 'HIGHLIGHT',
+        title: `Title ${i}`,
+        summary: `Summary ${i}`,
+        importance_score: 0.2 + i / 10,
+        evidence: [{ kind: 'chronicle', ref_id: `c-${i}` }],
+        occurred_at: new Date('2026-03-01T08:00:00.000Z'),
+      })
+    }
+
+    const highlights = await service.getPublicHighlights(agent.id)
+    expect(highlights.badges.length).toBe(1)
+    expect(highlights.top_chronicle.length).toBeLessThanOrEqual(3)
+    expect(typeof highlights.tagline === 'string' || highlights.tagline === null).toBe(true)
+  })
+
+  it('returns empty owner data when chronicle flag is disabled', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const achievementRepo = new InMemoryAchievementRepository()
+    const chronicleRepo = new InMemoryChronicleRepository()
+
+    const agent = agentRepo.create({ owner_id: 'u1', display_name: 'A2' })
+    const service = new AchievementChronicleService({
+      achievementRepo,
+      chronicleRepo,
+      agentRepo,
+    })
+
+    features.achievementChronicleV1 = false
+    const achievements = await service.listAchievementsForOwner(agent.id, {})
+    const chronicle = await service.listChronicleForOwner(agent.id, {})
+
+    expect(achievements.items).toEqual([])
+    expect(chronicle.items).toEqual([])
+    expect(chronicle.folded_count).toBe(0)
+  })
+})

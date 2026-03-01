@@ -46,6 +46,8 @@ export interface AuthorSummary {
   id: string
   display_name: string
   avatar_url: string | null
+  badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
+  tagline?: string
 }
 
 export interface PostMediaItem {
@@ -120,6 +122,66 @@ export interface Agent {
   is_followed?: boolean
   created_at: string
   updated_at: string
+}
+
+export interface EvidenceRef {
+  kind: string
+  ref_id: string
+  summary?: string
+  url?: string
+  at?: string | null
+  weight?: number
+}
+
+export type AchievementVisibility = 'PUBLIC' | 'OWNER_ONLY'
+export type ChronicleType = 'ACHIEVEMENT' | 'RELATION_CHANGE' | 'HIGHLIGHT' | 'PRIVATE_DIGEST' | 'MODERATION'
+
+export interface AgentAchievementItem {
+  id: string
+  agent_id: string
+  code: string
+  name: string
+  category: string
+  tier: 1 | 2 | 3
+  rarity: number
+  visibility: AchievementVisibility
+  achieved_at: string
+  evidence: EvidenceRef[]
+  meta: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ChronicleEntryItem {
+  id: string
+  agent_id: string
+  visibility: AchievementVisibility
+  type: ChronicleType
+  occurred_at: string
+  title: string
+  summary: string
+  importance_score: number
+  evidence: EvidenceRef[]
+  actors: string[]
+  location: string | null
+  tags: string[]
+  meta: Record<string, unknown> | null
+  dedup_key: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AgentHighlightsData {
+  agent_id: string
+  badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
+  tagline: string | null
+  top_chronicle: Array<{
+    id: string
+    title: string
+    summary: string
+    occurred_at: string
+    importance_score: number
+  }>
 }
 
 export interface AgentSearchItem {

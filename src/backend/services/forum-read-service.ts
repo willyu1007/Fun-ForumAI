@@ -12,6 +12,8 @@ import type {
   PaginatedResult,
 } from '../repos/index.js'
 import { NotFoundError } from '../lib/errors.js'
+import { config } from '../lib/config.js'
+import type { AchievementChronicleService } from './achievement-chronicle-service.js'
 
 export interface ForumReadServiceDeps {
   postRepo: PostRepository
@@ -21,6 +23,7 @@ export interface ForumReadServiceDeps {
   postMediaRepo: PostMediaRepository
   communityRepo: CommunityRepository
   agentRepo: AgentRepository
+  achievementChronicleService?: AchievementChronicleService
 }
 
 export interface PostMediaSummary {
@@ -33,6 +36,8 @@ export interface AuthorSummary {
   id: string
   display_name: string
   avatar_url: string | null
+  badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
+  tagline?: string
 }
 
 export interface PostWithMeta extends Post {
@@ -76,10 +81,24 @@ const HUMAN_VOTE_WEIGHT = 0.35
 export class ForumReadService {
   constructor(private readonly deps: ForumReadServiceDeps) {}
 
-  private resolveAuthor(agentId: string): AuthorSummary {
+  private async resolveAuthor(agentId: string): Promise<AuthorSummary> {
+    const withIdentity = async (base: AuthorSummary): Promise<AuthorSummary> => {
+      if (!config.features.achievementPublicHighlights || !this.deps.achievementChronicleService) {
+        return base
+      }
+      const identity = await this.deps.achievementChronicleService.getFeedAuthorIdentity(agentId)
+      return {
+        ...base,
+        ...(identity.badges ? { badges: identity.badges } : {}),
+        ...(identity.tagline ? { tagline: identity.tagline } : {}),
+      }
+    }
+
     const agent = this.deps.agentRepo.findById(agentId)
-    if (agent) return { id: agent.id, display_name: agent.display_name, avatar_url: agent.avatar_url }
-    return { id: agentId, display_name: agentId, avatar_url: null }
+    if (agent) {
+      return withIdentity({ id: agent.id, display_name: agent.display_name, avatar_url: agent.avatar_url })
+    }
+    return withIdentity({ id: agentId, display_name: agentId, avatar_url: null })
   }
 
   private resolveCommunityMeta(communityId: string): { slug: string; name: string } {
@@ -201,7 +220,7 @@ export class ForumReadService {
         activityAt,
         nowMs,
       }),
-      author: this.resolveAuthor(post.author_agent_id),
+      author: await this.resolveAuthor(post.author_agent_id),
       community_slug: community.slug,
       community_name: community.name,
       media,
@@ -289,11 +308,11 @@ export class ForumReadService {
       limit,
     })
 
-    const items: CommentWithAuthor[] = result.items.map((c) => {
+    const items: CommentWithAuthor[] = await Promise.all(result.items.map(async (c) => {
       const votes = this.getDetailedVoteSummary('COMMENT', c.id, viewerUserId)
       return {
         ...c,
-        author: this.resolveAuthor(c.author_agent_id),
+        author: await this.resolveAuthor(c.author_agent_id),
         vote_score: votes.weighted_score,
         agent_vote_score: votes.agent.score,
         agent_vote_up: votes.agent.up,
@@ -304,7 +323,7 @@ export class ForumReadService {
         weighted_vote_score: votes.weighted_score,
         viewer_human_vote_direction: votes.viewer_direction,
       }
-    })
+    }))
 
     return { items, next_cursor: result.next_cursor }
   }

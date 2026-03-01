@@ -50,6 +50,13 @@ export interface RelationServiceDeps {
   statsService?: StatsService | null
   relationEngine?: RelationEngine
   metrics?: RelationMetrics
+  onStateChanged?: (input: {
+    from_agent_id: string
+    to_agent_id: string
+    previous_state: RelationState | null
+    next_state: RelationState
+    relation_id: string
+  }) => Promise<void> | void
 }
 
 export interface RelationListItem {
@@ -86,6 +93,18 @@ export class RelationService {
   constructor(private readonly deps: RelationServiceDeps) {
     this.engine = deps.relationEngine ?? new RelationEngine()
     this.metrics = deps.metrics ?? new RelationMetrics()
+  }
+
+  setStateChangeHook(
+    hook: (input: {
+      from_agent_id: string
+      to_agent_id: string
+      previous_state: RelationState | null
+      next_state: RelationState
+      relation_id: string
+    }) => Promise<void> | void,
+  ): void {
+    this.deps.onStateChanged = hook
   }
 
   getMetrics(): RelationMetrics {
@@ -447,6 +466,17 @@ export class RelationService {
       this.metrics.markStateTransition()
       if (next.state === 'blocked') {
         this.metrics.markBlock()
+      }
+      if (this.deps.onStateChanged) {
+        Promise.resolve(this.deps.onStateChanged({
+          from_agent_id: fromAgentId,
+          to_agent_id: toAgentId,
+          previous_state: existing?.state ?? null,
+          next_state: next.state,
+          relation_id: next.id,
+        })).catch((hookError) => {
+          console.error('[RelationService] state-change hook failed:', hookError)
+        })
       }
     }
 

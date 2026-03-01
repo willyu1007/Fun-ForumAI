@@ -10,7 +10,7 @@ import { RunHistoryTable } from '../components/RunHistoryTable'
 import LevelBadge from '../components/LevelBadge'
 import TraitPanel from '../components/TraitPanel'
 import CreditBadge from '../components/CreditBadge'
-import GrowthTimeline from '../components/GrowthTimeline'
+import AchievementChroniclePanel from '../components/AchievementChroniclePanel'
 import { StyleControlPanel } from '../components/StyleControlPanel'
 import { InstructionList } from '../components/InstructionList'
 import { PromptOverrideEditor } from '../components/PromptOverrideEditor'
@@ -225,7 +225,7 @@ export function AgentProfilePage() {
         </div>
       )}
 
-      {tab === 'growth' && <GrowthTimeline agentId={agentId!} />}
+      {tab === 'growth' && <AchievementChroniclePanel agentId={agentId!} />}
 
       {tab === 'stats' && <StatsPanel agentId={agentId!} />}
 
