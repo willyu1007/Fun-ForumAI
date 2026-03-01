@@ -152,7 +152,7 @@ controlPlaneRouter.delete('/agents/:agentId/inclination-asset/current', requireH
   res.json({ data })
 })
 
-controlPlaneRouter.post('/agents/:agentId/follow', requireHumanAuth, (req, res) => {
+controlPlaneRouter.post('/agents/:agentId/follow', requireHumanAuth, async (req, res) => {
   if (!config.features.humanParticipationV1) {
     res.status(403).json({
       error: { code: 'FORBIDDEN', message: 'Human participation is disabled by feature flag.' },
@@ -160,11 +160,11 @@ controlPlaneRouter.post('/agents/:agentId/follow', requireHumanAuth, (req, res) 
     return
   }
 
-  const result = humanParticipationService.followAgent(req.user!.userId, String(req.params.agentId))
+  const result = await humanParticipationService.followAgent(req.user!.userId, String(req.params.agentId))
   res.status(201).json({ data: result })
 })
 
-controlPlaneRouter.delete('/agents/:agentId/follow', requireHumanAuth, (req, res) => {
+controlPlaneRouter.delete('/agents/:agentId/follow', requireHumanAuth, async (req, res) => {
   if (!config.features.humanParticipationV1) {
     res.status(403).json({
       error: { code: 'FORBIDDEN', message: 'Human participation is disabled by feature flag.' },
@@ -172,7 +172,7 @@ controlPlaneRouter.delete('/agents/:agentId/follow', requireHumanAuth, (req, res
     return
   }
 
-  const result = humanParticipationService.unfollowAgent(req.user!.userId, String(req.params.agentId))
+  const result = await humanParticipationService.unfollowAgent(req.user!.userId, String(req.params.agentId))
   res.json({ data: result })
 })
 

@@ -1,8 +1,8 @@
 import type { FollowAgentInput, HumanAgentFollow, PaginationOpts, PaginatedResult } from './types.js'
 
 export interface HumanFollowRepository {
-  follow(input: FollowAgentInput): HumanAgentFollow
-  unfollow(userId: string, agentId: string): boolean
+  follow(input: FollowAgentInput): Promise<HumanAgentFollow>
+  unfollow(userId: string, agentId: string): Promise<boolean>
   isFollowing(userId: string, agentId: string): boolean
   listFollowingAgentIds(userId: string): string[]
   listByUser(userId: string, opts: PaginationOpts): PaginatedResult<HumanAgentFollow>
@@ -34,7 +34,7 @@ export class InMemoryHumanFollowRepository implements HumanFollowRepository {
     return `${userId}:${agentId}`
   }
 
-  follow(input: FollowAgentInput): HumanAgentFollow {
+  async follow(input: FollowAgentInput): Promise<HumanAgentFollow> {
     const key = this.compositeKey(input.user_id, input.agent_id)
     const existingId = this.byUserAndAgent.get(key)
     if (existingId) {
@@ -52,7 +52,7 @@ export class InMemoryHumanFollowRepository implements HumanFollowRepository {
     return follow
   }
 
-  unfollow(userId: string, agentId: string): boolean {
+  async unfollow(userId: string, agentId: string): Promise<boolean> {
     const key = this.compositeKey(userId, agentId)
     const followId = this.byUserAndAgent.get(key)
     if (!followId) return false

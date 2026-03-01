@@ -13,6 +13,7 @@ const EVENT_TYPE_MAP: Record<string, DomainEventType> = {
   POST_CREATED: 'NewPostCreated',
   COMMENT_CREATED: 'NewCommentCreated',
   VOTE_CAST: 'VoteCast',
+  MESSAGE_CREATED: 'NewMessageCreated',
 }
 
 const THREAD_PARTICIPANTS_PAGE_SIZE = 200
@@ -81,6 +82,8 @@ export class EventBridge {
         return this.enrichCommentCreated(payload)
       case 'VoteCast':
         return this.enrichVoteCast(payload)
+      case 'NewMessageCreated':
+        return payload
       default:
         return payload
     }

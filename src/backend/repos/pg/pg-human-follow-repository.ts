@@ -31,7 +31,7 @@ export class PgHumanFollowRepository implements HumanFollowRepository {
     }
   }
 
-  follow(input: FollowAgentInput): HumanAgentFollow {
+  async follow(input: FollowAgentInput): Promise<HumanAgentFollow> {
     const key = this.compositeKey(input.user_id, input.agent_id)
     const existingId = this.byUserAndAgent.get(key)
 
@@ -41,6 +41,32 @@ export class PgHumanFollowRepository implements HumanFollowRepository {
 
     const id = randomUUID()
     const now = new Date()
+
+    try {
+      await this.prisma.humanAgentFollow.create({
+        data: {
+          id,
+          userId: input.user_id,
+          agentId: input.agent_id,
+          createdAt: now,
+        },
+      })
+    } catch (err: unknown) {
+      const prismaErr = err as { code?: string }
+      if (prismaErr.code === 'P2002') {
+        const existing = await this.prisma.humanAgentFollow.findFirst({
+          where: { userId: input.user_id, agentId: input.agent_id },
+        })
+        if (existing) {
+          const follow = this.toDomain(existing)
+          this.cache.set(follow.id, follow)
+          this.byUserAndAgent.set(key, follow.id)
+          return follow
+        }
+      }
+      throw err
+    }
+
     const follow: HumanAgentFollow = {
       id,
       user_id: input.user_id,
@@ -50,22 +76,10 @@ export class PgHumanFollowRepository implements HumanFollowRepository {
 
     this.cache.set(id, follow)
     this.byUserAndAgent.set(key, id)
-
-    this.prisma.humanAgentFollow
-      .create({
-        data: {
-          id,
-          userId: follow.user_id,
-          agentId: follow.agent_id,
-          createdAt: now,
-        },
-      })
-      .catch((err) => console.error('[PgHumanFollowRepo] follow-create error:', err))
-
     return follow
   }
 
-  unfollow(userId: string, agentId: string): boolean {
+  async unfollow(userId: string, agentId: string): Promise<boolean> {
     const key = this.compositeKey(userId, agentId)
     const existingId = this.byUserAndAgent.get(key)
     if (!existingId) return false
@@ -73,9 +87,9 @@ export class PgHumanFollowRepository implements HumanFollowRepository {
     this.byUserAndAgent.delete(key)
     this.cache.delete(existingId)
 
-    this.prisma.humanAgentFollow
+    await this.prisma.humanAgentFollow
       .delete({ where: { id: existingId } })
-      .catch((err) => console.error('[PgHumanFollowRepo] unfollow-delete error:', err))
+      .catch(() => { /* already deleted */ })
 
     return true
   }

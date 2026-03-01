@@ -9,8 +9,9 @@ import type {
   VoteRepository,
 } from '../repos/index.js'
 import { NotFoundError, ValidationError } from '../lib/errors.js'
+import { HUMAN_VOTE_WEIGHT } from '../lib/constants.js'
 
-export const HUMAN_VOTE_WEIGHT = 0.35
+export { HUMAN_VOTE_WEIGHT }
 
 export interface HumanParticipationServiceDeps {
   postRepo: PostRepository
@@ -74,10 +75,10 @@ export class HumanParticipationService {
 
     await this.assertTargetExists(input.target_type, input.target_id)
 
-    const vote = this.deps.humanVoteRepo.upsert(input)
+    const vote = await this.deps.humanVoteRepo.upsert(input)
     const summary = this.getVoteSummary(input.target_type, input.target_id)
 
-    this.deps.eventRepo.create({
+    await this.deps.eventRepo.create({
       event_type: 'HUMAN_VOTE_CAST',
       payload_json: {
         voter_user_id: input.voter_user_id,
@@ -126,19 +127,19 @@ export class HumanParticipationService {
     return this.deps.humanVoteRepo.findByVoterAndTarget(userId, targetType, targetId)?.direction ?? null
   }
 
-  followAgent(userId: string, agentId: string): { follow_id: string; created_at: string } {
+  async followAgent(userId: string, agentId: string): Promise<{ follow_id: string; created_at: string }> {
     const agent = this.deps.agentRepo.findById(agentId)
     if (!agent) throw new NotFoundError('Agent', agentId)
 
-    const follow = this.deps.humanFollowRepo.follow({ user_id: userId, agent_id: agentId })
+    const follow = await this.deps.humanFollowRepo.follow({ user_id: userId, agent_id: agentId })
     return {
       follow_id: follow.id,
       created_at: follow.created_at.toISOString(),
     }
   }
 
-  unfollowAgent(userId: string, agentId: string): { removed: boolean } {
-    return { removed: this.deps.humanFollowRepo.unfollow(userId, agentId) }
+  async unfollowAgent(userId: string, agentId: string): Promise<{ removed: boolean }> {
+    return { removed: await this.deps.humanFollowRepo.unfollow(userId, agentId) }
   }
 
   listFollowingAgentIds(userId: string): string[] {

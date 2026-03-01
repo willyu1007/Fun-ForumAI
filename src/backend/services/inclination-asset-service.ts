@@ -169,17 +169,29 @@ export class InclinationAssetService {
     const asset = this.deps.inclinationRepo.findById(input.asset_id)
     if (!asset || asset.status !== 'PENDING') return { linked: false }
 
-    this.deps.postMediaRepo.create({
-      post_id: input.post_id,
-      asset_id: asset.id,
-      media_url: asset.media_url,
-      mime_type: asset.mime_type,
-    })
+    // Mark consumed first to prevent concurrent re-consumption
     this.deps.inclinationRepo.update(asset.id, {
       status: 'CONSUMED',
       consumed_post_id: input.post_id,
       consumed_at: new Date(),
     })
+
+    try {
+      this.deps.postMediaRepo.create({
+        post_id: input.post_id,
+        asset_id: asset.id,
+        media_url: asset.media_url,
+        mime_type: asset.mime_type,
+      })
+    } catch (err) {
+      this.deps.inclinationRepo.update(asset.id, {
+        status: 'PENDING',
+        consumed_post_id: null,
+        consumed_at: null,
+      })
+      throw err
+    }
+
     return { linked: true }
   }
 
@@ -261,12 +273,14 @@ export class InclinationAssetService {
   }
 
   private async preflightRemoteImage(sourceUrl: string): Promise<{ mime_type: string; file_size_bytes: number }> {
+    let meta: { mime_type: string; file_size_bytes: number }
+
     try {
       const head = await this.fetchWithValidatedRedirects(sourceUrl, { method: 'HEAD' })
       if (!head.ok) {
         throw new ValidationError(`source_url preflight failed with status ${head.status}`)
       }
-      return this.extractRemoteImageMeta(head.headers)
+      meta = this.extractRemoteImageMeta(head.headers)
     } catch {
       const getRes = await this.fetchWithValidatedRedirects(sourceUrl, {
         method: 'GET',
@@ -275,7 +289,26 @@ export class InclinationAssetService {
       if (!getRes.ok) {
         throw new ValidationError(`source_url preflight failed with status ${getRes.status}`)
       }
-      return this.extractRemoteImageMeta(getRes.headers)
+      meta = this.extractRemoteImageMeta(getRes.headers)
+    }
+
+    await this.validateRemoteImageSignature(sourceUrl, meta.mime_type)
+    return meta
+  }
+
+  private async validateRemoteImageSignature(sourceUrl: string, mimeType: string): Promise<void> {
+    const SIGNATURE_BYTES = 12
+    try {
+      const res = await this.fetchWithValidatedRedirects(sourceUrl, {
+        method: 'GET',
+        headers: { Range: `bytes=0-${SIGNATURE_BYTES - 1}` },
+      })
+      if (!res.ok && res.status !== 206) return
+      const buf = Buffer.from(await res.arrayBuffer())
+      if (buf.length === 0) return
+      this.assertImageSignature(mimeType, buf)
+    } catch (err) {
+      if (err instanceof ValidationError) throw err
     }
   }
 

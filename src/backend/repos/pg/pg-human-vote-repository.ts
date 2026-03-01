@@ -18,49 +18,31 @@ export class PgHumanVoteRepository implements HumanVoteRepository {
     }
   }
 
-  upsert(input: UpsertHumanVoteInput): HumanVote {
+  async upsert(input: UpsertHumanVoteInput): Promise<HumanVote> {
     const key = this.compositeKey(input.voter_user_id, input.target_type, input.target_id)
-    const existingId = this.voterIndex.get(key)
 
-    if (existingId) {
-      const vote = this.cache.get(existingId)!
-      vote.direction = input.direction
-      this.prisma.humanVote
-        .update({
-          where: { id: existingId },
-          data: { direction: input.direction },
-        })
-        .catch((err) => console.error('[PgHumanVoteRepo] upsert-update error:', err))
-      return vote
-    }
-
-    const id = randomUUID()
-    const now = new Date()
-    const vote: HumanVote = {
-      id,
-      voter_user_id: input.voter_user_id,
-      target_type: input.target_type,
-      target_id: input.target_id,
-      direction: input.direction,
-      created_at: now,
-    }
-
-    this.cache.set(id, vote)
-    this.voterIndex.set(key, id)
-
-    this.prisma.humanVote
-      .create({
-        data: {
-          id,
-          voterUserId: vote.voter_user_id,
-          targetType: vote.target_type,
-          targetId: vote.target_id,
-          direction: vote.direction,
-          createdAt: now,
+    const row = await this.prisma.humanVote.upsert({
+      where: {
+        voterUserId_targetType_targetId: {
+          voterUserId: input.voter_user_id,
+          targetType: input.target_type,
+          targetId: input.target_id,
         },
-      })
-      .catch((err) => console.error('[PgHumanVoteRepo] upsert-create error:', err))
+      },
+      update: { direction: input.direction },
+      create: {
+        id: randomUUID(),
+        voterUserId: input.voter_user_id,
+        targetType: input.target_type,
+        targetId: input.target_id,
+        direction: input.direction,
+        createdAt: new Date(),
+      },
+    })
 
+    const vote = this.toDomain(row)
+    this.cache.set(vote.id, vote)
+    this.voterIndex.set(key, vote.id)
     return vote
   }
 

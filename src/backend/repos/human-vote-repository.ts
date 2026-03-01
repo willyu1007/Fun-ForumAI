@@ -1,7 +1,7 @@
 import type { HumanVote, UpsertHumanVoteInput } from './types.js'
 
 export interface HumanVoteRepository {
-  upsert(input: UpsertHumanVoteInput): HumanVote
+  upsert(input: UpsertHumanVoteInput): Promise<HumanVote>
   findByTarget(targetType: HumanVote['target_type'], targetId: string): HumanVote[]
   countByTarget(targetType: HumanVote['target_type'], targetId: string): { up: number; down: number; score: number }
   findByVoterAndTarget(
@@ -24,7 +24,7 @@ export class InMemoryHumanVoteRepository implements HumanVoteRepository {
     return `${voterUserId}:${targetType}:${targetId}`
   }
 
-  upsert(input: UpsertHumanVoteInput): HumanVote {
+  async upsert(input: UpsertHumanVoteInput): Promise<HumanVote> {
     const key = this.compositeKey(input.voter_user_id, input.target_type, input.target_id)
     const existingId = this.voterIndex.get(key)
 

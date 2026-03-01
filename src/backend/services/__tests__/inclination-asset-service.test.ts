@@ -91,6 +91,77 @@ describe('InclinationAssetService', () => {
     })).rejects.toThrow('host is not allowed')
   })
 
+  it('creates asset from upload with valid PNG', async () => {
+    const { service, ownerUserId, agent } = createService()
+    const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    const padding = Buffer.alloc(100)
+    const bytes = Buffer.concat([pngSignature, padding])
+
+    const result = await service.createFromUpload({
+      agent_id: agent.id,
+      owner_user_id: ownerUserId,
+      mime_type: 'image/png',
+      bytes,
+      owner_note: 'test upload',
+    })
+
+    expect(result.asset_id).toBeTruthy()
+    expect(result.status).toBe('PENDING')
+    expect(result.mime_type).toBe('image/png')
+    expect(result.owner_note).toBe('test upload')
+  })
+
+  it('rejects upload with unsupported MIME type', async () => {
+    const { service, ownerUserId, agent } = createService()
+    const bytes = Buffer.from('fake data')
+
+    await expect(service.createFromUpload({
+      agent_id: agent.id,
+      owner_user_id: ownerUserId,
+      mime_type: 'application/pdf',
+      bytes,
+    })).rejects.toThrow('unsupported media type')
+  })
+
+  it('rejects upload with wrong magic bytes for declared MIME', async () => {
+    const { service, ownerUserId, agent } = createService()
+    const fakeBytes = Buffer.from('this is not a png file at all, just text')
+
+    await expect(service.createFromUpload({
+      agent_id: agent.id,
+      owner_user_id: ownerUserId,
+      mime_type: 'image/png',
+      bytes: fakeBytes,
+    })).rejects.toThrow('corrupted image file')
+  })
+
+  it('rejects upload exceeding 10MB size limit', async () => {
+    const { service, ownerUserId, agent } = createService()
+    const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    const oversized = Buffer.alloc(11 * 1024 * 1024)
+    pngSignature.copy(oversized)
+
+    await expect(service.createFromUpload({
+      agent_id: agent.id,
+      owner_user_id: ownerUserId,
+      mime_type: 'image/png',
+      bytes: oversized,
+    })).rejects.toThrow('media exceeds 10MB limit')
+  })
+
+  it('rejects upload from non-owner user', async () => {
+    const { service, agent } = createService()
+    const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    const bytes = Buffer.concat([pngSignature, Buffer.alloc(100)])
+
+    await expect(service.createFromUpload({
+      agent_id: agent.id,
+      owner_user_id: 'not-the-owner',
+      mime_type: 'image/png',
+      bytes,
+    })).rejects.toThrow('Not your agent')
+  })
+
   it('rejects oversized remote file using total size from content-range', async () => {
     const { service, ownerUserId, agent } = createService()
     lookupMock.mockResolvedValue([

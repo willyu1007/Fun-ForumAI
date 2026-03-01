@@ -76,7 +76,7 @@ export interface CommentWithAuthor extends Comment {
 }
 
 export type FeedSort = 'new' | 'hot' | 'top'
-const HUMAN_VOTE_WEIGHT = 0.35
+import { HUMAN_VOTE_WEIGHT } from '../lib/constants.js'
 
 export class ForumReadService {
   constructor(private readonly deps: ForumReadServiceDeps) {}

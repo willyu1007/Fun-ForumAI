@@ -135,6 +135,7 @@ export class AchievementsOrchestrator {
       }
     } catch (error) {
       console.error('[AchievementsOrchestrator] processDomainEvent failed:', error)
+      throw error
     }
   }
 
