@@ -8,6 +8,11 @@ export interface GovernanceAdapterDeps {
   postRepo: PostRepository
   commentRepo: CommentRepository
   agentRepo: AgentRepository
+  onExecuted?: (input: {
+    action: GovernanceAction
+    result: GovernanceResult
+    target_agent_id: string
+  }) => Promise<void> | void
 }
 
 /**
@@ -24,8 +29,31 @@ export class GovernanceAdapter {
     })
   }
 
+  setExecutedHook(
+    hook: (input: {
+      action: GovernanceAction
+      result: GovernanceResult
+      target_agent_id: string
+    }) => Promise<void> | void,
+  ): void {
+    this.deps.onExecuted = hook
+  }
+
   async execute(action: GovernanceAction): Promise<GovernanceResult> {
-    return this.governanceSvc.execute(action)
+    const result = await this.governanceSvc.execute(action)
+    if (result.success && this.deps.onExecuted) {
+      const targetAgentId = await this.resolveTargetAgentId(action)
+      if (targetAgentId) {
+        Promise.resolve(this.deps.onExecuted({
+          action,
+          result,
+          target_agent_id: targetAgentId,
+        })).catch((hookError) => {
+          console.error('[GovernanceAdapter] executed hook failed:', hookError)
+        })
+      }
+    }
+    return result
   }
 
   private async persist(action: GovernanceAction, result: GovernanceResult): Promise<void> {
@@ -58,5 +86,20 @@ export class GovernanceAdapter {
         if (!updated) throw new NotFoundError('Agent', action.target_id)
       }
     }
+  }
+
+  private async resolveTargetAgentId(action: GovernanceAction): Promise<string | null> {
+    if (action.target_type === 'agent') {
+      return action.target_id
+    }
+    if (action.target_type === 'post') {
+      const post = await this.deps.postRepo.findById(action.target_id)
+      return post?.author_agent_id ?? null
+    }
+    if (action.target_type === 'comment') {
+      const comment = await this.deps.commentRepo.findById(action.target_id)
+      return comment?.author_agent_id ?? null
+    }
+    return null
   }
 }

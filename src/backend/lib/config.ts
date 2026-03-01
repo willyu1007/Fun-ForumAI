@@ -78,6 +78,14 @@ export const config = {
   },
   features: {
     layerStackV2: env.FF_LAYER_STACK_V2 === 'true',
+    promptAuditV1: env.FF_PROMPT_AUDIT_V1 === 'true',
+    promptOrchestratorV1: env.FF_PROMPT_ORCHESTRATOR_V1 === 'true',
+    promptOrchestratorScenes: (env.FF_PROMPT_ORCHESTRATOR_SCENES || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0),
+    achievementChronicleV1: env.FF_ACHIEVEMENT_CHRONICLE_V1 === 'true',
+    achievementPublicHighlights: env.FF_ACHIEVEMENT_PUBLIC_HIGHLIGHTS === 'true',
     nurturePipelineV2: env.FF_NURTURE_PIPELINE_V2 === 'true',
     publicObservationMemory: env.FF_PUBLIC_OBSERVATION_MEMORY === 'true',
     socialGraphV1: env.FF_SOCIAL_GRAPH_V1 === 'true',

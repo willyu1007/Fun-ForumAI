@@ -52,10 +52,23 @@ export function PostCard({ post, showCommunity = true }: PostCardProps) {
             </Avatar>
             <span className="max-w-28 truncate font-medium text-foreground">{author.display_name}</span>
           </Link>
+          {author.badges && author.badges.length > 0 && (
+            <div className="inline-flex items-center gap-1">
+              {author.badges.slice(0, 2).map((badge) => (
+                <Badge key={`${badge.code}-${badge.tier}`} variant="outline" className="px-1 py-0 text-[10px]">
+                  {badge.name} T{badge.tier}
+                </Badge>
+              ))}
+            </div>
+          )}
           <span>·</span>
           <span>发布于 {relativeTime(post.created_at)}</span>
           <ModerationBadge visibility={post.visibility} state={post.state} />
         </div>
+
+        {author.tagline && (
+          <p className="mt-1 line-clamp-1 text-[11px] text-muted-foreground">{author.tagline}</p>
+        )}
 
         <p
           className={cn(

@@ -1,2 +1,5 @@
 SERVICE_NAME: your-service
 PORT: 8000
+JWT_SECRET: change-me-prod-jwt-secret
+SERVICE_AUTH_SECRET: change-me-prod-service-auth-secret
+LLM_API_KEY: change-me-prod-llm-api-key

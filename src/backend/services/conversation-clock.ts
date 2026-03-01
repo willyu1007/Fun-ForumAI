@@ -6,6 +6,7 @@ import type { ChatService } from './chat-service.js'
 import type { LlmClient } from '../llm/llm-client.js'
 import type { PromptEngine } from '../llm/prompt-engine.js'
 import type { PromptLayerService } from '../runtime/prompt-layer-service.js'
+import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
 import type { SseHub } from '../sse/hub.js'
 import type { ChatMessageKind } from '../repos/types.js'
 import type { LeaderElector } from '../runtime/leader-elector.js'
@@ -34,6 +35,7 @@ export interface ConversationClockDeps {
   promptEngine: PromptEngine
   sseHub: SseHub
   promptLayerService?: PromptLayerService | null
+  promptOrchestrator?: PromptOrchestrator | null
   leaderElector?: LeaderElector
 }
 
@@ -51,6 +53,10 @@ export class ConversationClock {
 
   setPromptLayerService(service: PromptLayerService | null): void {
     ;(this.deps as { promptLayerService?: PromptLayerService | null }).promptLayerService = service
+  }
+
+  setPromptOrchestrator(orchestrator: PromptOrchestrator | null): void {
+    ;(this.deps as { promptOrchestrator?: PromptOrchestrator | null }).promptOrchestrator = orchestrator
   }
 
   start(): void {
@@ -259,6 +265,9 @@ export class ConversationClock {
       layer_growth: string
       layer_style: string
       layer_instructions: string
+      layer_community: string
+      layer_relationship: string
+      layer_showrunner: string
       layer_overrides: string
       layer_memory: string
       layer_privacy: string
@@ -266,12 +275,54 @@ export class ConversationClock {
       layer_growth: '',
       layer_style: '',
       layer_instructions: '',
+      layer_community: '',
+      layer_relationship: '',
+      layer_showrunner: '',
       layer_overrides: '',
       layer_memory: '',
       layer_privacy: '',
     }
+    let orchestratorApplied = false
 
-    if (config.features.layerStackV2 && this.deps.promptLayerService) {
+    if (this.deps.promptOrchestrator?.isSceneEnabled('chat_room')) {
+      try {
+        const member = await this.deps.roomRepo.getMember(roomId, agentId)
+        const topicHints = this.extractTopicHints(room.name, recentMsgs.map((m) => m.body))
+        const composed = await this.deps.promptOrchestrator.compose({
+          agentId,
+          scene: 'chat_room',
+          conversationText: recentMsgs.map((m) => m.body).join(' '),
+          topicHints,
+          communitySoftCulture: room.description || '',
+          sceneRule: `聊天室：${room.name}`,
+          shortTermState: `room:${roomId}|messages:${recentMsgs.length}`,
+          shortTermStateUpdatedAt: recentMsgs[recentMsgs.length - 1]?.created_at ?? null,
+          roomMemberState: member
+            ? { joined_at: member.joined_at, last_spoke_at: member.last_spoke_at }
+            : undefined,
+        })
+        layers = {
+          layer_growth: composed.layers.layer1_growth ?? '',
+          layer_style: composed.layers.layer2_style ?? '',
+          layer_instructions: composed.layers.layer3_instructions ?? '',
+          layer_community: composed.layers.layer_community ?? '',
+          layer_relationship: composed.layers.layer_relationship ?? '',
+          layer_showrunner: composed.layers.layer_showrunner ?? '',
+          layer_overrides: composed.layers.layer4_overrides ?? '',
+          layer_memory: composed.layers.layer5_memory ?? '',
+          layer_privacy: composed.layers.layer6_privacy ?? '',
+        }
+        orchestratorApplied = true
+      } catch {
+        // Fall back to prompt layer service or base values.
+      }
+    }
+
+    if (
+      config.features.layerStackV2 &&
+      !orchestratorApplied &&
+      this.deps.promptLayerService
+    ) {
       try {
         const member = await this.deps.roomRepo.getMember(roomId, agentId)
         const topicHints = this.extractTopicHints(room.name, recentMsgs.map((m) => m.body))
@@ -288,6 +339,9 @@ export class ConversationClock {
           layer_growth: composed.layer1_growth ?? '',
           layer_style: composed.layer2_style ?? '',
           layer_instructions: composed.layer3_instructions ?? '',
+          layer_community: composed.layer_community ?? '',
+          layer_relationship: composed.layer_relationship ?? '',
+          layer_showrunner: composed.layer_showrunner ?? '',
           layer_overrides: composed.layer4_overrides ?? '',
           layer_memory: composed.layer5_memory ?? '',
           layer_privacy: composed.layer6_privacy ?? '',
@@ -308,6 +362,9 @@ export class ConversationClock {
       layer_growth: layers.layer_growth,
       layer_style: layers.layer_style,
       layer_instructions: layers.layer_instructions,
+      layer_community: layers.layer_community,
+      layer_relationship: layers.layer_relationship,
+      layer_showrunner: layers.layer_showrunner,
       layer_overrides: layers.layer_overrides,
       layer_memory: layers.layer_memory,
       layer_privacy: layers.layer_privacy,

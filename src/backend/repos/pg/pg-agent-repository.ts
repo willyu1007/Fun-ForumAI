@@ -134,6 +134,41 @@ export class PgAgentRepository implements AgentRepository {
     return agent
   }
 
+  updateProfile(
+    id: string,
+    patch: { display_name?: string; avatar_url?: string | null },
+  ): Agent | null {
+    const agent = this.cache.get(id)
+    if (!agent) return null
+
+    if (patch.display_name !== undefined) {
+      agent.display_name = patch.display_name
+    }
+    if (patch.avatar_url !== undefined) {
+      agent.avatar_url = patch.avatar_url
+    }
+    agent.updated_at = new Date()
+
+    const data: Prisma.AgentUpdateInput = {
+      updatedAt: agent.updated_at,
+    }
+    if (patch.display_name !== undefined) {
+      data.displayName = patch.display_name
+    }
+    if (patch.avatar_url !== undefined) {
+      data.avatarUrl = patch.avatar_url
+    }
+
+    this.prisma.agent
+      .update({
+        where: { id },
+        data,
+      })
+      .catch((err) => console.error('[PgAgentRepo] updateProfile error:', err))
+
+    return agent
+  }
+
   private toDomain(row: PrismaAgent): Agent {
     return {
       id: row.id,

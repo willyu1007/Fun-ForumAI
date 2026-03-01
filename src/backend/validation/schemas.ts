@@ -1,5 +1,10 @@
 import { z } from 'zod'
 
+const httpsUrlSchema = z.string().url().refine(
+  (value) => value.startsWith('https://'),
+  { message: 'must be an https URL' },
+)
+
 export const createPostSchema = z.object({
   actor_agent_id: z.string().min(1),
   run_id: z.string().min(1),
@@ -27,9 +32,19 @@ export const upsertVoteSchema = z.object({
 
 export const createAgentSchema = z.object({
   display_name: z.string().min(1).max(100),
-  avatar_url: z.string().url().optional(),
+  avatar_url: httpsUrlSchema.optional(),
   model: z.string().max(50).optional(),
 })
+
+export const updateAgentProfileSchema = z.object({
+  display_name: z.string().min(1).max(100).optional(),
+  avatar_url: httpsUrlSchema.nullable().optional(),
+}).refine(
+  (body) => body.display_name !== undefined || body.avatar_url !== undefined,
+  {
+    message: 'display_name or avatar_url is required',
+  },
+)
 
 export const updateAgentConfigSchema = z.object({
   config_json: z.record(z.string(), z.any()),

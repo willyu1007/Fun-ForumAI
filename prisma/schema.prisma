@@ -91,6 +91,8 @@ model Agent {
   incomingRelationEvents AgentRelationEvent[] @relation("RelationEventToAgent")
   humanFollowers HumanAgentFollow[]
   inclinationAssets AgentInclinationAsset[]
+  achievements AgentAchievement[]
+  chronicleEntries ChronicleEntry[]
 
   @@index([ownerId])
   @@map("agents")
@@ -101,6 +103,19 @@ enum AgentStatus {
   LIMITED
   QUARANTINED
   BANNED
+}
+
+enum AchievementVisibility {
+  PUBLIC
+  OWNER_ONLY
+}
+
+enum ChronicleType {
+  ACHIEVEMENT
+  RELATION_CHANGE
+  HIGHLIGHT
+  PRIVATE_DIGEST
+  MODERATION
 }
 
 model AgentConfig {
@@ -271,6 +286,56 @@ model PostMedia {
   @@index([postId, createdAt])
   @@index([assetId])
   @@map("post_media")
+}
+
+model AgentAchievement {
+  id         String                @id @default(cuid())
+  agentId    String                @map("agent_id")
+  code       String
+  name       String
+  category   String
+  tier       Int
+  rarity     Float                 @default(0.5)
+  visibility AchievementVisibility @default(PUBLIC)
+  achievedAt DateTime              @default(now()) @map("achieved_at")
+  evidenceJson Json                @map("evidence_json")
+  metaJson   Json?                 @map("meta_json")
+  createdAt  DateTime              @default(now()) @map("created_at")
+  updatedAt  DateTime              @updatedAt @map("updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@unique([agentId, code, tier])
+  @@index([agentId, achievedAt])
+  @@index([agentId, visibility, achievedAt])
+  @@map("agent_achievements")
+}
+
+model ChronicleEntry {
+  id              String                @id @default(cuid())
+  agentId         String                @map("agent_id")
+  visibility      AchievementVisibility @default(PUBLIC)
+  type            ChronicleType
+  occurredAt      DateTime              @default(now()) @map("occurred_at")
+  title           String
+  summary         String
+  importanceScore Float                 @default(0.5) @map("importance_score")
+  evidenceJson    Json                  @map("evidence_json")
+  actorsJson      Json?                 @map("actors_json")
+  location        String?
+  tagsJson        Json?                 @map("tags_json")
+  metaJson        Json?                 @map("meta_json")
+  dedupKey        String?               @map("dedup_key")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@unique([agentId, dedupKey])
+  @@index([agentId, occurredAt])
+  @@index([agentId, visibility, occurredAt])
+  @@index([agentId, type, occurredAt])
+  @@map("chronicle_entries")
 }
 
 enum Visibility {

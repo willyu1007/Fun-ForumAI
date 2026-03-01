@@ -9,7 +9,7 @@ import { healthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { devSeedRouter } from './routes/dev-seed.js'
-import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, promptLayerService, agentService, promptEngine } from './container.js'
+import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, promptLayerService, promptOrchestrator, agentService, promptEngine } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
 import { agentGrowthRouter } from './routes/agent-growth-api.js'
@@ -19,6 +19,7 @@ import { requireHumanAuth } from './middleware/human-auth.js'
 import { privateChannelRouter } from './routes/private-channel-api.js'
 import { notificationRouter } from './routes/notification-api.js'
 import { agentStatsRouter } from './routes/agent-stats-api.js'
+import type { PromptLayers } from './runtime/types.js'
 
 const app: Express = express()
 
@@ -147,7 +148,7 @@ if (config.nodeEnv !== 'production') {
       const body = req.body as {
         agent_id?: string
         template_id?: string
-        scene?: 'forum_post' | 'forum_comment' | 'chat_room'
+        scene?: 'forum_post' | 'forum_comment' | 'chat_room' | 'private_chat' | 'proactive_dm' | 'scheduled_post'
         conversation_text?: string
         topic_hints?: string[]
         room_member_last_spoke_at?: string | null
@@ -161,9 +162,9 @@ if (config.nodeEnv !== 'production') {
         return
       }
 
-      if (!promptLayerService) {
+      if (!promptLayerService && !promptOrchestrator) {
         res.status(503).json({
-          error: { code: 'SERVICE_UNAVAILABLE', message: 'PromptLayerService not initialized' },
+          error: { code: 'SERVICE_UNAVAILABLE', message: 'Prompt composer service not initialized' },
         })
         return
       }
@@ -178,8 +179,7 @@ if (config.nodeEnv !== 'production') {
         return
       }
 
-      const persona = promptLayerService.getPersona(body.agent_id)
-      const layers = await promptLayerService.composeLayers({
+      const composeInput = {
         agentId: body.agent_id,
         scene: body.scene,
         conversationText: body.conversation_text ?? '',
@@ -187,7 +187,23 @@ if (config.nodeEnv !== 'production') {
         roomMemberState: body.room_member_last_spoke_at !== undefined
           ? { last_spoke_at: body.room_member_last_spoke_at ? new Date(body.room_member_last_spoke_at) : null }
           : undefined,
-      })
+      } as const
+
+      let persona: { name: string; style: string; interests: string[]; language: string }
+      let layers: PromptLayers
+      let audit: unknown
+
+      if (promptOrchestrator) {
+        const composed = await promptOrchestrator.compose(composeInput)
+        persona = composed.persona
+        layers = composed.layers
+        audit = composed.audit
+      } else {
+        const composed = await promptLayerService!.composeLayersWithAudit(composeInput)
+        persona = promptLayerService!.getPersona(body.agent_id)
+        layers = composed.layers
+        audit = composed.audit
+      }
 
       const defaults: Record<string, string> = {
         persona_name: persona.name,
@@ -207,9 +223,17 @@ if (config.nodeEnv !== 'production') {
         room_name: '调试房间',
         room_description: '',
         recent_messages: body.conversation_text ?? '（无）',
+        owner_display_name: 'Owner',
+        session_context: '',
+        latest_user_message: body.conversation_text ?? '调试私聊内容',
+        trigger_type: 'manual',
+        trigger_context: body.conversation_text ?? '调试主动触发上下文',
         layer_growth: layers.layer1_growth ?? '',
         layer_style: layers.layer2_style ?? '',
         layer_instructions: layers.layer3_instructions ?? '',
+        layer_community: layers.layer_community ?? '',
+        layer_relationship: layers.layer_relationship ?? '',
+        layer_showrunner: layers.layer_showrunner ?? '',
         layer_overrides: layers.layer4_overrides ?? '',
         layer_memory: layers.layer5_memory ?? '',
         layer_privacy: layers.layer6_privacy ?? '',
@@ -221,6 +245,7 @@ if (config.nodeEnv !== 'production') {
       res.json({
         data: {
           layers,
+          audit,
           messages,
         },
       })
@@ -263,6 +288,10 @@ if (nurtureScheduler) {
 
 if (relationScheduler) {
   relationScheduler.start()
+}
+
+if (achievementsScheduler) {
+  achievementsScheduler.start()
 }
 
 // ─── Persistence initialization ─────────────────────────────

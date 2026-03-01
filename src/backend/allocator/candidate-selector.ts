@@ -75,7 +75,7 @@ export class DefaultCandidateSelector implements CandidateSelector {
         score *= participation
         reasons.push(`stats_participation=${participation.toFixed(2)}`)
 
-        const controversy = clamp(toNumber((event as unknown as Record<string, unknown>).controversy_score), 0, 1)
+        const controversy = clamp(toNumber(event.controversy_score), 0, 1)
         if (controversy > 0) {
           const appetite = clamp(c.stats_hint.controversy_appetite, 0, 1)
           score += (appetite - 0.5) * controversy * 2
@@ -109,11 +109,9 @@ export class DefaultCandidateSelector implements CandidateSelector {
   }
 
   private extractTags(event: EventPayload): Set<string> {
-    // Tags come from the event payload (e.g. post tags)
-    // For MVP, we look at a conventional field; real impl reads from DB
-    const payload = event as unknown as Record<string, unknown>
-    const tags = payload['tags']
-    if (Array.isArray(tags)) return new Set(tags.filter((t): t is string => typeof t === 'string'))
+    if (Array.isArray(event.tags)) {
+      return new Set(event.tags.filter((tag): tag is string => typeof tag === 'string'))
+    }
     return new Set()
   }
 }

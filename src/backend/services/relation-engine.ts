@@ -74,7 +74,7 @@ export class RelationEngine {
     const existing = input.existing
     const currentState = existing?.state
 
-    let nextState: RelationState = existing?.state ?? 'inactive'
+    let nextState: RelationState
     let shadowStartedAt = existing?.shadow_started_at ?? null
     let effectiveAt = existing?.effective_at ?? null
     let inactiveAt = existing?.inactive_at ?? null

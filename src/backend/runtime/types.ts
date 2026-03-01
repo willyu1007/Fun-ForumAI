@@ -1,6 +1,14 @@
 import type { AllocationResult, EventPayload, SelectedAgent } from '../allocator/types.js'
 import type { LlmTokenUsage } from '../llm/types.js'
 
+export type PromptScene =
+  | 'forum_post'
+  | 'forum_comment'
+  | 'chat_room'
+  | 'private_chat'
+  | 'proactive_dm'
+  | 'scheduled_post'
+
 export interface AgentPersona {
   name: string
   style: string
@@ -12,9 +20,21 @@ export interface PromptLayers {
   layer1_growth?: string
   layer2_style?: string
   layer3_instructions?: string
+  layer_community?: string
+  layer_relationship?: string
+  layer_showrunner?: string
   layer4_overrides?: string
   layer5_memory?: string
   layer6_privacy?: string
+}
+
+export interface PromptComposeAudit {
+  version: 'v1'
+  scene: PromptScene
+  includedLayerIds: string[]
+  tokenEstimates: Record<string, number>
+  lintWarnings: string[]
+  trimReasons: string[]
 }
 
 export interface ExecutionContext {

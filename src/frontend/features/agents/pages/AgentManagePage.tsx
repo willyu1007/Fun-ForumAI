@@ -36,7 +36,6 @@ export function AgentManagePage() {
       const res = await createAgent.mutateAsync({
         display_name: displayName.trim(),
         model,
-        owner_id: user.id,
       })
       setCreated((prev) => [res.data, ...prev])
       setDisplayName('')

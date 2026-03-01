@@ -1,13 +1,14 @@
 import { Router, type IRouter } from 'express'
 import multer from 'multer'
 import { requireHumanAuth, requireAdmin } from '../middleware/human-auth.js'
-import { agentService, governanceAdapter, runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, relationService, humanParticipationService, inclinationAssetService } from '../container.js'
+import { agentService, governanceAdapter, runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, relationService, humanParticipationService, inclinationAssetService, achievementChronicleService } from '../container.js'
 import { config } from '../lib/config.js'
-import { ValidationError } from '../lib/errors.js'
+import { ForbiddenError, ValidationError } from '../lib/errors.js'
 import { validate } from '../validation/validate.js'
 import {
   createAgentSchema,
   updateAgentConfigSchema,
+  updateAgentProfileSchema,
   governanceActionSchema,
 } from '../validation/schemas.js'
 
@@ -25,6 +26,28 @@ controlPlaneRouter.post('/agents', requireHumanAuth, validate(createAgentSchema)
   })
   res.status(201).json({ data: agent })
 })
+
+controlPlaneRouter.patch(
+  '/agents/:agentId/profile',
+  requireHumanAuth,
+  validate(updateAgentProfileSchema),
+  (req, res) => {
+    const agentId = String(req.params.agentId)
+    const actor = req.user!
+    const existing = agentService.getAgent(agentId)
+    const isAllowed = actor.role === 'admin' || existing.owner_id === actor.userId
+    if (!isAllowed) {
+      throw new ForbiddenError('Only owner or admin can update agent profile')
+    }
+
+    const updated = agentService.updateProfile({
+      agent_id: agentId,
+      display_name: req.body.display_name,
+      avatar_url: req.body.avatar_url,
+    })
+    res.json({ data: updated })
+  },
+)
 
 controlPlaneRouter.patch(
   '/agents/:agentId/config',
@@ -172,8 +195,70 @@ controlPlaneRouter.get(
   },
 )
 
-controlPlaneRouter.get('/agents/:agentId/achievements', requireHumanAuth, (_req, res) => {
-  res.status(501).json({ error: { code: 'NOT_IMPLEMENTED', message: 'GET /v1/agents/:agentId/achievements not yet implemented' } })
+controlPlaneRouter.get('/agents/:agentId/achievements', requireHumanAuth, async (req, res) => {
+  const agentId = String(req.params.agentId)
+  const actor = req.user!
+  const existing = agentService.getAgent(agentId)
+  const isAllowed = actor.role === 'admin' || existing.owner_id === actor.userId
+  if (!isAllowed) {
+    throw new ForbiddenError('Only owner or admin can access achievements')
+  }
+
+  if (actor.role === 'admin') {
+    console.log('AchievementAccessAudit', JSON.stringify({
+      actor_user_id: actor.userId,
+      actor_role: actor.role,
+      target_agent_id: agentId,
+      endpoint: 'GET /v1/agents/:agentId/achievements',
+      at: new Date().toISOString(),
+    }))
+  }
+
+  const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
+  const limitRaw = typeof req.query.limit === 'string' ? Number.parseInt(req.query.limit, 10) : undefined
+  const result = await achievementChronicleService.listAchievementsForOwner(agentId, {
+    cursor,
+    limit: Number.isFinite(limitRaw) ? limitRaw : undefined,
+  })
+  res.json({ data: result.items, meta: { cursor: result.next_cursor } })
+})
+
+controlPlaneRouter.get('/agents/:agentId/chronicle', requireHumanAuth, async (req, res) => {
+  const agentId = String(req.params.agentId)
+  const actor = req.user!
+  const existing = agentService.getAgent(agentId)
+  const isAllowed = actor.role === 'admin' || existing.owner_id === actor.userId
+  if (!isAllowed) {
+    throw new ForbiddenError('Only owner or admin can access chronicle')
+  }
+
+  if (actor.role === 'admin') {
+    console.log('AchievementAccessAudit', JSON.stringify({
+      actor_user_id: actor.userId,
+      actor_role: actor.role,
+      target_agent_id: agentId,
+      endpoint: 'GET /v1/agents/:agentId/chronicle',
+      at: new Date().toISOString(),
+    }))
+  }
+
+  const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
+  const limitRaw = typeof req.query.limit === 'string' ? Number.parseInt(req.query.limit, 10) : undefined
+  const includeFolded = String(req.query.include_folded ?? 'false') === 'true'
+
+  const result = await achievementChronicleService.listChronicleForOwner(agentId, {
+    cursor,
+    limit: Number.isFinite(limitRaw) ? limitRaw : undefined,
+    include_folded: includeFolded,
+  })
+
+  res.json({
+    data: result.items,
+    meta: {
+      cursor: result.next_cursor,
+      folded_count: result.folded_count,
+    },
+  })
 })
 
 controlPlaneRouter.get('/me/followed-agents', requireHumanAuth, (req, res) => {

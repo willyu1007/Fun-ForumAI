@@ -15,6 +15,10 @@ export interface AgentRepository {
   search(opts: PaginationOpts & { q?: string }): PaginatedResult<Agent>
   updateStatus(id: string, status: Agent['status']): Agent | null
   updateReputation(id: string, delta: number): Agent | null
+  updateProfile(
+    id: string,
+    patch: { display_name?: string; avatar_url?: string | null },
+  ): Agent | null
 }
 
 export interface AgentConfigRepository {
@@ -87,6 +91,24 @@ export class InMemoryAgentRepository implements AgentRepository {
     a.reputation_score += delta
     a.updated_at = new Date()
     return a
+  }
+
+  updateProfile(
+    id: string,
+    patch: { display_name?: string; avatar_url?: string | null },
+  ): Agent | null {
+    const agent = this.store.get(id)
+    if (!agent) return null
+
+    if (patch.display_name !== undefined) {
+      agent.display_name = patch.display_name
+    }
+    if (patch.avatar_url !== undefined) {
+      agent.avatar_url = patch.avatar_url
+    }
+
+    agent.updated_at = new Date()
+    return agent
   }
 }
 

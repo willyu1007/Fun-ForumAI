@@ -24,6 +24,11 @@ features:
     status: in-progress
     description: "Stats v1 core + behavior wiring + owner panel onboarding."
     milestone_id: M-000
+  - id: F-020
+    title: "Agent Personality Experience V1"
+    status: planned
+    description: "Cross-scene personality experience upgrades across input fidelity, prompt orchestration, and growth presentation."
+    milestone_id: M-000
 
 requirements:
   - id: R-010
@@ -38,6 +43,18 @@ requirements:
     title: "Stats Web Panel and Onboarding"
     status: planned
     feature_id: F-010
+  - id: R-020
+    title: "Personality Foundation Inputs and Identity"
+    status: planned
+    feature_id: F-020
+  - id: R-021
+    title: "Cross-scene Prompt Orchestration Governance"
+    status: planned
+    feature_id: F-020
+  - id: R-022
+    title: "Achievement Chronicle Surface"
+    status: planned
+    feature_id: F-020
 
 tasks:
   - id: T-003
@@ -340,3 +357,30 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/multimodal-agent-inclination-v1
     updated: 2026-02-28
+  - id: T-045
+    slug: personality-foundation-input-identity-audit
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-020
+    dev_docs_path: dev-docs/active/personality-foundation-input-identity-audit
+    updated: 2026-02-28
+  - id: T-046
+    slug: prompt-orchestrator-unification-governance
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-021
+    dev_docs_path: dev-docs/active/prompt-orchestrator-unification-governance
+    updated: 2026-03-01
+  - id: T-047
+    slug: achievement-chronicle-experience-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-022
+    dev_docs_path: dev-docs/active/achievement-chronicle-experience-v1
+    updated: 2026-03-01

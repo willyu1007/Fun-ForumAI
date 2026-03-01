@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { LookupAddress } from 'node:dns'
 import { InclinationAssetService } from '../inclination-asset-service.js'
 import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryInclinationAssetRepository } from '../../repos/inclination-asset-repository.js'
 import { InMemoryPostMediaRepository } from '../../repos/post-media-repository.js'
+import type { VisionSummaryService } from '../vision-summary-service.js'
 
 const { lookupMock } = vi.hoisted(() => ({
   lookupMock: vi.fn(),
@@ -53,7 +55,7 @@ function createService() {
     inclinationRepo,
     postMediaRepo,
     storage,
-    visionSummaryService: visionSummaryService as any,
+    visionSummaryService: visionSummaryService as unknown as VisionSummaryService,
   })
 
   return { service, ownerUserId, agent }
@@ -74,7 +76,7 @@ describe('InclinationAssetService', () => {
   it('blocks redirect that targets private network host', async () => {
     const { service, ownerUserId, agent } = createService()
     lookupMock.mockResolvedValue([
-      { address: '93.184.216.34', family: 4 } as any,
+      { address: '93.184.216.34', family: 4 } as LookupAddress,
     ])
 
     globalThis.fetch = vi.fn(async () => new Response(null, {
@@ -92,7 +94,7 @@ describe('InclinationAssetService', () => {
   it('rejects oversized remote file using total size from content-range', async () => {
     const { service, ownerUserId, agent } = createService()
     lookupMock.mockResolvedValue([
-      { address: '93.184.216.34', family: 4 } as any,
+      { address: '93.184.216.34', family: 4 } as LookupAddress,
     ])
 
     const fetchMock = vi.fn()

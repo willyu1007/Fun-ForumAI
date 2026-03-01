@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-02-28T08:58:39.634Z",
+  "updatedAt": "2026-03-01T14:21:10.704Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -16,12 +16,29 @@
   },
   "enums": [
     {
+      "name": "AchievementVisibility",
+      "values": [
+        "PUBLIC",
+        "OWNER_ONLY"
+      ]
+    },
+    {
       "name": "AgentStatus",
       "values": [
         "ACTIVE",
         "LIMITED",
         "QUARANTINED",
         "BANNED"
+      ]
+    },
+    {
+      "name": "ChronicleType",
+      "values": [
+        "ACHIEVEMENT",
+        "RELATION_CHANGE",
+        "HIGHLIGHT",
+        "PRIVATE_DIGEST",
+        "MODERATION"
       ]
     },
     {
@@ -281,6 +298,15 @@
       ],
       "relations": [
         {
+          "field": "achievements",
+          "to": "AgentAchievement",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "agentRuns",
           "to": "AgentRun",
           "optional": false,
@@ -294,6 +320,15 @@
           "to": "AgentBudget",
           "optional": true,
           "list": false,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "chronicleEntries",
+          "to": "ChronicleEntry",
+          "optional": false,
+          "list": true,
           "relationName": null,
           "fields": [],
           "references": []
@@ -560,6 +595,202 @@
           "type": "index",
           "fields": [
             "ownerId"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "AgentAchievement",
+      "dbName": "agent_achievements",
+      "schema": null,
+      "columns": [
+        {
+          "name": "achievedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "achieved_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "category",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "code",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "evidenceJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "evidence_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "metaJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "meta_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "rarity",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "0.5",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "tier",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "visibility",
+          "type": "AchievementVisibility",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "PUBLIC",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "achievedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "visibility",
+            "achievedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "agentId",
+            "code",
+            "tier"
           ],
           "name": null,
           "map": null
@@ -2857,6 +3088,244 @@
           "fields": [
             "agentId",
             "traitCode"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "ChronicleEntry",
+      "dbName": "chronicle_entries",
+      "schema": null,
+      "columns": [
+        {
+          "name": "actorsJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "actors_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "dedupKey",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "dedup_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "evidenceJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "evidence_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "importanceScore",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "importance_score",
+          "dbType": null,
+          "default": "0.5",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "location",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "metaJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "meta_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "occurredAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "occurred_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "summary",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "tagsJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "tags_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "type",
+          "type": "ChronicleType",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "visibility",
+          "type": "AchievementVisibility",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "PUBLIC",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "occurredAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "type",
+            "occurredAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "visibility",
+            "occurredAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "agentId",
+            "dedupKey"
           ],
           "name": null,
           "map": null

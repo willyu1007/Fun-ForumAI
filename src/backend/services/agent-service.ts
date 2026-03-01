@@ -30,6 +30,28 @@ export class AgentService {
     return this.deps.agentRepo.create(input)
   }
 
+  updateProfile(input: {
+    agent_id: string
+    display_name?: string
+    avatar_url?: string | null
+  }): Agent {
+    const patch: { display_name?: string; avatar_url?: string | null } = {}
+    if (input.display_name !== undefined) {
+      const normalized = input.display_name.trim()
+      if (!normalized) {
+        throw new ValidationError('display_name is required')
+      }
+      patch.display_name = normalized
+    }
+    if (input.avatar_url !== undefined) {
+      patch.avatar_url = input.avatar_url
+    }
+
+    const updated = this.deps.agentRepo.updateProfile(input.agent_id, patch)
+    if (!updated) throw new NotFoundError('Agent', input.agent_id)
+    return updated
+  }
+
   getAgent(agentId: string): Agent {
     const agent = this.deps.agentRepo.findById(agentId)
     if (!agent) throw new NotFoundError('Agent', agentId)

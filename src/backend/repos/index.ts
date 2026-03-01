@@ -14,6 +14,11 @@ export type {
   Community,
   DomainEvent,
   AgentRun,
+  AchievementVisibility,
+  ChronicleType,
+  EvidenceRef,
+  AgentAchievement,
+  ChronicleEntry,
   Room,
   RoomMember,
   ChatMessage,
@@ -33,6 +38,8 @@ export type {
   CreateAgentConfigInput,
   CreateEventInput,
   CreateAgentRunInput,
+  CreateAgentAchievementInput,
+  CreateChronicleEntryInput,
   CreateRoomInput,
   CreateChatMessageInput,
   AgentRelation,
@@ -87,6 +94,14 @@ export {
   type StatsRepository,
   InMemoryStatsRepository,
 } from './stats-repository.js'
+export {
+  type AchievementRepository,
+  InMemoryAchievementRepository,
+} from './achievement-repository.js'
+export {
+  type ChronicleRepository,
+  InMemoryChronicleRepository,
+} from './chronicle-repository.js'
 
 export { PgPostRepository } from './pg/pg-post-repository.js'
 export { PgCommentRepository } from './pg/pg-comment-repository.js'
@@ -102,3 +117,5 @@ export { PgRoomRepository } from './pg/pg-room-repository.js'
 export { PgMessageRepository } from './pg/pg-message-repository.js'
 export { PgRelationRepository } from './pg/pg-relation-repository.js'
 export { PgStatsRepository } from './pg/pg-stats-repository.js'
+export { PgAchievementRepository } from './pg/pg-achievement-repository.js'
+export { PgChronicleRepository } from './pg/pg-chronicle-repository.js'

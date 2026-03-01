@@ -1,7 +1,9 @@
 import type { LlmClient } from '../llm/llm-client.js'
+import type { PromptEngine } from '../llm/prompt-engine.js'
 import type { AgentService } from './agent-service.js'
 import type { NotificationService } from './notification-service.js'
 import type { PrivateChannelRepository } from '../repos/private-channel-repository.js'
+import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
 
 const MAX_PROACTIVE_PER_DAY = 2
 const PROACTIVE_COOLDOWN_MS = 4 * 60 * 60 * 1000 // 4 hours between proactive sessions
@@ -10,11 +12,18 @@ export interface ProactiveInteractionDeps {
   channelRepo: PrivateChannelRepository
   agentService: AgentService
   llmClient: LlmClient
+  promptEngine?: PromptEngine | null
+  promptOrchestrator?: PromptOrchestrator | null
   notificationService: NotificationService
 }
 
 export class ProactiveInteractionService {
   constructor(private readonly deps: ProactiveInteractionDeps) {}
+
+  bindPromptOrchestrator(promptEngine: PromptEngine, promptOrchestrator: PromptOrchestrator): void {
+    ;(this.deps as { promptEngine?: PromptEngine | null }).promptEngine = promptEngine
+    ;(this.deps as { promptOrchestrator?: PromptOrchestrator | null }).promptOrchestrator = promptOrchestrator
+  }
 
   async onVoteReceived(agentId: string, vote: {
     direction: string
@@ -170,10 +179,54 @@ export class ProactiveInteractionService {
     trigger: { trigger: string; context: string },
   ): Promise<string> {
     const agent = this.deps.agentService.getAgent(agentId)
-    const config = this.deps.agentService.getLatestConfig(agentId)
-    const persona = config?.config_json?.persona as Record<string, unknown> | undefined
+    const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+    const persona = latestConfig?.config_json?.persona as Record<string, unknown> | undefined
     const personaName = (persona?.name as string) || agent?.display_name || '智能体'
     const personaStyle = (persona?.style as string) || '友好'
+
+    if (
+      this.deps.promptEngine &&
+      this.deps.promptOrchestrator?.isSceneEnabled('proactive_dm')
+    ) {
+      try {
+        const composed = await this.deps.promptOrchestrator.compose({
+          agentId,
+          scene: 'proactive_dm',
+          conversationText: `${trigger.trigger}\n${trigger.context}`,
+          topicHints: [trigger.trigger],
+          shortTermState: trigger.context.slice(0, 200),
+          shortTermStateUpdatedAt: new Date(),
+        })
+
+        const variables: Record<string, string> = {
+          persona_name: composed.persona.name,
+          persona_style: composed.persona.style,
+          persona_interests: composed.persona.interests.join('、'),
+          persona_language: composed.persona.language,
+          trigger_type: trigger.trigger,
+          trigger_context: trigger.context,
+          layer_growth: composed.layers.layer1_growth ?? '',
+          layer_style: composed.layers.layer2_style ?? '',
+          layer_instructions: composed.layers.layer3_instructions ?? '',
+          layer_community: composed.layers.layer_community ?? '',
+          layer_relationship: composed.layers.layer_relationship ?? '',
+          layer_showrunner: composed.layers.layer_showrunner ?? '',
+          layer_overrides: composed.layers.layer4_overrides ?? '',
+          layer_memory: composed.layers.layer5_memory ?? '',
+          layer_privacy: composed.layers.layer6_privacy ?? '',
+        }
+
+        const messages = this.deps.promptEngine.render('agent-proactive-dm-opening', variables)
+        const response = await this.deps.llmClient.chat({
+          messages,
+          temperature: 0.8,
+          model: agent?.model,
+        })
+        return response.content
+      } catch (err) {
+        console.warn('[ProactiveInteraction] PromptOrchestrator compose failed, fallback to legacy path:', err)
+      }
+    }
 
     const response = await this.deps.llmClient.chat({
       messages: [

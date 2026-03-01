@@ -3,8 +3,9 @@ import type { TraitEngine } from '../services/trait-engine.js'
 import type { InstructionEngine, InstructionContext } from '../services/instruction-engine.js'
 import type { MemoryService } from '../services/memory-service.js'
 import type { StatsService } from '../services/stats-service.js'
-import type { AgentPersona, PromptLayers } from './types.js'
+import type { AgentPersona, PromptLayers, PromptComposeAudit, PromptScene } from './types.js'
 import { config } from '../lib/config.js'
+import { computeControversyScore } from './controversy-score.js'
 
 const DEFAULT_PERSONA: AgentPersona = {
   name: '匿名智能体',
@@ -13,9 +14,7 @@ const DEFAULT_PERSONA: AgentPersona = {
   language: 'zh-CN',
 }
 
-const CONTROVERSY_KEYWORDS = config.controversy.keywords
-
-export type PromptLayerScene = 'forum_post' | 'forum_comment' | 'chat_room' | 'private_chat'
+export type PromptLayerScene = PromptScene
 
 export interface LayerComment {
   id: string
@@ -68,7 +67,16 @@ export class PromptLayerService {
   }
 
   async composeLayers(input: ComposePromptLayersInput): Promise<PromptLayers> {
+    const composed = await this.composeLayersWithAudit(input)
+    return composed.layers
+  }
+
+  async composeLayersWithAudit(
+    input: ComposePromptLayersInput,
+    opts?: { suppressAuditLog?: boolean },
+  ): Promise<{ layers: PromptLayers; audit: PromptComposeAudit }> {
     const layers: PromptLayers = {}
+    const lintWarnings: string[] = []
     const agentId = input.agentId
 
     if (this.deps.traitEngine) {
@@ -79,6 +87,7 @@ export class PromptLayerService {
         }
       } catch (err) {
         console.warn('[PromptLayerService] trait layer failed for agent', agentId, err)
+        lintWarnings.push('layer1_trait_failed')
       }
     }
 
@@ -90,11 +99,11 @@ export class PromptLayerService {
     if (this.deps.instructionEngine) {
       try {
         const instrCtx: InstructionContext = {
-          scene: input.scene === 'private_chat' ? 'chat_room' : input.scene,
+          scene: this.mapInstructionScene(input.scene),
           conversation_text: input.conversationText,
           is_new_member_reply: this.computeIsNewMemberReply(input.threadComments, input.targetCommentId),
           is_first_in_room: this.computeIsFirstInRoom(input),
-          controversy_score: this.computeControversyScore(input.conversationText),
+          controversy_score: computeControversyScore(input.conversationText),
         }
 
         const matched = await this.deps.instructionEngine.matchInstructions(agentId, instrCtx)
@@ -103,6 +112,7 @@ export class PromptLayerService {
         }
       } catch (err) {
         console.warn('[PromptLayerService] instruction layer failed for agent', agentId, err)
+        lintWarnings.push('layer3_instruction_failed')
       }
     }
 
@@ -114,11 +124,7 @@ export class PromptLayerService {
     if (this.deps.memoryService) {
       try {
         const privacySettings = await this.deps.memoryService.getPrivacySettings(agentId)
-        const memoryScene = input.scene === 'private_chat'
-          ? 'private_chat'
-          : input.scene === 'chat_room'
-            ? 'chat_room'
-            : 'forum'
+        const memoryScene = this.mapMemoryScene(input.scene)
 
         const memoryCtx = await this.deps.memoryService.getMemoriesForContext(agentId, {
           scene: memoryScene,
@@ -135,10 +141,15 @@ export class PromptLayerService {
         layers.layer6_privacy = this.buildPrivacyPrompt(privacySettings.disclosure_level)
       } catch (err) {
         console.warn('[PromptLayerService] memory layer failed for agent', agentId, err)
+        lintWarnings.push('layer5_memory_or_layer6_privacy_failed')
       }
     }
 
-    return layers
+    const audit = this.buildAudit(input.scene, layers, lintWarnings)
+    if (!opts?.suppressAuditLog) {
+      this.emitAuditLog(agentId, audit)
+    }
+    return { layers, audit }
   }
 
   private buildStyleLayer(agentId: string): string {
@@ -215,7 +226,8 @@ export class PromptLayerService {
       const overrides = (latestConfig?.config_json?.prompt_overrides as Record<string, string>) ?? {}
       const parts: string[] = []
       if (overrides.global_prefix) parts.push(overrides.global_prefix)
-      if (overrides[scene]) parts.push(overrides[scene])
+      const sceneKey = this.resolveOverrideSceneKey(scene)
+      if (overrides[sceneKey]) parts.push(overrides[sceneKey])
       if (overrides.global_suffix) parts.push(overrides.global_suffix)
       return parts.join('\n')
     } catch {
@@ -236,26 +248,68 @@ export class PromptLayerService {
   }
 
   private computeIsFirstInRoom(input: ComposePromptLayersInput): boolean {
-    if (input.scene !== 'chat_room') return false
+    if (input.scene !== 'chat_room' && input.scene !== 'private_chat' && input.scene !== 'proactive_dm') {
+      return false
+    }
     const lastSpokeAt = input.roomMemberState?.last_spoke_at
     return !lastSpokeAt
   }
 
-  private computeControversyScore(text: string): number {
-    if (!text.trim()) return 0
-    const lower = text.toLowerCase()
+  private mapInstructionScene(scene: PromptLayerScene): InstructionContext['scene'] {
+    if (scene === 'private_chat' || scene === 'proactive_dm') return 'chat_room'
+    if (scene === 'scheduled_post') return 'forum_post'
+    return scene
+  }
 
-    let keywordHits = 0
-    for (const kw of CONTROVERSY_KEYWORDS) {
-      if (lower.includes(kw)) keywordHits++
+  private mapMemoryScene(scene: PromptLayerScene): 'forum' | 'chat_room' | 'private_chat' {
+    if (scene === 'private_chat' || scene === 'proactive_dm') return 'private_chat'
+    if (scene === 'chat_room') return 'chat_room'
+    return 'forum'
+  }
+
+  private resolveOverrideSceneKey(scene: PromptLayerScene): string {
+    if (scene === 'scheduled_post') return 'forum_post'
+    if (scene === 'proactive_dm') return 'private_chat'
+    return scene
+  }
+
+  private buildAudit(
+    scene: PromptLayerScene,
+    layers: PromptLayers,
+    lintWarnings: string[],
+  ): PromptComposeAudit {
+    const includedLayerIds = Object.entries(layers)
+      .filter(([, content]) => typeof content === 'string' && content.trim().length > 0)
+      .map(([layerId]) => layerId)
+
+    const tokenEstimates: Record<string, number> = {}
+    for (const layerId of includedLayerIds) {
+      const content = layers[layerId as keyof PromptLayers] ?? ''
+      tokenEstimates[layerId] = this.estimateTokens(content)
     }
 
-    const punctuationHits =
-      (text.match(/[!！?？]{2,}/g)?.length ?? 0) +
-      (text.match(/\b(never|always|must|绝对|必须|毫无疑问)\b/gi)?.length ?? 0)
+    return {
+      version: 'v1',
+      scene,
+      includedLayerIds,
+      tokenEstimates,
+      lintWarnings,
+      trimReasons: [],
+    }
+  }
 
-    const rawScore = keywordHits * 0.12 + punctuationHits * 0.08
-    return Math.min(1, Number(rawScore.toFixed(3)))
+  private emitAuditLog(agentId: string, audit: PromptComposeAudit): void {
+    if (!config.features.promptAuditV1) return
+    console.info('[PromptAudit]', JSON.stringify({
+      agent_id: agentId,
+      ...audit,
+    }))
+  }
+
+  private estimateTokens(text: string): number {
+    const normalized = text.trim()
+    if (!normalized) return 0
+    return Math.max(1, Math.ceil(normalized.length / 4))
   }
 
   private buildPrivacyPrompt(level: number): string {

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ExecutionContext } from '../types.js'
+import type { ContextBuilderDeps } from '../context-builder.js'
 
 const ORIGINAL_FF_LAYER_STACK_V2 = process.env.FF_LAYER_STACK_V2
 
@@ -71,9 +72,9 @@ describe('ContextBuilder layer stack flag routing', () => {
     const { ContextBuilder } = await importContextBuilderWithFlag(true)
 
     const builder = new ContextBuilder({
-      forumReadService: {} as any,
-      agentService: {} as any,
-      promptLayerService: { composeLayers } as any,
+      forumReadService: {} as unknown as ContextBuilderDeps['forumReadService'],
+      agentService: {} as unknown as ContextBuilderDeps['agentService'],
+      promptLayerService: { composeLayers } as unknown as ContextBuilderDeps['promptLayerService'],
     })
 
     const ctx = buildBaseContext({
@@ -149,12 +150,12 @@ describe('ContextBuilder layer stack flag routing', () => {
     const { ContextBuilder } = await importContextBuilderWithFlag(false)
 
     const builder = new ContextBuilder({
-      forumReadService: {} as any,
-      agentService: agentService as any,
-      traitEngine: traitEngine as any,
-      instructionEngine: instructionEngine as any,
-      memoryService: memoryService as any,
-      promptLayerService: promptLayerService as any,
+      forumReadService: {} as unknown as ContextBuilderDeps['forumReadService'],
+      agentService: agentService as unknown as ContextBuilderDeps['agentService'],
+      traitEngine: traitEngine as unknown as ContextBuilderDeps['traitEngine'],
+      instructionEngine: instructionEngine as unknown as ContextBuilderDeps['instructionEngine'],
+      memoryService: memoryService as unknown as ContextBuilderDeps['memoryService'],
+      promptLayerService: promptLayerService as unknown as ContextBuilderDeps['promptLayerService'],
     })
 
     const result = await builder.enrichWithLayers(buildBaseContext())

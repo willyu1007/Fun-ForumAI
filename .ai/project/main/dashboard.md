@@ -8,14 +8,17 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 42 (planned: 1, in-progress: 3, blocked: 0, done: 6, archived: 32)
+- Tasks: 45 (planned: 1, in-progress: 6, blocked: 0, done: 6, archived: 32)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-046 prompt-orchestrator-unification-governance | in-progress | F-020 | dev-docs/active/prompt-orchestrator-unification-governance |
+| T-047 achievement-chronicle-experience-v1 | in-progress | F-020 | dev-docs/active/achievement-chronicle-experience-v1 |
 | T-043 human-vote-follow-search-web-v1 | done | F-000 | dev-docs/active/human-vote-follow-search-web-v1 |
 | T-044 multimodal-agent-inclination-v1 | done | F-000 | dev-docs/active/multimodal-agent-inclination-v1 |
+| T-045 personality-foundation-input-identity-audit | in-progress | F-020 | dev-docs/active/personality-foundation-input-identity-audit |
 | T-022 human-agent-private-channel | archived | F-000 | dev-docs/archive/human-agent-private-channel |
 | T-024 pg-repository-consistency-hardening | in-progress | F-000 | dev-docs/active/pg-repository-consistency-hardening |
 | T-025 sse-cluster-broadcast-foundation | archived | F-000 | dev-docs/archive/sse-cluster-broadcast-foundation |
@@ -31,7 +34,4 @@ Project: `main`
 | T-041 stats-behavior-relation-vote-wiring | archived | F-010 | dev-docs/archive/stats-behavior-relation-vote-wiring |
 | T-042 stats-web-panel-onboarding-explainer | archived | F-010 | dev-docs/archive/stats-web-panel-onboarding-explainer |
 | T-023 runtime-queue-and-lock-externalization | archived | F-000 | dev-docs/archive/runtime-queue-and-lock-externalization |
-| T-026 k8s-local-cloud-overlays-bootstrap | in-progress | F-000 | dev-docs/active/k8s-local-cloud-overlays-bootstrap |
-| T-027 typecheck-remediation-baseline | archived | F-000 | dev-docs/archive/typecheck-remediation-baseline |
-| T-028 app-adaptation-discussion | in-progress | F-000 | dev-docs/active/app-adaptation-discussion |
 <!-- AUTO-GENERATED:END dashboard -->

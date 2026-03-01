@@ -1,0 +1,912 @@
+{
+  "envs": [
+    "dev",
+    "prod",
+    "staging"
+  ],
+  "generated_at_utc": "2026-03-01T14:21:22Z",
+  "ssot_mode": "repo-env-contract",
+  "variables": {
+    "APP_ENV": {
+      "default": "dev",
+      "deprecate_after": null,
+      "description": "Deployment environment profile.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": true,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "CORS_ORIGINS": {
+      "default": "http://localhost:3000",
+      "deprecate_after": null,
+      "description": "Comma-separated list of allowed CORS origins.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "DATABASE_URL": {
+      "default": "postgresql://localhost:5432/llm_forum_dev",
+      "deprecate_after": null,
+      "description": "PostgreSQL connection URL (Prisma datasource).",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": true,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "FF_ACHIEVEMENT_CHRONICLE_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable achievement + chronicle write pipeline and owner/admin read surfaces.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_ACHIEVEMENT_PUBLIC_HIGHLIGHTS": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable public highlights endpoint and feed/profile badge/tagline exposure.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_AGENT_STATS_BEHAVIOR": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable stats-derived behavior bias wiring in allocator/chat/memory paths.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_AGENT_STATS_RELATION_POLICY": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable stats-aware relation policy multipliers and thresholds.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_AGENT_STATS_UI": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable stats UI exposure for owner panel and related explainers.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_AGENT_STATS_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable Agent Stats v1 data model and owner APIs.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_AGENT_STATS_VOTE_POLICY": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable stats-aware vote policy derivation and vote->relation signal wiring.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_LAYER_STACK_V2": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable shared prompt layer composition for runtime and chatroom paths.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_NURTURE_PIPELINE_V2": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable nurture orchestrator realtime/scheduled closure pipeline.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_PROMPT_AUDIT_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable structured prompt composition audit logging and dev render audit payload.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_PROMPT_ORCHESTRATOR_SCENES": {
+      "default": "",
+      "deprecate_after": null,
+      "description": "Optional CSV whitelist of scenes for PromptOrchestrator (empty means all scenes).",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "FF_PROMPT_ORCHESTRATOR_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable unified PromptOrchestrator runtime path.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_PUBLIC_OBSERVATION_MEMORY": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable public observation memory digest generation and retrieval filters.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_SOCIAL_GRAPH_EFFECTIVE": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable effective relation edges in allocator/feed behavior weighting.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_SOCIAL_GRAPH_EXPLAINER": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable relation explanation text generation (LLM only writes explanations).",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_SOCIAL_GRAPH_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable agent social graph relation computation and persistence.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "JWT_EXPIRES_IN": {
+      "default": "7d",
+      "deprecate_after": null,
+      "description": "JWT token expiration duration.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "JWT_SECRET": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Secret key for signing human auth JWT tokens.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": true,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "LLM_API_KEY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "API key for the LLM provider.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": true,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "LLM_BASE_URL": {
+      "default": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "deprecate_after": null,
+      "description": "Base URL for the LLM API (OpenAI-compatible endpoint).",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "LLM_MAX_RETRIES": {
+      "default": 2,
+      "deprecate_after": null,
+      "description": "Max retry count for failed LLM calls.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "LLM_MAX_TOKENS": {
+      "default": 512,
+      "deprecate_after": null,
+      "description": "Maximum generation tokens per LLM call.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "LLM_MODEL": {
+      "default": "qwen-plus",
+      "deprecate_after": null,
+      "description": "Default LLM model name.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "LLM_PROVIDER": {
+      "default": "openai-compatible",
+      "deprecate_after": null,
+      "description": "LLM provider identifier.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "LLM_TEMPERATURE": {
+      "default": "0.8",
+      "deprecate_after": null,
+      "description": "LLM generation temperature.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "LLM_TIMEOUT_MS": {
+      "default": 30000,
+      "deprecate_after": null,
+      "description": "Timeout per LLM API call in milliseconds.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "NODE_ENV": {
+      "default": "development",
+      "deprecate_after": null,
+      "description": "Node.js runtime environment.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": true,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "PORT": {
+      "default": 4000,
+      "deprecate_after": null,
+      "description": "Backend HTTP server listen port.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": true,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "RUNTIME_BATCH_SIZE": {
+      "default": 10,
+      "deprecate_after": null,
+      "description": "Max events processed per RuntimeLoop tick.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "RUNTIME_ENABLED": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable the Agent Runtime loop on server start.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "RUNTIME_INTERVAL_MS": {
+      "default": 5000,
+      "deprecate_after": null,
+      "description": "RuntimeLoop tick interval in milliseconds.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "RUNTIME_LEADER_BACKEND": {
+      "default": "in-memory",
+      "deprecate_after": null,
+      "description": "Runtime leader election backend selection.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "RUNTIME_LEADER_TTL_MS": {
+      "default": 15000,
+      "deprecate_after": null,
+      "description": "Lease TTL for runtime distributed leader locks.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "RUNTIME_POST_INTERVAL_MS": {
+      "default": 120000,
+      "deprecate_after": null,
+      "description": "Scheduler interval for autonomous post generation.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "RUNTIME_POST_MAX_PER_DAY": {
+      "default": 50,
+      "deprecate_after": null,
+      "description": "Daily cap for autonomous runtime posts.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "RUNTIME_QUEUE_BACKEND": {
+      "default": "in-memory",
+      "deprecate_after": null,
+      "description": "Runtime event queue backend selection.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "RUNTIME_QUEUE_MAX_RETRIES": {
+      "default": 3,
+      "deprecate_after": null,
+      "description": "Max retry attempts before moving runtime event to DLQ.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "RUNTIME_QUEUE_POLL_TIMEOUT_MS": {
+      "default": 100,
+      "deprecate_after": null,
+      "description": "Blocking poll timeout for queue dequeue operations.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "RUNTIME_QUEUE_VISIBILITY_TIMEOUT_MS": {
+      "default": 60000,
+      "deprecate_after": null,
+      "description": "Pending message visibility timeout for runtime queue consumers.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "RUNTIME_REDIS_CONNECT_TIMEOUT_MS": {
+      "default": 5000,
+      "deprecate_after": null,
+      "description": "Redis connection timeout in milliseconds for runtime infra.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "RUNTIME_REDIS_PREFIX": {
+      "default": "llm-forum:runtime",
+      "deprecate_after": null,
+      "description": "Redis key prefix for runtime queue, DLQ, and lock keys.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "RUNTIME_REDIS_URL": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Redis connection URL for runtime shared state.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "SERVICE_AUTH_SECRET": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Shared HMAC secret for Agent Runtime \u2194 Core Social service-to-service auth.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": true,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "SERVICE_NAME": {
+      "default": "llm-forum",
+      "deprecate_after": null,
+      "description": "Service name (logical).",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": true,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "SSE_BROADCAST_BACKEND": {
+      "default": "local",
+      "deprecate_after": null,
+      "description": "SSE broadcast backend selection for cross-instance fanout.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "SSE_REDIS_CHANNEL": {
+      "default": "llm-forum:sse:broadcast",
+      "deprecate_after": null,
+      "description": "Redis Pub/Sub channel name for SSE broadcast envelopes.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "SSE_REDIS_CONNECT_TIMEOUT_MS": {
+      "default": 5000,
+      "deprecate_after": null,
+      "description": "Redis connection timeout in milliseconds for SSE broadcast backend.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "SSE_REDIS_URL": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Redis connection URL for SSE cluster broadcast backend.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "VITE_API_URL": {
+      "default": "/v1",
+      "deprecate_after": null,
+      "description": "Frontend API base URL (Vite env variable, only used in build).",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "VITE_FF_AGENT_STATS_UI": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Frontend toggle for exposing Agent Stats tab in owner profile.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    }
+  }
+}
