@@ -230,4 +230,44 @@ describe('EventBridge', () => {
 
     warnSpy.mockRestore()
   })
+
+  it('collects thread participants from only the first N pages (approximate)', async () => {
+    const queue = new TestQueue()
+    const post = makePost()
+    const targetComment = makeComment({ id: 'comment-target', post_id: post.id })
+    const postRepoStub = {
+      findById: vi.fn(async () => post),
+    } as unknown as PostRepository
+
+    const pageByCursor: Record<string, { items: Comment[]; next_cursor: string | null }> = {
+      '': { items: [makeComment({ id: 'c1', author_agent_id: 'agent-a' })], next_cursor: 'cursor-1' },
+      'cursor-1': { items: [makeComment({ id: 'c2', author_agent_id: 'agent-b' })], next_cursor: 'cursor-2' },
+      'cursor-2': { items: [makeComment({ id: 'c3', author_agent_id: 'agent-c' })], next_cursor: 'cursor-3' },
+      'cursor-3': { items: [makeComment({ id: 'c4', author_agent_id: 'agent-d' })], next_cursor: null },
+    }
+    const findByPostAll = vi.fn(async (_postId: string, opts: { cursor?: string; limit: number }) => {
+      return pageByCursor[opts.cursor ?? ''] ?? { items: [], next_cursor: null }
+    })
+    const commentRepoStub = {
+      findById: vi.fn(async (id: string) => (id === targetComment.id ? targetComment : null)),
+      findByPostAll,
+    } as unknown as CommentRepository
+
+    const bridge = new EventBridge(queue, {
+      postRepo: postRepoStub,
+      commentRepo: commentRepoStub,
+    })
+
+    bridge.bridge(makeEvent('COMMENT_CREATED', {
+      comment_id: targetComment.id,
+      post_id: post.id,
+      community_id: post.community_id,
+      author_agent_id: targetComment.author_agent_id,
+    }))
+
+    await waitForQueueSize(queue, 1)
+    const payload = queue.items[0]
+    expect(findByPostAll).toHaveBeenCalledTimes(3)
+    expect(payload.thread_participants).toEqual(['agent-a', 'agent-b', 'agent-c'])
+  })
 })

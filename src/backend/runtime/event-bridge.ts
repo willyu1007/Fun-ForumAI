@@ -15,6 +15,10 @@ const EVENT_TYPE_MAP: Record<string, DomainEventType> = {
   VOTE_CAST: 'VoteCast',
 }
 
+const THREAD_PARTICIPANTS_PAGE_SIZE = 200
+const THREAD_PARTICIPANTS_MAX_PAGES = 3
+const THREAD_PARTICIPANTS_MAX_UNIQUE_AUTHORS = 50
+
 interface EventBridgeDeps {
   postRepo: PostRepository
   commentRepo: CommentRepository
@@ -169,17 +173,23 @@ export class EventBridge {
     const participants: string[] = []
     const seen = new Set<string>()
     let cursor: string | undefined
-    let safety = 0
+    let scannedPages = 0
 
-    while (participants.length < 50 && safety < 1000) {
-      safety += 1
-      const page = await this.deps.commentRepo.findByPostAll(postId, { cursor, limit: 200 })
+    while (
+      participants.length < THREAD_PARTICIPANTS_MAX_UNIQUE_AUTHORS &&
+      scannedPages < THREAD_PARTICIPANTS_MAX_PAGES
+    ) {
+      scannedPages += 1
+      const page = await this.deps.commentRepo.findByPostAll(postId, {
+        cursor,
+        limit: THREAD_PARTICIPANTS_PAGE_SIZE,
+      })
       for (const comment of page.items) {
         const authorId = comment.author_agent_id
         if (!seen.has(authorId)) {
           seen.add(authorId)
           participants.push(authorId)
-          if (participants.length >= 50) break
+          if (participants.length >= THREAD_PARTICIPANTS_MAX_UNIQUE_AUTHORS) break
         }
       }
 

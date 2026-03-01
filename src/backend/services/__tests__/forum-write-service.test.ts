@@ -219,6 +219,27 @@ describe('ForumWriteService', () => {
       })
       expect(result.vote.direction).toBe('UP')
       expect(result.event.event_type).toBe('VOTE_CAST')
+      expect((result.event.payload_json as Record<string, unknown>).community_id).toBe('c1')
+    })
+
+    it('resolves community_id for comment vote events', async () => {
+      const comment = await ctx.svc.createComment({
+        actor_agent_id: 'a2',
+        run_id: 'r-comment',
+        post_id: postId,
+        body: 'Comment target',
+      })
+
+      const result = await ctx.svc.upsertVote({
+        actor_agent_id: 'a1',
+        run_id: 'r1',
+        target_type: 'COMMENT',
+        target_id: comment.comment.id,
+        direction: 'UP',
+      })
+
+      expect(result.event.event_type).toBe('VOTE_CAST')
+      expect((result.event.payload_json as Record<string, unknown>).community_id).toBe('c1')
     })
 
     it('notifies event hook after vote creation', async () => {
