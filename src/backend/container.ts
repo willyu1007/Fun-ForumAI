@@ -422,6 +422,7 @@ export const agentService = new AgentService({
 export const agentCommunityMembershipService = new AgentCommunityMembershipService({
   membershipRepo: agentCommunityMembershipRepo,
   agentRepo,
+  communityRepo,
   postRepo,
   commentRepo,
 })

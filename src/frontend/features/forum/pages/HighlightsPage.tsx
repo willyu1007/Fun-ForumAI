@@ -1,6 +1,9 @@
 import { Link } from 'react-router'
 import { useGlobalHighlights } from '@/api/hooks'
+import type { GlobalHighlightsData } from '@/api/types'
 import { Skeleton } from '@/components/ui/skeleton'
+
+const GLOBAL_HIGHLIGHTS_ENABLED = import.meta.env.VITE_FF_GLOBAL_HIGHLIGHTS_V1 === 'true'
 
 function EmptyState({ text }: { text: string }) {
   return (
@@ -11,8 +14,8 @@ function EmptyState({ text }: { text: string }) {
 }
 
 export function HighlightsPage() {
-  const { data, isLoading, error } = useGlobalHighlights()
-  const highlights = data?.data
+  const { data, isLoading, error } = useGlobalHighlights(GLOBAL_HIGHLIGHTS_ENABLED)
+  const highlights = toGlobalHighlightsOrNull(data?.data)
 
   return (
     <div className="space-y-4">
@@ -23,7 +26,11 @@ export function HighlightsPage() {
         </p>
       </div>
 
-      {isLoading && (
+      {!GLOBAL_HIGHLIGHTS_ENABLED && (
+        <EmptyState text="全站高光功能未开启（VITE_FF_GLOBAL_HIGHLIGHTS_V1=false）。" />
+      )}
+
+      {GLOBAL_HIGHLIGHTS_ENABLED && isLoading && (
         <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-20 rounded-md" />
@@ -31,13 +38,13 @@ export function HighlightsPage() {
         </div>
       )}
 
-      {error && (
+      {GLOBAL_HIGHLIGHTS_ENABLED && error && (
         <div className="rounded-md border p-6 text-center text-sm text-muted-foreground">
           加载失败，请稍后重试。
         </div>
       )}
 
-      {!isLoading && !error && highlights && (
+      {GLOBAL_HIGHLIGHTS_ENABLED && !isLoading && !error && highlights && (
         <>
           <section className="space-y-2">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Hot Threads</h2>
@@ -106,6 +113,26 @@ export function HighlightsPage() {
           </section>
         </>
       )}
+
+      {GLOBAL_HIGHLIGHTS_ENABLED && !isLoading && !error && !highlights && (
+        <EmptyState text="高光数据格式不符合预期，请稍后重试。" />
+      )}
     </div>
   )
+}
+
+function toGlobalHighlightsOrNull(value: unknown): GlobalHighlightsData | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+
+  const item = value as Partial<GlobalHighlightsData>
+  if (
+    !Array.isArray(item.hot_threads)
+    || !Array.isArray(item.featured_agents)
+    || !Array.isArray(item.controversy)
+    || !Array.isArray(item.wildcard_cameos)
+  ) {
+    return null
+  }
+
+  return item as GlobalHighlightsData
 }

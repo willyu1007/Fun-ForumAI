@@ -50,117 +50,106 @@ export class PgAgentCommunityMembershipRepository implements AgentCommunityMembe
     }
   }
 
-  create(input: CreateAgentCommunityMembershipInput): AgentCommunityMembership {
+  async create(input: CreateAgentCommunityMembershipInput): Promise<AgentCommunityMembership> {
     const now = new Date()
-    const membership: AgentCommunityMembership = {
-      id: randomUUID(),
-      agent_id: input.agent_id,
-      community_id: input.community_id,
-      role: input.role ?? 'RESIDENT',
-      source: input.source ?? 'MANUAL',
-      joined_at: input.joined_at ?? now,
-      left_at: input.left_at ?? null,
-      created_by: input.created_by ?? null,
-      created_at: now,
-      updated_at: now,
-    }
-
-    this.cache.set(membership.id, membership)
-    if (membership.left_at === null) {
-      pushIndex(this.activeByAgent, membership.agent_id, membership.id)
-      pushIndex(this.activeByCommunity, membership.community_id, membership.id)
-    }
-
-    this.prisma.agentCommunityMembership
-      .create({
-        data: {
-          id: membership.id,
-          agentId: membership.agent_id,
-          communityId: membership.community_id,
-          role: membership.role,
-          source: membership.source,
-          joinedAt: membership.joined_at,
-          leftAt: membership.left_at,
-          createdBy: membership.created_by,
-          createdAt: membership.created_at,
-          updatedAt: membership.updated_at,
-        },
-      })
-      .catch((err) => {
-        if (isUniqueViolation(err)) {
-          const active = this.findActiveByAgent(membership.agent_id).find((item) => item.community_id === membership.community_id)
-          if (active) {
-            this.prisma.agentCommunityMembership
-              .update({
-                where: { id: active.id },
-                data: {
-                  role: membership.role,
-                  source: membership.source,
-                  leftAt: null,
-                  updatedAt: new Date(),
-                  createdBy: membership.created_by,
-                },
-              })
-              .catch((updateErr) => console.error('[PgAgentCommunityMembershipRepo] create->update error:', updateErr))
-            return
-          }
-        }
-        console.error('[PgAgentCommunityMembershipRepo] create error:', err)
-      })
-
+    const row = await this.prisma.agentCommunityMembership.create({
+      data: {
+        id: randomUUID(),
+        agentId: input.agent_id,
+        communityId: input.community_id,
+        role: input.role ?? 'RESIDENT',
+        source: input.source ?? 'MANUAL',
+        joinedAt: input.joined_at ?? now,
+        leftAt: input.left_at ?? null,
+        createdBy: input.created_by ?? null,
+        createdAt: now,
+        updatedAt: now,
+      },
+    })
+    const membership = this.toDomain(row)
+    this.putCache(membership)
     return membership
   }
 
-  upsertActive(input: CreateAgentCommunityMembershipInput): AgentCommunityMembership {
-    const existing = this.findActiveByAgent(input.agent_id).find((item) => item.community_id === input.community_id)
-    if (!existing) {
-      return this.create(input)
-    }
+  async upsertActive(input: CreateAgentCommunityMembershipInput): Promise<AgentCommunityMembership> {
+    const now = new Date()
+    const active = await this.prisma.agentCommunityMembership.findFirst({
+      where: {
+        agentId: input.agent_id,
+        communityId: input.community_id,
+        leftAt: null,
+      },
+      orderBy: [{ joinedAt: 'desc' }, { id: 'desc' }],
+    })
 
-    existing.role = input.role ?? existing.role
-    existing.source = input.source ?? existing.source
-    existing.left_at = null
-    if (input.created_by !== undefined) {
-      existing.created_by = input.created_by
-    }
-    existing.updated_at = new Date()
-
-    this.prisma.agentCommunityMembership
-      .update({
-        where: { id: existing.id },
+    if (active) {
+      const updated = await this.prisma.agentCommunityMembership.update({
+        where: { id: active.id },
         data: {
-          role: existing.role,
-          source: existing.source,
+          role: input.role ?? active.role,
+          source: input.source ?? active.source,
           leftAt: null,
-          createdBy: existing.created_by,
-          updatedAt: existing.updated_at,
+          createdBy: input.created_by ?? active.createdBy,
+          updatedAt: now,
         },
       })
-      .catch((err) => console.error('[PgAgentCommunityMembershipRepo] upsertActive error:', err))
+      const membership = this.toDomain(updated)
+      this.putCache(membership)
+      return membership
+    }
 
-    return existing
+    try {
+      return await this.create(input)
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error
+
+      const winner = await this.prisma.agentCommunityMembership.findFirst({
+        where: {
+          agentId: input.agent_id,
+          communityId: input.community_id,
+          leftAt: null,
+        },
+        orderBy: [{ joinedAt: 'desc' }, { id: 'desc' }],
+      })
+      if (!winner) throw error
+
+      const updated = await this.prisma.agentCommunityMembership.update({
+        where: { id: winner.id },
+        data: {
+          role: input.role ?? winner.role,
+          source: input.source ?? winner.source,
+          leftAt: null,
+          createdBy: input.created_by ?? winner.createdBy,
+          updatedAt: now,
+        },
+      })
+      const membership = this.toDomain(updated)
+      this.putCache(membership)
+      return membership
+    }
   }
 
-  leave(agentId: string, communityId: string, leftAt = new Date()): AgentCommunityMembership | null {
-    const existing = this.findActiveByAgent(agentId).find((item) => item.community_id === communityId)
-    if (!existing) return null
+  async leave(agentId: string, communityId: string, leftAt = new Date()): Promise<AgentCommunityMembership | null> {
+    const active = await this.prisma.agentCommunityMembership.findFirst({
+      where: {
+        agentId,
+        communityId,
+        leftAt: null,
+      },
+      orderBy: [{ joinedAt: 'desc' }, { id: 'desc' }],
+    })
+    if (!active) return null
 
-    existing.left_at = leftAt
-    existing.updated_at = leftAt
-    removeIndex(this.activeByAgent, existing.agent_id, existing.id)
-    removeIndex(this.activeByCommunity, existing.community_id, existing.id)
-
-    this.prisma.agentCommunityMembership
-      .update({
-        where: { id: existing.id },
-        data: {
-          leftAt,
-          updatedAt: leftAt,
-        },
-      })
-      .catch((err) => console.error('[PgAgentCommunityMembershipRepo] leave error:', err))
-
-    return existing
+    const updated = await this.prisma.agentCommunityMembership.update({
+      where: { id: active.id },
+      data: {
+        leftAt,
+        updatedAt: leftAt,
+      },
+    })
+    const membership = this.toDomain(updated)
+    this.putCache(membership)
+    return membership
   }
 
   findActiveByAgent(agentId: string): AgentCommunityMembership[] {
@@ -202,6 +191,20 @@ export class PgAgentCommunityMembershipRepository implements AgentCommunityMembe
       total += ids.size
     }
     return total
+  }
+
+  private putCache(next: AgentCommunityMembership): void {
+    const prev = this.cache.get(next.id)
+    if (prev?.left_at === null) {
+      removeIndex(this.activeByAgent, prev.agent_id, prev.id)
+      removeIndex(this.activeByCommunity, prev.community_id, prev.id)
+    }
+
+    this.cache.set(next.id, next)
+    if (next.left_at === null) {
+      pushIndex(this.activeByAgent, next.agent_id, next.id)
+      pushIndex(this.activeByCommunity, next.community_id, next.id)
+    }
   }
 
   private toDomain(row: PrismaAgentCommunityMembership): AgentCommunityMembership {

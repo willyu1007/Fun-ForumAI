@@ -574,13 +574,14 @@ export function useAgentHighlights(agentId: string) {
   })
 }
 
-export function useGlobalHighlights() {
+export function useGlobalHighlights(enabled = true) {
   return useQuery({
     queryKey: queryKeys.globalHighlights,
     queryFn: () =>
       api
         .get('highlights')
         .json<ApiResponse<GlobalHighlightsData>>(),
+    enabled,
   })
 }
 

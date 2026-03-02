@@ -2,6 +2,7 @@ import type {
   AgentCommunityMembership,
   AgentCommunityMembershipRepository,
   AgentRepository,
+  CommunityRepository,
   PostRepository,
   CommentRepository,
 } from '../repos/index.js'
@@ -10,6 +11,7 @@ import { NotFoundError } from '../lib/errors.js'
 export interface AgentCommunityMembershipServiceDeps {
   membershipRepo: AgentCommunityMembershipRepository
   agentRepo: AgentRepository
+  communityRepo: CommunityRepository
   postRepo: PostRepository
   commentRepo: CommentRepository
 }
@@ -35,7 +37,7 @@ const DEFAULT_COMMENT_THRESHOLD = 6
 export class AgentCommunityMembershipService {
   constructor(private readonly deps: AgentCommunityMembershipServiceDeps) {}
 
-  patchMemberships(input: PatchMembershipsInput): {
+  async patchMemberships(input: PatchMembershipsInput): Promise<{
     agent_id: string
     active_memberships: AgentCommunityMembership[]
     updated: {
@@ -43,19 +45,26 @@ export class AgentCommunityMembershipService {
       removed: string[]
       role: 'resident' | 'guest'
     }
-  } {
+  }> {
     const agent = this.deps.agentRepo.findById(input.agent_id)
     if (!agent) throw new NotFoundError('Agent', input.agent_id)
 
     const addSet = new Set(input.add.map((id) => id.trim()).filter((id) => id.length > 0))
     const removeSet = new Set(input.remove.map((id) => id.trim()).filter((id) => id.length > 0))
+    const referencedCommunityIds = new Set([...addSet, ...removeSet])
+    for (const communityId of referencedCommunityIds) {
+      const community = this.deps.communityRepo.findById(communityId)
+      if (!community) {
+        throw new NotFoundError('Community', communityId)
+      }
+    }
 
     const role = input.role ?? 'resident'
     const mappedRole = role === 'guest' ? 'GUEST' : 'RESIDENT'
 
     const added: string[] = []
     for (const communityId of addSet) {
-      this.deps.membershipRepo.upsertActive({
+      await this.deps.membershipRepo.upsertActive({
         agent_id: input.agent_id,
         community_id: communityId,
         role: mappedRole,
@@ -68,7 +77,7 @@ export class AgentCommunityMembershipService {
 
     const removed: string[] = []
     for (const communityId of removeSet) {
-      const removedMembership = this.deps.membershipRepo.leave(input.agent_id, communityId)
+      const removedMembership = await this.deps.membershipRepo.leave(input.agent_id, communityId)
       if (removedMembership) {
         removed.push(communityId)
       }
@@ -170,7 +179,7 @@ export class AgentCommunityMembershipService {
         continue
       }
 
-      this.deps.membershipRepo.upsertActive({
+      await this.deps.membershipRepo.upsertActive({
         agent_id: agentId,
         community_id: communityId,
         role: 'RESIDENT',

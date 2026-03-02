@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { InMemoryAgentCommunityMembershipRepository } from '../../repos/agent-community-membership-repository.js'
 import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
+import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
 import { InMemoryCommentRepository } from '../../repos/comment-repository.js'
 import { AgentCommunityMembershipService } from '../agent-community-membership-service.js'
@@ -9,45 +10,50 @@ describe('AgentCommunityMembershipService', () => {
   it('patches add/remove memberships', async () => {
     const membershipRepo = new InMemoryAgentCommunityMembershipRepository()
     const agentRepo = new InMemoryAgentRepository()
+    const communityRepo = new InMemoryCommunityRepository()
     const postRepo = new InMemoryPostRepository()
     const commentRepo = new InMemoryCommentRepository()
 
     const agent = agentRepo.create({ owner_id: 'owner-1', display_name: 'Agent One' })
+    const commA = communityRepo.create({ name: 'A', slug: 'a' })
+    const commB = communityRepo.create({ name: 'B', slug: 'b' })
 
     const service = new AgentCommunityMembershipService({
       membershipRepo,
       agentRepo,
+      communityRepo,
       postRepo,
       commentRepo,
     })
 
-    const first = service.patchMemberships({
+    const first = await service.patchMemberships({
       agent_id: agent.id,
-      add: ['comm-a', 'comm-b'],
+      add: [commA.id, commB.id],
       remove: [],
       role: 'resident',
       actor_user_id: 'owner-1',
     })
 
-    expect(first.updated.added.sort()).toEqual(['comm-a', 'comm-b'])
+    expect(first.updated.added.sort()).toEqual([commA.id, commB.id])
     expect(first.active_memberships).toHaveLength(2)
 
-    const second = service.patchMemberships({
+    const second = await service.patchMemberships({
       agent_id: agent.id,
       add: [],
-      remove: ['comm-a'],
+      remove: [commA.id],
       role: 'guest',
       actor_user_id: 'owner-1',
     })
 
-    expect(second.updated.removed).toEqual(['comm-a'])
-    expect(second.active_memberships.map((item) => item.community_id)).toEqual(['comm-b'])
+    expect(second.updated.removed).toEqual([commA.id])
+    expect(second.active_memberships.map((item) => item.community_id)).toEqual([commB.id])
     expect(service.listActive(agent.id)).toHaveLength(1)
   })
 
   it('backfills derived memberships from 30-day activity', async () => {
     const membershipRepo = new InMemoryAgentCommunityMembershipRepository()
     const agentRepo = new InMemoryAgentRepository()
+    const communityRepo = new InMemoryCommunityRepository()
     const postRepo = new InMemoryPostRepository()
     const commentRepo = new InMemoryCommentRepository()
 
@@ -84,6 +90,7 @@ describe('AgentCommunityMembershipService', () => {
     const service = new AgentCommunityMembershipService({
       membershipRepo,
       agentRepo,
+      communityRepo,
       postRepo,
       commentRepo,
     })
@@ -96,5 +103,33 @@ describe('AgentCommunityMembershipService', () => {
 
     const helperMemberships = membershipRepo.listActiveCommunityIdsByAgent(helper.id)
     expect(helperMemberships).toContain('comm-hot')
+  })
+
+  it('rejects unknown community ids', async () => {
+    const membershipRepo = new InMemoryAgentCommunityMembershipRepository()
+    const agentRepo = new InMemoryAgentRepository()
+    const communityRepo = new InMemoryCommunityRepository()
+    const postRepo = new InMemoryPostRepository()
+    const commentRepo = new InMemoryCommentRepository()
+
+    const agent = agentRepo.create({ owner_id: 'owner-1', display_name: 'Agent One' })
+
+    const service = new AgentCommunityMembershipService({
+      membershipRepo,
+      agentRepo,
+      communityRepo,
+      postRepo,
+      commentRepo,
+    })
+
+    await expect(service.patchMemberships({
+      agent_id: agent.id,
+      add: ['unknown-community'],
+      remove: [],
+      actor_user_id: 'owner-1',
+    })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      statusCode: 404,
+    })
   })
 })

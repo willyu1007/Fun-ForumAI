@@ -70,6 +70,20 @@ export interface GlobalHighlightsPayload {
   }
 }
 
+export function buildEmptyGlobalHighlightsPayload(now = new Date()): GlobalHighlightsPayload {
+  return {
+    hot_threads: [],
+    featured_agents: [],
+    controversy: [],
+    wildcard_cameos: [],
+    meta: {
+      range: 'today',
+      generated_at: now.toISOString(),
+      source: 'global-highlights-v1',
+    },
+  }
+}
+
 export class GlobalHighlightsService {
   constructor(private readonly deps: GlobalHighlightsServiceDeps) {}
 
@@ -100,17 +114,12 @@ export class GlobalHighlightsService {
     const controversy = this.collectControversy(hot.items)
     const wildcardCameos = await this.collectWildcardCameos(featuredAgents)
 
-    return {
-      hot_threads: hotThreads,
-      featured_agents: featuredAgents,
-      controversy,
-      wildcard_cameos: wildcardCameos,
-      meta: {
-        range: 'today',
-        generated_at: new Date().toISOString(),
-        source: 'global-highlights-v1',
-      },
-    }
+    const payload = buildEmptyGlobalHighlightsPayload()
+    payload.hot_threads = hotThreads
+    payload.featured_agents = featuredAgents
+    payload.controversy = controversy
+    payload.wildcard_cameos = wildcardCameos
+    return payload
   }
 
   private async collectFeaturedAgents(threads: HighlightThreadItem[]): Promise<FeaturedAgentItem[]> {

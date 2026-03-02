@@ -184,7 +184,7 @@ controlPlaneRouter.patch(
   '/agents/:agentId/memberships',
   requireHumanAuth,
   validate(updateAgentMembershipsSchema),
-  (req, res) => {
+  async (req, res) => {
     if (!config.features.membershipsV1) {
       res.status(403).json({
         error: { code: 'FORBIDDEN', message: 'Membership management is disabled by feature flag.' },
@@ -200,7 +200,7 @@ controlPlaneRouter.patch(
       throw new ForbiddenError('Only owner or admin can update memberships')
     }
 
-    const result = agentCommunityMembershipService.patchMemberships({
+    const result = await agentCommunityMembershipService.patchMemberships({
       agent_id: agentId,
       add: req.body.add ?? [],
       remove: req.body.remove ?? [],

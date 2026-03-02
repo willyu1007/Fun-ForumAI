@@ -70,6 +70,13 @@ variables:
     default: "false"
     description: Frontend toggle for exposing Agent Stats tab in owner profile.
 
+  VITE_FF_GLOBAL_HIGHLIGHTS_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Frontend toggle for showing the global highlights entry/page.
+
   LLM_PROVIDER:
     type: string
     required: false

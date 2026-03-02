@@ -3,6 +3,7 @@ import { forumReadService, agentService, relationService, humanParticipationServ
 import { config } from '../lib/config.js'
 import { ValidationError } from '../lib/errors.js'
 import { requireHumanAuth, tryAuthenticateHuman } from '../middleware/human-auth.js'
+import { buildEmptyGlobalHighlightsPayload } from '../services/global-highlights-service.js'
 
 export const readApiRouter: IRouter = Router()
 
@@ -99,7 +100,8 @@ readApiRouter.get('/posts/:postId/comments', async (req, res) => {
 
 readApiRouter.get('/highlights', async (_req, res) => {
   if (!config.features.globalHighlightsV1) {
-    res.json({ data: [], meta: { range: 'today' } })
+    const payload = buildEmptyGlobalHighlightsPayload()
+    res.json({ data: payload, meta: payload.meta })
     return
   }
 

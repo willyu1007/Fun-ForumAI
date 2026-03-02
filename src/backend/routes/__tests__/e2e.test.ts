@@ -4,7 +4,7 @@ import { app } from '../../app.js'
 import { createServiceToken } from '../../middleware/service-auth.js'
 import { createDevToken } from '../../middleware/human-auth.js'
 import { config } from '../../lib/config.js'
-import { llmClient } from '../../container.js'
+import { llmClient, communityRepo } from '../../container.js'
 
 const VALID_PNG_BUFFER = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/5NQAAAAASUVORK5CYII=',
@@ -71,7 +71,12 @@ describe('E2E: Read API (public)', () => {
   it('GET /v1/highlights returns empty', async () => {
     const res = await request(app).get('/v1/highlights')
     expect(res.status).toBe(200)
-    expect(res.body.data).toEqual([])
+    expect(res.body.data).toMatchObject({
+      hot_threads: [],
+      featured_agents: [],
+      controversy: [],
+      wildcard_cameos: [],
+    })
   })
 
   it('GET /v1/highlights returns grouped payload when feature is enabled', async () => {
@@ -375,6 +380,9 @@ describe('E2E: Control Plane (human auth)', () => {
     featureFlags.membershipsV1 = true
 
     try {
+      const communityA = communityRepo.create({ name: 'Membership A', slug: `membership-a-${Date.now()}` })
+      const communityB = communityRepo.create({ name: 'Membership B', slug: `membership-b-${Date.now()}` })
+
       const createRes = await request(app)
         .post('/v1/agents')
         .set('Authorization', `Bearer ${userToken}`)
@@ -384,24 +392,30 @@ describe('E2E: Control Plane (human auth)', () => {
       const addRes = await request(app)
         .patch(`/v1/agents/${agentId}/memberships`)
         .set('Authorization', `Bearer ${userToken}`)
-        .send({ add: ['comm-a', 'comm-b'], remove: [], role: 'resident' })
+        .send({ add: [communityA.id, communityB.id], remove: [], role: 'resident' })
       expect(addRes.status).toBe(200)
-      expect(addRes.body.data.updated.added.sort()).toEqual(['comm-a', 'comm-b'])
+      expect(addRes.body.data.updated.added.sort()).toEqual([communityA.id, communityB.id])
       expect(addRes.body.data.active_memberships).toHaveLength(2)
 
       const removeRes = await request(app)
         .patch(`/v1/agents/${agentId}/memberships`)
         .set('Authorization', `Bearer ${userToken}`)
-        .send({ add: [], remove: ['comm-a'] })
+        .send({ add: [], remove: [communityA.id] })
       expect(removeRes.status).toBe(200)
-      expect(removeRes.body.data.updated.removed).toEqual(['comm-a'])
-      expect(removeRes.body.data.active_memberships.map((item: { community_id: string }) => item.community_id)).toEqual(['comm-b'])
+      expect(removeRes.body.data.updated.removed).toEqual([communityA.id])
+      expect(removeRes.body.data.active_memberships.map((item: { community_id: string }) => item.community_id)).toEqual([communityB.id])
 
       const forbidden = await request(app)
         .patch(`/v1/agents/${agentId}/memberships`)
         .set('Authorization', `Bearer ${user2Token}`)
-        .send({ add: ['comm-c'], remove: [] })
+        .send({ add: [communityA.id], remove: [] })
       expect(forbidden.status).toBe(403)
+
+      const invalidCommunity = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: ['community-not-exists'], remove: [] })
+      expect(invalidCommunity.status).toBe(404)
     } finally {
       featureFlags.membershipsV1 = originalMembershipFlag
     }
@@ -657,7 +671,12 @@ describe('E2E: Achievement Chronicle V1', () => {
 
     const legacyHighlights = await request(app).get('/v1/highlights')
     expect(legacyHighlights.status).toBe(200)
-    expect(Array.isArray(legacyHighlights.body.data)).toBe(true)
+    expect(legacyHighlights.body.data).toMatchObject({
+      hot_threads: [],
+      featured_agents: [],
+      controversy: [],
+      wildcard_cameos: [],
+    })
   })
 })
 

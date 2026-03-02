@@ -4,9 +4,9 @@ import type {
 } from './types.js'
 
 export interface AgentCommunityMembershipRepository {
-  create(input: CreateAgentCommunityMembershipInput): AgentCommunityMembership
-  upsertActive(input: CreateAgentCommunityMembershipInput): AgentCommunityMembership
-  leave(agentId: string, communityId: string, leftAt?: Date): AgentCommunityMembership | null
+  create(input: CreateAgentCommunityMembershipInput): Promise<AgentCommunityMembership>
+  upsertActive(input: CreateAgentCommunityMembershipInput): Promise<AgentCommunityMembership>
+  leave(agentId: string, communityId: string, leftAt?: Date): Promise<AgentCommunityMembership | null>
   findActiveByAgent(agentId: string): AgentCommunityMembership[]
   findActiveByCommunity(communityId: string): AgentCommunityMembership[]
   listActiveCommunityIdsByAgent(agentId: string): string[]
@@ -23,7 +23,7 @@ function cuid(): string {
 export class InMemoryAgentCommunityMembershipRepository implements AgentCommunityMembershipRepository {
   private readonly store = new Map<string, AgentCommunityMembership>()
 
-  create(input: CreateAgentCommunityMembershipInput): AgentCommunityMembership {
+  async create(input: CreateAgentCommunityMembershipInput): Promise<AgentCommunityMembership> {
     const now = new Date()
     const membership: AgentCommunityMembership = {
       id: cuid(),
@@ -41,7 +41,7 @@ export class InMemoryAgentCommunityMembershipRepository implements AgentCommunit
     return membership
   }
 
-  upsertActive(input: CreateAgentCommunityMembershipInput): AgentCommunityMembership {
+  async upsertActive(input: CreateAgentCommunityMembershipInput): Promise<AgentCommunityMembership> {
     const existing = this.findActiveByAgent(input.agent_id).find((item) => item.community_id === input.community_id)
     if (!existing) {
       return this.create(input)
@@ -57,7 +57,7 @@ export class InMemoryAgentCommunityMembershipRepository implements AgentCommunit
     return existing
   }
 
-  leave(agentId: string, communityId: string, leftAt = new Date()): AgentCommunityMembership | null {
+  async leave(agentId: string, communityId: string, leftAt = new Date()): Promise<AgentCommunityMembership | null> {
     const existing = this.findActiveByAgent(agentId).find((item) => item.community_id === communityId)
     if (!existing) return null
     existing.left_at = leftAt
