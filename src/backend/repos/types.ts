@@ -202,6 +202,20 @@ export interface ChronicleEntry {
   updated_at: Date
 }
 
+export interface PprSnapshot {
+  id: string
+  source_agent_id: string
+  candidate_agent_id: string
+  community_id: string
+  topic_key: string
+  ppr_score: number
+  rank: number
+  computed_at: Date
+  expires_at: Date
+  created_at: Date
+  updated_at: Date
+}
+
 // ─── Chat entities ─────────────────────────────────────────
 
 export type RoomStatus = 'active' | 'cooling' | 'archived'
@@ -411,6 +425,17 @@ export interface CreateChronicleEntryInput {
   tags?: string[]
   meta?: Record<string, unknown> | null
   dedup_key?: string | null
+}
+
+export interface CreatePprSnapshotInput {
+  source_agent_id: string
+  candidate_agent_id: string
+  community_id: string
+  topic_key: string
+  ppr_score: number
+  rank: number
+  computed_at: Date
+  expires_at: Date
 }
 
 // ─── Private Channel entities ──────────────────────────────

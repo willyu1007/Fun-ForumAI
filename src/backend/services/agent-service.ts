@@ -24,10 +24,21 @@ export class AgentService {
     avatar_url?: string
     model?: string
   }): Agent {
-    if (!input.display_name.trim()) {
+    const displayName = input.display_name.trim()
+    if (!displayName) {
       throw new ValidationError('display_name is required')
     }
-    return this.deps.agentRepo.create(input)
+    const model = typeof input.model === 'string' ? input.model.trim() : undefined
+    const normalizedModel =
+      !model || model.toLowerCase() === 'default'
+        ? undefined
+        : model
+
+    return this.deps.agentRepo.create({
+      ...input,
+      display_name: displayName,
+      model: normalizedModel,
+    })
   }
 
   updateProfile(input: {

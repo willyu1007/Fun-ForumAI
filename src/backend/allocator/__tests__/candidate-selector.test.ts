@@ -1,6 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { DefaultCandidateSelector } from '../candidate-selector.js'
 import { DEFAULT_ALLOCATOR_CONFIG } from '../config.js'
+import { SnapshotGraphRelevanceProvider } from '../graph-relevance-provider.js'
+import { DefaultCastingDirectorPolicy } from '../casting-director-policy.js'
 import type { AgentCandidate, DegradationState, EventPayload } from '../types.js'
 
 const NORMAL: DegradationState = { level: 'normal', queue_lag_seconds: 0, factor: 1.0 }
@@ -164,5 +166,85 @@ describe('DefaultCandidateSelector', () => {
     const result = selector.select(event, [lowAppetite, highAppetite], 5, CRITICAL)
     expect(result[0].agent_id).toBe('high')
     expect(result[1].agent_id).toBe('low')
+  })
+
+  it('adds PPR bonus from snapshot when enabled', () => {
+    const provider = new SnapshotGraphRelevanceProvider()
+    provider.hydrate([
+      {
+        source_agent_id: 'agent-author',
+        candidate_agent_id: 'a2',
+        community_id: 'comm-1',
+        topic_key: '__all__',
+        ppr_score: 1,
+        rank: 1,
+        computed_at: new Date('2026-03-02T00:00:00.000Z'),
+        expires_at: new Date('2026-03-03T00:00:00.000Z'),
+      },
+      {
+        source_agent_id: 'agent-author',
+        candidate_agent_id: 'a1',
+        community_id: 'comm-1',
+        topic_key: '__all__',
+        ppr_score: 0.1,
+        rank: 2,
+        computed_at: new Date('2026-03-02T00:00:00.000Z'),
+        expires_at: new Date('2026-03-03T00:00:00.000Z'),
+      },
+    ])
+
+    const selectorWithPpr = new DefaultCandidateSelector(DEFAULT_ALLOCATOR_CONFIG, {
+      pprEnabled: true,
+      graphRelevanceProvider: provider,
+    })
+
+    const agents = [makeAgent('a1', { community_ids: ['comm-1'] }), makeAgent('a2', { community_ids: ['comm-1'] })]
+    const result = selectorWithPpr.select(makeEvent(), agents, 5, CRITICAL)
+
+    expect(result[0].agent_id).toBe('a2')
+    expect(result[0].reasons.some((reason) => reason.startsWith('ppr_bonus='))).toBe(true)
+  })
+
+  it('bypasses director policy when quota <= 2', () => {
+    const directorSpy = {
+      select: vi.fn(() => []),
+    }
+
+    const selectorWithDirector = new DefaultCandidateSelector(DEFAULT_ALLOCATOR_CONFIG, {
+      directorEnabled: true,
+      castingDirectorPolicy: directorSpy,
+    })
+
+    selectorWithDirector.select(makeEvent(), [makeAgent('a1'), makeAgent('a2')], 2, CRITICAL)
+    expect(directorSpy.select).not.toHaveBeenCalled()
+  })
+
+  it('applies director role allocation when enabled and quota > 2', () => {
+    const selectorWithDirector = new DefaultCandidateSelector(DEFAULT_ALLOCATOR_CONFIG, {
+      directorEnabled: true,
+      castingDirectorPolicy: new DefaultCastingDirectorPolicy(),
+      resolveCommunityDirectorConfig: () => ({
+        ratio: { core: 2, contrast: 1, wildcard: 1 },
+        wildcard_cap: 1,
+      }),
+    })
+
+    const event = makeEvent({ tags: ['x'] })
+    const agents = [
+      makeAgent('a1', { tags: ['x'], community_ids: ['comm-1'] }),
+      makeAgent('a2', { tags: ['x'], community_ids: ['comm-1'] }),
+      makeAgent('a3', { tags: ['x'], community_ids: ['comm-1'] }),
+      makeAgent('a6', { tags: ['x'], community_ids: ['comm-1'] }),
+      makeAgent('a4', { tags: [], community_ids: ['comm-1'] }),
+      makeAgent('a5', { tags: [], community_ids: ['comm-1'] }),
+    ]
+
+    const result = selectorWithDirector.select(event, agents, 4, CRITICAL)
+    const roleReasons = result.flatMap((item) => item.reasons).filter((reason) => reason.startsWith('director_role='))
+
+    expect(result).toHaveLength(4)
+    expect(roleReasons).toContain('director_role=core')
+    expect(roleReasons).toContain('director_role=contrast')
+    expect(roleReasons).toContain('director_role=wildcard')
   })
 })

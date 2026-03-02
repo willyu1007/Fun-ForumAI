@@ -13,6 +13,7 @@ import { InMemoryMessageRepository } from './repos/message-repository.js'
 import { InMemoryStatsRepository } from './repos/stats-repository.js'
 import { InMemoryAchievementRepository } from './repos/achievement-repository.js'
 import { InMemoryChronicleRepository } from './repos/chronicle-repository.js'
+import { InMemoryPprSnapshotRepository } from './repos/ppr-snapshot-repository.js'
 
 import type { PostRepository } from './repos/post-repository.js'
 import type { CommentRepository } from './repos/comment-repository.js'
@@ -30,6 +31,7 @@ import type { RelationRepository } from './repos/relation-repository.js'
 import type { StatsRepository } from './repos/stats-repository.js'
 import type { AchievementRepository } from './repos/achievement-repository.js'
 import type { ChronicleRepository } from './repos/chronicle-repository.js'
+import type { PprSnapshotRepository } from './repos/ppr-snapshot-repository.js'
 
 import { ForumReadService } from './services/forum-read-service.js'
 import { ForumWriteService } from './services/forum-write-service.js'
@@ -51,6 +53,10 @@ import {
   InMemoryAdmissionGate,
   DefaultQuotaCalculator,
   DefaultCandidateSelector,
+  SnapshotGraphRelevanceProvider,
+  DefaultCastingDirectorPolicy,
+  DIRECTOR_PILOT_COMMUNITY_SLUGS,
+  resolveDirectorCommunityConfig,
   InMemoryAllocationLock,
   DefaultDegradationMonitor,
   DEFAULT_ALLOCATOR_CONFIG,
@@ -61,6 +67,7 @@ import { LlmClient } from './llm/llm-client.js'
 import { PromptEngine } from './llm/prompt-engine.js'
 
 import { ContextBuilder } from './runtime/context-builder.js'
+import { CommunityPromptProfileCompiler } from './runtime/community-prompt-profile-compiler.js'
 import { PromptLayerService } from './runtime/prompt-layer-service.js'
 import { PromptOrchestrator } from './runtime/prompt-orchestrator.js'
 import { ResponseParser } from './runtime/response-parser.js'
@@ -102,6 +109,8 @@ import { NurtureScheduler } from './runtime/nurture-scheduler.js'
 import { PublicObservationEventHandler } from './runtime/public-observation-event-handler.js'
 import { RelationScheduler } from './runtime/relation-scheduler.js'
 import { AchievementsScheduler } from './runtime/achievements-scheduler.js'
+import { PprRefreshScheduler } from './runtime/ppr-refresh-scheduler.js'
+import { PprSnapshotBuilder } from './services/ppr/ppr-snapshot-builder.js'
 
 // ─── Repositories ───────────────────────────────────────────
 
@@ -120,6 +129,7 @@ let userRepo: UserRepository | null = null
 let statsRepo: StatsRepository
 let achievementRepo: AchievementRepository
 let chronicleRepo: ChronicleRepository
+let pprSnapshotRepo: PprSnapshotRepository
 export let voteRepo: VoteRepository
 export let humanVoteRepo: HumanVoteRepository
 export let humanFollowRepo: HumanFollowRepository
@@ -129,6 +139,7 @@ export let communityRepo: CommunityRepository
 export let statsService: StatsService | null = null
 export let achievementsOrchestrator: AchievementsOrchestrator | null = null
 export let achievementsScheduler: AchievementsScheduler | null = null
+export let pprRefreshScheduler: PprRefreshScheduler | null = null
 
 const _hydratables: HydratableRepo[] = []
 
@@ -153,6 +164,7 @@ if (config.db.usePrisma) {
   const { PgStatsRepository } = await import('./repos/pg/pg-stats-repository.js')
   const { PgAchievementRepository } = await import('./repos/pg/pg-achievement-repository.js')
   const { PgChronicleRepository } = await import('./repos/pg/pg-chronicle-repository.js')
+  const { PgPprSnapshotRepository } = await import('./repos/pg/pg-ppr-snapshot-repository.js')
 
   const pr = new PgPostRepository(prisma)
   const cr = new PgCommentRepository(prisma)
@@ -172,6 +184,7 @@ if (config.db.usePrisma) {
   const sr = new PgStatsRepository(prisma)
   const achar = new PgAchievementRepository(prisma)
   const chr = new PgChronicleRepository(prisma)
+  const ppr = new PgPprSnapshotRepository(prisma)
 
   postRepo = pr
   commentRepo = cr
@@ -191,8 +204,9 @@ if (config.db.usePrisma) {
   statsRepo = sr
   achievementRepo = achar
   chronicleRepo = chr
+  pprSnapshotRepo = ppr
   userRepo = new PgUserRepository(prisma)
-  _hydratables.push(pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, cmr, er, arr, rr, mr, sr, achar, chr)
+  _hydratables.push(pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, cmr, er, arr, rr, mr, sr, achar, chr, ppr)
 } else {
   postRepo = new InMemoryPostRepository()
   commentRepo = new InMemoryCommentRepository()
@@ -212,6 +226,7 @@ if (config.db.usePrisma) {
   statsRepo = new InMemoryStatsRepository()
   achievementRepo = new InMemoryAchievementRepository()
   chronicleRepo = new InMemoryChronicleRepository()
+  pprSnapshotRepo = new InMemoryPprSnapshotRepository()
 }
 
 // ─── SSE Hub ─────────────────────────────────────────────────
@@ -334,6 +349,7 @@ const privateChannelLeaderElector = createLeaderElector('private-channel')
 const nurtureLeaderElector = createLeaderElector('nurture')
 const relationLeaderElector = createLeaderElector('relation')
 const achievementsLeaderElector = createLeaderElector('achievements')
+const pprRefreshLeaderElector = createLeaderElector('ppr-refresh')
 
 // ─── Core Services ──────────────────────────────────────────
 
@@ -415,6 +431,40 @@ achievementsOrchestrator = new AchievementsOrchestrator({
 
 // ─── Allocator Pipeline ─────────────────────────────────────
 
+const graphRelevanceProvider = new SnapshotGraphRelevanceProvider()
+const castingDirectorPolicy = new DefaultCastingDirectorPolicy()
+const pprSnapshotBuilder = new PprSnapshotBuilder({
+  agentRepo,
+  communityRepo,
+  postRepo,
+  commentRepo,
+  relationRepo,
+})
+
+pprRefreshScheduler = new PprRefreshScheduler({
+  repository: pprSnapshotRepo,
+  provider: graphRelevanceProvider,
+  builder: pprSnapshotBuilder,
+  leaderElector: pprRefreshLeaderElector,
+})
+
+function resolveDirectorConfigByCommunity(communityId: string) {
+  const community = communityRepo.findById(communityId)
+  return resolveDirectorCommunityConfig({
+    communitySlug: community?.slug,
+    rulesJson: community?.rules_json ?? null,
+  })
+}
+
+if (config.features.castingDirectorEnabled) {
+  const missingPilotSlugs = DIRECTOR_PILOT_COMMUNITY_SLUGS.filter((slug) => !communityRepo.findBySlug(slug))
+  if (missingPilotSlugs.length > 0) {
+    console.warn(
+      `[CastingDirector] Pilot communities missing (${missingPilotSlugs.join(', ')}), fallback to default ratio.`,
+    )
+  }
+}
+
 const allocatorAgentRepo: AllocatorAgentRepo = {
   getCandidates(communityId: string, authorAgentId?: string): AgentCandidate[] {
     const agents = agentRepo.findActive({ limit: 100 })
@@ -443,7 +493,13 @@ const quotaCalc = new DefaultQuotaCalculator(DEFAULT_ALLOCATOR_CONFIG)
 export const allocator = new EventAllocator({
   admission: new InMemoryAdmissionGate(DEFAULT_ALLOCATOR_CONFIG),
   quota: quotaCalc,
-  candidates: new DefaultCandidateSelector(DEFAULT_ALLOCATOR_CONFIG),
+  candidates: new DefaultCandidateSelector(DEFAULT_ALLOCATOR_CONFIG, {
+    graphRelevanceProvider,
+    castingDirectorPolicy,
+    pprEnabled: config.features.allocatorPprEnabled,
+    directorEnabled: config.features.castingDirectorEnabled,
+    resolveCommunityDirectorConfig: resolveDirectorConfigByCommunity,
+  }),
   lock: new InMemoryAllocationLock(DEFAULT_ALLOCATOR_CONFIG.lockTtlMs),
   degradation: degradationMonitor,
   agentRepo: allocatorAgentRepo,
@@ -723,6 +779,7 @@ const contextBuilder = new ContextBuilder({
   memoryService,
   promptLayerService,
   promptOrchestrator,
+  communityPromptProfileCompiler: new CommunityPromptProfileCompiler(),
 })
 
 const responseParser = new ResponseParser()
@@ -829,6 +886,20 @@ export async function hydrateRepositories(): Promise<void> {
   if (_hydratables.length === 0) return
   console.log('[Container] Hydrating Pg repositories from database...')
   await Promise.all(_hydratables.map(r => r.hydrate()))
+  const snapshots = await pprSnapshotRepo.listUnexpired({ limit: 200_000 })
+  graphRelevanceProvider.hydrate(
+    snapshots.map((row) => ({
+      source_agent_id: row.source_agent_id,
+      candidate_agent_id: row.candidate_agent_id,
+      community_id: row.community_id,
+      topic_key: row.topic_key,
+      ppr_score: row.ppr_score,
+      rank: row.rank,
+      computed_at: row.computed_at,
+      expires_at: row.expires_at,
+    })),
+  )
+  console.log(`[Container] PPR snapshots loaded: ${snapshots.length}`)
   console.log(`[Container] ${_hydratables.length} repositories hydrated`)
 }
 
@@ -840,6 +911,8 @@ export async function closeRuntimeInfrastructure(): Promise<void> {
     privateChannelLeaderElector,
     nurtureLeaderElector,
     relationLeaderElector,
+    achievementsLeaderElector,
+    pprRefreshLeaderElector,
   ]
   const uniqueElectors = Array.from(new Set(electors))
   await Promise.allSettled(uniqueElectors.map((elector) => elector.releaseLeadership()))

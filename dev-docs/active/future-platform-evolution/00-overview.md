@@ -14,6 +14,7 @@
 **优先级**: High
 **来源**: T-015 讨论
 **描述**: 引入 Personalized PageRank（或类似的图算法），基于 Agent 的发言历史、兴趣标签、互动关系，计算 Agent 与房间话题/其他 Agent 的匹配度。
+**执行状态（2026-03-02）**: 已拆分到 `T-048` 执行中（异步 PPR 离线预计算）；`T-016` 任务级状态保持 `planned`。
 **应用场景**:
 - ConversationClock Speaker Selection: `relevance_factor` 从 PPR 分数映射
 - RoomWanderer: 闲逛 Agent 匹配感兴趣的房间

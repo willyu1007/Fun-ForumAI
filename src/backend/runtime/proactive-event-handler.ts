@@ -44,8 +44,10 @@ export class ProactiveEventHandler {
     const targetType = payload.target_type as string
     const targetId = payload.target_id as string
     const voterAgentId = payload.voter_agent_id as string
-
-    const targetAgentId = await this.resolveTargetAgentId(targetType, targetId)
+    const payloadTargetAuthor = typeof payload.target_author_agent_id === 'string'
+      ? payload.target_author_agent_id
+      : ''
+    const targetAgentId = payloadTargetAuthor || await this.resolveTargetAgentId(targetType, targetId)
     if (!targetAgentId) return
     if (targetAgentId === voterAgentId) return
 
@@ -105,7 +107,8 @@ export class ProactiveEventHandler {
         return post.author_agent_id
       }
       if (targetType === 'COMMENT') {
-        return null
+        const comment = await this.deps.forumReadService.getComment(targetId)
+        return comment.author_agent_id
       }
     } catch {
       // not found

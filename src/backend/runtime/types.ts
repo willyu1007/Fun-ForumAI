@@ -35,6 +35,13 @@ export interface PromptComposeAudit {
   tokenEstimates: Record<string, number>
   lintWarnings: string[]
   trimReasons: string[]
+  provenance?: {
+    community_profile?: {
+      source: string
+      version: string
+      fallback: boolean
+    }
+  }
 }
 
 export interface ExecutionContext {
@@ -46,6 +53,14 @@ export interface ExecutionContext {
     name: string
     description: string
     rules: string
+    prompt_profile?: {
+      hard_rules_text: string
+      soft_culture_text: string
+      provenance: {
+        source: string
+        used_fallback: boolean
+      }
+    }
   }
   post?: {
     id: string

@@ -7,7 +7,7 @@ import type {
   PaginatedResult,
   PaginationOpts,
 } from '../types.js'
-import type { ChronicleRepository } from '../chronicle-repository.js'
+import type { ChronicleRepository, ChronicleSignalMetrics } from '../chronicle-repository.js'
 
 function isUniqueError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
@@ -188,6 +188,73 @@ export class PgChronicleRepository implements ChronicleRepository {
     })
   }
 
+  async getSignalMetrics(
+    agentId: string,
+    opts: { signalKinds: string[]; since?: Date },
+  ): Promise<ChronicleSignalMetrics> {
+    const signalKinds = opts.signalKinds.filter((kind) => kind.trim().length > 0)
+    const signalTags = signalKinds.map((kind) => `signal:${kind}`)
+    const sinceSql = opts.since
+      ? Prisma.sql`AND "occurred_at" >= ${opts.since}`
+      : Prisma.empty
+
+    const baseRows = await this.prisma.$queryRaw<
+      Array<{ public_entries: bigint | number | string; activity_days: bigint | number | string; total_entries: bigint | number | string }>
+    >(Prisma.sql`
+      SELECT
+        COUNT(*) FILTER (WHERE "visibility" = 'PUBLIC') AS public_entries,
+        COUNT(DISTINCT DATE_TRUNC('day', "occurred_at")) AS activity_days,
+        COUNT(*) AS total_entries
+      FROM "chronicle_entries"
+      WHERE "agent_id" = ${agentId}
+      ${sinceSql}
+    `)
+
+    const crossSceneRows = await this.prisma.$queryRaw<Array<{ cross_scene: bigint | number | string }>>(Prisma.sql`
+      SELECT COUNT(DISTINCT signal_kind) AS cross_scene
+      FROM (
+        SELECT SUBSTRING(tag FROM 8) AS signal_kind
+        FROM "chronicle_entries"
+        CROSS JOIN LATERAL jsonb_array_elements_text(COALESCE("tags_json", '[]'::jsonb)) AS t(tag)
+        WHERE "agent_id" = ${agentId}
+        ${sinceSql}
+          AND t.tag LIKE 'signal:%'
+      ) AS s
+    `)
+
+    const signalRows = signalTags.length > 0
+      ? await this.prisma.$queryRaw<Array<{ tag: string; count: bigint | number | string }>>(Prisma.sql`
+          SELECT t.tag AS tag, COUNT(*) AS count
+          FROM "chronicle_entries"
+          CROSS JOIN LATERAL jsonb_array_elements_text(COALESCE("tags_json", '[]'::jsonb)) AS t(tag)
+          WHERE "agent_id" = ${agentId}
+          ${sinceSql}
+            AND t.tag IN (${Prisma.join(signalTags)})
+          GROUP BY t.tag
+        `)
+      : []
+
+    const signalCounts: Record<string, number> = {}
+    for (const kind of signalKinds) {
+      signalCounts[kind] = 0
+    }
+    for (const row of signalRows) {
+      const kind = row.tag.startsWith('signal:') ? row.tag.slice('signal:'.length) : row.tag
+      signalCounts[kind] = toNumber(row.count)
+    }
+
+    const base = baseRows[0] ?? { public_entries: 0, activity_days: 0, total_entries: 0 }
+    const cross = crossSceneRows[0] ?? { cross_scene: 0 }
+
+    return {
+      signal_counts: signalCounts,
+      public_entries: toNumber(base.public_entries),
+      activity_days: toNumber(base.activity_days),
+      cross_scene: toNumber(cross.cross_scene),
+      chronicle_entries: toNumber(base.total_entries),
+    }
+  }
+
   private toDomain(row: PrismaChronicleEntry): ChronicleEntry {
     return {
       id: row.id,
@@ -208,4 +275,12 @@ export class PgChronicleRepository implements ChronicleRepository {
       updated_at: row.updatedAt,
     }
   }
+}
+
+function toNumber(value: bigint | number | string | null | undefined): number {
+  if (value === null || value === undefined) return 0
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0
+  if (typeof value === 'bigint') return Number(value)
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) ? parsed : 0
 }

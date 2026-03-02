@@ -4,8 +4,22 @@ import type {
   AgentCandidate,
   ScoredCandidate,
   DegradationState,
+  GraphRelevanceProvider,
+  CastingDirectorPolicy,
+  CastingDirectorCommunityConfig,
 } from './types.js'
 import type { AllocatorConfig } from './config.js'
+import { deriveTopicKey } from './ppr-topic-key.js'
+
+const PPR_SCORE_SCALE = 2
+
+export interface DefaultCandidateSelectorDeps {
+  graphRelevanceProvider?: GraphRelevanceProvider
+  castingDirectorPolicy?: CastingDirectorPolicy
+  pprEnabled?: boolean
+  directorEnabled?: boolean
+  resolveCommunityDirectorConfig?: (communityId: string) => CastingDirectorCommunityConfig | undefined
+}
 
 /**
  * Rules-based candidate selection (MVP).
@@ -16,7 +30,10 @@ import type { AllocatorConfig } from './config.js'
  *   3. Sort + take   top-K where K = quota
  */
 export class DefaultCandidateSelector implements CandidateSelector {
-  constructor(private readonly cfg: AllocatorConfig) {}
+  constructor(
+    private readonly cfg: AllocatorConfig,
+    private readonly deps: DefaultCandidateSelectorDeps = {},
+  ) {}
 
   select(
     event: EventPayload,
@@ -27,7 +44,19 @@ export class DefaultCandidateSelector implements CandidateSelector {
     if (quota <= 0) return []
 
     const eventTags = this.extractTags(event)
+    const topicKey = deriveTopicKey(event.tags)
     const now = Date.now()
+    const pprSnapshot = this.deps.pprEnabled && this.deps.graphRelevanceProvider
+      ? this.deps.graphRelevanceProvider.getSnapshot({
+          source_agent_id: event.author_agent_id,
+          community_id: event.community_id,
+          topic_key: topicKey,
+          now: new Date(now),
+        })
+      : []
+    const pprScoreByAgent = new Map(
+      pprSnapshot.map((row) => [row.candidate_agent_id, row.ppr_score] as const),
+    )
 
     const scored: ScoredCandidate[] = []
 
@@ -89,6 +118,15 @@ export class DefaultCandidateSelector implements CandidateSelector {
         reasons.push('exploration_noise')
       }
 
+      if (this.deps.pprEnabled && pprScoreByAgent.size > 0) {
+        const pprScore = pprScoreByAgent.get(c.agent_id)
+        if (typeof pprScore === 'number' && Number.isFinite(pprScore) && pprScore > 0) {
+          const pprBonus = clamp(pprScore * PPR_SCORE_SCALE, 0, PPR_SCORE_SCALE)
+          score += pprBonus
+          reasons.push(`ppr_bonus=${pprBonus.toFixed(3)}`)
+        }
+      }
+
       if (c.relation_hint_to_author) {
         if (c.relation_hint_to_author === 'blocked') {
           continue
@@ -104,8 +142,18 @@ export class DefaultCandidateSelector implements CandidateSelector {
     }
 
     scored.sort((a, b) => b.score - a.score)
+    const topScored = scored.slice(0, quota)
 
-    return scored.slice(0, quota)
+    if (!this.deps.directorEnabled || quota <= 2 || !this.deps.castingDirectorPolicy) {
+      return topScored
+    }
+
+    return this.deps.castingDirectorPolicy.select({
+      event,
+      scored,
+      quota,
+      community_config: this.deps.resolveCommunityDirectorConfig?.(event.community_id),
+    })
   }
 
   private extractTags(event: EventPayload): Set<string> {

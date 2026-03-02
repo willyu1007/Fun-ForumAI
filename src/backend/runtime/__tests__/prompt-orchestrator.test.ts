@@ -339,4 +339,50 @@ describe('PromptOrchestrator', () => {
       },
     )
   })
+
+  it('records community prompt profile provenance in audit', async () => {
+    const composeLayersWithAudit = vi.fn(async () => ({
+      layers: {
+        layer1_growth: 'growth',
+        layer6_privacy: 'privacy',
+      },
+      audit: { ...BASE_AUDIT, scene: 'forum_post' as const },
+    }))
+
+    const orchestrator = new PromptOrchestrator({
+      promptLayerService: {
+        composeLayersWithAudit,
+        getPersona: vi.fn(() => ({
+          name: 'Profile Bot',
+          style: 'calm',
+          interests: ['community'],
+          language: 'zh-CN',
+        })),
+      } as unknown as PromptLayerService,
+    } as PromptOrchestratorDeps)
+
+    const result = await withFeatureFlags(
+      {
+        promptOrchestratorV1: true,
+        promptOrchestratorScenes: [],
+      },
+      () =>
+        orchestrator.compose({
+          agentId: 'agent-profile',
+          scene: 'forum_post',
+          conversationText: 'hello',
+          communityProfileProvenance: {
+            source: 'rules_json.personality.prompt_profile_v1',
+            version: 'v1',
+            fallback: false,
+          },
+        }),
+    )
+
+    expect(result.audit.provenance?.community_profile).toEqual({
+      source: 'rules_json.personality.prompt_profile_v1',
+      version: 'v1',
+      fallback: false,
+    })
+  })
 })

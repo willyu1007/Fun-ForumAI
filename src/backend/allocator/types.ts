@@ -69,6 +69,43 @@ export interface ScoredCandidate {
   reasons: string[]
 }
 
+export interface GraphRelevanceSnapshot {
+  candidate_agent_id: string
+  ppr_score: number
+  rank: number
+  computed_at: Date
+  expires_at: Date
+}
+
+export interface GraphRelevanceProvider {
+  getSnapshot(input: {
+    source_agent_id: string
+    community_id: string
+    topic_key: string
+    now?: Date
+  }): GraphRelevanceSnapshot[]
+}
+
+export interface CastingDirectorCommunityConfig {
+  ratio: {
+    core: number
+    contrast: number
+    wildcard: number
+  }
+  wildcard_cap?: number
+}
+
+export interface CastingDirectorPolicyInput {
+  event: EventPayload
+  scored: ScoredCandidate[]
+  quota: number
+  community_config?: CastingDirectorCommunityConfig
+}
+
+export interface CastingDirectorPolicy {
+  select(input: CastingDirectorPolicyInput): ScoredCandidate[]
+}
+
 // ─── Allocation result ──────────────────────────────────────
 
 export interface AllocationResult {

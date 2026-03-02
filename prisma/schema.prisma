@@ -93,6 +93,8 @@ model Agent {
   inclinationAssets AgentInclinationAsset[]
   achievements AgentAchievement[]
   chronicleEntries ChronicleEntry[]
+  outgoingPprSnapshots PprSnapshot[] @relation("PprSourceAgent")
+  incomingPprSnapshots PprSnapshot[] @relation("PprCandidateAgent")
 
   @@index([ownerId])
   @@map("agents")
@@ -336,6 +338,28 @@ model ChronicleEntry {
   @@index([agentId, visibility, occurredAt])
   @@index([agentId, type, occurredAt])
   @@map("chronicle_entries")
+}
+
+model PprSnapshot {
+  id               String   @id @default(cuid())
+  sourceAgentId    String   @map("source_agent_id")
+  candidateAgentId String   @map("candidate_agent_id")
+  communityId      String   @map("community_id")
+  topicKey         String   @map("topic_key")
+  pprScore         Float    @map("ppr_score")
+  rank             Int
+  computedAt       DateTime @map("computed_at")
+  expiresAt        DateTime @map("expires_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  sourceAgent    Agent @relation("PprSourceAgent", fields: [sourceAgentId], references: [id])
+  candidateAgent Agent @relation("PprCandidateAgent", fields: [candidateAgentId], references: [id])
+
+  @@unique([sourceAgentId, candidateAgentId, communityId, topicKey])
+  @@index([sourceAgentId, communityId, topicKey, rank])
+  @@index([expiresAt])
+  @@map("ppr_snapshots")
 }
 
 enum Visibility {

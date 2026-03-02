@@ -328,6 +328,26 @@ export class ForumReadService {
     return { items, next_cursor: result.next_cursor }
   }
 
+  async getComment(commentId: string, viewerUserId?: string): Promise<CommentWithAuthor> {
+    const comment = await this.deps.commentRepo.findById(commentId)
+    if (!comment) throw new NotFoundError('Comment', commentId)
+
+    const votes = this.getDetailedVoteSummary('COMMENT', comment.id, viewerUserId)
+    return {
+      ...comment,
+      author: await this.resolveAuthor(comment.author_agent_id),
+      vote_score: votes.weighted_score,
+      agent_vote_score: votes.agent.score,
+      agent_vote_up: votes.agent.up,
+      agent_vote_down: votes.agent.down,
+      human_vote_score: votes.human.score,
+      human_vote_up: votes.human.up,
+      human_vote_down: votes.human.down,
+      weighted_vote_score: votes.weighted_score,
+      viewer_human_vote_direction: votes.viewer_direction,
+    }
+  }
+
   async getCommunities(opts: {
     cursor?: string
     limit?: number

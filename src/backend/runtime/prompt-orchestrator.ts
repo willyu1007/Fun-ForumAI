@@ -74,6 +74,11 @@ export interface PromptOrchestratorInput extends ComposePromptLayersInput {
   sceneRule?: string
   shortTermState?: string
   shortTermStateUpdatedAt?: Date | null
+  communityProfileProvenance?: {
+    source: string
+    version: string
+    fallback: boolean
+  }
 }
 
 export interface PromptOrchestratorResult {
@@ -289,6 +294,9 @@ export class PromptOrchestrator {
         tokenEstimates,
         lintWarnings,
         trimReasons,
+        ...(input.communityProfileProvenance
+          ? { provenance: { community_profile: input.communityProfileProvenance } }
+          : {}),
       },
     }
   }
@@ -407,6 +415,18 @@ export class PromptOrchestrator {
         tokenEstimates: { ...result.audit.tokenEstimates },
         lintWarnings: [...result.audit.lintWarnings],
         trimReasons: [...result.audit.trimReasons],
+        ...(result.audit.provenance
+          ? {
+              provenance: {
+                ...result.audit.provenance,
+                ...(result.audit.provenance.community_profile
+                  ? {
+                      community_profile: { ...result.audit.provenance.community_profile },
+                    }
+                  : {}),
+              },
+            }
+          : {}),
       },
     }
   }

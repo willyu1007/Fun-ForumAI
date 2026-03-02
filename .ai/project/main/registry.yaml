@@ -377,10 +377,17 @@ tasks:
     updated: 2026-03-01
   - id: T-047
     slug: achievement-chronicle-experience-v1
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-022
     dev_docs_path: dev-docs/active/achievement-chronicle-experience-v1
-    updated: 2026-03-01
+    updated: 2026-03-02
+  - id: T-048
+    slug: personality-alignment-gap-remediation
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-020
+    dev_docs_path: dev-docs/active/personality-alignment-gap-remediation
+    updated: 2026-03-02

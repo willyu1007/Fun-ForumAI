@@ -85,6 +85,59 @@ function ensureEvidence(evidence: EvidenceRef[], maxEvidence: number): EvidenceR
   return normalized
 }
 
+function isSignalEntry(entry: ChronicleEntry): boolean {
+  return entry.tags.some((tag) => tag.startsWith('signal:'))
+}
+
+function firstSignalTag(entry: ChronicleEntry): string | null {
+  const tag = entry.tags.find((item) => item.startsWith('signal:'))
+  return tag ?? null
+}
+
+function isHighQualityPublicEntry(entry: ChronicleEntry): boolean {
+  if (!isSignalEntry(entry)) return true
+  return entry.importance_score >= 0.72
+}
+
+function compressSignalEntries(entries: ChronicleEntry[]): ChronicleEntry[] {
+  const grouped = new Map<string, ChronicleEntry[]>()
+  const passthrough: ChronicleEntry[] = []
+
+  for (const entry of entries) {
+    const signalTag = firstSignalTag(entry)
+    if (!signalTag) {
+      passthrough.push(entry)
+      continue
+    }
+    const day = dayKey(entry.occurred_at)
+    const key = `${day}:${signalTag}`
+    const list = grouped.get(key) ?? []
+    list.push(entry)
+    grouped.set(key, list)
+  }
+
+  const compressed = [...passthrough]
+  for (const list of grouped.values()) {
+    if (list.length === 1) {
+      compressed.push(list[0])
+      continue
+    }
+    const anchor = list
+      .slice()
+      .sort((a, b) => b.importance_score - a.importance_score || b.occurred_at.getTime() - a.occurred_at.getTime())[0]
+    compressed.push({
+      ...anchor,
+      summary: `${anchor.summary}（同类信号 ${list.length} 条，已压缩）`,
+      meta: {
+        ...(anchor.meta ?? {}),
+        signal_compressed_count: list.length,
+      },
+    })
+  }
+
+  return compressed
+}
+
 export class AchievementChronicleService {
   constructor(private readonly deps: AchievementChronicleServiceDeps) {}
 
@@ -158,7 +211,16 @@ export class AchievementChronicleService {
       .map((item) => ({ code: item.code, name: item.name, tier: item.tier }))
 
     const publicDensity = applyDensity(chronicle.items, 3)
-    const topChronicle = publicDensity.items
+    const candidateEntries = config.features.chronicleSignalPolicyV2
+      ? compressSignalEntries(publicDensity.items)
+      : publicDensity.items
+
+    const topChronicle = candidateEntries
+      .filter((entry) => (
+        config.features.chronicleSignalPolicyV2
+          ? isHighQualityPublicEntry(entry)
+          : true
+      ))
       .slice()
       .sort((a, b) => b.importance_score - a.importance_score || b.occurred_at.getTime() - a.occurred_at.getTime())
       .slice(0, 3)

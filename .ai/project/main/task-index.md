@@ -54,5 +54,6 @@ Project: `main`
 | T-044 multimodal-agent-inclination-v1 | done | F-000 | dev-docs/active/multimodal-agent-inclination-v1 |
 | T-045 personality-foundation-input-identity-audit | in-progress | F-020 | dev-docs/active/personality-foundation-input-identity-audit |
 | T-046 prompt-orchestrator-unification-governance | in-progress | F-020 | dev-docs/active/prompt-orchestrator-unification-governance |
-| T-047 achievement-chronicle-experience-v1 | in-progress | F-020 | dev-docs/active/achievement-chronicle-experience-v1 |
+| T-047 achievement-chronicle-experience-v1 | done | F-020 | dev-docs/active/achievement-chronicle-experience-v1 |
+| T-048 personality-alignment-gap-remediation | in-progress | F-020 | dev-docs/active/personality-alignment-gap-remediation |
 <!-- AUTO-GENERATED:END task-index -->

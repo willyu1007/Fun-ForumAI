@@ -6,6 +6,7 @@ import {
   roomLifecycle,
   conversationClock,
   privateChannelScheduler,
+  pprRefreshScheduler,
   closeRuntimeInfrastructure,
 } from './container.js'
 
@@ -23,6 +24,7 @@ async function main() {
     roomLifecycle.stop()
     conversationClock.stop()
     privateChannelScheduler?.stop()
+    pprRefreshScheduler?.stop()
 
     server.close(() => {
       Promise.allSettled([

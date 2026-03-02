@@ -237,6 +237,41 @@ variables:
     default: "false"
     description: Enable shared prompt layer composition for runtime and chatroom paths.
 
+  FF_ALLOCATOR_PPR_ENABLED:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable allocator GraphRelevanceProvider (offline PPR snapshot) scoring term.
+
+  FF_CASTING_DIRECTOR_ENABLED:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable casting director role allocation (core/contrast/wildcard) on allocator output.
+
+  FF_COMMUNITY_PROMPT_PROFILE_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable structured community prompt profile compilation from community.rules_json.
+
+  FF_CHRONICLE_SIGNAL_POLICY_V2:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable stricter chronicle signal visibility policy and public signal quality threshold.
+
+  FF_CHRONICLE_METRICS_CACHE_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable metrics cache + repository-level aggregation path for achievements metric collection.
+
   FF_PROMPT_AUDIT_V1:
     type: enum
     enum: ["true", "false"]

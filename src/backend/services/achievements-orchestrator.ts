@@ -10,6 +10,7 @@ import type { AchievementRepository, ChronicleRepository } from '../repos/index.
 import { ACHIEVEMENT_DEFINITIONS_V1, type AchievementDefinition, type AchievementSignalKind } from './achievements/definitions.js'
 import { AchievementChronicleService } from './achievement-chronicle-service.js'
 import { ImportanceScorerV1, IMPORTANCE_D_MAP_V1, IMPORTANCE_R_MAP_V1 } from './achievements/importance-scorer-v1.js'
+import { ChronicleSignalPolicy } from './achievements/chronicle-signal-policy.js'
 
 export interface AchievementSignal {
   kind: AchievementSignalKind
@@ -71,20 +72,46 @@ function getSignalChronicleType(kind: AchievementSignalKind): ChronicleEntry['ty
   }
 }
 
-function uniqueSignalKinds(entries: ChronicleEntry[]): Set<string> {
-  const kinds = new Set<string>()
-  for (const entry of entries) {
-    for (const tag of entry.tags) {
-      if (tag.startsWith(SIGNAL_TAG_PREFIX)) {
-        kinds.add(tag.slice(SIGNAL_TAG_PREFIX.length))
-      }
-    }
+function signalImportanceSignals(
+  kind: AchievementSignalKind,
+  visibilityWeight: number,
+): { F: number; S: number; R: number; D: number; O: number; N: number; C: number; spamPenalty?: number } {
+  switch (kind) {
+    case 'relation_change':
+      return { F: 0.72, S: 0.7, R: 0.62, D: visibilityWeight, O: 0.45, N: 0.5, C: 0.78 }
+    case 'governance':
+      return { F: 0.68, S: 0.66, R: 0.62, D: visibilityWeight, O: 0.5, N: 0.45, C: 0.72 }
+    case 'batch_weekly':
+      return { F: 0.64, S: 0.62, R: 0.58, D: visibilityWeight, O: 0.4, N: 0.6, C: 0.68 }
+    case 'batch_daily':
+      return { F: 0.58, S: 0.56, R: 0.5, D: visibilityWeight, O: 0.35, N: 0.5, C: 0.6 }
+    case 'forum_post':
+      return { F: 0.56, S: 0.54, R: 0.46, D: visibilityWeight, O: 0.32, N: 0.45, C: 0.52 }
+    case 'forum_comment':
+      return { F: 0.52, S: 0.5, R: 0.42, D: visibilityWeight, O: 0.3, N: 0.4, C: 0.48 }
+    case 'vote_received':
+      return { F: 0.5, S: 0.48, R: 0.4, D: visibilityWeight, O: 0.28, N: 0.36, C: 0.44, spamPenalty: 0.05 }
+    case 'private_digest':
+      return { F: 0.5, S: 0.46, R: 0.36, D: visibilityWeight, O: 0.35, N: 0.3, C: 0.5 }
+    default:
+      return { F: 0.5, S: 0.45, R: 0.35, D: visibilityWeight, O: 0.3, N: 0.2, C: 0.4 }
   }
-  return kinds
 }
 
 export class AchievementsOrchestrator {
   private readonly scorer: ImportanceScorerV1
+  private readonly signalPolicy = new ChronicleSignalPolicy()
+  private readonly metricCache = new Map<string, { expires_at: number; snapshot: MetricSnapshot }>()
+
+  private static readonly METRIC_CACHE_TTL_MS = 60_000
+  private static readonly METRIC_SIGNAL_KINDS: AchievementSignalKind[] = [
+    'forum_post',
+    'forum_comment',
+    'vote_received',
+    'private_digest',
+    'relation_change',
+    'governance',
+  ]
 
   constructor(private readonly deps: AchievementsOrchestratorDeps) {
     this.scorer = deps.scorer ?? new ImportanceScorerV1()
@@ -278,30 +305,49 @@ export class AchievementsOrchestrator {
       }
     }
 
+    const signalProfile = signalImportanceSignals(
+      signal.kind,
+      signal.kind === 'private_digest' ? IMPORTANCE_D_MAP_V1.OWNER_ONLY : IMPORTANCE_D_MAP_V1.PUBLIC,
+    )
+    const signalImportance = this.scorer.score({
+      ...signalProfile,
+      T: this.scorer.timeDecay(occurredAt),
+    })
+
+    const legacySignalVisibility: 'PUBLIC' | 'OWNER_ONLY' =
+      signal.kind === 'private_digest' || signal.kind === 'governance'
+        ? 'OWNER_ONLY'
+        : 'PUBLIC'
+    const signalDecision = config.features.chronicleSignalPolicyV2
+      ? this.signalPolicy.resolve({
+          kind: signal.kind,
+          evidence,
+          importanceScore: signalImportance,
+        })
+      : {
+          visibility: legacySignalVisibility,
+          reason: 'legacy_signal_visibility',
+        }
+
     await this.deps.chronicleService.recordChronicle({
       agent_id: signal.agent_id,
-      visibility: signal.kind === 'private_digest' || signal.kind === 'governance' ? 'OWNER_ONLY' : 'PUBLIC',
+      visibility: signalDecision.visibility,
       type: getSignalChronicleType(signal.kind),
       title: `Signal · ${signal.kind}`,
       summary: `Signal captured for ${signal.kind}`,
-      importance_score: this.scorer.score({
-        F: 0.5,
-        S: 0.45,
-        R: 0.35,
-        D: signal.kind === 'private_digest' ? IMPORTANCE_D_MAP_V1.OWNER_ONLY : IMPORTANCE_D_MAP_V1.PUBLIC,
-        O: 0.3,
-        N: 0.2,
-        C: 0.4,
-        T: this.scorer.timeDecay(occurredAt),
-        spamPenalty: 0,
-      }),
+      importance_score: signalImportance,
       evidence,
       tags: [signalTag],
-      meta: signal.metadata ?? null,
+      meta: {
+        ...(signal.metadata ?? {}),
+        signal_visibility_reason: signalDecision.reason,
+      },
       dedup_key: signal.dedup_key,
       occurred_at: occurredAt,
       maxEvidence: 5,
     })
+
+    this.metricCache.delete(signal.agent_id)
 
     const definitions = ACHIEVEMENT_DEFINITIONS_V1.filter((item) => item.triggerSignals.includes(signal.kind))
     if (definitions.length === 0) return
@@ -401,45 +447,41 @@ export class AchievementsOrchestrator {
   }
 
   private async collectMetrics(agentId: string): Promise<MetricSnapshot> {
-    const entries: ChronicleEntry[] = []
-    let cursor: string | undefined
-    let loops = 0
-
-    while (loops < 20) {
-      loops += 1
-      const page = await this.deps.chronicleRepo.findByAgent(agentId, {
-        cursor,
-        limit: 200,
-      })
-      entries.push(...page.items)
-      if (!page.next_cursor) break
-      cursor = page.next_cursor
+    if (config.features.chronicleMetricsCacheV1) {
+      const cached = this.metricCache.get(agentId)
+      if (cached && cached.expires_at > Date.now()) {
+        return cached.snapshot
+      }
     }
 
-    const tags = (kind: string): number => entries.filter((entry) => entry.tags.includes(`${SIGNAL_TAG_PREFIX}${kind}`)).length
-    const publicEntries = entries.filter((entry) => entry.visibility === 'PUBLIC').length
-    const activityDays = new Set(entries.map((entry) => dayKey(entry.occurred_at))).size
-    const scenes = uniqueSignalKinds(entries)
+    const summary = await this.deps.chronicleRepo.getSignalMetrics(agentId, {
+      signalKinds: AchievementsOrchestrator.METRIC_SIGNAL_KINDS,
+    })
 
     const effectiveRelations = this.deps.relationRepo
       ? await this.deps.relationRepo.countOutgoingByStates(agentId, ['effective'])
-      : entries.filter((entry) => entry.tags.includes(`${SIGNAL_TAG_PREFIX}relation_change`)).length
+      : (summary.signal_counts.relation_change ?? 0)
 
-    return {
-      posts: tags('forum_post'),
-      comments: tags('forum_comment'),
-      votes_received: tags('vote_received'),
-      private_digests: tags('private_digest'),
+    const snapshot: MetricSnapshot = {
+      posts: summary.signal_counts.forum_post ?? 0,
+      comments: summary.signal_counts.forum_comment ?? 0,
+      votes_received: summary.signal_counts.vote_received ?? 0,
+      private_digests: summary.signal_counts.private_digest ?? 0,
       effective_relations: effectiveRelations,
-      governance_actions: tags('governance'),
-      public_entries: publicEntries,
-      activity_days: activityDays,
-      cross_scene: scenes.size,
-      chronicle_entries: entries.length,
+      governance_actions: summary.signal_counts.governance ?? 0,
+      public_entries: summary.public_entries,
+      activity_days: summary.activity_days,
+      cross_scene: summary.cross_scene,
+      chronicle_entries: summary.chronicle_entries,
     }
-  }
-}
 
-function dayKey(date: Date): string {
-  return date.toISOString().slice(0, 10)
+    if (config.features.chronicleMetricsCacheV1) {
+      this.metricCache.set(agentId, {
+        expires_at: Date.now() + AchievementsOrchestrator.METRIC_CACHE_TTL_MS,
+        snapshot,
+      })
+    }
+
+    return snapshot
+  }
 }

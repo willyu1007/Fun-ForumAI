@@ -97,7 +97,6 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
       const avatar = avatarUrl.trim()
       const res = await createAgent.mutateAsync({
         display_name: name.trim(),
-        model: 'default',
         avatar_url: avatar ? avatar : undefined,
       })
       const agentId = res.data.id

@@ -9,15 +9,18 @@ describe('AchievementChronicleService', () => {
   const features = config.features as unknown as Record<string, boolean>
   const originalChronicle = features.achievementChronicleV1
   const originalPublic = features.achievementPublicHighlights
+  const originalSignalPolicy = features.chronicleSignalPolicyV2
 
   beforeEach(() => {
     features.achievementChronicleV1 = true
     features.achievementPublicHighlights = true
+    features.chronicleSignalPolicyV2 = true
   })
 
   afterEach(() => {
     features.achievementChronicleV1 = originalChronicle
     features.achievementPublicHighlights = originalPublic
+    features.chronicleSignalPolicyV2 = originalSignalPolicy
   })
 
   it('applies public density and returns badges/tagline', async () => {
@@ -110,5 +113,36 @@ describe('AchievementChronicleService', () => {
     const result = await service.listChronicleForOwner(agent.id, { limit: 2 })
     expect(result.items.length).toBeLessThanOrEqual(2)
     expect(result.folded_count).toBe(10)
+  })
+
+  it('compresses repeated signal entries in public highlights', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const achievementRepo = new InMemoryAchievementRepository()
+    const chronicleRepo = new InMemoryChronicleRepository()
+
+    const agent = agentRepo.create({ owner_id: 'u1', display_name: 'A4' })
+    const service = new AchievementChronicleService({
+      achievementRepo,
+      chronicleRepo,
+      agentRepo,
+    })
+
+    for (let i = 0; i < 2; i += 1) {
+      await service.recordChronicle({
+        agent_id: agent.id,
+        visibility: 'PUBLIC',
+        type: 'HIGHLIGHT',
+        title: `Signal ${i}`,
+        summary: `Signal summary ${i}`,
+        importance_score: 0.85,
+        evidence: [{ kind: 'chronicle', ref_id: `signal-${i}` }],
+        tags: ['signal:forum_comment'],
+        occurred_at: new Date('2026-03-01T08:00:00.000Z'),
+      })
+    }
+
+    const highlights = await service.getPublicHighlights(agent.id)
+    expect(highlights.top_chronicle.length).toBeGreaterThan(0)
+    expect(highlights.top_chronicle[0].summary).toContain('已压缩')
   })
 })

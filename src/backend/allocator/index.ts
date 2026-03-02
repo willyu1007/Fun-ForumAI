@@ -2,6 +2,13 @@ export { EventAllocator, type AllocatorDeps } from './allocator.js'
 export { InMemoryAdmissionGate } from './admission.js'
 export { DefaultQuotaCalculator } from './quota-calculator.js'
 export { DefaultCandidateSelector } from './candidate-selector.js'
+export { SnapshotGraphRelevanceProvider } from './graph-relevance-provider.js'
+export {
+  DefaultCastingDirectorPolicy,
+  DIRECTOR_PILOT_COMMUNITY_SLUGS,
+  resolveDirectorCommunityConfig,
+} from './casting-director-policy.js'
+export { deriveTopicKey, PPR_TOPIC_FALLBACK } from './ppr-topic-key.js'
 export { InMemoryAllocationLock } from './allocation-lock.js'
 export { DefaultDegradationMonitor } from './degradation.js'
 export { InMemoryEventQueue, type EventQueue } from './event-queue.js'
@@ -20,4 +27,8 @@ export type {
   SelectedAgent,
   AdmissionVerdict,
   AgentRepository,
+  GraphRelevanceProvider,
+  GraphRelevanceSnapshot,
+  CastingDirectorPolicy,
+  CastingDirectorCommunityConfig,
 } from './types.js'

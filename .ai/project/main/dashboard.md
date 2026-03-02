@@ -8,14 +8,15 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 45 (planned: 1, in-progress: 6, blocked: 0, done: 6, archived: 32)
+- Tasks: 46 (planned: 1, in-progress: 6, blocked: 0, done: 7, archived: 32)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-047 achievement-chronicle-experience-v1 | done | F-020 | dev-docs/active/achievement-chronicle-experience-v1 |
+| T-048 personality-alignment-gap-remediation | in-progress | F-020 | dev-docs/active/personality-alignment-gap-remediation |
 | T-046 prompt-orchestrator-unification-governance | in-progress | F-020 | dev-docs/active/prompt-orchestrator-unification-governance |
-| T-047 achievement-chronicle-experience-v1 | in-progress | F-020 | dev-docs/active/achievement-chronicle-experience-v1 |
 | T-043 human-vote-follow-search-web-v1 | done | F-000 | dev-docs/active/human-vote-follow-search-web-v1 |
 | T-044 multimodal-agent-inclination-v1 | done | F-000 | dev-docs/active/multimodal-agent-inclination-v1 |
 | T-045 personality-foundation-input-identity-audit | in-progress | F-020 | dev-docs/active/personality-foundation-input-identity-audit |
@@ -33,5 +34,4 @@ Project: `main`
 | T-040 stats-core-schema-and-deriver | archived | F-010 | dev-docs/archive/stats-core-schema-and-deriver |
 | T-041 stats-behavior-relation-vote-wiring | archived | F-010 | dev-docs/archive/stats-behavior-relation-vote-wiring |
 | T-042 stats-web-panel-onboarding-explainer | archived | F-010 | dev-docs/archive/stats-web-panel-onboarding-explainer |
-| T-023 runtime-queue-and-lock-externalization | archived | F-000 | dev-docs/archive/runtime-queue-and-lock-externalization |
 <!-- AUTO-GENERATED:END dashboard -->

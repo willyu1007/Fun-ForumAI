@@ -8,6 +8,7 @@ import type { PromptOrchestrator } from './prompt-orchestrator.js'
 import type { EventPayload, SelectedAgent } from '../allocator/types.js'
 import type { ExecutionContext, AgentPersona } from './types.js'
 import { config } from '../lib/config.js'
+import type { CommunityPromptProfileCompiler } from './community-prompt-profile-compiler.js'
 
 export interface ContextBuilderDeps {
   forumReadService: ForumReadService
@@ -17,6 +18,7 @@ export interface ContextBuilderDeps {
   memoryService?: MemoryService | null
   promptLayerService?: PromptLayerService | null
   promptOrchestrator?: PromptOrchestrator | null
+  communityPromptProfileCompiler?: CommunityPromptProfileCompiler | null
 }
 
 const DEFAULT_PERSONA: AgentPersona = {
@@ -64,13 +66,28 @@ export class ContextBuilder {
 
     if (this.deps.promptOrchestrator?.isSceneEnabled(scene)) {
       try {
+        const communityProfile = config.features.communityPromptProfileV1
+          ? ctx.community.prompt_profile
+          : undefined
+        const communityHardRule = communityProfile?.hard_rules_text || ctx.community.rules
+        const communitySoftCulture = communityProfile?.soft_culture_text || ctx.community.description
+
         const composed = await this.deps.promptOrchestrator.compose({
           agentId: ctx.agent.agent_id,
           scene,
           conversationText,
           topicHints,
-          communityHardRule: ctx.community.rules,
-          communitySoftCulture: ctx.community.description,
+          communityHardRule,
+          communitySoftCulture,
+          ...(communityProfile
+            ? {
+                communityProfileProvenance: {
+                  source: communityProfile.provenance.source,
+                  version: 'v1',
+                  fallback: communityProfile.provenance.used_fallback,
+                },
+              }
+            : {}),
           sceneRule: ctx.chatContext
             ? `你正在聊天室「${ctx.chatContext.room_name}」中继续群聊`
             : ctx.targetComment
@@ -263,6 +280,14 @@ export class ContextBuilder {
         name: c.name,
         description: c.description || '',
         rules: c.rules_json ? JSON.stringify(c.rules_json) : '',
+        ...(config.features.communityPromptProfileV1 && this.deps.communityPromptProfileCompiler
+          ? {
+              prompt_profile: this.deps.communityPromptProfileCompiler.compile({
+                communityDescription: c.description,
+                rulesJson: c.rules_json,
+              }),
+            }
+          : {}),
       }
     } catch {
       return { id: communityId, name: '未知社区', description: '', rules: '' }

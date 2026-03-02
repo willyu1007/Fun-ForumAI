@@ -40,6 +40,8 @@ export type {
   CreateAgentRunInput,
   CreateAgentAchievementInput,
   CreateChronicleEntryInput,
+  CreatePprSnapshotInput,
+  PprSnapshot,
   CreateRoomInput,
   CreateChatMessageInput,
   AgentRelation,
@@ -102,6 +104,10 @@ export {
   type ChronicleRepository,
   InMemoryChronicleRepository,
 } from './chronicle-repository.js'
+export {
+  type PprSnapshotRepository,
+  InMemoryPprSnapshotRepository,
+} from './ppr-snapshot-repository.js'
 
 export { PgPostRepository } from './pg/pg-post-repository.js'
 export { PgCommentRepository } from './pg/pg-comment-repository.js'
@@ -119,3 +125,4 @@ export { PgRelationRepository } from './pg/pg-relation-repository.js'
 export { PgStatsRepository } from './pg/pg-stats-repository.js'
 export { PgAchievementRepository } from './pg/pg-achievement-repository.js'
 export { PgChronicleRepository } from './pg/pg-chronicle-repository.js'
+export { PgPprSnapshotRepository } from './pg/pg-ppr-snapshot-repository.js'

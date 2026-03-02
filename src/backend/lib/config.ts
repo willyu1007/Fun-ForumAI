@@ -77,6 +77,11 @@ export const config = {
     keywords: (env.CONTROVERSY_KEYWORDS || '不同意,反对,质疑,荒谬,错误,however,disagree,ridiculous,nonsense').split(','),
   },
   features: {
+    allocatorPprEnabled: env.FF_ALLOCATOR_PPR_ENABLED === 'true',
+    castingDirectorEnabled: env.FF_CASTING_DIRECTOR_ENABLED === 'true',
+    communityPromptProfileV1: env.FF_COMMUNITY_PROMPT_PROFILE_V1 === 'true',
+    chronicleSignalPolicyV2: env.FF_CHRONICLE_SIGNAL_POLICY_V2 === 'true',
+    chronicleMetricsCacheV1: env.FF_CHRONICLE_METRICS_CACHE_V1 === 'true',
     layerStackV2: env.FF_LAYER_STACK_V2 === 'true',
     promptAuditV1: env.FF_PROMPT_AUDIT_V1 === 'true',
     promptOrchestratorV1: env.FF_PROMPT_ORCHESTRATOR_V1 === 'true',

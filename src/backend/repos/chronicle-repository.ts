@@ -7,6 +7,14 @@ import type {
   PaginationOpts,
 } from './types.js'
 
+export interface ChronicleSignalMetrics {
+  signal_counts: Record<string, number>
+  public_entries: number
+  activity_days: number
+  cross_scene: number
+  chronicle_entries: number
+}
+
 export interface ChronicleRepository {
   create(input: CreateChronicleEntryInput): Promise<ChronicleEntry>
   findByDedupKey(agentId: string, dedupKey: string): Promise<ChronicleEntry | null>
@@ -27,6 +35,10 @@ export interface ChronicleRepository {
     agentId: string,
     opts: { perDayCap: number; visibility?: AchievementVisibility[]; types?: ChronicleType[] },
   ): Promise<number>
+  getSignalMetrics(
+    agentId: string,
+    opts: { signalKinds: string[]; since?: Date },
+  ): Promise<ChronicleSignalMetrics>
 }
 
 let counter = 0
@@ -159,5 +171,49 @@ export class InMemoryChronicleRepository implements ChronicleRepository {
       }
     }
     return folded
+  }
+
+  async getSignalMetrics(
+    agentId: string,
+    opts: { signalKinds: string[]; since?: Date },
+  ): Promise<ChronicleSignalMetrics> {
+    const kindSet = new Set(opts.signalKinds)
+    const signalCounts: Record<string, number> = {}
+    for (const kind of kindSet) {
+      signalCounts[kind] = 0
+    }
+
+    const activityDays = new Set<string>()
+    const distinctSignalKinds = new Set<string>()
+    let publicEntries = 0
+    let totalEntries = 0
+
+    for (const entry of this.store.values()) {
+      if (entry.agent_id !== agentId) continue
+      if (opts.since && entry.occurred_at < opts.since) continue
+
+      totalEntries += 1
+      if (entry.visibility === 'PUBLIC') {
+        publicEntries += 1
+      }
+      activityDays.add(entry.occurred_at.toISOString().slice(0, 10))
+
+      for (const tag of entry.tags) {
+        if (!tag.startsWith('signal:')) continue
+        const kind = tag.slice('signal:'.length)
+        distinctSignalKinds.add(kind)
+        if (kindSet.has(kind)) {
+          signalCounts[kind] = (signalCounts[kind] ?? 0) + 1
+        }
+      }
+    }
+
+    return {
+      signal_counts: signalCounts,
+      public_entries: publicEntries,
+      activity_days: activityDays.size,
+      cross_scene: distinctSignalKinds.size,
+      chronicle_entries: totalEntries,
+    }
   }
 }
