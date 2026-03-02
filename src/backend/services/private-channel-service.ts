@@ -16,7 +16,7 @@ import type {
   PaginationOpts,
   PrivateSessionStatus,
 } from '../repos/types.js'
-import { NotFoundError, ValidationError, ForbiddenError } from '../lib/errors.js'
+import { AppError, NotFoundError, ValidationError, ForbiddenError } from '../lib/errors.js'
 
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
 
@@ -68,11 +68,22 @@ export class PrivateChannelService {
       return existing.items[0]
     }
 
-    return this.deps.channelRepo.createSession({
-      agent_id: agentId,
-      human_user_id: humanUserId,
-      initiator: 'HUMAN',
-    })
+    try {
+      return await this.deps.channelRepo.createSession({
+        agent_id: agentId,
+        human_user_id: humanUserId,
+        initiator: 'HUMAN',
+      })
+    } catch (err) {
+      if (isPrismaForeignKeyError(err)) {
+        throw new AppError(
+          409,
+          'Session dependency not ready; retry shortly',
+          'DEPENDENCY_NOT_READY',
+        )
+      }
+      throw err
+    }
   }
 
   async endSession(sessionId: string, humanUserId: string): Promise<PrivateSession> {
@@ -365,4 +376,12 @@ export class PrivateChannelService {
       })
       .join('\n\n')
   }
+}
+
+function isPrismaForeignKeyError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') {
+    return false
+  }
+  const maybeCode = (err as { code?: unknown }).code
+  return typeof maybeCode === 'string' && maybeCode === 'P2003'
 }

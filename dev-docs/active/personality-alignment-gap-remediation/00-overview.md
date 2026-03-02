@@ -1,9 +1,11 @@
-# 00 Overview — personality-alignment-gap-remediation (T-048 Delta)
+# 00 Overview — personality-alignment-gap-remediation (T-048 Delta + Delta-2)
 
 ## Status
 - State: in-progress
-- Scope status: Delta `PKG-0 ~ PKG-6` 代码已落地并通过本地全量测试。
-- Next step: 在本地 K8S staging 按批次开关做真实调用与灰度演练（5% -> 25% -> 100%，每档 24h）。
+- Scope status:
+  - Delta `PKG-0 ~ PKG-6` 已落地并通过本地全量测试。
+  - Delta-2 `PR-A/PR-B/PR-C/PR-D` 已完成并通过回归测试（2026-03-02）。
+- Next step: 使用仓库脚本执行正式采样并进入灰度门槛最终闭环。
 
 ## Goal
 在不改变既有冻结主路线（异步 PPR / Director 2:1:1 / 社区级 profile 注入）的前提下，修复新审查报告全部 P0 + P1 缺口，并补齐可回滚、可观测、可审计的上线条件。
@@ -37,3 +39,14 @@
   - top-k 稳定性提升 >= 25%
   - public highlights 噪音率下降 >= 40%
   - allocator 额外 p95 <= 20ms
+
+## Delta-2 remediation package (frozen)
+1. PKG-A（P0）：Agent 持久化一致性收敛（避免 `POST /v1/agents` 伪成功）
+2. PKG-B（P0）：Private session 创建前置校验与错误语义收敛
+3. PKG-C（P0）：`/v1/dev/seed` 在 PG 模式顺序化，消除 FK 竞态
+4. PKG-D（P1）：staging real-call 证据脚本入库与验收模板固化
+
+## Delta-2 success criteria
+1. `create-agent -> create-session` 连续 200 次成功率 >= 99.5%
+2. `private_sessions_agent_id_fkey` / `posts_community_id_fkey` / `posts_author_agent_id_fkey` 在回归中为 0
+3. 不引入外部 API breaking 变更

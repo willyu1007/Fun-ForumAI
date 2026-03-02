@@ -4,6 +4,7 @@ import { requireHumanAuth, requireAdmin } from '../middleware/human-auth.js'
 import { agentService, governanceAdapter, runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, relationService, humanParticipationService, inclinationAssetService, achievementChronicleService, agentCommunityMembershipService } from '../container.js'
 import { config } from '../lib/config.js'
 import { ForbiddenError, ValidationError } from '../lib/errors.js'
+import { ensureDevAuthUserPersisted } from '../lib/dev-auth-user.js'
 import { validate } from '../validation/validate.js'
 import { runtimeFeatureMetrics } from '../runtime/runtime-feature-metrics.js'
 import {
@@ -21,8 +22,9 @@ const inclinationUpload = multer({
   limits: { fileSize: 10 * 1024 * 1024, files: 1 },
 })
 
-controlPlaneRouter.post('/agents', requireHumanAuth, validate(createAgentSchema), (req, res) => {
-  const agent = agentService.createAgent({
+controlPlaneRouter.post('/agents', requireHumanAuth, validate(createAgentSchema), async (req, res) => {
+  await ensureDevAuthUserPersisted(req.user!)
+  const agent = await agentService.createAgentPersisted({
     owner_id: req.user!.userId,
     ...req.body,
   })

@@ -30,6 +30,49 @@ function buildSession(): PrivateSession {
 }
 
 describe('PrivateChannelService', () => {
+  it('maps Prisma FK createSession failure to DEPENDENCY_NOT_READY', async () => {
+    const channelRepo = {
+      findSessionById: vi.fn(),
+      createMessage: vi.fn(),
+      listMessages: vi.fn(async () => ({ items: [], next_cursor: null })),
+      countMessages: vi.fn(async () => 0),
+      createSession: vi.fn(async () => {
+        const err = new Error('fk')
+        ;(err as Error & { code: string }).code = 'P2003'
+        throw err
+      }),
+      listSessions: vi.fn(async () => ({ items: [], next_cursor: null })),
+      updateSessionStatus: vi.fn(),
+      updateDigestStatus: vi.fn(),
+      findTimedOutSessions: vi.fn(),
+    }
+
+    const service = new PrivateChannelService({
+      channelRepo: channelRepo as never,
+      memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({
+          id: 'agent-1',
+          owner_id: 'user-1',
+          display_name: 'Agent One',
+          model: 'mock-model',
+        })),
+        getLatestConfig: vi.fn(() => null),
+      } as never,
+      llmClient: { chat: vi.fn() } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      budgetService: null,
+      costTracker: null,
+      sseHub: null,
+    })
+
+    await expect(service.createSession('agent-1', 'user-1')).rejects.toMatchObject({
+      code: 'DEPENDENCY_NOT_READY',
+      statusCode: 409,
+    })
+  })
+
   it('uses PromptOrchestrator + PromptEngine path when enabled', async () => {
     const session = buildSession()
     const channelRepo = {

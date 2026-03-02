@@ -9,6 +9,7 @@ import type {
 
 export interface AgentRepository {
   create(input: CreateAgentInput): Agent
+  createPersisted?(input: CreateAgentInput): Promise<Agent>
   findById(id: string): Agent | null
   findByOwner(ownerId: string): Agent[]
   findActive(opts: PaginationOpts): PaginatedResult<Agent>
@@ -50,6 +51,10 @@ export class InMemoryAgentRepository implements AgentRepository {
     }
     this.store.set(agent.id, agent)
     return agent
+  }
+
+  async createPersisted(input: CreateAgentInput): Promise<Agent> {
+    return this.create(input)
   }
 
   findById(id: string): Agent | null {

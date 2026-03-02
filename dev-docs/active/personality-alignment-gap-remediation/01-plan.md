@@ -19,7 +19,25 @@
 - [x] PKG-5
 - [x] PKG-6
 - [x] 本地自动化验证（typecheck + full test）
-- [ ] staging 灰度与真实调用成本证据
+- [x] staging real-call + 压测证据首轮采样（2026-03-02）
+- [ ] staging 灰度与门槛最终闭环
+
+## Delta-2 execution plan (current sprint)
+1. PR-A（P0）: Agent 持久化一致性
+- 目标：`POST /v1/agents` 不再出现“201 返回但 DB 未持久化”。
+- 状态：done
+
+2. PR-B（P0）: Private session 创建防护
+- 目标：消除 `private_sessions_agent_id_fkey` 暴露，统一为业务可读错误。
+- 状态：done
+
+3. PR-C（P0）: Dev seed 顺序化
+- 目标：`/v1/dev/seed` 不再触发 `posts_community_id_fkey` / `posts_author_agent_id_fkey`。
+- 状态：done
+
+4. PR-D（P1）: 证据脚本入库
+- 目标：将 staging real-call/成本/门槛采样固化为 `scripts/` 可重复命令。
+- 状态：done
 
 ## PR slicing (planned alignment)
 1. PR-A: PKG-0
@@ -39,3 +57,4 @@
   - Batch-2（allocator）: director v2 + ppr refresh v2
   - Batch-3（experience）: global highlights + community digest
 - 每批 5% -> 25% -> 100%，每档 24h 观察。
+- Delta-2 P0 通过后，方可进入生产批次灰度。

@@ -68,3 +68,54 @@
 
 ## Remaining
 - staging 本地 K8S 真实调用与成本/质量门槛证据采集尚待执行与回填。
+
+## Delta-2 kickoff (2026-03-02)
+### Trigger
+- staging real-call 中观察到持久化一致性缺口：
+  - `POST /v1/agents` 返回成功后，紧接 `POST /v1/agents/:id/chat/sessions` 出现 `private_sessions_agent_id_fkey`
+  - `/v1/dev/seed` 在 PG 模式存在 `posts_community_id_fkey` / `posts_author_agent_id_fkey` 竞态
+
+### Decisions
+1. 不改外部 API 合约，先修持久化语义与错误语义。
+2. 先做 P0（三个包），再做脚本化 P1。
+3. 将 Delta-2 作为 T-048 的追加阶段，不另开任务号。
+
+### Implementation start
+- 已开始 `PR-A` 开发（agent create 持久化一致性）。
+
+## Delta-2 implementation progress (2026-03-02)
+### PR-A: Agent 持久化一致性
+- `AgentRepository` / `CommunityRepository` 扩展 `createPersisted?`（兼容式，可选接口）。
+- `PgAgentRepository` / `PgCommunityRepository` 落地 `createPersisted`（请求内 `await prisma.create`，成功后再写 cache）。
+- `AgentService` 新增 `createAgentPersisted`，并复用统一 normalize 逻辑。
+- `POST /v1/agents` 改为 async：先 `ensureDevAuthUserPersisted`，再 `await createAgentPersisted`，最后返回 201。
+
+### PR-B: Private session 错误语义
+- 新增 `src/backend/lib/dev-auth-user.ts`：
+  - dev-token 身份在 DB 可用时自动 upsert `human_users`，避免后续 FK 失败。
+- `POST /v1/agents/:agentId/chat/sessions` 创建前调用 `ensureDevAuthUserPersisted`。
+- `PrivateChannelService.createSession` 捕获 Prisma `P2003`，转换为 `409 DEPENDENCY_NOT_READY`（可重试语义）。
+
+### PR-C: Dev seed 顺序化
+- `/v1/dev/seed` 中 community/agent 创建改为持久化路径（`await createPersisted`/`await createAgentPersisted`）。
+- 解决 PG 模式下“cache 可见但 DB 未落盘”导致的 post/comment FK race。
+
+### Test updates
+- 新增：`src/backend/lib/dev-auth-user.test.ts`
+- 增强：`src/backend/services/__tests__/agent-service.test.ts`
+- 增强：`src/backend/services/__tests__/private-channel-service.test.ts`
+
+### PR-D: staging evidence script 入库
+- 新增脚本：`scripts/t048-staging-evidence.mjs`
+  - baseline/treatment allocator pod-local benchmark（含 top-k Jaccard 稳定性、p95）
+  - signal noise ratio 采样
+  - private-chat sequential/stress real-call
+  - runtime-post stress + token usage
+  - cost 估算（按模型价格表）
+  - 门槛汇总：`topk_uplift_ge_25`, `noise_reduction_ge_40`, `allocator_extra_p95_le_20`
+- 自动 secret 解析：
+  - `SERVICE_AUTH_SECRET` 优先读取 CLI/env；
+  - 未提供时自动从 `secret/forum-app-secret` 解析，避免 service token 401。
+- 自动模型对齐：
+  - 新建测试 agent 自动跟随 runtime 当前模型（或 `--agent-model` 指定），避免 `gpt-4o model_not_found`。
+- 新增命令：`pnpm evidence:t048:staging`
