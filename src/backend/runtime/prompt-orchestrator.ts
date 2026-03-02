@@ -7,6 +7,7 @@ import type {
   PromptLayers,
   PromptScene,
 } from './types.js'
+import { runtimeFeatureMetrics } from './runtime-feature-metrics.js'
 
 const DEFAULT_ORCHESTRATOR_CACHE_TTL_MS = 30_000
 const DEFAULT_ORCHESTRATOR_CACHE_MAX_ENTRIES = 500
@@ -367,6 +368,11 @@ export class PromptOrchestrator {
   }
 
   private emitAuditLog(agentId: string, audit: PromptComposeAudit): void {
+    runtimeFeatureMetrics.recordPromptAudit({
+      trimReasons: audit.trimReasons,
+      lintWarnings: audit.lintWarnings,
+    })
+
     if (!config.features.promptAuditV1) return
     console.info('[PromptAudit]', JSON.stringify({
       agent_id: agentId,

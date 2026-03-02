@@ -56,6 +56,11 @@ export interface ExecutionContext {
     prompt_profile?: {
       hard_rules_text: string
       soft_culture_text: string
+      culture_digest?: {
+        version: number
+        generated_at: string
+        expires_at: string
+      }
       provenance: {
         source: string
         used_fallback: boolean

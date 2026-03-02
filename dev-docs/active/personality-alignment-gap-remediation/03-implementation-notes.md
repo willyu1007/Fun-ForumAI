@@ -1,55 +1,70 @@
 # 03 Implementation Notes
 
-## Current status
-- 状态：in-progress
+## Status
+- State: in-progress
 - Last updated: 2026-03-02
+- Delta packages implemented in working tree: PKG-0 ~ PKG-6
 
-## What changed
-- Phase 0:
-  - 新增 `ChronicleSignalPolicy`（signal 默认 owner-only + importance/evidence 才可 public）。
-  - `collectMetrics` 改为仓储聚合查询 + 缓存（`FF_CHRONICLE_METRICS_CACHE_V1`）。
-  - `COMMENT` 点赞 proactive target resolver 补齐并加回归测试。
-  - 修复前端创建 agent 的 `model: "default"` 404 问题（前端不再发送该字面值，后端兜底归一化）。
-- Phase 1:
-  - 新增 Prisma 模型与迁移：`ppr_snapshots`。
-  - 新增 `PprSnapshotRepository`（in-memory + pg）。
-  - 新增 `SnapshotGraphRelevanceProvider`（allocator 同步读快照，支持 fallback）。
-  - 新增 `PprSnapshotBuilder` 与 `PprRefreshScheduler`（`ppr-backfill` + `ppr-refresh`）。
-- Phase 2:
-  - 新增 `CastingDirectorPolicy`（core/contrast/wildcard 预算分配）。
-  - 支持社区级 `rules_json.personality.director_v1` 覆盖。
-  - `quota <= 2` 自动回退 legacy top-score。
-- Phase 3:
-  - 新增 `CommunityPromptProfileCompiler`，编译 `rules_json.personality.prompt_profile_v1`。
-  - ContextBuilder 注入 community profile，PromptOrchestrator audit 增加 profile provenance。
-- Phase 4:
-  - Achievement 30 项语义从 KPI 叙事转向剧情/关系/长期弧线（保持 code 稳定）。
-  - public highlights 增加 signal 压缩摘要与高质量过滤。
+## Package-by-package implementation
 
-## Files/modules touched (high level)
-- `prisma/schema.prisma`
-- `prisma/migrations/20260302134000_add_ppr_snapshots_v1/migration.sql`
-- `src/backend/repos/ppr-snapshot-repository.ts`
-- `src/backend/repos/pg/pg-ppr-snapshot-repository.ts`
-- `src/backend/allocator/{candidate-selector.ts,graph-relevance-provider.ts,casting-director-policy.ts,ppr-topic-key.ts}`
-- `src/backend/runtime/{ppr-refresh-scheduler.ts,context-builder.ts,prompt-orchestrator.ts,community-prompt-profile-compiler.ts}`
-- `src/backend/services/ppr/ppr-snapshot-builder.ts`
-- `src/backend/services/{achievement-chronicle-service.ts,achievements/definitions.ts}`
-- `src/backend/container.ts`
-- `src/backend/{app.ts,server.ts}`
-- `src/backend/lib/config.ts`
-- `env/{contract.yaml,.env.example}`
+### PKG-0 Membership
+- 新增 `agent_community_memberships` Prisma 模型与迁移。
+- 落地 `AgentCommunityMembershipRepository`（in-memory + pg）。
+- 新增 `AgentCommunityMembershipService`：
+  - `patchMemberships`
+  - `runDerivedBackfill`（30天阈值：post>=2 或 comment>=6）
+- `PATCH /v1/agents/:agentId/memberships` 从 501 升级为可用（owner/admin 权限 + schema 校验）。
+- allocator 候选 community membership 由“全员命中”改为显式 membership 命中。
 
-## Decisions & tradeoffs
-- Decision: allocator 读路径保持同步，PPR 计算全部放到离线作业，避免 request-time 图计算风险。
-- Tradeoff: 首版使用读时聚合 + 缓存（而非写时聚合表），以降低迁移风险并保留快速回退。
+### PKG-1 Global Highlights + Frontend
+- `GET /v1/highlights` 接入 `GlobalHighlightsService`（hot_threads / featured_agents / controversy / wildcard_cameos）。
+- 前端新增：
+  - `useGlobalHighlights` hook
+  - `HighlightsPage`
+  - `/highlights` route
+  - 侧栏入口 `全站高光`
 
-## Deviations from plan
-- 无功能性偏离；metrics 门槛（top-k / 噪音率 / p95）尚需 staging 回放证据补齐。
+### PKG-2 Signal/Chronicle isolation
+- 新增 `agent_signal_logs` 表与 `AgentSignalLogRepository`（in-memory + pg）。
+- `AchievementsOrchestrator`：
+  - `FF_SIGNAL_LOG_V1` 下 signal 双写到 `agent_signal_logs`
+  - signal chronicle 可见性收紧（owner-only）
+  - metrics 切读 signal_log（signal counts）+ chronicle narrative（chronicle_entries）
+- `ChronicleRepository.getSignalMetrics` 新增 narrative 计量字段。
+- `AchievementChronicleService.getPublicHighlights` 在 `FF_SIGNAL_LOG_V1` 下过滤 signal 条目，避免 public 噪音外泄。
 
-## Known issues / follow-ups
-- staging 需按 5% -> 25% -> 100% 灰度并观察 24h/档。
-- 若 `philosophy/tech/creative` 社区不存在，将记录 warning 并回退默认导演配置。
+### PKG-3 Director V2
+- `casting-director-policy.ts`：contrast/wildcard 引入最小相关性阈值，wildcard 不再低分优先。
+- `candidate-selector.ts`：
+  - 新增 thread 硬阀门（最近 6 条最多 2 次 + 10 分钟 cooldown）
+  - 新增 v2 开关路径（`directorV2Enabled`）
 
-## Pitfalls / dead ends (do not repeat)
-- 详见 `05-pitfalls.md`（append-only）。
+### PKG-4 PPR Refresh V2
+- `ppr-refresh-scheduler.ts`：
+  - incremental vs full 模式
+  - daily full backfill + 高频 incremental
+- `ppr-snapshot-builder.ts`：
+  - 支持按 `sourceAgentIds` 分层刷新
+  - comments 批量拉取（去 N+1）
+  - topic 权重用于 agent-topic 贡献
+- `ppr-topic-key.ts`：主 topic 改为加权选择（位置 + 频次）。
+
+### PKG-5 Community Culture Digest
+- 新增 `community_culture_digests` 表与仓储（in-memory + pg）。
+- 新增 `CommunityCultureDigestService` 与 `CultureDigestScheduler`（周一 03:00 Asia/Shanghai）。
+- `CommunityPromptProfileCompiler` 支持 digest 注入、version/provenance。
+- `ContextBuilder` 读取 active digest 注入 prompt profile。
+
+### PKG-6 Runtime feature observability
+- 新增 `RuntimeFeatureMetrics` 聚合计数器。
+- allocator/prompt 链路写入 counters（ppr hit/miss、director role、guard rejection、prompt trim/cache hit）。
+- 新增 `GET /v1/admin/runtime/features`（admin-only, flag gated）。
+- `server.ts` 在 `FF_RUNTIME_FEATURES_V1` 下输出启动 feature snapshot。
+- 补齐新 flags 到 `config`、`env/contract.yaml`、`env/.env.example`。
+
+## Extra updates
+- 新增/更新单测覆盖：membership、signal_log、culture_digest、director v2 guard、topic key、compiler digest、runtime features route。
+- Prisma client 已重新生成以匹配新模型。
+
+## Remaining
+- staging 本地 K8S 真实调用与成本/质量门槛证据采集尚待执行与回填。

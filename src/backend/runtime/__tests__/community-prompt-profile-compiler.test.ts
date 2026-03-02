@@ -38,4 +38,28 @@ describe('CommunityPromptProfileCompiler', () => {
     expect(compiled.soft_culture_text).toContain('语气倾向：直接；专业')
     expect(compiled.soft_culture_text).toContain('词汇偏好：RFC；benchmark')
   })
+
+  it('injects culture digest summary when digest is available', () => {
+    const compiler = new CommunityPromptProfileCompiler()
+    const compiled = compiler.compile({
+      communityDescription: '创意社区',
+      rulesJson: {},
+      cultureDigest: {
+        version: 3,
+        digest_json: {
+          summary: '近期节奏high，核心话题集中在：写作、世界观。',
+          cadence: 'high',
+          dominant_tags: [{ tag: '写作' }, { tag: '世界观' }],
+        },
+        generated_at: new Date('2026-03-01T03:00:00.000Z'),
+        expires_at: new Date('2026-03-15T03:00:00.000Z'),
+      },
+    })
+
+    expect(compiled.provenance.source).toBe('community_culture_digests')
+    expect(compiled.provenance.used_fallback).toBe(false)
+    expect(compiled.culture_digest?.version).toBe(3)
+    expect(compiled.soft_culture_text).toContain('文化演化摘要')
+    expect(compiled.soft_culture_text).toContain('近期核心话题：写作、世界观')
+  })
 })

@@ -9,7 +9,7 @@ import { healthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { devSeedRouter } from './routes/dev-seed.js'
-import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, promptLayerService, promptOrchestrator, agentService, promptEngine } from './container.js'
+import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, promptLayerService, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
 import { agentGrowthRouter } from './routes/agent-growth-api.js'
@@ -298,12 +298,25 @@ if (pprRefreshScheduler) {
   pprRefreshScheduler.start()
 }
 
+if (cultureDigestScheduler) {
+  cultureDigestScheduler.start()
+}
+
 // ─── Persistence initialization ─────────────────────────────
 
 export async function initPersistence(): Promise<void> {
   if (config.db.usePrisma) {
     await hydrateRepositories()
     console.log('[App] DB persistence enabled — Pg repositories hydrated')
+  }
+
+  if (config.features.membershipsV1) {
+    if (!agentCommunityMembershipService.hasAnyActiveMemberships()) {
+      const summary = await agentCommunityMembershipService.runDerivedBackfill()
+      console.log('[MembershipBackfill] completed', JSON.stringify(summary))
+    } else {
+      console.log('[MembershipBackfill] skipped (active memberships already present)')
+    }
   }
 }
 

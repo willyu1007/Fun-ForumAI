@@ -74,6 +74,41 @@ describe('E2E: Read API (public)', () => {
     expect(res.body.data).toEqual([])
   })
 
+  it('GET /v1/highlights returns grouped payload when feature is enabled', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalHighlights = featureFlags.globalHighlightsV1
+    featureFlags.globalHighlightsV1 = true
+
+    try {
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: 'agent-highlights-1',
+        run_id: 'run-highlights-1',
+        community_id: 'c-hot',
+        title: 'Hot highlight post',
+        body: 'hot body',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      await servicePost('/v1/comments', {
+        actor_agent_id: 'agent-highlights-2',
+        run_id: 'run-highlights-2',
+        post_id: postId,
+        body: 'interesting thread',
+      })
+
+      const highlights = await request(app).get('/v1/highlights')
+      expect(highlights.status).toBe(200)
+      expect(Array.isArray(highlights.body.data.hot_threads)).toBe(true)
+      expect(highlights.body.data.hot_threads.length).toBeGreaterThan(0)
+      expect(Array.isArray(highlights.body.data.featured_agents)).toBe(true)
+      expect(Array.isArray(highlights.body.data.controversy)).toBe(true)
+      expect(Array.isArray(highlights.body.data.wildcard_cameos)).toBe(true)
+    } finally {
+      featureFlags.globalHighlightsV1 = originalHighlights
+    }
+  })
+
   it('GET /v1/feed?limit=abc returns 400 validation error', async () => {
     const res = await request(app).get('/v1/feed?limit=abc')
     expect(res.status).toBe(400)
@@ -332,6 +367,64 @@ describe('E2E: Control Plane (human auth)', () => {
     expect(adminPatch.status).toBe(200)
     expect(adminPatch.body.data.display_name).toBe('Admin Updated Name')
     expect(adminPatch.body.data.avatar_url).toBeNull()
+  })
+
+  it('PATCH /v1/agents/:agentId/memberships updates explicit memberships', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalMembershipFlag = featureFlags.membershipsV1
+    featureFlags.membershipsV1 = true
+
+    try {
+      const createRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Membership Bot' })
+      const agentId = createRes.body.data.id as string
+
+      const addRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: ['comm-a', 'comm-b'], remove: [], role: 'resident' })
+      expect(addRes.status).toBe(200)
+      expect(addRes.body.data.updated.added.sort()).toEqual(['comm-a', 'comm-b'])
+      expect(addRes.body.data.active_memberships).toHaveLength(2)
+
+      const removeRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [], remove: ['comm-a'] })
+      expect(removeRes.status).toBe(200)
+      expect(removeRes.body.data.updated.removed).toEqual(['comm-a'])
+      expect(removeRes.body.data.active_memberships.map((item: { community_id: string }) => item.community_id)).toEqual(['comm-b'])
+
+      const forbidden = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${user2Token}`)
+        .send({ add: ['comm-c'], remove: [] })
+      expect(forbidden.status).toBe(403)
+    } finally {
+      featureFlags.membershipsV1 = originalMembershipFlag
+    }
+  })
+
+  it('GET /v1/admin/runtime/features returns feature snapshot for admin', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRuntimeFeatures = featureFlags.runtimeFeaturesV1
+    featureFlags.runtimeFeaturesV1 = true
+
+    try {
+      const res = await request(app)
+        .get('/v1/admin/runtime/features')
+        .set('Authorization', `Bearer ${adminToken}`)
+      expect(res.status).toBe(200)
+      expect(typeof res.body.data.flags).toBe('object')
+      expect(typeof res.body.data.counters).toBe('object')
+      expect(res.body.data.counters).toHaveProperty('allocator.ppr_hits')
+      expect(res.body.data.counters).toHaveProperty('director.selected_core')
+      expect(res.body.data.counters).toHaveProperty('prompt.trim_applied_calls')
+    } finally {
+      featureFlags.runtimeFeaturesV1 = originalRuntimeFeatures
+    }
   })
 
   it('follow/unfollow and followed list work for authenticated users', async () => {

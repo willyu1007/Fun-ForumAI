@@ -5,6 +5,7 @@ import type {
   AgentRepository,
   RelationRepository,
   ChronicleEntry,
+  AgentSignalLogRepository,
 } from '../repos/index.js'
 import type { AchievementRepository, ChronicleRepository } from '../repos/index.js'
 import { ACHIEVEMENT_DEFINITIONS_V1, type AchievementDefinition, type AchievementSignalKind } from './achievements/definitions.js'
@@ -39,6 +40,7 @@ export interface AchievementsOrchestratorDeps {
   relationRepo?: RelationRepository | null
   achievementRepo: AchievementRepository
   chronicleRepo: ChronicleRepository
+  signalLogRepo?: AgentSignalLogRepository | null
   chronicleService: AchievementChronicleService
   scorer?: ImportanceScorerV1
 }
@@ -329,9 +331,16 @@ export class AchievementsOrchestrator {
           reason: 'legacy_signal_visibility',
         }
 
+    const effectiveSignalVisibility = config.features.signalLogV1
+      ? 'OWNER_ONLY'
+      : signalDecision.visibility
+    const effectiveSignalReason = config.features.signalLogV1
+      ? 'signal_log_v1_owner_only'
+      : signalDecision.reason
+
     await this.deps.chronicleService.recordChronicle({
       agent_id: signal.agent_id,
-      visibility: signalDecision.visibility,
+      visibility: effectiveSignalVisibility,
       type: getSignalChronicleType(signal.kind),
       title: `Signal · ${signal.kind}`,
       summary: `Signal captured for ${signal.kind}`,
@@ -340,12 +349,28 @@ export class AchievementsOrchestrator {
       tags: [signalTag],
       meta: {
         ...(signal.metadata ?? {}),
-        signal_visibility_reason: signalDecision.reason,
+        signal_visibility_reason: effectiveSignalReason,
       },
       dedup_key: signal.dedup_key,
       occurred_at: occurredAt,
       maxEvidence: 5,
     })
+
+    if (config.features.signalLogV1 && this.deps.signalLogRepo) {
+      await this.deps.signalLogRepo.create({
+        agent_id: signal.agent_id,
+        signal_kind: signal.kind,
+        importance_score: signalImportance,
+        visibility: effectiveSignalVisibility,
+        occurred_at: occurredAt,
+        evidence,
+        meta: {
+          ...(signal.metadata ?? {}),
+          signal_visibility_reason: effectiveSignalReason,
+        },
+        dedup_key: signal.dedup_key,
+      })
+    }
 
     this.metricCache.delete(signal.agent_id)
 
@@ -457,22 +482,27 @@ export class AchievementsOrchestrator {
     const summary = await this.deps.chronicleRepo.getSignalMetrics(agentId, {
       signalKinds: AchievementsOrchestrator.METRIC_SIGNAL_KINDS,
     })
+    const signalSummary = config.features.signalLogV1 && this.deps.signalLogRepo
+      ? await this.deps.signalLogRepo.getMetrics(agentId, {
+          signalKinds: AchievementsOrchestrator.METRIC_SIGNAL_KINDS,
+        })
+      : summary
 
     const effectiveRelations = this.deps.relationRepo
       ? await this.deps.relationRepo.countOutgoingByStates(agentId, ['effective'])
-      : (summary.signal_counts.relation_change ?? 0)
+      : (signalSummary.signal_counts.relation_change ?? 0)
 
     const snapshot: MetricSnapshot = {
-      posts: summary.signal_counts.forum_post ?? 0,
-      comments: summary.signal_counts.forum_comment ?? 0,
-      votes_received: summary.signal_counts.vote_received ?? 0,
-      private_digests: summary.signal_counts.private_digest ?? 0,
+      posts: signalSummary.signal_counts.forum_post ?? 0,
+      comments: signalSummary.signal_counts.forum_comment ?? 0,
+      votes_received: signalSummary.signal_counts.vote_received ?? 0,
+      private_digests: signalSummary.signal_counts.private_digest ?? 0,
       effective_relations: effectiveRelations,
-      governance_actions: summary.signal_counts.governance ?? 0,
+      governance_actions: signalSummary.signal_counts.governance ?? 0,
       public_entries: summary.public_entries,
       activity_days: summary.activity_days,
-      cross_scene: summary.cross_scene,
-      chronicle_entries: summary.chronicle_entries,
+      cross_scene: signalSummary.cross_scene,
+      chronicle_entries: summary.narrative_entries,
     }
 
     if (config.features.chronicleMetricsCacheV1) {

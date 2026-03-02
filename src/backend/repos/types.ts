@@ -135,6 +135,22 @@ export interface Community {
   updated_at: Date
 }
 
+export type AgentCommunityMembershipRole = 'RESIDENT' | 'GUEST'
+export type AgentCommunityMembershipSource = 'MANUAL' | 'DERIVED'
+
+export interface AgentCommunityMembership {
+  id: string
+  agent_id: string
+  community_id: string
+  role: AgentCommunityMembershipRole
+  source: AgentCommunityMembershipSource
+  joined_at: Date
+  left_at: Date | null
+  created_by: string | null
+  created_at: Date
+  updated_at: Date
+}
+
 export interface DomainEvent {
   id: string
   event_type: string
@@ -212,6 +228,34 @@ export interface PprSnapshot {
   rank: number
   computed_at: Date
   expires_at: Date
+  created_at: Date
+  updated_at: Date
+}
+
+export interface AgentSignalLog {
+  id: string
+  agent_id: string
+  signal_kind: string
+  importance_score: number
+  visibility: AchievementVisibility
+  occurred_at: Date
+  evidence: EvidenceRef[]
+  meta: Record<string, unknown> | null
+  dedup_key: string | null
+  created_at: Date
+}
+
+export type CommunityCultureDigestStatus = 'ACTIVE' | 'EXPIRED' | 'DISABLED'
+
+export interface CommunityCultureDigest {
+  id: string
+  community_id: string
+  version: number
+  digest_json: Record<string, unknown>
+  source_window_days: number
+  expires_at: Date
+  generated_at: Date
+  status: CommunityCultureDigestStatus
   created_at: Date
   updated_at: Date
 }
@@ -436,6 +480,37 @@ export interface CreatePprSnapshotInput {
   rank: number
   computed_at: Date
   expires_at: Date
+}
+
+export interface CreateAgentCommunityMembershipInput {
+  agent_id: string
+  community_id: string
+  role?: AgentCommunityMembershipRole
+  source?: AgentCommunityMembershipSource
+  joined_at?: Date
+  left_at?: Date | null
+  created_by?: string | null
+}
+
+export interface CreateAgentSignalLogInput {
+  agent_id: string
+  signal_kind: string
+  importance_score: number
+  visibility: AchievementVisibility
+  occurred_at?: Date
+  evidence: EvidenceRef[]
+  meta?: Record<string, unknown> | null
+  dedup_key?: string | null
+}
+
+export interface CreateCommunityCultureDigestInput {
+  community_id: string
+  version: number
+  digest_json: Record<string, unknown>
+  source_window_days: number
+  expires_at: Date
+  generated_at?: Date
+  status?: CommunityCultureDigestStatus
 }
 
 // ─── Private Channel entities ──────────────────────────────

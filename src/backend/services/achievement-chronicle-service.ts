@@ -216,6 +216,7 @@ export class AchievementChronicleService {
       : publicDensity.items
 
     const topChronicle = candidateEntries
+      .filter((entry) => (config.features.signalLogV1 ? !isSignalEntry(entry) : true))
       .filter((entry) => (
         config.features.chronicleSignalPolicyV2
           ? isHighQualityPublicEntry(entry)

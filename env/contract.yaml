@@ -244,6 +244,55 @@ variables:
     default: "false"
     description: Enable allocator GraphRelevanceProvider (offline PPR snapshot) scoring term.
 
+  FF_MEMBERSHIPS_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable explicit agent-community membership management and allocator membership gating.
+
+  FF_GLOBAL_HIGHLIGHTS_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable grouped global highlights API and frontend highlights page entry.
+
+  FF_SIGNAL_LOG_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable signal dual-write to agent_signal_logs and metrics read-path migration.
+
+  FF_CASTING_DIRECTOR_V2:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable director v2 hard guards (thread dominance cap + cooldown) and stricter pooling.
+
+  FF_PPR_REFRESH_V2:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable PPR refresh v2 strategy (incremental active sources + daily full backfill).
+
+  FF_COMMUNITY_DIGEST_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable community culture digest generation and prompt profile digest injection.
+
+  FF_RUNTIME_FEATURES_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable runtime feature snapshot endpoint and startup observability output.
+
   FF_CASTING_DIRECTOR_ENABLED:
     type: enum
     enum: ["true", "false"]

@@ -1,36 +1,30 @@
 # 04 Verification
 
-## Automated checks (executed)
-- `pnpm -s db:generate` -> pass
-- `pnpm -s typecheck` -> pass
-- `pnpm -s test` -> pass（63 files, 432 tests）
-- `pnpm -s vitest run src/backend/allocator/__tests__/candidate-selector.test.ts src/backend/allocator/__tests__/graph-relevance-provider.test.ts src/backend/allocator/__tests__/casting-director-policy.test.ts src/backend/repos/__tests__/ppr-snapshot-repository.test.ts src/backend/runtime/__tests__/prompt-orchestrator.test.ts src/backend/runtime/__tests__/community-prompt-profile-compiler.test.ts src/backend/services/__tests__/achievement-chronicle-service.test.ts src/backend/services/__tests__/achievements-orchestrator.test.ts src/backend/runtime/__tests__/proactive-event-handler.test.ts` -> pass
-- `pnpm -s vitest run src/backend/runtime/__tests__/prompt-orchestrator.test.ts src/backend/allocator/__tests__/candidate-selector.test.ts src/backend/services/__tests__/achievement-chronicle-service.test.ts` -> pass
+## Commands run (this implementation pass)
+1. `pnpm -s db:generate` -> pass
+2. `pnpm -s typecheck` -> pass
+3. `pnpm -s vitest run src/backend/routes/__tests__/e2e.test.ts src/backend/services/__tests__/agent-community-membership-service.test.ts src/backend/repos/__tests__/agent-community-membership-repository.test.ts src/backend/allocator/__tests__/candidate-selector.test.ts src/backend/allocator/__tests__/casting-director-policy.test.ts src/backend/services/__tests__/achievements-orchestrator.test.ts src/backend/services/__tests__/achievement-chronicle-service.test.ts` -> fail once（调整 chronicle_entries 口径后复测通过）
+4. `pnpm -s vitest run src/backend/services/__tests__/achievements-orchestrator.test.ts src/backend/routes/__tests__/e2e.test.ts` -> pass
+5. `pnpm -s typecheck` -> pass
+6. `pnpm -s vitest run src/backend/repos/__tests__/agent-signal-log-repository.test.ts src/backend/repos/__tests__/community-culture-digest-repository.test.ts src/backend/runtime/__tests__/community-prompt-profile-compiler.test.ts src/backend/allocator/__tests__/ppr-topic-key.test.ts src/backend/allocator/__tests__/candidate-selector.test.ts src/backend/services/__tests__/achievements-orchestrator.test.ts src/backend/services/__tests__/achievement-chronicle-service.test.ts src/backend/routes/__tests__/e2e.test.ts` -> pass
+7. `pnpm -s test` -> pass
+   - Result: 68 files, 446 tests passed
 
-## Governance checks (executed)
-- `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main` -> pass
-- `node .ai/scripts/ctl-project-governance.mjs lint --check --project main` -> pass（存在历史 warning 不阻断）
+## Governance checks
+1. `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main` -> pass
+2. `node .ai/scripts/ctl-project-governance.mjs lint --check --project main` -> pass（有历史 warning，不阻断）
 
-## Coverage vs phases
-- Phase 0:
-  - Chronicle signal visibility policy + metrics aggregation cache 覆盖。
-  - COMMENT vote proactive resolver 覆盖。
-  - `model=default` 404 修复覆盖。
-- Phase 1:
-  - PPR snapshot repository/provider/scheduler 覆盖。
-  - allocator 快照读取 + miss fallback 覆盖。
-- Phase 2:
-  - director role/budget 分配与 `quota<=2` 旁路覆盖。
-- Phase 3:
-  - community prompt profile compile + orchestrator provenance 覆盖。
-- Phase 4:
-  - public highlights signal 压缩与高质量阈值覆盖。
+## Functional verification map
+- PKG-0: memberships route + allocator explicit membership reason + backfill logic
+- PKG-1: grouped highlights API + `/highlights` frontend route
+- PKG-2: signal dual-write + chronicle narrative metric isolation + public signal suppression
+- PKG-3: director v2 hard guard + role distribution policy behavior
+- PKG-4: ppr refresh v2 strategy + topic weighted key + batch comment pull
+- PKG-5: digest repository/service/scheduler + compiler digest injection
+- PKG-6: runtime features endpoint + startup snapshot + counters instrumentation
 
-## Pending evidence (staging)
-- `top-k` 稳定性提升 >= 25%（回放指标）
-- `public highlights` 噪音率下降 >= 40%（对照指标）
-- allocator 额外 p95 时延 <= 20ms（压测指标）
-
-## Rollout / Backout
-- Rollout: staging 全开 -> prod 5% -> 25% -> 100%（每档观察 24h）。
-- Backout: 先关开关（`FF_ALLOCATOR_PPR_ENABLED`、`FF_CASTING_DIRECTOR_ENABLED`、`FF_COMMUNITY_PROMPT_PROFILE_V1`、`FF_CHRONICLE_SIGNAL_POLICY_V2`），再按 phase 回退对应 PR。
+## Pending staging evidence
+- top-k stability uplift >= 25%
+- public highlights noise reduction >= 40%
+- allocator extra p95 <= 20ms
+- local K8S staging real-call cost report

@@ -88,6 +88,18 @@ export class PgCommentRepository implements CommentRepository {
     }
   }
 
+  async findByPostsSince(postIds: string[], since: Date): Promise<Comment[]> {
+    if (postIds.length === 0) return []
+    const rows = await this.prisma.comment.findMany({
+      where: {
+        postId: { in: postIds },
+        createdAt: { gte: since },
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    })
+    return rows.map((row) => this.toDomain(row))
+  }
+
   async countByPost(postId: string): Promise<number> {
     return this.prisma.comment.count({
       where: { postId, state: 'APPROVED' },

@@ -6,7 +6,10 @@ import { InMemoryHumanFollowRepository } from './repos/human-follow-repository.j
 import { InMemoryInclinationAssetRepository } from './repos/inclination-asset-repository.js'
 import { InMemoryPostMediaRepository } from './repos/post-media-repository.js'
 import { InMemoryAgentRepository, InMemoryAgentConfigRepository } from './repos/agent-repository.js'
+import { InMemoryAgentCommunityMembershipRepository } from './repos/agent-community-membership-repository.js'
+import { InMemoryAgentSignalLogRepository } from './repos/agent-signal-log-repository.js'
 import { InMemoryCommunityRepository } from './repos/community-repository.js'
+import { InMemoryCommunityCultureDigestRepository } from './repos/community-culture-digest-repository.js'
 import { InMemoryEventRepository, InMemoryAgentRunRepository } from './repos/event-repository.js'
 import { InMemoryRoomRepository } from './repos/room-repository.js'
 import { InMemoryMessageRepository } from './repos/message-repository.js'
@@ -23,7 +26,10 @@ import type { HumanFollowRepository } from './repos/human-follow-repository.js'
 import type { InclinationAssetRepository } from './repos/inclination-asset-repository.js'
 import type { PostMediaRepository } from './repos/post-media-repository.js'
 import type { AgentRepository, AgentConfigRepository } from './repos/agent-repository.js'
+import type { AgentCommunityMembershipRepository } from './repos/agent-community-membership-repository.js'
+import type { AgentSignalLogRepository } from './repos/agent-signal-log-repository.js'
 import type { CommunityRepository } from './repos/community-repository.js'
+import type { CommunityCultureDigestRepository } from './repos/community-culture-digest-repository.js'
 import type { EventRepository, AgentRunRepository } from './repos/event-repository.js'
 import type { RoomRepository } from './repos/room-repository.js'
 import type { MessageRepository } from './repos/message-repository.js'
@@ -36,6 +42,9 @@ import type { PprSnapshotRepository } from './repos/ppr-snapshot-repository.js'
 import { ForumReadService } from './services/forum-read-service.js'
 import { ForumWriteService } from './services/forum-write-service.js'
 import { AgentService } from './services/agent-service.js'
+import { AgentCommunityMembershipService } from './services/agent-community-membership-service.js'
+import { GlobalHighlightsService } from './services/global-highlights-service.js'
+import { CommunityCultureDigestService } from './services/community-culture-digest-service.js'
 import { GovernanceAdapter } from './services/governance-adapter.js'
 import { HumanParticipationService } from './services/human-participation-service.js'
 import { InclinationAssetService } from './services/inclination-asset-service.js'
@@ -110,6 +119,7 @@ import { PublicObservationEventHandler } from './runtime/public-observation-even
 import { RelationScheduler } from './runtime/relation-scheduler.js'
 import { AchievementsScheduler } from './runtime/achievements-scheduler.js'
 import { PprRefreshScheduler } from './runtime/ppr-refresh-scheduler.js'
+import { CultureDigestScheduler } from './runtime/culture-digest-scheduler.js'
 import { PprSnapshotBuilder } from './services/ppr/ppr-snapshot-builder.js'
 
 // ─── Repositories ───────────────────────────────────────────
@@ -120,6 +130,8 @@ let postRepo: PostRepository
 let commentRepo: CommentRepository
 export let agentRepo: AgentRepository
 let agentConfigRepo: AgentConfigRepository
+let agentCommunityMembershipRepo: AgentCommunityMembershipRepository
+let agentSignalLogRepo: AgentSignalLogRepository
 let eventRepo: EventRepository
 let agentRunRepo: AgentRunRepository
 let roomRepo: RoomRepository
@@ -136,10 +148,13 @@ export let humanFollowRepo: HumanFollowRepository
 export let inclinationAssetRepo: InclinationAssetRepository
 export let postMediaRepo: PostMediaRepository
 export let communityRepo: CommunityRepository
+let communityCultureDigestRepo: CommunityCultureDigestRepository
 export let statsService: StatsService | null = null
 export let achievementsOrchestrator: AchievementsOrchestrator | null = null
 export let achievementsScheduler: AchievementsScheduler | null = null
 export let pprRefreshScheduler: PprRefreshScheduler | null = null
+export let communityCultureDigestService: CommunityCultureDigestService | null = null
+export let cultureDigestScheduler: CultureDigestScheduler | null = null
 
 const _hydratables: HydratableRepo[] = []
 
@@ -155,7 +170,10 @@ if (config.db.usePrisma) {
   const { PgInclinationAssetRepository } = await import('./repos/pg/pg-inclination-asset-repository.js')
   const { PgPostMediaRepository } = await import('./repos/pg/pg-post-media-repository.js')
   const { PgAgentRepository, PgAgentConfigRepository } = await import('./repos/pg/pg-agent-repository.js')
+  const { PgAgentCommunityMembershipRepository } = await import('./repos/pg/pg-agent-community-membership-repository.js')
+  const { PgAgentSignalLogRepository } = await import('./repos/pg/pg-agent-signal-log-repository.js')
   const { PgCommunityRepository } = await import('./repos/pg/pg-community-repository.js')
+  const { PgCommunityCultureDigestRepository } = await import('./repos/pg/pg-community-culture-digest-repository.js')
   const { PgEventRepository, PgAgentRunRepository } = await import('./repos/pg/pg-event-repository.js')
   const { PgRoomRepository } = await import('./repos/pg/pg-room-repository.js')
   const { PgMessageRepository } = await import('./repos/pg/pg-message-repository.js')
@@ -175,7 +193,10 @@ if (config.db.usePrisma) {
   const pmr = new PgPostMediaRepository(prisma)
   const ar = new PgAgentRepository(prisma)
   const acr = new PgAgentConfigRepository(prisma)
+  const amr = new PgAgentCommunityMembershipRepository(prisma)
+  const aslr = new PgAgentSignalLogRepository(prisma)
   const cmr = new PgCommunityRepository(prisma)
+  const cdr = new PgCommunityCultureDigestRepository(prisma)
   const er = new PgEventRepository(prisma)
   const arr = new PgAgentRunRepository(prisma)
   const rr = new PgRoomRepository(prisma)
@@ -195,7 +216,10 @@ if (config.db.usePrisma) {
   postMediaRepo = pmr
   agentRepo = ar
   agentConfigRepo = acr
+  agentCommunityMembershipRepo = amr
+  agentSignalLogRepo = aslr
   communityRepo = cmr
+  communityCultureDigestRepo = cdr
   eventRepo = er
   agentRunRepo = arr
   roomRepo = rr
@@ -206,7 +230,7 @@ if (config.db.usePrisma) {
   chronicleRepo = chr
   pprSnapshotRepo = ppr
   userRepo = new PgUserRepository(prisma)
-  _hydratables.push(pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, cmr, er, arr, rr, mr, sr, achar, chr, ppr)
+  _hydratables.push(pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, rr, mr, sr, achar, chr, ppr)
 } else {
   postRepo = new InMemoryPostRepository()
   commentRepo = new InMemoryCommentRepository()
@@ -217,7 +241,10 @@ if (config.db.usePrisma) {
   postMediaRepo = new InMemoryPostMediaRepository()
   agentRepo = new InMemoryAgentRepository()
   agentConfigRepo = new InMemoryAgentConfigRepository()
+  agentCommunityMembershipRepo = new InMemoryAgentCommunityMembershipRepository()
+  agentSignalLogRepo = new InMemoryAgentSignalLogRepository()
   communityRepo = new InMemoryCommunityRepository()
+  communityCultureDigestRepo = new InMemoryCommunityCultureDigestRepository()
   eventRepo = new InMemoryEventRepository()
   agentRunRepo = new InMemoryAgentRunRepository()
   roomRepo = new InMemoryRoomRepository()
@@ -350,6 +377,7 @@ const nurtureLeaderElector = createLeaderElector('nurture')
 const relationLeaderElector = createLeaderElector('relation')
 const achievementsLeaderElector = createLeaderElector('achievements')
 const pprRefreshLeaderElector = createLeaderElector('ppr-refresh')
+const cultureDigestLeaderElector = createLeaderElector('culture-digest')
 
 // ─── Core Services ──────────────────────────────────────────
 
@@ -379,10 +407,30 @@ export const forumWriteService = new ForumWriteService({
   moderator,
 })
 
+export const globalHighlightsService = new GlobalHighlightsService({
+  forumReadService,
+  achievementChronicleService,
+  chronicleRepo,
+})
+
 export const agentService = new AgentService({
   agentRepo,
   agentConfigRepo,
   agentRunRepo,
+})
+
+export const agentCommunityMembershipService = new AgentCommunityMembershipService({
+  membershipRepo: agentCommunityMembershipRepo,
+  agentRepo,
+  postRepo,
+  commentRepo,
+})
+
+communityCultureDigestService = new CommunityCultureDigestService({
+  digestRepo: communityCultureDigestRepo,
+  communityRepo,
+  postRepo,
+  commentRepo,
 })
 
 statsService = new StatsService({
@@ -426,6 +474,7 @@ achievementsOrchestrator = new AchievementsOrchestrator({
   relationRepo,
   achievementRepo,
   chronicleRepo,
+  signalLogRepo: agentSignalLogRepo,
   chronicleService: achievementChronicleService,
 })
 
@@ -468,6 +517,9 @@ if (config.features.castingDirectorEnabled) {
 const allocatorAgentRepo: AllocatorAgentRepo = {
   getCandidates(communityId: string, authorAgentId?: string): AgentCandidate[] {
     const agents = agentRepo.findActive({ limit: 100 })
+    const explicitMemberIds = config.features.membershipsV1
+      ? new Set(agentCommunityMembershipRepo.listActiveAgentIdsByCommunity(communityId))
+      : null
     return agents.items.map((a) => ({
       stats_hint: config.features.agentStatsBehavior && statsService
         ? statsService.getDerivedSync(a.id).stats_hint
@@ -478,7 +530,9 @@ const allocatorAgentRepo: AllocatorAgentRepo = {
       agent_id: a.id,
       status: a.status.toLowerCase() as AgentCandidate['status'],
       tags: [],
-      community_ids: [communityId],
+      community_ids: explicitMemberIds
+        ? (explicitMemberIds.has(a.id) ? [communityId] : [])
+        : [communityId],
       actions_last_hour: 0,
       tokens_last_day: 0,
       last_action_at: null,
@@ -497,7 +551,8 @@ export const allocator = new EventAllocator({
     graphRelevanceProvider,
     castingDirectorPolicy,
     pprEnabled: config.features.allocatorPprEnabled,
-    directorEnabled: config.features.castingDirectorEnabled,
+    directorEnabled: config.features.castingDirectorEnabled || config.features.castingDirectorV2,
+    directorV2Enabled: config.features.castingDirectorV2,
     resolveCommunityDirectorConfig: resolveDirectorConfigByCommunity,
   }),
   lock: new InMemoryAllocationLock(DEFAULT_ALLOCATOR_CONFIG.lockTtlMs),
@@ -750,6 +805,13 @@ if (achievementsOrchestrator) {
   }
 }
 
+if (config.features.communityDigestV1 && communityCultureDigestService) {
+  cultureDigestScheduler = new CultureDigestScheduler({
+    digestService: communityCultureDigestService,
+    leaderElector: cultureDigestLeaderElector,
+  })
+}
+
 promptLayerService = new PromptLayerService({
   agentService,
   traitEngine,
@@ -771,6 +833,10 @@ if (proactiveInteractionService) {
 
 // ─── Agent Runtime ──────────────────────────────────────────
 
+const communityPromptProfileCompiler = new CommunityPromptProfileCompiler({
+  communityCultureDigestService,
+})
+
 const contextBuilder = new ContextBuilder({
   forumReadService,
   agentService,
@@ -779,7 +845,8 @@ const contextBuilder = new ContextBuilder({
   memoryService,
   promptLayerService,
   promptOrchestrator,
-  communityPromptProfileCompiler: new CommunityPromptProfileCompiler(),
+  communityPromptProfileCompiler,
+  communityCultureDigestService,
 })
 
 const responseParser = new ResponseParser()

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
-import { Home, MessageSquare, Compass, Sparkles, ShieldCheck, Hash, Search } from 'lucide-react'
+import { Home, MessageSquare, Compass, Sparkles, ShieldCheck, Hash, Search, Trophy } from 'lucide-react'
 import { useCommunities } from '@/api/hooks'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
@@ -10,6 +10,7 @@ const QUICK_LINKS = [
   { to: '/', label: '广场', icon: <Home className="h-4 w-4" /> },
   { to: '/rooms', label: '聊天室', icon: <MessageSquare className="h-4 w-4" /> },
   { to: '/communities', label: '发现社区', icon: <Compass className="h-4 w-4" /> },
+  { to: '/highlights', label: '全站高光', icon: <Trophy className="h-4 w-4" /> },
   { to: '/agents', label: '搜索智能体', icon: <Search className="h-4 w-4" /> },
 ] as const
 

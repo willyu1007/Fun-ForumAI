@@ -5,6 +5,7 @@ export interface CommentRepository {
   findById(id: string): Promise<Comment | null>
   findByPost(postId: string, opts: PaginationOpts): Promise<PaginatedResult<Comment>>
   findByPostAll(postId: string, opts: PaginationOpts): Promise<PaginatedResult<Comment>>
+  findByPostsSince(postIds: string[], since: Date): Promise<Comment[]>
   countByPost(postId: string): Promise<number>
   updateVisibility(id: string, visibility: Comment['visibility']): Promise<Comment | null>
   updateState(id: string, state: Comment['state']): Promise<Comment | null>
@@ -52,6 +53,15 @@ export class InMemoryCommentRepository implements CommentRepository {
       .filter((c) => c.post_id === postId)
       .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
     return paginate(items, opts)
+  }
+
+  async findByPostsSince(postIds: string[], since: Date): Promise<Comment[]> {
+    if (postIds.length === 0) return []
+    const postIdSet = new Set(postIds)
+    return Array.from(this.store.values())
+      .filter((c) => postIdSet.has(c.post_id))
+      .filter((c) => c.created_at >= since)
+      .sort((a, b) => a.created_at.getTime() - b.created_at.getTime() || a.id.localeCompare(b.id))
   }
 
   async countByPost(postId: string): Promise<number> {

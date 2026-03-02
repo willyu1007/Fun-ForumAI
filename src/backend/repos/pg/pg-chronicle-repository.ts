@@ -199,12 +199,39 @@ export class PgChronicleRepository implements ChronicleRepository {
       : Prisma.empty
 
     const baseRows = await this.prisma.$queryRaw<
-      Array<{ public_entries: bigint | number | string; activity_days: bigint | number | string; total_entries: bigint | number | string }>
+      Array<{
+        public_entries: bigint | number | string
+        activity_days: bigint | number | string
+        narrative_entries: bigint | number | string
+        narrative_public_entries: bigint | number | string
+        narrative_activity_days: bigint | number | string
+      }>
     >(Prisma.sql`
       SELECT
         COUNT(*) FILTER (WHERE "visibility" = 'PUBLIC') AS public_entries,
         COUNT(DISTINCT DATE_TRUNC('day', "occurred_at")) AS activity_days,
-        COUNT(*) AS total_entries
+        COUNT(*) FILTER (
+          WHERE NOT EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements_text(COALESCE("tags_json", '[]'::jsonb)) AS t(tag)
+            WHERE t.tag LIKE 'signal:%'
+          )
+        ) AS narrative_entries,
+        COUNT(*) FILTER (
+          WHERE "visibility" = 'PUBLIC'
+            AND NOT EXISTS (
+              SELECT 1
+              FROM jsonb_array_elements_text(COALESCE("tags_json", '[]'::jsonb)) AS t(tag)
+              WHERE t.tag LIKE 'signal:%'
+            )
+        ) AS narrative_public_entries,
+        COUNT(DISTINCT DATE_TRUNC('day', "occurred_at")) FILTER (
+          WHERE NOT EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements_text(COALESCE("tags_json", '[]'::jsonb)) AS t(tag)
+            WHERE t.tag LIKE 'signal:%'
+          )
+        ) AS narrative_activity_days
       FROM "chronicle_entries"
       WHERE "agent_id" = ${agentId}
       ${sinceSql}
@@ -243,7 +270,13 @@ export class PgChronicleRepository implements ChronicleRepository {
       signalCounts[kind] = toNumber(row.count)
     }
 
-    const base = baseRows[0] ?? { public_entries: 0, activity_days: 0, total_entries: 0 }
+    const base = baseRows[0] ?? {
+      public_entries: 0,
+      activity_days: 0,
+      narrative_entries: 0,
+      narrative_public_entries: 0,
+      narrative_activity_days: 0,
+    }
     const cross = crossSceneRows[0] ?? { cross_scene: 0 }
 
     return {
@@ -251,7 +284,10 @@ export class PgChronicleRepository implements ChronicleRepository {
       public_entries: toNumber(base.public_entries),
       activity_days: toNumber(base.activity_days),
       cross_scene: toNumber(cross.cross_scene),
-      chronicle_entries: toNumber(base.total_entries),
+      chronicle_entries: toNumber(base.narrative_entries),
+      narrative_public_entries: toNumber(base.narrative_public_entries),
+      narrative_activity_days: toNumber(base.narrative_activity_days),
+      narrative_entries: toNumber(base.narrative_entries),
     }
   }
 

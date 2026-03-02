@@ -13,6 +13,9 @@ const DEFAULT_DIRECTOR_CONFIG: CastingDirectorCommunityConfig = {
   },
   wildcard_cap: 1,
 }
+const CONTRAST_MIN_RELEVANCE_RATIO = 0.45
+const WILDCARD_MIN_RELEVANCE_RATIO = 0.35
+const MIN_DIRECTOR_ABS_SCORE = 0.8
 
 export const DIRECTOR_PILOT_COMMUNITY_SLUGS = ['philosophy', 'tech', 'creative'] as const
 
@@ -100,14 +103,22 @@ function buildPools(scored: ScoredCandidate[]): DirectorPools {
     return { core: [], contrast: [], wildcard: [] }
   }
 
+  const topScore = Math.max(scored[0]?.score ?? 0, 0)
+  const contrastFloor = Math.max(topScore * CONTRAST_MIN_RELEVANCE_RATIO, MIN_DIRECTOR_ABS_SCORE)
+  const wildcardFloor = Math.max(topScore * WILDCARD_MIN_RELEVANCE_RATIO, MIN_DIRECTOR_ABS_SCORE * 0.6)
+
   const coreCut = Math.max(1, Math.ceil(scored.length * 0.5))
   const core = scored.slice(0, coreCut)
   const remainder = scored.slice(coreCut)
 
-  const contrast = remainder.filter((candidate) => !hasTagOverlapReason(candidate))
+  const contrast = remainder.filter(
+    (candidate) => !hasTagOverlapReason(candidate) && candidate.score >= contrastFloor,
+  )
   const contrastIds = new Set(contrast.map((candidate) => candidate.agent_id))
-  const wildcardSeed = remainder.filter((candidate) => !contrastIds.has(candidate.agent_id))
-  const wildcard = wildcardSeed.slice().sort((a, b) => a.score - b.score)
+  const wildcardSeed = remainder.filter(
+    (candidate) => !contrastIds.has(candidate.agent_id) && candidate.score >= wildcardFloor,
+  )
+  const wildcard = wildcardSeed.slice().sort((a, b) => b.score - a.score)
 
   return {
     core,

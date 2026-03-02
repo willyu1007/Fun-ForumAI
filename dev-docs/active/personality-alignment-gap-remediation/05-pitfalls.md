@@ -25,3 +25,22 @@ This file exists to prevent repeating mistakes within this task.
 - References (paths/commands/log keywords):
   - `dev-docs/active/personality-alignment-gap-remediation/*`
   - `node .ai/scripts/ctl-project-governance.mjs query --status in-progress`
+
+### 2026-03-02 - Signal 隔离口径误伤 batch 成就
+- Symptom:
+  - `achievements-orchestrator` 用例失败：`chronicle_spotlight` 未授予。
+- Context:
+  - 在做 signal 去污染时，把 `public_entries/activity_days/chronicle_entries` 全部切成 narrative-only。
+- What we tried:
+  - 直接复用 narrative 计量覆盖所有字段。
+- Why it failed (or current hypothesis):
+  - 需求仅要求去除 `chronicle_entries` 的 signal 污染；`public_entries/activity_days` 全改会改变既有批处理成就语义。
+- Fix / workaround (if any):
+  - 保持 `public_entries/activity_days` 为全量口径；仅 `chronicle_entries` 使用 narrative-only。
+  - 在 `ChronicleSignalMetrics` 中保留 narrative 扩展字段，避免再次混淆。
+- Prevention (how to avoid repeating it):
+  - 做计量口径改造时，先逐字段映射到业务定义，不要一次性“全字段同口径替换”。
+- References (paths/commands/log keywords):
+  - `src/backend/repos/{chronicle-repository.ts,pg/pg-chronicle-repository.ts}`
+  - `src/backend/services/achievements-orchestrator.ts`
+  - `pnpm -s vitest run src/backend/services/__tests__/achievements-orchestrator.test.ts`
