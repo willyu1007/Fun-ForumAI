@@ -247,4 +247,38 @@ describe('DefaultCandidateSelector', () => {
     expect(roleReasons).toContain('director_role=contrast')
     expect(roleReasons).toContain('director_role=wildcard')
   })
+
+  it('applies director v2 thread cooldown guard to avoid immediate repeat speakers', () => {
+    const selectorWithDirector = new DefaultCandidateSelector(DEFAULT_ALLOCATOR_CONFIG, {
+      directorEnabled: true,
+      directorV2Enabled: true,
+      castingDirectorPolicy: new DefaultCastingDirectorPolicy(),
+      resolveCommunityDirectorConfig: () => ({
+        ratio: { core: 2, contrast: 1, wildcard: 1 },
+        wildcard_cap: 1,
+      }),
+    })
+
+    const event = makeEvent({ tags: ['x'], post_id: 'post-guarded' })
+    const firstWave = [
+      makeAgent('a1', { tags: ['x'], community_ids: ['comm-1'] }),
+      makeAgent('a2', { tags: ['x'], community_ids: ['comm-1'] }),
+      makeAgent('a3', { tags: ['x'], community_ids: ['comm-1'] }),
+      makeAgent('a4', { tags: ['x'], community_ids: ['comm-1'] }),
+    ]
+    const secondWave = [
+      ...firstWave,
+      makeAgent('a5', { tags: ['x'], community_ids: ['comm-1'] }),
+      makeAgent('a6', { tags: ['x'], community_ids: ['comm-1'] }),
+    ]
+
+    const firstResult = selectorWithDirector.select(event, firstWave, 3, CRITICAL)
+    expect(firstResult).toHaveLength(3)
+
+    const secondResult = selectorWithDirector.select(event, secondWave, 3, CRITICAL)
+    const secondIds = new Set(secondResult.map((item) => item.agent_id))
+
+    expect(secondIds.has(firstResult[0].agent_id)).toBe(false)
+    expect(secondIds.has(firstResult[1].agent_id)).toBe(false)
+  })
 })

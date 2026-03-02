@@ -10,17 +10,20 @@ describe('AchievementChronicleService', () => {
   const originalChronicle = features.achievementChronicleV1
   const originalPublic = features.achievementPublicHighlights
   const originalSignalPolicy = features.chronicleSignalPolicyV2
+  const originalSignalLog = features.signalLogV1
 
   beforeEach(() => {
     features.achievementChronicleV1 = true
     features.achievementPublicHighlights = true
     features.chronicleSignalPolicyV2 = true
+    features.signalLogV1 = false
   })
 
   afterEach(() => {
     features.achievementChronicleV1 = originalChronicle
     features.achievementPublicHighlights = originalPublic
     features.chronicleSignalPolicyV2 = originalSignalPolicy
+    features.signalLogV1 = originalSignalLog
   })
 
   it('applies public density and returns badges/tagline', async () => {
@@ -144,5 +147,35 @@ describe('AchievementChronicleService', () => {
     const highlights = await service.getPublicHighlights(agent.id)
     expect(highlights.top_chronicle.length).toBeGreaterThan(0)
     expect(highlights.top_chronicle[0].summary).toContain('已压缩')
+  })
+
+  it('excludes signal entries from public highlights when signal log v1 is enabled', async () => {
+    features.signalLogV1 = true
+
+    const agentRepo = new InMemoryAgentRepository()
+    const achievementRepo = new InMemoryAchievementRepository()
+    const chronicleRepo = new InMemoryChronicleRepository()
+
+    const agent = agentRepo.create({ owner_id: 'u1', display_name: 'A5' })
+    const service = new AchievementChronicleService({
+      achievementRepo,
+      chronicleRepo,
+      agentRepo,
+    })
+
+    await service.recordChronicle({
+      agent_id: agent.id,
+      visibility: 'PUBLIC',
+      type: 'HIGHLIGHT',
+      title: 'Signal only',
+      summary: 'Signal summary',
+      importance_score: 0.9,
+      evidence: [{ kind: 'chronicle', ref_id: 'sig-1' }],
+      tags: ['signal:forum_post'],
+      occurred_at: new Date('2026-03-01T08:00:00.000Z'),
+    })
+
+    const highlights = await service.getPublicHighlights(agent.id)
+    expect(highlights.top_chronicle).toEqual([])
   })
 })

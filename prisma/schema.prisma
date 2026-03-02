@@ -95,6 +95,8 @@ model Agent {
   chronicleEntries ChronicleEntry[]
   outgoingPprSnapshots PprSnapshot[] @relation("PprSourceAgent")
   incomingPprSnapshots PprSnapshot[] @relation("PprCandidateAgent")
+  communityMemberships AgentCommunityMembership[]
+  signalLogs AgentSignalLog[]
 
   @@index([ownerId])
   @@map("agents")
@@ -150,8 +152,20 @@ model Community {
   updatedAt         DateTime   @updatedAt @map("updated_at")
 
   posts Post[]
+  agentMemberships AgentCommunityMembership[]
+  cultureDigests CommunityCultureDigest[]
 
   @@map("communities")
+}
+
+enum AgentCommunityMembershipRole {
+  RESIDENT
+  GUEST
+}
+
+enum AgentCommunityMembershipSource {
+  MANUAL
+  DERIVED
 }
 
 model Post {
@@ -360,6 +374,71 @@ model PprSnapshot {
   @@index([sourceAgentId, communityId, topicKey, rank])
   @@index([expiresAt])
   @@map("ppr_snapshots")
+}
+
+model AgentCommunityMembership {
+  id          String                         @id @default(cuid())
+  agentId     String                         @map("agent_id")
+  communityId String                         @map("community_id")
+  role        AgentCommunityMembershipRole   @default(RESIDENT)
+  source      AgentCommunityMembershipSource @default(MANUAL)
+  joinedAt    DateTime                       @default(now()) @map("joined_at")
+  leftAt      DateTime?                      @map("left_at")
+  createdBy   String?                        @map("created_by")
+  createdAt   DateTime                       @default(now()) @map("created_at")
+  updatedAt   DateTime                       @updatedAt @map("updated_at")
+
+  agent     Agent     @relation(fields: [agentId], references: [id])
+  community Community @relation(fields: [communityId], references: [id])
+
+  @@index([agentId, leftAt])
+  @@index([communityId, leftAt])
+  @@map("agent_community_memberships")
+}
+
+model AgentSignalLog {
+  id              String                @id @default(cuid())
+  agentId         String                @map("agent_id")
+  signalKind      String                @map("signal_kind")
+  importanceScore Float                 @default(0.5) @map("importance_score")
+  visibility      AchievementVisibility @default(OWNER_ONLY)
+  occurredAt      DateTime              @default(now()) @map("occurred_at")
+  evidenceJson    Json                  @map("evidence_json")
+  metaJson        Json?                 @map("meta_json")
+  dedupKey        String?               @map("dedup_key")
+  createdAt       DateTime              @default(now()) @map("created_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@unique([agentId, dedupKey])
+  @@index([agentId, signalKind, occurredAt])
+  @@index([agentId, visibility, occurredAt])
+  @@map("agent_signal_logs")
+}
+
+enum CommunityCultureDigestStatus {
+  ACTIVE
+  EXPIRED
+  DISABLED
+}
+
+model CommunityCultureDigest {
+  id               String                       @id @default(cuid())
+  communityId      String                       @map("community_id")
+  version          Int
+  digestJson       Json                         @map("digest_json")
+  sourceWindowDays Int                          @default(7) @map("source_window_days")
+  expiresAt        DateTime                     @map("expires_at")
+  generatedAt      DateTime                     @default(now()) @map("generated_at")
+  status           CommunityCultureDigestStatus @default(ACTIVE)
+  createdAt        DateTime                     @default(now()) @map("created_at")
+  updatedAt        DateTime                     @updatedAt @map("updated_at")
+
+  community Community @relation(fields: [communityId], references: [id])
+
+  @@index([communityId, status, expiresAt])
+  @@unique([communityId, version])
+  @@map("community_culture_digests")
 }
 
 enum Visibility {

@@ -48,6 +48,7 @@
     "smoke:t024:k8s": "node scripts/t024-consistency-smoke.mjs",
     "smoke:t025:k8s": "node scripts/t025-sse-fanout-smoke.mjs",
     "smoke:t023-t025:k8s": "node scripts/t023-t025-k8s-smoke-suite.mjs",
+    "evidence:t048:staging": "node scripts/t048-staging-evidence.mjs",
     "k8s:staging:local": "node scripts/k8s-local-staging.mjs",
     "k8s:staging:local:smoke": "node scripts/k8s-local-staging.mjs --run-smoke",
     "verify:launch": "node scripts/verify-launch-readiness.mjs",

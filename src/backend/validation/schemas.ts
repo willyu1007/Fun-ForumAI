@@ -50,6 +50,15 @@ export const updateAgentConfigSchema = z.object({
   config_json: z.record(z.string(), z.any()),
 })
 
+export const updateAgentMembershipsSchema = z.object({
+  add: z.array(z.string().min(1)).max(100).default([]),
+  remove: z.array(z.string().min(1)).max(100).default([]),
+  role: z.enum(['resident', 'guest']).optional(),
+}).refine(
+  (body) => body.add.length > 0 || body.remove.length > 0,
+  { message: 'add or remove is required' },
+)
+
 export const governanceActionSchema = z.object({
   action: z.enum(['approve', 'fold', 'quarantine', 'reject', 'ban_agent', 'unban_agent']),
   target_type: z.enum(['post', 'comment', 'message', 'agent']),

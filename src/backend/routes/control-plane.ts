@@ -1,13 +1,16 @@
 import { Router, type IRouter } from 'express'
 import multer from 'multer'
 import { requireHumanAuth, requireAdmin } from '../middleware/human-auth.js'
-import { agentService, governanceAdapter, runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, relationService, humanParticipationService, inclinationAssetService, achievementChronicleService } from '../container.js'
+import { agentService, governanceAdapter, runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, relationService, humanParticipationService, inclinationAssetService, achievementChronicleService, agentCommunityMembershipService } from '../container.js'
 import { config } from '../lib/config.js'
 import { ForbiddenError, ValidationError } from '../lib/errors.js'
+import { ensureDevAuthUserPersisted } from '../lib/dev-auth-user.js'
 import { validate } from '../validation/validate.js'
+import { runtimeFeatureMetrics } from '../runtime/runtime-feature-metrics.js'
 import {
   createAgentSchema,
   updateAgentConfigSchema,
+  updateAgentMembershipsSchema,
   updateAgentProfileSchema,
   governanceActionSchema,
 } from '../validation/schemas.js'
@@ -19,8 +22,9 @@ const inclinationUpload = multer({
   limits: { fileSize: 10 * 1024 * 1024, files: 1 },
 })
 
-controlPlaneRouter.post('/agents', requireHumanAuth, validate(createAgentSchema), (req, res) => {
-  const agent = agentService.createAgent({
+controlPlaneRouter.post('/agents', requireHumanAuth, validate(createAgentSchema), async (req, res) => {
+  await ensureDevAuthUserPersisted(req.user!)
+  const agent = await agentService.createAgentPersisted({
     owner_id: req.user!.userId,
     ...req.body,
   })
@@ -176,9 +180,36 @@ controlPlaneRouter.delete('/agents/:agentId/follow', requireHumanAuth, async (re
   res.json({ data: result })
 })
 
-controlPlaneRouter.patch('/agents/:agentId/memberships', requireHumanAuth, (_req, res) => {
-  res.status(501).json({ error: { code: 'NOT_IMPLEMENTED', message: 'PATCH /v1/agents/:agentId/memberships not yet implemented' } })
-})
+controlPlaneRouter.patch(
+  '/agents/:agentId/memberships',
+  requireHumanAuth,
+  validate(updateAgentMembershipsSchema),
+  async (req, res) => {
+    if (!config.features.membershipsV1) {
+      res.status(403).json({
+        error: { code: 'FORBIDDEN', message: 'Membership management is disabled by feature flag.' },
+      })
+      return
+    }
+
+    const agentId = String(req.params.agentId)
+    const actor = req.user!
+    const existing = agentService.getAgent(agentId)
+    const isAllowed = actor.role === 'admin' || existing.owner_id === actor.userId
+    if (!isAllowed) {
+      throw new ForbiddenError('Only owner or admin can update memberships')
+    }
+
+    const result = await agentCommunityMembershipService.patchMemberships({
+      agent_id: agentId,
+      add: req.body.add ?? [],
+      remove: req.body.remove ?? [],
+      role: req.body.role,
+      actor_user_id: actor.userId,
+    })
+    res.json({ data: result })
+  },
+)
 
 controlPlaneRouter.get(
   '/agents/:agentId/runs',
@@ -306,6 +337,30 @@ controlPlaneRouter.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, a
         size: eventQueueSize,
       },
       relations: relationService ? relationService.getMetrics().snapshot() : null,
+    },
+  })
+})
+
+controlPlaneRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, (_req, res) => {
+  if (!config.features.runtimeFeaturesV1) {
+    res.status(403).json({
+      error: { code: 'FORBIDDEN', message: 'Runtime feature observability is disabled by feature flag.' },
+    })
+    return
+  }
+
+  const counters = runtimeFeatureMetrics.snapshot()
+
+  res.json({
+    data: {
+      flags: config.features,
+      runtime: {
+        queue_backend: config.runtime.queueBackend,
+        leader_backend: config.runtime.leaderBackend,
+        llm_provider: config.llm.provider,
+        llm_model: config.llm.model,
+      },
+      counters,
     },
   })
 })

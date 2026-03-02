@@ -6,7 +6,7 @@ import type {
   PostRepository,
   RelationRepository,
 } from '../../repos/index.js'
-import { PPR_TOPIC_FALLBACK, normalizeTopicToken } from '../../allocator/ppr-topic-key.js'
+import { PPR_TOPIC_FALLBACK, deriveTopicWeights } from '../../allocator/ppr-topic-key.js'
 
 const COMMUNITY_ALL = '__all__'
 
@@ -25,6 +25,7 @@ export interface PprSnapshotBuildOptions {
   maxIterations?: number
   topKPerContext?: number
   refreshTtlMs: number
+  sourceAgentIds?: string[]
 }
 
 interface EdgeIndex {
@@ -162,6 +163,35 @@ function runPersonalizedPageRank(
 export class PprSnapshotBuilder {
   constructor(private readonly deps: PprSnapshotBuilderDeps) {}
 
+  async collectActiveSourceAgentIds(since: Date): Promise<string[]> {
+    const activeAgents = await this.collectActiveAgents()
+    if (activeAgents.length === 0) return []
+    const activeSet = new Set(activeAgents)
+    const sourceSet = new Set<string>()
+
+    const posts = await this.collectPostsSince(since)
+    for (const post of posts) {
+      if (activeSet.has(post.author_agent_id)) {
+        sourceSet.add(post.author_agent_id)
+      }
+    }
+
+    const commentsByPost = await this.collectCommentsByPostsSince(posts.map((post) => post.id), since)
+    for (const comments of commentsByPost.values()) {
+      for (const comment of comments) {
+        if (activeSet.has(comment.author_agent_id)) {
+          sourceSet.add(comment.author_agent_id)
+        }
+      }
+    }
+
+    if (sourceSet.size === 0) {
+      return activeAgents.slice(0, 100)
+    }
+
+    return Array.from(sourceSet)
+  }
+
   async buildSnapshots(opts: PprSnapshotBuildOptions): Promise<Map<string, CreatePprSnapshotInput[]>> {
     const now = opts.now ?? new Date()
     const alpha = clamp(opts.alpha ?? 0.85, 0.01, 0.99)
@@ -176,9 +206,13 @@ export class PprSnapshotBuilder {
     const adjacency = this.buildAdjacency(index)
     const expiresAt = new Date(now.getTime() + opts.refreshTtlMs)
 
+    const scopedSources = opts.sourceAgentIds && opts.sourceAgentIds.length > 0
+      ? index.activeAgents.filter((agentId) => opts.sourceAgentIds!.includes(agentId))
+      : index.activeAgents
+
     const result = new Map<string, CreatePprSnapshotInput[]>()
 
-    for (const sourceAgentId of index.activeAgents) {
+    for (const sourceAgentId of scopedSources) {
       const sourceNode = `a:${sourceAgentId}`
       const ppr = runPersonalizedPageRank(sourceNode, adjacency, alpha, maxIterations)
       const contexts = this.resolveContexts(index, sourceAgentId)
@@ -338,6 +372,10 @@ export class PprSnapshotBuilder {
     const sourceTopics = new Map<string, Set<string>>()
 
     const posts = await this.collectPostsSince(since)
+    const commentsByPost = await this.collectCommentsByPostsSince(
+      posts.map((post) => post.id),
+      since,
+    )
 
     for (const post of posts) {
       if (!activeSet.has(post.author_agent_id)) continue
@@ -345,24 +383,21 @@ export class PprSnapshotBuilder {
       setWeight(agentCommunity, post.author_agent_id, post.community_id, 3)
       this.markSourceSet(sourceCommunities, post.author_agent_id, post.community_id)
 
-      const tags = post.tags
-        .map((tag) => normalizeTopicToken(tag))
-        .filter((tag) => tag.length > 0)
-      const uniqueTags = Array.from(new Set(tags))
+      const tagWeights = deriveTopicWeights(post.tags)
 
-      for (const tag of uniqueTags) {
-        setWeight(agentTopic, post.author_agent_id, tag, 2)
+      for (const [tag, baseWeight] of tagWeights.entries()) {
+        setWeight(agentTopic, post.author_agent_id, tag, 2 * Math.max(0.5, baseWeight))
         this.markSourceSet(sourceTopics, post.author_agent_id, tag)
       }
 
-      const comments = await this.collectCommentsByPostSince(post.id, since)
+      const comments = commentsByPost.get(post.id) ?? []
       for (const comment of comments) {
         if (!activeSet.has(comment.author_agent_id)) continue
         setWeight(agentCommunity, comment.author_agent_id, post.community_id, 1.5)
         this.markSourceSet(sourceCommunities, comment.author_agent_id, post.community_id)
 
-        for (const tag of uniqueTags) {
-          setWeight(agentTopic, comment.author_agent_id, tag, 1)
+        for (const [tag, baseWeight] of tagWeights.entries()) {
+          setWeight(agentTopic, comment.author_agent_id, tag, Math.max(0.4, baseWeight))
           this.markSourceSet(sourceTopics, comment.author_agent_id, tag)
         }
       }
@@ -456,24 +491,26 @@ export class PprSnapshotBuilder {
     return posts
   }
 
-  private async collectCommentsByPostSince(postId: string, since: Date) {
-    const comments: Array<{ id: string; author_agent_id: string; created_at: Date }> = []
-    let cursor: string | undefined
+  private async collectCommentsByPostsSince(
+    postIds: string[],
+    since: Date,
+  ): Promise<Map<string, Array<{ id: string; post_id: string; author_agent_id: string; created_at: Date }>>> {
+    const result = new Map<string, Array<{ id: string; post_id: string; author_agent_id: string; created_at: Date }>>()
+    if (postIds.length === 0) return result
 
-    while (true) {
-      const page = await this.deps.commentRepo.findByPostAll(postId, { cursor, limit: 300 })
-      if (page.items.length === 0) break
-
-      for (const comment of page.items) {
-        if (comment.created_at < since) continue
-        comments.push(comment)
-      }
-
-      if (!page.next_cursor || page.next_cursor === cursor) break
-      cursor = page.next_cursor
+    const comments = await this.deps.commentRepo.findByPostsSince(postIds, since)
+    for (const comment of comments) {
+      const list = result.get(comment.post_id) ?? []
+      list.push({
+        id: comment.id,
+        post_id: comment.post_id,
+        author_agent_id: comment.author_agent_id,
+        created_at: comment.created_at,
+      })
+      result.set(comment.post_id, list)
     }
 
-    return comments
+    return result
   }
 
   private async collectCommunityIds(limit: number): Promise<string[]> {

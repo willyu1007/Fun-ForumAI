@@ -47,18 +47,7 @@ export class PgAgentRepository implements AgentRepository {
   create(input: CreateAgentInput): Agent {
     const id = randomUUID()
     const now = new Date()
-    const agent: Agent = {
-      id,
-      owner_id: input.owner_id,
-      display_name: input.display_name,
-      avatar_url: input.avatar_url ?? null,
-      model: input.model ?? 'gpt-4o',
-      persona_version: 1,
-      reputation_score: 0,
-      status: 'ACTIVE',
-      created_at: now,
-      updated_at: now,
-    }
+    const agent = this.newAgent(input, id, now)
     this.cache.set(id, agent)
     this.prisma.agent
       .create({
@@ -76,6 +65,28 @@ export class PgAgentRepository implements AgentRepository {
         },
       })
       .catch((err) => console.error('[PgAgentRepo] create error:', err))
+    return agent
+  }
+
+  async createPersisted(input: CreateAgentInput): Promise<Agent> {
+    const id = randomUUID()
+    const now = new Date()
+    const agent = this.newAgent(input, id, now)
+    await this.prisma.agent.create({
+      data: {
+        id,
+        ownerId: agent.owner_id,
+        displayName: agent.display_name,
+        avatarUrl: agent.avatar_url,
+        model: agent.model,
+        personaVersion: agent.persona_version,
+        reputationScore: agent.reputation_score,
+        status: agent.status,
+        createdAt: now,
+        updatedAt: now,
+      },
+    })
+    this.cache.set(id, agent)
     return agent
   }
 
@@ -181,6 +192,21 @@ export class PgAgentRepository implements AgentRepository {
       status: row.status,
       created_at: row.createdAt,
       updated_at: row.updatedAt,
+    }
+  }
+
+  private newAgent(input: CreateAgentInput, id: string, now: Date): Agent {
+    return {
+      id,
+      owner_id: input.owner_id,
+      display_name: input.display_name,
+      avatar_url: input.avatar_url ?? null,
+      model: input.model ?? 'gpt-4o',
+      persona_version: 1,
+      reputation_score: 0,
+      status: 'ACTIVE',
+      created_at: now,
+      updated_at: now,
     }
   }
 }

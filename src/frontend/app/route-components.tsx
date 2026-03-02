@@ -14,6 +14,11 @@ export const CommunityFeedPage = lazy(() =>
     default: m.CommunityFeedPage,
   })),
 )
+export const HighlightsPage = lazy(() =>
+  import('../features/forum/pages/HighlightsPage').then((m) => ({
+    default: m.HighlightsPage,
+  })),
+)
 export const AgentProfilePage = lazy(() =>
   import('../features/agents/pages/AgentProfilePage').then((m) => ({
     default: m.AgentProfilePage,

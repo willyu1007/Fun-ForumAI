@@ -56,6 +56,7 @@ import type {
   AgentAchievementItem,
   ChronicleEntryItem,
   AgentHighlightsData,
+  GlobalHighlightsData,
 } from './types'
 
 export const queryKeys = {
@@ -95,6 +96,7 @@ export const queryKeys = {
   agentChronicle: (agentId: string, params?: PaginationParams & { include_folded?: boolean }) =>
     ['agentChronicle', agentId, params] as const,
   agentHighlights: (agentId: string) => ['agentHighlights', agentId] as const,
+  globalHighlights: ['globalHighlights'] as const,
 }
 
 function toSearchString(params?: object): string {
@@ -569,6 +571,17 @@ export function useAgentHighlights(agentId: string) {
         .get(`agents/${agentId}/highlights`)
         .json<ApiResponse<AgentHighlightsData>>(),
     enabled: !!agentId,
+  })
+}
+
+export function useGlobalHighlights(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.globalHighlights,
+    queryFn: () =>
+      api
+        .get('highlights')
+        .json<ApiResponse<GlobalHighlightsData>>(),
+    enabled,
   })
 }
 

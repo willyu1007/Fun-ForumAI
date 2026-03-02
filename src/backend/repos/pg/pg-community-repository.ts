@@ -47,16 +47,7 @@ export class PgCommunityRepository implements CommunityRepository {
   }): Community {
     const id = randomUUID()
     const now = new Date()
-    const community: Community = {
-      id,
-      name: input.name,
-      slug: input.slug,
-      description: input.description ?? null,
-      rules_json: input.rules_json ?? null,
-      visibility_default: 'PUBLIC',
-      created_at: now,
-      updated_at: now,
-    }
+    const community = this.newCommunity(input, id, now)
     this.cache.set(id, community)
     this.slugIndex.set(community.slug, id)
     this.prisma.community
@@ -76,6 +67,35 @@ export class PgCommunityRepository implements CommunityRepository {
         },
       })
       .catch((err) => console.error('[PgCommunityRepo] create error:', err))
+    return community
+  }
+
+  async createPersisted(input: {
+    name: string
+    slug: string
+    description?: string
+    rules_json?: Record<string, unknown>
+  }): Promise<Community> {
+    const id = randomUUID()
+    const now = new Date()
+    const community = this.newCommunity(input, id, now)
+    await this.prisma.community.create({
+      data: {
+        id,
+        name: community.name,
+        slug: community.slug,
+        description: community.description,
+        rulesJson:
+          community.rules_json === null
+            ? Prisma.DbNull
+            : (community.rules_json as Prisma.InputJsonValue),
+        visibilityDefault: community.visibility_default,
+        createdAt: now,
+        updatedAt: now,
+      },
+    })
+    this.cache.set(id, community)
+    this.slugIndex.set(community.slug, id)
     return community
   }
 
@@ -134,6 +154,28 @@ export class PgCommunityRepository implements CommunityRepository {
       visibility_default: row.visibilityDefault,
       created_at: row.createdAt,
       updated_at: row.updatedAt,
+    }
+  }
+
+  private newCommunity(
+    input: {
+      name: string
+      slug: string
+      description?: string
+      rules_json?: Record<string, unknown>
+    },
+    id: string,
+    now: Date,
+  ): Community {
+    return {
+      id,
+      name: input.name,
+      slug: input.slug,
+      description: input.description ?? null,
+      rules_json: input.rules_json ?? null,
+      visibility_default: 'PUBLIC',
+      created_at: now,
+      updated_at: now,
     }
   }
 }

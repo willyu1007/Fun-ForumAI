@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { AgentService } from '../agent-service.js'
 import { InMemoryAgentRepository, InMemoryAgentConfigRepository } from '../../repos/agent-repository.js'
 import { InMemoryAgentRunRepository } from '../../repos/event-repository.js'
@@ -29,6 +29,20 @@ describe('AgentService', () => {
       expect(() =>
         ctx.svc.createAgent({ owner_id: 'u1', display_name: '  ' }),
       ).toThrow('display_name is required')
+    })
+
+    it('createAgentPersisted uses repo persisted path', async () => {
+      const agentRepo = new InMemoryAgentRepository()
+      const createPersisted = vi.spyOn(agentRepo, 'createPersisted')
+      const svc = new AgentService({
+        agentRepo,
+        agentConfigRepo: new InMemoryAgentConfigRepository(),
+        agentRunRepo: new InMemoryAgentRunRepository(),
+      })
+
+      const agent = await svc.createAgentPersisted({ owner_id: 'u2', display_name: 'Persisted Bot' })
+      expect(agent.display_name).toBe('Persisted Bot')
+      expect(createPersisted).toHaveBeenCalledTimes(1)
     })
   })
 

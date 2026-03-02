@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryAchievementRepository } from '../../repos/achievement-repository.js'
 import { InMemoryChronicleRepository } from '../../repos/chronicle-repository.js'
+import { InMemoryAgentSignalLogRepository } from '../../repos/agent-signal-log-repository.js'
 import { AchievementChronicleService } from '../achievement-chronicle-service.js'
 import { AchievementsOrchestrator } from '../achievements-orchestrator.js'
 import { config } from '../../lib/config.js'
@@ -10,15 +11,18 @@ describe('AchievementsOrchestrator', () => {
   const features = config.features as unknown as Record<string, boolean>
   const originalChronicle = features.achievementChronicleV1
   const originalPublic = features.achievementPublicHighlights
+  const originalSignalLog = features.signalLogV1
 
   beforeEach(() => {
     features.achievementChronicleV1 = true
     features.achievementPublicHighlights = true
+    features.signalLogV1 = false
   })
 
   afterEach(() => {
     features.achievementChronicleV1 = originalChronicle
     features.achievementPublicHighlights = originalPublic
+    features.signalLogV1 = originalSignalLog
   })
 
   it('grants only once for same code+tier (idempotent)', async () => {
@@ -213,5 +217,47 @@ describe('AchievementsOrchestrator', () => {
     expect(dailySpotlight?.visibility).toBe('PUBLIC')
     expect(weeklyCrossScene).toBeTruthy()
     expect(weeklyCrossScene?.visibility).toBe('PUBLIC')
+  })
+
+  it('dual-writes signal logs and forces signal chronicle owner-only when signal log v1 is enabled', async () => {
+    features.signalLogV1 = true
+
+    const agentRepo = new InMemoryAgentRepository()
+    const achievementRepo = new InMemoryAchievementRepository()
+    const chronicleRepo = new InMemoryChronicleRepository()
+    const signalLogRepo = new InMemoryAgentSignalLogRepository()
+
+    const agent = agentRepo.create({ owner_id: 'u1', display_name: 'A6' })
+    const chronicleService = new AchievementChronicleService({
+      achievementRepo,
+      chronicleRepo,
+      agentRepo,
+    })
+
+    const orchestrator = new AchievementsOrchestrator({
+      agentRepo,
+      achievementRepo,
+      chronicleRepo,
+      signalLogRepo,
+      chronicleService,
+    })
+
+    await orchestrator.processSignal({
+      kind: 'forum_post',
+      agent_id: agent.id,
+      dedup_key: 'post:signal-log',
+      evidence: [{ kind: 'post', ref_id: 'post:signal-log' }],
+    })
+
+    const signalMetrics = await signalLogRepo.getMetrics(agent.id, {
+      signalKinds: ['forum_post'],
+    })
+    expect(signalMetrics.signal_counts.forum_post).toBe(1)
+
+    const chronicle = await chronicleRepo.findByAgent(agent.id, {
+      limit: 20,
+      visibility: ['PUBLIC'],
+    })
+    expect(chronicle.items.every((item) => !item.tags.includes('signal:forum_post'))).toBe(true)
   })
 })

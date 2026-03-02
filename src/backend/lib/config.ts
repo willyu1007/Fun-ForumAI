@@ -78,6 +78,13 @@ export const config = {
   },
   features: {
     allocatorPprEnabled: env.FF_ALLOCATOR_PPR_ENABLED === 'true',
+    membershipsV1: env.FF_MEMBERSHIPS_V1 === 'true',
+    globalHighlightsV1: env.FF_GLOBAL_HIGHLIGHTS_V1 === 'true',
+    signalLogV1: env.FF_SIGNAL_LOG_V1 === 'true',
+    castingDirectorV2: env.FF_CASTING_DIRECTOR_V2 === 'true',
+    pprRefreshV2: env.FF_PPR_REFRESH_V2 === 'true',
+    communityDigestV1: env.FF_COMMUNITY_DIGEST_V1 === 'true',
+    runtimeFeaturesV1: env.FF_RUNTIME_FEATURES_V1 === 'true',
     castingDirectorEnabled: env.FF_CASTING_DIRECTOR_ENABLED === 'true',
     communityPromptProfileV1: env.FF_COMMUNITY_PROMPT_PROFILE_V1 === 'true',
     chronicleSignalPolicyV2: env.FF_CHRONICLE_SIGNAL_POLICY_V2 === 'true',

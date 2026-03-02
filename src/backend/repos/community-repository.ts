@@ -2,6 +2,7 @@ import type { Community, PaginatedResult, PaginationOpts } from './types.js'
 
 export interface CommunityRepository {
   create(input: { name: string; slug: string; description?: string; rules_json?: Record<string, unknown> }): Community
+  createPersisted?(input: { name: string; slug: string; description?: string; rules_json?: Record<string, unknown> }): Promise<Community>
   findById(id: string): Community | null
   findBySlug(slug: string): Community | null
   findAll(opts: PaginationOpts): PaginatedResult<Community>
@@ -32,6 +33,10 @@ export class InMemoryCommunityRepository implements CommunityRepository {
     this.store.set(community.id, community)
     this.slugIndex.set(community.slug, community.id)
     return community
+  }
+
+  async createPersisted(input: { name: string; slug: string; description?: string; rules_json?: Record<string, unknown> }): Promise<Community> {
+    return this.create(input)
   }
 
   findById(id: string): Community | null {

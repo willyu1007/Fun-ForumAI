@@ -13,6 +13,9 @@ export interface ChronicleSignalMetrics {
   activity_days: number
   cross_scene: number
   chronicle_entries: number
+  narrative_public_entries: number
+  narrative_activity_days: number
+  narrative_entries: number
 }
 
 export interface ChronicleRepository {
@@ -184,7 +187,9 @@ export class InMemoryChronicleRepository implements ChronicleRepository {
     }
 
     const activityDays = new Set<string>()
+    const narrativeDays = new Set<string>()
     const distinctSignalKinds = new Set<string>()
+    let allPublicEntries = 0
     let publicEntries = 0
     let totalEntries = 0
 
@@ -192,14 +197,22 @@ export class InMemoryChronicleRepository implements ChronicleRepository {
       if (entry.agent_id !== agentId) continue
       if (opts.since && entry.occurred_at < opts.since) continue
 
-      totalEntries += 1
-      if (entry.visibility === 'PUBLIC') {
-        publicEntries += 1
-      }
       activityDays.add(entry.occurred_at.toISOString().slice(0, 10))
+      if (entry.visibility === 'PUBLIC') {
+        allPublicEntries += 1
+      }
 
-      for (const tag of entry.tags) {
-        if (!tag.startsWith('signal:')) continue
+      const signalTags = entry.tags.filter((tag) => tag.startsWith('signal:'))
+      const isSignal = signalTags.length > 0
+      if (!isSignal) {
+        totalEntries += 1
+        if (entry.visibility === 'PUBLIC') {
+          publicEntries += 1
+        }
+        narrativeDays.add(entry.occurred_at.toISOString().slice(0, 10))
+      }
+
+      for (const tag of signalTags) {
         const kind = tag.slice('signal:'.length)
         distinctSignalKinds.add(kind)
         if (kindSet.has(kind)) {
@@ -210,10 +223,13 @@ export class InMemoryChronicleRepository implements ChronicleRepository {
 
     return {
       signal_counts: signalCounts,
-      public_entries: publicEntries,
+      public_entries: allPublicEntries,
       activity_days: activityDays.size,
       cross_scene: distinctSignalKinds.size,
       chronicle_entries: totalEntries,
+      narrative_public_entries: publicEntries,
+      narrative_activity_days: narrativeDays.size,
+      narrative_entries: totalEntries,
     }
   }
 }

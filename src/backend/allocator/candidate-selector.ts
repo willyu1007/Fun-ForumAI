@@ -10,14 +10,19 @@ import type {
 } from './types.js'
 import type { AllocatorConfig } from './config.js'
 import { deriveTopicKey } from './ppr-topic-key.js'
+import { runtimeFeatureMetrics } from '../runtime/runtime-feature-metrics.js'
 
 const PPR_SCORE_SCALE = 2
+const DIRECTOR_THREAD_WINDOW = 6
+const DIRECTOR_THREAD_MAX_AGENT_OCCURRENCES = 2
+const DIRECTOR_THREAD_COOLDOWN_MS = 10 * 60 * 1000
 
 export interface DefaultCandidateSelectorDeps {
   graphRelevanceProvider?: GraphRelevanceProvider
   castingDirectorPolicy?: CastingDirectorPolicy
   pprEnabled?: boolean
   directorEnabled?: boolean
+  directorV2Enabled?: boolean
   resolveCommunityDirectorConfig?: (communityId: string) => CastingDirectorCommunityConfig | undefined
 }
 
@@ -30,6 +35,8 @@ export interface DefaultCandidateSelectorDeps {
  *   3. Sort + take   top-K where K = quota
  */
 export class DefaultCandidateSelector implements CandidateSelector {
+  private readonly threadSelectionHistory = new Map<string, Array<{ agent_id: string; at: number }>>()
+
   constructor(
     private readonly cfg: AllocatorConfig,
     private readonly deps: DefaultCandidateSelectorDeps = {},
@@ -54,6 +61,9 @@ export class DefaultCandidateSelector implements CandidateSelector {
           now: new Date(now),
         })
       : []
+    if (this.deps.pprEnabled) {
+      runtimeFeatureMetrics.recordPpr(pprSnapshot.length > 0)
+    }
     const pprScoreByAgent = new Map(
       pprSnapshot.map((row) => [row.candidate_agent_id, row.ppr_score] as const),
     )
@@ -91,7 +101,7 @@ export class DefaultCandidateSelector implements CandidateSelector {
       const isMember = c.community_ids.includes(event.community_id)
       if (isMember) {
         score += 3
-        reasons.push('community_member')
+        reasons.push('community_member(explicit)')
       }
 
       if (event.post_id && c.recent_thread_post_ids.includes(event.post_id)) {
@@ -148,12 +158,25 @@ export class DefaultCandidateSelector implements CandidateSelector {
       return topScored
     }
 
-    return this.deps.castingDirectorPolicy.select({
+    const directorCandidates = this.deps.directorV2Enabled
+      ? this.applyDirectorGuards(event, scored, now)
+      : scored
+
+    const selected = this.deps.castingDirectorPolicy.select({
       event,
-      scored,
+      scored: directorCandidates,
       quota,
       community_config: this.deps.resolveCommunityDirectorConfig?.(event.community_id),
     })
+
+    const roleReasons = selected.flatMap((item) => item.reasons).filter((reason) => reason.startsWith('director_role='))
+    runtimeFeatureMetrics.recordDirectorRoles(roleReasons)
+
+    if (this.deps.directorV2Enabled && event.post_id) {
+      this.recordThreadSelections(event.post_id, selected, now)
+    }
+
+    return selected
   }
 
   private extractTags(event: EventPayload): Set<string> {
@@ -161,6 +184,65 @@ export class DefaultCandidateSelector implements CandidateSelector {
       return new Set(event.tags.filter((tag): tag is string => typeof tag === 'string'))
     }
     return new Set()
+  }
+
+  private applyDirectorGuards(
+    event: EventPayload,
+    scored: ScoredCandidate[],
+    now: number,
+  ): ScoredCandidate[] {
+    if (!event.post_id) return scored
+
+    const history = this.getThreadHistory(event.post_id, now)
+    const recent = history.slice(-DIRECTOR_THREAD_WINDOW)
+    const counts = new Map<string, number>()
+    for (const item of recent) {
+      counts.set(item.agent_id, (counts.get(item.agent_id) ?? 0) + 1)
+    }
+
+    const lastSpokeAt = new Map<string, number>()
+    for (const item of history) {
+      lastSpokeAt.set(item.agent_id, Math.max(lastSpokeAt.get(item.agent_id) ?? 0, item.at))
+    }
+
+    const filtered: ScoredCandidate[] = []
+    for (const candidate of scored) {
+      const selectedInRecent = counts.get(candidate.agent_id) ?? 0
+      if (selectedInRecent >= DIRECTOR_THREAD_MAX_AGENT_OCCURRENCES) {
+        runtimeFeatureMetrics.recordDirectorGuardRejection()
+        continue
+      }
+
+      const lastAt = lastSpokeAt.get(candidate.agent_id)
+      if (lastAt && now - lastAt < DIRECTOR_THREAD_COOLDOWN_MS) {
+        runtimeFeatureMetrics.recordDirectorGuardRejection()
+        continue
+      }
+
+      filtered.push(candidate)
+    }
+
+    return filtered.length > 0 ? filtered : scored
+  }
+
+  private getThreadHistory(threadId: string, now: number): Array<{ agent_id: string; at: number }> {
+    const list = this.threadSelectionHistory.get(threadId) ?? []
+    const ttl = 24 * 60 * 60 * 1000
+    const filtered = list.filter((item) => now - item.at <= ttl)
+    if (filtered.length !== list.length) {
+      this.threadSelectionHistory.set(threadId, filtered)
+    }
+    return filtered
+  }
+
+  private recordThreadSelections(threadId: string, selected: ScoredCandidate[], now: number): void {
+    const existing = this.getThreadHistory(threadId, now)
+    const merged = [
+      ...existing,
+      ...selected.map((item) => ({ agent_id: item.agent_id, at: now })),
+    ]
+    const trimmed = merged.slice(-120)
+    this.threadSelectionHistory.set(threadId, trimmed)
   }
 }
 

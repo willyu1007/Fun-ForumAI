@@ -12,6 +12,9 @@ export type {
   Agent,
   AgentConfig,
   Community,
+  AgentCommunityMembership,
+  AgentCommunityMembershipRole,
+  AgentCommunityMembershipSource,
   DomainEvent,
   AgentRun,
   AchievementVisibility,
@@ -41,7 +44,13 @@ export type {
   CreateAgentAchievementInput,
   CreateChronicleEntryInput,
   CreatePprSnapshotInput,
+  CreateAgentCommunityMembershipInput,
+  CreateAgentSignalLogInput,
+  CreateCommunityCultureDigestInput,
   PprSnapshot,
+  AgentSignalLog,
+  CommunityCultureDigest,
+  CommunityCultureDigestStatus,
   CreateRoomInput,
   CreateChatMessageInput,
   AgentRelation,
@@ -81,6 +90,10 @@ export {
   InMemoryCommunityRepository,
 } from './community-repository.js'
 export {
+  type AgentCommunityMembershipRepository,
+  InMemoryAgentCommunityMembershipRepository,
+} from './agent-community-membership-repository.js'
+export {
   type EventRepository,
   type AgentRunRepository,
   InMemoryEventRepository,
@@ -105,9 +118,18 @@ export {
   InMemoryChronicleRepository,
 } from './chronicle-repository.js'
 export {
+  type AgentSignalLogRepository,
+  type AgentSignalMetrics,
+  InMemoryAgentSignalLogRepository,
+} from './agent-signal-log-repository.js'
+export {
   type PprSnapshotRepository,
   InMemoryPprSnapshotRepository,
 } from './ppr-snapshot-repository.js'
+export {
+  type CommunityCultureDigestRepository,
+  InMemoryCommunityCultureDigestRepository,
+} from './community-culture-digest-repository.js'
 
 export { PgPostRepository } from './pg/pg-post-repository.js'
 export { PgCommentRepository } from './pg/pg-comment-repository.js'
@@ -118,6 +140,7 @@ export { PgInclinationAssetRepository } from './pg/pg-inclination-asset-reposito
 export { PgPostMediaRepository } from './pg/pg-post-media-repository.js'
 export { PgAgentRepository, PgAgentConfigRepository } from './pg/pg-agent-repository.js'
 export { PgCommunityRepository } from './pg/pg-community-repository.js'
+export { PgAgentCommunityMembershipRepository } from './pg/pg-agent-community-membership-repository.js'
 export { PgEventRepository, PgAgentRunRepository } from './pg/pg-event-repository.js'
 export { PgRoomRepository } from './pg/pg-room-repository.js'
 export { PgMessageRepository } from './pg/pg-message-repository.js'
@@ -125,4 +148,6 @@ export { PgRelationRepository } from './pg/pg-relation-repository.js'
 export { PgStatsRepository } from './pg/pg-stats-repository.js'
 export { PgAchievementRepository } from './pg/pg-achievement-repository.js'
 export { PgChronicleRepository } from './pg/pg-chronicle-repository.js'
+export { PgAgentSignalLogRepository } from './pg/pg-agent-signal-log-repository.js'
 export { PgPprSnapshotRepository } from './pg/pg-ppr-snapshot-repository.js'
+export { PgCommunityCultureDigestRepository } from './pg/pg-community-culture-digest-repository.js'

@@ -9,6 +9,7 @@ import type { EventPayload, SelectedAgent } from '../allocator/types.js'
 import type { ExecutionContext, AgentPersona } from './types.js'
 import { config } from '../lib/config.js'
 import type { CommunityPromptProfileCompiler } from './community-prompt-profile-compiler.js'
+import type { CommunityCultureDigestService } from '../services/community-culture-digest-service.js'
 
 export interface ContextBuilderDeps {
   forumReadService: ForumReadService
@@ -19,6 +20,7 @@ export interface ContextBuilderDeps {
   promptLayerService?: PromptLayerService | null
   promptOrchestrator?: PromptOrchestrator | null
   communityPromptProfileCompiler?: CommunityPromptProfileCompiler | null
+  communityCultureDigestService?: CommunityCultureDigestService | null
 }
 
 const DEFAULT_PERSONA: AgentPersona = {
@@ -285,6 +287,9 @@ export class ContextBuilder {
               prompt_profile: this.deps.communityPromptProfileCompiler.compile({
                 communityDescription: c.description,
                 rulesJson: c.rules_json,
+                cultureDigest: config.features.communityDigestV1 && this.deps.communityCultureDigestService
+                  ? await this.deps.communityCultureDigestService.getActiveDigest(c.id)
+                  : null,
               }),
             }
           : {}),

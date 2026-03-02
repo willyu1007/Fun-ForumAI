@@ -2,9 +2,12 @@ import type { LeaderElector } from './leader-elector.js'
 import type { PprSnapshotRepository, CreatePprSnapshotInput } from '../repos/index.js'
 import type { SnapshotGraphRelevanceProvider } from '../allocator/graph-relevance-provider.js'
 import { PprSnapshotBuilder } from '../services/ppr/ppr-snapshot-builder.js'
+import { config } from '../lib/config.js'
 
 const DEFAULT_REFRESH_INTERVAL_MS = 5 * 60 * 1000
 const DEFAULT_BACKFILL_DAYS = 30
+const DEFAULT_INCREMENTAL_DAYS = 7
+const DEFAULT_FULL_BACKFILL_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 export interface PprRefreshSchedulerDeps {
   repository: PprSnapshotRepository
@@ -17,6 +20,8 @@ export interface PprRefreshSchedulerConfig {
   refreshIntervalMs?: number
   backfillDays?: number
   topKPerContext?: number
+  incrementalDays?: number
+  fullBackfillIntervalMs?: number
 }
 
 export class PprRefreshScheduler {
@@ -28,6 +33,9 @@ export class PprRefreshScheduler {
   private readonly refreshIntervalMs: number
   private readonly backfillDays: number
   private readonly topKPerContext: number
+  private readonly incrementalDays: number
+  private readonly fullBackfillIntervalMs: number
+  private lastFullBackfillAt = 0
 
   constructor(
     private readonly deps: PprRefreshSchedulerDeps,
@@ -36,6 +44,8 @@ export class PprRefreshScheduler {
     this.refreshIntervalMs = cfg.refreshIntervalMs ?? DEFAULT_REFRESH_INTERVAL_MS
     this.backfillDays = cfg.backfillDays ?? DEFAULT_BACKFILL_DAYS
     this.topKPerContext = cfg.topKPerContext ?? 40
+    this.incrementalDays = cfg.incrementalDays ?? DEFAULT_INCREMENTAL_DAYS
+    this.fullBackfillIntervalMs = cfg.fullBackfillIntervalMs ?? DEFAULT_FULL_BACKFILL_INTERVAL_MS
   }
 
   start(): void {
@@ -76,7 +86,7 @@ export class PprRefreshScheduler {
   }
 
   async runBackfillOnce(): Promise<void> {
-    await this.recompute('ppr-backfill')
+    await this.recompute('ppr-backfill', true)
   }
 
   async runRefresh(label = 'manual-refresh'): Promise<void> {
@@ -97,7 +107,7 @@ export class PprRefreshScheduler {
     }
   }
 
-  private async recompute(jobLabel: string): Promise<void> {
+  private async recompute(jobLabel: string, forceFullBackfill = false): Promise<void> {
     if (this.inflight) return
     if (!(await this.ensureLeadership())) return
 
@@ -106,7 +116,17 @@ export class PprRefreshScheduler {
 
     try {
       const now = new Date()
-      const since = new Date(now.getTime() - this.backfillDays * 24 * 60 * 60 * 1000)
+      const v2Enabled = config.features.pprRefreshV2
+      const shouldFullBackfill = forceFullBackfill
+        || !v2Enabled
+        || this.lastFullBackfillAt === 0
+        || (now.getTime() - this.lastFullBackfillAt) >= this.fullBackfillIntervalMs
+
+      const windowDays = shouldFullBackfill ? this.backfillDays : this.incrementalDays
+      const since = new Date(now.getTime() - windowDays * 24 * 60 * 60 * 1000)
+      const sourceAgentIds = v2Enabled && !shouldFullBackfill
+        ? await this.deps.builder.collectActiveSourceAgentIds(since)
+        : undefined
 
       const snapshotsBySource = await this.deps.builder.buildSnapshots({
         since,
@@ -115,6 +135,7 @@ export class PprRefreshScheduler {
         maxIterations: 20,
         topKPerContext: this.topKPerContext,
         refreshTtlMs: this.refreshIntervalMs * 2,
+        sourceAgentIds,
       })
 
       let sourceCount = 0
@@ -128,9 +149,12 @@ export class PprRefreshScheduler {
       }
 
       const purged = await this.deps.repository.purgeExpired(now)
+      if (shouldFullBackfill) {
+        this.lastFullBackfillAt = now.getTime()
+      }
       const elapsedMs = Date.now() - startedAt
       console.log(
-        `[PprRefreshScheduler] ${jobLabel} done source_agents=${sourceCount} rows=${rowCount} purged=${purged} elapsed_ms=${elapsedMs}`,
+        `[PprRefreshScheduler] ${jobLabel} done mode=${shouldFullBackfill ? 'full' : 'incremental'} window_days=${windowDays} source_agents=${sourceCount} rows=${rowCount} purged=${purged} elapsed_ms=${elapsedMs}`,
       )
     } catch (err) {
       console.error(`[PprRefreshScheduler] ${jobLabel} failed:`, err)

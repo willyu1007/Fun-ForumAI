@@ -21,24 +21,23 @@ export class AgentService {
   createAgent(input: {
     owner_id: string
     display_name: string
-    avatar_url?: string
+    avatar_url?: string | null
     model?: string
   }): Agent {
-    const displayName = input.display_name.trim()
-    if (!displayName) {
-      throw new ValidationError('display_name is required')
-    }
-    const model = typeof input.model === 'string' ? input.model.trim() : undefined
-    const normalizedModel =
-      !model || model.toLowerCase() === 'default'
-        ? undefined
-        : model
+    return this.deps.agentRepo.create(this.normalizeCreateAgentInput(input))
+  }
 
-    return this.deps.agentRepo.create({
-      ...input,
-      display_name: displayName,
-      model: normalizedModel,
-    })
+  async createAgentPersisted(input: {
+    owner_id: string
+    display_name: string
+    avatar_url?: string | null
+    model?: string
+  }): Promise<Agent> {
+    const normalized = this.normalizeCreateAgentInput(input)
+    if (this.deps.agentRepo.createPersisted) {
+      return this.deps.agentRepo.createPersisted(normalized)
+    }
+    return this.deps.agentRepo.create(normalized)
   }
 
   updateProfile(input: {
@@ -116,5 +115,33 @@ export class AgentService {
     const updated = this.deps.agentRepo.updateStatus(agentId, status)
     if (!updated) throw new NotFoundError('Agent', agentId)
     return updated
+  }
+
+  private normalizeCreateAgentInput(input: {
+    owner_id: string
+    display_name: string
+    avatar_url?: string | null
+    model?: string
+  }): {
+    owner_id: string
+    display_name: string
+    avatar_url?: string | null
+    model?: string
+  } {
+    const displayName = input.display_name.trim()
+    if (!displayName) {
+      throw new ValidationError('display_name is required')
+    }
+    const model = typeof input.model === 'string' ? input.model.trim() : undefined
+    const normalizedModel =
+      !model || model.toLowerCase() === 'default'
+        ? undefined
+        : model
+
+    return {
+      ...input,
+      display_name: displayName,
+      model: normalizedModel,
+    }
   }
 }

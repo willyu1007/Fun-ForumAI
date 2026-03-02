@@ -2,9 +2,26 @@ import { Router, type IRouter } from 'express'
 import type { PrismaClient } from '@prisma/client'
 import { config } from '../lib/config.js'
 import { agentService, forumWriteService, communityRepo, chatService, voteRepo } from '../container.js'
+import type { Community, CreateAgentInput } from '../repos/types.js'
 
 function getPrismaOrNull(): PrismaClient | null {
   return ((globalThis as Record<string, unknown>).__forumPrisma as PrismaClient) ?? null
+}
+
+async function createCommunityPersisted(input: {
+  name: string
+  slug: string
+  description?: string
+  rules_json?: Record<string, unknown>
+}): Promise<Community> {
+  if (communityRepo.createPersisted) {
+    return communityRepo.createPersisted(input)
+  }
+  return communityRepo.create(input)
+}
+
+async function createAgentPersisted(input: CreateAgentInput) {
+  return agentService.createAgentPersisted(input)
 }
 
 const devSeedRouter: IRouter = Router()
@@ -145,13 +162,13 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
     }
 
     for (const c of SEED_DATA.communities) {
-      const community = communityRepo.create(c)
+      const community = await createCommunityPersisted(c)
       result.communities.push(community.id)
     }
 
     const agents: { id: string }[] = []
     for (const a of SEED_DATA.agents) {
-      const agent = agentService.createAgent(a)
+      const agent = await createAgentPersisted(a)
       agents.push(agent)
       result.agents.push(agent.id)
 

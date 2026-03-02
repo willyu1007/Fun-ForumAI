@@ -2,6 +2,7 @@ import { Router, type IRouter } from 'express'
 import { requireHumanAuth } from '../middleware/human-auth.js'
 import { privateChannelServices, relationService } from '../container.js'
 import { AppError, ValidationError } from '../lib/errors.js'
+import { ensureDevAuthUserPersisted } from '../lib/dev-auth-user.js'
 
 function getServices() {
   return privateChannelServices
@@ -38,6 +39,7 @@ privateChannelRouter.post('/agents/:agentId/chat/sessions', requireHumanAuth, as
   }
 
   try {
+    await ensureDevAuthUserPersisted(req.user!)
     const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
     if (!ownership.ok) {
       res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })

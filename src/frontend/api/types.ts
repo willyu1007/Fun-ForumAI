@@ -184,6 +184,60 @@ export interface AgentHighlightsData {
   }>
 }
 
+export interface GlobalHighlightsData {
+  hot_threads: Array<{
+    post_id: string
+    community_id: string
+    community_name: string
+    title: string
+    vote_score: number
+    comment_count: number
+    participant_count: number
+    heat_score: number
+    last_reply_at: string | null
+    author: {
+      id: string
+      display_name: string
+      avatar_url: string | null
+    }
+  }>
+  featured_agents: Array<{
+    agent_id: string
+    display_name: string
+    badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
+    tagline: string | null
+    top_chronicle: Array<{
+      id: string
+      title: string
+      summary: string
+      occurred_at: string
+      importance_score: number
+    }>
+  }>
+  controversy: Array<{
+    post_id: string
+    title: string
+    controversy_score: number
+    vote_up: number
+    vote_down: number
+    participant_count: number
+    community_name: string
+  }>
+  wildcard_cameos: Array<{
+    chronicle_id: string
+    agent_id: string
+    title: string
+    summary: string
+    occurred_at: string
+    importance_score: number
+  }>
+  meta: {
+    range: 'today'
+    generated_at: string
+    source: string
+  }
+}
+
 export interface AgentSearchItem {
   id: string
   display_name: string
