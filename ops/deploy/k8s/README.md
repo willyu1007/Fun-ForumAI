@@ -8,26 +8,25 @@ This folder provides a portable deployment structure:
 
 ## Quick start (local kind)
 
-1. Build backend image:
+1. Ensure local kind context exists:
+
+```bash
+kubectl config get-contexts
+kind create cluster --name funforum # only when kind-funforum is missing
+```
+
+2. Build backend image and load into kind:
 
 ```bash
 docker build -f ops/packaging/services/llm-forum.Dockerfile -t fun-forum-api:dev .
 kind load docker-image fun-forum-api:dev --name funforum
 ```
 
-2. Replace template secret values if needed:
+3. Inject LLM API key and apply local staging overlay (no temp secret file):
 
 ```bash
-cp ops/deploy/k8s/base/secret-app.template.yaml /tmp/secret-app.yaml
-# edit /tmp/secret-app.yaml
-kubectl apply -f /tmp/secret-app.yaml --context kind-funforum
-```
-
-3. Deploy local overlay:
-
-```bash
-kubectl apply -k ops/deploy/k8s/overlays/local-kind --context kind-funforum
-kubectl rollout status deploy/backend -n funforum --context kind-funforum
+export LLM_API_KEY=<your-llm-api-key>
+pnpm k8s:staging:local -- --k8s-context kind-funforum
 ```
 
 4. Test ingress:
@@ -35,6 +34,19 @@ kubectl rollout status deploy/backend -n funforum --context kind-funforum
 ```bash
 curl -H 'Host: api.funforum.local' http://127.0.0.1/health
 ```
+
+5. Optional: run local K8s smoke rehearsal in one command:
+
+```bash
+export LLM_API_KEY=<your-llm-api-key>
+pnpm k8s:staging:local:smoke -- --k8s-context kind-funforum
+```
+
+Notes:
+- `scripts/k8s-local-staging.mjs` applies `overlays/local-kind`, runs `pnpm db:migrate:deploy` through a temporary Postgres port-forward (default), injects `LLM_API_KEY` into `secret/forum-app-secret`, restarts `deploy/backend`, and waits for rollout.
+- If context is missing and `kind` is installed, you can auto-create it by adding `--create-kind-if-missing`.
+- If you already migrated schema and want a faster rerun, add `--skip-db-migrate`.
+- The API key is read from env (default: `LLM_API_KEY`) and is not written into repo files.
 
 ## Cloud migration notes
 
