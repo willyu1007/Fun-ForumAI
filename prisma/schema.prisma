@@ -311,6 +311,8 @@ model AgentAchievement {
   name       String
   category   String
   tier       Int
+  scope      String                @default("global")
+  scopeKey   String                @default("__global__") @map("scope_key")
   rarity     Float                 @default(0.5)
   visibility AchievementVisibility @default(PUBLIC)
   achievedAt DateTime              @default(now()) @map("achieved_at")
@@ -321,8 +323,9 @@ model AgentAchievement {
 
   agent Agent @relation(fields: [agentId], references: [id])
 
-  @@unique([agentId, code, tier])
+  @@unique([agentId, code, tier, scope, scopeKey])
   @@index([agentId, achievedAt])
+  @@index([agentId, scope, scopeKey, achievedAt])
   @@index([agentId, visibility, achievedAt])
   @@map("agent_achievements")
 }

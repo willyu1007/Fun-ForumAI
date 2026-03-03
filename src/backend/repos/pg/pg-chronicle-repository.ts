@@ -1,5 +1,6 @@
 import { Prisma, type ChronicleEntry as PrismaChronicleEntry, type PrismaClient } from '@prisma/client'
 import type {
+  AchievementScope,
   AchievementVisibility,
   ChronicleEntry,
   ChronicleType,
@@ -190,12 +191,18 @@ export class PgChronicleRepository implements ChronicleRepository {
 
   async getSignalMetrics(
     agentId: string,
-    opts: { signalKinds: string[]; since?: Date },
+    opts: { signalKinds: string[]; since?: Date; scope?: AchievementScope; scope_key?: string },
   ): Promise<ChronicleSignalMetrics> {
     const signalKinds = opts.signalKinds.filter((kind) => kind.trim().length > 0)
     const signalTags = signalKinds.map((kind) => `signal:${kind}`)
     const sinceSql = opts.since
       ? Prisma.sql`AND "occurred_at" >= ${opts.since}`
+      : Prisma.empty
+    const scopeSql = opts.scope
+      ? Prisma.sql`AND COALESCE("meta_json"->>'scope', 'global') = ${opts.scope}`
+      : Prisma.empty
+    const scopeKeySql = opts.scope_key
+      ? Prisma.sql`AND COALESCE("meta_json"->>'scope_key', '__global__') = ${opts.scope_key}`
       : Prisma.empty
 
     const baseRows = await this.prisma.$queryRaw<
@@ -235,6 +242,8 @@ export class PgChronicleRepository implements ChronicleRepository {
       FROM "chronicle_entries"
       WHERE "agent_id" = ${agentId}
       ${sinceSql}
+      ${scopeSql}
+      ${scopeKeySql}
     `)
 
     const crossSceneRows = await this.prisma.$queryRaw<Array<{ cross_scene: bigint | number | string }>>(Prisma.sql`
@@ -245,6 +254,8 @@ export class PgChronicleRepository implements ChronicleRepository {
         CROSS JOIN LATERAL jsonb_array_elements_text(COALESCE("tags_json", '[]'::jsonb)) AS t(tag)
         WHERE "agent_id" = ${agentId}
         ${sinceSql}
+        ${scopeSql}
+        ${scopeKeySql}
           AND t.tag LIKE 'signal:%'
       ) AS s
     `)
@@ -256,6 +267,8 @@ export class PgChronicleRepository implements ChronicleRepository {
           CROSS JOIN LATERAL jsonb_array_elements_text(COALESCE("tags_json", '[]'::jsonb)) AS t(tag)
           WHERE "agent_id" = ${agentId}
           ${sinceSql}
+          ${scopeSql}
+          ${scopeKeySql}
             AND t.tag IN (${Prisma.join(signalTags)})
           GROUP BY t.tag
         `)

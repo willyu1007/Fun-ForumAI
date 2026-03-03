@@ -1,14 +1,28 @@
 import type {
   AgentAchievement,
+  AchievementScope,
   AchievementVisibility,
   CreateAgentAchievementInput,
   PaginatedResult,
   PaginationOpts,
 } from './types.js'
 
+const GLOBAL_SCOPE: AchievementScope = 'global'
+const GLOBAL_SCOPE_KEY = '__global__'
+
+export interface AchievementScopeFilter {
+  scope: AchievementScope
+  scope_key: string
+}
+
 export interface AchievementRepository {
   grant(input: CreateAgentAchievementInput): Promise<{ achievement: AgentAchievement; created: boolean }>
-  findByCodeTier(agentId: string, code: string, tier: 1 | 2 | 3): Promise<AgentAchievement | null>
+  findByCodeTier(
+    agentId: string,
+    code: string,
+    tier: 1 | 2 | 3,
+    scope?: AchievementScopeFilter,
+  ): Promise<AgentAchievement | null>
   findByAgent(
     agentId: string,
     opts: PaginationOpts & { visibility?: AchievementVisibility[] },
@@ -40,8 +54,19 @@ export class InMemoryAchievementRepository implements AchievementRepository {
   private readonly store = new Map<string, AgentAchievement>()
   private readonly uniqueIndex = new Map<string, string>()
 
+  private normalizeScope(scope?: AchievementScopeFilter): AchievementScopeFilter {
+    return {
+      scope: scope?.scope ?? GLOBAL_SCOPE,
+      scope_key: scope?.scope_key || GLOBAL_SCOPE_KEY,
+    }
+  }
+
   async grant(input: CreateAgentAchievementInput): Promise<{ achievement: AgentAchievement; created: boolean }> {
-    const key = `${input.agent_id}:${input.code}:${input.tier}`
+    const normalizedScope = this.normalizeScope({
+      scope: input.scope,
+      scope_key: input.scope_key,
+    })
+    const key = `${input.agent_id}:${input.code}:${input.tier}:${normalizedScope.scope}:${normalizedScope.scope_key}`
     const existingId = this.uniqueIndex.get(key)
     if (existingId) {
       const achievement = this.store.get(existingId)
@@ -58,6 +83,8 @@ export class InMemoryAchievementRepository implements AchievementRepository {
       name: input.name,
       category: input.category,
       tier: input.tier,
+      scope: normalizedScope.scope,
+      scope_key: normalizedScope.scope_key,
       rarity: input.rarity ?? 0.5,
       visibility: input.visibility,
       achieved_at: input.achieved_at ?? now,
@@ -73,8 +100,14 @@ export class InMemoryAchievementRepository implements AchievementRepository {
     return { achievement, created: true }
   }
 
-  async findByCodeTier(agentId: string, code: string, tier: 1 | 2 | 3): Promise<AgentAchievement | null> {
-    const id = this.uniqueIndex.get(`${agentId}:${code}:${tier}`)
+  async findByCodeTier(
+    agentId: string,
+    code: string,
+    tier: 1 | 2 | 3,
+    scope?: AchievementScopeFilter,
+  ): Promise<AgentAchievement | null> {
+    const normalizedScope = this.normalizeScope(scope)
+    const id = this.uniqueIndex.get(`${agentId}:${code}:${tier}:${normalizedScope.scope}:${normalizedScope.scope_key}`)
     if (!id) return null
     return this.store.get(id) ?? null
   }

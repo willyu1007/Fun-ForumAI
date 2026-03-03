@@ -44,6 +44,8 @@ describe('AchievementChronicleService', () => {
       name: 'Forum Post Crafter T1',
       category: 'forum',
       tier: 1,
+      scope: 'global',
+      scope_key: '__global__',
       visibility: 'PUBLIC',
       evidence: [{ kind: 'post', ref_id: 'p1' }],
     })

@@ -1,5 +1,6 @@
 import type {
   AgentSignalLog,
+  AchievementScope,
   CreateAgentSignalLogInput,
 } from './types.js'
 
@@ -16,7 +17,7 @@ export interface AgentSignalLogRepository {
   findByDedupKey(agentId: string, dedupKey: string): Promise<AgentSignalLog | null>
   getMetrics(
     agentId: string,
-    opts: { signalKinds: string[]; since?: Date },
+    opts: { signalKinds: string[]; since?: Date; scope?: AchievementScope; scope_key?: string },
   ): Promise<AgentSignalMetrics>
 }
 
@@ -67,7 +68,7 @@ export class InMemoryAgentSignalLogRepository implements AgentSignalLogRepositor
 
   async getMetrics(
     agentId: string,
-    opts: { signalKinds: string[]; since?: Date },
+    opts: { signalKinds: string[]; since?: Date; scope?: AchievementScope; scope_key?: string },
   ): Promise<AgentSignalMetrics> {
     const counts: Record<string, number> = {}
     for (const kind of opts.signalKinds) {
@@ -82,6 +83,14 @@ export class InMemoryAgentSignalLogRepository implements AgentSignalLogRepositor
     for (const entry of this.store.values()) {
       if (entry.agent_id !== agentId) continue
       if (opts.since && entry.occurred_at < opts.since) continue
+      if (opts.scope) {
+        const scope = typeof entry.meta?.scope === 'string' ? entry.meta.scope : null
+        if (scope !== opts.scope) continue
+      }
+      if (opts.scope_key) {
+        const scopeKey = typeof entry.meta?.scope_key === 'string' ? entry.meta.scope_key : null
+        if (scopeKey !== opts.scope_key) continue
+      }
 
       total += 1
       if (entry.visibility === 'PUBLIC') {

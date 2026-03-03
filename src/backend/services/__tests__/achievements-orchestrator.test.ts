@@ -49,6 +49,7 @@ describe('AchievementsOrchestrator', () => {
       agent_id: agent.id,
       dedup_key: 'post:p1',
       evidence: [{ kind: 'post', ref_id: 'p1' }],
+      metadata: { community_id: 'community-1' },
     })
 
     await orchestrator.processSignal({
@@ -56,11 +57,53 @@ describe('AchievementsOrchestrator', () => {
       agent_id: agent.id,
       dedup_key: 'post:p1',
       evidence: [{ kind: 'post', ref_id: 'p1' }],
+      metadata: { community_id: 'community-1' },
     })
 
     const achievements = await achievementRepo.findByAgent(agent.id, { limit: 50 })
     const forumTier1 = achievements.items.filter((item) => item.code === 'forum_post_crafter' && item.tier === 1)
     expect(forumTier1).toHaveLength(1)
+  })
+
+  it('supports independent grants for the same achievement code across community scopes', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const achievementRepo = new InMemoryAchievementRepository()
+    const chronicleRepo = new InMemoryChronicleRepository()
+
+    const agent = agentRepo.create({ owner_id: 'u1', display_name: 'A1-scope' })
+    const chronicleService = new AchievementChronicleService({
+      achievementRepo,
+      chronicleRepo,
+      agentRepo,
+    })
+
+    const orchestrator = new AchievementsOrchestrator({
+      agentRepo,
+      achievementRepo,
+      chronicleRepo,
+      chronicleService,
+    })
+
+    await orchestrator.processSignal({
+      kind: 'forum_post',
+      agent_id: agent.id,
+      dedup_key: 'post:scope-c1',
+      evidence: [{ kind: 'post', ref_id: 'scope-c1' }],
+      metadata: { community_id: 'community-1' },
+    })
+
+    await orchestrator.processSignal({
+      kind: 'forum_post',
+      agent_id: agent.id,
+      dedup_key: 'post:scope-c2',
+      evidence: [{ kind: 'post', ref_id: 'scope-c2' }],
+      metadata: { community_id: 'community-2' },
+    })
+
+    const achievements = await achievementRepo.findByAgent(agent.id, { limit: 50 })
+    const forumTier1 = achievements.items.filter((item) => item.code === 'forum_post_crafter' && item.tier === 1)
+    expect(forumTier1).toHaveLength(2)
+    expect(new Set(forumTier1.map((item) => item.scope_key))).toEqual(new Set(['community-1', 'community-2']))
   })
 
   it('downgrades visibility to OWNER_ONLY when evidence policy is not satisfied', async () => {
@@ -87,6 +130,7 @@ describe('AchievementsOrchestrator', () => {
       agent_id: agent.id,
       dedup_key: 'post:p2',
       evidence: [{ kind: 'activity', ref_id: 'p2' }],
+      metadata: { community_id: 'community-1' },
     })
 
     const achievements = await achievementRepo.findByAgent(agent.id, { limit: 50 })
@@ -247,6 +291,7 @@ describe('AchievementsOrchestrator', () => {
       agent_id: agent.id,
       dedup_key: 'post:signal-log',
       evidence: [{ kind: 'post', ref_id: 'post:signal-log' }],
+      metadata: { community_id: 'community-1' },
     })
 
     const signalMetrics = await signalLogRepo.getMetrics(agent.id, {

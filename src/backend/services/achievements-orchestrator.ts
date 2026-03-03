@@ -6,6 +6,7 @@ import type {
   RelationRepository,
   ChronicleEntry,
   AgentSignalLogRepository,
+  AchievementScope,
 } from '../repos/index.js'
 import type { AchievementRepository, ChronicleRepository } from '../repos/index.js'
 import { ACHIEVEMENT_DEFINITIONS_V1, type AchievementDefinition, type AchievementSignalKind } from './achievements/definitions.js'
@@ -35,6 +36,11 @@ interface MetricSnapshot {
   chronicle_entries: number
 }
 
+interface ScopeContext {
+  scope: AchievementScope
+  scope_key: string
+}
+
 export interface AchievementsOrchestratorDeps {
   agentRepo: AgentRepository
   relationRepo?: RelationRepository | null
@@ -46,6 +52,8 @@ export interface AchievementsOrchestratorDeps {
 }
 
 const SIGNAL_TAG_PREFIX = 'signal:'
+const GLOBAL_SCOPE_KEY = '__global__'
+const OWNER_SCOPE_KEY = 'owner'
 
 function startOfDay(date: Date): Date {
   const d = new Date(date)
@@ -127,38 +135,52 @@ export class AchievementsOrchestrator {
       if (event.event_type === 'POST_CREATED') {
         const authorId = typeof payload.author_agent_id === 'string' ? payload.author_agent_id : ''
         const postId = typeof payload.post_id === 'string' ? payload.post_id : ''
+        const communityId = typeof payload.community_id === 'string' ? payload.community_id : ''
         if (authorId && postId) {
           await this.processSignal({
             kind: 'forum_post',
             agent_id: authorId,
             dedup_key: `post:${postId}`,
             evidence: [{ kind: 'post', ref_id: postId }],
-            metadata: { event_id: event.id },
+            metadata: {
+              event_id: event.id,
+              ...(communityId ? { community_id: communityId } : {}),
+            },
           })
         }
       } else if (event.event_type === 'COMMENT_CREATED') {
         const authorId = typeof payload.author_agent_id === 'string' ? payload.author_agent_id : ''
         const commentId = typeof payload.comment_id === 'string' ? payload.comment_id : ''
+        const communityId = typeof payload.community_id === 'string' ? payload.community_id : ''
         if (authorId && commentId) {
           await this.processSignal({
             kind: 'forum_comment',
             agent_id: authorId,
             dedup_key: `comment:${commentId}`,
             evidence: [{ kind: 'comment', ref_id: commentId }],
-            metadata: { event_id: event.id },
+            metadata: {
+              event_id: event.id,
+              ...(communityId ? { community_id: communityId } : {}),
+            },
           })
         }
       } else if (event.event_type === 'VOTE_CAST') {
         const direction = typeof payload.direction === 'string' ? payload.direction : ''
         const targetAuthorId = typeof payload.target_author_agent_id === 'string' ? payload.target_author_agent_id : ''
         const voteId = typeof payload.vote_id === 'string' ? payload.vote_id : ''
+        const voterAgentId = typeof payload.voter_agent_id === 'string' ? payload.voter_agent_id : ''
+        const communityId = typeof payload.community_id === 'string' ? payload.community_id : ''
         if (direction === 'UP' && targetAuthorId && voteId) {
           await this.processSignal({
             kind: 'vote_received',
             agent_id: targetAuthorId,
             dedup_key: `vote:${voteId}`,
             evidence: [{ kind: 'vote', ref_id: voteId }],
-            metadata: { event_id: event.id },
+            metadata: {
+              event_id: event.id,
+              ...(communityId ? { community_id: communityId } : {}),
+              ...(voterAgentId ? { peer_agent_id: voterAgentId } : {}),
+            },
           })
         }
       }
@@ -179,6 +201,9 @@ export class AchievementsOrchestrator {
         { kind: 'private_digest', ref_id: input.session_id },
         ...(input.memory_id ? [{ kind: 'memory', ref_id: input.memory_id }] : []),
       ],
+      metadata: {
+        peer_agent_id: OWNER_SCOPE_KEY,
+      },
     })
   }
 
@@ -199,6 +224,7 @@ export class AchievementsOrchestrator {
       evidence: [{ kind: 'relation', ref_id: input.relation_id }],
       metadata: {
         to_agent_id: input.to_agent_id,
+        peer_agent_id: input.to_agent_id,
         previous_state: input.previous_state,
         next_state: input.next_state,
       },
@@ -297,13 +323,18 @@ export class AchievementsOrchestrator {
     const occurredAt = signal.occurred_at ?? new Date()
     const evidence = signal.evidence ?? []
     const signalTag = `${SIGNAL_TAG_PREFIX}${signal.kind}`
+    const signalScope = this.resolveSignalScope(signal)
     const existingAchievements = await this.deps.achievementRepo.findByAgent(signal.agent_id, { limit: 200 })
     const latestAwardByCode = new Map<string, Date>()
 
     for (const achievement of existingAchievements.items) {
-      const prev = latestAwardByCode.get(achievement.code)
+      const scopedKey = this.cooldownKey(achievement.code, {
+        scope: achievement.scope,
+        scope_key: achievement.scope_key,
+      })
+      const prev = latestAwardByCode.get(scopedKey)
       if (!prev || prev.getTime() < achievement.achieved_at.getTime()) {
-        latestAwardByCode.set(achievement.code, achievement.achieved_at)
+        latestAwardByCode.set(scopedKey, achievement.achieved_at)
       }
     }
 
@@ -338,6 +369,13 @@ export class AchievementsOrchestrator {
       ? 'signal_log_v1_owner_only'
       : signalDecision.reason
 
+    const signalMeta = {
+      ...(signal.metadata ?? {}),
+      scope: signalScope.scope,
+      scope_key: signalScope.scope_key,
+      signal_visibility_reason: effectiveSignalReason,
+    }
+
     await this.deps.chronicleService.recordChronicle({
       agent_id: signal.agent_id,
       visibility: effectiveSignalVisibility,
@@ -347,10 +385,7 @@ export class AchievementsOrchestrator {
       importance_score: signalImportance,
       evidence,
       tags: [signalTag],
-      meta: {
-        ...(signal.metadata ?? {}),
-        signal_visibility_reason: effectiveSignalReason,
-      },
+      meta: signalMeta,
       dedup_key: signal.dedup_key,
       occurred_at: occurredAt,
       maxEvidence: 5,
@@ -364,30 +399,35 @@ export class AchievementsOrchestrator {
         visibility: effectiveSignalVisibility,
         occurred_at: occurredAt,
         evidence,
-        meta: {
-          ...(signal.metadata ?? {}),
-          signal_visibility_reason: effectiveSignalReason,
-        },
+        meta: signalMeta,
         dedup_key: signal.dedup_key,
       })
     }
 
-    this.metricCache.delete(signal.agent_id)
+    this.invalidateMetricCache(signal.agent_id)
 
     const definitions = ACHIEVEMENT_DEFINITIONS_V1.filter((item) => item.triggerSignals.includes(signal.kind))
     if (definitions.length === 0) return
 
-    const metric = await this.collectMetrics(signal.agent_id)
+    const scopedMetrics = new Map<string, MetricSnapshot>()
 
     for (const definition of definitions) {
-      if (this.isInCooldown(definition, occurredAt, latestAwardByCode)) {
+      const scopeContext = this.resolveDefinitionScope(definition, signal)
+      if (!scopeContext) continue
+
+      if (this.isInCooldown(definition, occurredAt, latestAwardByCode, scopeContext)) {
         continue
       }
+
+      const metricCacheKey = this.scopeCacheKey(scopeContext)
+      const metric = scopedMetrics.get(metricCacheKey)
+        ?? await this.collectMetrics(signal.agent_id, scopeContext)
+      scopedMetrics.set(metricCacheKey, metric)
 
       const value = metric[definition.metric]
       if (value < definition.threshold) continue
 
-      const hasPrerequisites = await this.hasAllPrerequisites(signal.agent_id, definition)
+      const hasPrerequisites = await this.hasAllPrerequisites(signal.agent_id, definition, scopeContext)
       if (!hasPrerequisites) continue
 
       const requiredKinds = new Set(definition.evidencePolicy.requiredKinds)
@@ -401,12 +441,16 @@ export class AchievementsOrchestrator {
         name: definition.name,
         category: definition.category,
         tier: definition.tier,
+        scope: scopeContext.scope,
+        scope_key: scopeContext.scope_key,
         rarity: definition.rarity,
         visibility,
         achieved_at: occurredAt,
         evidence: evidence.slice(0, definition.evidencePolicy.maxEvidence),
         meta: {
           trigger_kind: signal.kind,
+          scope: scopeContext.scope,
+          scope_key: scopeContext.scope_key,
           metric: definition.metric,
           threshold: definition.threshold,
           value,
@@ -416,7 +460,10 @@ export class AchievementsOrchestrator {
 
       if (!granted.created) continue
 
-      latestAwardByCode.set(definition.code, granted.achievement.achieved_at)
+      latestAwardByCode.set(
+        this.cooldownKey(definition.code, scopeContext),
+        granted.achievement.achieved_at,
+      )
 
       await this.deps.chronicleService.recordChronicle({
         agent_id: signal.agent_id,
@@ -437,12 +484,14 @@ export class AchievementsOrchestrator {
         }),
         evidence,
         tags: [...definition.chronicleTemplate.tags, `achievement:${definition.code}`, `tier:${definition.tier}`],
-        dedup_key: `achievement:${signal.agent_id}:${definition.code}:${definition.tier}`,
+        dedup_key: `achievement:${signal.agent_id}:${definition.code}:${definition.tier}:${scopeContext.scope}:${scopeContext.scope_key}`,
         occurred_at: occurredAt,
         maxEvidence: definition.evidencePolicy.maxEvidence,
         meta: {
           code: definition.code,
           tier: definition.tier,
+          scope: scopeContext.scope,
+          scope_key: scopeContext.scope_key,
           trigger_kind: signal.kind,
         },
       })
@@ -453,27 +502,33 @@ export class AchievementsOrchestrator {
     definition: AchievementDefinition,
     occurredAt: Date,
     latestAwardByCode: Map<string, Date>,
+    scopeContext: ScopeContext,
   ): boolean {
     if (definition.cooldownMs <= 0) return false
-    const latestAward = latestAwardByCode.get(definition.code)
+    const latestAward = latestAwardByCode.get(this.cooldownKey(definition.code, scopeContext))
     if (!latestAward) return false
     return occurredAt.getTime() - latestAward.getTime() < definition.cooldownMs
   }
 
-  private async hasAllPrerequisites(agentId: string, definition: AchievementDefinition): Promise<boolean> {
+  private async hasAllPrerequisites(
+    agentId: string,
+    definition: AchievementDefinition,
+    scopeContext: ScopeContext,
+  ): Promise<boolean> {
     for (const prerequisite of definition.prerequisites) {
       const [code, tierText] = prerequisite.split(':tier')
       const tierNum = Number(tierText) as 1 | 2 | 3
       if (!code || !tierNum || Number.isNaN(tierNum)) return false
-      const existing = await this.deps.achievementRepo.findByCodeTier(agentId, code, tierNum)
+      const existing = await this.deps.achievementRepo.findByCodeTier(agentId, code, tierNum, scopeContext)
       if (!existing) return false
     }
     return true
   }
 
-  private async collectMetrics(agentId: string): Promise<MetricSnapshot> {
+  private async collectMetrics(agentId: string, scopeContext: ScopeContext): Promise<MetricSnapshot> {
+    const cacheKey = this.metricCacheKey(agentId, scopeContext)
     if (config.features.chronicleMetricsCacheV1) {
-      const cached = this.metricCache.get(agentId)
+      const cached = this.metricCache.get(cacheKey)
       if (cached && cached.expires_at > Date.now()) {
         return cached.snapshot
       }
@@ -481,14 +536,18 @@ export class AchievementsOrchestrator {
 
     const summary = await this.deps.chronicleRepo.getSignalMetrics(agentId, {
       signalKinds: AchievementsOrchestrator.METRIC_SIGNAL_KINDS,
+      scope: scopeContext.scope,
+      scope_key: scopeContext.scope_key,
     })
     const signalSummary = config.features.signalLogV1 && this.deps.signalLogRepo
       ? await this.deps.signalLogRepo.getMetrics(agentId, {
           signalKinds: AchievementsOrchestrator.METRIC_SIGNAL_KINDS,
+          scope: scopeContext.scope,
+          scope_key: scopeContext.scope_key,
         })
       : summary
 
-    const effectiveRelations = this.deps.relationRepo
+    const effectiveRelations = scopeContext.scope === 'global' && this.deps.relationRepo
       ? await this.deps.relationRepo.countOutgoingByStates(agentId, ['effective'])
       : (signalSummary.signal_counts.relation_change ?? 0)
 
@@ -506,12 +565,90 @@ export class AchievementsOrchestrator {
     }
 
     if (config.features.chronicleMetricsCacheV1) {
-      this.metricCache.set(agentId, {
+      this.metricCache.set(cacheKey, {
         expires_at: Date.now() + AchievementsOrchestrator.METRIC_CACHE_TTL_MS,
         snapshot,
       })
     }
 
     return snapshot
+  }
+
+  private metricCacheKey(agentId: string, scopeContext: ScopeContext): string {
+    return `${agentId}:${scopeContext.scope}:${scopeContext.scope_key}`
+  }
+
+  private scopeCacheKey(scopeContext: ScopeContext): string {
+    return `${scopeContext.scope}:${scopeContext.scope_key}`
+  }
+
+  private cooldownKey(code: string, scopeContext: ScopeContext): string {
+    return `${code}:${scopeContext.scope}:${scopeContext.scope_key}`
+  }
+
+  private invalidateMetricCache(agentId: string): void {
+    for (const key of this.metricCache.keys()) {
+      if (key.startsWith(`${agentId}:`)) {
+        this.metricCache.delete(key)
+      }
+    }
+  }
+
+  private resolveSignalScope(signal: AchievementSignal): ScopeContext {
+    const metadata = signal.metadata ?? {}
+    const communityId = this.getMetaString(metadata, 'community_id')
+    const peerAgentId = this.getMetaString(metadata, 'peer_agent_id')
+      ?? this.getMetaString(metadata, 'to_agent_id')
+
+    if (signal.kind === 'forum_post' || signal.kind === 'forum_comment' || signal.kind === 'vote_received') {
+      return {
+        scope: 'community',
+        scope_key: communityId || GLOBAL_SCOPE_KEY,
+      }
+    }
+
+    if (signal.kind === 'private_digest' || signal.kind === 'relation_change') {
+      return {
+        scope: 'peer',
+        scope_key: peerAgentId || OWNER_SCOPE_KEY,
+      }
+    }
+
+    return {
+      scope: 'global',
+      scope_key: GLOBAL_SCOPE_KEY,
+    }
+  }
+
+  private resolveDefinitionScope(
+    definition: AchievementDefinition,
+    signal: AchievementSignal,
+  ): ScopeContext | null {
+    const metadata = signal.metadata ?? {}
+    if (definition.scope === 'global') {
+      return { scope: 'global', scope_key: GLOBAL_SCOPE_KEY }
+    }
+
+    if (definition.scope === 'community') {
+      const communityId = this.getMetaString(metadata, 'community_id')
+      if (!communityId) return null
+      return {
+        scope: 'community',
+        scope_key: communityId,
+      }
+    }
+
+    const peerAgentId = this.getMetaString(metadata, 'peer_agent_id')
+      ?? this.getMetaString(metadata, 'to_agent_id')
+      ?? OWNER_SCOPE_KEY
+    return {
+      scope: 'peer',
+      scope_key: peerAgentId,
+    }
+  }
+
+  private getMetaString(meta: Record<string, unknown>, key: string): string | null {
+    const value = meta[key]
+    return typeof value === 'string' && value.trim().length > 0 ? value : null
   }
 }

@@ -1,4 +1,5 @@
 import type {
+  AchievementScope,
   AchievementVisibility,
   ChronicleEntry,
   ChronicleType,
@@ -40,7 +41,7 @@ export interface ChronicleRepository {
   ): Promise<number>
   getSignalMetrics(
     agentId: string,
-    opts: { signalKinds: string[]; since?: Date },
+    opts: { signalKinds: string[]; since?: Date; scope?: AchievementScope; scope_key?: string },
   ): Promise<ChronicleSignalMetrics>
 }
 
@@ -178,7 +179,7 @@ export class InMemoryChronicleRepository implements ChronicleRepository {
 
   async getSignalMetrics(
     agentId: string,
-    opts: { signalKinds: string[]; since?: Date },
+    opts: { signalKinds: string[]; since?: Date; scope?: AchievementScope; scope_key?: string },
   ): Promise<ChronicleSignalMetrics> {
     const kindSet = new Set(opts.signalKinds)
     const signalCounts: Record<string, number> = {}
@@ -196,6 +197,14 @@ export class InMemoryChronicleRepository implements ChronicleRepository {
     for (const entry of this.store.values()) {
       if (entry.agent_id !== agentId) continue
       if (opts.since && entry.occurred_at < opts.since) continue
+      if (opts.scope) {
+        const scope = typeof entry.meta?.scope === 'string' ? entry.meta.scope : null
+        if (scope !== opts.scope) continue
+      }
+      if (opts.scope_key) {
+        const scopeKey = typeof entry.meta?.scope_key === 'string' ? entry.meta.scope_key : null
+        if (scopeKey !== opts.scope_key) continue
+      }
 
       activityDays.add(entry.occurred_at.toISOString().slice(0, 10))
       if (entry.visibility === 'PUBLIC') {

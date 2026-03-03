@@ -1,4 +1,4 @@
-import type { AchievementVisibility } from '../../repos/types.js'
+import type { AchievementScope, AchievementVisibility } from '../../repos/types.js'
 
 export type AchievementTriggerMode = 'event' | 'daily' | 'weekly'
 export type AchievementSignalKind =
@@ -39,6 +39,7 @@ export interface AchievementDefinition {
   name: string
   category: string
   tier: 1 | 2 | 3
+  scope: AchievementScope
   rarity: number
   visibility: AchievementVisibility
   triggerMode: AchievementTriggerMode
@@ -62,6 +63,7 @@ interface GroupSpec {
   code: string
   name: string
   category: string
+  scope: AchievementScope
   triggerMode: AchievementTriggerMode
   triggerSignals: AchievementSignalKind[]
   metric: AchievementMetric
@@ -77,6 +79,7 @@ function buildGroup(group: GroupSpec): AchievementDefinition[] {
     name: `${group.name} T${tierSpec.tier}`,
     category: group.category,
     tier: tierSpec.tier,
+    scope: group.scope,
     rarity: tierSpec.rarity,
     visibility: tierSpec.visibility ?? 'PUBLIC',
     triggerMode: group.triggerMode,
@@ -99,6 +102,7 @@ const groups: GroupSpec[] = [
     code: 'forum_post_crafter',
     name: 'Forum Post Crafter',
     category: 'story_arc',
+    scope: 'community',
     triggerMode: 'event',
     triggerSignals: ['forum_post'],
     metric: 'posts',
@@ -119,6 +123,7 @@ const groups: GroupSpec[] = [
     code: 'forum_comment_crafter',
     name: 'Forum Comment Crafter',
     category: 'dialogue_arc',
+    scope: 'community',
     triggerMode: 'event',
     triggerSignals: ['forum_comment'],
     metric: 'comments',
@@ -139,6 +144,7 @@ const groups: GroupSpec[] = [
     code: 'vote_magnet',
     name: 'Vote Magnet',
     category: 'resonance_arc',
+    scope: 'community',
     triggerMode: 'event',
     triggerSignals: ['vote_received'],
     metric: 'votes_received',
@@ -159,6 +165,7 @@ const groups: GroupSpec[] = [
     code: 'private_digest_keeper',
     name: 'Private Digest Keeper',
     category: 'trust_arc',
+    scope: 'peer',
     triggerMode: 'event',
     triggerSignals: ['private_digest'],
     metric: 'private_digests',
@@ -179,6 +186,7 @@ const groups: GroupSpec[] = [
     code: 'relation_weaver',
     name: 'Relation Weaver',
     category: 'relationship_arc',
+    scope: 'global',
     triggerMode: 'event',
     triggerSignals: ['relation_change'],
     metric: 'effective_relations',
@@ -199,6 +207,7 @@ const groups: GroupSpec[] = [
     code: 'governance_steadfast',
     name: 'Governance Steadfast',
     category: 'governance_arc',
+    scope: 'global',
     triggerMode: 'event',
     triggerSignals: ['governance'],
     metric: 'governance_actions',
@@ -219,6 +228,7 @@ const groups: GroupSpec[] = [
     code: 'chronicle_spotlight',
     name: 'Chronicle Spotlight',
     category: 'spotlight_arc',
+    scope: 'global',
     triggerMode: 'daily',
     triggerSignals: ['batch_daily'],
     metric: 'public_entries',
@@ -239,6 +249,7 @@ const groups: GroupSpec[] = [
     code: 'daily_presence',
     name: 'Daily Presence',
     category: 'continuity_arc',
+    scope: 'global',
     triggerMode: 'daily',
     triggerSignals: ['batch_daily'],
     metric: 'activity_days',
@@ -259,6 +270,7 @@ const groups: GroupSpec[] = [
     code: 'cross_scene_actor',
     name: 'Cross Scene Actor',
     category: 'bridge_arc',
+    scope: 'global',
     triggerMode: 'weekly',
     triggerSignals: ['batch_weekly'],
     metric: 'cross_scene',
@@ -279,6 +291,7 @@ const groups: GroupSpec[] = [
     code: 'milestone_story',
     name: 'Milestone Story',
     category: 'long_arc',
+    scope: 'global',
     triggerMode: 'weekly',
     triggerSignals: ['batch_weekly'],
     metric: 'chronicle_entries',

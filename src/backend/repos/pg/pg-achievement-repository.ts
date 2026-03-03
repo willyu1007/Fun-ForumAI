@@ -1,5 +1,6 @@
 import { Prisma, type AgentAchievement as PrismaAchievement, type PrismaClient } from '@prisma/client'
 import type {
+  AchievementScope,
   AchievementVisibility,
   AgentAchievement,
   CreateAgentAchievementInput,
@@ -7,6 +8,9 @@ import type {
   PaginationOpts,
 } from '../types.js'
 import type { AchievementRepository } from '../achievement-repository.js'
+
+const GLOBAL_SCOPE: AchievementScope = 'global'
+const GLOBAL_SCOPE_KEY = '__global__'
 
 function isUniqueError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
@@ -39,6 +43,8 @@ export class PgAchievementRepository implements AchievementRepository {
   async hydrate(): Promise<void> {}
 
   async grant(input: CreateAgentAchievementInput): Promise<{ achievement: AgentAchievement; created: boolean }> {
+    const scope = input.scope || GLOBAL_SCOPE
+    const scopeKey = input.scope_key || GLOBAL_SCOPE_KEY
     try {
       const row = await this.prisma.agentAchievement.create({
         data: {
@@ -47,6 +53,8 @@ export class PgAchievementRepository implements AchievementRepository {
           name: input.name,
           category: input.category,
           tier: input.tier,
+          scope,
+          scopeKey,
           rarity: input.rarity ?? 0.5,
           visibility: input.visibility,
           achievedAt: input.achieved_at ?? new Date(),
@@ -57,19 +65,31 @@ export class PgAchievementRepository implements AchievementRepository {
       return { achievement: this.toDomain(row), created: true }
     } catch (error) {
       if (!isUniqueError(error)) throw error
-      const existing = await this.findByCodeTier(input.agent_id, input.code, input.tier)
+      const existing = await this.findByCodeTier(input.agent_id, input.code, input.tier, {
+        scope,
+        scope_key: scopeKey,
+      })
       if (!existing) throw error
       return { achievement: existing, created: false }
     }
   }
 
-  async findByCodeTier(agentId: string, code: string, tier: 1 | 2 | 3): Promise<AgentAchievement | null> {
+  async findByCodeTier(
+    agentId: string,
+    code: string,
+    tier: 1 | 2 | 3,
+    scope?: { scope: AchievementScope; scope_key: string },
+  ): Promise<AgentAchievement | null> {
+    const normalizedScope = scope?.scope ?? GLOBAL_SCOPE
+    const normalizedScopeKey = scope?.scope_key || GLOBAL_SCOPE_KEY
     const row = await this.prisma.agentAchievement.findUnique({
       where: {
-        agentId_code_tier: {
+        agentId_code_tier_scope_scopeKey: {
           agentId,
           code,
           tier,
+          scope: normalizedScope,
+          scopeKey: normalizedScopeKey,
         },
       },
     })
@@ -126,6 +146,8 @@ export class PgAchievementRepository implements AchievementRepository {
       name: row.name,
       category: row.category,
       tier: row.tier as 1 | 2 | 3,
+      scope: row.scope as AchievementScope,
+      scope_key: row.scopeKey,
       rarity: row.rarity,
       visibility: row.visibility,
       achieved_at: row.achievedAt,

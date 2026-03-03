@@ -134,6 +134,7 @@ export interface EvidenceRef {
 }
 
 export type AchievementVisibility = 'PUBLIC' | 'OWNER_ONLY'
+export type AchievementScope = 'global' | 'community' | 'peer'
 export type ChronicleType = 'ACHIEVEMENT' | 'RELATION_CHANGE' | 'HIGHLIGHT' | 'PRIVATE_DIGEST' | 'MODERATION'
 
 export interface AgentAchievementItem {
@@ -143,6 +144,8 @@ export interface AgentAchievementItem {
   name: string
   category: string
   tier: 1 | 2 | 3
+  scope: AchievementScope
+  scope_key: string
   rarity: number
   visibility: AchievementVisibility
   achieved_at: string

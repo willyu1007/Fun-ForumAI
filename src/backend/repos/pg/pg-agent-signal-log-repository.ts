@@ -1,6 +1,7 @@
 import { Prisma, type AgentSignalLog as PrismaAgentSignalLog, type PrismaClient } from '@prisma/client'
 import type {
   AgentSignalLog,
+  AchievementScope,
   CreateAgentSignalLogInput,
 } from '../types.js'
 import type {
@@ -52,11 +53,17 @@ export class PgAgentSignalLogRepository implements AgentSignalLogRepository {
 
   async getMetrics(
     agentId: string,
-    opts: { signalKinds: string[]; since?: Date },
+    opts: { signalKinds: string[]; since?: Date; scope?: AchievementScope; scope_key?: string },
   ): Promise<AgentSignalMetrics> {
     const signalKinds = opts.signalKinds.filter((kind) => kind.trim().length > 0)
     const sinceSql = opts.since
       ? Prisma.sql`AND "occurred_at" >= ${opts.since}`
+      : Prisma.empty
+    const scopeSql = opts.scope
+      ? Prisma.sql`AND COALESCE("meta_json"->>'scope', 'global') = ${opts.scope}`
+      : Prisma.empty
+    const scopeKeySql = opts.scope_key
+      ? Prisma.sql`AND COALESCE("meta_json"->>'scope_key', '__global__') = ${opts.scope_key}`
       : Prisma.empty
 
     const baseRows = await this.prisma.$queryRaw<
@@ -69,6 +76,8 @@ export class PgAgentSignalLogRepository implements AgentSignalLogRepository {
       FROM "agent_signal_logs"
       WHERE "agent_id" = ${agentId}
       ${sinceSql}
+      ${scopeSql}
+      ${scopeKeySql}
     `)
 
     const kindRows = signalKinds.length > 0
@@ -77,6 +86,8 @@ export class PgAgentSignalLogRepository implements AgentSignalLogRepository {
           FROM "agent_signal_logs"
           WHERE "agent_id" = ${agentId}
           ${sinceSql}
+          ${scopeSql}
+          ${scopeKeySql}
             AND "signal_kind" IN (${Prisma.join(signalKinds)})
           GROUP BY "signal_kind"
         `)
@@ -87,6 +98,8 @@ export class PgAgentSignalLogRepository implements AgentSignalLogRepository {
       FROM "agent_signal_logs"
       WHERE "agent_id" = ${agentId}
       ${sinceSql}
+      ${scopeSql}
+      ${scopeKeySql}
     `)
 
     const counts: Record<string, number> = {}

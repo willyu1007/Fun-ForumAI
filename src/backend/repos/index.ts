@@ -18,6 +18,7 @@ export type {
   DomainEvent,
   AgentRun,
   AchievementVisibility,
+  AchievementScope,
   ChronicleType,
   EvidenceRef,
   AgentAchievement,
