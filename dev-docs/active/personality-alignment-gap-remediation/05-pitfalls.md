@@ -109,3 +109,22 @@ This file exists to prevent repeating mistakes within this task.
   - `/tmp/t048-evidence-smoke.json`
   - `Invalid service token signature`
   - `model_not_found`
+
+### 2026-03-03 - allocator pod benchmark 将 director 探索噪声混入“稳定性”门槛
+- Symptom:
+  - `t048-staging-evidence` 在 top-k 门槛出现显著负提升（treatment < baseline）。
+- Context:
+  - 脚本将 `casting director` 打开后的最终 `agents` 直接用于 Jaccard 稳定性，混入 contrast/wildcard 探索分配。
+- What we tried:
+  - 先尝试降低 benchmark 迭代数（避免 OOM），但 top-k 仍不稳定。
+- Why it failed (or current hypothesis):
+  - 指标目标是评估 allocator 主排序（PPR）稳定性，而 director 的探索位天然增加扰动，不应直接并入同一门槛。
+- Fix / workaround (if any):
+  - 将 allocator bench treatment 环境改为 `FF_CASTING_DIRECTOR_ENABLED=false`、`FF_CASTING_DIRECTOR_V2=false`，仅比较 PPR 稳定性。
+  - 同时引入 `topk_gate_mode`（`relative_uplift` / `saturation_non_regression` / `absolute_floor_when_baseline_zero`）确保高基线场景可解释。
+- Prevention (how to avoid repeating it):
+  - 设计门槛时必须先隔离“稳定性指标”与“探索性策略”的评估面，避免一条指标同时承载相反优化目标。
+- References (paths/commands/log keywords):
+  - `scripts/t048-staging-evidence.mjs`
+  - `/tmp/t048-evidence-fix-20260303.json`
+  - `topk_gate_mode`

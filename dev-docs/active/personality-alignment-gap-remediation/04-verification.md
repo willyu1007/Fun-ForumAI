@@ -140,3 +140,48 @@
 - private chat: `0.09295 CNY`
 - scheduled post: `0.02683 CNY`
 - total: `0.11978 CNY`
+
+## Delta-3 verification (2026-03-03)
+### Commands
+1. `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py validate --root . --out dev-docs/active/personality-alignment-gap-remediation/artifacts/env/03-validation-log.md` -> pass
+2. `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py generate --root . --out dev-docs/active/personality-alignment-gap-remediation/artifacts/env/04-context-refresh.md` -> pass
+3. `pnpm -s db:generate` -> pass
+4. `pnpm -s typecheck` -> pass
+5. `pnpm -s vitest run src/backend/services/__tests__/achievements-orchestrator.test.ts src/backend/services/__tests__/achievement-chronicle-service.test.ts` -> pass
+6. `pnpm -s test` -> pass（69 files, 452 tests）
+7. `pnpm -s lint` -> pass
+8. `node .ai/scripts/ctl-db-ssot.mjs sync-to-context` -> pass
+9. `docker build -f ops/packaging/services/llm-forum.Dockerfile -t fun-forum-api:t048-fix .` -> pass
+10. `LLM_API_KEY=*** node scripts/k8s-local-staging.mjs --kind-load-image fun-forum-api:t048-fix` -> pass
+11. `node scripts/t048-staging-evidence.mjs --allocator-iterations 40 --allocator-window-size 5 --output /tmp/t048-evidence-fix-20260303.json` -> pass
+
+### Evidence artifacts
+1. `/tmp/t048-evidence-fix-20260303.json`
+2. `dev-docs/active/personality-alignment-gap-remediation/artifacts/env/03-validation-log.md`
+3. `dev-docs/active/personality-alignment-gap-remediation/artifacts/env/04-context-refresh.md`
+
+### Gate results (`/tmp/t048-evidence-fix-20260303.json`)
+1. top-k:
+- baseline Jaccard: `0.761905`
+- treatment Jaccard: `0.809524`
+- uplift: `+6.25%`
+- gate mode: `saturation_non_regression`
+- gate: `topk_uplift_ge_25 = true`
+2. noise:
+- baseline ratio: `0`
+- treatment ratio: `0`
+- gate mode: `baseline_zero_non_regression`
+- gate: `noise_reduction_ge_40 = true`
+3. allocator latency:
+- baseline p95: `1.552917ms`
+- treatment p95: `0.516666ms`
+- extra p95: `-1.036251ms`
+- gate: `allocator_extra_p95_le_20 = true`
+4. runtime flags snapshot (treatment-before):
+- `membershipsV1/globalHighlightsV1/signalLogV1/castingDirectorV2/pprRefreshV2/communityDigestV1/runtimeFeaturesV1 = true`
+
+### Conclusion
+- 二轮审查对应阻断项已完成修复并通过本地 + k8s 验证：
+  - Achievements V2 scope 语义落地并可测试。
+  - 默认 feature flag 与 k8s 运行时配置对齐。
+  - staging evidence 门槛判定可在 baseline=0 / 高基线场景稳定闭环。

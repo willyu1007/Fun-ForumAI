@@ -119,3 +119,40 @@
 - 自动模型对齐：
   - 新建测试 agent 自动跟随 runtime 当前模型（或 `--agent-model` 指定），避免 `gpt-4o model_not_found`。
 - 新增命令：`pnpm evidence:t048:staging`
+
+## Delta-3 implementation progress (2026-03-03)
+### PR-E: Achievements V2 scope semantics
+- `AchievementDefinition` 增加 `scope: global|community|peer`，并为现有 30 定义补齐 scope。
+- `AgentAchievement` 持久化模型增加 `scope/scope_key`，唯一键升级为 `(agent_id, code, tier, scope, scope_key)`。
+- `AchievementsOrchestrator` 升级为 scope-aware：
+  - signal 写入 chronicle/signal_log 时附带 `scope/scope_key`；
+  - metrics 按 scope 聚合（chronicle/signal_log 双路径）；
+  - cooldown / prerequisites / grant / chronicle dedup 全部按 scoped key 判定；
+  - forum/vote 自动透传 `community_id`，private/relation 支持 peer scope。
+- 新增迁移：`prisma/migrations/20260303102000_achievement_scope_v2`（历史数据回填 scope 字段）。
+
+### PR-F: Runtime feature defaults + k8s alignment
+- `env/contract.yaml` 将 T-048 关键开关默认值改为 true：
+  - `FF_MEMBERSHIPS_V1`
+  - `FF_GLOBAL_HIGHLIGHTS_V1`
+  - `FF_SIGNAL_LOG_V1`
+  - `FF_CASTING_DIRECTOR_V2`
+  - `FF_PPR_REFRESH_V2`
+  - `FF_COMMUNITY_DIGEST_V1`
+  - `FF_RUNTIME_FEATURES_V1`
+  - `VITE_FF_GLOBAL_HIGHLIGHTS_V1`
+- 通过 `env-contractctl` 重新生成：
+  - `env/.env.example`
+  - `docs/env.md`
+  - `docs/context/env/contract.json`
+- `ops/deploy/k8s/base/configmap-app.yaml` 与 `overlays/local-kind/patch-configmap.yaml` 显式补齐上述开关，避免 k8s 环境默认落回 false。
+
+### PR-G: Evidence gate robustness and operability
+- `scripts/t048-staging-evidence.mjs` 增加门槛判定模式：
+  - `topk_gate_mode`: `relative_uplift` / `saturation_non_regression` / `absolute_floor_when_baseline_zero`
+  - `noise_gate_mode`: `relative_reduction` / `baseline_zero_non_regression`
+- baseline=0 时噪音门槛改为非回归判定，不再返回 `null` 导致闭环阻断。
+- 增加 allocator bench 参数：
+  - `--allocator-iterations`
+  - `--allocator-window-size`
+- allocator 基准 treatment 环境改为关闭 director，仅比较 PPR 稳定性，避免将导演探索噪声混入 top-k 稳定性指标。

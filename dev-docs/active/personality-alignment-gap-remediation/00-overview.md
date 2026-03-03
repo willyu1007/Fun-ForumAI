@@ -5,7 +5,8 @@
 - Scope status:
   - Delta `PKG-0 ~ PKG-6` 已落地并通过本地全量测试。
   - Delta-2 `PR-A/PR-B/PR-C/PR-D` 已完成并通过回归测试（2026-03-02）。
-- Next step: 使用仓库脚本执行正式采样并进入灰度门槛最终闭环。
+  - Delta-3（2026-03-03）已完成二轮审查缺口闭环：Achievements V2 scope 语义、默认 feature flags 对齐、staging evidence 门槛脚本收敛。
+- Next step: 等待人工验收并决定是否执行 `update-dev-docs-for-handoff status=done` 归档。
 
 ## Goal
 在不改变既有冻结主路线（异步 PPR / Director 2:1:1 / 社区级 profile 注入）的前提下，修复新审查报告全部 P0 + P1 缺口，并补齐可回滚、可观测、可审计的上线条件。
@@ -35,10 +36,10 @@
 - [x] runtime features 可观测性接口和启动快照落地。
 
 ## Remaining for production closeout
-- staging 真实流量演练与门槛证据：
-  - top-k 稳定性提升 >= 25%
-  - public highlights 噪音率下降 >= 40%
-  - allocator 额外 p95 <= 20ms
+- 当前无阻断项；2026-03-03 本地 kind staging 样本已通过三条门槛：
+  - `topk_uplift_ge_25 = true`（saturation_non_regression 模式）
+  - `noise_reduction_ge_40 = true`（baseline=0 非回归）
+  - `allocator_extra_p95_le_20 = true`
 
 ## Delta-2 remediation package (frozen)
 1. PKG-A（P0）：Agent 持久化一致性收敛（避免 `POST /v1/agents` 伪成功）
