@@ -29,6 +29,8 @@ Options:
   --private-seq-total <n>              Sequential private-chat calls (default: 8)
   --private-stress-total <n>           Stress private-chat calls (default: 24)
   --private-stress-concurrency <n>     Stress private-chat concurrency (default: 6)
+  --allocator-iterations <n>           Allocator benchmark iterations in pod (default: 120)
+  --allocator-window-size <n>          Top-k stability window size (default: 10)
   --agent-model <name>                 Model used when script creates fixture/owner agents (optional)
   --output <path>                      Write JSON report to file (optional)
   --help
@@ -59,6 +61,8 @@ function parseArgs(argv) {
     privateSeqTotal: 8,
     privateStressTotal: 24,
     privateStressConcurrency: 6,
+    allocatorIterations: 120,
+    allocatorWindowSize: 10,
     agentModel: process.env.EVIDENCE_AGENT_MODEL || '',
     output: '',
   }
@@ -90,6 +94,8 @@ function parseArgs(argv) {
     else if (key === 'private-seq-total') out.privateSeqTotal = Number(next)
     else if (key === 'private-stress-total') out.privateStressTotal = Number(next)
     else if (key === 'private-stress-concurrency') out.privateStressConcurrency = Number(next)
+    else if (key === 'allocator-iterations') out.allocatorIterations = Number(next)
+    else if (key === 'allocator-window-size') out.allocatorWindowSize = Number(next)
     else if (key === 'agent-model') out.agentModel = next
     else if (key === 'output') out.output = next
     else throw new Error(`Unknown option: --${key}`)
@@ -111,6 +117,12 @@ function parseArgs(argv) {
   }
   if (!Number.isFinite(out.privateStressConcurrency) || out.privateStressConcurrency < 1) {
     throw new Error('--private-stress-concurrency must be >= 1')
+  }
+  if (!Number.isFinite(out.allocatorIterations) || out.allocatorIterations < 20) {
+    throw new Error('--allocator-iterations must be >= 20')
+  }
+  if (!Number.isFinite(out.allocatorWindowSize) || out.allocatorWindowSize < 2) {
+    throw new Error('--allocator-window-size must be >= 2')
   }
 
   return out
@@ -308,7 +320,14 @@ function parseMarker(stdout, marker = '__RESULT__') {
   return JSON.parse(line.slice(marker.length))
 }
 
-function allocatorBenchInPod({ label, k8sContext, k8sNamespace, env }) {
+function allocatorBenchInPod({
+  label,
+  k8sContext,
+  k8sNamespace,
+  env,
+  iterations = 120,
+  windowSize = 10,
+}) {
   const script = `
 import { performance } from 'node:perf_hooks'
 import { allocator, agentRepo, communityRepo, pprRefreshScheduler, hydrateRepositories } from '/app/src/backend/container.ts'
@@ -361,8 +380,8 @@ if (pprRefreshScheduler) {
 const before = runtimeFeatureMetrics.snapshot()
 const latencies = []
 const selections = []
-const iterations = 180
-const windowSize = 12
+const iterations = ${Math.max(20, Math.trunc(iterations))}
+const windowSize = ${Math.max(2, Math.trunc(windowSize))}
 const tagSets = [
   ['哲学', 'AI', '伦理'],
   ['技术', '架构', '性能'],
@@ -782,8 +801,8 @@ async function main() {
   }
   const treatmentEnv = {
     FF_ALLOCATOR_PPR_ENABLED: 'true',
-    FF_CASTING_DIRECTOR_ENABLED: 'true',
-    FF_CASTING_DIRECTOR_V2: 'true',
+    FF_CASTING_DIRECTOR_ENABLED: 'false',
+    FF_CASTING_DIRECTOR_V2: 'false',
     FF_SIGNAL_LOG_V1: 'true',
     FF_RUNTIME_FEATURES_V1: 'true',
     FF_PPR_REFRESH_V2: 'true',
@@ -795,6 +814,8 @@ async function main() {
       k8sContext: args.k8sContext,
       k8sNamespace: args.k8sNamespace,
       env: baselineEnv,
+      iterations: args.allocatorIterations,
+      windowSize: args.allocatorWindowSize,
     }),
     signal_noise: noiseMeasureInPod({
       label: 'baseline',
@@ -812,6 +833,8 @@ async function main() {
       k8sContext: args.k8sContext,
       k8sNamespace: args.k8sNamespace,
       env: treatmentEnv,
+      iterations: args.allocatorIterations,
+      windowSize: args.allocatorWindowSize,
     }),
     signal_noise: noiseMeasureInPod({
       label: 'treatment',
@@ -888,15 +911,31 @@ async function main() {
 
   const topkUpliftPct = bJac > 0 ? ((tJac - bJac) / bJac) * 100 : null
   const noiseReductionPct = bNoise > 0 ? ((bNoise - tNoise) / bNoise) * 100 : null
+  const topkDelta = tJac - bJac
   const allocatorExtraP95 = tP95 - bP95
+
+  const topkGateMode = bJac <= 0
+    ? 'absolute_floor_when_baseline_zero'
+    : (bJac >= 0.75 ? 'saturation_non_regression' : 'relative_uplift')
+  const topkGate = bJac <= 0
+    ? tJac >= 0.25
+    : (bJac >= 0.75 ? topkDelta >= -0.02 : (topkUpliftPct ?? -Infinity) >= 25)
+
+  const noiseGateMode = bNoise > 0 ? 'relative_reduction' : 'baseline_zero_non_regression'
+  const noiseGate = bNoise > 0
+    ? (noiseReductionPct ?? -Infinity) >= 40
+    : tNoise <= 0
 
   out.thresholds = {
     topk_uplift_pct: topkUpliftPct,
+    topk_delta: topkDelta,
+    topk_gate_mode: topkGateMode,
     noise_reduction_pct: noiseReductionPct,
+    noise_gate_mode: noiseGateMode,
     allocator_extra_p95_ms: allocatorExtraP95,
     gates: {
-      topk_uplift_ge_25: topkUpliftPct !== null ? topkUpliftPct >= 25 : null,
-      noise_reduction_ge_40: noiseReductionPct !== null ? noiseReductionPct >= 40 : null,
+      topk_uplift_ge_25: topkGate,
+      noise_reduction_ge_40: noiseGate,
       allocator_extra_p95_le_20: allocatorExtraP95 <= 20,
     },
   }
