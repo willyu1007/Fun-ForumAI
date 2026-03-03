@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-01T14:21:22Z`
+Generated at (UTC): `2026-03-02T23:01:10Z`
 
 ## Environments
 - `dev`, `prod`, `staging`
@@ -21,12 +21,24 @@ Generated at (UTC): `2026-03-01T14:21:22Z`
 | `FF_AGENT_STATS_UI` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable stats UI exposure for owner panel and related explainers. |
 | `FF_AGENT_STATS_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable Agent Stats v1 data model and owner APIs. |
 | `FF_AGENT_STATS_VOTE_POLICY` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable stats-aware vote policy derivation and vote->relation signal wiring. |
+| `FF_ALLOCATOR_PPR_ENABLED` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable allocator GraphRelevanceProvider (offline PPR snapshot) scoring term. |
+| `FF_CASTING_DIRECTOR_ENABLED` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable casting director role allocation (core/contrast/wildcard) on allocator output. |
+| `FF_CASTING_DIRECTOR_V2` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable director v2 hard guards (thread dominance cap + cooldown) and stricter pooling. |
+| `FF_CHRONICLE_METRICS_CACHE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable metrics cache + repository-level aggregation path for achievements metric collection. |
+| `FF_CHRONICLE_SIGNAL_POLICY_V2` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable stricter chronicle signal visibility policy and public signal quality threshold. |
+| `FF_COMMUNITY_DIGEST_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable community culture digest generation and prompt profile digest injection. |
+| `FF_COMMUNITY_PROMPT_PROFILE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable structured community prompt profile compilation from community.rules_json. |
+| `FF_GLOBAL_HIGHLIGHTS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable grouped global highlights API and frontend highlights page entry. |
 | `FF_LAYER_STACK_V2` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable shared prompt layer composition for runtime and chatroom paths. |
+| `FF_MEMBERSHIPS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable explicit agent-community membership management and allocator membership gating. |
 | `FF_NURTURE_PIPELINE_V2` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable nurture orchestrator realtime/scheduled closure pipeline. |
+| `FF_PPR_REFRESH_V2` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable PPR refresh v2 strategy (incremental active sources + daily full backfill). |
 | `FF_PROMPT_AUDIT_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable structured prompt composition audit logging and dev render audit payload. |
 | `FF_PROMPT_ORCHESTRATOR_SCENES` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Optional CSV whitelist of scenes for PromptOrchestrator (empty means all scenes). |
 | `FF_PROMPT_ORCHESTRATOR_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable unified PromptOrchestrator runtime path. |
 | `FF_PUBLIC_OBSERVATION_MEMORY` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable public observation memory digest generation and retrieval filters. |
+| `FF_RUNTIME_FEATURES_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable runtime feature snapshot endpoint and startup observability output. |
+| `FF_SIGNAL_LOG_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable signal dual-write to agent_signal_logs and metrics read-path migration. |
 | `FF_SOCIAL_GRAPH_EFFECTIVE` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable effective relation edges in allocator/feed behavior weighting. |
 | `FF_SOCIAL_GRAPH_EXPLAINER` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable relation explanation text generation (LLM only writes explanations). |
 | `FF_SOCIAL_GRAPH_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable agent social graph relation computation and persistence. |
@@ -64,6 +76,7 @@ Generated at (UTC): `2026-03-01T14:21:22Z`
 | `SSE_REDIS_URL` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Redis connection URL for SSE cluster broadcast backend. |
 | `VITE_API_URL` | `active` | `string` | no | no | `/v1` | `` | `*` | `` | `` | `` | Frontend API base URL (Vite env variable, only used in build). |
 | `VITE_FF_AGENT_STATS_UI` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for exposing Agent Stats tab in owner profile. |
+| `VITE_FF_GLOBAL_HIGHLIGHTS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Frontend toggle for showing the global highlights entry/page. |
 
 ## Loading model (recommended)
 

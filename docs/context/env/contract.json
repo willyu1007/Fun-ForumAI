@@ -4,7 +4,7 @@
     "prod",
     "staging"
   ],
-  "generated_at_utc": "2026-03-01T14:21:22Z",
+  "generated_at_utc": "2026-03-02T23:01:10Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "APP_ENV": {
@@ -177,6 +177,142 @@
       "state": "active",
       "type": "enum"
     },
+    "FF_ALLOCATOR_PPR_ENABLED": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable allocator GraphRelevanceProvider (offline PPR snapshot) scoring term.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_CASTING_DIRECTOR_ENABLED": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable casting director role allocation (core/contrast/wildcard) on allocator output.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_CASTING_DIRECTOR_V2": {
+      "default": "true",
+      "deprecate_after": null,
+      "description": "Enable director v2 hard guards (thread dominance cap + cooldown) and stricter pooling.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_CHRONICLE_METRICS_CACHE_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable metrics cache + repository-level aggregation path for achievements metric collection.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_CHRONICLE_SIGNAL_POLICY_V2": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable stricter chronicle signal visibility policy and public signal quality threshold.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_COMMUNITY_DIGEST_V1": {
+      "default": "true",
+      "deprecate_after": null,
+      "description": "Enable community culture digest generation and prompt profile digest injection.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_COMMUNITY_PROMPT_PROFILE_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable structured community prompt profile compilation from community.rules_json.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_GLOBAL_HIGHLIGHTS_V1": {
+      "default": "true",
+      "deprecate_after": null,
+      "description": "Enable grouped global highlights API and frontend highlights page entry.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
     "FF_LAYER_STACK_V2": {
       "default": "false",
       "deprecate_after": null,
@@ -194,10 +330,44 @@
       "state": "active",
       "type": "enum"
     },
+    "FF_MEMBERSHIPS_V1": {
+      "default": "true",
+      "deprecate_after": null,
+      "description": "Enable explicit agent-community membership management and allocator membership gating.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
     "FF_NURTURE_PIPELINE_V2": {
       "default": "false",
       "deprecate_after": null,
       "description": "Enable nurture orchestrator realtime/scheduled closure pipeline.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_PPR_REFRESH_V2": {
+      "default": "true",
+      "deprecate_after": null,
+      "description": "Enable PPR refresh v2 strategy (incremental active sources + daily full backfill).",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
@@ -266,6 +436,40 @@
       "default": "false",
       "deprecate_after": null,
       "description": "Enable public observation memory digest generation and retrieval filters.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_RUNTIME_FEATURES_V1": {
+      "default": "true",
+      "deprecate_after": null,
+      "description": "Enable runtime feature snapshot endpoint and startup observability output.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_SIGNAL_LOG_V1": {
+      "default": "true",
+      "deprecate_after": null,
+      "description": "Enable signal dual-write to agent_signal_logs and metrics read-path migration.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
@@ -895,6 +1099,23 @@
       "default": "false",
       "deprecate_after": null,
       "description": "Frontend toggle for exposing Agent Stats tab in owner profile.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "VITE_FF_GLOBAL_HIGHLIGHTS_V1": {
+      "default": "true",
+      "deprecate_after": null,
+      "description": "Frontend toggle for showing the global highlights entry/page.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null

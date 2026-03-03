@@ -6,3 +6,10 @@ metadata:
 data:
   NODE_ENV: development
   CORS_ORIGINS: http://localhost:3000
+  FF_MEMBERSHIPS_V1: "true"
+  FF_GLOBAL_HIGHLIGHTS_V1: "true"
+  FF_SIGNAL_LOG_V1: "true"
+  FF_CASTING_DIRECTOR_V2: "true"
+  FF_PPR_REFRESH_V2: "true"
+  FF_COMMUNITY_DIGEST_V1: "true"
+  FF_RUNTIME_FEATURES_V1: "true"
