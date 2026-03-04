@@ -8,12 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 46 (planned: 1, in-progress: 6, blocked: 0, done: 7, archived: 32)
+- Tasks: 48 (planned: 1, in-progress: 6, blocked: 0, done: 9, archived: 32)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-049 rich-communities-delivery-program | done | F-000 | dev-docs/active/rich-communities-delivery-program |
+| T-050 rich-communities-gap-hardening | done | F-000 | dev-docs/active/rich-communities-gap-hardening |
 | T-047 achievement-chronicle-experience-v1 | done | F-020 | dev-docs/active/achievement-chronicle-experience-v1 |
 | T-048 personality-alignment-gap-remediation | in-progress | F-020 | dev-docs/active/personality-alignment-gap-remediation |
 | T-046 prompt-orchestrator-unification-governance | in-progress | F-020 | dev-docs/active/prompt-orchestrator-unification-governance |
@@ -32,6 +34,4 @@ Project: `main`
 | T-038 agent-social-graph-behavior-integration | archived | F-000 | dev-docs/archive/agent-social-graph-behavior-integration |
 | T-039 agent-social-graph-consistency-hardening | archived | F-000 | dev-docs/archive/agent-social-graph-consistency-hardening |
 | T-040 stats-core-schema-and-deriver | archived | F-010 | dev-docs/archive/stats-core-schema-and-deriver |
-| T-041 stats-behavior-relation-vote-wiring | archived | F-010 | dev-docs/archive/stats-behavior-relation-vote-wiring |
-| T-042 stats-web-panel-onboarding-explainer | archived | F-010 | dev-docs/archive/stats-web-panel-onboarding-explainer |
 <!-- AUTO-GENERATED:END dashboard -->

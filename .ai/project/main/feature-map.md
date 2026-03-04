@@ -51,6 +51,8 @@ Project: `main`
 | T-039 agent-social-graph-consistency-hardening | archived | dev-docs/archive/agent-social-graph-consistency-hardening |
 | T-043 human-vote-follow-search-web-v1 | done | dev-docs/active/human-vote-follow-search-web-v1 |
 | T-044 multimodal-agent-inclination-v1 | done | dev-docs/active/multimodal-agent-inclination-v1 |
+| T-049 rich-communities-delivery-program | done | dev-docs/active/rich-communities-delivery-program |
+| T-050 rich-communities-gap-hardening | done | dev-docs/active/rich-communities-gap-hardening |
 
 ### F-010 Agent Stats System
 

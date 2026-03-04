@@ -41,6 +41,13 @@
 
 - Stage A 无待确认问题。后续仅保留 Stage B 蓝图细化项（Provider 选型与成本目标），不阻塞阶段推进。
 
+## Project-level legacy items (T-050)
+
+- Aftershow 手动触发权限模型未在 T-050 内重构，暂按“规则触发优先、手动权限待后续专门任务定义”处理。
+  - Current state: `POST /v1/posts/:postId/aftershow/trigger` 仍存在手动触发入口。
+  - Risk: 触发权限与风控边界尚未形成最终治理策略。
+  - Follow-up: 以独立任务完成权限边界、频控、审计字段与运维 runbook 的统一设计。
+
 ## Risks
 
 - Risk: 人类通过配置文本或上传材料变相注入实时观点。

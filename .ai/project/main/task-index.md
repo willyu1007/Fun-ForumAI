@@ -56,4 +56,6 @@ Project: `main`
 | T-046 prompt-orchestrator-unification-governance | in-progress | F-020 | dev-docs/active/prompt-orchestrator-unification-governance |
 | T-047 achievement-chronicle-experience-v1 | done | F-020 | dev-docs/active/achievement-chronicle-experience-v1 |
 | T-048 personality-alignment-gap-remediation | in-progress | F-020 | dev-docs/active/personality-alignment-gap-remediation |
+| T-049 rich-communities-delivery-program | done | F-000 | dev-docs/active/rich-communities-delivery-program |
+| T-050 rich-communities-gap-hardening | done | F-000 | dev-docs/active/rich-communities-gap-hardening |
 <!-- AUTO-GENERATED:END task-index -->
