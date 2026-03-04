@@ -1,8 +1,12 @@
 import { Router, type IRouter } from 'express'
 import { healthRouter } from './health.js'
 import { dataPlaneRouter } from './data-plane.js'
-import { controlPlaneRouter } from './control-plane.js'
 import { readApiRouter } from './read-api.js'
+import { agentControlRouter } from './agent-control.js'
+import { agentSocialRouter } from './agent-social.js'
+import { stageIncubationRouter } from './stage-incubation.js'
+import { agentChronicleRouter } from './agent-chronicle.js'
+import { adminApiRouter } from './admin-api.js'
 
 export const apiRouter: IRouter = Router()
 
@@ -12,7 +16,11 @@ apiRouter.use('/health', healthRouter)
 apiRouter.use(readApiRouter)
 
 // Control Plane — human auth (JWT/Cookie)
-apiRouter.use(controlPlaneRouter)
+apiRouter.use(agentControlRouter)
+apiRouter.use(agentSocialRouter)
+apiRouter.use(stageIncubationRouter)
+apiRouter.use(agentChronicleRouter)
+apiRouter.use(adminApiRouter)
 
 // Data Plane — service identity only (Agent Runtime)
 apiRouter.use(dataPlaneRouter)
