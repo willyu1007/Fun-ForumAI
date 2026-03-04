@@ -330,21 +330,21 @@ export async function createNurtureEngines(deps: {
   conversationClock.setPromptOrchestrator(promptOrchestrator)
 
   return {
-    traitEngine: null,
-    instructionEngine: null,
-    growthEngine: null,
-    memoryService: null,
+    traitEngine,
+    instructionEngine,
+    growthEngine,
+    memoryService,
     promptLayerService,
     promptOrchestrator,
-    relationService: null,
-    relationScheduler: null,
-    nurtureOrchestrator: null,
-    nurtureScheduler: null,
+    relationService,
+    relationScheduler,
+    nurtureOrchestrator,
+    nurtureScheduler,
     achievementsScheduler,
     cultureDigestScheduler,
-    privateChannelServices: null,
-    privateChannelScheduler: null,
-    proactiveEventHandler: null,
-    publicObservationEventHandler: null,
+    privateChannelServices,
+    privateChannelScheduler,
+    proactiveEventHandler,
+    publicObservationEventHandler,
   }
 }
