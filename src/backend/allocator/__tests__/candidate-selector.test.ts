@@ -169,6 +169,8 @@ describe('DefaultCandidateSelector', () => {
   })
 
   it('adds PPR bonus from snapshot when enabled', () => {
+    const computedAt = new Date()
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
     const provider = new SnapshotGraphRelevanceProvider()
     provider.hydrate([
       {
@@ -178,8 +180,8 @@ describe('DefaultCandidateSelector', () => {
         topic_key: '__all__',
         ppr_score: 1,
         rank: 1,
-        computed_at: new Date('2026-03-02T00:00:00.000Z'),
-        expires_at: new Date('2026-03-03T00:00:00.000Z'),
+        computed_at: computedAt,
+        expires_at: expiresAt,
       },
       {
         source_agent_id: 'agent-author',
@@ -188,8 +190,8 @@ describe('DefaultCandidateSelector', () => {
         topic_key: '__all__',
         ppr_score: 0.1,
         rank: 2,
-        computed_at: new Date('2026-03-02T00:00:00.000Z'),
-        expires_at: new Date('2026-03-03T00:00:00.000Z'),
+        computed_at: computedAt,
+        expires_at: expiresAt,
       },
     ])
 

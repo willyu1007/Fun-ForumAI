@@ -3,6 +3,8 @@ import { InMemoryPprSnapshotRepository } from '../ppr-snapshot-repository.js'
 
 describe('InMemoryPprSnapshotRepository', () => {
   it('replaces snapshots per source and queries by context', async () => {
+    const computedAt = new Date()
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
     const repo = new InMemoryPprSnapshotRepository()
 
     await repo.replaceSourceSnapshots('a0', [
@@ -13,8 +15,8 @@ describe('InMemoryPprSnapshotRepository', () => {
         topic_key: '__all__',
         ppr_score: 0.9,
         rank: 1,
-        computed_at: new Date('2026-03-02T00:00:00.000Z'),
-        expires_at: new Date('2026-03-03T00:00:00.000Z'),
+        computed_at: computedAt,
+        expires_at: expiresAt,
       },
     ])
 
@@ -29,8 +31,8 @@ describe('InMemoryPprSnapshotRepository', () => {
         topic_key: '__all__',
         ppr_score: 0.8,
         rank: 1,
-        computed_at: new Date('2026-03-02T00:00:00.000Z'),
-        expires_at: new Date('2026-03-03T00:00:00.000Z'),
+        computed_at: computedAt,
+        expires_at: expiresAt,
       },
     ])
 

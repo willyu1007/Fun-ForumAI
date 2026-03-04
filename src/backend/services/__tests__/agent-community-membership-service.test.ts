@@ -132,4 +132,99 @@ describe('AgentCommunityMembershipService', () => {
       statusCode: 404,
     })
   })
+
+  it('does not allow recovering MUTED/BANNED memberships via patch add', async () => {
+    const membershipRepo = new InMemoryAgentCommunityMembershipRepository()
+    const agentRepo = new InMemoryAgentRepository()
+    const communityRepo = new InMemoryCommunityRepository()
+    const postRepo = new InMemoryPostRepository()
+    const commentRepo = new InMemoryCommentRepository()
+
+    const agent = agentRepo.create({ owner_id: 'owner-1', display_name: 'Agent One' })
+    const community = communityRepo.create({ name: 'Muted Community', slug: 'muted-community' })
+
+    await membershipRepo.upsertActive({
+      agent_id: agent.id,
+      community_id: community.id,
+      role: 'RESIDENT',
+      source: 'MANUAL',
+    })
+    await membershipRepo.updateStatus({
+      agent_id: agent.id,
+      community_id: community.id,
+      status: 'MUTED',
+      reason: 'governance',
+      set_by: 'admin-1',
+    })
+
+    const service = new AgentCommunityMembershipService({
+      membershipRepo,
+      agentRepo,
+      communityRepo,
+      postRepo,
+      commentRepo,
+    })
+
+    await expect(service.patchMemberships({
+      agent_id: agent.id,
+      add: [community.id],
+      remove: [],
+      actor_user_id: 'owner-1',
+    })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      statusCode: 403,
+    })
+  })
+
+  it('derived backfill skips current non-ACTIVE membership', async () => {
+    const membershipRepo = new InMemoryAgentCommunityMembershipRepository()
+    const agentRepo = new InMemoryAgentRepository()
+    const communityRepo = new InMemoryCommunityRepository()
+    const postRepo = new InMemoryPostRepository()
+    const commentRepo = new InMemoryCommentRepository()
+
+    const agent = agentRepo.create({ owner_id: 'owner-1', display_name: 'Agent Backfill' })
+    const post = await postRepo.create({
+      community_id: 'comm-locked',
+      author_agent_id: agent.id,
+      title: 'seed',
+      body: 'seed',
+      visibility: 'PUBLIC',
+      state: 'APPROVED',
+    })
+    expect(post.community_id).toBe('comm-locked')
+
+    await membershipRepo.upsertActive({
+      agent_id: agent.id,
+      community_id: 'comm-locked',
+      role: 'RESIDENT',
+      source: 'MANUAL',
+    })
+    await membershipRepo.updateStatus({
+      agent_id: agent.id,
+      community_id: 'comm-locked',
+      status: 'BANNED',
+      reason: 'policy',
+      set_by: 'admin-1',
+    })
+
+    const service = new AgentCommunityMembershipService({
+      membershipRepo,
+      agentRepo,
+      communityRepo,
+      postRepo,
+      commentRepo,
+    })
+
+    const result = await service.runDerivedBackfill({
+      days: 30,
+      min_posts: 1,
+      min_comments: 1,
+    })
+
+    expect(result.skipped_existing).toBeGreaterThanOrEqual(1)
+    const current = membershipRepo.findCurrent(agent.id, 'comm-locked')
+    expect(current?.status).toBe('BANNED')
+    expect(membershipRepo.findCurrentByCommunity('comm-locked')).toHaveLength(1)
+  })
 })

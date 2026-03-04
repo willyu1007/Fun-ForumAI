@@ -1,12 +1,13 @@
 import type {
   AgentCommunityMembership,
+  AgentCommunityMembershipStatus,
   AgentCommunityMembershipRepository,
   AgentRepository,
   CommunityRepository,
   PostRepository,
   CommentRepository,
 } from '../repos/index.js'
-import { NotFoundError } from '../lib/errors.js'
+import { ForbiddenError, NotFoundError } from '../lib/errors.js'
 
 export interface AgentCommunityMembershipServiceDeps {
   membershipRepo: AgentCommunityMembershipRepository
@@ -28,6 +29,15 @@ export interface BackfillMembershipsResult {
   processed_posts: number
   upserted_memberships: number
   skipped_existing: number
+}
+
+export interface UpdateMembershipStatusInput {
+  agent_id: string
+  community_id: string
+  status: AgentCommunityMembershipStatus
+  reason?: string
+  actor_user_id: string
+  actor_role: 'admin' | 'user'
 }
 
 const DEFAULT_BACKFILL_DAYS = 30
@@ -61,6 +71,15 @@ export class AgentCommunityMembershipService {
 
     const role = input.role ?? 'resident'
     const mappedRole = role === 'guest' ? 'GUEST' : 'RESIDENT'
+
+    for (const communityId of addSet) {
+      const existing = this.deps.membershipRepo.findCurrent(input.agent_id, communityId)
+      if (existing && existing.status !== 'ACTIVE') {
+        throw new ForbiddenError(
+          `Membership status ${existing.status} cannot be recovered via memberships patch; use PATCH /v1/agents/:agentId/memberships/:communityId/status`,
+        )
+      }
+    }
 
     const added: string[] = []
     for (const communityId of addSet) {
@@ -96,6 +115,45 @@ export class AgentCommunityMembershipService {
 
   listActive(agentId: string): AgentCommunityMembership[] {
     return this.deps.membershipRepo.findActiveByAgent(agentId)
+  }
+
+  getCurrent(agentId: string, communityId: string): AgentCommunityMembership | null {
+    return this.deps.membershipRepo.findCurrent(agentId, communityId)
+  }
+
+  async updateMembershipStatus(input: UpdateMembershipStatusInput): Promise<AgentCommunityMembership> {
+    const agent = this.deps.agentRepo.findById(input.agent_id)
+    if (!agent) throw new NotFoundError('Agent', input.agent_id)
+    const community = this.deps.communityRepo.findById(input.community_id)
+    if (!community) throw new NotFoundError('Community', input.community_id)
+
+    const current = this.deps.membershipRepo.findCurrent(input.agent_id, input.community_id)
+    if (!current) {
+      throw new NotFoundError('Membership', `${input.agent_id}:${input.community_id}`)
+    }
+
+    if (input.actor_role !== 'admin') {
+      if (input.status === 'BANNED') {
+        throw new ForbiddenError('Only admin can set BANNED status')
+      }
+      if (current.status === 'BANNED') {
+        throw new ForbiddenError('Only admin can recover from BANNED status')
+      }
+    }
+
+    const updated = await this.deps.membershipRepo.updateStatus({
+      agent_id: input.agent_id,
+      community_id: input.community_id,
+      status: input.status,
+      reason: input.reason?.trim() || null,
+      set_by: input.actor_user_id,
+      set_at: new Date(),
+    })
+    if (!updated) {
+      throw new NotFoundError('Membership', `${input.agent_id}:${input.community_id}`)
+    }
+
+    return updated
   }
 
   hasAnyActiveMemberships(): boolean {
@@ -173,7 +231,7 @@ export class AgentCommunityMembershipService {
         continue
       }
 
-      const existing = this.deps.membershipRepo.findActiveByAgent(agentId).some((item) => item.community_id === communityId)
+      const existing = this.deps.membershipRepo.findCurrent(agentId, communityId)
       if (existing) {
         skippedExisting += 1
         continue

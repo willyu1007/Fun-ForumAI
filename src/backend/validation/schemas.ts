@@ -59,11 +59,87 @@ export const updateAgentMembershipsSchema = z.object({
   { message: 'add or remove is required' },
 )
 
+export const patchAgentMembershipStatusSchema = z.object({
+  status: z.enum(['ACTIVE', 'MUTED', 'BANNED']),
+  reason: z.string().max(1000).optional(),
+})
+
+export const patchCommunityStageSpecSchema = z.object({
+  version: z.literal('v1'),
+  min_tier_pool: z.enum(['T1', 'T2', 'T3', 'T4', 'T5']),
+  roles: z.record(
+    z.string(),
+    z.object({
+      min_tier: z.enum(['T1', 'T2', 'T3', 'T4', 'T5']),
+      runtime_gate: z.boolean().optional(),
+      t4_longform_only: z.boolean().optional(),
+    }),
+  ),
+  tier_gate: z.object({
+    resident_min_tier: z.enum(['T1', 'T2', 'T3', 'T4', 'T5']),
+    core_min_tier: z.enum(['T1', 'T2', 'T3', 'T4', 'T5']),
+    t4_longform_min_tier: z.enum(['T1', 'T2', 'T3', 'T4', 'T5']),
+  }),
+  strict_t4: z.object({
+    enabled: z.boolean(),
+    premod_required: z.boolean(),
+    min_sources: z.number().int().min(1),
+    grant_required: z.boolean(),
+    max_ttl_hours: z.number().int().min(1).max(168),
+    redaction: z.enum(['strong', 'standard']),
+  }),
+  aftershow: z.object({
+    mode: z.enum(['OFF', 'THRESHOLD', 'PERIODIC', 'MANUAL']),
+    threshold: z.object({
+      min_comments: z.number().int().min(0),
+      min_human_vote_score: z.number().int().min(0),
+    }),
+    periodic: z.object({
+      enabled: z.boolean(),
+      interval_hours: z.number().int().min(1).max(168),
+    }),
+  }),
+  moderation: z.object({
+    min_source_count: z.number().int().min(0).optional(),
+    premod_required: z.boolean().optional(),
+    require_strong_redaction: z.boolean().optional(),
+    thresholds: z.object({
+      low_max_score: z.number().min(0),
+      medium_max_score: z.number().min(0),
+      auto_reject_score: z.number().min(0),
+    }).optional(),
+  }).optional(),
+}).strict()
+
+export const createAudienceMessageSchema = z.object({
+  body: z.string().trim().min(1).max(20_000),
+})
+
+export const triggerAftershowSchema = z.object({
+  mode: z.enum(['AUTO', 'MANUAL']).default('AUTO'),
+  force: z.boolean().default(false),
+})
+
+export const createIncubationGrantSchema = z.object({
+  reason: z.string().min(1).max(1000),
+  ttl_hours: z.number().int().min(1).max(168).default(168),
+}).strict()
+
+export const createIncubationReviewVerdictSchema = z.object({
+  verdict: z.enum(['approve', 'reject', 'quarantine']),
+  reason: z.string().max(1000).optional(),
+}).strict()
+
 export const governanceActionSchema = z.object({
   action: z.enum(['approve', 'fold', 'quarantine', 'reject', 'ban_agent', 'unban_agent']),
   target_type: z.enum(['post', 'comment', 'message', 'agent']),
   target_id: z.string().min(1),
   reason: z.string().max(1000).optional(),
+})
+
+export const adminSeasonRotateSchema = z.object({
+  open_count: z.number().int().min(3).max(5).default(3),
+  dry_run: z.boolean().default(false),
 })
 
 export const paginationQuery = z.object({

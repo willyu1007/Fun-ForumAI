@@ -77,9 +77,23 @@ export async function listRunningPods({ context, namespace, labelSelector }) {
 
   const payload = JSON.parse(res.stdout)
   return (Array.isArray(payload?.items) ? payload.items : [])
+    .filter((item) => {
+      if (!item || item?.metadata?.deletionTimestamp) return false
+      const conditions = Array.isArray(item?.status?.conditions) ? item.status.conditions : []
+      return conditions.some((cond) => cond?.type === 'Ready' && cond?.status === 'True')
+    })
+    .sort((a, b) => {
+      const aTs = Number(Date.parse(a?.metadata?.creationTimestamp || ''))
+      const bTs = Number(Date.parse(b?.metadata?.creationTimestamp || ''))
+      if (Number.isFinite(aTs) && Number.isFinite(bTs) && aTs !== bTs) {
+        return bTs - aTs
+      }
+      const aName = String(a?.metadata?.name || '')
+      const bName = String(b?.metadata?.name || '')
+      return aName.localeCompare(bName)
+    })
     .map((x) => x?.metadata?.name)
     .filter((x) => typeof x === 'string')
-    .sort()
 }
 
 async function waitPortForwardReady(child, name, timeoutMs = 10_000) {

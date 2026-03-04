@@ -264,9 +264,23 @@ async function listRunningPods(args) {
 
   const pods = Array.isArray(payload?.items)
     ? payload.items
+        .filter((item) => {
+          if (!item || item?.metadata?.deletionTimestamp) return false
+          const conditions = Array.isArray(item?.status?.conditions) ? item.status.conditions : []
+          return conditions.some((cond) => cond?.type === 'Ready' && cond?.status === 'True')
+        })
+        .sort((a, b) => {
+          const aTs = Number(Date.parse(a?.metadata?.creationTimestamp || ''))
+          const bTs = Number(Date.parse(b?.metadata?.creationTimestamp || ''))
+          if (Number.isFinite(aTs) && Number.isFinite(bTs) && aTs !== bTs) {
+            return bTs - aTs
+          }
+          const aName = String(a?.metadata?.name || '')
+          const bName = String(b?.metadata?.name || '')
+          return aName.localeCompare(bName)
+        })
         .map((item) => item?.metadata?.name)
         .filter((name) => typeof name === 'string')
-        .sort()
     : []
 
   return pods
@@ -275,12 +289,12 @@ async function listRunningPods(args) {
 function pickTwoPods(pods, preferredPod1, preferredPod2) {
   const chosen1 = preferredPod1 || pods[0]
   if (!chosen1) {
-    throw new Error('No running pods found for the selector')
+    throw new Error('No ready running pods found for the selector')
   }
 
   const chosen2 = preferredPod2 || pods.find((pod) => pod !== chosen1)
   if (!chosen2) {
-    throw new Error('Need at least two distinct running pods for leader-election smoke')
+    throw new Error('Need at least two distinct ready running pods for leader-election smoke')
   }
 
   return { pod1: chosen1, pod2: chosen2 }

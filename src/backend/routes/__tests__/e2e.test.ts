@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import request from 'supertest'
+import jwt from 'jsonwebtoken'
 import { app } from '../../app.js'
 import { createServiceToken } from '../../middleware/service-auth.js'
 import { createDevToken } from '../../middleware/human-auth.js'
 import { config } from '../../lib/config.js'
-import { llmClient, communityRepo } from '../../container.js'
+import { llmClient, communityRepo, incubationService } from '../../container.js'
 
 const VALID_PNG_BUFFER = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/5NQAAAAASUVORK5CYII=',
@@ -171,6 +172,47 @@ describe('E2E: Read API (public)', () => {
   it('GET /v1/feed?following_only=true requires auth', async () => {
     const res = await request(app).get('/v1/feed?following_only=true')
     expect(res.status).toBe(401)
+  })
+
+  it('POST /v1/posts/:postId/audience-messages validates body length and accepts valid message', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalAudienceZone = featureFlags.audienceZoneV1
+    featureFlags.audienceZoneV1 = true
+
+    try {
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: 'agent-audience-1',
+        run_id: 'run-audience-1',
+        community_id: 'c1',
+        title: 'Audience target',
+        body: 'audience thread body',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      const validRes = await request(app)
+        .post(`/v1/posts/${postId}/audience-messages`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ body: 'Great show, keep it going.' })
+      expect(validRes.status).toBe(201)
+
+      const blankRes = await request(app)
+        .post(`/v1/posts/${postId}/audience-messages`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ body: '   ' })
+      expect(blankRes.status).toBe(400)
+      expect(blankRes.body.error.code).toBe('VALIDATION_ERROR')
+
+      const tooLongBody = 'a'.repeat(20_001)
+      const longRes = await request(app)
+        .post(`/v1/posts/${postId}/audience-messages`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ body: tooLongBody })
+      expect(longRes.status).toBe(400)
+      expect(longRes.body.error.code).toBe('VALIDATION_ERROR')
+    } finally {
+      featureFlags.audienceZoneV1 = originalAudienceZone
+    }
   })
 })
 
@@ -421,6 +463,45 @@ describe('E2E: Control Plane (human auth)', () => {
     }
   })
 
+  it('PATCH /v1/agents/:agentId/memberships cannot recover BANNED membership via add', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalMembershipFlag = featureFlags.membershipsV1
+    const originalMembershipStatusFlag = featureFlags.membershipStatusV1
+    featureFlags.membershipsV1 = true
+    featureFlags.membershipStatusV1 = true
+
+    try {
+      const community = communityRepo.create({ name: 'Membership Ban', slug: `membership-ban-${Date.now()}` })
+      const createRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Membership Ban Bot' })
+      const agentId = createRes.body.data.id as string
+
+      const addRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(addRes.status).toBe(200)
+
+      const banRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships/${community.id}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'BANNED', reason: 'policy' })
+      expect(banRes.status).toBe(200)
+
+      const recoverViaAdd = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(recoverViaAdd.status).toBe(403)
+      expect(recoverViaAdd.body.error.code).toBe('FORBIDDEN')
+    } finally {
+      featureFlags.membershipsV1 = originalMembershipFlag
+      featureFlags.membershipStatusV1 = originalMembershipStatusFlag
+    }
+  })
+
   it('GET /v1/admin/runtime/features returns feature snapshot for admin', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     const originalRuntimeFeatures = featureFlags.runtimeFeaturesV1
@@ -438,6 +519,190 @@ describe('E2E: Control Plane (human auth)', () => {
       expect(res.body.data.counters).toHaveProperty('prompt.trim_applied_calls')
     } finally {
       featureFlags.runtimeFeaturesV1 = originalRuntimeFeatures
+    }
+  })
+
+  it('POST /v1/admin/stage/season-rotate requires admin role', async () => {
+    const res = await request(app)
+      .post('/v1/admin/stage/season-rotate')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ open_count: 3, dry_run: true })
+    expect(res.status).toBe(403)
+  })
+
+  it('POST /v1/admin/stage/season-rotate supports dry_run for admin', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalStageRotation = featureFlags.stageRotationV1
+    featureFlags.stageRotationV1 = true
+
+    try {
+      const res = await request(app)
+        .post('/v1/admin/stage/season-rotate')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ open_count: 3, dry_run: true })
+      expect(res.status).toBe(200)
+      expect(res.body.data.open_count).toBe(3)
+      expect(res.body.data.dry_run).toBe(true)
+      expect(Array.isArray(res.body.data.activated)).toBe(true)
+      expect(Array.isArray(res.body.data.replaced)).toBe(true)
+    } finally {
+      featureFlags.stageRotationV1 = originalStageRotation
+    }
+  })
+
+  it('POST /v1/admin/stage/season-rotate blocks non-dry-run in production node env', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const runtimeConfig = config as unknown as { nodeEnv: string }
+    const originalStageRotation = featureFlags.stageRotationV1
+    const originalNodeEnv = runtimeConfig.nodeEnv
+    const prodAdminToken = jwt.sign(
+      { userId: 'admin-prod', email: 'admin-prod@test.com', role: 'admin' },
+      config.auth.jwtSecret,
+    )
+    featureFlags.stageRotationV1 = true
+    runtimeConfig.nodeEnv = 'production'
+
+    try {
+      const blocked = await request(app)
+        .post('/v1/admin/stage/season-rotate')
+        .set('Authorization', `Bearer ${prodAdminToken}`)
+        .send({ open_count: 3, dry_run: false })
+      expect(blocked.status).toBe(403)
+      expect(blocked.body.error.code).toBe('FORBIDDEN')
+
+      const dryRun = await request(app)
+        .post('/v1/admin/stage/season-rotate')
+        .set('Authorization', `Bearer ${prodAdminToken}`)
+        .send({ open_count: 3, dry_run: true })
+      expect(dryRun.status).toBe(200)
+      expect(dryRun.body.data.dry_run).toBe(true)
+    } finally {
+      featureFlags.stageRotationV1 = originalStageRotation
+      runtimeConfig.nodeEnv = originalNodeEnv
+    }
+  })
+
+  it('POST /v1/incubation/jobs/:jobId/grant rejects reviewer_user_id field', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalIncubation = featureFlags.incubationV1
+    featureFlags.incubationV1 = true
+
+    try {
+      const res = await request(app)
+        .post('/v1/incubation/jobs/job-unknown/grant')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          reviewer_user_id: 'spoofed-user',
+          reason: 'grant reason',
+          ttl_hours: 24,
+        })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('VALIDATION_ERROR')
+    } finally {
+      featureFlags.incubationV1 = originalIncubation
+    }
+  })
+
+  it('POST /v1/incubation/jobs/:jobId/review-verdict rejects reviewer_user_id field', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalIncubation = featureFlags.incubationV1
+    featureFlags.incubationV1 = true
+
+    try {
+      const res = await request(app)
+        .post('/v1/incubation/jobs/job-unknown/review-verdict')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          reviewer_user_id: 'spoofed-user',
+          verdict: 'approve',
+          reason: 'review reason',
+        })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('VALIDATION_ERROR')
+    } finally {
+      featureFlags.incubationV1 = originalIncubation
+    }
+  })
+
+  it('incubation grant/review routes pass authenticated actor to service', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalIncubation = featureFlags.incubationV1
+    featureFlags.incubationV1 = true
+
+    const grantSpy = vi
+      .spyOn(incubationService, 'grantJob')
+      .mockResolvedValue({
+        id: 'grant-1',
+        job_id: 'job-1',
+        reviewer_agent_id: null,
+        reviewer_user_id: 'admin1',
+        status: 'ACTIVE',
+        reason: 'grant reason',
+        ttl_hours: 24,
+        granted_at: new Date(),
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        revoked_at: null,
+        meta: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      })
+    const reviewSpy = vi
+      .spyOn(incubationService, 'reviewJob')
+      .mockResolvedValue({
+        job: {
+          id: 'job-1',
+          post_id: 'post-1',
+          community_id: 'community-1',
+          proposer_agent_id: 'agent-1',
+          status: 'PENDING',
+          strict_t4: true,
+          grant_required: true,
+          premod_required: true,
+          redaction_level: 'strong',
+          source_count: 0,
+          requested_at: new Date(),
+          expires_at: null,
+          meta: null,
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+        next_action: 'grant_required',
+      })
+
+    try {
+      const grantRes = await request(app)
+        .post('/v1/incubation/jobs/job-1/grant')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          reason: 'grant reason',
+          ttl_hours: 24,
+        })
+      expect(grantRes.status).toBe(201)
+      expect(grantSpy).toHaveBeenCalledWith({
+        job_id: 'job-1',
+        actor_user_id: 'admin1',
+        reason: 'grant reason',
+        ttl_hours: 24,
+      })
+
+      const reviewRes = await request(app)
+        .post('/v1/incubation/jobs/job-1/review-verdict')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          verdict: 'approve',
+          reason: 'review reason',
+        })
+      expect(reviewRes.status).toBe(201)
+      expect(reviewSpy).toHaveBeenCalledWith({
+        job_id: 'job-1',
+        actor_user_id: 'admin1',
+        verdict: 'approve',
+        reason: 'review reason',
+      })
+    } finally {
+      featureFlags.incubationV1 = originalIncubation
+      grantSpy.mockRestore()
+      reviewSpy.mockRestore()
     }
   })
 
