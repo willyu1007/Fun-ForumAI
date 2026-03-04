@@ -22,3 +22,35 @@
   - `scripts/k8s-smoke-utils.mjs`（共享工具）
 - 更新 `package.json`：新增 `smoke:t023:k8s` / `smoke:t024:k8s` / `smoke:t025:k8s` / `smoke:t023-t025:k8s` 命令。
 - 更新 `ops/deploy/k8s/README.md`：补充 T-023~T-025 本地 smoke 脚本用法。
+
+## 2026-03-04 — T-023~T-025 稳定通过收敛
+- 基线快照（按用户要求全量提交并直推 main）：
+  - commit: `57f62a3`
+  - message: `chore: checkpoint full workspace before t023-t025 stability convergence`
+- Runtime 内存与启动路径收敛：
+  - `src/backend/container.ts`：
+    - `FF_ALLOCATOR_PPR_ENABLED=false` 时跳过 `pprSnapshotRepo.listUnexpired(...)` 与 `graphRelevanceProvider.hydrate(...)`，并输出 `PPR hydration skipped` 日志。
+  - `ops/deploy/k8s/overlays/local-kind/patch-configmap.yaml`：
+    - 新增 `NODE_OPTIONS=--max-old-space-size=1024`。
+  - `ops/deploy/k8s/overlays/local-kind/patch-backend-resources.yaml`：
+    - backend 资源提升为 `requests.memory=512Mi` / `limits.memory=2Gi`。
+  - `ops/deploy/k8s/overlays/local-kind/kustomization.yaml`：
+    - 接入 `patch-backend-resources.yaml`。
+- T-023~T-025 脚本收敛：
+  - `scripts/k8s-smoke-utils.mjs`：
+    - `parseCliArgs` 忽略裸 `--`。
+    - `runCommandCapture` 失败信息合并 `stderr/stdout`。
+    - 新增 `waitForReadyPods(...)`。
+  - `scripts/runtime-staging-smoke.mjs`：
+    - 新增 `--queue-drift-allowance`、`--leader-settle-ms`。
+    - `--discover-nodes-k8s` 路径先等 2 个 ready pod。
+    - queue drain 由“回 baseline”升级为“阈值回落 / 峰值回落 / 高基线容错”三段判定，并输出结构化上下文。
+  - `scripts/t023-runtime-k8s-smoke-suite.mjs`：
+    - 默认 `--wait-drain-ms` 提升到 `180000`。
+  - `scripts/t024-consistency-smoke.mjs`、`scripts/t025-sse-fanout-smoke.mjs`：
+    - 执行前统一 `waitForReadyPods(min=2)`。
+  - `scripts/t025-sse-fanout-smoke.mjs`：
+    - watcher 改为目标 post_id 精准匹配，缓存 pre-target 事件，规避并发噪声误命中。
+- 集群发布动作：
+  - 构建并加载新镜像 `fun-forum-api:dev` 到 kind。
+  - `k8s:staging:local --skip-db-migrate` 应用 overlay + secret 注入 + rollout。

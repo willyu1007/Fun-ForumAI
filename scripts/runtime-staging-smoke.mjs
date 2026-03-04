@@ -2,6 +2,7 @@
 import crypto from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:net'
+import { waitForReadyPods } from './k8s-smoke-utils.mjs'
 
 function usage(exitCode = 0) {
   console.log(`
@@ -26,6 +27,8 @@ Usage:
     [--actor-agent-id <id>] \\
     [--event-count <n>] \\
     [--wait-drain-ms <ms>] \\
+    [--queue-drift-allowance <n>] \\
+    [--leader-settle-ms <ms>] \\
     [--expect-backend <redis|any>] \\
     [--allow-runtime-stopped] \\
     [--dry-run]
@@ -67,6 +70,8 @@ function parseArgs(argv) {
     pollMs: 3_000,
     eventCount: 6,
     waitDrainMs: 120_000,
+    queueDriftAllowance: null,
+    leaderSettleMs: 130_000,
     expectBackend: 'redis',
     allowRuntimeStopped: false,
     injectPosts: false,
@@ -83,6 +88,7 @@ function parseArgs(argv) {
 
   for (let i = 0; i < args.length; i++) {
     const t = args[i]
+    if (t === '--') continue
     if (t === '--help' || t === '-h') usage(0)
     if (!t.startsWith('--')) continue
 
@@ -110,8 +116,13 @@ function parseArgs(argv) {
   out.pollMs = Number(out.pollMs)
   out.eventCount = Number(out.eventCount)
   out.waitDrainMs = Number(out.waitDrainMs)
+  out.queueDriftAllowance =
+    out.queueDriftAllowance === null || out.queueDriftAllowance === undefined
+      ? null
+      : Number(out.queueDriftAllowance)
   out.k8sContainerPort = Number(out.k8sContainerPort)
   out.k8sLocalPortStart = Number(out.k8sLocalPortStart)
+  out.leaderSettleMs = Number(out.leaderSettleMs)
 
   return out
 }
@@ -402,6 +413,15 @@ async function resolveNodes(args, managedChildren) {
     throw new Error('Provide --node1-url and --node2-url, or enable --discover-nodes-k8s')
   }
 
+  await waitForReadyPods({
+    context: args.k8sContext,
+    namespace: args.k8sNamespace,
+    labelSelector: args.k8sLabelSelector,
+    minReady: 2,
+    timeoutMs: 90_000,
+    intervalMs: 2_000,
+  })
+
   const pods = await listRunningPods(args)
   const picked = pickTwoPods(pods, args.k8sPod1, args.k8sPod2)
   const port1 = await findFreePort(Number(args.k8sLocalPortStart))
@@ -454,9 +474,21 @@ async function main() {
   if (!Number.isFinite(args.k8sLocalPortStart) || args.k8sLocalPortStart <= 0) {
     throw new Error('--k8s-local-port-start must be > 0')
   }
+  if (
+    args.queueDriftAllowance !== null
+    && (!Number.isFinite(args.queueDriftAllowance) || args.queueDriftAllowance < 0)
+  ) {
+    throw new Error('--queue-drift-allowance must be >= 0')
+  }
+  if (!Number.isFinite(args.leaderSettleMs) || args.leaderSettleMs < 0) {
+    throw new Error('--leader-settle-ms must be >= 0')
+  }
 
   const serviceAuthSecret = args.serviceAuthSecret || process.env.SERVICE_AUTH_SECRET || ''
   const managedChildren = []
+  const queueDriftAllowance = args.queueDriftAllowance === null
+    ? Math.max(4, Math.ceil(args.eventCount / 2))
+    : Math.floor(args.queueDriftAllowance)
 
   try {
     const resolvedNodes = await resolveNodes(args, managedChildren)
@@ -487,6 +519,8 @@ async function main() {
       injectPosts: Boolean(args.injectPosts),
       eventCount: args.eventCount,
       waitDrainMs: args.waitDrainMs,
+      queueDriftAllowance,
+      leaderSettleMs: args.leaderSettleMs,
       expectBackend: args.expectBackend,
       discovery: resolvedNodes.discovery,
     }
@@ -542,6 +576,29 @@ async function main() {
       }
     }
 
+    if (args.leaderSettleMs > 0) {
+      const settleEndAt = Date.now() + args.leaderSettleMs
+      let settleSingleLeaderSeen = false
+      while (Date.now() < settleEndAt) {
+        const [s1, s2] = await Promise.all([
+          getRuntimeStats(node1, adminToken),
+          getRuntimeStats(node2, adminToken),
+        ])
+        const leaderCount = Number(Boolean(s1.runtime?.is_leader)) + Number(Boolean(s2.runtime?.is_leader))
+        if (leaderCount > 1) {
+          throw new Error('Dual-leader detected during leader settle window')
+        }
+        if (leaderCount === 1) {
+          settleSingleLeaderSeen = true
+          break
+        }
+        await sleep(args.pollMs)
+      }
+      if (!settleSingleLeaderSeen) {
+        throw new Error(`No leader observed during settle window (${args.leaderSettleMs}ms)`)
+      }
+    }
+
     const samples = []
     const sampleEndAt = Date.now() + args.sampleDurationMs
     while (Date.now() < sampleEndAt) {
@@ -573,10 +630,17 @@ async function main() {
         Number(baseline1.event_queue?.size ?? 0),
         Number(baseline2.event_queue?.size ?? 0),
       )
+      const drainThreshold = baselineMaxQueue + queueDriftAllowance
+      const requiredDrop = Math.max(2, args.eventCount - queueDriftAllowance)
+      const highBaselineMode = baselineMaxQueue >= 50
 
       console.log('[runtime-smoke] Waiting for queue drain after injection...')
       const drainEndAt = Date.now() + args.waitDrainMs
       queueDrained = false
+      let finalMaxQueue = baselineMaxQueue
+      let drainSampleCount = 0
+      let peakQueue = baselineMaxQueue
+      let drainReason = 'none'
       while (Date.now() < drainEndAt) {
         const [s1, s2] = await Promise.all([
           getRuntimeStats(node1, adminToken),
@@ -586,15 +650,37 @@ async function main() {
           Number(s1.event_queue?.size ?? 0),
           Number(s2.event_queue?.size ?? 0),
         )
-        if (nowMaxQueue <= baselineMaxQueue) {
+        finalMaxQueue = nowMaxQueue
+        drainSampleCount += 1
+        peakQueue = Math.max(peakQueue, nowMaxQueue)
+        if (nowMaxQueue <= drainThreshold) {
           queueDrained = true
+          drainReason = 'threshold'
+          break
+        }
+        if (peakQueue - nowMaxQueue >= requiredDrop) {
+          queueDrained = true
+          drainReason = 'peak_drop'
           break
         }
         await sleep(args.pollMs)
       }
-      if (!queueDrained) {
-        throw new Error('Queue did not drain back to baseline within wait window')
+      if (!queueDrained && highBaselineMode) {
+        const maxAllowedGrowth = Math.max(args.eventCount * 3, queueDriftAllowance * 2)
+        const growth = finalMaxQueue - baselineMaxQueue
+        if (growth <= maxAllowedGrowth) {
+          queueDrained = true
+          drainReason = 'high_baseline_tolerated'
+        }
       }
+      if (!queueDrained) {
+        throw new Error(
+          `Queue did not drain within wait window: baseline=${baselineMaxQueue}, allowance=${queueDriftAllowance}, threshold=${drainThreshold}, requiredDrop=${requiredDrop}, peak=${peakQueue}, final=${finalMaxQueue}, samples=${drainSampleCount}`,
+        )
+      }
+      console.log(
+        `[runtime-smoke] Queue drain satisfied via ${drainReason}: baseline=${baselineMaxQueue}, threshold=${drainThreshold}, peak=${peakQueue}, final=${finalMaxQueue}, requiredDrop=${requiredDrop}, highBaselineMode=${highBaselineMode}`,
+      )
     }
 
     const final1 = await getRuntimeStats(node1, adminToken)

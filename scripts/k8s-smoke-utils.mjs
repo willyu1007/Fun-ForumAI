@@ -8,6 +8,7 @@ export function parseCliArgs(argv, defaults = {}) {
   const args = argv.slice(2)
   for (let i = 0; i < args.length; i++) {
     const token = args[i]
+    if (token === '--') continue
     if (token === '--help' || token === '-h') {
       out.help = true
       continue
@@ -49,7 +50,10 @@ export async function runCommandCapture(cmd, args, opts = {}) {
         resolve({ code: 0, stdout, stderr })
         return
       }
-      reject(new Error(`${cmd} ${args.join(' ')} failed (${exitCode}): ${stderr || stdout}`))
+      const parts = [`${cmd} ${args.join(' ')} failed (${exitCode})`]
+      if (stderr.trim()) parts.push(`stderr:\n${stderr.trim()}`)
+      if (stdout.trim()) parts.push(`stdout:\n${stdout.trim()}`)
+      reject(new Error(parts.join('\n')))
     })
   })
 }
@@ -94,6 +98,29 @@ export async function listRunningPods({ context, namespace, labelSelector }) {
     })
     .map((x) => x?.metadata?.name)
     .filter((x) => typeof x === 'string')
+}
+
+export async function waitForReadyPods({
+  context,
+  namespace,
+  labelSelector,
+  minReady = 2,
+  timeoutMs = 60_000,
+  intervalMs = 2_000,
+}) {
+  const deadline = Date.now() + Number(timeoutMs)
+  while (Date.now() < deadline) {
+    // eslint-disable-next-line no-await-in-loop
+    const pods = await listRunningPods({ context, namespace, labelSelector })
+    if (pods.length >= Number(minReady)) return pods
+    // eslint-disable-next-line no-await-in-loop
+    await sleep(Number(intervalMs))
+  }
+
+  const pods = await listRunningPods({ context, namespace, labelSelector })
+  throw new Error(
+    `Timed out waiting for ready pods: selector=${labelSelector}, namespace=${namespace}, expected>=${minReady}, actual=${pods.length}`,
+  )
 }
 
 async function waitPortForwardReady(child, name, timeoutMs = 10_000) {

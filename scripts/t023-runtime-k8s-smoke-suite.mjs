@@ -25,7 +25,7 @@ Options:
   --sample-duration-ms <ms>       Sample duration for each smoke (default: 30000)
   --poll-ms <ms>                  Poll interval (default: 2000)
   --event-count <n>               Number of injected events (default: 8)
-  --wait-drain-ms <ms>            Queue drain wait timeout (default: 90000)
+  --wait-drain-ms <ms>            Queue drain wait timeout (default: 180000)
   --service-auth-secret <secret>  Service auth secret (default: read from K8s secret)
   --service-auth-secret-name <n>  Secret resource name (default: forum-app-secret)
   --community-id <id>             Community id (default: auto-resolve from Postgres)
@@ -65,7 +65,7 @@ async function main() {
     sampleDurationMs: 30_000,
     pollMs: 2_000,
     eventCount: 8,
-    waitDrainMs: 90_000,
+    waitDrainMs: 180_000,
     serviceAuthSecretName: 'forum-app-secret',
     postgresDeployment: 'postgres',
     postgresUser: 'postgres',

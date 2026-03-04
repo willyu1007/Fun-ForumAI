@@ -5,6 +5,7 @@ metadata:
   namespace: funforum
 data:
   NODE_ENV: development
+  NODE_OPTIONS: "--max-old-space-size=1024"
   CORS_ORIGINS: http://localhost:3000
   RUNTIME_LEADER_TTL_MS: "120000"
   FF_MEMBERSHIPS_V1: "true"

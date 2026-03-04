@@ -2,6 +2,7 @@
 import {
   parseCliArgs,
   listRunningPods,
+  waitForReadyPods,
   startPortForward,
   stopChildProcess,
   requestJson,
@@ -59,6 +60,15 @@ async function main() {
 
   const managedChildren = []
   try {
+    await waitForReadyPods({
+      context: args.k8sContext,
+      namespace: args.k8sNamespace,
+      labelSelector: args.k8sLabelSelector,
+      minReady: 2,
+      timeoutMs: 90_000,
+      intervalMs: 2_000,
+    })
+
     const pods = await listRunningPods({
       context: args.k8sContext,
       namespace: args.k8sNamespace,
@@ -195,6 +205,15 @@ async function main() {
 
     await stopChildProcess(forward1)
     await stopChildProcess(forward2)
+
+    await waitForReadyPods({
+      context: args.k8sContext,
+      namespace: args.k8sNamespace,
+      labelSelector: args.k8sLabelSelector,
+      minReady: 2,
+      timeoutMs: Math.max(Number(args.restartTimeoutMs), 90_000),
+      intervalMs: 2_000,
+    })
 
     const postRestartPods = await listRunningPods({
       context: args.k8sContext,

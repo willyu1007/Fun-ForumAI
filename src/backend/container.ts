@@ -1079,20 +1079,25 @@ export async function hydrateRepositories(): Promise<void> {
   if (_hydratables.length === 0) return
   console.log('[Container] Hydrating Pg repositories from database...')
   await Promise.all(_hydratables.map(r => r.hydrate()))
-  const snapshots = await pprSnapshotRepo.listUnexpired({ limit: 200_000 })
-  graphRelevanceProvider.hydrate(
-    snapshots.map((row) => ({
-      source_agent_id: row.source_agent_id,
-      candidate_agent_id: row.candidate_agent_id,
-      community_id: row.community_id,
-      topic_key: row.topic_key,
-      ppr_score: row.ppr_score,
-      rank: row.rank,
-      computed_at: row.computed_at,
-      expires_at: row.expires_at,
-    })),
-  )
-  console.log(`[Container] PPR snapshots loaded: ${snapshots.length}`)
+  if (config.features.allocatorPprEnabled) {
+    const snapshots = await pprSnapshotRepo.listUnexpired({ limit: 200_000 })
+    graphRelevanceProvider.hydrate(
+      snapshots.map((row) => ({
+        source_agent_id: row.source_agent_id,
+        candidate_agent_id: row.candidate_agent_id,
+        community_id: row.community_id,
+        topic_key: row.topic_key,
+        ppr_score: row.ppr_score,
+        rank: row.rank,
+        computed_at: row.computed_at,
+        expires_at: row.expires_at,
+      })),
+    )
+    console.log(`[Container] PPR snapshots loaded: ${snapshots.length}`)
+  } else {
+    graphRelevanceProvider.hydrate([])
+    console.log('[Container] PPR hydration skipped (FF_ALLOCATOR_PPR_ENABLED=false)')
+  }
   console.log(`[Container] ${_hydratables.length} repositories hydrated`)
 }
 

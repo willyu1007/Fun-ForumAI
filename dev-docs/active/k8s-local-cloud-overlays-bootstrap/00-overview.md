@@ -2,7 +2,7 @@
 
 ## Status
 - State: in-progress
-- Next step: 本地 k8s 部署与 T-023~T-025 smoke 脚本已固化并验证；下一步在本地继续业务回归，随后推进云环境参数化。
+- Next step: 维持当前集群稳定性（持续观测 backend restart 与 T-023~T-025 套件波动），并将本地稳定参数迁移到云环境模板。
 
 ## Goal
 建立一套“本地可跑、云上可迁移”的 Kubernetes 部署结构（base + overlays），支撑后续 T-023/T-024/T-025 多实例验证。

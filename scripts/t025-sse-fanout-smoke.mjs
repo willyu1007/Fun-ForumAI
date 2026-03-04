@@ -2,6 +2,7 @@
 import {
   parseCliArgs,
   listRunningPods,
+  waitForReadyPods,
   startPortForward,
   stopChildProcess,
   requestJson,
@@ -37,22 +38,25 @@ Options:
   process.exit(exitCode)
 }
 
-function createSseWatcher(baseUrl, label, predicate, timeoutMs) {
+function createSseWatcher(baseUrl, label, timeoutMs) {
   const controller = new AbortController()
   let readyResolved = false
   let readyResolve
   let readyReject
+  let failed = null
+  let targetPostId = null
+  let targetResolve
+  let targetReject
+  let timeoutHandle = null
+  const seenPostIds = new Set()
+  const eventsByPostId = new Map()
 
   const ready = new Promise((resolve, reject) => {
     readyResolve = resolve
     readyReject = reject
   })
 
-  const event = (async () => {
-    const timer = setTimeout(() => {
-      controller.abort(new Error(`${label} timeout waiting SSE event`))
-    }, timeoutMs)
-
+  const streamTask = (async () => {
     try {
       const res = await fetch(`${baseUrl}/v1/events/stream`, {
         headers: {
@@ -101,29 +105,59 @@ function createSseWatcher(baseUrl, label, predicate, timeoutMs) {
             readyResolve(parsed)
           }
 
-          if (predicate(parsed)) {
-            clearTimeout(timer)
-            controller.abort()
-            return parsed
+          if (parsed?.type !== 'POST_CREATED') continue
+          const postId = parsed?.payload?.post_id
+          if (typeof postId !== 'string' || !postId) continue
+
+          seenPostIds.add(postId)
+          eventsByPostId.set(postId, parsed)
+          if (targetPostId && postId === targetPostId && targetResolve) {
+            clearTimeout(timeoutHandle)
+            const resolve = targetResolve
+            targetResolve = undefined
+            targetReject = undefined
+            resolve(parsed)
           }
         }
       }
 
       throw new Error(`${label} SSE stream ended before matching event`)
     } catch (err) {
+      failed = err
       if (!readyResolved) {
         readyResolved = true
         readyReject(err)
       }
-      throw err
+      if (targetReject) {
+        const reject = targetReject
+        targetResolve = undefined
+        targetReject = undefined
+        reject(err)
+      }
     } finally {
-      clearTimeout(timer)
+      clearTimeout(timeoutHandle)
     }
   })()
 
   return {
     ready,
-    event,
+    async waitForPost(postId) {
+      if (failed) throw failed
+      targetPostId = postId
+      if (seenPostIds.has(postId)) {
+        return eventsByPostId.get(postId)
+      }
+      return new Promise((resolve, reject) => {
+        targetResolve = resolve
+        targetReject = reject
+        timeoutHandle = setTimeout(() => {
+          targetResolve = undefined
+          targetReject = undefined
+          reject(new Error(`${label} timeout waiting SSE event for post ${postId}`))
+        }, Number(timeoutMs))
+      })
+    },
+    streamTask,
     abort: () => controller.abort(),
   }
 }
@@ -149,6 +183,15 @@ async function main() {
   const watchers = []
 
   try {
+    await waitForReadyPods({
+      context: args.k8sContext,
+      namespace: args.k8sNamespace,
+      labelSelector: args.k8sLabelSelector,
+      minReady: 2,
+      timeoutMs: 90_000,
+      intervalMs: 2_000,
+    })
+
     const pods = await listRunningPods({
       context: args.k8sContext,
       namespace: args.k8sNamespace,
@@ -200,18 +243,8 @@ async function main() {
     const node1 = `http://127.0.0.1:${Number(args.k8sLocalPort1)}`
     const node2 = `http://127.0.0.1:${Number(args.k8sLocalPort2)}`
 
-    const watcher1 = createSseWatcher(
-      node1,
-      'node1',
-      (event) => event?.type === 'POST_CREATED',
-      Number(args.eventTimeoutMs),
-    )
-    const watcher2 = createSseWatcher(
-      node2,
-      'node2',
-      (event) => event?.type === 'POST_CREATED',
-      Number(args.eventTimeoutMs),
-    )
+    const watcher1 = createSseWatcher(node1, 'node1', Number(args.eventTimeoutMs))
+    const watcher2 = createSseWatcher(node2, 'node2', Number(args.eventTimeoutMs))
     watchers.push(watcher1, watcher2)
 
     await Promise.all([watcher1.ready, watcher2.ready])
@@ -244,7 +277,10 @@ async function main() {
       throw new Error('Post id missing in create response')
     }
 
-    const [event1, event2] = await Promise.all([watcher1.event, watcher2.event])
+    const [event1, event2] = await Promise.all([
+      watcher1.waitForPost(postId),
+      watcher2.waitForPost(postId),
+    ])
 
     const payload1 = event1?.payload?.post_id
     const payload2 = event2?.payload?.post_id
@@ -269,6 +305,7 @@ async function main() {
         // noop
       }
     }
+    await Promise.allSettled(watchers.map((watcher) => watcher.streamTask))
 
     for (const child of managedChildren.reverse()) {
       // eslint-disable-next-line no-await-in-loop
