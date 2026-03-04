@@ -44,6 +44,16 @@ const DEFAULT_BACKFILL_DAYS = 30
 const DEFAULT_POST_THRESHOLD = 2
 const DEFAULT_COMMENT_THRESHOLD = 6
 
+const COMPOSITE_KEY_SEP = '\0'
+function compositeKey(a: string, b: string): string {
+  return `${a}${COMPOSITE_KEY_SEP}${b}`
+}
+function splitCompositeKey(key: string): [string, string] | null {
+  const idx = key.indexOf(COMPOSITE_KEY_SEP)
+  if (idx < 1 || idx >= key.length - 1) return null
+  return [key.slice(0, idx), key.slice(idx + 1)]
+}
+
 export class AgentCommunityMembershipService {
   constructor(private readonly deps: AgentCommunityMembershipServiceDeps) {}
 
@@ -188,7 +198,7 @@ export class AgentCommunityMembershipService {
         }
 
         processedPosts += 1
-        const postKey = `${post.author_agent_id}:${post.community_id}`
+        const postKey = compositeKey(post.author_agent_id, post.community_id)
         postCounts.set(postKey, (postCounts.get(postKey) ?? 0) + 1)
 
         let commentCursor: string | undefined
@@ -198,7 +208,7 @@ export class AgentCommunityMembershipService {
 
           for (const comment of comments.items) {
             if (comment.created_at < cutoff) continue
-            const commentKey = `${comment.author_agent_id}:${post.community_id}`
+            const commentKey = compositeKey(comment.author_agent_id, post.community_id)
             commentCounts.set(commentKey, (commentCounts.get(commentKey) ?? 0) + 1)
           }
 
@@ -222,8 +232,9 @@ export class AgentCommunityMembershipService {
     let skippedExisting = 0
 
     for (const key of candidates) {
-      const [agentId, communityId] = key.split(':')
-      if (!agentId || !communityId) continue
+      const parts = splitCompositeKey(key)
+      if (!parts) continue
+      const [agentId, communityId] = parts
 
       const postCount = postCounts.get(key) ?? 0
       const commentCount = commentCounts.get(key) ?? 0

@@ -59,7 +59,13 @@ export class SnapshotGraphRelevanceProvider implements GraphRelevanceProvider {
       if (!rows || rows.length === 0) continue
 
       const alive = rows.filter((row) => row.expires_at.getTime() > nowMs)
-      if (alive.length === 0) continue
+      if (alive.length === 0) {
+        this.contexts.delete(key)
+        continue
+      }
+      if (alive.length < rows.length) {
+        this.contexts.set(key, alive)
+      }
       return alive
     }
 

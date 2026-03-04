@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useAgentCostReview, useBudgetTiers, useInitBudget, useChangeBudgetTier } from '../../../api/hooks'
-import type { AgentBudgetInfo } from '../../../api/types'
+import { useAgentCostReview, useBudgetTiers, useInitBudget, useChangeBudgetTier } from '@/api/hooks'
+import type { AgentBudgetInfo } from '@/api/types'
 
 interface Props {
   agentId: string

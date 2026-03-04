@@ -13,9 +13,13 @@ function toDomain(row: {
   mode: string
   status: 'CREATED' | 'SKIPPED' | 'COMPLETED'
   thresholdMinComments: number
+  thresholdMinAudienceComments: number
   thresholdMinHumanVotes: number
   commentsAtTrigger: number
+  audienceMessageCountAtTrigger: number
   humanVoteScoreAtTrigger: number
+  audienceSummaryRef: string | null
+  thresholdDetailJson: Prisma.JsonValue | null
   triggeredByAgentId: string | null
   triggeredByUserId: string | null
   metaJson: Prisma.JsonValue | null
@@ -29,9 +33,13 @@ function toDomain(row: {
     mode: row.mode as AftershowRun['mode'],
     status: row.status,
     threshold_min_comments: row.thresholdMinComments,
+    threshold_min_audience_comments: row.thresholdMinAudienceComments,
     threshold_min_human_votes: row.thresholdMinHumanVotes,
     comments_at_trigger: row.commentsAtTrigger,
+    audience_message_count_at_trigger: row.audienceMessageCountAtTrigger,
     human_vote_score_at_trigger: row.humanVoteScoreAtTrigger,
+    audience_summary_ref: row.audienceSummaryRef,
+    threshold_detail: row.thresholdDetailJson as Record<string, unknown> | null,
     triggered_by_agent_id: row.triggeredByAgentId,
     triggered_by_user_id: row.triggeredByUserId,
     meta: row.metaJson as Record<string, unknown> | null,
@@ -53,9 +61,13 @@ export class PgAftershowRunRepository implements AftershowRunRepository {
         mode: input.mode,
         status: input.status ?? 'CREATED',
         thresholdMinComments: input.threshold_min_comments ?? 30,
+        thresholdMinAudienceComments: input.threshold_min_audience_comments ?? (input.threshold_min_comments ?? 30),
         thresholdMinHumanVotes: input.threshold_min_human_votes ?? 10,
         commentsAtTrigger: input.comments_at_trigger ?? 0,
+        audienceMessageCountAtTrigger: input.audience_message_count_at_trigger ?? 0,
         humanVoteScoreAtTrigger: input.human_vote_score_at_trigger ?? 0,
+        audienceSummaryRef: input.audience_summary_ref ?? null,
+        thresholdDetailJson: input.threshold_detail ? (input.threshold_detail as Prisma.InputJsonValue) : Prisma.DbNull,
         triggeredByAgentId: input.triggered_by_agent_id ?? null,
         triggeredByUserId: input.triggered_by_user_id ?? null,
         metaJson: input.meta ? (input.meta as Prisma.InputJsonValue) : Prisma.DbNull,

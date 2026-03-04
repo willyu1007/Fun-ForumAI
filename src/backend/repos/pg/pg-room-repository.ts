@@ -177,16 +177,13 @@ export class PgRoomRepository implements RoomRepository {
     const rows = await this.prisma.room.findMany({
       where: { status: 'active' },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      include: {
+        _count: { select: { memberships: { where: { leftAt: null } } } },
+      },
     })
-    const rooms = rows.map((row) => this.roomToDomain(row))
-    const available: Room[] = []
-    for (const room of rooms) {
-      const memberCount = await this.countMembers(room.id)
-      if (memberCount < room.max_agents) {
-        available.push(room)
-      }
-    }
-    return available
+    return rows
+      .filter((row) => row._count.memberships < row.maxAgents)
+      .map((row) => this.roomToDomain(row))
   }
 
   async getRoomsByAgent(agentId: string): Promise<Room[]> {

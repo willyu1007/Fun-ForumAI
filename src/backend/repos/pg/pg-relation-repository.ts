@@ -1,9 +1,9 @@
 import type {
   AgentRelation as PrismaRelation,
   AgentRelationEvent as PrismaRelationEvent,
-  Prisma,
   PrismaClient,
 } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import type {
   AgentRelation,
   AgentRelationEvent,
@@ -152,7 +152,10 @@ export class PgRelationRepository implements RelationRepository {
     opts: PaginationOpts,
   ): Promise<PaginatedResult<AgentRelation>> {
     const take = opts.limit + 1
-    const offset = opts.cursor ? 1 : 0
+
+    const cursorFilter = opts.cursor
+      ? Prisma.sql`AND r1."id" < ${opts.cursor}`
+      : Prisma.empty
 
     const rows = await this.prisma.$queryRaw<PrismaRelation[]>`
       SELECT r1.*
@@ -163,9 +166,9 @@ export class PgRelationRepository implements RelationRepository {
       WHERE r1."from_agent_id" = ${agentId}
         AND r1.state = 'effective'
         AND r2.state = 'effective'
-      ORDER BY r1."updated_at" DESC
+        ${cursorFilter}
+      ORDER BY r1."updated_at" DESC, r1."id" DESC
       LIMIT ${take}
-      OFFSET ${offset}
     `
 
     const mapped = rows.map((row) => this.rawRelationToDomain(row))

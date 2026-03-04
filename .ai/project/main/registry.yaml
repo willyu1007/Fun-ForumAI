@@ -405,3 +405,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/rich-communities-gap-hardening
     updated: 2026-03-04
+  - id: T-051
+    slug: rich-communities-full-alignment
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/rich-communities-full-alignment
+    updated: 2026-03-04

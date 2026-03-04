@@ -35,6 +35,16 @@ export class DefaultDecisionEngine implements DecisionEngine {
     verdict: ModerationVerdict
     reason: string
   } {
+    if (!Number.isFinite(score)) {
+      return {
+        risk_level: 'high',
+        visibility: 'QUARANTINE',
+        state: 'PENDING',
+        verdict: 'QUARANTINE',
+        reason: `invalid score: ${score}`,
+      }
+    }
+
     if (!filterResult.passed) {
       const blocked = filterResult.matched_rules
         .filter((r) => r.severity === 'block')

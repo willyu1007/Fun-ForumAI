@@ -50,7 +50,7 @@ notificationRouter.post('/me/notifications/:id/read', requireHumanAuth, async (r
   }
 
   try {
-    const notification = await svc.markRead(String(req.params.id))
+    const notification = await svc.markRead(String(req.params.id), req.user!.userId)
     if (!notification) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Notification not found' } })
       return

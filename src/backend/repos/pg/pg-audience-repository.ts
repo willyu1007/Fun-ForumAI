@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto'
-import type { PrismaClient } from '@prisma/client'
+import { Prisma, type PrismaClient } from '@prisma/client'
 import type {
   AudienceThread,
   AudienceMessage,
+  AudienceSummary,
   CreateAudienceThreadInput,
   CreateAudienceMessageInput,
+  CreateAudienceSummaryInput,
 } from '../types.js'
 import type { AudienceRepository } from '../audience-repository.js'
 
@@ -39,6 +41,34 @@ function toMessage(row: {
     thread_id: row.threadId,
     author_user_id: row.authorUserId,
     body: row.body,
+    created_at: row.createdAt,
+    updated_at: row.updatedAt,
+  }
+}
+
+function toSummary(row: {
+  id: string
+  threadId: string
+  postId: string
+  communityId: string
+  windowStart: Date
+  windowEnd: Date
+  summaryText: string
+  messageCount: number
+  metaJson: Prisma.JsonValue | null
+  createdAt: Date
+  updatedAt: Date
+}): AudienceSummary {
+  return {
+    id: row.id,
+    thread_id: row.threadId,
+    post_id: row.postId,
+    community_id: row.communityId,
+    window_start: row.windowStart,
+    window_end: row.windowEnd,
+    summary_text: row.summaryText,
+    message_count: row.messageCount,
+    meta: row.metaJson as Record<string, unknown> | null,
     created_at: row.createdAt,
     updated_at: row.updatedAt,
   }
@@ -99,5 +129,44 @@ export class PgAudienceRepository implements AudienceRepository {
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     })
     return rows.map(toMessage)
+  }
+
+  async countMessagesByThread(threadId: string): Promise<number> {
+    return this.prisma.audienceMessage.count({ where: { threadId } })
+  }
+
+  async createSummary(input: CreateAudienceSummaryInput): Promise<AudienceSummary> {
+    const now = new Date()
+    const row = await this.prisma.audienceSummary.create({
+      data: {
+        id: randomUUID(),
+        threadId: input.thread_id,
+        postId: input.post_id,
+        communityId: input.community_id,
+        windowStart: input.window_start,
+        windowEnd: input.window_end,
+        summaryText: input.summary_text,
+        messageCount: input.message_count,
+        metaJson: input.meta ? (input.meta as Prisma.InputJsonValue) : Prisma.DbNull,
+        createdAt: now,
+        updatedAt: now,
+      },
+    })
+    return toSummary({
+      ...row,
+      metaJson: row.metaJson,
+    })
+  }
+
+  async findLatestSummaryByThread(threadId: string): Promise<AudienceSummary | null> {
+    const row = await this.prisma.audienceSummary.findFirst({
+      where: { threadId },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })
+    if (!row) return null
+    return toSummary({
+      ...row,
+      metaJson: row.metaJson,
+    })
   }
 }

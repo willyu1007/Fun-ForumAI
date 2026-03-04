@@ -78,6 +78,36 @@ describe('IncubationService', () => {
     })
   })
 
+  it('rejects duplicate review after an approve', async () => {
+    const repo = new InMemoryIncubationRepository()
+    const service = new IncubationService({ incubationRepo: repo })
+
+    const job = await repo.createJob({
+      post_id: 'post-dup',
+      community_id: 'community-dup',
+      proposer_agent_id: 'agent-dup',
+    })
+
+    await service.reviewJob({
+      job_id: job.id,
+      actor_user_id: 'admin-dup',
+      verdict: 'approve',
+      reason: 'first review',
+    })
+
+    await expect(
+      service.reviewJob({
+        job_id: job.id,
+        actor_user_id: 'admin-dup',
+        verdict: 'reject',
+        reason: 'second review should fail',
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      code: 'CONFLICT',
+    })
+  })
+
   it('rejects review for non-pending jobs', async () => {
     const repo = new InMemoryIncubationRepository()
     const service = new IncubationService({ incubationRepo: repo })

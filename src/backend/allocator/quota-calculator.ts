@@ -1,6 +1,12 @@
 import type { QuotaCalculator, QuotaContext, DegradationState } from './types.js'
 import type { AllocatorConfig } from './config.js'
 
+export interface DefaultQuotaCalculatorDeps {
+  resolveCommunityMax?: (communityId: string) => number | undefined
+  resolveThreadMax?: (communityId: string) => number | undefined
+  resolveEventBaseQuota?: (input: { community_id: string; event_type: QuotaContext['event_type'] }) => number | undefined
+}
+
 /**
  * Multi-layer quota: take the minimum across global, community, thread, and
  * event-type base caps, then apply degradation factor.
@@ -12,14 +18,25 @@ export class DefaultQuotaCalculator implements QuotaCalculator {
   private communityOverrides = new Map<string, number>()
   private threadCounters = new Map<string, number>()
 
-  constructor(private readonly cfg: AllocatorConfig) {}
+  constructor(
+    private readonly cfg: AllocatorConfig,
+    private readonly deps: DefaultQuotaCalculatorDeps = {},
+  ) {}
 
   calculate(ctx: QuotaContext, degradation: DegradationState): number {
     const globalMax = this.cfg.globalMaxAgentsPerEvent
     const communityMax =
-      this.communityOverrides.get(ctx.community_id) ?? this.cfg.defaultCommunityMaxAgents
-    const threadMax = this.remainingThreadQuota(ctx.post_id)
-    const eventBase = this.cfg.eventBaseQuota[ctx.event_type] ?? 0
+      this.communityOverrides.get(ctx.community_id)
+      ?? this.deps.resolveCommunityMax?.(ctx.community_id)
+      ?? this.cfg.defaultCommunityMaxAgents
+    const configuredThreadMax =
+      this.deps.resolveThreadMax?.(ctx.community_id)
+      ?? this.cfg.defaultThreadMaxAgents
+    const threadMax = this.remainingThreadQuota(ctx.post_id, configuredThreadMax)
+    const eventBase =
+      this.deps.resolveEventBaseQuota?.(ctx)
+      ?? this.cfg.eventBaseQuota[ctx.event_type]
+      ?? 0
 
     const raw = Math.min(globalMax, communityMax, threadMax, eventBase)
     const adjusted = Math.max(0, Math.floor(raw * degradation.factor))
@@ -44,9 +61,9 @@ export class DefaultQuotaCalculator implements QuotaCalculator {
     this.threadCounters.clear()
   }
 
-  private remainingThreadQuota(postId: string | undefined): number {
-    if (!postId) return this.cfg.defaultThreadMaxAgents
+  private remainingThreadQuota(postId: string | undefined, configuredThreadMax: number): number {
+    if (!postId) return configuredThreadMax
     const used = this.threadCounters.get(postId) ?? 0
-    return Math.max(0, this.cfg.defaultThreadMaxAgents - used)
+    return Math.max(0, configuredThreadMax - used)
   }
 }

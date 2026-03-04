@@ -13,9 +13,6 @@ import { deriveTopicKey } from './ppr-topic-key.js'
 import { runtimeFeatureMetrics } from '../runtime/runtime-feature-metrics.js'
 
 const PPR_SCORE_SCALE = 2
-const DIRECTOR_THREAD_WINDOW = 6
-const DIRECTOR_THREAD_MAX_AGENT_OCCURRENCES = 2
-const DIRECTOR_THREAD_COOLDOWN_MS = 10 * 60 * 1000
 
 export interface DefaultCandidateSelectorDeps {
   graphRelevanceProvider?: GraphRelevanceProvider
@@ -53,6 +50,13 @@ export class DefaultCandidateSelector implements CandidateSelector {
     const eventTags = this.extractTags(event)
     const topicKey = deriveTopicKey(event.tags)
     const now = Date.now()
+    const communityDirectorConfig = this.deps.resolveCommunityDirectorConfig?.(event.community_id)
+    const runtimeGate = communityDirectorConfig?.runtime ?? {
+      cooldown_seconds: this.cfg.cooldownSeconds,
+      max_actions_per_hour: this.cfg.maxActionsPerHour,
+      max_tokens_per_day: this.cfg.maxTokensPerDay,
+      thread_max_agents: this.cfg.defaultThreadMaxAgents,
+    }
     const pprSnapshot = this.deps.pprEnabled && this.deps.graphRelevanceProvider
       ? this.deps.graphRelevanceProvider.getSnapshot({
           source_agent_id: event.author_agent_id,
@@ -79,15 +83,15 @@ export class DefaultCandidateSelector implements CandidateSelector {
       if (c.agent_id === event.author_agent_id) {
         continue
       }
-      if (c.actions_last_hour >= this.cfg.maxActionsPerHour) {
+      if (c.actions_last_hour >= runtimeGate.max_actions_per_hour) {
         continue
       }
-      if (c.tokens_last_day >= this.cfg.maxTokensPerDay) {
+      if (c.tokens_last_day >= runtimeGate.max_tokens_per_day) {
         continue
       }
       if (c.last_action_at) {
         const elapsed = (now - new Date(c.last_action_at).getTime()) / 1000
-        if (elapsed < this.cfg.cooldownSeconds) {
+        if (elapsed < runtimeGate.cooldown_seconds) {
           continue
         }
       }
@@ -105,6 +109,9 @@ export class DefaultCandidateSelector implements CandidateSelector {
       }
 
       if (event.post_id && c.recent_thread_post_ids.includes(event.post_id)) {
+        if (c.recent_thread_post_ids.length >= runtimeGate.thread_max_agents) {
+          continue
+        }
         score -= 1
         reasons.push('thread_repeat_penalty')
       }
@@ -159,14 +166,14 @@ export class DefaultCandidateSelector implements CandidateSelector {
     }
 
     const directorCandidates = this.deps.directorV2Enabled
-      ? this.applyDirectorGuards(event, scored, now)
+      ? this.applyDirectorGuards(event, scored, now, communityDirectorConfig)
       : scored
 
     const selected = this.deps.castingDirectorPolicy.select({
       event,
       scored: directorCandidates,
       quota,
-      community_config: this.deps.resolveCommunityDirectorConfig?.(event.community_id),
+      community_config: communityDirectorConfig,
     })
 
     const roleReasons = selected.flatMap((item) => item.reasons).filter((reason) => reason.startsWith('director_role='))
@@ -190,11 +197,21 @@ export class DefaultCandidateSelector implements CandidateSelector {
     event: EventPayload,
     scored: ScoredCandidate[],
     now: number,
+    communityConfig?: CastingDirectorCommunityConfig,
   ): ScoredCandidate[] {
     if (!event.post_id) return scored
 
+    const guard = communityConfig?.guard ?? {
+      contrast_min_relevance_ratio: 0.45,
+      wildcard_min_relevance_ratio: 0.35,
+      min_abs_score: 0.8,
+      thread_window: 6,
+      thread_max_agent_occurrences: 2,
+      thread_cooldown_seconds: 600,
+    }
+
     const history = this.getThreadHistory(event.post_id, now)
-    const recent = history.slice(-DIRECTOR_THREAD_WINDOW)
+    const recent = history.slice(-guard.thread_window)
     const counts = new Map<string, number>()
     for (const item of recent) {
       counts.set(item.agent_id, (counts.get(item.agent_id) ?? 0) + 1)
@@ -208,13 +225,13 @@ export class DefaultCandidateSelector implements CandidateSelector {
     const filtered: ScoredCandidate[] = []
     for (const candidate of scored) {
       const selectedInRecent = counts.get(candidate.agent_id) ?? 0
-      if (selectedInRecent >= DIRECTOR_THREAD_MAX_AGENT_OCCURRENCES) {
+      if (selectedInRecent >= guard.thread_max_agent_occurrences) {
         runtimeFeatureMetrics.recordDirectorGuardRejection()
         continue
       }
 
       const lastAt = lastSpokeAt.get(candidate.agent_id)
-      if (lastAt && now - lastAt < DIRECTOR_THREAD_COOLDOWN_MS) {
+      if (lastAt && now - lastAt < guard.thread_cooldown_seconds * 1000) {
         runtimeFeatureMetrics.recordDirectorGuardRejection()
         continue
       }

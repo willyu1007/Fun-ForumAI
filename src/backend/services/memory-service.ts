@@ -14,6 +14,7 @@ import type {
   CreateAgentMemoryInput,
 } from '../repos/types.js'
 import { config } from '../lib/config.js'
+import { ValidationError } from '../lib/errors.js'
 
 const DECAY_FACTOR_PER_DAY = 0.995
 const FORGET_THRESHOLD = 0.05
@@ -105,7 +106,9 @@ export class MemoryService {
       }
 
       if (config.features.socialGraphV1 && this.deps.relationService) {
-        this.deps.relationService.onPrivateDigestCompleted(session.agent_id, session.id).catch(() => {})
+        this.deps.relationService.onPrivateDigestCompleted(session.agent_id, session.id).catch((err) => {
+        console.error('[MemoryService] relationService onPrivateDigestCompleted failed:', err)
+      })
       }
 
       if (this.deps.onDigestCompleted) {
@@ -190,7 +193,9 @@ export class MemoryService {
 
     if (budgetFiltered.length > 0) {
       const ids = budgetFiltered.map((m) => m.id)
-      await this.deps.memoryRepo.incrementAccessCount(ids).catch(() => {})
+      await this.deps.memoryRepo.incrementAccessCount(ids).catch((err) => {
+        console.error('[MemoryService] incrementAccessCount failed:', err)
+      })
     }
 
     const formatted = budgetFiltered
@@ -293,7 +298,7 @@ export class MemoryService {
   ): Promise<AgentPrivacySettingsEntity> {
     if (changes.disclosure_level !== undefined) {
       if (changes.disclosure_level < 0 || changes.disclosure_level > 3) {
-        throw new Error('disclosure_level must be 0-3')
+        throw new ValidationError('disclosure_level must be 0-3')
       }
     }
     return this.deps.memoryRepo.upsertPrivacySettings({

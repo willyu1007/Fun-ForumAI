@@ -187,18 +187,34 @@ export interface StageTemplateManifestItem {
 
 export type IncubationJobStatus = 'PENDING' | 'GRANTED' | 'REJECTED' | 'QUARANTINED' | 'EXPIRED'
 export type IncubationGrantStatus = 'ACTIVE' | 'REVOKED' | 'EXPIRED'
+export type IncubationJobPhase =
+  | 'SEED_CREATED'
+  | 'AWAIT_GRANT'
+  | 'RESEARCHING'
+  | 'DRAFTING'
+  | 'REVIEWING'
+  | 'PUBLISHING'
+  | 'DONE'
+  | 'ABORTED'
 
 export interface IncubationJob {
   id: string
-  post_id: string
+  post_id: string | null
   community_id: string
   proposer_agent_id: string
   status: IncubationJobStatus
+  phase: IncubationJobPhase
   strict_t4: boolean
   grant_required: boolean
   premod_required: boolean
   redaction_level: string
   source_count: number
+  idempotency_key: string | null
+  source_session_id: string | null
+  source_memory_id: string | null
+  research: Record<string, unknown> | null
+  draft: Record<string, unknown> | null
+  review: Record<string, unknown> | null
   requested_at: Date
   expires_at: Date | null
   meta: Record<string, unknown> | null
@@ -214,6 +230,11 @@ export interface IncubationGrant {
   status: IncubationGrantStatus
   reason: string
   ttl_hours: number
+  scope: 'ABSTRACT_ONLY' | 'SCENARIO_LEVEL' | 'DETAIL_LEVEL'
+  anonymity_level: 'strong' | 'medium' | 'light'
+  quote_policy: 'NO_QUOTE' | 'PARAPHRASE_ONLY' | 'ALLOW_QUOTE'
+  no_go_topics: string[]
+  policy: Record<string, unknown> | null
   granted_at: Date
   expires_at: Date
   revoked_at: Date | null
@@ -263,6 +284,20 @@ export interface AudienceMessage {
   updated_at: Date
 }
 
+export interface AudienceSummary {
+  id: string
+  thread_id: string
+  post_id: string
+  community_id: string
+  window_start: Date
+  window_end: Date
+  summary_text: string
+  message_count: number
+  meta: Record<string, unknown> | null
+  created_at: Date
+  updated_at: Date
+}
+
 export type AftershowRunStatus = 'CREATED' | 'SKIPPED' | 'COMPLETED'
 
 export interface AftershowRun {
@@ -272,9 +307,13 @@ export interface AftershowRun {
   mode: 'OFF' | 'THRESHOLD' | 'PERIODIC' | 'MANUAL'
   status: AftershowRunStatus
   threshold_min_comments: number
+  threshold_min_audience_comments: number
   threshold_min_human_votes: number
   comments_at_trigger: number
+  audience_message_count_at_trigger: number
   human_vote_score_at_trigger: number
+  audience_summary_ref: string | null
+  threshold_detail: Record<string, unknown> | null
   triggered_by_agent_id: string | null
   triggered_by_user_id: string | null
   meta: Record<string, unknown> | null
@@ -644,24 +683,36 @@ export interface UpsertAgentStageTierSnapshotInput {
 }
 
 export interface CreateIncubationJobInput {
-  post_id: string
+  post_id?: string | null
   community_id: string
   proposer_agent_id: string
   status?: IncubationJobStatus
+  phase?: IncubationJobPhase
   strict_t4?: boolean
   grant_required?: boolean
   premod_required?: boolean
   redaction_level?: string
   source_count?: number
+  idempotency_key?: string | null
+  source_session_id?: string | null
+  source_memory_id?: string | null
+  research?: Record<string, unknown> | null
+  draft?: Record<string, unknown> | null
+  review?: Record<string, unknown> | null
   requested_at?: Date
   expires_at?: Date | null
   meta?: Record<string, unknown> | null
 }
 
 export interface UpdateIncubationJobInput {
+  post_id?: string | null
   status?: IncubationJobStatus
+  phase?: IncubationJobPhase
   source_count?: number
   expires_at?: Date | null
+  research?: Record<string, unknown> | null
+  draft?: Record<string, unknown> | null
+  review?: Record<string, unknown> | null
   meta?: Record<string, unknown> | null
 }
 
@@ -672,6 +723,11 @@ export interface CreateIncubationGrantInput {
   status?: IncubationGrantStatus
   reason: string
   ttl_hours: number
+  scope?: 'ABSTRACT_ONLY' | 'SCENARIO_LEVEL' | 'DETAIL_LEVEL'
+  anonymity_level?: 'strong' | 'medium' | 'light'
+  quote_policy?: 'NO_QUOTE' | 'PARAPHRASE_ONLY' | 'ALLOW_QUOTE'
+  no_go_topics?: string[]
+  policy?: Record<string, unknown> | null
   granted_at?: Date
   expires_at: Date
   meta?: Record<string, unknown> | null
@@ -705,15 +761,30 @@ export interface CreateAudienceMessageInput {
   body: string
 }
 
+export interface CreateAudienceSummaryInput {
+  thread_id: string
+  post_id: string
+  community_id: string
+  window_start: Date
+  window_end: Date
+  summary_text: string
+  message_count: number
+  meta?: Record<string, unknown> | null
+}
+
 export interface CreateAftershowRunInput {
   post_id: string
   community_id: string
   mode: 'OFF' | 'THRESHOLD' | 'PERIODIC' | 'MANUAL'
   status?: AftershowRunStatus
   threshold_min_comments?: number
+  threshold_min_audience_comments?: number
   threshold_min_human_votes?: number
   comments_at_trigger?: number
+  audience_message_count_at_trigger?: number
   human_vote_score_at_trigger?: number
+  audience_summary_ref?: string | null
+  threshold_detail?: Record<string, unknown> | null
   triggered_by_agent_id?: string | null
   triggered_by_user_id?: string | null
   meta?: Record<string, unknown> | null

@@ -56,13 +56,17 @@ export class PgNotificationRepository implements NotificationRepository {
     }
   }
 
-  async markRead(id: string): Promise<Notification | null> {
+  async markRead(id: string, userId: string): Promise<Notification | null> {
     try {
-      const row = await this.prisma.notification.update({
+      const row = await this.prisma.notification.findFirst({
+        where: { id, userId },
+      })
+      if (!row) return null
+      const updated = await this.prisma.notification.update({
         where: { id },
         data: { read: true },
       })
-      return this.toDomain(row)
+      return this.toDomain(updated)
     } catch {
       return null
     }

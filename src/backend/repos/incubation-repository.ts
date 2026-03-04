@@ -13,6 +13,7 @@ import type {
 export interface IncubationRepository {
   createJob(input: CreateIncubationJobInput): Promise<IncubationJob>
   findJobById(jobId: string): Promise<IncubationJob | null>
+  findJobByIdempotencyKey(idempotencyKey: string): Promise<IncubationJob | null>
   updateJob(jobId: string, patch: UpdateIncubationJobInput): Promise<IncubationJob | null>
   createGrant(input: CreateIncubationGrantInput): Promise<IncubationGrant>
   listGrantsByJob(jobId: string): Promise<IncubationGrant[]>
@@ -37,15 +38,22 @@ export class InMemoryIncubationRepository implements IncubationRepository {
     const now = input.requested_at ?? new Date()
     const row: IncubationJob = {
       id: cuid('inc_job'),
-      post_id: input.post_id,
+      post_id: input.post_id ?? null,
       community_id: input.community_id,
       proposer_agent_id: input.proposer_agent_id,
       status: input.status ?? 'PENDING',
+      phase: input.phase ?? 'AWAIT_GRANT',
       strict_t4: input.strict_t4 ?? true,
       grant_required: input.grant_required ?? true,
       premod_required: input.premod_required ?? true,
       redaction_level: input.redaction_level ?? 'strong',
       source_count: input.source_count ?? 0,
+      idempotency_key: input.idempotency_key ?? null,
+      source_session_id: input.source_session_id ?? null,
+      source_memory_id: input.source_memory_id ?? null,
+      research: input.research ?? null,
+      draft: input.draft ?? null,
+      review: input.review ?? null,
       requested_at: now,
       expires_at: input.expires_at ?? null,
       meta: input.meta ?? null,
@@ -60,13 +68,27 @@ export class InMemoryIncubationRepository implements IncubationRepository {
     return this.jobs.get(jobId) ?? null
   }
 
+  async findJobByIdempotencyKey(idempotencyKey: string): Promise<IncubationJob | null> {
+    for (const job of this.jobs.values()) {
+      if (job.idempotency_key === idempotencyKey) {
+        return job
+      }
+    }
+    return null
+  }
+
   async updateJob(jobId: string, patch: UpdateIncubationJobInput): Promise<IncubationJob | null> {
     const row = this.jobs.get(jobId)
     if (!row) return null
 
+    if (patch.post_id !== undefined) row.post_id = patch.post_id
     if (patch.status !== undefined) row.status = patch.status
+    if (patch.phase !== undefined) row.phase = patch.phase
     if (patch.source_count !== undefined) row.source_count = patch.source_count
     if (patch.expires_at !== undefined) row.expires_at = patch.expires_at
+    if (patch.research !== undefined) row.research = patch.research
+    if (patch.draft !== undefined) row.draft = patch.draft
+    if (patch.review !== undefined) row.review = patch.review
     if (patch.meta !== undefined) row.meta = patch.meta
     row.updated_at = new Date()
 
@@ -83,6 +105,11 @@ export class InMemoryIncubationRepository implements IncubationRepository {
       status: input.status ?? 'ACTIVE',
       reason: input.reason,
       ttl_hours: input.ttl_hours,
+      scope: input.scope ?? 'ABSTRACT_ONLY',
+      anonymity_level: input.anonymity_level ?? 'strong',
+      quote_policy: input.quote_policy ?? 'PARAPHRASE_ONLY',
+      no_go_topics: input.no_go_topics ?? [],
+      policy: input.policy ?? null,
       granted_at: now,
       expires_at: input.expires_at,
       revoked_at: null,

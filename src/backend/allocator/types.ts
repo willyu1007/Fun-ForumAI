@@ -93,6 +93,20 @@ export interface CastingDirectorCommunityConfig {
     wildcard: number
   }
   wildcard_cap?: number
+  guard?: {
+    contrast_min_relevance_ratio: number
+    wildcard_min_relevance_ratio: number
+    min_abs_score: number
+    thread_window: number
+    thread_max_agent_occurrences: number
+    thread_cooldown_seconds: number
+  }
+  runtime?: {
+    cooldown_seconds: number
+    max_actions_per_hour: number
+    max_tokens_per_day: number
+    thread_max_agents: number
+  }
 }
 
 export interface CastingDirectorPolicyInput {

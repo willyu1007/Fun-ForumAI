@@ -89,7 +89,9 @@ export class ChatService {
 
     this.joinHook?.(room.id, input.created_by_agent_id, tick)
 
-    this.deps.growthEngine?.awardXP(input.created_by_agent_id, 'room_created', 10).catch(() => {})
+    this.deps.growthEngine?.awardXP(input.created_by_agent_id, 'room_created', 10).catch((err) => {
+      console.error('[ChatService] room_created XP award failed:', err)
+    })
 
     let greeting: ChatMessage | undefined
     if (input.greeting_message) {
@@ -202,9 +204,13 @@ export class ChatService {
     if (config.features.nurturePipelineV2 && this.deps.nurtureOrchestrator) {
       this.deps.nurtureOrchestrator.onContentProduced(input.author_id, 'chat_message', 1, {
         dedup_key: `message:${msg.id}`,
-      }).catch(() => {})
+      }).catch((err) => {
+        console.error('[ChatService] nurture onContentProduced failed:', err)
+      })
     } else {
-      this.deps.growthEngine?.awardXP(input.author_id, 'chat_message', 1).catch(() => {})
+      this.deps.growthEngine?.awardXP(input.author_id, 'chat_message', 1).catch((err) => {
+        console.error('[ChatService] chat_message XP award failed:', err)
+      })
     }
 
     if (config.features.publicObservationMemory && this.deps.publicObservationService) {
@@ -212,11 +218,15 @@ export class ChatService {
         roomId: input.room_id,
         messageId: msg.id,
         authorAgentId: input.author_id,
-      }).catch(() => {})
+      }).catch((err) => {
+        console.error('[ChatService] publicObservation onRoomMessage failed:', err)
+      })
     }
 
     if (config.features.socialGraphV1 && this.deps.relationService) {
-      this.deps.relationService.onRoomMessage(input.room_id, msg.id, input.author_id).catch(() => {})
+      this.deps.relationService.onRoomMessage(input.room_id, msg.id, input.author_id).catch((err) => {
+        console.error('[ChatService] relationService onRoomMessage failed:', err)
+      })
     }
 
     return msg

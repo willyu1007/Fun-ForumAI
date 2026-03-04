@@ -152,4 +152,57 @@ describe('community membership gate', () => {
     expect(mutedBlocked).toBe(false)
     expect(activeAllowed).toBe(true)
   })
+
+  it('blocks BANNED agent when membershipStatus gate is enabled', () => {
+    const bannedBlocked = passesMembershipGate({
+      agent_id: 'agent-banned',
+      explicit_member_ids: new Set(['agent-banned']),
+      membership_status_enabled: true,
+      membership: {
+        id: 'm3',
+        agent_id: 'agent-banned',
+        community_id: 'c1',
+        role: 'RESIDENT',
+        source: 'MANUAL',
+        status: 'BANNED',
+        status_reason: 'violation',
+        status_set_by: 'admin',
+        status_set_at: new Date(),
+        joined_at: new Date(),
+        left_at: null,
+        created_by: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      },
+    })
+
+    expect(bannedBlocked).toBe(false)
+  })
+
+  it('returns null explicit_member_ids and empty map when both flags are off', () => {
+    const repo = makeMembershipRepoStub()
+    const findSpy = vi.spyOn(repo, 'findCurrentByCommunity')
+
+    const snapshot = buildCommunityMembershipSnapshot({
+      memberships_enabled: false,
+      membership_status_enabled: false,
+      community_id: 'c-1',
+      membership_repo: repo,
+    })
+
+    expect(snapshot.explicit_member_ids).toBeNull()
+    expect(snapshot.membership_by_agent.size).toBe(0)
+    expect(findSpy).not.toHaveBeenCalled()
+  })
+
+  it('allows any agent when explicit_member_ids is null (memberships disabled)', () => {
+    const allowed = passesMembershipGate({
+      agent_id: 'random-agent',
+      explicit_member_ids: null,
+      membership_status_enabled: false,
+      membership: null,
+    })
+
+    expect(allowed).toBe(true)
+  })
 })

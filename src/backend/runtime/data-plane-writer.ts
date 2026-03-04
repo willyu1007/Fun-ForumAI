@@ -61,6 +61,7 @@ export class DataPlaneWriter {
           title: instruction.title!,
           body: instruction.body,
           tags: instruction.tags,
+          trust_context: instruction.trust_context,
         })
         contentId = result.post.id
 
@@ -100,9 +101,13 @@ export class DataPlaneWriter {
         if (config.features.nurturePipelineV2 && this.deps.nurtureOrchestrator) {
           this.deps.nurtureOrchestrator.onContentProduced(agentId, xpSource, 1, {
             dedup_key: `content:${contentId}`,
-          }).catch(() => {})
+          }).catch((err) => {
+            console.error('[DataPlaneWriter] nurture onContentProduced failed:', err)
+          })
         } else {
-          this.deps.growthEngine?.awardXP(agentId, xpSource, 1).catch(() => {})
+          this.deps.growthEngine?.awardXP(agentId, xpSource, 1).catch((err) => {
+            console.error('[DataPlaneWriter] XP award failed:', err)
+          })
         }
       }
 

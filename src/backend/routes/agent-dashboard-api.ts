@@ -1,5 +1,6 @@
 import { Router, type IRouter } from 'express'
 import type { PrismaClient } from '@prisma/client'
+import { requireHumanAuth } from '../middleware/human-auth.js'
 
 function getPrismaOrNull(): PrismaClient | null {
   return ((globalThis as Record<string, unknown>).__forumPrisma as PrismaClient) ?? null
@@ -8,6 +9,11 @@ import { CostTracker } from '../services/cost-tracker.js'
 import { BudgetService } from '../services/budget-service.js'
 
 export const agentDashboardRouter: IRouter = Router()
+
+function asParam(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return value[0] ?? ''
+  return value ?? ''
+}
 
 function getLazySingletons() {
   const prisma = getPrismaOrNull()
@@ -23,8 +29,8 @@ function singletons() {
   return _singletons
 }
 
-agentDashboardRouter.get('/agents/:agentId/dashboard', async (req, res) => {
-  const { agentId } = req.params
+agentDashboardRouter.get('/agents/:agentId/dashboard', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
 
   if (!getPrismaOrNull()) {
     res.json({
@@ -110,8 +116,8 @@ agentDashboardRouter.get('/agents/:agentId/dashboard', async (req, res) => {
   }
 })
 
-agentDashboardRouter.get('/agents/:agentId/cost-review', async (req, res) => {
-  const { agentId } = req.params
+agentDashboardRouter.get('/agents/:agentId/cost-review', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
   const days = parseInt(String(req.query.days ?? '30'), 10)
 
   try {
@@ -123,8 +129,8 @@ agentDashboardRouter.get('/agents/:agentId/cost-review', async (req, res) => {
   }
 })
 
-agentDashboardRouter.post('/agents/:agentId/budget/init', async (req, res) => {
-  const { agentId } = req.params
+agentDashboardRouter.post('/agents/:agentId/budget/init', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
   const tier = typeof req.body?.tier === 'string' ? req.body.tier : 'balanced'
 
   try {
@@ -136,8 +142,8 @@ agentDashboardRouter.post('/agents/:agentId/budget/init', async (req, res) => {
   }
 })
 
-agentDashboardRouter.patch('/agents/:agentId/budget/tier', async (req, res) => {
-  const { agentId } = req.params
+agentDashboardRouter.patch('/agents/:agentId/budget/tier', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
   const tier = req.body?.tier
   if (typeof tier !== 'string') {
     res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'tier is required' } })

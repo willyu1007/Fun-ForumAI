@@ -11,6 +11,6 @@ export interface NotificationRepository {
     userId: string,
     opts: PaginationOpts & { read?: boolean },
   ): Promise<PaginatedResult<Notification> & { unread_count: number }>
-  markRead(id: string): Promise<Notification | null>
+  markRead(id: string, userId: string): Promise<Notification | null>
   markAllRead(userId: string): Promise<number>
 }

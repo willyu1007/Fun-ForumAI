@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest'
 import request from 'supertest'
 import jwt from 'jsonwebtoken'
 import { app } from '../../app.js'
@@ -21,6 +21,15 @@ function servicePost(path: string, body: Record<string, unknown>) {
 const adminToken = createDevToken({ userId: 'admin1', email: 'admin@test.com', role: 'admin' })
 const userToken = createDevToken({ userId: 'user1', email: 'user@test.com', role: 'user' })
 const user2Token = createDevToken({ userId: 'user2', email: 'user2@test.com', role: 'user' })
+let featureFlagSnapshot = { ...(config.features as unknown as Record<string, unknown>) }
+
+beforeEach(() => {
+  featureFlagSnapshot = { ...(config.features as unknown as Record<string, unknown>) }
+})
+
+afterEach(() => {
+  Object.assign(config.features as unknown as Record<string, unknown>, featureFlagSnapshot)
+})
 
 async function waitFor<T>(
   loader: () => Promise<T>,
@@ -639,6 +648,11 @@ describe('E2E: Control Plane (human auth)', () => {
         status: 'ACTIVE',
         reason: 'grant reason',
         ttl_hours: 24,
+        scope: 'ABSTRACT_ONLY',
+        anonymity_level: 'strong',
+        quote_policy: 'PARAPHRASE_ONLY',
+        no_go_topics: [],
+        policy: null,
         granted_at: new Date(),
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
         revoked_at: null,
@@ -655,11 +669,18 @@ describe('E2E: Control Plane (human auth)', () => {
           community_id: 'community-1',
           proposer_agent_id: 'agent-1',
           status: 'PENDING',
+          phase: 'AWAIT_GRANT',
           strict_t4: true,
           grant_required: true,
           premod_required: true,
           redaction_level: 'strong',
           source_count: 0,
+          idempotency_key: null,
+          source_session_id: null,
+          source_memory_id: null,
+          research: null,
+          draft: null,
+          review: null,
           requested_at: new Date(),
           expires_at: null,
           meta: null,
@@ -683,6 +704,10 @@ describe('E2E: Control Plane (human auth)', () => {
         actor_user_id: 'admin1',
         reason: 'grant reason',
         ttl_hours: 24,
+        scope: undefined,
+        anonymity_level: undefined,
+        quote_policy: undefined,
+        no_go_topics: undefined,
       })
 
       const reviewRes = await request(app)
@@ -703,6 +728,186 @@ describe('E2E: Control Plane (human auth)', () => {
       featureFlags.incubationV1 = originalIncubation
       grantSpy.mockRestore()
       reviewSpy.mockRestore()
+    }
+  })
+
+  it('GET /v1/incubation/jobs/:jobId blocks unrelated users', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalIncubation = featureFlags.incubationV1
+    featureFlags.incubationV1 = true
+
+    const ownerAgentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Incubation Owner Agent' })
+    expect(ownerAgentRes.status).toBe(201)
+    const proposerAgentId = ownerAgentRes.body.data.id as string
+
+    const getJobSpy = vi
+      .spyOn(incubationService, 'getJob')
+      .mockResolvedValue({
+        job: {
+          id: 'job-view-1',
+          post_id: null,
+          community_id: 'community-1',
+          proposer_agent_id: proposerAgentId,
+          status: 'PENDING',
+          phase: 'AWAIT_GRANT',
+          strict_t4: true,
+          grant_required: true,
+          premod_required: true,
+          redaction_level: 'strong',
+          source_count: 0,
+          idempotency_key: null,
+          source_session_id: null,
+          source_memory_id: null,
+          research: null,
+          draft: null,
+          review: null,
+          requested_at: new Date(),
+          expires_at: null,
+          meta: null,
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+        grants: [],
+        source_bundles: [],
+        events: [],
+      })
+
+    try {
+      const res = await request(app)
+        .get('/v1/incubation/jobs/job-view-1')
+        .set('Authorization', `Bearer ${user2Token}`)
+      expect(res.status).toBe(403)
+      expect(res.body.error.code).toBe('FORBIDDEN')
+    } finally {
+      featureFlags.incubationV1 = originalIncubation
+      getJobSpy.mockRestore()
+    }
+  })
+
+  it('GET /v1/incubation/jobs/:jobId allows assigned reviewer', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalIncubation = featureFlags.incubationV1
+    featureFlags.incubationV1 = true
+
+    const ownerAgentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Incubation Owner Agent 2' })
+    expect(ownerAgentRes.status).toBe(201)
+    const proposerAgentId = ownerAgentRes.body.data.id as string
+
+    const getJobSpy = vi
+      .spyOn(incubationService, 'getJob')
+      .mockResolvedValue({
+        job: {
+          id: 'job-view-2',
+          post_id: null,
+          community_id: 'community-1',
+          proposer_agent_id: proposerAgentId,
+          status: 'PENDING',
+          phase: 'AWAIT_GRANT',
+          strict_t4: true,
+          grant_required: true,
+          premod_required: true,
+          redaction_level: 'strong',
+          source_count: 0,
+          idempotency_key: null,
+          source_session_id: null,
+          source_memory_id: null,
+          research: null,
+          draft: null,
+          review: null,
+          requested_at: new Date(),
+          expires_at: null,
+          meta: null,
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+        grants: [
+          {
+            id: 'grant-reviewer-1',
+            job_id: 'job-view-2',
+            reviewer_agent_id: null,
+            reviewer_user_id: 'user2',
+            status: 'ACTIVE',
+            reason: 'review access',
+            ttl_hours: 24,
+            scope: 'ABSTRACT_ONLY',
+            anonymity_level: 'strong',
+            quote_policy: 'PARAPHRASE_ONLY',
+            no_go_topics: [],
+            policy: null,
+            granted_at: new Date(),
+            expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            revoked_at: null,
+            meta: null,
+            created_at: new Date(),
+            updated_at: new Date(),
+          },
+        ],
+        source_bundles: [],
+        events: [],
+      })
+
+    try {
+      const res = await request(app)
+        .get('/v1/incubation/jobs/job-view-2')
+        .set('Authorization', `Bearer ${user2Token}`)
+      expect(res.status).toBe(200)
+      expect(res.body.data.job.id).toBe('job-view-2')
+    } finally {
+      featureFlags.incubationV1 = originalIncubation
+      getJobSpy.mockRestore()
+    }
+  })
+
+  it('POST /v1/posts/:postId/aftershow/trigger allows only admin or agent owner in manual mode', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalAftershow = featureFlags.aftershowV1
+    featureFlags.aftershowV1 = true
+
+    const ownerAgentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Aftershow Owner Agent' })
+    expect(ownerAgentRes.status).toBe(201)
+    const ownerAgentId = ownerAgentRes.body.data.id as string
+
+    const community = communityRepo.create({
+      name: 'Aftershow Permission Community',
+      slug: `aftershow-perm-${Date.now()}`,
+    })
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: ownerAgentId,
+      run_id: 'run-aftershow-owner-1',
+      community_id: community.id,
+      title: 'Aftershow permission test',
+      body: 'permission check body',
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    try {
+      const forbiddenRes = await request(app)
+        .post(`/v1/posts/${postId}/aftershow/trigger`)
+        .set('Authorization', `Bearer ${user2Token}`)
+        .send({ mode: 'MANUAL', force: true })
+      expect(forbiddenRes.status).toBe(403)
+
+      const ownerRes = await request(app)
+        .post(`/v1/posts/${postId}/aftershow/trigger`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ mode: 'MANUAL', force: true })
+      expect(ownerRes.status).toBe(201)
+      expect(ownerRes.body.data).toHaveProperty('summary_ref')
+      expect(ownerRes.body.data).toHaveProperty('audience_message_count')
+      expect(ownerRes.body.data).toHaveProperty('threshold_detail')
+    } finally {
+      featureFlags.aftershowV1 = originalAftershow
     }
   })
 

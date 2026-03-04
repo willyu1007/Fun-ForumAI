@@ -1,6 +1,6 @@
 import type { PostRepository } from '../repos/index.js'
 import type { AudienceRepository } from '../repos/audience-repository.js'
-import { NotFoundError } from '../lib/errors.js'
+import { NotFoundError, ValidationError } from '../lib/errors.js'
 
 export interface AudienceServiceDeps {
   audienceRepo: AudienceRepository
@@ -32,6 +32,11 @@ export class AudienceService {
     actor_user_id: string
     body: string
   }) {
+    const trimmed = input.body?.trim()
+    if (!trimmed) {
+      throw new ValidationError('body must be a non-empty string')
+    }
+
     const post = await this.deps.postRepo.findById(input.post_id)
     if (!post) throw new NotFoundError('Post', input.post_id)
 
@@ -44,7 +49,7 @@ export class AudienceService {
     const message = await this.deps.audienceRepo.createMessage({
       thread_id: thread.id,
       author_user_id: input.actor_user_id,
-      body: input.body,
+      body: trimmed,
     })
 
     return {

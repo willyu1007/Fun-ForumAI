@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { richCommunitiesMetrics } from '../lib/rich-communities-metrics.js'
 
 export type AgentStageTier = 'T1' | 'T2' | 'T3' | 'T4' | 'T5'
 
@@ -18,15 +19,128 @@ const stageRoleSpecSchema = z.object({
   t4_longform_only: z.boolean().default(false),
 }).strict()
 
-const stageAftershowSchema = z.object({
-  mode: z.enum(['OFF', 'THRESHOLD', 'PERIODIC', 'MANUAL']).default('THRESHOLD'),
-  threshold: z.object({
-    min_comments: z.number().int().min(0).default(30),
-    min_human_vote_score: z.number().int().min(0).default(10),
+const stageAllocatorSchema = z.object({
+  community_max_agents: z.number().int().min(1).max(64).default(8),
+  thread_max_agents: z.number().int().min(1).max(256).default(20),
+  cooldown_seconds: z.number().int().min(0).max(3600).default(60),
+  max_actions_per_hour: z.number().int().min(1).max(1000).default(30),
+  max_tokens_per_day: z.number().int().min(100).max(10_000_000).default(100_000),
+  event_base_quota: z.object({
+    NewPostCreated: z.number().int().min(0).max(64).default(5),
+    NewCommentCreated: z.number().int().min(0).max(64).default(3),
+    NewMessageCreated: z.number().int().min(0).max(64).default(0),
+    VoteCast: z.number().int().min(0).max(64).default(0),
+    RoomTick: z.number().int().min(0).max(64).default(4),
   }).strict().default({
-    min_comments: 30,
-    min_human_vote_score: 10,
+    NewPostCreated: 5,
+    NewCommentCreated: 3,
+    NewMessageCreated: 0,
+    VoteCast: 0,
+    RoomTick: 4,
   }),
+  director_guard: z.object({
+    contrast_min_relevance_ratio: z.number().min(0).max(1).default(0.45),
+    wildcard_min_relevance_ratio: z.number().min(0).max(1).default(0.35),
+    min_abs_score: z.number().min(0).max(10).default(0.8),
+    thread_window: z.number().int().min(1).max(64).default(6),
+    thread_max_agent_occurrences: z.number().int().min(1).max(16).default(2),
+    thread_cooldown_seconds: z.number().int().min(0).max(3600).default(600),
+  }).strict().default({
+    contrast_min_relevance_ratio: 0.45,
+    wildcard_min_relevance_ratio: 0.35,
+    min_abs_score: 0.8,
+    thread_window: 6,
+    thread_max_agent_occurrences: 2,
+    thread_cooldown_seconds: 600,
+  }),
+}).strict().default({
+  community_max_agents: 8,
+  thread_max_agents: 20,
+  cooldown_seconds: 60,
+  max_actions_per_hour: 30,
+  max_tokens_per_day: 100_000,
+  event_base_quota: {
+    NewPostCreated: 5,
+    NewCommentCreated: 3,
+    NewMessageCreated: 0,
+    VoteCast: 0,
+    RoomTick: 4,
+  },
+  director_guard: {
+    contrast_min_relevance_ratio: 0.45,
+    wildcard_min_relevance_ratio: 0.35,
+    min_abs_score: 0.8,
+    thread_window: 6,
+    thread_max_agent_occurrences: 2,
+    thread_cooldown_seconds: 600,
+  },
+})
+
+const stageHumanParticipationSchema = z.object({
+  mode: z.enum(['A', 'B', 'C']).default('A'),
+  audience_zone_enabled: z.boolean().default(true),
+  agent_reads_audience_zone: z.boolean().default(false),
+  agent_reply_via_aftershow: z.boolean().default(true),
+}).strict().default({
+  mode: 'A',
+  audience_zone_enabled: true,
+  agent_reads_audience_zone: false,
+  agent_reply_via_aftershow: true,
+})
+
+const stageIncubationSchema = z.object({
+  enabled: z.boolean().default(false),
+  seed_source: z.enum(['private_digest_only', 'mixed']).default('private_digest_only'),
+  grant_required: z.boolean().default(true),
+  redaction_profile: z.enum(['strong', 'medium', 'light']).default('strong'),
+  research: z.object({
+    allow_web_search: z.boolean().default(true),
+    min_sources: z.number().int().min(1).max(20).default(3),
+  }).strict().default({
+    allow_web_search: true,
+    min_sources: 3,
+  }),
+  format: z.object({
+    min_words: z.number().int().min(100).max(20_000).default(600),
+    max_words: z.number().int().min(100).max(20_000).default(2_500),
+    citation_style: z.enum(['endnotes', 'inline']).default('endnotes'),
+  }).strict().default({
+    min_words: 600,
+    max_words: 2_500,
+    citation_style: 'endnotes',
+  }),
+}).strict().default({
+  enabled: false,
+  seed_source: 'private_digest_only',
+  grant_required: true,
+  redaction_profile: 'strong',
+  research: {
+    allow_web_search: true,
+    min_sources: 3,
+  },
+  format: {
+    min_words: 600,
+    max_words: 2_500,
+    citation_style: 'endnotes',
+  },
+})
+
+const stageAftershowThresholdSchema = z.object({
+  // New field names
+  audience_comments: z.number().int().min(0).optional(),
+  human_vote_score: z.number().int().min(0).optional(),
+  // Legacy aliases
+  min_comments: z.number().int().min(0).optional(),
+  min_human_vote_score: z.number().int().min(0).optional(),
+}).strict().transform((input) => ({
+  audience_comments: input.audience_comments ?? input.min_comments ?? 30,
+  human_vote_score: input.human_vote_score ?? input.min_human_vote_score ?? 10,
+}))
+
+const stageAftershowSchema = z.object({
+  enabled: z.boolean().default(true),
+  mode: z.enum(['OFF', 'THRESHOLD', 'PERIODIC', 'MANUAL']).default('THRESHOLD'),
+  threshold: z.preprocess((value) => value ?? {}, stageAftershowThresholdSchema),
   periodic: z.object({
     enabled: z.boolean().default(false),
     interval_hours: z.number().int().min(1).max(168).default(24),
@@ -35,10 +149,11 @@ const stageAftershowSchema = z.object({
     interval_hours: 24,
   }),
 }).strict().default({
+  enabled: true,
   mode: 'THRESHOLD',
   threshold: {
-    min_comments: 30,
-    min_human_vote_score: 10,
+    audience_comments: 30,
+    human_vote_score: 10,
   },
   periodic: {
     enabled: false,
@@ -91,6 +206,9 @@ const stageSpecV1Schema = z.object({
     redaction: 'strong',
   }),
   aftershow: stageAftershowSchema,
+  allocator: stageAllocatorSchema,
+  human_participation: stageHumanParticipationSchema,
+  incubation: stageIncubationSchema,
   moderation: z.object({
     // Override defaults consumed by moderation service.
     min_source_count: z.number().int().min(0).optional(),
@@ -110,6 +228,9 @@ export const DEFAULT_STAGE_SPEC_V1: StageSpecV1 = stageSpecV1Schema.parse({
   version: 'v1',
 })
 
+// Maximally permissive spec used when rules_json is missing or invalid.
+// strict_t4.enabled=false keeps the incubation pipeline from gating agents
+// that haven't earned T4 yet, preventing availability deadlocks on new communities.
 export const AVAILABILITY_FALLBACK_STAGE_SPEC_V1: StageSpecV1 = stageSpecV1Schema.parse({
   version: 'v1',
   min_tier_pool: 'T1',
@@ -144,14 +265,58 @@ export const AVAILABILITY_FALLBACK_STAGE_SPEC_V1: StageSpecV1 = stageSpecV1Schem
     redaction: 'strong',
   },
   aftershow: {
+    enabled: false,
     mode: 'OFF',
     threshold: {
-      min_comments: 30,
-      min_human_vote_score: 10,
+      audience_comments: 30,
+      human_vote_score: 10,
     },
     periodic: {
       enabled: false,
       interval_hours: 24,
+    },
+  },
+  allocator: {
+    community_max_agents: 8,
+    thread_max_agents: 20,
+    cooldown_seconds: 60,
+    max_actions_per_hour: 30,
+    max_tokens_per_day: 100_000,
+    event_base_quota: {
+      NewPostCreated: 5,
+      NewCommentCreated: 3,
+      NewMessageCreated: 0,
+      VoteCast: 0,
+      RoomTick: 4,
+    },
+    director_guard: {
+      contrast_min_relevance_ratio: 0.45,
+      wildcard_min_relevance_ratio: 0.35,
+      min_abs_score: 0.8,
+      thread_window: 6,
+      thread_max_agent_occurrences: 2,
+      thread_cooldown_seconds: 600,
+    },
+  },
+  human_participation: {
+    mode: 'A',
+    audience_zone_enabled: false,
+    agent_reads_audience_zone: false,
+    agent_reply_via_aftershow: true,
+  },
+  incubation: {
+    enabled: false,
+    seed_source: 'private_digest_only',
+    grant_required: true,
+    redaction_profile: 'strong',
+    research: {
+      allow_web_search: true,
+      min_sources: 3,
+    },
+    format: {
+      min_words: 600,
+      max_words: 2500,
+      citation_style: 'endnotes',
     },
   },
 })
@@ -198,6 +363,7 @@ export function resolveStageSpecFromRules(
   const rules = toRecord(rulesJson)
   const raw = rules?.stage_spec_v1
   if (!raw) {
+    richCommunitiesMetrics.recordStageSpecFallback()
     return {
       stage_spec: AVAILABILITY_FALLBACK_STAGE_SPEC_V1,
       used_fallback: true,
@@ -209,6 +375,7 @@ export function resolveStageSpecFromRules(
     fallback_spec: AVAILABILITY_FALLBACK_STAGE_SPEC_V1,
   })
   if (resolved.used_fallback) {
+    richCommunitiesMetrics.recordStageSpecFallback()
     const communityLabel = opts?.community_id ?? 'unknown_community'
     console.warn('[StageSpec] invalid stage_spec_v1, fallback applied', JSON.stringify({
       community_id: communityLabel,

@@ -12,7 +12,14 @@ export const createPostSchema = z.object({
   title: z.string().min(1).max(300),
   body: z.string().min(1).max(50_000),
   tags: z.array(z.string().max(50)).max(10).optional(),
-})
+  trust_context: z.object({
+    job_id: z.string().min(1),
+    grant_id: z.string().min(1),
+    source_bundle_ids: z.array(z.string().min(1)).min(1).max(50),
+    citation_urls: z.array(httpsUrlSchema).max(50).optional(),
+    redaction_profile: z.enum(['strong', 'medium', 'light']).optional(),
+  }).strict().optional(),
+}).strict()
 
 export const createCommentSchema = z.object({
   actor_agent_id: z.string().min(1),
@@ -20,7 +27,7 @@ export const createCommentSchema = z.object({
   post_id: z.string().min(1),
   parent_comment_id: z.string().optional(),
   body: z.string().min(1).max(10_000),
-})
+}).strict()
 
 export const upsertVoteSchema = z.object({
   actor_agent_id: z.string().min(1),
@@ -28,18 +35,18 @@ export const upsertVoteSchema = z.object({
   target_type: z.enum(['POST', 'COMMENT', 'MESSAGE']),
   target_id: z.string().min(1),
   direction: z.enum(['UP', 'DOWN', 'NEUTRAL']),
-})
+}).strict()
 
 export const createAgentSchema = z.object({
   display_name: z.string().min(1).max(100),
   avatar_url: httpsUrlSchema.optional(),
   model: z.string().max(50).optional(),
-})
+}).strict()
 
 export const updateAgentProfileSchema = z.object({
   display_name: z.string().min(1).max(100).optional(),
   avatar_url: httpsUrlSchema.nullable().optional(),
-}).refine(
+}).strict().refine(
   (body) => body.display_name !== undefined || body.avatar_url !== undefined,
   {
     message: 'display_name or avatar_url is required',
@@ -48,13 +55,13 @@ export const updateAgentProfileSchema = z.object({
 
 export const updateAgentConfigSchema = z.object({
   config_json: z.record(z.string(), z.any()),
-})
+}).strict()
 
 export const updateAgentMembershipsSchema = z.object({
   add: z.array(z.string().min(1)).max(100).default([]),
   remove: z.array(z.string().min(1)).max(100).default([]),
   role: z.enum(['resident', 'guest']).optional(),
-}).refine(
+}).strict().refine(
   (body) => body.add.length > 0 || body.remove.length > 0,
   { message: 'add or remove is required' },
 )
@@ -62,7 +69,7 @@ export const updateAgentMembershipsSchema = z.object({
 export const patchAgentMembershipStatusSchema = z.object({
   status: z.enum(['ACTIVE', 'MUTED', 'BANNED']),
   reason: z.string().max(1000).optional(),
-})
+}).strict()
 
 export const patchCommunityStageSpecSchema = z.object({
   version: z.literal('v1'),
@@ -89,16 +96,62 @@ export const patchCommunityStageSpecSchema = z.object({
     redaction: z.enum(['strong', 'standard']),
   }),
   aftershow: z.object({
+    enabled: z.boolean().optional(),
     mode: z.enum(['OFF', 'THRESHOLD', 'PERIODIC', 'MANUAL']),
     threshold: z.object({
-      min_comments: z.number().int().min(0),
-      min_human_vote_score: z.number().int().min(0),
+      audience_comments: z.number().int().min(0).optional(),
+      human_vote_score: z.number().int().min(0).optional(),
+      min_comments: z.number().int().min(0).optional(),
+      min_human_vote_score: z.number().int().min(0).optional(),
     }),
     periodic: z.object({
       enabled: z.boolean(),
       interval_hours: z.number().int().min(1).max(168),
     }),
   }),
+  allocator: z.object({
+    community_max_agents: z.number().int().min(1).max(64).optional(),
+    thread_max_agents: z.number().int().min(1).max(256).optional(),
+    cooldown_seconds: z.number().int().min(0).max(3600).optional(),
+    max_actions_per_hour: z.number().int().min(1).max(1000).optional(),
+    max_tokens_per_day: z.number().int().min(100).max(10_000_000).optional(),
+    event_base_quota: z.object({
+      NewPostCreated: z.number().int().min(0).max(64).optional(),
+      NewCommentCreated: z.number().int().min(0).max(64).optional(),
+      NewMessageCreated: z.number().int().min(0).max(64).optional(),
+      VoteCast: z.number().int().min(0).max(64).optional(),
+      RoomTick: z.number().int().min(0).max(64).optional(),
+    }).optional(),
+    director_guard: z.object({
+      contrast_min_relevance_ratio: z.number().min(0).max(1).optional(),
+      wildcard_min_relevance_ratio: z.number().min(0).max(1).optional(),
+      min_abs_score: z.number().min(0).max(10).optional(),
+      thread_window: z.number().int().min(1).max(64).optional(),
+      thread_max_agent_occurrences: z.number().int().min(1).max(16).optional(),
+      thread_cooldown_seconds: z.number().int().min(0).max(3600).optional(),
+    }).optional(),
+  }).optional(),
+  human_participation: z.object({
+    mode: z.enum(['A', 'B', 'C']).optional(),
+    audience_zone_enabled: z.boolean().optional(),
+    agent_reads_audience_zone: z.boolean().optional(),
+    agent_reply_via_aftershow: z.boolean().optional(),
+  }).optional(),
+  incubation: z.object({
+    enabled: z.boolean().optional(),
+    seed_source: z.enum(['private_digest_only', 'mixed']).optional(),
+    grant_required: z.boolean().optional(),
+    redaction_profile: z.enum(['strong', 'medium', 'light']).optional(),
+    research: z.object({
+      allow_web_search: z.boolean().optional(),
+      min_sources: z.number().int().min(1).max(20).optional(),
+    }).optional(),
+    format: z.object({
+      min_words: z.number().int().min(100).max(20_000).optional(),
+      max_words: z.number().int().min(100).max(20_000).optional(),
+      citation_style: z.enum(['endnotes', 'inline']).optional(),
+    }).optional(),
+  }).optional(),
   moderation: z.object({
     min_source_count: z.number().int().min(0).optional(),
     premod_required: z.boolean().optional(),
@@ -113,16 +166,20 @@ export const patchCommunityStageSpecSchema = z.object({
 
 export const createAudienceMessageSchema = z.object({
   body: z.string().trim().min(1).max(20_000),
-})
+}).strict()
 
 export const triggerAftershowSchema = z.object({
   mode: z.enum(['AUTO', 'MANUAL']).default('AUTO'),
   force: z.boolean().default(false),
-})
+}).strict()
 
 export const createIncubationGrantSchema = z.object({
   reason: z.string().min(1).max(1000),
   ttl_hours: z.number().int().min(1).max(168).default(168),
+  scope: z.enum(['ABSTRACT_ONLY', 'SCENARIO_LEVEL', 'DETAIL_LEVEL']).optional(),
+  anonymity_level: z.enum(['strong', 'medium', 'light']).optional(),
+  quote_policy: z.enum(['NO_QUOTE', 'PARAPHRASE_ONLY', 'ALLOW_QUOTE']).optional(),
+  no_go_topics: z.array(z.string().min(1).max(100)).max(50).optional(),
 }).strict()
 
 export const createIncubationReviewVerdictSchema = z.object({
@@ -135,12 +192,12 @@ export const governanceActionSchema = z.object({
   target_type: z.enum(['post', 'comment', 'message', 'agent']),
   target_id: z.string().min(1),
   reason: z.string().max(1000).optional(),
-})
+}).strict()
 
 export const adminSeasonRotateSchema = z.object({
   open_count: z.number().int().min(3).max(5).default(3),
   dry_run: z.boolean().default(false),
-})
+}).strict()
 
 export const paginationQuery = z.object({
   cursor: z.string().optional(),
@@ -167,11 +224,11 @@ const statsAllocationSchema = z.object({
 export const previewStatsAllocationSchema = z.object({
   version: z.number().int().min(1).optional(),
   allocation: statsAllocationSchema,
-})
+}).strict()
 
 export const allocateStatsSchema = z.object({
   version: z.number().int().min(1).optional(),
   allocation: statsAllocationSchema,
   confirm_no_respec: z.literal(true),
   idempotency_key: z.string().min(1).max(200),
-})
+}).strict()

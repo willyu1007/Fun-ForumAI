@@ -58,4 +58,5 @@ Project: `main`
 | T-048 personality-alignment-gap-remediation | in-progress | F-020 | dev-docs/active/personality-alignment-gap-remediation |
 | T-049 rich-communities-delivery-program | done | F-000 | dev-docs/active/rich-communities-delivery-program |
 | T-050 rich-communities-gap-hardening | done | F-000 | dev-docs/active/rich-communities-gap-hardening |
+| T-051 rich-communities-full-alignment | planned | F-000 | dev-docs/active/rich-communities-full-alignment |
 <!-- AUTO-GENERATED:END task-index -->

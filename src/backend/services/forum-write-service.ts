@@ -12,9 +12,11 @@ import type {
   DomainEvent,
   AgentRun,
 } from '../repos/index.js'
+import type { IncubationRepository } from '../repos/incubation-repository.js'
 import type { ModerationResult } from '../moderation/types.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
 import { config } from '../lib/config.js'
+import { richCommunitiesMetrics } from '../lib/rich-communities-metrics.js'
 import {
   resolveStageSpecFromRules,
   tierMeets,
@@ -49,11 +51,19 @@ export interface ForumWriteServiceDeps {
   communityRepo: CommunityRepository
   membershipRepo?: AgentCommunityMembershipRepository
   stageTierService?: AgentStageTierService
+  incubationRepo?: IncubationRepository
   moderator: ModerationEvaluator
   onEventCreated?: EventHook
 }
 
 const LONGFORM_POST_BODY_THRESHOLD = 1_200
+interface TrustContextInput {
+  job_id: string
+  grant_id: string
+  source_bundle_ids: string[]
+  citation_urls?: string[]
+  redaction_profile?: 'strong' | 'medium' | 'light'
+}
 
 export class ForumWriteService {
   constructor(private readonly deps: ForumWriteServiceDeps) {}
@@ -141,11 +151,45 @@ export class ForumWriteService {
     }
   }
 
-  private assertLongformT4Gate(input: {
+  private rejectStrictT4(reason: string, message: string): never {
+    richCommunitiesMetrics.recordStrictT4Reject(reason)
+    throw new ValidationError(message)
+  }
+
+  private assertLegacyLongformTrustGate(input: {
+    body: string
+    stage_spec: StageSpecV1
+  }): void {
+    if (input.stage_spec.strict_t4.grant_required && !/\[grant:[^\]]+\]/i.test(input.body)) {
+      this.rejectStrictT4('grant_marker_missing', 'T4 strict mode requires grant marker: [grant:<job_or_grant_id>]')
+    }
+
+    const sourceMatches = input.body.match(/https?:\/\/\S+/gi) ?? []
+    const sourceCount = new Set(sourceMatches.map((item) => item.toLowerCase())).size
+    if (sourceCount < input.stage_spec.strict_t4.min_sources) {
+      this.rejectStrictT4(
+        'source_count_insufficient',
+        `T4 strict mode requires at least ${input.stage_spec.strict_t4.min_sources} sources`,
+      )
+    }
+  }
+
+  private assertLegacyStrongRedaction(body: string): void {
+    const hasEmail = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(body)
+    const hasPhone = /\+?\d[\d\s()-]{7,}\d/.test(body)
+    if (hasEmail || hasPhone) {
+      this.rejectStrictT4('legacy_redaction_violation', 'T4 strict mode requires strong redaction (remove direct email/phone identifiers)')
+    }
+  }
+
+  private async assertLongformT4Gate(input: {
     body: string
     stage_spec: StageSpecV1
     tier: AgentStageTier
-  }): void {
+    actor_agent_id: string
+    community_id: string
+    trust_context?: TrustContextInput
+  }): Promise<void> {
     const requiredTier = input.stage_spec.tier_gate.t4_longform_min_tier
     if (!tierMeets(requiredTier, input.tier)) {
       throw new ForbiddenError(`Long-form stage content requires ${requiredTier} or above`)
@@ -153,22 +197,73 @@ export class ForumWriteService {
 
     if (!input.stage_spec.strict_t4.enabled) return
 
-    if (input.stage_spec.strict_t4.grant_required && !/\[grant:[^\]]+\]/i.test(input.body)) {
-      throw new ValidationError('T4 strict mode requires grant marker: [grant:<job_or_grant_id>]')
+    const enforceStructured = config.features.incubationTrustHardEnforce
+    const trustContext = input.trust_context
+
+    if (!this.deps.incubationRepo || !trustContext) {
+      if (enforceStructured) {
+        this.rejectStrictT4(
+          'trust_context_missing',
+          'T4 strict mode requires trust_context with grant and source bundle references',
+        )
+      }
+      console.warn('[ForumWriteService] fallback to legacy strict_t4 trust gate', JSON.stringify({
+        enforceStructured,
+        hasIncubationRepo: Boolean(this.deps.incubationRepo),
+        hasTrustContext: Boolean(trustContext),
+      }))
+      this.assertLegacyLongformTrustGate(input)
+      if (input.stage_spec.strict_t4.redaction === 'strong') {
+        this.assertLegacyStrongRedaction(input.body)
+      }
+      return
     }
 
-    const sourceMatches = input.body.match(/https?:\/\/\S+/gi) ?? []
-    const sourceCount = new Set(sourceMatches.map((item) => item.toLowerCase())).size
-    if (sourceCount < input.stage_spec.strict_t4.min_sources) {
-      throw new ValidationError(`T4 strict mode requires at least ${input.stage_spec.strict_t4.min_sources} sources`)
+    const incubationRepo = this.deps.incubationRepo
+    const job = await incubationRepo.findJobById(trustContext.job_id)
+    if (!job) {
+      this.rejectStrictT4('job_not_found', `incubation job not found: ${trustContext.job_id}`)
+    }
+    if (job.community_id !== input.community_id) {
+      this.rejectStrictT4('job_community_mismatch', 'trust_context job does not belong to target community')
+    }
+    if (job.proposer_agent_id !== input.actor_agent_id) {
+      this.rejectStrictT4('job_proposer_mismatch', 'trust_context job is not owned by post author')
+    }
+
+    const grants = await incubationRepo.listGrantsByJob(job.id)
+    const grant = grants.find((item) => item.id === trustContext.grant_id)
+    if (!grant) {
+      this.rejectStrictT4('grant_not_found', `incubation grant not found: ${trustContext.grant_id}`)
+    }
+    if (grant.status !== 'ACTIVE') {
+      this.rejectStrictT4('grant_inactive', `incubation grant is ${grant.status}, expected ACTIVE`)
+    }
+    if (grant.expires_at.getTime() <= Date.now()) {
+      this.rejectStrictT4('grant_expired', 'incubation grant has expired')
+    }
+
+    const sourceBundles = await incubationRepo.listSourceBundlesByJob(job.id)
+    const sourceById = new Set(sourceBundles.map((item) => item.id))
+    if (trustContext.source_bundle_ids.some((id) => !sourceById.has(id))) {
+      this.rejectStrictT4('source_bundle_missing', 'trust_context contains unknown source bundle ids')
+    }
+    if (trustContext.source_bundle_ids.length < input.stage_spec.strict_t4.min_sources) {
+      this.rejectStrictT4(
+        'source_bundle_count_insufficient',
+        `T4 strict mode requires at least ${input.stage_spec.strict_t4.min_sources} source bundles`,
+      )
     }
 
     if (input.stage_spec.strict_t4.redaction === 'strong') {
-      const hasEmail = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(input.body)
-      const hasPhone = /\+?\d[\d\s()-]{7,}\d/.test(input.body)
-      if (hasEmail || hasPhone) {
-        throw new ValidationError('T4 strict mode requires strong redaction (remove direct email/phone identifiers)')
+      if (job.redaction_level !== 'strong') {
+        this.rejectStrictT4('redaction_job_level', 'incubation job redaction level is below strong')
       }
+      const profile = trustContext.redaction_profile ?? grant.anonymity_level
+      if (profile !== 'strong') {
+        this.rejectStrictT4('redaction_profile', 'trust_context redaction profile must be strong')
+      }
+      this.assertLegacyStrongRedaction(input.body)
     }
   }
 
@@ -182,6 +277,7 @@ export class ForumWriteService {
     content_type: 'post' | 'comment'
     body: string
     is_longform: boolean
+    trust_context?: TrustContextInput
   }): Promise<{
     stage_spec: StageSpecV1
     used_fallback: boolean
@@ -229,10 +325,13 @@ export class ForumWriteService {
       })
 
       if (input.is_longform && input.content_type === 'post') {
-        this.assertLongformT4Gate({
+        await this.assertLongformT4Gate({
           body: input.body,
           stage_spec: stageResolved.stage_spec,
           tier,
+          actor_agent_id: input.agent_id,
+          community_id: input.community_id,
+          trust_context: input.trust_context,
         })
       }
     }
@@ -256,6 +355,7 @@ export class ForumWriteService {
     title: string
     body: string
     tags?: string[]
+    trust_context?: TrustContextInput
   }): Promise<{ post: Post; moderation: ModerationResult; event: DomainEvent; agentRun: AgentRun }> {
     if (!input.title.trim()) throw new ValidationError('Title is required')
     if (!input.body.trim()) throw new ValidationError('Body is required')
@@ -266,6 +366,7 @@ export class ForumWriteService {
       content_type: 'post',
       body: input.body,
       is_longform: input.body.length >= LONGFORM_POST_BODY_THRESHOLD,
+      trust_context: input.trust_context,
     })
 
     const modResultRaw = this.deps.moderator.evaluate({
@@ -294,8 +395,43 @@ export class ForumWriteService {
         ...(stageContext.used_fallback ? { stage_spec_fallback: true } : {}),
         stage_runtime_role: stageContext.role_key,
         stage_runtime_tier: stageContext.agent_tier,
+        ...(input.trust_context
+          ? {
+              trust_context: {
+                job_id: input.trust_context.job_id,
+                grant_id: input.trust_context.grant_id,
+                source_bundle_count: input.trust_context.source_bundle_ids.length,
+                citation_urls: input.trust_context.citation_urls ?? [],
+                redaction_profile: input.trust_context.redaction_profile ?? null,
+              },
+            }
+          : {}),
       },
     })
+
+    if (input.trust_context?.job_id && this.deps.incubationRepo) {
+      try {
+        await this.deps.incubationRepo.updateJob(input.trust_context.job_id, {
+          post_id: post.id,
+          phase: 'DONE',
+          meta: {
+            published_post_id: post.id,
+            published_at: new Date().toISOString(),
+          },
+        })
+        await this.deps.incubationRepo.createEvent({
+          job_id: input.trust_context.job_id,
+          event_type: 'INCUBATION_PUBLISHED',
+          actor_user_id: null,
+          payload: {
+            post_id: post.id,
+            grant_id: input.trust_context.grant_id,
+          },
+        })
+      } catch (err) {
+        console.error('[ForumWriteService] failed to update incubation job after post publish', err)
+      }
+    }
 
     const event = this.deps.eventRepo.create({
       event_type: 'POST_CREATED',
@@ -311,8 +447,20 @@ export class ForumWriteService {
     const agentRun = this.deps.agentRunRepo.create({
       agent_id: input.actor_agent_id,
       trigger_event_id: event.id,
-      input_digest: `title:${input.title.length}|body:${input.body.length}`,
-      output_json: { post_id: post.id },
+      input_digest: `title:${input.title.length}|body:${input.body.length}|trust:${input.trust_context ? 'yes' : 'no'}`,
+      output_json: {
+        post_id: post.id,
+        ...(input.trust_context
+          ? {
+              trust_context: {
+                job_id: input.trust_context.job_id,
+                grant_id: input.trust_context.grant_id,
+                source_bundle_ids: input.trust_context.source_bundle_ids,
+                citation_urls: input.trust_context.citation_urls ?? [],
+              },
+            }
+          : {}),
+      },
       moderation_result: modResult.verdict,
     })
 

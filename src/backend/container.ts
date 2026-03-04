@@ -136,6 +136,7 @@ import { CultureDigestScheduler } from './runtime/culture-digest-scheduler.js'
 import { PprSnapshotBuilder } from './services/ppr/ppr-snapshot-builder.js'
 import { resolveStageSpecFromRules, tierMeets } from './stage/index.js'
 import { IncubationService } from './services/incubation-service.js'
+import { IncubationOrchestrator } from './services/incubation-orchestrator.js'
 import { AudienceService } from './services/audience-service.js'
 import { AftershowService } from './services/aftershow-service.js'
 
@@ -445,6 +446,13 @@ export const incubationService = new IncubationService({
   incubationRepo,
 })
 
+export const incubationOrchestrator = new IncubationOrchestrator({
+  incubationRepo,
+  membershipRepo: agentCommunityMembershipRepo,
+  communityRepo,
+  stageTierService,
+})
+
 export const audienceService = new AudienceService({
   audienceRepo,
   postRepo,
@@ -452,8 +460,9 @@ export const audienceService = new AudienceService({
 
 export const aftershowService = new AftershowService({
   postRepo,
-  commentRepo,
   humanVoteRepo,
+  audienceRepo,
+  agentRepo,
   communityRepo,
   runRepo: aftershowRunRepo,
 })
@@ -467,6 +476,7 @@ export const forumWriteService = new ForumWriteService({
   communityRepo,
   membershipRepo: agentCommunityMembershipRepo,
   stageTierService,
+  incubationRepo,
   moderator,
 })
 
@@ -569,6 +579,14 @@ function resolveDirectorConfigByCommunity(communityId: string) {
   })
 }
 
+function resolveStageAllocatorByCommunity(communityId: string) {
+  const community = communityRepo.findById(communityId)
+  const stageResolved = resolveStageSpecFromRules(community?.rules_json ?? null, {
+    community_id: communityId,
+  })
+  return stageResolved.stage_spec.allocator
+}
+
 if (config.features.castingDirectorEnabled) {
   const missingPilotSlugs = DIRECTOR_PILOT_COMMUNITY_SLUGS.filter((slug) => !communityRepo.findBySlug(slug))
   if (missingPilotSlugs.length > 0) {
@@ -638,7 +656,14 @@ const allocatorAgentRepo: AllocatorAgentRepo = {
 }
 
 const degradationMonitor = new DefaultDegradationMonitor(DEFAULT_ALLOCATOR_CONFIG)
-const quotaCalc = new DefaultQuotaCalculator(DEFAULT_ALLOCATOR_CONFIG)
+const quotaCalc = new DefaultQuotaCalculator(DEFAULT_ALLOCATOR_CONFIG, {
+  resolveCommunityMax: (communityId) => resolveStageAllocatorByCommunity(communityId).community_max_agents,
+  resolveThreadMax: (communityId) => resolveStageAllocatorByCommunity(communityId).thread_max_agents,
+  resolveEventBaseQuota: ({ community_id, event_type }) => {
+    const quota = resolveStageAllocatorByCommunity(community_id).event_base_quota
+    return quota[event_type]
+  },
+})
 
 export const allocator = new EventAllocator({
   admission: new InMemoryAdmissionGate(DEFAULT_ALLOCATOR_CONFIG),
@@ -801,8 +826,13 @@ if (config.db.usePrisma) {
     relationService,
     statsService,
   })
-  if (memoryService && achievementsOrchestrator) {
-    memoryService.setDigestHook((input) => achievementsOrchestrator!.processPrivateDigest(input))
+  if (memoryService) {
+    memoryService.setDigestHook(async (input) => {
+      if (achievementsOrchestrator) {
+        await achievementsOrchestrator.processPrivateDigest(input)
+      }
+      await incubationOrchestrator.onPrivateDigestCompleted(input)
+    })
   }
 
   if (memoryService) {

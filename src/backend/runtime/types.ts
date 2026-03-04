@@ -108,6 +108,13 @@ export interface WriteInstruction {
   title?: string
   body: string
   tags?: string[]
+  trust_context?: {
+    job_id: string
+    grant_id: string
+    source_bundle_ids: string[]
+    citation_urls?: string[]
+    redaction_profile?: 'strong' | 'medium' | 'light'
+  }
   message_kind?: string
   media_asset_id?: string
   media_url?: string

@@ -1,4 +1,4 @@
-import { useAgentCredit, useAgentCreditEvents } from '../../../api/hooks'
+import { useAgentCredit, useAgentCreditEvents } from '@/api/hooks'
 
 interface CreditBadgeProps {
   agentId: string

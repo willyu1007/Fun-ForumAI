@@ -42,6 +42,10 @@ export class IncubationService {
     actor_user_id: string
     reason: string
     ttl_hours: number
+    scope?: 'ABSTRACT_ONLY' | 'SCENARIO_LEVEL' | 'DETAIL_LEVEL'
+    anonymity_level?: 'strong' | 'medium' | 'light'
+    quote_policy?: 'NO_QUOTE' | 'PARAPHRASE_ONLY' | 'ALLOW_QUOTE'
+    no_go_topics?: string[]
   }) {
     const job = await this.deps.incubationRepo.findJobById(input.job_id)
     if (!job) throw new NotFoundError('IncubationJob', input.job_id)
@@ -64,13 +68,32 @@ export class IncubationService {
       reviewer_user_id: input.actor_user_id,
       reason: input.reason.trim(),
       ttl_hours: input.ttl_hours,
+      scope: input.scope,
+      anonymity_level: input.anonymity_level,
+      quote_policy: input.quote_policy,
+      no_go_topics: input.no_go_topics ?? [],
+      policy: {
+        scope: input.scope ?? 'ABSTRACT_ONLY',
+        anonymity_level: input.anonymity_level ?? 'strong',
+        quote_policy: input.quote_policy ?? 'PARAPHRASE_ONLY',
+        no_go_topics: input.no_go_topics ?? [],
+      },
       expires_at: expiresAt,
     })
 
-    await this.deps.incubationRepo.updateJob(input.job_id, {
-      status: 'GRANTED',
-      expires_at: expiresAt,
-    })
+    // TODO: wrap in DB transaction when migrating to Postgres persistence
+    try {
+      await this.deps.incubationRepo.updateJob(input.job_id, {
+        status: 'GRANTED',
+        phase: 'RESEARCHING',
+        expires_at: expiresAt,
+      })
+    } catch (err) {
+      console.error('[IncubationService] grant created but job status update failed; data may be inconsistent', {
+        job_id: input.job_id, grant_id: grant.id,
+      })
+      throw err
+    }
 
     await this.deps.incubationRepo.createEvent({
       job_id: input.job_id,
@@ -80,6 +103,10 @@ export class IncubationService {
         reason: input.reason.trim(),
         ttl_hours: input.ttl_hours,
         grant_id: grant.id,
+        scope: grant.scope,
+        anonymity_level: grant.anonymity_level,
+        quote_policy: grant.quote_policy,
+        no_go_topics: grant.no_go_topics,
       },
     })
 
@@ -102,21 +129,40 @@ export class IncubationService {
       )
     }
 
-    const patch: { status?: 'REJECTED' | 'QUARANTINED'; meta: Record<string, unknown> } = {
-      meta: {
-        ...(job.meta ?? {}),
-        review_reason: input.reason?.trim() || null,
-      },
+    const existingMeta = (job.meta ?? {}) as Record<string, unknown>
+    if (existingMeta.review_verdict) {
+      throw new AppError(
+        409,
+        `Incubation job ${input.job_id} already reviewed (verdict: ${existingMeta.review_verdict}); submit grant or create a new job`,
+        'CONFLICT',
+      )
     }
+
+    const meta: Record<string, unknown> = {
+      ...existingMeta,
+      review_verdict: input.verdict,
+      review_reason: input.reason?.trim() || null,
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: input.actor_user_id,
+    }
+
+    let status: 'REJECTED' | 'QUARANTINED' | undefined
     if (input.verdict === 'reject') {
-      patch.status = 'REJECTED'
+      status = 'REJECTED'
     } else if (input.verdict === 'quarantine') {
-      patch.status = 'QUARANTINED'
+      status = 'QUARANTINED'
     }
 
     const updated = await this.deps.incubationRepo.updateJob(input.job_id, {
-      ...(patch.status ? { status: patch.status } : {}),
-      meta: patch.meta,
+      ...(status ? { status } : {}),
+      phase: status ? 'ABORTED' : 'AWAIT_GRANT',
+      review: {
+        verdict: input.verdict,
+        reason: input.reason?.trim() || null,
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: input.actor_user_id,
+      },
+      meta,
     })
 
     if (!updated) throw new NotFoundError('IncubationJob', input.job_id)

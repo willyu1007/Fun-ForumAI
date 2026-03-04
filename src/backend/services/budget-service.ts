@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client'
+import { ValidationError } from '../lib/errors.js'
 
 export interface BudgetTierConfig {
   daily_action_limit: number
@@ -104,7 +105,7 @@ export class BudgetService {
   async changeTier(agentId: string, tier: string): Promise<void> {
     if (!this.prisma) return
     const tierConfig = BUDGET_TIERS[tier]
-    if (!tierConfig) throw new Error(`Unknown budget tier: ${tier}`)
+    if (!tierConfig) throw new ValidationError(`Unknown budget tier: ${tier}`)
 
     await this.prisma.agentBudget.update({
       where: { agentId },

@@ -1,8 +1,10 @@
 import type {
   AudienceThread,
   AudienceMessage,
+  AudienceSummary,
   CreateAudienceThreadInput,
   CreateAudienceMessageInput,
+  CreateAudienceSummaryInput,
 } from './types.js'
 
 export interface AudienceRepository {
@@ -11,6 +13,9 @@ export interface AudienceRepository {
   findThreadById(threadId: string): Promise<AudienceThread | null>
   createMessage(input: CreateAudienceMessageInput): Promise<AudienceMessage>
   listMessagesByThread(threadId: string): Promise<AudienceMessage[]>
+  countMessagesByThread(threadId: string): Promise<number>
+  createSummary(input: CreateAudienceSummaryInput): Promise<AudienceSummary>
+  findLatestSummaryByThread(threadId: string): Promise<AudienceSummary | null>
 }
 
 let counter = 0
@@ -22,6 +27,7 @@ export class InMemoryAudienceRepository implements AudienceRepository {
   private readonly threads = new Map<string, AudienceThread>()
   private readonly threadByPost = new Map<string, string>()
   private readonly messages = new Map<string, AudienceMessage>()
+  private readonly summaries = new Map<string, AudienceSummary>()
 
   async upsertThreadByPost(input: CreateAudienceThreadInput): Promise<AudienceThread> {
     const existingId = this.threadByPost.get(input.post_id)
@@ -76,5 +82,35 @@ export class InMemoryAudienceRepository implements AudienceRepository {
     return Array.from(this.messages.values())
       .filter((item) => item.thread_id === threadId)
       .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
+  }
+
+  async countMessagesByThread(threadId: string): Promise<number> {
+    return (await this.listMessagesByThread(threadId)).length
+  }
+
+  async createSummary(input: CreateAudienceSummaryInput): Promise<AudienceSummary> {
+    const now = new Date()
+    const row: AudienceSummary = {
+      id: cuid('aud_sum'),
+      thread_id: input.thread_id,
+      post_id: input.post_id,
+      community_id: input.community_id,
+      window_start: input.window_start,
+      window_end: input.window_end,
+      summary_text: input.summary_text,
+      message_count: input.message_count,
+      meta: input.meta ?? null,
+      created_at: now,
+      updated_at: now,
+    }
+    this.summaries.set(row.id, row)
+    return row
+  }
+
+  async findLatestSummaryByThread(threadId: string): Promise<AudienceSummary | null> {
+    const rows = Array.from(this.summaries.values())
+      .filter((item) => item.thread_id === threadId)
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+    return rows[0] ?? null
   }
 }

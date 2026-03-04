@@ -5,6 +5,7 @@ import multer from 'multer'
 import { requireHumanAuth, requireAdmin } from '../middleware/human-auth.js'
 import { agentService, governanceAdapter, runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, relationService, humanParticipationService, inclinationAssetService, achievementChronicleService, agentCommunityMembershipService, communityRepo, stageTierService, incubationService, aftershowService } from '../container.js'
 import { config } from '../lib/config.js'
+import { richCommunitiesMetrics } from '../lib/rich-communities-metrics.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
 import { ensureDevAuthUserPersisted } from '../lib/dev-auth-user.js'
 import { validate } from '../validation/validate.js'
@@ -365,6 +366,7 @@ controlPlaneRouter.post(
     const result = await aftershowService.trigger({
       post_id: String(req.params.postId),
       triggered_by_user_id: req.user!.userId,
+      actor_role: req.user!.role,
       mode: req.body.mode,
       force: req.body.force,
     })
@@ -382,6 +384,14 @@ controlPlaneRouter.get('/incubation/jobs/:jobId', requireHumanAuth, async (req, 
   }
 
   const result = await incubationService.getJob(String(req.params.jobId))
+  if (req.user!.role !== 'admin') {
+    const proposer = agentService.getAgent(result.job.proposer_agent_id)
+    const isOwner = proposer.owner_id === req.user!.userId
+    const isReviewer = result.grants.some((item) => item.reviewer_user_id === req.user!.userId)
+    if (!isOwner && !isReviewer) {
+      throw new ForbiddenError('Only admin, owner, or assigned reviewer can access incubation job details')
+    }
+  }
   res.json({ data: result })
 })
 
@@ -406,6 +416,10 @@ controlPlaneRouter.post(
       actor_user_id: req.user!.userId,
       reason: req.body.reason,
       ttl_hours: req.body.ttl_hours,
+      scope: req.body.scope,
+      anonymity_level: req.body.anonymity_level,
+      quote_policy: req.body.quote_policy,
+      no_go_topics: req.body.no_go_topics,
     })
 
     res.status(201).json({ data: grant })
@@ -579,6 +593,7 @@ controlPlaneRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin
   }
 
   const counters = runtimeFeatureMetrics.snapshot()
+  const richCounters = richCommunitiesMetrics.snapshot()
 
   res.json({
     data: {
@@ -590,6 +605,7 @@ controlPlaneRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin
         llm_model: config.llm.model,
       },
       counters,
+      rich_communities: richCounters,
     },
   })
 })

@@ -1,4 +1,4 @@
-import { useAgentGrowthEvents, useAgentMilestones } from '../../../api/hooks'
+import { useAgentGrowthEvents, useAgentMilestones } from '@/api/hooks'
 
 interface GrowthTimelineProps {
   agentId: string

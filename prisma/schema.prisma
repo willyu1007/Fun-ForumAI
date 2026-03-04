@@ -163,6 +163,7 @@ model Community {
   cultureDigests CommunityCultureDigest[]
   incubationJobs IncubationJob[]
   audienceThreads AudienceThread[]
+  audienceSummaries AudienceSummary[]
   aftershowRuns AftershowRun[]
 
   @@map("communities")
@@ -204,6 +205,7 @@ model Post {
   consumedInclinationAssets AgentInclinationAsset[] @relation("InclinationConsumedPost")
   incubationJobs IncubationJob[]
   audienceThread AudienceThread?
+  audienceSummaries AudienceSummary[]
   aftershowRuns AftershowRun[]
 
   @@index([communityId, createdAt])
@@ -456,29 +458,38 @@ enum IncubationGrantStatus {
 
 model IncubationJob {
   id               String              @id @default(cuid())
-  postId           String              @map("post_id")
+  postId           String?             @map("post_id")
   communityId      String              @map("community_id")
   proposerAgentId  String              @map("proposer_agent_id")
   status           IncubationJobStatus @default(PENDING)
+  phase            String              @default("AWAIT_GRANT")
   strictT4         Boolean             @default(true) @map("strict_t4")
   grantRequired    Boolean             @default(true) @map("grant_required")
   premodRequired   Boolean             @default(true) @map("premod_required")
   redactionLevel   String              @default("strong") @map("redaction_level")
   sourceCount      Int                 @default(0) @map("source_count")
+  idempotencyKey   String?             @map("idempotency_key")
+  sourceSessionId  String?             @map("source_session_id")
+  sourceMemoryId   String?             @map("source_memory_id")
+  researchJson     Json?               @map("research_json")
+  draftJson        Json?               @map("draft_json")
+  reviewJson       Json?               @map("review_json")
   requestedAt      DateTime            @default(now()) @map("requested_at")
   expiresAt        DateTime?           @map("expires_at")
   metaJson         Json?               @map("meta_json")
   createdAt        DateTime            @default(now()) @map("created_at")
   updatedAt        DateTime            @updatedAt @map("updated_at")
 
-  post         Post                 @relation(fields: [postId], references: [id])
+  post          Post?                @relation(fields: [postId], references: [id])
   community    Community            @relation(fields: [communityId], references: [id])
   proposerAgent Agent              @relation("IncubationProposerAgent", fields: [proposerAgentId], references: [id])
   grants       IncubationGrant[]
   sourceBundles IncubationSourceBundle[]
   events       IncubationEvent[]
 
+  @@unique([idempotencyKey])
   @@index([communityId, status, createdAt])
+  @@index([communityId, phase, createdAt])
   @@index([proposerAgentId, status, createdAt])
   @@map("incubation_jobs")
 }
@@ -491,6 +502,11 @@ model IncubationGrant {
   status          IncubationGrantStatus @default(ACTIVE)
   reason          String
   ttlHours        Int                   @default(168) @map("ttl_hours")
+  scope           String                @default("ABSTRACT_ONLY")
+  anonymityLevel  String                @default("strong") @map("anonymity_level")
+  quotePolicy     String                @default("PARAPHRASE_ONLY") @map("quote_policy")
+  noGoTopicsJson  Json?                 @map("no_go_topics_json")
+  policyJson      Json?                 @map("policy_json")
   grantedAt       DateTime              @default(now()) @map("granted_at")
   expiresAt       DateTime              @map("expires_at")
   revokedAt       DateTime?             @map("revoked_at")
@@ -555,6 +571,7 @@ model AudienceThread {
   post      Post             @relation(fields: [postId], references: [id])
   community Community        @relation(fields: [communityId], references: [id])
   messages  AudienceMessage[]
+  summaries AudienceSummary[]
 
   @@index([communityId, status, createdAt])
   @@map("audience_threads")
@@ -576,6 +593,29 @@ model AudienceMessage {
   @@map("audience_messages")
 }
 
+model AudienceSummary {
+  id           String   @id @default(cuid())
+  threadId      String   @map("thread_id")
+  postId        String   @map("post_id")
+  communityId   String   @map("community_id")
+  windowStart   DateTime @map("window_start")
+  windowEnd     DateTime @map("window_end")
+  summaryText   String   @map("summary_text")
+  messageCount  Int      @default(0) @map("message_count")
+  metaJson      Json?    @map("meta_json")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  thread    AudienceThread @relation(fields: [threadId], references: [id])
+  post      Post           @relation(fields: [postId], references: [id])
+  community Community      @relation(fields: [communityId], references: [id])
+
+  @@index([threadId, createdAt])
+  @@index([postId, createdAt])
+  @@index([communityId, createdAt])
+  @@map("audience_summaries")
+}
+
 enum AftershowRunStatus {
   CREATED
   SKIPPED
@@ -589,9 +629,13 @@ model AftershowRun {
   mode                    String
   status                  AftershowRunStatus @default(CREATED)
   thresholdMinComments    Int               @default(30) @map("threshold_min_comments")
+  thresholdMinAudienceComments Int          @default(30) @map("threshold_min_audience_comments")
   thresholdMinHumanVotes  Int               @default(10) @map("threshold_min_human_votes")
   commentsAtTrigger       Int               @default(0) @map("comments_at_trigger")
+  audienceMessageCountAtTrigger Int         @default(0) @map("audience_message_count_at_trigger")
   humanVoteScoreAtTrigger Int               @default(0) @map("human_vote_score_at_trigger")
+  audienceSummaryRef      String?           @map("audience_summary_ref")
+  thresholdDetailJson     Json?             @map("threshold_detail_json")
   triggeredByAgentId      String?           @map("triggered_by_agent_id")
   triggeredByUserId       String?           @map("triggered_by_user_id")
   metaJson                Json?             @map("meta_json")
@@ -766,6 +810,7 @@ model Room {
   messages    RoomMessage[]
 
   @@index([status])
+  // TODO: add @@index([communityId]) when community-based room queries become frequent
   @@map("rooms")
 }
 
@@ -784,6 +829,7 @@ model RoomMembership {
   agent Agent @relation(fields: [agentId], references: [id])
 
   @@unique([roomId, agentId])
+  @@index([agentId])
   @@map("room_memberships")
 }
 

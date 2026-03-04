@@ -1,7 +1,19 @@
 const env = process.env
 
+function safeInt(raw: string | undefined, fallback: number): number {
+  if (!raw) return fallback
+  const n = parseInt(raw, 10)
+  return Number.isNaN(n) ? fallback : n
+}
+
+function safeFloat(raw: string | undefined, fallback: number): number {
+  if (!raw) return fallback
+  const n = parseFloat(raw)
+  return Number.isNaN(n) ? fallback : n
+}
+
 export const config = {
-  port: parseInt(env.PORT || '4000', 10),
+  port: safeInt(env.PORT, 4000),
   nodeEnv: env.NODE_ENV || 'development',
   cors: {
     origins: env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],
@@ -23,10 +35,10 @@ export const config = {
     model: env.LLM_MODEL || 'qwen-plus',
     apiKey: env.LLM_API_KEY || '',
     baseUrl: env.LLM_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    maxTokens: parseInt(env.LLM_MAX_TOKENS || '512', 10),
-    temperature: parseFloat(env.LLM_TEMPERATURE || '0.8'),
-    maxRetries: parseInt(env.LLM_MAX_RETRIES || '2', 10),
-    timeoutMs: parseInt(env.LLM_TIMEOUT_MS || '30000', 10),
+    maxTokens: safeInt(env.LLM_MAX_TOKENS, 512),
+    temperature: safeFloat(env.LLM_TEMPERATURE, 0.8),
+    maxRetries: safeInt(env.LLM_MAX_RETRIES, 2),
+    timeoutMs: safeInt(env.LLM_TIMEOUT_MS, 30000),
   },
   inclinationAssets: {
     storageBackend: env.INCLINATION_ASSET_STORAGE_BACKEND === 's3' ? 's3' : 'local',
@@ -43,35 +55,35 @@ export const config = {
   },
   runtime: {
     enabled: env.RUNTIME_ENABLED === 'true',
-    intervalMs: parseInt(env.RUNTIME_INTERVAL_MS || '5000', 10),
-    batchSize: parseInt(env.RUNTIME_BATCH_SIZE || '10', 10),
-    postIntervalMs: parseInt(env.RUNTIME_POST_INTERVAL_MS || '120000', 10),
-    postMaxPerDay: parseInt(env.RUNTIME_POST_MAX_PER_DAY || '50', 10),
+    intervalMs: safeInt(env.RUNTIME_INTERVAL_MS, 5000),
+    batchSize: safeInt(env.RUNTIME_BATCH_SIZE, 10),
+    postIntervalMs: safeInt(env.RUNTIME_POST_INTERVAL_MS, 120000),
+    postMaxPerDay: safeInt(env.RUNTIME_POST_MAX_PER_DAY, 50),
     queueBackend: env.RUNTIME_QUEUE_BACKEND === 'redis' ? 'redis' : 'in-memory',
     leaderBackend: env.RUNTIME_LEADER_BACKEND === 'redis' ? 'redis' : 'in-memory',
     redisUrl: env.RUNTIME_REDIS_URL || env.REDIS_URL || '',
     redisPrefix: env.RUNTIME_REDIS_PREFIX || 'llm-forum:runtime',
-    redisConnectTimeoutMs: parseInt(env.RUNTIME_REDIS_CONNECT_TIMEOUT_MS || '5000', 10),
-    queueVisibilityTimeoutMs: parseInt(env.RUNTIME_QUEUE_VISIBILITY_TIMEOUT_MS || '60000', 10),
-    queueMaxRetries: parseInt(env.RUNTIME_QUEUE_MAX_RETRIES || '3', 10),
-    queuePollTimeoutMs: parseInt(env.RUNTIME_QUEUE_POLL_TIMEOUT_MS || '100', 10),
-    leaderTtlMs: parseInt(env.RUNTIME_LEADER_TTL_MS || '15000', 10),
+    redisConnectTimeoutMs: safeInt(env.RUNTIME_REDIS_CONNECT_TIMEOUT_MS, 5000),
+    queueVisibilityTimeoutMs: safeInt(env.RUNTIME_QUEUE_VISIBILITY_TIMEOUT_MS, 60000),
+    queueMaxRetries: safeInt(env.RUNTIME_QUEUE_MAX_RETRIES, 3),
+    queuePollTimeoutMs: safeInt(env.RUNTIME_QUEUE_POLL_TIMEOUT_MS, 100),
+    leaderTtlMs: safeInt(env.RUNTIME_LEADER_TTL_MS, 15000),
   },
   sse: {
     broadcastBackend: env.SSE_BROADCAST_BACKEND === 'redis' ? 'redis' : 'local',
     redisUrl: env.SSE_REDIS_URL || env.RUNTIME_REDIS_URL || env.REDIS_URL || '',
     redisChannel: env.SSE_REDIS_CHANNEL || 'llm-forum:sse:broadcast',
-    redisConnectTimeoutMs: parseInt(env.SSE_REDIS_CONNECT_TIMEOUT_MS || '5000', 10),
+    redisConnectTimeoutMs: safeInt(env.SSE_REDIS_CONNECT_TIMEOUT_MS, 5000),
   },
   publicObservation: {
-    forumCooldownMs: parseInt(env.PO_FORUM_COOLDOWN_MS || String(6 * 3600_000), 10),
-    roomCooldownMs: parseInt(env.PO_ROOM_COOLDOWN_MS || String(3 * 3600_000), 10),
-    forumCommentThreshold: parseInt(env.PO_FORUM_COMMENT_THRESHOLD || '12', 10),
-    forumParticipantThreshold: parseInt(env.PO_FORUM_PARTICIPANT_THRESHOLD || '4', 10),
-    forumHeatThreshold: parseInt(env.PO_FORUM_HEAT_THRESHOLD || '30', 10),
-    roomMessageThreshold: parseInt(env.PO_ROOM_MSG_THRESHOLD || '80', 10),
-    roomActiveMinThreshold: parseInt(env.PO_ROOM_ACTIVE_MIN_THRESHOLD || '30', 10),
-    roomActiveMinMsgThreshold: parseInt(env.PO_ROOM_ACTIVE_MIN_MSG_THRESHOLD || '40', 10),
+    forumCooldownMs: safeInt(env.PO_FORUM_COOLDOWN_MS, 6 * 3600_000),
+    roomCooldownMs: safeInt(env.PO_ROOM_COOLDOWN_MS, 3 * 3600_000),
+    forumCommentThreshold: safeInt(env.PO_FORUM_COMMENT_THRESHOLD, 12),
+    forumParticipantThreshold: safeInt(env.PO_FORUM_PARTICIPANT_THRESHOLD, 4),
+    forumHeatThreshold: safeInt(env.PO_FORUM_HEAT_THRESHOLD, 30),
+    roomMessageThreshold: safeInt(env.PO_ROOM_MSG_THRESHOLD, 80),
+    roomActiveMinThreshold: safeInt(env.PO_ROOM_ACTIVE_MIN_THRESHOLD, 30),
+    roomActiveMinMsgThreshold: safeInt(env.PO_ROOM_ACTIVE_MIN_MSG_THRESHOLD, 40),
   },
   controversy: {
     keywords: (env.CONTROVERSY_KEYWORDS || '不同意,反对,质疑,荒谬,错误,however,disagree,ridiculous,nonsense').split(','),
@@ -116,8 +128,11 @@ export const config = {
     membershipStatusV1: env.FF_MEMBERSHIP_STATUS_V1 === 'true',
     stageGovernanceV1: env.FF_STAGE_GOVERNANCE_V1 === 'true',
     incubationV1: env.FF_INCUBATION_V1 === 'true',
+    incubationOrchestratorV1: env.FF_INCUBATION_ORCHESTRATOR_V1 === 'true',
+    incubationTrustHardEnforce: env.FF_INCUBATION_TRUST_HARD_ENFORCE === 'true',
     audienceZoneV1: env.FF_AUDIENCE_ZONE_V1 === 'true',
     aftershowV1: env.FF_AFTERSHOW_V1 === 'true',
+    aftershowAudienceSummaryV1: env.FF_AFTERSHOW_AUDIENCE_SUMMARY_V1 === 'true',
     stageRotationV1: env.FF_STAGE_ROTATION_V1 === 'true',
   },
 } as const

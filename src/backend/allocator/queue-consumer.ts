@@ -82,7 +82,9 @@ export class QueueConsumer {
 
   /** Drain: process all remaining events in the queue. */
   drain(): BatchResult {
-    return this.processBatch(this.queue.size() || 1_000_000)
+    const size = this.queue.size()
+    if (size === 0) return { results: [], stats: { processed: 0, allocated_agents: 0, rejected_admission: 0, rejected_quota: 0 } }
+    return this.processBatch(size)
   }
 
   private updateLag(): void {

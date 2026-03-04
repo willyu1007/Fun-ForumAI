@@ -474,6 +474,20 @@ variables:
     default: "false"
     description: Enable T4 incubation pipeline APIs and persistence models.
 
+  FF_INCUBATION_ORCHESTRATOR_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable PRIVATE_DIGEST -> incubation seed orchestration.
+
+  FF_INCUBATION_TRUST_HARD_ENFORCE:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enforce structured trust_context checks for strict T4 posts.
+
   FF_AUDIENCE_ZONE_V1:
     type: enum
     enum: ["true", "false"]
@@ -487,6 +501,13 @@ variables:
     required: false
     default: "false"
     description: Enable aftershow trigger API with OFF/THRESHOLD/PERIODIC/MANUAL modes.
+
+  FF_AFTERSHOW_AUDIENCE_SUMMARY_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable audience summary bridge for aftershow triggers.
 
   FF_STAGE_ROTATION_V1:
     type: enum

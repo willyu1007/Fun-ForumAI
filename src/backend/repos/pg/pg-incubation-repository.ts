@@ -20,11 +20,18 @@ function toJob(row: Prisma.IncubationJobGetPayload<object>): IncubationJob {
     community_id: row.communityId,
     proposer_agent_id: row.proposerAgentId,
     status: row.status,
+    phase: row.phase as IncubationJob['phase'],
     strict_t4: row.strictT4,
     grant_required: row.grantRequired,
     premod_required: row.premodRequired,
     redaction_level: row.redactionLevel,
     source_count: row.sourceCount,
+    idempotency_key: row.idempotencyKey,
+    source_session_id: row.sourceSessionId,
+    source_memory_id: row.sourceMemoryId,
+    research: row.researchJson as Record<string, unknown> | null,
+    draft: row.draftJson as Record<string, unknown> | null,
+    review: row.reviewJson as Record<string, unknown> | null,
     requested_at: row.requestedAt,
     expires_at: row.expiresAt,
     meta: row.metaJson as Record<string, unknown> | null,
@@ -42,6 +49,11 @@ function toGrant(row: Prisma.IncubationGrantGetPayload<object>): IncubationGrant
     status: row.status,
     reason: row.reason,
     ttl_hours: row.ttlHours,
+    scope: row.scope as IncubationGrant['scope'],
+    anonymity_level: row.anonymityLevel as IncubationGrant['anonymity_level'],
+    quote_policy: row.quotePolicy as IncubationGrant['quote_policy'],
+    no_go_topics: (row.noGoTopicsJson as string[] | null) ?? [],
+    policy: row.policyJson as Record<string, unknown> | null,
     granted_at: row.grantedAt,
     expires_at: row.expiresAt,
     revoked_at: row.revokedAt,
@@ -84,15 +96,22 @@ export class PgIncubationRepository implements IncubationRepository {
     const row = await this.prisma.incubationJob.create({
       data: {
         id: randomUUID(),
-        postId: input.post_id,
+        postId: input.post_id ?? null,
         communityId: input.community_id,
         proposerAgentId: input.proposer_agent_id,
         status: input.status ?? 'PENDING',
+        phase: input.phase ?? 'AWAIT_GRANT',
         strictT4: input.strict_t4 ?? true,
         grantRequired: input.grant_required ?? true,
         premodRequired: input.premod_required ?? true,
         redactionLevel: input.redaction_level ?? 'strong',
         sourceCount: input.source_count ?? 0,
+        idempotencyKey: input.idempotency_key ?? null,
+        sourceSessionId: input.source_session_id ?? null,
+        sourceMemoryId: input.source_memory_id ?? null,
+        researchJson: input.research ? (input.research as Prisma.InputJsonValue) : Prisma.DbNull,
+        draftJson: input.draft ? (input.draft as Prisma.InputJsonValue) : Prisma.DbNull,
+        reviewJson: input.review ? (input.review as Prisma.InputJsonValue) : Prisma.DbNull,
         requestedAt: now,
         expiresAt: input.expires_at ?? null,
         metaJson: input.meta ? (input.meta as Prisma.InputJsonValue) : Prisma.DbNull,
@@ -108,6 +127,14 @@ export class PgIncubationRepository implements IncubationRepository {
     return row ? toJob(row) : null
   }
 
+  async findJobByIdempotencyKey(idempotencyKey: string): Promise<IncubationJob | null> {
+    const row = await this.prisma.incubationJob.findFirst({
+      where: { idempotencyKey },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })
+    return row ? toJob(row) : null
+  }
+
   async updateJob(jobId: string, patch: UpdateIncubationJobInput): Promise<IncubationJob | null> {
     const existing = await this.prisma.incubationJob.findUnique({ where: { id: jobId } })
     if (!existing) return null
@@ -115,9 +142,32 @@ export class PgIncubationRepository implements IncubationRepository {
     const row = await this.prisma.incubationJob.update({
       where: { id: jobId },
       data: {
+        ...(patch.post_id !== undefined ? { postId: patch.post_id } : {}),
         ...(patch.status !== undefined ? { status: patch.status } : {}),
+        ...(patch.phase !== undefined ? { phase: patch.phase } : {}),
         ...(patch.source_count !== undefined ? { sourceCount: patch.source_count } : {}),
         ...(patch.expires_at !== undefined ? { expiresAt: patch.expires_at } : {}),
+        ...(patch.research !== undefined
+          ? {
+              researchJson: patch.research
+                ? (patch.research as Prisma.InputJsonValue)
+                : Prisma.DbNull,
+            }
+          : {}),
+        ...(patch.draft !== undefined
+          ? {
+              draftJson: patch.draft
+                ? (patch.draft as Prisma.InputJsonValue)
+                : Prisma.DbNull,
+            }
+          : {}),
+        ...(patch.review !== undefined
+          ? {
+              reviewJson: patch.review
+                ? (patch.review as Prisma.InputJsonValue)
+                : Prisma.DbNull,
+            }
+          : {}),
         ...(patch.meta !== undefined
           ? {
               metaJson: patch.meta
@@ -143,6 +193,11 @@ export class PgIncubationRepository implements IncubationRepository {
         status: input.status ?? 'ACTIVE',
         reason: input.reason,
         ttlHours: input.ttl_hours,
+        scope: input.scope ?? 'ABSTRACT_ONLY',
+        anonymityLevel: input.anonymity_level ?? 'strong',
+        quotePolicy: input.quote_policy ?? 'PARAPHRASE_ONLY',
+        noGoTopicsJson: input.no_go_topics ? (input.no_go_topics as Prisma.InputJsonValue) : Prisma.DbNull,
+        policyJson: input.policy ? (input.policy as Prisma.InputJsonValue) : Prisma.DbNull,
         grantedAt: now,
         expiresAt: input.expires_at,
         revokedAt: null,

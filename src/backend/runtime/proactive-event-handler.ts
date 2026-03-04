@@ -2,6 +2,7 @@ import type { DomainEvent } from '../repos/types.js'
 import type { ProactiveInteractionService } from '../services/proactive-interaction-service.js'
 import type { ForumReadService } from '../services/forum-read-service.js'
 import type { AgentService } from '../services/agent-service.js'
+import { LruMap } from '../lib/lru-map.js'
 
 export interface ProactiveEventHandlerDeps {
   proactiveService: ProactiveInteractionService
@@ -9,7 +10,8 @@ export interface ProactiveEventHandlerDeps {
   agentService: AgentService
 }
 
-const firstPostTracker = new Set<string>()
+const FIRST_POST_TRACKER_CAP = 10_000
+const firstPostTracker = new LruMap<string, true>(FIRST_POST_TRACKER_CAP)
 
 export class ProactiveEventHandler {
   constructor(private readonly deps: ProactiveEventHandlerDeps) {}
@@ -95,7 +97,7 @@ export class ProactiveEventHandler {
     if (!authorAgentId || !postId) return
 
     if (!firstPostTracker.has(authorAgentId)) {
-      firstPostTracker.add(authorAgentId)
+      firstPostTracker.set(authorAgentId, true)
       await this.deps.proactiveService.onAgentFirstPost(authorAgentId, postId)
     }
   }

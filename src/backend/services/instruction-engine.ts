@@ -90,7 +90,9 @@ export class InstructionEngine {
         this.prisma.agentInstruction.update({
           where: { id: inst.id },
           data: { timesTriggered: { increment: 1 }, lastTriggeredAt: new Date() },
-        }).catch(() => {})
+        }).catch((err) => {
+          console.error('[InstructionEngine] trigger count update failed:', err)
+        })
       }
     }
 

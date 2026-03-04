@@ -44,19 +44,22 @@ function singletons() {
 
 // ─── Growth ──────────────────────────────────────────────────
 
-agentGrowthRouter.get('/agents/:agentId/growth', async (req, res) => {
-  const data = await singletons().growth.getGrowth(req.params.agentId)
+agentGrowthRouter.get('/agents/:agentId/growth', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
+  const data = await singletons().growth.getGrowth(agentId)
   res.json({ data })
 })
 
-agentGrowthRouter.get('/agents/:agentId/growth-events', async (req, res) => {
+agentGrowthRouter.get('/agents/:agentId/growth-events', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
   const limit = parseInt(String(req.query.limit ?? '50'), 10)
-  const events = await singletons().growth.getGrowthEvents(req.params.agentId, limit)
+  const events = await singletons().growth.getGrowthEvents(agentId, limit)
   res.json({ data: events })
 })
 
-agentGrowthRouter.get('/agents/:agentId/milestones', async (req, res) => {
-  const milestones = await singletons().growth.getMilestones(req.params.agentId)
+agentGrowthRouter.get('/agents/:agentId/milestones', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
+  const milestones = await singletons().growth.getMilestones(agentId)
   res.json({ data: milestones })
 })
 
@@ -66,8 +69,9 @@ agentGrowthRouter.get('/growth/level-table', (_req, res) => {
 
 // ─── Traits ──────────────────────────────────────────────────
 
-agentGrowthRouter.get('/agents/:agentId/traits', async (req, res) => {
-  const traits = await singletons().traits.getTraits(req.params.agentId)
+agentGrowthRouter.get('/agents/:agentId/traits', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
+  const traits = await singletons().traits.getTraits(agentId)
   res.json({
     data: traits.map(t => ({
       id: t.id,
@@ -81,8 +85,10 @@ agentGrowthRouter.get('/agents/:agentId/traits', async (req, res) => {
   })
 })
 
-agentGrowthRouter.post('/agents/:agentId/traits/:traitCode/equip', async (req, res) => {
-  const result = await singletons().traits.equipTrait(req.params.agentId, req.params.traitCode)
+agentGrowthRouter.post('/agents/:agentId/traits/:traitCode/equip', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
+  const traitCode = asParam(req.params.traitCode)
+  const result = await singletons().traits.equipTrait(agentId, traitCode)
   if (!result.success) {
     res.status(400).json({ error: { code: 'EQUIP_FAILED', message: result.error } })
     return
@@ -90,8 +96,10 @@ agentGrowthRouter.post('/agents/:agentId/traits/:traitCode/equip', async (req, r
   res.json({ data: { message: 'equipped' } })
 })
 
-agentGrowthRouter.post('/agents/:agentId/traits/:traitCode/unequip', async (req, res) => {
-  const result = await singletons().traits.unequipTrait(req.params.agentId, req.params.traitCode)
+agentGrowthRouter.post('/agents/:agentId/traits/:traitCode/unequip', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
+  const traitCode = asParam(req.params.traitCode)
+  const result = await singletons().traits.unequipTrait(agentId, traitCode)
   if (!result.success) {
     res.status(400).json({ error: { code: 'UNEQUIP_FAILED', message: result.error } })
     return
@@ -105,14 +113,16 @@ agentGrowthRouter.get('/trait-definitions', (_req, res) => {
 
 // ─── Credit ──────────────────────────────────────────────────
 
-agentGrowthRouter.get('/agents/:agentId/credit', async (req, res) => {
-  const credit = await singletons().credit.getCredit(req.params.agentId)
+agentGrowthRouter.get('/agents/:agentId/credit', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
+  const credit = await singletons().credit.getCredit(agentId)
   res.json({ data: credit })
 })
 
-agentGrowthRouter.get('/agents/:agentId/credit-events', async (req, res) => {
+agentGrowthRouter.get('/agents/:agentId/credit-events', requireHumanAuth, async (req, res) => {
+  const agentId = asParam(req.params.agentId)
   const limit = parseInt(String(req.query.limit ?? '20'), 10)
-  const events = await singletons().credit.getCreditEvents(req.params.agentId, limit)
+  const events = await singletons().credit.getCreditEvents(agentId, limit)
   res.json({ data: events })
 })
 

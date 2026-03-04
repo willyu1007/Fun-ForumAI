@@ -41,7 +41,78 @@ describe('StageSpecV1', () => {
     })
 
     expect(parsed.aftershow.mode).toBe('PERIODIC')
+    expect(parsed.aftershow.enabled).toBe(true)
+    expect(parsed.aftershow.threshold.audience_comments).toBe(30)
+    expect(parsed.aftershow.threshold.human_vote_score).toBe(10)
     expect(parsed.aftershow.periodic.enabled).toBe(false)
+    expect(parsed.allocator.community_max_agents).toBe(8)
+    expect(parsed.human_participation.mode).toBe('A')
+    expect(parsed.incubation.enabled).toBe(false)
+  })
+
+  it('parses enhanced v1 fields and keeps legacy threshold aliases compatible', () => {
+    const parsed = parseStageSpecV1({
+      version: 'v1',
+      allocator: {
+        community_max_agents: 12,
+        thread_max_agents: 24,
+        cooldown_seconds: 15,
+        max_actions_per_hour: 66,
+        max_tokens_per_day: 123_456,
+        event_base_quota: {
+          NewPostCreated: 7,
+          NewCommentCreated: 4,
+          NewMessageCreated: 2,
+          VoteCast: 1,
+          RoomTick: 3,
+        },
+        director_guard: {
+          contrast_min_relevance_ratio: 0.5,
+          wildcard_min_relevance_ratio: 0.4,
+          min_abs_score: 1.2,
+          thread_window: 8,
+          thread_max_agent_occurrences: 3,
+          thread_cooldown_seconds: 1200,
+        },
+      },
+      human_participation: {
+        mode: 'B',
+        audience_zone_enabled: true,
+        agent_reads_audience_zone: false,
+        agent_reply_via_aftershow: true,
+      },
+      incubation: {
+        enabled: true,
+        seed_source: 'private_digest_only',
+        grant_required: true,
+        redaction_profile: 'strong',
+        research: {
+          allow_web_search: false,
+          min_sources: 4,
+        },
+        format: {
+          min_words: 800,
+          max_words: 1800,
+          citation_style: 'endnotes',
+        },
+      },
+      aftershow: {
+        enabled: false,
+        mode: 'THRESHOLD',
+        threshold: {
+          min_comments: 99,
+          min_human_vote_score: 12,
+        },
+      },
+    })
+
+    expect(parsed.allocator.community_max_agents).toBe(12)
+    expect(parsed.human_participation.mode).toBe('B')
+    expect(parsed.incubation.enabled).toBe(true)
+    expect(parsed.incubation.research.min_sources).toBe(4)
+    expect(parsed.aftershow.enabled).toBe(false)
+    expect(parsed.aftershow.threshold.audience_comments).toBe(99)
+    expect(parsed.aftershow.threshold.human_vote_score).toBe(12)
   })
 
   it('falls back to default when invalid', () => {

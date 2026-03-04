@@ -12,10 +12,21 @@ const DEFAULT_DIRECTOR_CONFIG: CastingDirectorCommunityConfig = {
     wildcard: 1,
   },
   wildcard_cap: 1,
+  guard: {
+    contrast_min_relevance_ratio: 0.45,
+    wildcard_min_relevance_ratio: 0.35,
+    min_abs_score: 0.8,
+    thread_window: 6,
+    thread_max_agent_occurrences: 2,
+    thread_cooldown_seconds: 600,
+  },
+  runtime: {
+    cooldown_seconds: 60,
+    max_actions_per_hour: 30,
+    max_tokens_per_day: 100_000,
+    thread_max_agents: 20,
+  },
 }
-const CONTRAST_MIN_RELEVANCE_RATIO = 0.45
-const WILDCARD_MIN_RELEVANCE_RATIO = 0.35
-const MIN_DIRECTOR_ABS_SCORE = 0.8
 
 export const DIRECTOR_PILOT_COMMUNITY_SLUGS = ['philosophy', 'tech', 'creative'] as const
 
@@ -65,6 +76,18 @@ function normalizeWildcardCap(value: unknown, fallback: number): number {
   return Math.trunc(parsed)
 }
 
+function normalizeBoundedNumber(value: unknown, fallback: number, bounds: { min: number; max: number }): number {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return fallback
+  if (parsed < bounds.min) return bounds.min
+  if (parsed > bounds.max) return bounds.max
+  return parsed
+}
+
+function normalizeBoundedInt(value: unknown, fallback: number, bounds: { min: number; max: number }): number {
+  return Math.trunc(normalizeBoundedNumber(value, fallback, bounds))
+}
+
 function toRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   return value as Record<string, unknown>
@@ -77,9 +100,69 @@ export function resolveDirectorCommunityConfig(input: {
   const pilot = input.communitySlug ? PILOT_DIRECTOR_CONFIG[input.communitySlug] : undefined
   const personality = toRecord(input.rulesJson?.personality)
   const directorV1 = toRecord(personality?.director_v1)
+  const stageSpecV1 = toRecord(input.rulesJson?.stage_spec_v1)
+  const allocator = toRecord(stageSpecV1?.allocator)
+  const directorGuard = toRecord(allocator?.director_guard)
+  const runtime = toRecord(allocator)
 
   if (!directorV1) {
-    return pilot ?? DEFAULT_DIRECTOR_CONFIG
+    return {
+      ...(pilot ?? DEFAULT_DIRECTOR_CONFIG),
+      guard: {
+        contrast_min_relevance_ratio: normalizeBoundedNumber(
+          directorGuard?.contrast_min_relevance_ratio,
+          pilot?.guard?.contrast_min_relevance_ratio ?? DEFAULT_DIRECTOR_CONFIG.guard!.contrast_min_relevance_ratio,
+          { min: 0, max: 1 },
+        ),
+        wildcard_min_relevance_ratio: normalizeBoundedNumber(
+          directorGuard?.wildcard_min_relevance_ratio,
+          pilot?.guard?.wildcard_min_relevance_ratio ?? DEFAULT_DIRECTOR_CONFIG.guard!.wildcard_min_relevance_ratio,
+          { min: 0, max: 1 },
+        ),
+        min_abs_score: normalizeBoundedNumber(
+          directorGuard?.min_abs_score,
+          pilot?.guard?.min_abs_score ?? DEFAULT_DIRECTOR_CONFIG.guard!.min_abs_score,
+          { min: 0, max: 10 },
+        ),
+        thread_window: normalizeBoundedInt(
+          directorGuard?.thread_window,
+          pilot?.guard?.thread_window ?? DEFAULT_DIRECTOR_CONFIG.guard!.thread_window,
+          { min: 1, max: 64 },
+        ),
+        thread_max_agent_occurrences: normalizeBoundedInt(
+          directorGuard?.thread_max_agent_occurrences,
+          pilot?.guard?.thread_max_agent_occurrences ?? DEFAULT_DIRECTOR_CONFIG.guard!.thread_max_agent_occurrences,
+          { min: 1, max: 16 },
+        ),
+        thread_cooldown_seconds: normalizeBoundedInt(
+          directorGuard?.thread_cooldown_seconds,
+          pilot?.guard?.thread_cooldown_seconds ?? DEFAULT_DIRECTOR_CONFIG.guard!.thread_cooldown_seconds,
+          { min: 0, max: 3600 },
+        ),
+      },
+      runtime: {
+        cooldown_seconds: normalizeBoundedInt(
+          runtime?.cooldown_seconds,
+          pilot?.runtime?.cooldown_seconds ?? DEFAULT_DIRECTOR_CONFIG.runtime!.cooldown_seconds,
+          { min: 0, max: 3600 },
+        ),
+        max_actions_per_hour: normalizeBoundedInt(
+          runtime?.max_actions_per_hour,
+          pilot?.runtime?.max_actions_per_hour ?? DEFAULT_DIRECTOR_CONFIG.runtime!.max_actions_per_hour,
+          { min: 1, max: 1000 },
+        ),
+        max_tokens_per_day: normalizeBoundedInt(
+          runtime?.max_tokens_per_day,
+          pilot?.runtime?.max_tokens_per_day ?? DEFAULT_DIRECTOR_CONFIG.runtime!.max_tokens_per_day,
+          { min: 100, max: 10_000_000 },
+        ),
+        thread_max_agents: normalizeBoundedInt(
+          runtime?.thread_max_agents,
+          pilot?.runtime?.thread_max_agents ?? DEFAULT_DIRECTOR_CONFIG.runtime!.thread_max_agents,
+          { min: 1, max: 256 },
+        ),
+      },
+    }
   }
 
   const ratio = toRecord(directorV1.ratio)
@@ -93,19 +176,74 @@ export function resolveDirectorCommunityConfig(input: {
       directorV1.wildcard_cap,
       pilot?.wildcard_cap ?? DEFAULT_DIRECTOR_CONFIG.wildcard_cap ?? 1,
     ),
+    guard: {
+      contrast_min_relevance_ratio: normalizeBoundedNumber(
+        directorGuard?.contrast_min_relevance_ratio,
+        pilot?.guard?.contrast_min_relevance_ratio ?? DEFAULT_DIRECTOR_CONFIG.guard!.contrast_min_relevance_ratio,
+        { min: 0, max: 1 },
+      ),
+      wildcard_min_relevance_ratio: normalizeBoundedNumber(
+        directorGuard?.wildcard_min_relevance_ratio,
+        pilot?.guard?.wildcard_min_relevance_ratio ?? DEFAULT_DIRECTOR_CONFIG.guard!.wildcard_min_relevance_ratio,
+        { min: 0, max: 1 },
+      ),
+      min_abs_score: normalizeBoundedNumber(
+        directorGuard?.min_abs_score,
+        pilot?.guard?.min_abs_score ?? DEFAULT_DIRECTOR_CONFIG.guard!.min_abs_score,
+        { min: 0, max: 10 },
+      ),
+      thread_window: normalizeBoundedInt(
+        directorGuard?.thread_window,
+        pilot?.guard?.thread_window ?? DEFAULT_DIRECTOR_CONFIG.guard!.thread_window,
+        { min: 1, max: 64 },
+      ),
+      thread_max_agent_occurrences: normalizeBoundedInt(
+        directorGuard?.thread_max_agent_occurrences,
+        pilot?.guard?.thread_max_agent_occurrences ?? DEFAULT_DIRECTOR_CONFIG.guard!.thread_max_agent_occurrences,
+        { min: 1, max: 16 },
+      ),
+      thread_cooldown_seconds: normalizeBoundedInt(
+        directorGuard?.thread_cooldown_seconds,
+        pilot?.guard?.thread_cooldown_seconds ?? DEFAULT_DIRECTOR_CONFIG.guard!.thread_cooldown_seconds,
+        { min: 0, max: 3600 },
+      ),
+    },
+    runtime: {
+      cooldown_seconds: normalizeBoundedInt(
+        runtime?.cooldown_seconds,
+        pilot?.runtime?.cooldown_seconds ?? DEFAULT_DIRECTOR_CONFIG.runtime!.cooldown_seconds,
+        { min: 0, max: 3600 },
+      ),
+      max_actions_per_hour: normalizeBoundedInt(
+        runtime?.max_actions_per_hour,
+        pilot?.runtime?.max_actions_per_hour ?? DEFAULT_DIRECTOR_CONFIG.runtime!.max_actions_per_hour,
+        { min: 1, max: 1000 },
+      ),
+      max_tokens_per_day: normalizeBoundedInt(
+        runtime?.max_tokens_per_day,
+        pilot?.runtime?.max_tokens_per_day ?? DEFAULT_DIRECTOR_CONFIG.runtime!.max_tokens_per_day,
+        { min: 100, max: 10_000_000 },
+      ),
+      thread_max_agents: normalizeBoundedInt(
+        runtime?.thread_max_agents,
+        pilot?.runtime?.thread_max_agents ?? DEFAULT_DIRECTOR_CONFIG.runtime!.thread_max_agents,
+        { min: 1, max: 256 },
+      ),
+    },
   }
 
   return merged
 }
 
-function buildPools(scored: ScoredCandidate[]): DirectorPools {
+function buildPools(scored: ScoredCandidate[], config: CastingDirectorCommunityConfig): DirectorPools {
   if (scored.length === 0) {
     return { core: [], contrast: [], wildcard: [] }
   }
 
   const topScore = Math.max(scored[0]?.score ?? 0, 0)
-  const contrastFloor = Math.max(topScore * CONTRAST_MIN_RELEVANCE_RATIO, MIN_DIRECTOR_ABS_SCORE)
-  const wildcardFloor = Math.max(topScore * WILDCARD_MIN_RELEVANCE_RATIO, MIN_DIRECTOR_ABS_SCORE * 0.6)
+  const guard = config.guard ?? DEFAULT_DIRECTOR_CONFIG.guard!
+  const contrastFloor = Math.max(topScore * guard.contrast_min_relevance_ratio, guard.min_abs_score)
+  const wildcardFloor = Math.max(topScore * guard.wildcard_min_relevance_ratio, guard.min_abs_score * 0.6)
 
   const coreCut = Math.max(1, Math.ceil(scored.length * 0.5))
   const core = scored.slice(0, coreCut)
@@ -201,7 +339,7 @@ export class DefaultCastingDirectorPolicy implements CastingDirectorPolicy {
     if (input.quota <= 0 || input.scored.length === 0) return []
 
     const config = input.community_config ?? DEFAULT_DIRECTOR_CONFIG
-    const pools = buildPools(input.scored)
+    const pools = buildPools(input.scored, config)
     const budgets = allocateBudgets(input.quota, pools, config)
 
     const selected: ScoredCandidate[] = []

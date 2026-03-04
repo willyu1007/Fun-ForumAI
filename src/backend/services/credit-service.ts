@@ -50,7 +50,9 @@ export class CreditService {
       await this.prisma.agent.update({
         where: { id: agentId },
         data: { status: 'LIMITED' },
-      }).catch(() => {})
+      }).catch((err) => {
+        console.error('[CreditService] agent status update to LIMITED failed:', err)
+      })
     }
 
     return { credit_score: newScore, risk_level: newRisk }

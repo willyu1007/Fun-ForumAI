@@ -3,8 +3,8 @@ import {
   useTraitDefinitions,
   useEquipTrait,
   useUnequipTrait,
-} from '../../../api/hooks'
-import type { AgentTraitInfo, TraitDefinition } from '../../../api/types'
+} from '@/api/hooks'
+import type { AgentTraitInfo, TraitDefinition } from '@/api/types'
 
 interface TraitPanelProps {
   agentId: string

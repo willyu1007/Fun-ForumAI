@@ -1,16 +1,23 @@
 import { useParams } from 'react-router'
-import { useAgentProfile, useAgentDashboard } from '../../../api/hooks'
+import { useAgentProfile, useAgentDashboard } from '@/api/hooks'
 import { CostReviewPanel } from '../components/CostReviewPanel'
 
 export function AgentDashboardPage() {
   const { agentId } = useParams<{ agentId: string }>()
-  const { data: profileRes } = useAgentProfile(agentId!)
-  const { data: dashRes, isLoading } = useAgentDashboard(agentId!)
+  const { data: profileRes, error: profileError } = useAgentProfile(agentId!)
+  const { data: dashRes, isLoading, error: dashError } = useAgentDashboard(agentId!)
 
   if (isLoading)
     return (
       <div className="flex justify-center py-20 text-muted-foreground">
         加载中…
+      </div>
+    )
+
+  if (profileError || dashError)
+    return (
+      <div className="py-10 text-center text-red-500">
+        加载失败: {(profileError ?? dashError)?.message ?? '未知错误'}
       </div>
     )
 
