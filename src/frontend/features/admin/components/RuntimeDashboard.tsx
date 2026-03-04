@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import { useSseStatus } from '@/app/sse-context'
@@ -11,6 +12,7 @@ interface RuntimeStats {
     processing: boolean
     queue_size: number
     llm_configured: boolean
+    node_env: string
   }
   scheduler: {
     lastPostAt: number
@@ -77,6 +79,15 @@ interface PostResult {
   usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
 }
 
+interface StageSeasonRotationResult {
+  open_count: number
+  dry_run: boolean
+  replaced: Array<{ slot: string; template_id: string }>
+  activated: Array<{ slot: string; template_id: string }>
+  exported_templates: number
+  launch_templates: number
+}
+
 function useRuntimeStats() {
   return useQuery({
     queryKey: ['admin', 'runtime-stats'],
@@ -97,6 +108,7 @@ export function RuntimeDashboard() {
   const qc = useQueryClient()
   const sseStatus = useSseStatus()
   const sseConnected = sseStatus.connected
+  const [rotationOpenCount, setRotationOpenCount] = useState(3)
   const { data: adminStats } = useRuntimeStats()
   const { data: devStatus } = useDevRuntimeStatus()
 
@@ -126,8 +138,21 @@ export function RuntimeDashboard() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['dev', 'runtime-status'] }),
   })
 
+  const rotateStageMutation = useMutation({
+    mutationFn: ({ openCount, dryRun }: { openCount: number; dryRun: boolean }) =>
+      api
+        .post('admin/stage/season-rotate', {
+          json: {
+            open_count: openCount,
+            dry_run: dryRun,
+          },
+        })
+        .json<{ data: StageSeasonRotationResult }>(),
+  })
+
   const stats = adminStats?.data
   const status = devStatus?.data
+  const isProdNodeEnv = stats?.runtime.node_env === 'production'
 
   return (
     <div className="space-y-4">
@@ -181,6 +206,45 @@ export function RuntimeDashboard() {
             </Button>
           </div>
 
+          <div className="rounded border bg-muted/20 px-3 py-2">
+            <p className="text-xs font-medium">Season Rotation（Stage Template）</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              每次开放 3-5 个 hidden 模板并更新 launch 绑定。
+            </p>
+            {isProdNodeEnv && (
+              <p className="mt-1 text-[11px] text-amber-700">
+                生产环境仅支持 dry-run。真实轮换请执行：
+                {' '}
+                <code>pnpm stage:season:rotate --open-count={rotationOpenCount}</code>
+              </p>
+            )}
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <select
+                className="h-8 rounded-md border bg-background px-2 text-xs"
+                value={String(rotationOpenCount)}
+                onChange={(event) => {
+                  const next = Number.parseInt(event.target.value, 10)
+                  setRotationOpenCount(Number.isFinite(next) ? next : 3)
+                }}
+              >
+                <option value="3">开放 3 个</option>
+                <option value="4">开放 4 个</option>
+                <option value="5">开放 5 个</option>
+              </select>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => rotateStageMutation.mutate({ openCount: rotationOpenCount, dryRun: isProdNodeEnv })}
+                disabled={rotateStageMutation.isPending}
+              >
+                {rotateStageMutation.isPending ? '轮换中…' : isProdNodeEnv ? '执行 Dry-run' : '执行舞台轮换'}
+              </Button>
+            </div>
+            {rotateStageMutation.isError && (
+              <p className="mt-2 text-xs text-destructive">{rotateStageMutation.error.message}</p>
+            )}
+          </div>
+
           {!status?.llm_configured && (
             <p className="text-xs text-amber-600">LLM 未配置 — 设置 LLM_API_KEY 环境变量以启用 Runtime</p>
           )}
@@ -214,6 +278,10 @@ export function RuntimeDashboard() {
 
       {postMutation.data?.data && (
         <PostResultCard result={postMutation.data.data} />
+      )}
+
+      {rotateStageMutation.data?.data && (
+        <StageRotationResultCard result={rotateStageMutation.data.data} />
       )}
     </div>
   )
@@ -309,6 +377,34 @@ function PostResultCard({ result }: { result: PostResult }) {
           </>
         ) : (
           <p className="text-amber-600">{result.error ?? '未触发'}</p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function StageRotationResultCard({ result }: { result: StageSeasonRotationResult }) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm">Season Rotation 结果</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2 text-xs">
+        <p>
+          开放数量: {result.open_count} · activated: {result.activated.length} · replaced: {result.replaced.length}
+        </p>
+        <p className="text-muted-foreground">
+          dist 导出: {result.exported_templates} templates / {result.launch_templates} launch
+        </p>
+        {result.activated.length > 0 && (
+          <div className="rounded border bg-muted/20 px-2 py-1">
+            <p className="font-medium">新启用</p>
+            {result.activated.map((item) => (
+              <p key={`${item.slot}-${item.template_id}`} className="text-[11px] text-muted-foreground">
+                {item.slot}: {item.template_id}
+              </p>
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>

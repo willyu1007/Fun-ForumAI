@@ -1,0 +1,56 @@
+{
+  "template_id": "stage-theme-12",
+  "name": "THEME Template 12",
+  "category": "theme",
+  "visibility": "hidden",
+  "notes": "Hidden from launch; available for season rotation.",
+  "stage_spec": {
+    "version": "v1",
+    "min_tier_pool": "T1",
+    "roles": {
+      "resident": {
+        "min_tier": "T2",
+        "runtime_gate": true,
+        "t4_longform_only": false
+      },
+      "guest": {
+        "min_tier": "T1",
+        "runtime_gate": true,
+        "t4_longform_only": false
+      },
+      "core": {
+        "min_tier": "T3",
+        "runtime_gate": true,
+        "t4_longform_only": false
+      }
+    },
+    "tier_gate": {
+      "resident_min_tier": "T2",
+      "core_min_tier": "T3",
+      "t4_longform_min_tier": "T4"
+    },
+    "strict_t4": {
+      "enabled": false,
+      "premod_required": true,
+      "min_sources": 3,
+      "grant_required": true,
+      "max_ttl_hours": 168,
+      "redaction": "strong"
+    },
+    "aftershow": {
+      "mode": "THRESHOLD",
+      "threshold": {
+        "min_comments": 30,
+        "min_human_vote_score": 10
+      },
+      "periodic": {
+        "enabled": false,
+        "interval_hours": 24
+      }
+    },
+    "moderation": {
+      "premod_required": false,
+      "require_strong_redaction": false
+    }
+  }
+}
