@@ -1,0 +1,46 @@
+import type {
+  AftershowRun,
+  CreateAftershowRunInput,
+} from './types.js'
+
+export interface AftershowRunRepository {
+  create(input: CreateAftershowRunInput): Promise<AftershowRun>
+  listByPost(postId: string): Promise<AftershowRun[]>
+}
+
+let counter = 0
+function cuid(): string {
+  return `aftershow_${Date.now()}_${++counter}`
+}
+
+export class InMemoryAftershowRunRepository implements AftershowRunRepository {
+  private readonly runs = new Map<string, AftershowRun>()
+
+  async create(input: CreateAftershowRunInput): Promise<AftershowRun> {
+    const now = new Date()
+    const row: AftershowRun = {
+      id: cuid(),
+      post_id: input.post_id,
+      community_id: input.community_id,
+      mode: input.mode,
+      status: input.status ?? 'CREATED',
+      threshold_min_comments: input.threshold_min_comments ?? 30,
+      threshold_min_human_votes: input.threshold_min_human_votes ?? 10,
+      comments_at_trigger: input.comments_at_trigger ?? 0,
+      human_vote_score_at_trigger: input.human_vote_score_at_trigger ?? 0,
+      triggered_by_agent_id: input.triggered_by_agent_id ?? null,
+      triggered_by_user_id: input.triggered_by_user_id ?? null,
+      meta: input.meta ?? null,
+      created_at: now,
+      updated_at: now,
+    }
+    this.runs.set(row.id, row)
+    return row
+  }
+
+  async listByPost(postId: string): Promise<AftershowRun[]> {
+    return Array.from(this.runs.values())
+      .filter((row) => row.post_id === postId)
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+  }
+}

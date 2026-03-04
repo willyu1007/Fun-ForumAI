@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-02T23:02:10.981Z",
+  "updatedAt": "2026-03-04T03:01:35.419Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -23,6 +23,14 @@
       ]
     },
     {
+      "name": "AftershowRunStatus",
+      "values": [
+        "CREATED",
+        "SKIPPED",
+        "COMPLETED"
+      ]
+    },
+    {
       "name": "AgentCommunityMembershipRole",
       "values": [
         "RESIDENT",
@@ -37,12 +45,27 @@
       ]
     },
     {
+      "name": "AgentCommunityMembershipStatus",
+      "values": [
+        "ACTIVE",
+        "MUTED",
+        "BANNED"
+      ]
+    },
+    {
       "name": "AgentStatus",
       "values": [
         "ACTIVE",
         "LIMITED",
         "QUARANTINED",
         "BANNED"
+      ]
+    },
+    {
+      "name": "AudienceThreadStatus",
+      "values": [
+        "OPEN",
+        "CLOSED"
       ]
     },
     {
@@ -111,6 +134,24 @@
       "values": [
         "URL",
         "UPLOAD"
+      ]
+    },
+    {
+      "name": "IncubationGrantStatus",
+      "values": [
+        "ACTIVE",
+        "REVOKED",
+        "EXPIRED"
+      ]
+    },
+    {
+      "name": "IncubationJobStatus",
+      "values": [
+        "PENDING",
+        "GRANTED",
+        "REJECTED",
+        "QUARANTINED",
+        "EXPIRED"
       ]
     },
     {
@@ -202,6 +243,229 @@
     }
   ],
   "tables": [
+    {
+      "name": "AftershowRun",
+      "dbName": "aftershow_runs",
+      "schema": null,
+      "columns": [
+        {
+          "name": "commentsAtTrigger",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "comments_at_trigger",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "humanVoteScoreAtTrigger",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "human_vote_score_at_trigger",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "metaJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "meta_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "mode",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "postId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "post_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "AftershowRunStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "CREATED",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "thresholdMinComments",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "threshold_min_comments",
+          "dbType": null,
+          "default": "30",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "thresholdMinHumanVotes",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "threshold_min_human_votes",
+          "dbType": null,
+          "default": "10",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "triggeredByAgentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "triggered_by_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "triggeredByUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "triggered_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "community",
+          "to": "Community",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "communityId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "post",
+          "to": "Post",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "postId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "triggeredByAgent",
+          "to": "Agent",
+          "optional": true,
+          "list": false,
+          "relationName": "AftershowTriggeredByAgent",
+          "fields": [
+            "triggeredByAgentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "communityId",
+            "mode",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "postId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
     {
       "name": "Agent",
       "dbName": "agents",
@@ -325,6 +589,15 @@
           "optional": false,
           "list": true,
           "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "aftershowRuns",
+          "to": "AftershowRun",
+          "optional": false,
+          "list": true,
+          "relationName": "AftershowTriggeredByAgent",
           "fields": [],
           "references": []
         },
@@ -482,6 +755,24 @@
           "references": []
         },
         {
+          "field": "incubationGrants",
+          "to": "IncubationGrant",
+          "optional": false,
+          "list": true,
+          "relationName": "IncubationReviewerAgent",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "incubationJobs",
+          "to": "IncubationJob",
+          "optional": false,
+          "list": true,
+          "relationName": "IncubationProposerAgent",
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "instructions",
           "to": "AgentInstruction",
           "optional": false,
@@ -598,6 +889,15 @@
           "to": "AgentSignalLog",
           "optional": false,
           "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "stageTierSnapshot",
+          "to": "AgentStageTierSnapshot",
+          "optional": true,
+          "list": false,
           "relationName": null,
           "fields": [],
           "references": []
@@ -1102,6 +1402,50 @@
           "dbName": null,
           "dbType": null,
           "default": "MANUAL",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "AgentCommunityMembershipStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "ACTIVE",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "statusReason",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "status_reason",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "statusSetAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "status_set_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "statusSetBy",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "status_set_by",
+          "dbType": null,
+          "default": null,
           "primaryKey": false,
           "unique": false
         },
@@ -2988,6 +3332,149 @@
       ]
     },
     {
+      "name": "AgentStageTierSnapshot",
+      "dbName": "agent_stage_tier_snapshots",
+      "schema": null,
+      "columns": [
+        {
+          "name": "achievementPoints",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "achievement_points",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "chroniclePoints",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "chronicle_points",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "computedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "computed_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "reasoningJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "reasoning_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "score",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "tier",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "trustPenalty",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "trust_penalty",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "tier",
+            "score"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
       "name": "AgentState",
       "dbName": "agent_states",
       "schema": null,
@@ -3516,6 +4003,249 @@
       ]
     },
     {
+      "name": "AudienceMessage",
+      "dbName": "audience_messages",
+      "schema": null,
+      "columns": [
+        {
+          "name": "authorUserId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "body",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "threadId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "thread_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "authorUser",
+          "to": "HumanUser",
+          "optional": false,
+          "list": false,
+          "relationName": "AudienceMessageAuthor",
+          "fields": [
+            "authorUserId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "thread",
+          "to": "AudienceThread",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "threadId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "authorUserId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "threadId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "AudienceThread",
+      "dbName": "audience_threads",
+      "schema": null,
+      "columns": [
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "postId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "post_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "status",
+          "type": "AudienceThreadStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "OPEN",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "community",
+          "to": "Community",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "communityId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "messages",
+          "to": "AudienceMessage",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "post",
+          "to": "Post",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "postId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "communityId",
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
       "name": "ChronicleEntry",
       "dbName": "chronicle_entries",
       "schema": null,
@@ -4032,6 +4762,15 @@
       ],
       "relations": [
         {
+          "field": "aftershowRuns",
+          "to": "AftershowRun",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "agentMemberships",
           "to": "AgentCommunityMembership",
           "optional": false,
@@ -4041,8 +4780,26 @@
           "references": []
         },
         {
+          "field": "audienceThreads",
+          "to": "AudienceThread",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "cultureDigests",
           "to": "CommunityCultureDigest",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "incubationJobs",
+          "to": "IncubationJob",
           "optional": false,
           "list": true,
           "relationName": null,
@@ -4894,6 +5651,15 @@
           "references": []
         },
         {
+          "field": "audienceMessages",
+          "to": "AudienceMessage",
+          "optional": false,
+          "list": true,
+          "relationName": "AudienceMessageAuthor",
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "follows",
           "to": "HumanAgentFollow",
           "optional": false,
@@ -4917,6 +5683,24 @@
           "optional": false,
           "list": true,
           "relationName": "InclinationAssetOwner",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "incubationEvents",
+          "to": "IncubationEvent",
+          "optional": false,
+          "list": true,
+          "relationName": "IncubationActorUser",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "incubationGrants",
+          "to": "IncubationGrant",
+          "optional": false,
+          "list": true,
+          "relationName": "IncubationReviewerUser",
           "fields": [],
           "references": []
         },
@@ -5053,6 +5837,723 @@
             "voterUserId",
             "targetType",
             "targetId"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "IncubationEvent",
+      "dbName": "incubation_events",
+      "schema": null,
+      "columns": [
+        {
+          "name": "actorUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "actor_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "eventType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "event_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "jobId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "job_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "payloadJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "payload_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "actorUser",
+          "to": "HumanUser",
+          "optional": true,
+          "list": false,
+          "relationName": "IncubationActorUser",
+          "fields": [
+            "actorUserId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "job",
+          "to": "IncubationJob",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "jobId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "jobId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "IncubationGrant",
+      "dbName": "incubation_grants",
+      "schema": null,
+      "columns": [
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "expiresAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "expires_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "grantedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "granted_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "jobId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "job_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "metaJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "meta_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reason",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reviewerAgentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "reviewer_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reviewerUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "reviewer_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "revokedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "revoked_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "IncubationGrantStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "ACTIVE",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "ttlHours",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "ttl_hours",
+          "dbType": null,
+          "default": "168",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "job",
+          "to": "IncubationJob",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "jobId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "reviewerAgent",
+          "to": "Agent",
+          "optional": true,
+          "list": false,
+          "relationName": "IncubationReviewerAgent",
+          "fields": [
+            "reviewerAgentId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "reviewerUser",
+          "to": "HumanUser",
+          "optional": true,
+          "list": false,
+          "relationName": "IncubationReviewerUser",
+          "fields": [
+            "reviewerUserId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "expiresAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "jobId",
+            "status",
+            "grantedAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "IncubationJob",
+      "dbName": "incubation_jobs",
+      "schema": null,
+      "columns": [
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "expiresAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "expires_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "grantRequired",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "grant_required",
+          "dbType": null,
+          "default": "true",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "metaJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "meta_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "postId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "post_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "premodRequired",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "premod_required",
+          "dbType": null,
+          "default": "true",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "proposerAgentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "proposer_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "redactionLevel",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "redaction_level",
+          "dbType": null,
+          "default": "\"strong\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "requestedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "requested_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "IncubationJobStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "PENDING",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "strictT4",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "strict_t4",
+          "dbType": null,
+          "default": "true",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "community",
+          "to": "Community",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "communityId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "events",
+          "to": "IncubationEvent",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "grants",
+          "to": "IncubationGrant",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "post",
+          "to": "Post",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "postId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "proposerAgent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": "IncubationProposerAgent",
+          "fields": [
+            "proposerAgentId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "sourceBundles",
+          "to": "IncubationSourceBundle",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "communityId",
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "proposerAgentId",
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "IncubationSourceBundle",
+      "dbName": "incubation_source_bundles",
+      "schema": null,
+      "columns": [
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "jobId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "job_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "metaJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "meta_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceRef",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_ref",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceUrl",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_url",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "job",
+          "to": "IncubationJob",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "jobId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "jobId",
+            "createdAt"
           ],
           "name": null,
           "map": null
@@ -5423,6 +6924,24 @@
       ],
       "relations": [
         {
+          "field": "aftershowRuns",
+          "to": "AftershowRun",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "audienceThread",
+          "to": "AudienceThread",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "author",
           "to": "Agent",
           "optional": false,
@@ -5463,6 +6982,15 @@
           "optional": false,
           "list": true,
           "relationName": "InclinationConsumedPost",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "incubationJobs",
+          "to": "IncubationJob",
+          "optional": false,
+          "list": true,
+          "relationName": null,
           "fields": [],
           "references": []
         },

@@ -137,6 +137,7 @@ export interface Community {
 
 export type AgentCommunityMembershipRole = 'RESIDENT' | 'GUEST'
 export type AgentCommunityMembershipSource = 'MANUAL' | 'DERIVED'
+export type AgentCommunityMembershipStatus = 'ACTIVE' | 'MUTED' | 'BANNED'
 
 export interface AgentCommunityMembership {
   id: string
@@ -144,9 +145,139 @@ export interface AgentCommunityMembership {
   community_id: string
   role: AgentCommunityMembershipRole
   source: AgentCommunityMembershipSource
+  status: AgentCommunityMembershipStatus
+  status_reason: string | null
+  status_set_by: string | null
+  status_set_at: Date | null
   joined_at: Date
   left_at: Date | null
   created_by: string | null
+  created_at: Date
+  updated_at: Date
+}
+
+export type AgentStageTier = 'T1' | 'T2' | 'T3' | 'T4' | 'T5'
+
+export interface AgentStageTierSnapshot {
+  id: string
+  agent_id: string
+  tier: AgentStageTier
+  score: number
+  achievement_points: number
+  chronicle_points: number
+  trust_penalty: number
+  reasoning: Record<string, unknown>
+  computed_at: Date
+  updated_at: Date
+}
+
+export type StageTemplateStatus = 'launch' | 'hidden'
+
+export interface StageTemplateManifestItem {
+  id: string
+  category: string
+  path: string
+  status: StageTemplateStatus
+  binding: {
+    community_slug: string
+    slot?: string
+    binding_type: 'core' | 'seasonal'
+  } | null
+}
+
+export type IncubationJobStatus = 'PENDING' | 'GRANTED' | 'REJECTED' | 'QUARANTINED' | 'EXPIRED'
+export type IncubationGrantStatus = 'ACTIVE' | 'REVOKED' | 'EXPIRED'
+
+export interface IncubationJob {
+  id: string
+  post_id: string
+  community_id: string
+  proposer_agent_id: string
+  status: IncubationJobStatus
+  strict_t4: boolean
+  grant_required: boolean
+  premod_required: boolean
+  redaction_level: string
+  source_count: number
+  requested_at: Date
+  expires_at: Date | null
+  meta: Record<string, unknown> | null
+  created_at: Date
+  updated_at: Date
+}
+
+export interface IncubationGrant {
+  id: string
+  job_id: string
+  reviewer_agent_id: string | null
+  reviewer_user_id: string | null
+  status: IncubationGrantStatus
+  reason: string
+  ttl_hours: number
+  granted_at: Date
+  expires_at: Date
+  revoked_at: Date | null
+  meta: Record<string, unknown> | null
+  created_at: Date
+  updated_at: Date
+}
+
+export interface IncubationSourceBundle {
+  id: string
+  job_id: string
+  source_type: string
+  source_ref: string
+  source_url: string | null
+  title: string | null
+  meta: Record<string, unknown> | null
+  created_at: Date
+  updated_at: Date
+}
+
+export interface IncubationEvent {
+  id: string
+  job_id: string
+  event_type: string
+  actor_user_id: string | null
+  payload: Record<string, unknown> | null
+  created_at: Date
+}
+
+export type AudienceThreadStatus = 'OPEN' | 'CLOSED'
+
+export interface AudienceThread {
+  id: string
+  post_id: string
+  community_id: string
+  status: AudienceThreadStatus
+  created_at: Date
+  updated_at: Date
+}
+
+export interface AudienceMessage {
+  id: string
+  thread_id: string
+  author_user_id: string
+  body: string
+  created_at: Date
+  updated_at: Date
+}
+
+export type AftershowRunStatus = 'CREATED' | 'SKIPPED' | 'COMPLETED'
+
+export interface AftershowRun {
+  id: string
+  post_id: string
+  community_id: string
+  mode: 'OFF' | 'THRESHOLD' | 'PERIODIC' | 'MANUAL'
+  status: AftershowRunStatus
+  threshold_min_comments: number
+  threshold_min_human_votes: number
+  comments_at_trigger: number
+  human_vote_score_at_trigger: number
+  triggered_by_agent_id: string | null
+  triggered_by_user_id: string | null
+  meta: Record<string, unknown> | null
   created_at: Date
   updated_at: Date
 }
@@ -492,9 +623,100 @@ export interface CreateAgentCommunityMembershipInput {
   community_id: string
   role?: AgentCommunityMembershipRole
   source?: AgentCommunityMembershipSource
+  status?: AgentCommunityMembershipStatus
+  status_reason?: string | null
+  status_set_by?: string | null
+  status_set_at?: Date | null
   joined_at?: Date
   left_at?: Date | null
   created_by?: string | null
+}
+
+export interface UpsertAgentStageTierSnapshotInput {
+  agent_id: string
+  tier: AgentStageTier
+  score: number
+  achievement_points: number
+  chronicle_points: number
+  trust_penalty: number
+  reasoning: Record<string, unknown>
+  computed_at?: Date
+}
+
+export interface CreateIncubationJobInput {
+  post_id: string
+  community_id: string
+  proposer_agent_id: string
+  status?: IncubationJobStatus
+  strict_t4?: boolean
+  grant_required?: boolean
+  premod_required?: boolean
+  redaction_level?: string
+  source_count?: number
+  requested_at?: Date
+  expires_at?: Date | null
+  meta?: Record<string, unknown> | null
+}
+
+export interface UpdateIncubationJobInput {
+  status?: IncubationJobStatus
+  source_count?: number
+  expires_at?: Date | null
+  meta?: Record<string, unknown> | null
+}
+
+export interface CreateIncubationGrantInput {
+  job_id: string
+  reviewer_agent_id?: string | null
+  reviewer_user_id?: string | null
+  status?: IncubationGrantStatus
+  reason: string
+  ttl_hours: number
+  granted_at?: Date
+  expires_at: Date
+  meta?: Record<string, unknown> | null
+}
+
+export interface CreateIncubationSourceBundleInput {
+  job_id: string
+  source_type: string
+  source_ref: string
+  source_url?: string | null
+  title?: string | null
+  meta?: Record<string, unknown> | null
+}
+
+export interface CreateIncubationEventInput {
+  job_id: string
+  event_type: string
+  actor_user_id?: string | null
+  payload?: Record<string, unknown> | null
+}
+
+export interface CreateAudienceThreadInput {
+  post_id: string
+  community_id: string
+  status?: AudienceThreadStatus
+}
+
+export interface CreateAudienceMessageInput {
+  thread_id: string
+  author_user_id: string
+  body: string
+}
+
+export interface CreateAftershowRunInput {
+  post_id: string
+  community_id: string
+  mode: 'OFF' | 'THRESHOLD' | 'PERIODIC' | 'MANUAL'
+  status?: AftershowRunStatus
+  threshold_min_comments?: number
+  threshold_min_human_votes?: number
+  comments_at_trigger?: number
+  human_vote_score_at_trigger?: number
+  triggered_by_agent_id?: string | null
+  triggered_by_user_id?: string | null
+  meta?: Record<string, unknown> | null
 }
 
 export interface CreateAgentSignalLogInput {

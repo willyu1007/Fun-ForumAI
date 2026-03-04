@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { Prisma, type PrismaClient, type AgentCommunityMembership as PrismaAgentCommunityMembership } from '@prisma/client'
 import type {
   AgentCommunityMembership,
+  AgentCommunityMembershipStatus,
   CreateAgentCommunityMembershipInput,
 } from '../types.js'
 import type { AgentCommunityMembershipRepository } from '../agent-community-membership-repository.js'
@@ -43,7 +44,7 @@ export class PgAgentCommunityMembershipRepository implements AgentCommunityMembe
     for (const row of rows) {
       const membership = this.toDomain(row)
       this.cache.set(membership.id, membership)
-      if (membership.left_at === null) {
+      if (membership.left_at === null && membership.status === 'ACTIVE') {
         pushIndex(this.activeByAgent, membership.agent_id, membership.id)
         pushIndex(this.activeByCommunity, membership.community_id, membership.id)
       }
@@ -59,6 +60,10 @@ export class PgAgentCommunityMembershipRepository implements AgentCommunityMembe
         communityId: input.community_id,
         role: input.role ?? 'RESIDENT',
         source: input.source ?? 'MANUAL',
+        status: input.status ?? 'ACTIVE',
+        statusReason: input.status_reason ?? null,
+        statusSetBy: input.status_set_by ?? null,
+        statusSetAt: input.status_set_at ?? null,
         joinedAt: input.joined_at ?? now,
         leftAt: input.left_at ?? null,
         createdBy: input.created_by ?? null,
@@ -83,15 +88,23 @@ export class PgAgentCommunityMembershipRepository implements AgentCommunityMembe
     })
 
     if (active) {
+      const updateData: Prisma.AgentCommunityMembershipUpdateInput = {
+        role: input.role ?? active.role,
+        source: input.source ?? active.source,
+        leftAt: null,
+        createdBy: input.created_by ?? active.createdBy,
+        updatedAt: now,
+      }
+      if (input.status !== undefined) {
+        updateData.status = input.status
+        updateData.statusReason = input.status_reason ?? null
+        updateData.statusSetBy = input.status_set_by ?? null
+        updateData.statusSetAt = input.status_set_at ?? now
+      }
+
       const updated = await this.prisma.agentCommunityMembership.update({
         where: { id: active.id },
-        data: {
-          role: input.role ?? active.role,
-          source: input.source ?? active.source,
-          leftAt: null,
-          createdBy: input.created_by ?? active.createdBy,
-          updatedAt: now,
-        },
+        data: updateData,
       })
       const membership = this.toDomain(updated)
       this.putCache(membership)
@@ -113,15 +126,23 @@ export class PgAgentCommunityMembershipRepository implements AgentCommunityMembe
       })
       if (!winner) throw error
 
+      const updateData: Prisma.AgentCommunityMembershipUpdateInput = {
+        role: input.role ?? winner.role,
+        source: input.source ?? winner.source,
+        leftAt: null,
+        createdBy: input.created_by ?? winner.createdBy,
+        updatedAt: now,
+      }
+      if (input.status !== undefined) {
+        updateData.status = input.status
+        updateData.statusReason = input.status_reason ?? null
+        updateData.statusSetBy = input.status_set_by ?? null
+        updateData.statusSetAt = input.status_set_at ?? now
+      }
+
       const updated = await this.prisma.agentCommunityMembership.update({
         where: { id: winner.id },
-        data: {
-          role: input.role ?? winner.role,
-          source: input.source ?? winner.source,
-          leftAt: null,
-          createdBy: input.created_by ?? winner.createdBy,
-          updatedAt: now,
-        },
+        data: updateData,
       })
       const membership = this.toDomain(updated)
       this.putCache(membership)
@@ -152,6 +173,52 @@ export class PgAgentCommunityMembershipRepository implements AgentCommunityMembe
     return membership
   }
 
+  async updateStatus(input: {
+    agent_id: string
+    community_id: string
+    status: AgentCommunityMembershipStatus
+    reason?: string | null
+    set_by?: string | null
+    set_at?: Date
+  }): Promise<AgentCommunityMembership | null> {
+    const current = await this.prisma.agentCommunityMembership.findFirst({
+      where: {
+        agentId: input.agent_id,
+        communityId: input.community_id,
+        leftAt: null,
+      },
+      orderBy: [{ joinedAt: 'desc' }, { id: 'desc' }],
+    })
+    if (!current) return null
+
+    const updated = await this.prisma.agentCommunityMembership.update({
+      where: { id: current.id },
+      data: {
+        status: input.status,
+        statusReason: input.reason ?? null,
+        statusSetBy: input.set_by ?? null,
+        statusSetAt: input.set_at ?? new Date(),
+        updatedAt: new Date(),
+      },
+    })
+    const membership = this.toDomain(updated)
+    this.putCache(membership)
+    return membership
+  }
+
+  findCurrent(agentId: string, communityId: string): AgentCommunityMembership | null {
+    const members = Array.from(this.cache.values())
+      .filter((item) => item.agent_id === agentId && item.community_id === communityId && item.left_at === null)
+      .sort((a, b) => b.joined_at.getTime() - a.joined_at.getTime())
+    return members[0] ?? null
+  }
+
+  findCurrentByCommunity(communityId: string): AgentCommunityMembership[] {
+    return Array.from(this.cache.values())
+      .filter((item) => item.community_id === communityId && item.left_at === null)
+      .sort((a, b) => b.joined_at.getTime() - a.joined_at.getTime())
+  }
+
   findActiveByAgent(agentId: string): AgentCommunityMembership[] {
     const ids = this.activeByAgent.get(agentId)
     if (!ids || ids.size === 0) return []
@@ -180,6 +247,10 @@ export class PgAgentCommunityMembershipRepository implements AgentCommunityMembe
     return this.findActiveByCommunity(communityId).map((item) => item.agent_id)
   }
 
+  listCurrentAgentIdsByCommunity(communityId: string): string[] {
+    return Array.from(new Set(this.findCurrentByCommunity(communityId).map((item) => item.agent_id)))
+  }
+
   countActiveByAgent(agentId: string): number {
     const ids = this.activeByAgent.get(agentId)
     return ids ? ids.size : 0
@@ -201,7 +272,7 @@ export class PgAgentCommunityMembershipRepository implements AgentCommunityMembe
     }
 
     this.cache.set(next.id, next)
-    if (next.left_at === null) {
+    if (next.left_at === null && next.status === 'ACTIVE') {
       pushIndex(this.activeByAgent, next.agent_id, next.id)
       pushIndex(this.activeByCommunity, next.community_id, next.id)
     }
@@ -214,6 +285,10 @@ export class PgAgentCommunityMembershipRepository implements AgentCommunityMembe
       community_id: row.communityId,
       role: row.role,
       source: row.source,
+      status: row.status,
+      status_reason: row.statusReason,
+      status_set_by: row.statusSetBy,
+      status_set_at: row.statusSetAt,
       joined_at: row.joinedAt,
       left_at: row.leftAt,
       created_by: row.createdBy,

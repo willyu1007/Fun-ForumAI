@@ -34,6 +34,9 @@ model HumanUser {
   humanVotes       HumanVote[]
   follows          HumanAgentFollow[]
   inclinationAssets AgentInclinationAsset[] @relation("InclinationAssetOwner")
+  audienceMessages AudienceMessage[] @relation("AudienceMessageAuthor")
+  incubationGrants IncubationGrant[] @relation("IncubationReviewerUser")
+  incubationEvents IncubationEvent[] @relation("IncubationActorUser")
 
   @@map("human_users")
 }
@@ -97,6 +100,10 @@ model Agent {
   incomingPprSnapshots PprSnapshot[] @relation("PprCandidateAgent")
   communityMemberships AgentCommunityMembership[]
   signalLogs AgentSignalLog[]
+  stageTierSnapshot AgentStageTierSnapshot?
+  incubationJobs IncubationJob[] @relation("IncubationProposerAgent")
+  incubationGrants IncubationGrant[] @relation("IncubationReviewerAgent")
+  aftershowRuns AftershowRun[] @relation("AftershowTriggeredByAgent")
 
   @@index([ownerId])
   @@map("agents")
@@ -154,6 +161,9 @@ model Community {
   posts Post[]
   agentMemberships AgentCommunityMembership[]
   cultureDigests CommunityCultureDigest[]
+  incubationJobs IncubationJob[]
+  audienceThreads AudienceThread[]
+  aftershowRuns AftershowRun[]
 
   @@map("communities")
 }
@@ -166,6 +176,12 @@ enum AgentCommunityMembershipRole {
 enum AgentCommunityMembershipSource {
   MANUAL
   DERIVED
+}
+
+enum AgentCommunityMembershipStatus {
+  ACTIVE
+  MUTED
+  BANNED
 }
 
 model Post {
@@ -186,6 +202,9 @@ model Post {
   comments  Comment[]
   media     PostMedia[]
   consumedInclinationAssets AgentInclinationAsset[] @relation("InclinationConsumedPost")
+  incubationJobs IncubationJob[]
+  audienceThread AudienceThread?
+  aftershowRuns AftershowRun[]
 
   @@index([communityId, createdAt])
   @@index([authorAgentId])
@@ -385,6 +404,10 @@ model AgentCommunityMembership {
   communityId String                         @map("community_id")
   role        AgentCommunityMembershipRole   @default(RESIDENT)
   source      AgentCommunityMembershipSource @default(MANUAL)
+  status      AgentCommunityMembershipStatus @default(ACTIVE)
+  statusReason String?                       @map("status_reason")
+  statusSetBy String?                        @map("status_set_by")
+  statusSetAt DateTime?                      @map("status_set_at")
   joinedAt    DateTime                       @default(now()) @map("joined_at")
   leftAt      DateTime?                      @map("left_at")
   createdBy   String?                        @map("created_by")
@@ -397,6 +420,191 @@ model AgentCommunityMembership {
   @@index([agentId, leftAt])
   @@index([communityId, leftAt])
   @@map("agent_community_memberships")
+}
+
+model AgentStageTierSnapshot {
+  id               String   @id @default(cuid())
+  agentId          String   @unique @map("agent_id")
+  tier             String
+  score            Float
+  achievementPoints Float   @map("achievement_points")
+  chroniclePoints  Float    @map("chronicle_points")
+  trustPenalty     Float    @map("trust_penalty")
+  reasoningJson    Json     @map("reasoning_json")
+  computedAt       DateTime @default(now()) @map("computed_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([tier, score])
+  @@map("agent_stage_tier_snapshots")
+}
+
+enum IncubationJobStatus {
+  PENDING
+  GRANTED
+  REJECTED
+  QUARANTINED
+  EXPIRED
+}
+
+enum IncubationGrantStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+model IncubationJob {
+  id               String              @id @default(cuid())
+  postId           String              @map("post_id")
+  communityId      String              @map("community_id")
+  proposerAgentId  String              @map("proposer_agent_id")
+  status           IncubationJobStatus @default(PENDING)
+  strictT4         Boolean             @default(true) @map("strict_t4")
+  grantRequired    Boolean             @default(true) @map("grant_required")
+  premodRequired   Boolean             @default(true) @map("premod_required")
+  redactionLevel   String              @default("strong") @map("redaction_level")
+  sourceCount      Int                 @default(0) @map("source_count")
+  requestedAt      DateTime            @default(now()) @map("requested_at")
+  expiresAt        DateTime?           @map("expires_at")
+  metaJson         Json?               @map("meta_json")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  post         Post                 @relation(fields: [postId], references: [id])
+  community    Community            @relation(fields: [communityId], references: [id])
+  proposerAgent Agent              @relation("IncubationProposerAgent", fields: [proposerAgentId], references: [id])
+  grants       IncubationGrant[]
+  sourceBundles IncubationSourceBundle[]
+  events       IncubationEvent[]
+
+  @@index([communityId, status, createdAt])
+  @@index([proposerAgentId, status, createdAt])
+  @@map("incubation_jobs")
+}
+
+model IncubationGrant {
+  id             String                @id @default(cuid())
+  jobId           String                @map("job_id")
+  reviewerAgentId String?               @map("reviewer_agent_id")
+  reviewerUserId  String?               @map("reviewer_user_id")
+  status          IncubationGrantStatus @default(ACTIVE)
+  reason          String
+  ttlHours        Int                   @default(168) @map("ttl_hours")
+  grantedAt       DateTime              @default(now()) @map("granted_at")
+  expiresAt       DateTime              @map("expires_at")
+  revokedAt       DateTime?             @map("revoked_at")
+  metaJson        Json?                 @map("meta_json")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+
+  job           IncubationJob @relation(fields: [jobId], references: [id])
+  reviewerAgent Agent?        @relation("IncubationReviewerAgent", fields: [reviewerAgentId], references: [id])
+  reviewerUser  HumanUser?    @relation("IncubationReviewerUser", fields: [reviewerUserId], references: [id])
+
+  @@index([jobId, status, grantedAt])
+  @@index([expiresAt])
+  @@map("incubation_grants")
+}
+
+model IncubationSourceBundle {
+  id         String   @id @default(cuid())
+  jobId       String   @map("job_id")
+  sourceType  String   @map("source_type")
+  sourceRef   String   @map("source_ref")
+  sourceUrl   String?  @map("source_url")
+  title       String?
+  metaJson    Json?    @map("meta_json")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  job IncubationJob @relation(fields: [jobId], references: [id])
+
+  @@index([jobId, createdAt])
+  @@map("incubation_source_bundles")
+}
+
+model IncubationEvent {
+  id          String   @id @default(cuid())
+  jobId        String   @map("job_id")
+  eventType    String   @map("event_type")
+  actorUserId  String?  @map("actor_user_id")
+  payloadJson  Json?    @map("payload_json")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  job       IncubationJob @relation(fields: [jobId], references: [id])
+  actorUser HumanUser?    @relation("IncubationActorUser", fields: [actorUserId], references: [id])
+
+  @@index([jobId, createdAt])
+  @@map("incubation_events")
+}
+
+enum AudienceThreadStatus {
+  OPEN
+  CLOSED
+}
+
+model AudienceThread {
+  id          String               @id @default(cuid())
+  postId       String               @unique @map("post_id")
+  communityId  String               @map("community_id")
+  status       AudienceThreadStatus @default(OPEN)
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
+
+  post      Post             @relation(fields: [postId], references: [id])
+  community Community        @relation(fields: [communityId], references: [id])
+  messages  AudienceMessage[]
+
+  @@index([communityId, status, createdAt])
+  @@map("audience_threads")
+}
+
+model AudienceMessage {
+  id           String   @id @default(cuid())
+  threadId      String   @map("thread_id")
+  authorUserId  String   @map("author_user_id")
+  body          String
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  thread     AudienceThread @relation(fields: [threadId], references: [id])
+  authorUser HumanUser      @relation("AudienceMessageAuthor", fields: [authorUserId], references: [id])
+
+  @@index([threadId, createdAt])
+  @@index([authorUserId, createdAt])
+  @@map("audience_messages")
+}
+
+enum AftershowRunStatus {
+  CREATED
+  SKIPPED
+  COMPLETED
+}
+
+model AftershowRun {
+  id                     String            @id @default(cuid())
+  postId                  String            @map("post_id")
+  communityId             String            @map("community_id")
+  mode                    String
+  status                  AftershowRunStatus @default(CREATED)
+  thresholdMinComments    Int               @default(30) @map("threshold_min_comments")
+  thresholdMinHumanVotes  Int               @default(10) @map("threshold_min_human_votes")
+  commentsAtTrigger       Int               @default(0) @map("comments_at_trigger")
+  humanVoteScoreAtTrigger Int               @default(0) @map("human_vote_score_at_trigger")
+  triggeredByAgentId      String?           @map("triggered_by_agent_id")
+  triggeredByUserId       String?           @map("triggered_by_user_id")
+  metaJson                Json?             @map("meta_json")
+  createdAt               DateTime          @default(now()) @map("created_at")
+  updatedAt               DateTime          @updatedAt @map("updated_at")
+
+  post            Post      @relation(fields: [postId], references: [id])
+  community       Community @relation(fields: [communityId], references: [id])
+  triggeredByAgent Agent?   @relation("AftershowTriggeredByAgent", fields: [triggeredByAgentId], references: [id])
+
+  @@index([postId, createdAt])
+  @@index([communityId, mode, createdAt])
+  @@map("aftershow_runs")
 }
 
 model AgentSignalLog {

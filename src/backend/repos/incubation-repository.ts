@@ -1,0 +1,144 @@
+import type {
+  IncubationJob,
+  IncubationGrant,
+  IncubationSourceBundle,
+  IncubationEvent,
+  CreateIncubationJobInput,
+  UpdateIncubationJobInput,
+  CreateIncubationGrantInput,
+  CreateIncubationSourceBundleInput,
+  CreateIncubationEventInput,
+} from './types.js'
+
+export interface IncubationRepository {
+  createJob(input: CreateIncubationJobInput): Promise<IncubationJob>
+  findJobById(jobId: string): Promise<IncubationJob | null>
+  updateJob(jobId: string, patch: UpdateIncubationJobInput): Promise<IncubationJob | null>
+  createGrant(input: CreateIncubationGrantInput): Promise<IncubationGrant>
+  listGrantsByJob(jobId: string): Promise<IncubationGrant[]>
+  createSourceBundle(input: CreateIncubationSourceBundleInput): Promise<IncubationSourceBundle>
+  listSourceBundlesByJob(jobId: string): Promise<IncubationSourceBundle[]>
+  createEvent(input: CreateIncubationEventInput): Promise<IncubationEvent>
+  listEventsByJob(jobId: string): Promise<IncubationEvent[]>
+}
+
+let counter = 0
+function cuid(prefix: string): string {
+  return `${prefix}_${Date.now()}_${++counter}`
+}
+
+export class InMemoryIncubationRepository implements IncubationRepository {
+  private readonly jobs = new Map<string, IncubationJob>()
+  private readonly grants = new Map<string, IncubationGrant>()
+  private readonly sourceBundles = new Map<string, IncubationSourceBundle>()
+  private readonly events = new Map<string, IncubationEvent>()
+
+  async createJob(input: CreateIncubationJobInput): Promise<IncubationJob> {
+    const now = input.requested_at ?? new Date()
+    const row: IncubationJob = {
+      id: cuid('inc_job'),
+      post_id: input.post_id,
+      community_id: input.community_id,
+      proposer_agent_id: input.proposer_agent_id,
+      status: input.status ?? 'PENDING',
+      strict_t4: input.strict_t4 ?? true,
+      grant_required: input.grant_required ?? true,
+      premod_required: input.premod_required ?? true,
+      redaction_level: input.redaction_level ?? 'strong',
+      source_count: input.source_count ?? 0,
+      requested_at: now,
+      expires_at: input.expires_at ?? null,
+      meta: input.meta ?? null,
+      created_at: now,
+      updated_at: now,
+    }
+    this.jobs.set(row.id, row)
+    return row
+  }
+
+  async findJobById(jobId: string): Promise<IncubationJob | null> {
+    return this.jobs.get(jobId) ?? null
+  }
+
+  async updateJob(jobId: string, patch: UpdateIncubationJobInput): Promise<IncubationJob | null> {
+    const row = this.jobs.get(jobId)
+    if (!row) return null
+
+    if (patch.status !== undefined) row.status = patch.status
+    if (patch.source_count !== undefined) row.source_count = patch.source_count
+    if (patch.expires_at !== undefined) row.expires_at = patch.expires_at
+    if (patch.meta !== undefined) row.meta = patch.meta
+    row.updated_at = new Date()
+
+    return row
+  }
+
+  async createGrant(input: CreateIncubationGrantInput): Promise<IncubationGrant> {
+    const now = input.granted_at ?? new Date()
+    const row: IncubationGrant = {
+      id: cuid('inc_grant'),
+      job_id: input.job_id,
+      reviewer_agent_id: input.reviewer_agent_id ?? null,
+      reviewer_user_id: input.reviewer_user_id ?? null,
+      status: input.status ?? 'ACTIVE',
+      reason: input.reason,
+      ttl_hours: input.ttl_hours,
+      granted_at: now,
+      expires_at: input.expires_at,
+      revoked_at: null,
+      meta: input.meta ?? null,
+      created_at: now,
+      updated_at: now,
+    }
+    this.grants.set(row.id, row)
+    return row
+  }
+
+  async listGrantsByJob(jobId: string): Promise<IncubationGrant[]> {
+    return Array.from(this.grants.values())
+      .filter((row) => row.job_id === jobId)
+      .sort((a, b) => b.granted_at.getTime() - a.granted_at.getTime())
+  }
+
+  async createSourceBundle(input: CreateIncubationSourceBundleInput): Promise<IncubationSourceBundle> {
+    const now = new Date()
+    const row: IncubationSourceBundle = {
+      id: cuid('inc_src'),
+      job_id: input.job_id,
+      source_type: input.source_type,
+      source_ref: input.source_ref,
+      source_url: input.source_url ?? null,
+      title: input.title ?? null,
+      meta: input.meta ?? null,
+      created_at: now,
+      updated_at: now,
+    }
+    this.sourceBundles.set(row.id, row)
+    return row
+  }
+
+  async listSourceBundlesByJob(jobId: string): Promise<IncubationSourceBundle[]> {
+    return Array.from(this.sourceBundles.values())
+      .filter((row) => row.job_id === jobId)
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+  }
+
+  async createEvent(input: CreateIncubationEventInput): Promise<IncubationEvent> {
+    const row: IncubationEvent = {
+      id: cuid('inc_event'),
+      job_id: input.job_id,
+      event_type: input.event_type,
+      actor_user_id: input.actor_user_id ?? null,
+      payload: input.payload ?? null,
+      created_at: new Date(),
+    }
+    this.events.set(row.id, row)
+    return row
+  }
+
+  async listEventsByJob(jobId: string): Promise<IncubationEvent[]> {
+    return Array.from(this.events.values())
+      .filter((row) => row.job_id === jobId)
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+  }
+}

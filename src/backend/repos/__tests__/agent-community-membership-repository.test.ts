@@ -32,4 +32,39 @@ describe('InMemoryAgentCommunityMembershipRepository', () => {
     expect(repo.countActiveByAgent('agent-1')).toBe(0)
     expect(repo.listActiveAgentIdsByCommunity('comm-1')).toEqual([])
   })
+
+  it('keeps non-ACTIVE status on upsertActive unless status is explicitly provided', async () => {
+    const repo = new InMemoryAgentCommunityMembershipRepository()
+
+    await repo.upsertActive({
+      agent_id: 'agent-2',
+      community_id: 'comm-2',
+      role: 'RESIDENT',
+      source: 'MANUAL',
+    })
+    await repo.updateStatus({
+      agent_id: 'agent-2',
+      community_id: 'comm-2',
+      status: 'MUTED',
+      reason: 'policy',
+      set_by: 'admin-1',
+    })
+
+    await repo.upsertActive({
+      agent_id: 'agent-2',
+      community_id: 'comm-2',
+      role: 'GUEST',
+      source: 'MANUAL',
+    })
+
+    const current = repo.findCurrent('agent-2', 'comm-2')
+    expect(current?.role).toBe('GUEST')
+    expect(current?.status).toBe('MUTED')
+    expect(repo.findActiveByAgent('agent-2')).toHaveLength(0)
+    expect(repo.listCurrentAgentIdsByCommunity('comm-2')).toEqual(['agent-2'])
+
+    await repo.leave('agent-2', 'comm-2')
+    expect(repo.findCurrent('agent-2', 'comm-2')).toBeNull()
+    expect(repo.listCurrentAgentIdsByCommunity('comm-2')).toEqual([])
+  })
 })

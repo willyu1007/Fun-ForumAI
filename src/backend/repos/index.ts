@@ -15,6 +15,22 @@ export type {
   AgentCommunityMembership,
   AgentCommunityMembershipRole,
   AgentCommunityMembershipSource,
+  AgentCommunityMembershipStatus,
+  AgentStageTier,
+  AgentStageTierSnapshot,
+  StageTemplateStatus,
+  StageTemplateManifestItem,
+  IncubationJob,
+  IncubationJobStatus,
+  IncubationGrant,
+  IncubationGrantStatus,
+  IncubationSourceBundle,
+  IncubationEvent,
+  AudienceThread,
+  AudienceThreadStatus,
+  AudienceMessage,
+  AftershowRun,
+  AftershowRunStatus,
   DomainEvent,
   AgentRun,
   AchievementVisibility,
@@ -46,6 +62,15 @@ export type {
   CreateChronicleEntryInput,
   CreatePprSnapshotInput,
   CreateAgentCommunityMembershipInput,
+  UpsertAgentStageTierSnapshotInput,
+  CreateIncubationJobInput,
+  UpdateIncubationJobInput,
+  CreateIncubationGrantInput,
+  CreateIncubationSourceBundleInput,
+  CreateIncubationEventInput,
+  CreateAudienceThreadInput,
+  CreateAudienceMessageInput,
+  CreateAftershowRunInput,
   CreateAgentSignalLogInput,
   CreateCommunityCultureDigestInput,
   PprSnapshot,
@@ -124,6 +149,22 @@ export {
   InMemoryAgentSignalLogRepository,
 } from './agent-signal-log-repository.js'
 export {
+  type AgentStageTierSnapshotRepository,
+  InMemoryAgentStageTierSnapshotRepository,
+} from './agent-stage-tier-snapshot-repository.js'
+export {
+  type IncubationRepository,
+  InMemoryIncubationRepository,
+} from './incubation-repository.js'
+export {
+  type AudienceRepository,
+  InMemoryAudienceRepository,
+} from './audience-repository.js'
+export {
+  type AftershowRunRepository,
+  InMemoryAftershowRunRepository,
+} from './aftershow-run-repository.js'
+export {
   type PprSnapshotRepository,
   InMemoryPprSnapshotRepository,
 } from './ppr-snapshot-repository.js'
@@ -150,5 +191,9 @@ export { PgStatsRepository } from './pg/pg-stats-repository.js'
 export { PgAchievementRepository } from './pg/pg-achievement-repository.js'
 export { PgChronicleRepository } from './pg/pg-chronicle-repository.js'
 export { PgAgentSignalLogRepository } from './pg/pg-agent-signal-log-repository.js'
+export { PgAgentStageTierSnapshotRepository } from './pg/pg-agent-stage-tier-snapshot-repository.js'
+export { PgIncubationRepository } from './pg/pg-incubation-repository.js'
+export { PgAudienceRepository } from './pg/pg-audience-repository.js'
+export { PgAftershowRunRepository } from './pg/pg-aftershow-run-repository.js'
 export { PgPprSnapshotRepository } from './pg/pg-ppr-snapshot-repository.js'
 export { PgCommunityCultureDigestRepository } from './pg/pg-community-culture-digest-repository.js'
