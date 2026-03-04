@@ -4,7 +4,10 @@ import { InMemoryPostRepository } from '../../repos/post-repository.js'
 import { InMemoryCommentRepository } from '../../repos/comment-repository.js'
 import { InMemoryVoteRepository } from '../../repos/vote-repository.js'
 import { InMemoryEventRepository, InMemoryAgentRunRepository } from '../../repos/event-repository.js'
+import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
+import { InMemoryAgentCommunityMembershipRepository } from '../../repos/agent-community-membership-repository.js'
 import type { ModerationResult } from '../../moderation/types.js'
+import { config } from '../../lib/config.js'
 
 const CLEAN_RESULT: ModerationResult = {
   risk_level: 'low',
@@ -37,6 +40,15 @@ function setup(modResult: ModerationResult = CLEAN_RESULT) {
   const voteRepo = new InMemoryVoteRepository()
   const eventRepo = new InMemoryEventRepository()
   const agentRunRepo = new InMemoryAgentRunRepository()
+  const communityRepo = new InMemoryCommunityRepository()
+  const membershipRepo = new InMemoryAgentCommunityMembershipRepository()
+  const community = communityRepo.create({
+    name: 'Test Community',
+    slug: `test-community-${Date.now()}`,
+  })
+  void membershipRepo.upsertActive({ agent_id: 'a0', community_id: community.id })
+  void membershipRepo.upsertActive({ agent_id: 'a1', community_id: community.id })
+  void membershipRepo.upsertActive({ agent_id: 'a2', community_id: community.id })
   const moderator: ModerationEvaluator = { evaluate: () => modResult }
   const svc = new ForumWriteService({
     postRepo,
@@ -44,19 +56,21 @@ function setup(modResult: ModerationResult = CLEAN_RESULT) {
     voteRepo,
     eventRepo,
     agentRunRepo,
+    communityRepo,
+    membershipRepo,
     moderator,
   })
-  return { svc, postRepo, commentRepo, voteRepo, eventRepo, agentRunRepo }
+  return { svc, postRepo, commentRepo, voteRepo, eventRepo, agentRunRepo, communityId: community.id, membershipRepo }
 }
 
 describe('ForumWriteService', () => {
   describe('createPost', () => {
     it('creates a post with moderation results', async () => {
-      const { svc, postRepo, eventRepo } = setup()
+      const { svc, postRepo, eventRepo, communityId } = setup()
       const result = await svc.createPost({
         actor_agent_id: 'a1',
         run_id: 'run_1',
-        community_id: 'c1',
+        community_id: communityId,
         title: 'Hello',
         body: 'World',
       })
@@ -73,11 +87,11 @@ describe('ForumWriteService', () => {
     })
 
     it('applies moderation visibility when content is risky', async () => {
-      const { svc } = setup(GRAY_RESULT)
+      const { svc, communityId } = setup(GRAY_RESULT)
       const result = await svc.createPost({
         actor_agent_id: 'a1',
         run_id: 'run_1',
-        community_id: 'c1',
+        community_id: communityId,
         title: 'Hello',
         body: 'Some risky content',
       })
@@ -86,12 +100,12 @@ describe('ForumWriteService', () => {
     })
 
     it('throws on empty title', async () => {
-      const { svc } = setup()
+      const { svc, communityId } = setup()
       await expect(
         svc.createPost({
           actor_agent_id: 'a1',
           run_id: 'r1',
-          community_id: 'c1',
+          community_id: communityId,
           title: '  ',
           body: 'OK',
         }),
@@ -99,16 +113,45 @@ describe('ForumWriteService', () => {
     })
 
     it('throws on empty body', async () => {
-      const { svc } = setup()
+      const { svc, communityId } = setup()
       await expect(
         svc.createPost({
           actor_agent_id: 'a1',
           run_id: 'r1',
-          community_id: 'c1',
+          community_id: communityId,
           title: 'OK',
           body: '',
         }),
       ).rejects.toThrow('Body is required')
+    })
+
+    it('blocks post write when membership status is MUTED', async () => {
+      const featureFlags = config.features as unknown as Record<string, boolean>
+      const originalMembershipStatus = featureFlags.membershipStatusV1
+      featureFlags.membershipStatusV1 = true
+
+      try {
+        const { svc, communityId, membershipRepo } = setup()
+        await membershipRepo.updateStatus({
+          agent_id: 'a1',
+          community_id: communityId,
+          status: 'MUTED',
+          reason: 'test',
+          set_by: 'admin',
+        })
+
+        await expect(
+          svc.createPost({
+            actor_agent_id: 'a1',
+            run_id: 'r-muted',
+            community_id: communityId,
+            title: 'Muted title',
+            body: 'Muted body',
+          }),
+        ).rejects.toThrow('cannot write runtime content')
+      } finally {
+        featureFlags.membershipStatusV1 = originalMembershipStatus
+      }
     })
   })
 
@@ -119,7 +162,7 @@ describe('ForumWriteService', () => {
     beforeEach(async () => {
       ctx = setup()
       const post = await ctx.postRepo.create({
-        community_id: 'c1',
+        community_id: ctx.communityId,
         author_agent_id: 'a0',
         title: 'T',
         body: 'B',
@@ -199,7 +242,7 @@ describe('ForumWriteService', () => {
     beforeEach(async () => {
       ctx = setup()
       const post = await ctx.postRepo.create({
-        community_id: 'c1',
+        community_id: ctx.communityId,
         author_agent_id: 'a0',
         title: 'T',
         body: 'B',
@@ -219,7 +262,7 @@ describe('ForumWriteService', () => {
       })
       expect(result.vote.direction).toBe('UP')
       expect(result.event.event_type).toBe('VOTE_CAST')
-      expect((result.event.payload_json as Record<string, unknown>).community_id).toBe('c1')
+      expect((result.event.payload_json as Record<string, unknown>).community_id).toBe(ctx.communityId)
     })
 
     it('resolves community_id for comment vote events', async () => {
@@ -239,7 +282,7 @@ describe('ForumWriteService', () => {
       })
 
       expect(result.event.event_type).toBe('VOTE_CAST')
-      expect((result.event.payload_json as Record<string, unknown>).community_id).toBe('c1')
+      expect((result.event.payload_json as Record<string, unknown>).community_id).toBe(ctx.communityId)
     })
 
     it('notifies event hook after vote creation', async () => {

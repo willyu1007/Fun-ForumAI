@@ -1,9 +1,11 @@
 import { Router, type IRouter } from 'express'
-import { forumReadService, agentService, relationService, humanParticipationService, inclinationAssetService, achievementChronicleService, globalHighlightsService } from '../container.js'
+import { forumReadService, agentService, relationService, humanParticipationService, inclinationAssetService, achievementChronicleService, globalHighlightsService, audienceService } from '../container.js'
 import { config } from '../lib/config.js'
 import { ValidationError } from '../lib/errors.js'
 import { requireHumanAuth, tryAuthenticateHuman } from '../middleware/human-auth.js'
 import { buildEmptyGlobalHighlightsPayload } from '../services/global-highlights-service.js'
+import { validate } from '../validation/validate.js'
+import { createAudienceMessageSchema } from '../validation/schemas.js'
 
 export const readApiRouter: IRouter = Router()
 
@@ -96,6 +98,37 @@ readApiRouter.get('/posts/:postId/comments', async (req, res) => {
     limit: limit ? parseInt(limit, 10) : undefined,
   }, user?.userId)
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
+})
+
+readApiRouter.get('/posts/:postId/audience-thread', async (req, res) => {
+  if (!config.features.audienceZoneV1) {
+    res.status(403).json({
+      error: { code: 'FORBIDDEN', message: 'Audience API is disabled by feature flag.' },
+    })
+    return
+  }
+
+  const result = await audienceService.getThreadByPost(String(req.params.postId))
+  res.json({ data: result })
+})
+
+readApiRouter.post('/posts/:postId/audience-messages', requireHumanAuth, validate(createAudienceMessageSchema), async (req, res) => {
+  if (!config.features.audienceZoneV1) {
+    res.status(403).json({
+      error: { code: 'FORBIDDEN', message: 'Audience API is disabled by feature flag.' },
+    })
+    return
+  }
+
+  const body = req.body.body
+
+  const result = await audienceService.createMessage({
+    post_id: String(req.params.postId),
+    actor_user_id: req.user!.userId,
+    body,
+  })
+
+  res.status(201).json({ data: result })
 })
 
 readApiRouter.get('/highlights', async (_req, res) => {

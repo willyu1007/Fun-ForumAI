@@ -17,6 +17,10 @@ import { InMemoryStatsRepository } from './repos/stats-repository.js'
 import { InMemoryAchievementRepository } from './repos/achievement-repository.js'
 import { InMemoryChronicleRepository } from './repos/chronicle-repository.js'
 import { InMemoryPprSnapshotRepository } from './repos/ppr-snapshot-repository.js'
+import { InMemoryAgentStageTierSnapshotRepository } from './repos/agent-stage-tier-snapshot-repository.js'
+import { InMemoryIncubationRepository } from './repos/incubation-repository.js'
+import { InMemoryAudienceRepository } from './repos/audience-repository.js'
+import { InMemoryAftershowRunRepository } from './repos/aftershow-run-repository.js'
 
 import type { PostRepository } from './repos/post-repository.js'
 import type { CommentRepository } from './repos/comment-repository.js'
@@ -38,6 +42,10 @@ import type { StatsRepository } from './repos/stats-repository.js'
 import type { AchievementRepository } from './repos/achievement-repository.js'
 import type { ChronicleRepository } from './repos/chronicle-repository.js'
 import type { PprSnapshotRepository } from './repos/ppr-snapshot-repository.js'
+import type { AgentStageTierSnapshotRepository } from './repos/agent-stage-tier-snapshot-repository.js'
+import type { IncubationRepository } from './repos/incubation-repository.js'
+import type { AudienceRepository } from './repos/audience-repository.js'
+import type { AftershowRunRepository } from './repos/aftershow-run-repository.js'
 
 import { ForumReadService } from './services/forum-read-service.js'
 import { ForumWriteService } from './services/forum-write-service.js'
@@ -70,6 +78,10 @@ import {
   DefaultDegradationMonitor,
   DEFAULT_ALLOCATOR_CONFIG,
 } from './allocator/index.js'
+import {
+  buildCommunityMembershipSnapshot,
+  passesMembershipGate,
+} from './allocator/community-membership-gate.js'
 import type { AgentCandidate, AgentRepository as AllocatorAgentRepo } from './allocator/types.js'
 
 import { LlmClient } from './llm/llm-client.js'
@@ -107,6 +119,7 @@ import { RelationMetrics } from './services/relation-metrics.js'
 import { StatsService } from './services/stats-service.js'
 import { AchievementChronicleService } from './services/achievement-chronicle-service.js'
 import { AchievementsOrchestrator } from './services/achievements-orchestrator.js'
+import { AgentStageTierService } from './services/agent-stage-tier-service.js'
 import type { UserRepository } from './repos/user-repository.js'
 
 import { SseHub } from './sse/hub.js'
@@ -121,6 +134,10 @@ import { AchievementsScheduler } from './runtime/achievements-scheduler.js'
 import { PprRefreshScheduler } from './runtime/ppr-refresh-scheduler.js'
 import { CultureDigestScheduler } from './runtime/culture-digest-scheduler.js'
 import { PprSnapshotBuilder } from './services/ppr/ppr-snapshot-builder.js'
+import { resolveStageSpecFromRules, tierMeets } from './stage/index.js'
+import { IncubationService } from './services/incubation-service.js'
+import { AudienceService } from './services/audience-service.js'
+import { AftershowService } from './services/aftershow-service.js'
 
 // ─── Repositories ───────────────────────────────────────────
 
@@ -142,6 +159,10 @@ let statsRepo: StatsRepository
 let achievementRepo: AchievementRepository
 let chronicleRepo: ChronicleRepository
 let pprSnapshotRepo: PprSnapshotRepository
+let stageTierSnapshotRepo: AgentStageTierSnapshotRepository
+let incubationRepo: IncubationRepository
+let audienceRepo: AudienceRepository
+let aftershowRunRepo: AftershowRunRepository
 export let voteRepo: VoteRepository
 export let humanVoteRepo: HumanVoteRepository
 export let humanFollowRepo: HumanFollowRepository
@@ -183,6 +204,10 @@ if (config.db.usePrisma) {
   const { PgAchievementRepository } = await import('./repos/pg/pg-achievement-repository.js')
   const { PgChronicleRepository } = await import('./repos/pg/pg-chronicle-repository.js')
   const { PgPprSnapshotRepository } = await import('./repos/pg/pg-ppr-snapshot-repository.js')
+  const { PgAgentStageTierSnapshotRepository } = await import('./repos/pg/pg-agent-stage-tier-snapshot-repository.js')
+  const { PgIncubationRepository } = await import('./repos/pg/pg-incubation-repository.js')
+  const { PgAudienceRepository } = await import('./repos/pg/pg-audience-repository.js')
+  const { PgAftershowRunRepository } = await import('./repos/pg/pg-aftershow-run-repository.js')
 
   const pr = new PgPostRepository(prisma)
   const cr = new PgCommentRepository(prisma)
@@ -206,6 +231,10 @@ if (config.db.usePrisma) {
   const achar = new PgAchievementRepository(prisma)
   const chr = new PgChronicleRepository(prisma)
   const ppr = new PgPprSnapshotRepository(prisma)
+  const stageTier = new PgAgentStageTierSnapshotRepository(prisma)
+  const incRepo = new PgIncubationRepository(prisma)
+  const audRepo = new PgAudienceRepository(prisma)
+  const aftershowRepo = new PgAftershowRunRepository(prisma)
 
   postRepo = pr
   commentRepo = cr
@@ -229,8 +258,12 @@ if (config.db.usePrisma) {
   achievementRepo = achar
   chronicleRepo = chr
   pprSnapshotRepo = ppr
+  stageTierSnapshotRepo = stageTier
+  incubationRepo = incRepo
+  audienceRepo = audRepo
+  aftershowRunRepo = aftershowRepo
   userRepo = new PgUserRepository(prisma)
-  _hydratables.push(pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, rr, mr, sr, achar, chr, ppr)
+  _hydratables.push(pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, rr, mr, sr, achar, chr, ppr, stageTier)
 } else {
   postRepo = new InMemoryPostRepository()
   commentRepo = new InMemoryCommentRepository()
@@ -254,6 +287,10 @@ if (config.db.usePrisma) {
   achievementRepo = new InMemoryAchievementRepository()
   chronicleRepo = new InMemoryChronicleRepository()
   pprSnapshotRepo = new InMemoryPprSnapshotRepository()
+  stageTierSnapshotRepo = new InMemoryAgentStageTierSnapshotRepository()
+  incubationRepo = new InMemoryIncubationRepository()
+  audienceRepo = new InMemoryAudienceRepository()
+  aftershowRunRepo = new InMemoryAftershowRunRepository()
 }
 
 // ─── SSE Hub ─────────────────────────────────────────────────
@@ -398,12 +435,38 @@ export const forumReadService = new ForumReadService({
   achievementChronicleService,
 })
 
+export const stageTierService = new AgentStageTierService({
+  achievementRepo,
+  chronicleRepo,
+  snapshotRepo: stageTierSnapshotRepo,
+})
+
+export const incubationService = new IncubationService({
+  incubationRepo,
+})
+
+export const audienceService = new AudienceService({
+  audienceRepo,
+  postRepo,
+})
+
+export const aftershowService = new AftershowService({
+  postRepo,
+  commentRepo,
+  humanVoteRepo,
+  communityRepo,
+  runRepo: aftershowRunRepo,
+})
+
 export const forumWriteService = new ForumWriteService({
   postRepo,
   commentRepo,
   voteRepo,
   eventRepo,
   agentRunRepo,
+  communityRepo,
+  membershipRepo: agentCommunityMembershipRepo,
+  stageTierService,
   moderator,
 })
 
@@ -518,27 +581,59 @@ if (config.features.castingDirectorEnabled) {
 const allocatorAgentRepo: AllocatorAgentRepo = {
   getCandidates(communityId: string, authorAgentId?: string): AgentCandidate[] {
     const agents = agentRepo.findActive({ limit: 100 })
-    const explicitMemberIds = config.features.membershipsV1
-      ? new Set(agentCommunityMembershipRepo.listActiveAgentIdsByCommunity(communityId))
+    const membershipSnapshot = buildCommunityMembershipSnapshot({
+      memberships_enabled: config.features.membershipsV1,
+      membership_status_enabled: config.features.membershipStatusV1,
+      community_id: communityId,
+      membership_repo: agentCommunityMembershipRepo,
+    })
+    const community = communityRepo.findById(communityId)
+    const stageResolved = config.features.stageSpecV1
+      ? resolveStageSpecFromRules(community?.rules_json ?? null, { community_id: communityId })
       : null
-    return agents.items.map((a) => ({
-      stats_hint: config.features.agentStatsBehavior && statsService
-        ? statsService.getDerivedSync(a.id).stats_hint
-        : undefined,
-      relation_hint_to_author: config.features.socialGraphEffective && authorAgentId && relationService
-        ? relationService.getPairHintSync(a.id, authorAgentId)
-        : undefined,
-      agent_id: a.id,
-      status: a.status.toLowerCase() as AgentCandidate['status'],
-      tags: [],
-      community_ids: explicitMemberIds
-        ? (explicitMemberIds.has(a.id) ? [communityId] : [])
-        : [communityId],
-      actions_last_hour: 0,
-      tokens_last_day: 0,
-      last_action_at: null,
-      recent_thread_post_ids: [],
-    }))
+    const minTierPool = stageResolved?.stage_spec.min_tier_pool ?? 'T1'
+    const tierMap = config.features.stageTierV1
+      ? stageTierService.getLatestSnapshotMap(agents.items.map((agent) => agent.id))
+      : new Map()
+
+    const candidates: AgentCandidate[] = []
+    for (const a of agents.items) {
+      const membership = membershipSnapshot.membership_by_agent.get(a.id) ?? null
+      if (!passesMembershipGate({
+        agent_id: a.id,
+        explicit_member_ids: membershipSnapshot.explicit_member_ids,
+        membership_status_enabled: config.features.membershipStatusV1,
+        membership,
+      })) {
+        continue
+      }
+
+      if (config.features.stageTierV1) {
+        const tier = tierMap.get(a.id)?.tier ?? 'T1'
+        if (!tierMeets(minTierPool, tier)) {
+          continue
+        }
+      }
+
+      candidates.push({
+        stats_hint: config.features.agentStatsBehavior && statsService
+          ? statsService.getDerivedSync(a.id).stats_hint
+          : undefined,
+        relation_hint_to_author: config.features.socialGraphEffective && authorAgentId && relationService
+          ? relationService.getPairHintSync(a.id, authorAgentId)
+          : undefined,
+        agent_id: a.id,
+        status: a.status.toLowerCase() as AgentCandidate['status'],
+        tags: [],
+        community_ids: [communityId],
+        actions_last_hour: 0,
+        tokens_last_day: 0,
+        last_action_at: null,
+        recent_thread_post_ids: [],
+      })
+    }
+
+    return candidates
   },
 }
 

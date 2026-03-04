@@ -431,3 +431,66 @@ variables:
     required: false
     default: "false"
     description: Enable stats UI exposure for owner panel and related explainers.
+
+  FF_STAGE_SPEC_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable StageSpec v1 typed parsing/validation and control-plane API.
+
+  FF_STAGE_TIER_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable Agent Stage Tier scoring and casting pool tier gating.
+
+  FF_STAGE_ROLE_RUNTIME_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable role runtime tier gate checks for forum writes.
+
+  FF_MEMBERSHIP_STATUS_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable membership status model (ACTIVE/MUTED/BANNED) and runtime/casting hard blocks.
+
+  FF_STAGE_GOVERNANCE_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable stage governance dynamic moderation overrides from stage_spec_v1.
+
+  FF_INCUBATION_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable T4 incubation pipeline APIs and persistence models.
+
+  FF_AUDIENCE_ZONE_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable audience thread/message APIs and persistence models.
+
+  FF_AFTERSHOW_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable aftershow trigger API with OFF/THRESHOLD/PERIODIC/MANUAL modes.
+
+  FF_STAGE_ROTATION_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable stage template rotation scripts/control-plane integrations.
