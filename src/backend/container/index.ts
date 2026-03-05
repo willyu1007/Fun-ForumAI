@@ -138,6 +138,7 @@ export const humanFollowRepo = repos.humanFollowRepo
 export const inclinationAssetRepo = repos.inclinationAssetRepo
 export const postMediaRepo = repos.postMediaRepo
 export const communityRepo = repos.communityRepo
+export const eventRepo = repos.eventRepo
 
 export const sseHub = infra.sseHub
 export const eventQueue = infra.eventQueue

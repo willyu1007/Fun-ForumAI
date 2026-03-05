@@ -71,6 +71,7 @@ function makeComment(overrides: Partial<Comment> = {}): Comment {
 function makeEvent(
   eventType: DomainEvent['event_type'],
   payload: Record<string, unknown>,
+  overrides: Partial<DomainEvent> = {},
 ): DomainEvent {
   return {
     id: `evt-${eventType.toLowerCase()}`,
@@ -87,6 +88,7 @@ function makeEvent(
     payload_json: payload,
     idempotency_key: `idem-${eventType.toLowerCase()}`,
     created_at: new Date('2026-02-28T12:00:00.000Z'),
+    ...overrides,
   }
 }
 
@@ -237,6 +239,97 @@ describe('EventBridge', () => {
     expect(payload.author_agent_id).toBe('agent-fallback')
     expect(warnSpy).toHaveBeenCalled()
 
+    warnSpy.mockRestore()
+  })
+
+  it('does not enqueue MESSAGE_CREATED events', async () => {
+    const queue = new TestQueue()
+    const bridge = new EventBridge(queue, {
+      postRepo: { findById: vi.fn(async () => null) } as unknown as PostRepository,
+      commentRepo: {
+        findById: vi.fn(async () => null),
+        findByPostAll: vi.fn(async () => ({ items: [], next_cursor: null })),
+      } as unknown as CommentRepository,
+    })
+
+    bridge.bridge(makeEvent('MESSAGE_CREATED', {
+      message_id: 'msg-1',
+      room_id: 'room-1',
+      author_agent_id: 'agent-1',
+      message_kind: 'normal',
+    }, {
+      room_id: 'room-1',
+      actor_id: 'agent-1',
+    }))
+
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(queue.items).toHaveLength(0)
+  })
+
+  it('does not enqueue HUMAN_VOTE_CAST events', async () => {
+    const queue = new TestQueue()
+    const bridge = new EventBridge(queue, {
+      postRepo: { findById: vi.fn(async () => null) } as unknown as PostRepository,
+      commentRepo: {
+        findById: vi.fn(async () => null),
+        findByPostAll: vi.fn(async () => ({ items: [], next_cursor: null })),
+      } as unknown as CommentRepository,
+    })
+
+    bridge.bridge(makeEvent('HUMAN_VOTE_CAST', {
+      target_type: 'POST',
+      target_id: 'post-1',
+      direction: 'UP',
+      voter_user_id: 'user-1',
+    }, {
+      actor_type: 'human',
+      actor_id: 'user-1',
+    }))
+
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(queue.items).toHaveLength(0)
+  })
+
+  it('does not enqueue unknown event types', async () => {
+    const queue = new TestQueue()
+    const bridge = new EventBridge(queue, {
+      postRepo: { findById: vi.fn(async () => null) } as unknown as PostRepository,
+      commentRepo: {
+        findById: vi.fn(async () => null),
+        findByPostAll: vi.fn(async () => ({ items: [], next_cursor: null })),
+      } as unknown as CommentRepository,
+    })
+
+    bridge.bridge(makeEvent('UNREGISTERED_EVENT', {
+      sample: 'value',
+    }))
+
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(queue.items).toHaveLength(0)
+  })
+
+  it('does not enqueue when event plane mismatches route rule', async () => {
+    const queue = new TestQueue()
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const bridge = new EventBridge(queue, {
+      postRepo: { findById: vi.fn(async () => null) } as unknown as PostRepository,
+      commentRepo: {
+        findById: vi.fn(async () => null),
+        findByPostAll: vi.fn(async () => ({ items: [], next_cursor: null })),
+      } as unknown as CommentRepository,
+    })
+
+    bridge.bridge(makeEvent('POST_CREATED', {
+      post_id: 'post-1',
+      community_id: 'community-1',
+      author_agent_id: 'agent-1',
+    }, {
+      plane: 'CONTROL',
+    }))
+
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(queue.items).toHaveLength(0)
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Plane mismatch'))
     warnSpy.mockRestore()
   })
 

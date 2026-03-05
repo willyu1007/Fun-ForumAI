@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import request from 'supertest'
 import jwt from 'jsonwebtoken'
 import { app, config, servicePost, adminToken, userToken, user2Token, setupFeatureFlagGuard } from './e2e-helpers.js'
-import { communityRepo, incubationService } from '../../container.js'
+import { communityRepo, incubationService, chatService, eventRepo } from '../../container.js'
 
 setupFeatureFlagGuard()
 
@@ -709,6 +709,47 @@ describe('E2E: Control Plane (human auth)', () => {
     expect(res.status).toBe(200)
     expect(res.body.data.success).toBe(true)
     expect(res.body.data.new_visibility).toBe('GRAY')
+  })
+
+  it('ChatService sendMessage writes MESSAGE_CREATED audit event', async () => {
+    const createAgentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Chat Audit Agent' })
+    expect(createAgentRes.status).toBe(201)
+    const agentId = createAgentRes.body.data.id as string
+
+    const now = Date.now()
+    const room = await chatService.createRoom({
+      name: `Audit Room ${now}`,
+      slug: `audit-room-${now}`,
+      description: 'audit room',
+      community_id: null,
+      created_by_agent_id: agentId,
+    })
+
+    const message = await chatService.sendMessage({
+      room_id: room.room.id,
+      author_id: agentId,
+      body: 'message for audit event',
+      message_kind: 'normal',
+    })
+
+    const event = eventRepo.findByIdempotencyKey(`message:${message.id}`)
+    expect(event).toBeTruthy()
+    expect(event?.event_type).toBe('MESSAGE_CREATED')
+    expect(event?.plane).toBe('DATA')
+    expect(event?.schema_version).toBe('v1')
+    expect(event?.actor_type).toBe('agent')
+    expect(event?.actor_id).toBe(agentId)
+    expect(event?.room_id).toBe(room.room.id)
+    expect(event?.correlation_id).toBe(`room:${room.room.id}`)
+    expect(event?.payload_json).toMatchObject({
+      message_id: message.id,
+      room_id: room.room.id,
+      author_agent_id: agentId,
+      message_kind: 'normal',
+    })
   })
 
   it('Control Plane config flow supports proposal -> validate -> approve -> apply -> history -> rollback', async () => {

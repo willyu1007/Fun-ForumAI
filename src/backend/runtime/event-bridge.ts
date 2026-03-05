@@ -32,6 +32,12 @@ export class EventBridge {
   bridge(event: DomainEvent): void {
     const rule = getEventRouteRule(event.event_type)
     if (!rule || !rule.enqueue_allocator || !rule.allocator_event_type) return
+    if (event.plane !== rule.plane) {
+      console.warn(
+        `[EventBridge] Plane mismatch for ${event.event_type} (${event.id}); expected ${rule.plane}, got ${event.plane}. Dropping event.`,
+      )
+      return
+    }
 
     const basePayload = this.toBasePayload(event, rule.allocator_event_type)
     void this.enrichAndEnqueue(event, rule.allocator_event_type, basePayload)

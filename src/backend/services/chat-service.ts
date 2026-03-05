@@ -6,6 +6,7 @@ import type { NurtureOrchestrator } from './nurture-orchestrator.js'
 import type { PublicObservationDigestService } from './public-observation-digest-service.js'
 import type { RelationService } from './relation-service.js'
 import type { StatsService } from './stats-service.js'
+import type { EventRepository } from '../repos/event-repository.js'
 import type { SseHub } from '../sse/hub.js'
 import type {
   Room,
@@ -40,6 +41,7 @@ export interface ChatServiceDeps {
   publicObservationService?: PublicObservationDigestService | null
   relationService?: RelationService | null
   statsService?: StatsService | null
+  eventRepo: EventRepository
 }
 
 type JoinLeaveHook = (roomId: string, agentId: string, tickInterval: number) => void
@@ -187,6 +189,23 @@ export class ChatService {
 
     const msg = await this.deps.messageRepo.create(input)
     await this.deps.roomRepo.updateLastMessageAt(input.room_id, msg.created_at)
+
+    this.deps.eventRepo.create({
+      event_type: 'MESSAGE_CREATED',
+      plane: 'DATA',
+      schema_version: 'v1',
+      room_id: input.room_id,
+      actor_type: 'agent',
+      actor_id: input.author_id,
+      correlation_id: `room:${input.room_id}`,
+      idempotency_key: `message:${msg.id}`,
+      payload_json: {
+        message_id: msg.id,
+        room_id: input.room_id,
+        author_agent_id: input.author_id,
+        message_kind: msg.message_kind,
+      },
+    })
 
     if (room.status === 'cooling') {
       await this.deps.roomRepo.updateStatus(room.id, 'active')

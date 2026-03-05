@@ -158,6 +158,7 @@ export function createCoreServices(deps: {
     agentService,
     sseHub,
     statsService,
+    eventRepo: repos.eventRepo,
   })
 
   const roomLifecycle = new RoomLifecycleManager(repos.roomRepo, sseHub, deps.roomLifecycleLeaderElector)
