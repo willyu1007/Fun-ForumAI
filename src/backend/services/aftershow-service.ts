@@ -18,9 +18,11 @@ import { richCommunitiesMetrics } from '../lib/rich-communities-metrics.js'
 import { resolveStageSpecFromRules } from '../stage/index.js'
 
 const MAX_CALLOUTS_PER_AFTERSHOW = 10
+const MAX_UNIQUE_USERS_NOTIFIED_PER_AFTERSHOW = 8
 const MAX_NOTIFICATIONS_PER_USER_PER_DAY = 20
 const MAX_NOTIFICATIONS_PER_POST_PER_HOUR = 20
 const MAX_AFTERSHOW_PUBLISH_PER_POST_PER_HOUR = 1
+const PER_USER_PER_POST_NOTIFICATION_COOLDOWN_MS = 60 * 60 * 1000
 
 export interface AftershowServiceDeps {
   postRepo: PostRepository
@@ -107,11 +109,24 @@ export class AftershowService {
     const startOfDay = toStartOfDay(new Date())
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
     let postCountThisHour = await this.deps.artifactRepo.countCalloutsByPostSince(input.post_id, oneHourAgo)
+    const notifiedUsers = new Set<string>()
     let createdCount = 0
 
     for (let calloutIndex = 0; calloutIndex < input.callouts.length; calloutIndex += 1) {
+      if (notifiedUsers.size >= MAX_UNIQUE_USERS_NOTIFIED_PER_AFTERSHOW) break
       if (postCountThisHour >= MAX_NOTIFICATIONS_PER_POST_PER_HOUR) break
       const callout = input.callouts[calloutIndex]
+      if (notifiedUsers.has(callout.user_id)) continue
+
+      const recentlyNotifiedOnPost = await this.deps.artifactRepo.countCalloutsByUserAndPostSince(
+        callout.user_id,
+        input.post_id,
+        new Date(Date.now() - PER_USER_PER_POST_NOTIFICATION_COOLDOWN_MS),
+      )
+      // The current artifact's callout is already persisted before notification fanout.
+      // Block only when there is at least one additional recent callout on the same post.
+      if (recentlyNotifiedOnPost > 1) continue
+
       const sentToday = await this.deps.artifactRepo.countCalloutsByUserSince(callout.user_id, startOfDay)
       if (sentToday >= MAX_NOTIFICATIONS_PER_USER_PER_DAY) continue
 
@@ -125,6 +140,7 @@ export class AftershowService {
       })
       createdCount += 1
       postCountThisHour += 1
+      notifiedUsers.add(callout.user_id)
 
       await this.deps.artifactRepo.updateCallout(callout.id, {
         notification_id: notification.id,
@@ -366,6 +382,28 @@ export class AftershowService {
         },
       })
 
+      await this.emitRuntimeEvent({
+        event_type: 'AFTERSHOW_INPUT_SNAPSHOT_CREATED',
+        community_id: post.community_id,
+        post_id: post.id,
+        correlation_id: correlationId,
+        payload_json: {
+          artifact_id: artifact.id,
+          message_count: messages.length,
+          summary_ref: summaryRef,
+        },
+      })
+
+      await this.emitRuntimeEvent({
+        event_type: 'AFTERSHOW_COMPOSE_REQUESTED',
+        community_id: post.community_id,
+        post_id: post.id,
+        correlation_id: correlationId,
+        payload_json: {
+          artifact_id: artifact.id,
+        },
+      })
+
       const content = this.buildAftershowContent({
         postTitle: post.title,
         messages,
@@ -456,6 +494,22 @@ export class AftershowService {
           callouts.push(created)
         }
 
+        this.deps.eventRepo.create({
+          event_type: 'AFTERSHOW_CALLOUTS_EXTRACTED',
+          plane: 'CONTROL',
+          schema_version: 'v1',
+          community_id: post.community_id,
+          post_id: post.id,
+          actor_type: 'system',
+          actor_id: 'aftershow-runtime',
+          correlation_id: correlationId,
+          payload_json: {
+            artifact_id: artifact.id,
+            callout_count: callouts.length,
+            user_ids: callouts.map((item) => item.user_id),
+          },
+        })
+
         notifications_created = await this.createNotificationsForCallouts({
           artifact,
           callouts,
@@ -480,7 +534,7 @@ export class AftershowService {
     artifact: AftershowArtifact | null
     callouts: AftershowCallout[]
   }> {
-    const artifact = await this.deps.artifactRepo.findLatestByPost(postId)
+    const artifact = await this.deps.artifactRepo.findLatestPublishedByPost(postId)
     if (!artifact) return { artifact: null, callouts: [] }
     const callouts = await this.deps.artifactRepo.listCalloutsByArtifact(artifact.id)
     return { artifact, callouts }

@@ -15,3 +15,26 @@
 - API 与读取能力：
   - `GET /v1/posts/:postId/aftershow`
   - `POST /v1/posts/:postId/aftershow/trigger`（兼容入口，内部走事件流水）
+
+## 2026-03-05（深度核查补强）
+- 读取语义修复（P0）：
+  - `aftershowService.getLatestByPost()` 改为优先返回最新 `PUBLISHED` artifact，避免“后续 ABORTED 覆盖已发布结果”。
+  - 影响路径：`GET /v1/posts/:postId/aftershow` 与帖子详情聚合读取。
+- 事件契约补强（P1）：
+  - 新增事件：`AFTERSHOW_INPUT_SNAPSHOT_CREATED`、`AFTERSHOW_COMPOSE_REQUESTED`、`AFTERSHOW_CALLOUTS_EXTRACTED`。
+  - `event-routing-policy` 注册对应事件，并显式 `enqueue_allocator=false`。
+  - 兼容保留：`AFTERSHOW_SNAPSHOT_CREATED` 继续发射。
+- 通知治理补强（P1）：
+  - 限制单次 aftershow 最多通知 `8` 个唯一用户。
+  - 增加同用户同帖子 `60` 分钟冷却（基于 callout 历史）。
+  - 扩展仓储查询能力：
+    - `countCalloutsByUserAndPostSince(userId, postId, since)`
+    - InMemory + Pg 双实现对齐。
+- 测试补强：
+  - `aftershow-service` 新增用例覆盖：
+    - “最新已发布优先”读取语义
+    - 扩展事件序列完整性
+    - 唯一用户上限 + 同帖冷却策略
+  - `e2e-read-api` 新增双触发回归：
+    - 首次 `PUBLISHED`、二次 `ABORTED` 时读取仍返回已发布 artifact。
+  - `event-routing-policy` 新增 aftershow 扩展事件映射断言。

@@ -219,6 +219,18 @@ export class PgAftershowArtifactRepository implements AftershowArtifactRepositor
     })
   }
 
+  async countCalloutsByUserAndPostSince(userId: string, postId: string, since: Date): Promise<number> {
+    return this.prisma.aftershowCallout.count({
+      where: {
+        userId,
+        createdAt: { gte: since },
+        artifact: {
+          postId,
+        },
+      },
+    })
+  }
+
   async countCalloutsByPostSince(postId: string, since: Date): Promise<number> {
     return this.prisma.aftershowCallout.count({
       where: {

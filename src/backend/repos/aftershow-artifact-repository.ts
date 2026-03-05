@@ -19,6 +19,7 @@ export interface AftershowArtifactRepository {
   updateCallout(id: string, input: UpdateAftershowCalloutInput): Promise<AftershowCallout | null>
   listCalloutsByArtifact(artifactId: string): Promise<AftershowCallout[]>
   countCalloutsByUserSince(userId: string, since: Date): Promise<number>
+  countCalloutsByUserAndPostSince(userId: string, postId: string, since: Date): Promise<number>
   countCalloutsByPostSince(postId: string, since: Date): Promise<number>
 }
 
@@ -147,6 +148,20 @@ export class InMemoryAftershowArtifactRepository implements AftershowArtifactRep
   async countCalloutsByUserSince(userId: string, since: Date): Promise<number> {
     return Array.from(this.callouts.values())
       .filter((item) => item.user_id === userId && item.created_at.getTime() >= since.getTime()).length
+  }
+
+  async countCalloutsByUserAndPostSince(userId: string, postId: string, since: Date): Promise<number> {
+    const artifactIds = new Set(
+      Array.from(this.artifacts.values())
+        .filter((item) => item.post_id === postId)
+        .map((item) => item.id),
+    )
+    return Array.from(this.callouts.values())
+      .filter((item) =>
+        item.user_id === userId
+        && artifactIds.has(item.artifact_id)
+        && item.created_at.getTime() >= since.getTime())
+      .length
   }
 
   async countCalloutsByPostSince(postId: string, since: Date): Promise<number> {

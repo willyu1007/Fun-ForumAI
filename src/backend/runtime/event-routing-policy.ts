@@ -31,9 +31,12 @@ const RULES: Record<string, EventRouteRule> = {
   ROLE_REVOKED: { plane: 'CONTROL', enqueue_allocator: false },
   HUMAN_NOTIFICATION_CREATED: { plane: 'CONTROL', enqueue_allocator: false },
   HUMAN_NOTIFICATION_INVALIDATED: { plane: 'CONTROL', enqueue_allocator: false },
+  AFTERSHOW_CALLOUTS_EXTRACTED: { plane: 'CONTROL', enqueue_allocator: false },
 
   AFTERSHOW_DUE: { plane: 'RUNTIME', enqueue_allocator: false },
   AFTERSHOW_SNAPSHOT_CREATED: { plane: 'RUNTIME', enqueue_allocator: false },
+  AFTERSHOW_INPUT_SNAPSHOT_CREATED: { plane: 'RUNTIME', enqueue_allocator: false },
+  AFTERSHOW_COMPOSE_REQUESTED: { plane: 'RUNTIME', enqueue_allocator: false },
   AFTERSHOW_COMPOSED: { plane: 'RUNTIME', enqueue_allocator: false },
   AFTERSHOW_PUBLISHED: { plane: 'RUNTIME', enqueue_allocator: false },
   AFTERSHOW_ABORTED: { plane: 'RUNTIME', enqueue_allocator: false },

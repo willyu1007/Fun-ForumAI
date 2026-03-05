@@ -36,10 +36,27 @@ describe('event-routing-policy', () => {
     }
   })
 
+  it('maps aftershow notification/control events without allocator enqueue', () => {
+    const controlEvents = [
+      'AFTERSHOW_CALLOUTS_EXTRACTED',
+      'HUMAN_NOTIFICATION_CREATED',
+      'HUMAN_NOTIFICATION_INVALIDATED',
+    ]
+
+    for (const eventType of controlEvents) {
+      const rule = getEventRouteRule(eventType)
+      expect(rule).toBeTruthy()
+      expect(rule?.plane).toBe('CONTROL')
+      expect(rule?.enqueue_allocator).toBe(false)
+    }
+  })
+
   it('maps aftershow runtime events without allocator enqueue', () => {
     const runtimeEvents = [
       'AFTERSHOW_DUE',
       'AFTERSHOW_SNAPSHOT_CREATED',
+      'AFTERSHOW_INPUT_SNAPSHOT_CREATED',
+      'AFTERSHOW_COMPOSE_REQUESTED',
       'AFTERSHOW_COMPOSED',
       'AFTERSHOW_PUBLISHED',
       'AFTERSHOW_ABORTED',
