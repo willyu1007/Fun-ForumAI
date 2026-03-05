@@ -6,6 +6,8 @@ import { InMemoryCommunityRepository } from '../../repos/community-repository.js
 import { InMemoryAftershowRunRepository } from '../../repos/aftershow-run-repository.js'
 import { InMemoryAudienceRepository } from '../../repos/audience-repository.js'
 import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
+import { InMemoryAftershowArtifactRepository } from '../../repos/aftershow-artifact-repository.js'
+import { InMemoryEventRepository } from '../../repos/event-repository.js'
 import { config } from '../../lib/config.js'
 
 function buildStageSpec(aftershowMode = 'THRESHOLD') {
@@ -51,6 +53,27 @@ async function createTestAgent(agentRepo: InMemoryAgentRepository): Promise<stri
   return agent.id
 }
 
+function createService(input: {
+  postRepo: InMemoryPostRepository
+  humanVoteRepo: InMemoryHumanVoteRepository
+  audienceRepo: InMemoryAudienceRepository
+  agentRepo: InMemoryAgentRepository
+  communityRepo: InMemoryCommunityRepository
+  runRepo: InMemoryAftershowRunRepository
+}) {
+  return new AftershowService({
+    postRepo: input.postRepo,
+    humanVoteRepo: input.humanVoteRepo,
+    audienceRepo: input.audienceRepo,
+    agentRepo: input.agentRepo,
+    communityRepo: input.communityRepo,
+    runRepo: input.runRepo,
+    artifactRepo: new InMemoryAftershowArtifactRepository(),
+    eventRepo: new InMemoryEventRepository(),
+    notificationRepo: null,
+  })
+}
+
 describe('AftershowService', () => {
   it('skips threshold mode when conditions are not met', async () => {
     const postRepo = new InMemoryPostRepository()
@@ -77,7 +100,7 @@ describe('AftershowService', () => {
       state: 'APPROVED',
     })
 
-    const service = new AftershowService({
+    const service = createService({
       postRepo,
       humanVoteRepo,
       audienceRepo,
@@ -144,7 +167,7 @@ describe('AftershowService', () => {
       body: '3',
     })
 
-    const service = new AftershowService({
+    const service = createService({
       postRepo,
       humanVoteRepo,
       audienceRepo,
@@ -189,7 +212,7 @@ describe('AftershowService', () => {
       state: 'APPROVED',
     })
 
-    const service = new AftershowService({
+    const service = createService({
       postRepo,
       humanVoteRepo,
       audienceRepo,
@@ -235,7 +258,7 @@ describe('AftershowService', () => {
       state: 'APPROVED',
     })
 
-    const service = new AftershowService({
+    const service = createService({
       postRepo,
       humanVoteRepo,
       audienceRepo,
@@ -279,7 +302,7 @@ describe('AftershowService', () => {
       state: 'APPROVED',
     })
 
-    const service = new AftershowService({
+    const service = createService({
       postRepo,
       humanVoteRepo,
       audienceRepo,
@@ -327,7 +350,7 @@ describe('AftershowService', () => {
       state: 'APPROVED',
     })
 
-    const service = new AftershowService({
+    const service = createService({
       postRepo,
       humanVoteRepo,
       audienceRepo,
@@ -355,7 +378,7 @@ describe('AftershowService', () => {
     const audienceRepo = new InMemoryAudienceRepository()
     const agentRepo = new InMemoryAgentRepository()
 
-    const service = new AftershowService({
+    const service = createService({
       postRepo,
       humanVoteRepo,
       audienceRepo,
@@ -407,7 +430,7 @@ describe('AftershowService', () => {
       direction: 'UP',
     })
 
-    const service = new AftershowService({
+    const service = createService({
       postRepo,
       humanVoteRepo,
       audienceRepo,
@@ -451,7 +474,7 @@ describe('AftershowService', () => {
       state: 'APPROVED',
     })
 
-    const service = new AftershowService({
+    const service = createService({
       postRepo,
       humanVoteRepo,
       audienceRepo,
@@ -528,7 +551,7 @@ describe('AftershowService', () => {
         body: 'This raw message should not be copied to run meta',
       })
 
-      const service = new AftershowService({
+      const service = createService({
         postRepo,
         humanVoteRepo,
         audienceRepo,
