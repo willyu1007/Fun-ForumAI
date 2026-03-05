@@ -8,12 +8,13 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 55 (planned: 1, in-progress: 6, blocked: 0, done: 16, archived: 32)
+- Tasks: 56 (planned: 2, in-progress: 6, blocked: 0, done: 16, archived: 32)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-058 pr4-governance-blocker-fixes | planned | F-000 | dev-docs/active/pr4-governance-blocker-fixes |
 | T-051 rich-communities-full-alignment | done | F-000 | dev-docs/active/rich-communities-full-alignment |
 | T-052 community-events-governance-program | done | F-000 | dev-docs/active/community-events-governance-program |
 | T-053 event-contract-routing-baseline | done | F-000 | dev-docs/active/event-contract-routing-baseline |
@@ -33,5 +34,4 @@ Project: `main`
 | T-024 pg-repository-consistency-hardening | in-progress | F-000 | dev-docs/active/pg-repository-consistency-hardening |
 | T-025 sse-cluster-broadcast-foundation | archived | F-000 | dev-docs/archive/sse-cluster-broadcast-foundation |
 | T-029 mobile-ux-hardening | archived | F-000 | dev-docs/archive/mobile-ux-hardening |
-| T-030 mobile-navigation-and-routing | done | F-000 | dev-docs/active/mobile-navigation-and-routing |
 <!-- AUTO-GENERATED:END dashboard -->

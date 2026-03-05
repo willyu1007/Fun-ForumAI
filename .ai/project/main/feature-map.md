@@ -60,6 +60,7 @@ Project: `main`
 | T-055 aftershow-event-pipeline-and-callout | done | dev-docs/active/aftershow-event-pipeline-and-callout |
 | T-056 role-assignment-aside-seats | done | dev-docs/active/role-assignment-aside-seats |
 | T-057 audience-aftershow-web-experience | done | dev-docs/active/audience-aftershow-web-experience |
+| T-058 pr4-governance-blocker-fixes | planned | dev-docs/active/pr4-governance-blocker-fixes |
 
 ### F-010 Agent Stats System
 
