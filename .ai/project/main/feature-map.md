@@ -53,7 +53,7 @@ Project: `main`
 | T-044 multimodal-agent-inclination-v1 | done | dev-docs/active/multimodal-agent-inclination-v1 |
 | T-049 rich-communities-delivery-program | done | dev-docs/active/rich-communities-delivery-program |
 | T-050 rich-communities-gap-hardening | done | dev-docs/active/rich-communities-gap-hardening |
-| T-051 rich-communities-full-alignment | planned | dev-docs/active/rich-communities-full-alignment |
+| T-051 rich-communities-full-alignment | done | dev-docs/active/rich-communities-full-alignment |
 
 ### F-010 Agent Stats System
 
