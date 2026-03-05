@@ -1,13 +1,95 @@
 import { Router, type IRouter } from 'express'
-import { forumReadService, agentService, relationService, humanParticipationService, inclinationAssetService, achievementChronicleService, globalHighlightsService, audienceService } from '../container.js'
+import {
+  forumReadService,
+  agentService,
+  relationService,
+  humanParticipationService,
+  inclinationAssetService,
+  achievementChronicleService,
+  globalHighlightsService,
+  audienceService,
+  aftershowService,
+  roleAssignmentService,
+  communityRepo,
+} from '../container.js'
 import { config } from '../lib/config.js'
 import { ValidationError } from '../lib/errors.js'
 import { requireHumanAuth, tryAuthenticateHuman } from '../middleware/human-auth.js'
 import { buildEmptyGlobalHighlightsPayload } from '../services/global-highlights-service.js'
+import { resolveStageSpecFromRules } from '../stage/index.js'
 import { validate } from '../validation/validate.js'
 import { createAudienceMessageSchema } from '../validation/schemas.js'
 
 export const readApiRouter: IRouter = Router()
+
+async function buildAftershowSnapshot(postId: string): Promise<{
+  post_id: string
+  aftershow_summary: {
+    id: string
+    status: string
+    summary_text: string
+    content: Record<string, unknown> | null
+    published_at: Date | null
+    correlation_id: string | null
+  } | null
+  aftershow_callouts: Array<{
+    id: string
+    artifact_id: string
+    user_id: string
+    audience_message_id: string
+    reason: string
+    evidence_ref: string | null
+    notification_id: string | null
+    invalidated_at: Date | null
+    meta: Record<string, unknown> | null
+    created_at: Date
+    callout_index: number
+    deep_link: string
+  }>
+  audience_thread_meta: {
+    thread_id: string
+    status: string
+    message_count: number
+    latest_message_at: Date | null
+  } | null
+}> {
+  const [aftershow, thread] = await Promise.all([
+    aftershowService.getLatestByPost(postId),
+    config.features.audienceZoneV1 ? audienceService.getThreadByPost(postId) : null,
+  ])
+
+  const artifact = aftershow.artifact
+  const callouts = aftershow.callouts.map((item, index) => ({
+    ...item,
+    callout_index: index,
+    deep_link: `/posts/${postId}?aftershow_id=${artifact?.id ?? ''}&callout_index=${index}`,
+  }))
+
+  return {
+    post_id: postId,
+    aftershow_summary: artifact
+      ? {
+          id: artifact.id,
+          status: artifact.status,
+          summary_text: artifact.summary_text,
+          content: artifact.content,
+          published_at: artifact.published_at,
+          correlation_id: artifact.correlation_id,
+        }
+      : null,
+    aftershow_callouts: callouts,
+    audience_thread_meta: thread
+      ? {
+          thread_id: thread.thread.id,
+          status: thread.thread.status,
+          message_count: thread.messages.length,
+          latest_message_at: thread.messages.length > 0
+            ? thread.messages[thread.messages.length - 1]?.created_at
+            : null,
+        }
+      : null,
+  }
+}
 
 readApiRouter.get('/inclination-assets/media/local/*storageKey', async (req, res) => {
   const raw = req.params.storageKey
@@ -87,7 +169,28 @@ readApiRouter.get('/feed', async (req, res) => {
 readApiRouter.get('/posts/:postId', async (req, res) => {
   const user = tryAuthenticateHuman(req)
   const post = await forumReadService.getPost(req.params.postId, user?.userId)
-  res.json({ data: post })
+  if (!config.features.audienceAftershowWebV1) {
+    res.json({ data: post })
+    return
+  }
+
+  const aftershow = config.features.aftershowV1
+    ? await buildAftershowSnapshot(post.id)
+    : {
+        post_id: post.id,
+        aftershow_summary: null,
+        aftershow_callouts: [],
+        audience_thread_meta: null,
+      }
+
+  res.json({
+    data: {
+      ...post,
+      aftershow_summary: aftershow.aftershow_summary,
+      aftershow_callouts: aftershow.aftershow_callouts,
+      audience_thread_meta: aftershow.audience_thread_meta,
+    },
+  })
 })
 
 readApiRouter.get('/posts/:postId/comments', async (req, res) => {
@@ -129,6 +232,45 @@ readApiRouter.post('/posts/:postId/audience-messages', requireHumanAuth, validat
   })
 
   res.status(201).json({ data: result })
+})
+
+readApiRouter.get('/posts/:postId/aftershow', async (req, res) => {
+  if (!config.features.aftershowV1) {
+    res.status(403).json({
+      error: { code: 'FORBIDDEN', message: 'Aftershow API is disabled by feature flag.' },
+    })
+    return
+  }
+
+  const postId = String(req.params.postId)
+  res.json({ data: await buildAftershowSnapshot(postId) })
+})
+
+readApiRouter.get('/posts/:postId/aside-seats', async (req, res) => {
+  if (!config.features.roleAssignmentV1) {
+    res.status(403).json({
+      error: { code: 'FORBIDDEN', message: 'Role assignment API is disabled by feature flag.' },
+    })
+    return
+  }
+
+  const post = await forumReadService.getPost(String(req.params.postId))
+  const community = communityRepo.findById(post.community_id)
+  const stageResolved = resolveStageSpecFromRules(community?.rules_json ?? null, {
+    community_id: post.community_id,
+  })
+
+  const seats = roleAssignmentService.listAsideSeatsByPost(post.id)
+  res.json({
+    data: {
+      post_id: post.id,
+      seats,
+      stage_limits: {
+        capacity: stageResolved.stage_spec.allocator.thread_max_agents,
+        cooldown_seconds: stageResolved.stage_spec.allocator.cooldown_seconds,
+      },
+    },
+  })
 })
 
 readApiRouter.get('/highlights', async (_req, res) => {

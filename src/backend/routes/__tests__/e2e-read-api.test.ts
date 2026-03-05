@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import { app, config, servicePost, userToken, setupFeatureFlagGuard, createTestCommunity } from './e2e-helpers.js'
+import { app, config, servicePost, userToken, adminToken, setupFeatureFlagGuard, createTestCommunity } from './e2e-helpers.js'
+import { roleAssignmentService, eventRepo } from '../../container.js'
 
 setupFeatureFlagGuard()
 
@@ -209,6 +210,279 @@ describe('E2E: Read API (public)', () => {
       expect(longRes.body.error.code).toBe('VALIDATION_ERROR')
     } finally {
       featureFlags.audienceZoneV1 = originalAudienceZone
+    }
+  })
+
+  it('GET /v1/posts/:postId/aftershow returns aftershow summary and callouts', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalAudienceZone = featureFlags.audienceZoneV1
+    const originalAftershow = featureFlags.aftershowV1
+    const originalAftershowPipeline = featureFlags.aftershowEventPipelineV1
+    featureFlags.audienceZoneV1 = true
+    featureFlags.aftershowV1 = true
+    featureFlags.aftershowEventPipelineV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Aftershow Read Community',
+        slug: `aftershow-read-${Date.now()}`,
+      })
+
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Aftershow Agent' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: agentId,
+        run_id: `run-aftershow-${Date.now()}`,
+        community_id: community.id,
+        title: 'Aftershow target post',
+        body: 'aftershow body',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      const messageRes = await request(app)
+        .post(`/v1/posts/${postId}/audience-messages`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ body: '请在 aftershow 里回应这个观点。' })
+      expect(messageRes.status).toBe(201)
+
+      const triggerRes = await request(app)
+        .post(`/v1/posts/${postId}/aftershow/trigger`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ mode: 'MANUAL', force: true })
+      expect(triggerRes.status).toBe(201)
+
+      const readRes = await request(app).get(`/v1/posts/${postId}/aftershow`)
+      expect(readRes.status).toBe(200)
+      expect(readRes.body.data.post_id).toBe(postId)
+      expect(readRes.body.data.aftershow_summary).toBeTruthy()
+      expect(Array.isArray(readRes.body.data.aftershow_callouts)).toBe(true)
+      if (readRes.body.data.aftershow_callouts.length > 0) {
+        expect(readRes.body.data.aftershow_callouts[0].deep_link).toContain(`/posts/${postId}?aftershow_id=`)
+      }
+    } finally {
+      featureFlags.audienceZoneV1 = originalAudienceZone
+      featureFlags.aftershowV1 = originalAftershow
+      featureFlags.aftershowEventPipelineV1 = originalAftershowPipeline
+    }
+  })
+
+  it('GET /v1/posts/:postId/aftershow keeps published artifact when the latest trigger is aborted', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalAudienceZone = featureFlags.audienceZoneV1
+    const originalAftershow = featureFlags.aftershowV1
+    const originalAftershowPipeline = featureFlags.aftershowEventPipelineV1
+    featureFlags.audienceZoneV1 = true
+    featureFlags.aftershowV1 = true
+    featureFlags.aftershowEventPipelineV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Aftershow Read Fallback Community',
+        slug: `aftershow-fallback-${Date.now()}`,
+      })
+
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Aftershow Fallback Agent' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: agentId,
+        run_id: `run-aftershow-fallback-${Date.now()}`,
+        community_id: community.id,
+        title: 'Aftershow fallback target post',
+        body: 'aftershow fallback body',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      const messageRes = await request(app)
+        .post(`/v1/posts/${postId}/audience-messages`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ body: '请在 aftershow 里回应这个观点。' })
+      expect(messageRes.status).toBe(201)
+
+      const firstTrigger = await request(app)
+        .post(`/v1/posts/${postId}/aftershow/trigger`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ mode: 'MANUAL', force: true })
+      expect(firstTrigger.status).toBe(201)
+      expect(firstTrigger.body.data.artifact?.status).toBe('PUBLISHED')
+      const firstArtifactId = firstTrigger.body.data.artifact?.id as string
+
+      const secondTrigger = await request(app)
+        .post(`/v1/posts/${postId}/aftershow/trigger`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ mode: 'MANUAL', force: true })
+      expect(secondTrigger.status).toBe(201)
+      expect(secondTrigger.body.data.artifact?.status).toBe('ABORTED')
+      expect(secondTrigger.body.data.reason).toBe('publish_rate_limited')
+
+      const readRes = await request(app).get(`/v1/posts/${postId}/aftershow`)
+      expect(readRes.status).toBe(200)
+      expect(readRes.body.data.aftershow_summary).toBeTruthy()
+      expect(readRes.body.data.aftershow_summary.status).toBe('PUBLISHED')
+      expect(readRes.body.data.aftershow_summary.id).toBe(firstArtifactId)
+      expect(Array.isArray(readRes.body.data.aftershow_callouts)).toBe(true)
+      expect(readRes.body.data.aftershow_callouts.length).toBeGreaterThan(0)
+    } finally {
+      featureFlags.audienceZoneV1 = originalAudienceZone
+      featureFlags.aftershowV1 = originalAftershow
+      featureFlags.aftershowEventPipelineV1 = originalAftershowPipeline
+    }
+  })
+
+  it('GET /v1/posts/:postId/aside-seats returns role assignments for post scope', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Aside Seats Read Community',
+        slug: `aside-seats-read-${Date.now()}`,
+      })
+
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Seat Agent' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
+
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: agentId,
+        run_id: `run-seat-${Date.now()}`,
+        community_id: community.id,
+        title: 'Aside seats target',
+        body: 'aside seats body',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      const roleRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'POST',
+          scope_id: postId,
+          role: 'aside-seat',
+          agent_id: agentId,
+        })
+      expect(roleRes.status).toBe(201)
+
+      const seatsRes = await request(app).get(`/v1/posts/${postId}/aside-seats`)
+      expect(seatsRes.status).toBe(200)
+      expect(seatsRes.body.data.post_id).toBe(postId)
+      expect(Array.isArray(seatsRes.body.data.seats)).toBe(true)
+      expect(seatsRes.body.data.seats.length).toBeGreaterThan(0)
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+    }
+  })
+
+  it('expired role assignment disappears from aside seats after expiration processing and writes ROLE_EXPIRED event', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Aside Seats Expiry Community',
+        slug: `aside-seats-expiry-${Date.now()}`,
+      })
+
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Seat Expiry Agent' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
+
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: agentId,
+        run_id: `run-seat-expiry-${Date.now()}`,
+        community_id: community.id,
+        title: 'Aside seats expiry target',
+        body: 'aside seats expiry body',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      const expiresAt = new Date(Date.now() + 2000).toISOString()
+      const roleRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'POST',
+          scope_id: postId,
+          role: 'aside-seat',
+          agent_id: agentId,
+          expires_at: expiresAt,
+        })
+      expect(roleRes.status).toBe(201)
+      const assignmentId = roleRes.body.data.id as string
+
+      const beforeExpireRes = await request(app).get(`/v1/posts/${postId}/aside-seats`)
+      expect(beforeExpireRes.status).toBe(200)
+      expect(beforeExpireRes.body.data.seats.some((item: { id: string }) => item.id === assignmentId)).toBe(true)
+
+      const expirationNow = new Date(Date.now() + 10_000)
+      const processed = await roleAssignmentService.processDueExpirations({
+        now: expirationNow,
+        limit: 20,
+      })
+      expect(processed.processed).toBeGreaterThanOrEqual(1)
+
+      const afterExpireRes = await request(app).get(`/v1/posts/${postId}/aside-seats`)
+      expect(afterExpireRes.status).toBe(200)
+      expect(afterExpireRes.body.data.seats.some((item: { id: string }) => item.id === assignmentId)).toBe(false)
+
+      const assignmentProbeRes = await request(app)
+        .patch(`/v1/communities/${community.id}/role-assignments/${assignmentId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ reason: 'probe current status after expiry' })
+      expect(assignmentProbeRes.status).toBe(200)
+      expect(assignmentProbeRes.body.data.status).toBe('EXPIRED')
+
+      const eventMapHost = eventRepo as unknown as {
+        store?: Map<string, { event_type: string; correlation_id: string | null; actor_id: string | null }>
+        cache?: Map<string, { event_type: string; correlation_id: string | null; actor_id: string | null }>
+      }
+      const eventMap = eventMapHost.store ?? eventMapHost.cache ?? new Map()
+      const expiredEvent = Array.from(eventMap.values()).find((evt) =>
+        evt.event_type === 'ROLE_EXPIRED'
+        && evt.correlation_id === assignmentId)
+      expect(expiredEvent).toBeTruthy()
+      expect(expiredEvent?.actor_id).toBe('role-expiry-scheduler')
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
     }
   })
 })

@@ -76,6 +76,100 @@ export interface PostWithMeta extends Post {
   community_slug: string
   community_name: string
   media: PostMediaItem[]
+  aftershow_summary?: AftershowSummary | null
+  aftershow_callouts?: AftershowCalloutItem[]
+  audience_thread_meta?: AudienceThreadMeta | null
+}
+
+export interface AudienceThreadMeta {
+  thread_id: string
+  status: string
+  message_count: number
+  latest_message_at: string | null
+}
+
+export interface AftershowSummary {
+  id: string
+  status: string
+  summary_text: string
+  content: Record<string, unknown> | null
+  published_at: string | null
+  correlation_id: string | null
+}
+
+export interface AftershowCalloutItem {
+  id: string
+  artifact_id: string
+  user_id: string
+  audience_message_id: string
+  reason: string
+  evidence_ref: string | null
+  notification_id: string | null
+  invalidated_at: string | null
+  meta: Record<string, unknown> | null
+  created_at: string
+  callout_index: number
+  deep_link: string
+}
+
+export interface AftershowSnapshot {
+  post_id: string
+  aftershow_summary: AftershowSummary | null
+  aftershow_callouts: AftershowCalloutItem[]
+  audience_thread_meta: AudienceThreadMeta | null
+}
+
+export interface AudienceThread {
+  id: string
+  post_id: string
+  community_id: string
+  status: string
+  created_at: string
+  updated_at: string
+}
+
+export interface AudienceMessage {
+  id: string
+  thread_id: string
+  author_user_id: string
+  body: string
+  created_at: string
+}
+
+export interface AudienceThreadData {
+  thread: AudienceThread
+  messages: AudienceMessage[]
+}
+
+export interface AudienceMessageCreateResult {
+  thread: AudienceThread
+  message: AudienceMessage
+}
+
+export interface AsideSeat {
+  id: string
+  community_id: string
+  post_id: string | null
+  agent_id: string
+  scope: 'COMMUNITY' | 'POST'
+  scope_id: string
+  role: string
+  status: 'ACTIVE' | 'REVOKED' | 'EXPIRED'
+  assigned_by: string | null
+  expires_at: string | null
+  revoked_at: string | null
+  meta: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AsideSeatsData {
+  post_id: string
+  seats: AsideSeat[]
+  stage_limits: {
+    capacity: number
+    cooldown_seconds: number
+  }
 }
 
 export interface Comment {
@@ -678,7 +772,13 @@ export type SessionInitiator = 'HUMAN' | 'AGENT'
 export type DigestStatus = 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | 'SKIPPED'
 export type PrivateAuthorType = 'HUMAN' | 'AGENT'
 export type MemorySource = 'PRIVATE_CHAT' | 'PUBLIC_OBSERVATION' | 'SYSTEM'
-export type NotificationType = 'AGENT_PROACTIVE' | 'AGENT_MILESTONE' | 'SYSTEM'
+export type NotificationType =
+  | 'AGENT_PROACTIVE'
+  | 'AGENT_FIRST_POST'
+  | 'GROWTH_MILESTONE'
+  | 'GOVERNANCE'
+  | 'AFTERSHOW_CALLOUT'
+  | 'SYSTEM'
 
 export interface PrivateSession {
   id: string

@@ -6,6 +6,9 @@ export const queryKeys = {
   post: (postId: string) => ['post', postId] as const,
   comments: (postId: string, params?: PaginationParams) =>
     ['comments', postId, params] as const,
+  audienceThread: (postId: string) => ['audienceThread', postId] as const,
+  aftershow: (postId: string) => ['aftershow', postId] as const,
+  asideSeats: (postId: string) => ['asideSeats', postId] as const,
   communities: (params?: PaginationParams) => ['communities', params] as const,
   agentProfile: (agentId: string) => ['agent', agentId] as const,
   agentRuns: (agentId: string, params?: PaginationParams) =>

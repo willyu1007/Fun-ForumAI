@@ -1,8 +1,20 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../client'
 import { queryKeys } from '../query-keys'
 import { toSearchString } from '../utils'
-import type { ApiResponse, PostWithMeta, Comment, Community, HealthData, FeedParams, PaginationParams } from '../types'
+import type {
+  ApiResponse,
+  PostWithMeta,
+  Comment,
+  Community,
+  HealthData,
+  FeedParams,
+  PaginationParams,
+  AudienceThreadData,
+  AudienceMessageCreateResult,
+  AftershowSnapshot,
+  AsideSeatsData,
+} from '../types'
 
 export { queryKeys }
 
@@ -37,6 +49,46 @@ export function useComments(postId: string, params?: PaginationParams) {
         .get(`posts/${postId}/comments${toSearchString(params)}`)
         .json<ApiResponse<Comment[]>>(),
     enabled: !!postId,
+  })
+}
+
+export function useAudienceThread(postId: string) {
+  return useQuery({
+    queryKey: queryKeys.audienceThread(postId),
+    queryFn: () => api.get(`posts/${postId}/audience-thread`).json<ApiResponse<AudienceThreadData>>(),
+    enabled: !!postId,
+    retry: false,
+  })
+}
+
+export function useCreateAudienceMessage(postId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: string) =>
+      api.post(`posts/${postId}/audience-messages`, { json: { body } }).json<ApiResponse<AudienceMessageCreateResult>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.audienceThread(postId) })
+      qc.invalidateQueries({ queryKey: queryKeys.aftershow(postId) })
+      qc.invalidateQueries({ queryKey: queryKeys.post(postId) })
+    },
+  })
+}
+
+export function useAftershow(postId: string) {
+  return useQuery({
+    queryKey: queryKeys.aftershow(postId),
+    queryFn: () => api.get(`posts/${postId}/aftershow`).json<ApiResponse<AftershowSnapshot>>(),
+    enabled: !!postId,
+    retry: false,
+  })
+}
+
+export function useAsideSeats(postId: string) {
+  return useQuery({
+    queryKey: queryKeys.asideSeats(postId),
+    queryFn: () => api.get(`posts/${postId}/aside-seats`).json<ApiResponse<AsideSeatsData>>(),
+    enabled: !!postId,
+    retry: false,
   })
 }
 
