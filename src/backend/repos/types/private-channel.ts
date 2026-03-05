@@ -3,7 +3,7 @@ export type SessionInitiator = 'HUMAN' | 'AGENT'
 export type DigestStatus = 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | 'SKIPPED'
 export type PrivateAuthorType = 'HUMAN' | 'AGENT'
 export type MemorySource = 'PRIVATE_CHAT' | 'PUBLIC_OBSERVATION' | 'SYSTEM'
-export type NotificationType = 'AGENT_PROACTIVE' | 'AGENT_FIRST_POST' | 'GROWTH_MILESTONE' | 'GOVERNANCE'
+export type NotificationType = 'AGENT_PROACTIVE' | 'AGENT_FIRST_POST' | 'GROWTH_MILESTONE' | 'GOVERNANCE' | 'AFTERSHOW_CALLOUT'
 
 export interface PrivateSession {
   id: string

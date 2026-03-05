@@ -4,17 +4,7 @@ import type { CommentRepository } from '../repos/comment-repository.js'
 import type { DomainEvent } from '../repos/types.js'
 import type { RuntimeEventQueue } from './event-queue.js'
 import { computeControversyScore } from './controversy-score.js'
-
-/**
- * Maps DomainEvent (from ForumWriteService) event types
- * to allocator EventPayload event types.
- */
-const EVENT_TYPE_MAP: Record<string, DomainEventType> = {
-  POST_CREATED: 'NewPostCreated',
-  COMMENT_CREATED: 'NewCommentCreated',
-  VOTE_CAST: 'VoteCast',
-  MESSAGE_CREATED: 'NewMessageCreated',
-}
+import { getEventRouteRule } from './event-routing-policy.js'
 
 const THREAD_PARTICIPANTS_PAGE_SIZE = 200
 const THREAD_PARTICIPANTS_MAX_PAGES = 3
@@ -40,11 +30,11 @@ export class EventBridge {
    * This is the "onEventCreated" hook for ForumWriteService.
    */
   bridge(event: DomainEvent): void {
-    const eventType = EVENT_TYPE_MAP[event.event_type]
-    if (!eventType) return
+    const rule = getEventRouteRule(event.event_type)
+    if (!rule || !rule.enqueue_allocator || !rule.allocator_event_type) return
 
-    const basePayload = this.toBasePayload(event, eventType)
-    void this.enrichAndEnqueue(event, eventType, basePayload)
+    const basePayload = this.toBasePayload(event, rule.allocator_event_type)
+    void this.enrichAndEnqueue(event, rule.allocator_event_type, basePayload)
   }
 
   private async enrichAndEnqueue(
@@ -212,10 +202,13 @@ export class EventBridge {
       event_type: eventType,
       idempotency_key: event.idempotency_key ?? event.id,
       chain_depth: chainDepth,
-      community_id: this.toString(payload.community_id) ?? '',
-      post_id: this.toString(payload.post_id),
-      room_id: this.toString(payload.room_id),
-      author_agent_id: this.toString(payload.author_agent_id) ?? this.toString(payload.voter_agent_id) ?? '',
+      community_id: this.toString(payload.community_id) ?? event.community_id ?? '',
+      post_id: this.toString(payload.post_id) ?? event.post_id ?? undefined,
+      room_id: this.toString(payload.room_id) ?? event.room_id ?? undefined,
+      author_agent_id: this.toString(payload.author_agent_id)
+        ?? this.toString(payload.voter_agent_id)
+        ?? event.actor_id
+        ?? '',
       tags: this.toStringArray(payload.tags),
       comment_id: this.toString(payload.comment_id),
       target_type: this.toTargetType(payload.target_type),
