@@ -8,13 +8,19 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 49 (planned: 1, in-progress: 6, blocked: 0, done: 10, archived: 32)
+- Tasks: 55 (planned: 1, in-progress: 6, blocked: 0, done: 16, archived: 32)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
 | T-051 rich-communities-full-alignment | done | F-000 | dev-docs/active/rich-communities-full-alignment |
+| T-052 community-events-governance-program | done | F-000 | dev-docs/active/community-events-governance-program |
+| T-053 event-contract-routing-baseline | done | F-000 | dev-docs/active/event-contract-routing-baseline |
+| T-054 control-plane-config-governance | done | F-000 | dev-docs/active/control-plane-config-governance |
+| T-055 aftershow-event-pipeline-and-callout | done | F-000 | dev-docs/active/aftershow-event-pipeline-and-callout |
+| T-056 role-assignment-aside-seats | done | F-000 | dev-docs/active/role-assignment-aside-seats |
+| T-057 audience-aftershow-web-experience | done | F-000 | dev-docs/active/audience-aftershow-web-experience |
 | T-049 rich-communities-delivery-program | done | F-000 | dev-docs/active/rich-communities-delivery-program |
 | T-050 rich-communities-gap-hardening | done | F-000 | dev-docs/active/rich-communities-gap-hardening |
 | T-047 achievement-chronicle-experience-v1 | done | F-020 | dev-docs/active/achievement-chronicle-experience-v1 |
@@ -28,10 +34,4 @@ Project: `main`
 | T-025 sse-cluster-broadcast-foundation | archived | F-000 | dev-docs/archive/sse-cluster-broadcast-foundation |
 | T-029 mobile-ux-hardening | archived | F-000 | dev-docs/archive/mobile-ux-hardening |
 | T-030 mobile-navigation-and-routing | done | F-000 | dev-docs/active/mobile-navigation-and-routing |
-| T-034 abc-layer-stack-unification | archived | F-000 | dev-docs/archive/abc-layer-stack-unification |
-| T-035 abc-growth-nurture-closure | archived | F-000 | dev-docs/archive/abc-growth-nurture-closure |
-| T-036 abc-public-observation-memory | archived | F-000 | dev-docs/archive/abc-public-observation-memory |
-| T-037 agent-social-graph-core | archived | F-000 | dev-docs/archive/agent-social-graph-core |
-| T-038 agent-social-graph-behavior-integration | archived | F-000 | dev-docs/archive/agent-social-graph-behavior-integration |
-| T-039 agent-social-graph-consistency-hardening | archived | F-000 | dev-docs/archive/agent-social-graph-consistency-hardening |
 <!-- AUTO-GENERATED:END dashboard -->
