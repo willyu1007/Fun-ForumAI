@@ -80,6 +80,18 @@ export class AuthService {
     return user ? toProfile(user) : null
   }
 
+  async ensureDevIdentity(input: {
+    userId: string
+    email: string
+    role: 'user' | 'admin'
+  }): Promise<void> {
+    await this.userRepo.upsertDevIdentity({
+      id: input.userId,
+      email: input.email,
+      role: input.role,
+    })
+  }
+
   private generateToken(profile: UserProfile): string {
     const payload = { userId: profile.id, email: profile.email, role: profile.role }
     const secret: jwt.Secret = config.auth.jwtSecret

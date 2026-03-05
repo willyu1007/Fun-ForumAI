@@ -9,6 +9,7 @@ import type {
   UpdateCommunityConfigPatchInput,
   CreateCommunityConfigApprovalInput,
   ConfigPatchStatus,
+  ConfigVersionStatus,
 } from '../types.js'
 import type { CommunityConfigRepository } from '../community-config-repository.js'
 
@@ -18,9 +19,11 @@ function toVersion(row: {
   version: number
   rulesJson: Prisma.JsonValue
   sourcePatchId: string | null
+  status: ConfigVersionStatus
   riskLevel: 'LOW' | 'HIGH'
   createdByUserId: string | null
   rollbackFromVersionId: string | null
+  effectiveAt: Date | null
   appliedAt: Date | null
   rolledBackAt: Date | null
   metaJson: Prisma.JsonValue | null
@@ -33,9 +36,11 @@ function toVersion(row: {
     version: row.version,
     rules_json: row.rulesJson as Record<string, unknown>,
     source_patch_id: row.sourcePatchId,
+    status: row.status,
     risk_level: row.riskLevel,
     created_by_user_id: row.createdByUserId,
     rollback_from_version_id: row.rollbackFromVersionId,
+    effective_at: row.effectiveAt,
     applied_at: row.appliedAt,
     rolled_back_at: row.rolledBackAt,
     meta: row.metaJson as Record<string, unknown> | null,
@@ -61,6 +66,7 @@ function toPatch(row: {
   rejectedReason: string | null
   validatedAt: Date | null
   approvedAt: Date | null
+  effectiveAt: Date | null
   appliedAt: Date | null
   rolledBackAt: Date | null
   metaJson: Prisma.JsonValue | null
@@ -84,6 +90,7 @@ function toPatch(row: {
     rejected_reason: row.rejectedReason,
     validated_at: row.validatedAt,
     approved_at: row.approvedAt,
+    effective_at: row.effectiveAt,
     applied_at: row.appliedAt,
     rolled_back_at: row.rolledBackAt,
     meta: row.metaJson as Record<string, unknown> | null,
@@ -122,9 +129,11 @@ export class PgCommunityConfigRepository implements CommunityConfigRepository {
         version: input.version,
         rulesJson: input.rules_json as Prisma.InputJsonValue,
         sourcePatchId: input.source_patch_id ?? null,
+        status: input.status ?? 'ACTIVE',
         riskLevel: input.risk_level ?? 'LOW',
         createdByUserId: input.created_by_user_id ?? null,
         rollbackFromVersionId: input.rollback_from_version_id ?? null,
+        effectiveAt: input.effective_at ?? null,
         appliedAt: input.applied_at ?? null,
         rolledBackAt: input.rolled_back_at ?? null,
         metaJson: input.meta ? (input.meta as Prisma.InputJsonValue) : Prisma.DbNull,
@@ -132,6 +141,33 @@ export class PgCommunityConfigRepository implements CommunityConfigRepository {
         updatedAt: now,
       },
     })
+    return toVersion({ ...row, metaJson: row.metaJson })
+  }
+
+  async updateVersion(
+    versionId: string,
+    input: {
+      status?: ConfigVersionStatus
+      applied_at?: Date | null
+      rolled_back_at?: Date | null
+      meta?: Record<string, unknown> | null
+    },
+  ): Promise<CommunityConfigVersion | null> {
+    const row = await this.prisma.communityConfigVersion.update({
+      where: { id: versionId },
+      data: {
+        ...(input.status !== undefined ? { status: input.status } : {}),
+        ...(input.applied_at !== undefined ? { appliedAt: input.applied_at } : {}),
+        ...(input.rolled_back_at !== undefined ? { rolledBackAt: input.rolled_back_at } : {}),
+        ...(input.meta !== undefined
+          ? {
+              metaJson: input.meta ? (input.meta as Prisma.InputJsonValue) : Prisma.DbNull,
+            }
+          : {}),
+        updatedAt: new Date(),
+      },
+    }).catch((err) => (err?.code === 'P2025' ? null : Promise.reject(err)))
+    if (!row) return null
     return toVersion({ ...row, metaJson: row.metaJson })
   }
 
@@ -163,7 +199,7 @@ export class PgCommunityConfigRepository implements CommunityConfigRepository {
         id: randomUUID(),
         communityId: input.community_id,
         baseVersionId: input.base_version_id ?? null,
-        status: input.status ?? 'DRAFT',
+        status: input.status ?? 'PROPOSED',
         riskLevel: input.risk_level ?? 'LOW',
         patchJson: input.patch_json as Prisma.InputJsonValue,
         proposedRulesJson: input.proposed_rules_json
@@ -178,6 +214,7 @@ export class PgCommunityConfigRepository implements CommunityConfigRepository {
         rejectedReason: input.rejected_reason ?? null,
         validatedAt: input.validated_at ?? null,
         approvedAt: input.approved_at ?? null,
+        effectiveAt: input.effective_at ?? null,
         appliedAt: input.applied_at ?? null,
         rolledBackAt: input.rolled_back_at ?? null,
         metaJson: input.meta ? (input.meta as Prisma.InputJsonValue) : Prisma.DbNull,
@@ -211,6 +248,7 @@ export class PgCommunityConfigRepository implements CommunityConfigRepository {
         ...(input.rejected_reason !== undefined ? { rejectedReason: input.rejected_reason } : {}),
         ...(input.validated_at !== undefined ? { validatedAt: input.validated_at } : {}),
         ...(input.approved_at !== undefined ? { approvedAt: input.approved_at } : {}),
+        ...(input.effective_at !== undefined ? { effectiveAt: input.effective_at } : {}),
         ...(input.applied_at !== undefined ? { appliedAt: input.applied_at } : {}),
         ...(input.rolled_back_at !== undefined ? { rolledBackAt: input.rolled_back_at } : {}),
         ...(input.meta !== undefined
@@ -241,6 +279,22 @@ export class PgCommunityConfigRepository implements CommunityConfigRepository {
     const rows = await this.prisma.communityConfigPatch.findMany({
       where: { communityId },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })
+    return rows.map((row) => toPatch({
+      ...row,
+      proposedRulesJson: row.proposedRulesJson,
+      metaJson: row.metaJson,
+    }))
+  }
+
+  async listDueScheduledPatches(now: Date, limit: number): Promise<CommunityConfigPatch[]> {
+    const rows = await this.prisma.communityConfigPatch.findMany({
+      where: {
+        status: 'SCHEDULED',
+        effectiveAt: { lte: now },
+      },
+      orderBy: [{ effectiveAt: 'asc' }, { createdAt: 'asc' }],
+      take: limit,
     })
     return rows.map((row) => toPatch({
       ...row,

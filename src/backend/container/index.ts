@@ -6,6 +6,7 @@ import { createCoreServices } from './services.js'
 import { createAllocator } from './allocator.js'
 import { createNurtureEngines } from './nurture.js'
 import { createRuntime } from './runtime.js'
+import { CommunityConfigScheduler } from '../runtime/community-config-scheduler.js'
 
 // ─── 1. Repositories ────────────────────────────────────────
 const { repos, hydratables } = await createRepositories(config.db.usePrisma)
@@ -30,6 +31,21 @@ const core = createCoreServices({
   roomLifecycleLeaderElector: infra.leaderElectors.roomLifecycle,
   conversationClockLeaderElector: infra.leaderElectors.conversationClock,
 })
+
+const communityConfigScheduler = new CommunityConfigScheduler(
+  {
+    service: core.communityConfigService,
+    leaderElector: infra.leaderElectors.communityConfigScheduler,
+  },
+  {
+    intervalMs: config.runtime.communityConfigSchedulerIntervalMs,
+    startupDelayMs: config.runtime.communityConfigSchedulerStartupDelayMs,
+    batchLimit: config.runtime.communityConfigSchedulerBatchLimit,
+    maxRetries: config.runtime.communityConfigSchedulerMaxRetries,
+    backoffBaseMs: config.runtime.communityConfigSchedulerBackoffBaseMs,
+    backoffMaxMs: config.runtime.communityConfigSchedulerBackoffMaxMs,
+  },
+)
 
 // ─── 5. Nurture Engines (Prisma-only heavy path) ────────────
 const nurture = await createNurtureEngines({
@@ -184,6 +200,7 @@ export const achievementsScheduler = nurture.achievementsScheduler
 export const cultureDigestScheduler = nurture.cultureDigestScheduler
 export const privateChannelServices = nurture.privateChannelServices
 export const privateChannelScheduler = nurture.privateChannelScheduler
+export { communityConfigScheduler }
 
 export const agentExecutor = rt.agentExecutor
 export const postScheduler = rt.postScheduler

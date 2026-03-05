@@ -732,12 +732,19 @@ enum ConfigRiskLevel {
 }
 
 enum ConfigPatchStatus {
-  DRAFT
+  PROPOSED
   VALIDATED
   APPROVED
+  SCHEDULED
   APPLIED
   REJECTED
   ROLLED_BACK
+}
+
+enum ConfigVersionStatus {
+  ACTIVE
+  ROLLED_BACK
+  RETIRED
 }
 
 enum ConfigApprovalDecision {
@@ -751,9 +758,11 @@ model CommunityConfigVersion {
   version             Int
   rulesJson           Json            @map("rules_json")
   sourcePatchId       String?         @map("source_patch_id")
+  status              ConfigVersionStatus @default(ACTIVE)
   riskLevel           ConfigRiskLevel @default(LOW) @map("risk_level")
   createdByUserId     String?         @map("created_by_user_id")
   rollbackFromVersionId String?       @map("rollback_from_version_id")
+  effectiveAt         DateTime?       @map("effective_at")
   appliedAt           DateTime?       @map("applied_at")
   rolledBackAt        DateTime?       @map("rolled_back_at")
   metaJson            Json?           @map("meta_json")
@@ -773,7 +782,7 @@ model CommunityConfigPatch {
   id                String           @id @default(cuid())
   communityId       String           @map("community_id")
   baseVersionId     String?          @map("base_version_id")
-  status            ConfigPatchStatus @default(DRAFT)
+  status            ConfigPatchStatus @default(PROPOSED)
   riskLevel         ConfigRiskLevel  @default(LOW) @map("risk_level")
   patchJson         Json             @map("patch_json")
   proposedRulesJson Json?            @map("proposed_rules_json")
@@ -786,6 +795,7 @@ model CommunityConfigPatch {
   rejectedReason    String?          @map("rejected_reason")
   validatedAt       DateTime?        @map("validated_at")
   approvedAt        DateTime?        @map("approved_at")
+  effectiveAt       DateTime?        @map("effective_at")
   appliedAt         DateTime?        @map("applied_at")
   rolledBackAt      DateTime?        @map("rolled_back_at")
   metaJson          Json?            @map("meta_json")
@@ -799,6 +809,7 @@ model CommunityConfigPatch {
   approvals CommunityConfigApproval[]
 
   @@index([communityId, status, createdAt])
+  @@index([status, effectiveAt])
   @@index([proposedByUserId, createdAt])
   @@index([appliedVersionId])
   @@map("community_config_patches")

@@ -25,6 +25,7 @@ import {
   createConfigProposalSchema,
   validateConfigProposalSchema,
   approveConfigProposalSchema,
+  rejectConfigProposalSchema,
   applyConfigProposalSchema,
   rollbackConfigSchema,
   createRoleAssignmentSchema,
@@ -90,7 +91,8 @@ stageIncubationRouter.patch(
       })
 
       const validation = await communityConfigService.validateProposal({
-        patch_id: proposal.id,
+        proposal_id: proposal.id,
+        community_id: communityId,
         actor_user_id: req.user!.userId,
       })
       if (validation.validation_errors.length > 0) {
@@ -98,17 +100,21 @@ stageIncubationRouter.patch(
       }
 
       const approved = await communityConfigService.approveProposal({
-        patch_id: proposal.id,
+        proposal_id: proposal.id,
+        community_id: communityId,
         actor_user_id: req.user!.userId,
         actor_role: req.user!.role,
-        decision: 'APPROVED',
       })
 
       const applied = await communityConfigService.applyProposal({
-        patch_id: approved.id,
+        proposal_id: approved.id,
+        community_id: communityId,
         actor_user_id: req.user!.userId,
         actor_role: req.user!.role,
       })
+      if (!applied.version) {
+        throw new ValidationError('stage-spec compatibility flow expected immediate config application')
+      }
 
       res.json({
         data: {
@@ -147,7 +153,7 @@ stageIncubationRouter.get('/communities/:communityId/config', requireHumanAuth, 
 })
 
 stageIncubationRouter.post(
-  '/communities/:communityId/config-proposals',
+  '/communities/:communityId/config/proposals',
   requireHumanAuth,
   validate(createConfigProposalSchema),
   async (req, res) => {
@@ -171,7 +177,7 @@ stageIncubationRouter.post(
 )
 
 stageIncubationRouter.post(
-  '/config-proposals/:proposalId/validate',
+  '/communities/:communityId/config/proposals/:proposalId/validate',
   requireHumanAuth,
   validate(validateConfigProposalSchema),
   async (req, res) => {
@@ -183,7 +189,8 @@ stageIncubationRouter.post(
     }
 
     const result = await communityConfigService.validateProposal({
-      patch_id: String(req.params.proposalId),
+      proposal_id: String(req.params.proposalId),
+      community_id: String(req.params.communityId),
       actor_user_id: req.user!.userId,
     })
     res.json({ data: result })
@@ -191,7 +198,7 @@ stageIncubationRouter.post(
 )
 
 stageIncubationRouter.post(
-  '/config-proposals/:proposalId/approve',
+  '/communities/:communityId/config/proposals/:proposalId/approve',
   requireHumanAuth,
   requireAdmin,
   validate(approveConfigProposalSchema),
@@ -204,10 +211,10 @@ stageIncubationRouter.post(
     }
 
     const patch = await communityConfigService.approveProposal({
-      patch_id: String(req.params.proposalId),
+      proposal_id: String(req.params.proposalId),
+      community_id: String(req.params.communityId),
       actor_user_id: req.user!.userId,
       actor_role: req.user!.role,
-      decision: req.body.decision,
       reason: req.body.reason,
     })
     res.json({ data: patch })
@@ -215,7 +222,31 @@ stageIncubationRouter.post(
 )
 
 stageIncubationRouter.post(
-  '/config-proposals/:proposalId/apply',
+  '/communities/:communityId/config/proposals/:proposalId/reject',
+  requireHumanAuth,
+  requireAdmin,
+  validate(rejectConfigProposalSchema),
+  async (req, res) => {
+    if (!config.features.controlPlaneConfigV1) {
+      res.status(403).json({
+        error: { code: 'FORBIDDEN', message: 'Control Plane config API is disabled by feature flag.' },
+      })
+      return
+    }
+
+    const patch = await communityConfigService.rejectProposal({
+      proposal_id: String(req.params.proposalId),
+      community_id: String(req.params.communityId),
+      actor_user_id: req.user!.userId,
+      actor_role: req.user!.role,
+      reason: req.body.reason,
+    })
+    res.json({ data: patch })
+  },
+)
+
+stageIncubationRouter.post(
+  '/communities/:communityId/config/apply',
   requireHumanAuth,
   validate(applyConfigProposalSchema),
   async (req, res) => {
@@ -227,16 +258,18 @@ stageIncubationRouter.post(
     }
 
     const result = await communityConfigService.applyProposal({
-      patch_id: String(req.params.proposalId),
+      proposal_id: req.body.proposal_id,
+      community_id: String(req.params.communityId),
       actor_user_id: req.user!.userId,
       actor_role: req.user!.role,
+      effective_at: req.body.effective_at ? new Date(req.body.effective_at) : null,
     })
     res.json({ data: result })
   },
 )
 
 stageIncubationRouter.post(
-  '/communities/:communityId/config-rollback',
+  '/communities/:communityId/config/rollback',
   requireHumanAuth,
   requireAdmin,
   validate(rollbackConfigSchema),
@@ -259,7 +292,7 @@ stageIncubationRouter.post(
   },
 )
 
-stageIncubationRouter.get('/communities/:communityId/config-history', requireHumanAuth, async (req, res) => {
+stageIncubationRouter.get('/communities/:communityId/config/history', requireHumanAuth, async (req, res) => {
   if (!config.features.controlPlaneConfigV1) {
     res.status(403).json({
       error: { code: 'FORBIDDEN', message: 'Control Plane config API is disabled by feature flag.' },

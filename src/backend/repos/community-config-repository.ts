@@ -6,10 +6,20 @@ import type {
   CreateCommunityConfigPatchInput,
   UpdateCommunityConfigPatchInput,
   CreateCommunityConfigApprovalInput,
+  ConfigVersionStatus,
 } from './types.js'
 
 export interface CommunityConfigRepository {
   createVersion(input: CreateCommunityConfigVersionInput): Promise<CommunityConfigVersion>
+  updateVersion(
+    versionId: string,
+    input: {
+      status?: ConfigVersionStatus
+      applied_at?: Date | null
+      rolled_back_at?: Date | null
+      meta?: Record<string, unknown> | null
+    },
+  ): Promise<CommunityConfigVersion | null>
   listVersionsByCommunity(communityId: string): Promise<CommunityConfigVersion[]>
   findLatestVersionByCommunity(communityId: string): Promise<CommunityConfigVersion | null>
   findVersionById(id: string): Promise<CommunityConfigVersion | null>
@@ -18,6 +28,7 @@ export interface CommunityConfigRepository {
   updatePatch(patchId: string, input: UpdateCommunityConfigPatchInput): Promise<CommunityConfigPatch | null>
   findPatchById(id: string): Promise<CommunityConfigPatch | null>
   listPatchesByCommunity(communityId: string): Promise<CommunityConfigPatch[]>
+  listDueScheduledPatches(now: Date, limit: number): Promise<CommunityConfigPatch[]>
 
   createApproval(input: CreateCommunityConfigApprovalInput): Promise<CommunityConfigApproval>
   listApprovalsByPatch(patchId: string): Promise<CommunityConfigApproval[]>
@@ -41,15 +52,37 @@ export class InMemoryCommunityConfigRepository implements CommunityConfigReposit
       version: input.version,
       rules_json: input.rules_json,
       source_patch_id: input.source_patch_id ?? null,
+      status: input.status ?? 'ACTIVE',
       risk_level: input.risk_level ?? 'LOW',
       created_by_user_id: input.created_by_user_id ?? null,
       rollback_from_version_id: input.rollback_from_version_id ?? null,
+      effective_at: input.effective_at ?? null,
       applied_at: input.applied_at ?? null,
       rolled_back_at: input.rolled_back_at ?? null,
       meta: input.meta ?? null,
       created_at: now,
       updated_at: now,
     }
+    this.versions.set(row.id, row)
+    return row
+  }
+
+  async updateVersion(
+    versionId: string,
+    input: {
+      status?: ConfigVersionStatus
+      applied_at?: Date | null
+      rolled_back_at?: Date | null
+      meta?: Record<string, unknown> | null
+    },
+  ): Promise<CommunityConfigVersion | null> {
+    const row = this.versions.get(versionId)
+    if (!row) return null
+    if (input.status !== undefined) row.status = input.status
+    if (input.applied_at !== undefined) row.applied_at = input.applied_at
+    if (input.rolled_back_at !== undefined) row.rolled_back_at = input.rolled_back_at
+    if (input.meta !== undefined) row.meta = input.meta
+    row.updated_at = new Date()
     this.versions.set(row.id, row)
     return row
   }
@@ -75,7 +108,7 @@ export class InMemoryCommunityConfigRepository implements CommunityConfigReposit
       id: cuid('cfg_patch'),
       community_id: input.community_id,
       base_version_id: input.base_version_id ?? null,
-      status: input.status ?? 'DRAFT',
+      status: input.status ?? 'PROPOSED',
       risk_level: input.risk_level ?? 'LOW',
       patch_json: input.patch_json,
       proposed_rules_json: input.proposed_rules_json ?? null,
@@ -88,6 +121,7 @@ export class InMemoryCommunityConfigRepository implements CommunityConfigReposit
       rejected_reason: input.rejected_reason ?? null,
       validated_at: input.validated_at ?? null,
       approved_at: input.approved_at ?? null,
+      effective_at: input.effective_at ?? null,
       applied_at: input.applied_at ?? null,
       rolled_back_at: input.rolled_back_at ?? null,
       meta: input.meta ?? null,
@@ -110,6 +144,7 @@ export class InMemoryCommunityConfigRepository implements CommunityConfigReposit
     if (input.rejected_reason !== undefined) row.rejected_reason = input.rejected_reason
     if (input.validated_at !== undefined) row.validated_at = input.validated_at
     if (input.approved_at !== undefined) row.approved_at = input.approved_at
+    if (input.effective_at !== undefined) row.effective_at = input.effective_at
     if (input.applied_at !== undefined) row.applied_at = input.applied_at
     if (input.rolled_back_at !== undefined) row.rolled_back_at = input.rolled_back_at
     if (input.meta !== undefined) row.meta = input.meta
@@ -126,6 +161,16 @@ export class InMemoryCommunityConfigRepository implements CommunityConfigReposit
     return Array.from(this.patches.values())
       .filter((item) => item.community_id === communityId)
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+  }
+
+  async listDueScheduledPatches(now: Date, limit: number): Promise<CommunityConfigPatch[]> {
+    return Array.from(this.patches.values())
+      .filter((item) =>
+        item.status === 'SCHEDULED'
+        && !!item.effective_at
+        && item.effective_at.getTime() <= now.getTime())
+      .sort((a, b) => a.effective_at!.getTime() - b.effective_at!.getTime())
+      .slice(0, limit)
   }
 
   async createApproval(input: CreateCommunityConfigApprovalInput): Promise<CommunityConfigApproval> {

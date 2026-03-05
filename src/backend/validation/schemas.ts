@@ -185,11 +185,17 @@ export const createConfigProposalSchema = z.object({
 export const validateConfigProposalSchema = z.object({}).strict()
 
 export const approveConfigProposalSchema = z.object({
-  decision: z.enum(['APPROVED', 'REJECTED']),
   reason: z.string().max(2000).optional(),
 }).strict()
 
-export const applyConfigProposalSchema = z.object({}).strict()
+export const rejectConfigProposalSchema = z.object({
+  reason: z.string().max(2000).optional(),
+}).strict()
+
+export const applyConfigProposalSchema = z.object({
+  proposal_id: z.string().min(1),
+  effective_at: z.string().datetime().optional(),
+}).strict()
 
 export const rollbackConfigSchema = z.object({
   version_id: z.string().min(1),

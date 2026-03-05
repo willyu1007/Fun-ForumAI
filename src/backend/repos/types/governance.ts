@@ -1,5 +1,6 @@
 export type ConfigRiskLevel = 'LOW' | 'HIGH'
-export type ConfigPatchStatus = 'DRAFT' | 'VALIDATED' | 'APPROVED' | 'APPLIED' | 'REJECTED' | 'ROLLED_BACK'
+export type ConfigVersionStatus = 'ACTIVE' | 'ROLLED_BACK' | 'RETIRED'
+export type ConfigPatchStatus = 'PROPOSED' | 'VALIDATED' | 'APPROVED' | 'SCHEDULED' | 'APPLIED' | 'REJECTED' | 'ROLLED_BACK'
 export type ConfigApprovalDecision = 'APPROVED' | 'REJECTED'
 
 export interface CommunityConfigVersion {
@@ -8,9 +9,11 @@ export interface CommunityConfigVersion {
   version: number
   rules_json: Record<string, unknown>
   source_patch_id: string | null
+  status: ConfigVersionStatus
   risk_level: ConfigRiskLevel
   created_by_user_id: string | null
   rollback_from_version_id: string | null
+  effective_at: Date | null
   applied_at: Date | null
   rolled_back_at: Date | null
   meta: Record<string, unknown> | null
@@ -35,6 +38,7 @@ export interface CommunityConfigPatch {
   rejected_reason: string | null
   validated_at: Date | null
   approved_at: Date | null
+  effective_at: Date | null
   applied_at: Date | null
   rolled_back_at: Date | null
   meta: Record<string, unknown> | null
@@ -56,9 +60,11 @@ export interface CreateCommunityConfigVersionInput {
   version: number
   rules_json: Record<string, unknown>
   source_patch_id?: string | null
+  status?: ConfigVersionStatus
   risk_level?: ConfigRiskLevel
   created_by_user_id?: string | null
   rollback_from_version_id?: string | null
+  effective_at?: Date | null
   applied_at?: Date | null
   rolled_back_at?: Date | null
   meta?: Record<string, unknown> | null
@@ -80,6 +86,7 @@ export interface CreateCommunityConfigPatchInput {
   rejected_reason?: string | null
   validated_at?: Date | null
   approved_at?: Date | null
+  effective_at?: Date | null
   applied_at?: Date | null
   rolled_back_at?: Date | null
   meta?: Record<string, unknown> | null
@@ -95,6 +102,7 @@ export interface UpdateCommunityConfigPatchInput {
   rejected_reason?: string | null
   validated_at?: Date | null
   approved_at?: Date | null
+  effective_at?: Date | null
   applied_at?: Date | null
   rolled_back_at?: Date | null
   meta?: Record<string, unknown> | null

@@ -39,6 +39,7 @@ export type {
   CommunityConfigVersion,
   CommunityConfigPatch,
   CommunityConfigApproval,
+  ConfigVersionStatus,
   ConfigRiskLevel,
   ConfigPatchStatus,
   ConfigApprovalDecision,

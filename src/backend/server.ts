@@ -8,6 +8,7 @@ import {
   privateChannelScheduler,
   pprRefreshScheduler,
   cultureDigestScheduler,
+  communityConfigScheduler,
   closeRuntimeInfrastructure,
 } from './container.js'
 
@@ -39,6 +40,7 @@ async function main() {
     privateChannelScheduler?.stop()
     pprRefreshScheduler?.stop()
     cultureDigestScheduler?.stop()
+    communityConfigScheduler?.stop()
 
     server.close(() => {
       Promise.allSettled([

@@ -68,6 +68,12 @@ export const config = {
     queueMaxRetries: safeInt(env.RUNTIME_QUEUE_MAX_RETRIES, 3),
     queuePollTimeoutMs: safeInt(env.RUNTIME_QUEUE_POLL_TIMEOUT_MS, 100),
     leaderTtlMs: safeInt(env.RUNTIME_LEADER_TTL_MS, 15000),
+    communityConfigSchedulerIntervalMs: safeInt(env.CONTROL_PLANE_SCHEDULER_INTERVAL_MS, 30000),
+    communityConfigSchedulerStartupDelayMs: safeInt(env.CONTROL_PLANE_SCHEDULER_STARTUP_DELAY_MS, 5000),
+    communityConfigSchedulerBatchLimit: safeInt(env.CONTROL_PLANE_SCHEDULER_BATCH_LIMIT, 20),
+    communityConfigSchedulerMaxRetries: safeInt(env.CONTROL_PLANE_SCHEDULER_MAX_RETRIES, 5),
+    communityConfigSchedulerBackoffBaseMs: safeInt(env.CONTROL_PLANE_SCHEDULER_BACKOFF_BASE_MS, 30000),
+    communityConfigSchedulerBackoffMaxMs: safeInt(env.CONTROL_PLANE_SCHEDULER_BACKOFF_MAX_MS, 900000),
   },
   sse: {
     broadcastBackend: env.SSE_BROADCAST_BACKEND === 'redis' ? 'redis' : 'local',

@@ -9,13 +9,13 @@ import { healthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { devSeedRouter } from './routes/dev-seed.js'
-import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, promptLayerService, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService } from './container.js'
+import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, promptLayerService, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
 import { agentGrowthRouter } from './routes/agent-growth-api.js'
 import { agentDashboardRouter } from './routes/agent-dashboard-api.js'
 import { createAuthRouter } from './routes/auth-api.js'
-import { requireHumanAuth } from './middleware/human-auth.js'
+import { requireHumanAuth, registerDevTokenSync } from './middleware/human-auth.js'
 import { privateChannelRouter } from './routes/private-channel-api.js'
 import { notificationRouter } from './routes/notification-api.js'
 import { agentStatsRouter } from './routes/agent-stats-api.js'
@@ -44,8 +44,18 @@ app.use('/v1', agentGrowthRouter)
 app.use('/v1', agentDashboardRouter)
 
 if (authService) {
-  app.use('/v1', createAuthRouter(authService))
+  const ensuredAuthService = authService
+  registerDevTokenSync(async (user) => {
+    if (!user._devToken) return
+    await ensuredAuthService.ensureDevIdentity({
+      userId: user.userId,
+      email: user.email,
+      role: user.role,
+    })
+  })
+  app.use('/v1', createAuthRouter(ensuredAuthService))
 } else if (config.nodeEnv !== 'production') {
+  registerDevTokenSync(null)
   // Minimal dev-only auth/me so DevAuthToolbar works without DB
   const devAuthRouter = express.Router()
   devAuthRouter.get('/auth/me', requireHumanAuth, (req, res) => {
@@ -67,6 +77,8 @@ if (authService) {
     res.json({ data: { message: '已退出登录' } })
   })
   app.use('/v1', devAuthRouter)
+} else {
+  registerDevTokenSync(null)
 }
 
 app.use('/v1', privateChannelRouter)
@@ -98,6 +110,7 @@ if (config.nodeEnv !== 'production') {
         runtime_enabled: config.runtime.enabled,
         queue_backend: config.runtime.queueBackend,
         leader_backend: config.runtime.leaderBackend,
+        community_config_scheduler_running: communityConfigScheduler?.isRunning ?? false,
       },
     })
   })
@@ -300,6 +313,10 @@ if (pprRefreshScheduler) {
 
 if (cultureDigestScheduler) {
   cultureDigestScheduler.start()
+}
+
+if (communityConfigScheduler) {
+  communityConfigScheduler.start()
 }
 
 // ─── Persistence initialization ─────────────────────────────

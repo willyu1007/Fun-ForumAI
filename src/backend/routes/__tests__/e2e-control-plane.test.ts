@@ -1,8 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
 import request from 'supertest'
 import jwt from 'jsonwebtoken'
-import { app, config, servicePost, adminToken, userToken, user2Token, setupFeatureFlagGuard } from './e2e-helpers.js'
-import { communityRepo, incubationService, chatService, eventRepo } from '../../container.js'
+import { app, config, servicePost, adminToken, userToken, user2Token, setupFeatureFlagGuard, waitFor } from './e2e-helpers.js'
+import { communityRepo, incubationService, chatService, eventRepo, communityConfigScheduler } from '../../container.js'
+import { DEFAULT_STAGE_SPEC_V1 } from '../../stage/index.js'
 
 setupFeatureFlagGuard()
 
@@ -761,10 +762,13 @@ describe('E2E: Control Plane (human auth)', () => {
       const community = communityRepo.create({
         name: 'Config Flow Community',
         slug: `config-flow-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: DEFAULT_STAGE_SPEC_V1,
+        },
       })
 
       const proposalRes = await request(app)
-        .post(`/v1/communities/${community.id}/config-proposals`)
+        .post(`/v1/communities/${community.id}/config/proposals`)
         .set('Authorization', `Bearer ${userToken}`)
         .send({
           patch: {
@@ -782,40 +786,40 @@ describe('E2E: Control Plane (human auth)', () => {
       const proposalId = proposalRes.body.data.id as string
 
       const validateRes = await request(app)
-        .post(`/v1/config-proposals/${proposalId}/validate`)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/validate`)
         .set('Authorization', `Bearer ${userToken}`)
         .send({})
       expect(validateRes.status).toBe(200)
       expect(Array.isArray(validateRes.body.data.validation_errors)).toBe(true)
 
       const blockedApply = await request(app)
-        .post(`/v1/config-proposals/${proposalId}/apply`)
+        .post(`/v1/communities/${community.id}/config/apply`)
         .set('Authorization', `Bearer ${userToken}`)
-        .send({})
+        .send({ proposal_id: proposalId })
       expect(blockedApply.status).toBe(400)
 
       const approveRes = await request(app)
-        .post(`/v1/config-proposals/${proposalId}/approve`)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/approve`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ decision: 'APPROVED' })
+        .send({})
       expect(approveRes.status).toBe(200)
 
       const applyRes = await request(app)
-        .post(`/v1/config-proposals/${proposalId}/apply`)
+        .post(`/v1/communities/${community.id}/config/apply`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({})
+        .send({ proposal_id: proposalId })
       expect(applyRes.status).toBe(200)
       const versionId = applyRes.body.data.version.id as string
 
       const historyRes = await request(app)
-        .get(`/v1/communities/${community.id}/config-history`)
+        .get(`/v1/communities/${community.id}/config/history`)
         .set('Authorization', `Bearer ${adminToken}`)
       expect(historyRes.status).toBe(200)
       expect(Array.isArray(historyRes.body.data.versions)).toBe(true)
       expect(Array.isArray(historyRes.body.data.patches)).toBe(true)
 
       const rollbackRes = await request(app)
-        .post(`/v1/communities/${community.id}/config-rollback`)
+        .post(`/v1/communities/${community.id}/config/rollback`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           version_id: versionId,
@@ -823,10 +827,222 @@ describe('E2E: Control Plane (human auth)', () => {
         })
       expect(rollbackRes.status).toBe(201)
       expect(rollbackRes.body.data.rollback_from_version_id).toBe(versionId)
+
+      const legacyProposalRoute = await request(app)
+        .post(`/v1/communities/${community.id}/config-proposals`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          patch: {
+            moderation: {
+              premod_required: true,
+            },
+          },
+        })
+      expect(legacyProposalRoute.status).toBe(404)
     } finally {
       featureFlags.controlPlaneConfigV1 = originalControlPlane
     }
   })
+
+  it('Control Plane config rejects cross-community proposal operations', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalControlPlane = featureFlags.controlPlaneConfigV1
+    featureFlags.controlPlaneConfigV1 = true
+
+    try {
+      const communityA = communityRepo.create({
+        name: 'Config Ownership Community A',
+        slug: `config-ownership-a-${Date.now()}`,
+      })
+      const communityB = communityRepo.create({
+        name: 'Config Ownership Community B',
+        slug: `config-ownership-b-${Date.now()}`,
+      })
+
+      const proposalRes = await request(app)
+        .post(`/v1/communities/${communityA.id}/config/proposals`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          patch: {
+            moderation: {
+              premod_required: true,
+            },
+          },
+        })
+      expect(proposalRes.status).toBe(201)
+      const proposalId = proposalRes.body.data.id as string
+
+      const validateOnWrongCommunity = await request(app)
+        .post(`/v1/communities/${communityB.id}/config/proposals/${proposalId}/validate`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({})
+      expect(validateOnWrongCommunity.status).toBe(404)
+
+      const approveOnWrongCommunity = await request(app)
+        .post(`/v1/communities/${communityB.id}/config/proposals/${proposalId}/approve`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+      expect(approveOnWrongCommunity.status).toBe(404)
+
+      const applyOnWrongCommunity = await request(app)
+        .post(`/v1/communities/${communityB.id}/config/apply`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ proposal_id: proposalId })
+      expect(applyOnWrongCommunity.status).toBe(404)
+    } finally {
+      featureFlags.controlPlaneConfigV1 = originalControlPlane
+    }
+  })
+
+  it('Control Plane config enforces proposal status transitions', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalControlPlane = featureFlags.controlPlaneConfigV1
+    featureFlags.controlPlaneConfigV1 = true
+
+    try {
+      const community = communityRepo.create({
+        name: 'Config Status Guard Community',
+        slug: `config-status-guard-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: DEFAULT_STAGE_SPEC_V1,
+        },
+      })
+
+      const proposalRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          patch: {
+            moderation: {
+              premod_required: true,
+            },
+          },
+        })
+      expect(proposalRes.status).toBe(201)
+      const proposalId = proposalRes.body.data.id as string
+
+      const approveWithoutValidate = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/approve`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+      expect(approveWithoutValidate.status).toBe(400)
+
+      const validateRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/validate`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({})
+      expect(validateRes.status).toBe(200)
+      expect(validateRes.body.data.patch.status).toBe('VALIDATED')
+
+      const rejectRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/reject`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ reason: 'manual reject after validate' })
+      expect(rejectRes.status).toBe(200)
+      expect(rejectRes.body.data.status).toBe('REJECTED')
+
+      const validateAfterReject = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/validate`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({})
+      expect(validateAfterReject.status).toBe(400)
+
+      const approveAfterReject = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/approve`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+      expect(approveAfterReject.status).toBe(400)
+    } finally {
+      featureFlags.controlPlaneConfigV1 = originalControlPlane
+    }
+  })
+
+  it('Control Plane config apply supports SCHEDULED auto-activation by scheduler', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalControlPlane = featureFlags.controlPlaneConfigV1
+    featureFlags.controlPlaneConfigV1 = true
+
+    try {
+      communityConfigScheduler?.stop()
+      communityConfigScheduler?.start()
+
+      const community = communityRepo.create({
+        name: 'Config Schedule Community',
+        slug: `config-schedule-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: DEFAULT_STAGE_SPEC_V1,
+        },
+      })
+
+      const proposalRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          patch: {
+            moderation: {
+              thresholds: {
+                low_max_score: 0.25,
+                medium_max_score: 0.6,
+                auto_reject_score: 0.9,
+              },
+            },
+          },
+          summary: 'Schedule a high-risk config apply',
+        })
+      expect(proposalRes.status).toBe(201)
+      const proposalId = proposalRes.body.data.id as string
+
+      const validateRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/validate`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({})
+      expect(validateRes.status).toBe(200)
+      expect(['VALIDATED', 'REJECTED']).toContain(validateRes.body.data.patch.status)
+
+      const approveRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/approve`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+      expect(approveRes.status).toBe(200)
+
+      const effectiveAt = new Date(Date.now() + 1500).toISOString()
+      const scheduleRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/apply`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          proposal_id: proposalId,
+          effective_at: effectiveAt,
+        })
+      expect(scheduleRes.status).toBe(200)
+      expect(scheduleRes.body.data.patch.status).toBe('SCHEDULED')
+      expect(scheduleRes.body.data.version).toBeNull()
+
+      const history = await waitFor(
+        async () => request(app)
+          .get(`/v1/communities/${community.id}/config/history`)
+          .set('Authorization', `Bearer ${adminToken}`),
+        {
+          timeoutMs: 12_000,
+          intervalMs: 300,
+          pass: (res) => {
+            const patches = res.body?.data?.patches as Array<{ id: string; status: string }> | undefined
+            const target = patches?.find((item) => item.id === proposalId)
+            return target?.status === 'APPLIED'
+          },
+        },
+      )
+
+      const appliedPatch = (history.body.data.patches as Array<{ id: string; status: string }>)
+        .find((item) => item.id === proposalId)
+      expect(appliedPatch?.status).toBe('APPLIED')
+
+      const activeVersion = (history.body.data.versions as Array<{ status: string; source_patch_id: string | null }>)
+        .find((item) => item.status === 'ACTIVE' && item.source_patch_id === proposalId)
+      expect(activeVersion).toBeTruthy()
+    } finally {
+      featureFlags.controlPlaneConfigV1 = originalControlPlane
+    }
+  }, 20_000)
 
   it('Role assignment control-plane endpoints create and update assignments', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
