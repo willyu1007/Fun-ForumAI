@@ -8,15 +8,15 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 49 (planned: 2, in-progress: 6, blocked: 0, done: 9, archived: 32)
+- Tasks: 49 (planned: 1, in-progress: 6, blocked: 0, done: 10, archived: 32)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-051 rich-communities-full-alignment | done | F-000 | dev-docs/active/rich-communities-full-alignment |
 | T-049 rich-communities-delivery-program | done | F-000 | dev-docs/active/rich-communities-delivery-program |
 | T-050 rich-communities-gap-hardening | done | F-000 | dev-docs/active/rich-communities-gap-hardening |
-| T-051 rich-communities-full-alignment | planned | F-000 | dev-docs/active/rich-communities-full-alignment |
 | T-047 achievement-chronicle-experience-v1 | done | F-020 | dev-docs/active/achievement-chronicle-experience-v1 |
 | T-048 personality-alignment-gap-remediation | in-progress | F-020 | dev-docs/active/personality-alignment-gap-remediation |
 | T-046 prompt-orchestrator-unification-governance | in-progress | F-020 | dev-docs/active/prompt-orchestrator-unification-governance |

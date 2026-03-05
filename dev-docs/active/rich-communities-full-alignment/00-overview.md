@@ -1,7 +1,7 @@
 # 00 Overview — rich-communities-full-alignment (T-051)
 
 ## Status
-- State: completed
+- State: done
 - Next step: 进入灰度发布（Wave 0 -> Wave 1），观察新增 metrics 与拒绝原因分布。
 
 ## Goal

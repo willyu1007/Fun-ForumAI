@@ -1,0 +1,144 @@
+export interface Agent {
+  id: string
+  owner_id: string
+  display_name: string
+  avatar_url: string | null
+  model: string
+  persona_version: number
+  reputation_score: number
+  status: 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED'
+  created_at: Date
+  updated_at: Date
+}
+
+export interface AgentConfig {
+  id: string
+  agent_id: string
+  config_json: Record<string, unknown>
+  updated_at: Date
+  effective_at: Date
+  updated_by: string
+}
+
+export interface Community {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  rules_json: Record<string, unknown> | null
+  visibility_default: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
+  created_at: Date
+  updated_at: Date
+}
+
+export type AgentCommunityMembershipRole = 'RESIDENT' | 'GUEST'
+export type AgentCommunityMembershipSource = 'MANUAL' | 'DERIVED'
+export type AgentCommunityMembershipStatus = 'ACTIVE' | 'MUTED' | 'BANNED'
+
+export interface AgentCommunityMembership {
+  id: string
+  agent_id: string
+  community_id: string
+  role: AgentCommunityMembershipRole
+  source: AgentCommunityMembershipSource
+  status: AgentCommunityMembershipStatus
+  status_reason: string | null
+  status_set_by: string | null
+  status_set_at: Date | null
+  joined_at: Date
+  left_at: Date | null
+  created_by: string | null
+  created_at: Date
+  updated_at: Date
+}
+
+export type AgentStageTier = 'T1' | 'T2' | 'T3' | 'T4' | 'T5'
+
+export interface AgentStageTierSnapshot {
+  id: string
+  agent_id: string
+  tier: AgentStageTier
+  score: number
+  achievement_points: number
+  chronicle_points: number
+  trust_penalty: number
+  reasoning: Record<string, unknown>
+  computed_at: Date
+  updated_at: Date
+}
+
+export type StageTemplateStatus = 'launch' | 'hidden'
+
+export interface StageTemplateManifestItem {
+  id: string
+  category: string
+  path: string
+  status: StageTemplateStatus
+  binding: {
+    community_slug: string
+    slot?: string
+    binding_type: 'core' | 'seasonal'
+  } | null
+}
+
+export interface HumanUser {
+  id: string
+  email: string
+  password_hash: string
+  display_name: string
+  avatar_url: string | null
+  phone: string | null
+  wechat_open_id: string | null
+  email_verified: boolean
+  phone_verified: boolean
+  last_login_at: Date | null
+  plan_tier: 'FREE' | 'PRO' | 'ADMIN'
+  status: 'ACTIVE' | 'SUSPENDED'
+  created_at: Date
+  updated_at: Date
+}
+
+export interface CreateHumanUserInput {
+  email: string
+  password_hash: string
+  display_name: string
+  avatar_url?: string | null
+}
+
+export interface CreateAgentInput {
+  owner_id: string
+  display_name: string
+  avatar_url?: string | null
+  model?: string
+}
+
+export interface CreateAgentConfigInput {
+  agent_id: string
+  config_json: Record<string, unknown>
+  updated_by: string
+}
+
+export interface CreateAgentCommunityMembershipInput {
+  agent_id: string
+  community_id: string
+  role?: AgentCommunityMembershipRole
+  source?: AgentCommunityMembershipSource
+  status?: AgentCommunityMembershipStatus
+  status_reason?: string | null
+  status_set_by?: string | null
+  status_set_at?: Date | null
+  joined_at?: Date
+  left_at?: Date | null
+  created_by?: string | null
+}
+
+export interface UpsertAgentStageTierSnapshotInput {
+  agent_id: string
+  tier: AgentStageTier
+  score: number
+  achievement_points: number
+  chronicle_points: number
+  trust_penalty: number
+  reasoning: Record<string, unknown>
+  computed_at?: Date
+}

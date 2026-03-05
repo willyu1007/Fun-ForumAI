@@ -1,7 +1,7 @@
 # 03 Implementation Notes
 
 ## Status
-- Current status: completed
+- Current status: done
 - Last updated: 2026-03-04
 
 ## Notes
