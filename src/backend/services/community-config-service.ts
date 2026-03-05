@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util'
 import type {
   CommunityRepository,
   CommunityConfigRepository,
@@ -8,6 +9,15 @@ import type {
 } from '../repos/index.js'
 import { NotFoundError, ValidationError, ForbiddenError } from '../lib/errors.js'
 import { resolveStageSpecFromRules } from '../stage/index.js'
+import type { UpdateCommunityConfigPatchInput } from '../repos/index.js'
+import {
+  deepMerge,
+  inferCommunityConfigRiskLevel,
+  normalizeCommunityConfigPatchRecord,
+  normalizeCommunityConfigRules,
+  normalizeCommunityConfigVersionRecord,
+  normalizeIncomingCommunityConfigPatch,
+} from './community-config-normalization.js'
 
 export interface CommunityConfigServiceDeps {
   communityRepo: CommunityRepository
@@ -21,28 +31,6 @@ interface ConfigApplyActor {
   actor_role: 'admin' | 'user' | 'system'
 }
 
-function deepMerge(base: unknown, patch: unknown): unknown {
-  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) return patch
-  if (!base || typeof base !== 'object' || Array.isArray(base)) return patch
-  const out: Record<string, unknown> = { ...(base as Record<string, unknown>) }
-  for (const [key, value] of Object.entries(patch as Record<string, unknown>)) {
-    const existing = out[key]
-    if (
-      value
-      && typeof value === 'object'
-      && !Array.isArray(value)
-      && existing
-      && typeof existing === 'object'
-      && !Array.isArray(existing)
-    ) {
-      out[key] = deepMerge(existing, value)
-    } else {
-      out[key] = value
-    }
-  }
-  return out
-}
-
 function toRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   return value as Record<string, unknown>
@@ -53,26 +41,22 @@ function toNumber(value: unknown): number | null {
   return value
 }
 
-function inferRiskLevel(patch: Record<string, unknown>, explicit?: ConfigRiskLevel): ConfigRiskLevel {
-  if (explicit) return explicit
-  const serialized = JSON.stringify(patch)
-  const highRiskMarkers = [
-    'aftershow',
-    'incubation',
-    'allocator',
-    'moderation',
-    'notifications',
-    'threshold',
-    'grant_required',
-  ]
-  if (highRiskMarkers.some((item) => serialized.includes(item))) return 'HIGH'
-  return 'LOW'
-}
-
 function lintProposedConfig(proposedRules: Record<string, unknown>): string[] {
   const errors: string[] = []
 
-  const moderation = toRecord(proposedRules.moderation)
+  const stageSpec = toRecord(proposedRules.stage_spec_v1)
+  const allocator = stageSpec ? toRecord(stageSpec.allocator) : null
+  const communityMaxAgents = allocator ? toNumber(allocator.community_max_agents) : null
+  const threadMaxAgents = allocator ? toNumber(allocator.thread_max_agents) : null
+  if (
+    communityMaxAgents !== null
+    && threadMaxAgents !== null
+    && threadMaxAgents > communityMaxAgents
+  ) {
+    errors.push('stage_spec_v1.allocator.thread_max_agents must be <= stage_spec_v1.allocator.community_max_agents')
+  }
+
+  const moderation = stageSpec ? toRecord(stageSpec.moderation) : null
   const thresholds = moderation ? toRecord(moderation.thresholds) : null
   const low = thresholds ? toNumber(thresholds.low_max_score) : null
   const medium = thresholds ? toNumber(thresholds.medium_max_score) : null
@@ -81,13 +65,6 @@ function lintProposedConfig(proposedRules: Record<string, unknown>): string[] {
     if (!(low < medium && medium < reject)) {
       errors.push('moderation.thresholds must satisfy low_max_score < medium_max_score < auto_reject_score')
     }
-  }
-
-  const allocator = toRecord(proposedRules.allocator)
-  const communityMax = allocator ? toNumber(allocator.community_max_agents) : null
-  const threadMax = allocator ? toNumber(allocator.thread_max_agents) : null
-  if (communityMax !== null && threadMax !== null && threadMax > communityMax) {
-    errors.push('allocator.thread_max_agents cannot be greater than allocator.community_max_agents')
   }
 
   return errors
@@ -116,9 +93,10 @@ export class CommunityConfigService {
   }> {
     const community = this.deps.communityRepo.findById(communityId)
     if (!community) throw new NotFoundError('Community', communityId)
-    const versions = await this.deps.configRepo.listVersionsByCommunity(communityId)
+    const versions = (await this.deps.configRepo.listVersionsByCommunity(communityId))
+      .map((item) => normalizeCommunityConfigVersionRecord(item))
     const activeVersion = versions.find((item) => item.status === 'ACTIVE') ?? null
-    const rules = (community.rules_json ?? {}) as Record<string, unknown>
+    const rules = normalizeCommunityConfigRules((community.rules_json ?? {}) as Record<string, unknown>)
     return {
       community_id: communityId,
       rules_json: rules,
@@ -141,15 +119,18 @@ export class CommunityConfigService {
     }
 
     const latest = await this.deps.configRepo.findLatestVersionByCommunity(input.community_id)
-    const baseRules = (community.rules_json ?? {}) as Record<string, unknown>
-    const merged = deepMerge(baseRules, input.patch) as Record<string, unknown>
-    const riskLevel = inferRiskLevel(input.patch, input.risk_level)
+    const baseRules = normalizeCommunityConfigRules((community.rules_json ?? {}) as Record<string, unknown>)
+    const normalizedPatch = normalizeIncomingCommunityConfigPatch(input.patch)
+    const merged = normalizeCommunityConfigRules(
+      deepMerge(baseRules, normalizedPatch) as Record<string, unknown>,
+    )
+    const riskLevel = inferCommunityConfigRiskLevel(normalizedPatch, input.risk_level)
     const patch = await this.deps.configRepo.createPatch({
       community_id: input.community_id,
       base_version_id: latest?.id ?? null,
       status: 'PROPOSED',
       risk_level: riskLevel,
-      patch_json: input.patch,
+      patch_json: normalizedPatch,
       proposed_rules_json: merged,
       summary: input.summary ?? null,
       reason: input.reason ?? null,
@@ -171,7 +152,7 @@ export class CommunityConfigService {
       },
     })
 
-    return patch
+    return normalizeCommunityConfigPatchRecord(patch)
   }
 
   async validateProposal(input: {
@@ -179,8 +160,9 @@ export class CommunityConfigService {
     community_id?: string
     actor_user_id: string
   }): Promise<{ patch: CommunityConfigPatch; validation_errors: string[] }> {
-    const patch = await this.deps.configRepo.findPatchById(input.proposal_id)
-    if (!patch) throw new NotFoundError('CommunityConfigPatch', input.proposal_id)
+    const rawPatch = await this.deps.configRepo.findPatchById(input.proposal_id)
+    if (!rawPatch) throw new NotFoundError('CommunityConfigPatch', input.proposal_id)
+    const { patch, normalizationUpdate } = await this.normalizePatchForEvaluation(rawPatch)
     this.assertPatchBelongsToCommunity(patch, input.community_id)
     this.assertPatchStatusForAction(patch, ['PROPOSED'], 'validated')
 
@@ -191,7 +173,10 @@ export class CommunityConfigService {
 
     const nextStatus: CommunityConfigPatch['status'] = errors.length > 0 ? 'REJECTED' : 'VALIDATED'
     const updated = await this.deps.configRepo.updatePatch(patch.id, {
+      ...(normalizationUpdate ?? {}),
       status: nextStatus,
+      risk_level: patch.risk_level,
+      proposed_rules_json: proposed,
       validated_by_user_id: input.actor_user_id,
       validated_at: new Date(),
       rejected_reason: errors.length > 0 ? errors.join('; ') : null,
@@ -203,6 +188,7 @@ export class CommunityConfigService {
         : patch.meta ?? null,
     })
     if (!updated) throw new NotFoundError('CommunityConfigPatch', patch.id)
+    const normalizedUpdated = normalizeCommunityConfigPatchRecord(updated)
 
     this.deps.eventRepo.create({
       event_type: errors.length > 0 ? 'COMMUNITY_CONFIG_VALIDATION_FAILED' : 'COMMUNITY_CONFIG_VALIDATED',
@@ -220,7 +206,7 @@ export class CommunityConfigService {
     })
 
     return {
-      patch: updated,
+      patch: normalizedUpdated,
       validation_errors: errors,
     }
   }
@@ -232,8 +218,9 @@ export class CommunityConfigService {
     actor_role: 'admin' | 'user'
     reason?: string
   }): Promise<CommunityConfigPatch> {
-    const patch = await this.deps.configRepo.findPatchById(input.proposal_id)
-    if (!patch) throw new NotFoundError('CommunityConfigPatch', input.proposal_id)
+    const rawPatch = await this.deps.configRepo.findPatchById(input.proposal_id)
+    if (!rawPatch) throw new NotFoundError('CommunityConfigPatch', input.proposal_id)
+    const { patch, normalizationUpdate } = await this.normalizePatchForEvaluation(rawPatch)
     this.assertPatchBelongsToCommunity(patch, input.community_id)
     this.assertPatchStatusForAction(patch, ['VALIDATED'], 'approved')
     if (input.actor_role !== 'admin') {
@@ -248,12 +235,16 @@ export class CommunityConfigService {
     })
 
     const updated = await this.deps.configRepo.updatePatch(patch.id, {
+      ...(normalizationUpdate ?? {}),
       status: 'APPROVED',
+      risk_level: patch.risk_level,
+      proposed_rules_json: patch.proposed_rules_json,
       approved_by_user_id: input.actor_user_id,
       approved_at: new Date(),
       rejected_reason: null,
     })
     if (!updated) throw new NotFoundError('CommunityConfigPatch', patch.id)
+    const normalizedUpdated = normalizeCommunityConfigPatchRecord(updated)
 
     this.deps.eventRepo.create({
       event_type: 'COMMUNITY_CONFIG_APPROVED',
@@ -269,7 +260,7 @@ export class CommunityConfigService {
       },
     })
 
-    return updated
+    return normalizedUpdated
   }
 
   async rejectProposal(input: {
@@ -279,8 +270,9 @@ export class CommunityConfigService {
     actor_role: 'admin' | 'user'
     reason?: string
   }): Promise<CommunityConfigPatch> {
-    const patch = await this.deps.configRepo.findPatchById(input.proposal_id)
-    if (!patch) throw new NotFoundError('CommunityConfigPatch', input.proposal_id)
+    const rawPatch = await this.deps.configRepo.findPatchById(input.proposal_id)
+    if (!rawPatch) throw new NotFoundError('CommunityConfigPatch', input.proposal_id)
+    const { patch, normalizationUpdate } = await this.normalizePatchForEvaluation(rawPatch)
     this.assertPatchBelongsToCommunity(patch, input.community_id)
     this.assertPatchStatusForAction(patch, ['PROPOSED', 'VALIDATED'], 'rejected')
     if (input.actor_role !== 'admin') {
@@ -295,12 +287,16 @@ export class CommunityConfigService {
     })
 
     const updated = await this.deps.configRepo.updatePatch(patch.id, {
+      ...(normalizationUpdate ?? {}),
       status: 'REJECTED',
+      risk_level: patch.risk_level,
+      proposed_rules_json: patch.proposed_rules_json,
       approved_by_user_id: input.actor_user_id,
       approved_at: new Date(),
       rejected_reason: input.reason ?? 'rejected_by_admin',
     })
     if (!updated) throw new NotFoundError('CommunityConfigPatch', patch.id)
+    const normalizedUpdated = normalizeCommunityConfigPatchRecord(updated)
 
     this.deps.eventRepo.create({
       event_type: 'COMMUNITY_CONFIG_REJECTED',
@@ -316,7 +312,7 @@ export class CommunityConfigService {
       },
     })
 
-    return updated
+    return normalizedUpdated
   }
 
   async applyProposal(input: {
@@ -326,15 +322,19 @@ export class CommunityConfigService {
     actor_role: 'admin' | 'user'
     effective_at?: Date | null
   }): Promise<{ patch: CommunityConfigPatch; version: CommunityConfigVersion | null }> {
-    const patch = await this.deps.configRepo.findPatchById(input.proposal_id)
-    if (!patch) throw new NotFoundError('CommunityConfigPatch', input.proposal_id)
+    const rawPatch = await this.deps.configRepo.findPatchById(input.proposal_id)
+    if (!rawPatch) throw new NotFoundError('CommunityConfigPatch', input.proposal_id)
+    const { patch, normalizationUpdate } = await this.normalizePatchForEvaluation(rawPatch)
     this.assertPatchBelongsToCommunity(patch, input.community_id)
     this.assertPatchApplyAllowed(patch, input.actor_role)
 
     const effectiveAt = input.effective_at ?? null
     if (effectiveAt && isFutureDate(effectiveAt)) {
       const scheduled = await this.deps.configRepo.updatePatch(patch.id, {
+        ...(normalizationUpdate ?? {}),
         status: 'SCHEDULED',
+        risk_level: patch.risk_level,
+        proposed_rules_json: patch.proposed_rules_json,
         effective_at: effectiveAt,
         meta: {
           ...(patch.meta ?? {}),
@@ -343,7 +343,7 @@ export class CommunityConfigService {
         },
       })
       if (!scheduled) throw new NotFoundError('CommunityConfigPatch', patch.id)
-      return { patch: scheduled, version: null }
+      return { patch: normalizeCommunityConfigPatchRecord(scheduled), version: null }
     }
 
     const result = await this.applyProposalNow({
@@ -374,13 +374,17 @@ export class CommunityConfigService {
     let failed = 0
     let exhausted = 0
 
-    for (const patch of duePatches) {
+    for (const duePatch of duePatches) {
+      const { patch, normalizationUpdate } = await this.normalizePatchForEvaluation(duePatch)
       const previousRetryCount = getRetryCount(patch.meta)
       if (previousRetryCount >= maxRetries) {
         exhausted += 1
         failed += 1
         await this.deps.configRepo.updatePatch(patch.id, {
+          ...(normalizationUpdate ?? {}),
           status: 'REJECTED',
+          risk_level: patch.risk_level,
+          proposed_rules_json: patch.proposed_rules_json,
           rejected_reason: 'scheduler_retry_exhausted',
           meta: {
             ...(patch.meta ?? {}),
@@ -428,6 +432,7 @@ export class CommunityConfigService {
           exhausted += 1
         }
         await this.deps.configRepo.updatePatch(patch.id, {
+          ...(normalizationUpdate ?? {}),
           ...(exhaustedNow
             ? {
                 status: 'REJECTED',
@@ -437,6 +442,8 @@ export class CommunityConfigService {
                 status: 'SCHEDULED',
                 effective_at: nextRetryAt,
               }),
+          risk_level: patch.risk_level,
+          proposed_rules_json: patch.proposed_rules_json,
           meta: {
             ...(patch.meta ?? {}),
             scheduler_retry_count: retryCount,
@@ -483,12 +490,14 @@ export class CommunityConfigService {
     if (input.actor_role !== 'admin') {
       throw new ForbiddenError('Only admin can rollback community config')
     }
-    const targetVersion = await this.deps.configRepo.findVersionById(input.version_id)
+    const rawTargetVersion = await this.deps.configRepo.findVersionById(input.version_id)
+    const targetVersion = rawTargetVersion ? normalizeCommunityConfigVersionRecord(rawTargetVersion) : null
     if (!targetVersion || targetVersion.community_id !== input.community_id) {
       throw new NotFoundError('CommunityConfigVersion', input.version_id)
     }
 
-    const latest = await this.deps.configRepo.findLatestVersionByCommunity(input.community_id)
+    const latestRaw = await this.deps.configRepo.findLatestVersionByCommunity(input.community_id)
+    const latest = latestRaw ? normalizeCommunityConfigVersionRecord(latestRaw) : null
     if (latest && latest.status === 'ACTIVE') {
       await this.deps.configRepo.updateVersion(latest.id, {
         status: 'ROLLED_BACK',
@@ -545,7 +554,10 @@ export class CommunityConfigService {
       this.deps.configRepo.listVersionsByCommunity(communityId),
       this.deps.configRepo.listPatchesByCommunity(communityId),
     ])
-    return { versions, patches }
+    return {
+      versions: versions.map((item) => normalizeCommunityConfigVersionRecord(item)),
+      patches: patches.map((item) => normalizeCommunityConfigPatchRecord(item)),
+    }
   }
 
   private assertPatchApplyAllowed(patch: CommunityConfigPatch, actorRole: 'admin' | 'user'): void {
@@ -594,7 +606,8 @@ export class CommunityConfigService {
     const community = this.deps.communityRepo.findById(patch.community_id)
     if (!community) throw new NotFoundError('Community', patch.community_id)
 
-    const latest = await this.deps.configRepo.findLatestVersionByCommunity(patch.community_id)
+    const latestRaw = await this.deps.configRepo.findLatestVersionByCommunity(patch.community_id)
+    const latest = latestRaw ? normalizeCommunityConfigVersionRecord(latestRaw) : null
     if (latest && latest.status === 'ACTIVE') {
       await this.deps.configRepo.updateVersion(latest.id, {
         status: 'RETIRED',
@@ -602,7 +615,9 @@ export class CommunityConfigService {
     }
 
     const nextVersionNumber = (latest?.version ?? 0) + 1
-    const nextRules = (patch.proposed_rules_json ?? community.rules_json ?? {}) as Record<string, unknown>
+    const nextRules = normalizeCommunityConfigRules(
+      (patch.proposed_rules_json ?? community.rules_json ?? {}) as Record<string, unknown>,
+    )
 
     const updatedCommunity = this.deps.communityRepo.update(patch.community_id, {
       rules_json: nextRules,
@@ -627,6 +642,8 @@ export class CommunityConfigService {
 
     const updatedPatch = await this.deps.configRepo.updatePatch(patch.id, {
       status: 'APPLIED',
+      risk_level: patch.risk_level,
+      proposed_rules_json: nextRules,
       effective_at: input.effective_at ?? patch.effective_at ?? input.applied_at,
       applied_version_id: version.id,
       applied_at: input.applied_at,
@@ -636,6 +653,8 @@ export class CommunityConfigService {
       },
     })
     if (!updatedPatch) throw new NotFoundError('CommunityConfigPatch', patch.id)
+    const normalizedUpdatedPatch = normalizeCommunityConfigPatchRecord(updatedPatch)
+    const normalizedVersion = normalizeCommunityConfigVersionRecord(version)
 
     this.deps.eventRepo.create({
       event_type: 'COMMUNITY_CONFIG_APPLIED',
@@ -647,8 +666,8 @@ export class CommunityConfigService {
       correlation_id: patch.id,
       payload_json: {
         patch_id: patch.id,
-        version_id: version.id,
-        version: version.version,
+        version_id: normalizedVersion.id,
+        version: normalizedVersion.version,
       },
     })
 
@@ -663,13 +682,53 @@ export class CommunityConfigService {
         correlation_id: patch.id,
         payload_json: {
           patch_id: patch.id,
-          version_id: version.id,
+          version_id: normalizedVersion.id,
           component,
           state: 'activated',
         },
       })
     }
 
-    return { patch: updatedPatch, version }
+    return { patch: normalizedUpdatedPatch, version: normalizedVersion }
+  }
+
+  private async normalizePatchForEvaluation(
+    patch: CommunityConfigPatch,
+  ): Promise<{ patch: CommunityConfigPatch; normalizationUpdate?: UpdateCommunityConfigPatchInput }> {
+    const normalizedPatch = normalizeCommunityConfigPatchRecord(patch)
+    const proposedRules = normalizedPatch.proposed_rules_json ?? normalizeCommunityConfigRules(
+      deepMerge(await this.resolvePatchBaseRules(normalizedPatch), normalizedPatch.patch_json) as Record<string, unknown>,
+    )
+    const nextPatch: CommunityConfigPatch = {
+      ...normalizedPatch,
+      proposed_rules_json: proposedRules,
+      risk_level: inferCommunityConfigRiskLevel(normalizedPatch.patch_json, normalizedPatch.risk_level),
+    }
+
+    const normalizationUpdate: UpdateCommunityConfigPatchInput = {}
+    if (patch.risk_level !== nextPatch.risk_level) {
+      normalizationUpdate.risk_level = nextPatch.risk_level
+    }
+    if (!isDeepStrictEqual(patch.proposed_rules_json ?? null, proposedRules)) {
+      normalizationUpdate.proposed_rules_json = proposedRules
+    }
+
+    return {
+      patch: nextPatch,
+      normalizationUpdate: Object.keys(normalizationUpdate).length > 0 ? normalizationUpdate : undefined,
+    }
+  }
+
+  private async resolvePatchBaseRules(patch: Pick<CommunityConfigPatch, 'community_id' | 'base_version_id'>): Promise<Record<string, unknown>> {
+    if (patch.base_version_id) {
+      const baseVersion = await this.deps.configRepo.findVersionById(patch.base_version_id)
+      if (baseVersion) {
+        return normalizeCommunityConfigRules(baseVersion.rules_json)
+      }
+    }
+
+    const community = this.deps.communityRepo.findById(patch.community_id)
+    if (!community) throw new NotFoundError('Community', patch.community_id)
+    return normalizeCommunityConfigRules((community.rules_json ?? {}) as Record<string, unknown>)
   }
 }

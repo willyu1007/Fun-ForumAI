@@ -20,7 +20,7 @@ const stageRoleSpecSchema = z.object({
 }).strict()
 
 const stageAllocatorSchema = z.object({
-  community_max_agents: z.number().int().min(1).max(64).default(8),
+  community_max_agents: z.number().int().min(1).max(64).default(20),
   thread_max_agents: z.number().int().min(1).max(256).default(20),
   cooldown_seconds: z.number().int().min(0).max(3600).default(60),
   max_actions_per_hour: z.number().int().min(1).max(1000).default(30),
@@ -54,7 +54,7 @@ const stageAllocatorSchema = z.object({
     thread_cooldown_seconds: 600,
   }),
 }).strict().default({
-  community_max_agents: 8,
+  community_max_agents: 20,
   thread_max_agents: 20,
   cooldown_seconds: 60,
   max_actions_per_hour: 30,
@@ -277,7 +277,7 @@ export const AVAILABILITY_FALLBACK_STAGE_SPEC_V1: StageSpecV1 = stageSpecV1Schem
     },
   },
   allocator: {
-    community_max_agents: 8,
+    community_max_agents: 20,
     thread_max_agents: 20,
     cooldown_seconds: 60,
     max_actions_per_hour: 30,

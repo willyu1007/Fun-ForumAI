@@ -45,7 +45,7 @@ describe('StageSpecV1', () => {
     expect(parsed.aftershow.threshold.audience_comments).toBe(30)
     expect(parsed.aftershow.threshold.human_vote_score).toBe(10)
     expect(parsed.aftershow.periodic.enabled).toBe(false)
-    expect(parsed.allocator.community_max_agents).toBe(8)
+    expect(parsed.allocator.community_max_agents).toBe(20)
     expect(parsed.human_participation.mode).toBe('A')
     expect(parsed.incubation.enabled).toBe(false)
   })

@@ -773,7 +773,11 @@ describe('E2E: Control Plane (human auth)', () => {
   it('Control Plane config flow supports proposal -> validate -> approve -> apply -> history -> rollback', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     const originalControlPlane = featureFlags.controlPlaneConfigV1
+    const originalAftershow = featureFlags.aftershowV1
+    const originalAudienceZone = featureFlags.audienceZoneV1
     featureFlags.controlPlaneConfigV1 = true
+    featureFlags.aftershowV1 = true
+    featureFlags.audienceZoneV1 = true
 
     try {
       const community = await createTestCommunity({
@@ -792,7 +796,7 @@ describe('E2E: Control Plane (human auth)', () => {
             aftershow: {
               mode: 'THRESHOLD',
               threshold: {
-                audience_comments: 5,
+                audience_comments: 1,
                 human_vote_score: 1,
               },
             },
@@ -801,6 +805,18 @@ describe('E2E: Control Plane (human auth)', () => {
         })
       expect(proposalRes.status).toBe(201)
       const proposalId = proposalRes.body.data.id as string
+      expect(proposalRes.body.data.patch_json).toEqual({
+        stage_spec_v1: {
+          aftershow: {
+            mode: 'THRESHOLD',
+            threshold: {
+              audience_comments: 1,
+              human_vote_score: 1,
+            },
+          },
+        },
+      })
+      expect(proposalRes.body.data.risk_level).toBe('HIGH')
 
       const validateRes = await request(app)
         .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/validate`)
@@ -828,12 +844,81 @@ describe('E2E: Control Plane (human auth)', () => {
       expect(applyRes.status).toBe(200)
       const versionId = applyRes.body.data.version.id as string
 
+      const configRes = await request(app)
+        .get(`/v1/communities/${community.id}/config`)
+        .set('Authorization', `Bearer ${adminToken}`)
+      expect(configRes.status).toBe(200)
+      expect(configRes.body.data.rules_json.stage_spec_v1.aftershow).toMatchObject({
+        mode: 'THRESHOLD',
+        threshold: {
+          audience_comments: 1,
+          human_vote_score: 1,
+        },
+      })
+      expect(configRes.body.data.rules_json).not.toHaveProperty('aftershow')
+
       const historyRes = await request(app)
         .get(`/v1/communities/${community.id}/config/history`)
         .set('Authorization', `Bearer ${adminToken}`)
       expect(historyRes.status).toBe(200)
       expect(Array.isArray(historyRes.body.data.versions)).toBe(true)
       expect(Array.isArray(historyRes.body.data.patches)).toBe(true)
+      const appliedPatch = (historyRes.body.data.patches as Array<{
+        id: string
+        patch_json: Record<string, unknown>
+      }>).find((item) => item.id === proposalId)
+      expect(appliedPatch?.patch_json).toEqual({
+        stage_spec_v1: {
+          aftershow: {
+            mode: 'THRESHOLD',
+            threshold: {
+              audience_comments: 1,
+              human_vote_score: 1,
+            },
+          },
+        },
+      })
+
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Config Flow Aftershow Agent' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: agentId,
+        run_id: `run-config-aftershow-${Date.now()}`,
+        community_id: community.id,
+        title: 'Config flow runtime target',
+        body: 'aftershow runtime should observe normalized control-plane config',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      const blockedAutoTriggerRes = await request(app)
+        .post(`/v1/posts/${postId}/aftershow/trigger`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ mode: 'AUTO', force: false })
+      expect(blockedAutoTriggerRes.status).toBe(201)
+      expect(blockedAutoTriggerRes.body.data.run.status).toBe('SKIPPED')
+      expect(blockedAutoTriggerRes.body.data.reason).toBe('threshold_not_met')
+      expect(blockedAutoTriggerRes.body.data.audience_message_count).toBe(0)
+
+      const audienceRes = await request(app)
+        .post(`/v1/posts/${postId}/audience-messages`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ body: 'One audience message should now satisfy the aftershow threshold.' })
+      expect(audienceRes.status).toBe(201)
+
+      const autoTriggerRes = await request(app)
+        .post(`/v1/posts/${postId}/aftershow/trigger`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ mode: 'AUTO', force: false })
+      expect(autoTriggerRes.status).toBe(201)
+      expect(autoTriggerRes.body.data.run.status).toBe('CREATED')
+      expect(autoTriggerRes.body.data.reason).toBe('triggered')
+      expect(autoTriggerRes.body.data.audience_message_count).toBe(1)
 
       const rollbackRes = await request(app)
         .post(`/v1/communities/${community.id}/config/rollback`)
@@ -856,6 +941,126 @@ describe('E2E: Control Plane (human auth)', () => {
           },
         })
       expect(legacyProposalRoute.status).toBe(404)
+    } finally {
+      featureFlags.controlPlaneConfigV1 = originalControlPlane
+      featureFlags.aftershowV1 = originalAftershow
+      featureFlags.audienceZoneV1 = originalAudienceZone
+    }
+  })
+
+  it('Control Plane config rejects allocator configs where thread_max_agents exceeds community_max_agents', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalControlPlane = featureFlags.controlPlaneConfigV1
+    featureFlags.controlPlaneConfigV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Allocator Guard Community',
+        slug: `allocator-guard-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: DEFAULT_STAGE_SPEC_V1,
+        },
+      })
+
+      const proposalRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          patch: {
+            stage_spec_v1: {
+              allocator: {
+                community_max_agents: 1,
+                thread_max_agents: 10,
+              },
+            },
+          },
+        })
+      expect(proposalRes.status).toBe(201)
+
+      const proposalId = proposalRes.body.data.id as string
+      const validateRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/validate`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({})
+
+      expect(validateRes.status).toBe(200)
+      expect(validateRes.body.data.patch.status).toBe('REJECTED')
+      expect(validateRes.body.data.validation_errors).toContain(
+        'stage_spec_v1.allocator.thread_max_agents must be <= stage_spec_v1.allocator.community_max_agents',
+      )
+    } finally {
+      featureFlags.controlPlaneConfigV1 = originalControlPlane
+    }
+  })
+
+  it('Control Plane config keeps audience raw-read changes behind admin approval and admin apply', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalControlPlane = featureFlags.controlPlaneConfigV1
+    featureFlags.controlPlaneConfigV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Audience Raw Read Guard Community',
+        slug: `audience-raw-read-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: DEFAULT_STAGE_SPEC_V1,
+        },
+      })
+
+      const proposalRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          patch: {
+            stage_spec_v1: {
+              human_participation: {
+                agent_reads_audience_zone: true,
+              },
+            },
+          },
+          risk_level: 'LOW',
+        })
+      expect(proposalRes.status).toBe(201)
+      expect(proposalRes.body.data.risk_level).toBe('HIGH')
+      const proposalId = proposalRes.body.data.id as string
+
+      const validateRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/validate`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({})
+      expect(validateRes.status).toBe(200)
+      expect(validateRes.body.data.patch.status).toBe('VALIDATED')
+      expect(validateRes.body.data.patch.risk_level).toBe('HIGH')
+
+      const blockedBeforeApprove = await request(app)
+        .post(`/v1/communities/${community.id}/config/apply`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ proposal_id: proposalId })
+      expect(blockedBeforeApprove.status).toBe(400)
+
+      const approveRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/approve`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+      expect(approveRes.status).toBe(200)
+
+      const blockedUserApply = await request(app)
+        .post(`/v1/communities/${community.id}/config/apply`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ proposal_id: proposalId })
+      expect(blockedUserApply.status).toBe(403)
+
+      const adminApply = await request(app)
+        .post(`/v1/communities/${community.id}/config/apply`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ proposal_id: proposalId })
+      expect(adminApply.status).toBe(200)
+
+      const configRes = await request(app)
+        .get(`/v1/communities/${community.id}/config`)
+        .set('Authorization', `Bearer ${adminToken}`)
+      expect(configRes.status).toBe(200)
+      expect(configRes.body.data.rules_json.stage_spec_v1.human_participation.agent_reads_audience_zone).toBe(true)
     } finally {
       featureFlags.controlPlaneConfigV1 = originalControlPlane
     }

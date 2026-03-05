@@ -47,3 +47,46 @@
   - `src/backend/routes/__tests__/e2e-control-plane.test.ts`
     - 新增跨社区 proposal 操作应 404
     - 新增非法状态迁移（未 validate 直接 approve、REJECTED 后 revalidate/reapprove）应 400
+
+## 2026-03-06（P1 规范化与审批门禁修复）
+- 新增统一配置规范化 helper：
+  - `src/backend/services/community-config-normalization.ts`
+  - 兼容 legacy 顶层治理字段，但持久化、校验、审批、apply 一律收敛到 `rules_json.stage_spec_v1`
+  - 同一 patch 混用 `stage_spec_v1` 与 legacy 顶层治理字段时抛 `VALIDATION_ERROR`
+- `src/backend/services/community-config-service.ts`
+  - `createProposal` 改为先规范化 patch，再计算 `proposed_rules_json`
+  - `validate/approve/reject/apply/processDueScheduled/rollback/getCurrentConfig/getHistory` 全部切换到规范化视图
+  - 风险分级改为规范化路径规则：命中 `stage_spec_v1` 或顶层 `notifications` 一律 `HIGH`，显式 `LOW` 不能降级
+  - mixed-shape 历史数据继续以 `stage_spec_v1` 为持久真源；legacy 顶层治理字段只用于补齐缺失子树，不覆盖冲突值
+- 新增数据修复迁移：
+  - `prisma/migrations/20260306090000_t054_control_plane_stage_spec_normalization/migration.sql`
+  - 规范化 `communities.rules_json`
+  - 规范化 `community_config_versions.rules_json`
+  - 规范化 `community_config_patches.patch_json / proposed_rules_json`
+  - 同步回填 patch `risk_level`
+- 扩展回归测试：
+  - `src/backend/services/__tests__/community-config-service.test.ts`
+    - 覆盖 legacy `aftershow` patch 规范化、`agent_reads_audience_zone` 高风险判定、显式 `LOW` 降级保护、混合形状拒绝
+  - `src/backend/routes/__tests__/e2e-control-plane.test.ts`
+    - 升级 control-plane flow 用例，验证 apply 后 runtime 真正读取新的 `stage_spec_v1.aftershow`
+    - 新增 Audience Zone raw-read patch 必须 admin approve + admin apply 的门禁回归
+- 扩展隔离 Pg 冒烟：
+  - `scripts/e2e-pg-isolated.mjs`
+  - 在临时数据库内写入 legacy 形状历史数据，重放规范化 migration，并断言缺失 `stage_spec_v1` 子树被补齐、legacy 重复键被移除、patch 高风险分类被正确提升
+
+## 2026-03-06（review follow-up 收口）
+- allocator 默认值与全量校验重新对齐：
+  - `src/backend/stage/stage-spec.ts`
+    - `allocator.community_max_agents` 默认值从 `8` 收敛到 `20`
+    - `DEFAULT_STAGE_SPEC_V1` 与 `AVAILABILITY_FALLBACK_STAGE_SPEC_V1` 同步使用 `20 / 20`
+  - `src/backend/services/community-config-service.ts`
+    - 恢复基于最终 `proposed_rules_json.stage_spec_v1.allocator` 的一致性校验
+    - `thread_max_agents > community_max_agents` 时在 validate 阶段直接 `REJECTED`
+- aftershow runtime smoke 改成真实 audience-path 证明：
+  - `src/backend/routes/__tests__/e2e-control-plane.test.ts`
+    - aftershow patch 改为 `audience_comments=1`、`human_vote_score=1`
+    - 新增无 audience message 时 `AUTO` 触发应返回 `threshold_not_met`
+    - 保留发 1 条 audience message 后成功触发的正向断言
+- mixed-shape 历史修复表述收口：
+  - `prisma/migrations/20260306090000_t054_control_plane_stage_spec_normalization/migration.sql`
+    - 明确注释：`stage_spec_v1` 是唯一持久真源，legacy 顶层治理字段只补齐缺失子树
