@@ -14,7 +14,7 @@ CLAUDE.md
 
 # Temporary files
 .ai/.tmp/
-var/inclination-assets/
+var/
 
 # Init runtime artifacts (generated)
 init/START-HERE.md

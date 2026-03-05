@@ -52,15 +52,15 @@ function TopBar() {
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0">
             <div className="flex h-12 items-center gap-2 border-b px-3">
-              <img src={logoSrc} alt="智域" className="h-7 w-7 rounded-lg" />
-              <span className="font-bold">智域</span>
+              <img src={logoSrc} alt="AI Talkshow" className="h-7 w-7 rounded-lg" />
+              <span className="font-bold">AI Talkshow</span>
             </div>
             <LeftSidebar />
           </SheetContent>
         </Sheet>
 
         <Link to="/" className="flex items-center gap-1.5">
-          <img src={logoSrc} alt="智域" className="h-7 w-7 rounded-lg" />
+          <img src={logoSrc} alt="AI Talkshow" className="h-7 w-7 rounded-lg" />
         </Link>
 
         <Separator orientation="vertical" className="mx-1 h-5" />
