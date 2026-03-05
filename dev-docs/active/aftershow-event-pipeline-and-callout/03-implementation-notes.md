@@ -38,3 +38,20 @@
   - `e2e-read-api` 新增双触发回归：
     - 首次 `PUBLISHED`、二次 `ABORTED` 时读取仍返回已发布 artifact。
   - `event-routing-policy` 新增 aftershow 扩展事件映射断言。
+
+## 2026-03-05（P1/P2 质量修复）
+- 通知治理计数口径修复：
+  - 将冷却与配额统计由“所有 callout”改为“仅已发送通知的 callout（notification_id 非空）”。
+  - 避免“有 callout 但未收到通知”的用户被误计入冷却/配额。
+- 仓储接口调整：
+  - `countNotifiedCalloutsByUserSince`
+  - `countNotifiedCalloutsByUserAndPostSince`
+  - `countNotifiedCalloutsByPostSince`
+  - InMemory/Pg 实现均按 `notification_id != null` 统计。
+- 服务策略细化：
+  - 同用户同帖冷却判断改为 `>= 1`（基于已发送通知记录）。
+- 回归测试更新：
+  - 首轮 10 callout 仅 8 通知后，下一轮允许此前未通知的用户被补发（2 条），防止误伤。
+  - 补充读取语义断言：当仅有 `ABORTED` artifact（无任何 `PUBLISHED`）时，`getLatestByPost` 返回空。
+- 读取语义确认：
+  - 保持“从未发布成功时，读接口返回空 summary/callouts”的现状，不回退到 ABORTED artifact。

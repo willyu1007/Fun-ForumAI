@@ -108,7 +108,7 @@ export class AftershowService {
 
     const startOfDay = toStartOfDay(new Date())
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
-    let postCountThisHour = await this.deps.artifactRepo.countCalloutsByPostSince(input.post_id, oneHourAgo)
+    let postCountThisHour = await this.deps.artifactRepo.countNotifiedCalloutsByPostSince(input.post_id, oneHourAgo)
     const notifiedUsers = new Set<string>()
     let createdCount = 0
 
@@ -118,16 +118,14 @@ export class AftershowService {
       const callout = input.callouts[calloutIndex]
       if (notifiedUsers.has(callout.user_id)) continue
 
-      const recentlyNotifiedOnPost = await this.deps.artifactRepo.countCalloutsByUserAndPostSince(
+      const recentlyNotifiedOnPost = await this.deps.artifactRepo.countNotifiedCalloutsByUserAndPostSince(
         callout.user_id,
         input.post_id,
         new Date(Date.now() - PER_USER_PER_POST_NOTIFICATION_COOLDOWN_MS),
       )
-      // The current artifact's callout is already persisted before notification fanout.
-      // Block only when there is at least one additional recent callout on the same post.
-      if (recentlyNotifiedOnPost > 1) continue
+      if (recentlyNotifiedOnPost >= 1) continue
 
-      const sentToday = await this.deps.artifactRepo.countCalloutsByUserSince(callout.user_id, startOfDay)
+      const sentToday = await this.deps.artifactRepo.countNotifiedCalloutsByUserSince(callout.user_id, startOfDay)
       if (sentToday >= MAX_NOTIFICATIONS_PER_USER_PER_DAY) continue
 
       const notification = await this.deps.notificationRepo.create({

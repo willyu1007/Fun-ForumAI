@@ -27,3 +27,15 @@
 - Pg 模式 aftershow e2e：PASS（`aftershow` 场景通过）。
 - Pg 三步链路脚本：PASS（触发 201 + 读取 200 + 通知 200，最新通知 `type=AFTERSHOW_CALLOUT` 且 `target_id=post_id:artifact_id:callout_index`）。
 - `typecheck`：PASS。
+
+## 2026-03-05（P1/P2 质量修复复测）
+
+### Commands
+1. `pnpm -s vitest run src/backend/services/__tests__/aftershow-service.test.ts`
+2. `pnpm -s vitest run src/backend/routes/__tests__/e2e-read-api.test.ts -t "aftershow"`
+3. `pnpm -s typecheck`
+
+### Result
+- `aftershow-service`：PASS（14/14，含“首轮未通知用户可在下一轮被通知”与“无已发布时返回空”的回归断言）。
+- `e2e-read-api` aftershow 子集：PASS（读取语义回归保持稳定）。
+- `typecheck`：PASS。

@@ -644,6 +644,42 @@ describe('AftershowService', () => {
     }
   })
 
+  it('getLatestByPost returns empty when no published artifact exists', async () => {
+    const postRepo = new InMemoryPostRepository()
+    const humanVoteRepo = new InMemoryHumanVoteRepository()
+    const communityRepo = new InMemoryCommunityRepository()
+    const runRepo = new InMemoryAftershowRunRepository()
+    const audienceRepo = new InMemoryAudienceRepository()
+    const agentRepo = new InMemoryAgentRepository()
+    const artifactRepo = new InMemoryAftershowArtifactRepository()
+
+    const now = new Date()
+    await artifactRepo.createArtifact({
+      run_id: 'run-aborted-only',
+      post_id: 'post-aborted-only',
+      community_id: 'comm-aborted-only',
+      status: 'ABORTED',
+      window_start: now,
+      window_end: now,
+      summary_text: 'aborted artifact',
+      meta: { reason: 'publish_rate_limited' },
+    })
+
+    const service = createService({
+      postRepo,
+      humanVoteRepo,
+      audienceRepo,
+      agentRepo,
+      communityRepo,
+      runRepo,
+      artifactRepo,
+    })
+
+    const latest = await service.getLatestByPost('post-aborted-only')
+    expect(latest.artifact).toBeNull()
+    expect(latest.callouts).toEqual([])
+  })
+
   it('emits extended aftershow pipeline events in order', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     const originalPipelineFlag = featureFlags.aftershowEventPipelineV1
@@ -725,7 +761,7 @@ describe('AftershowService', () => {
     }
   })
 
-  it('enforces max unique users per aftershow and per-user-per-post cooldown for notifications', async () => {
+  it('enforces max unique users per aftershow while allowing previously-unnotified users on next run', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     const originalPipelineFlag = featureFlags.aftershowEventPipelineV1
     featureFlags.aftershowEventPipelineV1 = true
@@ -788,6 +824,7 @@ describe('AftershowService', () => {
       expect(first.callouts.length).toBe(10)
       expect(first.notifications_created).toBe(8)
       expect(notificationRepo.created.length).toBe(8)
+      const firstBatchNotifiedUsers = new Set(notificationRepo.created.map((item) => item.user_id))
 
       const artifacts = (artifactRepo as unknown as {
         artifacts: Map<string, { created_at: Date }>
@@ -802,8 +839,14 @@ describe('AftershowService', () => {
         force: true,
       })
       expect(second.artifact?.status).toBe('PUBLISHED')
-      expect(second.notifications_created).toBe(0)
-      expect(notificationRepo.created.length).toBe(8)
+      expect(second.notifications_created).toBe(2)
+      expect(notificationRepo.created.length).toBe(10)
+
+      const secondBatch = notificationRepo.created.slice(8)
+      expect(secondBatch).toHaveLength(2)
+      for (const item of secondBatch) {
+        expect(firstBatchNotifiedUsers.has(item.user_id)).toBe(false)
+      }
     } finally {
       featureFlags.aftershowEventPipelineV1 = originalPipelineFlag
     }
