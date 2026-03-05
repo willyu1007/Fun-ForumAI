@@ -22,6 +22,11 @@ export {
   type CommunityConfigSchedulerDeps,
   type CommunityConfigSchedulerConfig,
 } from './community-config-scheduler.js'
+export {
+  RoleAssignmentExpiryScheduler,
+  type RoleAssignmentExpirySchedulerDeps,
+  type RoleAssignmentExpirySchedulerConfig,
+} from './role-assignment-expiry-scheduler.js'
 export type {
   AgentPersona,
   ExecutionContext,

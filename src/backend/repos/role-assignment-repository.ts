@@ -10,6 +10,7 @@ export interface RoleAssignmentRepository {
   update(id: string, input: UpdateRoleAssignmentInput): Promise<RoleAssignment | null>
   findById(id: string): RoleAssignment | null
   listActiveByScope(scope: RoleAssignmentScope, scopeId: string): RoleAssignment[]
+  listDueForExpiration(now: Date, limit: number): Promise<RoleAssignment[]>
   listByPost(postId: string): RoleAssignment[]
   findPrimaryForAgent(input: {
     agent_id: string
@@ -57,6 +58,7 @@ export class InMemoryRoleAssignmentRepository implements RoleAssignmentRepositor
   async update(id: string, input: UpdateRoleAssignmentInput): Promise<RoleAssignment | null> {
     const row = this.rows.get(id)
     if (!row) return null
+    if (input.expected_status !== undefined && row.status !== input.expected_status) return null
     if (input.role !== undefined) row.role = input.role
     if (input.status !== undefined) row.status = input.status
     if (input.expires_at !== undefined) row.expires_at = input.expires_at
@@ -76,6 +78,20 @@ export class InMemoryRoleAssignmentRepository implements RoleAssignmentRepositor
     return Array.from(this.rows.values())
       .filter((row) => row.scope === scope && row.scope_id === scopeId && isActive(row, now))
       .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
+  }
+
+  async listDueForExpiration(now: Date, limit: number): Promise<RoleAssignment[]> {
+    return Array.from(this.rows.values())
+      .filter((row) =>
+        row.status === 'ACTIVE'
+        && row.expires_at !== null
+        && row.expires_at.getTime() <= now.getTime())
+      .sort((a, b) => {
+        const aTs = a.expires_at?.getTime() ?? Number.MAX_SAFE_INTEGER
+        const bTs = b.expires_at?.getTime() ?? Number.MAX_SAFE_INTEGER
+        return aTs - bTs
+      })
+      .slice(0, limit)
   }
 
   listByPost(postId: string): RoleAssignment[] {

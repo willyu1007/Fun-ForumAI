@@ -9,6 +9,7 @@ import {
   pprRefreshScheduler,
   cultureDigestScheduler,
   communityConfigScheduler,
+  roleAssignmentExpiryScheduler,
   closeRuntimeInfrastructure,
 } from './container.js'
 
@@ -41,6 +42,7 @@ async function main() {
     pprRefreshScheduler?.stop()
     cultureDigestScheduler?.stop()
     communityConfigScheduler?.stop()
+    roleAssignmentExpiryScheduler?.stop()
 
     server.close(() => {
       Promise.allSettled([

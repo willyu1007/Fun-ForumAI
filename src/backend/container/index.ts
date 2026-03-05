@@ -7,6 +7,7 @@ import { createAllocator } from './allocator.js'
 import { createNurtureEngines } from './nurture.js'
 import { createRuntime } from './runtime.js'
 import { CommunityConfigScheduler } from '../runtime/community-config-scheduler.js'
+import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry-scheduler.js'
 
 // ─── 1. Repositories ────────────────────────────────────────
 const { repos, hydratables } = await createRepositories(config.db.usePrisma)
@@ -44,6 +45,18 @@ const communityConfigScheduler = new CommunityConfigScheduler(
     maxRetries: config.runtime.communityConfigSchedulerMaxRetries,
     backoffBaseMs: config.runtime.communityConfigSchedulerBackoffBaseMs,
     backoffMaxMs: config.runtime.communityConfigSchedulerBackoffMaxMs,
+  },
+)
+
+const roleAssignmentExpiryScheduler = new RoleAssignmentExpiryScheduler(
+  {
+    service: core.roleAssignmentService,
+    leaderElector: infra.leaderElectors.roleAssignmentExpiryScheduler,
+  },
+  {
+    intervalMs: config.runtime.roleAssignmentExpiryIntervalMs,
+    startupDelayMs: config.runtime.roleAssignmentExpiryStartupDelayMs,
+    batchLimit: config.runtime.roleAssignmentExpiryBatchLimit,
   },
 )
 
@@ -200,7 +213,7 @@ export const achievementsScheduler = nurture.achievementsScheduler
 export const cultureDigestScheduler = nurture.cultureDigestScheduler
 export const privateChannelServices = nurture.privateChannelServices
 export const privateChannelScheduler = nurture.privateChannelScheduler
-export { communityConfigScheduler }
+export { communityConfigScheduler, roleAssignmentExpiryScheduler }
 
 export const agentExecutor = rt.agentExecutor
 export const postScheduler = rt.postScheduler

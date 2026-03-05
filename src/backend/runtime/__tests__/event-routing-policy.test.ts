@@ -21,6 +21,37 @@ describe('event-routing-policy', () => {
     }
   })
 
+  it('maps role assignment control events without allocator enqueue', () => {
+    const controlEvents = [
+      'ROLE_ASSIGNED',
+      'ROLE_REVOKED',
+      'ROLE_EXPIRED',
+    ]
+
+    for (const eventType of controlEvents) {
+      const rule = getEventRouteRule(eventType)
+      expect(rule).toBeTruthy()
+      expect(rule?.plane).toBe('CONTROL')
+      expect(rule?.enqueue_allocator).toBe(false)
+    }
+  })
+
+  it('maps aftershow runtime events without allocator enqueue', () => {
+    const runtimeEvents = [
+      'AFTERSHOW_DUE',
+      'AFTERSHOW_SNAPSHOT_CREATED',
+      'AFTERSHOW_COMPOSED',
+      'AFTERSHOW_PUBLISHED',
+      'AFTERSHOW_ABORTED',
+    ]
+
+    for (const eventType of runtimeEvents) {
+      const rule = getEventRouteRule(eventType)
+      expect(rule).toBeTruthy()
+      expect(rule?.plane).toBe('RUNTIME')
+      expect(rule?.enqueue_allocator).toBe(false)
+    }
+  })
   it('does not retain legacy COMMUNITY_CONFIG_COMPONENT_ACK rule', () => {
     expect(getEventRouteRule('COMMUNITY_CONFIG_COMPONENT_ACK')).toBeNull()
   })

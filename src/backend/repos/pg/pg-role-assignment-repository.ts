@@ -80,19 +80,37 @@ export class PgRoleAssignmentRepository implements RoleAssignmentRepository {
   }
 
   async update(id: string, input: UpdateRoleAssignmentInput): Promise<RoleAssignment | null> {
-    const row = await this.prisma.roleAssignment.update({
-      where: { id },
-      data: {
-        ...(input.role !== undefined ? { role: input.role } : {}),
-        ...(input.status !== undefined ? { status: input.status } : {}),
-        ...(input.expires_at !== undefined ? { expiresAt: input.expires_at } : {}),
-        ...(input.revoked_at !== undefined ? { revokedAt: input.revoked_at } : {}),
-        ...(input.meta !== undefined
-          ? { metaJson: input.meta ? (input.meta as Prisma.InputJsonValue) : Prisma.DbNull }
-          : {}),
-        updatedAt: new Date(),
-      },
-    }).catch((err) => (err?.code === 'P2025' ? null : Promise.reject(err)))
+    const data = {
+      ...(input.role !== undefined ? { role: input.role } : {}),
+      ...(input.status !== undefined ? { status: input.status } : {}),
+      ...(input.expires_at !== undefined ? { expiresAt: input.expires_at } : {}),
+      ...(input.revoked_at !== undefined ? { revokedAt: input.revoked_at } : {}),
+      ...(input.meta !== undefined
+        ? { metaJson: input.meta ? (input.meta as Prisma.InputJsonValue) : Prisma.DbNull }
+        : {}),
+      updatedAt: new Date(),
+    }
+
+    const row = await (async () => {
+      if (input.expected_status === undefined) {
+        return this.prisma.roleAssignment.update({
+          where: { id },
+          data,
+        }).catch((err) => (err?.code === 'P2025' ? null : Promise.reject(err)))
+      }
+
+      return this.prisma.$transaction(async (tx) => {
+        const updated = await tx.roleAssignment.updateMany({
+          where: {
+            id,
+            status: input.expected_status,
+          },
+          data,
+        })
+        if (updated.count === 0) return null
+        return tx.roleAssignment.findUnique({ where: { id } })
+      })
+    })()
 
     if (!row) return null
     const mapped = toDomain({ ...row, metaJson: row.metaJson })
@@ -113,6 +131,28 @@ export class PgRoleAssignmentRepository implements RoleAssignmentRepository {
         && row.status === 'ACTIVE'
         && (!row.expires_at || row.expires_at.getTime() > now))
       .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
+  }
+
+  async listDueForExpiration(now: Date, limit: number): Promise<RoleAssignment[]> {
+    const rows = await this.prisma.roleAssignment.findMany({
+      where: {
+        status: 'ACTIVE',
+        expiresAt: {
+          not: null,
+          lte: now,
+        },
+      },
+      orderBy: [
+        { expiresAt: 'asc' },
+        { createdAt: 'asc' },
+      ],
+      take: limit,
+    })
+    const mapped = rows.map((row) => toDomain({ ...row, metaJson: row.metaJson }))
+    for (const row of mapped) {
+      this.cache.set(row.id, row)
+    }
+    return mapped
   }
 
   listByPost(postId: string): RoleAssignment[] {

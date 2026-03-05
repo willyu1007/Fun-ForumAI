@@ -100,6 +100,7 @@ export function createCoreServices(deps: {
     communityRepo: repos.communityRepo,
     postRepo: repos.postRepo,
     agentRepo: repos.agentRepo,
+    membershipRepo: repos.agentCommunityMembershipRepo,
     eventRepo: repos.eventRepo,
   })
 

@@ -150,7 +150,6 @@ export class AftershowService {
       mode: stageMode,
       status,
     })
-
     return {
       run,
       threshold_pass: thresholdPass,

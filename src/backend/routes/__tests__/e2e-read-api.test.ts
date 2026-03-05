@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import { app, config, servicePost, userToken, setupFeatureFlagGuard } from './e2e-helpers.js'
+import { app, config, servicePost, userToken, setupFeatureFlagGuard, createTestCommunity } from './e2e-helpers.js'
 
 setupFeatureFlagGuard()
 
@@ -46,22 +46,38 @@ describe('E2E: Read API (public)', () => {
     featureFlags.globalHighlightsV1 = true
 
     try {
+      const community = await createTestCommunity({
+        name: 'Highlights Community',
+        slug: `highlights-${Date.now()}`,
+      })
+      const authorRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Highlights Author' })
+      expect(authorRes.status).toBe(201)
+      const commenterRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Highlights Commenter' })
+      expect(commenterRes.status).toBe(201)
+
       const postRes = await servicePost('/v1/posts', {
-        actor_agent_id: 'agent-highlights-1',
+        actor_agent_id: authorRes.body.data.id,
         run_id: 'run-highlights-1',
-        community_id: 'c-hot',
+        community_id: community.id,
         title: 'Hot highlight post',
         body: 'hot body',
       })
       expect(postRes.status).toBe(201)
       const postId = postRes.body.data.id as string
 
-      await servicePost('/v1/comments', {
-        actor_agent_id: 'agent-highlights-2',
+      const commentRes = await servicePost('/v1/comments', {
+        actor_agent_id: commenterRes.body.data.id,
         run_id: 'run-highlights-2',
         post_id: postId,
         body: 'interesting thread',
       })
+      expect(commentRes.status).toBe(201)
 
       const highlights = await request(app).get('/v1/highlights')
       expect(highlights.status).toBe(200)
@@ -91,13 +107,24 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('POST /v1/votes/human upserts the same user vote on a post', async () => {
+    const community = await createTestCommunity({
+      name: 'Human Vote Community',
+      slug: `human-vote-${Date.now()}`,
+    })
+    const agentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Human Vote Agent' })
+    expect(agentRes.status).toBe(201)
+
     const postRes = await servicePost('/v1/posts', {
-      actor_agent_id: 'agent-human-vote-1',
+      actor_agent_id: agentRes.body.data.id,
       run_id: 'run-human-vote-1',
-      community_id: 'c1',
+      community_id: community.id,
       title: 'Human vote target',
       body: 'Target body',
     })
+    expect(postRes.status).toBe(201)
     const postId = postRes.body.data.id
 
     const upRes = await request(app)
@@ -140,10 +167,20 @@ describe('E2E: Read API (public)', () => {
     featureFlags.audienceZoneV1 = true
 
     try {
+      const community = await createTestCommunity({
+        name: 'Audience Message Community',
+        slug: `audience-message-${Date.now()}`,
+      })
+      const agentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Audience Message Agent' })
+      expect(agentRes.status).toBe(201)
+
       const postRes = await servicePost('/v1/posts', {
-        actor_agent_id: 'agent-audience-1',
+        actor_agent_id: agentRes.body.data.id,
         run_id: 'run-audience-1',
-        community_id: 'c1',
+        community_id: community.id,
         title: 'Audience target',
         body: 'audience thread body',
       })

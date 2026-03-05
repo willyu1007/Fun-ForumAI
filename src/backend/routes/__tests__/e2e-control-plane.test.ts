@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import request from 'supertest'
 import jwt from 'jsonwebtoken'
-import { app, config, servicePost, adminToken, userToken, user2Token, setupFeatureFlagGuard, waitFor } from './e2e-helpers.js'
-import { communityRepo, incubationService, chatService, eventRepo, communityConfigScheduler } from '../../container.js'
+import { app, config, servicePost, adminToken, userToken, user2Token, setupFeatureFlagGuard, waitFor, createTestCommunity } from './e2e-helpers.js'
+import { incubationService, chatService, eventRepo, communityConfigScheduler } from '../../container.js'
 import { DEFAULT_STAGE_SPEC_V1 } from '../../stage/index.js'
 
 setupFeatureFlagGuard()
@@ -44,10 +44,15 @@ describe('E2E: Control Plane (human auth)', () => {
     expect(profile.status).toBe(200)
     expect(profile.body.data.avatar_url).toBe(avatarUrl)
 
+    const community = await createTestCommunity({
+      name: 'Avatar Visibility Community',
+      slug: `avatar-visibility-${Date.now()}`,
+    })
+
     const postRes = await servicePost('/v1/posts', {
       actor_agent_id: agentId,
       run_id: 'run-avatar-1',
-      community_id: 'c1',
+      community_id: community.id,
       title: 'Avatar visibility post',
       body: 'avatar should appear in feed author',
     })
@@ -105,8 +110,8 @@ describe('E2E: Control Plane (human auth)', () => {
     featureFlags.membershipsV1 = true
 
     try {
-      const communityA = communityRepo.create({ name: 'Membership A', slug: `membership-a-${Date.now()}` })
-      const communityB = communityRepo.create({ name: 'Membership B', slug: `membership-b-${Date.now()}` })
+      const communityA = await createTestCommunity({ name: 'Membership A', slug: `membership-a-${Date.now()}` })
+      const communityB = await createTestCommunity({ name: 'Membership B', slug: `membership-b-${Date.now()}` })
 
       const createRes = await request(app)
         .post('/v1/agents')
@@ -119,7 +124,7 @@ describe('E2E: Control Plane (human auth)', () => {
         .set('Authorization', `Bearer ${userToken}`)
         .send({ add: [communityA.id, communityB.id], remove: [], role: 'resident' })
       expect(addRes.status).toBe(200)
-      expect(addRes.body.data.updated.added.sort()).toEqual([communityA.id, communityB.id])
+      expect(addRes.body.data.updated.added.sort()).toEqual([communityA.id, communityB.id].sort())
       expect(addRes.body.data.active_memberships).toHaveLength(2)
 
       const removeRes = await request(app)
@@ -154,7 +159,7 @@ describe('E2E: Control Plane (human auth)', () => {
     featureFlags.membershipStatusV1 = true
 
     try {
-      const community = communityRepo.create({ name: 'Membership Ban', slug: `membership-ban-${Date.now()}` })
+      const community = await createTestCommunity({ name: 'Membership Ban', slug: `membership-ban-${Date.now()}` })
       const createRes = await request(app)
         .post('/v1/agents')
         .set('Authorization', `Bearer ${userToken}`)
@@ -550,7 +555,7 @@ describe('E2E: Control Plane (human auth)', () => {
     expect(ownerAgentRes.status).toBe(201)
     const ownerAgentId = ownerAgentRes.body.data.id as string
 
-    const community = communityRepo.create({
+    const community = await createTestCommunity({
       name: 'Aftershow Permission Community',
       slug: `aftershow-perm-${Date.now()}`,
     })
@@ -689,13 +694,25 @@ describe('E2E: Control Plane (human auth)', () => {
   })
 
   it('POST /v1/admin/moderation/actions works for admin', async () => {
+    const community = await createTestCommunity({
+      name: 'Governance Action Community',
+      slug: `governance-action-${Date.now()}`,
+    })
+    const createAgentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Governance Action Agent' })
+    expect(createAgentRes.status).toBe(201)
+    const agentId = createAgentRes.body.data.id as string
+
     const postRes = await servicePost('/v1/posts', {
-      actor_agent_id: 'agent-gov-1',
+      actor_agent_id: agentId,
       run_id: 'run-gov-1',
-      community_id: 'c1',
+      community_id: community.id,
       title: 'Governance target',
       body: 'Content to moderate.',
     })
+    expect(postRes.status).toBe(201)
     const postId = postRes.body.data.id
 
     const res = await request(app)
@@ -759,7 +776,7 @@ describe('E2E: Control Plane (human auth)', () => {
     featureFlags.controlPlaneConfigV1 = true
 
     try {
-      const community = communityRepo.create({
+      const community = await createTestCommunity({
         name: 'Config Flow Community',
         slug: `config-flow-${Date.now()}`,
         rules_json: {
@@ -850,11 +867,11 @@ describe('E2E: Control Plane (human auth)', () => {
     featureFlags.controlPlaneConfigV1 = true
 
     try {
-      const communityA = communityRepo.create({
+      const communityA = await createTestCommunity({
         name: 'Config Ownership Community A',
         slug: `config-ownership-a-${Date.now()}`,
       })
-      const communityB = communityRepo.create({
+      const communityB = await createTestCommunity({
         name: 'Config Ownership Community B',
         slug: `config-ownership-b-${Date.now()}`,
       })
@@ -900,7 +917,7 @@ describe('E2E: Control Plane (human auth)', () => {
     featureFlags.controlPlaneConfigV1 = true
 
     try {
-      const community = communityRepo.create({
+      const community = await createTestCommunity({
         name: 'Config Status Guard Community',
         slug: `config-status-guard-${Date.now()}`,
         rules_json: {
@@ -966,7 +983,7 @@ describe('E2E: Control Plane (human auth)', () => {
       communityConfigScheduler?.stop()
       communityConfigScheduler?.start()
 
-      const community = communityRepo.create({
+      const community = await createTestCommunity({
         name: 'Config Schedule Community',
         slug: `config-schedule-${Date.now()}`,
         rules_json: {
@@ -1047,10 +1064,12 @@ describe('E2E: Control Plane (human auth)', () => {
   it('Role assignment control-plane endpoints create and update assignments', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
     featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
 
     try {
-      const community = communityRepo.create({
+      const community = await createTestCommunity({
         name: 'Role Assignment Community',
         slug: `role-assignment-${Date.now()}`,
       })
@@ -1060,6 +1079,12 @@ describe('E2E: Control Plane (human auth)', () => {
         .send({ display_name: 'Role Agent' })
       expect(createAgentRes.status).toBe(201)
       const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
 
       const postRes = await servicePost('/v1/posts', {
         actor_agent_id: agentId,
@@ -1094,6 +1119,374 @@ describe('E2E: Control Plane (human auth)', () => {
       expect(patchRes.body.data.status).toBe('REVOKED')
     } finally {
       featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+    }
+  })
+
+  it('Role assignment control-plane endpoints reject non-admin caller with 403', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Role Assignment Permission Guard',
+        slug: `role-assignment-perm-${Date.now()}`,
+      })
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Role Agent Permission Guard' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
+
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: agentId,
+        run_id: `run-role-perm-${Date.now()}`,
+        community_id: community.id,
+        title: 'Role assignment permission target',
+        body: 'role assignment permission content',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      const forbiddenCreateRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          scope: 'POST',
+          scope_id: postId,
+          role: 'aside-host',
+          agent_id: agentId,
+        })
+      expect(forbiddenCreateRes.status).toBe(403)
+
+      const createRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'POST',
+          scope_id: postId,
+          role: 'aside-host',
+          agent_id: agentId,
+        })
+      expect(createRes.status).toBe(201)
+      const assignmentId = createRes.body.data.id as string
+
+      const forbiddenPatchRes = await request(app)
+        .patch(`/v1/communities/${community.id}/role-assignments/${assignmentId}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ status: 'REVOKED', reason: 'non-admin should fail' })
+      expect(forbiddenPatchRes.status).toBe(403)
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+    }
+  })
+
+  it('Role assignment patch returns 404 when assignment does not belong to path community', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+
+    try {
+      const communityA = await createTestCommunity({
+        name: 'Role Assignment A',
+        slug: `role-assignment-a-${Date.now()}`,
+      })
+      const communityB = await createTestCommunity({
+        name: 'Role Assignment B',
+        slug: `role-assignment-b-${Date.now()}`,
+      })
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Role Agent Cross Community' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [communityA.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
+
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: agentId,
+        run_id: `run-role-cross-${Date.now()}`,
+        community_id: communityA.id,
+        title: 'Role assignment post cross community',
+        body: 'role assignment content cross community',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      const createRes = await request(app)
+        .post(`/v1/communities/${communityA.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'POST',
+          scope_id: postId,
+          role: 'aside-host',
+          agent_id: agentId,
+        })
+      expect(createRes.status).toBe(201)
+      const assignmentId = createRes.body.data.id as string
+
+      const patchRes = await request(app)
+        .patch(`/v1/communities/${communityB.id}/role-assignments/${assignmentId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          status: 'REVOKED',
+          reason: 'cross community should fail',
+        })
+      expect(patchRes.status).toBe(404)
+      expect(patchRes.body.error.code).toBe('NOT_FOUND')
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+    }
+  })
+
+  it('Role assignment creation rejects COMMUNITY scope with mismatched scope_id', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Role Assignment Scope Validation',
+        slug: `role-assignment-scope-${Date.now()}`,
+      })
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Role Agent Scope Validation' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
+
+      const createRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'COMMUNITY',
+          scope_id: `mismatched-${community.id}`,
+          role: 'community-host',
+          agent_id: agentId,
+        })
+      expect(createRes.status).toBe(400)
+      expect(createRes.body.error.code).toBe('VALIDATION_ERROR')
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+    }
+  })
+
+  it('Role assignment creation rejects MUTED membership with 409', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    const originalMembershipStatus = featureFlags.membershipStatusV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+    featureFlags.membershipStatusV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Role Assignment Membership Muted',
+        slug: `role-assignment-muted-${Date.now()}`,
+      })
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Role Agent Membership Muted' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
+
+      const mutedRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships/${community.id}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'MUTED', reason: 'cooldown' })
+      expect(mutedRes.status).toBe(200)
+
+      const createRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'COMMUNITY',
+          scope_id: community.id,
+          role: 'community-host',
+          agent_id: agentId,
+        })
+      expect(createRes.status).toBe(409)
+      expect(createRes.body.error.code).toBe('CONFLICT')
+      expect(String(createRes.body.error.message)).toContain('MUTED')
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+      featureFlags.membershipStatusV1 = originalMembershipStatus
+    }
+  })
+
+  it('Role assignment creation rejects LEFT membership with 409', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Role Assignment Membership Left',
+        slug: `role-assignment-left-${Date.now()}`,
+      })
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Role Agent Membership Left' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
+
+      const leaveRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [], remove: [community.id] })
+      expect(leaveRes.status).toBe(200)
+
+      const createRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'COMMUNITY',
+          scope_id: community.id,
+          role: 'community-host',
+          agent_id: agentId,
+        })
+      expect(createRes.status).toBe(409)
+      expect(createRes.body.error.code).toBe('CONFLICT')
+      expect(String(createRes.body.error.message)).toContain('ACTIVE membership')
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+    }
+  })
+
+  it('Role assignment creation rejects missing membership with 409', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Role Assignment Membership Missing',
+        slug: `role-assignment-missing-${Date.now()}`,
+      })
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Role Agent Membership Missing' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const createRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'COMMUNITY',
+          scope_id: community.id,
+          role: 'community-host',
+          agent_id: agentId,
+        })
+      expect(createRes.status).toBe(409)
+      expect(createRes.body.error.code).toBe('CONFLICT')
+      expect(String(createRes.body.error.message)).toContain('ACTIVE membership')
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+    }
+  })
+
+  it('Role assignment creation rejects BANNED membership with 409', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    const originalMembershipStatus = featureFlags.membershipStatusV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+    featureFlags.membershipStatusV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Role Assignment Membership Banned',
+        slug: `role-assignment-banned-${Date.now()}`,
+      })
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Role Agent Membership Banned' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
+
+      const banRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships/${community.id}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'BANNED', reason: 'policy' })
+      expect(banRes.status).toBe(200)
+
+      const createRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'COMMUNITY',
+          scope_id: community.id,
+          role: 'community-host',
+          agent_id: agentId,
+        })
+      expect(createRes.status).toBe(409)
+      expect(createRes.body.error.code).toBe('CONFLICT')
+      expect(String(createRes.body.error.message)).toContain('BANNED')
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+      featureFlags.membershipStatusV1 = originalMembershipStatus
     }
   })
 })

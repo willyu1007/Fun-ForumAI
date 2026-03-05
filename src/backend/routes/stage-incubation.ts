@@ -401,6 +401,7 @@ stageIncubationRouter.patch(
 
     const updated = await roleAssignmentService.update({
       assignment_id: String(req.params.assignmentId),
+      community_id: String(req.params.communityId),
       status: req.body.status,
       role: req.body.role,
       expires_at: req.body.expires_at === undefined

@@ -152,6 +152,7 @@ export interface CreateRoleAssignmentInput {
 export interface UpdateRoleAssignmentInput {
   role?: string
   status?: RoleAssignmentStatus
+  expected_status?: RoleAssignmentStatus
   expires_at?: Date | null
   revoked_at?: Date | null
   meta?: Record<string, unknown> | null

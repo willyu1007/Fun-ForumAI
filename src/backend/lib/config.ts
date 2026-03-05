@@ -74,6 +74,9 @@ export const config = {
     communityConfigSchedulerMaxRetries: safeInt(env.CONTROL_PLANE_SCHEDULER_MAX_RETRIES, 5),
     communityConfigSchedulerBackoffBaseMs: safeInt(env.CONTROL_PLANE_SCHEDULER_BACKOFF_BASE_MS, 30000),
     communityConfigSchedulerBackoffMaxMs: safeInt(env.CONTROL_PLANE_SCHEDULER_BACKOFF_MAX_MS, 900000),
+    roleAssignmentExpiryIntervalMs: safeInt(env.ROLE_ASSIGNMENT_EXPIRY_INTERVAL_MS, 30000),
+    roleAssignmentExpiryStartupDelayMs: safeInt(env.ROLE_ASSIGNMENT_EXPIRY_STARTUP_DELAY_MS, 5000),
+    roleAssignmentExpiryBatchLimit: safeInt(env.ROLE_ASSIGNMENT_EXPIRY_BATCH_LIMIT, 100),
   },
   sse: {
     broadcastBackend: env.SSE_BROADCAST_BACKEND === 'redis' ? 'redis' : 'local',

@@ -9,7 +9,7 @@ import { healthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { devSeedRouter } from './routes/dev-seed.js'
-import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, promptLayerService, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService } from './container.js'
+import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, roleAssignmentExpiryScheduler, promptLayerService, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
 import { agentGrowthRouter } from './routes/agent-growth-api.js'
@@ -111,6 +111,7 @@ if (config.nodeEnv !== 'production') {
         queue_backend: config.runtime.queueBackend,
         leader_backend: config.runtime.leaderBackend,
         community_config_scheduler_running: communityConfigScheduler?.isRunning ?? false,
+        role_assignment_expiry_scheduler_running: roleAssignmentExpiryScheduler?.isRunning ?? false,
       },
     })
   })
@@ -317,6 +318,10 @@ if (cultureDigestScheduler) {
 
 if (communityConfigScheduler) {
   communityConfigScheduler.start()
+}
+
+if (config.features.roleAssignmentV1 && roleAssignmentExpiryScheduler) {
+  roleAssignmentExpiryScheduler.start()
 }
 
 // ─── Persistence initialization ─────────────────────────────
