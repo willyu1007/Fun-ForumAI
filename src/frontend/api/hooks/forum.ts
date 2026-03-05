@@ -52,15 +52,6 @@ export function useComments(postId: string, params?: PaginationParams) {
   })
 }
 
-export function useAudienceThread(postId: string) {
-  return useQuery({
-    queryKey: queryKeys.audienceThread(postId),
-    queryFn: () => api.get(`posts/${postId}/audience-thread`).json<ApiResponse<AudienceThreadData>>(),
-    enabled: !!postId,
-    retry: false,
-  })
-}
-
 export function useCreateAudienceMessage(postId: string) {
   const qc = useQueryClient()
   return useMutation({
@@ -74,20 +65,29 @@ export function useCreateAudienceMessage(postId: string) {
   })
 }
 
-export function useAftershow(postId: string) {
+export function useAudienceThread(postId: string, options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: queryKeys.aftershow(postId),
-    queryFn: () => api.get(`posts/${postId}/aftershow`).json<ApiResponse<AftershowSnapshot>>(),
-    enabled: !!postId,
+    queryKey: queryKeys.audienceThread(postId),
+    queryFn: () => api.get(`posts/${postId}/audience-thread`).json<ApiResponse<AudienceThreadData>>(),
+    enabled: !!postId && (options?.enabled ?? true),
     retry: false,
   })
 }
 
-export function useAsideSeats(postId: string) {
+export function useAftershow(postId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.aftershow(postId),
+    queryFn: () => api.get(`posts/${postId}/aftershow`).json<ApiResponse<AftershowSnapshot>>(),
+    enabled: !!postId && (options?.enabled ?? true),
+    retry: false,
+  })
+}
+
+export function useAsideSeats(postId: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.asideSeats(postId),
     queryFn: () => api.get(`posts/${postId}/aside-seats`).json<ApiResponse<AsideSeatsData>>(),
-    enabled: !!postId,
+    enabled: !!postId && (options?.enabled ?? true),
     retry: false,
   })
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link, useSearchParams } from 'react-router'
 import { usePost, useComments, useAudienceThread, useCreateAudienceMessage, useAftershow, useAsideSeats } from '@/api/hooks'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -21,15 +21,87 @@ export function PostDetailPage() {
   const [searchParams] = useSearchParams()
   const { postId } = useParams()
   const [audienceDraft, setAudienceDraft] = useState('')
+  const [audienceDraftError, setAudienceDraftError] = useState<string | null>(null)
+  const [highlightedAudienceMessageId, setHighlightedAudienceMessageId] = useState<string | null>(null)
   const { data: postData, isLoading: postLoading, error: postError } = usePost(postId ?? '')
+  const postPayload = postData?.data ?? null
+  const supportsAudienceAftershowWeb = postPayload !== null
+    && Object.prototype.hasOwnProperty.call(postPayload, 'aftershow_summary')
+    && Object.prototype.hasOwnProperty.call(postPayload, 'aftershow_callouts')
+    && Object.prototype.hasOwnProperty.call(postPayload, 'audience_thread_meta')
   const { data: commentsData, isLoading: commentsLoading } = useComments(postId ?? '')
-  const { data: audienceThreadData } = useAudienceThread(postId ?? '')
-  const { data: aftershowData } = useAftershow(postId ?? '')
-  const { data: asideSeatsData } = useAsideSeats(postId ?? '')
+  const { data: audienceThreadData } = useAudienceThread(postId ?? '', { enabled: supportsAudienceAftershowWeb })
+  const { data: aftershowData } = useAftershow(postId ?? '', { enabled: supportsAudienceAftershowWeb })
+  const { data: asideSeatsData } = useAsideSeats(postId ?? '', { enabled: supportsAudienceAftershowWeb })
   const createAudienceMessage = useCreateAudienceMessage(postId ?? '')
   const { newCommentCounts, clearNewComments } = useSseNewCounts()
 
   const newCommentCount = (postId && newCommentCounts[postId]) || 0
+
+  const isAudienceAftershowEnabled = supportsAudienceAftershowWeb
+  const audienceThreadMessages = audienceThreadData?.data?.messages
+  const asideSeatItems = asideSeatsData?.data?.seats
+  const aftershow = useMemo(() => {
+    if (!isAudienceAftershowEnabled) return null
+    if (aftershowData?.data) return aftershowData.data
+    if (!postPayload) return null
+    return {
+      post_id: postPayload.id,
+      aftershow_summary: postPayload.aftershow_summary ?? null,
+      aftershow_callouts: postPayload.aftershow_callouts ?? [],
+      audience_thread_meta: postPayload.audience_thread_meta ?? null,
+    }
+  }, [aftershowData?.data, isAudienceAftershowEnabled, postPayload])
+  const audienceMessages = useMemo(() => {
+    if (!isAudienceAftershowEnabled) return []
+    return audienceThreadMessages ?? []
+  }, [audienceThreadMessages, isAudienceAftershowEnabled])
+  const asideSeats = useMemo(() => {
+    if (!isAudienceAftershowEnabled) return []
+    return asideSeatItems ?? []
+  }, [asideSeatItems, isAudienceAftershowEnabled])
+
+  const focusedAftershowId = searchParams.get('aftershow_id')
+  const focusedCalloutIndexRaw = searchParams.get('callout_index')
+  const focusedCalloutIndex = focusedCalloutIndexRaw ? Number.parseInt(focusedCalloutIndexRaw, 10) : null
+  const focusedAudienceMessageIdFromQuery = searchParams.get('audience_message_id')
+
+  const focusedCallout = useMemo(() => {
+    if (!aftershow || !focusedAftershowId || focusedCalloutIndex === null || Number.isNaN(focusedCalloutIndex) || focusedCalloutIndex < 0) {
+      return null
+    }
+    return aftershow.aftershow_callouts.find((item, index) =>
+      item.artifact_id === focusedAftershowId && index === focusedCalloutIndex) ?? null
+  }, [aftershow, focusedAftershowId, focusedCalloutIndex])
+
+  const focusedAudienceMessageId = focusedAudienceMessageIdFromQuery || focusedCallout?.audience_message_id || null
+  const renderedAudienceMessages = useMemo(() => {
+    const recentMessages = audienceMessages.slice(-20)
+    if (!focusedAudienceMessageId) return recentMessages
+    if (recentMessages.some((message) => message.id === focusedAudienceMessageId)) return recentMessages
+    const focusedMessage = audienceMessages.find((message) => message.id === focusedAudienceMessageId)
+    if (!focusedMessage) return recentMessages
+    return [focusedMessage, ...recentMessages]
+  }, [audienceMessages, focusedAudienceMessageId])
+
+  useEffect(() => {
+    if (!focusedAudienceMessageId) {
+      setHighlightedAudienceMessageId(null)
+      return
+    }
+    if (!renderedAudienceMessages.some((item) => item.id === focusedAudienceMessageId)) {
+      setHighlightedAudienceMessageId(null)
+      return
+    }
+    const element = document.getElementById(`audience-message-${focusedAudienceMessageId}`)
+    if (!element) return
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlightedAudienceMessageId(focusedAudienceMessageId)
+    const timer = window.setTimeout(() => {
+      setHighlightedAudienceMessageId((prev) => (prev === focusedAudienceMessageId ? null : prev))
+    }, 2500)
+    return () => window.clearTimeout(timer)
+  }, [focusedAudienceMessageId, renderedAudienceMessages])
 
   if (postLoading) {
     return (
@@ -57,24 +129,17 @@ export function PostDetailPage() {
   const author = post.author
   const communityPath = post.community_slug || post.community_id
   const commentCount = commentsData?.data?.length ?? post.comment_count
-  const aftershow = aftershowData?.data ?? {
-    post_id: post.id,
-    aftershow_summary: post.aftershow_summary ?? null,
-    aftershow_callouts: post.aftershow_callouts ?? [],
-    audience_thread_meta: post.audience_thread_meta ?? null,
-  }
-  const audienceMessages = audienceThreadData?.data?.messages ?? []
-  const asideSeats = asideSeatsData?.data?.seats ?? []
-
-  const focusedAftershowId = searchParams.get('aftershow_id')
-  const focusedCalloutIndexRaw = searchParams.get('callout_index')
-  const focusedCalloutIndex = focusedCalloutIndexRaw ? Number.parseInt(focusedCalloutIndexRaw, 10) : null
 
   const handleSendAudienceMessage = async () => {
     const body = audienceDraft.trim()
-    if (!body || !postId || createAudienceMessage.isPending) return
-    await createAudienceMessage.mutateAsync(body)
-    setAudienceDraft('')
+    if (!isAudienceAftershowEnabled || !body || !postId || createAudienceMessage.isPending) return
+    try {
+      setAudienceDraftError(null)
+      await createAudienceMessage.mutateAsync(body)
+      setAudienceDraft('')
+    } catch (error) {
+      setAudienceDraftError(error instanceof Error ? error.message : '发布失败，请稍后重试')
+    }
   }
 
   return (
@@ -180,113 +245,130 @@ export function PostDetailPage() {
         />
       </div>
 
-      <div className="rounded-md border bg-card p-4 space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold">Audience Zone</h2>
-          <span className="text-xs text-muted-foreground">
-            {audienceMessages.length} 条留言
-          </span>
-        </div>
+      {isAudienceAftershowEnabled && aftershow && (
+        <>
+          <div className="rounded-md border bg-card p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold">Audience Zone</h2>
+              <span className="text-xs text-muted-foreground">
+                {audienceMessages.length} 条留言
+              </span>
+            </div>
 
-        {asideSeats.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {asideSeats.map((seat) => (
-              <Badge key={seat.id} variant="outline" className="text-[10px]">
-                {seat.role} · {seat.agent_id.slice(0, 8)}
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        <div className="max-h-56 space-y-2 overflow-y-auto rounded-md border bg-muted/20 p-2">
-          {audienceMessages.length === 0 ? (
-            <div className="py-5 text-center text-xs text-muted-foreground">还没有观众留言</div>
-          ) : (
-            audienceMessages.slice(-20).map((message) => (
-              <div key={message.id} className="rounded border bg-background p-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-medium text-foreground">用户 {message.author_user_id.slice(0, 8)}</span>
-                  <span className="text-[10px] text-muted-foreground">{relativeTime(message.created_at)}</span>
-                </div>
-                <p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed">{message.body}</p>
+            {asideSeats.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {asideSeats.map((seat) => (
+                  <Badge key={seat.id} variant="outline" className="text-[10px]">
+                    {seat.role} · {seat.agent_id.slice(0, 8)}
+                  </Badge>
+                ))}
               </div>
-            ))
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Textarea
-            value={audienceDraft}
-            onChange={(e) => setAudienceDraft(e.target.value)}
-            disabled={!isAuthenticated || createAudienceMessage.isPending}
-            placeholder={isAuthenticated ? '留下你的观众留言…' : '登录后可参与 Audience Zone'}
-            className="min-h-20 text-sm"
-          />
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              disabled={!isAuthenticated || !audienceDraft.trim() || createAudienceMessage.isPending}
-              onClick={() => { void handleSendAudienceMessage() }}
-            >
-              发布留言
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-md border bg-card p-4 space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold">Aftershow Block</h2>
-          {aftershow.aftershow_summary?.published_at && (
-            <span className="text-xs text-muted-foreground">
-              发布于 {relativeTime(aftershow.aftershow_summary.published_at)}
-            </span>
-          )}
-        </div>
-
-        {!aftershow.aftershow_summary ? (
-          <div className="rounded-md border border-dashed p-4 text-xs text-muted-foreground">
-            暂无 Aftershow，总结尚未发布。
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{aftershow.aftershow_summary.summary_text}</p>
-            {aftershow.aftershow_summary.content && (
-              <pre className="overflow-x-auto rounded-md bg-muted/30 p-2 text-[11px]">
-                {JSON.stringify(aftershow.aftershow_summary.content, null, 2)}
-              </pre>
             )}
-          </div>
-        )}
 
-        <div className="space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground">Callouts</p>
-          {aftershow.aftershow_callouts.length === 0 ? (
-            <div className="text-xs text-muted-foreground">暂无 callout</div>
-          ) : (
-            aftershow.aftershow_callouts.map((callout, index) => {
-              const highlighted = focusedAftershowId
-                ? focusedAftershowId === callout.artifact_id && focusedCalloutIndex === index
-                : false
-              return (
-                <div
-                  key={callout.id}
-                  className={cn(
-                    'rounded-md border p-2 text-xs',
-                    highlighted ? 'border-emerald-500 bg-emerald-50/60' : 'bg-background',
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium">#{index + 1} · 用户 {callout.user_id.slice(0, 8)}</span>
-                    {highlighted && <Badge className="text-[10px]">通知定位</Badge>}
+            <div className="max-h-56 space-y-2 overflow-y-auto rounded-md border bg-muted/20 p-2">
+              {audienceMessages.length === 0 ? (
+                <div className="py-5 text-center text-xs text-muted-foreground">还没有观众留言</div>
+              ) : (
+                renderedAudienceMessages.map((message) => (
+                  <div
+                    key={message.id}
+                    id={`audience-message-${message.id}`}
+                    className={cn(
+                      'rounded border bg-background p-2 transition-colors',
+                      highlightedAudienceMessageId === message.id && 'border-emerald-500 bg-emerald-50/60',
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-medium text-foreground">用户 {message.author_user_id.slice(0, 8)}</span>
+                      <span className="text-[10px] text-muted-foreground">{relativeTime(message.created_at)}</span>
+                    </div>
+                    <p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed">{message.body}</p>
                   </div>
-                  <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{callout.reason}</p>
-                </div>
-              )
-            })
-          )}
-        </div>
-      </div>
+                ))
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Textarea
+                value={audienceDraft}
+                onChange={(e) => {
+                  setAudienceDraft(e.target.value)
+                  if (audienceDraftError) setAudienceDraftError(null)
+                }}
+                disabled={!isAuthenticated || !isAudienceAftershowEnabled || createAudienceMessage.isPending}
+                placeholder={isAuthenticated ? '留下你的观众留言…' : '登录后可参与 Audience Zone'}
+                className="min-h-20 text-sm"
+              />
+              {audienceDraftError && (
+                <div className="text-xs text-destructive">{audienceDraftError}</div>
+              )}
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  disabled={!isAuthenticated || !isAudienceAftershowEnabled || !audienceDraft.trim() || createAudienceMessage.isPending}
+                  onClick={() => { void handleSendAudienceMessage() }}
+                >
+                  发布留言
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-md border bg-card p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold">Aftershow Block</h2>
+              {aftershow.aftershow_summary?.published_at && (
+                <span className="text-xs text-muted-foreground">
+                  发布于 {relativeTime(aftershow.aftershow_summary.published_at)}
+                </span>
+              )}
+            </div>
+
+            {!aftershow.aftershow_summary ? (
+              <div className="rounded-md border border-dashed p-4 text-xs text-muted-foreground">
+                暂无 Aftershow，总结尚未发布。
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{aftershow.aftershow_summary.summary_text}</p>
+                {aftershow.aftershow_summary.content && (
+                  <pre className="overflow-x-auto rounded-md bg-muted/30 p-2 text-[11px]">
+                    {JSON.stringify(aftershow.aftershow_summary.content, null, 2)}
+                  </pre>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Callouts</p>
+              {aftershow.aftershow_callouts.length === 0 ? (
+                <div className="text-xs text-muted-foreground">暂无 callout</div>
+              ) : (
+                aftershow.aftershow_callouts.map((callout, index) => {
+                  const highlighted = focusedAftershowId
+                    ? focusedAftershowId === callout.artifact_id && focusedCalloutIndex === index
+                    : false
+                  return (
+                    <div
+                      key={callout.id}
+                      className={cn(
+                        'rounded-md border p-2 text-xs',
+                        highlighted ? 'border-emerald-500 bg-emerald-50/60' : 'bg-background',
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium">#{index + 1} · 用户 {callout.user_id.slice(0, 8)}</span>
+                        {highlighted && <Badge className="text-[10px]">通知定位</Badge>}
+                      </div>
+                      <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{callout.reason}</p>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
