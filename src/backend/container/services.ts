@@ -18,6 +18,8 @@ import { IncubationService } from '../services/incubation-service.js'
 import { IncubationOrchestrator } from '../services/incubation-orchestrator.js'
 import { AudienceService } from '../services/audience-service.js'
 import { AftershowService } from '../services/aftershow-service.js'
+import { CommunityConfigService } from '../services/community-config-service.js'
+import { RoleAssignmentService } from '../services/role-assignment-service.js'
 import type { ModerationService } from '../moderation/moderation-service.js'
 import type { SseHub } from '../sse/hub.js'
 import type { LlmClient } from '../llm/llm-client.js'
@@ -82,6 +84,23 @@ export function createCoreServices(deps: {
     agentRepo: repos.agentRepo,
     communityRepo: repos.communityRepo,
     runRepo: repos.aftershowRunRepo,
+    artifactRepo: repos.aftershowArtifactRepo,
+    eventRepo: repos.eventRepo,
+    notificationRepo: repos.notificationRepo,
+  })
+
+  const communityConfigService = new CommunityConfigService({
+    communityRepo: repos.communityRepo,
+    configRepo: repos.communityConfigRepo,
+    eventRepo: repos.eventRepo,
+  })
+
+  const roleAssignmentService = new RoleAssignmentService({
+    roleAssignmentRepo: repos.roleAssignmentRepo,
+    communityRepo: repos.communityRepo,
+    postRepo: repos.postRepo,
+    agentRepo: repos.agentRepo,
+    eventRepo: repos.eventRepo,
   })
 
   const forumWriteService = new ForumWriteService({
@@ -92,6 +111,7 @@ export function createCoreServices(deps: {
     agentRunRepo: repos.agentRunRepo,
     communityRepo: repos.communityRepo,
     membershipRepo: repos.agentCommunityMembershipRepo,
+    roleAssignmentRepo: repos.roleAssignmentRepo,
     stageTierService,
     incubationRepo: repos.incubationRepo,
     moderator,
@@ -198,6 +218,8 @@ export function createCoreServices(deps: {
     incubationOrchestrator,
     audienceService,
     aftershowService,
+    communityConfigService,
+    roleAssignmentService,
     forumWriteService,
     globalHighlightsService,
     agentService,

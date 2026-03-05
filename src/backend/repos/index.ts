@@ -33,7 +33,21 @@ export type {
   AudienceSummary,
   AftershowRun,
   AftershowRunStatus,
+  AftershowArtifact,
+  AftershowArtifactStatus,
+  AftershowCallout,
+  CommunityConfigVersion,
+  CommunityConfigPatch,
+  CommunityConfigApproval,
+  ConfigRiskLevel,
+  ConfigPatchStatus,
+  ConfigApprovalDecision,
+  RoleAssignment,
+  RoleAssignmentScope,
+  RoleAssignmentStatus,
   DomainEvent,
+  EventPlane,
+  EventActorType,
   AgentRun,
   AchievementVisibility,
   AchievementScope,
@@ -74,6 +88,16 @@ export type {
   CreateAudienceMessageInput,
   CreateAudienceSummaryInput,
   CreateAftershowRunInput,
+  CreateAftershowArtifactInput,
+  UpdateAftershowArtifactInput,
+  CreateAftershowCalloutInput,
+  UpdateAftershowCalloutInput,
+  CreateCommunityConfigVersionInput,
+  CreateCommunityConfigPatchInput,
+  UpdateCommunityConfigPatchInput,
+  CreateCommunityConfigApprovalInput,
+  CreateRoleAssignmentInput,
+  UpdateRoleAssignmentInput,
   CreateAgentSignalLogInput,
   CreateCommunityCultureDigestInput,
   PprSnapshot,
@@ -130,6 +154,7 @@ export {
 } from './event-repository.js'
 export { type RoomRepository, InMemoryRoomRepository } from './room-repository.js'
 export { type MessageRepository, InMemoryMessageRepository } from './message-repository.js'
+export { type NotificationRepository } from './notification-repository.js'
 export {
   type RelationRepository,
   InMemoryRelationRepository,
@@ -168,6 +193,18 @@ export {
   InMemoryAftershowRunRepository,
 } from './aftershow-run-repository.js'
 export {
+  type AftershowArtifactRepository,
+  InMemoryAftershowArtifactRepository,
+} from './aftershow-artifact-repository.js'
+export {
+  type CommunityConfigRepository,
+  InMemoryCommunityConfigRepository,
+} from './community-config-repository.js'
+export {
+  type RoleAssignmentRepository,
+  InMemoryRoleAssignmentRepository,
+} from './role-assignment-repository.js'
+export {
   type PprSnapshotRepository,
   InMemoryPprSnapshotRepository,
 } from './ppr-snapshot-repository.js'
@@ -189,6 +226,7 @@ export { PgAgentCommunityMembershipRepository } from './pg/pg-agent-community-me
 export { PgEventRepository, PgAgentRunRepository } from './pg/pg-event-repository.js'
 export { PgRoomRepository } from './pg/pg-room-repository.js'
 export { PgMessageRepository } from './pg/pg-message-repository.js'
+export { PgNotificationRepository } from './pg/pg-notification-repository.js'
 export { PgRelationRepository } from './pg/pg-relation-repository.js'
 export { PgStatsRepository } from './pg/pg-stats-repository.js'
 export { PgAchievementRepository } from './pg/pg-achievement-repository.js'
@@ -198,5 +236,8 @@ export { PgAgentStageTierSnapshotRepository } from './pg/pg-agent-stage-tier-sna
 export { PgIncubationRepository } from './pg/pg-incubation-repository.js'
 export { PgAudienceRepository } from './pg/pg-audience-repository.js'
 export { PgAftershowRunRepository } from './pg/pg-aftershow-run-repository.js'
+export { PgAftershowArtifactRepository } from './pg/pg-aftershow-artifact-repository.js'
+export { PgCommunityConfigRepository } from './pg/pg-community-config-repository.js'
+export { PgRoleAssignmentRepository } from './pg/pg-role-assignment-repository.js'
 export { PgPprSnapshotRepository } from './pg/pg-ppr-snapshot-repository.js'
 export { PgCommunityCultureDigestRepository } from './pg/pg-community-culture-digest-repository.js'

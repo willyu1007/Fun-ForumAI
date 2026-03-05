@@ -134,5 +134,10 @@ export const config = {
     aftershowV1: env.FF_AFTERSHOW_V1 === 'true',
     aftershowAudienceSummaryV1: env.FF_AFTERSHOW_AUDIENCE_SUMMARY_V1 === 'true',
     stageRotationV1: env.FF_STAGE_ROTATION_V1 === 'true',
+    eventContractV1: env.FF_EVENT_CONTRACT_V1 === 'true',
+    controlPlaneConfigV1: env.FF_CONTROL_PLANE_CONFIG_V1 === 'true',
+    aftershowEventPipelineV1: env.FF_AFTERSHOW_EVENT_PIPELINE_V1 === 'true',
+    roleAssignmentV1: env.FF_ROLE_ASSIGNMENT_V1 === 'true',
+    audienceAftershowWebV1: env.FF_AUDIENCE_AFTERSHOW_WEB_V1 === 'true',
   },
 } as const

@@ -21,6 +21,9 @@ import { InMemoryAgentStageTierSnapshotRepository } from '../repos/agent-stage-t
 import { InMemoryIncubationRepository } from '../repos/incubation-repository.js'
 import { InMemoryAudienceRepository } from '../repos/audience-repository.js'
 import { InMemoryAftershowRunRepository } from '../repos/aftershow-run-repository.js'
+import { InMemoryAftershowArtifactRepository } from '../repos/aftershow-artifact-repository.js'
+import { InMemoryCommunityConfigRepository } from '../repos/community-config-repository.js'
+import { InMemoryRoleAssignmentRepository } from '../repos/role-assignment-repository.js'
 
 import type { PostRepository } from '../repos/post-repository.js'
 import type { CommentRepository } from '../repos/comment-repository.js'
@@ -46,6 +49,10 @@ import type { AgentStageTierSnapshotRepository } from '../repos/agent-stage-tier
 import type { IncubationRepository } from '../repos/incubation-repository.js'
 import type { AudienceRepository } from '../repos/audience-repository.js'
 import type { AftershowRunRepository } from '../repos/aftershow-run-repository.js'
+import type { AftershowArtifactRepository } from '../repos/aftershow-artifact-repository.js'
+import type { CommunityConfigRepository } from '../repos/community-config-repository.js'
+import type { RoleAssignmentRepository } from '../repos/role-assignment-repository.js'
+import type { NotificationRepository } from '../repos/notification-repository.js'
 import type { UserRepository } from '../repos/user-repository.js'
 
 export interface Repositories {
@@ -76,6 +83,10 @@ export interface Repositories {
   incubationRepo: IncubationRepository
   audienceRepo: AudienceRepository
   aftershowRunRepo: AftershowRunRepository
+  aftershowArtifactRepo: AftershowArtifactRepository
+  communityConfigRepo: CommunityConfigRepository
+  roleAssignmentRepo: RoleAssignmentRepository
+  notificationRepo: NotificationRepository | null
 }
 
 interface HydratableRepo { hydrate(): Promise<void> }
@@ -115,6 +126,10 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgIncubationRepository } = await import('../repos/pg/pg-incubation-repository.js')
     const { PgAudienceRepository } = await import('../repos/pg/pg-audience-repository.js')
     const { PgAftershowRunRepository } = await import('../repos/pg/pg-aftershow-run-repository.js')
+    const { PgAftershowArtifactRepository } = await import('../repos/pg/pg-aftershow-artifact-repository.js')
+    const { PgCommunityConfigRepository } = await import('../repos/pg/pg-community-config-repository.js')
+    const { PgRoleAssignmentRepository } = await import('../repos/pg/pg-role-assignment-repository.js')
+    const { PgNotificationRepository } = await import('../repos/pg/pg-notification-repository.js')
 
     const pr = new PgPostRepository(prisma)
     const cr = new PgCommentRepository(prisma)
@@ -142,8 +157,12 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const incRepo = new PgIncubationRepository(prisma)
     const audRepo = new PgAudienceRepository(prisma)
     const aftershowRepo = new PgAftershowRunRepository(prisma)
+    const aftershowArtifactRepo = new PgAftershowArtifactRepository(prisma)
+    const communityConfigRepo = new PgCommunityConfigRepository(prisma)
+    const roleAssignmentRepo = new PgRoleAssignmentRepository(prisma)
+    const notificationRepo = new PgNotificationRepository(prisma)
 
-    hydratables.push(pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, rr, mr, sr, achar, chr, ppr, stageTier)
+    hydratables.push(pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, rr, mr, sr, achar, chr, ppr, stageTier, roleAssignmentRepo)
 
     return {
       repos: {
@@ -156,6 +175,8 @@ export async function createRepositories(usePrisma: boolean): Promise<{
         statsRepo: sr, achievementRepo: achar, chronicleRepo: chr,
         pprSnapshotRepo: ppr, stageTierSnapshotRepo: stageTier,
         incubationRepo: incRepo, audienceRepo: audRepo, aftershowRunRepo: aftershowRepo,
+        aftershowArtifactRepo, communityConfigRepo, roleAssignmentRepo,
+        notificationRepo,
       },
       hydratables,
     }
@@ -190,6 +211,10 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       incubationRepo: new InMemoryIncubationRepository(),
       audienceRepo: new InMemoryAudienceRepository(),
       aftershowRunRepo: new InMemoryAftershowRunRepository(),
+      aftershowArtifactRepo: new InMemoryAftershowArtifactRepository(),
+      communityConfigRepo: new InMemoryCommunityConfigRepository(),
+      roleAssignmentRepo: new InMemoryRoleAssignmentRepository(),
+      notificationRepo: null,
     },
     hydratables,
   }

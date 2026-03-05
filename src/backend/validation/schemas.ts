@@ -173,6 +173,52 @@ export const triggerAftershowSchema = z.object({
   force: z.boolean().default(false),
 }).strict()
 
+export const createConfigProposalSchema = z.object({
+  patch: z.record(z.string(), z.unknown()).refine((value) => Object.keys(value).length > 0, {
+    message: 'patch must not be empty',
+  }),
+  summary: z.string().max(500).optional(),
+  reason: z.string().max(2000).optional(),
+  risk_level: z.enum(['LOW', 'HIGH']).optional(),
+}).strict()
+
+export const validateConfigProposalSchema = z.object({}).strict()
+
+export const approveConfigProposalSchema = z.object({
+  decision: z.enum(['APPROVED', 'REJECTED']),
+  reason: z.string().max(2000).optional(),
+}).strict()
+
+export const applyConfigProposalSchema = z.object({}).strict()
+
+export const rollbackConfigSchema = z.object({
+  version_id: z.string().min(1),
+  reason: z.string().max(2000).optional(),
+}).strict()
+
+export const createRoleAssignmentSchema = z.object({
+  scope: z.enum(['COMMUNITY', 'POST']),
+  scope_id: z.string().min(1),
+  role: z.string().trim().min(1).max(64),
+  agent_id: z.string().min(1),
+  expires_at: z.string().datetime().nullable().optional(),
+  meta: z.record(z.string(), z.unknown()).optional(),
+}).strict()
+
+export const updateRoleAssignmentSchema = z.object({
+  status: z.enum(['ACTIVE', 'REVOKED', 'EXPIRED']).optional(),
+  role: z.string().trim().min(1).max(64).optional(),
+  expires_at: z.string().datetime().nullable().optional(),
+  reason: z.string().max(1000).optional(),
+}).strict().refine(
+  (value) =>
+    value.status !== undefined
+    || value.role !== undefined
+    || value.expires_at !== undefined
+    || value.reason !== undefined,
+  { message: 'status, role, expires_at, or reason is required' },
+)
+
 export const createIncubationGrantSchema = z.object({
   reason: z.string().min(1).max(1000),
   ttl_hours: z.number().int().min(1).max(168).default(168),

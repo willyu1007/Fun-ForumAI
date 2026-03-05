@@ -710,4 +710,133 @@ describe('E2E: Control Plane (human auth)', () => {
     expect(res.body.data.success).toBe(true)
     expect(res.body.data.new_visibility).toBe('GRAY')
   })
+
+  it('Control Plane config flow supports proposal -> validate -> approve -> apply -> history -> rollback', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalControlPlane = featureFlags.controlPlaneConfigV1
+    featureFlags.controlPlaneConfigV1 = true
+
+    try {
+      const community = communityRepo.create({
+        name: 'Config Flow Community',
+        slug: `config-flow-${Date.now()}`,
+      })
+
+      const proposalRes = await request(app)
+        .post(`/v1/communities/${community.id}/config-proposals`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          patch: {
+            aftershow: {
+              mode: 'THRESHOLD',
+              threshold: {
+                audience_comments: 5,
+                human_vote_score: 1,
+              },
+            },
+          },
+          summary: 'Enable stronger aftershow threshold',
+        })
+      expect(proposalRes.status).toBe(201)
+      const proposalId = proposalRes.body.data.id as string
+
+      const validateRes = await request(app)
+        .post(`/v1/config-proposals/${proposalId}/validate`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({})
+      expect(validateRes.status).toBe(200)
+      expect(Array.isArray(validateRes.body.data.validation_errors)).toBe(true)
+
+      const blockedApply = await request(app)
+        .post(`/v1/config-proposals/${proposalId}/apply`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({})
+      expect(blockedApply.status).toBe(400)
+
+      const approveRes = await request(app)
+        .post(`/v1/config-proposals/${proposalId}/approve`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ decision: 'APPROVED' })
+      expect(approveRes.status).toBe(200)
+
+      const applyRes = await request(app)
+        .post(`/v1/config-proposals/${proposalId}/apply`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+      expect(applyRes.status).toBe(200)
+      const versionId = applyRes.body.data.version.id as string
+
+      const historyRes = await request(app)
+        .get(`/v1/communities/${community.id}/config-history`)
+        .set('Authorization', `Bearer ${adminToken}`)
+      expect(historyRes.status).toBe(200)
+      expect(Array.isArray(historyRes.body.data.versions)).toBe(true)
+      expect(Array.isArray(historyRes.body.data.patches)).toBe(true)
+
+      const rollbackRes = await request(app)
+        .post(`/v1/communities/${community.id}/config-rollback`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          version_id: versionId,
+          reason: 'rollback rehearsal',
+        })
+      expect(rollbackRes.status).toBe(201)
+      expect(rollbackRes.body.data.rollback_from_version_id).toBe(versionId)
+    } finally {
+      featureFlags.controlPlaneConfigV1 = originalControlPlane
+    }
+  })
+
+  it('Role assignment control-plane endpoints create and update assignments', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    featureFlags.roleAssignmentV1 = true
+
+    try {
+      const community = communityRepo.create({
+        name: 'Role Assignment Community',
+        slug: `role-assignment-${Date.now()}`,
+      })
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Role Agent' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: agentId,
+        run_id: `run-role-${Date.now()}`,
+        community_id: community.id,
+        title: 'Role assignment post',
+        body: 'role assignment content',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      const createRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'POST',
+          scope_id: postId,
+          role: 'aside-host',
+          agent_id: agentId,
+        })
+      expect(createRes.status).toBe(201)
+      const assignmentId = createRes.body.data.id as string
+
+      const patchRes = await request(app)
+        .patch(`/v1/communities/${community.id}/role-assignments/${assignmentId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          status: 'REVOKED',
+          reason: 'rotation end',
+        })
+      expect(patchRes.status).toBe(200)
+      expect(patchRes.body.data.status).toBe('REVOKED')
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+    }
+  })
 })
