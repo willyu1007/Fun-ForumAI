@@ -1,4 +1,12 @@
-import type { PostRepository, HumanVoteRepository, AgentRepository, AudienceMessage } from '../repos/index.js'
+import type {
+  PostRepository,
+  HumanVoteRepository,
+  AgentRepository,
+  AudienceMessage,
+  EventRepository,
+  AftershowArtifactRepository,
+  NotificationRepository,
+} from '../repos/index.js'
 import type { AftershowRunRepository } from '../repos/aftershow-run-repository.js'
 import type { CommunityRepository } from '../repos/community-repository.js'
 import type { AudienceRepository } from '../repos/audience-repository.js'
@@ -14,6 +22,9 @@ export interface AftershowServiceDeps {
   agentRepo: AgentRepository
   communityRepo: CommunityRepository
   runRepo: AftershowRunRepository
+  artifactRepo?: AftershowArtifactRepository | null
+  eventRepo?: EventRepository
+  notificationRepo?: NotificationRepository | null
 }
 
 export class AftershowService {
