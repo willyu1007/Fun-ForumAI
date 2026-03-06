@@ -1,4 +1,8 @@
-# T-058 PR4 Governance Blocker Fixes
+# 00 Overview — pr4-governance-blocker-fixes (T-058)
+
+## Status
+- State: done
+- Next step: keep stacked PRs mergeable by clearing CI and branch conflicts in order (#4 -> #5 -> #6).
 
 ## Goal
 Fix two merge-blocking issues found during PR review:
@@ -9,12 +13,6 @@ Fix two merge-blocking issues found during PR review:
 - No schema migration.
 - No UI behavior changes outside existing API contract.
 - No broad refactor of governance subsystem.
-
-## Status
-- done
-
-## Next Step
-- Open/refresh PR with this branch and request re-review on #4/#5/#6 after CI.
 
 ## Acceptance Criteria
 - `/v1/communities/:communityId/config/apply` rejects non-admin callers with 403 for low/high risk patches.

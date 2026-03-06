@@ -17,3 +17,10 @@
     - existing config apply expectations adjusted to admin-only semantics
   - `src/backend/services/__tests__/forum-write-service.test.ts`
     - unknown assigned role cannot bypass runtime stage role gate
+- Follow-up CI stabilization for #4:
+  - `dev-docs/active/pr4-governance-blocker-fixes/.ai-task.yaml`
+    - `status` updated to `done` so governance lint no longer fails on invalid state.
+  - `dev-docs/active/pr4-governance-blocker-fixes/00-overview.md`
+    - aligned with standard `## Status` + `- State:` format to avoid parser ambiguity.
+  - `src/backend/runtime/__tests__/role-assignment-expiry-scheduler.test.ts`
+    - switched role fixture from `host` to valid `core` to match stage-spec role validation introduced by this task.
