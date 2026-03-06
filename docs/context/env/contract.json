@@ -4,7 +4,7 @@
     "prod",
     "staging"
   ],
-  "generated_at_utc": "2026-03-02T23:01:10Z",
+  "generated_at_utc": "2026-03-05T14:42:04Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "APP_ENV": {
@@ -23,6 +23,108 @@
       "secret_ref": null,
       "state": "active",
       "type": "enum"
+    },
+    "CONTROL_PLANE_SCHEDULER_BACKOFF_BASE_MS": {
+      "default": 30000,
+      "deprecate_after": null,
+      "description": "Base exponential backoff delay in milliseconds for scheduler retries.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "CONTROL_PLANE_SCHEDULER_BACKOFF_MAX_MS": {
+      "default": 900000,
+      "deprecate_after": null,
+      "description": "Max retry backoff delay in milliseconds for scheduler retries.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "CONTROL_PLANE_SCHEDULER_BATCH_LIMIT": {
+      "default": 20,
+      "deprecate_after": null,
+      "description": "Max scheduled config patches processed per scheduler tick.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "CONTROL_PLANE_SCHEDULER_INTERVAL_MS": {
+      "default": 30000,
+      "deprecate_after": null,
+      "description": "Poll interval in milliseconds for community config scheduled activation.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "CONTROL_PLANE_SCHEDULER_MAX_RETRIES": {
+      "default": 5,
+      "deprecate_after": null,
+      "description": "Max retry attempts for failed scheduled config applications.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "CONTROL_PLANE_SCHEDULER_STARTUP_DELAY_MS": {
+      "default": 5000,
+      "deprecate_after": null,
+      "description": "Startup delay in milliseconds before the first community config scheduler scan.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
     },
     "CORS_ORIGINS": {
       "default": "http://localhost:3000",
@@ -79,6 +181,57 @@
       "default": "false",
       "deprecate_after": null,
       "description": "Enable public highlights endpoint and feed/profile badge/tagline exposure.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_AFTERSHOW_AUDIENCE_SUMMARY_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable audience summary bridge for aftershow triggers.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_AFTERSHOW_EVENT_PIPELINE_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable due/snapshot/compose/publish aftershow event pipeline.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_AFTERSHOW_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable aftershow trigger API with OFF/THRESHOLD/PERIODIC/MANUAL modes.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
@@ -194,6 +347,40 @@
       "state": "active",
       "type": "enum"
     },
+    "FF_AUDIENCE_AFTERSHOW_WEB_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable audience + aftershow web presentation fields on post detail.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_AUDIENCE_ZONE_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable audience thread/message APIs and persistence models.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
     "FF_CASTING_DIRECTOR_ENABLED": {
       "default": "false",
       "deprecate_after": null,
@@ -296,10 +483,112 @@
       "state": "active",
       "type": "enum"
     },
+    "FF_CONTROL_PLANE_CONFIG_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable control-plane config proposal/approve/apply/rollback workflow.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_EVENT_CONTRACT_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable event contract and routing enforcement path.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
     "FF_GLOBAL_HIGHLIGHTS_V1": {
       "default": "true",
       "deprecate_after": null,
       "description": "Enable grouped global highlights API and frontend highlights page entry.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_HUMAN_PARTICIPATION_V1": {
+      "default": "true",
+      "deprecate_after": null,
+      "description": "Enable human participation routes and human vote/follow capabilities.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_INCUBATION_ORCHESTRATOR_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable PRIVATE_DIGEST -> incubation seed orchestration.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_INCUBATION_TRUST_HARD_ENFORCE": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enforce structured trust_context checks for strict T4 posts.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_INCUBATION_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable T4 incubation pipeline APIs and persistence models.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
@@ -334,6 +623,40 @@
       "default": "true",
       "deprecate_after": null,
       "description": "Enable explicit agent-community membership management and allocator membership gating.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_MEMBERSHIP_STATUS_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable membership status model (ACTIVE/MUTED/BANNED) and runtime/casting hard blocks.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_MULTIMODAL_AGENT_INCLINATION_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable multimodal inclination asset pipeline and related APIs.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
@@ -449,6 +772,23 @@
       "state": "active",
       "type": "enum"
     },
+    "FF_ROLE_ASSIGNMENT_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable role assignment endpoints and aside seats runtime read path.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
     "FF_RUNTIME_FEATURES_V1": {
       "default": "true",
       "deprecate_after": null,
@@ -521,6 +861,91 @@
       "default": "false",
       "deprecate_after": null,
       "description": "Enable agent social graph relation computation and persistence.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_STAGE_GOVERNANCE_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable stage governance dynamic moderation overrides from stage_spec_v1.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_STAGE_ROLE_RUNTIME_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable role runtime tier gate checks for forum writes.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_STAGE_ROTATION_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable stage template rotation scripts/control-plane integrations.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_STAGE_SPEC_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable StageSpec v1 typed parsing/validation and control-plane API.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_STAGE_TIER_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable Agent Stage Tier scoring and casting pool tier gating.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null

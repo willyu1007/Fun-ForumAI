@@ -22,7 +22,7 @@ export function OnboardingBar() {
   const notifications = data?.data?.items ?? []
 
   const firstPostNotif = notifications.find(
-    (n) => !n.read && n.type === 'AGENT_MILESTONE',
+    (n) => !n.read && n.type === 'AGENT_FIRST_POST',
   )
 
   useEffect(() => {

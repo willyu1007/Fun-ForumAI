@@ -468,6 +468,20 @@ variables:
     default: "false"
     description: Enable stats UI exposure for owner panel and related explainers.
 
+  FF_HUMAN_PARTICIPATION_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "true"
+    description: Enable human participation routes and human vote/follow capabilities.
+
+  FF_MULTIMODAL_AGENT_INCLINATION_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable multimodal inclination asset pipeline and related APIs.
+
   FF_STAGE_SPEC_V1:
     type: enum
     enum: ["true", "false"]
@@ -544,6 +558,41 @@ variables:
     required: false
     default: "false"
     description: Enable audience summary bridge for aftershow triggers.
+
+  FF_EVENT_CONTRACT_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable event contract and routing enforcement path.
+
+  FF_CONTROL_PLANE_CONFIG_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable control-plane config proposal/approve/apply/rollback workflow.
+
+  FF_AFTERSHOW_EVENT_PIPELINE_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable due/snapshot/compose/publish aftershow event pipeline.
+
+  FF_ROLE_ASSIGNMENT_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable role assignment endpoints and aside seats runtime read path.
+
+  FF_AUDIENCE_AFTERSHOW_WEB_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable audience + aftershow web presentation fields on post detail.
 
   FF_STAGE_ROTATION_V1:
     type: enum

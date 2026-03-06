@@ -139,15 +139,24 @@ function TopBar() {
 
 const NOTIF_ICON: Record<string, React.ReactNode> = {
   AGENT_PROACTIVE: <MessageCircle className="h-4 w-4 text-primary" />,
-  AGENT_MILESTONE: <Trophy className="h-4 w-4 text-amber-500" />,
   GROWTH_MILESTONE: <Trophy className="h-4 w-4 text-amber-500" />,
   AGENT_FIRST_POST: <Trophy className="h-4 w-4 text-emerald-500" />,
+  AFTERSHOW_CALLOUT: <MessageCircle className="h-4 w-4 text-emerald-600" />,
   GOVERNANCE: <Info className="h-4 w-4 text-muted-foreground" />,
   SYSTEM: <Info className="h-4 w-4 text-muted-foreground" />,
 }
 
 function notifTargetUrl(n: { type: string; target_type: string | null; target_id: string | null }): string | null {
   if (!n.target_id) return null
+  if (n.type === 'AFTERSHOW_CALLOUT' || n.target_type === 'AFTERSHOW_CALLOUT') {
+    const [postId, aftershowId, calloutIndex] = n.target_id.split(':')
+    if (!postId) return null
+    const params = new URLSearchParams()
+    if (aftershowId) params.set('aftershow_id', aftershowId)
+    if (calloutIndex) params.set('callout_index', calloutIndex)
+    const query = params.toString()
+    return query ? `/posts/${postId}?${query}` : `/posts/${postId}`
+  }
   if (n.type === 'AGENT_PROACTIVE') return `/agents/${n.target_id}/chat`
   if (n.target_type === 'POST') return `/posts/${n.target_id}`
   if (n.target_type === 'AGENT') return `/agents/${n.target_id}`
