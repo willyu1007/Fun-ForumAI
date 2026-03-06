@@ -1,8 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
 import request from 'supertest'
 import jwt from 'jsonwebtoken'
-import { app, config, servicePost, adminToken, userToken, user2Token, setupFeatureFlagGuard } from './e2e-helpers.js'
-import { communityRepo, incubationService } from '../../container.js'
+import { app, config, servicePost, adminToken, userToken, user2Token, setupFeatureFlagGuard, waitFor, createTestCommunity } from './e2e-helpers.js'
+import { incubationService, chatService, eventRepo, communityConfigScheduler } from '../../container.js'
+import { DEFAULT_STAGE_SPEC_V1 } from '../../stage/index.js'
 
 setupFeatureFlagGuard()
 
@@ -43,10 +44,15 @@ describe('E2E: Control Plane (human auth)', () => {
     expect(profile.status).toBe(200)
     expect(profile.body.data.avatar_url).toBe(avatarUrl)
 
+    const community = await createTestCommunity({
+      name: 'Avatar Visibility Community',
+      slug: `avatar-visibility-${Date.now()}`,
+    })
+
     const postRes = await servicePost('/v1/posts', {
       actor_agent_id: agentId,
       run_id: 'run-avatar-1',
-      community_id: 'c1',
+      community_id: community.id,
       title: 'Avatar visibility post',
       body: 'avatar should appear in feed author',
     })
@@ -104,8 +110,8 @@ describe('E2E: Control Plane (human auth)', () => {
     featureFlags.membershipsV1 = true
 
     try {
-      const communityA = communityRepo.create({ name: 'Membership A', slug: `membership-a-${Date.now()}` })
-      const communityB = communityRepo.create({ name: 'Membership B', slug: `membership-b-${Date.now()}` })
+      const communityA = await createTestCommunity({ name: 'Membership A', slug: `membership-a-${Date.now()}` })
+      const communityB = await createTestCommunity({ name: 'Membership B', slug: `membership-b-${Date.now()}` })
 
       const createRes = await request(app)
         .post('/v1/agents')
@@ -118,7 +124,7 @@ describe('E2E: Control Plane (human auth)', () => {
         .set('Authorization', `Bearer ${userToken}`)
         .send({ add: [communityA.id, communityB.id], remove: [], role: 'resident' })
       expect(addRes.status).toBe(200)
-      expect(addRes.body.data.updated.added.sort()).toEqual([communityA.id, communityB.id])
+      expect(addRes.body.data.updated.added.sort()).toEqual([communityA.id, communityB.id].sort())
       expect(addRes.body.data.active_memberships).toHaveLength(2)
 
       const removeRes = await request(app)
@@ -153,7 +159,7 @@ describe('E2E: Control Plane (human auth)', () => {
     featureFlags.membershipStatusV1 = true
 
     try {
-      const community = communityRepo.create({ name: 'Membership Ban', slug: `membership-ban-${Date.now()}` })
+      const community = await createTestCommunity({ name: 'Membership Ban', slug: `membership-ban-${Date.now()}` })
       const createRes = await request(app)
         .post('/v1/agents')
         .set('Authorization', `Bearer ${userToken}`)
@@ -549,7 +555,7 @@ describe('E2E: Control Plane (human auth)', () => {
     expect(ownerAgentRes.status).toBe(201)
     const ownerAgentId = ownerAgentRes.body.data.id as string
 
-    const community = communityRepo.create({
+    const community = await createTestCommunity({
       name: 'Aftershow Permission Community',
       slug: `aftershow-perm-${Date.now()}`,
     })
@@ -688,13 +694,25 @@ describe('E2E: Control Plane (human auth)', () => {
   })
 
   it('POST /v1/admin/moderation/actions works for admin', async () => {
+    const community = await createTestCommunity({
+      name: 'Governance Action Community',
+      slug: `governance-action-${Date.now()}`,
+    })
+    const createAgentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Governance Action Agent' })
+    expect(createAgentRes.status).toBe(201)
+    const agentId = createAgentRes.body.data.id as string
+
     const postRes = await servicePost('/v1/posts', {
-      actor_agent_id: 'agent-gov-1',
+      actor_agent_id: agentId,
       run_id: 'run-gov-1',
-      community_id: 'c1',
+      community_id: community.id,
       title: 'Governance target',
       body: 'Content to moderate.',
     })
+    expect(postRes.status).toBe(201)
     const postId = postRes.body.data.id
 
     const res = await request(app)
@@ -709,5 +727,1091 @@ describe('E2E: Control Plane (human auth)', () => {
     expect(res.status).toBe(200)
     expect(res.body.data.success).toBe(true)
     expect(res.body.data.new_visibility).toBe('GRAY')
+  })
+
+  it('ChatService sendMessage writes MESSAGE_CREATED audit event', async () => {
+    const createAgentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Chat Audit Agent' })
+    expect(createAgentRes.status).toBe(201)
+    const agentId = createAgentRes.body.data.id as string
+
+    const now = Date.now()
+    const room = await chatService.createRoom({
+      name: `Audit Room ${now}`,
+      slug: `audit-room-${now}`,
+      description: 'audit room',
+      community_id: null,
+      created_by_agent_id: agentId,
+    })
+
+    const message = await chatService.sendMessage({
+      room_id: room.room.id,
+      author_id: agentId,
+      body: 'message for audit event',
+      message_kind: 'normal',
+    })
+
+    const event = eventRepo.findByIdempotencyKey(`message:${message.id}`)
+    expect(event).toBeTruthy()
+    expect(event?.event_type).toBe('MESSAGE_CREATED')
+    expect(event?.plane).toBe('DATA')
+    expect(event?.schema_version).toBe('v1')
+    expect(event?.actor_type).toBe('agent')
+    expect(event?.actor_id).toBe(agentId)
+    expect(event?.room_id).toBe(room.room.id)
+    expect(event?.correlation_id).toBe(`room:${room.room.id}`)
+    expect(event?.payload_json).toMatchObject({
+      message_id: message.id,
+      room_id: room.room.id,
+      author_agent_id: agentId,
+      message_kind: 'normal',
+    })
+  })
+
+  it('Control Plane config flow supports proposal -> validate -> approve -> apply -> history -> rollback', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalControlPlane = featureFlags.controlPlaneConfigV1
+    const originalAftershow = featureFlags.aftershowV1
+    const originalAudienceZone = featureFlags.audienceZoneV1
+    featureFlags.controlPlaneConfigV1 = true
+    featureFlags.aftershowV1 = true
+    featureFlags.audienceZoneV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Config Flow Community',
+        slug: `config-flow-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: DEFAULT_STAGE_SPEC_V1,
+        },
+      })
+
+      const proposalRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          patch: {
+            aftershow: {
+              mode: 'THRESHOLD',
+              threshold: {
+                audience_comments: 1,
+                human_vote_score: 1,
+              },
+            },
+          },
+          summary: 'Enable stronger aftershow threshold',
+        })
+      expect(proposalRes.status).toBe(201)
+      const proposalId = proposalRes.body.data.id as string
+      expect(proposalRes.body.data.patch_json).toEqual({
+        stage_spec_v1: {
+          aftershow: {
+            mode: 'THRESHOLD',
+            threshold: {
+              audience_comments: 1,
+              human_vote_score: 1,
+            },
+          },
+        },
+      })
+      expect(proposalRes.body.data.risk_level).toBe('HIGH')
+
+      const validateRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/validate`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({})
+      expect(validateRes.status).toBe(200)
+      expect(Array.isArray(validateRes.body.data.validation_errors)).toBe(true)
+
+      const blockedApply = await request(app)
+        .post(`/v1/communities/${community.id}/config/apply`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ proposal_id: proposalId })
+      expect(blockedApply.status).toBe(403)
+
+      const approveRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/approve`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+      expect(approveRes.status).toBe(200)
+
+      const applyRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/apply`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ proposal_id: proposalId })
+      expect(applyRes.status).toBe(200)
+      const versionId = applyRes.body.data.version.id as string
+
+      const configRes = await request(app)
+        .get(`/v1/communities/${community.id}/config`)
+        .set('Authorization', `Bearer ${adminToken}`)
+      expect(configRes.status).toBe(200)
+      expect(configRes.body.data.rules_json.stage_spec_v1.aftershow).toMatchObject({
+        mode: 'THRESHOLD',
+        threshold: {
+          audience_comments: 1,
+          human_vote_score: 1,
+        },
+      })
+      expect(configRes.body.data.rules_json).not.toHaveProperty('aftershow')
+
+      const historyRes = await request(app)
+        .get(`/v1/communities/${community.id}/config/history`)
+        .set('Authorization', `Bearer ${adminToken}`)
+      expect(historyRes.status).toBe(200)
+      expect(Array.isArray(historyRes.body.data.versions)).toBe(true)
+      expect(Array.isArray(historyRes.body.data.patches)).toBe(true)
+      const appliedPatch = (historyRes.body.data.patches as Array<{
+        id: string
+        patch_json: Record<string, unknown>
+      }>).find((item) => item.id === proposalId)
+      expect(appliedPatch?.patch_json).toEqual({
+        stage_spec_v1: {
+          aftershow: {
+            mode: 'THRESHOLD',
+            threshold: {
+              audience_comments: 1,
+              human_vote_score: 1,
+            },
+          },
+        },
+      })
+
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Config Flow Aftershow Agent' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: agentId,
+        run_id: `run-config-aftershow-${Date.now()}`,
+        community_id: community.id,
+        title: 'Config flow runtime target',
+        body: 'aftershow runtime should observe normalized control-plane config',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      const blockedAutoTriggerRes = await request(app)
+        .post(`/v1/posts/${postId}/aftershow/trigger`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ mode: 'AUTO', force: false })
+      expect(blockedAutoTriggerRes.status).toBe(201)
+      expect(blockedAutoTriggerRes.body.data.run.status).toBe('SKIPPED')
+      expect(blockedAutoTriggerRes.body.data.reason).toBe('threshold_not_met')
+      expect(blockedAutoTriggerRes.body.data.audience_message_count).toBe(0)
+
+      const audienceRes = await request(app)
+        .post(`/v1/posts/${postId}/audience-messages`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ body: 'One audience message should now satisfy the aftershow threshold.' })
+      expect(audienceRes.status).toBe(201)
+
+      const autoTriggerRes = await request(app)
+        .post(`/v1/posts/${postId}/aftershow/trigger`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ mode: 'AUTO', force: false })
+      expect(autoTriggerRes.status).toBe(201)
+      expect(autoTriggerRes.body.data.run.status).toBe('CREATED')
+      expect(autoTriggerRes.body.data.reason).toBe('triggered')
+      expect(autoTriggerRes.body.data.audience_message_count).toBe(1)
+
+      const rollbackRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/rollback`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          version_id: versionId,
+          reason: 'rollback rehearsal',
+        })
+      expect(rollbackRes.status).toBe(201)
+      expect(rollbackRes.body.data.rollback_from_version_id).toBe(versionId)
+
+      const legacyProposalRoute = await request(app)
+        .post(`/v1/communities/${community.id}/config-proposals`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          patch: {
+            moderation: {
+              premod_required: true,
+            },
+          },
+        })
+      expect(legacyProposalRoute.status).toBe(404)
+    } finally {
+      featureFlags.controlPlaneConfigV1 = originalControlPlane
+      featureFlags.aftershowV1 = originalAftershow
+      featureFlags.audienceZoneV1 = originalAudienceZone
+    }
+  })
+
+  it('Control Plane config rejects allocator configs where thread_max_agents exceeds community_max_agents', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalControlPlane = featureFlags.controlPlaneConfigV1
+    featureFlags.controlPlaneConfigV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Allocator Guard Community',
+        slug: `allocator-guard-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: DEFAULT_STAGE_SPEC_V1,
+        },
+      })
+
+      const proposalRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          patch: {
+            stage_spec_v1: {
+              allocator: {
+                community_max_agents: 1,
+                thread_max_agents: 10,
+              },
+            },
+          },
+        })
+      expect(proposalRes.status).toBe(201)
+
+      const proposalId = proposalRes.body.data.id as string
+      const validateRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/validate`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({})
+
+      expect(validateRes.status).toBe(200)
+      expect(validateRes.body.data.patch.status).toBe('REJECTED')
+      expect(validateRes.body.data.validation_errors).toContain(
+        'stage_spec_v1.allocator.thread_max_agents must be <= stage_spec_v1.allocator.community_max_agents',
+      )
+    } finally {
+      featureFlags.controlPlaneConfigV1 = originalControlPlane
+    }
+  })
+
+  it('Control Plane config keeps audience raw-read changes behind admin approval and admin apply', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalControlPlane = featureFlags.controlPlaneConfigV1
+    featureFlags.controlPlaneConfigV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Audience Raw Read Guard Community',
+        slug: `audience-raw-read-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: DEFAULT_STAGE_SPEC_V1,
+        },
+      })
+
+      const proposalRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          patch: {
+            stage_spec_v1: {
+              human_participation: {
+                agent_reads_audience_zone: true,
+              },
+            },
+          },
+          risk_level: 'LOW',
+        })
+      expect(proposalRes.status).toBe(201)
+      expect(proposalRes.body.data.risk_level).toBe('HIGH')
+      const proposalId = proposalRes.body.data.id as string
+
+      const validateRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/validate`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({})
+      expect(validateRes.status).toBe(200)
+      expect(validateRes.body.data.patch.status).toBe('VALIDATED')
+      expect(validateRes.body.data.patch.risk_level).toBe('HIGH')
+
+      const blockedBeforeApprove = await request(app)
+        .post(`/v1/communities/${community.id}/config/apply`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ proposal_id: proposalId })
+      expect(blockedBeforeApprove.status).toBe(403)
+
+      const approveRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/approve`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+      expect(approveRes.status).toBe(200)
+
+      const blockedUserApply = await request(app)
+        .post(`/v1/communities/${community.id}/config/apply`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ proposal_id: proposalId })
+      expect(blockedUserApply.status).toBe(403)
+
+      const adminApply = await request(app)
+        .post(`/v1/communities/${community.id}/config/apply`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ proposal_id: proposalId })
+      expect(adminApply.status).toBe(200)
+
+      const configRes = await request(app)
+        .get(`/v1/communities/${community.id}/config`)
+        .set('Authorization', `Bearer ${adminToken}`)
+      expect(configRes.status).toBe(200)
+      expect(configRes.body.data.rules_json.stage_spec_v1.human_participation.agent_reads_audience_zone).toBe(true)
+    } finally {
+      featureFlags.controlPlaneConfigV1 = originalControlPlane
+    }
+  })
+
+  it('Control Plane config apply rejects non-admin callers even for validated low-risk patch', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalControlPlane = featureFlags.controlPlaneConfigV1
+    featureFlags.controlPlaneConfigV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Config Low Risk Apply Permission Guard',
+        slug: `config-low-risk-apply-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: DEFAULT_STAGE_SPEC_V1,
+        },
+      })
+
+      const proposalRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          patch: {
+            custom_runtime_toggle: {
+              enabled: true,
+            },
+          },
+        })
+      expect(proposalRes.status).toBe(201)
+      expect(proposalRes.body.data.risk_level).toBe('LOW')
+      const proposalId = proposalRes.body.data.id as string
+
+      const validateRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/validate`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({})
+      expect(validateRes.status).toBe(200)
+      expect(validateRes.body.data.patch.status).toBe('VALIDATED')
+
+      const blockedUserApply = await request(app)
+        .post(`/v1/communities/${community.id}/config/apply`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ proposal_id: proposalId })
+      expect(blockedUserApply.status).toBe(403)
+
+      const adminApply = await request(app)
+        .post(`/v1/communities/${community.id}/config/apply`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ proposal_id: proposalId })
+      expect(adminApply.status).toBe(200)
+      expect(adminApply.body.data.patch.status).toBe('APPLIED')
+      expect(adminApply.body.data.version).toBeTruthy()
+    } finally {
+      featureFlags.controlPlaneConfigV1 = originalControlPlane
+    }
+  })
+
+  it('Control Plane config rejects cross-community proposal operations', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalControlPlane = featureFlags.controlPlaneConfigV1
+    featureFlags.controlPlaneConfigV1 = true
+
+    try {
+      const communityA = await createTestCommunity({
+        name: 'Config Ownership Community A',
+        slug: `config-ownership-a-${Date.now()}`,
+      })
+      const communityB = await createTestCommunity({
+        name: 'Config Ownership Community B',
+        slug: `config-ownership-b-${Date.now()}`,
+      })
+
+      const proposalRes = await request(app)
+        .post(`/v1/communities/${communityA.id}/config/proposals`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          patch: {
+            moderation: {
+              premod_required: true,
+            },
+          },
+        })
+      expect(proposalRes.status).toBe(201)
+      const proposalId = proposalRes.body.data.id as string
+
+      const validateOnWrongCommunity = await request(app)
+        .post(`/v1/communities/${communityB.id}/config/proposals/${proposalId}/validate`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({})
+      expect(validateOnWrongCommunity.status).toBe(404)
+
+      const approveOnWrongCommunity = await request(app)
+        .post(`/v1/communities/${communityB.id}/config/proposals/${proposalId}/approve`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+      expect(approveOnWrongCommunity.status).toBe(404)
+
+      const applyOnWrongCommunity = await request(app)
+        .post(`/v1/communities/${communityB.id}/config/apply`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ proposal_id: proposalId })
+      expect(applyOnWrongCommunity.status).toBe(404)
+    } finally {
+      featureFlags.controlPlaneConfigV1 = originalControlPlane
+    }
+  })
+
+  it('Control Plane config enforces proposal status transitions', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalControlPlane = featureFlags.controlPlaneConfigV1
+    featureFlags.controlPlaneConfigV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Config Status Guard Community',
+        slug: `config-status-guard-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: DEFAULT_STAGE_SPEC_V1,
+        },
+      })
+
+      const proposalRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          patch: {
+            moderation: {
+              premod_required: true,
+            },
+          },
+        })
+      expect(proposalRes.status).toBe(201)
+      const proposalId = proposalRes.body.data.id as string
+
+      const approveWithoutValidate = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/approve`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+      expect(approveWithoutValidate.status).toBe(400)
+
+      const validateRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/validate`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({})
+      expect(validateRes.status).toBe(200)
+      expect(validateRes.body.data.patch.status).toBe('VALIDATED')
+
+      const rejectRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/reject`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ reason: 'manual reject after validate' })
+      expect(rejectRes.status).toBe(200)
+      expect(rejectRes.body.data.status).toBe('REJECTED')
+
+      const validateAfterReject = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/validate`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({})
+      expect(validateAfterReject.status).toBe(400)
+
+      const approveAfterReject = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/approve`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+      expect(approveAfterReject.status).toBe(400)
+    } finally {
+      featureFlags.controlPlaneConfigV1 = originalControlPlane
+    }
+  })
+
+  it('Control Plane config apply supports SCHEDULED auto-activation by scheduler', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalControlPlane = featureFlags.controlPlaneConfigV1
+    featureFlags.controlPlaneConfigV1 = true
+
+    try {
+      communityConfigScheduler?.stop()
+      communityConfigScheduler?.start()
+
+      const community = await createTestCommunity({
+        name: 'Config Schedule Community',
+        slug: `config-schedule-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: DEFAULT_STAGE_SPEC_V1,
+        },
+      })
+
+      const proposalRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          patch: {
+            moderation: {
+              thresholds: {
+                low_max_score: 0.25,
+                medium_max_score: 0.6,
+                auto_reject_score: 0.9,
+              },
+            },
+          },
+          summary: 'Schedule a high-risk config apply',
+        })
+      expect(proposalRes.status).toBe(201)
+      const proposalId = proposalRes.body.data.id as string
+
+      const validateRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/validate`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({})
+      expect(validateRes.status).toBe(200)
+      expect(['VALIDATED', 'REJECTED']).toContain(validateRes.body.data.patch.status)
+
+      const approveRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/approve`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+      expect(approveRes.status).toBe(200)
+
+      const effectiveAt = new Date(Date.now() + 1500).toISOString()
+      const scheduleRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/apply`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          proposal_id: proposalId,
+          effective_at: effectiveAt,
+        })
+      expect(scheduleRes.status).toBe(200)
+      expect(scheduleRes.body.data.patch.status).toBe('SCHEDULED')
+      expect(scheduleRes.body.data.version).toBeNull()
+
+      const history = await waitFor(
+        async () => request(app)
+          .get(`/v1/communities/${community.id}/config/history`)
+          .set('Authorization', `Bearer ${adminToken}`),
+        {
+          timeoutMs: 12_000,
+          intervalMs: 300,
+          pass: (res) => {
+            const patches = res.body?.data?.patches as Array<{ id: string; status: string }> | undefined
+            const target = patches?.find((item) => item.id === proposalId)
+            return target?.status === 'APPLIED'
+          },
+        },
+      )
+
+      const appliedPatch = (history.body.data.patches as Array<{ id: string; status: string }>)
+        .find((item) => item.id === proposalId)
+      expect(appliedPatch?.status).toBe('APPLIED')
+
+      const activeVersion = (history.body.data.versions as Array<{ status: string; source_patch_id: string | null }>)
+        .find((item) => item.status === 'ACTIVE' && item.source_patch_id === proposalId)
+      expect(activeVersion).toBeTruthy()
+    } finally {
+      featureFlags.controlPlaneConfigV1 = originalControlPlane
+    }
+  }, 20_000)
+
+  it('Role assignment control-plane endpoints create and update assignments', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Role Assignment Community',
+        slug: `role-assignment-${Date.now()}`,
+      })
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Role Agent' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
+
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: agentId,
+        run_id: `run-role-${Date.now()}`,
+        community_id: community.id,
+        title: 'Role assignment post',
+        body: 'role assignment content',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      const createRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'POST',
+          scope_id: postId,
+          role: 'core',
+          agent_id: agentId,
+        })
+      expect(createRes.status).toBe(201)
+      const assignmentId = createRes.body.data.id as string
+
+      const patchRes = await request(app)
+        .patch(`/v1/communities/${community.id}/role-assignments/${assignmentId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          status: 'REVOKED',
+          reason: 'rotation end',
+        })
+      expect(patchRes.status).toBe(200)
+      expect(patchRes.body.data.status).toBe('REVOKED')
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+    }
+  })
+
+  it('Role assignment rejects role keys that are not defined in stage_spec', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Role Assignment Stage Role Guard',
+        slug: `role-assignment-stage-role-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: DEFAULT_STAGE_SPEC_V1,
+        },
+      })
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Role Agent Stage Role Guard' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
+
+      const invalidCreateRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'COMMUNITY',
+          scope_id: community.id,
+          role: 'aside-seat',
+          agent_id: agentId,
+        })
+      expect(invalidCreateRes.status).toBe(400)
+      expect(invalidCreateRes.body.error.code).toBe('VALIDATION_ERROR')
+
+      const validCreateRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'COMMUNITY',
+          scope_id: community.id,
+          role: 'core',
+          agent_id: agentId,
+        })
+      expect(validCreateRes.status).toBe(201)
+      const assignmentId = validCreateRes.body.data.id as string
+
+      const invalidPatchRes = await request(app)
+        .patch(`/v1/communities/${community.id}/role-assignments/${assignmentId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          role: 'aside-seat',
+          reason: 'invalid role should be rejected',
+        })
+      expect(invalidPatchRes.status).toBe(400)
+      expect(invalidPatchRes.body.error.code).toBe('VALIDATION_ERROR')
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+    }
+  })
+
+  it('Role assignment control-plane endpoints reject non-admin caller with 403', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Role Assignment Permission Guard',
+        slug: `role-assignment-perm-${Date.now()}`,
+      })
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Role Agent Permission Guard' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
+
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: agentId,
+        run_id: `run-role-perm-${Date.now()}`,
+        community_id: community.id,
+        title: 'Role assignment permission target',
+        body: 'role assignment permission content',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      const forbiddenCreateRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          scope: 'POST',
+          scope_id: postId,
+          role: 'core',
+          agent_id: agentId,
+        })
+      expect(forbiddenCreateRes.status).toBe(403)
+
+      const createRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'POST',
+          scope_id: postId,
+          role: 'core',
+          agent_id: agentId,
+        })
+      expect(createRes.status).toBe(201)
+      const assignmentId = createRes.body.data.id as string
+
+      const forbiddenPatchRes = await request(app)
+        .patch(`/v1/communities/${community.id}/role-assignments/${assignmentId}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ status: 'REVOKED', reason: 'non-admin should fail' })
+      expect(forbiddenPatchRes.status).toBe(403)
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+    }
+  })
+
+  it('Role assignment patch returns 404 when assignment does not belong to path community', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+
+    try {
+      const communityA = await createTestCommunity({
+        name: 'Role Assignment A',
+        slug: `role-assignment-a-${Date.now()}`,
+      })
+      const communityB = await createTestCommunity({
+        name: 'Role Assignment B',
+        slug: `role-assignment-b-${Date.now()}`,
+      })
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Role Agent Cross Community' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [communityA.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
+
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: agentId,
+        run_id: `run-role-cross-${Date.now()}`,
+        community_id: communityA.id,
+        title: 'Role assignment post cross community',
+        body: 'role assignment content cross community',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      const createRes = await request(app)
+        .post(`/v1/communities/${communityA.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'POST',
+          scope_id: postId,
+          role: 'core',
+          agent_id: agentId,
+        })
+      expect(createRes.status).toBe(201)
+      const assignmentId = createRes.body.data.id as string
+
+      const patchRes = await request(app)
+        .patch(`/v1/communities/${communityB.id}/role-assignments/${assignmentId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          status: 'REVOKED',
+          reason: 'cross community should fail',
+        })
+      expect(patchRes.status).toBe(404)
+      expect(patchRes.body.error.code).toBe('NOT_FOUND')
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+    }
+  })
+
+  it('Role assignment creation rejects COMMUNITY scope with mismatched scope_id', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Role Assignment Scope Validation',
+        slug: `role-assignment-scope-${Date.now()}`,
+      })
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Role Agent Scope Validation' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
+
+      const createRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'COMMUNITY',
+          scope_id: `mismatched-${community.id}`,
+          role: 'core',
+          agent_id: agentId,
+        })
+      expect(createRes.status).toBe(400)
+      expect(createRes.body.error.code).toBe('VALIDATION_ERROR')
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+    }
+  })
+
+  it('Role assignment creation rejects MUTED membership with 409', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    const originalMembershipStatus = featureFlags.membershipStatusV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+    featureFlags.membershipStatusV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Role Assignment Membership Muted',
+        slug: `role-assignment-muted-${Date.now()}`,
+      })
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Role Agent Membership Muted' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
+
+      const mutedRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships/${community.id}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'MUTED', reason: 'cooldown' })
+      expect(mutedRes.status).toBe(200)
+
+      const createRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'COMMUNITY',
+          scope_id: community.id,
+          role: 'core',
+          agent_id: agentId,
+        })
+      expect(createRes.status).toBe(409)
+      expect(createRes.body.error.code).toBe('CONFLICT')
+      expect(String(createRes.body.error.message)).toContain('MUTED')
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+      featureFlags.membershipStatusV1 = originalMembershipStatus
+    }
+  })
+
+  it('Role assignment creation rejects LEFT membership with 409', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Role Assignment Membership Left',
+        slug: `role-assignment-left-${Date.now()}`,
+      })
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Role Agent Membership Left' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
+
+      const leaveRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [], remove: [community.id] })
+      expect(leaveRes.status).toBe(200)
+
+      const createRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'COMMUNITY',
+          scope_id: community.id,
+          role: 'core',
+          agent_id: agentId,
+        })
+      expect(createRes.status).toBe(409)
+      expect(createRes.body.error.code).toBe('CONFLICT')
+      expect(String(createRes.body.error.message)).toContain('ACTIVE membership')
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+    }
+  })
+
+  it('Role assignment creation rejects missing membership with 409', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Role Assignment Membership Missing',
+        slug: `role-assignment-missing-${Date.now()}`,
+      })
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Role Agent Membership Missing' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const createRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'COMMUNITY',
+          scope_id: community.id,
+          role: 'core',
+          agent_id: agentId,
+        })
+      expect(createRes.status).toBe(409)
+      expect(createRes.body.error.code).toBe('CONFLICT')
+      expect(String(createRes.body.error.message)).toContain('ACTIVE membership')
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+    }
+  })
+
+  it('Role assignment creation rejects BANNED membership with 409', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    const originalMembershipStatus = featureFlags.membershipStatusV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+    featureFlags.membershipStatusV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Role Assignment Membership Banned',
+        slug: `role-assignment-banned-${Date.now()}`,
+      })
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Role Agent Membership Banned' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
+
+      const banRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships/${community.id}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'BANNED', reason: 'policy' })
+      expect(banRes.status).toBe(200)
+
+      const createRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'COMMUNITY',
+          scope_id: community.id,
+          role: 'core',
+          agent_id: agentId,
+        })
+      expect(createRes.status).toBe(409)
+      expect(createRes.body.error.code).toBe('CONFLICT')
+      expect(String(createRes.body.error.message)).toContain('BANNED')
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+      featureFlags.membershipStatusV1 = originalMembershipStatus
+    }
   })
 })

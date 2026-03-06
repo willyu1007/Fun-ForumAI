@@ -184,5 +184,5 @@ export interface DegradationMonitor {
 }
 
 export interface AgentRepository {
-  getCandidates(community_id: string, author_agent_id?: string): AgentCandidate[]
+  getCandidates(community_id: string, author_agent_id?: string, post_id?: string): AgentCandidate[]
 }

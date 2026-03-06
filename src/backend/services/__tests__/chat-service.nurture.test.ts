@@ -24,6 +24,7 @@ describe('ChatService nurture bridge', () => {
 
     const onContentProduced = vi.fn().mockResolvedValue(undefined)
     const awardXP = vi.fn().mockResolvedValue(undefined)
+    const createEvent = vi.fn()
     const createdAt = new Date()
 
     const svc = new ChatService({
@@ -47,6 +48,7 @@ describe('ChatService nurture bridge', () => {
       agentService: {} as never,
       growthEngine: { awardXP } as never,
       nurtureOrchestrator: { onContentProduced } as never,
+      eventRepo: { create: createEvent } as never,
     })
 
     await svc.sendMessage({
@@ -59,6 +61,15 @@ describe('ChatService nurture bridge', () => {
     expect(onContentProduced).toHaveBeenCalledWith('agent-1', 'chat_message', 1, {
       dedup_key: 'message:msg-1',
     })
+    expect(createEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event_type: 'MESSAGE_CREATED',
+      plane: 'DATA',
+      actor_type: 'agent',
+      actor_id: 'agent-1',
+      room_id: 'room-1',
+      correlation_id: 'room:room-1',
+      idempotency_key: 'message:msg-1',
+    }))
     expect(awardXP).not.toHaveBeenCalled()
   })
 })

@@ -6,6 +6,7 @@ import type {
   AgentRunRepository,
   CommunityRepository,
   AgentCommunityMembershipRepository,
+  RoleAssignmentRepository,
   Post,
   Comment,
   Vote,
@@ -50,6 +51,7 @@ export interface ForumWriteServiceDeps {
   agentRunRepo: AgentRunRepository
   communityRepo: CommunityRepository
   membershipRepo?: AgentCommunityMembershipRepository
+  roleAssignmentRepo?: RoleAssignmentRepository
   stageTierService?: AgentStageTierService
   incubationRepo?: IncubationRepository
   moderator: ModerationEvaluator
@@ -135,7 +137,10 @@ export class ForumWriteService {
     tier: AgentStageTier
   }): void {
     const roleSpec = input.stage_spec.roles[input.role_key]
-    if (!roleSpec?.runtime_gate) return
+    if (!roleSpec) {
+      throw new ForbiddenError(`Role ${input.role_key} is not allowed by stage spec`)
+    }
+    if (!roleSpec.runtime_gate) return
 
     const roleMinTier = roleSpec.min_tier
     let effectiveMinTier = roleMinTier
@@ -274,6 +279,7 @@ export class ForumWriteService {
   private async resolveStageWriteContext(input: {
     agent_id: string
     community_id: string
+    post_id?: string
     content_type: 'post' | 'comment'
     body: string
     is_longform: boolean
@@ -308,7 +314,21 @@ export class ForumWriteService {
       throw new ForbiddenError(`Membership status ${membership.status} cannot write runtime content`)
     }
 
-    const roleKey = membership?.role === 'GUEST' ? 'guest' : 'resident'
+    let roleKey = membership?.role === 'GUEST' ? 'guest' : 'resident'
+    if (config.features.roleAssignmentV1 && this.deps.roleAssignmentRepo) {
+      const assignment = this.deps.roleAssignmentRepo.findPrimaryForAgent({
+        agent_id: input.agent_id,
+        community_id: input.community_id,
+        post_id: input.post_id ?? null,
+      })
+      if (assignment && assignment.role.trim().length > 0) {
+        const assignedRole = assignment.role.trim()
+        if (Object.prototype.hasOwnProperty.call(stageResolved.stage_spec.roles, assignedRole)) {
+          roleKey = assignedRole
+        }
+      }
+    }
+
     let tier: AgentStageTier = 'T1'
     if (config.features.stageTierV1 && this.deps.stageTierService) {
       const snapshot = await this.deps.stageTierService.getSnapshot(input.agent_id, {
@@ -363,6 +383,7 @@ export class ForumWriteService {
     const stageContext = await this.resolveStageWriteContext({
       agent_id: input.actor_agent_id,
       community_id: input.community_id,
+      post_id: undefined,
       content_type: 'post',
       body: input.body,
       is_longform: input.body.length >= LONGFORM_POST_BODY_THRESHOLD,
@@ -435,6 +456,13 @@ export class ForumWriteService {
 
     const event = this.deps.eventRepo.create({
       event_type: 'POST_CREATED',
+      plane: 'DATA',
+      schema_version: 'v1',
+      community_id: post.community_id,
+      post_id: post.id,
+      actor_type: 'agent',
+      actor_id: input.actor_agent_id,
+      correlation_id: `post:${post.id}`,
       payload_json: {
         post_id: post.id,
         community_id: post.community_id,
@@ -484,6 +512,7 @@ export class ForumWriteService {
     const stageContext = await this.resolveStageWriteContext({
       agent_id: input.actor_agent_id,
       community_id: post.community_id,
+      post_id: post.id,
       content_type: 'comment',
       body: input.body,
       is_longform: false,
@@ -520,6 +549,13 @@ export class ForumWriteService {
 
     const event = this.deps.eventRepo.create({
       event_type: 'COMMENT_CREATED',
+      plane: 'DATA',
+      schema_version: 'v1',
+      community_id: post.community_id,
+      post_id: comment.post_id,
+      actor_type: 'agent',
+      actor_id: input.actor_agent_id,
+      correlation_id: `post:${comment.post_id}`,
       payload_json: {
         comment_id: comment.id,
         post_id: comment.post_id,
@@ -544,12 +580,14 @@ export class ForumWriteService {
   }): Promise<{ vote: Vote; event: DomainEvent }> {
     let targetAuthorAgentId: string | null = null
     let communityId: string | null = null
+    let relatedPostId: string | null = null
 
     if (input.target_type === 'POST') {
       const post = await this.deps.postRepo.findById(input.target_id)
       if (!post) throw new NotFoundError('Post', input.target_id)
       targetAuthorAgentId = post.author_agent_id
       communityId = post.community_id
+      relatedPostId = post.id
     } else if (input.target_type === 'COMMENT') {
       const comment = await this.deps.commentRepo.findById(input.target_id)
       if (!comment) throw new NotFoundError('Comment', input.target_id)
@@ -557,6 +595,7 @@ export class ForumWriteService {
       const post = await this.deps.postRepo.findById(comment.post_id)
       if (!post) throw new NotFoundError('Post', comment.post_id)
       communityId = post.community_id
+      relatedPostId = post.id
     }
 
     const vote = this.deps.voteRepo.upsert({
@@ -568,6 +607,13 @@ export class ForumWriteService {
 
     const event = this.deps.eventRepo.create({
       event_type: 'VOTE_CAST',
+      plane: 'DATA',
+      schema_version: 'v1',
+      community_id: communityId,
+      post_id: relatedPostId,
+      actor_type: 'agent',
+      actor_id: input.actor_agent_id,
+      correlation_id: communityId ? `community:${communityId}` : null,
       payload_json: {
         vote_id: vote.id,
         voter_agent_id: vote.voter_agent_id,

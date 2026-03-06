@@ -80,6 +80,11 @@ export class HumanParticipationService {
 
     await this.deps.eventRepo.create({
       event_type: 'HUMAN_VOTE_CAST',
+      plane: 'DATA',
+      schema_version: 'v1',
+      actor_type: 'human',
+      actor_id: input.voter_user_id,
+      correlation_id: `${input.target_type}:${input.target_id}`,
       payload_json: {
         voter_user_id: input.voter_user_id,
         target_type: input.target_type,

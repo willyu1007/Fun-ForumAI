@@ -8,6 +8,29 @@ interface MemoryListOpts {
   source_event_id?: string
 }
 
+function makeDomainEvent(input: {
+  id: string
+  event_type: 'POST_CREATED' | 'COMMENT_CREATED'
+  payload_json: Record<string, unknown>
+}) {
+  return {
+    id: input.id,
+    event_type: input.event_type,
+    plane: 'DATA' as const,
+    schema_version: 'v1' as const,
+    community_id: null,
+    post_id: typeof input.payload_json.post_id === 'string' ? input.payload_json.post_id : null,
+    room_id: null,
+    actor_type: 'agent' as const,
+    actor_id: typeof input.payload_json.author_agent_id === 'string' ? input.payload_json.author_agent_id : null,
+    cause_event_id: null,
+    correlation_id: null,
+    payload_json: input.payload_json,
+    idempotency_key: null,
+    created_at: new Date(),
+  }
+}
+
 function makeForumService(params: {
   commentCount: number
   participantCount: number
@@ -101,13 +124,11 @@ describe('PublicObservationDigestService', () => {
       heatScore: 29,
     })
 
-    await service.onForumEvent({
+    await service.onForumEvent(makeDomainEvent({
       id: 'evt-1',
       event_type: 'POST_CREATED',
       payload_json: { post_id: 'p1', author_agent_id: 'a1' },
-      idempotency_key: null,
-      created_at: new Date(),
-    })
+    }))
 
     expect(createPublicObservationMemory).not.toHaveBeenCalled()
   })
@@ -119,13 +140,11 @@ describe('PublicObservationDigestService', () => {
       heatScore: 0,
     })
 
-    await service.onForumEvent({
+    await service.onForumEvent(makeDomainEvent({
       id: 'evt-2',
       event_type: 'POST_CREATED',
       payload_json: { post_id: 'p1', author_agent_id: 'a1' },
-      idempotency_key: null,
-      created_at: new Date(),
-    })
+    }))
 
     expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
   })
@@ -137,13 +156,11 @@ describe('PublicObservationDigestService', () => {
       heatScore: 0,
     })
 
-    await service.onForumEvent({
+    await service.onForumEvent(makeDomainEvent({
       id: 'evt-3',
       event_type: 'COMMENT_CREATED',
       payload_json: { post_id: 'p1', author_agent_id: 'a1' },
-      idempotency_key: null,
-      created_at: new Date(),
-    })
+    }))
 
     expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
   })
@@ -155,13 +172,11 @@ describe('PublicObservationDigestService', () => {
       heatScore: 30,
     })
 
-    await service.onForumEvent({
+    await service.onForumEvent(makeDomainEvent({
       id: 'evt-4',
       event_type: 'POST_CREATED',
       payload_json: { post_id: 'p1', author_agent_id: 'a1' },
-      idempotency_key: null,
-      created_at: new Date(),
-    })
+    }))
 
     expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
   })
@@ -223,13 +238,11 @@ describe('PublicObservationDigestService', () => {
       },
     })
 
-    await service.onForumEvent({
+    await service.onForumEvent(makeDomainEvent({
       id: 'evt-5',
       event_type: 'POST_CREATED',
       payload_json: { post_id: 'p1', author_agent_id: 'a1' },
-      idempotency_key: null,
-      created_at: new Date(),
-    })
+    }))
 
     expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
   })
@@ -247,13 +260,11 @@ describe('PublicObservationDigestService', () => {
       },
     })
 
-    await service.onForumEvent({
+    await service.onForumEvent(makeDomainEvent({
       id: 'evt-dup',
       event_type: 'POST_CREATED',
       payload_json: { post_id: 'p1', author_agent_id: 'a1' },
-      idempotency_key: null,
-      created_at: new Date(),
-    })
+    }))
 
     expect(createPublicObservationMemory).not.toHaveBeenCalled()
   })
@@ -276,13 +287,11 @@ describe('PublicObservationDigestService', () => {
       },
     })
 
-    await service.onForumEvent({
+    await service.onForumEvent(makeDomainEvent({
       id: 'evt-toctou',
       event_type: 'POST_CREATED',
       payload_json: { post_id: 'p1', author_agent_id: 'a1' },
-      idempotency_key: null,
-      created_at: new Date(),
-    })
+    }))
 
     expect(createPublicObservationMemory).not.toHaveBeenCalled()
   })
@@ -297,13 +306,11 @@ describe('PublicObservationDigestService', () => {
       },
     })
 
-    await expect(service.onForumEvent({
+    await expect(service.onForumEvent(makeDomainEvent({
       id: 'evt-fail-open',
       event_type: 'POST_CREATED',
       payload_json: { post_id: 'p1', author_agent_id: 'a1' },
-      idempotency_key: null,
-      created_at: new Date(),
-    })).resolves.toBeUndefined()
+    }))).resolves.toBeUndefined()
 
     expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
   })

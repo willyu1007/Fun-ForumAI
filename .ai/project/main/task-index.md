@@ -59,4 +59,11 @@ Project: `main`
 | T-049 rich-communities-delivery-program | done | F-000 | dev-docs/active/rich-communities-delivery-program |
 | T-050 rich-communities-gap-hardening | done | F-000 | dev-docs/active/rich-communities-gap-hardening |
 | T-051 rich-communities-full-alignment | done | F-000 | dev-docs/active/rich-communities-full-alignment |
+| T-052 community-events-governance-program | done | F-000 | dev-docs/active/community-events-governance-program |
+| T-053 event-contract-routing-baseline | done | F-000 | dev-docs/active/event-contract-routing-baseline |
+| T-054 control-plane-config-governance | done | F-000 | dev-docs/active/control-plane-config-governance |
+| T-055 aftershow-event-pipeline-and-callout | done | F-000 | dev-docs/active/aftershow-event-pipeline-and-callout |
+| T-056 role-assignment-aside-seats | done | F-000 | dev-docs/active/role-assignment-aside-seats |
+| T-057 audience-aftershow-web-experience | done | F-000 | dev-docs/active/audience-aftershow-web-experience |
+| T-058 pr4-governance-blocker-fixes | done | F-000 | dev-docs/active/pr4-governance-blocker-fixes |
 <!-- AUTO-GENERATED:END task-index -->

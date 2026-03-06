@@ -7,6 +7,7 @@ import { InMemoryEventRepository, InMemoryAgentRunRepository } from '../../repos
 import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
 import { InMemoryAgentCommunityMembershipRepository } from '../../repos/agent-community-membership-repository.js'
 import { InMemoryIncubationRepository } from '../../repos/incubation-repository.js'
+import { InMemoryRoleAssignmentRepository } from '../../repos/role-assignment-repository.js'
 import type { ModerationResult } from '../../moderation/types.js'
 import { config } from '../../lib/config.js'
 
@@ -102,6 +103,7 @@ function setup(modResult: ModerationResult = CLEAN_RESULT) {
   const communityRepo = new InMemoryCommunityRepository()
   const membershipRepo = new InMemoryAgentCommunityMembershipRepository()
   const incubationRepo = new InMemoryIncubationRepository()
+  const roleAssignmentRepo = new InMemoryRoleAssignmentRepository()
   const community = communityRepo.create({
     name: 'Test Community',
     slug: `test-community-${Date.now()}`,
@@ -118,6 +120,7 @@ function setup(modResult: ModerationResult = CLEAN_RESULT) {
     agentRunRepo,
     communityRepo,
     membershipRepo,
+    roleAssignmentRepo,
     incubationRepo,
     moderator,
   })
@@ -131,6 +134,7 @@ function setup(modResult: ModerationResult = CLEAN_RESULT) {
     communityRepo,
     communityId: community.id,
     membershipRepo,
+    roleAssignmentRepo,
     incubationRepo,
   }
 }
@@ -223,6 +227,57 @@ describe('ForumWriteService', () => {
         ).rejects.toThrow('cannot write runtime content')
       } finally {
         featureFlags.membershipStatusV1 = originalMembershipStatus
+      }
+    })
+
+    it('ignores unknown assigned role keys and still enforces resident role gate', async () => {
+      const featureFlags = config.features as unknown as Record<string, boolean>
+      const originalStageRoleRuntime = featureFlags.stageRoleRuntimeV1
+      const originalRoleAssignment = featureFlags.roleAssignmentV1
+      featureFlags.stageRoleRuntimeV1 = true
+      featureFlags.roleAssignmentV1 = true
+
+      try {
+        const { svc, communityRepo, communityId, roleAssignmentRepo } = setup()
+        const strictRoleSpec = buildStrictT4StageSpec()
+        strictRoleSpec.roles.resident.min_tier = 'T5'
+        strictRoleSpec.tier_gate.resident_min_tier = 'T5'
+        strictRoleSpec.strict_t4.enabled = false
+        communityRepo.update(communityId, { rules_json: { stage_spec_v1: strictRoleSpec } })
+
+        await expect(
+          svc.createPost({
+            actor_agent_id: 'a1',
+            run_id: 'r-role-gate-baseline',
+            community_id: communityId,
+            title: 'Role gate baseline',
+            body: 'baseline should be blocked',
+          }),
+        ).rejects.toThrow('does not meet role gate')
+
+        await roleAssignmentRepo.create({
+          community_id: communityId,
+          post_id: null,
+          agent_id: 'a1',
+          scope: 'COMMUNITY',
+          scope_id: communityId,
+          role: 'aside-seat',
+          status: 'ACTIVE',
+          assigned_by: 'admin',
+        })
+
+        await expect(
+          svc.createPost({
+            actor_agent_id: 'a1',
+            run_id: 'r-role-gate-with-unknown-role',
+            community_id: communityId,
+            title: 'Role gate should still block',
+            body: 'unknown assigned role must not bypass runtime gate',
+          }),
+        ).rejects.toThrow('does not meet role gate')
+      } finally {
+        featureFlags.stageRoleRuntimeV1 = originalStageRoleRuntime
+        featureFlags.roleAssignmentV1 = originalRoleAssignment
       }
     })
 

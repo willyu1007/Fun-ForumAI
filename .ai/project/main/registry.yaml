@@ -412,3 +412,52 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/rich-communities-full-alignment
     updated: 2026-03-05
+  - id: T-052
+    slug: community-events-governance-program
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/community-events-governance-program
+    updated: 2026-03-05
+  - id: T-053
+    slug: event-contract-routing-baseline
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/event-contract-routing-baseline
+    updated: 2026-03-05
+  - id: T-054
+    slug: control-plane-config-governance
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/control-plane-config-governance
+    updated: 2026-03-05
+  - id: T-055
+    slug: aftershow-event-pipeline-and-callout
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/aftershow-event-pipeline-and-callout
+    updated: 2026-03-05
+  - id: T-056
+    slug: role-assignment-aside-seats
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/role-assignment-aside-seats
+    updated: 2026-03-05
+  - id: T-057
+    slug: audience-aftershow-web-experience
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/audience-aftershow-web-experience
+    updated: 2026-03-05
+  - id: T-058
+    slug: pr4-governance-blocker-fixes
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/pr4-governance-blocker-fixes
+    updated: 2026-03-06

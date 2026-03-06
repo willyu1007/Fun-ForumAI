@@ -49,6 +49,7 @@
     "smoke:t025:k8s": "node scripts/t025-sse-fanout-smoke.mjs",
     "smoke:t023-t025:k8s": "node scripts/t023-t025-k8s-smoke-suite.mjs",
     "evidence:t048:staging": "node scripts/t048-staging-evidence.mjs",
+    "test:e2e:pg:isolated": "node scripts/e2e-pg-isolated.mjs",
     "stage:templates:validate": "node scripts/stage-templates-validate.mjs",
     "stage:templates:export": "node scripts/stage-templates-export.mjs",
     "stage:season:rotate": "node scripts/stage-season-rotate.mjs",

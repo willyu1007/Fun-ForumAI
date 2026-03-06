@@ -105,6 +105,12 @@ export interface CreateHumanUserInput {
   avatar_url?: string | null
 }
 
+export interface UpsertDevHumanIdentityInput {
+  id: string
+  email: string
+  role: 'user' | 'admin'
+}
+
 export interface CreateAgentInput {
   owner_id: string
   display_name: string

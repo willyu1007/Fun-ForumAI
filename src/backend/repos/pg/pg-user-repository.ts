@@ -1,5 +1,6 @@
+import { Prisma } from '@prisma/client'
 import type { PrismaClient, HumanUser as PrismaHumanUser } from '@prisma/client'
-import type { HumanUser, CreateHumanUserInput } from '../types.js'
+import type { HumanUser, CreateHumanUserInput, UpsertDevHumanIdentityInput } from '../types.js'
 import type { UserRepository } from '../user-repository.js'
 
 function toDomain(row: PrismaHumanUser): HumanUser {
@@ -41,6 +42,66 @@ export class PgUserRepository implements UserRepository {
         passwordHash: input.password_hash,
         displayName: input.display_name,
         avatarUrl: input.avatar_url ?? null,
+      },
+    })
+    return toDomain(row)
+  }
+
+  async upsertDevIdentity(input: UpsertDevHumanIdentityInput): Promise<HumanUser> {
+    const existingById = await this.prisma.humanUser.findUnique({ where: { id: input.id } })
+    if (existingById) {
+      const row = await this.prisma.humanUser.update({
+        where: { id: input.id },
+        data: {
+          displayName: input.role === 'admin' ? '开发管理员' : '开发用户',
+          planTier: input.role === 'admin' ? 'ADMIN' : existingById.planTier,
+          status: 'ACTIVE',
+          emailVerified: true,
+        },
+      })
+      return toDomain(row)
+    }
+
+    const baseCreateData = {
+      id: input.id,
+      email: input.email,
+      passwordHash: '__dev_token__',
+      displayName: input.role === 'admin' ? '开发管理员' : '开发用户',
+      avatarUrl: null,
+      planTier: input.role === 'admin' ? 'ADMIN' as const : 'FREE' as const,
+      status: 'ACTIVE' as const,
+      emailVerified: true,
+      phoneVerified: false,
+    }
+
+    try {
+      const row = await this.prisma.humanUser.create({ data: baseCreateData })
+      return toDomain(row)
+    } catch (err) {
+      if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== 'P2002') {
+        throw err
+      }
+    }
+
+    const existingByEmail = await this.prisma.humanUser.findUnique({ where: { email: input.email } })
+    if (existingByEmail) {
+      const row = await this.prisma.humanUser.create({
+        data: {
+          ...baseCreateData,
+          email: `dev+${input.id}@local.dev`,
+        },
+      })
+      return toDomain(row)
+    }
+
+    // Unique conflict from a concurrent writer: retry one more time with primary key lookup.
+    const afterConflict = await this.prisma.humanUser.findUnique({ where: { id: input.id } })
+    if (afterConflict) return toDomain(afterConflict)
+
+    const row = await this.prisma.humanUser.create({
+      data: {
+        ...baseCreateData,
+        email: `dev+${input.id}@local.dev`,
       },
     })
     return toDomain(row)

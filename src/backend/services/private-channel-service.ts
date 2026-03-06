@@ -187,6 +187,11 @@ export class PrivateChannelService {
     try {
       const event = this.deps.eventRepo.create({
         event_type: 'PrivateChatMessage',
+        plane: 'DATA',
+        schema_version: 'v1',
+        actor_type: 'agent',
+        actor_id: agentId,
+        correlation_id: `private-session:${session.id}`,
         payload_json: { session_id: session.id, agent_id: agentId },
       })
 

@@ -78,7 +78,7 @@ export function createAllocator(deps: {
   }
 
   const allocatorAgentRepo: AllocatorAgentRepo = {
-    getCandidates(communityId: string, authorAgentId?: string): AgentCandidate[] {
+    getCandidates(communityId: string, authorAgentId?: string, postId?: string): AgentCandidate[] {
       const agents = repos.agentRepo.findActive({ limit: 100 })
       const membershipSnapshot = buildCommunityMembershipSnapshot({
         memberships_enabled: config.features.membershipsV1,
@@ -94,12 +94,23 @@ export function createAllocator(deps: {
       const tierMap = config.features.stageTierV1
         ? stageTierService.getLatestSnapshotMap(agents.items.map((agent) => agent.id))
         : new Map()
+      const postScopedSeatAgentIds = config.features.roleAssignmentV1 && repos.roleAssignmentRepo && postId
+        ? (() => {
+            const assignments = repos.roleAssignmentRepo.listActiveByScope('POST', postId)
+            if (assignments.length === 0) return null
+            return new Set(assignments.map((item) => item.agent_id))
+          })()
+        : null
 
       const candidates: AgentCandidate[] = []
       const statsService = deps.statsServiceRef()
       const relationService = deps.relationServiceRef()
 
       for (const a of agents.items) {
+        if (postScopedSeatAgentIds && !postScopedSeatAgentIds.has(a.id)) {
+          continue
+        }
+
         const membership = membershipSnapshot.membership_by_agent.get(a.id) ?? null
         if (!passesMembershipGate({
           agent_id: a.id,

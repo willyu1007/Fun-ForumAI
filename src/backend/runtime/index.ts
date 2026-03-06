@@ -17,6 +17,16 @@ export {
 export { RuntimeLoop, type RuntimeLoopConfig, type RuntimeLoopDeps } from './runtime-loop.js'
 export { EventBridge } from './event-bridge.js'
 export { PostScheduler, type PostSchedulerConfig, type PostSchedulerDeps } from './post-scheduler.js'
+export {
+  CommunityConfigScheduler,
+  type CommunityConfigSchedulerDeps,
+  type CommunityConfigSchedulerConfig,
+} from './community-config-scheduler.js'
+export {
+  RoleAssignmentExpiryScheduler,
+  type RoleAssignmentExpirySchedulerDeps,
+  type RoleAssignmentExpirySchedulerConfig,
+} from './role-assignment-expiry-scheduler.js'
 export type {
   AgentPersona,
   ExecutionContext,

@@ -17,6 +17,9 @@ interface JwtPayload {
   role: 'user' | 'admin'
 }
 
+type DevTokenSyncFn = (user: AuthenticatedUser) => Promise<void>
+let devTokenSyncFn: DevTokenSyncFn | null = null
+
 function extractToken(req: Request): string | null {
   const authHeader = req.headers.authorization
   if (authHeader?.startsWith('Bearer ')) {
@@ -75,7 +78,19 @@ export function tryAuthenticateHuman(req: Request): AuthenticatedUser | null {
   return user
 }
 
-export function requireHumanAuth(req: Request, _res: Response, next: NextFunction): void {
+async function syncDevTokenIdentityIfNeeded(user: AuthenticatedUser): Promise<void> {
+  if (!user._devToken) return
+  if (config.nodeEnv === 'production') return
+  if (!config.db.usePrisma) return
+  if (!devTokenSyncFn) return
+  await devTokenSyncFn(user)
+}
+
+export function registerDevTokenSync(fn: DevTokenSyncFn | null): void {
+  devTokenSyncFn = fn
+}
+
+export async function requireHumanAuth(req: Request, _res: Response, next: NextFunction): Promise<void> {
   const token = extractToken(req)
   if (!token) {
     throw new UnauthorizedError('Missing authentication token')
@@ -85,6 +100,7 @@ export function requireHumanAuth(req: Request, _res: Response, next: NextFunctio
   if (!user) throw new UnauthorizedError('Invalid authentication token')
 
   req.user = user
+  await syncDevTokenIdentityIfNeeded(user)
   next()
 }
 

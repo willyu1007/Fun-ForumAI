@@ -212,6 +212,42 @@ variables:
     default: 15000
     description: Lease TTL for runtime distributed leader locks.
 
+  CONTROL_PLANE_SCHEDULER_INTERVAL_MS:
+    type: int
+    required: false
+    default: 30000
+    description: Poll interval in milliseconds for community config scheduled activation.
+
+  CONTROL_PLANE_SCHEDULER_STARTUP_DELAY_MS:
+    type: int
+    required: false
+    default: 5000
+    description: Startup delay in milliseconds before the first community config scheduler scan.
+
+  CONTROL_PLANE_SCHEDULER_BATCH_LIMIT:
+    type: int
+    required: false
+    default: 20
+    description: Max scheduled config patches processed per scheduler tick.
+
+  CONTROL_PLANE_SCHEDULER_MAX_RETRIES:
+    type: int
+    required: false
+    default: 5
+    description: Max retry attempts for failed scheduled config applications.
+
+  CONTROL_PLANE_SCHEDULER_BACKOFF_BASE_MS:
+    type: int
+    required: false
+    default: 30000
+    description: Base exponential backoff delay in milliseconds for scheduler retries.
+
+  CONTROL_PLANE_SCHEDULER_BACKOFF_MAX_MS:
+    type: int
+    required: false
+    default: 900000
+    description: Max retry backoff delay in milliseconds for scheduler retries.
+
   SSE_BROADCAST_BACKEND:
     type: enum
     enum: [local, redis]

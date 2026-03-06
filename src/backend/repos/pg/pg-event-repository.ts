@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto'
 import {
   Prisma,
   type PrismaClient,
+  type EventActorType as PrismaEventActorType,
+  type EventPlane as PrismaEventPlane,
   type Event as PrismaEvent,
   type AgentRun as PrismaAgentRun,
 } from '@prisma/client'
@@ -36,6 +38,39 @@ function paginate<T extends { id: string }>(
 // for FK target persistence in the same process.
 const pendingEventWrites = new Map<string, Promise<void>>()
 
+function toPrismaPlane(plane: DomainEvent['plane']): PrismaEventPlane {
+  switch (plane) {
+    case 'CONTROL':
+      return 'CONTROL'
+    case 'RUNTIME':
+      return 'RUNTIME'
+    default:
+      return 'DATA'
+  }
+}
+
+function toPrismaActorType(actorType: DomainEvent['actor_type']): PrismaEventActorType {
+  switch (actorType) {
+    case 'agent':
+      return 'AGENT'
+    case 'human':
+      return 'HUMAN'
+    default:
+      return 'SYSTEM'
+  }
+}
+
+function toDomainActorType(actorType: PrismaEventActorType): DomainEvent['actor_type'] {
+  switch (actorType) {
+    case 'AGENT':
+      return 'agent'
+    case 'HUMAN':
+      return 'human'
+    default:
+      return 'system'
+  }
+}
+
 export class PgEventRepository implements EventRepository {
   private cache = new Map<string, DomainEvent>()
   private idempotencyIndex = new Map<string, string>()
@@ -64,6 +99,15 @@ export class PgEventRepository implements EventRepository {
     const event: DomainEvent = {
       id,
       event_type: input.event_type,
+      plane: input.plane ?? 'DATA',
+      schema_version: input.schema_version ?? 'v1',
+      community_id: input.community_id ?? null,
+      post_id: input.post_id ?? null,
+      room_id: input.room_id ?? null,
+      actor_type: input.actor_type ?? 'system',
+      actor_id: input.actor_id ?? null,
+      cause_event_id: input.cause_event_id ?? null,
+      correlation_id: input.correlation_id ?? null,
       payload_json: input.payload_json,
       idempotency_key: input.idempotency_key ?? null,
       created_at: now,
@@ -77,6 +121,15 @@ export class PgEventRepository implements EventRepository {
         data: {
           id,
           eventType: event.event_type,
+          plane: toPrismaPlane(event.plane),
+          schemaVersion: event.schema_version,
+          communityId: event.community_id,
+          postId: event.post_id,
+          roomId: event.room_id,
+          actorType: toPrismaActorType(event.actor_type),
+          actorId: event.actor_id,
+          causeEventId: event.cause_event_id,
+          correlationId: event.correlation_id,
           payloadJson: event.payload_json as Prisma.InputJsonValue,
           idempotencyKey: event.idempotency_key,
           createdAt: now,
@@ -110,6 +163,15 @@ export class PgEventRepository implements EventRepository {
     return {
       id: row.id,
       event_type: row.eventType,
+      plane: row.plane,
+      schema_version: row.schemaVersion as 'v1',
+      community_id: row.communityId,
+      post_id: row.postId,
+      room_id: row.roomId,
+      actor_type: toDomainActorType(row.actorType),
+      actor_id: row.actorId,
+      cause_event_id: row.causeEventId,
+      correlation_id: row.correlationId,
       payload_json: row.payloadJson as Record<string, unknown>,
       idempotency_key: row.idempotencyKey,
       created_at: row.createdAt,

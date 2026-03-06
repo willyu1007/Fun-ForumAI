@@ -4,6 +4,7 @@ import { app } from '../../app.js'
 import { createServiceToken } from '../../middleware/service-auth.js'
 import { createDevToken } from '../../middleware/human-auth.js'
 import { config } from '../../lib/config.js'
+import { communityRepo } from '../../container.js'
 
 export { app, config }
 
@@ -54,4 +55,17 @@ export async function waitFor<T>(
     throw new Error('waitFor exhausted without any attempts')
   }
   return last
+}
+
+export async function createTestCommunity(input: {
+  name: string
+  slug: string
+  description?: string
+  rules_json?: Record<string, unknown>
+}) {
+  const createPersisted = communityRepo.createPersisted?.bind(communityRepo)
+  if (createPersisted) {
+    return createPersisted(input)
+  }
+  return communityRepo.create(input)
 }

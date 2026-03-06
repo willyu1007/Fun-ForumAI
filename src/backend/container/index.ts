@@ -6,6 +6,8 @@ import { createCoreServices } from './services.js'
 import { createAllocator } from './allocator.js'
 import { createNurtureEngines } from './nurture.js'
 import { createRuntime } from './runtime.js'
+import { CommunityConfigScheduler } from '../runtime/community-config-scheduler.js'
+import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry-scheduler.js'
 
 // ─── 1. Repositories ────────────────────────────────────────
 const { repos, hydratables } = await createRepositories(config.db.usePrisma)
@@ -30,6 +32,33 @@ const core = createCoreServices({
   roomLifecycleLeaderElector: infra.leaderElectors.roomLifecycle,
   conversationClockLeaderElector: infra.leaderElectors.conversationClock,
 })
+
+const communityConfigScheduler = new CommunityConfigScheduler(
+  {
+    service: core.communityConfigService,
+    leaderElector: infra.leaderElectors.communityConfigScheduler,
+  },
+  {
+    intervalMs: config.runtime.communityConfigSchedulerIntervalMs,
+    startupDelayMs: config.runtime.communityConfigSchedulerStartupDelayMs,
+    batchLimit: config.runtime.communityConfigSchedulerBatchLimit,
+    maxRetries: config.runtime.communityConfigSchedulerMaxRetries,
+    backoffBaseMs: config.runtime.communityConfigSchedulerBackoffBaseMs,
+    backoffMaxMs: config.runtime.communityConfigSchedulerBackoffMaxMs,
+  },
+)
+
+const roleAssignmentExpiryScheduler = new RoleAssignmentExpiryScheduler(
+  {
+    service: core.roleAssignmentService,
+    leaderElector: infra.leaderElectors.roleAssignmentExpiryScheduler,
+  },
+  {
+    intervalMs: config.runtime.roleAssignmentExpiryIntervalMs,
+    startupDelayMs: config.runtime.roleAssignmentExpiryStartupDelayMs,
+    batchLimit: config.runtime.roleAssignmentExpiryBatchLimit,
+  },
+)
 
 // ─── 5. Nurture Engines (Prisma-only heavy path) ────────────
 const nurture = await createNurtureEngines({
@@ -138,6 +167,7 @@ export const humanFollowRepo = repos.humanFollowRepo
 export const inclinationAssetRepo = repos.inclinationAssetRepo
 export const postMediaRepo = repos.postMediaRepo
 export const communityRepo = repos.communityRepo
+export const eventRepo = repos.eventRepo
 
 export const sseHub = infra.sseHub
 export const eventQueue = infra.eventQueue
@@ -153,6 +183,8 @@ export const incubationService = core.incubationService
 export const incubationOrchestrator = core.incubationOrchestrator
 export const audienceService = core.audienceService
 export const aftershowService = core.aftershowService
+export const communityConfigService = core.communityConfigService
+export const roleAssignmentService = core.roleAssignmentService
 export const forumWriteService = core.forumWriteService
 export const globalHighlightsService = core.globalHighlightsService
 export const agentService = core.agentService
@@ -181,6 +213,7 @@ export const achievementsScheduler = nurture.achievementsScheduler
 export const cultureDigestScheduler = nurture.cultureDigestScheduler
 export const privateChannelServices = nurture.privateChannelServices
 export const privateChannelScheduler = nurture.privateChannelScheduler
+export { communityConfigScheduler, roleAssignmentExpiryScheduler }
 
 export const agentExecutor = rt.agentExecutor
 export const postScheduler = rt.postScheduler

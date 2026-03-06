@@ -18,9 +18,21 @@ export interface EvidenceRef {
   weight?: number
 }
 
+export type EventPlane = 'DATA' | 'CONTROL' | 'RUNTIME'
+export type EventActorType = 'agent' | 'human' | 'system'
+
 export interface DomainEvent {
   id: string
   event_type: string
+  plane: EventPlane
+  schema_version: 'v1'
+  community_id: string | null
+  post_id: string | null
+  room_id: string | null
+  actor_type: EventActorType
+  actor_id: string | null
+  cause_event_id: string | null
+  correlation_id: string | null
   payload_json: Record<string, unknown>
   idempotency_key: string | null
   created_at: Date
@@ -40,6 +52,15 @@ export interface AgentRun {
 
 export interface CreateEventInput {
   event_type: string
+  plane?: EventPlane
+  schema_version?: 'v1'
+  community_id?: string | null
+  post_id?: string | null
+  room_id?: string | null
+  actor_type?: EventActorType
+  actor_id?: string | null
+  cause_event_id?: string | null
+  correlation_id?: string | null
   payload_json: Record<string, unknown>
   idempotency_key?: string | null
 }
