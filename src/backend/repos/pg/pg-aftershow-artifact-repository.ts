@@ -213,15 +213,29 @@ export class PgAftershowArtifactRepository implements AftershowArtifactRepositor
     return rows.map((row) => toCallout({ ...row, metaJson: row.metaJson }))
   }
 
-  async countCalloutsByUserSince(userId: string, since: Date): Promise<number> {
+  async countNotifiedCalloutsByUserSince(userId: string, since: Date): Promise<number> {
     return this.prisma.aftershowCallout.count({
-      where: { userId, createdAt: { gte: since } },
+      where: { userId, notificationId: { not: null }, createdAt: { gte: since } },
     })
   }
 
-  async countCalloutsByPostSince(postId: string, since: Date): Promise<number> {
+  async countNotifiedCalloutsByUserAndPostSince(userId: string, postId: string, since: Date): Promise<number> {
     return this.prisma.aftershowCallout.count({
       where: {
+        userId,
+        notificationId: { not: null },
+        createdAt: { gte: since },
+        artifact: {
+          postId,
+        },
+      },
+    })
+  }
+
+  async countNotifiedCalloutsByPostSince(postId: string, since: Date): Promise<number> {
+    return this.prisma.aftershowCallout.count({
+      where: {
+        notificationId: { not: null },
         createdAt: { gte: since },
         artifact: {
           postId,

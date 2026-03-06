@@ -18,8 +18,9 @@ export interface AftershowArtifactRepository {
   createCallout(input: CreateAftershowCalloutInput): Promise<AftershowCallout>
   updateCallout(id: string, input: UpdateAftershowCalloutInput): Promise<AftershowCallout | null>
   listCalloutsByArtifact(artifactId: string): Promise<AftershowCallout[]>
-  countCalloutsByUserSince(userId: string, since: Date): Promise<number>
-  countCalloutsByPostSince(postId: string, since: Date): Promise<number>
+  countNotifiedCalloutsByUserSince(userId: string, since: Date): Promise<number>
+  countNotifiedCalloutsByUserAndPostSince(userId: string, postId: string, since: Date): Promise<number>
+  countNotifiedCalloutsByPostSince(postId: string, since: Date): Promise<number>
 }
 
 let counter = 0
@@ -144,19 +145,41 @@ export class InMemoryAftershowArtifactRepository implements AftershowArtifactRep
       .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
   }
 
-  async countCalloutsByUserSince(userId: string, since: Date): Promise<number> {
+  async countNotifiedCalloutsByUserSince(userId: string, since: Date): Promise<number> {
     return Array.from(this.callouts.values())
-      .filter((item) => item.user_id === userId && item.created_at.getTime() >= since.getTime()).length
+      .filter((item) =>
+        item.user_id === userId
+        && item.notification_id !== null
+        && item.created_at.getTime() >= since.getTime())
+      .length
   }
 
-  async countCalloutsByPostSince(postId: string, since: Date): Promise<number> {
+  async countNotifiedCalloutsByUserAndPostSince(userId: string, postId: string, since: Date): Promise<number> {
     const artifactIds = new Set(
       Array.from(this.artifacts.values())
         .filter((item) => item.post_id === postId)
         .map((item) => item.id),
     )
     return Array.from(this.callouts.values())
-      .filter((item) => artifactIds.has(item.artifact_id) && item.created_at.getTime() >= since.getTime())
+      .filter((item) =>
+        item.user_id === userId
+        && item.notification_id !== null
+        && artifactIds.has(item.artifact_id)
+        && item.created_at.getTime() >= since.getTime())
+      .length
+  }
+
+  async countNotifiedCalloutsByPostSince(postId: string, since: Date): Promise<number> {
+    const artifactIds = new Set(
+      Array.from(this.artifacts.values())
+        .filter((item) => item.post_id === postId)
+        .map((item) => item.id),
+    )
+    return Array.from(this.callouts.values())
+      .filter((item) =>
+        item.notification_id !== null
+        && artifactIds.has(item.artifact_id)
+        && item.created_at.getTime() >= since.getTime())
       .length
   }
 }
