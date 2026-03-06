@@ -80,6 +80,15 @@ export class PgAftershowArtifactRepository implements AftershowArtifactRepositor
   constructor(private readonly prisma: PrismaClient) {}
 
   async createArtifact(input: CreateAftershowArtifactInput): Promise<AftershowArtifact> {
+    if (input.idempotency_key) {
+      const existing = await this.prisma.aftershowArtifact.findUnique({
+        where: { idempotencyKey: input.idempotency_key },
+      })
+      if (existing) {
+        return toArtifact({ ...existing, contentJson: existing.contentJson, metaJson: existing.metaJson })
+      }
+    }
+
     const now = new Date()
     const row = await this.prisma.aftershowArtifact.create({
       data: {
@@ -101,6 +110,14 @@ export class PgAftershowArtifactRepository implements AftershowArtifactRepositor
         createdAt: now,
         updatedAt: now,
       },
+    }).catch(async (err) => {
+      if (err?.code === 'P2002' && input.idempotency_key) {
+        const existing = await this.prisma.aftershowArtifact.findUnique({
+          where: { idempotencyKey: input.idempotency_key },
+        })
+        if (existing) return existing
+      }
+      throw err
     })
     return toArtifact({ ...row, contentJson: row.contentJson, metaJson: row.metaJson })
   }

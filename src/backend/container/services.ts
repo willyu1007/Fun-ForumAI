@@ -136,6 +136,7 @@ export function createCoreServices(deps: {
     communityRepo: repos.communityRepo,
     postRepo: repos.postRepo,
     commentRepo: repos.commentRepo,
+    eventRepo: repos.eventRepo,
   })
 
   const communityCultureDigestService = new CommunityCultureDigestService({

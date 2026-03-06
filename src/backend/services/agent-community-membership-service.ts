@@ -6,6 +6,7 @@ import type {
   CommunityRepository,
   PostRepository,
   CommentRepository,
+  EventRepository,
 } from '../repos/index.js'
 import { ForbiddenError, NotFoundError } from '../lib/errors.js'
 
@@ -15,6 +16,7 @@ export interface AgentCommunityMembershipServiceDeps {
   communityRepo: CommunityRepository
   postRepo: PostRepository
   commentRepo: CommentRepository
+  eventRepo: EventRepository
 }
 
 export interface PatchMembershipsInput {
@@ -102,6 +104,21 @@ export class AgentCommunityMembershipService {
       })
       added.push(communityId)
       removeSet.delete(communityId)
+      this.deps.eventRepo.create({
+        event_type: 'COMMUNITY_MEMBER_ADDED',
+        plane: 'CONTROL',
+        schema_version: 'v1',
+        community_id: communityId,
+        actor_type: 'human',
+        actor_id: input.actor_user_id,
+        correlation_id: `membership:${input.agent_id}:${communityId}`,
+        payload_json: {
+          agent_id: input.agent_id,
+          community_id: communityId,
+          role: mappedRole,
+          source: 'MANUAL',
+        },
+      })
     }
 
     const removed: string[] = []
@@ -109,6 +126,20 @@ export class AgentCommunityMembershipService {
       const removedMembership = await this.deps.membershipRepo.leave(input.agent_id, communityId)
       if (removedMembership) {
         removed.push(communityId)
+        this.deps.eventRepo.create({
+          event_type: 'COMMUNITY_MEMBER_LEFT',
+          plane: 'CONTROL',
+          schema_version: 'v1',
+          community_id: communityId,
+          actor_type: 'human',
+          actor_id: input.actor_user_id,
+          correlation_id: `membership:${input.agent_id}:${communityId}`,
+          payload_json: {
+            agent_id: input.agent_id,
+            community_id: communityId,
+            source: 'MANUAL',
+          },
+        })
       }
     }
 
@@ -151,6 +182,7 @@ export class AgentCommunityMembershipService {
       }
     }
 
+    const previousStatus = current.status
     const updated = await this.deps.membershipRepo.updateStatus({
       agent_id: input.agent_id,
       community_id: input.community_id,
@@ -161,6 +193,25 @@ export class AgentCommunityMembershipService {
     })
     if (!updated) {
       throw new NotFoundError('Membership', `${input.agent_id}:${input.community_id}`)
+    }
+
+    if (previousStatus !== input.status) {
+      this.deps.eventRepo.create({
+        event_type: 'COMMUNITY_MEMBER_STATUS_CHANGED',
+        plane: 'CONTROL',
+        schema_version: 'v1',
+        community_id: input.community_id,
+        actor_type: 'human',
+        actor_id: input.actor_user_id,
+        correlation_id: `membership:${input.agent_id}:${input.community_id}`,
+        payload_json: {
+          agent_id: input.agent_id,
+          community_id: input.community_id,
+          status_before: previousStatus,
+          status_after: input.status,
+          reason: input.reason?.trim() || null,
+        },
+      })
     }
 
     return updated
@@ -253,6 +304,21 @@ export class AgentCommunityMembershipService {
         community_id: communityId,
         role: 'RESIDENT',
         source: 'DERIVED',
+      })
+      this.deps.eventRepo.create({
+        event_type: 'COMMUNITY_MEMBER_ADDED',
+        plane: 'CONTROL',
+        schema_version: 'v1',
+        community_id: communityId,
+        actor_type: 'system',
+        actor_id: 'derived-backfill',
+        correlation_id: `membership:${agentId}:${communityId}`,
+        payload_json: {
+          agent_id: agentId,
+          community_id: communityId,
+          role: 'RESIDENT',
+          source: 'DERIVED',
+        },
       })
       upserted += 1
     }

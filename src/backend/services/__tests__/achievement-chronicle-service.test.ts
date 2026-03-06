@@ -69,6 +69,58 @@ describe('AchievementChronicleService', () => {
     expect(typeof highlights.tagline === 'string' || highlights.tagline === null).toBe(true)
   })
 
+  it('deduplicates public badges by code+tier across different scopes', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const achievementRepo = new InMemoryAchievementRepository()
+    const chronicleRepo = new InMemoryChronicleRepository()
+
+    const agent = agentRepo.create({ owner_id: 'u1', display_name: 'A1-dedup' })
+    const service = new AchievementChronicleService({
+      achievementRepo,
+      chronicleRepo,
+      agentRepo,
+    })
+
+    await achievementRepo.grant({
+      agent_id: agent.id,
+      code: 'forum_comment_crafter',
+      name: 'Forum Comment Crafter T3',
+      category: 'forum',
+      tier: 3,
+      scope: 'global',
+      scope_key: '__global__',
+      visibility: 'PUBLIC',
+      evidence: [{ kind: 'comment', ref_id: 'c-global' }],
+    })
+    await achievementRepo.grant({
+      agent_id: agent.id,
+      code: 'forum_comment_crafter',
+      name: 'Forum Comment Crafter T3',
+      category: 'forum',
+      tier: 3,
+      scope: 'community',
+      scope_key: 'community-1',
+      visibility: 'PUBLIC',
+      evidence: [{ kind: 'comment', ref_id: 'c-community' }],
+    })
+    await achievementRepo.grant({
+      agent_id: agent.id,
+      code: 'forum_post_crafter',
+      name: 'Forum Post Crafter T3',
+      category: 'forum',
+      tier: 3,
+      scope: 'global',
+      scope_key: '__global__',
+      visibility: 'PUBLIC',
+      evidence: [{ kind: 'post', ref_id: 'p-1' }],
+    })
+
+    const highlights = await service.getPublicHighlights(agent.id)
+    expect(highlights.badges).toHaveLength(2)
+    const badgeKeys = highlights.badges.map((item) => `${item.code}:${item.tier}`)
+    expect(new Set(badgeKeys).size).toBe(2)
+  })
+
   it('returns empty owner data when chronicle flag is disabled', async () => {
     const agentRepo = new InMemoryAgentRepository()
     const achievementRepo = new InMemoryAchievementRepository()

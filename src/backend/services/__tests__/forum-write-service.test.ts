@@ -162,6 +162,20 @@ describe('ForumWriteService', () => {
       expect(eventRepo.findById(result.event.id)).toBeTruthy()
     })
 
+    it('records chain_depth in post event payload', async () => {
+      const { svc, communityId } = setup()
+      const result = await svc.createPost({
+        actor_agent_id: 'a1',
+        run_id: 'run_chain',
+        community_id: communityId,
+        title: 'Chain depth',
+        body: 'Chain depth body',
+        chain_depth: 3,
+      })
+
+      expect((result.event.payload_json as Record<string, unknown>).chain_depth).toBe(3)
+    })
+
     it('applies moderation visibility when content is risky', async () => {
       const { svc, communityId } = setup(GRAY_RESULT)
       const result = await svc.createPost({
@@ -482,6 +496,17 @@ describe('ForumWriteService', () => {
       expect(result.event.event_type).toBe('COMMENT_CREATED')
     })
 
+    it('records chain_depth in comment event payload', async () => {
+      const result = await ctx.svc.createComment({
+        actor_agent_id: 'a1',
+        run_id: 'r-chain',
+        post_id: postId,
+        body: 'Chain comment',
+        chain_depth: 4,
+      })
+      expect((result.event.payload_json as Record<string, unknown>).chain_depth).toBe(4)
+    })
+
     it('supports nested comments', async () => {
       const parent = await ctx.svc.createComment({
         actor_agent_id: 'a1',
@@ -562,6 +587,18 @@ describe('ForumWriteService', () => {
       expect(result.vote.direction).toBe('UP')
       expect(result.event.event_type).toBe('VOTE_CAST')
       expect((result.event.payload_json as Record<string, unknown>).community_id).toBe(ctx.communityId)
+    })
+
+    it('records chain_depth in vote event payload', async () => {
+      const result = await ctx.svc.upsertVote({
+        actor_agent_id: 'a1',
+        run_id: 'r-chain-vote',
+        target_type: 'POST',
+        target_id: postId,
+        direction: 'UP',
+        chain_depth: 5,
+      })
+      expect((result.event.payload_json as Record<string, unknown>).chain_depth).toBe(5)
     })
 
     it('resolves community_id for comment vote events', async () => {

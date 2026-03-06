@@ -19,6 +19,7 @@
     "mobile:test": "pnpm --filter @fun-forum/mobile test",
     "build": "vite build",
     "start": "tsx src/backend/server.ts",
+    "pretypecheck": "pnpm db:generate",
     "typecheck": "tsc -b",
     "lint": "eslint src/",
     "test": "vitest run",

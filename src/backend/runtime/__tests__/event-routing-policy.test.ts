@@ -69,7 +69,72 @@ describe('event-routing-policy', () => {
       expect(rule?.enqueue_allocator).toBe(false)
     }
   })
+  it('maps micro-action data events without allocator enqueue', () => {
+    const microActionEvents = [
+      'ASIDE_COMMENT_CREATED',
+      'AGENT_VOTE_CAST',
+      'AFTERSHOW_COMMENT_CREATED',
+    ]
+
+    for (const eventType of microActionEvents) {
+      const rule = getEventRouteRule(eventType)
+      expect(rule).toBeTruthy()
+      expect(rule?.plane).toBe('DATA')
+      expect(rule?.enqueue_allocator).toBe(false)
+    }
+  })
+
+  it('maps community membership control events without allocator enqueue', () => {
+    const membershipEvents = [
+      'COMMUNITY_MEMBER_ADDED',
+      'COMMUNITY_MEMBER_LEFT',
+      'COMMUNITY_MEMBER_STATUS_CHANGED',
+    ]
+
+    for (const eventType of membershipEvents) {
+      const rule = getEventRouteRule(eventType)
+      expect(rule).toBeTruthy()
+      expect(rule?.plane).toBe('CONTROL')
+      expect(rule?.enqueue_allocator).toBe(false)
+    }
+  })
+
+  it('maps allocator-enqueued data events correctly', () => {
+    const enqueueEvents = [
+      { type: 'POST_CREATED', allocator: 'NewPostCreated' },
+      { type: 'COMMENT_CREATED', allocator: 'NewCommentCreated' },
+      { type: 'VOTE_CAST', allocator: 'VoteCast' },
+    ]
+
+    for (const { type, allocator } of enqueueEvents) {
+      const rule = getEventRouteRule(type)
+      expect(rule).toBeTruthy()
+      expect(rule?.plane).toBe('DATA')
+      expect(rule?.enqueue_allocator).toBe(true)
+      expect(rule?.allocator_event_type).toBe(allocator)
+    }
+  })
+
+  it('maps non-enqueued data events correctly', () => {
+    const noEnqueueEvents = [
+      'MESSAGE_CREATED',
+      'HUMAN_VOTE_CAST',
+    ]
+
+    for (const eventType of noEnqueueEvents) {
+      const rule = getEventRouteRule(eventType)
+      expect(rule).toBeTruthy()
+      expect(rule?.plane).toBe('DATA')
+      expect(rule?.enqueue_allocator).toBe(false)
+    }
+  })
+
   it('does not retain legacy COMMUNITY_CONFIG_COMPONENT_ACK rule', () => {
     expect(getEventRouteRule('COMMUNITY_CONFIG_COMPONENT_ACK')).toBeNull()
+  })
+
+  it('returns null for unknown event types', () => {
+    expect(getEventRouteRule('UNKNOWN_EVENT')).toBeNull()
+    expect(getEventRouteRule('')).toBeNull()
   })
 })

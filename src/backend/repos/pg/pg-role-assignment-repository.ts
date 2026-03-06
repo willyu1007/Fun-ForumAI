@@ -42,16 +42,36 @@ function toDomain(row: {
   }
 }
 
+const DEFAULT_CACHE_TTL_MS = 30_000
+
 export class PgRoleAssignmentRepository implements RoleAssignmentRepository {
   private cache = new Map<string, RoleAssignment>()
+  private lastHydratedAt = 0
+  private readonly cacheTtlMs: number
+  private refreshInFlight: Promise<void> | null = null
 
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient,
+    opts?: { cacheTtlMs?: number },
+  ) {
+    this.cacheTtlMs = opts?.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS
+  }
 
   async hydrate(): Promise<void> {
     const rows = await this.prisma.roleAssignment.findMany()
+    this.cache.clear()
     for (const row of rows) {
       this.cache.set(row.id, toDomain({ ...row, metaJson: row.metaJson }))
     }
+    this.lastHydratedAt = Date.now()
+  }
+
+  private scheduleRefreshIfStale(): void {
+    if (this.refreshInFlight) return
+    if (Date.now() - this.lastHydratedAt < this.cacheTtlMs) return
+    this.refreshInFlight = this.hydrate()
+      .catch((err) => console.error('[PgRoleAssignmentRepo] background refresh error:', err))
+      .finally(() => { this.refreshInFlight = null })
   }
 
   async create(input: CreateRoleAssignmentInput): Promise<RoleAssignment> {
@@ -119,10 +139,12 @@ export class PgRoleAssignmentRepository implements RoleAssignmentRepository {
   }
 
   findById(id: string): RoleAssignment | null {
+    this.scheduleRefreshIfStale()
     return this.cache.get(id) ?? null
   }
 
   listActiveByScope(scope: RoleAssignmentScope, scopeId: string): RoleAssignment[] {
+    this.scheduleRefreshIfStale()
     const now = Date.now()
     return Array.from(this.cache.values())
       .filter((row) =>
@@ -156,6 +178,7 @@ export class PgRoleAssignmentRepository implements RoleAssignmentRepository {
   }
 
   listByPost(postId: string): RoleAssignment[] {
+    this.scheduleRefreshIfStale()
     return Array.from(this.cache.values())
       .filter((row) => row.post_id === postId)
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
@@ -166,6 +189,7 @@ export class PgRoleAssignmentRepository implements RoleAssignmentRepository {
     community_id: string
     post_id?: string | null
   }): RoleAssignment | null {
+    this.scheduleRefreshIfStale()
     const now = Date.now()
     if (input.post_id) {
       const postScoped = Array.from(this.cache.values()).find((row) =>

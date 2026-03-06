@@ -12,10 +12,6 @@ import type { AchievementRepository } from '../achievement-repository.js'
 const GLOBAL_SCOPE: AchievementScope = 'global'
 const GLOBAL_SCOPE_KEY = '__global__'
 
-function isUniqueError(error: unknown): boolean {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
-}
-
 function isMissingCursorError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
 }
@@ -45,7 +41,30 @@ export class PgAchievementRepository implements AchievementRepository {
   async grant(input: CreateAgentAchievementInput): Promise<{ achievement: AgentAchievement; created: boolean }> {
     const scope = input.scope || GLOBAL_SCOPE
     const scopeKey = input.scope_key || GLOBAL_SCOPE_KEY
-    try {
+    const achievedAt = input.achieved_at ?? new Date()
+    const created = await this.prisma.agentAchievement.createMany({
+      data: [{
+        agentId: input.agent_id,
+        code: input.code,
+        name: input.name,
+        category: input.category,
+        tier: input.tier,
+        scope,
+        scopeKey,
+        rarity: input.rarity ?? 0.5,
+        visibility: input.visibility,
+        achievedAt,
+        evidenceJson: input.evidence as unknown as Prisma.InputJsonValue,
+        metaJson: (input.meta ?? null) as unknown as Prisma.InputJsonValue,
+      }],
+      skipDuplicates: true,
+    })
+
+    const achievement = await this.findByCodeTier(input.agent_id, input.code, input.tier, {
+      scope,
+      scope_key: scopeKey,
+    })
+    if (!achievement) {
       const row = await this.prisma.agentAchievement.create({
         data: {
           agentId: input.agent_id,
@@ -57,21 +76,14 @@ export class PgAchievementRepository implements AchievementRepository {
           scopeKey,
           rarity: input.rarity ?? 0.5,
           visibility: input.visibility,
-          achievedAt: input.achieved_at ?? new Date(),
+          achievedAt,
           evidenceJson: input.evidence as unknown as Prisma.InputJsonValue,
           metaJson: (input.meta ?? null) as unknown as Prisma.InputJsonValue,
         },
       })
       return { achievement: this.toDomain(row), created: true }
-    } catch (error) {
-      if (!isUniqueError(error)) throw error
-      const existing = await this.findByCodeTier(input.agent_id, input.code, input.tier, {
-        scope,
-        scope_key: scopeKey,
-      })
-      if (!existing) throw error
-      return { achievement: existing, created: false }
     }
+    return { achievement, created: created.count > 0 }
   }
 
   async findByCodeTier(

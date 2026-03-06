@@ -7,7 +7,7 @@ import type {
   CommunityConfigVersion,
   ConfigRiskLevel,
 } from '../repos/index.js'
-import { NotFoundError, ValidationError, ForbiddenError } from '../lib/errors.js'
+import { AppError, NotFoundError, ValidationError, ForbiddenError } from '../lib/errors.js'
 import { resolveStageSpecFromRules } from '../stage/index.js'
 import type { UpdateCommunityConfigPatchInput } from '../repos/index.js'
 import {
@@ -41,6 +41,11 @@ function toNumber(value: unknown): number | null {
   return value
 }
 
+function toArrayOfStrings(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null
+  return value.filter((item): item is string => typeof item === 'string')
+}
+
 function lintProposedConfig(proposedRules: Record<string, unknown>): string[] {
   const errors: string[] = []
 
@@ -56,6 +61,21 @@ function lintProposedConfig(proposedRules: Record<string, unknown>): string[] {
     errors.push('stage_spec_v1.allocator.thread_max_agents must be <= stage_spec_v1.allocator.community_max_agents')
   }
 
+  const cooldownSeconds = allocator ? toNumber(allocator.cooldown_seconds) : null
+  if (cooldownSeconds !== null && (cooldownSeconds < 0 || cooldownSeconds > 3600)) {
+    errors.push('allocator.cooldown_seconds must be between 0 and 3600')
+  }
+
+  const maxActionsPerHour = allocator ? toNumber(allocator.max_actions_per_hour) : null
+  if (maxActionsPerHour !== null && (maxActionsPerHour < 1 || maxActionsPerHour > 1000)) {
+    errors.push('allocator.max_actions_per_hour must be between 1 and 1000')
+  }
+
+  const maxTokensPerDay = allocator ? toNumber(allocator.max_tokens_per_day) : null
+  if (maxTokensPerDay !== null && (maxTokensPerDay < 100 || maxTokensPerDay > 10_000_000)) {
+    errors.push('allocator.max_tokens_per_day must be between 100 and 10,000,000')
+  }
+
   const moderation = stageSpec ? toRecord(stageSpec.moderation) : null
   const thresholds = moderation ? toRecord(moderation.thresholds) : null
   const low = thresholds ? toNumber(thresholds.low_max_score) : null
@@ -64,6 +84,44 @@ function lintProposedConfig(proposedRules: Record<string, unknown>): string[] {
   if (low !== null && medium !== null && reject !== null) {
     if (!(low < medium && medium < reject)) {
       errors.push('moderation.thresholds must satisfy low_max_score < medium_max_score < auto_reject_score')
+    }
+  }
+  if (low !== null && low < 0) errors.push('moderation.thresholds.low_max_score must be >= 0')
+  if (medium !== null && medium < 0) errors.push('moderation.thresholds.medium_max_score must be >= 0')
+  if (reject !== null && reject < 0) errors.push('moderation.thresholds.auto_reject_score must be >= 0')
+
+  const promptBudget = toRecord(proposedRules.prompt_budget)
+  if (promptBudget) {
+    const hardRules = promptBudget.hard_rules
+    if (hardRules !== undefined && hardRules !== null) {
+      if (typeof hardRules === 'string' && hardRules.length > 50_000) {
+        errors.push('prompt_budget.hard_rules must be <= 50,000 characters')
+      }
+      const hardRulesArr = toArrayOfStrings(hardRules)
+      if (hardRulesArr) {
+        for (const rule of hardRulesArr) {
+          if (rule.length > 10_000) {
+            errors.push('each prompt_budget.hard_rules entry must be <= 10,000 characters')
+            break
+          }
+        }
+      }
+    }
+    const softInstructions = promptBudget.soft_instructions
+    if (typeof softInstructions === 'string' && softInstructions.length > 50_000) {
+      errors.push('prompt_budget.soft_instructions must be <= 50,000 characters')
+    }
+  }
+
+  const incubation = stageSpec ? toRecord(stageSpec.incubation) : null
+  if (incubation) {
+    const format = toRecord(incubation.format)
+    if (format) {
+      const minWords = toNumber(format.min_words)
+      const maxWords = toNumber(format.max_words)
+      if (minWords !== null && maxWords !== null && minWords > maxWords) {
+        errors.push('incubation.format.min_words must be <= max_words')
+      }
     }
   }
 
@@ -496,24 +554,12 @@ export class CommunityConfigService {
       throw new NotFoundError('CommunityConfigVersion', input.version_id)
     }
 
-    const latestRaw = await this.deps.configRepo.findLatestVersionByCommunity(input.community_id)
-    const latest = latestRaw ? normalizeCommunityConfigVersionRecord(latestRaw) : null
-    if (latest && latest.status === 'ACTIVE') {
-      await this.deps.configRepo.updateVersion(latest.id, {
-        status: 'ROLLED_BACK',
-        rolled_back_at: new Date(),
-      })
-    }
-
-    const nextVersionNumber = (latest?.version ?? 0) + 1
     const updatedCommunity = this.deps.communityRepo.update(input.community_id, {
       rules_json: targetVersion.rules_json,
     })
     if (!updatedCommunity) throw new NotFoundError('Community', input.community_id)
 
-    const rollbackVersion = await this.deps.configRepo.createVersion({
-      community_id: input.community_id,
-      version: nextVersionNumber,
+    const rollbackVersion = await this.createVersionWithRetry(input.community_id, {
       rules_json: targetVersion.rules_json,
       source_patch_id: null,
       status: 'ACTIVE',
@@ -536,7 +582,7 @@ export class CommunityConfigService {
       actor_id: input.actor_user_id,
       correlation_id: rollbackVersion.id,
       payload_json: {
-        from_version_id: latest?.id ?? null,
+        from_version_id: rollbackVersion.rollback_from_version_id ?? null,
         to_version_id: targetVersion.id,
         rollback_version_id: rollbackVersion.id,
         reason: input.reason ?? null,
@@ -606,15 +652,6 @@ export class CommunityConfigService {
     const community = this.deps.communityRepo.findById(patch.community_id)
     if (!community) throw new NotFoundError('Community', patch.community_id)
 
-    const latestRaw = await this.deps.configRepo.findLatestVersionByCommunity(patch.community_id)
-    const latest = latestRaw ? normalizeCommunityConfigVersionRecord(latestRaw) : null
-    if (latest && latest.status === 'ACTIVE') {
-      await this.deps.configRepo.updateVersion(latest.id, {
-        status: 'RETIRED',
-      })
-    }
-
-    const nextVersionNumber = (latest?.version ?? 0) + 1
     const nextRules = normalizeCommunityConfigRules(
       (patch.proposed_rules_json ?? community.rules_json ?? {}) as Record<string, unknown>,
     )
@@ -624,9 +661,7 @@ export class CommunityConfigService {
     })
     if (!updatedCommunity) throw new NotFoundError('Community', patch.community_id)
 
-    const version = await this.deps.configRepo.createVersion({
-      community_id: patch.community_id,
-      version: nextVersionNumber,
+    const version = await this.createVersionWithRetry(patch.community_id, {
       rules_json: nextRules,
       source_patch_id: patch.id,
       status: 'ACTIVE',
@@ -649,7 +684,7 @@ export class CommunityConfigService {
       applied_at: input.applied_at,
       meta: {
         ...(patch.meta ?? {}),
-        applied_version: nextVersionNumber,
+        applied_version: version.version,
       },
     })
     if (!updatedPatch) throw new NotFoundError('CommunityConfigPatch', patch.id)
@@ -717,6 +752,38 @@ export class CommunityConfigService {
       patch: nextPatch,
       normalizationUpdate: Object.keys(normalizationUpdate).length > 0 ? normalizationUpdate : undefined,
     }
+  }
+
+  private async createVersionWithRetry(
+    communityId: string,
+    input: Omit<Parameters<CommunityConfigRepository['createVersion']>[0], 'community_id' | 'version'>,
+    maxRetries = 3,
+  ): Promise<CommunityConfigVersion> {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const latestRaw = await this.deps.configRepo.findLatestVersionByCommunity(communityId)
+      const latest = latestRaw ? normalizeCommunityConfigVersionRecord(latestRaw) : null
+      if (latest && (latest.status === 'ACTIVE' || latest.status === 'RETIRED')) {
+        const retireStatus = input.meta && 'rollback_reason' in input.meta ? 'ROLLED_BACK' as const : 'RETIRED' as const
+        await this.deps.configRepo.updateVersion(latest.id, {
+          status: retireStatus,
+          ...(retireStatus === 'ROLLED_BACK' ? { rolled_back_at: new Date() } : {}),
+        })
+      }
+      const nextVersionNumber = (latest?.version ?? 0) + 1
+      try {
+        return await this.deps.configRepo.createVersion({
+          ...input,
+          community_id: communityId,
+          version: nextVersionNumber,
+        })
+      } catch (err: unknown) {
+        const isUniqueViolation =
+          err !== null && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'P2002'
+        if (isUniqueViolation && attempt < maxRetries) continue
+        throw err
+      }
+    }
+    throw new AppError(409, 'Failed to create config version after retries (concurrent conflict)', 'CONFLICT')
   }
 
   private async resolvePatchBaseRules(patch: Pick<CommunityConfigPatch, 'community_id' | 'base_version_id'>): Promise<Record<string, unknown>> {

@@ -139,7 +139,8 @@ export class RuntimeLoop {
 
       // Autonomous posting: check if PostScheduler should create a new post
       let scheduledPost: RuntimeTickResult['scheduled_post']
-      if (this.deps.postScheduler) {
+      // Do not generate autonomous posts while backlog exists; it can amplify queue pressure.
+      if (this.deps.postScheduler && this.lastKnownQueueSize === 0) {
         const postResult = await this.deps.postScheduler.createPost()
         if (postResult.triggered) {
           scheduledPost = postResult

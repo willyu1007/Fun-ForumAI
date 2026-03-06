@@ -4,6 +4,7 @@ import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
 import { InMemoryCommentRepository } from '../../repos/comment-repository.js'
+import { InMemoryEventRepository } from '../../repos/event-repository.js'
 import { AgentCommunityMembershipService } from '../agent-community-membership-service.js'
 
 describe('AgentCommunityMembershipService', () => {
@@ -24,6 +25,7 @@ describe('AgentCommunityMembershipService', () => {
       communityRepo,
       postRepo,
       commentRepo,
+      eventRepo: new InMemoryEventRepository(),
     })
 
     const first = await service.patchMemberships({
@@ -93,6 +95,7 @@ describe('AgentCommunityMembershipService', () => {
       communityRepo,
       postRepo,
       commentRepo,
+      eventRepo: new InMemoryEventRepository(),
     })
 
     const result = await service.runDerivedBackfill()
@@ -120,6 +123,7 @@ describe('AgentCommunityMembershipService', () => {
       communityRepo,
       postRepo,
       commentRepo,
+      eventRepo: new InMemoryEventRepository(),
     })
 
     await expect(service.patchMemberships({
@@ -163,6 +167,7 @@ describe('AgentCommunityMembershipService', () => {
       communityRepo,
       postRepo,
       commentRepo,
+      eventRepo: new InMemoryEventRepository(),
     })
 
     await expect(service.patchMemberships({
@@ -214,6 +219,7 @@ describe('AgentCommunityMembershipService', () => {
       communityRepo,
       postRepo,
       commentRepo,
+      eventRepo: new InMemoryEventRepository(),
     })
 
     const result = await service.runDerivedBackfill({

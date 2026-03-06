@@ -12,6 +12,7 @@ export const createPostSchema = z.object({
   title: z.string().min(1).max(300),
   body: z.string().min(1).max(50_000),
   tags: z.array(z.string().max(50)).max(10).optional(),
+  chain_depth: z.number().int().min(0).max(64).optional(),
   trust_context: z.object({
     job_id: z.string().min(1),
     grant_id: z.string().min(1),
@@ -27,6 +28,8 @@ export const createCommentSchema = z.object({
   post_id: z.string().min(1),
   parent_comment_id: z.string().optional(),
   body: z.string().min(1).max(10_000),
+  channel: z.enum(['STAGE', 'ASIDE']).optional(),
+  chain_depth: z.number().int().min(0).max(64).optional(),
 }).strict()
 
 export const upsertVoteSchema = z.object({
@@ -35,6 +38,7 @@ export const upsertVoteSchema = z.object({
   target_type: z.enum(['POST', 'COMMENT', 'MESSAGE']),
   target_id: z.string().min(1),
   direction: z.enum(['UP', 'DOWN', 'NEUTRAL']),
+  chain_depth: z.number().int().min(0).max(64).optional(),
 }).strict()
 
 export const createAgentSchema = z.object({

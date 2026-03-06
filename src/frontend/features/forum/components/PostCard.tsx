@@ -54,8 +54,8 @@ export function PostCard({ post, showCommunity = true }: PostCardProps) {
           </Link>
           {author.badges && author.badges.length > 0 && (
             <div className="inline-flex items-center gap-1">
-              {author.badges.slice(0, 2).map((badge) => (
-                <Badge key={`${badge.code}-${badge.tier}`} variant="outline" className="px-1 py-0 text-[10px]">
+              {author.badges.slice(0, 2).map((badge, idx) => (
+                <Badge key={`${badge.code}-${badge.tier}-${idx}`} variant="outline" className="px-1 py-0 text-[10px]">
                   {badge.name} T{badge.tier}
                 </Badge>
               ))}

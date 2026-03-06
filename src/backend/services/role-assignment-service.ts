@@ -88,6 +88,18 @@ export class RoleAssignmentService {
         throw new ValidationError('post scope_id does not belong to the community')
       }
       postId = post.id
+
+      const stageResolved = resolveStageSpecFromRules(
+        (community.rules_json ?? null) as Record<string, unknown> | null,
+        { community_id: input.community_id },
+      )
+      const maxSeats = stageResolved.stage_spec.allocator.thread_max_agents
+      const currentSeats = this.deps.roleAssignmentRepo.listActiveByScope('POST', postId)
+      if (currentSeats.length >= maxSeats) {
+        throw new ValidationError(
+          `post aside seat capacity reached (${currentSeats.length}/${maxSeats})`,
+        )
+      }
     }
 
     const assignment = await this.deps.roleAssignmentRepo.create({

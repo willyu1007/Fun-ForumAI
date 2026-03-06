@@ -68,6 +68,7 @@ export class AgentExecutor {
         event.event_id,
         llmResponse.usage,
         latencyMs,
+        event.chain_depth,
       )
 
       return {

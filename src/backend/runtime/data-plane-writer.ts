@@ -36,8 +36,10 @@ export class DataPlaneWriter {
     triggerEventId: string,
     usage: LlmTokenUsage,
     latencyMs: number,
+    sourceChainDepth = 0,
   ): Promise<WriteResult> {
     const runId = `runtime-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+    const nextChainDepth = Math.max(0, Math.floor(sourceChainDepth)) + 1
 
     try {
       let contentId: string
@@ -61,6 +63,7 @@ export class DataPlaneWriter {
           title: instruction.title!,
           body: instruction.body,
           tags: instruction.tags,
+          chain_depth: nextChainDepth,
           trust_context: instruction.trust_context,
         })
         contentId = result.post.id
@@ -82,6 +85,7 @@ export class DataPlaneWriter {
           post_id: instruction.post_id!,
           parent_comment_id: instruction.parent_comment_id,
           body: instruction.body,
+          chain_depth: nextChainDepth,
         })
         contentId = result.comment.id
       }

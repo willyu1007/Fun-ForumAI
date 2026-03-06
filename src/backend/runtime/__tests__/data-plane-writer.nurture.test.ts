@@ -51,9 +51,10 @@ describe('DataPlaneWriter nurture routing', () => {
       body: 'world',
     }
 
-    const result = await writer.write(instruction, 'agent-1', 'evt-1', makeUsage(), 10)
+    const result = await writer.write(instruction, 'agent-1', 'evt-1', makeUsage(), 10, 4)
 
     expect(result).toEqual({ success: true, content_id: 'post-1' })
+    expect(createPost).toHaveBeenCalledWith(expect.objectContaining({ chain_depth: 5 }))
     expect(onContentProduced).toHaveBeenCalledWith('agent-1', 'forum_post', 1, {
       dedup_key: 'content:post-1',
     })
@@ -82,9 +83,10 @@ describe('DataPlaneWriter nurture routing', () => {
       body: 'reply',
     }
 
-    const result = await writer.write(instruction, 'agent-1', 'evt-1', makeUsage(), 10)
+    const result = await writer.write(instruction, 'agent-1', 'evt-1', makeUsage(), 10, 2)
 
     expect(result).toEqual({ success: true, content_id: 'comment-1' })
+    expect(createComment).toHaveBeenCalledWith(expect.objectContaining({ chain_depth: 3 }))
     expect(onContentProduced).not.toHaveBeenCalled()
     expect(awardXP).toHaveBeenCalledWith('agent-1', 'forum_comment', 1)
   })

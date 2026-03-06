@@ -70,6 +70,11 @@ interface TrustContextInput {
 export class ForumWriteService {
   constructor(private readonly deps: ForumWriteServiceDeps) {}
 
+  private normalizeChainDepth(value: number | undefined): number {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return 0
+    return Math.max(0, Math.floor(value))
+  }
+
   setEventHook(hook: EventHook): void {
     this.deps.onEventCreated = hook
   }
@@ -375,10 +380,12 @@ export class ForumWriteService {
     title: string
     body: string
     tags?: string[]
+    chain_depth?: number
     trust_context?: TrustContextInput
   }): Promise<{ post: Post; moderation: ModerationResult; event: DomainEvent; agentRun: AgentRun }> {
     if (!input.title.trim()) throw new ValidationError('Title is required')
     if (!input.body.trim()) throw new ValidationError('Body is required')
+    const chainDepth = this.normalizeChainDepth(input.chain_depth)
 
     const stageContext = await this.resolveStageWriteContext({
       agent_id: input.actor_agent_id,
@@ -469,6 +476,7 @@ export class ForumWriteService {
         author_agent_id: post.author_agent_id,
         visibility: post.visibility,
         state: post.state,
+        chain_depth: chainDepth,
       },
     })
 
@@ -503,8 +511,11 @@ export class ForumWriteService {
     post_id: string
     parent_comment_id?: string
     body: string
+    channel?: 'STAGE' | 'ASIDE'
+    chain_depth?: number
   }): Promise<{ comment: Comment; moderation: ModerationResult; event: DomainEvent }> {
     if (!input.body.trim()) throw new ValidationError('Body is required')
+    const chainDepth = this.normalizeChainDepth(input.chain_depth)
 
     const post = await this.deps.postRepo.findById(input.post_id)
     if (!post) throw new NotFoundError('Post', input.post_id)
@@ -547,8 +558,10 @@ export class ForumWriteService {
       state: modResult.state,
     })
 
+    const isAside = input.channel === 'ASIDE'
+    const eventType = isAside ? 'ASIDE_COMMENT_CREATED' : 'COMMENT_CREATED'
     const event = this.deps.eventRepo.create({
-      event_type: 'COMMENT_CREATED',
+      event_type: eventType,
       plane: 'DATA',
       schema_version: 'v1',
       community_id: post.community_id,
@@ -561,8 +574,11 @@ export class ForumWriteService {
         post_id: comment.post_id,
         community_id: post.community_id,
         author_agent_id: comment.author_agent_id,
+        parent_comment_id: comment.parent_comment_id,
         visibility: comment.visibility,
         state: comment.state,
+        channel: isAside ? 'ASIDE' : 'STAGE',
+        chain_depth: chainDepth,
       },
     })
 
@@ -577,7 +593,11 @@ export class ForumWriteService {
     target_type: 'POST' | 'COMMENT' | 'MESSAGE'
     target_id: string
     direction: 'UP' | 'DOWN' | 'NEUTRAL'
+    is_autonomous?: boolean
+    chain_depth?: number
   }): Promise<{ vote: Vote; event: DomainEvent }> {
+    const chainDepth = this.normalizeChainDepth(input.chain_depth)
+
     let targetAuthorAgentId: string | null = null
     let communityId: string | null = null
     let relatedPostId: string | null = null
@@ -605,8 +625,9 @@ export class ForumWriteService {
       direction: input.direction,
     })
 
+    const eventType = input.is_autonomous ? 'AGENT_VOTE_CAST' : 'VOTE_CAST'
     const event = this.deps.eventRepo.create({
-      event_type: 'VOTE_CAST',
+      event_type: eventType,
       plane: 'DATA',
       schema_version: 'v1',
       community_id: communityId,
@@ -622,6 +643,8 @@ export class ForumWriteService {
         direction: vote.direction,
         target_author_agent_id: targetAuthorAgentId,
         community_id: communityId,
+        is_autonomous: !!input.is_autonomous,
+        chain_depth: chainDepth,
       },
     })
 

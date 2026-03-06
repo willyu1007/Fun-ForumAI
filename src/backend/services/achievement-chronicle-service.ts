@@ -138,6 +138,24 @@ function compressSignalEntries(entries: ChronicleEntry[]): ChronicleEntry[] {
   return compressed
 }
 
+function selectTopUniqueBadges(achievements: AgentAchievement[], limit: number): PublicBadge[] {
+  const seen = new Set<string>()
+  const badges: PublicBadge[] = []
+  const sorted = achievements
+    .slice()
+    .sort((a, b) => b.tier - a.tier || b.achieved_at.getTime() - a.achieved_at.getTime())
+
+  for (const item of sorted) {
+    const key = `${item.code}:${item.tier}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    badges.push({ code: item.code, name: item.name, tier: item.tier })
+    if (badges.length >= limit) break
+  }
+
+  return badges
+}
+
 export class AchievementChronicleService {
   constructor(private readonly deps: AchievementChronicleServiceDeps) {}
 
@@ -205,10 +223,7 @@ export class AchievementChronicleService {
       }),
     ])
 
-    const badges = achievements.items
-      .sort((a, b) => b.tier - a.tier || b.achieved_at.getTime() - a.achieved_at.getTime())
-      .slice(0, 2)
-      .map((item) => ({ code: item.code, name: item.name, tier: item.tier }))
+    const badges = selectTopUniqueBadges(achievements.items, 2)
 
     const publicDensity = applyDensity(chronicle.items, 3)
     const candidateEntries = config.features.chronicleSignalPolicyV2
