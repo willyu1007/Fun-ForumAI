@@ -10,6 +10,7 @@ import type {
   RoleAssignmentStatus,
 } from '../repos/index.js'
 import { AppError, NotFoundError, ValidationError } from '../lib/errors.js'
+import { resolveStageSpecFromRules } from '../stage/index.js'
 
 export interface RoleAssignmentServiceDeps {
   roleAssignmentRepo: RoleAssignmentRepository
@@ -23,6 +24,20 @@ export interface RoleAssignmentServiceDeps {
 export class RoleAssignmentService {
   constructor(private readonly deps: RoleAssignmentServiceDeps) {}
 
+  private assertRoleDefinedByStageSpec(input: {
+    community_id: string
+    role: string
+    rules_json: Record<string, unknown> | null
+  }): void {
+    const role = input.role.trim()
+    const stageResolved = resolveStageSpecFromRules(input.rules_json, {
+      community_id: input.community_id,
+    })
+    if (!Object.prototype.hasOwnProperty.call(stageResolved.stage_spec.roles, role)) {
+      throw new ValidationError(`role "${role}" is not defined in stage_spec_v1.roles`)
+    }
+  }
+
   async assign(input: {
     community_id: string
     scope: RoleAssignmentScope
@@ -35,6 +50,12 @@ export class RoleAssignmentService {
   }): Promise<RoleAssignment> {
     const community = this.deps.communityRepo.findById(input.community_id)
     if (!community) throw new NotFoundError('Community', input.community_id)
+    const role = input.role.trim()
+    this.assertRoleDefinedByStageSpec({
+      community_id: input.community_id,
+      role,
+      rules_json: (community.rules_json ?? null) as Record<string, unknown> | null,
+    })
 
     const agent = this.deps.agentRepo.findById(input.agent_id)
     if (!agent) throw new NotFoundError('Agent', input.agent_id)
@@ -75,7 +96,7 @@ export class RoleAssignmentService {
       agent_id: input.agent_id,
       scope: input.scope,
       scope_id: input.scope_id,
-      role: input.role,
+      role,
       status: 'ACTIVE',
       assigned_by: input.actor_user_id,
       expires_at: input.expires_at ?? null,
@@ -119,6 +140,16 @@ export class RoleAssignmentService {
     if (input.community_id && existing.community_id !== input.community_id) {
       throw new NotFoundError('RoleAssignment', input.assignment_id)
     }
+    const role = input.role?.trim()
+    if (role !== undefined) {
+      const community = this.deps.communityRepo.findById(existing.community_id)
+      if (!community) throw new NotFoundError('Community', existing.community_id)
+      this.assertRoleDefinedByStageSpec({
+        community_id: existing.community_id,
+        role,
+        rules_json: (community.rules_json ?? null) as Record<string, unknown> | null,
+      })
+    }
 
     const transitionedToRevoked = input.status === 'REVOKED' && existing.status !== 'REVOKED'
     const transitionedToExpired = input.status === 'EXPIRED' && existing.status !== 'EXPIRED'
@@ -126,7 +157,7 @@ export class RoleAssignmentService {
     const next = await this.deps.roleAssignmentRepo.update(existing.id, {
       ...(input.status !== undefined ? { status: input.status } : {}),
       ...(input.expected_current_status !== undefined ? { expected_status: input.expected_current_status } : {}),
-      ...(input.role !== undefined ? { role: input.role } : {}),
+      ...(role !== undefined ? { role } : {}),
       ...(input.expires_at !== undefined ? { expires_at: input.expires_at } : {}),
       ...(transitionedToRevoked ? { revoked_at: new Date() } : {}),
       meta: {

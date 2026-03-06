@@ -829,7 +829,7 @@ describe('E2E: Control Plane (human auth)', () => {
         .post(`/v1/communities/${community.id}/config/apply`)
         .set('Authorization', `Bearer ${userToken}`)
         .send({ proposal_id: proposalId })
-      expect(blockedApply.status).toBe(400)
+      expect(blockedApply.status).toBe(403)
 
       const approveRes = await request(app)
         .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/approve`)
@@ -1036,7 +1036,7 @@ describe('E2E: Control Plane (human auth)', () => {
         .post(`/v1/communities/${community.id}/config/apply`)
         .set('Authorization', `Bearer ${userToken}`)
         .send({ proposal_id: proposalId })
-      expect(blockedBeforeApprove.status).toBe(400)
+      expect(blockedBeforeApprove.status).toBe(403)
 
       const approveRes = await request(app)
         .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/approve`)
@@ -1061,6 +1061,59 @@ describe('E2E: Control Plane (human auth)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
       expect(configRes.status).toBe(200)
       expect(configRes.body.data.rules_json.stage_spec_v1.human_participation.agent_reads_audience_zone).toBe(true)
+    } finally {
+      featureFlags.controlPlaneConfigV1 = originalControlPlane
+    }
+  })
+
+  it('Control Plane config apply rejects non-admin callers even for validated low-risk patch', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalControlPlane = featureFlags.controlPlaneConfigV1
+    featureFlags.controlPlaneConfigV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Config Low Risk Apply Permission Guard',
+        slug: `config-low-risk-apply-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: DEFAULT_STAGE_SPEC_V1,
+        },
+      })
+
+      const proposalRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          patch: {
+            custom_runtime_toggle: {
+              enabled: true,
+            },
+          },
+        })
+      expect(proposalRes.status).toBe(201)
+      expect(proposalRes.body.data.risk_level).toBe('LOW')
+      const proposalId = proposalRes.body.data.id as string
+
+      const validateRes = await request(app)
+        .post(`/v1/communities/${community.id}/config/proposals/${proposalId}/validate`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({})
+      expect(validateRes.status).toBe(200)
+      expect(validateRes.body.data.patch.status).toBe('VALIDATED')
+
+      const blockedUserApply = await request(app)
+        .post(`/v1/communities/${community.id}/config/apply`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ proposal_id: proposalId })
+      expect(blockedUserApply.status).toBe(403)
+
+      const adminApply = await request(app)
+        .post(`/v1/communities/${community.id}/config/apply`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ proposal_id: proposalId })
+      expect(adminApply.status).toBe(200)
+      expect(adminApply.body.data.patch.status).toBe('APPLIED')
+      expect(adminApply.body.data.version).toBeTruthy()
     } finally {
       featureFlags.controlPlaneConfigV1 = originalControlPlane
     }
@@ -1307,7 +1360,7 @@ describe('E2E: Control Plane (human auth)', () => {
         .send({
           scope: 'POST',
           scope_id: postId,
-          role: 'aside-host',
+          role: 'core',
           agent_id: agentId,
         })
       expect(createRes.status).toBe(201)
@@ -1322,6 +1375,73 @@ describe('E2E: Control Plane (human auth)', () => {
         })
       expect(patchRes.status).toBe(200)
       expect(patchRes.body.data.status).toBe('REVOKED')
+    } finally {
+      featureFlags.roleAssignmentV1 = originalRoleAssignment
+      featureFlags.membershipsV1 = originalMemberships
+    }
+  })
+
+  it('Role assignment rejects role keys that are not defined in stage_spec', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalRoleAssignment = featureFlags.roleAssignmentV1
+    const originalMemberships = featureFlags.membershipsV1
+    featureFlags.roleAssignmentV1 = true
+    featureFlags.membershipsV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Role Assignment Stage Role Guard',
+        slug: `role-assignment-stage-role-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: DEFAULT_STAGE_SPEC_V1,
+        },
+      })
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Role Agent Stage Role Guard' })
+      expect(createAgentRes.status).toBe(201)
+      const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
+
+      const invalidCreateRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'COMMUNITY',
+          scope_id: community.id,
+          role: 'aside-seat',
+          agent_id: agentId,
+        })
+      expect(invalidCreateRes.status).toBe(400)
+      expect(invalidCreateRes.body.error.code).toBe('VALIDATION_ERROR')
+
+      const validCreateRes = await request(app)
+        .post(`/v1/communities/${community.id}/role-assignments`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          scope: 'COMMUNITY',
+          scope_id: community.id,
+          role: 'core',
+          agent_id: agentId,
+        })
+      expect(validCreateRes.status).toBe(201)
+      const assignmentId = validCreateRes.body.data.id as string
+
+      const invalidPatchRes = await request(app)
+        .patch(`/v1/communities/${community.id}/role-assignments/${assignmentId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          role: 'aside-seat',
+          reason: 'invalid role should be rejected',
+        })
+      expect(invalidPatchRes.status).toBe(400)
+      expect(invalidPatchRes.body.error.code).toBe('VALIDATION_ERROR')
     } finally {
       featureFlags.roleAssignmentV1 = originalRoleAssignment
       featureFlags.membershipsV1 = originalMemberships
@@ -1369,7 +1489,7 @@ describe('E2E: Control Plane (human auth)', () => {
         .send({
           scope: 'POST',
           scope_id: postId,
-          role: 'aside-host',
+          role: 'core',
           agent_id: agentId,
         })
       expect(forbiddenCreateRes.status).toBe(403)
@@ -1380,7 +1500,7 @@ describe('E2E: Control Plane (human auth)', () => {
         .send({
           scope: 'POST',
           scope_id: postId,
-          role: 'aside-host',
+          role: 'core',
           agent_id: agentId,
         })
       expect(createRes.status).toBe(201)
@@ -1442,7 +1562,7 @@ describe('E2E: Control Plane (human auth)', () => {
         .send({
           scope: 'POST',
           scope_id: postId,
-          role: 'aside-host',
+          role: 'core',
           agent_id: agentId,
         })
       expect(createRes.status).toBe(201)
@@ -1494,7 +1614,7 @@ describe('E2E: Control Plane (human auth)', () => {
         .send({
           scope: 'COMMUNITY',
           scope_id: `mismatched-${community.id}`,
-          role: 'community-host',
+          role: 'core',
           agent_id: agentId,
         })
       expect(createRes.status).toBe(400)
@@ -1544,7 +1664,7 @@ describe('E2E: Control Plane (human auth)', () => {
         .send({
           scope: 'COMMUNITY',
           scope_id: community.id,
-          role: 'community-host',
+          role: 'core',
           agent_id: agentId,
         })
       expect(createRes.status).toBe(409)
@@ -1594,7 +1714,7 @@ describe('E2E: Control Plane (human auth)', () => {
         .send({
           scope: 'COMMUNITY',
           scope_id: community.id,
-          role: 'community-host',
+          role: 'core',
           agent_id: agentId,
         })
       expect(createRes.status).toBe(409)
@@ -1631,7 +1751,7 @@ describe('E2E: Control Plane (human auth)', () => {
         .send({
           scope: 'COMMUNITY',
           scope_id: community.id,
-          role: 'community-host',
+          role: 'core',
           agent_id: agentId,
         })
       expect(createRes.status).toBe(409)
@@ -1682,7 +1802,7 @@ describe('E2E: Control Plane (human auth)', () => {
         .send({
           scope: 'COMMUNITY',
           scope_id: community.id,
-          role: 'community-host',
+          role: 'core',
           agent_id: agentId,
         })
       expect(createRes.status).toBe(409)

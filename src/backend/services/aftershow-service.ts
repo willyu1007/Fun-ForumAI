@@ -320,7 +320,7 @@ export class AftershowService {
     })
 
     let artifact: AftershowArtifact | null = null
-    let callouts: AftershowCallout[] = []
+    const callouts: AftershowCallout[] = []
     let notifications_created = 0
 
     if (config.features.aftershowEventPipelineV1) {
