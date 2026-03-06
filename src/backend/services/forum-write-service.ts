@@ -137,7 +137,10 @@ export class ForumWriteService {
     tier: AgentStageTier
   }): void {
     const roleSpec = input.stage_spec.roles[input.role_key]
-    if (!roleSpec?.runtime_gate) return
+    if (!roleSpec) {
+      throw new ForbiddenError(`Role ${input.role_key} is not allowed by stage spec`)
+    }
+    if (!roleSpec.runtime_gate) return
 
     const roleMinTier = roleSpec.min_tier
     let effectiveMinTier = roleMinTier
@@ -319,7 +322,10 @@ export class ForumWriteService {
         post_id: input.post_id ?? null,
       })
       if (assignment && assignment.role.trim().length > 0) {
-        roleKey = assignment.role.trim()
+        const assignedRole = assignment.role.trim()
+        if (Object.prototype.hasOwnProperty.call(stageResolved.stage_spec.roles, assignedRole)) {
+          roleKey = assignedRole
+        }
       }
     }
 

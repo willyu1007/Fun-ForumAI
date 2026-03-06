@@ -248,6 +248,7 @@ stageIncubationRouter.post(
 stageIncubationRouter.post(
   '/communities/:communityId/config/apply',
   requireHumanAuth,
+  requireAdmin,
   validate(applyConfigProposalSchema),
   async (req, res) => {
     if (!config.features.controlPlaneConfigV1) {

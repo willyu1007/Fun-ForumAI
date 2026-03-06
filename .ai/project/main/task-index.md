@@ -65,4 +65,5 @@ Project: `main`
 | T-055 aftershow-event-pipeline-and-callout | done | F-000 | dev-docs/active/aftershow-event-pipeline-and-callout |
 | T-056 role-assignment-aside-seats | done | F-000 | dev-docs/active/role-assignment-aside-seats |
 | T-057 audience-aftershow-web-experience | done | F-000 | dev-docs/active/audience-aftershow-web-experience |
+| T-058 pr4-governance-blocker-fixes | done | F-000 | dev-docs/active/pr4-governance-blocker-fixes |
 <!-- AUTO-GENERATED:END task-index -->

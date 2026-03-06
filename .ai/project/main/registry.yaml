@@ -454,3 +454,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/audience-aftershow-web-experience
     updated: 2026-03-05
+  - id: T-058
+    slug: pr4-governance-blocker-fixes
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/pr4-governance-blocker-fixes
+    updated: 2026-03-06
