@@ -23,7 +23,15 @@ import type {
 } from '../../repos/types.js'
 import { config } from '../../lib/config.js'
 
-function buildStageSpec(aftershowMode = 'THRESHOLD') {
+function buildStageSpec(
+  aftershowMode = 'THRESHOLD',
+  thresholdOverrides?: Partial<{ audience_comments: number; human_vote_score: number }>,
+) {
+  const threshold = {
+    audience_comments: thresholdOverrides?.audience_comments ?? 3,
+    human_vote_score: thresholdOverrides?.human_vote_score ?? 2,
+  }
+
   return {
     version: 'v1',
     min_tier_pool: 'T1',
@@ -45,10 +53,7 @@ function buildStageSpec(aftershowMode = 'THRESHOLD') {
     },
     aftershow: {
       mode: aftershowMode,
-      threshold: {
-        audience_comments: 3,
-        human_vote_score: 2,
-      },
+      threshold,
       periodic: {
         enabled: false,
         interval_hours: 24,
@@ -521,6 +526,78 @@ describe('AftershowService', () => {
 
     expect(result.run.status).toBe('CREATED')
     expect(result.threshold_pass).toBe(true)
+  })
+
+  it('treats threshold value 0 as disabled and only evaluates enabled threshold items', async () => {
+    const postRepo = new InMemoryPostRepository()
+    const humanVoteRepo = new InMemoryHumanVoteRepository()
+    const communityRepo = new InMemoryCommunityRepository()
+    const runRepo = new InMemoryAftershowRunRepository()
+    const audienceRepo = new InMemoryAudienceRepository()
+    const agentRepo = new InMemoryAgentRepository()
+
+    const agentId = await createTestAgent(agentRepo)
+
+    const community = communityRepo.create({
+      name: 'Zero Threshold Community',
+      slug: `zero-threshold-${Date.now()}`,
+      rules_json: {
+        stage_spec_v1: buildStageSpec('THRESHOLD', {
+          audience_comments: 1,
+          human_vote_score: 0,
+        }),
+      },
+    })
+
+    const post = await postRepo.create({
+      community_id: community.id,
+      author_agent_id: agentId,
+      title: 'title',
+      body: 'body',
+      visibility: 'PUBLIC',
+      state: 'APPROVED',
+    })
+
+    const thread = await audienceRepo.upsertThreadByPost({
+      post_id: post.id,
+      community_id: post.community_id,
+      status: 'OPEN',
+    })
+
+    const service = createService({
+      postRepo,
+      humanVoteRepo,
+      audienceRepo,
+      agentRepo,
+      communityRepo,
+      runRepo,
+    })
+
+    const beforeAudienceMessage = await service.trigger({
+      post_id: post.id,
+      mode: 'AUTO',
+      force: false,
+    })
+
+    expect(beforeAudienceMessage.run.status).toBe('SKIPPED')
+    expect(beforeAudienceMessage.reason).toBe('threshold_not_met')
+    expect(beforeAudienceMessage.threshold_pass).toBe(false)
+
+    await audienceRepo.createMessage({
+      thread_id: thread.id,
+      author_user_id: 'u1',
+      body: 'first audience message',
+    })
+
+    const afterAudienceMessage = await service.trigger({
+      post_id: post.id,
+      mode: 'AUTO',
+      force: false,
+    })
+
+    expect(afterAudienceMessage.run.status).toBe('CREATED')
+    expect(afterAudienceMessage.reason).toBe('triggered')
+    expect(afterAudienceMessage.threshold_pass).toBe(true)
   })
 
   it('records stage_spec_errors in meta when rules_json is invalid', async () => {

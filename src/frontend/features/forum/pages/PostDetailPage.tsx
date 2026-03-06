@@ -290,6 +290,8 @@ export function PostDetailPage() {
 
             <div className="space-y-2">
               <Textarea
+                id="audience-message-input"
+                name="audienceMessage"
                 value={audienceDraft}
                 onChange={(e) => {
                   setAudienceDraft(e.target.value)

@@ -1,11 +1,18 @@
 import { Router, type IRouter } from 'express'
 import type { PrismaClient } from '@prisma/client'
 import { config } from '../lib/config.js'
-import { agentService, forumWriteService, communityRepo, chatService, voteRepo } from '../container.js'
+import { agentService, forumWriteService, communityRepo, chatService, voteRepo, agentCommunityMembershipService } from '../container.js'
 import type { Community, CreateAgentInput } from '../repos/types.js'
 
 function getPrismaOrNull(): PrismaClient | null {
   return ((globalThis as Record<string, unknown>).__forumPrisma as PrismaClient) ?? null
+}
+
+function isUniqueConstraintError(err: unknown): boolean {
+  return err !== null
+    && typeof err === 'object'
+    && 'code' in err
+    && (err as { code?: string }).code === 'P2002'
 }
 
 async function createCommunityPersisted(input: {
@@ -22,6 +29,46 @@ async function createCommunityPersisted(input: {
 
 async function createAgentPersisted(input: CreateAgentInput) {
   return agentService.createAgentPersisted(input)
+}
+
+async function findCommunityBySlugWithFallback(slug: string): Promise<Community | null> {
+  const cached = communityRepo.findBySlug(slug)
+  if (cached) return cached
+
+  const prisma = getPrismaOrNull()
+  if (!prisma) return null
+  const row = await prisma.community.findUnique({ where: { slug } })
+  if (!row) return null
+
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    description: row.description,
+    rules_json: row.rulesJson as Record<string, unknown> | null,
+    visibility_default: row.visibilityDefault,
+    created_at: row.createdAt,
+    updated_at: row.updatedAt,
+  }
+}
+
+async function findOrCreateSeedCommunity(input: {
+  name: string
+  slug: string
+  description?: string
+  rules_json?: Record<string, unknown>
+}): Promise<Community> {
+  const existing = await findCommunityBySlugWithFallback(input.slug)
+  if (existing) return existing
+
+  try {
+    return await createCommunityPersisted(input)
+  } catch (err) {
+    if (!isUniqueConstraintError(err)) throw err
+    const conflicted = await findCommunityBySlugWithFallback(input.slug)
+    if (conflicted) return conflicted
+    throw err
+  }
 }
 
 const devSeedRouter: IRouter = Router()
@@ -160,9 +207,11 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
       posts: [],
       comments: [],
     }
+    const seededCommunitiesBySlug = new Map<string, Community>()
 
     for (const c of SEED_DATA.communities) {
-      const community = await createCommunityPersisted(c)
+      const community = await findOrCreateSeedCommunity(c)
+      seededCommunitiesBySlug.set(c.slug, community)
       result.communities.push(community.id)
     }
 
@@ -177,34 +226,65 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
       }
     }
 
+    const membershipAddsByAgent = new Map<string, Set<string>>()
+    for (const p of SEED_DATA.posts) {
+      const community = seededCommunitiesBySlug.get(p.communitySlug)
+      const agent = agents[p.agentIdx]
+      if (!community || !agent) continue
+      const communitySet = membershipAddsByAgent.get(agent.id) ?? new Set<string>()
+      communitySet.add(community.id)
+      membershipAddsByAgent.set(agent.id, communitySet)
+    }
+
+    for (const [agentId, communityIds] of membershipAddsByAgent.entries()) {
+      try {
+        await agentCommunityMembershipService.patchMemberships({
+          agent_id: agentId,
+          add: [...communityIds],
+          remove: [],
+          actor_user_id: 'dev-seed',
+        })
+      } catch (e) {
+        console.warn('[dev-seed] Membership seeding partial failure:', e)
+      }
+    }
+
     const posts: { id: string }[] = []
     for (const p of SEED_DATA.posts) {
-      const community = communityRepo.findBySlug(p.communitySlug)
+      const community = seededCommunitiesBySlug.get(p.communitySlug) ?? communityRepo.findBySlug(p.communitySlug)
       if (!community) continue
       const agent = agents[p.agentIdx]
-      const postResult = await forumWriteService.createPost({
-        actor_agent_id: agent.id,
-        run_id: `seed-run-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        community_id: community.id,
-        title: p.title,
-        body: p.body,
-        tags: p.tags,
-      })
-      posts.push({ id: postResult.post.id })
-      result.posts.push(postResult.post.id)
+      try {
+        const postResult = await forumWriteService.createPost({
+          actor_agent_id: agent.id,
+          run_id: `seed-run-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          community_id: community.id,
+          title: p.title,
+          body: p.body,
+          tags: p.tags,
+        })
+        posts.push({ id: postResult.post.id })
+        result.posts.push(postResult.post.id)
+      } catch (e) {
+        console.warn('[dev-seed] Post seeding partial failure:', e)
+      }
     }
 
     for (const c of SEED_DATA.comments) {
       const post = posts[c.postIdx]
       const agent = agents[c.agentIdx]
       if (!post || !agent) continue
-      const commentResult = await forumWriteService.createComment({
-        actor_agent_id: agent.id,
-        run_id: `seed-run-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        post_id: post.id,
-        body: c.body,
-      })
-      result.comments.push(commentResult.comment.id)
+      try {
+        const commentResult = await forumWriteService.createComment({
+          actor_agent_id: agent.id,
+          run_id: `seed-run-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          post_id: post.id,
+          body: c.body,
+        })
+        result.comments.push(commentResult.comment.id)
+      } catch (e) {
+        console.warn('[dev-seed] Comment seeding partial failure:', e)
+      }
     }
 
     let voteCount = 0

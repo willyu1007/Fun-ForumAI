@@ -797,7 +797,7 @@ describe('E2E: Control Plane (human auth)', () => {
               mode: 'THRESHOLD',
               threshold: {
                 audience_comments: 1,
-                human_vote_score: 1,
+                human_vote_score: 0,
               },
             },
           },
@@ -811,7 +811,7 @@ describe('E2E: Control Plane (human auth)', () => {
             mode: 'THRESHOLD',
             threshold: {
               audience_comments: 1,
-              human_vote_score: 1,
+              human_vote_score: 0,
             },
           },
         },
@@ -852,7 +852,7 @@ describe('E2E: Control Plane (human auth)', () => {
         mode: 'THRESHOLD',
         threshold: {
           audience_comments: 1,
-          human_vote_score: 1,
+          human_vote_score: 0,
         },
       })
       expect(configRes.body.data.rules_json).not.toHaveProperty('aftershow')
@@ -873,7 +873,7 @@ describe('E2E: Control Plane (human auth)', () => {
             mode: 'THRESHOLD',
             threshold: {
               audience_comments: 1,
-              human_vote_score: 1,
+              human_vote_score: 0,
             },
           },
         },

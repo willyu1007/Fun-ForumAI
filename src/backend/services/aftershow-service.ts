@@ -230,8 +230,14 @@ export class AftershowService {
       : 0
     const humanVotes = this.deps.humanVoteRepo.countByTarget('POST', post.id)
 
-    const thresholdPass = audienceMessageCount >= threshold.audience_comments
-      || humanVotes.score >= threshold.human_vote_score
+    const enabledThresholdChecks: boolean[] = []
+    if (threshold.audience_comments > 0) {
+      enabledThresholdChecks.push(audienceMessageCount >= threshold.audience_comments)
+    }
+    if (threshold.human_vote_score > 0) {
+      enabledThresholdChecks.push(humanVotes.score >= threshold.human_vote_score)
+    }
+    const thresholdPass = enabledThresholdChecks.length > 0 && enabledThresholdChecks.some(Boolean)
 
     let status: 'CREATED' | 'SKIPPED' | 'COMPLETED' = 'CREATED'
     let reason = 'triggered'

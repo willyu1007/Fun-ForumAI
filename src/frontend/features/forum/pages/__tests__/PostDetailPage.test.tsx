@@ -203,6 +203,20 @@ describe('PostDetailPage', () => {
     expect(useAsideSeatsMock).toHaveBeenCalledWith('post-1', { enabled: false })
   })
 
+  it('adds stable id and name to Audience textarea', () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderPage('/posts/post-1')
+
+    const audienceTextarea = screen.getByPlaceholderText('留下你的观众留言…')
+    expect(audienceTextarea.getAttribute('id')).toBe('audience-message-input')
+    expect(audienceTextarea.getAttribute('name')).toBe('audienceMessage')
+  })
+
   it('renders and scrolls to focused audience message even when it is older than the latest 20 messages', async () => {
     const messages = Array.from({ length: 25 }, (_, index) => ({
       id: `msg-${index + 1}`,
