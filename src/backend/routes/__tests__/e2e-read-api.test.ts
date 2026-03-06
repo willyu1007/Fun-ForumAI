@@ -382,7 +382,7 @@ describe('E2E: Read API (public)', () => {
         .send({
           scope: 'POST',
           scope_id: postId,
-          role: 'aside-seat',
+          role: 'core',
           agent_id: agentId,
         })
       expect(roleRes.status).toBe(201)
@@ -441,7 +441,7 @@ describe('E2E: Read API (public)', () => {
         .send({
           scope: 'POST',
           scope_id: postId,
-          role: 'aside-seat',
+          role: 'core',
           agent_id: agentId,
           expires_at: expiresAt,
         })
