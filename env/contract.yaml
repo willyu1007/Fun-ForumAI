@@ -63,6 +63,16 @@ variables:
     default: /v1
     description: Frontend API base URL (Vite env variable, only used in build).
 
+  EXPO_PUBLIC_API_BASE_URL:
+    type: string
+    required: false
+    description: Mobile API base URL override. If unset, iOS simulator defaults to http://127.0.0.1:4000 and Android emulator defaults to http://10.0.2.2:4000.
+
+  EXPO_EAS_PROJECT_ID:
+    type: string
+    required: false
+    description: Expo EAS project id used for development builds and EAS metadata injection in the mobile app config.
+
   VITE_FF_AGENT_STATS_UI:
     type: enum
     enum: ["true", "false"]

@@ -1,6 +1,18 @@
 import { apiGet, apiPost, AuthError, getApiBaseUrl } from '../client'
 
-const BASE = getApiBaseUrl()
+function getProcessEnv(): Record<string, string | undefined> {
+  const maybeProcess = globalThis as typeof globalThis & {
+    process?: { env?: Record<string, string | undefined> }
+  }
+
+  if (!maybeProcess.process) {
+    maybeProcess.process = { env: {} }
+  } else if (!maybeProcess.process.env) {
+    maybeProcess.process.env = {}
+  }
+
+  return maybeProcess.process.env ?? {}
+}
 
 function jsonResponse(status: number, body: unknown): Response {
   return {
@@ -25,6 +37,9 @@ function jsonResponse(status: number, body: unknown): Response {
 let fetchSpy: jest.SpiedFunction<typeof globalThis.fetch>
 
 beforeEach(() => {
+  const env = getProcessEnv()
+  delete env.EXPO_PUBLIC_API_BASE_URL
+  delete env.EXPO_OS
   fetchSpy = jest.spyOn(globalThis, 'fetch').mockReset()
 })
 
@@ -34,9 +49,10 @@ describe('apiGet', () => {
   it('returns data on 200', async () => {
     fetchSpy.mockResolvedValueOnce(jsonResponse(200, { data: { id: '1' } }))
     const result = await apiGet<{ id: string }>('/v1/test')
+    const base = getApiBaseUrl()
     expect(result.data.id).toBe('1')
     expect(fetchSpy).toHaveBeenCalledWith(
-      `${BASE}/v1/test`,
+      `${base}/v1/test`,
       expect.objectContaining({ method: 'GET' }),
     )
   })
@@ -110,5 +126,17 @@ describe('apiPost', () => {
 describe('getApiBaseUrl', () => {
   it('returns default when no env var', () => {
     expect(getApiBaseUrl()).toBe('http://127.0.0.1:4000')
+  })
+
+  it('returns Android default when EXPO_OS=android', () => {
+    getProcessEnv().EXPO_OS = 'android'
+    expect(getApiBaseUrl()).toBe('http://10.0.2.2:4000')
+  })
+
+  it('prefers explicit env override over platform default', () => {
+    const env = getProcessEnv()
+    env.EXPO_OS = 'android'
+    env.EXPO_PUBLIC_API_BASE_URL = 'http://192.168.0.20:4000'
+    expect(getApiBaseUrl()).toBe('http://192.168.0.20:4000')
   })
 })

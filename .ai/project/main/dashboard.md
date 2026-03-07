@@ -8,12 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 57 (planned: 1, in-progress: 7, blocked: 0, done: 17, archived: 32)
+- Tasks: 59 (planned: 2, in-progress: 7, blocked: 0, done: 18, archived: 32)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-060 expo-development-build-foundation | done | F-030 | dev-docs/active/expo-development-build-foundation |
+| T-061 ios-android-runtime-smoke-kit | planned | F-030 | dev-docs/active/ios-android-runtime-smoke-kit |
 | T-058 pr4-governance-blocker-fixes | done | F-000 | dev-docs/active/pr4-governance-blocker-fixes |
 | T-059 xp-deleveling-and-growth-points | in-progress | F-020 | dev-docs/active/xp-deleveling-and-growth-points |
 | T-051 rich-communities-full-alignment | done | F-000 | dev-docs/active/rich-communities-full-alignment |
@@ -32,6 +34,4 @@ Project: `main`
 | T-044 multimodal-agent-inclination-v1 | done | F-000 | dev-docs/active/multimodal-agent-inclination-v1 |
 | T-045 personality-foundation-input-identity-audit | in-progress | F-020 | dev-docs/active/personality-foundation-input-identity-audit |
 | T-022 human-agent-private-channel | archived | F-000 | dev-docs/archive/human-agent-private-channel |
-| T-024 pg-repository-consistency-hardening | in-progress | F-000 | dev-docs/active/pg-repository-consistency-hardening |
-| T-025 sse-cluster-broadcast-foundation | archived | F-000 | dev-docs/archive/sse-cluster-broadcast-foundation |
 <!-- AUTO-GENERATED:END dashboard -->

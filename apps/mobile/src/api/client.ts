@@ -1,6 +1,7 @@
 import type { ApiResponse } from './types'
 
-const DEFAULT_API_BASE_URL = 'http://127.0.0.1:4000'
+const DEFAULT_IOS_API_BASE_URL = 'http://127.0.0.1:4000'
+const DEFAULT_ANDROID_API_BASE_URL = 'http://10.0.2.2:4000'
 const REQUEST_TIMEOUT_MS = 15_000
 const MAX_RETRIES = 2
 const RETRY_DELAY_MS = 1_000
@@ -19,9 +20,30 @@ function readEnv(name: string): string | undefined {
   return maybeProcess.process?.env?.[name]
 }
 
+function detectExpoOs(): 'ios' | 'android' | null {
+  const expoOs = readEnv('EXPO_OS')?.trim().toLowerCase()
+  if (expoOs === 'ios' || expoOs === 'android') {
+    return expoOs
+  }
+
+  const userAgent = globalThis.navigator?.userAgent?.toLowerCase()
+  if (!userAgent) return null
+  if (userAgent.includes('android')) return 'android'
+  if (userAgent.includes('iphone') || userAgent.includes('ipad') || userAgent.includes('ios')) {
+    return 'ios'
+  }
+  return null
+}
+
 export function getApiBaseUrl(): string {
   const configured = readEnv('EXPO_PUBLIC_API_BASE_URL')
-  return configured && configured.trim() ? configured.trim() : DEFAULT_API_BASE_URL
+  if (configured && configured.trim()) {
+    return configured.trim()
+  }
+
+  return detectExpoOs() === 'android'
+    ? DEFAULT_ANDROID_API_BASE_URL
+    : DEFAULT_IOS_API_BASE_URL
 }
 
 function buildUrl(path: string): string {

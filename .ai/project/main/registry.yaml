@@ -29,6 +29,11 @@ features:
     status: planned
     description: "Cross-scene personality experience upgrades across input fidelity, prompt orchestration, and growth presentation."
     milestone_id: M-000
+  - id: F-030
+    title: "Mobile Runtime Delivery"
+    status: in-progress
+    description: "Expo development build baseline and iOS/Android runtime smoke enablement for the mobile app."
+    milestone_id: M-000
 
 requirements:
   - id: R-010
@@ -59,6 +64,14 @@ requirements:
     title: "XP Deleveling and Growth Point Simplification"
     status: in-progress
     feature_id: F-020
+  - id: R-024
+    title: "Expo Development Build Foundation"
+    status: done
+    feature_id: F-030
+  - id: R-025
+    title: "iOS Android Runtime Smoke Enablement"
+    status: planned
+    feature_id: F-030
 
 tasks:
   - id: T-003
@@ -474,3 +487,21 @@ tasks:
       - R-023
     dev_docs_path: dev-docs/active/xp-deleveling-and-growth-points
     updated: 2026-03-06
+  - id: T-060
+    slug: expo-development-build-foundation
+    status: done
+    milestone_id: M-000
+    feature_id: F-030
+    requirement_ids:
+      - R-024
+    dev_docs_path: dev-docs/active/expo-development-build-foundation
+    updated: 2026-03-07
+  - id: T-061
+    slug: ios-android-runtime-smoke-kit
+    status: planned
+    milestone_id: M-000
+    feature_id: F-030
+    requirement_ids:
+      - R-025
+    dev_docs_path: dev-docs/active/ios-android-runtime-smoke-kit
+    updated: 2026-03-07

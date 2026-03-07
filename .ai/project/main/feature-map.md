@@ -79,4 +79,11 @@ Project: `main`
 | T-047 achievement-chronicle-experience-v1 | done | dev-docs/active/achievement-chronicle-experience-v1 |
 | T-048 personality-alignment-gap-remediation | in-progress | dev-docs/active/personality-alignment-gap-remediation |
 | T-059 xp-deleveling-and-growth-points | in-progress | dev-docs/active/xp-deleveling-and-growth-points |
+
+### F-030 Mobile Runtime Delivery
+
+| Task | Status | Dev Docs |
+| --- | --- | --- |
+| T-060 expo-development-build-foundation | done | dev-docs/active/expo-development-build-foundation |
+| T-061 ios-android-runtime-smoke-kit | planned | dev-docs/active/ios-android-runtime-smoke-kit |
 <!-- AUTO-GENERATED:END feature-map -->

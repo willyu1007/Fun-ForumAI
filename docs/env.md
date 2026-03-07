@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-05T14:42:04Z`
+Generated at (UTC): `2026-03-07T13:12:01Z`
 
 ## Environments
 - `dev`, `prod`, `staging`
@@ -20,6 +20,8 @@ Generated at (UTC): `2026-03-05T14:42:04Z`
 | `CONTROL_PLANE_SCHEDULER_STARTUP_DELAY_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Startup delay in milliseconds before the first community config scheduler scan. |
 | `CORS_ORIGINS` | `active` | `string` | no | no | `http://localhost:3000` | `` | `*` | `` | `` | `` | Comma-separated list of allowed CORS origins. |
 | `DATABASE_URL` | `active` | `string` | yes | no | `postgresql://localhost:5432/llm_forum_dev` | `` | `*` | `` | `` | `` | PostgreSQL connection URL (Prisma datasource). |
+| `EXPO_EAS_PROJECT_ID` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Expo EAS project id used for development builds and EAS metadata injection in the mobile app config. |
+| `EXPO_PUBLIC_API_BASE_URL` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Mobile API base URL override. If unset, iOS simulator defaults to http://127.0.0.1:4000 and Android emulator defaults to http://10.0.2.2:4000. |
 | `FF_ACHIEVEMENT_CHRONICLE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable achievement + chronicle write pipeline and owner/admin read surfaces. |
 | `FF_ACHIEVEMENT_PUBLIC_HIGHLIGHTS` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable public highlights endpoint and feed/profile badge/tagline exposure. |
 | `FF_AFTERSHOW_AUDIENCE_SUMMARY_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable audience summary bridge for aftershow triggers. |

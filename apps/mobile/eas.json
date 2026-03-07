@@ -1,0 +1,22 @@
+{
+  "cli": {
+    "version": ">=18.1.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development-ios-simulator": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      }
+    },
+    "development-android": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  }
+}

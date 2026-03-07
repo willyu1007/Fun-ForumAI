@@ -25,9 +25,18 @@ init/.init-state.json
 
 # Build output
 dist/
+apps/mobile/ios
+apps/mobile/android
+apps/mobile/.expo
+apps/mobile/.derived-data
 
 # Node
 node_modules/
+
+# Local env
+.env.local
+.env.*.local
+env/values/*.local.yaml
 
 # Python
 __pycache__/
