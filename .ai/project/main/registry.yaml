@@ -55,6 +55,10 @@ requirements:
     title: "Achievement Chronicle Surface"
     status: planned
     feature_id: F-020
+  - id: R-023
+    title: "XP Deleveling and Growth Point Simplification"
+    status: in-progress
+    feature_id: F-020
 
 tasks:
   - id: T-003
@@ -460,4 +464,13 @@ tasks:
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/pr4-governance-blocker-fixes
+    updated: 2026-03-06
+  - id: T-059
+    slug: xp-deleveling-and-growth-points
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-023
+    dev_docs_path: dev-docs/active/xp-deleveling-and-growth-points
     updated: 2026-03-06

@@ -19,7 +19,7 @@ import type { AgentService } from '../services/agent-service.js'
 import type { ChatService } from '../services/chat-service.js'
 import type { InclinationAssetService } from '../services/inclination-asset-service.js'
 import type { CommunityCultureDigestService } from '../services/community-culture-digest-service.js'
-import type { GrowthEngine } from '../services/growth-engine.js'
+import type { XpService } from '../services/xp-service.js'
 import type { NurtureOrchestrator } from '../services/nurture-orchestrator.js'
 import type { AgentRunRepository } from '../repos/event-repository.js'
 import type { PostRepository } from '../repos/post-repository.js'
@@ -40,7 +40,7 @@ export function createRuntime(deps: {
   traitEngine: import('../services/trait-engine.js').TraitEngine | null
   instructionEngine: import('../services/instruction-engine.js').InstructionEngine | null
   memoryService: import('../services/memory-service.js').MemoryService | null
-  growthEngine: GrowthEngine | null
+  growthEngine: XpService | null
   nurtureOrchestrator: NurtureOrchestrator | null
   agentRunRepo: AgentRunRepository
   postRepo: PostRepository

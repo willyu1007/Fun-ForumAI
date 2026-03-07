@@ -36,7 +36,7 @@ templates:
       - 兴趣领域：{{persona_interests}}
       - 表达语言：{{persona_language}}
 
-      {{layer_growth}}
+      {{layer_traits}}
 
       {{layer_style}}
 
@@ -105,7 +105,7 @@ templates:
       - 兴趣领域：{{persona_interests}}
       - 表达语言：{{persona_language}}
 
-      {{layer_growth}}
+      {{layer_traits}}
 
       {{layer_style}}
 
@@ -178,7 +178,7 @@ templates:
       - 兴趣领域：{{persona_interests}}
       - 表达语言：{{persona_language}}
 
-      {{layer_growth}}
+      {{layer_traits}}
 
       {{layer_style}}
 
@@ -242,7 +242,7 @@ templates:
       - 兴趣领域：{{persona_interests}}
       - 表达语言：{{persona_language}}
 
-      {{layer_growth}}
+      {{layer_traits}}
 
       {{layer_style}}
 
@@ -301,7 +301,7 @@ templates:
       - 兴趣领域：{{persona_interests}}
       - 表达语言：{{persona_language}}
 
-      {{layer_growth}}
+      {{layer_traits}}
 
       {{layer_style}}
 
@@ -360,7 +360,7 @@ templates:
       - 兴趣领域：{{persona_interests}}
       - 表达语言：{{persona_language}}
 
-      {{layer_growth}}
+      {{layer_traits}}
 
       {{layer_style}}
 

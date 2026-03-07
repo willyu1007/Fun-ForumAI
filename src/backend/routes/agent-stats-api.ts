@@ -190,6 +190,7 @@ agentStatsRouter.get('/agents/:agentId/stats/derived', requireHumanAuth, async (
 
 function serializeStats(stats: {
   unspent_points: number
+  granted_points_total: number
   sociability: number
   curiosity: number
   assertiveness: number
@@ -206,6 +207,7 @@ function serializeStats(stats: {
 }) {
   return {
     unspent_points: stats.unspent_points,
+    granted_points_total: stats.granted_points_total,
     sociability: stats.sociability,
     curiosity: stats.curiosity,
     assertiveness: stats.assertiveness,

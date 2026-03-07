@@ -143,7 +143,7 @@ export class ContextBuilder {
       try {
         const fragments = await this.deps.traitEngine.getTraitPromptFragments(agentId)
         if (fragments) {
-          layers.layer1_growth = fragments
+          layers.layer1_traits = fragments
         }
       } catch { /* ignore */ }
     }

@@ -28,21 +28,18 @@ export function AgentDashboardPage() {
       <div className="py-10 text-center text-muted-foreground">无数据</div>
     )
 
-  const xpForNextLevel = dash.growth.level * 100
-  const xpProgress = Math.min(dash.growth.xp / xpForNextLevel, 1)
-
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xl font-bold text-white">
-          Lv.{dash.growth.level}
+          XP
         </div>
         <div>
           <h1 className="text-2xl font-bold">
             {agent?.display_name ?? 'Agent'}
           </h1>
-          <p className="text-sm text-muted-foreground">Agent Dashboard</p>
+          <p className="text-sm text-muted-foreground">XP 资源线与运行状态</p>
         </div>
       </div>
 
@@ -50,20 +47,17 @@ export function AgentDashboardPage() {
         {/* XP Card */}
         <div className="rounded-xl border bg-card p-5">
           <div className="mb-2 flex items-center justify-between text-sm">
-            <span className="font-medium">经验值</span>
-            <span className="text-muted-foreground">
-              {dash.growth.xp} / {xpForNextLevel} XP
-            </span>
+            <span className="font-medium">XP 与成长点</span>
+            <span className="text-muted-foreground">{dash.xp.xp} XP</span>
           </div>
-          <div className="h-3 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-emerald-500 transition-all"
-              style={{ width: `${xpProgress * 100}%` }}
-            />
-          </div>
-          <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
-            <span>特质槽: {dash.growth.trait_slots}</span>
-            <span>指令槽: {dash.growth.instruction_slots}</span>
+          <p className="text-xs text-muted-foreground">
+            XP 只用于累计成长点，不承担成就判定、身份判定或功能门槛。
+          </p>
+          <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
+            <span>每 1 点成长点所需 XP: {dash.xp.xp_per_growth_point} XP</span>
+            <span>累计成长点: {dash.xp.growth_points_total}</span>
+            <span>已分配成长点: {dash.xp.growth_points_spent}</span>
+            <span>待分配成长点: {dash.xp.growth_points_available}</span>
           </div>
         </div>
 
@@ -160,9 +154,12 @@ export function AgentDashboardPage() {
       {/* Cost Review Panel */}
       <CostReviewPanel agentId={agentId!} budget={dash.budget} />
 
-      {/* Growth Events Timeline */}
+      {/* XP Timeline */}
       <div className="rounded-xl border bg-card p-5">
-        <div className="mb-4 text-sm font-medium">成长记录</div>
+        <div className="mb-1 text-sm font-medium">XP 记录</div>
+        <p className="mb-4 text-xs text-muted-foreground">
+          这里只记录 XP 的来源与收支，不展示成就、编年史或身份事件。
+        </p>
         {dash.recent_events.length > 0 ? (
           <div className="space-y-4">
             {dash.recent_events.map((e) => (
@@ -186,6 +183,7 @@ export function AgentDashboardPage() {
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {e.description}
                   </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground/70">来源: {e.source}</p>
                   <time className="mt-1 text-xs text-muted-foreground/60">
                     {new Date(e.created_at).toLocaleString('zh-CN')}
                   </time>
@@ -194,7 +192,7 @@ export function AgentDashboardPage() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">暂无成长记录</p>
+          <p className="text-sm text-muted-foreground">暂无 XP 记录</p>
         )}
       </div>
     </div>

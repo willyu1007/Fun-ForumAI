@@ -1,5 +1,6 @@
 import type { AgentRepository } from '../repos/agent-repository.js'
 import type { AgentService } from './agent-service.js'
+import { XP_PER_GROWTH_POINT } from './xp-service.js'
 import type {
   AgentState,
   AgentStatePoint,
@@ -81,16 +82,16 @@ export interface StatsServiceDeps {
   statsRepo: StatsRepository
   agentRepo: AgentRepository
   agentService: AgentService
-  growthEngine?: {
-    getGrowth(agentId: string): Promise<{ level: number }>
+  xpService?: {
+    getXp(agentId: string): Promise<{ xp: number }>
   } | null
 }
 
 export class StatsService {
   constructor(private readonly deps: StatsServiceDeps) {}
 
-  setGrowthEngine(engine: StatsServiceDeps['growthEngine']): void {
-    ;(this.deps as { growthEngine: StatsServiceDeps['growthEngine'] }).growthEngine = engine ?? null
+  setXpService(engine: StatsServiceDeps['xpService']): void {
+    ;(this.deps as { xpService: StatsServiceDeps['xpService'] }).xpService = engine ?? null
   }
 
   async onDomainEvent(event: DomainEvent): Promise<void> {
@@ -275,6 +276,7 @@ export class StatsService {
     const persisted = await this.deps.statsRepo.saveStats({
       agent_id: agentId,
       unspent_points: preview.after.unspent_points,
+      granted_points_total: preview.after.granted_points_total,
       sociability: preview.after.sociability,
       curiosity: preview.after.curiosity,
       assertiveness: preview.after.assertiveness,
@@ -454,25 +456,22 @@ export class StatsService {
   private async ensureStats(agentId: string): Promise<AgentStats> {
     const stats = await this.deps.statsRepo.getOrCreateStats(agentId)
 
-    if (!this.deps.growthEngine) {
-      return stats
-    }
-
-    // One-time lazy sync for existing agents created before stats was introduced.
-    if (!isDefaultStats(stats) || stats.unspent_points !== 0 || stats.version !== 1) {
+    if (!this.deps.xpService) {
       return stats
     }
 
     try {
-      const growth = await this.deps.growthEngine.getGrowth(agentId)
-      const grantedPoints = Math.max(0, Math.floor(growth.level) - 1)
-      if (grantedPoints <= 0) {
+      const { xp } = await this.deps.xpService.getXp(agentId)
+      const grantedPointsTotal = Math.max(0, Math.floor(xp / XP_PER_GROWTH_POINT))
+      if (grantedPointsTotal <= stats.granted_points_total) {
         return stats
       }
 
+      const grantedPointsDelta = grantedPointsTotal - stats.granted_points_total
       const synced = await this.deps.statsRepo.saveStats({
         agent_id: agentId,
-        unspent_points: grantedPoints,
+        unspent_points: stats.unspent_points + grantedPointsDelta,
+        granted_points_total: grantedPointsTotal,
         sociability: stats.sociability,
         curiosity: stats.curiosity,
         assertiveness: stats.assertiveness,
@@ -493,11 +492,13 @@ export class StatsService {
       await this.deps.statsRepo.createEvent({
         agent_id: agentId,
         event_type: 'POINTS_GRANTED',
-        source: 'level_sync',
-        idempotency_key: `level-sync:${agentId}:v${synced.version}`,
+        source: 'xp_formula_sync',
+        idempotency_key: `xp-formula-sync:${agentId}:${grantedPointsTotal}`,
         delta_json: {
-          granted_points: grantedPoints,
-          level: growth.level,
+          granted_points: grantedPointsDelta,
+          granted_points_total: grantedPointsTotal,
+          xp,
+          xp_per_growth_point: XP_PER_GROWTH_POINT,
         },
       })
 
@@ -609,6 +610,7 @@ function toNumber(value: unknown): number {
 function serializeStats(stats: AgentStats): Record<string, number> {
   return {
     unspent_points: stats.unspent_points,
+    granted_points_total: stats.granted_points_total,
     sociability: stats.sociability,
     curiosity: stats.curiosity,
     assertiveness: stats.assertiveness,
@@ -673,6 +675,7 @@ function defaultStats(agentId: string): AgentStats {
   return {
     agent_id: agentId,
     unspent_points: 0,
+    granted_points_total: 0,
     sociability: 0,
     curiosity: 0,
     assertiveness: 0,
@@ -700,19 +703,4 @@ function defaultState(agentId: string): AgentState {
     fatigue: 0,
     last_updated_at: now,
   }
-}
-
-function isDefaultStats(stats: AgentStats): boolean {
-  return (
-    stats.sociability === 0 &&
-    stats.curiosity === 0 &&
-    stats.assertiveness === 0 &&
-    stats.empathy === 0 &&
-    stats.brashness === 0 &&
-    stats.cynicism === 0 &&
-    stats.stubbornness === 0 &&
-    stats.volatility === 0 &&
-    stats.memory === 30 &&
-    stats.learning === 30
-  )
 }

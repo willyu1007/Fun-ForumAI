@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-05T04:58:04.045Z",
+  "updatedAt": "2026-03-06T14:12:13.254Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -106,9 +106,10 @@
     {
       "name": "ConfigPatchStatus",
       "values": [
-        "DRAFT",
+        "PROPOSED",
         "VALIDATED",
         "APPROVED",
+        "SCHEDULED",
         "APPLIED",
         "REJECTED",
         "ROLLED_BACK"
@@ -119,6 +120,14 @@
       "values": [
         "LOW",
         "HIGH"
+      ]
+    },
+    {
+      "name": "ConfigVersionStatus",
+      "values": [
+        "ACTIVE",
+        "ROLLED_BACK",
+        "RETIRED"
       ]
     },
     {
@@ -1272,24 +1281,6 @@
           "references": []
         },
         {
-          "field": "growth",
-          "to": "AgentGrowth",
-          "optional": true,
-          "list": false,
-          "relationName": null,
-          "fields": [],
-          "references": []
-        },
-        {
-          "field": "growthEvents",
-          "to": "GrowthEvent",
-          "optional": false,
-          "list": true,
-          "relationName": null,
-          "fields": [],
-          "references": []
-        },
-        {
           "field": "humanFollowers",
           "to": "HumanAgentFollow",
           "optional": false,
@@ -1355,6 +1346,15 @@
         {
           "field": "instructions",
           "to": "AgentInstruction",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "legacyGrowthEventArchives",
+          "to": "LegacyGrowthEventArchive",
           "optional": false,
           "list": true,
           "relationName": null,
@@ -1530,6 +1530,24 @@
         {
           "field": "votes",
           "to": "Vote",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "xp",
+          "to": "AgentXp",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "xpEvents",
+          "to": "XpEvent",
           "optional": false,
           "list": true,
           "relationName": null,
@@ -2262,95 +2280,6 @@
         },
         {
           "name": "violations",
-          "type": "Int",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": "0",
-          "primaryKey": false,
-          "unique": false
-        }
-      ],
-      "relations": [
-        {
-          "field": "agent",
-          "to": "Agent",
-          "optional": false,
-          "list": false,
-          "relationName": null,
-          "fields": [
-            "agentId"
-          ],
-          "references": [
-            "id"
-          ]
-        }
-      ],
-      "indexes": []
-    },
-    {
-      "name": "AgentGrowth",
-      "dbName": "agent_growth",
-      "schema": null,
-      "columns": [
-        {
-          "name": "agentId",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "agent_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": true,
-          "unique": false
-        },
-        {
-          "name": "instructionSlots",
-          "type": "Int",
-          "nullable": false,
-          "list": false,
-          "dbName": "instruction_slots",
-          "dbType": null,
-          "default": "0",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "level",
-          "type": "Int",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": "1",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "traitSlots",
-          "type": "Int",
-          "nullable": false,
-          "list": false,
-          "dbName": "trait_slots",
-          "dbType": null,
-          "default": "0",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "updatedAt",
-          "type": "DateTime",
-          "nullable": false,
-          "list": false,
-          "dbName": "updated_at",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "xp",
           "type": "Int",
           "nullable": false,
           "list": false,
@@ -4365,6 +4294,17 @@
           "unique": false
         },
         {
+          "name": "grantedPointsTotal",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "granted_points_total",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "learning",
           "type": "Int",
           "nullable": false,
@@ -4590,6 +4530,62 @@
           "map": null
         }
       ]
+    },
+    {
+      "name": "AgentXp",
+      "dbName": "agent_xp",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "xp",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": []
     },
     {
       "name": "AudienceMessage",
@@ -5872,6 +5868,17 @@
           "unique": false
         },
         {
+          "name": "effectiveAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "effective_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "id",
           "type": "String",
           "nullable": false,
@@ -5977,7 +5984,7 @@
           "list": false,
           "dbName": null,
           "dbType": null,
-          "default": "DRAFT",
+          "default": "PROPOSED",
           "primaryKey": false,
           "unique": false
         },
@@ -6116,6 +6123,15 @@
           ],
           "name": null,
           "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "status",
+            "effectiveAt"
+          ],
+          "name": null,
+          "map": null
         }
       ]
     },
@@ -6163,6 +6179,17 @@
           "nullable": true,
           "list": false,
           "dbName": "created_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "effectiveAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "effective_at",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -6242,6 +6269,17 @@
           "dbName": "source_patch_id",
           "dbType": null,
           "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "ConfigVersionStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "ACTIVE",
           "primaryKey": false,
           "unique": false
         },
@@ -6879,116 +6917,6 @@
           "fields": [
             "plane",
             "eventType",
-            "createdAt"
-          ],
-          "name": null,
-          "map": null
-        }
-      ]
-    },
-    {
-      "name": "GrowthEvent",
-      "dbName": "growth_events",
-      "schema": null,
-      "columns": [
-        {
-          "name": "agentId",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "agent_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "createdAt",
-          "type": "DateTime",
-          "nullable": false,
-          "list": false,
-          "dbName": "created_at",
-          "dbType": null,
-          "default": "now()",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "description",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "eventType",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "event_type",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "id",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": "cuid()",
-          "primaryKey": true,
-          "unique": false
-        },
-        {
-          "name": "title",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "xpDelta",
-          "type": "Int",
-          "nullable": false,
-          "list": false,
-          "dbName": "xp_delta",
-          "dbType": null,
-          "default": "0",
-          "primaryKey": false,
-          "unique": false
-        }
-      ],
-      "relations": [
-        {
-          "field": "agent",
-          "to": "Agent",
-          "optional": false,
-          "list": false,
-          "relationName": null,
-          "fields": [
-            "agentId"
-          ],
-          "references": [
-            "id"
-          ]
-        }
-      ],
-      "indexes": [
-        {
-          "type": "index",
-          "fields": [
-            "agentId",
             "createdAt"
           ],
           "name": null,
@@ -8390,6 +8318,116 @@
           "type": "index",
           "fields": [
             "jobId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "LegacyGrowthEventArchive",
+      "dbName": "legacy_growth_events_archive",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "eventType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "event_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "xpDelta",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "xp_delta",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
             "createdAt"
           ],
           "name": null,
@@ -10314,6 +10352,137 @@
             "voterAgentId",
             "targetType",
             "targetId"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "XpEvent",
+      "dbName": "xp_events",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "dedupKey",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "dedup_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "source",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "xpDelta",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "xp_delta",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "dedupKey",
+            "createdAt"
           ],
           "name": null,
           "map": null

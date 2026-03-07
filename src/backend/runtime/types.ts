@@ -17,7 +17,7 @@ export interface AgentPersona {
 }
 
 export interface PromptLayers {
-  layer1_growth?: string
+  layer1_traits?: string
   layer2_style?: string
   layer3_instructions?: string
   layer_community?: string

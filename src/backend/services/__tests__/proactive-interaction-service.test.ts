@@ -72,12 +72,12 @@ describe('ProactiveInteractionService', () => {
         isSceneEnabled: vi.fn(() => true),
         compose: vi.fn(async () => ({
           persona: { name: 'Main Agent', style: 'warm', interests: ['ai'], language: 'zh-CN' },
-          layers: { layer1_growth: 'growth', layer6_privacy: 'privacy' },
+          layers: { layer1_traits: 'growth', layer6_privacy: 'privacy' },
           audit: {
             version: 'v1',
             scene: 'proactive_dm',
-            includedLayerIds: ['layer1_growth', 'layer6_privacy'],
-            tokenEstimates: { layer1_growth: 10, layer6_privacy: 10 },
+            includedLayerIds: ['layer1_traits', 'layer6_privacy'],
+            tokenEstimates: { layer1_traits: 10, layer6_privacy: 10 },
             lintWarnings: [],
             trimReasons: [],
           },

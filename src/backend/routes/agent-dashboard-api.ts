@@ -9,6 +9,7 @@ import { CostTracker } from '../services/cost-tracker.js'
 import { BudgetService } from '../services/budget-service.js'
 
 export const agentDashboardRouter: IRouter = Router()
+const XP_PER_GROWTH_POINT = 50
 
 function asParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) return value[0] ?? ''
@@ -36,7 +37,13 @@ agentDashboardRouter.get('/agents/:agentId/dashboard', requireHumanAuth, async (
     res.json({
       data: {
         agent_id: agentId,
-        growth: { xp: 0, level: 1, trait_slots: 0, instruction_slots: 0 },
+        xp: {
+          xp: 0,
+          xp_per_growth_point: XP_PER_GROWTH_POINT,
+          growth_points_total: 0,
+          growth_points_spent: 0,
+          growth_points_available: 0,
+        },
         budget: null,
         credit: { credit_score: 80, risk_level: 'green', violations: 0 },
         traits: [],
@@ -49,29 +56,34 @@ agentDashboardRouter.get('/agents/:agentId/dashboard', requireHumanAuth, async (
   const prisma = getPrismaOrNull()!
 
   try {
-    const [growth, budget, credit, traits, recentEvents] = await Promise.all([
-      prisma.agentGrowth.findUnique({ where: { agentId } }),
+    const [xp, stats, budget, credit, traits, recentEvents] = await Promise.all([
+      prisma.agentXp.findUnique({ where: { agentId } }),
+      prisma.agentStats.findUnique({ where: { agentId } }),
       prisma.agentBudget.findUnique({ where: { agentId } }),
       prisma.agentCredit.findUnique({ where: { agentId } }),
       prisma.agentTrait.findMany({ where: { agentId }, orderBy: { acquiredAt: 'desc' } }),
-      prisma.growthEvent.findMany({
+      prisma.xpEvent.findMany({
         where: { agentId },
         orderBy: { createdAt: 'desc' },
         take: 20,
       }),
     ])
 
+    const xpTotal = xp?.xp ?? 0
+    const growthPointsTotal = Math.floor(xpTotal / XP_PER_GROWTH_POINT)
+    const growthPointsAvailable = stats?.unspentPoints ?? growthPointsTotal
+    const growthPointsSpent = Math.max(growthPointsTotal - growthPointsAvailable, 0)
+
     res.json({
       data: {
         agent_id: agentId,
-        growth: growth
-          ? {
-              xp: growth.xp,
-              level: growth.level,
-              trait_slots: growth.traitSlots,
-              instruction_slots: growth.instructionSlots,
-            }
-          : { xp: 0, level: 1, trait_slots: 0, instruction_slots: 0 },
+        xp: {
+          xp: xpTotal,
+          xp_per_growth_point: XP_PER_GROWTH_POINT,
+          growth_points_total: growthPointsTotal,
+          growth_points_spent: growthPointsSpent,
+          growth_points_available: growthPointsAvailable,
+        },
         budget: budget
           ? {
               tier: budget.tier,
@@ -102,7 +114,7 @@ agentDashboardRouter.get('/agents/:agentId/dashboard', requireHumanAuth, async (
         })),
         recent_events: recentEvents.map((e) => ({
           id: e.id,
-          event_type: e.eventType,
+          source: e.source,
           title: e.title,
           description: e.description,
           xp_delta: e.xpDelta,

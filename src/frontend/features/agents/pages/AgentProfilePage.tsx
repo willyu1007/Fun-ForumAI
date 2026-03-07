@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router'
-import { useAgentProfile, useAgentRuns, useAgentGrowth, useFollowAgent, useUnfollowAgent } from '@/api/hooks'
+import { useAgentProfile, useAgentRuns, useAgentXp, useFollowAgent, useUnfollowAgent } from '@/api/hooks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -41,7 +41,7 @@ const MULTIMODAL_INCLINATION_ENABLED = import.meta.env.VITE_FF_MULTIMODAL_AGENT_
 
 type TabId =
   | 'overview'
-  | 'growth'
+  | 'achievements'
   | 'stats'
   | 'style'
   | 'instructions'
@@ -58,7 +58,7 @@ export function AgentProfilePage() {
   const [tab, setTab] = useState<TabId>('overview')
   const { data, isLoading, error } = useAgentProfile(agentId ?? '')
   const { data: runsData, isLoading: runsLoading } = useAgentRuns(agentId ?? '')
-  const { data: growthRes } = useAgentGrowth(agentId ?? '')
+  const { data: xpRes } = useAgentXp(agentId ?? '')
   const follow = useFollowAgent(agentId ?? '')
   const unfollow = useUnfollowAgent(agentId ?? '')
   const agent = data?.data
@@ -66,7 +66,7 @@ export function AgentProfilePage() {
   const tabs = useMemo(() => {
     const baseTabs: Array<{ id: TabId; label: string }> = [
       { id: 'overview', label: '概览' },
-      { id: 'growth', label: '成长' },
+      { id: 'achievements', label: '成就线' },
       ...(STATS_UI_ENABLED ? [{ id: 'stats' as const, label: 'Stats' }] : []),
       { id: 'privacy', label: '隐私' },
       { id: 'relations', label: '关系网' },
@@ -211,21 +211,21 @@ export function AgentProfilePage() {
       {/* Tab content */}
       {tab === 'overview' && (
         <div className="space-y-4">
-          {growthRes?.data && (
+          {xpRes?.data && (
             <LevelBadge
-              level={growthRes.data.level}
-              xp={growthRes.data.xp}
-              xpForNext={growthRes.data.level * 100}
+              xp={xpRes.data.xp}
+              growthPointsTotal={xpRes.data.growth_points_total}
+              growthPointsAvailable={xpRes.data.growth_points_available}
             />
           )}
           <div className="grid gap-4 md:grid-cols-2">
-            <TraitPanel agentId={agentId!} traitSlots={growthRes?.data?.trait_slots ?? 0} />
+            <TraitPanel agentId={agentId!} />
             <CreditBadge agentId={agentId!} />
           </div>
         </div>
       )}
 
-      {tab === 'growth' && <AchievementChroniclePanel agentId={agentId!} />}
+      {tab === 'achievements' && <AchievementChroniclePanel agentId={agentId!} />}
 
       {tab === 'stats' && <StatsPanel agentId={agentId!} />}
 
@@ -233,7 +233,7 @@ export function AgentProfilePage() {
 
       {tab === 'instructions' && (
         isOwner
-          ? <InstructionList agentId={agentId!} instructionSlots={growthRes?.data?.instruction_slots ?? 0} />
+          ? <InstructionList agentId={agentId!} />
           : null
       )}
 
@@ -245,7 +245,7 @@ export function AgentProfilePage() {
 
       {tab === 'advanced' && (
         isOwner
-          ? <PromptOverrideEditor agentId={agentId!} level={growthRes?.data?.level ?? 1} />
+          ? <PromptOverrideEditor agentId={agentId!} />
           : null
       )}
 

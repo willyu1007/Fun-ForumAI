@@ -27,7 +27,7 @@ import type { IncubationOrchestrator } from '../services/incubation-orchestrator
 export interface NurtureResult {
   traitEngine: import('../services/trait-engine.js').TraitEngine | null
   instructionEngine: import('../services/instruction-engine.js').InstructionEngine | null
-  growthEngine: import('../services/growth-engine.js').GrowthEngine | null
+  growthEngine: import('../services/xp-service.js').XpService | null
   memoryService: import('../services/memory-service.js').MemoryService | null
   promptLayerService: PromptLayerService
   promptOrchestrator: PromptOrchestrator
@@ -77,7 +77,7 @@ export async function createNurtureEngines(deps: {
 
   let traitEngine: import('../services/trait-engine.js').TraitEngine | null = null
   let instructionEngine: import('../services/instruction-engine.js').InstructionEngine | null = null
-  let growthEngine: import('../services/growth-engine.js').GrowthEngine | null = null
+  let growthEngine: import('../services/xp-service.js').XpService | null = null
   let memoryService: import('../services/memory-service.js').MemoryService | null = null
   let relationService: RelationService | null = null
   let relationScheduler: RelationScheduler | null = null
@@ -97,7 +97,7 @@ export async function createNurtureEngines(deps: {
 
     const { TraitEngine } = await import('../services/trait-engine.js')
     const { InstructionEngine } = await import('../services/instruction-engine.js')
-    const { GrowthEngine } = await import('../services/growth-engine.js')
+    const { XpService } = await import('../services/xp-service.js')
     const { MemoryService } = await import('../services/memory-service.js')
     const { NotificationService } = await import('../services/notification-service.js')
     const { ProactiveInteractionService } = await import('../services/proactive-interaction-service.js')
@@ -109,8 +109,8 @@ export async function createNurtureEngines(deps: {
 
     traitEngine = new TraitEngine(prisma)
     instructionEngine = new InstructionEngine(prisma)
-    growthEngine = new GrowthEngine(prisma)
-    statsService.setGrowthEngine(growthEngine)
+    growthEngine = new XpService(prisma)
+    statsService.setXpService(growthEngine)
 
     if (repos.relationRepo) {
       relationService = new RelationService({
@@ -118,7 +118,6 @@ export async function createNurtureEngines(deps: {
         agentRepo: repos.agentRepo,
         agentService,
         traitEngine,
-        growthEngine,
         postRepo: repos.postRepo,
         commentRepo: repos.commentRepo,
         roomRepo: repos.roomRepo,

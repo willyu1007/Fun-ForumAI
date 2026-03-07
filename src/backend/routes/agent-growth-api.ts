@@ -1,5 +1,5 @@
 import { Router, type IRouter } from 'express'
-import { GrowthEngine } from '../services/growth-engine.js'
+import { XpService } from '../services/xp-service.js'
 import { TraitEngine } from '../services/trait-engine.js'
 import { CreditService } from '../services/credit-service.js'
 import { InstructionEngine } from '../services/instruction-engine.js'
@@ -12,7 +12,8 @@ function getPrismaOrNull(): PrismaClient | null {
   return ((globalThis as Record<string, unknown>).__forumPrisma as PrismaClient) ?? null
 }
 
-export const agentGrowthRouter: IRouter = Router()
+export const agentNurtureRouter: IRouter = Router()
+const XP_PER_GROWTH_POINT = 50
 
 function assertOwner(agentId: string, userId: string): void {
   const agent = agentService.getAgent(agentId)
@@ -29,7 +30,7 @@ function asParam(value: string | string[] | undefined): string {
 function getLazySingletons() {
   const prisma = getPrismaOrNull()
   return {
-    growth: new GrowthEngine(prisma),
+    xp: new XpService(prisma),
     traits: new TraitEngine(prisma),
     credit: new CreditService(prisma),
     instructions: new InstructionEngine(prisma),
@@ -42,34 +43,37 @@ function singletons() {
   return _singletons
 }
 
-// ─── Growth ──────────────────────────────────────────────────
+// ─── XP ──────────────────────────────────────────────────────
 
-agentGrowthRouter.get('/agents/:agentId/growth', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.get('/agents/:agentId/xp', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
-  const data = await singletons().growth.getGrowth(agentId)
-  res.json({ data })
+  const [xp, stats] = await Promise.all([
+    singletons().xp.getXp(agentId),
+    getPrismaOrNull()?.agentStats.findUnique({ where: { agentId } }) ?? Promise.resolve(null),
+  ])
+  const growthPointsTotal = Math.floor(xp.xp / XP_PER_GROWTH_POINT)
+  const growthPointsAvailable = stats?.unspentPoints ?? growthPointsTotal
+  res.json({
+    data: {
+      xp: xp.xp,
+      xp_per_growth_point: XP_PER_GROWTH_POINT,
+      growth_points_total: growthPointsTotal,
+      growth_points_spent: Math.max(growthPointsTotal - growthPointsAvailable, 0),
+      growth_points_available: growthPointsAvailable,
+    },
+  })
 })
 
-agentGrowthRouter.get('/agents/:agentId/growth-events', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.get('/agents/:agentId/xp-events', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
   const limit = parseInt(String(req.query.limit ?? '50'), 10)
-  const events = await singletons().growth.getGrowthEvents(agentId, limit)
+  const events = await singletons().xp.getXpEvents(agentId, limit)
   res.json({ data: events })
-})
-
-agentGrowthRouter.get('/agents/:agentId/milestones', requireHumanAuth, async (req, res) => {
-  const agentId = asParam(req.params.agentId)
-  const milestones = await singletons().growth.getMilestones(agentId)
-  res.json({ data: milestones })
-})
-
-agentGrowthRouter.get('/growth/level-table', (_req, res) => {
-  res.json({ data: singletons().growth.getLevelTable() })
 })
 
 // ─── Traits ──────────────────────────────────────────────────
 
-agentGrowthRouter.get('/agents/:agentId/traits', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.get('/agents/:agentId/traits', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
   const traits = await singletons().traits.getTraits(agentId)
   res.json({
@@ -85,7 +89,7 @@ agentGrowthRouter.get('/agents/:agentId/traits', requireHumanAuth, async (req, r
   })
 })
 
-agentGrowthRouter.post('/agents/:agentId/traits/:traitCode/equip', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.post('/agents/:agentId/traits/:traitCode/equip', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
   const traitCode = asParam(req.params.traitCode)
   const result = await singletons().traits.equipTrait(agentId, traitCode)
@@ -96,7 +100,7 @@ agentGrowthRouter.post('/agents/:agentId/traits/:traitCode/equip', requireHumanA
   res.json({ data: { message: 'equipped' } })
 })
 
-agentGrowthRouter.post('/agents/:agentId/traits/:traitCode/unequip', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.post('/agents/:agentId/traits/:traitCode/unequip', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
   const traitCode = asParam(req.params.traitCode)
   const result = await singletons().traits.unequipTrait(agentId, traitCode)
@@ -107,19 +111,19 @@ agentGrowthRouter.post('/agents/:agentId/traits/:traitCode/unequip', requireHuma
   res.json({ data: { message: 'unequipped' } })
 })
 
-agentGrowthRouter.get('/trait-definitions', (_req, res) => {
+agentNurtureRouter.get('/trait-definitions', (_req, res) => {
   res.json({ data: singletons().traits.getTraitDefinitions() })
 })
 
 // ─── Credit ──────────────────────────────────────────────────
 
-agentGrowthRouter.get('/agents/:agentId/credit', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.get('/agents/:agentId/credit', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
   const credit = await singletons().credit.getCredit(agentId)
   res.json({ data: credit })
 })
 
-agentGrowthRouter.get('/agents/:agentId/credit-events', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.get('/agents/:agentId/credit-events', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
   const limit = parseInt(String(req.query.limit ?? '20'), 10)
   const events = await singletons().credit.getCreditEvents(agentId, limit)
@@ -128,7 +132,7 @@ agentGrowthRouter.get('/agents/:agentId/credit-events', requireHumanAuth, async 
 
 // ─── Instructions (T-019) ────────────────────────────────────
 
-agentGrowthRouter.get('/agents/:agentId/instructions', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.get('/agents/:agentId/instructions', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
   assertOwner(agentId, req.user!.userId)
   const instructions = await singletons().instructions.getInstructions(agentId)
@@ -148,7 +152,7 @@ agentGrowthRouter.get('/agents/:agentId/instructions', requireHumanAuth, async (
   })
 })
 
-agentGrowthRouter.post('/agents/:agentId/instructions', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.post('/agents/:agentId/instructions', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
   assertOwner(agentId, req.user!.userId)
   const result = await singletons().instructions.createInstruction(agentId, {
@@ -165,7 +169,7 @@ agentGrowthRouter.post('/agents/:agentId/instructions', requireHumanAuth, async 
   res.status(201).json({ data: { id: result.id } })
 })
 
-agentGrowthRouter.patch('/agents/:agentId/instructions/:instructionId', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.patch('/agents/:agentId/instructions/:instructionId', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
   assertOwner(agentId, req.user!.userId)
   const instructionId = asParam(req.params.instructionId)
@@ -183,7 +187,7 @@ agentGrowthRouter.patch('/agents/:agentId/instructions/:instructionId', requireH
   res.json({ data: { message: 'updated' } })
 })
 
-agentGrowthRouter.delete('/agents/:agentId/instructions/:instructionId', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.delete('/agents/:agentId/instructions/:instructionId', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
   assertOwner(agentId, req.user!.userId)
   const instructionId = asParam(req.params.instructionId)
@@ -191,7 +195,7 @@ agentGrowthRouter.delete('/agents/:agentId/instructions/:instructionId', require
   res.json({ data: { message: 'deleted' } })
 })
 
-agentGrowthRouter.post('/agents/:agentId/instructions/:instructionId/toggle', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.post('/agents/:agentId/instructions/:instructionId/toggle', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
   assertOwner(agentId, req.user!.userId)
   const instructionId = asParam(req.params.instructionId)
@@ -199,17 +203,13 @@ agentGrowthRouter.post('/agents/:agentId/instructions/:instructionId/toggle', re
   res.json({ data: { enabled } })
 })
 
-agentGrowthRouter.get('/instruction-templates', (_req, res) => {
+agentNurtureRouter.get('/instruction-templates', (_req, res) => {
   res.json({ data: singletons().instructions.getTemplates() })
-})
-
-agentGrowthRouter.get('/instruction-level-gates', (_req, res) => {
-  res.json({ data: singletons().instructions.getLevelGates() })
 })
 
 // ─── Style (T-019) ──────────────────────────────────────────
 
-agentGrowthRouter.get('/agents/:agentId/style', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.get('/agents/:agentId/style', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
   assertOwner(agentId, req.user!.userId)
   if (!getPrismaOrNull()) {
@@ -234,7 +234,7 @@ agentGrowthRouter.get('/agents/:agentId/style', requireHumanAuth, async (req, re
   })
 })
 
-agentGrowthRouter.patch('/agents/:agentId/style', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.patch('/agents/:agentId/style', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
   assertOwner(agentId, req.user!.userId)
   if (!getPrismaOrNull()) {
@@ -279,7 +279,7 @@ const DANGEROUS_PATTERNS = [
   /disregard/i,
 ]
 
-agentGrowthRouter.get('/agents/:agentId/prompt-overrides', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.get('/agents/:agentId/prompt-overrides', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
   assertOwner(agentId, req.user!.userId)
   if (!getPrismaOrNull()) {
@@ -295,21 +295,14 @@ agentGrowthRouter.get('/agents/:agentId/prompt-overrides', requireHumanAuth, asy
   res.json({ data: configJson.prompt_overrides ?? {} })
 })
 
-agentGrowthRouter.patch('/agents/:agentId/prompt-overrides', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.patch('/agents/:agentId/prompt-overrides', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
   assertOwner(agentId, req.user!.userId)
   if (!getPrismaOrNull()) {
     res.json({ data: { message: 'updated' } })
     return
   }
-
   const prisma = getPrismaOrNull()!
-
-  const growth = await prisma.agentGrowth.findUnique({ where: { agentId } })
-  if (!growth || growth.level < 4) {
-    res.status(403).json({ error: { code: 'LEVEL_TOO_LOW', message: 'Prompt overrides require Lv.4+' } })
-    return
-  }
 
   const overrides = req.body as Record<string, string>
   for (const [key, value] of Object.entries(overrides)) {

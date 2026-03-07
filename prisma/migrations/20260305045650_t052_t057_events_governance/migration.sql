@@ -1,38 +1,78 @@
 -- CreateEnum
-CREATE TYPE "AftershowArtifactStatus" AS ENUM ('DUE', 'SNAPSHOT_CREATED', 'COMPOSED', 'PUBLISHED', 'ABORTED');
+DO $$
+BEGIN
+  CREATE TYPE "AftershowArtifactStatus" AS ENUM ('DUE', 'SNAPSHOT_CREATED', 'COMPOSED', 'PUBLISHED', 'ABORTED');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateEnum
-CREATE TYPE "ConfigRiskLevel" AS ENUM ('LOW', 'HIGH');
+DO $$
+BEGIN
+  CREATE TYPE "ConfigRiskLevel" AS ENUM ('LOW', 'HIGH');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateEnum
-CREATE TYPE "ConfigPatchStatus" AS ENUM ('DRAFT', 'VALIDATED', 'APPROVED', 'APPLIED', 'REJECTED', 'ROLLED_BACK');
+DO $$
+BEGIN
+  CREATE TYPE "ConfigPatchStatus" AS ENUM ('DRAFT', 'VALIDATED', 'APPROVED', 'APPLIED', 'REJECTED', 'ROLLED_BACK');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateEnum
-CREATE TYPE "ConfigApprovalDecision" AS ENUM ('APPROVED', 'REJECTED');
+DO $$
+BEGIN
+  CREATE TYPE "ConfigApprovalDecision" AS ENUM ('APPROVED', 'REJECTED');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateEnum
-CREATE TYPE "RoleAssignmentScope" AS ENUM ('COMMUNITY', 'POST');
+DO $$
+BEGIN
+  CREATE TYPE "RoleAssignmentScope" AS ENUM ('COMMUNITY', 'POST');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateEnum
-CREATE TYPE "RoleAssignmentStatus" AS ENUM ('ACTIVE', 'REVOKED', 'EXPIRED');
+DO $$
+BEGIN
+  CREATE TYPE "RoleAssignmentStatus" AS ENUM ('ACTIVE', 'REVOKED', 'EXPIRED');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateEnum
-CREATE TYPE "EventPlane" AS ENUM ('DATA', 'CONTROL', 'RUNTIME');
+DO $$
+BEGIN
+  CREATE TYPE "EventPlane" AS ENUM ('DATA', 'CONTROL', 'RUNTIME');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateEnum
-CREATE TYPE "EventActorType" AS ENUM ('AGENT', 'HUMAN', 'SYSTEM');
+DO $$
+BEGIN
+  CREATE TYPE "EventActorType" AS ENUM ('AGENT', 'HUMAN', 'SYSTEM');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- AlterEnum
-ALTER TYPE "NotificationType" ADD VALUE 'AFTERSHOW_CALLOUT';
+ALTER TYPE "NotificationType" ADD VALUE IF NOT EXISTS 'AFTERSHOW_CALLOUT';
 
 -- DropIndex
-DROP INDEX "agent_community_memberships_active_unique_idx";
+DROP INDEX IF EXISTS "agent_community_memberships_active_unique_idx";
 
 -- DropIndex
-DROP INDEX "agent_memories_public_observation_event_idempotency_idx";
+DROP INDEX IF EXISTS "agent_memories_public_observation_event_idempotency_idx";
 
 -- DropIndex
-DROP INDEX "community_culture_digests_active_unique_idx";
+DROP INDEX IF EXISTS "community_culture_digests_active_unique_idx";
 
 -- AlterTable
 ALTER TABLE "events" ADD COLUMN     "actor_id" TEXT,

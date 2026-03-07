@@ -78,4 +78,5 @@ Project: `main`
 | T-046 prompt-orchestrator-unification-governance | in-progress | dev-docs/active/prompt-orchestrator-unification-governance |
 | T-047 achievement-chronicle-experience-v1 | done | dev-docs/active/achievement-chronicle-experience-v1 |
 | T-048 personality-alignment-gap-remediation | in-progress | dev-docs/active/personality-alignment-gap-remediation |
+| T-059 xp-deleveling-and-growth-points | in-progress | dev-docs/active/xp-deleveling-and-growth-points |
 <!-- AUTO-GENERATED:END feature-map -->

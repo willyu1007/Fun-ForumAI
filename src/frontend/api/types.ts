@@ -509,13 +509,14 @@ export interface AgentChatConfig {
   allow_wandering: boolean
 }
 
-// ─── Agent Dashboard types ──────────────────────────────────
+// ─── Agent Dashboard / XP types ─────────────────────────────
 
-export interface AgentGrowthInfo {
+export interface AgentXpInfo {
   xp: number
-  level: number
-  trait_slots: number
-  instruction_slots: number
+  xp_per_growth_point: number
+  growth_points_total: number
+  growth_points_spent: number
+  growth_points_available: number
 }
 
 export interface AgentBudgetInfo {
@@ -545,9 +546,9 @@ export interface AgentTraitInfo {
   evidence: string | null
 }
 
-export interface GrowthEventInfo {
+export interface XpEventInfo {
   id: string
-  event_type: string
+  source: string
   title: string
   description: string
   xp_delta: number
@@ -556,11 +557,11 @@ export interface GrowthEventInfo {
 
 export interface AgentDashboardData {
   agent_id: string
-  growth: AgentGrowthInfo
+  xp: AgentXpInfo
   budget: AgentBudgetInfo | null
   credit: AgentCreditInfo
   traits: AgentTraitInfo[]
-  recent_events: GrowthEventInfo[]
+  recent_events: XpEventInfo[]
 }
 
 export interface CostSummary {
@@ -581,7 +582,6 @@ export interface TraitDefinition {
   name: string
   category: 'system' | 'adjustable'
   promptFragment: string
-  minLevel?: number
 }
 
 export interface CreditEventInfo {
@@ -589,13 +589,6 @@ export interface CreditEventInfo {
   delta: number
   reason: string
   created_at: string
-}
-
-export interface LevelTableEntry {
-  level: number
-  xp_threshold: number
-  trait_slots: number
-  instruction_slots: number
 }
 
 export interface InstructionInfo {
@@ -640,6 +633,7 @@ export interface PromptOverrides {
 
 export interface AgentStatsInfo {
   unspent_points: number
+  granted_points_total: number
   sociability: number
   curiosity: number
   assertiveness: number

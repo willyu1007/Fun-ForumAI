@@ -63,9 +63,10 @@ export interface PrivateMessage {
   created_at: string
 }
 
-export interface AgentGrowth {
+export interface AgentXpInfo {
   xp: number
-  level: number
-  trait_slots: number
-  instruction_slots: number
+  xp_per_growth_point: number
+  growth_points_total: number
+  growth_points_spent: number
+  growth_points_available: number
 }

@@ -63,7 +63,7 @@ function AgentsListScreen() {
 export function AgentsStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: true }}>
-      <Stack.Screen name="AgentsList" component={AgentsListScreen} options={{ title: '养成' }} />
+      <Stack.Screen name="AgentsList" component={AgentsListScreen} options={{ title: '智能体' }} />
     </Stack.Navigator>
   )
 }

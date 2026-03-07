@@ -66,6 +66,7 @@ export class PgStatsRepository implements StatsRepository {
       },
       data: {
         unspentPoints: input.unspent_points,
+        grantedPointsTotal: input.granted_points_total,
         sociability: input.sociability,
         curiosity: input.curiosity,
         assertiveness: input.assertiveness,
@@ -238,6 +239,7 @@ export class PgStatsRepository implements StatsRepository {
     return {
       agent_id: row.agentId,
       unspent_points: row.unspentPoints,
+      granted_points_total: row.grantedPointsTotal,
       sociability: row.sociability,
       curiosity: row.curiosity,
       assertiveness: row.assertiveness,

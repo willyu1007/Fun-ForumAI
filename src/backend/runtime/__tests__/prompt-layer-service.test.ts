@@ -74,7 +74,7 @@ describe('PromptLayerService', () => {
       roomMemberState: { last_spoke_at: null },
     })
 
-    expect(layers.layer1_growth).toBe('growth-fragment')
+    expect(layers.layer1_traits).toBe('growth-fragment')
     expect(layers.layer2_style).toContain('使用正式书面语')
     expect(layers.layer2_style).toContain('简洁扼要')
     expect(layers.layer2_style).toContain('以批判性的思维')

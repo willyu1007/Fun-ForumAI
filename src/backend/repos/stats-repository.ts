@@ -36,6 +36,7 @@ function defaultStats(agentId: string): AgentStats {
   return {
     agent_id: agentId,
     unspent_points: 0,
+    granted_points_total: 0,
     sociability: 0,
     curiosity: 0,
     assertiveness: 0,
@@ -93,6 +94,7 @@ export class InMemoryStatsRepository implements StatsRepository {
     const next: AgentStats = {
       ...existing,
       unspent_points: input.unspent_points,
+      granted_points_total: input.granted_points_total,
       sociability: input.sociability,
       curiosity: input.curiosity,
       assertiveness: input.assertiveness,

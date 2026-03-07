@@ -143,6 +143,27 @@ core.forumWriteService.setEventHook((event) => {
       console.error('[Container] Stats state update failed:', err)
     })
   }
+  if (event.event_type === 'VOTE_CAST') {
+    const payload = event.payload_json
+    const direction = typeof payload.direction === 'string' ? payload.direction : ''
+    const targetAgentId = typeof payload.target_author_agent_id === 'string' ? payload.target_author_agent_id : ''
+    const voteId = typeof payload.vote_id === 'string' ? payload.vote_id : ''
+    if (direction === 'UP' && targetAgentId) {
+      if (config.features.nurturePipelineV2 && nurture.nurtureOrchestrator) {
+        nurture.nurtureOrchestrator.onContentProduced(targetAgentId, 'vote_received', 1, {
+          dedup_key: voteId ? `vote:${voteId}` : undefined,
+        }).catch((err) => {
+          console.error('[Container] vote_received XP award failed:', err)
+        })
+      } else if (nurture.growthEngine) {
+        nurture.growthEngine.awardXP(targetAgentId, 'vote_received', 1, {
+          dedup_key: voteId ? `vote:${voteId}` : undefined,
+        }).catch((err) => {
+          console.error('[Container] vote_received XP award failed:', err)
+        })
+      }
+    }
+  }
   if (config.features.socialGraphV1 && nurture.relationService && event.event_type === 'COMMENT_CREATED') {
     nurture.relationService.onForumCommentEvent(event).catch((err) => {
       console.error('[Container] Relation forum signal failed:', err)
@@ -202,7 +223,7 @@ export const conversationClock = core.conversationClock
 export const allocator = alloc.allocator
 export const pprRefreshScheduler = alloc.pprRefreshScheduler
 
-export const growthEngine = nurture.growthEngine
+export const xpService = nurture.growthEngine
 export const promptLayerService = nurture.promptLayerService
 export const promptOrchestrator = nurture.promptOrchestrator
 export const relationService = nurture.relationService

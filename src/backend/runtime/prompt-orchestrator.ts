@@ -180,7 +180,7 @@ export class PromptOrchestrator {
     const categories: OrchestratorCategories = {
       scene_rule: this.normalizeLayerText(input.sceneRule),
       community_hard: this.normalizeLayerText(input.communityHardRule),
-      persona_traits: this.normalizeLayerText(baseLayers.layer1_growth),
+      persona_traits: this.normalizeLayerText(baseLayers.layer1_traits),
       relationship: this.normalizeLayerText(input.relationshipHint ?? baseLayers.layer_relationship),
       instructions: this.normalizeLayerText(baseLayers.layer3_instructions),
       community_soft: this.normalizeLayerText(input.communitySoftCulture),
@@ -264,7 +264,7 @@ export class PromptOrchestrator {
     ])
 
     const layers: PromptLayers = {
-      layer1_growth: this.orUndefined(categories.persona_traits),
+      layer1_traits: this.orUndefined(categories.persona_traits),
       layer2_style: this.orUndefined(categories.style),
       layer3_instructions: this.orUndefined(categories.instructions),
       layer_community: this.orUndefined(communityLayer),

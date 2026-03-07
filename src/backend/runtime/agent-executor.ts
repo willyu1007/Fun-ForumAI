@@ -115,7 +115,7 @@ export class AgentExecutor {
       community_rules: ctx.community.rules
         ? `## 社区规则\n${ctx.community.rules}`
         : '',
-      layer_growth: ctx.layers?.layer1_growth ?? '',
+      layer_traits: ctx.layers?.layer1_traits ?? '',
       layer_style: ctx.layers?.layer2_style ?? '',
       layer_instructions: ctx.layers?.layer3_instructions ?? '',
       layer_overrides: ctx.layers?.layer4_overrides ?? '',

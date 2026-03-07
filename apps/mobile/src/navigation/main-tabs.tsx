@@ -43,14 +43,14 @@ export function MainTabs() {
         <Tab.Screen
           name="AgentsTab"
           component={AgentsStack}
-          options={{ tabBarLabel: ({ focused }) => <TabLabel label="养成" focused={focused} /> }}
+          options={{ tabBarLabel: ({ focused }) => <TabLabel label="智能体" focused={focused} /> }}
         />
       )}
       {isLoggedIn && (
         <Tab.Screen
           name="GrowthTab"
           component={GrowthStack}
-          options={{ tabBarLabel: ({ focused }) => <TabLabel label="成长" focused={focused} /> }}
+          options={{ tabBarLabel: ({ focused }) => <TabLabel label="XP" focused={focused} /> }}
         />
       )}
       {isLoggedIn && (

@@ -26,23 +26,23 @@ model HumanUser {
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
 
-  agents           Agent[]
-  agentConfigs     AgentConfig[]          @relation("ConfigUpdatedBy")
-  privateSessions  PrivateSession[]
-  privacyUpdates   AgentPrivacySettings[] @relation("PrivacyUpdatedBy")
-  notifications    Notification[]
-  humanVotes       HumanVote[]
-  follows          HumanAgentFollow[]
-  inclinationAssets AgentInclinationAsset[] @relation("InclinationAssetOwner")
-  audienceMessages AudienceMessage[] @relation("AudienceMessageAuthor")
-  aftershowCallouts AftershowCallout[] @relation("AftershowCalloutUser")
-  incubationGrants IncubationGrant[] @relation("IncubationReviewerUser")
-  incubationEvents IncubationEvent[] @relation("IncubationActorUser")
-  configVersions CommunityConfigVersion[] @relation("CommunityConfigVersionCreatedBy")
-  configPatchProposals CommunityConfigPatch[] @relation("CommunityConfigPatchProposedBy")
-  configPatchValidations CommunityConfigPatch[] @relation("CommunityConfigPatchValidatedBy")
-  configPatchApprovals CommunityConfigPatch[] @relation("CommunityConfigPatchApprovedBy")
-  configApprovalEvents CommunityConfigApproval[] @relation("CommunityConfigApprovalActor")
+  agents                 Agent[]
+  agentConfigs           AgentConfig[]             @relation("ConfigUpdatedBy")
+  privateSessions        PrivateSession[]
+  privacyUpdates         AgentPrivacySettings[]    @relation("PrivacyUpdatedBy")
+  notifications          Notification[]
+  humanVotes             HumanVote[]
+  follows                HumanAgentFollow[]
+  inclinationAssets      AgentInclinationAsset[]   @relation("InclinationAssetOwner")
+  audienceMessages       AudienceMessage[]         @relation("AudienceMessageAuthor")
+  aftershowCallouts      AftershowCallout[]        @relation("AftershowCalloutUser")
+  incubationGrants       IncubationGrant[]         @relation("IncubationReviewerUser")
+  incubationEvents       IncubationEvent[]         @relation("IncubationActorUser")
+  configVersions         CommunityConfigVersion[]  @relation("CommunityConfigVersionCreatedBy")
+  configPatchProposals   CommunityConfigPatch[]    @relation("CommunityConfigPatchProposedBy")
+  configPatchValidations CommunityConfigPatch[]    @relation("CommunityConfigPatchValidatedBy")
+  configPatchApprovals   CommunityConfigPatch[]    @relation("CommunityConfigPatchApprovedBy")
+  configApprovalEvents   CommunityConfigApproval[] @relation("CommunityConfigApprovalActor")
 
   @@map("human_users")
 }
@@ -70,47 +70,48 @@ model Agent {
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
 
-  owner            HumanUser          @relation(fields: [ownerId], references: [id])
-  configs          AgentConfig[]
-  posts            Post[]
-  comments         Comment[]
-  votes            Vote[]
-  agentRuns        AgentRun[]
-  roomMemberships  RoomMembership[]
-  roomMessages     RoomMessage[]
-  messageReactions MessageReaction[]
-  createdRooms     Room[]             @relation("RoomCreator")
-  growth           AgentGrowth?
-  traits           AgentTrait[]
-  growthEvents     GrowthEvent[]
-  instructions     AgentInstruction[]
-  budget           AgentBudget?
-  costLogs         CostLog[]
-  credit           AgentCredit?
-  creditEvents     CreditEvent[]
-  privateSessions  PrivateSession[]
-  memories         AgentMemory[]
-  privacySettings  AgentPrivacySettings?
-  stats            AgentStats?
-  state            AgentState?
-  statEvents       AgentStatEvent[]
-  outgoingRelations AgentRelation[]      @relation("RelationFromAgent")
-  incomingRelations AgentRelation[]      @relation("RelationToAgent")
-  outgoingRelationEvents AgentRelationEvent[] @relation("RelationEventFromAgent")
-  incomingRelationEvents AgentRelationEvent[] @relation("RelationEventToAgent")
-  humanFollowers HumanAgentFollow[]
-  inclinationAssets AgentInclinationAsset[]
-  achievements AgentAchievement[]
-  chronicleEntries ChronicleEntry[]
-  outgoingPprSnapshots PprSnapshot[] @relation("PprSourceAgent")
-  incomingPprSnapshots PprSnapshot[] @relation("PprCandidateAgent")
-  communityMemberships AgentCommunityMembership[]
-  roleAssignments RoleAssignment[]
-  signalLogs AgentSignalLog[]
-  stageTierSnapshot AgentStageTierSnapshot?
-  incubationJobs IncubationJob[] @relation("IncubationProposerAgent")
-  incubationGrants IncubationGrant[] @relation("IncubationReviewerAgent")
-  aftershowRuns AftershowRun[] @relation("AftershowTriggeredByAgent")
+  owner                     HumanUser                  @relation(fields: [ownerId], references: [id])
+  configs                   AgentConfig[]
+  posts                     Post[]
+  comments                  Comment[]
+  votes                     Vote[]
+  agentRuns                 AgentRun[]
+  roomMemberships           RoomMembership[]
+  roomMessages              RoomMessage[]
+  messageReactions          MessageReaction[]
+  createdRooms              Room[]                     @relation("RoomCreator")
+  xp                        AgentXp?
+  traits                    AgentTrait[]
+  xpEvents                  XpEvent[]
+  legacyGrowthEventArchives LegacyGrowthEventArchive[]
+  instructions              AgentInstruction[]
+  budget                    AgentBudget?
+  costLogs                  CostLog[]
+  credit                    AgentCredit?
+  creditEvents              CreditEvent[]
+  privateSessions           PrivateSession[]
+  memories                  AgentMemory[]
+  privacySettings           AgentPrivacySettings?
+  stats                     AgentStats?
+  state                     AgentState?
+  statEvents                AgentStatEvent[]
+  outgoingRelations         AgentRelation[]            @relation("RelationFromAgent")
+  incomingRelations         AgentRelation[]            @relation("RelationToAgent")
+  outgoingRelationEvents    AgentRelationEvent[]       @relation("RelationEventFromAgent")
+  incomingRelationEvents    AgentRelationEvent[]       @relation("RelationEventToAgent")
+  humanFollowers            HumanAgentFollow[]
+  inclinationAssets         AgentInclinationAsset[]
+  achievements              AgentAchievement[]
+  chronicleEntries          ChronicleEntry[]
+  outgoingPprSnapshots      PprSnapshot[]              @relation("PprSourceAgent")
+  incomingPprSnapshots      PprSnapshot[]              @relation("PprCandidateAgent")
+  communityMemberships      AgentCommunityMembership[]
+  roleAssignments           RoleAssignment[]
+  signalLogs                AgentSignalLog[]
+  stageTierSnapshot         AgentStageTierSnapshot?
+  incubationJobs            IncubationJob[]            @relation("IncubationProposerAgent")
+  incubationGrants          IncubationGrant[]          @relation("IncubationReviewerAgent")
+  aftershowRuns             AftershowRun[]             @relation("AftershowTriggeredByAgent")
 
   @@index([ownerId])
   @@map("agents")
@@ -165,16 +166,16 @@ model Community {
   createdAt         DateTime   @default(now()) @map("created_at")
   updatedAt         DateTime   @updatedAt @map("updated_at")
 
-  posts Post[]
-  agentMemberships AgentCommunityMembership[]
-  cultureDigests CommunityCultureDigest[]
-  incubationJobs IncubationJob[]
-  audienceThreads AudienceThread[]
-  audienceSummaries AudienceSummary[]
-  aftershowRuns AftershowRun[]
-  configVersions CommunityConfigVersion[]
-  configPatches CommunityConfigPatch[]
-  roleAssignments RoleAssignment[]
+  posts              Post[]
+  agentMemberships   AgentCommunityMembership[]
+  cultureDigests     CommunityCultureDigest[]
+  incubationJobs     IncubationJob[]
+  audienceThreads    AudienceThread[]
+  audienceSummaries  AudienceSummary[]
+  aftershowRuns      AftershowRun[]
+  configVersions     CommunityConfigVersion[]
+  configPatches      CommunityConfigPatch[]
+  roleAssignments    RoleAssignment[]
   aftershowArtifacts AftershowArtifact[]
 
   @@map("communities")
@@ -209,17 +210,17 @@ model Post {
   createdAt              DateTime     @default(now()) @map("created_at")
   updatedAt              DateTime     @updatedAt @map("updated_at")
 
-  community Community @relation(fields: [communityId], references: [id])
-  author    Agent     @relation(fields: [authorAgentId], references: [id])
-  comments  Comment[]
-  media     PostMedia[]
+  community                 Community               @relation(fields: [communityId], references: [id])
+  author                    Agent                   @relation(fields: [authorAgentId], references: [id])
+  comments                  Comment[]
+  media                     PostMedia[]
   consumedInclinationAssets AgentInclinationAsset[] @relation("InclinationConsumedPost")
-  incubationJobs IncubationJob[]
-  audienceThread AudienceThread?
-  audienceSummaries AudienceSummary[]
-  aftershowRuns AftershowRun[]
-  roleAssignments RoleAssignment[]
-  aftershowArtifacts AftershowArtifact[]
+  incubationJobs            IncubationJob[]
+  audienceThread            AudienceThread?
+  audienceSummaries         AudienceSummary[]
+  aftershowRuns             AftershowRun[]
+  roleAssignments           RoleAssignment[]
+  aftershowArtifacts        AftershowArtifact[]
 
   @@index([communityId, createdAt])
   @@index([authorAgentId])
@@ -265,12 +266,12 @@ model Vote {
 }
 
 model HumanVote {
-  id           String             @id @default(cuid())
-  voterUserId  String             @map("voter_user_id")
-  targetType   HumanVoteTarget    @map("target_type")
-  targetId     String             @map("target_id")
-  direction    HumanVoteDirection
-  createdAt    DateTime           @default(now()) @map("created_at")
+  id          String             @id @default(cuid())
+  voterUserId String             @map("voter_user_id")
+  targetType  HumanVoteTarget    @map("target_type")
+  targetId    String             @map("target_id")
+  direction   HumanVoteDirection
+  createdAt   DateTime           @default(now()) @map("created_at")
 
   voter HumanUser @relation(fields: [voterUserId], references: [id])
 
@@ -295,25 +296,25 @@ model HumanAgentFollow {
 }
 
 model AgentInclinationAsset {
-  id                String                  @id @default(cuid())
-  agentId           String                  @map("agent_id")
-  ownerUserId       String                  @map("owner_user_id")
-  sourceType        InclinationSourceType   @map("source_type")
-  originUrl         String?                 @map("origin_url")
-  storageKey        String?                 @map("storage_key")
-  mediaUrl          String                  @map("media_url")
-  mimeType          String                  @map("mime_type")
-  fileSizeBytes     Int                     @map("file_size_bytes")
-  ownerNote         String?                 @map("owner_note")
-  visionSummaryJson Json                    @map("vision_summary_json")
-  status            InclinationAssetStatus  @default(PENDING)
-  consumedPostId    String?                 @map("consumed_post_id")
-  consumedAt        DateTime?               @map("consumed_at")
-  createdAt         DateTime                @default(now()) @map("created_at")
+  id                String                 @id @default(cuid())
+  agentId           String                 @map("agent_id")
+  ownerUserId       String                 @map("owner_user_id")
+  sourceType        InclinationSourceType  @map("source_type")
+  originUrl         String?                @map("origin_url")
+  storageKey        String?                @map("storage_key")
+  mediaUrl          String                 @map("media_url")
+  mimeType          String                 @map("mime_type")
+  fileSizeBytes     Int                    @map("file_size_bytes")
+  ownerNote         String?                @map("owner_note")
+  visionSummaryJson Json                   @map("vision_summary_json")
+  status            InclinationAssetStatus @default(PENDING)
+  consumedPostId    String?                @map("consumed_post_id")
+  consumedAt        DateTime?              @map("consumed_at")
+  createdAt         DateTime               @default(now()) @map("created_at")
 
-  agent        Agent    @relation(fields: [agentId], references: [id])
-  owner        HumanUser @relation("InclinationAssetOwner", fields: [ownerUserId], references: [id])
-  consumedPost Post?    @relation("InclinationConsumedPost", fields: [consumedPostId], references: [id])
+  agent        Agent       @relation(fields: [agentId], references: [id])
+  owner        HumanUser   @relation("InclinationAssetOwner", fields: [ownerUserId], references: [id])
+  consumedPost Post?       @relation("InclinationConsumedPost", fields: [consumedPostId], references: [id])
   postMedia    PostMedia[]
 
   @@index([agentId, status, createdAt])
@@ -330,7 +331,7 @@ model PostMedia {
   mimeType  String   @map("mime_type")
   createdAt DateTime @default(now()) @map("created_at")
 
-  post  Post                 @relation(fields: [postId], references: [id])
+  post  Post                  @relation(fields: [postId], references: [id])
   asset AgentInclinationAsset @relation(fields: [assetId], references: [id])
 
   @@index([postId, createdAt])
@@ -339,21 +340,21 @@ model PostMedia {
 }
 
 model AgentAchievement {
-  id         String                @id @default(cuid())
-  agentId    String                @map("agent_id")
-  code       String
-  name       String
-  category   String
-  tier       Int
-  scope      String                @default("global")
-  scopeKey   String                @default("__global__") @map("scope_key")
-  rarity     Float                 @default(0.5)
-  visibility AchievementVisibility @default(PUBLIC)
-  achievedAt DateTime              @default(now()) @map("achieved_at")
-  evidenceJson Json                @map("evidence_json")
-  metaJson   Json?                 @map("meta_json")
-  createdAt  DateTime              @default(now()) @map("created_at")
-  updatedAt  DateTime              @updatedAt @map("updated_at")
+  id           String                @id @default(cuid())
+  agentId      String                @map("agent_id")
+  code         String
+  name         String
+  category     String
+  tier         Int
+  scope        String                @default("global")
+  scopeKey     String                @default("__global__") @map("scope_key")
+  rarity       Float                 @default(0.5)
+  visibility   AchievementVisibility @default(PUBLIC)
+  achievedAt   DateTime              @default(now()) @map("achieved_at")
+  evidenceJson Json                  @map("evidence_json")
+  metaJson     Json?                 @map("meta_json")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @updatedAt @map("updated_at")
 
   agent Agent @relation(fields: [agentId], references: [id])
 
@@ -414,20 +415,20 @@ model PprSnapshot {
 }
 
 model AgentCommunityMembership {
-  id          String                         @id @default(cuid())
-  agentId     String                         @map("agent_id")
-  communityId String                         @map("community_id")
-  role        AgentCommunityMembershipRole   @default(RESIDENT)
-  source      AgentCommunityMembershipSource @default(MANUAL)
-  status      AgentCommunityMembershipStatus @default(ACTIVE)
-  statusReason String?                       @map("status_reason")
-  statusSetBy String?                        @map("status_set_by")
-  statusSetAt DateTime?                      @map("status_set_at")
-  joinedAt    DateTime                       @default(now()) @map("joined_at")
-  leftAt      DateTime?                      @map("left_at")
-  createdBy   String?                        @map("created_by")
-  createdAt   DateTime                       @default(now()) @map("created_at")
-  updatedAt   DateTime                       @updatedAt @map("updated_at")
+  id           String                         @id @default(cuid())
+  agentId      String                         @map("agent_id")
+  communityId  String                         @map("community_id")
+  role         AgentCommunityMembershipRole   @default(RESIDENT)
+  source       AgentCommunityMembershipSource @default(MANUAL)
+  status       AgentCommunityMembershipStatus @default(ACTIVE)
+  statusReason String?                        @map("status_reason")
+  statusSetBy  String?                        @map("status_set_by")
+  statusSetAt  DateTime?                      @map("status_set_at")
+  joinedAt     DateTime                       @default(now()) @map("joined_at")
+  leftAt       DateTime?                      @map("left_at")
+  createdBy    String?                        @map("created_by")
+  createdAt    DateTime                       @default(now()) @map("created_at")
+  updatedAt    DateTime                       @updatedAt @map("updated_at")
 
   agent     Agent     @relation(fields: [agentId], references: [id])
   community Community @relation(fields: [communityId], references: [id])
@@ -438,16 +439,16 @@ model AgentCommunityMembership {
 }
 
 model AgentStageTierSnapshot {
-  id               String   @id @default(cuid())
-  agentId          String   @unique @map("agent_id")
-  tier             String
-  score            Float
-  achievementPoints Float   @map("achievement_points")
-  chroniclePoints  Float    @map("chronicle_points")
-  trustPenalty     Float    @map("trust_penalty")
-  reasoningJson    Json     @map("reasoning_json")
-  computedAt       DateTime @default(now()) @map("computed_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(cuid())
+  agentId           String   @unique @map("agent_id")
+  tier              String
+  score             Float
+  achievementPoints Float    @map("achievement_points")
+  chroniclePoints   Float    @map("chronicle_points")
+  trustPenalty      Float    @map("trust_penalty")
+  reasoningJson     Json     @map("reasoning_json")
+  computedAt        DateTime @default(now()) @map("computed_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   agent Agent @relation(fields: [agentId], references: [id])
 
@@ -470,35 +471,35 @@ enum IncubationGrantStatus {
 }
 
 model IncubationJob {
-  id               String              @id @default(cuid())
-  postId           String?             @map("post_id")
-  communityId      String              @map("community_id")
-  proposerAgentId  String              @map("proposer_agent_id")
-  status           IncubationJobStatus @default(PENDING)
-  phase            String              @default("AWAIT_GRANT")
-  strictT4         Boolean             @default(true) @map("strict_t4")
-  grantRequired    Boolean             @default(true) @map("grant_required")
-  premodRequired   Boolean             @default(true) @map("premod_required")
-  redactionLevel   String              @default("strong") @map("redaction_level")
-  sourceCount      Int                 @default(0) @map("source_count")
-  idempotencyKey   String?             @map("idempotency_key")
-  sourceSessionId  String?             @map("source_session_id")
-  sourceMemoryId   String?             @map("source_memory_id")
-  researchJson     Json?               @map("research_json")
-  draftJson        Json?               @map("draft_json")
-  reviewJson       Json?               @map("review_json")
-  requestedAt      DateTime            @default(now()) @map("requested_at")
-  expiresAt        DateTime?           @map("expires_at")
-  metaJson         Json?               @map("meta_json")
-  createdAt        DateTime            @default(now()) @map("created_at")
-  updatedAt        DateTime            @updatedAt @map("updated_at")
+  id              String              @id @default(cuid())
+  postId          String?             @map("post_id")
+  communityId     String              @map("community_id")
+  proposerAgentId String              @map("proposer_agent_id")
+  status          IncubationJobStatus @default(PENDING)
+  phase           String              @default("AWAIT_GRANT")
+  strictT4        Boolean             @default(true) @map("strict_t4")
+  grantRequired   Boolean             @default(true) @map("grant_required")
+  premodRequired  Boolean             @default(true) @map("premod_required")
+  redactionLevel  String              @default("strong") @map("redaction_level")
+  sourceCount     Int                 @default(0) @map("source_count")
+  idempotencyKey  String?             @map("idempotency_key")
+  sourceSessionId String?             @map("source_session_id")
+  sourceMemoryId  String?             @map("source_memory_id")
+  researchJson    Json?               @map("research_json")
+  draftJson       Json?               @map("draft_json")
+  reviewJson      Json?               @map("review_json")
+  requestedAt     DateTime            @default(now()) @map("requested_at")
+  expiresAt       DateTime?           @map("expires_at")
+  metaJson        Json?               @map("meta_json")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
 
-  post          Post?                @relation(fields: [postId], references: [id])
-  community    Community            @relation(fields: [communityId], references: [id])
-  proposerAgent Agent              @relation("IncubationProposerAgent", fields: [proposerAgentId], references: [id])
-  grants       IncubationGrant[]
+  post          Post?                    @relation(fields: [postId], references: [id])
+  community     Community                @relation(fields: [communityId], references: [id])
+  proposerAgent Agent                    @relation("IncubationProposerAgent", fields: [proposerAgentId], references: [id])
+  grants        IncubationGrant[]
   sourceBundles IncubationSourceBundle[]
-  events       IncubationEvent[]
+  events        IncubationEvent[]
 
   @@unique([idempotencyKey])
   @@index([communityId, status, createdAt])
@@ -508,7 +509,7 @@ model IncubationJob {
 }
 
 model IncubationGrant {
-  id             String                @id @default(cuid())
+  id              String                @id @default(cuid())
   jobId           String                @map("job_id")
   reviewerAgentId String?               @map("reviewer_agent_id")
   reviewerUserId  String?               @map("reviewer_user_id")
@@ -538,14 +539,14 @@ model IncubationGrant {
 
 model IncubationSourceBundle {
   id         String   @id @default(cuid())
-  jobId       String   @map("job_id")
-  sourceType  String   @map("source_type")
-  sourceRef   String   @map("source_ref")
-  sourceUrl   String?  @map("source_url")
-  title       String?
-  metaJson    Json?    @map("meta_json")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  jobId      String   @map("job_id")
+  sourceType String   @map("source_type")
+  sourceRef  String   @map("source_ref")
+  sourceUrl  String?  @map("source_url")
+  title      String?
+  metaJson   Json?    @map("meta_json")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
   job IncubationJob @relation(fields: [jobId], references: [id])
 
@@ -555,11 +556,11 @@ model IncubationSourceBundle {
 
 model IncubationEvent {
   id          String   @id @default(cuid())
-  jobId        String   @map("job_id")
-  eventType    String   @map("event_type")
-  actorUserId  String?  @map("actor_user_id")
-  payloadJson  Json?    @map("payload_json")
-  createdAt    DateTime @default(now()) @map("created_at")
+  jobId       String   @map("job_id")
+  eventType   String   @map("event_type")
+  actorUserId String?  @map("actor_user_id")
+  payloadJson Json?    @map("payload_json")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   job       IncubationJob @relation(fields: [jobId], references: [id])
   actorUser HumanUser?    @relation("IncubationActorUser", fields: [actorUserId], references: [id])
@@ -575,14 +576,14 @@ enum AudienceThreadStatus {
 
 model AudienceThread {
   id          String               @id @default(cuid())
-  postId       String               @unique @map("post_id")
-  communityId  String               @map("community_id")
-  status       AudienceThreadStatus @default(OPEN)
-  createdAt    DateTime             @default(now()) @map("created_at")
-  updatedAt    DateTime             @updatedAt @map("updated_at")
+  postId      String               @unique @map("post_id")
+  communityId String               @map("community_id")
+  status      AudienceThreadStatus @default(OPEN)
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
 
-  post      Post             @relation(fields: [postId], references: [id])
-  community Community        @relation(fields: [communityId], references: [id])
+  post      Post              @relation(fields: [postId], references: [id])
+  community Community         @relation(fields: [communityId], references: [id])
   messages  AudienceMessage[]
   summaries AudienceSummary[]
 
@@ -592,14 +593,14 @@ model AudienceThread {
 
 model AudienceMessage {
   id           String   @id @default(cuid())
-  threadId      String   @map("thread_id")
-  authorUserId  String   @map("author_user_id")
-  body          String
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  threadId     String   @map("thread_id")
+  authorUserId String   @map("author_user_id")
+  body         String
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  thread     AudienceThread @relation(fields: [threadId], references: [id])
-  authorUser HumanUser      @relation("AudienceMessageAuthor", fields: [authorUserId], references: [id])
+  thread            AudienceThread     @relation(fields: [threadId], references: [id])
+  authorUser        HumanUser          @relation("AudienceMessageAuthor", fields: [authorUserId], references: [id])
   aftershowCallouts AftershowCallout[]
 
   @@index([threadId, createdAt])
@@ -609,16 +610,16 @@ model AudienceMessage {
 
 model AudienceSummary {
   id           String   @id @default(cuid())
-  threadId      String   @map("thread_id")
-  postId        String   @map("post_id")
-  communityId   String   @map("community_id")
-  windowStart   DateTime @map("window_start")
-  windowEnd     DateTime @map("window_end")
-  summaryText   String   @map("summary_text")
-  messageCount  Int      @default(0) @map("message_count")
-  metaJson      Json?    @map("meta_json")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  threadId     String   @map("thread_id")
+  postId       String   @map("post_id")
+  communityId  String   @map("community_id")
+  windowStart  DateTime @map("window_start")
+  windowEnd    DateTime @map("window_end")
+  summaryText  String   @map("summary_text")
+  messageCount Int      @default(0) @map("message_count")
+  metaJson     Json?    @map("meta_json")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   thread    AudienceThread @relation(fields: [threadId], references: [id])
   post      Post           @relation(fields: [postId], references: [id])
@@ -637,29 +638,29 @@ enum AftershowRunStatus {
 }
 
 model AftershowRun {
-  id                     String            @id @default(cuid())
-  postId                  String            @map("post_id")
-  communityId             String            @map("community_id")
-  mode                    String
-  status                  AftershowRunStatus @default(CREATED)
-  thresholdMinComments    Int               @default(30) @map("threshold_min_comments")
-  thresholdMinAudienceComments Int          @default(30) @map("threshold_min_audience_comments")
-  thresholdMinHumanVotes  Int               @default(10) @map("threshold_min_human_votes")
-  commentsAtTrigger       Int               @default(0) @map("comments_at_trigger")
-  audienceMessageCountAtTrigger Int         @default(0) @map("audience_message_count_at_trigger")
-  humanVoteScoreAtTrigger Int               @default(0) @map("human_vote_score_at_trigger")
-  audienceSummaryRef      String?           @map("audience_summary_ref")
-  thresholdDetailJson     Json?             @map("threshold_detail_json")
-  triggeredByAgentId      String?           @map("triggered_by_agent_id")
-  triggeredByUserId       String?           @map("triggered_by_user_id")
-  metaJson                Json?             @map("meta_json")
-  createdAt               DateTime          @default(now()) @map("created_at")
-  updatedAt               DateTime          @updatedAt @map("updated_at")
+  id                            String             @id @default(cuid())
+  postId                        String             @map("post_id")
+  communityId                   String             @map("community_id")
+  mode                          String
+  status                        AftershowRunStatus @default(CREATED)
+  thresholdMinComments          Int                @default(30) @map("threshold_min_comments")
+  thresholdMinAudienceComments  Int                @default(30) @map("threshold_min_audience_comments")
+  thresholdMinHumanVotes        Int                @default(10) @map("threshold_min_human_votes")
+  commentsAtTrigger             Int                @default(0) @map("comments_at_trigger")
+  audienceMessageCountAtTrigger Int                @default(0) @map("audience_message_count_at_trigger")
+  humanVoteScoreAtTrigger       Int                @default(0) @map("human_vote_score_at_trigger")
+  audienceSummaryRef            String?            @map("audience_summary_ref")
+  thresholdDetailJson           Json?              @map("threshold_detail_json")
+  triggeredByAgentId            String?            @map("triggered_by_agent_id")
+  triggeredByUserId             String?            @map("triggered_by_user_id")
+  metaJson                      Json?              @map("meta_json")
+  createdAt                     DateTime           @default(now()) @map("created_at")
+  updatedAt                     DateTime           @updatedAt @map("updated_at")
 
-  post            Post      @relation(fields: [postId], references: [id])
-  community       Community @relation(fields: [communityId], references: [id])
-  triggeredByAgent Agent?   @relation("AftershowTriggeredByAgent", fields: [triggeredByAgentId], references: [id])
-  artifacts AftershowArtifact[]
+  post             Post                @relation(fields: [postId], references: [id])
+  community        Community           @relation(fields: [communityId], references: [id])
+  triggeredByAgent Agent?              @relation("AftershowTriggeredByAgent", fields: [triggeredByAgentId], references: [id])
+  artifacts        AftershowArtifact[]
 
   @@index([postId, createdAt])
   @@index([communityId, mode, createdAt])
@@ -675,27 +676,27 @@ enum AftershowArtifactStatus {
 }
 
 model AftershowArtifact {
-  id               String                @id @default(cuid())
-  runId            String?               @map("run_id")
-  postId           String                @map("post_id")
-  communityId      String                @map("community_id")
-  status           AftershowArtifactStatus @default(DUE)
-  windowStart      DateTime              @map("window_start")
-  windowEnd        DateTime              @map("window_end")
-  summaryText      String                @map("summary_text")
-  contentJson      Json?                 @map("content_json")
-  audienceSummaryRef String?             @map("audience_summary_ref")
-  correlationId    String?               @map("correlation_id")
-  causeEventId     String?               @map("cause_event_id")
-  idempotencyKey   String?               @unique @map("idempotency_key")
-  publishedAt      DateTime?             @map("published_at")
-  metaJson         Json?                 @map("meta_json")
-  createdAt        DateTime              @default(now()) @map("created_at")
-  updatedAt        DateTime              @updatedAt @map("updated_at")
+  id                 String                  @id @default(cuid())
+  runId              String?                 @map("run_id")
+  postId             String                  @map("post_id")
+  communityId        String                  @map("community_id")
+  status             AftershowArtifactStatus @default(DUE)
+  windowStart        DateTime                @map("window_start")
+  windowEnd          DateTime                @map("window_end")
+  summaryText        String                  @map("summary_text")
+  contentJson        Json?                   @map("content_json")
+  audienceSummaryRef String?                 @map("audience_summary_ref")
+  correlationId      String?                 @map("correlation_id")
+  causeEventId       String?                 @map("cause_event_id")
+  idempotencyKey     String?                 @unique @map("idempotency_key")
+  publishedAt        DateTime?               @map("published_at")
+  metaJson           Json?                   @map("meta_json")
+  createdAt          DateTime                @default(now()) @map("created_at")
+  updatedAt          DateTime                @updatedAt @map("updated_at")
 
-  run       AftershowRun?   @relation(fields: [runId], references: [id])
-  post      Post            @relation(fields: [postId], references: [id])
-  community Community       @relation(fields: [communityId], references: [id])
+  run       AftershowRun?      @relation(fields: [runId], references: [id])
+  post      Post               @relation(fields: [postId], references: [id])
+  community Community          @relation(fields: [communityId], references: [id])
   callouts  AftershowCallout[]
 
   @@index([postId, createdAt])
@@ -705,20 +706,20 @@ model AftershowArtifact {
 }
 
 model AftershowCallout {
-  id               String           @id @default(cuid())
-  artifactId       String           @map("artifact_id")
-  userId           String           @map("user_id")
-  audienceMessageId String          @map("audience_message_id")
-  reason           String
-  evidenceRef      String?          @map("evidence_ref")
-  notificationId   String?          @map("notification_id")
-  invalidatedAt    DateTime?        @map("invalidated_at")
-  metaJson         Json?            @map("meta_json")
-  createdAt        DateTime         @default(now()) @map("created_at")
+  id                String    @id @default(cuid())
+  artifactId        String    @map("artifact_id")
+  userId            String    @map("user_id")
+  audienceMessageId String    @map("audience_message_id")
+  reason            String
+  evidenceRef       String?   @map("evidence_ref")
+  notificationId    String?   @map("notification_id")
+  invalidatedAt     DateTime? @map("invalidated_at")
+  metaJson          Json?     @map("meta_json")
+  createdAt         DateTime  @default(now()) @map("created_at")
 
-  artifact       AftershowArtifact @relation(fields: [artifactId], references: [id])
-  user           HumanUser         @relation("AftershowCalloutUser", fields: [userId], references: [id])
-  audienceMessage AudienceMessage  @relation(fields: [audienceMessageId], references: [id])
+  artifact        AftershowArtifact @relation(fields: [artifactId], references: [id])
+  user            HumanUser         @relation("AftershowCalloutUser", fields: [userId], references: [id])
+  audienceMessage AudienceMessage   @relation(fields: [audienceMessageId], references: [id])
 
   @@unique([artifactId, userId, audienceMessageId])
   @@index([userId, createdAt])
@@ -753,23 +754,23 @@ enum ConfigApprovalDecision {
 }
 
 model CommunityConfigVersion {
-  id                  String          @id @default(cuid())
-  communityId         String          @map("community_id")
-  version             Int
-  rulesJson           Json            @map("rules_json")
-  sourcePatchId       String?         @map("source_patch_id")
-  status              ConfigVersionStatus @default(ACTIVE)
-  riskLevel           ConfigRiskLevel @default(LOW) @map("risk_level")
-  createdByUserId     String?         @map("created_by_user_id")
-  rollbackFromVersionId String?       @map("rollback_from_version_id")
-  effectiveAt         DateTime?       @map("effective_at")
-  appliedAt           DateTime?       @map("applied_at")
-  rolledBackAt        DateTime?       @map("rolled_back_at")
-  metaJson            Json?           @map("meta_json")
-  createdAt           DateTime        @default(now()) @map("created_at")
-  updatedAt           DateTime        @updatedAt @map("updated_at")
+  id                    String              @id @default(cuid())
+  communityId           String              @map("community_id")
+  version               Int
+  rulesJson             Json                @map("rules_json")
+  sourcePatchId         String?             @map("source_patch_id")
+  status                ConfigVersionStatus @default(ACTIVE)
+  riskLevel             ConfigRiskLevel     @default(LOW) @map("risk_level")
+  createdByUserId       String?             @map("created_by_user_id")
+  rollbackFromVersionId String?             @map("rollback_from_version_id")
+  effectiveAt           DateTime?           @map("effective_at")
+  appliedAt             DateTime?           @map("applied_at")
+  rolledBackAt          DateTime?           @map("rolled_back_at")
+  metaJson              Json?               @map("meta_json")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
 
-  community Community  @relation(fields: [communityId], references: [id])
+  community     Community  @relation(fields: [communityId], references: [id])
   createdByUser HumanUser? @relation("CommunityConfigVersionCreatedBy", fields: [createdByUserId], references: [id])
 
   @@unique([communityId, version])
@@ -779,34 +780,34 @@ model CommunityConfigVersion {
 }
 
 model CommunityConfigPatch {
-  id                String           @id @default(cuid())
-  communityId       String           @map("community_id")
-  baseVersionId     String?          @map("base_version_id")
+  id                String            @id @default(cuid())
+  communityId       String            @map("community_id")
+  baseVersionId     String?           @map("base_version_id")
   status            ConfigPatchStatus @default(PROPOSED)
-  riskLevel         ConfigRiskLevel  @default(LOW) @map("risk_level")
-  patchJson         Json             @map("patch_json")
-  proposedRulesJson Json?            @map("proposed_rules_json")
+  riskLevel         ConfigRiskLevel   @default(LOW) @map("risk_level")
+  patchJson         Json              @map("patch_json")
+  proposedRulesJson Json?             @map("proposed_rules_json")
   summary           String?
   reason            String?
-  proposedByUserId  String           @map("proposed_by_user_id")
-  validatedByUserId String?          @map("validated_by_user_id")
-  approvedByUserId  String?          @map("approved_by_user_id")
-  appliedVersionId  String?          @map("applied_version_id")
-  rejectedReason    String?          @map("rejected_reason")
-  validatedAt       DateTime?        @map("validated_at")
-  approvedAt        DateTime?        @map("approved_at")
-  effectiveAt       DateTime?        @map("effective_at")
-  appliedAt         DateTime?        @map("applied_at")
-  rolledBackAt      DateTime?        @map("rolled_back_at")
-  metaJson          Json?            @map("meta_json")
-  createdAt         DateTime         @default(now()) @map("created_at")
-  updatedAt         DateTime         @updatedAt @map("updated_at")
+  proposedByUserId  String            @map("proposed_by_user_id")
+  validatedByUserId String?           @map("validated_by_user_id")
+  approvedByUserId  String?           @map("approved_by_user_id")
+  appliedVersionId  String?           @map("applied_version_id")
+  rejectedReason    String?           @map("rejected_reason")
+  validatedAt       DateTime?         @map("validated_at")
+  approvedAt        DateTime?         @map("approved_at")
+  effectiveAt       DateTime?         @map("effective_at")
+  appliedAt         DateTime?         @map("applied_at")
+  rolledBackAt      DateTime?         @map("rolled_back_at")
+  metaJson          Json?             @map("meta_json")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
 
-  community Community @relation(fields: [communityId], references: [id])
-  proposedByUser HumanUser @relation("CommunityConfigPatchProposedBy", fields: [proposedByUserId], references: [id])
-  validatedByUser HumanUser? @relation("CommunityConfigPatchValidatedBy", fields: [validatedByUserId], references: [id])
-  approvedByUser HumanUser? @relation("CommunityConfigPatchApprovedBy", fields: [approvedByUserId], references: [id])
-  approvals CommunityConfigApproval[]
+  community       Community                 @relation(fields: [communityId], references: [id])
+  proposedByUser  HumanUser                 @relation("CommunityConfigPatchProposedBy", fields: [proposedByUserId], references: [id])
+  validatedByUser HumanUser?                @relation("CommunityConfigPatchValidatedBy", fields: [validatedByUserId], references: [id])
+  approvedByUser  HumanUser?                @relation("CommunityConfigPatchApprovedBy", fields: [approvedByUserId], references: [id])
+  approvals       CommunityConfigApproval[]
 
   @@index([communityId, status, createdAt])
   @@index([status, effectiveAt])
@@ -843,20 +844,20 @@ enum RoleAssignmentStatus {
 }
 
 model RoleAssignment {
-  id         String                @id @default(cuid())
+  id          String               @id @default(cuid())
   communityId String               @map("community_id")
-  postId     String?               @map("post_id")
-  agentId    String                @map("agent_id")
-  scope      RoleAssignmentScope
-  scopeId    String                @map("scope_id")
-  role       String
-  status     RoleAssignmentStatus  @default(ACTIVE)
-  assignedBy String?               @map("assigned_by")
-  expiresAt  DateTime?             @map("expires_at")
-  revokedAt  DateTime?             @map("revoked_at")
-  metaJson   Json?                 @map("meta_json")
-  createdAt  DateTime              @default(now()) @map("created_at")
-  updatedAt  DateTime              @updatedAt @map("updated_at")
+  postId      String?              @map("post_id")
+  agentId     String               @map("agent_id")
+  scope       RoleAssignmentScope
+  scopeId     String               @map("scope_id")
+  role        String
+  status      RoleAssignmentStatus @default(ACTIVE)
+  assignedBy  String?              @map("assigned_by")
+  expiresAt   DateTime?            @map("expires_at")
+  revokedAt   DateTime?            @map("revoked_at")
+  metaJson    Json?                @map("meta_json")
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
 
   community Community @relation(fields: [communityId], references: [id])
   post      Post?     @relation(fields: [postId], references: [id])
@@ -908,8 +909,8 @@ model CommunityCultureDigest {
 
   community Community @relation(fields: [communityId], references: [id])
 
-  @@index([communityId, status, expiresAt])
   @@unique([communityId, version])
+  @@index([communityId, status, expiresAt])
   @@map("community_culture_digests")
 }
 
@@ -1112,17 +1113,14 @@ model MessageReaction {
 // Agent Growth & Nurture
 // ──────────────────────────────────────────────
 
-model AgentGrowth {
-  agentId          String   @id @map("agent_id")
-  xp               Int      @default(0)
-  level            Int      @default(1)
-  traitSlots       Int      @default(0) @map("trait_slots")
-  instructionSlots Int      @default(0) @map("instruction_slots")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+model AgentXp {
+  agentId   String   @id @map("agent_id")
+  xp        Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   agent Agent @relation(fields: [agentId], references: [id])
 
-  @@map("agent_growth")
+  @@map("agent_xp")
 }
 
 model AgentTrait {
@@ -1141,8 +1139,25 @@ model AgentTrait {
   @@map("agent_traits")
 }
 
-model GrowthEvent {
+model XpEvent {
   id          String   @id @default(cuid())
+  agentId     String   @map("agent_id")
+  source      String
+  title       String
+  description String
+  xpDelta     Int      @default(0) @map("xp_delta")
+  dedupKey    String?  @map("dedup_key")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([agentId, createdAt])
+  @@index([agentId, dedupKey, createdAt])
+  @@map("xp_events")
+}
+
+model LegacyGrowthEventArchive {
+  id          String   @id
   agentId     String   @map("agent_id")
   eventType   String   @map("event_type")
   title       String
@@ -1153,7 +1168,7 @@ model GrowthEvent {
   agent Agent @relation(fields: [agentId], references: [id])
 
   @@index([agentId, createdAt])
-  @@map("growth_events")
+  @@map("legacy_growth_events_archive")
 }
 
 model AgentInstruction {
@@ -1363,21 +1378,22 @@ model AgentPrivacySettings {
 // ──────────────────────────────────────────────
 
 model AgentStats {
-  agentId        String   @id @map("agent_id")
-  unspentPoints  Int      @default(0) @map("unspent_points")
-  sociability    Int      @default(0)
-  curiosity      Int      @default(0)
-  assertiveness  Int      @default(0)
-  empathy        Int      @default(0)
-  brashness      Int      @default(0)
-  cynicism       Int      @default(0)
-  stubbornness   Int      @default(0)
-  volatility     Int      @default(0)
-  memory         Int      @default(30)
-  learning       Int      @default(30)
-  version        Int      @default(1)
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  agentId            String   @id @map("agent_id")
+  unspentPoints      Int      @default(0) @map("unspent_points")
+  grantedPointsTotal Int      @default(0) @map("granted_points_total")
+  sociability        Int      @default(0)
+  curiosity          Int      @default(0)
+  assertiveness      Int      @default(0)
+  empathy            Int      @default(0)
+  brashness          Int      @default(0)
+  cynicism           Int      @default(0)
+  stubbornness       Int      @default(0)
+  volatility         Int      @default(0)
+  memory             Int      @default(30)
+  learning           Int      @default(30)
+  version            Int      @default(1)
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   agent Agent @relation(fields: [agentId], references: [id])
 
@@ -1385,13 +1401,13 @@ model AgentStats {
 }
 
 model AgentState {
-  agentId        String   @id @map("agent_id")
-  valence        Float    @default(0)
-  arousal        Float    @default(0)
-  confidence     Float    @default(0)
-  irritability   Float    @default(0)
-  fatigue        Float    @default(0)
-  lastUpdatedAt  DateTime @default(now()) @map("last_updated_at")
+  agentId       String   @id @map("agent_id")
+  valence       Float    @default(0)
+  arousal       Float    @default(0)
+  confidence    Float    @default(0)
+  irritability  Float    @default(0)
+  fatigue       Float    @default(0)
+  lastUpdatedAt DateTime @default(now()) @map("last_updated_at")
 
   agent Agent @relation(fields: [agentId], references: [id])
 
@@ -1419,26 +1435,26 @@ model AgentStatEvent {
 // ──────────────────────────────────────────────
 
 model AgentRelation {
-  id                 String   @id @default(cuid())
-  fromAgentId        String   @map("from_agent_id")
-  toAgentId          String   @map("to_agent_id")
-  state              String   @default("shadow")
-  relationScore      Float    @default(0) @map("relation_score")
-  interactionScore   Float    @default(0) @map("interaction_score")
-  personaScore       Float    @default(0) @map("persona_score")
-  safetyScore        Float    @default(1) @map("safety_score")
-  shadowStartedAt    DateTime? @map("shadow_started_at")
-  effectiveAt        DateTime? @map("effective_at")
-  inactiveAt         DateTime? @map("inactive_at")
-  blockedAt          DateTime? @map("blocked_at")
+  id                  String    @id @default(cuid())
+  fromAgentId         String    @map("from_agent_id")
+  toAgentId           String    @map("to_agent_id")
+  state               String    @default("shadow")
+  relationScore       Float     @default(0) @map("relation_score")
+  interactionScore    Float     @default(0) @map("interaction_score")
+  personaScore        Float     @default(0) @map("persona_score")
+  safetyScore         Float     @default(1) @map("safety_score")
+  shadowStartedAt     DateTime? @map("shadow_started_at")
+  effectiveAt         DateTime? @map("effective_at")
+  inactiveAt          DateTime? @map("inactive_at")
+  blockedAt           DateTime? @map("blocked_at")
   belowThresholdSince DateTime? @map("below_threshold_since")
-  lastSignalAt       DateTime? @map("last_signal_at")
-  lastInteractionAt  DateTime? @map("last_interaction_at")
-  lastEvaluatedAt    DateTime? @map("last_evaluated_at")
-  lastStateChangedAt DateTime? @map("last_state_changed_at")
-  version            Int      @default(1)
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  lastSignalAt        DateTime? @map("last_signal_at")
+  lastInteractionAt   DateTime? @map("last_interaction_at")
+  lastEvaluatedAt     DateTime? @map("last_evaluated_at")
+  lastStateChangedAt  DateTime? @map("last_state_changed_at")
+  version             Int       @default(1)
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
   fromAgent Agent @relation("RelationFromAgent", fields: [fromAgentId], references: [id])
   toAgent   Agent @relation("RelationToAgent", fields: [toAgentId], references: [id])

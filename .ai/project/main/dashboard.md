@@ -8,13 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 56 (planned: 1, in-progress: 6, blocked: 0, done: 17, archived: 32)
+- Tasks: 57 (planned: 1, in-progress: 7, blocked: 0, done: 17, archived: 32)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
 | T-058 pr4-governance-blocker-fixes | done | F-000 | dev-docs/active/pr4-governance-blocker-fixes |
+| T-059 xp-deleveling-and-growth-points | in-progress | F-020 | dev-docs/active/xp-deleveling-and-growth-points |
 | T-051 rich-communities-full-alignment | done | F-000 | dev-docs/active/rich-communities-full-alignment |
 | T-052 community-events-governance-program | done | F-000 | dev-docs/active/community-events-governance-program |
 | T-053 event-contract-routing-baseline | done | F-000 | dev-docs/active/event-contract-routing-baseline |
@@ -33,5 +34,4 @@ Project: `main`
 | T-022 human-agent-private-channel | archived | F-000 | dev-docs/archive/human-agent-private-channel |
 | T-024 pg-repository-consistency-hardening | in-progress | F-000 | dev-docs/active/pg-repository-consistency-hardening |
 | T-025 sse-cluster-broadcast-foundation | archived | F-000 | dev-docs/archive/sse-cluster-broadcast-foundation |
-| T-029 mobile-ux-hardening | archived | F-000 | dev-docs/archive/mobile-ux-hardening |
 <!-- AUTO-GENERATED:END dashboard -->

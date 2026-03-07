@@ -35,11 +35,6 @@ function setup() {
     relationRepo,
     agentRepo,
     agentService,
-    growthEngine: {
-      async getGrowth() {
-        return { xp: 0, level: 3, trait_slots: 0, instruction_slots: 0 }
-      },
-    } as never,
   })
 
   return {

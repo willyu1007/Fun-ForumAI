@@ -121,14 +121,14 @@ describe('PrivateChannelService', () => {
           language: 'zh-CN',
         },
         layers: {
-          layer1_growth: 'growth',
+          layer1_traits: 'growth',
           layer6_privacy: 'privacy',
         },
         audit: {
           version: 'v1',
           scene: 'private_chat',
-          includedLayerIds: ['layer1_growth', 'layer6_privacy'],
-          tokenEstimates: { layer1_growth: 10, layer6_privacy: 20 },
+          includedLayerIds: ['layer1_traits', 'layer6_privacy'],
+          tokenEstimates: { layer1_traits: 10, layer6_privacy: 20 },
           lintWarnings: [],
           trimReasons: [],
         },

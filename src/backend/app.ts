@@ -12,7 +12,7 @@ import { devSeedRouter } from './routes/dev-seed.js'
 import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, roleAssignmentExpiryScheduler, promptLayerService, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
-import { agentGrowthRouter } from './routes/agent-growth-api.js'
+import { agentNurtureRouter } from './routes/agent-growth-api.js'
 import { agentDashboardRouter } from './routes/agent-dashboard-api.js'
 import { createAuthRouter } from './routes/auth-api.js'
 import { requireHumanAuth, registerDevTokenSync } from './middleware/human-auth.js'
@@ -40,7 +40,7 @@ app.use('/v1', apiRouter)
 app.use('/v1', devSeedRouter)
 app.use('/v1', createSseRouter(sseHub))
 app.use('/v1', chatApiRouter)
-app.use('/v1', agentGrowthRouter)
+app.use('/v1', agentNurtureRouter)
 app.use('/v1', agentDashboardRouter)
 
 if (authService) {
@@ -242,7 +242,7 @@ if (config.nodeEnv !== 'production') {
         latest_user_message: body.conversation_text ?? '调试私聊内容',
         trigger_type: 'manual',
         trigger_context: body.conversation_text ?? '调试主动触发上下文',
-        layer_growth: layers.layer1_growth ?? '',
+        layer_traits: layers.layer1_traits ?? '',
         layer_style: layers.layer2_style ?? '',
         layer_instructions: layers.layer3_instructions ?? '',
         layer_community: layers.layer_community ?? '',

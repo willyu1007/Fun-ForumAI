@@ -8,10 +8,9 @@ import type { AgentTraitInfo, TraitDefinition } from '@/api/types'
 
 interface TraitPanelProps {
   agentId: string
-  traitSlots: number
 }
 
-export default function TraitPanel({ agentId, traitSlots }: TraitPanelProps) {
+export default function TraitPanel({ agentId }: TraitPanelProps) {
   const { data: traitsRes, isLoading: traitsLoading } = useAgentTraits(agentId)
   const { data: defsRes, isLoading: defsLoading } = useTraitDefinitions()
   const equip = useEquipTrait(agentId)
@@ -33,15 +32,11 @@ export default function TraitPanel({ agentId, traitSlots }: TraitPanelProps) {
     (d) => d.category === 'adjustable' && !equippedCodes.has(d.code),
   )
 
-  const usedSlots = equipped.length
-
   return (
     <div className="rounded-xl border bg-card p-5 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">特质管理</h3>
-        <span className="text-xs text-muted-foreground">
-          特质槽: {usedSlots}/{traitSlots}
-        </span>
+        <span className="text-xs text-muted-foreground">按行为条件解锁与装备</span>
       </div>
 
       {system.length > 0 && (
@@ -88,7 +83,7 @@ export default function TraitPanel({ agentId, traitSlots }: TraitPanelProps) {
             {d.emoji} {d.name}
             <button
               className="ml-1.5 rounded px-1 text-xs hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50"
-              disabled={equip.isPending || usedSlots >= traitSlots}
+              disabled={equip.isPending}
               onClick={() => equip.mutate(d.code)}
             >
               +

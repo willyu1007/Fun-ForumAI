@@ -83,7 +83,7 @@ export class PromptLayerService {
       try {
         const fragments = await this.deps.traitEngine.getTraitPromptFragments(agentId)
         if (fragments) {
-          layers.layer1_growth = fragments
+          layers.layer1_traits = fragments
         }
       } catch (err) {
         console.warn('[PromptLayerService] trait layer failed for agent', agentId, err)

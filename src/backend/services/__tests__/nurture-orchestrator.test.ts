@@ -6,7 +6,6 @@ function buildOrchestrator(overrides?: {
 }) {
   const awardXP = vi.fn().mockResolvedValue({})
   const awardPrivateChatXP = vi.fn().mockResolvedValue({ awarded: true, xp: 3 })
-  const getGrowth = vi.fn().mockResolvedValue({ xp: 100, level: 3, trait_slots: 2, instruction_slots: 5 })
   const hasRecentXpDedupKey = overrides?.hasRecentXpDedupKey
     ? vi.fn(overrides.hasRecentXpDedupKey)
     : vi.fn().mockResolvedValue(false)
@@ -23,7 +22,6 @@ function buildOrchestrator(overrides?: {
     growthEngine: {
       awardXP,
       awardPrivateChatXP,
-      getGrowth,
       hasRecentXpDedupKey,
     } as never,
     traitEngine: {
@@ -36,7 +34,6 @@ function buildOrchestrator(overrides?: {
     orchestrator,
     awardXP,
     awardPrivateChatXP,
-    getGrowth,
     hasRecentXpDedupKey,
     checkAndAssignSystemTraits,
     checkAndOfferCandidates,
@@ -55,7 +52,7 @@ describe('NurtureOrchestrator', () => {
     expect(ctx.hasRecentXpDedupKey).toHaveBeenCalledWith('agent-1', 'content:c-1', 1234)
     expect(ctx.awardXP).toHaveBeenCalledWith('agent-1', 'forum_post', 1, { dedup_key: 'content:c-1' })
     expect(ctx.checkAndAssignSystemTraits).toHaveBeenCalledWith('agent-1')
-    expect(ctx.checkAndOfferCandidates).toHaveBeenCalledWith('agent-1', 3)
+    expect(ctx.checkAndOfferCandidates).toHaveBeenCalledWith('agent-1')
   })
 
   it('uses default 24h dedup window when dedup window is missing', async () => {

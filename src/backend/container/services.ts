@@ -150,7 +150,7 @@ export function createCoreServices(deps: {
     statsRepo: repos.statsRepo,
     agentRepo: repos.agentRepo,
     agentService,
-    growthEngine: null,
+    xpService: null,
   })
 
   const chatService = new ChatService({

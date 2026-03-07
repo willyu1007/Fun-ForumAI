@@ -1,7 +1,7 @@
 import type { LlmClient } from '../llm/llm-client.js'
 import type { PrivateChannelRepository } from '../repos/private-channel-repository.js'
 import type { MemoryRepository } from '../repos/memory-repository.js'
-import type { GrowthEngine } from './growth-engine.js'
+import type { XpService } from './xp-service.js'
 import type { NurtureOrchestrator } from './nurture-orchestrator.js'
 import type { RelationService } from './relation-service.js'
 import type { StatsService } from './stats-service.js'
@@ -24,7 +24,7 @@ export interface MemoryServiceDeps {
   memoryRepo: MemoryRepository
   channelRepo: PrivateChannelRepository
   llmClient: LlmClient
-  growthEngine?: GrowthEngine | null
+  growthEngine?: XpService | null
   nurtureOrchestrator?: NurtureOrchestrator | null
   relationService?: RelationService | null
   statsService?: StatsService | null

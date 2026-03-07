@@ -15,12 +15,12 @@ export type AgentStatEventType =
   | 'POINTS_GRANTED'
   | 'POINTS_SPENT'
   | 'STATE_UPDATED'
-  | 'LEVEL_SYNC'
   | 'SYSTEM_SEED'
 
 export interface AgentStats {
   agent_id: string
   unspent_points: number
+  granted_points_total: number
   sociability: number
   curiosity: number
   assertiveness: number
@@ -112,6 +112,7 @@ export interface CreateAgentStatEventInput {
 export interface SaveAgentStatsInput {
   agent_id: string
   unspent_points: number
+  granted_points_total: number
   sociability: number
   curiosity: number
   assertiveness: number

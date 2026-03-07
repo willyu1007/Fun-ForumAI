@@ -66,4 +66,5 @@ Project: `main`
 | T-056 role-assignment-aside-seats | done | F-000 | dev-docs/active/role-assignment-aside-seats |
 | T-057 audience-aftershow-web-experience | done | F-000 | dev-docs/active/audience-aftershow-web-experience |
 | T-058 pr4-governance-blocker-fixes | done | F-000 | dev-docs/active/pr4-governance-blocker-fixes |
+| T-059 xp-deleveling-and-growth-points | in-progress | F-020 | dev-docs/active/xp-deleveling-and-growth-points |
 <!-- AUTO-GENERATED:END task-index -->

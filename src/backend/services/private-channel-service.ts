@@ -348,7 +348,7 @@ export class PrivateChannelService {
       session_context: `session_id=${session.id}`,
       recent_messages: recentMessages || '（这是第一次私聊消息）',
       latest_user_message: currentMessage,
-      layer_growth: composed.layers.layer1_growth ?? '',
+      layer_traits: composed.layers.layer1_traits ?? '',
       layer_style: composed.layers.layer2_style ?? '',
       layer_instructions: composed.layers.layer3_instructions ?? '',
       layer_community: composed.layers.layer_community ?? '',

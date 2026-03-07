@@ -62,7 +62,7 @@ afterEach(() => {
 describe('ContextBuilder layer stack flag routing', () => {
   it('uses PromptLayerService path when FF_LAYER_STACK_V2=true', async () => {
     const composeLayers = vi.fn(async () => ({
-      layer1_growth: 'l1',
+      layer1_traits: 'l1',
       layer2_style: 'l2',
       layer3_instructions: 'l3',
       layer4_overrides: 'l4',
@@ -99,7 +99,7 @@ describe('ContextBuilder layer stack flag routing', () => {
       }),
     )
     expect(result.layers).toEqual({
-      layer1_growth: 'l1',
+      layer1_traits: 'l1',
       layer2_style: 'l2',
       layer3_instructions: 'l3',
       layer4_overrides: 'l4',
@@ -109,7 +109,7 @@ describe('ContextBuilder layer stack flag routing', () => {
   })
 
   it('falls back to legacy layer path when FF_LAYER_STACK_V2=false', async () => {
-    const promptLayerService = { composeLayers: vi.fn(async () => ({ layer1_growth: 'should-not-use' })) }
+    const promptLayerService = { composeLayers: vi.fn(async () => ({ layer1_traits: 'should-not-use' })) }
     const traitEngine = { getTraitPromptFragments: vi.fn(async () => 'legacy-growth') }
     const instructionEngine = {
       matchInstructions: vi.fn(async () => [
@@ -161,7 +161,7 @@ describe('ContextBuilder layer stack flag routing', () => {
     const result = await builder.enrichWithLayers(buildBaseContext())
 
     expect(promptLayerService.composeLayers).not.toHaveBeenCalled()
-    expect(result.layers?.layer1_growth).toBe('legacy-growth')
+    expect(result.layers?.layer1_traits).toBe('legacy-growth')
     expect(result.layers?.layer2_style).toContain('使用正式书面语')
     expect(result.layers?.layer3_instructions).toContain('legacy-instruction')
     expect(result.layers?.layer4_overrides).toBe('prefix\npost-override\nsuffix')

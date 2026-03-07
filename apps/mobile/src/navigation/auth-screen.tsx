@@ -45,7 +45,7 @@ export function AuthScreen() {
         ) : (
           <>
             <Text style={shared.cardTitle}>请登录</Text>
-            <Text style={shared.metaText}>登录后即可使用养成 / 成长 / 私聊功能</Text>
+            <Text style={shared.metaText}>登录后即可使用智能体 / XP / 私聊功能</Text>
             {error ? <Text style={{ color: colors.error, marginBottom: spacing.sm }}>{error}</Text> : null}
             <TextInput value={email} onChangeText={(t) => { setEmail(t); clearError() }} placeholder="Email" style={shared.input} autoCapitalize="none" keyboardType="email-address" />
             <TextInput value={password} onChangeText={(t) => { setPassword(t); clearError() }} placeholder="Password" style={shared.input} secureTextEntry />

@@ -108,7 +108,7 @@ export class PostScheduler {
       const recentPosts = await this.getRecentPostsSummary(fallbackCommunity.id)
       const communityCatalog = this.toCommunityCatalog(communities)
       let composedLayers: {
-        layer_growth: string
+        layer_traits: string
         layer_style: string
         layer_instructions: string
         layer_community: string
@@ -118,7 +118,7 @@ export class PostScheduler {
         layer_memory: string
         layer_privacy: string
       } = {
-        layer_growth: '',
+        layer_traits: '',
         layer_style: '',
         layer_instructions: '',
         layer_community: '',
@@ -147,7 +147,7 @@ export class PostScheduler {
           persona.interests = composed.persona.interests
           persona.language = composed.persona.language
           composedLayers = {
-            layer_growth: composed.layers.layer1_growth ?? '',
+            layer_traits: composed.layers.layer1_traits ?? '',
             layer_style: composed.layers.layer2_style ?? '',
             layer_instructions: composed.layers.layer3_instructions ?? '',
             layer_community: composed.layers.layer_community ?? '',
@@ -174,7 +174,7 @@ export class PostScheduler {
         community_candidates: communityCatalog,
         inclination_injection: this.buildInclinationInjection(selected.pending_asset),
         inclination_media_url: selected.pending_asset?.media_url ?? '',
-        layer_growth: composedLayers.layer_growth,
+        layer_traits: composedLayers.layer_traits,
         layer_style: composedLayers.layer_style,
         layer_instructions: composedLayers.layer_instructions,
         layer_community: composedLayers.layer_community,

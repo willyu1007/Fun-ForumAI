@@ -67,6 +67,13 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
   }
 
   const derived = statsData.derived
+  const grantedPointsTotal = Number.isFinite(statsData.stats.granted_points_total)
+    ? statsData.stats.granted_points_total
+    : statsData.stats.unspent_points
+  const spentPoints = Math.max(
+    grantedPointsTotal - statsData.stats.unspent_points,
+    0,
+  )
   const previewData = previewMutation.data?.data
   const previewIsStale = previewSignature !== null && previewSignature !== currentDraftSignature
 
@@ -113,7 +120,14 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
           <CardTitle className="text-base">属性分配</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">未分配点数：<span className="font-medium text-foreground">{statsData.stats.unspent_points}</span></p>
+          <div className="space-y-1 text-sm text-muted-foreground">
+            <p>待分配成长点：<span className="font-medium text-foreground">{statsData.stats.unspent_points}</span></p>
+            <p>已分配成长点：<span className="font-medium text-foreground">{spentPoints}</span></p>
+            <p>累计成长点：<span className="font-medium text-foreground">{grantedPointsTotal}</span></p>
+            <p className="text-xs">
+              成长点只由 XP 累积产生；成就、编年史和舞台身份不会影响这里的点数。
+            </p>
+          </div>
 
           <div className="grid gap-3 md:grid-cols-2">
             {ALLOCATION_FIELDS.map((field) => {

@@ -6,7 +6,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 interface PromptOverrideEditorProps {
   agentId: string
-  level: number
 }
 
 const OVERRIDE_FIELDS: { key: keyof PromptOverrides; label: string }[] = [
@@ -19,13 +18,11 @@ const OVERRIDE_FIELDS: { key: keyof PromptOverrides; label: string }[] = [
 ]
 
 const CHAR_MAX = 500
-const UNLOCK_LEVEL = 4
 
-export function PromptOverrideEditor({ agentId, level }: PromptOverrideEditorProps) {
+export function PromptOverrideEditor({ agentId }: PromptOverrideEditorProps) {
   const { data, isLoading } = useAgentPromptOverrides(agentId)
   const update = useUpdatePromptOverrides(agentId)
   const [local, setLocal] = useState<PromptOverrides>({})
-  const locked = level < UNLOCK_LEVEL
 
   useEffect(() => {
     if (data?.data) setLocal(data.data)
@@ -50,18 +47,7 @@ export function PromptOverrideEditor({ agentId, level }: PromptOverrideEditorPro
   }
 
   return (
-    <div className="relative space-y-4">
-      {locked && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/80 backdrop-blur-sm">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-muted-foreground">Lv.{UNLOCK_LEVEL} 解锁</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              当前等级 Lv.{level}，升级后可自定义 Prompt
-            </p>
-          </div>
-        </div>
-      )}
-
+    <div className="space-y-4">
       {OVERRIDE_FIELDS.map(({ key, label }) => {
         const val = local[key] ?? ''
         return (
@@ -77,10 +63,9 @@ export function PromptOverrideEditor({ agentId, level }: PromptOverrideEditorPro
             <textarea
               value={val}
               onChange={(e) => handleChange(key, e.target.value)}
-              disabled={locked}
               rows={3}
               placeholder={`输入${label}内容…`}
-              className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
             />
           </div>
         )
@@ -90,7 +75,7 @@ export function PromptOverrideEditor({ agentId, level }: PromptOverrideEditorPro
         <Button
           size="sm"
           onClick={handleSave}
-          disabled={locked || update.isPending}
+          disabled={update.isPending}
         >
           {update.isPending ? '保存中…' : '保存'}
         </Button>

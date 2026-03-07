@@ -10,7 +10,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 interface InstructionListProps {
   agentId: string
-  instructionSlots: number
 }
 
 const TRIGGER_LABELS: Record<string, string> = {
@@ -31,7 +30,7 @@ const TRIGGER_COLORS: Record<string, string> = {
   schedule: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
 }
 
-export function InstructionList({ agentId, instructionSlots }: InstructionListProps) {
+export function InstructionList({ agentId }: InstructionListProps) {
   const { data, isLoading } = useAgentInstructions(agentId)
   const toggle = useToggleInstruction(agentId)
   const remove = useDeleteInstruction(agentId)
@@ -54,14 +53,9 @@ export function InstructionList({ agentId, instructionSlots }: InstructionListPr
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-muted-foreground">
-          指令槽: {instructions.length}/{instructionSlots}
+          已配置指令: {instructions.length}
         </span>
-        <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-sky-500 transition-all"
-            style={{ width: `${Math.min(100, (instructions.length / instructionSlots) * 100)}%` }}
-          />
-        </div>
+        <span className="text-xs text-muted-foreground">不再受等级槽位限制</span>
       </div>
 
       {instructions.length === 0 && (

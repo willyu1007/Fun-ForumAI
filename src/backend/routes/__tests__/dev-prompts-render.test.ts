@@ -64,7 +64,7 @@ describe('POST /v1/dev/prompts/render', () => {
     const agentId = await createAgent(devApp, 'T034 Forum Bot')
 
     const markers = {
-      layer_growth: '[L1_GROWTH]',
+      layer_traits: '[L1_GROWTH]',
       layer_style: '[L2_STYLE]',
       layer_instructions: '[L3_INSTRUCTIONS]',
       layer_community: '[L_COMMUNITY]',
@@ -89,7 +89,7 @@ describe('POST /v1/dev/prompts/render', () => {
     const systemMessage = (res.body.data.messages as Array<{ role: string; content: string }>)
       .find((m) => m.role === 'system')
     expect(systemMessage).toBeDefined()
-    expect(systemMessage?.content).toContain(markers.layer_growth)
+    expect(systemMessage?.content).toContain(markers.layer_traits)
     expect(systemMessage?.content).toContain(markers.layer_style)
     expect(systemMessage?.content).toContain(markers.layer_instructions)
     expect(systemMessage?.content).toContain(markers.layer_community)
@@ -112,7 +112,7 @@ describe('POST /v1/dev/prompts/render', () => {
     const agentId = await createAgent(devApp, 'T034 Chat Bot')
 
     const markers = {
-      layer_growth: '{CHAT_L1}',
+      layer_traits: '{CHAT_L1}',
       layer_style: '{CHAT_L2}',
       layer_instructions: '{CHAT_L3}',
       layer_community: '{CHAT_COMMUNITY}',
@@ -137,7 +137,7 @@ describe('POST /v1/dev/prompts/render', () => {
     const systemMessage = (res.body.data.messages as Array<{ role: string; content: string }>)
       .find((m) => m.role === 'system')
     expect(systemMessage).toBeDefined()
-    expect(systemMessage?.content).toContain(markers.layer_growth)
+    expect(systemMessage?.content).toContain(markers.layer_traits)
     expect(systemMessage?.content).toContain(markers.layer_style)
     expect(systemMessage?.content).toContain(markers.layer_instructions)
     expect(systemMessage?.content).toContain(markers.layer_community)

@@ -3,7 +3,6 @@ import type { RelationRepository } from '../repos/relation-repository.js'
 import type { AgentRepository } from '../repos/agent-repository.js'
 import type { AgentService } from './agent-service.js'
 import type { TraitEngine } from './trait-engine.js'
-import type { GrowthEngine } from './growth-engine.js'
 import type { PostRepository } from '../repos/post-repository.js'
 import type { CommentRepository } from '../repos/comment-repository.js'
 import type { RoomRepository } from '../repos/room-repository.js'
@@ -16,14 +15,7 @@ import { LruMap } from '../lib/lru-map.js'
 
 const DAYS_7_MS = 7 * 24 * 60 * 60 * 1000
 const ACTIVE_RELATION_STATES: RelationState[] = ['shadow', 'effective']
-
-const LEVEL_CAPACITY: Record<number, number> = {
-  1: 20,
-  2: 40,
-  3: 80,
-  4: 120,
-  5: 180,
-}
+const RELATION_CAPACITY = 180
 
 export type PairRelationHint = 'none' | 'following' | 'follower' | 'friend' | 'blocked'
 
@@ -42,7 +34,6 @@ export interface RelationServiceDeps {
   agentRepo: AgentRepository
   agentService: AgentService
   traitEngine?: TraitEngine | null
-  growthEngine?: GrowthEngine | null
   postRepo?: PostRepository
   commentRepo?: CommentRepository
   roomRepo?: RoomRepository
@@ -597,15 +588,8 @@ export class RelationService {
   private async isCapacityAllowed(fromAgentId: string, existing: AgentRelation | null): Promise<boolean> {
     if (existing) return true
 
-    const growth = this.deps.growthEngine
-      ? await this.deps.growthEngine.getGrowth(fromAgentId).catch(() => ({ level: 1 }))
-      : { level: 1 }
-
-    const level = Math.max(1, Math.floor(growth.level ?? 1))
-    const cap = level >= 5 ? LEVEL_CAPACITY[5] : LEVEL_CAPACITY[level] ?? LEVEL_CAPACITY[1]
-
     const activeCount = await this.deps.relationRepo.countOutgoingByStates(fromAgentId, ACTIVE_RELATION_STATES)
-    return activeCount < cap
+    return activeCount < RELATION_CAPACITY
   }
 
   private async refreshPairHints(fromAgentId: string, toAgentId: string): Promise<void> {

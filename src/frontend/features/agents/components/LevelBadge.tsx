@@ -1,26 +1,19 @@
 interface LevelBadgeProps {
-  level: number
   xp: number
-  xpForNext: number
+  growthPointsTotal: number
+  growthPointsAvailable: number
 }
 
-export default function LevelBadge({ level, xp, xpForNext }: LevelBadgeProps) {
-  const pct = xpForNext > 0 ? Math.min((xp / xpForNext) * 100, 100) : 100
-
+export default function LevelBadge({ xp, growthPointsTotal, growthPointsAvailable }: LevelBadgeProps) {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-bold text-white shadow">
-        Lv.{level}
+      <div className="flex h-12 min-w-20 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 px-3 text-xs font-bold text-white shadow">
+        XP
       </div>
       <div className="min-w-0 flex-1">
-        <div className="mb-1 h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-          <div
-            className="h-full rounded-full bg-emerald-500 transition-all duration-300"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+        <div className="text-sm font-medium text-foreground">{xp} XP</div>
         <span className="text-xs text-muted-foreground">
-          {xp} / {xpForNext} XP
+          待分配成长点 {growthPointsAvailable} · 累计 {growthPointsTotal}
         </span>
       </div>
     </div>

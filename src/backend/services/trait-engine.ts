@@ -6,7 +6,6 @@ interface TraitDef {
   name: string
   category: 'system' | 'adjustable'
   promptFragment: string
-  minLevel?: number
 }
 
 const TRAIT_DEFS: TraitDef[] = [
@@ -14,12 +13,12 @@ const TRAIT_DEFS: TraitDef[] = [
   { code: 'hyperactive', emoji: '⚡', name: '活跃分子', category: 'system', promptFragment: '你精力充沛，话题敏感度高，总是快速参与讨论' },
   { code: 'controversial', emoji: '⚠️', name: '争议制造者', category: 'system', promptFragment: '你的观点常引发争议，需要特别注意措辞的分寸感' },
   { code: 'slow_starter', emoji: '🐢', name: '慢热型', category: 'system', promptFragment: '你倾向于先观察再发言，一旦开口往往言之有物' },
-  { code: 'scholar', emoji: '📖', name: '学术派', category: 'adjustable', promptFragment: '你善于引经据典，用严谨的逻辑和证据支持观点', minLevel: 2 },
-  { code: 'storyteller', emoji: '🎭', name: '故事家', category: 'adjustable', promptFragment: '你擅长用故事和比喻来表达观点，让抽象的概念变得生动', minLevel: 2 },
-  { code: 'debater', emoji: '⚔️', name: '辩手', category: 'adjustable', promptFragment: '你善于从不同角度审视问题，敢于提出有力的反驳', minLevel: 3 },
-  { code: 'warmheart', emoji: '🌸', name: '暖心使者', category: 'adjustable', promptFragment: '你温柔体贴，善于倾听和鼓励，让每个人都感到被重视', minLevel: 3 },
-  { code: 'philosopher', emoji: '🔮', name: '哲学家', category: 'adjustable', promptFragment: '你追问事物的本质，喜欢提出开放性的深度问题', minLevel: 4 },
-  { code: 'comedian', emoji: '🎪', name: '段子手', category: 'adjustable', promptFragment: '你幽默风趣，善于用出其不意的比喻和段子活跃气氛', minLevel: 4 },
+  { code: 'scholar', emoji: '📖', name: '学术派', category: 'adjustable', promptFragment: '你善于引经据典，用严谨的逻辑和证据支持观点' },
+  { code: 'storyteller', emoji: '🎭', name: '故事家', category: 'adjustable', promptFragment: '你擅长用故事和比喻来表达观点，让抽象的概念变得生动' },
+  { code: 'debater', emoji: '⚔️', name: '辩手', category: 'adjustable', promptFragment: '你善于从不同角度审视问题，敢于提出有力的反驳' },
+  { code: 'warmheart', emoji: '🌸', name: '暖心使者', category: 'adjustable', promptFragment: '你温柔体贴，善于倾听和鼓励，让每个人都感到被重视' },
+  { code: 'philosopher', emoji: '🔮', name: '哲学家', category: 'adjustable', promptFragment: '你追问事物的本质，喜欢提出开放性的深度问题' },
+  { code: 'comedian', emoji: '🎪', name: '段子手', category: 'adjustable', promptFragment: '你幽默风趣，善于用出其不意的比喻和段子活跃气氛' },
 ]
 
 export class TraitEngine {
@@ -41,10 +40,9 @@ export class TraitEngine {
     }
   }
 
-  async checkAndOfferCandidates(agentId: string, level: number): Promise<void> {
+  async checkAndOfferCandidates(agentId: string): Promise<void> {
     if (!this.prisma) return
     for (const def of TRAIT_DEFS.filter(d => d.category === 'adjustable')) {
-      if (def.minLevel && level < def.minLevel) continue
       const exists = await this.prisma.agentTrait.findUnique({
         where: { agentId_traitCode: { agentId, traitCode: def.code } },
       })
@@ -66,14 +64,6 @@ export class TraitEngine {
     if (!trait) return { success: false, error: 'trait_not_found' }
     if (trait.status === 'equipped') return { success: true }
     if (trait.status !== 'candidate') return { success: false, error: 'not_candidate' }
-
-    const growth = await this.prisma.agentGrowth.findUnique({ where: { agentId } })
-    const equippedCount = await this.prisma.agentTrait.count({
-      where: { agentId, status: 'equipped', category: 'adjustable' },
-    })
-    if (growth && equippedCount >= growth.traitSlots) {
-      return { success: false, error: 'no_trait_slots' }
-    }
 
     await this.prisma.agentTrait.update({
       where: { agentId_traitCode: { agentId, traitCode } },

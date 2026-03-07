@@ -1,5 +1,5 @@
 import type { AgentRepository } from '../repos/agent-repository.js'
-import type { GrowthEngine, XpSource } from './growth-engine.js'
+import type { XpService, XpSource } from './xp-service.js'
 import type { TraitEngine } from './trait-engine.js'
 
 export const DEFAULT_NURTURE_DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000
@@ -11,7 +11,7 @@ export interface NurtureTriggerOptions {
 
 export interface NurtureOrchestratorDeps {
   agentRepo: AgentRepository
-  growthEngine: GrowthEngine | null
+  growthEngine: XpService | null
   traitEngine: TraitEngine | null
 }
 
@@ -97,8 +97,7 @@ export class NurtureOrchestrator {
     if (!this.deps.traitEngine || !this.deps.growthEngine) return
 
     await this.deps.traitEngine.checkAndAssignSystemTraits(agentId)
-    const growth = await this.deps.growthEngine.getGrowth(agentId)
-    await this.deps.traitEngine.checkAndOfferCandidates(agentId, growth.level)
+    await this.deps.traitEngine.checkAndOfferCandidates(agentId)
   }
 
   private async shouldSkipByDedup(agentId: string, opts: NurtureTriggerOptions): Promise<boolean> {

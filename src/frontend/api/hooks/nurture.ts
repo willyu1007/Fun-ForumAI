@@ -2,12 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../client'
 import { queryKeys } from '../query-keys'
 import { toSearchString } from '../utils'
-import type { ApiResponse, AgentGrowthInfo, AgentTraitInfo, AgentCreditInfo, GrowthEventInfo, TraitDefinition, CreditEventInfo, LevelTableEntry, PaginationParams, AgentAchievementItem, ChronicleEntryItem, AgentHighlightsData, GlobalHighlightsData } from '../types'
+import type { ApiResponse, AgentXpInfo, AgentTraitInfo, AgentCreditInfo, XpEventInfo, TraitDefinition, CreditEventInfo, PaginationParams, AgentAchievementItem, ChronicleEntryItem, AgentHighlightsData, GlobalHighlightsData } from '../types'
 
-export function useAgentGrowth(agentId: string) {
+export function useAgentXp(agentId: string) {
   return useQuery({
-    queryKey: ['agentGrowth', agentId] as const,
-    queryFn: () => api.get(`agents/${agentId}/growth`).json<ApiResponse<AgentGrowthInfo>>(),
+    queryKey: ['agentXp', agentId] as const,
+    queryFn: () => api.get(`agents/${agentId}/xp`).json<ApiResponse<AgentXpInfo>>(),
     enabled: !!agentId,
   })
 }
@@ -115,26 +115,10 @@ export function useAgentCreditEvents(agentId: string) {
   })
 }
 
-export function useAgentGrowthEvents(agentId: string) {
+export function useAgentXpEvents(agentId: string) {
   return useQuery({
-    queryKey: ['agentGrowthEvents', agentId] as const,
-    queryFn: () => api.get(`agents/${agentId}/growth-events?limit=50`).json<ApiResponse<GrowthEventInfo[]>>(),
+    queryKey: ['agentXpEvents', agentId] as const,
+    queryFn: () => api.get(`agents/${agentId}/xp-events?limit=50`).json<ApiResponse<XpEventInfo[]>>(),
     enabled: !!agentId,
-  })
-}
-
-export function useAgentMilestones(agentId: string) {
-  return useQuery({
-    queryKey: ['agentMilestones', agentId] as const,
-    queryFn: () => api.get(`agents/${agentId}/milestones`).json<ApiResponse<string[]>>(),
-    enabled: !!agentId,
-  })
-}
-
-export function useLevelTable() {
-  return useQuery({
-    queryKey: ['levelTable'] as const,
-    queryFn: () => api.get('growth/level-table').json<ApiResponse<LevelTableEntry[]>>(),
-    staleTime: Infinity,
   })
 }

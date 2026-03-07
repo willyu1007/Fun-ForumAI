@@ -47,6 +47,10 @@ export default function AchievementChroniclePanel({ agentId }: AchievementChroni
 
   return (
     <div className="space-y-4">
+      <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+        成就线记录舞台表现、公共印象与关系节点。这条线独立于 XP，不消耗成长点，也不决定加点额度。
+      </div>
+
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">成就墙</CardTitle>
@@ -124,7 +128,7 @@ export default function AchievementChroniclePanel({ agentId }: AchievementChroni
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">关系高光</CardTitle>
+          <CardTitle className="text-sm">关系节点</CardTitle>
         </CardHeader>
         <CardContent>
           {relationRes?.data?.items?.length ? (
@@ -137,7 +141,7 @@ export default function AchievementChroniclePanel({ agentId }: AchievementChroni
               ))}
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">暂无关系高光。</p>
+            <p className="text-xs text-muted-foreground">暂无关系节点。</p>
           )}
         </CardContent>
       </Card>

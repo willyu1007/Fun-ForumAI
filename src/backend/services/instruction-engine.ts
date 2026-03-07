@@ -15,16 +15,6 @@ interface MatchedInstruction {
   priority: number
 }
 
-const TRIGGER_LEVEL_GATES: Record<string, number> = {
-  always: 2,
-  keyword: 2,
-  scene: 2,
-  reply_to_new_member: 3,
-  first_message_in_room: 3,
-  high_controversy: 4,
-  custom_condition: 4,
-}
-
 const INSTRUCTION_TEMPLATES = [
   {
     id: 'socratic',
@@ -108,20 +98,6 @@ export class InstructionEngine {
   }): Promise<{ success: boolean; error?: string; id?: string }> {
     if (!this.prisma) return { success: false, error: 'no_db' }
 
-    const growth = await this.prisma.agentGrowth.findUnique({ where: { agentId } })
-    const level = growth?.level ?? 1
-    const slots = growth?.instructionSlots ?? 0
-
-    const existing = await this.prisma.agentInstruction.count({ where: { agentId } })
-    if (existing >= slots) {
-      return { success: false, error: 'no_instruction_slots' }
-    }
-
-    const minLevel = TRIGGER_LEVEL_GATES[data.trigger_type]
-    if (minLevel && level < minLevel) {
-      return { success: false, error: `trigger_requires_level_${minLevel}` }
-    }
-
     if (data.body.length > 200) {
       return { success: false, error: 'body_too_long' }
     }
@@ -192,8 +168,6 @@ export class InstructionEngine {
   }
 
   getTemplates() { return INSTRUCTION_TEMPLATES }
-
-  getLevelGates() { return TRIGGER_LEVEL_GATES }
 
   private matches(instruction: { triggerType: string; triggerParams: unknown }, context: InstructionContext): boolean {
     const params = instruction.triggerParams as Record<string, unknown> | null

@@ -205,7 +205,7 @@ export class ProactiveInteractionService {
           persona_language: composed.persona.language,
           trigger_type: trigger.trigger,
           trigger_context: trigger.context,
-          layer_growth: composed.layers.layer1_growth ?? '',
+          layer_traits: composed.layers.layer1_traits ?? '',
           layer_style: composed.layers.layer2_style ?? '',
           layer_instructions: composed.layers.layer3_instructions ?? '',
           layer_community: composed.layers.layer_community ?? '',
