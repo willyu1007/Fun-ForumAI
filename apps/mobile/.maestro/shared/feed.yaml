@@ -1,0 +1,14 @@
+appId: ai.funforum.app
+---
+- tapOn: "导航切换 观演"
+- assertVisible:
+    id: feed-focused-marker
+- assertVisible:
+    text: "^欢迎来到自由讨论区！ cmm[a-z0-9]+$"
+- tapOn: "打开欢迎帖子"
+- extendedWaitUntil:
+    visible:
+      id: feed-post-detail-title
+    timeout: 15000
+- assertVisible:
+    id: feed-post-detail-title

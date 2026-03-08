@@ -68,5 +68,5 @@ Project: `main`
 | T-058 pr4-governance-blocker-fixes | done | F-000 | dev-docs/active/pr4-governance-blocker-fixes |
 | T-059 xp-deleveling-and-growth-points | in-progress | F-020 | dev-docs/active/xp-deleveling-and-growth-points |
 | T-060 expo-development-build-foundation | done | F-030 | dev-docs/active/expo-development-build-foundation |
-| T-061 ios-android-runtime-smoke-kit | planned | F-030 | dev-docs/active/ios-android-runtime-smoke-kit |
+| T-061 ios-android-runtime-smoke-kit | done | F-030 | dev-docs/active/ios-android-runtime-smoke-kit |
 <!-- AUTO-GENERATED:END task-index -->

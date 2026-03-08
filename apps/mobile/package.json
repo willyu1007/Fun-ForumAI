@@ -2,7 +2,7 @@
   "name": "@fun-forum/mobile",
   "version": "0.0.1",
   "private": true,
-  "main": "node_modules/expo/AppEntry.js",
+  "main": "index.js",
   "scripts": {
     "dev": "expo start",
     "dev:ios": "expo start --ios",

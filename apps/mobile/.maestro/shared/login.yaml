@@ -1,0 +1,41 @@
+appId: ai.funforum.app
+---
+- tapOn: "导航切换 我的"
+- assertVisible:
+    id: profile-focused-marker
+- assertVisible:
+    id: auth-screen
+- tapOn:
+    id: auth-email-input
+- inputText: "${SMOKE_EMAIL}"
+- tapOn:
+    id: auth-password-input
+- inputText: "${SMOKE_PASSWORD}"
+- tapOn:
+    id: auth-login-button
+    repeat: 2
+- runFlow:
+    when:
+      visible: "保存密码"
+    commands:
+      - tapOn: "以后"
+- runFlow:
+    when:
+      visible: "保存密码？"
+    commands:
+      - tapOn: "以后"
+- runFlow:
+    when:
+      visible: "Not Now"
+    commands:
+      - tapOn: "Not Now"
+- extendedWaitUntil:
+    visible:
+      id: tab-agents
+    timeout: 15000
+- assertVisible:
+    id: tab-agents
+- assertVisible:
+    id: tab-xp
+- assertVisible:
+    id: tab-private

@@ -1,16 +1,19 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
+import { useIsFocused } from '@react-navigation/native'
 import { useCallback, useEffect, useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
+import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { apiGet } from '../api/client'
 import type { Agent, AgentXpInfo } from '../api/types'
 import { useAuth } from '../auth/auth-context'
 import { shared } from '../components/shared-styles'
+import { testIDs } from '../testing/test-ids'
 import type { GrowthStackParams } from './types'
-import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 
 const Stack = createNativeStackNavigator<GrowthStackParams>()
 
-function GrowthPickerScreen({ navigation }: NativeStackScreenProps<GrowthStackParams, 'GrowthView'>) {
+function GrowthPickerScreen({ navigation }: NativeStackScreenProps<GrowthStackParams, 'GrowthPicker'>) {
+  const isFocused = useIsFocused()
   const { token } = useAuth()
   const [agents, setAgents] = useState<Agent[]>([])
 
@@ -20,15 +23,19 @@ function GrowthPickerScreen({ navigation }: NativeStackScreenProps<GrowthStackPa
   }, [token])
 
   return (
-    <ScrollView contentContainerStyle={shared.card}>
+    <ScrollView contentContainerStyle={shared.card} testID={testIDs.growth.pickerScreen}>
+      {__DEV__ && isFocused ? <Text testID={testIDs.growth.focusedMarker} style={shared.metaText}>当前页: XP</Text> : null}
       <Text style={shared.cardTitle}>选择 Agent 查看 XP</Text>
       {agents.length === 0
         ? <Text style={shared.emptyText}>暂无 Agent</Text>
         : agents.map((a) => (
             <Pressable
               key={a.id}
+              accessible
+              accessibilityLabel={`查看 XP ${a.display_name}`}
+              accessibilityRole="button"
               style={shared.listRow}
-              onPress={() => navigation.setParams({ agentId: a.id })}
+              onPress={() => navigation.navigate('GrowthView', { agentId: a.id })}
             >
               <Text style={shared.itemText}>{a.display_name}</Text>
             </Pressable>
@@ -54,14 +61,19 @@ function GrowthViewScreen({ route }: NativeStackScreenProps<GrowthStackParams, '
   useEffect(() => { void refresh() }, [refresh])
 
   return (
-    <ScrollView contentContainerStyle={shared.card}>
+    <ScrollView contentContainerStyle={shared.card} testID={testIDs.growth.viewScreen}>
       <Text style={shared.cardTitle}>XP 与成长点</Text>
       <Text style={shared.metaText}>XP 只负责累计成长点，不承担成就判定或任何门槛。</Text>
-      <Pressable style={[shared.secondaryButton, busy ? shared.disabled : null]} onPress={() => void refresh()} disabled={busy}>
+      <Pressable
+        testID={testIDs.growth.refreshButton}
+        style={[shared.secondaryButton, busy ? shared.disabled : null]}
+        onPress={() => void refresh()}
+        disabled={busy}
+      >
         <Text>刷新</Text>
       </Pressable>
       {xp ? (
-        <View style={shared.detailBox}>
+        <View style={shared.detailBox} testID={testIDs.growth.summaryCard}>
           <Text style={shared.itemText}>Agent: {agentId}</Text>
           <Text style={shared.itemText}>XP: {xp.xp}</Text>
           <Text style={shared.itemText}>每 1 点成长点所需 XP: {xp.xp_per_growth_point} XP</Text>
@@ -77,7 +89,8 @@ function GrowthViewScreen({ route }: NativeStackScreenProps<GrowthStackParams, '
 export function GrowthStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: true }}>
-      <Stack.Screen name="GrowthView" component={GrowthViewScreen} options={{ title: 'XP' }} initialParams={{ agentId: '' }} />
+      <Stack.Screen name="GrowthPicker" component={GrowthPickerScreen} options={{ title: 'XP' }} />
+      <Stack.Screen name="GrowthView" component={GrowthViewScreen} options={{ title: 'XP 详情' }} />
     </Stack.Navigator>
   )
 }

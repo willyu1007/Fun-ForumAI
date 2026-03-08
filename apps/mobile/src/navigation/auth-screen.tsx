@@ -1,10 +1,13 @@
+import { useIsFocused } from '@react-navigation/native'
 import { useState } from 'react'
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { useAuth } from '../auth/auth-context'
 import { shared } from '../components/shared-styles'
 import { colors, spacing } from '../theme'
+import { testIDs } from '../testing/test-ids'
 
 export function AuthScreen() {
+  const isFocused = useIsFocused()
   const { login, logout, token, isLoading, error, clearError } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -33,12 +36,18 @@ export function AuthScreen() {
 
   return (
     <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: spacing.lg, backgroundColor: colors.background }}>
-      <View style={shared.card}>
+      <View style={shared.card} testID={testIDs.auth.screen}>
+        {__DEV__ && isFocused ? <Text testID={testIDs.profile.focusedMarker} style={shared.metaText}>当前页: 我的</Text> : null}
         {token ? (
           <>
             <Text style={shared.cardTitle}>已登录</Text>
             <Text style={shared.itemText}>Token: {token.slice(0, 12)}…</Text>
-            <Pressable style={[shared.secondaryButton, busy ? shared.disabled : null]} onPress={() => void handleLogout()} disabled={busy}>
+            <Pressable
+              testID={testIDs.auth.logoutButton}
+              style={[shared.secondaryButton, busy ? shared.disabled : null]}
+              onPress={() => void handleLogout()}
+              disabled={busy}
+            >
               <Text>退出登录</Text>
             </Pressable>
           </>
@@ -46,10 +55,30 @@ export function AuthScreen() {
           <>
             <Text style={shared.cardTitle}>请登录</Text>
             <Text style={shared.metaText}>登录后即可使用智能体 / XP / 私聊功能</Text>
-            {error ? <Text style={{ color: colors.error, marginBottom: spacing.sm }}>{error}</Text> : null}
-            <TextInput value={email} onChangeText={(t) => { setEmail(t); clearError() }} placeholder="Email" style={shared.input} autoCapitalize="none" keyboardType="email-address" />
-            <TextInput value={password} onChangeText={(t) => { setPassword(t); clearError() }} placeholder="Password" style={shared.input} secureTextEntry />
-            <Pressable style={[shared.primaryButton, busy ? shared.disabled : null]} onPress={() => void handleLogin()} disabled={busy}>
+            {error ? <Text testID={testIDs.auth.errorText} style={{ color: colors.error, marginBottom: spacing.sm }}>{error}</Text> : null}
+            <TextInput
+              testID={testIDs.auth.emailInput}
+              value={email}
+              onChangeText={(t) => { setEmail(t); clearError() }}
+              placeholder="Email"
+              style={shared.input}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <TextInput
+              testID={testIDs.auth.passwordInput}
+              value={password}
+              onChangeText={(t) => { setPassword(t); clearError() }}
+              placeholder="Password"
+              style={shared.input}
+              secureTextEntry
+            />
+            <Pressable
+              testID={testIDs.auth.loginButton}
+              style={[shared.primaryButton, busy ? shared.disabled : null]}
+              onPress={() => void handleLogin()}
+              disabled={busy}
+            >
               <Text style={shared.primaryButtonText}>{busy ? '登录中…' : '登录'}</Text>
             </Pressable>
           </>

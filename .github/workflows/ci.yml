@@ -90,6 +90,9 @@ jobs:
       - name: Mobile config check
         run: pnpm mobile:config:check
 
+      - name: Mobile smoke scaffold validate
+        run: pnpm mobile:smoke:validate
+
   launch-readiness:
     name: Launch Readiness Gate
     runs-on: ubuntu-latest

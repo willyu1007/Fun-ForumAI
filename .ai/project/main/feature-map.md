@@ -85,5 +85,5 @@ Project: `main`
 | Task | Status | Dev Docs |
 | --- | --- | --- |
 | T-060 expo-development-build-foundation | done | dev-docs/active/expo-development-build-foundation |
-| T-061 ios-android-runtime-smoke-kit | planned | dev-docs/active/ios-android-runtime-smoke-kit |
+| T-061 ios-android-runtime-smoke-kit | done | dev-docs/active/ios-android-runtime-smoke-kit |
 <!-- AUTO-GENERATED:END feature-map -->

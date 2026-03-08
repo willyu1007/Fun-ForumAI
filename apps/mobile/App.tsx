@@ -18,7 +18,7 @@ const linking: LinkingOptions<TabParams> = {
         screens: { AgentsList: 'agents' },
       },
       GrowthTab: {
-        screens: { GrowthView: 'growth/:agentId' },
+        screens: { GrowthPicker: 'growth', GrowthView: 'growth/:agentId' },
       },
       PrivateTab: {
         screens: { SessionsList: 'private', Chat: 'private/:agentId/:sessionId' },

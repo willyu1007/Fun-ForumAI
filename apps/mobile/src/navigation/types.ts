@@ -15,6 +15,7 @@ export type AgentsStackParams = {
 }
 
 export type GrowthStackParams = {
+  GrowthPicker: undefined
   GrowthView: { agentId: string }
 }
 

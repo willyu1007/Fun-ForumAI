@@ -1,0 +1,17 @@
+appId: ai.funforum.app
+---
+- tapOn: "导航切换 私聊"
+- assertVisible:
+    id: private-focused-marker
+- assertVisible: ".*${SMOKE_AGENT_NAME}.*"
+- tapOn: ".*${SMOKE_AGENT_NAME}.*"
+- tapOn:
+    id: private-create-session-button
+- assertVisible:
+    id: private-chat-screen
+- tapOn:
+    id: private-chat-input
+- inputText: "${SMOKE_PRIVATE_MESSAGE}"
+- tapOn:
+    id: private-chat-send-button
+- assertVisible: ".*${SMOKE_PRIVATE_MESSAGE}.*"

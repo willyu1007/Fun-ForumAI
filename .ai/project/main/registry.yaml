@@ -31,7 +31,7 @@ features:
     milestone_id: M-000
   - id: F-030
     title: "Mobile Runtime Delivery"
-    status: in-progress
+    status: done
     description: "Expo development build baseline and iOS/Android runtime smoke enablement for the mobile app."
     milestone_id: M-000
 
@@ -70,7 +70,7 @@ requirements:
     feature_id: F-030
   - id: R-025
     title: "iOS Android Runtime Smoke Enablement"
-    status: planned
+    status: done
     feature_id: F-030
 
 tasks:
@@ -498,10 +498,10 @@ tasks:
     updated: 2026-03-07
   - id: T-061
     slug: ios-android-runtime-smoke-kit
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-030
     requirement_ids:
       - R-025
     dev_docs_path: dev-docs/active/ios-android-runtime-smoke-kit
-    updated: 2026-03-07
+    updated: 2026-03-08

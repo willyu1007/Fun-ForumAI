@@ -1,4 +1,5 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
+import { useIsFocused } from '@react-navigation/native'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Keyboard, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { apiGet, apiPost } from '../api/client'
@@ -7,12 +8,14 @@ import { useAuth } from '../auth/auth-context'
 import { openSseStream } from '../realtime/sse'
 import { isPrivateEvent } from '../events'
 import { shared } from '../components/shared-styles'
+import { testIDs } from '../testing/test-ids'
 import type { PrivateStackParams } from './types'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 
 const Stack = createNativeStackNavigator<PrivateStackParams>()
 
 function SessionsListScreen({ navigation }: NativeStackScreenProps<PrivateStackParams, 'SessionsList'>) {
+  const isFocused = useIsFocused()
   const { token } = useAuth()
   const [agents, setAgents] = useState<Agent[]>([])
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
@@ -50,13 +53,17 @@ function SessionsListScreen({ navigation }: NativeStackScreenProps<PrivateStackP
   }, [navigation, selectedAgentId, token])
 
   return (
-    <ScrollView contentContainerStyle={shared.card}>
+    <ScrollView contentContainerStyle={shared.card} testID={testIDs.private.sessionsScreen}>
+      {__DEV__ && isFocused ? <Text testID={testIDs.private.focusedMarker} style={shared.metaText}>当前页: 私聊</Text> : null}
       <Text style={shared.cardTitle}>私聊会话</Text>
 
       <Text style={shared.sectionTitle}>选择 Agent</Text>
       {agents.map((a) => (
         <Pressable
           key={a.id}
+          accessible
+          accessibilityLabel={`选择 Agent ${a.display_name}`}
+          accessibilityRole="button"
           style={[shared.listRow, a.id === selectedAgentId ? shared.listRowSelected : null]}
           onPress={() => setSelectedAgentId(a.id)}
         >
@@ -65,10 +72,20 @@ function SessionsListScreen({ navigation }: NativeStackScreenProps<PrivateStackP
       ))}
 
       <View style={shared.buttonRow}>
-        <Pressable style={[shared.primaryButton, busy ? shared.disabled : null]} onPress={() => void createSession()} disabled={busy}>
+        <Pressable
+          testID={testIDs.private.createSessionButton}
+          style={[shared.primaryButton, busy ? shared.disabled : null]}
+          onPress={() => void createSession()}
+          disabled={busy}
+        >
           <Text style={shared.primaryButtonText}>新建会话</Text>
         </Pressable>
-        <Pressable style={[shared.secondaryButton, busy ? shared.disabled : null]} onPress={() => void refreshSessions()} disabled={busy}>
+        <Pressable
+          testID={testIDs.private.refreshButton}
+          style={[shared.secondaryButton, busy ? shared.disabled : null]}
+          onPress={() => void refreshSessions()}
+          disabled={busy}
+        >
           <Text>刷新</Text>
         </Pressable>
       </View>
@@ -78,6 +95,9 @@ function SessionsListScreen({ navigation }: NativeStackScreenProps<PrivateStackP
         : sessions.map((s) => (
             <Pressable
               key={s.id}
+              accessible
+              accessibilityLabel={`打开会话 ${s.id} ${s.status}`}
+              accessibilityRole="button"
               style={shared.listRow}
               onPress={() => navigation.navigate('Chat', { sessionId: s.id, agentId: selectedAgentId ?? s.agent_id })}
             >
@@ -146,7 +166,7 @@ function ChatScreen({ route }: NativeStackScreenProps<PrivateStackParams, 'Chat'
   }, [agentId, loadMessages, sessionId, token])
 
   return (
-    <ScrollView contentContainerStyle={shared.card} keyboardShouldPersistTaps="handled">
+    <ScrollView contentContainerStyle={shared.card} keyboardShouldPersistTaps="handled" testID={testIDs.private.chatScreen}>
       {sorted.length === 0
         ? <Text style={shared.emptyText}>暂无消息</Text>
         : sorted.map((msg) => (
@@ -157,6 +177,7 @@ function ChatScreen({ route }: NativeStackScreenProps<PrivateStackParams, 'Chat'
           ))}
 
       <TextInput
+        testID={testIDs.private.chatInput}
         value={input}
         onChangeText={setInput}
         placeholder="输入私聊消息"
@@ -165,10 +186,20 @@ function ChatScreen({ route }: NativeStackScreenProps<PrivateStackParams, 'Chat'
         onSubmitEditing={() => void send()}
       />
       <View style={shared.buttonRow}>
-        <Pressable style={[shared.primaryButton, busy ? shared.disabled : null]} onPress={() => void send()} disabled={busy}>
+        <Pressable
+          testID={testIDs.private.sendButton}
+          style={[shared.primaryButton, busy ? shared.disabled : null]}
+          onPress={() => void send()}
+          disabled={busy}
+        >
           <Text style={shared.primaryButtonText}>发送</Text>
         </Pressable>
-        <Pressable style={[shared.secondaryButton, busy ? shared.disabled : null]} onPress={() => void endSession()} disabled={busy}>
+        <Pressable
+          testID={testIDs.private.endSessionButton}
+          style={[shared.secondaryButton, busy ? shared.disabled : null]}
+          onPress={() => void endSession()}
+          disabled={busy}
+        >
           <Text>结束会话</Text>
         </Pressable>
       </View>

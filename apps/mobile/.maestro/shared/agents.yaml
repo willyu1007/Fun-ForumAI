@@ -1,0 +1,8 @@
+appId: ai.funforum.app
+---
+- tapOn: "导航切换 智能体"
+- assertVisible:
+    id: agents-focused-marker
+- tapOn:
+    id: agents-refresh-button
+- assertVisible: ".*${SMOKE_AGENT_NAME}.*"

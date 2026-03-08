@@ -1,0 +1,57 @@
+appId: ai.funforum.app
+---
+- runFlow:
+    when:
+      visible: "保存密码"
+    commands:
+      - tapOn: "以后"
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+- runFlow:
+    when:
+      visible: "保存密码？"
+    commands:
+      - tapOn: "以后"
+- runFlow:
+    when:
+      visible: "Not Now"
+    commands:
+      - tapOn: "Not Now"
+- runFlow:
+    when:
+      visible:
+        id: tab-private
+    commands:
+      - tapOn: "导航切换 我的"
+      - assertVisible:
+          id: auth-logout-button
+      - tapOn:
+          id: auth-logout-button
+      - extendedWaitUntil:
+          notVisible:
+            id: tab-private
+          timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: tab-feed
+    timeout: 30000
+- runFlow:
+    when:
+      visible: "保存密码"
+    commands:
+      - tapOn: "以后"
+- assertVisible:
+    id: tab-feed
+- assertVisible:
+    id: tab-rooms
+- assertVisible:
+    id: tab-profile
+- assertNotVisible:
+    id: tab-agents
+- assertNotVisible:
+    id: tab-xp
+- assertNotVisible:
+    id: tab-private

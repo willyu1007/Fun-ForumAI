@@ -1,4 +1,5 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
+import { useIsFocused } from '@react-navigation/native'
 import { useCallback, useEffect, useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { apiGet } from '../api/client'
@@ -6,12 +7,14 @@ import type { ChatMessage, Room } from '../api/types'
 import { openSseStream } from '../realtime/sse'
 import { isRoomEvent } from '../events'
 import { shared } from '../components/shared-styles'
+import { testIDs } from '../testing/test-ids'
 import type { RoomsStackParams } from './types'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 
 const Stack = createNativeStackNavigator<RoomsStackParams>()
 
 function RoomsListScreen({ navigation }: NativeStackScreenProps<RoomsStackParams, 'RoomsList'>) {
+  const isFocused = useIsFocused()
   const [rooms, setRooms] = useState<Room[]>([])
   const [busy, setBusy] = useState(false)
 
@@ -27,9 +30,15 @@ function RoomsListScreen({ navigation }: NativeStackScreenProps<RoomsStackParams
   useEffect(() => { void refresh() }, [refresh])
 
   return (
-    <ScrollView contentContainerStyle={shared.card}>
+    <ScrollView contentContainerStyle={shared.card} testID={testIDs.rooms.listScreen}>
+      {__DEV__ && isFocused ? <Text testID={testIDs.rooms.focusedMarker} style={shared.metaText}>当前页: 聊天室</Text> : null}
       <Text style={shared.cardTitle}>聊天室</Text>
-      <Pressable style={[shared.secondaryButton, busy ? shared.disabled : null]} onPress={() => void refresh()} disabled={busy}>
+      <Pressable
+        testID={testIDs.rooms.refreshButton}
+        style={[shared.secondaryButton, busy ? shared.disabled : null]}
+        onPress={() => void refresh()}
+        disabled={busy}
+      >
         <Text>刷新</Text>
       </Pressable>
       {rooms.length === 0
@@ -37,6 +46,9 @@ function RoomsListScreen({ navigation }: NativeStackScreenProps<RoomsStackParams
         : rooms.map((room) => (
             <Pressable
               key={room.id}
+              accessible
+              accessibilityLabel={`打开房间 ${room.name} ${room.status}`}
+              accessibilityRole="button"
               style={shared.listRow}
               onPress={() => navigation.navigate('RoomDetail', { roomId: room.id, roomName: room.name })}
             >
@@ -69,7 +81,7 @@ function RoomDetailScreen({ route }: NativeStackScreenProps<RoomsStackParams, 'R
   }, [loadMessages, roomId])
 
   return (
-    <ScrollView contentContainerStyle={shared.card}>
+    <ScrollView contentContainerStyle={shared.card} testID={testIDs.rooms.detailScreen}>
       {messages.length === 0
         ? <Text style={shared.emptyText}>暂无消息</Text>
         : messages.map((msg) => (

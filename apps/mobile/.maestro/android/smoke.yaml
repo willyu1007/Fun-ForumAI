@@ -1,0 +1,31 @@
+appId: ai.funforum.app
+name: Android smoke
+---
+- runFlow:
+    file: ../shared/anonymous.yaml
+- runFlow:
+    file: ./login.yaml
+    env:
+      SMOKE_EMAIL: "${SMOKE_EMAIL}"
+      SMOKE_PASSWORD: "${SMOKE_PASSWORD}"
+- runFlow:
+    file: ./feed.yaml
+    env:
+      FEED_POST_TITLE: "${FEED_POST_TITLE}"
+- runFlow:
+    file: ../shared/rooms.yaml
+    env:
+      SMOKE_ROOM_NAME: "${SMOKE_ROOM_NAME}"
+- runFlow:
+    file: ../shared/agents.yaml
+    env:
+      SMOKE_AGENT_NAME: "${SMOKE_AGENT_NAME}"
+- runFlow:
+    file: ../shared/xp.yaml
+    env:
+      SMOKE_AGENT_NAME: "${SMOKE_AGENT_NAME}"
+- runFlow:
+    file: ../shared/private.yaml
+    env:
+      SMOKE_AGENT_NAME: "${SMOKE_AGENT_NAME}"
+      SMOKE_PRIVATE_MESSAGE: "${SMOKE_PRIVATE_MESSAGE}"

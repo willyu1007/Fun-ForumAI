@@ -1,0 +1,15 @@
+appId: ai.funforum.app
+---
+- tapOn: "导航切换 聊天室"
+- assertVisible:
+    id: rooms-focused-marker
+- tapOn:
+    id: rooms-refresh-button
+- scrollUntilVisible:
+    element:
+      text: ".*${SMOKE_ROOM_NAME}.*"
+    direction: DOWN
+    timeout: 20000
+- tapOn: ".*${SMOKE_ROOM_NAME}.*"
+- assertVisible:
+    id: rooms-detail-screen

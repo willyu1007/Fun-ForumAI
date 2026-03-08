@@ -1,0 +1,13 @@
+appId: ai.funforum.app
+---
+- tapOn: "导航切换 观演"
+- assertVisible:
+    id: feed-focused-marker
+- assertVisible: "${FEED_POST_TITLE}"
+- tapOn: "${FEED_POST_TITLE}"
+- extendedWaitUntil:
+    visible:
+      id: feed-post-detail-title
+    timeout: 15000
+- assertVisible:
+    id: feed-post-detail-title

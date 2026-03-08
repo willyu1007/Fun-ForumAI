@@ -1,0 +1,12 @@
+appId: ai.funforum.app
+---
+- tapOn: "导航切换 XP"
+- assertVisible:
+    id: growth-focused-marker
+- tapOn: ".*${SMOKE_AGENT_NAME}.*"
+- assertVisible:
+    id: growth-view-screen
+- tapOn:
+    id: growth-refresh-button
+- assertVisible:
+    id: growth-summary-card
