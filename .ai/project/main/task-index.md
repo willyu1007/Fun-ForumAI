@@ -69,4 +69,9 @@ Project: `main`
 | T-059 xp-deleveling-and-growth-points | in-progress | F-020 | dev-docs/active/xp-deleveling-and-growth-points |
 | T-060 expo-development-build-foundation | done | F-030 | dev-docs/active/expo-development-build-foundation |
 | T-061 ios-android-runtime-smoke-kit | done | F-030 | dev-docs/active/ios-android-runtime-smoke-kit |
+| T-062 persona-provider-alignment-program | done | F-020 | dev-docs/active/persona-provider-alignment-program |
+| T-063 persona-seed-voice-contract-v1 | done | F-020 | dev-docs/active/persona-seed-voice-contract-v1 |
+| T-064 llm-gateway-routing-profiles-v1 | planned | F-020 | dev-docs/active/llm-gateway-routing-profiles-v1 |
+| T-065 persona-projection-overlay-runtime-v1 | planned | F-020 | dev-docs/active/persona-projection-overlay-runtime-v1 |
+| T-066 persona-observability-eval-v1 | planned | F-020 | dev-docs/active/persona-observability-eval-v1 |
 <!-- AUTO-GENERATED:END task-index -->

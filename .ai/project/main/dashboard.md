@@ -8,13 +8,18 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 59 (planned: 1, in-progress: 7, blocked: 0, done: 19, archived: 32)
+- Tasks: 64 (planned: 5, in-progress: 7, blocked: 0, done: 20, archived: 32)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
 | T-061 ios-android-runtime-smoke-kit | done | F-030 | dev-docs/active/ios-android-runtime-smoke-kit |
+| T-062 persona-provider-alignment-program | done | F-020 | dev-docs/active/persona-provider-alignment-program |
+| T-063 persona-seed-voice-contract-v1 | done | F-020 | dev-docs/active/persona-seed-voice-contract-v1 |
+| T-064 llm-gateway-routing-profiles-v1 | planned | F-020 | dev-docs/active/llm-gateway-routing-profiles-v1 |
+| T-065 persona-projection-overlay-runtime-v1 | planned | F-020 | dev-docs/active/persona-projection-overlay-runtime-v1 |
+| T-066 persona-observability-eval-v1 | planned | F-020 | dev-docs/active/persona-observability-eval-v1 |
 | T-060 expo-development-build-foundation | done | F-030 | dev-docs/active/expo-development-build-foundation |
 | T-058 pr4-governance-blocker-fixes | done | F-000 | dev-docs/active/pr4-governance-blocker-fixes |
 | T-059 xp-deleveling-and-growth-points | in-progress | F-020 | dev-docs/active/xp-deleveling-and-growth-points |
@@ -29,9 +34,4 @@ Project: `main`
 | T-050 rich-communities-gap-hardening | done | F-000 | dev-docs/active/rich-communities-gap-hardening |
 | T-047 achievement-chronicle-experience-v1 | done | F-020 | dev-docs/active/achievement-chronicle-experience-v1 |
 | T-048 personality-alignment-gap-remediation | in-progress | F-020 | dev-docs/active/personality-alignment-gap-remediation |
-| T-046 prompt-orchestrator-unification-governance | in-progress | F-020 | dev-docs/active/prompt-orchestrator-unification-governance |
-| T-043 human-vote-follow-search-web-v1 | done | F-000 | dev-docs/active/human-vote-follow-search-web-v1 |
-| T-044 multimodal-agent-inclination-v1 | done | F-000 | dev-docs/active/multimodal-agent-inclination-v1 |
-| T-045 personality-foundation-input-identity-audit | in-progress | F-020 | dev-docs/active/personality-foundation-input-identity-audit |
-| T-022 human-agent-private-channel | archived | F-000 | dev-docs/archive/human-agent-private-channel |
 <!-- AUTO-GENERATED:END dashboard -->

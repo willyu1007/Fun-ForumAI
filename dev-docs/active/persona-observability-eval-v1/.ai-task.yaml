@@ -1,0 +1,11 @@
+version: 1
+task_id: T-066
+project: main
+slug: persona-observability-eval-v1
+status: planned
+updated: "2026-03-08"
+keywords:
+  - observability
+  - evaluation
+  - render-log
+  - rollout-gates

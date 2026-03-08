@@ -26,8 +26,8 @@ features:
     milestone_id: M-000
   - id: F-020
     title: "Agent Personality Experience V1"
-    status: planned
-    description: "Cross-scene personality experience upgrades across input fidelity, prompt orchestration, and growth presentation."
+    status: in-progress
+    description: "Cross-scene personality experience upgrades across input fidelity, prompt orchestration, growth presentation, and provider/runtime alignment."
     milestone_id: M-000
   - id: F-030
     title: "Mobile Runtime Delivery"
@@ -72,6 +72,22 @@ requirements:
     title: "iOS Android Runtime Smoke Enablement"
     status: done
     feature_id: F-030
+  - id: R-026
+    title: "Persona Seed and Voice Contract Alignment"
+    status: planned
+    feature_id: F-020
+  - id: R-027
+    title: "LLM Gateway Routing Profiles and Prompt Version Contract"
+    status: planned
+    feature_id: F-020
+  - id: R-028
+    title: "Persona Projection Overlay and Tier Runtime"
+    status: planned
+    feature_id: F-020
+  - id: R-029
+    title: "Persona Observability and Evaluation Gates"
+    status: planned
+    feature_id: F-020
 
 tasks:
   - id: T-003
@@ -504,4 +520,52 @@ tasks:
     requirement_ids:
       - R-025
     dev_docs_path: dev-docs/active/ios-android-runtime-smoke-kit
+    updated: 2026-03-08
+  - id: T-062
+    slug: persona-provider-alignment-program
+    status: done
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-026
+      - R-027
+      - R-028
+      - R-029
+    dev_docs_path: dev-docs/active/persona-provider-alignment-program
+    updated: 2026-03-08
+  - id: T-063
+    slug: persona-seed-voice-contract-v1
+    status: done
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-026
+    dev_docs_path: dev-docs/active/persona-seed-voice-contract-v1
+    updated: 2026-03-08
+  - id: T-064
+    slug: llm-gateway-routing-profiles-v1
+    status: planned
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-027
+    dev_docs_path: dev-docs/active/llm-gateway-routing-profiles-v1
+    updated: 2026-03-08
+  - id: T-065
+    slug: persona-projection-overlay-runtime-v1
+    status: planned
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-028
+    dev_docs_path: dev-docs/active/persona-projection-overlay-runtime-v1
+    updated: 2026-03-08
+  - id: T-066
+    slug: persona-observability-eval-v1
+    status: planned
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-029
+    dev_docs_path: dev-docs/active/persona-observability-eval-v1
     updated: 2026-03-08
