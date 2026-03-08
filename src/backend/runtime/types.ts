@@ -100,6 +100,7 @@ export interface ExecutionContext {
   layers?: PromptLayers
   promptScene?: PromptScene
   runtimeEnvelope?: PersonaRuntimeEnvelope | null
+  prompt_audit?: PromptComposeAudit
 }
 
 export interface WriteInstruction {

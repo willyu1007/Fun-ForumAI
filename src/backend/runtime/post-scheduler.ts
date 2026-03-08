@@ -11,8 +11,15 @@ import type { InclinationAssetService } from '../services/inclination-asset-serv
 import type { PromptOrchestrator } from './prompt-orchestrator.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { RenderTierDecisionResult } from './persona-runtime-types.js'
+import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
+import type { PromptComposeAudit } from './types.js'
+import {
+  attachPersonaObservation,
+  buildPersonaObservation,
+  recordPersonaObservation,
+} from './persona-observation.js'
 
 export interface PostSchedulerConfig {
   postIntervalMs: number
@@ -26,6 +33,8 @@ export interface PostSchedulerDeps {
   agentService: AgentService
   responseParser: ResponseParser
   dataplaneWriter: DataPlaneWriter
+  eventRepo: EventRepository
+  agentRunRepo: AgentRunRepository
   inclinationAssetService?: Pick<InclinationAssetService, 'listPendingAgentIds' | 'getPendingForAgent'>
   promptOrchestrator?: PromptOrchestrator | null
   personaStateService?: PersonaStateService | null
@@ -112,6 +121,8 @@ export class PostScheduler {
       const persona = this.loadPersona(selected.id)
       const recentPosts = await this.getRecentPostsSummary(fallbackCommunity.id)
       const communityCatalog = this.toCommunityCatalog(communities)
+      const observationIdentity = this.resolveObservationIdentity(selected.id)
+      let promptAudit: PromptComposeAudit | null = null
       let composedLayers: {
         layer_traits: string
         layer_style: string
@@ -164,6 +175,7 @@ export class PostScheduler {
             layer_memory: composed.layers.layer5_memory ?? '',
             layer_privacy: composed.layers.layer6_privacy ?? '',
           }
+          promptAudit = composed.audit
         } catch {
           // Fall back to template-only behavior when orchestration fails.
         }
@@ -192,9 +204,40 @@ export class PostScheduler {
         layer_privacy: composedLayers.layer_privacy,
       }
 
+      const triggerEvent = this.deps.eventRepo.create({
+        event_type: 'SCHEDULED_POST_GENERATED',
+        plane: 'RUNTIME',
+        actor_type: 'agent',
+        actor_id: selected.id,
+        community_id: fallbackCommunity.id,
+        correlation_id: `scheduled-post:${selected.id}:${Date.now()}`,
+        payload_json: {
+          agent_id: selected.id,
+          fallback_community_id: fallbackCommunity.id,
+        },
+      })
+
       const messages = this.deps.promptEngine.render(PROMPT_TEMPLATE_REFS.agentCreatePost, variables)
       const llmResponse = await this.deps.llmClient.chat({ messages })
       const latencyMs = Date.now() - start
+      const observation = buildPersonaObservation({
+        sourceCallsiteId: 'post-scheduler-create-post',
+        scene: 'scheduled_post',
+        intent: 'scheduled_post',
+        visibility: 'visible',
+        coverageStatus: 'migrated_visible',
+        personaSeedCode: observationIdentity?.persona_seed_code,
+        homeVoiceLineId: observationIdentity?.home_voice_line_id,
+        promptRef: PROMPT_TEMPLATE_REFS.agentCreatePost,
+        requestedTier: 'base',
+        resolvedTier: 'base',
+        usage: llmResponse.usage,
+        latencyMs,
+        parseSuccess: false,
+        promptAudit,
+        llmProviderId: llmResponse.provider_id,
+        llmModelId: llmResponse.model,
+      })
 
       const instruction = this.deps.responseParser.parseAsScheduledPost({
         text: llmResponse.content,
@@ -203,6 +246,26 @@ export class PostScheduler {
       })
 
       if (!instruction) {
+        const failedObservation = {
+          ...observation,
+          parse_success: false,
+          error: 'Failed to parse LLM output as scheduled post',
+        }
+        this.deps.agentRunRepo.create({
+          agent_id: selected.id,
+          trigger_event_id: triggerEvent.id,
+          input_digest: `scheduled_post_parse_failed|len:${llmResponse.content.length}`,
+          output_json: attachPersonaObservation(
+            {
+              fallback_community_id: fallbackCommunity.id,
+              error: 'Failed to parse LLM output as post',
+            },
+            failedObservation,
+          ),
+          token_cost: llmResponse.usage.total_tokens,
+          latency_ms: latencyMs,
+        })
+        recordPersonaObservation(failedObservation)
         console.warn('[PostScheduler] LLM output could not be parsed as scheduled post')
         return {
           triggered: true,
@@ -220,13 +283,17 @@ export class PostScheduler {
         instruction.media_mime_type = selected.pending_asset.mime_type
       }
 
-      const triggerEventId = `scheduled-post-${Date.now()}`
       const writeResult = await this.deps.dataplaneWriter.write(
         instruction,
         selected.id,
-        triggerEventId,
+        triggerEvent.id,
         llmResponse.usage,
         latencyMs,
+        0,
+        {
+          ...observation,
+          parse_success: true,
+        },
       )
 
       if (!writeResult.success || !writeResult.content_id) {
@@ -379,6 +446,23 @@ export class PostScheduler {
       return resolveAgentIdentity(agent, latestConfig).visiblePersona
     } catch {
       return DEFAULT_PERSONA
+    }
+  }
+
+  private resolveObservationIdentity(agentId: string): {
+    persona_seed_code: import('../../shared/agent-persona-catalog.js').PersonaSeedCode
+    home_voice_line_id: import('../../shared/agent-persona-catalog.js').VoiceLineId
+  } | null {
+    try {
+      const agent = this.deps.agentService.getAgent(agentId)
+      const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+      const resolved = resolveAgentIdentity(agent, latestConfig)
+      return {
+        persona_seed_code: resolved.summary.persona_seed_code,
+        home_voice_line_id: resolved.summary.home_voice_line_id,
+      }
+    } catch {
+      return null
     }
   }
 

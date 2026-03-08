@@ -1,3 +1,8 @@
+import type {
+  PersonaObservationCounters,
+  PersonaObservationV1,
+} from './persona-observation.js'
+
 export interface RuntimeFeatureMetricsSnapshot {
   allocator: {
     ppr_hits: number
@@ -15,6 +20,7 @@ export interface RuntimeFeatureMetricsSnapshot {
     trimmed_categories: number
     cache_hit_calls: number
   }
+  persona: PersonaObservationCounters
   updated_at: string
 }
 
@@ -35,6 +41,26 @@ class RuntimeFeatureMetrics {
       trim_applied_calls: 0,
       trimmed_categories: 0,
       cache_hit_calls: 0,
+    },
+    persona: {
+      observed_runs_total: 0,
+      observed_visible_runs_total: 0,
+      observed_hidden_runs_total: 0,
+      migrated_visible_runs_total: 0,
+      legacy_partial_runs_total: 0,
+      hidden_partial_runs_total: 0,
+      complete_runs_total: 0,
+      parse_attempt_total: 0,
+      parse_success_total: 0,
+      identity_write_attempt_total: 0,
+      identity_write_success_total: 0,
+      fallback_none_total: 0,
+      fallback_same_line_total: 0,
+      fallback_same_family_total: 0,
+      fallback_cross_family_hidden_total: 0,
+      fallback_rare_reanchor_total: 0,
+      overlay_activation_total: 0,
+      rare_reanchor_total: 0,
     },
     updated_at: new Date(0).toISOString(),
   }
@@ -76,6 +102,66 @@ class RuntimeFeatureMetrics {
     if (input.lintWarnings.includes('cache_hit')) {
       this.snapshotState.prompt.cache_hit_calls += 1
     }
+    this.touch()
+  }
+
+  recordPersonaObservation(
+    observation: PersonaObservationV1,
+    opts: { complete: boolean },
+  ): void {
+    const persona = this.snapshotState.persona
+    persona.observed_runs_total += 1
+
+    if (observation.visibility === 'visible') {
+      persona.observed_visible_runs_total += 1
+    } else {
+      persona.observed_hidden_runs_total += 1
+    }
+
+    if (observation.coverage_status === 'migrated_visible') {
+      persona.migrated_visible_runs_total += 1
+    } else if (observation.coverage_status === 'legacy_partial') {
+      persona.legacy_partial_runs_total += 1
+    } else if (observation.coverage_status === 'hidden_partial') {
+      persona.hidden_partial_runs_total += 1
+    }
+
+    if (opts.complete) {
+      persona.complete_runs_total += 1
+    }
+
+    if (typeof observation.parse_success === 'boolean') {
+      persona.parse_attempt_total += 1
+      if (observation.parse_success) {
+        persona.parse_success_total += 1
+      }
+    }
+
+    if (observation.identity_write.attempted) {
+      persona.identity_write_attempt_total += 1
+      if (observation.identity_write.success) {
+        persona.identity_write_success_total += 1
+      }
+    }
+
+    const fallback = observation.render_decision?.fallback_level ?? 'none'
+    if (fallback === 'none') {
+      persona.fallback_none_total += 1
+    } else if (fallback === 'same-line') {
+      persona.fallback_same_line_total += 1
+    } else if (fallback === 'same-family') {
+      persona.fallback_same_family_total += 1
+    } else if (fallback === 'cross-family-hidden') {
+      persona.fallback_cross_family_hidden_total += 1
+    } else if (fallback === 'rare-reanchor') {
+      persona.fallback_rare_reanchor_total += 1
+      persona.rare_reanchor_total += 1
+    }
+
+    if (observation.runtime_state?.active_overlay_id) {
+      persona.overlay_activation_total += 1
+    }
+
     this.touch()
   }
 

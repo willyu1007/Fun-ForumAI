@@ -18,6 +18,7 @@
 - `PromptOrchestrator` 已支持 `shortTermState`、`sceneRule`、budget/trim/audit；
 - `stats` 既影响 prompt 又影响 chat tick；
 - 但目前没有统一 `persona_vector`、stateful overlay 或 tier floor 规则。
+- `T-066` 已开始消费 runtime 侧观测字段，因此本包需要预留 `active_overlay_id / overlay_cause / overlay_rng_seed / drift_score / tier_floor / tier_floor_reason` 的合同位置。
 
 ## Acceptance criteria (high level)
 - [x] 冻结 `PersonaVector / PersonaState / OverlayTemplate / ActiveOverlay` 接口。

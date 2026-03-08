@@ -5,6 +5,8 @@ import type { XpService } from './xp-service.js'
 import type { NurtureOrchestrator } from './nurture-orchestrator.js'
 import type { RelationService } from './relation-service.js'
 import type { StatsService } from './stats-service.js'
+import type { AgentService } from './agent-service.js'
+import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type {
   AgentMemory,
   AgentPrivacySettingsEntity,
@@ -15,6 +17,12 @@ import type {
 } from '../repos/types.js'
 import { config } from '../lib/config.js'
 import { ValidationError } from '../lib/errors.js'
+import { resolveAgentIdentity } from '../identity/agent-identity.js'
+import {
+  attachPersonaObservation,
+  buildPersonaObservation,
+  recordPersonaObservation,
+} from '../runtime/persona-observation.js'
 
 const DECAY_FACTOR_PER_DAY = 0.995
 const FORGET_THRESHOLD = 0.05
@@ -24,6 +32,9 @@ export interface MemoryServiceDeps {
   memoryRepo: MemoryRepository
   channelRepo: PrivateChannelRepository
   llmClient: LlmClient
+  agentService?: AgentService | null
+  eventRepo?: EventRepository | null
+  agentRunRepo?: AgentRunRepository | null
   xpService?: XpService | null
   nurtureOrchestrator?: NurtureOrchestrator | null
   relationService?: RelationService | null
@@ -75,6 +86,7 @@ export class MemoryService {
         .map((m) => `${m.author_type === 'HUMAN' ? 'Owner' : 'Agent'}: ${m.content}`)
         .join('\n\n')
 
+      const startMs = Date.now()
       const llmResponse = await this.deps.llmClient.chat({
         messages: [
           {
@@ -104,6 +116,17 @@ export class MemoryService {
       })
 
       await this.deps.channelRepo.updateDigestStatus(sessionId, 'COMPLETED')
+      this.recordDigestRun({
+        agentId: session.agent_id,
+        sessionId,
+        memoryId: memory.id,
+        summaryText: parsed.summary_text,
+        usage: llmResponse.usage,
+        latencyMs: Date.now() - startMs,
+        parseSuccess: parsed.parse_success,
+        llmProviderId: llmResponse.provider_id,
+        llmModelId: llmResponse.model,
+      })
 
       if (config.features.nurturePipelineV2 && this.deps.nurtureOrchestrator) {
         this.deps.nurtureOrchestrator.onPrivateDigestCompleted(session.agent_id, msgCount, {
@@ -364,6 +387,7 @@ export class MemoryService {
     key_facts: string[]
     sentiment: string
     importance_score: number
+    parse_success: boolean
   } {
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/)
@@ -377,6 +401,7 @@ export class MemoryService {
           importance_score: typeof parsed.importance_score === 'number'
             ? Math.min(1, Math.max(0, parsed.importance_score))
             : 0.5,
+          parse_success: true,
         }
       }
     } catch {
@@ -389,6 +414,98 @@ export class MemoryService {
       key_facts: [],
       sentiment: 'neutral',
       importance_score: 0.5,
+      parse_success: false,
+    }
+  }
+
+  private recordDigestRun(input: {
+    agentId: string
+    sessionId: string
+    memoryId: string
+    summaryText: string
+    usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
+    latencyMs: number
+    parseSuccess: boolean
+    llmProviderId?: string
+    llmModelId?: string
+  }): void {
+    if (!this.deps.eventRepo || !this.deps.agentRunRepo) {
+      return
+    }
+
+    const identity = this.resolveObservationIdentity(input.agentId)
+    const observation = buildPersonaObservation({
+      sourceCallsiteId: 'memory-private-digest',
+      scene: 'background_hidden',
+      intent: 'private_digest',
+      visibility: 'hidden',
+      coverageStatus: 'hidden_partial',
+      personaSeedCode: identity?.persona_seed_code,
+      homeVoiceLineId: identity?.home_voice_line_id,
+      routingVoiceLineId: 'deepseek-director-v1',
+      promptRef: { id: 'internal-private-chat-digest', version: 1 },
+      requestedTier: 'premium',
+      resolvedTier: 'premium',
+      usage: input.usage,
+      latencyMs: input.latencyMs,
+      parseSuccess: input.parseSuccess,
+      llmProviderId: input.llmProviderId,
+      llmModelId: input.llmModelId,
+    })
+
+    try {
+      const event = this.deps.eventRepo.create({
+        event_type: 'PRIVATE_DIGEST_GENERATED',
+        plane: 'RUNTIME',
+        actor_type: 'agent',
+        actor_id: input.agentId,
+        correlation_id: `private-session:${input.sessionId}`,
+        payload_json: {
+          agent_id: input.agentId,
+          session_id: input.sessionId,
+          memory_id: input.memoryId,
+        },
+      })
+
+      this.deps.agentRunRepo.create({
+        agent_id: input.agentId,
+        trigger_event_id: event.id,
+        input_digest: `private_digest|session:${input.sessionId}`,
+        output_json: attachPersonaObservation(
+          {
+            session_id: input.sessionId,
+            memory_id: input.memoryId,
+            summary_len: input.summaryText.length,
+          },
+          observation,
+        ),
+        token_cost: input.usage.total_tokens,
+        latency_ms: input.latencyMs,
+      })
+      recordPersonaObservation(observation)
+    } catch (err) {
+      console.error('[MemoryService] AgentRun record failed:', err)
+    }
+  }
+
+  private resolveObservationIdentity(agentId: string): {
+    persona_seed_code: import('../../shared/agent-persona-catalog.js').PersonaSeedCode
+    home_voice_line_id: import('../../shared/agent-persona-catalog.js').VoiceLineId
+  } | null {
+    if (!this.deps.agentService) {
+      return null
+    }
+
+    try {
+      const agent = this.deps.agentService.getAgent(agentId)
+      const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+      const resolved = resolveAgentIdentity(agent, latestConfig)
+      return {
+        persona_seed_code: resolved.summary.persona_seed_code,
+        home_voice_line_id: resolved.summary.home_voice_line_id,
+      }
+    } catch {
+      return null
     }
   }
 

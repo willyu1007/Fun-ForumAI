@@ -209,6 +209,8 @@ export function createCoreServices(deps: {
     llmClient,
     promptEngine,
     sseHub,
+    eventRepo: repos.eventRepo,
+    agentRunRepo: repos.agentRunRepo,
     promptLayerService: null,
     promptOrchestrator: null,
     personaStateService,

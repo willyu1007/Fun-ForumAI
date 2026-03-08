@@ -14,6 +14,7 @@ function withLayerStackFlag<T>(enabled: boolean, run: () => Promise<T>): Promise
 
 describe('ProactiveInteractionService', () => {
   it('uses PromptOrchestrator + PromptEngine for proactive opening', async () => {
+    const agentRunRepo = { create: vi.fn() }
     const channelRepo = {
       listSessions: vi.fn(async () => ({ items: [], next_cursor: null })),
       createSession: vi.fn(async () => ({
@@ -84,6 +85,8 @@ describe('ProactiveInteractionService', () => {
           },
         })),
       } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: agentRunRepo as never,
       notificationService: { create: vi.fn(async () => ({ id: 'notif-1' })) } as never,
     })
 
@@ -101,6 +104,14 @@ describe('ProactiveInteractionService', () => {
           trigger_type: 'vote_received',
         }),
       )
+      expect(agentRunRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+        output_json: expect.objectContaining({
+          persona_observation: expect.objectContaining({
+            source_callsite_id: 'proactive-orchestrated-opening',
+            scene: 'proactive_dm',
+          }),
+        }),
+      }))
     })
   })
 
@@ -183,6 +194,8 @@ describe('ProactiveInteractionService', () => {
           },
         })),
       } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
       personaStateService: {
         recordVisibleRender,
       } as never,
@@ -222,6 +235,7 @@ describe('ProactiveInteractionService', () => {
       content: 'legacy opening',
       usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 },
     }))
+    const agentRunRepo = { create: vi.fn() }
 
     const service = new ProactiveInteractionService({
       channelRepo: {
@@ -273,6 +287,8 @@ describe('ProactiveInteractionService', () => {
           throw new Error('compose failed')
         }),
       } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: agentRunRepo as never,
       notificationService: { create: vi.fn(async () => ({ id: 'notif-1' })) } as never,
     })
 
@@ -288,6 +304,13 @@ describe('ProactiveInteractionService', () => {
       expect(firstCall).toBeDefined()
       const call = firstCall![0] as unknown as { messages: Array<{ role: string; content: string }> }
       expect(call.messages[0].content).toContain('主动和你的 Owner')
+      expect(agentRunRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+        output_json: expect.objectContaining({
+          persona_observation: expect.objectContaining({
+            source_callsite_id: 'proactive-legacy-opening',
+          }),
+        }),
+      }))
     })
   })
 })

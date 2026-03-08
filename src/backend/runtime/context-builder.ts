@@ -115,6 +115,7 @@ export class ContextBuilder {
         ctx.persona = composed.persona
         ctx.layers = composed.layers
         ctx.runtimeEnvelope = composed.runtimeEnvelope ?? null
+        ctx.prompt_audit = composed.audit
         return ctx
       } catch {
         // Fall through to legacy layer path on any failure.
@@ -123,11 +124,7 @@ export class ContextBuilder {
 
     if (config.features.layerStackV2 && this.deps.promptLayerService) {
       try {
-        const promptLayerService = this.deps.promptLayerService
-        const composeLayersWithAudit =
-          (promptLayerService as Partial<Pick<PromptLayerService, 'composeLayersWithAudit'>>)
-            .composeLayersWithAudit
-        const composeInput = {
+        const composed = await this.deps.promptLayerService.composeLayersWithAudit({
           agentId: ctx.agent.agent_id,
           scene,
           conversationText,
@@ -138,21 +135,13 @@ export class ContextBuilder {
             body: c.body,
           })),
           targetCommentId: ctx.targetComment?.id,
+        }, { suppressAuditLog: true })
+        if (composed.persona) {
+          ctx.persona = composed.persona
         }
-        if (composeLayersWithAudit) {
-          const composed = await composeLayersWithAudit.call(
-            promptLayerService,
-            composeInput,
-            { suppressAuditLog: true },
-          )
-          if (composed.persona) {
-            ctx.persona = composed.persona
-          }
-          ctx.layers = composed.layers
-          ctx.runtimeEnvelope = composed.runtimeEnvelope ?? null
-        } else {
-          ctx.layers = await promptLayerService.composeLayers(composeInput)
-        }
+        ctx.layers = composed.layers
+        ctx.runtimeEnvelope = composed.runtimeEnvelope ?? null
+        ctx.prompt_audit = composed.audit
         return ctx
       } catch {
         // Fall through to legacy layer path on any failure.

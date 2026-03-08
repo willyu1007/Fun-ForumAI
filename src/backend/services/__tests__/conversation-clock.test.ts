@@ -56,6 +56,12 @@ describe('ConversationClock', () => {
       sseHub: {
         broadcastToRoom: vi.fn(),
       } as never,
+      eventRepo: {
+        create: vi.fn(() => ({ id: 'evt-1' })),
+      } as never,
+      agentRunRepo: {
+        create: vi.fn(),
+      } as never,
       promptOrchestrator: {
         isSceneEnabled: vi.fn(() => true),
         compose: vi.fn(async () => ({

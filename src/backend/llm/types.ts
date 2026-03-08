@@ -28,6 +28,7 @@ export interface LlmResponse {
   usage: LlmTokenUsage
   model: string
   finish_reason: string | null
+  provider_id?: string
 }
 
 // ─── Provider abstraction ───────────────────────────────────

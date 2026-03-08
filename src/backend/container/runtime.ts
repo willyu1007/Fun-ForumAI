@@ -23,6 +23,7 @@ import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { XpService } from '../services/xp-service.js'
 import type { NurtureOrchestrator } from '../services/nurture-orchestrator.js'
 import type { AgentRunRepository } from '../repos/event-repository.js'
+import type { EventRepository } from '../repos/event-repository.js'
 import type { PostRepository } from '../repos/post-repository.js'
 import type { CommentRepository } from '../repos/comment-repository.js'
 import { config } from '../lib/config.js'
@@ -44,6 +45,7 @@ export function createRuntime(deps: {
   memoryService: import('../services/memory-service.js').MemoryService | null
   xpService: XpService | null
   nurtureOrchestrator: NurtureOrchestrator | null
+  eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
   postRepo: PostRepository
   commentRepo: CommentRepository
@@ -86,6 +88,8 @@ export function createRuntime(deps: {
     contextBuilder,
     responseParser,
     dataplaneWriter,
+    agentRunRepo: deps.agentRunRepo,
+    agentService: deps.agentService,
     personaStateService: deps.personaStateService,
   })
 
@@ -97,6 +101,8 @@ export function createRuntime(deps: {
       agentService: deps.agentService,
       responseParser,
       dataplaneWriter,
+      eventRepo: deps.eventRepo,
+      agentRunRepo: deps.agentRunRepo,
       inclinationAssetService: deps.inclinationAssetService,
       promptOrchestrator: deps.promptOrchestrator,
       personaStateService: deps.personaStateService,

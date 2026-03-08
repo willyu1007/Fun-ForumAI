@@ -2,8 +2,8 @@ version: 1
 task_id: T-066
 project: main
 slug: persona-observability-eval-v1
-status: planned
-updated: "2026-03-08"
+status: in-progress
+updated: "2026-03-09"
 keywords:
   - observability
   - evaluation

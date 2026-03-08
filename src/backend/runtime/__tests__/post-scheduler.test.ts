@@ -39,6 +39,18 @@ function createDeps(
           },
         ],
       })),
+      getAgent: vi.fn(() => ({
+        id: 'agent-1',
+        owner_id: 'user-1',
+        display_name: 'Agent One',
+        avatar_url: null,
+        model: '',
+        persona_version: 1,
+        reputation_score: 0,
+        status: 'ACTIVE',
+        created_at: new Date('2026-03-09T00:00:00.000Z'),
+        updated_at: new Date('2026-03-09T00:00:00.000Z'),
+      })),
       getLatestConfig: vi.fn(() => null),
     } as unknown as PostSchedulerDeps['agentService'],
     responseParser: {
@@ -52,6 +64,12 @@ function createDeps(
     dataplaneWriter: {
       write: writeImpl,
     } as unknown as PostSchedulerDeps['dataplaneWriter'],
+    eventRepo: {
+      create: vi.fn(() => ({ id: 'evt-1' })),
+    } as unknown as PostSchedulerDeps['eventRepo'],
+    agentRunRepo: {
+      create: vi.fn(),
+    } as unknown as PostSchedulerDeps['agentRunRepo'],
     ...overrides,
   }
 }

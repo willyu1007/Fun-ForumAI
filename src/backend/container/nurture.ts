@@ -148,6 +148,9 @@ export async function createNurtureEngines(deps: {
       memoryRepo,
       channelRepo,
       llmClient,
+      agentService,
+      eventRepo: repos.eventRepo,
+      agentRunRepo: repos.agentRunRepo,
       xpService: xpEngine,
       nurtureOrchestrator,
       relationService,
@@ -182,6 +185,9 @@ export async function createNurtureEngines(deps: {
       roomRepo: repos.roomRepo,
       messageRepo: repos.messageRepo,
       memoryService,
+      agentService,
+      eventRepo: repos.eventRepo,
+      agentRunRepo: repos.agentRunRepo,
     })
     publicObservationEventHandler = new PublicObservationEventHandler({
       digestService: publicObservationDigestService,
@@ -192,6 +198,8 @@ export async function createNurtureEngines(deps: {
       agentService,
       llmClient,
       personaStateService,
+      eventRepo: repos.eventRepo,
+      agentRunRepo: repos.agentRunRepo,
       notificationService,
     })
 

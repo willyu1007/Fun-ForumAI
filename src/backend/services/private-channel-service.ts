@@ -1,5 +1,5 @@
 import type { LlmClient } from '../llm/llm-client.js'
-import type { LlmMessage } from '../llm/types.js'
+import type { LlmMessage, LlmResponse } from '../llm/types.js'
 import type { PromptEngine } from '../llm/prompt-engine.js'
 import type { AgentService } from './agent-service.js'
 import type { BudgetService } from './budget-service.js'
@@ -11,6 +11,7 @@ import type { SseHub } from '../sse/hub.js'
 import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
 import type { RenderTierDecisionResult } from '../runtime/persona-runtime-types.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
+import type { PromptComposeAudit } from '../runtime/types.js'
 import type {
   PrivateSession,
   PrivateMessage,
@@ -21,6 +22,12 @@ import type {
 import { AppError, NotFoundError, ValidationError, ForbiddenError } from '../lib/errors.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import type { PersonaStateService } from './persona-state-service.js'
+import {
+  attachPersonaObservation,
+  buildPersonaObservation,
+  type PersonaObservationV1,
+  recordPersonaObservation,
+} from '../runtime/persona-observation.js'
 
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
 
@@ -161,6 +168,25 @@ export class PrivateChannelService {
       temperature: 0.8,
     })
     const latencyMs = Date.now() - startMs
+    const identity = this.resolveObservationIdentity(session.agent_id)
+    const observation = buildPersonaObservation({
+      sourceCallsiteId: 'private-channel-reply',
+      scene: 'private_chat',
+      intent: 'private_reply',
+      visibility: 'visible',
+      coverageStatus: 'migrated_visible',
+      personaSeedCode: identity?.persona_seed_code,
+      homeVoiceLineId: identity?.home_voice_line_id,
+      promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
+      requestedTier: 'base',
+      resolvedTier: 'base',
+      usage: llmResponse.usage,
+      latencyMs,
+      parseSuccess: true,
+      promptAudit: replyPlan.promptAudit,
+      llmProviderId: llmResponse.provider_id,
+      llmModelId: llmResponse.model,
+    })
 
     const agentReply = await this.deps.channelRepo.createMessage({
       session_id: sessionId,
@@ -183,7 +209,7 @@ export class PrivateChannelService {
       })
     }
 
-    this.recordAuditTrail(session, content.trim(), llmResponse, latencyMs)
+    this.recordAuditTrail(session, content.trim(), llmResponse, latencyMs, observation)
 
     return {
       human_message: humanMsg,
@@ -195,8 +221,9 @@ export class PrivateChannelService {
   private recordAuditTrail(
     session: PrivateSession,
     inputContent: string,
-    llmResponse: { content: string; usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } },
+    llmResponse: LlmResponse,
     latencyMs: number,
+    observation: PersonaObservationV1,
   ): void {
     const agentId = session.agent_id
 
@@ -215,10 +242,17 @@ export class PrivateChannelService {
         agent_id: agentId,
         trigger_event_id: event.id,
         input_digest: `private_chat|session:${session.id}|len:${inputContent.length}`,
-        output_json: { reply_len: llmResponse.content.length, session_id: session.id },
+        output_json: attachPersonaObservation(
+          {
+            reply_len: llmResponse.content.length,
+            session_id: session.id,
+          },
+          observation,
+        ),
         token_cost: llmResponse.usage.total_tokens,
         latency_ms: latencyMs,
       })
+      recordPersonaObservation(observation)
     } catch (err) {
       console.error('[PrivateChannel] AgentRun record failed:', err)
     }
@@ -314,7 +348,11 @@ export class PrivateChannelService {
   private async buildMessagesForReply(
     session: PrivateSession,
     currentMessage: string,
-  ): Promise<{ messages: LlmMessage[]; renderDecision: RenderTierDecisionResult | null }> {
+  ): Promise<{
+    messages: LlmMessage[]
+    renderDecision: RenderTierDecisionResult | null
+    promptAudit: PromptComposeAudit | null
+  }> {
     if (this.deps.promptEngine && this.deps.promptOrchestrator) {
       try {
         return await this.buildChatMessagesWithOrchestrator(session, currentMessage)
@@ -325,13 +363,18 @@ export class PrivateChannelService {
     return {
       messages: await this.buildChatMessages(session, currentMessage),
       renderDecision: null,
+      promptAudit: null,
     }
   }
 
   private async buildChatMessagesWithOrchestrator(
     session: PrivateSession,
     currentMessage: string,
-  ): Promise<{ messages: LlmMessage[]; renderDecision: RenderTierDecisionResult | null }> {
+  ): Promise<{
+    messages: LlmMessage[]
+    renderDecision: RenderTierDecisionResult | null
+    promptAudit: PromptComposeAudit
+  }> {
     const history = await this.deps.channelRepo.listMessages(session.id, { limit: 20 })
     const conversationText = [...history.items.map((item) => item.content), currentMessage].join(' ').trim()
     const topicHints = currentMessage
@@ -375,6 +418,7 @@ export class PrivateChannelService {
     return {
       messages: this.deps.promptEngine!.render(PROMPT_TEMPLATE_REFS.agentPrivateChatReply, variables),
       renderDecision: composed.runtimeEnvelope?.renderTierDecision ?? null,
+      promptAudit: composed.audit,
     }
   }
 
@@ -396,6 +440,23 @@ export class PrivateChannelService {
         return `[${sourceLabel} | 重要度: ${m.importance_score.toFixed(1)}]\n${m.summary_text}`
       })
       .join('\n\n')
+  }
+
+  private resolveObservationIdentity(agentId: string): {
+    persona_seed_code: import('../../shared/agent-persona-catalog.js').PersonaSeedCode
+    home_voice_line_id: import('../../shared/agent-persona-catalog.js').VoiceLineId
+  } | null {
+    try {
+      const agent = this.deps.agentService.getAgent(agentId)
+      const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+      const resolved = resolveAgentIdentity(agent, latestConfig)
+      return {
+        persona_seed_code: resolved.summary.persona_seed_code,
+        home_voice_line_id: resolved.summary.home_voice_line_id,
+      }
+    } catch {
+      return null
+    }
   }
 }
 

@@ -1,8 +1,8 @@
 # 00 Overview — persona-observability-eval-v1 (T-066)
 
 ## Status
-- State: planned
-- Next step: 冻结 render log schema、eval rubric 与 rollout gate 表。
+- State: in-progress
+- Next step: 收集带 `migrated_visible` 的真实样本，进入 blind review / staging shadow logging。
 
 ## Goal
 定义人格/声线/provider 的观测、评测与灰度门槛，让后续实现具备可解释、可归因、可回滚的质量控制。
@@ -18,7 +18,8 @@
 - 哪条 line 更适合哪个 seed
 
 ## Acceptance criteria (high level)
-- [ ] 冻结 render log schema 与最小必填字段。
-- [ ] 冻结 blind review rubric 与 offline replay/eval set 规范。
-- [ ] 冻结 rollout gate、rollback trigger 与失败归因口径。
-- [ ] 明确与 `T-064/T-065` 的 contract 依赖关系。
+- [x] 冻结 render log schema 与最小必填字段。
+- [x] 冻结 blind review rubric 与 offline replay/eval set 规范。
+- [x] 冻结 rollout gate、rollback trigger 与失败归因口径。
+- [x] 明确与 `T-064/T-065` 的 contract 依赖关系。
+- [x] 将观测合同接入 `agent_runs`、`GET /v1/admin/runtime/features` 与 `GET /v1/agents/:agentId/runs`。

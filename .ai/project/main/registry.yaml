@@ -562,10 +562,10 @@ tasks:
     updated: 2026-03-08
   - id: T-066
     slug: persona-observability-eval-v1
-    status: planned
+    status: in-progress
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-029
     dev_docs_path: dev-docs/active/persona-observability-eval-v1
-    updated: 2026-03-08
+    updated: 2026-03-09

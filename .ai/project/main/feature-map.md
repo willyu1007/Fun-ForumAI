@@ -83,7 +83,7 @@ Project: `main`
 | T-063 persona-seed-voice-contract-v1 | done | dev-docs/active/persona-seed-voice-contract-v1 |
 | T-064 llm-gateway-routing-profiles-v1 | done | dev-docs/active/llm-gateway-routing-profiles-v1 |
 | T-065 persona-projection-overlay-runtime-v1 | planned | dev-docs/active/persona-projection-overlay-runtime-v1 |
-| T-066 persona-observability-eval-v1 | planned | dev-docs/active/persona-observability-eval-v1 |
+| T-066 persona-observability-eval-v1 | in-progress | dev-docs/active/persona-observability-eval-v1 |
 
 ### F-030 Mobile Runtime Delivery
 

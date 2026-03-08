@@ -7,6 +7,11 @@ import type { WriteInstruction } from './types.js'
 import type { LlmTokenUsage } from '../llm/types.js'
 import type { ChatMessageKind } from '../repos/types.js'
 import { config } from '../lib/config.js'
+import type { PersonaObservationV1 } from './persona-observation.js'
+import {
+  attachPersonaObservation,
+  recordPersonaObservation,
+} from './persona-observation.js'
 
 export interface DataPlaneWriterDeps {
   forumWriteService: ForumWriteService
@@ -37,6 +42,7 @@ export class DataPlaneWriter {
     usage: LlmTokenUsage,
     latencyMs: number,
     sourceChainDepth = 0,
+    observation?: PersonaObservationV1 | null,
   ): Promise<WriteResult> {
     const runId = `runtime-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const nextChainDepth = Math.max(0, Math.floor(sourceChainDepth)) + 1
@@ -46,7 +52,15 @@ export class DataPlaneWriter {
 
       if (instruction.action === 'create_message') {
         if (!this.deps.chatService) {
-          return { success: false, error: 'ChatService not configured' }
+          return this.recordFailedWrite({
+            instruction,
+            agentId,
+            triggerEventId,
+            usage,
+            latencyMs,
+            observation,
+            error: 'ChatService not configured',
+          })
         }
         const msg = await this.deps.chatService.sendMessage({
           room_id: instruction.room_id!,
@@ -94,10 +108,15 @@ export class DataPlaneWriter {
         agent_id: agentId,
         trigger_event_id: triggerEventId,
         input_digest: `action:${instruction.action}|body_len:${instruction.body.length}`,
-        output_json: { content_id: contentId, action: instruction.action },
+        output_json: observation
+          ? attachPersonaObservation({ content_id: contentId, action: instruction.action }, observation)
+          : { content_id: contentId, action: instruction.action },
         token_cost: usage.total_tokens,
         latency_ms: latencyMs,
       })
+      if (observation) {
+        recordPersonaObservation(observation)
+      }
 
       if (instruction.action !== 'create_message') {
         const xpSource = instruction.action === 'create_post' ? 'forum_post' : 'forum_comment'
@@ -119,7 +138,56 @@ export class DataPlaneWriter {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown write error'
       console.error(`[DataPlaneWriter] Write failed for agent ${agentId}: ${message}`)
-      return { success: false, error: message }
+      return this.recordFailedWrite({
+        instruction,
+        agentId,
+        triggerEventId,
+        usage,
+        latencyMs,
+        observation,
+        error: message,
+      })
     }
+  }
+
+  private recordFailedWrite(input: {
+    instruction: WriteInstruction
+    agentId: string
+    triggerEventId: string
+    usage: LlmTokenUsage
+    latencyMs: number
+    observation?: PersonaObservationV1 | null
+    error: string
+  }): WriteResult {
+    if (!input.observation) {
+      return { success: false, error: input.error }
+    }
+
+    const failedObservation: PersonaObservationV1 = {
+      ...input.observation,
+      error: input.error,
+    }
+
+    try {
+      this.deps.agentRunRepo.create({
+        agent_id: input.agentId,
+        trigger_event_id: input.triggerEventId,
+        input_digest: `write_failed|action:${input.instruction.action}|body_len:${input.instruction.body.length}`,
+        output_json: attachPersonaObservation(
+          {
+            action: input.instruction.action,
+            error: input.error,
+          },
+          failedObservation,
+        ),
+        token_cost: input.usage.total_tokens,
+        latency_ms: input.latencyMs,
+      })
+      recordPersonaObservation(failedObservation)
+    } catch (runErr) {
+      console.error('[DataPlaneWriter] Failed to persist failed-write AgentRun:', runErr)
+    }
+
+    return { success: false, error: input.error }
   }
 }

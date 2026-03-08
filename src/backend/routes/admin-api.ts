@@ -3,6 +3,7 @@ import { requireHumanAuth, requireAdmin } from '../middleware/human-auth.js'
 import { governanceAdapter, runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, relationService } from '../container.js'
 import { config } from '../lib/config.js'
 import { richCommunitiesMetrics } from '../lib/rich-communities-metrics.js'
+import { buildPersonaObservabilitySummary } from '../runtime/persona-observation.js'
 import { runtimeFeatureMetrics } from '../runtime/runtime-feature-metrics.js'
 import { validate } from '../validation/validate.js'
 import { governanceActionSchema } from '../validation/schemas.js'
@@ -59,6 +60,7 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, (_
         llm_model: config.llm.model,
       },
       counters,
+      persona_observability: buildPersonaObservabilitySummary(counters.persona),
       rich_communities: richCounters,
     },
   })

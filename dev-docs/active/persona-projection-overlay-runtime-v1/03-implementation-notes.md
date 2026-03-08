@@ -17,3 +17,10 @@
   - `AgentExecutor`、`ConversationClock`、`PrivateChannelService`、`ProactiveInteractionService`、`PostScheduler` 在可见内容成功落地后调用 `recordVisibleRender`。
   - `MemoryService` digest hook 增加 `importance_score/sentiment`，供 persona writeback 使用。
   - `agent-growth-api` 已接入 owner style pin、trait、instruction 写回入口。
+- 2026-03-09 与 `T-066` 对齐：观测侧已先消费以下 runtime 字段，业务语义仍由本包冻结后再进入实现：
+  - `active_overlay_id`
+  - `overlay_cause`
+  - `overlay_rng_seed`
+  - `drift_score`
+  - `tier_floor`
+  - `tier_floor_reason`

@@ -73,5 +73,5 @@ Project: `main`
 | T-063 persona-seed-voice-contract-v1 | done | F-020 | dev-docs/active/persona-seed-voice-contract-v1 |
 | T-064 llm-gateway-routing-profiles-v1 | done | F-020 | dev-docs/active/llm-gateway-routing-profiles-v1 |
 | T-065 persona-projection-overlay-runtime-v1 | planned | F-020 | dev-docs/active/persona-projection-overlay-runtime-v1 |
-| T-066 persona-observability-eval-v1 | planned | F-020 | dev-docs/active/persona-observability-eval-v1 |
+| T-066 persona-observability-eval-v1 | in-progress | F-020 | dev-docs/active/persona-observability-eval-v1 |
 <!-- AUTO-GENERATED:END task-index -->

@@ -47,7 +47,10 @@ export class LlmClient {
       `[LlmClient] model=${response.model} tokens=${response.usage.total_tokens} latency=${latencyMs}ms`,
     )
 
-    return response
+    return {
+      ...response,
+      provider_id: this.cfg.provider.provider_id,
+    }
   }
 
   get isConfigured(): boolean {

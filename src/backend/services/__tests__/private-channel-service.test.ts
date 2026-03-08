@@ -76,6 +76,7 @@ describe('PrivateChannelService', () => {
 
   it('uses PromptOrchestrator + PromptEngine path when enabled', async () => {
     const session = buildSession()
+    const agentRunRepo = { create: vi.fn() }
     const channelRepo = {
       findSessionById: vi.fn(async () => session),
       createMessage: vi
@@ -165,7 +166,7 @@ describe('PrivateChannelService', () => {
       promptEngine,
       promptOrchestrator,
       eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
-      agentRunRepo: { create: vi.fn() } as never,
+      agentRunRepo: agentRunRepo as never,
       budgetService: null,
       costTracker: null,
       sseHub: null,
@@ -181,6 +182,17 @@ describe('PrivateChannelService', () => {
           latest_user_message: '你好',
         }),
       )
+      expect(agentRunRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+        output_json: expect.objectContaining({
+          persona_observation: expect.objectContaining({
+            source_callsite_id: 'private-channel-reply',
+            scene: 'private_chat',
+            prompt_audit: expect.objectContaining({
+              included_layer_ids: ['layer1_traits', 'layer6_privacy'],
+            }),
+          }),
+        }),
+      }))
     })
   })
 

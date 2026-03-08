@@ -35,8 +35,8 @@ async function grantUnspentPoints(statsRepo: InMemoryStatsRepository, agentId: s
   const base = await statsRepo.getOrCreateStats(agentId)
   await statsRepo.saveStats({
     agent_id: agentId,
-    granted_points_total: base.granted_points_total,
     unspent_points: points,
+    granted_points_total: points,
     sociability: base.sociability,
     curiosity: base.curiosity,
     assertiveness: base.assertiveness,
@@ -58,8 +58,8 @@ describe('StatsService', () => {
 
     await ctx.statsRepo.saveStats({
       agent_id: ctx.agent.id,
-      granted_points_total: base.granted_points_total,
       unspent_points: 5,
+      granted_points_total: 5,
       sociability: base.sociability,
       curiosity: base.curiosity,
       assertiveness: base.assertiveness,
@@ -100,8 +100,8 @@ describe('StatsService', () => {
 
     await ctx.statsRepo.saveStats({
       agent_id: ctx.agent.id,
-      granted_points_total: base.granted_points_total,
       unspent_points: 3,
+      granted_points_total: 3,
       sociability: base.sociability,
       curiosity: base.curiosity,
       assertiveness: base.assertiveness,
@@ -130,8 +130,8 @@ describe('StatsService', () => {
 
     await ctx.statsRepo.saveStats({
       agent_id: ctx.agent.id,
-      granted_points_total: base.granted_points_total,
       unspent_points: 4,
+      granted_points_total: 4,
       sociability: base.sociability,
       curiosity: base.curiosity,
       assertiveness: base.assertiveness,

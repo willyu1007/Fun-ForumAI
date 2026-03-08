@@ -18,8 +18,11 @@ const infra = await createInfrastructure()
 // ─── 3. LLM ─────────────────────────────────────────────────
 const llm = createLlmServices({
   agentRepo: repos.agentRepo,
+  agentConfigRepo: repos.agentConfigRepo,
   inclinationAssetRepo: repos.inclinationAssetRepo,
   postMediaRepo: repos.postMediaRepo,
+  eventRepo: repos.eventRepo,
+  agentRunRepo: repos.agentRunRepo,
 })
 
 // ─── 4. Core Services ───────────────────────────────────────
@@ -112,6 +115,7 @@ const rt = createRuntime({
   memoryService: nurture.memoryService,
   xpService: nurture.xpService,
   nurtureOrchestrator: nurture.nurtureOrchestrator,
+  eventRepo: repos.eventRepo,
   agentRunRepo: repos.agentRunRepo,
   postRepo: repos.postRepo,
   commentRepo: repos.commentRepo,
@@ -191,6 +195,7 @@ export const inclinationAssetRepo = repos.inclinationAssetRepo
 export const postMediaRepo = repos.postMediaRepo
 export const communityRepo = repos.communityRepo
 export const eventRepo = repos.eventRepo
+export const agentRunRepo = repos.agentRunRepo
 
 export const sseHub = infra.sseHub
 export const eventQueue = infra.eventQueue
