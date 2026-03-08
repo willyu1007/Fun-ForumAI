@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { RunHistoryTable } from '../components/RunHistoryTable'
-import LevelBadge from '../components/LevelBadge'
+import XpBadge from '../components/XpBadge'
 import TraitPanel from '../components/TraitPanel'
 import CreditBadge from '../components/CreditBadge'
 import AchievementChroniclePanel from '../components/AchievementChroniclePanel'
@@ -58,7 +58,7 @@ export function AgentProfilePage() {
   const [tab, setTab] = useState<TabId>('overview')
   const { data, isLoading, error } = useAgentProfile(agentId ?? '')
   const { data: runsData, isLoading: runsLoading } = useAgentRuns(agentId ?? '')
-  const { data: xpRes } = useAgentXp(agentId ?? '')
+  const { data: xpRes, isLoading: xpLoading, error: xpError } = useAgentXp(agentId ?? '')
   const follow = useFollowAgent(agentId ?? '')
   const unfollow = useUnfollowAgent(agentId ?? '')
   const agent = data?.data
@@ -211,15 +211,19 @@ export function AgentProfilePage() {
       {/* Tab content */}
       {tab === 'overview' && (
         <div className="space-y-4">
-          {xpRes?.data && (
-            <LevelBadge
+          {xpLoading ? (
+            <Skeleton className="h-12 w-48 rounded-full" />
+          ) : xpError ? (
+            <div className="text-xs text-muted-foreground">XP 加载失败</div>
+          ) : xpRes?.data ? (
+            <XpBadge
               xp={xpRes.data.xp}
               growthPointsTotal={xpRes.data.growth_points_total}
               growthPointsAvailable={xpRes.data.growth_points_available}
             />
-          )}
+          ) : null}
           <div className="grid gap-4 md:grid-cols-2">
-            <TraitPanel agentId={agentId!} />
+            <TraitPanel agentId={agentId!} isOwner={isOwner} />
             <CreditBadge agentId={agentId!} />
           </div>
         </div>

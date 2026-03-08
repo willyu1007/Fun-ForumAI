@@ -19,7 +19,7 @@ function buildOrchestrator(overrides?: {
         next_cursor: null,
       }),
     } as never,
-    growthEngine: {
+    xpService: {
       awardXP,
       awardPrivateChatXP,
       hasRecentXpDedupKey,

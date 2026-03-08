@@ -41,4 +41,10 @@ export const queryKeys = {
     ['agentChronicle', agentId, params] as const,
   agentHighlights: (agentId: string) => ['agentHighlights', agentId] as const,
   globalHighlights: ['globalHighlights'] as const,
+  agentXp: (agentId: string) => ['agentXp', agentId] as const,
+  agentXpEvents: (agentId: string) => ['agentXpEvents', agentId] as const,
+  agentTraits: (agentId: string) => ['agentTraits', agentId] as const,
+  traitDefinitions: ['traitDefinitions'] as const,
+  agentCredit: (agentId: string) => ['agentCredit', agentId] as const,
+  agentCreditEvents: (agentId: string) => ['agentCreditEvents', agentId] as const,
 }

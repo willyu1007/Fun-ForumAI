@@ -6,7 +6,7 @@ import type { ApiResponse, AgentXpInfo, AgentTraitInfo, AgentCreditInfo, XpEvent
 
 export function useAgentXp(agentId: string) {
   return useQuery({
-    queryKey: ['agentXp', agentId] as const,
+    queryKey: queryKeys.agentXp(agentId),
     queryFn: () => api.get(`agents/${agentId}/xp`).json<ApiResponse<AgentXpInfo>>(),
     enabled: !!agentId,
   })
@@ -61,7 +61,7 @@ export function useGlobalHighlights(enabled = true) {
 
 export function useAgentTraits(agentId: string) {
   return useQuery({
-    queryKey: ['agentTraits', agentId] as const,
+    queryKey: queryKeys.agentTraits(agentId),
     queryFn: () => api.get(`agents/${agentId}/traits`).json<ApiResponse<AgentTraitInfo[]>>(),
     enabled: !!agentId,
   })
@@ -69,7 +69,7 @@ export function useAgentTraits(agentId: string) {
 
 export function useTraitDefinitions() {
   return useQuery({
-    queryKey: ['traitDefinitions'] as const,
+    queryKey: queryKeys.traitDefinitions,
     queryFn: () => api.get('trait-definitions').json<ApiResponse<TraitDefinition[]>>(),
     staleTime: Infinity,
   })
@@ -81,8 +81,8 @@ export function useEquipTrait(agentId: string) {
     mutationFn: (traitCode: string) =>
       api.post(`agents/${agentId}/traits/${traitCode}/equip`).json<ApiResponse<unknown>>(),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['agentTraits', agentId] })
-      qc.invalidateQueries({ queryKey: ['agentDashboard', agentId] })
+      qc.invalidateQueries({ queryKey: queryKeys.agentTraits(agentId) })
+      qc.invalidateQueries({ queryKey: queryKeys.agentDashboard(agentId) })
     },
   })
 }
@@ -93,31 +93,31 @@ export function useUnequipTrait(agentId: string) {
     mutationFn: (traitCode: string) =>
       api.post(`agents/${agentId}/traits/${traitCode}/unequip`).json<ApiResponse<unknown>>(),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['agentTraits', agentId] })
-      qc.invalidateQueries({ queryKey: ['agentDashboard', agentId] })
+      qc.invalidateQueries({ queryKey: queryKeys.agentTraits(agentId) })
+      qc.invalidateQueries({ queryKey: queryKeys.agentDashboard(agentId) })
     },
   })
 }
 
 export function useAgentCredit(agentId: string) {
   return useQuery({
-    queryKey: ['agentCredit', agentId] as const,
+    queryKey: queryKeys.agentCredit(agentId),
     queryFn: () => api.get(`agents/${agentId}/credit`).json<ApiResponse<AgentCreditInfo>>(),
     enabled: !!agentId,
   })
 }
 
-export function useAgentCreditEvents(agentId: string) {
+export function useAgentCreditEvents(agentId: string, options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: ['agentCreditEvents', agentId] as const,
+    queryKey: queryKeys.agentCreditEvents(agentId),
     queryFn: () => api.get(`agents/${agentId}/credit-events?limit=20`).json<ApiResponse<CreditEventInfo[]>>(),
-    enabled: !!agentId,
+    enabled: !!agentId && (options?.enabled ?? true),
   })
 }
 
 export function useAgentXpEvents(agentId: string) {
   return useQuery({
-    queryKey: ['agentXpEvents', agentId] as const,
+    queryKey: queryKeys.agentXpEvents(agentId),
     queryFn: () => api.get(`agents/${agentId}/xp-events?limit=50`).json<ApiResponse<XpEventInfo[]>>(),
     enabled: !!agentId,
   })

@@ -8,9 +8,10 @@ import type { AgentTraitInfo, TraitDefinition } from '@/api/types'
 
 interface TraitPanelProps {
   agentId: string
+  isOwner?: boolean
 }
 
-export default function TraitPanel({ agentId }: TraitPanelProps) {
+export default function TraitPanel({ agentId, isOwner = false }: TraitPanelProps) {
   const { data: traitsRes, isLoading: traitsLoading } = useAgentTraits(agentId)
   const { data: defsRes, isLoading: defsLoading } = useTraitDefinitions()
   const equip = useEquipTrait(agentId)
@@ -62,35 +63,39 @@ export default function TraitPanel({ agentId }: TraitPanelProps) {
           return (
             <Badge key={t.id} variant="equipped">
               {def?.emoji} {def?.name ?? t.trait_code}
-              <button
-                className="ml-1.5 rounded px-1 text-xs hover:bg-violet-200 dark:hover:bg-violet-800 disabled:opacity-50"
-                disabled={unequip.isPending}
-                onClick={() => unequip.mutate(t.trait_code)}
-              >
-                ✕
-              </button>
+              {isOwner && (
+                <button
+                  className="ml-1.5 rounded px-1 text-xs hover:bg-violet-200 dark:hover:bg-violet-800 disabled:opacity-50"
+                  disabled={unequip.isPending}
+                  onClick={() => unequip.mutate(t.trait_code)}
+                >
+                  ✕
+                </button>
+              )}
             </Badge>
           )
         })}
       </Section>
 
-      <Section title="候选">
-        {candidates.length === 0 && (
-          <span className="text-xs text-muted-foreground">无可用候选特质</span>
-        )}
-        {candidates.map((d) => (
-          <Badge key={d.code} variant="candidate">
-            {d.emoji} {d.name}
-            <button
-              className="ml-1.5 rounded px-1 text-xs hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50"
-              disabled={equip.isPending}
-              onClick={() => equip.mutate(d.code)}
-            >
-              +
-            </button>
-          </Badge>
-        ))}
-      </Section>
+      {isOwner && (
+        <Section title="候选">
+          {candidates.length === 0 && (
+            <span className="text-xs text-muted-foreground">无可用候选特质</span>
+          )}
+          {candidates.map((d) => (
+            <Badge key={d.code} variant="candidate">
+              {d.emoji} {d.name}
+              <button
+                className="ml-1.5 rounded px-1 text-xs hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50"
+                disabled={equip.isPending}
+                onClick={() => equip.mutate(d.code)}
+              >
+                +
+              </button>
+            </Badge>
+          ))}
+        </Section>
+      )}
     </div>
   )
 }

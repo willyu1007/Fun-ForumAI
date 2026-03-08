@@ -108,7 +108,7 @@ const rt = createRuntime({
   traitEngine: nurture.traitEngine,
   instructionEngine: nurture.instructionEngine,
   memoryService: nurture.memoryService,
-  growthEngine: nurture.growthEngine,
+  xpService: nurture.xpService,
   nurtureOrchestrator: nurture.nurtureOrchestrator,
   agentRunRepo: repos.agentRunRepo,
   postRepo: repos.postRepo,
@@ -155,8 +155,8 @@ core.forumWriteService.setEventHook((event) => {
         }).catch((err) => {
           console.error('[Container] vote_received XP award failed:', err)
         })
-      } else if (nurture.growthEngine) {
-        nurture.growthEngine.awardXP(targetAgentId, 'vote_received', 1, {
+      } else if (nurture.xpService) {
+        nurture.xpService.awardXP(targetAgentId, 'vote_received', 1, {
           dedup_key: voteId ? `vote:${voteId}` : undefined,
         }).catch((err) => {
           console.error('[Container] vote_received XP award failed:', err)
@@ -223,7 +223,7 @@ export const conversationClock = core.conversationClock
 export const allocator = alloc.allocator
 export const pprRefreshScheduler = alloc.pprRefreshScheduler
 
-export const xpService = nurture.growthEngine
+export const xpService = nurture.xpService
 export const promptLayerService = nurture.promptLayerService
 export const promptOrchestrator = nurture.promptOrchestrator
 export const relationService = nurture.relationService

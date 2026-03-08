@@ -74,7 +74,7 @@ describe('MemoryService nurture bridge', () => {
           }),
         }),
       } as never,
-      growthEngine: { awardPrivateChatXP } as never,
+      xpService: { awardPrivateChatXP } as never,
       nurtureOrchestrator: { onPrivateDigestCompleted } as never,
     })
 

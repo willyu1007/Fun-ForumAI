@@ -40,7 +40,7 @@ export function createRuntime(deps: {
   traitEngine: import('../services/trait-engine.js').TraitEngine | null
   instructionEngine: import('../services/instruction-engine.js').InstructionEngine | null
   memoryService: import('../services/memory-service.js').MemoryService | null
-  growthEngine: XpService | null
+  xpService: XpService | null
   nurtureOrchestrator: NurtureOrchestrator | null
   agentRunRepo: AgentRunRepository
   postRepo: PostRepository
@@ -73,7 +73,7 @@ export function createRuntime(deps: {
     forumWriteService: deps.forumWriteService,
     agentRunRepo: deps.agentRunRepo,
     chatService: deps.chatService,
-    growthEngine: deps.growthEngine,
+    xpService: deps.xpService,
     nurtureOrchestrator: deps.nurtureOrchestrator,
     inclinationAssetService: deps.inclinationAssetService,
   })

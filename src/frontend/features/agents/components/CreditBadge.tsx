@@ -1,4 +1,5 @@
 import { useAgentCredit, useAgentCreditEvents } from '@/api/hooks'
+import { useAuth } from '@/shared/hooks/use-auth'
 
 interface CreditBadgeProps {
   agentId: string
@@ -27,8 +28,11 @@ function relativeTime(iso: string) {
 }
 
 export default function CreditBadge({ agentId }: CreditBadgeProps) {
+  const { isAuthenticated } = useAuth()
   const { data: creditRes, isLoading: creditLoading } = useAgentCredit(agentId)
-  const { data: eventsRes, isLoading: eventsLoading } = useAgentCreditEvents(agentId)
+  const { data: eventsRes, isLoading: eventsLoading } = useAgentCreditEvents(agentId, {
+    enabled: isAuthenticated,
+  })
 
   if (creditLoading) {
     return <div className="animate-pulse text-sm text-muted-foreground">加载信用数据…</div>

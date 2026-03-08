@@ -1,10 +1,10 @@
 import { Router, type IRouter } from 'express'
-import { XpService } from '../services/xp-service.js'
+import { XP_PER_GROWTH_POINT } from '../services/xp-service.js'
 import { TraitEngine } from '../services/trait-engine.js'
 import { CreditService } from '../services/credit-service.js'
 import { InstructionEngine } from '../services/instruction-engine.js'
 import type { PrismaClient } from '@prisma/client'
-import { agentService } from '../container.js'
+import { agentService, xpService } from '../container.js'
 import { requireHumanAuth } from '../middleware/human-auth.js'
 import { ForbiddenError } from '../lib/errors.js'
 
@@ -13,7 +13,6 @@ function getPrismaOrNull(): PrismaClient | null {
 }
 
 export const agentNurtureRouter: IRouter = Router()
-const XP_PER_GROWTH_POINT = 50
 
 function assertOwner(agentId: string, userId: string): void {
   const agent = agentService.getAgent(agentId)
@@ -30,7 +29,6 @@ function asParam(value: string | string[] | undefined): string {
 function getLazySingletons() {
   const prisma = getPrismaOrNull()
   return {
-    xp: new XpService(prisma),
     traits: new TraitEngine(prisma),
     credit: new CreditService(prisma),
     instructions: new InstructionEngine(prisma),
@@ -45,20 +43,19 @@ function singletons() {
 
 // ─── XP ──────────────────────────────────────────────────────
 
-agentNurtureRouter.get('/agents/:agentId/xp', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.get('/agents/:agentId/xp', async (req, res) => {
   const agentId = asParam(req.params.agentId)
-  const [xp, stats] = await Promise.all([
-    singletons().xp.getXp(agentId),
+  const [summary, stats] = await Promise.all([
+    xpService?.getXpSummary(agentId) ?? Promise.resolve({ xp: 0, xp_per_growth_point: XP_PER_GROWTH_POINT, growth_points_total: 0 }),
     getPrismaOrNull()?.agentStats.findUnique({ where: { agentId } }) ?? Promise.resolve(null),
   ])
-  const growthPointsTotal = Math.floor(xp.xp / XP_PER_GROWTH_POINT)
-  const growthPointsAvailable = stats?.unspentPoints ?? growthPointsTotal
+  const growthPointsAvailable = stats?.unspentPoints ?? summary.growth_points_total
   res.json({
     data: {
-      xp: xp.xp,
-      xp_per_growth_point: XP_PER_GROWTH_POINT,
-      growth_points_total: growthPointsTotal,
-      growth_points_spent: Math.max(growthPointsTotal - growthPointsAvailable, 0),
+      xp: summary.xp,
+      xp_per_growth_point: summary.xp_per_growth_point,
+      growth_points_total: summary.growth_points_total,
+      growth_points_spent: Math.max(summary.growth_points_total - growthPointsAvailable, 0),
       growth_points_available: growthPointsAvailable,
     },
   })
@@ -66,14 +63,15 @@ agentNurtureRouter.get('/agents/:agentId/xp', requireHumanAuth, async (req, res)
 
 agentNurtureRouter.get('/agents/:agentId/xp-events', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
-  const limit = parseInt(String(req.query.limit ?? '50'), 10)
-  const events = await singletons().xp.getXpEvents(agentId, limit)
+  const rawLimit = parseInt(String(req.query.limit ?? '50'), 10)
+  const limit = Number.isNaN(rawLimit) ? 50 : Math.min(Math.max(rawLimit, 1), 200)
+  const events = await (xpService?.getXpEvents(agentId, limit) ?? Promise.resolve([]))
   res.json({ data: events })
 })
 
 // ─── Traits ──────────────────────────────────────────────────
 
-agentNurtureRouter.get('/agents/:agentId/traits', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.get('/agents/:agentId/traits', async (req, res) => {
   const agentId = asParam(req.params.agentId)
   const traits = await singletons().traits.getTraits(agentId)
   res.json({
@@ -91,6 +89,7 @@ agentNurtureRouter.get('/agents/:agentId/traits', requireHumanAuth, async (req, 
 
 agentNurtureRouter.post('/agents/:agentId/traits/:traitCode/equip', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
+  assertOwner(agentId, req.user!.userId)
   const traitCode = asParam(req.params.traitCode)
   const result = await singletons().traits.equipTrait(agentId, traitCode)
   if (!result.success) {
@@ -102,6 +101,7 @@ agentNurtureRouter.post('/agents/:agentId/traits/:traitCode/equip', requireHuman
 
 agentNurtureRouter.post('/agents/:agentId/traits/:traitCode/unequip', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
+  assertOwner(agentId, req.user!.userId)
   const traitCode = asParam(req.params.traitCode)
   const result = await singletons().traits.unequipTrait(agentId, traitCode)
   if (!result.success) {
@@ -117,7 +117,7 @@ agentNurtureRouter.get('/trait-definitions', (_req, res) => {
 
 // ─── Credit ──────────────────────────────────────────────────
 
-agentNurtureRouter.get('/agents/:agentId/credit', requireHumanAuth, async (req, res) => {
+agentNurtureRouter.get('/agents/:agentId/credit', async (req, res) => {
   const agentId = asParam(req.params.agentId)
   const credit = await singletons().credit.getCredit(agentId)
   res.json({ data: credit })
@@ -125,8 +125,9 @@ agentNurtureRouter.get('/agents/:agentId/credit', requireHumanAuth, async (req, 
 
 agentNurtureRouter.get('/agents/:agentId/credit-events', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
-  const limit = parseInt(String(req.query.limit ?? '20'), 10)
-  const events = await singletons().credit.getCreditEvents(agentId, limit)
+  const rawCreditLimit = parseInt(String(req.query.limit ?? '20'), 10)
+  const creditLimit = Number.isNaN(rawCreditLimit) ? 20 : Math.min(Math.max(rawCreditLimit, 1), 200)
+  const events = await singletons().credit.getCreditEvents(agentId, creditLimit)
   res.json({ data: events })
 })
 

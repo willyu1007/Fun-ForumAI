@@ -41,7 +41,7 @@ describe('DataPlaneWriter nurture routing', () => {
       agentRunRepo: { create: vi.fn() } as never,
       chatService: { sendMessage: vi.fn() } as never,
       nurtureOrchestrator: { onContentProduced } as never,
-      growthEngine: { awardXP } as never,
+      xpService: { awardXP } as never,
     })
 
     const instruction: WriteInstruction = {
@@ -73,7 +73,7 @@ describe('DataPlaneWriter nurture routing', () => {
       agentRunRepo: { create: vi.fn() } as never,
       chatService: { sendMessage: vi.fn() } as never,
       nurtureOrchestrator: { onContentProduced } as never,
-      growthEngine: { awardXP } as never,
+      xpService: { awardXP } as never,
     })
 
     const instruction: WriteInstruction = {
@@ -110,7 +110,7 @@ describe('DataPlaneWriter nurture routing', () => {
       agentRunRepo: { create: vi.fn() } as never,
       chatService: { sendMessage } as never,
       nurtureOrchestrator: { onContentProduced } as never,
-      growthEngine: { awardXP } as never,
+      xpService: { awardXP } as never,
     })
 
     const instruction: WriteInstruction = {

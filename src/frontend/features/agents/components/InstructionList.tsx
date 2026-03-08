@@ -55,7 +55,7 @@ export function InstructionList({ agentId }: InstructionListProps) {
         <span className="text-sm font-medium text-muted-foreground">
           已配置指令: {instructions.length}
         </span>
-        <span className="text-xs text-muted-foreground">不再受等级槽位限制</span>
+        <span className="text-xs text-muted-foreground">可自由配置</span>
       </div>
 
       {instructions.length === 0 && (

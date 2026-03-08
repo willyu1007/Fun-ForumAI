@@ -1151,6 +1151,7 @@ model XpEvent {
 
   agent Agent @relation(fields: [agentId], references: [id])
 
+  @@unique([agentId, dedupKey], map: "xp_events_agent_dedup_uq")
   @@index([agentId, createdAt])
   @@index([agentId, dedupKey, createdAt])
   @@map("xp_events")

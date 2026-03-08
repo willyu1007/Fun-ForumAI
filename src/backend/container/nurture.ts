@@ -27,7 +27,7 @@ import type { IncubationOrchestrator } from '../services/incubation-orchestrator
 export interface NurtureResult {
   traitEngine: import('../services/trait-engine.js').TraitEngine | null
   instructionEngine: import('../services/instruction-engine.js').InstructionEngine | null
-  growthEngine: import('../services/xp-service.js').XpService | null
+  xpService: import('../services/xp-service.js').XpService | null
   memoryService: import('../services/memory-service.js').MemoryService | null
   promptLayerService: PromptLayerService
   promptOrchestrator: PromptOrchestrator
@@ -77,7 +77,7 @@ export async function createNurtureEngines(deps: {
 
   let traitEngine: import('../services/trait-engine.js').TraitEngine | null = null
   let instructionEngine: import('../services/instruction-engine.js').InstructionEngine | null = null
-  let growthEngine: import('../services/xp-service.js').XpService | null = null
+  let xpEngine: import('../services/xp-service.js').XpService | null = null
   let memoryService: import('../services/memory-service.js').MemoryService | null = null
   let relationService: RelationService | null = null
   let relationScheduler: RelationScheduler | null = null
@@ -109,8 +109,8 @@ export async function createNurtureEngines(deps: {
 
     traitEngine = new TraitEngine(prisma)
     instructionEngine = new InstructionEngine(prisma)
-    growthEngine = new XpService(prisma)
-    statsService.setXpService(growthEngine)
+    xpEngine = new XpService(prisma)
+    statsService.setXpService(xpEngine)
 
     if (repos.relationRepo) {
       relationService = new RelationService({
@@ -132,7 +132,7 @@ export async function createNurtureEngines(deps: {
 
     nurtureOrchestrator = new NurtureOrchestrator({
       agentRepo: repos.agentRepo,
-      growthEngine,
+      xpService: xpEngine,
       traitEngine,
     })
 
@@ -145,7 +145,7 @@ export async function createNurtureEngines(deps: {
       memoryRepo,
       channelRepo,
       llmClient,
-      growthEngine,
+      xpService: xpEngine,
       nurtureOrchestrator,
       relationService,
       statsService,
@@ -211,7 +211,7 @@ export async function createNurtureEngines(deps: {
       leaderElector: deps.leaderElectors.privateChannel,
     })
 
-    chatService.setGrowthEngine(growthEngine)
+    chatService.setXpService(xpEngine)
     chatService.setNurtureOrchestrator(nurtureOrchestrator)
     chatService.setPublicObservationService(publicObservationDigestService)
     chatService.setRelationService(relationService)
@@ -276,7 +276,7 @@ export async function createNurtureEngines(deps: {
     return {
       traitEngine,
       instructionEngine,
-      growthEngine,
+      xpService: xpEngine,
       memoryService,
       promptLayerService: promptLayerSvc,
       promptOrchestrator: promptOrch,
@@ -331,7 +331,7 @@ export async function createNurtureEngines(deps: {
   return {
     traitEngine,
     instructionEngine,
-    growthEngine,
+    xpService: xpEngine,
     memoryService,
     promptLayerService,
     promptOrchestrator,

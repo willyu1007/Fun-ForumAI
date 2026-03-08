@@ -46,7 +46,7 @@ describe('ChatService nurture bridge', () => {
       } as never,
       agentRepo: {} as never,
       agentService: {} as never,
-      growthEngine: { awardXP } as never,
+      xpService: { awardXP } as never,
       nurtureOrchestrator: { onContentProduced } as never,
       eventRepo: { create: createEvent } as never,
     })

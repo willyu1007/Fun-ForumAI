@@ -24,7 +24,7 @@ export interface MemoryServiceDeps {
   memoryRepo: MemoryRepository
   channelRepo: PrivateChannelRepository
   llmClient: LlmClient
-  growthEngine?: XpService | null
+  xpService?: XpService | null
   nurtureOrchestrator?: NurtureOrchestrator | null
   relationService?: RelationService | null
   statsService?: StatsService | null
@@ -99,8 +99,8 @@ export class MemoryService {
         }).catch((err) => {
           console.error('[MemoryService] Nurture pipeline failed:', err)
         })
-      } else if (this.deps.growthEngine) {
-        this.deps.growthEngine.awardPrivateChatXP(session.agent_id, msgCount).catch((err) => {
+      } else if (this.deps.xpService) {
+        this.deps.xpService.awardPrivateChatXP(session.agent_id, msgCount).catch((err) => {
           console.error('[MemoryService] XP award failed:', err)
         })
       }

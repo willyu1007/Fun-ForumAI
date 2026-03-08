@@ -11,7 +11,7 @@ export interface NurtureTriggerOptions {
 
 export interface NurtureOrchestratorDeps {
   agentRepo: AgentRepository
-  growthEngine: XpService | null
+  xpService: XpService | null
   traitEngine: TraitEngine | null
 }
 
@@ -24,12 +24,12 @@ export class NurtureOrchestrator {
     amount = 1,
     opts: NurtureTriggerOptions = {},
   ): Promise<void> {
-    if (!this.deps.growthEngine) return
+    if (!this.deps.xpService) return
 
     try {
       if (await this.shouldSkipByDedup(agentId, opts)) return
 
-      await this.deps.growthEngine.awardXP(agentId, source, amount, {
+      await this.deps.xpService.awardXP(agentId, source, amount, {
         dedup_key: this.normalizeDedupKey(opts.dedup_key),
       })
       await this.evaluateTraits(agentId)
@@ -43,12 +43,12 @@ export class NurtureOrchestrator {
     messageCount: number,
     opts: NurtureTriggerOptions = {},
   ): Promise<void> {
-    if (!this.deps.growthEngine) return
+    if (!this.deps.xpService) return
 
     try {
       if (await this.shouldSkipByDedup(agentId, opts)) return
 
-      await this.deps.growthEngine.awardPrivateChatXP(agentId, messageCount, {
+      await this.deps.xpService.awardPrivateChatXP(agentId, messageCount, {
         dedup_key: this.normalizeDedupKey(opts.dedup_key),
       })
       await this.evaluateTraits(agentId)
@@ -58,7 +58,7 @@ export class NurtureOrchestrator {
   }
 
   async reconcileAgent(agentId: string): Promise<void> {
-    if (!this.deps.growthEngine) return
+    if (!this.deps.xpService) return
 
     try {
       await this.evaluateTraits(agentId)
@@ -94,7 +94,7 @@ export class NurtureOrchestrator {
   }
 
   private async evaluateTraits(agentId: string): Promise<void> {
-    if (!this.deps.traitEngine || !this.deps.growthEngine) return
+    if (!this.deps.traitEngine || !this.deps.xpService) return
 
     await this.deps.traitEngine.checkAndAssignSystemTraits(agentId)
     await this.deps.traitEngine.checkAndOfferCandidates(agentId)
@@ -107,7 +107,7 @@ export class NurtureOrchestrator {
     const windowMs = this.resolveWindowMs(opts.dedup_window_ms)
     let hasRecent: boolean
     try {
-      hasRecent = Boolean(await this.deps.growthEngine?.hasRecentXpDedupKey(agentId, dedupKey, windowMs))
+      hasRecent = Boolean(await this.deps.xpService?.hasRecentXpDedupKey(agentId, dedupKey, windowMs))
     } catch (err) {
       console.warn('[NurtureOrchestrator] dedup check failed, fallback to non-dedup path:', err)
       return false

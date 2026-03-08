@@ -36,7 +36,7 @@ export interface ChatServiceDeps {
   agentRepo: AgentRepository
   agentService: AgentService
   sseHub?: SseHub
-  growthEngine?: { awardXP(agentId: string, source: string, amount: number): Promise<unknown> } | null
+  xpService?: { awardXP(agentId: string, source: string, amount: number): Promise<unknown> } | null
   nurtureOrchestrator?: NurtureOrchestrator | null
   publicObservationService?: PublicObservationDigestService | null
   relationService?: RelationService | null
@@ -60,8 +60,8 @@ export class ChatService {
     this.leaveHook = hook
   }
 
-  setGrowthEngine(engine: ChatServiceDeps['growthEngine']): void {
-    (this.deps as { growthEngine: ChatServiceDeps['growthEngine'] }).growthEngine = engine
+  setXpService(engine: ChatServiceDeps['xpService']): void {
+    (this.deps as { xpService: ChatServiceDeps['xpService'] }).xpService = engine
   }
 
   setNurtureOrchestrator(orchestrator: NurtureOrchestrator | null): void {
@@ -91,7 +91,7 @@ export class ChatService {
 
     this.joinHook?.(room.id, input.created_by_agent_id, tick)
 
-    this.deps.growthEngine?.awardXP(input.created_by_agent_id, 'room_created', 10).catch((err) => {
+    this.deps.xpService?.awardXP(input.created_by_agent_id, 'room_created', 10).catch((err) => {
       console.error('[ChatService] room_created XP award failed:', err)
     })
 
@@ -227,7 +227,7 @@ export class ChatService {
         console.error('[ChatService] nurture onContentProduced failed:', err)
       })
     } else {
-      this.deps.growthEngine?.awardXP(input.author_id, 'chat_message', 1).catch((err) => {
+      this.deps.xpService?.awardXP(input.author_id, 'chat_message', 1).catch((err) => {
         console.error('[ChatService] chat_message XP award failed:', err)
       })
     }

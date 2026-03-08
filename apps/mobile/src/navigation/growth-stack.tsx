@@ -16,17 +16,23 @@ function GrowthPickerScreen({ navigation }: NativeStackScreenProps<GrowthStackPa
   const isFocused = useIsFocused()
   const { token } = useAuth()
   const [agents, setAgents] = useState<Agent[]>([])
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
     if (!token) return
-    void apiGet<Agent[]>('/v1/me/agents', token).then((r) => setAgents(r.data)).catch(() => {})
+    setLoadError(false)
+    void apiGet<Agent[]>('/v1/me/agents', token)
+      .then((r) => setAgents(r.data))
+      .catch(() => setLoadError(true))
   }, [token])
 
   return (
     <ScrollView contentContainerStyle={shared.card} testID={testIDs.growth.pickerScreen}>
       {__DEV__ && isFocused ? <Text testID={testIDs.growth.focusedMarker} style={shared.metaText}>当前页: XP</Text> : null}
       <Text style={shared.cardTitle}>选择 Agent 查看 XP</Text>
-      {agents.length === 0
+      {loadError
+        ? <Text style={shared.emptyText}>加载失败，请重试</Text>
+        : agents.length === 0
         ? <Text style={shared.emptyText}>暂无 Agent</Text>
         : agents.map((a) => (
             <Pressable
@@ -46,17 +52,23 @@ function GrowthPickerScreen({ navigation }: NativeStackScreenProps<GrowthStackPa
 
 function GrowthViewScreen({ route }: NativeStackScreenProps<GrowthStackParams, 'GrowthView'>) {
   const { agentId } = route.params
+  const { token } = useAuth()
   const [xp, setXp] = useState<AgentXpInfo | null>(null)
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
+    if (!token) return
     setBusy(true)
+    setError(null)
     try {
-      const r = await apiGet<AgentXpInfo>(`/v1/agents/${agentId}/xp`)
+      const r = await apiGet<AgentXpInfo>(`/v1/agents/${agentId}/xp`, token)
       setXp(r.data)
-    } catch { /* */ }
+    } catch {
+      setError('加载 XP 失败，请重试')
+    }
     setBusy(false)
-  }, [agentId])
+  }, [agentId, token])
 
   useEffect(() => { void refresh() }, [refresh])
 
@@ -72,7 +84,9 @@ function GrowthViewScreen({ route }: NativeStackScreenProps<GrowthStackParams, '
       >
         <Text>刷新</Text>
       </Pressable>
-      {xp ? (
+      {error ? (
+        <Text style={shared.emptyText}>{error}</Text>
+      ) : xp ? (
         <View style={shared.detailBox} testID={testIDs.growth.summaryCard}>
           <Text style={shared.itemText}>Agent: {agentId}</Text>
           <Text style={shared.itemText}>XP: {xp.xp}</Text>

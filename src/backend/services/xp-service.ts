@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 
 export const XP_PER_GROWTH_POINT = 50
 
@@ -36,22 +37,54 @@ export class XpService {
     }
 
     const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
+    todayStart.setUTCHours(0, 0, 0, 0)
+    const normalizedDedup = this.normalizeDedupKey(opts.dedup_key) ?? null
 
-    const todayDigestCount = await this.prisma.xpEvent.count({
-      where: {
-        agentId,
-        source: 'private_chat_digest',
-        createdAt: { gte: todayStart },
-      },
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Serialize concurrent daily-cap checks for the same agent
+      await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${agentId}))`)
+
+      if (normalizedDedup) {
+        const dup = await tx.xpEvent.findFirst({
+          where: { agentId, dedupKey: normalizedDedup },
+          select: { id: true },
+        })
+        if (dup) return { awarded: false, xp: (await tx.agentXp.findUnique({ where: { agentId } }))?.xp ?? 0, reason: 'dedup_hit' as const }
+      }
+
+      const todayDigestCount = await tx.xpEvent.count({
+        where: {
+          agentId,
+          source: 'private_chat_digest',
+          createdAt: { gte: todayStart },
+        },
+      })
+
+      if (todayDigestCount >= PRIVATE_CHAT_XP_CONFIG.daily_cap) {
+        return { awarded: false, xp: 0, reason: 'daily_cap_reached' as const }
+      }
+
+      const xpRow = await tx.agentXp.upsert({
+        where: { agentId },
+        create: { agentId, xp: PRIVATE_CHAT_XP_CONFIG.base_xp },
+        update: { xp: { increment: PRIVATE_CHAT_XP_CONFIG.base_xp } },
+      })
+
+      await tx.xpEvent.create({
+        data: {
+          agentId,
+          source: 'private_chat_digest',
+          title: this.sourceTitle('private_chat_digest'),
+          description: this.buildXpDescription('private_chat_digest', PRIVATE_CHAT_XP_CONFIG.base_xp, opts.dedup_key),
+          xpDelta: PRIVATE_CHAT_XP_CONFIG.base_xp,
+          dedupKey: normalizedDedup,
+        },
+      })
+
+      return { awarded: true, xp: xpRow.xp }
     })
 
-    if (todayDigestCount >= PRIVATE_CHAT_XP_CONFIG.daily_cap) {
-      return { awarded: false, xp: 0, reason: 'daily_cap_reached' }
-    }
-
-    await this.awardXP(agentId, 'private_chat_digest', PRIVATE_CHAT_XP_CONFIG.base_xp, opts)
-    return { awarded: true, xp: PRIVATE_CHAT_XP_CONFIG.base_xp }
+    return result
   }
 
   async awardXP(
@@ -59,27 +92,40 @@ export class XpService {
     source: XpSource,
     amount: number,
     opts: XpAwardOptions = {},
-  ): Promise<{ xp: number }> {
+  ): Promise<{ xp: number; skipped?: boolean }> {
     if (!this.prisma) return { xp: 0 }
+    if (!Number.isInteger(amount) || amount <= 0) return { xp: 0 }
 
-    const xp = await this.prisma.agentXp.upsert({
-      where: { agentId },
-      create: { agentId, xp: amount },
-      update: { xp: { increment: amount } },
+    const normalizedDedup = this.normalizeDedupKey(opts.dedup_key) ?? null
+
+    return this.prisma.$transaction(async (tx) => {
+      if (normalizedDedup) {
+        const dup = await tx.xpEvent.findFirst({
+          where: { agentId, dedupKey: normalizedDedup },
+          select: { id: true },
+        })
+        if (dup) return { xp: (await tx.agentXp.findUnique({ where: { agentId } }))?.xp ?? 0, skipped: true }
+      }
+
+      const xpRow = await tx.agentXp.upsert({
+        where: { agentId },
+        create: { agentId, xp: amount },
+        update: { xp: { increment: amount } },
+      })
+
+      await tx.xpEvent.create({
+        data: {
+          agentId,
+          source,
+          title: this.sourceTitle(source),
+          description: this.buildXpDescription(source, amount, opts.dedup_key),
+          xpDelta: amount,
+          dedupKey: normalizedDedup,
+        },
+      })
+
+      return { xp: xpRow.xp }
     })
-
-    await this.prisma.xpEvent.create({
-      data: {
-        agentId,
-        source,
-        title: this.sourceTitle(source),
-        description: this.buildXpDescription(source, amount, opts.dedup_key),
-        xpDelta: amount,
-        dedupKey: this.normalizeDedupKey(opts.dedup_key) ?? null,
-      },
-    })
-
-    return { xp: xp.xp }
   }
 
   async hasRecentXpDedupKey(agentId: string, dedupKey: string, windowMs: number): Promise<boolean> {

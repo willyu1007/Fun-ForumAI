@@ -12,7 +12,7 @@ export interface DataPlaneWriterDeps {
   forumWriteService: ForumWriteService
   agentRunRepo: AgentRunRepository
   chatService?: ChatService
-  growthEngine?: { awardXP(agentId: string, source: string, amount: number): Promise<unknown> } | null
+  xpService?: { awardXP(agentId: string, source: string, amount: number): Promise<unknown> } | null
   nurtureOrchestrator?: NurtureOrchestrator | null
   inclinationAssetService?: Pick<InclinationAssetService, 'attachPostMediaAndConsume'>
 }
@@ -109,7 +109,7 @@ export class DataPlaneWriter {
             console.error('[DataPlaneWriter] nurture onContentProduced failed:', err)
           })
         } else {
-          this.deps.growthEngine?.awardXP(agentId, xpSource, 1).catch((err) => {
+          this.deps.xpService?.awardXP(agentId, xpSource, 1).catch((err) => {
             console.error('[DataPlaneWriter] XP award failed:', err)
           })
         }

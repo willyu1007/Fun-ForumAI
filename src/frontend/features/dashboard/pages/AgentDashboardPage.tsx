@@ -100,7 +100,7 @@ export function AgentDashboardPage() {
                   <div
                     className="h-full rounded-full bg-sky-500 transition-all"
                     style={{
-                      width: `${(dash.budget.daily_actions_used / dash.budget.daily_action_limit) * 100}%`,
+                      width: `${dash.budget.daily_action_limit > 0 ? (dash.budget.daily_actions_used / dash.budget.daily_action_limit) * 100 : 0}%`,
                     }}
                   />
                 </div>
@@ -117,7 +117,7 @@ export function AgentDashboardPage() {
                   <div
                     className="h-full rounded-full bg-sky-500 transition-all"
                     style={{
-                      width: `${(dash.budget.monthly_actions_used / dash.budget.monthly_action_limit) * 100}%`,
+                      width: `${dash.budget.monthly_action_limit > 0 ? (dash.budget.monthly_actions_used / dash.budget.monthly_action_limit) * 100 : 0}%`,
                     }}
                   />
                 </div>
