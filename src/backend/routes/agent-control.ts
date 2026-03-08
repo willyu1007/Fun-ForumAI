@@ -6,6 +6,7 @@ import { config } from '../lib/config.js'
 import { ForbiddenError, ValidationError } from '../lib/errors.js'
 import { ensureDevAuthUserPersisted } from '../lib/dev-auth-user.js'
 import { validate } from '../validation/validate.js'
+import { buildAgentReadPayload } from '../identity/agent-identity.js'
 import {
   createAgentSchema,
   updateAgentConfigSchema,
@@ -25,7 +26,9 @@ agentControlRouter.post('/agents', requireHumanAuth, validate(createAgentSchema)
     owner_id: req.user!.userId,
     ...req.body,
   })
-  res.status(201).json({ data: agent })
+  res.status(201).json({
+    data: buildAgentReadPayload(agent, agentService.getLatestConfig(agent.id)),
+  })
 })
 
 agentControlRouter.patch(
@@ -46,7 +49,9 @@ agentControlRouter.patch(
       display_name: req.body.display_name,
       avatar_url: req.body.avatar_url,
     })
-    res.json({ data: updated })
+    res.json({
+      data: buildAgentReadPayload(updated, agentService.getLatestConfig(agentId)),
+    })
   },
 )
 
@@ -54,14 +59,14 @@ agentControlRouter.patch(
   '/agents/:agentId/config',
   requireHumanAuth,
   validate(updateAgentConfigSchema),
-  (req, res) => {
+  async (req, res) => {
     const agentId = String(req.params.agentId)
-    const config = agentService.updateConfig(
+    const config = await agentService.updateConfig(
       agentId,
       req.body.config_json,
       req.user!.userId,
     )
-  res.json({ data: config })
+    res.json({ data: config })
   },
 )
 

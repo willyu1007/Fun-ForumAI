@@ -296,11 +296,11 @@ export class ChatService {
     }
   }
 
-  updateAgentChatConfig(
+  async updateAgentChatConfig(
     agentId: string,
     ownerId: string,
     update: { talkativeness?: number; allow_wandering?: boolean },
-  ): { talkativeness: number; allow_wandering: boolean } {
+  ): Promise<{ talkativeness: number; allow_wandering: boolean }> {
     const agent = this.deps.agentRepo.findById(agentId)
     if (!agent) throw new NotFoundError('Agent', agentId)
     if (agent.owner_id !== ownerId) throw new ForbiddenError('You do not own this agent')
@@ -319,7 +319,7 @@ export class ChatService {
       ...(update.allow_wandering !== undefined ? { allow_wandering: update.allow_wandering } : {}),
     }
 
-    this.deps.agentService.updateConfig(agentId, { ...existingJson, chat: newChat }, ownerId)
+    await this.deps.agentService.updateConfig(agentId, { chat: newChat }, ownerId)
 
     return this.getAgentChatConfig(agentId)
   }

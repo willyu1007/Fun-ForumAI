@@ -20,6 +20,7 @@ import { privateChannelRouter } from './routes/private-channel-api.js'
 import { notificationRouter } from './routes/notification-api.js'
 import { agentStatsRouter } from './routes/agent-stats-api.js'
 import type { PromptLayers } from './runtime/types.js'
+import { resolveAgentIdentity } from './identity/agent-identity.js'
 
 const app: Express = express()
 
@@ -184,8 +185,29 @@ if (config.nodeEnv !== 'production') {
       }
 
       let agentDisplayName: string
+      let identityContract: {
+        source: string
+        persona_seed_code: string
+        persona_seed_label: string
+        home_voice_line_id: string
+        home_voice_line_label: string
+        owner_style_pins: Record<string, unknown>
+        visible_persona: { name: string; style: string; interests: string[]; language: string }
+      }
       try {
-        agentDisplayName = agentService.getAgent(body.agent_id).display_name
+        const agent = agentService.getAgent(body.agent_id)
+        const latestConfig = agentService.getLatestConfig(body.agent_id)
+        const identity = resolveAgentIdentity(agent, latestConfig)
+        agentDisplayName = agent.display_name
+        identityContract = {
+          source: identity.source,
+          persona_seed_code: identity.summary.persona_seed_code,
+          persona_seed_label: identity.summary.persona_seed_label,
+          home_voice_line_id: identity.summary.home_voice_line_id,
+          home_voice_line_label: identity.summary.home_voice_line_label,
+          owner_style_pins: identity.contract.ownerStylePins,
+          visible_persona: identity.visiblePersona,
+        }
       } catch {
         res.status(404).json({
           error: { code: 'NOT_FOUND', message: `Agent ${body.agent_id} not found` },
@@ -261,6 +283,7 @@ if (config.nodeEnv !== 'production') {
           layers,
           audit,
           messages,
+          identity_contract: identityContract!,
         },
       })
     } catch (err) {

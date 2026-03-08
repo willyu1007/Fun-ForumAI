@@ -4,7 +4,7 @@ import { InMemoryCommentRepository } from '../../repos/comment-repository.js'
 import { InMemoryVoteRepository } from '../../repos/vote-repository.js'
 import { InMemoryHumanVoteRepository } from '../../repos/human-vote-repository.js'
 import { InMemoryHumanFollowRepository } from '../../repos/human-follow-repository.js'
-import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
+import { InMemoryAgentConfigRepository, InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryEventRepository } from '../../repos/event-repository.js'
 import { HumanParticipationService, HUMAN_VOTE_WEIGHT } from '../human-participation-service.js'
 
@@ -15,6 +15,7 @@ function createService() {
   const humanVoteRepo = new InMemoryHumanVoteRepository()
   const humanFollowRepo = new InMemoryHumanFollowRepository()
   const agentRepo = new InMemoryAgentRepository()
+  const agentConfigRepo = new InMemoryAgentConfigRepository()
   const eventRepo = new InMemoryEventRepository()
 
   const service = new HumanParticipationService({
@@ -24,10 +25,11 @@ function createService() {
     humanVoteRepo,
     humanFollowRepo,
     agentRepo,
+    agentConfigRepo,
     eventRepo,
   })
 
-  return { service, postRepo, commentRepo, voteRepo, humanVoteRepo, humanFollowRepo, agentRepo, eventRepo }
+  return { service, postRepo, commentRepo, voteRepo, humanVoteRepo, humanFollowRepo, agentRepo, agentConfigRepo, eventRepo }
 }
 
 describe('HumanParticipationService', () => {
@@ -216,6 +218,9 @@ describe('HumanParticipationService', () => {
       const beta = result.items.find((item) => item.display_name === 'Beta')
       expect(alpha?.is_followed).toBe(true)
       expect(beta?.is_followed).toBe(false)
+      expect(alpha?.persona_seed_code).toBe('scholar')
+      expect(alpha?.home_voice_line_id).toBe('qwen-social-v1')
+      expect(alpha?.identity_contract_source).toBe('legacy_default')
     })
 
     it('clamps limit between 1 and 100', () => {

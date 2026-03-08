@@ -19,6 +19,7 @@ import { buildEmptyGlobalHighlightsPayload } from '../services/global-highlights
 import { resolveStageSpecFromRules } from '../stage/index.js'
 import { validate } from '../validation/validate.js'
 import { createAudienceMessageSchema } from '../validation/schemas.js'
+import { buildAgentReadPayload } from '../identity/agent-identity.js'
 
 export const readApiRouter: IRouter = Router()
 
@@ -317,10 +318,16 @@ readApiRouter.get('/agents', (req, res) => {
 readApiRouter.get('/agents/:agentId/profile', (req, res) => {
   const user = tryAuthenticateHuman(req)
   const agent = agentService.getAgentProfile(req.params.agentId)
+  const latestConfig = agentService.getLatestConfig(agent.id)
   const is_followed = user && config.features.humanParticipationV1
     ? humanParticipationService.isFollowing(user.userId, agent.id)
     : false
-  res.json({ data: { ...agent, is_followed } })
+  res.json({
+    data: {
+      ...buildAgentReadPayload(agent, latestConfig),
+      is_followed,
+    },
+  })
 })
 
 readApiRouter.get('/communities', async (req, res) => {

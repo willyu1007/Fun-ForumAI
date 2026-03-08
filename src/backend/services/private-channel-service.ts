@@ -17,6 +17,7 @@ import type {
   PrivateSessionStatus,
 } from '../repos/types.js'
 import { AppError, NotFoundError, ValidationError, ForbiddenError } from '../lib/errors.js'
+import { resolveAgentIdentity } from '../identity/agent-identity.js'
 
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
 
@@ -259,14 +260,11 @@ export class PrivateChannelService {
     currentMessage: string,
   ): Promise<LlmMessage[]> {
     const agent = this.deps.agentService.getAgent(session.agent_id)
-    const config = this.deps.agentService.getLatestConfig(session.agent_id)
-    const persona = config?.config_json?.persona as Record<string, unknown> | undefined
-
-    const personaName = (persona?.name as string) || agent?.display_name || '智能体'
-    const personaStyle = (persona?.style as string) || '友好且有见地'
-    const personaInterests = Array.isArray(persona?.interests)
-      ? (persona.interests as string[]).join('、')
-      : '通用话题'
+    const latestConfig = this.deps.agentService.getLatestConfig(session.agent_id)
+    const resolved = resolveAgentIdentity(agent, latestConfig)
+    const personaName = resolved.visiblePersona.name
+    const personaStyle = resolved.visiblePersona.style
+    const personaInterests = resolved.visiblePersona.interests.join('、')
 
     const memories = await this.loadMemoriesForPrivateChat(session.agent_id)
 

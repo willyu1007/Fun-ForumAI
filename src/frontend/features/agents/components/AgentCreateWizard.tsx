@@ -7,52 +7,14 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useCreateAgent } from '@/api/hooks'
-import type { StyleSettings } from '@/api/types'
+import type { Agent, StyleSettings } from '@/api/types'
+import { PERSONA_SEED_OPTIONS } from '../persona-seeds'
 
 interface AgentCreateWizardProps {
   open: boolean
   onClose: () => void
-  onCreated: (agentId: string) => void
+  onCreated: (agent: Agent) => void
 }
-
-interface PersonaTemplate {
-  emoji: string
-  name: string
-  style: StyleSettings
-}
-
-const PERSONA_TEMPLATES: PersonaTemplate[] = [
-  {
-    emoji: '🎓',
-    name: '学者型',
-    style: { formality: 4, verbosity: 4, mood: 'neutral', habits: ['summarizes'], forum_activity: 3 },
-  },
-  {
-    emoji: '🔥',
-    name: '毒舌型',
-    style: { formality: 2, verbosity: 2, mood: 'critical', habits: ['asks_questions'], forum_activity: 3 },
-  },
-  {
-    emoji: '🌸',
-    name: '暖心型',
-    style: { formality: 3, verbosity: 3, mood: 'optimistic', habits: ['tells_stories'], forum_activity: 3 },
-  },
-  {
-    emoji: '🤔',
-    name: '哲学家型',
-    style: { formality: 4, verbosity: 5, mood: 'neutral', habits: ['asks_questions'], forum_activity: 3 },
-  },
-  {
-    emoji: '🎭',
-    name: '段子手型',
-    style: { formality: 1, verbosity: 2, mood: 'random', habits: ['uses_analogies'], forum_activity: 3 },
-  },
-  {
-    emoji: '🌊',
-    name: '和事佬型',
-    style: { formality: 3, verbosity: 3, mood: 'neutral', habits: ['summarizes'], forum_activity: 3 },
-  },
-]
 
 const INTEREST_TAGS = ['科技', '哲学', '艺术', '生活', '编程', '社会', '游戏', '音乐', '电影', '美食']
 
@@ -98,26 +60,24 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
       const res = await createAgent.mutateAsync({
         display_name: name.trim(),
         avatar_url: avatar ? avatar : undefined,
+        persona_seed_code: PERSONA_SEED_OPTIONS[selectedPersona ?? 0]?.code,
+        owner_style_pins: {
+          ...finalStyle,
+          interests,
+        },
       })
-      const agentId = res.data.id
-      await updateAgentStyleDirect(agentId, finalStyle)
-      onCreated(agentId)
+      onCreated(res.data)
       handleClose()
     } catch {
       setCreating(false)
     }
   }
 
-  const updateAgentStyleDirect = async (agentId: string, s: StyleSettings) => {
-    const { api } = await import('@/api/client')
-    await api.patch(`agents/${agentId}/style`, { json: s })
-  }
-
   const skipAll = () => doCreate(DEFAULT_STYLE)
 
   const handleNext = () => {
     if (step === 1 && selectedPersona !== null) {
-      setStyle(PERSONA_TEMPLATES[selectedPersona].style)
+      setStyle(PERSONA_SEED_OPTIONS[selectedPersona].style)
     }
     if (step < 3) {
       setStep(step + 1)
@@ -180,7 +140,7 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
             <div>
               <p className="mb-3 text-sm text-muted-foreground">选择一个人设模板：</p>
               <div className="grid grid-cols-2 gap-2">
-                {PERSONA_TEMPLATES.map((t, i) => (
+                {PERSONA_SEED_OPTIONS.map((t, i) => (
                   <button
                     key={t.name}
                     type="button"

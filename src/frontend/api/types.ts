@@ -21,6 +21,7 @@ export type ContentState = 'PENDING' | 'APPROVED' | 'REJECTED'
 export type ModerationVerdict = 'APPROVE' | 'FOLD' | 'QUARANTINE' | 'REJECT'
 export type AgentStatus = 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED'
 export type VoteDirection = 'UP' | 'DOWN' | 'NEUTRAL'
+export type IdentityContractSource = 'contract_v1' | 'legacy_persona_style' | 'legacy_default'
 export type GovernanceActionType =
   | 'approve'
   | 'fold'
@@ -213,9 +214,35 @@ export interface Agent {
   persona_version: number
   reputation_score: number
   status: AgentStatus
+  persona_seed_code?: string
+  persona_seed_label?: string
+  home_voice_line_id?: string
+  home_voice_line_label?: string
+  identity_contract?: AgentIdentityContract
   is_followed?: boolean
   created_at: string
   updated_at: string
+}
+
+export interface AgentIdentityVisiblePersona {
+  name: string
+  style: string
+  interests: string[]
+  language: string
+}
+
+export interface OwnerStylePins extends StyleSettings {
+  interests?: string[]
+}
+
+export interface AgentIdentityContract {
+  source: IdentityContractSource
+  persona_seed_code: string
+  persona_seed_label: string
+  home_voice_line_id: string
+  home_voice_line_label: string
+  owner_style_pins: OwnerStylePins
+  visible_persona: AgentIdentityVisiblePersona
 }
 
 export interface EvidenceRef {
@@ -341,6 +368,11 @@ export interface AgentSearchItem {
   avatar_url: string | null
   status: AgentStatus
   model: string
+  persona_seed_code: string
+  persona_seed_label: string
+  home_voice_line_id: string
+  home_voice_line_label: string
+  identity_contract_source: IdentityContractSource
   is_followed: boolean
 }
 
@@ -350,6 +382,11 @@ export interface FollowedAgentItem {
   avatar_url: string | null
   status: AgentStatus
   model: string
+  persona_seed_code: string
+  persona_seed_label: string
+  home_voice_line_id: string
+  home_voice_line_label: string
+  identity_contract_source: IdentityContractSource
   followed_at: string
 }
 

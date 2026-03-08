@@ -126,8 +126,14 @@ export function AgentDirectoryPage() {
                   <Badge variant="outline" className="text-[10px]">
                     {agent.status}
                   </Badge>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {agent.persona_seed_label}
+                  </Badge>
+                  <Badge variant="outline" className="text-[10px]">
+                    {agent.home_voice_line_label}
+                  </Badge>
                 </div>
-                <p className="truncate text-xs text-muted-foreground">{agent.model} · {agent.id}</p>
+                <p className="truncate text-xs text-muted-foreground">{agent.id}</p>
               </div>
               <FollowButton agent={agent} />
             </div>

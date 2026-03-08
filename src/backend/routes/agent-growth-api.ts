@@ -7,6 +7,11 @@ import type { PrismaClient } from '@prisma/client'
 import { agentService, xpService } from '../container.js'
 import { requireHumanAuth } from '../middleware/human-auth.js'
 import { ForbiddenError } from '../lib/errors.js'
+import {
+  applyStyleSettingsPatch,
+  readStyleSettings,
+  type OwnerStylePins,
+} from '../identity/agent-identity.js'
 
 function getPrismaOrNull(): PrismaClient | null {
   return ((globalThis as Record<string, unknown>).__forumPrisma as PrismaClient) ?? null
@@ -213,61 +218,23 @@ agentNurtureRouter.get('/instruction-templates', (_req, res) => {
 agentNurtureRouter.get('/agents/:agentId/style', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
   assertOwner(agentId, req.user!.userId)
-  if (!getPrismaOrNull()) {
-    res.json({ data: { formality: 3, verbosity: 3, mood: 'neutral', habits: [], forum_activity: 3 } })
-    return
-  }
-  const prisma = getPrismaOrNull()!
-  const agentConfig = await prisma.agentConfig.findFirst({
-    where: { agentId },
-    orderBy: { effectiveAt: 'desc' },
-  })
-  const configJson = (agentConfig?.configJson as Record<string, unknown>) ?? {}
-  const style = (configJson.style as Record<string, unknown>) ?? {}
-  res.json({
-    data: {
-      formality: style.formality ?? 3,
-      verbosity: style.verbosity ?? 3,
-      mood: style.mood ?? 'neutral',
-      habits: style.habits ?? [],
-      forum_activity: style.forum_activity ?? 3,
-    },
-  })
+  const latestConfig = agentService.getLatestConfig(agentId)
+  res.json({ data: readStyleSettings(latestConfig?.config_json ?? {}) })
 })
 
 agentNurtureRouter.patch('/agents/:agentId/style', requireHumanAuth, async (req, res) => {
   const agentId = asParam(req.params.agentId)
   assertOwner(agentId, req.user!.userId)
-  if (!getPrismaOrNull()) {
-    res.json({ data: { message: 'updated' } })
-    return
-  }
-  const prisma = getPrismaOrNull()!
-  const agentConfig = await prisma.agentConfig.findFirst({
-    where: { agentId },
-    orderBy: { effectiveAt: 'desc' },
+  const existing = agentService.getLatestConfig(agentId)?.config_json ?? {}
+  const nextConfig = applyStyleSettingsPatch(existing, req.body as Partial<OwnerStylePins>)
+  const saved = await agentService.updateConfig(agentId, nextConfig, req.user!.userId)
+
+  res.json({
+    data: {
+      message: 'updated',
+      style: readStyleSettings(saved.config_json),
+    },
   })
-  const existing = (agentConfig?.configJson as Record<string, unknown>) ?? {}
-  const newStyle = { ...(existing.style as Record<string, unknown> ?? {}), ...req.body }
-  const now = new Date()
-
-  if (agentConfig) {
-    await prisma.agentConfig.update({
-      where: { id: agentConfig.id },
-      data: { configJson: { ...existing, style: newStyle }, updatedAt: now },
-    })
-  } else {
-    await prisma.agentConfig.create({
-      data: {
-        agentId,
-        configJson: { style: newStyle },
-        effectiveAt: now,
-        updatedBy: 'dev-seed',
-      },
-    })
-  }
-
-  res.json({ data: { message: 'updated', style: newStyle } })
 })
 
 // ─── Prompt Overrides (T-019) ────────────────────────────────

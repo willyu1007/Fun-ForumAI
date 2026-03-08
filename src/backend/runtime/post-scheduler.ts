@@ -9,6 +9,7 @@ import type { AgentInclinationAsset } from '../repos/types.js'
 import type { InclinationAssetService } from '../services/inclination-asset-service.js'
 import type { PromptOrchestrator } from './prompt-orchestrator.js'
 import { config } from '../lib/config.js'
+import { resolveAgentIdentity } from '../identity/agent-identity.js'
 
 export interface PostSchedulerConfig {
   postIntervalMs: number
@@ -356,16 +357,9 @@ export class PostScheduler {
 
   private loadPersona(agentId: string): AgentPersona {
     try {
-      const configObj = this.deps.agentService.getLatestConfig(agentId)
-      if (!configObj?.config_json?.persona) return DEFAULT_PERSONA
-
-      const p = configObj.config_json.persona as Record<string, unknown>
-      return {
-        name: (p.name as string) || DEFAULT_PERSONA.name,
-        style: (p.style as string) || DEFAULT_PERSONA.style,
-        interests: Array.isArray(p.interests) ? (p.interests as string[]) : DEFAULT_PERSONA.interests,
-        language: (p.language as string) || DEFAULT_PERSONA.language,
-      }
+      const agent = this.deps.agentService.getAgent(agentId)
+      const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+      return resolveAgentIdentity(agent, latestConfig).visiblePersona
     } catch {
       return DEFAULT_PERSONA
     }

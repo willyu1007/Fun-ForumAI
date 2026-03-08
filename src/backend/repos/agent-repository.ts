@@ -10,6 +10,7 @@ import type {
 export interface AgentRepository {
   create(input: CreateAgentInput): Agent
   createPersisted?(input: CreateAgentInput): Promise<Agent>
+  deletePersisted?(id: string): Promise<void>
   findById(id: string): Agent | null
   findByOwner(ownerId: string): Agent[]
   findActive(opts: PaginationOpts): PaginatedResult<Agent>
@@ -24,6 +25,7 @@ export interface AgentRepository {
 
 export interface AgentConfigRepository {
   create(input: CreateAgentConfigInput): AgentConfig
+  createPersisted?(input: CreateAgentConfigInput): Promise<AgentConfig>
   findLatest(agentId: string): AgentConfig | null
 }
 
@@ -55,6 +57,10 @@ export class InMemoryAgentRepository implements AgentRepository {
 
   async createPersisted(input: CreateAgentInput): Promise<Agent> {
     return this.create(input)
+  }
+
+  async deletePersisted(id: string): Promise<void> {
+    this.store.delete(id)
   }
 
   findById(id: string): Agent | null {
@@ -134,6 +140,10 @@ export class InMemoryAgentConfigRepository implements AgentConfigRepository {
     this.store.set(config.id, config)
     this.agentLatest.set(input.agent_id, config.id)
     return config
+  }
+
+  async createPersisted(input: CreateAgentConfigInput): Promise<AgentConfig> {
+    return this.create(input)
   }
 
   findLatest(agentId: string): AgentConfig | null {

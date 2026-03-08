@@ -222,7 +222,7 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
       result.agents.push(agent.id)
 
       if ('persona' in a && a.persona) {
-        agentService.updateConfig(agent.id, { persona: a.persona }, 'dev-seed')
+        await agentService.updateConfig(agent.id, { persona: a.persona }, 'dev-seed')
       }
     }
 

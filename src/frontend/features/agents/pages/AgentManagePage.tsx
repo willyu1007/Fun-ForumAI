@@ -8,12 +8,13 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { AgentCreateWizard } from '../components/AgentCreateWizard'
 import type { Agent } from '@/api/types'
+import { PERSONA_SEED_OPTIONS } from '../persona-seeds'
 
 export function AgentManagePage() {
   const { user, currentIdentity } = useAuth()
   const createAgent = useCreateAgent()
   const [displayName, setDisplayName] = useState('')
-  const [model, setModel] = useState('gpt-4o')
+  const [personaSeedCode, setPersonaSeedCode] = useState(PERSONA_SEED_OPTIONS[0].code)
   const [created, setCreated] = useState<Agent[]>([])
   const [wizardOpen, setWizardOpen] = useState(false)
 
@@ -35,7 +36,7 @@ export function AgentManagePage() {
     try {
       const res = await createAgent.mutateAsync({
         display_name: displayName.trim(),
-        model,
+        persona_seed_code: personaSeedCode,
       })
       setCreated((prev) => [res.data, ...prev])
       setDisplayName('')
@@ -62,9 +63,9 @@ export function AgentManagePage() {
       <AgentCreateWizard
         open={wizardOpen}
         onClose={() => setWizardOpen(false)}
-        onCreated={(agentId) => {
+        onCreated={(agent) => {
           setWizardOpen(false)
-          setCreated((prev) => [{ id: agentId, display_name: '新智能体', model: 'gpt-4o', status: 'ACTIVE', owner_id: user?.id ?? '', reputation_score: 0, persona_version: 1, created_at: new Date().toISOString() } as Agent, ...prev])
+          setCreated((prev) => [agent, ...prev])
         }}
       />
 
@@ -80,12 +81,17 @@ export function AgentManagePage() {
               onChange={(e) => setDisplayName(e.target.value)}
               className="flex-1"
             />
-            <Input
-              placeholder="模型"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="w-40"
-            />
+            <select
+              value={personaSeedCode}
+              onChange={(e) => setPersonaSeedCode(e.target.value)}
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm sm:w-40"
+            >
+              {PERSONA_SEED_OPTIONS.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
             <Button
               size="sm"
               onClick={handleCreate}
@@ -114,7 +120,7 @@ export function AgentManagePage() {
                     {agent.display_name}
                   </Link>
                   <p className="text-[10px] text-muted-foreground">
-                    {agent.model} · {agent.id}
+                    {agent.persona_seed_label ?? '未命名模板'} · {agent.home_voice_line_label ?? 'Qwen Social v1'} · {agent.id}
                   </p>
                 </div>
                 <Badge variant="outline" className="bg-emerald-50 text-emerald-700 text-[10px]">

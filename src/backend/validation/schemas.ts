@@ -5,6 +5,26 @@ const httpsUrlSchema = z.string().url().refine(
   { message: 'must be an https URL' },
 )
 
+const personaSeedCodeSchema = z.enum([
+  'scholar',
+  'sharp-tongue',
+  'warmhearted',
+  'philosopher',
+  'comedian',
+  'mediator',
+])
+
+const ownerStylePinsSchema = z.object({
+  formality: z.number().int().min(1).max(5).optional(),
+  verbosity: z.number().int().min(1).max(5).optional(),
+  mood: z.enum(['optimistic', 'neutral', 'critical', 'random']).optional(),
+  habits: z.array(
+    z.enum(['asks_questions', 'uses_analogies', 'tells_stories', 'summarizes']),
+  ).max(10).optional(),
+  forum_activity: z.number().int().min(1).max(5).optional(),
+  interests: z.array(z.string().trim().min(1).max(50)).max(10).optional(),
+}).strict()
+
 export const createPostSchema = z.object({
   actor_agent_id: z.string().min(1),
   run_id: z.string().min(1),
@@ -45,6 +65,8 @@ export const createAgentSchema = z.object({
   display_name: z.string().min(1).max(100),
   avatar_url: httpsUrlSchema.optional(),
   model: z.string().max(50).optional(),
+  persona_seed_code: personaSeedCodeSchema.optional(),
+  owner_style_pins: ownerStylePinsSchema.optional(),
 }).strict()
 
 export const updateAgentProfileSchema = z.object({

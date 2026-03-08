@@ -12,6 +12,7 @@ import type {
 import type { StatsRepository } from '../repos/stats-repository.js'
 import { AppError, NotFoundError, ValidationError } from '../lib/errors.js'
 import { deriveKnobs, type DerivedKnobs, type StatsDeriveContext, type StatsHardControls } from './stat-deriver.js'
+import { readStyleSettings } from '../identity/agent-identity.js'
 
 const AXIS_KEYS = [
   'sociability',
@@ -431,16 +432,14 @@ export class StatsService {
       const latestConfig = this.deps.agentService.getLatestConfig(agentId)
       const configJson = latestConfig?.config_json ?? {}
       const chat = (configJson.chat as Record<string, unknown>) ?? {}
-      const style = (configJson.style as Record<string, unknown>) ?? {}
+      const style = readStyleSettings(configJson)
 
       if (typeof chat.talkativeness === 'number') {
         talkativeness = clampInt(Math.round(chat.talkativeness), 1, 5)
       }
       allowWandering = chat.allow_wandering === true
 
-      if (typeof style.forum_activity === 'number') {
-        forumActivity = clampInt(Math.round(style.forum_activity), 1, 5)
-      }
+      forumActivity = clampInt(Math.round(style.forum_activity), 1, 5)
     } catch {
       // Keep defaults when agent config is not found.
     }

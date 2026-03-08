@@ -1,5 +1,7 @@
 import type {
+  Agent,
   AgentRepository,
+  AgentConfigRepository,
   CommentRepository,
   EventRepository,
   HumanFollowRepository,
@@ -10,6 +12,7 @@ import type {
 } from '../repos/index.js'
 import { NotFoundError, ValidationError } from '../lib/errors.js'
 import { HUMAN_VOTE_WEIGHT } from '../lib/constants.js'
+import { resolveAgentIdentity } from '../identity/agent-identity.js'
 
 export { HUMAN_VOTE_WEIGHT }
 
@@ -20,6 +23,7 @@ export interface HumanParticipationServiceDeps {
   humanVoteRepo: HumanVoteRepository
   humanFollowRepo: HumanFollowRepository
   agentRepo: AgentRepository
+  agentConfigRepo: AgentConfigRepository
   eventRepo: EventRepository
 }
 
@@ -40,6 +44,11 @@ export interface SearchAgentsResult {
     avatar_url: string | null
     status: string
     model: string
+    persona_seed_code: string
+    persona_seed_label: string
+    home_voice_line_id: string
+    home_voice_line_label: string
+    identity_contract_source: string
     is_followed: boolean
   }>
   next_cursor: string | null
@@ -52,6 +61,11 @@ export interface FollowedAgentsResult {
     avatar_url: string | null
     status: string
     model: string
+    persona_seed_code: string
+    persona_seed_label: string
+    home_voice_line_id: string
+    home_voice_line_label: string
+    identity_contract_source: string
     followed_at: string
   }>
   next_cursor: string | null
@@ -168,14 +182,13 @@ export class HumanParticipationService {
       : new Set<string>()
 
     return {
-      items: result.items.map((agent) => ({
-        id: agent.id,
-        display_name: agent.display_name,
-        avatar_url: agent.avatar_url,
-        status: agent.status,
-        model: agent.model,
-        is_followed: input.viewer_user_id ? followed.has(agent.id) : false,
-      })),
+      items: result.items.map((agent) => {
+        const card = this.buildAgentCard(agent)
+        return {
+          ...card,
+          is_followed: input.viewer_user_id ? followed.has(agent.id) : false,
+        }
+      }),
       next_cursor: result.next_cursor,
     }
   }
@@ -191,11 +204,7 @@ export class HumanParticipationService {
         const agent = this.deps.agentRepo.findById(follow.agent_id)
         if (!agent) return null
         return {
-          id: agent.id,
-          display_name: agent.display_name,
-          avatar_url: agent.avatar_url,
-          status: agent.status,
-          model: agent.model,
+          ...this.buildAgentCard(agent),
           followed_at: follow.created_at.toISOString(),
         }
       })
@@ -209,5 +218,25 @@ export class HumanParticipationService {
 
   isFollowing(userId: string, agentId: string): boolean {
     return this.deps.humanFollowRepo.isFollowing(userId, agentId)
+  }
+
+  private buildAgentCard(agent: Agent): SearchAgentsResult['items'][number] {
+    const identity = resolveAgentIdentity(
+      agent,
+      this.deps.agentConfigRepo.findLatest(agent.id),
+    )
+    return {
+      id: agent.id,
+      display_name: agent.display_name,
+      avatar_url: agent.avatar_url,
+      status: agent.status,
+      model: agent.model,
+      persona_seed_code: identity.summary.persona_seed_code,
+      persona_seed_label: identity.summary.persona_seed_label,
+      home_voice_line_id: identity.summary.home_voice_line_id,
+      home_voice_line_label: identity.summary.home_voice_line_label,
+      identity_contract_source: identity.source,
+      is_followed: false,
+    }
   }
 }

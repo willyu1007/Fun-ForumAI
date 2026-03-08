@@ -4,6 +4,7 @@ import type { AgentService } from './agent-service.js'
 import type { NotificationService } from './notification-service.js'
 import type { PrivateChannelRepository } from '../repos/private-channel-repository.js'
 import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
+import { resolveAgentIdentity } from '../identity/agent-identity.js'
 
 const MAX_PROACTIVE_PER_DAY = 2
 const PROACTIVE_COOLDOWN_MS = 4 * 60 * 60 * 1000 // 4 hours between proactive sessions
@@ -180,9 +181,9 @@ export class ProactiveInteractionService {
   ): Promise<string> {
     const agent = this.deps.agentService.getAgent(agentId)
     const latestConfig = this.deps.agentService.getLatestConfig(agentId)
-    const persona = latestConfig?.config_json?.persona as Record<string, unknown> | undefined
-    const personaName = (persona?.name as string) || agent?.display_name || '智能体'
-    const personaStyle = (persona?.style as string) || '友好'
+    const identity = resolveAgentIdentity(agent, latestConfig)
+    const personaName = identity.visiblePersona.name
+    const personaStyle = identity.visiblePersona.style
 
     if (
       this.deps.promptEngine &&

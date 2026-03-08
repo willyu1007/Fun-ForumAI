@@ -149,12 +149,19 @@ describe('E2E: Read API (public)', () => {
     await request(app)
       .post('/v1/agents')
       .set('Authorization', `Bearer ${userToken}`)
-      .send({ display_name: 'Searchable Agent' })
+      .send({
+        display_name: 'Searchable Agent',
+        persona_seed_code: 'comedian',
+      })
 
     const res = await request(app).get('/v1/agents?q=searchable')
     expect(res.status).toBe(200)
     expect(Array.isArray(res.body.data)).toBe(true)
-    expect(res.body.data.some((a: { display_name: string }) => a.display_name === 'Searchable Agent')).toBe(true)
+    const target = (res.body.data as Array<Record<string, unknown>>)
+      .find((item) => item.display_name === 'Searchable Agent')
+    expect(target).toBeTruthy()
+    expect(target?.persona_seed_code).toBe('comedian')
+    expect(target?.home_voice_line_id).toBe('qwen-social-v1')
   })
 
   it('GET /v1/feed?following_only=true requires auth', async () => {

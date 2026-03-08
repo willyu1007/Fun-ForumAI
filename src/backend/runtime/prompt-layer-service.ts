@@ -6,6 +6,10 @@ import type { StatsService } from '../services/stats-service.js'
 import type { AgentPersona, PromptLayers, PromptComposeAudit, PromptScene } from './types.js'
 import { config } from '../lib/config.js'
 import { computeControversyScore } from './controversy-score.js'
+import {
+  buildStyleInstructionText,
+  resolveAgentIdentity,
+} from '../identity/agent-identity.js'
 
 const DEFAULT_PERSONA: AgentPersona = {
   name: '匿名智能体',
@@ -49,18 +53,8 @@ export class PromptLayerService {
   getPersona(agentId: string): AgentPersona {
     try {
       const agent = this.deps.agentService.getAgent(agentId)
-      const config = this.deps.agentService.getLatestConfig(agentId)
-      const p = (config?.config_json?.persona as Record<string, unknown> | undefined) ?? {}
-      const interests = Array.isArray(p.interests)
-        ? (p.interests as string[])
-        : DEFAULT_PERSONA.interests
-
-      return {
-        name: (p.name as string) || agent.display_name || DEFAULT_PERSONA.name,
-        style: (p.style as string) || DEFAULT_PERSONA.style,
-        interests,
-        language: (p.language as string) || DEFAULT_PERSONA.language,
-      }
+      const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+      return resolveAgentIdentity(agent, latestConfig).visiblePersona
     } catch {
       return DEFAULT_PERSONA
     }
@@ -154,44 +148,13 @@ export class PromptLayerService {
 
   private buildStyleLayer(agentId: string): string {
     try {
+      const agent = this.deps.agentService.getAgent(agentId)
       const latestConfig = this.deps.agentService.getLatestConfig(agentId)
-      const style = (latestConfig?.config_json?.style as Record<string, unknown>) ?? {}
       const parts: string[] = []
-
-      const formality = style.formality as number | undefined
-      if (formality !== undefined && formality !== 3) {
-        parts.push(formality > 3 ? '使用正式书面语' : '使用轻松口语化的表达')
-      }
-
-      const verbosity = style.verbosity as number | undefined
-      if (verbosity !== undefined && verbosity !== 3) {
-        parts.push(verbosity > 3 ? '详细展开论述' : '简洁扼要')
-      }
-
-      const mood = style.mood as string | undefined
-      if (mood && mood !== 'neutral') {
-        const moodMap: Record<string, string> = {
-          optimistic: '以乐观积极的态度',
-          critical: '以批判性的思维',
-          random: '情绪多变',
-        }
-        if (moodMap[mood]) {
-          parts.push(moodMap[mood])
-        }
-      }
-
-      const habits = style.habits as string[] | undefined
-      if (habits?.length) {
-        const habitMap: Record<string, string> = {
-          asks_questions: '善于提问',
-          uses_analogies: '喜欢引用类比',
-          tells_stories: '爱用故事说明问题',
-          summarizes: '善于总结要点',
-        }
-        const mapped = habits.map((h) => habitMap[h]).filter(Boolean)
-        if (mapped.length > 0) {
-          parts.push(mapped.join('、'))
-        }
+      const resolved = resolveAgentIdentity(agent, latestConfig)
+      const baseStyle = buildStyleInstructionText(resolved.contract.ownerStylePins)
+      if (baseStyle) {
+        parts.push(baseStyle)
       }
 
       if (config.features.agentStatsBehavior && this.deps.statsService) {

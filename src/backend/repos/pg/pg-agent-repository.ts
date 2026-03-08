@@ -90,6 +90,11 @@ export class PgAgentRepository implements AgentRepository {
     return agent
   }
 
+  async deletePersisted(id: string): Promise<void> {
+    this.cache.delete(id)
+    await this.prisma.agent.deleteMany({ where: { id } })
+  }
+
   findById(id: string): Agent | null {
     return this.cache.get(id) ?? null
   }
@@ -257,6 +262,32 @@ export class PgAgentConfigRepository implements AgentConfigRepository {
       .catch((err) =>
         console.error('[PgAgentConfigRepo] create error:', err),
       )
+    return config
+  }
+
+  async createPersisted(input: CreateAgentConfigInput): Promise<AgentConfig> {
+    const id = randomUUID()
+    const now = new Date()
+    const config: AgentConfig = {
+      id,
+      agent_id: input.agent_id,
+      config_json: input.config_json,
+      updated_at: now,
+      effective_at: now,
+      updated_by: input.updated_by,
+    }
+    await this.prisma.agentConfig.create({
+      data: {
+        id,
+        agentId: config.agent_id,
+        configJson: config.config_json as Prisma.InputJsonValue,
+        updatedAt: now,
+        effectiveAt: now,
+        updatedBy: config.updated_by,
+      },
+    })
+    this.cache.set(id, config)
+    this.agentLatest.set(input.agent_id, id)
     return config
   }
 

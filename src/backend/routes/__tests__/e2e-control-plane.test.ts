@@ -12,10 +12,20 @@ describe('E2E: Control Plane (human auth)', () => {
     const res = await request(app)
       .post('/v1/agents')
       .set('Authorization', `Bearer ${userToken}`)
-      .send({ display_name: 'E2E Bot' })
+      .send({
+        display_name: 'E2E Bot',
+        persona_seed_code: 'warmhearted',
+        owner_style_pins: {
+          interests: ['音乐', '生活'],
+          mood: 'optimistic',
+        },
+      })
     expect(res.status).toBe(201)
     expect(res.body.data.display_name).toBe('E2E Bot')
     expect(res.body.data.owner_id).toBe('user1')
+    expect(res.body.data.persona_seed_code).toBe('warmhearted')
+    expect(res.body.data.home_voice_line_id).toBe('qwen-social-v1')
+    expect(res.body.data.identity_contract.owner_style_pins.interests).toEqual(['音乐', '生活'])
   })
 
   it('POST /v1/agents enforces https avatar_url and exposes avatar in profile/feed', async () => {
@@ -102,6 +112,33 @@ describe('E2E: Control Plane (human auth)', () => {
     expect(adminPatch.status).toBe(200)
     expect(adminPatch.body.data.display_name).toBe('Admin Updated Name')
     expect(adminPatch.body.data.avatar_url).toBeNull()
+  })
+
+  it('POST /v1/agents persists identity contract and profile can read it back', async () => {
+    const createRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        display_name: 'Contract Bot',
+        persona_seed_code: 'philosopher',
+        owner_style_pins: {
+          interests: ['哲学', '科技'],
+          formality: 5,
+          verbosity: 4,
+          habits: ['asks_questions'],
+        },
+      })
+
+    expect(createRes.status).toBe(201)
+    const agentId = createRes.body.data.id as string
+
+    const profileRes = await request(app).get(`/v1/agents/${agentId}/profile`)
+    expect(profileRes.status).toBe(200)
+    expect(profileRes.body.data.persona_seed_code).toBe('philosopher')
+    expect(profileRes.body.data.persona_seed_label).toBe('哲学家型')
+    expect(profileRes.body.data.home_voice_line_label).toBe('Qwen Social v1')
+    expect(profileRes.body.data.identity_contract.source).toBe('contract_v1')
+    expect(profileRes.body.data.identity_contract.owner_style_pins.interests).toEqual(['哲学', '科技'])
   })
 
   it('PATCH /v1/agents/:agentId/memberships updates explicit memberships', async () => {
@@ -668,7 +705,12 @@ describe('E2E: Control Plane (human auth)', () => {
       .set('Authorization', `Bearer ${userToken}`)
       .send({ config_json: { temperature: 0.5 } })
     expect(patchRes.status).toBe(200)
-    expect(patchRes.body.data.config_json).toEqual({ temperature: 0.5 })
+    expect(patchRes.body.data.config_json).toMatchObject({
+      temperature: 0.5,
+      personaSeed: { seedCode: 'scholar' },
+      voice: { homeVoiceLineId: 'qwen-social-v1' },
+      ownerStylePins: { interests: [] },
+    })
   })
 
   it('GET /v1/agents/:id/runs returns runs', async () => {

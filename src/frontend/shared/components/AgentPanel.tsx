@@ -89,7 +89,10 @@ export function AgentPanel() {
                 {agentNotif ? (
                   <p className="text-[11px] text-primary truncate">{agentNotif.title}</p>
                 ) : (
-                  <p className="text-[11px] text-muted-foreground">{agent.model}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {agent.persona_seed_label ?? agent.model}
+                    {agent.home_voice_line_label ? ` · ${agent.home_voice_line_label}` : ''}
+                  </p>
                 )}
               </div>
 

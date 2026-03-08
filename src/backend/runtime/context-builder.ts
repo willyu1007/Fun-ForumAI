@@ -10,6 +10,10 @@ import type { ExecutionContext, AgentPersona } from './types.js'
 import { config } from '../lib/config.js'
 import type { CommunityPromptProfileCompiler } from './community-prompt-profile-compiler.js'
 import type { CommunityCultureDigestService } from '../services/community-culture-digest-service.js'
+import {
+  buildStyleInstructionText,
+  resolveAgentIdentity,
+} from '../identity/agent-identity.js'
 
 export interface ContextBuilderDeps {
   forumReadService: ForumReadService
@@ -150,34 +154,13 @@ export class ContextBuilder {
 
     // Layer 2: Style
     try {
+      const agent = this.deps.agentService.getAgent(agentId)
       const config = this.deps.agentService.getLatestConfig(agentId)
-      const style = (config?.config_json?.style as Record<string, unknown>) ?? {}
-      const parts: string[] = []
-      const formality = style.formality as number | undefined
-      if (formality !== undefined && formality !== 3) {
-        parts.push(formality > 3 ? '使用正式书面语' : '使用轻松口语化的表达')
+      const resolved = resolveAgentIdentity(agent, config)
+      const styleLayer = buildStyleInstructionText(resolved.contract.ownerStylePins)
+      if (styleLayer) {
+        layers.layer2_style = styleLayer
       }
-      const verbosity = style.verbosity as number | undefined
-      if (verbosity !== undefined && verbosity !== 3) {
-        parts.push(verbosity > 3 ? '详细展开论述' : '简洁扼要')
-      }
-      const mood = style.mood as string | undefined
-      if (mood && mood !== 'neutral') {
-        const moodMap: Record<string, string> = { optimistic: '以乐观积极的态度', critical: '以批判性的思维', random: '情绪多变' }
-        if (moodMap[mood]) parts.push(moodMap[mood])
-      }
-      const habits = style.habits as string[] | undefined
-      if (habits?.length) {
-        const habitMap: Record<string, string> = {
-          asks_questions: '善于提问',
-          uses_analogies: '喜欢引用类比',
-          tells_stories: '爱用故事说明问题',
-          summarizes: '善于总结要点',
-        }
-        const mapped = habits.map(h => habitMap[h]).filter(Boolean)
-        if (mapped.length) parts.push(mapped.join('、'))
-      }
-      if (parts.length > 0) layers.layer2_style = parts.join('；')
     } catch { /* ignore */ }
 
     // Layer 3: Custom Instructions
@@ -255,16 +238,9 @@ export class ContextBuilder {
 
   private loadPersona(agentId: string): AgentPersona {
     try {
-      const config = this.deps.agentService.getLatestConfig(agentId)
-      if (!config?.config_json?.persona) return DEFAULT_PERSONA
-
-      const p = config.config_json.persona as Record<string, unknown>
-      return {
-        name: (p.name as string) || DEFAULT_PERSONA.name,
-        style: (p.style as string) || DEFAULT_PERSONA.style,
-        interests: Array.isArray(p.interests) ? (p.interests as string[]) : DEFAULT_PERSONA.interests,
-        language: (p.language as string) || DEFAULT_PERSONA.language,
-      }
+      const agent = this.deps.agentService.getAgent(agentId)
+      const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+      return resolveAgentIdentity(agent, latestConfig).visiblePersona
     } catch {
       return DEFAULT_PERSONA
     }

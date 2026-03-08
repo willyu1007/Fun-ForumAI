@@ -33,16 +33,27 @@ describe('AgentService', () => {
 
     it('createAgentPersisted uses repo persisted path', async () => {
       const agentRepo = new InMemoryAgentRepository()
+      const agentConfigRepo = new InMemoryAgentConfigRepository()
       const createPersisted = vi.spyOn(agentRepo, 'createPersisted')
       const svc = new AgentService({
         agentRepo,
-        agentConfigRepo: new InMemoryAgentConfigRepository(),
+        agentConfigRepo,
         agentRunRepo: new InMemoryAgentRunRepository(),
       })
 
-      const agent = await svc.createAgentPersisted({ owner_id: 'u2', display_name: 'Persisted Bot' })
+      const agent = await svc.createAgentPersisted({
+        owner_id: 'u2',
+        display_name: 'Persisted Bot',
+        persona_seed_code: 'comedian',
+        owner_style_pins: { interests: ['电影', '音乐'] },
+      })
       expect(agent.display_name).toBe('Persisted Bot')
       expect(createPersisted).toHaveBeenCalledTimes(1)
+      expect(agentConfigRepo.findLatest(agent.id)?.config_json).toMatchObject({
+        personaSeed: { seedCode: 'comedian' },
+        voice: { homeVoiceLineId: 'qwen-social-v1', locked: true },
+        ownerStylePins: { interests: ['电影', '音乐'] },
+      })
     })
   })
 
@@ -70,23 +81,90 @@ describe('AgentService', () => {
   })
 
   describe('updateConfig', () => {
-    it('creates a config entry', () => {
+    it('creates a config entry', async () => {
       const a = ctx.svc.createAgent({ owner_id: 'u1', display_name: 'Bot' })
-      const cfg = ctx.svc.updateConfig(a.id, { temp: 0.7 }, 'admin1')
+      const cfg = await ctx.svc.updateConfig(a.id, { temp: 0.7 }, 'admin1')
       expect(cfg.config_json).toEqual({ temp: 0.7 })
       expect(cfg.updated_by).toBe('admin1')
     })
 
-    it('throws for unknown agent', () => {
-      expect(() => ctx.svc.updateConfig('nope', {}, 'admin')).toThrow('not found')
+    it('preserves identity fields when patching a subset of config_json', async () => {
+      const agent = await ctx.svc.createAgentPersisted({
+        owner_id: 'u1',
+        display_name: 'Layered Bot',
+        persona_seed_code: 'philosopher',
+        owner_style_pins: { interests: ['哲学'], verbosity: 5 },
+      })
+
+      const cfg = await ctx.svc.updateConfig(agent.id, {
+        voice: {
+          lineVersion: 2,
+          migrationPolicy: { maxMigrations: 3 },
+        },
+        chat: { talkativeness: 4 },
+      }, 'admin1')
+
+      expect(cfg.config_json).toMatchObject({
+        personaSeed: { seedCode: 'philosopher' },
+        ownerStylePins: { interests: ['哲学'], verbosity: 5 },
+        voice: {
+          homeVoiceLineId: 'qwen-social-v1',
+          lineVersion: 2,
+          locked: true,
+          migrationPolicy: {
+            allowRareReanchor: false,
+            maxMigrations: 3,
+          },
+        },
+        chat: { talkativeness: 4 },
+      })
+    })
+
+    it('rolls back agent creation if config persistence fails', async () => {
+      const agentRepo = new InMemoryAgentRepository()
+      const deletePersisted = vi.spyOn(agentRepo, 'deletePersisted')
+      const agentConfigRepo = {
+        create: vi.fn(() => {
+          throw new Error('should not use create')
+        }),
+        createPersisted: vi.fn(async () => {
+          throw new Error('config write failed')
+        }),
+        findLatest: vi.fn(() => null),
+      }
+      const svc = new AgentService({
+        agentRepo,
+        agentConfigRepo,
+        agentRunRepo: new InMemoryAgentRunRepository(),
+      })
+
+      await expect(svc.createAgentPersisted({
+        owner_id: 'u2',
+        display_name: 'Rollback Bot',
+      })).rejects.toThrow('config write failed')
+
+      expect(deletePersisted).toHaveBeenCalledTimes(1)
+      expect(agentRepo.findByOwner('u2')).toHaveLength(0)
+    })
+
+    it('rejects hidden-only voice lines as home voice', async () => {
+      const a = ctx.svc.createAgent({ owner_id: 'u1', display_name: 'Bot' })
+      await expect(ctx.svc.updateConfig(a.id, {
+        personaSeed: { seedCode: 'scholar' },
+        voice: { homeVoiceLineId: 'deepseek-director-v1' },
+      }, 'admin1')).rejects.toThrow('hidden-only voice line cannot be used as homeVoiceLineId')
+    })
+
+    it('throws for unknown agent', async () => {
+      await expect(ctx.svc.updateConfig('nope', {}, 'admin')).rejects.toThrow('not found')
     })
   })
 
   describe('getLatestConfig', () => {
-    it('returns latest config', () => {
+    it('returns latest config', async () => {
       const a = ctx.svc.createAgent({ owner_id: 'u1', display_name: 'Bot' })
-      ctx.svc.updateConfig(a.id, { v: 1 }, 'admin')
-      ctx.svc.updateConfig(a.id, { v: 2 }, 'admin')
+      await ctx.svc.updateConfig(a.id, { v: 1 }, 'admin')
+      await ctx.svc.updateConfig(a.id, { v: 2 }, 'admin')
       expect(ctx.svc.getLatestConfig(a.id)?.config_json).toEqual({ v: 2 })
     })
 

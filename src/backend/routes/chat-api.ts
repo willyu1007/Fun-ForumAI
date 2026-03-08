@@ -131,12 +131,12 @@ chatApiRouter.get('/agents/:agentId/chat-config', (req, res) => {
   res.json({ data: config })
 })
 
-chatApiRouter.patch('/agents/:agentId/chat-config', requireHumanAuth, (req, res) => {
+chatApiRouter.patch('/agents/:agentId/chat-config', requireHumanAuth, async (req, res) => {
   const { talkativeness, allow_wandering } = req.body as {
     talkativeness?: number
     allow_wandering?: boolean
   }
-  const config = chatService.updateAgentChatConfig(
+  const config = await chatService.updateAgentChatConfig(
     String(req.params.agentId),
     req.user!.userId,
     { talkativeness, allow_wandering },

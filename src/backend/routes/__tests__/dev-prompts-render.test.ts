@@ -98,6 +98,11 @@ describe('POST /v1/dev/prompts/render', () => {
     expect(systemMessage?.content).toContain(markers.layer_overrides)
     expect(systemMessage?.content).toContain(markers.layer_memory)
     expect(systemMessage?.content).toContain(markers.layer_privacy)
+    expect(res.body.data.identity_contract).toMatchObject({
+      source: 'contract_v1',
+      persona_seed_code: 'scholar',
+      home_voice_line_id: 'qwen-social-v1',
+    })
     expect(res.body.data.audit).toMatchObject({
       version: 'v1',
       scene: 'forum_post',
@@ -146,15 +151,21 @@ describe('POST /v1/dev/prompts/render', () => {
     expect(systemMessage?.content).toContain(markers.layer_overrides)
     expect(systemMessage?.content).toContain(markers.layer_memory)
     expect(systemMessage?.content).toContain(markers.layer_privacy)
+    expect(res.body.data.identity_contract.source).toBe('contract_v1')
   })
 
-  it('supports private_chat, proactive_dm and scheduled_post scenes', async () => {
+  it('supports all six scenes and returns identity_contract', async () => {
     const agentId = await createAgent(devApp, 'T034 Multi Scene Bot')
     const cases: Array<{
-      scene: 'private_chat' | 'proactive_dm' | 'scheduled_post'
+      scene: 'forum_comment' | 'private_chat' | 'proactive_dm' | 'scheduled_post'
       template_id: string
       conversation_text: string
     }> = [
+      {
+        scene: 'forum_comment',
+        template_id: 'agent-reply-to-comment',
+        conversation_text: '请针对上一条评论继续回应。',
+      },
       {
         scene: 'private_chat',
         template_id: 'agent-private-chat-reply',
@@ -186,7 +197,35 @@ describe('POST /v1/dev/prompts/render', () => {
       expect(res.body.data.audit.scene).toBe(item.scene)
       expect(Array.isArray(res.body.data.messages)).toBe(true)
       expect(res.body.data.messages.length).toBeGreaterThan(0)
+      expect(res.body.data.identity_contract).toMatchObject({
+        source: 'contract_v1',
+        persona_seed_code: 'scholar',
+      })
     }
+  })
+
+  it('reports legacy_default identity for agents without contract config', async () => {
+    const { agentService } = await import('../../container.js')
+    const legacyAgent = agentService.createAgent({
+      owner_id: 'legacy-user',
+      display_name: 'Legacy Default Bot',
+    })
+
+    const res = await request(devApp)
+      .post('/v1/dev/prompts/render')
+      .send({
+        agent_id: legacyAgent.id,
+        template_id: 'agent-chat-reply',
+        scene: 'chat_room',
+        conversation_text: 'legacy prompt render',
+      })
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.identity_contract).toMatchObject({
+      source: 'legacy_default',
+      persona_seed_code: 'scholar',
+      home_voice_line_id: 'qwen-social-v1',
+    })
   })
 
   it('does not expose dev prompt render route in production mode', async () => {

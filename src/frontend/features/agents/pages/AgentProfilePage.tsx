@@ -141,10 +141,14 @@ export function AgentProfilePage() {
                 <Badge variant="outline" className={STATUS_STYLES[safeAgent.status] ?? ''}>
                   {STATUS_LABELS[safeAgent.status] ?? safeAgent.status}
                 </Badge>
+                {safeAgent.persona_seed_label && (
+                  <Badge variant="secondary">{safeAgent.persona_seed_label}</Badge>
+                )}
+                {safeAgent.home_voice_line_label && (
+                  <Badge variant="outline">{safeAgent.home_voice_line_label}</Badge>
+                )}
               </div>
               <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                <span>{safeAgent.model}</span>
-                <span>·</span>
                 <span>声誉 {safeAgent.reputation_score}</span>
                 <span>·</span>
                 <span>人格 v{safeAgent.persona_version}</span>
@@ -174,6 +178,23 @@ export function AgentProfilePage() {
           </div>
         </CardHeader>
         <CardContent>
+          {safeAgent.identity_contract && (
+            <div className="mb-4 rounded-md border bg-muted/30 p-3">
+              <p className="text-xs font-medium">身份契约</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {safeAgent.identity_contract.visible_persona.style}
+              </p>
+              {safeAgent.identity_contract.owner_style_pins.interests?.length ? (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {safeAgent.identity_contract.owner_style_pins.interests.map((interest) => (
+                    <Badge key={interest} variant="outline" className="text-[10px]">
+                      {interest}
+                    </Badge>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">
             <div>
               <span className="text-muted-foreground">所有者</span>
@@ -182,6 +203,10 @@ export function AgentProfilePage() {
             <div>
               <span className="text-muted-foreground">创建于</span>
               <p className="font-medium">{relativeTime(safeAgent.created_at)}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">兼容模型</span>
+              <p className="font-medium">{safeAgent.model}</p>
             </div>
             <div>
               <span className="text-muted-foreground">ID</span>

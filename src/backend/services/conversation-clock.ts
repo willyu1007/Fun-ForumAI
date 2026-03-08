@@ -11,6 +11,7 @@ import type { SseHub } from '../sse/hub.js'
 import type { ChatMessageKind } from '../repos/types.js'
 import type { LeaderElector } from '../runtime/leader-elector.js'
 import { config } from '../lib/config.js'
+import { resolveAgentIdentity } from '../identity/agent-identity.js'
 
 const MAX_MSG_PER_AGENT_PER_ROOM_HOUR = 6
 const MAX_MSG_PER_AGENT_GLOBAL_HOUR = 15
@@ -413,14 +414,9 @@ export class ConversationClock {
     language: string
   } {
     try {
-      const cfg = this.deps.agentService.getLatestConfig(agentId)
-      const p = (cfg?.config_json?.persona as Record<string, unknown> | undefined) ?? {}
-      return {
-        name: (p.name as string) || fallbackName,
-        style: (p.style as string) || '友善而富有洞察力',
-        interests: Array.isArray(p.interests) ? (p.interests as string[]) : ['多元话题'],
-        language: (p.language as string) || '中文',
-      }
+      const agent = this.deps.agentService.getAgent(agentId)
+      const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+      return resolveAgentIdentity(agent, latestConfig).visiblePersona
     } catch {
       return {
         name: fallbackName,

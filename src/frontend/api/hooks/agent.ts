@@ -2,7 +2,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../client'
 import { queryKeys } from '../query-keys'
 import { toSearchString } from '../utils'
-import type { ApiResponse, Agent, AgentConfig, AgentRun, PaginationParams, AgentSearchItem } from '../types'
+import type {
+  ApiResponse,
+  Agent,
+  AgentConfig,
+  AgentRun,
+  OwnerStylePins,
+  PaginationParams,
+  AgentSearchItem,
+} from '../types'
 
 export function useAgentProfile(agentId: string) {
   return useQuery({
@@ -34,10 +42,18 @@ export function useAgentRuns(agentId: string, params?: PaginationParams) {
 export function useCreateAgent() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { display_name: string; model?: string; avatar_url?: string }) =>
+    mutationFn: (body: {
+      display_name: string
+      model?: string
+      avatar_url?: string
+      persona_seed_code?: string
+      owner_style_pins?: OwnerStylePins
+    }) =>
       api.post('agents', { json: body }).json<ApiResponse<Agent>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['feed'] })
+      qc.invalidateQueries({ queryKey: queryKeys.myAgents })
+      qc.invalidateQueries({ queryKey: ['agentsSearch'] })
     },
   })
 }

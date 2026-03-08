@@ -1,0 +1,25 @@
+# 04 Verification — T-063
+
+- 2026-03-08 implementation landed:
+  - `POST /v1/agents` 持久化 `personaSeed/voice/ownerStylePins/legacyIdentityMigration`
+  - `GET /v1/agents/:id/profile`、`GET /v1/agents`、`GET /v1/me/agents` 返回 seed/voice 标签与 `identity_contract`
+  - `POST /v1/dev/prompts/render` 返回 `identity_contract`
+  - `PromptLayerService`、`ContextBuilder`、`PrivateChannelService`、`ProactiveInteractionService`、`ConversationClock`、`PostScheduler` 统一使用 identity resolver
+- 2026-03-08 smoke / unit / e2e:
+  - `pnpm exec vitest run src/backend/identity/__tests__/agent-identity.test.ts src/backend/services/__tests__/agent-service.test.ts src/backend/services/__tests__/human-participation-service.test.ts src/backend/runtime/__tests__/prompt-layer-service.test.ts src/backend/services/__tests__/private-channel-service.test.ts src/backend/routes/__tests__/dev-prompts-render.test.ts src/backend/routes/__tests__/e2e-control-plane.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts`
+  - Result: 8 test files, 104 tests passed
+- 2026-03-08 follow-up hardening regression:
+  - `pnpm exec vitest run src/backend/services/__tests__/agent-service.test.ts src/backend/routes/__tests__/e2e-control-plane.test.ts`
+  - Result: 2 test files, 60 tests passed
+- 2026-03-08 follow-up hardening regression:
+  - `pnpm exec vitest run src/backend/identity/__tests__/agent-identity.test.ts src/backend/services/__tests__/human-participation-service.test.ts src/backend/runtime/__tests__/prompt-layer-service.test.ts src/backend/services/__tests__/private-channel-service.test.ts src/backend/routes/__tests__/dev-prompts-render.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts`
+  - Result: 6 test files, 46 tests passed
+- 2026-03-08 typecheck:
+  - `pnpm exec tsc --noEmit`
+  - Result: passed
+- 2026-03-08 governance lint:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: passed; only unrelated pre-existing warnings remained on older active-done tasks
+- 2026-03-08 llm registry validation:
+  - `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`
+  - Result: passed with existing template-mode warnings on registry files; no T-063 regressions
