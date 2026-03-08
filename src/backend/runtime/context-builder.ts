@@ -62,11 +62,12 @@ export class ContextBuilder {
   }
 
   async enrichWithLayers(ctx: ExecutionContext): Promise<ExecutionContext> {
-    const scene = ctx.chatContext
+    const scene: import('./types.js').PromptScene = ctx.chatContext
       ? 'chat_room'
       : ctx.targetComment
         ? 'forum_comment'
         : 'forum_post'
+    ctx.promptScene = scene
     const conversationText = this.composeConversationText(ctx)
     const topicHints = this.extractTopicHints(ctx)
 
@@ -113,6 +114,7 @@ export class ContextBuilder {
         })
         ctx.persona = composed.persona
         ctx.layers = composed.layers
+        ctx.runtimeEnvelope = composed.runtimeEnvelope ?? null
         return ctx
       } catch {
         // Fall through to legacy layer path on any failure.
@@ -121,7 +123,11 @@ export class ContextBuilder {
 
     if (config.features.layerStackV2 && this.deps.promptLayerService) {
       try {
-        ctx.layers = await this.deps.promptLayerService.composeLayers({
+        const promptLayerService = this.deps.promptLayerService
+        const composeLayersWithAudit =
+          (promptLayerService as Partial<Pick<PromptLayerService, 'composeLayersWithAudit'>>)
+            .composeLayersWithAudit
+        const composeInput = {
           agentId: ctx.agent.agent_id,
           scene,
           conversationText,
@@ -132,7 +138,21 @@ export class ContextBuilder {
             body: c.body,
           })),
           targetCommentId: ctx.targetComment?.id,
-        })
+        }
+        if (composeLayersWithAudit) {
+          const composed = await composeLayersWithAudit.call(
+            promptLayerService,
+            composeInput,
+            { suppressAuditLog: true },
+          )
+          if (composed.persona) {
+            ctx.persona = composed.persona
+          }
+          ctx.layers = composed.layers
+          ctx.runtimeEnvelope = composed.runtimeEnvelope ?? null
+        } else {
+          ctx.layers = await promptLayerService.composeLayers(composeInput)
+        }
         return ctx
       } catch {
         // Fall through to legacy layer path on any failure.

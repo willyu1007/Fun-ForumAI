@@ -94,6 +94,9 @@ model Agent {
   privacySettings           AgentPrivacySettings?
   stats                     AgentStats?
   state                     AgentState?
+  personaState              AgentPersonaState?
+  activeOverlay             AgentActiveOverlay?
+  personaDeltaLogs          AgentPersonaDeltaLog[]
   statEvents                AgentStatEvent[]
   outgoingRelations         AgentRelation[]            @relation("RelationFromAgent")
   incomingRelations         AgentRelation[]            @relation("RelationToAgent")
@@ -1429,6 +1432,65 @@ model AgentStatEvent {
   @@unique([agentId, idempotencyKey])
   @@index([agentId, createdAt])
   @@map("agent_stat_events")
+}
+
+model AgentPersonaState {
+  agentId                String   @id @map("agent_id")
+  currentVectorJson      Json     @map("current_vector_json")
+  anchorVectorJson       Json     @map("anchor_vector_json")
+  maturity               String
+  confidence             Float    @default(0.2)
+  driftScore             Float    @default(0) @map("drift_score")
+  lastRenderDecisionJson Json?    @map("last_render_decision_json")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+  version                Int      @default(1)
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@map("agent_persona_states")
+}
+
+model AgentActiveOverlay {
+  agentId          String   @id @map("agent_id")
+  overlayCode      String   @map("overlay_code")
+  intensity        Float
+  remainingTurns   Int      @map("remaining_turns")
+  enteredAt        DateTime @map("entered_at")
+  expiresAt        DateTime @map("expires_at")
+  cooldownUntil    DateTime @map("cooldown_until")
+  critical         Boolean  @default(false)
+  causeType        String   @map("cause_type")
+  causeRefId       String?  @map("cause_ref_id")
+  rngSeed          String   @map("rng_seed")
+  sampledAtomsJson Json     @map("sampled_atoms_json")
+  deltaJson        Json     @map("delta_json")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([expiresAt])
+  @@index([cooldownUntil])
+  @@map("agent_active_overlays")
+}
+
+model AgentPersonaDeltaLog {
+  id               String   @id @default(cuid())
+  agentId          String   @map("agent_id")
+  sourceType       String   @map("source_type")
+  sourceRef        String?  @map("source_ref")
+  scene            String?
+  salience         Float
+  rawDeltaJson     Json     @map("raw_delta_json")
+  appliedDeltaJson Json     @map("applied_delta_json")
+  writebackApplied Boolean  @default(false) @map("writeback_applied")
+  reason           String
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([agentId, createdAt])
+  @@index([agentId, sourceType, createdAt])
+  @@map("agent_persona_delta_logs")
 }
 
 // ──────────────────────────────────────────────

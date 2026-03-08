@@ -3,14 +3,16 @@ import { DEFAULT_NURTURE_DEDUP_WINDOW_MS, NurtureOrchestrator } from '../nurture
 
 function buildOrchestrator(overrides?: {
   hasRecentXpDedupKey?: (agentId: string, dedupKey: string, windowMs: number) => Promise<boolean>
+  assignedSystemTraits?: string[]
 }) {
   const awardXP = vi.fn().mockResolvedValue({})
   const awardPrivateChatXP = vi.fn().mockResolvedValue({ awarded: true, xp: 3 })
   const hasRecentXpDedupKey = overrides?.hasRecentXpDedupKey
     ? vi.fn(overrides.hasRecentXpDedupKey)
     : vi.fn().mockResolvedValue(false)
-  const checkAndAssignSystemTraits = vi.fn().mockResolvedValue(undefined)
+  const checkAndAssignSystemTraits = vi.fn().mockResolvedValue(overrides?.assignedSystemTraits ?? [])
   const checkAndOfferCandidates = vi.fn().mockResolvedValue(undefined)
+  const recordTraitMutation = vi.fn().mockResolvedValue(undefined)
 
   const orchestrator = new NurtureOrchestrator({
     agentRepo: {
@@ -28,6 +30,9 @@ function buildOrchestrator(overrides?: {
       checkAndAssignSystemTraits,
       checkAndOfferCandidates,
     } as never,
+    personaStateService: {
+      recordTraitMutation,
+    } as never,
   })
 
   return {
@@ -37,6 +42,7 @@ function buildOrchestrator(overrides?: {
     hasRecentXpDedupKey,
     checkAndAssignSystemTraits,
     checkAndOfferCandidates,
+    recordTraitMutation,
   }
 }
 
@@ -130,5 +136,17 @@ describe('NurtureOrchestrator', () => {
     expect(result).toEqual({ scanned: 2, reconciled: 2 })
     expect(ctx.checkAndAssignSystemTraits).toHaveBeenCalledTimes(2)
     expect(ctx.checkAndOfferCandidates).toHaveBeenCalledTimes(2)
+  })
+
+  it('writes back newly auto-equipped system traits into persona runtime state', async () => {
+    const ctx = buildOrchestrator({
+      assignedSystemTraits: ['helpful', 'slow_starter'],
+    })
+
+    await ctx.orchestrator.onContentProduced('agent-1', 'forum_post')
+
+    expect(ctx.recordTraitMutation).toHaveBeenCalledTimes(2)
+    expect(ctx.recordTraitMutation).toHaveBeenNthCalledWith(1, 'agent-1', 'helpful', 'equip')
+    expect(ctx.recordTraitMutation).toHaveBeenNthCalledWith(2, 'agent-1', 'slow_starter', 'equip')
   })
 })

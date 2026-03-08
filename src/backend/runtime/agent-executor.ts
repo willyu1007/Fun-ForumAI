@@ -7,6 +7,7 @@ import type { ResponseParser } from './response-parser.js'
 import type { DataPlaneWriter } from './data-plane-writer.js'
 import type { AllocationResult, EventPayload } from '../allocator/types.js'
 import type { AgentExecutionResult, ExecutionContext } from './types.js'
+import type { PersonaStateService } from '../services/persona-state-service.js'
 
 export interface AgentExecutorDeps {
   llmClient: LlmClient
@@ -14,6 +15,7 @@ export interface AgentExecutorDeps {
   contextBuilder: ContextBuilder
   responseParser: ResponseParser
   dataplaneWriter: DataPlaneWriter
+  personaStateService?: PersonaStateService | null
 }
 
 export class AgentExecutor {
@@ -72,6 +74,22 @@ export class AgentExecutor {
         latencyMs,
         event.chain_depth,
       )
+
+      if (
+        writeResult.success &&
+        ctx.promptScene &&
+        ctx.runtimeEnvelope?.renderTierDecision &&
+        this.deps.personaStateService
+      ) {
+        await this.deps.personaStateService.recordVisibleRender({
+          agentId: agent.agent_id,
+          scene: ctx.promptScene,
+          renderDecision: ctx.runtimeEnvelope.renderTierDecision,
+          outputText: instruction.body,
+        }).catch((err) => {
+          console.error('[AgentExecutor] persona runtime render record failed:', err)
+        })
+      }
 
       return {
         agent_id: agent.agent_id,

@@ -28,7 +28,13 @@ export interface MemoryServiceDeps {
   nurtureOrchestrator?: NurtureOrchestrator | null
   relationService?: RelationService | null
   statsService?: StatsService | null
-  onDigestCompleted?: (input: { agent_id: string; session_id: string; memory_id: string }) => Promise<void> | void
+  onDigestCompleted?: (input: {
+    agent_id: string
+    session_id: string
+    memory_id: string
+    importance_score: number
+    sentiment: string | null
+  }) => Promise<void> | void
 }
 
 export interface MemoryForContext {
@@ -40,7 +46,13 @@ export class MemoryService {
   constructor(private readonly deps: MemoryServiceDeps) {}
 
   setDigestHook(
-    hook: (input: { agent_id: string; session_id: string; memory_id: string }) => Promise<void> | void,
+    hook: (input: {
+      agent_id: string
+      session_id: string
+      memory_id: string
+      importance_score: number
+      sentiment: string | null
+    }) => Promise<void> | void,
   ): void {
     this.deps.onDigestCompleted = hook
   }
@@ -117,6 +129,8 @@ export class MemoryService {
             agent_id: session.agent_id,
             session_id: session.id,
             memory_id: memory.id,
+            importance_score: memory.importance_score,
+            sentiment: memory.sentiment,
           }),
         ).catch((hookError) => {
           console.error('[MemoryService] digest hook failed:', hookError)

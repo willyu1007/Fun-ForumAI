@@ -24,8 +24,9 @@ const TRAIT_DEFS: TraitDef[] = [
 export class TraitEngine {
   constructor(private readonly prisma: PrismaClient | null) {}
 
-  async checkAndAssignSystemTraits(agentId: string): Promise<void> {
-    if (!this.prisma) return
+  async checkAndAssignSystemTraits(agentId: string): Promise<string[]> {
+    if (!this.prisma) return []
+    const assigned: string[] = []
     for (const def of TRAIT_DEFS.filter(d => d.category === 'system')) {
       const exists = await this.prisma.agentTrait.findUnique({
         where: { agentId_traitCode: { agentId, traitCode: def.code } },
@@ -36,8 +37,10 @@ export class TraitEngine {
         await this.prisma.agentTrait.create({
           data: { agentId, traitCode: def.code, category: 'system', status: 'equipped', equippedAt: new Date() },
         })
+        assigned.push(def.code)
       }
     }
+    return assigned
   }
 
   async checkAndOfferCandidates(agentId: string): Promise<void> {

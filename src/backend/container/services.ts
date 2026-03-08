@@ -9,6 +9,7 @@ import { HumanParticipationService } from '../services/human-participation-servi
 import { ChatService } from '../services/chat-service.js'
 import { AuthService } from '../services/auth-service.js'
 import { StatsService } from '../services/stats-service.js'
+import { PersonaStateService } from '../services/persona-state-service.js'
 import { AchievementChronicleService } from '../services/achievement-chronicle-service.js'
 import { AchievementsOrchestrator } from '../services/achievements-orchestrator.js'
 import { AgentStageTierService } from '../services/agent-stage-tier-service.js'
@@ -153,6 +154,12 @@ export function createCoreServices(deps: {
     xpService: null,
   })
 
+  const personaStateService = new PersonaStateService({
+    personaStateRepo: repos.personaStateRepo,
+    agentService,
+    statsService,
+  })
+
   const chatService = new ChatService({
     roomRepo: repos.roomRepo,
     messageRepo: repos.messageRepo,
@@ -204,6 +211,7 @@ export function createCoreServices(deps: {
     sseHub,
     promptLayerService: null,
     promptOrchestrator: null,
+    personaStateService,
     leaderElector: deps.conversationClockLeaderElector,
   })
 
@@ -230,6 +238,7 @@ export function createCoreServices(deps: {
     agentCommunityMembershipService,
     communityCultureDigestService,
     statsService,
+    personaStateService,
     chatService,
     roomLifecycle,
     authService,

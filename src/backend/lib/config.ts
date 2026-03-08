@@ -120,6 +120,12 @@ export const config = {
       .split(',')
       .map((item) => item.trim())
       .filter((item) => item.length > 0),
+    personaRuntimeV1: env.FF_PERSONA_RUNTIME_V1 === 'true',
+    personaRuntimeScenes: (env.FF_PERSONA_RUNTIME_SCENES || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0),
+    personaWritebackV1: env.FF_PERSONA_WRITEBACK_V1 === 'true',
     achievementChronicleV1: env.FF_ACHIEVEMENT_CHRONICLE_V1 === 'true',
     achievementPublicHighlights: env.FF_ACHIEVEMENT_PUBLIC_HIGHLIGHTS === 'true',
     nurturePipelineV2: env.FF_NURTURE_PIPELINE_V2 === 'true',

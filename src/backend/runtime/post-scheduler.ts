@@ -9,6 +9,8 @@ import type { AgentPersona } from './types.js'
 import type { AgentInclinationAsset } from '../repos/types.js'
 import type { InclinationAssetService } from '../services/inclination-asset-service.js'
 import type { PromptOrchestrator } from './prompt-orchestrator.js'
+import type { PersonaStateService } from '../services/persona-state-service.js'
+import type { RenderTierDecisionResult } from './persona-runtime-types.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 
@@ -26,6 +28,7 @@ export interface PostSchedulerDeps {
   dataplaneWriter: DataPlaneWriter
   inclinationAssetService?: Pick<InclinationAssetService, 'listPendingAgentIds' | 'getPendingForAgent'>
   promptOrchestrator?: PromptOrchestrator | null
+  personaStateService?: PersonaStateService | null
 }
 
 export interface PostSchedulerResult {
@@ -130,8 +133,9 @@ export class PostScheduler {
         layer_memory: '',
         layer_privacy: '',
       }
+      let renderDecision: RenderTierDecisionResult | null = null
 
-      if (this.deps.promptOrchestrator?.isSceneEnabled('scheduled_post')) {
+      if (this.deps.promptOrchestrator) {
         try {
           const composed = await this.deps.promptOrchestrator.compose({
             agentId: selected.id,
@@ -148,6 +152,7 @@ export class PostScheduler {
           persona.style = composed.persona.style
           persona.interests = composed.persona.interests
           persona.language = composed.persona.language
+          renderDecision = composed.runtimeEnvelope?.renderTierDecision ?? null
           composedLayers = {
             layer_traits: composed.layers.layer1_traits ?? '',
             layer_style: composed.layers.layer2_style ?? '',
@@ -239,6 +244,17 @@ export class PostScheduler {
 
       this.lastPostAt = Date.now()
       this.postsToday++
+
+      if (renderDecision && this.deps.personaStateService) {
+        await this.deps.personaStateService.recordVisibleRender({
+          agentId: selected.id,
+          scene: 'scheduled_post',
+          renderDecision,
+          outputText: instruction.body,
+        }).catch((err) => {
+          console.error('[PostScheduler] persona runtime render record failed:', err)
+        })
+      }
 
       const actualCommunity = communities.find((item) => item.id === instruction.community_id)
       console.log(

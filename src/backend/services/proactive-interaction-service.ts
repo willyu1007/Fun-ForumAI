@@ -4,8 +4,10 @@ import type { AgentService } from './agent-service.js'
 import type { NotificationService } from './notification-service.js'
 import type { PrivateChannelRepository } from '../repos/private-channel-repository.js'
 import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
+import type { RenderTierDecisionResult } from '../runtime/persona-runtime-types.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
+import type { PersonaStateService } from './persona-state-service.js'
 
 const MAX_PROACTIVE_PER_DAY = 2
 const PROACTIVE_COOLDOWN_MS = 4 * 60 * 60 * 1000 // 4 hours between proactive sessions
@@ -16,6 +18,7 @@ export interface ProactiveInteractionDeps {
   llmClient: LlmClient
   promptEngine?: PromptEngine | null
   promptOrchestrator?: PromptOrchestrator | null
+  personaStateService?: PersonaStateService | null
   notificationService: NotificationService
 }
 
@@ -46,7 +49,7 @@ export class ProactiveInteractionService {
 
     const targetLabel = vote.target_type === 'POST' ? '帖子' : vote.target_type === 'COMMENT' ? '评论' : '消息'
 
-    const openingMessage = await this.generateOpeningMessage(agentId, {
+    const opening = await this.generateOpeningMessage(agentId, {
       trigger: 'vote_received',
       context: `${voterName}给你的${targetLabel}点了赞。`,
     })
@@ -62,8 +65,19 @@ export class ProactiveInteractionService {
     await this.deps.channelRepo.createMessage({
       session_id: session.id,
       author_type: 'AGENT',
-      content: openingMessage,
+      content: opening.content,
     })
+
+    if (opening.renderDecision && this.deps.personaStateService) {
+      await this.deps.personaStateService.recordVisibleRender({
+        agentId,
+        scene: 'proactive_dm',
+        renderDecision: opening.renderDecision,
+        outputText: opening.content,
+      }).catch((err) => {
+        console.error('[ProactiveInteraction] persona runtime render record failed:', err)
+      })
+    }
 
     await this.deps.notificationService.create({
       userId: agent.owner_id,
@@ -93,7 +107,7 @@ export class ProactiveInteractionService {
     const challengerAgent = this.deps.agentService.getAgent(challenge.challenger_agent_id)
     const challengerName = challengerAgent?.display_name ?? '一位智能体'
 
-    const openingMessage = await this.generateOpeningMessage(agentId, {
+    const opening = await this.generateOpeningMessage(agentId, {
       trigger: 'opinion_challenged',
       context: [
         `${challengerName}对你的观点提出了质疑。`,
@@ -113,8 +127,19 @@ export class ProactiveInteractionService {
     await this.deps.channelRepo.createMessage({
       session_id: session.id,
       author_type: 'AGENT',
-      content: openingMessage,
+      content: opening.content,
     })
+
+    if (opening.renderDecision && this.deps.personaStateService) {
+      await this.deps.personaStateService.recordVisibleRender({
+        agentId,
+        scene: 'proactive_dm',
+        renderDecision: opening.renderDecision,
+        outputText: opening.content,
+      }).catch((err) => {
+        console.error('[ProactiveInteraction] persona runtime render record failed:', err)
+      })
+    }
 
     await this.deps.notificationService.create({
       userId: agent.owner_id,
@@ -179,17 +204,14 @@ export class ProactiveInteractionService {
   private async generateOpeningMessage(
     agentId: string,
     trigger: { trigger: string; context: string },
-  ): Promise<string> {
+  ): Promise<{ content: string; renderDecision: RenderTierDecisionResult | null }> {
     const agent = this.deps.agentService.getAgent(agentId)
     const latestConfig = this.deps.agentService.getLatestConfig(agentId)
     const identity = resolveAgentIdentity(agent, latestConfig)
     const personaName = identity.visiblePersona.name
     const personaStyle = identity.visiblePersona.style
 
-    if (
-      this.deps.promptEngine &&
-      this.deps.promptOrchestrator?.isSceneEnabled('proactive_dm')
-    ) {
+    if (this.deps.promptEngine && this.deps.promptOrchestrator) {
       try {
         const composed = await this.deps.promptOrchestrator.compose({
           agentId,
@@ -227,7 +249,10 @@ export class ProactiveInteractionService {
           temperature: 0.8,
           model: agent?.model,
         })
-        return response.content
+        return {
+          content: response.content,
+          renderDecision: composed.runtimeEnvelope?.renderTierDecision ?? null,
+        }
       } catch (err) {
         console.warn('[ProactiveInteraction] PromptOrchestrator compose failed, fallback to legacy path:', err)
       }
@@ -256,6 +281,9 @@ export class ProactiveInteractionService {
       model: agent?.model,
     })
 
-    return response.content
+    return {
+      content: response.content,
+      renderDecision: null,
+    }
   }
 }

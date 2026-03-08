@@ -120,9 +120,15 @@ export type {
   AgentState,
   AgentStatEvent,
   AgentStatEventType,
+  AgentPersonaStateEntity,
+  AgentActiveOverlayEntity,
+  AgentPersonaDeltaLogEntity,
   CreateAgentStatEventInput,
+  CreateAgentPersonaDeltaLogInput,
   SaveAgentStatsInput,
   SaveAgentStateInput,
+  SaveAgentPersonaStateInput,
+  SaveAgentActiveOverlayInput,
   AgentStatePoint,
 } from './types.js'
 
@@ -164,6 +170,10 @@ export {
   type StatsRepository,
   InMemoryStatsRepository,
 } from './stats-repository.js'
+export {
+  type PersonaStateRepository,
+  InMemoryPersonaStateRepository,
+} from './persona-state-repository.js'
 export {
   type AchievementRepository,
   InMemoryAchievementRepository,
@@ -230,6 +240,7 @@ export { PgMessageRepository } from './pg/pg-message-repository.js'
 export { PgNotificationRepository } from './pg/pg-notification-repository.js'
 export { PgRelationRepository } from './pg/pg-relation-repository.js'
 export { PgStatsRepository } from './pg/pg-stats-repository.js'
+export { PgPersonaStateRepository } from './pg/pg-persona-state-repository.js'
 export { PgAchievementRepository } from './pg/pg-achievement-repository.js'
 export { PgChronicleRepository } from './pg/pg-chronicle-repository.js'
 export { PgAgentSignalLogRepository } from './pg/pg-agent-signal-log-repository.js'

@@ -1,6 +1,7 @@
 import type { AgentRepository } from '../repos/agent-repository.js'
 import type { XpService, XpSource } from './xp-service.js'
 import type { TraitEngine } from './trait-engine.js'
+import type { PersonaStateService } from './persona-state-service.js'
 
 export const DEFAULT_NURTURE_DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000
 
@@ -13,6 +14,7 @@ export interface NurtureOrchestratorDeps {
   agentRepo: AgentRepository
   xpService: XpService | null
   traitEngine: TraitEngine | null
+  personaStateService?: Pick<PersonaStateService, 'recordTraitMutation'> | null
 }
 
 export class NurtureOrchestrator {
@@ -96,7 +98,12 @@ export class NurtureOrchestrator {
   private async evaluateTraits(agentId: string): Promise<void> {
     if (!this.deps.traitEngine || !this.deps.xpService) return
 
-    await this.deps.traitEngine.checkAndAssignSystemTraits(agentId)
+    const newlyEquipped = (await this.deps.traitEngine.checkAndAssignSystemTraits(agentId)) ?? []
+    for (const traitCode of newlyEquipped) {
+      await this.deps.personaStateService?.recordTraitMutation(agentId, traitCode, 'equip').catch((err) => {
+        console.warn('[NurtureOrchestrator] persona trait writeback failed:', err)
+      })
+    }
     await this.deps.traitEngine.checkAndOfferCandidates(agentId)
   }
 

@@ -9,6 +9,7 @@ import type { MemoryRepository } from '../repos/memory-repository.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { SseHub } from '../sse/hub.js'
 import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
+import type { RenderTierDecisionResult } from '../runtime/persona-runtime-types.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import type {
   PrivateSession,
@@ -19,6 +20,7 @@ import type {
 } from '../repos/types.js'
 import { AppError, NotFoundError, ValidationError, ForbiddenError } from '../lib/errors.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
+import type { PersonaStateService } from './persona-state-service.js'
 
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
 
@@ -40,6 +42,7 @@ export interface PrivateChannelServiceDeps {
   llmClient: LlmClient
   promptEngine?: PromptEngine | null
   promptOrchestrator?: PromptOrchestrator | null
+  personaStateService?: PersonaStateService | null
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
   budgetService: BudgetService | null
@@ -150,10 +153,10 @@ export class PrivateChannelService {
       payload: { session_id: sessionId, message: humanMsg },
     })
 
-    const messages = await this.buildMessagesForReply(session, content.trim())
+    const replyPlan = await this.buildMessagesForReply(session, content.trim())
     const startMs = Date.now()
     const llmResponse = await this.deps.llmClient.chat({
-      messages,
+      messages: replyPlan.messages,
       model: agent.model,
       temperature: 0.8,
     })
@@ -168,6 +171,17 @@ export class PrivateChannelService {
       type: 'PRIVATE_MESSAGE_CREATED',
       payload: { session_id: sessionId, message: agentReply },
     })
+
+    if (replyPlan.renderDecision && this.deps.personaStateService) {
+      await this.deps.personaStateService.recordVisibleRender({
+        agentId: session.agent_id,
+        scene: 'private_chat',
+        renderDecision: replyPlan.renderDecision,
+        outputText: agentReply.content,
+      }).catch((err) => {
+        console.error('[PrivateChannel] persona runtime render record failed:', err)
+      })
+    }
 
     this.recordAuditTrail(session, content.trim(), llmResponse, latencyMs)
 
@@ -300,24 +314,24 @@ export class PrivateChannelService {
   private async buildMessagesForReply(
     session: PrivateSession,
     currentMessage: string,
-  ): Promise<LlmMessage[]> {
-    if (
-      this.deps.promptEngine &&
-      this.deps.promptOrchestrator?.isSceneEnabled('private_chat')
-    ) {
+  ): Promise<{ messages: LlmMessage[]; renderDecision: RenderTierDecisionResult | null }> {
+    if (this.deps.promptEngine && this.deps.promptOrchestrator) {
       try {
         return await this.buildChatMessagesWithOrchestrator(session, currentMessage)
       } catch (err) {
         console.warn('[PrivateChannel] PromptOrchestrator compose failed, fallback to legacy path:', err)
       }
     }
-    return this.buildChatMessages(session, currentMessage)
+    return {
+      messages: await this.buildChatMessages(session, currentMessage),
+      renderDecision: null,
+    }
   }
 
   private async buildChatMessagesWithOrchestrator(
     session: PrivateSession,
     currentMessage: string,
-  ): Promise<LlmMessage[]> {
+  ): Promise<{ messages: LlmMessage[]; renderDecision: RenderTierDecisionResult | null }> {
     const history = await this.deps.channelRepo.listMessages(session.id, { limit: 20 })
     const conversationText = [...history.items.map((item) => item.content), currentMessage].join(' ').trim()
     const topicHints = currentMessage
@@ -358,7 +372,10 @@ export class PrivateChannelService {
       layer_privacy: composed.layers.layer6_privacy ?? '',
     }
 
-    return this.deps.promptEngine!.render(PROMPT_TEMPLATE_REFS.agentPrivateChatReply, variables)
+    return {
+      messages: this.deps.promptEngine!.render(PROMPT_TEMPLATE_REFS.agentPrivateChatReply, variables),
+      renderDecision: composed.runtimeEnvelope?.renderTierDecision ?? null,
+    }
   }
 
   private async loadMemoriesForPrivateChat(agentId: string): Promise<string | null> {

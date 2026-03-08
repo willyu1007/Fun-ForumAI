@@ -184,6 +184,138 @@ describe('PrivateChannelService', () => {
     })
   })
 
+  it('still uses prompt composition when scene orchestration is disabled but runtime compose is available', async () => {
+    const session = buildSession()
+    const recordVisibleRender = vi.fn(async () => undefined)
+    const channelRepo = {
+      findSessionById: vi.fn(async () => session),
+      createMessage: vi
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'msg-human',
+          session_id: session.id,
+          author_type: 'HUMAN',
+          content: '你好',
+          created_at: new Date(),
+        })
+        .mockResolvedValueOnce({
+          id: 'msg-agent',
+          session_id: session.id,
+          author_type: 'AGENT',
+          content: 'runtime reply',
+          created_at: new Date(),
+        }),
+      listMessages: vi.fn(async () => ({
+        items: [],
+        next_cursor: null,
+      })),
+      countMessages: vi.fn(async () => 0),
+      createSession: vi.fn(),
+      listSessions: vi.fn(),
+      updateSessionStatus: vi.fn(),
+      updateDigestStatus: vi.fn(),
+      findTimedOutSessions: vi.fn(),
+    }
+    const promptEngine = {
+      render: vi.fn(() => [
+        { role: 'system', content: 'sys' },
+        { role: 'user', content: 'user' },
+      ]),
+    } as unknown as PromptEngine
+    const promptOrchestrator = {
+      isSceneEnabled: vi.fn(() => false),
+      compose: vi.fn(async () => ({
+        persona: {
+          name: 'Agent One',
+          style: 'runtime-style',
+          interests: ['runtime'],
+          language: 'zh-CN',
+        },
+        layers: {
+          layer1_traits: 'runtime traits',
+          layer2_style: 'runtime style',
+          layer6_privacy: 'privacy',
+        },
+        audit: {
+          version: 'v1',
+          scene: 'private_chat',
+          includedLayerIds: ['layer1_traits', 'layer2_style', 'layer6_privacy'],
+          tokenEstimates: { layer1_traits: 10, layer2_style: 10, layer6_privacy: 20 },
+          lintWarnings: [],
+          trimReasons: [],
+        },
+        runtimeEnvelope: {
+          renderTierDecision: {
+            scene: 'private_chat',
+            requestedTier: 'plus',
+            reasons: ['runtime_floor'],
+          },
+        },
+      })),
+    } as unknown as PromptOrchestrator
+
+    const service = new PrivateChannelService({
+      channelRepo: channelRepo as never,
+      memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({
+          id: 'agent-1',
+          owner_id: 'user-1',
+          display_name: 'Agent One',
+          model: 'mock-model',
+        })),
+        getLatestConfig: vi.fn(() => ({
+          config_json: {
+            persona: {
+              name: 'Agent One',
+              style: 'warm',
+              interests: ['ai'],
+            },
+          },
+        })),
+      } as never,
+      llmClient: {
+        chat: vi.fn(async () => ({
+          content: 'runtime reply',
+          usage: { prompt_tokens: 10, completion_tokens: 6, total_tokens: 16 },
+        })),
+      } as never,
+      promptEngine,
+      promptOrchestrator,
+      personaStateService: {
+        recordVisibleRender,
+      } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      budgetService: null,
+      costTracker: null,
+      sseHub: null,
+    })
+
+    await withLayerStackFlag(false, async () => {
+      const result = await service.sendMessage(session.id, 'user-1', ' 你好 ')
+      expect(result.agent_reply.content).toBe('runtime reply')
+      expect(promptOrchestrator.compose).toHaveBeenCalledTimes(1)
+      expect(promptEngine.render).toHaveBeenCalledWith(
+        PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
+        expect.objectContaining({
+          persona_style: 'runtime-style',
+          layer_traits: 'runtime traits',
+        }),
+      )
+      expect(recordVisibleRender).toHaveBeenCalledWith({
+        agentId: 'agent-1',
+        scene: 'private_chat',
+        renderDecision: {
+          scene: 'private_chat',
+          requestedTier: 'plus',
+          reasons: ['runtime_floor'],
+        },
+        outputText: 'runtime reply',
+      })
+    })
+  })
+
   it('falls back to legacy hand-written prompt when orchestrator fails', async () => {
     const session = buildSession()
     const llmChat = vi.fn(async (_input: { messages: Array<{ role: string; content: string }> }) => ({

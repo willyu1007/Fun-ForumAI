@@ -14,6 +14,7 @@ import { InMemoryEventRepository, InMemoryAgentRunRepository } from '../repos/ev
 import { InMemoryRoomRepository } from '../repos/room-repository.js'
 import { InMemoryMessageRepository } from '../repos/message-repository.js'
 import { InMemoryStatsRepository } from '../repos/stats-repository.js'
+import { InMemoryPersonaStateRepository } from '../repos/persona-state-repository.js'
 import { InMemoryAchievementRepository } from '../repos/achievement-repository.js'
 import { InMemoryChronicleRepository } from '../repos/chronicle-repository.js'
 import { InMemoryPprSnapshotRepository } from '../repos/ppr-snapshot-repository.js'
@@ -42,6 +43,7 @@ import type { RoomRepository } from '../repos/room-repository.js'
 import type { MessageRepository } from '../repos/message-repository.js'
 import type { RelationRepository } from '../repos/relation-repository.js'
 import type { StatsRepository } from '../repos/stats-repository.js'
+import type { PersonaStateRepository } from '../repos/persona-state-repository.js'
 import type { AchievementRepository } from '../repos/achievement-repository.js'
 import type { ChronicleRepository } from '../repos/chronicle-repository.js'
 import type { PprSnapshotRepository } from '../repos/ppr-snapshot-repository.js'
@@ -76,6 +78,7 @@ export interface Repositories {
   relationRepo: RelationRepository | null
   userRepo: UserRepository | null
   statsRepo: StatsRepository
+  personaStateRepo: PersonaStateRepository
   achievementRepo: AchievementRepository
   chronicleRepo: ChronicleRepository
   pprSnapshotRepo: PprSnapshotRepository
@@ -119,6 +122,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgUserRepository } = await import('../repos/pg/pg-user-repository.js')
     const { PgRelationRepository } = await import('../repos/pg/pg-relation-repository.js')
     const { PgStatsRepository } = await import('../repos/pg/pg-stats-repository.js')
+    const { PgPersonaStateRepository } = await import('../repos/pg/pg-persona-state-repository.js')
     const { PgAchievementRepository } = await import('../repos/pg/pg-achievement-repository.js')
     const { PgChronicleRepository } = await import('../repos/pg/pg-chronicle-repository.js')
     const { PgPprSnapshotRepository } = await import('../repos/pg/pg-ppr-snapshot-repository.js')
@@ -150,6 +154,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const mr = new PgMessageRepository(prisma)
     const relr = new PgRelationRepository(prisma)
     const sr = new PgStatsRepository(prisma)
+    const psr = new PgPersonaStateRepository(prisma)
     const achar = new PgAchievementRepository(prisma)
     const chr = new PgChronicleRepository(prisma)
     const ppr = new PgPprSnapshotRepository(prisma)
@@ -162,7 +167,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const roleAssignmentRepo = new PgRoleAssignmentRepository(prisma)
     const notificationRepo = new PgNotificationRepository(prisma)
 
-    hydratables.push(pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, rr, mr, sr, achar, chr, ppr, stageTier, roleAssignmentRepo)
+    hydratables.push(pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, rr, mr, sr, achar, chr, ppr, stageTier, roleAssignmentRepo, psr)
 
     return {
       repos: {
@@ -172,7 +177,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
         agentSignalLogRepo: aslr, communityRepo: cmr, communityCultureDigestRepo: cdr,
         eventRepo: er, agentRunRepo: arr, roomRepo: rr, messageRepo: mr,
         relationRepo: relr, userRepo: new PgUserRepository(prisma),
-        statsRepo: sr, achievementRepo: achar, chronicleRepo: chr,
+        statsRepo: sr, personaStateRepo: psr, achievementRepo: achar, chronicleRepo: chr,
         pprSnapshotRepo: ppr, stageTierSnapshotRepo: stageTier,
         incubationRepo: incRepo, audienceRepo: audRepo, aftershowRunRepo: aftershowRepo,
         aftershowArtifactRepo, communityConfigRepo, roleAssignmentRepo,
@@ -204,6 +209,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       relationRepo: null,
       userRepo: null,
       statsRepo: new InMemoryStatsRepository(),
+      personaStateRepo: new InMemoryPersonaStateRepository(),
       achievementRepo: new InMemoryAchievementRepository(),
       chronicleRepo: new InMemoryChronicleRepository(),
       pprSnapshotRepo: new InMemoryPprSnapshotRepository(),

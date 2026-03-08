@@ -70,6 +70,7 @@ const nurture = await createNurtureEngines({
   agentService: core.agentService,
   chatService: core.chatService,
   statsService: core.statsService,
+  personaStateService: core.personaStateService,
   conversationClock: core.conversationClock,
   achievementsOrchestrator: core.achievementsOrchestrator,
   governanceAdapter: core.governanceAdapter,
@@ -103,6 +104,7 @@ const rt = createRuntime({
   chatService: core.chatService,
   inclinationAssetService: llm.inclinationAssetService,
   communityCultureDigestService: core.communityCultureDigestService,
+  personaStateService: core.personaStateService,
   promptLayerService: nurture.promptLayerService,
   promptOrchestrator: nurture.promptOrchestrator,
   traitEngine: nurture.traitEngine,
@@ -212,6 +214,7 @@ export const agentService = core.agentService
 export const agentCommunityMembershipService = core.agentCommunityMembershipService
 export const communityCultureDigestService = core.communityCultureDigestService
 export const statsService = core.statsService
+export const personaStateService = core.personaStateService
 export const chatService = core.chatService
 export const roomLifecycle = core.roomLifecycle
 export const authService = core.authService

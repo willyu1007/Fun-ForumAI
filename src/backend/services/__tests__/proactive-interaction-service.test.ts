@@ -104,6 +104,119 @@ describe('ProactiveInteractionService', () => {
     })
   })
 
+  it('still uses runtime compose when proactive scene orchestration is disabled', async () => {
+    const recordVisibleRender = vi.fn(async () => undefined)
+    const promptEngine = {
+      render: vi.fn(() => [
+        { role: 'system', content: 'sys' },
+        { role: 'user', content: 'user' },
+      ]),
+    }
+    const service = new ProactiveInteractionService({
+      channelRepo: {
+        listSessions: vi.fn(async () => ({ items: [], next_cursor: null })),
+        createSession: vi.fn(async () => ({
+          id: 'session-runtime',
+          agent_id: 'agent-1',
+          human_user_id: 'owner-1',
+          status: 'ACTIVE',
+          initiator: 'AGENT',
+          trigger_type: 'VOTE_RECEIVED',
+          trigger_ref: 'post-1',
+          started_at: new Date(),
+          ended_at: null,
+          digest_status: 'PENDING',
+        })),
+        createMessage: vi.fn(async () => ({
+          id: 'msg-1',
+          session_id: 'session-runtime',
+          author_type: 'AGENT',
+          content: 'runtime opening',
+          created_at: new Date(),
+        })),
+        listMessages: vi.fn(async () => ({ items: [], next_cursor: null })),
+        findSessionById: vi.fn(),
+        updateSessionStatus: vi.fn(),
+        updateDigestStatus: vi.fn(),
+        findTimedOutSessions: vi.fn(),
+        countMessages: vi.fn(),
+      } as never,
+      agentService: {
+        getAgent: vi.fn((agentId: string) => ({
+          id: agentId,
+          owner_id: 'owner-1',
+          display_name: agentId === 'agent-voter' ? 'Voter' : 'Main Agent',
+          model: 'mock-model',
+        })),
+        getLatestConfig: vi.fn(() => ({
+          config_json: {
+            persona: { name: 'Main Agent', style: 'warm', interests: ['ai'], language: 'zh-CN' },
+          },
+        })),
+      } as never,
+      llmClient: {
+        chat: vi.fn(async () => ({
+          content: 'runtime opening',
+          usage: { prompt_tokens: 10, completion_tokens: 6, total_tokens: 16 },
+        })),
+      } as never,
+      promptEngine: promptEngine as never,
+      promptOrchestrator: {
+        isSceneEnabled: vi.fn(() => false),
+        compose: vi.fn(async () => ({
+          persona: { name: 'Main Agent', style: 'runtime-style', interests: ['runtime'], language: 'zh-CN' },
+          layers: { layer1_traits: 'runtime traits', layer6_privacy: 'privacy' },
+          audit: {
+            version: 'v1',
+            scene: 'proactive_dm',
+            includedLayerIds: ['layer1_traits', 'layer6_privacy'],
+            tokenEstimates: { layer1_traits: 10, layer6_privacy: 10 },
+            lintWarnings: [],
+            trimReasons: [],
+          },
+          runtimeEnvelope: {
+            renderTierDecision: {
+              scene: 'proactive_dm',
+              requestedTier: 'plus',
+              reasons: ['runtime_floor'],
+            },
+          },
+        })),
+      } as never,
+      personaStateService: {
+        recordVisibleRender,
+      } as never,
+      notificationService: { create: vi.fn(async () => ({ id: 'notif-1' })) } as never,
+    })
+
+    await withLayerStackFlag(false, async () => {
+      const ok = await service.onVoteReceived('agent-1', {
+        direction: 'UP',
+        target_type: 'POST',
+        target_id: 'post-1',
+        voter_agent_id: 'agent-voter',
+      })
+      expect(ok).toBe(true)
+      expect(promptEngine.render).toHaveBeenCalledWith(
+        PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
+        expect.objectContaining({
+          persona_style: 'runtime-style',
+          layer_traits: 'runtime traits',
+        }),
+      )
+      expect(recordVisibleRender).toHaveBeenCalledWith({
+        agentId: 'agent-1',
+        scene: 'proactive_dm',
+        renderDecision: {
+          scene: 'proactive_dm',
+          requestedTier: 'plus',
+          reasons: ['runtime_floor'],
+        },
+        outputText: 'runtime opening',
+      })
+    })
+  })
+
   it('falls back to legacy prompt when orchestrator path fails', async () => {
     const llmChat = vi.fn(async (_input: { messages: Array<{ role: string; content: string }> }) => ({
       content: 'legacy opening',

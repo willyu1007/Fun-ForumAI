@@ -131,6 +131,10 @@ describe('ContextBuilder layer stack flag routing', () => {
       })),
     }
     const agentService = {
+      getAgent: vi.fn(() => ({
+        id: 'agent-1',
+        display_name: 'Layer Bot',
+      })),
       getLatestConfig: vi.fn(() => ({
         config_json: {
           style: {
