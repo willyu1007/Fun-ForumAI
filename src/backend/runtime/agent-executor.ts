@@ -1,5 +1,7 @@
 import type { LlmClient } from '../llm/llm-client.js'
 import type { PromptEngine } from '../llm/prompt-engine.js'
+import type { PromptTemplateRef } from '../llm/gateway-contract.js'
+import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import type { ContextBuilder } from './context-builder.js'
 import type { ResponseParser } from './response-parser.js'
 import type { DataPlaneWriter } from './data-plane-writer.js'
@@ -93,14 +95,14 @@ export class AgentExecutor {
     }
   }
 
-  private pickTemplate(event: EventPayload, _ctx: ExecutionContext): string {
+  private pickTemplate(event: EventPayload, _ctx: ExecutionContext): PromptTemplateRef {
     switch (event.event_type) {
       case 'NewPostCreated':
-        return 'agent-reply-to-post'
+        return PROMPT_TEMPLATE_REFS.agentReplyToPost
       case 'NewCommentCreated':
-        return 'agent-reply-to-comment'
+        return PROMPT_TEMPLATE_REFS.agentReplyToComment
       default:
-        return 'agent-reply-to-post'
+        return PROMPT_TEMPLATE_REFS.agentReplyToPost
     }
   }
 
@@ -118,6 +120,9 @@ export class AgentExecutor {
       layer_traits: ctx.layers?.layer1_traits ?? '',
       layer_style: ctx.layers?.layer2_style ?? '',
       layer_instructions: ctx.layers?.layer3_instructions ?? '',
+      layer_community: ctx.layers?.layer_community ?? '',
+      layer_relationship: ctx.layers?.layer_relationship ?? '',
+      layer_showrunner: ctx.layers?.layer_showrunner ?? '',
       layer_overrides: ctx.layers?.layer4_overrides ?? '',
       layer_memory: ctx.layers?.layer5_memory ?? '',
       layer_privacy: ctx.layers?.layer6_privacy ?? '',

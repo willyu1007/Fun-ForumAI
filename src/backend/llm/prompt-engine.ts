@@ -1,47 +1,34 @@
-import { readFileSync } from 'node:fs'
-import { resolve, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import type { LlmMessage } from './types.js'
+import {
+  LLMGatewayContractError,
+  type PromptTemplateRef,
+} from './gateway-contract.js'
+import {
+  loadPromptTemplatesRegistry,
+  type PromptTemplateRegistryEntry,
+  type PromptVariableSchema,
+} from './registry-loader.js'
 
-export interface PromptTemplate {
-  prompt_template_id: string
-  version: number
-  description: string
-  system_prompt: string
-  user_prompt: string
-}
-
-interface PromptRegistryFile {
-  version: number
-  templates: Array<{
-    prompt_template_id: string
-    version: number
-    description: string
-    system_prompt: string
-    user_prompt: string
-  }>
-}
+export interface PromptTemplate extends PromptTemplateRegistryEntry {}
 
 /**
- * Loads prompt templates from the YAML registry and renders them
+ * Loads prompt templates from the registry and renders them
  * with simple {{variable}} substitution.
  */
 export class PromptEngine {
-  private templates = new Map<string, PromptTemplate>()
+  private readonly templates = new Map<string, PromptTemplate>()
 
   constructor(registryPath?: string) {
-    const path = registryPath ?? this.defaultRegistryPath()
-    this.loadRegistry(path)
+    this.loadRegistry(registryPath)
   }
 
   render(
-    templateId: string,
+    promptRef: PromptTemplateRef,
     variables: Record<string, string>,
   ): LlmMessage[] {
-    const tpl = this.templates.get(templateId)
-    if (!tpl) {
-      throw new Error(`Prompt template not found: ${templateId}`)
-    }
+    const tpl = this.getTemplateOrThrow(promptRef)
+    validatePromptVariables(promptRef, tpl.variables_schema, variables)
+    validateTemplatePlaceholders(promptRef, tpl, variables)
 
     return [
       { role: 'system', content: renderTemplate(tpl.system_prompt, variables) },
@@ -49,43 +36,49 @@ export class PromptEngine {
     ]
   }
 
-  getTemplate(templateId: string): PromptTemplate | undefined {
-    return this.templates.get(templateId)
+  getTemplate(promptRef: PromptTemplateRef): PromptTemplate | undefined {
+    return this.templates.get(getPromptTemplateKey(promptRef))
   }
 
-  get templateIds(): string[] {
-    return Array.from(this.templates.keys())
+  get templateRefs(): PromptTemplateRef[] {
+    return Array.from(this.templates.values()).map((template) => ({
+      id: template.prompt_template_id,
+      version: template.version,
+    }))
   }
 
-  private loadRegistry(path: string): void {
-    try {
-      const raw = readFileSync(path, 'utf-8')
-      const data = parseSimpleYaml(raw) as PromptRegistryFile
-
-      if (!data?.templates) {
-        console.warn('[PromptEngine] No templates found in registry')
-        return
-      }
-
-      for (const t of data.templates) {
-        this.templates.set(t.prompt_template_id, {
-          prompt_template_id: t.prompt_template_id,
-          version: t.version,
-          description: t.description,
-          system_prompt: t.system_prompt,
-          user_prompt: t.user_prompt,
-        })
-      }
-
-      console.log(`[PromptEngine] Loaded ${this.templates.size} templates`)
-    } catch (err) {
-      console.warn(`[PromptEngine] Failed to load registry: ${(err as Error).message}`)
+  private getTemplateOrThrow(promptRef: PromptTemplateRef): PromptTemplate {
+    const template = this.getTemplate(promptRef)
+    if (!template) {
+      throw new LLMGatewayContractError(
+        'RegistryResolutionError',
+        `Prompt template not found: ${promptRef.id}@${promptRef.version}`,
+        { prompt_ref: promptRef },
+      )
     }
+    return template
   }
 
-  private defaultRegistryPath(): string {
-    const here = dirname(fileURLToPath(import.meta.url))
-    return resolve(here, '../../../.ai/llm-config/registry/prompt_templates.yaml')
+  private loadRegistry(registryPath?: string): void {
+    const data = loadPromptTemplatesRegistry(registryPath)
+    for (const template of data.templates) {
+      this.templates.set(
+        getPromptTemplateKey({
+          id: template.prompt_template_id,
+          version: template.version,
+        }),
+        template,
+      )
+    }
+
+    if (this.templates.size === 0) {
+      throw new LLMGatewayContractError(
+        'RegistryResolutionError',
+        'Prompt template registry loaded without any templates',
+      )
+    }
+
+    console.log(`[PromptEngine] Loaded ${this.templates.size} prompt template versions`)
   }
 }
 
@@ -93,99 +86,82 @@ function renderTemplate(template: string, vars: Record<string, string>): string 
   return template.replace(/\{\{(\w+)\}\}/g, (_, key: string) => vars[key] ?? '')
 }
 
-/**
- * Minimal YAML subset parser for the prompt template registry.
- * Handles the specific structure we need without a full YAML dependency.
- * For production, consider using a proper YAML parser.
- */
-function parseSimpleYaml(raw: string): PromptRegistryFile {
-  const templates: PromptRegistryFile['templates'] = []
-  let currentTemplate: Record<string, unknown> | null = null
-  let currentField: string | null = null
-  let multilineBuffer: string[] = []
-  let inMultiline = false
+function getPromptTemplateKey(promptRef: PromptTemplateRef): string {
+  return `${promptRef.id}@${promptRef.version}`
+}
 
-  const lines = raw.split('\n')
-
-  function flushMultiline() {
-    if (currentTemplate && currentField && multilineBuffer.length > 0) {
-      currentTemplate[currentField] = multilineBuffer.join('\n')
-    }
-    multilineBuffer = []
-    inMultiline = false
-    currentField = null
+function validatePromptVariables(
+  promptRef: PromptTemplateRef,
+  schema: PromptVariableSchema,
+  variables: Record<string, string>,
+): void {
+  if (schema.type !== 'object') {
+    throw new LLMGatewayContractError(
+      'PromptValidationError',
+      `Prompt variables schema must be an object: ${promptRef.id}@${promptRef.version}`,
+      { prompt_ref: promptRef, schema_type: schema.type },
+    )
   }
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-
-    if (line.trimStart().startsWith('#') || line.trim() === '') {
-      if (inMultiline) {
-        if (line.trim() === '' && i + 1 < lines.length) {
-          const nextLine = lines[i + 1]
-          const nextIndent = nextLine.length - nextLine.trimStart().length
-          if (nextIndent >= 6) {
-            multilineBuffer.push('')
-            continue
-          }
-        }
-        if (line.trim() === '') {
-          continue
-        }
-      }
-      continue
-    }
-
-    const indent = line.length - line.trimStart().length
-
-    if (inMultiline) {
-      if (indent >= 6) {
-        multilineBuffer.push(line.slice(6))
-        continue
-      } else {
-        flushMultiline()
-      }
-    }
-
-    const trimmed = line.trim()
-
-    if (trimmed.startsWith('- prompt_template_id:')) {
-      if (currentTemplate) {
-        templates.push(currentTemplate as PromptRegistryFile['templates'][number])
-      }
-      currentTemplate = {
-        prompt_template_id: trimmed.split(':').slice(1).join(':').trim(),
-        version: 1,
-        description: '',
-        system_prompt: '',
-        user_prompt: '',
-      }
-      continue
-    }
-
-    if (!currentTemplate) continue
-
-    if (indent >= 4 && trimmed.includes(':')) {
-      const colonIdx = trimmed.indexOf(':')
-      const key = trimmed.slice(0, colonIdx).trim()
-      const value = trimmed.slice(colonIdx + 1).trim()
-
-      if (['version', 'description', 'system_prompt', 'user_prompt'].includes(key)) {
-        if (value === '|') {
-          currentField = key
-          inMultiline = true
-          multilineBuffer = []
-        } else {
-          currentTemplate[key] = key === 'version' ? parseInt(value, 10) : value
-        }
-      }
-    }
+  const missingRequired = schema.required.filter((key) => !hasNonEmptyString(variables[key]))
+  if (missingRequired.length > 0) {
+    throw new LLMGatewayContractError(
+      'PromptValidationError',
+      `Missing required prompt variables for ${promptRef.id}@${promptRef.version}: ${missingRequired.join(', ')}`,
+      {
+        prompt_ref: promptRef,
+        missing_required: missingRequired,
+      },
+    )
   }
 
-  if (inMultiline) flushMultiline()
-  if (currentTemplate) {
-    templates.push(currentTemplate as PromptRegistryFile['templates'][number])
-  }
+  const invalidTypedKeys = Object.entries(schema.properties)
+    .filter(([, definition]) => definition.type === 'string')
+    .filter(([key]) => key in variables && typeof variables[key] !== 'string')
+    .map(([key]) => key)
 
-  return { version: 1, templates }
+  if (invalidTypedKeys.length > 0) {
+    throw new LLMGatewayContractError(
+      'PromptValidationError',
+      `Prompt variables must be strings for ${promptRef.id}@${promptRef.version}: ${invalidTypedKeys.join(', ')}`,
+      {
+        prompt_ref: promptRef,
+        invalid_typed_keys: invalidTypedKeys,
+      },
+    )
+  }
+}
+
+function validateTemplatePlaceholders(
+  promptRef: PromptTemplateRef,
+  template: PromptTemplate,
+  variables: Record<string, string>,
+): void {
+  const placeholders = new Set<string>()
+  collectPlaceholders(template.system_prompt, placeholders)
+  collectPlaceholders(template.user_prompt, placeholders)
+
+  const missingPlaceholders = Array.from(placeholders)
+    .filter((key) => !(key in variables))
+
+  if (missingPlaceholders.length > 0) {
+    throw new LLMGatewayContractError(
+      'PromptValidationError',
+      `Missing prompt placeholders for ${promptRef.id}@${promptRef.version}: ${missingPlaceholders.join(', ')}`,
+      {
+        prompt_ref: promptRef,
+        missing_placeholders: missingPlaceholders,
+      },
+    )
+  }
+}
+
+function collectPlaceholders(template: string, output: Set<string>): void {
+  for (const match of template.matchAll(/\{\{(\w+)\}\}/g)) {
+    output.add(match[1])
+  }
+}
+
+function hasNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0
 }

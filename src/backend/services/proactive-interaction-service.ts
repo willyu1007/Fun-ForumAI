@@ -4,6 +4,7 @@ import type { AgentService } from './agent-service.js'
 import type { NotificationService } from './notification-service.js'
 import type { PrivateChannelRepository } from '../repos/private-channel-repository.js'
 import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
+import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 
 const MAX_PROACTIVE_PER_DAY = 2
@@ -217,7 +218,10 @@ export class ProactiveInteractionService {
           layer_privacy: composed.layers.layer6_privacy ?? '',
         }
 
-        const messages = this.deps.promptEngine.render('agent-proactive-dm-opening', variables)
+        const messages = this.deps.promptEngine.render(
+          PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
+          variables,
+        )
         const response = await this.deps.llmClient.chat({
           messages,
           temperature: 0.8,

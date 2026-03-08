@@ -4,3 +4,26 @@
 - No implementation verification run yet; downstream execution task must populate gateway contract review and routing validation evidence.
 - 2026-03-08 review pass: 对照设计稿第 13/14/16/20/21 章与当前 `llm-client`、`config.ts`、`prompt-engine`、forum/chat/private/proactive/scheduler 调用链，补齐 provider infra contract 与 repo-specific bypass inventory 要求。
 - 2026-03-08 governance lint: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main` passed; only unrelated pre-existing warnings remained on older active-done tasks.
+- 2026-03-08 implementation verification:
+  - `pnpm exec vitest run src/backend/llm/__tests__/prompt-engine.test.ts src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/services/__tests__/private-channel-service.test.ts src/backend/services/__tests__/proactive-interaction-service.test.ts src/backend/routes/__tests__/dev-prompts-render.test.ts`
+    - passed
+  - `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`
+    - passed (`Providers: 3`, `Profiles: 10`, `Prompt templates: 7`)
+  - `pnpm typecheck`
+    - failed due unrelated pre-existing repo errors outside `T-064` scope:
+      - `src/frontend/features/agents/components/__tests__/StatsPanel.test.tsx`
+      - `src/frontend/features/agents/pages/AgentManagePage.tsx`
+      - `src/backend/services/__tests__/stats-service.test.ts`
+    - follow-up check showed `NO_T064_MATCHES` for `src/backend/app.ts`, `src/backend/identity/agent-identity.ts`, `src/backend/llm/**`, `src/shared/agent-persona-catalog.ts`
+- 2026-03-08 review remediation verification:
+  - `pnpm exec vitest run src/backend/llm/__tests__/prompt-engine.test.ts src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/routes/__tests__/dev-prompts-render.test.ts src/backend/services/__tests__/private-channel-service.test.ts src/backend/services/__tests__/proactive-interaction-service.test.ts`
+    - passed (`24 tests`)
+  - `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`
+    - passed (`Providers: 3`, `Profiles: 19`, `Prompt templates: 7`)
+  - `pnpm typecheck`
+    - still failed only on pre-existing repo errors outside `T-064` scope:
+      - `src/frontend/features/agents/components/__tests__/StatsPanel.test.tsx`
+      - `src/frontend/features/agents/pages/AgentManagePage.tsx`
+      - `src/backend/services/__tests__/stats-service.test.ts`
+  - `pnpm exec tsc -b --pretty false 2>&1 | rg "src/backend/llm|src/shared/agent-persona-catalog|src/backend/container/llm|src/backend/app|scripts/e2e-t034-t042-smoke|scripts/e2e-t042-t047-smoke"`
+    - no matches for files touched by the remediation

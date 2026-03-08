@@ -1,20 +1,291 @@
-# Model routing profiles registry (template)
+# Model routing profiles registry
 #
-# Profiles are business-level intent labels (stable IDs) mapped to one or more provider/model candidates.
-# Feature code should call by `profile_id` whenever possible.
+# Profiles are runtime-authoritative business intents resolved from:
+#   voice line -> intent -> tier -> profile -> provider/model candidate set
 
 version: 1
 
 profiles:
-  # Example: a general-purpose profile with a primary and fallback
-  - profile_id: balanced
-    intent: general_text_generation
+  - profile_id: qwen-social-chat-reply-lite
+    voice_line_id: qwen-social-v1
+    tier: lite
+    intent: chat_reply
+    visibility: visible
     candidates:
-      - provider_id: example-provider
-        model_id: example-model-small
+      - provider_id: dashscope-openai
+        model_id: qwen-flash-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
         weight: 100
+        quality_class: fast
+    fallback: []
+
+  - profile_id: qwen-social-forum-reply-base
+    voice_line_id: qwen-social-v1
+    tier: base
+    intent: forum_reply
+    visibility: visible
+    candidates:
+      - provider_id: dashscope-openai
+        model_id: qwen-plus-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 100
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: qwen-social-scheduled-post-base
+    voice_line_id: qwen-social-v1
+    tier: base
+    intent: scheduled_post
+    visibility: visible
+    candidates:
+      - provider_id: dashscope-openai
+        model_id: qwen-plus-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 100
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: qwen-social-private-reply-base
+    voice_line_id: qwen-social-v1
+    tier: base
+    intent: private_reply
+    visibility: visible
+    candidates:
+      - provider_id: dashscope-openai
+        model_id: qwen-plus-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 100
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: qwen-social-proactive-opening-base
+    voice_line_id: qwen-social-v1
+    tier: base
+    intent: proactive_opening
+    visibility: visible
+    candidates:
+      - provider_id: dashscope-openai
+        model_id: qwen-plus-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 100
+        quality_class: balanced
     fallback:
-      # Optional: fallback candidates or another profile_id
-      - provider_id: example-provider
-        model_id: example-model-tiny
+      - level: same-line
+        profile_id: qwen-social-proactive-opening-premium
+        reason: proactive openings may raise quality within the same line
+
+  - profile_id: qwen-social-proactive-opening-premium
+    voice_line_id: qwen-social-v1
+    tier: premium
+    intent: proactive_opening
+    visibility: visible
+    candidates:
+      - provider_id: dashscope-openai
+        model_id: qwen-max
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
         weight: 100
+        quality_class: premium
+    fallback:
+      - level: same-line
+        profile_id: qwen-social-proactive-opening-base
+        reason: degrade within the same line before any family escape
+
+  - profile_id: qwen-social-identity-write-premium
+    voice_line_id: qwen-social-v1
+    tier: premium
+    intent: identity_write
+    visibility: identity_write
+    candidates:
+      - provider_id: dashscope-openai
+        model_id: qwen-max
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 100
+        quality_class: premium
+    fallback: []
+
+  - profile_id: glm-deep-chat-reply-lite
+    voice_line_id: glm-deep-v1
+    tier: lite
+    intent: chat_reply
+    visibility: visible
+    candidates:
+      - provider_id: zai-openai
+        model_id: glm-4-air
+        region: cn
+        endpoint_id: zai-cn
+        weight: 100
+        quality_class: fast
+    fallback: []
+
+  - profile_id: glm-deep-forum-reply-base
+    voice_line_id: glm-deep-v1
+    tier: base
+    intent: forum_reply
+    visibility: visible
+    candidates:
+      - provider_id: zai-openai
+        model_id: glm-4-plus
+        region: cn
+        endpoint_id: zai-cn
+        weight: 100
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: glm-deep-scheduled-post-base
+    voice_line_id: glm-deep-v1
+    tier: base
+    intent: scheduled_post
+    visibility: visible
+    candidates:
+      - provider_id: zai-openai
+        model_id: glm-4-plus
+        region: cn
+        endpoint_id: zai-cn
+        weight: 100
+        quality_class: balanced
+    fallback:
+      - level: same-line
+        profile_id: glm-deep-scheduled-post-premium
+        reason: scheduled posting may raise quality inside the same line
+
+  - profile_id: glm-deep-scheduled-post-premium
+    voice_line_id: glm-deep-v1
+    tier: premium
+    intent: scheduled_post
+    visibility: visible
+    candidates:
+      - provider_id: zai-openai
+        model_id: glm-4.5
+        region: cn
+        endpoint_id: zai-cn
+        weight: 100
+        quality_class: premium
+    fallback:
+      - level: same-line
+        profile_id: glm-deep-scheduled-post-base
+        reason: degrade within the same line before any family escape
+
+  - profile_id: glm-deep-private-reply-base
+    voice_line_id: glm-deep-v1
+    tier: base
+    intent: private_reply
+    visibility: visible
+    candidates:
+      - provider_id: zai-openai
+        model_id: glm-4-plus
+        region: cn
+        endpoint_id: zai-cn
+        weight: 100
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: glm-deep-proactive-opening-base
+    voice_line_id: glm-deep-v1
+    tier: base
+    intent: proactive_opening
+    visibility: visible
+    candidates:
+      - provider_id: zai-openai
+        model_id: glm-4-plus
+        region: cn
+        endpoint_id: zai-cn
+        weight: 100
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: glm-deep-identity-write-premium
+    voice_line_id: glm-deep-v1
+    tier: premium
+    intent: identity_write
+    visibility: identity_write
+    candidates:
+      - provider_id: zai-openai
+        model_id: glm-4.5
+        region: cn
+        endpoint_id: zai-cn
+        weight: 100
+        quality_class: premium
+    fallback: []
+
+  - profile_id: deepseek-director-public-observation-base
+    voice_line_id: deepseek-director-v1
+    tier: base
+    intent: public_observation_digest
+    visibility: hidden
+    candidates:
+      - provider_id: deepseek-openai
+        model_id: deepseek-chat
+        region: cn
+        endpoint_id: deepseek-cn
+        weight: 100
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: deepseek-director-private-digest-premium
+    voice_line_id: deepseek-director-v1
+    tier: premium
+    intent: private_digest
+    visibility: hidden
+    candidates:
+      - provider_id: deepseek-openai
+        model_id: deepseek-reasoner
+        region: cn
+        endpoint_id: deepseek-cn
+        weight: 100
+        quality_class: premium
+    fallback: []
+
+  - profile_id: deepseek-director-vision-summary-base
+    voice_line_id: deepseek-director-v1
+    tier: base
+    intent: vision_summary
+    visibility: hidden
+    candidates:
+      - provider_id: deepseek-openai
+        model_id: deepseek-chat
+        region: cn
+        endpoint_id: deepseek-cn
+        weight: 100
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: deepseek-director-director-plan-base
+    voice_line_id: deepseek-director-v1
+    tier: base
+    intent: director_plan
+    visibility: hidden
+    candidates:
+      - provider_id: deepseek-openai
+        model_id: deepseek-chat
+        region: cn
+        endpoint_id: deepseek-cn
+        weight: 100
+        quality_class: balanced
+    fallback:
+      - level: same-line
+        profile_id: deepseek-director-director-plan-premium
+        reason: raise hidden director work inside the same line only
+
+  - profile_id: deepseek-director-director-plan-premium
+    voice_line_id: deepseek-director-v1
+    tier: premium
+    intent: director_plan
+    visibility: hidden
+    candidates:
+      - provider_id: deepseek-openai
+        model_id: deepseek-reasoner
+        region: cn
+        endpoint_id: deepseek-cn
+        weight: 100
+        quality_class: premium
+    fallback:
+      - level: same-line
+        profile_id: deepseek-director-director-plan-base
+        reason: degrade inside the hidden director line only

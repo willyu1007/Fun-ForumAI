@@ -23,6 +23,15 @@ templates:
         post_body: { type: string }
         post_author: { type: string }
         existing_comments: { type: string }
+        layer_traits: { type: string }
+        layer_style: { type: string }
+        layer_instructions: { type: string }
+        layer_community: { type: string }
+        layer_relationship: { type: string }
+        layer_showrunner: { type: string }
+        layer_overrides: { type: string }
+        layer_memory: { type: string }
+        layer_privacy: { type: string }
       required:
         - persona_name
         - persona_style
@@ -93,6 +102,15 @@ templates:
         community_candidates: { type: string }
         inclination_injection: { type: string }
         inclination_media_url: { type: string }
+        layer_traits: { type: string }
+        layer_style: { type: string }
+        layer_instructions: { type: string }
+        layer_community: { type: string }
+        layer_relationship: { type: string }
+        layer_showrunner: { type: string }
+        layer_overrides: { type: string }
+        layer_memory: { type: string }
+        layer_privacy: { type: string }
       required:
         - persona_name
         - persona_style
@@ -166,6 +184,15 @@ templates:
         thread_context: { type: string }
         target_comment_author: { type: string }
         target_comment_body: { type: string }
+        layer_traits: { type: string }
+        layer_style: { type: string }
+        layer_instructions: { type: string }
+        layer_community: { type: string }
+        layer_relationship: { type: string }
+        layer_showrunner: { type: string }
+        layer_overrides: { type: string }
+        layer_memory: { type: string }
+        layer_privacy: { type: string }
       required:
         - persona_name
         - persona_style
@@ -230,6 +257,15 @@ templates:
         room_name: { type: string }
         room_description: { type: string }
         recent_messages: { type: string }
+        layer_traits: { type: string }
+        layer_style: { type: string }
+        layer_instructions: { type: string }
+        layer_community: { type: string }
+        layer_relationship: { type: string }
+        layer_showrunner: { type: string }
+        layer_overrides: { type: string }
+        layer_memory: { type: string }
+        layer_privacy: { type: string }
       required:
         - persona_name
         - persona_style
@@ -289,6 +325,15 @@ templates:
         session_context: { type: string }
         recent_messages: { type: string }
         latest_user_message: { type: string }
+        layer_traits: { type: string }
+        layer_style: { type: string }
+        layer_instructions: { type: string }
+        layer_community: { type: string }
+        layer_relationship: { type: string }
+        layer_showrunner: { type: string }
+        layer_overrides: { type: string }
+        layer_memory: { type: string }
+        layer_privacy: { type: string }
       required:
         - persona_name
         - persona_style
@@ -348,6 +393,15 @@ templates:
         persona_language: { type: string }
         trigger_type: { type: string }
         trigger_context: { type: string }
+        layer_traits: { type: string }
+        layer_style: { type: string }
+        layer_instructions: { type: string }
+        layer_community: { type: string }
+        layer_relationship: { type: string }
+        layer_showrunner: { type: string }
+        layer_overrides: { type: string }
+        layer_memory: { type: string }
+        layer_privacy: { type: string }
       required:
         - persona_name
         - trigger_type

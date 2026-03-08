@@ -7,6 +7,7 @@ import type { LlmClient } from '../llm/llm-client.js'
 import type { PromptEngine } from '../llm/prompt-engine.js'
 import type { PromptLayerService } from '../runtime/prompt-layer-service.js'
 import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
+import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import type { SseHub } from '../sse/hub.js'
 import type { ChatMessageKind } from '../repos/types.js'
 import type { LeaderElector } from '../runtime/leader-elector.js'
@@ -371,7 +372,7 @@ export class ConversationClock {
       layer_privacy: layers.layer_privacy,
     }
 
-    const messages = this.deps.promptEngine.render('agent-chat-reply', variables)
+    const messages = this.deps.promptEngine.render(PROMPT_TEMPLATE_REFS.agentChatReply, variables)
     const response = await this.deps.llmClient.chat({ messages })
     const content = response.content.trim()
 

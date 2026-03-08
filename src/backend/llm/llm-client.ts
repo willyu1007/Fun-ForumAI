@@ -14,6 +14,8 @@ export class LlmClient {
   /**
    * Send a chat completion request.
    * Falls back to configured defaults for model / max_tokens / temperature.
+   * These defaults are a bootstrap compatibility path, not a visible-generation
+   * authority once gateway routing profiles land.
    */
   async chat(opts: {
     messages: LlmMessage[]

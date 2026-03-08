@@ -4,6 +4,7 @@ import { PrivateChannelService } from '../private-channel-service.js'
 import type { PromptOrchestrator } from '../../runtime/prompt-orchestrator.js'
 import type { PromptEngine } from '../../llm/prompt-engine.js'
 import type { PrivateSession } from '../../repos/types.js'
+import { PROMPT_TEMPLATE_REFS } from '../../llm/prompt-template-refs.js'
 
 function withLayerStackFlag<T>(enabled: boolean, run: () => Promise<T>): Promise<T> {
   const featureFlags = config.features as unknown as Record<string, boolean>
@@ -174,7 +175,7 @@ describe('PrivateChannelService', () => {
       const result = await service.sendMessage(session.id, 'user-1', ' 你好 ')
       expect(result.agent_reply.content).toBe('你好呀')
       expect(promptEngine.render).toHaveBeenCalledWith(
-        'agent-private-chat-reply',
+        PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
         expect.objectContaining({
           persona_name: 'Agent One',
           latest_user_message: '你好',

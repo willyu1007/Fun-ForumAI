@@ -99,7 +99,7 @@ async function testLayerStackV2(agentId, token) {
   const render = await api(
     'POST',
     '/v1/dev/prompts/render',
-    { agent_id: agentId, template_id: 'agent-reply-to-post', scene: 'forum_post' },
+    { agent_id: agentId, template_id: 'agent-reply-to-post', template_version: 1, scene: 'forum_post' },
     token,
   )
   const renderOk = render.status === 200
@@ -115,7 +115,7 @@ async function testLayerStackV2(agentId, token) {
   const render404 = await api(
     'POST',
     '/v1/dev/prompts/render',
-    { agent_id: 'nonexistent-agent', template_id: 'agent-reply-to-post', scene: 'forum_post' },
+    { agent_id: 'nonexistent-agent', template_id: 'agent-reply-to-post', template_version: 1, scene: 'forum_post' },
     token,
   )
   log('Render with invalid agent → 404/500', render404.status === 404 || render404.status === 500)

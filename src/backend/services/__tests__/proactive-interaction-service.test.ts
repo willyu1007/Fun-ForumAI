@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { config } from '../../lib/config.js'
 import { ProactiveInteractionService } from '../proactive-interaction-service.js'
+import { PROMPT_TEMPLATE_REFS } from '../../llm/prompt-template-refs.js'
 
 function withLayerStackFlag<T>(enabled: boolean, run: () => Promise<T>): Promise<T> {
   const featureFlags = config.features as unknown as Record<string, boolean>
@@ -95,7 +96,7 @@ describe('ProactiveInteractionService', () => {
       })
       expect(ok).toBe(true)
       expect(promptEngine.render).toHaveBeenCalledWith(
-        'agent-proactive-dm-opening',
+        PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
         expect.objectContaining({
           trigger_type: 'vote_received',
         }),

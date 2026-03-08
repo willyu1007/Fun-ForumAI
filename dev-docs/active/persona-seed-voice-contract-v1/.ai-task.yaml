@@ -2,7 +2,7 @@ version: 1
 task_id: T-063
 project: main
 slug: persona-seed-voice-contract-v1
-status: planned
+status: done
 updated: "2026-03-08"
 keywords:
   - persona-seed

@@ -1,5 +1,6 @@
 import type { LlmClient } from '../llm/llm-client.js'
 import type { PromptEngine } from '../llm/prompt-engine.js'
+import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import type { ForumReadService } from '../services/forum-read-service.js'
 import type { AgentService } from '../services/agent-service.js'
 import type { ResponseParser } from './response-parser.js'
@@ -186,7 +187,7 @@ export class PostScheduler {
         layer_privacy: composedLayers.layer_privacy,
       }
 
-      const messages = this.deps.promptEngine.render('agent-create-post', variables)
+      const messages = this.deps.promptEngine.render(PROMPT_TEMPLATE_REFS.agentCreatePost, variables)
       const llmResponse = await this.deps.llmClient.chat({ messages })
       const latencyMs = Date.now() - start
 

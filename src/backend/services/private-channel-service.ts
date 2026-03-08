@@ -9,6 +9,7 @@ import type { MemoryRepository } from '../repos/memory-repository.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { SseHub } from '../sse/hub.js'
 import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
+import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import type {
   PrivateSession,
   PrivateMessage,
@@ -357,7 +358,7 @@ export class PrivateChannelService {
       layer_privacy: composed.layers.layer6_privacy ?? '',
     }
 
-    return this.deps.promptEngine!.render('agent-private-chat-reply', variables)
+    return this.deps.promptEngine!.render(PROMPT_TEMPLATE_REFS.agentPrivateChatReply, variables)
   }
 
   private async loadMemoriesForPrivateChat(agentId: string): Promise<string | null> {

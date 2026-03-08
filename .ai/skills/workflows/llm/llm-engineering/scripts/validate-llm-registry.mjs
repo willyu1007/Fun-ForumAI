@@ -6,27 +6,41 @@
  * Validates the repo's LLM SSOT registries under:
  *   .ai/llm-config/registry/*
  *
- * Goals:
- * - lightweight, dependency-free validation (no YAML library)
- * - catch duplicate IDs and broken references early
- * - provide an optional "strict" mode to prevent shipping template placeholders
- *
  * Usage:
  *   node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs
  *   node .../validate-llm-registry.mjs --strict
- *
- * @reference .ai/skills/standards/naming-conventions/SKILL.md
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-// Note: This script uses inline YAML parsing utilities for portability.
-// The shared library at .ai/scripts/lib/yaml-lite.mjs contains equivalent functions.
+import { parse as parseYaml } from 'yaml';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const VALID_VOICE_LINE_IDS = new Set(['qwen-social-v1', 'glm-deep-v1', 'deepseek-director-v1']);
+const VALID_TIERS = new Set(['lite', 'base', 'premium']);
+const VALID_VISIBILITIES = new Set(['visible', 'hidden', 'identity_write', 'dev_only']);
+const VALID_INTENTS = new Set([
+  'forum_reply',
+  'chat_reply',
+  'scheduled_post',
+  'private_reply',
+  'proactive_opening',
+  'public_observation_digest',
+  'private_digest',
+  'vision_summary',
+  'identity_write',
+  'director_plan',
+]);
+const VALID_FALLBACK_LEVELS = new Set([
+  'same-line',
+  'same-family',
+  'cross-family-hidden',
+  'rare-reanchor',
+]);
+const VALID_QUALITY_CLASSES = new Set(['fast', 'balanced', 'premium']);
 
 const colors = {
   red: (s) => `\x1b[31m${s}\x1b[0m`,
@@ -43,169 +57,6 @@ function die(msg) {
 
 function warn(msg) {
   console.warn(colors.yellow(msg));
-}
-
-function readFileSafe(p) {
-  try {
-    return fs.readFileSync(p, 'utf8');
-  } catch {
-    return null;
-  }
-}
-
-function stripInlineComment(line) {
-  const idx = line.indexOf('#');
-  if (idx === -1) return line;
-  return line.slice(0, idx);
-}
-
-function unquote(s) {
-  const t = String(s).trim();
-  if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
-    return t.slice(1, -1);
-  }
-  return t;
-}
-
-function uniqueList(list) {
-  return Array.from(new Set(list));
-}
-
-function findRepoRoot(startDir) {
-  let dir = startDir;
-  while (true) {
-    const candidate = path.join(dir, '.ai', 'llm-config', 'registry', 'config_keys.yaml');
-    if (fs.existsSync(candidate)) return dir;
-    const parent = path.dirname(dir);
-    if (parent === dir) return null;
-    dir = parent;
-  }
-}
-
-function hasTemplateHeader(raw) {
-  // Template marker is intentionally simple and cheap.
-  // Real repos should remove "(template)" in the first-line comment headers.
-  const head = raw.split(/\r?\n/).slice(0, 5).join('\n');
-  return head.toLowerCase().includes('(template)');
-}
-
-function parseTopLevelVersion(raw) {
-  // Minimal parsing for `version: <int>` at top level.
-  const m = raw.match(/^\s*version\s*:\s*([0-9]+)\s*$/m);
-  return m ? Number(m[1]) : null;
-}
-
-function parseListFieldValues(raw, listItemKey) {
-  // Extract values from list items that look like:
-  //   - <listItemKey>: value
-  // We do NOT attempt full YAML; this is tuned to the template registry format.
-  const values = [];
-  const lines = raw.replace(/\r\n/g, '\n').split('\n');
-  const re = new RegExp(`^\\s*\\-\\s*${listItemKey}\\s*:\\s*(.+)\\s*$`);
-
-  for (const originalLine of lines) {
-    const line = stripInlineComment(originalLine).trimEnd();
-    const m = line.match(re);
-    if (!m) continue;
-    const v = unquote(m[1]);
-    if (v) values.push(v);
-  }
-
-  return values;
-}
-
-function parseAllScalarValues(raw, keyName) {
-  // Extract scalar assignments that look like:
-  //   keyName: value
-  // across the entire document (used for referenced provider_id in profiles).
-  const values = [];
-  const lines = raw.replace(/\r\n/g, '\n').split('\n');
-  const re = new RegExp(`^\\s*${keyName}\\s*:\\s*(.+)\\s*$`);
-
-  for (const originalLine of lines) {
-    const line = stripInlineComment(originalLine).trimEnd();
-    const m = line.match(re);
-    if (!m) continue;
-    const v = unquote(m[1]);
-    if (v) values.push(v);
-  }
-
-  return values;
-}
-
-function parsePromptTemplates(raw) {
-  // Extract (prompt_template_id, version) pairs.
-  // Assumes format:
-  // templates:
-  //   - prompt_template_id: foo
-  //     version: 1
-  const pairs = [];
-  let currentId = null;
-  let currentVersion = null;
-
-  const lines = raw.replace(/\r\n/g, '\n').split('\n');
-
-  for (const originalLine of lines) {
-    const line = stripInlineComment(originalLine).trimEnd();
-
-    const idMatch = line.match(/^\s*\-\s*prompt_template_id\s*:\s*(.+)\s*$/);
-    if (idMatch) {
-      // flush previous
-      if (currentId && Number.isInteger(currentVersion)) {
-        pairs.push({ id: currentId, version: currentVersion });
-      }
-      currentId = unquote(idMatch[1]);
-      currentVersion = null;
-      continue;
-    }
-
-    if (currentId) {
-      const vMatch = line.match(/^\s*version\s*:\s*([0-9]+)\s*$/);
-      if (vMatch) {
-        currentVersion = Number(vMatch[1]);
-      }
-    }
-  }
-
-  if (currentId && Number.isInteger(currentVersion)) {
-    pairs.push({ id: currentId, version: currentVersion });
-  }
-
-  return pairs;
-}
-
-function parseConfigKeys(raw) {
-  // Minimal YAML parsing for config_keys.yaml structure.
-  const keys = [];
-  const scopePrefixes = [];
-  let mode = null;
-
-  const lines = raw.replace(/\r\n/g, '\n').split('\n');
-  for (const originalLine of lines) {
-    const line = stripInlineComment(originalLine).trimEnd();
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    if (/^keys\s*:\s*$/.test(trimmed)) {
-      mode = 'keys';
-      continue;
-    }
-    if (/^scope_prefixes\s*:\s*$/.test(trimmed)) {
-      mode = 'scope_prefixes';
-      continue;
-    }
-
-    const m = trimmed.match(/^\-\s*(.+)\s*$/);
-    if (!m) continue;
-
-    const value = unquote(m[1]);
-    if (!value) continue;
-
-    if (mode === 'keys') keys.push(value);
-    if (mode === 'scope_prefixes') scopePrefixes.push(value);
-  }
-
-  return { keys, scopePrefixes };
 }
 
 function main() {
@@ -230,111 +81,433 @@ function main() {
     configKeys: path.join(registryDir, 'config_keys.yaml'),
   };
 
-  for (const [k, p] of Object.entries(files)) {
-    if (!fs.existsSync(p)) {
-      die(`Missing registry file: ${path.relative(repoRoot, p)} (${k})`);
+  for (const [key, filePath] of Object.entries(files)) {
+    if (!fs.existsSync(filePath)) {
+      die(`Missing registry file: ${path.relative(repoRoot, filePath)} (${key})`);
     }
   }
 
-  const rawProviders = readFileSafe(files.providers);
-  const rawProfiles = readFileSafe(files.profiles);
-  const rawPrompts = readFileSafe(files.prompts);
+  const rawProviders = readYamlFile(files.providers, 'providers.yaml');
+  const rawProfiles = readYamlFile(files.profiles, 'model_profiles.yaml');
+  const rawPrompts = readYamlFile(files.prompts, 'prompt_templates.yaml');
   const rawConfig = readFileSafe(files.configKeys);
 
-  if (!rawProviders || !rawProfiles || !rawPrompts || !rawConfig) {
-    die('Failed to read one or more registry files.');
+  if (!rawConfig) {
+    die('Failed to read config_keys.yaml');
   }
 
-  const providersVersion = parseTopLevelVersion(rawProviders);
-  const profilesVersion = parseTopLevelVersion(rawProfiles);
-  const promptsVersion = parseTopLevelVersion(rawPrompts);
-  const configVersion = parseTopLevelVersion(rawConfig);
+  const providers = parseRegistry(rawProviders, 'providers.yaml');
+  const profiles = parseRegistry(rawProfiles, 'model_profiles.yaml');
+  const prompts = parseRegistry(rawPrompts, 'prompt_templates.yaml');
 
-  if (!providersVersion) die('providers.yaml missing top-level `version: <int>`');
-  if (!profilesVersion) die('model_profiles.yaml missing top-level `version: <int>`');
-  if (!promptsVersion) die('prompt_templates.yaml missing top-level `version: <int>`');
-  if (!configVersion) die('config_keys.yaml missing top-level `version: <int>`');
+  validateVersion(providers, 'providers.yaml');
+  validateVersion(profiles, 'model_profiles.yaml');
+  validateVersion(prompts, 'prompt_templates.yaml');
+  validateConfigVersion(rawConfig);
 
-  const providerIds = parseListFieldValues(rawProviders, 'provider_id');
-  const profileIds = parseListFieldValues(rawProfiles, 'profile_id');
-  const referencedProviderIds = parseAllScalarValues(rawProfiles, 'provider_id');
-  const promptPairs = parsePromptTemplates(rawPrompts);
-  const { keys: configKeys } = parseConfigKeys(rawConfig);
+  validateProviders(providers);
+  validateProfiles(profiles, providers);
+  validatePromptTemplates(prompts);
+  validateTemplateMode(strict, rawProviders, rawProfiles, rawPrompts, rawConfig);
 
-  // Duplicate detection
-  const dupProviders = providerIds.filter((v, i) => providerIds.indexOf(v) !== i);
-  const dupProfiles = profileIds.filter((v, i) => profileIds.indexOf(v) !== i);
+  const providerIds = providers.providers.map((entry) => entry.provider_id);
+  const profileIds = profiles.profiles.map((entry) => entry.profile_id);
+  const promptPairs = prompts.templates.map((entry) => `${entry.prompt_template_id}@${entry.version}`);
+  const configKeys = parseConfigKeys(rawConfig);
 
-  const promptPairStrings = promptPairs.map((p) => `${p.id}@${p.version}`);
-  const dupPrompts = promptPairStrings.filter((v, i) => promptPairStrings.indexOf(v) !== i);
-
-  const dupKeys = configKeys.filter((v, i) => configKeys.indexOf(v) !== i);
-
-  if (dupProviders.length) die(`Duplicate provider_id(s): ${uniqueList(dupProviders).join(', ')}`);
-  if (dupProfiles.length) die(`Duplicate profile_id(s): ${uniqueList(dupProfiles).join(', ')}`);
-  if (dupPrompts.length) die(`Duplicate prompt_template_id@version: ${uniqueList(dupPrompts).join(', ')}`);
-  if (dupKeys.length) die(`Duplicate config key(s): ${uniqueList(dupKeys).join(', ')}`);
-
-  // Cross-reference validation (profiles -> providers)
-  const providerSet = new Set(providerIds);
-  const referenced = uniqueList(referencedProviderIds);
-  const missingProviders = referenced.filter((pid) => pid && !providerSet.has(pid));
-
-  if (missingProviders.length) {
-    die(`model_profiles.yaml references unknown provider_id(s): ${missingProviders.join(', ')}`);
-  }
-
-  // Prompt pair completeness
-  const incompletePrompt = promptPairs.filter((p) => !p.id || !Number.isInteger(p.version));
-  if (incompletePrompt.length) {
-    die('prompt_templates.yaml contains an entry missing prompt_template_id or version');
-  }
-
-  // Summary
   console.log(colors.gray(`Registry dir: ${path.relative(repoRoot, registryDir)}`));
   console.log(colors.gray(`Providers: ${providerIds.length}`));
   console.log(colors.gray(`Profiles: ${profileIds.length}`));
   console.log(colors.gray(`Prompt templates: ${promptPairs.length}`));
   console.log(colors.gray(`Config keys: ${configKeys.length}`));
+  console.log('');
+  console.log(colors.green('OK: registries are structurally and contractually valid.'));
+}
 
-  // Template placeholder / readiness checks
-  const templateWarnings = [];
+function validateProviders(doc) {
+  assertArray(doc.providers, 'providers.yaml providers');
+  const providerIds = [];
 
-  if (hasTemplateHeader(rawProviders)) templateWarnings.push('providers.yaml header still marked as (template)');
-  if (hasTemplateHeader(rawProfiles)) templateWarnings.push('model_profiles.yaml header still marked as (template)');
-  if (hasTemplateHeader(rawPrompts)) templateWarnings.push('prompt_templates.yaml header still marked as (template)');
-  if (hasTemplateHeader(rawConfig)) templateWarnings.push('config_keys.yaml header still marked as (template)');
+  for (const provider of doc.providers) {
+    assertObject(provider, 'provider entry');
+    const providerId = requireNonEmptyString(provider.provider_id, 'provider_id');
+    providerIds.push(providerId);
+    requireNonEmptyString(provider.display_name, `providers.${providerId}.display_name`);
+    requireOneOf(provider.gateway_kind, ['openai_compatible', 'native'], `providers.${providerId}.gateway_kind`);
 
-  // Common placeholder IDs used in this template
-  const placeholderPatterns = [
-    /^example\-/i,
-  ];
+    assertObject(provider.auth, `providers.${providerId}.auth`);
+    requireOneOf(provider.auth.type, ['api_key'], `providers.${providerId}.auth.type`);
+    requireBoolean(provider.auth.credential_ref_required, `providers.${providerId}.auth.credential_ref_required`);
+    requireNonEmptyString(provider.auth.credential_ref, `providers.${providerId}.auth.credential_ref`);
 
-  const hasPlaceholder = (v) => placeholderPatterns.some((re) => re.test(String(v || '')));
-
-  const placeholderIds = [];
-  for (const pid of providerIds) if (hasPlaceholder(pid)) placeholderIds.push(`provider_id:${pid}`);
-  for (const pfid of profileIds) if (hasPlaceholder(pfid)) placeholderIds.push(`profile_id:${pfid}`);
-  for (const p of promptPairs) if (hasPlaceholder(p.id)) placeholderIds.push(`prompt_template_id:${p.id}`);
-
-  if (placeholderIds.length) {
-    templateWarnings.push(`placeholder identifiers present: ${uniqueList(placeholderIds).join(', ')}`);
-  }
-
-  if (templateWarnings.length) {
-    if (strict) {
-      console.log('');
-      die(`Registry still in TEMPLATE mode:\n- ${templateWarnings.join('\n- ')}\n\nFix: replace placeholders with real org/project data (and remove "(template)" markers).`);
+    assertObject(provider.routing, `providers.${providerId}.routing`);
+    assertArray(provider.routing.regions, `providers.${providerId}.routing.regions`);
+    if (provider.routing.regions.length === 0) {
+      die(`providers.${providerId}.routing.regions must contain at least one region`);
+    }
+    provider.routing.regions.forEach((region, index) => {
+      requireNonEmptyString(region, `providers.${providerId}.routing.regions[${index}]`);
+    });
+    const defaultRegion = requireNonEmptyString(provider.routing.default_region, `providers.${providerId}.routing.default_region`);
+    if (!provider.routing.regions.includes(defaultRegion)) {
+      die(`providers.${providerId}.routing.default_region must be listed in routing.regions`);
     }
 
-    console.log('');
-    warn('Registry appears to be in TEMPLATE mode (this is fine for the template repo, but not for production):');
-    for (const w of templateWarnings) warn(`- ${w}`);
-    console.log(colors.gray('Tip: run with `--strict` in CI to prevent shipping template registries.'));
+    assertObject(provider.capabilities, `providers.${providerId}.capabilities`);
+    requireBoolean(provider.capabilities.chat, `providers.${providerId}.capabilities.chat`);
+    requireBoolean(provider.capabilities.json_mode, `providers.${providerId}.capabilities.json_mode`);
+    requireBoolean(provider.capabilities.tool_calling, `providers.${providerId}.capabilities.tool_calling`);
+    requireBoolean(provider.capabilities.streaming, `providers.${providerId}.capabilities.streaming`);
+
+    assertObject(provider.defaults, `providers.${providerId}.defaults`);
+    requirePositiveInteger(provider.defaults.timeout_ms, `providers.${providerId}.defaults.timeout_ms`);
+    requireNonNegativeInteger(provider.defaults.max_retries, `providers.${providerId}.defaults.max_retries`);
+  }
+
+  assertUnique(providerIds, 'provider_id');
+}
+
+function validateProfiles(doc, providersDoc) {
+  assertArray(doc.profiles, 'model_profiles.yaml profiles');
+  const profileIds = [];
+  const providersById = new Map(providersDoc.providers.map((entry) => [entry.provider_id, entry]));
+
+  for (const profile of doc.profiles) {
+    assertObject(profile, 'profile entry');
+    const profileId = requireNonEmptyString(profile.profile_id, 'profile_id');
+    profileIds.push(profileId);
+
+    const voiceLineId = requireNonEmptyString(profile.voice_line_id, `profiles.${profileId}.voice_line_id`);
+    if (!VALID_VOICE_LINE_IDS.has(voiceLineId)) {
+      die(`profiles.${profileId}.voice_line_id must be one of: ${Array.from(VALID_VOICE_LINE_IDS).join(', ')}`);
+    }
+
+    const tier = requireNonEmptyString(profile.tier, `profiles.${profileId}.tier`);
+    if (!VALID_TIERS.has(tier)) {
+      die(`profiles.${profileId}.tier must be one of: ${Array.from(VALID_TIERS).join(', ')}`);
+    }
+
+    const intent = requireNonEmptyString(profile.intent, `profiles.${profileId}.intent`);
+    if (!VALID_INTENTS.has(intent)) {
+      die(`profiles.${profileId}.intent must be one of: ${Array.from(VALID_INTENTS).join(', ')}`);
+    }
+
+    const visibility = requireNonEmptyString(profile.visibility, `profiles.${profileId}.visibility`);
+    if (!VALID_VISIBILITIES.has(visibility)) {
+      die(`profiles.${profileId}.visibility must be one of: ${Array.from(VALID_VISIBILITIES).join(', ')}`);
+    }
+    if (visibility === 'dev_only') {
+      die(`profiles.${profileId}.visibility cannot be dev_only in model_profiles.yaml`);
+    }
+
+    if (voiceLineId === 'deepseek-director-v1' && visibility !== 'hidden') {
+      die(`profiles.${profileId} uses director line ${voiceLineId} but visibility is not hidden`);
+    }
+    if (voiceLineId !== 'deepseek-director-v1' && visibility === 'hidden') {
+      die(`profiles.${profileId} uses visible line ${voiceLineId} but visibility is hidden`);
+    }
+    if (visibility === 'identity_write' && intent !== 'identity_write') {
+      die(`profiles.${profileId} visibility=identity_write requires intent=identity_write`);
+    }
+
+    assertArray(profile.candidates, `profiles.${profileId}.candidates`);
+    if (profile.candidates.length === 0) {
+      die(`profiles.${profileId}.candidates must contain at least one candidate`);
+    }
+
+    for (const [index, candidate] of profile.candidates.entries()) {
+      assertObject(candidate, `profiles.${profileId}.candidates[${index}]`);
+      const providerId = requireNonEmptyString(candidate.provider_id, `profiles.${profileId}.candidates[${index}].provider_id`);
+      const provider = providersById.get(providerId);
+      if (!provider) {
+        die(`profiles.${profileId} references unknown provider_id ${providerId}`);
+      }
+      requireNonEmptyString(candidate.model_id, `profiles.${profileId}.candidates[${index}].model_id`);
+      const region = requireNonEmptyString(candidate.region, `profiles.${profileId}.candidates[${index}].region`);
+      if (!provider.routing.regions.includes(region)) {
+        die(`profiles.${profileId}.candidates[${index}].region=${region} is not allowed for provider ${providerId}`);
+      }
+      requireNonEmptyString(candidate.endpoint_id, `profiles.${profileId}.candidates[${index}].endpoint_id`);
+      requirePositiveNumber(candidate.weight, `profiles.${profileId}.candidates[${index}].weight`);
+      requireOneOf(candidate.quality_class, Array.from(VALID_QUALITY_CLASSES), `profiles.${profileId}.candidates[${index}].quality_class`);
+    }
+
+    assertArray(profile.fallback, `profiles.${profileId}.fallback`);
+    for (const [index, fallback] of profile.fallback.entries()) {
+      assertObject(fallback, `profiles.${profileId}.fallback[${index}]`);
+      requireOneOf(fallback.level, Array.from(VALID_FALLBACK_LEVELS), `profiles.${profileId}.fallback[${index}].level`);
+      requireNonEmptyString(fallback.reason, `profiles.${profileId}.fallback[${index}].reason`);
+      if (fallback.profile_id !== undefined) {
+        requireNonEmptyString(fallback.profile_id, `profiles.${profileId}.fallback[${index}].profile_id`);
+      }
+      if (fallback.provider_id !== undefined) {
+        requireNonEmptyString(fallback.provider_id, `profiles.${profileId}.fallback[${index}].provider_id`);
+      }
+      if (fallback.model_id !== undefined) {
+        requireNonEmptyString(fallback.model_id, `profiles.${profileId}.fallback[${index}].model_id`);
+      }
+    }
+  }
+
+  assertUnique(profileIds, 'profile_id');
+
+  const profileIdSet = new Set(profileIds);
+  for (const profile of doc.profiles) {
+    for (const fallback of profile.fallback) {
+      if (fallback.profile_id && !profileIdSet.has(fallback.profile_id)) {
+        die(`profiles.${profile.profile_id} fallback references unknown profile_id ${fallback.profile_id}`);
+      }
+    }
+  }
+}
+
+function validatePromptTemplates(doc) {
+  assertArray(doc.templates, 'prompt_templates.yaml templates');
+  const promptPairs = [];
+
+  for (const template of doc.templates) {
+    assertObject(template, 'prompt template entry');
+    const templateId = requireNonEmptyString(template.prompt_template_id, 'prompt_template_id');
+    const version = requirePositiveInteger(template.version, `templates.${templateId}.version`);
+    promptPairs.push(`${templateId}@${version}`);
+    requireNonEmptyString(template.description, `templates.${templateId}.description`);
+    requireNonEmptyString(template.system_prompt, `templates.${templateId}.system_prompt`);
+    requireNonEmptyString(template.user_prompt, `templates.${templateId}.user_prompt`);
+
+    assertObject(template.variables_schema, `templates.${templateId}.variables_schema`);
+    if (template.variables_schema.type !== 'object') {
+      die(`templates.${templateId}.variables_schema.type must be "object"`);
+    }
+
+    assertObject(template.variables_schema.properties, `templates.${templateId}.variables_schema.properties`);
+    const propertyKeys = Object.keys(template.variables_schema.properties);
+    if (propertyKeys.length === 0) {
+      die(`templates.${templateId}.variables_schema.properties must define at least one key`);
+    }
+
+    for (const key of propertyKeys) {
+      assertObject(template.variables_schema.properties[key], `templates.${templateId}.variables_schema.properties.${key}`);
+      if (template.variables_schema.properties[key].type !== 'string') {
+        die(`templates.${templateId}.variables_schema.properties.${key}.type must be "string"`);
+      }
+    }
+
+    assertArray(template.variables_schema.required, `templates.${templateId}.variables_schema.required`);
+    for (const requiredKey of template.variables_schema.required) {
+      requireNonEmptyString(requiredKey, `templates.${templateId}.variables_schema.required[]`);
+      if (!propertyKeys.includes(requiredKey)) {
+        die(`templates.${templateId}.variables_schema.required references undeclared property ${requiredKey}`);
+      }
+    }
+
+    const placeholders = collectTemplatePlaceholders(template.system_prompt, template.user_prompt);
+    for (const placeholder of placeholders) {
+      if (!propertyKeys.includes(placeholder)) {
+        die(`templates.${templateId}@${version} uses undeclared placeholder ${placeholder}`);
+      }
+    }
+  }
+
+  assertUnique(promptPairs, 'prompt_template_id@version');
+}
+
+function validateTemplateMode(strict, ...rawFiles) {
+  const warnings = [];
+  const labels = ['providers.yaml', 'model_profiles.yaml', 'prompt_templates.yaml', 'config_keys.yaml'];
+
+  rawFiles.forEach((raw, index) => {
+    if (hasTemplateHeader(raw)) {
+      warnings.push(`${labels[index]} header still marked as (template)`);
+    }
+  });
+
+  const placeholderIds = [];
+  const placeholderPattern = /^example\-/i;
+
+  const providers = parseRegistry(rawFiles[0], 'providers.yaml');
+  providers.providers.forEach((entry) => {
+    if (placeholderPattern.test(entry.provider_id)) {
+      placeholderIds.push(`provider_id:${entry.provider_id}`);
+    }
+  });
+
+  const profiles = parseRegistry(rawFiles[1], 'model_profiles.yaml');
+  profiles.profiles.forEach((entry) => {
+    if (placeholderPattern.test(entry.profile_id)) {
+      placeholderIds.push(`profile_id:${entry.profile_id}`);
+    }
+  });
+
+  const prompts = parseRegistry(rawFiles[2], 'prompt_templates.yaml');
+  prompts.templates.forEach((entry) => {
+    if (placeholderPattern.test(entry.prompt_template_id)) {
+      placeholderIds.push(`prompt_template_id:${entry.prompt_template_id}`);
+    }
+  });
+
+  if (placeholderIds.length) {
+    warnings.push(`placeholder identifiers present: ${Array.from(new Set(placeholderIds)).join(', ')}`);
+  }
+
+  if (warnings.length === 0) {
+    return;
+  }
+
+  if (strict) {
+    die(`Registry still in TEMPLATE mode:\n- ${warnings.join('\n- ')}\n\nFix: replace placeholders with real org/project data (and remove "(template)" markers).`);
   }
 
   console.log('');
-  console.log(colors.green('OK: registries are structurally valid.'));
+  warn('Registry appears to be in TEMPLATE mode (this is fine for the template repo, but not for production):');
+  warnings.forEach((item) => warn(`- ${item}`));
+  console.log(colors.gray('Tip: run with `--strict` in CI to prevent shipping template registries.'));
+}
+
+function validateVersion(doc, fileName) {
+  if (!Number.isInteger(doc.version) || doc.version <= 0) {
+    die(`${fileName} missing top-level \`version: <int>\``);
+  }
+}
+
+function validateConfigVersion(rawConfig) {
+  const match = rawConfig.match(/^\s*version\s*:\s*([0-9]+)\s*$/m);
+  if (!match) {
+    die('config_keys.yaml missing top-level `version: <int>`');
+  }
+}
+
+function parseConfigKeys(raw) {
+  const keys = [];
+  let mode = null;
+
+  raw.replace(/\r\n/g, '\n').split('\n').forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return;
+    if (trimmed === 'keys:') {
+      mode = 'keys';
+      return;
+    }
+    if (trimmed === 'scope_prefixes:') {
+      mode = 'scope_prefixes';
+      return;
+    }
+    const match = trimmed.match(/^\-\s*(.+)\s*$/);
+    if (!match) return;
+    if (mode === 'keys') {
+      keys.push(match[1].replace(/^['"]|['"]$/g, ''));
+    }
+  });
+
+  return keys;
+}
+
+function collectTemplatePlaceholders(...templates) {
+  const placeholders = new Set();
+  templates.forEach((template) => {
+    for (const match of String(template).matchAll(/\{\{(\w+)\}\}/g)) {
+      placeholders.add(match[1]);
+    }
+  });
+  return placeholders;
+}
+
+function assertUnique(values, label) {
+  const duplicates = values.filter((value, index) => values.indexOf(value) !== index);
+  if (duplicates.length > 0) {
+    die(`Duplicate ${label}(s): ${Array.from(new Set(duplicates)).join(', ')}`);
+  }
+}
+
+function requirePositiveInteger(value, label) {
+  if (!Number.isInteger(value) || value <= 0) {
+    die(`${label} must be a positive integer`);
+  }
+  return value;
+}
+
+function requireNonNegativeInteger(value, label) {
+  if (!Number.isInteger(value) || value < 0) {
+    die(`${label} must be a non-negative integer`);
+  }
+  return value;
+}
+
+function requirePositiveNumber(value, label) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    die(`${label} must be a positive number`);
+  }
+}
+
+function requireBoolean(value, label) {
+  if (typeof value !== 'boolean') {
+    die(`${label} must be a boolean`);
+  }
+}
+
+function requireOneOf(value, choices, label) {
+  if (!choices.includes(value)) {
+    die(`${label} must be one of: ${choices.join(', ')}`);
+  }
+  return value;
+}
+
+function requireNonEmptyString(value, label) {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    die(`${label} must be a non-empty string`);
+  }
+  return value;
+}
+
+function assertArray(value, label) {
+  if (!Array.isArray(value)) {
+    die(`${label} must be an array`);
+  }
+}
+
+function assertObject(value, label) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    die(`${label} must be an object`);
+  }
+}
+
+function parseRegistry(raw, fileName) {
+  try {
+    return parseYaml(raw);
+  } catch (error) {
+    die(`Failed to parse ${fileName}: ${error instanceof Error ? error.message : 'Unknown YAML parse error'}`);
+  }
+}
+
+function readYamlFile(filePath, label) {
+  const raw = readFileSafe(filePath);
+  if (!raw) {
+    die(`Failed to read ${label}`);
+  }
+  return raw;
+}
+
+function readFileSafe(filePath) {
+  try {
+    return fs.readFileSync(filePath, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
+function findRepoRoot(startDir) {
+  let dir = startDir;
+  while (true) {
+    const candidate = path.join(dir, '.ai', 'llm-config', 'registry', 'config_keys.yaml');
+    if (fs.existsSync(candidate)) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+
+function hasTemplateHeader(raw) {
+  const head = raw.split(/\r?\n/).slice(0, 5).join('\n');
+  return head.toLowerCase().includes('(template)');
 }
 
 main();

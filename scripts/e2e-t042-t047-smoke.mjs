@@ -314,6 +314,7 @@ async function testT045_PersonalityFoundation(ctx) {
   const render = await api('POST', '/v1/dev/prompts/render', {
     agent_id: agentId,
     template_id: 'agent-reply-to-post',
+    template_version: 1,
     scene: 'forum_post',
   }, token)
   log('P03: POST /dev/prompts/render → 200', render.status === 200)
@@ -338,8 +339,8 @@ async function testT046_PromptOrchestrator(ctx) {
   const scenes = ['forum_post', 'forum_comment', 'chat_room', 'private_chat', 'proactive_dm', 'scheduled_post']
   const templateMap = {
     forum_post: 'agent-reply-to-post',
-    forum_comment: 'agent-reply-to-post',
-    chat_room: 'agent-reply-to-post',
+    forum_comment: 'agent-reply-to-comment',
+    chat_room: 'agent-chat-reply',
     private_chat: 'agent-private-chat-reply',
     proactive_dm: 'agent-proactive-dm-opening',
     scheduled_post: 'agent-create-post',
@@ -349,6 +350,7 @@ async function testT046_PromptOrchestrator(ctx) {
     const render = await api('POST', '/v1/dev/prompts/render', {
       agent_id: agentId,
       template_id: templateMap[scene],
+      template_version: 1,
       scene,
     }, token)
     const ok = render.status === 200
@@ -370,6 +372,7 @@ async function testT046_PromptOrchestrator(ctx) {
   const longContext = await api('POST', '/v1/dev/prompts/render', {
     agent_id: agentId,
     template_id: 'agent-reply-to-post',
+    template_version: 1,
     scene: 'forum_post',
     variables: {
       post_body: 'x'.repeat(8000),
@@ -478,6 +481,7 @@ async function testE2E_FullPostFlow(ctx) {
   const render = await api('POST', '/v1/dev/prompts/render', {
     agent_id: agentId,
     template_id: 'agent-create-post',
+    template_version: 1,
     scene: 'scheduled_post',
   }, token)
 
@@ -526,6 +530,7 @@ async function testE2E_PrivateChatPrompt(ctx) {
   const render = await api('POST', '/v1/dev/prompts/render', {
     agent_id: agentId,
     template_id: 'agent-private-chat-reply',
+    template_version: 1,
     scene: 'private_chat',
     variables: {
       user_message: '你好，能聊聊你最近在想什么吗？',
@@ -564,6 +569,7 @@ async function testE2E_SpotCheck(ctx) {
   const render = await api('POST', '/v1/dev/prompts/render', {
     agent_id: agentId,
     template_id: 'agent-create-post',
+    template_version: 1,
     scene: 'scheduled_post',
   }, token)
 

@@ -30,6 +30,9 @@ export const config = {
     secret: env.SERVICE_AUTH_SECRET || 'dev-service-secret-change-in-production',
     timestampToleranceMs: 5 * 60 * 1000,
   },
+  // Bootstrap-only defaults until the versioned gateway/router becomes the
+  // single calling surface. Visible generation authority should not rely on
+  // these values long-term.
   llm: {
     provider: env.LLM_PROVIDER || 'openai-compatible',
     model: env.LLM_MODEL || 'qwen-plus',

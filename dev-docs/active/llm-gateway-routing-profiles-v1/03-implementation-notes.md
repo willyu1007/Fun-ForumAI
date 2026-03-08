@@ -3,3 +3,20 @@
 - 初始化任务包，默认依赖 `T-063` 输出的 identity / voice authority contract。
 - 本包面向后续 runtime implementation，当前仅冻结 single calling surface 与 routing/profile/prompt version 规则。
 - 2026-03-08 评审补强：补入 provider 五层对象、region/headroom/health 解析顺序、repo 旁路文件清单与 `variables_schema` runtime 契约。
+- 2026-03-08 implementation:
+  - 新增 `src/backend/llm/gateway-contract.ts`，冻结 `PromptTemplateRef`、`LLMGatewayRequest/Response`、`RenderDecision`、`ModelProfileResolution`、错误分类与五层 provider infra contract。
+  - 新增 `src/backend/llm/registry-loader.ts`、`prompt-template-refs.ts`、`voice-line-routing.ts`、`callsite-inventory.ts`，把 runtime registry 读取、显式 prompt ref、voice line -> profile 解析与全量 call-site inventory 固化为代码资产。
+  - `PromptEngine` 改为按 `prompt_template_id + version` 寻址，并执行 `variables_schema` + placeholder 校验；dev prompt render 响应中新增 `prompt_template` 元数据。
+  - visible prompt 调用点改为显式 `PromptTemplateRef`：`agent-executor`、`post-scheduler`、`conversation-clock`、`private-channel-service`、`proactive-interaction-service`、`app.ts`。
+  - `.ai/llm-config/registry/providers.yaml`、`model_profiles.yaml` 升级为首批 3 线 authoritative runtime SSOT；`prompt_templates.yaml` 补齐 layer variables schema。
+  - 新增 llm contract/registry/inventory 测试，确保后续新增 `llmClient.chat(...)` 或 `promptEngine.render(...)` 直调会被 guard 测试拦截。
+- 2026-03-08 review remediation:
+  - `VOICE_LINE_CATALOG` 补入 `intentProfileRefs`，并把 `resolveVoiceLineTierProfileRef` 升级为 `voiceLine + intent + tier` 的强解析接口；隐藏 director 线也补入 `public_observation_digest / private_digest / vision_summary / director_plan` 的目标 profile。
+  - `model_profiles.yaml` 从“每条线一个 tier 样例”扩为真实的 intent-aware profile inventory，覆盖 forum/chat/post/private/proactive/identity_write 与 hidden director intents。
+  - `registry-loader.ts` 改为 schema + cross-reference fail-fast 校验，并在 `createLlmServices()` 启动阶段预加载完整 registry bundle，避免 runtime 延迟爆炸。
+  - `callsite-inventory.ts` 从“逐个 direct call 计数表”升级为“逻辑 call-site inventory + textual call guard”双层结构，加入 evidence patterns 和 expected profile refs。
+  - `validate-llm-registry.mjs` 升级为真实 YAML 校验器，补上 `voice_line_id / tier / intent / visibility / endpoint_id / gateway_kind / placeholder-schema` 等 contract 字段验证。
+  - `scripts/e2e-t034-t042-smoke.mjs`、`scripts/e2e-t042-t047-smoke.mjs` 已补齐 `template_version`，并修正 `forum_comment` / `chat_room` 的 template 选择以匹配 versioned prompt contract。
+- 2026-03-09 boundary clarification:
+  - 再次确认 `T-064` 已完成范围仅到 contract/registry/inventory/verifier。
+  - `gateway skeleton + call-site migration` 不回收进当前 task bundle，避免把 contract 包和实现包混成同一个阶段。

@@ -18,6 +18,8 @@
 
 ## Non-goals
 - 不接入新 provider SDK，也不实现实际 gateway 代码。
+- 不实现 gateway skeleton。
+- 不在本包内替换业务侧 call-site 到 gateway surface。
 - 不重做 prompt 文案，只定义 template/version/variables contract。
 - 不定义 persona axes 或 overlay runtime。
 
@@ -70,6 +72,19 @@
    - 冻结 `prompt_template_id + version + variables schema + render log` 的使用契约。
 4. **Phase 3 — Call-site migration plan**
    - 产出所有 visible path 的迁移 inventory 与完成标准。
+   - 不在 `T-064` 内执行迁移；迁移实现由紧随其后的实现包消费本合同完成。
+
+## Future provider expansion (Phase 2+ planning record)
+- `MiniMax / Kimi / 豆包` 不进入 `T-064` 首批 active line，但必须沿用本包冻结的命名与路由合同：
+  - 新增 line 必须先扩展 `src/shared/agent-persona-catalog.ts` 的 `family / tierProfileRefs / identityWriteProfileRef / directorOnly`
+  - 新增 provider 必须先注册到 `.ai/llm-config/registry/providers.yaml`
+  - 新增 line/tier 必须先注册到 `.ai/llm-config/registry/model_profiles.yaml`
+  - 任何 visible line 仍需满足 `same-line -> same-family` fallback 约束，禁止用跨 family fallback 模拟成长
+- 推荐后续落包顺序：
+  - Phase 2a: `MiniMax` 社交/角色扮演 line
+  - Phase 2b: `Kimi` 深聊/长上下文 line
+  - Phase 2c: `豆包` 高频互动 line
+- 这些扩展应由后续实现包在本合同之上接入，不回写 `T-062` 总控包的 provider 矩阵细节。
 
 ## Verification and acceptance criteria
 - 所有 visible-generation 路径都有明确 target gateway path。

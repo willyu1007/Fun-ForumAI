@@ -21,6 +21,9 @@ import { notificationRouter } from './routes/notification-api.js'
 import { agentStatsRouter } from './routes/agent-stats-api.js'
 import type { PromptLayers } from './runtime/types.js'
 import { resolveAgentIdentity } from './identity/agent-identity.js'
+import { LLMGatewayContractError } from './llm/gateway-contract.js'
+import { buildPromptTemplateRef } from './llm/prompt-template-refs.js'
+import type { OwnerStylePins } from './identity/agent-identity.js'
 
 const app: Express = express()
 
@@ -163,6 +166,7 @@ if (config.nodeEnv !== 'production') {
       const body = req.body as {
         agent_id?: string
         template_id?: string
+        template_version?: number
         scene?: 'forum_post' | 'forum_comment' | 'chat_room' | 'private_chat' | 'proactive_dm' | 'scheduled_post'
         conversation_text?: string
         topic_hints?: string[]
@@ -170,9 +174,12 @@ if (config.nodeEnv !== 'production') {
         variables?: Record<string, string>
       }
 
-      if (!body.agent_id || !body.template_id || !body.scene) {
+      if (!body.agent_id || !body.template_id || !body.template_version || !body.scene) {
         res.status(400).json({
-          error: { code: 'VALIDATION_ERROR', message: 'agent_id, template_id and scene are required' },
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'agent_id, template_id, template_version and scene are required',
+          },
         })
         return
       }
@@ -191,7 +198,7 @@ if (config.nodeEnv !== 'production') {
         persona_seed_label: string
         home_voice_line_id: string
         home_voice_line_label: string
-        owner_style_pins: Record<string, unknown>
+        owner_style_pins: OwnerStylePins
         visible_persona: { name: string; style: string; interests: string[]; language: string }
       }
       try {
@@ -259,11 +266,16 @@ if (config.nodeEnv !== 'production') {
         room_name: '调试房间',
         room_description: '',
         recent_messages: body.conversation_text ?? '（无）',
+        recent_posts: '',
+        community_candidates: '',
+        inclination_injection: '',
+        inclination_media_url: '',
         owner_display_name: 'Owner',
         session_context: '',
         latest_user_message: body.conversation_text ?? '调试私聊内容',
         trigger_type: 'manual',
         trigger_context: body.conversation_text ?? '调试主动触发上下文',
+        topic: body.conversation_text ?? '调试主题',
         layer_traits: layers.layer1_traits ?? '',
         layer_style: layers.layer2_style ?? '',
         layer_instructions: layers.layer3_instructions ?? '',
@@ -276,17 +288,41 @@ if (config.nodeEnv !== 'production') {
       }
 
       const variables = { ...defaults, ...(body.variables ?? {}) }
-      const messages = promptEngine.render(body.template_id, variables)
+      const promptRef = buildPromptTemplateRef(body.template_id, body.template_version)
+      const promptTemplate = promptEngine.getTemplate(promptRef)
+      const messages = promptEngine.render(promptRef, variables)
 
       res.json({
         data: {
           layers,
           audit,
           messages,
+          prompt_template: promptTemplate
+            ? {
+                id: promptTemplate.prompt_template_id,
+                version: promptTemplate.version,
+                variables_schema: promptTemplate.variables_schema,
+              }
+            : {
+                id: promptRef.id,
+                version: promptRef.version,
+                variables_schema: null,
+              },
           identity_contract: identityContract!,
         },
       })
     } catch (err) {
+      if (err instanceof LLMGatewayContractError) {
+        res.status(400).json({
+          error: {
+            code: err.code,
+            message: err.message,
+            details: err.details ?? null,
+          },
+        })
+        return
+      }
+
       const message = err instanceof Error ? err.message : 'Unknown error'
       res.status(500).json({ error: { code: 'PROMPT_RENDER_FAILED', message } })
     }

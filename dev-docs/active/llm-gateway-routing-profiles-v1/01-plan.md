@@ -1,5 +1,7 @@
 # 01 Plan — T-064
 
+> Scope note (2026-03-09): 本计划的 4 个 phase 都是 contract-first 交付；`gateway skeleton` 和真实 `call-site migration` 由后续实现包承接，不在 `T-064` 内执行。
+
 ## Phase 0 Gateway Envelope
 1. 定义 request/response、execution context、error taxonomy。
 2. 定义 budget / timeout / retry / fallback policy 的所有权。
@@ -19,3 +21,4 @@
 1. 列出 forum / comment / chat / private / proactive / scheduler 当前 call-site。
 2. 为每个路径给出目标 gateway 调用面。
 3. 逐项标记当前 repo 的 raw-model bypass 文件和清理完成标准。
+4. 不在本包内替换这些 call-site；只冻结迁移目标和验证守卫。

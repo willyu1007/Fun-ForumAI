@@ -544,7 +544,7 @@ tasks:
     updated: 2026-03-08
   - id: T-064
     slug: llm-gateway-routing-profiles-v1
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:

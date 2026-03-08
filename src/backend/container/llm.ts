@@ -1,5 +1,6 @@
 import { LlmClient } from '../llm/llm-client.js'
 import { PromptEngine } from '../llm/prompt-engine.js'
+import { loadLlmRegistryBundle } from '../llm/registry-loader.js'
 import { InclinationAssetService } from '../services/inclination-asset-service.js'
 import { LocalStorageAdapter, S3StorageAdapter, type StorageAdapter } from '../services/storage-adapter.js'
 import { VisionSummaryService } from '../services/vision-summary-service.js'
@@ -13,6 +14,8 @@ export function createLlmServices(deps: {
   inclinationAssetRepo: InclinationAssetRepository
   postMediaRepo: PostMediaRepository
 }) {
+  loadLlmRegistryBundle()
+
   const llmClient = new LlmClient({
     provider: {
       provider_id: config.llm.provider,

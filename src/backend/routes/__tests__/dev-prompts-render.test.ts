@@ -53,6 +53,7 @@ describe('POST /v1/dev/prompts/render', () => {
       .send({
         agent_id: 'agent-does-not-exist',
         template_id: 'agent-chat-reply',
+        template_version: 1,
         scene: 'chat_room',
       })
 
@@ -80,6 +81,7 @@ describe('POST /v1/dev/prompts/render', () => {
       .send({
         agent_id: agentId,
         template_id: 'agent-reply-to-post',
+        template_version: 1,
         scene: 'forum_post',
         conversation_text: '请对这个观点给出回应',
         variables: markers,
@@ -111,6 +113,10 @@ describe('POST /v1/dev/prompts/render', () => {
     expect(res.body.data.audit).toHaveProperty('tokenEstimates')
     expect(res.body.data.audit).toHaveProperty('lintWarnings')
     expect(res.body.data.audit).toHaveProperty('trimReasons')
+    expect(res.body.data.prompt_template).toMatchObject({
+      id: 'agent-reply-to-post',
+      version: 1,
+    })
   })
 
   it('renders chat template with orchestrator layers injected', async () => {
@@ -133,6 +139,7 @@ describe('POST /v1/dev/prompts/render', () => {
       .send({
         agent_id: agentId,
         template_id: 'agent-chat-reply',
+        template_version: 1,
         scene: 'chat_room',
         conversation_text: '最近聊聊模型评测吧',
         variables: markers,
@@ -159,26 +166,31 @@ describe('POST /v1/dev/prompts/render', () => {
     const cases: Array<{
       scene: 'forum_comment' | 'private_chat' | 'proactive_dm' | 'scheduled_post'
       template_id: string
+      template_version: number
       conversation_text: string
     }> = [
       {
         scene: 'forum_comment',
         template_id: 'agent-reply-to-comment',
+        template_version: 1,
         conversation_text: '请针对上一条评论继续回应。',
       },
       {
         scene: 'private_chat',
         template_id: 'agent-private-chat-reply',
+        template_version: 1,
         conversation_text: '我今天有点纠结，想听你的建议。',
       },
       {
         scene: 'proactive_dm',
         template_id: 'agent-proactive-dm-opening',
+        template_version: 1,
         conversation_text: '你的帖子刚被点赞了，想聊聊后续观点。',
       },
       {
         scene: 'scheduled_post',
         template_id: 'agent-create-post',
+        template_version: 1,
         conversation_text: '最近社区都在讨论模型评测基准。',
       },
     ]
@@ -189,6 +201,7 @@ describe('POST /v1/dev/prompts/render', () => {
         .send({
           agent_id: agentId,
           template_id: item.template_id,
+          template_version: item.template_version,
           scene: item.scene,
           conversation_text: item.conversation_text,
         })
@@ -216,6 +229,7 @@ describe('POST /v1/dev/prompts/render', () => {
       .send({
         agent_id: legacyAgent.id,
         template_id: 'agent-chat-reply',
+        template_version: 1,
         scene: 'chat_room',
         conversation_text: 'legacy prompt render',
       })
@@ -236,6 +250,7 @@ describe('POST /v1/dev/prompts/render', () => {
       .send({
         agent_id: 'any',
         template_id: 'agent-chat-reply',
+        template_version: 1,
         scene: 'chat_room',
       })
 

@@ -90,7 +90,7 @@ const DEFAULT_STYLE_PINS: Required<Omit<OwnerStylePins, 'interests'>> = {
 type LegacyPersonaConfig = {
   name?: string
   style?: string
-  interests?: string[]
+  interests: string[]
   language?: string
 }
 
@@ -553,11 +553,11 @@ function readInterestPins(input: unknown): string[] {
   return Array.from(new Set(interests))
 }
 
-function normalizeHabitList(input: unknown): string[] {
+function normalizeHabitList(input: unknown): PersonaHabit[] {
   if (!Array.isArray(input)) return []
   const allowed = new Set(['asks_questions', 'uses_analogies', 'tells_stories', 'summarizes'])
   const values = input
-    .filter((item): item is string => typeof item === 'string' && allowed.has(item))
+    .filter((item): item is PersonaHabit => typeof item === 'string' && allowed.has(item))
     .slice(0, 10)
   return Array.from(new Set(values))
 }
