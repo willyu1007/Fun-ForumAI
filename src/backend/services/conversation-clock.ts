@@ -12,6 +12,10 @@ import type { SseHub } from '../sse/hub.js'
 import type { ChatMessageKind } from '../repos/types.js'
 import type { LeaderElector } from '../runtime/leader-elector.js'
 import type { PersonaStateService } from './persona-state-service.js'
+import type {
+  ChatroomRuntimeContextBuilder,
+  ChatroomRuntimeContextResult,
+} from './chatroom-runtime-context-builder.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { LlmTokenUsage } from '../llm/types.js'
 import type { PromptComposeAudit } from '../runtime/types.js'
@@ -50,6 +54,7 @@ export interface ConversationClockDeps {
   promptLayerService?: PromptLayerService | null
   promptOrchestrator?: PromptOrchestrator | null
   personaStateService?: PersonaStateService | null
+  chatroomRuntimeContextBuilder?: ChatroomRuntimeContextBuilder | null
   leaderElector?: LeaderElector
 }
 
@@ -71,6 +76,10 @@ export class ConversationClock {
 
   setPromptOrchestrator(orchestrator: PromptOrchestrator | null): void {
     ;(this.deps as { promptOrchestrator?: PromptOrchestrator | null }).promptOrchestrator = orchestrator
+  }
+
+  setChatroomRuntimeContextBuilder(builder: ChatroomRuntimeContextBuilder | null): void {
+    ;(this.deps as { chatroomRuntimeContextBuilder?: ChatroomRuntimeContextBuilder | null }).chatroomRuntimeContextBuilder = builder
   }
 
   start(): void {
@@ -296,6 +305,18 @@ export class ConversationClock {
     if (!room || !agent) return { kind: 'empty', body: '' }
 
     const recentMsgs = await this.deps.messageRepo.getLatestMessages(roomId, 10)
+    const runtimeChatContext = this.deps.chatroomRuntimeContextBuilder
+      ? await this.deps.chatroomRuntimeContextBuilder.build({
+          room,
+          agentId,
+          recentMessages: recentMsgs,
+        }).catch(() => null)
+      : null
+    const chatConversationText = this.buildChatConversationText(recentMsgs, runtimeChatContext)
+    const chatTopicHints = this.extractTopicHints(room.name, this.buildTopicHintBodies(recentMsgs, runtimeChatContext))
+    const chatSceneRule = this.buildChatSceneRule(room.name, runtimeChatContext)
+    const chatShortTermState = this.buildChatShortTermState(roomId, recentMsgs.length, runtimeChatContext)
+
     const recentText = recentMsgs
       .map((m) => {
         const a = this.deps.agentRepo.findById(m.author_id)
@@ -338,15 +359,14 @@ export class ConversationClock {
     if (this.deps.promptOrchestrator?.isSceneEnabled('chat_room')) {
       try {
         const member = await this.deps.roomRepo.getMember(roomId, agentId)
-        const topicHints = this.extractTopicHints(room.name, recentMsgs.map((m) => m.body))
         const composed = await this.deps.promptOrchestrator.compose({
           agentId,
           scene: 'chat_room',
-          conversationText: recentMsgs.map((m) => m.body).join(' '),
-          topicHints,
+          conversationText: chatConversationText,
+          topicHints: chatTopicHints,
           communitySoftCulture: room.description || '',
-          sceneRule: `聊天室：${room.name}`,
-          shortTermState: `room:${roomId}|messages:${recentMsgs.length}`,
+          sceneRule: chatSceneRule,
+          shortTermState: chatShortTermState,
           shortTermStateUpdatedAt: recentMsgs[recentMsgs.length - 1]?.created_at ?? null,
           roomMemberState: member
             ? { joined_at: member.joined_at, last_spoke_at: member.last_spoke_at }
@@ -379,13 +399,12 @@ export class ConversationClock {
     ) {
       try {
         const member = await this.deps.roomRepo.getMember(roomId, agentId)
-        const topicHints = this.extractTopicHints(room.name, recentMsgs.map((m) => m.body))
         const composed = await this.deps.promptLayerService.composeLayersWithAudit(
           {
             agentId,
             scene: 'chat_room',
-            conversationText: recentMsgs.map((m) => m.body).join(' '),
-            topicHints,
+            conversationText: chatConversationText,
+            topicHints: chatTopicHints,
             roomMemberState: member
               ? { joined_at: member.joined_at, last_spoke_at: member.last_spoke_at }
               : undefined,
@@ -427,6 +446,16 @@ export class ConversationClock {
       room_name: room.name,
       room_description: room.description || '',
       recent_messages: recentText || '（房间刚刚创建，还没有对话）',
+      program_scene: runtimeChatContext?.promptVariables.program_scene ?? '',
+      episode_id: runtimeChatContext?.promptVariables.episode_id ?? '',
+      current_beat: runtimeChatContext?.promptVariables.current_beat ?? '',
+      cue_type: runtimeChatContext?.promptVariables.cue_type ?? '',
+      director_goal: runtimeChatContext?.promptVariables.director_goal ?? '',
+      self_role: runtimeChatContext?.promptVariables.self_role ?? '',
+      cast_snapshot: runtimeChatContext?.promptVariables.cast_snapshot ?? '',
+      live_hook: runtimeChatContext?.promptVariables.live_hook ?? '',
+      unresolved_question: runtimeChatContext?.promptVariables.unresolved_question ?? '',
+      last_highlight: runtimeChatContext?.promptVariables.last_highlight ?? '',
       layer_traits: layers.layer_traits,
       layer_style: layers.layer_style,
       layer_instructions: layers.layer_instructions,
@@ -562,6 +591,62 @@ export class ConversationClock {
       .split(/[\s,，、；;：:。.!！?？]+/)
       .filter((w) => w.length >= 2)
       .slice(0, 10)
+  }
+
+  private buildTopicHintBodies(
+    recentMessages: Array<{ body: string }>,
+    runtimeChatContext: ChatroomRuntimeContextResult | null,
+  ): string[] {
+    const bodies = recentMessages.map((message) => message.body)
+    const liveHook = runtimeChatContext?.chatContext.program?.live_hook
+    const unresolvedQuestion = runtimeChatContext?.chatContext.program?.unresolved_question
+    if (liveHook) bodies.push(liveHook)
+    if (unresolvedQuestion) bodies.push(unresolvedQuestion)
+    return bodies
+  }
+
+  private buildChatConversationText(
+    recentMessages: Array<{ body: string }>,
+    runtimeChatContext: ChatroomRuntimeContextResult | null,
+  ): string {
+    const bodies = recentMessages.map((message) => message.body)
+    const liveHook = runtimeChatContext?.chatContext.program?.live_hook
+    const unresolvedQuestion = runtimeChatContext?.chatContext.program?.unresolved_question
+    if (liveHook) {
+      bodies.push(`当前看点：${liveHook}`)
+    }
+    if (unresolvedQuestion) {
+      bodies.push(`当前悬念：${unresolvedQuestion}`)
+    }
+    return bodies.join(' ')
+  }
+
+  private buildChatSceneRule(roomName: string, runtimeChatContext: ChatroomRuntimeContextResult | null): string {
+    const program = runtimeChatContext?.chatContext.program
+    if (!program) {
+      return `聊天室：${roomName}`
+    }
+    return `聊天室：${roomName}｜节目=${program.scene_type}｜角色=${program.self_role ?? 'UNASSIGNED'}｜episode=${program.episode_id}`
+  }
+
+  private buildChatShortTermState(
+    roomId: string,
+    recentMessageCount: number,
+    runtimeChatContext: ChatroomRuntimeContextResult | null,
+  ): string {
+    const program = runtimeChatContext?.chatContext.program
+    if (!program) {
+      return `room:${roomId}|messages:${recentMessageCount}`
+    }
+    return [
+      `room:${roomId}`,
+      `messages:${recentMessageCount}`,
+      `scene:${program.scene_type}`,
+      `role:${program.self_role ?? 'UNASSIGNED'}`,
+      `episode:${program.episode_id}`,
+      `hook:${program.live_hook ?? ''}`,
+      `question:${program.unresolved_question ?? ''}`,
+    ].join('|')
   }
 
   private async recordGeneratedMessageRun(input: {

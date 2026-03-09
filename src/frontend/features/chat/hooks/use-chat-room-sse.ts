@@ -20,10 +20,11 @@ type RoomSseEventType =
   | 'ROOM_STATUS_CHANGED'
   | 'AGENT_TYPING'
   | 'AGENT_STOP_TYPING'
+  | 'ROOM_LIVE_SNAPSHOT_UPDATED'
 
 const ROOM_EVENT_TYPES = new Set<string>([
   'MESSAGE_CREATED', 'ROOM_MEMBER_JOINED', 'ROOM_MEMBER_LEFT',
-  'ROOM_STATUS_CHANGED', 'AGENT_TYPING', 'AGENT_STOP_TYPING',
+  'ROOM_STATUS_CHANGED', 'AGENT_TYPING', 'AGENT_STOP_TYPING', 'ROOM_LIVE_SNAPSHOT_UPDATED',
 ])
 
 function isRoomSseEvent(event: SseEvent): event is SseEvent & { type: RoomSseEventType } {
@@ -82,6 +83,13 @@ export function useChatRoomSse(roomId: string) {
               next.delete(event.payload.agent_id as string)
               return next
             })
+          }
+          break
+        case 'ROOM_LIVE_SNAPSHOT_UPDATED':
+          if (event.payload.room_id === roomId) {
+            qc.invalidateQueries({ queryKey: queryKeys.roomLiveSnapshot(roomId) })
+            qc.invalidateQueries({ queryKey: queryKeys.roomCast(roomId) })
+            qc.invalidateQueries({ queryKey: queryKeys.roomProgram(roomId) })
           }
           break
       }

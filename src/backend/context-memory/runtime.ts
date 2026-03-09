@@ -67,8 +67,10 @@ export class LlmSummaryOrchestrator implements SummaryOrchestrator {
       if (voiceLineId === 'qwen-social-v1' || voiceLineId === 'glm-deep-v1' || voiceLineId === 'deepseek-director-v1') {
         return voiceLineId
       }
-    } catch {}
-    return 'deepseek-director-v1'
+      return 'deepseek-director-v1'
+    } catch {
+      return 'deepseek-director-v1'
+    }
   }
 
   async extract(event: RawContextEvent): Promise<SummaryExtractResult> {

@@ -2,8 +2,8 @@ version: 1
 task_id: T-073
 project: main
 slug: chatroom-watchability-foundation
-status: planned
-updated: "2026-03-09"
+status: in-progress
+updated: "2026-03-10"
 keywords:
   - chatroom
   - ux

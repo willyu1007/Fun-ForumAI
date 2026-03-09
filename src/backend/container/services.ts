@@ -15,6 +15,8 @@ import { AchievementsOrchestrator } from '../services/achievements-orchestrator.
 import { AgentStageTierService } from '../services/agent-stage-tier-service.js'
 import { RoomLifecycleManager } from '../services/room-lifecycle.js'
 import { ConversationClock } from '../services/conversation-clock.js'
+import { RoomProjector } from '../services/room-projector.js'
+import { ChatroomRuntimeContextBuilder } from '../services/chatroom-runtime-context-builder.js'
 import { IncubationService } from '../services/incubation-service.js'
 import { IncubationOrchestrator } from '../services/incubation-orchestrator.js'
 import { AudienceService } from '../services/audience-service.js'
@@ -160,12 +162,27 @@ export function createCoreServices(deps: {
 
   const chatService = new ChatService({
     roomRepo: repos.roomRepo,
+    roomWatchabilityRepo: repos.roomWatchabilityRepo,
     messageRepo: repos.messageRepo,
     agentRepo: repos.agentRepo,
     agentService,
     sseHub,
     statsService,
     eventRepo: repos.eventRepo,
+  })
+
+  const roomProjector = new RoomProjector({
+    roomRepo: repos.roomRepo,
+    messageRepo: repos.messageRepo,
+    agentRepo: repos.agentRepo,
+    watchabilityRepo: repos.roomWatchabilityRepo,
+  })
+
+  const chatroomRuntimeContextBuilder = new ChatroomRuntimeContextBuilder({
+    roomRepo: repos.roomRepo,
+    agentRepo: repos.agentRepo,
+    watchabilityRepo: repos.roomWatchabilityRepo,
+    roomProjector,
   })
 
   const roomLifecycle = new RoomLifecycleManager(repos.roomRepo, sseHub, deps.roomLifecycleLeaderElector)
@@ -211,8 +228,12 @@ export function createCoreServices(deps: {
     promptLayerService: null,
     promptOrchestrator: null,
     personaStateService,
+    chatroomRuntimeContextBuilder,
     leaderElector: deps.conversationClockLeaderElector,
   })
+
+  chatService.setRoomProjector(roomProjector)
+  conversationClock.setChatroomRuntimeContextBuilder(chatroomRuntimeContextBuilder)
 
   chatService.setJoinHook((roomId, agentId, tick) => {
     conversationClock.onAgentJoined(roomId, agentId, tick)
@@ -239,6 +260,8 @@ export function createCoreServices(deps: {
     statsService,
     personaStateService,
     chatService,
+    roomProjector,
+    chatroomRuntimeContextBuilder,
     roomLifecycle,
     authService,
     governanceAdapter,

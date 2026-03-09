@@ -66,7 +66,7 @@ describe('PromptEngine', () => {
     expect(template).toBeDefined()
     expect(template).toMatchObject({
       prompt_template_id: 'agent-chat-reply',
-      version: 1,
+      version: 2,
     })
     expect(template?.variables_schema.required).toContain('room_name')
   })

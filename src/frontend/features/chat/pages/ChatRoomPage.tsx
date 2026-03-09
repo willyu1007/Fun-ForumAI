@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router'
-import { useRoom, useRoomMessages, useRecallAgent } from '@/api/hooks'
+import { useRoom, useRoomMessages, useRecallAgent, useRoomLiveSnapshot, useRoomCast, useRoomProgram } from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,15 +10,41 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { relativeTime } from '@/shared/utils/relative-time'
-import type { ChatMessage, RoomMember } from '@/api/types'
+import type { ChatMessage, RoomCastRole, RoomMember, RoomSceneType } from '@/api/types'
 import { useChatRoomSse } from '../hooks/use-chat-room-sse'
+
+const SCENE_LABEL: Record<RoomSceneType, string> = {
+  FREE_CHAT: '自由群聊',
+  TALK_SHOW: '脱口秀',
+  ROUND_TABLE: '圆桌',
+  ROAST: '吐槽',
+  DEBATE: '辩论',
+  SLICE_OF_LIFE: '日常',
+  STORY_LAB: '故事实验',
+}
+
+const ROLE_LABEL: Record<RoomCastRole, string> = {
+  HOST: '主持',
+  REGULAR: '常驻',
+  FOIL: '对撞',
+  SKEPTIC: '追问',
+  EXPLAINER: '解释',
+  WILDCARD: '野卡',
+  CHRONICLER: '记录',
+}
 
 export function ChatRoomPage() {
   const { roomId } = useParams<{ roomId: string }>()
   const { data: roomData, isLoading: roomLoading } = useRoom(roomId ?? '')
   const { data: msgData } = useRoomMessages(roomId ?? '')
+  const { data: snapshotData } = useRoomLiveSnapshot(roomId ?? '')
+  const { data: castData } = useRoomCast(roomId ?? '')
+  const { data: programData } = useRoomProgram(roomId ?? '')
   const room = roomData?.data
   const messages = msgData?.data ?? []
+  const snapshot = snapshotData?.data
+  const cast = castData?.data
+  const program = programData?.data
   const { typingAgents } = useChatRoomSse(roomId ?? '')
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -48,6 +74,14 @@ export function ChatRoomPage() {
           name={room.name}
           status={room.status}
           memberCount={room.members?.length ?? 0}
+          sceneType={snapshot?.scene_type ?? program?.scene_type ?? 'FREE_CHAT'}
+          liveHook={snapshot?.live_hook ?? room.watchability?.live_hook ?? room.description}
+          unresolvedQuestion={snapshot?.unresolved_question ?? room.watchability?.unresolved_question ?? null}
+          recapShort={snapshot?.recap_short ?? null}
+          cast={cast?.cast ?? []}
+          programEnabled={program?.enabled ?? false}
+          energy={snapshot?.energy ?? room.watchability?.energy ?? 0}
+          tension={snapshot?.tension ?? room.watchability?.tension ?? 0}
           onToggleMembers={() => setShowMembers((v) => !v)}
         />
 
@@ -89,11 +123,31 @@ function ChatHeader({
   name,
   status,
   memberCount,
+  sceneType,
+  liveHook,
+  unresolvedQuestion,
+  recapShort,
+  cast,
+  programEnabled,
+  energy,
+  tension,
   onToggleMembers,
 }: {
   name: string
   status: string
   memberCount: number
+  sceneType: RoomSceneType
+  liveHook?: string | null
+  unresolvedQuestion?: string | null
+  recapShort?: string | null
+  cast: Array<{
+    agent_id: string
+    name: string
+    role: RoomCastRole
+  }>
+  programEnabled: boolean
+  energy: number
+  tension: number
   onToggleMembers: () => void
 }) {
   const statusColor =
@@ -104,18 +158,54 @@ function ChatHeader({
         : 'bg-gray-400'
 
   return (
-    <div className="flex items-center justify-between border-b px-4 py-3">
-      <div className="flex items-center gap-3">
-        <Link to="/rooms" className="text-muted-foreground hover:text-foreground text-sm">
-          ← 返回
-        </Link>
-        <Separator orientation="vertical" className="h-5" />
-        <h2 className="font-semibold text-base">{name}</h2>
-        <span className={cn('h-2 w-2 rounded-full', statusColor)} />
+    <div className="border-b px-4 py-3 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link to="/rooms" className="text-muted-foreground hover:text-foreground text-sm">
+            ← 返回
+          </Link>
+          <Separator orientation="vertical" className="h-5" />
+          <h2 className="font-semibold text-base">{name}</h2>
+          <span className={cn('h-2 w-2 rounded-full', statusColor)} />
+          <Badge variant="outline" className="text-[10px]">
+            {SCENE_LABEL[sceneType]}
+          </Badge>
+          {programEnabled && (
+            <Badge variant="secondary" className="text-[10px]">
+              Program On
+            </Badge>
+          )}
+        </div>
+        <Button variant="ghost" size="sm" onClick={onToggleMembers}>
+          {memberCount} 位成员
+        </Button>
       </div>
-      <Button variant="ghost" size="sm" onClick={onToggleMembers}>
-        {memberCount} 位成员
-      </Button>
+
+      <div className="space-y-2">
+        <p className="text-sm font-medium leading-6">
+          {liveHook || '这间房正在慢慢升温，下一句可能就会有戏。'}
+        </p>
+        {unresolvedQuestion && (
+          <p className="text-xs text-muted-foreground">
+            当前悬念：{unresolvedQuestion}
+          </p>
+        )}
+        {recapShort && (
+          <p className="text-xs text-muted-foreground">
+            入场扶手：{recapShort}
+          </p>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {cast.slice(0, 4).map((entry) => (
+            <Badge key={entry.agent_id} variant="secondary" className="text-[10px]">
+              {entry.name} · {ROLE_LABEL[entry.role]}
+            </Badge>
+          ))}
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          热度 {Math.round(energy * 100)} · 张力 {Math.round(tension * 100)}
+        </p>
+      </div>
     </div>
   )
 }

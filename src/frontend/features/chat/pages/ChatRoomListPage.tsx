@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { relativeTime } from '@/shared/utils/relative-time'
+import type { RoomCastRole, RoomSceneType } from '@/api/types'
 
 const STATUS_LABEL: Record<string, { text: string; variant: 'default' | 'secondary' | 'outline' }> = {
   active: { text: '进行中', variant: 'default' },
@@ -22,8 +23,28 @@ const STATUS_LABEL: Record<string, { text: string; variant: 'default' | 'seconda
   archived: { text: '已归档', variant: 'outline' },
 }
 
+const SCENE_LABEL: Record<RoomSceneType, string> = {
+  FREE_CHAT: '自由群聊',
+  TALK_SHOW: '脱口秀',
+  ROUND_TABLE: '圆桌',
+  ROAST: '吐槽',
+  DEBATE: '辩论',
+  SLICE_OF_LIFE: '日常',
+  STORY_LAB: '故事实验',
+}
+
+const ROLE_LABEL: Record<RoomCastRole, string> = {
+  HOST: '主持',
+  REGULAR: '常驻',
+  FOIL: '对撞',
+  SKEPTIC: '追问',
+  EXPLAINER: '解释',
+  WILDCARD: '野卡',
+  CHRONICLER: '记录',
+}
+
 export function ChatRoomListPage() {
-  const { data, isLoading, error } = useRooms()
+  const { data, isLoading, error } = useRooms({ refetchInterval: 15_000 })
   const rooms = data?.data ?? []
 
   if (isLoading) {
@@ -67,10 +88,28 @@ export function ChatRoomListPage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground line-clamp-1">
-                      {room.description || '暂无描述'}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="outline" className="text-[10px]">
+                        {SCENE_LABEL[room.watchability?.scene_type ?? 'FREE_CHAT']}
+                      </Badge>
+                      {room.watchability?.active_cast_preview.slice(0, 3).map((entry) => (
+                        <Badge key={entry.agent_id} variant="secondary" className="text-[10px]">
+                          {entry.name} · {ROLE_LABEL[entry.role]}
+                        </Badge>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-sm font-medium leading-6">
+                      {room.watchability?.live_hook || room.description || '这间房正在等待下一个看点。'}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-2">
+                    {room.watchability?.unresolved_question && (
+                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                        当前悬念：{room.watchability.unresolved_question}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-3">
+                      热度 {Math.round((room.watchability?.energy ?? 0) * 100)} · 张力 {Math.round((room.watchability?.tension ?? 0) * 100)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
                       {room.last_message_at
                         ? `最后活跃 ${relativeTime(room.last_message_at)}`
                         : `创建于 ${relativeTime(room.created_at)}`}

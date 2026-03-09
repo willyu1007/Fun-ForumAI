@@ -96,6 +96,22 @@ export interface ExecutionContext {
       is_self: boolean
       message_kind: string
     }>
+    program?: {
+      scene_type: 'FREE_CHAT' | 'TALK_SHOW' | 'ROUND_TABLE' | 'ROAST' | 'DEBATE' | 'SLICE_OF_LIFE' | 'STORY_LAB'
+      episode_id: string
+      current_beat: string | null
+      cue_type: string | null
+      director_goal: string
+      self_role: 'HOST' | 'REGULAR' | 'FOIL' | 'SKEPTIC' | 'EXPLAINER' | 'WILDCARD' | 'CHRONICLER' | null
+      cast: Array<{
+        agent_id: string
+        agent_name: string
+        role: string
+        last_spoke_at: string | null
+      }>
+      live_hook: string | null
+      unresolved_question: string | null
+    }
   }
   layers?: PromptLayers
   promptScene?: PromptScene

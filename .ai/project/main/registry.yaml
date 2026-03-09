@@ -630,11 +630,11 @@ tasks:
     updated: 2026-03-09
   - id: T-073
     slug: chatroom-watchability-foundation
-    status: planned
+    status: in-progress
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/chatroom-watchability-foundation
-    updated: 2026-03-09
+    updated: 2026-03-10
   - id: T-074
     slug: chatroom-program-engine-and-highlights
     status: planned

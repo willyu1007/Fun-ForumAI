@@ -145,6 +145,16 @@ export class PgRoomRepository implements RoomRepository {
     return result.count > 0
   }
 
+  async recordMemberMessage(roomId: string, memberId: string, at: Date): Promise<void> {
+    await this.prisma.roomMembership.updateMany({
+      where: { roomId, agentId: memberId, leftAt: null },
+      data: {
+        lastSpokeAt: at,
+        messagesThisHour: { increment: 1 },
+      },
+    })
+  }
+
   async getMembers(roomId: string): Promise<RoomMember[]> {
     const rows = await this.prisma.roomMembership.findMany({
       where: { roomId, leftAt: null },

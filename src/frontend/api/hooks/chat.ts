@@ -1,13 +1,24 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../client'
 import { queryKeys } from '../query-keys'
-import type { ApiResponse, Room, RoomWithMembers, ChatMessage, AgentChatConfig, RoomStatus } from '../types'
+import type {
+  ApiResponse,
+  Room,
+  RoomWithMembers,
+  ChatMessage,
+  AgentChatConfig,
+  RoomStatus,
+  RoomLiveSnapshot,
+  RoomCastView,
+  RoomProgramView,
+} from '../types'
 
-export function useRooms(params?: { status?: RoomStatus }) {
+export function useRooms(params?: { status?: RoomStatus; refetchInterval?: number }) {
   return useQuery({
-    queryKey: queryKeys.rooms(params),
+    queryKey: queryKeys.rooms(params ? { status: params.status } : undefined),
     queryFn: () =>
       api.get(`rooms${params?.status ? `?status=${params.status}` : ''}`).json<ApiResponse<Room[]>>(),
+    refetchInterval: params?.refetchInterval,
   })
 }
 
@@ -26,6 +37,33 @@ export function useRoomMessages(roomId: string) {
       api.get(`rooms/${roomId}/messages?limit=100`).json<ApiResponse<ChatMessage[]>>(),
     enabled: !!roomId,
     refetchInterval: 10_000,
+  })
+}
+
+export function useRoomLiveSnapshot(roomId: string) {
+  return useQuery({
+    queryKey: queryKeys.roomLiveSnapshot(roomId),
+    queryFn: () =>
+      api.get(`rooms/${roomId}/live-snapshot`).json<ApiResponse<RoomLiveSnapshot>>(),
+    enabled: !!roomId,
+  })
+}
+
+export function useRoomCast(roomId: string) {
+  return useQuery({
+    queryKey: queryKeys.roomCast(roomId),
+    queryFn: () =>
+      api.get(`rooms/${roomId}/cast`).json<ApiResponse<RoomCastView>>(),
+    enabled: !!roomId,
+  })
+}
+
+export function useRoomProgram(roomId: string) {
+  return useQuery({
+    queryKey: queryKeys.roomProgram(roomId),
+    queryFn: () =>
+      api.get(`rooms/${roomId}/program`).json<ApiResponse<RoomProgramView>>(),
+    enabled: !!roomId,
   })
 }
 
@@ -54,9 +92,12 @@ export function useDispatchAgent() {
   return useMutation({
     mutationFn: ({ roomId, agentId }: { roomId: string; agentId: string }) =>
       api.post(`rooms/${roomId}/agents/${agentId}/join`).json<ApiResponse<unknown>>(),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['rooms'] })
-      qc.invalidateQueries({ queryKey: ['room'] })
+      qc.invalidateQueries({ queryKey: queryKeys.room(variables.roomId) })
+      qc.invalidateQueries({ queryKey: queryKeys.roomLiveSnapshot(variables.roomId) })
+      qc.invalidateQueries({ queryKey: queryKeys.roomCast(variables.roomId) })
+      qc.invalidateQueries({ queryKey: queryKeys.roomProgram(variables.roomId) })
     },
   })
 }
@@ -66,9 +107,12 @@ export function useRecallAgent() {
   return useMutation({
     mutationFn: ({ roomId, agentId }: { roomId: string; agentId: string }) =>
       api.post(`rooms/${roomId}/agents/${agentId}/leave`).json<ApiResponse<unknown>>(),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['rooms'] })
-      qc.invalidateQueries({ queryKey: ['room'] })
+      qc.invalidateQueries({ queryKey: queryKeys.room(variables.roomId) })
+      qc.invalidateQueries({ queryKey: queryKeys.roomLiveSnapshot(variables.roomId) })
+      qc.invalidateQueries({ queryKey: queryKeys.roomCast(variables.roomId) })
+      qc.invalidateQueries({ queryKey: queryKeys.roomProgram(variables.roomId) })
     },
   })
 }

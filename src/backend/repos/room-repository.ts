@@ -18,6 +18,7 @@ export interface RoomRepository {
 
   addMember(roomId: string, memberId: string, joinSource: RoomMemberJoinSource, tickInterval: number): Promise<RoomMember>
   removeMember(roomId: string, memberId: string): Promise<boolean>
+  recordMemberMessage(roomId: string, memberId: string, at: Date): Promise<void>
   getMembers(roomId: string): Promise<RoomMember[]>
   isMember(roomId: string, memberId: string): Promise<boolean>
   getMember(roomId: string, memberId: string): Promise<RoomMember | null>
@@ -126,6 +127,15 @@ export class InMemoryRoomRepository implements RoomRepository {
     if (idx < 0) return false
     list.splice(idx, 1)
     return true
+  }
+
+  async recordMemberMessage(roomId: string, memberId: string, at: Date): Promise<void> {
+    const list = this.members.get(roomId)
+    if (!list) return
+    const member = list.find((item) => item.member_id === memberId)
+    if (!member) return
+    member.last_spoke_at = at
+    member.messages_this_hour += 1
   }
 
   async getMembers(roomId: string): Promise<RoomMember[]> {

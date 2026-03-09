@@ -9,7 +9,7 @@ import {
   type PromptVariableSchema,
 } from './registry-loader.js'
 
-export interface PromptTemplate extends PromptTemplateRegistryEntry {}
+export type PromptTemplate = PromptTemplateRegistryEntry
 
 /**
  * Loads prompt templates from the registry and renders them

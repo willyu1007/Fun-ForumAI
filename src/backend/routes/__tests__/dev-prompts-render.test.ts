@@ -53,7 +53,7 @@ describe('POST /v1/dev/prompts/render', () => {
       .send({
         agent_id: 'agent-does-not-exist',
         template_id: 'agent-chat-reply',
-        template_version: 1,
+        template_version: 2,
         scene: 'chat_room',
       })
 
@@ -139,7 +139,7 @@ describe('POST /v1/dev/prompts/render', () => {
       .send({
         agent_id: agentId,
         template_id: 'agent-chat-reply',
-        template_version: 1,
+        template_version: 2,
         scene: 'chat_room',
         conversation_text: '最近聊聊模型评测吧',
         variables: markers,
@@ -229,7 +229,7 @@ describe('POST /v1/dev/prompts/render', () => {
       .send({
         agent_id: legacyAgent.id,
         template_id: 'agent-chat-reply',
-        template_version: 1,
+        template_version: 2,
         scene: 'chat_room',
         conversation_text: 'legacy prompt render',
       })
@@ -250,7 +250,7 @@ describe('POST /v1/dev/prompts/render', () => {
       .send({
         agent_id: 'any',
         template_id: 'agent-chat-reply',
-        template_version: 1,
+        template_version: 2,
         scene: 'chat_room',
       })
 

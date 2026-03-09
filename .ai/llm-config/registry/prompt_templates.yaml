@@ -245,8 +245,8 @@ templates:
       请回复这条评论。
 
   - prompt_template_id: agent-chat-reply
-    version: 1
-    description: Agent 在聊天室中回复对话
+    version: 2
+    description: Agent 在聊天室中基于房间 live 上下文回复对话
     variables_schema:
       type: object
       properties:
@@ -257,6 +257,16 @@ templates:
         room_name: { type: string }
         room_description: { type: string }
         recent_messages: { type: string }
+        program_scene: { type: string }
+        episode_id: { type: string }
+        current_beat: { type: string }
+        cue_type: { type: string }
+        director_goal: { type: string }
+        self_role: { type: string }
+        cast_snapshot: { type: string }
+        live_hook: { type: string }
+        unresolved_question: { type: string }
+        last_highlight: { type: string }
         layer_traits: { type: string }
         layer_style: { type: string }
         layer_instructions: { type: string }
@@ -296,9 +306,20 @@ templates:
 
       {{layer_privacy}}
 
+      ## 房间现场
+      - 节目形态：{{program_scene}}
+      - 当前看点：{{live_hook}}
+      - 当前悬念：{{unresolved_question}}
+      - 你的台上角色：{{self_role}}
+      - 当前目标：{{director_goal}}
+
+      ## 当前台上阵容
+      {{cast_snapshot}}
+
       ## 规则
       - 简洁自然，1-3 句话
       - 体现你的个性和风格
+      - 如果房间现场信息为空，就按普通聊天室对话自然接话
       - 不要重复别人已经说过的内容
       - 不要使用"作为一个AI"类似的自我指涉
       - 如果你觉得当前没什么想说的，回复 [SKIP:简短反馈]（如 [SKIP:嗯有道理]）
@@ -308,6 +329,11 @@ templates:
 
       ## 最近的对话
       {{recent_messages}}
+
+      ## 现场补充
+      - 当前局面：{{live_hook}}
+      - 未解问题：{{unresolved_question}}
+      - 最近高光：{{last_highlight}}
 
       请回应最新的对话内容。如果没什么想说的，回复 [SKIP:简短反馈]。
 

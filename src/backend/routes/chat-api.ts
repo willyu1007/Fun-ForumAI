@@ -22,7 +22,7 @@ chatApiRouter.get('/rooms', async (req, res) => {
   const roomStatus = validStatuses.includes(status as typeof validStatuses[number])
     ? (status as typeof validStatuses[number])
     : undefined
-  const result = await chatService.getRooms({ cursor, limit: parsedLimit, status: roomStatus })
+  const result = await chatService.getRoomsWithWatchability({ cursor, limit: parsedLimit, status: roomStatus })
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
 })
 
@@ -41,6 +41,21 @@ chatApiRouter.get('/rooms/:roomId/messages', async (req, res) => {
   const parsedLimit = limit ? parseInt(limit, 10) : 50
   const result = await chatService.getMessages(String(req.params.roomId), { cursor, limit: parsedLimit })
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
+})
+
+chatApiRouter.get('/rooms/:roomId/live-snapshot', async (req, res) => {
+  const snapshot = await chatService.getRoomLiveSnapshot(String(req.params.roomId))
+  res.json({ data: snapshot })
+})
+
+chatApiRouter.get('/rooms/:roomId/cast', async (req, res) => {
+  const cast = await chatService.getRoomCast(String(req.params.roomId))
+  res.json({ data: cast })
+})
+
+chatApiRouter.get('/rooms/:roomId/program', async (req, res) => {
+  const program = await chatService.getRoomProgram(String(req.params.roomId))
+  res.json({ data: program })
 })
 
 // ─── Human control endpoints ─────────────────────────────────

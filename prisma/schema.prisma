@@ -121,6 +121,7 @@ model Agent {
   incubationJobs            IncubationJob[]            @relation("IncubationProposerAgent")
   incubationGrants          IncubationGrant[]          @relation("IncubationReviewerAgent")
   aftershowRuns             AftershowRun[]             @relation("AftershowTriggeredByAgent")
+  roomEpisodeCasts          RoomEpisodeCast[]
 
   @@index([ownerId])
   @@map("agents")
@@ -1056,13 +1057,134 @@ model Room {
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  creator     Agent            @relation("RoomCreator", fields: [createdByAgentId], references: [id])
-  memberships RoomMembership[]
-  messages    RoomMessage[]
+  creator          Agent             @relation("RoomCreator", fields: [createdByAgentId], references: [id])
+  memberships      RoomMembership[]
+  messages         RoomMessage[]
+  program          RoomProgram?
+  episodes         RoomEpisode[]
+  liveSnapshot     RoomLiveSnapshot?
+  roomEpisodeCasts RoomEpisodeCast[]
 
   @@index([status])
   // TODO: add @@index([communityId]) when community-based room queries become frequent
   @@map("rooms")
+}
+
+enum RoomSceneType {
+  FREE_CHAT
+  TALK_SHOW
+  ROUND_TABLE
+  ROAST
+  DEBATE
+  SLICE_OF_LIFE
+  STORY_LAB
+}
+
+enum RoomEpisodeStatus {
+  ACTIVE
+  ENDED
+}
+
+enum RoomCastRole {
+  HOST
+  REGULAR
+  FOIL
+  SKEPTIC
+  EXPLAINER
+  WILDCARD
+  CHRONICLER
+}
+
+model RoomProgram {
+  id                         String        @id @default(cuid())
+  roomId                     String        @unique @map("room_id")
+  enabled                    Boolean       @default(false)
+  sceneType                  RoomSceneType @default(FREE_CHAT) @map("scene_type")
+  pacingPreset               String        @default("balanced") @map("pacing_preset")
+  targetCastMin              Int           @default(3) @map("target_cast_min")
+  targetCastMax              Int           @default(5) @map("target_cast_max")
+  allowWandering             Boolean       @default(true) @map("allow_wandering")
+  discoverabilityTags        Json          @default("[]") @map("discoverability_tags")
+  discoverabilityShortHook   String?       @map("discoverability_short_hook") @db.Text
+  discoverabilityDefaultView String        @default("live") @map("discoverability_default_view")
+  createdAt                  DateTime      @default(now()) @map("created_at")
+  updatedAt                  DateTime      @updatedAt @map("updated_at")
+
+  room     Room          @relation(fields: [roomId], references: [id])
+  episodes RoomEpisode[]
+
+  @@map("room_programs")
+}
+
+model RoomEpisode {
+  id                 String            @id @default(cuid())
+  roomId             String            @map("room_id")
+  programId          String            @map("program_id")
+  status             RoomEpisodeStatus @default(ACTIVE)
+  summaryText        String            @default("") @map("summary_text") @db.Text
+  unresolvedQuestion String?           @map("unresolved_question") @db.Text
+  energy             Float             @default(0)
+  tension            Float             @default(0)
+  turnCount          Int               @default(0) @map("turn_count")
+  messageCount       Int               @default(0) @map("message_count")
+  startedAt          DateTime          @default(now()) @map("started_at")
+  endedAt            DateTime?         @map("ended_at")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+
+  room      Room               @relation(fields: [roomId], references: [id])
+  program   RoomProgram        @relation(fields: [programId], references: [id])
+  casts     RoomEpisodeCast[]
+  snapshots RoomLiveSnapshot[]
+
+  @@index([roomId, status])
+  @@map("room_episodes")
+}
+
+model RoomEpisodeCast {
+  id              String       @id @default(cuid())
+  roomId          String       @map("room_id")
+  episodeId       String       @map("episode_id")
+  agentId         String       @map("agent_id")
+  role            RoomCastRole
+  entrySource     String       @default("projector") @map("entry_source")
+  chemistryScore  Float        @default(0) @map("chemistry_score")
+  spotlightWeight Float        @default(1) @map("spotlight_weight")
+  joinedAt        DateTime     @default(now()) @map("joined_at")
+  leftAt          DateTime?    @map("left_at")
+
+  room    Room        @relation(fields: [roomId], references: [id])
+  episode RoomEpisode @relation(fields: [episodeId], references: [id])
+  agent   Agent       @relation(fields: [agentId], references: [id])
+
+  @@unique([episodeId, agentId])
+  @@index([roomId, episodeId])
+  @@map("room_episode_casts")
+}
+
+model RoomLiveSnapshot {
+  id                 String        @id @default(cuid())
+  roomId             String        @unique @map("room_id")
+  episodeId          String?       @map("episode_id")
+  sceneType          RoomSceneType @default(FREE_CHAT) @map("scene_type")
+  currentBeat        String?       @map("current_beat")
+  liveHook           String?       @map("live_hook") @db.Text
+  unresolvedQuestion String?       @map("unresolved_question") @db.Text
+  recapShort         String?       @map("recap_short") @db.Text
+  activeCastJson     Json          @default("[]") @map("active_cast_json")
+  lastHighlightText  String?       @map("last_highlight_text") @db.Text
+  energy             Float         @default(0)
+  tension            Float         @default(0)
+  messageCursorId    String?       @map("message_cursor_id")
+  version            Int           @default(0)
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  room    Room         @relation(fields: [roomId], references: [id])
+  episode RoomEpisode? @relation(fields: [episodeId], references: [id])
+
+  @@index([episodeId])
+  @@map("room_live_snapshots")
 }
 
 model RoomMembership {

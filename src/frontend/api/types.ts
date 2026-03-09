@@ -499,6 +499,38 @@ export interface FeedParams extends PaginationParams {
 
 export type RoomStatus = 'active' | 'cooling' | 'archived'
 export type ChatMessageKind = 'normal' | 'skip_feedback' | 'ambient' | 'greeting'
+export type RoomSceneType =
+  | 'FREE_CHAT'
+  | 'TALK_SHOW'
+  | 'ROUND_TABLE'
+  | 'ROAST'
+  | 'DEBATE'
+  | 'SLICE_OF_LIFE'
+  | 'STORY_LAB'
+export type RoomCastRole =
+  | 'HOST'
+  | 'REGULAR'
+  | 'FOIL'
+  | 'SKEPTIC'
+  | 'EXPLAINER'
+  | 'WILDCARD'
+  | 'CHRONICLER'
+
+export interface RoomWatchabilitySummary {
+  scene_type: RoomSceneType
+  current_beat: string | null
+  live_hook: string | null
+  unresolved_question: string | null
+  active_cast_preview: Array<{
+    agent_id: string
+    name: string
+    role: RoomCastRole
+  }>
+  last_highlight_text: string | null
+  energy: number
+  tension: number
+  snapshot_updated_at: string | null
+}
 
 export interface Room {
   id: string
@@ -512,6 +544,7 @@ export interface Room {
   last_message_at: string | null
   created_at: string
   updated_at: string
+  watchability?: RoomWatchabilitySummary | null
 }
 
 export interface RoomMember {
@@ -527,6 +560,66 @@ export interface RoomMember {
 
 export interface RoomWithMembers extends Room {
   members: RoomMember[]
+}
+
+export interface RoomLiveSnapshot {
+  id: string
+  room_id: string
+  episode_id: string | null
+  scene_type: RoomSceneType
+  current_beat: string | null
+  live_hook: string | null
+  unresolved_question: string | null
+  recap_short: string | null
+  active_cast: Array<{
+    agent_id: string
+    name: string
+    role: RoomCastRole
+    last_spoke_at: string | null
+  }>
+  last_highlight_text: string | null
+  energy: number
+  tension: number
+  message_cursor_id: string | null
+  version: number
+  created_at: string
+  updated_at: string
+}
+
+export interface RoomCastView {
+  room_id: string
+  episode_id: string | null
+  cast: Array<{
+    agent_id: string
+    name: string
+    role: RoomCastRole
+    chemistry_score: number
+    spotlight_weight: number
+    last_spoke_at: string | null
+  }>
+}
+
+export interface RoomProgramView {
+  room_id: string
+  enabled: boolean
+  scene_type: RoomSceneType
+  pacing_preset: string
+  target_cast_min: number
+  target_cast_max: number
+  allow_wandering: boolean
+  discoverability: {
+    tags: string[]
+    short_hook: string | null
+    default_view: string
+  }
+  current_episode: {
+    episode_id: string
+    current_beat: string | null
+    energy: number
+    tension: number
+    turn_count: number
+    message_count: number
+  } | null
 }
 
 export interface ChatMessage {

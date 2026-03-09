@@ -7,3 +7,50 @@
 - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
   - Result: pass
   - Notes: 仅存在既有旧任务 warning；`T-073` 注册与 bundle 结构通过。
+
+## 2026-03-10
+- `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+  - Result: pass
+  - Notes: `T-073` 状态切换到 `in-progress` 后，project hub 派生视图已同步。
+- `pnpm prisma format`
+  - Result: pass
+  - Notes: Prisma schema 格式化通过，新增 watchability 相关模型与枚举。
+- `pnpm db:validate`
+  - Result: pass
+  - Notes: Prisma schema 校验通过。
+- `pnpm db:generate`
+  - Result: pass
+  - Notes: Prisma Client 已按最新 schema 重新生成。
+- `pnpm exec prisma migrate dev --create-only --name t073_chatroom_watchability_foundation`
+  - Result: fail
+  - Notes: 本地数据库存在既有 migration history drift，Prisma 要求 `migrate reset`；本任务未执行破坏性 reset，改为手写 migration SQL 并继续做 schema/context 校验。
+- `node .ai/scripts/ctl-db-ssot.mjs sync-to-context`
+  - Result: pass
+  - Notes: `docs/context/db/schema.json` 与 registry 已按 repo SSOT 刷新。
+- `pnpm exec tsc -b --pretty false`
+  - Result: pass
+  - Notes: 后端、前端与共享类型编译通过。
+- `pnpm lint`
+  - Result: pass
+  - Notes: 修复两个既有静态问题后，仓库 `eslint src/` 全量通过。
+- `pnpm test src/backend/repos/__tests__/room-watchability-repository.test.ts src/backend/services/__tests__/room-projector.test.ts src/backend/services/__tests__/chatroom-runtime-context-builder.test.ts src/backend/services/__tests__/chat-service.watchability.test.ts src/backend/services/__tests__/conversation-clock.test.ts src/backend/llm/__tests__/prompt-engine.test.ts src/backend/runtime/__tests__/persona-observation.test.ts src/backend/routes/__tests__/dev-prompts-render.test.ts src/backend/routes/__tests__/chat-watchability-api.test.ts`
+  - Result: pass
+  - Notes: 覆盖 watchability repo、projector、runtime context、chat service、prompt contract 和 read API 合同。
+- `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: pass
+  - Notes: task bundle 文档补齐后，项目治理 lint 继续通过。
+- `pnpm exec tsc -b --pretty false`
+  - Result: pass
+  - Notes: review 修复后再次确认编译仍通过。
+- `pnpm test src/backend/repos/__tests__/room-watchability-repository.test.ts src/backend/repos/__tests__/pg-room-watchability-repository.test.ts src/backend/services/__tests__/room-projector.test.ts src/backend/services/__tests__/chatroom-runtime-context-builder.test.ts src/backend/services/__tests__/chat-service.watchability.test.ts src/backend/services/__tests__/conversation-clock.test.ts src/backend/llm/__tests__/prompt-engine.test.ts src/backend/runtime/__tests__/persona-observation.test.ts src/backend/routes/__tests__/dev-prompts-render.test.ts src/backend/routes/__tests__/chat-watchability-api.test.ts src/frontend/api/hooks/__tests__/chat-mutations.test.tsx`
+  - Result: pass
+  - Notes: 新增覆盖 PG active episode advisory lock、creator 离场 cast 规则、ConversationClock typed context 注入，以及前端 join/leave watchability query 失效。
+- `pnpm lint`
+  - Result: pass
+  - Notes: review 修复与新增测试后，仓库 `eslint src/` 继续通过。
+- `find . -maxdepth 4 \\( -name 'coverage' -o -name '.vitest' -o -name '*.tsbuildinfo' -o -name 'vitest-report*' -o -name 'playwright-report' \\)`
+  - Result: pass
+  - Notes: 清理 `tsc -b` 生成的 `node_modules/.tmp/*.tsbuildinfo` 后，无残留测试/验证产物。
+- `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: pass
+  - Notes: review 修复与验证记录补齐后，project governance lint 继续通过。
