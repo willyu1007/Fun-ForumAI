@@ -30,3 +30,6 @@ Project: `main`
 - 2026-03-09 task_id=T-071 slug=local-kind-runtime-consistency-remediation event=registered dev_docs_path=dev-docs/active/local-kind-runtime-consistency-remediation
 - 2026-03-09 task_id=T-070 slug=persona-rollout-shadow-review event=status from=in-progress to=done
 - 2026-03-09 task_id=T-072 slug=persona-rollout-gate-evidence-remediation event=status from=planned to=in-progress
+- 2026-03-09 task_id=T-073 slug=chatroom-watchability-foundation event=registered dev_docs_path=dev-docs/active/chatroom-watchability-foundation
+- 2026-03-09 task_id=T-074 slug=chatroom-program-engine-and-highlights event=registered dev_docs_path=dev-docs/active/chatroom-program-engine-and-highlights
+- 2026-03-09 task_id=T-075 slug=chatroom-persona-projection-and-ecosystem event=registered dev_docs_path=dev-docs/active/chatroom-persona-projection-and-ecosystem

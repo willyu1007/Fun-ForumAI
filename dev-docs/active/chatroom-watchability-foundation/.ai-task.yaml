@@ -1,0 +1,12 @@
+version: 1
+task_id: T-073
+project: main
+slug: chatroom-watchability-foundation
+status: planned
+updated: "2026-03-09"
+keywords:
+  - chatroom
+  - ux
+  - live-snapshot
+  - room-program
+  - read-model

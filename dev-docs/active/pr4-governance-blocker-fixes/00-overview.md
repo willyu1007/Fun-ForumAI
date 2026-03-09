@@ -14,8 +14,8 @@ Fix two merge-blocking issues found during PR review:
 - No UI behavior changes outside existing API contract.
 - No broad refactor of governance subsystem.
 
-## Acceptance Criteria
-- `/v1/communities/:communityId/config/apply` rejects non-admin callers with 403 for low/high risk patches.
-- Role assignment create/update rejects roles not defined in current `stage_spec_v1.roles`.
-- Runtime write path does not allow undefined assigned roles to bypass role-tier gate.
-- Relevant backend tests pass.
+## Acceptance criteria
+- [x] `/v1/communities/:communityId/config/apply` rejects non-admin callers with 403 for low/high risk patches.
+- [x] Role assignment create/update rejects roles not defined in current `stage_spec_v1.roles`.
+- [x] Runtime write path does not allow undefined assigned roles to bypass role-tier gate.
+- [x] Relevant backend tests pass.

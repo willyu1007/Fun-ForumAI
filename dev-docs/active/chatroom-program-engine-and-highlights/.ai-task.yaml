@@ -1,0 +1,12 @@
+version: 1
+task_id: T-074
+project: main
+slug: chatroom-program-engine-and-highlights
+status: planned
+updated: "2026-03-09"
+keywords:
+  - chatroom
+  - cue-planner
+  - highlights
+  - room-program-engine
+  - runtime

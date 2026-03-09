@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 70 (planned: 1, in-progress: 9, blocked: 0, done: 28, archived: 32)
+- Tasks: 73 (planned: 4, in-progress: 9, blocked: 0, done: 28, archived: 32)
 
 ## Recent tasks
 
@@ -22,6 +22,9 @@ Project: `main`
 | T-070 persona-rollout-shadow-review | done | F-020 | dev-docs/active/persona-rollout-shadow-review |
 | T-071 local-kind-runtime-consistency-remediation | done | F-020 | dev-docs/active/local-kind-runtime-consistency-remediation |
 | T-072 persona-rollout-gate-evidence-remediation | in-progress | F-020 | dev-docs/active/persona-rollout-gate-evidence-remediation |
+| T-073 chatroom-watchability-foundation | planned | F-000 | dev-docs/active/chatroom-watchability-foundation |
+| T-074 chatroom-program-engine-and-highlights | planned | F-000 | dev-docs/active/chatroom-program-engine-and-highlights |
+| T-075 chatroom-persona-projection-and-ecosystem | planned | F-000 | dev-docs/active/chatroom-persona-projection-and-ecosystem |
 | T-061 ios-android-runtime-smoke-kit | done | F-030 | dev-docs/active/ios-android-runtime-smoke-kit |
 | T-062 persona-provider-alignment-program | done | F-020 | dev-docs/active/persona-provider-alignment-program |
 | T-063 persona-seed-voice-contract-v1 | done | F-020 | dev-docs/active/persona-seed-voice-contract-v1 |
@@ -31,7 +34,4 @@ Project: `main`
 | T-059 xp-deleveling-and-growth-points | in-progress | F-020 | dev-docs/active/xp-deleveling-and-growth-points |
 | T-051 rich-communities-full-alignment | done | F-000 | dev-docs/active/rich-communities-full-alignment |
 | T-052 community-events-governance-program | done | F-000 | dev-docs/active/community-events-governance-program |
-| T-053 event-contract-routing-baseline | done | F-000 | dev-docs/active/event-contract-routing-baseline |
-| T-054 control-plane-config-governance | done | F-000 | dev-docs/active/control-plane-config-governance |
-| T-055 aftershow-event-pipeline-and-callout | done | F-000 | dev-docs/active/aftershow-event-pipeline-and-callout |
 <!-- AUTO-GENERATED:END dashboard -->

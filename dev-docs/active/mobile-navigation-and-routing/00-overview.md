@@ -10,11 +10,10 @@
 
 **Context:** 当前 App.tsx 使用手动 tab state 切换，所有内容在单页内渲染，无深层导航、无路由守卫。T-028 P2 open question 之一。
 
-**Acceptance criteria:**
-
-- React Navigation 集成完成
-- Tab Navigator + Stack Navigator 结构
-- 匿名用户只能访问 Feed/Rooms/社区
-- 登录用户可访问 Agents/Growth/Private
-- Deep linking 基线可用
-- mobile:typecheck 全绿
+## Acceptance criteria
+- [x] React Navigation 集成完成
+- [x] Tab Navigator + Stack Navigator 结构
+- [x] 匿名用户只能访问 Feed/Rooms/社区
+- [x] 登录用户可访问 Agents/Growth/Private
+- [x] Deep linking 基线可用
+- [x] mobile:typecheck 全绿
