@@ -8,21 +8,21 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 67 (planned: 3, in-progress: 10, blocked: 0, done: 22, archived: 32)
+- Tasks: 67 (planned: 2, in-progress: 8, blocked: 0, done: 25, archived: 32)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
-| T-067 control-context-plane-alignment-program | in-progress | F-020 | dev-docs/active/control-context-plane-alignment-program |
+| T-066 persona-observability-eval-v1 | done | F-020 | dev-docs/active/persona-observability-eval-v1 |
+| T-067 control-context-plane-alignment-program | done | F-020 | dev-docs/active/control-context-plane-alignment-program |
 | T-068 llm-control-plane-runtime-v1 | in-progress | F-020 | dev-docs/active/llm-control-plane-runtime-v1 |
-| T-069 context-memory-plane-runtime-v1 | in-progress | F-020 | dev-docs/active/context-memory-plane-runtime-v1 |
+| T-069 context-memory-plane-runtime-v1 | done | F-020 | dev-docs/active/context-memory-plane-runtime-v1 |
 | T-061 ios-android-runtime-smoke-kit | done | F-030 | dev-docs/active/ios-android-runtime-smoke-kit |
 | T-062 persona-provider-alignment-program | done | F-020 | dev-docs/active/persona-provider-alignment-program |
 | T-063 persona-seed-voice-contract-v1 | done | F-020 | dev-docs/active/persona-seed-voice-contract-v1 |
 | T-064 llm-gateway-routing-profiles-v1 | done | F-020 | dev-docs/active/llm-gateway-routing-profiles-v1 |
 | T-065 persona-projection-overlay-runtime-v1 | planned | F-020 | dev-docs/active/persona-projection-overlay-runtime-v1 |
-| T-066 persona-observability-eval-v1 | planned | F-020 | dev-docs/active/persona-observability-eval-v1 |
 | T-060 expo-development-build-foundation | done | F-030 | dev-docs/active/expo-development-build-foundation |
 | T-058 pr4-governance-blocker-fixes | done | F-000 | dev-docs/active/pr4-governance-blocker-fixes |
 | T-059 xp-deleveling-and-growth-points | in-progress | F-020 | dev-docs/active/xp-deleveling-and-growth-points |

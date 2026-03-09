@@ -566,16 +566,16 @@ tasks:
     updated: 2026-03-08
   - id: T-066
     slug: persona-observability-eval-v1
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-029
     dev_docs_path: dev-docs/active/persona-observability-eval-v1
-    updated: 2026-03-08
+    updated: 2026-03-09
   - id: T-067
     slug: control-context-plane-alignment-program
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
@@ -594,7 +594,7 @@ tasks:
     updated: 2026-03-09
   - id: T-069
     slug: context-memory-plane-runtime-v1
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:

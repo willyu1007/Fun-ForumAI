@@ -36,3 +36,9 @@
   - `MemoryPack.selectedMemories` 现在只回传真正被 legacy slot 使用到的 memories；当 `public_observation` 命中 typed public cards 时，不再错误增加 legacy `PUBLIC_OBSERVATION` 的 access count。
   - `PublicObservationDigestService` 通过 gateway 生成 hidden digest 时改为传真实 `agentId`，让 T-068 的 budget guard 与 authoritative usage ledger 继续按真实 agent 归属记账。
   - typed nightly maintenance 改为分页扫全量 episodic cards，而不是只处理最新一页，避免旧卡片永久逃逸 decay / prune / compaction。
+- 2026-03-09 完成 T-069 剩余收口项：
+  - 新增 `src/backend/runtime/persona-observability.ts` 并把 `MemoryPack` retrieval、typed write、identity write、public ingress、legacy migration fallback、nightly compaction 都纳入 rollout snapshot。
+  - `PublicObservationDigestService` 的 dedup / cooldown 现在 typed-first：优先查 `RawContextEvent`，命中后不再回退 legacy `AgentMemory`；只有 typed 缺口时才记录 migration fallback。
+  - `MemoryService.runTypedNightlyMaintenance()` 在 chronicle compaction 前先查 `findByDedupKey()`，避免 owner-only chronicle 因 nightly 重跑而重复写入。
+  - `GET /v1/admin/runtime/features` 现在可直接暴露 persona observability snapshot 与 usage ledger render-log preview，便于 `T-066` 消费现成 runtime 证据。
+  - 新增 `public-observation-real-smoke`，用真实 in-memory services 验证 forum/chat-room 事件从 ingress 到 typed public retrieval 的整条链路。

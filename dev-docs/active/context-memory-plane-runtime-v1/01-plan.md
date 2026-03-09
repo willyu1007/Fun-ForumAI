@@ -21,14 +21,18 @@
 ## Remaining
 
 ### Phase 4 Runtime Smoke
-1. 做 forum/chat-room 的真实事件 smoke，不只停留在 mock tests。
-2. 验证 public observation 从 domain event / room message 进入 typed plane 后，prompt render 确实命中 public episodic slots。
+1. 已用真实 `ForumReadService`、`MemoryService`、`DefaultContextJournalService`、`LlmSummaryOrchestrator`、`LlmIdentityFinalizer` 做 forum/chat-room smoke。
+2. 已验证 public observation 从 domain event / room message 进入 typed plane 后，`getMemoriesForContext()` 会命中 public episodic slots。
 
 ### Phase 5 Rollout Gate
-1. 与 `T-066` 对齐 observability / eval / rollout gate。
-2. 为 public ingress 和 nightly compaction 增加 rollout 关注项：typed write 成功率、identity-write 调用稳定性、chronicle compaction 去重稳定性。
+1. 已与 `T-066` 对齐 observability / eval / rollout gate。
+2. 已为 public ingress 和 nightly compaction 增加 rollout 关注项：typed write 成功率、identity-write 调用稳定性、chronicle compaction 去重稳定性。
 
 ### Phase 6 Migration Cleanup
-1. 明确 dual-read / dual-write 退场条件。
-2. 补 public typed persistence cleanup tests。
-3. 评估 legacy `AgentMemory` 在 public observation 路径上的降级或退场顺序。
+1. 已明确本轮 dual-read / dual-write 退场条件：读路径 typed-first，写路径保留 compatibility `AgentMemory`，退场依据迁移 fallback 指标另包推进。
+2. 已补 public typed persistence cleanup tests，覆盖 typed-first dedup / cooldown / real ingress smoke。
+3. 已在 public observation 路径实现 typed raw-event 优先去重与 cooldown，并将 legacy fallback 显式计入 migration metrics。
+
+## Follow-up (non-blocking)
+
+1. 若要彻底移除 public observation 的 legacy `AgentMemory` 双写，应新开迁移包，基于本轮新增的 migration/rollout metrics 做分阶段关停。

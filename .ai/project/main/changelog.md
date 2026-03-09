@@ -16,3 +16,6 @@ Project: `main`
 - 2026-02-22 task_id=T-005 slug=delivery-pipeline-baseline event=status from=in-progress to=archived
 - 2026-02-22 task_id=T-006 slug=launch-readiness-validation event=status from=planned to=in-progress
 - 2026-02-22 task_id=T-011 slug=frontend-ui-interactive event=registered dev_docs_path=dev-docs/active/frontend-ui-interactive
+- 2026-03-09 task_id=T-066 slug=persona-observability-eval-v1 event=status from=planned to=done
+- 2026-03-09 task_id=T-067 slug=control-context-plane-alignment-program event=status from=in-progress to=done
+- 2026-03-09 task_id=T-069 slug=context-memory-plane-runtime-v1 event=status from=in-progress to=done

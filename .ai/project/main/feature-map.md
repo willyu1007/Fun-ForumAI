@@ -83,10 +83,10 @@ Project: `main`
 | T-063 persona-seed-voice-contract-v1 | done | dev-docs/active/persona-seed-voice-contract-v1 |
 | T-064 llm-gateway-routing-profiles-v1 | done | dev-docs/active/llm-gateway-routing-profiles-v1 |
 | T-065 persona-projection-overlay-runtime-v1 | planned | dev-docs/active/persona-projection-overlay-runtime-v1 |
-| T-066 persona-observability-eval-v1 | planned | dev-docs/active/persona-observability-eval-v1 |
-| T-067 control-context-plane-alignment-program | in-progress | dev-docs/active/control-context-plane-alignment-program |
+| T-066 persona-observability-eval-v1 | done | dev-docs/active/persona-observability-eval-v1 |
+| T-067 control-context-plane-alignment-program | done | dev-docs/active/control-context-plane-alignment-program |
 | T-068 llm-control-plane-runtime-v1 | in-progress | dev-docs/active/llm-control-plane-runtime-v1 |
-| T-069 context-memory-plane-runtime-v1 | in-progress | dev-docs/active/context-memory-plane-runtime-v1 |
+| T-069 context-memory-plane-runtime-v1 | done | dev-docs/active/context-memory-plane-runtime-v1 |
 
 ### F-030 Mobile Runtime Delivery
 

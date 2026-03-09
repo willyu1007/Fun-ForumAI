@@ -14,3 +14,8 @@
 1. 定义 quality/cost/latency/fallback 的阈值。
 2. 定义 rollback trigger、诊断顺序与验收顺序。
 3. 定义 line-seed fit、nurture perceptibility 与 rare reanchor 的 gate。
+
+## Phase 3 Runtime Adoption
+1. 将 render log required fields、blind review rubric、replay slices 和 rollout gates 实装为 runtime 可读 contract。
+2. 将 typed write / identity write / retrieval / migration / nightly compaction 指标暴露给 admin runtime features。
+3. 为后续 rollout review 准备 render-log preview 与 gate snapshot。

@@ -28,7 +28,8 @@
   - Result: pass
 - 2026-03-09 `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`
   - Result: pass
-- Pending:
-  - forum/chat-room 的真实事件 smoke（非 mock）
-  - rollout gate 与 T-066 observability/eval 对接
-  - dual-read/dual-write migration tests against future public typed persistence cleanup
+- 2026-03-09 `pnpm exec vitest run src/backend/services/__tests__/public-observation-digest-service.test.ts src/backend/services/__tests__/public-observation-real-smoke.test.ts src/backend/services/__tests__/memory-service.context-memory.test.ts src/backend/context-memory/__tests__/memory-pack.test.ts src/backend/repos/__tests__/context-memory-repository.test.ts src/backend/runtime/__tests__/persona-observability.test.ts src/backend/routes/__tests__/e2e-control-plane.test.ts`
+  - Result: pass (67 tests / 7 files)
+- 2026-03-09 `pnpm exec tsc -p tsconfig.json --noEmit`
+  - Result: pass
+- No blocking pending items remain within T-069 scope.
