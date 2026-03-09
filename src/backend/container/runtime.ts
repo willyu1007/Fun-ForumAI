@@ -25,6 +25,7 @@ import type { AgentRunRepository } from '../repos/event-repository.js'
 import type { EventRepository } from '../repos/event-repository.js'
 import type { PostRepository } from '../repos/post-repository.js'
 import type { CommentRepository } from '../repos/comment-repository.js'
+import type { AgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
 import { config } from '../lib/config.js'
 
 export function createRuntime(deps: {
@@ -45,6 +46,7 @@ export function createRuntime(deps: {
   nurtureOrchestrator: NurtureOrchestrator | null
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
+  membershipRepo: AgentCommunityMembershipRepository
   postRepo: PostRepository
   commentRepo: CommentRepository
   eventQueue: RuntimeEventQueue
@@ -99,6 +101,7 @@ export function createRuntime(deps: {
       dataplaneWriter,
       eventRepo: deps.eventRepo,
       agentRunRepo: deps.agentRunRepo,
+      membershipRepo: deps.membershipRepo,
       inclinationAssetService: deps.inclinationAssetService,
       promptOrchestrator: deps.promptOrchestrator,
       personaStateService: deps.personaStateService,

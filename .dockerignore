@@ -9,6 +9,7 @@ dist
 .cursor
 dev-docs
 docs
+!docs/project/policy.yaml
 *.md
 .env*
 .github

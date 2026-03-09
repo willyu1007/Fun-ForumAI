@@ -2,6 +2,7 @@ import { Router, type IRouter } from 'express'
 import { requireHumanAuth, requireAdmin } from '../middleware/human-auth.js'
 import { governanceAdapter, runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, relationService, usageLedger } from '../container.js'
 import { config } from '../lib/config.js'
+import { getRuntimeBuildInfo } from '../lib/runtime-build-info.js'
 import { richCommunitiesMetrics } from '../lib/rich-communities-metrics.js'
 import { buildPersonaObservabilitySummary } from '../runtime/persona-observation.js'
 import { runtimeFeatureMetrics } from '../runtime/runtime-feature-metrics.js'
@@ -51,6 +52,7 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, (_
   const counters = runtimeFeatureMetrics.snapshot()
   const richCounters = richCommunitiesMetrics.snapshot()
   const observability = personaObservability.snapshot()
+  const build = getRuntimeBuildInfo()
 
   res.json({
     data: {
@@ -60,6 +62,12 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, (_
         leader_backend: config.runtime.leaderBackend,
         llm_provider: config.llm.provider,
         llm_model: config.llm.model,
+        build,
+        persona_runtime: {
+          enabled: config.features.personaRuntimeV1,
+          scenes: config.features.personaRuntimeScenes,
+          writeback_enabled: config.features.personaWritebackV1,
+        },
       },
       counters,
       persona_observability: buildPersonaObservabilitySummary(counters.persona),

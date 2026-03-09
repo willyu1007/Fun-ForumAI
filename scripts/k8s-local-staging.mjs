@@ -2,13 +2,23 @@
 import { spawn } from 'node:child_process'
 import { access } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { kubectlArgs, parseCliArgs, runCommandCapture, stopChildProcess } from './k8s-smoke-utils.mjs'
+import { tsImport } from 'tsx/esm/api'
+import {
+  kubectlArgs,
+  listRunningPods,
+  parseCliArgs,
+  pollUntil,
+  requestJson,
+  runCommandCapture,
+  startPortForward,
+  stopChildProcess,
+} from './k8s-smoke-utils.mjs'
 
 function usage(exitCode = 0) {
   console.log(`
 k8s-local-staging.mjs
 
-Apply local-kind staging overlay and inject LLM API key into forum-app-secret.
+Apply local-kind staging overlay, refresh the backend image, and verify runtime fingerprint parity.
 
 Usage:
   node scripts/k8s-local-staging.mjs [options]
@@ -19,11 +29,18 @@ Options:
   --overlay <path>                Kustomize overlay path (default: ops/deploy/k8s/overlays/local-kind)
   --secret-name <name>            Secret resource name (default: forum-app-secret)
   --llm-api-key-env <name>        Environment variable for API key (default: LLM_API_KEY)
-  --kind-load-image <image>       Optional: run "kind load docker-image <image>"
+  --image-tag <image>             Backend image tag to build/load (default: fun-forum-api:dev)
+  --kind-load-image <image>       Backward-compatible alias for --image-tag
+  --dockerfile <path>             Dockerfile used for the backend image build (default: ops/packaging/services/llm-forum.Dockerfile)
+  --build-context <path>          Docker build context (default: .)
+  --skip-image-refresh            Skip local docker build + kind load (explicit stale-image opt-out)
   --kind-cluster-name <name>      Kind cluster name when loading image (default: funforum)
   --create-kind-if-missing        Optional: auto-create kind cluster when context is missing
   --skip-db-migrate               Optional: skip "pnpm db:migrate:deploy" against in-cluster Postgres
   --postgres-local-port <port>    Local port used for temporary Postgres port-forward (default: 55432)
+  --backend-label <selector>      Backend pod label selector (default: app.kubernetes.io/name=backend)
+  --backend-local-port <port>     Local port for temporary backend port-forward (default: 4100)
+  --backend-port <port>           Backend container port (default: 4000)
   --run-smoke                     Optional: run T-023~T-025 smoke suite after rollout
   --help
 
@@ -34,6 +51,18 @@ Examples:
   LLM_API_KEY=*** pnpm k8s:staging:local:smoke -- --k8s-context kind-funforum
 `)
   process.exit(exitCode)
+}
+
+function asInt(value, fallback, label) {
+  const parsed = Number(value ?? fallback)
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    throw new Error(`${label} must be a positive number`)
+  }
+  return parsed
+}
+
+function devToken(userId, email, role = 'user') {
+  return Buffer.from(JSON.stringify({ userId, email, role })).toString('base64url')
 }
 
 function decodeSecretData(data) {
@@ -117,6 +146,30 @@ async function maybeKindLoadImage(image, clusterName) {
   await ensureCommandExists('kind')
   console.log(`[staging] Loading image into kind cluster "${clusterName}": ${image}`)
   await runCommandCapture('kind', ['load', 'docker-image', String(image), '--name', String(clusterName)])
+}
+
+async function maybeRefreshImage({
+  imageTag,
+  dockerfile,
+  buildContext,
+  clusterName,
+  skipImageRefresh,
+}) {
+  if (skipImageRefresh) {
+    console.warn(`[staging] WARN: skip-image-refresh=true; reusing existing image ${imageTag}`)
+    return
+  }
+  await ensureCommandExists('docker')
+  console.log(`[staging] Building backend image: ${imageTag}`)
+  await runCommandCapture('docker', [
+    'build',
+    '-f',
+    String(dockerfile),
+    '-t',
+    String(imageTag),
+    String(buildContext),
+  ])
+  await maybeKindLoadImage(imageTag, clusterName)
 }
 
 async function startServicePortForward({
@@ -228,6 +281,59 @@ async function runSmokeSuite({ context, namespace }) {
   if (stderr.trim()) process.stderr.write(stderr)
 }
 
+async function waitForBackend(baseUrl) {
+  await pollUntil(async () => {
+    const res = await requestJson(`${baseUrl}/health`)
+    return res.ok ? res : null
+  }, { timeoutMs: 30_000, intervalMs: 1000 })
+}
+
+async function fetchRuntimeFeatures(baseUrl, adminToken) {
+  const res = await requestJson(`${baseUrl}/v1/admin/runtime/features`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${adminToken}`,
+    },
+  })
+  if (!res.ok) {
+    throw new Error(`GET /v1/admin/runtime/features failed: ${res.status} ${res.text}`)
+  }
+  return res.json?.data
+}
+
+async function loadLocalRuntimeBuildInfo() {
+  const mod = await tsImport('../src/backend/lib/runtime-build-info.ts', import.meta.url)
+  return mod.getRuntimeBuildInfo()
+}
+
+function validateRuntimeFeatures(features, localBuildInfo) {
+  const remoteBuild = features?.runtime?.build
+  if (!remoteBuild || typeof remoteBuild !== 'object') {
+    throw new Error('Runtime features payload is missing runtime.build fingerprint details')
+  }
+  if (remoteBuild.code_fingerprint !== localBuildInfo.code_fingerprint) {
+    throw new Error(
+      `Runtime build fingerprint mismatch: local=${localBuildInfo.code_fingerprint} remote=${remoteBuild.code_fingerprint ?? 'missing'}`,
+    )
+  }
+
+  const flags = features?.flags ?? {}
+  const requiredScenes = ['forum_post', 'forum_comment', 'chat_room', 'private_chat', 'proactive_dm', 'scheduled_post']
+  if (flags.personaRuntimeV1 !== true) {
+    throw new Error('Runtime features show personaRuntimeV1=false after local-kind reconciliation')
+  }
+  if (flags.personaWritebackV1 !== true) {
+    throw new Error('Runtime features show personaWritebackV1=false after local-kind reconciliation')
+  }
+  if (!Array.isArray(flags.personaRuntimeScenes)) {
+    throw new Error('Runtime features are missing personaRuntimeScenes array')
+  }
+  const missingScenes = requiredScenes.filter((scene) => !flags.personaRuntimeScenes.includes(scene))
+  if (missingScenes.length > 0) {
+    throw new Error(`Runtime features are missing persona runtime scenes: ${missingScenes.join(', ')}`)
+  }
+}
+
 async function main() {
   const args = parseCliArgs(process.argv, {
     k8sContext: 'kind-funforum',
@@ -235,10 +341,17 @@ async function main() {
     overlay: 'ops/deploy/k8s/overlays/local-kind',
     secretName: 'forum-app-secret',
     llmApiKeyEnv: 'LLM_API_KEY',
+    imageTag: 'fun-forum-api:dev',
+    dockerfile: 'ops/packaging/services/llm-forum.Dockerfile',
+    buildContext: '.',
+    skipImageRefresh: false,
     kindClusterName: 'funforum',
     createKindIfMissing: false,
     skipDbMigrate: false,
     postgresLocalPort: 55432,
+    backendLabel: 'app.kubernetes.io/name=backend',
+    backendLocalPort: 4100,
+    backendPort: 4000,
     runSmoke: false,
   })
 
@@ -260,13 +373,34 @@ async function main() {
 
   const overlayPath = resolve(process.cwd(), String(args.overlay))
   await access(overlayPath)
+  const dockerfilePath = resolve(process.cwd(), String(args.dockerfile))
+  await access(dockerfilePath)
+  const buildContextPath = resolve(process.cwd(), String(args.buildContext))
+  await access(buildContextPath)
 
-  const llmApiKey = process.env[String(args.llmApiKeyEnv)] || ''
+  const existingSecretData = await getSecretData({
+    context: args.k8sContext,
+    namespace: args.k8sNamespace,
+    secretName: args.secretName,
+  })
+
+  const llmApiKey = (
+    process.env[String(args.llmApiKeyEnv)] ||
+    existingSecretData.DASHSCOPE_API_KEY ||
+    existingSecretData.LLM_API_KEY ||
+    ''
+  )
   if (!llmApiKey.trim()) {
-    throw new Error(`Missing API key env "${args.llmApiKeyEnv}". Example: export ${args.llmApiKeyEnv}=<your-key>`)
+    throw new Error(`Missing API key env "${args.llmApiKeyEnv}" and no reusable API key was found in secret/${args.secretName}`)
   }
 
-  await maybeKindLoadImage(args.kindLoadImage, args.kindClusterName)
+  await maybeRefreshImage({
+    imageTag: String(args.imageTag || args.kindLoadImage),
+    dockerfile: dockerfilePath,
+    buildContext: buildContextPath,
+    clusterName: args.kindClusterName,
+    skipImageRefresh: Boolean(args.skipImageRefresh),
+  })
 
   console.log(`[staging] Applying overlay: ${overlayPath}`)
   await runCommandCapture('kubectl', kubectlArgs(args.k8sContext, ['apply', '-k', overlayPath]))
@@ -280,12 +414,6 @@ async function main() {
     })
   }
 
-  const existingSecretData = await getSecretData({
-    context: args.k8sContext,
-    namespace: args.k8sNamespace,
-    secretName: args.secretName,
-  })
-
   const mergedSecretData = {
     DATABASE_URL: existingSecretData.DATABASE_URL || defaultDatabaseUrl(String(args.k8sNamespace)),
     REDIS_URL: existingSecretData.REDIS_URL || defaultRedisUrl(String(args.k8sNamespace)),
@@ -293,6 +421,9 @@ async function main() {
     SERVICE_AUTH_SECRET:
       process.env.SERVICE_AUTH_SECRET || existingSecretData.SERVICE_AUTH_SECRET || 'local-dev-service-auth-secret',
     LLM_API_KEY: llmApiKey,
+    DASHSCOPE_API_KEY: process.env.DASHSCOPE_API_KEY || existingSecretData.DASHSCOPE_API_KEY || llmApiKey,
+    ZAI_API_KEY: process.env.ZAI_API_KEY || existingSecretData.ZAI_API_KEY || '',
+    DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY || existingSecretData.DEEPSEEK_API_KEY || '',
   }
 
   const secretManifest = JSON.stringify(
@@ -335,6 +466,38 @@ async function main() {
       '--timeout=180s',
     ]),
   )
+
+  const localBuildInfo = await loadLocalRuntimeBuildInfo()
+  const adminToken = devToken('admin-dev', 'admin-dev@local.test', 'admin')
+  let backendForward = null
+  try {
+    const backendPods = await listRunningPods({
+      context: args.k8sContext,
+      namespace: args.k8sNamespace,
+      labelSelector: String(args.backendLabel),
+    })
+    if (backendPods.length === 0) {
+      throw new Error(`No ready backend pod found for selector ${args.backendLabel}`)
+    }
+    backendForward = await startPortForward({
+      context: args.k8sContext,
+      namespace: args.k8sNamespace,
+      podName: backendPods[0],
+      localPort: asInt(args.backendLocalPort, 4100, '--backend-local-port'),
+      containerPort: asInt(args.backendPort, 4000, '--backend-port'),
+    })
+
+    const baseUrl = `http://127.0.0.1:${asInt(args.backendLocalPort, 4100, '--backend-local-port')}`
+    await waitForBackend(baseUrl)
+    const runtimeFeatures = await fetchRuntimeFeatures(baseUrl, adminToken)
+    validateRuntimeFeatures(runtimeFeatures, localBuildInfo)
+    console.log('[staging] Runtime fingerprint verified:', JSON.stringify({
+      code_fingerprint: runtimeFeatures.runtime.build.code_fingerprint,
+      persona_runtime: runtimeFeatures.runtime.persona_runtime,
+    }))
+  } finally {
+    await stopChildProcess(backendForward)
+  }
 
   if (args.runSmoke) {
     await runSmokeSuite({

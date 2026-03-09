@@ -41,3 +41,34 @@
     - `shadow-run-log.json` 中 8 次 `runtime-post-warmup` 全部记录为 `write-failed`
     - 每次结果都满足 `triggered=true` 但 `post_id=null`，且错误统一为 `posts_community_id_fkey`
     - 结论：新的脚本行为符合预期。它不会再把失败 public write 误记为有效样本，而是保留证据后立即暴露 runtime blocker。
+  - 第 5 次运行（`T-071` 清除 local-kind runtime blocker 后）：
+    - output: `.ai/.tmp/t070/t070-2026-03-09T08-07-58-214Z`
+    - `pre_review_status=warn`
+    - `recommendation=hold`
+    - `callsite_deltas.post-scheduler-create-post.delta=11`
+    - `callsite_deltas.private-channel-reply.delta=2`
+    - `shadow_activity.target_agent_run_count=8`
+    - `shadow_activity.target_agent_observed_run_count=5`
+    - `shadow_activity.observed_runs_total=49`
+    - `shadow-run-log.json` 中 warmup 已不再出现全量 `write-failed`
+    - 结论：runtime blocker 已清除，当前 remaining warnings 属于 blind review / cost baseline 比较尚未完成，而不是 local-kind runtime 故障。
+- 2026-03-09 blind review / finalize:
+  - 在 `.ai/.tmp/t070/t070-2026-03-09T08-07-58-214Z/review-results.json` 写入 collaborative review 结果
+  - `node scripts/t070-finalize-review.mjs --input .ai/.tmp/t070/t070-2026-03-09T08-07-58-214Z`
+  - result: pass（脚本执行成功）
+  - final snapshot:
+    - `gate-snapshot.final.json`
+    - `rollout-verdict.md`
+    - `overall_status=warn`
+    - `recommendation=hold`
+  - final slice summary:
+    - `cross_scene_same_agent`: `3/3 reviewed`, `status=pass`
+    - `private_to_public_delta`: `1/1 reviewed`, `status=pass`
+    - `fallback_or_degraded`: `0/8 reviewed`, `status=warn`
+  - final issues:
+    - `identity-write-success-guardrail-not-run`
+    - `cost-baseline-incomparable`
+    - `slice-fallback_or_degraded-incomplete-review`
+  - conclusion:
+    - `T-070` 已完成 blind review / finalize workflow，并成功将 gate 状态从 `not_run` 推进到最终 verdict
+    - 当前 verdict 不是 `go`，而是 `hold`

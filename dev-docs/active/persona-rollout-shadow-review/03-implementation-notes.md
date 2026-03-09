@@ -32,3 +32,25 @@
     - `shadow-run-log.json` 中 `runtime-post-warmup` 八次均为 `write-failed`
     - 每次都带有 `posts_community_id_fkey`，且 `post_id=null`
   - 推断：当前阻断已经被更准确地定位为 runtime public write path 故障；这比旧逻辑里“随机 target + 继续后续步骤”更符合真实系统状态。
+- 2026-03-09 在 `T-071` 修复 local-kind runtime drift 后，已重新执行真实 `kind` shadow review：
+  - `.ai/.tmp/t070/t070-2026-03-09T08-07-58-214Z`
+  - 结果：`pre_review_status=warn`、`recommendation=hold`
+  - 关键变化：
+    - warmup 不再全 `write-failed`，8 次 warmup 均产生 persisted public posts
+    - `post-scheduler-create-post` / `private-channel-reply` 的 blocking callsite delta 均为 `pass`
+    - target agent window 内新增 runs 为 `8`，其中带 `persona_observation` 的 observed runs 为 `5`
+  - 结论：`T-070` 已从 runtime blocker 阶段恢复到可继续的 blind review / finalize 阶段，后续不再由 `T-071` 承接。
+- 2026-03-09 已对 `.ai/.tmp/t070/t070-2026-03-09T08-07-58-214Z` 完成 blind review / finalize：
+  - 生成 `review-results.json`
+  - 生成 `gate-snapshot.final.json`
+  - 生成 `rollout-verdict.md`
+  - `review_mode=collaborative`
+  - `overall_status=warn`
+  - `recommendation=hold`
+- 本次 blind review 的判定策略：
+  - `cross_scene_same_agent` 与 `private_to_public_delta` 使用样本文本直接评分
+  - `fallback_or_degraded` 因 8 个样本都只有 `[[content unavailable]]`，不强行打分，而是将该切片显式记录为 evidence gap
+- 最终 `hold` 不是 runtime blocker，而是证据与 guardrail 缺口：
+  - `identity-write-success-guardrail-not-run`
+  - `cost-baseline-incomparable`
+  - `slice-fallback_or_degraded-incomplete-review`

@@ -242,6 +242,14 @@ describe('E2E: Control Plane (human auth)', () => {
       expect(res.body.data.counters).toHaveProperty('allocator.ppr_hits')
       expect(res.body.data.counters).toHaveProperty('director.selected_core')
       expect(res.body.data.counters).toHaveProperty('prompt.trim_applied_calls')
+      expect(typeof res.body.data.runtime.build).toBe('object')
+      expect(typeof res.body.data.runtime.build.code_fingerprint).toBe('string')
+      expect(Array.isArray(res.body.data.runtime.build.fingerprint_basis)).toBe(true)
+      expect(res.body.data.runtime.persona_runtime).toEqual(expect.objectContaining({
+        enabled: expect.any(Boolean),
+        scenes: expect.any(Array),
+        writeback_enabled: expect.any(Boolean),
+      }))
       expect(res.body.data.observability).toHaveProperty('render_log.required_fields')
       expect(res.body.data.observability).toHaveProperty('evaluation.blind_review_rubric')
       expect(res.body.data.observability).toHaveProperty('rollout_gates')

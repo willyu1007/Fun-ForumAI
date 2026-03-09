@@ -2,7 +2,31 @@ import { describe, expect, it, vi } from 'vitest'
 import { PostScheduler } from '../post-scheduler.js'
 import type { PostSchedulerDeps } from '../post-scheduler.js'
 
-function createDeps(writeImpl: ReturnType<typeof vi.fn>): PostSchedulerDeps {
+function createDeps(
+  writeImpl: ReturnType<typeof vi.fn>,
+  options: {
+    communities?: Array<{
+      id: string
+      slug: string
+      name: string
+      description: string
+      rules_json: Record<string, unknown>
+    }>
+    activeCommunityIdsByAgent?: string[]
+    scheduledPostCommunityId?: string
+  } = {},
+): PostSchedulerDeps {
+  const communities = options.communities ?? [
+    {
+      id: 'community-1',
+      slug: 'general',
+      name: 'General',
+      description: '',
+      rules_json: {},
+    },
+  ]
+  const scheduledPostCommunityId = options.scheduledPostCommunityId ?? communities[0]?.id ?? 'community-1'
+
   return {
     llmGateway: {
       generateVisibleText: vi.fn(async () => ({
@@ -30,15 +54,7 @@ function createDeps(writeImpl: ReturnType<typeof vi.fn>): PostSchedulerDeps {
     } as unknown as PostSchedulerDeps['llmGateway'],
     forumReadService: {
       getCommunities: vi.fn(async () => ({
-        items: [
-          {
-            id: 'community-1',
-            slug: 'general',
-            name: 'General',
-            description: '',
-            rules_json: {},
-          },
-        ],
+        items: communities,
       })),
       getFeed: vi.fn(async () => ({ items: [] })),
     } as unknown as PostSchedulerDeps['forumReadService'],
@@ -61,7 +77,7 @@ function createDeps(writeImpl: ReturnType<typeof vi.fn>): PostSchedulerDeps {
     responseParser: {
       parseAsScheduledPost: vi.fn(() => ({
         action: 'create_post',
-        community_id: 'community-1',
+        community_id: scheduledPostCommunityId,
         title: 'generated title',
         body: 'generated body',
       })),
@@ -75,6 +91,9 @@ function createDeps(writeImpl: ReturnType<typeof vi.fn>): PostSchedulerDeps {
     agentRunRepo: {
       create: vi.fn(),
     } as unknown as PostSchedulerDeps['agentRunRepo'],
+    membershipRepo: {
+      listActiveCommunityIdsByAgent: vi.fn(() => options.activeCommunityIdsByAgent ?? communities.map((item) => item.id)),
+    } as unknown as NonNullable<PostSchedulerDeps['membershipRepo']>,
   }
 }
 
@@ -97,5 +116,90 @@ describe('PostScheduler', () => {
     expect(write).toHaveBeenCalledTimes(2)
     expect(scheduler.stats.postsToday).toBe(0)
     expect(scheduler.stats.lastPostAt).toBe(0)
+  })
+
+  it('passes persona observation into scheduled post writes', async () => {
+    const write = vi.fn(async () => ({ success: true, content_id: 'post-1' }))
+    const scheduler = new PostScheduler(createDeps(write), {
+      postIntervalMs: 60_000,
+      postMaxPerDay: 2,
+    })
+
+    const result = await scheduler.createPost()
+
+    expect(result).toEqual(expect.objectContaining({
+      triggered: true,
+      post_id: 'post-1',
+      agent_id: 'agent-1',
+      community_id: 'community-1',
+    }))
+    expect(write).toHaveBeenCalledTimes(1)
+    expect(write).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'create_post',
+        community_id: 'community-1',
+      }),
+      'agent-1',
+      'evt-1',
+      expect.objectContaining({ total_tokens: 22 }),
+      expect.any(Number),
+      0,
+      expect.objectContaining({
+        source_callsite_id: 'post-scheduler-create-post',
+        scene: 'scheduled_post',
+        visibility: 'visible',
+        coverage_status: 'migrated_visible',
+        parse_success: true,
+      }),
+    )
+  })
+
+  it('only schedules posts into communities where the agent is actively enrolled', async () => {
+    const write = vi.fn(async () => ({ success: true, content_id: 'post-2' }))
+    const scheduler = new PostScheduler(createDeps(write, {
+      communities: [
+        {
+          id: 'community-1',
+          slug: 'general',
+          name: 'General',
+          description: '',
+          rules_json: {},
+        },
+        {
+          id: 'community-2',
+          slug: 'tech',
+          name: 'Tech',
+          description: '',
+          rules_json: {},
+        },
+      ],
+      activeCommunityIdsByAgent: ['community-2'],
+      scheduledPostCommunityId: 'community-2',
+    }), {
+      postIntervalMs: 60_000,
+      postMaxPerDay: 2,
+    })
+
+    const result = await scheduler.createPost()
+
+    expect(result).toEqual(expect.objectContaining({
+      triggered: true,
+      community_id: 'community-2',
+      post_id: 'post-2',
+    }))
+    expect(write).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'create_post',
+        community_id: 'community-2',
+      }),
+      'agent-1',
+      'evt-1',
+      expect.objectContaining({ total_tokens: 22 }),
+      expect.any(Number),
+      0,
+      expect.objectContaining({
+        source_callsite_id: 'post-scheduler-create-post',
+      }),
+    )
   })
 })

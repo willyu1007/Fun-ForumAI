@@ -115,6 +115,7 @@ const rt = createRuntime({
   nurtureOrchestrator: nurture.nurtureOrchestrator,
   eventRepo: repos.eventRepo,
   agentRunRepo: repos.agentRunRepo,
+  membershipRepo: repos.agentCommunityMembershipRepo,
   postRepo: repos.postRepo,
   commentRepo: repos.commentRepo,
   eventQueue: infra.eventQueue,

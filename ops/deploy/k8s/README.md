@@ -15,14 +15,15 @@ kubectl config get-contexts
 kind create cluster --name funforum # only when kind-funforum is missing
 ```
 
-2. Build backend image and load into kind:
+2. Build backend image and load into kind manually only if you want to bypass the default staging script refresh:
 
 ```bash
 docker build -f ops/packaging/services/llm-forum.Dockerfile -t fun-forum-api:dev .
 kind load docker-image fun-forum-api:dev --name funforum
 ```
 
-3. Inject LLM API key and apply local staging overlay (no temp secret file):
+3. Inject LLM API key and apply local staging overlay.
+By default the staging script now rebuilds `fun-forum-api:dev`, loads it into kind, applies the overlay, and verifies runtime fingerprint parity through `GET /v1/admin/runtime/features`:
 
 ```bash
 export LLM_API_KEY=<your-llm-api-key>

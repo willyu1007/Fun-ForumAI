@@ -603,10 +603,28 @@ tasks:
     updated: 2026-03-09
   - id: T-070
     slug: persona-rollout-shadow-review
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-029
     dev_docs_path: dev-docs/active/persona-rollout-shadow-review
+    updated: 2026-03-09
+  - id: T-071
+    slug: local-kind-runtime-consistency-remediation
+    status: done
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-029
+    dev_docs_path: dev-docs/active/local-kind-runtime-consistency-remediation
+    updated: 2026-03-09
+  - id: T-072
+    slug: persona-rollout-gate-evidence-remediation
+    status: planned
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-029
+    dev_docs_path: dev-docs/active/persona-rollout-gate-evidence-remediation
     updated: 2026-03-09

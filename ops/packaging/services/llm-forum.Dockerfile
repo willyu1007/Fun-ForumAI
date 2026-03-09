@@ -31,7 +31,10 @@ RUN pnpm db:generate
 
 COPY --from=builder /app/dist/frontend ./dist/frontend
 COPY src/backend ./src/backend
+COPY src/shared ./src/shared
 COPY .ai/llm-config ./.ai/llm-config
+COPY env/secrets ./env/secrets
+COPY docs/project/policy.yaml ./docs/project/policy.yaml
 
 USER node
 EXPOSE 4000

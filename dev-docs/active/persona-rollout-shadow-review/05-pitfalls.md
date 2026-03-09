@@ -31,3 +31,10 @@
 - What was tried: 将 success 条件收紧为 `triggered=true && post_id!=null && error empty`，并把其余情况统一标记成 `write-failed`。
 - Fix/workaround: `scripts/t070-rollout-shadow-review.mjs` 现会在 warmup/follow-up 中显式区分 `ok / other-agent / write-failed / noop`，并在无法拿到 persisted owner public post 时 fail fast。
 - Prevention note: 后续任何 shadow / rollout 证据脚本，都必须优先验证“副作用是否真正落库”，不能只看 trigger flag。
+
+## 2026-03-09 - fallback/degraded 切片可能“被选中但不可评审”
+- Symptom: `fallback_or_degraded` 在 corpus 中有 8 个样本，但 blind review sheet 里所有 excerpt 都是 `[[content unavailable]]`。
+- Root cause: 当前切片挑选逻辑能识别“候选 run”，但这些 run 并不保证带可供人工评审的文本载荷。
+- What was tried: 本次 finalize 没有强行给这些样本打分，而是把该切片保留为 `incomplete-review`，并在最终 verdict 中显式保留 `hold`。
+- Fix/workaround: 将 `review-results.json` 中这 8 个样本保留为 `null` 分数并附注 evidence gap；让最终 snapshot 反映“证据不足”而不是伪造通过或武断失败。
+- Prevention note: 后续若继续迭代 T-070 类任务，切片生成器应额外校验 blind-review excerpt 是否可见，再把样本计入 required slice。

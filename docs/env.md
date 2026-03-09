@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-09T03:39:05Z`
+Generated at (UTC): `2026-03-09T07:20:25Z`
 
 ## Environments
 - `dev`, `prod`, `staging`
@@ -55,6 +55,9 @@ Generated at (UTC): `2026-03-09T03:39:05Z`
 | `FF_MEMBERSHIP_STATUS_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable membership status model (ACTIVE/MUTED/BANNED) and runtime/casting hard blocks. |
 | `FF_MULTIMODAL_AGENT_INCLINATION_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable multimodal inclination asset pipeline and related APIs. |
 | `FF_NURTURE_PIPELINE_V2` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable nurture orchestrator realtime/scheduled closure pipeline. |
+| `FF_PERSONA_RUNTIME_SCENES` | `active` | `string` | no | no | `forum_post,forum_comment,chat_room,private_chat,proactive_dm,scheduled_post` | `` | `*` | `` | `` | `` | CSV whitelist of scenes where persona runtime state should participate. |
+| `FF_PERSONA_RUNTIME_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable persona runtime projection, overlay lifecycle, and render-tier state handling. |
+| `FF_PERSONA_WRITEBACK_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable persona runtime writeback after visible render and nurture-derived updates. |
 | `FF_PPR_REFRESH_V2` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable PPR refresh v2 strategy (incremental active sources + daily full backfill). |
 | `FF_PROMPT_AUDIT_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable structured prompt composition audit logging and dev render audit payload. |
 | `FF_PROMPT_ORCHESTRATOR_SCENES` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Optional CSV whitelist of scenes for PromptOrchestrator (empty means all scenes). |

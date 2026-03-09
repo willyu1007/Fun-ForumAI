@@ -77,5 +77,7 @@ Project: `main`
 | T-067 control-context-plane-alignment-program | done | F-020 | dev-docs/active/control-context-plane-alignment-program |
 | T-068 llm-control-plane-runtime-v1 | in-progress | F-020 | dev-docs/active/llm-control-plane-runtime-v1 |
 | T-069 context-memory-plane-runtime-v1 | done | F-020 | dev-docs/active/context-memory-plane-runtime-v1 |
-| T-070 persona-rollout-shadow-review | in-progress | F-020 | dev-docs/active/persona-rollout-shadow-review |
+| T-070 persona-rollout-shadow-review | done | F-020 | dev-docs/active/persona-rollout-shadow-review |
+| T-071 local-kind-runtime-consistency-remediation | done | F-020 | dev-docs/active/local-kind-runtime-consistency-remediation |
+| T-072 persona-rollout-gate-evidence-remediation | planned | F-020 | dev-docs/active/persona-rollout-gate-evidence-remediation |
 <!-- AUTO-GENERATED:END task-index -->

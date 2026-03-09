@@ -11,6 +11,7 @@ import type { PromptOrchestrator } from './prompt-orchestrator.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { RenderTierDecisionResult } from './persona-runtime-types.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
+import type { AgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
 import type { PromptComposeAudit } from './types.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
@@ -33,6 +34,7 @@ export interface PostSchedulerDeps {
   dataplaneWriter: DataPlaneWriter
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
+  membershipRepo?: Pick<AgentCommunityMembershipRepository, 'listActiveCommunityIdsByAgent'>
   inclinationAssetService?: Pick<InclinationAssetService, 'listPendingAgentIds' | 'getPendingForAgent'>
   promptOrchestrator?: PromptOrchestrator | null
   personaStateService?: PersonaStateService | null
@@ -113,12 +115,20 @@ export class PostScheduler {
 
       const communities = await this.listCommunities()
       if (communities.length === 0) return { triggered: false, error: 'No communities' }
-      const fallbackCommunity = this.pickRandomCommunity(communities)
+      const eligibleCommunities = this.resolveEligibleCommunities(selected.id, communities)
+      if (eligibleCommunities.length === 0) {
+        return {
+          triggered: true,
+          agent_id: selected.id,
+          error: 'Selected agent has no writable communities',
+        }
+      }
+      const fallbackCommunity = this.pickRandomCommunity(eligibleCommunities)
       if (!fallbackCommunity) return { triggered: false, error: 'No communities' }
 
       const persona = this.loadPersona(selected.id)
       const recentPosts = await this.getRecentPostsSummary(fallbackCommunity.id)
-      const communityCatalog = this.toCommunityCatalog(communities)
+      const communityCatalog = this.toCommunityCatalog(eligibleCommunities)
       const observationIdentity = this.resolveObservationIdentity(selected.id)
       let promptAudit: PromptComposeAudit | null = null
       let composedLayers: {
@@ -252,7 +262,7 @@ export class PostScheduler {
       const instruction = this.deps.responseParser.parseAsScheduledPost({
         text: llmResponse.content,
         fallbackCommunityId: fallbackCommunity.id,
-        communities,
+        communities: eligibleCommunities,
       })
 
       if (!instruction) {
@@ -333,7 +343,7 @@ export class PostScheduler {
         })
       }
 
-      const actualCommunity = communities.find((item) => item.id === instruction.community_id)
+      const actualCommunity = eligibleCommunities.find((item) => item.id === instruction.community_id)
       console.log(
         `[PostScheduler] Agent "${persona.name}" posted in "${actualCommunity?.name ?? instruction.community_id}" (${latencyMs}ms, ${llmResponse.usage.total_tokens} tokens)`,
       )
@@ -377,7 +387,7 @@ export class PostScheduler {
   }
 
   private pickAgent(): SelectedAgent | null {
-    const activeAgents = this.deps.agentService.listActiveAgents({ limit: 100 }).items
+    const activeAgents = this.listEligibleAgents()
     if (activeAgents.length === 0) return null
 
     if (config.features.multimodalAgentInclinationV1 && this.deps.inclinationAssetService) {
@@ -405,6 +415,17 @@ export class PostScheduler {
     }
   }
 
+  private listEligibleAgents(): Array<{ id: string; display_name: string }> {
+    const activeAgents = this.deps.agentService.listActiveAgents({ limit: 100 }).items
+    if (!this.requiresMembershipScopedPosting() || !this.deps.membershipRepo) {
+      return activeAgents
+    }
+
+    return activeAgents.filter((agent) =>
+      this.deps.membershipRepo!.listActiveCommunityIdsByAgent(agent.id).length > 0,
+    )
+  }
+
   private async listCommunities(): Promise<CommunityCandidate[]> {
     const result = await this.deps.forumReadService.getCommunities({ limit: 100 })
     return result.items.map((item) => ({
@@ -420,6 +441,22 @@ export class PostScheduler {
     if (communities.length === 0) return null
     const idx = Math.floor(Math.random() * communities.length)
     return communities[idx]
+  }
+
+  private resolveEligibleCommunities(
+    agentId: string,
+    communities: CommunityCandidate[],
+  ): CommunityCandidate[] {
+    if (!this.requiresMembershipScopedPosting() || !this.deps.membershipRepo) {
+      return communities
+    }
+
+    const activeCommunityIds = new Set(this.deps.membershipRepo.listActiveCommunityIdsByAgent(agentId))
+    return communities.filter((item) => activeCommunityIds.has(item.id))
+  }
+
+  private requiresMembershipScopedPosting(): boolean {
+    return config.features.membershipsV1 || config.features.membershipStatusV1 || config.features.stageRoleRuntimeV1
   }
 
   private toCommunityCatalog(communities: CommunityCandidate[]): string {

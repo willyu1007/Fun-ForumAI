@@ -1,5 +1,6 @@
 import { app, initPersistence } from './app.js'
 import { config } from './lib/config.js'
+import { getRuntimeBuildInfo } from './lib/runtime-build-info.js'
 import { disconnectPrisma } from './persistence/prisma-client.js'
 import {
   runtimeLoop,
@@ -18,6 +19,7 @@ async function main() {
 
   if (config.features.runtimeFeaturesV1) {
     console.log('[RuntimeFeatures] startup', JSON.stringify({
+      build: getRuntimeBuildInfo(),
       flags: config.features,
       runtime: {
         queue_backend: config.runtime.queueBackend,

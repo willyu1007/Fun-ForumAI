@@ -1,0 +1,38 @@
+# 03 Implementation Notes — T-071
+
+- 2026-03-09 初始化 `T-071`，作为 `T-070` 的 runtime blocker-fix task。
+- 当前已确认的环境漂移风险：
+  - local-kind overlay 固定使用 `fun-forum-api:dev + imagePullPolicy=IfNotPresent`
+  - `scripts/k8s-local-staging.mjs` 旧语义允许跳过镜像刷新
+  - `config.ts` 读取 `FF_PERSONA_RUNTIME_V1 / SCENES / WRITEBACK`，但 env SSOT 与 k8s ConfigMap 中缺失这些 keys
+- 历史 antecedent：
+  - `T-048 Delta-2 / PR-C` 曾修过 `/v1/dev/seed` FK 竞态
+  - 本次不 reopen `T-048`，只把它作为“旧修复在 local-kind 实跑中未被证明仍然生效”的背景
+- 2026-03-09 已为 local-kind runtime 增加版本一致性防线：
+  - `scripts/k8s-local-staging.mjs` 默认执行 backend `docker build + kind load`，只有显式 `--skip-image-refresh` 才允许跳过镜像刷新。
+  - rollout 完成后，脚本会临时 port-forward backend，调用 `GET /v1/admin/runtime/features`，校验远端 `runtime.build.code_fingerprint` 与本地源码一致。
+  - 同时校验 `FF_PERSONA_RUNTIME_V1 / FF_PERSONA_RUNTIME_SCENES / FF_PERSONA_WRITEBACK_V1` 已在实际运行环境中生效。
+- 2026-03-09 已补齐 runtime 指纹与 persona flags 暴露面：
+  - 新增 `src/backend/lib/runtime-build-info.ts`
+  - `GET /v1/admin/runtime/features` 新增 `runtime.build` 与 `runtime.persona_runtime`
+  - backend startup log 同步打印 build fingerprint
+- 2026-03-09 已补齐 env / k8s 契约：
+  - `env/contract.yaml`
+  - `ops/deploy/k8s/base/configmap-app.yaml`
+  - `ops/deploy/k8s/overlays/local-kind/patch-configmap.yaml`
+  - 以及由 env-contractctl 刷新的 `env/.env.example`、`docs/env.md`、`docs/context/env/contract.json`
+- 2026-03-09 已修复 local-kind 镜像运行时缺件：
+  - Docker image 现在包含 `src/shared`
+  - Docker image 现在包含 `env/secrets/*.ref.yaml`
+  - Docker image 现在包含 `docs/project/policy.yaml`
+  - `.dockerignore` 仅对白名单放行 `docs/project/policy.yaml`，避免扩大 build context
+- 2026-03-09 已修复 `post-scheduler` 与 membership 合同错位：
+  - scheduler 现在只会从“有 active community memberships 的 agent”中选人
+  - scheduler 现在只会把 LLM 生成的 `scheduled_post` 写入该 agent 可写的社区
+  - runtime container 已把 `membershipRepo` 接入 `PostScheduler`
+  - `post-scheduler.test.ts` 新增 “only schedules posts into communities where the agent is actively enrolled” 回归
+- 2026-03-09 blocker 清除结果：
+  - local-kind rollout 成功并验证 fingerprint：`sha256:6f22c14086311d0911355ed14f6f530c4e2880a75feb27a7b12e13c74063c6b8`
+  - `T-070` 最新 run：`.ai/.tmp/t070/t070-2026-03-09T08-07-58-214Z`
+  - 结果：`pre_review_status=warn`、`recommendation=hold`
+  - 说明：runtime blocker 已清除，剩余工作回到 blind review / finalize，而不是继续修 local-kind runtime

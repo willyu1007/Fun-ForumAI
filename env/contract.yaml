@@ -422,6 +422,26 @@ variables:
     default: ""
     description: Optional CSV whitelist of scenes for PromptOrchestrator (empty means all scenes).
 
+  FF_PERSONA_RUNTIME_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "true"
+    description: Enable persona runtime projection, overlay lifecycle, and render-tier state handling.
+
+  FF_PERSONA_RUNTIME_SCENES:
+    type: string
+    required: false
+    default: forum_post,forum_comment,chat_room,private_chat,proactive_dm,scheduled_post
+    description: CSV whitelist of scenes where persona runtime state should participate.
+
+  FF_PERSONA_WRITEBACK_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "true"
+    description: Enable persona runtime writeback after visible render and nurture-derived updates.
+
   FF_ACHIEVEMENT_CHRONICLE_V1:
     type: enum
     enum: ["true", "false"]

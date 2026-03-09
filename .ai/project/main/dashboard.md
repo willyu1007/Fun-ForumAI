@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 68 (planned: 1, in-progress: 9, blocked: 0, done: 26, archived: 32)
+- Tasks: 70 (planned: 2, in-progress: 8, blocked: 0, done: 28, archived: 32)
 
 ## Recent tasks
 
@@ -19,7 +19,9 @@ Project: `main`
 | T-067 control-context-plane-alignment-program | done | F-020 | dev-docs/active/control-context-plane-alignment-program |
 | T-068 llm-control-plane-runtime-v1 | in-progress | F-020 | dev-docs/active/llm-control-plane-runtime-v1 |
 | T-069 context-memory-plane-runtime-v1 | done | F-020 | dev-docs/active/context-memory-plane-runtime-v1 |
-| T-070 persona-rollout-shadow-review | in-progress | F-020 | dev-docs/active/persona-rollout-shadow-review |
+| T-070 persona-rollout-shadow-review | done | F-020 | dev-docs/active/persona-rollout-shadow-review |
+| T-071 local-kind-runtime-consistency-remediation | done | F-020 | dev-docs/active/local-kind-runtime-consistency-remediation |
+| T-072 persona-rollout-gate-evidence-remediation | planned | F-020 | dev-docs/active/persona-rollout-gate-evidence-remediation |
 | T-061 ios-android-runtime-smoke-kit | done | F-030 | dev-docs/active/ios-android-runtime-smoke-kit |
 | T-062 persona-provider-alignment-program | done | F-020 | dev-docs/active/persona-provider-alignment-program |
 | T-063 persona-seed-voice-contract-v1 | done | F-020 | dev-docs/active/persona-seed-voice-contract-v1 |
@@ -32,6 +34,4 @@ Project: `main`
 | T-053 event-contract-routing-baseline | done | F-000 | dev-docs/active/event-contract-routing-baseline |
 | T-054 control-plane-config-governance | done | F-000 | dev-docs/active/control-plane-config-governance |
 | T-055 aftershow-event-pipeline-and-callout | done | F-000 | dev-docs/active/aftershow-event-pipeline-and-callout |
-| T-056 role-assignment-aside-seats | done | F-000 | dev-docs/active/role-assignment-aside-seats |
-| T-057 audience-aftershow-web-experience | done | F-000 | dev-docs/active/audience-aftershow-web-experience |
 <!-- AUTO-GENERATED:END dashboard -->
