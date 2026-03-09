@@ -24,3 +24,4 @@
   - `drift_score`
   - `tier_floor`
   - `tier_floor_reason`
+- 2026-03-09 governance closeout：`State`、`.ai-task.yaml` 与 project hub 统一对齐为 `done`；后续 rollout 证据由 `T-070` 承接。

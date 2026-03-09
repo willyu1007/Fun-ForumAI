@@ -1,8 +1,8 @@
 # 00 Overview — persona-projection-overlay-runtime-v1 (T-065)
 
 ## Status
-- State: implemented
-- Next step: 联动 T-066 观测评测，把 runtime floor / overlay 命中 / writeback 漂移纳入评测与灰度看板。
+- State: done
+- Next step: `T-070 persona-rollout-shadow-review` 将消费 runtime floor / overlay 命中 / writeback 漂移样本做 blind review 与 gate snapshot；本包范围内无未决实现项。
 
 ## Goal
 定义 persona projection、overlay runtime 与 render tier 规则，让现有 prompt/orchestrator 主链路可以承接稳定人格与短期波动。

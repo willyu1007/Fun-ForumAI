@@ -13,7 +13,7 @@
 | Source | Path/reference | Used for | Trust level | Notes |
 |---|---|---|---|---|
 | User-confirmed plan | 当前会话（2026-03-08） | 任务结构、冻结决策、首批范围 | highest | 明确要求只产出任务包，不做代码实现 |
-| Design memo | `/Users/yurui/Downloads/agent_persona_prompt_provider_design.md` | 人格/voice/router 总体设计 | high | 作为概念和接口冻结基线 |
+| Design memo | `/Users/phoenix/Downloads/Fun-ForumAI_agent_persona_prompt_provider_design.md` | 人格/voice/router 总体设计 | high | 作为概念和接口冻结基线 |
 | Current repo runtime | `src/backend/runtime/**`, `src/backend/llm/**`, `src/backend/services/**` | 确认当前 prompt/provider 断点 | high | 已核实现有调用面与 prompt 编排方式 |
 | Existing personality tasks | `dev-docs/active/T-045~T-049` | 上游基础与边界 | medium | 本轮不 reopen，作为依赖输入 |
 | Project hub | `.ai/project/main/registry.yaml` | Feature / Requirement / Task 语义映射 | high | 本轮挂载到 `F-020` |

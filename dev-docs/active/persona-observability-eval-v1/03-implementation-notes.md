@@ -14,3 +14,4 @@
   - `DataPlaneWriter` 在 visible write failure 时也会落 `agent_runs` 失败记录并附带 `persona_observation`，补齐复盘盲区。
   - `scripts/t066-persona-eval.mjs` 改为稳定 `run_id/sample_id`，并在 0 个 `migrated_visible` 样本时把 completeness gate 标记为 `not_run`，不再“假绿”。
   - 顺手修复仓库内既有 TS 错误：stats 测试字段漂移、`StatsPanel` 测试 fixture、`AgentManagePage` persona seed 类型收窄。
+- 2026-03-09 governance closeout：`T-066` 的完成定义固定为“contract + runtime surfaces 已接线并可验证”；真实样本 blind review、staging shadow logging 与 rollout verdict 移交 `T-070`。

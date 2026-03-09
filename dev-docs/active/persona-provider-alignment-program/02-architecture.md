@@ -5,6 +5,11 @@
 - `T-062` 不定义实现级字段细节；这些落在 `T-063~T-066`。
 - `T-062` 是本轮 Persona / Prompt / Provider 规划的主索引，不替代上游人格任务。
 
+## Acceptance lens
+- `T-062` 的完成定义是“方案级闭环”：设计对齐、任务边界、依赖顺序、closeout 归位、follow-up 归位与 governance 绿灯。
+- `T-062` 不要求 blind review 已实填、staging shadow logging 已完成、或 gate snapshot 已离开 `not_run`；这些属于 rollout execution，不属于总包阻断项。
+- `T-062` 的职责是明确“谁已经完成、谁继续做什么”，而不是把 rollout 运营执行和 contract/runtime closeout 混在一个任务中。
+
 ## Semantic mapping
 - Milestone: `M-000`
 - Feature: `F-020 Agent Personality Experience V1`
@@ -30,9 +35,11 @@
 - `T-062` 持有跨包 traceability 的 canonical matrix。
 - `T-063~T-066` 只维护各自 contract 与 verification，不复制整张 matrix。
 - 后续实现任务引用 matrix row id，例如 `TM-04`，以标记自己承接的是哪段设计稿语义。
+- `T-070` 只消费 `TM-08` 的 rollout execution 证据，不新增 persona/provider 语义行。
 - 若设计稿新增高影响主题且无法映射到现有 row，必须先更新本节，再新增任务或调整 requirement。
 
-## Dependency graph
+## Dependency graphs
+### Planning baseline
 ```text
 T-045 / T-046 / T-048 / T-049
         ↓
@@ -45,6 +52,11 @@ T-045 / T-046 / T-048 / T-049
       T-066
 ```
 
+### Implementation reality (2026-03-09)
+- 语义 ownership 仍以原始规划链为准：`T-063 -> (T-064, T-065) -> T-066`
+- 运行时实现承接链已演进为：`T-064 -> T-068 -> T-069 -> T-066 -> T-070`
+- `T-065` 作为 persona runtime foundation 已独立完成，不再阻塞 `T-062` 的总包 closeout。
+
 ## Program control rules
 - 新子包只能扩展 `F-020` 语义，不得隐式迁移到 `F-000`。
 - 任何实现前的重大变更必须先更新对应子包文档，而不是直接改总控包。
@@ -53,3 +65,4 @@ T-045 / T-046 / T-048 / T-049
 ## Risks
 - 若未来需要新增 UX / achievement follow-up 包，应新建 requirement/task，不得塞回 `T-063~T-066`。
 - 若需要修改首批 line 组合，应开新规划任务而不是直接改写本轮 bundle。
+- 若继续把 rollout 证据留在 `T-066` 而不拆 follow-up，任务状态会长期停留在假 `in-progress`，并再次造成治理漂移。

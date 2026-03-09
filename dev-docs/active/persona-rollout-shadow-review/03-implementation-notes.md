@@ -1,0 +1,34 @@
+# 03 Implementation Notes — T-070
+
+- 2026-03-09 初始化 follow-up task bundle，用于承接 `T-066` 之后剩余的 rollout execution。
+- 本包只消费 `T-066` 已冻结的 render log / rubric / gate contract，不新增第二套标准。
+- `migrated_visible` 真实样本、blind review、staging shadow logging 与 rollout verdict 不再继续混入 `T-066`，避免 observability contract task 长期停在假 `in-progress`。
+- 2026-03-09 已新增 `src/backend/runtime/persona-rollout-gate.ts`，定义 `PersonaBlindReviewResultV1`、`PersonaRolloutPreReviewSnapshotV1`、`PersonaRolloutGateSnapshotV1` 与 recommendation 合并逻辑，避免把 gate 规则写死在脚本里。
+- 2026-03-09 已新增 `scripts/t070-rollout-shadow-review.mjs`：
+  - 可在本地 `kind` staging 上复用 `scripts/k8s-local-staging.mjs`、`GET /v1/admin/runtime/features`、`GET /v1/agents/:agentId/runs` 与 `scripts/t066-persona-eval.mjs`。
+  - 固定输出 `.ai/.tmp/t070/<run-id>/runtime-features.before.json`、`runtime-features.after.json`、`shadow-run-log.json`、`target-agent-runs.json`、`gate-summary.pre-review.json`、`review-results.template.json`。
+  - 受控样本补齐链路固定为：owner agent scheduled post warmup -> same agent private chat -> same agent follow-up scheduled post。
+- 2026-03-09 已新增 `scripts/t070-finalize-review.mjs`：
+  - 消费 `corpus-manifest.json`、`gate-summary.pre-review.json`、`review-results.json`。
+  - 输出 `gate-snapshot.final.json` 与 `rollout-verdict.md`。
+- 2026-03-09 已新增 `src/backend/runtime/__tests__/persona-rollout-gate.test.ts`，覆盖 `go / hold / rollback` 与 pre-review warning 场景。
+- 2026-03-09 为适应已有 cluster 数据，`scripts/t070-rollout-shadow-review.mjs` 已对 `/v1/dev/seed` 增加容错：若 seed 返回 `500`，但 owner agents 已存在，则记录 warning 后继续执行，而不是直接中断。
+- 2026-03-09 已对 `T-070` 脚本和 gate 做一轮质量硬化：
+  - `scheduled_post` 只有在 `triggered=true` 且 `post_id` 已落库、`error` 为空时，才计为有效 public sample；`post_id=null` 会被显式记录为 `write-failed`，不再伪装成成功尝试。
+  - warmup 不再拿“第一次命中的 owner agent”作为 target，而是汇总本轮成功落库的 owner public hits，再按 `hits desc -> last_attempt desc -> agent_id asc` 选出更稳定的 target。
+  - `shadow_activity.target_agent_run_count` 改为只统计本次 shadow window（`created_at >= started_at`）内新增 runs，并新增 `target_agent_observed_run_count`，避免历史 runs 污染 pre-review 诊断。
+  - blind review finalize 新增 `sample_id` 唯一性校验，并按 manifest 样本覆盖率计算 `reviewed_samples/completed`，不再允许重复行伪造 “review completed”。
+- 2026-03-09 已执行两次真实本地 `kind` shadow review。最新 evidence run:
+  - `.ai/.tmp/t070/t070-2026-03-09T06-34-23-606Z`
+  - 结论：流程可完整跑通，但 pre-review=`fail`、recommendation=`rollback`
+  - 直接阻断：
+    - `post-scheduler-create-post` / `private-channel-reply` 的 `persona_observation` callsite delta 仍为 `0`
+    - `shadow_activity.target_agent_run_count=52` 且 `observed_runs_total=0`
+  - 推断：当前 local-kind backend 能产出真实 agent runs，但这些 runs 仍未写入 `persona_observation`，表现更像运行镜像/运行时未带上 `T-066` contract hook，而不是 `T-070` orchestration 本身失效。
+- 2026-03-09 质量硬化后再次执行真实 `kind` shadow review。最新 evidence run:
+  - `.ai/.tmp/t070/t070-2026-03-09T07-01-15-329Z`
+  - 结论：脚本现会在 warmup 阶段对 “只触发但未落库” 的 public path 直接 fail fast，而不是继续拿伪成功样本往下跑。
+  - 直接证据：
+    - `shadow-run-log.json` 中 `runtime-post-warmup` 八次均为 `write-failed`
+    - 每次都带有 `posts_community_id_fkey`，且 `post_id=null`
+  - 推断：当前阻断已经被更准确地定位为 runtime public write path 故障；这比旧逻辑里“随机 target + 继续后续步骤”更符合真实系统状态。

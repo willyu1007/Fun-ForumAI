@@ -1,7 +1,7 @@
 # 04 Verification — T-066
 
-- Planning-only task bundle initialized.
-- No implementation verification run yet; downstream execution task must populate log schema review and rollout gate validation evidence.
+- Historical note: 本包起始于 planning-only bundle，后续 implementation verification 见下文。
+- Current closeout note (2026-03-09): `T-066` 的 scope 以 contract/runtime surfaces 为界；blind review 执行、staging shadow logging 与非 `not_run` gate evidence 已拆分到 `T-070`。
 - 2026-03-08 review pass: 对照设计稿第 18/20/21 章与当前 telemetry 能力，补齐 nurture perceptibility、provider success metrics 与 pre/post private-chat public behavior eval slice 的规划要求。
 - 2026-03-08 governance lint: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main` passed; only unrelated pre-existing warnings remained on older active-done tasks.
 - 2026-03-09 implementation stage: source contracts, runtime hooks, API read surfaces, and offline eval script landed.
@@ -23,3 +23,6 @@
   - 当前本地数据中 `observed_runs_total=0`、`gate_status=not_run`，符合“无 migrated visible 样本时不判绿”的预期。
   - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main` passed.
   - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main` passed; only older active-done task bundles still emit legacy warnings.
+- 2026-03-09 governance closeout:
+  - `T-066` 状态与 `.ai-task.yaml` 对齐为 `done`。
+  - 真实样本 blind review / staging shadow logging / rollout verdict 的执行责任已迁移到 `T-070 persona-rollout-shadow-review`。
