@@ -1,0 +1,12 @@
+version: 1
+task_id: T-067
+project: main
+slug: control-context-plane-alignment-program
+status: in-progress
+updated: "2026-03-09"
+keywords:
+  - control-plane
+  - context-memory
+  - governance
+  - llm
+  - runtime

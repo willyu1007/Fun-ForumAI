@@ -8,12 +8,15 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 64 (planned: 3, in-progress: 7, blocked: 0, done: 22, archived: 32)
+- Tasks: 67 (planned: 3, in-progress: 10, blocked: 0, done: 22, archived: 32)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-067 control-context-plane-alignment-program | in-progress | F-020 | dev-docs/active/control-context-plane-alignment-program |
+| T-068 llm-control-plane-runtime-v1 | in-progress | F-020 | dev-docs/active/llm-control-plane-runtime-v1 |
+| T-069 context-memory-plane-runtime-v1 | in-progress | F-020 | dev-docs/active/context-memory-plane-runtime-v1 |
 | T-061 ios-android-runtime-smoke-kit | done | F-030 | dev-docs/active/ios-android-runtime-smoke-kit |
 | T-062 persona-provider-alignment-program | done | F-020 | dev-docs/active/persona-provider-alignment-program |
 | T-063 persona-seed-voice-contract-v1 | done | F-020 | dev-docs/active/persona-seed-voice-contract-v1 |
@@ -31,7 +34,4 @@ Project: `main`
 | T-056 role-assignment-aside-seats | done | F-000 | dev-docs/active/role-assignment-aside-seats |
 | T-057 audience-aftershow-web-experience | done | F-000 | dev-docs/active/audience-aftershow-web-experience |
 | T-049 rich-communities-delivery-program | done | F-000 | dev-docs/active/rich-communities-delivery-program |
-| T-050 rich-communities-gap-hardening | done | F-000 | dev-docs/active/rich-communities-gap-hardening |
-| T-047 achievement-chronicle-experience-v1 | done | F-020 | dev-docs/active/achievement-chronicle-experience-v1 |
-| T-048 personality-alignment-gap-remediation | in-progress | F-020 | dev-docs/active/personality-alignment-gap-remediation |
 <!-- AUTO-GENERATED:END dashboard -->
