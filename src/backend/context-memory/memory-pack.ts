@@ -19,6 +19,7 @@ export class DefaultRetrievalPacker implements RetrievalPacker {
   }): MemoryPack {
     const privateCards = input.typed.privateEpisodicCards
     const publicCards = input.typed.publicEpisodicCards
+    const publicScene = input.scene !== 'private_chat'
     const topicRecallPool = input.scene === 'private_chat'
       ? [...privateCards, ...publicCards]
       : [...publicCards]
@@ -32,8 +33,10 @@ export class DefaultRetrievalPacker implements RetrievalPacker {
     const ownerPrivate = input.scene === 'private_chat'
       ? buildOwnerPrivateItems(input.typed.ownerRelation, privateCards)
       : []
-    const durableThreads = buildDurableThreads(input.typed)
-    const safeShadow = input.typed.privateShadows.length > 0
+    const durableThreads = publicScene
+      ? buildPublicDurableThreads(input.typed)
+      : buildPrivateDurableThreads(input.typed)
+    const safeShadow = !publicScene && input.typed.privateShadows.length > 0
       ? input.typed.privateShadows.slice(0, 2).map((item) => trim(item.public_safe_shadow, 100))
       : fallbackSafeShadow(input.legacyMemories, input.scene)
     const publicObservation = buildPublicObservationItems(publicCards)
@@ -70,7 +73,7 @@ export class DefaultRetrievalPacker implements RetrievalPacker {
           topicRecall.length === 0 ||
           recentRecall.length === 0 ||
           durableThreads.length === 0 ||
-          input.typed.privateShadows.length === 0
+          safeShadow.length === 0
         ),
       }),
       tokenEstimate,
@@ -87,7 +90,7 @@ export class DefaultRetrievalPacker implements RetrievalPacker {
             topicRecall.length === 0 ||
             recentRecall.length === 0 ||
             durableThreads.length === 0 ||
-            input.typed.privateShadows.length === 0
+            safeShadow.length === 0
           )
           : legacyPublicObservation.length > 0,
       },
@@ -130,7 +133,7 @@ function buildOwnerPrivateItems(
   return items.slice(0, 3)
 }
 
-function buildDurableThreads(state: TypedRetrievalState): string[] {
+function buildPrivateDurableThreads(state: TypedRetrievalState): string[] {
   const items: string[] = []
   if (state.selfModel?.summary) {
     items.push(`自我主线：${trim(state.selfModel.summary, 120)}`)
@@ -142,6 +145,12 @@ function buildDurableThreads(state: TypedRetrievalState): string[] {
     items.push(`编年史：${trim(entry.title, 40)} | ${trim(entry.summary, 100)}`)
   }
   return items
+}
+
+function buildPublicDurableThreads(state: TypedRetrievalState): string[] {
+  return state.chronicleEntries
+    .slice(0, 2)
+    .map((entry) => `编年史：${trim(entry.title, 40)} | ${trim(entry.summary, 100)}`)
 }
 
 function selectTopicCards(cards: EpisodicCard[], topicHints: string[], limit: number): EpisodicCard[] {

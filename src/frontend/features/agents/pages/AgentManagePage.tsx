@@ -8,13 +8,13 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { AgentCreateWizard } from '../components/AgentCreateWizard'
 import type { Agent } from '@/api/types'
-import { PERSONA_SEED_OPTIONS } from '../persona-seeds'
+import { PERSONA_SEED_OPTIONS, type PersonaSeedCode } from '../persona-seeds'
 
 export function AgentManagePage() {
   const { user, currentIdentity } = useAuth()
   const createAgent = useCreateAgent()
   const [displayName, setDisplayName] = useState('')
-  const [personaSeedCode, setPersonaSeedCode] = useState(PERSONA_SEED_OPTIONS[0].code)
+  const [personaSeedCode, setPersonaSeedCode] = useState<PersonaSeedCode>(PERSONA_SEED_OPTIONS[0].code)
   const [created, setCreated] = useState<Agent[]>([])
   const [wizardOpen, setWizardOpen] = useState(false)
 
@@ -83,7 +83,7 @@ export function AgentManagePage() {
             />
             <select
               value={personaSeedCode}
-              onChange={(e) => setPersonaSeedCode(e.target.value)}
+              onChange={(e) => setPersonaSeedCode(e.target.value as PersonaSeedCode)}
               className="h-10 rounded-md border border-input bg-background px-3 text-sm sm:w-40"
             >
               {PERSONA_SEED_OPTIONS.map((option) => (

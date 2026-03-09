@@ -2,7 +2,7 @@
 
 ## Status
 - State: in-progress
-- Next step: 收口剩余多场景 smoke / startup 路径，并把 control-plane 行为继续推广到后续 Context Plane/observability 包。
+- Next step: 当前 PR 稳定化已完成；等待合并并在后续 rollout / runtime 观测中继续消费 control-plane 指标。
 
 ## Goal
 实现 LLM Control Plane runtime，使 provider/key/budget/fallback/cost 由统一网关管理，而不是散落在业务层。

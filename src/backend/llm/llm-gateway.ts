@@ -53,7 +53,7 @@ export class LLMGateway {
   }
 
   get isConfigured(): boolean {
-    return this.options.credentialBroker.hasAnyUsableCredential() || this.options.llmClient.isConfigured
+    return this.options.credentialBroker.hasAnyUsableCredential()
   }
 
   setBudgetChecker(checker: ConstructorParameters<typeof BudgetGuard>[0]): void {
@@ -278,7 +278,7 @@ export class LLMGateway {
         throw new LLMGatewayContractError(
           'RegistryResolutionError',
           `No identity write profile for ${request.homeVoiceLineId}`,
-          request,
+          requestDetails(request),
         )
       }
       return profileId
@@ -294,7 +294,7 @@ export class LLMGateway {
       throw new LLMGatewayContractError(
         'RegistryResolutionError',
         `No profile for ${request.homeVoiceLineId}/${request.intent}/${tier}`,
-        request,
+        requestDetails(request),
       )
     }
     return profileId
@@ -392,4 +392,21 @@ function toGatewayError(error: unknown, code: LLMGatewayErrorCode): LLMGatewayCo
     code,
     error instanceof Error ? error.message : 'Unknown gateway error',
   )
+}
+
+function requestDetails(request: LLMGatewayRequest): Record<string, unknown> {
+  return {
+    intent: request.intent,
+    visibility: request.visibility,
+    scene: request.scene,
+    agentId: request.agentId,
+    homeVoiceLineId: request.homeVoiceLineId,
+    promptRef: request.promptRef,
+    budgetClass: request.budgetClass,
+    traceId: request.traceId,
+    requestedTier: request.requestedTier,
+    allowFallbackWithinLine: request.allowFallbackWithinLine,
+    allowCrossFamily: request.allowCrossFamily,
+    providerTags: request.providerTags,
+  }
 }

@@ -103,6 +103,12 @@ const routingFallbackLevelSchema = z.enum([
   'cross-family-hidden',
   'rare-reanchor',
 ])
+const modelProfileFallbackLevelSchema = z.enum([
+  'same-line',
+  'same-family',
+  'cross-family-hidden',
+  'rare-reanchor',
+])
 const qualityClassSchema = z.enum(['fast', 'balanced', 'premium'])
 const credentialHealthSchema = z.enum(['healthy', 'degraded', 'blocked'])
 const routeOrderSchema = z.enum([
@@ -165,7 +171,7 @@ const modelProfileSchema = z.object({
       ).min(1),
       fallback: z.array(
         z.object({
-          level: routingFallbackLevelSchema,
+          level: modelProfileFallbackLevelSchema,
           profile_id: z.string().min(1).optional(),
           provider_id: z.string().min(1).optional(),
           model_id: z.string().min(1).optional(),

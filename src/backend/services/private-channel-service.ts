@@ -1,4 +1,5 @@
 import type { LLMGateway } from '../llm/llm-gateway.js'
+import type { LLMGatewayResponse } from '../llm/gateway-contract.js'
 import type { PromptEngine } from '../llm/prompt-engine.js'
 import type { AgentService } from './agent-service.js'
 import type { BudgetService } from './budget-service.js'
@@ -188,7 +189,7 @@ export class PrivateChannelService {
   private recordAuditTrail(
     session: PrivateSession,
     inputContent: string,
-    llmResponse: { content: string; usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } },
+    llmResponse: Pick<LLMGatewayResponse, 'content' | 'usage'>,
     latencyMs: number,
   ): void {
     const agentId = session.agent_id

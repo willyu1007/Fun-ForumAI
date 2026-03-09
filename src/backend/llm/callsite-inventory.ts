@@ -368,7 +368,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     source_id: 'private-context-identity-finalize',
     source_file: 'src/backend/context-memory/runtime.ts',
     scene: 'background_hidden',
-    dispatch_calls: ['llmGateway.generateHiddenArtifact'],
+    dispatch_calls: ['llmGateway.generateIdentityWrite'],
     evidence_patterns: [
       'PROMPT_TEMPLATE_REFS.internalPrivateChatIdentityFinalize',
       'this.deps.llmGateway.generateIdentityWrite({',

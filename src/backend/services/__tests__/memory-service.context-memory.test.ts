@@ -14,27 +14,31 @@ describe('MemoryService context-memory runtime', () => {
 
   it('runs private typed pipeline and still emits a compatibility AgentMemory', async () => {
     const onDigestCompleted = vi.fn().mockResolvedValue(undefined)
+    const createMemory = vi.fn().mockResolvedValue({
+      id: 'mem-1',
+      agent_id: 'agent-1',
+      source_type: 'PRIVATE_CHAT',
+      source_session_id: 'session-1',
+      source_ref_type: null,
+      source_ref_id: null,
+      source_event_id: 'ctxevent:private-session:session-1',
+      summary_text: '兼容摘要',
+      topic_tags: ['咖啡'],
+      key_facts: ['fact'],
+      sentiment: 'thoughtful',
+      importance_score: 0.8,
+      privacy_floor: 1,
+      access_count: 0,
+      forgotten: false,
+      created_at: new Date(),
+      last_accessed_at: null,
+    })
+    const updateDigestStatus = vi.fn().mockResolvedValue(undefined)
+    const episodicUpsert = vi.fn().mockResolvedValue(undefined)
+    const tensionReplace = vi.fn().mockResolvedValue(undefined)
     const service = new MemoryService({
       memoryRepo: {
-        createMemory: vi.fn().mockResolvedValue({
-          id: 'mem-1',
-          agent_id: 'agent-1',
-          source_type: 'PRIVATE_CHAT',
-          source_session_id: 'session-1',
-          source_ref_type: null,
-          source_ref_id: null,
-          source_event_id: 'ctxevent:private-session:session-1',
-          summary_text: '兼容摘要',
-          topic_tags: ['咖啡'],
-          key_facts: ['fact'],
-          sentiment: 'thoughtful',
-          importance_score: 0.8,
-          privacy_floor: 1,
-          access_count: 0,
-          forgotten: false,
-          created_at: new Date(),
-          last_accessed_at: null,
-        }),
+        createMemory,
         listMemories: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
       } as never,
       channelRepo: {
@@ -45,7 +49,7 @@ describe('MemoryService context-memory runtime', () => {
           ended_at: new Date('2026-03-09T10:00:00.000Z'),
         }),
         countMessages: vi.fn().mockResolvedValue(6),
-        updateDigestStatus: vi.fn().mockResolvedValue(undefined),
+        updateDigestStatus,
         listMessages: vi.fn().mockResolvedValue({
           items: [
             { author_type: 'HUMAN', content: '聊聊咖啡' },
@@ -171,10 +175,10 @@ describe('MemoryService context-memory runtime', () => {
             ownerStylePinsPatch: { verbosity: 4 },
           }),
         },
-        episodicCardRepo: { upsert: vi.fn().mockResolvedValue(undefined) } as never,
+        episodicCardRepo: { upsert: episodicUpsert } as never,
         relationStateRepo: { upsert: vi.fn().mockResolvedValue(undefined) } as never,
         selfModelStateRepo: { upsert: vi.fn().mockResolvedValue(undefined) } as never,
-        activeTensionRepo: { replaceForAgent: vi.fn().mockResolvedValue(undefined) } as never,
+        activeTensionRepo: { replaceForAgent: tensionReplace } as never,
         privateShadowRepo: { upsert: vi.fn().mockResolvedValue(undefined) } as never,
       } as never,
       onDigestCompleted,
@@ -188,14 +192,14 @@ describe('MemoryService context-memory runtime', () => {
       session_id: 'session-1',
       memory_id: 'mem-1',
     })
-    expect((service as never).deps.memoryRepo.createMemory).toHaveBeenCalledWith(expect.objectContaining({
+    expect(createMemory).toHaveBeenCalledWith(expect.objectContaining({
       source_event_id: 'ctxevent:private-session:session-1',
       source_session_id: 'session-1',
       source_type: 'PRIVATE_CHAT',
     }))
-    expect((service as never).deps.contextMemory.episodicCardRepo.upsert).toHaveBeenCalled()
-    expect((service as never).deps.contextMemory.activeTensionRepo.replaceForAgent).toHaveBeenCalledWith('agent-1', expect.any(Array))
-    expect((service as never).deps.channelRepo.updateDigestStatus).toHaveBeenCalledWith('session-1', 'COMPLETED')
+    expect(episodicUpsert).toHaveBeenCalled()
+    expect(tensionReplace).toHaveBeenCalledWith('agent-1', expect.any(Array))
+    expect(updateDigestStatus).toHaveBeenCalledWith('session-1', 'COMPLETED')
   })
 
   it('ingests forum public observation into typed context while keeping legacy AgentMemory', async () => {

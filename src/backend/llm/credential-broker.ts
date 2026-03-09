@@ -54,7 +54,14 @@ export class CredentialBroker {
       throw new LLMGatewayContractError(
         'RegistryResolutionError',
         `Unknown provider for candidate: ${input.candidate.provider_id}`,
-        input.candidate,
+        {
+          provider_id: input.candidate.provider_id,
+          model_id: input.candidate.model_id,
+          region: input.candidate.region,
+          endpoint_id: input.candidate.endpoint_id,
+          weight: input.candidate.weight,
+          quality_class: input.candidate.quality_class,
+        },
       )
     }
 
@@ -117,7 +124,14 @@ export class CredentialBroker {
     throw new LLMGatewayContractError(
       'AuthError',
       `Failed to resolve credential for ${input.candidate.provider_id}/${input.candidate.model_id}`,
-      input.candidate,
+      {
+        provider_id: input.candidate.provider_id,
+        model_id: input.candidate.model_id,
+        region: input.candidate.region,
+        endpoint_id: input.candidate.endpoint_id,
+        weight: input.candidate.weight,
+        quality_class: input.candidate.quality_class,
+      },
     )
   }
 }

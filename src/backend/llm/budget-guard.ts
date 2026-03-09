@@ -28,7 +28,12 @@ export class BudgetGuard {
     throw new LLMGatewayContractError(
       'BudgetExceededError',
       result.reason || `Budget denied for ${input.agentId}`,
-      input,
+      {
+        agentId: input.agentId,
+        budgetClass: input.budgetClass,
+        traceId: input.traceId,
+        estimatedCostCny: input.estimatedCostCny,
+      },
     )
   }
 }

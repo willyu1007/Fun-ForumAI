@@ -207,7 +207,7 @@ export interface LLMGatewayRequest {
 export interface LLMGatewayResponse {
   content: string
   messages: LlmMessage[]
-  usage?: LlmTokenUsage
+  usage: LlmTokenUsage
   finishReason?: string | null
   latencyMs: number
   platformRetryCount: number

@@ -27,6 +27,7 @@ const useAllocateStatsMock = vi.mocked(useAllocateStats)
 function buildSnapshot(): AgentStatsSnapshot {
   return {
     stats: {
+      granted_points_total: 3,
       unspent_points: 3,
       sociability: 0,
       curiosity: 0,

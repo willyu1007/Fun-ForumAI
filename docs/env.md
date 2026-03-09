@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-08T22:41:14Z`
+Generated at (UTC): `2026-03-09T03:39:05Z`
 
 ## Environments
 - `dev`, `prod`, `staging`
@@ -73,7 +73,7 @@ Generated at (UTC): `2026-03-08T22:41:14Z`
 | `FF_STAGE_TIER_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable Agent Stage Tier scoring and casting pool tier gating. |
 | `JWT_EXPIRES_IN` | `active` | `string` | no | no | `7d` | `` | `*` | `` | `` | `` | JWT token expiration duration. |
 | `JWT_SECRET` | `active` | `string` | yes | yes | `` | `jwt_secret` | `*` | `` | `` | `` | Secret key for signing human auth JWT tokens. |
-| `LLM_API_KEY` | `deprecated` | `string` | yes | yes | `` | `llm_api_key` | `*` | `` | `DASHSCOPE_API_KEY` | `` | API key for the LLM provider. |
+| `LLM_API_KEY` | `deprecated` | `string` | no | yes | `` | `llm_api_key` | `*` | `` | `DASHSCOPE_API_KEY` | `` | API key for the LLM provider. |
 | `LLM_BASE_URL` | `active` | `string` | no | no | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `` | `*` | `` | `` | `` | Base URL for the LLM API (OpenAI-compatible endpoint). |
 | `LLM_MAX_RETRIES` | `active` | `int` | no | no | `2` | `` | `*` | `` | `` | `` | Max retry count for failed LLM calls. |
 | `LLM_MAX_TOKENS` | `active` | `int` | no | no | `512` | `` | `*` | `` | `` | `` | Maximum generation tokens per LLM call. |

@@ -103,7 +103,7 @@ variables:
 
   LLM_API_KEY:
     type: string
-    required: true
+    required: false
     description: API key for the LLM provider.
     secret: true
     secret_ref: llm_api_key

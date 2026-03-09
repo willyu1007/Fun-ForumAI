@@ -158,7 +158,7 @@ export class LlmIdentityFinalizer implements IdentityFinalizer {
           scene: input.origin.scene,
           counterpart_kind: resolveCounterpartKindFromSourceType(input.origin.sourceType),
         },
-        budgetClass: 'hidden_background',
+        budgetClass: 'identity_write',
         traceId: `identity-finalize:${agentId}:${input.origin.eventId}`,
         requestedTier: 'premium',
         allowFallbackWithinLine: false,
@@ -304,25 +304,25 @@ function resolveCounterpartKindFromSourceType(sourceType: RawContextEvent['sourc
 }
 
 function episodicCardsFromDistill(event: RawContextEvent, items: unknown[]): UpsertContextEpisodicCardInput[] {
-  const cards = items
-    .map((item, index) => {
-      const record = toRecord(item)
-      const title = stringField(record.title, '').trim()
-      const summary = stringField(record.summary, '').trim()
-      if (!title || !summary) return null
-      return {
-        id: `ctxepisode:${event.id}:${index + 1}`,
-        agent_id: event.agent_id,
-        event_id: event.id,
-        scene: event.scene,
-        title,
-        summary,
-        topic_tags: stringArrayField(record.topic_tags),
-        evidence_refs: dedupeStrings([event.id, ...event.evidence_refs, ...stringArrayField(record.evidence_refs)]),
-        salience: numberField(record.salience, 0.5),
-      } satisfies UpsertContextEpisodicCardInput
+  const cards: UpsertContextEpisodicCardInput[] = []
+  for (const [index, item] of items.entries()) {
+    const record = toRecord(item)
+    if (!record) continue
+    const title = stringField(record.title, '').trim()
+    const summary = stringField(record.summary, '').trim()
+    if (!title || !summary) continue
+    cards.push({
+      id: `ctxepisode:${event.id}:${index + 1}`,
+      agent_id: event.agent_id,
+      event_id: event.id,
+      scene: event.scene,
+      title,
+      summary,
+      topic_tags: stringArrayField(record.topic_tags),
+      evidence_refs: dedupeStrings([event.id, ...event.evidence_refs, ...stringArrayField(record.evidence_refs)]),
+      salience: numberField(record.salience, 0.5),
     })
-    .filter((item): item is UpsertContextEpisodicCardInput => item !== null)
+  }
   return cards
 }
 
@@ -367,22 +367,23 @@ function tensionsFromDistill(
   event: RawContextEvent,
   items: unknown[],
 ): UpsertContextActiveTensionItemInput[] {
-  return items
-    .map((item) => {
-      const record = toRecord(item)
-      const label = stringField(record.label, '').trim()
-      const description = stringField(record.description, '').trim()
-      if (!label || !description) return null
-      return {
-        id: `ctxtension:${event.agent_id}:${slug(label)}`,
-        agent_id: event.agent_id,
-        label,
-        description,
-        intensity: numberField(record.intensity, 0.5),
-        evidence_refs: dedupeStrings([event.id, ...event.evidence_refs, ...stringArrayField(record.evidence_refs)]),
-      } satisfies UpsertContextActiveTensionItemInput
+  const tensions: UpsertContextActiveTensionItemInput[] = []
+  for (const item of items) {
+    const record = toRecord(item)
+    if (!record) continue
+    const label = stringField(record.label, '').trim()
+    const description = stringField(record.description, '').trim()
+    if (!label || !description) continue
+    tensions.push({
+      id: `ctxtension:${event.agent_id}:${slug(label)}`,
+      agent_id: event.agent_id,
+      label,
+      description,
+      intensity: numberField(record.intensity, 0.5),
+      evidence_refs: dedupeStrings([event.id, ...event.evidence_refs, ...stringArrayField(record.evidence_refs)]),
     })
-    .filter((item): item is UpsertContextActiveTensionItemInput => item !== null)
+  }
+  return tensions
 }
 
 function privateShadowFromDistill(
@@ -475,6 +476,7 @@ function tensionsFromFinalize(
   return items
     .map((item, index) => {
       const record = toRecord(item)
+      if (!record) return null
       const label = stringField(record.label, '').trim()
       const existing = label ? byId.get(`ctxtension:${fallback[0]?.agent_id ?? ''}:${slug(label)}`) : null
       if (existing) {
@@ -530,14 +532,12 @@ function ownerStylePinsPatch(value: unknown): Partial<OwnerStylePins> {
   const forumActivity = intField(record.forum_activity)
   if (forumActivity !== null) next.forum_activity = forumActivity
 
-  const mood = typeof record.mood === 'string' && IDENTITY_MOODS.has(record.mood as OwnerStylePins['mood'])
-    ? record.mood as NonNullable<OwnerStylePins['mood']>
+  const mood = typeof record.mood === 'string' && isIdentityMood(record.mood)
+    ? record.mood
     : null
   if (mood) next.mood = mood
 
-  const habits = stringArrayField(record.habits).filter((item): item is NonNullable<OwnerStylePins['habits']>[number] => (
-    IDENTITY_HABITS.has(item as NonNullable<OwnerStylePins['habits']>[number])
-  ))
+  const habits = stringArrayField(record.habits).filter(isIdentityHabit)
   if (habits.length > 0) next.habits = habits
 
   const interests = stringArrayField(record.interests).slice(0, 8)
@@ -589,6 +589,14 @@ function intField(value: unknown): number | null {
 
 function dedupeStrings(values: string[]): string[] {
   return Array.from(new Set(values.filter((value) => value.trim().length > 0)))
+}
+
+function isIdentityMood(value: string): value is NonNullable<OwnerStylePins['mood']> {
+  return IDENTITY_MOODS.has(value as NonNullable<OwnerStylePins['mood']>)
+}
+
+function isIdentityHabit(value: string): value is NonNullable<OwnerStylePins['habits']>[number] {
+  return IDENTITY_HABITS.has(value as NonNullable<OwnerStylePins['habits']>[number])
 }
 
 function slug(value: string): string {

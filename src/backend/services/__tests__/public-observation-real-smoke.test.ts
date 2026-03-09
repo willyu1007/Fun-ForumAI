@@ -13,7 +13,6 @@ import {
   InMemoryCommentRepository,
   InMemoryCommunityRepository,
   InMemoryEpisodicCardRepository,
-  InMemoryEventRepository,
   InMemoryHumanVoteRepository,
   InMemoryMessageRepository,
   InMemoryPostMediaRepository,
@@ -36,6 +35,7 @@ import type {
 } from '../../repos/types.js'
 import type { MemoryRepository } from '../../repos/memory-repository.js'
 import { DefaultContextJournalService, LlmIdentityFinalizer, LlmSummaryOrchestrator } from '../../context-memory/runtime.js'
+import type { PromptTemplateRef } from '../../llm/gateway-contract.js'
 import { PROMPT_TEMPLATE_REFS } from '../../llm/prompt-template-refs.js'
 import { personaObservability } from '../../runtime/persona-observability.js'
 
@@ -59,7 +59,7 @@ class InMemoryMemoryRepository implements MemoryRepository {
       key_facts: [...input.key_facts],
       sentiment: input.sentiment ?? null,
       importance_score: input.importance_score,
-      privacy_floor: input.privacy_floor,
+      privacy_floor: input.privacy_floor ?? 1,
       access_count: 0,
       forgotten: false,
       created_at: new Date(),
@@ -188,7 +188,7 @@ function buildDomainEvent(input: {
   }
 }
 
-function gatewayResponse(content: string, promptRef = PROMPT_TEMPLATE_REFS.internalPublicObservationDigest) {
+function gatewayResponse(content: string, promptRef: PromptTemplateRef = PROMPT_TEMPLATE_REFS.internalPublicObservationDigest) {
   return {
     content,
     messages: [],
@@ -222,7 +222,6 @@ describe('Public observation real smoke', () => {
   it('forum event ingests typed public context and renders public episodic slots', async () => {
     const agentRepo = new InMemoryAgentRepository()
     const agentConfigRepo = new InMemoryAgentConfigRepository()
-    const agentRunRepo = new InMemoryEventRepository()
     const agentService = new AgentService({
       agentRepo,
       agentConfigRepo,
@@ -402,6 +401,8 @@ describe('Public observation real smoke', () => {
     expect(typedCards.items[0]?.title).toContain('播客留白讨论')
     expect(context.formatted).toContain('公共回声')
     expect(context.formatted).toContain('播客留白讨论')
+    expect(context.formatted).not.toContain('我开始把停顿也当成表达结构的一部分')
+    expect(context.formatted).not.toContain('节奏 vs 信息密度')
     expect(context.memories).toEqual([])
   })
 
@@ -543,6 +544,8 @@ describe('Public observation real smoke', () => {
     expect(typedCards.items[0]?.title).toContain('聊天室节奏窗口')
     expect(context.formatted).toContain('公共回声')
     expect(context.formatted).toContain('聊天室节奏窗口')
+    expect(context.formatted).not.toContain('热闹 vs 留白')
+    expect(context.formatted).not.toContain('我开始把对话节奏看成一种结构')
     expect(context.memories).toEqual([])
   })
 })

@@ -19,3 +19,11 @@
 - 2026-03-09 同步治理/护栏：
   - `callsite-inventory` 改成“业务层必须走 gateway”的 guard；
   - `config_keys.yaml` 补齐所有现有 `RUNTIME_*` key，恢复 `check-llm-config-keys` 通过。
+- 2026-03-09 针对 `codex/t067-t069-control-context-planes` PR 做 merge-blocker 稳定化：
+  - `LLMGateway.isConfigured` 只再反映 `CredentialBroker.hasAnyUsableCredential()`，不再把 legacy bootstrap `llmClient.isConfigured` 作为 readiness 信号。
+  - `LLMGatewayResponse.usage` 收紧为成功响应必有字段，`PrivateChannelService` 与相关测试 mock 同步改成显式带 usage。
+  - `BudgetGuard`、`CredentialBroker`、`LLMGateway` 统一把 `LLMGatewayContractError.details` 传成 plain record，消除本分支引入的 TypeScript shape 失败。
+  - `callsite-inventory` 中 private context identity finalize 的 surface 元数据修正为 `generateIdentityWrite`，避免 identity-write 流量继续被记成 generic hidden lane。
+  - `LLM_API_KEY` 在 `env/contract.yaml` 中保留为 deprecated 但改成 optional，并用 `env-contractctl` 重新生成 `env/.env.example`、`docs/env.md`、`docs/context/env/contract.json`。
+  - runtime/ops 文案不再提示单一 `LLM_API_KEY`；管理台与 `LlmClient` bootstrap warning 均改为面向 provider credential / per-request credential 的表述。
+  - 顺手收口这条 PR 额外引入的 typecheck 回归：`StatsPanel` / `stats-service` 补齐 `granted_points_total`，`AgentManagePage` 的 `personaSeedCode` state 改成 `PersonaSeedCode` 显式收窄。

@@ -42,3 +42,8 @@
   - `MemoryService.runTypedNightlyMaintenance()` 在 chronicle compaction 前先查 `findByDedupKey()`，避免 owner-only chronicle 因 nightly 重跑而重复写入。
   - `GET /v1/admin/runtime/features` 现在可直接暴露 persona observability snapshot 与 usage ledger render-log preview，便于 `T-066` 消费现成 runtime 证据。
   - 新增 `public-observation-real-smoke`，用真实 in-memory services 验证 forum/chat-room 事件从 ingress 到 typed public retrieval 的整条链路。
+- 2026-03-09 针对 `codex/t067-t069-control-context-planes` PR 做 context-memory 稳定化：
+  - `DefaultRetrievalPacker` 现在显式区分 `private_chat` 与公共 scene；`forum` / `chat_room` 不再渲染 `owner_private`、`safe_shadow`，`durable_threads` 只保留 public chronicle，不再把 private-derived `selfModel` / `tensions` 带入公开 prompt。
+  - `LlmIdentityFinalizer` 的 gateway 调用改用 `budgetClass: identity_write`，使 ledger / observability 能区分 identity update 与 generic hidden summarization。
+  - `context-memory/runtime.ts` finalize helper 补齐 nullability / type-guard，避免这条 PR 分支在 TypeScript strict 模式下因为 finalize payload 解析失败而阻塞合并。
+  - `memory-pack`、`public-observation-real-smoke`、`memory-service.context-memory`、`private-channel-scheduler` 等测试同步更新，明确 `disclosureLevel=0` 的 public prompt 不得出现 private-derived typed 内容。

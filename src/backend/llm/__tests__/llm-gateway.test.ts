@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { BudgetGuard } from '../budget-guard.js'
 import { CredentialBroker } from '../credential-broker.js'
 import { LLMGateway } from '../llm-gateway.js'
+import { LlmClient } from '../llm-client.js'
 import type { LlmRegistryBundle } from '../registry-loader.js'
 import { UsageLedgerWriter } from '../usage-ledger.js'
 
@@ -126,19 +127,58 @@ function buildBundle(): LlmRegistryBundle {
   }
 }
 
+function buildLlmClient(): LlmClient {
+  return new LlmClient({
+    provider: {
+      provider_id: 'dashscope-openai',
+      base_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      api_key: 'bootstrap-key',
+      timeout_ms: 30_000,
+      max_retries: 2,
+    },
+    defaults: {
+      model: 'qwen-plus-character',
+      max_tokens: 512,
+      temperature: 0.7,
+    },
+  })
+}
+
 describe('LLMGateway', () => {
+  it('treats the gateway as configured only when a credential pool is usable', () => {
+    const bundle = buildBundle()
+    const llmClient = buildLlmClient()
+    vi.spyOn(llmClient, 'chat').mockResolvedValue({
+      content: 'ok',
+      usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      model: 'qwen-max',
+      finish_reason: 'stop',
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: { resolve: vi.fn(() => { throw new Error('missing secret') }) } as never,
+      }),
+      usageLedger: new UsageLedgerWriter(),
+      budgetGuard: new BudgetGuard(),
+    })
+
+    expect(gateway.isConfigured).toBe(false)
+  })
+
   it('falls back to a same-line profile when the initial candidate has no matching credential pool', async () => {
     const bundle = buildBundle()
     const usageLedger = new UsageLedgerWriter()
-    const llmClient = {
-      chat: vi.fn().mockResolvedValue({
-        content: 'ok',
-        usage: { prompt_tokens: 10, completion_tokens: 8, total_tokens: 18 },
-        model: 'qwen-max',
-        finish_reason: 'stop',
-      }),
-      isConfigured: true,
-    } as never
+    const llmClient = buildLlmClient()
+    const chatSpy = vi.spyOn(llmClient, 'chat').mockResolvedValue({
+      content: 'ok',
+      usage: { prompt_tokens: 10, completion_tokens: 8, total_tokens: 18 },
+      model: 'qwen-max',
+      finish_reason: 'stop',
+    })
     const gateway = new LLMGateway({
       bundle,
       promptEngine: { render: vi.fn() } as never,
@@ -168,7 +208,7 @@ describe('LLMGateway', () => {
 
     expect(response.renderDecision.profileId).toBe('qwen-social-proactive-opening-premium')
     expect(response.renderDecision.modelId).toBe('qwen-max')
-    expect(llmClient.chat).toHaveBeenCalledTimes(1)
+    expect(chatSpy).toHaveBeenCalledTimes(1)
     expect(usageLedger.list()).toHaveLength(2)
     expect(usageLedger.list()[0]?.success).toBe(false)
     expect(usageLedger.list()[1]?.success).toBe(true)
@@ -178,10 +218,8 @@ describe('LLMGateway', () => {
     const bundle = buildBundle()
     bundle.credentialPools.pools[0]!.allowed_model_ids = ['qwen-plus-character']
 
-    const llmClient = {
-      chat: vi.fn(),
-      isConfigured: true,
-    } as never
+    const llmClient = buildLlmClient()
+    const chatSpy = vi.spyOn(llmClient, 'chat')
     const gateway = new LLMGateway({
       bundle,
       promptEngine: { render: vi.fn() } as never,
@@ -209,7 +247,7 @@ describe('LLMGateway', () => {
       allowCrossFamily: false,
     })).rejects.toMatchObject({ code: 'BudgetExceededError' })
 
-    expect(llmClient.chat).not.toHaveBeenCalled()
+    expect(chatSpy).not.toHaveBeenCalled()
   })
 
   it('records platform retry accounting from the provider adapter response metadata', async () => {
@@ -217,19 +255,18 @@ describe('LLMGateway', () => {
     bundle.credentialPools.pools[0]!.allowed_model_ids = ['qwen-plus-character']
 
     const usageLedger = new UsageLedgerWriter()
+    const llmClient = buildLlmClient()
+    vi.spyOn(llmClient, 'chat').mockResolvedValue({
+      content: 'ok',
+      usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 },
+      model: 'qwen-plus-character',
+      finish_reason: 'stop',
+      meta: { attempts: 3 },
+    })
     const gateway = new LLMGateway({
       bundle,
       promptEngine: { render: vi.fn() } as never,
-      llmClient: {
-        chat: vi.fn().mockResolvedValue({
-          content: 'ok',
-          usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 },
-          model: 'qwen-plus-character',
-          finish_reason: 'stop',
-          meta: { attempts: 3 },
-        }),
-        isConfigured: true,
-      } as never,
+      llmClient,
       credentialBroker: new CredentialBroker({
         bundle,
         secretResolver: { resolve: vi.fn(() => 'secret') } as never,

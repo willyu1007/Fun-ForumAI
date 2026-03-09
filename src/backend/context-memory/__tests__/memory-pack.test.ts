@@ -126,7 +126,8 @@ describe('MemoryPack', () => {
     expect(pack.slots.find((slot) => slot.slotId === 'public_observation')?.items[0]).toContain('论坛观察')
     expect(pack.slots.find((slot) => slot.slotId === 'topic_recall')?.items[0]).toContain('播客节奏讨论')
     expect(pack.slots.find((slot) => slot.slotId === 'recent_recall')?.items[0]).toContain('播客节奏讨论')
-    expect(pack.slots.find((slot) => slot.slotId === 'safe_shadow')?.items[0]).toContain('最近我更在意')
+    expect(pack.slots.find((slot) => slot.slotId === 'durable_threads')?.items).toEqual([])
+    expect(pack.slots.find((slot) => slot.slotId === 'safe_shadow')?.items).toEqual([])
     expect(pack.selectedMemories).toEqual([])
   })
 
@@ -223,6 +224,10 @@ describe('MemoryPack', () => {
       ],
       selectedMemories: [],
       tokenEstimate: 100,
+      observability: {
+        publicObservationSource: 'empty',
+        usedLegacyFallback: false,
+      },
     }, 40)
 
     expect(output.text).toContain('### 私聊锚点')

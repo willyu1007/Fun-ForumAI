@@ -10,7 +10,9 @@ providers.set('deepseek-openai', new OpenAICompatibleProvider())
 export class LlmClient {
   constructor(private readonly cfg: LlmClientConfig) {
     if (!cfg.provider.api_key) {
-      console.warn('[LlmClient] LLM_API_KEY is not set — LLM calls will fail')
+      console.warn(
+        '[LlmClient] bootstrap provider api_key is not set — direct client calls require per-request credentials or legacy bootstrap config',
+      )
     }
   }
 

@@ -33,3 +33,9 @@
 - 2026-03-09 `pnpm exec tsc -p tsconfig.json --noEmit`
   - Result: pass
 - No blocking pending items remain within T-069 scope.
+- 2026-03-09 `pnpm exec vitest run src/backend/llm/__tests__/llm-gateway.test.ts src/backend/context-memory/__tests__/memory-pack.test.ts src/backend/services/__tests__/public-observation-real-smoke.test.ts`
+  - Result: pass (9 tests / 3 files)
+- 2026-03-09 `pnpm exec vitest run src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/services/__tests__/memory-service.context-memory.test.ts src/backend/runtime/__tests__/persona-observability.test.ts src/backend/runtime/__tests__/private-channel-scheduler.test.ts src/backend/services/__tests__/stats-service.test.ts src/frontend/features/agents/components/__tests__/StatsPanel.test.tsx`
+  - Result: pass (18 tests / 6 files)
+- 2026-03-09 `pnpm typecheck`
+  - Result: pass
