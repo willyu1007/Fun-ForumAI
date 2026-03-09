@@ -55,6 +55,14 @@ function buildBundle(): LlmRegistryBundle {
               weight: 100,
               quality_class: 'balanced',
             },
+            {
+              provider_id: 'dashscope-openai',
+              model_id: 'qwen-flash-character',
+              region: 'cn-beijing',
+              endpoint_id: 'dashscope-cn-beijing',
+              weight: 80,
+              quality_class: 'fast',
+            },
           ],
           fallback: [
             {
@@ -213,9 +221,10 @@ describe('LLMGateway', () => {
     expect(response.renderDecision.profileId).toBe('qwen-social-proactive-opening-premium')
     expect(response.renderDecision.modelId).toBe('qwen-max')
     expect(chatSpy).toHaveBeenCalledTimes(1)
-    expect(usageLedger.list()).toHaveLength(2)
+    expect(usageLedger.list()).toHaveLength(3)
     expect(usageLedger.list()[0]?.success).toBe(false)
-    expect(usageLedger.list()[1]?.success).toBe(true)
+    expect(usageLedger.list()[1]?.success).toBe(false)
+    expect(usageLedger.list()[2]?.success).toBe(true)
   })
 
   it('fails fast when budget guard denies the request', async () => {
@@ -296,6 +305,54 @@ describe('LLMGateway', () => {
 
     expect(response.platformRetryCount).toBe(2)
     expect(usageLedger.list()[0]?.platform_retry_count).toBe(2)
+  })
+
+  it('prioritizes a preferred model inside the resolved profile before falling back by weight', async () => {
+    const bundle = buildBundle()
+    bundle.credentialPools.pools[0]!.allowed_model_ids = ['qwen-plus-character', 'qwen-flash-character']
+
+    const usageLedger = new UsageLedgerWriter()
+    const llmClient = buildLlmClient()
+    const chatSpy = vi.spyOn(llmClient, 'chat').mockResolvedValue({
+      content: 'flash preferred',
+      usage: { prompt_tokens: 12, completion_tokens: 6, total_tokens: 18 },
+      model: 'qwen-flash-character',
+      finish_reason: 'stop',
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: { resolve: vi.fn(() => 'secret') } as never,
+      }),
+      usageLedger,
+      budgetGuard: new BudgetGuard(),
+    })
+
+    const response = await gateway.generateVisibleText({
+      intent: 'proactive_opening',
+      scene: 'proactive_dm',
+      agentId: 'agent-1',
+      homeVoiceLineId: 'qwen-social-v1',
+      preferredModelId: 'qwen-flash-character',
+      promptRef: { id: 'agent-proactive-dm-opening', version: 1 },
+      variables: {},
+      promptMessages: [{ role: 'user', content: 'open' }],
+      budgetClass: 'visible_standard',
+      traceId: 'trace-preferred',
+      requestedTier: 'base',
+      allowFallbackWithinLine: true,
+      allowCrossFamily: false,
+    })
+
+    expect(chatSpy).toHaveBeenCalledWith(expect.objectContaining({
+      model: 'qwen-flash-character',
+    }))
+    expect(response.renderDecision.modelId).toBe('qwen-flash-character')
+    expect(response.renderDecision.reasons).toContain('preferred_model_hint')
+    expect(usageLedger.list()[0]?.model_id).toBe('qwen-flash-character')
   })
 
   it('tries the next candidate in the same hidden profile when the preferred credential is missing', async () => {

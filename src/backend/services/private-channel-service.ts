@@ -18,6 +18,7 @@ import {
   type PersonaObservationV1,
   recordPersonaObservation,
 } from '../runtime/persona-observation.js'
+import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import type {
   PrivateSession,
@@ -152,12 +153,14 @@ export class PrivateChannelService {
     })
 
     const replyPlan = await this.buildRequestForReply(session, content.trim())
+    const routing = this.resolveVisibleRouting(session.agent_id)
     const startMs = Date.now()
     const llmResponse = await this.deps.llmGateway.generateVisibleText({
       intent: 'private_reply',
       scene: 'private_chat',
       agentId: session.agent_id,
-      homeVoiceLineId: this.resolveHomeVoiceLineId(session.agent_id),
+      homeVoiceLineId: routing.homeVoiceLineId,
+      preferredModelId: routing.preferredModelId,
       promptRef: replyPlan.promptRef,
       variables: replyPlan.variables,
       budgetClass: 'visible_standard',
@@ -448,10 +451,18 @@ export class PrivateChannelService {
       .join('\n\n')
   }
 
-  private resolveHomeVoiceLineId(agentId: string) {
+  private resolveVisibleRouting(agentId: string): {
+    homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
+    preferredModelId?: string
+  } {
     const agent = this.deps.agentService.getAgent(agentId)
     const latestConfig = this.deps.agentService.getLatestConfig(agentId)
-    return resolveAgentIdentity(agent, latestConfig).summary.home_voice_line_id
+    const resolved = resolveAgentIdentity(agent, latestConfig)
+    const homeVoiceLineId = resolved.summary.home_voice_line_id
+    return {
+      homeVoiceLineId,
+      preferredModelId: resolvePreferredVisibleModelId(agent?.model, homeVoiceLineId),
+    }
   }
 
   private resolveObservationIdentity(agentId: string): {

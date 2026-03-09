@@ -32,6 +32,12 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: balanced
+      - provider_id: dashscope-openai
+        model_id: qwen-flash-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 80
+        quality_class: fast
     fallback: []
 
   - profile_id: qwen-social-scheduled-post-base
@@ -46,6 +52,12 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: balanced
+      - provider_id: dashscope-openai
+        model_id: qwen-flash-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 80
+        quality_class: fast
     fallback: []
 
   - profile_id: qwen-social-private-reply-base
@@ -60,6 +72,12 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: balanced
+      - provider_id: dashscope-openai
+        model_id: qwen-flash-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 80
+        quality_class: fast
     fallback: []
 
   - profile_id: qwen-social-proactive-opening-base
@@ -74,6 +92,12 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: balanced
+      - provider_id: dashscope-openai
+        model_id: qwen-flash-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 80
+        quality_class: fast
     fallback:
       - level: same-line
         profile_id: qwen-social-proactive-opening-premium

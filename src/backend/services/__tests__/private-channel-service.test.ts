@@ -159,7 +159,7 @@ describe('PrivateChannelService', () => {
           id: 'agent-1',
           owner_id: 'user-1',
           display_name: 'Agent One',
-          model: 'mock-model',
+          model: 'qwen-flash',
         })),
         getLatestConfig: vi.fn(() => ({
           config_json: {
@@ -186,6 +186,7 @@ describe('PrivateChannelService', () => {
       const result = await service.sendMessage(session.id, 'user-1', ' 你好 ')
       expect(result.agent_reply.content).toBe('你好呀')
       expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
+        preferredModelId: 'qwen-flash-character',
         promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
         variables: expect.objectContaining({
           persona_name: 'Agent One',

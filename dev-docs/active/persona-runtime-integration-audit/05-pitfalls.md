@@ -12,7 +12,14 @@
   - Root cause: 当前会话的 `chrome-devtools` 连接状态损坏。
   - Fix: 改用本地 Playwright 直接跑浏览器级 E2E，并保留截图与 JSON 摘要。
   - Prevention: 需要浏览器证据时准备 Playwright 作为兜底通道，避免单点依赖 MCP。
-- Symptom: 真实私聊中，agent 声称配置为 `model=qwen-flash`，实际 render 仍走 `qwen-plus-character`。
-  - Root cause: 当前运行时将 `homeVoiceLineId + requestedTier` 作为 visible dispatch authority，`agent.model` 不再直接参与路由。
-  - Fix: 本轮未改动架构，只记录为设计符合度差距。
-  - Prevention: 若产品仍希望“单 agent 模型配对”可控，需要把 `agent.model` 从兼容字段提升为显式 routing input，或在 UI/API 上去掉误导性的“模型即实际渲染模型”暗示。
+- Symptom: 真实私聊中，agent 配置为 `model=qwen-flash`，但 render 仍走 `qwen-plus-character`。
+  - Root cause: visible dispatch 只按 `homeVoiceLineId + requestedTier` 解析 profile，`agent.model` 完全没有下传到 gateway；即使 registry 已经存在多候选，也不会影响排序。
+  - Fix: 为 gateway 增加 `preferredModelId`，在 profile 内部先按偏好排序；visible callsite 统一把 `agent.model -> preferredModelId` 下传，并在 qwen visible base profiles 中补入 `qwen-flash-character` 候选。
+  - Prevention: 后续凡是增加“agent 个体模型偏好”，必须同时覆盖三层：
+    - registry 中有可选候选；
+    - callsite 把偏好显式传给 gateway；
+    - observability 能通过 `preferred_model_hint` 看出偏好是否真的命中。
+- Symptom: 本地浏览器验证多次打到错误端口，先后命中了别的 `3000/5173` 进程。
+  - Root cause: 开发机上同时存在多个前端/服务，默认端口并不总对应当前仓库；直接沿用历史 URL 会得到假阴性。
+  - Fix: 本轮改为重启当前仓库 backend `:4000`，并额外拉起隔离 Vite 实例（最终落在 `:3002`）做 Playwright 验证。
+  - Prevention: 本地 E2E 先用 `ps/lsof` 确认端口归属，再开始浏览器验证；必要时总是为当前仓库起独立端口，避免误打到别的项目。

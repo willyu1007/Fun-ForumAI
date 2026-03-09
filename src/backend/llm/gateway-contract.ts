@@ -194,6 +194,7 @@ export interface LLMGatewayRequest {
   scene: PromptScene | 'background_hidden' | 'dev_prompt_render'
   agentId: string
   homeVoiceLineId: VoiceLineId
+  preferredModelId?: string
   promptRef: PromptTemplateRef
   variables: Record<string, string>
   budgetClass: LLMBudgetClass

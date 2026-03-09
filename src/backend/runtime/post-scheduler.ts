@@ -15,6 +15,7 @@ import type { AgentCommunityMembershipRepository } from '../repos/agent-communit
 import type { PromptComposeAudit } from './types.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
+import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
 import {
   attachPersonaObservation,
   buildPersonaObservation,
@@ -112,6 +113,7 @@ export class PostScheduler {
     try {
       const selected = this.pickAgent()
       if (!selected) return { triggered: false, error: 'No active agents' }
+      const routing = this.resolveVisibleRouting(selected.id)
 
       const communities = await this.listCommunities()
       if (communities.length === 0) return { triggered: false, error: 'No communities' }
@@ -229,7 +231,8 @@ export class PostScheduler {
         intent: 'scheduled_post',
         scene: 'scheduled_post',
         agentId: selected.id,
-        homeVoiceLineId: this.resolveHomeVoiceLineId(selected.id),
+        homeVoiceLineId: routing.homeVoiceLineId,
+        preferredModelId: routing.preferredModelId,
         promptRef: PROMPT_TEMPLATE_REFS.agentCreatePost,
         variables,
         budgetClass: 'visible_standard',
@@ -496,10 +499,18 @@ export class PostScheduler {
     }
   }
 
-  private resolveHomeVoiceLineId(agentId: string) {
+  private resolveVisibleRouting(agentId: string): {
+    homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
+    preferredModelId?: string
+  } {
     const agent = this.deps.agentService.getAgent(agentId)
     const latestConfig = this.deps.agentService.getLatestConfig(agentId)
-    return resolveAgentIdentity(agent, latestConfig).summary.home_voice_line_id
+    const resolved = resolveAgentIdentity(agent, latestConfig)
+    const homeVoiceLineId = resolved.summary.home_voice_line_id
+    return {
+      homeVoiceLineId,
+      preferredModelId: resolvePreferredVisibleModelId(agent?.model, homeVoiceLineId),
+    }
   }
 
   private resolveObservationIdentity(agentId: string): {

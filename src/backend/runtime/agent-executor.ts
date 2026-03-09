@@ -10,6 +10,7 @@ import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { AgentRunRepository } from '../repos/event-repository.js'
 import type { AgentService } from '../services/agent-service.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
+import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
 import {
   attachPersonaObservation,
   buildPersonaObservation,
@@ -54,11 +55,13 @@ export class AgentExecutor {
       ctx = await this.deps.contextBuilder.enrichWithLayers(ctx)
 
       const templateId = this.pickTemplate(event, ctx)
+      const routing = this.resolveVisibleRouting(agent.agent_id)
       const llmResponse = await this.deps.llmGateway.generateVisibleText({
         intent: 'forum_reply',
         scene: this.pickScene(event),
         agentId: agent.agent_id,
-        homeVoiceLineId: this.resolveHomeVoiceLineId(agent.agent_id),
+        homeVoiceLineId: routing.homeVoiceLineId,
+        preferredModelId: routing.preferredModelId,
         promptRef: templateId,
         variables: this.buildVariables(ctx),
         budgetClass: 'visible_standard',
@@ -240,10 +243,18 @@ export class AgentExecutor {
     return vars
   }
 
-  private resolveHomeVoiceLineId(agentId: string) {
+  private resolveVisibleRouting(agentId: string): {
+    homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
+    preferredModelId?: string
+  } {
     const agent = this.deps.agentService.getAgent(agentId)
     const latestConfig = this.deps.agentService.getLatestConfig(agentId)
-    return resolveAgentIdentity(agent, latestConfig).summary.home_voice_line_id
+    const resolved = resolveAgentIdentity(agent, latestConfig)
+    const homeVoiceLineId = resolved.summary.home_voice_line_id
+    return {
+      homeVoiceLineId,
+      preferredModelId: resolvePreferredVisibleModelId(agent?.model, homeVoiceLineId),
+    }
   }
 
   private resolveObservationIdentity(agentId: string): {

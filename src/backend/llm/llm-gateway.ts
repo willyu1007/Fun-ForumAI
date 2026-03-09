@@ -82,9 +82,11 @@ export class LLMGateway {
     let lastError: unknown = null
 
     for (const route of routePlan) {
-      for (const candidate of [...route.profile.candidates].sort((a, b) => b.weight - a.weight)) {
+      const orderedCandidates = prioritizeCandidates(route.profile.candidates, request.preferredModelId)
+      for (const candidate of orderedCandidates) {
         const estimatedUsage = estimateUsage(messages, request.maxTokens)
         const estimatedCost = this.estimateCost(candidate.model_id, estimatedUsage)
+        const renderReasons = buildRenderReasons(route.reasons, request.preferredModelId, candidate.model_id)
 
         await this.options.budgetGuard.assertAllowed({
           agentId: request.agentId,
@@ -114,7 +116,7 @@ export class LLMGateway {
             endpointId: candidate.endpoint_id,
             credentialId: credential.pool.credential_id,
             fallbackLevel: route.fallbackLevel,
-            reasons: route.reasons,
+            reasons: renderReasons,
             promptTemplateId: request.promptRef.id,
             promptVersion: request.promptRef.version,
           }
@@ -191,7 +193,7 @@ export class LLMGateway {
               region: candidate.region,
               endpointId: candidate.endpoint_id,
               fallbackLevel: route.fallbackLevel,
-              reasons: route.reasons,
+              reasons: renderReasons,
               promptTemplateId: request.promptRef.id,
               promptVersion: request.promptRef.version,
             },
@@ -403,8 +405,37 @@ function requestDetails(request: LLMGatewayRequest): Record<string, unknown> {
     budgetClass: request.budgetClass,
     traceId: request.traceId,
     requestedTier: request.requestedTier,
+    preferredModelId: request.preferredModelId,
     allowFallbackWithinLine: request.allowFallbackWithinLine,
     allowCrossFamily: request.allowCrossFamily,
     providerTags: request.providerTags,
   }
+}
+
+function prioritizeCandidates(
+  candidates: ModelProfileEntry['candidates'],
+  preferredModelId: string | undefined,
+): ModelProfileEntry['candidates'] {
+  return [...candidates].sort((a, b) => {
+    const aPreferred = preferredModelId !== undefined && a.model_id === preferredModelId
+    const bPreferred = preferredModelId !== undefined && b.model_id === preferredModelId
+    if (aPreferred !== bPreferred) {
+      return aPreferred ? -1 : 1
+    }
+    return b.weight - a.weight
+  })
+}
+
+function buildRenderReasons(
+  routeReasons: string[],
+  preferredModelId: string | undefined,
+  candidateModelId: string,
+): string[] {
+  if (!preferredModelId || preferredModelId !== candidateModelId) {
+    return routeReasons
+  }
+  if (routeReasons.includes('preferred_model_hint')) {
+    return routeReasons
+  }
+  return [...routeReasons, 'preferred_model_hint']
 }

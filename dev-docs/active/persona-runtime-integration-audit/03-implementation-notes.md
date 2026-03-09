@@ -14,12 +14,37 @@
   - `src/backend/runtime/__tests__/rollout-evidence-collector.test.ts`
   - `src/backend/routes/__tests__/e2e-dev-seed.test.ts`
   - `src/backend/runtime/__tests__/rollout-evidence-collector.test.ts` 中历史错误字面量与未使用 import 已清理，恢复 `pnpm typecheck`。
-- 真实环境核验时发现一个“当前代码未完全满足设计目标”的差距，但本轮未直接重构：
-  - 以 `model=qwen-flash` 创建的 agent（`806e5d24-0b00-4e11-a2b5-834891d6be9b`）在真实私聊渲染中仍落到 `qwen-social-private-reply-base -> qwen-plus-character`。
-  - 代码证据见 `src/backend/services/private-channel-service.ts` 与 `src/backend/llm/callsite-inventory.ts`：visible dispatch 以 `homeVoiceLineId + requestedTier` 为权威，`agent.model` 仅保留为兼容字段，不再直接参与 private reply 路由。
-  - 这与外部设计文档“agent 绑定 voice line、不绑定 provider/key”是一致的，但也意味着“agent 个体模型配对”尚未真正成为运行时控制面能力。
+- 基于上述真实差距，继续落地了“同 voice line/profile 内的 agent 模型偏好”闭环：
+  - 新增 `src/backend/llm/model-preference.ts`
+    - 将 `agent.model` 规范化为“同 visible profile 内的 preferredModelId”，目前先覆盖 qwen 家族：
+      - `qwen-flash -> qwen-flash-character`
+      - `qwen-plus / qwen-turbo -> qwen-plus-character`
+      - `qwen-max -> qwen-max`
+  - 扩展 `src/backend/llm/gateway-contract.ts` 与 `src/backend/llm/llm-gateway.ts`
+    - `LLMGatewayRequest` 增加 `preferredModelId`；
+    - gateway 在已解析好的 profile 内先按 `preferredModelId` 重排候选，再按 `weight` 兜底；
+    - 命中偏好候选时，`renderDecision.reasons` 会附加 `preferred_model_hint`，便于 observability 和 rollout evidence 直接识别。
+  - visible callsite 已全量接入该偏好输入：
+    - `src/backend/services/private-channel-service.ts`
+    - `src/backend/runtime/agent-executor.ts`
+    - `src/backend/services/proactive-interaction-service.ts`
+    - `src/backend/runtime/post-scheduler.ts`
+  - `src/backend/llm/callsite-inventory.ts` 已同步更新契约表述：
+    - `homeVoiceLineId` 仍是 dispatch authority；
+    - `agent.model` 不再是 raw override，而是“同 profile 内的候选排序偏好”。
+  - `.ai/llm-config/registry/model_profiles.yaml`
+    - 为 qwen visible base profiles 补入 `qwen-flash-character` 次级候选，覆盖 `forum_reply / scheduled_post / private_reply / proactive_opening`。
+  - 新增/更新回归测试：
+    - `src/backend/llm/__tests__/llm-gateway.test.ts`
+      - 覆盖 “preferredModelId 命中时优先选 flash 候选”。
+    - `src/backend/services/__tests__/private-channel-service.test.ts`
+      - 覆盖私聊服务确实把 `preferredModelId=qwen-flash-character` 下传到 gateway。
+- 该闭环保持了设计文档里的架构边界：
+  - voice line / tier / intent 仍决定 profile；
+  - `agent.model` 只在该 profile 内偏置候选顺序，不绕过 voice line，也不直接绑死 provider/key。
 - 浏览器证据通过 Playwright 获得，原因是本轮 `chrome-devtools` MCP 会话出现 `Transport closed`：
   - 目录页、agent profile、private chat、admin runtime 页面截图位于 `.ai/.tmp/ui/persona-runtime-integration-audit/`。
   - 关键汇总文件：
     - `.ai/.tmp/ui/persona-runtime-integration-audit/playwright-summary.json`
     - `.ai/.tmp/ui/persona-runtime-integration-audit/playwright-chat-admin-summary.json`
+    - `.ai/.tmp/ui/persona-runtime-integration-audit/playwright-flash-private-chat.json`

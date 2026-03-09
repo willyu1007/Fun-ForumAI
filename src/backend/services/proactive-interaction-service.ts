@@ -12,6 +12,7 @@ import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import type { PersonaStateService } from './persona-state-service.js'
 import type { PromptComposeAudit } from '../runtime/types.js'
 import type { LlmTokenUsage } from '../llm/types.js'
+import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
 import {
   attachPersonaObservation,
   buildPersonaObservation,
@@ -241,6 +242,7 @@ export class ProactiveInteractionService {
     const personaName = identity.visiblePersona.name
     const personaStyle = identity.visiblePersona.style
     const homeVoiceLineId = identity.summary.home_voice_line_id
+    const preferredModelId = resolvePreferredVisibleModelId(agent.model, homeVoiceLineId)
 
     if (this.deps.promptOrchestrator) {
       try {
@@ -277,6 +279,7 @@ export class ProactiveInteractionService {
           scene: 'proactive_dm',
           agentId,
           homeVoiceLineId,
+          preferredModelId,
           promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
           variables,
           budgetClass: 'visible_standard',
@@ -308,6 +311,7 @@ export class ProactiveInteractionService {
       scene: 'proactive_dm',
       agentId,
       homeVoiceLineId,
+      preferredModelId,
       promptRef: PROMPT_TEMPLATE_REFS.internalProactiveDmOpeningLegacy,
       variables: {
         persona_name: personaName,

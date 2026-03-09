@@ -6,6 +6,9 @@
 - 代码与测试验证：
   - `pnpm typecheck`：通过。
   - `pnpm vitest run src/backend/llm/__tests__/usage-ledger.test.ts src/backend/runtime/__tests__/rollout-evidence-collector.test.ts src/backend/routes/__tests__/e2e-dev-seed.test.ts src/backend/routes/__tests__/e2e-control-plane.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/context-memory/__tests__/extract-distill-pipeline.test.ts src/backend/services/__tests__/memory-service.nurture.test.ts`：7 files / 64 tests 通过。
+- 2026-03-10 模型偏好闭环补充验证：
+  - `pnpm typecheck`：通过。
+  - `pnpm vitest run src/backend/llm/__tests__/llm-gateway.test.ts src/backend/services/__tests__/private-channel-service.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/llm/__tests__/registry-contract.test.ts`：4 files / 16 tests 通过。
 - 本地真实运行验证（`localhost:4000` backend + `localhost:3001` Vite frontend）：
   - `POST /v1/dev/seed`：返回 `communities=4 / agents=5 / posts=5 / comments=2`，修复后不再出现 stage gate 与 membership 拒绝。
   - `node scripts/e2e-concurrent-stress.mjs --base-url http://127.0.0.1:4000 --concurrency 3`：
@@ -17,6 +20,30 @@
     - `/agents/806e5d24-0b00-4e11-a2b5-834891d6be9b` 成功渲染身份契约与人格版本
     - `/agents/806e5d24-0b00-4e11-a2b5-834891d6be9b/chat` 真实发送私聊，返回 `200`，回复摘要为 `我的人格特点为追求深度探索且注重逻辑结构...`
     - `/admin` 成功渲染 Runtime 控制、事件队列、SSE 卡片
+- 本地真实运行验证（2026-03-10，当前源码重启后的 `localhost:4000` backend + `localhost:3002` 临时 Vite frontend）：
+  - 使用 dev token 创建 `model=qwen-flash` 的 agent：
+    - `agent_id = e81d3d9f-852c-4efd-8a95-2b136b47b937`
+    - identity contract 返回 `home_voice_line_id = qwen-social-v1`
+  - 真实私聊链路：
+    - `POST /v1/agents/:agentId/chat/sessions`：`201`
+    - `POST /v1/agents/:agentId/chat/sessions/:sessionId/messages`：`200`
+    - agent 回复正文：`嘿，今天适合发疯式灵感！...`
+  - PG usage ledger 直接查询：
+    - `private_reply | private_chat | qwen-flash-character | qwen-social-private-reply-base | dashscope-openai | t`
+    - 说明 `agent.model=qwen-flash` 已成功转化为同 profile 内的实际候选偏好，而非继续落回 `qwen-plus-character`。
+  - 后端运行日志同步佐证：
+    - `render_decision.reasons` 包含 `preferred_model_hint`
+    - `modelId=qwen-flash-character`
+  - 并发压测复跑：
+    - `node scripts/e2e-concurrent-stress.mjs --base-url http://127.0.0.1:4000 --concurrency 3`：通过
+    - `Triggered runtime posts=6 / chat replies=6 / errors=0`
+    - render log 最近 20 条中存在 `qwen-flash-character`，未出现 writeback / typed write 回退异常。
+  - Playwright UI 证据：
+    - 当前仓库隔离 Vite 前端跑在 `http://localhost:3002`
+    - `/agents/e81d3d9f-852c-4efd-8a95-2b136b47b937/chat` 页面已看到本次真实 human message 与 agent reply
+    - 证据文件：
+      - `.ai/.tmp/ui/persona-runtime-integration-audit/playwright-flash-private-chat.json`
+      - `.ai/.tmp/ui/persona-runtime-integration-audit/playwright-flash-private-chat.png`
 - k8s / kind 真实环境验证（`kind-funforum` / namespace `funforum`）：
   - 现网 deployment 可访问，但与当前源码存在 drift：
     - `POST /v1/admin/rollout/evidence-window/start` 在 kind 返回 `404 Route not found`
@@ -27,6 +54,7 @@
   - 正向符合：
     - provider registry / credential pool / routing policy / model profile / usage ledger / rollout evidence 结构均已入仓。
     - context-memory 抽取、typed write、identity write、nightly compaction 相关 runtime observability 已存在可审计面。
+    - visible callsite 已支持“voice line 权威 + 同 profile 内 model 偏好”，真实 `qwen-flash` 私聊验证已成立。
   - 仍未闭环：
     - admin runtime features 中 rollout gates 仍显示 `public_typed_read_path=block`、`legacy_dependency=block`，说明 context-memory 读取链路尚未达到文档要求的 typed-read 主路径成熟度。
-    - 真实私聊验证中，agent API 字段 `model=qwen-flash` 不会直接驱动 visible render model；实际仍按 home voice line/profile 路由到 `qwen-plus-character`。
+    - `agent.model` 目前只是“同 resolved profile 内的候选偏好”，不是跨 voice-line / tier 的自由模型覆盖；如果产品要更强的“单 agent 模型配对”，还需要单独设计 control-plane 约束与审计面。
