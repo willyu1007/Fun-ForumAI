@@ -107,7 +107,25 @@ describe('PrivateChannelService', () => {
 
     const gatewayGenerate = vi.fn(async () => ({
       content: '你好呀',
+      messages: [],
       usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 },
+      latencyMs: 12,
+      platformRetryCount: 0,
+      renderDecision: {
+        voiceLineId: 'qwen-social-v1',
+        tier: 'base',
+        profileId: 'profile-1',
+        providerId: 'dashscope-openai',
+        modelId: 'qwen-plus',
+        region: 'cn',
+        endpointId: 'default',
+        credentialId: 'cred-1',
+        fallbackLevel: 'none',
+        reasons: ['test'],
+        promptTemplateId: PROMPT_TEMPLATE_REFS.agentPrivateChatReply.id,
+        promptVersion: PROMPT_TEMPLATE_REFS.agentPrivateChatReply.version,
+      },
+      promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
     }))
     const promptOrchestrator = {
       isSceneEnabled: vi.fn(() => true),
@@ -181,7 +199,25 @@ describe('PrivateChannelService', () => {
     const session = buildSession()
     const gatewayGenerate = vi.fn(async (_input: { variables: Record<string, string> }) => ({
       content: 'fallback reply',
+      messages: [],
       usage: { prompt_tokens: 11, completion_tokens: 5, total_tokens: 16 },
+      latencyMs: 10,
+      platformRetryCount: 0,
+      renderDecision: {
+        voiceLineId: 'qwen-social-v1',
+        tier: 'base',
+        profileId: 'profile-1',
+        providerId: 'dashscope-openai',
+        modelId: 'qwen-plus',
+        region: 'cn',
+        endpointId: 'default',
+        credentialId: 'cred-1',
+        fallbackLevel: 'none',
+        reasons: ['test'],
+        promptTemplateId: PROMPT_TEMPLATE_REFS.agentPrivateChatReply.id,
+        promptVersion: PROMPT_TEMPLATE_REFS.agentPrivateChatReply.version,
+      },
+      promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
     }))
     const channelRepo = {
       findSessionById: vi.fn(async () => session),

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2025-12-25T00:00:00Z",
+  "updatedAt": "2026-03-09T00:00:00Z",
   "format": "json",
   "levels": ["debug", "info", "warn", "error"],
   "fields": [
@@ -53,7 +53,168 @@
       "type": "string",
       "required": false,
       "description": "Request identifier"
+    },
+    {
+      "name": "persona_observation.version",
+      "type": "string",
+      "required": false,
+      "description": "Persona observation envelope version attached to agent_runs.output_json"
+    },
+    {
+      "name": "persona_observation.trace_id",
+      "type": "string",
+      "required": false,
+      "description": "Stable trace id for one persona generation call"
+    },
+    {
+      "name": "persona_observation.source_callsite_id",
+      "type": "string",
+      "required": false,
+      "description": "LLM callsite inventory source_id for attribution"
+    },
+    {
+      "name": "persona_observation.scene",
+      "type": "string",
+      "required": false,
+      "description": "Prompt scene or hidden background scene"
+    },
+    {
+      "name": "persona_observation.intent",
+      "type": "string",
+      "required": false,
+      "description": "Generation intent routed by the provider/profile contract"
+    },
+    {
+      "name": "persona_observation.visibility",
+      "type": "string",
+      "required": false,
+      "description": "visible or hidden generation visibility class"
+    },
+    {
+      "name": "persona_observation.coverage_status",
+      "type": "string",
+      "required": false,
+      "description": "migrated_visible, legacy_partial, or hidden_partial"
+    },
+    {
+      "name": "persona_observation.persona_seed_code",
+      "type": "string",
+      "required": false,
+      "description": "Resolved persona seed code for the generating agent"
+    },
+    {
+      "name": "persona_observation.home_voice_line_id",
+      "type": "string",
+      "required": false,
+      "description": "Resolved home voice line id for the generating agent"
+    },
+    {
+      "name": "persona_observation.prompt_ref.id",
+      "type": "string",
+      "required": false,
+      "description": "Prompt template id used by the generation path"
+    },
+    {
+      "name": "persona_observation.prompt_ref.version",
+      "type": "number",
+      "required": false,
+      "description": "Prompt template version used by the generation path"
+    },
+    {
+      "name": "persona_observation.requested_tier",
+      "type": "string",
+      "required": false,
+      "description": "Requested render tier"
+    },
+    {
+      "name": "persona_observation.resolved_tier",
+      "type": "string",
+      "required": false,
+      "description": "Resolved render tier"
+    },
+    {
+      "name": "persona_observation.render_decision.profile_id",
+      "type": "string",
+      "required": false,
+      "description": "Resolved model profile id when available"
+    },
+    {
+      "name": "persona_observation.render_decision.provider_id",
+      "type": "string",
+      "required": false,
+      "description": "Provider id used or inferred for the generation"
+    },
+    {
+      "name": "persona_observation.render_decision.model_id",
+      "type": "string",
+      "required": false,
+      "description": "Model id used or inferred for the generation"
+    },
+    {
+      "name": "persona_observation.render_decision.region",
+      "type": "string",
+      "required": false,
+      "description": "Resolved provider region when available"
+    },
+    {
+      "name": "persona_observation.render_decision.fallback_level",
+      "type": "string",
+      "required": false,
+      "description": "Routing fallback level for the selected render path"
+    },
+    {
+      "name": "persona_observation.usage.total_tokens",
+      "type": "number",
+      "required": false,
+      "description": "Total tokens consumed by the observed generation"
+    },
+    {
+      "name": "persona_observation.latency_ms",
+      "type": "number",
+      "required": false,
+      "description": "LLM latency in milliseconds"
+    },
+    {
+      "name": "persona_observation.parse_success",
+      "type": "boolean",
+      "required": false,
+      "description": "Whether the LLM response parsed into the expected runtime artifact"
+    },
+    {
+      "name": "persona_observation.identity_write.attempted",
+      "type": "boolean",
+      "required": false,
+      "description": "Whether an identity-write side effect was attempted"
+    },
+    {
+      "name": "persona_observation.identity_write.success",
+      "type": "boolean",
+      "required": false,
+      "description": "Whether an attempted identity-write side effect succeeded"
+    },
+    {
+      "name": "persona_observation.prompt_audit.included_layer_ids",
+      "type": "array<string>",
+      "required": false,
+      "description": "Prompt audit summary without raw prompt text"
+    },
+    {
+      "name": "persona_observation.prompt_audit.token_estimates",
+      "type": "object",
+      "required": false,
+      "description": "Per-layer token estimates from prompt audit"
+    },
+    {
+      "name": "persona_observation.prompt_audit.lint_warnings",
+      "type": "array<string>",
+      "required": false,
+      "description": "Prompt audit lint warnings"
+    },
+    {
+      "name": "persona_observation.prompt_audit.trim_reasons",
+      "type": "array<string>",
+      "required": false,
+      "description": "Prompt audit trim reasons"
     }
   ]
 }
-

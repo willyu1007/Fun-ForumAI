@@ -30,3 +30,7 @@
   - Result: pass
 - 2026-03-09 `pnpm typecheck`
   - Result: pass (rerun after runtime/dashboard LLM credential messaging cleanup)
+- 2026-03-09 `pnpm typecheck`
+  - Result: pass (rerun after resolving `origin/main` merge conflicts for runtime/services/tests)
+- 2026-03-09 `pnpm exec vitest run src/backend/runtime/__tests__/post-scheduler.test.ts src/backend/services/__tests__/conversation-clock.test.ts src/backend/services/__tests__/private-channel-service.test.ts src/backend/services/__tests__/proactive-interaction-service.test.ts src/backend/services/__tests__/public-observation-digest-service.test.ts src/backend/services/__tests__/public-observation-real-smoke.test.ts src/backend/services/__tests__/stats-service.test.ts src/frontend/features/agents/components/__tests__/StatsPanel.test.tsx`
+  - Result: pass (32 tests / 8 files)

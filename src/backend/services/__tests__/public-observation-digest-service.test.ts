@@ -8,6 +8,24 @@ interface MemoryListOpts {
   source_event_id?: string
 }
 
+function makeObservationDeps() {
+  return {
+    agentService: {
+      getAgent: vi.fn((agentId: string) => ({
+        id: agentId,
+        display_name: `Agent ${agentId}`,
+      })),
+      getLatestConfig: vi.fn(() => null),
+    } as never,
+    eventRepo: {
+      create: vi.fn(() => ({ id: 'evt-runtime-1' })),
+    } as never,
+    agentRunRepo: {
+      create: vi.fn(),
+    } as never,
+  }
+}
+
 function makeDomainEvent(input: {
   id: string
   event_type: 'POST_CREATED' | 'COMMENT_CREATED'
@@ -66,6 +84,7 @@ function makeForumService(params: {
       listMemories,
       createPublicObservationMemory,
     } as never,
+    ...makeObservationDeps(),
   })
 
   return { service, createPublicObservationMemory, listMemories }
@@ -103,6 +122,7 @@ function makeRoomService(params: {
       listMemories,
       createPublicObservationMemory,
     } as never,
+    ...makeObservationDeps(),
   })
 
   return { service, createPublicObservationMemory, listMemories }
@@ -212,6 +232,7 @@ describe('PublicObservationDigestService', () => {
         listMemories: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
         createPublicObservationMemory: vi.fn().mockResolvedValue(undefined),
       } as never,
+      ...makeObservationDeps(),
     })
 
     await service.onForumEvent(makeDomainEvent({
@@ -264,6 +285,7 @@ describe('PublicObservationDigestService', () => {
         listMemories,
         createPublicObservationMemory,
       } as never,
+      ...makeObservationDeps(),
     })
 
     await service.onForumEvent(makeDomainEvent({
@@ -396,6 +418,7 @@ describe('PublicObservationDigestService', () => {
         listMemories,
         createPublicObservationMemory,
       } as never,
+      ...makeObservationDeps(),
     })
 
     await service.onRoomMessage({ roomId: 'r1', messageId: 'm-typed-cooldown', authorAgentId: 'a1' })

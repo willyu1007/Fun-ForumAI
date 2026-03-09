@@ -24,6 +24,7 @@ describe('MemoryService nurture bridge', () => {
 
     const onPrivateDigestCompleted = vi.fn().mockResolvedValue(undefined)
     const awardPrivateChatXP = vi.fn().mockResolvedValue({ awarded: true, xp: 3 })
+    const agentRunRepo = { create: vi.fn() }
 
     const service = new MemoryService({
       memoryRepo: {
@@ -72,8 +73,22 @@ describe('MemoryService nurture bridge', () => {
             sentiment: 'thoughtful',
             importance_score: 0.8,
           }),
+          usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 },
+          model: 'deepseek-reasoner',
+          provider_id: 'openrouter',
         }),
       } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({
+          id: 'agent-1',
+          owner_id: 'owner-1',
+          display_name: 'Agent One',
+          model: 'mock-model',
+        })),
+        getLatestConfig: vi.fn(() => ({ config_json: {} })),
+      } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: agentRunRepo as never,
       xpService: { awardPrivateChatXP } as never,
       nurtureOrchestrator: { onPrivateDigestCompleted } as never,
     })
@@ -85,5 +100,14 @@ describe('MemoryService nurture bridge', () => {
       dedup_key: 'session:session-1',
     })
     expect(awardPrivateChatXP).not.toHaveBeenCalled()
+    expect(agentRunRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+      output_json: expect.objectContaining({
+        persona_observation: expect.objectContaining({
+          source_callsite_id: 'memory-private-digest',
+          visibility: 'hidden',
+          requested_tier: 'premium',
+        }),
+      }),
+    }))
   })
 })

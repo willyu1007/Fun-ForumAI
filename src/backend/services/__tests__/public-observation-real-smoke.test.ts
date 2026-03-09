@@ -378,6 +378,9 @@ describe('Public observation real smoke', () => {
       roomRepo: new InMemoryRoomRepository(),
       messageRepo: new InMemoryMessageRepository(),
       memoryService,
+      agentService,
+      eventRepo: { create: () => ({ id: 'evt-public-1' }) } as never,
+      agentRunRepo: { create: () => ({}) } as never,
     })
 
     await digestService.onForumEvent(buildDomainEvent({
@@ -522,6 +525,9 @@ describe('Public observation real smoke', () => {
       roomRepo,
       messageRepo,
       memoryService,
+      agentService,
+      eventRepo: { create: () => ({ id: 'evt-public-2' }) } as never,
+      agentRunRepo: { create: () => ({}) } as never,
     })
 
     await digestService.onRoomMessage({

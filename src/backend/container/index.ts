@@ -18,8 +18,11 @@ const infra = await createInfrastructure()
 // ─── 3. LLM ─────────────────────────────────────────────────
 const llm = createLlmServices({
   agentRepo: repos.agentRepo,
+  agentConfigRepo: repos.agentConfigRepo,
   inclinationAssetRepo: repos.inclinationAssetRepo,
   postMediaRepo: repos.postMediaRepo,
+  eventRepo: repos.eventRepo,
+  agentRunRepo: repos.agentRunRepo,
 })
 
 // ─── 4. Core Services ───────────────────────────────────────
@@ -69,6 +72,7 @@ const nurture = await createNurtureEngines({
   agentService: core.agentService,
   chatService: core.chatService,
   statsService: core.statsService,
+  personaStateService: core.personaStateService,
   conversationClock: core.conversationClock,
   achievementsOrchestrator: core.achievementsOrchestrator,
   governanceAdapter: core.governanceAdapter,
@@ -101,6 +105,7 @@ const rt = createRuntime({
   chatService: core.chatService,
   inclinationAssetService: llm.inclinationAssetService,
   communityCultureDigestService: core.communityCultureDigestService,
+  personaStateService: core.personaStateService,
   promptLayerService: nurture.promptLayerService,
   promptOrchestrator: nurture.promptOrchestrator,
   traitEngine: nurture.traitEngine,
@@ -108,6 +113,7 @@ const rt = createRuntime({
   memoryService: nurture.memoryService,
   xpService: nurture.xpService,
   nurtureOrchestrator: nurture.nurtureOrchestrator,
+  eventRepo: repos.eventRepo,
   agentRunRepo: repos.agentRunRepo,
   postRepo: repos.postRepo,
   commentRepo: repos.commentRepo,
@@ -187,6 +193,7 @@ export const inclinationAssetRepo = repos.inclinationAssetRepo
 export const postMediaRepo = repos.postMediaRepo
 export const communityRepo = repos.communityRepo
 export const eventRepo = repos.eventRepo
+export const agentRunRepo = repos.agentRunRepo
 
 export const sseHub = infra.sseHub
 export const eventQueue = infra.eventQueue
@@ -212,6 +219,7 @@ export const agentService = core.agentService
 export const agentCommunityMembershipService = core.agentCommunityMembershipService
 export const communityCultureDigestService = core.communityCultureDigestService
 export const statsService = core.statsService
+export const personaStateService = core.personaStateService
 export const chatService = core.chatService
 export const roomLifecycle = core.roomLifecycle
 export const authService = core.authService

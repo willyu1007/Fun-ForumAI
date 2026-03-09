@@ -62,6 +62,7 @@ export class InclinationAssetService {
 
     const preflight = await this.preflightRemoteImage(sourceUrl)
     const summary = await this.deps.visionSummaryService.build({
+      agentId: input.agent_id,
       mimeType: preflight.mime_type,
       ownerNote,
       sourceUrl,
@@ -109,6 +110,7 @@ export class InclinationAssetService {
     })
 
     const summary = await this.deps.visionSummaryService.build({
+      agentId: input.agent_id,
       mimeType: input.mime_type,
       ownerNote,
       uploadBuffer: input.bytes,

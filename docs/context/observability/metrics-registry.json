@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2025-12-25T00:00:00Z",
+  "updatedAt": "2026-03-09T00:00:00Z",
   "metrics": [
     {
       "name": "http_requests_total",
@@ -16,7 +16,63 @@
       "labels": ["method", "path"],
       "unit": "seconds",
       "buckets": [0.01, 0.05, 0.1, 0.5, 1, 5]
+    },
+    {
+      "name": "persona_visible_render_total",
+      "type": "counter",
+      "description": "Total visible persona render runs captured in agent_runs/runtime metrics",
+      "labels": ["scene", "source_callsite_id", "coverage_status"],
+      "unit": "runs"
+    },
+    {
+      "name": "persona_render_latency_seconds",
+      "type": "histogram",
+      "description": "Latency distribution for persona render runs",
+      "labels": ["visibility", "scene", "source_callsite_id"],
+      "unit": "seconds",
+      "buckets": [0.25, 0.5, 1, 2, 5, 10, 15, 30]
+    },
+    {
+      "name": "persona_render_fallback_total",
+      "type": "counter",
+      "description": "Render fallback levels observed for persona runs",
+      "labels": ["visibility", "fallback_level", "source_callsite_id"],
+      "unit": "runs"
+    },
+    {
+      "name": "persona_parse_success_total",
+      "type": "counter",
+      "description": "Persona runs partitioned by parse success",
+      "labels": ["visibility", "scene", "parse_success"],
+      "unit": "runs"
+    },
+    {
+      "name": "persona_identity_write_success_total",
+      "type": "counter",
+      "description": "Identity-write attempts partitioned by success outcome",
+      "labels": ["scene", "attempted", "success"],
+      "unit": "runs"
+    },
+    {
+      "name": "persona_overlay_activation_total",
+      "type": "counter",
+      "description": "Observed runs where a persona overlay was active",
+      "labels": ["scene", "overlay_cause"],
+      "unit": "runs"
+    },
+    {
+      "name": "persona_rare_reanchor_total",
+      "type": "counter",
+      "description": "Observed rare reanchor fallback events",
+      "labels": ["visibility", "scene", "source_callsite_id"],
+      "unit": "runs"
+    },
+    {
+      "name": "persona_eval_gate_status",
+      "type": "gauge",
+      "description": "Latest offline persona eval gate verdict encoded as pass/fail/warn/not_run",
+      "labels": ["gate_id", "kind", "status"],
+      "unit": "state"
     }
   ]
 }
-

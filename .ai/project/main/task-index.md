@@ -73,8 +73,5 @@ Project: `main`
 | T-063 persona-seed-voice-contract-v1 | done | F-020 | dev-docs/active/persona-seed-voice-contract-v1 |
 | T-064 llm-gateway-routing-profiles-v1 | done | F-020 | dev-docs/active/llm-gateway-routing-profiles-v1 |
 | T-065 persona-projection-overlay-runtime-v1 | planned | F-020 | dev-docs/active/persona-projection-overlay-runtime-v1 |
-| T-066 persona-observability-eval-v1 | done | F-020 | dev-docs/active/persona-observability-eval-v1 |
-| T-067 control-context-plane-alignment-program | done | F-020 | dev-docs/active/control-context-plane-alignment-program |
-| T-068 llm-control-plane-runtime-v1 | in-progress | F-020 | dev-docs/active/llm-control-plane-runtime-v1 |
-| T-069 context-memory-plane-runtime-v1 | done | F-020 | dev-docs/active/context-memory-plane-runtime-v1 |
+| T-066 persona-observability-eval-v1 | in-progress | F-020 | dev-docs/active/persona-observability-eval-v1 |
 <!-- AUTO-GENERATED:END task-index -->

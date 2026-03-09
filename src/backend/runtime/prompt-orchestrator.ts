@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { config } from '../lib/config.js'
 import type { ComposePromptLayersInput, PromptLayerService } from './prompt-layer-service.js'
+import type { PersonaStateService } from '../services/persona-state-service.js'
 import type {
   AgentPersona,
   PromptComposeAudit,
@@ -8,6 +9,8 @@ import type {
   PromptScene,
 } from './types.js'
 import { runtimeFeatureMetrics } from './runtime-feature-metrics.js'
+import type { PersonaRuntimeEnvelope, PersonaRuntimeScene } from './persona-runtime-types.js'
+import { SCENE_RULE_MAX_CHARS, SHORT_TERM_STATE_MAX_CHARS_BY_SCENE } from './persona-runtime-types.js'
 
 const DEFAULT_ORCHESTRATOR_CACHE_TTL_MS = 30_000
 const DEFAULT_ORCHESTRATOR_CACHE_MAX_ENTRIES = 500
@@ -86,10 +89,12 @@ export interface PromptOrchestratorResult {
   persona: AgentPersona
   layers: PromptLayers
   audit: PromptComposeAudit
+  runtimeEnvelope?: PersonaRuntimeEnvelope | null
 }
 
 export interface PromptOrchestratorDeps {
   promptLayerService: PromptLayerService
+  personaStateService?: PersonaStateService | null
 }
 
 export interface PromptOrchestratorOptions {
@@ -115,13 +120,32 @@ export class PromptOrchestrator {
   }
 
   async compose(input: PromptOrchestratorInput): Promise<PromptOrchestratorResult> {
-    const persona = this.deps.promptLayerService.getPersona(input.agentId)
+    let runtimeEnvelope: PersonaRuntimeEnvelope | null = null
+    if (
+      this.deps.personaStateService?.isSceneEnabled(input.scene as PersonaRuntimeScene)
+    ) {
+      try {
+        runtimeEnvelope = await this.deps.personaStateService.prepareRuntimeEnvelope({
+          agentId: input.agentId,
+          scene: input.scene as PersonaRuntimeScene,
+          conversationText: input.conversationText,
+          topicHints: input.topicHints,
+          externalSceneRule: input.sceneRule,
+          externalShortTermState: input.shortTermState,
+        })
+      } catch (err) {
+        console.warn('[PromptOrchestrator] persona runtime prepare failed:', err)
+      }
+    }
+
     const orchestratorEnabled = this.isEnabledForScene(input.scene)
     const now = Date.now()
     if (orchestratorEnabled) {
       this.pruneCache(now)
     }
-    const cacheKey = orchestratorEnabled ? this.buildCacheKey(input) : null
+    const cacheKey = orchestratorEnabled
+      ? this.buildCacheKey(input, runtimeEnvelope?.cacheSalt ?? '')
+      : null
 
     if (cacheKey) {
       const cached = this.cache.get(cacheKey)
@@ -136,21 +160,33 @@ export class PromptOrchestrator {
       }
     }
 
-    const base = await this.deps.promptLayerService.composeLayersWithAudit(input, {
-      suppressAuditLog: true,
-    })
+    const base = await this.deps.promptLayerService.composeLayersWithAudit(
+      {
+        ...input,
+        precomputedRuntimeEnvelope: runtimeEnvelope,
+      },
+      { suppressAuditLog: true },
+    )
+    const persona = base.persona ?? this.deps.promptLayerService.getPersona(input.agentId)
 
     if (!orchestratorEnabled) {
       const fallbackResult: PromptOrchestratorResult = {
         persona,
         layers: base.layers,
         audit: base.audit,
+        runtimeEnvelope: base.runtimeEnvelope ?? runtimeEnvelope,
       }
       this.emitAuditLog(input.agentId, fallbackResult.audit)
       return fallbackResult
     }
 
-    const result = this.applyGovernance(input, persona, base.layers, base.audit)
+    const result = this.applyGovernance(
+      input,
+      persona,
+      base.layers,
+      base.audit,
+      base.runtimeEnvelope ?? runtimeEnvelope,
+    )
 
     if (cacheKey) {
       this.cache.set(cacheKey, {
@@ -176,15 +212,24 @@ export class PromptOrchestrator {
     persona: AgentPersona,
     baseLayers: PromptLayers,
     baseAudit: PromptComposeAudit,
+    runtimeEnvelope: PersonaRuntimeEnvelope | null,
   ): PromptOrchestratorResult {
     const categories: OrchestratorCategories = {
-      scene_rule: this.normalizeLayerText(input.sceneRule),
+      scene_rule: this.normalizeLayerText(
+        this.mergeSceneRule(input.sceneRule, runtimeEnvelope?.overlaySceneRule ?? ''),
+      ),
       community_hard: this.normalizeLayerText(input.communityHardRule),
       persona_traits: this.normalizeLayerText(baseLayers.layer1_traits),
       relationship: this.normalizeLayerText(input.relationshipHint ?? baseLayers.layer_relationship),
       instructions: this.normalizeLayerText(baseLayers.layer3_instructions),
       community_soft: this.normalizeLayerText(input.communitySoftCulture),
-      short_term_state: this.normalizeLayerText(input.shortTermState),
+      short_term_state: this.normalizeLayerText(
+        this.mergeShortTermState(
+          input.scene,
+          input.shortTermState,
+          runtimeEnvelope?.overlayShortTermState ?? '',
+        ),
+      ),
       style: this.normalizeLayerText(baseLayers.layer2_style),
       overrides: this.normalizeLayerText(baseLayers.layer4_overrides),
     }
@@ -299,6 +344,7 @@ export class PromptOrchestrator {
           ? { provenance: { community_profile: input.communityProfileProvenance } }
           : {}),
       },
+      runtimeEnvelope,
     }
   }
 
@@ -347,7 +393,7 @@ export class PromptOrchestrator {
     }
   }
 
-  private buildCacheKey(input: PromptOrchestratorInput): string | null {
+  private buildCacheKey(input: PromptOrchestratorInput, runtimeCacheSalt: string): string | null {
     if (!CACHEABLE_SCENES.has(input.scene)) return null
     const digest = [
       `agent:${input.agentId}`,
@@ -363,6 +409,7 @@ export class PromptOrchestrator {
       `community_hard:${input.communityHardRule ?? ''}`,
       `community_soft:${input.communitySoftCulture ?? ''}`,
       `relationship:${input.relationshipHint ?? ''}`,
+      `runtime_cache:${runtimeCacheSalt}`,
     ].join('\n')
     return createHash('sha1').update(digest).digest('hex')
   }
@@ -396,6 +443,27 @@ export class PromptOrchestrator {
     return parts.filter((part) => part.trim().length > 0).join('\n\n')
   }
 
+  private mergeSceneRule(sceneRule: string | undefined, overlaySceneRule: string): string {
+    return truncateCompact(
+      [sceneRule ?? '', overlaySceneRule].filter((item) => item.trim().length > 0).join('；'),
+      SCENE_RULE_MAX_CHARS,
+    )
+  }
+
+  private mergeShortTermState(
+    scene: PromptScene,
+    shortTermState: string | undefined,
+    overlayShortTermState: string,
+  ): string {
+    const maxChars = SHORT_TERM_STATE_MAX_CHARS_BY_SCENE[scene as PersonaRuntimeScene] ?? 90
+    return truncateCompact(
+      [overlayShortTermState, shortTermState ?? '']
+        .filter((item) => item.trim().length > 0)
+        .join('；'),
+      maxChars,
+    )
+  }
+
   private normalizeLayerText(value: string | undefined): string {
     return (value ?? '').trim()
   }
@@ -415,6 +483,41 @@ export class PromptOrchestrator {
     return {
       persona: { ...result.persona, interests: [...result.persona.interests] },
       layers: { ...result.layers },
+      runtimeEnvelope: result.runtimeEnvelope
+        ? {
+            ...result.runtimeEnvelope,
+            state: {
+              ...result.runtimeEnvelope.state,
+              current: { ...result.runtimeEnvelope.state.current },
+              anchor: { ...result.runtimeEnvelope.state.anchor },
+            },
+            projection: {
+              ...result.runtimeEnvelope.projection,
+              dominantAxes: result.runtimeEnvelope.projection.dominantAxes.map((item) => ({ ...item })),
+              projectedPins: {
+                ...result.runtimeEnvelope.projection.projectedPins,
+                habits: result.runtimeEnvelope.projection.projectedPins.habits
+                  ? [...result.runtimeEnvelope.projection.projectedPins.habits]
+                  : undefined,
+                interests: result.runtimeEnvelope.projection.projectedPins.interests
+                  ? [...result.runtimeEnvelope.projection.projectedPins.interests]
+                  : undefined,
+              },
+            },
+            overlay: result.runtimeEnvelope.overlay
+              ? {
+                  ...result.runtimeEnvelope.overlay,
+                  cause: { ...result.runtimeEnvelope.overlay.cause },
+                  sampledAtoms: { ...result.runtimeEnvelope.overlay.sampledAtoms },
+                  delta: { ...result.runtimeEnvelope.overlay.delta },
+                }
+              : null,
+            renderTierDecision: {
+              ...result.runtimeEnvelope.renderTierDecision,
+              reasons: [...result.runtimeEnvelope.renderTierDecision.reasons],
+            },
+          }
+        : null,
       audit: {
         ...result.audit,
         includedLayerIds: [...result.audit.includedLayerIds],
@@ -436,4 +539,10 @@ export class PromptOrchestrator {
       },
     }
   }
+}
+
+function truncateCompact(text: string, maxChars: number): string {
+  const normalized = text.trim()
+  if (normalized.length <= maxChars) return normalized
+  return `${normalized.slice(0, Math.max(0, maxChars - 3))}...`
 }

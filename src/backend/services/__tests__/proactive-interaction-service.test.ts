@@ -45,6 +45,24 @@ describe('ProactiveInteractionService', () => {
     const gatewayGenerate = vi.fn(async (_input: Record<string, unknown>) => ({
       content: 'opening',
       usage: { prompt_tokens: 10, completion_tokens: 6, total_tokens: 16 },
+      messages: [],
+      latencyMs: 12,
+      platformRetryCount: 0,
+      renderDecision: {
+        voiceLineId: 'qwen-social-v1',
+        tier: 'base',
+        profileId: 'profile-1',
+        providerId: 'dashscope-openai',
+        modelId: 'qwen-plus',
+        region: 'cn',
+        endpointId: 'default',
+        credentialId: 'cred-1',
+        fallbackLevel: 'none',
+        reasons: ['test'],
+        promptTemplateId: 'agent-proactive-dm-opening',
+        promptVersion: 1,
+      },
+      promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
     }))
     const service = new ProactiveInteractionService({
       channelRepo: channelRepo as never,
@@ -77,6 +95,8 @@ describe('ProactiveInteractionService', () => {
           },
         })),
       } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
       notificationService: { create: vi.fn(async () => ({ id: 'notif-1' })) } as never,
     })
 
@@ -101,6 +121,24 @@ describe('ProactiveInteractionService', () => {
     const gatewayGenerate = vi.fn(async (_input: Record<string, unknown>) => ({
       content: 'legacy opening',
       usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 },
+      messages: [],
+      latencyMs: 10,
+      platformRetryCount: 0,
+      renderDecision: {
+        voiceLineId: 'qwen-social-v1',
+        tier: 'base',
+        profileId: 'profile-1',
+        providerId: 'dashscope-openai',
+        modelId: 'qwen-plus',
+        region: 'cn',
+        endpointId: 'default',
+        credentialId: 'cred-1',
+        fallbackLevel: 'none',
+        reasons: ['test'],
+        promptTemplateId: 'internal-proactive-dm-opening-legacy',
+        promptVersion: 1,
+      },
+      promptRef: PROMPT_TEMPLATE_REFS.internalProactiveDmOpeningLegacy,
     }))
 
     const service = new ProactiveInteractionService({
@@ -152,6 +190,8 @@ describe('ProactiveInteractionService', () => {
           throw new Error('compose failed')
         }),
       } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
       notificationService: { create: vi.fn(async () => ({ id: 'notif-1' })) } as never,
     })
 

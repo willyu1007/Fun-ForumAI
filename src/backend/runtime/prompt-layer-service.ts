@@ -2,6 +2,7 @@ import type { AgentService } from '../services/agent-service.js'
 import type { TraitEngine } from '../services/trait-engine.js'
 import type { InstructionEngine, InstructionContext } from '../services/instruction-engine.js'
 import type { MemoryService } from '../services/memory-service.js'
+import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { StatsService } from '../services/stats-service.js'
 import type { AgentPersona, PromptLayers, PromptComposeAudit, PromptScene } from './types.js'
 import { config } from '../lib/config.js'
@@ -10,6 +11,7 @@ import {
   buildStyleInstructionText,
   resolveAgentIdentity,
 } from '../identity/agent-identity.js'
+import type { PersonaRuntimeEnvelope, PersonaRuntimeScene } from './persona-runtime-types.js'
 
 const DEFAULT_PERSONA: AgentPersona = {
   name: '匿名智能体',
@@ -37,6 +39,7 @@ export interface ComposePromptLayersInput {
     joined_at?: Date | null
     last_spoke_at?: Date | null
   }
+  precomputedRuntimeEnvelope?: PersonaRuntimeEnvelope | null
 }
 
 export interface PromptLayerServiceDeps {
@@ -45,6 +48,14 @@ export interface PromptLayerServiceDeps {
   instructionEngine?: InstructionEngine | null
   memoryService?: MemoryService | null
   statsService?: StatsService | null
+  personaStateService?: PersonaStateService | null
+}
+
+export interface PromptLayerComposeResult {
+  layers: PromptLayers
+  audit: PromptComposeAudit
+  persona?: AgentPersona
+  runtimeEnvelope?: PersonaRuntimeEnvelope | null
 }
 
 export class PromptLayerService {
@@ -68,16 +79,47 @@ export class PromptLayerService {
   async composeLayersWithAudit(
     input: ComposePromptLayersInput,
     opts?: { suppressAuditLog?: boolean },
-  ): Promise<{ layers: PromptLayers; audit: PromptComposeAudit }> {
+  ): Promise<PromptLayerComposeResult> {
     const layers: PromptLayers = {}
     const lintWarnings: string[] = []
     const agentId = input.agentId
+    let runtimeEnvelope = input.precomputedRuntimeEnvelope ?? null
+    let persona: AgentPersona | undefined
+
+    if (
+      !runtimeEnvelope &&
+      this.deps.personaStateService?.isSceneEnabled(input.scene as PersonaRuntimeScene)
+    ) {
+      try {
+        runtimeEnvelope = await this.deps.personaStateService.prepareRuntimeEnvelope({
+          agentId,
+          scene: input.scene as PersonaRuntimeScene,
+          conversationText: input.conversationText,
+          topicHints: input.topicHints,
+        })
+      } catch (err) {
+        console.warn('[PromptLayerService] persona runtime failed for agent', agentId, err)
+        lintWarnings.push('persona_runtime_failed')
+      }
+    }
+
+    if (runtimeEnvelope) {
+      persona = this.buildRuntimePersona(agentId, runtimeEnvelope)
+      layers.layer1_traits = this.joinSections([
+        '## 人格核心\n' + runtimeEnvelope.projection.coreSummary,
+      ])
+    }
 
     if (this.deps.traitEngine) {
       try {
         const fragments = await this.deps.traitEngine.getTraitPromptFragments(agentId)
         if (fragments) {
-          layers.layer1_traits = fragments
+          layers.layer1_traits = runtimeEnvelope
+            ? this.joinSections([
+                layers.layer1_traits ?? '',
+                '## 已装备特质\n' + fragments,
+              ])
+            : fragments
         }
       } catch (err) {
         console.warn('[PromptLayerService] trait layer failed for agent', agentId, err)
@@ -85,7 +127,7 @@ export class PromptLayerService {
       }
     }
 
-    const styleLayer = this.buildStyleLayer(agentId)
+    const styleLayer = this.buildStyleLayer(agentId, runtimeEnvelope)
     if (styleLayer) {
       layers.layer2_style = styleLayer
     }
@@ -143,16 +185,20 @@ export class PromptLayerService {
     if (!opts?.suppressAuditLog) {
       this.emitAuditLog(agentId, audit)
     }
-    return { layers, audit }
+    return { layers, audit, persona, runtimeEnvelope }
   }
 
-  private buildStyleLayer(agentId: string): string {
+  private buildStyleLayer(agentId: string, runtimeEnvelope: PersonaRuntimeEnvelope | null): string {
     try {
-      const agent = this.deps.agentService.getAgent(agentId)
-      const latestConfig = this.deps.agentService.getLatestConfig(agentId)
       const parts: string[] = []
-      const resolved = resolveAgentIdentity(agent, latestConfig)
-      const baseStyle = buildStyleInstructionText(resolved.contract.ownerStylePins)
+      const baseStyle = runtimeEnvelope
+        ? runtimeEnvelope.projection.visibleStyle
+        : (() => {
+            const agent = this.deps.agentService.getAgent(agentId)
+            const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+            const resolved = resolveAgentIdentity(agent, latestConfig)
+            return buildStyleInstructionText(resolved.contract.ownerStylePins)
+          })()
       if (baseStyle) {
         parts.push(baseStyle)
       }
@@ -179,7 +225,31 @@ export class PromptLayerService {
 
       return parts.join('；')
     } catch {
-      return ''
+      return runtimeEnvelope?.projection.visibleStyle ?? ''
+    }
+  }
+
+  private buildRuntimePersona(
+    agentId: string,
+    runtimeEnvelope: PersonaRuntimeEnvelope,
+  ): AgentPersona {
+    try {
+      const agent = this.deps.agentService.getAgent(agentId)
+      const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+      const resolved = resolveAgentIdentity(agent, latestConfig)
+      return {
+        name: resolved.visiblePersona.name,
+        style: runtimeEnvelope.projection.visibleStyle || resolved.visiblePersona.style,
+        interests: resolved.contract.ownerStylePins.interests?.length
+          ? [...resolved.contract.ownerStylePins.interests]
+          : [...resolved.visiblePersona.interests],
+        language: resolved.visiblePersona.language,
+      }
+    } catch {
+      return {
+        ...DEFAULT_PERSONA,
+        style: runtimeEnvelope.projection.visibleStyle || DEFAULT_PERSONA.style,
+      }
     }
   }
 
@@ -273,6 +343,10 @@ export class PromptLayerService {
     const normalized = text.trim()
     if (!normalized) return 0
     return Math.max(1, Math.ceil(normalized.length / 4))
+  }
+
+  private joinSections(parts: string[]): string {
+    return parts.filter((part) => part.trim().length > 0).join('\n\n')
   }
 
   private buildPrivacyPrompt(level: number): string {

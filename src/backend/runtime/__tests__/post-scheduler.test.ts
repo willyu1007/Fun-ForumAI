@@ -7,7 +7,25 @@ function createDeps(writeImpl: ReturnType<typeof vi.fn>): PostSchedulerDeps {
     llmGateway: {
       generateVisibleText: vi.fn(async () => ({
         content: 'mock llm output',
+        messages: [],
         usage: { prompt_tokens: 10, completion_tokens: 12, total_tokens: 22 },
+        latencyMs: 15,
+        platformRetryCount: 0,
+        renderDecision: {
+          voiceLineId: 'qwen-social-v1',
+          tier: 'base',
+          profileId: 'profile-1',
+          providerId: 'dashscope-openai',
+          modelId: 'qwen-plus',
+          region: 'cn',
+          endpointId: 'default',
+          credentialId: 'cred-1',
+          fallbackLevel: 'none',
+          reasons: ['test'],
+          promptTemplateId: 'agent-create-post',
+          promptVersion: 1,
+        },
+        promptRef: { id: 'agent-create-post', version: 1 },
       })),
     } as unknown as PostSchedulerDeps['llmGateway'],
     forumReadService: {
@@ -51,6 +69,12 @@ function createDeps(writeImpl: ReturnType<typeof vi.fn>): PostSchedulerDeps {
     dataplaneWriter: {
       write: writeImpl,
     } as unknown as PostSchedulerDeps['dataplaneWriter'],
+    eventRepo: {
+      create: vi.fn(() => ({ id: 'evt-1' })),
+    } as unknown as PostSchedulerDeps['eventRepo'],
+    agentRunRepo: {
+      create: vi.fn(),
+    } as unknown as PostSchedulerDeps['agentRunRepo'],
   }
 }
 

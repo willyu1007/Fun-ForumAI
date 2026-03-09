@@ -1,27 +1,54 @@
 import type { LLMGateway } from '../llm/llm-gateway.js'
+import type { AgentRepository, AgentConfigRepository } from '../repos/agent-repository.js'
+import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { AgentInclinationVisionSummary } from '../repos/types.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
+import { resolveAgentIdentity } from '../identity/agent-identity.js'
+import {
+  attachPersonaObservation,
+  buildPersonaObservation,
+  recordPersonaObservation,
+} from '../runtime/persona-observation.js'
 
 export interface BuildVisionSummaryInput {
+  agentId?: string
   mimeType: string
   ownerNote?: string | null
   sourceUrl?: string | null
   uploadBuffer?: Buffer | null
 }
 
+export interface VisionSummaryServiceDeps {
+  llmGateway: LLMGateway
+  agentRepo: AgentRepository
+  agentConfigRepo: AgentConfigRepository
+  eventRepo: EventRepository
+  agentRunRepo: AgentRunRepository
+}
+
 export class VisionSummaryService {
-  constructor(private readonly llmGateway: LLMGateway) {}
+  constructor(private readonly deps: VisionSummaryServiceDeps) {}
 
   async build(input: BuildVisionSummaryInput): Promise<AgentInclinationVisionSummary> {
+    let attempted = false
+    let latencyMs: number | undefined
+    let usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } | undefined
+    let llmProviderId: string | undefined
+    let llmModelId: string | undefined
+    let parseSuccess = false
+    let error: string | undefined
+
     try {
-      if (this.llmGateway.isConfigured) {
+      if (this.deps.llmGateway.isConfigured) {
         const imageUrl = this.resolveImageUrl(input)
         if (imageUrl) {
           const prompt = this.composePrompt(input.ownerNote, input.mimeType)
-          const response = await this.llmGateway.generateHiddenArtifact({
+          attempted = true
+          const startMs = Date.now()
+          const response = await this.deps.llmGateway.generateHiddenArtifact({
             intent: 'vision_summary',
             scene: 'background_hidden',
-            agentId: 'vision-summary',
+            agentId: input.agentId ?? 'vision-summary',
             homeVoiceLineId: 'deepseek-director-v1',
             promptRef: PROMPT_TEMPLATE_REFS.internalVisionSummary,
             variables: {
@@ -51,15 +78,51 @@ export class VisionSummaryService {
             temperature: 0.2,
             maxTokens: 300,
           })
+          latencyMs = Date.now() - startMs
+          usage = response.usage
+          llmProviderId = response.renderDecision.providerId
+          llmModelId = response.renderDecision.modelId
           const parsed = this.tryParse(response.content)
-          if (parsed) return parsed
+          parseSuccess = Boolean(parsed)
+          const summary = parsed ?? this.fallback(input)
+          if (input.agentId) {
+            this.recordVisionRun({
+              agentId: input.agentId,
+              summary,
+              mimeType: input.mimeType,
+              sourceKind: input.sourceUrl ? 'url' : 'upload',
+              usage,
+              latencyMs,
+              parseSuccess,
+              llmProviderId,
+              llmModelId,
+            })
+          }
+          return summary
         }
       }
     } catch (err) {
       console.warn('[VisionSummaryService] vision summary fallback:', err)
+      attempted = true
+      error = err instanceof Error ? err.message : 'vision_summary_failed'
     }
 
-    return this.fallback(input)
+    const summary = this.fallback(input)
+    if (attempted && input.agentId) {
+      this.recordVisionRun({
+        agentId: input.agentId,
+        summary,
+        mimeType: input.mimeType,
+        sourceKind: input.sourceUrl ? 'url' : 'upload',
+        usage,
+        latencyMs,
+        parseSuccess,
+        llmProviderId,
+        llmModelId,
+        error,
+      })
+    }
+    return summary
   }
 
   private resolveImageUrl(input: BuildVisionSummaryInput): string | null {
@@ -103,9 +166,11 @@ export class VisionSummaryService {
 
   private fallback(input: BuildVisionSummaryInput): AgentInclinationVisionSummary {
     const note = input.ownerNote?.trim() || ''
-    const mood = /开心|搞笑|有趣|meme|fun|lol/i.test(note) ? '轻松活跃'
-      : /严肃|批判|风险|担忧|critical|serious/i.test(note) ? '审慎克制'
-      : '中性'
+    const mood = /开心|搞笑|有趣|meme|fun|lol/i.test(note)
+      ? '轻松活跃'
+      : /严肃|批判|风险|担忧|critical|serious/i.test(note)
+        ? '审慎克制'
+        : '中性'
     const scene = input.mimeType === 'image/gif' ? '动图/表情包场景' : '图片讨论场景'
     const theme = note ? note.slice(0, 80) : '围绕视觉素材延展讨论'
 
@@ -126,6 +191,81 @@ export class VisionSummaryService {
       scene,
       mood,
       discussion_points: points,
+    }
+  }
+
+  private recordVisionRun(input: {
+    agentId: string
+    summary: AgentInclinationVisionSummary
+    mimeType: string
+    sourceKind: 'url' | 'upload'
+    usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
+    latencyMs?: number
+    parseSuccess: boolean
+    llmProviderId?: string
+    llmModelId?: string
+    error?: string
+  }): void {
+    const agent = this.deps.agentRepo.findById(input.agentId)
+    if (!agent) {
+      return
+    }
+
+    const latestConfig = this.deps.agentConfigRepo.findLatest(input.agentId)
+    const resolved = resolveAgentIdentity(agent, latestConfig)
+    const observation = buildPersonaObservation({
+      sourceCallsiteId: 'vision-summary',
+      scene: 'background_hidden',
+      intent: 'vision_summary',
+      visibility: 'hidden',
+      coverageStatus: 'hidden_partial',
+      personaSeedCode: resolved.summary.persona_seed_code,
+      homeVoiceLineId: resolved.summary.home_voice_line_id,
+      routingVoiceLineId: 'deepseek-director-v1',
+      promptRef: { id: 'internal-vision-summary', version: 1 },
+      requestedTier: 'base',
+      resolvedTier: 'base',
+      usage: input.usage,
+      latencyMs: input.latencyMs,
+      parseSuccess: input.parseSuccess,
+      llmProviderId: input.llmProviderId,
+      llmModelId: input.llmModelId,
+      error: input.error ?? null,
+    })
+
+    try {
+      const event = this.deps.eventRepo.create({
+        event_type: 'VISION_SUMMARY_GENERATED',
+        plane: 'RUNTIME',
+        actor_type: 'agent',
+        actor_id: input.agentId,
+        correlation_id: `vision-summary:${input.agentId}:${Date.now()}`,
+        payload_json: {
+          agent_id: input.agentId,
+          mime_type: input.mimeType,
+          source_kind: input.sourceKind,
+        },
+      })
+
+      this.deps.agentRunRepo.create({
+        agent_id: input.agentId,
+        trigger_event_id: event.id,
+        input_digest: `vision_summary|mime:${input.mimeType}|source:${input.sourceKind}`,
+        output_json: attachPersonaObservation(
+          {
+            mime_type: input.mimeType,
+            source_kind: input.sourceKind,
+            theme: input.summary.theme,
+            discussion_points_count: input.summary.discussion_points.length,
+          },
+          observation,
+        ),
+        token_cost: input.usage?.total_tokens ?? 0,
+        latency_ms: input.latencyMs ?? 0,
+      })
+      recordPersonaObservation(observation)
+    } catch (err) {
+      console.error('[VisionSummaryService] AgentRun record failed:', err)
     }
   }
 }

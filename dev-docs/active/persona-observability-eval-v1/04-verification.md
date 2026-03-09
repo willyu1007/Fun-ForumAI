@@ -1,11 +1,25 @@
 # 04 Verification — T-066
 
+- Planning-only task bundle initialized.
+- No implementation verification run yet; downstream execution task must populate log schema review and rollout gate validation evidence.
 - 2026-03-08 review pass: 对照设计稿第 18/20/21 章与当前 telemetry 能力，补齐 nurture perceptibility、provider success metrics 与 pre/post private-chat public behavior eval slice 的规划要求。
-- 2026-03-08 governance lint: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
-  - Result: pass
-- 2026-03-09 `pnpm exec vitest run src/backend/runtime/__tests__/persona-observability.test.ts src/backend/services/__tests__/public-observation-real-smoke.test.ts src/backend/routes/__tests__/e2e-control-plane.test.ts`
-  - Result: pass
-- 2026-03-09 `pnpm exec tsc -p tsconfig.json --noEmit`
-  - Result: pass
-- 2026-03-09 `GET /v1/admin/runtime/features` e2e assertions
-  - Result: pass (`observability.render_log.required_fields`, `evaluation.blind_review_rubric`, `rollout_gates`, `render_log_preview` 均已暴露)
+- 2026-03-08 governance lint: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main` passed; only unrelated pre-existing warnings remained on older active-done tasks.
+- 2026-03-09 implementation stage: source contracts, runtime hooks, API read surfaces, and offline eval script landed.
+- 2026-03-09 verification:
+  - `pnpm install` passed.
+  - `pnpm exec tsc -p tsconfig.node.json --pretty false` still reports unrelated pre-existing failures in `src/backend/services/__tests__/stats-service.test.ts` because `SaveAgentStatsInput.granted_points_total` was already missing in those tests.
+  - `pnpm exec tsc -b --pretty false` still reports unrelated pre-existing failures in:
+    - `src/frontend/features/agents/components/__tests__/StatsPanel.test.tsx`
+    - `src/frontend/features/agents/pages/AgentManagePage.tsx`
+    - `src/backend/services/__tests__/stats-service.test.ts`
+  - `pnpm test -- src/backend/runtime/__tests__/persona-observation.test.ts src/backend/runtime/__tests__/post-scheduler.test.ts src/backend/services/__tests__/private-channel-service.test.ts src/backend/services/__tests__/proactive-interaction-service.test.ts src/backend/services/__tests__/public-observation-digest-service.test.ts src/backend/services/__tests__/memory-service.nurture.test.ts src/backend/routes/__tests__/e2e-control-plane.test.ts` passed (`7` files, `63` tests).
+  - `node scripts/t066-persona-eval.mjs --take 50` passed and wrote artifacts under `.ai/.tmp/persona-eval/persona-eval-2026-03-08T23-07-45-660Z-62e1a1/`.
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main` passed.
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main` passed; only unrelated legacy warnings remain on older done tasks.
+- 2026-03-09 review-fix verification:
+  - `pnpm exec tsc -b --pretty false` passed with zero diagnostics.
+  - `pnpm test -- src/backend/runtime/__tests__/data-plane-writer.nurture.test.ts src/backend/runtime/__tests__/persona-observation.test.ts src/backend/runtime/__tests__/post-scheduler.test.ts src/backend/routes/__tests__/e2e-control-plane.test.ts src/backend/services/__tests__/private-channel-service.test.ts src/backend/services/__tests__/proactive-interaction-service.test.ts src/backend/services/__tests__/stats-service.test.ts src/frontend/features/agents/components/__tests__/StatsPanel.test.tsx` passed (`8` files, `65` tests).
+  - `node scripts/t066-persona-eval.mjs --take 50` passed and wrote artifacts under `.ai/.tmp/persona-eval/persona-eval-ad87109bfff0/`.
+  - 当前本地数据中 `observed_runs_total=0`、`gate_status=not_run`，符合“无 migrated visible 样本时不判绿”的预期。
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main` passed.
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main` passed; only older active-done task bundles still emit legacy warnings.

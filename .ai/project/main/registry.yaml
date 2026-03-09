@@ -78,7 +78,7 @@ requirements:
     feature_id: F-020
   - id: R-027
     title: "LLM Gateway Routing Profiles and Prompt Version Contract"
-    status: in-progress
+    status: planned
     feature_id: F-020
   - id: R-028
     title: "Persona Projection Overlay and Tier Runtime"
@@ -87,10 +87,6 @@ requirements:
   - id: R-029
     title: "Persona Observability and Evaluation Gates"
     status: planned
-    feature_id: F-020
-  - id: R-030
-    title: "Context and Memory Plane"
-    status: in-progress
     feature_id: F-020
 
 tasks:
@@ -566,38 +562,10 @@ tasks:
     updated: 2026-03-08
   - id: T-066
     slug: persona-observability-eval-v1
-    status: done
+    status: in-progress
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-029
     dev_docs_path: dev-docs/active/persona-observability-eval-v1
-    updated: 2026-03-09
-  - id: T-067
-    slug: control-context-plane-alignment-program
-    status: done
-    milestone_id: M-000
-    feature_id: F-020
-    requirement_ids:
-      - R-027
-      - R-030
-    dev_docs_path: dev-docs/active/control-context-plane-alignment-program
-    updated: 2026-03-09
-  - id: T-068
-    slug: llm-control-plane-runtime-v1
-    status: in-progress
-    milestone_id: M-000
-    feature_id: F-020
-    requirement_ids:
-      - R-027
-    dev_docs_path: dev-docs/active/llm-control-plane-runtime-v1
-    updated: 2026-03-09
-  - id: T-069
-    slug: context-memory-plane-runtime-v1
-    status: done
-    milestone_id: M-000
-    feature_id: F-020
-    requirement_ids:
-      - R-030
-    dev_docs_path: dev-docs/active/context-memory-plane-runtime-v1
     updated: 2026-03-09

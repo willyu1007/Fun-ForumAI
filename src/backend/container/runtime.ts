@@ -18,9 +18,11 @@ import type { AgentService } from '../services/agent-service.js'
 import type { ChatService } from '../services/chat-service.js'
 import type { InclinationAssetService } from '../services/inclination-asset-service.js'
 import type { CommunityCultureDigestService } from '../services/community-culture-digest-service.js'
+import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { XpService } from '../services/xp-service.js'
 import type { NurtureOrchestrator } from '../services/nurture-orchestrator.js'
 import type { AgentRunRepository } from '../repos/event-repository.js'
+import type { EventRepository } from '../repos/event-repository.js'
 import type { PostRepository } from '../repos/post-repository.js'
 import type { CommentRepository } from '../repos/comment-repository.js'
 import { config } from '../lib/config.js'
@@ -33,6 +35,7 @@ export function createRuntime(deps: {
   chatService: ChatService
   inclinationAssetService: InclinationAssetService
   communityCultureDigestService: CommunityCultureDigestService | null
+  personaStateService: PersonaStateService
   promptLayerService: PromptLayerService | null
   promptOrchestrator: PromptOrchestrator | null
   traitEngine: import('../services/trait-engine.js').TraitEngine | null
@@ -40,6 +43,7 @@ export function createRuntime(deps: {
   memoryService: import('../services/memory-service.js').MemoryService | null
   xpService: XpService | null
   nurtureOrchestrator: NurtureOrchestrator | null
+  eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
   postRepo: PostRepository
   commentRepo: CommentRepository
@@ -78,10 +82,12 @@ export function createRuntime(deps: {
 
   const agentExecutor = new AgentExecutor({
     llmGateway: deps.llmGateway,
-    agentService: deps.agentService,
     contextBuilder,
     responseParser,
     dataplaneWriter,
+    agentRunRepo: deps.agentRunRepo,
+    agentService: deps.agentService,
+    personaStateService: deps.personaStateService,
   })
 
   const postScheduler = new PostScheduler(
@@ -91,8 +97,11 @@ export function createRuntime(deps: {
       agentService: deps.agentService,
       responseParser,
       dataplaneWriter,
+      eventRepo: deps.eventRepo,
+      agentRunRepo: deps.agentRunRepo,
       inclinationAssetService: deps.inclinationAssetService,
       promptOrchestrator: deps.promptOrchestrator,
+      personaStateService: deps.personaStateService,
     },
     {
       postIntervalMs: config.runtime.postIntervalMs,

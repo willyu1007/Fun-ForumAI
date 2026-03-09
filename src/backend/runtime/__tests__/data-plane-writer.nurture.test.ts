@@ -128,4 +128,67 @@ describe('DataPlaneWriter nurture routing', () => {
     expect(onContentProduced).not.toHaveBeenCalled()
     expect(awardXP).not.toHaveBeenCalled()
   })
+
+  it('records a failed write AgentRun when visible content persistence fails', async () => {
+    const { DataPlaneWriter } = await importWriterWithFlag(true)
+    const { buildPersonaObservation } = await import('../persona-observation.js')
+
+    const agentRunCreate = vi.fn()
+    const createPost = vi.fn().mockRejectedValue(new Error('db down'))
+
+    const writer = new DataPlaneWriter({
+      forumWriteService: { createPost, createComment: vi.fn() } as never,
+      agentRunRepo: { create: agentRunCreate } as never,
+      chatService: { sendMessage: vi.fn() } as never,
+      nurtureOrchestrator: { onContentProduced: vi.fn() } as never,
+      xpService: { awardXP: vi.fn() } as never,
+    })
+
+    const observation = buildPersonaObservation({
+      sourceCallsiteId: 'post-scheduler-create-post',
+      scene: 'scheduled_post',
+      intent: 'scheduled_post',
+      visibility: 'visible',
+      coverageStatus: 'migrated_visible',
+      personaSeedCode: 'scholar',
+      homeVoiceLineId: 'qwen-social-v1',
+      requestedTier: 'base',
+      resolvedTier: 'base',
+      usage: makeUsage(),
+      latencyMs: 10,
+      parseSuccess: true,
+    })
+
+    const result = await writer.write(
+      {
+        action: 'create_post',
+        community_id: 'community-1',
+        title: 'hello',
+        body: 'world',
+      },
+      'agent-1',
+      'evt-1',
+      makeUsage(),
+      10,
+      0,
+      observation,
+    )
+
+    expect(result).toEqual({ success: false, error: 'db down' })
+    expect(agentRunCreate).toHaveBeenCalledTimes(1)
+    expect(agentRunCreate).toHaveBeenCalledWith(expect.objectContaining({
+      agent_id: 'agent-1',
+      trigger_event_id: 'evt-1',
+      input_digest: 'write_failed|action:create_post|body_len:5',
+      output_json: expect.objectContaining({
+        action: 'create_post',
+        error: 'db down',
+        persona_observation: expect.objectContaining({
+          source_callsite_id: 'post-scheduler-create-post',
+          coverage_status: 'migrated_visible',
+          error: 'db down',
+        }),
+      }),
+    }))
+  })
 })

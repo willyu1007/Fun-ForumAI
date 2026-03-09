@@ -1,5 +1,6 @@
 import type { AllocationResult, EventPayload, SelectedAgent } from '../allocator/types.js'
 import type { LlmTokenUsage } from '../llm/types.js'
+import type { PersonaRuntimeEnvelope } from './persona-runtime-types.js'
 
 export type PromptScene =
   | 'forum_post'
@@ -97,6 +98,9 @@ export interface ExecutionContext {
     }>
   }
   layers?: PromptLayers
+  promptScene?: PromptScene
+  runtimeEnvelope?: PersonaRuntimeEnvelope | null
+  prompt_audit?: PromptComposeAudit
 }
 
 export interface WriteInstruction {

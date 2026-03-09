@@ -1,20 +1,35 @@
 import type { PromptEngine } from '../llm/prompt-engine.js'
 import type { LLMGateway } from '../llm/llm-gateway.js'
+import type { RenderDecision } from '../llm/gateway-contract.js'
 import type { AgentService } from './agent-service.js'
 import type { NotificationService } from './notification-service.js'
 import type { PrivateChannelRepository } from '../repos/private-channel-repository.js'
+import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
+import type { RenderTierDecisionResult } from '../runtime/persona-runtime-types.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
+import type { PersonaStateService } from './persona-state-service.js'
+import type { PromptComposeAudit } from '../runtime/types.js'
+import type { LlmTokenUsage } from '../llm/types.js'
+import {
+  attachPersonaObservation,
+  buildPersonaObservation,
+  type PersonaObservationV1,
+  recordPersonaObservation,
+} from '../runtime/persona-observation.js'
 
 const MAX_PROACTIVE_PER_DAY = 2
-const PROACTIVE_COOLDOWN_MS = 4 * 60 * 60 * 1000 // 4 hours between proactive sessions
+const PROACTIVE_COOLDOWN_MS = 4 * 60 * 60 * 1000
 
 export interface ProactiveInteractionDeps {
   channelRepo: PrivateChannelRepository
   agentService: AgentService
   llmGateway: LLMGateway
   promptOrchestrator?: PromptOrchestrator | null
+  personaStateService?: PersonaStateService | null
+  eventRepo: EventRepository
+  agentRunRepo: AgentRunRepository
   notificationService: NotificationService
 }
 
@@ -42,7 +57,6 @@ export class ProactiveInteractionService {
 
     const voterAgent = this.deps.agentService.getAgent(vote.voter_agent_id)
     const voterName = voterAgent?.display_name ?? '一位智能体'
-
     const targetLabel = vote.target_type === 'POST' ? '帖子' : vote.target_type === 'COMMENT' ? '评论' : '消息'
 
     const openingMessage = await this.generateOpeningMessage(agentId, {
@@ -61,8 +75,27 @@ export class ProactiveInteractionService {
     await this.deps.channelRepo.createMessage({
       session_id: session.id,
       author_type: 'AGENT',
-      content: openingMessage,
+      content: openingMessage.content,
     })
+
+    this.recordOpeningRun({
+      agentId,
+      sessionId: session.id,
+      triggerType: 'vote_received',
+      triggerRef: vote.target_id,
+      openingMessage,
+    })
+
+    if (openingMessage.renderDecision && this.deps.personaStateService) {
+      await this.deps.personaStateService.recordVisibleRender({
+        agentId,
+        scene: 'proactive_dm',
+        renderDecision: openingMessage.renderDecision,
+        outputText: openingMessage.content,
+      }).catch((err) => {
+        console.error('[ProactiveInteraction] persona runtime render record failed:', err)
+      })
+    }
 
     await this.deps.notificationService.create({
       userId: agent.owner_id,
@@ -112,8 +145,27 @@ export class ProactiveInteractionService {
     await this.deps.channelRepo.createMessage({
       session_id: session.id,
       author_type: 'AGENT',
-      content: openingMessage,
+      content: openingMessage.content,
     })
+
+    this.recordOpeningRun({
+      agentId,
+      sessionId: session.id,
+      triggerType: 'opinion_challenged',
+      triggerRef: challenge.comment_id ?? challenge.post_id,
+      openingMessage,
+    })
+
+    if (openingMessage.renderDecision && this.deps.personaStateService) {
+      await this.deps.personaStateService.recordVisibleRender({
+        agentId,
+        scene: 'proactive_dm',
+        renderDecision: openingMessage.renderDecision,
+        outputText: openingMessage.content,
+      }).catch((err) => {
+        console.error('[ProactiveInteraction] persona runtime render record failed:', err)
+      })
+    }
 
     await this.deps.notificationService.create({
       userId: agent.owner_id,
@@ -145,7 +197,6 @@ export class ProactiveInteractionService {
     const agent = this.deps.agentService.getAgent(agentId)
     if (!agent) return false
 
-    // Check daily limit
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
 
@@ -154,20 +205,15 @@ export class ProactiveInteractionService {
       initiator: 'AGENT',
     })
 
-    const todayCount = todaySessions.items.filter(
-      (s) => s.started_at >= todayStart,
-    ).length
-
+    const todayCount = todaySessions.items.filter((session) => session.started_at >= todayStart).length
     if (todayCount >= MAX_PROACTIVE_PER_DAY) return false
 
-    // Check if owner responded to last proactive session
     const lastProactive = todaySessions.items[0]
     if (lastProactive && lastProactive.started_at >= todayStart) {
       const messages = await this.deps.channelRepo.listMessages(lastProactive.id, { limit: 10 })
-      const hasOwnerReply = messages.items.some((m) => m.author_type === 'HUMAN')
+      const hasOwnerReply = messages.items.some((message) => message.author_type === 'HUMAN')
       if (!hasOwnerReply) return false
 
-      // Cooldown check
       const elapsed = Date.now() - lastProactive.started_at.getTime()
       if (elapsed < PROACTIVE_COOLDOWN_MS) return false
     }
@@ -178,16 +224,25 @@ export class ProactiveInteractionService {
   private async generateOpeningMessage(
     agentId: string,
     trigger: { trigger: string; context: string },
-  ): Promise<string> {
+  ): Promise<{
+    content: string
+    renderDecision: RenderTierDecisionResult | null
+    usage: LlmTokenUsage
+    latencyMs: number
+    promptAudit: PromptComposeAudit | null
+    sourceCallsiteId: 'proactive-orchestrated-opening' | 'proactive-legacy-opening'
+    gatewayRenderDecision: RenderDecision
+    llmProviderId?: string
+    llmModelId?: string
+  }> {
     const agent = this.deps.agentService.getAgent(agentId)
     const latestConfig = this.deps.agentService.getLatestConfig(agentId)
     const identity = resolveAgentIdentity(agent, latestConfig)
     const personaName = identity.visiblePersona.name
     const personaStyle = identity.visiblePersona.style
-
     const homeVoiceLineId = identity.summary.home_voice_line_id
 
-    if (this.deps.promptOrchestrator?.isSceneEnabled('proactive_dm')) {
+    if (this.deps.promptOrchestrator) {
       try {
         const composed = await this.deps.promptOrchestrator.compose({
           agentId,
@@ -216,6 +271,7 @@ export class ProactiveInteractionService {
           layer_privacy: composed.layers.layer6_privacy ?? '',
         }
 
+        const startMs = Date.now()
         const response = await this.deps.llmGateway.generateVisibleText({
           intent: 'proactive_opening',
           scene: 'proactive_dm',
@@ -230,12 +286,23 @@ export class ProactiveInteractionService {
           allowCrossFamily: false,
           temperature: 0.8,
         })
-        return response.content
+        return {
+          content: response.content,
+          usage: response.usage,
+          latencyMs: Date.now() - startMs,
+          promptAudit: composed.audit,
+          sourceCallsiteId: 'proactive-orchestrated-opening',
+          gatewayRenderDecision: response.renderDecision,
+          llmProviderId: response.renderDecision.providerId,
+          llmModelId: response.renderDecision.modelId,
+          renderDecision: composed.runtimeEnvelope?.renderTierDecision ?? null,
+        }
       } catch (err) {
         console.warn('[ProactiveInteraction] PromptOrchestrator compose failed, fallback to legacy path:', err)
       }
     }
 
+    const startMs = Date.now()
     const response = await this.deps.llmGateway.generateVisibleText({
       intent: 'proactive_opening',
       scene: 'proactive_dm',
@@ -256,6 +323,110 @@ export class ProactiveInteractionService {
       temperature: 0.8,
     })
 
-    return response.content
+    return {
+      content: response.content,
+      renderDecision: null,
+      usage: response.usage,
+      latencyMs: Date.now() - startMs,
+      promptAudit: null,
+      sourceCallsiteId: 'proactive-legacy-opening',
+      gatewayRenderDecision: response.renderDecision,
+      llmProviderId: response.renderDecision.providerId,
+      llmModelId: response.renderDecision.modelId,
+    }
+  }
+
+  private recordOpeningRun(input: {
+    agentId: string
+    sessionId: string
+    triggerType: string
+    triggerRef: string
+    openingMessage: {
+      content: string
+      renderDecision: RenderTierDecisionResult | null
+      usage: LlmTokenUsage
+      latencyMs: number
+      promptAudit: PromptComposeAudit | null
+      sourceCallsiteId: 'proactive-orchestrated-opening' | 'proactive-legacy-opening'
+      gatewayRenderDecision: RenderDecision
+      llmProviderId?: string
+      llmModelId?: string
+    }
+  }): void {
+    const identity = this.resolveObservationIdentity(input.agentId)
+    const observation: PersonaObservationV1 = buildPersonaObservation({
+      sourceCallsiteId: input.openingMessage.sourceCallsiteId,
+      scene: 'proactive_dm',
+      intent: 'proactive_opening',
+      visibility: 'visible',
+      coverageStatus: 'migrated_visible',
+      personaSeedCode: identity?.persona_seed_code,
+      homeVoiceLineId: identity?.home_voice_line_id,
+      promptRef: input.openingMessage.sourceCallsiteId === 'proactive-orchestrated-opening'
+        ? PROMPT_TEMPLATE_REFS.agentProactiveDmOpening
+        : { id: 'internal-proactive-dm-opening-legacy', version: 1 },
+      requestedTier: 'base',
+      resolvedTier: 'base',
+      renderDecision: input.openingMessage.gatewayRenderDecision,
+      usage: input.openingMessage.usage,
+      latencyMs: input.openingMessage.latencyMs,
+      parseSuccess: true,
+      promptAudit: input.openingMessage.promptAudit,
+      llmProviderId: input.openingMessage.llmProviderId,
+      llmModelId: input.openingMessage.llmModelId,
+    })
+
+    try {
+      const event = this.deps.eventRepo.create({
+        event_type: 'PROACTIVE_DM_OPENING_GENERATED',
+        plane: 'RUNTIME',
+        actor_type: 'agent',
+        actor_id: input.agentId,
+        correlation_id: `private-session:${input.sessionId}`,
+        payload_json: {
+          agent_id: input.agentId,
+          session_id: input.sessionId,
+          trigger_type: input.triggerType,
+          trigger_ref: input.triggerRef,
+        },
+      })
+
+      this.deps.agentRunRepo.create({
+        agent_id: input.agentId,
+        trigger_event_id: event.id,
+        input_digest: `proactive_dm|session:${input.sessionId}|trigger:${input.triggerType}`,
+        output_json: attachPersonaObservation(
+          {
+            session_id: input.sessionId,
+            trigger_type: input.triggerType,
+            trigger_ref: input.triggerRef,
+            reply_len: input.openingMessage.content.length,
+          },
+          observation,
+        ),
+        token_cost: input.openingMessage.usage.total_tokens,
+        latency_ms: input.openingMessage.latencyMs,
+      })
+      recordPersonaObservation(observation)
+    } catch (err) {
+      console.error('[ProactiveInteraction] AgentRun record failed:', err)
+    }
+  }
+
+  private resolveObservationIdentity(agentId: string): {
+    persona_seed_code: import('../../shared/agent-persona-catalog.js').PersonaSeedCode
+    home_voice_line_id: import('../../shared/agent-persona-catalog.js').VoiceLineId
+  } | null {
+    try {
+      const agent = this.deps.agentService.getAgent(agentId)
+      const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+      const resolved = resolveAgentIdentity(agent, latestConfig)
+      return {
+        persona_seed_code: resolved.summary.persona_seed_code,
+        home_voice_line_id: resolved.summary.home_voice_line_id,
+      }
+    } catch {
+      return null
+    }
   }
 }

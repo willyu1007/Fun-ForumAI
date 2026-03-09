@@ -4,12 +4,13 @@ import { TraitEngine } from '../services/trait-engine.js'
 import { CreditService } from '../services/credit-service.js'
 import { InstructionEngine } from '../services/instruction-engine.js'
 import type { PrismaClient } from '@prisma/client'
-import { agentService, xpService } from '../container.js'
+import { agentService, personaStateService, xpService } from '../container.js'
 import { requireHumanAuth } from '../middleware/human-auth.js'
 import { ForbiddenError } from '../lib/errors.js'
 import {
   applyStyleSettingsPatch,
   readStyleSettings,
+  resolveAgentIdentity,
   type OwnerStylePins,
 } from '../identity/agent-identity.js'
 
@@ -101,6 +102,11 @@ agentNurtureRouter.post('/agents/:agentId/traits/:traitCode/equip', requireHuman
     res.status(400).json({ error: { code: 'EQUIP_FAILED', message: result.error } })
     return
   }
+  if (personaStateService) {
+    await personaStateService.recordTraitMutation(agentId, traitCode, 'equip').catch((err) => {
+      console.error('[AgentGrowthApi] trait equip writeback failed:', err)
+    })
+  }
   res.json({ data: { message: 'equipped' } })
 })
 
@@ -112,6 +118,11 @@ agentNurtureRouter.post('/agents/:agentId/traits/:traitCode/unequip', requireHum
   if (!result.success) {
     res.status(400).json({ error: { code: 'UNEQUIP_FAILED', message: result.error } })
     return
+  }
+  if (personaStateService) {
+    await personaStateService.recordTraitMutation(agentId, traitCode, 'unequip').catch((err) => {
+      console.error('[AgentGrowthApi] trait unequip writeback failed:', err)
+    })
   }
   res.json({ data: { message: 'unequipped' } })
 })
@@ -172,6 +183,17 @@ agentNurtureRouter.post('/agents/:agentId/instructions', requireHumanAuth, async
     res.status(400).json({ error: { code: 'CREATE_FAILED', message: result.error } })
     return
   }
+  if (personaStateService) {
+    await personaStateService.recordInstructionMutation({
+      agentId,
+      action: 'create',
+      body: req.body.body,
+      instructionId: result.id,
+      triggerType: req.body.trigger_type,
+    }).catch((err) => {
+      console.error('[AgentGrowthApi] instruction create writeback failed:', err)
+    })
+  }
   res.status(201).json({ data: { id: result.id } })
 })
 
@@ -190,6 +212,17 @@ agentNurtureRouter.patch('/agents/:agentId/instructions/:instructionId', require
     res.status(400).json({ error: { code: 'UPDATE_FAILED', message: result.error } })
     return
   }
+  if (personaStateService) {
+    await personaStateService.recordInstructionMutation({
+      agentId,
+      action: 'update',
+      body: req.body.body,
+      instructionId,
+      triggerType: req.body.trigger_type,
+    }).catch((err) => {
+      console.error('[AgentGrowthApi] instruction update writeback failed:', err)
+    })
+  }
   res.json({ data: { message: 'updated' } })
 })
 
@@ -197,7 +230,20 @@ agentNurtureRouter.delete('/agents/:agentId/instructions/:instructionId', requir
   const agentId = asParam(req.params.agentId)
   assertOwner(agentId, req.user!.userId)
   const instructionId = asParam(req.params.instructionId)
+  const existingInstruction = (await singletons().instructions.getInstructions(agentId))
+    .find((item) => item.id === instructionId)
   await singletons().instructions.deleteInstruction(instructionId)
+  if (existingInstruction && personaStateService) {
+    await personaStateService.recordInstructionMutation({
+      agentId,
+      action: 'delete',
+      body: existingInstruction.body,
+      instructionId,
+      triggerType: existingInstruction.triggerType,
+    }).catch((err) => {
+      console.error('[AgentGrowthApi] instruction delete writeback failed:', err)
+    })
+  }
   res.json({ data: { message: 'deleted' } })
 })
 
@@ -205,7 +251,20 @@ agentNurtureRouter.post('/agents/:agentId/instructions/:instructionId/toggle', r
   const agentId = asParam(req.params.agentId)
   assertOwner(agentId, req.user!.userId)
   const instructionId = asParam(req.params.instructionId)
+  const existingInstruction = (await singletons().instructions.getInstructions(agentId))
+    .find((item) => item.id === instructionId)
   const enabled = await singletons().instructions.toggleInstruction(instructionId)
+  if (existingInstruction && personaStateService) {
+    await personaStateService.recordInstructionMutation({
+      agentId,
+      action: enabled ? 'toggle_on' : 'toggle_off',
+      body: existingInstruction.body,
+      instructionId,
+      triggerType: existingInstruction.triggerType,
+    }).catch((err) => {
+      console.error('[AgentGrowthApi] instruction toggle writeback failed:', err)
+    })
+  }
   res.json({ data: { enabled } })
 })
 
@@ -226,8 +285,21 @@ agentNurtureRouter.patch('/agents/:agentId/style', requireHumanAuth, async (req,
   const agentId = asParam(req.params.agentId)
   assertOwner(agentId, req.user!.userId)
   const existing = agentService.getLatestConfig(agentId)?.config_json ?? {}
+  const beforeIdentity = resolveAgentIdentity(agentService.getAgent(agentId), agentService.getLatestConfig(agentId))
   const nextConfig = applyStyleSettingsPatch(existing, req.body as Partial<OwnerStylePins>)
   const saved = await agentService.updateConfig(agentId, nextConfig, req.user!.userId)
+  const afterIdentity = resolveAgentIdentity(agentService.getAgent(agentId), saved)
+
+  if (personaStateService) {
+    await personaStateService.recordOwnerStylePinChange(
+      agentId,
+      beforeIdentity.contract.ownerStylePins,
+      afterIdentity.contract.ownerStylePins,
+      'api:style_patch',
+    ).catch((err) => {
+      console.error('[AgentGrowthApi] owner style pin writeback failed:', err)
+    })
+  }
 
   res.json({
     data: {

@@ -6,12 +6,23 @@ import type { ChatService } from './chat-service.js'
 import type { LLMGateway } from '../llm/llm-gateway.js'
 import type { PromptLayerService } from '../runtime/prompt-layer-service.js'
 import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
+import type { RenderTierDecisionResult } from '../runtime/persona-runtime-types.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import type { SseHub } from '../sse/hub.js'
 import type { ChatMessageKind } from '../repos/types.js'
 import type { LeaderElector } from '../runtime/leader-elector.js'
+import type { PersonaStateService } from './persona-state-service.js'
+import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
+import type { LlmTokenUsage } from '../llm/types.js'
+import type { PromptComposeAudit } from '../runtime/types.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
+import type { PersonaObservationV1 } from '../runtime/persona-observation.js'
+import {
+  attachPersonaObservation,
+  buildPersonaObservation,
+  recordPersonaObservation,
+} from '../runtime/persona-observation.js'
 
 const MAX_MSG_PER_AGENT_PER_ROOM_HOUR = 6
 const MAX_MSG_PER_AGENT_GLOBAL_HOUR = 15
@@ -34,8 +45,11 @@ export interface ConversationClockDeps {
   chatService: ChatService
   llmGateway: LLMGateway
   sseHub: SseHub
+  eventRepo: EventRepository
+  agentRunRepo: AgentRunRepository
   promptLayerService?: PromptLayerService | null
   promptOrchestrator?: PromptOrchestrator | null
+  personaStateService?: PersonaStateService | null
   leaderElector?: LeaderElector
 }
 
@@ -198,7 +212,16 @@ export class ConversationClock {
 
           const altResult = await this.generateMessage(roomId, other.member_id)
           if (altResult.kind === 'normal') {
-            await this.postMessage(roomId, other.member_id, altResult.body, 'normal')
+            await this.postMessage(roomId, other.member_id, altResult.body, 'normal', altResult.renderDecision)
+            await this.recordGeneratedMessageRun({
+              roomId,
+              agentId: other.member_id,
+              body: altResult.body,
+              kind: 'normal',
+              usage: altResult.usage,
+              latencyMs: altResult.latency_ms,
+              observation: altResult.observation,
+            })
             found = true
             break
           }
@@ -206,13 +229,31 @@ export class ConversationClock {
         }
 
         if (!found) {
-          await this.postMessage(roomId, agentId, result.body, 'skip_feedback')
+          await this.postMessage(roomId, agentId, result.body, 'skip_feedback', result.renderDecision)
+          await this.recordGeneratedMessageRun({
+            roomId,
+            agentId,
+            body: result.body,
+            kind: 'skip_feedback',
+            usage: result.usage,
+            latencyMs: result.latency_ms,
+            observation: result.observation,
+          })
         }
       } else if (result.kind === 'normal') {
-        await this.postMessage(roomId, agentId, result.body, 'normal')
+        await this.postMessage(roomId, agentId, result.body, 'normal', result.renderDecision)
+        await this.recordGeneratedMessageRun({
+          roomId,
+          agentId,
+          body: result.body,
+          kind: 'normal',
+          usage: result.usage,
+          latencyMs: result.latency_ms,
+          observation: result.observation,
+        })
       } else {
         const ambient = AMBIENT_MESSAGES[Math.floor(Math.random() * AMBIENT_MESSAGES.length)]
-        await this.postMessage(roomId, agentId, ambient, 'ambient')
+        await this.postMessage(roomId, agentId, ambient, 'ambient', result.renderDecision)
       }
     } catch (err) {
       console.error(`[ConversationClock] Generate error for ${agentId}:`, err)
@@ -242,7 +283,14 @@ export class ConversationClock {
   private async generateMessage(
     roomId: string,
     agentId: string,
-  ): Promise<{ kind: 'normal' | 'skip_feedback' | 'empty'; body: string }> {
+  ): Promise<{
+    kind: 'normal' | 'skip_feedback' | 'empty'
+    body: string
+    usage?: LlmTokenUsage
+    latency_ms?: number
+    observation?: PersonaObservationV1
+    renderDecision?: RenderTierDecisionResult | null
+  }> {
     const room = await this.deps.roomRepo.findById(roomId)
     const agent = this.deps.agentRepo.findById(agentId)
     if (!room || !agent) return { kind: 'empty', body: '' }
@@ -260,7 +308,10 @@ export class ConversationClock {
       return { kind: 'normal', body: `[${agent.display_name}] 聊天测试消息` }
     }
 
-    const persona = this.resolvePersona(agentId, agent.display_name)
+    let persona = this.resolvePersona(agentId, agent.display_name)
+    const observationIdentity = this.resolveObservationIdentity(agentId)
+    let promptAudit: PromptComposeAudit | null = null
+    let renderDecision: RenderTierDecisionResult | null = null
     let layers: {
       layer_traits: string
       layer_style: string
@@ -312,6 +363,9 @@ export class ConversationClock {
           layer_memory: composed.layers.layer5_memory ?? '',
           layer_privacy: composed.layers.layer6_privacy ?? '',
         }
+        promptAudit = composed.audit
+        persona = composed.persona
+        renderDecision = composed.runtimeEnvelope?.renderTierDecision ?? null
         orchestratorApplied = true
       } catch {
         // Fall back to prompt layer service or base values.
@@ -326,26 +380,34 @@ export class ConversationClock {
       try {
         const member = await this.deps.roomRepo.getMember(roomId, agentId)
         const topicHints = this.extractTopicHints(room.name, recentMsgs.map((m) => m.body))
-        const composed = await this.deps.promptLayerService.composeLayers({
-          agentId,
-          scene: 'chat_room',
-          conversationText: recentMsgs.map((m) => m.body).join(' '),
-          topicHints,
-          roomMemberState: member
-            ? { joined_at: member.joined_at, last_spoke_at: member.last_spoke_at }
-            : undefined,
-        })
+        const composed = await this.deps.promptLayerService.composeLayersWithAudit(
+          {
+            agentId,
+            scene: 'chat_room',
+            conversationText: recentMsgs.map((m) => m.body).join(' '),
+            topicHints,
+            roomMemberState: member
+              ? { joined_at: member.joined_at, last_spoke_at: member.last_spoke_at }
+              : undefined,
+          },
+          { suppressAuditLog: true },
+        )
         layers = {
-          layer_traits: composed.layer1_traits ?? '',
-          layer_style: composed.layer2_style ?? '',
-          layer_instructions: composed.layer3_instructions ?? '',
-          layer_community: composed.layer_community ?? '',
-          layer_relationship: composed.layer_relationship ?? '',
-          layer_showrunner: composed.layer_showrunner ?? '',
-          layer_overrides: composed.layer4_overrides ?? '',
-          layer_memory: composed.layer5_memory ?? '',
-          layer_privacy: composed.layer6_privacy ?? '',
+          layer_traits: composed.layers.layer1_traits ?? '',
+          layer_style: composed.layers.layer2_style ?? '',
+          layer_instructions: composed.layers.layer3_instructions ?? '',
+          layer_community: composed.layers.layer_community ?? '',
+          layer_relationship: composed.layers.layer_relationship ?? '',
+          layer_showrunner: composed.layers.layer_showrunner ?? '',
+          layer_overrides: composed.layers.layer4_overrides ?? '',
+          layer_memory: composed.layers.layer5_memory ?? '',
+          layer_privacy: composed.layers.layer6_privacy ?? '',
         }
+        promptAudit = composed.audit
+        if (composed.persona) {
+          persona = composed.persona
+        }
+        renderDecision = composed.runtimeEnvelope?.renderTierDecision ?? null
       } catch {
         // Fall back to base values if layer composition fails.
       }
@@ -353,8 +415,14 @@ export class ConversationClock {
 
     const variables: Record<string, string> = {
       persona_name: persona.name,
-      persona_style: config.features.layerStackV2 ? persona.style : '友善而富有洞察力',
-      persona_interests: config.features.layerStackV2 ? persona.interests.join('、') : '多元话题',
+      persona_style:
+        orchestratorApplied || config.features.layerStackV2
+          ? persona.style
+          : '友善而富有洞察力',
+      persona_interests:
+        orchestratorApplied || config.features.layerStackV2
+          ? persona.interests.join('、')
+          : '多元话题',
       persona_language: persona.language,
       room_name: room.name,
       room_description: room.description || '',
@@ -383,16 +451,50 @@ export class ConversationClock {
       allowFallbackWithinLine: false,
       allowCrossFamily: false,
     })
+    const latencyMs = response.latencyMs ?? 0
     const content = response.content.trim()
+    const observation = buildPersonaObservation({
+      sourceCallsiteId: 'conversation-clock-chat-reply',
+      scene: 'chat_room',
+      intent: 'chat_reply',
+      visibility: 'visible',
+      coverageStatus: 'migrated_visible',
+      personaSeedCode: observationIdentity?.persona_seed_code,
+      homeVoiceLineId: observationIdentity?.home_voice_line_id,
+      promptRef: PROMPT_TEMPLATE_REFS.agentChatReply,
+      requestedTier: response.renderDecision.tier,
+      resolvedTier: response.renderDecision.tier,
+      renderDecision: response.renderDecision,
+      usage: response.usage,
+      latencyMs,
+      parseSuccess: true,
+      promptAudit,
+      llmProviderId: response.renderDecision.providerId,
+      llmModelId: response.renderDecision.modelId,
+    })
 
     const skipMatch = content.match(/^\[SKIP(?::(.+?))?\]/)
     if (skipMatch) {
       const feedback = skipMatch[1]?.trim() || ''
-      return { kind: 'skip_feedback', body: feedback }
+      return {
+        kind: 'skip_feedback',
+        body: feedback,
+        usage: response.usage,
+        latency_ms: latencyMs,
+        observation,
+        renderDecision,
+      }
     }
 
-    if (!content) return { kind: 'empty', body: '' }
-    return { kind: 'normal', body: content }
+    if (!content) return { kind: 'empty', body: '', renderDecision }
+    return {
+      kind: 'normal',
+      body: content,
+      usage: response.usage,
+      latency_ms: latencyMs,
+      observation,
+      renderDecision,
+    }
   }
 
   private async postMessage(
@@ -400,6 +502,7 @@ export class ConversationClock {
     agentId: string,
     body: string,
     kind: ChatMessageKind,
+    renderDecision?: RenderTierDecisionResult | null,
   ): Promise<void> {
     try {
       await this.deps.chatService.sendMessage({
@@ -408,6 +511,16 @@ export class ConversationClock {
         body,
         message_kind: kind,
       })
+      if (renderDecision && this.deps.personaStateService) {
+        await this.deps.personaStateService.recordVisibleRender({
+          agentId,
+          scene: 'chat_room',
+          renderDecision,
+          outputText: body,
+        }).catch((err) => {
+          console.error('[ConversationClock] persona runtime render record failed:', err)
+        })
+      }
     } catch (err) {
       console.error(`[ConversationClock] Failed to post message in ${roomId}:`, err)
     }
@@ -449,5 +562,71 @@ export class ConversationClock {
       .split(/[\s,，、；;：:。.!！?？]+/)
       .filter((w) => w.length >= 2)
       .slice(0, 10)
+  }
+
+  private async recordGeneratedMessageRun(input: {
+    roomId: string
+    agentId: string
+    body: string
+    kind: ChatMessageKind
+    usage?: LlmTokenUsage
+    latencyMs?: number
+    observation?: PersonaObservationV1
+  }): Promise<void> {
+    if (!input.observation || !input.usage || typeof input.latencyMs !== 'number') {
+      return
+    }
+
+    try {
+      const event = this.deps.eventRepo.create({
+        event_type: 'CHAT_ROOM_MESSAGE_GENERATED',
+        plane: 'RUNTIME',
+        room_id: input.roomId,
+        actor_type: 'agent',
+        actor_id: input.agentId,
+        correlation_id: `room:${input.roomId}:agent:${input.agentId}`,
+        payload_json: {
+          room_id: input.roomId,
+          author_agent_id: input.agentId,
+          message_kind: input.kind,
+        },
+      })
+
+      this.deps.agentRunRepo.create({
+        agent_id: input.agentId,
+        trigger_event_id: event.id,
+        input_digest: `chat_room|room:${input.roomId}|kind:${input.kind}|len:${input.body.length}`,
+        output_json: attachPersonaObservation(
+          {
+            room_id: input.roomId,
+            body_length: input.body.length,
+            message_kind: input.kind,
+          },
+          input.observation,
+        ),
+        token_cost: input.usage.total_tokens,
+        latency_ms: input.latencyMs,
+      })
+      recordPersonaObservation(input.observation)
+    } catch (err) {
+      console.error('[ConversationClock] AgentRun record failed:', err)
+    }
+  }
+
+  private resolveObservationIdentity(agentId: string): {
+    persona_seed_code: import('../../shared/agent-persona-catalog.js').PersonaSeedCode
+    home_voice_line_id: import('../../shared/agent-persona-catalog.js').VoiceLineId
+  } | null {
+    try {
+      const agent = this.deps.agentService.getAgent(agentId)
+      const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+      const resolved = resolveAgentIdentity(agent, latestConfig)
+      return {
+        persona_seed_code: resolved.summary.persona_seed_code,
+        home_voice_line_id: resolved.summary.home_voice_line_id,
+      }
+    } catch {
+      return null
+    }
   }
 }

@@ -23,6 +23,7 @@ import type { AchievementsOrchestrator } from '../services/achievements-orchestr
 import type { GovernanceAdapter } from '../services/governance-adapter.js'
 import type { CommunityCultureDigestService } from '../services/community-culture-digest-service.js'
 import type { IncubationOrchestrator } from '../services/incubation-orchestrator.js'
+import type { PersonaStateService } from '../services/persona-state-service.js'
 
 export interface NurtureResult {
   traitEngine: import('../services/trait-engine.js').TraitEngine | null
@@ -55,6 +56,7 @@ export async function createNurtureEngines(deps: {
   agentService: AgentService
   chatService: ChatService
   statsService: StatsService
+  personaStateService: PersonaStateService
   conversationClock: ConversationClock
   achievementsOrchestrator: AchievementsOrchestrator
   governanceAdapter: GovernanceAdapter
@@ -70,7 +72,7 @@ export async function createNurtureEngines(deps: {
 }): Promise<NurtureResult> {
   const {
     repos, llmGateway, promptEngine, sseHub,
-    forumReadService, agentService, chatService, statsService,
+    forumReadService, agentService, chatService, statsService, personaStateService,
     conversationClock, achievementsOrchestrator, governanceAdapter,
     communityCultureDigestService, incubationOrchestrator,
   } = deps
@@ -147,6 +149,7 @@ export async function createNurtureEngines(deps: {
       agentRepo: repos.agentRepo,
       xpService: xpEngine,
       traitEngine,
+      personaStateService,
     })
 
     const channelRepo = new PgPrivateChannelRepository(prisma)
@@ -167,6 +170,9 @@ export async function createNurtureEngines(deps: {
       memoryRepo,
       channelRepo,
       llmGateway,
+      agentService,
+      eventRepo: repos.eventRepo,
+      agentRunRepo: repos.agentRunRepo,
       xpService: xpEngine,
       nurtureOrchestrator,
       relationService,
@@ -189,6 +195,13 @@ export async function createNurtureEngines(deps: {
       if (achievementsOrchestrator) {
         await achievementsOrchestrator.processPrivateDigest(input)
       }
+      await personaStateService.recordPrivateDigest({
+        agentId: input.agent_id,
+        sessionId: input.session_id,
+        memoryId: input.memory_id,
+        importanceScore: input.importance_score,
+        sentiment: input.sentiment ?? 'neutral',
+      })
       await incubationOrchestrator.onPrivateDigestCompleted(input)
     })
 
@@ -198,6 +211,9 @@ export async function createNurtureEngines(deps: {
       roomRepo: repos.roomRepo,
       messageRepo: repos.messageRepo,
       memoryService,
+      agentService,
+      eventRepo: repos.eventRepo,
+      agentRunRepo: repos.agentRunRepo,
     })
     publicObservationEventHandler = new PublicObservationEventHandler({
       digestService: publicObservationDigestService,
@@ -207,6 +223,9 @@ export async function createNurtureEngines(deps: {
       channelRepo,
       agentService,
       llmGateway,
+      personaStateService,
+      eventRepo: repos.eventRepo,
+      agentRunRepo: repos.agentRunRepo,
       notificationService,
     })
 
@@ -230,6 +249,7 @@ export async function createNurtureEngines(deps: {
       memoryRepo,
       agentService,
       llmGateway,
+      personaStateService,
       eventRepo: repos.eventRepo,
       agentRunRepo: repos.agentRunRepo,
       budgetService,
@@ -271,8 +291,12 @@ export async function createNurtureEngines(deps: {
       instructionEngine,
       memoryService,
       statsService,
+      personaStateService,
     })
-    const promptOrch = new PromptOrchestrator({ promptLayerService: promptLayerSvc })
+    const promptOrch = new PromptOrchestrator({
+      promptLayerService: promptLayerSvc,
+      personaStateService,
+    })
     conversationClock.setPromptLayerService(promptLayerSvc)
     conversationClock.setPromptOrchestrator(promptOrch)
 
@@ -357,8 +381,12 @@ export async function createNurtureEngines(deps: {
     instructionEngine: null,
     memoryService: null,
     statsService,
+    personaStateService,
   })
-  const promptOrchestrator = new PromptOrchestrator({ promptLayerService })
+  const promptOrchestrator = new PromptOrchestrator({
+    promptLayerService,
+    personaStateService,
+  })
   conversationClock.setPromptLayerService(promptLayerService)
   conversationClock.setPromptOrchestrator(promptOrchestrator)
 

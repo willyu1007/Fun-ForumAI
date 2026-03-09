@@ -62,11 +62,12 @@ export class ContextBuilder {
   }
 
   async enrichWithLayers(ctx: ExecutionContext): Promise<ExecutionContext> {
-    const scene = ctx.chatContext
+    const scene: import('./types.js').PromptScene = ctx.chatContext
       ? 'chat_room'
       : ctx.targetComment
         ? 'forum_comment'
         : 'forum_post'
+    ctx.promptScene = scene
     const conversationText = this.composeConversationText(ctx)
     const topicHints = this.extractTopicHints(ctx)
 
@@ -113,6 +114,8 @@ export class ContextBuilder {
         })
         ctx.persona = composed.persona
         ctx.layers = composed.layers
+        ctx.runtimeEnvelope = composed.runtimeEnvelope ?? null
+        ctx.prompt_audit = composed.audit
         return ctx
       } catch {
         // Fall through to legacy layer path on any failure.
@@ -121,7 +124,7 @@ export class ContextBuilder {
 
     if (config.features.layerStackV2 && this.deps.promptLayerService) {
       try {
-        ctx.layers = await this.deps.promptLayerService.composeLayers({
+        const composed = await this.deps.promptLayerService.composeLayersWithAudit({
           agentId: ctx.agent.agent_id,
           scene,
           conversationText,
@@ -132,7 +135,13 @@ export class ContextBuilder {
             body: c.body,
           })),
           targetCommentId: ctx.targetComment?.id,
-        })
+        }, { suppressAuditLog: true })
+        if (composed.persona) {
+          ctx.persona = composed.persona
+        }
+        ctx.layers = composed.layers
+        ctx.runtimeEnvelope = composed.runtimeEnvelope ?? null
+        ctx.prompt_audit = composed.audit
         return ctx
       } catch {
         // Fall through to legacy layer path on any failure.

@@ -11,13 +11,18 @@ import { LocalStorageAdapter, S3StorageAdapter, type StorageAdapter } from '../s
 import { VisionSummaryService } from '../services/vision-summary-service.js'
 import { config } from '../lib/config.js'
 import type { AgentRepository } from '../repos/agent-repository.js'
+import type { AgentConfigRepository } from '../repos/agent-repository.js'
 import type { InclinationAssetRepository } from '../repos/inclination-asset-repository.js'
 import type { PostMediaRepository } from '../repos/post-media-repository.js'
+import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 
 export function createLlmServices(deps: {
   agentRepo: AgentRepository
+  agentConfigRepo: AgentConfigRepository
   inclinationAssetRepo: InclinationAssetRepository
   postMediaRepo: PostMediaRepository
+  eventRepo: EventRepository
+  agentRunRepo: AgentRunRepository
 }) {
   const registryBundle = loadLlmRegistryBundle()
 
@@ -69,7 +74,13 @@ export function createLlmServices(deps: {
           baseDir: config.inclinationAssets.localDir,
         })
 
-  const visionSummaryService = new VisionSummaryService(llmGateway)
+  const visionSummaryService = new VisionSummaryService({
+    llmGateway,
+    agentRepo: deps.agentRepo,
+    agentConfigRepo: deps.agentConfigRepo,
+    eventRepo: deps.eventRepo,
+    agentRunRepo: deps.agentRunRepo,
+  })
   const inclinationAssetService = new InclinationAssetService({
     agentRepo: deps.agentRepo,
     inclinationRepo: deps.inclinationAssetRepo,

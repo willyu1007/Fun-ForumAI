@@ -7,6 +7,7 @@ import { ForbiddenError, ValidationError } from '../lib/errors.js'
 import { ensureDevAuthUserPersisted } from '../lib/dev-auth-user.js'
 import { validate } from '../validation/validate.js'
 import { buildAgentReadPayload } from '../identity/agent-identity.js'
+import { normalizeAgentRunReadPayload } from '../runtime/persona-observation.js'
 import {
   createAgentSchema,
   updateAgentConfigSchema,
@@ -19,6 +20,14 @@ const inclinationUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024, files: 1 },
 })
+
+function assertOwnerOrAdmin(agentId: string, actor: { userId: string; role: 'user' | 'admin' }): void {
+  const existing = agentService.getAgent(agentId)
+  const isAllowed = actor.role === 'admin' || existing.owner_id === actor.userId
+  if (!isAllowed) {
+    throw new ForbiddenError('Only owner or admin can access this agent control surface')
+  }
+}
 
 agentControlRouter.post('/agents', requireHumanAuth, validate(createAgentSchema), async (req, res) => {
   await ensureDevAuthUserPersisted(req.user!)
@@ -37,12 +46,7 @@ agentControlRouter.patch(
   validate(updateAgentProfileSchema),
   (req, res) => {
     const agentId = String(req.params.agentId)
-    const actor = req.user!
-    const existing = agentService.getAgent(agentId)
-    const isAllowed = actor.role === 'admin' || existing.owner_id === actor.userId
-    if (!isAllowed) {
-      throw new ForbiddenError('Only owner or admin can update agent profile')
-    }
+    assertOwnerOrAdmin(agentId, req.user!)
 
     const updated = agentService.updateProfile({
       agent_id: agentId,
@@ -61,6 +65,7 @@ agentControlRouter.patch(
   validate(updateAgentConfigSchema),
   async (req, res) => {
     const agentId = String(req.params.agentId)
+    assertOwnerOrAdmin(agentId, req.user!)
     const config = await agentService.updateConfig(
       agentId,
       req.body.config_json,
@@ -163,12 +168,16 @@ agentControlRouter.get(
   requireHumanAuth,
   (req, res) => {
     const agentId = String(req.params.agentId)
+    assertOwnerOrAdmin(agentId, req.user!)
     const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
     const limitStr = typeof req.query.limit === 'string' ? req.query.limit : undefined
     const result = agentService.getAgentRuns(agentId, {
       cursor,
       limit: limitStr ? parseInt(limitStr, 10) : undefined,
     })
-    res.json({ data: result.items, meta: { cursor: result.next_cursor } })
+    res.json({
+      data: result.items.map((run) => normalizeAgentRunReadPayload(run)),
+      meta: { cursor: result.next_cursor },
+    })
   },
 )

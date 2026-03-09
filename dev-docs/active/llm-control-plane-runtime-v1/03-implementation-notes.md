@@ -27,3 +27,7 @@
   - `LLM_API_KEY` 在 `env/contract.yaml` 中保留为 deprecated 但改成 optional，并用 `env-contractctl` 重新生成 `env/.env.example`、`docs/env.md`、`docs/context/env/contract.json`。
   - runtime/ops 文案不再提示单一 `LLM_API_KEY`；管理台与 `LlmClient` bootstrap warning 均改为面向 provider credential / per-request credential 的表述。
   - 顺手收口这条 PR 额外引入的 typecheck 回归：`StatsPanel` / `stats-service` 补齐 `granted_points_total`，`AgentManagePage` 的 `personaSeedCode` state 改成 `PersonaSeedCode` 显式收窄。
+- 2026-03-09 在与 `origin/main` 的冲突收口中，保留 control-plane gateway 路径，并吸收 `main` 上的 persona observability / runtime render 记录：
+  - `AgentExecutor`、`PostScheduler`、`ConversationClock`、`PrivateChannelService`、`ProactiveInteractionService`、`PublicObservationDigestService`、`VisionSummaryService` 重新对齐到 `main` 的 observation / agent-run 结构，但所有 LLM 调用继续经 `LLMGateway`。
+  - `MemoryService` 保留 typed context retrieval / digest 逻辑，同时补回 `main` 的 digest hook payload 扩展与 private digest agent-run 记录。
+  - `createLlmServices`、`createNurtureEngines`、runtime/container wiring 与相关测试同步到 `main` 当前依赖签名。

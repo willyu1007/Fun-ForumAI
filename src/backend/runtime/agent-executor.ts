@@ -6,15 +6,24 @@ import type { ResponseParser } from './response-parser.js'
 import type { DataPlaneWriter } from './data-plane-writer.js'
 import type { AllocationResult, EventPayload } from '../allocator/types.js'
 import type { AgentExecutionResult, ExecutionContext } from './types.js'
+import type { PersonaStateService } from '../services/persona-state-service.js'
+import type { AgentRunRepository } from '../repos/event-repository.js'
 import type { AgentService } from '../services/agent-service.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
+import {
+  attachPersonaObservation,
+  buildPersonaObservation,
+  recordPersonaObservation,
+} from './persona-observation.js'
 
 export interface AgentExecutorDeps {
   llmGateway: LLMGateway
-  agentService: AgentService
   contextBuilder: ContextBuilder
   responseParser: ResponseParser
   dataplaneWriter: DataPlaneWriter
+  agentRunRepo: AgentRunRepository
+  agentService: AgentService
+  personaStateService?: PersonaStateService | null
 }
 
 export class AgentExecutor {
@@ -45,14 +54,13 @@ export class AgentExecutor {
       ctx = await this.deps.contextBuilder.enrichWithLayers(ctx)
 
       const templateId = this.pickTemplate(event, ctx)
-      const variables = this.buildVariables(ctx)
       const llmResponse = await this.deps.llmGateway.generateVisibleText({
         intent: 'forum_reply',
         scene: this.pickScene(event),
         agentId: agent.agent_id,
         homeVoiceLineId: this.resolveHomeVoiceLineId(agent.agent_id),
         promptRef: templateId,
-        variables,
+        variables: this.buildVariables(ctx),
         budgetClass: 'visible_standard',
         traceId: `runtime:${event.event_id}:${agent.agent_id}`,
         requestedTier: 'base',
@@ -60,10 +68,53 @@ export class AgentExecutor {
         allowCrossFamily: false,
       })
       const latencyMs = Date.now() - start
+      const identity = this.resolveObservationIdentity(agent.agent_id)
+      const observation = buildPersonaObservation({
+        sourceCallsiteId: event.event_type === 'NewCommentCreated'
+          ? 'agent-executor-forum-comment'
+          : 'agent-executor-forum-post',
+        scene: event.event_type === 'NewCommentCreated' ? 'forum_comment' : 'forum_post',
+        intent: 'forum_reply',
+        visibility: 'visible',
+        coverageStatus: 'migrated_visible',
+        personaSeedCode: identity?.persona_seed_code,
+        homeVoiceLineId: identity?.home_voice_line_id,
+        promptRef: templateId,
+        requestedTier: llmResponse.renderDecision.tier,
+        resolvedTier: llmResponse.renderDecision.tier,
+        renderDecision: llmResponse.renderDecision,
+        usage: llmResponse.usage,
+        latencyMs,
+        parseSuccess: false,
+        promptAudit: ctx.prompt_audit ?? null,
+        llmProviderId: llmResponse.renderDecision.providerId,
+        llmModelId: llmResponse.renderDecision.modelId,
+      })
 
       const instruction = this.deps.responseParser.parse(llmResponse.content, ctx)
 
       if (!instruction) {
+        const failedObservation = {
+          ...observation,
+          parse_success: false,
+          error: 'LLM output could not be parsed into a valid action',
+        }
+        this.deps.agentRunRepo.create({
+          agent_id: agent.agent_id,
+          trigger_event_id: event.event_id,
+          input_digest: `parse_failed|template:${templateId.id}@${templateId.version}|len:${llmResponse.content.length}`,
+          output_json: attachPersonaObservation(
+            {
+              error: 'LLM output could not be parsed into a valid action',
+              prompt_template_id: templateId.id,
+              prompt_version: templateId.version,
+            },
+            failedObservation,
+          ),
+          token_cost: llmResponse.usage.total_tokens,
+          latency_ms: latencyMs,
+        })
+        recordPersonaObservation(failedObservation)
         console.warn(`[AgentExecutor] No valid instruction from LLM for agent ${agent.agent_id}`)
         return {
           agent_id: agent.agent_id,
@@ -82,7 +133,27 @@ export class AgentExecutor {
         llmResponse.usage,
         latencyMs,
         event.chain_depth,
+        {
+          ...observation,
+          parse_success: true,
+        },
       )
+
+      if (
+        writeResult.success &&
+        ctx.promptScene &&
+        ctx.runtimeEnvelope?.renderTierDecision &&
+        this.deps.personaStateService
+      ) {
+        await this.deps.personaStateService.recordVisibleRender({
+          agentId: agent.agent_id,
+          scene: ctx.promptScene,
+          renderDecision: ctx.runtimeEnvelope.renderTierDecision,
+          outputText: instruction.body,
+        }).catch((err) => {
+          console.error('[AgentExecutor] persona runtime render record failed:', err)
+        })
+      }
 
       return {
         agent_id: agent.agent_id,
@@ -119,12 +190,6 @@ export class AgentExecutor {
 
   private pickScene(event: EventPayload): 'forum_post' | 'forum_comment' {
     return event.event_type === 'NewCommentCreated' ? 'forum_comment' : 'forum_post'
-  }
-
-  private resolveHomeVoiceLineId(agentId: string) {
-    const agent = this.deps.agentService.getAgent(agentId)
-    const latestConfig = this.deps.agentService.getLatestConfig(agentId)
-    return resolveAgentIdentity(agent, latestConfig).summary.home_voice_line_id
   }
 
   private buildVariables(ctx: ExecutionContext): Record<string, string> {
@@ -173,5 +238,28 @@ export class AgentExecutor {
     }
 
     return vars
+  }
+
+  private resolveHomeVoiceLineId(agentId: string) {
+    const agent = this.deps.agentService.getAgent(agentId)
+    const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+    return resolveAgentIdentity(agent, latestConfig).summary.home_voice_line_id
+  }
+
+  private resolveObservationIdentity(agentId: string): {
+    persona_seed_code: import('../../shared/agent-persona-catalog.js').PersonaSeedCode
+    home_voice_line_id: import('../../shared/agent-persona-catalog.js').VoiceLineId
+  } | null {
+    try {
+      const agent = this.deps.agentService.getAgent(agentId)
+      const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+      const resolved = resolveAgentIdentity(agent, latestConfig)
+      return {
+        persona_seed_code: resolved.summary.persona_seed_code,
+        home_voice_line_id: resolved.summary.home_voice_line_id,
+      }
+    } catch {
+      return null
+    }
   }
 }

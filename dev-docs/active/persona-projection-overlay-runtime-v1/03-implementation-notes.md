@@ -1,5 +1,26 @@
 # 03 Implementation Notes — T-065
 
-- 初始化任务包，范围限定为“persona runtime / projection / overlay / tier 规则冻结”。
-- 本包默认复用现有 `PromptLayerService` 与 `PromptOrchestrator` 作为未来插入点，但不在本轮写实现代码。
-- 2026-03-08 评审补强：补入 overlay 可复现性、默认参数表、`cause/sampledAtoms/rngSeed` 字段以及六场景字符预算要求。
+- 2026-03-09 实装 backend runtime foundation：
+  - 新增 `src/shared/persona-vector.ts`，冻结 10 轴 persona vector。
+  - 扩展 `src/shared/agent-persona-catalog.ts`，为各 seed 增加 `baselineVector` 与 `volatilityBias`。
+  - 新增 `src/backend/runtime/persona-projector.ts`、`overlay-engine.ts`、`render-tier-policy.ts`、`persona-runtime-types.ts`。
+  - 新增 `src/backend/services/persona-state-service.ts` 作为唯一权威入口，负责 state 初始化、overlay 生命周期、保守写回、delta log 和记载 `lastRenderDecision`。
+- 2026-03-09 持久化接线：
+  - `prisma/schema.prisma` 增加 `AgentPersonaState`、`AgentActiveOverlay`、`AgentPersonaDeltaLog`。
+  - 增加 `src/backend/repos/persona-state-repository.ts`、`src/backend/repos/pg/pg-persona-state-repository.ts`。
+  - 补充 migration 资产：`prisma/migrations/20260309062000_t065_persona_runtime_v1/migration.sql`。
+- 2026-03-09 prompt/runtime 接线：
+  - `PromptLayerService` 改为支持 runtime projection，并把 `layer1_traits` 升级为“人格核心摘要 + trait fragments”。
+  - `PromptOrchestrator` 改为提前拉取 runtime envelope，把 overlay 注入 `shortTermState/sceneRule`，并把 `cacheSalt` 纳入 cache key。
+  - `ContextBuilder` 在 orchestrator / layer-stack 两条路径上传递 `promptScene` 与 `runtimeEnvelope`。
+- 2026-03-09 visible path 接线：
+  - `AgentExecutor`、`ConversationClock`、`PrivateChannelService`、`ProactiveInteractionService`、`PostScheduler` 在可见内容成功落地后调用 `recordVisibleRender`。
+  - `MemoryService` digest hook 增加 `importance_score/sentiment`，供 persona writeback 使用。
+  - `agent-growth-api` 已接入 owner style pin、trait、instruction 写回入口。
+- 2026-03-09 与 `T-066` 对齐：观测侧已先消费以下 runtime 字段，业务语义仍由本包冻结后再进入实现：
+  - `active_overlay_id`
+  - `overlay_cause`
+  - `overlay_rng_seed`
+  - `drift_score`
+  - `tier_floor`
+  - `tier_floor_reason`

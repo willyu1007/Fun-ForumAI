@@ -10,6 +10,11 @@ import { AgentCreateWizard } from '../components/AgentCreateWizard'
 import type { Agent } from '@/api/types'
 import { PERSONA_SEED_OPTIONS, type PersonaSeedCode } from '../persona-seeds'
 
+function coercePersonaSeedCode(value: string): PersonaSeedCode {
+  const matched = PERSONA_SEED_OPTIONS.find((option) => option.code === value)
+  return matched?.code ?? PERSONA_SEED_OPTIONS[0].code
+}
+
 export function AgentManagePage() {
   const { user, currentIdentity } = useAuth()
   const createAgent = useCreateAgent()
@@ -83,7 +88,7 @@ export function AgentManagePage() {
             />
             <select
               value={personaSeedCode}
-              onChange={(e) => setPersonaSeedCode(e.target.value as PersonaSeedCode)}
+              onChange={(e) => setPersonaSeedCode(coercePersonaSeedCode(e.target.value))}
               className="h-10 rounded-md border border-input bg-background px-3 text-sm sm:w-40"
             >
               {PERSONA_SEED_OPTIONS.map((option) => (

@@ -1,3 +1,5 @@
+import type { PersonaVector } from './persona-vector.js'
+
 export type PersonaSeedCode =
   | 'scholar'
   | 'sharp-tongue'
@@ -49,6 +51,8 @@ export interface PersonaSeedCatalogEntry {
   displayName: string
   starterStyleProjection: PersonaSeedStyleProjection
   compatibleVoiceLines: readonly VoiceLineId[]
+  baselineVector: PersonaVector
+  volatilityBias: number
 }
 
 export interface VoiceLineCatalogEntry {
@@ -86,6 +90,19 @@ export const PERSONA_SEED_CATALOG: Record<PersonaSeedCode, PersonaSeedCatalogEnt
       forum_activity: 3,
     },
     compatibleVoiceLines: ['qwen-social-v1', 'glm-deep-v1'],
+    baselineVector: {
+      warmth: 58,
+      sharpness: 34,
+      expressiveness: 52,
+      theatricality: 28,
+      rigor: 82,
+      spontaneity: 42,
+      curiosity: 84,
+      assertiveness: 48,
+      sensitivity: 46,
+      stability: 74,
+    },
+    volatilityBias: 0.22,
   },
   'sharp-tongue': {
     code: 'sharp-tongue',
@@ -98,6 +115,19 @@ export const PERSONA_SEED_CATALOG: Record<PersonaSeedCode, PersonaSeedCatalogEnt
       forum_activity: 3,
     },
     compatibleVoiceLines: ['qwen-social-v1', 'glm-deep-v1'],
+    baselineVector: {
+      warmth: 26,
+      sharpness: 82,
+      expressiveness: 54,
+      theatricality: 40,
+      rigor: 56,
+      spontaneity: 58,
+      curiosity: 62,
+      assertiveness: 76,
+      sensitivity: 52,
+      stability: 44,
+    },
+    volatilityBias: 0.58,
   },
   warmhearted: {
     code: 'warmhearted',
@@ -110,6 +140,19 @@ export const PERSONA_SEED_CATALOG: Record<PersonaSeedCode, PersonaSeedCatalogEnt
       forum_activity: 3,
     },
     compatibleVoiceLines: ['qwen-social-v1', 'glm-deep-v1'],
+    baselineVector: {
+      warmth: 86,
+      sharpness: 20,
+      expressiveness: 60,
+      theatricality: 46,
+      rigor: 48,
+      spontaneity: 56,
+      curiosity: 58,
+      assertiveness: 42,
+      sensitivity: 76,
+      stability: 68,
+    },
+    volatilityBias: 0.34,
   },
   philosopher: {
     code: 'philosopher',
@@ -122,6 +165,19 @@ export const PERSONA_SEED_CATALOG: Record<PersonaSeedCode, PersonaSeedCatalogEnt
       forum_activity: 3,
     },
     compatibleVoiceLines: ['qwen-social-v1', 'glm-deep-v1'],
+    baselineVector: {
+      warmth: 48,
+      sharpness: 38,
+      expressiveness: 64,
+      theatricality: 34,
+      rigor: 78,
+      spontaneity: 40,
+      curiosity: 88,
+      assertiveness: 50,
+      sensitivity: 58,
+      stability: 70,
+    },
+    volatilityBias: 0.26,
   },
   comedian: {
     code: 'comedian',
@@ -134,6 +190,19 @@ export const PERSONA_SEED_CATALOG: Record<PersonaSeedCode, PersonaSeedCatalogEnt
       forum_activity: 3,
     },
     compatibleVoiceLines: ['qwen-social-v1', 'glm-deep-v1'],
+    baselineVector: {
+      warmth: 68,
+      sharpness: 48,
+      expressiveness: 82,
+      theatricality: 84,
+      rigor: 30,
+      spontaneity: 86,
+      curiosity: 56,
+      assertiveness: 54,
+      sensitivity: 44,
+      stability: 38,
+    },
+    volatilityBias: 0.64,
   },
   mediator: {
     code: 'mediator',
@@ -146,6 +215,19 @@ export const PERSONA_SEED_CATALOG: Record<PersonaSeedCode, PersonaSeedCatalogEnt
       forum_activity: 3,
     },
     compatibleVoiceLines: ['qwen-social-v1', 'glm-deep-v1'],
+    baselineVector: {
+      warmth: 78,
+      sharpness: 24,
+      expressiveness: 50,
+      theatricality: 24,
+      rigor: 70,
+      spontaneity: 38,
+      curiosity: 60,
+      assertiveness: 36,
+      sensitivity: 72,
+      stability: 82,
+    },
+    volatilityBias: 0.18,
   },
 }
 
