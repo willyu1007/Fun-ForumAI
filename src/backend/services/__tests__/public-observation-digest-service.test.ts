@@ -8,6 +8,24 @@ interface MemoryListOpts {
   source_event_id?: string
 }
 
+function makeObservationDeps() {
+  return {
+    agentService: {
+      getAgent: vi.fn((agentId: string) => ({
+        id: agentId,
+        display_name: `Agent ${agentId}`,
+      })),
+      getLatestConfig: vi.fn(() => null),
+    } as never,
+    eventRepo: {
+      create: vi.fn(() => ({ id: 'evt-runtime-1' })),
+    } as never,
+    agentRunRepo: {
+      create: vi.fn(),
+    } as never,
+  }
+}
+
 function makeDomainEvent(input: {
   id: string
   event_type: 'POST_CREATED' | 'COMMENT_CREATED'
@@ -35,18 +53,16 @@ function makeForumService(params: {
   commentCount: number
   participantCount: number
   heatScore: number
-  llmClient?: Record<string, unknown>
   listMemoriesImpl?: (opts: MemoryListOpts) => Promise<{ items: Array<{ created_at: Date }>; next_cursor: null }>
 }) {
-  const createPublicObservationMemory = vi.fn().mockResolvedValue({ id: 'mem-1' })
+  const createPublicObservationMemory = vi.fn().mockResolvedValue(undefined)
   const listMemories = vi.fn((_: string, opts: MemoryListOpts) => {
     if (params.listMemoriesImpl) return params.listMemoriesImpl(opts)
     return Promise.resolve({ items: [], next_cursor: null as null })
   })
-  const agentRunRepo = { create: vi.fn() }
 
   const service = new PublicObservationDigestService({
-    llmClient: (params.llmClient ?? { isConfigured: false }) as never,
+    llmGateway: { isConfigured: false } as never,
     forumReadService: {
       getPost: vi.fn().mockResolvedValue({
         id: 'p1',
@@ -63,40 +79,30 @@ function makeForumService(params: {
     roomRepo: {} as never,
     messageRepo: {} as never,
     memoryService: {
+      hasTypedPublicObservationEvent: vi.fn().mockResolvedValue(false),
+      getLatestTypedPublicObservationAt: vi.fn().mockResolvedValue(null),
       listMemories,
       createPublicObservationMemory,
     } as never,
-    agentService: {
-      getAgent: vi.fn(() => ({
-        id: 'a1',
-        owner_id: 'owner-1',
-        display_name: 'Agent One',
-        model: 'mock-model',
-      })),
-      getLatestConfig: vi.fn(() => ({ config_json: {} })),
-    } as never,
-    eventRepo: { create: vi.fn(() => ({ id: 'evt-runtime-1' })) } as never,
-    agentRunRepo: agentRunRepo as never,
+    ...makeObservationDeps(),
   })
 
-  return { service, createPublicObservationMemory, listMemories, agentRunRepo }
+  return { service, createPublicObservationMemory, listMemories }
 }
 
 function makeRoomService(params: {
   messageCount: number
   roomCreatedAt: Date
-  llmClient?: Record<string, unknown>
   listMemoriesImpl?: (opts: MemoryListOpts) => Promise<{ items: Array<{ created_at: Date }>; next_cursor: null }>
 }) {
-  const createPublicObservationMemory = vi.fn().mockResolvedValue({ id: 'mem-1' })
+  const createPublicObservationMemory = vi.fn().mockResolvedValue(undefined)
   const listMemories = vi.fn((_: string, opts: MemoryListOpts) => {
     if (params.listMemoriesImpl) return params.listMemoriesImpl(opts)
     return Promise.resolve({ items: [], next_cursor: null as null })
   })
-  const agentRunRepo = { create: vi.fn() }
 
   const service = new PublicObservationDigestService({
-    llmClient: (params.llmClient ?? { isConfigured: false }) as never,
+    llmGateway: { isConfigured: false } as never,
     forumReadService: {} as never,
     roomRepo: {
       findById: vi.fn().mockResolvedValue({
@@ -111,23 +117,15 @@ function makeRoomService(params: {
       getLatestMessages: vi.fn().mockResolvedValue(Array.from({ length: 80 }).map((_, i) => ({ body: `m${i + 1}` }))),
     } as never,
     memoryService: {
+      hasTypedPublicObservationEvent: vi.fn().mockResolvedValue(false),
+      getLatestTypedPublicObservationAt: vi.fn().mockResolvedValue(null),
       listMemories,
       createPublicObservationMemory,
     } as never,
-    agentService: {
-      getAgent: vi.fn(() => ({
-        id: 'a1',
-        owner_id: 'owner-1',
-        display_name: 'Agent One',
-        model: 'mock-model',
-      })),
-      getLatestConfig: vi.fn(() => ({ config_json: {} })),
-    } as never,
-    eventRepo: { create: vi.fn(() => ({ id: 'evt-runtime-1' })) } as never,
-    agentRunRepo: agentRunRepo as never,
+    ...makeObservationDeps(),
   })
 
-  return { service, createPublicObservationMemory, listMemories, agentRunRepo }
+  return { service, createPublicObservationMemory, listMemories }
 }
 
 describe('PublicObservationDigestService', () => {
@@ -173,6 +171,12 @@ describe('PublicObservationDigestService', () => {
     }))
 
     expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
+    expect(createPublicObservationMemory).toHaveBeenCalledWith(expect.objectContaining({
+      typed_context: expect.objectContaining({
+        scene: 'forum',
+        transcript: expect.stringContaining('标题: t'),
+      }),
+    }))
   })
 
   it('forum triggers when participant_count=4', async () => {
@@ -191,6 +195,57 @@ describe('PublicObservationDigestService', () => {
     expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
   })
 
+  it('uses the real agent id when routing public observation through the gateway', async () => {
+    const generateHiddenArtifact = vi.fn().mockResolvedValue({
+      content: JSON.stringify({
+        summary_text: 'summary',
+        topic_tags: ['tag'],
+        key_facts: ['fact'],
+        sentiment: 'thoughtful',
+        importance_score: 0.6,
+      }),
+    })
+    const service = new PublicObservationDigestService({
+      llmGateway: {
+        isConfigured: true,
+        generateHiddenArtifact,
+      } as never,
+      forumReadService: {
+        getPost: vi.fn().mockResolvedValue({
+          id: 'p1',
+          title: 't',
+          body: 'b',
+          community_id: 'community-1',
+          participant_count: 4,
+          heat_score: 0,
+        }),
+        getComments: vi.fn().mockResolvedValue({
+          items: [{ body: 'c1' }],
+          next_cursor: null,
+        }),
+      } as never,
+      roomRepo: {} as never,
+      messageRepo: {} as never,
+      memoryService: {
+        hasTypedPublicObservationEvent: vi.fn().mockResolvedValue(false),
+        getLatestTypedPublicObservationAt: vi.fn().mockResolvedValue(null),
+        listMemories: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
+        createPublicObservationMemory: vi.fn().mockResolvedValue(undefined),
+      } as never,
+      ...makeObservationDeps(),
+    })
+
+    await service.onForumEvent(makeDomainEvent({
+      id: 'evt-real-agent',
+      event_type: 'POST_CREATED',
+      payload_json: { post_id: 'p1', author_agent_id: 'agent-real-1' },
+    }))
+
+    expect(generateHiddenArtifact).toHaveBeenCalledWith(expect.objectContaining({
+      agentId: 'agent-real-1',
+    }))
+  })
+
   it('forum triggers when heat_score=30', async () => {
     const { service, createPublicObservationMemory } = makeForumService({
       commentCount: 0,
@@ -205,6 +260,42 @@ describe('PublicObservationDigestService', () => {
     }))
 
     expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
+  })
+
+  it('forum dedup short-circuits when typed raw event already exists', async () => {
+    const createPublicObservationMemory = vi.fn().mockResolvedValue(undefined)
+    const listMemories = vi.fn().mockResolvedValue({ items: [], next_cursor: null })
+    const service = new PublicObservationDigestService({
+      llmGateway: { isConfigured: false } as never,
+      forumReadService: {
+        getPost: vi.fn().mockResolvedValue({
+          id: 'p1',
+          title: 't',
+          body: 'b',
+          participant_count: 4,
+          heat_score: 0,
+        }),
+        getComments: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
+      } as never,
+      roomRepo: {} as never,
+      messageRepo: {} as never,
+      memoryService: {
+        hasTypedPublicObservationEvent: vi.fn().mockResolvedValue(true),
+        getLatestTypedPublicObservationAt: vi.fn().mockResolvedValue(null),
+        listMemories,
+        createPublicObservationMemory,
+      } as never,
+      ...makeObservationDeps(),
+    })
+
+    await service.onForumEvent(makeDomainEvent({
+      id: 'evt-typed-dedup',
+      event_type: 'POST_CREATED',
+      payload_json: { post_id: 'p1', author_agent_id: 'a1' },
+    }))
+
+    expect(createPublicObservationMemory).not.toHaveBeenCalled()
+    expect(listMemories).not.toHaveBeenCalled()
   })
 
   it('room does not trigger when message_count=79', async () => {
@@ -229,6 +320,12 @@ describe('PublicObservationDigestService', () => {
     await service.onRoomMessage({ roomId: 'r1', messageId: 'm-2', authorAgentId: 'a1' })
 
     expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
+    expect(createPublicObservationMemory).toHaveBeenCalledWith(expect.objectContaining({
+      typed_context: expect.objectContaining({
+        scene: 'chat_room',
+        transcript: expect.stringContaining('房间: room'),
+      }),
+    }))
   })
 
   it('room threshold branch requires active_minutes>=30 when messages=40', async () => {
@@ -295,6 +392,44 @@ describe('PublicObservationDigestService', () => {
     expect(createPublicObservationMemory).not.toHaveBeenCalled()
   })
 
+  it('room cooldown uses typed raw events before falling back to legacy memories', async () => {
+    const now = new Date('2026-02-27T08:00:00.000Z')
+    const createPublicObservationMemory = vi.fn().mockResolvedValue(undefined)
+    const listMemories = vi.fn().mockResolvedValue({ items: [], next_cursor: null })
+    const service = new PublicObservationDigestService({
+      llmGateway: { isConfigured: false } as never,
+      forumReadService: {} as never,
+      roomRepo: {
+        findById: vi.fn().mockResolvedValue({
+          id: 'r1',
+          name: 'room',
+          description: '',
+          created_at: new Date(now.getTime() - 60 * 60 * 1000),
+          last_message_at: now,
+        }),
+      } as never,
+      messageRepo: {
+        countByRoom: vi.fn().mockResolvedValue(80),
+        getLatestMessages: vi.fn().mockResolvedValue(Array.from({ length: 80 }).map((_, i) => ({ body: `m${i + 1}` }))),
+      } as never,
+      memoryService: {
+        hasTypedPublicObservationEvent: vi.fn().mockResolvedValue(false),
+        getLatestTypedPublicObservationAt: vi.fn().mockResolvedValue(new Date(now.getTime() - 30 * 60_000)),
+        listMemories,
+        createPublicObservationMemory,
+      } as never,
+      ...makeObservationDeps(),
+    })
+
+    await service.onRoomMessage({ roomId: 'r1', messageId: 'm-typed-cooldown', authorAgentId: 'a1' })
+
+    expect(createPublicObservationMemory).not.toHaveBeenCalled()
+    expect(listMemories).toHaveBeenCalledTimes(1)
+    expect(listMemories).toHaveBeenCalledWith('a1', expect.objectContaining({
+      source_event_id: 'm-typed-cooldown',
+    }))
+  })
+
   it('rechecks cooldown before write to prevent TOCTOU duplicates', async () => {
     let cooldownCheckCount = 0
     const { service, createPublicObservationMemory } = makeForumService({
@@ -339,44 +474,5 @@ describe('PublicObservationDigestService', () => {
     }))).resolves.toBeUndefined()
 
     expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
-  })
-
-  it('records hidden persona observation when llm digest path is used', async () => {
-    const { service, agentRunRepo } = makeForumService({
-      commentCount: 12,
-      participantCount: 1,
-      heatScore: 0,
-      llmClient: {
-        isConfigured: true,
-        chat: vi.fn().mockResolvedValue({
-          content: JSON.stringify({
-            summary_text: '一次有代表性的公共讨论',
-            topic_tags: ['讨论'],
-            key_facts: ['形成观察'],
-            sentiment: 'thoughtful',
-            importance_score: 0.7,
-          }),
-          usage: { prompt_tokens: 12, completion_tokens: 18, total_tokens: 30 },
-          model: 'deepseek-reasoner',
-          provider_id: 'openrouter',
-        }),
-      },
-    })
-
-    await service.onForumEvent(makeDomainEvent({
-      id: 'evt-observed',
-      event_type: 'POST_CREATED',
-      payload_json: { post_id: 'p1', author_agent_id: 'a1' },
-    }))
-
-    expect(agentRunRepo.create).toHaveBeenCalledWith(expect.objectContaining({
-      output_json: expect.objectContaining({
-        persona_observation: expect.objectContaining({
-          source_callsite_id: 'public-observation-digest',
-          visibility: 'hidden',
-          coverage_status: 'hidden_partial',
-        }),
-      }),
-    }))
   })
 })

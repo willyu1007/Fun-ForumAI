@@ -15,6 +15,7 @@ function safeFloat(raw: string | undefined, fallback: number): number {
 export const config = {
   port: safeInt(env.PORT, 4000),
   nodeEnv: env.NODE_ENV || 'development',
+  appEnv: env.APP_ENV === 'staging' || env.APP_ENV === 'prod' ? env.APP_ENV : 'dev',
   cors: {
     origins: env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],
   },

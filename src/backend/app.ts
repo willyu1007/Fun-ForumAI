@@ -9,7 +9,7 @@ import { healthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { devSeedRouter } from './routes/dev-seed.js'
-import { runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, roleAssignmentExpiryScheduler, promptLayerService, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService } from './container.js'
+import { runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, roleAssignmentExpiryScheduler, promptLayerService, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
 import { agentNurtureRouter } from './routes/agent-growth-api.js'
@@ -110,7 +110,7 @@ if (config.nodeEnv !== 'production') {
         processing: runtimeLoop.isProcessing,
         queue_size: queueSize,
         is_leader: runtimeLoop.isLeader,
-        llm_configured: llmClient.isConfigured,
+        llm_configured: llmGateway.isConfigured,
         runtime_enabled: config.runtime.enabled,
         queue_backend: config.runtime.queueBackend,
         leader_backend: config.runtime.leaderBackend,
@@ -121,9 +121,9 @@ if (config.nodeEnv !== 'production') {
   })
 
   app.post('/v1/dev/runtime/start', async (_req, res) => {
-    if (!llmClient.isConfigured) {
+    if (!llmGateway.isConfigured) {
       res.status(400).json({
-        error: { code: 'LLM_NOT_CONFIGURED', message: 'Set LLM_API_KEY to enable runtime' },
+        error: { code: 'LLM_NOT_CONFIGURED', message: 'Configure at least one usable LLM credential to enable runtime' },
       })
       return
     }
@@ -142,9 +142,9 @@ if (config.nodeEnv !== 'production') {
   })
 
   app.post('/v1/dev/runtime/post', async (_req, res) => {
-    if (!llmClient.isConfigured) {
+    if (!llmGateway.isConfigured) {
       res.status(400).json({
-        error: { code: 'LLM_NOT_CONFIGURED', message: 'Set LLM_API_KEY to enable posting' },
+        error: { code: 'LLM_NOT_CONFIGURED', message: 'Configure at least one usable LLM credential to enable posting' },
       })
       return
     }
@@ -341,11 +341,11 @@ app.use((_req, res) => {
 
 // ─── Auto-start runtime if configured ───────────────────────
 
-if (config.runtime.enabled && llmClient.isConfigured) {
+if (config.runtime.enabled && llmGateway.isConfigured) {
   console.log('[App] RUNTIME_ENABLED=true, starting RuntimeLoop...')
   runtimeLoop.start()
-} else if (config.runtime.enabled && !llmClient.isConfigured) {
-  console.warn('[App] RUNTIME_ENABLED=true but LLM_API_KEY not set — RuntimeLoop not started')
+} else if (config.runtime.enabled && !llmGateway.isConfigured) {
+  console.warn('[App] RUNTIME_ENABLED=true but no usable LLM credential resolved — RuntimeLoop not started')
 }
 
 roomLifecycle.start()

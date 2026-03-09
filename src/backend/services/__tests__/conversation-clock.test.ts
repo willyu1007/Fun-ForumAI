@@ -43,15 +43,30 @@ describe('ConversationClock', () => {
       chatService: {
         sendMessage: vi.fn(async () => undefined),
       } as never,
-      llmClient: {
+      llmGateway: {
         isConfigured: true,
-        chat: vi.fn(async () => ({
+        generateVisibleText: vi.fn(async () => ({
           content: '   ',
+          messages: [],
           usage: { prompt_tokens: 10, completion_tokens: 0, total_tokens: 10 },
+          latencyMs: 12,
+          platformRetryCount: 0,
+          renderDecision: {
+            voiceLineId: 'qwen-social-v1',
+            tier: 'base',
+            profileId: 'profile-1',
+            providerId: 'dashscope-openai',
+            modelId: 'qwen-plus',
+            region: 'cn',
+            endpointId: 'default',
+            credentialId: 'cred-1',
+            fallbackLevel: 'none',
+            reasons: ['runtime_floor'],
+            promptTemplateId: 'agent-chat-reply',
+            promptVersion: 1,
+          },
+          promptRef: { id: 'agent-chat-reply', version: 1 },
         })),
-      } as never,
-      promptEngine: {
-        render: vi.fn(() => [{ role: 'user', content: 'prompt' }]),
       } as never,
       sseHub: {
         broadcastToRoom: vi.fn(),

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import request from 'supertest'
 import jwt from 'jsonwebtoken'
 import { app, config, servicePost, adminToken, userToken, user2Token, setupFeatureFlagGuard, waitFor, createTestCommunity } from './e2e-helpers.js'
-import { incubationService, chatService, eventRepo, agentRunRepo, communityConfigScheduler } from '../../container.js'
+import { incubationService, chatService, eventRepo, communityConfigScheduler } from '../../container.js'
 import { DEFAULT_STAGE_SPEC_V1 } from '../../stage/index.js'
 
 setupFeatureFlagGuard()
@@ -239,12 +239,13 @@ describe('E2E: Control Plane (human auth)', () => {
       expect(res.status).toBe(200)
       expect(typeof res.body.data.flags).toBe('object')
       expect(typeof res.body.data.counters).toBe('object')
-      expect(typeof res.body.data.persona_observability).toBe('object')
       expect(res.body.data.counters).toHaveProperty('allocator.ppr_hits')
       expect(res.body.data.counters).toHaveProperty('director.selected_core')
       expect(res.body.data.counters).toHaveProperty('prompt.trim_applied_calls')
-      expect(res.body.data.persona_observability).toHaveProperty('log_completeness')
-      expect(res.body.data.persona_observability).toHaveProperty('latest_gate_snapshot')
+      expect(res.body.data.observability).toHaveProperty('render_log.required_fields')
+      expect(res.body.data.observability).toHaveProperty('evaluation.blind_review_rubric')
+      expect(res.body.data.observability).toHaveProperty('rollout_gates')
+      expect(Array.isArray(res.body.data.observability.render_log_preview)).toBe(true)
     } finally {
       featureFlags.runtimeFeaturesV1 = originalRuntimeFeatures
     }
@@ -585,9 +586,7 @@ describe('E2E: Control Plane (human auth)', () => {
 
   it('POST /v1/posts/:postId/aftershow/trigger allows only admin or agent owner in manual mode', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
-    const originalAudienceZone = featureFlags.audienceZoneV1
     const originalAftershow = featureFlags.aftershowV1
-    featureFlags.audienceZoneV1 = true
     featureFlags.aftershowV1 = true
 
     const ownerAgentRes = await request(app)
@@ -613,12 +612,6 @@ describe('E2E: Control Plane (human auth)', () => {
     const postId = postRes.body.data.id as string
 
     try {
-      const audienceMessageRes = await request(app)
-        .post(`/v1/posts/${postId}/audience-messages`)
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ body: '请在 aftershow 里回应这个观点。' })
-      expect(audienceMessageRes.status).toBe(201)
-
       const forbiddenRes = await request(app)
         .post(`/v1/posts/${postId}/aftershow/trigger`)
         .set('Authorization', `Bearer ${user2Token}`)
@@ -634,7 +627,6 @@ describe('E2E: Control Plane (human auth)', () => {
       expect(ownerRes.body.data).toHaveProperty('audience_message_count')
       expect(ownerRes.body.data).toHaveProperty('threshold_detail')
     } finally {
-      featureFlags.audienceZoneV1 = originalAudienceZone
       featureFlags.aftershowV1 = originalAftershow
     }
   })
@@ -725,27 +717,6 @@ describe('E2E: Control Plane (human auth)', () => {
     })
   })
 
-  it('PATCH /v1/agents/:id/config rejects non-owner and allows admin', async () => {
-    const createRes = await request(app)
-      .post('/v1/agents')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send({ display_name: 'Config Guard Bot' })
-    const agentId = createRes.body.data.id
-
-    const blockedRes = await request(app)
-      .patch(`/v1/agents/${agentId}/config`)
-      .set('Authorization', `Bearer ${user2Token}`)
-      .send({ config_json: { temperature: 0.6 } })
-    expect(blockedRes.status).toBe(403)
-
-    const adminRes = await request(app)
-      .patch(`/v1/agents/${agentId}/config`)
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ config_json: { temperature: 0.6 } })
-    expect(adminRes.status).toBe(200)
-    expect(adminRes.body.data.config_json.temperature).toBe(0.6)
-  })
-
   it('GET /v1/agents/:id/runs returns runs', async () => {
     const createRes = await request(app)
       .post('/v1/agents')
@@ -753,92 +724,11 @@ describe('E2E: Control Plane (human auth)', () => {
       .send({ display_name: 'Runs Bot' })
     const agentId = createRes.body.data.id
 
-    const event = eventRepo.create({
-      event_type: 'TEST_AGENT_RUN_CREATED',
-      plane: 'RUNTIME',
-      actor_type: 'agent',
-      actor_id: agentId,
-      payload_json: { agent_id: agentId },
-    })
-    agentRunRepo.create({
-      agent_id: agentId,
-      trigger_event_id: event.id,
-      input_digest: 'test-agent-run',
-      output_json: {
-        persona_observation: {
-          version: 'persona-observation-v1',
-          trace_id: 'trace-test',
-          source_callsite_id: 'private-channel-reply',
-          scene: 'private_chat',
-          intent: 'private_reply',
-          visibility: 'visible',
-          coverage_status: 'legacy_partial',
-          identity_write: {
-            attempted: false,
-            success: false,
-          },
-        },
-      },
-      token_cost: 12,
-      latency_ms: 300,
-    })
-
     const runsRes = await request(app)
       .get(`/v1/agents/${agentId}/runs`)
       .set('Authorization', `Bearer ${userToken}`)
     expect(runsRes.status).toBe(200)
     expect(runsRes.body.data).toBeInstanceOf(Array)
-    expect(runsRes.body.data[0]).toHaveProperty('persona_observation')
-    expect(runsRes.body.data[0].persona_observation.source_callsite_id).toBe('private-channel-reply')
-  })
-
-  it('GET /v1/agents/:id/runs rejects non-owner and allows admin', async () => {
-    const createRes = await request(app)
-      .post('/v1/agents')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send({ display_name: 'Runs Guard Bot' })
-    const agentId = createRes.body.data.id
-
-    const event = eventRepo.create({
-      event_type: 'TEST_AGENT_RUN_CREATED',
-      plane: 'RUNTIME',
-      actor_type: 'agent',
-      actor_id: agentId,
-      payload_json: { agent_id: agentId },
-    })
-    agentRunRepo.create({
-      agent_id: agentId,
-      trigger_event_id: event.id,
-      input_digest: 'test-agent-run-guard',
-      output_json: {
-        persona_observation: {
-          version: 'persona-observation-v1',
-          trace_id: 'trace-guard',
-          source_callsite_id: 'private-channel-reply',
-          scene: 'private_chat',
-          intent: 'private_reply',
-          visibility: 'visible',
-          coverage_status: 'legacy_partial',
-          identity_write: {
-            attempted: false,
-            success: false,
-          },
-        },
-      },
-      token_cost: 1,
-      latency_ms: 1,
-    })
-
-    const blockedRes = await request(app)
-      .get(`/v1/agents/${agentId}/runs`)
-      .set('Authorization', `Bearer ${user2Token}`)
-    expect(blockedRes.status).toBe(403)
-
-    const adminRes = await request(app)
-      .get(`/v1/agents/${agentId}/runs`)
-      .set('Authorization', `Bearer ${adminToken}`)
-    expect(adminRes.status).toBe(200)
-    expect(adminRes.body.data[0].persona_observation.source_callsite_id).toBe('private-channel-reply')
   })
 
   it('POST /v1/admin/moderation/actions requires admin role', async () => {

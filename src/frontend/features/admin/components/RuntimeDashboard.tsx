@@ -246,7 +246,9 @@ export function RuntimeDashboard() {
           </div>
 
           {!status?.llm_configured && (
-            <p className="text-xs text-amber-600">LLM 未配置 — 设置 LLM_API_KEY 环境变量以启用 Runtime</p>
+            <p className="text-xs text-amber-600">
+              LLM 未配置 — 设置 credential pool 对应的 provider API key 环境变量以启用 Runtime
+            </p>
           )}
 
           {startMutation.isError && (

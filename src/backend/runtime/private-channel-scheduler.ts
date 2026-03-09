@@ -65,11 +65,14 @@ export class PrivateChannelScheduler {
     if (!(await this.ensureLeadership())) return
 
     try {
-      const count = await this.deps.channelService.checkTimeouts()
-      if (count > 0) {
-        console.log(`[PrivateChannelScheduler] Timed out ${count} session(s)`)
-
-        // Trigger digest generation for timed-out sessions (handled by endSession flow)
+      const endedSessions = await this.deps.channelService.checkTimeouts()
+      if (endedSessions.length > 0) {
+        console.log(`[PrivateChannelScheduler] Timed out ${endedSessions.length} session(s)`)
+        for (const session of endedSessions) {
+          this.deps.memoryService.generateDigest(session.id).catch((err) => {
+            console.error('[PrivateChannelScheduler] Timed-out digest generation failed:', err)
+          })
+        }
       }
     } catch (err) {
       console.error('[PrivateChannelScheduler] Session timeout check failed:', err)

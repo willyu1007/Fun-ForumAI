@@ -1,5 +1,4 @@
-import type { LlmClient } from '../llm/llm-client.js'
-import type { PromptEngine } from '../llm/prompt-engine.js'
+import type { LLMGateway } from '../llm/llm-gateway.js'
 import type { PromptTemplateRef } from '../llm/gateway-contract.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import type { ContextBuilder } from './context-builder.js'
@@ -12,14 +11,13 @@ import type { AgentRunRepository } from '../repos/event-repository.js'
 import type { AgentService } from '../services/agent-service.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import {
-  buildPersonaObservation,
   attachPersonaObservation,
+  buildPersonaObservation,
   recordPersonaObservation,
 } from './persona-observation.js'
 
 export interface AgentExecutorDeps {
-  llmClient: LlmClient
-  promptEngine: PromptEngine
+  llmGateway: LLMGateway
   contextBuilder: ContextBuilder
   responseParser: ResponseParser
   dataplaneWriter: DataPlaneWriter
@@ -56,10 +54,19 @@ export class AgentExecutor {
       ctx = await this.deps.contextBuilder.enrichWithLayers(ctx)
 
       const templateId = this.pickTemplate(event, ctx)
-      const variables = this.buildVariables(ctx)
-      const messages = this.deps.promptEngine.render(templateId, variables)
-
-      const llmResponse = await this.deps.llmClient.chat({ messages })
+      const llmResponse = await this.deps.llmGateway.generateVisibleText({
+        intent: 'forum_reply',
+        scene: this.pickScene(event),
+        agentId: agent.agent_id,
+        homeVoiceLineId: this.resolveHomeVoiceLineId(agent.agent_id),
+        promptRef: templateId,
+        variables: this.buildVariables(ctx),
+        budgetClass: 'visible_standard',
+        traceId: `runtime:${event.event_id}:${agent.agent_id}`,
+        requestedTier: 'base',
+        allowFallbackWithinLine: false,
+        allowCrossFamily: false,
+      })
       const latencyMs = Date.now() - start
       const identity = this.resolveObservationIdentity(agent.agent_id)
       const observation = buildPersonaObservation({
@@ -73,14 +80,15 @@ export class AgentExecutor {
         personaSeedCode: identity?.persona_seed_code,
         homeVoiceLineId: identity?.home_voice_line_id,
         promptRef: templateId,
-        requestedTier: 'base',
-        resolvedTier: 'base',
+        requestedTier: llmResponse.renderDecision.tier,
+        resolvedTier: llmResponse.renderDecision.tier,
+        renderDecision: llmResponse.renderDecision,
         usage: llmResponse.usage,
         latencyMs,
         parseSuccess: false,
         promptAudit: ctx.prompt_audit ?? null,
-        llmProviderId: llmResponse.provider_id,
-        llmModelId: llmResponse.model,
+        llmProviderId: llmResponse.renderDecision.providerId,
+        llmModelId: llmResponse.renderDecision.modelId,
       })
 
       const instruction = this.deps.responseParser.parse(llmResponse.content, ctx)
@@ -180,6 +188,10 @@ export class AgentExecutor {
     }
   }
 
+  private pickScene(event: EventPayload): 'forum_post' | 'forum_comment' {
+    return event.event_type === 'NewCommentCreated' ? 'forum_comment' : 'forum_post'
+  }
+
   private buildVariables(ctx: ExecutionContext): Record<string, string> {
     const vars: Record<string, string> = {
       persona_name: ctx.persona.name,
@@ -226,6 +238,12 @@ export class AgentExecutor {
     }
 
     return vars
+  }
+
+  private resolveHomeVoiceLineId(agentId: string) {
+    const agent = this.deps.agentService.getAgent(agentId)
+    const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+    return resolveAgentIdentity(agent, latestConfig).summary.home_voice_line_id
   }
 
   private resolveObservationIdentity(agentId: string): {

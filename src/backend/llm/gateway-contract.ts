@@ -98,6 +98,9 @@ export interface CredentialPoolEntry {
   endpoint: string
   credential_ref: string
   health: 'healthy' | 'degraded' | 'blocked'
+  enabled?: boolean
+  scope_tags?: string[]
+  allowed_model_ids?: string[]
   rpm_headroom?: number
   tpm_headroom?: number
 }
@@ -115,9 +118,22 @@ export interface UsageLedgerEntry {
   agent_id: string
   intent: LLMGenerationIntent
   visibility: LLMVisibility
+  scene: PromptScene | 'background_hidden' | 'dev_prompt_render'
   prompt_ref: PromptTemplateRef
   render_decision: RenderDecision
-  usage: LlmTokenUsage
+  usage?: LlmTokenUsage
+  success: boolean
+  provider_id?: string
+  model_id?: string
+  profile_id?: string
+  pool_id?: string
+  credential_id?: string
+  billing_class?: LLMBudgetClass
+  estimated_cost_cny?: number
+  reserved_cost_cny?: number
+  actual_cost_cny?: number
+  platform_retry_count?: number
+  error_code?: LLMGatewayErrorCode
   latency_ms: number
   created_at: string
 }
@@ -161,6 +177,7 @@ export interface RenderDecision {
   modelId: string
   region: string
   endpointId?: string
+  credentialId?: string
   fallbackLevel: RoutingFallbackLevel
   reasons: string[]
   promptTemplateId: string
@@ -170,7 +187,7 @@ export interface RenderDecision {
 export interface LLMGatewayRequest {
   intent: LLMGenerationIntent
   visibility: LLMVisibility
-  scene: PromptScene
+  scene: PromptScene | 'background_hidden' | 'dev_prompt_render'
   agentId: string
   homeVoiceLineId: VoiceLineId
   promptRef: PromptTemplateRef
@@ -180,13 +197,20 @@ export interface LLMGatewayRequest {
   requestedTier?: RenderTier
   allowFallbackWithinLine: boolean
   allowCrossFamily: boolean
+  temperature?: number
+  maxTokens?: number
+  stop?: string[]
+  providerTags?: string[]
+  promptMessages?: LlmMessage[]
 }
 
 export interface LLMGatewayResponse {
   content: string
   messages: LlmMessage[]
-  usage?: LlmTokenUsage
+  usage: LlmTokenUsage
   finishReason?: string | null
+  latencyMs: number
+  platformRetryCount: number
   renderDecision: RenderDecision
   promptRef: PromptTemplateRef
 }

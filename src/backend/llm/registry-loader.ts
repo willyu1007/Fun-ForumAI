@@ -13,10 +13,12 @@ import {
   type VoiceLineRoutingIntent,
 } from '../../shared/agent-persona-catalog.js'
 import type {
+  CredentialPoolEntry,
   LLMVisibility,
   ModelProfileCandidate,
   ModelProfileFallback,
   ProviderRegistryEntry,
+  RoutingPolicyEntry,
 } from './gateway-contract.js'
 import { LLMGatewayContractError } from './gateway-contract.js'
 
@@ -64,16 +66,30 @@ export interface PromptTemplatesRegistryFile {
   templates: PromptTemplateRegistryEntry[]
 }
 
+export interface CredentialPoolsRegistryFile {
+  version: number
+  pools: CredentialPoolEntry[]
+}
+
+export interface RoutingPoliciesRegistryFile {
+  version: number
+  policies: RoutingPolicyEntry[]
+}
+
 export interface LlmRegistryBundle {
   providers: ProvidersRegistryFile
   modelProfiles: ModelProfilesRegistryFile
   promptTemplates: PromptTemplatesRegistryFile
+  credentialPools: CredentialPoolsRegistryFile
+  routingPolicies: RoutingPoliciesRegistryFile
 }
 
 export interface LlmRegistryPaths {
   providers?: string
   modelProfiles?: string
   promptTemplates?: string
+  credentialPools?: string
+  routingPolicies?: string
 }
 
 const lLMVisibilityEnum = z.enum(['visible', 'hidden', 'identity_write', 'dev_only'])
@@ -81,12 +97,28 @@ const renderTierSchema = z.enum(RENDER_TIERS)
 const voiceLineIdSchema = z.enum(VOICE_LINE_IDS)
 const routingIntentSchema = z.enum(VOICE_LINE_ROUTING_INTENTS)
 const routingFallbackLevelSchema = z.enum([
+  'none',
+  'same-line',
+  'same-family',
+  'cross-family-hidden',
+  'rare-reanchor',
+])
+const modelProfileFallbackLevelSchema = z.enum([
   'same-line',
   'same-family',
   'cross-family-hidden',
   'rare-reanchor',
 ])
 const qualityClassSchema = z.enum(['fast', 'balanced', 'premium'])
+const credentialHealthSchema = z.enum(['healthy', 'degraded', 'blocked'])
+const routeOrderSchema = z.enum([
+  'intent_scene_fit',
+  'voice_line_tier',
+  'profile_candidates',
+  'region_policy',
+  'headroom',
+  'health',
+])
 
 const providerRegistrySchema = z.object({
   version: z.number().int().positive(),
@@ -139,7 +171,7 @@ const modelProfileSchema = z.object({
       ).min(1),
       fallback: z.array(
         z.object({
-          level: routingFallbackLevelSchema,
+          level: modelProfileFallbackLevelSchema,
           profile_id: z.string().min(1).optional(),
           provider_id: z.string().min(1).optional(),
           model_id: z.string().min(1).optional(),
@@ -172,6 +204,39 @@ const promptTemplateSchema = z.object({
   ),
 }).strict()
 
+const credentialPoolsSchema = z.object({
+  version: z.number().int().positive(),
+  pools: z.array(
+    z.object({
+      credential_id: z.string().min(1),
+      provider_id: z.string().min(1),
+      region: z.string().min(1),
+      endpoint_id: z.string().min(1),
+      endpoint: z.string().url(),
+      credential_ref: z.string().min(1),
+      health: credentialHealthSchema,
+      enabled: z.boolean().optional(),
+      scope_tags: z.array(z.string().min(1)).optional(),
+      allowed_model_ids: z.array(z.string().min(1)).optional(),
+      rpm_headroom: z.number().int().min(0).optional(),
+      tpm_headroom: z.number().int().min(0).optional(),
+    }).strict(),
+  ),
+}).strict()
+
+const routingPoliciesSchema = z.object({
+  version: z.number().int().positive(),
+  policies: z.array(
+    z.object({
+      profile_id: z.string().min(1),
+      route_order: z.array(routeOrderSchema).min(1),
+      allow_fallback_within_line: z.boolean(),
+      allow_cross_family: z.boolean(),
+      allowed_fallback_levels: z.array(routingFallbackLevelSchema).min(1),
+    }).strict(),
+  ),
+}).strict()
+
 export function loadProvidersRegistry(registryPath = defaultRegistryPath('providers.yaml')): ProvidersRegistryFile {
   return parseYamlFile(registryPath, providerRegistrySchema, 'providers registry')
 }
@@ -188,11 +253,25 @@ export function loadPromptTemplatesRegistry(
   return parseYamlFile(registryPath, promptTemplateSchema, 'prompt templates registry')
 }
 
+export function loadCredentialPoolsRegistry(
+  registryPath = defaultRegistryPath('credential_pools.yaml'),
+): CredentialPoolsRegistryFile {
+  return parseYamlFile(registryPath, credentialPoolsSchema, 'credential pools registry')
+}
+
+export function loadRoutingPoliciesRegistry(
+  registryPath = defaultRegistryPath('routing_policies.yaml'),
+): RoutingPoliciesRegistryFile {
+  return parseYamlFile(registryPath, routingPoliciesSchema, 'routing policies registry')
+}
+
 export function loadLlmRegistryBundle(paths: LlmRegistryPaths = {}): LlmRegistryBundle {
   const bundle: LlmRegistryBundle = {
     providers: loadProvidersRegistry(paths.providers),
     modelProfiles: loadModelProfilesRegistry(paths.modelProfiles),
     promptTemplates: loadPromptTemplatesRegistry(paths.promptTemplates),
+    credentialPools: loadCredentialPoolsRegistry(paths.credentialPools),
+    routingPolicies: loadRoutingPoliciesRegistry(paths.routingPolicies),
   }
 
   validateLlmRegistryBundle(bundle)
@@ -205,16 +284,23 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
   const promptKeys = bundle.promptTemplates.templates.map(
     (entry) => `${entry.prompt_template_id}@${entry.version}`,
   )
+  const credentialIds = bundle.credentialPools.pools.map((entry) => entry.credential_id)
+  const policyProfileIds = bundle.routingPolicies.policies.map((entry) => entry.profile_id)
 
   assertUnique(providerIds, 'provider_id')
   assertUnique(profileIds, 'profile_id')
   assertUnique(promptKeys, 'prompt_template_id@version')
+  assertUnique(credentialIds, 'credential_id')
+  assertUnique(policyProfileIds, 'routing policy profile_id')
 
   const providersById = new Map(
     bundle.providers.providers.map((entry) => [entry.provider_id, entry] as const),
   )
   const profilesById = new Map(
     bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
+  )
+  const policyByProfileId = new Map(
+    bundle.routingPolicies.policies.map((entry) => [entry.profile_id, entry] as const),
   )
 
   for (const provider of bundle.providers.providers) {
@@ -226,7 +312,34 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
     }
   }
 
+  for (const pool of bundle.credentialPools.pools) {
+    const provider = providersById.get(pool.provider_id)
+    if (!provider) {
+      throw registryError(
+        `Credential pool ${pool.credential_id} references unknown provider ${pool.provider_id}`,
+        { credential_id: pool.credential_id, provider_id: pool.provider_id },
+      )
+    }
+    if (!provider.routing.regions.includes(pool.region)) {
+      throw registryError(
+        `Credential pool ${pool.credential_id} uses unsupported region ${pool.region}`,
+        {
+          credential_id: pool.credential_id,
+          provider_id: pool.provider_id,
+          region: pool.region,
+        },
+      )
+    }
+  }
+
   for (const profile of bundle.modelProfiles.profiles) {
+    if (!policyByProfileId.has(profile.profile_id)) {
+      throw registryError(
+        `Profile ${profile.profile_id} is missing a routing policy`,
+        { profile_id: profile.profile_id },
+      )
+    }
+
     const line = VOICE_LINE_CATALOG[profile.voice_line_id]
     if (!line) {
       throw registryError(`Unknown voice_line_id: ${profile.voice_line_id}`, {
@@ -273,6 +386,23 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
           },
         )
       }
+
+      const matchingPool = bundle.credentialPools.pools.find((pool) => (
+        pool.provider_id === candidate.provider_id &&
+        pool.region === candidate.region &&
+        pool.endpoint_id === candidate.endpoint_id
+      ))
+      if (!matchingPool) {
+        throw registryError(
+          `Profile ${profile.profile_id} candidate ${candidate.provider_id}/${candidate.model_id} has no credential pool`,
+          {
+            profile_id: profile.profile_id,
+            provider_id: candidate.provider_id,
+            model_id: candidate.model_id,
+            endpoint_id: candidate.endpoint_id,
+          },
+        )
+      }
     }
 
     for (const fallback of profile.fallback) {
@@ -282,6 +412,21 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
           { profile_id: profile.profile_id, fallback_profile_id: fallback.profile_id },
         )
       }
+    }
+  }
+
+  for (const policy of bundle.routingPolicies.policies) {
+    if (!profilesById.has(policy.profile_id)) {
+      throw registryError(
+        `Routing policy references unknown profile ${policy.profile_id}`,
+        { profile_id: policy.profile_id },
+      )
+    }
+    if (!policy.allowed_fallback_levels.includes('none')) {
+      throw registryError(
+        `Routing policy ${policy.profile_id} must include none in allowed_fallback_levels`,
+        { profile_id: policy.profile_id },
+      )
     }
   }
 

@@ -1,10 +1,11 @@
 import { Router, type IRouter } from 'express'
 import { requireHumanAuth, requireAdmin } from '../middleware/human-auth.js'
-import { governanceAdapter, runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, relationService } from '../container.js'
+import { governanceAdapter, runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, relationService, usageLedger } from '../container.js'
 import { config } from '../lib/config.js'
 import { richCommunitiesMetrics } from '../lib/rich-communities-metrics.js'
 import { buildPersonaObservabilitySummary } from '../runtime/persona-observation.js'
 import { runtimeFeatureMetrics } from '../runtime/runtime-feature-metrics.js'
+import { personaObservability } from '../runtime/persona-observability.js'
 import { validate } from '../validation/validate.js'
 import { governanceActionSchema } from '../validation/schemas.js'
 
@@ -24,7 +25,7 @@ adminApiRouter.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, async
         processing: runtimeLoop.isProcessing,
         queue_size: queueSize,
         is_leader: runtimeLoop.isLeader,
-        llm_configured: llmClient.isConfigured,
+        llm_configured: llmGateway.isConfigured,
         node_env: config.nodeEnv,
         queue_backend: config.runtime.queueBackend,
         leader_backend: config.runtime.leaderBackend,
@@ -49,6 +50,7 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, (_
 
   const counters = runtimeFeatureMetrics.snapshot()
   const richCounters = richCommunitiesMetrics.snapshot()
+  const observability = personaObservability.snapshot()
 
   res.json({
     data: {
@@ -62,6 +64,10 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, (_
       counters,
       persona_observability: buildPersonaObservabilitySummary(counters.persona),
       rich_communities: richCounters,
+      observability: {
+        ...observability,
+        render_log_preview: personaObservability.latestRenderLog(usageLedger.list(), 20),
+      },
     },
   })
 })

@@ -64,8 +64,8 @@ describe('MemoryService nurture bridge', () => {
           ],
         }),
       } as never,
-      llmClient: {
-        chat: vi.fn().mockResolvedValue({
+      llmGateway: {
+        generateHiddenArtifact: vi.fn().mockResolvedValue({
           content: JSON.stringify({
             summary_text: '总结',
             topic_tags: ['topic'],

@@ -1,0 +1,252 @@
+# Routing policy registry
+#
+# Defines allowed fallback behavior for each model profile.
+
+version: 1
+
+policies:
+  - profile_id: qwen-social-chat-reply-lite
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: qwen-social-forum-reply-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: qwen-social-scheduled-post-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: qwen-social-private-reply-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: qwen-social-proactive-opening-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: true
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+      - same-line
+
+  - profile_id: qwen-social-proactive-opening-premium
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: true
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+      - same-line
+
+  - profile_id: qwen-social-identity-write-premium
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: glm-deep-chat-reply-lite
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: glm-deep-forum-reply-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: glm-deep-scheduled-post-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: true
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+      - same-line
+
+  - profile_id: glm-deep-scheduled-post-premium
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: true
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+      - same-line
+
+  - profile_id: glm-deep-private-reply-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: glm-deep-proactive-opening-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: glm-deep-identity-write-premium
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: deepseek-director-public-observation-base
+    route_order:
+      - intent_scene_fit
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: deepseek-director-private-digest-premium
+    route_order:
+      - intent_scene_fit
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: deepseek-director-vision-summary-base
+    route_order:
+      - intent_scene_fit
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: deepseek-director-director-plan-base
+    route_order:
+      - intent_scene_fit
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: deepseek-director-director-plan-premium
+    route_order:
+      - intent_scene_fit
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none

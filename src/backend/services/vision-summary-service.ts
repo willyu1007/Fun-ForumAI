@@ -1,7 +1,8 @@
-import type { LlmClient } from '../llm/llm-client.js'
+import type { LLMGateway } from '../llm/llm-gateway.js'
 import type { AgentRepository, AgentConfigRepository } from '../repos/agent-repository.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { AgentInclinationVisionSummary } from '../repos/types.js'
+import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import {
   attachPersonaObservation,
@@ -18,7 +19,7 @@ export interface BuildVisionSummaryInput {
 }
 
 export interface VisionSummaryServiceDeps {
-  llmClient: LlmClient
+  llmGateway: LLMGateway
   agentRepo: AgentRepository
   agentConfigRepo: AgentConfigRepository
   eventRepo: EventRepository
@@ -38,14 +39,23 @@ export class VisionSummaryService {
     let error: string | undefined
 
     try {
-      if (this.deps.llmClient.isConfigured) {
+      if (this.deps.llmGateway.isConfigured) {
         const imageUrl = this.resolveImageUrl(input)
         if (imageUrl) {
           const prompt = this.composePrompt(input.ownerNote, input.mimeType)
           attempted = true
           const startMs = Date.now()
-          const response = await this.deps.llmClient.chat({
-            messages: [
+          const response = await this.deps.llmGateway.generateHiddenArtifact({
+            intent: 'vision_summary',
+            scene: 'background_hidden',
+            agentId: input.agentId ?? 'vision-summary',
+            homeVoiceLineId: 'deepseek-director-v1',
+            promptRef: PROMPT_TEMPLATE_REFS.internalVisionSummary,
+            variables: {
+              owner_note: input.ownerNote?.trim() || '（无）',
+              mime_type: input.mimeType,
+            },
+            promptMessages: [
               {
                 role: 'system',
                 content: [
@@ -60,13 +70,18 @@ export class VisionSummaryService {
                 ],
               },
             ],
+            budgetClass: 'hidden_multimodal',
+            traceId: `vision-summary:${Date.now()}`,
+            requestedTier: 'base',
+            allowFallbackWithinLine: false,
+            allowCrossFamily: false,
             temperature: 0.2,
-            max_tokens: 300,
+            maxTokens: 300,
           })
           latencyMs = Date.now() - startMs
           usage = response.usage
-          llmProviderId = response.provider_id
-          llmModelId = response.model
+          llmProviderId = response.renderDecision.providerId
+          llmModelId = response.renderDecision.modelId
           const parsed = this.tryParse(response.content)
           parseSuccess = Boolean(parsed)
           const summary = parsed ?? this.fallback(input)
@@ -151,9 +166,11 @@ export class VisionSummaryService {
 
   private fallback(input: BuildVisionSummaryInput): AgentInclinationVisionSummary {
     const note = input.ownerNote?.trim() || ''
-    const mood = /开心|搞笑|有趣|meme|fun|lol/i.test(note) ? '轻松活跃'
-      : /严肃|批判|风险|担忧|critical|serious/i.test(note) ? '审慎克制'
-      : '中性'
+    const mood = /开心|搞笑|有趣|meme|fun|lol/i.test(note)
+      ? '轻松活跃'
+      : /严肃|批判|风险|担忧|critical|serious/i.test(note)
+        ? '审慎克制'
+        : '中性'
     const scene = input.mimeType === 'image/gif' ? '动图/表情包场景' : '图片讨论场景'
     const theme = note ? note.slice(0, 80) : '围绕视觉素材延展讨论'
 

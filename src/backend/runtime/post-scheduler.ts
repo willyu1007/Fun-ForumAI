@@ -1,5 +1,4 @@
-import type { LlmClient } from '../llm/llm-client.js'
-import type { PromptEngine } from '../llm/prompt-engine.js'
+import type { LLMGateway } from '../llm/llm-gateway.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import type { ForumReadService } from '../services/forum-read-service.js'
 import type { AgentService } from '../services/agent-service.js'
@@ -12,9 +11,9 @@ import type { PromptOrchestrator } from './prompt-orchestrator.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { RenderTierDecisionResult } from './persona-runtime-types.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
+import type { PromptComposeAudit } from './types.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
-import type { PromptComposeAudit } from './types.js'
 import {
   attachPersonaObservation,
   buildPersonaObservation,
@@ -27,8 +26,7 @@ export interface PostSchedulerConfig {
 }
 
 export interface PostSchedulerDeps {
-  llmClient: LlmClient
-  promptEngine: PromptEngine
+  llmGateway: LLMGateway
   forumReadService: ForumReadService
   agentService: AgentService
   responseParser: ResponseParser
@@ -217,8 +215,19 @@ export class PostScheduler {
         },
       })
 
-      const messages = this.deps.promptEngine.render(PROMPT_TEMPLATE_REFS.agentCreatePost, variables)
-      const llmResponse = await this.deps.llmClient.chat({ messages })
+      const llmResponse = await this.deps.llmGateway.generateVisibleText({
+        intent: 'scheduled_post',
+        scene: 'scheduled_post',
+        agentId: selected.id,
+        homeVoiceLineId: this.resolveHomeVoiceLineId(selected.id),
+        promptRef: PROMPT_TEMPLATE_REFS.agentCreatePost,
+        variables,
+        budgetClass: 'visible_standard',
+        traceId: `scheduled-post:${selected.id}:${Date.now()}`,
+        requestedTier: 'base',
+        allowFallbackWithinLine: true,
+        allowCrossFamily: false,
+      })
       const latencyMs = Date.now() - start
       const observation = buildPersonaObservation({
         sourceCallsiteId: 'post-scheduler-create-post',
@@ -229,14 +238,15 @@ export class PostScheduler {
         personaSeedCode: observationIdentity?.persona_seed_code,
         homeVoiceLineId: observationIdentity?.home_voice_line_id,
         promptRef: PROMPT_TEMPLATE_REFS.agentCreatePost,
-        requestedTier: 'base',
-        resolvedTier: 'base',
+        requestedTier: llmResponse.renderDecision.tier,
+        resolvedTier: llmResponse.renderDecision.tier,
+        renderDecision: llmResponse.renderDecision,
         usage: llmResponse.usage,
         latencyMs,
         parseSuccess: false,
         promptAudit,
-        llmProviderId: llmResponse.provider_id,
-        llmModelId: llmResponse.model,
+        llmProviderId: llmResponse.renderDecision.providerId,
+        llmModelId: llmResponse.renderDecision.modelId,
       })
 
       const instruction = this.deps.responseParser.parseAsScheduledPost({
@@ -447,6 +457,12 @@ export class PostScheduler {
     } catch {
       return DEFAULT_PERSONA
     }
+  }
+
+  private resolveHomeVoiceLineId(agentId: string) {
+    const agent = this.deps.agentService.getAgent(agentId)
+    const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+    return resolveAgentIdentity(agent, latestConfig).summary.home_voice_line_id
   }
 
   private resolveObservationIdentity(agentId: string): {

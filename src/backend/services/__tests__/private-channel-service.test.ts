@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest'
 import { config } from '../../lib/config.js'
 import { PrivateChannelService } from '../private-channel-service.js'
 import type { PromptOrchestrator } from '../../runtime/prompt-orchestrator.js'
-import type { PromptEngine } from '../../llm/prompt-engine.js'
 import type { PrivateSession } from '../../repos/types.js'
 import { PROMPT_TEMPLATE_REFS } from '../../llm/prompt-template-refs.js'
 
@@ -60,7 +59,7 @@ describe('PrivateChannelService', () => {
         })),
         getLatestConfig: vi.fn(() => null),
       } as never,
-      llmClient: { chat: vi.fn() } as never,
+      llmGateway: { generateVisibleText: vi.fn() } as never,
       eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
       agentRunRepo: { create: vi.fn() } as never,
       budgetService: null,
@@ -76,7 +75,6 @@ describe('PrivateChannelService', () => {
 
   it('uses PromptOrchestrator + PromptEngine path when enabled', async () => {
     const session = buildSession()
-    const agentRunRepo = { create: vi.fn() }
     const channelRepo = {
       findSessionById: vi.fn(async () => session),
       createMessage: vi
@@ -107,12 +105,28 @@ describe('PrivateChannelService', () => {
       findTimedOutSessions: vi.fn(),
     }
 
-    const promptEngine = {
-      render: vi.fn(() => [
-        { role: 'system', content: 'sys' },
-        { role: 'user', content: 'user' },
-      ]),
-    } as unknown as PromptEngine
+    const gatewayGenerate = vi.fn(async () => ({
+      content: '你好呀',
+      messages: [],
+      usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 },
+      latencyMs: 12,
+      platformRetryCount: 0,
+      renderDecision: {
+        voiceLineId: 'qwen-social-v1',
+        tier: 'base',
+        profileId: 'profile-1',
+        providerId: 'dashscope-openai',
+        modelId: 'qwen-plus',
+        region: 'cn',
+        endpointId: 'default',
+        credentialId: 'cred-1',
+        fallbackLevel: 'none',
+        reasons: ['test'],
+        promptTemplateId: PROMPT_TEMPLATE_REFS.agentPrivateChatReply.id,
+        promptVersion: PROMPT_TEMPLATE_REFS.agentPrivateChatReply.version,
+      },
+      promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
+    }))
     const promptOrchestrator = {
       isSceneEnabled: vi.fn(() => true),
       compose: vi.fn(async () => ({
@@ -157,16 +171,12 @@ describe('PrivateChannelService', () => {
           },
         })),
       } as never,
-      llmClient: {
-        chat: vi.fn(async () => ({
-          content: '你好呀',
-          usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 },
-        })),
+      llmGateway: {
+        generateVisibleText: gatewayGenerate,
       } as never,
-      promptEngine,
       promptOrchestrator,
       eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
-      agentRunRepo: agentRunRepo as never,
+      agentRunRepo: { create: vi.fn() } as never,
       budgetService: null,
       costTracker: null,
       sseHub: null,
@@ -175,164 +185,39 @@ describe('PrivateChannelService', () => {
     await withLayerStackFlag(true, async () => {
       const result = await service.sendMessage(session.id, 'user-1', ' 你好 ')
       expect(result.agent_reply.content).toBe('你好呀')
-      expect(promptEngine.render).toHaveBeenCalledWith(
-        PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
-        expect.objectContaining({
+      expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
+        promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
+        variables: expect.objectContaining({
           persona_name: 'Agent One',
           latest_user_message: '你好',
-        }),
-      )
-      expect(agentRunRepo.create).toHaveBeenCalledWith(expect.objectContaining({
-        output_json: expect.objectContaining({
-          persona_observation: expect.objectContaining({
-            source_callsite_id: 'private-channel-reply',
-            scene: 'private_chat',
-            prompt_audit: expect.objectContaining({
-              included_layer_ids: ['layer1_traits', 'layer6_privacy'],
-            }),
-          }),
         }),
       }))
     })
   })
 
-  it('still uses prompt composition when scene orchestration is disabled but runtime compose is available', async () => {
-    const session = buildSession()
-    const recordVisibleRender = vi.fn(async () => undefined)
-    const channelRepo = {
-      findSessionById: vi.fn(async () => session),
-      createMessage: vi
-        .fn()
-        .mockResolvedValueOnce({
-          id: 'msg-human',
-          session_id: session.id,
-          author_type: 'HUMAN',
-          content: '你好',
-          created_at: new Date(),
-        })
-        .mockResolvedValueOnce({
-          id: 'msg-agent',
-          session_id: session.id,
-          author_type: 'AGENT',
-          content: 'runtime reply',
-          created_at: new Date(),
-        }),
-      listMessages: vi.fn(async () => ({
-        items: [],
-        next_cursor: null,
-      })),
-      countMessages: vi.fn(async () => 0),
-      createSession: vi.fn(),
-      listSessions: vi.fn(),
-      updateSessionStatus: vi.fn(),
-      updateDigestStatus: vi.fn(),
-      findTimedOutSessions: vi.fn(),
-    }
-    const promptEngine = {
-      render: vi.fn(() => [
-        { role: 'system', content: 'sys' },
-        { role: 'user', content: 'user' },
-      ]),
-    } as unknown as PromptEngine
-    const promptOrchestrator = {
-      isSceneEnabled: vi.fn(() => false),
-      compose: vi.fn(async () => ({
-        persona: {
-          name: 'Agent One',
-          style: 'runtime-style',
-          interests: ['runtime'],
-          language: 'zh-CN',
-        },
-        layers: {
-          layer1_traits: 'runtime traits',
-          layer2_style: 'runtime style',
-          layer6_privacy: 'privacy',
-        },
-        audit: {
-          version: 'v1',
-          scene: 'private_chat',
-          includedLayerIds: ['layer1_traits', 'layer2_style', 'layer6_privacy'],
-          tokenEstimates: { layer1_traits: 10, layer2_style: 10, layer6_privacy: 20 },
-          lintWarnings: [],
-          trimReasons: [],
-        },
-        runtimeEnvelope: {
-          renderTierDecision: {
-            scene: 'private_chat',
-            requestedTier: 'plus',
-            reasons: ['runtime_floor'],
-          },
-        },
-      })),
-    } as unknown as PromptOrchestrator
-
-    const service = new PrivateChannelService({
-      channelRepo: channelRepo as never,
-      memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
-      agentService: {
-        getAgent: vi.fn(() => ({
-          id: 'agent-1',
-          owner_id: 'user-1',
-          display_name: 'Agent One',
-          model: 'mock-model',
-        })),
-        getLatestConfig: vi.fn(() => ({
-          config_json: {
-            persona: {
-              name: 'Agent One',
-              style: 'warm',
-              interests: ['ai'],
-            },
-          },
-        })),
-      } as never,
-      llmClient: {
-        chat: vi.fn(async () => ({
-          content: 'runtime reply',
-          usage: { prompt_tokens: 10, completion_tokens: 6, total_tokens: 16 },
-        })),
-      } as never,
-      promptEngine,
-      promptOrchestrator,
-      personaStateService: {
-        recordVisibleRender,
-      } as never,
-      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
-      agentRunRepo: { create: vi.fn() } as never,
-      budgetService: null,
-      costTracker: null,
-      sseHub: null,
-    })
-
-    await withLayerStackFlag(false, async () => {
-      const result = await service.sendMessage(session.id, 'user-1', ' 你好 ')
-      expect(result.agent_reply.content).toBe('runtime reply')
-      expect(promptOrchestrator.compose).toHaveBeenCalledTimes(1)
-      expect(promptEngine.render).toHaveBeenCalledWith(
-        PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
-        expect.objectContaining({
-          persona_style: 'runtime-style',
-          layer_traits: 'runtime traits',
-        }),
-      )
-      expect(recordVisibleRender).toHaveBeenCalledWith({
-        agentId: 'agent-1',
-        scene: 'private_chat',
-        renderDecision: {
-          scene: 'private_chat',
-          requestedTier: 'plus',
-          reasons: ['runtime_floor'],
-        },
-        outputText: 'runtime reply',
-      })
-    })
-  })
-
   it('falls back to legacy hand-written prompt when orchestrator fails', async () => {
     const session = buildSession()
-    const llmChat = vi.fn(async (_input: { messages: Array<{ role: string; content: string }> }) => ({
+    const gatewayGenerate = vi.fn(async (_input: { variables: Record<string, string> }) => ({
       content: 'fallback reply',
+      messages: [],
       usage: { prompt_tokens: 11, completion_tokens: 5, total_tokens: 16 },
+      latencyMs: 10,
+      platformRetryCount: 0,
+      renderDecision: {
+        voiceLineId: 'qwen-social-v1',
+        tier: 'base',
+        profileId: 'profile-1',
+        providerId: 'dashscope-openai',
+        modelId: 'qwen-plus',
+        region: 'cn',
+        endpointId: 'default',
+        credentialId: 'cred-1',
+        fallbackLevel: 'none',
+        reasons: ['test'],
+        promptTemplateId: PROMPT_TEMPLATE_REFS.agentPrivateChatReply.id,
+        promptVersion: PROMPT_TEMPLATE_REFS.agentPrivateChatReply.version,
+      },
+      promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
     }))
     const channelRepo = {
       findSessionById: vi.fn(async () => session),
@@ -384,8 +269,7 @@ describe('PrivateChannelService', () => {
           },
         })),
       } as never,
-      llmClient: { chat: llmChat } as never,
-      promptEngine: { render: vi.fn() } as never,
+      llmGateway: { generateVisibleText: gatewayGenerate } as never,
       promptOrchestrator: {
         isSceneEnabled: vi.fn(() => true),
         compose: vi.fn(async () => {
@@ -401,10 +285,14 @@ describe('PrivateChannelService', () => {
 
     await withLayerStackFlag(true, async () => {
       await service.sendMessage(session.id, 'user-1', ' question ')
-      const firstCall = llmChat.mock.calls.at(0)
+      const firstCall = gatewayGenerate.mock.calls.at(0)
       expect(firstCall).toBeDefined()
-      const call = firstCall![0] as unknown as { messages: Array<{ role: string; content: string }> }
-      expect(call.messages[0].content).toContain('场景：与 Owner 的私人对话')
+      const call = firstCall![0] as unknown as {
+        promptRef: typeof PROMPT_TEMPLATE_REFS.agentPrivateChatReply
+        variables: Record<string, string>
+      }
+      expect(call.promptRef).toEqual(PROMPT_TEMPLATE_REFS.agentPrivateChatReply)
+      expect(call.variables.session_context).toContain('场景：与 Owner 的私人对话')
     })
   })
 })

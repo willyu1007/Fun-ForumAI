@@ -1,5 +1,5 @@
-import type { LlmClient } from '../llm/llm-client.js'
-import type { LlmMessage, LlmResponse } from '../llm/types.js'
+import type { LLMGateway } from '../llm/llm-gateway.js'
+import type { LLMGatewayResponse } from '../llm/gateway-contract.js'
 import type { PromptEngine } from '../llm/prompt-engine.js'
 import type { AgentService } from './agent-service.js'
 import type { BudgetService } from './budget-service.js'
@@ -10,17 +10,7 @@ import type { EventRepository, AgentRunRepository } from '../repos/event-reposit
 import type { SseHub } from '../sse/hub.js'
 import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
 import type { RenderTierDecisionResult } from '../runtime/persona-runtime-types.js'
-import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import type { PromptComposeAudit } from '../runtime/types.js'
-import type {
-  PrivateSession,
-  PrivateMessage,
-  PaginatedResult,
-  PaginationOpts,
-  PrivateSessionStatus,
-} from '../repos/types.js'
-import { AppError, NotFoundError, ValidationError, ForbiddenError } from '../lib/errors.js'
-import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import type { PersonaStateService } from './persona-state-service.js'
 import {
   attachPersonaObservation,
@@ -28,8 +18,18 @@ import {
   type PersonaObservationV1,
   recordPersonaObservation,
 } from '../runtime/persona-observation.js'
+import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
+import type {
+  PrivateSession,
+  PrivateMessage,
+  PaginatedResult,
+  PaginationOpts,
+  PrivateSessionStatus,
+} from '../repos/types.js'
+import { AppError, ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
+import { resolveAgentIdentity } from '../identity/agent-identity.js'
 
-const SESSION_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000
 
 const PRIVATE_SCENE_PROMPT = [
   '## 场景：与 Owner 的私人对话',
@@ -46,8 +46,7 @@ export interface PrivateChannelServiceDeps {
   channelRepo: PrivateChannelRepository
   memoryRepo: MemoryRepository
   agentService: AgentService
-  llmClient: LlmClient
-  promptEngine?: PromptEngine | null
+  llmGateway: LLMGateway
   promptOrchestrator?: PromptOrchestrator | null
   personaStateService?: PersonaStateService | null
   eventRepo: EventRepository
@@ -61,7 +60,7 @@ export class PrivateChannelService {
   constructor(private readonly deps: PrivateChannelServiceDeps) {}
 
   bindPromptOrchestrator(promptEngine: PromptEngine, promptOrchestrator: PromptOrchestrator): void {
-    ;(this.deps as { promptEngine?: PromptEngine | null }).promptEngine = promptEngine
+    void promptEngine
     ;(this.deps as { promptOrchestrator?: PromptOrchestrator | null }).promptOrchestrator = promptOrchestrator
   }
 
@@ -88,11 +87,7 @@ export class PrivateChannelService {
       })
     } catch (err) {
       if (isPrismaForeignKeyError(err)) {
-        throw new AppError(
-          409,
-          'Session dependency not ready; retry shortly',
-          'DEPENDENCY_NOT_READY',
-        )
+        throw new AppError(409, 'Session dependency not ready; retry shortly', 'DEPENDENCY_NOT_READY')
       }
       throw err
     }
@@ -108,11 +103,7 @@ export class PrivateChannelService {
       throw new ValidationError('Session is not active')
     }
 
-    const updated = await this.deps.channelRepo.updateSessionStatus(
-      sessionId,
-      'ENDED',
-      new Date(),
-    )
+    const updated = await this.deps.channelRepo.updateSessionStatus(sessionId, 'ENDED', new Date())
     if (!updated) throw new NotFoundError('PrivateSession', sessionId)
 
     this.deps.sseHub?.broadcastToSession(sessionId, {
@@ -160,11 +151,20 @@ export class PrivateChannelService {
       payload: { session_id: sessionId, message: humanMsg },
     })
 
-    const replyPlan = await this.buildMessagesForReply(session, content.trim())
+    const replyPlan = await this.buildRequestForReply(session, content.trim())
     const startMs = Date.now()
-    const llmResponse = await this.deps.llmClient.chat({
-      messages: replyPlan.messages,
-      model: agent.model,
+    const llmResponse = await this.deps.llmGateway.generateVisibleText({
+      intent: 'private_reply',
+      scene: 'private_chat',
+      agentId: session.agent_id,
+      homeVoiceLineId: this.resolveHomeVoiceLineId(session.agent_id),
+      promptRef: replyPlan.promptRef,
+      variables: replyPlan.variables,
+      budgetClass: 'visible_standard',
+      traceId: `private-chat:${session.id}:${humanMsg.id}`,
+      requestedTier: 'base',
+      allowFallbackWithinLine: false,
+      allowCrossFamily: false,
       temperature: 0.8,
     })
     const latencyMs = Date.now() - startMs
@@ -177,15 +177,16 @@ export class PrivateChannelService {
       coverageStatus: 'migrated_visible',
       personaSeedCode: identity?.persona_seed_code,
       homeVoiceLineId: identity?.home_voice_line_id,
-      promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
-      requestedTier: 'base',
-      resolvedTier: 'base',
+      promptRef: replyPlan.promptRef,
+      requestedTier: llmResponse.renderDecision.tier,
+      resolvedTier: llmResponse.renderDecision.tier,
+      renderDecision: llmResponse.renderDecision,
       usage: llmResponse.usage,
       latencyMs,
       parseSuccess: true,
       promptAudit: replyPlan.promptAudit,
-      llmProviderId: llmResponse.provider_id,
-      llmModelId: llmResponse.model,
+      llmProviderId: llmResponse.renderDecision.providerId,
+      llmModelId: llmResponse.renderDecision.modelId,
     })
 
     const agentReply = await this.deps.channelRepo.createMessage({
@@ -221,7 +222,7 @@ export class PrivateChannelService {
   private recordAuditTrail(
     session: PrivateSession,
     inputContent: string,
-    llmResponse: LlmResponse,
+    llmResponse: Pick<LLMGatewayResponse, 'content' | 'usage'>,
     latencyMs: number,
     observation: PersonaObservationV1,
   ): void {
@@ -290,90 +291,94 @@ export class PrivateChannelService {
     return this.deps.channelRepo.listMessages(sessionId, opts)
   }
 
-  async checkTimeouts(): Promise<number> {
+  async checkTimeouts(): Promise<PrivateSession[]> {
     const timedOut = await this.deps.channelRepo.findTimedOutSessions(SESSION_TIMEOUT_MS)
-    let count = 0
+    const ended: PrivateSession[] = []
     for (const session of timedOut) {
-      await this.deps.channelRepo.updateSessionStatus(session.id, 'ENDED', new Date())
-      count++
+      const updated = await this.deps.channelRepo.updateSessionStatus(session.id, 'ENDED', new Date())
+      if (updated) {
+        ended.push(updated)
+      }
     }
-    return count
+    return ended
   }
 
   async getMessageCount(sessionId: string): Promise<number> {
     return this.deps.channelRepo.countMessages(sessionId)
   }
 
-  private async buildChatMessages(
+  private async buildLegacyReplyVariables(
     session: PrivateSession,
     currentMessage: string,
-  ): Promise<LlmMessage[]> {
+  ): Promise<Record<string, string>> {
     const agent = this.deps.agentService.getAgent(session.agent_id)
     const latestConfig = this.deps.agentService.getLatestConfig(session.agent_id)
     const resolved = resolveAgentIdentity(agent, latestConfig)
     const personaName = resolved.visiblePersona.name
     const personaStyle = resolved.visiblePersona.style
     const personaInterests = resolved.visiblePersona.interests.join('、')
+    const personaLanguage = resolved.visiblePersona.language
 
     const memories = await this.loadMemoriesForPrivateChat(session.agent_id)
-
-    const systemParts = [
-      `你是 ${personaName}，一个 AI 智能体。`,
-      `你的风格：${personaStyle}`,
-      `你的兴趣领域：${personaInterests}`,
-      '',
-      PRIVATE_SCENE_PROMPT,
-    ]
-
-    if (memories) {
-      systemParts.push('', '## 你的记忆', memories)
-    }
-
     const history = await this.deps.channelRepo.listMessages(session.id, { limit: 20 })
-    const chatMessages: LlmMessage[] = [
-      { role: 'system', content: systemParts.join('\n') },
-    ]
+    const recentMessages = history.items
+      .map((item) => `${item.author_type === 'HUMAN' ? 'Owner' : personaName}：${item.content}`)
+      .join('\n')
 
-    for (const msg of history.items) {
-      chatMessages.push({
-        role: msg.author_type === 'HUMAN' ? 'user' : 'assistant',
-        content: msg.content,
-      })
+    return {
+      persona_name: personaName,
+      persona_style: personaStyle,
+      persona_interests: personaInterests,
+      persona_language: personaLanguage,
+      owner_display_name: 'Owner',
+      session_context: [PRIVATE_SCENE_PROMPT, `session_id=${session.id}`].join('\n'),
+      recent_messages: recentMessages || '（这是第一次私聊消息）',
+      latest_user_message: currentMessage,
+      layer_traits: '',
+      layer_style: '',
+      layer_instructions: '',
+      layer_community: '',
+      layer_relationship: '',
+      layer_showrunner: '',
+      layer_overrides: '',
+      layer_memory: memories ? `## 你的记忆\n${memories}` : '',
+      layer_privacy: '',
     }
-
-    chatMessages.push({ role: 'user', content: currentMessage })
-    return chatMessages
   }
 
-  private async buildMessagesForReply(
+  private async buildRequestForReply(
     session: PrivateSession,
     currentMessage: string,
   ): Promise<{
-    messages: LlmMessage[]
+    promptRef: typeof PROMPT_TEMPLATE_REFS.agentPrivateChatReply
+    variables: Record<string, string>
     renderDecision: RenderTierDecisionResult | null
     promptAudit: PromptComposeAudit | null
   }> {
-    if (this.deps.promptEngine && this.deps.promptOrchestrator) {
+    if (this.deps.promptOrchestrator) {
       try {
-        return await this.buildChatMessagesWithOrchestrator(session, currentMessage)
+        return await this.buildRequestWithOrchestrator(session, currentMessage)
       } catch (err) {
         console.warn('[PrivateChannel] PromptOrchestrator compose failed, fallback to legacy path:', err)
       }
     }
+
     return {
-      messages: await this.buildChatMessages(session, currentMessage),
+      promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
+      variables: await this.buildLegacyReplyVariables(session, currentMessage),
       renderDecision: null,
       promptAudit: null,
     }
   }
 
-  private async buildChatMessagesWithOrchestrator(
+  private async buildRequestWithOrchestrator(
     session: PrivateSession,
     currentMessage: string,
   ): Promise<{
-    messages: LlmMessage[]
+    promptRef: typeof PROMPT_TEMPLATE_REFS.agentPrivateChatReply
+    variables: Record<string, string>
     renderDecision: RenderTierDecisionResult | null
-    promptAudit: PromptComposeAudit
+    promptAudit: PromptComposeAudit | null
   }> {
     const history = await this.deps.channelRepo.listMessages(session.id, { limit: 20 })
     const conversationText = [...history.items.map((item) => item.content), currentMessage].join(' ').trim()
@@ -395,28 +400,27 @@ export class PrivateChannelService {
       .map((item) => `${item.author_type === 'HUMAN' ? 'Owner' : composed.persona.name}：${item.content}`)
       .join('\n')
 
-    const variables: Record<string, string> = {
-      persona_name: composed.persona.name,
-      persona_style: composed.persona.style,
-      persona_interests: composed.persona.interests.join('、'),
-      persona_language: composed.persona.language,
-      owner_display_name: 'Owner',
-      session_context: `session_id=${session.id}`,
-      recent_messages: recentMessages || '（这是第一次私聊消息）',
-      latest_user_message: currentMessage,
-      layer_traits: composed.layers.layer1_traits ?? '',
-      layer_style: composed.layers.layer2_style ?? '',
-      layer_instructions: composed.layers.layer3_instructions ?? '',
-      layer_community: composed.layers.layer_community ?? '',
-      layer_relationship: composed.layers.layer_relationship ?? '',
-      layer_showrunner: composed.layers.layer_showrunner ?? '',
-      layer_overrides: composed.layers.layer4_overrides ?? '',
-      layer_memory: composed.layers.layer5_memory ?? '',
-      layer_privacy: composed.layers.layer6_privacy ?? '',
-    }
-
     return {
-      messages: this.deps.promptEngine!.render(PROMPT_TEMPLATE_REFS.agentPrivateChatReply, variables),
+      promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
+      variables: {
+        persona_name: composed.persona.name,
+        persona_style: composed.persona.style,
+        persona_interests: composed.persona.interests.join('、'),
+        persona_language: composed.persona.language,
+        owner_display_name: 'Owner',
+        session_context: `session_id=${session.id}`,
+        recent_messages: recentMessages || '（这是第一次私聊消息）',
+        latest_user_message: currentMessage,
+        layer_traits: composed.layers.layer1_traits ?? '',
+        layer_style: composed.layers.layer2_style ?? '',
+        layer_instructions: composed.layers.layer3_instructions ?? '',
+        layer_community: composed.layers.layer_community ?? '',
+        layer_relationship: composed.layers.layer_relationship ?? '',
+        layer_showrunner: composed.layers.layer_showrunner ?? '',
+        layer_overrides: composed.layers.layer4_overrides ?? '',
+        layer_memory: composed.layers.layer5_memory ?? '',
+        layer_privacy: composed.layers.layer6_privacy ?? '',
+      },
       renderDecision: composed.runtimeEnvelope?.renderTierDecision ?? null,
       promptAudit: composed.audit,
     }
@@ -432,14 +436,22 @@ export class PrivateChannelService {
     return memories.items
       .sort((a, b) => b.importance_score - a.importance_score)
       .slice(0, 8)
-      .map((m) => {
+      .map((memory) => {
         const sourceLabel =
-          m.source_type === 'PRIVATE_CHAT' ? '来自之前的交流'
-          : m.source_type === 'PUBLIC_OBSERVATION' ? '来自公共讨论'
-          : '系统知识'
-        return `[${sourceLabel} | 重要度: ${m.importance_score.toFixed(1)}]\n${m.summary_text}`
+          memory.source_type === 'PRIVATE_CHAT'
+            ? '来自之前的交流'
+            : memory.source_type === 'PUBLIC_OBSERVATION'
+              ? '来自公共讨论'
+              : '系统知识'
+        return `[${sourceLabel} | 重要度: ${memory.importance_score.toFixed(1)}]\n${memory.summary_text}`
       })
       .join('\n\n')
+  }
+
+  private resolveHomeVoiceLineId(agentId: string) {
+    const agent = this.deps.agentService.getAgent(agentId)
+    const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+    return resolveAgentIdentity(agent, latestConfig).summary.home_voice_line_id
   }
 
   private resolveObservationIdentity(agentId: string): {

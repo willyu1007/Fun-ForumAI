@@ -1,0 +1,33 @@
+# 03 Implementation Notes — T-068
+
+- 2026-03-09 开始 runtime implementation，目标是承接 `T-064` contract，并输出 `T-069` 可依赖的 lane / ledger / budget 基线。
+- 2026-03-09 完成 env/control-plane SSOT 收口：
+  - `env/contract.yaml` 改为 `secret: true + secret_ref`；
+  - `env/values/*` 移除 secret 占位；
+  - `env/secrets/dev.ref.yaml` 使用 `env` backend，`staging/prod.ref.yaml` 使用 `bws` backend；
+  - `.ai/llm-config/registry/credential_pools.yaml`、`routing_policies.yaml` 成为新的 runtime-authoritative registry。
+- 2026-03-09 新增 runtime 组件：
+  - `SecretResolver` 解析 `secret-ref:*`、`env://`、`file://`、`bws`；
+  - `CredentialBroker` 选择 credential pool 并解析 secret；
+  - `BudgetGuard` 注入现有 `BudgetService.checkBudget`；
+  - `UsageLedgerWriter` 输出 authoritative usage ledger；
+  - `LLMGateway` 负责 prompt render、profile resolution、fallback、budget、usage ledger 与 provider dispatch。
+- 2026-03-09 完成 call-site migration：
+  - visible 路径：`AgentExecutor`、`PostScheduler`、`ConversationClock`、`PrivateChannelService`、`ProactiveInteractionService`
+  - hidden 路径：`PublicObservationDigestService`、`MemoryService.generateDigest()`、`VisionSummaryService`
+  - `LlmClient` 保留为 provider adapter；唯一允许直接 `llmClient.chat()` 的生产文件变为 `src/backend/llm/llm-gateway.ts`。
+- 2026-03-09 同步治理/护栏：
+  - `callsite-inventory` 改成“业务层必须走 gateway”的 guard；
+  - `config_keys.yaml` 补齐所有现有 `RUNTIME_*` key，恢复 `check-llm-config-keys` 通过。
+- 2026-03-09 针对 `codex/t067-t069-control-context-planes` PR 做 merge-blocker 稳定化：
+  - `LLMGateway.isConfigured` 只再反映 `CredentialBroker.hasAnyUsableCredential()`，不再把 legacy bootstrap `llmClient.isConfigured` 作为 readiness 信号。
+  - `LLMGatewayResponse.usage` 收紧为成功响应必有字段，`PrivateChannelService` 与相关测试 mock 同步改成显式带 usage。
+  - `BudgetGuard`、`CredentialBroker`、`LLMGateway` 统一把 `LLMGatewayContractError.details` 传成 plain record，消除本分支引入的 TypeScript shape 失败。
+  - `callsite-inventory` 中 private context identity finalize 的 surface 元数据修正为 `generateIdentityWrite`，避免 identity-write 流量继续被记成 generic hidden lane。
+  - `LLM_API_KEY` 在 `env/contract.yaml` 中保留为 deprecated 但改成 optional，并用 `env-contractctl` 重新生成 `env/.env.example`、`docs/env.md`、`docs/context/env/contract.json`。
+  - runtime/ops 文案不再提示单一 `LLM_API_KEY`；管理台与 `LlmClient` bootstrap warning 均改为面向 provider credential / per-request credential 的表述。
+  - 顺手收口这条 PR 额外引入的 typecheck 回归：`StatsPanel` / `stats-service` 补齐 `granted_points_total`，`AgentManagePage` 的 `personaSeedCode` state 改成 `PersonaSeedCode` 显式收窄。
+- 2026-03-09 在与 `origin/main` 的冲突收口中，保留 control-plane gateway 路径，并吸收 `main` 上的 persona observability / runtime render 记录：
+  - `AgentExecutor`、`PostScheduler`、`ConversationClock`、`PrivateChannelService`、`ProactiveInteractionService`、`PublicObservationDigestService`、`VisionSummaryService` 重新对齐到 `main` 的 observation / agent-run 结构，但所有 LLM 调用继续经 `LLMGateway`。
+  - `MemoryService` 保留 typed context retrieval / digest 逻辑，同时补回 `main` 的 digest hook payload 扩展与 private digest agent-run 记录。
+  - `createLlmServices`、`createNurtureEngines`、runtime/container wiring 与相关测试同步到 `main` 当前依赖签名。

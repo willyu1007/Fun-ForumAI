@@ -84,6 +84,9 @@ export class OpenAICompatibleProvider implements LlmProvider {
           },
           model: data.model,
           finish_reason: choice.finish_reason,
+          meta: {
+            attempts: attempt + 1,
+          },
         }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {

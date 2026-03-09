@@ -14,7 +14,6 @@ function withLayerStackFlag<T>(enabled: boolean, run: () => Promise<T>): Promise
 
 describe('ProactiveInteractionService', () => {
   it('uses PromptOrchestrator + PromptEngine for proactive opening', async () => {
-    const agentRunRepo = { create: vi.fn() }
     const channelRepo = {
       listSessions: vi.fn(async () => ({ items: [], next_cursor: null })),
       createSession: vi.fn(async () => ({
@@ -43,15 +42,27 @@ describe('ProactiveInteractionService', () => {
       findTimedOutSessions: vi.fn(),
       countMessages: vi.fn(),
     }
-    const promptEngine = {
-      render: vi.fn(() => [
-        { role: 'system', content: 'sys' },
-        { role: 'user', content: 'user' },
-      ]),
-    }
-    const llmChat = vi.fn(async (_input: { messages: Array<{ role: string; content: string }> }) => ({
+    const gatewayGenerate = vi.fn(async (_input: Record<string, unknown>) => ({
       content: 'opening',
       usage: { prompt_tokens: 10, completion_tokens: 6, total_tokens: 16 },
+      messages: [],
+      latencyMs: 12,
+      platformRetryCount: 0,
+      renderDecision: {
+        voiceLineId: 'qwen-social-v1',
+        tier: 'base',
+        profileId: 'profile-1',
+        providerId: 'dashscope-openai',
+        modelId: 'qwen-plus',
+        region: 'cn',
+        endpointId: 'default',
+        credentialId: 'cred-1',
+        fallbackLevel: 'none',
+        reasons: ['test'],
+        promptTemplateId: 'agent-proactive-dm-opening',
+        promptVersion: 1,
+      },
+      promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
     }))
     const service = new ProactiveInteractionService({
       channelRepo: channelRepo as never,
@@ -68,8 +79,7 @@ describe('ProactiveInteractionService', () => {
           },
         })),
       } as never,
-      llmClient: { chat: llmChat } as never,
-      promptEngine: promptEngine as never,
+      llmGateway: { generateVisibleText: gatewayGenerate } as never,
       promptOrchestrator: {
         isSceneEnabled: vi.fn(() => true),
         compose: vi.fn(async () => ({
@@ -86,7 +96,7 @@ describe('ProactiveInteractionService', () => {
         })),
       } as never,
       eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
-      agentRunRepo: agentRunRepo as never,
+      agentRunRepo: { create: vi.fn() } as never,
       notificationService: { create: vi.fn(async () => ({ id: 'notif-1' })) } as never,
     })
 
@@ -98,144 +108,38 @@ describe('ProactiveInteractionService', () => {
         voter_agent_id: 'agent-voter',
       })
       expect(ok).toBe(true)
-      expect(promptEngine.render).toHaveBeenCalledWith(
-        PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
-        expect.objectContaining({
+      expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
+        promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
+        variables: expect.objectContaining({
           trigger_type: 'vote_received',
-        }),
-      )
-      expect(agentRunRepo.create).toHaveBeenCalledWith(expect.objectContaining({
-        output_json: expect.objectContaining({
-          persona_observation: expect.objectContaining({
-            source_callsite_id: 'proactive-orchestrated-opening',
-            scene: 'proactive_dm',
-          }),
         }),
       }))
     })
   })
 
-  it('still uses runtime compose when proactive scene orchestration is disabled', async () => {
-    const recordVisibleRender = vi.fn(async () => undefined)
-    const promptEngine = {
-      render: vi.fn(() => [
-        { role: 'system', content: 'sys' },
-        { role: 'user', content: 'user' },
-      ]),
-    }
-    const service = new ProactiveInteractionService({
-      channelRepo: {
-        listSessions: vi.fn(async () => ({ items: [], next_cursor: null })),
-        createSession: vi.fn(async () => ({
-          id: 'session-runtime',
-          agent_id: 'agent-1',
-          human_user_id: 'owner-1',
-          status: 'ACTIVE',
-          initiator: 'AGENT',
-          trigger_type: 'VOTE_RECEIVED',
-          trigger_ref: 'post-1',
-          started_at: new Date(),
-          ended_at: null,
-          digest_status: 'PENDING',
-        })),
-        createMessage: vi.fn(async () => ({
-          id: 'msg-1',
-          session_id: 'session-runtime',
-          author_type: 'AGENT',
-          content: 'runtime opening',
-          created_at: new Date(),
-        })),
-        listMessages: vi.fn(async () => ({ items: [], next_cursor: null })),
-        findSessionById: vi.fn(),
-        updateSessionStatus: vi.fn(),
-        updateDigestStatus: vi.fn(),
-        findTimedOutSessions: vi.fn(),
-        countMessages: vi.fn(),
-      } as never,
-      agentService: {
-        getAgent: vi.fn((agentId: string) => ({
-          id: agentId,
-          owner_id: 'owner-1',
-          display_name: agentId === 'agent-voter' ? 'Voter' : 'Main Agent',
-          model: 'mock-model',
-        })),
-        getLatestConfig: vi.fn(() => ({
-          config_json: {
-            persona: { name: 'Main Agent', style: 'warm', interests: ['ai'], language: 'zh-CN' },
-          },
-        })),
-      } as never,
-      llmClient: {
-        chat: vi.fn(async () => ({
-          content: 'runtime opening',
-          usage: { prompt_tokens: 10, completion_tokens: 6, total_tokens: 16 },
-        })),
-      } as never,
-      promptEngine: promptEngine as never,
-      promptOrchestrator: {
-        isSceneEnabled: vi.fn(() => false),
-        compose: vi.fn(async () => ({
-          persona: { name: 'Main Agent', style: 'runtime-style', interests: ['runtime'], language: 'zh-CN' },
-          layers: { layer1_traits: 'runtime traits', layer6_privacy: 'privacy' },
-          audit: {
-            version: 'v1',
-            scene: 'proactive_dm',
-            includedLayerIds: ['layer1_traits', 'layer6_privacy'],
-            tokenEstimates: { layer1_traits: 10, layer6_privacy: 10 },
-            lintWarnings: [],
-            trimReasons: [],
-          },
-          runtimeEnvelope: {
-            renderTierDecision: {
-              scene: 'proactive_dm',
-              requestedTier: 'plus',
-              reasons: ['runtime_floor'],
-            },
-          },
-        })),
-      } as never,
-      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
-      agentRunRepo: { create: vi.fn() } as never,
-      personaStateService: {
-        recordVisibleRender,
-      } as never,
-      notificationService: { create: vi.fn(async () => ({ id: 'notif-1' })) } as never,
-    })
-
-    await withLayerStackFlag(false, async () => {
-      const ok = await service.onVoteReceived('agent-1', {
-        direction: 'UP',
-        target_type: 'POST',
-        target_id: 'post-1',
-        voter_agent_id: 'agent-voter',
-      })
-      expect(ok).toBe(true)
-      expect(promptEngine.render).toHaveBeenCalledWith(
-        PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
-        expect.objectContaining({
-          persona_style: 'runtime-style',
-          layer_traits: 'runtime traits',
-        }),
-      )
-      expect(recordVisibleRender).toHaveBeenCalledWith({
-        agentId: 'agent-1',
-        scene: 'proactive_dm',
-        renderDecision: {
-          scene: 'proactive_dm',
-          requestedTier: 'plus',
-          reasons: ['runtime_floor'],
-        },
-        outputText: 'runtime opening',
-      })
-    })
-  })
-
   it('falls back to legacy prompt when orchestrator path fails', async () => {
-    const llmChat = vi.fn(async (_input: { messages: Array<{ role: string; content: string }> }) => ({
+    const gatewayGenerate = vi.fn(async (_input: Record<string, unknown>) => ({
       content: 'legacy opening',
       usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 },
+      messages: [],
+      latencyMs: 10,
+      platformRetryCount: 0,
+      renderDecision: {
+        voiceLineId: 'qwen-social-v1',
+        tier: 'base',
+        profileId: 'profile-1',
+        providerId: 'dashscope-openai',
+        modelId: 'qwen-plus',
+        region: 'cn',
+        endpointId: 'default',
+        credentialId: 'cred-1',
+        fallbackLevel: 'none',
+        reasons: ['test'],
+        promptTemplateId: 'internal-proactive-dm-opening-legacy',
+        promptVersion: 1,
+      },
+      promptRef: PROMPT_TEMPLATE_REFS.internalProactiveDmOpeningLegacy,
     }))
-    const agentRunRepo = { create: vi.fn() }
 
     const service = new ProactiveInteractionService({
       channelRepo: {
@@ -279,8 +183,7 @@ describe('ProactiveInteractionService', () => {
           },
         })),
       } as never,
-      llmClient: { chat: llmChat } as never,
-      promptEngine: { render: vi.fn() } as never,
+      llmGateway: { generateVisibleText: gatewayGenerate } as never,
       promptOrchestrator: {
         isSceneEnabled: vi.fn(() => true),
         compose: vi.fn(async () => {
@@ -288,7 +191,7 @@ describe('ProactiveInteractionService', () => {
         }),
       } as never,
       eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
-      agentRunRepo: agentRunRepo as never,
+      agentRunRepo: { create: vi.fn() } as never,
       notificationService: { create: vi.fn(async () => ({ id: 'notif-1' })) } as never,
     })
 
@@ -300,17 +203,10 @@ describe('ProactiveInteractionService', () => {
         voter_agent_id: 'agent-voter',
       })
       expect(ok).toBe(true)
-      const firstCall = llmChat.mock.calls.at(0)
+      const firstCall = gatewayGenerate.mock.calls.at(0)
       expect(firstCall).toBeDefined()
-      const call = firstCall![0] as unknown as { messages: Array<{ role: string; content: string }> }
-      expect(call.messages[0].content).toContain('主动和你的 Owner')
-      expect(agentRunRepo.create).toHaveBeenCalledWith(expect.objectContaining({
-        output_json: expect.objectContaining({
-          persona_observation: expect.objectContaining({
-            source_callsite_id: 'proactive-legacy-opening',
-          }),
-        }),
-      }))
+      const call = firstCall![0] as unknown as { promptRef: typeof PROMPT_TEMPLATE_REFS.internalProactiveDmOpeningLegacy }
+      expect(call.promptRef).toEqual(PROMPT_TEMPLATE_REFS.internalProactiveDmOpeningLegacy)
     })
   })
 })

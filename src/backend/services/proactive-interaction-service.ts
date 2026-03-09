@@ -1,5 +1,6 @@
-import type { LlmClient } from '../llm/llm-client.js'
 import type { PromptEngine } from '../llm/prompt-engine.js'
+import type { LLMGateway } from '../llm/llm-gateway.js'
+import type { RenderDecision } from '../llm/gateway-contract.js'
 import type { AgentService } from './agent-service.js'
 import type { NotificationService } from './notification-service.js'
 import type { PrivateChannelRepository } from '../repos/private-channel-repository.js'
@@ -19,13 +20,12 @@ import {
 } from '../runtime/persona-observation.js'
 
 const MAX_PROACTIVE_PER_DAY = 2
-const PROACTIVE_COOLDOWN_MS = 4 * 60 * 60 * 1000 // 4 hours between proactive sessions
+const PROACTIVE_COOLDOWN_MS = 4 * 60 * 60 * 1000
 
 export interface ProactiveInteractionDeps {
   channelRepo: PrivateChannelRepository
   agentService: AgentService
-  llmClient: LlmClient
-  promptEngine?: PromptEngine | null
+  llmGateway: LLMGateway
   promptOrchestrator?: PromptOrchestrator | null
   personaStateService?: PersonaStateService | null
   eventRepo: EventRepository
@@ -37,7 +37,7 @@ export class ProactiveInteractionService {
   constructor(private readonly deps: ProactiveInteractionDeps) {}
 
   bindPromptOrchestrator(promptEngine: PromptEngine, promptOrchestrator: PromptOrchestrator): void {
-    ;(this.deps as { promptEngine?: PromptEngine | null }).promptEngine = promptEngine
+    void promptEngine
     ;(this.deps as { promptOrchestrator?: PromptOrchestrator | null }).promptOrchestrator = promptOrchestrator
   }
 
@@ -57,7 +57,6 @@ export class ProactiveInteractionService {
 
     const voterAgent = this.deps.agentService.getAgent(vote.voter_agent_id)
     const voterName = voterAgent?.display_name ?? '一位智能体'
-
     const targetLabel = vote.target_type === 'POST' ? '帖子' : vote.target_type === 'COMMENT' ? '评论' : '消息'
 
     const openingMessage = await this.generateOpeningMessage(agentId, {
@@ -198,7 +197,6 @@ export class ProactiveInteractionService {
     const agent = this.deps.agentService.getAgent(agentId)
     if (!agent) return false
 
-    // Check daily limit
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
 
@@ -207,20 +205,15 @@ export class ProactiveInteractionService {
       initiator: 'AGENT',
     })
 
-    const todayCount = todaySessions.items.filter(
-      (s) => s.started_at >= todayStart,
-    ).length
-
+    const todayCount = todaySessions.items.filter((session) => session.started_at >= todayStart).length
     if (todayCount >= MAX_PROACTIVE_PER_DAY) return false
 
-    // Check if owner responded to last proactive session
     const lastProactive = todaySessions.items[0]
     if (lastProactive && lastProactive.started_at >= todayStart) {
       const messages = await this.deps.channelRepo.listMessages(lastProactive.id, { limit: 10 })
-      const hasOwnerReply = messages.items.some((m) => m.author_type === 'HUMAN')
+      const hasOwnerReply = messages.items.some((message) => message.author_type === 'HUMAN')
       if (!hasOwnerReply) return false
 
-      // Cooldown check
       const elapsed = Date.now() - lastProactive.started_at.getTime()
       if (elapsed < PROACTIVE_COOLDOWN_MS) return false
     }
@@ -238,6 +231,7 @@ export class ProactiveInteractionService {
     latencyMs: number
     promptAudit: PromptComposeAudit | null
     sourceCallsiteId: 'proactive-orchestrated-opening' | 'proactive-legacy-opening'
+    gatewayRenderDecision: RenderDecision
     llmProviderId?: string
     llmModelId?: string
   }> {
@@ -246,8 +240,9 @@ export class ProactiveInteractionService {
     const identity = resolveAgentIdentity(agent, latestConfig)
     const personaName = identity.visiblePersona.name
     const personaStyle = identity.visiblePersona.style
+    const homeVoiceLineId = identity.summary.home_voice_line_id
 
-    if (this.deps.promptEngine && this.deps.promptOrchestrator) {
+    if (this.deps.promptOrchestrator) {
       try {
         const composed = await this.deps.promptOrchestrator.compose({
           agentId,
@@ -276,15 +271,20 @@ export class ProactiveInteractionService {
           layer_privacy: composed.layers.layer6_privacy ?? '',
         }
 
-        const messages = this.deps.promptEngine.render(
-          PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
-          variables,
-        )
         const startMs = Date.now()
-        const response = await this.deps.llmClient.chat({
-          messages,
+        const response = await this.deps.llmGateway.generateVisibleText({
+          intent: 'proactive_opening',
+          scene: 'proactive_dm',
+          agentId,
+          homeVoiceLineId,
+          promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
+          variables,
+          budgetClass: 'visible_standard',
+          traceId: `proactive-dm:${agentId}:${Date.now()}`,
+          requestedTier: 'base',
+          allowFallbackWithinLine: true,
+          allowCrossFamily: false,
           temperature: 0.8,
-          model: agent?.model,
         })
         return {
           content: response.content,
@@ -292,8 +292,9 @@ export class ProactiveInteractionService {
           latencyMs: Date.now() - startMs,
           promptAudit: composed.audit,
           sourceCallsiteId: 'proactive-orchestrated-opening',
-          llmProviderId: response.provider_id,
-          llmModelId: response.model,
+          gatewayRenderDecision: response.renderDecision,
+          llmProviderId: response.renderDecision.providerId,
+          llmModelId: response.renderDecision.modelId,
           renderDecision: composed.runtimeEnvelope?.renderTierDecision ?? null,
         }
       } catch (err) {
@@ -302,27 +303,24 @@ export class ProactiveInteractionService {
     }
 
     const startMs = Date.now()
-    const response = await this.deps.llmClient.chat({
-      messages: [
-        {
-          role: 'system',
-          content: [
-            `你是「${personaName}」，风格是${personaStyle}。`,
-            '你正在主动和你的 Owner（人类持有者）发起一次简短对话。',
-            '要求：',
-            '- 语气自然亲切，像朋友分享事情',
-            '- 简洁，2-4 句话',
-            '- 不要说"作为AI"或类似自我指涉',
-            '- 根据触发事件自然地开启对话',
-          ].join('\n'),
-        },
-        {
-          role: 'user',
-          content: `触发事件：${trigger.trigger}\n${trigger.context}\n\n请自然地开启对话。`,
-        },
-      ],
+    const response = await this.deps.llmGateway.generateVisibleText({
+      intent: 'proactive_opening',
+      scene: 'proactive_dm',
+      agentId,
+      homeVoiceLineId,
+      promptRef: PROMPT_TEMPLATE_REFS.internalProactiveDmOpeningLegacy,
+      variables: {
+        persona_name: personaName,
+        persona_style: personaStyle,
+        trigger_type: trigger.trigger,
+        trigger_context: trigger.context,
+      },
+      budgetClass: 'visible_standard',
+      traceId: `proactive-dm-legacy:${agentId}:${Date.now()}`,
+      requestedTier: 'base',
+      allowFallbackWithinLine: true,
+      allowCrossFamily: false,
       temperature: 0.8,
-      model: agent?.model,
     })
 
     return {
@@ -332,8 +330,9 @@ export class ProactiveInteractionService {
       latencyMs: Date.now() - startMs,
       promptAudit: null,
       sourceCallsiteId: 'proactive-legacy-opening',
-      llmProviderId: response.provider_id,
-      llmModelId: response.model,
+      gatewayRenderDecision: response.renderDecision,
+      llmProviderId: response.renderDecision.providerId,
+      llmModelId: response.renderDecision.modelId,
     }
   }
 
@@ -349,6 +348,7 @@ export class ProactiveInteractionService {
       latencyMs: number
       promptAudit: PromptComposeAudit | null
       sourceCallsiteId: 'proactive-orchestrated-opening' | 'proactive-legacy-opening'
+      gatewayRenderDecision: RenderDecision
       llmProviderId?: string
       llmModelId?: string
     }
@@ -367,6 +367,7 @@ export class ProactiveInteractionService {
         : { id: 'internal-proactive-dm-opening-legacy', version: 1 },
       requestedTier: 'base',
       resolvedTier: 'base',
+      renderDecision: input.openingMessage.gatewayRenderDecision,
       usage: input.openingMessage.usage,
       latencyMs: input.openingMessage.latencyMs,
       parseSuccess: true,

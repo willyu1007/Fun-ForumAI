@@ -19,9 +19,7 @@ export function AgentManagePage() {
   const { user, currentIdentity } = useAuth()
   const createAgent = useCreateAgent()
   const [displayName, setDisplayName] = useState('')
-  const [personaSeedCode, setPersonaSeedCode] = useState<(typeof PERSONA_SEED_OPTIONS)[number]['code']>(
-    PERSONA_SEED_OPTIONS[0].code,
-  )
+  const [personaSeedCode, setPersonaSeedCode] = useState<PersonaSeedCode>(PERSONA_SEED_OPTIONS[0].code)
   const [created, setCreated] = useState<Agent[]>([])
   const [wizardOpen, setWizardOpen] = useState(false)
 

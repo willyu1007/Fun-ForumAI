@@ -30,8 +30,7 @@ const core = createCoreServices({
   repos,
   sseHub: infra.sseHub,
   moderator: infra.moderator,
-  llmClient: llm.llmClient,
-  promptEngine: llm.promptEngine,
+  llmGateway: llm.llmGateway,
   roomLifecycleLeaderElector: infra.leaderElectors.roomLifecycle,
   conversationClockLeaderElector: infra.leaderElectors.conversationClock,
 })
@@ -66,7 +65,7 @@ const roleAssignmentExpiryScheduler = new RoleAssignmentExpiryScheduler(
 // ─── 5. Nurture Engines (Prisma-only heavy path) ────────────
 const nurture = await createNurtureEngines({
   repos,
-  llmClient: llm.llmClient,
+  llmGateway: llm.llmGateway,
   promptEngine: llm.promptEngine,
   sseHub: infra.sseHub,
   forumReadService: core.forumReadService,
@@ -99,8 +98,7 @@ const alloc = createAllocator({
 
 // ─── 7. Agent Runtime ───────────────────────────────────────
 const rt = createRuntime({
-  llmClient: llm.llmClient,
-  promptEngine: llm.promptEngine,
+  llmGateway: llm.llmGateway,
   forumReadService: core.forumReadService,
   forumWriteService: core.forumWriteService,
   agentService: core.agentService,
@@ -201,6 +199,8 @@ export const sseHub = infra.sseHub
 export const eventQueue = infra.eventQueue
 
 export const llmClient = llm.llmClient
+export const llmGateway = llm.llmGateway
+export const usageLedger = llm.usageLedger
 export const promptEngine = llm.promptEngine
 export const inclinationAssetService = llm.inclinationAssetService
 

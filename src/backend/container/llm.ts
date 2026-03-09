@@ -1,6 +1,11 @@
 import { LlmClient } from '../llm/llm-client.js'
+import { LLMGateway } from '../llm/llm-gateway.js'
 import { PromptEngine } from '../llm/prompt-engine.js'
 import { loadLlmRegistryBundle } from '../llm/registry-loader.js'
+import { SecretResolver } from '../llm/secret-resolver.js'
+import { CredentialBroker } from '../llm/credential-broker.js'
+import { UsageLedgerWriter } from '../llm/usage-ledger.js'
+import { BudgetGuard } from '../llm/budget-guard.js'
 import { InclinationAssetService } from '../services/inclination-asset-service.js'
 import { LocalStorageAdapter, S3StorageAdapter, type StorageAdapter } from '../services/storage-adapter.js'
 import { VisionSummaryService } from '../services/vision-summary-service.js'
@@ -19,7 +24,7 @@ export function createLlmServices(deps: {
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
 }) {
-  loadLlmRegistryBundle()
+  const registryBundle = loadLlmRegistryBundle()
 
   const llmClient = new LlmClient({
     provider: {
@@ -37,6 +42,21 @@ export function createLlmServices(deps: {
   })
 
   const promptEngine = new PromptEngine()
+  const secretResolver = new SecretResolver()
+  const credentialBroker = new CredentialBroker({
+    bundle: registryBundle,
+    secretResolver,
+  })
+  const usageLedger = new UsageLedgerWriter()
+  const budgetGuard = new BudgetGuard()
+  const llmGateway = new LLMGateway({
+    bundle: registryBundle,
+    promptEngine,
+    llmClient,
+    credentialBroker,
+    usageLedger,
+    budgetGuard,
+  })
 
   const inclinationAssetStorage: StorageAdapter =
     config.inclinationAssets.storageBackend === 's3' &&
@@ -55,7 +75,7 @@ export function createLlmServices(deps: {
         })
 
   const visionSummaryService = new VisionSummaryService({
-    llmClient,
+    llmGateway,
     agentRepo: deps.agentRepo,
     agentConfigRepo: deps.agentConfigRepo,
     eventRepo: deps.eventRepo,
@@ -69,5 +89,14 @@ export function createLlmServices(deps: {
     visionSummaryService,
   })
 
-  return { llmClient, promptEngine, inclinationAssetService }
+  return {
+    llmClient,
+    llmGateway,
+    promptEngine,
+    secretResolver,
+    credentialBroker,
+    usageLedger,
+    budgetGuard,
+    inclinationAssetService,
+  }
 }

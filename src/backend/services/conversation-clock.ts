@@ -3,21 +3,20 @@ import type { MessageRepository } from '../repos/message-repository.js'
 import type { AgentRepository } from '../repos/agent-repository.js'
 import type { AgentService } from './agent-service.js'
 import type { ChatService } from './chat-service.js'
-import type { LlmClient } from '../llm/llm-client.js'
-import type { PromptEngine } from '../llm/prompt-engine.js'
+import type { LLMGateway } from '../llm/llm-gateway.js'
 import type { PromptLayerService } from '../runtime/prompt-layer-service.js'
 import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
 import type { RenderTierDecisionResult } from '../runtime/persona-runtime-types.js'
-import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import type { SseHub } from '../sse/hub.js'
 import type { ChatMessageKind } from '../repos/types.js'
 import type { LeaderElector } from '../runtime/leader-elector.js'
 import type { PersonaStateService } from './persona-state-service.js'
-import { config } from '../lib/config.js'
-import { resolveAgentIdentity } from '../identity/agent-identity.js'
+import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { LlmTokenUsage } from '../llm/types.js'
 import type { PromptComposeAudit } from '../runtime/types.js'
+import { config } from '../lib/config.js'
+import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import type { PersonaObservationV1 } from '../runtime/persona-observation.js'
 import {
   attachPersonaObservation,
@@ -44,8 +43,7 @@ export interface ConversationClockDeps {
   agentRepo: AgentRepository
   agentService: AgentService
   chatService: ChatService
-  llmClient: LlmClient
-  promptEngine: PromptEngine
+  llmGateway: LLMGateway
   sseHub: SseHub
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
@@ -214,13 +212,7 @@ export class ConversationClock {
 
           const altResult = await this.generateMessage(roomId, other.member_id)
           if (altResult.kind === 'normal') {
-            await this.postMessage(
-              roomId,
-              other.member_id,
-              altResult.body,
-              'normal',
-              altResult.renderDecision,
-            )
+            await this.postMessage(roomId, other.member_id, altResult.body, 'normal', altResult.renderDecision)
             await this.recordGeneratedMessageRun({
               roomId,
               agentId: other.member_id,
@@ -312,7 +304,7 @@ export class ConversationClock {
       })
       .join('\n')
 
-    if (!this.deps.llmClient.isConfigured) {
+    if (!this.deps.llmGateway.isConfigured) {
       return { kind: 'normal', body: `[${agent.display_name}] 聊天测试消息` }
     }
 
@@ -446,10 +438,20 @@ export class ConversationClock {
       layer_privacy: layers.layer_privacy,
     }
 
-    const messages = this.deps.promptEngine.render(PROMPT_TEMPLATE_REFS.agentChatReply, variables)
-    const startMs = Date.now()
-    const response = await this.deps.llmClient.chat({ messages })
-    const latencyMs = Date.now() - startMs
+    const response = await this.deps.llmGateway.generateVisibleText({
+      intent: 'chat_reply',
+      scene: 'chat_room',
+      agentId,
+      homeVoiceLineId: this.resolveHomeVoiceLineId(agentId),
+      promptRef: PROMPT_TEMPLATE_REFS.agentChatReply,
+      variables,
+      budgetClass: 'visible_standard',
+      traceId: `chat-room:${roomId}:${agentId}:${Date.now()}`,
+      requestedTier: 'lite',
+      allowFallbackWithinLine: false,
+      allowCrossFamily: false,
+    })
+    const latencyMs = response.latencyMs ?? 0
     const content = response.content.trim()
     const observation = buildPersonaObservation({
       sourceCallsiteId: 'conversation-clock-chat-reply',
@@ -460,14 +462,15 @@ export class ConversationClock {
       personaSeedCode: observationIdentity?.persona_seed_code,
       homeVoiceLineId: observationIdentity?.home_voice_line_id,
       promptRef: PROMPT_TEMPLATE_REFS.agentChatReply,
-      requestedTier: 'lite',
-      resolvedTier: 'lite',
+      requestedTier: response.renderDecision.tier,
+      resolvedTier: response.renderDecision.tier,
+      renderDecision: response.renderDecision,
       usage: response.usage,
       latencyMs,
       parseSuccess: true,
       promptAudit,
-      llmProviderId: response.provider_id,
-      llmModelId: response.model,
+      llmProviderId: response.renderDecision.providerId,
+      llmModelId: response.renderDecision.modelId,
     })
 
     const skipMatch = content.match(/^\[SKIP(?::(.+?))?\]/)
@@ -545,6 +548,12 @@ export class ConversationClock {
         language: '中文',
       }
     }
+  }
+
+  private resolveHomeVoiceLineId(agentId: string) {
+    const agent = this.deps.agentService.getAgent(agentId)
+    const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+    return resolveAgentIdentity(agent, latestConfig).summary.home_voice_line_id
   }
 
   private extractTopicHints(roomName: string, messageBodies: string[]): string[] {

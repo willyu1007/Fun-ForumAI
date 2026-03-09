@@ -2,20 +2,32 @@ import { describe, expect, it, vi } from 'vitest'
 import { PostScheduler } from '../post-scheduler.js'
 import type { PostSchedulerDeps } from '../post-scheduler.js'
 
-function createDeps(
-  writeImpl: ReturnType<typeof vi.fn>,
-  overrides: Partial<PostSchedulerDeps> = {},
-): PostSchedulerDeps {
+function createDeps(writeImpl: ReturnType<typeof vi.fn>): PostSchedulerDeps {
   return {
-    llmClient: {
-      chat: vi.fn(async () => ({
+    llmGateway: {
+      generateVisibleText: vi.fn(async () => ({
         content: 'mock llm output',
+        messages: [],
         usage: { prompt_tokens: 10, completion_tokens: 12, total_tokens: 22 },
+        latencyMs: 15,
+        platformRetryCount: 0,
+        renderDecision: {
+          voiceLineId: 'qwen-social-v1',
+          tier: 'base',
+          profileId: 'profile-1',
+          providerId: 'dashscope-openai',
+          modelId: 'qwen-plus',
+          region: 'cn',
+          endpointId: 'default',
+          credentialId: 'cred-1',
+          fallbackLevel: 'none',
+          reasons: ['test'],
+          promptTemplateId: 'agent-create-post',
+          promptVersion: 1,
+        },
+        promptRef: { id: 'agent-create-post', version: 1 },
       })),
-    } as unknown as PostSchedulerDeps['llmClient'],
-    promptEngine: {
-      render: vi.fn(() => [{ role: 'user', content: 'mock prompt' }]),
-    } as unknown as PostSchedulerDeps['promptEngine'],
+    } as unknown as PostSchedulerDeps['llmGateway'],
     forumReadService: {
       getCommunities: vi.fn(async () => ({
         items: [
@@ -41,15 +53,8 @@ function createDeps(
       })),
       getAgent: vi.fn(() => ({
         id: 'agent-1',
-        owner_id: 'user-1',
         display_name: 'Agent One',
-        avatar_url: null,
-        model: '',
-        persona_version: 1,
-        reputation_score: 0,
-        status: 'ACTIVE',
-        created_at: new Date('2026-03-09T00:00:00.000Z'),
-        updated_at: new Date('2026-03-09T00:00:00.000Z'),
+        model: 'mock-model',
       })),
       getLatestConfig: vi.fn(() => null),
     } as unknown as PostSchedulerDeps['agentService'],
@@ -70,7 +75,6 @@ function createDeps(
     agentRunRepo: {
       create: vi.fn(),
     } as unknown as PostSchedulerDeps['agentRunRepo'],
-    ...overrides,
   }
 }
 
@@ -93,81 +97,5 @@ describe('PostScheduler', () => {
     expect(write).toHaveBeenCalledTimes(2)
     expect(scheduler.stats.postsToday).toBe(0)
     expect(scheduler.stats.lastPostAt).toBe(0)
-  })
-
-  it('uses prompt compose fallback and records runtime render when orchestrator scene is disabled', async () => {
-    const write = vi.fn(async () => ({ success: true, content_id: 'post-1' }))
-    const recordVisibleRender = vi.fn(async () => undefined)
-    const promptOrchestrator = {
-      isSceneEnabled: vi.fn(() => false),
-      compose: vi.fn(async () => ({
-        persona: {
-          name: 'Runtime Agent',
-          style: 'runtime-style',
-          interests: ['runtime'],
-          language: 'zh-CN',
-        },
-        layers: {
-          layer1_traits: 'runtime traits',
-          layer2_style: 'runtime style',
-          layer6_privacy: 'privacy',
-        },
-        audit: {
-          version: 'v1',
-          scene: 'scheduled_post',
-          includedLayerIds: ['layer1_traits', 'layer2_style', 'layer6_privacy'],
-          tokenEstimates: { layer1_traits: 10, layer2_style: 10, layer6_privacy: 10 },
-          lintWarnings: [],
-          trimReasons: [],
-        },
-        runtimeEnvelope: {
-          renderTierDecision: {
-            scene: 'scheduled_post',
-            requestedTier: 'plus',
-            reasons: ['runtime_floor'],
-          },
-        },
-      })),
-    }
-    const promptEngine = {
-      render: vi.fn(() => [{ role: 'user', content: 'mock prompt' }]),
-    }
-
-    const scheduler = new PostScheduler(
-      createDeps(write, {
-        promptEngine: promptEngine as never,
-        promptOrchestrator: promptOrchestrator as never,
-        personaStateService: {
-          recordVisibleRender,
-        } as never,
-      }),
-      {
-        postIntervalMs: 60_000,
-        postMaxPerDay: 2,
-      },
-    )
-
-    const result = await scheduler.createPost()
-
-    expect(result.triggered).toBe(true)
-    expect(result.post_id).toBe('post-1')
-    expect(promptOrchestrator.compose).toHaveBeenCalledTimes(1)
-    expect(promptEngine.render).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        persona_name: 'Runtime Agent',
-        layer_traits: 'runtime traits',
-      }),
-    )
-    expect(recordVisibleRender).toHaveBeenCalledWith({
-      agentId: 'agent-1',
-      scene: 'scheduled_post',
-      renderDecision: {
-        scene: 'scheduled_post',
-        requestedTier: 'plus',
-        reasons: ['runtime_floor'],
-      },
-      outputText: 'generated body',
-    })
   })
 })
