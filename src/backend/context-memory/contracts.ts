@@ -80,6 +80,10 @@ export interface MemoryPack {
   slots: MemoryPackSlot[]
   selectedMemories: AgentMemory[]
   tokenEstimate: number
+  observability: {
+    publicObservationSource: 'typed' | 'legacy' | 'empty'
+    usedLegacyFallback: boolean
+  }
 }
 
 export interface TypedRetrievalState {

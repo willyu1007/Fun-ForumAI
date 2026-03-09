@@ -21,6 +21,7 @@ import type {
   SummaryExtractResult,
   SummaryOrchestrator,
 } from './contracts.js'
+import { personaObservability } from '../runtime/persona-observability.js'
 
 const IDENTITY_MOODS = new Set<NonNullable<OwnerStylePins['mood']>>(['optimistic', 'neutral', 'critical', 'random'])
 const IDENTITY_HABITS = new Set<NonNullable<OwnerStylePins['habits']>[number]>([
@@ -137,45 +138,51 @@ export class LlmIdentityFinalizer implements IdentityFinalizer {
   }) {}
 
   async finalize(agentId: string, input: SummaryDistillResult): Promise<IdentityFinalizeResult> {
-    const agent = this.deps.agentService.getAgent(agentId)
-    const latestConfig = this.deps.agentService.getLatestConfig(agentId)
-    const resolved = resolveAgentIdentity(agent, latestConfig)
+    try {
+      const agent = this.deps.agentService.getAgent(agentId)
+      const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+      const resolved = resolveAgentIdentity(agent, latestConfig)
 
-    const response = await this.deps.llmGateway.generateIdentityWrite({
-      intent: 'identity_write',
-      scene: 'background_hidden',
-      agentId,
-      homeVoiceLineId: resolved.summary.home_voice_line_id,
-      promptRef: resolveIdentityFinalizePromptRef(input.origin.sourceType),
-      variables: {
-        current_identity_json: JSON.stringify({
-          owner_style_pins: resolved.contract.ownerStylePins,
-          visible_persona: resolved.visiblePersona,
-        }, null, 2),
-        distill_json: JSON.stringify(input, null, 2),
-        scene: input.origin.scene,
-        counterpart_kind: resolveCounterpartKindFromSourceType(input.origin.sourceType),
-      },
-      budgetClass: 'hidden_background',
-      traceId: `identity-finalize:${agentId}:${input.origin.eventId}`,
-      requestedTier: 'premium',
-      allowFallbackWithinLine: false,
-      allowCrossFamily: false,
-      temperature: 0.2,
-    })
+      const response = await this.deps.llmGateway.generateIdentityWrite({
+        intent: 'identity_write',
+        scene: 'background_hidden',
+        agentId,
+        homeVoiceLineId: resolved.summary.home_voice_line_id,
+        promptRef: resolveIdentityFinalizePromptRef(input.origin.sourceType),
+        variables: {
+          current_identity_json: JSON.stringify({
+            owner_style_pins: resolved.contract.ownerStylePins,
+            visible_persona: resolved.visiblePersona,
+          }, null, 2),
+          distill_json: JSON.stringify(input, null, 2),
+          scene: input.origin.scene,
+          counterpart_kind: resolveCounterpartKindFromSourceType(input.origin.sourceType),
+        },
+        budgetClass: 'hidden_background',
+        traceId: `identity-finalize:${agentId}:${input.origin.eventId}`,
+        requestedTier: 'premium',
+        allowFallbackWithinLine: false,
+        allowCrossFamily: false,
+        temperature: 0.2,
+      })
 
-    const parsed = parseJsonRecord(response.content)
-    const stylePatch = ownerStylePinsPatch(parsed.owner_style_pins_patch)
-    if (Object.keys(stylePatch).length > 0) {
-      await this.deps.agentService.updateConfig(agentId, { ownerStylePins: stylePatch }, agent.owner_id)
-    }
+      const parsed = parseJsonRecord(response.content)
+      const stylePatch = ownerStylePinsPatch(parsed.owner_style_pins_patch)
+      if (Object.keys(stylePatch).length > 0) {
+        await this.deps.agentService.updateConfig(agentId, { ownerStylePins: stylePatch }, agent.owner_id)
+      }
 
-    return {
-      relationState: relationStateFromFinalize(parsed.relation_state, input.relationState),
-      selfModel: selfModelFromFinalize(parsed.self_model, input.selfModel),
-      tensions: tensionsFromFinalize(parsed.tensions, input.tensions, agentId),
-      privateShadow: privateShadowFromFinalize(parsed.private_shadow, input.privateShadow),
-      ownerStylePinsPatch: stylePatch,
+      personaObservability.recordIdentityWrite(true)
+      return {
+        relationState: relationStateFromFinalize(parsed.relation_state, input.relationState),
+        selfModel: selfModelFromFinalize(parsed.self_model, input.selfModel),
+        tensions: tensionsFromFinalize(parsed.tensions, input.tensions, agentId),
+        privateShadow: privateShadowFromFinalize(parsed.private_shadow, input.privateShadow),
+        ownerStylePinsPatch: stylePatch,
+      }
+    } catch (error) {
+      personaObservability.recordIdentityWrite(false)
+      throw error
     }
   }
 }
@@ -199,6 +206,10 @@ export function buildPrivateSessionRawEvent(input: {
     evidence_refs: [`private_session:${input.sessionId}`],
     created_at: input.createdAt ?? new Date(),
   }
+}
+
+export function buildPrivateSessionRawEventId(sessionId: string): string {
+  return `ctxevent:private-session:${sessionId}`
 }
 
 export function buildForumThreadRawEvent(input: {
@@ -227,6 +238,10 @@ export function buildForumThreadRawEvent(input: {
   }
 }
 
+export function buildForumThreadRawEventId(sourceEventId: string): string {
+  return `ctxevent:forum:${sourceEventId}`
+}
+
 export function buildChatRoomWindowRawEvent(input: {
   eventId: string
   agentId: string
@@ -249,6 +264,10 @@ export function buildChatRoomWindowRawEvent(input: {
     ]),
     created_at: input.createdAt ?? new Date(),
   }
+}
+
+export function buildChatRoomWindowRawEventId(sourceEventId: string): string {
+  return `ctxevent:chat-room:${sourceEventId}`
 }
 
 function resolveHiddenIntent(event: RawContextEvent): 'private_digest' | 'public_observation_digest' {

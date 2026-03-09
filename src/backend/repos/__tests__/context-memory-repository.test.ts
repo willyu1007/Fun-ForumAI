@@ -33,6 +33,16 @@ describe('InMemory context-memory repositories', () => {
       transcript: 'Owner: hi again',
       evidence_refs: ['session:1'],
     })
+    await rawRepo.upsert({
+      id: 'evt-2',
+      agent_id: 'agent-1',
+      scene: 'forum',
+      source_type: 'forum_thread',
+      source_ref_id: 'post-1',
+      counterpart_id: 'community-1',
+      transcript: '标题: 播客',
+      evidence_refs: ['post:1'],
+    })
 
     await episodicRepo.upsert({
       id: 'card-1',
@@ -59,10 +69,18 @@ describe('InMemory context-memory repositories', () => {
     await episodicRepo.pruneByIds('agent-1', ['card-2'])
 
     const rawItems = await rawRepo.listByAgent('agent-1', { limit: 10 })
+    const forumItems = await rawRepo.listByAgent('agent-1', {
+      limit: 10,
+      scene: 'forum',
+      source_type: 'forum_thread',
+      source_ref_id: 'post-1',
+    })
     const episodicItems = await episodicRepo.listByAgent('agent-1', { limit: 10 })
 
-    expect(rawItems.items).toHaveLength(1)
-    expect(rawItems.items[0].transcript).toContain('hi again')
+    expect(rawItems.items).toHaveLength(2)
+    expect(rawItems.items.find((item) => item.id === 'evt-1')?.transcript).toContain('hi again')
+    expect(forumItems.items).toHaveLength(1)
+    expect(forumItems.items[0].id).toBe('evt-2')
     expect(episodicItems.items).toHaveLength(1)
   })
 

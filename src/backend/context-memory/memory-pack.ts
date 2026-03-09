@@ -74,6 +74,23 @@ export class DefaultRetrievalPacker implements RetrievalPacker {
         ),
       }),
       tokenEstimate,
+      observability: {
+        publicObservationSource: publicObservation.length > 0
+          ? 'typed'
+          : legacyPublicObservation.length > 0
+            ? 'legacy'
+            : 'empty',
+        usedLegacyFallback: input.scene === 'private_chat'
+          ? (
+            legacyPublicObservation.length > 0 ||
+            ownerPrivate.length === 0 ||
+            topicRecall.length === 0 ||
+            recentRecall.length === 0 ||
+            durableThreads.length === 0 ||
+            input.typed.privateShadows.length === 0
+          )
+          : legacyPublicObservation.length > 0,
+      },
     }
   }
 }

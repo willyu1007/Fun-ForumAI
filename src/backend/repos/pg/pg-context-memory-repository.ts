@@ -2,6 +2,7 @@ import { Prisma, type PrismaClient } from '@prisma/client'
 import type {
   ContextActiveTensionItem,
   ContextEpisodicCard,
+  ContextMemorySourceType,
   ContextPrivateShadowMemory,
   ContextRawEvent,
   ContextRelationChannel,
@@ -71,12 +72,18 @@ export class PgRawContextEventRepository implements RawContextEventRepository {
 
   async listByAgent(
     agentId: string,
-    opts: PaginationOpts & { scene?: ContextMemoryScene },
+    opts: PaginationOpts & {
+      scene?: ContextMemoryScene
+      source_type?: ContextMemorySourceType
+      source_ref_id?: string
+    },
   ): Promise<PaginatedResult<ContextRawEvent>> {
     const rows = await this.prisma.rawContextEvent.findMany({
       where: {
         agentId,
         ...(opts.scene ? { scene: toScene(opts.scene) } : {}),
+        ...(opts.source_type ? { sourceType: toSourceType(opts.source_type) } : {}),
+        ...(opts.source_ref_id ? { sourceRefId: opts.source_ref_id } : {}),
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: opts.limit + 1,

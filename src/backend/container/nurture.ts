@@ -173,6 +173,7 @@ export async function createNurtureEngines(deps: {
       statsService,
       contextMemory: {
         journalService: contextJournalService,
+        rawEventRepo: rawContextEventRepo,
         summaryOrchestrator,
         identityFinalizer,
         episodicCardRepo,

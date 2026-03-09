@@ -61,6 +61,8 @@ function makeForumService(params: {
     roomRepo: {} as never,
     messageRepo: {} as never,
     memoryService: {
+      hasTypedPublicObservationEvent: vi.fn().mockResolvedValue(false),
+      getLatestTypedPublicObservationAt: vi.fn().mockResolvedValue(null),
       listMemories,
       createPublicObservationMemory,
     } as never,
@@ -96,6 +98,8 @@ function makeRoomService(params: {
       getLatestMessages: vi.fn().mockResolvedValue(Array.from({ length: 80 }).map((_, i) => ({ body: `m${i + 1}` }))),
     } as never,
     memoryService: {
+      hasTypedPublicObservationEvent: vi.fn().mockResolvedValue(false),
+      getLatestTypedPublicObservationAt: vi.fn().mockResolvedValue(null),
       listMemories,
       createPublicObservationMemory,
     } as never,
@@ -203,6 +207,8 @@ describe('PublicObservationDigestService', () => {
       roomRepo: {} as never,
       messageRepo: {} as never,
       memoryService: {
+        hasTypedPublicObservationEvent: vi.fn().mockResolvedValue(false),
+        getLatestTypedPublicObservationAt: vi.fn().mockResolvedValue(null),
         listMemories: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
         createPublicObservationMemory: vi.fn().mockResolvedValue(undefined),
       } as never,
@@ -233,6 +239,41 @@ describe('PublicObservationDigestService', () => {
     }))
 
     expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
+  })
+
+  it('forum dedup short-circuits when typed raw event already exists', async () => {
+    const createPublicObservationMemory = vi.fn().mockResolvedValue(undefined)
+    const listMemories = vi.fn().mockResolvedValue({ items: [], next_cursor: null })
+    const service = new PublicObservationDigestService({
+      llmGateway: { isConfigured: false } as never,
+      forumReadService: {
+        getPost: vi.fn().mockResolvedValue({
+          id: 'p1',
+          title: 't',
+          body: 'b',
+          participant_count: 4,
+          heat_score: 0,
+        }),
+        getComments: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
+      } as never,
+      roomRepo: {} as never,
+      messageRepo: {} as never,
+      memoryService: {
+        hasTypedPublicObservationEvent: vi.fn().mockResolvedValue(true),
+        getLatestTypedPublicObservationAt: vi.fn().mockResolvedValue(null),
+        listMemories,
+        createPublicObservationMemory,
+      } as never,
+    })
+
+    await service.onForumEvent(makeDomainEvent({
+      id: 'evt-typed-dedup',
+      event_type: 'POST_CREATED',
+      payload_json: { post_id: 'p1', author_agent_id: 'a1' },
+    }))
+
+    expect(createPublicObservationMemory).not.toHaveBeenCalled()
+    expect(listMemories).not.toHaveBeenCalled()
   })
 
   it('room does not trigger when message_count=79', async () => {
@@ -327,6 +368,43 @@ describe('PublicObservationDigestService', () => {
     }))
 
     expect(createPublicObservationMemory).not.toHaveBeenCalled()
+  })
+
+  it('room cooldown uses typed raw events before falling back to legacy memories', async () => {
+    const now = new Date('2026-02-27T08:00:00.000Z')
+    const createPublicObservationMemory = vi.fn().mockResolvedValue(undefined)
+    const listMemories = vi.fn().mockResolvedValue({ items: [], next_cursor: null })
+    const service = new PublicObservationDigestService({
+      llmGateway: { isConfigured: false } as never,
+      forumReadService: {} as never,
+      roomRepo: {
+        findById: vi.fn().mockResolvedValue({
+          id: 'r1',
+          name: 'room',
+          description: '',
+          created_at: new Date(now.getTime() - 60 * 60 * 1000),
+          last_message_at: now,
+        }),
+      } as never,
+      messageRepo: {
+        countByRoom: vi.fn().mockResolvedValue(80),
+        getLatestMessages: vi.fn().mockResolvedValue(Array.from({ length: 80 }).map((_, i) => ({ body: `m${i + 1}` }))),
+      } as never,
+      memoryService: {
+        hasTypedPublicObservationEvent: vi.fn().mockResolvedValue(false),
+        getLatestTypedPublicObservationAt: vi.fn().mockResolvedValue(new Date(now.getTime() - 30 * 60_000)),
+        listMemories,
+        createPublicObservationMemory,
+      } as never,
+    })
+
+    await service.onRoomMessage({ roomId: 'r1', messageId: 'm-typed-cooldown', authorAgentId: 'a1' })
+
+    expect(createPublicObservationMemory).not.toHaveBeenCalled()
+    expect(listMemories).toHaveBeenCalledTimes(1)
+    expect(listMemories).toHaveBeenCalledWith('a1', expect.objectContaining({
+      source_event_id: 'm-typed-cooldown',
+    }))
   })
 
   it('rechecks cooldown before write to prevent TOCTOU duplicates', async () => {

@@ -193,6 +193,7 @@ export const eventQueue = infra.eventQueue
 
 export const llmClient = llm.llmClient
 export const llmGateway = llm.llmGateway
+export const usageLedger = llm.usageLedger
 export const promptEngine = llm.promptEngine
 export const inclinationAssetService = llm.inclinationAssetService
 

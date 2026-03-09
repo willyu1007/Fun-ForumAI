@@ -1,6 +1,7 @@
 import type {
   ContextActiveTensionItem,
   ContextEpisodicCard,
+  ContextMemorySourceType,
   ContextPrivateShadowMemory,
   ContextRawEvent,
   ContextRelationChannel,
@@ -22,7 +23,11 @@ export interface RawContextEventRepository {
   findById(id: string): Promise<ContextRawEvent | null>
   listByAgent(
     agentId: string,
-    opts: PaginationOpts & { scene?: ContextMemoryScene },
+    opts: PaginationOpts & {
+      scene?: ContextMemoryScene
+      source_type?: ContextMemorySourceType
+      source_ref_id?: string
+    },
   ): Promise<PaginatedResult<ContextRawEvent>>
 }
 
@@ -113,11 +118,17 @@ export class InMemoryRawContextEventRepository implements RawContextEventReposit
 
   async listByAgent(
     agentId: string,
-    opts: PaginationOpts & { scene?: ContextMemoryScene },
+    opts: PaginationOpts & {
+      scene?: ContextMemoryScene
+      source_type?: ContextMemorySourceType
+      source_ref_id?: string
+    },
   ): Promise<PaginatedResult<ContextRawEvent>> {
     const items = Array.from(this.store.values())
       .filter((item) => item.agent_id === agentId)
       .filter((item) => (opts.scene ? item.scene === opts.scene : true))
+      .filter((item) => (opts.source_type ? item.source_type === opts.source_type : true))
+      .filter((item) => (opts.source_ref_id ? item.source_ref_id === opts.source_ref_id : true))
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime() || b.id.localeCompare(a.id))
     return paginate(items, opts)
   }

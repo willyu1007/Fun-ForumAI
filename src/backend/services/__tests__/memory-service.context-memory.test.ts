@@ -60,6 +60,10 @@ describe('MemoryService context-memory runtime', () => {
         journalService: {
           record: vi.fn(async (event) => event),
         },
+        rawEventRepo: {
+          findById: vi.fn().mockResolvedValue(null),
+          listByAgent: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
+        } as never,
         summaryOrchestrator: {
           extract: vi.fn().mockResolvedValue({
             summaryText: 'extract',
@@ -289,6 +293,10 @@ describe('MemoryService context-memory runtime', () => {
       llmGateway: {} as never,
       contextMemory: {
         journalService: { record } as never,
+        rawEventRepo: {
+          findById: vi.fn().mockResolvedValue(null),
+          listByAgent: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
+        } as never,
         summaryOrchestrator: { extract, distill } as never,
         identityFinalizer: { finalize } as never,
         episodicCardRepo: { upsert: episodicUpsert } as never,
@@ -401,6 +409,10 @@ describe('MemoryService context-memory runtime', () => {
       llmGateway: {} as never,
       contextMemory: {
         journalService: {} as never,
+        rawEventRepo: {
+          findById: vi.fn().mockResolvedValue(null),
+          listByAgent: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
+        } as never,
         summaryOrchestrator: {} as never,
         identityFinalizer: {} as never,
         episodicCardRepo: {
@@ -454,6 +466,7 @@ describe('MemoryService context-memory runtime', () => {
           pruneByIds: shadowPrune,
         } as never,
         chronicleRepo: {
+          findByDedupKey: vi.fn().mockResolvedValue(null),
           create: chronicleCreate,
         } as never,
       } as never,

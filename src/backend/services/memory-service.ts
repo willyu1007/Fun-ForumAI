@@ -6,6 +6,7 @@ import type {
   ContextRelationStateRepository,
   EpisodicCardRepository,
   PrivateShadowMemoryRepository,
+  RawContextEventRepository,
   SelfModelStateRepository,
 } from '../repos/context-memory-repository.js'
 import type { ChronicleRepository } from '../repos/chronicle-repository.js'
@@ -38,9 +39,13 @@ import type {
 import { DefaultMemoryPackRenderer, DefaultRetrievalPacker } from '../context-memory/memory-pack.js'
 import {
   buildChatRoomWindowRawEvent,
+  buildChatRoomWindowRawEventId,
   buildForumThreadRawEvent,
+  buildForumThreadRawEventId,
   buildPrivateSessionRawEvent,
+  buildPrivateSessionRawEventId,
 } from '../context-memory/runtime.js'
+import { personaObservability } from '../runtime/persona-observability.js'
 
 const DECAY_FACTOR_PER_DAY = 0.995
 const FORGET_THRESHOLD = 0.05
@@ -58,6 +63,7 @@ const NIGHTLY_COMPACTION_LOOKBACK_DAYS = 7
 
 export interface ContextMemoryRuntimeDeps {
   journalService: ContextJournalService
+  rawEventRepo: RawContextEventRepository
   summaryOrchestrator: SummaryOrchestrator
   identityFinalizer: IdentityFinalizer
   episodicCardRepo: EpisodicCardRepository
@@ -183,6 +189,8 @@ export class MemoryService {
       })
     }
 
+    personaObservability.recordRetrieval(memoryPack.observability)
+
     return { memories: memoryPack.selectedMemories, formatted }
   }
 
@@ -251,6 +259,7 @@ export class MemoryService {
 
     try {
       memory = await this.deps.memoryRepo.createMemory(data)
+      personaObservability.recordLegacyPublicDualWrite()
     } catch (err) {
       if (!sourceEventId || !isUniqueConstraintError(err)) {
         throw err
@@ -333,6 +342,34 @@ export class MemoryService {
     return { decayed, forgotten }
   }
 
+  async hasTypedPublicObservationEvent(
+    agentId: string,
+    input: { scene: Extract<ContextMemoryScene, 'forum' | 'chat_room'>; sourceEventId: string },
+  ): Promise<boolean> {
+    const runtime = this.deps.contextMemory
+    if (!runtime) return false
+    const rawEventId = input.scene === 'forum'
+      ? buildForumThreadRawEventId(input.sourceEventId)
+      : buildChatRoomWindowRawEventId(input.sourceEventId)
+    const row = await runtime.rawEventRepo.findById(rawEventId)
+    return Boolean(row && row.agent_id === agentId)
+  }
+
+  async getLatestTypedPublicObservationAt(
+    agentId: string,
+    input: { scene: Extract<ContextMemoryScene, 'forum' | 'chat_room'>; sourceRefId: string },
+  ): Promise<Date | null> {
+    const runtime = this.deps.contextMemory
+    if (!runtime) return null
+    const page = await runtime.rawEventRepo.listByAgent(agentId, {
+      limit: 1,
+      scene: input.scene,
+      source_type: input.scene === 'forum' ? 'forum_thread' : 'chat_room_window',
+      source_ref_id: input.sourceRefId,
+    })
+    return page.items[0]?.created_at ?? null
+  }
+
   private async generateTypedDigest(
     sessionId: string,
     transcript: string,
@@ -344,36 +381,40 @@ export class MemoryService {
     if (!runtime) {
       throw new Error('context_memory_runtime_missing')
     }
+    try {
+      const rawEvent = await runtime.journalService.record(buildPrivateSessionRawEvent({
+        eventId: buildPrivateSessionRawEventId(sessionId),
+        agentId,
+        sessionId,
+        ownerId,
+        transcript,
+        createdAt,
+      }))
+      const extracted = await runtime.summaryOrchestrator.extract(rawEvent)
+      const distilled = await runtime.summaryOrchestrator.distill(rawEvent, extracted)
+      const finalized = await runtime.identityFinalizer.finalize(agentId, distilled)
+      await this.persistTypedContextState(agentId, distilled, finalized)
+      personaObservability.recordTypedWrite(true)
 
-    const rawEventId = `ctxevent:private-session:${sessionId}`
-    const rawEvent = await runtime.journalService.record(buildPrivateSessionRawEvent({
-      eventId: rawEventId,
-      agentId,
-      sessionId,
-      ownerId,
-      transcript,
-      createdAt,
-    }))
-    const extracted = await runtime.summaryOrchestrator.extract(rawEvent)
-    const distilled = await runtime.summaryOrchestrator.distill(rawEvent, extracted)
-    const finalized = await runtime.identityFinalizer.finalize(agentId, distilled)
-    await this.persistTypedContextState(agentId, distilled, finalized)
+      const existing = await this.findPrivateDigestByEventId(agentId, rawEvent.id)
+      if (existing) return existing
 
-    const existing = await this.findPrivateDigestByEventId(agentId, rawEvent.id)
-    if (existing) return existing
-
-    return this.deps.memoryRepo.createMemory({
-      agent_id: agentId,
-      source_type: 'PRIVATE_CHAT',
-      source_session_id: sessionId,
-      source_event_id: rawEvent.id,
-      summary_text: distilled.compatibilityDigest.summary_text,
-      topic_tags: distilled.compatibilityDigest.topic_tags,
-      key_facts: distilled.compatibilityDigest.key_facts,
-      sentiment: distilled.compatibilityDigest.sentiment,
-      importance_score: distilled.compatibilityDigest.importance_score,
-      privacy_floor: 1,
-    })
+      return this.deps.memoryRepo.createMemory({
+        agent_id: agentId,
+        source_type: 'PRIVATE_CHAT',
+        source_session_id: sessionId,
+        source_event_id: rawEvent.id,
+        summary_text: distilled.compatibilityDigest.summary_text,
+        topic_tags: distilled.compatibilityDigest.topic_tags,
+        key_facts: distilled.compatibilityDigest.key_facts,
+        sentiment: distilled.compatibilityDigest.sentiment,
+        importance_score: distilled.compatibilityDigest.importance_score,
+        privacy_floor: 1,
+      })
+    } catch (error) {
+      personaObservability.recordTypedWrite(false)
+      throw error
+    }
   }
 
   private async generateLegacyDigest(
@@ -597,7 +638,9 @@ export class MemoryService {
     if (!this.deps.contextMemory || !input.typed_context) return
     try {
       await this.ingestTypedPublicObservation(memory, input, sourceEventId)
+      personaObservability.recordTypedWrite(true)
     } catch (err) {
+      personaObservability.recordTypedWrite(false)
       console.error('[MemoryService] typed public observation ingest failed:', err)
     }
   }
@@ -613,7 +656,7 @@ export class MemoryService {
 
     const rawEvent = typedContext.scene === 'forum'
       ? buildForumThreadRawEvent({
-        eventId: `ctxevent:forum:${sourceEventId ?? memory.id}`,
+        eventId: buildForumThreadRawEventId(sourceEventId ?? memory.id),
         agentId: input.agent_id,
         postId: input.source_ref_id,
         communityId: typedContext.counterpart_id ?? null,
@@ -622,7 +665,7 @@ export class MemoryService {
         createdAt: typedContext.created_at ?? memory.created_at,
       })
       : buildChatRoomWindowRawEvent({
-        eventId: `ctxevent:chat-room:${sourceEventId ?? memory.id}`,
+        eventId: buildChatRoomWindowRawEventId(sourceEventId ?? memory.id),
         agentId: input.agent_id,
         roomId: input.source_ref_id,
         transcript: typedContext.transcript,
@@ -662,85 +705,109 @@ export class MemoryService {
     const runtime = this.deps.contextMemory
     if (!runtime) return
 
-    const [allCards, shadows, tensions, selfModel] = await Promise.all([
-      this.listAllEpisodicCards(agentId),
-      runtime.privateShadowRepo.listByAgent(agentId, 12),
-      runtime.activeTensionRepo.listByAgent(agentId, 10),
-      runtime.selfModelStateRepo.findByAgent(agentId),
-    ])
+    try {
+      const [allCards, shadows, tensions, selfModel] = await Promise.all([
+        this.listAllEpisodicCards(agentId),
+        runtime.privateShadowRepo.listByAgent(agentId, 12),
+        runtime.activeTensionRepo.listByAgent(agentId, 10),
+        runtime.selfModelStateRepo.findByAgent(agentId),
+      ])
 
-    const now = new Date()
-    const compacted = this.compactEpisodicCards(allCards, now)
-    const nextTensions = tensions
-      .map((item) => ({
-        id: item.id,
-        agent_id: item.agent_id,
-        label: item.label,
-        description: item.description,
-        intensity: clamp01(item.intensity * NIGHTLY_TENSION_DECAY),
-        evidence_refs: [...item.evidence_refs],
-      }))
-      .filter((item) => item.intensity >= NIGHTLY_TENSION_FORGET_THRESHOLD)
-      .slice(0, 5)
-
-    await Promise.all(compacted.kept.map((card) => runtime.episodicCardRepo.upsert({
-      id: card.id,
-      agent_id: card.agent_id,
-      event_id: card.event_id,
-      scene: card.scene,
-      title: card.title,
-      summary: card.summary,
-      topic_tags: card.topic_tags,
-      evidence_refs: card.evidence_refs,
-      salience: card.salience,
-      created_at: card.created_at,
-    })))
-
-    if (compacted.prunedIds.length > 0) {
-      await runtime.episodicCardRepo.pruneByIds(agentId, compacted.prunedIds)
-    }
-
-    await runtime.activeTensionRepo.replaceForAgent(agentId, nextTensions)
-
-    if (selfModel) {
-      await runtime.selfModelStateRepo.upsert({
-        id: selfModel.id,
-        agent_id: selfModel.agent_id,
-        summary: selfModel.summary,
-        tensions: nextTensions.map((item) => item.label),
-        evidence_refs: selfModel.evidence_refs,
-      })
-    }
-
-    const shadowPrunedIds = shadows.slice(NIGHTLY_SHADOW_KEEP).map((item) => item.id)
-    if (shadowPrunedIds.length > 0) {
-      await runtime.privateShadowRepo.pruneByIds(agentId, shadowPrunedIds)
-    }
-
-    if (runtime.chronicleRepo && compacted.mergeCandidates.length >= NIGHTLY_COMPACTION_MIN_CARDS) {
-      const evidence = compacted.mergeCandidates
+      const now = new Date()
+      const compacted = this.compactEpisodicCards(allCards, now)
+      const nextTensions = tensions
+        .map((item) => ({
+          id: item.id,
+          agent_id: item.agent_id,
+          label: item.label,
+          description: item.description,
+          intensity: clamp01(item.intensity * NIGHTLY_TENSION_DECAY),
+          evidence_refs: [...item.evidence_refs],
+        }))
+        .filter((item) => item.intensity >= NIGHTLY_TENSION_FORGET_THRESHOLD)
         .slice(0, 5)
-        .map((card) => ({
-          kind: 'context_episode',
-          ref_id: card.id,
-          summary: card.title,
-        } satisfies EvidenceRef))
-      await runtime.chronicleRepo.create({
-        agent_id: agentId,
-        visibility: 'OWNER_ONLY',
-        type: 'HIGHLIGHT',
-        occurred_at: now,
-        title: 'Nightly Context Compaction',
-        summary: this.buildNightlyCompactionSummary(compacted.mergeCandidates),
-        importance_score: clamp01(average(compacted.mergeCandidates.map((card) => card.salience)) + 0.05),
-        evidence,
-        tags: ['context:nightly', 'context:compaction', ...Array.from(new Set(compacted.mergeCandidates.map((card) => `scene:${card.scene}`)))],
-        meta: {
-          source: 'context_memory_nightly',
-          event_ids: compacted.mergeCandidates.map((card) => card.event_id).filter((value): value is string => Boolean(value)),
-        },
-        dedup_key: `context-nightly:${agentId}:${now.toISOString().slice(0, 10)}`,
+
+      await Promise.all(compacted.kept.map((card) => runtime.episodicCardRepo.upsert({
+        id: card.id,
+        agent_id: card.agent_id,
+        event_id: card.event_id,
+        scene: card.scene,
+        title: card.title,
+        summary: card.summary,
+        topic_tags: card.topic_tags,
+        evidence_refs: card.evidence_refs,
+        salience: card.salience,
+        created_at: card.created_at,
+      })))
+
+      if (compacted.prunedIds.length > 0) {
+        await runtime.episodicCardRepo.pruneByIds(agentId, compacted.prunedIds)
+      }
+
+      await runtime.activeTensionRepo.replaceForAgent(agentId, nextTensions)
+
+      if (selfModel) {
+        await runtime.selfModelStateRepo.upsert({
+          id: selfModel.id,
+          agent_id: selfModel.agent_id,
+          summary: selfModel.summary,
+          tensions: nextTensions.map((item) => item.label),
+          evidence_refs: selfModel.evidence_refs,
+        })
+      }
+
+      const shadowPrunedIds = shadows.slice(NIGHTLY_SHADOW_KEEP).map((item) => item.id)
+      if (shadowPrunedIds.length > 0) {
+        await runtime.privateShadowRepo.pruneByIds(agentId, shadowPrunedIds)
+      }
+
+      let compactionCreated = false
+      let compactionDedupHit = false
+      if (runtime.chronicleRepo && compacted.mergeCandidates.length >= NIGHTLY_COMPACTION_MIN_CARDS) {
+        const dedupKey = `context-nightly:${agentId}:${now.toISOString().slice(0, 10)}`
+        const existing = await runtime.chronicleRepo.findByDedupKey(agentId, dedupKey)
+        if (existing) {
+          compactionDedupHit = true
+        } else {
+          const evidence = compacted.mergeCandidates
+            .slice(0, 5)
+            .map((card) => ({
+              kind: 'context_episode',
+              ref_id: card.id,
+              summary: card.title,
+            } satisfies EvidenceRef))
+          await runtime.chronicleRepo.create({
+            agent_id: agentId,
+            visibility: 'OWNER_ONLY',
+            type: 'HIGHLIGHT',
+            occurred_at: now,
+            title: 'Nightly Context Compaction',
+            summary: this.buildNightlyCompactionSummary(compacted.mergeCandidates),
+            importance_score: clamp01(average(compacted.mergeCandidates.map((card) => card.salience)) + 0.05),
+            evidence,
+            tags: ['context:nightly', 'context:compaction', ...Array.from(new Set(compacted.mergeCandidates.map((card) => `scene:${card.scene}`)))],
+            meta: {
+              source: 'context_memory_nightly',
+              event_ids: compacted.mergeCandidates.map((card) => card.event_id).filter((value): value is string => Boolean(value)),
+            },
+            dedup_key: dedupKey,
+          })
+          compactionCreated = true
+        }
+      }
+
+      personaObservability.recordNightlyCompaction({
+        created: compactionCreated,
+        dedupHit: compactionDedupHit,
+        failed: false,
       })
+    } catch (error) {
+      personaObservability.recordNightlyCompaction({
+        created: false,
+        dedupHit: false,
+        failed: true,
+      })
+      throw error
     }
   }
 

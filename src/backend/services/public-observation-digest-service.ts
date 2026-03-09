@@ -6,6 +6,7 @@ import type { MessageRepository } from '../repos/message-repository.js'
 import type { MemoryService } from './memory-service.js'
 import { config } from '../lib/config.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
+import { personaObservability } from '../runtime/persona-observability.js'
 
 export interface PublicObservationDigestServiceDeps {
   llmGateway: LLMGateway
@@ -35,15 +36,16 @@ export class PublicObservationDigestService {
         post.heat_score >= po.forumHeatThreshold
 
       if (!shouldDigest) return
+      personaObservability.recordPublicIngress('forum')
 
-      if (!await this.shouldProceedByEventDedup(agentId, event.id)) return
-      if (!await this.shouldProceedByCooldown(agentId, 'post', postId, po.forumCooldownMs)) return
+      if (!await this.shouldProceedByEventDedup(agentId, 'forum', event.id)) return
+      if (!await this.shouldProceedByCooldown(agentId, 'forum', 'post', postId, po.forumCooldownMs)) return
 
       const transcript = this.buildForumTranscript(post.title, post.body, comments.items.map((c) => c.body))
       const summary = await this.summarize('forum', transcript, agentId)
 
       // Re-check cooldown before write to avoid TOCTOU during long LLM calls.
-      if (!await this.shouldProceedByCooldown(agentId, 'post', postId, po.forumCooldownMs)) return
+      if (!await this.shouldProceedByCooldown(agentId, 'forum', 'post', postId, po.forumCooldownMs)) return
 
       await this.deps.memoryService.createPublicObservationMemory({
         agent_id: agentId,
@@ -82,16 +84,17 @@ export class PublicObservationDigestService {
       const activeMinutes = Math.max(0, (Date.now() - room.created_at.getTime()) / 60_000)
       const shouldDigest = messageCount >= po.roomMessageThreshold || (activeMinutes >= po.roomActiveMinThreshold && messageCount >= po.roomActiveMinMsgThreshold)
       if (!shouldDigest) return
+      personaObservability.recordPublicIngress('chat_room')
 
-      if (!await this.shouldProceedByEventDedup(input.authorAgentId, input.messageId)) return
-      if (!await this.shouldProceedByCooldown(input.authorAgentId, 'room', input.roomId, po.roomCooldownMs)) return
+      if (!await this.shouldProceedByEventDedup(input.authorAgentId, 'chat_room', input.messageId)) return
+      if (!await this.shouldProceedByCooldown(input.authorAgentId, 'chat_room', 'room', input.roomId, po.roomCooldownMs)) return
 
       const messages = await this.deps.messageRepo.getLatestMessages(input.roomId, 80)
       const transcript = this.buildRoomTranscript(room.name, room.description || '', messages.map((m) => m.body))
       const summary = await this.summarize('room', transcript, input.authorAgentId)
 
       // Re-check cooldown before write to avoid TOCTOU during long LLM calls.
-      if (!await this.shouldProceedByCooldown(input.authorAgentId, 'room', input.roomId, po.roomCooldownMs)) return
+      if (!await this.shouldProceedByCooldown(input.authorAgentId, 'chat_room', 'room', input.roomId, po.roomCooldownMs)) return
 
       await this.deps.memoryService.createPublicObservationMemory({
         agent_id: input.authorAgentId,
@@ -116,14 +119,24 @@ export class PublicObservationDigestService {
     }
   }
 
-  private async shouldProceedByEventDedup(agentId: string, sourceEventId: string): Promise<boolean> {
+  private async shouldProceedByEventDedup(
+    agentId: string,
+    scene: 'forum' | 'chat_room',
+    sourceEventId: string,
+  ): Promise<boolean> {
     try {
+      if (await this.deps.memoryService.hasTypedPublicObservationEvent(agentId, { scene, sourceEventId })) {
+        return false
+      }
       const existing = await this.deps.memoryService.listMemories(agentId, {
         limit: 1,
         source_type: 'PUBLIC_OBSERVATION',
         source_event_id: sourceEventId,
         forgotten: false,
       })
+      if (existing.items.length > 0) {
+        personaObservability.recordLegacyMigrationFallback('public_dedup')
+      }
       return existing.items.length === 0
     } catch (err) {
       console.warn('[PublicObservationDigestService] event dedup check failed, fallback to continue:', err)
@@ -133,12 +146,13 @@ export class PublicObservationDigestService {
 
   private async shouldProceedByCooldown(
     agentId: string,
+    scene: 'forum' | 'chat_room',
     sourceRefType: string,
     sourceRefId: string,
     cooldownMs: number,
   ): Promise<boolean> {
     try {
-      return await this.isCooledDown(agentId, sourceRefType, sourceRefId, cooldownMs)
+      return await this.isCooledDown(agentId, scene, sourceRefType, sourceRefId, cooldownMs)
     } catch (err) {
       console.warn('[PublicObservationDigestService] cooldown check failed, fallback to continue:', err)
       return true
@@ -147,10 +161,19 @@ export class PublicObservationDigestService {
 
   private async isCooledDown(
     agentId: string,
+    scene: 'forum' | 'chat_room',
     sourceRefType: string,
     sourceRefId: string,
     cooldownMs: number,
   ): Promise<boolean> {
+    const typedLatest = await this.deps.memoryService.getLatestTypedPublicObservationAt(agentId, {
+      scene,
+      sourceRefId,
+    })
+    if (typedLatest) {
+      return Date.now() - typedLatest.getTime() >= cooldownMs
+    }
+
     const latest = await this.deps.memoryService.listMemories(agentId, {
       limit: 1,
       source_type: 'PUBLIC_OBSERVATION',
@@ -161,6 +184,7 @@ export class PublicObservationDigestService {
 
     const last = latest.items[0]
     if (!last) return true
+    personaObservability.recordLegacyMigrationFallback('public_cooldown')
     return Date.now() - last.created_at.getTime() >= cooldownMs
   }
 
