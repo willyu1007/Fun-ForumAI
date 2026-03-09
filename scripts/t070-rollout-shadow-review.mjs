@@ -280,6 +280,19 @@ async function fetchAgentRuns(baseUrl, agentId, ownerToken, limit = 100) {
   }
 }
 
+async function fetchSessions(baseUrl, agentId, ownerToken, { status, limit = 50 } = {}) {
+  const params = new URLSearchParams({ limit: String(limit) })
+  if (status) params.set('status', status)
+  const payload = await expectOkJson(
+    baseUrl,
+    'GET',
+    `/v1/agents/${agentId}/chat/sessions?${params.toString()}`,
+    { token: ownerToken },
+    `GET /v1/agents/${agentId}/chat/sessions`,
+  )
+  return Array.isArray(payload.data?.items) ? payload.data.items : []
+}
+
 async function forceRuntimePost(baseUrl) {
   const res = await api(baseUrl, 'POST', '/v1/dev/runtime/post')
   if (!res.ok) {
@@ -330,6 +343,85 @@ function runsWithinWindow(items, startedAt) {
 
 function countObservedRuns(items) {
   return items.filter((item) => item?.output_json?.persona_observation?.version === 'persona-observation-v1').length
+}
+
+function countObservedCallsites(items) {
+  return items.reduce((counts, item) => {
+    const callsite = item?.output_json?.persona_observation?.source_callsite_id
+    if (!hasText(callsite)) return counts
+    counts[callsite] = (counts[callsite] ?? 0) + 1
+    return counts
+  }, {})
+}
+
+function identityWriteSnapshot(runtimeFeatures) {
+  const counters = runtimeFeatures?.observability?.context_memory?.identity_writes
+  return {
+    success_total: Number(counters?.success_total ?? 0),
+    failure_total: Number(counters?.failure_total ?? 0),
+  }
+}
+
+function estimateFinalEvalTake(baseTake, shadowLog) {
+  const runtimePostSteps = shadowLog.steps.filter((step) =>
+    (step.step === 'runtime-post-warmup' || step.step === 'runtime-post-followup') &&
+    step.detail?.post_id &&
+    step.detail?.agent_id,
+  ).length
+  const privateReplySteps = shadowLog.steps.filter((step) => step.step === 'private-chat-message' && step.status === 'ok').length
+  const estimatedShadowRuns = (runtimePostSteps * 2) + privateReplySteps
+  return Math.max(baseTake, baseTake + estimatedShadowRuns + 8)
+}
+
+async function waitForDigestStatus(baseUrl, agentId, sessionId, ownerToken, shadowLog, timeoutMs = 90_000) {
+  const startedAt = Date.now()
+  let attempts = 0
+
+  try {
+    const terminal = await pollUntil(async () => {
+      attempts += 1
+      const sessions = await fetchSessions(baseUrl, agentId, ownerToken, { status: 'ENDED' })
+      const session = sessions.find((item) => item?.id === sessionId) ?? null
+      if (!session) return null
+      const digestStatus = session.digest_status
+      if (digestStatus === 'COMPLETED' || digestStatus === 'FAILED' || digestStatus === 'SKIPPED') {
+        return {
+          session,
+          digest_status: digestStatus,
+        }
+      }
+      return null
+    }, { timeoutMs, intervalMs: 1000 })
+
+    shadowLog.steps.push({
+      step: 'private-chat-digest-await',
+      status: terminal.digest_status === 'COMPLETED' ? 'ok' : 'warn',
+      at: new Date().toISOString(),
+      detail: {
+        agent_id: agentId,
+        session_id: sessionId,
+        digest_status: terminal.digest_status,
+        attempts,
+        waited_ms: Date.now() - startedAt,
+      },
+    })
+
+    return terminal
+  } catch (err) {
+    shadowLog.steps.push({
+      step: 'private-chat-digest-await',
+      status: 'error',
+      at: new Date().toISOString(),
+      detail: {
+        agent_id: agentId,
+        session_id: sessionId,
+        attempts,
+        waited_ms: Date.now() - startedAt,
+        error: err instanceof Error ? err.message : String(err),
+      },
+    })
+    throw err
+  }
 }
 
 async function seedData(baseUrl, ownerToken, shadowLog) {
@@ -551,6 +643,8 @@ async function main() {
   let databaseUrl = ''
   let targetAgentId = null
   let privateChatCompletedAt = null
+  let privateChatSessionId = null
+  let privateChatDigestStatus = null
 
   await mkdir(outputDir, { recursive: true })
 
@@ -601,10 +695,23 @@ async function main() {
       take: opts.take,
       databaseUrl,
     })
+    const baselineManifest = await readJson(join(baselineEvalDir, 'corpus-manifest.json'))
+    const baselineAttribution = await readJson(join(baselineEvalDir, 'attribution-summary.json'))
+    const baselineGate = await readJson(join(baselineEvalDir, 'gate-summary.json'))
 
     targetAgentId = await selectTargetAgent(baseUrl, ownerAgentIds, opts.warmupAttempts, shadowLog)
     const privateChatResult = await sendPrivateChatScenario(baseUrl, targetAgentId, ownerToken, opts.chatMessages, shadowLog)
     privateChatCompletedAt = privateChatResult.finished_at
+    privateChatSessionId = privateChatResult.session_id
+    const digestTerminal = await waitForDigestStatus(
+      baseUrl,
+      targetAgentId,
+      privateChatResult.session_id,
+      ownerToken,
+      shadowLog,
+    )
+    privateChatDigestStatus = digestTerminal.digest_status
+
     const followUpResult = await runFollowUpPosts(baseUrl, targetAgentId, opts.postRetryAttempts, shadowLog)
     if (!followUpResult.matched) {
       shadowLog.steps.push({
@@ -628,51 +735,68 @@ async function main() {
       })
     }
 
+    const targetRuns = targetAgentId
+      ? await fetchAgentRuns(baseUrl, targetAgentId, ownerToken, 100)
+      : { items: [], meta: {} }
+    const targetWindowRuns = runsWithinWindow(targetRuns.items, shadowLog.started_at)
+    const targetObservedWindowRuns = countObservedRuns(targetWindowRuns)
+    const targetWindowCallsites = countObservedCallsites(targetWindowRuns)
+    const finalEvalTake = estimateFinalEvalTake(opts.take, shadowLog)
+    shadowLog.steps.push({
+      step: 'final-eval-window',
+      status: 'ok',
+      at: new Date().toISOString(),
+      detail: {
+        baseline_take: opts.take,
+        final_take: finalEvalTake,
+      },
+    })
     await runPersonaEval({
       outputDir: finalEvalDir,
-      take: opts.take,
+      take: finalEvalTake,
       databaseUrl,
     })
 
     const runtimeAfter = await fetchRuntimeFeatures(baseUrl, adminToken)
     await writeJson(join(outputDir, 'runtime-features.after.json'), runtimeAfter)
 
-    const baselineManifest = await readJson(join(baselineEvalDir, 'corpus-manifest.json'))
-    const baselineAttribution = await readJson(join(baselineEvalDir, 'attribution-summary.json'))
     const finalManifest = await readJson(join(finalEvalDir, 'corpus-manifest.json'))
     const finalAttribution = await readJson(join(finalEvalDir, 'attribution-summary.json'))
     const offlineGate = await readJson(join(finalEvalDir, 'gate-summary.json'))
+    const runtimeIdentityBefore = identityWriteSnapshot(runtimeBefore)
+    const runtimeIdentityAfter = identityWriteSnapshot(runtimeAfter)
 
     await copyFile(join(finalEvalDir, 'corpus-manifest.json'), join(outputDir, 'corpus-manifest.json'))
     await copyFile(join(finalEvalDir, 'blind-review-sheet.md'), join(outputDir, 'blind-review-sheet.md'))
     await copyFile(join(finalEvalDir, 'attribution-summary.json'), join(outputDir, 'attribution-summary.json'))
     await copyFile(join(finalEvalDir, 'gate-summary.json'), join(outputDir, 'gate-summary.raw.json'))
 
-    const targetRuns = targetAgentId
-      ? await fetchAgentRuns(baseUrl, targetAgentId, ownerToken, 100)
-      : { items: [], meta: {} }
-    const targetWindowRuns = runsWithinWindow(targetRuns.items, shadowLog.started_at)
-    const targetObservedWindowRuns = countObservedRuns(targetWindowRuns)
     if (targetAgentId) {
       await writeJson(join(outputDir, 'target-agent-runs.json'), {
         agent_id: targetAgentId,
         baseline_manifest_run_id: baselineManifest.run_id,
         final_manifest_run_id: finalManifest.run_id,
         window_started_at: shadowLog.started_at,
+        private_chat_session_id: privateChatSessionId,
         private_chat_completed_at: privateChatCompletedAt,
+        private_chat_digest_status: privateChatDigestStatus,
         window_items: targetWindowRuns,
         window_run_count: targetWindowRuns.length,
         window_observed_run_count: targetObservedWindowRuns,
+        window_callsite_counts: targetWindowCallsites,
         ...targetRuns,
       })
     } else {
       await writeJson(join(outputDir, 'target-agent-runs.json'), {
         agent_id: null,
         window_started_at: shadowLog.started_at,
+        private_chat_session_id: privateChatSessionId,
         private_chat_completed_at: privateChatCompletedAt,
+        private_chat_digest_status: privateChatDigestStatus,
         window_items: [],
         window_run_count: 0,
         window_observed_run_count: 0,
+        window_callsite_counts: {},
         items: [],
         meta: {},
       })
@@ -682,12 +806,21 @@ async function main() {
       offlineGate,
       baselineAttribution,
       currentAttribution: finalAttribution,
+      runtimeIdentityDelta: {
+        before_success_total: runtimeIdentityBefore.success_total,
+        before_failure_total: runtimeIdentityBefore.failure_total,
+        after_success_total: runtimeIdentityAfter.success_total,
+        after_failure_total: runtimeIdentityAfter.failure_total,
+      },
+      baselineGate,
+      currentGate: offlineGate,
       manifest: finalManifest,
       shadowActivity: {
         targetAgentId,
         windowStartedAt: shadowLog.started_at,
         targetAgentRunCount: targetWindowRuns.length,
         targetAgentObservedRunCount: targetObservedWindowRuns,
+        windowCallsiteCounts: targetWindowCallsites,
       },
     })
     await writeJson(join(outputDir, 'gate-summary.pre-review.json'), preReview)

@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 70 (planned: 2, in-progress: 8, blocked: 0, done: 28, archived: 32)
+- Tasks: 70 (planned: 1, in-progress: 9, blocked: 0, done: 28, archived: 32)
 
 ## Recent tasks
 
@@ -21,7 +21,7 @@ Project: `main`
 | T-069 context-memory-plane-runtime-v1 | done | F-020 | dev-docs/active/context-memory-plane-runtime-v1 |
 | T-070 persona-rollout-shadow-review | done | F-020 | dev-docs/active/persona-rollout-shadow-review |
 | T-071 local-kind-runtime-consistency-remediation | done | F-020 | dev-docs/active/local-kind-runtime-consistency-remediation |
-| T-072 persona-rollout-gate-evidence-remediation | planned | F-020 | dev-docs/active/persona-rollout-gate-evidence-remediation |
+| T-072 persona-rollout-gate-evidence-remediation | in-progress | F-020 | dev-docs/active/persona-rollout-gate-evidence-remediation |
 | T-061 ios-android-runtime-smoke-kit | done | F-030 | dev-docs/active/ios-android-runtime-smoke-kit |
 | T-062 persona-provider-alignment-program | done | F-020 | dev-docs/active/persona-provider-alignment-program |
 | T-063 persona-seed-voice-contract-v1 | done | F-020 | dev-docs/active/persona-seed-voice-contract-v1 |

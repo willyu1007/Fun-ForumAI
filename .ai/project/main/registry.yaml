@@ -621,7 +621,7 @@ tasks:
     updated: 2026-03-09
   - id: T-072
     slug: persona-rollout-gate-evidence-remediation
-    status: planned
+    status: in-progress
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:

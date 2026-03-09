@@ -79,5 +79,5 @@ Project: `main`
 | T-069 context-memory-plane-runtime-v1 | done | F-020 | dev-docs/active/context-memory-plane-runtime-v1 |
 | T-070 persona-rollout-shadow-review | done | F-020 | dev-docs/active/persona-rollout-shadow-review |
 | T-071 local-kind-runtime-consistency-remediation | done | F-020 | dev-docs/active/local-kind-runtime-consistency-remediation |
-| T-072 persona-rollout-gate-evidence-remediation | planned | F-020 | dev-docs/active/persona-rollout-gate-evidence-remediation |
+| T-072 persona-rollout-gate-evidence-remediation | in-progress | F-020 | dev-docs/active/persona-rollout-gate-evidence-remediation |
 <!-- AUTO-GENERATED:END task-index -->

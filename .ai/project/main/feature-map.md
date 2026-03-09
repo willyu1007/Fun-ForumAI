@@ -89,7 +89,7 @@ Project: `main`
 | T-069 context-memory-plane-runtime-v1 | done | dev-docs/active/context-memory-plane-runtime-v1 |
 | T-070 persona-rollout-shadow-review | done | dev-docs/active/persona-rollout-shadow-review |
 | T-071 local-kind-runtime-consistency-remediation | done | dev-docs/active/local-kind-runtime-consistency-remediation |
-| T-072 persona-rollout-gate-evidence-remediation | planned | dev-docs/active/persona-rollout-gate-evidence-remediation |
+| T-072 persona-rollout-gate-evidence-remediation | in-progress | dev-docs/active/persona-rollout-gate-evidence-remediation |
 
 ### F-030 Mobile Runtime Delivery
 

@@ -29,3 +29,4 @@ Project: `main`
 - 2026-03-09 task_id=T-070 slug=persona-rollout-shadow-review event=status from=planned to=in-progress
 - 2026-03-09 task_id=T-071 slug=local-kind-runtime-consistency-remediation event=registered dev_docs_path=dev-docs/active/local-kind-runtime-consistency-remediation
 - 2026-03-09 task_id=T-070 slug=persona-rollout-shadow-review event=status from=in-progress to=done
+- 2026-03-09 task_id=T-072 slug=persona-rollout-gate-evidence-remediation event=status from=planned to=in-progress

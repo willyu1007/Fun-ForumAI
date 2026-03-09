@@ -191,6 +191,8 @@ describe('MemoryService context-memory runtime', () => {
       agent_id: 'agent-1',
       session_id: 'session-1',
       memory_id: 'mem-1',
+      importance_score: 0.8,
+      sentiment: 'thoughtful',
     })
     expect(createMemory).toHaveBeenCalledWith(expect.objectContaining({
       source_event_id: 'ctxevent:private-session:session-1',

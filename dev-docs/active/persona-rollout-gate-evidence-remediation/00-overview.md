@@ -1,12 +1,12 @@
 # 00 Overview — persona-rollout-gate-evidence-remediation (T-072)
 
 ## Status
-- State: planned
-- 说明: follow-up task；本轮仅建立任务包，不实施
+- State: in-progress
+- 说明: follow-up task；本轮开始实施 `T-072` evidence remediation
 - 前置:
   - `T-070 persona-rollout-shadow-review` 已完成 blind review / finalize，当前 verdict=`warn/hold`
   - `T-071 local-kind-runtime-consistency-remediation` 已完成，runtime blocker 已清除
-- Next step: 在后续实施轮次中补齐 rollout gate 的证据缺口，并重跑最终 verdict
+- Next step: 落地 `t066/t070/persona-rollout-gate` 修复，补跑验证并同步 project governance
 
 ## Goal
 围绕 `T-070` 的最终 `hold` 结论补齐剩余证据，使人格 rollout gate 从“流程完成但证据不足”推进到“可明确 go / go_with_caveats / rollback”的可决策状态。
@@ -26,7 +26,7 @@
 - 不重新实现 `T-066` 的 observability / gate contract
 - 不重开 `T-070` 的 orchestration 脚本主流程，除非为证据缺口补强所必需
 - 不把 local-kind runtime drift、镜像 freshness、ConfigMap 对齐问题重新并回 `T-071`
-- 本轮不实施产品代码或脚本修改；只定义任务边界、验收口径和后续执行计划
+- 不新增 owner-facing API / UI
 
 ## Acceptance Criteria (high level)
 - [ ] 产出一轮新的 rollout evidence，使 `identity-write-success` guardrail 进入可判定状态

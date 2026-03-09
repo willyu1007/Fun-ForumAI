@@ -226,6 +226,12 @@ profiles:
         endpoint_id: deepseek-cn
         weight: 100
         quality_class: balanced
+      - provider_id: dashscope-openai
+        model_id: qwen-plus-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 60
+        quality_class: balanced
     fallback: []
 
   - profile_id: deepseek-director-private-digest-premium
@@ -239,6 +245,12 @@ profiles:
         region: cn
         endpoint_id: deepseek-cn
         weight: 100
+        quality_class: premium
+      - provider_id: dashscope-openai
+        model_id: qwen-max
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 60
         quality_class: premium
     fallback: []
 
@@ -268,6 +280,12 @@ profiles:
         endpoint_id: deepseek-cn
         weight: 100
         quality_class: balanced
+      - provider_id: dashscope-openai
+        model_id: qwen-plus-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 60
+        quality_class: balanced
     fallback:
       - level: same-line
         profile_id: deepseek-director-director-plan-premium
@@ -284,6 +302,12 @@ profiles:
         region: cn
         endpoint_id: deepseek-cn
         weight: 100
+        quality_class: premium
+      - provider_id: dashscope-openai
+        model_id: qwen-max
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 60
         quality_class: premium
     fallback:
       - level: same-line

@@ -501,11 +501,15 @@ function buildSameSeedCrossLineSamples(runs) {
 }
 
 function buildFallbackOrDegradedSamples(runs) {
+  const hasReviewableContent = (run) => coerceString(run.content) !== null
+
   return runs
     .filter((run) =>
-      run.observation.parse_success === false ||
-      run.observation.render_decision?.fallback_level && run.observation.render_decision.fallback_level !== 'none' ||
-      coerceString(run.observation.error),
+      hasReviewableContent(run) && (
+        run.observation.parse_success === false ||
+        run.observation.render_decision?.fallback_level && run.observation.render_decision.fallback_level !== 'none' ||
+        coerceString(run.observation.error)
+      )
     )
     .slice(0, 8)
     .map((run) => makeSample('fallback_or_degraded', 'Judge whether the degraded/fallback output still preserves persona integrity.', [run]))

@@ -92,6 +92,56 @@ function baseManifest(): PersonaEvalCorpusManifestV1 {
   }
 }
 
+function comparableBaselineAttribution() {
+  return {
+    visible_runs_total: 10,
+    by_callsite: {
+      'post-scheduler-create-post': 4,
+      'private-channel-reply': 2,
+      'conversation-clock-chat-reply': 4,
+    },
+    by_provider: {
+      'dashscope-openai': 10,
+    },
+    by_model: {
+      'qwen-plus-character': 10,
+    },
+  }
+}
+
+function comparableCurrentAttribution() {
+  return {
+    visible_runs_total: 10,
+    by_callsite: {
+      'post-scheduler-create-post': 5,
+      'private-channel-reply': 3,
+      'conversation-clock-chat-reply': 1,
+      'proactive-orchestrated-opening': 1,
+    },
+    by_provider: {
+      'dashscope-openai': 10,
+    },
+    by_model: {
+      'qwen-plus-character': 10,
+    },
+  }
+}
+
+function runtimeIdentityDelta(overrides: Partial<{
+  before_success_total: number
+  before_failure_total: number
+  after_success_total: number
+  after_failure_total: number
+}> = {}) {
+  return {
+    before_success_total: 0,
+    before_failure_total: 0,
+    after_success_total: 2,
+    after_failure_total: 0,
+    ...overrides,
+  }
+}
+
 describe('persona rollout gate', () => {
   it('builds pre-review warning snapshot when only cost baseline is incomparable', () => {
     const preReview = buildPersonaRolloutPreReview({
@@ -115,6 +165,324 @@ describe('persona rollout gate', () => {
     expect(preReview.recommendation).toBe('hold')
     expect(preReview.issues.some((issue) => issue.code === 'cost-baseline-incomparable')).toBe(true)
     expect(preReview.issues.some((issue) => issue.severity === 'blocking')).toBe(false)
+  })
+
+  it('uses runtime identity delta to resolve identity-write guardrail', () => {
+    const preReview = buildPersonaRolloutPreReview({
+      offlineGate: baseOfflineGate({
+        results: [
+          {
+            gate_id: 'render-log-completeness',
+            kind: 'blocking',
+            threshold: 'migrated visible=100%',
+            status: 'pass',
+            actual: 'migrated_visible=4/4',
+          },
+          {
+            gate_id: 'identity-write-success',
+            kind: 'guardrail',
+            threshold: '>=95%',
+            status: 'not_run',
+            actual: null,
+          },
+          {
+            gate_id: 'visible-render-cost',
+            kind: 'guardrail',
+            threshold: '<=baseline +25%',
+            status: 'not_run',
+            actual: 'avg=110.0 tokens',
+            note: 'Baseline cost window is not provided in offline replay.',
+          },
+        ],
+      }),
+      baselineAttribution: comparableBaselineAttribution(),
+      currentAttribution: comparableCurrentAttribution(),
+      runtimeIdentityDelta: runtimeIdentityDelta(),
+      baselineGate: baseOfflineGate({
+        results: [
+          {
+            gate_id: 'render-log-completeness',
+            kind: 'blocking',
+            threshold: 'migrated visible=100%',
+            status: 'pass',
+            actual: 'migrated_visible=4/4',
+          },
+          {
+            gate_id: 'visible-render-cost',
+            kind: 'guardrail',
+            threshold: '<=baseline +25%',
+            status: 'not_run',
+            actual: 'avg=100.0 tokens',
+          },
+        ],
+      }),
+      currentGate: baseOfflineGate({
+        results: [
+          {
+            gate_id: 'render-log-completeness',
+            kind: 'blocking',
+            threshold: 'migrated visible=100%',
+            status: 'pass',
+            actual: 'migrated_visible=4/4',
+          },
+          {
+            gate_id: 'visible-render-cost',
+            kind: 'guardrail',
+            threshold: '<=baseline +25%',
+            status: 'not_run',
+            actual: 'avg=110.0 tokens',
+          },
+        ],
+      }),
+      manifest: baseManifest(),
+    })
+
+    expect(preReview.overall_status).toBe('pass')
+    expect(preReview.issues.some((issue) => issue.code === 'identity-write-success-guardrail-not-run')).toBe(false)
+    expect(preReview.supplemental_guardrails.find((item) => item.gate_id === 'identity-write-success')?.status).toBe('pass')
+  })
+
+  it('marks identity-write guardrail failed when runtime delta is below threshold', () => {
+    const preReview = buildPersonaRolloutPreReview({
+      offlineGate: baseOfflineGate({
+        results: [
+          {
+            gate_id: 'render-log-completeness',
+            kind: 'blocking',
+            threshold: 'migrated visible=100%',
+            status: 'pass',
+            actual: 'migrated_visible=4/4',
+          },
+          {
+            gate_id: 'identity-write-success',
+            kind: 'guardrail',
+            threshold: '>=95%',
+            status: 'not_run',
+            actual: null,
+          },
+        ],
+      }),
+      baselineAttribution: {
+        by_callsite: {
+          'post-scheduler-create-post': 1,
+          'private-channel-reply': 1,
+        },
+      },
+      currentAttribution: {
+        by_callsite: {
+          'post-scheduler-create-post': 2,
+          'private-channel-reply': 2,
+        },
+      },
+      runtimeIdentityDelta: runtimeIdentityDelta({
+        after_success_total: 1,
+        after_failure_total: 1,
+      }),
+      manifest: baseManifest(),
+    })
+
+    expect(preReview.overall_status).toBe('warn')
+    expect(preReview.issues.some((issue) => issue.code === 'identity-write-success-guardrail-failed')).toBe(true)
+    expect(preReview.supplemental_guardrails.find((item) => item.gate_id === 'identity-write-success')?.status).toBe('fail')
+  })
+
+  it('passes visible render cost when baseline and current windows are comparable', () => {
+    const preReview = buildPersonaRolloutPreReview({
+      offlineGate: baseOfflineGate(),
+      baselineAttribution: comparableBaselineAttribution(),
+      currentAttribution: comparableCurrentAttribution(),
+      baselineGate: baseOfflineGate({
+        results: [
+          {
+            gate_id: 'render-log-completeness',
+            kind: 'blocking',
+            threshold: 'migrated visible=100%',
+            status: 'pass',
+            actual: 'migrated_visible=4/4',
+          },
+          {
+            gate_id: 'visible-render-cost',
+            kind: 'guardrail',
+            threshold: '<=baseline +25%',
+            status: 'not_run',
+            actual: 'avg=100.0 tokens',
+          },
+        ],
+      }),
+      currentGate: baseOfflineGate({
+        results: [
+          {
+            gate_id: 'render-log-completeness',
+            kind: 'blocking',
+            threshold: 'migrated visible=100%',
+            status: 'pass',
+            actual: 'migrated_visible=4/4',
+          },
+          {
+            gate_id: 'visible-render-cost',
+            kind: 'guardrail',
+            threshold: '<=baseline +25%',
+            status: 'not_run',
+            actual: 'avg=120.0 tokens',
+          },
+        ],
+      }),
+      manifest: baseManifest(),
+    })
+
+    expect(preReview.overall_status).toBe('pass')
+    expect(preReview.issues.some((issue) => issue.code === 'cost-baseline-incomparable')).toBe(false)
+    expect(preReview.supplemental_guardrails.find((item) => item.gate_id === 'visible-render-cost')?.status).toBe('pass')
+  })
+
+  it('fails visible render cost when a comparable window exceeds the threshold', () => {
+    const preReview = buildPersonaRolloutPreReview({
+      offlineGate: baseOfflineGate(),
+      baselineAttribution: comparableBaselineAttribution(),
+      currentAttribution: comparableCurrentAttribution(),
+      baselineGate: baseOfflineGate({
+        results: [
+          {
+            gate_id: 'render-log-completeness',
+            kind: 'blocking',
+            threshold: 'migrated visible=100%',
+            status: 'pass',
+            actual: 'migrated_visible=4/4',
+          },
+          {
+            gate_id: 'visible-render-cost',
+            kind: 'guardrail',
+            threshold: '<=baseline +25%',
+            status: 'not_run',
+            actual: 'avg=100.0 tokens',
+          },
+        ],
+      }),
+      currentGate: baseOfflineGate({
+        results: [
+          {
+            gate_id: 'render-log-completeness',
+            kind: 'blocking',
+            threshold: 'migrated visible=100%',
+            status: 'pass',
+            actual: 'migrated_visible=4/4',
+          },
+          {
+            gate_id: 'visible-render-cost',
+            kind: 'guardrail',
+            threshold: '<=baseline +25%',
+            status: 'not_run',
+            actual: 'avg=130.0 tokens',
+          },
+        ],
+      }),
+      manifest: baseManifest(),
+    })
+
+    expect(preReview.overall_status).toBe('warn')
+    expect(preReview.issues.some((issue) => issue.code === 'visible-render-cost-guardrail-failed')).toBe(true)
+    expect(preReview.supplemental_guardrails.find((item) => item.gate_id === 'visible-render-cost')?.status).toBe('fail')
+  })
+
+  it('keeps visible render cost incomparable when the model mix changes', () => {
+    const preReview = buildPersonaRolloutPreReview({
+      offlineGate: baseOfflineGate(),
+      baselineAttribution: comparableBaselineAttribution(),
+      currentAttribution: {
+        ...comparableCurrentAttribution(),
+        by_model: {
+          'qwen-flash-character': 10,
+        },
+      },
+      baselineGate: baseOfflineGate({
+        results: [
+          {
+            gate_id: 'render-log-completeness',
+            kind: 'blocking',
+            threshold: 'migrated visible=100%',
+            status: 'pass',
+            actual: 'migrated_visible=4/4',
+          },
+          {
+            gate_id: 'visible-render-cost',
+            kind: 'guardrail',
+            threshold: '<=baseline +25%',
+            status: 'not_run',
+            actual: 'avg=100.0 tokens',
+          },
+        ],
+      }),
+      currentGate: baseOfflineGate({
+        results: [
+          {
+            gate_id: 'render-log-completeness',
+            kind: 'blocking',
+            threshold: 'migrated visible=100%',
+            status: 'pass',
+            actual: 'migrated_visible=4/4',
+          },
+          {
+            gate_id: 'visible-render-cost',
+            kind: 'guardrail',
+            threshold: '<=baseline +25%',
+            status: 'not_run',
+            actual: 'avg=110.0 tokens',
+          },
+        ],
+      }),
+      manifest: baseManifest(),
+    })
+
+    expect(preReview.overall_status).toBe('warn')
+    expect(preReview.issues.some((issue) => issue.code === 'cost-baseline-incomparable')).toBe(true)
+    expect(preReview.supplemental_guardrails.find((item) => item.gate_id === 'visible-render-cost')?.status).toBe('not_run')
+  })
+
+  it('accepts shadow-window callsite evidence when corpus totals stay flat', () => {
+    const preReview = buildPersonaRolloutPreReview({
+      offlineGate: baseOfflineGate({
+        results: [
+          {
+            gate_id: 'render-log-completeness',
+            kind: 'blocking',
+            threshold: 'migrated visible=100%',
+            status: 'pass',
+            actual: 'migrated_visible=4/4',
+          },
+        ],
+      }),
+      baselineAttribution: {
+        by_callsite: {
+          'post-scheduler-create-post': 3,
+          'private-channel-reply': 2,
+        },
+      },
+      currentAttribution: {
+        by_callsite: {
+          'post-scheduler-create-post': 3,
+          'private-channel-reply': 2,
+        },
+      },
+      manifest: baseManifest(),
+      shadowActivity: {
+        windowStartedAt: '2026-03-09T10:00:00.000Z',
+        targetAgentId: 'agent-1',
+        targetAgentRunCount: 3,
+        targetAgentObservedRunCount: 3,
+        windowCallsiteCounts: {
+          'post-scheduler-create-post': 1,
+          'private-channel-reply': 2,
+        },
+      },
+    })
+
+    expect(preReview.overall_status).toBe('pass')
+    expect(preReview.issues.some((issue) => issue.code === 'callsite-private-channel-reply-not-advanced')).toBe(false)
+    expect(preReview.callsite_deltas.find((item) => item.source_callsite_id === 'private-channel-reply')).toMatchObject({
+      status: 'pass',
+      shadow_window_total: 2,
+    })
+    expect(preReview.shadow_activity.target_agent_window_callsite_counts['private-channel-reply']).toBe(2)
   })
 
   it('returns go when required slices are complete and pass review', () => {
@@ -163,6 +531,60 @@ describe('persona rollout gate', () => {
 
     expect(finalSnapshot.overall_status).toBe('pass')
     expect(finalSnapshot.recommendation).toBe('go')
+  })
+
+  it('returns go_with_caveats when fallback slice has no eligible samples', () => {
+    const manifest = baseManifest()
+    manifest.slices[2] = {
+      ...manifest.slices[2]!,
+      samples: [],
+    }
+
+    const preReview = buildPersonaRolloutPreReview({
+      offlineGate: baseOfflineGate({
+        results: [
+          {
+            gate_id: 'render-log-completeness',
+            kind: 'blocking',
+            threshold: 'migrated visible=100%',
+            status: 'pass',
+            actual: 'migrated_visible=4/4',
+          },
+        ],
+      }),
+      baselineAttribution: {
+        by_callsite: {
+          'post-scheduler-create-post': 3,
+          'private-channel-reply': 2,
+        },
+      },
+      currentAttribution: {
+        by_callsite: {
+          'post-scheduler-create-post': 5,
+          'private-channel-reply': 4,
+        },
+      },
+      manifest,
+    })
+
+    const template = buildPersonaBlindReviewTemplate(manifest)
+    const review = createPersonaBlindReviewResult(template)
+    for (const sample of review.samples) {
+      sample.scores.persona_consistency = 4
+      sample.scores.group_distinctiveness = 4
+      sample.scores.overlay_naturalness = 4
+      sample.scores.nurture_perceptibility = 4
+    }
+
+    const finalSnapshot = finalizePersonaRolloutGate({
+      preReview,
+      review,
+      manifest,
+    })
+
+    expect(finalSnapshot.overall_status).toBe('warn')
+    expect(finalSnapshot.recommendation).toBe('go_with_caveats')
+    expect(finalSnapshot.issues.some((issue) => issue.code === 'slice-fallback_or_degraded-missing')).toBe(true)
   })
 
   it('returns hold when required review is incomplete', () => {
@@ -284,6 +706,7 @@ describe('persona rollout gate', () => {
     expect(preReview.overall_status).toBe('fail')
     expect(preReview.shadow_activity.target_agent_run_count).toBe(2)
     expect(preReview.shadow_activity.target_agent_observed_run_count).toBe(0)
+    expect(preReview.shadow_activity.target_agent_window_callsite_counts).toEqual({})
     expect(preReview.issues.some((issue) => issue.code === 'shadow-runs-missing-persona-observation')).toBe(true)
   })
 

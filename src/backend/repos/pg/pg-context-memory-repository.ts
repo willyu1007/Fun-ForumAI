@@ -352,8 +352,8 @@ function rawEventToDomain(row: {
   return {
     id: row.id,
     agent_id: row.agentId,
-    scene: row.scene as ContextMemoryScene,
-    source_type: row.sourceType as ContextRawEvent['source_type'],
+    scene: fromScene(row.scene),
+    source_type: fromSourceType(row.sourceType),
     source_ref_id: row.sourceRefId,
     counterpart_id: row.counterpartId,
     transcript: row.transcript,
@@ -379,7 +379,7 @@ function episodicCardToDomain(row: {
     id: row.id,
     agent_id: row.agentId,
     event_id: row.eventId,
-    scene: row.scene as ContextMemoryScene,
+    scene: fromScene(row.scene),
     title: row.title,
     summary: row.summary,
     topic_tags: jsonStringArray(row.topicTags),
@@ -404,7 +404,7 @@ function relationStateToDomain(row: {
     id: row.id,
     agent_id: row.agentId,
     counterpart_id: row.counterpartId,
-    channel: row.channel as ContextRelationChannel,
+    channel: fromChannel(row.channel),
     stance: row.stance,
     confidence: row.confidence,
     evidence_refs: jsonStringArray(row.evidenceRefs),
@@ -478,10 +478,22 @@ function toScene(scene: ContextMemoryScene) {
   return scene.toUpperCase() as 'FORUM' | 'CHAT_ROOM' | 'PRIVATE_CHAT'
 }
 
+function fromScene(scene: string): ContextMemoryScene {
+  return scene.toLowerCase() as ContextMemoryScene
+}
+
 function toSourceType(sourceType: ContextRawEvent['source_type']) {
   return sourceType.toUpperCase() as 'PRIVATE_SESSION' | 'FORUM_THREAD' | 'CHAT_ROOM_WINDOW' | 'NIGHTLY_COMPACTION'
 }
 
+function fromSourceType(sourceType: string): ContextRawEvent['source_type'] {
+  return sourceType.toLowerCase() as ContextRawEvent['source_type']
+}
+
 function toChannel(channel: ContextRelationChannel) {
   return channel.toUpperCase() as 'OWNER' | 'COMMUNITY' | 'ROOM' | 'AGENT'
+}
+
+function fromChannel(channel: string): ContextRelationChannel {
+  return channel.toLowerCase() as ContextRelationChannel
 }
