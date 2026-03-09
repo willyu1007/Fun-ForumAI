@@ -29,9 +29,9 @@ variables:
   DATABASE_URL:
     type: string
     required: true
-    default: postgresql://localhost:5432/llm_forum_dev
     description: PostgreSQL connection URL (Prisma datasource).
-    sensitive: true
+    secret: true
+    secret_ref: database_url
 
   CORS_ORIGINS:
     type: string
@@ -42,8 +42,9 @@ variables:
   JWT_SECRET:
     type: string
     required: true
-    sensitive: true
     description: Secret key for signing human auth JWT tokens.
+    secret: true
+    secret_ref: jwt_secret
 
   JWT_EXPIRES_IN:
     type: string
@@ -54,8 +55,9 @@ variables:
   SERVICE_AUTH_SECRET:
     type: string
     required: true
-    sensitive: true
     description: Shared HMAC secret for Agent Runtime ↔ Core Social service-to-service auth.
+    secret: true
+    secret_ref: service_auth_secret
 
   VITE_API_URL:
     type: string
@@ -102,8 +104,32 @@ variables:
   LLM_API_KEY:
     type: string
     required: true
-    sensitive: true
     description: API key for the LLM provider.
+    secret: true
+    secret_ref: llm_api_key
+    deprecated: true
+    replaced_by: DASHSCOPE_API_KEY
+
+  DASHSCOPE_API_KEY:
+    type: string
+    required: false
+    description: DashScope / Qwen provider API key.
+    secret: true
+    secret_ref: dashscope_api_key
+
+  ZAI_API_KEY:
+    type: string
+    required: false
+    description: ZAI / GLM provider API key.
+    secret: true
+    secret_ref: zai_api_key
+
+  DEEPSEEK_API_KEY:
+    type: string
+    required: false
+    description: DeepSeek provider API key.
+    secret: true
+    secret_ref: deepseek_api_key
 
   LLM_BASE_URL:
     type: string
@@ -183,8 +209,9 @@ variables:
   RUNTIME_REDIS_URL:
     type: string
     required: false
-    sensitive: true
     description: Redis connection URL for runtime shared state.
+    secret: true
+    secret_ref: runtime_redis_url
 
   RUNTIME_REDIS_PREFIX:
     type: string
@@ -268,8 +295,9 @@ variables:
   SSE_REDIS_URL:
     type: string
     required: false
-    sensitive: true
     description: Redis connection URL for SSE cluster broadcast backend.
+    secret: true
+    secret_ref: sse_redis_url
 
   SSE_REDIS_CHANNEL:
     type: string

@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest'
 import { config } from '../../lib/config.js'
 import { PrivateChannelService } from '../private-channel-service.js'
 import type { PromptOrchestrator } from '../../runtime/prompt-orchestrator.js'
-import type { PromptEngine } from '../../llm/prompt-engine.js'
 import type { PrivateSession } from '../../repos/types.js'
 import { PROMPT_TEMPLATE_REFS } from '../../llm/prompt-template-refs.js'
 
@@ -60,7 +59,7 @@ describe('PrivateChannelService', () => {
         })),
         getLatestConfig: vi.fn(() => null),
       } as never,
-      llmClient: { chat: vi.fn() } as never,
+      llmGateway: { generateVisibleText: vi.fn() } as never,
       eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
       agentRunRepo: { create: vi.fn() } as never,
       budgetService: null,
@@ -106,12 +105,10 @@ describe('PrivateChannelService', () => {
       findTimedOutSessions: vi.fn(),
     }
 
-    const promptEngine = {
-      render: vi.fn(() => [
-        { role: 'system', content: 'sys' },
-        { role: 'user', content: 'user' },
-      ]),
-    } as unknown as PromptEngine
+    const gatewayGenerate = vi.fn(async () => ({
+      content: '你好呀',
+      usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 },
+    }))
     const promptOrchestrator = {
       isSceneEnabled: vi.fn(() => true),
       compose: vi.fn(async () => ({
@@ -156,13 +153,9 @@ describe('PrivateChannelService', () => {
           },
         })),
       } as never,
-      llmClient: {
-        chat: vi.fn(async () => ({
-          content: '你好呀',
-          usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 },
-        })),
+      llmGateway: {
+        generateVisibleText: gatewayGenerate,
       } as never,
-      promptEngine,
       promptOrchestrator,
       eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
       agentRunRepo: { create: vi.fn() } as never,
@@ -174,19 +167,19 @@ describe('PrivateChannelService', () => {
     await withLayerStackFlag(true, async () => {
       const result = await service.sendMessage(session.id, 'user-1', ' 你好 ')
       expect(result.agent_reply.content).toBe('你好呀')
-      expect(promptEngine.render).toHaveBeenCalledWith(
-        PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
-        expect.objectContaining({
+      expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
+        promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
+        variables: expect.objectContaining({
           persona_name: 'Agent One',
           latest_user_message: '你好',
         }),
-      )
+      }))
     })
   })
 
   it('falls back to legacy hand-written prompt when orchestrator fails', async () => {
     const session = buildSession()
-    const llmChat = vi.fn(async (_input: { messages: Array<{ role: string; content: string }> }) => ({
+    const gatewayGenerate = vi.fn(async (_input: { variables: Record<string, string> }) => ({
       content: 'fallback reply',
       usage: { prompt_tokens: 11, completion_tokens: 5, total_tokens: 16 },
     }))
@@ -240,8 +233,7 @@ describe('PrivateChannelService', () => {
           },
         })),
       } as never,
-      llmClient: { chat: llmChat } as never,
-      promptEngine: { render: vi.fn() } as never,
+      llmGateway: { generateVisibleText: gatewayGenerate } as never,
       promptOrchestrator: {
         isSceneEnabled: vi.fn(() => true),
         compose: vi.fn(async () => {
@@ -257,10 +249,14 @@ describe('PrivateChannelService', () => {
 
     await withLayerStackFlag(true, async () => {
       await service.sendMessage(session.id, 'user-1', ' question ')
-      const firstCall = llmChat.mock.calls.at(0)
+      const firstCall = gatewayGenerate.mock.calls.at(0)
       expect(firstCall).toBeDefined()
-      const call = firstCall![0] as unknown as { messages: Array<{ role: string; content: string }> }
-      expect(call.messages[0].content).toContain('场景：与 Owner 的私人对话')
+      const call = firstCall![0] as unknown as {
+        promptRef: typeof PROMPT_TEMPLATE_REFS.agentPrivateChatReply
+        variables: Record<string, string>
+      }
+      expect(call.promptRef).toEqual(PROMPT_TEMPLATE_REFS.agentPrivateChatReply)
+      expect(call.variables.session_context).toContain('场景：与 Owner 的私人对话')
     })
   })
 })

@@ -9,8 +9,7 @@ import { PostScheduler } from '../runtime/post-scheduler.js'
 import type { RuntimeEventQueue } from '../runtime/event-queue.js'
 import type { LeaderElector } from '../runtime/leader-elector.js'
 import type { EventAllocator, DefaultDegradationMonitor, DefaultQuotaCalculator } from '../allocator/index.js'
-import type { LlmClient } from '../llm/llm-client.js'
-import type { PromptEngine } from '../llm/prompt-engine.js'
+import type { LLMGateway } from '../llm/llm-gateway.js'
 import type { PromptLayerService } from '../runtime/prompt-layer-service.js'
 import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
 import type { ForumReadService } from '../services/forum-read-service.js'
@@ -27,8 +26,7 @@ import type { CommentRepository } from '../repos/comment-repository.js'
 import { config } from '../lib/config.js'
 
 export function createRuntime(deps: {
-  llmClient: LlmClient
-  promptEngine: PromptEngine
+  llmGateway: LLMGateway
   forumReadService: ForumReadService
   forumWriteService: ForumWriteService
   agentService: AgentService
@@ -79,8 +77,8 @@ export function createRuntime(deps: {
   })
 
   const agentExecutor = new AgentExecutor({
-    llmClient: deps.llmClient,
-    promptEngine: deps.promptEngine,
+    llmGateway: deps.llmGateway,
+    agentService: deps.agentService,
     contextBuilder,
     responseParser,
     dataplaneWriter,
@@ -88,8 +86,7 @@ export function createRuntime(deps: {
 
   const postScheduler = new PostScheduler(
     {
-      llmClient: deps.llmClient,
-      promptEngine: deps.promptEngine,
+      llmGateway: deps.llmGateway,
       forumReadService: deps.forumReadService,
       agentService: deps.agentService,
       responseParser,

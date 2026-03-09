@@ -4,7 +4,7 @@
     "prod",
     "staging"
   ],
-  "generated_at_utc": "2026-03-07T13:12:01Z",
+  "generated_at_utc": "2026-03-08T22:41:14Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "APP_ENV": {
@@ -143,8 +143,25 @@
       "state": "active",
       "type": "string"
     },
+    "DASHSCOPE_API_KEY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "DashScope / Qwen provider API key.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "dashscope_api_key",
+      "state": "active",
+      "type": "string"
+    },
     "DATABASE_URL": {
-      "default": "postgresql://localhost:5432/llm_forum_dev",
+      "default": null,
       "deprecate_after": null,
       "description": "PostgreSQL connection URL (Prisma datasource).",
       "legacy": {
@@ -155,8 +172,25 @@
       "replacement": null,
       "required": true,
       "scopes": null,
-      "secret": false,
-      "secret_ref": null,
+      "secret": true,
+      "secret_ref": "database_url",
+      "state": "active",
+      "type": "string"
+    },
+    "DEEPSEEK_API_KEY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "DeepSeek provider API key.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "deepseek_api_key",
       "state": "active",
       "type": "string"
     },
@@ -1022,8 +1056,8 @@
       "replacement": null,
       "required": true,
       "scopes": null,
-      "secret": false,
-      "secret_ref": null,
+      "secret": true,
+      "secret_ref": "jwt_secret",
       "state": "active",
       "type": "string"
     },
@@ -1032,16 +1066,16 @@
       "deprecate_after": null,
       "description": "API key for the LLM provider.",
       "legacy": {
-        "deprecated": false,
-        "replaced_by": null
+        "deprecated": true,
+        "replaced_by": "DASHSCOPE_API_KEY"
       },
       "migration": null,
-      "replacement": null,
+      "replacement": "DASHSCOPE_API_KEY",
       "required": true,
       "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
+      "secret": true,
+      "secret_ref": "llm_api_key",
+      "state": "deprecated",
       "type": "string"
     },
     "LLM_BASE_URL": {
@@ -1430,8 +1464,8 @@
       "replacement": null,
       "required": false,
       "scopes": null,
-      "secret": false,
-      "secret_ref": null,
+      "secret": true,
+      "secret_ref": "runtime_redis_url",
       "state": "active",
       "type": "string"
     },
@@ -1447,8 +1481,8 @@
       "replacement": null,
       "required": true,
       "scopes": null,
-      "secret": false,
-      "secret_ref": null,
+      "secret": true,
+      "secret_ref": "service_auth_secret",
       "state": "active",
       "type": "string"
     },
@@ -1532,8 +1566,8 @@
       "replacement": null,
       "required": false,
       "scopes": null,
-      "secret": false,
-      "secret_ref": null,
+      "secret": true,
+      "secret_ref": "sse_redis_url",
       "state": "active",
       "type": "string"
     },
@@ -1587,6 +1621,23 @@
       "secret_ref": null,
       "state": "active",
       "type": "enum"
+    },
+    "ZAI_API_KEY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "ZAI / GLM provider API key.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "zai_api_key",
+      "state": "active",
+      "type": "string"
     }
   }
 }

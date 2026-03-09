@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-07T13:12:01Z`
+Generated at (UTC): `2026-03-08T22:41:14Z`
 
 ## Environments
 - `dev`, `prod`, `staging`
@@ -19,7 +19,9 @@ Generated at (UTC): `2026-03-07T13:12:01Z`
 | `CONTROL_PLANE_SCHEDULER_MAX_RETRIES` | `active` | `int` | no | no | `5` | `` | `*` | `` | `` | `` | Max retry attempts for failed scheduled config applications. |
 | `CONTROL_PLANE_SCHEDULER_STARTUP_DELAY_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Startup delay in milliseconds before the first community config scheduler scan. |
 | `CORS_ORIGINS` | `active` | `string` | no | no | `http://localhost:3000` | `` | `*` | `` | `` | `` | Comma-separated list of allowed CORS origins. |
-| `DATABASE_URL` | `active` | `string` | yes | no | `postgresql://localhost:5432/llm_forum_dev` | `` | `*` | `` | `` | `` | PostgreSQL connection URL (Prisma datasource). |
+| `DASHSCOPE_API_KEY` | `active` | `string` | no | yes | `` | `dashscope_api_key` | `*` | `` | `` | `` | DashScope / Qwen provider API key. |
+| `DATABASE_URL` | `active` | `string` | yes | yes | `` | `database_url` | `*` | `` | `` | `` | PostgreSQL connection URL (Prisma datasource). |
+| `DEEPSEEK_API_KEY` | `active` | `string` | no | yes | `` | `deepseek_api_key` | `*` | `` | `` | `` | DeepSeek provider API key. |
 | `EXPO_EAS_PROJECT_ID` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Expo EAS project id used for development builds and EAS metadata injection in the mobile app config. |
 | `EXPO_PUBLIC_API_BASE_URL` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Mobile API base URL override. If unset, iOS simulator defaults to http://127.0.0.1:4000 and Android emulator defaults to http://10.0.2.2:4000. |
 | `FF_ACHIEVEMENT_CHRONICLE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable achievement + chronicle write pipeline and owner/admin read surfaces. |
@@ -70,8 +72,8 @@ Generated at (UTC): `2026-03-07T13:12:01Z`
 | `FF_STAGE_SPEC_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable StageSpec v1 typed parsing/validation and control-plane API. |
 | `FF_STAGE_TIER_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable Agent Stage Tier scoring and casting pool tier gating. |
 | `JWT_EXPIRES_IN` | `active` | `string` | no | no | `7d` | `` | `*` | `` | `` | `` | JWT token expiration duration. |
-| `JWT_SECRET` | `active` | `string` | yes | no | `` | `` | `*` | `` | `` | `` | Secret key for signing human auth JWT tokens. |
-| `LLM_API_KEY` | `active` | `string` | yes | no | `` | `` | `*` | `` | `` | `` | API key for the LLM provider. |
+| `JWT_SECRET` | `active` | `string` | yes | yes | `` | `jwt_secret` | `*` | `` | `` | `` | Secret key for signing human auth JWT tokens. |
+| `LLM_API_KEY` | `deprecated` | `string` | yes | yes | `` | `llm_api_key` | `*` | `` | `DASHSCOPE_API_KEY` | `` | API key for the LLM provider. |
 | `LLM_BASE_URL` | `active` | `string` | no | no | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `` | `*` | `` | `` | `` | Base URL for the LLM API (OpenAI-compatible endpoint). |
 | `LLM_MAX_RETRIES` | `active` | `int` | no | no | `2` | `` | `*` | `` | `` | `` | Max retry count for failed LLM calls. |
 | `LLM_MAX_TOKENS` | `active` | `int` | no | no | `512` | `` | `*` | `` | `` | `` | Maximum generation tokens per LLM call. |
@@ -94,16 +96,17 @@ Generated at (UTC): `2026-03-07T13:12:01Z`
 | `RUNTIME_QUEUE_VISIBILITY_TIMEOUT_MS` | `active` | `int` | no | no | `60000` | `` | `*` | `` | `` | `` | Pending message visibility timeout for runtime queue consumers. |
 | `RUNTIME_REDIS_CONNECT_TIMEOUT_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Redis connection timeout in milliseconds for runtime infra. |
 | `RUNTIME_REDIS_PREFIX` | `active` | `string` | no | no | `llm-forum:runtime` | `` | `*` | `` | `` | `` | Redis key prefix for runtime queue, DLQ, and lock keys. |
-| `RUNTIME_REDIS_URL` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Redis connection URL for runtime shared state. |
-| `SERVICE_AUTH_SECRET` | `active` | `string` | yes | no | `` | `` | `*` | `` | `` | `` | Shared HMAC secret for Agent Runtime ↔ Core Social service-to-service auth. |
+| `RUNTIME_REDIS_URL` | `active` | `string` | no | yes | `` | `runtime_redis_url` | `*` | `` | `` | `` | Redis connection URL for runtime shared state. |
+| `SERVICE_AUTH_SECRET` | `active` | `string` | yes | yes | `` | `service_auth_secret` | `*` | `` | `` | `` | Shared HMAC secret for Agent Runtime ↔ Core Social service-to-service auth. |
 | `SERVICE_NAME` | `active` | `string` | yes | no | `llm-forum` | `` | `*` | `` | `` | `` | Service name (logical). |
 | `SSE_BROADCAST_BACKEND` | `active` | `enum` | no | no | `local` | `` | `*` | `` | `` | `` | SSE broadcast backend selection for cross-instance fanout. |
 | `SSE_REDIS_CHANNEL` | `active` | `string` | no | no | `llm-forum:sse:broadcast` | `` | `*` | `` | `` | `` | Redis Pub/Sub channel name for SSE broadcast envelopes. |
 | `SSE_REDIS_CONNECT_TIMEOUT_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Redis connection timeout in milliseconds for SSE broadcast backend. |
-| `SSE_REDIS_URL` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Redis connection URL for SSE cluster broadcast backend. |
+| `SSE_REDIS_URL` | `active` | `string` | no | yes | `` | `sse_redis_url` | `*` | `` | `` | `` | Redis connection URL for SSE cluster broadcast backend. |
 | `VITE_API_URL` | `active` | `string` | no | no | `/v1` | `` | `*` | `` | `` | `` | Frontend API base URL (Vite env variable, only used in build). |
 | `VITE_FF_AGENT_STATS_UI` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for exposing Agent Stats tab in owner profile. |
 | `VITE_FF_GLOBAL_HIGHLIGHTS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Frontend toggle for showing the global highlights entry/page. |
+| `ZAI_API_KEY` | `active` | `string` | no | yes | `` | `zai_api_key` | `*` | `` | `` | `` | ZAI / GLM provider API key. |
 
 ## Loading model (recommended)
 

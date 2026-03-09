@@ -3,8 +3,7 @@ import type { MessageRepository } from '../repos/message-repository.js'
 import type { AgentRepository } from '../repos/agent-repository.js'
 import type { AgentService } from './agent-service.js'
 import type { ChatService } from './chat-service.js'
-import type { LlmClient } from '../llm/llm-client.js'
-import type { PromptEngine } from '../llm/prompt-engine.js'
+import type { LLMGateway } from '../llm/llm-gateway.js'
 import type { PromptLayerService } from '../runtime/prompt-layer-service.js'
 import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
@@ -33,8 +32,7 @@ export interface ConversationClockDeps {
   agentRepo: AgentRepository
   agentService: AgentService
   chatService: ChatService
-  llmClient: LlmClient
-  promptEngine: PromptEngine
+  llmGateway: LLMGateway
   sseHub: SseHub
   promptLayerService?: PromptLayerService | null
   promptOrchestrator?: PromptOrchestrator | null
@@ -258,7 +256,7 @@ export class ConversationClock {
       })
       .join('\n')
 
-    if (!this.deps.llmClient.isConfigured) {
+    if (!this.deps.llmGateway.isConfigured) {
       return { kind: 'normal', body: `[${agent.display_name}] 聊天测试消息` }
     }
 
@@ -372,8 +370,19 @@ export class ConversationClock {
       layer_privacy: layers.layer_privacy,
     }
 
-    const messages = this.deps.promptEngine.render(PROMPT_TEMPLATE_REFS.agentChatReply, variables)
-    const response = await this.deps.llmClient.chat({ messages })
+    const response = await this.deps.llmGateway.generateVisibleText({
+      intent: 'chat_reply',
+      scene: 'chat_room',
+      agentId,
+      homeVoiceLineId: this.resolveHomeVoiceLineId(agentId),
+      promptRef: PROMPT_TEMPLATE_REFS.agentChatReply,
+      variables,
+      budgetClass: 'visible_standard',
+      traceId: `chat-room:${roomId}:${agentId}:${Date.now()}`,
+      requestedTier: 'lite',
+      allowFallbackWithinLine: false,
+      allowCrossFamily: false,
+    })
     const content = response.content.trim()
 
     const skipMatch = content.match(/^\[SKIP(?::(.+?))?\]/)
@@ -426,6 +435,12 @@ export class ConversationClock {
         language: '中文',
       }
     }
+  }
+
+  private resolveHomeVoiceLineId(agentId: string) {
+    const agent = this.deps.agentService.getAgent(agentId)
+    const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+    return resolveAgentIdentity(agent, latestConfig).summary.home_voice_line_id
   }
 
   private extractTopicHints(roomName: string, messageBodies: string[]): string[] {

@@ -1,0 +1,38 @@
+# 03 Implementation Notes — T-069
+
+- 2026-03-09 初始化 Context & Memory Plane runtime 包，准备在 `memory-service` 兼容接口之下完成 typed store 替换。
+- 2026-03-09 新增 `src/backend/context-memory/contracts.ts`：
+  - 定义 `RawContextEvent`、`EpisodicCard`、`RelationState`、`SelfModelState`、`ActiveTensionItem`、`PrivateShadowMemory`
+  - 定义 `ContextJournalService`、`SummaryOrchestrator`、`IdentityFinalizer`、`RetrievalPacker`、`MemoryPackRenderer`
+  - 当前先作为 runtime contract 层，后续再落持久化 repo/typed store。
+- 2026-03-09 新增 `DefaultRetrievalPacker` 与 `DefaultMemoryPackRenderer`：
+  - 将现有 `AgentMemory` 兼容映射为 6 个固定槽位：`owner_private`、`public_observation`、`topic_recall`、`recent_recall`、`durable_threads`、`safe_shadow`
+  - `MemoryService.getMemoriesForContext()` 保持原签名，但内部不再输出自由 prose，而是输出固定槽位 `MemoryPack` 文本。
+- 2026-03-09 当前 Context Plane 落地边界：
+  - 已完成 retrieval/render contract 与 `layer5_memory` 固定槽位
+  - 已把 hidden private digest / public observation / vision summary 接到 Control Plane gateway
+  - 尚未完成 typed store 持久化、journal 管道、identity_finalize runtime 写入
+- 2026-03-09 完成 private-first typed persistence：
+  - `prisma/schema.prisma` 新增 `RawContextEvent`、`EpisodicCard`、`ContextRelationState`、`SelfModelState`、`ActiveTensionItem`、`PrivateShadowMemory`
+  - 新增 in-memory / PG context-memory repositories，并保留 social-graph `agent_relations` 独立职责
+  - 生成 migration `20260309073000_t069_context_memory_private_first`
+- 2026-03-09 完成 private-first pipeline runtime：
+  - 新增 `DefaultContextJournalService`、`LlmSummaryOrchestrator`、`LlmIdentityFinalizer`
+  - `MemoryService.generateDigest()` 保持签名不变，但内部已切到 `raw event -> extract -> distill -> finalize -> typed upserts -> compatibility AgentMemory`
+  - `identity_finalize` 通过 `llmGateway.generateIdentityWrite()` 走 home voice line identity-write lane，并自动以 `agent.owner_id` 写回 `ownerStylePins`
+  - `PrivateChannelScheduler` timeout 路径现会触发同一条 digest/context pipeline
+- 2026-03-09 完成 typed-first retrieval：
+  - `MemoryService.getMemoriesForContext()` 现优先读取 typed episodic / owner relation / self model / tensions / private shadow，再回退 legacy `AgentMemory`
+  - public/forum/chat-room 不再用 legacy private digest 填充 `safe_shadow`；只有 private scene 才允许 legacy private fallback
+  - `ContextBuilder` legacy path 增加对 `config_json.style` 的 fallback，避免旧测试/旧配置在 `getAgent()` 缺失时丢失 `layer2_style`
+- 2026-03-09 完成 forum / chat-room / nightly 接入：
+  - `PublicObservationDigestService` 现会把 forum post / room window transcript 作为 `typed_context` 交给 `MemoryService.createPublicObservationMemory()`，保持 legacy `AgentMemory` 双写，同时补写 typed raw event / extract / distill / identity finalize。
+  - `src/backend/context-memory/runtime.ts` 现在会按 scene/source 选择 private/public prompt refs，并把 relation channel 从固定 `owner` 泛化到 `community` / `room`。
+  - `TypedRetrievalState` 改为分离 `privateEpisodicCards` 与 `publicEpisodicCards`；`MemoryPack` 的 `public_observation` 优先使用 typed public cards。
+  - `MemoryService.decayAndForget()` 现在会顺带执行 typed nightly maintenance：episodic salience decay、low-salience prune、shadow prune、tension decay、self-model tensions 同步，以及 owner-only chronicle compaction。
+  - 为 public extract / distill / finalize 新增显式 prompt refs 与 callsite inventory 条目，但继续复用既有 `public_observation_digest` / `identity_write` intents，不新增 routing intent。
+- 2026-03-09 收口 review findings：
+  - `MemoryPack` 在 `forum` / `chat_room` 场景不再读取 private episodic cards 或 owner relation；`owner_private`、`topic_recall`、`recent_recall` 都只允许 public typed cards 或 public-safe legacy fallback，避免把 private-only summary 渲染进公开 prompt。
+  - `MemoryPack.selectedMemories` 现在只回传真正被 legacy slot 使用到的 memories；当 `public_observation` 命中 typed public cards 时，不再错误增加 legacy `PUBLIC_OBSERVATION` 的 access count。
+  - `PublicObservationDigestService` 通过 gateway 生成 hidden digest 时改为传真实 `agentId`，让 T-068 的 budget guard 与 authoritative usage ledger 继续按真实 agent 归属记账。
+  - typed nightly maintenance 改为分页扫全量 episodic cards，而不是只处理最新一页，避免旧卡片永久逃逸 decay / prune / compaction。

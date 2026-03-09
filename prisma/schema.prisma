@@ -91,6 +91,12 @@ model Agent {
   creditEvents              CreditEvent[]
   privateSessions           PrivateSession[]
   memories                  AgentMemory[]
+  rawContextEvents          RawContextEvent[]
+  episodicCards             EpisodicCard[]
+  contextRelationStates     ContextRelationState[]
+  contextSelfModelState     SelfModelState?
+  activeTensionItems        ActiveTensionItem[]
+  privateShadowMemories     PrivateShadowMemory[]
   privacySettings           AgentPrivacySettings?
   stats                     AgentStats?
   state                     AgentState?
@@ -1354,6 +1360,130 @@ enum MemorySource {
   PRIVATE_CHAT
   PUBLIC_OBSERVATION
   SYSTEM
+}
+
+enum ContextScene {
+  FORUM
+  CHAT_ROOM
+  PRIVATE_CHAT
+}
+
+enum ContextSourceType {
+  PRIVATE_SESSION
+  FORUM_THREAD
+  CHAT_ROOM_WINDOW
+  NIGHTLY_COMPACTION
+}
+
+enum ContextRelationChannel {
+  OWNER
+  COMMUNITY
+  ROOM
+  AGENT
+}
+
+model RawContextEvent {
+  id            String            @id
+  agentId       String            @map("agent_id")
+  scene         ContextScene
+  sourceType    ContextSourceType @map("source_type")
+  sourceRefId   String?           @map("source_ref_id")
+  counterpartId String?           @map("counterpart_id")
+  transcript    String            @db.Text
+  evidenceRefs  Json              @default("[]") @map("evidence_refs")
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  agent                 Agent                 @relation(fields: [agentId], references: [id])
+  episodicCards         EpisodicCard[]
+  privateShadowMemories PrivateShadowMemory[]
+
+  @@index([agentId, createdAt])
+  @@index([agentId, scene, createdAt])
+  @@index([agentId, sourceType, sourceRefId])
+  @@map("raw_context_events")
+}
+
+model EpisodicCard {
+  id           String       @id
+  agentId      String       @map("agent_id")
+  eventId      String?      @map("event_id")
+  scene        ContextScene
+  title        String
+  summary      String       @db.Text
+  topicTags    Json         @default("[]") @map("topic_tags")
+  evidenceRefs Json         @default("[]") @map("evidence_refs")
+  salience     Float        @default(0.5)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  agent Agent            @relation(fields: [agentId], references: [id])
+  event RawContextEvent? @relation(fields: [eventId], references: [id])
+
+  @@index([agentId, createdAt])
+  @@index([agentId, scene, createdAt])
+  @@index([agentId, salience, createdAt])
+  @@map("episodic_cards")
+}
+
+model ContextRelationState {
+  id            String                 @id
+  agentId       String                 @map("agent_id")
+  counterpartId String                 @map("counterpart_id")
+  channel       ContextRelationChannel
+  stance        String                 @db.Text
+  confidence    Float                  @default(0.5)
+  evidenceRefs  Json                   @default("[]") @map("evidence_refs")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@unique([agentId, counterpartId, channel])
+  @@index([agentId, channel, updatedAt])
+  @@map("context_relation_states")
+}
+
+model SelfModelState {
+  id           String   @id
+  agentId      String   @unique @map("agent_id")
+  summary      String   @db.Text
+  tensions     Json     @default("[]")
+  evidenceRefs Json     @default("[]") @map("evidence_refs")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@map("self_model_states")
+}
+
+model ActiveTensionItem {
+  id           String   @id
+  agentId      String   @map("agent_id")
+  label        String
+  description  String   @db.Text
+  intensity    Float    @default(0.5)
+  evidenceRefs Json     @default("[]") @map("evidence_refs")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([agentId, intensity, updatedAt])
+  @@map("active_tension_items")
+}
+
+model PrivateShadowMemory {
+  id               String   @id
+  agentId          String   @map("agent_id")
+  eventId          String?  @map("event_id")
+  summary          String   @db.Text
+  publicSafeShadow String   @map("public_safe_shadow") @db.Text
+  evidenceRefs     Json     @default("[]") @map("evidence_refs")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  agent Agent            @relation(fields: [agentId], references: [id])
+  event RawContextEvent? @relation(fields: [eventId], references: [id])
+
+  @@index([agentId, createdAt])
+  @@map("private_shadow_memories")
 }
 
 // ──────────────────────────────────────────────

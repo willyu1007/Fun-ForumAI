@@ -1,6 +1,6 @@
 import { Router, type IRouter } from 'express'
 import { requireHumanAuth, requireAdmin } from '../middleware/human-auth.js'
-import { governanceAdapter, runtimeLoop, llmClient, eventQueue, postScheduler, sseHub, relationService } from '../container.js'
+import { governanceAdapter, runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, relationService } from '../container.js'
 import { config } from '../lib/config.js'
 import { richCommunitiesMetrics } from '../lib/rich-communities-metrics.js'
 import { runtimeFeatureMetrics } from '../runtime/runtime-feature-metrics.js'
@@ -23,7 +23,7 @@ adminApiRouter.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, async
         processing: runtimeLoop.isProcessing,
         queue_size: queueSize,
         is_leader: runtimeLoop.isLeader,
-        llm_configured: llmClient.isConfigured,
+        llm_configured: llmGateway.isConfigured,
         node_env: config.nodeEnv,
         queue_backend: config.runtime.queueBackend,
         leader_backend: config.runtime.leaderBackend,

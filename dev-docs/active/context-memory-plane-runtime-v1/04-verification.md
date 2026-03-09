@@ -1,0 +1,34 @@
+# 04 Verification — T-069
+
+- 2026-03-09 `pnpm exec vitest run src/backend/context-memory/__tests__/memory-pack.test.ts src/backend/runtime/__tests__/prompt-layer-service.test.ts src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/llm/__tests__/secret-resolver.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/runtime/__tests__/post-scheduler.test.ts src/backend/services/__tests__/private-channel-service.test.ts src/backend/services/__tests__/proactive-interaction-service.test.ts src/backend/services/__tests__/public-observation-digest-service.test.ts src/backend/services/__tests__/memory-service.nurture.test.ts`
+  - Result: pass
+- 2026-03-09 `pnpm exec tsc -p tsconfig.json --noEmit`
+  - Result: pass
+- 2026-03-09 `pnpm exec prisma format`
+  - Result: pass
+- 2026-03-09 `pnpm exec prisma generate`
+  - Result: pass
+- 2026-03-09 `pnpm exec vitest run src/backend/context-memory/__tests__/memory-pack.test.ts src/backend/context-memory/__tests__/runtime.test.ts src/backend/repos/__tests__/context-memory-repository.test.ts src/backend/services/__tests__/memory-service.context-memory.test.ts src/backend/services/__tests__/memory-service.nurture.test.ts src/backend/runtime/__tests__/private-channel-scheduler.test.ts src/backend/runtime/__tests__/prompt-layer-service.test.ts src/backend/runtime/__tests__/context-builder.layer-stack-v2.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/llm/__tests__/registry-contract.test.ts src/backend/services/__tests__/private-channel-service.test.ts src/backend/services/__tests__/public-observation-digest-service.test.ts src/backend/services/__tests__/proactive-interaction-service.test.ts`
+  - Result: pass (39 tests / 13 files)
+- 2026-03-09 `node .ai/skills/workflows/llm/llm-engineering/scripts/check-llm-config-keys.mjs`
+  - Result: pass
+- 2026-03-09 `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`
+  - Result: pass
+- 2026-03-09 `node .ai/scripts/ctl-db-ssot.mjs sync-to-context`
+  - Result: pass (`docs/context/db/schema.json` updated)
+- 2026-03-09 `pnpm exec vitest run src/backend/context-memory/__tests__/memory-pack.test.ts src/backend/context-memory/__tests__/runtime.test.ts src/backend/repos/__tests__/context-memory-repository.test.ts src/backend/services/__tests__/memory-service.context-memory.test.ts src/backend/services/__tests__/memory-service.nurture.test.ts src/backend/runtime/__tests__/private-channel-scheduler.test.ts src/backend/runtime/__tests__/prompt-layer-service.test.ts src/backend/runtime/__tests__/context-builder.layer-stack-v2.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/llm/__tests__/registry-contract.test.ts src/backend/services/__tests__/private-channel-service.test.ts src/backend/services/__tests__/public-observation-digest-service.test.ts src/backend/services/__tests__/proactive-interaction-service.test.ts`
+  - Result: pass (42 tests / 13 files)
+- 2026-03-09 `pnpm exec vitest run src/backend/context-memory/__tests__/memory-pack.test.ts src/backend/services/__tests__/memory-service.context-memory.test.ts src/backend/services/__tests__/public-observation-digest-service.test.ts src/backend/context-memory/__tests__/runtime.test.ts src/backend/repos/__tests__/context-memory-repository.test.ts src/backend/runtime/__tests__/private-channel-scheduler.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/llm/__tests__/registry-contract.test.ts`
+  - Result: pass (30 tests / 8 files)
+- 2026-03-09 `pnpm exec tsc -p tsconfig.json --noEmit`
+  - Result: pass
+- 2026-03-09 `pnpm exec vitest run src/backend/context-memory/__tests__/memory-pack.test.ts src/backend/services/__tests__/public-observation-digest-service.test.ts src/backend/services/__tests__/memory-service.context-memory.test.ts src/backend/context-memory/__tests__/runtime.test.ts src/backend/repos/__tests__/context-memory-repository.test.ts src/backend/runtime/__tests__/private-channel-scheduler.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/llm/__tests__/registry-contract.test.ts`
+  - Result: pass (31 tests / 8 files)
+- 2026-03-09 `node .ai/skills/workflows/llm/llm-engineering/scripts/check-llm-config-keys.mjs`
+  - Result: pass
+- 2026-03-09 `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`
+  - Result: pass
+- Pending:
+  - forum/chat-room 的真实事件 smoke（非 mock）
+  - rollout gate 与 T-066 observability/eval 对接
+  - dual-read/dual-write migration tests against future public typed persistence cleanup

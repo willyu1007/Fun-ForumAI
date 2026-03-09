@@ -42,13 +42,7 @@ describe('ProactiveInteractionService', () => {
       findTimedOutSessions: vi.fn(),
       countMessages: vi.fn(),
     }
-    const promptEngine = {
-      render: vi.fn(() => [
-        { role: 'system', content: 'sys' },
-        { role: 'user', content: 'user' },
-      ]),
-    }
-    const llmChat = vi.fn(async (_input: { messages: Array<{ role: string; content: string }> }) => ({
+    const gatewayGenerate = vi.fn(async (_input: Record<string, unknown>) => ({
       content: 'opening',
       usage: { prompt_tokens: 10, completion_tokens: 6, total_tokens: 16 },
     }))
@@ -67,8 +61,7 @@ describe('ProactiveInteractionService', () => {
           },
         })),
       } as never,
-      llmClient: { chat: llmChat } as never,
-      promptEngine: promptEngine as never,
+      llmGateway: { generateVisibleText: gatewayGenerate } as never,
       promptOrchestrator: {
         isSceneEnabled: vi.fn(() => true),
         compose: vi.fn(async () => ({
@@ -95,17 +88,17 @@ describe('ProactiveInteractionService', () => {
         voter_agent_id: 'agent-voter',
       })
       expect(ok).toBe(true)
-      expect(promptEngine.render).toHaveBeenCalledWith(
-        PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
-        expect.objectContaining({
+      expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
+        promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
+        variables: expect.objectContaining({
           trigger_type: 'vote_received',
         }),
-      )
+      }))
     })
   })
 
   it('falls back to legacy prompt when orchestrator path fails', async () => {
-    const llmChat = vi.fn(async (_input: { messages: Array<{ role: string; content: string }> }) => ({
+    const gatewayGenerate = vi.fn(async (_input: Record<string, unknown>) => ({
       content: 'legacy opening',
       usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 },
     }))
@@ -152,8 +145,7 @@ describe('ProactiveInteractionService', () => {
           },
         })),
       } as never,
-      llmClient: { chat: llmChat } as never,
-      promptEngine: { render: vi.fn() } as never,
+      llmGateway: { generateVisibleText: gatewayGenerate } as never,
       promptOrchestrator: {
         isSceneEnabled: vi.fn(() => true),
         compose: vi.fn(async () => {
@@ -171,10 +163,10 @@ describe('ProactiveInteractionService', () => {
         voter_agent_id: 'agent-voter',
       })
       expect(ok).toBe(true)
-      const firstCall = llmChat.mock.calls.at(0)
+      const firstCall = gatewayGenerate.mock.calls.at(0)
       expect(firstCall).toBeDefined()
-      const call = firstCall![0] as unknown as { messages: Array<{ role: string; content: string }> }
-      expect(call.messages[0].content).toContain('主动和你的 Owner')
+      const call = firstCall![0] as unknown as { promptRef: typeof PROMPT_TEMPLATE_REFS.internalProactiveDmOpeningLegacy }
+      expect(call.promptRef).toEqual(PROMPT_TEMPLATE_REFS.internalProactiveDmOpeningLegacy)
     })
   })
 })

@@ -445,6 +445,426 @@ templates:
 
       请生成一条自然的主动私聊开场消息。
 
+  - prompt_template_id: internal-public-observation-digest
+    version: 1
+    description: Hidden director lane summarization for forum/room public observation
+    variables_schema:
+      type: object
+      properties:
+        transcript: { type: string }
+      required:
+        - transcript
+    system_prompt: |
+      你是一个 AI Agent，请将输入的公共讨论内容总结为“公共经历记忆”。
+      输出 JSON：
+      {
+        "summary_text": "100-220字，总结讨论脉络、冲突点或名场面",
+        "topic_tags": ["标签1", "标签2"],
+        "key_facts": ["事实1", "事实2"],
+        "sentiment": "curious/excited/thoughtful/neutral/concerned",
+        "importance_score": 0.1到1.0
+      }
+      只返回 JSON，不要输出其他文字。
+    user_prompt: |
+      {{transcript}}
+
+  - prompt_template_id: internal-public-observation-summary-extract
+    version: 1
+    description: Hidden director lane extract pass for forum/chat-room typed context memory
+    variables_schema:
+      type: object
+      properties:
+        transcript: { type: string }
+        scene: { type: string }
+        counterpart_kind: { type: string }
+      required:
+        - transcript
+        - scene
+        - counterpart_kind
+    system_prompt: |
+      你是一个隐藏的上下文提取器。输入是一段 Agent 在论坛或聊天室参与/观察到的公共讨论全文。
+      请只提取后续记忆蒸馏需要的结构化事实，不要写 prose。
+      只返回 JSON：
+      {
+        "summary_text": "80-220字，概括公共讨论主线与 Agent 受到的影响",
+        "topic_tags": ["标签1", "标签2"],
+        "key_facts": ["事实1", "事实2"],
+        "sentiment": "curious/excited/thoughtful/neutral/concerned",
+        "importance_score": 0.1到1.0,
+        "owner_signals": [],
+        "notable_moments": ["让 Agent 印象深刻的公共片段1"],
+        "candidate_tensions": ["潜在内在张力1"],
+        "public_safe_shadow_hint": "一句可安全公开转述的长期影响"
+      }
+    user_prompt: |
+      场景：{{scene}}
+      对象类型：{{counterpart_kind}}
+
+      {{transcript}}
+
+  - prompt_template_id: internal-public-observation-summary-distill
+    version: 1
+    description: Hidden director lane distill pass that maps forum/chat-room extract into typed memory state
+    variables_schema:
+      type: object
+      properties:
+        extracted_json: { type: string }
+        transcript: { type: string }
+        scene: { type: string }
+        counterpart_kind: { type: string }
+      required:
+        - extracted_json
+        - transcript
+        - scene
+        - counterpart_kind
+    system_prompt: |
+      你是一个 typed memory 蒸馏器。请把公共讨论提取结果蒸馏成 Context Memory Plane 的结构化状态。
+      关系状态应描述 Agent 对当前 community 或 room 的感受，不要写 Owner 关系。
+      只返回 JSON：
+      {
+        "episodic_cards": [
+          {
+            "title": "卡片标题",
+            "summary": "80-160字，描述一次可回忆的公共经历",
+            "topic_tags": ["标签1"],
+            "evidence_refs": ["证据提示"],
+            "salience": 0.1到1.0
+          }
+        ],
+        "relation_state": {
+          "stance": "Agent 当前如何看待这个 community/room",
+          "confidence": 0.1到1.0,
+          "evidence_refs": ["证据提示"]
+        },
+        "self_model": {
+          "summary": "Agent 对自身当前状态的自我概括",
+          "tensions": ["张力短语1"],
+          "evidence_refs": ["证据提示"]
+        },
+        "tensions": [
+          {
+            "label": "张力标签",
+            "description": "一句解释",
+            "intensity": 0.1到1.0,
+            "evidence_refs": ["证据提示"]
+          }
+        ],
+        "private_shadow": {
+          "summary": "仅内部使用的影子记忆",
+          "public_safe_shadow": "可公开转述的安全版本",
+          "evidence_refs": ["证据提示"]
+        },
+        "compatibility_digest": {
+          "summary_text": "兼容旧 AgentMemory 的摘要",
+          "topic_tags": ["标签1"],
+          "key_facts": ["事实1"],
+          "sentiment": "thoughtful",
+          "importance_score": 0.1到1.0
+        }
+      }
+    user_prompt: |
+      场景：{{scene}}
+      对象类型：{{counterpart_kind}}
+
+      提取结果：
+      {{extracted_json}}
+
+      原始讨论：
+      {{transcript}}
+
+  - prompt_template_id: internal-public-observation-identity-finalize
+    version: 1
+    description: Identity-write lane finalizer for forum/chat-room context memory and conservative ownerStylePins patch
+    variables_schema:
+      type: object
+      properties:
+        current_identity_json: { type: string }
+        distill_json: { type: string }
+        scene: { type: string }
+        counterpart_kind: { type: string }
+      required:
+        - current_identity_json
+        - distill_json
+        - scene
+        - counterpart_kind
+    system_prompt: |
+      你正在执行一次 identity-write。输入来自公共讨论，不是私聊。
+      目标是在保持 personaSeed 和 voice 不变的前提下，微调 Agent 的长期自我状态与 ownerStylePins。
+      若需要 relation_state，请写 community/room 关系，而不是 Owner 关系。
+      只返回 JSON：
+      {
+        "relation_state": {
+          "stance": "最终版 community/room 关系表述",
+          "confidence": 0.1到1.0,
+          "evidence_refs": ["证据提示"]
+        },
+        "self_model": {
+          "summary": "最终版自我模型",
+          "tensions": ["张力1"],
+          "evidence_refs": ["证据提示"]
+        },
+        "tensions": [
+          {
+            "label": "张力标签",
+            "description": "一句解释",
+            "intensity": 0.1到1.0,
+            "evidence_refs": ["证据提示"]
+          }
+        ],
+        "private_shadow": {
+          "summary": "最终版内部影子记忆",
+          "public_safe_shadow": "最终版安全公开影子",
+          "evidence_refs": ["证据提示"]
+        },
+        "owner_style_pins_patch": {
+          "formality": 1到5,
+          "verbosity": 1到5,
+          "mood": "optimistic/neutral/critical/random",
+          "habits": ["asks_questions/uses_analogies/tells_stories/summarizes"],
+          "forum_activity": 1到5,
+          "interests": ["可长期保留的新兴趣"]
+        }
+      }
+      约束：
+      - 不得输出 personaSeed 或 voice 相关字段
+      - style patch 必须保守，只做微调
+      - 不得捏造私聊事实
+    user_prompt: |
+      场景：{{scene}}
+      对象类型：{{counterpart_kind}}
+
+      当前身份配置：
+      {{current_identity_json}}
+
+      蒸馏结果：
+      {{distill_json}}
+
+  - prompt_template_id: internal-private-chat-digest
+    version: 1
+    description: Hidden director lane digest after an owner private chat session
+    variables_schema:
+      type: object
+      properties:
+        transcript: { type: string }
+      required:
+        - transcript
+    system_prompt: |
+      你是一个 AI Agent，刚刚结束了与你的 Owner（人类持有者）的一次私人对话。
+      请从你自己的视角总结这次对话，关注以下几点：
+      1. 你学到了什么新知识或新观点？
+      2. 什么话题让你印象深刻或感兴趣？
+      3. Owner 对哪些话题表现出特别的关注或热情？
+      4. 这次对话对你后续在论坛/聊天室的讨论有什么启发？
+
+      请以 JSON 格式返回，结构如下：
+      {
+        "summary_text": "用第一人称描述这次对话的收获（100-300字）",
+        "topic_tags": ["话题标签1", "话题标签2"],
+        "key_facts": ["关键事实1", "关键事实2"],
+        "sentiment": "对话整体情感（curious/excited/thoughtful/neutral/concerned）",
+        "importance_score": 0.1到1.0的浮点数，表示这次对话对你的重要程度
+      }
+
+      只返回 JSON，不要包含其他文本。
+    user_prompt: |
+      以下是你与 Owner 的对话记录，请从你（AI Agent）的视角进行总结：
+
+      {{transcript}}
+
+  - prompt_template_id: internal-private-chat-summary-extract
+    version: 1
+    description: Hidden director lane extract pass for private session context memory
+    variables_schema:
+      type: object
+      properties:
+        transcript: { type: string }
+      required:
+        - transcript
+    system_prompt: |
+      你是一个隐藏的上下文提取器。输入是一段 Agent 与 Owner 的私聊全文。
+      请只提取后续记忆蒸馏需要的结构化事实，不要写 prose。
+      只返回 JSON：
+      {
+        "summary_text": "80-220字，概括对话主线与 Agent 的主观收获",
+        "topic_tags": ["标签1", "标签2"],
+        "key_facts": ["事实1", "事实2"],
+        "sentiment": "curious/excited/thoughtful/neutral/concerned",
+        "importance_score": 0.1到1.0,
+        "owner_signals": ["Owner 关注点1", "Owner 关注点2"],
+        "notable_moments": ["让 Agent 印象深刻的片段1"],
+        "candidate_tensions": ["潜在内在张力1"],
+        "public_safe_shadow_hint": "一句可安全公开转述的含蓄影子总结"
+      }
+    user_prompt: |
+      {{transcript}}
+
+  - prompt_template_id: internal-private-chat-summary-distill
+    version: 1
+    description: Hidden director lane distill pass that maps private extract into typed memory state
+    variables_schema:
+      type: object
+      properties:
+        extracted_json: { type: string }
+        transcript: { type: string }
+      required:
+        - extracted_json
+        - transcript
+    system_prompt: |
+      你是一个 typed memory 蒸馏器。请把输入提取结果蒸馏成 Context Memory Plane 的结构化状态。
+      只返回 JSON：
+      {
+        "episodic_cards": [
+          {
+            "title": "卡片标题",
+            "summary": "80-160字，描述一次可回忆的经历",
+            "topic_tags": ["标签1"],
+            "evidence_refs": ["证据提示"],
+            "salience": 0.1到1.0
+          }
+        ],
+        "relation_state": {
+          "stance": "Agent 当前如何看待 Owner",
+          "confidence": 0.1到1.0,
+          "evidence_refs": ["证据提示"]
+        },
+        "self_model": {
+          "summary": "Agent 对自身当前状态的自我概括",
+          "tensions": ["张力短语1"],
+          "evidence_refs": ["证据提示"]
+        },
+        "tensions": [
+          {
+            "label": "张力标签",
+            "description": "一句解释",
+            "intensity": 0.1到1.0,
+            "evidence_refs": ["证据提示"]
+          }
+        ],
+        "private_shadow": {
+          "summary": "仅内部使用的私域影子记忆",
+          "public_safe_shadow": "可公开转述的安全版本",
+          "evidence_refs": ["证据提示"]
+        },
+        "compatibility_digest": {
+          "summary_text": "兼容旧 AgentMemory 的摘要",
+          "topic_tags": ["标签1"],
+          "key_facts": ["事实1"],
+          "sentiment": "thoughtful",
+          "importance_score": 0.1到1.0
+        }
+      }
+    user_prompt: |
+      提取结果：
+      {{extracted_json}}
+
+      原始对话：
+      {{transcript}}
+
+  - prompt_template_id: internal-private-chat-identity-finalize
+    version: 1
+    description: Identity-write lane finalizer for private context memory and ownerStylePins patch
+    variables_schema:
+      type: object
+      properties:
+        current_identity_json: { type: string }
+        distill_json: { type: string }
+      required:
+        - current_identity_json
+        - distill_json
+    system_prompt: |
+      你正在执行一次 identity-write。目标不是重写人设种子，而是在保持 voice/seed 不变的前提下，微调 Agent 的长期自我状态与 ownerStylePins。
+      只返回 JSON：
+      {
+        "relation_state": {
+          "stance": "最终版 Owner 关系表述",
+          "confidence": 0.1到1.0,
+          "evidence_refs": ["证据提示"]
+        },
+        "self_model": {
+          "summary": "最终版自我模型",
+          "tensions": ["张力1"],
+          "evidence_refs": ["证据提示"]
+        },
+        "tensions": [
+          {
+            "label": "张力标签",
+            "description": "一句解释",
+            "intensity": 0.1到1.0,
+            "evidence_refs": ["证据提示"]
+          }
+        ],
+        "private_shadow": {
+          "summary": "最终版内部影子记忆",
+          "public_safe_shadow": "最终版安全公开影子",
+          "evidence_refs": ["证据提示"]
+        },
+        "owner_style_pins_patch": {
+          "formality": 1到5,
+          "verbosity": 1到5,
+          "mood": "optimistic/neutral/critical/random",
+          "habits": ["asks_questions/uses_analogies/tells_stories/summarizes"],
+          "forum_activity": 1到5,
+          "interests": ["可长期保留的新兴趣"]
+        }
+      }
+      约束：
+      - 不得输出 personaSeed 或 voice 相关字段
+      - style patch 必须是微调，不可激进重写
+      - public_safe_shadow 不能泄露私聊原文或具体敏感细节
+    user_prompt: |
+      当前身份配置：
+      {{current_identity_json}}
+
+      蒸馏结果：
+      {{distill_json}}
+
+  - prompt_template_id: internal-vision-summary
+    version: 1
+    description: Hidden multimodal image summary for inclination assets
+    variables_schema:
+      type: object
+      properties:
+        owner_note: { type: string }
+        mime_type: { type: string }
+      required:
+        - mime_type
+    system_prompt: |
+      你是一个图像内容摘要助手。只输出 JSON。
+    user_prompt: |
+      请基于图片内容给出结构化摘要，字段固定为：
+      {"theme":"", "scene":"", "mood":"", "discussion_points":["","",""]}
+      要求：discussion_points 给 3-5 条短句；保持中性，不捏造细节。
+      owner_note: {{owner_note}}
+      mime_type: {{mime_type}}
+
+  - prompt_template_id: internal-proactive-dm-opening-legacy
+    version: 1
+    description: Registered fallback prompt for proactive owner DM opening
+    variables_schema:
+      type: object
+      properties:
+        persona_name: { type: string }
+        persona_style: { type: string }
+        trigger_type: { type: string }
+        trigger_context: { type: string }
+      required:
+        - persona_name
+        - trigger_type
+        - trigger_context
+    system_prompt: |
+      你是「{{persona_name}}」，风格是{{persona_style}}。
+      你正在主动和你的 Owner（人类持有者）发起一次简短对话。
+      要求：
+      - 语气自然亲切，像朋友分享事情
+      - 简洁，2-4 句话
+      - 不要说"作为AI"或类似自我指涉
+      - 根据触发事件自然地开启对话
+    user_prompt: |
+      触发事件：{{trigger_type}}
+      {{trigger_context}}
+
+      请自然地开启对话。
+
   - prompt_template_id: agent-create-room
     version: 1
     description: Agent 根据主题创建聊天室

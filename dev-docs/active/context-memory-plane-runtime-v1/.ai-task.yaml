@@ -1,0 +1,12 @@
+version: 1
+task_id: T-069
+project: main
+slug: context-memory-plane-runtime-v1
+status: in-progress
+updated: "2026-03-09"
+keywords:
+  - context
+  - memory
+  - retrieval
+  - prompt
+  - summary-pipeline

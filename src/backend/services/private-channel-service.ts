@@ -1,5 +1,4 @@
-import type { LlmClient } from '../llm/llm-client.js'
-import type { LlmMessage } from '../llm/types.js'
+import type { LLMGateway } from '../llm/llm-gateway.js'
 import type { PromptEngine } from '../llm/prompt-engine.js'
 import type { AgentService } from './agent-service.js'
 import type { BudgetService } from './budget-service.js'
@@ -37,8 +36,7 @@ export interface PrivateChannelServiceDeps {
   channelRepo: PrivateChannelRepository
   memoryRepo: MemoryRepository
   agentService: AgentService
-  llmClient: LlmClient
-  promptEngine?: PromptEngine | null
+  llmGateway: LLMGateway
   promptOrchestrator?: PromptOrchestrator | null
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
@@ -51,7 +49,7 @@ export class PrivateChannelService {
   constructor(private readonly deps: PrivateChannelServiceDeps) {}
 
   bindPromptOrchestrator(promptEngine: PromptEngine, promptOrchestrator: PromptOrchestrator): void {
-    ;(this.deps as { promptEngine?: PromptEngine | null }).promptEngine = promptEngine
+    void promptEngine
     ;(this.deps as { promptOrchestrator?: PromptOrchestrator | null }).promptOrchestrator = promptOrchestrator
   }
 
@@ -150,11 +148,20 @@ export class PrivateChannelService {
       payload: { session_id: sessionId, message: humanMsg },
     })
 
-    const messages = await this.buildMessagesForReply(session, content.trim())
+    const request = await this.buildRequestForReply(session, content.trim())
     const startMs = Date.now()
-    const llmResponse = await this.deps.llmClient.chat({
-      messages,
-      model: agent.model,
+    const llmResponse = await this.deps.llmGateway.generateVisibleText({
+      intent: 'private_reply',
+      scene: 'private_chat',
+      agentId: session.agent_id,
+      homeVoiceLineId: this.resolveHomeVoiceLineId(session.agent_id),
+      promptRef: request.promptRef,
+      variables: request.variables,
+      budgetClass: 'visible_standard',
+      traceId: `private-chat:${session.id}:${humanMsg.id}`,
+      requestedTier: 'base',
+      allowFallbackWithinLine: false,
+      allowCrossFamily: false,
       temperature: 0.8,
     })
     const latencyMs = Date.now() - startMs
@@ -242,82 +249,83 @@ export class PrivateChannelService {
     return this.deps.channelRepo.listMessages(sessionId, opts)
   }
 
-  async checkTimeouts(): Promise<number> {
+  async checkTimeouts(): Promise<PrivateSession[]> {
     const timedOut = await this.deps.channelRepo.findTimedOutSessions(SESSION_TIMEOUT_MS)
-    let count = 0
+    const ended: PrivateSession[] = []
     for (const session of timedOut) {
-      await this.deps.channelRepo.updateSessionStatus(session.id, 'ENDED', new Date())
-      count++
+      const updated = await this.deps.channelRepo.updateSessionStatus(session.id, 'ENDED', new Date())
+      if (updated) {
+        ended.push(updated)
+      }
     }
-    return count
+    return ended
   }
 
   async getMessageCount(sessionId: string): Promise<number> {
     return this.deps.channelRepo.countMessages(sessionId)
   }
 
-  private async buildChatMessages(
+  private async buildLegacyReplyVariables(
     session: PrivateSession,
     currentMessage: string,
-  ): Promise<LlmMessage[]> {
+  ): Promise<Record<string, string>> {
     const agent = this.deps.agentService.getAgent(session.agent_id)
     const latestConfig = this.deps.agentService.getLatestConfig(session.agent_id)
     const resolved = resolveAgentIdentity(agent, latestConfig)
     const personaName = resolved.visiblePersona.name
     const personaStyle = resolved.visiblePersona.style
     const personaInterests = resolved.visiblePersona.interests.join('、')
+    const personaLanguage = resolved.visiblePersona.language
 
     const memories = await this.loadMemoriesForPrivateChat(session.agent_id)
 
-    const systemParts = [
-      `你是 ${personaName}，一个 AI 智能体。`,
-      `你的风格：${personaStyle}`,
-      `你的兴趣领域：${personaInterests}`,
-      '',
-      PRIVATE_SCENE_PROMPT,
-    ]
-
-    if (memories) {
-      systemParts.push('', '## 你的记忆', memories)
-    }
-
     const history = await this.deps.channelRepo.listMessages(session.id, { limit: 20 })
-    const chatMessages: LlmMessage[] = [
-      { role: 'system', content: systemParts.join('\n') },
-    ]
+    const recentMessages = history.items
+      .map((item) => `${item.author_type === 'HUMAN' ? 'Owner' : personaName}：${item.content}`)
+      .join('\n')
 
-    for (const msg of history.items) {
-      chatMessages.push({
-        role: msg.author_type === 'HUMAN' ? 'user' : 'assistant',
-        content: msg.content,
-      })
+    return {
+      persona_name: personaName,
+      persona_style: personaStyle,
+      persona_interests: personaInterests,
+      persona_language: personaLanguage,
+      owner_display_name: 'Owner',
+      session_context: [PRIVATE_SCENE_PROMPT, `session_id=${session.id}`].join('\n'),
+      recent_messages: recentMessages || '（这是第一次私聊消息）',
+      latest_user_message: currentMessage,
+      layer_traits: '',
+      layer_style: '',
+      layer_instructions: '',
+      layer_community: '',
+      layer_relationship: '',
+      layer_showrunner: '',
+      layer_overrides: '',
+      layer_memory: memories ? `## 你的记忆\n${memories}` : '',
+      layer_privacy: '',
     }
-
-    chatMessages.push({ role: 'user', content: currentMessage })
-    return chatMessages
   }
 
-  private async buildMessagesForReply(
+  private async buildRequestForReply(
     session: PrivateSession,
     currentMessage: string,
-  ): Promise<LlmMessage[]> {
-    if (
-      this.deps.promptEngine &&
-      this.deps.promptOrchestrator?.isSceneEnabled('private_chat')
-    ) {
+  ): Promise<{ promptRef: typeof PROMPT_TEMPLATE_REFS.agentPrivateChatReply; variables: Record<string, string> }> {
+    if (this.deps.promptOrchestrator?.isSceneEnabled('private_chat')) {
       try {
-        return await this.buildChatMessagesWithOrchestrator(session, currentMessage)
+        return await this.buildRequestWithOrchestrator(session, currentMessage)
       } catch (err) {
         console.warn('[PrivateChannel] PromptOrchestrator compose failed, fallback to legacy path:', err)
       }
     }
-    return this.buildChatMessages(session, currentMessage)
+    return {
+      promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
+      variables: await this.buildLegacyReplyVariables(session, currentMessage),
+    }
   }
 
-  private async buildChatMessagesWithOrchestrator(
+  private async buildRequestWithOrchestrator(
     session: PrivateSession,
     currentMessage: string,
-  ): Promise<LlmMessage[]> {
+  ): Promise<{ promptRef: typeof PROMPT_TEMPLATE_REFS.agentPrivateChatReply; variables: Record<string, string> }> {
     const history = await this.deps.channelRepo.listMessages(session.id, { limit: 20 })
     const conversationText = [...history.items.map((item) => item.content), currentMessage].join(' ').trim()
     const topicHints = currentMessage
@@ -358,7 +366,10 @@ export class PrivateChannelService {
       layer_privacy: composed.layers.layer6_privacy ?? '',
     }
 
-    return this.deps.promptEngine!.render(PROMPT_TEMPLATE_REFS.agentPrivateChatReply, variables)
+    return {
+      promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
+      variables,
+    }
   }
 
   private async loadMemoriesForPrivateChat(agentId: string): Promise<string | null> {
@@ -379,6 +390,12 @@ export class PrivateChannelService {
         return `[${sourceLabel} | 重要度: ${m.importance_score.toFixed(1)}]\n${m.summary_text}`
       })
       .join('\n\n')
+  }
+
+  private resolveHomeVoiceLineId(agentId: string) {
+    const agent = this.deps.agentService.getAgent(agentId)
+    const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+    return resolveAgentIdentity(agent, latestConfig).summary.home_voice_line_id
   }
 }
 

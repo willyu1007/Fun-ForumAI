@@ -9,7 +9,7 @@ import { RelationScheduler } from '../runtime/relation-scheduler.js'
 import { AchievementsScheduler } from '../runtime/achievements-scheduler.js'
 import { CultureDigestScheduler } from '../runtime/culture-digest-scheduler.js'
 import { config } from '../lib/config.js'
-import type { LlmClient } from '../llm/llm-client.js'
+import type { LLMGateway } from '../llm/llm-gateway.js'
 import type { PromptEngine } from '../llm/prompt-engine.js'
 import type { SseHub } from '../sse/hub.js'
 import type { Repositories } from './repos.js'
@@ -48,7 +48,7 @@ export interface NurtureResult {
 
 export async function createNurtureEngines(deps: {
   repos: Repositories
-  llmClient: LlmClient
+  llmGateway: LLMGateway
   promptEngine: PromptEngine
   sseHub: SseHub
   forumReadService: ForumReadService
@@ -69,7 +69,7 @@ export async function createNurtureEngines(deps: {
   }
 }): Promise<NurtureResult> {
   const {
-    repos, llmClient, promptEngine, sseHub,
+    repos, llmGateway, promptEngine, sseHub,
     forumReadService, agentService, chatService, statsService,
     conversationClock, achievementsOrchestrator, governanceAdapter,
     communityCultureDigestService, incubationOrchestrator,
@@ -105,7 +105,20 @@ export async function createNurtureEngines(deps: {
     const { PublicObservationEventHandler } = await import('../runtime/public-observation-event-handler.js')
     const { PgPrivateChannelRepository } = await import('../repos/pg/pg-private-channel-repository.js')
     const { PgMemoryRepository } = await import('../repos/pg/pg-memory-repository.js')
+    const {
+      PgRawContextEventRepository,
+      PgEpisodicCardRepository,
+      PgContextRelationStateRepository,
+      PgSelfModelStateRepository,
+      PgActiveTensionItemRepository,
+      PgPrivateShadowMemoryRepository,
+    } = await import('../repos/pg/pg-context-memory-repository.js')
     const { PgNotificationRepository } = await import('../repos/pg/pg-notification-repository.js')
+    const {
+      DefaultContextJournalService,
+      LlmIdentityFinalizer,
+      LlmSummaryOrchestrator,
+    } = await import('../context-memory/runtime.js')
 
     traitEngine = new TraitEngine(prisma)
     instructionEngine = new InstructionEngine(prisma)
@@ -138,17 +151,37 @@ export async function createNurtureEngines(deps: {
 
     const channelRepo = new PgPrivateChannelRepository(prisma)
     const memoryRepo = new PgMemoryRepository(prisma)
+    const rawContextEventRepo = new PgRawContextEventRepository(prisma)
+    const episodicCardRepo = new PgEpisodicCardRepository(prisma)
+    const contextRelationStateRepo = new PgContextRelationStateRepository(prisma)
+    const selfModelStateRepo = new PgSelfModelStateRepository(prisma)
+    const activeTensionRepo = new PgActiveTensionItemRepository(prisma)
+    const privateShadowRepo = new PgPrivateShadowMemoryRepository(prisma)
     const notificationRepo = new PgNotificationRepository(prisma)
     const notificationService = new NotificationService(notificationRepo)
+    const contextJournalService = new DefaultContextJournalService(rawContextEventRepo)
+    const summaryOrchestrator = new LlmSummaryOrchestrator({ llmGateway })
+    const identityFinalizer = new LlmIdentityFinalizer({ llmGateway, agentService })
 
     memoryService = new MemoryService({
       memoryRepo,
       channelRepo,
-      llmClient,
+      llmGateway,
       xpService: xpEngine,
       nurtureOrchestrator,
       relationService,
       statsService,
+      contextMemory: {
+        journalService: contextJournalService,
+        summaryOrchestrator,
+        identityFinalizer,
+        episodicCardRepo,
+        relationStateRepo: contextRelationStateRepo,
+        selfModelStateRepo,
+        activeTensionRepo,
+        privateShadowRepo,
+        chronicleRepo: repos.chronicleRepo,
+      },
     })
 
     memoryService.setDigestHook(async (input) => {
@@ -159,7 +192,7 @@ export async function createNurtureEngines(deps: {
     })
 
     const publicObservationDigestService = new PublicObservationDigestService({
-      llmClient,
+      llmGateway,
       forumReadService,
       roomRepo: repos.roomRepo,
       messageRepo: repos.messageRepo,
@@ -172,7 +205,7 @@ export async function createNurtureEngines(deps: {
     const proactiveInteractionService = new ProactiveInteractionService({
       channelRepo,
       agentService,
-      llmClient,
+      llmGateway,
       notificationService,
     })
 
@@ -186,6 +219,7 @@ export async function createNurtureEngines(deps: {
     const { CostTracker } = await import('../services/cost-tracker.js')
     const budgetService = new BudgetService(prisma)
     const costTracker = new CostTracker(prisma)
+    llmGateway.setBudgetChecker(async ({ agentId }) => budgetService.checkBudget(agentId))
 
     const { PrivateChannelService } = await import('../services/private-channel-service.js')
     const { PrivateChannelScheduler } = await import('../runtime/private-channel-scheduler.js')
@@ -194,8 +228,7 @@ export async function createNurtureEngines(deps: {
       channelRepo,
       memoryRepo,
       agentService,
-      llmClient,
-      promptEngine,
+      llmGateway,
       eventRepo: repos.eventRepo,
       agentRunRepo: repos.agentRunRepo,
       budgetService,

@@ -107,6 +107,21 @@ export type {
   CommunityCultureDigestStatus,
   CreateRoomInput,
   CreateChatMessageInput,
+  ContextMemoryScene,
+  ContextMemorySourceType,
+  ContextRelationChannel,
+  ContextRawEvent,
+  ContextEpisodicCard,
+  ContextRelationState,
+  ContextSelfModelState,
+  ContextActiveTensionItem,
+  ContextPrivateShadowMemory,
+  UpsertContextRawEventInput,
+  UpsertContextEpisodicCardInput,
+  UpsertContextRelationStateInput,
+  UpsertContextSelfModelStateInput,
+  UpsertContextActiveTensionItemInput,
+  UpsertContextPrivateShadowMemoryInput,
   AgentRelation,
   AgentRelationEvent,
   RelationState,
@@ -210,6 +225,21 @@ export {
   InMemoryPprSnapshotRepository,
 } from './ppr-snapshot-repository.js'
 export {
+  type RawContextEventRepository,
+  type EpisodicCardRepository,
+  type ContextRelationStateRepository,
+  type SelfModelStateRepository,
+  type ActiveTensionItemRepository,
+  type PrivateShadowMemoryRepository,
+  InMemoryRawContextEventRepository,
+  InMemoryEpisodicCardRepository,
+  InMemoryContextRelationStateRepository,
+  InMemorySelfModelStateRepository,
+  InMemoryActiveTensionItemRepository,
+  InMemoryPrivateShadowMemoryRepository,
+  createContextMemoryId,
+} from './context-memory-repository.js'
+export {
   type CommunityCultureDigestRepository,
   InMemoryCommunityCultureDigestRepository,
 } from './community-culture-digest-repository.js'
@@ -242,3 +272,11 @@ export { PgCommunityConfigRepository } from './pg/pg-community-config-repository
 export { PgRoleAssignmentRepository } from './pg/pg-role-assignment-repository.js'
 export { PgPprSnapshotRepository } from './pg/pg-ppr-snapshot-repository.js'
 export { PgCommunityCultureDigestRepository } from './pg/pg-community-culture-digest-repository.js'
+export {
+  PgRawContextEventRepository,
+  PgEpisodicCardRepository,
+  PgContextRelationStateRepository,
+  PgSelfModelStateRepository,
+  PgActiveTensionItemRepository,
+  PgPrivateShadowMemoryRepository,
+} from './pg/pg-context-memory-repository.js'

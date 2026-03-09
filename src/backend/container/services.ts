@@ -22,8 +22,7 @@ import { CommunityConfigService } from '../services/community-config-service.js'
 import { RoleAssignmentService } from '../services/role-assignment-service.js'
 import type { ModerationService } from '../moderation/moderation-service.js'
 import type { SseHub } from '../sse/hub.js'
-import type { LlmClient } from '../llm/llm-client.js'
-import type { PromptEngine } from '../llm/prompt-engine.js'
+import type { LLMGateway } from '../llm/llm-gateway.js'
 import type { LeaderElector } from '../runtime/leader-elector.js'
 import type { Repositories } from './repos.js'
 
@@ -31,12 +30,11 @@ export function createCoreServices(deps: {
   repos: Repositories
   sseHub: SseHub
   moderator: ModerationService
-  llmClient: LlmClient
-  promptEngine: PromptEngine
+  llmGateway: LLMGateway
   roomLifecycleLeaderElector: LeaderElector
   conversationClockLeaderElector: LeaderElector
 }) {
-  const { repos, sseHub, moderator, llmClient, promptEngine } = deps
+  const { repos, sseHub, moderator, llmGateway } = deps
 
   const achievementChronicleService = new AchievementChronicleService({
     achievementRepo: repos.achievementRepo,
@@ -199,8 +197,7 @@ export function createCoreServices(deps: {
     agentRepo: repos.agentRepo,
     agentService,
     chatService,
-    llmClient,
-    promptEngine,
+    llmGateway,
     sseHub,
     promptLayerService: null,
     promptOrchestrator: null,

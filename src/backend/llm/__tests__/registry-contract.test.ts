@@ -20,6 +20,8 @@ describe('LLM registry contract', () => {
     expect(bundle.providers.providers.length).toBeGreaterThan(0)
     expect(bundle.modelProfiles.profiles.length).toBeGreaterThan(0)
     expect(bundle.promptTemplates.templates.length).toBeGreaterThan(0)
+    expect(bundle.credentialPools.pools.length).toBeGreaterThan(0)
+    expect(bundle.routingPolicies.policies.length).toBeGreaterThan(0)
   })
 
   it('resolves intent-aware voice-line tier profile refs from the shared voice-line catalog', () => {

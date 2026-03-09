@@ -1,5 +1,4 @@
-import type { LlmClient } from '../llm/llm-client.js'
-import type { PromptEngine } from '../llm/prompt-engine.js'
+import type { LLMGateway } from '../llm/llm-gateway.js'
 import type { PromptTemplateRef } from '../llm/gateway-contract.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import type { ContextBuilder } from './context-builder.js'
@@ -7,10 +6,12 @@ import type { ResponseParser } from './response-parser.js'
 import type { DataPlaneWriter } from './data-plane-writer.js'
 import type { AllocationResult, EventPayload } from '../allocator/types.js'
 import type { AgentExecutionResult, ExecutionContext } from './types.js'
+import type { AgentService } from '../services/agent-service.js'
+import { resolveAgentIdentity } from '../identity/agent-identity.js'
 
 export interface AgentExecutorDeps {
-  llmClient: LlmClient
-  promptEngine: PromptEngine
+  llmGateway: LLMGateway
+  agentService: AgentService
   contextBuilder: ContextBuilder
   responseParser: ResponseParser
   dataplaneWriter: DataPlaneWriter
@@ -45,9 +46,19 @@ export class AgentExecutor {
 
       const templateId = this.pickTemplate(event, ctx)
       const variables = this.buildVariables(ctx)
-      const messages = this.deps.promptEngine.render(templateId, variables)
-
-      const llmResponse = await this.deps.llmClient.chat({ messages })
+      const llmResponse = await this.deps.llmGateway.generateVisibleText({
+        intent: 'forum_reply',
+        scene: this.pickScene(event),
+        agentId: agent.agent_id,
+        homeVoiceLineId: this.resolveHomeVoiceLineId(agent.agent_id),
+        promptRef: templateId,
+        variables,
+        budgetClass: 'visible_standard',
+        traceId: `runtime:${event.event_id}:${agent.agent_id}`,
+        requestedTier: 'base',
+        allowFallbackWithinLine: false,
+        allowCrossFamily: false,
+      })
       const latencyMs = Date.now() - start
 
       const instruction = this.deps.responseParser.parse(llmResponse.content, ctx)
@@ -104,6 +115,16 @@ export class AgentExecutor {
       default:
         return PROMPT_TEMPLATE_REFS.agentReplyToPost
     }
+  }
+
+  private pickScene(event: EventPayload): 'forum_post' | 'forum_comment' {
+    return event.event_type === 'NewCommentCreated' ? 'forum_comment' : 'forum_post'
+  }
+
+  private resolveHomeVoiceLineId(agentId: string) {
+    const agent = this.deps.agentService.getAgent(agentId)
+    const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+    return resolveAgentIdentity(agent, latestConfig).summary.home_voice_line_id
   }
 
   private buildVariables(ctx: ExecutionContext): Record<string, string> {

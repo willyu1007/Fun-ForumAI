@@ -154,10 +154,18 @@ export class ContextBuilder {
 
     // Layer 2: Style
     try {
-      const agent = this.deps.agentService.getAgent(agentId)
       const config = this.deps.agentService.getLatestConfig(agentId)
-      const resolved = resolveAgentIdentity(agent, config)
-      const styleLayer = buildStyleInstructionText(resolved.contract.ownerStylePins)
+      let styleLayer = ''
+      try {
+        const agent = this.deps.agentService.getAgent(agentId)
+        const resolved = resolveAgentIdentity(agent, config)
+        styleLayer = buildStyleInstructionText(resolved.contract.ownerStylePins)
+      } catch {
+        const legacyStyle = config?.config_json?.style
+        if (legacyStyle && typeof legacyStyle === 'object' && !Array.isArray(legacyStyle)) {
+          styleLayer = buildStyleInstructionText(legacyStyle as Parameters<typeof buildStyleInstructionText>[0])
+        }
+      }
       if (styleLayer) {
         layers.layer2_style = styleLayer
       }

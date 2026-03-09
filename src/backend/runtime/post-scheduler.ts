@@ -1,5 +1,4 @@
-import type { LlmClient } from '../llm/llm-client.js'
-import type { PromptEngine } from '../llm/prompt-engine.js'
+import type { LLMGateway } from '../llm/llm-gateway.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import type { ForumReadService } from '../services/forum-read-service.js'
 import type { AgentService } from '../services/agent-service.js'
@@ -18,8 +17,7 @@ export interface PostSchedulerConfig {
 }
 
 export interface PostSchedulerDeps {
-  llmClient: LlmClient
-  promptEngine: PromptEngine
+  llmGateway: LLMGateway
   forumReadService: ForumReadService
   agentService: AgentService
   responseParser: ResponseParser
@@ -187,8 +185,20 @@ export class PostScheduler {
         layer_privacy: composedLayers.layer_privacy,
       }
 
-      const messages = this.deps.promptEngine.render(PROMPT_TEMPLATE_REFS.agentCreatePost, variables)
-      const llmResponse = await this.deps.llmClient.chat({ messages })
+      const homeVoiceLineId = this.resolveHomeVoiceLineId(selected.id)
+      const llmResponse = await this.deps.llmGateway.generateVisibleText({
+        intent: 'scheduled_post',
+        scene: 'scheduled_post',
+        agentId: selected.id,
+        homeVoiceLineId,
+        promptRef: PROMPT_TEMPLATE_REFS.agentCreatePost,
+        variables,
+        budgetClass: 'visible_standard',
+        traceId: `scheduled-post:${selected.id}:${Date.now()}`,
+        requestedTier: 'base',
+        allowFallbackWithinLine: true,
+        allowCrossFamily: false,
+      })
       const latencyMs = Date.now() - start
 
       const instruction = this.deps.responseParser.parseAsScheduledPost({
@@ -364,6 +374,12 @@ export class PostScheduler {
     } catch {
       return DEFAULT_PERSONA
     }
+  }
+
+  private resolveHomeVoiceLineId(agentId: string) {
+    const agent = this.deps.agentService.getAgent(agentId)
+    const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+    return resolveAgentIdentity(agent, latestConfig).summary.home_voice_line_id
   }
 
   private async getRecentPostsSummary(communityId: string): Promise<string> {

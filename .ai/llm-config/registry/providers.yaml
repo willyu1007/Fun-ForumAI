@@ -12,7 +12,7 @@ providers:
     auth:
       type: api_key
       credential_ref_required: true
-      credential_ref: env:LLM_API_KEY
+      credential_ref: secret-ref:dashscope_api_key
     routing:
       regions:
         - cn-beijing
@@ -32,7 +32,7 @@ providers:
     auth:
       type: api_key
       credential_ref_required: true
-      credential_ref: secret-ref:zai/default
+      credential_ref: secret-ref:zai_api_key
     routing:
       regions:
         - cn
@@ -52,7 +52,7 @@ providers:
     auth:
       type: api_key
       credential_ref_required: true
-      credential_ref: secret-ref:deepseek/default
+      credential_ref: secret-ref:deepseek_api_key
     routing:
       regions:
         - cn

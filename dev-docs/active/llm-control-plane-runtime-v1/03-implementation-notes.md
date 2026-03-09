@@ -1,0 +1,21 @@
+# 03 Implementation Notes — T-068
+
+- 2026-03-09 开始 runtime implementation，目标是承接 `T-064` contract，并输出 `T-069` 可依赖的 lane / ledger / budget 基线。
+- 2026-03-09 完成 env/control-plane SSOT 收口：
+  - `env/contract.yaml` 改为 `secret: true + secret_ref`；
+  - `env/values/*` 移除 secret 占位；
+  - `env/secrets/dev.ref.yaml` 使用 `env` backend，`staging/prod.ref.yaml` 使用 `bws` backend；
+  - `.ai/llm-config/registry/credential_pools.yaml`、`routing_policies.yaml` 成为新的 runtime-authoritative registry。
+- 2026-03-09 新增 runtime 组件：
+  - `SecretResolver` 解析 `secret-ref:*`、`env://`、`file://`、`bws`；
+  - `CredentialBroker` 选择 credential pool 并解析 secret；
+  - `BudgetGuard` 注入现有 `BudgetService.checkBudget`；
+  - `UsageLedgerWriter` 输出 authoritative usage ledger；
+  - `LLMGateway` 负责 prompt render、profile resolution、fallback、budget、usage ledger 与 provider dispatch。
+- 2026-03-09 完成 call-site migration：
+  - visible 路径：`AgentExecutor`、`PostScheduler`、`ConversationClock`、`PrivateChannelService`、`ProactiveInteractionService`
+  - hidden 路径：`PublicObservationDigestService`、`MemoryService.generateDigest()`、`VisionSummaryService`
+  - `LlmClient` 保留为 provider adapter；唯一允许直接 `llmClient.chat()` 的生产文件变为 `src/backend/llm/llm-gateway.ts`。
+- 2026-03-09 同步治理/护栏：
+  - `callsite-inventory` 改成“业务层必须走 gateway”的 guard；
+  - `config_keys.yaml` 补齐所有现有 `RUNTIME_*` key，恢复 `check-llm-config-keys` 通过。

@@ -8,6 +8,16 @@ export const PROMPT_TEMPLATE_REFS = {
   agentPrivateChatReply: { id: 'agent-private-chat-reply', version: 1 },
   agentProactiveDmOpening: { id: 'agent-proactive-dm-opening', version: 1 },
   agentCreateRoom: { id: 'agent-create-room', version: 1 },
+  internalPublicObservationDigest: { id: 'internal-public-observation-digest', version: 1 },
+  internalPrivateChatDigest: { id: 'internal-private-chat-digest', version: 1 },
+  internalPrivateChatSummaryExtract: { id: 'internal-private-chat-summary-extract', version: 1 },
+  internalPrivateChatSummaryDistill: { id: 'internal-private-chat-summary-distill', version: 1 },
+  internalPrivateChatIdentityFinalize: { id: 'internal-private-chat-identity-finalize', version: 1 },
+  internalPublicObservationSummaryExtract: { id: 'internal-public-observation-summary-extract', version: 1 },
+  internalPublicObservationSummaryDistill: { id: 'internal-public-observation-summary-distill', version: 1 },
+  internalPublicObservationIdentityFinalize: { id: 'internal-public-observation-identity-finalize', version: 1 },
+  internalVisionSummary: { id: 'internal-vision-summary', version: 1 },
+  internalProactiveDmOpeningLegacy: { id: 'internal-proactive-dm-opening-legacy', version: 1 },
 } as const satisfies Record<string, PromptTemplateRef>
 
 export function buildPromptTemplateRef(id: string, version: number): PromptTemplateRef {

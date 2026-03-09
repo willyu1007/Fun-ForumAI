@@ -1,5 +1,5 @@
-import type { LlmClient } from '../llm/llm-client.js'
 import type { PromptEngine } from '../llm/prompt-engine.js'
+import type { LLMGateway } from '../llm/llm-gateway.js'
 import type { AgentService } from './agent-service.js'
 import type { NotificationService } from './notification-service.js'
 import type { PrivateChannelRepository } from '../repos/private-channel-repository.js'
@@ -13,8 +13,7 @@ const PROACTIVE_COOLDOWN_MS = 4 * 60 * 60 * 1000 // 4 hours between proactive se
 export interface ProactiveInteractionDeps {
   channelRepo: PrivateChannelRepository
   agentService: AgentService
-  llmClient: LlmClient
-  promptEngine?: PromptEngine | null
+  llmGateway: LLMGateway
   promptOrchestrator?: PromptOrchestrator | null
   notificationService: NotificationService
 }
@@ -23,7 +22,7 @@ export class ProactiveInteractionService {
   constructor(private readonly deps: ProactiveInteractionDeps) {}
 
   bindPromptOrchestrator(promptEngine: PromptEngine, promptOrchestrator: PromptOrchestrator): void {
-    ;(this.deps as { promptEngine?: PromptEngine | null }).promptEngine = promptEngine
+    void promptEngine
     ;(this.deps as { promptOrchestrator?: PromptOrchestrator | null }).promptOrchestrator = promptOrchestrator
   }
 
@@ -186,10 +185,9 @@ export class ProactiveInteractionService {
     const personaName = identity.visiblePersona.name
     const personaStyle = identity.visiblePersona.style
 
-    if (
-      this.deps.promptEngine &&
-      this.deps.promptOrchestrator?.isSceneEnabled('proactive_dm')
-    ) {
+    const homeVoiceLineId = identity.summary.home_voice_line_id
+
+    if (this.deps.promptOrchestrator?.isSceneEnabled('proactive_dm')) {
       try {
         const composed = await this.deps.promptOrchestrator.compose({
           agentId,
@@ -218,14 +216,19 @@ export class ProactiveInteractionService {
           layer_privacy: composed.layers.layer6_privacy ?? '',
         }
 
-        const messages = this.deps.promptEngine.render(
-          PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
+        const response = await this.deps.llmGateway.generateVisibleText({
+          intent: 'proactive_opening',
+          scene: 'proactive_dm',
+          agentId,
+          homeVoiceLineId,
+          promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
           variables,
-        )
-        const response = await this.deps.llmClient.chat({
-          messages,
+          budgetClass: 'visible_standard',
+          traceId: `proactive-dm:${agentId}:${Date.now()}`,
+          requestedTier: 'base',
+          allowFallbackWithinLine: true,
+          allowCrossFamily: false,
           temperature: 0.8,
-          model: agent?.model,
         })
         return response.content
       } catch (err) {
@@ -233,27 +236,24 @@ export class ProactiveInteractionService {
       }
     }
 
-    const response = await this.deps.llmClient.chat({
-      messages: [
-        {
-          role: 'system',
-          content: [
-            `你是「${personaName}」，风格是${personaStyle}。`,
-            '你正在主动和你的 Owner（人类持有者）发起一次简短对话。',
-            '要求：',
-            '- 语气自然亲切，像朋友分享事情',
-            '- 简洁，2-4 句话',
-            '- 不要说"作为AI"或类似自我指涉',
-            '- 根据触发事件自然地开启对话',
-          ].join('\n'),
-        },
-        {
-          role: 'user',
-          content: `触发事件：${trigger.trigger}\n${trigger.context}\n\n请自然地开启对话。`,
-        },
-      ],
+    const response = await this.deps.llmGateway.generateVisibleText({
+      intent: 'proactive_opening',
+      scene: 'proactive_dm',
+      agentId,
+      homeVoiceLineId,
+      promptRef: PROMPT_TEMPLATE_REFS.internalProactiveDmOpeningLegacy,
+      variables: {
+        persona_name: personaName,
+        persona_style: personaStyle,
+        trigger_type: trigger.trigger,
+        trigger_context: trigger.context,
+      },
+      budgetClass: 'visible_standard',
+      traceId: `proactive-dm-legacy:${agentId}:${Date.now()}`,
+      requestedTier: 'base',
+      allowFallbackWithinLine: true,
+      allowCrossFamily: false,
       temperature: 0.8,
-      model: agent?.model,
     })
 
     return response.content

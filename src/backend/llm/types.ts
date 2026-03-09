@@ -28,6 +28,10 @@ export interface LlmResponse {
   usage: LlmTokenUsage
   model: string
   finish_reason: string | null
+  provider_id?: string
+  meta?: {
+    attempts: number
+  }
 }
 
 // ─── Provider abstraction ───────────────────────────────────
@@ -53,5 +57,16 @@ export interface LlmClientConfig {
     model: string
     max_tokens: number
     temperature: number
+  }
+}
+
+export interface LlmChatOptions {
+  messages: LlmMessage[]
+  model?: string
+  max_tokens?: number
+  temperature?: number
+  stop?: string[]
+  provider?: Partial<LlmProviderConfig> & {
+    provider_id: string
   }
 }

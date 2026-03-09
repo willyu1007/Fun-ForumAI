@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-06T14:12:13.254Z",
+  "updatedAt": "2026-03-08T23:20:20.241Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -136,6 +136,32 @@
         "PENDING",
         "APPROVED",
         "REJECTED"
+      ]
+    },
+    {
+      "name": "ContextRelationChannel",
+      "values": [
+        "OWNER",
+        "COMMUNITY",
+        "ROOM",
+        "AGENT"
+      ]
+    },
+    {
+      "name": "ContextScene",
+      "values": [
+        "FORUM",
+        "CHAT_ROOM",
+        "PRIVATE_CHAT"
+      ]
+    },
+    {
+      "name": "ContextSourceType",
+      "values": [
+        "PRIVATE_SESSION",
+        "FORUM_THREAD",
+        "CHAT_ROOM_WINDOW",
+        "NIGHTLY_COMPACTION"
       ]
     },
     {
@@ -319,6 +345,117 @@
     }
   ],
   "tables": [
+    {
+      "name": "ActiveTensionItem",
+      "dbName": "active_tension_items",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "evidenceRefs",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "evidence_refs",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "intensity",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "0.5",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "label",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "intensity",
+            "updatedAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
     {
       "name": "AftershowArtifact",
       "dbName": "aftershow_artifacts",
@@ -1182,6 +1319,15 @@
           "references": []
         },
         {
+          "field": "activeTensionItems",
+          "to": "ActiveTensionItem",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "aftershowRuns",
           "to": "AftershowRun",
           "optional": false,
@@ -1245,6 +1391,24 @@
           "references": []
         },
         {
+          "field": "contextRelationStates",
+          "to": "ContextRelationState",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "contextSelfModelState",
+          "to": "SelfModelState",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "costLogs",
           "to": "CostLog",
           "optional": false,
@@ -1274,6 +1438,15 @@
         {
           "field": "creditEvents",
           "to": "CreditEvent",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "episodicCards",
+          "to": "EpisodicCard",
           "optional": false,
           "list": true,
           "relationName": null,
@@ -1440,6 +1613,24 @@
         {
           "field": "privateSessions",
           "to": "PrivateSession",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "privateShadowMemories",
+          "to": "PrivateShadowMemory",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "rawContextEvents",
+          "to": "RawContextEvent",
           "optional": false,
           "list": true,
           "relationName": null,
@@ -6517,6 +6708,138 @@
       ]
     },
     {
+      "name": "ContextRelationState",
+      "dbName": "context_relation_states",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "channel",
+          "type": "ContextRelationChannel",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "confidence",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "0.5",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "counterpartId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "counterpart_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "evidenceRefs",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "evidence_refs",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "stance",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "channel",
+            "updatedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "agentId",
+            "counterpartId",
+            "channel"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
       "name": "CostLog",
       "dbName": "cost_logs",
       "schema": null,
@@ -6707,6 +7030,193 @@
           "type": "index",
           "fields": [
             "agentId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "EpisodicCard",
+      "dbName": "episodic_cards",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "eventId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "event_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "evidenceRefs",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "evidence_refs",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "salience",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "0.5",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "scene",
+          "type": "ContextScene",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "summary",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "topicTags",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "topic_tags",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "event",
+          "to": "RawContextEvent",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "eventId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "salience",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "scene",
             "createdAt"
           ],
           "name": null,
@@ -9505,6 +10015,299 @@
       ]
     },
     {
+      "name": "PrivateShadowMemory",
+      "dbName": "private_shadow_memories",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "eventId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "event_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "evidenceRefs",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "evidence_refs",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "publicSafeShadow",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "public_safe_shadow",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "summary",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "event",
+          "to": "RawContextEvent",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "eventId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "RawContextEvent",
+      "dbName": "raw_context_events",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "counterpartId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "counterpart_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "evidenceRefs",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "evidence_refs",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "scene",
+          "type": "ContextScene",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceRefId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_ref_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceType",
+          "type": "ContextSourceType",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "transcript",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "episodicCards",
+          "to": "EpisodicCard",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "privateShadowMemories",
+          "to": "PrivateShadowMemory",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "scene",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "sourceType",
+            "sourceRefId"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
       "name": "RoleAssignment",
       "dbName": "role_assignments",
       "schema": null,
@@ -10239,6 +11042,95 @@
       ]
     },
     {
+      "name": "SelfModelState",
+      "dbName": "self_model_states",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "evidenceRefs",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "evidence_refs",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "summary",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "tensions",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": []
+    },
+    {
       "name": "Vote",
       "dbName": "votes",
       "schema": null,
@@ -10486,6 +11378,15 @@
           ],
           "name": null,
           "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "agentId",
+            "dedupKey"
+          ],
+          "name": null,
+          "map": "xp_events_agent_dedup_uq"
         }
       ]
     }

@@ -1,8 +1,11 @@
-import type { LlmClientConfig, LlmMessage, LlmProvider, LlmResponse } from './types.js'
+import type { LlmChatOptions, LlmClientConfig, LlmProvider, LlmResponse } from './types.js'
 import { OpenAICompatibleProvider } from './providers/openai-compatible.js'
 
 const providers = new Map<string, LlmProvider>()
 providers.set('openai-compatible', new OpenAICompatibleProvider())
+providers.set('dashscope-openai', new OpenAICompatibleProvider())
+providers.set('zai-openai', new OpenAICompatibleProvider())
+providers.set('deepseek-openai', new OpenAICompatibleProvider())
 
 export class LlmClient {
   constructor(private readonly cfg: LlmClientConfig) {
@@ -17,16 +20,15 @@ export class LlmClient {
    * These defaults are a bootstrap compatibility path, not a visible-generation
    * authority once gateway routing profiles land.
    */
-  async chat(opts: {
-    messages: LlmMessage[]
-    model?: string
-    max_tokens?: number
-    temperature?: number
-    stop?: string[]
-  }): Promise<LlmResponse> {
-    const provider = providers.get(this.cfg.provider.provider_id)
+  async chat(opts: LlmChatOptions): Promise<LlmResponse> {
+    const providerConfig = {
+      ...this.cfg.provider,
+      ...opts.provider,
+    }
+
+    const provider = providers.get(providerConfig.provider_id)
     if (!provider) {
-      throw new Error(`Unknown LLM provider: ${this.cfg.provider.provider_id}`)
+      throw new Error(`Unknown LLM provider: ${providerConfig.provider_id}`)
     }
 
     const start = Date.now()
@@ -39,15 +41,18 @@ export class LlmClient {
         temperature: opts.temperature ?? this.cfg.defaults.temperature,
         stop: opts.stop,
       },
-      this.cfg.provider,
+      providerConfig,
     )
 
     const latencyMs = Date.now() - start
     console.log(
-      `[LlmClient] model=${response.model} tokens=${response.usage.total_tokens} latency=${latencyMs}ms`,
+      `[LlmClient] provider=${providerConfig.provider_id} model=${response.model} tokens=${response.usage.total_tokens} latency=${latencyMs}ms`,
     )
 
-    return response
+    return {
+      ...response,
+      provider_id: providerConfig.provider_id,
+    }
   }
 
   get isConfigured(): boolean {

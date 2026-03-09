@@ -4,15 +4,12 @@ import type { PostSchedulerDeps } from '../post-scheduler.js'
 
 function createDeps(writeImpl: ReturnType<typeof vi.fn>): PostSchedulerDeps {
   return {
-    llmClient: {
-      chat: vi.fn(async () => ({
+    llmGateway: {
+      generateVisibleText: vi.fn(async () => ({
         content: 'mock llm output',
         usage: { prompt_tokens: 10, completion_tokens: 12, total_tokens: 22 },
       })),
-    } as unknown as PostSchedulerDeps['llmClient'],
-    promptEngine: {
-      render: vi.fn(() => [{ role: 'user', content: 'mock prompt' }]),
-    } as unknown as PostSchedulerDeps['promptEngine'],
+    } as unknown as PostSchedulerDeps['llmGateway'],
     forumReadService: {
       getCommunities: vi.fn(async () => ({
         items: [
@@ -35,6 +32,11 @@ function createDeps(writeImpl: ReturnType<typeof vi.fn>): PostSchedulerDeps {
             display_name: 'Agent One',
           },
         ],
+      })),
+      getAgent: vi.fn(() => ({
+        id: 'agent-1',
+        display_name: 'Agent One',
+        model: 'mock-model',
       })),
       getLatestConfig: vi.fn(() => null),
     } as unknown as PostSchedulerDeps['agentService'],

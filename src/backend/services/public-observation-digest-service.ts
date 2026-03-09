@@ -1,13 +1,14 @@
 import type { DomainEvent } from '../repos/types.js'
-import type { LlmClient } from '../llm/llm-client.js'
+import type { LLMGateway } from '../llm/llm-gateway.js'
 import type { ForumReadService } from './forum-read-service.js'
 import type { RoomRepository } from '../repos/room-repository.js'
 import type { MessageRepository } from '../repos/message-repository.js'
 import type { MemoryService } from './memory-service.js'
 import { config } from '../lib/config.js'
+import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 
 export interface PublicObservationDigestServiceDeps {
-  llmClient: LlmClient
+  llmGateway: LLMGateway
   forumReadService: ForumReadService
   roomRepo: RoomRepository
   messageRepo: MessageRepository
@@ -38,7 +39,8 @@ export class PublicObservationDigestService {
       if (!await this.shouldProceedByEventDedup(agentId, event.id)) return
       if (!await this.shouldProceedByCooldown(agentId, 'post', postId, po.forumCooldownMs)) return
 
-      const summary = await this.summarizeForum(post.title, post.body, comments.items.map((c) => c.body))
+      const transcript = this.buildForumTranscript(post.title, post.body, comments.items.map((c) => c.body))
+      const summary = await this.summarize('forum', transcript, agentId)
 
       // Re-check cooldown before write to avoid TOCTOU during long LLM calls.
       if (!await this.shouldProceedByCooldown(agentId, 'post', postId, po.forumCooldownMs)) return
@@ -53,6 +55,13 @@ export class PublicObservationDigestService {
         key_facts: summary.key_facts,
         sentiment: summary.sentiment,
         importance_score: summary.importance_score,
+        typed_context: {
+          scene: 'forum',
+          transcript,
+          counterpart_id: post.community_id,
+          evidence_refs: [`domain_event:${event.id}`, `post:${postId}`],
+          created_at: event.created_at,
+        },
       })
     } catch (err) {
       console.error('[PublicObservationDigestService] onForumEvent failed:', err)
@@ -78,11 +87,8 @@ export class PublicObservationDigestService {
       if (!await this.shouldProceedByCooldown(input.authorAgentId, 'room', input.roomId, po.roomCooldownMs)) return
 
       const messages = await this.deps.messageRepo.getLatestMessages(input.roomId, 80)
-      const summary = await this.summarizeRoom(
-        room.name,
-        room.description || '',
-        messages.map((m) => m.body),
-      )
+      const transcript = this.buildRoomTranscript(room.name, room.description || '', messages.map((m) => m.body))
+      const summary = await this.summarize('room', transcript, input.authorAgentId)
 
       // Re-check cooldown before write to avoid TOCTOU during long LLM calls.
       if (!await this.shouldProceedByCooldown(input.authorAgentId, 'room', input.roomId, po.roomCooldownMs)) return
@@ -97,6 +103,13 @@ export class PublicObservationDigestService {
         key_facts: summary.key_facts,
         sentiment: summary.sentiment,
         importance_score: summary.importance_score,
+        typed_context: {
+          scene: 'chat_room',
+          transcript,
+          counterpart_id: input.roomId,
+          evidence_refs: [`room:${input.roomId}`, `message:${input.messageId}`],
+          created_at: room.last_message_at ?? new Date(),
+        },
       })
     } catch (err) {
       console.error('[PublicObservationDigestService] onRoomMessage failed:', err)
@@ -151,36 +164,32 @@ export class PublicObservationDigestService {
     return Date.now() - last.created_at.getTime() >= cooldownMs
   }
 
-  private async summarizeForum(
+  private buildForumTranscript(
     title: string,
     body: string,
     commentBodies: string[],
-  ): Promise<DigestSummary> {
-    const transcript = [
+  ): string {
+    return [
       `标题: ${title}`,
       `正文: ${body}`,
       ...commentBodies.slice(-30).map((c, i) => `评论${i + 1}: ${c}`),
     ].join('\n')
-
-    return this.summarize('forum', transcript)
   }
 
-  private async summarizeRoom(
+  private buildRoomTranscript(
     roomName: string,
     roomDescription: string,
     messageBodies: string[],
-  ): Promise<DigestSummary> {
-    const transcript = [
+  ): string {
+    return [
       `房间: ${roomName}`,
       `描述: ${roomDescription}`,
       ...messageBodies.slice(-60).map((m, i) => `消息${i + 1}: ${m}`),
     ].join('\n')
-
-    return this.summarize('room', transcript)
   }
 
-  private async summarize(kind: 'forum' | 'room', transcript: string): Promise<DigestSummary> {
-    if (!this.deps.llmClient.isConfigured) {
+  private async summarize(kind: 'forum' | 'room', transcript: string, agentId: string): Promise<DigestSummary> {
+    if (!this.deps.llmGateway.isConfigured) {
       return {
         summary_text: `${kind} 公共讨论产生了新的观察记忆，后续可用于连续性表达。`,
         topic_tags: this.extractTags(transcript),
@@ -191,17 +200,20 @@ export class PublicObservationDigestService {
     }
 
     try {
-      const llmResp = await this.deps.llmClient.chat({
-        messages: [
-          {
-            role: 'system',
-            content: PUBLIC_OBSERVATION_DIGEST_SYSTEM_PROMPT,
-          },
-          {
-            role: 'user',
-            content: transcript,
-          },
-        ],
+      const llmResp = await this.deps.llmGateway.generateHiddenArtifact({
+        intent: 'public_observation_digest',
+        scene: 'background_hidden',
+        agentId,
+        homeVoiceLineId: 'deepseek-director-v1',
+        promptRef: PROMPT_TEMPLATE_REFS.internalPublicObservationDigest,
+        variables: {
+          transcript,
+        },
+        budgetClass: 'hidden_background',
+        traceId: `public-observation:${kind}:${Date.now()}`,
+        requestedTier: 'base',
+        allowFallbackWithinLine: false,
+        allowCrossFamily: false,
         temperature: 0.3,
       })
       return this.parseDigestResponse(llmResp.content)
@@ -265,14 +277,3 @@ interface DigestSummary {
   sentiment: string
   importance_score: number
 }
-
-const PUBLIC_OBSERVATION_DIGEST_SYSTEM_PROMPT = `你是一个 AI Agent，请将输入的公共讨论内容总结为“公共经历记忆”。
-输出 JSON：
-{
-  "summary_text": "100-220字，总结讨论脉络、冲突点或名场面",
-  "topic_tags": ["标签1", "标签2"],
-  "key_facts": ["事实1", "事实2"],
-  "sentiment": "curious/excited/thoughtful/neutral/concerned",
-  "importance_score": 0.1到1.0
-}
-只返回 JSON，不要输出其他文字。`
