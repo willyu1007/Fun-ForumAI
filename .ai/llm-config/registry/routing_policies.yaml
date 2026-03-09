@@ -85,6 +85,30 @@ policies:
       - none
       - same-line
 
+  - profile_id: qwen-social-public-observation-base
+    route_order:
+      - intent_scene_fit
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: qwen-social-private-digest-base
+    route_order:
+      - intent_scene_fit
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
   - profile_id: qwen-social-identity-write-premium
     route_order:
       - intent_scene_fit
@@ -178,6 +202,30 @@ policies:
     allowed_fallback_levels:
       - none
 
+  - profile_id: glm-deep-public-observation-base
+    route_order:
+      - intent_scene_fit
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: glm-deep-private-digest-base
+    route_order:
+      - intent_scene_fit
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
   - profile_id: glm-deep-identity-write-premium
     route_order:
       - intent_scene_fit
@@ -192,6 +240,18 @@ policies:
       - none
 
   - profile_id: deepseek-director-public-observation-base
+    route_order:
+      - intent_scene_fit
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: deepseek-director-private-digest-base
     route_order:
       - intent_scene_fit
       - profile_candidates
@@ -245,6 +305,142 @@ policies:
       - profile_candidates
       - region_policy
       - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  # ─── MiniMax Her v1 ───
+
+  - profile_id: minimax-her-chat-reply-lite
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: minimax-her-forum-reply-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: minimax-her-scheduled-post-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: minimax-her-private-reply-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: minimax-her-proactive-opening-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: minimax-her-identity-write-premium
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  # ─── Kimi Deep v1 ───
+
+  - profile_id: kimi-deep-chat-reply-lite
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: kimi-deep-forum-reply-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: kimi-deep-scheduled-post-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: kimi-deep-private-reply-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: kimi-deep-proactive-opening-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: kimi-deep-identity-write-premium
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
       - health
     allow_fallback_within_line: false
     allow_cross_family: false

@@ -1,0 +1,25 @@
+# 03 Implementation Notes — T-076
+
+- 2026-03-09 初始化任务包，目标是对 `T-062~T-072` 与三份外部设计文档做集成审计，并在真实运行中修复发现的问题。
+- 当前仓库存在未提交工作树改动，主要集中在 `T-068/T-069/T-072` 相关 registry、gateway、memory、rollout 代码；后续需要先审读这些变更再继续实现。
+- 审计期间新增并落地了两处真实修复：
+  - `src/backend/routes/dev-seed.ts`
+    - 为 seed 社区写入宽松版 `StageSpecV1`，避免现网 runtime 因 `Tier T1 does not meet role gate T3` 拒绝写帖。
+    - membership 预置从“只覆盖 post author”改为“同时覆盖 comment author”，避免 comment seed 因 “Agent is not an active member of this community” 失败。
+  - `src/backend/llm/usage-ledger.ts`、`src/backend/repos/pg/pg-usage-ledger-repository.ts`、`src/backend/routes/admin-api.ts`
+    - 为 usage ledger repository 增加 `listRecent()`。
+    - admin runtime/rollout 视图改为读取 repo-backed ledger，而不是进程内 `usageLedger.list()`，修复多 pod / k8s 下 `render_log_preview` 为空、rollout evidence 只看本机内存的问题。
+- 同步补了回归测试和类型修正：
+  - `src/backend/llm/__tests__/usage-ledger.test.ts`
+  - `src/backend/runtime/__tests__/rollout-evidence-collector.test.ts`
+  - `src/backend/routes/__tests__/e2e-dev-seed.test.ts`
+  - `src/backend/runtime/__tests__/rollout-evidence-collector.test.ts` 中历史错误字面量与未使用 import 已清理，恢复 `pnpm typecheck`。
+- 真实环境核验时发现一个“当前代码未完全满足设计目标”的差距，但本轮未直接重构：
+  - 以 `model=qwen-flash` 创建的 agent（`806e5d24-0b00-4e11-a2b5-834891d6be9b`）在真实私聊渲染中仍落到 `qwen-social-private-reply-base -> qwen-plus-character`。
+  - 代码证据见 `src/backend/services/private-channel-service.ts` 与 `src/backend/llm/callsite-inventory.ts`：visible dispatch 以 `homeVoiceLineId + requestedTier` 为权威，`agent.model` 仅保留为兼容字段，不再直接参与 private reply 路由。
+  - 这与外部设计文档“agent 绑定 voice line、不绑定 provider/key”是一致的，但也意味着“agent 个体模型配对”尚未真正成为运行时控制面能力。
+- 浏览器证据通过 Playwright 获得，原因是本轮 `chrome-devtools` MCP 会话出现 `Transport closed`：
+  - 目录页、agent profile、private chat、admin runtime 页面截图位于 `.ai/.tmp/ui/persona-runtime-integration-audit/`。
+  - 关键汇总文件：
+    - `.ai/.tmp/ui/persona-runtime-integration-audit/playwright-summary.json`
+    - `.ai/.tmp/ui/persona-runtime-integration-audit/playwright-chat-admin-summary.json`

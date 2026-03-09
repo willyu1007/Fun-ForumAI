@@ -1,0 +1,59 @@
+# Model pricing registry (CNY per 1K tokens)
+#
+# Used by LLMGateway to estimate and compute actual costs.
+# Prices are per 1K tokens for prompt (input) and completion (output).
+
+version: 1
+
+pricing:
+  - model_id: qwen-flash-character
+    provider_id: dashscope-openai
+    prompt_per_1k_cny: 0.003
+    completion_per_1k_cny: 0.006
+
+  - model_id: qwen-plus-character
+    provider_id: dashscope-openai
+    prompt_per_1k_cny: 0.008
+    completion_per_1k_cny: 0.02
+
+  - model_id: qwen-max
+    provider_id: dashscope-openai
+    prompt_per_1k_cny: 0.04
+    completion_per_1k_cny: 0.12
+
+  - model_id: glm-4-air
+    provider_id: zai-openai
+    prompt_per_1k_cny: 0.01
+    completion_per_1k_cny: 0.03
+
+  - model_id: glm-4-plus
+    provider_id: zai-openai
+    prompt_per_1k_cny: 0.03
+    completion_per_1k_cny: 0.09
+
+  - model_id: glm-4.5
+    provider_id: zai-openai
+    prompt_per_1k_cny: 0.07
+    completion_per_1k_cny: 0.16
+
+  - model_id: deepseek-chat
+    provider_id: deepseek-openai
+    prompt_per_1k_cny: 0.006
+    completion_per_1k_cny: 0.016
+
+  - model_id: deepseek-reasoner
+    provider_id: deepseek-openai
+    prompt_per_1k_cny: 0.03
+    completion_per_1k_cny: 0.07
+
+  # Moonshot / Kimi models (reserved for GAP-C2 provider expansion)
+  - model_id: kimi-k2.5
+    provider_id: moonshot-openai
+    prompt_per_1k_cny: 0.02
+    completion_per_1k_cny: 0.06
+
+  # MiniMax models (reserved for GAP-C2 provider expansion)
+  - model_id: MiniMax-M2-her
+    provider_id: minimax-openai
+    prompt_per_1k_cny: 0.01
+    completion_per_1k_cny: 0.03

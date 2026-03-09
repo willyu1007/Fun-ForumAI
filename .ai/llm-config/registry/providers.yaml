@@ -65,3 +65,43 @@ providers:
     defaults:
       timeout_ms: 30000
       max_retries: 2
+
+  - provider_id: moonshot-openai
+    display_name: Moonshot (Kimi) OpenAI-Compatible
+    gateway_kind: openai_compatible
+    auth:
+      type: api_key
+      credential_ref_required: true
+      credential_ref: secret-ref:moonshot_api_key
+    routing:
+      regions:
+        - cn
+      default_region: cn
+    capabilities:
+      chat: true
+      json_mode: true
+      tool_calling: true
+      streaming: true
+    defaults:
+      timeout_ms: 60000
+      max_retries: 2
+
+  - provider_id: minimax-openai
+    display_name: MiniMax OpenAI-Compatible
+    gateway_kind: openai_compatible
+    auth:
+      type: api_key
+      credential_ref_required: true
+      credential_ref: secret-ref:minimax_api_key
+    routing:
+      regions:
+        - cn
+      default_region: cn
+    capabilities:
+      chat: true
+      json_mode: true
+      tool_calling: false
+      streaming: true
+    defaults:
+      timeout_ms: 30000
+      max_retries: 2

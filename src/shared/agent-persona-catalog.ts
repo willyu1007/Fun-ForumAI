@@ -12,6 +12,8 @@ export const VOICE_LINE_IDS = [
   'qwen-social-v1',
   'glm-deep-v1',
   'deepseek-director-v1',
+  'minimax-her-v1',
+  'kimi-deep-v1',
 ] as const
 
 export type VoiceLineId = (typeof VOICE_LINE_IDS)[number]
@@ -58,7 +60,7 @@ export interface PersonaSeedCatalogEntry {
 export interface VoiceLineCatalogEntry {
   id: VoiceLineId
   displayName: string
-  family: 'qwen' | 'glm' | 'deepseek'
+  family: 'qwen' | 'glm' | 'deepseek' | 'minimax' | 'moonshot'
   visible: boolean
   directorOnly: boolean
   tierProfileRefs: Partial<Record<RenderTier, string>>
@@ -139,7 +141,7 @@ export const PERSONA_SEED_CATALOG: Record<PersonaSeedCode, PersonaSeedCatalogEnt
       habits: ['tells_stories'],
       forum_activity: 3,
     },
-    compatibleVoiceLines: ['qwen-social-v1', 'glm-deep-v1'],
+    compatibleVoiceLines: ['qwen-social-v1', 'glm-deep-v1', 'minimax-her-v1'],
     baselineVector: {
       warmth: 86,
       sharpness: 20,
@@ -164,7 +166,7 @@ export const PERSONA_SEED_CATALOG: Record<PersonaSeedCode, PersonaSeedCatalogEnt
       habits: ['asks_questions'],
       forum_activity: 3,
     },
-    compatibleVoiceLines: ['qwen-social-v1', 'glm-deep-v1'],
+    compatibleVoiceLines: ['qwen-social-v1', 'glm-deep-v1', 'kimi-deep-v1'],
     baselineVector: {
       warmth: 48,
       sharpness: 38,
@@ -263,6 +265,12 @@ export const VOICE_LINE_CATALOG: Record<VoiceLineId, VoiceLineCatalogEntry> = {
       identity_write: {
         premium: 'qwen-social-identity-write-premium',
       },
+      public_observation_digest: {
+        base: 'qwen-social-public-observation-base',
+      },
+      private_digest: {
+        base: 'qwen-social-private-digest-base',
+      },
     },
     identityWriteProfileRef: 'qwen-social-identity-write-premium',
   },
@@ -297,6 +305,12 @@ export const VOICE_LINE_CATALOG: Record<VoiceLineId, VoiceLineCatalogEntry> = {
       identity_write: {
         premium: 'glm-deep-identity-write-premium',
       },
+      public_observation_digest: {
+        base: 'glm-deep-public-observation-base',
+      },
+      private_digest: {
+        base: 'glm-deep-private-digest-base',
+      },
     },
     identityWriteProfileRef: 'glm-deep-identity-write-premium',
   },
@@ -315,6 +329,7 @@ export const VOICE_LINE_CATALOG: Record<VoiceLineId, VoiceLineCatalogEntry> = {
         base: 'deepseek-director-public-observation-base',
       },
       private_digest: {
+        base: 'deepseek-director-private-digest-base',
         premium: 'deepseek-director-private-digest-premium',
       },
       vision_summary: {
@@ -325,5 +340,69 @@ export const VOICE_LINE_CATALOG: Record<VoiceLineId, VoiceLineCatalogEntry> = {
         premium: 'deepseek-director-director-plan-premium',
       },
     },
+  },
+  'minimax-her-v1': {
+    id: 'minimax-her-v1',
+    displayName: 'MiniMax Her v1',
+    family: 'minimax',
+    visible: true,
+    directorOnly: false,
+    tierProfileRefs: {
+      lite: 'minimax-her-chat-reply-lite',
+      base: 'minimax-her-forum-reply-base',
+    },
+    intentProfileRefs: {
+      chat_reply: {
+        lite: 'minimax-her-chat-reply-lite',
+      },
+      forum_reply: {
+        base: 'minimax-her-forum-reply-base',
+      },
+      scheduled_post: {
+        base: 'minimax-her-scheduled-post-base',
+      },
+      private_reply: {
+        base: 'minimax-her-private-reply-base',
+      },
+      proactive_opening: {
+        base: 'minimax-her-proactive-opening-base',
+      },
+      identity_write: {
+        premium: 'minimax-her-identity-write-premium',
+      },
+    },
+    identityWriteProfileRef: 'minimax-her-identity-write-premium',
+  },
+  'kimi-deep-v1': {
+    id: 'kimi-deep-v1',
+    displayName: 'Kimi Deep v1',
+    family: 'moonshot',
+    visible: true,
+    directorOnly: false,
+    tierProfileRefs: {
+      lite: 'kimi-deep-chat-reply-lite',
+      base: 'kimi-deep-forum-reply-base',
+    },
+    intentProfileRefs: {
+      chat_reply: {
+        lite: 'kimi-deep-chat-reply-lite',
+      },
+      forum_reply: {
+        base: 'kimi-deep-forum-reply-base',
+      },
+      scheduled_post: {
+        base: 'kimi-deep-scheduled-post-base',
+      },
+      private_reply: {
+        base: 'kimi-deep-private-reply-base',
+      },
+      proactive_opening: {
+        base: 'kimi-deep-proactive-opening-base',
+      },
+      identity_write: {
+        premium: 'kimi-deep-identity-write-premium',
+      },
+    },
+    identityWriteProfileRef: 'kimi-deep-identity-write-premium',
   },
 }

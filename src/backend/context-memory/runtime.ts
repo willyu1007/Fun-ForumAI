@@ -50,14 +50,31 @@ export class DefaultContextJournalService implements ContextJournalService {
 }
 
 export class LlmSummaryOrchestrator implements SummaryOrchestrator {
-  constructor(private readonly deps: { llmGateway: LLMGateway }) {}
+  constructor(private readonly deps: {
+    llmGateway: LLMGateway
+    agentService?: AgentService
+  }) {}
+
+  private resolveVoiceLineId(agentId: string): 'deepseek-director-v1' | 'qwen-social-v1' | 'glm-deep-v1' {
+    if (!this.deps.agentService) return 'deepseek-director-v1'
+    try {
+      const agent = this.deps.agentService.getAgent(agentId)
+      const config = this.deps.agentService.getLatestConfig(agentId)
+      const identity = resolveAgentIdentity(agent, config)
+      const voiceLineId = identity.summary.home_voice_line_id
+      if (voiceLineId === 'qwen-social-v1' || voiceLineId === 'glm-deep-v1' || voiceLineId === 'deepseek-director-v1') {
+        return voiceLineId
+      }
+    } catch {}
+    return 'deepseek-director-v1'
+  }
 
   async extract(event: RawContextEvent): Promise<SummaryExtractResult> {
     const response = await this.deps.llmGateway.generateHiddenArtifact({
       intent: resolveHiddenIntent(event),
       scene: 'background_hidden',
       agentId: event.agent_id,
-      homeVoiceLineId: 'deepseek-director-v1',
+      homeVoiceLineId: this.resolveVoiceLineId(event.agent_id),
       promptRef: resolveExtractPromptRef(event),
       variables: {
         transcript: event.transcript,
@@ -66,8 +83,8 @@ export class LlmSummaryOrchestrator implements SummaryOrchestrator {
       },
       budgetClass: 'hidden_background',
       traceId: `context-extract:${event.id}`,
-      requestedTier: 'premium',
-      allowFallbackWithinLine: false,
+      requestedTier: 'base',
+      allowFallbackWithinLine: true,
       allowCrossFamily: false,
       temperature: 0.2,
     })
@@ -91,7 +108,7 @@ export class LlmSummaryOrchestrator implements SummaryOrchestrator {
       intent: resolveHiddenIntent(event),
       scene: 'background_hidden',
       agentId: event.agent_id,
-      homeVoiceLineId: 'deepseek-director-v1',
+      homeVoiceLineId: this.resolveVoiceLineId(event.agent_id),
       promptRef: resolveDistillPromptRef(event),
       variables: {
         extracted_json: JSON.stringify(extracted, null, 2),
@@ -101,8 +118,8 @@ export class LlmSummaryOrchestrator implements SummaryOrchestrator {
       },
       budgetClass: 'hidden_background',
       traceId: `context-distill:${event.id}`,
-      requestedTier: 'premium',
-      allowFallbackWithinLine: false,
+      requestedTier: 'base',
+      allowFallbackWithinLine: true,
       allowCrossFamily: false,
       temperature: 0.2,
     })

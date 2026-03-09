@@ -76,12 +76,25 @@ export interface RoutingPoliciesRegistryFile {
   policies: RoutingPolicyEntry[]
 }
 
+export interface ModelPricingEntry {
+  model_id: string
+  provider_id: string
+  prompt_per_1k_cny: number
+  completion_per_1k_cny: number
+}
+
+export interface ModelPricingRegistryFile {
+  version: number
+  pricing: ModelPricingEntry[]
+}
+
 export interface LlmRegistryBundle {
   providers: ProvidersRegistryFile
   modelProfiles: ModelProfilesRegistryFile
   promptTemplates: PromptTemplatesRegistryFile
   credentialPools: CredentialPoolsRegistryFile
   routingPolicies: RoutingPoliciesRegistryFile
+  modelPricing: ModelPricingRegistryFile
 }
 
 export interface LlmRegistryPaths {
@@ -90,6 +103,7 @@ export interface LlmRegistryPaths {
   promptTemplates?: string
   credentialPools?: string
   routingPolicies?: string
+  modelPricing?: string
 }
 
 const lLMVisibilityEnum = z.enum(['visible', 'hidden', 'identity_write', 'dev_only'])
@@ -265,6 +279,24 @@ export function loadRoutingPoliciesRegistry(
   return parseYamlFile(registryPath, routingPoliciesSchema, 'routing policies registry')
 }
 
+const modelPricingSchema = z.object({
+  version: z.number().int().positive(),
+  pricing: z.array(
+    z.object({
+      model_id: z.string().min(1),
+      provider_id: z.string().min(1),
+      prompt_per_1k_cny: z.number().nonnegative(),
+      completion_per_1k_cny: z.number().nonnegative(),
+    }).strict(),
+  ),
+})
+
+export function loadModelPricingRegistry(
+  registryPath = defaultRegistryPath('model_pricing.yaml'),
+): ModelPricingRegistryFile {
+  return parseYamlFile(registryPath, modelPricingSchema, 'model pricing registry')
+}
+
 export function loadLlmRegistryBundle(paths: LlmRegistryPaths = {}): LlmRegistryBundle {
   const bundle: LlmRegistryBundle = {
     providers: loadProvidersRegistry(paths.providers),
@@ -272,6 +304,7 @@ export function loadLlmRegistryBundle(paths: LlmRegistryPaths = {}): LlmRegistry
     promptTemplates: loadPromptTemplatesRegistry(paths.promptTemplates),
     credentialPools: loadCredentialPoolsRegistry(paths.credentialPools),
     routingPolicies: loadRoutingPoliciesRegistry(paths.routingPolicies),
+    modelPricing: loadModelPricingRegistry(paths.modelPricing),
   }
 
   validateLlmRegistryBundle(bundle)

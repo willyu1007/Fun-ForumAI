@@ -9,6 +9,9 @@ describe('E2E: Dev seed route', () => {
     const firstCommunityIds = firstRes.body.data.ids.communities as string[]
     expect(Array.isArray(firstCommunityIds)).toBe(true)
     expect(firstCommunityIds.length).toBeGreaterThan(0)
+    expect(firstRes.body.data.counts.agents).toBeGreaterThan(0)
+    expect(firstRes.body.data.counts.posts).toBeGreaterThan(0)
+    expect(firstRes.body.data.counts.comments).toBeGreaterThan(0)
 
     const secondRes = await request(app).post('/v1/dev/seed').send()
     expect(secondRes.status).toBe(200)

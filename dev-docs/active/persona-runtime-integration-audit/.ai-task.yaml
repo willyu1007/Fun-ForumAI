@@ -1,0 +1,13 @@
+version: 1
+task_id: T-076
+project: main
+slug: persona-runtime-integration-audit
+status: in-progress
+updated: "2026-03-09"
+keywords:
+  - persona
+  - provider
+  - control-plane
+  - context-memory
+  - audit
+  - e2e

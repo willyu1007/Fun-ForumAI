@@ -110,6 +110,34 @@ profiles:
         quality_class: premium
     fallback: []
 
+  - profile_id: qwen-social-public-observation-base
+    voice_line_id: qwen-social-v1
+    tier: base
+    intent: public_observation_digest
+    visibility: hidden
+    candidates:
+      - provider_id: dashscope-openai
+        model_id: qwen-plus-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 100
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: qwen-social-private-digest-base
+    voice_line_id: qwen-social-v1
+    tier: base
+    intent: private_digest
+    visibility: hidden
+    candidates:
+      - provider_id: dashscope-openai
+        model_id: qwen-plus-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 100
+        quality_class: balanced
+    fallback: []
+
   - profile_id: glm-deep-chat-reply-lite
     voice_line_id: glm-deep-v1
     tier: lite
@@ -214,10 +242,70 @@ profiles:
         quality_class: premium
     fallback: []
 
+  - profile_id: glm-deep-public-observation-base
+    voice_line_id: glm-deep-v1
+    tier: base
+    intent: public_observation_digest
+    visibility: hidden
+    candidates:
+      - provider_id: zai-openai
+        model_id: glm-4-plus
+        region: cn
+        endpoint_id: zai-cn
+        weight: 100
+        quality_class: balanced
+      - provider_id: dashscope-openai
+        model_id: qwen-plus-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 60
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: glm-deep-private-digest-base
+    voice_line_id: glm-deep-v1
+    tier: base
+    intent: private_digest
+    visibility: hidden
+    candidates:
+      - provider_id: zai-openai
+        model_id: glm-4-plus
+        region: cn
+        endpoint_id: zai-cn
+        weight: 100
+        quality_class: balanced
+      - provider_id: dashscope-openai
+        model_id: qwen-plus-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 60
+        quality_class: balanced
+    fallback: []
+
   - profile_id: deepseek-director-public-observation-base
     voice_line_id: deepseek-director-v1
     tier: base
     intent: public_observation_digest
+    visibility: hidden
+    candidates:
+      - provider_id: deepseek-openai
+        model_id: deepseek-chat
+        region: cn
+        endpoint_id: deepseek-cn
+        weight: 100
+        quality_class: balanced
+      - provider_id: dashscope-openai
+        model_id: qwen-plus-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 60
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: deepseek-director-private-digest-base
+    voice_line_id: deepseek-director-v1
+    tier: base
+    intent: private_digest
     visibility: hidden
     candidates:
       - provider_id: deepseek-openai
@@ -313,3 +401,175 @@ profiles:
       - level: same-line
         profile_id: deepseek-director-director-plan-base
         reason: degrade inside the hidden director line only
+
+  # ─── MiniMax Her v1 (social / empathetic voice) ───
+
+  - profile_id: minimax-her-chat-reply-lite
+    voice_line_id: minimax-her-v1
+    tier: lite
+    intent: chat_reply
+    visibility: visible
+    candidates:
+      - provider_id: minimax-openai
+        model_id: MiniMax-M2-her
+        region: cn
+        endpoint_id: minimax-cn
+        weight: 100
+        quality_class: fast
+    fallback: []
+
+  - profile_id: minimax-her-forum-reply-base
+    voice_line_id: minimax-her-v1
+    tier: base
+    intent: forum_reply
+    visibility: visible
+    candidates:
+      - provider_id: minimax-openai
+        model_id: MiniMax-M2-her
+        region: cn
+        endpoint_id: minimax-cn
+        weight: 100
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: minimax-her-scheduled-post-base
+    voice_line_id: minimax-her-v1
+    tier: base
+    intent: scheduled_post
+    visibility: visible
+    candidates:
+      - provider_id: minimax-openai
+        model_id: MiniMax-M2-her
+        region: cn
+        endpoint_id: minimax-cn
+        weight: 100
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: minimax-her-private-reply-base
+    voice_line_id: minimax-her-v1
+    tier: base
+    intent: private_reply
+    visibility: visible
+    candidates:
+      - provider_id: minimax-openai
+        model_id: MiniMax-M2-her
+        region: cn
+        endpoint_id: minimax-cn
+        weight: 100
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: minimax-her-proactive-opening-base
+    voice_line_id: minimax-her-v1
+    tier: base
+    intent: proactive_opening
+    visibility: visible
+    candidates:
+      - provider_id: minimax-openai
+        model_id: MiniMax-M2-her
+        region: cn
+        endpoint_id: minimax-cn
+        weight: 100
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: minimax-her-identity-write-premium
+    voice_line_id: minimax-her-v1
+    tier: premium
+    intent: identity_write
+    visibility: identity_write
+    candidates:
+      - provider_id: minimax-openai
+        model_id: MiniMax-M2-her
+        region: cn
+        endpoint_id: minimax-cn
+        weight: 100
+        quality_class: premium
+    fallback: []
+
+  # ─── Kimi Deep v1 (long-context / analytical voice) ───
+
+  - profile_id: kimi-deep-chat-reply-lite
+    voice_line_id: kimi-deep-v1
+    tier: lite
+    intent: chat_reply
+    visibility: visible
+    candidates:
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 100
+        quality_class: fast
+    fallback: []
+
+  - profile_id: kimi-deep-forum-reply-base
+    voice_line_id: kimi-deep-v1
+    tier: base
+    intent: forum_reply
+    visibility: visible
+    candidates:
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 100
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: kimi-deep-scheduled-post-base
+    voice_line_id: kimi-deep-v1
+    tier: base
+    intent: scheduled_post
+    visibility: visible
+    candidates:
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 100
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: kimi-deep-private-reply-base
+    voice_line_id: kimi-deep-v1
+    tier: base
+    intent: private_reply
+    visibility: visible
+    candidates:
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 100
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: kimi-deep-proactive-opening-base
+    voice_line_id: kimi-deep-v1
+    tier: base
+    intent: proactive_opening
+    visibility: visible
+    candidates:
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 100
+        quality_class: balanced
+    fallback: []
+
+  - profile_id: kimi-deep-identity-write-premium
+    voice_line_id: kimi-deep-v1
+    tier: premium
+    intent: identity_write
+    visibility: identity_write
+    candidates:
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 100
+        quality_class: premium
+    fallback: []

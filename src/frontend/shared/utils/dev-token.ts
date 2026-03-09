@@ -19,11 +19,13 @@ export function generateDevToken(identity: 'anonymous' | 'user' | 'admin'): stri
 
 export function setDevAuth(identity: 'anonymous' | 'user' | 'admin'): DevUser | null {
   if (identity === 'anonymous') {
-    document.cookie = 'auth_token=; max-age=0; path=/'
+    document.cookie = 'auth_token=; max-age=0; path=/; SameSite=Lax'
+    localStorage.removeItem('dev_auth_token')
     return null
   }
   const token = generateDevToken(identity)
-  document.cookie = `auth_token=${token}; path=/; max-age=86400`
+  document.cookie = `auth_token=${token}; path=/; max-age=86400; SameSite=Lax`
+  localStorage.setItem('dev_auth_token', token)
   return DEV_USERS[identity]
 }
 

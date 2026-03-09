@@ -15,6 +15,14 @@ const { repos, hydratables } = await createRepositories(config.db.usePrisma)
 // ─── 2. Infrastructure (SSE, Moderation, Redis, Queues, Leaders) ──
 const infra = await createInfrastructure()
 
+// ─── 2b. Usage Ledger Repo (Pg-only) ──────────────────────────
+let pgUsageLedgerRepo: import('../llm/usage-ledger.js').UsageLedgerRepository | undefined
+if (config.db.usePrisma) {
+  const { getPrismaClient } = await import('../persistence/prisma-client.js')
+  const { PgUsageLedgerRepository } = await import('../repos/pg/pg-usage-ledger-repository.js')
+  pgUsageLedgerRepo = new PgUsageLedgerRepository(getPrismaClient())
+}
+
 // ─── 3. LLM ─────────────────────────────────────────────────
 const llm = createLlmServices({
   agentRepo: repos.agentRepo,
@@ -23,6 +31,7 @@ const llm = createLlmServices({
   postMediaRepo: repos.postMediaRepo,
   eventRepo: repos.eventRepo,
   agentRunRepo: repos.agentRunRepo,
+  usageLedgerRepo: pgUsageLedgerRepo,
 })
 
 // ─── 4. Core Services ───────────────────────────────────────
@@ -202,6 +211,7 @@ export const eventQueue = infra.eventQueue
 export const llmClient = llm.llmClient
 export const llmGateway = llm.llmGateway
 export const usageLedger = llm.usageLedger
+export const usageLedgerRepo = llm.usageLedgerRepo
 export const promptEngine = llm.promptEngine
 export const inclinationAssetService = llm.inclinationAssetService
 

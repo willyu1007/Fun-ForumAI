@@ -78,6 +78,10 @@ export interface ProviderRegistryEntry {
   }
 }
 
+/**
+ * @deprecated Use ModelProfileEntry from registry-loader.ts instead.
+ * Kept for backward compatibility; will be removed in a future release.
+ */
 export interface ModelCatalogEntry {
   model_id: string
   provider_id: string

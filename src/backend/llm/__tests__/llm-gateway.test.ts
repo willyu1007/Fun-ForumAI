@@ -124,6 +124,10 @@ function buildBundle(): LlmRegistryBundle {
         },
       ],
     },
+    modelPricing: {
+      version: 1,
+      pricing: [],
+    },
   }
 }
 

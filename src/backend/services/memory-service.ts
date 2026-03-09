@@ -538,7 +538,18 @@ export class MemoryService {
       ? ['OWNER_ONLY', 'PUBLIC'] as const
       : ['PUBLIC'] as const
 
-    const [privateCards, allCards, ownerRelations, selfModel, tensions, privateShadows, chronicleEntries] = await Promise.all([
+    const [
+      privateCards,
+      allCards,
+      ownerRelations,
+      communityRelations,
+      roomRelations,
+      agentRelations,
+      selfModel,
+      tensions,
+      privateShadows,
+      chronicleEntries,
+    ] = await Promise.all([
       runtime.episodicCardRepo.listByAgent(agentId, {
         limit: Math.max(topK * 2, TYPED_EPISODIC_RETRIEVAL_LIMIT),
         scene: 'private_chat',
@@ -547,6 +558,9 @@ export class MemoryService {
         limit: Math.max(topK * 3, TYPED_EPISODIC_RETRIEVAL_LIMIT),
       }),
       runtime.relationStateRepo.listByAgent(agentId, { limit: 3, channel: 'owner' }),
+      runtime.relationStateRepo.listByAgent(agentId, { limit: 3, channel: 'community' }),
+      runtime.relationStateRepo.listByAgent(agentId, { limit: 3, channel: 'room' }),
+      runtime.relationStateRepo.listByAgent(agentId, { limit: 5, channel: 'agent' }),
       runtime.selfModelStateRepo.findByAgent(agentId),
       runtime.activeTensionRepo.listByAgent(agentId, 3),
       runtime.privateShadowRepo.listByAgent(agentId, TYPED_SHADOW_RETRIEVAL_LIMIT),
@@ -559,6 +573,9 @@ export class MemoryService {
       privateEpisodicCards: privateCards.items,
       publicEpisodicCards: allCards.items.filter((card) => card.scene !== 'private_chat'),
       ownerRelation: ownerRelations.items[0] ?? null,
+      communityRelations: communityRelations.items,
+      roomRelations: roomRelations.items,
+      agentRelations: agentRelations.items,
       selfModel,
       tensions,
       privateShadows,
@@ -1019,6 +1036,9 @@ function emptyTypedRetrievalState(): TypedRetrievalState {
     privateEpisodicCards: [],
     publicEpisodicCards: [],
     ownerRelation: null,
+    communityRelations: [],
+    roomRelations: [],
+    agentRelations: [],
     selfModel: null,
     tensions: [],
     privateShadows: [],

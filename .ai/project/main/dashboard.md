@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 73 (planned: 4, in-progress: 9, blocked: 0, done: 28, archived: 32)
+- Tasks: 74 (planned: 4, in-progress: 10, blocked: 0, done: 28, archived: 32)
 
 ## Recent tasks
 
@@ -25,6 +25,7 @@ Project: `main`
 | T-073 chatroom-watchability-foundation | planned | F-000 | dev-docs/active/chatroom-watchability-foundation |
 | T-074 chatroom-program-engine-and-highlights | planned | F-000 | dev-docs/active/chatroom-program-engine-and-highlights |
 | T-075 chatroom-persona-projection-and-ecosystem | planned | F-000 | dev-docs/active/chatroom-persona-projection-and-ecosystem |
+| T-076 persona-runtime-integration-audit | in-progress | F-020 | dev-docs/active/persona-runtime-integration-audit |
 | T-061 ios-android-runtime-smoke-kit | done | F-030 | dev-docs/active/ios-android-runtime-smoke-kit |
 | T-062 persona-provider-alignment-program | done | F-020 | dev-docs/active/persona-provider-alignment-program |
 | T-063 persona-seed-voice-contract-v1 | done | F-020 | dev-docs/active/persona-seed-voice-contract-v1 |
@@ -33,5 +34,4 @@ Project: `main`
 | T-058 pr4-governance-blocker-fixes | done | F-000 | dev-docs/active/pr4-governance-blocker-fixes |
 | T-059 xp-deleveling-and-growth-points | in-progress | F-020 | dev-docs/active/xp-deleveling-and-growth-points |
 | T-051 rich-communities-full-alignment | done | F-000 | dev-docs/active/rich-communities-full-alignment |
-| T-052 community-events-governance-program | done | F-000 | dev-docs/active/community-events-governance-program |
 <!-- AUTO-GENERATED:END dashboard -->

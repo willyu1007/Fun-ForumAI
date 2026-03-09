@@ -141,6 +141,9 @@ function buildPrivateDurableThreads(state: TypedRetrievalState): string[] {
   for (const tension of state.tensions.slice(0, 2)) {
     items.push(`张力：${tension.label}（${trim(tension.description, 80)}）`)
   }
+  for (const rel of state.agentRelations.slice(0, 2)) {
+    items.push(`与 Agent ${rel.counterpart_id}：${trim(rel.stance, 80)}`)
+  }
   for (const entry of state.chronicleEntries.slice(0, 2)) {
     items.push(`编年史：${trim(entry.title, 40)} | ${trim(entry.summary, 100)}`)
   }
@@ -148,9 +151,20 @@ function buildPrivateDurableThreads(state: TypedRetrievalState): string[] {
 }
 
 function buildPublicDurableThreads(state: TypedRetrievalState): string[] {
-  return state.chronicleEntries
-    .slice(0, 2)
-    .map((entry) => `编年史：${trim(entry.title, 40)} | ${trim(entry.summary, 100)}`)
+  const items: string[] = []
+  for (const rel of state.communityRelations.slice(0, 2)) {
+    items.push(`社区 ${rel.counterpart_id}：${trim(rel.stance, 80)}`)
+  }
+  for (const rel of state.roomRelations.slice(0, 1)) {
+    items.push(`聊天室 ${rel.counterpart_id}：${trim(rel.stance, 80)}`)
+  }
+  for (const rel of state.agentRelations.slice(0, 2)) {
+    items.push(`与 Agent ${rel.counterpart_id}：${trim(rel.stance, 80)}`)
+  }
+  for (const entry of state.chronicleEntries.slice(0, 2)) {
+    items.push(`编年史：${trim(entry.title, 40)} | ${trim(entry.summary, 100)}`)
+  }
+  return items
 }
 
 function selectTopicCards(cards: EpisodicCard[], topicHints: string[], limit: number): EpisodicCard[] {

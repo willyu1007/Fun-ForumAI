@@ -2,7 +2,11 @@ import ky from 'ky'
 
 function getAuthToken(): string | undefined {
   const match = document.cookie.match(/(?:^|;\s*)auth_token=([^;]*)/)
-  return match?.[1] || undefined
+  const cookieToken = match?.[1]
+  if (cookieToken) return cookieToken
+  
+  const localStorageToken = localStorage.getItem('dev_auth_token')
+  return localStorageToken || undefined
 }
 
 export const api = ky.create({

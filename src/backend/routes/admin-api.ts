@@ -1,12 +1,20 @@
 import { Router, type IRouter } from 'express'
 import { requireHumanAuth, requireAdmin } from '../middleware/human-auth.js'
-import { governanceAdapter, runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, relationService, usageLedger } from '../container.js'
+import { governanceAdapter, runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, relationService, usageLedgerRepo } from '../container.js'
 import { config } from '../lib/config.js'
 import { getRuntimeBuildInfo } from '../lib/runtime-build-info.js'
 import { richCommunitiesMetrics } from '../lib/rich-communities-metrics.js'
 import { buildPersonaObservabilitySummary } from '../runtime/persona-observation.js'
 import { runtimeFeatureMetrics } from '../runtime/runtime-feature-metrics.js'
 import { personaObservability } from '../runtime/persona-observability.js'
+import {
+  startRolloutEvidenceWindow,
+  getActiveRolloutWindow,
+  clearActiveRolloutWindow,
+  collectIdentityWriteDelta,
+  collectCostBaselineFromLedger,
+  collectFallbackOrDegradedEntries,
+} from '../runtime/rollout-evidence-collector.js'
 import { validate } from '../validation/validate.js'
 import { governanceActionSchema } from '../validation/schemas.js'
 
@@ -41,7 +49,7 @@ adminApiRouter.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, async
   })
 })
 
-adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, (_req, res) => {
+adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, async (_req, res) => {
   if (!config.features.runtimeFeaturesV1) {
     res.status(403).json({
       error: { code: 'FORBIDDEN', message: 'Runtime feature observability is disabled by feature flag.' },
@@ -52,6 +60,7 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, (_
   const counters = runtimeFeatureMetrics.snapshot()
   const richCounters = richCommunitiesMetrics.snapshot()
   const observability = personaObservability.snapshot()
+  const recentLedgerEntries = await usageLedgerRepo.listRecent(200)
   const build = getRuntimeBuildInfo()
 
   res.json({
@@ -74,7 +83,7 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, (_
       rich_communities: richCounters,
       observability: {
         ...observability,
-        render_log_preview: personaObservability.latestRenderLog(usageLedger.list(), 20),
+        render_log_preview: personaObservability.latestRenderLog(recentLedgerEntries, 20),
       },
     },
   })
@@ -122,3 +131,74 @@ adminApiRouter.post(
     res.json({ data: relation })
   },
 )
+
+adminApiRouter.post('/admin/rollout/evidence-window/start', requireHumanAuth, requireAdmin, (_req, res) => {
+  const existing = getActiveRolloutWindow()
+  if (existing) {
+    res.status(409).json({
+      error: {
+        code: 'CONFLICT',
+        message: 'An evidence window is already active.',
+        started_at: existing.startedAt.toISOString(),
+      },
+    })
+    return
+  }
+  const window = startRolloutEvidenceWindow()
+  res.json({ data: { started_at: window.startedAt.toISOString() } })
+})
+
+adminApiRouter.post('/admin/rollout/evidence-window/collect', requireHumanAuth, requireAdmin, async (req, res) => {
+  const window = getActiveRolloutWindow()
+  if (!window) {
+    res.status(404).json({
+      error: { code: 'NOT_FOUND', message: 'No active evidence window. Call POST /start first.' },
+    })
+    return
+  }
+
+  const agentId = typeof req.body?.agent_id === 'string' ? req.body.agent_id : ''
+  if (!agentId) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'agent_id is required in request body.' },
+    })
+    return
+  }
+
+  const identityDelta = collectIdentityWriteDelta(window.beforeSnapshot)
+
+  const { attribution, gate } = await collectCostBaselineFromLedger(
+    usageLedgerRepo,
+    agentId,
+    window.startedAt,
+  )
+
+  const allEntries = await usageLedgerRepo.listRecent(1_000)
+  const fallbackEntries = collectFallbackOrDegradedEntries(allEntries)
+
+  clearActiveRolloutWindow()
+
+  res.json({
+    data: {
+      window_started_at: window.startedAt.toISOString(),
+      collected_at: new Date().toISOString(),
+      identity_write_delta: identityDelta,
+      cost_baseline: { attribution, gate },
+      fallback_or_degraded: {
+        total: fallbackEntries.length,
+        entries: fallbackEntries.slice(0, 50),
+      },
+    },
+  })
+})
+
+adminApiRouter.get('/admin/rollout/fallback-entries', requireHumanAuth, requireAdmin, async (_req, res) => {
+  const allEntries = await usageLedgerRepo.listRecent(1_000)
+  const fallbackEntries = collectFallbackOrDegradedEntries(allEntries)
+  res.json({
+    data: {
+      total: fallbackEntries.length,
+      entries: fallbackEntries.slice(0, 100),
+    },
+  })
+})

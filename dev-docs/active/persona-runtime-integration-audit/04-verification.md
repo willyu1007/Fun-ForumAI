@@ -1,0 +1,32 @@
+# 04 Verification — T-076
+
+- 2026-03-09 初始化阶段：
+  - 已读取 `README.md`、`dev-docs/AGENTS.md`、project hub/task docs、最近 git log 与三份外部设计文档。
+  - 已识别当前 worktree 存在未提交改动，后续验证需基于当前树进行，禁止误回滚。
+- 代码与测试验证：
+  - `pnpm typecheck`：通过。
+  - `pnpm vitest run src/backend/llm/__tests__/usage-ledger.test.ts src/backend/runtime/__tests__/rollout-evidence-collector.test.ts src/backend/routes/__tests__/e2e-dev-seed.test.ts src/backend/routes/__tests__/e2e-control-plane.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/context-memory/__tests__/extract-distill-pipeline.test.ts src/backend/services/__tests__/memory-service.nurture.test.ts`：7 files / 64 tests 通过。
+- 本地真实运行验证（`localhost:4000` backend + `localhost:3001` Vite frontend）：
+  - `POST /v1/dev/seed`：返回 `communities=4 / agents=5 / posts=5 / comments=2`，修复后不再出现 stage gate 与 membership 拒绝。
+  - `node scripts/e2e-concurrent-stress.mjs --base-url http://127.0.0.1:4000 --concurrency 3`：
+    - forum/chat 并发写入成功；
+    - `render_log_preview` 不再为 0；
+    - preview 中可见 `public_observation_digest / scheduled_post / forum_reply / private_reply` 混合流量。
+  - Playwright UI 路径：
+    - `/agents` 搜索并渲染 `E2E 审计代理 20260309`
+    - `/agents/806e5d24-0b00-4e11-a2b5-834891d6be9b` 成功渲染身份契约与人格版本
+    - `/agents/806e5d24-0b00-4e11-a2b5-834891d6be9b/chat` 真实发送私聊，返回 `200`，回复摘要为 `我的人格特点为追求深度探索且注重逻辑结构...`
+    - `/admin` 成功渲染 Runtime 控制、事件队列、SSE 卡片
+- k8s / kind 真实环境验证（`kind-funforum` / namespace `funforum`）：
+  - 现网 deployment 可访问，但与当前源码存在 drift：
+    - `POST /v1/admin/rollout/evidence-window/start` 在 kind 返回 `404 Route not found`
+    - `GET /v1/admin/runtime/features` 形态仍为旧版
+  - kind 环境中并发压测曾出现 `render_log_preview=0`，与源码修复前“只读进程内 usage ledger”问题一致。
+  - 尝试通过 `scripts/k8s-local-staging.mjs` 重新构建并推送当前镜像，但本轮 Docker build 挂起时间过长，中止后未完成新镜像 rollout。
+- 设计符合度交叉检查：
+  - 正向符合：
+    - provider registry / credential pool / routing policy / model profile / usage ledger / rollout evidence 结构均已入仓。
+    - context-memory 抽取、typed write、identity write、nightly compaction 相关 runtime observability 已存在可审计面。
+  - 仍未闭环：
+    - admin runtime features 中 rollout gates 仍显示 `public_typed_read_path=block`、`legacy_dependency=block`，说明 context-memory 读取链路尚未达到文档要求的 typed-read 主路径成熟度。
+    - 真实私聊验证中，agent API 字段 `model=qwen-flash` 不会直接驱动 visible render model；实际仍按 home voice line/profile 路由到 `qwen-plus-character`。

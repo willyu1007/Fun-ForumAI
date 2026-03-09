@@ -90,6 +90,9 @@ export interface TypedRetrievalState {
   privateEpisodicCards: EpisodicCard[]
   publicEpisodicCards: EpisodicCard[]
   ownerRelation: RelationState | null
+  communityRelations: RelationState[]
+  roomRelations: RelationState[]
+  agentRelations: RelationState[]
   selfModel: SelfModelState | null
   tensions: ActiveTensionItem[]
   privateShadows: PrivateShadowMemory[]

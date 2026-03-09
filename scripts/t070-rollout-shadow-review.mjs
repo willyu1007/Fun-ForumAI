@@ -682,6 +682,23 @@ async function main() {
     const runtimeBefore = await fetchRuntimeFeatures(baseUrl, adminToken)
     await writeJson(join(outputDir, 'runtime-features.before.json'), runtimeBefore)
 
+    const evidenceWindowRes = await api(baseUrl, 'POST', '/v1/admin/rollout/evidence-window/start', { token: adminToken })
+    if (evidenceWindowRes.ok) {
+      shadowLog.steps.push({
+        step: 'evidence-window-start',
+        status: 'ok',
+        at: new Date().toISOString(),
+        detail: evidenceWindowRes.json?.data,
+      })
+    } else {
+      shadowLog.steps.push({
+        step: 'evidence-window-start',
+        status: 'warn',
+        at: new Date().toISOString(),
+        detail: { http_status: evidenceWindowRes.status, message: 'Evidence window start failed; will use offline-only evidence.' },
+      })
+    }
+
     await seedData(baseUrl, ownerToken, shadowLog)
     const ownedAgents = await fetchOwnedAgents(baseUrl, ownerToken)
     if (ownedAgents.length === 0) {
@@ -802,18 +819,49 @@ async function main() {
       })
     }
 
+    let persistentEvidence = null
+    if (targetAgentId && evidenceWindowRes?.ok) {
+      const collectRes = await api(baseUrl, 'POST', '/v1/admin/rollout/evidence-window/collect', {
+        token: adminToken,
+        body: { agent_id: targetAgentId },
+      })
+      if (collectRes.ok) {
+        persistentEvidence = collectRes.json?.data ?? null
+        await writeJson(join(outputDir, 'persistent-evidence.json'), persistentEvidence)
+        shadowLog.steps.push({
+          step: 'evidence-window-collect',
+          status: 'ok',
+          at: new Date().toISOString(),
+          detail: {
+            identity_delta_sample: persistentEvidence?.identity_write_delta,
+            fallback_total: persistentEvidence?.fallback_or_degraded?.total ?? 0,
+          },
+        })
+      } else {
+        shadowLog.steps.push({
+          step: 'evidence-window-collect',
+          status: 'warn',
+          at: new Date().toISOString(),
+          detail: { http_status: collectRes.status },
+        })
+      }
+    }
+
+    const effectiveIdentityDelta = persistentEvidence?.identity_write_delta ?? {
+      before_success_total: runtimeIdentityBefore.success_total,
+      before_failure_total: runtimeIdentityBefore.failure_total,
+      after_success_total: runtimeIdentityAfter.success_total,
+      after_failure_total: runtimeIdentityAfter.failure_total,
+    }
+    const effectiveCurrentGate = persistentEvidence?.cost_baseline?.gate ?? offlineGate
+
     const preReview = buildPersonaRolloutPreReview({
       offlineGate,
       baselineAttribution,
-      currentAttribution: finalAttribution,
-      runtimeIdentityDelta: {
-        before_success_total: runtimeIdentityBefore.success_total,
-        before_failure_total: runtimeIdentityBefore.failure_total,
-        after_success_total: runtimeIdentityAfter.success_total,
-        after_failure_total: runtimeIdentityAfter.failure_total,
-      },
+      currentAttribution: persistentEvidence?.cost_baseline?.attribution ?? finalAttribution,
+      runtimeIdentityDelta: effectiveIdentityDelta,
       baselineGate,
-      currentGate: offlineGate,
+      currentGate: effectiveCurrentGate,
       manifest: finalManifest,
       shadowActivity: {
         targetAgentId,

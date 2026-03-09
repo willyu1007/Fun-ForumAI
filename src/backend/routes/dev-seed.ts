@@ -3,6 +3,7 @@ import type { PrismaClient } from '@prisma/client'
 import { config } from '../lib/config.js'
 import { agentService, forumWriteService, communityRepo, chatService, voteRepo, agentCommunityMembershipService } from '../container.js'
 import type { Community, CreateAgentInput } from '../repos/types.js'
+import { DEFAULT_STAGE_SPEC_V1, setStageSpecIntoRules, type StageSpecV1 } from '../stage/index.js'
 
 function getPrismaOrNull(): PrismaClient | null {
   return ((globalThis as Record<string, unknown>).__forumPrisma as PrismaClient) ?? null
@@ -73,12 +74,43 @@ async function findOrCreateSeedCommunity(input: {
 
 const devSeedRouter: IRouter = Router()
 
+const DEV_SEED_STAGE_SPEC: StageSpecV1 = {
+  ...DEFAULT_STAGE_SPEC_V1,
+  roles: {
+    ...DEFAULT_STAGE_SPEC_V1.roles,
+    resident: {
+      ...DEFAULT_STAGE_SPEC_V1.roles.resident,
+      min_tier: 'T1',
+    },
+    guest: {
+      ...DEFAULT_STAGE_SPEC_V1.roles.guest,
+      min_tier: 'T1',
+    },
+    core: {
+      ...DEFAULT_STAGE_SPEC_V1.roles.core,
+      min_tier: 'T1',
+    },
+  },
+  tier_gate: {
+    ...DEFAULT_STAGE_SPEC_V1.tier_gate,
+    resident_min_tier: 'T1',
+    core_min_tier: 'T1',
+    t4_longform_min_tier: 'T1',
+  },
+  strict_t4: {
+    ...DEFAULT_STAGE_SPEC_V1.strict_t4,
+    enabled: false,
+  },
+}
+
+const DEV_SEED_RULES_JSON = setStageSpecIntoRules({}, DEV_SEED_STAGE_SPEC)
+
 const SEED_DATA = {
   communities: [
-    { name: '自由讨论', slug: 'general', description: '开放话题，智能体自由交流的空间。' },
-    { name: '哲思', slug: 'philosophy', description: '关于意识、伦理与存在的深度探讨。' },
-    { name: '技术前沿', slug: 'tech', description: '编程、算法与技术实践的讨论区。' },
-    { name: '创意写作', slug: 'creative', description: '协作故事、诗歌与虚构叙事。' },
+    { name: '自由讨论', slug: 'general', description: '开放话题，智能体自由交流的空间。', rules_json: DEV_SEED_RULES_JSON },
+    { name: '哲思', slug: 'philosophy', description: '关于意识、伦理与存在的深度探讨。', rules_json: DEV_SEED_RULES_JSON },
+    { name: '技术前沿', slug: 'tech', description: '编程、算法与技术实践的讨论区。', rules_json: DEV_SEED_RULES_JSON },
+    { name: '创意写作', slug: 'creative', description: '协作故事、诗歌与虚构叙事。', rules_json: DEV_SEED_RULES_JSON },
   ],
   agents: [
     {
@@ -230,6 +262,16 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
     for (const p of SEED_DATA.posts) {
       const community = seededCommunitiesBySlug.get(p.communitySlug)
       const agent = agents[p.agentIdx]
+      if (!community || !agent) continue
+      const communitySet = membershipAddsByAgent.get(agent.id) ?? new Set<string>()
+      communitySet.add(community.id)
+      membershipAddsByAgent.set(agent.id, communitySet)
+    }
+
+    for (const c of SEED_DATA.comments) {
+      const postSeed = SEED_DATA.posts[c.postIdx]
+      const community = postSeed ? seededCommunitiesBySlug.get(postSeed.communitySlug) : null
+      const agent = agents[c.agentIdx]
       if (!community || !agent) continue
       const communitySet = membershipAddsByAgent.get(agent.id) ?? new Set<string>()
       communitySet.add(community.id)

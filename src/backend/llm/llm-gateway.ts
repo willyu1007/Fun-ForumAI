@@ -13,7 +13,7 @@ import { BudgetGuard } from './budget-guard.js'
 import { LlmClient } from './llm-client.js'
 import { PromptEngine } from './prompt-engine.js'
 import type { LlmMessage, LlmTokenUsage } from './types.js'
-import type { LlmRegistryBundle, ModelProfileEntry } from './registry-loader.js'
+import type { LlmRegistryBundle, ModelPricingEntry, ModelProfileEntry } from './registry-loader.js'
 import { resolveIdentityWriteProfileRef, resolveVoiceLineTierProfileRef } from './voice-line-routing.js'
 import { UsageLedgerWriter } from './usage-ledger.js'
 
@@ -32,23 +32,21 @@ interface LlmGatewayOptions {
   budgetGuard: BudgetGuard
 }
 
-const PRICE_PER_1K_TOKENS_CNY: Record<string, { prompt: number; completion: number }> = {
-  'qwen-flash-character': { prompt: 0.003, completion: 0.006 },
-  'qwen-plus-character': { prompt: 0.008, completion: 0.02 },
-  'qwen-max': { prompt: 0.04, completion: 0.12 },
-  'glm-4-air': { prompt: 0.01, completion: 0.03 },
-  'glm-4-plus': { prompt: 0.03, completion: 0.09 },
-  'glm-4.5': { prompt: 0.07, completion: 0.16 },
-  'deepseek-chat': { prompt: 0.006, completion: 0.016 },
-  'deepseek-reasoner': { prompt: 0.03, completion: 0.07 },
-}
+const DEFAULT_PRICING = { prompt: 0.02, completion: 0.05 }
 
 export class LLMGateway {
   private readonly profilesById: Map<string, ModelProfileEntry>
+  private readonly pricingByModelId: Map<string, { prompt: number; completion: number }>
 
   constructor(private readonly options: LlmGatewayOptions) {
     this.profilesById = new Map(
       options.bundle.modelProfiles.profiles.map((profile) => [profile.profile_id, profile] as const),
+    )
+    this.pricingByModelId = new Map(
+      options.bundle.modelPricing.pricing.map((p: ModelPricingEntry) => [
+        p.model_id,
+        { prompt: p.prompt_per_1k_cny, completion: p.completion_per_1k_cny },
+      ] as const),
     )
   }
 
@@ -86,7 +84,7 @@ export class LLMGateway {
     for (const route of routePlan) {
       for (const candidate of [...route.profile.candidates].sort((a, b) => b.weight - a.weight)) {
         const estimatedUsage = estimateUsage(messages, request.maxTokens)
-        const estimatedCost = estimateCost(candidate.model_id, estimatedUsage)
+        const estimatedCost = this.estimateCost(candidate.model_id, estimatedUsage)
 
         await this.options.budgetGuard.assertAllowed({
           agentId: request.agentId,
@@ -138,7 +136,7 @@ export class LLMGateway {
 
           const latencyMs = Date.now() - startedAt
           const platformRetryCount = Math.max((response.meta?.attempts ?? 1) - 1, 0)
-          const actualCost = estimateCost(candidate.model_id, response.usage)
+          const actualCost = this.estimateCost(candidate.model_id, response.usage)
 
           this.options.usageLedger.write({
             trace_id: request.traceId,
@@ -300,6 +298,14 @@ export class LLMGateway {
     return profileId
   }
 
+  private estimateCost(modelId: string, usage: LlmTokenUsage): number {
+    const pricing = this.pricingByModelId.get(modelId) ?? DEFAULT_PRICING
+    return (
+      (usage.prompt_tokens / 1000) * pricing.prompt +
+      (usage.completion_tokens / 1000) * pricing.completion
+    )
+  }
+
   private isFallbackAllowed(
     level: RoutingFallbackLevel,
     visibility: LLMVisibility,
@@ -340,14 +346,6 @@ function estimateUsage(messages: LlmMessage[], maxTokens = 512): LlmTokenUsage {
     completion_tokens,
     total_tokens: prompt_tokens + completion_tokens,
   }
-}
-
-function estimateCost(modelId: string, usage: LlmTokenUsage): number {
-  const pricing = PRICE_PER_1K_TOKENS_CNY[modelId] ?? { prompt: 0.02, completion: 0.05 }
-  return (
-    (usage.prompt_tokens / 1000) * pricing.prompt +
-    (usage.completion_tokens / 1000) * pricing.completion
-  )
 }
 
 function shouldTryNextRoute(code: string): boolean {

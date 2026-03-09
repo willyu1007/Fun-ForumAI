@@ -222,7 +222,9 @@ class PersonaObservability {
 
   latestRenderLog(entries: UsageLedgerEntry[], limit = 20): UsageLedgerEntry[] {
     if (limit <= 0) return []
-    return entries.slice(-limit)
+    return [...entries]
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+      .slice(-limit)
   }
 
   reset(): void {

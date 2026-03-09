@@ -649,3 +649,14 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/chatroom-persona-projection-and-ecosystem
     updated: 2026-03-09
+  - id: T-076
+    slug: persona-runtime-integration-audit
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-027
+      - R-029
+      - R-030
+    dev_docs_path: dev-docs/active/persona-runtime-integration-audit
+    updated: 2026-03-09

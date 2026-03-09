@@ -4,7 +4,9 @@ import { PromptEngine } from '../llm/prompt-engine.js'
 import { loadLlmRegistryBundle } from '../llm/registry-loader.js'
 import { SecretResolver } from '../llm/secret-resolver.js'
 import { CredentialBroker } from '../llm/credential-broker.js'
-import { UsageLedgerWriter } from '../llm/usage-ledger.js'
+import { UsageLedgerWriter, InMemoryUsageLedgerRepository } from '../llm/usage-ledger.js'
+import type { UsageLedgerRepository } from '../llm/usage-ledger.js'
+import { createDefaultBudgetChecker } from '../llm/default-budget-checker.js'
 import { BudgetGuard } from '../llm/budget-guard.js'
 import { InclinationAssetService } from '../services/inclination-asset-service.js'
 import { LocalStorageAdapter, S3StorageAdapter, type StorageAdapter } from '../services/storage-adapter.js'
@@ -23,6 +25,7 @@ export function createLlmServices(deps: {
   postMediaRepo: PostMediaRepository
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
+  usageLedgerRepo?: UsageLedgerRepository
 }) {
   const registryBundle = loadLlmRegistryBundle()
 
@@ -47,8 +50,10 @@ export function createLlmServices(deps: {
     bundle: registryBundle,
     secretResolver,
   })
+  const ledgerRepo = deps.usageLedgerRepo ?? new InMemoryUsageLedgerRepository()
   const usageLedger = new UsageLedgerWriter()
-  const budgetGuard = new BudgetGuard()
+  usageLedger.setRepository(ledgerRepo)
+  const budgetGuard = new BudgetGuard(createDefaultBudgetChecker(ledgerRepo))
   const llmGateway = new LLMGateway({
     bundle: registryBundle,
     promptEngine,
@@ -96,6 +101,7 @@ export function createLlmServices(deps: {
     secretResolver,
     credentialBroker,
     usageLedger,
+    usageLedgerRepo: ledgerRepo,
     budgetGuard,
     inclinationAssetService,
   }

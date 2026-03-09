@@ -83,4 +83,5 @@ Project: `main`
 | T-073 chatroom-watchability-foundation | planned | F-000 | dev-docs/active/chatroom-watchability-foundation |
 | T-074 chatroom-program-engine-and-highlights | planned | F-000 | dev-docs/active/chatroom-program-engine-and-highlights |
 | T-075 chatroom-persona-projection-and-ecosystem | planned | F-000 | dev-docs/active/chatroom-persona-projection-and-ecosystem |
+| T-076 persona-runtime-integration-audit | in-progress | F-020 | dev-docs/active/persona-runtime-integration-audit |
 <!-- AUTO-GENERATED:END task-index -->

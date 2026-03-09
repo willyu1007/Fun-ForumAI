@@ -163,7 +163,7 @@ export async function createNurtureEngines(deps: {
     const notificationRepo = new PgNotificationRepository(prisma)
     const notificationService = new NotificationService(notificationRepo)
     const contextJournalService = new DefaultContextJournalService(rawContextEventRepo)
-    const summaryOrchestrator = new LlmSummaryOrchestrator({ llmGateway })
+    const summaryOrchestrator = new LlmSummaryOrchestrator({ llmGateway, agentService })
     const identityFinalizer = new LlmIdentityFinalizer({ llmGateway, agentService })
 
     memoryService = new MemoryService({
