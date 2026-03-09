@@ -310,10 +310,10 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     intent: 'identity_write',
     visibility: 'identity_write',
     prompt_ref: { id: 'internal-public-observation-identity-finalize', version: 1 },
-    voice_line_authority: 'Public observation finalize must resolve from the agent home voice line through the identity-write lane.',
+    voice_line_authority: 'Public observation finalize must resolve from the agent home voice line through the identity-write lane, but can request a lower identity tier than private digest.',
     tier_floor: 'identityWriteTier',
     expected_profile_refs: {
-      'qwen-social-v1': 'qwen-social-identity-write-premium',
+      'qwen-social-v1': 'qwen-social-identity-write-base',
       'glm-deep-v1': 'glm-deep-identity-write-premium',
     },
     legacy_raw_model_use: 'Removed; config-affecting public finalize no longer uses hidden director or raw model defaults.',
@@ -377,7 +377,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     intent: 'identity_write',
     visibility: 'identity_write',
     prompt_ref: { id: 'internal-private-chat-identity-finalize', version: 1 },
-    voice_line_authority: 'Identity finalize must resolve from the agent home voice line through the identity-write lane.',
+    voice_line_authority: 'Private identity finalize must resolve from the agent home voice line through the identity-write lane and can request the higher private tier.',
     tier_floor: 'identityWriteTier',
     expected_profile_refs: {
       'qwen-social-v1': 'qwen-social-identity-write-premium',

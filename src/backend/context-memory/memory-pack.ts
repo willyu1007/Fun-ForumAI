@@ -41,6 +41,7 @@ export class DefaultRetrievalPacker implements RetrievalPacker {
       : fallbackSafeShadow(input.legacyMemories, input.scene)
     const publicObservation = buildPublicObservationItems(publicCards)
     const legacyPublicObservation = selectLegacyPublicObservation(input.legacyMemories, 2)
+    const publicObservationUsedLegacyFallback = publicObservation.length === 0 && legacyPublicObservation.length > 0
     const publicObservationItems = publicObservation.length > 0
       ? publicObservation
       : legacyPublicObservation.map(toLegacyBullet)
@@ -83,16 +84,7 @@ export class DefaultRetrievalPacker implements RetrievalPacker {
           : legacyPublicObservation.length > 0
             ? 'legacy'
             : 'empty',
-        usedLegacyFallback: input.scene === 'private_chat'
-          ? (
-            legacyPublicObservation.length > 0 ||
-            ownerPrivate.length === 0 ||
-            topicRecall.length === 0 ||
-            recentRecall.length === 0 ||
-            durableThreads.length === 0 ||
-            safeShadow.length === 0
-          )
-          : legacyPublicObservation.length > 0,
+        usedLegacyFallback: publicObservationUsedLegacyFallback,
       },
     }
   }

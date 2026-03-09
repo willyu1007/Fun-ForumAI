@@ -90,6 +90,58 @@ function buildBundle(): LlmRegistryBundle {
           ],
           fallback: [],
         },
+        {
+          profile_id: 'qwen-social-identity-write-base',
+          voice_line_id: 'qwen-social-v1',
+          tier: 'base',
+          intent: 'identity_write',
+          visibility: 'identity_write',
+          candidates: [
+            {
+              provider_id: 'dashscope-openai',
+              model_id: 'qwen-plus-character',
+              region: 'cn-beijing',
+              endpoint_id: 'dashscope-cn-beijing',
+              weight: 100,
+              quality_class: 'balanced',
+            },
+            {
+              provider_id: 'dashscope-openai',
+              model_id: 'qwen-flash-character',
+              region: 'cn-beijing',
+              endpoint_id: 'dashscope-cn-beijing',
+              weight: 60,
+              quality_class: 'fast',
+            },
+          ],
+          fallback: [],
+        },
+        {
+          profile_id: 'qwen-social-identity-write-premium',
+          voice_line_id: 'qwen-social-v1',
+          tier: 'premium',
+          intent: 'identity_write',
+          visibility: 'identity_write',
+          candidates: [
+            {
+              provider_id: 'dashscope-openai',
+              model_id: 'qwen-max',
+              region: 'cn-beijing',
+              endpoint_id: 'dashscope-cn-beijing',
+              weight: 100,
+              quality_class: 'premium',
+            },
+            {
+              provider_id: 'dashscope-openai',
+              model_id: 'qwen-plus-character',
+              region: 'cn-beijing',
+              endpoint_id: 'dashscope-cn-beijing',
+              weight: 80,
+              quality_class: 'balanced',
+            },
+          ],
+          fallback: [],
+        },
       ],
     },
     promptTemplates: {
@@ -127,6 +179,20 @@ function buildBundle(): LlmRegistryBundle {
           profile_id: 'qwen-social-proactive-opening-premium',
           route_order: ['profile_candidates', 'health'],
           allow_fallback_within_line: true,
+          allow_cross_family: false,
+          allowed_fallback_levels: ['none'],
+        },
+        {
+          profile_id: 'qwen-social-identity-write-base',
+          route_order: ['voice_line_tier', 'profile_candidates', 'health'],
+          allow_fallback_within_line: false,
+          allow_cross_family: false,
+          allowed_fallback_levels: ['none'],
+        },
+        {
+          profile_id: 'qwen-social-identity-write-premium',
+          route_order: ['voice_line_tier', 'profile_candidates', 'health'],
+          allow_fallback_within_line: false,
           allow_cross_family: false,
           allowed_fallback_levels: ['none'],
         },
@@ -353,6 +419,54 @@ describe('LLMGateway', () => {
     expect(response.renderDecision.modelId).toBe('qwen-flash-character')
     expect(response.renderDecision.reasons).toContain('preferred_model_hint')
     expect(usageLedger.list()[0]?.model_id).toBe('qwen-flash-character')
+  })
+
+  it('resolves identity-write requests from the requested tier before falling back to the voice-line default', async () => {
+    const bundle = buildBundle()
+    bundle.credentialPools.pools[0]!.scope_tags = ['visible', 'identity_write']
+    bundle.credentialPools.pools[0]!.allowed_model_ids = ['qwen-plus-character']
+
+    const usageLedger = new UsageLedgerWriter()
+    const llmClient = buildLlmClient()
+    const chatSpy = vi.spyOn(llmClient, 'chat').mockResolvedValue({
+      content: '{"owner_style_pins_patch":{}}',
+      usage: { prompt_tokens: 12, completion_tokens: 6, total_tokens: 18 },
+      model: 'qwen-plus-character',
+      finish_reason: 'stop',
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: { resolve: vi.fn(() => 'secret') } as never,
+      }),
+      usageLedger,
+      budgetGuard: new BudgetGuard(),
+    })
+
+    const response = await gateway.generateIdentityWrite({
+      intent: 'identity_write',
+      scene: 'background_hidden',
+      agentId: 'agent-1',
+      homeVoiceLineId: 'qwen-social-v1',
+      promptRef: { id: 'internal-public-observation-identity-finalize', version: 1 },
+      variables: {},
+      promptMessages: [{ role: 'user', content: 'finalize' }],
+      budgetClass: 'identity_write',
+      traceId: 'trace-identity-base',
+      requestedTier: 'base',
+      allowFallbackWithinLine: false,
+      allowCrossFamily: false,
+    })
+
+    expect(chatSpy).toHaveBeenCalledWith(expect.objectContaining({
+      model: 'qwen-plus-character',
+    }))
+    expect(response.renderDecision.profileId).toBe('qwen-social-identity-write-base')
+    expect(response.renderDecision.modelId).toBe('qwen-plus-character')
+    expect(usageLedger.list()[0]?.profile_id).toBe('qwen-social-identity-write-base')
   })
 
   it('tries the next candidate in the same hidden profile when the preferred credential is missing', async () => {

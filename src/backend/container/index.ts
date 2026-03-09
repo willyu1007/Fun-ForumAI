@@ -8,6 +8,8 @@ import { createNurtureEngines } from './nurture.js'
 import { createRuntime } from './runtime.js'
 import { CommunityConfigScheduler } from '../runtime/community-config-scheduler.js'
 import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry-scheduler.js'
+import { getRuntimeBuildInfo } from '../lib/runtime-build-info.js'
+import { personaObservability } from '../runtime/persona-observability.js'
 
 // ─── 1. Repositories ────────────────────────────────────────
 const { repos, hydratables } = await createRepositories(config.db.usePrisma)
@@ -21,6 +23,13 @@ if (config.db.usePrisma) {
   const { getPrismaClient } = await import('../persistence/prisma-client.js')
   const { PgUsageLedgerRepository } = await import('../repos/pg/pg-usage-ledger-repository.js')
   pgUsageLedgerRepo = new PgUsageLedgerRepository(getPrismaClient())
+
+  const { PgPersonaObservabilityRepository } = await import('../repos/pg/pg-persona-observability-repository.js')
+  const build = getRuntimeBuildInfo()
+  const instanceId = `${build.hostname ?? 'local'}:${process.pid}`
+  personaObservability.setRepository(
+    new PgPersonaObservabilityRepository(getPrismaClient(), build.code_fingerprint, instanceId),
+  )
 }
 
 // ─── 3. LLM ─────────────────────────────────────────────────

@@ -109,6 +109,19 @@ policies:
     allowed_fallback_levels:
       - none
 
+  - profile_id: qwen-social-identity-write-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
   - profile_id: qwen-social-identity-write-premium
     route_order:
       - intent_scene_fit

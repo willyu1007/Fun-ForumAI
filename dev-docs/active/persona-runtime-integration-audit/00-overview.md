@@ -2,7 +2,7 @@
 
 ## Status
 - State: in-progress
-- Next step: 对照三份设计文档与 `T-062~T-072` 交付物完成 repo audit，跑通 local/k8s/browser 真实验证，记录差距并落地必要修复。
+- Next step: 整理 public identity-write 分层修复与最终 kind 证据，准备提交与交接说明。
 
 ## Goal
 对 `T-062~T-072` 涉及的人格、prompt 分层、provider/control plane、context/memory plane 与 rollout 相关实现做一次集成审计与质量加固，确认当前仓库是否满足需求文档，并修复真实测试中暴露的问题。

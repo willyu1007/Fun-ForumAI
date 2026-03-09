@@ -23,3 +23,18 @@
   - Root cause: 开发机上同时存在多个前端/服务，默认端口并不总对应当前仓库；直接沿用历史 URL 会得到假阴性。
   - Fix: 本轮改为重启当前仓库 backend `:4000`，并额外拉起隔离 Vite 实例（最终落在 `:3002`）做 Playwright 验证。
   - Prevention: 本地 E2E 先用 `ps/lsof` 确认端口归属，再开始浏览器验证；必要时总是为当前仓库起独立端口，避免误打到别的项目。
+- Symptom: kind 中 `admin/runtime/features` 在多 pod 下会出现 counters 分裂，reset/restart 后也无法稳定得到当前 rollout window。
+  - Root cause: `personaObservability` 只保存在进程内；service 入口随机打到不同 pod，导致 runtime features 看到的只是单实例局部状态。切成 repo-backed 后，如果只按 build fingerprint 聚合，又会失去“人为清零窗口”的能力。
+  - Fix: 新增 `persona_observability_metrics` 表，按 `runtime_key(code_fingerprint) + instance_id(hostname:pid)` 聚合；同时增加 `POST /v1/admin/runtime/features/reset`，对当前 fingerprint 的 counters 清零。
+  - Prevention: 任何 rollout gate 只要要跨 pod读取，就必须有持久化聚合层；如果 gate 语义需要“本轮窗口”，还必须显式提供 reset/start 机制，不能依赖 pod 重启。
+- Symptom: typed public-read gate 在真实 kind 流量里长期卡在 legacy fallback，即使新写入链路本身已经能产出 typed public observation。
+  - Root cause: 系统中已存在大量 legacy `PUBLIC_OBSERVATION` memories，老 agent 的首读仍会直接走 legacy bullet；仅靠等待新流量自然替换，收敛速度太慢。
+  - Fix: `MemoryService.getMemoriesForContext()` 新增自愈式 backfill：首次读到 legacy public observation 且没有 typed public cards 时，立即补写 synthetic raw context event + episodic card，并在同一请求内重新加载 typed state。
+  - Prevention: 对任何“legacy -> typed”迁移，不能只做新写路径；必须同时提供批量 backfill 或读时自愈，否则 rollout gate 会被历史存量长期锁死。
+- Symptom: `typed_write_success / identity_write_success` 在 kind fresh window 下偶发掉到 `warn/block`，而且失败样本集中在 public observation 流量后出现。
+  - Root cause: public observation 的 identity finalize 之前和 private digest 共用同一个 `identity_write premium` lane，qwen-social 会直上 `qwen-max`；该模型在较长 public distill payload 下会触发 DashScope 超时，导致 `identity_write=false`，同时把外层 typed write 也记成失败。
+  - Fix: 把 `identity_write` 改成按场景分 tier：
+    - `forum_thread / chat_room_window / nightly_compaction -> base`
+    - `private_session -> premium`
+    - qwen 的 base lane 使用 `qwen-plus-character`，premium lane 仍允许 `qwen-max`，但同 profile 里有 `qwen-plus-character` 兜底。
+  - Prevention: 后续凡是把 config-affecting hidden call 挂到 visible voice line 上，都不能默认“全部 premium”；要先区分 public/private/backfill 场景，再决定 requested tier，否则 rollout gate 会被慢模型拖垮。

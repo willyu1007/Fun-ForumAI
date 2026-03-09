@@ -263,6 +263,7 @@ export const VOICE_LINE_CATALOG: Record<VoiceLineId, VoiceLineCatalogEntry> = {
         premium: 'qwen-social-proactive-opening-premium',
       },
       identity_write: {
+        base: 'qwen-social-identity-write-base',
         premium: 'qwen-social-identity-write-premium',
       },
       public_observation_digest: {

@@ -191,9 +191,16 @@ export class MemoryService {
     }
 
     const selectedLegacy = this.selectLegacyMemories(filtered, opts.topicHints, effectiveTopK, effectiveBudget)
-    const typed = this.deps.contextMemory
+    let typed = this.deps.contextMemory
       ? await this.loadTypedRetrievalState(agentId, effectiveTopK, opts.scene)
       : emptyTypedRetrievalState()
+
+    if (this.deps.contextMemory && typed.publicEpisodicCards.length === 0) {
+      const backfilledCount = await this.backfillLegacyPublicObservations(agentId, selectedLegacy)
+      if (backfilledCount > 0) {
+        typed = await this.loadTypedRetrievalState(agentId, effectiveTopK, opts.scene)
+      }
+    }
 
     const memoryPack = this.retrievalPacker.pack({
       agentId,
@@ -581,6 +588,67 @@ export class MemoryService {
       privateShadows,
       chronicleEntries: chronicleEntries.items,
     }
+  }
+
+  private async backfillLegacyPublicObservations(
+    agentId: string,
+    memories: AgentMemory[],
+  ): Promise<number> {
+    const runtime = this.deps.contextMemory
+    if (!runtime) return 0
+
+    const candidates = memories
+      .filter((memory) => memory.agent_id === agentId)
+      .filter((memory) => memory.source_type === 'PUBLIC_OBSERVATION')
+      .sort((a, b) => b.importance_score - a.importance_score || b.created_at.getTime() - a.created_at.getTime())
+      .slice(0, 2)
+
+    let backfilled = 0
+    for (const memory of candidates) {
+      const scene = inferLegacyPublicObservationScene(memory)
+      const rawEventId = legacyPublicObservationRawEventId(memory.id)
+      const existing = await runtime.rawEventRepo.findById(rawEventId)
+      if (existing) continue
+
+      const sourceRefId = memory.source_ref_id ?? memory.id
+      const counterpartId = scene === 'chat_room'
+        ? sourceRefId
+        : null
+
+      await runtime.rawEventRepo.upsert({
+        id: rawEventId,
+        agent_id: memory.agent_id,
+        scene,
+        source_type: scene === 'chat_room' ? 'chat_room_window' : 'forum_thread',
+        source_ref_id: sourceRefId,
+        counterpart_id: counterpartId,
+        transcript: buildLegacyPublicObservationTranscript(memory),
+        evidence_refs: [
+          `legacy_memory:${memory.id}`,
+          ...(memory.source_event_id ? [`legacy_event:${memory.source_event_id}`] : []),
+        ],
+        created_at: memory.created_at,
+      })
+
+      await runtime.episodicCardRepo.upsert({
+        id: legacyPublicObservationCardId(memory.id),
+        agent_id: memory.agent_id,
+        event_id: rawEventId,
+        scene,
+        title: buildLegacyPublicObservationTitle(memory),
+        summary: memory.summary_text,
+        topic_tags: [...memory.topic_tags],
+        evidence_refs: [
+          `legacy_memory:${memory.id}`,
+          ...(memory.source_event_id ? [`legacy_event:${memory.source_event_id}`] : []),
+        ],
+        salience: clamp01(memory.importance_score),
+        created_at: memory.created_at,
+      })
+      backfilled += 1
+    }
+
+    return backfilled
   }
 
   private selectLegacyMemories(
@@ -1031,6 +1099,35 @@ function buildTranscript(messages: Array<{ author_type: 'HUMAN' | 'AGENT'; conte
     .join('\n\n')
 }
 
+function legacyPublicObservationRawEventId(memoryId: string): string {
+  return `ctxevent:legacy-public-observation:${memoryId}`
+}
+
+function legacyPublicObservationCardId(memoryId: string): string {
+  return `ctxepisode:legacy-public-observation:${memoryId}:1`
+}
+
+function inferLegacyPublicObservationScene(memory: AgentMemory): Extract<ContextMemoryScene, 'forum' | 'chat_room'> {
+  return memory.source_ref_type === 'room' ? 'chat_room' : 'forum'
+}
+
+function buildLegacyPublicObservationTranscript(memory: AgentMemory): string {
+  const keyFacts = memory.key_facts.length > 0
+    ? memory.key_facts.map((fact, index) => `线索${index + 1}: ${fact}`)
+    : ['线索1: 缺少结构化线索，使用兼容摘要回填 typed public observation。']
+  return [
+    `兼容摘要: ${memory.summary_text}`,
+    ...keyFacts,
+  ].join('\n')
+}
+
+function buildLegacyPublicObservationTitle(memory: AgentMemory): string {
+  const firstFact = memory.key_facts[0]?.trim()
+  if (firstFact) return trim(firstFact, 32)
+  const prefix = memory.source_ref_type === 'room' ? '聊天室公共观察' : '论坛公共观察'
+  return trim(`${prefix} | ${memory.summary_text}`, 32)
+}
+
 function emptyTypedRetrievalState(): TypedRetrievalState {
   return {
     privateEpisodicCards: [],
@@ -1070,4 +1167,9 @@ function clamp01(value: number): number {
 function average(values: number[]): number {
   if (values.length === 0) return 0
   return values.reduce((sum, value) => sum + value, 0) / values.length
+}
+
+function trim(value: string, maxLength: number): string {
+  if (value.length <= maxLength) return value
+  return `${value.slice(0, Math.max(0, maxLength - 3))}...`
 }

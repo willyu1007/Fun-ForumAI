@@ -2,7 +2,9 @@ import { resolveAgentIdentity, type OwnerStylePins } from '../identity/agent-ide
 import type { AgentService } from '../services/agent-service.js'
 import type { LLMGateway } from '../llm/llm-gateway.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
+import type { RenderTier } from '../../shared/agent-persona-catalog.js'
 import type {
+  ContextMemorySourceType,
   ContextRawEvent,
   ContextRelationChannel,
   UpsertContextActiveTensionItemInput,
@@ -177,7 +179,7 @@ export class LlmIdentityFinalizer implements IdentityFinalizer {
         },
         budgetClass: 'identity_write',
         traceId: `identity-finalize:${agentId}:${input.origin.eventId}`,
-        requestedTier: 'premium',
+        requestedTier: resolveIdentityWriteTier(input.origin.sourceType),
         allowFallbackWithinLine: false,
         allowCrossFamily: false,
         temperature: 0.2,
@@ -201,6 +203,18 @@ export class LlmIdentityFinalizer implements IdentityFinalizer {
       personaObservability.recordIdentityWrite(false)
       throw error
     }
+  }
+}
+
+function resolveIdentityWriteTier(sourceType: ContextMemorySourceType): RenderTier {
+  switch (sourceType) {
+    case 'private_session':
+      return 'premium'
+    case 'forum_thread':
+    case 'chat_room_window':
+    case 'nightly_compaction':
+    default:
+      return 'base'
   }
 }
 

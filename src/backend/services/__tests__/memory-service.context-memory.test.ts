@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryService } from '../memory-service.js'
+import {
+  InMemoryActiveTensionItemRepository,
+  InMemoryContextRelationStateRepository,
+  InMemoryEpisodicCardRepository,
+  InMemoryPrivateShadowMemoryRepository,
+  InMemoryRawContextEventRepository,
+  InMemorySelfModelStateRepository,
+} from '../../repos/context-memory-repository.js'
 
 describe('MemoryService context-memory runtime', () => {
   beforeEach(() => {
@@ -345,6 +353,75 @@ describe('MemoryService context-memory runtime', () => {
       channel: 'community',
       counterpart_id: 'community-1',
     }))
+  })
+
+  it('backfills legacy public observation into typed retrieval on first read', async () => {
+    const rawEventRepo = new InMemoryRawContextEventRepository()
+    const episodicCardRepo = new InMemoryEpisodicCardRepository()
+    const incrementAccessCount = vi.fn().mockResolvedValue(undefined)
+    const service = new MemoryService({
+      memoryRepo: {
+        findActiveMemories: vi.fn().mockResolvedValue([
+          {
+            id: 'mem-public-legacy-1',
+            agent_id: 'agent-1',
+            source_type: 'PUBLIC_OBSERVATION',
+            source_session_id: null,
+            source_ref_type: 'post',
+            source_ref_id: 'post-1',
+            source_event_id: 'legacy-evt-1',
+            summary_text: '大家围绕故事的缺席如何塑造叙事完成展开过一次公共讨论。',
+            topic_tags: ['叙事', '缺席'],
+            key_facts: ['后来者会替沉默补写结局'],
+            sentiment: 'thoughtful',
+            importance_score: 0.82,
+            privacy_floor: 0,
+            access_count: 0,
+            forgotten: false,
+            created_at: new Date('2026-03-19T10:00:00.000Z'),
+            last_accessed_at: null,
+          },
+        ]),
+        incrementAccessCount,
+      } as never,
+      channelRepo: {} as never,
+      llmGateway: {} as never,
+      contextMemory: {
+        journalService: {} as never,
+        rawEventRepo,
+        summaryOrchestrator: {} as never,
+        identityFinalizer: {} as never,
+        episodicCardRepo,
+        relationStateRepo: new InMemoryContextRelationStateRepository(),
+        selfModelStateRepo: new InMemorySelfModelStateRepository(),
+        activeTensionRepo: new InMemoryActiveTensionItemRepository(),
+        privateShadowRepo: new InMemoryPrivateShadowMemoryRepository(),
+      } as never,
+    })
+
+    const result = await service.getMemoriesForContext('agent-1', {
+      scene: 'private_chat',
+      topicHints: ['叙事'],
+      disclosureLevel: 1,
+      tokenBudget: 800,
+      topK: 4,
+    })
+
+    expect(result.formatted).toContain('公共回声')
+    expect(result.formatted).toContain('论坛观察 |')
+    expect(await rawEventRepo.findById('ctxevent:legacy-public-observation:mem-public-legacy-1')).toMatchObject({
+      agent_id: 'agent-1',
+      scene: 'forum',
+      source_ref_id: 'post-1',
+    })
+    const cards = await episodicCardRepo.listByAgent('agent-1', { limit: 10, scene: 'forum' })
+    expect(cards.items).toHaveLength(1)
+    expect(cards.items[0]).toMatchObject({
+      id: 'ctxepisode:legacy-public-observation:mem-public-legacy-1:1',
+      event_id: 'ctxevent:legacy-public-observation:mem-public-legacy-1',
+      scene: 'forum',
+    })
+    expect(incrementAccessCount).not.toHaveBeenCalled()
   })
 
   it('runs typed nightly maintenance during decay and compacts older episodes into chronicle', async () => {

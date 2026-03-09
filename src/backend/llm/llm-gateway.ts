@@ -273,7 +273,10 @@ export class LLMGateway {
 
   private resolveInitialProfileId(request: LLMGatewayRequest): string {
     if (request.visibility === 'identity_write' || request.intent === 'identity_write') {
-      const profileId = resolveIdentityWriteProfileRef(request.homeVoiceLineId)
+      const profileId = resolveIdentityWriteProfileRef(
+        request.homeVoiceLineId,
+        request.requestedTier ?? defaultTierForIntent('identity_write'),
+      )
       if (!profileId) {
         throw new LLMGatewayContractError(
           'RegistryResolutionError',

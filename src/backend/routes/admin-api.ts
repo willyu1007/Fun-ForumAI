@@ -49,6 +49,24 @@ adminApiRouter.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, async
   })
 })
 
+adminApiRouter.post('/admin/runtime/features/reset', requireHumanAuth, requireAdmin, async (_req, res) => {
+  if (!config.features.runtimeFeaturesV1) {
+    res.status(403).json({
+      error: { code: 'FORBIDDEN', message: 'Runtime feature observability is disabled by feature flag.' },
+    })
+    return
+  }
+
+  await personaObservability.resetAggregated()
+  const snapshot = await personaObservability.snapshotAggregated()
+  res.json({
+    data: {
+      reset_at: new Date().toISOString(),
+      observability: snapshot,
+    },
+  })
+})
+
 adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, async (_req, res) => {
   if (!config.features.runtimeFeaturesV1) {
     res.status(403).json({
@@ -59,7 +77,7 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
 
   const counters = runtimeFeatureMetrics.snapshot()
   const richCounters = richCommunitiesMetrics.snapshot()
-  const observability = personaObservability.snapshot()
+  const observability = await personaObservability.snapshotAggregated()
   const recentLedgerEntries = await usageLedgerRepo.listRecent(200)
   const build = getRuntimeBuildInfo()
 

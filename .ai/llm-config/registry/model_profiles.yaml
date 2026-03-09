@@ -120,6 +120,26 @@ profiles:
         profile_id: qwen-social-proactive-opening-base
         reason: degrade within the same line before any family escape
 
+  - profile_id: qwen-social-identity-write-base
+    voice_line_id: qwen-social-v1
+    tier: base
+    intent: identity_write
+    visibility: identity_write
+    candidates:
+      - provider_id: dashscope-openai
+        model_id: qwen-plus-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 100
+        quality_class: balanced
+      - provider_id: dashscope-openai
+        model_id: qwen-flash-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 60
+        quality_class: fast
+    fallback: []
+
   - profile_id: qwen-social-identity-write-premium
     voice_line_id: qwen-social-v1
     tier: premium
@@ -132,6 +152,12 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: premium
+      - provider_id: dashscope-openai
+        model_id: qwen-plus-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 80
+        quality_class: balanced
     fallback: []
 
   - profile_id: qwen-social-public-observation-base

@@ -95,105 +95,78 @@ export interface PersonaObservabilitySnapshot {
   rollout_gates: PersonaRolloutGate[]
 }
 
+export interface PersonaObservabilityMetricDelta {
+  publicIngressForumTotal?: number
+  publicIngressChatRoomTotal?: number
+  typedWriteSuccessTotal?: number
+  typedWriteFailureTotal?: number
+  identityWriteSuccessTotal?: number
+  identityWriteFailureTotal?: number
+  retrievalTotal?: number
+  retrievalPublicTypedHits?: number
+  retrievalPublicLegacyHits?: number
+  retrievalLegacyFallbackTotal?: number
+  migrationPublicDedupLegacyFallbacks?: number
+  migrationPublicCooldownLegacyFallbacks?: number
+  migrationPublicDualWriteTotal?: number
+  nightlyCompactionRunsTotal?: number
+  nightlyCompactionCreatedTotal?: number
+  nightlyCompactionDedupHitsTotal?: number
+  nightlyCompactionFailureTotal?: number
+}
+
+export interface PersonaObservabilityRepository {
+  increment(delta: PersonaObservabilityMetricDelta): Promise<void>
+  snapshot(): Promise<PersonaObservabilitySnapshot['context_memory']>
+  reset(): Promise<void>
+}
+
 class PersonaObservability {
-  private readonly snapshotState: PersonaObservabilitySnapshot = {
-    render_log: {
-      required_fields: PERSONA_RENDER_LOG_REQUIRED_FIELDS,
-    },
-    evaluation: {
-      blind_review_rubric: PERSONA_BLIND_REVIEW_RUBRIC,
-      replay_slices: PERSONA_REPLAY_EVAL_SLICES,
-    },
-    context_memory: {
-      public_ingress: {
-        forum_total: 0,
-        chat_room_total: 0,
-      },
-      typed_writes: {
-        success_total: 0,
-        failure_total: 0,
-      },
-      identity_writes: {
-        success_total: 0,
-        failure_total: 0,
-      },
-      retrieval: {
-        total: 0,
-        public_typed_hits: 0,
-        public_legacy_hits: 0,
-        legacy_fallback_total: 0,
-      },
-      migration: {
-        public_dedup_legacy_fallbacks: 0,
-        public_cooldown_legacy_fallbacks: 0,
-        public_dual_write_total: 0,
-      },
-      nightly_compaction: {
-        runs_total: 0,
-        created_total: 0,
-        dedup_hits_total: 0,
-        failure_total: 0,
-      },
-      updated_at: new Date(0).toISOString(),
-    },
-    rollout_gates: [],
+  private readonly snapshotState: PersonaObservabilitySnapshot = createBaseSnapshot()
+  private repo: PersonaObservabilityRepository | null = null
+
+  setRepository(repo: PersonaObservabilityRepository | null): void {
+    this.repo = repo
   }
 
   recordPublicIngress(scene: 'forum' | 'chat_room'): void {
-    if (scene === 'forum') {
-      this.snapshotState.context_memory.public_ingress.forum_total += 1
-    } else {
-      this.snapshotState.context_memory.public_ingress.chat_room_total += 1
-    }
-    this.touch()
+    this.recordDelta(scene === 'forum'
+      ? { publicIngressForumTotal: 1 }
+      : { publicIngressChatRoomTotal: 1 })
   }
 
   recordTypedWrite(success: boolean): void {
-    if (success) {
-      this.snapshotState.context_memory.typed_writes.success_total += 1
-    } else {
-      this.snapshotState.context_memory.typed_writes.failure_total += 1
-    }
-    this.touch()
+    this.recordDelta(success
+      ? { typedWriteSuccessTotal: 1 }
+      : { typedWriteFailureTotal: 1 })
   }
 
   recordIdentityWrite(success: boolean): void {
-    if (success) {
-      this.snapshotState.context_memory.identity_writes.success_total += 1
-    } else {
-      this.snapshotState.context_memory.identity_writes.failure_total += 1
-    }
-    this.touch()
+    this.recordDelta(success
+      ? { identityWriteSuccessTotal: 1 }
+      : { identityWriteFailureTotal: 1 })
   }
 
   recordRetrieval(input: {
     publicObservationSource: 'typed' | 'legacy' | 'empty'
     usedLegacyFallback: boolean
   }): void {
-    this.snapshotState.context_memory.retrieval.total += 1
-    if (input.publicObservationSource === 'typed') {
-      this.snapshotState.context_memory.retrieval.public_typed_hits += 1
-    } else if (input.publicObservationSource === 'legacy') {
-      this.snapshotState.context_memory.retrieval.public_legacy_hits += 1
-    }
-    if (input.usedLegacyFallback) {
-      this.snapshotState.context_memory.retrieval.legacy_fallback_total += 1
-    }
-    this.touch()
+    this.recordDelta({
+      retrievalTotal: 1,
+      retrievalPublicTypedHits: input.publicObservationSource === 'typed' ? 1 : 0,
+      retrievalPublicLegacyHits: input.publicObservationSource === 'legacy' ? 1 : 0,
+      retrievalLegacyFallbackTotal: input.usedLegacyFallback ? 1 : 0,
+    })
   }
 
   recordLegacyMigrationFallback(kind: 'public_dedup' | 'public_cooldown'): void {
-    if (kind === 'public_dedup') {
-      this.snapshotState.context_memory.migration.public_dedup_legacy_fallbacks += 1
-    } else {
-      this.snapshotState.context_memory.migration.public_cooldown_legacy_fallbacks += 1
-    }
-    this.touch()
+    this.recordDelta(kind === 'public_dedup'
+      ? { migrationPublicDedupLegacyFallbacks: 1 }
+      : { migrationPublicCooldownLegacyFallbacks: 1 })
   }
 
   recordLegacyPublicDualWrite(): void {
-    this.snapshotState.context_memory.migration.public_dual_write_total += 1
-    this.touch()
+    this.recordDelta({ migrationPublicDualWriteTotal: 1 })
   }
 
   recordNightlyCompaction(input: {
@@ -201,23 +174,33 @@ class PersonaObservability {
     dedupHit: boolean
     failed: boolean
   }): void {
-    this.snapshotState.context_memory.nightly_compaction.runs_total += 1
-    if (input.created) {
-      this.snapshotState.context_memory.nightly_compaction.created_total += 1
-    }
-    if (input.dedupHit) {
-      this.snapshotState.context_memory.nightly_compaction.dedup_hits_total += 1
-    }
-    if (input.failed) {
-      this.snapshotState.context_memory.nightly_compaction.failure_total += 1
-    }
-    this.touch()
+    this.recordDelta({
+      nightlyCompactionRunsTotal: 1,
+      nightlyCompactionCreatedTotal: input.created ? 1 : 0,
+      nightlyCompactionDedupHitsTotal: input.dedupHit ? 1 : 0,
+      nightlyCompactionFailureTotal: input.failed ? 1 : 0,
+    })
   }
 
   snapshot(): PersonaObservabilitySnapshot {
-    const cloned = JSON.parse(JSON.stringify(this.snapshotState)) as PersonaObservabilitySnapshot
-    cloned.rollout_gates = evaluatePersonaRolloutGates(cloned.context_memory)
-    return cloned
+    return cloneSnapshot(this.snapshotState)
+  }
+
+  async snapshotAggregated(): Promise<PersonaObservabilitySnapshot> {
+    if (!this.repo) {
+      return this.snapshot()
+    }
+
+    const snapshot = createBaseSnapshot()
+    snapshot.context_memory = await this.repo.snapshot()
+    snapshot.rollout_gates = evaluatePersonaRolloutGates(snapshot.context_memory)
+    return snapshot
+  }
+
+  async resetAggregated(): Promise<void> {
+    this.reset()
+    if (!this.repo) return
+    await this.repo.reset()
   }
 
   latestRenderLog(entries: UsageLedgerEntry[], limit = 20): UsageLedgerEntry[] {
@@ -228,30 +211,98 @@ class PersonaObservability {
   }
 
   reset(): void {
-    this.snapshotState.context_memory.public_ingress.forum_total = 0
-    this.snapshotState.context_memory.public_ingress.chat_room_total = 0
-    this.snapshotState.context_memory.typed_writes.success_total = 0
-    this.snapshotState.context_memory.typed_writes.failure_total = 0
-    this.snapshotState.context_memory.identity_writes.success_total = 0
-    this.snapshotState.context_memory.identity_writes.failure_total = 0
-    this.snapshotState.context_memory.retrieval.total = 0
-    this.snapshotState.context_memory.retrieval.public_typed_hits = 0
-    this.snapshotState.context_memory.retrieval.public_legacy_hits = 0
-    this.snapshotState.context_memory.retrieval.legacy_fallback_total = 0
-    this.snapshotState.context_memory.migration.public_dedup_legacy_fallbacks = 0
-    this.snapshotState.context_memory.migration.public_cooldown_legacy_fallbacks = 0
-    this.snapshotState.context_memory.migration.public_dual_write_total = 0
-    this.snapshotState.context_memory.nightly_compaction.runs_total = 0
-    this.snapshotState.context_memory.nightly_compaction.created_total = 0
-    this.snapshotState.context_memory.nightly_compaction.dedup_hits_total = 0
-    this.snapshotState.context_memory.nightly_compaction.failure_total = 0
-    this.snapshotState.context_memory.updated_at = new Date(0).toISOString()
+    this.snapshotState.context_memory = createEmptyContextMemoryMetrics()
     this.snapshotState.rollout_gates = []
   }
 
-  private touch(): void {
-    this.snapshotState.context_memory.updated_at = new Date().toISOString()
+  private recordDelta(delta: PersonaObservabilityMetricDelta): void {
+    applyDelta(this.snapshotState.context_memory, delta)
+    this.snapshotState.rollout_gates = evaluatePersonaRolloutGates(this.snapshotState.context_memory)
+    if (!this.repo) return
+
+    this.repo.increment(delta).catch((err) => {
+      console.error('[PersonaObservability] persist failed:', err)
+    })
   }
+}
+
+function createBaseSnapshot(): PersonaObservabilitySnapshot {
+  return {
+    render_log: {
+      required_fields: PERSONA_RENDER_LOG_REQUIRED_FIELDS,
+    },
+    evaluation: {
+      blind_review_rubric: PERSONA_BLIND_REVIEW_RUBRIC,
+      replay_slices: PERSONA_REPLAY_EVAL_SLICES,
+    },
+    context_memory: createEmptyContextMemoryMetrics(),
+    rollout_gates: [],
+  }
+}
+
+export function createEmptyContextMemoryMetrics(): PersonaObservabilitySnapshot['context_memory'] {
+  return {
+    public_ingress: {
+      forum_total: 0,
+      chat_room_total: 0,
+    },
+    typed_writes: {
+      success_total: 0,
+      failure_total: 0,
+    },
+    identity_writes: {
+      success_total: 0,
+      failure_total: 0,
+    },
+    retrieval: {
+      total: 0,
+      public_typed_hits: 0,
+      public_legacy_hits: 0,
+      legacy_fallback_total: 0,
+    },
+    migration: {
+      public_dedup_legacy_fallbacks: 0,
+      public_cooldown_legacy_fallbacks: 0,
+      public_dual_write_total: 0,
+    },
+    nightly_compaction: {
+      runs_total: 0,
+      created_total: 0,
+      dedup_hits_total: 0,
+      failure_total: 0,
+    },
+    updated_at: new Date(0).toISOString(),
+  }
+}
+
+function cloneSnapshot(snapshot: PersonaObservabilitySnapshot): PersonaObservabilitySnapshot {
+  const cloned = JSON.parse(JSON.stringify(snapshot)) as PersonaObservabilitySnapshot
+  cloned.rollout_gates = evaluatePersonaRolloutGates(cloned.context_memory)
+  return cloned
+}
+
+function applyDelta(
+  metrics: PersonaObservabilitySnapshot['context_memory'],
+  delta: PersonaObservabilityMetricDelta,
+): void {
+  metrics.public_ingress.forum_total += delta.publicIngressForumTotal ?? 0
+  metrics.public_ingress.chat_room_total += delta.publicIngressChatRoomTotal ?? 0
+  metrics.typed_writes.success_total += delta.typedWriteSuccessTotal ?? 0
+  metrics.typed_writes.failure_total += delta.typedWriteFailureTotal ?? 0
+  metrics.identity_writes.success_total += delta.identityWriteSuccessTotal ?? 0
+  metrics.identity_writes.failure_total += delta.identityWriteFailureTotal ?? 0
+  metrics.retrieval.total += delta.retrievalTotal ?? 0
+  metrics.retrieval.public_typed_hits += delta.retrievalPublicTypedHits ?? 0
+  metrics.retrieval.public_legacy_hits += delta.retrievalPublicLegacyHits ?? 0
+  metrics.retrieval.legacy_fallback_total += delta.retrievalLegacyFallbackTotal ?? 0
+  metrics.migration.public_dedup_legacy_fallbacks += delta.migrationPublicDedupLegacyFallbacks ?? 0
+  metrics.migration.public_cooldown_legacy_fallbacks += delta.migrationPublicCooldownLegacyFallbacks ?? 0
+  metrics.migration.public_dual_write_total += delta.migrationPublicDualWriteTotal ?? 0
+  metrics.nightly_compaction.runs_total += delta.nightlyCompactionRunsTotal ?? 0
+  metrics.nightly_compaction.created_total += delta.nightlyCompactionCreatedTotal ?? 0
+  metrics.nightly_compaction.dedup_hits_total += delta.nightlyCompactionDedupHitsTotal ?? 0
+  metrics.nightly_compaction.failure_total += delta.nightlyCompactionFailureTotal ?? 0
+  metrics.updated_at = new Date().toISOString()
 }
 
 export function evaluatePersonaRolloutGates(
@@ -263,7 +314,7 @@ export function evaluatePersonaRolloutGates(
   const identityWriteSuccessRate = ratio(metrics.identity_writes.success_total, identityWriteTotal)
   const publicReadTotal = metrics.retrieval.public_typed_hits + metrics.retrieval.public_legacy_hits
   const publicTypedHitRate = ratio(metrics.retrieval.public_typed_hits, publicReadTotal)
-  const legacyDependencyChecks = metrics.retrieval.total +
+  const legacyDependencyChecks = publicReadTotal +
     metrics.migration.public_dedup_legacy_fallbacks +
     metrics.migration.public_cooldown_legacy_fallbacks
   const legacyDependencyRate = ratio(

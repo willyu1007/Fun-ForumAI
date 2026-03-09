@@ -55,7 +55,7 @@ describe('LLM registry contract', () => {
     const visibleLines = Object.values(VOICE_LINE_CATALOG).filter((line) => line.visible)
 
     for (const line of visibleLines) {
-      const profileId = resolveIdentityWriteProfileRef(line.id)
+      const profileId = resolveIdentityWriteProfileRef(line.id, 'premium')
       expect(profileId).toBeTruthy()
       expect(profileId).toBe(line.intentProfileRefs.identity_write?.premium)
     }
@@ -63,13 +63,27 @@ describe('LLM registry contract', () => {
     const directorLine = VOICE_LINE_CATALOG['deepseek-director-v1']
     expect(directorLine.visible).toBe(false)
     expect(directorLine.directorOnly).toBe(true)
-    expect(resolveIdentityWriteProfileRef('deepseek-director-v1')).toBeNull()
+    expect(resolveIdentityWriteProfileRef('deepseek-director-v1', 'premium')).toBeNull()
     expect(
       resolveVoiceLineTierProfileRef('deepseek-director-v1', 'director_plan', 'base'),
     ).toBe('deepseek-director-director-plan-base')
     expect(
       resolveVoiceLineTierProfileRef('deepseek-director-v1', 'director_plan', 'premium'),
     ).toBe('deepseek-director-director-plan-premium')
+  })
+
+  it('keeps qwen identity-write tiers split between public and private adaptation lanes', () => {
+    const bundle = loadLlmRegistryBundle()
+    const profilesById = new Map(
+      bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
+    )
+
+    expect(resolveIdentityWriteProfileRef('qwen-social-v1', 'base')).toBe('qwen-social-identity-write-base')
+    expect(resolveIdentityWriteProfileRef('qwen-social-v1', 'premium')).toBe('qwen-social-identity-write-premium')
+    expect(profilesById.get('qwen-social-identity-write-base')?.candidates[0]?.model_id).toBe('qwen-plus-character')
+    expect(
+      profilesById.get('qwen-social-identity-write-premium')?.candidates.some((candidate) => candidate.model_id === 'qwen-plus-character'),
+    ).toBe(true)
   })
 
   it('keeps visible prompt refs registered in the prompt template registry', () => {

@@ -48,3 +48,58 @@
     - `.ai/.tmp/ui/persona-runtime-integration-audit/playwright-summary.json`
     - `.ai/.tmp/ui/persona-runtime-integration-audit/playwright-chat-admin-summary.json`
     - `.ai/.tmp/ui/persona-runtime-integration-audit/playwright-flash-private-chat.json`
+- 2026-03-10 第二阶段闭环补强：
+  - 修复了 `context-memory` rollout gate 的两类真实缺口：
+    - `src/backend/runtime/persona-observability.ts`
+      - `legacy_dependency` 现在只按 public typed-read / legacy public fallback 计算，不再把 private fallback 一起算进 gate。
+      - 新增 repo-backed repository 接口与 `snapshotAggregated()/resetAggregated()`，为 k8s 多 pod 下的 runtime features 提供稳定聚合。
+    - `src/backend/repos/pg/pg-persona-observability-repository.ts`
+      - 新增按 `runtime_key(code_fingerprint) + instance_id(hostname:pid)` 记账的持久化 counter repository。
+      - admin runtime features 现在读聚合后的 DB counters，而不是单 pod 的进程内状态。
+    - `src/backend/routes/admin-api.ts`
+      - `GET /v1/admin/runtime/features` 改为读取 aggregated snapshot。
+      - 新增 `POST /v1/admin/runtime/features/reset`，用于对当前 rollout fingerprint 清零 counters，恢复可控验证窗口。
+    - `src/backend/container/index.ts`
+      - 在 Prisma 模式下自动为 `personaObservability` 注入 PG repository，instance scope 绑定 `hostname + pid`。
+    - `prisma/schema.prisma`
+      - 新增 `persona_observability_metrics` 表，对应 migration `20260310070000_t076_persona_observability_metrics`。
+  - 修复了 legacy public observation 长期卡住 typed-read gate 的结构性问题：
+    - `src/backend/services/memory-service.ts`
+      - 在 `getMemoriesForContext()` 中加入自愈式 backfill：
+        - 当 typed public episodic cards 为空且存在 legacy `PUBLIC_OBSERVATION` memories 时，自动回填 synthetic raw context event + episodic card。
+        - 当前请求会立即重新加载 typed state，因此首个读取请求就能切到 typed public observation，而不是继续落回 legacy bullet。
+      - 该 backfill 采用稳定 ID：
+        - `ctxevent:legacy-public-observation:<memoryId>`
+        - `ctxepisode:legacy-public-observation:<memoryId>:1`
+  - 补充了对应测试：
+    - `src/backend/runtime/__tests__/persona-observability.test.ts`
+      - 覆盖 repo-backed aggregated snapshot。
+    - `src/backend/services/__tests__/memory-service.context-memory.test.ts`
+      - 覆盖 legacy public observation 在首读时被回填成 typed retrieval。
+- 2026-03-10 第三阶段收口：
+  - 复现并确认了 `typed_write_success / identity_write_success` 的真实失败根因，不是观测噪音：
+    - kind 两 pod 的 forum/public-observation 流量里，`public observation -> identity finalize` 仍在使用 `qwen-social-identity-write-premium -> qwen-max`。
+    - 该链路在 DashScope 上多次出现 `TimeoutError`，最终把 `identity_write` 与包裹它的 typed write 一起记成失败。
+  - 针对该根因把 `identity_write` 做成按场景分层的 tier 解析，而不是一律走 premium：
+    - `src/shared/agent-persona-catalog.ts`
+      - 为 `qwen-social-v1` 增加 `identity_write.base -> qwen-social-identity-write-base`。
+    - `src/backend/llm/voice-line-routing.ts`、`src/backend/llm/llm-gateway.ts`
+      - `resolveIdentityWriteProfileRef()` 现在支持按 `requestedTier` 解析；如果某条 voice line 没有对应 tier，则回退到既有 `identityWriteProfileRef`。
+    - `src/backend/context-memory/runtime.ts`
+      - `private_session` 的 identity finalize 继续请求 `premium`。
+      - `forum_thread / chat_room_window / nightly_compaction` 的 identity finalize 改为请求 `base`。
+    - `src/backend/llm/callsite-inventory.ts`
+      - public/private identity finalize 的 expected profile refs 已按新 tier 语义拆开。
+  - registry 调整：
+    - `.ai/llm-config/registry/model_profiles.yaml`
+      - 新增 `qwen-social-identity-write-base`，主候选为 `qwen-plus-character`，次候选为 `qwen-flash-character`。
+      - `qwen-social-identity-write-premium` 保留 `qwen-max`，但增加 `qwen-plus-character` 作为同 profile 的候选兜底。
+    - `.ai/llm-config/registry/routing_policies.yaml`
+      - 补入 `qwen-social-identity-write-base` policy。
+  - 新增/更新回归测试：
+    - `src/backend/llm/__tests__/registry-contract.test.ts`
+      - 覆盖 qwen identity-write base/premium 的 registry contract。
+    - `src/backend/llm/__tests__/llm-gateway.test.ts`
+      - 覆盖 `generateIdentityWrite(requestedTier='base')` 实际命中 `qwen-social-identity-write-base`。
+    - `src/backend/context-memory/__tests__/runtime.test.ts`
+      - 覆盖 private finalize 仍请求 `premium`，public finalize 改为请求 `base`。

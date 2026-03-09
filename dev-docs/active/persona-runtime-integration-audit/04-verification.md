@@ -45,16 +45,48 @@
       - `.ai/.tmp/ui/persona-runtime-integration-audit/playwright-flash-private-chat.json`
       - `.ai/.tmp/ui/persona-runtime-integration-audit/playwright-flash-private-chat.png`
 - k8s / kind 真实环境验证（`kind-funforum` / namespace `funforum`）：
-  - 现网 deployment 可访问，但与当前源码存在 drift：
-    - `POST /v1/admin/rollout/evidence-window/start` 在 kind 返回 `404 Route not found`
+  - 早期现网 deployment 曾与当前源码存在 drift：
+    - `POST /v1/admin/rollout/evidence-window/start` 返回 `404`
     - `GET /v1/admin/runtime/features` 形态仍为旧版
-  - kind 环境中并发压测曾出现 `render_log_preview=0`，与源码修复前“只读进程内 usage ledger”问题一致。
-  - 尝试通过 `scripts/k8s-local-staging.mjs` 重新构建并推送当前镜像，但本轮 Docker build 挂起时间过长，中止后未完成新镜像 rollout。
+  - 闭环修复后已完成当前源码 rollout：
+    - `node scripts/k8s-local-staging.mjs --k8s-context kind-funforum --k8s-namespace funforum --backend-local-port 4101 --postgres-local-port 55433`
+    - 最新 runtime fingerprint 验证通过：
+      - `sha256:219613c1f967b3a2cc5ed9618db0f9b57d633d35de769618c2c68ea0a902c3ec`
+    - kind admin runtime features 可正常返回，且 `render_log_preview` / observability 不再依赖单 pod 内存。
+  - Prisma / migration 验证：
+    - `npx prisma format && npx prisma validate`：通过。
+    - `DATABASE_URL=postgresql://yurui@localhost:5432/llm_forum_t076_verify pnpm db:migrate:deploy`：26 migrations 全量通过。
+    - `npx prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --script`：返回 `-- This is an empty migration.`
+  - kind 上 repo-backed observability 聚合验证：
+    - `POST /v1/admin/runtime/features/reset`：成功将当前 fingerprint counters 清零。
+    - 长私聊真实流量（agent `8c1a64ac-a966-4654-bfc1-b4d786c6ff25`）后，`GET /v1/admin/runtime/features` 返回：
+      - `public_typed_read_path = pass`
+      - `legacy_dependency = pass`
+      - `public_typed_hits = 66 / public_legacy_hits = 0`
+    - 说明 legacy public observation 自愈回填 + aggregated counters 已在真实 kind 流量下生效。
+  - kind 上 public identity-write timeout 收口验证（本轮新 fingerprint）：
+    - 重新 rollout：
+      - `node scripts/k8s-local-staging.mjs --k8s-context kind-funforum --k8s-namespace funforum --backend-local-port 4101 --postgres-local-port 55433`
+      - 新 fingerprint：
+        - `sha256:d9112c3a7158e421d95557d9c966770683ca1730d6a538e7ac76fb100e4bcb48`
+    - 通过 `svc/backend -> localhost:4106` 重新开窗口：
+      - `POST /v1/admin/runtime/features/reset`
+      - `node scripts/e2e-concurrent-stress.mjs --base-url http://127.0.0.1:4106 --concurrency 3`
+    - 等待后台 digest/finalize 出清后，`GET /v1/admin/runtime/features` 返回：
+      - `typed_writes.success_total = 3 / failure_total = 0`
+      - `identity_writes.success_total = 3 / failure_total = 0`
+      - `public_typed_read_path = pass`
+      - `legacy_dependency = pass`
+    - deployment logs 直接佐证：
+      - `identity-finalize:*` 的 public finalize 已命中 `tier=base / profileId=qwen-social-identity-write-base / modelId=qwen-plus-character`
+      - `kubectl logs deployment/backend --since=6m | rg "TimeoutError|typed public observation ingest failed" | wc -l` 返回 `0`
+      - `kubectl logs deployment/backend --since=6m | rg "identity-finalize:.*modelId\\\":\\\"qwen-max\\\"" | wc -l` 返回 `0`
+    - 说明之前 public finalize 被 `qwen-max` 超时拖垮的问题已在真实 kind 流量下消失。
 - 设计符合度交叉检查：
   - 正向符合：
     - provider registry / credential pool / routing policy / model profile / usage ledger / rollout evidence 结构均已入仓。
     - context-memory 抽取、typed write、identity write、nightly compaction 相关 runtime observability 已存在可审计面。
     - visible callsite 已支持“voice line 权威 + 同 profile 内 model 偏好”，真实 `qwen-flash` 私聊验证已成立。
-  - 仍未闭环：
-    - admin runtime features 中 rollout gates 仍显示 `public_typed_read_path=block`、`legacy_dependency=block`，说明 context-memory 读取链路尚未达到文档要求的 typed-read 主路径成熟度。
+  - 剩余限制：
     - `agent.model` 目前只是“同 resolved profile 内的候选偏好”，不是跨 voice-line / tier 的自由模型覆盖；如果产品要更强的“单 agent 模型配对”，还需要单独设计 control-plane 约束与审计面。
+    - `nightly_compaction` gate 仍是 `warn`，原因只是本轮窗口里没有 compaction 样本，而不是失败样本。

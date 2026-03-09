@@ -192,8 +192,44 @@ describe('MemoryPack', () => {
     })
 
     expect(privatePack.slots.find((slot) => slot.slotId === 'owner_private')?.items[0]).toContain('Owner')
+    expect(privatePack.observability.publicObservationSource).toBe('empty')
+    expect(privatePack.observability.usedLegacyFallback).toBe(false)
     expect(publicPack.slots.find((slot) => slot.slotId === 'owner_private')?.items).toEqual([])
     expect(publicPack.slots.find((slot) => slot.slotId === 'safe_shadow')?.items).toEqual([])
+  })
+
+  it('marks legacy dependency only when the public observation slot falls back to legacy rows', () => {
+    const packer = new DefaultRetrievalPacker()
+    const pack = packer.pack({
+      agentId: 'agent-1',
+      scene: 'forum',
+      topicHints: ['播客'],
+      disclosureLevel: 1,
+      tokenBudget: 200,
+      legacyMemories: [
+        legacyMemory('m1', {
+          source_type: 'PUBLIC_OBSERVATION',
+          summary_text: '论坛里有人讨论播客节目节奏。',
+          topic_tags: ['播客'],
+          importance_score: 0.7,
+        }),
+      ],
+      typed: {
+        privateEpisodicCards: [],
+        publicEpisodicCards: [],
+        ownerRelation: null,
+        communityRelations: [],
+        roomRelations: [],
+        agentRelations: [],
+        selfModel: null,
+        tensions: [],
+        privateShadows: [],
+        chronicleEntries: [],
+      },
+    })
+
+    expect(pack.observability.publicObservationSource).toBe('legacy')
+    expect(pack.observability.usedLegacyFallback).toBe(true)
   })
 
   it('renders a bounded fixed-slot memory pack', () => {

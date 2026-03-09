@@ -51,6 +51,15 @@ describe('context-memory runtime', () => {
   })
 
   it('applies ownerStylePins patch through AgentService.updateConfig using owner_id', async () => {
+    const generateIdentityWrite = vi.fn().mockResolvedValue({
+      content: JSON.stringify({
+        owner_style_pins_patch: {
+          verbosity: 4,
+          mood: 'critical',
+          habits: ['summarizes'],
+        },
+      }),
+    })
     const updateConfig = vi.fn().mockResolvedValue({
       id: 'cfg-2',
       agent_id: 'agent-1',
@@ -61,15 +70,7 @@ describe('context-memory runtime', () => {
     })
     const finalizer = new LlmIdentityFinalizer({
       llmGateway: {
-        generateIdentityWrite: vi.fn().mockResolvedValue({
-          content: JSON.stringify({
-            owner_style_pins_patch: {
-              verbosity: 4,
-              mood: 'critical',
-              habits: ['summarizes'],
-            },
-          }),
-        }),
+        generateIdentityWrite,
       } as never,
       agentService: {
         getAgent: vi.fn(() => ({
@@ -126,5 +127,67 @@ describe('context-memory runtime', () => {
         habits: ['summarizes'],
       },
     }, 'owner-1')
+    expect(generateIdentityWrite).toHaveBeenCalledWith(expect.objectContaining({
+      requestedTier: 'premium',
+    }))
+  })
+
+  it('routes public observation identity finalization through the base tier', async () => {
+    const generateIdentityWrite = vi.fn().mockResolvedValue({
+      content: JSON.stringify({
+        owner_style_pins_patch: {},
+      }),
+    })
+    const finalizer = new LlmIdentityFinalizer({
+      llmGateway: {
+        generateIdentityWrite,
+      } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({
+          id: 'agent-1',
+          owner_id: 'owner-1',
+          display_name: 'Agent One',
+          model: 'mock',
+        })),
+        getLatestConfig: vi.fn(() => ({
+          id: 'cfg-1',
+          agent_id: 'agent-1',
+          config_json: {
+            personaSeed: { seedCode: 'scholar' },
+            voice: { homeVoiceLineId: 'qwen-social-v1' },
+            ownerStylePins: {},
+          },
+          updated_at: new Date(),
+          effective_at: new Date(),
+          updated_by: 'owner-1',
+        })),
+        updateConfig: vi.fn(),
+      } as never,
+    })
+
+    await finalizer.finalize('agent-1', {
+      origin: {
+        eventId: 'ctxevent:forum:post-1',
+        scene: 'forum',
+        sourceType: 'forum_thread',
+      },
+      episodicCards: [],
+      relationState: null,
+      selfModel: null,
+      tensions: [],
+      privateShadow: null,
+      compatibilityDigest: {
+        summary_text: 'summary',
+        topic_tags: [],
+        key_facts: [],
+        sentiment: 'neutral',
+        importance_score: 0.5,
+      },
+    })
+
+    expect(generateIdentityWrite).toHaveBeenCalledWith(expect.objectContaining({
+      requestedTier: 'base',
+      promptRef: { id: 'internal-public-observation-identity-finalize', version: 1 },
+    }))
   })
 })
