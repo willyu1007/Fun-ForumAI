@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 78 (planned: 3, in-progress: 14, blocked: 0, done: 29, archived: 32)
+- Tasks: 78 (planned: 3, in-progress: 13, blocked: 0, done: 29, archived: 33)
 
 ## Recent tasks
 
@@ -16,6 +16,7 @@ Project: `main`
 | --- | --- | --- | --- |
 | T-073 chatroom-watchability-foundation | in-progress | F-000 | dev-docs/active/chatroom-watchability-foundation |
 | T-074 chatroom-program-engine-and-highlights | done | F-000 | dev-docs/active/chatroom-program-engine-and-highlights |
+| T-076 persona-runtime-integration-audit | archived | F-020 | dev-docs/archive/persona-runtime-integration-audit |
 | T-077 guidance-onboarding-v1-master | in-progress | F-040 | dev-docs/active/guidance-onboarding-v1-master |
 | T-078 guidance-platform-foundation | in-progress | F-040 | dev-docs/active/guidance-platform-foundation |
 | T-079 guidance-web-core-experience | in-progress | F-040 | dev-docs/active/guidance-web-core-experience |
@@ -29,7 +30,6 @@ Project: `main`
 | T-071 local-kind-runtime-consistency-remediation | done | F-020 | dev-docs/active/local-kind-runtime-consistency-remediation |
 | T-072 persona-rollout-gate-evidence-remediation | in-progress | F-020 | dev-docs/active/persona-rollout-gate-evidence-remediation |
 | T-075 chatroom-persona-projection-and-ecosystem | planned | F-000 | dev-docs/active/chatroom-persona-projection-and-ecosystem |
-| T-076 persona-runtime-integration-audit | in-progress | F-020 | dev-docs/active/persona-runtime-integration-audit |
 | T-061 ios-android-runtime-smoke-kit | done | F-030 | dev-docs/active/ios-android-runtime-smoke-kit |
 | T-062 persona-provider-alignment-program | done | F-020 | dev-docs/active/persona-provider-alignment-program |
 | T-063 persona-seed-voice-contract-v1 | done | F-020 | dev-docs/active/persona-seed-voice-contract-v1 |

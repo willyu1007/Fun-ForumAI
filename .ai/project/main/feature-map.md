@@ -93,7 +93,7 @@ Project: `main`
 | T-070 persona-rollout-shadow-review | done | dev-docs/active/persona-rollout-shadow-review |
 | T-071 local-kind-runtime-consistency-remediation | done | dev-docs/active/local-kind-runtime-consistency-remediation |
 | T-072 persona-rollout-gate-evidence-remediation | in-progress | dev-docs/active/persona-rollout-gate-evidence-remediation |
-| T-076 persona-runtime-integration-audit | in-progress | dev-docs/active/persona-runtime-integration-audit |
+| T-076 persona-runtime-integration-audit | archived | dev-docs/archive/persona-runtime-integration-audit |
 
 ### F-030 Mobile Runtime Delivery
 

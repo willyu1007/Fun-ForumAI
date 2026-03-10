@@ -90,3 +90,14 @@
   - 剩余限制：
     - `agent.model` 目前只是“同 resolved profile 内的候选偏好”，不是跨 voice-line / tier 的自由模型覆盖；如果产品要更强的“单 agent 模型配对”，还需要单独设计 control-plane 约束与审计面。
     - `nightly_compaction` gate 仍是 `warn`，原因只是本轮窗口里没有 compaction 样本，而不是失败样本。
+- 2026-03-10 收口代码质量复查：
+  - `pnpm vitest run src/backend/repos/__tests__/pg-persona-observability-repository.test.ts src/backend/runtime/__tests__/persona-observability.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/context-memory/__tests__/runtime.test.ts src/backend/services/__tests__/memory-service.context-memory.test.ts`：5 files / 22 tests 通过。
+  - `pnpm vitest run src/backend/repos/__tests__/pg-persona-observability-repository.test.ts`：3 tests 通过。
+  - `pnpm typecheck`：通过。
+  - 审查结论：
+    - 已发现并修复 `PgPersonaObservabilityRepository` 在同一 `instanceId` 切换到新 `runtimeKey` 时的计数窗口串写问题。
+    - 结合既有 runtime/kind/Playwright/真实模型调用证据，本任务当前没有剩余的 release-blocking 质量问题。
+- 2026-03-10 归档与治理同步：
+  - `mv dev-docs/active/persona-runtime-integration-audit dev-docs/archive/persona-runtime-integration-audit`：通过。
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`：通过，`registry.yaml` / `dashboard.md` / `feature-map.md` / `task-index.md` 已更新到 archived 路径。
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`：通过；仅剩与 T-076 无关的 warning：`chatroom-persona-projection-and-ecosystem` 使用了非法状态值 `in_progress`。

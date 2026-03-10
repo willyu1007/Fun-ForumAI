@@ -38,3 +38,10 @@
     - `private_session -> premium`
     - qwen 的 base lane 使用 `qwen-plus-character`，premium lane 仍允许 `qwen-max`，但同 profile 里有 `qwen-plus-character` 兜底。
   - Prevention: 后续凡是把 config-affecting hidden call 挂到 visible voice line 上，都不能默认“全部 premium”；要先区分 public/private/backfill 场景，再决定 requested tier，否则 rollout gate 会被慢模型拖垮。
+- Symptom: repo-backed `persona_observability_metrics` 在同一 `hostname:pid` 重启并切到新 fingerprint 后，可能继续把新计数写进旧 `runtime_key` 窗口，导致 `GET /v1/admin/runtime/features` 在 reset / rollout 后读到的聚合样本不稳定。
+  - Root cause: repository 之前只按 `instanceId` 做 `upsert`，但 snapshot/reset 的窗口语义按 `runtimeKey` 聚合；当同一实例槽位复用时，持久化行没有在 runtimeKey 变化时被重新初始化。
+  - Fix: `PgPersonaObservabilityRepository.increment()` 现在会先确保当前 runtime row 已初始化到正确的 `runtimeKey`，若发现同一 `instanceId` 绑定的是旧 fingerprint，会先重置该行再累计当前增量；`reset()` 也会清空本地 row cache，确保 reset 后首个写入能正确重建行。
+  - Prevention: 任何“单实例 row + 多窗口聚合 key”设计都不能只验证 steady-state；必须额外覆盖三种边界：
+    - 同实例切换窗口 key；
+    - reset/delete 后首次写入；
+    - 首批并发增量写入的初始化路径。

@@ -672,15 +672,15 @@ tasks:
     updated: 2026-03-09
   - id: T-076
     slug: persona-runtime-integration-audit
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-027
       - R-029
       - R-030
-    dev_docs_path: dev-docs/active/persona-runtime-integration-audit
-    updated: 2026-03-09
+    dev_docs_path: dev-docs/archive/persona-runtime-integration-audit
+    updated: 2026-03-10
   - id: T-077
     slug: guidance-onboarding-v1-master
     status: in-progress

@@ -1,4 +1,4 @@
-import type { PrismaClient, Prisma } from '@prisma/client'
+import { Prisma, type PrismaClient } from '@prisma/client'
 import {
   createEmptyContextMemoryMetrics,
   type PersonaObservabilityMetricDelta,
@@ -6,6 +6,9 @@ import {
 } from '../../runtime/persona-observability.js'
 
 export class PgPersonaObservabilityRepository implements PersonaObservabilityRepository {
+  private rowState: 'unknown' | 'ready' = 'unknown'
+  private ensureRowPromise: Promise<void> | null = null
+
   constructor(
     private readonly prisma: PrismaClient,
     private readonly runtimeKey: string,
@@ -13,14 +16,25 @@ export class PgPersonaObservabilityRepository implements PersonaObservabilityRep
   ) {}
 
   async increment(delta: PersonaObservabilityMetricDelta): Promise<void> {
-    const createData = createCreateData(this.runtimeKey, this.instanceId, delta)
-    const updateData = createUpdateData(delta)
+    await this.ensureCurrentRuntimeRow()
 
-    await this.prisma.personaObservabilityMetrics.upsert({
-      where: { instanceId: this.instanceId },
-      create: createData,
-      update: updateData,
-    })
+    try {
+      await this.prisma.personaObservabilityMetrics.update({
+        where: { instanceId: this.instanceId },
+        data: createUpdateData(delta),
+      })
+    } catch (error) {
+      if (!isRecordNotFoundError(error)) {
+        throw error
+      }
+
+      this.rowState = 'unknown'
+      await this.ensureCurrentRuntimeRow()
+      await this.prisma.personaObservabilityMetrics.update({
+        where: { instanceId: this.instanceId },
+        data: createUpdateData(delta),
+      })
+    }
   }
 
   async snapshot(): Promise<ReturnType<typeof createEmptyContextMemoryMetrics>> {
@@ -73,9 +87,51 @@ export class PgPersonaObservabilityRepository implements PersonaObservabilityRep
   }
 
   async reset(): Promise<void> {
+    this.rowState = 'unknown'
     await this.prisma.personaObservabilityMetrics.deleteMany({
       where: { runtimeKey: this.runtimeKey },
     })
+  }
+
+  private async ensureCurrentRuntimeRow(): Promise<void> {
+    if (this.rowState === 'ready') {
+      return
+    }
+
+    if (!this.ensureRowPromise) {
+      this.ensureRowPromise = this.ensureCurrentRuntimeRowInternal()
+        .finally(() => {
+          this.ensureRowPromise = null
+        })
+    }
+
+    await this.ensureRowPromise
+  }
+
+  private async ensureCurrentRuntimeRowInternal(): Promise<void> {
+    const existing = await this.prisma.personaObservabilityMetrics.findUnique({
+      where: { instanceId: this.instanceId },
+      select: { runtimeKey: true },
+    })
+
+    if (!existing) {
+      await this.prisma.personaObservabilityMetrics.upsert({
+        where: { instanceId: this.instanceId },
+        create: createCreateData(this.runtimeKey, this.instanceId, {}),
+        update: { runtimeKey: this.runtimeKey },
+      })
+      this.rowState = 'ready'
+      return
+    }
+
+    if (existing.runtimeKey !== this.runtimeKey) {
+      await this.prisma.personaObservabilityMetrics.update({
+        where: { instanceId: this.instanceId },
+        data: createResetData(this.runtimeKey),
+      })
+    }
+
+    this.rowState = 'ready'
   }
 }
 
@@ -129,6 +185,33 @@ function createUpdateData(delta: PersonaObservabilityMetricDelta): Prisma.Person
   applyIncrement(update, 'nightlyCompactionFailureTotal', delta.nightlyCompactionFailureTotal)
 
   return update
+}
+
+function createResetData(runtimeKey: string): Prisma.PersonaObservabilityMetricsUpdateInput {
+  return {
+    runtimeKey,
+    publicIngressForumTotal: 0,
+    publicIngressChatRoomTotal: 0,
+    typedWriteSuccessTotal: 0,
+    typedWriteFailureTotal: 0,
+    identityWriteSuccessTotal: 0,
+    identityWriteFailureTotal: 0,
+    retrievalTotal: 0,
+    retrievalPublicTypedHits: 0,
+    retrievalPublicLegacyHits: 0,
+    retrievalLegacyFallbackTotal: 0,
+    migrationPublicDedupLegacyFallbacks: 0,
+    migrationPublicCooldownLegacyFallbacks: 0,
+    migrationPublicDualWriteTotal: 0,
+    nightlyCompactionRunsTotal: 0,
+    nightlyCompactionCreatedTotal: 0,
+    nightlyCompactionDedupHitsTotal: 0,
+    nightlyCompactionFailureTotal: 0,
+  }
+}
+
+function isRecordNotFoundError(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
 }
 
 function applyIncrement(

@@ -18,3 +18,8 @@
 - 当前 worktree 已有未提交改动，审计/修复必须在理解现有修改目的后继续，不能回滚用户已有工作。
 - 真实模型调用涉及成本和第三方可用性，验证结果可能受 provider/network 波动影响。
 - k8s 本地环境与源码可能存在镜像/配置漂移，需要先确认运行 fingerprint。
+
+## Closeout decisions
+- `persona_observability_metrics` 仍使用 `instance_id(hostname:pid)` 作为单实例行标识，但运行时计数的语义以 `runtime_key(code_fingerprint)` 为窗口边界。
+- 因此 repository 不能在旧行上直接盲目 `upsert + increment`；当同一 `instance_id` 切到新 fingerprint 时，必须先清空该行并重绑到新 `runtime_key`，之后再开始累计本轮计数。
+- `reset()` 不仅要删当前 `runtime_key` 的持久化样本，还要让 repository 丢弃本地“row 已就绪”的缓存状态，避免 reset 后第一次增量写入直接命中不存在的行。

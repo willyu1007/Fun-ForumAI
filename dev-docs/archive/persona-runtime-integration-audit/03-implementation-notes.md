@@ -103,3 +103,13 @@
       - 覆盖 `generateIdentityWrite(requestedTier='base')` 实际命中 `qwen-social-identity-write-base`。
     - `src/backend/context-memory/__tests__/runtime.test.ts`
       - 覆盖 private finalize 仍请求 `premium`，public finalize 改为请求 `base`。
+- 2026-03-10 收口代码质量复查：
+  - 复核 `preferredModelId`、identity-write tier 路由、repo-backed observability 与 legacy public backfill 的关键路径和测试覆盖后，只发现 1 个必须修的 correctness 问题：
+    - `src/backend/repos/pg/pg-persona-observability-repository.ts`
+      - 旧实现按 `instanceId` upsert、按 `runtimeKey` 聚合；当同一 `hostname:pid` 在重启后切到新 fingerprint 时，会继续沿用旧 runtime row，导致本轮 rollout counters 被写进旧窗口。
+      - 现已改为“先确保当前 runtime row 正确初始化/重绑，再执行 increment”；并在 `reset()` 后清空本地 row cache，避免 reset 后首个增量更新命中已删除的行。
+    - 新增 `src/backend/repos/__tests__/pg-persona-observability-repository.test.ts`
+      - 覆盖缺失行初始化、runtimeKey 切换重绑、reset 后重建三种场景。
+  - 复查结论：
+    - 当前没有再发现阻断 T-076 收口的 release-blocking 问题。
+    - 残余限制保持不变：`agent.model` 仍是同 profile 内偏好，不提供跨 voice-line / tier 的自由覆盖。
