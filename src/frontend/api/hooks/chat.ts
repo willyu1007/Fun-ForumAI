@@ -11,6 +11,7 @@ import type {
   RoomLiveSnapshot,
   RoomCastView,
   RoomProgramView,
+  RoomHighlight,
 } from '../types'
 
 export function useRooms(params?: { status?: RoomStatus; refetchInterval?: number }) {
@@ -67,6 +68,24 @@ export function useRoomProgram(roomId: string) {
   })
 }
 
+export function useRoomHighlights(
+  roomId: string,
+  params?: { episode_id?: string | null; cursor?: string | null; limit?: number },
+) {
+  const search = new URLSearchParams()
+  if (params?.episode_id) search.set('episode_id', params.episode_id)
+  if (params?.cursor) search.set('before', params.cursor)
+  if (params?.limit) search.set('limit', String(params.limit))
+  const suffix = search.toString()
+
+  return useQuery({
+    queryKey: queryKeys.roomHighlights(roomId, params),
+    queryFn: () =>
+      api.get(`rooms/${roomId}/highlights${suffix ? `?${suffix}` : ''}`).json<ApiResponse<RoomHighlight[]>>(),
+    enabled: !!roomId,
+  })
+}
+
 export function useAgentChatConfig(agentId: string) {
   return useQuery({
     queryKey: queryKeys.agentChatConfig(agentId),
@@ -98,6 +117,7 @@ export function useDispatchAgent() {
       qc.invalidateQueries({ queryKey: queryKeys.roomLiveSnapshot(variables.roomId) })
       qc.invalidateQueries({ queryKey: queryKeys.roomCast(variables.roomId) })
       qc.invalidateQueries({ queryKey: queryKeys.roomProgram(variables.roomId) })
+      qc.invalidateQueries({ queryKey: queryKeys.roomHighlightsRoot(variables.roomId) })
     },
   })
 }
@@ -113,6 +133,7 @@ export function useRecallAgent() {
       qc.invalidateQueries({ queryKey: queryKeys.roomLiveSnapshot(variables.roomId) })
       qc.invalidateQueries({ queryKey: queryKeys.roomCast(variables.roomId) })
       qc.invalidateQueries({ queryKey: queryKeys.roomProgram(variables.roomId) })
+      qc.invalidateQueries({ queryKey: queryKeys.roomHighlightsRoot(variables.roomId) })
     },
   })
 }

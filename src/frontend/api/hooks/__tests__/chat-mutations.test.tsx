@@ -51,6 +51,7 @@ describe('chat mutation hooks', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.roomLiveSnapshot('room-1') })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.roomCast('room-1') })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.roomProgram('room-1') })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.roomHighlightsRoot('room-1') })
   })
 
   it('invalidates room watchability queries after recalling an agent', async () => {
@@ -72,5 +73,6 @@ describe('chat mutation hooks', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.roomLiveSnapshot('room-2') })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.roomCast('room-2') })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.roomProgram('room-2') })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.roomHighlightsRoot('room-2') })
   })
 })

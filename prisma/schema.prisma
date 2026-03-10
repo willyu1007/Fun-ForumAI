@@ -78,6 +78,9 @@ model Agent {
   agentRuns                 AgentRun[]
   roomMemberships           RoomMembership[]
   roomMessages              RoomMessage[]
+  selectedRoomBeats         RoomEpisodeBeat[]         @relation("RoomBeatSelectedSpeaker")
+  selectedRoomProgramEvents RoomProgramEvent[]        @relation("RoomProgramEventSelectedSpeaker")
+  roomSelectionLedgers      RoomSelectionLedger[]
   messageReactions          MessageReaction[]
   createdRooms              Room[]                     @relation("RoomCreator")
   xp                        AgentXp?
@@ -1064,6 +1067,10 @@ model Room {
   episodes         RoomEpisode[]
   liveSnapshot     RoomLiveSnapshot?
   roomEpisodeCasts RoomEpisodeCast[]
+  episodeBeats     RoomEpisodeBeat[]
+  programEvents    RoomProgramEvent[]
+  selectionLedgers RoomSelectionLedger[]
+  highlights       RoomHighlight[]
 
   @@index([status])
   // TODO: add @@index([communityId]) when community-based room queries become frequent
@@ -1095,6 +1102,48 @@ enum RoomCastRole {
   CHRONICLER
 }
 
+enum RoomBeatType {
+  OPENING
+  HOOK
+  EXPLAIN
+  CLASH
+  CALLBACK
+  COOL_DOWN
+  RECAP
+  LANDING
+}
+
+enum RoomCueType {
+  ADVANCE
+  ASK
+  CALLBACK
+  SUMMARIZE
+  COOL_DOWN
+  CLOSE
+}
+
+enum RoomProgramEventType {
+  RAW_MESSAGE
+  ROOM_TICK
+  PROGRAM_CUE
+}
+
+enum RoomProgramEventStatus {
+  PENDING
+  PLANNED
+  EXECUTED
+  SKIPPED
+  FAILED
+}
+
+enum RoomHighlightKind {
+  CALLBACK
+  PUNCHLINE
+  CHARACTER_MOMENT
+  SUMMARY
+  CLASH
+}
+
 model RoomProgram {
   id                         String        @id @default(cuid())
   roomId                     String        @unique @map("room_id")
@@ -1103,7 +1152,12 @@ model RoomProgram {
   pacingPreset               String        @default("balanced") @map("pacing_preset")
   targetCastMin              Int           @default(3) @map("target_cast_min")
   targetCastMax              Int           @default(5) @map("target_cast_max")
+  callbackWindow             Int           @default(18) @map("callback_window")
+  recapEveryTurns            Int           @default(10) @map("recap_every_turns")
+  maxConsecutiveTurns        Int           @default(1) @map("max_consecutive_turns")
+  idleCueAfterMs             Int           @default(30000) @map("idle_cue_after_ms")
   allowWandering             Boolean       @default(true) @map("allow_wandering")
+  directorPolicyJson         Json          @default("{}") @map("director_policy_json")
   discoverabilityTags        Json          @default("[]") @map("discoverability_tags")
   discoverabilityShortHook   String?       @map("discoverability_short_hook") @db.Text
   discoverabilityDefaultView String        @default("live") @map("discoverability_default_view")
@@ -1123,6 +1177,7 @@ model RoomEpisode {
   status             RoomEpisodeStatus @default(ACTIVE)
   summaryText        String            @default("") @map("summary_text") @db.Text
   unresolvedQuestion String?           @map("unresolved_question") @db.Text
+  callbackBankJson   Json              @default("[]") @map("callback_bank_json")
   energy             Float             @default(0)
   tension            Float             @default(0)
   turnCount          Int               @default(0) @map("turn_count")
@@ -1135,7 +1190,12 @@ model RoomEpisode {
   room      Room               @relation(fields: [roomId], references: [id])
   program   RoomProgram        @relation(fields: [programId], references: [id])
   casts     RoomEpisodeCast[]
+  beats     RoomEpisodeBeat[]
+  events    RoomProgramEvent[]
+  ledgers   RoomSelectionLedger[]
+  highlights RoomHighlight[]
   snapshots RoomLiveSnapshot[]
+  messages  RoomMessage[]
 
   @@index([roomId, status])
   @@map("room_episodes")
@@ -1160,6 +1220,109 @@ model RoomEpisodeCast {
   @@unique([episodeId, agentId])
   @@index([roomId, episodeId])
   @@map("room_episode_casts")
+}
+
+model RoomEpisodeBeat {
+  id                    String        @id @default(cuid())
+  roomId                String        @map("room_id")
+  episodeId             String        @map("episode_id")
+  ordinal               Int
+  beatType              RoomBeatType  @map("beat_type")
+  cueType               RoomCueType   @map("cue_type")
+  directorGoal          String        @map("director_goal") @db.Text
+  promptHint            String?       @map("prompt_hint") @db.Text
+  anchorMessageId       String?       @map("anchor_message_id")
+  callbackMessageId     String?       @map("callback_message_id")
+  targetRole            RoomCastRole? @map("target_role")
+  selectedSpeakerAgentId String?      @map("selected_speaker_agent_id")
+  status                String        @default("planned")
+  auditJson             Json?         @map("audit_json")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  completedAt           DateTime?     @map("completed_at")
+
+  room        Room                  @relation(fields: [roomId], references: [id])
+  episode     RoomEpisode           @relation(fields: [episodeId], references: [id])
+  ledgers     RoomSelectionLedger[]
+  highlights  RoomHighlight[]
+  events      RoomProgramEvent[]
+  messages    RoomMessage[]
+  selectedSpeaker Agent?           @relation("RoomBeatSelectedSpeaker", fields: [selectedSpeakerAgentId], references: [id])
+
+  @@unique([episodeId, ordinal])
+  @@index([roomId, episodeId, createdAt])
+  @@map("room_episode_beats")
+}
+
+model RoomProgramEvent {
+  id                     String                 @id @default(cuid())
+  roomId                 String                 @map("room_id")
+  episodeId              String?                @map("episode_id")
+  beatId                 String?                @map("beat_id")
+  eventType              RoomProgramEventType   @map("event_type")
+  status                 RoomProgramEventStatus @default(PENDING)
+  cueType                RoomCueType?           @map("cue_type")
+  directorGoal           String?                @map("director_goal") @db.Text
+  selectedSpeakerAgentId String?                @map("selected_speaker_agent_id")
+  idempotencyKey         String                 @unique @map("idempotency_key")
+  payloadJson            Json?                  @map("payload_json")
+  errorText              String?                @map("error_text") @db.Text
+  createdAt              DateTime               @default(now()) @map("created_at")
+  updatedAt              DateTime               @updatedAt @map("updated_at")
+
+  room        Room                   @relation(fields: [roomId], references: [id])
+  episode     RoomEpisode?           @relation(fields: [episodeId], references: [id])
+  beat        RoomEpisodeBeat?       @relation(fields: [beatId], references: [id])
+  ledgers     RoomSelectionLedger[]
+  messages    RoomMessage[]
+  selectedSpeaker Agent?             @relation("RoomProgramEventSelectedSpeaker", fields: [selectedSpeakerAgentId], references: [id])
+
+  @@index([roomId, createdAt])
+  @@index([episodeId, createdAt])
+  @@map("room_program_events")
+}
+
+model RoomSelectionLedger {
+  id               String        @id @default(cuid())
+  roomId           String        @map("room_id")
+  episodeId        String?       @map("episode_id")
+  beatId           String?       @map("beat_id")
+  programEventId   String        @map("program_event_id")
+  candidateAgentId String        @map("candidate_agent_id")
+  selected         Boolean       @default(false)
+  finalScore       Float         @default(0) @map("final_score")
+  reasonsJson      Json          @default("[]") @map("reasons_json")
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  room         Room             @relation(fields: [roomId], references: [id])
+  episode      RoomEpisode?     @relation(fields: [episodeId], references: [id])
+  beat         RoomEpisodeBeat? @relation(fields: [beatId], references: [id])
+  programEvent RoomProgramEvent @relation(fields: [programEventId], references: [id])
+  candidate    Agent            @relation(fields: [candidateAgentId], references: [id])
+
+  @@index([roomId, createdAt])
+  @@index([programEventId, selected])
+  @@map("room_selection_ledgers")
+}
+
+model RoomHighlight {
+  id               String            @id @default(cuid())
+  roomId           String            @map("room_id")
+  episodeId        String?           @map("episode_id")
+  beatId           String?           @map("beat_id")
+  sourceMessageId  String            @unique @map("source_message_id")
+  kind             RoomHighlightKind
+  text             String            @db.Text
+  actorAgentIdsJson Json             @default("[]") @map("actor_agent_ids_json")
+  score            Float             @default(0)
+  createdAt        DateTime          @default(now()) @map("created_at")
+
+  room      Room             @relation(fields: [roomId], references: [id])
+  episode   RoomEpisode?     @relation(fields: [episodeId], references: [id])
+  beat      RoomEpisodeBeat? @relation(fields: [beatId], references: [id])
+
+  @@index([roomId, createdAt])
+  @@index([episodeId, createdAt])
+  @@map("room_highlights")
 }
 
 model RoomLiveSnapshot {
@@ -1210,6 +1373,11 @@ model RoomMessage {
   id              String       @id @default(cuid())
   roomId          String       @map("room_id")
   authorAgentId   String       @map("author_agent_id")
+  episodeId       String?      @map("episode_id")
+  beatId          String?      @map("beat_id")
+  programEventId  String?      @map("program_event_id")
+  speakerRole     RoomCastRole? @map("speaker_role")
+  cueType         RoomCueType? @map("cue_type")
   body            String
   messageKind     String       @default("normal") @map("message_kind")
   parentMessageId String?      @map("parent_message_id")
@@ -1218,11 +1386,17 @@ model RoomMessage {
   state           ContentState @default(PENDING)
   createdAt       DateTime     @default(now()) @map("created_at")
 
-  room      Room              @relation(fields: [roomId], references: [id])
-  author    Agent             @relation(fields: [authorAgentId], references: [id])
-  reactions MessageReaction[]
+  room         Room              @relation(fields: [roomId], references: [id])
+  author       Agent             @relation(fields: [authorAgentId], references: [id])
+  episode      RoomEpisode?      @relation(fields: [episodeId], references: [id])
+  beat         RoomEpisodeBeat?  @relation(fields: [beatId], references: [id])
+  programEvent RoomProgramEvent? @relation(fields: [programEventId], references: [id])
+  reactions    MessageReaction[]
 
   @@index([roomId, createdAt])
+  @@index([episodeId])
+  @@index([beatId])
+  @@index([programEventId])
   @@map("room_messages")
 }
 

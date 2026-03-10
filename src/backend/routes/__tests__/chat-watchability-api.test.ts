@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import request from 'supertest'
 import { app, userToken } from './e2e-helpers.js'
 import { chatService } from '../../container.js'
@@ -23,6 +23,8 @@ describe('chat watchability api', () => {
     await chatService.sendMessage({
       room_id: created.room.id,
       author_id: agentId,
+      speaker_role: 'HOST',
+      cue_type: 'CALLBACK',
       body: '所以人类深夜点外卖，真的是因为饿吗？',
     })
 
@@ -51,8 +53,18 @@ describe('chat watchability api', () => {
     expect(programRes.status).toBe(200)
     expect(programRes.body.data).toMatchObject({
       room_id: created.room.id,
-      enabled: false,
+      enabled: true,
       scene_type: 'FREE_CHAT',
+      callback_window: 18,
+    })
+
+    await vi.waitFor(async () => {
+      const highlightsRes = await request(app).get(`/v1/rooms/${created.room.id}/highlights`)
+      expect(highlightsRes.status).toBe(200)
+      expect(highlightsRes.body.data[0]).toMatchObject({
+        source_message_id: expect.any(String),
+        kind: 'CALLBACK',
+      })
     })
   })
 })

@@ -57,6 +57,40 @@ describe('ChatroomRuntimeContextBuilder', () => {
       scene_type: 'TALK_SHOW',
       discoverability_short_hook: '一群 agent 正在把 benchmark 神话拆开审。',
     })
+    const program = await watchabilityRepo.getProgram(room.id)
+    const episode = await watchabilityRepo.getActiveEpisode(room.id)
+    expect(program).not.toBeNull()
+    expect(episode).not.toBeNull()
+    const beat = await watchabilityRepo.createEpisodeBeat({
+      room_id: room.id,
+      episode_id: episode!.id,
+      ordinal: 1,
+      beat_type: 'CALLBACK',
+      cue_type: 'CALLBACK',
+      director_goal: '把 benchmark 神话拆开重讲',
+      selected_speaker_agent_id: host.id,
+    })
+    await watchabilityRepo.createProgramEvent({
+      room_id: room.id,
+      episode_id: episode!.id,
+      beat_id: beat.id,
+      event_type: 'PROGRAM_CUE',
+      status: 'PLANNED',
+      cue_type: 'CALLBACK',
+      director_goal: '把 benchmark 神话拆开重讲',
+      selected_speaker_agent_id: host.id,
+      idempotency_key: 'builder-test-cue',
+    })
+    await watchabilityRepo.createHighlight({
+      room_id: room.id,
+      episode_id: episode!.id,
+      beat_id: beat.id,
+      source_message_id: greeting.id,
+      kind: 'CALLBACK',
+      text: greeting.body,
+      actor_agent_ids: [host.id],
+      score: 0.9,
+    })
 
     const enabled = await builder.build({
       room,
@@ -67,8 +101,11 @@ describe('ChatroomRuntimeContextBuilder', () => {
     expect(enabled.chatContext.program).toMatchObject({
       scene_type: 'TALK_SHOW',
       self_role: 'HOST',
+      cue_type: 'CALLBACK',
+      director_goal: '把 benchmark 神话拆开重讲',
     })
     expect(enabled.promptVariables.program_scene).toBe('TALK_SHOW')
     expect(enabled.promptVariables.cast_snapshot).toContain('Host (HOST)')
+    expect(enabled.promptVariables.last_highlight).toContain('benchmark')
   })
 })

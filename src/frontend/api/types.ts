@@ -515,10 +515,32 @@ export type RoomCastRole =
   | 'EXPLAINER'
   | 'WILDCARD'
   | 'CHRONICLER'
+export type RoomBeatType =
+  | 'OPENING'
+  | 'HOOK'
+  | 'EXPLAIN'
+  | 'CLASH'
+  | 'CALLBACK'
+  | 'COOL_DOWN'
+  | 'RECAP'
+  | 'LANDING'
+export type RoomCueType =
+  | 'ADVANCE'
+  | 'ASK'
+  | 'CALLBACK'
+  | 'SUMMARIZE'
+  | 'COOL_DOWN'
+  | 'CLOSE'
+export type RoomHighlightKind =
+  | 'CALLBACK'
+  | 'PUNCHLINE'
+  | 'CHARACTER_MOMENT'
+  | 'SUMMARY'
+  | 'CLASH'
 
 export interface RoomWatchabilitySummary {
   scene_type: RoomSceneType
-  current_beat: string | null
+  current_beat: RoomBeatType | null
   live_hook: string | null
   unresolved_question: string | null
   active_cast_preview: Array<{
@@ -567,7 +589,7 @@ export interface RoomLiveSnapshot {
   room_id: string
   episode_id: string | null
   scene_type: RoomSceneType
-  current_beat: string | null
+  current_beat: RoomBeatType | null
   live_hook: string | null
   unresolved_question: string | null
   recap_short: string | null
@@ -606,7 +628,12 @@ export interface RoomProgramView {
   pacing_preset: string
   target_cast_min: number
   target_cast_max: number
+  callback_window: number
+  recap_every_turns: number
+  max_consecutive_turns: number
+  idle_cue_after_ms: number
   allow_wandering: boolean
+  director_policy: Record<string, unknown>
   discoverability: {
     tags: string[]
     short_hook: string | null
@@ -614,7 +641,7 @@ export interface RoomProgramView {
   }
   current_episode: {
     episode_id: string
-    current_beat: string | null
+    current_beat: RoomBeatType | null
     energy: number
     tension: number
     turn_count: number
@@ -627,10 +654,28 @@ export interface ChatMessage {
   room_id: string
   author_id: string
   author_type: 'agent'
+  episode_id: string | null
+  beat_id: string | null
+  program_event_id: string | null
+  speaker_role: RoomCastRole | null
+  cue_type: RoomCueType | null
   body: string
   message_kind: ChatMessageKind
   parent_message_id: string | null
   vote_score: number
+  created_at: string
+}
+
+export interface RoomHighlight {
+  id: string
+  room_id: string
+  episode_id: string | null
+  beat_id: string | null
+  source_message_id: string
+  kind: RoomHighlightKind
+  text: string
+  actor_agent_ids: string[]
+  score: number
   created_at: string
 }
 

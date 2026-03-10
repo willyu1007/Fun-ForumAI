@@ -112,4 +112,112 @@ describe('RoomProjector', () => {
     ])
     expect(projection?.cast.some((entry) => entry.role === 'HOST')).toBe(false)
   })
+
+  it('projects latest beat and highlight into the live snapshot', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const roomRepo = new InMemoryRoomRepository()
+    const messageRepo = new InMemoryMessageRepository()
+    const watchabilityRepo = new InMemoryRoomWatchabilityRepository()
+
+    const host = agentRepo.create({ owner_id: 'u1', display_name: 'Host' })
+    const room = await roomRepo.create({
+      name: 'Beat Room',
+      slug: 'beat-room',
+      description: '要更有戏',
+      created_by_agent_id: host.id,
+    })
+
+    await roomRepo.addMember(room.id, host.id, 'creator', 20_000)
+    const opening = await messageRepo.create({
+      room_id: room.id,
+      author_id: host.id,
+      speaker_role: 'HOST',
+      cue_type: 'CALLBACK',
+      body: '那我们把刚才那个梗再捡回来。',
+    })
+    await roomRepo.recordMemberMessage(room.id, host.id, opening.created_at)
+
+    const program = await watchabilityRepo.ensureProgram(room)
+    const episode = await watchabilityRepo.ensureActiveEpisode(room.id, program.id)
+    await watchabilityRepo.createEpisodeBeat({
+      room_id: room.id,
+      episode_id: episode.id,
+      ordinal: 1,
+      beat_type: 'CALLBACK',
+      cue_type: 'CALLBACK',
+      director_goal: '回收前面的包袱',
+      selected_speaker_agent_id: host.id,
+    })
+    await watchabilityRepo.createHighlight({
+      room_id: room.id,
+      episode_id: episode.id,
+      source_message_id: opening.id,
+      beat_id: null,
+      kind: 'CALLBACK',
+      text: opening.body,
+      actor_agent_ids: [host.id],
+      score: 0.9,
+    })
+
+    const projector = new RoomProjector({
+      roomRepo,
+      messageRepo,
+      agentRepo,
+      watchabilityRepo,
+    })
+
+    const projection = await projector.refreshRoom(room.id)
+    const refreshedEpisode = await watchabilityRepo.getActiveEpisode(room.id)
+
+    expect(projection?.snapshot.current_beat).toBe('CALLBACK')
+    expect(projection?.snapshot.last_highlight_text).toBe(opening.body)
+    expect(refreshedEpisode?.callback_bank_json.length).toBeGreaterThan(0)
+  })
+
+  it('honors callback_window even when it is larger than the watchability recap window', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const roomRepo = new InMemoryRoomRepository()
+    const messageRepo = new InMemoryMessageRepository()
+    const watchabilityRepo = new InMemoryRoomWatchabilityRepository()
+
+    const host = agentRepo.create({ owner_id: 'u1', display_name: 'Host' })
+    const room = await roomRepo.create({
+      name: 'Long Callback Room',
+      slug: 'long-callback-room',
+      description: '测试 callback window',
+      created_by_agent_id: host.id,
+    })
+
+    await roomRepo.addMember(room.id, host.id, 'creator', 20_000)
+    const program = await watchabilityRepo.ensureProgram(room)
+    await watchabilityRepo.updateProgram(room.id, {
+      callback_window: 8,
+      enabled: true,
+    })
+
+    let oldestMessageId = ''
+    for (let index = 0; index < 8; index += 1) {
+      const message = await messageRepo.create({
+        room_id: room.id,
+        author_id: host.id,
+        body: `第 ${index + 1} 条消息，留一个之后要回收的梗！`,
+        cue_type: index === 0 ? 'CALLBACK' : null,
+        speaker_role: 'HOST',
+      })
+      if (index === 0) oldestMessageId = message.id
+      await roomRepo.recordMemberMessage(room.id, host.id, message.created_at)
+    }
+
+    const projector = new RoomProjector({
+      roomRepo,
+      messageRepo,
+      agentRepo,
+      watchabilityRepo,
+    })
+
+    await projector.refreshRoom(room.id)
+    const episode = await watchabilityRepo.getActiveEpisode(room.id)
+
+    expect(episode?.callback_bank_json.some((candidate) => candidate.message_id === oldestMessageId)).toBe(true)
+  })
 })

@@ -20,11 +20,16 @@ type RoomSseEventType =
   | 'ROOM_STATUS_CHANGED'
   | 'AGENT_TYPING'
   | 'AGENT_STOP_TYPING'
+  | 'ROOM_BEAT_CHANGED'
+  | 'ROOM_CAST_UPDATED'
+  | 'ROOM_HIGHLIGHT_CREATED'
   | 'ROOM_LIVE_SNAPSHOT_UPDATED'
 
 const ROOM_EVENT_TYPES = new Set<string>([
   'MESSAGE_CREATED', 'ROOM_MEMBER_JOINED', 'ROOM_MEMBER_LEFT',
-  'ROOM_STATUS_CHANGED', 'AGENT_TYPING', 'AGENT_STOP_TYPING', 'ROOM_LIVE_SNAPSHOT_UPDATED',
+  'ROOM_STATUS_CHANGED', 'AGENT_TYPING', 'AGENT_STOP_TYPING',
+  'ROOM_BEAT_CHANGED', 'ROOM_CAST_UPDATED', 'ROOM_HIGHLIGHT_CREATED',
+  'ROOM_LIVE_SNAPSHOT_UPDATED',
 ])
 
 function isRoomSseEvent(event: SseEvent): event is SseEvent & { type: RoomSseEventType } {
@@ -59,7 +64,9 @@ export function useChatRoomSse(roomId: string) {
         case 'ROOM_MEMBER_LEFT':
           if (event.payload.room_id === roomId) {
             qc.invalidateQueries({ queryKey: queryKeys.room(roomId) })
+            qc.invalidateQueries({ queryKey: queryKeys.roomHighlightsRoot(roomId) })
           }
+          qc.invalidateQueries({ queryKey: ['rooms'] })
           break
         case 'ROOM_STATUS_CHANGED':
           if (event.payload.room_id === roomId) {
@@ -85,12 +92,37 @@ export function useChatRoomSse(roomId: string) {
             })
           }
           break
+        case 'ROOM_BEAT_CHANGED':
+          if (event.payload.room_id === roomId) {
+            qc.invalidateQueries({ queryKey: queryKeys.roomLiveSnapshot(roomId) })
+            qc.invalidateQueries({ queryKey: queryKeys.roomProgram(roomId) })
+            qc.invalidateQueries({ queryKey: queryKeys.roomMessages(roomId) })
+          }
+          qc.invalidateQueries({ queryKey: ['rooms'] })
+          break
+        case 'ROOM_CAST_UPDATED':
+          if (event.payload.room_id === roomId) {
+            qc.invalidateQueries({ queryKey: queryKeys.roomCast(roomId) })
+            qc.invalidateQueries({ queryKey: queryKeys.roomLiveSnapshot(roomId) })
+          }
+          qc.invalidateQueries({ queryKey: ['rooms'] })
+          break
+        case 'ROOM_HIGHLIGHT_CREATED':
+          if (event.payload.room_id === roomId) {
+            qc.invalidateQueries({ queryKey: queryKeys.roomHighlightsRoot(roomId) })
+            qc.invalidateQueries({ queryKey: queryKeys.roomLiveSnapshot(roomId) })
+            qc.invalidateQueries({ queryKey: queryKeys.roomMessages(roomId) })
+          }
+          qc.invalidateQueries({ queryKey: ['rooms'] })
+          break
         case 'ROOM_LIVE_SNAPSHOT_UPDATED':
           if (event.payload.room_id === roomId) {
             qc.invalidateQueries({ queryKey: queryKeys.roomLiveSnapshot(roomId) })
             qc.invalidateQueries({ queryKey: queryKeys.roomCast(roomId) })
             qc.invalidateQueries({ queryKey: queryKeys.roomProgram(roomId) })
+            qc.invalidateQueries({ queryKey: queryKeys.roomHighlightsRoot(roomId) })
           }
+          qc.invalidateQueries({ queryKey: ['rooms'] })
           break
       }
     },

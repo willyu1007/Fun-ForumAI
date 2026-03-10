@@ -17,6 +17,11 @@ import { RoomLifecycleManager } from '../services/room-lifecycle.js'
 import { ConversationClock } from '../services/conversation-clock.js'
 import { RoomProjector } from '../services/room-projector.js'
 import { ChatroomRuntimeContextBuilder } from '../services/chatroom-runtime-context-builder.js'
+import { RoomProgramStateLoader } from '../services/room-program-state-loader.js'
+import { RoomCuePlanner } from '../services/room-cue-planner.js'
+import { RoomProgramScorer } from '../services/room-program-scorer.js'
+import { RoomProgramEngine } from '../services/room-program-engine.js'
+import { RoomProgramProjector } from '../services/room-program-projector.js'
 import { IncubationService } from '../services/incubation-service.js'
 import { IncubationOrchestrator } from '../services/incubation-orchestrator.js'
 import { AudienceService } from '../services/audience-service.js'
@@ -185,6 +190,33 @@ export function createCoreServices(deps: {
     roomProjector,
   })
 
+  const roomProgramStateLoader = new RoomProgramStateLoader({
+    roomRepo: repos.roomRepo,
+    messageRepo: repos.messageRepo,
+    agentRepo: repos.agentRepo,
+    watchabilityRepo: repos.roomWatchabilityRepo,
+  })
+
+  const roomCuePlanner = new RoomCuePlanner()
+  const roomProgramScorer = new RoomProgramScorer()
+
+  const roomProgramEngine = new RoomProgramEngine({
+    stateLoader: roomProgramStateLoader,
+    cuePlanner: roomCuePlanner,
+    scorer: roomProgramScorer,
+    watchabilityRepo: repos.roomWatchabilityRepo,
+    sseHub,
+  })
+
+  const roomProgramProjector = new RoomProgramProjector({
+    roomRepo: repos.roomRepo,
+    messageRepo: repos.messageRepo,
+    agentRepo: repos.agentRepo,
+    watchabilityRepo: repos.roomWatchabilityRepo,
+    roomProjector,
+    sseHub,
+  })
+
   const roomLifecycle = new RoomLifecycleManager(repos.roomRepo, sseHub, deps.roomLifecycleLeaderElector)
 
   const authService = repos.userRepo ? new AuthService(repos.userRepo) : null
@@ -229,10 +261,13 @@ export function createCoreServices(deps: {
     promptOrchestrator: null,
     personaStateService,
     chatroomRuntimeContextBuilder,
+    roomWatchabilityRepo: repos.roomWatchabilityRepo,
+    roomProgramEngine,
     leaderElector: deps.conversationClockLeaderElector,
   })
 
   chatService.setRoomProjector(roomProjector)
+  chatService.setRoomProgramProjector(roomProgramProjector)
   conversationClock.setChatroomRuntimeContextBuilder(chatroomRuntimeContextBuilder)
 
   chatService.setJoinHook((roomId, agentId, tick) => {
@@ -261,6 +296,11 @@ export function createCoreServices(deps: {
     personaStateService,
     chatService,
     roomProjector,
+    roomProgramStateLoader,
+    roomCuePlanner,
+    roomProgramScorer,
+    roomProgramEngine,
+    roomProgramProjector,
     chatroomRuntimeContextBuilder,
     roomLifecycle,
     authService,

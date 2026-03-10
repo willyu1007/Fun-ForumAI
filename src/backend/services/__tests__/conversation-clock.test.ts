@@ -271,4 +271,89 @@ describe('ConversationClock', () => {
       topicHints: expect.arrayContaining(['General']),
     }))
   })
+
+  it('treats timer owner as wake-up signal and can select another speaker in program rooms', async () => {
+    const roomProgramEngine = {
+      planNextTurn: vi.fn(async () => ({
+        episode_id: 'ep-1',
+        selected_speaker_agent_id: 'agent-2',
+        speaker_role: 'FOIL',
+        cue_type: 'CALLBACK',
+        beat_type: 'CALLBACK',
+        director_goal: '把旧梗回收回来',
+        beat_id: 'beat-1',
+        program_event_id: 'evt-program-1',
+      })),
+      markProgramEvent: vi.fn(async () => undefined),
+    }
+
+    const clock = new ConversationClock({
+      roomRepo: {
+        findById: vi.fn(async () => ({
+          id: 'room-1',
+          status: 'active',
+          name: 'General',
+          description: '',
+        })),
+        isMember: vi.fn(async () => true),
+      } as never,
+      messageRepo: {
+        countByAuthorInRoomThisHour: vi.fn(async () => 0),
+        countByAuthorGlobalThisHour: vi.fn(async () => 0),
+        countByRoomThisHour: vi.fn(async () => 0),
+      } as never,
+      agentRepo: {
+        findById: vi.fn(() => ({ id: 'agent-2', display_name: 'Agent Two' })),
+      } as never,
+      agentService: {
+        getLatestConfig: vi.fn(() => null),
+      } as never,
+      chatService: {
+        sendMessage: vi.fn(async () => undefined),
+      } as never,
+      llmGateway: {} as never,
+      sseHub: {
+        broadcastToRoom: vi.fn(),
+      } as never,
+      eventRepo: {
+        create: vi.fn(() => ({ id: 'evt-1' })),
+      } as never,
+      agentRunRepo: {
+        create: vi.fn(),
+      } as never,
+      roomWatchabilityRepo: {
+        getProgram: vi.fn(async () => ({ enabled: true })),
+      } as never,
+      roomProgramEngine: roomProgramEngine as never,
+    })
+
+    ;(clock as unknown as { running: boolean }).running = true
+    ;(clock as unknown as { scheduleAgent: (roomId: string, agentId: string, tickInterval: number) => void }).scheduleAgent = vi.fn()
+    vi.spyOn(clock as never, 'generateMessage' as never).mockResolvedValue({
+      kind: 'normal',
+      body: '这句应该让别的角色来讲。',
+    } as never)
+    const postSpy = vi.spyOn(clock as never, 'postMessage' as never).mockResolvedValue(undefined as never)
+
+    await (clock as unknown as {
+      handleTick: (roomId: string, agentId: string, tickInterval: number) => Promise<void>
+    }).handleTick('room-1', 'agent-1', 1_000)
+
+    expect(roomProgramEngine.planNextTurn).toHaveBeenCalledWith(expect.objectContaining({
+      roomId: 'room-1',
+      triggerAgentId: 'agent-1',
+    }))
+    expect(postSpy).toHaveBeenCalledWith(
+      'room-1',
+      'agent-2',
+      '这句应该让别的角色来讲。',
+      'normal',
+      undefined,
+      expect.objectContaining({
+        beat_id: 'beat-1',
+        cue_type: 'CALLBACK',
+        speaker_role: 'FOIL',
+      }),
+    )
+  })
 })

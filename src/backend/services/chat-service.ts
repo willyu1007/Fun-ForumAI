@@ -18,6 +18,7 @@ import type {
   PaginatedResult,
   PaginationOpts,
   RoomCastMemberView,
+  RoomHighlight,
   RoomLiveSnapshot,
   RoomProgramReadModel,
   RoomWatchabilitySummary,
@@ -25,6 +26,7 @@ import type {
 import { NotFoundError, ValidationError, ForbiddenError } from '../lib/errors.js'
 import { config } from '../lib/config.js'
 import type { RoomProjector } from './room-projector.js'
+import type { RoomProgramProjector } from './room-program-projector.js'
 
 const MAX_ROOMS_PER_AGENT = 3
 
@@ -57,6 +59,7 @@ export class ChatService {
   private joinHook?: JoinLeaveHook
   private leaveHook?: (roomId: string, agentId: string) => void
   private roomProjector: RoomProjector | null = null
+  private roomProgramProjector: RoomProgramProjector | null = null
 
   constructor(private readonly deps: ChatServiceDeps) {}
 
@@ -70,6 +73,10 @@ export class ChatService {
 
   setRoomProjector(projector: RoomProjector | null): void {
     this.roomProjector = projector
+  }
+
+  setRoomProgramProjector(projector: RoomProgramProjector | null): void {
+    this.roomProgramProjector = projector
   }
 
   setXpService(engine: ChatServiceDeps['xpService']): void {
@@ -97,6 +104,17 @@ export class ChatService {
     if (!agent) throw new NotFoundError('Agent', input.created_by_agent_id)
 
     const room = await this.deps.roomRepo.create(input)
+    if (this.deps.roomWatchabilityRepo) {
+      await this.deps.roomWatchabilityRepo.ensureProgram(room)
+      await this.deps.roomWatchabilityRepo.updateProgram(room.id, {
+        enabled: true,
+        callback_window: 18,
+        recap_every_turns: 10,
+        max_consecutive_turns: 1,
+        idle_cue_after_ms: 30_000,
+        director_policy_json: {},
+      })
+    }
 
     const tick = this.getAgentTickInterval(input.created_by_agent_id)
     await this.deps.roomRepo.addMember(room.id, input.created_by_agent_id, 'creator', tick)
@@ -120,7 +138,7 @@ export class ChatService {
     }
 
     const projection = await this.projectRoom(room.id)
-    this.broadcastSnapshotUpdate(room.id, projection?.snapshot ?? null)
+    this.broadcastProjectionUpdate(room.id, projection)
 
     return { room, greeting }
   }
@@ -160,7 +178,7 @@ export class ChatService {
 
     this.joinHook?.(roomId, agentId, tick)
     const projection = await this.projectRoom(roomId)
-    this.broadcastSnapshotUpdate(roomId, projection?.snapshot ?? null)
+    this.broadcastProjectionUpdate(roomId, projection)
     return member
   }
 
@@ -185,7 +203,7 @@ export class ChatService {
 
     this.leaveHook?.(roomId, agentId)
     const projection = await this.projectRoom(roomId)
-    this.broadcastSnapshotUpdate(roomId, projection?.snapshot ?? null)
+    this.broadcastProjectionUpdate(roomId, projection)
   }
 
   async leaveAndJoin(
@@ -269,8 +287,7 @@ export class ChatService {
       })
     }
 
-    const projection = await this.projectRoom(input.room_id)
-    this.broadcastSnapshotUpdate(input.room_id, projection?.snapshot ?? null)
+    void this.projectRoomAfterMessage(msg)
 
     return msg
   }
@@ -379,7 +396,12 @@ export class ChatService {
       pacing_preset: program?.pacing_preset ?? 'balanced',
       target_cast_min: program?.target_cast_min ?? Math.min(3, room.max_agents),
       target_cast_max: program?.target_cast_max ?? room.max_agents,
+      callback_window: program?.callback_window ?? 18,
+      recap_every_turns: program?.recap_every_turns ?? 10,
+      max_consecutive_turns: program?.max_consecutive_turns ?? 1,
+      idle_cue_after_ms: program?.idle_cue_after_ms ?? 30_000,
       allow_wandering: program?.allow_wandering ?? true,
+      director_policy: program?.director_policy_json ?? {},
       discoverability: {
         tags: program?.discoverability_tags ?? [],
         short_hook: program?.discoverability_short_hook ?? (room.description || null),
@@ -396,6 +418,18 @@ export class ChatService {
           }
         : null,
     }
+  }
+
+  async getRoomHighlights(
+    roomId: string,
+    opts: PaginationOpts & { episode_id?: string | null },
+  ): Promise<PaginatedResult<RoomHighlight>> {
+    const room = await this.deps.roomRepo.findById(roomId)
+    if (!room) throw new NotFoundError('Room', roomId)
+    if (!this.deps.roomWatchabilityRepo) {
+      return { items: [], next_cursor: null }
+    }
+    return this.deps.roomWatchabilityRepo.listHighlights(roomId, opts)
   }
 
   async getMessages(roomId: string, opts: PaginationOpts): Promise<PaginatedResult<ChatMessage>> {
@@ -519,6 +553,29 @@ export class ChatService {
     }
   }
 
+  private async projectRoomAfterMessage(message: ChatMessage): Promise<void> {
+    try {
+      if (this.roomProgramProjector) {
+        await this.roomProgramProjector.onMessageCreated(message)
+        return
+      }
+
+      const projection = await this.projectRoom(message.room_id)
+      this.broadcastProjectionUpdate(message.room_id, projection)
+    } catch (err) {
+      console.error('[ChatService] room program projector failed:', err)
+    }
+  }
+
+  private broadcastProjectionUpdate(
+    roomId: string,
+    projection: { snapshot: RoomLiveSnapshot; cast: RoomCastMemberView[] } | null,
+  ): void {
+    if (!projection) return
+    this.broadcastSnapshotUpdate(roomId, projection.snapshot)
+    this.broadcastCastUpdate(roomId, projection.snapshot.episode_id, projection.cast)
+  }
+
   private broadcastSnapshotUpdate(roomId: string, snapshot: RoomLiveSnapshot | null): void {
     if (!snapshot) return
     this.deps.sseHub?.broadcastToRoom(roomId, {
@@ -535,6 +592,21 @@ export class ChatService {
           tension: snapshot.tension,
           last_highlight_text: snapshot.last_highlight_text,
         },
+      },
+    })
+  }
+
+  private broadcastCastUpdate(
+    roomId: string,
+    episodeId: string | null,
+    cast: RoomCastMemberView[],
+  ): void {
+    this.deps.sseHub?.broadcastToRoom(roomId, {
+      type: 'ROOM_CAST_UPDATED',
+      payload: {
+        room_id: roomId,
+        episode_id: episodeId,
+        cast,
       },
     })
   }

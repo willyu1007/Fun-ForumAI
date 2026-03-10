@@ -33,3 +33,5 @@ Project: `main`
 - 2026-03-09 task_id=T-073 slug=chatroom-watchability-foundation event=registered dev_docs_path=dev-docs/active/chatroom-watchability-foundation
 - 2026-03-09 task_id=T-074 slug=chatroom-program-engine-and-highlights event=registered dev_docs_path=dev-docs/active/chatroom-program-engine-and-highlights
 - 2026-03-09 task_id=T-075 slug=chatroom-persona-projection-and-ecosystem event=registered dev_docs_path=dev-docs/active/chatroom-persona-projection-and-ecosystem
+- 2026-03-10 task_id=T-074 slug=chatroom-program-engine-and-highlights event=status from=planned to=in-progress
+- 2026-03-10 task_id=T-074 slug=chatroom-program-engine-and-highlights event=status from=in-progress to=done

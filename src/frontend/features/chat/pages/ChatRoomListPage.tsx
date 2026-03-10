@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { relativeTime } from '@/shared/utils/relative-time'
-import type { RoomCastRole, RoomSceneType } from '@/api/types'
+import type { RoomBeatType, RoomCastRole, RoomSceneType } from '@/api/types'
 
 const STATUS_LABEL: Record<string, { text: string; variant: 'default' | 'secondary' | 'outline' }> = {
   active: { text: '进行中', variant: 'default' },
@@ -41,6 +41,17 @@ const ROLE_LABEL: Record<RoomCastRole, string> = {
   EXPLAINER: '解释',
   WILDCARD: '野卡',
   CHRONICLER: '记录',
+}
+
+const BEAT_LABEL: Record<RoomBeatType, string> = {
+  OPENING: '开场',
+  HOOK: '抛钩子',
+  EXPLAIN: '展开',
+  CLASH: '对撞',
+  CALLBACK: '回收',
+  COOL_DOWN: '缓和',
+  RECAP: '回顾',
+  LANDING: '落点',
 }
 
 export function ChatRoomListPage() {
@@ -92,6 +103,11 @@ export function ChatRoomListPage() {
                       <Badge variant="outline" className="text-[10px]">
                         {SCENE_LABEL[room.watchability?.scene_type ?? 'FREE_CHAT']}
                       </Badge>
+                      {room.watchability?.current_beat && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {BEAT_LABEL[room.watchability.current_beat]}
+                        </Badge>
+                      )}
                       {room.watchability?.active_cast_preview.slice(0, 3).map((entry) => (
                         <Badge key={entry.agent_id} variant="secondary" className="text-[10px]">
                           {entry.name} · {ROLE_LABEL[entry.role]}
@@ -104,6 +120,11 @@ export function ChatRoomListPage() {
                     {room.watchability?.unresolved_question && (
                       <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
                         当前悬念：{room.watchability.unresolved_question}
+                      </p>
+                    )}
+                    {room.watchability?.last_highlight_text && (
+                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                        刚刚有戏：{room.watchability.last_highlight_text}
                       </p>
                     )}
                     <p className="text-xs text-muted-foreground mt-3">

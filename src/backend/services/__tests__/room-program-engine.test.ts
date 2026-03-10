@@ -1,0 +1,161 @@
+import { describe, expect, it } from 'vitest'
+import { InMemoryRoomWatchabilityRepository } from '../../repos/room-watchability-repository.js'
+import { RoomProgramEngine } from '../room-program-engine.js'
+import { RoomCuePlanner } from '../room-cue-planner.js'
+import { RoomProgramScorer } from '../room-program-scorer.js'
+import type { LoadedRoomProgramState } from '../room-program-state-loader.js'
+
+function makeLoadedState(): LoadedRoomProgramState {
+  const now = new Date('2026-03-10T10:00:00.000Z')
+  return {
+    room: {
+      id: 'room-1',
+      name: '节目房',
+      slug: 'show-room',
+      description: '节目化房间',
+      community_id: null,
+      created_by_agent_id: 'agent-1',
+      max_agents: 4,
+      tick_interval_base: 20_000,
+      status: 'active',
+      last_message_at: now,
+      created_at: now,
+      updated_at: now,
+    },
+    program: {
+      id: 'program-1',
+      room_id: 'room-1',
+      enabled: true,
+      scene_type: 'FREE_CHAT',
+      pacing_preset: 'balanced',
+      target_cast_min: 2,
+      target_cast_max: 4,
+      callback_window: 18,
+      recap_every_turns: 10,
+      max_consecutive_turns: 1,
+      idle_cue_after_ms: 30_000,
+      allow_wandering: true,
+      director_policy_json: {},
+      discoverability_tags: [],
+      discoverability_short_hook: null,
+      discoverability_default_view: 'live',
+      created_at: now,
+      updated_at: now,
+    },
+    episode: {
+      id: 'episode-1',
+      room_id: 'room-1',
+      program_id: 'program-1',
+      status: 'ACTIVE',
+      summary_text: '',
+      unresolved_question: null,
+      callback_bank_json: [{
+        message_id: 'msg-1',
+        author_agent_id: 'agent-2',
+        summary_text: '夜宵税那个旧梗',
+        weight: 0.9,
+        created_at: now.toISOString(),
+      }],
+      energy: 0.52,
+      tension: 0.22,
+      turn_count: 6,
+      message_count: 6,
+      started_at: now,
+      ended_at: null,
+      created_at: now,
+      updated_at: now,
+    },
+    snapshot: null,
+    cast: [
+      {
+        agent_id: 'agent-1',
+        name: 'Host',
+        role: 'HOST',
+        chemistry_score: 0.88,
+        spotlight_weight: 1.1,
+        last_spoke_at: now,
+      },
+      {
+        agent_id: 'agent-2',
+        name: 'Foil',
+        role: 'FOIL',
+        chemistry_score: 0.82,
+        spotlight_weight: 1,
+        last_spoke_at: new Date('2026-03-10T09:59:00.000Z'),
+      },
+    ],
+    members: [],
+    recentMessages: [{
+      id: 'msg-2',
+      room_id: 'room-1',
+      author_id: 'agent-1',
+      author_type: 'agent',
+      episode_id: 'episode-1',
+      beat_id: null,
+      program_event_id: null,
+      speaker_role: 'HOST',
+      cue_type: null,
+      body: '先把这个前提留在台上。',
+      message_kind: 'normal',
+      parent_message_id: null,
+      vote_score: 0,
+      created_at: now,
+    }],
+    latestBeat: null,
+    latestEvent: null,
+    latestHighlight: null,
+    lastMessage: {
+      id: 'msg-2',
+      room_id: 'room-1',
+      author_id: 'agent-1',
+      author_type: 'agent',
+      episode_id: 'episode-1',
+      beat_id: null,
+      program_event_id: null,
+      speaker_role: 'HOST',
+      cue_type: null,
+      body: '先把这个前提留在台上。',
+      message_kind: 'normal',
+      parent_message_id: null,
+      vote_score: 0,
+      created_at: now,
+    },
+  }
+}
+
+describe('RoomProgramEngine', () => {
+  it('reuses the same planned cue on retry instead of duplicating beat/event/ledger rows', async () => {
+    const watchabilityRepo = new InMemoryRoomWatchabilityRepository()
+    const state = makeLoadedState()
+    const engine = new RoomProgramEngine({
+      stateLoader: {
+        load: async () => state,
+      } as never,
+      cuePlanner: new RoomCuePlanner(),
+      scorer: new RoomProgramScorer(),
+      watchabilityRepo,
+    })
+
+    const first = await engine.planNextTurn({
+      roomId: 'room-1',
+      triggerAgentId: 'agent-trigger',
+      canSpeak: async () => true,
+    })
+    const second = await engine.planNextTurn({
+      roomId: 'room-1',
+      triggerAgentId: 'agent-trigger',
+      canSpeak: async () => true,
+    })
+
+    expect(first).not.toBeNull()
+    expect(second).not.toBeNull()
+    expect(second?.beat_id).toBe(first?.beat_id)
+    expect(second?.program_event_id).toBe(first?.program_event_id)
+
+    const latestBeat = await watchabilityRepo.getLatestBeat('episode-1')
+    const ledgers = await watchabilityRepo.listSelectionLedger(first!.program_event_id)
+
+    expect(latestBeat?.id).toBe(first?.beat_id)
+    expect(ledgers).toHaveLength(2)
+  })
+})

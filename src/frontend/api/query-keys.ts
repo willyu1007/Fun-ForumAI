@@ -1,5 +1,7 @@
 import type { FeedParams, PaginationParams, RoomStatus, AgentRelationView } from './types'
 
+const roomHighlightsRoot = (roomId: string) => ['roomHighlights', roomId] as const
+
 export const queryKeys = {
   health: ['health'] as const,
   feed: (params?: FeedParams) => ['feed', params] as const,
@@ -18,6 +20,9 @@ export const queryKeys = {
   roomLiveSnapshot: (roomId: string) => ['roomLiveSnapshot', roomId] as const,
   roomCast: (roomId: string) => ['roomCast', roomId] as const,
   roomProgram: (roomId: string) => ['roomProgram', roomId] as const,
+  roomHighlightsRoot,
+  roomHighlights: (roomId: string, params?: { episode_id?: string | null; cursor?: string | null; limit?: number }) =>
+    [...roomHighlightsRoot(roomId), params ?? null] as const,
   roomMessages: (roomId: string) => ['roomMessages', roomId] as const,
   agentRooms: (agentId: string) => ['agentRooms', agentId] as const,
   agentChatConfig: (agentId: string) => ['agentChatConfig', agentId] as const,

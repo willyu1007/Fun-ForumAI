@@ -3,6 +3,8 @@ import type { MessageRepository } from '../repos/message-repository.js'
 import type { RoomRepository } from '../repos/room-repository.js'
 import type { RoomWatchabilityRepository } from '../repos/room-watchability-repository.js'
 import type {
+  ChatMessage,
+  RoomCallbackCandidate,
   RoomCastMemberView,
   RoomLiveSnapshot,
   RoomProgram,
@@ -21,7 +23,39 @@ import {
   toNamedRecentMessages,
 } from './chatroom-watchability-heuristics.js'
 
-const RECENT_MESSAGE_LIMIT = 6
+const WATCHABILITY_RECENT_MESSAGE_LIMIT = 6
+const CALLBACK_BANK_LIMIT = 10
+
+function trimText(text: string, max: number): string {
+  const normalized = text.replace(/\s+/g, ' ').trim()
+  if (normalized.length <= max) return normalized
+  return `${normalized.slice(0, Math.max(0, max - 1)).trimEnd()}…`
+}
+
+function buildCallbackBank(
+  recentMessages: ChatMessage[],
+  callbackWindow: number,
+): RoomCallbackCandidate[] {
+  return recentMessages
+    .slice(-callbackWindow)
+    .map((message) => {
+      let weight = 0
+      if (message.cue_type === 'CALLBACK') weight += 0.5
+      if (/[?？]/.test(message.body)) weight += 0.22
+      if (/[!！]/.test(message.body)) weight += 0.14
+      weight += Math.min(message.body.trim().length / 240, 0.16)
+      return {
+        message_id: message.id,
+        author_agent_id: message.author_id,
+        summary_text: trimText(message.body, 56),
+        weight: Number(weight.toFixed(2)),
+        created_at: message.created_at.toISOString(),
+      } satisfies RoomCallbackCandidate
+    })
+    .filter((candidate) => candidate.weight >= 0.18)
+    .sort((left, right) => right.weight - left.weight)
+    .slice(0, CALLBACK_BANK_LIMIT)
+}
 
 export interface RoomProjectorDeps {
   roomRepo: RoomRepository
@@ -77,14 +111,22 @@ export class RoomProjector {
       }
     }
 
-    const recentMessages = await this.deps.messageRepo.getLatestMessages(room.id, RECENT_MESSAGE_LIMIT)
-    const namedMessages = toNamedRecentMessages(recentMessages, agentNames)
+    const recentMessages = await this.deps.messageRepo.getLatestMessages(
+      room.id,
+      Math.max(WATCHABILITY_RECENT_MESSAGE_LIMIT, program.callback_window),
+    )
+    const watchabilityMessages = recentMessages.slice(-WATCHABILITY_RECENT_MESSAGE_LIMIT)
+    const namedMessages = toNamedRecentMessages(watchabilityMessages, agentNames)
     const unresolvedQuestion = buildUnresolvedQuestion(namedMessages)
     const recapShort = buildRecapShort(room, namedMessages)
     const liveHook = buildLiveHook(room, namedMessages, unresolvedQuestion)
     const energy = computeEnergy(namedMessages, members)
     const tension = computeTension(namedMessages)
+    const latestBeat = await this.deps.watchabilityRepo.getLatestBeat(episode.id)
+    const latestHighlight = await this.deps.watchabilityRepo.getLatestHighlight(room.id)
+    const callbackBank = buildCallbackBank(recentMessages, program.callback_window)
 
+    const messageCount = await this.deps.messageRepo.countByRoom(room.id)
     const assignments = deriveCastAssignments(room, members)
     const persistedCast = await this.deps.watchabilityRepo.replaceEpisodeCast(
       room.id,
@@ -105,22 +147,23 @@ export class RoomProjector {
       episode_id: episode.id,
       summary_text: recapShort ?? '',
       unresolved_question: unresolvedQuestion,
+      callback_bank_json: callbackBank,
       energy,
       tension,
-      turn_count: recentMessages.length,
-      message_count: await this.deps.messageRepo.countByRoom(room.id),
+      turn_count: messageCount,
+      message_count: messageCount,
     })
 
     const snapshot = await this.deps.watchabilityRepo.saveLiveSnapshot({
       room_id: room.id,
       episode_id: episode.id,
       scene_type: program.scene_type,
-      current_beat: null,
+      current_beat: latestBeat?.beat_type ?? null,
       live_hook: liveHook,
       unresolved_question: unresolvedQuestion,
       recap_short: recapShort,
       active_cast: liveCast,
-      last_highlight_text: null,
+      last_highlight_text: latestHighlight?.text ?? null,
       energy,
       tension,
       message_cursor_id: recentMessages[recentMessages.length - 1]?.id ?? null,
@@ -160,7 +203,12 @@ export class RoomProjector {
       pacing_preset: program.pacing_preset,
       target_cast_min: program.target_cast_min,
       target_cast_max: program.target_cast_max,
+      callback_window: program.callback_window,
+      recap_every_turns: program.recap_every_turns,
+      max_consecutive_turns: program.max_consecutive_turns,
+      idle_cue_after_ms: program.idle_cue_after_ms,
       allow_wandering: program.allow_wandering,
+      director_policy: program.director_policy_json,
       discoverability: {
         tags: program.discoverability_tags,
         short_hook: program.discoverability_short_hook,

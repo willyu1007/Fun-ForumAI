@@ -3,9 +3,10 @@
 ## Boundaries
 - `ConversationClock` 仍是时间触发器和房间消息 source。
 - `RoomCuePlanner` 把 raw tick/raw message 翻译成 `ProgramCueCreated`；它不直接生成文本，也不直接写消息。
-- `allocator` 在现有规则框架上增加 program-aware score，不做全局最优求解。
+- program-aware selection 只发生在当前 room members 范围内，不改 forum allocator 的全局事件分配语义。
 - `RoomHighlight` 与 beat/program state 属于 read-side projection，不回写成写入成败条件。
-- `RoomProgramEngine` 是本包的正式子系统，包含 planner、context loader、projector、shared memory/callback bank 维护。
+- `RoomProgramEngine` 是本包的正式子系统，包含 planner、state loader、projector、callback bank 维护与 room-local scorer。
+- 本包不开放 owner program/cue 写接口；新房默认启用第二阶段，老房间保持兼容。
 
 ## Core Runtime Flow
 1. raw trigger: `RoomTick` 或 room message committed
@@ -26,10 +27,10 @@
   - 记录 raw trigger、program cue、planner status、event lifecycle。
 - `RoomSelectionLedger`
   - 记录 top-N 候选及 reasons，服务审计与调优。
-- `RoomSharedMemory`
-  - 维护轻公共连续性、callback bank 与过期策略。
 - `RoomHighlight`
   - 记录 punchline/clash/callback/reveal/summary 等高光片段。
+- `RoomEpisode.callbackBankJson`
+  - 维护房间级轻连续性和 callback 候选，不单独拆 `RoomSharedMemory` 表。
 
 ## Runtime Invariants
 - `RoomProgramEvent.idempotencyKey` 全局唯一。
@@ -48,7 +49,7 @@
 ## Compatibility
 - 第一阶段 snapshot/cast/program 接口继续保留，并消费第二阶段的 richer state。
 - 现有消息推送和房间 typing/status 事件保持兼容，beat/program/highlight 事件新增，不替换旧事件。
-- 如果 planner 被 feature flag 关闭，聊天室仍能退回第一阶段行为。
+- `program.enabled=false` 的 legacy 房间继续退回第一阶段行为；program-enabled 新房默认走第二阶段行为。
 
 ## Risks
 - 若 planner 直接依赖 LLM，时延和不可审计性会放大。

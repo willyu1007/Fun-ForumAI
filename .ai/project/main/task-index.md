@@ -81,7 +81,7 @@ Project: `main`
 | T-071 local-kind-runtime-consistency-remediation | done | F-020 | dev-docs/active/local-kind-runtime-consistency-remediation |
 | T-072 persona-rollout-gate-evidence-remediation | in-progress | F-020 | dev-docs/active/persona-rollout-gate-evidence-remediation |
 | T-073 chatroom-watchability-foundation | in-progress | F-000 | dev-docs/active/chatroom-watchability-foundation |
-| T-074 chatroom-program-engine-and-highlights | planned | F-000 | dev-docs/active/chatroom-program-engine-and-highlights |
+| T-074 chatroom-program-engine-and-highlights | done | F-000 | dev-docs/active/chatroom-program-engine-and-highlights |
 | T-075 chatroom-persona-projection-and-ecosystem | planned | F-000 | dev-docs/active/chatroom-persona-projection-and-ecosystem |
 | T-076 persona-runtime-integration-audit | in-progress | F-020 | dev-docs/active/persona-runtime-integration-audit |
 <!-- AUTO-GENERATED:END task-index -->

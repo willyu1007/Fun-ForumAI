@@ -49,6 +49,11 @@ export class ChatroomRuntimeContextBuilder {
     const program = await this.deps.watchabilityRepo.getProgram(room.id) ?? await this.deps.watchabilityRepo.ensureProgram(room)
     const snapshot = await this.deps.watchabilityRepo.getLiveSnapshot(room.id)
     const activeEpisode = await this.deps.watchabilityRepo.getActiveEpisode(room.id)
+    const latestBeat = activeEpisode
+      ? await this.deps.watchabilityRepo.getLatestBeat(activeEpisode.id)
+      : null
+    const latestEvent = await this.deps.watchabilityRepo.getLatestProgramEvent(room.id)
+    const latestHighlight = await this.deps.watchabilityRepo.getLatestHighlight(room.id)
     const persistedCast = await this.deps.watchabilityRepo.getCurrentCast(room.id)
     const members = await this.deps.roomRepo.getMembers(room.id)
     const cast = persistedCast.map((entry) => ({
@@ -81,6 +86,10 @@ export class ChatroomRuntimeContextBuilder {
       activeEpisode,
     )
     const selfRole = this.deps.roomProjector.getSelfRole(cast, agentId)
+    const directorGoal =
+      latestEvent?.director_goal
+      ?? latestBeat?.director_goal
+      ?? buildDirectorGoal(programReadModel, room, snapshot?.live_hook ?? null)
 
     const chatContext: NonNullable<ExecutionContext['chatContext']> = {
       room_name: room.name,
@@ -90,9 +99,9 @@ export class ChatroomRuntimeContextBuilder {
         ? {
             scene_type: programReadModel.scene_type,
             episode_id: snapshot?.episode_id ?? '',
-            current_beat: snapshot?.current_beat ?? null,
-            cue_type: null,
-            director_goal: buildDirectorGoal(programReadModel, room, snapshot?.live_hook ?? null),
+            current_beat: latestBeat?.beat_type ?? snapshot?.current_beat ?? null,
+            cue_type: latestEvent?.cue_type ?? latestBeat?.cue_type ?? null,
+            director_goal: directorGoal,
             self_role: selfRole,
             cast: cast.map((entry) => ({
               agent_id: entry.agent_id,
@@ -119,7 +128,7 @@ export class ChatroomRuntimeContextBuilder {
             cast_snapshot: stringifyCast(cast),
             live_hook: chatContext.program.live_hook ?? '',
             unresolved_question: chatContext.program.unresolved_question ?? '',
-            last_highlight: snapshot?.last_highlight_text ?? '',
+            last_highlight: latestHighlight?.text ?? snapshot?.last_highlight_text ?? '',
           }
         : {
             program_scene: '',

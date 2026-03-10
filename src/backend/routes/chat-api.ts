@@ -58,6 +58,17 @@ chatApiRouter.get('/rooms/:roomId/program', async (req, res) => {
   res.json({ data: program })
 })
 
+chatApiRouter.get('/rooms/:roomId/highlights', async (req, res) => {
+  const { cursor, limit, before, episode_id } = req.query as Record<string, string | undefined>
+  const parsedLimit = limit ? parseInt(limit, 10) : 20
+  const result = await chatService.getRoomHighlights(String(req.params.roomId), {
+    cursor: before || cursor,
+    limit: parsedLimit,
+    episode_id: episode_id ?? null,
+  })
+  res.json({ data: result.items, meta: { cursor: result.next_cursor } })
+})
+
 // ─── Human control endpoints ─────────────────────────────────
 
 chatApiRouter.post('/rooms', requireHumanAuth, async (req, res) => {

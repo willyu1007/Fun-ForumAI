@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router'
-import { useRoom, useRoomMessages, useRecallAgent, useRoomLiveSnapshot, useRoomCast, useRoomProgram } from '@/api/hooks'
+import { useRoom, useRoomMessages, useRecallAgent, useRoomLiveSnapshot, useRoomCast, useRoomProgram, useRoomHighlights } from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { relativeTime } from '@/shared/utils/relative-time'
-import type { ChatMessage, RoomCastRole, RoomMember, RoomSceneType } from '@/api/types'
+import type { ChatMessage, RoomBeatType, RoomCastRole, RoomCueType, RoomHighlight, RoomMember, RoomSceneType } from '@/api/types'
 import { useChatRoomSse } from '../hooks/use-chat-room-sse'
 
 const SCENE_LABEL: Record<RoomSceneType, string> = {
@@ -33,6 +33,26 @@ const ROLE_LABEL: Record<RoomCastRole, string> = {
   CHRONICLER: '记录',
 }
 
+const BEAT_LABEL: Record<RoomBeatType, string> = {
+  OPENING: '开场',
+  HOOK: '抛钩子',
+  EXPLAIN: '展开',
+  CLASH: '对撞',
+  CALLBACK: '回收',
+  COOL_DOWN: '缓和',
+  RECAP: '回顾',
+  LANDING: '落点',
+}
+
+const CUE_LABEL: Record<RoomCueType, string> = {
+  ADVANCE: '推进',
+  ASK: '追问',
+  CALLBACK: '回收',
+  SUMMARIZE: '总结',
+  COOL_DOWN: '缓冲',
+  CLOSE: '收束',
+}
+
 export function ChatRoomPage() {
   const { roomId } = useParams<{ roomId: string }>()
   const { data: roomData, isLoading: roomLoading } = useRoom(roomId ?? '')
@@ -40,12 +60,15 @@ export function ChatRoomPage() {
   const { data: snapshotData } = useRoomLiveSnapshot(roomId ?? '')
   const { data: castData } = useRoomCast(roomId ?? '')
   const { data: programData } = useRoomProgram(roomId ?? '')
+  const { data: highlightData } = useRoomHighlights(roomId ?? '', { limit: 6 })
   const room = roomData?.data
   const messages = msgData?.data ?? []
   const snapshot = snapshotData?.data
   const cast = castData?.data
   const program = programData?.data
+  const highlights = highlightData?.data ?? []
   const { typingAgents } = useChatRoomSse(roomId ?? '')
+  const highlightedMessageIds = new Set(highlights.map((item) => item.source_message_id))
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [showMembers, setShowMembers] = useState(false)
@@ -80,6 +103,8 @@ export function ChatRoomPage() {
           recapShort={snapshot?.recap_short ?? null}
           cast={cast?.cast ?? []}
           programEnabled={program?.enabled ?? false}
+          currentBeat={snapshot?.current_beat ?? program?.current_episode?.current_beat ?? null}
+          lastHighlight={highlights[0] ?? null}
           energy={snapshot?.energy ?? room.watchability?.energy ?? 0}
           tension={snapshot?.tension ?? room.watchability?.tension ?? 0}
           onToggleMembers={() => setShowMembers((v) => !v)}
@@ -87,13 +112,39 @@ export function ChatRoomPage() {
 
         <ScrollArea className="flex-1 px-4 py-2">
           <div className="space-y-3">
+            {highlights.length > 0 && (
+              <div className="rounded-xl border bg-muted/30 px-3 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">刚刚有戏</p>
+                    <p className="mt-1 text-sm font-medium leading-6">{highlights[0].text}</p>
+                  </div>
+                  <Badge variant="secondary" className="shrink-0 text-[10px]">
+                    {highlights[0].kind}
+                  </Badge>
+                </div>
+                {highlights.length > 1 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {highlights.slice(1, 4).map((highlight) => (
+                      <span key={highlight.id} className="rounded-full bg-background px-2 py-1 text-[11px] text-muted-foreground">
+                        {highlight.text}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             {messages.length === 0 && (
               <div className="text-center text-muted-foreground py-10">
                 暂时没有消息，等待 Agent 们开始对话...
               </div>
             )}
             {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                highlighted={highlightedMessageIds.has(msg.id)}
+              />
             ))}
             {typingAgents.size > 0 && (
               <div className="text-sm text-muted-foreground animate-pulse pl-2">
@@ -129,6 +180,8 @@ function ChatHeader({
   recapShort,
   cast,
   programEnabled,
+  currentBeat,
+  lastHighlight,
   energy,
   tension,
   onToggleMembers,
@@ -146,6 +199,8 @@ function ChatHeader({
     role: RoomCastRole
   }>
   programEnabled: boolean
+  currentBeat: RoomBeatType | null
+  lastHighlight: RoomHighlight | null
   energy: number
   tension: number
   onToggleMembers: () => void
@@ -175,6 +230,11 @@ function ChatHeader({
               Program On
             </Badge>
           )}
+          {currentBeat && (
+            <Badge variant="outline" className="text-[10px]">
+              当前节奏 · {BEAT_LABEL[currentBeat]}
+            </Badge>
+          )}
         </div>
         <Button variant="ghost" size="sm" onClick={onToggleMembers}>
           {memberCount} 位成员
@@ -195,6 +255,11 @@ function ChatHeader({
             入场扶手：{recapShort}
           </p>
         )}
+        {lastHighlight && (
+          <p className="text-xs text-muted-foreground">
+            刚刚高光：{lastHighlight.text}
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           {cast.slice(0, 4).map((entry) => (
             <Badge key={entry.agent_id} variant="secondary" className="text-[10px]">
@@ -210,7 +275,7 @@ function ChatHeader({
   )
 }
 
-function MessageBubble({ message }: { message: ChatMessage }) {
+function MessageBubble({ message, highlighted }: { message: ChatMessage; highlighted: boolean }) {
   const isSkip = message.message_kind === 'skip_feedback'
   const isAmbient = message.message_kind === 'ambient'
   const isGreeting = message.message_kind === 'greeting'
@@ -224,7 +289,11 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   }
 
   return (
-    <div className={cn('flex gap-3', isSkip && 'opacity-60')}>
+    <div className={cn(
+      'flex gap-3 rounded-xl px-2 py-2 transition-colors',
+      isSkip && 'opacity-60',
+      highlighted && 'bg-amber-50 ring-1 ring-amber-200',
+    )}>
       <Avatar className="h-8 w-8 shrink-0 mt-0.5">
         <AvatarFallback className="text-xs bg-primary/10">
           {message.author_id.slice(-2).toUpperCase()}
@@ -244,6 +313,19 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             <Badge variant="secondary" className="text-[10px] px-1 py-0">
               反馈
             </Badge>
+          )}
+          {message.speaker_role && (
+            <Badge variant="outline" className="text-[10px] px-1 py-0">
+              {ROLE_LABEL[message.speaker_role]}
+            </Badge>
+          )}
+          {message.cue_type && (
+            <Badge variant="secondary" className="text-[10px] px-1 py-0">
+              {CUE_LABEL[message.cue_type]}
+            </Badge>
+          )}
+          {highlighted && (
+            <Badge className="text-[10px] px-1 py-0">高光</Badge>
           )}
           <span className="text-xs text-muted-foreground">
             {relativeTime(message.created_at)}

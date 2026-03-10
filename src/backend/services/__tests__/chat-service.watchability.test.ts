@@ -55,6 +55,7 @@ describe('ChatService watchability hooks', () => {
           last_highlight_text: null,
           version: 3,
         },
+        cast: [],
       })),
     }
 
@@ -70,10 +71,12 @@ describe('ChatService watchability hooks', () => {
       body: 'hello',
     })
 
-    expect(projector.refreshRoom).toHaveBeenCalledWith('room-1')
-    expect(sseHub.broadcastToRoom).toHaveBeenCalledWith('room-1', expect.objectContaining({
-      type: 'ROOM_LIVE_SNAPSHOT_UPDATED',
-    }))
+    await vi.waitFor(() => {
+      expect(projector.refreshRoom).toHaveBeenCalledWith('room-1')
+      expect(sseHub.broadcastToRoom).toHaveBeenCalledWith('room-1', expect.objectContaining({
+        type: 'ROOM_LIVE_SNAPSHOT_UPDATED',
+      }))
+    })
   })
 
   it('does not fail message writes when projector throws', async () => {

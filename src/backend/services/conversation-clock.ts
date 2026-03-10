@@ -16,6 +16,7 @@ import type {
   ChatroomRuntimeContextBuilder,
   ChatroomRuntimeContextResult,
 } from './chatroom-runtime-context-builder.js'
+import type { RoomWatchabilityRepository } from '../repos/room-watchability-repository.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { LlmTokenUsage } from '../llm/types.js'
 import type { PromptComposeAudit } from '../runtime/types.js'
@@ -27,6 +28,8 @@ import {
   buildPersonaObservation,
   recordPersonaObservation,
 } from '../runtime/persona-observation.js'
+import type { RoomProgramEngine } from './room-program-engine.js'
+import type { CreateChatMessageInput } from '../repos/types.js'
 
 const MAX_MSG_PER_AGENT_PER_ROOM_HOUR = 6
 const MAX_MSG_PER_AGENT_GLOBAL_HOUR = 15
@@ -55,6 +58,8 @@ export interface ConversationClockDeps {
   promptOrchestrator?: PromptOrchestrator | null
   personaStateService?: PersonaStateService | null
   chatroomRuntimeContextBuilder?: ChatroomRuntimeContextBuilder | null
+  roomWatchabilityRepo?: RoomWatchabilityRepository | null
+  roomProgramEngine?: RoomProgramEngine | null
   leaderElector?: LeaderElector
 }
 
@@ -66,6 +71,7 @@ interface AgentTimer {
 
 export class ConversationClock {
   private timers = new Map<string, AgentTimer>()
+  private roomLocks = new Set<string>()
   private running = false
 
   constructor(private readonly deps: ConversationClockDeps) {}
@@ -190,6 +196,13 @@ export class ConversationClock {
       return
     }
 
+    const program = await this.deps.roomWatchabilityRepo?.getProgram(roomId) ?? null
+    if (program?.enabled && this.deps.roomProgramEngine) {
+      await this.handleProgramTick(roomId, agentId)
+      this.scheduleAgent(roomId, agentId, tickInterval)
+      return
+    }
+
     if (!await this.checkRateLimits(roomId, agentId)) {
       this.scheduleAgent(roomId, agentId, tickInterval)
       return
@@ -274,6 +287,119 @@ export class ConversationClock {
     }
 
     this.scheduleAgent(roomId, agentId, tickInterval)
+  }
+
+  private async handleProgramTick(roomId: string, triggerAgentId: string): Promise<void> {
+    if (this.roomLocks.has(roomId)) return
+    this.roomLocks.add(roomId)
+
+    try {
+      const plannedTurn = await this.deps.roomProgramEngine?.planNextTurn({
+        roomId,
+        triggerAgentId,
+        canSpeak: async (agentId) => this.checkRateLimits(roomId, agentId),
+      }) ?? null
+      if (!plannedTurn) return
+
+      const selectedAgentId = plannedTurn.selected_speaker_agent_id
+
+      this.deps.sseHub.broadcastToRoom(roomId, {
+        type: 'AGENT_TYPING',
+        payload: { room_id: roomId, agent_id: selectedAgentId },
+      })
+
+      try {
+        const result = await this.generateMessage(roomId, selectedAgentId)
+        const programMessageInput: Pick<
+          CreateChatMessageInput,
+          'episode_id' | 'beat_id' | 'program_event_id' | 'speaker_role' | 'cue_type'
+        > = {
+          episode_id: plannedTurn.episode_id,
+          beat_id: plannedTurn.beat_id,
+          program_event_id: plannedTurn.program_event_id,
+          speaker_role: plannedTurn.speaker_role,
+          cue_type: plannedTurn.cue_type,
+        }
+
+        if (result.kind === 'normal') {
+          await this.postMessage(
+            roomId,
+            selectedAgentId,
+            result.body,
+            'normal',
+            result.renderDecision,
+            programMessageInput,
+          )
+          await this.deps.roomProgramEngine?.markProgramEvent(plannedTurn.program_event_id, 'EXECUTED')
+          await this.recordGeneratedMessageRun({
+            roomId,
+            agentId: selectedAgentId,
+            body: result.body,
+            kind: 'normal',
+            usage: result.usage,
+            latencyMs: result.latency_ms,
+            observation: result.observation,
+          })
+          return
+        }
+
+        if (result.kind === 'skip_feedback' && result.body) {
+          await this.postMessage(
+            roomId,
+            selectedAgentId,
+            result.body,
+            'skip_feedback',
+            result.renderDecision,
+            programMessageInput,
+          )
+          await this.deps.roomProgramEngine?.markProgramEvent(plannedTurn.program_event_id, 'EXECUTED')
+          await this.recordGeneratedMessageRun({
+            roomId,
+            agentId: selectedAgentId,
+            body: result.body,
+            kind: 'skip_feedback',
+            usage: result.usage,
+            latencyMs: result.latency_ms,
+            observation: result.observation,
+          })
+          return
+        }
+
+        if (result.kind === 'empty') {
+          await this.deps.roomProgramEngine?.markProgramEvent(
+            plannedTurn.program_event_id,
+            'SKIPPED',
+            'empty_response',
+          )
+          return
+        }
+
+        const ambient = AMBIENT_MESSAGES[Math.floor(Math.random() * AMBIENT_MESSAGES.length)]
+        await this.postMessage(
+          roomId,
+          selectedAgentId,
+          ambient,
+          'ambient',
+          result.renderDecision,
+          programMessageInput,
+        )
+        await this.deps.roomProgramEngine?.markProgramEvent(plannedTurn.program_event_id, 'EXECUTED')
+      } catch (error) {
+        await this.deps.roomProgramEngine?.markProgramEvent(
+          plannedTurn.program_event_id,
+          'FAILED',
+          error instanceof Error ? error.message : 'program_tick_failed',
+        )
+        throw error
+      } finally {
+        this.deps.sseHub.broadcastToRoom(roomId, {
+          type: 'AGENT_STOP_TYPING',
+          payload: { room_id: roomId, agent_id: selectedAgentId },
+        })
+      }
+    } finally {
+      this.roomLocks.delete(roomId)
+    }
   }
 
   private async checkRateLimits(roomId: string, agentId: string): Promise<boolean> {
@@ -532,11 +658,20 @@ export class ConversationClock {
     body: string,
     kind: ChatMessageKind,
     renderDecision?: RenderTierDecisionResult | null,
+    metadata?: Pick<
+      CreateChatMessageInput,
+      'episode_id' | 'beat_id' | 'program_event_id' | 'speaker_role' | 'cue_type'
+    >,
   ): Promise<void> {
     try {
       await this.deps.chatService.sendMessage({
         room_id: roomId,
         author_id: agentId,
+        episode_id: metadata?.episode_id ?? null,
+        beat_id: metadata?.beat_id ?? null,
+        program_event_id: metadata?.program_event_id ?? null,
+        speaker_role: metadata?.speaker_role ?? null,
+        cue_type: metadata?.cue_type ?? null,
         body,
         message_kind: kind,
       })
