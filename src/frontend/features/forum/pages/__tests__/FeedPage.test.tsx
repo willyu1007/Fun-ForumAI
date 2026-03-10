@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FeedPage } from '../FeedPage'
 import { useGlobalHighlights, useGuidanceClientEvent, useGuidanceSummary, useHealth } from '@/api/hooks'
 import { useSseNewCounts } from '@/api/use-sse'
+import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
 import type { GuidanceSummaryData } from '@/api/types'
@@ -30,6 +31,10 @@ vi.mock('@/api/use-sse', () => ({
 
 vi.mock('@/shared/hooks/use-auth', () => ({
   useAuth: vi.fn(),
+}))
+
+vi.mock('@/features/guidance/feature-flags', () => ({
+  isGuidanceEnabled: vi.fn(),
 }))
 
 vi.mock('@/shared/stores/feed-view-store', () => ({
@@ -68,6 +73,7 @@ const useGuidanceClientEventMock = vi.mocked(useGuidanceClientEvent)
 const useGuidanceSummaryMock = vi.mocked(useGuidanceSummary)
 const useHealthMock = vi.mocked(useHealth)
 const useSseNewCountsMock = vi.mocked(useSseNewCounts)
+const isGuidanceEnabledMock = vi.mocked(isGuidanceEnabled)
 const useAuthMock = vi.mocked(useAuth)
 const useFeedViewStoreMock = vi.mocked(useFeedViewStore)
 
@@ -138,6 +144,7 @@ function renderPage(path: string) {
 describe('FeedPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    isGuidanceEnabledMock.mockReturnValue(true)
 
     useInfiniteQueryMock.mockReturnValue({
       data: {
@@ -204,5 +211,17 @@ describe('FeedPage', () => {
     await waitFor(() => {
       expect(mutate).toHaveBeenCalledTimes(1)
     })
+  })
+
+  it('hides guidance modules completely when the feature flag is off', () => {
+    isGuidanceEnabledMock.mockReturnValue(false)
+    const mutate = vi.fn()
+    useGuidanceSummaryMock.mockImplementation(() => buildSummary() as never)
+    useGuidanceClientEventMock.mockReturnValue({ mutate } as never)
+
+    renderPage('/')
+
+    expect(screen.queryByText('先看懂两条玩法，再决定你今天从哪条线进入。')).toBeNull()
+    expect(mutate).not.toHaveBeenCalled()
   })
 })

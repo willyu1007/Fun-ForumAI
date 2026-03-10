@@ -1,5 +1,6 @@
 import { Router, type IRouter } from 'express'
 import { privateChannelServices } from '../container.js'
+import { config } from '../lib/config.js'
 import { resolveGuidanceActorContext, toGuidanceActorChannelKey } from '../guidance/http.js'
 import { tryAuthenticateHuman } from '../middleware/human-auth.js'
 import type { SseHub } from '../sse/hub.js'
@@ -18,7 +19,7 @@ export function createSseRouter(hub: SseHub): IRouter {
   router.get('/events/stream', async (req, res) => {
     const roomIds = parseIdsParam(req.query.rooms)
     const sessionIds = parseIdsParam(req.query.sessions)
-    const subscribeGuidanceActor = roomIds.length === 0 && sessionIds.length === 0
+    const subscribeGuidanceActor = config.features.guidanceV1 && roomIds.length === 0 && sessionIds.length === 0
 
     if (sessionIds.length > 0) {
       const user = tryAuthenticateHuman(req)

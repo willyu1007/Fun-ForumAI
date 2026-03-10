@@ -16,6 +16,7 @@ import {
   GuidanceOrchestrator,
   GuidanceStateService,
 } from '../guidance/index.js'
+import { handleGuidanceDigestHook, handleGuidanceForumFanout } from '../guidance/feature-gates.js'
 
 function extractOwnerStylePins(configJson: Record<string, unknown>): Record<string, unknown> {
   const identity = configJson.identity
@@ -161,18 +162,11 @@ const guidanceOrchestrator = new GuidanceOrchestrator({
 
 if (nurture.memoryService) {
   nurture.memoryService.appendDigestHook(async (input) => {
-    const agent = repos.agentRepo.findById(input.agent_id)
-    if (!agent?.owner_id) return
-    await guidanceOrchestrator.ingestEvent(
-      { actor_type: 'USER', actor_id: agent.owner_id },
-      'PRIVATE_DIGEST_READY',
-      {
-        agent_id: input.agent_id,
-        session_id: input.session_id,
-        memory_id: input.memory_id,
-      },
-      { dedup_key: `private_digest_ready:${input.session_id}` },
-    )
+    await handleGuidanceDigestHook(input, {
+      guidanceEnabled: config.features.guidanceV1,
+      agentRepo: repos.agentRepo,
+      orchestrator: guidanceOrchestrator,
+    })
   })
 }
 
@@ -271,8 +265,12 @@ core.forumWriteService.setEventHook((event) => {
   if (config.features.publicObservationMemory && nurture.publicObservationEventHandler) {
     nurture.publicObservationEventHandler.handle(event)
   }
-  guidanceOrchestrator.handleForumEvent(event).catch((err) => {
-    console.error('[Container] Guidance forum event ingest failed:', err)
+  handleGuidanceForumFanout(event, {
+    guidanceEnabled: config.features.guidanceV1,
+    orchestrator: guidanceOrchestrator,
+    onError: (err) => {
+      console.error('[Container] Guidance forum event ingest failed:', err)
+    },
   })
 })
 

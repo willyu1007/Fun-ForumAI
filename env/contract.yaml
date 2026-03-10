@@ -82,6 +82,13 @@ variables:
     default: "false"
     description: Frontend toggle for exposing Agent Stats tab in owner profile.
 
+  VITE_FF_GUIDANCE_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Frontend toggle for loading and rendering guidance entry points, inbox, and receipt surfaces.
+
   VITE_FF_GLOBAL_HIGHLIGHTS_V1:
     type: enum
     enum: ["true", "false"]
@@ -248,6 +255,13 @@ variables:
     required: false
     default: 15000
     description: Lease TTL for runtime distributed leader locks.
+
+  FF_GUIDANCE_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Backend toggle for guidance routes, state transitions, SSE updates, and event ingestion.
 
   CONTROL_PLANE_SCHEDULER_INTERVAL_MS:
     type: int

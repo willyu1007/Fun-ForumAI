@@ -2,7 +2,7 @@
 
 ## Status
 - State: in-progress
-- Next step: 补充更多 route-level 场景验证，并在现有 frozen contract 基础上为 recall / observability 留出复用口。
+- Next step: 当前 flag 对称性与关停副作用回归已补齐，下一步转向 recall / observability 复用口与后续子包交接。
 
 ## Goal
 落地 Guidance 平台基础设施子包，提供：

@@ -1,6 +1,12 @@
 import { Router, type IRouter } from 'express'
 import { guidanceOrchestrator } from '../container.js'
-import { resolveGuidanceActorContext } from '../guidance/http.js'
+import { config } from '../lib/config.js'
+import {
+  buildDisabledGuidanceInbox,
+  buildDisabledGuidanceSummary,
+  peekGuidanceActorContext,
+  resolveGuidanceActorContext,
+} from '../guidance/http.js'
 import { toGuidanceItemCardView } from '../guidance/guidance-types.js'
 import { ValidationError } from '../lib/errors.js'
 
@@ -8,6 +14,10 @@ export const guidanceRouter: IRouter = Router()
 
 guidanceRouter.get('/guidance/summary', async (req, res, next) => {
   try {
+    if (!config.features.guidanceV1) {
+      res.json({ data: buildDisabledGuidanceSummary(peekGuidanceActorContext(req)) })
+      return
+    }
     const actor = resolveGuidanceActorContext(req, res)
     await guidanceOrchestrator.prepareActor(actor)
     const data = await guidanceOrchestrator.getSummary(actor)
@@ -19,6 +29,10 @@ guidanceRouter.get('/guidance/summary', async (req, res, next) => {
 
 guidanceRouter.get('/guidance/inbox', async (req, res, next) => {
   try {
+    if (!config.features.guidanceV1) {
+      res.json({ data: buildDisabledGuidanceInbox() })
+      return
+    }
     const actor = resolveGuidanceActorContext(req, res)
     await guidanceOrchestrator.prepareActor(actor)
     const data = await guidanceOrchestrator.getInbox(actor)
@@ -33,6 +47,10 @@ guidanceRouter.post('/guidance/client-events', async (req, res, next) => {
     const eventType = typeof req.body?.event_type === 'string' ? req.body.event_type : null
     if (!eventType) {
       throw new ValidationError('event_type is required')
+    }
+    if (!config.features.guidanceV1) {
+      res.status(202).json({ data: { accepted: true } })
+      return
     }
 
     const actor = resolveGuidanceActorContext(req, res)
@@ -56,6 +74,16 @@ guidanceRouter.post('/guidance/items/:id/action', async (req, res, next) => {
     const action = typeof req.body?.action === 'string' ? req.body.action : null
     if (action !== 'open' && action !== 'dismiss' && action !== 'complete') {
       throw new ValidationError('action must be one of open, dismiss, complete')
+    }
+    if (!config.features.guidanceV1) {
+      const actor = peekGuidanceActorContext(req)
+      const item = await guidanceOrchestrator.getItem(actor, String(req.params.id))
+      if (!item) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Guidance item not found' } })
+        return
+      }
+      res.json({ data: toGuidanceItemCardView(item) })
+      return
     }
     const actor = resolveGuidanceActorContext(req, res)
     await guidanceOrchestrator.prepareActor(actor)

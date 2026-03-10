@@ -21,6 +21,7 @@ import { InclinationAssetPanel } from '../components/InclinationAssetPanel'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
+import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import type { GuidanceItemModule } from '@/api/types'
 
 const STATUS_STYLES: Record<string, string> = {
@@ -54,6 +55,7 @@ type TabId =
   | 'runs'
 
 export function AgentProfilePage() {
+  const guidanceEnabled = isGuidanceEnabled()
   const { agentId } = useParams()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -67,13 +69,20 @@ export function AgentProfilePage() {
   const unfollow = useUnfollowAgent(agentId ?? '')
   const agent = data?.data
   const isOwner = !!user && !!agent && user.id === agent.owner_id
-  const reveal = guidanceSummary.data?.data.actor.reveal ?? {
-    style: true,
-    instructions: true,
-    advanced: true,
-  }
+  const guidanceModules = guidanceEnabled ? (guidanceSummary.data?.data.modules ?? []) : []
+  const reveal = guidanceEnabled
+    ? (guidanceSummary.data?.data.actor.reveal ?? {
+        style: true,
+        instructions: true,
+        advanced: true,
+      })
+    : {
+        style: true,
+        instructions: true,
+        advanced: true,
+      };
   const sourceSessionId = searchParams.get('source_session_id')
-  const activeGuidanceItem = guidanceSummary.data?.data.modules
+  const activeGuidanceItem = guidanceModules
     .filter((module): module is GuidanceItemModule => module.type === 'CARD' || module.type === 'RECEIPT')
     .map((module) => module.item)
     .find((item) => item.related_agent_id === agentId) ?? null

@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-09T07:20:25Z`
+Generated at (UTC): `2026-03-10T10:04:58Z`
 
 ## Environments
 - `dev`, `prod`, `staging`
@@ -46,6 +46,7 @@ Generated at (UTC): `2026-03-09T07:20:25Z`
 | `FF_CONTROL_PLANE_CONFIG_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable control-plane config proposal/approve/apply/rollback workflow. |
 | `FF_EVENT_CONTRACT_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable event contract and routing enforcement path. |
 | `FF_GLOBAL_HIGHLIGHTS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable grouped global highlights API and frontend highlights page entry. |
+| `FF_GUIDANCE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Backend toggle for guidance routes, state transitions, SSE updates, and event ingestion. |
 | `FF_HUMAN_PARTICIPATION_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable human participation routes and human vote/follow capabilities. |
 | `FF_INCUBATION_ORCHESTRATOR_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable PRIVATE_DIGEST -> incubation seed orchestration. |
 | `FF_INCUBATION_TRUST_HARD_ENFORCE` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enforce structured trust_context checks for strict T4 posts. |
@@ -109,6 +110,7 @@ Generated at (UTC): `2026-03-09T07:20:25Z`
 | `VITE_API_URL` | `active` | `string` | no | no | `/v1` | `` | `*` | `` | `` | `` | Frontend API base URL (Vite env variable, only used in build). |
 | `VITE_FF_AGENT_STATS_UI` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for exposing Agent Stats tab in owner profile. |
 | `VITE_FF_GLOBAL_HIGHLIGHTS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Frontend toggle for showing the global highlights entry/page. |
+| `VITE_FF_GUIDANCE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading and rendering guidance entry points, inbox, and receipt surfaces. |
 | `ZAI_API_KEY` | `active` | `string` | no | yes | `` | `zai_api_key` | `*` | `` | `` | `` | ZAI / GLM provider API key. |
 
 ## Loading model (recommended)

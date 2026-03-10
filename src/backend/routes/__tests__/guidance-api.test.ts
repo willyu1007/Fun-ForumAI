@@ -1,12 +1,24 @@
-import { describe, expect, it } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import request from 'supertest'
 import { app } from '../../app.js'
+import { config } from '../../lib/config.js'
 import { createDevToken } from '../../middleware/human-auth.js'
 
 function extractVisitorCookie(setCookie: string | string[] | undefined): string | undefined {
   const values = Array.isArray(setCookie) ? setCookie : (setCookie ? [setCookie] : [])
   return values.find((entry) => entry.startsWith('ff_vid='))
 }
+
+const featureFlags = config.features as unknown as Record<string, boolean>
+const originalGuidanceFlag = featureFlags.guidanceV1
+
+beforeEach(() => {
+  featureFlags.guidanceV1 = true
+})
+
+afterAll(() => {
+  featureFlags.guidanceV1 = originalGuidanceFlag
+})
 
 describe('Guidance API', () => {
   it('shows only dual entry on first anonymous visit, then reveals checklist after spectator CTA', async () => {
@@ -110,5 +122,97 @@ describe('Guidance API', () => {
       .set('Authorization', `Bearer ${ownerToken}`)
     expect(refreshedInbox.status).toBe(200)
     expect(refreshedInbox.body.data.unread_count).toBe(0)
+  })
+
+  it('returns safe empty states and ignores client events while the feature flag is off', async () => {
+    const ownerToken = createDevToken({ userId: 'guidance-flagged-owner', email: 'owner@test.com', role: 'user' })
+
+    featureFlags.guidanceV1 = false
+
+    const eventRes = await request(app)
+      .post('/v1/guidance/client-events')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        event_type: 'DUAL_ENTRY_CTA_CLICKED',
+        payload: { track: 'OWNER' },
+      })
+    expect(eventRes.status).toBe(202)
+
+    const summaryOff = await request(app)
+      .get('/v1/guidance/summary')
+      .set('Authorization', `Bearer ${ownerToken}`)
+    expect(summaryOff.status).toBe(200)
+    expect(summaryOff.body.data.modules).toEqual([])
+    expect(summaryOff.body.data.actor.current_track).toBe('UNDECIDED')
+    expect(summaryOff.body.data.actor.reveal).toEqual({
+      style: true,
+      instructions: true,
+      advanced: true,
+    })
+
+    const inboxOff = await request(app)
+      .get('/v1/guidance/inbox')
+      .set('Authorization', `Bearer ${ownerToken}`)
+    expect(inboxOff.status).toBe(200)
+    expect(inboxOff.body.data).toEqual({
+      items: [],
+      unread_count: 0,
+    })
+
+    featureFlags.guidanceV1 = true
+
+    const summaryOn = await request(app)
+      .get('/v1/guidance/summary')
+      .set('Authorization', `Bearer ${ownerToken}`)
+    expect(summaryOn.status).toBe(200)
+    expect(summaryOn.body.data.actor.current_track).toBe('UNDECIDED')
+    expect(summaryOn.body.data.modules[0]).toMatchObject({
+      type: 'DUAL_ENTRY',
+      reason_code: 'HOME_DUAL_ENTRY',
+    })
+    expect(summaryOn.body.data.modules.some((module: { type: string }) => module.type === 'CHECKLIST')).toBe(false)
+  })
+
+  it('leaves existing items unchanged when action requests arrive while the feature flag is off', async () => {
+    const ownerToken = createDevToken({ userId: 'guidance-action-owner', email: 'owner@test.com', role: 'user' })
+
+    const createEvent = async (event_type: string, payload: Record<string, unknown>) => {
+      const res = await request(app)
+        .post('/v1/guidance/client-events')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ event_type, payload })
+      expect(res.status).toBe(202)
+    }
+
+    await createEvent('AGENT_CREATED', { agent_id: 'agent-2' })
+    await createEvent('PRIVATE_SESSION_ENDED', { agent_id: 'agent-2', session_id: 'session-2' })
+    await createEvent('PRIVATE_DIGEST_READY', { agent_id: 'agent-2', session_id: 'session-2', memory_id: 'memory-2' })
+
+    const inboxRes = await request(app)
+      .get('/v1/guidance/inbox')
+      .set('Authorization', `Bearer ${ownerToken}`)
+    expect(inboxRes.status).toBe(200)
+
+    const receipt = (inboxRes.body.data.items as Array<{ id: string; unread: boolean }>)[0]
+    expect(receipt).toBeTruthy()
+    expect(receipt.unread).toBe(true)
+
+    featureFlags.guidanceV1 = false
+
+    const actionRes = await request(app)
+      .post(`/v1/guidance/items/${receipt.id}/action`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ action: 'open' })
+    expect(actionRes.status).toBe(200)
+    expect(actionRes.body.data.unread).toBe(true)
+
+    featureFlags.guidanceV1 = true
+
+    const refreshedInbox = await request(app)
+      .get('/v1/guidance/inbox')
+      .set('Authorization', `Bearer ${ownerToken}`)
+    expect(refreshedInbox.status).toBe(200)
+    const refreshedReceipt = (refreshedInbox.body.data.items as Array<{ id: string; unread: boolean }>).find((item) => item.id === receipt.id)
+    expect(refreshedReceipt?.unread).toBe(true)
   })
 })

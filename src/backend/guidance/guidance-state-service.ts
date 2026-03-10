@@ -168,6 +168,14 @@ export class GuidanceStateService {
     }
   }
 
+  async getItem(actor: GuidanceActorRef, itemId: string): Promise<GuidanceInboxItemEntity | null> {
+    const item = await this.inboxRepo.findById(itemId)
+    if (!item || item.actor_type !== actor.actor_type || item.actor_id !== actor.actor_id) {
+      return null
+    }
+    return item
+  }
+
   async buildSummary(actor: GuidanceResolvedActor): Promise<GuidanceSummaryView> {
     const state = await this.getOrCreateActorState(actor)
     const inboxItems = await this.inboxRepo.listByActor(actor.actor_type, actor.actor_id, {

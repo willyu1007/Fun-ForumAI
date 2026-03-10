@@ -37,6 +37,10 @@ export class GuidanceOrchestrator {
     return this.deps.stateService.listInbox(actor)
   }
 
+  async getItem(actor: GuidanceActorRef, itemId: string) {
+    return this.deps.stateService.getItem(actor, itemId)
+  }
+
   async actOnItem(actor: GuidanceActorRef, itemId: string, action: 'open' | 'dismiss' | 'complete') {
     const updated = await this.deps.stateService.markItem(actor, itemId, action)
     if (updated) {

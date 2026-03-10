@@ -24,6 +24,7 @@ import type {
 } from '@/api/types'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
+import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 
 const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
 const GLOBAL_HIGHLIGHTS_ENABLED = import.meta.env.VITE_FF_GLOBAL_HIGHLIGHTS_V1 === 'true'
@@ -106,6 +107,7 @@ function ProofThreadCard({
 }
 
 export function FeedPage() {
+  const guidanceEnabled = isGuidanceEnabled()
   const [sort, setSort] = useState<SortMode>('hot')
   const [searchParams, setSearchParams] = useSearchParams()
   const { error: healthError } = useHealth()
@@ -148,7 +150,7 @@ export function FeedPage() {
   })
 
   const posts = data?.pages.flatMap((p) => p.data) ?? []
-  const summary = guidanceSummary.data?.data
+  const summary = guidanceEnabled ? guidanceSummary.data?.data : undefined
   const dualEntry = summary?.modules.find(isDualEntry) ?? null
   const checklist = summary?.modules.find(isChecklist) ?? null
   const surfacedItems = summary?.modules.filter(isItemModule) ?? []

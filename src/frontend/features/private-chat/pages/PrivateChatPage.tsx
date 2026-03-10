@@ -22,6 +22,7 @@ import { MessageInput } from '../components/MessageInput'
 import { SessionSidebar } from '../components/SessionSidebar'
 import { usePrivateSessionSse } from '../hooks/use-private-session-sse'
 import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
+import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 
 export function PrivateChatPage() {
   const { agentId } = useParams<{ agentId: string }>()
@@ -183,6 +184,7 @@ function ChatThread({
   sessionId: string
   agentName: string
 }) {
+  const guidanceEnabled = isGuidanceEnabled()
   const { data: msgData, isLoading } = usePrivateMessages(sessionId)
   const sendMessage = useSendPrivateMessage(agentId, sessionId)
   const endSession = useEndPrivateSession(agentId, sessionId)
@@ -191,7 +193,9 @@ function ChatThread({
   usePrivateSessionSse(sessionId, agentId)
 
   const messages: PrivateMessage[] = msgData?.data?.items ?? []
-  const receiptItem = guidanceInbox.data?.data?.items.find((item) => item.related_session_id === sessionId) ?? null
+  const receiptItem = guidanceEnabled
+    ? guidanceInbox.data?.data?.items.find((item) => item.related_session_id === sessionId) ?? null
+    : null
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })

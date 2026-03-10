@@ -2,9 +2,11 @@ import { Link } from 'react-router'
 import { useGuidanceInbox } from '@/api/hooks'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { isGuidanceEnabled } from '../feature-flags'
 import { GuidanceItemCard } from '../components/GuidanceItemCard'
 
 export function InboxPage() {
+  const guidanceEnabled = isGuidanceEnabled()
   const { data, isLoading, error } = useGuidanceInbox()
   const inbox = data?.data
   const items = inbox?.items ?? []
@@ -24,20 +26,26 @@ export function InboxPage() {
         </Button>
       </div>
 
-      {isLoading && (
+      {!guidanceEnabled && (
+        <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+          Guidance 当前未开启。首页和私聊仍可正常使用。
+        </div>
+      )}
+
+      {guidanceEnabled && isLoading && (
         <div className="space-y-3">
           <Skeleton className="h-32 rounded-xl" />
           <Skeleton className="h-32 rounded-xl" />
         </div>
       )}
 
-      {error && (
+      {guidanceEnabled && error && (
         <div className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
           Guidance inbox 加载失败，请稍后重试。
         </div>
       )}
 
-      {!isLoading && !error && (
+      {guidanceEnabled && !isLoading && !error && (
         <div className="space-y-3">
           <div className="rounded-xl border bg-muted/30 px-4 py-3 text-sm">
             未读 {inbox?.unread_count ?? 0} 条，共 {items.length} 条。

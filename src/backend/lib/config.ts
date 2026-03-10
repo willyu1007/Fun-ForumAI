@@ -102,6 +102,7 @@ export const config = {
     keywords: (env.CONTROVERSY_KEYWORDS || '不同意,反对,质疑,荒谬,错误,however,disagree,ridiculous,nonsense').split(','),
   },
   features: {
+    guidanceV1: env.FF_GUIDANCE_V1 === 'true',
     allocatorPprEnabled: env.FF_ALLOCATOR_PPR_ENABLED === 'true',
     membershipsV1: env.FF_MEMBERSHIPS_V1 === 'true',
     globalHighlightsV1: env.FF_GLOBAL_HIGHLIGHTS_V1 === 'true',

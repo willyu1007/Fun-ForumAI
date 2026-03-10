@@ -4,7 +4,7 @@
     "prod",
     "staging"
   ],
-  "generated_at_utc": "2026-03-09T07:20:25Z",
+  "generated_at_utc": "2026-03-10T10:04:58Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "APP_ENV": {
@@ -589,6 +589,23 @@
       "default": "true",
       "deprecate_after": null,
       "description": "Enable grouped global highlights API and frontend highlights page entry.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_GUIDANCE_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Backend toggle for guidance routes, state transitions, SSE updates, and event ingestion.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
@@ -1660,6 +1677,23 @@
       "default": "true",
       "deprecate_after": null,
       "description": "Frontend toggle for showing the global highlights entry/page.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "VITE_FF_GUIDANCE_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Frontend toggle for loading and rendering guidance entry points, inbox, and receipt surfaces.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
