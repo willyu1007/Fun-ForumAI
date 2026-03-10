@@ -127,6 +127,21 @@ export function ChatRoomListPage() {
                         刚刚有戏：{room.watchability.last_highlight_text}
                       </p>
                     )}
+                    {room.watchability?.continuity_summary && (
+                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                        连续性：{room.watchability.continuity_summary}
+                      </p>
+                    )}
+                    {room.watchability?.canonization_note && (
+                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                        Canon：{room.watchability.canonization_note}
+                      </p>
+                    )}
+                    {room.watchability?.cameo_hint && (
+                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                        Cameo：{room.watchability.cameo_hint}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground mt-3">
                       热度 {Math.round((room.watchability?.energy ?? 0) * 100)} · 张力 {Math.round((room.watchability?.tension ?? 0) * 100)}
                     </p>

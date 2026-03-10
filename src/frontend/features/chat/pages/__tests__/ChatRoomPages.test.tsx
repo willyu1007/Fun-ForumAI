@@ -4,10 +4,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChatRoomListPage } from '../ChatRoomListPage'
 import { ChatRoomPage } from '../ChatRoomPage'
 import {
+  useCreateRoomCue,
   useCreateRoom,
+  usePatchRoomMemberControl,
+  usePatchRoomProgram,
   useRecallAgent,
   useRoom,
   useRoomCast,
+  useRoomControlState,
   useRoomHighlights,
   useRoomLiveSnapshot,
   useRoomMessages,
@@ -20,10 +24,14 @@ import { useChatRoomSse } from '../../hooks/use-chat-room-sse'
 vi.mock('@/api/hooks', () => ({
   useRooms: vi.fn(),
   useCreateRoom: vi.fn(),
+  useCreateRoomCue: vi.fn(),
+  usePatchRoomMemberControl: vi.fn(),
+  usePatchRoomProgram: vi.fn(),
   useRoom: vi.fn(),
   useRoomMessages: vi.fn(),
   useRoomLiveSnapshot: vi.fn(),
   useRoomCast: vi.fn(),
+  useRoomControlState: vi.fn(),
   useRoomProgram: vi.fn(),
   useRoomHighlights: vi.fn(),
   useRecallAgent: vi.fn(),
@@ -39,10 +47,14 @@ vi.mock('../../hooks/use-chat-room-sse', () => ({
 
 const useRoomsMock = vi.mocked(useRooms)
 const useCreateRoomMock = vi.mocked(useCreateRoom)
+const useCreateRoomCueMock = vi.mocked(useCreateRoomCue)
+const usePatchRoomMemberControlMock = vi.mocked(usePatchRoomMemberControl)
+const usePatchRoomProgramMock = vi.mocked(usePatchRoomProgram)
 const useRoomMock = vi.mocked(useRoom)
 const useRoomMessagesMock = vi.mocked(useRoomMessages)
 const useRoomLiveSnapshotMock = vi.mocked(useRoomLiveSnapshot)
 const useRoomCastMock = vi.mocked(useRoomCast)
+const useRoomControlStateMock = vi.mocked(useRoomControlState)
 const useRoomProgramMock = vi.mocked(useRoomProgram)
 const useRoomHighlightsMock = vi.mocked(useRoomHighlights)
 const useRecallAgentMock = vi.mocked(useRecallAgent)
@@ -51,6 +63,7 @@ const useChatRoomSseMock = vi.mocked(useChatRoomSse)
 
 describe('chat room pages', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     Element.prototype.scrollIntoView = vi.fn()
     useAuthMock.mockReturnValue({ user: null } as never)
     useChatRoomSseMock.mockReturnValue({
@@ -62,9 +75,27 @@ describe('chat room pages', () => {
       mutate: vi.fn(),
       isPending: false,
     } as never)
+    useCreateRoomCueMock.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as never)
+    usePatchRoomMemberControlMock.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as never)
+    usePatchRoomProgramMock.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as never)
+    useRoomControlStateMock.mockReturnValue({
+      data: undefined,
+    } as never)
   })
 
-  it('renders current beat, highlight and message metadata on ChatRoomPage', () => {
+  it('renders current beat, continuity note, owner panel and message metadata on ChatRoomPage', () => {
+    useAuthMock.mockReturnValue({
+      user: { id: 'user1', email: 'user@test.com', role: 'user' },
+    } as never)
     useRoomMock.mockReturnValue({
       data: {
         data: {
@@ -79,6 +110,7 @@ describe('chat room pages', () => {
           last_message_at: '2026-03-10T10:00:00.000Z',
           created_at: '2026-03-10T10:00:00.000Z',
           updated_at: '2026-03-10T10:00:00.000Z',
+          viewer_can_control: true,
           members: [],
           watchability: null,
         },
@@ -121,6 +153,9 @@ describe('chat room pages', () => {
           energy: 0.7,
           tension: 0.4,
           message_cursor_id: 'msg-1',
+          continuity_summary: '旧梗已经重新连上主线。',
+          canonization_note: '这场夜宵税讨论已经沉淀出公共 canon。',
+          cameo_hint: null,
           version: 2,
           created_at: '2026-03-10T10:00:00.000Z',
           updated_at: '2026-03-10T10:00:01.000Z',
@@ -158,6 +193,12 @@ describe('chat room pages', () => {
           idle_cue_after_ms: 30000,
           allow_wandering: true,
           director_policy: {},
+          wander_policy: {
+            enabled: true,
+            entry_cooldown_ms: 180000,
+            max_parallel_rooms: 2,
+            min_discoverability_score: 0.25,
+          },
           discoverability: {
             tags: [],
             short_hook: null,
@@ -190,6 +231,85 @@ describe('chat room pages', () => {
         }],
       },
     } as never)
+    useRoomControlStateMock.mockReturnValue({
+      data: {
+        data: {
+          room_id: 'room-1',
+          room_status: 'active',
+          program: {
+            room_id: 'room-1',
+            enabled: true,
+            scene_type: 'FREE_CHAT',
+            pacing_preset: 'balanced',
+            target_cast_min: 2,
+            target_cast_max: 4,
+            callback_window: 18,
+            recap_every_turns: 10,
+            max_consecutive_turns: 1,
+            idle_cue_after_ms: 30000,
+            allow_wandering: true,
+            director_policy: {},
+            wander_policy: {
+              enabled: true,
+              entry_cooldown_ms: 180000,
+              max_parallel_rooms: 2,
+              min_discoverability_score: 0.25,
+            },
+            discoverability: {
+              tags: [],
+              short_hook: '旧梗重新回来了',
+              default_view: 'live',
+            },
+            current_episode: {
+              episode_id: 'ep-1',
+              current_beat: 'CALLBACK',
+              energy: 0.7,
+              tension: 0.4,
+              turn_count: 5,
+              message_count: 5,
+            },
+          },
+          snapshot: null,
+          cast: [],
+          members: [{
+            room_id: 'room-1',
+            member_id: 'agent-2',
+            member_type: 'agent',
+            join_source: 'creator',
+            personal_tick_interval: 20000,
+            messages_this_hour: 1,
+            last_spoke_at: '2026-03-10T10:00:01.000Z',
+            role_hint: 'FOIL',
+            wander_eligible: true,
+            spotlight_weight: 1,
+            suppressed_until: null,
+            joined_at: '2026-03-10T10:00:00.000Z',
+            name: 'Foil',
+            projection: {
+              id: 'proj-1',
+              agent_id: 'agent-2',
+              scene_affinity_json: { FREE_CHAT: 0.7 },
+              banter_style: 'playful',
+              conflict_threshold: 0.3,
+              callback_habit: 0.8,
+              signature_moves_json: ['接住旧梗'],
+              disclosure_policy_json: {},
+              follow_targets_json: [],
+              avoid_targets_json: [],
+              role_tendency: 'FOIL',
+              spotlight_preference: 'HIGH',
+              public_projection_hint: '更适合 FREE_CHAT · 常站 FOIL',
+              created_at: '2026-03-10T10:00:00.000Z',
+              updated_at: '2026-03-10T10:00:00.000Z',
+            },
+          }],
+          recent_highlights: [],
+          recent_program_events: [],
+          recent_shared_memory: [],
+          alerts: [],
+        },
+      },
+    } as never)
 
     render(
       <MemoryRouter initialEntries={['/rooms/room-1']}>
@@ -202,7 +322,80 @@ describe('chat room pages', () => {
     expect(screen.getByText('当前节奏 · 回收')).toBeTruthy()
     expect(screen.getAllByText('高光').length).toBeGreaterThan(0)
     expect(screen.getByText('回收')).toBeTruthy()
-    expect(screen.getByText('对撞')).toBeTruthy()
+    expect(screen.getAllByText('对撞').length).toBeGreaterThan(0)
+    expect(screen.getByText(/连续性：旧梗已经重新连上主线/)).toBeTruthy()
+    expect(screen.getByText('Owner Control')).toBeTruthy()
+    expect(screen.getByText('手动 Cue')).toBeTruthy()
+    expect(useRoomControlStateMock).toHaveBeenLastCalledWith('room-1', { enabled: true })
+  })
+
+  it('keeps owner control query disabled for public viewers', () => {
+    useRoomMock.mockReturnValue({
+      data: {
+        data: {
+          id: 'room-1',
+          name: '公开房间',
+          slug: 'room-1',
+          description: '围观用房间',
+          community_id: null,
+          created_by_agent_id: 'agent-1',
+          max_agents: 4,
+          status: 'active',
+          last_message_at: '2026-03-10T10:00:00.000Z',
+          created_at: '2026-03-10T10:00:00.000Z',
+          updated_at: '2026-03-10T10:00:00.000Z',
+          viewer_can_control: false,
+          members: [],
+          watchability: null,
+        },
+      },
+      isLoading: false,
+    } as never)
+    useRoomMessagesMock.mockReturnValue({ data: { data: [] } } as never)
+    useRoomLiveSnapshotMock.mockReturnValue({ data: { data: null } } as never)
+    useRoomCastMock.mockReturnValue({ data: { data: { room_id: 'room-1', episode_id: null, cast: [] } } } as never)
+    useRoomProgramMock.mockReturnValue({
+      data: {
+        data: {
+          room_id: 'room-1',
+          enabled: false,
+          scene_type: 'FREE_CHAT',
+          pacing_preset: 'balanced',
+          target_cast_min: 2,
+          target_cast_max: 4,
+          callback_window: 18,
+          recap_every_turns: 10,
+          max_consecutive_turns: 1,
+          idle_cue_after_ms: 30000,
+          allow_wandering: true,
+          director_policy: {},
+          wander_policy: {
+            enabled: false,
+            entry_cooldown_ms: 180000,
+            max_parallel_rooms: 2,
+            min_discoverability_score: 0.25,
+          },
+          discoverability: {
+            tags: [],
+            short_hook: null,
+            default_view: 'live',
+          },
+          current_episode: null,
+        },
+      },
+    } as never)
+    useRoomHighlightsMock.mockReturnValue({ data: { data: [] } } as never)
+
+    render(
+      <MemoryRouter initialEntries={['/rooms/room-1']}>
+        <Routes>
+          <Route path="/rooms/:roomId" element={<ChatRoomPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(useRoomControlStateMock).toHaveBeenLastCalledWith('room-1', { enabled: false })
+    expect(screen.queryByText('Owner Control')).toBeNull()
   })
 
   it('renders beat and latest highlight on ChatRoomListPage cards', () => {
@@ -233,6 +426,9 @@ describe('chat room pages', () => {
             last_highlight_text: '把刚才那个夜宵税的梗捡回来了。',
             energy: 0.7,
             tension: 0.4,
+            continuity_summary: '旧梗重新接上了主线。',
+            canonization_note: '这场讨论已经生成 canon。',
+            cameo_hint: null,
             snapshot_updated_at: '2026-03-10T10:00:00.000Z',
           },
         }],
@@ -249,5 +445,7 @@ describe('chat room pages', () => {
 
     expect(screen.getByText('回收')).toBeTruthy()
     expect(screen.getByText(/刚刚有戏：把刚才那个夜宵税的梗捡回来了/)).toBeTruthy()
+    expect(screen.getByText(/连续性：旧梗重新接上了主线/)).toBeTruthy()
+    expect(screen.getByText(/Canon：这场讨论已经生成 canon/)).toBeTruthy()
   })
 })

@@ -20,6 +20,7 @@ export const queryKeys = {
   roomLiveSnapshot: (roomId: string) => ['roomLiveSnapshot', roomId] as const,
   roomCast: (roomId: string) => ['roomCast', roomId] as const,
   roomProgram: (roomId: string) => ['roomProgram', roomId] as const,
+  roomControlState: (roomId: string) => ['roomControlState', roomId] as const,
   roomHighlightsRoot,
   roomHighlights: (roomId: string, params?: { episode_id?: string | null; cursor?: string | null; limit?: number }) =>
     [...roomHighlightsRoot(roomId), params ?? null] as const,

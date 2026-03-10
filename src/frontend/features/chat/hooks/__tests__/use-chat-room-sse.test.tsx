@@ -70,4 +70,34 @@ describe('useChatRoomSse', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.roomMessages('room-1') })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['rooms'] })
   })
+
+  it('invalidates owner control state when ROOM_CONTROL_STATE_UPDATED arrives', () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    })
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+    renderHook(() => useChatRoomSse('room-1'), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    const instance = FakeEventSource.instances[0]
+
+    act(() => {
+      instance.onmessage?.({
+        data: JSON.stringify({
+          type: 'ROOM_CONTROL_STATE_UPDATED',
+          payload: { room_id: 'room-1', reason: 'manual_cue' },
+          timestamp: new Date().toISOString(),
+        }),
+      } as MessageEvent)
+    })
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.roomControlState('room-1') })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.roomProgram('room-1') })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.roomCast('room-1') })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.roomLiveSnapshot('room-1') })
+  })
 })

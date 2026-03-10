@@ -12,7 +12,22 @@ import type {
   RoomCastView,
   RoomProgramView,
   RoomHighlight,
+  RoomControlState,
+  RoomCueType,
+  RoomCastRole,
+  RoomSceneType,
+  RoomWanderPolicy,
 } from '../types'
+
+function invalidateRoomQueries(qc: ReturnType<typeof useQueryClient>, roomId: string) {
+  qc.invalidateQueries({ queryKey: ['rooms'] })
+  qc.invalidateQueries({ queryKey: queryKeys.room(roomId) })
+  qc.invalidateQueries({ queryKey: queryKeys.roomLiveSnapshot(roomId) })
+  qc.invalidateQueries({ queryKey: queryKeys.roomCast(roomId) })
+  qc.invalidateQueries({ queryKey: queryKeys.roomProgram(roomId) })
+  qc.invalidateQueries({ queryKey: queryKeys.roomControlState(roomId) })
+  qc.invalidateQueries({ queryKey: queryKeys.roomHighlightsRoot(roomId) })
+}
 
 export function useRooms(params?: { status?: RoomStatus; refetchInterval?: number }) {
   return useQuery({
@@ -68,6 +83,16 @@ export function useRoomProgram(roomId: string) {
   })
 }
 
+export function useRoomControlState(roomId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.roomControlState(roomId),
+    queryFn: () =>
+      api.get(`rooms/${roomId}/control-state`).json<ApiResponse<RoomControlState>>(),
+    enabled: !!roomId && (options?.enabled ?? true),
+    retry: false,
+  })
+}
+
 export function useRoomHighlights(
   roomId: string,
   params?: { episode_id?: string | null; cursor?: string | null; limit?: number },
@@ -112,12 +137,7 @@ export function useDispatchAgent() {
     mutationFn: ({ roomId, agentId }: { roomId: string; agentId: string }) =>
       api.post(`rooms/${roomId}/agents/${agentId}/join`).json<ApiResponse<unknown>>(),
     onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: ['rooms'] })
-      qc.invalidateQueries({ queryKey: queryKeys.room(variables.roomId) })
-      qc.invalidateQueries({ queryKey: queryKeys.roomLiveSnapshot(variables.roomId) })
-      qc.invalidateQueries({ queryKey: queryKeys.roomCast(variables.roomId) })
-      qc.invalidateQueries({ queryKey: queryKeys.roomProgram(variables.roomId) })
-      qc.invalidateQueries({ queryKey: queryKeys.roomHighlightsRoot(variables.roomId) })
+      invalidateRoomQueries(qc, variables.roomId)
     },
   })
 }
@@ -128,12 +148,7 @@ export function useRecallAgent() {
     mutationFn: ({ roomId, agentId }: { roomId: string; agentId: string }) =>
       api.post(`rooms/${roomId}/agents/${agentId}/leave`).json<ApiResponse<unknown>>(),
     onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: ['rooms'] })
-      qc.invalidateQueries({ queryKey: queryKeys.room(variables.roomId) })
-      qc.invalidateQueries({ queryKey: queryKeys.roomLiveSnapshot(variables.roomId) })
-      qc.invalidateQueries({ queryKey: queryKeys.roomCast(variables.roomId) })
-      qc.invalidateQueries({ queryKey: queryKeys.roomProgram(variables.roomId) })
-      qc.invalidateQueries({ queryKey: queryKeys.roomHighlightsRoot(variables.roomId) })
+      invalidateRoomQueries(qc, variables.roomId)
     },
   })
 }
@@ -147,6 +162,71 @@ export function useUpdateAgentChatConfig2(agentId: string) {
         .json<ApiResponse<AgentChatConfig>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.agentChatConfig(agentId) })
+    },
+  })
+}
+
+export function usePatchRoomProgram(roomId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: {
+      enabled?: boolean
+      scene_type?: RoomSceneType
+      pacing_preset?: string
+      target_cast_min?: number
+      target_cast_max?: number
+      callback_window?: number
+      recap_every_turns?: number
+      max_consecutive_turns?: number
+      idle_cue_after_ms?: number
+      allow_wandering?: boolean
+      director_policy?: Record<string, unknown>
+      wander_policy?: Partial<RoomWanderPolicy>
+      discoverability?: {
+        tags?: string[]
+        short_hook?: string | null
+        default_view?: string
+      }
+    }) =>
+      api.patch(`rooms/${roomId}/program`, { json: body }).json<ApiResponse<RoomProgramView>>(),
+    onSuccess: () => {
+      invalidateRoomQueries(qc, roomId)
+    },
+  })
+}
+
+export function useCreateRoomCue(roomId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: {
+      cue_type: RoomCueType
+      director_goal: string
+      target_roles?: RoomCastRole[]
+      anchor_message_id?: string | null
+      callback_message_id?: string | null
+    }) =>
+      api.post(`rooms/${roomId}/program/cues`, { json: body }).json<ApiResponse<unknown>>(),
+    onSuccess: () => {
+      invalidateRoomQueries(qc, roomId)
+    },
+  })
+}
+
+export function usePatchRoomMemberControl(roomId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: {
+      agentId: string
+      role_hint?: RoomCastRole | null
+      spotlight_weight?: number
+      wander_eligible?: boolean
+      suppressed_until?: string | null
+    }) => {
+      const { agentId, ...body } = input
+      return api.patch(`rooms/${roomId}/members/${agentId}/control`, { json: body }).json<ApiResponse<unknown>>()
+    },
+    onSuccess: () => {
+      invalidateRoomQueries(qc, roomId)
     },
   })
 }

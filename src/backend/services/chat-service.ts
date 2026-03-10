@@ -27,6 +27,7 @@ import { NotFoundError, ValidationError, ForbiddenError } from '../lib/errors.js
 import { config } from '../lib/config.js'
 import type { RoomProjector } from './room-projector.js'
 import type { RoomProgramProjector } from './room-program-projector.js'
+import { normalizeWanderPolicy } from './chatroom-program-policy.js'
 
 const MAX_ROOMS_PER_AGENT = 3
 
@@ -144,13 +145,46 @@ export class ChatService {
   }
 
   async dispatchAgentToRoom(roomId: string, agentId: string, ownerId: string): Promise<RoomMember> {
+    return this.dispatchAgentToRoomInternal(roomId, agentId, {
+      ownerId,
+      joinSource: 'dispatched',
+      bypassOwnership: false,
+    })
+  }
+
+  async moveAgentByEcology(
+    leaveRoomId: string,
+    joinRoomId: string,
+    agentId: string,
+  ): Promise<RoomMember> {
+    return this.moveAgentBetweenRooms({
+      leaveRoomId,
+      joinRoomId,
+      agentId,
+      ownerId: null,
+      bypassOwnership: true,
+      joinSource: 'wandering',
+    })
+  }
+
+  private async dispatchAgentToRoomInternal(
+    roomId: string,
+    agentId: string,
+    input: {
+      ownerId: string | null
+      joinSource: RoomMember['join_source']
+      bypassOwnership: boolean
+    },
+  ): Promise<RoomMember> {
     const room = await this.deps.roomRepo.findById(roomId)
     if (!room) throw new NotFoundError('Room', roomId)
     if (room.status === 'archived') throw new ValidationError('Cannot join an archived room')
 
     const agent = this.deps.agentRepo.findById(agentId)
     if (!agent) throw new NotFoundError('Agent', agentId)
-    if (agent.owner_id !== ownerId) throw new ForbiddenError('You do not own this agent')
+    if (!input.bypassOwnership && agent.owner_id !== input.ownerId) {
+      throw new ForbiddenError('You do not own this agent')
+    }
 
     if (await this.deps.roomRepo.isMember(roomId, agentId)) {
       throw new ValidationError('Agent is already a member of this room')
@@ -169,41 +203,49 @@ export class ChatService {
     }
 
     const tick = this.getAgentTickInterval(agentId)
-    const member = await this.deps.roomRepo.addMember(roomId, agentId, 'dispatched', tick)
-
-    this.deps.sseHub?.broadcastToRoom(roomId, {
-      type: 'ROOM_MEMBER_JOINED',
-      payload: { room_id: roomId, member },
-    })
-
+    const member = await this.deps.roomRepo.addMember(roomId, agentId, input.joinSource, tick)
+    this.emitRoomMemberJoined(roomId, member)
     this.joinHook?.(roomId, agentId, tick)
-    const projection = await this.projectRoom(roomId)
-    this.broadcastProjectionUpdate(roomId, projection)
+    await this.refreshAndBroadcastRoom(roomId)
     return member
   }
 
   async recallAgentFromRoom(roomId: string, agentId: string, ownerId: string): Promise<void> {
+    await this.recallAgentFromRoomInternal(roomId, agentId, {
+      ownerId,
+      bypassOwnership: false,
+    })
+  }
+
+  private async recallAgentFromRoomInternal(
+    roomId: string,
+    agentId: string,
+    input: {
+      ownerId: string | null
+      bypassOwnership: boolean
+    },
+  ): Promise<void> {
     const room = await this.deps.roomRepo.findById(roomId)
     if (!room) throw new NotFoundError('Room', roomId)
 
     const agent = this.deps.agentRepo.findById(agentId)
     if (!agent) throw new NotFoundError('Agent', agentId)
-    if (agent.owner_id !== ownerId) throw new ForbiddenError('You do not own this agent')
+    if (!input.bypassOwnership && agent.owner_id !== input.ownerId) {
+      throw new ForbiddenError('You do not own this agent')
+    }
 
     if (!await this.deps.roomRepo.isMember(roomId, agentId)) {
       throw new ValidationError('Agent is not a member of this room')
     }
 
-    await this.deps.roomRepo.removeMember(roomId, agentId)
+    const removed = await this.deps.roomRepo.removeMember(roomId, agentId)
+    if (!removed) {
+      throw new ValidationError('Agent is not a member of this room')
+    }
 
-    this.deps.sseHub?.broadcastToRoom(roomId, {
-      type: 'ROOM_MEMBER_LEFT',
-      payload: { room_id: roomId, agent_id: agentId },
-    })
-
+    this.emitRoomMemberLeft(roomId, agentId)
     this.leaveHook?.(roomId, agentId)
-    const projection = await this.projectRoom(roomId)
-    this.broadcastProjectionUpdate(roomId, projection)
+    await this.refreshAndBroadcastRoom(roomId)
   }
 
   async leaveAndJoin(
@@ -212,8 +254,86 @@ export class ChatService {
     agentId: string,
     ownerId: string,
   ): Promise<RoomMember> {
-    await this.recallAgentFromRoom(leaveRoomId, agentId, ownerId)
-    return this.dispatchAgentToRoom(joinRoomId, agentId, ownerId)
+    return this.moveAgentBetweenRooms({
+      leaveRoomId,
+      joinRoomId,
+      agentId,
+      ownerId,
+      bypassOwnership: false,
+      joinSource: 'dispatched',
+    })
+  }
+
+  private async moveAgentBetweenRooms(input: {
+    leaveRoomId: string
+    joinRoomId: string
+    agentId: string
+    ownerId: string | null
+    joinSource: RoomMember['join_source']
+    bypassOwnership: boolean
+  }): Promise<RoomMember> {
+    if (input.leaveRoomId === input.joinRoomId) {
+      throw new ValidationError('leaveRoomId and joinRoomId must be different')
+    }
+
+    const [sourceRoom, targetRoom, agent, sourceMember, targetHasMember] = await Promise.all([
+      this.deps.roomRepo.findById(input.leaveRoomId),
+      this.deps.roomRepo.findById(input.joinRoomId),
+      Promise.resolve(this.deps.agentRepo.findById(input.agentId)),
+      this.deps.roomRepo.getMember(input.leaveRoomId, input.agentId),
+      this.deps.roomRepo.isMember(input.joinRoomId, input.agentId),
+    ])
+
+    if (!sourceRoom) throw new NotFoundError('Room', input.leaveRoomId)
+    if (!targetRoom) throw new NotFoundError('Room', input.joinRoomId)
+    if (targetRoom.status === 'archived') throw new ValidationError('Cannot join an archived room')
+    if (!agent) throw new NotFoundError('Agent', input.agentId)
+    if (!input.bypassOwnership && agent.owner_id !== input.ownerId) {
+      throw new ForbiddenError('You do not own this agent')
+    }
+    if (!sourceMember) {
+      throw new ValidationError('Agent is not a member of this room')
+    }
+    if (targetHasMember) {
+      throw new ValidationError('Agent is already a member of this room')
+    }
+
+    const targetCount = await this.deps.roomRepo.countMembers(input.joinRoomId)
+    if (targetCount >= targetRoom.max_agents) {
+      throw new ValidationError('Room is full')
+    }
+
+    const tick = this.getAgentTickInterval(input.agentId)
+    const joinedMember = await this.deps.roomRepo.addMember(input.joinRoomId, input.agentId, input.joinSource, tick)
+
+    try {
+      const joinedCount = await this.deps.roomRepo.countMembers(input.joinRoomId)
+      if (joinedCount > targetRoom.max_agents) {
+        throw new ValidationError('Room is full')
+      }
+
+      const removed = await this.deps.roomRepo.removeMember(input.leaveRoomId, input.agentId)
+      if (!removed) {
+        throw new ValidationError('Agent is not a member of this room')
+      }
+    } catch (error) {
+      await this.deps.roomRepo.removeMember(input.joinRoomId, input.agentId).catch((rollbackError) => {
+        console.error('[ChatService] failed to rollback room move after error:', rollbackError)
+      })
+      throw error
+    }
+
+    this.emitRoomMemberLeft(input.leaveRoomId, input.agentId)
+    this.leaveHook?.(input.leaveRoomId, input.agentId)
+    this.emitRoomMemberJoined(input.joinRoomId, joinedMember)
+    this.joinHook?.(input.joinRoomId, input.agentId, tick)
+
+    await Promise.all([
+      this.refreshAndBroadcastRoom(input.leaveRoomId),
+      this.refreshAndBroadcastRoom(input.joinRoomId),
+    ])
+
+    return joinedMember
   }
 
   async sendMessage(input: CreateChatMessageInput): Promise<ChatMessage> {
@@ -306,11 +426,16 @@ export class ChatService {
       : []
     const snapshotsByRoom = new Map(snapshots.map((snapshot) => [snapshot.room_id, snapshot]))
 
-    return {
-      items: rooms.items.map((room) => ({
+    const items = await Promise.all(rooms.items.map(async (room) => {
+      const snapshot = await this.enrichSnapshot(snapshotsByRoom.get(room.id) ?? null, room.id)
+      return {
         ...room,
-        watchability: this.buildWatchabilitySummary(room, snapshotsByRoom.get(room.id) ?? null),
-      })),
+        watchability: this.buildWatchabilitySummary(room, snapshot),
+      }
+    }))
+
+    return {
+      items,
       next_cursor: rooms.next_cursor,
     }
   }
@@ -331,7 +456,9 @@ export class ChatService {
       snapshot = (await this.projectRoom(roomId))?.snapshot ?? null
     }
 
-    if (snapshot) return snapshot
+    if (snapshot) {
+      return (await this.enrichSnapshot(snapshot, roomId)) ?? snapshot
+    }
 
     const now = new Date()
     return {
@@ -348,6 +475,9 @@ export class ChatService {
       energy: 0,
       tension: 0,
       message_cursor_id: null,
+      continuity_summary: null,
+      canonization_note: null,
+      cameo_hint: null,
       version: 0,
       created_at: now,
       updated_at: now,
@@ -402,6 +532,7 @@ export class ChatService {
       idle_cue_after_ms: program?.idle_cue_after_ms ?? 30_000,
       allow_wandering: program?.allow_wandering ?? true,
       director_policy: program?.director_policy_json ?? {},
+      wander_policy: normalizeWanderPolicy(program?.wander_policy_json),
       discoverability: {
         tags: program?.discoverability_tags ?? [],
         short_hook: program?.discoverability_short_hook ?? (room.description || null),
@@ -518,6 +649,11 @@ export class ChatService {
       chemistry_score: entry.chemistry_score,
       spotlight_weight: entry.spotlight_weight,
       last_spoke_at: members.find((member) => member.member_id === entry.agent_id)?.last_spoke_at ?? null,
+      role_hint: members.find((member) => member.member_id === entry.agent_id)?.role_hint ?? null,
+      wander_eligible: members.find((member) => member.member_id === entry.agent_id)?.wander_eligible ?? true,
+      suppressed_until: members.find((member) => member.member_id === entry.agent_id)?.suppressed_until ?? null,
+      member_spotlight_weight: members.find((member) => member.member_id === entry.agent_id)?.spotlight_weight ?? 1,
+      projection: null,
     }))
   }
 
@@ -539,7 +675,28 @@ export class ChatService {
       last_highlight_text: snapshot?.last_highlight_text ?? null,
       energy: snapshot?.energy ?? 0,
       tension: snapshot?.tension ?? 0,
+      continuity_summary: snapshot?.continuity_summary ?? null,
+      canonization_note: snapshot?.canonization_note ?? null,
+      cameo_hint: snapshot?.cameo_hint ?? null,
       snapshot_updated_at: snapshot?.updated_at ?? null,
+    }
+  }
+
+  private async enrichSnapshot(
+    snapshot: RoomLiveSnapshot | null,
+    roomId: string,
+  ): Promise<RoomLiveSnapshot | null> {
+    if (!snapshot || !this.deps.roomWatchabilityRepo) return snapshot
+    const [continuity, canonization, cameo] = await Promise.all([
+      this.deps.roomWatchabilityRepo.getLatestSharedMemory(roomId, 'CONTINUITY'),
+      this.deps.roomWatchabilityRepo.getLatestSharedMemory(roomId, 'CANONIZATION'),
+      this.deps.roomWatchabilityRepo.getLatestSharedMemory(roomId, 'CAMEO'),
+    ])
+    return {
+      ...snapshot,
+      continuity_summary: continuity?.summary_text ?? snapshot.continuity_summary ?? null,
+      canonization_note: canonization?.summary_text ?? snapshot.canonization_note ?? null,
+      cameo_hint: cameo?.summary_text ?? snapshot.cameo_hint ?? null,
     }
   }
 
@@ -565,6 +722,25 @@ export class ChatService {
     } catch (err) {
       console.error('[ChatService] room program projector failed:', err)
     }
+  }
+
+  private emitRoomMemberJoined(roomId: string, member: RoomMember): void {
+    this.deps.sseHub?.broadcastToRoom(roomId, {
+      type: 'ROOM_MEMBER_JOINED',
+      payload: { room_id: roomId, member },
+    })
+  }
+
+  private emitRoomMemberLeft(roomId: string, agentId: string): void {
+    this.deps.sseHub?.broadcastToRoom(roomId, {
+      type: 'ROOM_MEMBER_LEFT',
+      payload: { room_id: roomId, agent_id: agentId },
+    })
+  }
+
+  private async refreshAndBroadcastRoom(roomId: string): Promise<void> {
+    const projection = await this.projectRoom(roomId)
+    this.broadcastProjectionUpdate(roomId, projection)
   }
 
   private broadcastProjectionUpdate(

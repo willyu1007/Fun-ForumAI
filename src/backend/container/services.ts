@@ -22,6 +22,11 @@ import { RoomCuePlanner } from '../services/room-cue-planner.js'
 import { RoomProgramScorer } from '../services/room-program-scorer.js'
 import { RoomProgramEngine } from '../services/room-program-engine.js'
 import { RoomProgramProjector } from '../services/room-program-projector.js'
+import { AgentPublicProjectionService } from '../services/agent-public-projection-service.js'
+import { ChatroomControlService } from '../services/chatroom-control-service.js'
+import { RoomDiscoveryService } from '../services/room-discovery-service.js'
+import { RoomEcologyService } from '../services/room-ecology-service.js'
+import { ChatroomCanonizationService } from '../services/chatroom-canonization-service.js'
 import { IncubationService } from '../services/incubation-service.js'
 import { IncubationOrchestrator } from '../services/incubation-orchestrator.js'
 import { AudienceService } from '../services/audience-service.js'
@@ -165,6 +170,16 @@ export function createCoreServices(deps: {
     statsService,
   })
 
+  const agentPublicProjectionService = new AgentPublicProjectionService({
+    projectionRepo: repos.agentPublicProjectionRepo,
+    agentRepo: repos.agentRepo,
+    agentService,
+    relationRepo: repos.relationRepo,
+    statsService,
+    personaStateService,
+    achievementChronicleService,
+  })
+
   const chatService = new ChatService({
     roomRepo: repos.roomRepo,
     roomWatchabilityRepo: repos.roomWatchabilityRepo,
@@ -181,6 +196,7 @@ export function createCoreServices(deps: {
     messageRepo: repos.messageRepo,
     agentRepo: repos.agentRepo,
     watchabilityRepo: repos.roomWatchabilityRepo,
+    projectionService: agentPublicProjectionService,
   })
 
   const chatroomRuntimeContextBuilder = new ChatroomRuntimeContextBuilder({
@@ -188,6 +204,7 @@ export function createCoreServices(deps: {
     agentRepo: repos.agentRepo,
     watchabilityRepo: repos.roomWatchabilityRepo,
     roomProjector,
+    projectionService: agentPublicProjectionService,
   })
 
   const roomProgramStateLoader = new RoomProgramStateLoader({
@@ -195,10 +212,40 @@ export function createCoreServices(deps: {
     messageRepo: repos.messageRepo,
     agentRepo: repos.agentRepo,
     watchabilityRepo: repos.roomWatchabilityRepo,
+    projectionService: agentPublicProjectionService,
   })
 
   const roomCuePlanner = new RoomCuePlanner()
   const roomProgramScorer = new RoomProgramScorer()
+  const roomDiscoveryService = new RoomDiscoveryService({
+    roomRepo: repos.roomRepo,
+    watchabilityRepo: repos.roomWatchabilityRepo,
+  })
+  const chatroomCanonizationService = new ChatroomCanonizationService({
+    roomRepo: repos.roomRepo,
+    watchabilityRepo: repos.roomWatchabilityRepo,
+    chronicleService: achievementChronicleService,
+    forumWriteService,
+    sseHub,
+  })
+  const chatroomControlService = new ChatroomControlService({
+    roomRepo: repos.roomRepo,
+    watchabilityRepo: repos.roomWatchabilityRepo,
+    agentRepo: repos.agentRepo,
+    roomProjector,
+    stateLoader: roomProgramStateLoader,
+    scorer: roomProgramScorer,
+    projectionService: agentPublicProjectionService,
+    sseHub,
+  })
+  const roomEcologyService = new RoomEcologyService({
+    roomRepo: repos.roomRepo,
+    watchabilityRepo: repos.roomWatchabilityRepo,
+    projectionService: agentPublicProjectionService,
+    discoveryService: roomDiscoveryService,
+    chatService,
+    sseHub,
+  })
 
   const roomProgramEngine = new RoomProgramEngine({
     stateLoader: roomProgramStateLoader,
@@ -214,10 +261,17 @@ export function createCoreServices(deps: {
     agentRepo: repos.agentRepo,
     watchabilityRepo: repos.roomWatchabilityRepo,
     roomProjector,
+    canonizationService: chatroomCanonizationService,
     sseHub,
   })
 
-  const roomLifecycle = new RoomLifecycleManager(repos.roomRepo, sseHub, deps.roomLifecycleLeaderElector)
+  const roomLifecycle = new RoomLifecycleManager(
+    repos.roomRepo,
+    repos.roomWatchabilityRepo,
+    sseHub,
+    chatroomCanonizationService,
+    deps.roomLifecycleLeaderElector,
+  )
 
   const authService = repos.userRepo ? new AuthService(repos.userRepo) : null
 
@@ -263,6 +317,7 @@ export function createCoreServices(deps: {
     chatroomRuntimeContextBuilder,
     roomWatchabilityRepo: repos.roomWatchabilityRepo,
     roomProgramEngine,
+    roomEcologyService,
     leaderElector: deps.conversationClockLeaderElector,
   })
 
@@ -294,11 +349,16 @@ export function createCoreServices(deps: {
     communityCultureDigestService,
     statsService,
     personaStateService,
+    agentPublicProjectionService,
     chatService,
     roomProjector,
     roomProgramStateLoader,
     roomCuePlanner,
     roomProgramScorer,
+    roomDiscoveryService,
+    roomEcologyService,
+    chatroomCanonizationService,
+    chatroomControlService,
     roomProgramEngine,
     roomProgramProjector,
     chatroomRuntimeContextBuilder,

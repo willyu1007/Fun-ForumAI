@@ -13,7 +13,10 @@ import type {
   RoomMemberJoinSource,
   RoomStatus,
 } from '../types.js'
-import type { RoomRepository } from '../room-repository.js'
+import type {
+  RoomRepository,
+  UpdateRoomMemberControlInput,
+} from '../room-repository.js'
 
 const SYSTEM_MAX_AGENTS = 5
 const SYSTEM_TICK_BASE = 20_000
@@ -177,6 +180,29 @@ export class PgRoomRepository implements RoomRepository {
     return row ? this.memberToDomain(row) : null
   }
 
+  async updateMemberControl(
+    roomId: string,
+    memberId: string,
+    patch: UpdateRoomMemberControlInput,
+  ): Promise<RoomMember | null> {
+    const data: Prisma.RoomMembershipUpdateManyMutationInput = {}
+    if (patch.role_hint !== undefined) data.roleHint = patch.role_hint
+    if (patch.wander_eligible !== undefined) data.wanderEligible = patch.wander_eligible
+    if (patch.spotlight_weight !== undefined) data.spotlightWeight = patch.spotlight_weight
+    if (patch.suppressed_until !== undefined) data.suppressedUntil = patch.suppressed_until
+
+    if (Object.keys(data).length === 0) {
+      return this.getMember(roomId, memberId)
+    }
+
+    await this.prisma.roomMembership.updateMany({
+      where: { roomId, agentId: memberId, leftAt: null },
+      data,
+    })
+
+    return this.getMember(roomId, memberId)
+  }
+
   async countMembers(roomId: string): Promise<number> {
     return this.prisma.roomMembership.count({
       where: { roomId, leftAt: null },
@@ -237,6 +263,10 @@ export class PgRoomRepository implements RoomRepository {
       personal_tick_interval: row.personalTickInterval,
       messages_this_hour: row.messagesThisHour,
       last_spoke_at: row.lastSpokeAt,
+      role_hint: row.roleHint as RoomMember['role_hint'],
+      wander_eligible: row.wanderEligible,
+      spotlight_weight: row.spotlightWeight,
+      suppressed_until: row.suppressedUntil,
       joined_at: row.joinedAt,
     }
   }

@@ -8,6 +8,7 @@ import {
   type RoomLiveSnapshot as PrismaRoomLiveSnapshot,
   type RoomProgram as PrismaRoomProgram,
   type RoomProgramEvent as PrismaRoomProgramEvent,
+  type RoomSharedMemory as PrismaRoomSharedMemory,
   type RoomSelectionLedger as PrismaRoomSelectionLedger,
 } from '@prisma/client'
 import type {
@@ -23,6 +24,8 @@ import type {
   RoomLiveSnapshot,
   RoomProgram,
   RoomProgramEvent,
+  RoomSharedMemory,
+  RoomWanderPolicy,
   RoomSelectionLedger,
   RoomSelectionReason,
 } from '../types.js'
@@ -30,6 +33,7 @@ import type {
   CreateRoomEpisodeBeatInput,
   CreateRoomHighlightInput,
   CreateRoomProgramEventInput,
+  CreateRoomSharedMemoryInput,
   PlanRoomProgramCueInput,
   PlanRoomProgramCueResult,
   RoomWatchabilityRepository,
@@ -49,6 +53,19 @@ function toStringArray(value: Prisma.JsonValue): string[] {
 function toRecord(value: Prisma.JsonValue | null | undefined): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
   return value as Record<string, unknown>
+}
+
+function toWanderPolicy(value: Prisma.JsonValue | null | undefined): RoomWanderPolicy {
+  const record = toRecord(value)
+  return {
+    enabled: record.enabled === true,
+    entry_cooldown_ms:
+      typeof record.entry_cooldown_ms === 'number' ? record.entry_cooldown_ms : 180_000,
+    max_parallel_rooms:
+      typeof record.max_parallel_rooms === 'number' ? record.max_parallel_rooms : 2,
+    min_discoverability_score:
+      typeof record.min_discoverability_score === 'number' ? record.min_discoverability_score : 0.25,
+  }
 }
 
 function toCallbackCandidates(value: Prisma.JsonValue): RoomCallbackCandidate[] {
@@ -146,6 +163,7 @@ function toProgramPatchData(patch: UpdateRoomProgramInput): Prisma.RoomProgramUp
   if (patch.idle_cue_after_ms !== undefined) data.idleCueAfterMs = patch.idle_cue_after_ms
   if (patch.allow_wandering !== undefined) data.allowWandering = patch.allow_wandering
   if (patch.director_policy_json !== undefined) data.directorPolicyJson = patch.director_policy_json
+  if (patch.wander_policy_json !== undefined) data.wanderPolicyJson = patch.wander_policy_json
   if (patch.discoverability_tags !== undefined) data.discoverabilityTags = patch.discoverability_tags
   if (patch.discoverability_short_hook !== undefined) {
     data.discoverabilityShortHook = patch.discoverability_short_hook
@@ -196,6 +214,12 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
         idleCueAfterMs: 30_000,
         allowWandering: true,
         directorPolicyJson: {},
+        wanderPolicyJson: {
+          enabled: false,
+          entry_cooldown_ms: 180_000,
+          max_parallel_rooms: 2,
+          min_discoverability_score: 0.25,
+        },
         discoverabilityTags: [],
         discoverabilityShortHook: room.description || null,
         discoverabilityDefaultView: 'live',
@@ -239,6 +263,12 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
         idleCueAfterMs: 30_000,
         allowWandering: true,
         directorPolicyJson: {},
+        wanderPolicyJson: {
+          enabled: false,
+          entry_cooldown_ms: 180_000,
+          max_parallel_rooms: 2,
+          min_discoverability_score: 0.25,
+        },
         discoverabilityTags: [],
         discoverabilityShortHook: room.description || null,
         discoverabilityDefaultView: 'live',
@@ -266,6 +296,14 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
   async getProgram(roomId: string): Promise<RoomProgram | null> {
     const row = await this.prisma.roomProgram.findUnique({ where: { roomId } })
     return row ? this.toProgram(row) : null
+  }
+
+  async listPrograms(roomIds: string[]): Promise<RoomProgram[]> {
+    if (roomIds.length === 0) return []
+    const rows = await this.prisma.roomProgram.findMany({
+      where: { roomId: { in: roomIds } },
+    })
+    return rows.map((row) => this.toProgram(row))
   }
 
   async ensureActiveEpisode(roomId: string, programId: string): Promise<RoomEpisode> {
@@ -302,6 +340,22 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
       orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
     })
     return row ? this.toEpisode(row) : null
+  }
+
+  async endActiveEpisode(roomId: string, endedAt = new Date()): Promise<RoomEpisode | null> {
+    const active = await this.prisma.roomEpisode.findFirst({
+      where: { roomId, status: 'ACTIVE' },
+      orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+    })
+    if (!active) return null
+    const row = await this.prisma.roomEpisode.update({
+      where: { id: active.id },
+      data: {
+        status: 'ENDED',
+        endedAt,
+      },
+    })
+    return this.toEpisode(row)
   }
 
   async saveEpisodeState(input: SaveRoomEpisodeStateInput): Promise<RoomEpisode | null> {
@@ -579,6 +633,15 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
     return row ? this.toProgramEvent(row) : null
   }
 
+  async listRecentProgramEvents(roomId: string, limit: number): Promise<RoomProgramEvent[]> {
+    const rows = await this.prisma.roomProgramEvent.findMany({
+      where: { roomId },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit,
+    })
+    return rows.map((row) => this.toProgramEvent(row))
+  }
+
   async saveSelectionLedger(input: SaveRoomSelectionLedgerInput[]): Promise<RoomSelectionLedger[]> {
     if (input.length === 0) return []
     const rows = await this.prisma.$transaction(input.map((entry) => this.prisma.roomSelectionLedger.create({
@@ -711,6 +774,49 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
     return rows.map((row) => this.toSnapshot(row))
   }
 
+  async createSharedMemory(input: CreateRoomSharedMemoryInput): Promise<RoomSharedMemory> {
+    const row = await this.prisma.roomSharedMemory.create({
+      data: {
+        roomId: input.room_id,
+        episodeId: input.episode_id ?? null,
+        memoryKind: input.memory_kind,
+        summaryText: input.summary_text,
+        tagsJson: input.tags ?? [],
+        sourceMessageId: input.source_message_id ?? null,
+        sourceHighlightId: input.source_highlight_id ?? null,
+        score: input.score ?? 0,
+      },
+    })
+    return this.toSharedMemory(row)
+  }
+
+  async getLatestSharedMemory(roomId: string, kind?: RoomSharedMemory['memory_kind']): Promise<RoomSharedMemory | null> {
+    const row = await this.prisma.roomSharedMemory.findFirst({
+      where: {
+        roomId,
+        ...(kind ? { memoryKind: kind } : {}),
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })
+    return row ? this.toSharedMemory(row) : null
+  }
+
+  async listSharedMemories(
+    roomId: string,
+    limit: number,
+    kind?: RoomSharedMemory['memory_kind'],
+  ): Promise<RoomSharedMemory[]> {
+    const rows = await this.prisma.roomSharedMemory.findMany({
+      where: {
+        roomId,
+        ...(kind ? { memoryKind: kind } : {}),
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit,
+    })
+    return rows.map((row) => this.toSharedMemory(row))
+  }
+
   private toProgram(row: PrismaRoomProgram): RoomProgram {
     return {
       id: row.id,
@@ -726,6 +832,7 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
       idle_cue_after_ms: row.idleCueAfterMs,
       allow_wandering: row.allowWandering,
       director_policy_json: toRecord(row.directorPolicyJson),
+      wander_policy_json: toWanderPolicy(row.wanderPolicyJson),
       discoverability_tags: toStringArray(row.discoverabilityTags),
       discoverability_short_hook: row.discoverabilityShortHook,
       discoverability_default_view: row.discoverabilityDefaultView,
@@ -855,6 +962,22 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
       tension: row.tension,
       message_cursor_id: row.messageCursorId,
       version: row.version,
+      created_at: row.createdAt,
+      updated_at: row.updatedAt,
+    }
+  }
+
+  private toSharedMemory(row: PrismaRoomSharedMemory): RoomSharedMemory {
+    return {
+      id: row.id,
+      room_id: row.roomId,
+      episode_id: row.episodeId,
+      memory_kind: row.memoryKind as RoomSharedMemory['memory_kind'],
+      summary_text: row.summaryText,
+      tags: toStringArray(row.tagsJson),
+      source_message_id: row.sourceMessageId,
+      source_highlight_id: row.sourceHighlightId,
+      score: row.score,
       created_at: row.createdAt,
       updated_at: row.updatedAt,
     }

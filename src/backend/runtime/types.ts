@@ -111,6 +111,11 @@ export interface ExecutionContext {
       }>
       live_hook: string | null
       unresolved_question: string | null
+      public_projection_hint: string | null
+      signature_moves: string[]
+      shared_memory_summary: string | null
+      role_hint: 'HOST' | 'REGULAR' | 'FOIL' | 'SKEPTIC' | 'EXPLAINER' | 'WILDCARD' | 'CHRONICLER' | null
+      projection_updated_at: string | null
     }
   }
   layers?: PromptLayers

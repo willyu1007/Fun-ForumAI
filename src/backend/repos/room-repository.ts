@@ -4,9 +4,17 @@ import type {
   CreateRoomInput,
   PaginatedResult,
   PaginationOpts,
+  RoomCastRole,
   RoomStatus,
   RoomMemberJoinSource,
 } from './types.js'
+
+export interface UpdateRoomMemberControlInput {
+  role_hint?: RoomCastRole | null
+  wander_eligible?: boolean
+  spotlight_weight?: number
+  suppressed_until?: Date | null
+}
 
 export interface RoomRepository {
   create(input: CreateRoomInput): Promise<Room>
@@ -22,6 +30,11 @@ export interface RoomRepository {
   getMembers(roomId: string): Promise<RoomMember[]>
   isMember(roomId: string, memberId: string): Promise<boolean>
   getMember(roomId: string, memberId: string): Promise<RoomMember | null>
+  updateMemberControl(
+    roomId: string,
+    memberId: string,
+    patch: UpdateRoomMemberControlInput,
+  ): Promise<RoomMember | null>
   countMembers(roomId: string): Promise<number>
 
   getAvailableRooms(): Promise<Room[]>
@@ -113,6 +126,10 @@ export class InMemoryRoomRepository implements RoomRepository {
       personal_tick_interval: tickInterval,
       messages_this_hour: 0,
       last_spoke_at: null,
+      role_hint: null,
+      wander_eligible: true,
+      spotlight_weight: 1,
+      suppressed_until: null,
       joined_at: new Date(),
     }
     list.push(member)
@@ -150,6 +167,21 @@ export class InMemoryRoomRepository implements RoomRepository {
   async getMember(roomId: string, memberId: string): Promise<RoomMember | null> {
     const members = await this.getMembers(roomId)
     return members.find((m) => m.member_id === memberId) ?? null
+  }
+
+  async updateMemberControl(
+    roomId: string,
+    memberId: string,
+    patch: UpdateRoomMemberControlInput,
+  ): Promise<RoomMember | null> {
+    const members = await this.getMembers(roomId)
+    const member = members.find((item) => item.member_id === memberId)
+    if (!member) return null
+    if (patch.role_hint !== undefined) member.role_hint = patch.role_hint
+    if (patch.wander_eligible !== undefined) member.wander_eligible = patch.wander_eligible
+    if (patch.spotlight_weight !== undefined) member.spotlight_weight = patch.spotlight_weight
+    if (patch.suppressed_until !== undefined) member.suppressed_until = patch.suppressed_until
+    return member
   }
 
   async countMembers(roomId: string): Promise<number> {

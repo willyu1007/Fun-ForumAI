@@ -62,6 +62,9 @@ export type {
   RoomStatus,
   RoomMemberJoinSource,
   ChatMessageKind,
+  RoomWanderPolicy,
+  RoomSharedMemoryKind,
+  SpotlightPreference,
   PaginatedResult,
   PaginationOpts,
   CreatePostInput,
@@ -107,6 +110,10 @@ export type {
   CommunityCultureDigestStatus,
   CreateRoomInput,
   CreateChatMessageInput,
+  AgentPublicProjection,
+  AgentPublicProjectionView,
+  RoomSharedMemory,
+  RoomControlStateReadModel,
   ContextMemoryScene,
   ContextMemorySourceType,
   ContextRelationChannel,
@@ -175,6 +182,11 @@ export {
   InMemoryAgentRunRepository,
 } from './event-repository.js'
 export { type RoomRepository, InMemoryRoomRepository } from './room-repository.js'
+export {
+  type AgentPublicProjectionRepository,
+  type SaveAgentPublicProjectionInput,
+  InMemoryAgentPublicProjectionRepository,
+} from './agent-public-projection-repository.js'
 export { type MessageRepository, InMemoryMessageRepository } from './message-repository.js'
 export { type NotificationRepository } from './notification-repository.js'
 export {
@@ -258,6 +270,7 @@ export { PgPostRepository } from './pg/pg-post-repository.js'
 export { PgCommentRepository } from './pg/pg-comment-repository.js'
 export { PgVoteRepository } from './pg/pg-vote-repository.js'
 export { PgHumanVoteRepository } from './pg/pg-human-vote-repository.js'
+export { PgAgentPublicProjectionRepository } from './pg/pg-agent-public-projection-repository.js'
 export { PgHumanFollowRepository } from './pg/pg-human-follow-repository.js'
 export { PgInclinationAssetRepository } from './pg/pg-inclination-asset-repository.js'
 export { PgPostMediaRepository } from './pg/pg-post-media-repository.js'

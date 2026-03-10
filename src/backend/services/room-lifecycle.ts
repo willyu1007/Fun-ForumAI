@@ -1,6 +1,8 @@
 import type { RoomRepository } from '../repos/room-repository.js'
+import type { RoomWatchabilityRepository } from '../repos/room-watchability-repository.js'
 import type { SseHub } from '../sse/hub.js'
 import type { LeaderElector } from '../runtime/leader-elector.js'
+import type { ChatroomCanonizationService } from './chatroom-canonization-service.js'
 
 const COOLING_THRESHOLD_MS = 30 * 60 * 1000
 const ARCHIVE_THRESHOLD_MS = 4 * 60 * 60 * 1000
@@ -11,7 +13,9 @@ export class RoomLifecycleManager {
 
   constructor(
     private readonly roomRepo: RoomRepository,
+    private readonly watchabilityRepo: RoomWatchabilityRepository | null,
     private readonly sseHub: SseHub,
+    private readonly canonizationService?: ChatroomCanonizationService | null,
     private readonly leaderElector?: LeaderElector,
   ) {}
 
@@ -45,11 +49,9 @@ export class RoomLifecycleManager {
     for (const room of activeRooms.items) {
       const lastActivity = room.last_message_at?.getTime() ?? room.created_at.getTime()
       if (now - lastActivity > COOLING_THRESHOLD_MS) {
+        await this.closeEpisode(room.id)
         await this.roomRepo.updateStatus(room.id, 'cooling')
-        this.sseHub.broadcastToRoom(room.id, {
-          type: 'ROOM_STATUS_CHANGED',
-          payload: { room_id: room.id, status: 'cooling' },
-        })
+        this.broadcastRoomState(room.id, 'cooling', 'episode_closed')
         console.log(`[RoomLifecycle] Room ${room.id} → cooling`)
       }
     }
@@ -58,17 +60,43 @@ export class RoomLifecycleManager {
     for (const room of coolingRooms.items) {
       const lastActivity = room.last_message_at?.getTime() ?? room.created_at.getTime()
       if (now - lastActivity > ARCHIVE_THRESHOLD_MS) {
+        await this.closeEpisode(room.id)
         await this.roomRepo.updateStatus(room.id, 'archived')
         const members = await this.roomRepo.getMembers(room.id)
         for (const member of members) {
           await this.roomRepo.removeMember(room.id, member.member_id)
         }
-        this.sseHub.broadcastToRoom(room.id, {
-          type: 'ROOM_STATUS_CHANGED',
-          payload: { room_id: room.id, status: 'archived' },
-        })
+        this.broadcastRoomState(room.id, 'archived', 'room_archived')
         console.log(`[RoomLifecycle] Room ${room.id} → archived (${members.length} members removed)`)
       }
     }
+  }
+
+  private async closeEpisode(roomId: string): Promise<void> {
+    if (this.canonizationService) {
+      await this.canonizationService.onEpisodeEnded(roomId).catch((error) => {
+        console.error('[RoomLifecycle] canonization on room close failed:', error)
+      })
+      return
+    }
+
+    await this.watchabilityRepo?.endActiveEpisode(roomId).catch((error) => {
+      console.error('[RoomLifecycle] endActiveEpisode failed:', error)
+    })
+  }
+
+  private broadcastRoomState(roomId: string, status: 'cooling' | 'archived', reason: string): void {
+    this.sseHub.broadcastToRoom(roomId, {
+      type: 'ROOM_STATUS_CHANGED',
+      payload: { room_id: roomId, status },
+    })
+    this.sseHub.broadcastToRoom(roomId, {
+      type: 'ROOM_CONTROL_STATE_UPDATED',
+      payload: {
+        room_id: roomId,
+        reason,
+        emitted_at: new Date().toISOString(),
+      },
+    })
   }
 }

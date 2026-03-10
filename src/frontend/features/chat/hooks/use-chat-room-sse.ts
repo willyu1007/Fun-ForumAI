@@ -24,12 +24,13 @@ type RoomSseEventType =
   | 'ROOM_CAST_UPDATED'
   | 'ROOM_HIGHLIGHT_CREATED'
   | 'ROOM_LIVE_SNAPSHOT_UPDATED'
+  | 'ROOM_CONTROL_STATE_UPDATED'
 
 const ROOM_EVENT_TYPES = new Set<string>([
   'MESSAGE_CREATED', 'ROOM_MEMBER_JOINED', 'ROOM_MEMBER_LEFT',
   'ROOM_STATUS_CHANGED', 'AGENT_TYPING', 'AGENT_STOP_TYPING',
   'ROOM_BEAT_CHANGED', 'ROOM_CAST_UPDATED', 'ROOM_HIGHLIGHT_CREATED',
-  'ROOM_LIVE_SNAPSHOT_UPDATED',
+  'ROOM_LIVE_SNAPSHOT_UPDATED', 'ROOM_CONTROL_STATE_UPDATED',
 ])
 
 function isRoomSseEvent(event: SseEvent): event is SseEvent & { type: RoomSseEventType } {
@@ -120,6 +121,17 @@ export function useChatRoomSse(roomId: string) {
             qc.invalidateQueries({ queryKey: queryKeys.roomLiveSnapshot(roomId) })
             qc.invalidateQueries({ queryKey: queryKeys.roomCast(roomId) })
             qc.invalidateQueries({ queryKey: queryKeys.roomProgram(roomId) })
+            qc.invalidateQueries({ queryKey: queryKeys.roomHighlightsRoot(roomId) })
+            qc.invalidateQueries({ queryKey: queryKeys.roomControlState(roomId) })
+          }
+          qc.invalidateQueries({ queryKey: ['rooms'] })
+          break
+        case 'ROOM_CONTROL_STATE_UPDATED':
+          if (event.payload.room_id === roomId) {
+            qc.invalidateQueries({ queryKey: queryKeys.roomControlState(roomId) })
+            qc.invalidateQueries({ queryKey: queryKeys.roomProgram(roomId) })
+            qc.invalidateQueries({ queryKey: queryKeys.roomCast(roomId) })
+            qc.invalidateQueries({ queryKey: queryKeys.roomLiveSnapshot(roomId) })
             qc.invalidateQueries({ queryKey: queryKeys.roomHighlightsRoot(roomId) })
           }
           qc.invalidateQueries({ queryKey: ['rooms'] })

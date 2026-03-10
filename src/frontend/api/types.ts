@@ -537,6 +537,81 @@ export type RoomHighlightKind =
   | 'CHARACTER_MOMENT'
   | 'SUMMARY'
   | 'CLASH'
+export type SpotlightPreference = 'LOW' | 'MEDIUM' | 'HIGH'
+
+export interface RoomWanderPolicy {
+  enabled: boolean
+  entry_cooldown_ms: number
+  max_parallel_rooms: number
+  min_discoverability_score: number
+}
+
+export interface AgentPublicProjectionView {
+  id: string
+  agent_id: string
+  scene_affinity_json: Record<string, number>
+  banter_style: string
+  conflict_threshold: number
+  callback_habit: number
+  signature_moves_json: string[]
+  disclosure_policy_json: Record<string, unknown>
+  follow_targets_json: string[]
+  avoid_targets_json: string[]
+  role_tendency: RoomCastRole | null
+  spotlight_preference: SpotlightPreference
+  public_projection_hint: string
+  created_at: string
+  updated_at: string
+}
+
+export interface RoomSelectionLedgerEntry {
+  id: string
+  room_id: string
+  episode_id: string | null
+  beat_id: string | null
+  program_event_id: string
+  candidate_agent_id: string
+  selected: boolean
+  final_score: number
+  reasons_json: Array<{
+    code: string
+    value: number
+    message: string
+  }>
+  created_at: string
+}
+
+export interface RoomProgramEventRecord {
+  id: string
+  room_id: string
+  episode_id: string | null
+  beat_id: string | null
+  event_type: 'RAW_MESSAGE' | 'ROOM_TICK' | 'PROGRAM_CUE'
+  status: 'PENDING' | 'PLANNED' | 'EXECUTED' | 'SKIPPED' | 'FAILED'
+  cue_type: RoomCueType | null
+  director_goal: string | null
+  selected_speaker_agent_id: string | null
+  idempotency_key: string
+  payload_json: Record<string, unknown> | null
+  error_text: string | null
+  created_at: string
+  updated_at: string
+  selection_reasons: RoomSelectionLedgerEntry[]
+}
+
+export interface RoomSharedMemory {
+  id: string
+  room_id: string
+  episode_id: string | null
+  memory_kind: 'CONTINUITY' | 'CAMEO' | 'CANONIZATION'
+  summary_text: string
+  tags: string[]
+  source_message_id: string | null
+  source_highlight_id: string | null
+  score: number
+  created_at: string
+  updated_at: string
+}
 
 export interface RoomWatchabilitySummary {
   scene_type: RoomSceneType
@@ -551,6 +626,9 @@ export interface RoomWatchabilitySummary {
   last_highlight_text: string | null
   energy: number
   tension: number
+  continuity_summary?: string | null
+  canonization_note?: string | null
+  cameo_hint?: string | null
   snapshot_updated_at: string | null
 }
 
@@ -566,6 +644,7 @@ export interface Room {
   last_message_at: string | null
   created_at: string
   updated_at: string
+  viewer_can_control?: boolean
   watchability?: RoomWatchabilitySummary | null
 }
 
@@ -577,6 +656,10 @@ export interface RoomMember {
   personal_tick_interval: number
   messages_this_hour: number
   last_spoke_at: string | null
+  role_hint?: RoomCastRole | null
+  wander_eligible?: boolean
+  spotlight_weight?: number
+  suppressed_until?: string | null
   joined_at: string
 }
 
@@ -603,6 +686,9 @@ export interface RoomLiveSnapshot {
   energy: number
   tension: number
   message_cursor_id: string | null
+  continuity_summary?: string | null
+  canonization_note?: string | null
+  cameo_hint?: string | null
   version: number
   created_at: string
   updated_at: string
@@ -618,6 +704,11 @@ export interface RoomCastView {
     chemistry_score: number
     spotlight_weight: number
     last_spoke_at: string | null
+    role_hint?: RoomCastRole | null
+    wander_eligible?: boolean
+    suppressed_until?: string | null
+    member_spotlight_weight?: number
+    projection?: AgentPublicProjectionView | null
   }>
 }
 
@@ -634,6 +725,7 @@ export interface RoomProgramView {
   idle_cue_after_ms: number
   allow_wandering: boolean
   director_policy: Record<string, unknown>
+  wander_policy: RoomWanderPolicy
   discoverability: {
     tags: string[]
     short_hook: string | null
@@ -682,6 +774,24 @@ export interface RoomHighlight {
 export interface AgentChatConfig {
   talkativeness: number
   allow_wandering: boolean
+}
+
+export interface RoomControlMember extends RoomMember {
+  name: string
+  projection: AgentPublicProjectionView | null
+}
+
+export interface RoomControlState {
+  room_id: string
+  room_status: RoomStatus
+  program: RoomProgramView
+  snapshot: RoomLiveSnapshot | null
+  cast: RoomCastView['cast']
+  members: RoomControlMember[]
+  recent_highlights: RoomHighlight[]
+  recent_program_events: RoomProgramEventRecord[]
+  recent_shared_memory: RoomSharedMemory[]
+  alerts: string[]
 }
 
 // ─── Agent Dashboard / XP types ─────────────────────────────

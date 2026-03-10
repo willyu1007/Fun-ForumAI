@@ -5,6 +5,7 @@ import type { RoomWatchabilityRepository } from '../repos/room-watchability-repo
 import type { ChatMessage, RoomCastMemberView, RoomHighlightKind } from '../repos/types.js'
 import type { SseHub } from '../sse/hub.js'
 import type { RoomProjectionResult, RoomProjector } from './room-projector.js'
+import type { ChatroomCanonizationService } from './chatroom-canonization-service.js'
 
 function buildCastSignature(cast: RoomCastMemberView[]): string {
   return cast
@@ -37,6 +38,7 @@ export interface RoomProgramProjectorDeps {
   agentRepo: AgentRepository
   watchabilityRepo: RoomWatchabilityRepository
   roomProjector: RoomProjector
+  canonizationService?: ChatroomCanonizationService | null
   sseHub?: SseHub | null
 }
 
@@ -85,7 +87,7 @@ export class RoomProgramProjector {
     const highlight = deriveHighlight(message)
     if (!highlight || highlight.score < 0.6) return
 
-    await this.deps.watchabilityRepo.createHighlight({
+    const created = await this.deps.watchabilityRepo.createHighlight({
       room_id: message.room_id,
       episode_id: message.episode_id ?? null,
       beat_id: message.beat_id ?? null,
@@ -95,6 +97,11 @@ export class RoomProgramProjector {
       actor_agent_ids: [message.author_id],
       score: highlight.score,
     })
+    if (this.deps.canonizationService) {
+      void this.deps.canonizationService.considerHighlight(message.room_id, created).catch((error) => {
+        console.error('[RoomProgramProjector] canonization trigger failed:', error)
+      })
+    }
   }
 
   private broadcastProgramProjection(
@@ -160,6 +167,14 @@ export class RoomProgramProjector {
             score: latestHighlight.score,
             created_at: latestHighlight.created_at.toISOString(),
           },
+        },
+      })
+      this.deps.sseHub?.broadcastToRoom(roomId, {
+        type: 'ROOM_CONTROL_STATE_UPDATED',
+        payload: {
+          room_id: roomId,
+          reason: 'highlight_created',
+          emitted_at: new Date().toISOString(),
         },
       })
     }).catch((error) => {

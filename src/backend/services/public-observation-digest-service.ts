@@ -25,10 +25,27 @@ export interface PublicObservationDigestServiceDeps {
   agentService: AgentService
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
+  onMemoryCreated?: (input: {
+    agent_id: string
+    summary_text: string
+    topic_tags: string[]
+    importance_score: number
+  }) => Promise<void> | void
 }
 
 export class PublicObservationDigestService {
   constructor(private readonly deps: PublicObservationDigestServiceDeps) {}
+
+  setMemoryCreatedHook(
+    hook: (input: {
+      agent_id: string
+      summary_text: string
+      topic_tags: string[]
+      importance_score: number
+    }) => Promise<void> | void,
+  ): void {
+    this.deps.onMemoryCreated = hook
+  }
 
   async onForumEvent(event: DomainEvent): Promise<void> {
     const payload = event.payload_json
@@ -84,6 +101,7 @@ export class PublicObservationDigestService {
         memoryId: memory.id,
         metadata: summary,
       })
+      this.emitProjectionHook(agentId, summary.summary.summary_text, summary.summary.topic_tags, summary.summary.importance_score)
     } catch (err) {
       console.error('[PublicObservationDigestService] onForumEvent failed:', err)
     }
@@ -144,9 +162,32 @@ export class PublicObservationDigestService {
         memoryId: memory.id,
         metadata: summary,
       })
+      this.emitProjectionHook(
+        input.authorAgentId,
+        summary.summary.summary_text,
+        summary.summary.topic_tags,
+        summary.summary.importance_score,
+      )
     } catch (err) {
       console.error('[PublicObservationDigestService] onRoomMessage failed:', err)
     }
+  }
+
+  private emitProjectionHook(
+    agentId: string,
+    summaryText: string,
+    topicTags: string[],
+    importanceScore: number,
+  ): void {
+    if (!this.deps.onMemoryCreated) return
+    Promise.resolve(this.deps.onMemoryCreated({
+      agent_id: agentId,
+      summary_text: summaryText,
+      topic_tags: topicTags,
+      importance_score: importanceScore,
+    })).catch((error) => {
+      console.error('[PublicObservationDigestService] memory hook failed:', error)
+    })
   }
 
   private async shouldProceedByEventDedup(

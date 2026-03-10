@@ -24,6 +24,7 @@ import type { GovernanceAdapter } from '../services/governance-adapter.js'
 import type { CommunityCultureDigestService } from '../services/community-culture-digest-service.js'
 import type { IncubationOrchestrator } from '../services/incubation-orchestrator.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
+import type { AgentPublicProjectionService } from '../services/agent-public-projection-service.js'
 
 export interface NurtureResult {
   traitEngine: import('../services/trait-engine.js').TraitEngine | null
@@ -57,6 +58,7 @@ export async function createNurtureEngines(deps: {
   chatService: ChatService
   statsService: StatsService
   personaStateService: PersonaStateService
+  agentPublicProjectionService: AgentPublicProjectionService
   conversationClock: ConversationClock
   achievementsOrchestrator: AchievementsOrchestrator
   governanceAdapter: GovernanceAdapter
@@ -72,7 +74,7 @@ export async function createNurtureEngines(deps: {
 }): Promise<NurtureResult> {
   const {
     repos, llmGateway, promptEngine, sseHub,
-    forumReadService, agentService, chatService, statsService, personaStateService,
+    forumReadService, agentService, chatService, statsService, personaStateService, agentPublicProjectionService,
     conversationClock, achievementsOrchestrator, governanceAdapter,
     communityCultureDigestService, incubationOrchestrator,
   } = deps
@@ -140,9 +142,18 @@ export async function createNurtureEngines(deps: {
         statsService,
         metrics: new RelationMetrics(),
       })
-      if (achievementsOrchestrator) {
-        relationService.setStateChangeHook((input) => achievementsOrchestrator.processRelationStateChange(input))
-      }
+      relationService.setStateChangeHook(async (input) => {
+        if (achievementsOrchestrator) {
+          await achievementsOrchestrator.processRelationStateChange(input)
+        }
+        await agentPublicProjectionService.refresh(input.from_agent_id, {
+          reason: 'relation_change',
+          relation_change: {
+            to_agent_id: input.to_agent_id,
+            next_state: input.next_state,
+          },
+        })
+      })
     }
 
     nurtureOrchestrator = new NurtureOrchestrator({
@@ -195,6 +206,11 @@ export async function createNurtureEngines(deps: {
       if (achievementsOrchestrator) {
         await achievementsOrchestrator.processPrivateDigest(input)
       }
+      await agentPublicProjectionService.refreshFromPrivateDigest({
+        agent_id: input.agent_id,
+        sentiment: input.sentiment,
+        importance_score: input.importance_score,
+      })
       await personaStateService.recordPrivateDigest({
         agentId: input.agent_id,
         sessionId: input.session_id,
@@ -215,6 +231,8 @@ export async function createNurtureEngines(deps: {
       eventRepo: repos.eventRepo,
       agentRunRepo: repos.agentRunRepo,
     })
+    publicObservationDigestService.setMemoryCreatedHook((input) =>
+      agentPublicProjectionService.refreshFromPublicObservation(input))
     publicObservationEventHandler = new PublicObservationEventHandler({
       digestService: publicObservationDigestService,
     })

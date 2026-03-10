@@ -10,12 +10,14 @@ import type {
 import type { ExecutionContext } from '../runtime/types.js'
 import { RoomProjector } from './room-projector.js'
 import { toNamedRecentMessages } from './chatroom-watchability-heuristics.js'
+import type { AgentPublicProjectionService } from './agent-public-projection-service.js'
 
 export interface ChatroomRuntimeContextBuilderDeps {
   roomRepo: RoomRepository
   agentRepo: AgentRepository
   watchabilityRepo: RoomWatchabilityRepository
   roomProjector: RoomProjector
+  projectionService?: AgentPublicProjectionService | null
 }
 
 export interface ChatroomRuntimeContextResult {
@@ -40,6 +42,10 @@ function buildDirectorGoal(program: RoomProgramReadModel, room: Room, liveHook: 
 export class ChatroomRuntimeContextBuilder {
   constructor(private readonly deps: ChatroomRuntimeContextBuilderDeps) {}
 
+  setProjectionService(service: AgentPublicProjectionService | null): void {
+    ;(this.deps as { projectionService?: AgentPublicProjectionService | null }).projectionService = service
+  }
+
   async build(input: {
     room: Room
     agentId: string
@@ -54,8 +60,12 @@ export class ChatroomRuntimeContextBuilder {
       : null
     const latestEvent = await this.deps.watchabilityRepo.getLatestProgramEvent(room.id)
     const latestHighlight = await this.deps.watchabilityRepo.getLatestHighlight(room.id)
+    const latestSharedMemory = await this.deps.watchabilityRepo.getLatestSharedMemory(room.id, 'CONTINUITY')
     const persistedCast = await this.deps.watchabilityRepo.getCurrentCast(room.id)
     const members = await this.deps.roomRepo.getMembers(room.id)
+    const projections = this.deps.projectionService
+      ? await this.deps.projectionService.getOrBuildMany(persistedCast.map((entry) => entry.agent_id))
+      : new Map()
     const cast = persistedCast.map((entry) => ({
       agent_id: entry.agent_id,
       name: this.deps.agentRepo.findById(entry.agent_id)?.display_name ?? entry.agent_id,
@@ -63,6 +73,11 @@ export class ChatroomRuntimeContextBuilder {
       chemistry_score: entry.chemistry_score,
       spotlight_weight: entry.spotlight_weight,
       last_spoke_at: members.find((member) => member.member_id === entry.agent_id)?.last_spoke_at ?? null,
+      role_hint: members.find((member) => member.member_id === entry.agent_id)?.role_hint ?? null,
+      wander_eligible: members.find((member) => member.member_id === entry.agent_id)?.wander_eligible ?? true,
+      suppressed_until: members.find((member) => member.member_id === entry.agent_id)?.suppressed_until ?? null,
+      member_spotlight_weight: members.find((member) => member.member_id === entry.agent_id)?.spotlight_weight ?? 1,
+      projection: projections.get(entry.agent_id) ?? null,
     }))
 
     const recentAgentNames = new Map<string, string>()
@@ -86,6 +101,8 @@ export class ChatroomRuntimeContextBuilder {
       activeEpisode,
     )
     const selfRole = this.deps.roomProjector.getSelfRole(cast, agentId)
+    const selfMember = members.find((member) => member.member_id === agentId) ?? null
+    const selfProjection = projections.get(agentId) ?? null
     const directorGoal =
       latestEvent?.director_goal
       ?? latestBeat?.director_goal
@@ -111,6 +128,11 @@ export class ChatroomRuntimeContextBuilder {
             })),
             live_hook: snapshot?.live_hook ?? null,
             unresolved_question: snapshot?.unresolved_question ?? null,
+            public_projection_hint: selfProjection?.public_projection_hint ?? null,
+            signature_moves: selfProjection?.signature_moves_json ?? [],
+            shared_memory_summary: latestSharedMemory?.summary_text ?? null,
+            role_hint: selfMember?.role_hint ?? null,
+            projection_updated_at: selfProjection?.updated_at.toISOString() ?? null,
           }
         : undefined,
     }
@@ -129,6 +151,11 @@ export class ChatroomRuntimeContextBuilder {
             live_hook: chatContext.program.live_hook ?? '',
             unresolved_question: chatContext.program.unresolved_question ?? '',
             last_highlight: latestHighlight?.text ?? snapshot?.last_highlight_text ?? '',
+            public_projection_hint: chatContext.program.public_projection_hint ?? '',
+            signature_moves: chatContext.program.signature_moves.join('、'),
+            shared_memory_summary: chatContext.program.shared_memory_summary ?? '',
+            role_hint: chatContext.program.role_hint ?? '',
+            projection_updated_at: chatContext.program.projection_updated_at ?? '',
           }
         : {
             program_scene: '',
@@ -141,6 +168,11 @@ export class ChatroomRuntimeContextBuilder {
             live_hook: '',
             unresolved_question: '',
             last_highlight: '',
+            public_projection_hint: '',
+            signature_moves: '',
+            shared_memory_summary: '',
+            role_hint: '',
+            projection_updated_at: '',
           },
     }
   }

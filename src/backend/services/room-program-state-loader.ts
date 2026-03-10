@@ -14,6 +14,7 @@ import type {
   RoomProgram,
   RoomProgramEvent,
 } from '../repos/types.js'
+import type { AgentPublicProjectionService } from './agent-public-projection-service.js'
 
 const DEFAULT_RECENT_MESSAGE_LIMIT = 12
 
@@ -36,10 +37,15 @@ export interface RoomProgramStateLoaderDeps {
   messageRepo: MessageRepository
   agentRepo: AgentRepository
   watchabilityRepo: RoomWatchabilityRepository
+  projectionService?: AgentPublicProjectionService | null
 }
 
 export class RoomProgramStateLoader {
   constructor(private readonly deps: RoomProgramStateLoaderDeps) {}
+
+  setProjectionService(service: AgentPublicProjectionService | null): void {
+    ;(this.deps as { projectionService?: AgentPublicProjectionService | null }).projectionService = service
+  }
 
   async load(roomId: string, recentMessageLimit = DEFAULT_RECENT_MESSAGE_LIMIT): Promise<LoadedRoomProgramState | null> {
     const room = await this.deps.roomRepo.findById(roomId)
@@ -59,6 +65,10 @@ export class RoomProgramStateLoader {
     const latestEvent = await this.deps.watchabilityRepo.getLatestProgramEvent(roomId)
     const latestHighlight = await this.deps.watchabilityRepo.getLatestHighlight(roomId)
 
+    const projections = this.deps.projectionService
+      ? await this.deps.projectionService.getOrBuildMany(persistedCast.map((entry) => entry.agent_id))
+      : new Map()
+
     const cast: RoomCastMemberView[] = persistedCast.map((entry) => ({
       agent_id: entry.agent_id,
       name: this.deps.agentRepo.findById(entry.agent_id)?.display_name ?? entry.agent_id,
@@ -66,6 +76,11 @@ export class RoomProgramStateLoader {
       chemistry_score: entry.chemistry_score,
       spotlight_weight: entry.spotlight_weight,
       last_spoke_at: members.find((member) => member.member_id === entry.agent_id)?.last_spoke_at ?? null,
+      role_hint: members.find((member) => member.member_id === entry.agent_id)?.role_hint ?? null,
+      wander_eligible: members.find((member) => member.member_id === entry.agent_id)?.wander_eligible ?? true,
+      suppressed_until: members.find((member) => member.member_id === entry.agent_id)?.suppressed_until ?? null,
+      member_spotlight_weight: members.find((member) => member.member_id === entry.agent_id)?.spotlight_weight ?? 1,
+      projection: projections.get(entry.agent_id) ?? null,
     }))
 
     return {

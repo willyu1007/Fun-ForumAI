@@ -29,6 +29,7 @@ import {
   recordPersonaObservation,
 } from '../runtime/persona-observation.js'
 import type { RoomProgramEngine } from './room-program-engine.js'
+import type { RoomEcologyService } from './room-ecology-service.js'
 import type { CreateChatMessageInput } from '../repos/types.js'
 
 const MAX_MSG_PER_AGENT_PER_ROOM_HOUR = 6
@@ -60,6 +61,7 @@ export interface ConversationClockDeps {
   chatroomRuntimeContextBuilder?: ChatroomRuntimeContextBuilder | null
   roomWatchabilityRepo?: RoomWatchabilityRepository | null
   roomProgramEngine?: RoomProgramEngine | null
+  roomEcologyService?: RoomEcologyService | null
   leaderElector?: LeaderElector
 }
 
@@ -86,6 +88,10 @@ export class ConversationClock {
 
   setChatroomRuntimeContextBuilder(builder: ChatroomRuntimeContextBuilder | null): void {
     ;(this.deps as { chatroomRuntimeContextBuilder?: ChatroomRuntimeContextBuilder | null }).chatroomRuntimeContextBuilder = builder
+  }
+
+  setRoomEcologyService(service: RoomEcologyService | null): void {
+    ;(this.deps as { roomEcologyService?: RoomEcologyService | null }).roomEcologyService = service
   }
 
   start(): void {
@@ -194,6 +200,13 @@ export class ConversationClock {
     if (!await this.deps.roomRepo.isMember(roomId, agentId)) {
       this.onAgentLeft(roomId, agentId)
       return
+    }
+
+    if (this.deps.roomEcologyService) {
+      const wandered = await this.deps.roomEcologyService.maybeWander(roomId, agentId)
+      if (wandered) {
+        return
+      }
     }
 
     const program = await this.deps.roomWatchabilityRepo?.getProgram(roomId) ?? null

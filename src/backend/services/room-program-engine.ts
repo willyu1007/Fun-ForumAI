@@ -42,6 +42,7 @@ export class RoomProgramEngine {
       cast: state.cast,
       recentMessages: state.recentMessages,
       cue,
+      scene_type: state.program.scene_type,
       maxConsecutiveTurns: state.program.max_consecutive_turns,
     })
     if (scoredCandidates.length === 0) return null
@@ -122,6 +123,14 @@ export class RoomProgramEngine {
           },
         },
       })
+      this.deps.sseHub?.broadcastToRoom(state.room.id, {
+        type: 'ROOM_CONTROL_STATE_UPDATED',
+        payload: {
+          room_id: state.room.id,
+          reason: 'program_cue_planned',
+          emitted_at: new Date().toISOString(),
+        },
+      })
     }
 
     return {
@@ -141,9 +150,18 @@ export class RoomProgramEngine {
     status: 'EXECUTED' | 'FAILED' | 'SKIPPED',
     errorText?: string | null,
   ): Promise<void> {
-    await this.deps.watchabilityRepo.updateProgramEvent(eventId, {
+    const updated = await this.deps.watchabilityRepo.updateProgramEvent(eventId, {
       status,
       error_text: errorText ?? null,
+    })
+    if (!updated) return
+    this.deps.sseHub?.broadcastToRoom(updated.room_id, {
+      type: 'ROOM_CONTROL_STATE_UPDATED',
+      payload: {
+        room_id: updated.room_id,
+        reason: `program_event_${status.toLowerCase()}`,
+        emitted_at: new Date().toISOString(),
+      },
     })
   }
 }

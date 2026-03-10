@@ -11,6 +11,7 @@ import type {
   RoomProgramReadModel,
   RoomWatchabilitySummary,
 } from '../repos/types.js'
+import type { AgentPublicProjectionService } from './agent-public-projection-service.js'
 import {
   buildLiveHook,
   buildRecapShort,
@@ -22,9 +23,23 @@ import {
   toLiveCast,
   toNamedRecentMessages,
 } from './chatroom-watchability-heuristics.js'
+import { normalizeWanderPolicy } from './chatroom-program-policy.js'
 
 const WATCHABILITY_RECENT_MESSAGE_LIMIT = 6
 const CALLBACK_BANK_LIMIT = 10
+
+function buildContinuitySummary(input: {
+  recapShort: string | null
+  unresolvedQuestion: string | null
+  latestHighlightText: string | null
+}): string | null {
+  const parts = [
+    input.recapShort,
+    input.unresolvedQuestion ? `悬念: ${input.unresolvedQuestion}` : null,
+    input.latestHighlightText ? `梗: ${trimText(input.latestHighlightText, 40)}` : null,
+  ].filter(Boolean)
+  return parts.length > 0 ? parts.join(' | ') : null
+}
 
 function trimText(text: string, max: number): string {
   const normalized = text.replace(/\s+/g, ' ').trim()
@@ -62,6 +77,7 @@ export interface RoomProjectorDeps {
   messageRepo: MessageRepository
   agentRepo: AgentRepository
   watchabilityRepo: RoomWatchabilityRepository
+  projectionService?: AgentPublicProjectionService | null
 }
 
 export interface RoomProjectionResult {
@@ -88,6 +104,9 @@ function fallbackWatchability(room: {
     last_highlight_text: snapshot?.last_highlight_text ?? null,
     energy: snapshot?.energy ?? 0,
     tension: snapshot?.tension ?? 0,
+    continuity_summary: snapshot?.continuity_summary ?? null,
+    canonization_note: snapshot?.canonization_note ?? null,
+    cameo_hint: snapshot?.cameo_hint ?? null,
     snapshot_updated_at: snapshot?.updated_at ?? null,
   }
 }
@@ -102,6 +121,9 @@ export class RoomProjector {
     const program = await this.deps.watchabilityRepo.ensureProgram(room)
     const episode = await this.deps.watchabilityRepo.ensureActiveEpisode(room.id, program.id)
     const members = await this.deps.roomRepo.getMembers(room.id)
+    const projections = this.deps.projectionService
+      ? await this.deps.projectionService.getOrBuildMany(members.map((member) => member.member_id))
+      : new Map()
 
     const agentNames = new Map<string, string>()
     for (const member of members) {
@@ -124,6 +146,8 @@ export class RoomProjector {
     const tension = computeTension(namedMessages)
     const latestBeat = await this.deps.watchabilityRepo.getLatestBeat(episode.id)
     const latestHighlight = await this.deps.watchabilityRepo.getLatestHighlight(room.id)
+    const latestSharedMemory = await this.deps.watchabilityRepo.getLatestSharedMemory(room.id, 'CONTINUITY')
+    const latestCanonization = await this.deps.watchabilityRepo.getLatestSharedMemory(room.id, 'CANONIZATION')
     const callbackBank = buildCallbackBank(recentMessages, program.callback_window)
 
     const messageCount = await this.deps.messageRepo.countByRoom(room.id)
@@ -154,6 +178,26 @@ export class RoomProjector {
       message_count: messageCount,
     })
 
+    const continuitySummary = buildContinuitySummary({
+      recapShort,
+      unresolvedQuestion,
+      latestHighlightText: latestHighlight?.text ?? null,
+    })
+    if (continuitySummary && latestSharedMemory?.summary_text !== continuitySummary) {
+      await this.deps.watchabilityRepo.createSharedMemory({
+        room_id: room.id,
+        episode_id: episode.id,
+        memory_kind: 'CONTINUITY',
+        summary_text: continuitySummary,
+        tags: unresolvedQuestion ? ['unresolved-question'] : ['continuity'],
+        source_highlight_id: latestHighlight?.id ?? null,
+        source_message_id: recentMessages[recentMessages.length - 1]?.id ?? null,
+        score: Math.max(energy, tension),
+      }).catch((error) => {
+        console.error('[RoomProjector] failed to persist room shared memory:', error)
+      })
+    }
+
     const snapshot = await this.deps.watchabilityRepo.saveLiveSnapshot({
       room_id: room.id,
       episode_id: episode.id,
@@ -168,6 +212,9 @@ export class RoomProjector {
       tension,
       message_cursor_id: recentMessages[recentMessages.length - 1]?.id ?? null,
     })
+    snapshot.continuity_summary = latestSharedMemory?.summary_text ?? continuitySummary
+    snapshot.canonization_note = latestCanonization?.summary_text ?? null
+    snapshot.cameo_hint = null
 
     const cast: RoomCastMemberView[] = persistedCast.map((entry) => ({
       agent_id: entry.agent_id,
@@ -176,6 +223,11 @@ export class RoomProjector {
       chemistry_score: entry.chemistry_score,
       spotlight_weight: entry.spotlight_weight,
       last_spoke_at: members.find((member) => member.member_id === entry.agent_id)?.last_spoke_at ?? null,
+      role_hint: members.find((member) => member.member_id === entry.agent_id)?.role_hint ?? null,
+      wander_eligible: members.find((member) => member.member_id === entry.agent_id)?.wander_eligible ?? true,
+      suppressed_until: members.find((member) => member.member_id === entry.agent_id)?.suppressed_until ?? null,
+      member_spotlight_weight: members.find((member) => member.member_id === entry.agent_id)?.spotlight_weight ?? 1,
+      projection: projections.get(entry.agent_id) ?? null,
     }))
 
     return {
@@ -209,6 +261,7 @@ export class RoomProjector {
       idle_cue_after_ms: program.idle_cue_after_ms,
       allow_wandering: program.allow_wandering,
       director_policy: program.director_policy_json,
+      wander_policy: normalizeWanderPolicy(program.wander_policy_json),
       discoverability: {
         tags: program.discoverability_tags,
         short_hook: program.discoverability_short_hook,

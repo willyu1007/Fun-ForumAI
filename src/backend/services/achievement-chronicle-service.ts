@@ -13,6 +13,11 @@ export interface AchievementChronicleServiceDeps {
   achievementRepo: AchievementRepository
   chronicleRepo: ChronicleRepository
   agentRepo: AgentRepository
+  onRecord?: (input: {
+    agent_id: string
+    type: ChronicleEntry['type']
+    visibility: AchievementVisibility
+  }) => Promise<void> | void
 }
 
 export interface ChronicleListResult {
@@ -157,6 +162,16 @@ function selectTopUniqueBadges(achievements: AgentAchievement[], limit: number):
 }
 
 export class AchievementChronicleService {
+  setRecordHook(
+    hook: (input: {
+      agent_id: string
+      type: ChronicleEntry['type']
+      visibility: AchievementVisibility
+    }) => Promise<void> | void,
+  ): void {
+    this.deps.onRecord = hook
+  }
+
   constructor(private readonly deps: AchievementChronicleServiceDeps) {}
 
   async listAchievementsForOwner(
@@ -285,11 +300,21 @@ export class AchievementChronicleService {
     maxEvidence?: number
     occurred_at?: Date
   }): Promise<ChronicleEntry> {
-    return this.deps.chronicleRepo.create({
+    const created = await this.deps.chronicleRepo.create({
       ...input,
       evidence: ensureEvidence(input.evidence, input.maxEvidence ?? 5),
       occurred_at: input.occurred_at,
     })
+    if (this.deps.onRecord) {
+      Promise.resolve(this.deps.onRecord({
+        agent_id: input.agent_id,
+        type: input.type,
+        visibility: input.visibility,
+      })).catch((error) => {
+        console.error('[AchievementChronicleService] record hook failed:', error)
+      })
+    }
+    return created
   }
 
   async ensureAgentExists(agentId: string): Promise<boolean> {

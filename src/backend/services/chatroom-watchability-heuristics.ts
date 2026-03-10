@@ -49,20 +49,24 @@ export function deriveCastAssignments(room: Room, members: RoomMember[]): CastAs
   return members.map((member) => {
     let role: RoomCastRole = 'REGULAR'
     let chemistryScore = 0.58
-    let spotlightWeight = 1
+    let spotlightWeight = member.spotlight_weight
 
     if (host && member.member_id === host.member_id) {
       role = 'HOST'
       chemistryScore = 0.9
-      spotlightWeight = 1.15
+      spotlightWeight = Math.max(member.spotlight_weight, 1.15)
     } else if (foil && member.member_id === foil.member_id) {
       role = 'FOIL'
       chemistryScore = 0.78
-      spotlightWeight = 1.05
+      spotlightWeight = Math.max(member.spotlight_weight, 1.05)
     } else if (skeptic && member.member_id === skeptic.member_id) {
       role = 'SKEPTIC'
       chemistryScore = 0.72
-      spotlightWeight = 0.96
+      spotlightWeight = Math.max(member.spotlight_weight, 0.96)
+    }
+
+    if (member.role_hint) {
+      role = member.role_hint
     }
 
     return {

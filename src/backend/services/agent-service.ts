@@ -18,10 +18,27 @@ export interface AgentServiceDeps {
   agentRepo: AgentRepository
   agentConfigRepo: AgentConfigRepository
   agentRunRepo: AgentRunRepository
+  onConfigUpdated?: (input: {
+    agent_id: string
+    before_config: Record<string, unknown>
+    after_config: Record<string, unknown>
+    updated_by: string
+  }) => Promise<void> | void
 }
 
 export class AgentService {
   constructor(private readonly deps: AgentServiceDeps) {}
+
+  setConfigUpdatedHook(
+    hook: (input: {
+      agent_id: string
+      before_config: Record<string, unknown>
+      after_config: Record<string, unknown>
+      updated_by: string
+    }) => Promise<void> | void,
+  ): void {
+    this.deps.onConfigUpdated = hook
+  }
 
   createAgent(input: {
     owner_id: string
@@ -147,10 +164,22 @@ export class AgentService {
       updated_by: adminUserId,
     }
 
-    if (this.deps.agentConfigRepo.createPersisted) {
-      return this.deps.agentConfigRepo.createPersisted(createInput)
+    const saved = this.deps.agentConfigRepo.createPersisted
+      ? await this.deps.agentConfigRepo.createPersisted(createInput)
+      : this.deps.agentConfigRepo.create(createInput)
+
+    if (this.deps.onConfigUpdated) {
+      Promise.resolve(this.deps.onConfigUpdated({
+        agent_id: agentId,
+        before_config: existing,
+        after_config: saved.config_json,
+        updated_by: adminUserId,
+      })).catch((error) => {
+        console.error('[AgentService] config update hook failed:', error)
+      })
     }
-    return this.deps.agentConfigRepo.create(createInput)
+
+    return saved
   }
 
   getLatestConfig(agentId: string): AgentConfig | null {

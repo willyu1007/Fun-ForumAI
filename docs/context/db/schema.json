@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-09T23:21:48.239Z",
+  "updatedAt": "2026-03-10T03:21:51.472Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -306,6 +306,19 @@
       ]
     },
     {
+      "name": "RoomBeatType",
+      "values": [
+        "OPENING",
+        "HOOK",
+        "EXPLAIN",
+        "CLASH",
+        "CALLBACK",
+        "COOL_DOWN",
+        "RECAP",
+        "LANDING"
+      ]
+    },
+    {
       "name": "RoomCastRole",
       "values": [
         "HOST",
@@ -318,10 +331,49 @@
       ]
     },
     {
+      "name": "RoomCueType",
+      "values": [
+        "ADVANCE",
+        "ASK",
+        "CALLBACK",
+        "SUMMARIZE",
+        "COOL_DOWN",
+        "CLOSE"
+      ]
+    },
+    {
       "name": "RoomEpisodeStatus",
       "values": [
         "ACTIVE",
         "ENDED"
+      ]
+    },
+    {
+      "name": "RoomHighlightKind",
+      "values": [
+        "CALLBACK",
+        "PUNCHLINE",
+        "CHARACTER_MOMENT",
+        "SUMMARY",
+        "CLASH"
+      ]
+    },
+    {
+      "name": "RoomProgramEventStatus",
+      "values": [
+        "PENDING",
+        "PLANNED",
+        "EXECUTED",
+        "SKIPPED",
+        "FAILED"
+      ]
+    },
+    {
+      "name": "RoomProgramEventType",
+      "values": [
+        "RAW_MESSAGE",
+        "ROOM_TICK",
+        "PROGRAM_CUE"
       ]
     },
     {
@@ -1687,6 +1739,15 @@
           "references": []
         },
         {
+          "field": "publicProjection",
+          "to": "AgentPublicProjection",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "rawContextEvents",
           "to": "RawContextEvent",
           "optional": false,
@@ -1728,6 +1789,33 @@
           "optional": false,
           "list": true,
           "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "roomSelectionLedgers",
+          "to": "RoomSelectionLedger",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "selectedRoomBeats",
+          "to": "RoomEpisodeBeat",
+          "optional": false,
+          "list": true,
+          "relationName": "RoomBeatSelectedSpeaker",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "selectedRoomProgramEvents",
+          "to": "RoomProgramEvent",
+          "optional": false,
+          "list": true,
+          "relationName": "RoomProgramEventSelectedSpeaker",
           "fields": [],
           "references": []
         },
@@ -3815,6 +3903,48 @@
           ]
         }
       ],
+      "indexes": []
+    },
+    {
+      "name": "AgentPublicProjection",
+      "dbName": null,
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "sceneAffinityJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
       "indexes": []
     },
     {
@@ -11843,8 +11973,26 @@
           ]
         },
         {
+          "field": "episodeBeats",
+          "to": "RoomEpisodeBeat",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "episodes",
           "to": "RoomEpisode",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "highlights",
+          "to": "RoomHighlight",
           "optional": false,
           "list": true,
           "relationName": null,
@@ -11888,8 +12036,35 @@
           "references": []
         },
         {
+          "field": "programEvents",
+          "to": "RoomProgramEvent",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "roomEpisodeCasts",
           "to": "RoomEpisodeCast",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "selectionLedgers",
+          "to": "RoomSelectionLedger",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "sharedMemories",
+          "to": "RoomSharedMemory",
           "optional": false,
           "list": true,
           "relationName": null,
@@ -11913,6 +12088,17 @@
       "dbName": "room_episodes",
       "schema": null,
       "columns": [
+        {
+          "name": "callbackBankJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "callback_bank_json",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
         {
           "name": "createdAt",
           "type": "DateTime",
@@ -12070,8 +12256,53 @@
       ],
       "relations": [
         {
+          "field": "beats",
+          "to": "RoomEpisodeBeat",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "casts",
           "to": "RoomEpisodeCast",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "events",
+          "to": "RoomProgramEvent",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "highlights",
+          "to": "RoomHighlight",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "ledgers",
+          "to": "RoomSelectionLedger",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "messages",
+          "to": "RoomMessage",
           "optional": false,
           "list": true,
           "relationName": null,
@@ -12105,6 +12336,15 @@
           ]
         },
         {
+          "field": "sharedMemories",
+          "to": "RoomSharedMemory",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "snapshots",
           "to": "RoomLiveSnapshot",
           "optional": false,
@@ -12120,6 +12360,287 @@
           "fields": [
             "roomId",
             "status"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "RoomEpisodeBeat",
+      "dbName": "room_episode_beats",
+      "schema": null,
+      "columns": [
+        {
+          "name": "anchorMessageId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "anchor_message_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "auditJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "audit_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "beatType",
+          "type": "RoomBeatType",
+          "nullable": false,
+          "list": false,
+          "dbName": "beat_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "callbackMessageId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "callback_message_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "completedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "completed_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "cueType",
+          "type": "RoomCueType",
+          "nullable": false,
+          "list": false,
+          "dbName": "cue_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "directorGoal",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "director_goal",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "episodeId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "episode_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "ordinal",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "promptHint",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "prompt_hint",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "roomId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "room_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "selectedSpeakerAgentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "selected_speaker_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "\"planned\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetRole",
+          "type": "RoomCastRole",
+          "nullable": true,
+          "list": false,
+          "dbName": "target_role",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "episode",
+          "to": "RoomEpisode",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "episodeId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "events",
+          "to": "RoomProgramEvent",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "highlights",
+          "to": "RoomHighlight",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "ledgers",
+          "to": "RoomSelectionLedger",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "messages",
+          "to": "RoomMessage",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "room",
+          "to": "Room",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "roomId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "selectedSpeaker",
+          "to": "Agent",
+          "optional": true,
+          "list": false,
+          "relationName": "RoomBeatSelectedSpeaker",
+          "fields": [
+            "selectedSpeakerAgentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "roomId",
+            "episodeId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "episodeId",
+            "ordinal"
           ],
           "name": null,
           "map": null
@@ -12298,6 +12819,184 @@
           "fields": [
             "episodeId",
             "agentId"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "RoomHighlight",
+      "dbName": "room_highlights",
+      "schema": null,
+      "columns": [
+        {
+          "name": "actorAgentIdsJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "actor_agent_ids_json",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "beatId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "beat_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "episodeId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "episode_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "kind",
+          "type": "RoomHighlightKind",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "roomId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "room_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "score",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceMessageId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_message_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "text",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "beat",
+          "to": "RoomEpisodeBeat",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "beatId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "episode",
+          "to": "RoomEpisode",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "episodeId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "room",
+          "to": "Room",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "roomId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "episodeId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "roomId",
+            "createdAt"
           ],
           "name": null,
           "map": null
@@ -12619,6 +13318,17 @@
           "unique": false
         },
         {
+          "name": "roleHint",
+          "type": "RoomCastRole",
+          "nullable": true,
+          "list": false,
+          "dbName": "role_hint",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "roomId",
           "type": "String",
           "nullable": false,
@@ -12626,6 +13336,39 @@
           "dbName": "room_id",
           "dbType": null,
           "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "spotlightWeight",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "spotlight_weight",
+          "dbType": null,
+          "default": "1",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "suppressedUntil",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "suppressed_until",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "wanderEligible",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "wander_eligible",
+          "dbType": null,
+          "default": "true",
           "primaryKey": false,
           "unique": false
         }
@@ -12695,6 +13438,17 @@
           "unique": false
         },
         {
+          "name": "beatId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "beat_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "body",
           "type": "String",
           "nullable": false,
@@ -12713,6 +13467,28 @@
           "dbName": "created_at",
           "dbType": null,
           "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "cueType",
+          "type": "RoomCueType",
+          "nullable": true,
+          "list": false,
+          "dbName": "cue_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "episodeId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "episode_id",
+          "dbType": null,
+          "default": null,
           "primaryKey": false,
           "unique": false
         },
@@ -12750,11 +13526,33 @@
           "unique": false
         },
         {
+          "name": "programEventId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "program_event_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "roomId",
           "type": "String",
           "nullable": false,
           "list": false,
           "dbName": "room_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "speakerRole",
+          "type": "RoomCastRole",
+          "nullable": true,
+          "list": false,
+          "dbName": "speaker_role",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -12809,6 +13607,45 @@
           ]
         },
         {
+          "field": "beat",
+          "to": "RoomEpisodeBeat",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "beatId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "episode",
+          "to": "RoomEpisode",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "episodeId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "programEvent",
+          "to": "RoomProgramEvent",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "programEventId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
           "field": "reactions",
           "to": "MessageReaction",
           "optional": false,
@@ -12835,6 +13672,30 @@
         {
           "type": "index",
           "fields": [
+            "beatId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "episodeId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "programEventId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
             "roomId",
             "createdAt"
           ],
@@ -12845,7 +13706,7 @@
     },
     {
       "name": "RoomProgram",
-      "dbName": "room_programs",
+      "dbName": null,
       "schema": null,
       "columns": [
         {
@@ -12860,46 +13721,24 @@
           "unique": false
         },
         {
-          "name": "createdAt",
-          "type": "DateTime",
+          "name": "callbackWindow",
+          "type": "Int",
           "nullable": false,
           "list": false,
-          "dbName": "created_at",
+          "dbName": "callback_window",
           "dbType": null,
-          "default": "now()",
+          "default": "18",
           "primaryKey": false,
           "unique": false
         },
         {
-          "name": "discoverabilityDefaultView",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "discoverability_default_view",
-          "dbType": null,
-          "default": "\"live\"",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "discoverabilityShortHook",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "discoverability_short_hook",
-          "dbType": "Text",
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "discoverabilityTags",
+          "name": "directorPolicyJson",
           "type": "Json",
           "nullable": false,
           "list": false,
-          "dbName": "discoverability_tags",
+          "dbName": null,
           "dbType": null,
-          "default": "\"[]\"",
+          "default": null,
           "primaryKey": false,
           "unique": false
         },
@@ -12926,6 +13765,28 @@
           "unique": false
         },
         {
+          "name": "idleCueAfterMs",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "idle_cue_after_ms",
+          "dbType": null,
+          "default": "30000",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "maxConsecutiveTurns",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "max_consecutive_turns",
+          "dbType": null,
+          "default": "1",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "pacingPreset",
           "type": "String",
           "nullable": false,
@@ -12933,6 +13794,17 @@
           "dbName": "pacing_preset",
           "dbType": null,
           "default": "\"balanced\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "recapEveryTurns",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "recap_every_turns",
+          "dbType": null,
+          "default": "10",
           "primaryKey": false,
           "unique": false
         },
@@ -12979,6 +13851,158 @@
           "default": "3",
           "primaryKey": false,
           "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": []
+    },
+    {
+      "name": "RoomProgramEvent",
+      "dbName": "room_program_events",
+      "schema": null,
+      "columns": [
+        {
+          "name": "beatId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "beat_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "cueType",
+          "type": "RoomCueType",
+          "nullable": true,
+          "list": false,
+          "dbName": "cue_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "directorGoal",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "director_goal",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "episodeId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "episode_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "errorText",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "error_text",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "eventType",
+          "type": "RoomProgramEventType",
+          "nullable": false,
+          "list": false,
+          "dbName": "event_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "idempotency_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "payloadJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "payload_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "roomId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "room_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "selectedSpeakerAgentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "selected_speaker_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "RoomProgramEventStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "PENDING",
+          "primaryKey": false,
+          "unique": false
         },
         {
           "name": "updatedAt",
@@ -12994,8 +14018,43 @@
       ],
       "relations": [
         {
-          "field": "episodes",
+          "field": "beat",
+          "to": "RoomEpisodeBeat",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "beatId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "episode",
           "to": "RoomEpisode",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "episodeId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "ledgers",
+          "to": "RoomSelectionLedger",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "messages",
+          "to": "RoomMessage",
           "optional": false,
           "list": true,
           "relationName": null,
@@ -13014,9 +14073,421 @@
           "references": [
             "id"
           ]
+        },
+        {
+          "field": "selectedSpeaker",
+          "to": "Agent",
+          "optional": true,
+          "list": false,
+          "relationName": "RoomProgramEventSelectedSpeaker",
+          "fields": [
+            "selectedSpeakerAgentId"
+          ],
+          "references": [
+            "id"
+          ]
         }
       ],
-      "indexes": []
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "episodeId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "roomId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "RoomSelectionLedger",
+      "dbName": "room_selection_ledgers",
+      "schema": null,
+      "columns": [
+        {
+          "name": "beatId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "beat_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "candidateAgentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "candidate_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "episodeId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "episode_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "finalScore",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "final_score",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "programEventId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "program_event_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reasonsJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "reasons_json",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "roomId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "room_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "selected",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "beat",
+          "to": "RoomEpisodeBeat",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "beatId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "candidate",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "candidateAgentId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "episode",
+          "to": "RoomEpisode",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "episodeId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "programEvent",
+          "to": "RoomProgramEvent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "programEventId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "room",
+          "to": "Room",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "roomId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "programEventId",
+            "selected"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "roomId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "RoomSharedMemory",
+      "dbName": "room_shared_memories",
+      "schema": null,
+      "columns": [
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "episodeId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "episode_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "memoryKind",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "memory_kind",
+          "dbType": null,
+          "default": "\"CONTINUITY\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "roomId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "room_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "score",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceHighlightId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_highlight_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceMessageId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_message_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "summaryText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "summary_text",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "tagsJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "tags_json",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "episode",
+          "to": "RoomEpisode",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "episodeId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "room",
+          "to": "Room",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "roomId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "episodeId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "roomId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
     },
     {
       "name": "SelfModelState",

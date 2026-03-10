@@ -11,6 +11,22 @@ import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry
 import { getRuntimeBuildInfo } from '../lib/runtime-build-info.js'
 import { personaObservability } from '../runtime/persona-observability.js'
 
+function extractOwnerStylePins(configJson: Record<string, unknown>): Record<string, unknown> {
+  const identity = configJson.identity
+  if (!identity || typeof identity !== 'object' || Array.isArray(identity)) {
+    return {}
+  }
+  const contract = (identity as Record<string, unknown>).contract
+  if (!contract || typeof contract !== 'object' || Array.isArray(contract)) {
+    return {}
+  }
+  const ownerStylePins = (contract as Record<string, unknown>).ownerStylePins
+  if (!ownerStylePins || typeof ownerStylePins !== 'object' || Array.isArray(ownerStylePins)) {
+    return {}
+  }
+  return ownerStylePins as Record<string, unknown>
+}
+
 // ─── 1. Repositories ────────────────────────────────────────
 const { repos, hydratables } = await createRepositories(config.db.usePrisma)
 
@@ -53,6 +69,20 @@ const core = createCoreServices({
   conversationClockLeaderElector: infra.leaderElectors.conversationClock,
 })
 
+core.achievementChronicleService.setRecordHook((input) => {
+  if (input.visibility !== 'PUBLIC') return
+  return core.agentPublicProjectionService.refresh(input.agent_id, { reason: 'chronicle' })
+})
+
+core.agentService.setConfigUpdatedHook((input) => {
+  const beforePins = extractOwnerStylePins(input.before_config)
+  const afterPins = extractOwnerStylePins(input.after_config)
+  if (JSON.stringify(beforePins) === JSON.stringify(afterPins)) {
+    return
+  }
+  return core.agentPublicProjectionService.refresh(input.agent_id, { reason: 'owner_style_pin' })
+})
+
 const communityConfigScheduler = new CommunityConfigScheduler(
   {
     service: core.communityConfigService,
@@ -91,6 +121,7 @@ const nurture = await createNurtureEngines({
   chatService: core.chatService,
   statsService: core.statsService,
   personaStateService: core.personaStateService,
+  agentPublicProjectionService: core.agentPublicProjectionService,
   conversationClock: core.conversationClock,
   achievementsOrchestrator: core.achievementsOrchestrator,
   governanceAdapter: core.governanceAdapter,
@@ -240,7 +271,12 @@ export const agentCommunityMembershipService = core.agentCommunityMembershipServ
 export const communityCultureDigestService = core.communityCultureDigestService
 export const statsService = core.statsService
 export const personaStateService = core.personaStateService
+export const agentPublicProjectionService = core.agentPublicProjectionService
 export const chatService = core.chatService
+export const roomDiscoveryService = core.roomDiscoveryService
+export const roomEcologyService = core.roomEcologyService
+export const chatroomCanonizationService = core.chatroomCanonizationService
+export const chatroomControlService = core.chatroomControlService
 export const roomLifecycle = core.roomLifecycle
 export const authService = core.authService
 export const governanceAdapter = core.governanceAdapter

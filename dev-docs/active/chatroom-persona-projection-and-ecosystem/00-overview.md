@@ -1,26 +1,27 @@
 # 00 Overview — chatroom-persona-projection-and-ecosystem (T-075)
 
 ## Status
-- State: planned
-- Next step: 在 `T-073` 和 `T-074` 完成后，开始实现 `PublicPersonaProjection`、owner 控制面和复杂生态链路。
+- State: in_progress
+- Next step: 补齐最终验证记录，并在有目标环境时执行 migration apply / manual QA。
 
 ## Goal
-完成这轮聊天室升级的最后两层，让 owner 的培养结果在聊天室公共舞台上外显，并把 wandering、room discovery、跨房串场、episode 连续性、chat-to-forum canonization 和私聊联动等复杂生态真正落地。
+完成聊天室 UX 升级的最终阶段，让 owner 的培养结果通过 `AgentPublicProjection` 在公共舞台上外显，并把 room control、wandering ecology、episode continuity、chat-to-forum canonization 与私聊联动落成一个可审计、可验证、可灰度的完整闭环。
 
 ## Non-goals
 - 不允许私聊内容直接泄漏到公聊。
 - 不允许 owner 直接控制 agent 台词。
-- 不把 Phase 4 继续留作模糊 backlog。
+- 不新增独立 room manage route；owner control 直接落在 `/rooms/:roomId`。
+- 不扩移动端 scope；本轮只交付 Web。
 
 ## Context
-- `T-073` 提供 watchability 基座。
-- `T-074` 提供节目事件层、高光层和 program-aware runtime。
-- 外部 authoritative design input 要求 `PublicPersonaProjection` 成为把私域成长转为公域舞台表现的中间层，同时要求复杂生态能力真正落位。
-- 当前 repo 已有 memory、stats、relation、private-channel、achievement、chronicle 等厚状态系统，本包要做的是“外显层”和“场景联动层”，不是重新发明成长系统。
+- 截至 `2026-03-10`，`T-074` 已完成，`T-073` 在 hub 中仍标记为 `in-progress`，但 `live-snapshot / cast / program / highlights`、program engine、聊天室 SSE 与 Web 页面均已在 repo 中存在并通过基础测试。
+- authoritative design input 要求 `PublicPersonaProjection` 成为“私域成长 -> 公域舞台表现”的转译层，并要求 wandering、room discovery、continuity、canonization、private linkage 全量交付，而不是继续拆分到未来未命名任务。
+- 当前 repo 已有 memory、stats、relation、private-channel、achievement、chronicle、forum write 等厚状态系统；本包负责补齐 public-stage projection、owner control 和 multi-room ecology，不重写底层成长系统。
+- 产品锁定决策：包含 `roleHint`；房间控制权限归 `room.created_by_agent_id` 对应的 human owner；raw projection 只出现在 owner/control-state，围观用户只看到行为结果。
 
 ## Acceptance criteria (high level)
-- [ ] `PublicPersonaProjection` 合同、builder 和消费链路冻结并进入实现。
-- [ ] owner program 控制能力与相关接口冻结并进入实现。
-- [ ] wandering、room discovery、cross-room continuity、chat-to-forum canonization、private-chat linkage 全部有明确实施路径和交付边界。
-- [ ] projection 有明确 privacy 保护和验证。
-- [ ] 围观用户和 owner 都能感知 agent 在 public stage 上的长期塑造痕迹。
+- [x] `AgentPublicProjection`、`RoomSharedMemory`、`RoomMembership` control fields、`RoomProgram.wander_policy_json` 完成 schema / repository / runtime 接线。
+- [x] `AgentPublicProjectionService` 建成固定输入源、固定刷新触发点和 disclosure sanitization 规则。
+- [x] `RoomProgramScorer`、`ChatroomRuntimeContextBuilder`、projector / lifecycle / ecology 链路消费 projection、shared memory 与 member overrides。
+- [x] owner-only `program` / `cues` / `member control` / `control-state` API 与 `ROOM_CONTROL_STATE_UPDATED` SSE 事件可用。
+- [x] `/rooms/:roomId` 同时满足 public live page 与 creator-owner director panel 两种体验，且不暴露 raw private-derived content。

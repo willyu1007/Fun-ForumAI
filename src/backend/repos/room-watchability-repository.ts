@@ -18,6 +18,9 @@ import type {
   RoomProgramEventStatus,
   RoomProgramEventType,
   RoomSceneType,
+  RoomSharedMemory,
+  RoomSharedMemoryKind,
+  RoomWanderPolicy,
   RoomSelectionLedger,
   RoomSelectionReason,
 } from './types.js'
@@ -34,6 +37,7 @@ export interface UpdateRoomProgramInput {
   idle_cue_after_ms?: number
   allow_wandering?: boolean
   director_policy_json?: Record<string, unknown>
+  wander_policy_json?: RoomWanderPolicy
   discoverability_tags?: string[]
   discoverability_short_hook?: string | null
   discoverability_default_view?: string
@@ -136,6 +140,17 @@ export interface CreateRoomHighlightInput {
   score: number
 }
 
+export interface CreateRoomSharedMemoryInput {
+  room_id: string
+  episode_id?: string | null
+  memory_kind: RoomSharedMemoryKind
+  summary_text: string
+  tags?: string[]
+  source_message_id?: string | null
+  source_highlight_id?: string | null
+  score?: number
+}
+
 export interface PlanRoomProgramCueInput {
   room_id: string
   episode_id: string
@@ -172,8 +187,10 @@ export interface RoomWatchabilityRepository {
   ensureProgram(room: Room): Promise<RoomProgram>
   updateProgram(roomId: string, patch: UpdateRoomProgramInput): Promise<RoomProgram | null>
   getProgram(roomId: string): Promise<RoomProgram | null>
+  listPrograms(roomIds: string[]): Promise<RoomProgram[]>
   ensureActiveEpisode(roomId: string, programId: string): Promise<RoomEpisode>
   getActiveEpisode(roomId: string): Promise<RoomEpisode | null>
+  endActiveEpisode(roomId: string, endedAt?: Date): Promise<RoomEpisode | null>
   saveEpisodeState(input: SaveRoomEpisodeStateInput): Promise<RoomEpisode | null>
   replaceEpisodeCast(roomId: string, episodeId: string, cast: SaveRoomEpisodeCastInput[]): Promise<RoomEpisodeCast[]>
   getCurrentCast(roomId: string): Promise<RoomEpisodeCast[]>
@@ -183,6 +200,7 @@ export interface RoomWatchabilityRepository {
   planProgramCue(input: PlanRoomProgramCueInput): Promise<PlanRoomProgramCueResult>
   updateProgramEvent(id: string, patch: UpdateRoomProgramEventInput): Promise<RoomProgramEvent | null>
   getLatestProgramEvent(roomId: string): Promise<RoomProgramEvent | null>
+  listRecentProgramEvents(roomId: string, limit: number): Promise<RoomProgramEvent[]>
   saveSelectionLedger(input: SaveRoomSelectionLedgerInput[]): Promise<RoomSelectionLedger[]>
   listSelectionLedger(programEventId: string): Promise<RoomSelectionLedger[]>
   createHighlight(input: CreateRoomHighlightInput): Promise<RoomHighlight>
@@ -194,6 +212,9 @@ export interface RoomWatchabilityRepository {
   saveLiveSnapshot(input: SaveRoomLiveSnapshotInput): Promise<RoomLiveSnapshot>
   getLiveSnapshot(roomId: string): Promise<RoomLiveSnapshot | null>
   listLiveSnapshots(roomIds: string[]): Promise<RoomLiveSnapshot[]>
+  createSharedMemory(input: CreateRoomSharedMemoryInput): Promise<RoomSharedMemory>
+  getLatestSharedMemory(roomId: string, kind?: RoomSharedMemoryKind): Promise<RoomSharedMemory | null>
+  listSharedMemories(roomId: string, limit: number, kind?: RoomSharedMemoryKind): Promise<RoomSharedMemory[]>
 }
 
 let counter = 0
@@ -217,6 +238,12 @@ function defaultProgram(room: Room): RoomProgram {
     idle_cue_after_ms: 30_000,
     allow_wandering: true,
     director_policy_json: {},
+    wander_policy_json: {
+      enabled: false,
+      entry_cooldown_ms: 180_000,
+      max_parallel_rooms: 2,
+      min_discoverability_score: 0.25,
+    },
     discoverability_tags: [],
     discoverability_short_hook: room.description || null,
     discoverability_default_view: 'live',
@@ -252,6 +279,8 @@ export class InMemoryRoomWatchabilityRepository implements RoomWatchabilityRepos
   private readonly highlights = new Map<string, RoomHighlight>()
   private readonly highlightIdsByRoom = new Map<string, string[]>()
   private readonly snapshots = new Map<string, RoomLiveSnapshot>()
+  private readonly sharedMemories = new Map<string, RoomSharedMemory>()
+  private readonly sharedMemoryIdsByRoom = new Map<string, string[]>()
 
   async hydrate(): Promise<void> {}
 
@@ -277,6 +306,12 @@ export class InMemoryRoomWatchabilityRepository implements RoomWatchabilityRepos
 
   async getProgram(roomId: string): Promise<RoomProgram | null> {
     return this.programs.get(roomId) ?? null
+  }
+
+  async listPrograms(roomIds: string[]): Promise<RoomProgram[]> {
+    return roomIds
+      .map((roomId) => this.programs.get(roomId) ?? null)
+      .filter((program): program is RoomProgram => Boolean(program))
   }
 
   async ensureActiveEpisode(roomId: string, programId: string): Promise<RoomEpisode> {
@@ -313,6 +348,22 @@ export class InMemoryRoomWatchabilityRepository implements RoomWatchabilityRepos
     const episodeId = this.activeEpisodeByRoom.get(roomId)
     if (!episodeId) return null
     return this.episodes.get(episodeId) ?? null
+  }
+
+  async endActiveEpisode(roomId: string, endedAt = new Date()): Promise<RoomEpisode | null> {
+    const episodeId = this.activeEpisodeByRoom.get(roomId)
+    if (!episodeId) return null
+    const existing = this.episodes.get(episodeId)
+    if (!existing) return null
+    const updated: RoomEpisode = {
+      ...existing,
+      status: 'ENDED',
+      ended_at: endedAt,
+      updated_at: endedAt,
+    }
+    this.episodes.set(updated.id, updated)
+    this.activeEpisodeByRoom.delete(roomId)
+    return updated
   }
 
   async saveEpisodeState(input: SaveRoomEpisodeStateInput): Promise<RoomEpisode | null> {
@@ -536,6 +587,15 @@ export class InMemoryRoomWatchabilityRepository implements RoomWatchabilityRepos
     return this.events.get(ids[ids.length - 1]) ?? null
   }
 
+  async listRecentProgramEvents(roomId: string, limit: number): Promise<RoomProgramEvent[]> {
+    const ids = this.eventIdsByRoom.get(roomId) ?? []
+    return ids
+      .slice(-limit)
+      .map((id) => this.events.get(id))
+      .filter((event): event is RoomProgramEvent => Boolean(event))
+      .reverse()
+  }
+
   async saveSelectionLedger(input: SaveRoomSelectionLedgerInput[]): Promise<RoomSelectionLedger[]> {
     const created = input.map((entry) => ({
       id: cuid('rpledger'),
@@ -638,5 +698,46 @@ export class InMemoryRoomWatchabilityRepository implements RoomWatchabilityRepos
     return roomIds
       .map((roomId) => this.snapshots.get(roomId) ?? null)
       .filter((snapshot): snapshot is RoomLiveSnapshot => snapshot !== null)
+  }
+
+  async createSharedMemory(input: CreateRoomSharedMemoryInput): Promise<RoomSharedMemory> {
+    const now = new Date()
+    const memory: RoomSharedMemory = {
+      id: cuid('rsm'),
+      room_id: input.room_id,
+      episode_id: input.episode_id ?? null,
+      memory_kind: input.memory_kind,
+      summary_text: input.summary_text,
+      tags: input.tags ? [...input.tags] : [],
+      source_message_id: input.source_message_id ?? null,
+      source_highlight_id: input.source_highlight_id ?? null,
+      score: input.score ?? 0,
+      created_at: now,
+      updated_at: now,
+    }
+    this.sharedMemories.set(memory.id, memory)
+    const ids = this.sharedMemoryIdsByRoom.get(input.room_id) ?? []
+    ids.push(memory.id)
+    this.sharedMemoryIdsByRoom.set(input.room_id, ids)
+    return memory
+  }
+
+  async getLatestSharedMemory(roomId: string, kind?: RoomSharedMemoryKind): Promise<RoomSharedMemory | null> {
+    const items = await this.listSharedMemories(roomId, 1, kind)
+    return items[0] ?? null
+  }
+
+  async listSharedMemories(
+    roomId: string,
+    limit: number,
+    kind?: RoomSharedMemoryKind,
+  ): Promise<RoomSharedMemory[]> {
+    const ids = this.sharedMemoryIdsByRoom.get(roomId) ?? []
+    return ids
+      .map((id) => this.sharedMemories.get(id) ?? null)
+      .filter((item): item is RoomSharedMemory => item !== null)
+      .filter((item) => (kind ? item.memory_kind === kind : true))
+      .slice(-limit)
+      .reverse()
   }
 }
