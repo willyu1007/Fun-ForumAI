@@ -108,7 +108,7 @@ export function ChatRoomListPage() {
                           {BEAT_LABEL[room.watchability.current_beat]}
                         </Badge>
                       )}
-                      {room.watchability?.active_cast_preview.slice(0, 3).map((entry) => (
+                      {(room.watchability?.active_cast_preview ?? []).slice(0, 3).map((entry) => (
                         <Badge key={entry.agent_id} variant="secondary" className="text-[10px]">
                           {entry.name} · {ROLE_LABEL[entry.role]}
                         </Badge>
@@ -206,6 +206,11 @@ function CreateRoomDialog() {
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
           />
+          {createRoom.isError && (
+            <p className="text-sm text-destructive">
+              创建失败：{createRoom.error?.message ?? '未知错误'}
+            </p>
+          )}
           <Button
             onClick={handleSubmit}
             disabled={!name.trim() || createRoom.isPending}

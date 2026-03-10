@@ -232,12 +232,14 @@ export class AgentPublicProjectionService {
 
     const [existing, publicHighlights, projectedPersona] = await Promise.all([
       this.deps.projectionRepo.get(agentId),
-      this.deps.achievementChronicleService?.getPublicHighlights(agentId).catch(() => ({
-        badges: [],
-        tagline: null,
-        top_chronicle: [],
-      })),
-      this.deps.personaStateService?.getProjectedPersona(agentId).catch(() => null),
+      this.deps.achievementChronicleService?.getPublicHighlights(agentId).catch((err) => {
+        console.warn(`[AgentPublicProjectionService] getPublicHighlights failed for agent=${agentId}:`, err)
+        return { badges: [], tagline: null, top_chronicle: [] }
+      }),
+      this.deps.personaStateService?.getProjectedPersona(agentId).catch((err) => {
+        console.warn(`[AgentPublicProjectionService] getProjectedPersona failed for agent=${agentId}:`, err)
+        return null
+      }),
     ])
 
     const latestConfig = this.deps.agentService.getLatestConfig(agentId)

@@ -81,6 +81,7 @@ describe('PgRoomWatchabilityRepository', () => {
         status: 'ACTIVE',
         summaryText: '',
         unresolvedQuestion: null,
+        callbackBankJson: [],
         energy: 0,
         tension: 0,
         turnCount: 0,

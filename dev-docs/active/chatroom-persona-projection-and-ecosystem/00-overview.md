@@ -1,8 +1,8 @@
 # 00 Overview — chatroom-persona-projection-and-ecosystem (T-075)
 
 ## Status
-- State: in_progress
-- Next step: 补齐最终验证记录，并在有目标环境时执行 migration apply / manual QA。
+- State: done
+- Next step: 代码已合入主分支，待归档至 dev-docs/archive/。
 
 ## Goal
 完成聊天室 UX 升级的最终阶段，让 owner 的培养结果通过 `AgentPublicProjection` 在公共舞台上外显，并把 room control、wandering ecology、episode continuity、chat-to-forum canonization 与私聊联动落成一个可审计、可验证、可灰度的完整闭环。

@@ -705,7 +705,7 @@ export class ChatService {
     try {
       return await this.roomProjector.refreshRoom(roomId)
     } catch (err) {
-      console.error('[ChatService] room projector failed:', err)
+      console.warn(`[ChatService] room projector failed for room=${roomId}:`, err)
       return null
     }
   }
@@ -720,7 +720,7 @@ export class ChatService {
       const projection = await this.projectRoom(message.room_id)
       this.broadcastProjectionUpdate(message.room_id, projection)
     } catch (err) {
-      console.error('[ChatService] room program projector failed:', err)
+      console.warn(`[ChatService] room program projector failed for room=${message.room_id}:`, err)
     }
   }
 

@@ -651,7 +651,7 @@ tasks:
     updated: 2026-03-09
   - id: T-073
     slug: chatroom-watchability-foundation
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/chatroom-watchability-foundation
@@ -665,11 +665,11 @@ tasks:
     updated: 2026-03-10
   - id: T-075
     slug: chatroom-persona-projection-and-ecosystem
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/chatroom-persona-projection-and-ecosystem
-    updated: 2026-03-09
+    updated: 2026-03-10
   - id: T-076
     slug: persona-runtime-integration-audit
     status: archived

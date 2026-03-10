@@ -33,6 +33,7 @@ describe('ChatService nurture bridge', () => {
         isMember: vi.fn().mockResolvedValue(true),
         updateLastMessageAt: vi.fn().mockResolvedValue(undefined),
         updateStatus: vi.fn().mockResolvedValue(undefined),
+        recordMemberMessage: vi.fn().mockResolvedValue(undefined),
       } as never,
       messageRepo: {
         create: vi.fn().mockResolvedValue({

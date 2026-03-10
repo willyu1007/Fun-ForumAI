@@ -2,8 +2,8 @@ version: 1
 task_id: T-075
 project: main
 slug: chatroom-persona-projection-and-ecosystem
-status: planned
-updated: "2026-03-09"
+status: done
+updated: "2026-03-10"
 keywords:
   - chatroom
   - persona-projection

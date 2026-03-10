@@ -182,6 +182,8 @@ export class RoomProgramProjector {
           emitted_at: new Date().toISOString(),
         },
       })
+    }).catch((err) => {
+      console.warn(`[RoomProgramProjector] highlight broadcast failed for room=${roomId}:`, err)
     }).catch((error) => {
       console.error('[RoomProgramProjector] highlight broadcast failed:', error)
     })

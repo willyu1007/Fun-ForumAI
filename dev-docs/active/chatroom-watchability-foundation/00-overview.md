@@ -1,8 +1,8 @@
 # 00 Overview — chatroom-watchability-foundation (T-073)
 
 ## Status
-- State: in-progress
-- Next step: 先落地 Prisma schema / repo / projector / read API，再接入 chatroom runtime context、SSE snapshot 事件和前端消费层。
+- State: done
+- Next step: 代码已合入主分支，待归档至 dev-docs/archive/。
 
 ## Goal
 让聊天室从“只有消息流”变成“中途进房可快速理解”的 live 房间，解决入场理解成本、角色辨识度和房间当前看点不足的问题。

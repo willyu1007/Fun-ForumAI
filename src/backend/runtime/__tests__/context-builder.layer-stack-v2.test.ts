@@ -61,20 +61,23 @@ afterEach(() => {
 
 describe('ContextBuilder layer stack flag routing', () => {
   it('uses PromptLayerService path when FF_LAYER_STACK_V2=true', async () => {
-    const composeLayers = vi.fn(async () => ({
-      layer1_traits: 'l1',
-      layer2_style: 'l2',
-      layer3_instructions: 'l3',
-      layer4_overrides: 'l4',
-      layer5_memory: 'l5',
-      layer6_privacy: 'l6',
+    const composeLayersWithAudit = vi.fn(async () => ({
+      layers: {
+        layer1_traits: 'l1',
+        layer2_style: 'l2',
+        layer3_instructions: 'l3',
+        layer4_overrides: 'l4',
+        layer5_memory: 'l5',
+        layer6_privacy: 'l6',
+      },
+      audit: undefined,
     }))
     const { ContextBuilder } = await importContextBuilderWithFlag(true)
 
     const builder = new ContextBuilder({
       forumReadService: {} as unknown as ContextBuilderDeps['forumReadService'],
       agentService: {} as unknown as ContextBuilderDeps['agentService'],
-      promptLayerService: { composeLayers } as unknown as ContextBuilderDeps['promptLayerService'],
+      promptLayerService: { composeLayersWithAudit } as unknown as ContextBuilderDeps['promptLayerService'],
     })
 
     const ctx = buildBaseContext({
@@ -91,12 +94,13 @@ describe('ContextBuilder layer stack flag routing', () => {
 
     const result = await builder.enrichWithLayers(ctx)
 
-    expect(composeLayers).toHaveBeenCalledTimes(1)
-    expect(composeLayers).toHaveBeenCalledWith(
+    expect(composeLayersWithAudit).toHaveBeenCalledTimes(1)
+    expect(composeLayersWithAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         agentId: 'agent-1',
         scene: 'chat_room',
       }),
+      expect.objectContaining({ suppressAuditLog: true }),
     )
     expect(result.layers).toEqual({
       layer1_traits: 'l1',

@@ -80,9 +80,9 @@ Project: `main`
 | T-070 persona-rollout-shadow-review | done | F-020 | dev-docs/active/persona-rollout-shadow-review |
 | T-071 local-kind-runtime-consistency-remediation | done | F-020 | dev-docs/active/local-kind-runtime-consistency-remediation |
 | T-072 persona-rollout-gate-evidence-remediation | in-progress | F-020 | dev-docs/active/persona-rollout-gate-evidence-remediation |
-| T-073 chatroom-watchability-foundation | in-progress | F-000 | dev-docs/active/chatroom-watchability-foundation |
+| T-073 chatroom-watchability-foundation | done | F-000 | dev-docs/active/chatroom-watchability-foundation |
 | T-074 chatroom-program-engine-and-highlights | done | F-000 | dev-docs/active/chatroom-program-engine-and-highlights |
-| T-075 chatroom-persona-projection-and-ecosystem | planned | F-000 | dev-docs/active/chatroom-persona-projection-and-ecosystem |
+| T-075 chatroom-persona-projection-and-ecosystem | done | F-000 | dev-docs/active/chatroom-persona-projection-and-ecosystem |
 | T-076 persona-runtime-integration-audit | archived | F-020 | dev-docs/archive/persona-runtime-integration-audit |
 | T-077 guidance-onboarding-v1-master | in-progress | F-040 | dev-docs/active/guidance-onboarding-v1-master |
 | T-078 guidance-platform-foundation | in-progress | F-040 | dev-docs/active/guidance-platform-foundation |

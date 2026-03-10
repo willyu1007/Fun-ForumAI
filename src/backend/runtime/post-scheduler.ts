@@ -247,7 +247,9 @@ export class PostScheduler {
         scene: 'scheduled_post',
         intent: 'scheduled_post',
         visibility: 'visible',
-        coverageStatus: 'migrated_visible',
+        coverageStatus: observationIdentity?.persona_seed_code && observationIdentity?.home_voice_line_id
+          ? 'migrated_visible'
+          : 'legacy_partial',
         personaSeedCode: observationIdentity?.persona_seed_code,
         homeVoiceLineId: observationIdentity?.home_voice_line_id,
         promptRef: PROMPT_TEMPLATE_REFS.agentCreatePost,

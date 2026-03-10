@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import request from 'supertest'
 import { app, config, userToken, user2Token, VALID_PNG_BUFFER, setupFeatureFlagGuard } from './e2e-helpers.js'
-import { llmClient } from '../../container.js'
+import { llmClient, llmGateway } from '../../container.js'
 
 setupFeatureFlagGuard()
 
@@ -117,25 +117,66 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
   it('consumes pending inclination asset on next scheduled post and writes post media', async () => {
     const originalChat = llmClient.chat.bind(llmClient)
     const originalIsConfigured = Object.getOwnPropertyDescriptor(llmClient, 'isConfigured')
+    const originalGatewayIsConfigured = Object.getOwnPropertyDescriptor(
+      Object.getPrototypeOf(llmGateway),
+      'isConfigured',
+    ) ?? Object.getOwnPropertyDescriptor(llmGateway, 'isConfigured')
+    const originalGatewayGenerateVisibleText = llmGateway.generateVisibleText.bind(llmGateway)
+    const originalGatewayGenerateHiddenArtifact = llmGateway.generateHiddenArtifact.bind(llmGateway)
 
     Object.defineProperty(llmClient, 'isConfigured', {
       value: true,
       configurable: true,
     })
+    Object.defineProperty(llmGateway, 'isConfigured', {
+      value: true,
+      configurable: true,
+    })
 
-    llmClient.chat = vi.fn().mockResolvedValue({
+    const stubRenderDecision = {
+      voiceLineId: 'default',
+      tier: 'base',
+      profileId: 'test',
+      providerId: 'test',
+      modelId: 'test-model',
+      region: 'local',
+      fallbackLevel: 'none',
+      reasons: ['initial_profile_resolution'],
+    }
+
+    const mockPostResponse = {
       content: JSON.stringify({
         community_id_or_slug: 'general',
         title: '多模态调度测试帖',
         body: '这是一条用于验证 pending 资源消费链路的测试正文。',
       }),
+      messages: [],
+      usage: { prompt_tokens: 12, completion_tokens: 24, total_tokens: 36 },
+      finishReason: 'stop',
+      latencyMs: 10,
+      platformRetryCount: 0,
+      renderDecision: stubRenderDecision,
+      promptRef: { template_id: 'test', version: 1 },
+    }
+
+    const mockVisionResponse = {
+      content: '表情包展示了一种典型的"精疲力竭却又享受生活"的情绪。',
+      messages: [],
+      usage: { prompt_tokens: 50, completion_tokens: 30, total_tokens: 80 },
+      finishReason: 'stop',
+      latencyMs: 20,
+      platformRetryCount: 0,
+      renderDecision: stubRenderDecision,
+      promptRef: { template_id: 'internal-vision-summary', version: 1 },
+    }
+
+    llmClient.chat = vi.fn().mockResolvedValue({
+      content: mockPostResponse.content,
       model: 'test-model',
-      usage: {
-        prompt_tokens: 12,
-        completion_tokens: 24,
-        total_tokens: 36,
-      },
+      usage: mockPostResponse.usage,
     })
+    llmGateway.generateVisibleText = vi.fn().mockResolvedValue(mockPostResponse)
+    llmGateway.generateHiddenArtifact = vi.fn().mockResolvedValue(mockVisionResponse)
 
     try {
       const seedRes = await request(app).post('/v1/dev/seed').send()
@@ -180,10 +221,17 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
       expect(currentRes.body.data.last_consumed.asset_id).toBe(assetId)
     } finally {
       llmClient.chat = originalChat
+      llmGateway.generateVisibleText = originalGatewayGenerateVisibleText
+      llmGateway.generateHiddenArtifact = originalGatewayGenerateHiddenArtifact
       if (originalIsConfigured) {
         Object.defineProperty(llmClient, 'isConfigured', originalIsConfigured)
       } else {
         delete (llmClient as unknown as Record<string, unknown>).isConfigured
+      }
+      if (originalGatewayIsConfigured) {
+        Object.defineProperty(llmGateway, 'isConfigured', originalGatewayIsConfigured)
+      } else {
+        delete (llmGateway as unknown as Record<string, unknown>).isConfigured
       }
     }
   })

@@ -194,7 +194,7 @@ export class RoomProjector {
         source_message_id: recentMessages[recentMessages.length - 1]?.id ?? null,
         score: Math.max(energy, tension),
       }).catch((error) => {
-        console.error('[RoomProjector] failed to persist room shared memory:', error)
+        console.warn(`[RoomProjector] failed to persist room shared memory for room=${roomId}:`, error)
       })
     }
 

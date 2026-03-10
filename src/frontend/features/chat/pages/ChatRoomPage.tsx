@@ -528,15 +528,15 @@ function DirectorPanel({
   const patchMemberControl = usePatchRoomMemberControl(roomId)
 
   const [sceneType, setSceneType] = useState<RoomSceneType>(controlState.program.scene_type)
-  const [shortHook, setShortHook] = useState(controlState.program.discoverability.short_hook ?? '')
+  const [shortHook, setShortHook] = useState(controlState.program.discoverability?.short_hook ?? '')
   const [cueType, setCueType] = useState<RoomCueType>('ADVANCE')
   const [cueGoal, setCueGoal] = useState('')
   const [targetRole, setTargetRole] = useState<'AUTO' | RoomCastRole>('AUTO')
 
   useEffect(() => {
     setSceneType(controlState.program.scene_type)
-    setShortHook(controlState.program.discoverability.short_hook ?? '')
-  }, [controlState.program.discoverability.short_hook, controlState.program.scene_type, roomId])
+    setShortHook(controlState.program.discoverability?.short_hook ?? '')
+  }, [controlState.program.discoverability?.short_hook, controlState.program.scene_type, roomId])
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col" data-ui="room-director-panel">

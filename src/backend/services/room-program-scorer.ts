@@ -77,7 +77,7 @@ export class RoomProgramScorer {
             ? 0.18
             : 0
         const sceneAffinityBonus = Number((
-          (candidate.projection?.scene_affinity_json[input.scene_type] ?? 0) * 0.18
+          ((candidate.projection?.scene_affinity_json ?? {})[input.scene_type] ?? 0) * 0.18
         ).toFixed(2))
         const callbackHabitBonus = input.cue.callback_message_id
           ? Number(((candidate.projection?.callback_habit ?? 0) * 0.16).toFixed(2))
@@ -86,11 +86,11 @@ export class RoomProgramScorer {
           ? Number(((1 - (candidate.projection?.conflict_threshold ?? 0.55)) * 0.12).toFixed(2))
           : 0
         const followTargetBonus =
-          lastAuthorId && candidate.projection?.follow_targets_json.includes(lastAuthorId)
+          lastAuthorId && candidate.projection?.follow_targets_json?.includes(lastAuthorId)
             ? 0.12
             : 0
         const avoidTargetPenalty =
-          lastAuthorId && candidate.projection?.avoid_targets_json.includes(lastAuthorId)
+          lastAuthorId && candidate.projection?.avoid_targets_json?.includes(lastAuthorId)
             ? 0.18
             : 0
         const chemistryBonus = Number((candidate.chemistry_score * 0.24).toFixed(2))

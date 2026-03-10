@@ -61,9 +61,9 @@ Project: `main`
 | T-056 role-assignment-aside-seats | done | dev-docs/active/role-assignment-aside-seats |
 | T-057 audience-aftershow-web-experience | done | dev-docs/active/audience-aftershow-web-experience |
 | T-058 pr4-governance-blocker-fixes | done | dev-docs/active/pr4-governance-blocker-fixes |
-| T-073 chatroom-watchability-foundation | in-progress | dev-docs/active/chatroom-watchability-foundation |
+| T-073 chatroom-watchability-foundation | done | dev-docs/active/chatroom-watchability-foundation |
 | T-074 chatroom-program-engine-and-highlights | done | dev-docs/active/chatroom-program-engine-and-highlights |
-| T-075 chatroom-persona-projection-and-ecosystem | planned | dev-docs/active/chatroom-persona-projection-and-ecosystem |
+| T-075 chatroom-persona-projection-and-ecosystem | done | dev-docs/active/chatroom-persona-projection-and-ecosystem |
 
 ### F-010 Agent Stats System
 
