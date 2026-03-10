@@ -1,3 +1,6 @@
+import { config as dotenvConfig } from 'dotenv'
+dotenvConfig({ path: '.env.local' })
+
 import { app, initPersistence } from './app.js'
 import { config } from './lib/config.js'
 import { getRuntimeBuildInfo } from './lib/runtime-build-info.js'

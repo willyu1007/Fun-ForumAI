@@ -122,6 +122,7 @@ export class InMemoryRoomRepository implements RoomRepository {
       room_id: roomId,
       member_id: memberId,
       member_type: 'agent',
+      display_name: null,
       join_source: joinSource,
       personal_tick_interval: tickInterval,
       messages_this_hour: 0,

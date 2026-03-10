@@ -760,6 +760,7 @@ export interface RoomMember {
   room_id: string
   member_id: string
   member_type: 'agent'
+  display_name: string | null
   join_source: 'dispatched' | 'wandering' | 'creator'
   personal_tick_interval: number
   messages_this_hour: number

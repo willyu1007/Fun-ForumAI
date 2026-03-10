@@ -119,6 +119,18 @@ export function ChatRoomPage() {
   const { typingAgents } = useChatRoomSse(roomId ?? '')
   const highlightedMessageIds = new Set(highlights.map((item) => item.source_message_id))
 
+  const agentNameMap = new Map<string, string>()
+  for (const member of room?.members ?? []) {
+    if (member.display_name) {
+      agentNameMap.set(member.member_id, member.display_name)
+    }
+  }
+  for (const entry of cast?.cast ?? []) {
+    if (!agentNameMap.has(entry.agent_id)) {
+      agentNameMap.set(entry.agent_id, entry.name)
+    }
+  }
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length])
@@ -184,11 +196,12 @@ export function ChatRoomPage() {
                 key={msg.id}
                 message={msg}
                 highlighted={highlightedMessageIds.has(msg.id)}
+                authorName={agentNameMap.get(msg.author_id)}
               />
             ))}
             {typingAgents.size > 0 && (
               <div className="animate-pulse pl-2 text-sm text-muted-foreground">
-                {Array.from(typingAgents).join(', ')} 正在思考...
+                {Array.from(typingAgents).map((id) => agentNameMap.get(id) ?? id.slice(0, 8)).join(', ')} 正在思考...
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -401,10 +414,11 @@ function HighlightStrip({ highlights }: { highlights: RoomHighlight[] }) {
   )
 }
 
-function MessageBubble({ message, highlighted }: { message: ChatMessage; highlighted: boolean }) {
+function MessageBubble({ message, highlighted, authorName }: { message: ChatMessage; highlighted: boolean; authorName?: string }) {
   const isSkip = message.message_kind === 'skip_feedback'
   const isAmbient = message.message_kind === 'ambient'
   const isGreeting = message.message_kind === 'greeting'
+  const displayName = authorName ?? message.author_id.slice(0, 8)
 
   if (isAmbient) {
     return (
@@ -422,13 +436,13 @@ function MessageBubble({ message, highlighted }: { message: ChatMessage; highlig
     )}>
       <Avatar className="mt-0.5 h-8 w-8 shrink-0">
         <AvatarFallback className="bg-primary/10 text-xs">
-          {message.author_id.slice(-2).toUpperCase()}
+          {displayName.slice(0, 2)}
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-medium">
-            {message.author_id}
+            {displayName}
           </span>
           {isGreeting && (
             <Badge variant="outline" className="px-1 py-0 text-[10px]">

@@ -162,8 +162,9 @@ export class PgRoomRepository implements RoomRepository {
     const rows = await this.prisma.roomMembership.findMany({
       where: { roomId, leftAt: null },
       orderBy: [{ joinedAt: 'asc' }, { id: 'asc' }],
+      include: { agent: { select: { displayName: true } } },
     })
-    return rows.map((row) => this.memberToDomain(row))
+    return rows.map((row) => this.memberToDomain(row, row.agent?.displayName ?? null))
   }
 
   async isMember(roomId: string, memberId: string): Promise<boolean> {
@@ -254,11 +255,12 @@ export class PgRoomRepository implements RoomRepository {
     }
   }
 
-  private memberToDomain(row: PrismaMembership): RoomMember {
+  private memberToDomain(row: PrismaMembership, displayName?: string | null): RoomMember {
     return {
       room_id: row.roomId,
       member_id: row.agentId,
       member_type: 'agent',
+      display_name: displayName ?? null,
       join_source: row.joinSource as RoomMemberJoinSource,
       personal_tick_interval: row.personalTickInterval,
       messages_this_hour: row.messagesThisHour,
