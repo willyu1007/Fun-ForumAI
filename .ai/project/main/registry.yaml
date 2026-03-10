@@ -692,7 +692,7 @@ tasks:
     updated: 2026-03-10
   - id: T-078
     slug: guidance-platform-foundation
-    status: planned
+    status: in-progress
     milestone_id: M-000
     feature_id: F-040
     requirement_ids:
@@ -701,7 +701,7 @@ tasks:
     updated: 2026-03-10
   - id: T-079
     slug: guidance-web-core-experience
-    status: planned
+    status: in-progress
     milestone_id: M-000
     feature_id: F-040
     requirement_ids:

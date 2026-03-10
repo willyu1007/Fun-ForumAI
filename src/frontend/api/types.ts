@@ -16,6 +16,114 @@ export interface ApiError {
   }
 }
 
+export type GuidanceActorType = 'VISITOR' | 'USER'
+export type GuidanceTrack = 'UNDECIDED' | 'SPECTATOR' | 'OWNER'
+export type GuidanceStage = 'NEW_VISITOR' | 'EXPLORING' | 'FIRST_SUCCESS' | 'RETAINED'
+export type GuidanceInboxStatus = 'ACTIVE' | 'COMPLETED' | 'DISMISSED'
+export type GuidanceItemModuleType = 'CARD' | 'RECEIPT'
+export type GuidanceSummaryModuleType = 'DUAL_ENTRY' | 'CHECKLIST' | 'CARD' | 'RECEIPT'
+
+export interface GuidanceCta {
+  label: string
+  target: string
+  event_name?: string
+  payload?: Record<string, unknown>
+}
+
+export interface GuidanceDualEntryCard {
+  track: Exclude<GuidanceTrack, 'UNDECIDED'>
+  title: string
+  promise: string
+  entry_cta: GuidanceCta
+  return_hook: string
+}
+
+export interface GuidanceDualEntryModule {
+  type: 'DUAL_ENTRY'
+  reason_code: string
+  hero_body: string
+  cards: GuidanceDualEntryCard[]
+}
+
+export interface GuidanceChecklistItem {
+  reason_code: string
+  title: string
+  body: string
+  completed: boolean
+  cta: GuidanceCta | null
+}
+
+export interface GuidanceChecklistModule {
+  type: 'CHECKLIST'
+  title: string
+  items: GuidanceChecklistItem[]
+}
+
+export interface GuidanceItemCard {
+  id: string
+  module_type: GuidanceItemModuleType
+  reason_code: string
+  title: string
+  body: string
+  unread: boolean
+  status: GuidanceInboxStatus
+  cta: GuidanceCta | null
+  payload: Record<string, unknown> | null
+  related_agent_id: string | null
+  related_session_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface GuidanceItemModule {
+  type: GuidanceItemModuleType
+  item: GuidanceItemCard
+}
+
+export type GuidanceSummaryModule =
+  | GuidanceDualEntryModule
+  | GuidanceChecklistModule
+  | GuidanceItemModule
+
+export interface GuidanceActorState {
+  actor_type: GuidanceActorType
+  actor_id: string
+  current_track: GuidanceTrack
+  stage: GuidanceStage
+  explained: {
+    two_tracks: boolean
+  }
+  completed: {
+    followed_first_agent: boolean
+    used_following_feed: boolean
+    created_agent: boolean
+    started_private_chat: boolean
+    nurture_receipt_ready: boolean
+    watch_public_effect: boolean
+  }
+  first_success: {
+    achieved: boolean
+    at: string | null
+  }
+  reveal: {
+    style: boolean
+    instructions: boolean
+    advanced: boolean
+  }
+  latest_owner_agent_id: string | null
+  latest_receipt_session_id: string | null
+}
+
+export interface GuidanceSummaryData {
+  actor: GuidanceActorState
+  modules: GuidanceSummaryModule[]
+}
+
+export interface GuidanceInboxData {
+  items: GuidanceItemCard[]
+  unread_count: number
+}
+
 export type ContentVisibility = 'PUBLIC' | 'GRAY' | 'QUARANTINE'
 export type ContentState = 'PENDING' | 'APPROVED' | 'REJECTED'
 export type ModerationVerdict = 'APPROVE' | 'FOLD' | 'QUARANTINE' | 'REJECT'
@@ -1084,6 +1192,7 @@ export interface AgentMemoryInfo {
   id: string
   agent_id: string
   source_type: MemorySource
+  source_session_id?: string | null
   summary_text: string
   topic_tags: string[]
   key_facts: string[]

@@ -12,14 +12,13 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
 import { AgentPanel } from './AgentPanel'
-import { OnboardingBar } from './OnboardingBar'
 import { DevAuthToolbar } from './DevAuthToolbar'
 import { LeftSidebar } from './LeftSidebar'
 import { RightSidebar } from './RightSidebar'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useSidebarStore } from '@/shared/stores/sidebar-store'
-import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '@/api/hooks'
-import { Bell, MessageCircle, Trophy, Info } from 'lucide-react'
+import { useGuidanceInbox, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '@/api/hooks'
+import { Bell, MessageCircle, Trophy, Info, Inbox } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { relativeTime } from '@/shared/utils/relative-time'
 import logoSrc from '@/assets/logo.png'
@@ -28,6 +27,8 @@ function TopBar() {
   const { toggleLeft, leftOpen } = useSidebarStore()
   const { user, isAuthenticated, logout } = useAuth()
   const location = useLocation()
+  const { data: guidanceInbox } = useGuidanceInbox()
+  const guidanceUnread = guidanceInbox?.data?.unread_count ?? 0
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -76,6 +77,17 @@ function TopBar() {
                 <Link to="/agents/manage">+ 创建</Link>
               </Button>
 
+              <Button variant="ghost" size="sm" asChild className="relative hidden sm:flex">
+                <Link to="/inbox">
+                  <Inbox className="h-4 w-4" />
+                  <span>Inbox</span>
+                  {guidanceUnread > 0 && (
+                    <Badge className="ml-1 h-4 min-w-4 rounded-full px-1 text-[10px]">
+                      {guidanceUnread > 9 ? '9+' : guidanceUnread}
+                    </Badge>
+                  )}
+                </Link>
+              </Button>
               <AgentPanel />
               <NotificationBell />
 
@@ -119,6 +131,9 @@ function TopBar() {
             </>
           ) : (
             <>
+              <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
+                <Link to="/inbox">Inbox</Link>
+              </Button>
               <Button variant="ghost" size="sm" asChild>
                 <Link to="/login" state={{ from: location.pathname }}>
                   登录
@@ -230,7 +245,6 @@ function NotificationBell() {
 
 export function Layout() {
   const { leftOpen } = useSidebarStore()
-  const { isAuthenticated } = useAuth()
   const { pathname } = useLocation()
 
   const showRight = pathname === '/' || pathname.startsWith('/c/')
@@ -264,8 +278,6 @@ export function Layout() {
           </aside>
         )}
       </div>
-
-      {isAuthenticated && <OnboardingBar />}
       <DevAuthToolbar />
     </div>
   )

@@ -16,6 +16,7 @@ export interface MemoryRepository {
     opts: PaginationOpts & {
       source_type?: MemorySource
       forgotten?: boolean
+      source_session_id?: string
       source_ref_type?: string
       source_ref_id?: string
       source_event_id?: string

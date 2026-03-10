@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest'
+import type { RoomCastMemberView } from '../../repos/types.js'
 import { RoomProgramScorer } from '../room-program-scorer.js'
+
+function makeCastMember(overrides: Partial<RoomCastMemberView>): RoomCastMemberView {
+  return {
+    agent_id: 'agent-host',
+    name: 'Host',
+    role: 'HOST',
+    chemistry_score: 0.91,
+    spotlight_weight: 1.2,
+    last_spoke_at: null,
+    role_hint: null,
+    wander_eligible: true,
+    suppressed_until: null,
+    member_spotlight_weight: 1,
+    projection: null,
+    ...overrides,
+  }
+}
 
 describe('RoomProgramScorer', () => {
   it('rewards role fit and callback hits while penalizing repetition', () => {
@@ -16,23 +34,17 @@ describe('RoomProgramScorer', () => {
         audit_json: {},
       },
       cast: [
-        {
+        makeCastMember({
           agent_id: 'agent-foil',
           name: 'Foil',
           role: 'FOIL',
           chemistry_score: 0.82,
           spotlight_weight: 1,
           last_spoke_at: null,
-        },
-        {
-          agent_id: 'agent-host',
-          name: 'Host',
-          role: 'HOST',
-          chemistry_score: 0.91,
-          spotlight_weight: 1.2,
-          last_spoke_at: null,
-        },
+        }),
+        makeCastMember({}),
       ],
+      scene_type: 'FREE_CHAT',
       recentMessages: [
         {
           id: 'msg-old',

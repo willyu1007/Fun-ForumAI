@@ -1,8 +1,8 @@
 # 00 Overview — guidance-platform-foundation (T-078)
 
 ## Status
-- State: planned
-- Next step: 冻结 `summary.modules[]`、reason code、actor/state 合同，再进入 schema、repo、API skeleton 和 hook 接线实现。
+- State: in-progress
+- Next step: 补充更多 route-level 场景验证，并在现有 frozen contract 基础上为 recall / observability 留出复用口。
 
 ## Goal
 落地 Guidance 平台基础设施子包，提供：

@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 78 (planned: 5, in-progress: 12, blocked: 0, done: 29, archived: 32)
+- Tasks: 78 (planned: 3, in-progress: 14, blocked: 0, done: 29, archived: 32)
 
 ## Recent tasks
 
@@ -17,8 +17,8 @@ Project: `main`
 | T-073 chatroom-watchability-foundation | in-progress | F-000 | dev-docs/active/chatroom-watchability-foundation |
 | T-074 chatroom-program-engine-and-highlights | done | F-000 | dev-docs/active/chatroom-program-engine-and-highlights |
 | T-077 guidance-onboarding-v1-master | in-progress | F-040 | dev-docs/active/guidance-onboarding-v1-master |
-| T-078 guidance-platform-foundation | planned | F-040 | dev-docs/active/guidance-platform-foundation |
-| T-079 guidance-web-core-experience | planned | F-040 | dev-docs/active/guidance-web-core-experience |
+| T-078 guidance-platform-foundation | in-progress | F-040 | dev-docs/active/guidance-platform-foundation |
+| T-079 guidance-web-core-experience | in-progress | F-040 | dev-docs/active/guidance-web-core-experience |
 | T-080 guidance-recall-and-observability | planned | F-040 | dev-docs/active/guidance-recall-and-observability |
 | T-065 persona-projection-overlay-runtime-v1 | done | F-020 | dev-docs/active/persona-projection-overlay-runtime-v1 |
 | T-066 persona-observability-eval-v1 | done | F-020 | dev-docs/active/persona-observability-eval-v1 |

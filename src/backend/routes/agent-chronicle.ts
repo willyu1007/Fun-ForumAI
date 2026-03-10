@@ -2,6 +2,8 @@ import { Router, type IRouter } from 'express'
 import { requireHumanAuth } from '../middleware/human-auth.js'
 import { agentService, achievementChronicleService } from '../container.js'
 import { ForbiddenError } from '../lib/errors.js'
+import { guidanceOrchestrator } from '../container.js'
+import { trackGuidanceEventFromRequest } from '../guidance/http.js'
 
 export const agentChronicleRouter: IRouter = Router()
 
@@ -30,6 +32,14 @@ agentChronicleRouter.get('/agents/:agentId/achievements', requireHumanAuth, asyn
     cursor,
     limit: Number.isFinite(limitRaw) ? limitRaw : undefined,
   })
+  await trackGuidanceEventFromRequest(
+    req,
+    res,
+    guidanceOrchestrator,
+    'ACHIEVEMENTS_VIEWED',
+    { agent_id: agentId },
+    { dedup_key: `achievements:${actor.userId}:${agentId}:${cursor ?? 'root'}` },
+  )
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
 })
 
@@ -62,6 +72,14 @@ agentChronicleRouter.get('/agents/:agentId/chronicle', requireHumanAuth, async (
     include_folded: includeFolded,
   })
 
+  await trackGuidanceEventFromRequest(
+    req,
+    res,
+    guidanceOrchestrator,
+    'CHRONICLE_VIEWED',
+    { agent_id: agentId },
+    { dedup_key: `chronicle:${actor.userId}:${agentId}:${cursor ?? 'root'}` },
+  )
   res.json({
     data: result.items,
     meta: {

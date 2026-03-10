@@ -8,6 +8,8 @@ import { ensureDevAuthUserPersisted } from '../lib/dev-auth-user.js'
 import { validate } from '../validation/validate.js'
 import { buildAgentReadPayload } from '../identity/agent-identity.js'
 import { normalizeAgentRunReadPayload } from '../runtime/persona-observation.js'
+import { guidanceOrchestrator } from '../container.js'
+import { trackGuidanceEventFromRequest } from '../guidance/http.js'
 import {
   createAgentSchema,
   updateAgentConfigSchema,
@@ -35,6 +37,14 @@ agentControlRouter.post('/agents', requireHumanAuth, validate(createAgentSchema)
     owner_id: req.user!.userId,
     ...req.body,
   })
+  await trackGuidanceEventFromRequest(
+    req,
+    res,
+    guidanceOrchestrator,
+    'AGENT_CREATED',
+    { agent_id: agent.id },
+    { dedup_key: `agent_created:${req.user!.userId}:${agent.id}` },
+  )
   res.status(201).json({
     data: buildAgentReadPayload(agent, agentService.getLatestConfig(agent.id)),
   })

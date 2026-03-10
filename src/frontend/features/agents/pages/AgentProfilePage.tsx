@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, Link, useNavigate } from 'react-router'
-import { useAgentProfile, useAgentRuns, useAgentXp, useFollowAgent, useUnfollowAgent } from '@/api/hooks'
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router'
+import { useAgentProfile, useAgentRuns, useAgentXp, useFollowAgent, useUnfollowAgent, useGuidanceSummary } from '@/api/hooks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -20,6 +20,8 @@ import { StatsPanel } from '../components/StatsPanel'
 import { InclinationAssetPanel } from '../components/InclinationAssetPanel'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { useAuth } from '@/shared/hooks/use-auth'
+import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
+import type { GuidanceItemModule } from '@/api/types'
 
 const STATUS_STYLES: Record<string, string> = {
   ACTIVE: 'bg-emerald-50 text-emerald-700',
@@ -54,15 +56,27 @@ type TabId =
 export function AgentProfilePage() {
   const { agentId } = useParams()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { isAuthenticated, user } = useAuth()
   const [tab, setTab] = useState<TabId>('overview')
   const { data, isLoading, error } = useAgentProfile(agentId ?? '')
   const { data: runsData, isLoading: runsLoading } = useAgentRuns(agentId ?? '')
   const { data: xpRes, isLoading: xpLoading, error: xpError } = useAgentXp(agentId ?? '')
+  const guidanceSummary = useGuidanceSummary()
   const follow = useFollowAgent(agentId ?? '')
   const unfollow = useUnfollowAgent(agentId ?? '')
   const agent = data?.data
   const isOwner = !!user && !!agent && user.id === agent.owner_id
+  const reveal = guidanceSummary.data?.data.actor.reveal ?? {
+    style: true,
+    instructions: true,
+    advanced: true,
+  }
+  const sourceSessionId = searchParams.get('source_session_id')
+  const activeGuidanceItem = guidanceSummary.data?.data.modules
+    .filter((module): module is GuidanceItemModule => module.type === 'CARD' || module.type === 'RECEIPT')
+    .map((module) => module.item)
+    .find((item) => item.related_agent_id === agentId) ?? null
   const tabs = useMemo(() => {
     const baseTabs: Array<{ id: TabId; label: string }> = [
       { id: 'overview', label: '概览' },
@@ -75,19 +89,27 @@ export function AgentProfilePage() {
     if (!isOwner) return baseTabs
     return [
       ...baseTabs.slice(0, STATS_UI_ENABLED ? 3 : 2),
-      { id: 'style', label: '风格' },
-      { id: 'instructions', label: '指令' },
+      ...(reveal.style ? [{ id: 'style' as const, label: '风格' }] : []),
+      ...(reveal.instructions ? [{ id: 'instructions' as const, label: '指令' }] : []),
       ...(MULTIMODAL_INCLINATION_ENABLED ? [{ id: 'multimodal' as const, label: '多模态倾向' }] : []),
-      { id: 'advanced', label: '高阶' },
+      ...(reveal.advanced ? [{ id: 'advanced' as const, label: '高阶' }] : []),
       ...baseTabs.slice(STATS_UI_ENABLED ? 3 : 2),
     ]
-  }, [isOwner])
+  }, [isOwner, reveal.advanced, reveal.instructions, reveal.style])
 
   useEffect(() => {
     if (!tabs.some((item) => item.id === tab)) {
       setTab('overview')
     }
   }, [tab, tabs])
+
+  useEffect(() => {
+    const requested = searchParams.get('tab')
+    if (!requested) return
+    if (tabs.some((item) => item.id === requested)) {
+      setTab(requested as TabId)
+    }
+  }, [searchParams, tabs])
 
   if (isLoading) {
     return (
@@ -216,12 +238,32 @@ export function AgentProfilePage() {
         </CardContent>
       </Card>
 
+      {isOwner && (!reveal.style || !reveal.instructions || !reveal.advanced) && (
+        activeGuidanceItem ? (
+          <GuidanceItemCard item={activeGuidanceItem} />
+        ) : (
+          <Card className="border-amber-300/60 bg-amber-50/40">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">先完成第一轮闭环，再解锁更重的 Owner 控制面</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              风格、指令和高阶控制会在你完成私聊回执、看到公开效果后逐步出现，避免 Day 0 就被复杂面板淹没。
+            </CardContent>
+          </Card>
+        )
+      )}
+
       {/* Tab bar */}
       <div className="flex gap-1 overflow-x-auto border-b">
         {tabs.map((t) => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id as TabId)}
+            onClick={() => {
+              setTab(t.id as TabId)
+              const next = new URLSearchParams(searchParams)
+              next.set('tab', t.id)
+              setSearchParams(next, { replace: true })
+            }}
             className={`whitespace-nowrap px-3 py-2 text-sm transition-colors ${
               tab === t.id
                 ? 'border-b-2 border-primary font-medium text-foreground'
@@ -268,7 +310,7 @@ export function AgentProfilePage() {
 
       {tab === 'multimodal' && isOwner && <InclinationAssetPanel agentId={agentId!} />}
 
-      {tab === 'privacy' && <PrivacySettingsPanel agentId={agentId!} />}
+      {tab === 'privacy' && <PrivacySettingsPanel agentId={agentId!} sourceSessionId={sourceSessionId} />}
 
       {tab === 'relations' && <RelationNetworkPanel agentId={agentId!} />}
 

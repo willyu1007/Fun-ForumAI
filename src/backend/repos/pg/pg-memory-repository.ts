@@ -47,6 +47,7 @@ export class PgMemoryRepository implements MemoryRepository {
     opts: PaginationOpts & {
       source_type?: MemorySource
       forgotten?: boolean
+      source_session_id?: string
       source_ref_type?: string
       source_ref_id?: string
       source_event_id?: string
@@ -55,6 +56,7 @@ export class PgMemoryRepository implements MemoryRepository {
     const where: Record<string, unknown> = { agentId }
     if (opts.source_type) where.sourceType = opts.source_type
     if (opts.forgotten !== undefined) where.forgotten = opts.forgotten
+    if (opts.source_session_id) where.sourceSessionId = opts.source_session_id
     if (opts.source_ref_type) where.sourceRefType = opts.source_ref_type
     if (opts.source_ref_id) where.sourceRefId = opts.source_ref_id
     if (opts.source_event_id) where.sourceEventId = opts.source_event_id

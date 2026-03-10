@@ -29,6 +29,8 @@ export class SseHub {
   private clientRooms = new Map<string, Set<string>>()
   private sessionSubscriptions = new Map<string, Set<string>>()
   private clientSessions = new Map<string, Set<string>>()
+  private actorSubscriptions = new Map<string, Set<string>>()
+  private clientActors = new Map<string, Set<string>>()
   private broadcastAdapter: SseBroadcastAdapter | null = null
 
   constructor(options: SseHubOptions = {}) {
@@ -139,6 +141,46 @@ export class SseHub {
     const normalized = this.normalizeEvent(event)
     this.broadcastToSessionLocal(sessionId, normalized)
     this.publishToCluster('session', normalized, { sessionId })
+  }
+
+  subscribeActor(clientId: string, actorKey: string): void {
+    let actorClients = this.actorSubscriptions.get(actorKey)
+    if (!actorClients) {
+      actorClients = new Set()
+      this.actorSubscriptions.set(actorKey, actorClients)
+    }
+    actorClients.add(clientId)
+
+    let actors = this.clientActors.get(clientId)
+    if (!actors) {
+      actors = new Set()
+      this.clientActors.set(clientId, actors)
+    }
+    actors.add(actorKey)
+  }
+
+  unsubscribeActor(clientId: string, actorKey: string): void {
+    const actorClients = this.actorSubscriptions.get(actorKey)
+    if (actorClients) {
+      actorClients.delete(clientId)
+      if (actorClients.size === 0) {
+        this.actorSubscriptions.delete(actorKey)
+      }
+    }
+
+    const actors = this.clientActors.get(clientId)
+    if (actors) {
+      actors.delete(actorKey)
+      if (actors.size === 0) {
+        this.clientActors.delete(clientId)
+      }
+    }
+  }
+
+  broadcastToActor(actorKey: string, event: SseEvent): void {
+    const normalized = this.normalizeEvent(event)
+    this.broadcastToActorLocal(actorKey, normalized)
+    this.publishToCluster('actor', normalized, { actorKey })
   }
 
   broadcast(event: SseEvent): void {
@@ -287,6 +329,12 @@ export class SseHub {
         this.unsubscribeSession(clientId, sessionId)
       }
     }
+    const actors = this.clientActors.get(clientId)
+    if (actors) {
+      for (const actorKey of Array.from(actors)) {
+        this.unsubscribeActor(clientId, actorKey)
+      }
+    }
   }
 
   private startHeartbeat(): void {
@@ -330,7 +378,7 @@ export class SseHub {
   private publishToCluster(
     scope: SseBroadcastScope,
     event: SseEvent,
-    target: { roomId?: string; sessionId?: string },
+    target: { roomId?: string; sessionId?: string; actorKey?: string },
   ): void {
     if (!this.broadcastAdapter) return
 
@@ -339,6 +387,7 @@ export class SseHub {
       scope,
       room_id: target.roomId,
       session_id: target.sessionId,
+      actor_key: target.actorKey,
       event,
       published_at: new Date().toISOString(),
     }
@@ -353,6 +402,12 @@ export class SseHub {
     if (envelope.source === this.instanceId) return
 
     const event = this.normalizeEvent(envelope.event)
+    if (envelope.scope === 'actor') {
+      if (!envelope.actor_key) return
+      this.broadcastToActorLocal(envelope.actor_key, event)
+      return
+    }
+
     if (envelope.scope === 'room') {
       if (!envelope.room_id) return
       this.broadcastToRoomLocal(envelope.room_id, event)
@@ -366,5 +421,30 @@ export class SseHub {
     }
 
     this.broadcastLocal(event)
+  }
+
+  private broadcastToActorLocal(actorKey: string, event: SseEvent): void {
+    const clientIds = this.actorSubscriptions.get(actorKey)
+    if (!clientIds || clientIds.size === 0) return
+
+    const data = JSON.stringify(event)
+    const dead: string[] = []
+
+    for (const clientId of clientIds) {
+      const client = this.clients.get(clientId)
+      if (!client) {
+        dead.push(clientId)
+        continue
+      }
+      try {
+        client.res.write(`data: ${data}\n\n`)
+      } catch {
+        dead.push(clientId)
+      }
+    }
+
+    for (const id of dead) {
+      this.cleanupClient(id)
+    }
   }
 }

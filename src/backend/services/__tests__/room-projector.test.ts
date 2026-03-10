@@ -189,7 +189,7 @@ describe('RoomProjector', () => {
     })
 
     await roomRepo.addMember(room.id, host.id, 'creator', 20_000)
-    const program = await watchabilityRepo.ensureProgram(room)
+    await watchabilityRepo.ensureProgram(room)
     await watchabilityRepo.updateProgram(room.id, {
       callback_window: 8,
       enabled: true,

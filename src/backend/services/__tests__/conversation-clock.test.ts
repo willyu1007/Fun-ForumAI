@@ -1,6 +1,27 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ConversationClock } from '../conversation-clock.js'
 
+type ConversationClockHarness = {
+  running: boolean
+  scheduleAgent: (roomId: string, agentId: string, tickInterval: number) => void
+  handleTick: (roomId: string, agentId: string, tickInterval: number) => Promise<void>
+  generateMessage: (
+    roomId: string,
+    agentId: string,
+  ) => Promise<{
+    kind: 'normal' | 'skip_feedback' | 'empty'
+    body: string
+  }>
+  postMessage: (
+    roomId: string,
+    agentId: string,
+    body: string,
+    kind: 'normal' | 'skip_feedback' | 'ambient' | 'greeting',
+    renderDecision?: unknown,
+    metadata?: unknown,
+  ) => Promise<void>
+}
+
 describe('ConversationClock', () => {
   it('consumes runtime render decisions when ambient fallback posts a visible message', async () => {
     const recordVisibleRender = vi.fn(async () => undefined)
@@ -327,17 +348,16 @@ describe('ConversationClock', () => {
       roomProgramEngine: roomProgramEngine as never,
     })
 
-    ;(clock as unknown as { running: boolean }).running = true
-    ;(clock as unknown as { scheduleAgent: (roomId: string, agentId: string, tickInterval: number) => void }).scheduleAgent = vi.fn()
-    vi.spyOn(clock as never, 'generateMessage' as never).mockResolvedValue({
+    const harness = clock as unknown as ConversationClockHarness
+    harness.running = true
+    harness.scheduleAgent = vi.fn()
+    vi.spyOn(harness, 'generateMessage').mockResolvedValue({
       kind: 'normal',
       body: '这句应该让别的角色来讲。',
-    } as never)
-    const postSpy = vi.spyOn(clock as never, 'postMessage' as never).mockResolvedValue(undefined as never)
+    })
+    const postSpy = vi.spyOn(harness, 'postMessage').mockResolvedValue(undefined)
 
-    await (clock as unknown as {
-      handleTick: (roomId: string, agentId: string, tickInterval: number) => Promise<void>
-    }).handleTick('room-1', 'agent-1', 1_000)
+    await harness.handleTick('room-1', 'agent-1', 1_000)
 
     expect(roomProgramEngine.planNextTurn).toHaveBeenCalledWith(expect.objectContaining({
       roomId: 'room-1',

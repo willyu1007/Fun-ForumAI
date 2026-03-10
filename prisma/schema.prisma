@@ -2024,6 +2024,104 @@ model AgentRelationEvent {
 }
 
 // ──────────────────────────────────────────────
+// Guidance & Onboarding
+// ──────────────────────────────────────────────
+
+model GuidanceActorState {
+  id                      String            @id @default(cuid())
+  actorType               GuidanceActorType @map("actor_type")
+  actorId                 String            @map("actor_id")
+  currentTrack            GuidanceTrack     @default(UNDECIDED) @map("current_track")
+  stage                   GuidanceStage     @default(NEW_VISITOR)
+  explainedTwoTracks      Boolean           @default(false) @map("explained_two_tracks")
+  followedFirstAgentAt    DateTime?         @map("followed_first_agent_at")
+  followingFeedSeenAt     DateTime?         @map("following_feed_seen_at")
+  agentCreatedAt          DateTime?         @map("agent_created_at")
+  privateSessionCreatedAt DateTime?         @map("private_session_created_at")
+  privateSessionEndedAt   DateTime?         @map("private_session_ended_at")
+  nurtureReceiptReadyAt   DateTime?         @map("nurture_receipt_ready_at")
+  watchPublicEffectAt     DateTime?         @map("watch_public_effect_at")
+  latestOwnerAgentId      String?           @map("latest_owner_agent_id")
+  latestReceiptSessionId  String?           @map("latest_receipt_session_id")
+  createdAt               DateTime          @default(now()) @map("created_at")
+  updatedAt               DateTime          @updatedAt @map("updated_at")
+
+  @@unique([actorType, actorId])
+  @@index([actorType, stage, updatedAt])
+  @@map("guidance_actor_states")
+}
+
+enum GuidanceActorType {
+  VISITOR
+  USER
+}
+
+enum GuidanceTrack {
+  UNDECIDED
+  SPECTATOR
+  OWNER
+}
+
+enum GuidanceStage {
+  NEW_VISITOR
+  EXPLORING
+  FIRST_SUCCESS
+  RETAINED
+}
+
+model GuidanceInbox {
+  id               String              @id @default(cuid())
+  actorType        GuidanceActorType   @map("actor_type")
+  actorId          String              @map("actor_id")
+  moduleType       GuidanceInboxModule @map("module_type")
+  reasonCode       String              @map("reason_code")
+  status           GuidanceInboxStatus @default(ACTIVE)
+  dedupKey         String?             @map("dedup_key")
+  unread           Boolean             @default(true)
+  title            String
+  body             String              @db.Text
+  ctaLabel         String?             @map("cta_label")
+  ctaTarget        String?             @map("cta_target")
+  payloadJson      Json?               @map("payload_json")
+  relatedAgentId   String?             @map("related_agent_id")
+  relatedSessionId String?             @map("related_session_id")
+  completedAt      DateTime?           @map("completed_at")
+  dismissedAt      DateTime?           @map("dismissed_at")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  @@index([actorType, actorId, status, updatedAt])
+  @@index([actorType, actorId, unread, updatedAt])
+  @@unique([actorType, actorId, dedupKey])
+  @@map("guidance_inbox")
+}
+
+enum GuidanceInboxModule {
+  CARD
+  RECEIPT
+}
+
+enum GuidanceInboxStatus {
+  ACTIVE
+  COMPLETED
+  DISMISSED
+}
+
+model GuidanceEventLog {
+  id         String            @id @default(cuid())
+  actorType  GuidanceActorType @map("actor_type")
+  actorId    String            @map("actor_id")
+  eventType  String            @map("event_type")
+  dedupKey   String?           @map("dedup_key")
+  payloadJson Json?            @map("payload_json")
+  createdAt  DateTime          @default(now()) @map("created_at")
+
+  @@index([actorType, actorId, createdAt])
+  @@unique([actorType, actorId, dedupKey])
+  @@map("guidance_event_log")
+}
+
+// ──────────────────────────────────────────────
 // Notifications
 // ──────────────────────────────────────────────
 

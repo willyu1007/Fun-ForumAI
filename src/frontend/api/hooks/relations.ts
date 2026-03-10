@@ -4,11 +4,16 @@ import { queryKeys } from '../query-keys'
 import { toSearchString } from '../utils'
 import type { ApiResponse, AgentMemoryInfo, AgentRelationItem, AgentRelationSummary, AgentRelationView, PrivacySettings, PaginatedList } from '../types'
 
-export function useAgentMemories(agentId: string) {
+export function useAgentMemories(
+  agentId: string,
+  params?: { source_session_id?: string; source_type?: string; forgotten?: boolean },
+) {
   return useQuery({
-    queryKey: queryKeys.agentMemories(agentId),
+    queryKey: queryKeys.agentMemories(agentId, params),
     queryFn: () =>
-      api.get(`agents/${agentId}/memories`).json<ApiResponse<PaginatedList<AgentMemoryInfo>>>(),
+      api
+        .get(`agents/${agentId}/memories${toSearchString(params)}`)
+        .json<ApiResponse<PaginatedList<AgentMemoryInfo>>>(),
     enabled: !!agentId,
   })
 }

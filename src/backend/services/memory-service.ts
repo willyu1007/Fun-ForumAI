@@ -111,8 +111,17 @@ export interface MemoryForContext {
 export class MemoryService {
   private readonly retrievalPacker = new DefaultRetrievalPacker()
   private readonly memoryPackRenderer = new DefaultMemoryPackRenderer()
+  private digestHooks: Array<(input: {
+    agent_id: string
+    session_id: string
+    memory_id: string
+    importance_score: number
+    sentiment: string | null
+  }) => Promise<void> | void>
 
-  constructor(private readonly deps: MemoryServiceDeps) {}
+  constructor(private readonly deps: MemoryServiceDeps) {
+    this.digestHooks = deps.onDigestCompleted ? [deps.onDigestCompleted] : []
+  }
 
   setDigestHook(
     hook: (input: {
@@ -123,7 +132,19 @@ export class MemoryService {
       sentiment: string | null
     }) => Promise<void> | void,
   ): void {
-    this.deps.onDigestCompleted = hook
+    this.digestHooks = [hook]
+  }
+
+  appendDigestHook(
+    hook: (input: {
+      agent_id: string
+      session_id: string
+      memory_id: string
+      importance_score: number
+      sentiment: string | null
+    }) => Promise<void> | void,
+  ): void {
+    this.digestHooks.push(hook)
   }
 
   async generateDigest(sessionId: string): Promise<AgentMemory | null> {
@@ -229,6 +250,7 @@ export class MemoryService {
     opts: PaginationOpts & {
       source_type?: MemorySource
       forgotten?: boolean
+      source_session_id?: string
       source_ref_type?: string
       source_ref_id?: string
       source_event_id?: string
@@ -520,8 +542,8 @@ export class MemoryService {
       })
     }
 
-    if (this.deps.onDigestCompleted) {
-      Promise.resolve(this.deps.onDigestCompleted({
+    for (const hook of this.digestHooks) {
+      Promise.resolve(hook({
         agent_id: input.agentId,
         session_id: input.sessionId,
         memory_id: input.memory.id,

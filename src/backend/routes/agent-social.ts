@@ -4,6 +4,8 @@ import { agentService, humanParticipationService, agentCommunityMembershipServic
 import { config } from '../lib/config.js'
 import { ForbiddenError } from '../lib/errors.js'
 import { validate } from '../validation/validate.js'
+import { guidanceOrchestrator } from '../container.js'
+import { trackGuidanceEventFromRequest } from '../guidance/http.js'
 import {
   updateAgentMembershipsSchema,
   patchAgentMembershipStatusSchema,
@@ -20,6 +22,14 @@ agentSocialRouter.post('/agents/:agentId/follow', requireHumanAuth, async (req, 
   }
 
   const result = await humanParticipationService.followAgent(req.user!.userId, String(req.params.agentId))
+  await trackGuidanceEventFromRequest(
+    req,
+    res,
+    guidanceOrchestrator,
+    'AGENT_FOLLOWED',
+    { agent_id: String(req.params.agentId) },
+    { dedup_key: `agent_followed:${req.user!.userId}:${String(req.params.agentId)}` },
+  )
   res.status(201).json({ data: result })
 })
 

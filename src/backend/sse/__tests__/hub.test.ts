@@ -160,6 +160,28 @@ describe('SseHub', () => {
     expect(collectEvents(r2)).toEqual([])
   })
 
+  it('broadcasts actor-scoped events only to subscribed local clients', () => {
+    const hub = new SseHub({ instanceId: 'hub-actor' })
+    hubsToClose.push(hub)
+
+    const r1 = new StubResponse()
+    const r2 = new StubResponse()
+    hub.addClient('c1', r1 as unknown as Response)
+    hub.addClient('c2', r2 as unknown as Response)
+    hub.subscribeActor('c1', 'USER:user-1')
+
+    hub.broadcastToActor('USER:user-1', {
+      type: 'GUIDANCE_UPDATED',
+      payload: {},
+    })
+
+    expect(collectEvents(r1)).toEqual([expect.objectContaining({
+      type: 'GUIDANCE_UPDATED',
+      payload: {},
+    })])
+    expect(collectEvents(r2)).toEqual([])
+  })
+
   it('fans out global events across hubs via broadcast adapter without local duplication', async () => {
     const hub1 = new SseHub({ instanceId: 'hub-1' })
     const hub2 = new SseHub({ instanceId: 'hub-2' })
@@ -240,6 +262,36 @@ describe('SseHub', () => {
       type: 'PRIVATE_MESSAGE_CREATED',
       payload: { session_id: 'session-9', id: 'pm-1' },
     })])
+    expect(collectEvents(r3)).toEqual([])
+  })
+
+  it('fans out actor-scoped events across hubs while honoring actor subscriptions', async () => {
+    const hub1 = new SseHub({ instanceId: 'hub-1' })
+    const hub2 = new SseHub({ instanceId: 'hub-2' })
+    hubsToClose.push(hub1, hub2)
+
+    await hub1.setBroadcastAdapter(new MemoryBusBroadcastAdapter())
+    await hub2.setBroadcastAdapter(new MemoryBusBroadcastAdapter())
+
+    const r1 = new StubResponse()
+    const r2 = new StubResponse()
+    const r3 = new StubResponse()
+    hub1.addClient('c1', r1 as unknown as Response)
+    hub2.addClient('c2', r2 as unknown as Response)
+    hub2.addClient('c3', r3 as unknown as Response)
+
+    hub1.subscribeActor('c1', 'USER:user-9')
+    hub2.subscribeActor('c2', 'USER:user-9')
+    hub2.subscribeActor('c3', 'USER:user-other')
+
+    hub1.broadcastToActor('USER:user-9', {
+      type: 'GUIDANCE_UPDATED',
+      payload: {},
+    })
+    await flushAsync()
+
+    expect(collectEvents(r1)).toEqual([expect.objectContaining({ type: 'GUIDANCE_UPDATED', payload: {} })])
+    expect(collectEvents(r2)).toEqual([expect.objectContaining({ type: 'GUIDANCE_UPDATED', payload: {} })])
     expect(collectEvents(r3)).toEqual([])
   })
 })

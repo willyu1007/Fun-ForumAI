@@ -13,9 +13,15 @@ const DISCLOSURE_LEVELS = [
   { value: 3, label: '经历分享', desc: '可以提及与人类交流的经历' },
 ] as const
 
-export function PrivacySettingsPanel({ agentId }: { agentId: string }) {
+export function PrivacySettingsPanel({
+  agentId,
+  sourceSessionId,
+}: {
+  agentId: string
+  sourceSessionId?: string | null
+}) {
   const { data: settingsData, isLoading } = usePrivacySettings(agentId)
-  const { data: memoriesData } = useAgentMemories(agentId)
+  const { data: memoriesData } = useAgentMemories(agentId, sourceSessionId ? { source_session_id: sourceSessionId } : undefined)
   const updateSettings = useUpdatePrivacySettings(agentId)
 
   const settings = settingsData?.data
@@ -137,7 +143,14 @@ export function PrivacySettingsPanel({ agentId }: { agentId: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">记忆列表 ({memories.length})</CardTitle>
+          <CardTitle className="text-sm">
+            记忆列表 ({memories.length})
+            {sourceSessionId && (
+              <Badge variant="secondary" className="ml-2 text-[10px]">
+                已按本次私聊过滤
+              </Badge>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {memories.length === 0 ? (

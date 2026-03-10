@@ -4,13 +4,14 @@ export interface SseEvent {
   timestamp?: string
 }
 
-export type SseBroadcastScope = 'global' | 'room' | 'session'
+export type SseBroadcastScope = 'global' | 'room' | 'session' | 'actor'
 
 export interface SseBroadcastEnvelope {
   source: string
   scope: SseBroadcastScope
   room_id?: string
   session_id?: string
+  actor_key?: string
   event: SseEvent
   published_at: string
 }

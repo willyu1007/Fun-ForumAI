@@ -232,7 +232,7 @@ export async function createNurtureEngines(deps: {
       agentRunRepo: repos.agentRunRepo,
     })
     publicObservationDigestService.setMemoryCreatedHook((input) =>
-      agentPublicProjectionService.refreshFromPublicObservation(input))
+      agentPublicProjectionService.refreshFromPublicObservation(input).then(() => undefined))
     publicObservationEventHandler = new PublicObservationEventHandler({
       digestService: publicObservationDigestService,
     })

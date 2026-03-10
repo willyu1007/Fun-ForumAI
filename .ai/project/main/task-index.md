@@ -85,7 +85,7 @@ Project: `main`
 | T-075 chatroom-persona-projection-and-ecosystem | planned | F-000 | dev-docs/active/chatroom-persona-projection-and-ecosystem |
 | T-076 persona-runtime-integration-audit | in-progress | F-020 | dev-docs/active/persona-runtime-integration-audit |
 | T-077 guidance-onboarding-v1-master | in-progress | F-040 | dev-docs/active/guidance-onboarding-v1-master |
-| T-078 guidance-platform-foundation | planned | F-040 | dev-docs/active/guidance-platform-foundation |
-| T-079 guidance-web-core-experience | planned | F-040 | dev-docs/active/guidance-web-core-experience |
+| T-078 guidance-platform-foundation | in-progress | F-040 | dev-docs/active/guidance-platform-foundation |
+| T-079 guidance-web-core-experience | in-progress | F-040 | dev-docs/active/guidance-web-core-experience |
 | T-080 guidance-recall-and-observability | planned | F-040 | dev-docs/active/guidance-recall-and-observability |
 <!-- AUTO-GENERATED:END task-index -->

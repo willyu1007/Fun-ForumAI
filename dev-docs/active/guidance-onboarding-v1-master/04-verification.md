@@ -32,3 +32,9 @@
 - 2026-03-10 | `node .ai/scripts/ctl-project-governance.mjs query --project main --text "guidance-web-core-experience"` | pass（返回 `T-079`）
 - 2026-03-10 | `node .ai/scripts/ctl-project-governance.mjs query --project main --text "guidance-recall-and-observability"` | pass（返回 `T-080`）
 - 2026-03-10 | doc review against `fun-forumai-guidance-system-design.md` | pass（已为事件矩阵、中央文案层、inline payoff、渐进式揭示、延迟回流补齐 owner）
+- 2026-03-10 | `pnpm db:generate` | pass
+- 2026-03-10 | `pnpm exec tsc -p tsconfig.app.json` | pass
+- 2026-03-10 | `pnpm exec vitest run src/backend/services/__tests__/guidance-orchestrator.test.ts src/backend/routes/__tests__/guidance-api.test.ts` | pass
+- 2026-03-10 | `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main` | pass
+- 2026-03-10 | `node .ai/scripts/ctl-project-governance.mjs lint --check --project main` | pass（仍有与本任务无关的历史 warning：`chatroom-persona-projection-and-ecosystem` 使用 `in_progress`）
+- 2026-03-10 | `pnpm typecheck` | fail（存在与本次 guidance 无关的既有 backend room-watchability / pg json typing / room-* tests 错误）

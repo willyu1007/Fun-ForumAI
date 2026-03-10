@@ -10,6 +10,12 @@ import { CommunityConfigScheduler } from '../runtime/community-config-scheduler.
 import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry-scheduler.js'
 import { getRuntimeBuildInfo } from '../lib/runtime-build-info.js'
 import { personaObservability } from '../runtime/persona-observability.js'
+import {
+  GuidanceCopyService,
+  GuidanceDeliveryAdapter,
+  GuidanceOrchestrator,
+  GuidanceStateService,
+} from '../guidance/index.js'
 
 function extractOwnerStylePins(configJson: Record<string, unknown>): Record<string, unknown> {
   const identity = configJson.identity
@@ -71,7 +77,7 @@ const core = createCoreServices({
 
 core.achievementChronicleService.setRecordHook((input) => {
   if (input.visibility !== 'PUBLIC') return
-  return core.agentPublicProjectionService.refresh(input.agent_id, { reason: 'chronicle' })
+  return core.agentPublicProjectionService.refresh(input.agent_id, { reason: 'chronicle' }).then(() => undefined)
 })
 
 core.agentService.setConfigUpdatedHook((input) => {
@@ -80,7 +86,7 @@ core.agentService.setConfigUpdatedHook((input) => {
   if (JSON.stringify(beforePins) === JSON.stringify(afterPins)) {
     return
   }
-  return core.agentPublicProjectionService.refresh(input.agent_id, { reason: 'owner_style_pin' })
+  return core.agentPublicProjectionService.refresh(input.agent_id, { reason: 'owner_style_pin' }).then(() => undefined)
 })
 
 const communityConfigScheduler = new CommunityConfigScheduler(
@@ -135,6 +141,40 @@ const nurture = await createNurtureEngines({
     cultureDigest: infra.leaderElectors.cultureDigest,
   },
 })
+
+const guidanceCopyService = new GuidanceCopyService()
+const guidanceStateService = new GuidanceStateService(
+  repos.guidanceActorStateRepo,
+  repos.guidanceInboxRepo,
+  guidanceCopyService,
+)
+const guidanceDelivery = new GuidanceDeliveryAdapter(infra.sseHub)
+const guidanceOrchestrator = new GuidanceOrchestrator({
+  stateService: guidanceStateService,
+  inboxRepo: repos.guidanceInboxRepo,
+  eventLogRepo: repos.guidanceEventLogRepo,
+  humanFollowRepo: repos.humanFollowRepo,
+  agentRepo: repos.agentRepo,
+  copyService: guidanceCopyService,
+  delivery: guidanceDelivery,
+})
+
+if (nurture.memoryService) {
+  nurture.memoryService.appendDigestHook(async (input) => {
+    const agent = repos.agentRepo.findById(input.agent_id)
+    if (!agent?.owner_id) return
+    await guidanceOrchestrator.ingestEvent(
+      { actor_type: 'USER', actor_id: agent.owner_id },
+      'PRIVATE_DIGEST_READY',
+      {
+        agent_id: input.agent_id,
+        session_id: input.session_id,
+        memory_id: input.memory_id,
+      },
+      { dedup_key: `private_digest_ready:${input.session_id}` },
+    )
+  })
+}
 
 // ─── 6. Allocator Pipeline ──────────────────────────────────
 const alloc = createAllocator({
@@ -231,6 +271,9 @@ core.forumWriteService.setEventHook((event) => {
   if (config.features.publicObservationMemory && nurture.publicObservationEventHandler) {
     nurture.publicObservationEventHandler.handle(event)
   }
+  guidanceOrchestrator.handleForumEvent(event).catch((err) => {
+    console.error('[Container] Guidance forum event ingest failed:', err)
+  })
 })
 
 // ─── Exports (preserving original container.ts public API) ──
@@ -299,6 +342,7 @@ export const cultureDigestScheduler = nurture.cultureDigestScheduler
 export const privateChannelServices = nurture.privateChannelServices
 export const privateChannelScheduler = nurture.privateChannelScheduler
 export { communityConfigScheduler, roleAssignmentExpiryScheduler }
+export { guidanceCopyService, guidanceStateService, guidanceOrchestrator }
 
 export const agentExecutor = rt.agentExecutor
 export const postScheduler = rt.postScheduler

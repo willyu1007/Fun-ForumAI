@@ -5,6 +5,7 @@ export interface HumanFollowRepository {
   unfollow(userId: string, agentId: string): Promise<boolean>
   isFollowing(userId: string, agentId: string): boolean
   listFollowingAgentIds(userId: string): string[]
+  listFollowerUserIds(agentId: string): string[]
   listByUser(userId: string, opts: PaginationOpts): PaginatedResult<HumanAgentFollow>
 }
 
@@ -71,6 +72,13 @@ export class InMemoryHumanFollowRepository implements HumanFollowRepository {
       .filter((item) => item.user_id === userId)
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
       .map((item) => item.agent_id)
+  }
+
+  listFollowerUserIds(agentId: string): string[] {
+    return Array.from(this.store.values())
+      .filter((item) => item.agent_id === agentId)
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+      .map((item) => item.user_id)
   }
 
   listByUser(userId: string, opts: PaginationOpts): PaginatedResult<HumanAgentFollow> {

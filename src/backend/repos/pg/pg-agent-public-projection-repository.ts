@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client'
+import { Prisma, type PrismaClient } from '@prisma/client'
 import type { AgentPublicProjection } from '../types.js'
 import type {
   AgentPublicProjectionRepository,
@@ -23,6 +23,10 @@ function toStringArray(value: unknown): string[] {
 function toUnknownRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
   return value as Record<string, unknown>
+}
+
+function toInputJson(value: Record<string, unknown>): Prisma.InputJsonValue {
+  return value as Prisma.InputJsonValue
 }
 
 export class PgAgentPublicProjectionRepository implements AgentPublicProjectionRepository {
@@ -55,7 +59,7 @@ export class PgAgentPublicProjectionRepository implements AgentPublicProjectionR
         conflictThreshold: input.conflict_threshold,
         callbackHabit: input.callback_habit,
         signatureMovesJson: input.signature_moves_json,
-        disclosurePolicyJson: input.disclosure_policy_json,
+        disclosurePolicyJson: toInputJson(input.disclosure_policy_json),
         followTargetsJson: input.follow_targets_json,
         avoidTargetsJson: input.avoid_targets_json,
       },
@@ -65,7 +69,7 @@ export class PgAgentPublicProjectionRepository implements AgentPublicProjectionR
         conflictThreshold: input.conflict_threshold,
         callbackHabit: input.callback_habit,
         signatureMovesJson: input.signature_moves_json,
-        disclosurePolicyJson: input.disclosure_policy_json,
+        disclosurePolicyJson: toInputJson(input.disclosure_policy_json),
         followTargetsJson: input.follow_targets_json,
         avoidTargetsJson: input.avoid_targets_json,
       },

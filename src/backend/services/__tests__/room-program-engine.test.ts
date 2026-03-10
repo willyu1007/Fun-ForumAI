@@ -1,9 +1,27 @@
 import { describe, expect, it } from 'vitest'
 import { InMemoryRoomWatchabilityRepository } from '../../repos/room-watchability-repository.js'
+import type { RoomCastMemberView } from '../../repos/types.js'
 import { RoomProgramEngine } from '../room-program-engine.js'
 import { RoomCuePlanner } from '../room-cue-planner.js'
 import { RoomProgramScorer } from '../room-program-scorer.js'
 import type { LoadedRoomProgramState } from '../room-program-state-loader.js'
+
+function makeCastMember(overrides: Partial<RoomCastMemberView>): RoomCastMemberView {
+  return {
+    agent_id: 'agent-1',
+    name: 'Host',
+    role: 'HOST',
+    chemistry_score: 0.88,
+    spotlight_weight: 1.1,
+    last_spoke_at: new Date('2026-03-10T10:00:00.000Z'),
+    role_hint: null,
+    wander_eligible: true,
+    suppressed_until: null,
+    member_spotlight_weight: 1,
+    projection: null,
+    ...overrides,
+  }
+}
 
 function makeLoadedState(): LoadedRoomProgramState {
   const now = new Date('2026-03-10T10:00:00.000Z')
@@ -36,6 +54,12 @@ function makeLoadedState(): LoadedRoomProgramState {
       idle_cue_after_ms: 30_000,
       allow_wandering: true,
       director_policy_json: {},
+      wander_policy_json: {
+        enabled: false,
+        entry_cooldown_ms: 180_000,
+        max_parallel_rooms: 2,
+        min_discoverability_score: 0.25,
+      },
       discoverability_tags: [],
       discoverability_short_hook: null,
       discoverability_default_view: 'live',
@@ -67,22 +91,17 @@ function makeLoadedState(): LoadedRoomProgramState {
     },
     snapshot: null,
     cast: [
-      {
-        agent_id: 'agent-1',
-        name: 'Host',
-        role: 'HOST',
-        chemistry_score: 0.88,
-        spotlight_weight: 1.1,
+      makeCastMember({
         last_spoke_at: now,
-      },
-      {
+      }),
+      makeCastMember({
         agent_id: 'agent-2',
         name: 'Foil',
         role: 'FOIL',
         chemistry_score: 0.82,
         spotlight_weight: 1,
         last_spoke_at: new Date('2026-03-10T09:59:00.000Z'),
-      },
+      }),
     ],
     members: [],
     recentMessages: [{

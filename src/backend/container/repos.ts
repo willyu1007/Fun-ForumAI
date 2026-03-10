@@ -27,6 +27,9 @@ import { InMemoryAftershowRunRepository } from '../repos/aftershow-run-repositor
 import { InMemoryAftershowArtifactRepository } from '../repos/aftershow-artifact-repository.js'
 import { InMemoryCommunityConfigRepository } from '../repos/community-config-repository.js'
 import { InMemoryRoleAssignmentRepository } from '../repos/role-assignment-repository.js'
+import { InMemoryGuidanceActorStateRepository } from '../repos/guidance-state-repository.js'
+import { InMemoryGuidanceInboxRepository } from '../repos/guidance-inbox-repository.js'
+import { InMemoryGuidanceEventLogRepository } from '../repos/guidance-event-log-repository.js'
 
 import type { PostRepository } from '../repos/post-repository.js'
 import type { CommentRepository } from '../repos/comment-repository.js'
@@ -60,6 +63,9 @@ import type { CommunityConfigRepository } from '../repos/community-config-reposi
 import type { RoleAssignmentRepository } from '../repos/role-assignment-repository.js'
 import type { NotificationRepository } from '../repos/notification-repository.js'
 import type { UserRepository } from '../repos/user-repository.js'
+import type { GuidanceActorStateRepository } from '../repos/guidance-state-repository.js'
+import type { GuidanceInboxRepository } from '../repos/guidance-inbox-repository.js'
+import type { GuidanceEventLogRepository } from '../repos/guidance-event-log-repository.js'
 
 export interface Repositories {
   postRepo: PostRepository
@@ -96,6 +102,9 @@ export interface Repositories {
   communityConfigRepo: CommunityConfigRepository
   roleAssignmentRepo: RoleAssignmentRepository
   notificationRepo: NotificationRepository | null
+  guidanceActorStateRepo: GuidanceActorStateRepository
+  guidanceInboxRepo: GuidanceInboxRepository
+  guidanceEventLogRepo: GuidanceEventLogRepository
 }
 
 interface HydratableRepo { hydrate(): Promise<void> }
@@ -142,6 +151,9 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgCommunityConfigRepository } = await import('../repos/pg/pg-community-config-repository.js')
     const { PgRoleAssignmentRepository } = await import('../repos/pg/pg-role-assignment-repository.js')
     const { PgNotificationRepository } = await import('../repos/pg/pg-notification-repository.js')
+    const { PgGuidanceActorStateRepository } = await import('../repos/pg/pg-guidance-state-repository.js')
+    const { PgGuidanceInboxRepository } = await import('../repos/pg/pg-guidance-inbox-repository.js')
+    const { PgGuidanceEventLogRepository } = await import('../repos/pg/pg-guidance-event-log-repository.js')
 
     const pr = new PgPostRepository(prisma)
     const cr = new PgCommentRepository(prisma)
@@ -176,6 +188,9 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const communityConfigRepo = new PgCommunityConfigRepository(prisma)
     const roleAssignmentRepo = new PgRoleAssignmentRepository(prisma)
     const notificationRepo = new PgNotificationRepository(prisma)
+    const guidanceActorStateRepo = new PgGuidanceActorStateRepository(prisma)
+    const guidanceInboxRepo = new PgGuidanceInboxRepository(prisma)
+    const guidanceEventLogRepo = new PgGuidanceEventLogRepository(prisma)
 
     hydratables.push(pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, rr, rwr, appr, mr, sr, achar, chr, ppr, stageTier, roleAssignmentRepo, psr)
 
@@ -192,6 +207,9 @@ export async function createRepositories(usePrisma: boolean): Promise<{
         incubationRepo: incRepo, audienceRepo: audRepo, aftershowRunRepo: aftershowRepo,
         aftershowArtifactRepo, communityConfigRepo, roleAssignmentRepo,
         notificationRepo,
+        guidanceActorStateRepo,
+        guidanceInboxRepo,
+        guidanceEventLogRepo,
       },
       hydratables,
     }
@@ -233,6 +251,9 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       communityConfigRepo: new InMemoryCommunityConfigRepository(),
       roleAssignmentRepo: new InMemoryRoleAssignmentRepository(),
       notificationRepo: null,
+      guidanceActorStateRepo: new InMemoryGuidanceActorStateRepository(),
+      guidanceInboxRepo: new InMemoryGuidanceInboxRepository(),
+      guidanceEventLogRepo: new InMemoryGuidanceEventLogRepository(),
     },
     hydratables,
   }

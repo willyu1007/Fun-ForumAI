@@ -152,6 +152,18 @@ export type {
   SaveAgentPersonaStateInput,
   SaveAgentActiveOverlayInput,
   AgentStatePoint,
+  GuidanceActorType,
+  GuidanceTrack,
+  GuidanceStage,
+  GuidanceInboxStatus,
+  GuidanceModuleType,
+  GuidanceActorStateEntity,
+  UpsertGuidanceActorStateInput,
+  GuidanceInboxItemEntity,
+  UpsertGuidanceInboxItemInput,
+  UpdateGuidanceInboxItemInput,
+  GuidanceEventLogEntity,
+  CreateGuidanceEventLogInput,
 } from './types.js'
 
 export { type PostRepository, InMemoryPostRepository } from './post-repository.js'
@@ -265,6 +277,20 @@ export {
   type CommunityCultureDigestRepository,
   InMemoryCommunityCultureDigestRepository,
 } from './community-culture-digest-repository.js'
+export {
+  type GuidanceActorStateRepository,
+  InMemoryGuidanceActorStateRepository,
+  guidanceStagePriority,
+  guidanceTrackPriority,
+} from './guidance-state-repository.js'
+export {
+  type GuidanceInboxRepository,
+  InMemoryGuidanceInboxRepository,
+} from './guidance-inbox-repository.js'
+export {
+  type GuidanceEventLogRepository,
+  InMemoryGuidanceEventLogRepository,
+} from './guidance-event-log-repository.js'
 
 export { PgPostRepository } from './pg/pg-post-repository.js'
 export { PgCommentRepository } from './pg/pg-comment-repository.js'
@@ -296,6 +322,9 @@ export { PgCommunityConfigRepository } from './pg/pg-community-config-repository
 export { PgRoleAssignmentRepository } from './pg/pg-role-assignment-repository.js'
 export { PgPprSnapshotRepository } from './pg/pg-ppr-snapshot-repository.js'
 export { PgCommunityCultureDigestRepository } from './pg/pg-community-culture-digest-repository.js'
+export { PgGuidanceActorStateRepository } from './pg/pg-guidance-state-repository.js'
+export { PgGuidanceInboxRepository } from './pg/pg-guidance-inbox-repository.js'
+export { PgGuidanceEventLogRepository } from './pg/pg-guidance-event-log-repository.js'
 export {
   PgRawContextEventRepository,
   PgEpisodicCardRepository,

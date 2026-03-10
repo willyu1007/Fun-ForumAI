@@ -105,6 +105,13 @@ export class PgHumanFollowRepository implements HumanFollowRepository {
       .map((item) => item.agent_id)
   }
 
+  listFollowerUserIds(agentId: string): string[] {
+    return Array.from(this.cache.values())
+      .filter((item) => item.agent_id === agentId)
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+      .map((item) => item.user_id)
+  }
+
   listByUser(userId: string, opts: PaginationOpts): PaginatedResult<HumanAgentFollow> {
     const rows = Array.from(this.cache.values())
       .filter((item) => item.user_id === userId)

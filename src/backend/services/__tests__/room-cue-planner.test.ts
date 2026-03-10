@@ -1,6 +1,27 @@
 import { describe, expect, it } from 'vitest'
+import type { RoomEpisode } from '../../repos/types.js'
 import { RoomCuePlanner } from '../room-cue-planner.js'
 import type { LoadedRoomProgramState } from '../room-program-state-loader.js'
+
+function makeEpisode(now: Date): RoomEpisode {
+  return {
+    id: 'episode-1',
+    room_id: 'room-1',
+    program_id: 'program-1',
+    status: 'ACTIVE',
+    summary_text: '',
+    unresolved_question: null,
+    callback_bank_json: [],
+    energy: 0.45,
+    tension: 0.2,
+    turn_count: 4,
+    message_count: 4,
+    started_at: now,
+    ended_at: null,
+    created_at: now,
+    updated_at: now,
+  }
+}
 
 function makeState(overrides?: Partial<LoadedRoomProgramState>): LoadedRoomProgramState {
   const now = new Date('2026-03-10T09:00:00.000Z')
@@ -33,29 +54,19 @@ function makeState(overrides?: Partial<LoadedRoomProgramState>): LoadedRoomProgr
       idle_cue_after_ms: 30_000,
       allow_wandering: true,
       director_policy_json: {},
+      wander_policy_json: {
+        enabled: false,
+        entry_cooldown_ms: 180_000,
+        max_parallel_rooms: 2,
+        min_discoverability_score: 0.25,
+      },
       discoverability_tags: [],
       discoverability_short_hook: null,
       discoverability_default_view: 'live',
       created_at: now,
       updated_at: now,
     },
-    episode: {
-      id: 'episode-1',
-      room_id: 'room-1',
-      program_id: 'program-1',
-      status: 'ACTIVE',
-      summary_text: '',
-      unresolved_question: null,
-      callback_bank_json: [],
-      energy: 0.45,
-      tension: 0.2,
-      turn_count: 4,
-      message_count: 4,
-      started_at: now,
-      ended_at: null,
-      created_at: now,
-      updated_at: now,
-    },
+    episode: makeEpisode(now),
     snapshot: null,
     cast: [],
     members: [],
@@ -116,9 +127,10 @@ describe('RoomCuePlanner', () => {
 
   it('emits callback cue when callback bank has a reusable item', () => {
     const planner = new RoomCuePlanner()
+    const now = new Date('2026-03-10T09:00:00.000Z')
     const plan = planner.plan(makeState({
       episode: {
-        ...makeState().episode,
+        ...makeEpisode(now),
         callback_bank_json: [{
           message_id: 'msg-callback',
           author_agent_id: 'agent-3',
@@ -174,7 +186,7 @@ describe('RoomCuePlanner', () => {
     const idleTime = new Date(Date.now() - 20_000)
     const plan = planner.plan(makeState({
       episode: {
-        ...makeState().episode,
+        ...makeEpisode(idleTime),
         unresolved_question: null,
         energy: 0.1,
         turn_count: 8,

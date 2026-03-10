@@ -136,6 +136,11 @@ export class RoomProgramProjector {
       chemistry_score: 0,
       spotlight_weight: 0,
       last_spoke_at: null,
+      role_hint: null,
+      wander_eligible: true,
+      suppressed_until: null,
+      member_spotlight_weight: 1,
+      projection: null,
     })))
     const nextCastSignature = buildCastSignature(cast)
 

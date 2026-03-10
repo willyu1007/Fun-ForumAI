@@ -2,7 +2,7 @@
 
 ## Status
 - State: in-progress
-- Next step: 启动 `T-078 guidance-platform-foundation`，先冻结服务端事实源和 API 契约，再允许 Web 与召回子包进入实现。
+- Next step: 继续收敛 `T-079` 剩余 explanation / inline payoff surface，随后再启动 `T-080` 的 bell / proactive / metrics。
 
 ## Goal
 建立 Guidance & Onboarding V1 的项目级治理母包，明确：

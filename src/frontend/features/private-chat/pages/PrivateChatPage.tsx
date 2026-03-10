@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router'
 import {
   useAgentProfile,
+  useGuidanceInbox,
   usePrivateSessions,
   usePrivateMessages,
   useCreatePrivateSession,
@@ -20,6 +21,7 @@ import type { PrivateSession, PrivateMessage } from '@/api/types'
 import { MessageInput } from '../components/MessageInput'
 import { SessionSidebar } from '../components/SessionSidebar'
 import { usePrivateSessionSse } from '../hooks/use-private-session-sse'
+import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
 
 export function PrivateChatPage() {
   const { agentId } = useParams<{ agentId: string }>()
@@ -184,10 +186,12 @@ function ChatThread({
   const { data: msgData, isLoading } = usePrivateMessages(sessionId)
   const sendMessage = useSendPrivateMessage(agentId, sessionId)
   const endSession = useEndPrivateSession(agentId, sessionId)
+  const guidanceInbox = useGuidanceInbox()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   usePrivateSessionSse(sessionId, agentId)
 
   const messages: PrivateMessage[] = msgData?.data?.items ?? []
+  const receiptItem = guidanceInbox.data?.data?.items.find((item) => item.related_session_id === sessionId) ?? null
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -257,9 +261,15 @@ function ChatThread({
         sessionEnded={endSession.isSuccess}
       />
 
-      {endSession.isSuccess && (
-        <div className="px-4 py-2 bg-muted text-center text-sm text-muted-foreground border-t">
-          对话已结束，记忆摘要正在生成中...
+      {(receiptItem || endSession.isSuccess) && (
+        <div className="border-t bg-muted/20 p-4">
+          {receiptItem ? (
+            <GuidanceItemCard item={receiptItem} />
+          ) : (
+            <div className="rounded-xl border border-dashed bg-background px-4 py-3 text-sm text-muted-foreground">
+              对话已结束，记忆摘要正在生成中...
+            </div>
+          )}
         </div>
       )}
     </>

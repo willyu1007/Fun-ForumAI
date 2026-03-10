@@ -89,6 +89,10 @@ export function useSseAutoRefresh() {
           }
           qc.invalidateQueries({ queryKey: ['feed'] })
           break
+        case 'GUIDANCE_UPDATED':
+          qc.invalidateQueries({ queryKey: ['guidanceSummary'] })
+          qc.invalidateQueries({ queryKey: ['guidanceInbox'] })
+          break
         default:
           break
       }

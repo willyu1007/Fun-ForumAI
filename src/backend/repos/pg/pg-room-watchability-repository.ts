@@ -136,6 +136,15 @@ function toLiveCastArray(value: Prisma.JsonValue): RoomLiveCastItem[] {
   })
 }
 
+function toInputJson(value: Prisma.JsonValue | Record<string, unknown> | string[] | RoomCallbackCandidate[] | RoomSelectionReason[] | RoomWanderPolicy): Prisma.InputJsonValue {
+  return value as Prisma.InputJsonValue
+}
+
+function toNullableInputJson(value: Prisma.JsonValue | Record<string, unknown> | null | undefined): Prisma.InputJsonValue | typeof Prisma.DbNull {
+  if (value === null || value === undefined) return Prisma.DbNull
+  return value as Prisma.InputJsonValue
+}
+
 function paginate<T extends { id: string }>(items: T[], opts: PaginationOpts): PaginatedResult<T> {
   let start = 0
   if (opts.cursor) {
@@ -162,8 +171,8 @@ function toProgramPatchData(patch: UpdateRoomProgramInput): Prisma.RoomProgramUp
   if (patch.max_consecutive_turns !== undefined) data.maxConsecutiveTurns = patch.max_consecutive_turns
   if (patch.idle_cue_after_ms !== undefined) data.idleCueAfterMs = patch.idle_cue_after_ms
   if (patch.allow_wandering !== undefined) data.allowWandering = patch.allow_wandering
-  if (patch.director_policy_json !== undefined) data.directorPolicyJson = patch.director_policy_json
-  if (patch.wander_policy_json !== undefined) data.wanderPolicyJson = patch.wander_policy_json
+  if (patch.director_policy_json !== undefined) data.directorPolicyJson = toInputJson(patch.director_policy_json)
+  if (patch.wander_policy_json !== undefined) data.wanderPolicyJson = toInputJson(patch.wander_policy_json)
   if (patch.discoverability_tags !== undefined) data.discoverabilityTags = patch.discoverability_tags
   if (patch.discoverability_short_hook !== undefined) {
     data.discoverabilityShortHook = patch.discoverability_short_hook
@@ -174,15 +183,15 @@ function toProgramPatchData(patch: UpdateRoomProgramInput): Prisma.RoomProgramUp
   return data
 }
 
-function toProgramEventPatchData(patch: UpdateRoomProgramEventInput): Prisma.RoomProgramEventUpdateInput {
-  const data: Prisma.RoomProgramEventUpdateInput = {}
+function toProgramEventPatchData(patch: UpdateRoomProgramEventInput): Prisma.RoomProgramEventUncheckedUpdateInput {
+  const data: Prisma.RoomProgramEventUncheckedUpdateInput = {}
   if (patch.status !== undefined) data.status = patch.status
   if (patch.cue_type !== undefined) data.cueType = patch.cue_type
   if (patch.director_goal !== undefined) data.directorGoal = patch.director_goal
   if (patch.selected_speaker_agent_id !== undefined) {
     data.selectedSpeakerAgentId = patch.selected_speaker_agent_id
   }
-  if (patch.payload_json !== undefined) data.payloadJson = patch.payload_json
+  if (patch.payload_json !== undefined) data.payloadJson = toNullableInputJson(patch.payload_json)
   if (patch.error_text !== undefined) data.errorText = patch.error_text
   return data
 }
@@ -213,13 +222,13 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
         maxConsecutiveTurns: 1,
         idleCueAfterMs: 30_000,
         allowWandering: true,
-        directorPolicyJson: {},
-        wanderPolicyJson: {
-          enabled: false,
-          entry_cooldown_ms: 180_000,
-          max_parallel_rooms: 2,
-          min_discoverability_score: 0.25,
-        },
+          directorPolicyJson: toInputJson({}),
+          wanderPolicyJson: toInputJson({
+            enabled: false,
+            entry_cooldown_ms: 180_000,
+            max_parallel_rooms: 2,
+            min_discoverability_score: 0.25,
+          }),
         discoverabilityTags: [],
         discoverabilityShortHook: room.description || null,
         discoverabilityDefaultView: 'live',
@@ -262,13 +271,13 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
         maxConsecutiveTurns: 1,
         idleCueAfterMs: 30_000,
         allowWandering: true,
-        directorPolicyJson: {},
-        wanderPolicyJson: {
+        directorPolicyJson: toInputJson({}),
+        wanderPolicyJson: toInputJson({
           enabled: false,
           entry_cooldown_ms: 180_000,
           max_parallel_rooms: 2,
           min_discoverability_score: 0.25,
-        },
+        }),
         discoverabilityTags: [],
         discoverabilityShortHook: room.description || null,
         discoverabilityDefaultView: 'live',
@@ -365,7 +374,7 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
         data: {
           summaryText: input.summary_text,
           unresolvedQuestion: input.unresolved_question,
-          callbackBankJson: input.callback_bank_json,
+          callbackBankJson: toInputJson(input.callback_bank_json),
           energy: input.energy,
           tension: input.tension,
           turnCount: input.turn_count,
@@ -454,7 +463,7 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
         targetRole: input.target_role ?? null,
         selectedSpeakerAgentId: input.selected_speaker_agent_id ?? null,
         status: input.status ?? 'planned',
-        auditJson: input.audit_json ?? null,
+          auditJson: toNullableInputJson(input.audit_json),
       },
     })
     return this.toBeat(row)
@@ -481,7 +490,7 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
           directorGoal: input.director_goal ?? null,
           selectedSpeakerAgentId: input.selected_speaker_agent_id ?? null,
           idempotencyKey: input.idempotency_key,
-          payloadJson: input.payload_json ?? null,
+          payloadJson: toNullableInputJson(input.payload_json),
           errorText: input.error_text ?? null,
         },
       })
@@ -537,7 +546,7 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
             targetRole: input.target_role ?? null,
             selectedSpeakerAgentId: input.selected_speaker_agent_id,
             status: input.beat_status ?? 'selected',
-            auditJson: input.beat_audit_json ?? null,
+            auditJson: toNullableInputJson(input.beat_audit_json),
           },
         })
 
@@ -549,7 +558,9 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
             cueType: input.cue_type,
             directorGoal: input.director_goal,
             selectedSpeakerAgentId: input.selected_speaker_agent_id,
-            payloadJson: input.event_payload_json ?? existingEvent.payloadJson,
+            payloadJson: input.event_payload_json !== undefined
+              ? toNullableInputJson(input.event_payload_json)
+              : toNullableInputJson(existingEvent.payloadJson),
           },
         })
 
@@ -579,7 +590,7 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
           targetRole: input.target_role ?? null,
           selectedSpeakerAgentId: input.selected_speaker_agent_id,
           status: input.beat_status ?? 'selected',
-          auditJson: input.beat_audit_json ?? null,
+          auditJson: toNullableInputJson(input.beat_audit_json),
         },
       })
 
@@ -594,7 +605,7 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
           directorGoal: input.director_goal,
           selectedSpeakerAgentId: input.selected_speaker_agent_id,
           idempotencyKey: input.idempotency_key,
-          payloadJson: input.event_payload_json ?? null,
+          payloadJson: toNullableInputJson(input.event_payload_json),
           errorText: null,
         },
       })
@@ -653,7 +664,7 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
         candidateAgentId: entry.candidate_agent_id,
         selected: entry.selected,
         finalScore: entry.final_score,
-        reasonsJson: entry.reasons_json,
+        reasonsJson: toInputJson(entry.reasons_json),
       },
     })))
     return rows.map((row) => this.toSelectionLedger(row))
@@ -998,7 +1009,7 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
         candidateAgentId: entry.candidate_agent_id,
         selected: entry.selected,
         finalScore: entry.final_score,
-        reasonsJson: entry.reasons_json,
+        reasonsJson: toInputJson(entry.reasons_json),
       },
     })))
   }

@@ -24,3 +24,12 @@
 - `T-078` 进入实现时，先冻结 `summary.modules[]`、reason code、state merge、完整事件接入矩阵和 `guidance-copy-service` contract。
 - `T-079` 启动前，必须引用 `T-078` 的 frozen contract，不得自行补 event/stage/reason。
 - `T-080` 启动前，必须确认 canonical guidance item 已在首页 / inbox / inline / receipt 闭环稳定。
+
+## 2026-03-10 implementation update
+- `T-078` 已进入产品代码实现：
+  - backend guidance schema / repo / service / route / SSE / hook wiring 已落地；
+  - canonical module contract 已用于 summary / inbox / receipt。
+- `T-079` 已进入产品代码实现：
+  - 首页首屏已改为 dual entry + proof；
+  - inbox、private receipt、owner reveal gate 已接入。
+- 当前剩余风险集中在 repo 既有 typecheck 噪音与部分 explanation surface 未补全，尚未进入 `T-080`。

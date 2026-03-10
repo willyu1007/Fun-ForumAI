@@ -107,7 +107,7 @@ Project: `main`
 | Task | Status | Dev Docs |
 | --- | --- | --- |
 | T-077 guidance-onboarding-v1-master | in-progress | dev-docs/active/guidance-onboarding-v1-master |
-| T-078 guidance-platform-foundation | planned | dev-docs/active/guidance-platform-foundation |
-| T-079 guidance-web-core-experience | planned | dev-docs/active/guidance-web-core-experience |
+| T-078 guidance-platform-foundation | in-progress | dev-docs/active/guidance-platform-foundation |
+| T-079 guidance-web-core-experience | in-progress | dev-docs/active/guidance-web-core-experience |
 | T-080 guidance-recall-and-observability | planned | dev-docs/active/guidance-recall-and-observability |
 <!-- AUTO-GENERATED:END feature-map -->

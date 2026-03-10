@@ -4,6 +4,8 @@ import { privateChannelServices, relationService } from '../container.js'
 import { AppError, ValidationError } from '../lib/errors.js'
 import { ensureDevAuthUserPersisted } from '../lib/dev-auth-user.js'
 import { buildAgentReadPayload } from '../identity/agent-identity.js'
+import { guidanceOrchestrator } from '../container.js'
+import { trackGuidanceEventFromRequest } from '../guidance/http.js'
 
 function getServices() {
   return privateChannelServices
@@ -50,6 +52,17 @@ privateChannelRouter.post('/agents/:agentId/chat/sessions', requireHumanAuth, as
     const session = await services.channelService.createSession(
       String(req.params.agentId),
       req.user!.userId,
+    )
+    await trackGuidanceEventFromRequest(
+      req,
+      res,
+      guidanceOrchestrator,
+      'PRIVATE_SESSION_CREATED',
+      {
+        agent_id: String(req.params.agentId),
+        session_id: session.id,
+      },
+      { dedup_key: `private_session_created:${req.user!.userId}:${session.id}` },
     )
     res.status(201).json({ data: session })
   } catch (err) {
@@ -105,11 +118,25 @@ privateChannelRouter.post(
     }
 
     try {
+      const beforeCount = await services.channelService.getMessageCount(String(req.params.sessionId))
       const result = await services.channelService.sendMessage(
         String(req.params.sessionId),
         req.user!.userId,
         content,
       )
+      if (beforeCount === 0) {
+        await trackGuidanceEventFromRequest(
+          req,
+          res,
+          guidanceOrchestrator,
+          'PRIVATE_FIRST_MESSAGE_SENT',
+          {
+            agent_id: String(req.params.agentId),
+            session_id: String(req.params.sessionId),
+          },
+          { dedup_key: `private_first_message:${req.user!.userId}:${String(req.params.sessionId)}` },
+        )
+      }
       res.json({ data: result })
     } catch (err) {
       handleError(res, err)
@@ -163,6 +190,17 @@ privateChannelRouter.post(
         console.error('[PrivateChannelAPI] Digest generation failed:', err)
       })
 
+      await trackGuidanceEventFromRequest(
+        req,
+        res,
+        guidanceOrchestrator,
+        'PRIVATE_SESSION_ENDED',
+        {
+          agent_id: String(req.params.agentId),
+          session_id: String(req.params.sessionId),
+        },
+        { dedup_key: `private_session_ended:${req.user!.userId}:${String(req.params.sessionId)}` },
+      )
       res.json({ data: { session, digest_status: 'GENERATING' } })
     } catch (err) {
       handleError(res, err)
@@ -189,6 +227,7 @@ privateChannelRouter.get('/agents/:agentId/memories', requireHumanAuth, async (r
     const limit = Math.min(parseInt(String(req.query.limit ?? '20'), 10), 50)
     const cursor = req.query.cursor as string | undefined
     const sourceType = req.query.source_type as string | undefined
+    const sourceSessionId = req.query.source_session_id as string | undefined
     const sourceRefType = req.query.source_ref_type as string | undefined
     const sourceRefId = req.query.source_ref_id as string | undefined
     const forgotten = req.query.forgotten === 'true' ? true
@@ -199,10 +238,22 @@ privateChannelRouter.get('/agents/:agentId/memories', requireHumanAuth, async (r
       limit,
       cursor,
       source_type: sourceType as 'PRIVATE_CHAT' | 'PUBLIC_OBSERVATION' | 'SYSTEM' | undefined,
+      source_session_id: sourceSessionId,
       source_ref_type: sourceRefType,
       source_ref_id: sourceRefId,
       forgotten,
     })
+    await trackGuidanceEventFromRequest(
+      req,
+      res,
+      guidanceOrchestrator,
+      'MEMORIES_VIEWED',
+      {
+        agent_id: String(req.params.agentId),
+        source_session_id: sourceSessionId ?? null,
+      },
+      { dedup_key: `memories_viewed:${req.user!.userId}:${String(req.params.agentId)}:${sourceSessionId ?? 'all'}:${cursor ?? 'root'}` },
+    )
     res.json({ data: result })
   } catch (err) {
     handleError(res, err)

@@ -20,6 +20,8 @@ import { resolveStageSpecFromRules } from '../stage/index.js'
 import { validate } from '../validation/validate.js'
 import { createAudienceMessageSchema } from '../validation/schemas.js'
 import { buildAgentReadPayload } from '../identity/agent-identity.js'
+import { guidanceOrchestrator } from '../container.js'
+import { trackGuidanceEventFromRequest } from '../guidance/http.js'
 
 export const readApiRouter: IRouter = Router()
 
@@ -160,10 +162,26 @@ readApiRouter.get('/feed', async (req, res) => {
         relation_context: { hint },
       }
     })
+    await trackGuidanceEventFromRequest(
+      req,
+      res,
+      guidanceOrchestrator,
+      followingOnly ? 'FOLLOWING_FEED_VIEWED' : 'FEED_VIEWED',
+      { following_only: followingOnly },
+      { dedup_key: `${followingOnly ? 'following_feed' : 'feed'}:${cursor ?? 'root'}:${feedSort ?? 'default'}` },
+    )
     res.json({ data: enriched, meta: { cursor: result.next_cursor } })
     return
   }
 
+  await trackGuidanceEventFromRequest(
+    req,
+    res,
+    guidanceOrchestrator,
+    followingOnly ? 'FOLLOWING_FEED_VIEWED' : 'FEED_VIEWED',
+    { following_only: followingOnly },
+    { dedup_key: `${followingOnly ? 'following_feed' : 'feed'}:${cursor ?? 'root'}:${feedSort ?? 'default'}` },
+  )
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
 })
 
@@ -171,6 +189,14 @@ readApiRouter.get('/posts/:postId', async (req, res) => {
   const user = tryAuthenticateHuman(req)
   const post = await forumReadService.getPost(req.params.postId, user?.userId)
   if (!config.features.audienceAftershowWebV1) {
+    await trackGuidanceEventFromRequest(
+      req,
+      res,
+      guidanceOrchestrator,
+      'POST_VIEWED',
+      { post_id: post.id, author_agent_id: post.author_agent_id },
+      { dedup_key: `post_viewed:${post.id}` },
+    )
     res.json({ data: post })
     return
   }
@@ -184,6 +210,14 @@ readApiRouter.get('/posts/:postId', async (req, res) => {
         audience_thread_meta: null,
       }
 
+  await trackGuidanceEventFromRequest(
+    req,
+    res,
+    guidanceOrchestrator,
+    'POST_VIEWED',
+    { post_id: post.id, author_agent_id: post.author_agent_id },
+    { dedup_key: `post_viewed:${post.id}` },
+  )
   res.json({
     data: {
       ...post,
@@ -274,7 +308,7 @@ readApiRouter.get('/posts/:postId/aside-seats', async (req, res) => {
   })
 })
 
-readApiRouter.get('/highlights', async (_req, res) => {
+readApiRouter.get('/highlights', async (req, res) => {
   if (!config.features.globalHighlightsV1) {
     const payload = buildEmptyGlobalHighlightsPayload()
     res.json({ data: payload, meta: payload.meta })
@@ -282,6 +316,14 @@ readApiRouter.get('/highlights', async (_req, res) => {
   }
 
   const data = await globalHighlightsService.collectToday()
+  await trackGuidanceEventFromRequest(
+    req,
+    res,
+    guidanceOrchestrator,
+    'HIGHLIGHTS_VIEWED',
+    {},
+    { dedup_key: `highlights:${data.meta.generated_at.slice(0, 10)}` },
+  )
   res.json({ data, meta: data.meta })
 })
 

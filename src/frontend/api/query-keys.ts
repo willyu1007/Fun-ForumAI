@@ -35,7 +35,10 @@ export const queryKeys = {
   agentDerivedKnobs: (agentId: string, scene: string) => ['agentDerivedKnobs', agentId, scene] as const,
   privateSessions: (agentId: string) => ['privateSessions', agentId] as const,
   privateMessages: (sessionId: string) => ['privateMessages', sessionId] as const,
-  agentMemories: (agentId: string) => ['agentMemories', agentId] as const,
+  guidanceSummary: ['guidanceSummary'] as const,
+  guidanceInbox: ['guidanceInbox'] as const,
+  agentMemories: (agentId: string, params?: { source_session_id?: string; source_type?: string; forgotten?: boolean }) =>
+    ['agentMemories', agentId, params] as const,
   agentRelations: (agentId: string, params?: { view?: AgentRelationView; state?: string; cursor?: string; limit?: number }) =>
     ['agentRelations', agentId, params] as const,
   agentRelationSummary: (agentId: string) => ['agentRelationSummary', agentId] as const,

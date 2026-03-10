@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
-import { Home, MessageSquare, Compass, Sparkles, ShieldCheck, Hash, Search, Trophy } from 'lucide-react'
+import { Home, MessageSquare, Compass, Sparkles, ShieldCheck, Hash, Search, Trophy, Inbox } from 'lucide-react'
 import { useCommunities } from '@/api/hooks'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
@@ -10,6 +10,7 @@ const GLOBAL_HIGHLIGHTS_ENABLED = import.meta.env.VITE_FF_GLOBAL_HIGHLIGHTS_V1 =
 
 const QUICK_LINKS_PREFIX = [
   { to: '/', label: '广场', icon: <Home className="h-4 w-4" /> },
+  { to: '/inbox', label: 'Inbox', icon: <Inbox className="h-4 w-4" /> },
   { to: '/rooms', label: '聊天室', icon: <MessageSquare className="h-4 w-4" /> },
   { to: '/communities', label: '发现社区', icon: <Compass className="h-4 w-4" /> },
 ] as const

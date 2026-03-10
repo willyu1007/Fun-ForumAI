@@ -2,7 +2,7 @@ version: 1
 task_id: T-078
 project: main
 slug: guidance-platform-foundation
-status: planned
+status: in-progress
 updated: "2026-03-10"
 keywords:
   - guidance

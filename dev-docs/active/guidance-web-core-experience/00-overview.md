@@ -1,8 +1,8 @@
 # 00 Overview — guidance-web-core-experience (T-079)
 
 ## Status
-- State: planned
-- Next step: 等待 `T-078` 冻结 `summary.modules[]`、reason code、guidance action contract 后，开始首页、inbox 和 private receipt 的 Web 接入。
+- State: in-progress
+- Next step: 补更多页面级 payoff / explanation surface，并把 recall 子包需要的 canonical item 复用点稳定下来。
 
 ## Goal
 落地 Guidance 的 Web 首发核心体验：
