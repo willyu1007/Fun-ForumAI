@@ -20,7 +20,7 @@ describe('PgRoomWatchabilityRepository', () => {
       updatedAt: new Date('2026-03-10T10:00:00.000Z'),
     }
     const tx = {
-      $queryRaw: vi.fn(async () => []),
+      $executeRaw: vi.fn(async () => 1),
       roomEpisode: {
         findFirst: vi.fn(async () => existingEpisode),
         create: vi.fn(),
@@ -33,7 +33,7 @@ describe('PgRoomWatchabilityRepository', () => {
     const repo = new PgRoomWatchabilityRepository(prisma as never)
     const episode = await repo.ensureActiveEpisode('room-1', 'prog-1')
 
-    expect(tx.$queryRaw).toHaveBeenCalledOnce()
+    expect(tx.$executeRaw).toHaveBeenCalledOnce()
     expect(tx.roomEpisode.findFirst).toHaveBeenCalledWith({
       where: { roomId: 'room-1', status: 'ACTIVE' },
       orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
@@ -45,7 +45,7 @@ describe('PgRoomWatchabilityRepository', () => {
   it('creates a new active episode only after the advisory lock is held', async () => {
     const createdAt = new Date('2026-03-10T10:05:00.000Z')
     const tx = {
-      $queryRaw: vi.fn(async () => []),
+      $executeRaw: vi.fn(async () => 1),
       roomEpisode: {
         findFirst: vi.fn(async () => null),
         create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
@@ -73,7 +73,7 @@ describe('PgRoomWatchabilityRepository', () => {
     const repo = new PgRoomWatchabilityRepository(prisma as never)
     const episode = await repo.ensureActiveEpisode('room-2', 'prog-2')
 
-    expect(tx.$queryRaw).toHaveBeenCalledOnce()
+    expect(tx.$executeRaw).toHaveBeenCalledOnce()
     expect(tx.roomEpisode.create).toHaveBeenCalledWith({
       data: {
         roomId: 'room-2',

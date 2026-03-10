@@ -20,6 +20,7 @@ import type { RoomWatchabilityRepository } from '../repos/room-watchability-repo
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { LlmTokenUsage } from '../llm/types.js'
 import type { PromptComposeAudit } from '../runtime/types.js'
+import { sanitizeChatOutput } from '../runtime/chat-output-sanitizer.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import type { PersonaObservationV1 } from '../runtime/persona-observation.js'
@@ -457,10 +458,12 @@ export class ConversationClock {
     const chatShortTermState = this.buildChatShortTermState(roomId, recentMsgs.length, runtimeChatContext)
 
     const recentText = recentMsgs
-      .map((m) => {
+      .flatMap((m) => {
+        const body = this.sanitizePromptText(m.body)
+        if (!body) return []
         const a = this.deps.agentRepo.findById(m.author_id)
         const name = a?.display_name ?? m.author_id
-        return `**${name}**：${m.body}`
+        return [`**${name}**：${body}`]
       })
       .join('\n')
 
@@ -595,6 +598,11 @@ export class ConversationClock {
       live_hook: runtimeChatContext?.promptVariables.live_hook ?? '',
       unresolved_question: runtimeChatContext?.promptVariables.unresolved_question ?? '',
       last_highlight: runtimeChatContext?.promptVariables.last_highlight ?? '',
+      public_projection_hint: runtimeChatContext?.promptVariables.public_projection_hint ?? '',
+      signature_moves: runtimeChatContext?.promptVariables.signature_moves ?? '',
+      shared_memory_summary: runtimeChatContext?.promptVariables.shared_memory_summary ?? '',
+      role_hint: runtimeChatContext?.promptVariables.role_hint ?? '',
+      projection_updated_at: runtimeChatContext?.promptVariables.projection_updated_at ?? '',
       layer_traits: layers.layer_traits,
       layer_style: layers.layer_style,
       layer_instructions: layers.layer_instructions,
@@ -620,7 +628,8 @@ export class ConversationClock {
       allowCrossFamily: false,
     })
     const latencyMs = response.latencyMs ?? 0
-    const content = response.content.trim()
+    const sanitized = sanitizeChatOutput(response.content)
+    const content = sanitized.text
     const observation = buildPersonaObservation({
       sourceCallsiteId: 'conversation-clock-chat-reply',
       scene: 'chat_room',
@@ -635,7 +644,7 @@ export class ConversationClock {
       renderDecision: response.renderDecision,
       usage: response.usage,
       latencyMs,
-      parseSuccess: true,
+      parseSuccess: Boolean(content) && !sanitized.looks_meta,
       promptAudit,
       llmProviderId: response.renderDecision.providerId,
       llmModelId: response.renderDecision.modelId,
@@ -654,7 +663,7 @@ export class ConversationClock {
       }
     }
 
-    if (!content) return { kind: 'empty', body: '', renderDecision }
+    if (!content || sanitized.looks_meta) return { kind: 'empty', body: '', renderDecision }
     return {
       kind: 'normal',
       body: content,
@@ -745,9 +754,11 @@ export class ConversationClock {
     recentMessages: Array<{ body: string }>,
     runtimeChatContext: ChatroomRuntimeContextResult | null,
   ): string[] {
-    const bodies = recentMessages.map((message) => message.body)
-    const liveHook = runtimeChatContext?.chatContext.program?.live_hook
-    const unresolvedQuestion = runtimeChatContext?.chatContext.program?.unresolved_question
+    const bodies = recentMessages
+      .map((message) => this.sanitizePromptText(message.body))
+      .filter((body): body is string => Boolean(body))
+    const liveHook = this.sanitizePromptText(runtimeChatContext?.chatContext.program?.live_hook)
+    const unresolvedQuestion = this.sanitizePromptText(runtimeChatContext?.chatContext.program?.unresolved_question)
     if (liveHook) bodies.push(liveHook)
     if (unresolvedQuestion) bodies.push(unresolvedQuestion)
     return bodies
@@ -757,9 +768,11 @@ export class ConversationClock {
     recentMessages: Array<{ body: string }>,
     runtimeChatContext: ChatroomRuntimeContextResult | null,
   ): string {
-    const bodies = recentMessages.map((message) => message.body)
-    const liveHook = runtimeChatContext?.chatContext.program?.live_hook
-    const unresolvedQuestion = runtimeChatContext?.chatContext.program?.unresolved_question
+    const bodies = recentMessages
+      .map((message) => this.sanitizePromptText(message.body))
+      .filter((body): body is string => Boolean(body))
+    const liveHook = this.sanitizePromptText(runtimeChatContext?.chatContext.program?.live_hook)
+    const unresolvedQuestion = this.sanitizePromptText(runtimeChatContext?.chatContext.program?.unresolved_question)
     if (liveHook) {
       bodies.push(`当前看点：${liveHook}`)
     }
@@ -792,9 +805,16 @@ export class ConversationClock {
       `scene:${program.scene_type}`,
       `role:${program.self_role ?? 'UNASSIGNED'}`,
       `episode:${program.episode_id}`,
-      `hook:${program.live_hook ?? ''}`,
-      `question:${program.unresolved_question ?? ''}`,
+      `hook:${this.sanitizePromptText(program.live_hook) ?? ''}`,
+      `question:${this.sanitizePromptText(program.unresolved_question) ?? ''}`,
     ].join('|')
+  }
+
+  private sanitizePromptText(text: string | null | undefined): string | null {
+    if (!text) return null
+    const sanitized = sanitizeChatOutput(text)
+    if (!sanitized.text || sanitized.looks_meta) return null
+    return sanitized.text
   }
 
   private async recordGeneratedMessageRun(input: {

@@ -177,4 +177,73 @@ describe('RoomProgramEngine', () => {
     expect(latestBeat?.id).toBe(first?.beat_id)
     expect(ledgers).toHaveLength(2)
   })
+
+  it('consumes an existing manually planned cue before generating a new one', async () => {
+    const watchabilityRepo = new InMemoryRoomWatchabilityRepository()
+    const state = makeLoadedState()
+    const now = new Date('2026-03-10T10:01:00.000Z')
+
+    const beat = await watchabilityRepo.createEpisodeBeat({
+      room_id: state.room.id,
+      episode_id: state.episode!.id,
+      ordinal: 7,
+      beat_type: 'CALLBACK',
+      cue_type: 'CALLBACK',
+      director_goal: '把 owner 的追问接起来',
+      prompt_hint: '自然 callback',
+      target_role: 'FOIL',
+      selected_speaker_agent_id: 'agent-2',
+      status: 'selected',
+      audit_json: null,
+    })
+    const event = await watchabilityRepo.createProgramEvent({
+      room_id: state.room.id,
+      episode_id: state.episode!.id,
+      beat_id: beat.id,
+      event_type: 'PROGRAM_CUE',
+      status: 'PLANNED',
+      cue_type: 'CALLBACK',
+      director_goal: '把 owner 的追问接起来',
+      selected_speaker_agent_id: 'agent-2',
+      idempotency_key: 'manual-cue:test',
+      payload_json: { manual: true },
+    })
+
+    const engine = new RoomProgramEngine({
+      stateLoader: {
+        load: async () => ({
+          ...state,
+          latestBeat: {
+            ...beat,
+            created_at: now,
+          },
+          latestEvent: {
+            ...event,
+            created_at: now,
+            updated_at: now,
+          },
+        }),
+      } as never,
+      cuePlanner: new RoomCuePlanner(),
+      scorer: new RoomProgramScorer(),
+      watchabilityRepo,
+    })
+
+    const turn = await engine.planNextTurn({
+      roomId: state.room.id,
+      triggerAgentId: 'agent-trigger',
+      canSpeak: async () => true,
+    })
+
+    expect(turn).toEqual({
+      episode_id: state.episode!.id,
+      selected_speaker_agent_id: 'agent-2',
+      speaker_role: 'FOIL',
+      cue_type: 'CALLBACK',
+      beat_type: 'CALLBACK',
+      director_goal: '把 owner 的追问接起来',
+      beat_id: beat.id,
+      program_event_id: event.id,
+    })
+  })
 })

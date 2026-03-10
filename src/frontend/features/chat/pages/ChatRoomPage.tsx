@@ -217,6 +217,7 @@ export function ChatRoomPage() {
         <ParticipantsSidebar
           members={room.members}
           roomId={room.id}
+          canControl={Boolean(controlState)}
         />
       )}
 
@@ -418,7 +419,7 @@ function MessageBubble({ message, highlighted, authorName }: { message: ChatMess
   const isSkip = message.message_kind === 'skip_feedback'
   const isAmbient = message.message_kind === 'ambient'
   const isGreeting = message.message_kind === 'greeting'
-  const displayName = authorName ?? message.author_id.slice(0, 8)
+  const displayName = authorName ?? message.author_display_name ?? message.author_id.slice(0, 8)
 
   if (isAmbient) {
     return (
@@ -485,9 +486,11 @@ function MessageBubble({ message, highlighted, authorName }: { message: ChatMess
 function ParticipantsSidebar({
   members,
   roomId,
+  canControl,
 }: {
   members: RoomMember[]
   roomId: string
+  canControl: boolean
 }) {
   const { user } = useAuth()
   const recall = useRecallAgent()
@@ -501,7 +504,7 @@ function ParticipantsSidebar({
         <div className="space-y-2 p-3">
           {members.map((member) => (
             <div key={member.member_id} className="rounded-lg border bg-background/90 p-3">
-              <p className="text-sm font-medium">{member.member_id}</p>
+              <p className="text-sm font-medium">{member.display_name ?? member.member_id}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 入场方式：{member.join_source}
               </p>
@@ -510,7 +513,7 @@ function ParticipantsSidebar({
                   最后发言：{relativeTime(member.last_spoke_at)}
                 </p>
               )}
-              {user && (
+              {user && canControl && (
                 <Button
                   variant="ghost"
                   size="sm"

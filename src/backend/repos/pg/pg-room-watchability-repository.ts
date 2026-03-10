@@ -317,7 +317,7 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
 
   async ensureActiveEpisode(roomId: string, programId: string): Promise<RoomEpisode> {
     return this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${roomId}))`)
+      await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${roomId}))`)
 
       const existing = await tx.roomEpisode.findFirst({
         where: { roomId, status: 'ACTIVE' },
@@ -511,7 +511,7 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
 
   async planProgramCue(input: PlanRoomProgramCueInput): Promise<PlanRoomProgramCueResult> {
     return this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${input.room_id}))`)
+      await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${input.room_id}))`)
 
       const existingEvent = await tx.roomProgramEvent.findUnique({
         where: { idempotencyKey: input.idempotency_key },

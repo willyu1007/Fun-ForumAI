@@ -220,4 +220,52 @@ describe('RoomProjector', () => {
 
     expect(episode?.callback_bank_json.some((candidate) => candidate.message_id === oldestMessageId)).toBe(true)
   })
+
+  it('keeps historical speaker names readable after members have left the room', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const roomRepo = new InMemoryRoomRepository()
+    const messageRepo = new InMemoryMessageRepository()
+    const watchabilityRepo = new InMemoryRoomWatchabilityRepository()
+
+    const host = agentRepo.create({ owner_id: 'u1', display_name: 'Host' })
+    const foil = agentRepo.create({ owner_id: 'u2', display_name: 'Foil' })
+    const room = await roomRepo.create({
+      name: 'History Room',
+      slug: 'history-room',
+      description: '回看消息时也要看得懂',
+      created_by_agent_id: host.id,
+    })
+
+    await roomRepo.addMember(room.id, host.id, 'creator', 20_000)
+    await roomRepo.addMember(room.id, foil.id, 'dispatched', 20_000)
+
+    const hostMessage = await messageRepo.create({
+      room_id: room.id,
+      author_id: host.id,
+      body: '我先把话题推开。',
+    })
+    await roomRepo.recordMemberMessage(room.id, host.id, hostMessage.created_at)
+
+    const foilMessage = await messageRepo.create({
+      room_id: room.id,
+      author_id: foil.id,
+      body: '我接着把这个梗往前推。',
+    })
+    await roomRepo.recordMemberMessage(room.id, foil.id, foilMessage.created_at)
+
+    await roomRepo.removeMember(room.id, foil.id)
+
+    const projector = new RoomProjector({
+      roomRepo,
+      messageRepo,
+      agentRepo,
+      watchabilityRepo,
+    })
+
+    const projection = await projector.refreshRoom(room.id)
+
+    expect(projection?.snapshot.live_hook).toContain('Foil')
+    expect(projection?.snapshot.recap_short).toContain('Foil')
+    expect(projection?.snapshot.recap_short).not.toContain(foil.id)
+  })
 })

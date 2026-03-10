@@ -4,11 +4,12 @@ import { queryKeys } from '../query-keys'
 import { toSearchString } from '../utils'
 import type { ApiResponse, Agent, FollowedAgentItem, HumanVoteResult, InclinationAsset, InclinationAssetCurrentState } from '../types'
 
-export function useMyAgents() {
+export function useMyAgents(enabled = true) {
   return useQuery({
     queryKey: queryKeys.myAgents,
     queryFn: () => api.get('me/agents').json<ApiResponse<Agent[]>>(),
     staleTime: 60_000,
+    enabled,
   })
 }
 

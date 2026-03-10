@@ -8,6 +8,7 @@ import type {
   RoomProgramReadModel,
 } from '../repos/types.js'
 import type { ExecutionContext } from '../runtime/types.js'
+import { sanitizeChatOutput } from '../runtime/chat-output-sanitizer.js'
 import { RoomProjector } from './room-projector.js'
 import { toNamedRecentMessages } from './chatroom-watchability-heuristics.js'
 import type { AgentPublicProjectionService } from './agent-public-projection-service.js'
@@ -37,6 +38,13 @@ function buildDirectorGoal(program: RoomProgramReadModel, room: Room, liveHook: 
     ?? program.discoverability.short_hook
     ?? room.description
     ?? `继续把「${room.name}」这场 live 群聊往前推进。`
+}
+
+function sanitizePromptText(text: string | null | undefined): string | null {
+  if (!text) return null
+  const sanitized = sanitizeChatOutput(text)
+  if (!sanitized.text || sanitized.looks_meta) return null
+  return sanitized.text
 }
 
 export class ChatroomRuntimeContextBuilder {
@@ -88,12 +96,17 @@ export class ChatroomRuntimeContextBuilder {
       }
     }
 
-    const recent = toNamedRecentMessages(recentMessages, recentAgentNames).map((message) => ({
-      author_name: message.author_name,
-      body: message.body,
-      is_self: message.author_id === agentId,
-      message_kind: message.message_kind,
-    }))
+    const recent = toNamedRecentMessages(recentMessages, recentAgentNames).flatMap((message) => {
+      const body = sanitizePromptText(message.body)
+      return body
+        ? [{
+            author_name: message.author_name,
+            body,
+            is_self: message.author_id === agentId,
+            message_kind: message.message_kind,
+          }]
+        : []
+    })
 
     const programReadModel = this.deps.roomProjector.toProgramReadModel(
       program,
@@ -107,6 +120,11 @@ export class ChatroomRuntimeContextBuilder {
       latestEvent?.director_goal
       ?? latestBeat?.director_goal
       ?? buildDirectorGoal(programReadModel, room, snapshot?.live_hook ?? null)
+
+    const liveHook = sanitizePromptText(snapshot?.live_hook)
+    const unresolvedQuestion = sanitizePromptText(snapshot?.unresolved_question)
+    const sharedMemorySummary = sanitizePromptText(latestSharedMemory?.summary_text)
+    const lastHighlight = sanitizePromptText(latestHighlight?.text ?? snapshot?.last_highlight_text)
 
     const chatContext: NonNullable<ExecutionContext['chatContext']> = {
       room_name: room.name,
@@ -126,11 +144,11 @@ export class ChatroomRuntimeContextBuilder {
               role: entry.role,
               last_spoke_at: entry.last_spoke_at?.toISOString() ?? null,
             })),
-            live_hook: snapshot?.live_hook ?? null,
-            unresolved_question: snapshot?.unresolved_question ?? null,
+            live_hook: liveHook,
+            unresolved_question: unresolvedQuestion,
             public_projection_hint: selfProjection?.public_projection_hint ?? null,
             signature_moves: selfProjection?.signature_moves_json ?? [],
-            shared_memory_summary: latestSharedMemory?.summary_text ?? null,
+            shared_memory_summary: sharedMemorySummary,
             role_hint: selfMember?.role_hint ?? null,
             projection_updated_at: selfProjection?.updated_at.toISOString() ?? null,
           }
@@ -150,7 +168,7 @@ export class ChatroomRuntimeContextBuilder {
             cast_snapshot: stringifyCast(cast),
             live_hook: chatContext.program.live_hook ?? '',
             unresolved_question: chatContext.program.unresolved_question ?? '',
-            last_highlight: latestHighlight?.text ?? snapshot?.last_highlight_text ?? '',
+            last_highlight: lastHighlight ?? '',
             public_projection_hint: chatContext.program.public_projection_hint ?? '',
             signature_moves: chatContext.program.signature_moves.join('、'),
             shared_memory_summary: chatContext.program.shared_memory_summary ?? '',

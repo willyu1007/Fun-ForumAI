@@ -35,6 +35,11 @@ export class RoomProgramEngine {
     const state = await this.deps.stateLoader.load(input.roomId)
     if (!state || !state.program.enabled || !state.episode) return null
 
+    const pendingPlannedTurn = await this.reusePendingPlannedTurn(state, input.canSpeak)
+    if (pendingPlannedTurn) {
+      return pendingPlannedTurn
+    }
+
     const cue = this.deps.cuePlanner.plan(state, input.triggerAgentId)
     if (!cue) return null
 
@@ -142,6 +147,38 @@ export class RoomProgramEngine {
       director_goal: cue.director_goal,
       beat_id: plannedCue.beat.id,
       program_event_id: plannedCue.event.id,
+    }
+  }
+
+  private async reusePendingPlannedTurn(
+    state: Awaited<ReturnType<RoomProgramStateLoader['load']>>,
+    canSpeak?: (agentId: string) => Promise<boolean>,
+  ): Promise<PlannedProgramTurn | null> {
+    if (!state?.episode || !state.latestEvent || !state.latestBeat) return null
+    if (state.latestEvent.status !== 'PLANNED') return null
+    if (state.latestEvent.event_type !== 'PROGRAM_CUE') return null
+    if (state.latestEvent.episode_id !== state.episode.id) return null
+    if (state.latestEvent.beat_id !== state.latestBeat.id) return null
+
+    const selectedAgentId =
+      state.latestEvent.selected_speaker_agent_id
+      ?? state.latestBeat.selected_speaker_agent_id
+      ?? null
+    if (!selectedAgentId) return null
+
+    if (canSpeak && !await canSpeak(selectedAgentId)) {
+      return null
+    }
+
+    return {
+      episode_id: state.episode.id,
+      selected_speaker_agent_id: selectedAgentId,
+      speaker_role: state.cast.find((candidate) => candidate.agent_id === selectedAgentId)?.role ?? null,
+      cue_type: state.latestEvent.cue_type ?? state.latestBeat.cue_type,
+      beat_type: state.latestBeat.beat_type,
+      director_goal: state.latestEvent.director_goal ?? state.latestBeat.director_goal,
+      beat_id: state.latestBeat.id,
+      program_event_id: state.latestEvent.id,
     }
   }
 

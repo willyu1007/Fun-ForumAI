@@ -137,6 +137,12 @@ export class RoomProjector {
       room.id,
       Math.max(WATCHABILITY_RECENT_MESSAGE_LIMIT, program.callback_window),
     )
+    for (const message of recentMessages) {
+      const agent = this.deps.agentRepo.findById(message.author_id)
+      if (agent?.display_name && !agentNames.has(message.author_id)) {
+        agentNames.set(message.author_id, agent.display_name)
+      }
+    }
     const watchabilityMessages = recentMessages.slice(-WATCHABILITY_RECENT_MESSAGE_LIMIT)
     const namedMessages = toNamedRecentMessages(watchabilityMessages, agentNames)
     const unresolvedQuestion = buildUnresolvedQuestion(namedMessages)

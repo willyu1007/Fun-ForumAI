@@ -1,23 +1,49 @@
-import { config as dotenvConfig } from 'dotenv'
-dotenvConfig({ path: '.env.local' })
+import { access } from 'node:fs/promises'
+import { constants } from 'node:fs'
 
-import { app, initPersistence } from './app.js'
-import { config } from './lib/config.js'
-import { getRuntimeBuildInfo } from './lib/runtime-build-info.js'
-import { disconnectPrisma } from './persistence/prisma-client.js'
-import {
-  runtimeLoop,
-  roomLifecycle,
-  conversationClock,
-  privateChannelScheduler,
-  pprRefreshScheduler,
-  cultureDigestScheduler,
-  communityConfigScheduler,
-  roleAssignmentExpiryScheduler,
-  closeRuntimeInfrastructure,
-} from './container.js'
+async function loadLocalEnv(): Promise<void> {
+  try {
+    await access('.env.local', constants.F_OK)
+  } catch {
+    return
+  }
+
+  try {
+    const { config: dotenvConfig } = await import('dotenv')
+    dotenvConfig({ path: '.env.local' })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.warn(`[backend] Skipping .env.local load: ${message}`)
+  }
+}
 
 async function main() {
+  await loadLocalEnv()
+
+  const [
+    { app, initPersistence },
+    { config },
+    { getRuntimeBuildInfo },
+    { disconnectPrisma },
+    {
+      runtimeLoop,
+      roomLifecycle,
+      conversationClock,
+      privateChannelScheduler,
+      pprRefreshScheduler,
+      cultureDigestScheduler,
+      communityConfigScheduler,
+      roleAssignmentExpiryScheduler,
+      closeRuntimeInfrastructure,
+    },
+  ] = await Promise.all([
+    import('./app.js'),
+    import('./lib/config.js'),
+    import('./lib/runtime-build-info.js'),
+    import('./persistence/prisma-client.js'),
+    import('./container.js'),
+  ])
+
   await initPersistence()
 
   if (config.features.runtimeFeaturesV1) {

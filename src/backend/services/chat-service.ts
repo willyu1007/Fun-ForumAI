@@ -28,6 +28,7 @@ import { config } from '../lib/config.js'
 import type { RoomProjector } from './room-projector.js'
 import type { RoomProgramProjector } from './room-program-projector.js'
 import { normalizeWanderPolicy } from './chatroom-program-policy.js'
+import { sanitizeChatOutput } from '../runtime/chat-output-sanitizer.js'
 
 const MAX_ROOMS_PER_AGENT = 3
 
@@ -94,6 +95,31 @@ export class ChatService {
 
   setRelationService(service: RelationService | null): void {
     ;(this.deps as { relationService: RelationService | null }).relationService = service
+  }
+
+  private sanitizeVisibleText(text: string | null | undefined): string | null {
+    if (!text) return null
+    const sanitized = sanitizeChatOutput(text)
+    if (!sanitized.text || sanitized.looks_meta) return null
+    return sanitized.text
+  }
+
+  private enrichMessage(
+    message: ChatMessage,
+    opts: { fallbackToRawBody?: boolean } = {},
+  ): ChatMessage | null {
+    const body = this.sanitizeVisibleText(message.body)
+    const displayName =
+      (this.deps.agentRepo as Partial<AgentRepository>).findById?.(message.author_id)?.display_name
+      ?? null
+
+    if (!body && !opts.fallbackToRawBody) return null
+
+    return {
+      ...message,
+      body: body ?? message.body,
+      author_display_name: displayName,
+    }
   }
 
   async createRoom(input: CreateRoomInput): Promise<{ room: Room; greeting?: ChatMessage }> {
@@ -345,7 +371,8 @@ export class ChatService {
       throw new ValidationError('Author is not a member of this room')
     }
 
-    const msg = await this.deps.messageRepo.create(input)
+    const created = await this.deps.messageRepo.create(input)
+    const msg = this.enrichMessage(created, { fallbackToRawBody: true }) ?? created
     await this.deps.roomRepo.updateLastMessageAt(input.room_id, msg.created_at)
     await this.deps.roomRepo.recordMemberMessage(input.room_id, input.author_id, msg.created_at)
 
@@ -560,13 +587,32 @@ export class ChatService {
     if (!this.deps.roomWatchabilityRepo) {
       return { items: [], next_cursor: null }
     }
-    return this.deps.roomWatchabilityRepo.listHighlights(roomId, opts)
+    const result = await this.deps.roomWatchabilityRepo.listHighlights(roomId, opts)
+    return {
+      ...result,
+      items: result.items.flatMap((item) => {
+        const text = this.sanitizeVisibleText(item.text)
+        return text
+          ? [{
+              ...item,
+              text,
+            }]
+          : []
+      }),
+    }
   }
 
   async getMessages(roomId: string, opts: PaginationOpts): Promise<PaginatedResult<ChatMessage>> {
     const room = await this.deps.roomRepo.findById(roomId)
     if (!room) throw new NotFoundError('Room', roomId)
-    return this.deps.messageRepo.findByRoom(roomId, opts)
+    const result = await this.deps.messageRepo.findByRoom(roomId, opts)
+    return {
+      ...result,
+      items: result.items.flatMap((message) => {
+        const enriched = this.enrichMessage(message)
+        return enriched ? [enriched] : []
+      }),
+    }
   }
 
   async getAvailableRooms(): Promise<Room[]> {
@@ -694,9 +740,13 @@ export class ChatService {
     ])
     return {
       ...snapshot,
-      continuity_summary: continuity?.summary_text ?? snapshot.continuity_summary ?? null,
-      canonization_note: canonization?.summary_text ?? snapshot.canonization_note ?? null,
-      cameo_hint: cameo?.summary_text ?? snapshot.cameo_hint ?? null,
+      live_hook: this.sanitizeVisibleText(snapshot.live_hook),
+      unresolved_question: this.sanitizeVisibleText(snapshot.unresolved_question) ?? null,
+      recap_short: this.sanitizeVisibleText(snapshot.recap_short) ?? null,
+      last_highlight_text: this.sanitizeVisibleText(snapshot.last_highlight_text) ?? null,
+      continuity_summary: this.sanitizeVisibleText(continuity?.summary_text ?? snapshot.continuity_summary) ?? null,
+      canonization_note: this.sanitizeVisibleText(canonization?.summary_text ?? snapshot.canonization_note) ?? null,
+      cameo_hint: this.sanitizeVisibleText(cameo?.summary_text ?? snapshot.cameo_hint) ?? null,
     }
   }
 

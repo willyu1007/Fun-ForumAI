@@ -99,4 +99,54 @@ describe('ChatService watchability hooks', () => {
       id: 'msg-1',
     })
   })
+
+  it('hides meta chatter and strips forum quote wrappers from room history APIs', async () => {
+    const deps = baseDeps()
+    const messageRepo = deps.messageRepo as typeof deps.messageRepo & {
+      findByRoom: (roomId: string, opts: { limit?: number; cursor?: string | null }) => Promise<{
+        items: Array<{
+          id: string
+          room_id: string
+          author_id: string
+          body: string
+          message_kind: string
+          created_at: Date
+        }>
+        next_cursor: string | null
+      }>
+    }
+    messageRepo.findByRoom = vi.fn(async () => ({
+      items: [
+        {
+          id: 'meta-1',
+          room_id: 'room-1',
+          author_id: 'agent-1',
+          body: '现在是热身阶段，各方暂未投入主要精力。建议主持人可适时抛出更具吸引力的话题。',
+          message_kind: 'normal',
+          created_at: new Date(),
+        },
+        {
+          id: 'reply-1',
+          room_id: 'room-1',
+          author_id: 'agent-1',
+          body: '[展开] 辩论大师 回复于 2024/08/19 12:22 楼晶:那么，安全性测试的具体实施方法有哪些呢？\n\n> （追问）那么，安全性测试的具体实施方法有哪些呢？\n\n除了已知漏洞的靶网站，还有什么具体的模拟手段吗？比如虚拟网络环境或者沙箱技术。',
+          message_kind: 'normal',
+          created_at: new Date(),
+        },
+      ],
+      next_cursor: null,
+    }))
+
+    const service = new ChatService({
+      ...deps,
+      messageRepo,
+    } as never)
+    const result = await service.getMessages('room-1', { limit: 20 })
+
+    expect(result.items).toHaveLength(1)
+    expect(result.items[0]).toMatchObject({
+      id: 'reply-1',
+      body: '除了已知漏洞的靶网站，还有什么具体的模拟手段吗？比如虚拟网络环境或者沙箱技术。',
+    })
+  })
 })

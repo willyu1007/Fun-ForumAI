@@ -150,6 +150,28 @@ describe('ConversationClock', () => {
   })
 
   it('feeds typed chat program context into prompt orchestration inputs', async () => {
+    const generateVisibleText = vi.fn(async () => ({
+      content: '继续往下聊。',
+      messages: [],
+      usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+      latencyMs: 10,
+      platformRetryCount: 0,
+      renderDecision: {
+        voiceLineId: 'qwen-social-v1',
+        tier: 'base',
+        profileId: 'profile-1',
+        providerId: 'dashscope-openai',
+        modelId: 'qwen-plus',
+        region: 'cn',
+        endpointId: 'default',
+        credentialId: 'cred-1',
+        fallbackLevel: 'none',
+        reasons: ['runtime_floor'],
+        promptTemplateId: 'agent-chat-reply',
+        promptVersion: 2,
+      },
+      promptRef: { id: 'agent-chat-reply', version: 2 },
+    }))
     const compose = vi.fn(async () => ({
       persona: {
         name: 'Agent One',
@@ -204,28 +226,7 @@ describe('ConversationClock', () => {
       chatService: {} as never,
       llmGateway: {
         isConfigured: true,
-        generateVisibleText: vi.fn(async () => ({
-          content: '继续往下聊。',
-          messages: [],
-          usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
-          latencyMs: 10,
-          platformRetryCount: 0,
-          renderDecision: {
-            voiceLineId: 'qwen-social-v1',
-            tier: 'base',
-            profileId: 'profile-1',
-            providerId: 'dashscope-openai',
-            modelId: 'qwen-plus',
-            region: 'cn',
-            endpointId: 'default',
-            credentialId: 'cred-1',
-            fallbackLevel: 'none',
-            reasons: ['runtime_floor'],
-            promptTemplateId: 'agent-chat-reply',
-            promptVersion: 2,
-          },
-          promptRef: { id: 'agent-chat-reply', version: 2 },
-        })),
+        generateVisibleText,
       } as never,
       sseHub: {
         broadcastToRoom: vi.fn(),
@@ -276,6 +277,11 @@ describe('ConversationClock', () => {
             live_hook: 'Guest 正在追问一个关键前提。',
             unresolved_question: '到底谁在偷换定义？',
             last_highlight: '',
+            public_projection_hint: '更适合 debate · 更偏即时反应',
+            signature_moves: '追问、反打',
+            shared_memory_summary: '最近一直在拆概念边界。',
+            role_hint: 'FOIL',
+            projection_updated_at: '2026-03-10T10:00:00.000Z',
           },
         })),
       } as never,
@@ -290,6 +296,15 @@ describe('ConversationClock', () => {
       sceneRule: '聊天室：General｜节目=DEBATE｜角色=FOIL｜episode=ep-7',
       shortTermState: expect.stringContaining('scene:DEBATE'),
       topicHints: expect.arrayContaining(['General']),
+    }))
+    expect(generateVisibleText).toHaveBeenCalledWith(expect.objectContaining({
+      variables: expect.objectContaining({
+        public_projection_hint: '更适合 debate · 更偏即时反应',
+        signature_moves: '追问、反打',
+        shared_memory_summary: '最近一直在拆概念边界。',
+        role_hint: 'FOIL',
+        projection_updated_at: '2026-03-10T10:00:00.000Z',
+      }),
     }))
   })
 

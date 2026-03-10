@@ -1,4 +1,5 @@
 import type { ExecutionContext, WriteInstruction } from './types.js'
+import { sanitizeChatOutput } from './chat-output-sanitizer.js'
 
 interface CommunityCandidate {
   id: string
@@ -52,8 +53,10 @@ export class ResponseParser {
 
   private parseChatReply(text: string, ctx: ExecutionContext): WriteInstruction | null {
     if (!ctx.event.room_id) return null
+    const sanitized = sanitizeChatOutput(text)
+    if (!sanitized.text || sanitized.looks_meta) return null
 
-    const skipMatch = text.match(/^\[SKIP(?::(.+?))?\]/)
+    const skipMatch = sanitized.text.match(/^\[SKIP(?::(.+?))?\]/)
     if (skipMatch) {
       const feedback = skipMatch[1]?.trim() || ''
       return {
@@ -69,7 +72,7 @@ export class ResponseParser {
       action: 'create_message',
       community_id: ctx.community.id,
       room_id: ctx.event.room_id,
-      body: text,
+      body: sanitized.text,
       message_kind: 'normal',
     }
   }

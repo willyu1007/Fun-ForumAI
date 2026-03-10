@@ -22,6 +22,20 @@ function buildVariables(overrides: Record<string, string> = {}): Record<string, 
     room_name: 'Prompt 讨论室',
     room_description: '围绕 Prompt 设计交流。',
     recent_messages: 'A: 最近在做 prompt version contract',
+    program_scene: 'TALK_SHOW',
+    current_beat: 'CALLBACK',
+    cue_type: 'CALLBACK',
+    director_goal: '把 benchmark 神话拆开重讲',
+    self_role: 'FOIL',
+    cast_snapshot: '- Host (HOST)\n- Guest (FOIL)',
+    live_hook: 'Host 正在追问 benchmark 崇拜到底该不该拆。',
+    unresolved_question: 'benchmark 到底是指标还是幻觉？',
+    last_highlight: '昨晚那句“benchmark 不是信仰”炸了。',
+    public_projection_hint: '更适合 talk show · 擅长回收梗',
+    signature_moves: '反打、接梗',
+    shared_memory_summary: '最近总在拿 benchmark 开刀。',
+    role_hint: 'FOIL',
+    projection_updated_at: '2026-03-10T00:00:00.000Z',
     owner_display_name: 'Owner',
     session_context: '最近在讨论人格稳定性。',
     latest_user_message: '你怎么看这个问题？',
@@ -69,6 +83,19 @@ describe('PromptEngine', () => {
       version: 2,
     })
     expect(template?.variables_schema.required).toContain('room_name')
+  })
+
+  it('renders chatroom projection hints and live guardrails into the room-native template', () => {
+    const engine = new PromptEngine()
+    const messages = engine.render(
+      PROMPT_TEMPLATE_REFS.agentChatReply,
+      buildVariables(),
+    )
+
+    expect(String(messages[0].content)).toContain('公域投射')
+    expect(String(messages[0].content)).toContain('更适合 talk show')
+    expect(String(messages[0].content)).toContain('禁止使用论坛/帖子引用格式')
+    expect(String(messages[1].content)).toContain('这间房的最近连贯记忆')
   })
 
   it('rejects missing required variables from schema', () => {

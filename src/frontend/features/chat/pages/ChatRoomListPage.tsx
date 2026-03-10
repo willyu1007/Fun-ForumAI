@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import { useRooms, useCreateRoom } from '@/api/hooks'
+import { useRooms, useCreateRoom, useMyAgents } from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,10 +9,18 @@ import { Input } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { relativeTime } from '@/shared/utils/relative-time'
 import type { RoomBeatType, RoomCastRole, RoomSceneType } from '@/api/types'
@@ -166,15 +174,28 @@ function CreateRoomDialog() {
   const [name, setName] = useState('')
   const [desc, setDesc] = useState('')
   const { user } = useAuth()
+  const { data: myAgentsData, isLoading: myAgentsLoading } = useMyAgents(Boolean(user))
+  const myAgents = myAgentsData?.data ?? []
+  const [selectedAgentId, setSelectedAgentId] = useState('')
   const createRoom = useCreateRoom()
 
+  useEffect(() => {
+    if (!myAgents.length) {
+      setSelectedAgentId('')
+      return
+    }
+    if (!selectedAgentId || !myAgents.some((agent) => agent.id === selectedAgentId)) {
+      setSelectedAgentId(myAgents[0].id)
+    }
+  }, [myAgents, selectedAgentId])
+
   const handleSubmit = () => {
-    if (!name.trim()) return
+    if (!name.trim() || !selectedAgentId) return
     createRoom.mutate(
       {
         name: name.trim(),
         description: desc.trim(),
-        created_by_agent_id: user?.id ? `agent_${user.id}` : 'agent_demo_user_1',
+        created_by_agent_id: selectedAgentId,
       },
       {
         onSuccess: () => {
@@ -194,8 +215,42 @@ function CreateRoomDialog() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>创建新聊天室</DialogTitle>
+          <DialogDescription>
+            选择由哪个 agent 开场，再设置房间名称和一句简介。
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 pt-2">
+          {!user && (
+            <p className="text-sm text-muted-foreground">
+              登录后才能以你的 agent 创建聊天室。
+            </p>
+          )}
+          {user && (
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">开场 Agent</p>
+              <Select
+                value={selectedAgentId}
+                onValueChange={setSelectedAgentId}
+                disabled={myAgentsLoading || myAgents.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={myAgentsLoading ? '加载中...' : '选择一个 agent'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {myAgents.map((agent) => (
+                    <SelectItem key={agent.id} value={agent.id}>
+                      {agent.display_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!myAgentsLoading && myAgents.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  你还没有可用 agent，先去创建一个再开房间。
+                </p>
+              )}
+            </div>
+          )}
           <Input
             placeholder="房间名称"
             value={name}
@@ -213,7 +268,7 @@ function CreateRoomDialog() {
           )}
           <Button
             onClick={handleSubmit}
-            disabled={!name.trim() || createRoom.isPending}
+            disabled={!user || !selectedAgentId || !name.trim() || createRoom.isPending}
             className="w-full"
           >
             {createRoom.isPending ? '创建中...' : '创建'}

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChatRoomListPage } from '../ChatRoomListPage'
@@ -17,6 +17,7 @@ import {
   useRoomMessages,
   useRoomProgram,
   useRooms,
+  useMyAgents,
 } from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useChatRoomSse } from '../../hooks/use-chat-room-sse'
@@ -35,6 +36,7 @@ vi.mock('@/api/hooks', () => ({
   useRoomProgram: vi.fn(),
   useRoomHighlights: vi.fn(),
   useRecallAgent: vi.fn(),
+  useMyAgents: vi.fn(),
 }))
 
 vi.mock('@/shared/hooks/use-auth', () => ({
@@ -58,6 +60,7 @@ const useRoomControlStateMock = vi.mocked(useRoomControlState)
 const useRoomProgramMock = vi.mocked(useRoomProgram)
 const useRoomHighlightsMock = vi.mocked(useRoomHighlights)
 const useRecallAgentMock = vi.mocked(useRecallAgent)
+const useMyAgentsMock = vi.mocked(useMyAgents)
 const useAuthMock = vi.mocked(useAuth)
 const useChatRoomSseMock = vi.mocked(useChatRoomSse)
 
@@ -74,6 +77,7 @@ describe('chat room pages', () => {
     useCreateRoomMock.mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
+      isError: false,
     } as never)
     useCreateRoomCueMock.mockReturnValue({
       mutate: vi.fn(),
@@ -89,6 +93,10 @@ describe('chat room pages', () => {
     } as never)
     useRoomControlStateMock.mockReturnValue({
       data: undefined,
+    } as never)
+    useMyAgentsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
     } as never)
   })
 
@@ -122,7 +130,8 @@ describe('chat room pages', () => {
         data: [{
           id: 'msg-1',
           room_id: 'room-1',
-          author_id: 'agent-2',
+          author_id: 'agent-9',
+          author_display_name: '历史作者',
           author_type: 'agent',
           episode_id: 'ep-1',
           beat_id: 'beat-1',
@@ -323,6 +332,7 @@ describe('chat room pages', () => {
     expect(screen.getAllByText('高光').length).toBeGreaterThan(0)
     expect(screen.getByText('回收')).toBeTruthy()
     expect(screen.getAllByText('对撞').length).toBeGreaterThan(0)
+    expect(screen.getByText('历史作者')).toBeTruthy()
     expect(screen.getByText(/连续性：旧梗已经重新连上主线/)).toBeTruthy()
     expect(screen.getByText('Owner Control')).toBeTruthy()
     expect(screen.getByText('手动 Cue')).toBeTruthy()
@@ -447,5 +457,63 @@ describe('chat room pages', () => {
     expect(screen.getByText(/刚刚有戏：把刚才那个夜宵税的梗捡回来了/)).toBeTruthy()
     expect(screen.getByText(/连续性：旧梗重新接上了主线/)).toBeTruthy()
     expect(screen.getByText(/Canon：这场讨论已经生成 canon/)).toBeTruthy()
+  })
+
+  it('creates rooms with a real owned agent id instead of fabricating one from the user id', async () => {
+    const mutate = vi.fn()
+    useAuthMock.mockReturnValue({
+      user: { id: 'dev-user-001', email: 'dev-user@test.com', role: 'user' },
+    } as never)
+    useRoomsMock.mockReturnValue({
+      data: { data: [] },
+      isLoading: false,
+      error: null,
+    } as never)
+    useMyAgentsMock.mockReturnValue({
+      data: {
+        data: [{
+          id: 'agent-real-1',
+          owner_id: 'dev-user-001',
+          display_name: '真实 Agent',
+          avatar_url: null,
+          model: 'qwen-flash',
+          config_json: {},
+          status: 'ACTIVE',
+          created_at: '2026-03-10T10:00:00.000Z',
+          updated_at: '2026-03-10T10:00:00.000Z',
+        }],
+      },
+      isLoading: false,
+    } as never)
+    useCreateRoomMock.mockReturnValue({
+      mutate,
+      isPending: false,
+      isError: false,
+    } as never)
+
+    render(
+      <MemoryRouter>
+        <ChatRoomListPage />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '创建聊天室' }))
+    fireEvent.change(screen.getByPlaceholderText('房间名称'), { target: { value: '真实建房 smoke' } })
+    fireEvent.change(screen.getByPlaceholderText('描述（可选）'), { target: { value: '验证 agent 选择' } })
+
+    await waitFor(() => {
+      const createButtons = screen.getAllByRole('button', { name: '创建' })
+      fireEvent.click(createButtons[createButtons.length - 1]!)
+      expect(mutate).toHaveBeenCalledWith(
+        {
+          name: '真实建房 smoke',
+          description: '验证 agent 选择',
+          created_by_agent_id: 'agent-real-1',
+        },
+        expect.objectContaining({
+          onSuccess: expect.any(Function),
+        }),
+      )
+    })
   })
 })

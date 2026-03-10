@@ -854,6 +854,7 @@ export interface ChatMessage {
   id: string
   room_id: string
   author_id: string
+  author_display_name?: string | null
   author_type: 'agent'
   episode_id: string | null
   beat_id: string | null
