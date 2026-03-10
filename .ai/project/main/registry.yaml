@@ -34,6 +34,11 @@ features:
     status: done
     description: "Expo development build baseline and iOS/Android runtime smoke enablement for the mobile app."
     milestone_id: M-000
+  - id: F-040
+    title: "Guidance & Onboarding V1"
+    status: in-progress
+    description: "Server-owned guidance and onboarding system for dual-track spectator/owner activation, Web-first core experience, and recall/observability."
+    milestone_id: M-000
 
 requirements:
   - id: R-010
@@ -92,6 +97,22 @@ requirements:
     title: "Context and Memory Plane"
     status: in-progress
     feature_id: F-020
+  - id: R-040
+    title: "Guidance Contract and Orchestration"
+    status: in-progress
+    feature_id: F-040
+  - id: R-041
+    title: "Guidance Platform Foundation"
+    status: planned
+    feature_id: F-040
+  - id: R-042
+    title: "Guidance Web Core Experience"
+    status: planned
+    feature_id: F-040
+  - id: R-043
+    title: "Guidance Recall and Observability"
+    status: planned
+    feature_id: F-040
 
 tasks:
   - id: T-003
@@ -660,3 +681,39 @@ tasks:
       - R-030
     dev_docs_path: dev-docs/active/persona-runtime-integration-audit
     updated: 2026-03-09
+  - id: T-077
+    slug: guidance-onboarding-v1-master
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-040
+    requirement_ids:
+      - R-040
+    dev_docs_path: dev-docs/active/guidance-onboarding-v1-master
+    updated: 2026-03-10
+  - id: T-078
+    slug: guidance-platform-foundation
+    status: planned
+    milestone_id: M-000
+    feature_id: F-040
+    requirement_ids:
+      - R-041
+    dev_docs_path: dev-docs/active/guidance-platform-foundation
+    updated: 2026-03-10
+  - id: T-079
+    slug: guidance-web-core-experience
+    status: planned
+    milestone_id: M-000
+    feature_id: F-040
+    requirement_ids:
+      - R-042
+    dev_docs_path: dev-docs/active/guidance-web-core-experience
+    updated: 2026-03-10
+  - id: T-080
+    slug: guidance-recall-and-observability
+    status: planned
+    milestone_id: M-000
+    feature_id: F-040
+    requirement_ids:
+      - R-043
+    dev_docs_path: dev-docs/active/guidance-recall-and-observability
+    updated: 2026-03-10

@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 74 (planned: 2, in-progress: 11, blocked: 0, done: 29, archived: 32)
+- Tasks: 78 (planned: 5, in-progress: 12, blocked: 0, done: 29, archived: 32)
 
 ## Recent tasks
 
@@ -16,6 +16,10 @@ Project: `main`
 | --- | --- | --- | --- |
 | T-073 chatroom-watchability-foundation | in-progress | F-000 | dev-docs/active/chatroom-watchability-foundation |
 | T-074 chatroom-program-engine-and-highlights | done | F-000 | dev-docs/active/chatroom-program-engine-and-highlights |
+| T-077 guidance-onboarding-v1-master | in-progress | F-040 | dev-docs/active/guidance-onboarding-v1-master |
+| T-078 guidance-platform-foundation | planned | F-040 | dev-docs/active/guidance-platform-foundation |
+| T-079 guidance-web-core-experience | planned | F-040 | dev-docs/active/guidance-web-core-experience |
+| T-080 guidance-recall-and-observability | planned | F-040 | dev-docs/active/guidance-recall-and-observability |
 | T-065 persona-projection-overlay-runtime-v1 | done | F-020 | dev-docs/active/persona-projection-overlay-runtime-v1 |
 | T-066 persona-observability-eval-v1 | done | F-020 | dev-docs/active/persona-observability-eval-v1 |
 | T-067 control-context-plane-alignment-program | done | F-020 | dev-docs/active/control-context-plane-alignment-program |
@@ -30,8 +34,4 @@ Project: `main`
 | T-062 persona-provider-alignment-program | done | F-020 | dev-docs/active/persona-provider-alignment-program |
 | T-063 persona-seed-voice-contract-v1 | done | F-020 | dev-docs/active/persona-seed-voice-contract-v1 |
 | T-064 llm-gateway-routing-profiles-v1 | done | F-020 | dev-docs/active/llm-gateway-routing-profiles-v1 |
-| T-060 expo-development-build-foundation | done | F-030 | dev-docs/active/expo-development-build-foundation |
-| T-058 pr4-governance-blocker-fixes | done | F-000 | dev-docs/active/pr4-governance-blocker-fixes |
-| T-059 xp-deleveling-and-growth-points | in-progress | F-020 | dev-docs/active/xp-deleveling-and-growth-points |
-| T-051 rich-communities-full-alignment | done | F-000 | dev-docs/active/rich-communities-full-alignment |
 <!-- AUTO-GENERATED:END dashboard -->
