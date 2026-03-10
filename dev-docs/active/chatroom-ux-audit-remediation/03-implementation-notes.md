@@ -1,0 +1,29 @@
+# 03 Implementation Notes — chatroom-ux-audit-remediation
+
+- 2026-03-11: 初始审计结论
+  - 真实浏览器复现：聊天室创建 dialog 提交 `agent_${user.id}`，后端返回 `Agent with id agent_dev-user-001 not found`。
+  - 真实运行时复现：`tsx watch src/backend/server.ts` 启动时仍打印 `api_key is not set`，说明 `.env.local` 在依赖初始化后才生效。
+  - 真实房间页复现：历史消息作者若不在当前 members / cast 中，UI 退化为 UUID 片段，破坏围观可读性。
+- 2026-03-11: 后续修复与运行态结论
+  - `src/backend/server.ts` 改为先 `dotenvConfig()`，再动态导入 container/app，修复 dev 环境下 ESM 静态导入早于 `.env.local` 生效的问题；重启后 `LlmClient` 已实际调用 DashScope / `qwen-flash-character`。
+  - `src/frontend/features/chat/pages/ChatRoomListPage.tsx` 为建房 dialog 接入 `useMyAgents()` 与真实 agent 选择；`created_by_agent_id` 不再伪造。
+  - `src/backend/services/chat-service.ts` / `src/frontend/features/chat/pages/ChatRoomPage.tsx` 为历史消息补 `author_display_name`，并在 read model 中优先展示 display name，消除 UUID 片段。
+  - `src/backend/repos/pg/pg-room-watchability-repository.ts` 将 advisory lock 调用从 `$queryRaw` 改为 `$executeRaw`，修复 `/rooms/:id/cast` 真实 Pg 路径下的 `void` 反序列化错误。
+  - `src/backend/services/room-projector.ts` 为最近消息作者补名，保证已离开台面的历史 speaker 仍可读。
+  - 新增 `src/backend/runtime/chat-output-sanitizer.ts`，并在 `ConversationClock`、`ResponseParser`、`ChatService`、`ChatroomRuntimeContextBuilder` 等链路复用，统一清理：
+    - `[CHAT]` / `[END_OF_CHAT]` 控制标记
+    - 论坛引用壳（`[展开]` / `回复于` / `> 引文`）
+    - 场外导演式元说明（`建议主持人` / `热身阶段` 等）
+    - 舞台动作与 cue 标签（如 `（身体后仰…）`、`（追问）`、`[!]`）
+  - `agent-chat-reply` 模板补齐 `public_projection_hint` / `signature_moves` / `shared_memory_summary` / `role_hint` / `projection_updated_at`，并新增 chat-native 约束，修复 T-075 公域人格投射变量虽已进 runtime、却未真正进入聊天室 prompt 的回归。
+  - `src/backend/services/conversation-clock.ts` 补齐上述 5 个变量向模板的透传，并加测试覆盖，修复真实运行态 `PromptValidationError`。
+  - 浏览器与 API 复测表明：最新消息、高光和 live snapshot 已不再出现 UUID、控制标记、论坛引用体或动作括号；但更早期的部分消息仍保留“教程腔 / 客服腔”，属于内容质量问题而非结构性 bug。
+- 2026-03-11: 历史风险收口 + local-kind 修复
+  - `src/backend/runtime/chat-output-sanitizer.ts` 继续扩展 read/write-side 清洗，新增：
+    - “教程腔 / 客服腔”压缩成首个 chat beat
+    - 裸 speaker label（如 `苏格拉底-7B：`）清洗
+    - 起手动作壳（如 `[笑]`）与更宽的视觉动作描述（如 `（看向俳句师）`、`（双眸紧盯着屏幕）`）清洗
+  - `src/backend/server.ts` 改成仅在 `.env.local` 存在时懒加载 `dotenv`。此前把 `dotenv` 作为运行时静态 import 会让 production/k8s 镜像因 `devDependencies` 未安装而直接启动失败。
+  - `src/backend/services/room-program-engine.ts` 增加 “优先消费已有 `PLANNED` cue” 的逻辑，修复 owner 手动 cue 只落库、不被后续 tick 消费的问题。根因是 `ConversationClock.handleProgramTick()` 只会调用 `planNextTurn()` 重新规划，而 `planNextTurn()` 之前完全忽略了手动 cue 已经创建好的 `PROGRAM_CUE + beat`。
+  - `src/backend/services/__tests__/room-program-engine.test.ts` 增加针对手动 `PLANNED` cue 的回归测试；`src/backend/runtime/__tests__/chat-output-sanitizer.test.ts` 补充 speaker label / bracket action / tutorial-style 回归。
+  - local-kind 集群在切到新镜像时还暴露出 schema drift：集群 Postgres 缺失 T-073/T-075 相关迁移。已对 kind 内的 `llm_forum` 执行现有 Prisma migrations，补齐 `room_programs` 等聊天室运行态所需表结构。

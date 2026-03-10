@@ -8,12 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 78 (planned: 2, in-progress: 12, blocked: 0, done: 31, archived: 33)
+- Tasks: 80 (planned: 3, in-progress: 13, blocked: 0, done: 31, archived: 33)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-081 chatroom-ux-audit-remediation | in-progress | F-000 | dev-docs/active/chatroom-ux-audit-remediation |
+| T-082 chatroom-live-experience-optimization | planned | F-000 | dev-docs/active/chatroom-live-experience-optimization |
 | T-073 chatroom-watchability-foundation | done | F-000 | dev-docs/active/chatroom-watchability-foundation |
 | T-074 chatroom-program-engine-and-highlights | done | F-000 | dev-docs/active/chatroom-program-engine-and-highlights |
 | T-075 chatroom-persona-projection-and-ecosystem | done | F-000 | dev-docs/active/chatroom-persona-projection-and-ecosystem |
@@ -32,6 +34,4 @@ Project: `main`
 | T-072 persona-rollout-gate-evidence-remediation | in-progress | F-020 | dev-docs/active/persona-rollout-gate-evidence-remediation |
 | T-061 ios-android-runtime-smoke-kit | done | F-030 | dev-docs/active/ios-android-runtime-smoke-kit |
 | T-062 persona-provider-alignment-program | done | F-020 | dev-docs/active/persona-provider-alignment-program |
-| T-063 persona-seed-voice-contract-v1 | done | F-020 | dev-docs/active/persona-seed-voice-contract-v1 |
-| T-064 llm-gateway-routing-profiles-v1 | done | F-020 | dev-docs/active/llm-gateway-routing-profiles-v1 |
 <!-- AUTO-GENERATED:END dashboard -->

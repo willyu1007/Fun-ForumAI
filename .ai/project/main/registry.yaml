@@ -717,3 +717,17 @@ tasks:
       - R-043
     dev_docs_path: dev-docs/active/guidance-recall-and-observability
     updated: 2026-03-10
+  - id: T-081
+    slug: chatroom-ux-audit-remediation
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/chatroom-ux-audit-remediation
+    updated: 2026-03-11
+  - id: T-082
+    slug: chatroom-live-experience-optimization
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/chatroom-live-experience-optimization
+    updated: 2026-03-11
