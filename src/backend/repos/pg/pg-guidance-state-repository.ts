@@ -9,6 +9,7 @@ import type { GuidanceActorStateRepository } from '../guidance-state-repository.
 
 type GuidanceActorStateTable = {
   findUnique(args: Record<string, unknown>): Promise<Record<string, unknown> | null>
+  findMany(args: Record<string, unknown>): Promise<Record<string, unknown>[]>
   upsert(args: Record<string, unknown>): Promise<Record<string, unknown>>
   deleteMany(args: Record<string, unknown>): Promise<unknown>
 }
@@ -52,6 +53,15 @@ export class PgGuidanceActorStateRepository implements GuidanceActorStateReposit
       },
     })
     return row ? toDomain(row) : null
+  }
+
+  async listByActorType(actorType: GuidanceActorType, opts?: { limit?: number }): Promise<GuidanceActorStateEntity[]> {
+    const rows = await this.table.findMany({
+      where: { actorType },
+      orderBy: { updatedAt: 'desc' },
+      ...(typeof opts?.limit === 'number' ? { take: opts.limit } : {}),
+    })
+    return rows.map(toDomain)
   }
 
   async upsert(input: UpsertGuidanceActorStateInput): Promise<GuidanceActorStateEntity> {

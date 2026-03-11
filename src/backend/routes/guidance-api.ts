@@ -1,7 +1,8 @@
 import { Router, type IRouter } from 'express'
-import { guidanceOrchestrator } from '../container.js'
+import { guidanceBellService, guidanceOrchestrator } from '../container.js'
 import { config } from '../lib/config.js'
 import {
+  buildDisabledGuidanceBell,
   buildDisabledGuidanceInbox,
   buildDisabledGuidanceSummary,
   peekGuidanceActorContext,
@@ -36,6 +37,21 @@ guidanceRouter.get('/guidance/inbox', async (req, res, next) => {
     const actor = resolveGuidanceActorContext(req, res)
     await guidanceOrchestrator.prepareActor(actor)
     const data = await guidanceOrchestrator.getInbox(actor)
+    res.json({ data })
+  } catch (err) {
+    next(err)
+  }
+})
+
+guidanceRouter.get('/guidance/bell', async (req, res, next) => {
+  try {
+    if (!config.features.guidanceV1 || !config.features.guidanceRecallV1) {
+      res.json({ data: buildDisabledGuidanceBell() })
+      return
+    }
+    const actor = resolveGuidanceActorContext(req, res)
+    await guidanceOrchestrator.prepareActor(actor)
+    const data = await guidanceBellService.listBell(actor)
     res.json({ data })
   } catch (err) {
     next(err)

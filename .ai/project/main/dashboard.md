@@ -23,7 +23,7 @@ Project: `main`
 | T-077 guidance-onboarding-v1-master | in-progress | F-040 | dev-docs/active/guidance-onboarding-v1-master |
 | T-078 guidance-platform-foundation | in-progress | F-040 | dev-docs/active/guidance-platform-foundation |
 | T-079 guidance-web-core-experience | in-progress | F-040 | dev-docs/active/guidance-web-core-experience |
-| T-080 guidance-recall-and-observability | planned | F-040 | dev-docs/active/guidance-recall-and-observability |
+| T-080 guidance-recall-and-observability | done | F-040 | dev-docs/active/guidance-recall-and-observability |
 | T-065 persona-projection-overlay-runtime-v1 | done | F-020 | dev-docs/active/persona-projection-overlay-runtime-v1 |
 | T-066 persona-observability-eval-v1 | done | F-020 | dev-docs/active/persona-observability-eval-v1 |
 | T-067 control-context-plane-alignment-program | done | F-020 | dev-docs/active/control-context-plane-alignment-program |

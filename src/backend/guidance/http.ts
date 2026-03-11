@@ -4,6 +4,7 @@ import { config } from '../lib/config.js'
 import { tryAuthenticateHuman } from '../middleware/human-auth.js'
 import type { GuidanceOrchestrator } from './guidance-orchestrator.js'
 import type {
+  GuidanceBellView,
   GuidanceInboxView,
   GuidanceResolvedActor,
   GuidanceActorRef,
@@ -85,6 +86,13 @@ export function buildDisabledGuidanceSummary(actor: GuidanceActorRef): GuidanceS
 }
 
 export function buildDisabledGuidanceInbox(): GuidanceInboxView {
+  return {
+    items: [],
+    unread_count: 0,
+  }
+}
+
+export function buildDisabledGuidanceBell(): GuidanceBellView {
   return {
     items: [],
     unread_count: 0,

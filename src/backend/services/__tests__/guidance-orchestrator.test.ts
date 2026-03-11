@@ -182,9 +182,25 @@ describe('GuidanceOrchestrator', () => {
 
     const ownerInbox = await ctx.stateService.listInbox({ actor_type: 'USER', actor_id: 'owner-1' })
     const followerInbox = await ctx.stateService.listInbox({ actor_type: 'USER', actor_id: 'follower-1' })
+    const ownerDeliveries = await ctx.eventLogRepo.listByActor('USER', 'owner-1', {
+      eventTypes: ['GUIDANCE_BELL_DELIVERED'],
+    })
+    const followerDeliveries = await ctx.eventLogRepo.listByActor('USER', 'follower-1', {
+      eventTypes: ['GUIDANCE_BELL_DELIVERED'],
+    })
 
     expect(ownerInbox.items.some((item) => item.reason_code === 'WATCH_PUBLIC_EFFECT')).toBe(true)
     expect(followerInbox.items.some((item) => item.reason_code === 'FOLLOWED_AGENT_STORY_ESCALATED')).toBe(true)
+    expect(ownerDeliveries[0]?.payload_json).toMatchObject({
+      reason_code: 'WATCH_PUBLIC_EFFECT',
+      recall: false,
+    })
+    expect(ownerDeliveries[0]?.payload_json).not.toHaveProperty('delay_ms')
+    expect(followerDeliveries[0]?.payload_json).toMatchObject({
+      reason_code: 'FOLLOWED_AGENT_STORY_ESCALATED',
+      recall: false,
+    })
+    expect(followerDeliveries[0]?.payload_json).not.toHaveProperty('delay_ms')
   })
 
   it('ignores public-effect fan-out for non-visible forum content', async () => {
@@ -270,5 +286,35 @@ describe('GuidanceOrchestrator', () => {
     expect(summary.actor.completed.watch_public_effect).toBe(true)
     expect(summary.actor.reveal.advanced).toBe(true)
     expect(inbox.items.find((item) => item.reason_code === 'WATCH_PUBLIC_EFFECT')?.status).toBe('COMPLETED')
+  })
+
+  it('completes nurture receipt guidance when the linked memories are viewed', async () => {
+    const ctx = createGuidanceContext()
+    const agent = ctx.agentRepo.create({ owner_id: 'owner-2', display_name: 'Receipt Bot' })
+    const actor = { actor_type: 'USER' as const, actor_id: 'owner-2' }
+
+    await ctx.orchestrator.ingestEvent(actor, 'AGENT_CREATED', { agent_id: agent.id })
+    await ctx.orchestrator.ingestEvent(actor, 'PRIVATE_DIGEST_READY', {
+      agent_id: agent.id,
+      session_id: 'session-receipt-1',
+      memory_id: 'memory-receipt-1',
+    })
+
+    let receipt = await ctx.inboxRepo.findByDedupKey('USER', 'owner-2', 'nurture_receipt:session-receipt-1')
+    expect(receipt?.status).toBe('ACTIVE')
+
+    await ctx.orchestrator.ingestEvent(actor, 'MEMORIES_VIEWED', {
+      agent_id: agent.id,
+      source_session_id: 'session-receipt-1',
+    })
+
+    receipt = await ctx.inboxRepo.findByDedupKey('USER', 'owner-2', 'nurture_receipt:session-receipt-1')
+    const completionEvents = await ctx.eventLogRepo.listByActor('USER', 'owner-2', {
+      eventTypes: ['GUIDANCE_ITEM_COMPLETED'],
+    })
+
+    expect(receipt?.status).toBe('COMPLETED')
+    expect(receipt?.unread).toBe(false)
+    expect(completionEvents.some((event) => event.payload_json?.reason_code === 'NURTURE_RECEIPT_READY')).toBe(true)
   })
 })

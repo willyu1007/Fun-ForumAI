@@ -9,6 +9,7 @@ import type { GuidanceEventLogRepository } from '../guidance-event-log-repositor
 
 type GuidanceEventLogTable = {
   findFirst(args: Record<string, unknown>): Promise<Record<string, unknown> | null>
+  findMany(args: Record<string, unknown>): Promise<Record<string, unknown>[]>
   create(args: Record<string, unknown>): Promise<Record<string, unknown>>
   deleteMany(args: Record<string, unknown>): Promise<unknown>
 }
@@ -41,6 +42,42 @@ export class PgGuidanceEventLogRepository implements GuidanceEventLogRepository 
       },
     })
     return row ? toDomain(row) : null
+  }
+
+  async listByActor(
+    actorType: GuidanceActorType,
+    actorId: string,
+    opts?: { eventTypes?: string[]; createdAfter?: Date; limit?: number },
+  ): Promise<GuidanceEventLogEntity[]> {
+    const rows = await this.table.findMany({
+      where: {
+        actorType,
+        actorId,
+        ...(opts?.eventTypes ? { eventType: { in: opts.eventTypes } } : {}),
+        ...(opts?.createdAfter ? { createdAt: { gte: opts.createdAfter } } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      ...(typeof opts?.limit === 'number' ? { take: opts.limit } : {}),
+    })
+    return rows.map(toDomain)
+  }
+
+  async listAll(opts?: {
+    actorType?: GuidanceActorType
+    eventTypes?: string[]
+    createdAfter?: Date
+    limit?: number
+  }): Promise<GuidanceEventLogEntity[]> {
+    const rows = await this.table.findMany({
+      where: {
+        ...(opts?.actorType ? { actorType: opts.actorType } : {}),
+        ...(opts?.eventTypes ? { eventType: { in: opts.eventTypes } } : {}),
+        ...(opts?.createdAfter ? { createdAt: { gte: opts.createdAfter } } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      ...(typeof opts?.limit === 'number' ? { take: opts.limit } : {}),
+    })
+    return rows.map(toDomain)
   }
 
   async create(input: CreateGuidanceEventLogInput): Promise<GuidanceEventLogEntity> {

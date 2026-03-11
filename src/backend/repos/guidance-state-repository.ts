@@ -9,6 +9,7 @@ import type {
 
 export interface GuidanceActorStateRepository {
   findByActor(actorType: GuidanceActorType, actorId: string): Promise<GuidanceActorStateEntity | null>
+  listByActorType(actorType: GuidanceActorType, opts?: { limit?: number }): Promise<GuidanceActorStateEntity[]>
   upsert(input: UpsertGuidanceActorStateInput): Promise<GuidanceActorStateEntity>
   deleteByActor(actorType: GuidanceActorType, actorId: string): Promise<void>
 }
@@ -70,6 +71,13 @@ export class InMemoryGuidanceActorStateRepository implements GuidanceActorStateR
 
   async findByActor(actorType: GuidanceActorType, actorId: string): Promise<GuidanceActorStateEntity | null> {
     return this.store.get(this.key(actorType, actorId)) ?? null
+  }
+
+  async listByActorType(actorType: GuidanceActorType, opts?: { limit?: number }): Promise<GuidanceActorStateEntity[]> {
+    const items = Array.from(this.store.values())
+      .filter((item) => item.actor_type === actorType)
+      .sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime())
+    return typeof opts?.limit === 'number' ? items.slice(0, opts.limit) : items
   }
 
   async upsert(input: UpsertGuidanceActorStateInput): Promise<GuidanceActorStateEntity> {

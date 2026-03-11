@@ -11,9 +11,12 @@ import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry
 import { getRuntimeBuildInfo } from '../lib/runtime-build-info.js'
 import { personaObservability } from '../runtime/persona-observability.js'
 import {
+  GuidanceBellService,
   GuidanceCopyService,
   GuidanceDeliveryAdapter,
+  GuidanceObservabilityService,
   GuidanceOrchestrator,
+  GuidanceRecallScheduler,
   GuidanceStateService,
 } from '../guidance/index.js'
 import { handleGuidanceDigestHook, handleGuidanceForumFanout } from '../guidance/feature-gates.js'
@@ -150,6 +153,14 @@ const guidanceStateService = new GuidanceStateService(
   guidanceCopyService,
 )
 const guidanceDelivery = new GuidanceDeliveryAdapter(infra.sseHub)
+const guidanceBellService = new GuidanceBellService({
+  inboxRepo: repos.guidanceInboxRepo,
+  eventLogRepo: repos.guidanceEventLogRepo,
+})
+const guidanceObservabilityService = new GuidanceObservabilityService({
+  inboxRepo: repos.guidanceInboxRepo,
+  eventLogRepo: repos.guidanceEventLogRepo,
+})
 const guidanceOrchestrator = new GuidanceOrchestrator({
   stateService: guidanceStateService,
   inboxRepo: repos.guidanceInboxRepo,
@@ -159,6 +170,16 @@ const guidanceOrchestrator = new GuidanceOrchestrator({
   copyService: guidanceCopyService,
   delivery: guidanceDelivery,
 })
+const guidanceRecallScheduler = new GuidanceRecallScheduler(
+  {
+    stateRepo: repos.guidanceActorStateRepo,
+    inboxRepo: repos.guidanceInboxRepo,
+    eventLogRepo: repos.guidanceEventLogRepo,
+    copyService: guidanceCopyService,
+    bellService: guidanceBellService,
+    leaderElector: infra.leaderElectors.guidanceRecallScheduler,
+  },
+)
 
 if (nurture.memoryService) {
   nurture.memoryService.appendDigestHook(async (input) => {
@@ -340,7 +361,14 @@ export const cultureDigestScheduler = nurture.cultureDigestScheduler
 export const privateChannelServices = nurture.privateChannelServices
 export const privateChannelScheduler = nurture.privateChannelScheduler
 export { communityConfigScheduler, roleAssignmentExpiryScheduler }
-export { guidanceCopyService, guidanceStateService, guidanceOrchestrator }
+export {
+  guidanceBellService,
+  guidanceCopyService,
+  guidanceObservabilityService,
+  guidanceRecallScheduler,
+  guidanceStateService,
+  guidanceOrchestrator,
+}
 
 export const agentExecutor = rt.agentExecutor
 export const postScheduler = rt.postScheduler

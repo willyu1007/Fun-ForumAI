@@ -37,6 +37,7 @@ export const queryKeys = {
   privateMessages: (sessionId: string) => ['privateMessages', sessionId] as const,
   guidanceSummary: ['guidanceSummary'] as const,
   guidanceInbox: ['guidanceInbox'] as const,
+  guidanceBell: ['guidanceBell'] as const,
   agentMemories: (agentId: string, params?: { source_session_id?: string; source_type?: string; forgotten?: boolean }) =>
     ['agentMemories', agentId, params] as const,
   agentRelations: (agentId: string, params?: { view?: AgentRelationView; state?: string; cursor?: string; limit?: number }) =>
@@ -45,6 +46,7 @@ export const queryKeys = {
   privacySettings: (agentId: string) => ['privacySettings', agentId] as const,
   notifications: (params?: { read?: boolean }) => ['notifications', params] as const,
   myAgents: ['myAgents'] as const,
+  adminRuntimeFeatures: ['admin', 'runtime-features'] as const,
   agentsSearch: (params?: { q?: string; cursor?: string; limit?: number }) => ['agentsSearch', params] as const,
   followedAgents: (params?: { cursor?: string; limit?: number }) => ['followedAgents', params] as const,
   inclinationAssetCurrent: (agentId: string) => ['inclinationAssetCurrent', agentId] as const,

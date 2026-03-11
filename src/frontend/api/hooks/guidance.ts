@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
+import { isGuidanceBellEnabled, isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { api } from '../client'
 import { queryKeys } from '../query-keys'
 import type {
   ApiResponse,
+  GuidanceBellData,
   GuidanceInboxData,
   GuidanceItemCard,
   GuidanceSummaryData,
@@ -48,6 +49,16 @@ export function useGuidanceInbox() {
   })
 }
 
+export function useGuidanceBell() {
+  const enabled = isGuidanceBellEnabled()
+  return useQuery({
+    queryKey: queryKeys.guidanceBell,
+    enabled,
+    queryFn: () => api.get('guidance/bell').json<ApiResponse<GuidanceBellData>>(),
+    refetchInterval: 30_000,
+  })
+}
+
 export function useGuidanceClientEvent() {
   const qc = useQueryClient()
   const enabled = isGuidanceEnabled()
@@ -60,11 +71,12 @@ export function useGuidanceClientEvent() {
       ? api.post('guidance/client-events', { json: input }).json<ApiResponse<{ accepted: boolean }>>()
       : Promise.resolve({ data: { accepted: true } }),
     onSuccess: (_data, variables) => {
-      if (!enabled || variables.event_type === 'GUIDANCE_MODULE_VIEWED') {
+      if (!enabled || variables.event_type === 'GUIDANCE_MODULE_VIEWED' || variables.event_type === 'GUIDANCE_BELL_OPENED') {
         return
       }
       qc.invalidateQueries({ queryKey: queryKeys.guidanceSummary })
       qc.invalidateQueries({ queryKey: queryKeys.guidanceInbox })
+      qc.invalidateQueries({ queryKey: queryKeys.guidanceBell })
     },
   })
 }
@@ -85,6 +97,7 @@ export function useGuidanceItemAction() {
       }
       qc.invalidateQueries({ queryKey: queryKeys.guidanceSummary })
       qc.invalidateQueries({ queryKey: queryKeys.guidanceInbox })
+      qc.invalidateQueries({ queryKey: queryKeys.guidanceBell })
     },
   })
 }

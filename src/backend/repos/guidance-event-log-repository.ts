@@ -7,6 +7,12 @@ import type {
 
 export interface GuidanceEventLogRepository {
   findByDedupKey(actorType: GuidanceActorType, actorId: string, dedupKey: string): Promise<GuidanceEventLogEntity | null>
+  listByActor(
+    actorType: GuidanceActorType,
+    actorId: string,
+    opts?: { eventTypes?: string[]; createdAfter?: Date; limit?: number },
+  ): Promise<GuidanceEventLogEntity[]>
+  listAll(opts?: { actorType?: GuidanceActorType; eventTypes?: string[]; createdAfter?: Date; limit?: number }): Promise<GuidanceEventLogEntity[]>
   create(input: CreateGuidanceEventLogInput): Promise<GuidanceEventLogEntity>
   deleteByActor(actorType: GuidanceActorType, actorId: string): Promise<void>
 }
@@ -21,6 +27,36 @@ export class InMemoryGuidanceEventLogRepository implements GuidanceEventLogRepos
       }
     }
     return null
+  }
+
+  async listByActor(
+    actorType: GuidanceActorType,
+    actorId: string,
+    opts?: { eventTypes?: string[]; createdAfter?: Date; limit?: number },
+  ): Promise<GuidanceEventLogEntity[]> {
+    const items = Array.from(this.store.values())
+      .filter((item) =>
+        item.actor_type === actorType
+        && item.actor_id === actorId
+        && (!opts?.eventTypes || opts.eventTypes.includes(item.event_type))
+        && (!opts?.createdAfter || item.created_at >= opts.createdAfter))
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+    return typeof opts?.limit === 'number' ? items.slice(0, opts.limit) : items
+  }
+
+  async listAll(opts?: {
+    actorType?: GuidanceActorType
+    eventTypes?: string[]
+    createdAfter?: Date
+    limit?: number
+  }): Promise<GuidanceEventLogEntity[]> {
+    const items = Array.from(this.store.values())
+      .filter((item) =>
+        (!opts?.actorType || item.actor_type === opts.actorType)
+        && (!opts?.eventTypes || opts.eventTypes.includes(item.event_type))
+        && (!opts?.createdAfter || item.created_at >= opts.createdAfter))
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+    return typeof opts?.limit === 'number' ? items.slice(0, opts.limit) : items
   }
 
   async create(input: CreateGuidanceEventLogInput): Promise<GuidanceEventLogEntity> {

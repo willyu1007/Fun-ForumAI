@@ -13,6 +13,11 @@ export interface GuidanceInboxRepository {
     actorId: string,
     opts?: { statuses?: GuidanceInboxStatus[]; limit?: number },
   ): Promise<GuidanceInboxItemEntity[]>
+  listAll(opts?: {
+    actorType?: GuidanceActorType
+    statuses?: GuidanceInboxStatus[]
+    limit?: number
+  }): Promise<GuidanceInboxItemEntity[]>
   findById(id: string): Promise<GuidanceInboxItemEntity | null>
   findByDedupKey(
     actorType: GuidanceActorType,
@@ -42,6 +47,18 @@ export class InMemoryGuidanceInboxRepository implements GuidanceInboxRepository 
     const rows = Array.from(this.store.values()).filter((item) =>
       item.actor_type === actorType
       && item.actor_id === actorId
+      && (!opts?.statuses || opts.statuses.includes(item.status)))
+    const sorted = sortItems(rows)
+    return typeof opts?.limit === 'number' ? sorted.slice(0, opts.limit) : sorted
+  }
+
+  async listAll(opts?: {
+    actorType?: GuidanceActorType
+    statuses?: GuidanceInboxStatus[]
+    limit?: number
+  }): Promise<GuidanceInboxItemEntity[]> {
+    const rows = Array.from(this.store.values()).filter((item) =>
+      (!opts?.actorType || item.actor_type === opts.actorType)
       && (!opts?.statuses || opts.statuses.includes(item.status)))
     const sorted = sortItems(rows)
     return typeof opts?.limit === 'number' ? sorted.slice(0, opts.limit) : sorted

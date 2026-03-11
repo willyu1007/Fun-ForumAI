@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
+import { useRuntimeFeatures } from '@/api/hooks'
+import type { GuidanceRuntimeData } from '@/api/types'
 import { useSseStatus } from '@/app/sse-context'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -111,6 +113,7 @@ export function RuntimeDashboard() {
   const [rotationOpenCount, setRotationOpenCount] = useState(3)
   const { data: adminStats } = useRuntimeStats()
   const { data: devStatus } = useDevRuntimeStatus()
+  const { data: runtimeFeatures } = useRuntimeFeatures()
 
   const tickMutation = useMutation({
     mutationFn: () => api.post('dev/runtime/tick').json<{ data: TickResult }>(),
@@ -274,6 +277,8 @@ export function RuntimeDashboard() {
         </CardContent>
       </Card>
 
+      <GuidanceRuntimeCard guidance={runtimeFeatures?.data?.guidance} />
+
       {tickMutation.data?.data && (
         <TickResultCard result={tickMutation.data.data} />
       )}
@@ -286,6 +291,71 @@ export function RuntimeDashboard() {
         <StageRotationResultCard result={rotateStageMutation.data.data} />
       )}
     </div>
+  )
+}
+
+export function GuidanceRuntimeCard({ guidance }: { guidance?: GuidanceRuntimeData | null }) {
+  const reasonEntries = Object.entries(guidance?.per_reason ?? {})
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm">Guidance Runtime</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="Guidance Bell"
+            value={`${guidance?.bell.unread_count ?? 0} unread`}
+            variant={(guidance?.bell.unread_count ?? 0) > 0 ? 'default' : 'muted'}
+            detail={`active ${guidance?.bell.active_count ?? 0}`}
+          />
+          <StatCard
+            title="Recall Flag"
+            value={guidance?.flags.guidance_recall_v1 ? '开启' : '关闭'}
+            variant={guidance?.flags.guidance_recall_v1 ? 'success' : 'muted'}
+            detail={guidance?.flags.guidance_v1 ? 'guidance v1 已开启' : 'guidance v1 已关闭'}
+          />
+          <StatCard
+            title="交付延迟"
+            value={formatDurationMs(guidance?.avg_delivery_delay_ms ?? null)}
+            variant="default"
+            detail="平均 recall delivery delay"
+          />
+          <StatCard
+            title="Suppression"
+            value={String((guidance?.suppression.same_reason_count ?? 0) + (guidance?.suppression.daily_cap_count ?? 0))}
+            variant="default"
+            detail={`same-reason ${guidance?.suppression.same_reason_count ?? 0} · 24h cap ${guidance?.suppression.daily_cap_count ?? 0}`}
+          />
+        </div>
+
+        <div className="rounded border bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
+          <p>
+            teaching-first violations: {guidance?.teaching_first_violation_count ?? 0}
+          </p>
+          <p>
+            delivered/opened/dismissed/completed metrics are aggregated from canonical guidance event log only.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          {reasonEntries.length === 0 ? (
+            <p className="text-xs text-muted-foreground">暂无 Guidance Runtime 指标。</p>
+          ) : (
+            reasonEntries.map(([reasonCode, metric]) => (
+              <div key={reasonCode} className="grid grid-cols-[minmax(0,1fr)_repeat(4,auto)] items-center gap-2 rounded border px-3 py-2 text-[11px]">
+                <span className="truncate font-medium">{reasonCode}</span>
+                <Badge variant="outline">delivered {metric.delivered}</Badge>
+                <Badge variant="outline">opened {metric.opened}</Badge>
+                <Badge variant="outline">dismissed {metric.dismissed}</Badge>
+                <Badge variant="outline">completed {metric.completed}</Badge>
+              </div>
+            ))
+          )}
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -312,6 +382,13 @@ function StatCard({ title, value, variant, detail }: {
       </CardContent>
     </Card>
   )
+}
+
+function formatDurationMs(value: number | null): string {
+  if (value === null) return '-'
+  if (value >= 60_000) return `${Math.round(value / 60_000)}m`
+  if (value >= 1_000) return `${Math.round(value / 1_000)}s`
+  return `${value}ms`
 }
 
 function TickResultCard({ result }: { result: TickResult }) {

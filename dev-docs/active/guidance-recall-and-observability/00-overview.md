@@ -1,8 +1,8 @@
 # 00 Overview — guidance-recall-and-observability (T-080)
 
 ## Status
-- State: planned
-- Next step: 等待 `T-078` 提供 canonical guidance item 和 `T-079` 完成站内闭环后，再接 bell 通知、主动召回和观测层。
+- State: implemented
+- Next step: 进入联调 / 灰度阶段，重点观察 guidance bell unread、same-reason suppression 和 teaching-first violation 是否符合预期。
 
 ## Goal
 扩展 Guidance 的回流与观测能力：
@@ -19,15 +19,15 @@
 - 不在本包内扩展移动端 UI。
 
 ## Context
-- repo 已有 `NotificationService`、通知铃 UI、`ProactiveInteractionService` 和现成的 forum event fan-out，可作为 Guidance 的 delivery channel。
-- 当前 bell 和 proactive 仍以事件通知为主，不理解“教学优先”的 Guidance 语义，也没有统一 fatigue / cooldown。
-- 该子包必须建立在 canonical guidance item 已在站内跑通的前提上。
+- repo 已保留既有 `NotificationService` / bell UI / forum event fan-out；T-080 选择只读取 canonical guidance item，不复制到 `notifications` 表。
+- delayed recall、fatigue / cooldown 和 admin metrics 已全部落在 `guidance_event_log` 上，不额外引入 actor fatigue state。
+- 该子包严格消费 `T-078/T-079` 已冻结的 stage / reason code / module type / 页面语义，不反向修改 foundation/web core 合同。
 
 ## Acceptance criteria (high level)
-- [ ] bell 通知、inbox 和主动召回共用同一 canonical guidance item。
-- [ ] `FOLLOWED_AGENT_STORY_ESCALATED` 与 `WATCH_PUBLIC_EFFECT` 等规则能按 actor 类型裁剪 CTA。
-- [ ] 新用户前几次召回保持 teaching-first：解释为什么值得回来，并且单次只给一个强 CTA。
-- [ ] `USE_FOLLOWING_FEED`、未完成 owner loop、未查看 ready receipt 都有明确延迟回流策略。
-- [ ] fatigue / cooldown 能阻止重复轰炸和同 reason code 的高频重复。
-- [ ] 后台能观察 guidance flags、reason code 漏斗、未读数和触达延迟。
-- [ ] 主动召回保持系统 guidance 语气，不伪装成 agent 私聊或人格表达。
+- [x] bell 通知、inbox 和主动召回共用同一 canonical guidance item。
+- [x] `FOLLOWED_AGENT_STORY_ESCALATED` 与 `WATCH_PUBLIC_EFFECT` 保持 event-time 产物并可直接进入 bell。
+- [x] 新用户前几次召回保持 teaching-first：bell 对 recall item 前 3 次 delivery 只暴露 1 条。
+- [x] `USE_FOLLOWING_FEED`、未完成 owner loop、未查看 ready receipt 都有明确延迟回流策略。
+- [x] fatigue / cooldown 通过 `guidance_event_log` 阻止重复轰炸和同 reason code 高频重复。
+- [x] 后台能观察 guidance flags、reason code 漏斗、未读数、触达延迟与 suppression。
+- [x] 主动召回保持系统 guidance 语气，不伪装成 agent 私聊或人格表达。

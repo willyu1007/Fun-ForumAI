@@ -37,6 +37,7 @@ export interface InfraResult {
     cultureDigest: LeaderElector
     communityConfigScheduler: LeaderElector
     roleAssignmentExpiryScheduler: LeaderElector
+    guidanceRecallScheduler: LeaderElector
   }
 }
 
@@ -163,6 +164,7 @@ export async function createInfrastructure(): Promise<InfraResult> {
       cultureDigest: createLeaderElector('culture-digest'),
       communityConfigScheduler: createLeaderElector('community-config-scheduler'),
       roleAssignmentExpiryScheduler: createLeaderElector('role-assignment-expiry-scheduler'),
+      guidanceRecallScheduler: createLeaderElector('guidance-recall-scheduler'),
     },
   }
 }

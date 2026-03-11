@@ -230,7 +230,9 @@ describe('E2E: Control Plane (human auth)', () => {
   it('GET /v1/admin/runtime/features returns feature snapshot for admin', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     const originalRuntimeFeatures = featureFlags.runtimeFeaturesV1
+    const originalGuidanceRecall = featureFlags.guidanceRecallV1
     featureFlags.runtimeFeaturesV1 = true
+    featureFlags.guidanceRecallV1 = true
 
     try {
       const res = await request(app)
@@ -250,12 +252,30 @@ describe('E2E: Control Plane (human auth)', () => {
         scenes: expect.any(Array),
         writeback_enabled: expect.any(Boolean),
       }))
+      expect(res.body.data.guidance).toEqual(expect.objectContaining({
+        flags: {
+          guidance_v1: expect.any(Boolean),
+          guidance_recall_v1: true,
+        },
+        bell: {
+          unread_count: expect.any(Number),
+          active_count: expect.any(Number),
+        },
+        per_reason: expect.any(Object),
+        suppression: {
+          same_reason_count: expect.any(Number),
+          daily_cap_count: expect.any(Number),
+        },
+        teaching_first_violation_count: expect.any(Number),
+      }))
+      expect(res.body.data.guidance).toHaveProperty('avg_delivery_delay_ms')
       expect(res.body.data.observability).toHaveProperty('render_log.required_fields')
       expect(res.body.data.observability).toHaveProperty('evaluation.blind_review_rubric')
       expect(res.body.data.observability).toHaveProperty('rollout_gates')
       expect(Array.isArray(res.body.data.observability.render_log_preview)).toBe(true)
     } finally {
       featureFlags.runtimeFeaturesV1 = originalRuntimeFeatures
+      featureFlags.guidanceRecallV1 = originalGuidanceRecall
     }
   })
 

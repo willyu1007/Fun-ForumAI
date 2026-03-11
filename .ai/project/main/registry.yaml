@@ -710,13 +710,13 @@ tasks:
     updated: 2026-03-10
   - id: T-080
     slug: guidance-recall-and-observability
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-040
     requirement_ids:
       - R-043
     dev_docs_path: dev-docs/active/guidance-recall-and-observability
-    updated: 2026-03-10
+    updated: 2026-03-11
   - id: T-081
     slug: chatroom-ux-audit-remediation
     status: in-progress

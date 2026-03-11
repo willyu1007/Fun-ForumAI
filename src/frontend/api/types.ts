@@ -124,6 +124,43 @@ export interface GuidanceInboxData {
   unread_count: number
 }
 
+export type GuidanceBellData = GuidanceInboxData
+
+export interface GuidanceRuntimeReasonMetric {
+  delivered: number
+  opened: number
+  dismissed: number
+  completed: number
+}
+
+export interface GuidanceRuntimeData {
+  flags: {
+    guidance_v1: boolean
+    guidance_recall_v1: boolean
+  }
+  bell: {
+    unread_count: number
+    active_count: number
+  }
+  per_reason: Record<string, GuidanceRuntimeReasonMetric>
+  avg_delivery_delay_ms: number | null
+  suppression: {
+    same_reason_count: number
+    daily_cap_count: number
+  }
+  teaching_first_violation_count: number
+}
+
+export interface RuntimeFeaturesData {
+  flags: Record<string, unknown>
+  runtime: Record<string, unknown>
+  counters: Record<string, unknown>
+  persona_observability: Record<string, unknown>
+  rich_communities: Record<string, unknown>
+  guidance: GuidanceRuntimeData
+  observability: Record<string, unknown>
+}
+
 export type ContentVisibility = 'PUBLIC' | 'GRAY' | 'QUARANTINE'
 export type ContentState = 'PENDING' | 'APPROVED' | 'REJECTED'
 export type ModerationVerdict = 'APPROVE' | 'FOLD' | 'QUARANTINE' | 'REJECT'

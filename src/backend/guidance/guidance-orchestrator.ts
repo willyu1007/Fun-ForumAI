@@ -3,6 +3,7 @@ import type { AgentRepository } from '../repos/agent-repository.js'
 import type { GuidanceEventLogRepository } from '../repos/guidance-event-log-repository.js'
 import type { GuidanceInboxRepository } from '../repos/guidance-inbox-repository.js'
 import type { HumanFollowRepository } from '../repos/human-follow-repository.js'
+import { GUIDANCE_EVENT_TYPES } from './guidance-events.js'
 import { guidanceMetrics } from './metrics.js'
 import type { GuidanceResolvedActor, GuidanceActorRef } from './guidance-types.js'
 import { GUIDANCE_REASON_CODES } from './reason-codes.js'
@@ -44,6 +45,11 @@ export class GuidanceOrchestrator {
   async actOnItem(actor: GuidanceActorRef, itemId: string, action: 'open' | 'dismiss' | 'complete') {
     const updated = await this.deps.stateService.markItem(actor, itemId, action)
     if (updated) {
+      if (action === 'dismiss') {
+        await this.recordItemLifecycleEvent(actor, updated, GUIDANCE_EVENT_TYPES.ITEM_DISMISSED)
+      } else if (action === 'complete') {
+        await this.recordItemLifecycleEvent(actor, updated, GUIDANCE_EVENT_TYPES.ITEM_COMPLETED)
+      }
       this.deps.delivery.publishUpdated(actor)
     }
     return updated
@@ -169,20 +175,12 @@ export class GuidanceOrchestrator {
             await this.deps.stateService.saveActorState(actor, {
               watch_public_effect_at: now,
             })
-            await this.deps.inboxRepo.update({
-              id: watchItem.id,
-              status: 'COMPLETED',
-              unread: false,
-            })
+            await this.completeItem(actor, watchItem)
             shouldPublish = true
           }
           const followerItem = await this.findFollowedStoryItem(actor, postId)
           if (followerItem) {
-            await this.deps.inboxRepo.update({
-              id: followerItem.id,
-              status: 'COMPLETED',
-              unread: false,
-            })
+            await this.completeItem(actor, followerItem)
             shouldPublish = true
           }
         }
@@ -193,7 +191,7 @@ export class GuidanceOrchestrator {
         if (sessionId) {
           const item = await this.deps.inboxRepo.findByDedupKey(actor.actor_type, actor.actor_id, `nurture_receipt:${sessionId}`)
           if (item) {
-            await this.deps.inboxRepo.update({ id: item.id, unread: false })
+            await this.completeItem(actor, item)
             shouldPublish = true
           }
         }
@@ -203,13 +201,14 @@ export class GuidanceOrchestrator {
         const targetUrl = typeof payload.target_url === 'string' ? payload.target_url : null
         const postId = typeof payload.post_id === 'string' ? payload.post_id : null
         if (targetUrl && postId) {
-          await this.upsertInbox(actor, GUIDANCE_REASON_CODES.WATCH_PUBLIC_EFFECT, {
+          const item = await this.upsertInbox(actor, GUIDANCE_REASON_CODES.WATCH_PUBLIC_EFFECT, {
             module_type: 'CARD',
             dedup_key: `watch_public_effect:${postId}`,
             target_url: targetUrl,
             post_id: postId,
             agent_id: typeof payload.agent_id === 'string' ? payload.agent_id : null,
           })
+          await this.recordBellDelivery(actor, item, { recall: false, delayMs: null })
           shouldPublish = true
         }
         break
@@ -218,13 +217,14 @@ export class GuidanceOrchestrator {
         const targetUrl = typeof payload.target_url === 'string' ? payload.target_url : null
         const postId = typeof payload.post_id === 'string' ? payload.post_id : null
         if (targetUrl && postId) {
-          await this.upsertInbox(actor, GUIDANCE_REASON_CODES.FOLLOWED_AGENT_STORY_ESCALATED, {
+          const item = await this.upsertInbox(actor, GUIDANCE_REASON_CODES.FOLLOWED_AGENT_STORY_ESCALATED, {
             module_type: 'CARD',
             dedup_key: `followed_story:${postId}`,
             target_url: targetUrl,
             post_id: postId,
             agent_id: typeof payload.agent_id === 'string' ? payload.agent_id : null,
           })
+          await this.recordBellDelivery(actor, item, { recall: false, delayMs: null })
           shouldPublish = true
         }
         break
@@ -288,11 +288,7 @@ export class GuidanceOrchestrator {
     })
     const target = items.find((item) => item.reason_code === reasonCode)
     if (target) {
-      await this.deps.inboxRepo.update({
-        id: target.id,
-        status: 'COMPLETED',
-        unread: false,
-      })
+      await this.completeItem(actor, target)
     }
   }
 
@@ -307,14 +303,14 @@ export class GuidanceOrchestrator {
       session_id?: string | null
       post_id?: string | null
     },
-  ): Promise<void> {
+  ): Promise<GuidanceInboxItemEntity> {
     const copy = this.deps.copyService.getReasonCopy(reasonCode, {
       target_url: context.target_url ?? null,
       agent_id: context.agent_id ?? null,
       session_id: context.session_id ?? null,
       post_id: context.post_id ?? null,
     })
-    await this.deps.inboxRepo.upsert({
+    return this.deps.inboxRepo.upsert({
       actor_type: actor.actor_type,
       actor_id: actor.actor_id,
       module_type: context.module_type,
@@ -332,6 +328,53 @@ export class GuidanceOrchestrator {
       related_session_id: context.session_id ?? null,
       unread: true,
       status: 'ACTIVE',
+    })
+  }
+
+  private async completeItem(actor: GuidanceActorRef, item: GuidanceInboxItemEntity): Promise<void> {
+    const updated = await this.deps.inboxRepo.update({
+      id: item.id,
+      status: 'COMPLETED',
+      unread: false,
+    })
+    if (updated) {
+      await this.recordItemLifecycleEvent(actor, updated, GUIDANCE_EVENT_TYPES.ITEM_COMPLETED)
+    }
+  }
+
+  private async recordBellDelivery(
+    actor: GuidanceActorRef,
+    item: GuidanceInboxItemEntity,
+    opts: { recall: boolean; delayMs: number | null },
+  ): Promise<void> {
+    await this.deps.eventLogRepo.create({
+      actor_type: actor.actor_type,
+      actor_id: actor.actor_id,
+      event_type: GUIDANCE_EVENT_TYPES.BELL_DELIVERED,
+      payload_json: {
+        item_id: item.id,
+        reason_code: item.reason_code,
+        dedup_key: item.dedup_key,
+        recall: opts.recall,
+        ...(typeof opts.delayMs === 'number' ? { delay_ms: opts.delayMs } : {}),
+      },
+    })
+  }
+
+  private async recordItemLifecycleEvent(
+    actor: GuidanceActorRef,
+    item: GuidanceInboxItemEntity,
+    eventType: typeof GUIDANCE_EVENT_TYPES.ITEM_DISMISSED | typeof GUIDANCE_EVENT_TYPES.ITEM_COMPLETED,
+  ): Promise<void> {
+    await this.deps.eventLogRepo.create({
+      actor_type: actor.actor_type,
+      actor_id: actor.actor_id,
+      event_type: eventType,
+      payload_json: {
+        item_id: item.id,
+        reason_code: item.reason_code,
+        dedup_key: item.dedup_key,
+      },
     })
   }
 

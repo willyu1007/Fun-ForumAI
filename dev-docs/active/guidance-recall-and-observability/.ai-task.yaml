@@ -2,8 +2,8 @@ version: 1
 task_id: T-080
 project: main
 slug: guidance-recall-and-observability
-status: planned
-updated: "2026-03-10"
+status: done
+updated: "2026-03-11"
 keywords:
   - guidance
   - recall

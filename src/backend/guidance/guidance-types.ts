@@ -117,6 +117,11 @@ export interface GuidanceInboxView {
   unread_count: number
 }
 
+export interface GuidanceBellView {
+  items: GuidanceItemCardView[]
+  unread_count: number
+}
+
 export interface GuidanceChecklistSeed {
   reason_code: GuidanceReasonCode
   completed: boolean

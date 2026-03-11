@@ -17,8 +17,8 @@ import { LeftSidebar } from './LeftSidebar'
 import { RightSidebar } from './RightSidebar'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useSidebarStore } from '@/shared/stores/sidebar-store'
-import { useGuidanceInbox, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '@/api/hooks'
-import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
+import { useGuidanceBell, useGuidanceClientEvent, useGuidanceInbox, useGuidanceItemAction, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '@/api/hooks'
+import { isGuidanceBellEnabled, isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { Bell, MessageCircle, Trophy, Info, Inbox } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { relativeTime } from '@/shared/utils/relative-time'
@@ -188,11 +188,18 @@ function notifTargetUrl(n: { type: string; target_type: string | null; target_id
 
 function NotificationBell() {
   const navigate = useNavigate()
+  const guidanceBellEnabled = isGuidanceBellEnabled()
   const { data } = useNotifications()
+  const { data: guidanceBell } = useGuidanceBell()
+  const guidanceClientEvent = useGuidanceClientEvent()
+  const guidanceItemAction = useGuidanceItemAction()
   const markRead = useMarkNotificationRead()
   const markAll = useMarkAllNotificationsRead()
-  const unread = data?.data?.unread_count ?? 0
+  const notificationUnread = data?.data?.unread_count ?? 0
   const items = data?.data?.items ?? []
+  const guidanceItems = guidanceBellEnabled ? (guidanceBell?.data?.items ?? []) : []
+  const guidanceUnread = guidanceBellEnabled ? (guidanceBell?.data?.unread_count ?? 0) : 0
+  const unread = guidanceUnread + notificationUnread
 
   const handleClick = (n: { id: string; read: boolean; type: string; target_type: string | null; target_id: string | null }) => {
     if (!n.read) markRead.mutate(n.id)
@@ -200,10 +207,39 @@ function NotificationBell() {
     if (url) navigate(url)
   }
 
+  const handleGuidanceClick = (item: {
+    id: string
+    unread: boolean
+    reason_code: string
+    title: string
+    body: string
+    cta: { target: string } | null
+    created_at: string
+    updated_at: string
+  }) => {
+    guidanceClientEvent.mutate({
+      event_type: 'GUIDANCE_BELL_OPENED',
+      payload: {
+        item_id: item.id,
+        reason_code: item.reason_code,
+      },
+      dedup_key: `guidance_bell_opened:${item.id}:${item.updated_at}`,
+    })
+    if (item.unread) {
+      guidanceItemAction.mutate({ item_id: item.id, action: 'open' })
+    }
+    if (item.cta?.target) {
+      navigate(item.cta.target)
+    }
+  }
+
+  const hasGuidanceItems = guidanceItems.length > 0
+  const hasNotifications = items.length > 0
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="relative h-8 w-8 p-0">
+        <Button variant="ghost" size="sm" className="relative h-8 w-8 p-0" aria-label="通知中心">
           <Bell className="h-4 w-4" />
           {unread > 0 && (
             <Badge className="absolute -right-1 -top-1 h-4 min-w-4 rounded-full px-1 text-[10px]">
@@ -213,9 +249,36 @@ function NotificationBell() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 max-h-80 overflow-y-auto">
+        {hasGuidanceItems && (
+          <>
+            <div className="px-2 py-1.5">
+              <DropdownMenuLabel className="p-0 text-xs">Guidance</DropdownMenuLabel>
+            </div>
+            {guidanceItems.slice(0, 3).map((item) => (
+              <DropdownMenuItem
+                key={item.id}
+                className={cn('flex items-start gap-2 py-2 cursor-pointer', item.unread && 'bg-primary/5')}
+                onClick={() => handleGuidanceClick(item)}
+              >
+                <span className="shrink-0 mt-0.5">
+                  {item.module_type === 'RECEIPT'
+                    ? <MessageCircle className="h-4 w-4 text-emerald-600" />
+                    : <Inbox className="h-4 w-4 text-primary" />}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-medium block">{item.title}</span>
+                  <span className="text-[11px] text-muted-foreground line-clamp-2 block">{item.body}</span>
+                  <span className="text-[10px] text-muted-foreground mt-0.5 block">{relativeTime(item.created_at)}</span>
+                </div>
+                {item.unread && <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1" />}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+          </>
+        )}
         <div className="flex items-center justify-between px-2 py-1.5">
           <DropdownMenuLabel className="text-xs p-0">通知</DropdownMenuLabel>
-          {unread > 0 && (
+          {notificationUnread > 0 && (
             <Button
               variant="ghost"
               size="sm"
@@ -227,7 +290,9 @@ function NotificationBell() {
           )}
         </div>
         <DropdownMenuSeparator />
-        {items.length === 0 ? (
+        {!hasGuidanceItems && !hasNotifications ? (
+          <div className="px-2 py-4 text-center text-xs text-muted-foreground">暂无通知</div>
+        ) : !hasNotifications ? (
           <div className="px-2 py-4 text-center text-xs text-muted-foreground">暂无通知</div>
         ) : (
           items.slice(0, 10).map((n) => (

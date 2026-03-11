@@ -34,6 +34,7 @@ async function main() {
       cultureDigestScheduler,
       communityConfigScheduler,
       roleAssignmentExpiryScheduler,
+      guidanceRecallScheduler,
       closeRuntimeInfrastructure,
     },
   ] = await Promise.all([
@@ -74,6 +75,7 @@ async function main() {
     cultureDigestScheduler?.stop()
     communityConfigScheduler?.stop()
     roleAssignmentExpiryScheduler?.stop()
+    guidanceRecallScheduler?.stop()
 
     server.close(() => {
       Promise.allSettled([

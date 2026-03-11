@@ -11,13 +11,16 @@ function extractVisitorCookie(setCookie: string | string[] | undefined): string 
 
 const featureFlags = config.features as unknown as Record<string, boolean>
 const originalGuidanceFlag = featureFlags.guidanceV1
+const originalGuidanceRecallFlag = featureFlags.guidanceRecallV1
 
 beforeEach(() => {
   featureFlags.guidanceV1 = true
+  featureFlags.guidanceRecallV1 = true
 })
 
 afterAll(() => {
   featureFlags.guidanceV1 = originalGuidanceFlag
+  featureFlags.guidanceRecallV1 = originalGuidanceRecallFlag
 })
 
 describe('Guidance API', () => {
@@ -173,6 +176,46 @@ describe('Guidance API', () => {
     expect(summaryOn.body.data.modules.some((module: { type: string }) => module.type === 'CHECKLIST')).toBe(false)
   })
 
+  it('returns only bell-eligible canonical guidance items without duplicates', async () => {
+    const ownerToken = createDevToken({ userId: 'guidance-bell-owner', email: 'owner@test.com', role: 'user' })
+
+    const createEvent = async (event_type: string, payload: Record<string, unknown>) => {
+      const res = await request(app)
+        .post('/v1/guidance/client-events')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ event_type, payload })
+      expect(res.status).toBe(202)
+    }
+
+    await createEvent('AGENT_CREATED', { agent_id: 'agent-bell-1' })
+    await createEvent('PRIVATE_SESSION_ENDED', { agent_id: 'agent-bell-1', session_id: 'session-bell-1' })
+    await createEvent('PRIVATE_DIGEST_READY', { agent_id: 'agent-bell-1', session_id: 'session-bell-1' })
+    await createEvent('OWNER_AGENT_PUBLIC_EVENT', {
+      agent_id: 'agent-bell-1',
+      post_id: 'post-bell-1',
+      target_url: '/posts/post-bell-1',
+    })
+    await createEvent('OWNER_AGENT_PUBLIC_EVENT', {
+      agent_id: 'agent-bell-1',
+      post_id: 'post-bell-1',
+      target_url: '/posts/post-bell-1',
+    })
+
+    const bellRes = await request(app)
+      .get('/v1/guidance/bell')
+      .set('Authorization', `Bearer ${ownerToken}`)
+
+    expect(bellRes.status).toBe(200)
+    expect(bellRes.body.data.unread_count).toBe(1)
+    expect(bellRes.body.data.items).toHaveLength(1)
+    expect(bellRes.body.data.items[0]).toMatchObject({
+      reason_code: 'WATCH_PUBLIC_EFFECT',
+      cta: {
+        target: '/posts/post-bell-1',
+      },
+    })
+  })
+
   it('leaves existing items unchanged when action requests arrive while the feature flag is off', async () => {
     const ownerToken = createDevToken({ userId: 'guidance-action-owner', email: 'owner@test.com', role: 'user' })
 
@@ -198,6 +241,7 @@ describe('Guidance API', () => {
     expect(receipt.unread).toBe(true)
 
     featureFlags.guidanceV1 = false
+    featureFlags.guidanceRecallV1 = false
 
     const actionRes = await request(app)
       .post(`/v1/guidance/items/${receipt.id}/action`)
@@ -207,6 +251,7 @@ describe('Guidance API', () => {
     expect(actionRes.body.data.unread).toBe(true)
 
     featureFlags.guidanceV1 = true
+    featureFlags.guidanceRecallV1 = true
 
     const refreshedInbox = await request(app)
       .get('/v1/guidance/inbox')

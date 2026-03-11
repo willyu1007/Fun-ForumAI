@@ -1,6 +1,6 @@
 import { Router, type IRouter } from 'express'
 import { requireHumanAuth, requireAdmin } from '../middleware/human-auth.js'
-import { governanceAdapter, runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, relationService, usageLedgerRepo } from '../container.js'
+import { governanceAdapter, runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, relationService, usageLedgerRepo, guidanceObservabilityService } from '../container.js'
 import { config } from '../lib/config.js'
 import { getRuntimeBuildInfo } from '../lib/runtime-build-info.js'
 import { richCommunitiesMetrics } from '../lib/rich-communities-metrics.js'
@@ -78,6 +78,7 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
   const counters = runtimeFeatureMetrics.snapshot()
   const richCounters = richCommunitiesMetrics.snapshot()
   const observability = await personaObservability.snapshotAggregated()
+  const guidance = await guidanceObservabilityService.snapshot()
   const recentLedgerEntries = await usageLedgerRepo.listRecent(200)
   const build = getRuntimeBuildInfo()
 
@@ -99,6 +100,13 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
       counters,
       persona_observability: buildPersonaObservabilitySummary(counters.persona),
       rich_communities: richCounters,
+      guidance: {
+        flags: {
+          guidance_v1: config.features.guidanceV1,
+          guidance_recall_v1: config.features.guidanceRecallV1,
+        },
+        ...guidance,
+      },
       observability: {
         ...observability,
         render_log_preview: personaObservability.latestRenderLog(recentLedgerEntries, 20),

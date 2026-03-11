@@ -69,6 +69,25 @@ export class PgGuidanceInboxRepository implements GuidanceInboxRepository {
     return rows.map(toDomain)
   }
 
+  async listAll(opts?: {
+    actorType?: GuidanceActorType
+    statuses?: GuidanceInboxStatus[]
+    limit?: number
+  }): Promise<GuidanceInboxItemEntity[]> {
+    const rows = await this.table.findMany({
+      where: {
+        ...(opts?.actorType ? { actorType: opts.actorType } : {}),
+        ...(opts?.statuses ? { status: { in: opts.statuses } } : {}),
+      },
+      orderBy: [
+        { unread: 'desc' },
+        { updatedAt: 'desc' },
+      ],
+      ...(typeof opts?.limit === 'number' ? { take: opts.limit } : {}),
+    })
+    return rows.map(toDomain)
+  }
+
   async findById(id: string): Promise<GuidanceInboxItemEntity | null> {
     const row = await this.table.findUnique({ where: { id } })
     return row ? toDomain(row) : null

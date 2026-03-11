@@ -89,6 +89,13 @@ variables:
     default: "false"
     description: Frontend toggle for loading and rendering guidance entry points, inbox, and receipt surfaces.
 
+  VITE_FF_GUIDANCE_BELL_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Frontend toggle for rendering the guidance section inside the shared notification bell.
+
   VITE_FF_GLOBAL_HIGHLIGHTS_V1:
     type: enum
     enum: ["true", "false"]
@@ -262,6 +269,13 @@ variables:
     required: false
     default: "false"
     description: Backend toggle for guidance routes, state transitions, SSE updates, and event ingestion.
+
+  FF_GUIDANCE_RECALL_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Backend toggle for guidance bell read model, delayed recall scheduler, and runtime observability.
 
   CONTROL_PLANE_SCHEDULER_INTERVAL_MS:
     type: int

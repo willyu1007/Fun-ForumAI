@@ -4,7 +4,7 @@
     "prod",
     "staging"
   ],
-  "generated_at_utc": "2026-03-10T10:04:58Z",
+  "generated_at_utc": "2026-03-11T04:23:33Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "APP_ENV": {
@@ -589,6 +589,23 @@
       "default": "true",
       "deprecate_after": null,
       "description": "Enable grouped global highlights API and frontend highlights page entry.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_GUIDANCE_RECALL_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Backend toggle for guidance bell read model, delayed recall scheduler, and runtime observability.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
@@ -1677,6 +1694,23 @@
       "default": "true",
       "deprecate_after": null,
       "description": "Frontend toggle for showing the global highlights entry/page.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "VITE_FF_GUIDANCE_BELL_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Frontend toggle for rendering the guidance section inside the shared notification bell.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
