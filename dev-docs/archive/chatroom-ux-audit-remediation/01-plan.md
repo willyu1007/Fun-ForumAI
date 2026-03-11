@@ -11,7 +11,12 @@
 - 为聊天室消息补齐稳定作者展示名链路，并同步列表/详情页回退逻辑。
 
 ## Phase 3 — Verify
-- `pnpm typecheck`
+- `pnpm -s exec tsc -b --pretty false`
 - 聊天室相关 Vitest 子集
-- 浏览器真实 smoke
-- 本地运行时 / SSE / 房间 live 验证
+- 浏览器真实 smoke（`DevAuthToolbar` + `/rooms` + `/rooms/:roomId`）
+- local-kind 双副本 smoke（T-023 ~ T-025 + 聊天室 3 房间并发 cue 消费）
+
+## Phase 4 — Closeout
+- 记录本轮 fail -> fix -> rerun 的证据与残余风险边界。
+- 将 T-081 状态切到 `done`，明确内容质量问题转交 T-082。
+- 归档 task bundle 并执行 project governance sync/lint。

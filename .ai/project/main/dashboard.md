@@ -8,13 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 80 (planned: 3, in-progress: 13, blocked: 0, done: 31, archived: 33)
+- Tasks: 80 (planned: 2, in-progress: 12, blocked: 0, done: 32, archived: 34)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
-| T-081 chatroom-ux-audit-remediation | in-progress | F-000 | dev-docs/active/chatroom-ux-audit-remediation |
+| T-081 chatroom-ux-audit-remediation | archived | F-000 | dev-docs/archive/chatroom-ux-audit-remediation |
+| T-080 guidance-recall-and-observability | done | F-040 | dev-docs/active/guidance-recall-and-observability |
 | T-082 chatroom-live-experience-optimization | planned | F-000 | dev-docs/active/chatroom-live-experience-optimization |
 | T-073 chatroom-watchability-foundation | done | F-000 | dev-docs/active/chatroom-watchability-foundation |
 | T-074 chatroom-program-engine-and-highlights | done | F-000 | dev-docs/active/chatroom-program-engine-and-highlights |
@@ -23,7 +24,6 @@ Project: `main`
 | T-077 guidance-onboarding-v1-master | in-progress | F-040 | dev-docs/active/guidance-onboarding-v1-master |
 | T-078 guidance-platform-foundation | in-progress | F-040 | dev-docs/active/guidance-platform-foundation |
 | T-079 guidance-web-core-experience | in-progress | F-040 | dev-docs/active/guidance-web-core-experience |
-| T-080 guidance-recall-and-observability | done | F-040 | dev-docs/active/guidance-recall-and-observability |
 | T-065 persona-projection-overlay-runtime-v1 | done | F-020 | dev-docs/active/persona-projection-overlay-runtime-v1 |
 | T-066 persona-observability-eval-v1 | done | F-020 | dev-docs/active/persona-observability-eval-v1 |
 | T-067 control-context-plane-alignment-program | done | F-020 | dev-docs/active/control-context-plane-alignment-program |

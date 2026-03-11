@@ -1,7 +1,7 @@
 # 00 Overview — guidance-recall-and-observability (T-080)
 
 ## Status
-- State: implemented
+- State: done
 - Next step: 进入联调 / 灰度阶段，重点观察 guidance bell unread、same-reason suppression 和 teaching-first violation 是否符合预期。
 
 ## Goal

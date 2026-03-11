@@ -32,16 +32,47 @@ function paginate<T extends { id: string }>(
   return { items: page, next_cursor }
 }
 
+const DEFAULT_CACHE_REFRESH_MS = 2_000
+
 export class PgAgentRepository implements AgentRepository {
   private cache = new Map<string, Agent>()
+  private refreshInFlight: Promise<void> | null = null
 
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient,
+    opts?: { refreshIntervalMs?: number },
+  ) {
+    const refreshIntervalMs = opts?.refreshIntervalMs ?? DEFAULT_CACHE_REFRESH_MS
+    if (refreshIntervalMs > 0) {
+      const timer = setInterval(() => {
+        void this.refreshCache().catch((err) => {
+          console.error('[PgAgentRepo] background refresh error:', err)
+        })
+      }, refreshIntervalMs)
+      timer.unref?.()
+    }
+  }
 
   async hydrate(): Promise<void> {
     const rows = await this.prisma.agent.findMany()
+    const nextCache = new Map<string, Agent>()
     for (const row of rows) {
-      this.cache.set(row.id, this.toDomain(row))
+      nextCache.set(row.id, this.toDomain(row))
     }
+    for (const [id, agent] of this.cache) {
+      if (!nextCache.has(id)) {
+        nextCache.set(id, agent)
+      }
+    }
+    this.cache = nextCache
+  }
+
+  private refreshCache(): Promise<void> {
+    if (this.refreshInFlight) return this.refreshInFlight
+    this.refreshInFlight = this.hydrate().finally(() => {
+      this.refreshInFlight = null
+    })
+    return this.refreshInFlight
   }
 
   create(input: CreateAgentInput): Agent {
@@ -69,6 +100,9 @@ export class PgAgentRepository implements AgentRepository {
   }
 
   async createPersisted(input: CreateAgentInput): Promise<Agent> {
+    if (this.refreshInFlight) {
+      await this.refreshInFlight
+    }
     const id = randomUUID()
     const now = new Date()
     const agent = this.newAgent(input, id, now)
@@ -219,20 +253,54 @@ export class PgAgentRepository implements AgentRepository {
 export class PgAgentConfigRepository implements AgentConfigRepository {
   private cache = new Map<string, AgentConfig>()
   private agentLatest = new Map<string, string>()
+  private refreshInFlight: Promise<void> | null = null
 
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient,
+    opts?: { refreshIntervalMs?: number },
+  ) {
+    const refreshIntervalMs = opts?.refreshIntervalMs ?? DEFAULT_CACHE_REFRESH_MS
+    if (refreshIntervalMs > 0) {
+      const timer = setInterval(() => {
+        void this.refreshCache().catch((err) => {
+          console.error('[PgAgentConfigRepo] background refresh error:', err)
+        })
+      }, refreshIntervalMs)
+      timer.unref?.()
+    }
+  }
 
   async hydrate(): Promise<void> {
     const rows = await this.prisma.agentConfig.findMany({
       orderBy: { effectiveAt: 'desc' },
     })
+    const nextCache = new Map<string, AgentConfig>()
+    const nextLatest = new Map<string, string>()
     for (const row of rows) {
       const config = this.toDomain(row)
-      this.cache.set(config.id, config)
-      if (!this.agentLatest.has(config.agent_id)) {
-        this.agentLatest.set(config.agent_id, config.id)
+      nextCache.set(config.id, config)
+      if (!nextLatest.has(config.agent_id)) {
+        nextLatest.set(config.agent_id, config.id)
       }
     }
+    for (const [id, config] of this.cache) {
+      if (!nextCache.has(id)) {
+        nextCache.set(id, config)
+      }
+      if (!nextLatest.has(config.agent_id)) {
+        nextLatest.set(config.agent_id, id)
+      }
+    }
+    this.cache = nextCache
+    this.agentLatest = nextLatest
+  }
+
+  private refreshCache(): Promise<void> {
+    if (this.refreshInFlight) return this.refreshInFlight
+    this.refreshInFlight = this.hydrate().finally(() => {
+      this.refreshInFlight = null
+    })
+    return this.refreshInFlight
   }
 
   create(input: CreateAgentConfigInput): AgentConfig {
@@ -266,6 +334,9 @@ export class PgAgentConfigRepository implements AgentConfigRepository {
   }
 
   async createPersisted(input: CreateAgentConfigInput): Promise<AgentConfig> {
+    if (this.refreshInFlight) {
+      await this.refreshInFlight
+    }
     const id = randomUUID()
     const now = new Date()
     const config: AgentConfig = {

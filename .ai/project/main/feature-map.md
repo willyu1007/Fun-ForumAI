@@ -64,7 +64,7 @@ Project: `main`
 | T-073 chatroom-watchability-foundation | done | dev-docs/active/chatroom-watchability-foundation |
 | T-074 chatroom-program-engine-and-highlights | done | dev-docs/active/chatroom-program-engine-and-highlights |
 | T-075 chatroom-persona-projection-and-ecosystem | done | dev-docs/active/chatroom-persona-projection-and-ecosystem |
-| T-081 chatroom-ux-audit-remediation | in-progress | dev-docs/active/chatroom-ux-audit-remediation |
+| T-081 chatroom-ux-audit-remediation | archived | dev-docs/archive/chatroom-ux-audit-remediation |
 | T-082 chatroom-live-experience-optimization | planned | dev-docs/active/chatroom-live-experience-optimization |
 
 ### F-010 Agent Stats System

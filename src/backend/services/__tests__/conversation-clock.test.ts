@@ -391,4 +391,89 @@ describe('ConversationClock', () => {
       }),
     )
   })
+
+  it('hydrates missing timers for active room members when leader sync runs', async () => {
+    const ensureLeadership = vi.fn(async () => true)
+    const list = vi.fn(async () => ({
+      items: [{ id: 'room-1', status: 'active' }],
+    }))
+    const getMembers = vi.fn(async () => [
+      {
+        member_id: 'agent-1',
+        personal_tick_interval: 25_000,
+      },
+    ])
+
+    const clock = new ConversationClock({
+      roomRepo: {
+        list,
+        getMembers,
+      } as never,
+      messageRepo: {} as never,
+      agentRepo: {} as never,
+      agentService: {} as never,
+      chatService: {} as never,
+      llmGateway: {} as never,
+      sseHub: {} as never,
+      eventRepo: {} as never,
+      agentRunRepo: {} as never,
+      leaderElector: {
+        ensureLeadership,
+      } as never,
+    })
+
+    const harness = clock as unknown as {
+      running: boolean
+      scheduleAgent: (roomId: string, agentId: string, tickInterval: number) => void
+      syncActiveRoomTimers: () => Promise<void>
+    }
+    harness.running = true
+    harness.scheduleAgent = vi.fn()
+
+    await harness.syncActiveRoomTimers()
+
+    expect(ensureLeadership).toHaveBeenCalledTimes(1)
+    expect(list).toHaveBeenCalledWith({ limit: 200, status: 'active' })
+    expect(getMembers).toHaveBeenCalledWith('room-1')
+    expect(harness.scheduleAgent).toHaveBeenCalledWith('room-1', 'agent-1', 25_000)
+  })
+
+  it('skips active room timer hydration when this pod is not leader', async () => {
+    const ensureLeadership = vi.fn(async () => false)
+    const list = vi.fn()
+    const getMembers = vi.fn()
+
+    const clock = new ConversationClock({
+      roomRepo: {
+        list,
+        getMembers,
+      } as never,
+      messageRepo: {} as never,
+      agentRepo: {} as never,
+      agentService: {} as never,
+      chatService: {} as never,
+      llmGateway: {} as never,
+      sseHub: {} as never,
+      eventRepo: {} as never,
+      agentRunRepo: {} as never,
+      leaderElector: {
+        ensureLeadership,
+      } as never,
+    })
+
+    const harness = clock as unknown as {
+      running: boolean
+      scheduleAgent: (roomId: string, agentId: string, tickInterval: number) => void
+      syncActiveRoomTimers: () => Promise<void>
+    }
+    harness.running = true
+    harness.scheduleAgent = vi.fn()
+
+    await harness.syncActiveRoomTimers()
+
+    expect(ensureLeadership).toHaveBeenCalledTimes(1)
+    expect(list).not.toHaveBeenCalled()
+    expect(getMembers).not.toHaveBeenCalled()
+    expect(harness.scheduleAgent).not.toHaveBeenCalled()
+  })
 })

@@ -2,7 +2,7 @@
 
 ## Status
 - State: planned
-- Next step: 创建 task bundle 并冻结体验优化的验收口径，作为 `T-073 ~ T-075` 的后续优化阶段启动。
+- Next step: 以 `T-081` 已关闭的稳定性基线为前提，启动节奏基线与 fast-lane 的第一批实现。
 
 ## Goal
 提升聊天室的回合密度、高光频率、人格辨识度和 owner 导播体感，让人类围观时更像在看 live 节目，参与控制时更像在导演房间。
@@ -15,7 +15,7 @@
 
 ## Context
 - `T-073`、`T-074`、`T-075` 已经把聊天室 watchability、program/highlights、persona/ecology 基座接齐，但当前体感仍然偏“能跑”，还没到“像节目”。
-- `T-081` 正在处理真实路径稳定性与遗留风险，本包只承接其后的体验增强，不回混缺陷清单。
+- `T-081` 已完成真实路径稳定性收口，本包只承接其后的体验增强，不回混缺陷清单。
 - 当前 repo 已有 `/rooms/:roomId` 单页、`PATCH /rooms/:roomId/program`、`POST /rooms/:roomId/program/cues`、`GET /rooms/:roomId/control-state`、room-level SSE 和 owner panel。
 - authoritative product direction 仍来自“聊天室功能改造”文档，但本包的目标是把设计主张收敛到可观测、可压测、可回归的工程闭环。
 

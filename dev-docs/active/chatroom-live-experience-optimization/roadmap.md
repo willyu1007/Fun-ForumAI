@@ -24,7 +24,7 @@
 6. local-kind 并发验收：在真实模型与多房并发下复核活性、SSE 和 render 体验。
 
 ## Deliverables
-- 新 task bundle 与 project hub 注册完成，明确标注为 `T-073 ~ T-075` 的后续优化。
+- 现有 task bundle 与 project hub 持续同步，明确标注为 `T-073 ~ T-075` 的后续优化。
 - `POST /rooms/:roomId/program/cues` 增量冻结 `preset` 与 `target_agent_id`，继续兼容已有 `cue_type` / `director_goal` / `target_roles`。
 - `RoomControlStateReadModel` 与 `ROOM_CONTROL_STATE_UPDATED` 增加 fast-lane 与预设相关字段。
 - 验证矩阵覆盖 typecheck、Vitest 子集、浏览器 smoke、local-kind `3 房间 / 60s` 与 `5 房间 / 60s`。

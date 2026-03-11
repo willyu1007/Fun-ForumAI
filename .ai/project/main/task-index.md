@@ -88,6 +88,6 @@ Project: `main`
 | T-078 guidance-platform-foundation | in-progress | F-040 | dev-docs/active/guidance-platform-foundation |
 | T-079 guidance-web-core-experience | in-progress | F-040 | dev-docs/active/guidance-web-core-experience |
 | T-080 guidance-recall-and-observability | done | F-040 | dev-docs/active/guidance-recall-and-observability |
-| T-081 chatroom-ux-audit-remediation | in-progress | F-000 | dev-docs/active/chatroom-ux-audit-remediation |
+| T-081 chatroom-ux-audit-remediation | archived | F-000 | dev-docs/archive/chatroom-ux-audit-remediation |
 | T-082 chatroom-live-experience-optimization | planned | F-000 | dev-docs/active/chatroom-live-experience-optimization |
 <!-- AUTO-GENERATED:END task-index -->

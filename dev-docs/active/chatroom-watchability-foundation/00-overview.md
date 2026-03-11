@@ -20,8 +20,8 @@
 - 外部 authoritative design input 位于“聊天室功能改造”目录，包含总纲和 3 份实施子文档。
 
 ## Acceptance criteria (high level)
-- [ ] `RoomProgram`、`RoomEpisode`、`RoomEpisodeCast`、最小 `RoomLiveSnapshot` 合同冻结并进入实现范围。
-- [ ] `ExecutionContext.chatContext.program` 和 room-native template 变量冻结并接入聊天室生成链路。
-- [ ] `GET /rooms/:roomId/live-snapshot`、`GET /rooms/:roomId/cast`、`GET /rooms/:roomId/program` 可供前端直接消费。
-- [ ] 房间列表和房间头部能显示“为什么值得进”“当前在发生什么”“谁在台上”。
-- [ ] 旧聊天消息流、旧房间接口与 `ConversationClock` 保持兼容，无行为回退。
+- [x] `RoomProgram`、`RoomEpisode`、`RoomEpisodeCast`、最小 `RoomLiveSnapshot` 合同冻结并进入实现范围。
+- [x] `ExecutionContext.chatContext.program` 和 room-native template 变量冻结并接入聊天室生成链路。
+- [x] `GET /rooms/:roomId/live-snapshot`、`GET /rooms/:roomId/cast`、`GET /rooms/:roomId/program` 可供前端直接消费。
+- [x] 房间列表和房间头部能显示“为什么值得进”“当前在发生什么”“谁在台上”。
+- [x] 旧聊天消息流、旧房间接口与 `ConversationClock` 保持兼容，无行为回退。
