@@ -14,6 +14,11 @@ interface SseClient {
   connectedAt: number
 }
 
+type FlushableResponse = Response & {
+  flush?: () => void
+  flushHeaders?: () => void
+}
+
 const HEARTBEAT_INTERVAL_MS = 30_000
 const CLIENT_TIMEOUT_MS = 5 * 60 * 1000
 
@@ -49,12 +54,13 @@ export class SseHub {
   addClient(id: string, res: Response): void {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
     })
 
-    res.write(`data: ${JSON.stringify({ type: 'connected', payload: { client_id: id } })}\n\n`)
+    this.flushHeaders(res)
+    this.writeChunk(res, `data: ${JSON.stringify({ type: 'connected', payload: { client_id: id } })}\n\n`)
 
     this.clients.set(id, { id, res, connectedAt: Date.now() })
 
@@ -261,7 +267,7 @@ export class SseHub {
         continue
       }
       try {
-        client.res.write(`data: ${data}\n\n`)
+        this.writeChunk(client.res, `data: ${data}\n\n`)
       } catch {
         dead.push(clientId)
       }
@@ -286,7 +292,7 @@ export class SseHub {
         continue
       }
       try {
-        client.res.write(`data: ${data}\n\n`)
+        this.writeChunk(client.res, `data: ${data}\n\n`)
       } catch {
         dead.push(clientId)
       }
@@ -304,7 +310,7 @@ export class SseHub {
 
     for (const [id, client] of this.clients) {
       try {
-        client.res.write(`data: ${data}\n\n`)
+        this.writeChunk(client.res, `data: ${data}\n\n`)
       } catch {
         dead.push(id)
       }
@@ -348,7 +354,7 @@ export class SseHub {
           continue
         }
         try {
-          client.res.write(`: heartbeat\n\n`)
+          this.writeChunk(client.res, ': heartbeat\n\n')
         } catch {
           dead.push(id)
         }
@@ -437,7 +443,7 @@ export class SseHub {
         continue
       }
       try {
-        client.res.write(`data: ${data}\n\n`)
+        this.writeChunk(client.res, `data: ${data}\n\n`)
       } catch {
         dead.push(clientId)
       }
@@ -446,5 +452,14 @@ export class SseHub {
     for (const id of dead) {
       this.cleanupClient(id)
     }
+  }
+
+  private flushHeaders(res: Response): void {
+    ;(res as FlushableResponse).flushHeaders?.()
+  }
+
+  private writeChunk(res: Response, chunk: string): void {
+    res.write(chunk)
+    ;(res as FlushableResponse).flush?.()
   }
 }

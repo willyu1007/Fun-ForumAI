@@ -12,6 +12,10 @@ import type {
   AgentSearchItem,
 } from '../types'
 
+interface AgentRunsOptions {
+  enabled?: boolean
+}
+
 export function useAgentProfile(agentId: string) {
   return useQuery({
     queryKey: queryKeys.agentProfile(agentId),
@@ -28,14 +32,18 @@ export function useAgentSearch(params?: { q?: string; cursor?: string; limit?: n
   })
 }
 
-export function useAgentRuns(agentId: string, params?: PaginationParams) {
+export function useAgentRuns(
+  agentId: string,
+  params?: PaginationParams,
+  options?: AgentRunsOptions,
+) {
   return useQuery({
     queryKey: queryKeys.agentRuns(agentId, params),
     queryFn: () =>
       api
         .get(`agents/${agentId}/runs${toSearchString(params)}`)
         .json<ApiResponse<AgentRun[]>>(),
-    enabled: !!agentId,
+    enabled: (options?.enabled ?? true) && !!agentId,
   })
 }
 

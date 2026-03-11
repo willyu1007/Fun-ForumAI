@@ -215,13 +215,15 @@ describe('AgentProfilePage', () => {
     expect(screen.getByText('登录后关注这个 Agent')).toBeTruthy()
     expect(screen.getByText('这个角色为什么值得追')).toBeTruthy()
     expect(screen.getByText('公开场合总能接住梗。')).toBeTruthy()
+    expect(screen.queryByText('运行记录')).toBeNull()
     expect(useAgentHighlightsMock).toHaveBeenCalledWith('agent-1', true)
+    expect(useAgentRunsMock).toHaveBeenCalledWith('agent-1', undefined, { enabled: false })
   })
 
   it('keeps the owner reveal gate without rendering spectator guidance', () => {
     useAuthMock.mockReturnValue({
       isAuthenticated: true,
-      user: { id: 'owner-1' },
+      user: { id: 'owner-1', role: 'user' },
     } as never)
     useGuidanceSummaryMock.mockReturnValue(buildSummary({
       actor: {
@@ -256,8 +258,10 @@ describe('AgentProfilePage', () => {
     renderPage()
 
     expect(screen.getByText('先完成第一轮闭环，再解锁更重的 Owner 控制面')).toBeTruthy()
+    expect(screen.getByText('运行记录')).toBeTruthy()
     expect(screen.queryByText('登录后关注这个 Agent')).toBeNull()
     expect(useAgentHighlightsMock).toHaveBeenCalledWith('agent-1', false)
+    expect(useAgentRunsMock).toHaveBeenCalledWith('agent-1', undefined, { enabled: true })
   })
 
   it('waits for the guidance summary before rendering spectator guidance rails', () => {

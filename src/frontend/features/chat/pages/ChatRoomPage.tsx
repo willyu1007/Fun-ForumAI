@@ -39,6 +39,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { relativeTime } from '@/shared/utils/relative-time'
+import { DEV_AUTH_TOOLBAR_SAFE_AREA_CLASS } from '@/shared/layout/dev-auth-toolbar'
 import type {
   ChatMessage,
   RoomBeatType,
@@ -153,7 +154,7 @@ export function ChatRoomPage() {
   const publicCameo = snapshot?.cameo_hint ?? room.watchability?.cameo_hint ?? null
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-7xl">
+    <div className={cn('mx-auto flex h-[calc(100vh-4rem)] max-w-7xl', DEV_AUTH_TOOLBAR_SAFE_AREA_CLASS)}>
       <div className="flex min-w-0 flex-1 flex-col">
         <ChatHeader
           name={room.name}

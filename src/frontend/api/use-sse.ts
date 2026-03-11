@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { create } from 'zustand'
+import { queryKeys } from './query-keys'
 
 interface SseEvent {
   type: string
@@ -90,8 +91,9 @@ export function useSseAutoRefresh() {
           qc.invalidateQueries({ queryKey: ['feed'] })
           break
         case 'GUIDANCE_UPDATED':
-          qc.invalidateQueries({ queryKey: ['guidanceSummary'] })
-          qc.invalidateQueries({ queryKey: ['guidanceInbox'] })
+          qc.invalidateQueries({ queryKey: queryKeys.guidanceSummary })
+          qc.invalidateQueries({ queryKey: queryKeys.guidanceInbox })
+          qc.invalidateQueries({ queryKey: queryKeys.guidanceBell })
           break
         default:
           break

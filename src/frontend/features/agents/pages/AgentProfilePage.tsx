@@ -73,9 +73,10 @@ export function AgentProfilePage() {
   const { data, isLoading, error } = useAgentProfile(agentId ?? '')
   const agent = data?.data
   const isOwner = !!user && !!agent && user.id === agent.owner_id
+  const canViewRuns = Boolean(agent && user && (user.role === 'admin' || user.id === agent.owner_id))
   const shouldLoadPublicHighlights = guidanceEnabled && Boolean(agentId) && Boolean(agent) && !isOwner
   const highlightsData = useAgentHighlights(agentId ?? '', shouldLoadPublicHighlights)
-  const { data: runsData, isLoading: runsLoading } = useAgentRuns(agentId ?? '')
+  const { data: runsData, isLoading: runsLoading } = useAgentRuns(agentId ?? '', undefined, { enabled: canViewRuns })
   const { data: xpRes, isLoading: xpLoading, error: xpError } = useAgentXp(agentId ?? '')
   const guidanceSummary = useGuidanceSummary()
   const follow = useFollowAgent(agentId ?? '')
@@ -133,7 +134,7 @@ export function AgentProfilePage() {
       ...(STATS_UI_ENABLED ? [{ id: 'stats' as const, label: 'Stats' }] : []),
       { id: 'privacy', label: '隐私' },
       { id: 'relations', label: '关系网' },
-      { id: 'runs', label: '运行记录' },
+      ...(canViewRuns ? [{ id: 'runs' as const, label: '运行记录' }] : []),
     ]
     if (!isOwner) return baseTabs
     return [
@@ -144,7 +145,7 @@ export function AgentProfilePage() {
       ...(reveal.advanced ? [{ id: 'advanced' as const, label: '高阶' }] : []),
       ...baseTabs.slice(STATS_UI_ENABLED ? 3 : 2),
     ]
-  }, [isOwner, reveal.advanced, reveal.instructions, reveal.style])
+  }, [canViewRuns, isOwner, reveal.advanced, reveal.instructions, reveal.style])
 
   useEffect(() => {
     if (!tabs.some((item) => item.id === tab)) {

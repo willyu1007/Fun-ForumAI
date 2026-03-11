@@ -18,11 +18,13 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { relativeTime } from '@/shared/utils/relative-time'
 import type { PrivateSession, PrivateMessage } from '@/api/types'
+import { DEV_AUTH_TOOLBAR_SAFE_AREA_CLASS } from '@/shared/layout/dev-auth-toolbar'
 import { MessageInput } from '../components/MessageInput'
 import { SessionSidebar } from '../components/SessionSidebar'
 import { usePrivateSessionSse } from '../hooks/use-private-session-sse'
 import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
+import { getPrivateDigestFallbackNotice } from '../digest-guidance'
 
 export function PrivateChatPage() {
   const { agentId } = useParams<{ agentId: string }>()
@@ -36,6 +38,7 @@ export function PrivateChatPage() {
   const agent = agentData?.data
   const sessionItems = sessionsData?.data?.items
   const sessions = useMemo(() => sessionItems ?? [], [sessionItems])
+  const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null
 
   useEffect(() => {
     if (!activeSessionId && sessions.length > 0) {
@@ -64,7 +67,7 @@ export function PrivateChatPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] max-w-5xl mx-auto">
+    <div className={cn('mx-auto flex h-[calc(100vh-4rem)] max-w-5xl', DEV_AUTH_TOOLBAR_SAFE_AREA_CLASS)}>
       {/* Session sidebar - desktop */}
       <div className="hidden md:block w-64 border-r">
         <SessionSidebar
@@ -82,7 +85,7 @@ export function PrivateChatPage() {
         <ChatHeader
           agentName={agent.display_name}
           agentId={agent.id}
-          activeSession={sessions.find((s) => s.id === activeSessionId) ?? null}
+          activeSession={activeSession}
           sessionCount={sessions.length}
           onToggleSidebar={() => setShowSidebar(!showSidebar)}
           onNewSession={handleNewSession}
@@ -94,6 +97,7 @@ export function PrivateChatPage() {
             agentId={agentId!}
             sessionId={activeSessionId}
             agentName={agent.display_name}
+            session={activeSession}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
@@ -179,10 +183,12 @@ function ChatThread({
   agentId,
   sessionId,
   agentName,
+  session,
 }: {
   agentId: string
   sessionId: string
   agentName: string
+  session: PrivateSession | null
 }) {
   const guidanceEnabled = isGuidanceEnabled()
   const { data: msgData, isLoading } = usePrivateMessages(sessionId)
@@ -193,8 +199,15 @@ function ChatThread({
   usePrivateSessionSse(sessionId, agentId)
 
   const messages: PrivateMessage[] = msgData?.data?.items ?? []
+  const sessionEnded = endSession.isSuccess || session?.status === 'ENDED' || session?.status === 'ARCHIVED'
   const receiptItem = guidanceEnabled
     ? guidanceInbox.data?.data?.items.find((item) => item.related_session_id === sessionId) ?? null
+    : null
+  const fallbackNotice = sessionEnded
+    ? getPrivateDigestFallbackNotice({
+        messageCount: messages.length,
+        digestStatus: session?.digest_status,
+      })
     : null
 
   useEffect(() => {
@@ -262,18 +275,27 @@ function ChatThread({
         onSend={handleSend}
         onEndSession={handleEnd}
         disabled={sendMessage.isPending}
-        sessionEnded={endSession.isSuccess}
+        sessionEnded={sessionEnded}
+        messageCount={messages.length}
       />
 
-      {(receiptItem || endSession.isSuccess) && (
+      {(receiptItem || sessionEnded || endSession.isSuccess) && (
         <div className="border-t bg-muted/20 p-4">
           {receiptItem ? (
             <GuidanceItemCard item={receiptItem} />
-          ) : (
-            <div className="rounded-xl border border-dashed bg-background px-4 py-3 text-sm text-muted-foreground">
-              对话已结束，记忆摘要正在生成中...
+          ) : fallbackNotice ? (
+            <div
+              className={cn(
+                'rounded-xl px-4 py-3 text-sm',
+                fallbackNotice.tone === 'warning' && 'border border-amber-300/70 bg-amber-50 text-amber-950',
+                fallbackNotice.tone === 'danger' && 'border border-destructive/40 bg-destructive/5 text-destructive',
+                fallbackNotice.tone === 'muted' && 'border border-dashed bg-background text-muted-foreground',
+              )}
+            >
+              <p className="font-medium">{fallbackNotice.title}</p>
+              <p className="mt-1">{fallbackNotice.body}</p>
             </div>
-          )}
+          ) : null}
         </div>
       )}
     </>

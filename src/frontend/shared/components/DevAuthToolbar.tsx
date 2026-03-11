@@ -3,6 +3,10 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { api } from '@/api/client'
+import {
+  DEV_AUTH_TOOLBAR_HEIGHT_CLASS,
+  SHOULD_RENDER_DEV_AUTH_TOOLBAR,
+} from '@/shared/layout/dev-auth-toolbar'
 
 type Identity = 'anonymous' | 'user' | 'admin'
 
@@ -26,11 +30,11 @@ export function DevAuthToolbar() {
     }
   }
 
-  if (import.meta.env.PROD) return null
+  if (!SHOULD_RENDER_DEV_AUTH_TOOLBAR) return null
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="mx-auto flex h-12 max-w-6xl items-center justify-between gap-4 px-4">
+      <div className={`mx-auto flex ${DEV_AUTH_TOOLBAR_HEIGHT_CLASS} max-w-6xl items-center justify-between gap-4 px-4`}>
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground">身份切换：</span>
           {IDENTITIES.map(({ id, label }) => (

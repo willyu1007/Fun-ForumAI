@@ -27,6 +27,13 @@ import type { OwnerStylePins } from './identity/agent-identity.js'
 
 const app: Express = express()
 
+function shouldCompress(req: express.Request, res: express.Response): boolean {
+  if (req.path === '/v1/events/stream' || req.headers.accept?.includes('text/event-stream')) {
+    return false
+  }
+  return compression.filter(req, res)
+}
+
 app.use(helmet())
 app.use(
   cors({
@@ -34,7 +41,7 @@ app.use(
     credentials: true,
   }),
 )
-app.use(compression())
+app.use(compression({ filter: shouldCompress }))
 app.use(express.json({ limit: '1mb' }))
 app.use(cookieParser())
 app.use(requestLogger)
