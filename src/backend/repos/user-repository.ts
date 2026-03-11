@@ -7,3 +7,101 @@ export interface UserRepository {
   upsertDevIdentity(input: UpsertDevHumanIdentityInput): Promise<HumanUser>
   updateLastLogin(id: string): Promise<void>
 }
+
+let counter = 0
+
+function cuid(): string {
+  return `human_${Date.now()}_${++counter}`
+}
+
+export class InMemoryUserRepository implements UserRepository {
+  private readonly store = new Map<string, HumanUser>()
+  private readonly byEmail = new Map<string, string>()
+
+  async findById(id: string): Promise<HumanUser | null> {
+    return this.store.get(id) ?? null
+  }
+
+  async findByEmail(email: string): Promise<HumanUser | null> {
+    const id = this.byEmail.get(email)
+    if (!id) return null
+    return this.store.get(id) ?? null
+  }
+
+  async create(input: CreateHumanUserInput): Promise<HumanUser> {
+    const now = new Date()
+    const user: HumanUser = {
+      id: cuid(),
+      email: input.email,
+      password_hash: input.password_hash,
+      display_name: input.display_name,
+      avatar_url: input.avatar_url ?? null,
+      phone: null,
+      wechat_open_id: null,
+      email_verified: false,
+      phone_verified: false,
+      last_login_at: null,
+      plan_tier: 'FREE',
+      status: 'ACTIVE',
+      created_at: now,
+      updated_at: now,
+    }
+
+    this.store.set(user.id, user)
+    this.byEmail.set(user.email, user.id)
+    return user
+  }
+
+  async upsertDevIdentity(input: UpsertDevHumanIdentityInput): Promise<HumanUser> {
+    const existingById = this.store.get(input.id)
+    if (existingById) {
+      const updated: HumanUser = {
+        ...existingById,
+        display_name: input.role === 'admin' ? '开发管理员' : '开发用户',
+        plan_tier: input.role === 'admin' ? 'ADMIN' : existingById.plan_tier,
+        status: 'ACTIVE',
+        email_verified: true,
+        updated_at: new Date(),
+      }
+      this.store.set(updated.id, updated)
+      this.byEmail.set(updated.email, updated.id)
+      return updated
+    }
+
+    const idConflict = this.byEmail.get(input.email)
+    const email = idConflict ? `dev+${input.id}@local.dev` : input.email
+    const now = new Date()
+    const user: HumanUser = {
+      id: input.id,
+      email,
+      password_hash: '__dev_token__',
+      display_name: input.role === 'admin' ? '开发管理员' : '开发用户',
+      avatar_url: null,
+      phone: null,
+      wechat_open_id: null,
+      email_verified: true,
+      phone_verified: false,
+      last_login_at: null,
+      plan_tier: input.role === 'admin' ? 'ADMIN' : 'FREE',
+      status: 'ACTIVE',
+      created_at: now,
+      updated_at: now,
+    }
+
+    this.store.set(user.id, user)
+    this.byEmail.set(user.email, user.id)
+    return user
+  }
+
+  async updateLastLogin(id: string): Promise<void> {
+    const existing = this.store.get(id)
+    if (!existing) return
+
+    const now = new Date()
+    this.store.set(id, {
+      ...existing,
+      last_login_at: now,
+      updated_at: now,
+    })
+  }
+}

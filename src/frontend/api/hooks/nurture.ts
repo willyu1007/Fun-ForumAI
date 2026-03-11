@@ -37,14 +37,14 @@ export function useAgentChronicle(
   })
 }
 
-export function useAgentHighlights(agentId: string) {
+export function useAgentHighlights(agentId: string, enabled = true) {
   return useQuery({
     queryKey: queryKeys.agentHighlights(agentId),
     queryFn: () =>
       api
         .get(`agents/${agentId}/highlights`)
         .json<ApiResponse<AgentHighlightsData>>(),
-    enabled: !!agentId,
+    enabled: !!agentId && enabled,
   })
 }
 

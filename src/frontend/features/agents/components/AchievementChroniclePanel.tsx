@@ -5,9 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAgentAchievements, useAgentChronicle, useAgentRelations } from '@/api/hooks'
 import { relativeTime } from '@/shared/utils/relative-time'
+import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
+import { GuidanceInlineRail } from '@/features/guidance/components/GuidanceInlineRail'
+import type { GuidanceItemCard as GuidanceItemCardView } from '@/api/types'
+import type { GuidanceInlineRail as GuidanceInlineRailModel } from '@/features/guidance/contextual-guidance'
 
 interface AchievementChroniclePanelProps {
   agentId: string
+  guidanceItem?: GuidanceItemCardView | null
+  fallbackRail?: GuidanceInlineRailModel | null
+  showRelationNodes?: boolean
 }
 
 function tierLabel(tier: 1 | 2 | 3): string {
@@ -16,14 +23,19 @@ function tierLabel(tier: 1 | 2 | 3): string {
   return 'T1'
 }
 
-export default function AchievementChroniclePanel({ agentId }: AchievementChroniclePanelProps) {
+export default function AchievementChroniclePanel({
+  agentId,
+  guidanceItem,
+  fallbackRail,
+  showRelationNodes = true,
+}: AchievementChroniclePanelProps) {
   const [includeFolded, setIncludeFolded] = useState(false)
   const { data: achievementsRes, isLoading: loadingAchievements } = useAgentAchievements(agentId, { limit: 60 })
   const { data: chronicleRes, isLoading: loadingChronicle } = useAgentChronicle(agentId, {
     limit: 60,
     include_folded: includeFolded,
   })
-  const { data: relationRes } = useAgentRelations(agentId, { view: 'friends', limit: 3 })
+  const { data: relationRes } = useAgentRelations(agentId, { view: 'friends', limit: 3 }, showRelationNodes)
 
   const achievements = achievementsRes?.data
   const chronicle = chronicleRes?.data ?? []
@@ -47,6 +59,12 @@ export default function AchievementChroniclePanel({ agentId }: AchievementChroni
 
   return (
     <div className="space-y-4">
+      {guidanceItem ? (
+        <GuidanceItemCard item={guidanceItem} />
+      ) : fallbackRail ? (
+        <GuidanceInlineRail rail={fallbackRail} />
+      ) : null}
+
       <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
         成就线记录舞台表现、公共印象与关系节点。这条线独立于 XP，不消耗成长点，也不决定加点额度。
       </div>
@@ -126,25 +144,27 @@ export default function AchievementChroniclePanel({ agentId }: AchievementChroni
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">关系节点</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {relationRes?.data?.items?.length ? (
-            <div className="space-y-2">
-              {relationRes.data.items.slice(0, 3).map((item) => (
-                <div key={item.relation_id} className="flex items-center justify-between rounded-md border p-2 text-xs">
-                  <span className="font-medium">{item.pair_agent_id}</span>
-                  <span className="text-muted-foreground">{item.state} · {item.relation_score.toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">暂无关系节点。</p>
-          )}
-        </CardContent>
-      </Card>
+      {showRelationNodes && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">关系节点</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {relationRes?.data?.items?.length ? (
+              <div className="space-y-2">
+                {relationRes.data.items.slice(0, 3).map((item) => (
+                  <div key={item.relation_id} className="flex items-center justify-between rounded-md border p-2 text-xs">
+                    <span className="font-medium">{item.pair_agent_id}</span>
+                    <span className="text-muted-foreground">{item.state} · {item.relation_score.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">暂无关系节点。</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

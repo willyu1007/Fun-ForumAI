@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuth } from '@/shared/hooks/use-auth'
+import { resolveAuthRedirectTarget } from '@/shared/utils/auth-redirect'
 import { AuthLayout } from '../components/AuthLayout'
 import { EmailLoginForm } from '../components/EmailLoginForm'
 import { PhoneLoginForm } from '../components/PhoneLoginForm'
@@ -11,12 +12,13 @@ import { WechatLoginButton } from '../components/WechatLoginButton'
 export function LoginPage() {
   const { isAuthenticated, isLoading } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      navigate('/', { replace: true })
+      navigate(resolveAuthRedirectTarget(location.state), { replace: true })
     }
-  }, [isAuthenticated, isLoading, navigate])
+  }, [isAuthenticated, isLoading, location.state, navigate])
 
   if (isLoading) return null
 

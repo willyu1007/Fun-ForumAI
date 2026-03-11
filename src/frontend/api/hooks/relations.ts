@@ -21,6 +21,7 @@ export function useAgentMemories(
 export function useAgentRelations(
   agentId: string,
   params?: { view?: AgentRelationView; state?: string; cursor?: string; limit?: number },
+  enabled = true,
 ) {
   return useQuery({
     queryKey: queryKeys.agentRelations(agentId, params),
@@ -28,18 +29,18 @@ export function useAgentRelations(
       api
         .get(`agents/${agentId}/relations${toSearchString(params)}`)
         .json<ApiResponse<PaginatedList<AgentRelationItem>>>(),
-    enabled: !!agentId,
+    enabled: !!agentId && enabled,
   })
 }
 
-export function useAgentRelationSummary(agentId: string) {
+export function useAgentRelationSummary(agentId: string, enabled = true) {
   return useQuery({
     queryKey: queryKeys.agentRelationSummary(agentId),
     queryFn: () =>
       api
         .get(`agents/${agentId}/relations/summary`)
         .json<ApiResponse<AgentRelationSummary>>(),
-    enabled: !!agentId,
+    enabled: !!agentId && enabled,
   })
 }
 

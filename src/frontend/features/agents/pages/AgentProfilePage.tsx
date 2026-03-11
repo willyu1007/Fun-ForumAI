@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, Link, useNavigate, useSearchParams } from 'react-router'
-import { useAgentProfile, useAgentRuns, useAgentXp, useFollowAgent, useUnfollowAgent, useGuidanceSummary } from '@/api/hooks'
+import { useParams, Link, useNavigate, useSearchParams, useLocation } from 'react-router'
+import { useAgentProfile, useAgentRuns, useAgentXp, useFollowAgent, useUnfollowAgent, useGuidanceSummary, useAgentHighlights } from '@/api/hooks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -21,8 +21,16 @@ import { InclinationAssetPanel } from '../components/InclinationAssetPanel'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
+import { GuidanceInlineRail } from '@/features/guidance/components/GuidanceInlineRail'
+import {
+  buildAgentSpectatorRail,
+  buildPrivacyExplanationRail,
+  buildStageProofRail,
+  findCanonicalGuidanceItemForAgent,
+} from '@/features/guidance/contextual-guidance'
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import type { GuidanceItemModule } from '@/api/types'
+import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redirect'
 
 const STATUS_STYLES: Record<string, string> = {
   ACTIVE: 'bg-emerald-50 text-emerald-700',
@@ -58,20 +66,24 @@ export function AgentProfilePage() {
   const guidanceEnabled = isGuidanceEnabled()
   const { agentId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const { isAuthenticated, user } = useAuth()
   const [tab, setTab] = useState<TabId>('overview')
   const { data, isLoading, error } = useAgentProfile(agentId ?? '')
+  const agent = data?.data
+  const isOwner = !!user && !!agent && user.id === agent.owner_id
+  const shouldLoadPublicHighlights = guidanceEnabled && Boolean(agentId) && Boolean(agent) && !isOwner
+  const highlightsData = useAgentHighlights(agentId ?? '', shouldLoadPublicHighlights)
   const { data: runsData, isLoading: runsLoading } = useAgentRuns(agentId ?? '')
   const { data: xpRes, isLoading: xpLoading, error: xpError } = useAgentXp(agentId ?? '')
   const guidanceSummary = useGuidanceSummary()
   const follow = useFollowAgent(agentId ?? '')
   const unfollow = useUnfollowAgent(agentId ?? '')
-  const agent = data?.data
-  const isOwner = !!user && !!agent && user.id === agent.owner_id
-  const guidanceModules = guidanceEnabled ? (guidanceSummary.data?.data.modules ?? []) : []
+  const guidanceData = guidanceEnabled ? guidanceSummary.data?.data : undefined
+  const guidanceModules = guidanceEnabled ? (guidanceData?.modules ?? []) : []
   const reveal = guidanceEnabled
-    ? (guidanceSummary.data?.data.actor.reveal ?? {
+    ? (guidanceData?.actor.reveal ?? {
         style: true,
         instructions: true,
         advanced: true,
@@ -81,11 +93,39 @@ export function AgentProfilePage() {
         instructions: true,
         advanced: true,
       };
+  const currentPath = locationToPath(location)
   const sourceSessionId = searchParams.get('source_session_id')
   const activeGuidanceItem = guidanceModules
     .filter((module): module is GuidanceItemModule => module.type === 'CARD' || module.type === 'RECEIPT')
     .map((module) => module.item)
     .find((item) => item.related_agent_id === agentId) ?? null
+  const contextualAgentItem = guidanceEnabled && agentId
+    ? findCanonicalGuidanceItemForAgent(guidanceData, agentId, { includeReceipt: false })
+    : null
+  const stageGuidanceItem = activeGuidanceItem?.id === contextualAgentItem?.id ? null : contextualAgentItem
+  const privacyGuidanceItem = sourceSessionId && contextualAgentItem?.reason_code === 'WATCH_PUBLIC_EFFECT'
+    ? contextualAgentItem
+    : null
+  const spectatorRail = guidanceEnabled && !isOwner
+    ? buildAgentSpectatorRail({
+        summary: guidanceData,
+        isAuthenticated,
+        isFollowed: Boolean(agent?.is_followed),
+        currentPath,
+      })
+    : null
+  const privacyFallbackRail = guidanceEnabled ? buildPrivacyExplanationRail({
+    agentId: agentId ?? '',
+    sourceSessionId,
+  }) : null
+  const stageProofRail = guidanceEnabled ? buildStageProofRail('achievements') : null
+  const relationProofRail = guidanceEnabled ? buildStageProofRail('relations') : null
+  const publicHighlights = highlightsData.data?.data
+  const shouldShowPublicProof = guidanceEnabled && !isOwner && Boolean(
+    publicHighlights?.tagline
+      || publicHighlights?.badges.length
+      || publicHighlights?.top_chronicle.length,
+  )
   const tabs = useMemo(() => {
     const baseTabs: Array<{ id: TabId; label: string }> = [
       { id: 'overview', label: '概览' },
@@ -203,7 +243,7 @@ export function AgentProfilePage() {
               </Button>
             ) : HUMAN_PARTICIPATION_ENABLED ? (
               <Button size="sm" variant="outline" asChild>
-                <Link to="/login">登录后关注</Link>
+                <Link to="/login" state={buildAuthRedirectState(currentPath, currentPath)}>登录后关注</Link>
               </Button>
             ) : null}
           </div>
@@ -262,6 +302,49 @@ export function AgentProfilePage() {
         )
       )}
 
+      {!isOwner && (
+        contextualAgentItem ? (
+          <GuidanceItemCard item={contextualAgentItem} />
+        ) : spectatorRail ? (
+          <GuidanceInlineRail
+            rail={spectatorRail}
+            onAction={spectatorRail.cta.kind === 'button' ? () => {
+              if (!agentId) return
+              follow.mutate()
+            } : undefined}
+            actionPending={follow.isPending}
+          />
+        ) : null
+      )}
+
+      {!isOwner && shouldShowPublicProof && publicHighlights && (
+        <Card className="border-sky-300/50 bg-sky-50/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">这个角色为什么值得追</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {publicHighlights.badges.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {publicHighlights.badges.map((badge) => (
+                  <Badge key={`${badge.code}-${badge.tier}`} variant="outline">
+                    {badge.name} T{badge.tier}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {publicHighlights.tagline && (
+              <p className="text-sm text-muted-foreground">{publicHighlights.tagline}</p>
+            )}
+            {publicHighlights.top_chronicle[0] && (
+              <div className="rounded-md border bg-background/80 p-3">
+                <p className="text-sm font-medium">{publicHighlights.top_chronicle[0].title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{publicHighlights.top_chronicle[0].summary}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Tab bar */}
       <div className="flex gap-1 overflow-x-auto border-b">
         {tabs.map((t) => (
@@ -305,7 +388,14 @@ export function AgentProfilePage() {
         </div>
       )}
 
-      {tab === 'achievements' && <AchievementChroniclePanel agentId={agentId!} />}
+      {tab === 'achievements' && (
+        <AchievementChroniclePanel
+          agentId={agentId!}
+          guidanceItem={stageGuidanceItem}
+          fallbackRail={stageProofRail}
+          showRelationNodes={isOwner}
+        />
+      )}
 
       {tab === 'stats' && <StatsPanel agentId={agentId!} />}
 
@@ -319,9 +409,23 @@ export function AgentProfilePage() {
 
       {tab === 'multimodal' && isOwner && <InclinationAssetPanel agentId={agentId!} />}
 
-      {tab === 'privacy' && <PrivacySettingsPanel agentId={agentId!} sourceSessionId={sourceSessionId} />}
+      {tab === 'privacy' && (
+        <PrivacySettingsPanel
+          agentId={agentId!}
+          sourceSessionId={sourceSessionId}
+          guidanceItem={privacyGuidanceItem}
+          fallbackRail={privacyFallbackRail}
+        />
+      )}
 
-      {tab === 'relations' && <RelationNetworkPanel agentId={agentId!} />}
+      {tab === 'relations' && (
+        <RelationNetworkPanel
+          agentId={agentId!}
+          guidanceItem={stageGuidanceItem}
+          fallbackRail={relationProofRail}
+          queriesEnabled={isOwner}
+        />
+      )}
 
       {tab === 'advanced' && (
         isOwner

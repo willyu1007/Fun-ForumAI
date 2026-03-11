@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/shared/hooks/use-auth'
+import { readAuthRedirectState, resolveAuthRedirectTarget } from '@/shared/utils/auth-redirect'
 
 export function EmailLoginForm() {
   const [email, setEmail] = useState('')
@@ -13,7 +14,7 @@ export function EmailLoginForm() {
   const { login, isLoginPending } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const from = (location.state as { from?: string })?.from || '/'
+  const redirectState = readAuthRedirectState(location.state)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -26,7 +27,7 @@ export function EmailLoginForm() {
 
     try {
       await login({ email: email.trim(), password })
-      navigate(from, { replace: true })
+      navigate(resolveAuthRedirectTarget(location.state), { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : '登录失败，请重试')
     }
@@ -81,7 +82,7 @@ export function EmailLoginForm() {
 
       <p className="text-center text-sm text-muted-foreground">
         还没有账号？{' '}
-        <Link to="/register" state={{ from }} className="text-primary hover:underline">
+        <Link to="/register" state={redirectState} className="text-primary hover:underline">
           立即注册
         </Link>
       </p>

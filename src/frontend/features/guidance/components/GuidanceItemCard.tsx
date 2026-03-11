@@ -1,17 +1,31 @@
-import { Link } from 'react-router'
+import { Link, useLocation } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { GuidanceItemCard as GuidanceItemCardView } from '@/api/types'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { useGuidanceItemAction } from '@/api/hooks'
+import { useAuth } from '@/shared/hooks/use-auth'
+import { buildAuthRedirectState, isGuidanceAuthGatedTarget, locationToPath } from '@/shared/utils/auth-redirect'
 
 export function GuidanceItemCard({ item }: { item: GuidanceItemCardView }) {
   const itemAction = useGuidanceItemAction()
+  const { isAuthenticated } = useAuth()
+  const location = useLocation()
 
   const handleOpen = () => {
     itemAction.mutate({ item_id: item.id, action: 'open' })
   }
+
+  const requiresAuth = item.cta ? isGuidanceAuthGatedTarget(item.cta.target) : false
+  const currentPath = locationToPath(location)
+  const ctaTarget = item.cta && !isAuthenticated && requiresAuth ? '/login' : item.cta?.target
+  const ctaState = item.cta && !isAuthenticated && requiresAuth
+    ? buildAuthRedirectState(currentPath, item.cta.target)
+    : undefined
+  const ctaLabel = item.cta && !isAuthenticated && requiresAuth
+    ? '登录后继续追剧情'
+    : item.cta?.label
 
   return (
     <Card className={item.unread ? 'border-amber-300/80 bg-amber-50/40' : ''}>
@@ -30,9 +44,9 @@ export function GuidanceItemCard({ item }: { item: GuidanceItemCardView }) {
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">{item.body}</p>
         <div className="flex flex-wrap items-center gap-2">
-          {item.cta && (
+          {item.cta && ctaTarget && ctaLabel && (
             <Button asChild size="sm" onClick={handleOpen}>
-              <Link to={item.cta.target}>{item.cta.label}</Link>
+              <Link to={ctaTarget} state={ctaState}>{ctaLabel}</Link>
             </Button>
           )}
           {item.status === 'ACTIVE' && (

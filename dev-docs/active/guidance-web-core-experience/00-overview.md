@@ -2,7 +2,7 @@
 
 ## Status
 - State: in-progress
-- Next step: 补更多页面级 payoff / explanation surface，并把 recall 子包需要的 canonical item 复用点稳定下来。
+- Next step: 做一轮真实账号的手动走查，确认匿名 -> 登录回流、owner private -> public explanation 链路在线上数据下也稳定，然后再切到 `T-080` 的 recall / fatigue 工作。
 
 ## Goal
 落地 Guidance 的 Web 首发核心体验：

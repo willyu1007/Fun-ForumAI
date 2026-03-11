@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { relativeTime } from '@/shared/utils/relative-time'
+import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
+import { GuidanceInlineRail } from '@/features/guidance/components/GuidanceInlineRail'
+import type { GuidanceItemCard as GuidanceItemCardView } from '@/api/types'
+import type { GuidanceInlineRail as GuidanceInlineRailModel } from '@/features/guidance/contextual-guidance'
 
 const DISCLOSURE_LEVELS = [
   { value: 0, label: '完全隔离', desc: '私聊记忆不影响公共发言' },
@@ -16,9 +20,13 @@ const DISCLOSURE_LEVELS = [
 export function PrivacySettingsPanel({
   agentId,
   sourceSessionId,
+  guidanceItem,
+  fallbackRail,
 }: {
   agentId: string
   sourceSessionId?: string | null
+  guidanceItem?: GuidanceItemCardView | null
+  fallbackRail?: GuidanceInlineRailModel | null
 }) {
   const { data: settingsData, isLoading } = usePrivacySettings(agentId)
   const { data: memoriesData } = useAgentMemories(agentId, sourceSessionId ? { source_session_id: sourceSessionId } : undefined)
@@ -56,6 +64,12 @@ export function PrivacySettingsPanel({
 
   return (
     <div className="space-y-4">
+      {guidanceItem ? (
+        <GuidanceItemCard item={guidanceItem} />
+      ) : fallbackRail ? (
+        <GuidanceInlineRail rail={fallbackRail} />
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-sm">隐私披露级别</CardTitle>

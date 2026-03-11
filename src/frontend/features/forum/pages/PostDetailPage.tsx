@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, Link, useSearchParams } from 'react-router'
-import { usePost, useComments, useAudienceThread, useCreateAudienceMessage, useAftershow, useAsideSeats } from '@/api/hooks'
+import { useParams, Link, useSearchParams, useLocation } from 'react-router'
+import { usePost, useComments, useAudienceThread, useCreateAudienceMessage, useAftershow, useAsideSeats, useAgentProfile, useFollowAgent, useGuidanceSummary } from '@/api/hooks'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -15,16 +15,28 @@ import { relativeTime } from '@/shared/utils/relative-time'
 import { useSseNewCounts } from '@/api/use-sse'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { cn } from '@/lib/utils'
+import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
+import { GuidanceInlineRail } from '@/features/guidance/components/GuidanceInlineRail'
+import { buildPostSpectatorRail, findCanonicalGuidanceItemForPost } from '@/features/guidance/contextual-guidance'
+import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
+import { locationToPath } from '@/shared/utils/auth-redirect'
 
 export function PostDetailPage() {
+  const guidanceEnabled = isGuidanceEnabled()
   const { isAuthenticated } = useAuth()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const { postId } = useParams()
   const [audienceDraft, setAudienceDraft] = useState('')
   const [audienceDraftError, setAudienceDraftError] = useState<string | null>(null)
+  const [followError, setFollowError] = useState<string | null>(null)
   const [highlightedAudienceMessageId, setHighlightedAudienceMessageId] = useState<string | null>(null)
   const { data: postData, isLoading: postLoading, error: postError } = usePost(postId ?? '')
+  const guidanceSummary = useGuidanceSummary()
   const postPayload = postData?.data ?? null
+  const authorAgentId = postPayload?.author.id ?? ''
+  const authorProfile = useAgentProfile(authorAgentId)
+  const followAuthor = useFollowAgent(authorAgentId)
   const supportsAudienceAftershowWeb = postPayload !== null
     && Object.prototype.hasOwnProperty.call(postPayload, 'aftershow_summary')
     && Object.prototype.hasOwnProperty.call(postPayload, 'aftershow_callouts')
@@ -75,6 +87,7 @@ export function PostDetailPage() {
   }, [aftershow, focusedAftershowId, focusedCalloutIndex])
 
   const focusedAudienceMessageId = focusedAudienceMessageIdFromQuery || focusedCallout?.audience_message_id || null
+  const currentPath = locationToPath(location)
   const renderedAudienceMessages = useMemo(() => {
     const recentMessages = audienceMessages.slice(-20)
     if (!focusedAudienceMessageId) return recentMessages
@@ -126,9 +139,29 @@ export function PostDetailPage() {
   }
 
   const post = postData.data
+  const guidanceData = guidanceEnabled ? guidanceSummary.data?.data : undefined
+  const canonicalGuidanceItem = guidanceEnabled ? findCanonicalGuidanceItemForPost(guidanceData, post.id) : null
+  const spectatorRail = guidanceEnabled && !canonicalGuidanceItem
+    ? buildPostSpectatorRail({
+        summary: guidanceData,
+        isAuthenticated,
+        isFollowingAuthor: authorProfile.data?.data?.is_followed ?? false,
+        currentPath,
+      })
+    : null
   const author = post.author
   const communityPath = post.community_slug || post.community_id
   const commentCount = commentsData?.data?.length ?? post.comment_count
+
+  const handleFollowAuthor = async () => {
+    if (!authorAgentId) return
+    setFollowError(null)
+    try {
+      await followAuthor.mutateAsync()
+    } catch (error) {
+      setFollowError(error instanceof Error ? error.message : '关注失败，请稍后重试')
+    }
+  }
 
   const handleSendAudienceMessage = async () => {
     const body = audienceDraft.trim()
@@ -231,6 +264,25 @@ export function PostDetailPage() {
           </div>
         </div>
       </div>
+
+      {(canonicalGuidanceItem || spectatorRail) && (
+        canonicalGuidanceItem ? (
+          <GuidanceItemCard item={canonicalGuidanceItem} />
+        ) : spectatorRail ? (
+          <div className="space-y-2">
+            <GuidanceInlineRail
+              rail={spectatorRail}
+              onAction={spectatorRail.cta.kind === 'button' ? () => {
+                void handleFollowAuthor()
+              } : undefined}
+              actionPending={followAuthor.isPending}
+            />
+            {followError && spectatorRail.cta.kind === 'button' && (
+              <p className="text-sm text-destructive">{followError}</p>
+            )}
+          </div>
+        ) : null
+      )}
 
       <div className="rounded-md border bg-card p-4">
         <NewContentBanner

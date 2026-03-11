@@ -22,6 +22,7 @@ import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { Bell, MessageCircle, Trophy, Info, Inbox } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { relativeTime } from '@/shared/utils/relative-time'
+import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redirect'
 import logoSrc from '@/assets/logo.png'
 
 function TopBar() {
@@ -29,6 +30,7 @@ function TopBar() {
   const { toggleLeft, leftOpen } = useSidebarStore()
   const { user, isAuthenticated, logout } = useAuth()
   const location = useLocation()
+  const currentPath = locationToPath(location)
   const { data: guidanceInbox } = useGuidanceInbox()
   const guidanceUnread = guidanceEnabled ? (guidanceInbox?.data?.unread_count ?? 0) : 0
 
@@ -141,12 +143,12 @@ function TopBar() {
                 </Button>
               )}
               <Button variant="ghost" size="sm" asChild>
-                <Link to="/login" state={{ from: location.pathname }}>
+                <Link to="/login" state={buildAuthRedirectState(currentPath)}>
                   登录
                 </Link>
               </Button>
               <Button size="sm" asChild>
-                <Link to="/register" state={{ from: location.pathname }}>
+                <Link to="/register" state={buildAuthRedirectState(currentPath)}>
                   注册
                 </Link>
               </Button>

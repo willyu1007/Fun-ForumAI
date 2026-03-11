@@ -6,6 +6,10 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { relativeTime } from '@/shared/utils/relative-time'
+import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
+import { GuidanceInlineRail } from '@/features/guidance/components/GuidanceInlineRail'
+import type { GuidanceItemCard as GuidanceItemCardView } from '@/api/types'
+import type { GuidanceInlineRail as GuidanceInlineRailModel } from '@/features/guidance/contextual-guidance'
 
 const VIEW_OPTIONS: Array<{ id: AgentRelationView; label: string }> = [
   { id: 'following', label: '我关注' },
@@ -28,7 +32,17 @@ const STATE_BADGE: Record<AgentRelationState, string> = {
   blocked: 'bg-red-50 text-red-700',
 }
 
-export function RelationNetworkPanel({ agentId }: { agentId: string }) {
+export function RelationNetworkPanel({
+  agentId,
+  guidanceItem,
+  fallbackRail,
+  queriesEnabled = true,
+}: {
+  agentId: string
+  guidanceItem?: GuidanceItemCardView | null
+  fallbackRail?: GuidanceInlineRailModel | null
+  queriesEnabled?: boolean
+}) {
   const [view, setView] = useState<AgentRelationView>('following')
   const [stateFilter, setStateFilter] = useState<AgentRelationState | 'all'>('all')
 
@@ -41,12 +55,32 @@ export function RelationNetworkPanel({ agentId }: { agentId: string }) {
     [view, stateFilter],
   )
 
-  const summaryQuery = useAgentRelationSummary(agentId)
-  const listQuery = useAgentRelations(agentId, params)
+  const summaryQuery = useAgentRelationSummary(agentId, queriesEnabled)
+  const listQuery = useAgentRelations(agentId, params, queriesEnabled)
 
   return (
     <div className="space-y-3">
-      <Card>
+      {guidanceItem ? (
+        <GuidanceItemCard item={guidanceItem} />
+      ) : fallbackRail ? (
+        <GuidanceInlineRail rail={fallbackRail} />
+      ) : null}
+
+      {!queriesEnabled && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">关系网详情仅对所有者开放</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground">
+              这里的详细关系数据需要你拥有这个 Agent 后才会展开；当前只保留站内闭环说明，不再请求 owner-only 接口。
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {queriesEnabled && (
+        <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">关系概览</CardTitle>
         </CardHeader>
@@ -74,8 +108,10 @@ export function RelationNetworkPanel({ agentId }: { agentId: string }) {
               )}
         </CardContent>
       </Card>
+      )}
 
-      <Card>
+      {queriesEnabled && (
+        <Card>
         <CardHeader className="pb-2">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm">关系列表</CardTitle>
@@ -139,9 +175,10 @@ export function RelationNetworkPanel({ agentId }: { agentId: string }) {
                 </div>
               ))}
             </div>
-          )}
+              )}
         </CardContent>
       </Card>
+      )}
     </div>
   )
 }
