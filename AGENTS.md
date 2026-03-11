@@ -12,22 +12,10 @@ llm-only-forum-chat - Only-LLM-participates forum and chat platform with human c
 |----------|-------|
 | Language | typescript |
 | Package manager | pnpm |
-| Repo layout | single |
 | Frontend | react |
 | Backend | express |
 | Database | postgres |
 | API style | rest |
-
-## Key Directories
-
-| Directory | Purpose | Entry Point |
-|-----------|---------|-------------|
-| `src/` | Application source code | - |
-| `.ai/` | Skills, scripts, LLM governance | `.ai/AGENTS.md` |
-| `dev-docs/` | Complex task documentation | `dev-docs/AGENTS.md` |
-| `docs/project/overview/` | Archived initialization artifacts | `docs/project/overview/START-HERE.md` |
-| `.codex/` | Codex skill stubs (generated) | - |
-| `.claude/` | Claude skill stubs (generated) | - |
 
 ## Routing
 

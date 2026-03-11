@@ -6,16 +6,6 @@
 - Use `ctl-deploy.mjs` to manage deployments.
 - AI plans deployments; humans execute and approve.
 
-## Directory Structure
-
-- `http_services/` - HTTP service deployment configs
-- `workloads/` - Background workload configs
-- `clients/` - Client application configs
-- `k8s/` - Kubernetes-specific configs (if enabled)
-- `environments/` - Environment-specific configs
-- `scripts/` - Deployment helper scripts
-- `handbook/` - Deployment plans and runbooks
-
 ## AI Workflow
 
 1. **Register** services: `node .ai/skills/features/deployment/scripts/ctl-deploy.mjs add-service --id <id>`

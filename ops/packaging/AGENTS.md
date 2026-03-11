@@ -6,15 +6,6 @@
 - Use `ctl-packaging.mjs` to manage packaging configuration.
 - AI proposes changes; humans execute builds.
 
-## Directory Structure
-
-- `services/` - Service Dockerfiles (long-running)
-- `jobs/` - Job Dockerfiles (batch/cron)
-- `apps/` - Application Dockerfiles (CLI tools, etc.)
-- `templates/` - Dockerfile templates by language
-- `scripts/` - Build helper scripts
-- `handbook/` - Packaging plans and notes
-
 ## AI Workflow
 
 1. **Register** targets: `node .ai/skills/features/packaging/scripts/ctl-packaging.mjs add-service --id <id> --module <path>`

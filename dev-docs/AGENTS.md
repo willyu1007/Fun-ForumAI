@@ -48,21 +48,6 @@ Before making any code/config changes for a task that meets the Decision Gate:
    - record every verification run in `04-verification.md` (commands + outcomes)
 4. Before pausing, handing off, or finishing, run `update-dev-docs-for-handoff`.
 
-## Directory Structure
-
-```
-dev-docs/
-  active/<task-slug>/
-    roadmap.md              # Macro-level planning (plan-maker)
-    00-overview.md          # Goal, non-goals, status
-    01-plan.md              # Phases, acceptance criteria
-    02-architecture.md      # Boundaries, interfaces, risks
-    03-implementation-notes.md  # Decisions, changes, rationale
-    04-verification.md      # Checks run, results
-    05-pitfalls.md          # Resolved failures, historical lessons, "do-not-repeat" notes
-  archive/                  # Completed tasks
-```
-
 ## File Purposes
 
 | File | Contains | Update Frequency |
