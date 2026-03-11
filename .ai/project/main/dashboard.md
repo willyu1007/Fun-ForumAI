@@ -8,30 +8,30 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 80 (planned: 3, in-progress: 13, blocked: 0, done: 31, archived: 33)
+- Tasks: 80 (planned: 2, in-progress: 13, blocked: 0, done: 0, archived: 65)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
-| T-081 chatroom-ux-audit-remediation | in-progress | F-000 | dev-docs/active/chatroom-ux-audit-remediation |
-| T-082 chatroom-live-experience-optimization | planned | F-000 | dev-docs/active/chatroom-live-experience-optimization |
-| T-073 chatroom-watchability-foundation | done | F-000 | dev-docs/active/chatroom-watchability-foundation |
-| T-074 chatroom-program-engine-and-highlights | done | F-000 | dev-docs/active/chatroom-program-engine-and-highlights |
-| T-075 chatroom-persona-projection-and-ecosystem | done | F-000 | dev-docs/active/chatroom-persona-projection-and-ecosystem |
-| T-076 persona-runtime-integration-audit | archived | F-020 | dev-docs/archive/persona-runtime-integration-audit |
-| T-077 guidance-onboarding-v1-master | in-progress | F-040 | dev-docs/active/guidance-onboarding-v1-master |
-| T-078 guidance-platform-foundation | in-progress | F-040 | dev-docs/active/guidance-platform-foundation |
-| T-079 guidance-web-core-experience | in-progress | F-040 | dev-docs/active/guidance-web-core-experience |
-| T-080 guidance-recall-and-observability | done | F-040 | dev-docs/active/guidance-recall-and-observability |
-| T-065 persona-projection-overlay-runtime-v1 | done | F-020 | dev-docs/active/persona-projection-overlay-runtime-v1 |
-| T-066 persona-observability-eval-v1 | done | F-020 | dev-docs/active/persona-observability-eval-v1 |
-| T-067 control-context-plane-alignment-program | done | F-020 | dev-docs/active/control-context-plane-alignment-program |
-| T-068 llm-control-plane-runtime-v1 | in-progress | F-020 | dev-docs/active/llm-control-plane-runtime-v1 |
-| T-069 context-memory-plane-runtime-v1 | done | F-020 | dev-docs/active/context-memory-plane-runtime-v1 |
-| T-070 persona-rollout-shadow-review | done | F-020 | dev-docs/active/persona-rollout-shadow-review |
-| T-071 local-kind-runtime-consistency-remediation | done | F-020 | dev-docs/active/local-kind-runtime-consistency-remediation |
-| T-072 persona-rollout-gate-evidence-remediation | in-progress | F-020 | dev-docs/active/persona-rollout-gate-evidence-remediation |
-| T-061 ios-android-runtime-smoke-kit | done | F-030 | dev-docs/active/ios-android-runtime-smoke-kit |
-| T-062 persona-provider-alignment-program | done | F-020 | dev-docs/active/persona-provider-alignment-program |
+| T-030 mobile-navigation-and-routing | archived | F-000 | dev-docs/archive/mobile-navigation-and-routing |
+| T-031 mobile-test-automation | archived | F-000 | dev-docs/archive/mobile-test-automation |
+| T-032 frontend-sse-resilience | archived | F-000 | dev-docs/archive/frontend-sse-resilience |
+| T-033 realtime-protocol-evaluation | archived | F-000 | dev-docs/archive/realtime-protocol-evaluation |
+| T-043 human-vote-follow-search-web-v1 | archived | F-000 | dev-docs/archive/human-vote-follow-search-web-v1 |
+| T-044 multimodal-agent-inclination-v1 | archived | F-000 | dev-docs/archive/multimodal-agent-inclination-v1 |
+| T-047 achievement-chronicle-experience-v1 | archived | F-020 | dev-docs/archive/achievement-chronicle-experience-v1 |
+| T-049 rich-communities-delivery-program | archived | F-000 | dev-docs/archive/rich-communities-delivery-program |
+| T-050 rich-communities-gap-hardening | archived | F-000 | dev-docs/archive/rich-communities-gap-hardening |
+| T-051 rich-communities-full-alignment | archived | F-000 | dev-docs/archive/rich-communities-full-alignment |
+| T-052 community-events-governance-program | archived | F-000 | dev-docs/archive/community-events-governance-program |
+| T-053 event-contract-routing-baseline | archived | F-000 | dev-docs/archive/event-contract-routing-baseline |
+| T-054 control-plane-config-governance | archived | F-000 | dev-docs/archive/control-plane-config-governance |
+| T-055 aftershow-event-pipeline-and-callout | archived | F-000 | dev-docs/archive/aftershow-event-pipeline-and-callout |
+| T-056 role-assignment-aside-seats | archived | F-000 | dev-docs/archive/role-assignment-aside-seats |
+| T-057 audience-aftershow-web-experience | archived | F-000 | dev-docs/archive/audience-aftershow-web-experience |
+| T-058 pr4-governance-blocker-fixes | archived | F-000 | dev-docs/archive/pr4-governance-blocker-fixes |
+| T-060 expo-development-build-foundation | archived | F-030 | dev-docs/archive/expo-development-build-foundation |
+| T-061 ios-android-runtime-smoke-kit | archived | F-030 | dev-docs/archive/ios-android-runtime-smoke-kit |
+| T-062 persona-provider-alignment-program | archived | F-020 | dev-docs/archive/persona-provider-alignment-program |
 <!-- AUTO-GENERATED:END dashboard -->

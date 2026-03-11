@@ -1,0 +1,6 @@
+version: 1
+task_id: T-032
+project: main
+slug: frontend-sse-resilience
+status: archived
+updated: "2026-03-12"

@@ -1,0 +1,13 @@
+version: 1
+task_id: T-051
+project: main
+slug: rich-communities-full-alignment
+status: archived
+updated: "2026-03-12"
+keywords:
+  - rich-communities
+  - stage-spec
+  - incubation
+  - aftershow
+  - allocator
+  - trust-gate

@@ -1,0 +1,11 @@
+version: 1
+task_id: T-065
+project: main
+slug: persona-projection-overlay-runtime-v1
+status: archived
+updated: "2026-03-12"
+keywords:
+  - persona-vector
+  - overlay
+  - projection
+  - render-tier

@@ -39,31 +39,31 @@ Project: `main`
 | T-027 typecheck-remediation-baseline | archived | dev-docs/archive/typecheck-remediation-baseline |
 | T-028 app-adaptation-discussion | in-progress | dev-docs/active/app-adaptation-discussion |
 | T-029 mobile-ux-hardening | archived | dev-docs/archive/mobile-ux-hardening |
-| T-030 mobile-navigation-and-routing | done | dev-docs/active/mobile-navigation-and-routing |
-| T-031 mobile-test-automation | done | dev-docs/active/mobile-test-automation |
-| T-032 frontend-sse-resilience | done | dev-docs/active/frontend-sse-resilience |
-| T-033 realtime-protocol-evaluation | done | dev-docs/active/realtime-protocol-evaluation |
+| T-030 mobile-navigation-and-routing | archived | dev-docs/archive/mobile-navigation-and-routing |
+| T-031 mobile-test-automation | archived | dev-docs/archive/mobile-test-automation |
+| T-032 frontend-sse-resilience | archived | dev-docs/archive/frontend-sse-resilience |
+| T-033 realtime-protocol-evaluation | archived | dev-docs/archive/realtime-protocol-evaluation |
 | T-034 abc-layer-stack-unification | archived | dev-docs/archive/abc-layer-stack-unification |
 | T-035 abc-growth-nurture-closure | archived | dev-docs/archive/abc-growth-nurture-closure |
 | T-036 abc-public-observation-memory | archived | dev-docs/archive/abc-public-observation-memory |
 | T-037 agent-social-graph-core | archived | dev-docs/archive/agent-social-graph-core |
 | T-038 agent-social-graph-behavior-integration | archived | dev-docs/archive/agent-social-graph-behavior-integration |
 | T-039 agent-social-graph-consistency-hardening | archived | dev-docs/archive/agent-social-graph-consistency-hardening |
-| T-043 human-vote-follow-search-web-v1 | done | dev-docs/active/human-vote-follow-search-web-v1 |
-| T-044 multimodal-agent-inclination-v1 | done | dev-docs/active/multimodal-agent-inclination-v1 |
-| T-049 rich-communities-delivery-program | done | dev-docs/active/rich-communities-delivery-program |
-| T-050 rich-communities-gap-hardening | done | dev-docs/active/rich-communities-gap-hardening |
-| T-051 rich-communities-full-alignment | done | dev-docs/active/rich-communities-full-alignment |
-| T-052 community-events-governance-program | done | dev-docs/active/community-events-governance-program |
-| T-053 event-contract-routing-baseline | done | dev-docs/active/event-contract-routing-baseline |
-| T-054 control-plane-config-governance | done | dev-docs/active/control-plane-config-governance |
-| T-055 aftershow-event-pipeline-and-callout | done | dev-docs/active/aftershow-event-pipeline-and-callout |
-| T-056 role-assignment-aside-seats | done | dev-docs/active/role-assignment-aside-seats |
-| T-057 audience-aftershow-web-experience | done | dev-docs/active/audience-aftershow-web-experience |
-| T-058 pr4-governance-blocker-fixes | done | dev-docs/active/pr4-governance-blocker-fixes |
-| T-073 chatroom-watchability-foundation | done | dev-docs/active/chatroom-watchability-foundation |
-| T-074 chatroom-program-engine-and-highlights | done | dev-docs/active/chatroom-program-engine-and-highlights |
-| T-075 chatroom-persona-projection-and-ecosystem | done | dev-docs/active/chatroom-persona-projection-and-ecosystem |
+| T-043 human-vote-follow-search-web-v1 | archived | dev-docs/archive/human-vote-follow-search-web-v1 |
+| T-044 multimodal-agent-inclination-v1 | archived | dev-docs/archive/multimodal-agent-inclination-v1 |
+| T-049 rich-communities-delivery-program | archived | dev-docs/archive/rich-communities-delivery-program |
+| T-050 rich-communities-gap-hardening | archived | dev-docs/archive/rich-communities-gap-hardening |
+| T-051 rich-communities-full-alignment | archived | dev-docs/archive/rich-communities-full-alignment |
+| T-052 community-events-governance-program | archived | dev-docs/archive/community-events-governance-program |
+| T-053 event-contract-routing-baseline | archived | dev-docs/archive/event-contract-routing-baseline |
+| T-054 control-plane-config-governance | archived | dev-docs/archive/control-plane-config-governance |
+| T-055 aftershow-event-pipeline-and-callout | archived | dev-docs/archive/aftershow-event-pipeline-and-callout |
+| T-056 role-assignment-aside-seats | archived | dev-docs/archive/role-assignment-aside-seats |
+| T-057 audience-aftershow-web-experience | archived | dev-docs/archive/audience-aftershow-web-experience |
+| T-058 pr4-governance-blocker-fixes | archived | dev-docs/archive/pr4-governance-blocker-fixes |
+| T-073 chatroom-watchability-foundation | archived | dev-docs/archive/chatroom-watchability-foundation |
+| T-074 chatroom-program-engine-and-highlights | archived | dev-docs/archive/chatroom-program-engine-and-highlights |
+| T-075 chatroom-persona-projection-and-ecosystem | archived | dev-docs/archive/chatroom-persona-projection-and-ecosystem |
 | T-081 chatroom-ux-audit-remediation | in-progress | dev-docs/active/chatroom-ux-audit-remediation |
 | T-082 chatroom-live-experience-optimization | planned | dev-docs/active/chatroom-live-experience-optimization |
 
@@ -81,19 +81,19 @@ Project: `main`
 | --- | --- | --- |
 | T-045 personality-foundation-input-identity-audit | in-progress | dev-docs/active/personality-foundation-input-identity-audit |
 | T-046 prompt-orchestrator-unification-governance | in-progress | dev-docs/active/prompt-orchestrator-unification-governance |
-| T-047 achievement-chronicle-experience-v1 | done | dev-docs/active/achievement-chronicle-experience-v1 |
+| T-047 achievement-chronicle-experience-v1 | archived | dev-docs/archive/achievement-chronicle-experience-v1 |
 | T-048 personality-alignment-gap-remediation | in-progress | dev-docs/active/personality-alignment-gap-remediation |
 | T-059 xp-deleveling-and-growth-points | in-progress | dev-docs/active/xp-deleveling-and-growth-points |
-| T-062 persona-provider-alignment-program | done | dev-docs/active/persona-provider-alignment-program |
-| T-063 persona-seed-voice-contract-v1 | done | dev-docs/active/persona-seed-voice-contract-v1 |
-| T-064 llm-gateway-routing-profiles-v1 | done | dev-docs/active/llm-gateway-routing-profiles-v1 |
-| T-065 persona-projection-overlay-runtime-v1 | done | dev-docs/active/persona-projection-overlay-runtime-v1 |
-| T-066 persona-observability-eval-v1 | done | dev-docs/active/persona-observability-eval-v1 |
-| T-067 control-context-plane-alignment-program | done | dev-docs/active/control-context-plane-alignment-program |
+| T-062 persona-provider-alignment-program | archived | dev-docs/archive/persona-provider-alignment-program |
+| T-063 persona-seed-voice-contract-v1 | archived | dev-docs/archive/persona-seed-voice-contract-v1 |
+| T-064 llm-gateway-routing-profiles-v1 | archived | dev-docs/archive/llm-gateway-routing-profiles-v1 |
+| T-065 persona-projection-overlay-runtime-v1 | archived | dev-docs/archive/persona-projection-overlay-runtime-v1 |
+| T-066 persona-observability-eval-v1 | archived | dev-docs/archive/persona-observability-eval-v1 |
+| T-067 control-context-plane-alignment-program | archived | dev-docs/archive/control-context-plane-alignment-program |
 | T-068 llm-control-plane-runtime-v1 | in-progress | dev-docs/active/llm-control-plane-runtime-v1 |
-| T-069 context-memory-plane-runtime-v1 | done | dev-docs/active/context-memory-plane-runtime-v1 |
-| T-070 persona-rollout-shadow-review | done | dev-docs/active/persona-rollout-shadow-review |
-| T-071 local-kind-runtime-consistency-remediation | done | dev-docs/active/local-kind-runtime-consistency-remediation |
+| T-069 context-memory-plane-runtime-v1 | archived | dev-docs/archive/context-memory-plane-runtime-v1 |
+| T-070 persona-rollout-shadow-review | archived | dev-docs/archive/persona-rollout-shadow-review |
+| T-071 local-kind-runtime-consistency-remediation | archived | dev-docs/archive/local-kind-runtime-consistency-remediation |
 | T-072 persona-rollout-gate-evidence-remediation | in-progress | dev-docs/active/persona-rollout-gate-evidence-remediation |
 | T-076 persona-runtime-integration-audit | archived | dev-docs/archive/persona-runtime-integration-audit |
 
@@ -101,8 +101,8 @@ Project: `main`
 
 | Task | Status | Dev Docs |
 | --- | --- | --- |
-| T-060 expo-development-build-foundation | done | dev-docs/active/expo-development-build-foundation |
-| T-061 ios-android-runtime-smoke-kit | done | dev-docs/active/ios-android-runtime-smoke-kit |
+| T-060 expo-development-build-foundation | archived | dev-docs/archive/expo-development-build-foundation |
+| T-061 ios-android-runtime-smoke-kit | archived | dev-docs/archive/ios-android-runtime-smoke-kit |
 
 ### F-040 Guidance & Onboarding V1
 
@@ -111,5 +111,5 @@ Project: `main`
 | T-077 guidance-onboarding-v1-master | in-progress | dev-docs/active/guidance-onboarding-v1-master |
 | T-078 guidance-platform-foundation | in-progress | dev-docs/active/guidance-platform-foundation |
 | T-079 guidance-web-core-experience | in-progress | dev-docs/active/guidance-web-core-experience |
-| T-080 guidance-recall-and-observability | done | dev-docs/active/guidance-recall-and-observability |
+| T-080 guidance-recall-and-observability | archived | dev-docs/archive/guidance-recall-and-observability |
 <!-- AUTO-GENERATED:END feature-map -->

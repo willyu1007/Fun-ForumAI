@@ -1,0 +1,11 @@
+version: 1
+task_id: T-056
+project: main
+slug: role-assignment-aside-seats
+status: archived
+updated: "2026-03-12"
+keywords:
+  - role-assignment
+  - aside-seats
+  - membership
+  - allocator

@@ -1,0 +1,12 @@
+version: 1
+task_id: T-080
+project: main
+slug: guidance-recall-and-observability
+status: archived
+updated: "2026-03-12"
+keywords:
+  - guidance
+  - recall
+  - notifications
+  - proactive
+  - observability

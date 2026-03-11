@@ -306,32 +306,32 @@ tasks:
     updated: 2026-02-27
   - id: T-030
     slug: mobile-navigation-and-routing
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/mobile-navigation-and-routing
-    updated: 2026-02-27
+    dev_docs_path: dev-docs/archive/mobile-navigation-and-routing
+    updated: 2026-03-12
   - id: T-031
     slug: mobile-test-automation
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/mobile-test-automation
-    updated: 2026-02-26
+    dev_docs_path: dev-docs/archive/mobile-test-automation
+    updated: 2026-03-12
   - id: T-032
     slug: frontend-sse-resilience
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/frontend-sse-resilience
-    updated: 2026-02-26
+    dev_docs_path: dev-docs/archive/frontend-sse-resilience
+    updated: 2026-03-12
   - id: T-033
     slug: realtime-protocol-evaluation
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/realtime-protocol-evaluation
-    updated: 2026-02-26
+    dev_docs_path: dev-docs/archive/realtime-protocol-evaluation
+    updated: 2026-03-12
   - id: T-034
     slug: abc-layer-stack-unification
     status: archived
@@ -403,18 +403,18 @@ tasks:
     updated: 2026-02-27
   - id: T-043
     slug: human-vote-follow-search-web-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/human-vote-follow-search-web-v1
-    updated: 2026-02-28
+    dev_docs_path: dev-docs/archive/human-vote-follow-search-web-v1
+    updated: 2026-03-12
   - id: T-044
     slug: multimodal-agent-inclination-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/multimodal-agent-inclination-v1
-    updated: 2026-02-28
+    dev_docs_path: dev-docs/archive/multimodal-agent-inclination-v1
+    updated: 2026-03-12
   - id: T-045
     slug: personality-foundation-input-identity-audit
     status: in-progress
@@ -435,13 +435,13 @@ tasks:
     updated: 2026-03-01
   - id: T-047
     slug: achievement-chronicle-experience-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-022
-    dev_docs_path: dev-docs/active/achievement-chronicle-experience-v1
-    updated: 2026-03-02
+    dev_docs_path: dev-docs/archive/achievement-chronicle-experience-v1
+    updated: 2026-03-12
   - id: T-048
     slug: personality-alignment-gap-remediation
     status: in-progress
@@ -451,74 +451,74 @@ tasks:
     updated: 2026-03-02
   - id: T-049
     slug: rich-communities-delivery-program
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/rich-communities-delivery-program
-    updated: 2026-03-04
+    dev_docs_path: dev-docs/archive/rich-communities-delivery-program
+    updated: 2026-03-12
   - id: T-050
     slug: rich-communities-gap-hardening
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/rich-communities-gap-hardening
-    updated: 2026-03-04
+    dev_docs_path: dev-docs/archive/rich-communities-gap-hardening
+    updated: 2026-03-12
   - id: T-051
     slug: rich-communities-full-alignment
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/rich-communities-full-alignment
-    updated: 2026-03-05
+    dev_docs_path: dev-docs/archive/rich-communities-full-alignment
+    updated: 2026-03-12
   - id: T-052
     slug: community-events-governance-program
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/community-events-governance-program
-    updated: 2026-03-05
+    dev_docs_path: dev-docs/archive/community-events-governance-program
+    updated: 2026-03-12
   - id: T-053
     slug: event-contract-routing-baseline
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/event-contract-routing-baseline
-    updated: 2026-03-05
+    dev_docs_path: dev-docs/archive/event-contract-routing-baseline
+    updated: 2026-03-12
   - id: T-054
     slug: control-plane-config-governance
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/control-plane-config-governance
-    updated: 2026-03-05
+    dev_docs_path: dev-docs/archive/control-plane-config-governance
+    updated: 2026-03-12
   - id: T-055
     slug: aftershow-event-pipeline-and-callout
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/aftershow-event-pipeline-and-callout
-    updated: 2026-03-05
+    dev_docs_path: dev-docs/archive/aftershow-event-pipeline-and-callout
+    updated: 2026-03-12
   - id: T-056
     slug: role-assignment-aside-seats
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/role-assignment-aside-seats
-    updated: 2026-03-05
+    dev_docs_path: dev-docs/archive/role-assignment-aside-seats
+    updated: 2026-03-12
   - id: T-057
     slug: audience-aftershow-web-experience
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/audience-aftershow-web-experience
-    updated: 2026-03-05
+    dev_docs_path: dev-docs/archive/audience-aftershow-web-experience
+    updated: 2026-03-12
   - id: T-058
     slug: pr4-governance-blocker-fixes
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/pr4-governance-blocker-fixes
-    updated: 2026-03-06
+    dev_docs_path: dev-docs/archive/pr4-governance-blocker-fixes
+    updated: 2026-03-12
   - id: T-059
     slug: xp-deleveling-and-growth-points
     status: in-progress
@@ -530,25 +530,25 @@ tasks:
     updated: 2026-03-06
   - id: T-060
     slug: expo-development-build-foundation
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-030
     requirement_ids:
       - R-024
-    dev_docs_path: dev-docs/active/expo-development-build-foundation
-    updated: 2026-03-07
+    dev_docs_path: dev-docs/archive/expo-development-build-foundation
+    updated: 2026-03-12
   - id: T-061
     slug: ios-android-runtime-smoke-kit
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-030
     requirement_ids:
       - R-025
-    dev_docs_path: dev-docs/active/ios-android-runtime-smoke-kit
-    updated: 2026-03-08
+    dev_docs_path: dev-docs/archive/ios-android-runtime-smoke-kit
+    updated: 2026-03-12
   - id: T-062
     slug: persona-provider-alignment-program
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
@@ -556,54 +556,54 @@ tasks:
       - R-027
       - R-028
       - R-029
-    dev_docs_path: dev-docs/active/persona-provider-alignment-program
-    updated: 2026-03-08
+    dev_docs_path: dev-docs/archive/persona-provider-alignment-program
+    updated: 2026-03-12
   - id: T-063
     slug: persona-seed-voice-contract-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-026
-    dev_docs_path: dev-docs/active/persona-seed-voice-contract-v1
-    updated: 2026-03-08
+    dev_docs_path: dev-docs/archive/persona-seed-voice-contract-v1
+    updated: 2026-03-12
   - id: T-064
     slug: llm-gateway-routing-profiles-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-027
-    dev_docs_path: dev-docs/active/llm-gateway-routing-profiles-v1
-    updated: 2026-03-08
+    dev_docs_path: dev-docs/archive/llm-gateway-routing-profiles-v1
+    updated: 2026-03-12
   - id: T-065
     slug: persona-projection-overlay-runtime-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-028
-    dev_docs_path: dev-docs/active/persona-projection-overlay-runtime-v1
-    updated: 2026-03-09
+    dev_docs_path: dev-docs/archive/persona-projection-overlay-runtime-v1
+    updated: 2026-03-12
   - id: T-066
     slug: persona-observability-eval-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-029
-    dev_docs_path: dev-docs/active/persona-observability-eval-v1
-    updated: 2026-03-09
+    dev_docs_path: dev-docs/archive/persona-observability-eval-v1
+    updated: 2026-03-12
   - id: T-067
     slug: control-context-plane-alignment-program
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-027
       - R-030
-    dev_docs_path: dev-docs/active/control-context-plane-alignment-program
-    updated: 2026-03-09
+    dev_docs_path: dev-docs/archive/control-context-plane-alignment-program
+    updated: 2026-03-12
   - id: T-068
     slug: llm-control-plane-runtime-v1
     status: in-progress
@@ -615,31 +615,31 @@ tasks:
     updated: 2026-03-09
   - id: T-069
     slug: context-memory-plane-runtime-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-030
-    dev_docs_path: dev-docs/active/context-memory-plane-runtime-v1
-    updated: 2026-03-09
+    dev_docs_path: dev-docs/archive/context-memory-plane-runtime-v1
+    updated: 2026-03-12
   - id: T-070
     slug: persona-rollout-shadow-review
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-029
-    dev_docs_path: dev-docs/active/persona-rollout-shadow-review
-    updated: 2026-03-09
+    dev_docs_path: dev-docs/archive/persona-rollout-shadow-review
+    updated: 2026-03-12
   - id: T-071
     slug: local-kind-runtime-consistency-remediation
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-029
-    dev_docs_path: dev-docs/active/local-kind-runtime-consistency-remediation
-    updated: 2026-03-09
+    dev_docs_path: dev-docs/archive/local-kind-runtime-consistency-remediation
+    updated: 2026-03-12
   - id: T-072
     slug: persona-rollout-gate-evidence-remediation
     status: in-progress
@@ -651,25 +651,25 @@ tasks:
     updated: 2026-03-09
   - id: T-073
     slug: chatroom-watchability-foundation
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/chatroom-watchability-foundation
-    updated: 2026-03-10
+    dev_docs_path: dev-docs/archive/chatroom-watchability-foundation
+    updated: 2026-03-12
   - id: T-074
     slug: chatroom-program-engine-and-highlights
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/chatroom-program-engine-and-highlights
-    updated: 2026-03-10
+    dev_docs_path: dev-docs/archive/chatroom-program-engine-and-highlights
+    updated: 2026-03-12
   - id: T-075
     slug: chatroom-persona-projection-and-ecosystem
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/chatroom-persona-projection-and-ecosystem
-    updated: 2026-03-10
+    dev_docs_path: dev-docs/archive/chatroom-persona-projection-and-ecosystem
+    updated: 2026-03-12
   - id: T-076
     slug: persona-runtime-integration-audit
     status: archived
@@ -710,13 +710,13 @@ tasks:
     updated: 2026-03-10
   - id: T-080
     slug: guidance-recall-and-observability
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-040
     requirement_ids:
       - R-043
-    dev_docs_path: dev-docs/active/guidance-recall-and-observability
-    updated: 2026-03-11
+    dev_docs_path: dev-docs/archive/guidance-recall-and-observability
+    updated: 2026-03-12
   - id: T-081
     slug: chatroom-ux-audit-remediation
     status: in-progress

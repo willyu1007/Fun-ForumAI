@@ -1,0 +1,11 @@
+version: 1
+task_id: T-053
+project: main
+slug: event-contract-routing-baseline
+status: archived
+updated: "2026-03-12"
+keywords:
+  - event-envelope
+  - routing
+  - allocator
+  - correlation

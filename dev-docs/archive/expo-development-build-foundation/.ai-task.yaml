@@ -1,0 +1,13 @@
+version: 1
+task_id: T-060
+project: main
+slug: expo-development-build-foundation
+status: archived
+updated: "2026-03-12"
+keywords:
+  - mobile
+  - expo
+  - eas
+  - development-build
+  - ios
+  - android
