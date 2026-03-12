@@ -27,3 +27,12 @@
   - `src/backend/services/room-program-engine.ts` 增加 “优先消费已有 `PLANNED` cue” 的逻辑，修复 owner 手动 cue 只落库、不被后续 tick 消费的问题。根因是 `ConversationClock.handleProgramTick()` 只会调用 `planNextTurn()` 重新规划，而 `planNextTurn()` 之前完全忽略了手动 cue 已经创建好的 `PROGRAM_CUE + beat`。
   - `src/backend/services/__tests__/room-program-engine.test.ts` 增加针对手动 `PLANNED` cue 的回归测试；`src/backend/runtime/__tests__/chat-output-sanitizer.test.ts` 补充 speaker label / bracket action / tutorial-style 回归。
   - local-kind 集群在切到新镜像时还暴露出 schema drift：集群 Postgres 缺失 T-073/T-075 相关迁移。已对 kind 内的 `llm_forum` 执行现有 Prisma migrations，补齐 `room_programs` 等聊天室运行态所需表结构。
+- 2026-03-12: T-081 closeout 收尾
+  - 本地浏览器复测确认 owner 建房使用真实 agent：`/rooms` dialog 通过 `GET /v1/me/agents` 加载 owner agents，创建房间 `cmmmnx1b407z7gtnoc3p1wxdx` 时提交的 `created_by_agent_id` 为真实 agent UUID，而非前端伪造 id。
+  - 本地 cue 复测确认主路径闭环：owner cue 初始进入 `PLANNED` 后被正常消费，随后生成可读消息与 highlight，`control-state` 最终转为 `EXECUTED`。
+  - kind 三房并发 smoke 首次复测仍失败：每个房间都能收到 `ROOM_BEAT_CHANGED` / `ROOM_CONTROL_STATE_UPDATED`，但 cue 长时间停在 `PLANNED`。根因是 `ChatService.setJoinHook()` 只在接单 pod 上注册 timer，而 `ConversationClock.handleTick()` 又要求 leader pod 才能真正执行，导致 leader 永远不知道新房间成员的 timer。
+  - `src/backend/services/conversation-clock.ts` 新增 leader-only `syncActiveRoomTimers()` 周期补注册逻辑（5s），并在 `start()/stop()` 中管理该同步循环；`src/backend/services/__tests__/conversation-clock.test.ts` 补了 leader 同步 / 非 leader 跳过的回归测试。
+  - kind 第二次复测暴露更深一层的 Pg 多 pod 问题：leader pod 的 timer 已触发，但 `RoomEcologyService` / `AgentService` 解析 agent 时抛出 `Agent with id ... not found`。根因是 `PgAgentRepository` / `PgAgentConfigRepository` 采用“启动时 hydrate 后只查本地 cache”的模型，rollout 后由任一 pod 新建的 agent / config 不会自动同步到其他 pod。
+  - `src/backend/repos/pg/pg-agent-repository.ts` 为 Pg agent/config repo 增加短周期后台 refresh，并把 refresh 改成 merge-style 更新，避免旧快照把并发写入的新 agent/config 从 cache 中冲掉；同时 `createPersisted()` 会等待正在进行的 refresh，降低 seed 与 refresh 竞态。
+  - 最终 local-kind 复测通过：`/v1/dev/seed` 恢复稳定，3 个新房间的 cue 全部从 `PLANNED` 转到 `EXECUTED`，每房间都产出至少 1 条真实消息、1 条 highlight 和完整 room-level SSE。
+  - 仍然存在的“节目感不足 / 高光密度偏低 / persona 还不够锋利”问题保留给 T-082，不再作为 T-081 reopen 条件。

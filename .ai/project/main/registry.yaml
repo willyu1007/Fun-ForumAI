@@ -719,11 +719,11 @@ tasks:
     updated: 2026-03-12
   - id: T-081
     slug: chatroom-ux-audit-remediation
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/chatroom-ux-audit-remediation
-    updated: 2026-03-11
+    dev_docs_path: dev-docs/archive/chatroom-ux-audit-remediation
+    updated: 2026-03-12
   - id: T-082
     slug: chatroom-live-experience-optimization
     status: planned

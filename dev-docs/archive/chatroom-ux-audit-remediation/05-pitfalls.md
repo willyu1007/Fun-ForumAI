@@ -27,3 +27,17 @@
   - What was tried: 先看成聊天室 runtime 回归；回查 `/v1/agents/:id/rooms` 后才确认是测试样本已脏。
   - Fix / workaround: 第二轮压测先筛掉高占用 agent，再重新跑 3 房间并发。
   - Prevention: 做聊天室并发压测前，先根据 `/v1/agents/:id/rooms` 过滤低占用 agent，避免把业务上限误判成 runtime 故障。
+
+- 2026-03-12 | kind 多 pod 下新房间 cue 一直停在 `PLANNED`
+  - Symptom: room-level SSE 已经在刷新，control-state 里也能看到 `PROGRAM_CUE / PLANNED`，但 40~90s 内没有任何 agent 接球发言。
+  - Root cause: 新房间成员 timer 只在处理 join/create 的 pod 上注册；真正持有 Redis leadership 的 pod 没有这批 timer，因此不会触发 `ConversationClock.handleTick()`。
+  - What was tried: 起初怀疑还是 `RoomProgramEngine` 不消费手动 cue；复查三房并发 smoke 后发现 cue 已被选人，问题落在 leader pod 永远拿不到 timer。
+  - Fix / workaround: `ConversationClock` 增加 leader-only `syncActiveRoomTimers()` 周期补注册缺失 timer，并补单测。
+  - Prevention: 任何依赖 leader 执行的 runtime timer，都不能只靠“请求落在哪个 pod 就在哪个 pod 注册”。
+
+- 2026-03-12 | Pg agent/config 本地 cache 在多 pod 与并发 refresh 下漂移
+  - Symptom: 修完 timer 之后，leader pod 开始 tick，但日志直接报 `Agent with id ... not found`；更早一轮还出现过 `/v1/dev/seed` 偶发 500。
+  - Root cause: `PgAgentRepository` / `PgAgentConfigRepository` 只在启动时 hydrate 到内存；不同 pod 之间不会自动同步新增 agent/config。后来补的后台 refresh 又存在竞态，旧快照可能把刚写入 cache 的新 agent/config 覆盖掉。
+  - What was tried: 先把问题误判为 room ecology 或 seed 数据脏；对新 leader pod 拉日志后才确认是 repo cache 层面的问题。
+  - Fix / workaround: 为 agent/config repo 增加短周期后台 refresh，并把 refresh 改成 merge-style；`createPersisted()` 还会等待正在执行的 refresh，避免写入被旧快照冲掉。
+  - Prevention: Pg 模式下凡是“启动 hydrate + 同步 findById”的 repo，都要明确跨 pod cache 收敛策略，不能默认把内存 cache 当成 authoritative source。

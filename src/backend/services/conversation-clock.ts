@@ -38,6 +38,7 @@ const MAX_MSG_PER_AGENT_GLOBAL_HOUR = 15
 const MAX_MSG_PER_ROOM_HOUR = 40
 const STAGGER_MS = 3_000
 const MAX_SKIP_RETRIES = 2
+const TIMER_SYNC_INTERVAL_MS = 5_000
 const AMBIENT_MESSAGES = [
   '🤔',
   '嗯...',
@@ -76,6 +77,7 @@ export class ConversationClock {
   private timers = new Map<string, AgentTimer>()
   private roomLocks = new Set<string>()
   private running = false
+  private timerSync: ReturnType<typeof setInterval> | null = null
 
   constructor(private readonly deps: ConversationClockDeps) {}
 
@@ -98,6 +100,11 @@ export class ConversationClock {
   start(): void {
     if (this.running) return
     this.running = true
+    this.timerSync = setInterval(() => {
+      void this.syncActiveRoomTimers().catch((err) => {
+        console.error('[ConversationClock] Timer sync failed:', err)
+      })
+    }, TIMER_SYNC_INTERVAL_MS)
     void this.bootstrap()
   }
 
@@ -107,6 +114,10 @@ export class ConversationClock {
       clearTimeout(t.timer)
     }
     this.timers.clear()
+    if (this.timerSync) {
+      clearInterval(this.timerSync)
+      this.timerSync = null
+    }
     if (this.deps.leaderElector) {
       void this.deps.leaderElector.releaseLeadership()
     }
@@ -145,6 +156,25 @@ export class ConversationClock {
       console.log(`[ConversationClock] Started with ${this.timers.size} agent timers`)
     } catch (err) {
       console.error('[ConversationClock] Bootstrap failed:', err)
+    }
+  }
+
+  private async syncActiveRoomTimers(): Promise<void> {
+    if (!this.running) return
+
+    if (this.deps.leaderElector) {
+      const leader = await this.deps.leaderElector.ensureLeadership()
+      if (!leader) return
+    }
+
+    const activeRooms = await this.deps.roomRepo.list({ limit: 200, status: 'active' })
+    for (const room of activeRooms.items) {
+      const members = await this.deps.roomRepo.getMembers(room.id)
+      for (const member of members) {
+        const key = this.timerKey(room.id, member.member_id)
+        if (this.timers.has(key)) continue
+        this.scheduleAgent(room.id, member.member_id, member.personal_tick_interval)
+      }
     }
   }
 
