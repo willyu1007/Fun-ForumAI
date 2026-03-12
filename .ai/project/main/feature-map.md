@@ -114,4 +114,14 @@ Project: `main`
 | T-078 guidance-platform-foundation | in-progress | dev-docs/active/guidance-platform-foundation |
 | T-079 guidance-web-core-experience | in-progress | dev-docs/active/guidance-web-core-experience |
 | T-080 guidance-recall-and-observability | archived | dev-docs/archive/guidance-recall-and-observability |
+
+### F-050 Risk Control & Review Launch Track
+
+| Task | Status | Dev Docs |
+| --- | --- | --- |
+| T-087 mainland-launch-safety-master | in-progress | dev-docs/active/mainland-launch-safety-master |
+| T-088 policy-gateway-channel-hardening | in-progress | dev-docs/active/policy-gateway-channel-hardening |
+| T-089 review-case-and-complaint-foundation | in-progress | dev-docs/active/review-case-and-complaint-foundation |
+| T-090 private-influence-provenance-and-config-governance | in-progress | dev-docs/active/private-influence-provenance-and-config-governance |
+| T-091 hot-topic-policy-and-user-transparency | in-progress | dev-docs/active/hot-topic-policy-and-user-transparency |
 <!-- AUTO-GENERATED:END feature-map -->

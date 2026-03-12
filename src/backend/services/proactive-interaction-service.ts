@@ -19,6 +19,8 @@ import {
   type PersonaObservationV1,
   recordPersonaObservation,
 } from '../runtime/persona-observation.js'
+import type { PolicyGatewayService } from './policy-gateway-service.js'
+import type { IdentityGateService } from './identity-gate-service.js'
 
 const MAX_PROACTIVE_PER_DAY = 2
 const PROACTIVE_COOLDOWN_MS = 4 * 60 * 60 * 1000
@@ -32,6 +34,8 @@ export interface ProactiveInteractionDeps {
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
   notificationService: NotificationService
+  policyGatewayService?: PolicyGatewayService | null
+  identityGateService?: IdentityGateService | null
 }
 
 export class ProactiveInteractionService {
@@ -64,6 +68,19 @@ export class ProactiveInteractionService {
       trigger: 'vote_received',
       context: `${voterName}给你的${targetLabel}点了赞。`,
     })
+    const policyDecision = this.deps.policyGatewayService
+      ? await this.deps.policyGatewayService.evaluate({
+          channel: 'proactive_dm',
+          text: openingMessage.content,
+          author_agent_id: agentId,
+          user_id: agent.owner_id,
+          target_type: 'notification',
+          target_id: vote.target_id,
+          scene: 'proactive_dm',
+        })
+      : null
+    if (policyDecision?.action === 'block') return false
+    const effectiveOpeningContent = policyDecision?.final_text ?? openingMessage.content
 
     const session = await this.deps.channelRepo.createSession({
       agent_id: agentId,
@@ -76,7 +93,9 @@ export class ProactiveInteractionService {
     await this.deps.channelRepo.createMessage({
       session_id: session.id,
       author_type: 'AGENT',
-      content: openingMessage.content,
+      content: effectiveOpeningContent,
+      delivery_status: policyDecision?.delivery_status ?? 'DELIVERED',
+      moderation_metadata: policyDecision?.metadata ?? null,
     })
 
     this.recordOpeningRun({
@@ -84,7 +103,7 @@ export class ProactiveInteractionService {
       sessionId: session.id,
       triggerType: 'vote_received',
       triggerRef: vote.target_id,
-      openingMessage,
+      openingMessage: { ...openingMessage, content: effectiveOpeningContent },
     })
 
     if (openingMessage.renderDecision && this.deps.personaStateService) {
@@ -92,7 +111,7 @@ export class ProactiveInteractionService {
         agentId,
         scene: 'proactive_dm',
         renderDecision: openingMessage.renderDecision,
-        outputText: openingMessage.content,
+        outputText: effectiveOpeningContent,
       }).catch((err) => {
         console.error('[ProactiveInteraction] persona runtime render record failed:', err)
       })
@@ -134,6 +153,19 @@ export class ProactiveInteractionService {
         `质疑内容："${challenge.challenge_content.slice(0, 200)}"`,
       ].join('\n'),
     })
+    const policyDecision = this.deps.policyGatewayService
+      ? await this.deps.policyGatewayService.evaluate({
+          channel: 'proactive_dm',
+          text: openingMessage.content,
+          author_agent_id: agentId,
+          user_id: agent.owner_id,
+          target_type: 'notification',
+          target_id: challenge.comment_id ?? challenge.post_id,
+          scene: 'proactive_dm',
+        })
+      : null
+    if (policyDecision?.action === 'block') return false
+    const effectiveOpeningContent = policyDecision?.final_text ?? openingMessage.content
 
     const session = await this.deps.channelRepo.createSession({
       agent_id: agentId,
@@ -146,7 +178,9 @@ export class ProactiveInteractionService {
     await this.deps.channelRepo.createMessage({
       session_id: session.id,
       author_type: 'AGENT',
-      content: openingMessage.content,
+      content: effectiveOpeningContent,
+      delivery_status: policyDecision?.delivery_status ?? 'DELIVERED',
+      moderation_metadata: policyDecision?.metadata ?? null,
     })
 
     this.recordOpeningRun({
@@ -154,7 +188,7 @@ export class ProactiveInteractionService {
       sessionId: session.id,
       triggerType: 'opinion_challenged',
       triggerRef: challenge.comment_id ?? challenge.post_id,
-      openingMessage,
+      openingMessage: { ...openingMessage, content: effectiveOpeningContent },
     })
 
     if (openingMessage.renderDecision && this.deps.personaStateService) {
@@ -162,7 +196,7 @@ export class ProactiveInteractionService {
         agentId,
         scene: 'proactive_dm',
         renderDecision: openingMessage.renderDecision,
-        outputText: openingMessage.content,
+        outputText: effectiveOpeningContent,
       }).catch((err) => {
         console.error('[ProactiveInteraction] persona runtime render record failed:', err)
       })
@@ -197,6 +231,13 @@ export class ProactiveInteractionService {
   private async canTriggerProactive(agentId: string): Promise<boolean> {
     const agent = this.deps.agentService.getAgent(agentId)
     if (!agent) return false
+    if (this.deps.identityGateService) {
+      try {
+        await this.deps.identityGateService.assertVerified(agent.owner_id, 'proactive_receive')
+      } catch {
+        return false
+      }
+    }
 
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)

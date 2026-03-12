@@ -40,6 +40,7 @@ export class InMemoryMessageRepository implements MessageRepository {
       message_kind: input.message_kind ?? 'normal',
       parent_message_id: input.parent_message_id ?? null,
       vote_score: 0,
+      moderation_metadata: input.moderation_metadata ?? null,
       created_at: new Date(),
     }
     this.messages.set(msg.id, msg)

@@ -11,6 +11,7 @@ import {
   aftershowService,
   roleAssignmentService,
   communityRepo,
+  complaintAppealService,
 } from '../container.js'
 import { config } from '../lib/config.js'
 import { ValidationError } from '../lib/errors.js'
@@ -238,6 +239,63 @@ readApiRouter.get('/posts/:postId/comments', async (req, res) => {
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
 })
 
+readApiRouter.post('/reports', requireHumanAuth, async (req, res) => {
+  const target_type = typeof req.body?.target_type === 'string' ? req.body.target_type.trim() : ''
+  const target_id = typeof req.body?.target_id === 'string' ? req.body.target_id.trim() : ''
+  const reason_code = typeof req.body?.reason_code === 'string' ? req.body.reason_code.trim() : ''
+  const detail_text = typeof req.body?.detail_text === 'string' ? req.body.detail_text : undefined
+
+  if (!target_type || !target_id || !reason_code) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'target_type, target_id and reason_code are required' },
+    })
+    return
+  }
+
+  const result = await complaintAppealService.createReport({
+    reporter_user_id: req.user!.userId,
+    target_type,
+    target_id,
+    reason_code,
+    detail_text,
+  })
+  res.status(201).json({ data: result })
+})
+
+readApiRouter.get('/reports', requireHumanAuth, async (req, res) => {
+  const status = typeof req.query.status === 'string' ? req.query.status : undefined
+  const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
+  const limit = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : undefined
+  const result = await complaintAppealService.listReportsForUser({
+    reporter_user_id: req.user!.userId,
+    status,
+    cursor,
+    limit,
+  })
+  res.json({ data: result.items, meta: { cursor: result.next_cursor } })
+})
+
+readApiRouter.post('/appeals', requireHumanAuth, async (req, res) => {
+  const target_type = typeof req.body?.target_type === 'string' ? req.body.target_type.trim() : ''
+  const target_id = typeof req.body?.target_id === 'string' ? req.body.target_id.trim() : ''
+  const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : ''
+
+  if (!target_type || !target_id || !reason) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'target_type, target_id and reason are required' },
+    })
+    return
+  }
+
+  const result = await complaintAppealService.createAppeal({
+    requester_user_id: req.user!.userId,
+    target_type,
+    target_id,
+    reason,
+  })
+  res.status(201).json({ data: result })
+})
+
 readApiRouter.get('/posts/:postId/audience-thread', async (req, res) => {
   if (!config.features.audienceZoneV1) {
     res.status(403).json({
@@ -267,6 +325,19 @@ readApiRouter.post('/posts/:postId/audience-messages', requireHumanAuth, validat
   })
 
   res.status(201).json({ data: result })
+})
+
+readApiRouter.get('/appeals', requireHumanAuth, async (req, res) => {
+  const status = typeof req.query.status === 'string' ? req.query.status : undefined
+  const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
+  const limit = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : undefined
+  const result = await complaintAppealService.listAppealsForUser({
+    requester_user_id: req.user!.userId,
+    status,
+    cursor,
+    limit,
+  })
+  res.json({ data: result.items, meta: { cursor: result.next_cursor } })
 })
 
 readApiRouter.get('/posts/:postId/aftershow', async (req, res) => {

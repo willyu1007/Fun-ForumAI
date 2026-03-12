@@ -338,6 +338,7 @@ export class MemoryService {
       disclosure_level: 1,
       public_memory_budget: 1000,
       public_memory_top_k: 4,
+      public_disclosure_cap: null,
       updated_at: new Date(),
       updated_by: '',
     }
@@ -350,6 +351,7 @@ export class MemoryService {
       disclosure_level?: number
       public_memory_budget?: number
       public_memory_top_k?: number
+      public_disclosure_cap?: number | null
     },
   ): Promise<AgentPrivacySettingsEntity> {
     if (changes.disclosure_level !== undefined) {
@@ -357,11 +359,36 @@ export class MemoryService {
         throw new ValidationError('disclosure_level must be 0-3')
       }
     }
+    if (
+      changes.public_disclosure_cap !== undefined
+      && changes.public_disclosure_cap !== null
+      && (changes.public_disclosure_cap < 0 || changes.public_disclosure_cap > 3)
+    ) {
+      throw new ValidationError('public_disclosure_cap must be 0-3 or null')
+    }
     return this.deps.memoryRepo.upsertPrivacySettings({
       agent_id: agentId,
       ...changes,
       updated_by: updatedBy,
     })
+  }
+
+  resolveEffectiveDisclosureLevel(settings: AgentPrivacySettingsEntity): {
+    requested_disclosure_level: number
+    effective_disclosure_level: number
+    cap_source: 'owner_setting' | 'server_cap'
+    public_disclosure_cap: number | null
+  } {
+    const requested = settings.disclosure_level
+    const effective = settings.public_disclosure_cap === null
+      ? requested
+      : Math.min(requested, settings.public_disclosure_cap)
+    return {
+      requested_disclosure_level: requested,
+      effective_disclosure_level: effective,
+      cap_source: settings.public_disclosure_cap === null ? 'owner_setting' : 'server_cap',
+      public_disclosure_cap: settings.public_disclosure_cap,
+    }
   }
 
   async decayAndForget(agentId: string): Promise<{ decayed: number; forgotten: number }> {

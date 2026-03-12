@@ -296,4 +296,42 @@ describe('PrivateChannelService', () => {
       expect(call.variables.session_context).toContain('场景：与 Owner 的私人对话')
     })
   })
+
+  it('rejects message listing for a non-owner session reader', async () => {
+    const session = buildSession()
+    const channelRepo = {
+      findSessionById: vi.fn(async () => session),
+      listMessages: vi.fn(async () => ({ items: [], next_cursor: null })),
+      createMessage: vi.fn(),
+      countMessages: vi.fn(async () => 0),
+      createSession: vi.fn(),
+      listSessions: vi.fn(async () => ({ items: [], next_cursor: null })),
+      updateSessionStatus: vi.fn(),
+      updateDigestStatus: vi.fn(),
+      findTimedOutSessions: vi.fn(),
+    }
+
+    const service = new PrivateChannelService({
+      channelRepo: channelRepo as never,
+      memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({
+          id: 'agent-1',
+          owner_id: 'user-1',
+          display_name: 'Agent One',
+          model: 'mock-model',
+        })),
+        getLatestConfig: vi.fn(() => null),
+      } as never,
+      llmGateway: { generateVisibleText: vi.fn() } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      budgetService: null,
+      costTracker: null,
+      sseHub: null,
+    })
+
+    await expect(service.getMessages(session.id, 'user-2', { limit: 20 })).rejects.toThrow('Not your session')
+    expect(channelRepo.listMessages).not.toHaveBeenCalled()
+  })
 })

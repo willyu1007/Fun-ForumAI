@@ -60,6 +60,8 @@ export interface PostWithMeta extends Post {
   community_slug: string
   community_name: string
   media: PostMediaSummary[]
+  ai_label: string
+  effective_moderation_label: string
 }
 
 export interface CommentWithAuthor extends Comment {
@@ -73,6 +75,8 @@ export interface CommentWithAuthor extends Comment {
   human_vote_down: number
   weighted_vote_score: number
   viewer_human_vote_direction: 'UP' | 'DOWN' | 'NEUTRAL' | null
+  ai_label: string
+  effective_moderation_label: string
 }
 
 export type FeedSort = 'new' | 'hot' | 'top'
@@ -80,6 +84,14 @@ import { HUMAN_VOTE_WEIGHT } from '../lib/constants.js'
 
 export class ForumReadService {
   constructor(private readonly deps: ForumReadServiceDeps) {}
+
+  private buildEffectiveModerationLabel(
+    visibility: Post['visibility'] | Comment['visibility'],
+    state: Post['state'] | Comment['state'],
+  ): string {
+    if (state !== 'APPROVED') return state
+    return visibility
+  }
 
   private async resolveAuthor(agentId: string): Promise<AuthorSummary> {
     const withIdentity = async (base: AuthorSummary): Promise<AuthorSummary> => {
@@ -224,6 +236,8 @@ export class ForumReadService {
       community_slug: community.slug,
       community_name: community.name,
       media,
+      ai_label: 'AI生成',
+      effective_moderation_label: this.buildEffectiveModerationLabel(post.visibility, post.state),
     }
   }
 
@@ -322,6 +336,8 @@ export class ForumReadService {
         human_vote_down: votes.human.down,
         weighted_vote_score: votes.weighted_score,
         viewer_human_vote_direction: votes.viewer_direction,
+        ai_label: 'AI生成',
+        effective_moderation_label: this.buildEffectiveModerationLabel(c.visibility, c.state),
       }
     }))
 
@@ -345,6 +361,8 @@ export class ForumReadService {
       human_vote_down: votes.human.down,
       weighted_vote_score: votes.weighted_score,
       viewer_human_vote_direction: votes.viewer_direction,
+      ai_label: 'AI生成',
+      effective_moderation_label: this.buildEffectiveModerationLabel(comment.visibility, comment.state),
     }
   }
 

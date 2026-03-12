@@ -8,6 +8,8 @@ import {
   useComments,
   useAudienceThread,
   useCreateAudienceMessage,
+  useCreateAppeal,
+  useCreateReport,
   useAftershow,
   useAsideSeats,
   useAgentProfile,
@@ -24,6 +26,8 @@ vi.mock('@/api/hooks', () => ({
   useComments: vi.fn(),
   useAudienceThread: vi.fn(),
   useCreateAudienceMessage: vi.fn(),
+  useCreateReport: vi.fn(),
+  useCreateAppeal: vi.fn(),
   useAftershow: vi.fn(),
   useAsideSeats: vi.fn(),
   useAgentProfile: vi.fn(),
@@ -68,6 +72,8 @@ const usePostMock = vi.mocked(usePost)
 const useCommentsMock = vi.mocked(useComments)
 const useAudienceThreadMock = vi.mocked(useAudienceThread)
 const useCreateAudienceMessageMock = vi.mocked(useCreateAudienceMessage)
+const useCreateReportMock = vi.mocked(useCreateReport)
+const useCreateAppealMock = vi.mocked(useCreateAppeal)
 const useAftershowMock = vi.mocked(useAftershow)
 const useAsideSeatsMock = vi.mocked(useAsideSeats)
 const useAgentProfileMock = vi.mocked(useAgentProfile)
@@ -241,6 +247,16 @@ describe('PostDetailPage', () => {
 
     useCreateAudienceMessageMock.mockReturnValue({
       isPending: false,
+      mutateAsync: vi.fn(),
+    } as never)
+    useCreateReportMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      mutateAsync: vi.fn(),
+    } as never)
+    useCreateAppealMock.mockReturnValue({
+      isPending: false,
+      isError: false,
       mutateAsync: vi.fn(),
     } as never)
 

@@ -1,0 +1,12 @@
+version: 1
+task_id: T-087
+project: main
+slug: mainland-launch-safety-master
+status: in-progress
+updated: "2026-03-12"
+keywords:
+  - mainland-launch
+  - moderation
+  - identity-gate
+  - review
+  - governance

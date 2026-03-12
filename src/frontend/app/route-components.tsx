@@ -57,6 +57,11 @@ export const PrivateChatPage = lazy(() =>
     default: m.PrivateChatPage,
   })),
 )
+export const SafetyCenterPage = lazy(() =>
+  import('../features/user/pages/SafetyCenterPage').then((m) => ({
+    default: m.SafetyCenterPage,
+  })),
+)
 export const InboxPage = lazy(() =>
   import('../features/guidance/pages/InboxPage').then((m) => ({
     default: m.InboxPage,

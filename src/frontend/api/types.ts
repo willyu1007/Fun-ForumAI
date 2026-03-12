@@ -222,6 +222,8 @@ export interface PostWithMeta extends Post {
   community_slug: string
   community_name: string
   media: PostMediaItem[]
+  ai_label?: string
+  effective_moderation_label?: string
   aftershow_summary?: AftershowSummary | null
   aftershow_callouts?: AftershowCalloutItem[]
   audience_thread_meta?: AudienceThreadMeta | null
@@ -338,6 +340,8 @@ export interface Comment {
   human_vote_down?: number
   weighted_vote_score?: number
   viewer_human_vote_direction?: VoteDirection | null
+  ai_label?: string
+  effective_moderation_label?: string
 }
 
 export interface Vote {
@@ -585,6 +589,10 @@ export interface AgentConfig {
   id: string
   agent_id: string
   config_json: Record<string, unknown>
+  risk_level?: 'LOW' | 'HIGH'
+  review_status?: 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'REJECTED'
+  review_case_id?: string | null
+  lint_warnings?: string[]
   updated_at: string
   effective_at: string
   updated_by: string
@@ -619,6 +627,105 @@ export interface GovernanceResult {
   target_id: string
   new_visibility?: ContentVisibility
   new_state?: ContentState
+}
+
+export interface ReviewCase {
+  id: string
+  case_type: 'MODERATION' | 'COMPLAINT' | 'APPEAL' | 'IDENTITY_REVIEW' | 'CONFIG_REVIEW' | 'HOT_TOPIC'
+  status: 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'DISMISSED'
+  priority: number
+  summary_text: string | null
+  opened_reason: string | null
+  opened_by: string
+  assigned_to_user_id: string | null
+  linked_policy_snapshot_id: string | null
+  linked_complaint_ticket_id: string | null
+  linked_appeal_request_id: string | null
+  resolution_action: string | null
+  resolved_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ReviewCaseTarget {
+  id: string
+  case_id: string
+  target_type: string
+  target_id: string
+  channel: string
+  community_id: string | null
+  agent_id: string | null
+  user_id: string | null
+  room_id: string | null
+  session_id: string | null
+  message_id: string | null
+  created_at: string
+}
+
+export interface ReviewEvidenceSnapshot {
+  id: string
+  case_id: string
+  snapshot_type: string
+  payload: Record<string, unknown>
+  created_at: string
+}
+
+export interface ReviewTask {
+  id: string
+  case_id: string
+  task_type: string
+  status: 'PENDING' | 'ASSIGNED' | 'COMPLETED' | 'CANCELED'
+  assignee_user_id: string | null
+  due_at: string | null
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ReviewCaseDetail {
+  case: ReviewCase
+  targets: ReviewCaseTarget[]
+  evidence: ReviewEvidenceSnapshot[]
+  tasks: ReviewTask[]
+}
+
+export interface IdentityVerification {
+  id: string
+  user_id: string
+  status: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'EXPIRED'
+  method: 'MANUAL_REVIEW' | 'SUPPLIER_PLACEHOLDER'
+  reviewed_by_user_id: string | null
+  reason: string | null
+  submitted_at: string
+  reviewed_at: string | null
+  expires_at: string | null
+  meta: Record<string, unknown> | null
+}
+
+export interface ComplaintTicket {
+  id: string
+  reporter_user_id: string
+  target_type: string
+  target_id: string
+  reason_code: string
+  detail_text: string | null
+  status: 'OPEN' | 'LINKED' | 'RESOLVED' | 'REJECTED'
+  linked_case_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AppealRequest {
+  id: string
+  requester_user_id: string
+  target_type: string
+  target_id: string
+  linked_case_id: string | null
+  linked_complaint_ticket_id: string | null
+  reason: string
+  status: 'OPEN' | 'LINKED' | 'RESOLVED' | 'REJECTED'
+  created_at: string
+  updated_at: string
 }
 
 export interface HealthData {
@@ -902,6 +1009,7 @@ export interface ChatMessage {
   message_kind: ChatMessageKind
   parent_message_id: string | null
   vote_score: number
+  moderation_metadata?: Record<string, unknown> | null
   created_at: string
 }
 
@@ -1224,6 +1332,8 @@ export interface PrivateMessage {
   session_id: string
   author_type: PrivateAuthorType
   content: string
+  delivery_status?: 'PENDING_REVIEW' | 'DELIVERED' | 'REWRITTEN' | 'REFUSED' | 'BLOCKED'
+  moderation_metadata?: Record<string, unknown> | null
   created_at: string
 }
 
@@ -1246,6 +1356,7 @@ export interface PrivacySettings {
   disclosure_level: number
   public_memory_budget: number
   public_memory_top_k: number
+  public_disclosure_cap?: number | null
 }
 
 export interface Notification {

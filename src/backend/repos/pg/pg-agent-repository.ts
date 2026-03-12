@@ -34,6 +34,10 @@ function paginate<T extends { id: string }>(
 
 const DEFAULT_CACHE_REFRESH_MS = 2_000
 
+function isEffectiveConfig(config: AgentConfig): boolean {
+  return config.review_status === 'NOT_REQUIRED' || config.review_status === 'APPROVED'
+}
+
 export class PgAgentRepository implements AgentRepository {
   private cache = new Map<string, Agent>()
   private refreshInFlight: Promise<void> | null = null
@@ -314,6 +318,10 @@ export class PgAgentConfigRepository implements AgentConfigRepository {
       id,
       agent_id: input.agent_id,
       config_json: input.config_json,
+      risk_level: input.risk_level ?? 'LOW',
+      review_status: input.review_status ?? 'NOT_REQUIRED',
+      review_case_id: input.review_case_id ?? null,
+      lint_warnings: input.lint_warnings ?? [],
       updated_at: now,
       effective_at: now,
       updated_by: input.updated_by,
@@ -326,6 +334,10 @@ export class PgAgentConfigRepository implements AgentConfigRepository {
           id,
           agentId: config.agent_id,
           configJson: config.config_json as Prisma.InputJsonValue,
+          riskLevel: config.risk_level,
+          reviewStatus: config.review_status,
+          reviewCaseId: config.review_case_id,
+          lintWarningsJson: config.lint_warnings as Prisma.InputJsonValue,
           updatedAt: now,
           effectiveAt: now,
           updatedBy: config.updated_by,
@@ -347,6 +359,10 @@ export class PgAgentConfigRepository implements AgentConfigRepository {
       id,
       agent_id: input.agent_id,
       config_json: input.config_json,
+      risk_level: input.risk_level ?? 'LOW',
+      review_status: input.review_status ?? 'NOT_REQUIRED',
+      review_case_id: input.review_case_id ?? null,
+      lint_warnings: input.lint_warnings ?? [],
       updated_at: now,
       effective_at: now,
       updated_by: input.updated_by,
@@ -356,6 +372,10 @@ export class PgAgentConfigRepository implements AgentConfigRepository {
         id,
         agentId: config.agent_id,
         configJson: config.config_json as Prisma.InputJsonValue,
+        riskLevel: config.risk_level,
+        reviewStatus: config.review_status,
+        reviewCaseId: config.review_case_id,
+        lintWarningsJson: config.lint_warnings as Prisma.InputJsonValue,
         updatedAt: now,
         effectiveAt: now,
         updatedBy: config.updated_by,
@@ -371,9 +391,21 @@ export class PgAgentConfigRepository implements AgentConfigRepository {
   }
 
   findLatest(agentId: string): AgentConfig | null {
-    const id = this.agentLatest.get(agentId)
-    if (!id) return null
-    return this.cache.get(id) ?? null
+    const configs = Array.from(this.cache.values())
+      .filter((item) => item.agent_id === agentId)
+      .sort((a, b) =>
+        b.effective_at.getTime() - a.effective_at.getTime()
+        || b.id.localeCompare(a.id))
+    return configs.find(isEffectiveConfig) ?? configs[0] ?? null
+  }
+
+  findLatestRevision(agentId: string): AgentConfig | null {
+    const configs = Array.from(this.cache.values())
+      .filter((item) => item.agent_id === agentId)
+      .sort((a, b) =>
+        b.updated_at.getTime() - a.updated_at.getTime()
+        || b.id.localeCompare(a.id))
+    return configs[0] ?? null
   }
 
   private toDomain(row: PrismaAgentConfig): AgentConfig {
@@ -381,6 +413,12 @@ export class PgAgentConfigRepository implements AgentConfigRepository {
       id: row.id,
       agent_id: row.agentId,
       config_json: row.configJson as Record<string, unknown>,
+      risk_level: row.riskLevel,
+      review_status: row.reviewStatus,
+      review_case_id: row.reviewCaseId,
+      lint_warnings: Array.isArray(row.lintWarningsJson)
+        ? row.lintWarningsJson.filter((item): item is string => typeof item === 'string')
+        : [],
       updated_at: row.updatedAt,
       effective_at: row.effectiveAt,
       updated_by: row.updatedBy,

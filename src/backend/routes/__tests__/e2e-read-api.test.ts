@@ -145,6 +145,117 @@ describe('E2E: Read API (public)', () => {
     expect(downRes.body.data.summary.human_down).toBe(1)
   })
 
+  it('POST /v1/reports and GET /v1/reports create and list complaint tickets for the current user', async () => {
+    const community = await createTestCommunity({
+      name: 'Report Target Community',
+      slug: `report-target-${Date.now()}`,
+    })
+    const agentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Report Target Agent' })
+    expect(agentRes.status).toBe(201)
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: agentRes.body.data.id,
+      run_id: 'run-report-target-1',
+      community_id: community.id,
+      title: 'Reportable post',
+      body: 'needs review',
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    const createRes = await request(app)
+      .post('/v1/reports')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        target_type: 'post',
+        target_id: postId,
+        reason_code: 'viewer_report',
+        detail_text: 'needs review',
+      })
+
+    expect(createRes.status).toBe(201)
+    expect(createRes.body.data.complaint.status).toBe('LINKED')
+    expect(createRes.body.data.case.case_type).toBe('COMPLAINT')
+
+    const listRes = await request(app)
+      .get('/v1/reports')
+      .set('Authorization', `Bearer ${userToken}`)
+
+    expect(listRes.status).toBe(200)
+    expect(Array.isArray(listRes.body.data)).toBe(true)
+    expect(listRes.body.data.some((item: { target_id: string }) => item.target_id === postId)).toBe(true)
+  })
+
+  it('POST /v1/appeals and GET /v1/appeals create and list appeal requests for the current user', async () => {
+    const community = await createTestCommunity({
+      name: 'Appeal Target Community',
+      slug: `appeal-target-${Date.now()}`,
+    })
+    const agentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Appeal Target Agent' })
+    expect(agentRes.status).toBe(201)
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: agentRes.body.data.id,
+      run_id: 'run-appeal-target-1',
+      community_id: community.id,
+      title: 'Appealable post',
+      body: 'owner appeal target',
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    const createRes = await request(app)
+      .post('/v1/appeals')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        target_type: 'post',
+        target_id: postId,
+        reason: 'owner_appeal',
+      })
+
+    expect(createRes.status).toBe(201)
+    expect(createRes.body.data.appeal.status).toBe('LINKED')
+    expect(createRes.body.data.case.case_type).toBe('APPEAL')
+
+    const listRes = await request(app)
+      .get('/v1/appeals')
+      .set('Authorization', `Bearer ${userToken}`)
+
+    expect(listRes.status).toBe(200)
+    expect(Array.isArray(listRes.body.data)).toBe(true)
+    expect(listRes.body.data.some((item: { target_id: string }) => item.target_id === postId)).toBe(true)
+  })
+
+  it('POST /v1/reports rejects unsupported target types and missing targets', async () => {
+    const invalidType = await request(app)
+      .post('/v1/reports')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        target_type: 'unsupported',
+        target_id: 'x-1',
+        reason_code: 'viewer_report',
+      })
+    expect(invalidType.status).toBe(400)
+    expect(invalidType.body.error.code).toBe('VALIDATION_ERROR')
+
+    const missingTarget = await request(app)
+      .post('/v1/reports')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        target_type: 'post',
+        target_id: 'missing-post',
+        reason_code: 'viewer_report',
+      })
+    expect(missingTarget.status).toBe(404)
+    expect(missingTarget.body.error.code).toBe('NOT_FOUND')
+  })
+
   it('GET /v1/agents supports public search', async () => {
     await request(app)
       .post('/v1/agents')

@@ -1,5 +1,15 @@
 import { useState } from 'react'
-import { useGovernanceAction, useHealth } from '@/api/hooks'
+import {
+  useAssignModerationCase,
+  useGovernanceAction,
+  useHealth,
+  useIdentityReviews,
+  useModerationCase,
+  useModerationQueue,
+  useReopenModerationCase,
+  useResolveIdentityReview,
+  useResolveModerationCase,
+} from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -45,14 +55,22 @@ const STATE_LABELS: Record<string, string> = {
   REJECTED: '已拒绝',
 }
 export function AdminPanel() {
-  const { currentIdentity } = useAuth()
+  const { currentIdentity, user } = useAuth()
   const governance = useGovernanceAction()
   const { data: healthData } = useHealth()
+  const { data: queueData } = useModerationQueue()
+  const { data: identityReviews } = useIdentityReviews({ limit: 20 })
+  const assignCase = useAssignModerationCase()
+  const resolveCase = useResolveModerationCase()
+  const reopenCase = useReopenModerationCase()
+  const resolveIdentity = useResolveIdentityReview()
   const [action, setAction] = useState<GovernanceActionType>('approve')
   const [targetType, setTargetType] = useState<string>('post')
   const [targetId, setTargetId] = useState('')
   const [reason, setReason] = useState('')
   const [history, setHistory] = useState<GovernanceResult[]>([])
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null)
+  const { data: caseDetail } = useModerationCase(selectedCaseId)
   if (currentIdentity !== 'admin') {
     return (
       <div className="space-y-4">
@@ -199,6 +217,137 @@ export function AdminPanel() {
               </div>
             </section>
           )}
+
+          <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <Card>
+              <CardHeader className={uix('uix-f4cc511ff0')}>
+                <CardTitle className={uix('uix-fc7473ca09')}>审核队列</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {(queueData?.data ?? []).length === 0 && (
+                  <p className={uix('uix-abda0153e3')}>当前没有待处理 case。</p>
+                )}
+                {(queueData?.data ?? []).map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setSelectedCaseId(item.id)}
+                    className={uix('uix-81af913189')}
+                  >
+                    <div className="text-left">
+                      <p className={uix('uix-da8bf29040')}>
+                        {item.case_type} · {item.summary_text ?? item.id}
+                      </p>
+                      <p className={uix('uix-abda0153e3')}>
+                        {item.status} · priority {item.priority}
+                      </p>
+                    </div>
+                    <Badge variant="outline">{item.status}</Badge>
+                  </button>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className={uix('uix-f4cc511ff0')}>
+                <CardTitle className={uix('uix-fc7473ca09')}>Case 详情</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {!caseDetail?.data && (
+                  <p className={uix('uix-abda0153e3')}>从左侧选择一个 case 查看详情。</p>
+                )}
+                {caseDetail?.data && (
+                  <>
+                    <div>
+                      <p className={uix('uix-da8bf29040')}>
+                        {caseDetail.data.case.case_type} · {caseDetail.data.case.status}
+                      </p>
+                      <p className={uix('uix-abda0153e3')}>
+                        {caseDetail.data.case.summary_text ?? '无摘要'}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => assignCase.mutate({ case_id: caseDetail.data.case.id, assignee_user_id: user?.id ?? null })}
+                      >
+                        指派给我
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => resolveCase.mutate({ case_id: caseDetail.data.case.id, resolution_action: 'resolved_in_admin_panel' })}
+                      >
+                        解决
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => reopenCase.mutate({ case_id: caseDetail.data.case.id, opened_reason: 'manual_reopen' })}
+                      >
+                        重新打开
+                      </Button>
+                    </div>
+                    <div>
+                      <p className={uix('uix-b3691fbf2a')}>Targets</p>
+                      <div className="space-y-1">
+                        {caseDetail.data.targets.map((target) => (
+                          <div key={target.id} className={uix('uix-abda0153e3')}>
+                            {target.channel} · {target.target_type}:{target.target_id}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className={uix('uix-b3691fbf2a')}>Evidence</p>
+                      <div className="space-y-1">
+                        {caseDetail.data.evidence.map((evidence) => (
+                          <div key={evidence.id} className={uix('uix-abda0153e3')}>
+                            {evidence.snapshot_type}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader className={uix('uix-f4cc511ff0')}>
+              <CardTitle className={uix('uix-fc7473ca09')}>实名审核</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {(identityReviews?.data ?? []).slice(0, 8).map((item) => (
+                <div key={item.id} className={uix('uix-81af913189')}>
+                  <div>
+                    <p className={uix('uix-da8bf29040')}>{item.user_id}</p>
+                    <p className={uix('uix-abda0153e3')}>{item.status}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => resolveIdentity.mutate({ user_id: item.user_id, status: 'VERIFIED' })}
+                    >
+                      通过
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => resolveIdentity.mutate({ user_id: item.user_id, status: 'REJECTED' })}
+                    >
+                      驳回
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {(identityReviews?.data ?? []).length === 0 && (
+                <p className={uix('uix-abda0153e3')}>暂无实名审核记录。</p>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

@@ -26,6 +26,7 @@ import {
   type StageSpecV1,
 } from '../stage/index.js'
 import type { AgentStageTierService } from './agent-stage-tier-service.js'
+import type { PolicyGatewayService } from './policy-gateway-service.js'
 
 export interface ModerationEvaluator {
   evaluate(input: {
@@ -55,6 +56,7 @@ export interface ForumWriteServiceDeps {
   stageTierService?: AgentStageTierService
   incubationRepo?: IncubationRepository
   moderator: ModerationEvaluator
+  policyGatewayService?: PolicyGatewayService
   onEventCreated?: EventHook
 }
 
@@ -306,6 +308,13 @@ export class ForumWriteService {
     const stageResolved = resolveStageSpecFromRules(community?.rules_json ?? null, {
       community_id: community?.id ?? input.community_id,
     })
+    if (
+      config.features.riskControlV1
+      && config.launch.market === 'mainland'
+      && stageResolved.used_fallback
+    ) {
+      throw new ValidationError('Mainland launch requires a valid stage_spec_v1; fallback is not allowed')
+    }
 
     const membership = this.deps.membershipRepo?.findCurrent(input.agent_id, input.community_id) ?? null
     if ((config.features.membershipsV1 || config.features.membershipStatusV1 || config.features.stageRoleRuntimeV1) && !membership) {
@@ -409,6 +418,23 @@ export class ForumWriteService {
     const modResult = this.applyPremodOverride(modResultRaw, stageContext.stage_spec, {
       is_longform: stageContext.is_longform,
     })
+    const gatewayDecision = this.deps.policyGatewayService
+      ? await this.deps.policyGatewayService.evaluate({
+          channel: 'forum_post',
+          title: input.title,
+          text: input.body,
+          tags: input.tags,
+          author_agent_id: input.actor_agent_id,
+          community_id: input.community_id,
+          target_type: 'post',
+          scene: 'forum_post',
+          existing_moderation: modResult,
+          prefer_rewrite: false,
+        })
+      : null
+    if (gatewayDecision) {
+      this.deps.policyGatewayService?.assertAllowed(gatewayDecision)
+    }
 
     const post = await this.deps.postRepo.create({
       community_id: input.community_id,
@@ -420,6 +446,13 @@ export class ForumWriteService {
       state: modResult.state,
       moderation_metadata: {
         ...(modResult.details as unknown as Record<string, unknown>),
+        ...(gatewayDecision
+          ? {
+              policy_action: gatewayDecision.action,
+              policy_reason: gatewayDecision.reason,
+              policy_case_id: gatewayDecision.case_id,
+            }
+          : {}),
         ...(stageContext.used_fallback ? { stage_spec_fallback: true } : {}),
         stage_runtime_role: stageContext.role_key,
         stage_runtime_tier: stageContext.agent_tier,
@@ -436,6 +469,12 @@ export class ForumWriteService {
           : {}),
       },
     })
+
+    if (gatewayDecision) {
+      await this.deps.policyGatewayService?.finalizeRecordedOutcomeTarget(gatewayDecision, {
+        target_id: post.id,
+      })
+    }
 
     if (input.trust_context?.job_id && this.deps.incubationRepo) {
       try {
@@ -548,6 +587,21 @@ export class ForumWriteService {
     const modResult = this.applyPremodOverride(modResultRaw, stageContext.stage_spec, {
       is_longform: false,
     })
+    const gatewayDecision = this.deps.policyGatewayService
+      ? await this.deps.policyGatewayService.evaluate({
+          channel: 'forum_comment',
+          text: input.body,
+          author_agent_id: input.actor_agent_id,
+          community_id: post.community_id,
+          target_type: 'comment',
+          scene: 'forum_comment',
+          existing_moderation: modResult,
+          prefer_rewrite: false,
+        })
+      : null
+    if (gatewayDecision) {
+      this.deps.policyGatewayService?.assertAllowed(gatewayDecision)
+    }
 
     const comment = await this.deps.commentRepo.create({
       post_id: input.post_id,
@@ -557,6 +611,12 @@ export class ForumWriteService {
       visibility: modResult.visibility,
       state: modResult.state,
     })
+
+    if (gatewayDecision) {
+      await this.deps.policyGatewayService?.finalizeRecordedOutcomeTarget(gatewayDecision, {
+        target_id: comment.id,
+      })
+    }
 
     const isAside = input.channel === 'ASIDE'
     const eventType = isAside ? 'ASIDE_COMMENT_CREATED' : 'COMMENT_CREATED'

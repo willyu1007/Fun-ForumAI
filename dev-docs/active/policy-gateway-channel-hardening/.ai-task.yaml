@@ -1,0 +1,12 @@
+version: 1
+task_id: T-088
+project: main
+slug: policy-gateway-channel-hardening
+status: in-progress
+updated: "2026-03-12"
+keywords:
+  - policy-gateway
+  - chat
+  - private-chat
+  - proactive-dm
+  - identity-gate

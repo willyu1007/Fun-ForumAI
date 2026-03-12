@@ -85,6 +85,9 @@ export class PromptLayerService {
     const agentId = input.agentId
     let runtimeEnvelope = input.precomputedRuntimeEnvelope ?? null
     let persona: AgentPersona | undefined
+    let privateMemoryProvenance:
+      | NonNullable<NonNullable<PromptComposeAudit['provenance']>['private_memory']>
+      | undefined
 
     if (
       !runtimeEnvelope &&
@@ -160,12 +163,13 @@ export class PromptLayerService {
     if (this.deps.memoryService) {
       try {
         const privacySettings = await this.deps.memoryService.getPrivacySettings(agentId)
+        const disclosure = this.deps.memoryService.resolveEffectiveDisclosureLevel(privacySettings)
         const memoryScene = this.mapMemoryScene(input.scene)
 
         const memoryCtx = await this.deps.memoryService.getMemoriesForContext(agentId, {
           scene: memoryScene,
           topicHints: input.topicHints ?? [],
-          disclosureLevel: privacySettings.disclosure_level,
+          disclosureLevel: disclosure.effective_disclosure_level,
           tokenBudget: privacySettings.public_memory_budget,
           topK: privacySettings.public_memory_top_k,
         })
@@ -174,7 +178,18 @@ export class PromptLayerService {
           layers.layer5_memory = '## 你的记忆与经历\n' + memoryCtx.formatted
         }
 
-        layers.layer6_privacy = this.buildPrivacyPrompt(privacySettings.disclosure_level)
+        layers.layer6_privacy = this.buildPrivacyPrompt(disclosure.effective_disclosure_level)
+        privateMemoryProvenance = {
+          used_memory_ids: memoryCtx.memories.map((memory) => memory.id),
+          requested_disclosure_level: disclosure.requested_disclosure_level,
+          effective_disclosure_level: disclosure.effective_disclosure_level,
+          cap_source: disclosure.cap_source,
+          public_disclosure_cap: disclosure.public_disclosure_cap,
+          rewrite_cause:
+            disclosure.requested_disclosure_level !== disclosure.effective_disclosure_level
+              ? 'server_disclosure_cap_applied'
+              : null,
+        }
       } catch (err) {
         console.warn('[PromptLayerService] memory layer failed for agent', agentId, err)
         lintWarnings.push('layer5_memory_or_layer6_privacy_failed')
@@ -182,6 +197,12 @@ export class PromptLayerService {
     }
 
     const audit = this.buildAudit(input.scene, layers, lintWarnings)
+    if (privateMemoryProvenance) {
+      audit.provenance = {
+        ...(audit.provenance ?? {}),
+        private_memory: privateMemoryProvenance,
+      }
+    }
     if (!opts?.suppressAuditLog) {
       this.emitAuditLog(agentId, audit)
     }

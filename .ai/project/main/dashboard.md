@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 82 (planned: 1, in-progress: 14, blocked: 0, done: 0, archived: 67)
+- Tasks: 87 (planned: 1, in-progress: 19, blocked: 0, done: 0, archived: 67)
 
 ## Recent tasks
 

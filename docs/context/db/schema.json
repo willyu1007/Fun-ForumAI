@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-10T03:21:51.472Z",
+  "updatedAt": "2026-03-12T07:54:29.013Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -72,6 +72,15 @@
       ]
     },
     {
+      "name": "AppealStatus",
+      "values": [
+        "OPEN",
+        "LINKED",
+        "RESOLVED",
+        "REJECTED"
+      ]
+    },
+    {
       "name": "AudienceThreadStatus",
       "values": [
         "OPEN",
@@ -97,6 +106,15 @@
       ]
     },
     {
+      "name": "ComplaintStatus",
+      "values": [
+        "OPEN",
+        "LINKED",
+        "RESOLVED",
+        "REJECTED"
+      ]
+    },
+    {
       "name": "ConfigApprovalDecision",
       "values": [
         "APPROVED",
@@ -113,6 +131,15 @@
         "APPLIED",
         "REJECTED",
         "ROLLED_BACK"
+      ]
+    },
+    {
+      "name": "ConfigReviewStatus",
+      "values": [
+        "NOT_REQUIRED",
+        "PENDING",
+        "APPROVED",
+        "REJECTED"
       ]
     },
     {
@@ -191,6 +218,45 @@
       ]
     },
     {
+      "name": "GuidanceActorType",
+      "values": [
+        "VISITOR",
+        "USER"
+      ]
+    },
+    {
+      "name": "GuidanceInboxModule",
+      "values": [
+        "CARD",
+        "RECEIPT"
+      ]
+    },
+    {
+      "name": "GuidanceInboxStatus",
+      "values": [
+        "ACTIVE",
+        "COMPLETED",
+        "DISMISSED"
+      ]
+    },
+    {
+      "name": "GuidanceStage",
+      "values": [
+        "NEW_VISITOR",
+        "EXPLORING",
+        "FIRST_SUCCESS",
+        "RETAINED"
+      ]
+    },
+    {
+      "name": "GuidanceTrack",
+      "values": [
+        "UNDECIDED",
+        "SPECTATOR",
+        "OWNER"
+      ]
+    },
+    {
       "name": "HumanVoteDirection",
       "values": [
         "UP",
@@ -203,6 +269,22 @@
       "values": [
         "POST",
         "COMMENT"
+      ]
+    },
+    {
+      "name": "IdentityVerificationMethod",
+      "values": [
+        "MANUAL_REVIEW",
+        "SUPPLIER_PLACEHOLDER"
+      ]
+    },
+    {
+      "name": "IdentityVerificationStatus",
+      "values": [
+        "PENDING",
+        "VERIFIED",
+        "REJECTED",
+        "EXPIRED"
       ]
     },
     {
@@ -249,6 +331,16 @@
       ]
     },
     {
+      "name": "MessageDeliveryStatus",
+      "values": [
+        "PENDING_REVIEW",
+        "DELIVERED",
+        "REWRITTEN",
+        "REFUSED",
+        "BLOCKED"
+      ]
+    },
+    {
       "name": "ModerationResult",
       "values": [
         "APPROVE",
@@ -288,6 +380,35 @@
         "ACTIVE",
         "ENDED",
         "ARCHIVED"
+      ]
+    },
+    {
+      "name": "ReviewCaseStatus",
+      "values": [
+        "OPEN",
+        "IN_REVIEW",
+        "RESOLVED",
+        "DISMISSED"
+      ]
+    },
+    {
+      "name": "ReviewCaseType",
+      "values": [
+        "MODERATION",
+        "COMPLAINT",
+        "APPEAL",
+        "IDENTITY_REVIEW",
+        "CONFIG_REVIEW",
+        "HOT_TOPIC"
+      ]
+    },
+    {
+      "name": "ReviewTaskStatus",
+      "values": [
+        "PENDING",
+        "ASSIGNED",
+        "COMPLETED",
+        "CANCELED"
       ]
     },
     {
@@ -2707,6 +2828,50 @@
           "unique": false
         },
         {
+          "name": "lintWarningsJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "lint_warnings_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reviewCaseId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "review_case_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reviewStatus",
+          "type": "ConfigReviewStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": "review_status",
+          "dbType": null,
+          "default": "NOT_REQUIRED",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "riskLevel",
+          "type": "ConfigRiskLevel",
+          "nullable": false,
+          "list": false,
+          "dbName": "risk_level",
+          "dbType": null,
+          "default": "LOW",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "updatedAt",
           "type": "DateTime",
           "nullable": false,
@@ -3827,6 +3992,17 @@
           "dbName": "disclosure_level",
           "dbType": null,
           "default": "1",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicDisclosureCap",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "public_disclosure_cap",
+          "dbType": null,
+          "default": null,
           "primaryKey": false,
           "unique": false
         },
@@ -5454,6 +5630,154 @@
         }
       ],
       "indexes": []
+    },
+    {
+      "name": "AppealRequest",
+      "dbName": "appeal_requests",
+      "schema": null,
+      "columns": [
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "linkedCaseId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "linked_case_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "linkedComplaintTicketId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "linked_complaint_ticket_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reason",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "requesterUserId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "requester_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "AppealStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "OPEN",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "target_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "target_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "requesterUserId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "targetType",
+            "targetId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
     },
     {
       "name": "AudienceMessage",
@@ -7385,6 +7709,154 @@
       ]
     },
     {
+      "name": "ComplaintTicket",
+      "dbName": "complaint_tickets",
+      "schema": null,
+      "columns": [
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "detailText",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "detail_text",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "linkedCaseId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "linked_case_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reasonCode",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "reason_code",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reporterUserId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "reporter_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "ComplaintStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "OPEN",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "target_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "target_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "reporterUserId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "targetType",
+            "targetId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
       "name": "ContextRelationState",
       "dbName": "context_relation_states",
       "schema": null,
@@ -8105,6 +8577,708 @@
             "plane",
             "eventType",
             "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "GovernanceActionLog",
+      "dbName": "governance_action_logs",
+      "schema": null,
+      "columns": [
+        {
+          "name": "action",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "actorUserId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "actor_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "caseId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "case_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "reason",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "resultJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "result_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "target_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "target_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "caseId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "targetType",
+            "targetId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "GuidanceActorState",
+      "dbName": "guidance_actor_states",
+      "schema": null,
+      "columns": [
+        {
+          "name": "actorId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "actor_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "actorType",
+          "type": "GuidanceActorType",
+          "nullable": false,
+          "list": false,
+          "dbName": "actor_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "agentCreatedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "agent_created_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "currentTrack",
+          "type": "GuidanceTrack",
+          "nullable": false,
+          "list": false,
+          "dbName": "current_track",
+          "dbType": null,
+          "default": "UNDECIDED",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "explainedTwoTracks",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "explained_two_tracks",
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "followedFirstAgentAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "followed_first_agent_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "followingFeedSeenAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "following_feed_seen_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "latestOwnerAgentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "latest_owner_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "latestReceiptSessionId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "latest_receipt_session_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "nurtureReceiptReadyAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "nurture_receipt_ready_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "privateSessionCreatedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "private_session_created_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "privateSessionEndedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "private_session_ended_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "stage",
+          "type": "GuidanceStage",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "NEW_VISITOR",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "watchPublicEffectAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "watch_public_effect_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "actorType",
+            "stage",
+            "updatedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "actorType",
+            "actorId"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "GuidanceEventLog",
+      "dbName": "guidance_event_log",
+      "schema": null,
+      "columns": [
+        {
+          "name": "actorId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "actor_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "actorType",
+          "type": "GuidanceActorType",
+          "nullable": false,
+          "list": false,
+          "dbName": "actor_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "dedupKey",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "dedup_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "eventType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "event_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "payloadJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "payload_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "actorType",
+            "actorId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "actorType",
+            "actorId",
+            "dedupKey"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "GuidanceInbox",
+      "dbName": "guidance_inbox",
+      "schema": null,
+      "columns": [
+        {
+          "name": "actorId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "actor_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "actorType",
+          "type": "GuidanceActorType",
+          "nullable": false,
+          "list": false,
+          "dbName": "actor_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "body",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "completedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "completed_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "ctaLabel",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "cta_label",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "ctaTarget",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "cta_target",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "dedupKey",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "dedup_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "dismissedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "dismissed_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "moduleType",
+          "type": "GuidanceInboxModule",
+          "nullable": false,
+          "list": false,
+          "dbName": "module_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "payloadJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "payload_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reasonCode",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "reason_code",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "relatedAgentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "related_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "relatedSessionId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "related_session_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "GuidanceInboxStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "ACTIVE",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "unread",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "true",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "actorType",
+            "actorId",
+            "status",
+            "updatedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "actorType",
+            "actorId",
+            "unread",
+            "updatedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "actorType",
+            "actorId",
+            "dedupKey"
           ],
           "name": null,
           "map": null
@@ -10078,6 +11252,434 @@
       ]
     },
     {
+      "name": "ModerationCase",
+      "dbName": "moderation_cases",
+      "schema": null,
+      "columns": [
+        {
+          "name": "assignedToUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "assigned_to_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "caseType",
+          "type": "ReviewCaseType",
+          "nullable": false,
+          "list": false,
+          "dbName": "case_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "linkedAppealRequestId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "linked_appeal_request_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "linkedComplaintTicketId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "linked_complaint_ticket_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "linkedPolicySnapshotId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "linked_policy_snapshot_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "openedBy",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "opened_by",
+          "dbType": null,
+          "default": "\"system\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "openedReason",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "opened_reason",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "priority",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "50",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "resolutionAction",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "resolution_action",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "resolvedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "resolved_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "ReviewCaseStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "OPEN",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "summaryText",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "summary_text",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "caseType",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "status",
+            "priority",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "ModerationCaseTarget",
+      "dbName": "moderation_case_targets",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "caseId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "case_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "channel",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "messageId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "message_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "roomId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "room_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sessionId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "session_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "target_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "target_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "userId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "caseId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "targetType",
+            "targetId"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "ModerationEvidenceSnapshot",
+      "dbName": "moderation_evidence_snapshots",
+      "schema": null,
+      "columns": [
+        {
+          "name": "caseId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "case_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "payloadJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "payload_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "snapshotType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "snapshot_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "caseId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
       "name": "Notification",
       "dbName": "notifications",
       "schema": null,
@@ -10453,6 +12055,196 @@
           "type": "index",
           "fields": [
             "runtimeKey"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "PolicySnapshot",
+      "dbName": "policy_snapshots",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "channel",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "contentHash",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "content_hash",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "decisionJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "decision_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "moderationJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "moderation_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "normalizedText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "normalized_text",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "scene",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "target_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "target_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "userId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "channel",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "communityId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "contentHash",
+            "channel",
+            "targetType"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "targetType",
+            "targetId"
           ],
           "name": null,
           "map": null
@@ -11062,6 +12854,17 @@
           "unique": false
         },
         {
+          "name": "deliveryStatus",
+          "type": "MessageDeliveryStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": "delivery_status",
+          "dbType": null,
+          "default": "DELIVERED",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "id",
           "type": "String",
           "nullable": false,
@@ -11070,6 +12873,17 @@
           "dbType": null,
           "default": "cuid()",
           "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "moderationMetadataJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "moderation_metadata_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
           "unique": false
         },
         {
@@ -11580,6 +13394,411 @@
             "agentId",
             "sourceType",
             "sourceRefId"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "ReviewTask",
+      "dbName": "review_tasks",
+      "schema": null,
+      "columns": [
+        {
+          "name": "assigneeUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "assignee_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "caseId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "case_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "completedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "completed_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "dueAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "due_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "ReviewTaskStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "PENDING",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "taskType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "task_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "assigneeUserId",
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "caseId",
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "RiskEventLog",
+      "dbName": "risk_event_logs",
+      "schema": null,
+      "columns": [
+        {
+          "name": "action",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "caseId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "case_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "channel",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "detailText",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "detail_text",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "eventType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "event_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "messageId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "message_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "payloadJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "payload_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "policySnapshotId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "policy_snapshot_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "riskCategories",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "risk_categories",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "riskLevel",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "risk_level",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "riskScore",
+          "type": "Float",
+          "nullable": true,
+          "list": false,
+          "dbName": "risk_score",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "roomId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "room_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sessionId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "session_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "target_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetType",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "target_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "userId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "action",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "channel",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "targetType",
+            "targetId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "userId",
+            "createdAt"
           ],
           "name": null,
           "map": null
@@ -13515,6 +15734,17 @@
           "unique": false
         },
         {
+          "name": "moderationMetadataJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "moderation_metadata_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "parentMessageId",
           "type": "String",
           "nullable": true,
@@ -14577,6 +16807,144 @@
         }
       ],
       "indexes": []
+    },
+    {
+      "name": "UserIdentityVerification",
+      "dbName": "user_identity_verifications",
+      "schema": null,
+      "columns": [
+        {
+          "name": "expiresAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "expires_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "metaJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "meta_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "method",
+          "type": "IdentityVerificationMethod",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "MANUAL_REVIEW",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reason",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reviewedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "reviewed_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reviewedByUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "reviewed_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "IdentityVerificationStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "PENDING",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "submittedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "submitted_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "userId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "status",
+            "submittedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "userId",
+            "submittedAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
     },
     {
       "name": "Vote",

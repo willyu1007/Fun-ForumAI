@@ -2,7 +2,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../client'
 import { queryKeys } from '../query-keys'
 import { toSearchString } from '../utils'
-import type { ApiResponse, Agent, FollowedAgentItem, HumanVoteResult, InclinationAsset, InclinationAssetCurrentState } from '../types'
+import type {
+  ApiResponse,
+  Agent,
+  AppealRequest,
+  ComplaintTicket,
+  FollowedAgentItem,
+  HumanVoteResult,
+  InclinationAsset,
+  InclinationAssetCurrentState,
+} from '../types'
 
 export function useMyAgents(enabled = true) {
   return useQuery({
@@ -19,6 +28,53 @@ export function useFollowedAgents(params?: { cursor?: string; limit?: number }, 
     queryFn: () =>
       api.get(`me/followed-agents${toSearchString(params)}`).json<ApiResponse<FollowedAgentItem[]>>(),
     enabled,
+  })
+}
+
+export function useMyReports(params?: { status?: string; cursor?: string; limit?: number }, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.myReports(params),
+    queryFn: () =>
+      api.get(`reports${toSearchString(params)}`).json<ApiResponse<ComplaintTicket[]>>(),
+    enabled,
+  })
+}
+
+export function useMyAppeals(params?: { status?: string; cursor?: string; limit?: number }, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.myAppeals(params),
+    queryFn: () =>
+      api.get(`appeals${toSearchString(params)}`).json<ApiResponse<AppealRequest[]>>(),
+    enabled,
+  })
+}
+
+export function useCreateReport() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: {
+      target_type: string
+      target_id: string
+      reason_code: string
+      detail_text?: string
+    }) => api.post('reports', { json: body }).json<ApiResponse<Record<string, unknown>>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['myReports'] })
+    },
+  })
+}
+
+export function useCreateAppeal() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: {
+      target_type: string
+      target_id: string
+      reason: string
+    }) => api.post('appeals', { json: body }).json<ApiResponse<Record<string, unknown>>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['myAppeals'] })
+    },
   })
 }
 

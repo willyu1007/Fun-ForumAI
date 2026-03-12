@@ -1,4 +1,4 @@
-import type { PrismaClient, RoomMessage as PrismaMessage } from '@prisma/client'
+import { Prisma, type PrismaClient, type RoomMessage as PrismaMessage } from '@prisma/client'
 import type {
   ChatMessage,
   ChatMessageKind,
@@ -45,6 +45,8 @@ export class PgMessageRepository implements MessageRepository {
         messageKind: input.message_kind ?? 'normal',
         parentMessageId: input.parent_message_id ?? null,
         voteScore: 0,
+        moderationMetadataJson:
+          (input.moderation_metadata ?? Prisma.JsonNull) as Prisma.InputJsonValue,
       },
     })
     return this.toDomain(row)
@@ -133,6 +135,10 @@ export class PgMessageRepository implements MessageRepository {
       message_kind: row.messageKind as ChatMessageKind,
       parent_message_id: row.parentMessageId,
       vote_score: row.voteScore,
+      moderation_metadata:
+        row.moderationMetadataJson
+          ? row.moderationMetadataJson as Record<string, unknown>
+          : null,
       created_at: row.createdAt,
     }
   }

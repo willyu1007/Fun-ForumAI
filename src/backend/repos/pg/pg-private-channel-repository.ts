@@ -3,6 +3,7 @@ import type {
   PrivateSession as PrismaSession,
   PrivateMessage as PrismaMessage,
 } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import type {
   PrivateSession,
   PrivateMessage,
@@ -117,6 +118,9 @@ export class PgPrivateChannelRepository implements PrivateChannelRepository {
         sessionId: input.session_id,
         authorType: input.author_type,
         content: input.content,
+        deliveryStatus: input.delivery_status ?? 'DELIVERED',
+        moderationMetadataJson:
+          (input.moderation_metadata ?? Prisma.JsonNull) as Prisma.InputJsonValue,
       },
     })
     return this.messageToDomain(row)
@@ -167,6 +171,11 @@ export class PgPrivateChannelRepository implements PrivateChannelRepository {
       session_id: row.sessionId,
       author_type: row.authorType,
       content: row.content,
+      delivery_status: row.deliveryStatus,
+      moderation_metadata:
+        row.moderationMetadataJson
+          ? row.moderationMetadataJson as Record<string, unknown>
+          : null,
       created_at: row.createdAt,
     }
   }

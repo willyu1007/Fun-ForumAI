@@ -8,6 +8,8 @@ import {
   useAftershow,
   useAsideSeats,
   useAgentProfile,
+  useCreateAppeal,
+  useCreateReport,
   useFollowAgent,
   useGuidanceSummary,
 } from '@/api/hooks'
@@ -81,13 +83,14 @@ function toAftershowContentV1(
 }
 export function PostDetailPage() {
   const guidanceEnabled = isGuidanceEnabled()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const { postId } = useParams()
   const [audienceDraft, setAudienceDraft] = useState('')
   const [audienceDraftError, setAudienceDraftError] = useState<string | null>(null)
   const [followError, setFollowError] = useState<string | null>(null)
+  const [safetyActionMessage, setSafetyActionMessage] = useState<string | null>(null)
   const [highlightedAudienceMessageId, setHighlightedAudienceMessageId] = useState<string | null>(
     null,
   )
@@ -113,6 +116,8 @@ export function PostDetailPage() {
     enabled: supportsAudienceAftershowWeb,
   })
   const createAudienceMessage = useCreateAudienceMessage(postId ?? '')
+  const createReport = useCreateReport()
+  const createAppeal = useCreateAppeal()
   const { newCommentCounts, clearNewComments } = useSseNewCounts()
   const newCommentCount = (postId && newCommentCounts[postId]) || 0
   const isAudienceAftershowEnabled = supportsAudienceAftershowWeb
@@ -230,6 +235,7 @@ export function PostDetailPage() {
   const author = post.author
   const communityPath = post.community_slug || post.community_id
   const commentCount = commentsData?.data?.length ?? post.comment_count
+  const isPostOwner = authorProfile.data?.data?.owner_id === user?.id
   const handleFollowAuthor = async () => {
     if (!authorAgentId) return
     setFollowError(null)
@@ -248,6 +254,33 @@ export function PostDetailPage() {
       setAudienceDraft('')
     } catch (error) {
       setAudienceDraftError(error instanceof Error ? error.message : '发布失败，请稍后重试')
+    }
+  }
+  const handleReportPost = async () => {
+    setSafetyActionMessage(null)
+    try {
+      await createReport.mutateAsync({
+        target_type: 'post',
+        target_id: post.id,
+        reason_code: 'viewer_report',
+        detail_text: `Reported from post detail: ${post.id}`,
+      })
+      setSafetyActionMessage('举报已提交，可在“举报与申诉”页查看处理状态。')
+    } catch (error) {
+      setSafetyActionMessage(error instanceof Error ? error.message : '举报提交失败，请稍后重试')
+    }
+  }
+  const handleAppealPost = async () => {
+    setSafetyActionMessage(null)
+    try {
+      await createAppeal.mutateAsync({
+        target_type: 'post',
+        target_id: post.id,
+        reason: 'owner_appeal_from_post_detail',
+      })
+      setSafetyActionMessage('申诉已提交，可在“举报与申诉”页查看处理状态。')
+    } catch (error) {
+      setSafetyActionMessage(error instanceof Error ? error.message : '申诉提交失败，请稍后重试')
     }
   }
   return (
@@ -313,6 +346,48 @@ export function PostDetailPage() {
           )}
 
           <RichTextLite text={post.body} className={uix('uix-2a398e7214')} />
+
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+            <span className={uix('uix-25be576b96')}>审核与风控</span>
+            {isAuthenticated ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={createReport.isPending}
+                  onClick={() => {
+                    void handleReportPost()
+                  }}
+                >
+                  {createReport.isPending ? '提交中…' : '举报此帖'}
+                </Button>
+                {isPostOwner && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={createAppeal.isPending}
+                    onClick={() => {
+                      void handleAppealPost()
+                    }}
+                  >
+                    {createAppeal.isPending ? '提交中…' : '申诉审核'}
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" asChild>
+                  <Link to="/safety">查看状态</Link>
+                </Button>
+              </>
+            ) : (
+              <Button size="sm" variant="outline" asChild>
+                <Link to="/login">登录后举报或申诉</Link>
+              </Button>
+            )}
+          </div>
+          {safetyActionMessage && (
+            <p className={createReport.isError || createAppeal.isError ? uix('uix-551c237449') : uix('uix-abda0153e3')}>
+              {safetyActionMessage}
+            </p>
+          )}
 
           {post.media.length > 0 && (
             <div className={uix('uix-a7cd7a5d10')}>

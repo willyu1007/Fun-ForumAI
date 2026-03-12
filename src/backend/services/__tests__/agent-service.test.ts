@@ -122,6 +122,86 @@ describe('AgentService', () => {
       expect(cfg.updated_by).toBe('admin1')
     })
 
+    it('does not switch the effective config to a pending review revision', async () => {
+      const a = ctx.svc.createAgent({ owner_id: 'u1', display_name: 'Bot' })
+      await ctx.svc.updateConfig(a.id, { temp: 0.7 }, 'admin1')
+      const pending = await ctx.svc.updateConfig(
+        a.id,
+        { proactive: { enabled: true } },
+        'admin1',
+        {
+          risk_level: 'HIGH',
+          review_status: 'PENDING',
+          review_case_id: 'case-1',
+          lint_warnings: ['high_risk_config_surface_touched'],
+        },
+      )
+
+      expect(pending.review_status).toBe('PENDING')
+      expect(ctx.svc.getLatestConfig(a.id)?.config_json).toEqual({ temp: 0.7 })
+    })
+
+    it('merges follow-up edits on top of the latest pending revision', async () => {
+      const a = ctx.svc.createAgent({ owner_id: 'u1', display_name: 'Bot' })
+      await ctx.svc.updateConfig(a.id, { temp: 0.7 }, 'admin1')
+      await ctx.svc.updateConfig(
+        a.id,
+        { proactive: { enabled: true } },
+        'admin1',
+        {
+          risk_level: 'HIGH',
+          review_status: 'PENDING',
+          review_case_id: 'case-1',
+          lint_warnings: ['high_risk_config_surface_touched'],
+        },
+      )
+
+      const followup = await ctx.svc.updateConfig(
+        a.id,
+        { privacy: { disclosureLevel: 2 } },
+        'admin1',
+        {
+          risk_level: 'HIGH',
+          review_status: 'PENDING',
+          review_case_id: 'case-2',
+          lint_warnings: ['public_disclosure_cap_changed'],
+        },
+      )
+
+      expect(followup.config_json).toMatchObject({
+        temp: 0.7,
+        proactive: { enabled: true },
+        privacy: { disclosureLevel: 2 },
+      })
+      expect(ctx.svc.getLatestConfig(a.id)?.config_json).toEqual({ temp: 0.7 })
+      expect(ctx.svc.getLatestConfigRevision(a.id)?.config_json).toMatchObject({
+        temp: 0.7,
+        proactive: { enabled: true },
+        privacy: { disclosureLevel: 2 },
+      })
+    })
+
+    it('skips the config update hook for pending review revisions', async () => {
+      const agentRepo = new InMemoryAgentRepository()
+      const agentConfigRepo = new InMemoryAgentConfigRepository()
+      const onConfigUpdated = vi.fn()
+      const svc = new AgentService({
+        agentRepo,
+        agentConfigRepo,
+        agentRunRepo: new InMemoryAgentRunRepository(),
+        onConfigUpdated,
+      })
+      const agent = svc.createAgent({ owner_id: 'u1', display_name: 'Hook Bot' })
+
+      await svc.updateConfig(agent.id, { privacy: { disclosureLevel: 1 } }, 'admin1', {
+        risk_level: 'HIGH',
+        review_status: 'PENDING',
+        lint_warnings: ['public_disclosure_cap_changed'],
+      })
+
+      expect(onConfigUpdated).not.toHaveBeenCalled()
+    })
+
     it('preserves identity fields when patching a subset of config_json', async () => {
       const agent = await ctx.svc.createAgentPersisted({
         owner_id: 'u1',

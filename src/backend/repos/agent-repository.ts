@@ -29,11 +29,16 @@ export interface AgentConfigRepository {
   createPersisted?(input: CreateAgentConfigInput): Promise<AgentConfig>
   refreshPersisted?(): Promise<void>
   findLatest(agentId: string): AgentConfig | null
+  findLatestRevision?(agentId: string): AgentConfig | null
 }
 
 let counter = 0
 function cuid(prefix: string): string {
   return `${prefix}_${Date.now()}_${++counter}`
+}
+
+function isEffectiveConfig(config: AgentConfig): boolean {
+  return config.review_status === 'NOT_REQUIRED' || config.review_status === 'APPROVED'
 }
 
 export class InMemoryAgentRepository implements AgentRepository {
@@ -139,6 +144,10 @@ export class InMemoryAgentConfigRepository implements AgentConfigRepository {
       id: cuid('acfg'),
       agent_id: input.agent_id,
       config_json: input.config_json,
+      risk_level: input.risk_level ?? 'LOW',
+      review_status: input.review_status ?? 'NOT_REQUIRED',
+      review_case_id: input.review_case_id ?? null,
+      lint_warnings: input.lint_warnings ?? [],
       updated_at: now,
       effective_at: now,
       updated_by: input.updated_by,
@@ -157,9 +166,21 @@ export class InMemoryAgentConfigRepository implements AgentConfigRepository {
   }
 
   findLatest(agentId: string): AgentConfig | null {
-    const id = this.agentLatest.get(agentId)
-    if (!id) return null
-    return this.store.get(id) ?? null
+    const configs = Array.from(this.store.values())
+      .filter((item) => item.agent_id === agentId)
+      .sort((a, b) =>
+        b.effective_at.getTime() - a.effective_at.getTime()
+        || b.id.localeCompare(a.id))
+    return configs.find(isEffectiveConfig) ?? configs[0] ?? null
+  }
+
+  findLatestRevision(agentId: string): AgentConfig | null {
+    const configs = Array.from(this.store.values())
+      .filter((item) => item.agent_id === agentId)
+      .sort((a, b) =>
+        b.updated_at.getTime() - a.updated_at.getTime()
+        || b.id.localeCompare(a.id))
+    return configs[0] ?? null
   }
 }
 

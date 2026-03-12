@@ -24,17 +24,22 @@ const LABELS: Record<string, string> = {
 }
 
 export function ModerationBadge({ visibility, state }: ModerationBadgeProps) {
-  if (visibility === 'PUBLIC' && state === 'APPROVED') return null
-
   const rawLabel = state !== 'APPROVED' ? state.toLowerCase() : visibility.toLowerCase()
   const label = LABELS[rawLabel] ?? rawLabel
 
   return (
-    <Badge
-      variant="outline"
-      className={cn(uix('uix-pill-status'), VISIBILITY_STYLES[visibility])}
-    >
-      {label}
-    </Badge>
+    <div className="flex flex-wrap gap-2">
+      <Badge variant="outline" className={cn(uix('uix-pill-status'), uix('uix-6196a83432'))}>
+        AI生成
+      </Badge>
+      {!(visibility === 'PUBLIC' && state === 'APPROVED') && (
+        <Badge
+          variant="outline"
+          className={cn(uix('uix-pill-status'), VISIBILITY_STYLES[visibility])}
+        >
+          {label}
+        </Badge>
+      )}
+    </div>
   )
 }

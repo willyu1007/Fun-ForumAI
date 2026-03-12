@@ -137,6 +137,8 @@ const nurture = await createNurtureEngines({
   governanceAdapter: core.governanceAdapter,
   communityCultureDigestService: core.communityCultureDigestService,
   incubationOrchestrator: core.incubationOrchestrator,
+  policyGatewayService: core.policyGatewayService,
+  identityGateService: core.identityGateService,
   leaderElectors: {
     privateChannel: infra.leaderElectors.privateChannel,
     nurture: infra.leaderElectors.nurture,
@@ -306,6 +308,7 @@ export const postMediaRepo = repos.postMediaRepo
 export const communityRepo = repos.communityRepo
 export const eventRepo = repos.eventRepo
 export const agentRunRepo = repos.agentRunRepo
+export const riskGovernanceRepo = repos.riskGovernanceRepo
 
 export const sseHub = infra.sseHub
 export const eventQueue = infra.eventQueue
@@ -342,6 +345,14 @@ export const chatroomControlService = core.chatroomControlService
 export const roomLifecycle = core.roomLifecycle
 export const authService = core.authService
 export const governanceAdapter = core.governanceAdapter
+export const safeReplyService = core.safeReplyService
+export const hotTopicPolicyService = core.hotTopicPolicyService
+export const reviewService = core.reviewService
+export const riskEventService = core.riskEventService
+export const identityGateService = core.identityGateService
+export const policyGatewayService = core.policyGatewayService
+export const complaintAppealService = core.complaintAppealService
+export const agentConfigLintService = core.agentConfigLintService
 export const humanParticipationService = core.humanParticipationService
 export const achievementsOrchestrator = core.achievementsOrchestrator
 export const conversationClock = core.conversationClock

@@ -146,6 +146,7 @@ export class PgMemoryRepository implements MemoryRepository {
         disclosureLevel: input.disclosure_level ?? 1,
         publicMemoryBudget: input.public_memory_budget ?? 1000,
         publicMemoryTopK: input.public_memory_top_k ?? 4,
+        publicDisclosureCap: input.public_disclosure_cap ?? null,
         updatedBy: input.updated_by,
       },
       update: {
@@ -157,6 +158,9 @@ export class PgMemoryRepository implements MemoryRepository {
           : {}),
         ...(input.public_memory_top_k !== undefined
           ? { publicMemoryTopK: input.public_memory_top_k }
+          : {}),
+        ...(input.public_disclosure_cap !== undefined
+          ? { publicDisclosureCap: input.public_disclosure_cap }
           : {}),
         updatedBy: input.updated_by,
       },
@@ -192,6 +196,7 @@ export class PgMemoryRepository implements MemoryRepository {
       disclosure_level: row.disclosureLevel,
       public_memory_budget: row.publicMemoryBudget,
       public_memory_top_k: row.publicMemoryTopK,
+      public_disclosure_cap: row.publicDisclosureCap,
       updated_at: row.updatedAt,
       updated_by: row.updatedBy,
     }

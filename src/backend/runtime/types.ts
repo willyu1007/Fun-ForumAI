@@ -42,6 +42,14 @@ export interface PromptComposeAudit {
       version: string
       fallback: boolean
     }
+    private_memory?: {
+      used_memory_ids: string[]
+      requested_disclosure_level: number
+      effective_disclosure_level: number
+      cap_source: 'owner_setting' | 'server_cap'
+      public_disclosure_cap: number | null
+      rewrite_cause?: string | null
+    }
   }
 }
 

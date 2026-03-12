@@ -92,4 +92,9 @@ Project: `main`
 | T-082 chatroom-live-experience-optimization | archived | F-000 | dev-docs/archive/chatroom-live-experience-optimization |
 | T-084 public-web-chinese-first-content-presentation | in-progress | F-000 | dev-docs/active/public-web-chinese-first-content-presentation |
 | T-086 repo-baseline-governance-and-ui-remediation | in-progress | F-000 | dev-docs/active/repo-baseline-governance-and-ui-remediation |
+| T-087 mainland-launch-safety-master | in-progress | F-050 | dev-docs/active/mainland-launch-safety-master |
+| T-088 policy-gateway-channel-hardening | in-progress | F-050 | dev-docs/active/policy-gateway-channel-hardening |
+| T-089 review-case-and-complaint-foundation | in-progress | F-050 | dev-docs/active/review-case-and-complaint-foundation |
+| T-090 private-influence-provenance-and-config-governance | in-progress | F-050 | dev-docs/active/private-influence-provenance-and-config-governance |
+| T-091 hot-topic-policy-and-user-transparency | in-progress | F-050 | dev-docs/active/hot-topic-policy-and-user-transparency |
 <!-- AUTO-GENERATED:END task-index -->

@@ -17,6 +17,7 @@ import {
   PostDetailPage,
   PrivateChatPage,
   RegisterPage,
+  SafetyCenterPage,
   SuspenseWrap,
 } from './route-components'
 
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
       { path: 'agents/:agentId/dashboard', element: <SuspenseWrap><AgentDashboardPage /></SuspenseWrap> },
       { path: 'agents/:agentId/chat', element: <SuspenseWrap><PrivateChatPage /></SuspenseWrap> },
       { path: 'agents/manage', element: <SuspenseWrap><AgentManagePage /></SuspenseWrap> },
+      { path: 'safety', element: <SuspenseWrap><SafetyCenterPage /></SuspenseWrap> },
       { path: 'rooms', element: <SuspenseWrap><ChatRoomListPage /></SuspenseWrap> },
       { path: 'rooms/:roomId', element: <SuspenseWrap><ChatRoomPage /></SuspenseWrap> },
       { path: 'admin', element: <SuspenseWrap><AdminPanel /></SuspenseWrap> },

@@ -151,16 +151,22 @@ privateChannelRouter.get(
   '/agents/:agentId/chat/sessions/:sessionId/messages',
   requireHumanAuth,
   async (req, res) => {
-    const services = getServices()
-    if (!services) {
-      res.json({ data: { items: [], next_cursor: null } })
-      return
-    }
-
     try {
+      const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
+      if (!ownership.ok) {
+        res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+        return
+      }
+
+      const services = getServices()
+      if (!services) {
+        res.json({ data: { items: [], next_cursor: null } })
+        return
+      }
+
       const limit = Math.min(parseInt(String(req.query.limit ?? '50'), 10), 100)
       const cursor = req.query.cursor as string | undefined
-      const result = await services.channelService.getMessages(String(req.params.sessionId), {
+      const result = await services.channelService.getMessages(String(req.params.sessionId), req.user!.userId, {
         limit,
         cursor,
       })
@@ -274,6 +280,7 @@ privateChannelRouter.get('/agents/:agentId/privacy-settings', requireHumanAuth, 
         disclosure_level: 1,
         public_memory_budget: 1000,
         public_memory_top_k: 4,
+        public_disclosure_cap: null,
       },
     })
     return
@@ -307,7 +314,7 @@ privateChannelRouter.patch('/agents/:agentId/privacy-settings', requireHumanAuth
       return
     }
 
-    const { disclosure_level, public_memory_budget, public_memory_top_k } = req.body ?? {}
+    const { disclosure_level, public_memory_budget, public_memory_top_k, public_disclosure_cap } = req.body ?? {}
 
     if (disclosure_level !== undefined) {
       const level = Number(disclosure_level)
@@ -323,6 +330,11 @@ privateChannelRouter.patch('/agents/:agentId/privacy-settings', requireHumanAuth
         disclosure_level: disclosure_level !== undefined ? Number(disclosure_level) : undefined,
         public_memory_budget: public_memory_budget !== undefined ? Number(public_memory_budget) : undefined,
         public_memory_top_k: public_memory_top_k !== undefined ? Number(public_memory_top_k) : undefined,
+        public_disclosure_cap: public_disclosure_cap === null
+          ? null
+          : public_disclosure_cap !== undefined
+            ? Number(public_disclosure_cap)
+            : undefined,
       },
     )
     res.json({ data: settings })
