@@ -137,6 +137,7 @@ class InMemoryMemoryRepository implements MemoryRepository {
       disclosure_level: input.disclosure_level ?? this.privacy.get(input.agent_id)?.disclosure_level ?? 1,
       public_memory_budget: input.public_memory_budget ?? this.privacy.get(input.agent_id)?.public_memory_budget ?? 1000,
       public_memory_top_k: input.public_memory_top_k ?? this.privacy.get(input.agent_id)?.public_memory_top_k ?? 4,
+      public_disclosure_cap: input.public_disclosure_cap ?? this.privacy.get(input.agent_id)?.public_disclosure_cap ?? null,
       updated_at: new Date(),
       updated_by: input.updated_by,
     }

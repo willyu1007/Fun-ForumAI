@@ -16,6 +16,9 @@ export const config = {
   port: safeInt(env.PORT, 4000),
   nodeEnv: env.NODE_ENV || 'development',
   appEnv: env.APP_ENV === 'staging' || env.APP_ENV === 'prod' ? env.APP_ENV : 'dev',
+  launch: {
+    market: env.APP_MARKET === 'mainland' ? 'mainland' : 'global',
+  },
   cors: {
     origins: env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],
   },
@@ -160,5 +163,11 @@ export const config = {
     aftershowEventPipelineV1: env.FF_AFTERSHOW_EVENT_PIPELINE_V1 === 'true',
     roleAssignmentV1: env.FF_ROLE_ASSIGNMENT_V1 === 'true',
     audienceAftershowWebV1: env.FF_AUDIENCE_AFTERSHOW_WEB_V1 === 'true',
+    riskControlV1: env.FF_RISK_CONTROL_V1 === 'true',
+    riskControlPublicEnforce: env.FF_RISK_CONTROL_PUBLIC_ENFORCE === 'true',
+    riskControlChatEnforce: env.FF_RISK_CONTROL_CHAT_ENFORCE === 'true',
+    riskControlPrivateEnforce: env.FF_RISK_CONTROL_PRIVATE_ENFORCE === 'true',
+    riskControlProactiveEnforce: env.FF_RISK_CONTROL_PROACTIVE_ENFORCE === 'true',
+    hotTopicPolicyV1: env.FF_HOT_TOPIC_POLICY_V1 === 'true',
   },
 } as const

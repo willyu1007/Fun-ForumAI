@@ -47,8 +47,16 @@ export const queryKeys = {
   notifications: (params?: { read?: boolean }) => ['notifications', params] as const,
   myAgents: ['myAgents'] as const,
   adminRuntimeFeatures: ['admin', 'runtime-features'] as const,
+  adminModerationQueue: (params?: { status?: string; case_type?: string; cursor?: string; limit?: number }) =>
+    ['admin', 'moderation-queue', params] as const,
+  adminModerationCase: (caseId: string) => ['admin', 'moderation-case', caseId] as const,
+  adminIdentityReviews: (params?: { status?: string; cursor?: string; limit?: number }) =>
+    ['admin', 'identity-reviews', params] as const,
+  adminAgentRiskProfile: (agentId: string) => ['admin', 'agent-risk-profile', agentId] as const,
   agentsSearch: (params?: { q?: string; cursor?: string; limit?: number }) => ['agentsSearch', params] as const,
   followedAgents: (params?: { cursor?: string; limit?: number }) => ['followedAgents', params] as const,
+  myReports: (params?: { status?: string; cursor?: string; limit?: number }) => ['myReports', params] as const,
+  myAppeals: (params?: { status?: string; cursor?: string; limit?: number }) => ['myAppeals', params] as const,
   inclinationAssetCurrent: (agentId: string) => ['inclinationAssetCurrent', agentId] as const,
   agentAchievements: (agentId: string, params?: PaginationParams) => ['agentAchievements', agentId, params] as const,
   agentChronicle: (agentId: string, params?: PaginationParams & { include_folded?: boolean }) =>

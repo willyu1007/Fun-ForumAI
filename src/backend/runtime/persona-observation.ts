@@ -38,6 +38,7 @@ export interface PersonaObservationPromptAuditSummary {
   token_estimates: Record<string, number>
   lint_warnings: string[]
   trim_reasons: string[]
+  provenance?: PromptComposeAudit['provenance']
 }
 
 export interface PersonaObservationRuntimeState {
@@ -606,10 +607,39 @@ function summarizePromptAudit(audit: PromptComposeAudit): PersonaObservationProm
     token_estimates: { ...audit.tokenEstimates },
     lint_warnings: [...audit.lintWarnings],
     trim_reasons: [...audit.trimReasons],
+    ...(audit.provenance
+      ? {
+          provenance: {
+            ...(audit.provenance.community_profile
+              ? {
+                  community_profile: {
+                    ...audit.provenance.community_profile,
+                  },
+                }
+              : {}),
+            ...(audit.provenance.private_memory
+              ? {
+                  private_memory: {
+                    ...audit.provenance.private_memory,
+                    used_memory_ids: [...audit.provenance.private_memory.used_memory_ids],
+                  },
+                }
+              : {}),
+          },
+        }
+      : {}),
   }
 }
 
 function normalizePromptAuditSummary(raw: Record<string, unknown>): PersonaObservationPromptAuditSummary {
+  const provenanceRaw = isRecord(raw.provenance) ? raw.provenance : null
+  const communityProfileRaw = provenanceRaw && isRecord(provenanceRaw.community_profile)
+    ? provenanceRaw.community_profile
+    : null
+  const privateMemoryRaw = provenanceRaw && isRecord(provenanceRaw.private_memory)
+    ? provenanceRaw.private_memory
+    : null
+
   return {
     included_layer_ids: Array.isArray(raw.included_layer_ids)
       ? raw.included_layer_ids.filter((item): item is string => typeof item === 'string')
@@ -628,6 +658,47 @@ function normalizePromptAuditSummary(raw: Record<string, unknown>): PersonaObser
     trim_reasons: Array.isArray(raw.trim_reasons)
       ? raw.trim_reasons.filter((item): item is string => typeof item === 'string')
       : [],
+    ...(provenanceRaw
+      ? {
+          provenance: {
+            ...(communityProfileRaw
+              && typeof communityProfileRaw.source === 'string'
+              && typeof communityProfileRaw.version === 'string'
+              && typeof communityProfileRaw.fallback === 'boolean'
+              ? {
+                  community_profile: {
+                    source: communityProfileRaw.source,
+                    version: communityProfileRaw.version,
+                    fallback: communityProfileRaw.fallback,
+                  },
+                }
+              : {}),
+            ...(privateMemoryRaw
+              && typeof privateMemoryRaw.requested_disclosure_level === 'number'
+              && typeof privateMemoryRaw.effective_disclosure_level === 'number'
+              && (privateMemoryRaw.cap_source === 'owner_setting' || privateMemoryRaw.cap_source === 'server_cap')
+              ? {
+                  private_memory: {
+                    used_memory_ids: Array.isArray(privateMemoryRaw.used_memory_ids)
+                      ? privateMemoryRaw.used_memory_ids.filter((item): item is string => typeof item === 'string')
+                      : [],
+                    requested_disclosure_level: privateMemoryRaw.requested_disclosure_level,
+                    effective_disclosure_level: privateMemoryRaw.effective_disclosure_level,
+                    cap_source: privateMemoryRaw.cap_source,
+                    public_disclosure_cap:
+                      typeof privateMemoryRaw.public_disclosure_cap === 'number' || privateMemoryRaw.public_disclosure_cap === null
+                        ? privateMemoryRaw.public_disclosure_cap
+                        : null,
+                    rewrite_cause:
+                      typeof privateMemoryRaw.rewrite_cause === 'string' || privateMemoryRaw.rewrite_cause === null
+                        ? privateMemoryRaw.rewrite_cause
+                        : null,
+                  },
+                }
+              : {}),
+          },
+        }
+      : {}),
   }
 }
 

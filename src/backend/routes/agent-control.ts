@@ -1,7 +1,7 @@
 import { Router, type IRouter } from 'express'
 import multer from 'multer'
 import { requireHumanAuth } from '../middleware/human-auth.js'
-import { agentService, inclinationAssetService } from '../container.js'
+import { agentConfigLintService, agentService, inclinationAssetService, reviewService } from '../container.js'
 import { config } from '../lib/config.js'
 import { ForbiddenError, ValidationError } from '../lib/errors.js'
 import { ensureDevAuthUserPersisted } from '../lib/dev-auth-user.js'
@@ -22,6 +22,26 @@ const inclinationUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024, files: 1 },
 })
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function mergeConfigJson(
+  base: Record<string, unknown>,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...base }
+  for (const [key, value] of Object.entries(patch)) {
+    const existing = merged[key]
+    if (isPlainRecord(existing) && isPlainRecord(value)) {
+      merged[key] = mergeConfigJson(existing, value)
+      continue
+    }
+    merged[key] = value
+  }
+  return merged
+}
 
 function assertOwnerOrAdmin(agentId: string, actor: { userId: string; role: 'user' | 'admin' }): void {
   const existing = agentService.getAgent(agentId)
@@ -76,12 +96,37 @@ agentControlRouter.patch(
   async (req, res) => {
     const agentId = String(req.params.agentId)
     assertOwnerOrAdmin(agentId, req.user!)
+    const beforeConfig = agentService.getLatestConfigRevision(agentId)?.config_json ?? {}
+    const mergedConfig = mergeConfigJson(beforeConfig, req.body.config_json)
+    const review = agentConfigLintService.lint({
+      before_config: beforeConfig,
+      after_config: mergedConfig,
+    })
+    if (review.review_status === 'PENDING') {
+      const reviewCase = await reviewService.openConfigReviewCase({
+        agent_id: agentId,
+        updated_by: req.user!.userId,
+        summary_text: `High-risk config update queued for review: ${agentId}`,
+        evidence: {
+          before_config: beforeConfig,
+          after_config: mergedConfig,
+          lint_warnings: review.lint_warnings,
+        },
+      })
+      review.review_case_id = reviewCase.id
+    }
     const config = await agentService.updateConfig(
       agentId,
       req.body.config_json,
       req.user!.userId,
+      review,
     )
-    res.json({ data: config })
+    res.json({
+      data: config,
+      meta: {
+        effective_immediately: config.review_status === 'NOT_REQUIRED' || config.review_status === 'APPROVED',
+      },
+    })
   },
 )
 

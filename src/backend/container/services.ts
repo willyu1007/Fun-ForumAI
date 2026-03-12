@@ -33,6 +33,14 @@ import { AudienceService } from '../services/audience-service.js'
 import { AftershowService } from '../services/aftershow-service.js'
 import { CommunityConfigService } from '../services/community-config-service.js'
 import { RoleAssignmentService } from '../services/role-assignment-service.js'
+import { SafeReplyService } from '../services/safe-reply-service.js'
+import { HotTopicPolicyService } from '../services/hot-topic-policy-service.js'
+import { ReviewService } from '../services/review-service.js'
+import { RiskEventService } from '../services/risk-event-service.js'
+import { IdentityGateService } from '../services/identity-gate-service.js'
+import { PolicyGatewayService } from '../services/policy-gateway-service.js'
+import { AgentConfigLintService } from '../services/agent-config-lint-service.js'
+import { ComplaintAppealService } from '../services/complaint-appeal-service.js'
 import type { ModerationService } from '../moderation/moderation-service.js'
 import type { SseHub } from '../sse/hub.js'
 import type { LLMGateway } from '../llm/llm-gateway.js'
@@ -52,6 +60,25 @@ export function createCoreServices(deps: {
   const achievementChronicleService = new AchievementChronicleService({
     achievementRepo: repos.achievementRepo,
     chronicleRepo: repos.chronicleRepo,
+    agentRepo: repos.agentRepo,
+  })
+
+  const safeReplyService = new SafeReplyService()
+  const hotTopicPolicyService = new HotTopicPolicyService()
+  const reviewService = new ReviewService(repos.riskGovernanceRepo)
+  const riskEventService = new RiskEventService(repos.riskGovernanceRepo, reviewService)
+  const identityGateService = new IdentityGateService(repos.riskGovernanceRepo)
+  const policyGatewayService = new PolicyGatewayService({
+    moderator,
+    safeReplyService,
+    hotTopicPolicyService,
+    riskEventService,
+  })
+  const agentConfigLintService = new AgentConfigLintService()
+  const complaintAppealService = new ComplaintAppealService(repos.riskGovernanceRepo, reviewService, {
+    postRepo: repos.postRepo,
+    commentRepo: repos.commentRepo,
+    messageRepo: repos.messageRepo,
     agentRepo: repos.agentRepo,
   })
 
@@ -127,6 +154,7 @@ export function createCoreServices(deps: {
     stageTierService,
     incubationRepo: repos.incubationRepo,
     moderator,
+    policyGatewayService,
   })
 
   const globalHighlightsService = new GlobalHighlightsService({
@@ -189,6 +217,7 @@ export function createCoreServices(deps: {
     sseHub,
     statsService,
     eventRepo: repos.eventRepo,
+    policyGatewayService,
   })
 
   const roomProjector = new RoomProjector({
@@ -279,6 +308,8 @@ export function createCoreServices(deps: {
     postRepo: repos.postRepo,
     commentRepo: repos.commentRepo,
     agentRepo: repos.agentRepo,
+    messageRepo: repos.messageRepo,
+    riskGovernanceRepo: repos.riskGovernanceRepo,
   })
 
   const humanParticipationService = new HumanParticipationService({
@@ -365,6 +396,14 @@ export function createCoreServices(deps: {
     roomLifecycle,
     authService,
     governanceAdapter,
+    safeReplyService,
+    hotTopicPolicyService,
+    reviewService,
+    riskEventService,
+    identityGateService,
+    policyGatewayService,
+    complaintAppealService,
+    agentConfigLintService,
     humanParticipationService,
     achievementsOrchestrator,
     conversationClock,

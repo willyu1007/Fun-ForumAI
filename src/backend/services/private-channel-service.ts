@@ -29,6 +29,8 @@ import type {
 } from '../repos/types.js'
 import { AppError, ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
+import type { PolicyGatewayService } from './policy-gateway-service.js'
+import type { IdentityGateService } from './identity-gate-service.js'
 
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000
 
@@ -55,6 +57,8 @@ export interface PrivateChannelServiceDeps {
   budgetService: BudgetService | null
   costTracker: CostTracker | null
   sseHub?: SseHub | null
+  policyGatewayService?: PolicyGatewayService | null
+  identityGateService?: IdentityGateService | null
 }
 
 export class PrivateChannelService {
@@ -78,6 +82,10 @@ export class PrivateChannelService {
     })
     if (existing.items.length > 0) {
       return existing.items[0]
+    }
+
+    if (this.deps.identityGateService) {
+      await this.deps.identityGateService.assertVerified(humanUserId, 'private_session_create')
     }
 
     try {
@@ -131,6 +139,9 @@ export class PrivateChannelService {
     if (!content.trim()) {
       throw new ValidationError('Message content cannot be empty')
     }
+    if (this.deps.identityGateService) {
+      await this.deps.identityGateService.assertVerified(humanUserId, 'private_message_send')
+    }
 
     const agent = this.deps.agentService.getAgent(session.agent_id)
     if (!agent) throw new NotFoundError('Agent', session.agent_id)
@@ -142,17 +153,54 @@ export class PrivateChannelService {
       }
     }
 
+    const inboundPolicy = this.deps.policyGatewayService
+      ? await this.deps.policyGatewayService.evaluate({
+          channel: 'private_inbound',
+          text: content.trim(),
+          author_agent_id: session.agent_id,
+          user_id: humanUserId,
+          target_type: 'private_session',
+          target_id: session.id,
+          session_id: session.id,
+          scene: 'private_chat',
+        })
+      : null
+    const effectiveHumanContent = inboundPolicy?.action === 'block'
+      ? '[blocked by policy]'
+      : inboundPolicy?.final_text ?? content.trim()
+
     const humanMsg = await this.deps.channelRepo.createMessage({
       session_id: sessionId,
       author_type: 'HUMAN',
-      content: content.trim(),
+      content: effectiveHumanContent,
+      delivery_status: inboundPolicy?.delivery_status ?? 'DELIVERED',
+      moderation_metadata: inboundPolicy?.metadata ?? null,
     })
     this.deps.sseHub?.broadcastToSession(sessionId, {
       type: 'PRIVATE_MESSAGE_CREATED',
       payload: { session_id: sessionId, message: humanMsg },
     })
 
-    const replyPlan = await this.buildRequestForReply(session, content.trim())
+    if (inboundPolicy?.action === 'block') {
+      const refusal = await this.deps.channelRepo.createMessage({
+        session_id: sessionId,
+        author_type: 'AGENT',
+        content: inboundPolicy.final_text,
+        delivery_status: 'REFUSED',
+        moderation_metadata: inboundPolicy.metadata,
+      })
+      this.deps.sseHub?.broadcastToSession(sessionId, {
+        type: 'PRIVATE_MESSAGE_CREATED',
+        payload: { session_id: sessionId, message: refusal },
+      })
+      return {
+        human_message: humanMsg,
+        agent_reply: refusal,
+        token_cost: 0,
+      }
+    }
+
+    const replyPlan = await this.buildRequestForReply(session, effectiveHumanContent)
     const routing = this.resolveVisibleRouting(session.agent_id)
     const startMs = Date.now()
     const llmResponse = await this.deps.llmGateway.generateVisibleText({
@@ -192,10 +240,27 @@ export class PrivateChannelService {
       llmModelId: llmResponse.renderDecision.modelId,
     })
 
+    const outboundPolicy = this.deps.policyGatewayService
+      ? await this.deps.policyGatewayService.evaluate({
+          channel: 'private_outbound',
+          text: llmResponse.content,
+          author_agent_id: session.agent_id,
+          user_id: humanUserId,
+          target_type: 'private_session',
+          target_id: session.id,
+          session_id: session.id,
+          scene: 'private_chat',
+        })
+      : null
+
     const agentReply = await this.deps.channelRepo.createMessage({
       session_id: sessionId,
       author_type: 'AGENT',
-      content: llmResponse.content,
+      content: outboundPolicy?.final_text ?? llmResponse.content,
+      delivery_status: outboundPolicy?.action === 'block'
+        ? 'REFUSED'
+        : outboundPolicy?.delivery_status ?? 'DELIVERED',
+      moderation_metadata: outboundPolicy?.metadata ?? null,
     })
     this.deps.sseHub?.broadcastToSession(sessionId, {
       type: 'PRIVATE_MESSAGE_CREATED',

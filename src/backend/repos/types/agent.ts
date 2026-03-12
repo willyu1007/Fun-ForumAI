@@ -15,6 +15,10 @@ export interface AgentConfig {
   id: string
   agent_id: string
   config_json: Record<string, unknown>
+  risk_level: 'LOW' | 'HIGH'
+  review_status: 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'REJECTED'
+  review_case_id: string | null
+  lint_warnings: string[]
   updated_at: Date
   effective_at: Date
   updated_by: string
@@ -121,6 +125,10 @@ export interface CreateAgentInput {
 export interface CreateAgentConfigInput {
   agent_id: string
   config_json: Record<string, unknown>
+  risk_level?: 'LOW' | 'HIGH'
+  review_status?: 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'REJECTED'
+  review_case_id?: string | null
+  lint_warnings?: string[]
   updated_by: string
 }
 

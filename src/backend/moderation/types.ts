@@ -82,7 +82,7 @@ export type GovernanceActionType =
 
 export interface GovernanceAction {
   action: GovernanceActionType
-  target_type: 'post' | 'comment' | 'message' | 'agent'
+  target_type: 'post' | 'comment' | 'message' | 'agent' | 'private_session' | 'notification' | 'config_revision'
   target_id: string
   admin_user_id: string
   reason?: string

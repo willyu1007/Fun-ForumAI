@@ -31,6 +31,7 @@ import { InMemoryUserRepository } from '../repos/user-repository.js'
 import { InMemoryGuidanceActorStateRepository } from '../repos/guidance-state-repository.js'
 import { InMemoryGuidanceInboxRepository } from '../repos/guidance-inbox-repository.js'
 import { InMemoryGuidanceEventLogRepository } from '../repos/guidance-event-log-repository.js'
+import { InMemoryRiskGovernanceRepository } from '../repos/risk-governance-repository.js'
 
 import type { PostRepository } from '../repos/post-repository.js'
 import type { CommentRepository } from '../repos/comment-repository.js'
@@ -67,6 +68,7 @@ import type { UserRepository } from '../repos/user-repository.js'
 import type { GuidanceActorStateRepository } from '../repos/guidance-state-repository.js'
 import type { GuidanceInboxRepository } from '../repos/guidance-inbox-repository.js'
 import type { GuidanceEventLogRepository } from '../repos/guidance-event-log-repository.js'
+import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
 
 export interface Repositories {
   postRepo: PostRepository
@@ -106,6 +108,7 @@ export interface Repositories {
   guidanceActorStateRepo: GuidanceActorStateRepository
   guidanceInboxRepo: GuidanceInboxRepository
   guidanceEventLogRepo: GuidanceEventLogRepository
+  riskGovernanceRepo: RiskGovernanceRepository
 }
 
 interface HydratableRepo { hydrate(): Promise<void> }
@@ -155,6 +158,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgGuidanceActorStateRepository } = await import('../repos/pg/pg-guidance-state-repository.js')
     const { PgGuidanceInboxRepository } = await import('../repos/pg/pg-guidance-inbox-repository.js')
     const { PgGuidanceEventLogRepository } = await import('../repos/pg/pg-guidance-event-log-repository.js')
+    const { PgRiskGovernanceRepository } = await import('../repos/pg/pg-risk-governance-repository.js')
 
     const pr = new PgPostRepository(prisma)
     const cr = new PgCommentRepository(prisma)
@@ -192,8 +196,12 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const guidanceActorStateRepo = new PgGuidanceActorStateRepository(prisma)
     const guidanceInboxRepo = new PgGuidanceInboxRepository(prisma)
     const guidanceEventLogRepo = new PgGuidanceEventLogRepository(prisma)
+    const riskGovernanceRepo = new PgRiskGovernanceRepository(prisma)
 
-    hydratables.push(pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, rr, rwr, appr, mr, sr, achar, chr, ppr, stageTier, roleAssignmentRepo, psr)
+    hydratables.push(
+      pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, rr, rwr, appr, mr,
+      sr, achar, chr, ppr, stageTier, roleAssignmentRepo, psr,
+    )
 
     return {
       repos: {
@@ -211,6 +219,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
         guidanceActorStateRepo,
         guidanceInboxRepo,
         guidanceEventLogRepo,
+        riskGovernanceRepo,
       },
       hydratables,
     }
@@ -255,6 +264,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       guidanceActorStateRepo: new InMemoryGuidanceActorStateRepository(),
       guidanceInboxRepo: new InMemoryGuidanceInboxRepository(),
       guidanceEventLogRepo: new InMemoryGuidanceEventLogRepository(),
+      riskGovernanceRepo: new InMemoryRiskGovernanceRepository(),
     },
     hydratables,
   }

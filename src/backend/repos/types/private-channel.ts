@@ -1,3 +1,5 @@
+import type { MessageDeliveryStatus } from './risk-governance.js'
+
 export type PrivateSessionStatus = 'ACTIVE' | 'ENDED' | 'ARCHIVED'
 export type SessionInitiator = 'HUMAN' | 'AGENT'
 export type DigestStatus = 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | 'SKIPPED'
@@ -23,6 +25,8 @@ export interface PrivateMessage {
   session_id: string
   author_type: PrivateAuthorType
   content: string
+  delivery_status: MessageDeliveryStatus
+  moderation_metadata: Record<string, unknown> | null
   created_at: Date
 }
 
@@ -51,6 +55,7 @@ export interface AgentPrivacySettingsEntity {
   disclosure_level: number
   public_memory_budget: number
   public_memory_top_k: number
+  public_disclosure_cap: number | null
   updated_at: Date
   updated_by: string
 }
@@ -79,6 +84,8 @@ export interface CreatePrivateMessageInput {
   session_id: string
   author_type: PrivateAuthorType
   content: string
+  delivery_status?: MessageDeliveryStatus
+  moderation_metadata?: Record<string, unknown> | null
 }
 
 export interface CreateAgentMemoryInput {
@@ -101,6 +108,7 @@ export interface UpsertPrivacySettingsInput {
   disclosure_level?: number
   public_memory_budget?: number
   public_memory_top_k?: number
+  public_disclosure_cap?: number | null
   updated_by: string
 }
 

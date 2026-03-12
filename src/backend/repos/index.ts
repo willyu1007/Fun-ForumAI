@@ -164,6 +164,41 @@ export type {
   UpdateGuidanceInboxItemInput,
   GuidanceEventLogEntity,
   CreateGuidanceEventLogInput,
+  IdentityVerificationStatus,
+  IdentityVerificationMethod,
+  MessageDeliveryStatus,
+  ReviewCaseType,
+  ReviewCaseStatus,
+  ReviewTaskStatus,
+  ComplaintStatus,
+  AppealStatus,
+  ConfigReviewStatus,
+  UserIdentityVerification,
+  PolicySnapshot,
+  ModerationCase,
+  ModerationCaseTarget,
+  ModerationEvidenceSnapshot,
+  ReviewTask,
+  GovernanceActionLog,
+  ComplaintTicket,
+  AppealRequest,
+  RiskEventLog,
+  CreatePolicySnapshotInput,
+  CreateRiskEventLogInput,
+  CreateModerationCaseInput,
+  UpdateModerationCaseInput,
+  CreateModerationCaseTargetInput,
+  CreateModerationEvidenceSnapshotInput,
+  CreateReviewTaskInput,
+  UpdateReviewTaskInput,
+  CreateGovernanceActionLogInput,
+  CreateComplaintTicketInput,
+  UpdateComplaintTicketInput,
+  CreateAppealRequestInput,
+  UpdateAppealRequestInput,
+  UpsertUserIdentityVerificationInput,
+  IdentityReviewSummary,
+  AgentConfigReview,
 } from './types.js'
 
 export { type PostRepository, InMemoryPostRepository } from './post-repository.js'
@@ -201,6 +236,10 @@ export {
 } from './agent-public-projection-repository.js'
 export { type MessageRepository, InMemoryMessageRepository } from './message-repository.js'
 export { type NotificationRepository } from './notification-repository.js'
+export {
+  type RiskGovernanceRepository,
+  InMemoryRiskGovernanceRepository,
+} from './risk-governance-repository.js'
 export {
   type RelationRepository,
   InMemoryRelationRepository,

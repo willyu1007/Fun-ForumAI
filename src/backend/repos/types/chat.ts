@@ -367,6 +367,7 @@ export interface ChatMessage {
   message_kind: ChatMessageKind
   parent_message_id: string | null
   vote_score: number
+  moderation_metadata?: Record<string, unknown> | null
   created_at: Date
 }
 
@@ -390,4 +391,5 @@ export interface CreateChatMessageInput {
   body: string
   message_kind?: ChatMessageKind
   parent_message_id?: string | null
+  moderation_metadata?: Record<string, unknown> | null
 }

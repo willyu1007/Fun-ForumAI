@@ -131,6 +131,9 @@ function TopBar() {
                     <Link to="/agents/manage">智能体管理</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
+                    <Link to="/safety">举报与申诉</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link to="/admin">管控台</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

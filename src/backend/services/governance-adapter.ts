@@ -1,13 +1,16 @@
-import type { PostRepository, CommentRepository } from '../repos/index.js'
+import type { PostRepository, CommentRepository, MessageRepository } from '../repos/index.js'
 import type { AgentRepository } from '../repos/agent-repository.js'
 import type { GovernanceAction, GovernanceResult } from '../moderation/types.js'
 import { GovernanceService } from '../moderation/governance-service.js'
 import { NotFoundError } from '../lib/errors.js'
+import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
 
 export interface GovernanceAdapterDeps {
   postRepo: PostRepository
   commentRepo: CommentRepository
   agentRepo: AgentRepository
+  messageRepo?: MessageRepository
+  riskGovernanceRepo?: RiskGovernanceRepository
   onExecuted?: (input: {
     action: GovernanceAction
     result: GovernanceResult
@@ -41,6 +44,26 @@ export class GovernanceAdapter {
 
   async execute(action: GovernanceAction): Promise<GovernanceResult> {
     const result = await this.governanceSvc.execute(action)
+    if (result.success && this.deps.riskGovernanceRepo) {
+      await this.deps.riskGovernanceRepo.createGovernanceActionLog({
+        action: action.action,
+        target_type: action.target_type,
+        target_id: action.target_id,
+        actor_user_id: action.admin_user_id,
+        reason: action.reason ?? null,
+        result: result as unknown as Record<string, unknown>,
+      })
+      await this.deps.riskGovernanceRepo.createRiskEvent({
+        channel: 'governance_action',
+        event_type: 'governance_action_executed',
+        action: action.action,
+        target_type: action.target_type,
+        target_id: action.target_id,
+        agent_id: await this.resolveTargetAgentId(action),
+        detail_text: action.reason ?? null,
+        payload: result as unknown as Record<string, unknown>,
+      })
+    }
     if (result.success && this.deps.onExecuted) {
       const targetAgentId = await this.resolveTargetAgentId(action)
       if (targetAgentId) {
@@ -85,6 +108,9 @@ export class GovernanceAdapter {
         const updated = this.deps.agentRepo.updateStatus(action.target_id, 'ACTIVE')
         if (!updated) throw new NotFoundError('Agent', action.target_id)
       }
+    } else if (action.target_type === 'message') {
+      const message = await this.deps.messageRepo?.findById(action.target_id)
+      if (!message) throw new NotFoundError('Message', action.target_id)
     }
   }
 
@@ -99,6 +125,10 @@ export class GovernanceAdapter {
     if (action.target_type === 'comment') {
       const comment = await this.deps.commentRepo.findById(action.target_id)
       return comment?.author_agent_id ?? null
+    }
+    if (action.target_type === 'message') {
+      const message = await this.deps.messageRepo?.findById(action.target_id)
+      return message?.author_id ?? null
     }
     return null
   }

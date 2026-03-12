@@ -25,6 +25,8 @@ import type { CommunityCultureDigestService } from '../services/community-cultur
 import type { IncubationOrchestrator } from '../services/incubation-orchestrator.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { AgentPublicProjectionService } from '../services/agent-public-projection-service.js'
+import type { PolicyGatewayService } from '../services/policy-gateway-service.js'
+import type { IdentityGateService } from '../services/identity-gate-service.js'
 
 export interface NurtureResult {
   traitEngine: import('../services/trait-engine.js').TraitEngine | null
@@ -64,6 +66,8 @@ export async function createNurtureEngines(deps: {
   governanceAdapter: GovernanceAdapter
   communityCultureDigestService: CommunityCultureDigestService
   incubationOrchestrator: IncubationOrchestrator
+  policyGatewayService: PolicyGatewayService
+  identityGateService: IdentityGateService
   leaderElectors: {
     privateChannel: LeaderElector
     nurture: LeaderElector
@@ -77,6 +81,7 @@ export async function createNurtureEngines(deps: {
     forumReadService, agentService, chatService, statsService, personaStateService, agentPublicProjectionService,
     conversationClock, achievementsOrchestrator, governanceAdapter,
     communityCultureDigestService, incubationOrchestrator,
+    policyGatewayService, identityGateService,
   } = deps
 
   let traitEngine: import('../services/trait-engine.js').TraitEngine | null = null
@@ -245,6 +250,8 @@ export async function createNurtureEngines(deps: {
       eventRepo: repos.eventRepo,
       agentRunRepo: repos.agentRunRepo,
       notificationService,
+      policyGatewayService,
+      identityGateService,
     })
 
     proactiveEventHandler = new ProactiveEventHandler({
@@ -273,6 +280,8 @@ export async function createNurtureEngines(deps: {
       budgetService,
       costTracker,
       sseHub,
+      policyGatewayService,
+      identityGateService,
     })
     privateChannelServices = { channelService, memoryService }
 

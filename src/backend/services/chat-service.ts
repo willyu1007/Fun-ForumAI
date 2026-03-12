@@ -29,6 +29,7 @@ import type { RoomProjector } from './room-projector.js'
 import type { RoomProgramProjector } from './room-program-projector.js'
 import { normalizeWanderPolicy } from './chatroom-program-policy.js'
 import { sanitizeChatOutput } from '../runtime/chat-output-sanitizer.js'
+import type { PolicyGatewayService } from './policy-gateway-service.js'
 
 const MAX_ROOMS_PER_AGENT = 3
 
@@ -53,6 +54,7 @@ export interface ChatServiceDeps {
   statsService?: StatsService | null
   eventRepo: EventRepository
   roomWatchabilityRepo?: RoomWatchabilityRepository | null
+  policyGatewayService?: PolicyGatewayService | null
 }
 
 type JoinLeaveHook = (roomId: string, agentId: string, tickInterval: number) => void
@@ -371,7 +373,26 @@ export class ChatService {
       throw new ValidationError('Author is not a member of this room')
     }
 
-    const created = await this.deps.messageRepo.create(input)
+    const policyDecision = this.deps.policyGatewayService
+      ? await this.deps.policyGatewayService.evaluate({
+          channel: 'chat_room',
+          text: input.body,
+          author_agent_id: input.author_id,
+          community_id: room.community_id,
+          target_type: 'message',
+          room_id: input.room_id,
+          scene: 'chat_room',
+        })
+      : null
+    if (policyDecision) {
+      this.deps.policyGatewayService?.assertAllowed(policyDecision)
+    }
+
+    const created = await this.deps.messageRepo.create({
+      ...input,
+      body: policyDecision?.final_text ?? input.body,
+      moderation_metadata: policyDecision?.metadata ?? input.moderation_metadata ?? null,
+    })
     const msg = this.enrichMessage(created, { fallbackToRawBody: true }) ?? created
     await this.deps.roomRepo.updateLastMessageAt(input.room_id, msg.created_at)
     await this.deps.roomRepo.recordMemberMessage(input.room_id, input.author_id, msg.created_at)

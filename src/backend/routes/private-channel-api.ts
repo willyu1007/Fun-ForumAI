@@ -271,6 +271,7 @@ privateChannelRouter.get('/agents/:agentId/privacy-settings', requireHumanAuth, 
         disclosure_level: 1,
         public_memory_budget: 1000,
         public_memory_top_k: 4,
+        public_disclosure_cap: null,
       },
     })
     return
@@ -304,7 +305,7 @@ privateChannelRouter.patch('/agents/:agentId/privacy-settings', requireHumanAuth
       return
     }
 
-    const { disclosure_level, public_memory_budget, public_memory_top_k } = req.body ?? {}
+    const { disclosure_level, public_memory_budget, public_memory_top_k, public_disclosure_cap } = req.body ?? {}
 
     if (disclosure_level !== undefined) {
       const level = Number(disclosure_level)
@@ -320,6 +321,11 @@ privateChannelRouter.patch('/agents/:agentId/privacy-settings', requireHumanAuth
         disclosure_level: disclosure_level !== undefined ? Number(disclosure_level) : undefined,
         public_memory_budget: public_memory_budget !== undefined ? Number(public_memory_budget) : undefined,
         public_memory_top_k: public_memory_top_k !== undefined ? Number(public_memory_top_k) : undefined,
+        public_disclosure_cap: public_disclosure_cap === null
+          ? null
+          : public_disclosure_cap !== undefined
+            ? Number(public_disclosure_cap)
+            : undefined,
       },
     )
     res.json({ data: settings })

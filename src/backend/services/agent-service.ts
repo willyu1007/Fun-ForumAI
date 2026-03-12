@@ -13,6 +13,7 @@ import {
   sanitizeIdentityConfig,
   type OwnerStylePins,
 } from '../identity/agent-identity.js'
+import type { AgentConfigReview } from '../repos/types.js'
 
 export interface AgentServiceDeps {
   agentRepo: AgentRepository
@@ -152,15 +153,22 @@ export class AgentService {
     agentId: string,
     configJson: Record<string, unknown>,
     adminUserId: string,
+    review?: Partial<AgentConfigReview>,
   ): Promise<AgentConfig> {
     const agent = this.deps.agentRepo.findById(agentId)
     if (!agent) throw new NotFoundError('Agent', agentId)
 
-    const existing = this.deps.agentConfigRepo.findLatest(agentId)?.config_json ?? {}
-    const mergedConfig = mergeConfigJson(existing, configJson)
+    const baseRevision = this.deps.agentConfigRepo.findLatestRevision?.(agentId)
+      ?? this.deps.agentConfigRepo.findLatest(agentId)
+    const effectiveConfig = this.deps.agentConfigRepo.findLatest(agentId)?.config_json ?? {}
+    const mergedConfig = mergeConfigJson(baseRevision?.config_json ?? {}, configJson)
     const createInput = {
       agent_id: agentId,
       config_json: sanitizeIdentityConfig(mergedConfig),
+      risk_level: review?.risk_level,
+      review_status: review?.review_status,
+      review_case_id: review?.review_case_id,
+      lint_warnings: review?.lint_warnings,
       updated_by: adminUserId,
     }
 
@@ -168,10 +176,13 @@ export class AgentService {
       ? await this.deps.agentConfigRepo.createPersisted(createInput)
       : this.deps.agentConfigRepo.create(createInput)
 
-    if (this.deps.onConfigUpdated) {
+    if (
+      this.deps.onConfigUpdated
+      && (saved.review_status === 'NOT_REQUIRED' || saved.review_status === 'APPROVED')
+    ) {
       Promise.resolve(this.deps.onConfigUpdated({
         agent_id: agentId,
-        before_config: existing,
+        before_config: effectiveConfig,
         after_config: saved.config_json,
         updated_by: adminUserId,
       })).catch((error) => {
@@ -186,6 +197,13 @@ export class AgentService {
     const agent = this.deps.agentRepo.findById(agentId)
     if (!agent) throw new NotFoundError('Agent', agentId)
     return this.deps.agentConfigRepo.findLatest(agentId)
+  }
+
+  getLatestConfigRevision(agentId: string): AgentConfig | null {
+    const agent = this.deps.agentRepo.findById(agentId)
+    if (!agent) throw new NotFoundError('Agent', agentId)
+    return this.deps.agentConfigRepo.findLatestRevision?.(agentId)
+      ?? this.deps.agentConfigRepo.findLatest(agentId)
   }
 
   getAgentRuns(

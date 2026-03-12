@@ -1,0 +1,218 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { config } from '../../lib/config.js'
+import type { ModerationResult } from '../../moderation/types.js'
+import { InMemoryRiskGovernanceRepository } from '../../repos/risk-governance-repository.js'
+import { HotTopicPolicyService } from '../hot-topic-policy-service.js'
+import { PolicyGatewayService } from '../policy-gateway-service.js'
+import { ReviewService } from '../review-service.js'
+import { RiskEventService } from '../risk-event-service.js'
+import { SafeReplyService } from '../safe-reply-service.js'
+
+const CLEAN_RESULT: ModerationResult = {
+  risk_level: 'low',
+  risk_score: 0.1,
+  risk_categories: ['clean'],
+  visibility: 'PUBLIC',
+  state: 'APPROVED',
+  verdict: 'APPROVE',
+  details: {
+    rule_filter: { passed: true, matched_rules: [] },
+    classifier_score: 0.1,
+    classifier_categories: ['clean'],
+    decision_reason: 'clean',
+    fail_closed: false,
+  },
+}
+
+const HIGH_RESULT: ModerationResult = {
+  ...CLEAN_RESULT,
+  risk_level: 'high',
+  risk_score: 0.91,
+  risk_categories: ['hate_harassment'],
+  visibility: 'QUARANTINE',
+  state: 'PENDING',
+  verdict: 'QUARANTINE',
+  details: {
+    ...CLEAN_RESULT.details,
+    classifier_score: 0.91,
+    classifier_categories: ['hate_harassment'],
+    decision_reason: 'high risk',
+  },
+}
+
+const REDLINE_RESULT: ModerationResult = {
+  ...HIGH_RESULT,
+  state: 'REJECTED',
+  verdict: 'REJECT',
+  details: {
+    ...HIGH_RESULT.details,
+    rule_filter: {
+      passed: false,
+      matched_rules: [{ rule_type: 'keyword', pattern: 'terror', severity: 'block' }],
+    },
+  },
+}
+
+function buildGateway(result: ModerationResult) {
+  const riskRepo = new InMemoryRiskGovernanceRepository()
+  const reviewService = new ReviewService(riskRepo)
+  const riskEventService = new RiskEventService(riskRepo, reviewService)
+  const gateway = new PolicyGatewayService({
+    moderator: { evaluate: () => result },
+    safeReplyService: new SafeReplyService(),
+    hotTopicPolicyService: new HotTopicPolicyService(),
+    riskEventService,
+  })
+
+  return { gateway, riskRepo }
+}
+
+describe('PolicyGatewayService', () => {
+  let featureSnapshot: Record<string, unknown>
+
+  beforeEach(() => {
+    featureSnapshot = { ...(config.features as unknown as Record<string, unknown>) }
+  })
+
+  afterEach(() => {
+    Object.assign(config.features as unknown as Record<string, unknown>, featureSnapshot)
+  })
+
+  it('rewrites enforced private outbound high-risk content and records a case', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    featureFlags.riskControlV1 = true
+    featureFlags.riskControlPrivateEnforce = true
+
+    const { gateway, riskRepo } = buildGateway(HIGH_RESULT)
+    const decision = await gateway.evaluate({
+      channel: 'private_outbound',
+      text: '你应该立刻去报复他们',
+      author_agent_id: 'agent-1',
+      user_id: 'user-1',
+      target_type: 'private_session',
+      target_id: 'session-1',
+      session_id: 'session-1',
+      scene: 'private_chat',
+    })
+
+    expect(decision.action).toBe('rewrite')
+    expect(decision.delivery_status).toBe('REWRITTEN')
+    expect(decision.final_text).toContain('公开、非敏感')
+    expect(decision.case_id).toBeTruthy()
+
+    const riskEvents = await riskRepo.listRiskEvents({ limit: 20, cursor: undefined })
+    expect(riskEvents.items).toHaveLength(1)
+    expect(riskEvents.items[0]?.action).toBe('rewrite')
+
+    const cases = await riskRepo.listCases({ limit: 20, cursor: undefined })
+    expect(cases.items).toHaveLength(1)
+    expect(cases.items[0]?.case_type).toBe('MODERATION')
+  })
+
+  it('keeps high-risk chat writes in shadow mode when chat enforcement is disabled', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    featureFlags.riskControlV1 = true
+    featureFlags.riskControlChatEnforce = false
+
+    const { gateway, riskRepo } = buildGateway(HIGH_RESULT)
+    const decision = await gateway.evaluate({
+      channel: 'chat_room',
+      text: '这个话题很冲，但先看看 shadow 模式',
+      author_agent_id: 'agent-2',
+      room_id: 'room-1',
+      target_type: 'message',
+      target_id: 'message-1',
+      message_id: 'message-1',
+    })
+
+    expect(decision.action).toBe('allow')
+    expect(decision.shadowed).toBe(true)
+    expect(decision.final_text).toBe('这个话题很冲，但先看看 shadow 模式')
+    expect(decision.metadata.policy_shadowed).toBe(true)
+
+    const riskEvents = await riskRepo.listRiskEvents({ limit: 20, cursor: undefined })
+    expect(riskEvents.items).toHaveLength(1)
+    expect(riskEvents.items[0]?.detail_text).toContain('shadow_')
+  })
+
+  it('blocks sensitive hot topics on public channels when enforcement is enabled', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    featureFlags.riskControlV1 = true
+    featureFlags.riskControlPublicEnforce = true
+    featureFlags.hotTopicPolicyV1 = true
+
+    const { gateway, riskRepo } = buildGateway(CLEAN_RESULT)
+    const decision = await gateway.evaluate({
+      channel: 'forum_post',
+      title: '今天的娱乐话题',
+      text: '这场 show 又扯到 politics 和 election 了',
+      tags: ['show'],
+      author_agent_id: 'agent-3',
+      community_id: 'community-1',
+      target_type: 'post',
+      target_id: 'post-1',
+    })
+
+    expect(decision.action).toBe('block')
+    expect(decision.reason).toBe('allowed_domain_drifted_into_sensitive_topic')
+    expect(decision.case_id).toBeTruthy()
+
+    const riskEvents = await riskRepo.listRiskEvents({ limit: 20, cursor: undefined })
+    expect(riskEvents.items[0]?.payload?.hot_topic).toMatchObject({
+      allowed: false,
+      drift_detected: true,
+    })
+  })
+
+  it('turns redline moderation into a hard block', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    featureFlags.riskControlV1 = true
+    featureFlags.riskControlPrivateEnforce = true
+
+    const { gateway } = buildGateway(REDLINE_RESULT)
+    const decision = await gateway.evaluate({
+      channel: 'private_outbound',
+      text: 'redline',
+      author_agent_id: 'agent-4',
+      user_id: 'user-4',
+      target_type: 'private_session',
+      target_id: 'session-4',
+    })
+
+    expect(decision.action).toBe('block')
+    expect(decision.delivery_status).toBe('BLOCKED')
+    expect(decision.final_text).toContain('换成公开、非敏感的话题')
+  })
+
+  it('creates distinct policy snapshots for repeated identical content on different targets', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    featureFlags.riskControlV1 = true
+    featureFlags.riskControlPublicEnforce = true
+
+    const { gateway, riskRepo } = buildGateway(CLEAN_RESULT)
+    await gateway.evaluate({
+      channel: 'forum_post',
+      text: '重复内容',
+      author_agent_id: 'agent-1',
+      community_id: 'community-1',
+      target_type: 'post',
+      target_id: 'post-1',
+      scene: 'forum_post',
+    })
+    await gateway.evaluate({
+      channel: 'forum_post',
+      text: '重复内容',
+      author_agent_id: 'agent-2',
+      community_id: 'community-2',
+      target_type: 'post',
+      target_id: 'post-2',
+      scene: 'forum_post',
+    })
+
+    const riskEvents = await riskRepo.listRiskEvents({ limit: 20, cursor: undefined })
+    expect(riskEvents.items).toHaveLength(2)
+    expect(riskEvents.items[0]?.policy_snapshot_id).toBeTruthy()
+    expect(riskEvents.items[1]?.policy_snapshot_id).toBeTruthy()
+    expect(riskEvents.items[0]?.policy_snapshot_id).not.toBe(riskEvents.items[1]?.policy_snapshot_id)
+  })
+})

@@ -215,13 +215,14 @@ export class ContextBuilder {
     if (this.deps.memoryService) {
       try {
         const privacySettings = await this.deps.memoryService.getPrivacySettings(agentId)
+        const disclosure = this.deps.memoryService.resolveEffectiveDisclosureLevel(privacySettings)
         const memoryScene: 'chat_room' | 'forum' = ctx.chatContext ? 'chat_room' : 'forum'
         const topicHints = this.extractTopicHints(ctx)
 
         const memoryCtx = await this.deps.memoryService.getMemoriesForContext(agentId, {
           scene: memoryScene,
           topicHints,
-          disclosureLevel: privacySettings.disclosure_level,
+          disclosureLevel: disclosure.effective_disclosure_level,
           tokenBudget: privacySettings.public_memory_budget,
           topK: privacySettings.public_memory_top_k,
         })
@@ -231,7 +232,7 @@ export class ContextBuilder {
         }
 
         // Layer 6: Privacy disclosure rules
-        layers.layer6_privacy = this.buildPrivacyPrompt(privacySettings.disclosure_level)
+        layers.layer6_privacy = this.buildPrivacyPrompt(disclosure.effective_disclosure_level)
       } catch { /* ignore */ }
     }
 
