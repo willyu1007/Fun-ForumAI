@@ -289,6 +289,9 @@ export interface RoomWatchabilitySummary {
   canonization_note?: string | null
   cameo_hint?: string | null
   snapshot_updated_at: Date | null
+  hot_topic_mode?: 'NORMAL' | 'MANUAL_REVIEW_ONLY' | 'DISABLED' | null
+  distribution_state?: 'NORMAL' | 'NO_RECOMMEND' | 'BLOCKED'
+  discoverability_tags?: string[]
 }
 
 export interface RoomCastMemberView {

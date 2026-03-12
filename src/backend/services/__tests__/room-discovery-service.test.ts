@@ -59,4 +59,53 @@ describe('RoomDiscoveryService', () => {
     expect(ranked[0]?.reasons).toContain('scene_affinity')
     expect(ranked[0]?.reasons).toContain('has_highlight')
   })
+
+  it('filters rooms tagged as no_recommend from discovery', async () => {
+    const service = new RoomDiscoveryService({
+      roomRepo: {
+        getAvailableRooms: vi.fn(async () => [
+          {
+            id: 'room-1',
+            name: 'Hidden',
+            status: 'active',
+            max_agents: 4,
+            last_message_at: new Date('2026-03-10T10:00:00.000Z'),
+          },
+          {
+            id: 'room-2',
+            name: 'Visible',
+            status: 'active',
+            max_agents: 4,
+            last_message_at: new Date('2026-03-10T10:05:00.000Z'),
+          },
+        ]),
+        getRoomsByAgent: vi.fn(async () => []),
+      } as never,
+      watchabilityRepo: {
+        listPrograms: vi.fn(async () => [
+          {
+            room_id: 'room-1',
+            enabled: true,
+            scene_type: 'FREE_CHAT',
+            discoverability_tags: ['no_recommend'],
+          },
+          {
+            room_id: 'room-2',
+            enabled: true,
+            scene_type: 'DEBATE',
+            discoverability_tags: [],
+          },
+        ]),
+        listLiveSnapshots: vi.fn(async () => []),
+      } as never,
+    })
+
+    const ranked = await service.rankRoomsForAgent({
+      agentId: 'agent-1',
+      currentRoomId: 'room-0',
+      projection: null,
+    })
+
+    expect(ranked.map((item) => item.room.id)).toEqual(['room-2'])
+  })
 })

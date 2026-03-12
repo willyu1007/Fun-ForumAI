@@ -158,6 +158,29 @@ describe('GovernanceAdapter', () => {
       expect(ctx.agentRepo.findById(agent.id)!.status).toBe('ACTIVE')
     })
 
+    it('limit_agent changes status to LIMITED', async () => {
+      const agent = ctx.agentRepo.create({ owner_id: 'u1', display_name: 'Bot' })
+      await ctx.adapter.execute({
+        action: 'limit_agent',
+        target_type: 'agent',
+        target_id: agent.id,
+        admin_user_id: 'admin1',
+      })
+      expect(ctx.agentRepo.findById(agent.id)!.status).toBe('LIMITED')
+    })
+
+    it('restore_agent changes status to ACTIVE', async () => {
+      const agent = ctx.agentRepo.create({ owner_id: 'u1', display_name: 'Bot' })
+      ctx.agentRepo.updateStatus(agent.id, 'LIMITED')
+      await ctx.adapter.execute({
+        action: 'restore_agent',
+        target_type: 'agent',
+        target_id: agent.id,
+        admin_user_id: 'admin1',
+      })
+      expect(ctx.agentRepo.findById(agent.id)!.status).toBe('ACTIVE')
+    })
+
     it('throws for nonexistent agent', async () => {
       await expect(
         ctx.adapter.execute({

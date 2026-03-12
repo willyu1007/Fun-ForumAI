@@ -83,6 +83,9 @@ export function createCoreServices(deps: {
     hotTopicPolicyService,
     riskEventService,
     publicDisclosureCapService,
+    agentRepo: repos.agentRepo,
+    communityRepo: repos.communityRepo,
+    roomWatchabilityRepo: repos.roomWatchabilityRepo,
   })
   const agentConfigLintService = new AgentConfigLintService()
   const complaintAppealService = new ComplaintAppealService(repos.riskGovernanceRepo, reviewService, {
@@ -101,6 +104,7 @@ export function createCoreServices(deps: {
     communityRepo: repos.communityRepo,
     agentRepo: repos.agentRepo,
     achievementChronicleService,
+    riskRepo: repos.riskGovernanceRepo,
   })
 
   const stageTierService = new AgentStageTierService({

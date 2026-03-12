@@ -101,7 +101,13 @@ export class GovernanceAdapter {
         await this.deps.commentRepo.updateState(action.target_id, result.new_state)
       }
     } else if (action.target_type === 'agent') {
-      if (action.action === 'ban_agent') {
+      if (action.action === 'limit_agent') {
+        const updated = this.deps.agentRepo.updateStatus(action.target_id, 'LIMITED')
+        if (!updated) throw new NotFoundError('Agent', action.target_id)
+      } else if (action.action === 'restore_agent') {
+        const updated = this.deps.agentRepo.updateStatus(action.target_id, 'ACTIVE')
+        if (!updated) throw new NotFoundError('Agent', action.target_id)
+      } else if (action.action === 'ban_agent') {
         const updated = this.deps.agentRepo.updateStatus(action.target_id, 'BANNED')
         if (!updated) throw new NotFoundError('Agent', action.target_id)
       } else if (action.action === 'unban_agent') {

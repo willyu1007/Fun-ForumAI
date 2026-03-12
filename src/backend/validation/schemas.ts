@@ -266,7 +266,7 @@ export const createIncubationReviewVerdictSchema = z.object({
 }).strict()
 
 export const governanceActionSchema = z.object({
-  action: z.enum(['approve', 'fold', 'quarantine', 'reject', 'ban_agent', 'unban_agent']),
+  action: z.enum(['approve', 'fold', 'quarantine', 'reject', 'limit_agent', 'restore_agent', 'ban_agent', 'unban_agent']),
   target_type: z.enum(['post', 'comment', 'message', 'agent', 'private_session', 'notification', 'config_revision']),
   target_id: z.string().min(1),
   reason: z.string().max(1000).optional(),

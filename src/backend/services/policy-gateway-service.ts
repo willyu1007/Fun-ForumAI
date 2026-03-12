@@ -1,12 +1,24 @@
 import { ValidationError } from '../lib/errors.js'
 import { config } from '../lib/config.js'
 import type { ModerationResult } from '../moderation/types.js'
-import type { ModerationEvaluator } from './forum-write-service.js'
-import type { MessageDeliveryStatus } from '../repos/types.js'
-import type { HotTopicPolicyService } from './hot-topic-policy-service.js'
+import type { AgentRepository } from '../repos/agent-repository.js'
+import type { CommunityRepository } from '../repos/community-repository.js'
+import type { MessageDeliveryStatus, ReviewCaseType, ReviewQueue } from '../repos/types.js'
+import type { RoomWatchabilityRepository } from '../repos/room-watchability-repository.js'
+import type { HotTopicDistributionState, HotTopicPolicyService } from './hot-topic-policy-service.js'
 import type { PublicDisclosureCapService } from './public-disclosure-cap-service.js'
 import type { RiskEventService } from './risk-event-service.js'
 import type { SafeReplyService } from './safe-reply-service.js'
+import type { ModerationEvaluator } from './forum-write-service.js'
+import {
+  DEFAULT_ALLOWED_HOT_TOPIC_DOMAINS,
+  hasNoRecommendTag,
+  pickStricterHotTopicMode,
+  readCommunityHotTopicPolicyV1,
+  readRoomHotTopicMode,
+  type CommunityHotTopicPolicyV1,
+  type HotTopicMode,
+} from './hot-topic-policy-config.js'
 
 export type PolicyGatewayChannel =
   | 'forum_post'
@@ -28,6 +40,9 @@ export interface PolicyGatewayResult {
   case_id: string | null
   policy_snapshot_id: string | null
   risk_event_id: string | null
+  visibility_override: 'PUBLIC' | 'GRAY' | 'QUARANTINE' | null
+  state_override: 'APPROVED' | 'PENDING' | 'REJECTED' | null
+  distribution_state: HotTopicDistributionState
 }
 
 interface SpilloverHit {
@@ -44,6 +59,32 @@ interface SpilloverEnforcement {
   refusal_text: string
   override_cap_level: 0 | 1
   override_source: 'owner_endorsement_public' | 'owner_private_leak'
+}
+
+interface HotTopicKillSwitchHit {
+  source: 'room_override' | 'community_scene_override' | 'community_mode' | 'agent_status'
+  mode: HotTopicMode
+  detail: string
+}
+
+interface ResolvedHotTopicPolicyContext {
+  community_policy: CommunityHotTopicPolicyV1
+  effective_mode: HotTopicMode
+  effective_source: HotTopicKillSwitchHit['source'] | 'default'
+  hits: HotTopicKillSwitchHit[]
+  room_no_recommend: boolean
+  scene_key: string | null
+  agent_status: 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED' | null
+}
+
+interface HotTopicEnforcement {
+  action: 'allow' | 'block'
+  delivery_status: MessageDeliveryStatus
+  reason: string
+  distribution_state: HotTopicDistributionState
+  visibility_override?: PolicyGatewayResult['visibility_override']
+  state_override?: PolicyGatewayResult['state_override']
+  pending_review?: boolean
 }
 
 const OWNER_PRIVATE_LEAK_RESPONSE = '请不要公开转述 Owner 或私聊中的原话，换成不涉及私域来源的公开表达。'
@@ -69,6 +110,9 @@ export class PolicyGatewayService {
     hotTopicPolicyService: HotTopicPolicyService
     riskEventService: RiskEventService
     publicDisclosureCapService: PublicDisclosureCapService
+    agentRepo?: AgentRepository | null
+    communityRepo?: CommunityRepository | null
+    roomWatchabilityRepo?: RoomWatchabilityRepository | null
   }) {}
 
   async evaluate(input: {
@@ -76,6 +120,8 @@ export class PolicyGatewayService {
     text: string
     title?: string
     tags?: string[]
+    topic_context_text?: string | null
+    topic_context_tags?: string[]
     author_agent_id: string
     community_id?: string | null
     user_id?: string | null
@@ -106,23 +152,42 @@ export class PolicyGatewayService {
       ? this.applySpilloverRisk(moderationBase, spillover)
       : moderationBase
 
-    const hotTopic = this.shouldApplyHotTopicPolicy(input.channel)
-      ? this.deps.hotTopicPolicyService.evaluate({
-          text: textForModeration,
-          tags: input.tags,
-        })
-      : null
+    const shouldEvaluateHotTopic = this.shouldEvaluateHotTopicPolicy(input.channel)
+    const [hotTopicContext, hotTopic] = shouldEvaluateHotTopic
+      ? await Promise.all([
+          this.resolveHotTopicPolicyContext(input),
+          Promise.resolve(this.deps.hotTopicPolicyService.evaluate({
+            text: textForModeration,
+            tags: input.tags,
+            context_text: input.topic_context_text,
+            context_tags: input.topic_context_tags,
+          })),
+        ])
+      : [null, null]
+
+    const hotTopicEnforcement = this.resolveHotTopicEnforcement({
+      channel: input.channel,
+      author_agent_id: input.author_agent_id,
+      hot_topic: hotTopic,
+      context: hotTopicContext,
+    })
 
     let action: PolicyGatewayResult['action'] = 'allow'
     let final_text = input.text
     let delivery_status: MessageDeliveryStatus = 'DELIVERED'
     let rewrite_cause: string | null = null
     let reason = 'policy_allow'
+    let visibility_override: PolicyGatewayResult['visibility_override'] = hotTopicEnforcement?.visibility_override ?? null
+    let state_override: PolicyGatewayResult['state_override'] = hotTopicEnforcement?.state_override ?? null
+    let distribution_state: HotTopicDistributionState = hotTopicEnforcement?.distribution_state ?? 'NORMAL'
 
-    if (hotTopic && !hotTopic.allowed) {
+    if (hotTopicEnforcement?.action === 'block') {
       action = 'block'
-      delivery_status = 'BLOCKED'
-      reason = hotTopic.reason
+      delivery_status = hotTopicEnforcement.delivery_status
+      reason = hotTopicEnforcement.reason
+      distribution_state = 'BLOCKED'
+      visibility_override = null
+      state_override = null
     } else {
       const safeReply = this.deps.safeReplyService.rewriteOrRefuse({
         scene: this.mapScene(input.channel),
@@ -135,6 +200,14 @@ export class PolicyGatewayService {
       delivery_status = safeReply.delivery_status
       rewrite_cause = safeReply.rewrite_cause
       reason = safeReply.reason
+
+      if (hotTopicEnforcement?.pending_review && action === 'allow') {
+        delivery_status = 'PENDING_REVIEW'
+        reason = hotTopicEnforcement.reason
+      }
+      if (hotTopicEnforcement && action === 'allow' && distribution_state !== 'NORMAL') {
+        reason = hotTopicEnforcement.reason
+      }
     }
 
     const spilloverEnforcement = this.resolveSpilloverEnforcement({
@@ -148,10 +221,51 @@ export class PolicyGatewayService {
       delivery_status = spilloverEnforcement.delivery_status
       rewrite_cause = spilloverEnforcement.rewrite_cause
       reason = spilloverEnforcement.reason
+      distribution_state = 'BLOCKED'
+      visibility_override = null
+      state_override = null
     }
 
     const enforced = this.isEnforced(input.channel)
-    const shadowed = !enforced && (action === 'rewrite' || action === 'block')
+    const shadowed = !enforced && (action === 'rewrite' || action === 'block' || distribution_state !== 'NORMAL')
+    const effectiveDistributionState: HotTopicDistributionState = shadowed ? 'NORMAL' : distribution_state
+    const effectiveVisibilityOverride = shadowed ? null : visibility_override
+    const effectiveStateOverride = shadowed ? null : state_override
+    const topicSignals = hotTopic
+      ? {
+          topic_domain: hotTopic.topic_domain,
+          hot_topic_flag: hotTopic.hot_topic_flag,
+          topic_confidence: hotTopic.topic_confidence,
+          drift_risk_score: hotTopic.drift_risk_score,
+          drift_detected: hotTopic.drift_detected,
+          distribution_state,
+          enforcement_reason: reason,
+          matched_keywords: hotTopic.matched_keywords,
+          allowed_matches: hotTopic.allowed_matches,
+          sensitive_matches: hotTopic.sensitive_matches,
+          context_matches: hotTopic.context_matches,
+          allowed_domains: hotTopicContext?.community_policy.allowed_domains ?? DEFAULT_ALLOWED_HOT_TOPIC_DOMAINS,
+          kill_switch_mode: hotTopicContext?.effective_mode ?? 'NORMAL',
+          kill_switch_source: hotTopicContext?.effective_source ?? 'default',
+          scene_key: hotTopicContext?.scene_key ?? null,
+          room_no_recommend: hotTopicContext?.room_no_recommend ?? false,
+          policy_shadowed: shadowed,
+        }
+      : null
+
+    const ordinaryAllow = action === 'allow' && distribution_state === 'NORMAL' && !spilloverEnforcement
+    const hotTopicCase = Boolean(topicSignals?.hot_topic_flag) && !ordinaryAllow
+    const caseRouting = hotTopicCase
+      ? {
+          case_type: 'HOT_TOPIC' as ReviewCaseType,
+          queue: 'HOT_TOPIC' as ReviewQueue,
+          priority: distribution_state === 'BLOCKED'
+            ? 95
+            : hotTopic?.drift_detected
+              ? 90
+              : 82,
+        }
+      : null
 
     const outcome = await this.deps.riskEventService.recordModerationOutcome({
       text: textForModeration,
@@ -175,19 +289,35 @@ export class PolicyGatewayService {
         rewrite_cause,
         delivery_status,
         hot_topic: hotTopic,
+        topic_signals: topicSignals,
+        distribution_state,
+        visibility_override,
+        state_override,
         spillover,
+        kill_switch: hotTopicContext
+          ? {
+              effective_mode: hotTopicContext.effective_mode,
+              effective_source: hotTopicContext.effective_source,
+              hits: hotTopicContext.hits,
+              room_no_recommend: hotTopicContext.room_no_recommend,
+            }
+          : null,
       },
       evidence: {
         moderation,
         hot_topic: hotTopic,
+        topic_signals: topicSignals,
         spillover,
       },
       open_case:
         moderation.state === 'PENDING'
         || moderation.risk_level === 'high'
         || action === 'block'
-        || Boolean(hotTopic?.drift_detected)
+        || distribution_state !== 'NORMAL'
         || Boolean(spilloverEnforcement),
+      case_type: caseRouting?.case_type,
+      queue: caseRouting?.queue,
+      priority: caseRouting?.priority,
     })
 
     if (spilloverEnforcement && !shadowed) {
@@ -211,16 +341,29 @@ export class PolicyGatewayService {
       metadata: {
         moderation,
         hot_topic: hotTopic,
+        topic_signals: topicSignals,
+        distribution_state: effectiveDistributionState,
+        room_no_recommend: hotTopicContext?.room_no_recommend ?? false,
         policy_action: action,
         policy_enforced: enforced,
         policy_shadowed: shadowed,
         rewrite_cause,
         spillover,
+        kill_switch: hotTopicContext
+          ? {
+              effective_mode: hotTopicContext.effective_mode,
+              effective_source: hotTopicContext.effective_source,
+              hits: hotTopicContext.hits,
+            }
+          : null,
       },
       shadowed,
       case_id: outcome.case?.id ?? null,
       policy_snapshot_id: outcome.snapshot.id,
       risk_event_id: outcome.risk_event.id,
+      visibility_override: effectiveVisibilityOverride,
+      state_override: effectiveStateOverride,
+      distribution_state: effectiveDistributionState,
     }
   }
 
@@ -250,9 +393,9 @@ export class PolicyGatewayService {
     }
   }
 
-  private shouldApplyHotTopicPolicy(channel: PolicyGatewayChannel): boolean {
+  private shouldEvaluateHotTopicPolicy(channel: PolicyGatewayChannel): boolean {
     return config.features.hotTopicPolicyV1
-      && (channel === 'forum_post' || channel === 'forum_comment' || channel === 'chat_room')
+      && (channel === 'forum_post' || channel === 'forum_comment' || channel === 'chat_room' || channel === 'proactive_dm')
   }
 
   private shouldGuardPublicChannel(channel: PolicyGatewayChannel): boolean {
@@ -375,5 +518,175 @@ export class PolicyGatewayService {
       override_cap_level: 1,
       override_source: 'owner_endorsement_public',
     }
+  }
+
+  private async resolveHotTopicPolicyContext(input: {
+    channel: PolicyGatewayChannel
+    author_agent_id: string
+    community_id?: string | null
+    room_id?: string | null
+    scene?: string | null
+  }): Promise<ResolvedHotTopicPolicyContext> {
+    const community = input.community_id && this.deps.communityRepo
+      ? this.deps.communityRepo.findById(input.community_id)
+      : null
+    const communityPolicy = readCommunityHotTopicPolicyV1(
+      (community?.rules_json ?? null) as Record<string, unknown> | null | undefined,
+    )
+    const agent = this.deps.agentRepo?.findById(input.author_agent_id) ?? null
+    const agentMode = agent ? this.mapAgentStatusToHotTopicMode(agent.status) : 'NORMAL'
+    const roomProgram = input.room_id && this.deps.roomWatchabilityRepo
+      ? await this.deps.roomWatchabilityRepo.getProgram(input.room_id)
+      : null
+    const roomMode = readRoomHotTopicMode(roomProgram?.director_policy_json)
+    const roomNoRecommend = hasNoRecommendTag(roomProgram?.discoverability_tags)
+    const sceneCandidates = [
+      roomProgram?.scene_type ?? null,
+      input.scene ?? null,
+      input.channel,
+    ].filter((value): value is string => Boolean(value))
+    const sceneModes = sceneCandidates
+      .map((key) => ({
+        key,
+        mode: communityPolicy.scene_modes[key] ?? null,
+      }))
+      .filter((item): item is { key: string; mode: HotTopicMode } => item.mode !== null)
+
+    const communitySceneMode = sceneModes.length > 0
+      ? pickStricterHotTopicMode(sceneModes.map((item) => item.mode))
+      : null
+    const activeSceneKey = sceneModes.find((item) => item.mode === communitySceneMode)?.key ?? null
+
+    const hits: HotTopicKillSwitchHit[] = []
+    if (roomMode && roomMode !== 'NORMAL') {
+      hits.push({
+        source: 'room_override',
+        mode: roomMode,
+        detail: input.room_id ? `room:${input.room_id}` : 'room',
+      })
+    }
+    if (communitySceneMode && communitySceneMode !== 'NORMAL') {
+      hits.push({
+        source: 'community_scene_override',
+        mode: communitySceneMode,
+        detail: activeSceneKey ?? 'scene',
+      })
+    }
+    if (communityPolicy.mode !== 'NORMAL') {
+      hits.push({
+        source: 'community_mode',
+        mode: communityPolicy.mode,
+        detail: input.community_id ?? 'community',
+      })
+    }
+    if (agentMode !== 'NORMAL') {
+      hits.push({
+        source: 'agent_status',
+        mode: agentMode,
+        detail: agent?.status ?? 'UNKNOWN',
+      })
+    }
+
+    let effective_mode: HotTopicMode = 'NORMAL'
+    let effective_source: ResolvedHotTopicPolicyContext['effective_source'] = 'default'
+    for (const candidate of hits) {
+      const stricter = pickStricterHotTopicMode([effective_mode, candidate.mode])
+      if (stricter !== effective_mode) {
+        effective_mode = stricter
+        effective_source = candidate.source
+      }
+    }
+
+    return {
+      community_policy: communityPolicy,
+      effective_mode,
+      effective_source,
+      hits,
+      room_no_recommend: roomNoRecommend,
+      scene_key: activeSceneKey,
+      agent_status: agent?.status ?? null,
+    }
+  }
+
+  private resolveHotTopicEnforcement(input: {
+    channel: PolicyGatewayChannel
+    author_agent_id: string
+    hot_topic: ReturnType<HotTopicPolicyService['evaluate']> | null
+    context: ResolvedHotTopicPolicyContext | null
+  }): HotTopicEnforcement | null {
+    const agentStatus = input.context?.agent_status ?? null
+    if (input.channel === 'proactive_dm' && agentStatus && agentStatus !== 'ACTIVE') {
+      return {
+        action: 'block',
+        delivery_status: 'BLOCKED',
+        reason: agentStatus === 'LIMITED'
+          ? 'agent_limited_proactive_disabled'
+          : 'agent_status_proactive_disabled',
+        distribution_state: 'BLOCKED',
+      }
+    }
+
+    if (!input.hot_topic || !input.hot_topic.hot_topic_flag) {
+      return null
+    }
+
+    const allowedDomains = new Set(input.context?.community_policy.allowed_domains ?? DEFAULT_ALLOWED_HOT_TOPIC_DOMAINS)
+    const topicDomain = input.hot_topic.topic_domain
+    const domainAllowed = topicDomain === 'GENERAL'
+      || (topicDomain !== 'SENSITIVE' && allowedDomains.has(topicDomain))
+    const effectiveMode = input.context?.effective_mode ?? 'NORMAL'
+
+    if (effectiveMode === 'DISABLED') {
+      return {
+        action: 'block',
+        delivery_status: 'BLOCKED',
+        reason: 'hot_topic_disabled_by_kill_switch',
+        distribution_state: 'BLOCKED',
+      }
+    }
+
+    if (topicDomain === 'SENSITIVE' || !domainAllowed) {
+      return {
+        action: 'block',
+        delivery_status: 'BLOCKED',
+        reason: topicDomain === 'SENSITIVE'
+          ? input.hot_topic.enforcement_reason
+          : 'hot_topic_domain_not_allowed',
+        distribution_state: 'BLOCKED',
+      }
+    }
+
+    if (input.channel === 'proactive_dm') {
+      return null
+    }
+
+    if (effectiveMode === 'MANUAL_REVIEW_ONLY' || input.hot_topic.distribution_state === 'NO_RECOMMEND') {
+      const manualReason = effectiveMode === 'MANUAL_REVIEW_ONLY'
+        ? 'hot_topic_manual_review_only'
+        : input.hot_topic.enforcement_reason
+      return {
+        action: 'allow',
+        delivery_status: input.channel === 'chat_room' ? 'PENDING_REVIEW' : 'DELIVERED',
+        reason: manualReason,
+        distribution_state: 'NO_RECOMMEND',
+        visibility_override: input.channel === 'forum_post' || input.channel === 'forum_comment'
+          ? 'GRAY'
+          : null,
+        state_override: input.channel === 'forum_post' || input.channel === 'forum_comment'
+          ? 'APPROVED'
+          : null,
+        pending_review: input.channel === 'chat_room',
+      }
+    }
+
+    return null
+  }
+
+  private mapAgentStatusToHotTopicMode(
+    status: 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED',
+  ): HotTopicMode {
+    if (status === 'LIMITED') return 'MANUAL_REVIEW_ONLY'
+    if (status === 'QUARANTINED' || status === 'BANNED') return 'DISABLED'
+    return 'NORMAL'
   }
 }

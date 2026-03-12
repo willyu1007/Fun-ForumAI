@@ -26,7 +26,7 @@ import {
   type StageSpecV1,
 } from '../stage/index.js'
 import type { AgentStageTierService } from './agent-stage-tier-service.js'
-import type { PolicyGatewayService } from './policy-gateway-service.js'
+import type { PolicyGatewayResult, PolicyGatewayService } from './policy-gateway-service.js'
 
 export interface ModerationEvaluator {
   evaluate(input: {
@@ -71,6 +71,63 @@ interface TrustContextInput {
 
 export class ForumWriteService {
   constructor(private readonly deps: ForumWriteServiceDeps) {}
+
+  private resolveStricterVisibility(
+    current: ModerationResult['visibility'],
+    override: ModerationResult['visibility'] | null | undefined,
+  ): ModerationResult['visibility'] {
+    if (!override) return current
+    const priority: Record<ModerationResult['visibility'], number> = {
+      PUBLIC: 0,
+      GRAY: 1,
+      QUARANTINE: 2,
+    }
+    return priority[override] > priority[current] ? override : current
+  }
+
+  private resolveStricterState(
+    current: ModerationResult['state'],
+    override: ModerationResult['state'] | null | undefined,
+  ): ModerationResult['state'] {
+    if (!override) return current
+    const priority: Record<ModerationResult['state'], number> = {
+      APPROVED: 0,
+      PENDING: 1,
+      REJECTED: 2,
+    }
+    return priority[override] > priority[current] ? override : current
+  }
+
+  private deriveVerdictFromState(
+    visibility: ModerationResult['visibility'],
+    state: ModerationResult['state'],
+  ): ModerationResult['verdict'] {
+    if (state === 'REJECTED') return 'REJECT'
+    if (visibility === 'QUARANTINE' || state === 'PENDING') return 'QUARANTINE'
+    if (visibility === 'GRAY') return 'FOLD'
+    return 'APPROVE'
+  }
+
+  private applyPolicyDecisionToModeration(
+    moderation: ModerationResult,
+    gatewayDecision: Pick<PolicyGatewayResult, 'visibility_override' | 'state_override'> | null,
+  ): ModerationResult {
+    if (!gatewayDecision) return moderation
+    const visibility = this.resolveStricterVisibility(moderation.visibility, gatewayDecision.visibility_override)
+    const state = this.resolveStricterState(moderation.state, gatewayDecision.state_override)
+    if (visibility === moderation.visibility && state === moderation.state) return moderation
+
+    return {
+      ...moderation,
+      visibility,
+      state,
+      verdict: this.deriveVerdictFromState(visibility, state),
+      details: {
+        ...moderation.details,
+        decision_reason: `${moderation.details.decision_reason}; policy_gateway_distribution_override`,
+      },
+    }
+  }
 
   private normalizeChainDepth(value: number | undefined): number {
     if (typeof value !== 'number' || !Number.isFinite(value)) return 0
@@ -435,6 +492,7 @@ export class ForumWriteService {
     if (gatewayDecision) {
       this.deps.policyGatewayService?.assertAllowed(gatewayDecision)
     }
+    const effectiveModeration = this.applyPolicyDecisionToModeration(modResult, gatewayDecision)
 
     const post = await this.deps.postRepo.create({
       community_id: input.community_id,
@@ -442,15 +500,18 @@ export class ForumWriteService {
       title: input.title,
       body: input.body,
       tags: input.tags,
-      visibility: modResult.visibility,
-      state: modResult.state,
+      visibility: effectiveModeration.visibility,
+      state: effectiveModeration.state,
       moderation_metadata: {
-        ...(modResult.details as unknown as Record<string, unknown>),
+        ...(effectiveModeration.details as unknown as Record<string, unknown>),
         ...(gatewayDecision
           ? {
               policy_action: gatewayDecision.action,
               policy_reason: gatewayDecision.reason,
               policy_case_id: gatewayDecision.case_id,
+              distribution_state: gatewayDecision.distribution_state,
+              topic_signals: gatewayDecision.metadata.topic_signals ?? null,
+              kill_switch: gatewayDecision.metadata.kill_switch ?? null,
             }
           : {}),
         ...(stageContext.used_fallback ? { stage_spec_fallback: true } : {}),
@@ -541,7 +602,7 @@ export class ForumWriteService {
 
     this.notifyEvent(event)
 
-    return { post, moderation: modResult, event, agentRun }
+    return { post, moderation: effectiveModeration, event, agentRun }
   }
 
   async createComment(input: {
@@ -568,9 +629,10 @@ export class ForumWriteService {
       is_longform: false,
     })
 
+    let parentComment: Comment | null = null
     if (input.parent_comment_id) {
-      const parent = await this.deps.commentRepo.findById(input.parent_comment_id)
-      if (!parent || parent.post_id !== input.post_id) {
+      parentComment = await this.deps.commentRepo.findById(input.parent_comment_id)
+      if (!parentComment || parentComment.post_id !== input.post_id) {
         throw new NotFoundError('Parent comment', input.parent_comment_id)
       }
     }
@@ -591,6 +653,12 @@ export class ForumWriteService {
       ? await this.deps.policyGatewayService.evaluate({
           channel: 'forum_comment',
           text: input.body,
+          topic_context_text: [
+            post.title,
+            post.body,
+            parentComment?.body ?? '',
+          ].filter(Boolean).join('\n\n'),
+          topic_context_tags: post.tags,
           author_agent_id: input.actor_agent_id,
           community_id: post.community_id,
           target_type: 'comment',
@@ -602,14 +670,15 @@ export class ForumWriteService {
     if (gatewayDecision) {
       this.deps.policyGatewayService?.assertAllowed(gatewayDecision)
     }
+    const effectiveModeration = this.applyPolicyDecisionToModeration(modResult, gatewayDecision)
 
     const comment = await this.deps.commentRepo.create({
       post_id: input.post_id,
       parent_comment_id: input.parent_comment_id ?? null,
       author_agent_id: input.actor_agent_id,
       body: input.body,
-      visibility: modResult.visibility,
-      state: modResult.state,
+      visibility: effectiveModeration.visibility,
+      state: effectiveModeration.state,
     })
 
     if (gatewayDecision) {
@@ -644,7 +713,7 @@ export class ForumWriteService {
 
     this.notifyEvent(event)
 
-    return { comment, moderation: modResult, event }
+    return { comment, moderation: effectiveModeration, event }
   }
 
   async upsertVote(input: {

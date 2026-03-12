@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { config } from '../../lib/config.js'
 import type { ModerationResult } from '../../moderation/types.js'
+import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
+import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
 import { InMemoryRiskGovernanceRepository } from '../../repos/risk-governance-repository.js'
+import { InMemoryRoomWatchabilityRepository } from '../../repos/room-watchability-repository.js'
 import { HotTopicPolicyService } from '../hot-topic-policy-service.js'
 import { PolicyGatewayService } from '../policy-gateway-service.js'
 import { PublicDisclosureCapService } from '../public-disclosure-cap-service.js'
@@ -72,6 +75,68 @@ function buildGateway(result: ModerationResult) {
   })
 
   return { gateway, riskRepo, publicDisclosureCapService }
+}
+
+async function buildGatewayWithHotTopicContext(input: {
+  result?: ModerationResult
+  agent_status?: 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED'
+  community_rules_json?: Record<string, unknown> | null
+  room_program_patch?: {
+    director_policy_json?: Record<string, unknown>
+    discoverability_tags?: string[]
+    scene_type?: 'FREE_CHAT' | 'TALK_SHOW' | 'ROUND_TABLE' | 'ROAST' | 'DEBATE' | 'SLICE_OF_LIFE' | 'STORY_LAB'
+  }
+}) {
+  const riskRepo = new InMemoryRiskGovernanceRepository()
+  const reviewService = new ReviewService(riskRepo)
+  const riskEventService = new RiskEventService(riskRepo, reviewService)
+  const hotTopicPolicyService = new HotTopicPolicyService()
+  const publicDisclosureCapService = new PublicDisclosureCapService({
+    riskRepo,
+    hotTopicPolicyService,
+  })
+  const agentRepo = new InMemoryAgentRepository()
+  const communityRepo = new InMemoryCommunityRepository()
+  const roomWatchabilityRepo = new InMemoryRoomWatchabilityRepository()
+  const agent = agentRepo.create({ owner_id: 'owner-1', display_name: 'Hot Topic Bot' })
+  if (input.agent_status) {
+    agentRepo.updateStatus(agent.id, input.agent_status)
+  }
+  const community = communityRepo.create({
+    name: 'Hot Topic Community',
+    slug: `hot-topic-${Date.now()}`,
+    rules_json: input.community_rules_json ?? null,
+  })
+
+  if (input.room_program_patch) {
+    await roomWatchabilityRepo.ensureProgram({
+      id: 'room-1',
+      name: 'Room 1',
+      slug: 'room-1',
+      description: 'watch room',
+      community_id: community.id,
+      created_by_agent_id: agent.id,
+      max_agents: 4,
+      status: 'active',
+      last_message_at: null,
+      created_at: new Date(),
+      updated_at: new Date(),
+    })
+    await roomWatchabilityRepo.updateProgram('room-1', input.room_program_patch)
+  }
+
+  const gateway = new PolicyGatewayService({
+    moderator: { evaluate: () => input.result ?? CLEAN_RESULT },
+    safeReplyService: new SafeReplyService(),
+    hotTopicPolicyService,
+    riskEventService,
+    publicDisclosureCapService,
+    agentRepo,
+    communityRepo,
+    roomWatchabilityRepo,
+  })
+
+  return { gateway, riskRepo, publicDisclosureCapService, agentId: agent.id, communityId: community.id }
 }
 
 describe('PolicyGatewayService', () => {
@@ -333,5 +398,123 @@ describe('PolicyGatewayService', () => {
     expect(decision.case_id).toBeNull()
     const activeOverride = await publicDisclosureCapService.getActiveOverride('agent', 'agent-9')
     expect(activeOverride).toBeNull()
+  })
+
+  it('routes manual-review-only hot topics into gray no-recommend and HOT_TOPIC queue', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    featureFlags.riskControlV1 = true
+    featureFlags.riskControlPublicEnforce = true
+    featureFlags.hotTopicPolicyV1 = true
+
+    const { gateway, riskRepo, communityId, agentId } = await buildGatewayWithHotTopicContext({
+      community_rules_json: {
+        hot_topic_policy_v1: {
+          mode: 'MANUAL_REVIEW_ONLY',
+          allowed_domains: ['ENTERTAINMENT', 'SPORTS', 'LIFESTYLE'],
+          scene_modes: {},
+          user_copy: {},
+        },
+      },
+    })
+
+    const decision = await gateway.evaluate({
+      channel: 'forum_post',
+      text: '这档 show 的 finale 和 concert 热度都在冲榜。',
+      author_agent_id: agentId,
+      community_id: communityId,
+      target_type: 'post',
+      target_id: 'post-hot-1',
+    })
+
+    expect(decision.action).toBe('allow')
+    expect(decision.visibility_override).toBe('GRAY')
+    expect(decision.state_override).toBe('APPROVED')
+    expect(decision.distribution_state).toBe('NO_RECOMMEND')
+    expect(decision.reason).toBe('hot_topic_manual_review_only')
+
+    const cases = await riskRepo.listCases({ limit: 20, cursor: undefined })
+    expect(cases.items[0]?.case_type).toBe('HOT_TOPIC')
+    expect(cases.items[0]?.queue).toBe('HOT_TOPIC')
+  })
+
+  it('blocks allowed hot topics when the community kill switch is disabled', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    featureFlags.riskControlV1 = true
+    featureFlags.riskControlPublicEnforce = true
+    featureFlags.hotTopicPolicyV1 = true
+
+    const { gateway, communityId, agentId } = await buildGatewayWithHotTopicContext({
+      community_rules_json: {
+        hot_topic_policy_v1: {
+          mode: 'DISABLED',
+          allowed_domains: ['ENTERTAINMENT'],
+          scene_modes: {},
+          user_copy: {},
+        },
+      },
+    })
+
+    const decision = await gateway.evaluate({
+      channel: 'forum_post',
+      text: 'movie、show 和 concert 一起爆了。',
+      author_agent_id: agentId,
+      community_id: communityId,
+      target_type: 'post',
+      target_id: 'post-hot-2',
+    })
+
+    expect(decision.action).toBe('block')
+    expect(decision.reason).toBe('hot_topic_disabled_by_kill_switch')
+    expect(decision.distribution_state).toBe('BLOCKED')
+  })
+
+  it('blocks proactive dm when the agent is limited', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    featureFlags.riskControlV1 = true
+    featureFlags.riskControlProactiveEnforce = true
+    featureFlags.hotTopicPolicyV1 = true
+
+    const { gateway, communityId, agentId } = await buildGatewayWithHotTopicContext({
+      agent_status: 'LIMITED',
+    })
+
+    const decision = await gateway.evaluate({
+      channel: 'proactive_dm',
+      text: '这场 show 的新瓜我想直接私信讲给你。',
+      author_agent_id: agentId,
+      community_id: communityId,
+      user_id: 'user-1',
+      target_type: 'private_session',
+      target_id: 'session-hot-1',
+      session_id: 'session-hot-1',
+    })
+
+    expect(decision.action).toBe('block')
+    expect(decision.reason).toBe('agent_limited_proactive_disabled')
+    expect(decision.distribution_state).toBe('BLOCKED')
+  })
+
+  it('rejects sensitive hot topics for proactive dms', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    featureFlags.riskControlV1 = true
+    featureFlags.riskControlProactiveEnforce = true
+    featureFlags.hotTopicPolicyV1 = true
+
+    const { gateway, communityId, agentId } = await buildGatewayWithHotTopicContext({})
+
+    const decision = await gateway.evaluate({
+      channel: 'proactive_dm',
+      text: '我想主动跟你聊 election 和 politics 的最新变化。',
+      author_agent_id: agentId,
+      community_id: communityId,
+      user_id: 'user-1',
+      target_type: 'private_session',
+      target_id: 'session-hot-2',
+      session_id: 'session-hot-2',
+    })
+
+    expect(decision.action).toBe('block')
+    expect(decision.reason).toBe('sensitive_topic_blocked')
+    expect(decision.distribution_state).toBe('BLOCKED')
   })
 })

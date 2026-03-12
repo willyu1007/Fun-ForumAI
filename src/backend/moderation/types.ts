@@ -79,6 +79,8 @@ export type GovernanceActionType =
   | 'fold'
   | 'quarantine'
   | 'reject'
+  | 'limit_agent'
+  | 'restore_agent'
   | 'ban_agent'
   | 'unban_agent'
 

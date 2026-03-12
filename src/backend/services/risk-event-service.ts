@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { ModerationResult } from '../moderation/types.js'
 import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
+import type { ReviewCaseType, ReviewQueue } from '../repos/types.js'
 import type { ReviewService } from './review-service.js'
 
 function hashText(value: string): string {
@@ -36,6 +37,9 @@ export class RiskEventService {
     decision: Record<string, unknown>
     evidence?: Record<string, unknown>
     open_case?: boolean
+    case_type?: ReviewCaseType
+    queue?: ReviewQueue
+    priority?: number
   }) {
     const content_hash = hashText(input.text.trim())
     const snapshot = await this.riskRepo.createPolicySnapshot({
@@ -55,6 +59,9 @@ export class RiskEventService {
     let moderationCase = null
     if (input.open_case) {
       moderationCase = await this.reviewService.openAutomatedCase({
+        case_type: input.case_type,
+        queue: input.queue,
+        priority: input.priority,
         summary_text: `${input.channel} ${input.action}: ${input.reason}`,
         risk_summary: {
           source: 'policy_gateway',

@@ -1,6 +1,7 @@
 import type { RoomRepository } from '../repos/room-repository.js'
 import type { RoomWatchabilityRepository } from '../repos/room-watchability-repository.js'
 import type { AgentPublicProjectionView, Room } from '../repos/types.js'
+import { hasNoRecommendTag } from './hot-topic-policy-config.js'
 
 export interface RoomDiscoveryCandidate {
   room: Room
@@ -41,6 +42,9 @@ export class RoomDiscoveryService {
       .map((room) => {
         const program = programsByRoomId.get(room.id)
         const snapshot = snapshotsByRoomId.get(room.id) ?? null
+        if (hasNoRecommendTag(program?.discoverability_tags)) {
+          return null
+        }
 
         let score = 0.22
         const reasons: string[] = []
@@ -74,6 +78,7 @@ export class RoomDiscoveryService {
           reasons,
         } satisfies RoomDiscoveryCandidate
       })
+      .filter((candidate): candidate is RoomDiscoveryCandidate => candidate !== null)
       .sort((left, right) => right.score - left.score || left.room.id.localeCompare(right.room.id))
   }
 }

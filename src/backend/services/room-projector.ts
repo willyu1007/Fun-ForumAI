@@ -108,6 +108,9 @@ function fallbackWatchability(room: {
     canonization_note: snapshot?.canonization_note ?? null,
     cameo_hint: snapshot?.cameo_hint ?? null,
     snapshot_updated_at: snapshot?.updated_at ?? null,
+    hot_topic_mode: null,
+    distribution_state: 'NORMAL',
+    discoverability_tags: [],
   }
 }
 
