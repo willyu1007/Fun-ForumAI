@@ -22,7 +22,10 @@ import type {
   UpdateAppealRequestInput,
   UpdateComplaintTicketInput,
   UpdateModerationCaseInput,
+  UpdateModerationCaseTargetInput,
+  UpdatePolicySnapshotInput,
   UpdateReviewTaskInput,
+  UpdateRiskEventLogInput,
   UpsertUserIdentityVerificationInput,
   UserIdentityVerification,
   RiskEventLog,
@@ -36,8 +39,10 @@ export interface RiskGovernanceRepository {
 
   findPolicySnapshotByHash(input: { content_hash: string; channel: string; target_type: string }): Promise<PolicySnapshot | null>
   createPolicySnapshot(input: CreatePolicySnapshotInput): Promise<PolicySnapshot>
+  updatePolicySnapshot(id: string, input: UpdatePolicySnapshotInput): Promise<PolicySnapshot | null>
 
   createRiskEvent(input: CreateRiskEventLogInput): Promise<RiskEventLog>
+  updateRiskEvent(id: string, input: UpdateRiskEventLogInput): Promise<RiskEventLog | null>
   listRiskEvents(
     opts: PaginationOpts & { target_type?: string; target_id?: string; channel?: string; agent_id?: string; user_id?: string },
   ): Promise<PaginatedResult<RiskEventLog>>
@@ -45,8 +50,10 @@ export interface RiskGovernanceRepository {
   createCase(input: CreateModerationCaseInput): Promise<ModerationCase>
   updateCase(id: string, input: UpdateModerationCaseInput): Promise<ModerationCase | null>
   findCaseById(id: string): Promise<ModerationCase | null>
+  findLatestCaseByTarget(targetType: string, targetId: string): Promise<ModerationCase | null>
   listCases(opts: PaginationOpts & { status?: string; case_type?: string }): Promise<PaginatedResult<ModerationCase>>
   addCaseTarget(input: CreateModerationCaseTargetInput): Promise<ModerationCaseTarget>
+  updateCaseTargets(caseId: string, input: UpdateModerationCaseTargetInput): Promise<ModerationCaseTarget[]>
   listCaseTargets(caseId: string): Promise<ModerationCaseTarget[]>
   addEvidenceSnapshot(input: CreateModerationEvidenceSnapshotInput): Promise<ModerationEvidenceSnapshot>
   listEvidenceSnapshots(caseId: string): Promise<ModerationEvidenceSnapshot[]>
@@ -194,6 +201,17 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
     return entity
   }
 
+  async updatePolicySnapshot(id: string, input: UpdatePolicySnapshotInput): Promise<PolicySnapshot | null> {
+    const existing = this.policySnapshots.get(id)
+    if (!existing) return null
+    const next: PolicySnapshot = {
+      ...existing,
+      ...(input.target_id !== undefined ? { target_id: input.target_id } : {}),
+    }
+    this.policySnapshots.set(id, next)
+    return next
+  }
+
   async createRiskEvent(input: CreateRiskEventLogInput): Promise<RiskEventLog> {
     const entity: RiskEventLog = {
       id: cuid('risk'),
@@ -219,6 +237,20 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
     }
     this.riskEvents.set(entity.id, entity)
     return entity
+  }
+
+  async updateRiskEvent(id: string, input: UpdateRiskEventLogInput): Promise<RiskEventLog | null> {
+    const existing = this.riskEvents.get(id)
+    if (!existing) return null
+    const next: RiskEventLog = {
+      ...existing,
+      ...(input.target_id !== undefined ? { target_id: input.target_id } : {}),
+      ...(input.room_id !== undefined ? { room_id: input.room_id } : {}),
+      ...(input.session_id !== undefined ? { session_id: input.session_id } : {}),
+      ...(input.message_id !== undefined ? { message_id: input.message_id } : {}),
+    }
+    this.riskEvents.set(id, next)
+    return next
   }
 
   async listRiskEvents(
@@ -280,6 +312,22 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
     return this.cases.get(id) ?? null
   }
 
+  async findLatestCaseByTarget(targetType: string, targetId: string): Promise<ModerationCase | null> {
+    const caseIds = Array.from(this.caseTargets.entries())
+      .filter(([, targets]) => targets.some((target) => target.target_type === targetType && target.target_id === targetId))
+      .map(([caseId]) => caseId)
+
+    const matches = caseIds
+      .map((caseId) => this.cases.get(caseId))
+      .filter((item): item is ModerationCase => Boolean(item))
+      .sort((a, b) =>
+        b.updated_at.getTime() - a.updated_at.getTime()
+        || b.created_at.getTime() - a.created_at.getTime()
+        || b.id.localeCompare(a.id))
+
+    return matches[0] ?? null
+  }
+
   async listCases(
     opts: PaginationOpts & { status?: string; case_type?: string },
   ): Promise<PaginatedResult<ModerationCase>> {
@@ -309,6 +357,19 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
     items.push(entity)
     this.caseTargets.set(input.case_id, items)
     return entity
+  }
+
+  async updateCaseTargets(caseId: string, input: UpdateModerationCaseTargetInput): Promise<ModerationCaseTarget[]> {
+    const existing = this.caseTargets.get(caseId) ?? []
+    const next = existing.map((target) => ({
+      ...target,
+      ...(input.target_id !== undefined ? { target_id: input.target_id } : {}),
+      ...(input.room_id !== undefined ? { room_id: input.room_id } : {}),
+      ...(input.session_id !== undefined ? { session_id: input.session_id } : {}),
+      ...(input.message_id !== undefined ? { message_id: input.message_id } : {}),
+    }))
+    this.caseTargets.set(caseId, next)
+    return [...next]
   }
 
   async listCaseTargets(caseId: string): Promise<ModerationCaseTarget[]> {

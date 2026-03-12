@@ -25,6 +25,8 @@ export interface PolicyGatewayResult {
   metadata: Record<string, unknown>
   shadowed: boolean
   case_id: string | null
+  policy_snapshot_id: string | null
+  risk_event_id: string | null
 }
 
 export class PolicyGatewayService {
@@ -149,7 +151,29 @@ export class PolicyGatewayService {
       },
       shadowed,
       case_id: outcome.case?.id ?? null,
+      policy_snapshot_id: outcome.snapshot.id,
+      risk_event_id: outcome.risk_event.id,
     }
+  }
+
+  async finalizeRecordedOutcomeTarget(
+    result: Pick<PolicyGatewayResult, 'policy_snapshot_id' | 'risk_event_id' | 'case_id'>,
+    target: {
+      target_id: string
+      room_id?: string | null
+      session_id?: string | null
+      message_id?: string | null
+    },
+  ): Promise<void> {
+    await this.deps.riskEventService.rebindRecordedOutcomeTarget({
+      policy_snapshot_id: result.policy_snapshot_id,
+      risk_event_id: result.risk_event_id,
+      case_id: result.case_id,
+      target_id: target.target_id,
+      room_id: target.room_id,
+      session_id: target.session_id,
+      message_id: target.message_id,
+    })
   }
 
   assertAllowed(result: Pick<PolicyGatewayResult, 'action' | 'reason'>): void {

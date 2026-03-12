@@ -27,5 +27,9 @@
   - `PATCH /agents/:agentId/config` 与 `AgentService.updateConfig()` 改为基于最新 revision（含 pending）合并，修复高风险配置待审期间继续编辑会丢变更的问题。
   - `ComplaintAppealService` 增加 report/appeal `target_type` allowlist 与目标存在性校验，阻断任意字符串污染 case 队列。
   - admin risk profile 的 `effective_disclosure_cap` 改为优先读取 runtime privacy settings；同时补纯函数回归测试覆盖 source priority。
+  - `AgentConfigLintService` 改为基于 `before_config`/`after_config` 差异判定高风险面，避免已批准的 `publish`/`proactive`/`privacy` 配置让后续无关编辑重复入审。
+  - `PolicyGatewayService` 输出 `policy_snapshot_id`/`risk_event_id`，并在 forum post/comment/chat message 持久化后回绑真实 target id，修复自动 case 绑定到 snapshot/post 占位 id 的问题。
+  - `ComplaintAppealService` 改为通过治理仓储按 target 直接查找既有 case，不再受 `listCases(limit=200)` 窗口影响。
+  - 私聊消息读取补 owner 鉴权：`GET /agents/:agentId/chat/sessions/:sessionId/messages` 在 route fallback 层校验 agent owner，service 层再校验 session owner。
 - 当前未完成项集中在 `T-091` 尾项：community/scene/agent kill switch、推荐降权/不推荐链路、更多聊天室/通知面透明文案。
 - schema 迁移文件已落 repo，但尚未对任何真实 DB 执行 `migrate deploy`；见 `04-verification.md`。

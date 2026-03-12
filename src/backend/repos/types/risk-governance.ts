@@ -178,6 +178,10 @@ export interface CreatePolicySnapshotInput {
   decision: Record<string, unknown>
 }
 
+export interface UpdatePolicySnapshotInput {
+  target_id?: string | null
+}
+
 export interface CreateRiskEventLogInput {
   policy_snapshot_id?: string | null
   case_id?: string | null
@@ -197,6 +201,13 @@ export interface CreateRiskEventLogInput {
   message_id?: string | null
   detail_text?: string | null
   payload?: Record<string, unknown> | null
+}
+
+export interface UpdateRiskEventLogInput {
+  target_id?: string | null
+  room_id?: string | null
+  session_id?: string | null
+  message_id?: string | null
 }
 
 export interface CreateModerationCaseInput {
@@ -233,6 +244,13 @@ export interface CreateModerationCaseTargetInput {
   community_id?: string | null
   agent_id?: string | null
   user_id?: string | null
+  room_id?: string | null
+  session_id?: string | null
+  message_id?: string | null
+}
+
+export interface UpdateModerationCaseTargetInput {
+  target_id?: string
   room_id?: string | null
   session_id?: string | null
   message_id?: string | null

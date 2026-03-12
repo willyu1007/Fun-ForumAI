@@ -26,6 +26,8 @@
 | `pnpm test src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx` | pass | 10 tests passed |
 | `pnpm typecheck` | pass | includes `prisma generate` pre-step |
 | `pnpm test src/backend/services/__tests__/policy-gateway-service.test.ts src/backend/services/__tests__/complaint-appeal-service.test.ts src/backend/services/__tests__/agent-service.test.ts src/backend/routes/__tests__/admin-api-utils.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts src/backend/routes/__tests__/e2e-control-plane.test.ts` | pass | 95 tests passed after fixing review findings |
+| `pnpm vitest run src/backend/services/__tests__/agent-config-lint-service.test.ts src/backend/services/__tests__/complaint-appeal-service.test.ts src/backend/services/__tests__/forum-write-service.policy-gateway.test.ts src/backend/services/__tests__/chat-service.policy-gateway.test.ts src/backend/services/__tests__/private-channel-service.test.ts src/backend/services/__tests__/forum-write-service.test.ts src/backend/services/__tests__/policy-gateway-service.test.ts src/backend/routes/__tests__/private-channel-message-auth.test.ts src/backend/routes/__tests__/private-channel-memory-auth.test.ts` | pass | 48 tests passed, 覆盖 config diff lint、>200 report dedupe、forum/chat target rebind、私聊读取 owner auth |
+| `pnpm exec tsc --noEmit` | pass | 新增治理仓储接口与调用点通过静态编译 |
 | `git diff --check` | pass | no whitespace / merge-marker issues |
 | `node .ai/scripts/ctl-db-ssot.mjs sync-to-context` | pass | refreshed `docs/context/db/schema.json` after schema change |
 

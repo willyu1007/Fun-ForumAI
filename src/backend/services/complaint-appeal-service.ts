@@ -65,14 +65,7 @@ export class ComplaintAppealService {
   }
 
   private async findExistingCaseByTarget(targetType: string, targetId: string) {
-    const cases = await this.riskRepo.listCases({ limit: 200, cursor: undefined })
-    for (const existing of cases.items) {
-      const targets = await this.riskRepo.listCaseTargets(existing.id)
-      if (targets.some((target) => target.target_type === targetType && target.target_id === targetId)) {
-        return existing
-      }
-    }
-    return null
+    return this.riskRepo.findLatestCaseByTarget(targetType, targetId)
   }
 
   async createReport(input: {

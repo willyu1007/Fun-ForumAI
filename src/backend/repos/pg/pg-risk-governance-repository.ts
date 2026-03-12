@@ -37,7 +37,10 @@ import type {
   UpdateAppealRequestInput,
   UpdateComplaintTicketInput,
   UpdateModerationCaseInput,
+  UpdateModerationCaseTargetInput,
+  UpdatePolicySnapshotInput,
   UpdateReviewTaskInput,
+  UpdateRiskEventLogInput,
   UpsertUserIdentityVerificationInput,
   UserIdentityVerification,
 } from '../types.js'
@@ -167,6 +170,20 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
     return this.toPolicySnapshot(row)
   }
 
+  async updatePolicySnapshot(id: string, input: UpdatePolicySnapshotInput): Promise<PolicySnapshot | null> {
+    try {
+      const row = await this.prisma.policySnapshot.update({
+        where: { id },
+        data: {
+          ...(input.target_id !== undefined ? { targetId: input.target_id } : {}),
+        },
+      })
+      return this.toPolicySnapshot(row)
+    } catch {
+      return null
+    }
+  }
+
   async createRiskEvent(input: CreateRiskEventLogInput): Promise<RiskEventLog> {
     const row = await this.prisma.riskEventLog.create({
       data: {
@@ -191,6 +208,23 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
       },
     })
     return this.toRiskEvent(row)
+  }
+
+  async updateRiskEvent(id: string, input: UpdateRiskEventLogInput): Promise<RiskEventLog | null> {
+    try {
+      const row = await this.prisma.riskEventLog.update({
+        where: { id },
+        data: {
+          ...(input.target_id !== undefined ? { targetId: input.target_id } : {}),
+          ...(input.room_id !== undefined ? { roomId: input.room_id } : {}),
+          ...(input.session_id !== undefined ? { sessionId: input.session_id } : {}),
+          ...(input.message_id !== undefined ? { messageId: input.message_id } : {}),
+        },
+      })
+      return this.toRiskEvent(row)
+    } catch {
+      return null
+    }
   }
 
   async listRiskEvents(
@@ -259,6 +293,22 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
     return row ? this.toModerationCase(row) : null
   }
 
+  async findLatestCaseByTarget(targetType: string, targetId: string): Promise<ModerationCase | null> {
+    const targets = await this.prisma.moderationCaseTarget.findMany({
+      where: { targetType, targetId },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })
+    const caseIds = [...new Set(targets.map((target) => target.caseId))]
+    if (caseIds.length === 0) return null
+
+    const rows = await this.prisma.moderationCase.findMany({
+      where: { id: { in: caseIds } },
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      take: 1,
+    })
+    return rows[0] ? this.toModerationCase(rows[0]) : null
+  }
+
   async listCases(
     opts: PaginationOpts & { status?: string; case_type?: string },
   ): Promise<PaginatedResult<ModerationCase>> {
@@ -296,6 +346,19 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     })
     return rows.map((row) => this.toCaseTarget(row))
+  }
+
+  async updateCaseTargets(caseId: string, input: UpdateModerationCaseTargetInput): Promise<ModerationCaseTarget[]> {
+    await this.prisma.moderationCaseTarget.updateMany({
+      where: { caseId },
+      data: {
+        ...(input.target_id !== undefined ? { targetId: input.target_id } : {}),
+        ...(input.room_id !== undefined ? { roomId: input.room_id } : {}),
+        ...(input.session_id !== undefined ? { sessionId: input.session_id } : {}),
+        ...(input.message_id !== undefined ? { messageId: input.message_id } : {}),
+      },
+    })
+    return this.listCaseTargets(caseId)
   }
 
   async addEvidenceSnapshot(

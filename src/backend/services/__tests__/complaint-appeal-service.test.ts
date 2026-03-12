@@ -89,6 +89,55 @@ describe('ComplaintAppealService', () => {
     expect(evidence.some((item) => item.snapshot_type === 'case_reopened')).toBe(true)
   })
 
+  it('finds and reopens an older matching case even after more than 200 newer cases exist', async () => {
+    const { riskRepo, service, reviewService, agent, messageRepo } = setup()
+    const message = await messageRepo.create({
+      room_id: 'room-overflow',
+      author_id: agent.id,
+      body: 'aged target',
+    })
+    const original = await reviewService.openAutomatedCase({
+      case_type: 'COMPLAINT',
+      summary_text: 'Original complaint case',
+      opened_reason: 'seeded',
+      target: {
+        case_id: '',
+        target_type: 'message',
+        target_id: message.id,
+        channel: 'report',
+      },
+    })
+    await reviewService.resolveCase(original.id, 'seeded_resolution')
+
+    await new Promise((resolve) => setTimeout(resolve, 5))
+
+    for (let i = 0; i < 250; i += 1) {
+      await reviewService.openAutomatedCase({
+        case_type: 'COMPLAINT',
+        summary_text: `Newer complaint ${i}`,
+        opened_reason: 'seeded_newer_case',
+        target: {
+          case_id: '',
+          target_type: 'message',
+          target_id: `message-newer-${i}`,
+          channel: 'report',
+        },
+      })
+    }
+
+    const result = await service.createReport({
+      reporter_user_id: 'user-overflow',
+      target_type: 'message',
+      target_id: message.id,
+      reason_code: 'repeat_report',
+    })
+
+    expect(result.case?.id).toBe(original.id)
+
+    const cases = await riskRepo.listCases({ limit: 300, cursor: undefined })
+    expect(cases.items).toHaveLength(251)
+  })
+
   it('links appeal requests into their own review case', async () => {
     const { riskRepo, service, agent, postRepo } = setup()
     const post = await postRepo.create({

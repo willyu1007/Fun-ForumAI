@@ -98,4 +98,38 @@ export class RiskEventService {
       case: moderationCase,
     }
   }
+
+  async rebindRecordedOutcomeTarget(input: {
+    policy_snapshot_id?: string | null
+    risk_event_id?: string | null
+    case_id?: string | null
+    target_id: string
+    room_id?: string | null
+    session_id?: string | null
+    message_id?: string | null
+  }): Promise<void> {
+    if (input.policy_snapshot_id) {
+      await this.riskRepo.updatePolicySnapshot(input.policy_snapshot_id, {
+        target_id: input.target_id,
+      })
+    }
+
+    if (input.risk_event_id) {
+      await this.riskRepo.updateRiskEvent(input.risk_event_id, {
+        target_id: input.target_id,
+        room_id: input.room_id,
+        session_id: input.session_id,
+        message_id: input.message_id,
+      })
+    }
+
+    if (input.case_id) {
+      await this.riskRepo.updateCaseTargets(input.case_id, {
+        target_id: input.target_id,
+        room_id: input.room_id,
+        session_id: input.session_id,
+        message_id: input.message_id,
+      })
+    }
+  }
 }

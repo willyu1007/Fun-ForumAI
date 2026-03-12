@@ -354,8 +354,14 @@ export class PrivateChannelService {
 
   async getMessages(
     sessionId: string,
+    humanUserId: string,
     opts: PaginationOpts,
   ): Promise<PaginatedResult<PrivateMessage>> {
+    const session = await this.deps.channelRepo.findSessionById(sessionId)
+    if (!session) throw new NotFoundError('PrivateSession', sessionId)
+    if (session.human_user_id !== humanUserId) {
+      throw new ForbiddenError('Not your session')
+    }
     return this.deps.channelRepo.listMessages(sessionId, opts)
   }
 

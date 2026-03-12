@@ -148,16 +148,22 @@ privateChannelRouter.get(
   '/agents/:agentId/chat/sessions/:sessionId/messages',
   requireHumanAuth,
   async (req, res) => {
-    const services = getServices()
-    if (!services) {
-      res.json({ data: { items: [], next_cursor: null } })
-      return
-    }
-
     try {
+      const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
+      if (!ownership.ok) {
+        res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+        return
+      }
+
+      const services = getServices()
+      if (!services) {
+        res.json({ data: { items: [], next_cursor: null } })
+        return
+      }
+
       const limit = Math.min(parseInt(String(req.query.limit ?? '50'), 10), 100)
       const cursor = req.query.cursor as string | undefined
-      const result = await services.channelService.getMessages(String(req.params.sessionId), {
+      const result = await services.channelService.getMessages(String(req.params.sessionId), req.user!.userId, {
         limit,
         cursor,
       })

@@ -394,6 +394,15 @@ export class ChatService {
       moderation_metadata: policyDecision?.metadata ?? input.moderation_metadata ?? null,
     })
     const msg = this.enrichMessage(created, { fallbackToRawBody: true }) ?? created
+
+    if (policyDecision) {
+      await this.deps.policyGatewayService?.finalizeRecordedOutcomeTarget(policyDecision, {
+        target_id: msg.id,
+        room_id: input.room_id,
+        message_id: msg.id,
+      })
+    }
+
     await this.deps.roomRepo.updateLastMessageAt(input.room_id, msg.created_at)
     await this.deps.roomRepo.recordMemberMessage(input.room_id, input.author_id, msg.created_at)
 

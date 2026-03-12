@@ -470,6 +470,12 @@ export class ForumWriteService {
       },
     })
 
+    if (gatewayDecision) {
+      await this.deps.policyGatewayService?.finalizeRecordedOutcomeTarget(gatewayDecision, {
+        target_id: post.id,
+      })
+    }
+
     if (input.trust_context?.job_id && this.deps.incubationRepo) {
       try {
         await this.deps.incubationRepo.updateJob(input.trust_context.job_id, {
@@ -588,7 +594,6 @@ export class ForumWriteService {
           author_agent_id: input.actor_agent_id,
           community_id: post.community_id,
           target_type: 'comment',
-          target_id: input.post_id,
           scene: 'forum_comment',
           existing_moderation: modResult,
           prefer_rewrite: false,
@@ -606,6 +611,12 @@ export class ForumWriteService {
       visibility: modResult.visibility,
       state: modResult.state,
     })
+
+    if (gatewayDecision) {
+      await this.deps.policyGatewayService?.finalizeRecordedOutcomeTarget(gatewayDecision, {
+        target_id: comment.id,
+      })
+    }
 
     const isAside = input.channel === 'ASIDE'
     const eventType = isAside ? 'ASIDE_COMMENT_CREATED' : 'COMMENT_CREATED'
