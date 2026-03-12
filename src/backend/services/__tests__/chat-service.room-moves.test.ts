@@ -32,6 +32,12 @@ function makeService(roomRepo: InMemoryRoomRepository, overrides?: {
       })),
     } as never,
     agentService: {
+      getAgentPersisted: vi.fn((agentId: string) => ({
+        id: agentId,
+        owner_id: 'owner-1',
+        display_name: `Agent ${agentId}`,
+      })),
+      getLatestConfigPersisted: vi.fn(() => null),
       getLatestConfig: vi.fn(() => null),
     } as never,
     eventRepo: {
