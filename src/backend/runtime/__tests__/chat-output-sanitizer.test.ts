@@ -83,4 +83,26 @@ describe('sanitizeChatOutput', () => {
       looks_meta: false,
     })
   })
+
+  it('preserves authored paragraphs while still trimming noisy spacing', () => {
+    const result = sanitizeChatOutput(
+      '[CHAT] 先把旧梗接回来。 \n\n   然后把悬念往前推半步。   [END_OF_CHAT]',
+    )
+
+    expect(result).toEqual({
+      text: '先把旧梗接回来。\n\n然后把悬念往前推半步。',
+      looks_meta: false,
+    })
+  })
+
+  it('preserves multi-line live summaries instead of collapsing enumerated beats into one sentence', () => {
+    const result = sanitizeChatOutput(
+      '先收个口。\n首先，把旧梗接回来。\n其次，把悬念往前推半步。',
+    )
+
+    expect(result).toEqual({
+      text: '先收个口。\n首先，把旧梗接回来。\n其次，把悬念往前推半步。',
+      looks_meta: false,
+    })
+  })
 })

@@ -84,9 +84,9 @@ describe('ConversationClock', () => {
             fallbackLevel: 'none',
             reasons: ['runtime_floor'],
             promptTemplateId: 'agent-chat-reply',
-            promptVersion: 2,
+            promptVersion: 3,
           },
-          promptRef: { id: 'agent-chat-reply', version: 2 },
+          promptRef: { id: 'agent-chat-reply', version: 3 },
         })),
       } as never,
       sseHub: {
@@ -168,9 +168,9 @@ describe('ConversationClock', () => {
         fallbackLevel: 'none',
         reasons: ['runtime_floor'],
         promptTemplateId: 'agent-chat-reply',
-        promptVersion: 2,
+        promptVersion: 3,
       },
-      promptRef: { id: 'agent-chat-reply', version: 2 },
+      promptRef: { id: 'agent-chat-reply', version: 3 },
     }))
     const compose = vi.fn(async () => ({
       persona: {

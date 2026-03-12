@@ -9,33 +9,32 @@ import { Badge } from '@/components/ui/badge'
 import { AgentCreateWizard } from '../components/AgentCreateWizard'
 import type { Agent } from '@/api/types'
 import { PERSONA_SEED_OPTIONS, type PersonaSeedCode } from '../persona-seeds'
-
+import { uix } from '@/shared/utils/uix'
 function coercePersonaSeedCode(value: string): PersonaSeedCode {
   const matched = PERSONA_SEED_OPTIONS.find((option) => option.code === value)
   return matched?.code ?? PERSONA_SEED_OPTIONS[0].code
 }
-
 export function AgentManagePage() {
   const { user, currentIdentity } = useAuth()
   const createAgent = useCreateAgent()
   const [displayName, setDisplayName] = useState('')
-  const [personaSeedCode, setPersonaSeedCode] = useState<PersonaSeedCode>(PERSONA_SEED_OPTIONS[0].code)
+  const [personaSeedCode, setPersonaSeedCode] = useState<PersonaSeedCode>(
+    PERSONA_SEED_OPTIONS[0].code,
+  )
   const [created, setCreated] = useState<Agent[]>([])
   const [wizardOpen, setWizardOpen] = useState(false)
-
   if (currentIdentity === 'anonymous') {
     return (
       <div className="space-y-4">
-        <h1 className="text-lg font-bold">智能体管理</h1>
-        <div className="rounded-md border border-dashed bg-muted/30 p-10 text-center">
-          <p className="text-sm text-muted-foreground">
+        <h1 className={uix('uix-65af6ac52c')}>智能体管理</h1>
+        <div className={uix('uix-5218d295f2')}>
+          <p className={uix('uix-26f026f8ad')}>
             请先通过下方工具栏切换为<strong>用户</strong>或<strong>管理员</strong>身份。
           </p>
         </div>
       </div>
     )
   }
-
   const handleCreate = async () => {
     if (!displayName.trim() || !user) return
     try {
@@ -49,14 +48,11 @@ export function AgentManagePage() {
       // error handled by mutation state
     }
   }
-
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-lg font-bold">智能体管理</h1>
-        <p className="text-xs text-muted-foreground">
-          创建和管理 LLM 智能体。当前身份：{user?.email}
-        </p>
+        <h1 className={uix('uix-65af6ac52c')}>智能体管理</h1>
+        <p className={uix('uix-25be576b96')}>创建和管理 LLM 智能体。当前身份：{user?.email}</p>
       </div>
 
       <div className="flex gap-2">
@@ -75,8 +71,8 @@ export function AgentManagePage() {
       />
 
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">快速创建</CardTitle>
+        <CardHeader className={uix('uix-f4cc511ff0')}>
+          <CardTitle className={uix('uix-fc7473ca09')}>快速创建</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -89,7 +85,7 @@ export function AgentManagePage() {
             <select
               value={personaSeedCode}
               onChange={(e) => setPersonaSeedCode(coercePersonaSeedCode(e.target.value))}
-              className="h-10 rounded-md border border-input bg-background px-3 text-sm sm:w-40"
+              className={uix('uix-ebe1542709')}
             >
               {PERSONA_SEED_OPTIONS.map((option) => (
                 <option key={option.code} value={option.code}>
@@ -106,29 +102,27 @@ export function AgentManagePage() {
             </Button>
           </div>
           {createAgent.isError && (
-            <p className="mt-2 text-xs text-destructive">{createAgent.error.message}</p>
+            <p className={uix('uix-24449fdcf8')}>{createAgent.error.message}</p>
           )}
         </CardContent>
       </Card>
 
       {created.length > 0 && (
         <section>
-          <h2 className="mb-2 text-sm font-semibold">刚刚创建</h2>
+          <h2 className={uix('uix-673a51ffad')}>刚刚创建</h2>
           <div className="space-y-1">
             {created.map((agent) => (
-              <div key={agent.id} className="flex items-center justify-between rounded-md border bg-card px-3 py-2">
+              <div key={agent.id} className={uix('uix-81af913189')}>
                 <div>
-                  <Link
-                    to={`/agents/${agent.id}`}
-                    className="text-sm font-medium hover:text-primary hover:underline"
-                  >
+                  <Link to={`/agents/${agent.id}`} className={uix('uix-9845912366')}>
                     {agent.display_name}
                   </Link>
-                  <p className="text-[10px] text-muted-foreground">
-                    {agent.persona_seed_label ?? '未命名模板'} · {agent.home_voice_line_label ?? 'Qwen Social v1'} · {agent.id}
+                  <p className={uix('uix-abda0153e3')}>
+                    {agent.persona_seed_label ?? '未命名模板'} ·{' '}
+                    {agent.home_voice_line_label ?? 'Qwen Social v1'} · {agent.id}
                   </p>
                 </div>
-                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 text-[10px]">
+                <Badge variant="outline" className={uix('uix-2801f8f0b2')}>
                   活跃
                 </Badge>
               </div>

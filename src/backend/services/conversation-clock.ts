@@ -615,6 +615,7 @@ export class ConversationClock {
           ? persona.interests.join('、')
           : '多元话题',
       persona_language: persona.language,
+      persona_seed_code: observationIdentity?.persona_seed_code ?? 'scholar',
       room_name: room.name,
       room_description: room.description || '',
       recent_messages: recentText || '（房间刚刚创建，还没有对话）',

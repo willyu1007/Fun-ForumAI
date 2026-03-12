@@ -140,7 +140,9 @@ function renderPage(path: string) {
   )
 }
 
-function buildGuidanceSummary(overrides?: Partial<NonNullable<ReturnType<typeof useGuidanceSummaryMock>['data']>['data']>) {
+function buildGuidanceSummary(
+  overrides?: Partial<NonNullable<ReturnType<typeof useGuidanceSummaryMock>['data']>['data']>,
+) {
   return {
     data: {
       data: {
@@ -271,8 +273,8 @@ describe('PostDetailPage', () => {
 
     renderPage('/posts/post-1')
 
-    expect(screen.queryByText('Audience Zone')).toBeNull()
-    expect(screen.queryByText('Aftershow Block')).toBeNull()
+    expect(screen.queryByText('💬 观众区')).toBeNull()
+    expect(screen.queryByText('📝 场后总结')).toBeNull()
     expect(useAudienceThreadMock).toHaveBeenCalledWith('post-1', { enabled: false })
     expect(useAftershowMock).toHaveBeenCalledWith('post-1', { enabled: false })
     expect(useAsideSeatsMock).toHaveBeenCalledWith('post-1', { enabled: false })
@@ -290,6 +292,50 @@ describe('PostDetailPage', () => {
     const audienceTextarea = screen.getByPlaceholderText('留下你的观众留言…')
     expect(audienceTextarea.getAttribute('id')).toBe('audience-message-input')
     expect(audienceTextarea.getAttribute('name')).toBe('audienceMessage')
+  })
+
+  it('renders structured aftershow sections without leaking raw json', () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    useAftershowMock.mockReturnValue({
+      data: {
+        data: {
+          post_id: 'post-1',
+          aftershow_summary: {
+            id: 'aftershow-1',
+            status: 'PUBLISHED',
+            summary_text: '备用总结',
+            content: {
+              title: '场后总结 · test post',
+              summary: '一句重点\n\n- 关键看点',
+              highlights: [
+                {
+                  audience_message_id: 'msg-1',
+                  user_id: 'user-1',
+                  excerpt: '第一条亮点',
+                },
+              ],
+              generated_at: '2026-03-01T00:00:00.000Z',
+            },
+            published_at: '2026-03-01T00:00:00.000Z',
+            correlation_id: null,
+          },
+          aftershow_callouts: [],
+          audience_thread_meta: null,
+        } satisfies AftershowSnapshot,
+      },
+    } as never)
+
+    renderPage('/posts/post-1')
+
+    expect(screen.getByText('📝 场后总结')).toBeTruthy()
+    expect(screen.getByText('🌟 精选观众高光')).toBeTruthy()
+    expect(screen.getByText('第一条亮点')).toBeTruthy()
+    expect(screen.queryByText(/"title":/)).toBeNull()
   })
 
   it('renders and scrolls to focused audience message even when it is older than the latest 20 messages', async () => {
@@ -429,33 +475,35 @@ describe('PostDetailPage', () => {
       isLoading: false,
       error: null,
     } as never)
-    useGuidanceSummaryMock.mockReturnValue(buildGuidanceSummary({
-      modules: [
-        {
-          type: 'CARD',
-          item: {
-            id: 'card-1',
-            module_type: 'CARD',
-            reason_code: 'FOLLOWED_AGENT_STORY_ESCALATED',
-            title: '你关注的剧情升级了',
-            body: '回去接上这条线。',
-            unread: true,
-            status: 'ACTIVE',
-            cta: {
-              label: '进入正在发酵的剧情',
-              target: '/posts/post-1',
+    useGuidanceSummaryMock.mockReturnValue(
+      buildGuidanceSummary({
+        modules: [
+          {
+            type: 'CARD',
+            item: {
+              id: 'card-1',
+              module_type: 'CARD',
+              reason_code: 'FOLLOWED_AGENT_STORY_ESCALATED',
+              title: '你关注的剧情升级了',
+              body: '回去接上这条线。',
+              unread: true,
+              status: 'ACTIVE',
+              cta: {
+                label: '进入正在发酵的剧情',
+                target: '/posts/post-1',
+              },
+              payload: {
+                post_id: 'post-1',
+              },
+              related_agent_id: 'agent-1',
+              related_session_id: null,
+              created_at: '2026-03-11T00:00:00.000Z',
+              updated_at: '2026-03-11T00:00:00.000Z',
             },
-            payload: {
-              post_id: 'post-1',
-            },
-            related_agent_id: 'agent-1',
-            related_session_id: null,
-            created_at: '2026-03-11T00:00:00.000Z',
-            updated_at: '2026-03-11T00:00:00.000Z',
           },
-        },
-      ],
-    }) as never)
+        ],
+      }) as never,
+    )
 
     renderPage('/posts/post-1')
 

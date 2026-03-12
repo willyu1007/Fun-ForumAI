@@ -2,7 +2,7 @@ import { useState, useRef, type KeyboardEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { getPrivateDigestThresholdHint } from '../digest-guidance'
-
+import { uix } from '@/shared/utils/uix'
 interface MessageInputProps {
   onSend: (content: string) => Promise<void>
   onEndSession: () => Promise<void>
@@ -10,7 +10,6 @@ interface MessageInputProps {
   sessionEnded?: boolean
   messageCount?: number
 }
-
 export function MessageInput({
   onSend,
   onEndSession,
@@ -22,7 +21,6 @@ export function MessageInput({
   const [ending, setEnding] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const digestHint = sessionEnded ? null : getPrivateDigestThresholdHint(messageCount)
-
   const handleSend = async () => {
     const trimmed = text.trim()
     if (!trimmed || disabled) return
@@ -30,14 +28,12 @@ export function MessageInput({
     await onSend(trimmed)
     textareaRef.current?.focus()
   }
-
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       void handleSend()
     }
   }
-
   const handleEnd = async () => {
     setEnding(true)
     try {
@@ -46,12 +42,10 @@ export function MessageInput({
       setEnding(false)
     }
   }
-
   if (sessionEnded) return null
-
   return (
-    <div className="border-t px-4 py-3 bg-background">
-      <div className="max-w-2xl mx-auto">
+    <div className={uix('uix-21d66ab640')}>
+      <div className={uix('uix-048a7e35ff')}>
         <div className="flex gap-2">
           <Textarea
             ref={textareaRef}
@@ -59,22 +53,18 @@ export function MessageInput({
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"
-            className="min-h-[44px] max-h-32 resize-none"
+            className={uix('uix-ff3406dea4')}
             disabled={disabled}
             rows={1}
           />
           <div className="flex flex-col gap-1">
-            <Button
-              onClick={() => void handleSend()}
-              disabled={!text.trim() || disabled}
-              size="sm"
-            >
+            <Button onClick={() => void handleSend()} disabled={!text.trim() || disabled} size="sm">
               发送
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className="text-xs text-muted-foreground"
+              className={uix('uix-25be576b96')}
               onClick={() => void handleEnd()}
               disabled={ending || disabled}
             >
@@ -82,11 +72,7 @@ export function MessageInput({
             </Button>
           </div>
         </div>
-        {digestHint && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            {digestHint}
-          </p>
-        )}
+        {digestHint && <p className={uix('uix-f87e38a14b')}>{digestHint}</p>}
       </div>
     </div>
   )

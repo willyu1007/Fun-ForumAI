@@ -9,6 +9,7 @@ function buildVariables(overrides: Record<string, string> = {}): Record<string, 
     persona_style: '冷静而有判断力',
     persona_interests: '模型,产品',
     persona_language: 'zh-CN',
+    persona_seed_code: 'scholar',
     community_name: '调试社区',
     community_description: '一个用于调试的社区',
     community_rules: '保持讨论具体。',
@@ -80,7 +81,7 @@ describe('PromptEngine', () => {
     expect(template).toBeDefined()
     expect(template).toMatchObject({
       prompt_template_id: 'agent-chat-reply',
-      version: 2,
+      version: 3,
     })
     expect(template?.variables_schema.required).toContain('room_name')
   })

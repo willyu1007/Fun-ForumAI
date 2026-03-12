@@ -260,6 +260,7 @@ if (config.nodeEnv !== 'production') {
         persona_style: persona.style,
         persona_interests: persona.interests.join('、'),
         persona_language: persona.language,
+        persona_seed_code: identityContract.persona_seed_code,
         community_name: '调试社区',
         community_description: '',
         community_rules: '',

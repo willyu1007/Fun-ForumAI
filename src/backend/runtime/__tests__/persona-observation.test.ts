@@ -16,7 +16,7 @@ describe('persona-observation', () => {
       coverageStatus: 'migrated_visible',
       personaSeedCode: 'scholar',
       homeVoiceLineId: 'qwen-social-v1',
-      promptRef: { id: 'agent-chat-reply', version: 2 },
+      promptRef: { id: 'agent-chat-reply', version: 3 },
       requestedTier: 'lite',
       resolvedTier: 'lite',
       renderDecision: {
@@ -29,7 +29,7 @@ describe('persona-observation', () => {
         fallbackLevel: 'none',
         reasons: ['test'],
         promptTemplateId: 'agent-chat-reply',
-        promptVersion: 2,
+        promptVersion: 3,
       },
       usage: { prompt_tokens: 10, completion_tokens: 6, total_tokens: 16 },
       latencyMs: 800,

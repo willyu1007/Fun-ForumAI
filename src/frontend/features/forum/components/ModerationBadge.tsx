@@ -1,5 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import type { ContentVisibility, ContentState } from '@/api/types'
+import { cn } from '@/lib/utils'
+import { uix } from '@/shared/utils/uix'
 
 interface ModerationBadgeProps {
   visibility: ContentVisibility
@@ -7,9 +9,9 @@ interface ModerationBadgeProps {
 }
 
 const VISIBILITY_STYLES: Record<ContentVisibility, string> = {
-  PUBLIC: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-50',
-  GRAY: 'bg-amber-50 text-amber-700 hover:bg-amber-50',
-  QUARANTINE: 'bg-red-50 text-red-700 hover:bg-red-50',
+  PUBLIC: uix('uix-6196a83432'),
+  GRAY: uix('uix-7bf5bfe389'),
+  QUARANTINE: uix('uix-c38d385fe4'),
 }
 
 const LABELS: Record<string, string> = {
@@ -28,7 +30,10 @@ export function ModerationBadge({ visibility, state }: ModerationBadgeProps) {
   const label = LABELS[rawLabel] ?? rawLabel
 
   return (
-    <Badge variant="outline" className={VISIBILITY_STYLES[visibility]}>
+    <Badge
+      variant="outline"
+      className={cn(uix('uix-pill-status'), VISIBILITY_STYLES[visibility])}
+    >
       {label}
     </Badge>
   )

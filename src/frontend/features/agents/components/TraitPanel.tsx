@@ -1,43 +1,32 @@
-import {
-  useAgentTraits,
-  useTraitDefinitions,
-  useEquipTrait,
-  useUnequipTrait,
-} from '@/api/hooks'
+import { useAgentTraits, useTraitDefinitions, useEquipTrait, useUnequipTrait } from '@/api/hooks'
 import type { AgentTraitInfo, TraitDefinition } from '@/api/types'
-
+import { uix } from '@/shared/utils/uix'
 interface TraitPanelProps {
   agentId: string
   isOwner?: boolean
 }
-
 export default function TraitPanel({ agentId, isOwner = false }: TraitPanelProps) {
   const { data: traitsRes, isLoading: traitsLoading } = useAgentTraits(agentId)
   const { data: defsRes, isLoading: defsLoading } = useTraitDefinitions()
   const equip = useEquipTrait(agentId)
   const unequip = useUnequipTrait(agentId)
-
   if (traitsLoading || defsLoading) {
-    return <div className="animate-pulse text-sm text-muted-foreground">加载特质中…</div>
+    return <div className={uix('uix-839cdd2e7e')}>加载特质中…</div>
   }
-
   const traits: AgentTraitInfo[] = traitsRes?.data ?? []
   const defs: TraitDefinition[] = defsRes?.data ?? []
   const defMap = new Map(defs.map((d) => [d.code, d]))
-
   const equipped = traits.filter((t) => t.status === 'equipped' && t.category === 'adjustable')
   const system = traits.filter((t) => t.category === 'system')
-  const equippedCodes = new Set(traits.filter((t) => t.status === 'equipped').map((t) => t.trait_code))
-
-  const candidates = defs.filter(
-    (d) => d.category === 'adjustable' && !equippedCodes.has(d.code),
+  const equippedCodes = new Set(
+    traits.filter((t) => t.status === 'equipped').map((t) => t.trait_code),
   )
-
+  const candidates = defs.filter((d) => d.category === 'adjustable' && !equippedCodes.has(d.code))
   return (
-    <div className="rounded-xl border bg-card p-5 space-y-4">
+    <div className={uix('uix-63142bb52e')}>
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold">特质管理</h3>
-        <span className="text-xs text-muted-foreground">按行为条件解锁与装备</span>
+        <h3 className={uix('uix-e83a7042bc')}>特质管理</h3>
+        <span className={uix('uix-25be576b96')}>按行为条件解锁与装备</span>
       </div>
 
       {system.length > 0 && (
@@ -46,7 +35,7 @@ export default function TraitPanel({ agentId, isOwner = false }: TraitPanelProps
             const def = defMap.get(t.trait_code)
             return (
               <Badge key={t.id} variant="system">
-                <span className="mr-1">⚙️</span>
+                <span className={uix('uix-618162408e')}>⚙️</span>
                 {def?.emoji} {def?.name ?? t.trait_code}
               </Badge>
             )
@@ -55,9 +44,7 @@ export default function TraitPanel({ agentId, isOwner = false }: TraitPanelProps
       )}
 
       <Section title="已装备">
-        {equipped.length === 0 && (
-          <span className="text-xs text-muted-foreground">暂无已装备特质</span>
-        )}
+        {equipped.length === 0 && <span className={uix('uix-25be576b96')}>暂无已装备特质</span>}
         {equipped.map((t) => {
           const def = defMap.get(t.trait_code)
           return (
@@ -65,7 +52,7 @@ export default function TraitPanel({ agentId, isOwner = false }: TraitPanelProps
               {def?.emoji} {def?.name ?? t.trait_code}
               {isOwner && (
                 <button
-                  className="ml-1.5 rounded px-1 text-xs hover:bg-violet-200 dark:hover:bg-violet-800 disabled:opacity-50"
+                  className={uix('uix-57d22d46ef')}
                   disabled={unequip.isPending}
                   onClick={() => unequip.mutate(t.trait_code)}
                 >
@@ -79,14 +66,12 @@ export default function TraitPanel({ agentId, isOwner = false }: TraitPanelProps
 
       {isOwner && (
         <Section title="候选">
-          {candidates.length === 0 && (
-            <span className="text-xs text-muted-foreground">无可用候选特质</span>
-          )}
+          {candidates.length === 0 && <span className={uix('uix-25be576b96')}>无可用候选特质</span>}
           {candidates.map((d) => (
             <Badge key={d.code} variant="candidate">
               {d.emoji} {d.name}
               <button
-                className="ml-1.5 rounded px-1 text-xs hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50"
+                className={uix('uix-0d42dcaf77')}
                 disabled={equip.isPending}
                 onClick={() => equip.mutate(d.code)}
               >
@@ -99,22 +84,19 @@ export default function TraitPanel({ agentId, isOwner = false }: TraitPanelProps
     </div>
   )
 }
-
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="mb-1.5 text-xs font-medium text-muted-foreground">{title}</p>
+      <p className={uix('uix-6a8eda6259')}>{title}</p>
       <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   )
 }
-
 const variantClasses = {
   system: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
   equipped: 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300',
   candidate: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
 } as const
-
 function Badge({
   variant,
   children,
@@ -123,10 +105,6 @@ function Badge({
   children: React.ReactNode
 }) {
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${variantClasses[variant]}`}
-    >
-      {children}
-    </span>
+    <span className={`${uix('uix-pill-badge-base')} ${variantClasses[variant]}`}>{children}</span>
   )
 }

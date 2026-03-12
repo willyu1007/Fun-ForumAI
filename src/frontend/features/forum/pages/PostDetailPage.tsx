@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link, useSearchParams, useLocation } from 'react-router'
-import { usePost, useComments, useAudienceThread, useCreateAudienceMessage, useAftershow, useAsideSeats, useAgentProfile, useFollowAgent, useGuidanceSummary } from '@/api/hooks'
+import {
+  usePost,
+  useComments,
+  useAudienceThread,
+  useCreateAudienceMessage,
+  useAftershow,
+  useAsideSeats,
+  useAgentProfile,
+  useFollowAgent,
+  useGuidanceSummary,
+} from '@/api/hooks'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -14,13 +24,61 @@ import { HumanVoteControls } from '../components/HumanVoteControls'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { useSseNewCounts } from '@/api/use-sse'
 import { useAuth } from '@/shared/hooks/use-auth'
+import { RichTextLite } from '@/shared/components/RichTextLite'
 import { cn } from '@/lib/utils'
 import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
 import { GuidanceInlineRail } from '@/features/guidance/components/GuidanceInlineRail'
-import { buildPostSpectatorRail, findCanonicalGuidanceItemForPost } from '@/features/guidance/contextual-guidance'
+import {
+  buildPostSpectatorRail,
+  findCanonicalGuidanceItemForPost,
+} from '@/features/guidance/contextual-guidance'
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
+import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
 import { locationToPath } from '@/shared/utils/auth-redirect'
-
+import { uix } from '@/shared/utils/uix'
+interface AftershowContentHighlightV1 {
+  audience_message_id: string
+  user_id: string
+  excerpt: string
+}
+interface AftershowContentV1 {
+  title: string
+  summary: string
+  highlights: AftershowContentHighlightV1[]
+  generated_at: string
+}
+function toAftershowContentV1(
+  value: Record<string, unknown> | null | undefined,
+): AftershowContentV1 | null {
+  if (!value) return null
+  const title = typeof value.title === 'string' ? value.title : null
+  const summary = typeof value.summary === 'string' ? value.summary : null
+  const generatedAt = typeof value.generated_at === 'string' ? value.generated_at : null
+  const highlights = Array.isArray(value.highlights)
+    ? value.highlights
+        .map((item) => {
+          if (!item || typeof item !== 'object' || Array.isArray(item)) return null
+          const audienceMessageId =
+            typeof item.audience_message_id === 'string' ? item.audience_message_id : null
+          const userId = typeof item.user_id === 'string' ? item.user_id : null
+          const excerpt = typeof item.excerpt === 'string' ? item.excerpt : null
+          if (!audienceMessageId || !userId || !excerpt) return null
+          return {
+            audience_message_id: audienceMessageId,
+            user_id: userId,
+            excerpt,
+          } satisfies AftershowContentHighlightV1
+        })
+        .filter((item): item is AftershowContentHighlightV1 => item !== null)
+    : []
+  if (!title || !summary || !generatedAt) return null
+  return {
+    title,
+    summary,
+    highlights,
+    generated_at: generatedAt,
+  }
+}
 export function PostDetailPage() {
   const guidanceEnabled = isGuidanceEnabled()
   const { isAuthenticated } = useAuth()
@@ -30,26 +88,33 @@ export function PostDetailPage() {
   const [audienceDraft, setAudienceDraft] = useState('')
   const [audienceDraftError, setAudienceDraftError] = useState<string | null>(null)
   const [followError, setFollowError] = useState<string | null>(null)
-  const [highlightedAudienceMessageId, setHighlightedAudienceMessageId] = useState<string | null>(null)
+  const [highlightedAudienceMessageId, setHighlightedAudienceMessageId] = useState<string | null>(
+    null,
+  )
   const { data: postData, isLoading: postLoading, error: postError } = usePost(postId ?? '')
   const guidanceSummary = useGuidanceSummary()
   const postPayload = postData?.data ?? null
   const authorAgentId = postPayload?.author.id ?? ''
   const authorProfile = useAgentProfile(authorAgentId)
   const followAuthor = useFollowAgent(authorAgentId)
-  const supportsAudienceAftershowWeb = postPayload !== null
-    && Object.prototype.hasOwnProperty.call(postPayload, 'aftershow_summary')
-    && Object.prototype.hasOwnProperty.call(postPayload, 'aftershow_callouts')
-    && Object.prototype.hasOwnProperty.call(postPayload, 'audience_thread_meta')
+  const supportsAudienceAftershowWeb =
+    postPayload !== null &&
+    Object.prototype.hasOwnProperty.call(postPayload, 'aftershow_summary') &&
+    Object.prototype.hasOwnProperty.call(postPayload, 'aftershow_callouts') &&
+    Object.prototype.hasOwnProperty.call(postPayload, 'audience_thread_meta')
   const { data: commentsData, isLoading: commentsLoading } = useComments(postId ?? '')
-  const { data: audienceThreadData } = useAudienceThread(postId ?? '', { enabled: supportsAudienceAftershowWeb })
-  const { data: aftershowData } = useAftershow(postId ?? '', { enabled: supportsAudienceAftershowWeb })
-  const { data: asideSeatsData } = useAsideSeats(postId ?? '', { enabled: supportsAudienceAftershowWeb })
+  const { data: audienceThreadData } = useAudienceThread(postId ?? '', {
+    enabled: supportsAudienceAftershowWeb,
+  })
+  const { data: aftershowData } = useAftershow(postId ?? '', {
+    enabled: supportsAudienceAftershowWeb,
+  })
+  const { data: asideSeatsData } = useAsideSeats(postId ?? '', {
+    enabled: supportsAudienceAftershowWeb,
+  })
   const createAudienceMessage = useCreateAudienceMessage(postId ?? '')
   const { newCommentCounts, clearNewComments } = useSseNewCounts()
-
   const newCommentCount = (postId && newCommentCounts[postId]) || 0
-
   const isAudienceAftershowEnabled = supportsAudienceAftershowWeb
   const audienceThreadMessages = audienceThreadData?.data?.messages
   const asideSeatItems = asideSeatsData?.data?.seats
@@ -72,31 +137,46 @@ export function PostDetailPage() {
     if (!isAudienceAftershowEnabled) return []
     return asideSeatItems ?? []
   }, [asideSeatItems, isAudienceAftershowEnabled])
-
+  const aftershowContent = useMemo(
+    () => toAftershowContentV1(aftershow?.aftershow_summary?.content ?? null),
+    [aftershow?.aftershow_summary?.content],
+  )
   const focusedAftershowId = searchParams.get('aftershow_id')
   const focusedCalloutIndexRaw = searchParams.get('callout_index')
-  const focusedCalloutIndex = focusedCalloutIndexRaw ? Number.parseInt(focusedCalloutIndexRaw, 10) : null
+  const focusedCalloutIndex = focusedCalloutIndexRaw
+    ? Number.parseInt(focusedCalloutIndexRaw, 10)
+    : null
   const focusedAudienceMessageIdFromQuery = searchParams.get('audience_message_id')
-
   const focusedCallout = useMemo(() => {
-    if (!aftershow || !focusedAftershowId || focusedCalloutIndex === null || Number.isNaN(focusedCalloutIndex) || focusedCalloutIndex < 0) {
+    if (
+      !aftershow ||
+      !focusedAftershowId ||
+      focusedCalloutIndex === null ||
+      Number.isNaN(focusedCalloutIndex) ||
+      focusedCalloutIndex < 0
+    ) {
       return null
     }
-    return aftershow.aftershow_callouts.find((item, index) =>
-      item.artifact_id === focusedAftershowId && index === focusedCalloutIndex) ?? null
+    return (
+      aftershow.aftershow_callouts.find(
+        (item, index) => item.artifact_id === focusedAftershowId && index === focusedCalloutIndex,
+      ) ?? null
+    )
   }, [aftershow, focusedAftershowId, focusedCalloutIndex])
-
-  const focusedAudienceMessageId = focusedAudienceMessageIdFromQuery || focusedCallout?.audience_message_id || null
+  const focusedAudienceMessageId =
+    focusedAudienceMessageIdFromQuery || focusedCallout?.audience_message_id || null
   const currentPath = locationToPath(location)
   const renderedAudienceMessages = useMemo(() => {
     const recentMessages = audienceMessages.slice(-20)
     if (!focusedAudienceMessageId) return recentMessages
-    if (recentMessages.some((message) => message.id === focusedAudienceMessageId)) return recentMessages
-    const focusedMessage = audienceMessages.find((message) => message.id === focusedAudienceMessageId)
+    if (recentMessages.some((message) => message.id === focusedAudienceMessageId))
+      return recentMessages
+    const focusedMessage = audienceMessages.find(
+      (message) => message.id === focusedAudienceMessageId,
+    )
     if (!focusedMessage) return recentMessages
     return [focusedMessage, ...recentMessages]
   }, [audienceMessages, focusedAudienceMessageId])
-
   useEffect(() => {
     if (!focusedAudienceMessageId) {
       setHighlightedAudienceMessageId(null)
@@ -115,44 +195,41 @@ export function PostDetailPage() {
     }, 2500)
     return () => window.clearTimeout(timer)
   }, [focusedAudienceMessageId, renderedAudienceMessages])
-
   if (postLoading) {
     return (
       <div className="space-y-3">
         <Skeleton className="h-6 w-40" />
-        <Skeleton className="h-48 rounded-md" />
+        <Skeleton className={uix('uix-c3f01542ea')} />
       </div>
     )
   }
-
   if (postError || !postData?.data) {
     return (
       <div className="space-y-3">
         <Button variant="ghost" size="sm" asChild>
           <Link to="/">← 返回广场</Link>
         </Button>
-        <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-          未找到该帖子。
-        </div>
+        <div className={uix('uix-f1637dcd62')}>未找到该帖子。</div>
       </div>
     )
   }
-
   const post = postData.data
   const guidanceData = guidanceEnabled ? guidanceSummary.data?.data : undefined
-  const canonicalGuidanceItem = guidanceEnabled ? findCanonicalGuidanceItemForPost(guidanceData, post.id) : null
-  const spectatorRail = guidanceEnabled && !canonicalGuidanceItem
-    ? buildPostSpectatorRail({
-        summary: guidanceData,
-        isAuthenticated,
-        isFollowingAuthor: authorProfile.data?.data?.is_followed ?? false,
-        currentPath,
-      })
+  const canonicalGuidanceItem = guidanceEnabled
+    ? findCanonicalGuidanceItemForPost(guidanceData, post.id)
     : null
+  const spectatorRail =
+    guidanceEnabled && !canonicalGuidanceItem
+      ? buildPostSpectatorRail({
+          summary: guidanceData,
+          isAuthenticated,
+          isFollowingAuthor: authorProfile.data?.data?.is_followed ?? false,
+          currentPath,
+        })
+      : null
   const author = post.author
   const communityPath = post.community_slug || post.community_id
   const commentCount = commentsData?.data?.length ?? post.comment_count
-
   const handleFollowAuthor = async () => {
     if (!authorAgentId) return
     setFollowError(null)
@@ -162,7 +239,6 @@ export function PostDetailPage() {
       setFollowError(error instanceof Error ? error.message : '关注失败，请稍后重试')
     }
   }
-
   const handleSendAudienceMessage = async () => {
     const body = audienceDraft.trim()
     if (!isAudienceAftershowEnabled || !body || !postId || createAudienceMessage.isPending) return
@@ -174,15 +250,14 @@ export function PostDetailPage() {
       setAudienceDraftError(error instanceof Error ? error.message : '发布失败，请稍后重试')
     }
   }
-
   return (
     <div className="space-y-3">
-      <Button variant="ghost" size="sm" asChild className="h-7 text-xs">
+      <Button variant="ghost" size="sm" asChild className={uix('uix-fe3d94994b')}>
         <Link to="/">← 返回广场</Link>
       </Button>
 
-      <div className="flex rounded-md border bg-card">
-        <div className="flex w-10 shrink-0 items-start justify-center rounded-l-md bg-muted/40 pt-3">
+      <div className={uix('uix-00d41dad4f')}>
+        <div className={uix('uix-07041d1b44')}>
           <div className="flex flex-col items-center gap-1">
             <VoteColumn targetType="POST" targetId={post.id} score={post.vote_score} />
             <HumanVoteControls
@@ -196,145 +271,149 @@ export function PostDetailPage() {
           </div>
         </div>
 
-        <div className="min-w-0 flex-1 p-4">
+        <div className={uix('uix-f96a1e91b5')}>
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0 space-y-1">
               {post.community_id && (
-                <Link
-                  to={`/c/${communityPath}`}
-                  className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground hover:bg-accent"
-                >
+                <Link to={`/c/${communityPath}`} className={uix('uix-b1e8336281')}>
                   c/{communityPath}
                 </Link>
               )}
-              <Link to={`/agents/${author.id}`} className="inline-flex max-w-full items-center gap-1.5 hover:underline">
+              <Link
+                to={`/agents/${author.id}`}
+                className="inline-flex max-w-full items-center gap-1.5 hover:underline"
+              >
                 <Avatar className="h-5 w-5">
-                  {author.avatar_url && <AvatarImage src={author.avatar_url} alt={author.display_name} />}
-                  <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
+                  {author.avatar_url && (
+                    <AvatarImage src={author.avatar_url} alt={author.display_name} />
+                  )}
+                  <AvatarFallback className={uix('uix-c9c4000725')}>
                     {author.display_name.slice(0, 1).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className="truncate text-xs font-medium text-foreground">{author.display_name}</span>
+                <span className={uix('uix-15efed281d')}>{author.display_name}</span>
               </Link>
             </div>
-            <div className="flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+            <div className={uix('uix-1e02cc4e42')}>
               <span>{relativeTime(post.created_at)}</span>
               <ModerationBadge visibility={post.visibility} state={post.state} />
             </div>
           </div>
 
-          <h1 className="mt-2 text-lg font-bold leading-snug">{post.title}</h1>
+          <h1 className={uix('uix-2dac82659b')}>{post.title}</h1>
 
           {post.tags.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1">
+            <div className={uix('uix-6c52481496')}>
               {post.tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="px-1.5 py-0 text-[10px]">
+                <Badge key={tag} variant="secondary" className={uix('uix-9e8fecbb7f')}>
                   {tag}
                 </Badge>
               ))}
             </div>
           )}
 
-          <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">
-            {post.body}
-          </div>
+          <RichTextLite text={post.body} className={uix('uix-2a398e7214')} />
 
           {post.media.length > 0 && (
-            <div className="mt-3 space-y-2">
-              <p className="text-xs text-muted-foreground">附带图片</p>
+            <div className={uix('uix-a7cd7a5d10')}>
+              <p className={uix('uix-25be576b96')}>附带图片</p>
               <div className="flex flex-wrap gap-2">
                 {post.media.map((item) => (
                   <a key={item.asset_id} href={item.media_url} target="_blank" rel="noreferrer">
-                    <img
-                      src={item.media_url}
-                      alt="post media"
-                      className="h-28 w-40 rounded-md border object-cover"
-                    />
+                    <img src={item.media_url} alt="post media" className={uix('uix-5cf23b6415')} />
                   </a>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="mt-4 flex items-center gap-4 border-t pt-3 text-xs text-muted-foreground">
-            <span className="font-medium">💬 {commentCount} 条讨论</span>
-            <span>Agent 👍 {post.agent_vote_up} / 👎 {post.agent_vote_down}</span>
-            <span>Human 👍 {post.human_vote_up} / 👎 {post.human_vote_down}</span>
+          <div className={uix('uix-0fc8796731')}>
+            <span className={uix('uix-2689f39580')}>💬 {commentCount} 条讨论</span>
+            <span>
+              Agent 👍 {post.agent_vote_up} / 👎 {post.agent_vote_down}
+            </span>
+            <span>
+              Human 👍 {post.human_vote_up} / 👎 {post.human_vote_down}
+            </span>
             <span>综合分 {post.weighted_vote_score}</span>
           </div>
         </div>
       </div>
 
-      {(canonicalGuidanceItem || spectatorRail) && (
-        canonicalGuidanceItem ? (
+      {(canonicalGuidanceItem || spectatorRail) &&
+        (canonicalGuidanceItem ? (
           <GuidanceItemCard item={canonicalGuidanceItem} />
         ) : spectatorRail ? (
           <div className="space-y-2">
             <GuidanceInlineRail
               rail={spectatorRail}
-              onAction={spectatorRail.cta.kind === 'button' ? () => {
-                void handleFollowAuthor()
-              } : undefined}
+              onAction={
+                spectatorRail.cta.kind === 'button'
+                  ? () => {
+                      void handleFollowAuthor()
+                    }
+                  : undefined
+              }
               actionPending={followAuthor.isPending}
             />
             {followError && spectatorRail.cta.kind === 'button' && (
-              <p className="text-sm text-destructive">{followError}</p>
+              <p className={uix('uix-c889115c43')}>{followError}</p>
             )}
           </div>
-        ) : null
-      )}
+        ) : null)}
 
-      <div className="rounded-md border bg-card p-4">
+      <div className={uix('uix-dc51efa437')}>
         <NewContentBanner
           count={newCommentCount}
           label="条新回复"
-          onRefresh={() => { if (postId) clearNewComments(postId) }}
+          onRefresh={() => {
+            if (postId) clearNewComments(postId)
+          }}
           queryKey={['comments', postId]}
         />
-        <CommentList
-          comments={commentsData?.data ?? []}
-          isLoading={commentsLoading}
-        />
+        <CommentList comments={commentsData?.data ?? []} isLoading={commentsLoading} />
       </div>
 
       {isAudienceAftershowEnabled && aftershow && (
         <>
-          <div className="rounded-md border bg-card p-4 space-y-3">
+          <div className={uix('uix-d4e7e4bb07')}>
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold">Audience Zone</h2>
-              <span className="text-xs text-muted-foreground">
-                {audienceMessages.length} 条留言
-              </span>
+              <h2 className={uix('uix-9f9576a7da')}>{formatGlossaryLabel('audienceZone')}</h2>
+              <span className={uix('uix-25be576b96')}>{audienceMessages.length} 条留言</span>
             </div>
 
             {asideSeats.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {asideSeats.map((seat) => (
-                  <Badge key={seat.id} variant="outline" className="text-[10px]">
+                  <Badge key={seat.id} variant="outline" className={uix('uix-1dc571a360')}>
                     {seat.role} · {seat.agent_id.slice(0, 8)}
                   </Badge>
                 ))}
               </div>
             )}
 
-            <div className="max-h-56 space-y-2 overflow-y-auto rounded-md border bg-muted/20 p-2">
+            <div className={uix('uix-6bdac1a18e')}>
               {audienceMessages.length === 0 ? (
-                <div className="py-5 text-center text-xs text-muted-foreground">还没有观众留言</div>
+                <div className={uix('uix-5b0a9eed34')}>还没有观众留言</div>
               ) : (
                 renderedAudienceMessages.map((message) => (
                   <div
                     key={message.id}
                     id={`audience-message-${message.id}`}
                     className={cn(
-                      'rounded border bg-background p-2 transition-colors',
-                      highlightedAudienceMessageId === message.id && 'border-emerald-500 bg-emerald-50/60',
+                      uix('uix-a1670fa70c'),
+                      highlightedAudienceMessageId === message.id && uix('uix-a3dca92e1e'),
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-medium text-foreground">用户 {message.author_user_id.slice(0, 8)}</span>
-                      <span className="text-[10px] text-muted-foreground">{relativeTime(message.created_at)}</span>
+                      <span className={uix('uix-e990e4304b')}>
+                        用户 {message.author_user_id.slice(0, 8)}
+                      </span>
+                      <span className={uix('uix-abda0153e3')}>
+                        {relativeTime(message.created_at)}
+                      </span>
                     </div>
-                    <p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed">{message.body}</p>
+                    <RichTextLite text={message.body} className={uix('uix-14d734a71b')} />
                   </div>
                 ))
               )}
@@ -349,18 +428,27 @@ export function PostDetailPage() {
                   setAudienceDraft(e.target.value)
                   if (audienceDraftError) setAudienceDraftError(null)
                 }}
-                disabled={!isAuthenticated || !isAudienceAftershowEnabled || createAudienceMessage.isPending}
-                placeholder={isAuthenticated ? '留下你的观众留言…' : '登录后可参与 Audience Zone'}
-                className="min-h-20 text-sm"
+                disabled={
+                  !isAuthenticated || !isAudienceAftershowEnabled || createAudienceMessage.isPending
+                }
+                placeholder={isAuthenticated ? '留下你的观众留言…' : '登录后可参与观众区'}
+                className={uix('uix-84b25cd81f')}
               />
               {audienceDraftError && (
-                <div className="text-xs text-destructive">{audienceDraftError}</div>
+                <div className={uix('uix-551c237449')}>{audienceDraftError}</div>
               )}
               <div className="flex justify-end">
                 <Button
                   size="sm"
-                  disabled={!isAuthenticated || !isAudienceAftershowEnabled || !audienceDraft.trim() || createAudienceMessage.isPending}
-                  onClick={() => { void handleSendAudienceMessage() }}
+                  disabled={
+                    !isAuthenticated ||
+                    !isAudienceAftershowEnabled ||
+                    !audienceDraft.trim() ||
+                    createAudienceMessage.isPending
+                  }
+                  onClick={() => {
+                    void handleSendAudienceMessage()
+                  }}
                 >
                   发布留言
                 </Button>
@@ -368,35 +456,64 @@ export function PostDetailPage() {
             </div>
           </div>
 
-          <div className="rounded-md border bg-card p-4 space-y-3">
+          <div className={uix('uix-d4e7e4bb07')}>
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold">Aftershow Block</h2>
+              <h2 className={uix('uix-9f9576a7da')}>{formatGlossaryLabel('aftershowBlock')}</h2>
               {aftershow.aftershow_summary?.published_at && (
-                <span className="text-xs text-muted-foreground">
+                <span className={uix('uix-25be576b96')}>
                   发布于 {relativeTime(aftershow.aftershow_summary.published_at)}
                 </span>
               )}
             </div>
 
             {!aftershow.aftershow_summary ? (
-              <div className="rounded-md border border-dashed p-4 text-xs text-muted-foreground">
-                暂无 Aftershow，总结尚未发布。
-              </div>
+              <div className={uix('uix-8a085b9853')}>暂无 Aftershow，总结尚未发布。</div>
             ) : (
-              <div className="space-y-2">
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{aftershow.aftershow_summary.summary_text}</p>
-                {aftershow.aftershow_summary.content && (
-                  <pre className="overflow-x-auto rounded-md bg-muted/30 p-2 text-[11px]">
-                    {JSON.stringify(aftershow.aftershow_summary.content, null, 2)}
-                  </pre>
+              <div className="space-y-3">
+                {aftershowContent?.title && (
+                  <p className={uix('uix-5af1ba0eb8')}>{aftershowContent.title}</p>
                 )}
+
+                <div className={uix('uix-e78ccbb8c7')}>
+                  <p className={uix('uix-f549f10a99')}>{formatGlossaryLabel('summary')}</p>
+                  <RichTextLite
+                    text={aftershowContent?.summary ?? aftershow.aftershow_summary.summary_text}
+                    className={uix('uix-470129e6c7')}
+                  />
+                </div>
+
+                {aftershowContent?.highlights.length ? (
+                  <div className={uix('uix-e78ccbb8c7')}>
+                    <p className={uix('uix-f549f10a99')}>
+                      {formatGlossaryLabel('audienceHighlights')}
+                    </p>
+                    <div className={uix('uix-813892bc68')}>
+                      {aftershowContent.highlights.map((highlight) => (
+                        <div key={highlight.audience_message_id} className={uix('uix-b612da518f')}>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={uix('uix-e990e4304b')}>
+                              用户 {highlight.user_id.slice(0, 8)}
+                            </span>
+                            <Badge variant="outline" className={uix('uix-1dc571a360')}>
+                              观众留言
+                            </Badge>
+                          </div>
+                          <RichTextLite
+                            text={highlight.excerpt}
+                            className={uix('uix-14d734a71b')}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             )}
 
             <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">Callouts</p>
+              <p className={uix('uix-f549f10a99')}>{formatGlossaryLabel('callouts')}</p>
               {aftershow.aftershow_callouts.length === 0 ? (
-                <div className="text-xs text-muted-foreground">暂无 callout</div>
+                <div className={uix('uix-25be576b96')}>暂无被回应的观众点</div>
               ) : (
                 aftershow.aftershow_callouts.map((callout, index) => {
                   const highlighted = focusedAftershowId
@@ -406,15 +523,17 @@ export function PostDetailPage() {
                     <div
                       key={callout.id}
                       className={cn(
-                        'rounded-md border p-2 text-xs',
-                        highlighted ? 'border-emerald-500 bg-emerald-50/60' : 'bg-background',
+                        uix('uix-a8bb6e0a63'),
+                        highlighted ? uix('uix-a3dca92e1e') : uix('uix-e6f9e383a7'),
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium">#{index + 1} · 用户 {callout.user_id.slice(0, 8)}</span>
-                        {highlighted && <Badge className="text-[10px]">通知定位</Badge>}
+                        <span className={uix('uix-2689f39580')}>
+                          #{index + 1} · 用户 {callout.user_id.slice(0, 8)}
+                        </span>
+                        {highlighted && <Badge className={uix('uix-1dc571a360')}>已定位</Badge>}
                       </div>
-                      <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{callout.reason}</p>
+                      <RichTextLite text={callout.reason} className={uix('uix-d05147b388')} />
                     </div>
                   )
                 })

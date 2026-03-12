@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { useCreateInstruction, useInstructionTemplates } from '@/api/hooks'
 import { Button } from '@/components/ui/button'
-
+import { uix } from '@/shared/utils/uix'
 interface InstructionEditorProps {
   agentId: string
   onClose: () => void
 }
-
 const TRIGGER_TYPES = [
   { value: 'always', label: '始终触发' },
   { value: 'keyword', label: '关键词触发' },
@@ -15,20 +14,16 @@ const TRIGGER_TYPES = [
   { value: 'random', label: '随机触发' },
   { value: 'schedule', label: '定时触发' },
 ] as const
-
 const SCENE_OPTIONS = [
   { value: 'chat_room', label: '聊天室' },
   { value: 'forum_post', label: '论坛发帖' },
   { value: 'forum_comment', label: '论坛评论' },
 ] as const
-
 const BODY_MAX = 200
-
 export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) {
   const create = useCreateInstruction(agentId)
   const { data: templatesData } = useInstructionTemplates()
   const templates = templatesData?.data ?? []
-
   const [name, setName] = useState('')
   const [triggerType, setTriggerType] = useState('always')
   const [keywords, setKeywords] = useState('')
@@ -37,11 +32,15 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
   const [body, setBody] = useState('')
   const [priority, setPriority] = useState(5)
   const [showTemplates, setShowTemplates] = useState(false)
-
   const buildTriggerParams = () => {
     switch (triggerType) {
       case 'keyword':
-        return { keywords: keywords.split(',').map((k) => k.trim()).filter(Boolean) }
+        return {
+          keywords: keywords
+            .split(',')
+            .map((k) => k.trim())
+            .filter(Boolean),
+        }
       case 'scene':
         return { scenes }
       case 'high_controversy':
@@ -50,7 +49,6 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
         return undefined
     }
   }
-
   const handleSubmit = async () => {
     if (!name.trim() || !body.trim()) return
     await create.mutateAsync({
@@ -62,36 +60,42 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
     })
     onClose()
   }
-
-  const applyTemplate = (tpl: { name: string; trigger_type: string; trigger_params: unknown; body: string }) => {
+  const applyTemplate = (tpl: {
+    name: string
+    trigger_type: string
+    trigger_params: unknown
+    body: string
+  }) => {
     setName(tpl.name)
     setTriggerType(tpl.trigger_type)
     setBody(tpl.body)
     if (tpl.trigger_type === 'keyword' && tpl.trigger_params) {
-      const params = tpl.trigger_params as { keywords?: string[] }
+      const params = tpl.trigger_params as {
+        keywords?: string[]
+      }
       setKeywords(params.keywords?.join(', ') ?? '')
     }
     if (tpl.trigger_type === 'scene' && tpl.trigger_params) {
-      const params = tpl.trigger_params as { scenes?: string[] }
+      const params = tpl.trigger_params as {
+        scenes?: string[]
+      }
       setScenes(params.scenes ?? [])
     }
     if (tpl.trigger_type === 'high_controversy' && tpl.trigger_params) {
-      const params = tpl.trigger_params as { threshold?: number }
+      const params = tpl.trigger_params as {
+        threshold?: number
+      }
       setThreshold(params.threshold ?? 0.7)
     }
     setShowTemplates(false)
   }
-
   const toggleScene = (scene: string) => {
-    setScenes((prev) =>
-      prev.includes(scene) ? prev.filter((s) => s !== scene) : [...prev, scene],
-    )
+    setScenes((prev) => (prev.includes(scene) ? prev.filter((s) => s !== scene) : [...prev, scene]))
   }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">新建指令</h3>
+        <h3 className={uix('uix-9f9576a7da')}>新建指令</h3>
         <div className="relative">
           <Button
             variant="outline"
@@ -102,13 +106,13 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
             模板
           </Button>
           {showTemplates && templates.length > 0 && (
-            <div className="absolute right-0 z-10 mt-1 w-56 rounded-md border bg-background p-1 shadow-lg">
+            <div className={uix('uix-8be92b3570')}>
               {templates.map((tpl) => (
                 <button
                   key={tpl.id}
                   type="button"
                   onClick={() => applyTemplate(tpl)}
-                  className="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+                  className={uix('uix-df6cd0d4c0')}
                 >
                   {tpl.name}
                 </button>
@@ -119,22 +123,22 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium">名称</label>
+        <label className={uix('uix-04e0ee4b3b')}>名称</label>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="指令名称"
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+          className={uix('uix-bb26c57321')}
         />
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium">触发类型</label>
+        <label className={uix('uix-04e0ee4b3b')}>触发类型</label>
         <select
           value={triggerType}
           onChange={(e) => setTriggerType(e.target.value)}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+          className={uix('uix-bb26c57321')}
         >
           {TRIGGER_TYPES.map((t) => (
             <option key={t.value} value={t.value}>
@@ -146,30 +150,28 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
 
       {triggerType === 'keyword' && (
         <div>
-          <label className="mb-1 block text-sm font-medium">关键词（逗号分隔）</label>
+          <label className={uix('uix-04e0ee4b3b')}>关键词（逗号分隔）</label>
           <input
             type="text"
             value={keywords}
             onChange={(e) => setKeywords(e.target.value)}
             placeholder="AI, 人工智能, 机器学习"
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+            className={uix('uix-bb26c57321')}
           />
         </div>
       )}
 
       {triggerType === 'scene' && (
         <div>
-          <label className="mb-1 block text-sm font-medium">场景选择</label>
+          <label className={uix('uix-04e0ee4b3b')}>场景选择</label>
           <div className="flex flex-wrap gap-2">
             {SCENE_OPTIONS.map((opt) => {
               const active = scenes.includes(opt.value)
               return (
                 <label
                   key={opt.value}
-                  className={`cursor-pointer rounded-md border px-3 py-1.5 text-sm transition-colors ${
-                    active
-                      ? 'border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300'
-                      : 'border-border hover:bg-muted'
+                  className={`${uix('uix-choice-chip')} ${
+                    active ? uix('uix-c6b1a26b89') : uix('uix-94ec054230')
                   }`}
                 >
                   <input
@@ -188,9 +190,9 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
 
       {triggerType === 'high_controversy' && (
         <div>
-          <div className="mb-1 flex items-center justify-between">
-            <label className="text-sm font-medium">争议阈值</label>
-            <span className="text-xs text-muted-foreground">{threshold.toFixed(2)}</span>
+          <div className={uix('uix-3a9d20850c')}>
+            <label className={uix('uix-aaa307c4ab')}>争议阈值</label>
+            <span className={uix('uix-25be576b96')}>{threshold.toFixed(2)}</span>
           </div>
           <input
             type="range"
@@ -201,7 +203,7 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
             onChange={(e) => setThreshold(Number(e.target.value))}
             className="w-full accent-sky-500"
           />
-          <div className="mt-0.5 flex justify-between text-xs text-muted-foreground">
+          <div className={uix('uix-9d4fa5789f')}>
             <span>0.50</span>
             <span>1.00</span>
           </div>
@@ -209,9 +211,11 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
       )}
 
       <div>
-        <div className="mb-1 flex items-center justify-between">
-          <label className="text-sm font-medium">指令内容</label>
-          <span className={`text-xs ${body.length > BODY_MAX ? 'text-destructive' : 'text-muted-foreground'}`}>
+        <div className={uix('uix-3a9d20850c')}>
+          <label className={uix('uix-aaa307c4ab')}>指令内容</label>
+          <span
+            className={`${uix('uix-text-xs')} ${body.length > BODY_MAX ? uix('uix-811148b13d') : uix('uix-bfa6031907')}`}
+          >
             {body.length}/{BODY_MAX}
           </span>
         </div>
@@ -220,14 +224,14 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
           onChange={(e) => setBody(e.target.value.slice(0, BODY_MAX))}
           rows={4}
           placeholder="描述 Agent 在触发时应如何行为…"
-          className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+          className={uix('uix-6761e68629')}
         />
       </div>
 
       <div>
-        <div className="mb-1 flex items-center justify-between">
-          <label className="text-sm font-medium">优先级</label>
-          <span className="text-xs text-muted-foreground">{priority}</span>
+        <div className={uix('uix-3a9d20850c')}>
+          <label className={uix('uix-aaa307c4ab')}>优先级</label>
+          <span className={uix('uix-25be576b96')}>{priority}</span>
         </div>
         <input
           type="range"
@@ -238,13 +242,13 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
           onChange={(e) => setPriority(Number(e.target.value))}
           className="w-full accent-sky-500"
         />
-        <div className="mt-0.5 flex justify-between text-xs text-muted-foreground">
+        <div className={uix('uix-9d4fa5789f')}>
           <span>0</span>
           <span>10</span>
         </div>
       </div>
 
-      <div className="flex justify-end gap-2 pt-2">
+      <div className={uix('uix-19d19ceda7')}>
         <Button variant="outline" size="sm" onClick={onClose}>
           取消
         </Button>

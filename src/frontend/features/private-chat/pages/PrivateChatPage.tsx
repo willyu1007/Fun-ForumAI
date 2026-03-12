@@ -25,21 +25,20 @@ import { usePrivateSessionSse } from '../hooks/use-private-session-sse'
 import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { getPrivateDigestFallbackNotice } from '../digest-guidance'
-
+import { uix } from '@/shared/utils/uix'
 export function PrivateChatPage() {
-  const { agentId } = useParams<{ agentId: string }>()
+  const { agentId } = useParams<{
+    agentId: string
+  }>()
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [showSidebar, setShowSidebar] = useState(false)
-
   const { data: agentData, isLoading: agentLoading } = useAgentProfile(agentId ?? '')
   const { data: sessionsData, isLoading: sessionsLoading } = usePrivateSessions(agentId ?? '')
   const createSession = useCreatePrivateSession(agentId ?? '')
-
   const agent = agentData?.data
   const sessionItems = sessionsData?.data?.items
   const sessions = useMemo(() => sessionItems ?? [], [sessionItems])
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null
-
   useEffect(() => {
     if (!activeSessionId && sessions.length > 0) {
       const active = sessions.find((s) => s.status === 'ACTIVE')
@@ -47,29 +46,25 @@ export function PrivateChatPage() {
       else setActiveSessionId(sessions[0].id)
     }
   }, [sessions, activeSessionId])
-
   const handleNewSession = async () => {
     const result = await createSession.mutateAsync()
     setActiveSessionId(result.data.id)
   }
-
   if (agentLoading || sessionsLoading) {
     return (
-      <div className="p-4 space-y-3 max-w-4xl mx-auto">
+      <div className={uix('uix-1acd49fb50')}>
         <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-[70vh]" />
+        <Skeleton className={uix('uix-e14c642c26')} />
       </div>
     )
   }
-
   if (!agent) {
-    return <div className="p-4 text-destructive">Agent 不存在</div>
+    return <div className={uix('uix-3973a73bc4')}>Agent 不存在</div>
   }
-
   return (
-    <div className={cn('mx-auto flex h-[calc(100vh-4rem)] max-w-5xl', DEV_AUTH_TOOLBAR_SAFE_AREA_CLASS)}>
+    <div className={cn(uix('uix-7e9650e827'), DEV_AUTH_TOOLBAR_SAFE_AREA_CLASS)}>
       {/* Session sidebar - desktop */}
-      <div className="hidden md:block w-64 border-r">
+      <div className={uix('uix-3bf51bf1ea')}>
         <SessionSidebar
           sessions={sessions}
           activeSessionId={activeSessionId}
@@ -100,10 +95,10 @@ export function PrivateChatPage() {
             session={activeSession}
           />
         ) : (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            <div className="text-center space-y-3">
-              <p className="text-lg">还没有对话</p>
-              <p className="text-sm">点击"新对话"开始与 {agent.display_name} 交流</p>
+          <div className={uix('uix-894f9af854')}>
+            <div className={uix('uix-043556acb2')}>
+              <p className={uix('uix-42536e69e6')}>还没有对话</p>
+              <p className={uix('uix-fc7473ca09')}>点击"新对话"开始与 {agent.display_name} 交流</p>
               <Button onClick={handleNewSession} disabled={createSession.isPending}>
                 开始新对话
               </Button>
@@ -115,8 +110,8 @@ export function PrivateChatPage() {
       {/* Mobile sidebar overlay */}
       {showSidebar && (
         <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowSidebar(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-72 bg-background border-r">
+          <div className={uix('uix-d90d8e1509')} onClick={() => setShowSidebar(false)} />
+          <div className={uix('uix-94e1620257')}>
             <SessionSidebar
               sessions={sessions}
               activeSessionId={activeSessionId}
@@ -134,7 +129,6 @@ export function PrivateChatPage() {
     </div>
   )
 }
-
 function ChatHeader({
   agentName,
   agentId,
@@ -153,12 +147,12 @@ function ChatHeader({
   isCreating: boolean
 }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3 border-b bg-background/95 backdrop-blur">
+    <div className={uix('uix-27671266a7')}>
       <Button variant="ghost" size="sm" className="md:hidden" onClick={onToggleSidebar}>
         ☰
       </Button>
 
-      <Link to={`/agents/${agentId}`} className="font-semibold hover:underline">
+      <Link to={`/agents/${agentId}`} className={uix('uix-2c0ac2ad39')}>
         {agentName}
       </Link>
 
@@ -168,9 +162,9 @@ function ChatHeader({
         </Badge>
       )}
 
-      <span className="text-xs text-muted-foreground">{sessionCount} 个对话</span>
+      <span className={uix('uix-25be576b96')}>{sessionCount} 个对话</span>
 
-      <div className="ml-auto">
+      <div className={uix('uix-fb56d9cff3')}>
         <Button variant="outline" size="sm" onClick={onNewSession} disabled={isCreating}>
           {isCreating ? '创建中...' : '新对话'}
         </Button>
@@ -178,7 +172,6 @@ function ChatHeader({
     </div>
   )
 }
-
 function ChatThread({
   agentId,
   sessionId,
@@ -197,11 +190,12 @@ function ChatThread({
   const guidanceInbox = useGuidanceInbox()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   usePrivateSessionSse(sessionId, agentId)
-
   const messages: PrivateMessage[] = msgData?.data?.items ?? []
-  const sessionEnded = endSession.isSuccess || session?.status === 'ENDED' || session?.status === 'ARCHIVED'
+  const sessionEnded =
+    endSession.isSuccess || session?.status === 'ENDED' || session?.status === 'ARCHIVED'
   const receiptItem = guidanceEnabled
-    ? guidanceInbox.data?.data?.items.find((item) => item.related_session_id === sessionId) ?? null
+    ? (guidanceInbox.data?.data?.items.find((item) => item.related_session_id === sessionId) ??
+      null)
     : null
   const fallbackNotice = sessionEnded
     ? getPrivateDigestFallbackNotice({
@@ -209,59 +203,46 @@ function ChatThread({
         digestStatus: session?.digest_status,
       })
     : null
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length])
-
   const handleSend = async (content: string) => {
     await sendMessage.mutateAsync(content)
   }
-
   const handleEnd = async () => {
     await endSession.mutateAsync()
   }
-
   if (isLoading) {
     return (
-      <div className="flex-1 p-4 space-y-3">
+      <div className={uix('uix-ba5c7544cc')}>
         <Skeleton className="h-12 w-3/4" />
-        <Skeleton className="h-12 w-1/2 ml-auto" />
+        <Skeleton className={uix('uix-3d549328b0')} />
         <Skeleton className="h-12 w-2/3" />
       </div>
     )
   }
-
   return (
     <>
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-3 max-w-2xl mx-auto">
+      <ScrollArea className={uix('uix-396cd874b5')}>
+        <div className={uix('uix-6adf5992c8')}>
           {messages.length === 0 && (
-            <div className="text-center text-muted-foreground py-12">
-              对话开始了，说点什么吧
-            </div>
+            <div className={uix('uix-6776cc4881')}>对话开始了，说点什么吧</div>
           )}
 
           {messages.map((msg) => (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              agentName={agentName}
-            />
+            <MessageBubble key={msg.id} message={msg} agentName={agentName} />
           ))}
 
           {sendMessage.isPending && (
             <div className="flex gap-2 items-start">
               <Avatar className="h-8 w-8 shrink-0">
-                <AvatarFallback className="text-xs bg-primary/10">
-                  {agentName[0]}
-                </AvatarFallback>
+                <AvatarFallback className={uix('uix-c2ff24b045')}>{agentName[0]}</AvatarFallback>
               </Avatar>
-              <Card className="px-3 py-2 max-w-[75%] bg-muted">
+              <Card className={uix('uix-eebdac32e1')}>
                 <div className="flex gap-1">
                   <span className="animate-bounce">·</span>
-                  <span className="animate-bounce" style={{ animationDelay: '0.1s' }}>·</span>
-                  <span className="animate-bounce" style={{ animationDelay: '0.2s' }}>·</span>
+                  <span className={uix('uix-typing-dot-delay-100')}>·</span>
+                  <span className={uix('uix-typing-dot-delay-200')}>·</span>
                 </div>
               </Card>
             </div>
@@ -280,20 +261,20 @@ function ChatThread({
       />
 
       {(receiptItem || sessionEnded || endSession.isSuccess) && (
-        <div className="border-t bg-muted/20 p-4">
+        <div className={uix('uix-f5c93a678c')}>
           {receiptItem ? (
             <GuidanceItemCard item={receiptItem} />
           ) : fallbackNotice ? (
             <div
               className={cn(
-                'rounded-xl px-4 py-3 text-sm',
-                fallbackNotice.tone === 'warning' && 'border border-amber-300/70 bg-amber-50 text-amber-950',
-                fallbackNotice.tone === 'danger' && 'border border-destructive/40 bg-destructive/5 text-destructive',
-                fallbackNotice.tone === 'muted' && 'border border-dashed bg-background text-muted-foreground',
+                uix('uix-d46112421b'),
+                fallbackNotice.tone === 'warning' && uix('uix-077886b048'),
+                fallbackNotice.tone === 'danger' && uix('uix-16d839ad3d'),
+                fallbackNotice.tone === 'muted' && uix('uix-e968d23e0a'),
               )}
             >
-              <p className="font-medium">{fallbackNotice.title}</p>
-              <p className="mt-1">{fallbackNotice.body}</p>
+              <p className={uix('uix-2689f39580')}>{fallbackNotice.title}</p>
+              <p className={uix('uix-b6b02c0ebe')}>{fallbackNotice.body}</p>
             </div>
           ) : null}
         </div>
@@ -301,35 +282,32 @@ function ChatThread({
     </>
   )
 }
-
-function MessageBubble({
-  message,
-  agentName,
-}: {
-  message: PrivateMessage
-  agentName: string
-}) {
+function MessageBubble({ message, agentName }: { message: PrivateMessage; agentName: string }) {
   const isHuman = message.author_type === 'HUMAN'
-
   return (
     <div className={cn('flex gap-2 items-start', isHuman && 'flex-row-reverse')}>
       <Avatar className="h-8 w-8 shrink-0">
-        <AvatarFallback className={cn('text-xs', isHuman ? 'bg-blue-100' : 'bg-primary/10')}>
+        <AvatarFallback
+          className={cn(
+            uix('uix-359090c2d5'),
+            isHuman ? uix('uix-2eb3df8f1f') : uix('uix-375dc44df6'),
+          )}
+        >
           {isHuman ? '我' : agentName[0]}
         </AvatarFallback>
       </Avatar>
 
       <Card
         className={cn(
-          'px-3 py-2 max-w-[75%]',
-          isHuman ? 'bg-primary text-primary-foreground' : 'bg-muted',
+          uix('uix-dd9b87af6b'),
+          isHuman ? uix('uix-47e7dfa4ff') : uix('uix-2ef11f1cb2'),
         )}
       >
-        <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+        <p className={uix('uix-d6b7157957')}>{message.content}</p>
         <span
           className={cn(
-            'text-[10px] mt-1 block',
-            isHuman ? 'text-primary-foreground/60' : 'text-muted-foreground',
+            uix('uix-cb59187521'),
+            isHuman ? uix('uix-6ce381ea94') : uix('uix-bfa6031907'),
           )}
         >
           {relativeTime(message.created_at)}

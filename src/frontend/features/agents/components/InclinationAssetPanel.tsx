@@ -11,42 +11,37 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { relativeTime } from '@/shared/utils/relative-time'
-
+import { uix } from '@/shared/utils/uix'
 type Mode = 'url' | 'upload'
-
 interface InclinationAssetPanelProps {
   agentId: string
 }
-
 function renderError(error: unknown): string {
   if (error && typeof error === 'object') {
-    const message = (error as { message?: unknown }).message
+    const message = (
+      error as {
+        message?: unknown
+      }
+    ).message
     if (typeof message === 'string' && message.trim()) return message
   }
   return '操作失败，请稍后重试'
 }
-
 export function InclinationAssetPanel({ agentId }: InclinationAssetPanelProps) {
   const [mode, setMode] = useState<Mode>('url')
   const [sourceUrl, setSourceUrl] = useState('')
   const [ownerNote, setOwnerNote] = useState('')
   const [file, setFile] = useState<File | null>(null)
-
   const current = useInclinationAssetCurrent(agentId, true)
   const createFromUrl = useCreateInclinationAssetFromUrl(agentId)
   const createFromUpload = useCreateInclinationAssetFromUpload(agentId)
   const removeCurrent = useDeleteInclinationAssetCurrent(agentId)
-
   const busy = createFromUrl.isPending || createFromUpload.isPending || removeCurrent.isPending
   const pending = current.data?.data?.pending ?? null
   const lastConsumed = current.data?.data?.last_consumed ?? null
-
   const errorMessage = useMemo(() => {
-    return renderError(
-      createFromUrl.error ?? createFromUpload.error ?? removeCurrent.error,
-    )
+    return renderError(createFromUrl.error ?? createFromUpload.error ?? removeCurrent.error)
   }, [createFromUrl.error, createFromUpload.error, removeCurrent.error])
-
   async function submitUrl() {
     const trimmed = sourceUrl.trim()
     if (!trimmed) return
@@ -57,7 +52,6 @@ export function InclinationAssetPanel({ agentId }: InclinationAssetPanelProps) {
     setSourceUrl('')
     setOwnerNote('')
   }
-
   async function submitUpload() {
     if (!file) return
     await createFromUpload.mutateAsync({
@@ -67,11 +61,10 @@ export function InclinationAssetPanel({ agentId }: InclinationAssetPanelProps) {
     setFile(null)
     setOwnerNote('')
   }
-
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm">多模态倾向（仅下一次自动发帖生效）</CardTitle>
+      <CardHeader className={uix('uix-7fcf9124b5')}>
+        <CardTitle className={uix('uix-fc7473ca09')}>多模态倾向（仅下一次自动发帖生效）</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-2">
@@ -89,7 +82,7 @@ export function InclinationAssetPanel({ agentId }: InclinationAssetPanelProps) {
           >
             上传
           </Button>
-          <span className="text-xs text-muted-foreground">支持 jpg/png/webp/gif，单文件 ≤ 10MB</span>
+          <span className={uix('uix-25be576b96')}>支持 jpg/png/webp/gif，单文件 ≤ 10MB</span>
         </div>
 
         {mode === 'url' ? (
@@ -108,7 +101,7 @@ export function InclinationAssetPanel({ agentId }: InclinationAssetPanelProps) {
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
             {file && (
-              <p className="text-xs text-muted-foreground">
+              <p className={uix('uix-25be576b96')}>
                 已选择：{file.name}（{Math.ceil(file.size / 1024)} KB）
               </p>
             )}
@@ -116,7 +109,7 @@ export function InclinationAssetPanel({ agentId }: InclinationAssetPanelProps) {
         )}
 
         <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">Owner 文案（可选，最多 500 字）</p>
+          <p className={uix('uix-25be576b96')}>Owner 文案（可选，最多 500 字）</p>
           <Textarea
             rows={3}
             placeholder="例如：这张图更偏轻松吐槽风格，试着引出分歧讨论。"
@@ -153,34 +146,34 @@ export function InclinationAssetPanel({ agentId }: InclinationAssetPanelProps) {
         </div>
 
         {(createFromUrl.error || createFromUpload.error || removeCurrent.error) && (
-          <p className="text-xs text-destructive">{errorMessage}</p>
+          <p className={uix('uix-551c237449')}>{errorMessage}</p>
         )}
 
-        {current.isLoading && (
-          <p className="text-xs text-muted-foreground">加载中…</p>
-        )}
+        {current.isLoading && <p className={uix('uix-25be576b96')}>加载中…</p>}
 
         {pending ? (
-          <div className="space-y-2 rounded-md border bg-muted/20 p-3">
+          <div className={uix('uix-916c39db92')}>
             <div className="flex items-center gap-2">
               <Badge>{pending.status}</Badge>
-              <span className="text-xs text-muted-foreground">创建于 {relativeTime(pending.created_at)}</span>
+              <span className={uix('uix-25be576b96')}>
+                创建于 {relativeTime(pending.created_at)}
+              </span>
             </div>
             <a href={pending.media_url} target="_blank" rel="noreferrer" className="block">
               <img
                 src={pending.media_url}
                 alt="pending inclination asset"
-                className="max-h-56 w-auto rounded-md border object-cover"
+                className={uix('uix-57713b6345')}
               />
             </a>
             {pending.owner_note && (
-              <p className="text-xs text-muted-foreground">Owner 文案：{pending.owner_note}</p>
+              <p className={uix('uix-25be576b96')}>Owner 文案：{pending.owner_note}</p>
             )}
-            <div className="space-y-1 text-xs text-muted-foreground">
+            <div className={uix('uix-8e629eec72')}>
               <p>主题：{pending.vision_summary.theme}</p>
               <p>场景：{pending.vision_summary.scene}</p>
               <p>情绪：{pending.vision_summary.mood}</p>
-              <ul className="list-disc space-y-0.5 pl-5">
+              <ul className={uix('uix-fc112e2611')}>
                 {pending.vision_summary.discussion_points.map((point) => (
                   <li key={point}>{point}</li>
                 ))}
@@ -188,17 +181,19 @@ export function InclinationAssetPanel({ agentId }: InclinationAssetPanelProps) {
             </div>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">当前无待生效资源。</p>
+          <p className={uix('uix-25be576b96')}>当前无待生效资源。</p>
         )}
 
         {lastConsumed && (
-          <div className="space-y-1 rounded-md border border-dashed p-2">
-            <p className="text-xs text-muted-foreground">最近一次已消费：{relativeTime(lastConsumed.created_at)}</p>
+          <div className={uix('uix-9916b52253')}>
+            <p className={uix('uix-25be576b96')}>
+              最近一次已消费：{relativeTime(lastConsumed.created_at)}
+            </p>
             <a
               href={lastConsumed.media_url}
               target="_blank"
               rel="noreferrer"
-              className="text-xs text-primary hover:underline"
+              className={uix('uix-2f8d1bd3ec')}
             >
               查看最近已消费资源
             </a>

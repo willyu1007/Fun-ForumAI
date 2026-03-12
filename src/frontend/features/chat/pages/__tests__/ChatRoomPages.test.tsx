@@ -127,23 +127,25 @@ describe('chat room pages', () => {
     } as never)
     useRoomMessagesMock.mockReturnValue({
       data: {
-        data: [{
-          id: 'msg-1',
-          room_id: 'room-1',
-          author_id: 'agent-9',
-          author_display_name: '历史作者',
-          author_type: 'agent',
-          episode_id: 'ep-1',
-          beat_id: 'beat-1',
-          program_event_id: 'evt-1',
-          speaker_role: 'FOIL',
-          cue_type: 'CALLBACK',
-          body: '把刚才那个夜宵税的梗捡回来了。',
-          message_kind: 'normal',
-          parent_message_id: null,
-          vote_score: 0,
-          created_at: '2026-03-10T10:00:01.000Z',
-        }],
+        data: [
+          {
+            id: 'msg-1',
+            room_id: 'room-1',
+            author_id: 'agent-9',
+            author_display_name: '历史作者',
+            author_type: 'agent',
+            episode_id: 'ep-1',
+            beat_id: 'beat-1',
+            program_event_id: 'evt-1',
+            speaker_role: 'FOIL',
+            cue_type: 'CALLBACK',
+            body: '先把旧梗接回来。\n\n把刚才那个夜宵税的梗捡回来了。',
+            message_kind: 'normal',
+            parent_message_id: null,
+            vote_score: 0,
+            created_at: '2026-03-10T10:00:01.000Z',
+          },
+        ],
       },
     } as never)
     useRoomLiveSnapshotMock.mockReturnValue({
@@ -176,14 +178,16 @@ describe('chat room pages', () => {
         data: {
           room_id: 'room-1',
           episode_id: 'ep-1',
-          cast: [{
-            agent_id: 'agent-2',
-            name: 'Foil',
-            role: 'FOIL',
-            chemistry_score: 0.8,
-            spotlight_weight: 1,
-            last_spoke_at: '2026-03-10T10:00:01.000Z',
-          }],
+          cast: [
+            {
+              agent_id: 'agent-2',
+              name: 'Foil',
+              role: 'FOIL',
+              chemistry_score: 0.8,
+              spotlight_weight: 1,
+              last_spoke_at: '2026-03-10T10:00:01.000Z',
+            },
+          ],
         },
       },
     } as never)
@@ -226,18 +230,20 @@ describe('chat room pages', () => {
     } as never)
     useRoomHighlightsMock.mockReturnValue({
       data: {
-        data: [{
-          id: 'highlight-1',
-          room_id: 'room-1',
-          episode_id: 'ep-1',
-          beat_id: 'beat-1',
-          source_message_id: 'msg-1',
-          kind: 'CALLBACK',
-          text: '把刚才那个夜宵税的梗捡回来了。',
-          actor_agent_ids: ['agent-2'],
-          score: 0.92,
-          created_at: '2026-03-10T10:00:01.000Z',
-        }],
+        data: [
+          {
+            id: 'highlight-1',
+            room_id: 'room-1',
+            episode_id: 'ep-1',
+            beat_id: 'beat-1',
+            source_message_id: 'msg-1',
+            kind: 'CALLBACK',
+            text: '把刚才那个夜宵税的梗捡回来了。',
+            actor_agent_ids: ['agent-2'],
+            score: 0.92,
+            created_at: '2026-03-10T10:00:01.000Z',
+          },
+        ],
       },
     } as never)
     useRoomControlStateMock.mockReturnValue({
@@ -280,38 +286,40 @@ describe('chat room pages', () => {
           },
           snapshot: null,
           cast: [],
-          members: [{
-            room_id: 'room-1',
-            member_id: 'agent-2',
-            member_type: 'agent',
-            join_source: 'creator',
-            personal_tick_interval: 20000,
-            messages_this_hour: 1,
-            last_spoke_at: '2026-03-10T10:00:01.000Z',
-            role_hint: 'FOIL',
-            wander_eligible: true,
-            spotlight_weight: 1,
-            suppressed_until: null,
-            joined_at: '2026-03-10T10:00:00.000Z',
-            name: 'Foil',
-            projection: {
-              id: 'proj-1',
-              agent_id: 'agent-2',
-              scene_affinity_json: { FREE_CHAT: 0.7 },
-              banter_style: 'playful',
-              conflict_threshold: 0.3,
-              callback_habit: 0.8,
-              signature_moves_json: ['接住旧梗'],
-              disclosure_policy_json: {},
-              follow_targets_json: [],
-              avoid_targets_json: [],
-              role_tendency: 'FOIL',
-              spotlight_preference: 'HIGH',
-              public_projection_hint: '更适合 FREE_CHAT · 常站 FOIL',
-              created_at: '2026-03-10T10:00:00.000Z',
-              updated_at: '2026-03-10T10:00:00.000Z',
+          members: [
+            {
+              room_id: 'room-1',
+              member_id: 'agent-2',
+              member_type: 'agent',
+              join_source: 'creator',
+              personal_tick_interval: 20000,
+              messages_this_hour: 1,
+              last_spoke_at: '2026-03-10T10:00:01.000Z',
+              role_hint: 'FOIL',
+              wander_eligible: true,
+              spotlight_weight: 1,
+              suppressed_until: null,
+              joined_at: '2026-03-10T10:00:00.000Z',
+              name: 'Foil',
+              projection: {
+                id: 'proj-1',
+                agent_id: 'agent-2',
+                scene_affinity_json: { FREE_CHAT: 0.7 },
+                banter_style: 'playful',
+                conflict_threshold: 0.3,
+                callback_habit: 0.8,
+                signature_moves_json: ['接住旧梗'],
+                disclosure_policy_json: {},
+                follow_targets_json: [],
+                avoid_targets_json: [],
+                role_tendency: 'FOIL',
+                spotlight_preference: 'HIGH',
+                public_projection_hint: '更适合 FREE_CHAT · 常站 FOIL',
+                created_at: '2026-03-10T10:00:00.000Z',
+                updated_at: '2026-03-10T10:00:00.000Z',
+              },
             },
-          }],
+          ],
           recent_highlights: [],
           recent_program_events: [],
           recent_shared_memory: [],
@@ -333,9 +341,12 @@ describe('chat room pages', () => {
     expect(screen.getByText('回收')).toBeTruthy()
     expect(screen.getAllByText('对撞').length).toBeGreaterThan(0)
     expect(screen.getByText('历史作者')).toBeTruthy()
-    expect(screen.getByText(/连续性：旧梗已经重新连上主线/)).toBeTruthy()
-    expect(screen.getByText('Owner Control')).toBeTruthy()
+    expect(screen.getByText('🪢 连续性')).toBeTruthy()
+    expect(screen.getByText('旧梗已经重新连上主线。')).toBeTruthy()
+    expect(screen.getByText('房主控制')).toBeTruthy()
     expect(screen.getByText('手动 Cue')).toBeTruthy()
+    expect(screen.getByText('先把旧梗接回来。')).toBeTruthy()
+    expect(screen.getAllByText('把刚才那个夜宵税的梗捡回来了。').length).toBeGreaterThan(0)
     expect(useRoomControlStateMock).toHaveBeenLastCalledWith('room-1', { enabled: true })
   })
 
@@ -363,7 +374,9 @@ describe('chat room pages', () => {
     } as never)
     useRoomMessagesMock.mockReturnValue({ data: { data: [] } } as never)
     useRoomLiveSnapshotMock.mockReturnValue({ data: { data: null } } as never)
-    useRoomCastMock.mockReturnValue({ data: { data: { room_id: 'room-1', episode_id: null, cast: [] } } } as never)
+    useRoomCastMock.mockReturnValue({
+      data: { data: { room_id: 'room-1', episode_id: null, cast: [] } },
+    } as never)
     useRoomProgramMock.mockReturnValue({
       data: {
         data: {
@@ -405,43 +418,140 @@ describe('chat room pages', () => {
     )
 
     expect(useRoomControlStateMock).toHaveBeenLastCalledWith('room-1', { enabled: false })
-    expect(screen.queryByText('Owner Control')).toBeNull()
+    expect(screen.queryByText('房主控制')).toBeNull()
   })
 
-  it('renders beat and latest highlight on ChatRoomListPage cards', () => {
-    useRoomsMock.mockReturnValue({
+  it('preserves paragraphs in ambient room messages', () => {
+    useRoomMock.mockReturnValue({
       data: {
-        data: [{
+        data: {
           id: 'room-1',
-          name: '深夜聊天室',
+          name: '公开房间',
           slug: 'room-1',
-          description: '一群 agent 在拆夜宵',
+          description: '围观用房间',
           community_id: null,
           created_by_agent_id: 'agent-1',
           max_agents: 4,
           status: 'active',
           last_message_at: '2026-03-10T10:00:00.000Z',
-          created_at: '2026-03-10T09:00:00.000Z',
+          created_at: '2026-03-10T10:00:00.000Z',
           updated_at: '2026-03-10T10:00:00.000Z',
-          watchability: {
-            scene_type: 'FREE_CHAT',
-            current_beat: 'CALLBACK',
-            live_hook: '旧梗被重新抛了回来。',
-            unresolved_question: null,
-            active_cast_preview: [{
-              agent_id: 'agent-2',
-              name: 'Foil',
-              role: 'FOIL',
-            }],
-            last_highlight_text: '把刚才那个夜宵税的梗捡回来了。',
-            energy: 0.7,
-            tension: 0.4,
-            continuity_summary: '旧梗重新接上了主线。',
-            canonization_note: '这场讨论已经生成 canon。',
-            cameo_hint: null,
-            snapshot_updated_at: '2026-03-10T10:00:00.000Z',
+          viewer_can_control: false,
+          members: [],
+          watchability: null,
+        },
+      },
+      isLoading: false,
+    } as never)
+    useRoomMessagesMock.mockReturnValue({
+      data: {
+        data: [
+          {
+            id: 'msg-ambient-1',
+            room_id: 'room-1',
+            author_id: 'system',
+            author_display_name: '系统',
+            author_type: 'agent',
+            episode_id: 'ep-1',
+            beat_id: null,
+            program_event_id: null,
+            speaker_role: null,
+            cue_type: null,
+            body: '灯光暗了一格。\n\n台下有人开始起哄。',
+            message_kind: 'ambient',
+            parent_message_id: null,
+            vote_score: 0,
+            created_at: '2026-03-10T10:00:01.000Z',
           },
-        }],
+        ],
+      },
+    } as never)
+    useRoomLiveSnapshotMock.mockReturnValue({ data: { data: null } } as never)
+    useRoomCastMock.mockReturnValue({
+      data: { data: { room_id: 'room-1', episode_id: null, cast: [] } },
+    } as never)
+    useRoomProgramMock.mockReturnValue({
+      data: {
+        data: {
+          room_id: 'room-1',
+          enabled: false,
+          scene_type: 'FREE_CHAT',
+          pacing_preset: 'balanced',
+          target_cast_min: 2,
+          target_cast_max: 4,
+          callback_window: 18,
+          recap_every_turns: 10,
+          max_consecutive_turns: 1,
+          idle_cue_after_ms: 30000,
+          allow_wandering: true,
+          director_policy: {},
+          wander_policy: {
+            enabled: false,
+            entry_cooldown_ms: 180000,
+            max_parallel_rooms: 2,
+            min_discoverability_score: 0.25,
+          },
+          discoverability: {
+            tags: [],
+            short_hook: null,
+            default_view: 'live',
+          },
+          current_episode: null,
+        },
+      },
+    } as never)
+    useRoomHighlightsMock.mockReturnValue({ data: { data: [] } } as never)
+
+    render(
+      <MemoryRouter initialEntries={['/rooms/room-1']}>
+        <Routes>
+          <Route path="/rooms/:roomId" element={<ChatRoomPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('灯光暗了一格。')).toBeTruthy()
+    expect(screen.getByText('台下有人开始起哄。')).toBeTruthy()
+  })
+
+  it('renders beat and latest highlight on ChatRoomListPage cards', () => {
+    useRoomsMock.mockReturnValue({
+      data: {
+        data: [
+          {
+            id: 'room-1',
+            name: '深夜聊天室',
+            slug: 'room-1',
+            description: '一群 agent 在拆夜宵',
+            community_id: null,
+            created_by_agent_id: 'agent-1',
+            max_agents: 4,
+            status: 'active',
+            last_message_at: '2026-03-10T10:00:00.000Z',
+            created_at: '2026-03-10T09:00:00.000Z',
+            updated_at: '2026-03-10T10:00:00.000Z',
+            watchability: {
+              scene_type: 'FREE_CHAT',
+              current_beat: 'CALLBACK',
+              live_hook: '旧梗被重新抛了回来。',
+              unresolved_question: null,
+              active_cast_preview: [
+                {
+                  agent_id: 'agent-2',
+                  name: 'Foil',
+                  role: 'FOIL',
+                },
+              ],
+              last_highlight_text: '把刚才那个夜宵税的梗捡回来了。',
+              energy: 0.7,
+              tension: 0.4,
+              continuity_summary: '旧梗重新接上了主线。',
+              canonization_note: '这场讨论已经生成 canon。',
+              cameo_hint: null,
+              snapshot_updated_at: '2026-03-10T10:00:00.000Z',
+            },
+          },
+        ],
       },
       isLoading: false,
       error: null,
@@ -454,9 +564,9 @@ describe('chat room pages', () => {
     )
 
     expect(screen.getByText('回收')).toBeTruthy()
-    expect(screen.getByText(/刚刚有戏：把刚才那个夜宵税的梗捡回来了/)).toBeTruthy()
-    expect(screen.getByText(/连续性：旧梗重新接上了主线/)).toBeTruthy()
-    expect(screen.getByText(/Canon：这场讨论已经生成 canon/)).toBeTruthy()
+    expect(screen.getByText(/🔥 刚刚高光：把刚才那个夜宵税的梗捡回来了/)).toBeTruthy()
+    expect(screen.getByText(/🪢 连续性：旧梗重新接上了主线/)).toBeTruthy()
+    expect(screen.getByText(/🧩 设定落点：这场讨论已经生成 canon/)).toBeTruthy()
   })
 
   it('creates rooms with a real owned agent id instead of fabricating one from the user id', async () => {
@@ -471,17 +581,19 @@ describe('chat room pages', () => {
     } as never)
     useMyAgentsMock.mockReturnValue({
       data: {
-        data: [{
-          id: 'agent-real-1',
-          owner_id: 'dev-user-001',
-          display_name: '真实 Agent',
-          avatar_url: null,
-          model: 'qwen-flash',
-          config_json: {},
-          status: 'ACTIVE',
-          created_at: '2026-03-10T10:00:00.000Z',
-          updated_at: '2026-03-10T10:00:00.000Z',
-        }],
+        data: [
+          {
+            id: 'agent-real-1',
+            owner_id: 'dev-user-001',
+            display_name: '真实 Agent',
+            avatar_url: null,
+            model: 'qwen-flash',
+            config_json: {},
+            status: 'ACTIVE',
+            created_at: '2026-03-10T10:00:00.000Z',
+            updated_at: '2026-03-10T10:00:00.000Z',
+          },
+        ],
       },
       isLoading: false,
     } as never)
@@ -498,8 +610,12 @@ describe('chat room pages', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: '创建聊天室' }))
-    fireEvent.change(screen.getByPlaceholderText('房间名称'), { target: { value: '真实建房 smoke' } })
-    fireEvent.change(screen.getByPlaceholderText('描述（可选）'), { target: { value: '验证 agent 选择' } })
+    fireEvent.change(screen.getByPlaceholderText('房间名称'), {
+      target: { value: '真实建房 smoke' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('描述（可选）'), {
+      target: { value: '验证 agent 选择' },
+    })
 
     await waitFor(() => {
       const createButtons = screen.getAllByRole('button', { name: '创建' })

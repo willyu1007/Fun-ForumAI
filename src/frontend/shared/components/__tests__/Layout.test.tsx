@@ -2,7 +2,15 @@ import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useGuidanceBell, useGuidanceClientEvent, useGuidanceInbox, useGuidanceItemAction, useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from '@/api/hooks'
+import {
+  useGuidanceBell,
+  useGuidanceClientEvent,
+  useGuidanceInbox,
+  useGuidanceItemAction,
+  useNotifications,
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+} from '@/api/hooks'
 import { isGuidanceBellEnabled, isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useSidebarStore } from '@/shared/stores/sidebar-store'
@@ -45,13 +53,25 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DropdownMenuTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DropdownMenuContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  DropdownMenuItem: ({ children, onClick, className }: { children: ReactNode; onClick?: () => void; className?: string }) => (
-    <button type="button" className={className} onClick={onClick}>
+  DropdownMenuItem: ({
+    children,
+    onClick,
+    className,
+  }: {
+    children: ReactNode
+    onClick?: () => void
+    className?: string
+  }) => (
+    <button
+      type="button"
+      className={className ? `truncate ${className}` : 'truncate'}
+      onClick={onClick}
+    >
       {children}
     </button>
   ),
   DropdownMenuLabel: ({ children, className }: { children: ReactNode; className?: string }) => (
-    <div className={className}>{children}</div>
+    <div className={className ? `truncate ${className}` : 'truncate'}>{children}</div>
   ),
   DropdownMenuSeparator: () => <div />,
 }))
@@ -131,7 +151,7 @@ describe('Layout', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.queryByText('Inbox')).toBeNull()
+    expect(screen.queryByText('📥 收件箱')).toBeNull()
   })
 
   it('renders guidance bell items above notifications and opens the deep link on click', async () => {
@@ -200,7 +220,7 @@ describe('Layout', () => {
 
     fireEvent.click(screen.getByLabelText('通知中心'))
 
-    expect(await screen.findByText('Guidance')).toBeTruthy()
+    expect((await screen.findAllByText('📥 收件箱')).length).toBeGreaterThan(0)
     fireEvent.click(screen.getByText('Guidance Item'))
 
     expect(guidanceClientEventMutate).toHaveBeenCalledWith({

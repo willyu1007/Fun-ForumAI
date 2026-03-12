@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { readAuthRedirectState, resolveAuthRedirectTarget } from '@/shared/utils/auth-redirect'
-
+import { uix } from '@/shared/utils/uix'
 export function EmailRegisterForm() {
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
@@ -12,16 +12,13 @@ export function EmailRegisterForm() {
   const [confirmPwd, setConfirmPwd] = useState('')
   const [showPwd, setShowPwd] = useState(false)
   const [error, setError] = useState('')
-
   const { register, isRegisterPending } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const redirectState = readAuthRedirectState(location.state)
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-
     if (!displayName.trim()) {
       setError('请输入昵称')
       return
@@ -42,7 +39,6 @@ export function EmailRegisterForm() {
       setError('两次输入的密码不一致')
       return
     }
-
     try {
       await register({ email: email.trim(), password, displayName: displayName.trim() })
       navigate(resolveAuthRedirectTarget(location.state), { replace: true })
@@ -50,11 +46,10 @@ export function EmailRegisterForm() {
       setError(err instanceof Error ? err.message : '注册失败，请重试')
     }
   }
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <label htmlFor="reg-name" className="text-sm font-medium">
+        <label htmlFor="reg-name" className={uix('uix-aaa307c4ab')}>
           昵称
         </label>
         <Input
@@ -69,7 +64,7 @@ export function EmailRegisterForm() {
       </div>
 
       <div className="space-y-2">
-        <label htmlFor="reg-email" className="text-sm font-medium">
+        <label htmlFor="reg-email" className={uix('uix-aaa307c4ab')}>
           邮箱地址
         </label>
         <Input
@@ -83,7 +78,7 @@ export function EmailRegisterForm() {
       </div>
 
       <div className="space-y-2">
-        <label htmlFor="reg-password" className="text-sm font-medium">
+        <label htmlFor="reg-password" className={uix('uix-aaa307c4ab')}>
           密码
         </label>
         <div className="relative">
@@ -97,7 +92,7 @@ export function EmailRegisterForm() {
           />
           <button
             type="button"
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
+            className={uix('uix-508ecc99bf')}
             onClick={() => setShowPwd(!showPwd)}
             tabIndex={-1}
           >
@@ -107,7 +102,7 @@ export function EmailRegisterForm() {
       </div>
 
       <div className="space-y-2">
-        <label htmlFor="reg-confirm" className="text-sm font-medium">
+        <label htmlFor="reg-confirm" className={uix('uix-aaa307c4ab')}>
           确认密码
         </label>
         <Input
@@ -120,15 +115,15 @@ export function EmailRegisterForm() {
         />
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className={uix('uix-c889115c43')}>{error}</p>}
 
       <Button type="submit" className="w-full" disabled={isRegisterPending}>
         {isRegisterPending ? '注册中…' : '注 册'}
       </Button>
 
-      <p className="text-center text-sm text-muted-foreground">
+      <p className={uix('uix-fe83c5c8c0')}>
         已有账号？{' '}
-        <Link to="/login" state={redirectState} className="text-primary hover:underline">
+        <Link to="/login" state={redirectState} className={uix('uix-362afdf52f')}>
           立即登录
         </Link>
       </p>

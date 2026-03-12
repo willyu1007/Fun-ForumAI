@@ -14,9 +14,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import type { PostWithMeta, ApiResponse } from '@/api/types'
 import { useAuth } from '@/shared/hooks/use-auth'
-
+import { COMMUNITY_VISIBILITY_LABELS } from '@/shared/utils/public-ui-glossary'
+import { uix } from '@/shared/utils/uix'
 const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
-
 export function CommunityFeedPage() {
   const { slug } = useParams()
   const [sort, setSort] = useState<SortMode>('hot')
@@ -24,15 +24,12 @@ export function CommunityFeedPage() {
   const { isAuthenticated } = useAuth()
   const { view } = useFeedViewStore()
   const { newPostCount, clearNewPosts } = useSseNewCounts()
-
   useEffect(() => {
     if (!isAuthenticated && followingOnly) {
       setFollowingOnly(false)
     }
   }, [isAuthenticated, followingOnly])
-
   const { data: community, isLoading: communityLoading } = useCommunityBySlug(slug ?? '')
-
   const {
     data: feedData,
     isLoading: feedLoading,
@@ -49,46 +46,48 @@ export function CommunityFeedPage() {
       if (community?.id) sp.set('community_id', community.id)
       if (followingOnly) sp.set('following_only', 'true')
       if (pageParam) sp.set('cursor', pageParam)
-      return api.get(`feed?${sp.toString()}`).json<ApiResponse<PostWithMeta[]> & { meta: { cursor: string | null } }>()
+      return api.get(`feed?${sp.toString()}`).json<
+        ApiResponse<PostWithMeta[]> & {
+          meta: {
+            cursor: string | null
+          }
+        }
+      >()
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.meta?.cursor ?? undefined,
     enabled: !!community,
   })
-
   const posts = feedData?.pages.flatMap((p) => p.data) ?? []
   const isLoading = communityLoading || feedLoading
-
   if (!slug) return null
-
   return (
     <div className="space-y-3">
       {community && (
-        <div className="rounded-md border bg-gradient-to-r from-primary/5 to-primary/10 p-4">
+        <div className={uix('uix-1819b9b32e')}>
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/20 text-xl">
-              💬
-            </div>
+            <div className={uix('uix-7d0cdab1f8')}>💬</div>
             <div>
-              <h1 className="text-lg font-bold">{community.name}</h1>
-              <p className="text-xs text-muted-foreground">c/{community.slug}</p>
+              <h1 className={uix('uix-65af6ac52c')}>{community.name}</h1>
+              <p className={uix('uix-25be576b96')}>c/{community.slug}</p>
             </div>
-            <Badge variant="outline" className="ml-auto text-xs">
-              {community.visibility_default}
+            <Badge variant="outline" className={uix('uix-757cbc0226')}>
+              {COMMUNITY_VISIBILITY_LABELS[community.visibility_default.toLowerCase()] ??
+                community.visibility_default}
             </Badge>
           </div>
           {community.description && (
-            <p className="mt-2 text-sm text-muted-foreground">{community.description}</p>
+            <p className={uix('uix-ca5e8b251c')}>{community.description}</p>
           )}
         </div>
       )}
 
-      {communityLoading && <Skeleton className="h-24 rounded-md" />}
+      {communityLoading && <Skeleton className={uix('uix-a3cb5e8f60')} />}
 
       {!communityLoading && !community && (
-        <div className="rounded-md border p-10 text-center">
-          <p className="text-sm font-medium">未找到该社区</p>
-          <p className="mt-1 text-xs text-muted-foreground">社区 c/{slug} 不存在。</p>
+        <div className={uix('uix-9ea27bf804')}>
+          <p className={uix('uix-aaa307c4ab')}>未找到该社区</p>
+          <p className={uix('uix-dacb762e7b')}>社区 c/{slug} 不存在。</p>
         </div>
       )}
 
@@ -112,21 +111,20 @@ export function CommunityFeedPage() {
           {isLoading && (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className={view === 'card' ? 'h-28 rounded-md' : 'h-12 rounded-md'} />
+                <Skeleton
+                  key={i}
+                  className={view === 'card' ? uix('uix-7d38597482') : uix('uix-1e7b8da7e2')}
+                />
               ))}
             </div>
           )}
 
-          {error && (
-            <div className="rounded-md border p-6 text-center text-sm text-muted-foreground">
-              加载失败，请稍后重试。
-            </div>
-          )}
+          {error && <div className={uix('uix-c07a4b39bd')}>加载失败，请稍后重试。</div>}
 
           {!isLoading && posts.length === 0 && !error && (
-            <div className="rounded-md border border-dashed bg-muted/30 p-10 text-center">
-              <p className="text-sm font-medium">暂无帖子</p>
-              <p className="mt-1 text-xs text-muted-foreground">该社区还没有内容。</p>
+            <div className={uix('uix-5218d295f2')}>
+              <p className={uix('uix-aaa307c4ab')}>暂无帖子</p>
+              <p className={uix('uix-dacb762e7b')}>该社区还没有内容。</p>
             </div>
           )}
 

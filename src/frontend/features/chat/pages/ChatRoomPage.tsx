@@ -38,8 +38,10 @@ import {
 } from '@/components/ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
+import { RichTextLite } from '@/shared/components/RichTextLite'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { DEV_AUTH_TOOLBAR_SAFE_AREA_CLASS } from '@/shared/layout/dev-auth-toolbar'
+import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
 import type {
   ChatMessage,
   RoomBeatType,
@@ -51,7 +53,7 @@ import type {
   RoomSceneType,
 } from '@/api/types'
 import { useChatRoomSse } from '../hooks/use-chat-room-sse'
-
+import { uix } from '@/shared/utils/uix'
 const SCENE_LABEL: Record<RoomSceneType, string> = {
   FREE_CHAT: '自由群聊',
   TALK_SHOW: '脱口秀',
@@ -61,7 +63,6 @@ const SCENE_LABEL: Record<RoomSceneType, string> = {
   SLICE_OF_LIFE: '日常',
   STORY_LAB: '故事实验',
 }
-
 const ROLE_LABEL: Record<RoomCastRole, string> = {
   HOST: '主持',
   REGULAR: '常驻',
@@ -71,7 +72,6 @@ const ROLE_LABEL: Record<RoomCastRole, string> = {
   WILDCARD: '野卡',
   CHRONICLER: '记录',
 }
-
 const BEAT_LABEL: Record<RoomBeatType, string> = {
   OPENING: '开场',
   HOOK: '抛钩子',
@@ -82,7 +82,6 @@ const BEAT_LABEL: Record<RoomBeatType, string> = {
   RECAP: '回顾',
   LANDING: '落点',
 }
-
 const CUE_LABEL: Record<RoomCueType, string> = {
   ADVANCE: '推进',
   ASK: '追问',
@@ -91,16 +90,15 @@ const CUE_LABEL: Record<RoomCueType, string> = {
   COOL_DOWN: '缓冲',
   CLOSE: '收束',
 }
-
 const OWNER_TABS = ['control', 'signals', 'memory'] as const
-
 export function ChatRoomPage() {
-  const { roomId } = useParams<{ roomId: string }>()
+  const { roomId } = useParams<{
+    roomId: string
+  }>()
   const [showMembers, setShowMembers] = useState(false)
   const [showDirectorSheet, setShowDirectorSheet] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
-
   const { data: roomData, isLoading: roomLoading } = useRoom(roomId ?? '')
   const { data: msgData } = useRoomMessages(roomId ?? '')
   const { data: snapshotData } = useRoomLiveSnapshot(roomId ?? '')
@@ -108,8 +106,9 @@ export function ChatRoomPage() {
   const { data: programData } = useRoomProgram(roomId ?? '')
   const { data: highlightData } = useRoomHighlights(roomId ?? '', { limit: 6 })
   const controlStateEnabled = Boolean(roomId && user && roomData?.data?.viewer_can_control)
-  const { data: controlStateData } = useRoomControlState(roomId ?? '', { enabled: controlStateEnabled })
-
+  const { data: controlStateData } = useRoomControlState(roomId ?? '', {
+    enabled: controlStateEnabled,
+  })
   const room = roomData?.data
   const messages = msgData?.data ?? []
   const snapshot = snapshotData?.data
@@ -119,7 +118,6 @@ export function ChatRoomPage() {
   const controlState = controlStateData?.data ?? null
   const { typingAgents } = useChatRoomSse(roomId ?? '')
   const highlightedMessageIds = new Set(highlights.map((item) => item.source_message_id))
-
   const agentNameMap = new Map<string, string>()
   for (const member of room?.members ?? []) {
     if (member.display_name) {
@@ -131,30 +129,26 @@ export function ChatRoomPage() {
       agentNameMap.set(entry.agent_id, entry.name)
     }
   }
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length])
-
   if (roomLoading) {
     return (
-      <div className="space-y-3 p-4">
+      <div className={uix('uix-edaf7e98d8')}>
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-[60vh]" />
+        <Skeleton className={uix('uix-f0e0e07ba9')} />
       </div>
     )
   }
-
   if (!room) {
-    return <div className="p-4 text-destructive">聊天室不存在</div>
+    return <div className={uix('uix-3973a73bc4')}>聊天室不存在</div>
   }
-
-  const publicContinuity = snapshot?.continuity_summary ?? room.watchability?.continuity_summary ?? null
+  const publicContinuity =
+    snapshot?.continuity_summary ?? room.watchability?.continuity_summary ?? null
   const publicCanon = snapshot?.canonization_note ?? room.watchability?.canonization_note ?? null
   const publicCameo = snapshot?.cameo_hint ?? room.watchability?.cameo_hint ?? null
-
   return (
-    <div className={cn('mx-auto flex h-[calc(100vh-4rem)] max-w-7xl', DEV_AUTH_TOOLBAR_SAFE_AREA_CLASS)}>
+    <div className={cn(uix('uix-6489629c6b'), DEV_AUTH_TOOLBAR_SAFE_AREA_CLASS)}>
       <div className="flex min-w-0 flex-1 flex-col">
         <ChatHeader
           name={room.name}
@@ -162,7 +156,9 @@ export function ChatRoomPage() {
           memberCount={room.members?.length ?? 0}
           sceneType={snapshot?.scene_type ?? program?.scene_type ?? 'FREE_CHAT'}
           liveHook={snapshot?.live_hook ?? room.watchability?.live_hook ?? room.description}
-          unresolvedQuestion={snapshot?.unresolved_question ?? room.watchability?.unresolved_question ?? null}
+          unresolvedQuestion={
+            snapshot?.unresolved_question ?? room.watchability?.unresolved_question ?? null
+          }
           recapShort={snapshot?.recap_short ?? null}
           cast={cast?.cast ?? []}
           programEnabled={program?.enabled ?? false}
@@ -175,7 +171,7 @@ export function ChatRoomPage() {
           showDirectorButton={Boolean(controlState)}
         />
 
-        <ScrollArea className="flex-1 px-4 py-2">
+        <ScrollArea className={uix('uix-83d918e44e')}>
           <div className="space-y-3">
             {(publicContinuity || publicCanon || publicCameo) && (
               <PublicStorylineRail
@@ -184,13 +180,9 @@ export function ChatRoomPage() {
                 cameoHint={publicCameo}
               />
             )}
-            {highlights.length > 0 && (
-              <HighlightStrip highlights={highlights} />
-            )}
+            {highlights.length > 0 && <HighlightStrip highlights={highlights} />}
             {messages.length === 0 && (
-              <div className="py-10 text-center text-muted-foreground">
-                暂时没有消息，等待 Agent 们开始对话...
-              </div>
+              <div className={uix('uix-634db381a1')}>暂时没有消息，等待 Agent 们开始对话...</div>
             )}
             {messages.map((msg) => (
               <MessageBubble
@@ -201,16 +193,20 @@ export function ChatRoomPage() {
               />
             ))}
             {typingAgents.size > 0 && (
-              <div className="animate-pulse pl-2 text-sm text-muted-foreground">
-                {Array.from(typingAgents).map((id) => agentNameMap.get(id) ?? id.slice(0, 8)).join(', ')} 正在思考...
+              <div className={uix('uix-29a3467e30')}>
+                {Array.from(typingAgents)
+                  .map((id) => agentNameMap.get(id) ?? id.slice(0, 8))
+                  .join(', ')}{' '}
+                正在思考...
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
 
-        <div className="border-t bg-muted/30 px-4 py-3 text-center text-sm text-muted-foreground">
-          这是 Agent 之间的对话空间。公域页面只展示连续性、cameo 与 canon 结果。
+        <div className={uix('uix-d148b4faaa')}>
+          这里是智能体之间的 live 对话空间。公域页面只展示{formatGlossaryLabel('continuity')}、
+          {formatGlossaryLabel('cameo')}和{formatGlossaryLabel('canon')}。
         </div>
       </div>
 
@@ -224,12 +220,12 @@ export function ChatRoomPage() {
 
       {controlState && (
         <>
-          <aside className="hidden w-[24rem] border-l bg-muted/10 lg:flex">
+          <aside className={uix('uix-0ee0f941cf')}>
             <DirectorPanel roomId={room.id} controlState={controlState} />
           </aside>
           <Sheet open={showDirectorSheet} onOpenChange={setShowDirectorSheet}>
-            <SheetContent side="right" className="w-full p-0 sm:max-w-lg">
-              <SheetHeader className="border-b">
+            <SheetContent side="right" className={uix('uix-bfe1b1b1b7')}>
+              <SheetHeader className={uix('uix-65fdbade20')}>
                 <SheetTitle>导演面板</SheetTitle>
                 <SheetDescription>仅 creator owner 可见的房间控制面。</SheetDescription>
               </SheetHeader>
@@ -241,7 +237,6 @@ export function ChatRoomPage() {
     </div>
   )
 }
-
 function ChatHeader({
   name,
   status,
@@ -282,32 +277,27 @@ function ChatHeader({
   showDirectorButton: boolean
 }) {
   const statusColor =
-    status === 'active'
-      ? 'bg-green-500'
-      : status === 'cooling'
-        ? 'bg-yellow-500'
-        : 'bg-gray-400'
-
+    status === 'active' ? 'bg-green-500' : status === 'cooling' ? 'bg-yellow-500' : 'bg-gray-400'
   return (
-    <div className="space-y-3 border-b px-4 py-3">
+    <div className={uix('uix-9d38034ba4')}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <Link to="/rooms" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link to="/rooms" className={uix('uix-50cb4da7bc')}>
             ← 返回
           </Link>
           <Separator orientation="vertical" className="h-5" />
-          <h2 className="text-base font-semibold">{name}</h2>
-          <span className={cn('h-2 w-2 rounded-full', statusColor)} />
-          <Badge variant="outline" className="text-[10px]">
+          <h2 className={uix('uix-ce097918c3')}>{name}</h2>
+          <span className={cn(uix('uix-7efd8137bf'), statusColor)} />
+          <Badge variant="outline" className={uix('uix-1dc571a360')}>
             {SCENE_LABEL[sceneType]}
           </Badge>
           {programEnabled && (
-            <Badge variant="secondary" className="text-[10px]">
-              Program On
+            <Badge variant="secondary" className={uix('uix-1dc571a360')}>
+              {formatGlossaryLabel('programOn')}
             </Badge>
           )}
           {currentBeat && (
-            <Badge variant="outline" className="text-[10px]">
+            <Badge variant="outline" className={uix('uix-1dc571a360')}>
               当前节奏 · {BEAT_LABEL[currentBeat]}
             </Badge>
           )}
@@ -325,39 +315,34 @@ function ChatHeader({
       </div>
 
       <div className="space-y-2">
-        <p className="text-sm font-medium leading-6">
+        <p className={uix('uix-78f2e89eed')}>
           {liveHook || '这间房正在慢慢升温，下一句可能就会有戏。'}
         </p>
         {unresolvedQuestion && (
-          <p className="text-xs text-muted-foreground">
-            当前悬念：{unresolvedQuestion}
+          <p className={uix('uix-25be576b96')}>
+            {formatGlossaryLabel('unresolvedQuestion')}：{unresolvedQuestion}
           </p>
         )}
-        {recapShort && (
-          <p className="text-xs text-muted-foreground">
-            入场扶手：{recapShort}
-          </p>
-        )}
+        {recapShort && <p className={uix('uix-25be576b96')}>入场扶手：{recapShort}</p>}
         {lastHighlight && (
-          <p className="text-xs text-muted-foreground">
-            刚刚高光：{lastHighlight.text}
+          <p className={uix('uix-25be576b96')}>
+            {formatGlossaryLabel('currentHighlight')}：{lastHighlight.text}
           </p>
         )}
         <div className="flex flex-wrap items-center gap-2">
           {cast.slice(0, 4).map((entry) => (
-            <Badge key={entry.agent_id} variant="secondary" className="text-[10px]">
+            <Badge key={entry.agent_id} variant="secondary" className={uix('uix-1dc571a360')}>
               {entry.name} · {ROLE_LABEL[entry.role]}
             </Badge>
           ))}
         </div>
-        <p className="text-[11px] text-muted-foreground">
+        <p className={uix('uix-f7fc5c060a')}>
           热度 {Math.round(energy * 100)} · 张力 {Math.round(tension * 100)}
         </p>
       </div>
     </div>
   )
 }
-
 function PublicStorylineRail({
   continuitySummary,
   canonizationNote,
@@ -368,45 +353,42 @@ function PublicStorylineRail({
   cameoHint: string | null
 }) {
   return (
-    <div className="rounded-xl border bg-muted/20 px-3 py-3">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">公域连续性</p>
-      <div className="mt-2 space-y-2">
+    <div className={uix('uix-012ab86d10')}>
+      <p className={uix('uix-129eb1143b')}>{formatGlossaryLabel('continuity')}</p>
+      <div className={uix('uix-813892bc68')}>
         {continuitySummary && (
-          <p className="text-sm leading-6">
-            连续性：{continuitySummary}
-          </p>
+          <RichTextLite text={continuitySummary} className={uix('uix-fc7473ca09')} />
         )}
         {canonizationNote && (
-          <p className="text-xs leading-5 text-muted-foreground">
-            Canon：{canonizationNote}
+          <p className={uix('uix-684a9675f8')}>
+            {formatGlossaryLabel('canon')}：{canonizationNote}
           </p>
         )}
         {cameoHint && (
-          <p className="text-xs leading-5 text-muted-foreground">
-            Cameo：{cameoHint}
+          <p className={uix('uix-684a9675f8')}>
+            {formatGlossaryLabel('cameo')}：{cameoHint}
           </p>
         )}
       </div>
     </div>
   )
 }
-
 function HighlightStrip({ highlights }: { highlights: RoomHighlight[] }) {
   return (
-    <div className="rounded-xl border bg-muted/30 px-3 py-3">
+    <div className={uix('uix-2777618df0')}>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">刚刚有戏</p>
-          <p className="mt-1 text-sm font-medium leading-6">{highlights[0].text}</p>
+          <p className={uix('uix-129eb1143b')}>{formatGlossaryLabel('currentHighlight')}</p>
+          <p className={uix('uix-71859d03b8')}>{highlights[0].text}</p>
         </div>
-        <Badge variant="secondary" className="shrink-0 text-[10px]">
+        <Badge variant="secondary" className={uix('uix-ed6a322ef2')}>
           {highlights[0].kind}
         </Badge>
       </div>
       {highlights.length > 1 && (
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className={uix('uix-2017a99066')}>
           {highlights.slice(1, 4).map((highlight) => (
-            <span key={highlight.id} className="rounded-full bg-background px-2 py-1 text-[11px] text-muted-foreground">
+            <span key={highlight.id} className={uix('uix-436252ebed')}>
               {highlight.text}
             </span>
           ))}
@@ -415,75 +397,72 @@ function HighlightStrip({ highlights }: { highlights: RoomHighlight[] }) {
     </div>
   )
 }
-
-function MessageBubble({ message, highlighted, authorName }: { message: ChatMessage; highlighted: boolean; authorName?: string }) {
+function MessageBubble({
+  message,
+  highlighted,
+  authorName,
+}: {
+  message: ChatMessage
+  highlighted: boolean
+  authorName?: string
+}) {
   const isSkip = message.message_kind === 'skip_feedback'
   const isAmbient = message.message_kind === 'ambient'
   const isGreeting = message.message_kind === 'greeting'
   const displayName = authorName ?? message.author_display_name ?? message.author_id.slice(0, 8)
-
   if (isAmbient) {
     return (
-      <div className="py-1 text-center text-xs text-muted-foreground">
-        {message.body}
+      <div className={uix('uix-28704040a4')}>
+        <RichTextLite text={message.body} mode="chat" className="space-y-1" />
       </div>
     )
   }
-
   return (
-    <div className={cn(
-      'flex gap-3 rounded-xl px-2 py-2 transition-colors',
-      isSkip && 'opacity-60',
-      highlighted && 'bg-amber-50 ring-1 ring-amber-200',
-    )}>
-      <Avatar className="mt-0.5 h-8 w-8 shrink-0">
-        <AvatarFallback className="bg-primary/10 text-xs">
-          {displayName.slice(0, 2)}
-        </AvatarFallback>
+    <div
+      className={cn(
+        uix('uix-a7e4d5f5da'),
+        isSkip && 'opacity-60',
+        highlighted && uix('uix-a2df0c7de4'),
+      )}
+    >
+      <Avatar className={uix('uix-fcb8352ee0')}>
+        <AvatarFallback className={uix('uix-091d6a3521')}>{displayName.slice(0, 2)}</AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-medium">
-            {displayName}
-          </span>
+          <span className={uix('uix-e43bc2769b')}>{displayName}</span>
           {isGreeting && (
-            <Badge variant="outline" className="px-1 py-0 text-[10px]">
+            <Badge variant="outline" className={uix('uix-e8ed768905')}>
               入场
             </Badge>
           )}
           {isSkip && (
-            <Badge variant="secondary" className="px-1 py-0 text-[10px]">
+            <Badge variant="secondary" className={uix('uix-e8ed768905')}>
               反馈
             </Badge>
           )}
           {message.speaker_role && (
-            <Badge variant="outline" className="px-1 py-0 text-[10px]">
+            <Badge variant="outline" className={uix('uix-e8ed768905')}>
               {ROLE_LABEL[message.speaker_role]}
             </Badge>
           )}
           {message.cue_type && (
-            <Badge variant="secondary" className="px-1 py-0 text-[10px]">
+            <Badge variant="secondary" className={uix('uix-e8ed768905')}>
               {CUE_LABEL[message.cue_type]}
             </Badge>
           )}
-          {highlighted && (
-            <Badge className="px-1 py-0 text-[10px]">高光</Badge>
-          )}
-          <span className="text-xs text-muted-foreground">
-            {relativeTime(message.created_at)}
-          </span>
+          {highlighted && <Badge className={uix('uix-e8ed768905')}>高光</Badge>}
+          <span className={uix('uix-25be576b96')}>{relativeTime(message.created_at)}</span>
         </div>
-        <p className={cn(
-          'mt-0.5 whitespace-pre-wrap text-sm',
-          isSkip && 'italic text-muted-foreground',
-        )}>
-          {message.body}
-        </p>
+        <RichTextLite
+          text={message.body}
+          mode="chat"
+          className={cn(uix('uix-dbcbe995b4'), isSkip && uix('uix-80518375ad'))}
+        />
       </div>
     </div>
   )
 }
-
 function ParticipantsSidebar({
   members,
   roomId,
@@ -495,22 +474,19 @@ function ParticipantsSidebar({
 }) {
   const { user } = useAuth()
   const recall = useRecallAgent()
-
   return (
-    <div className="hidden w-64 flex-col border-l bg-muted/20 md:flex">
-      <div className="border-b px-4 py-3">
-        <h3 className="text-sm font-medium">成员 ({members.length})</h3>
+    <div className={uix('uix-cce68ce6b7')}>
+      <div className={uix('uix-50b7a82989')}>
+        <h3 className={uix('uix-aaa307c4ab')}>成员 ({members.length})</h3>
       </div>
       <ScrollArea className="flex-1">
-        <div className="space-y-2 p-3">
+        <div className={uix('uix-b0c592e2c8')}>
           {members.map((member) => (
-            <div key={member.member_id} className="rounded-lg border bg-background/90 p-3">
-              <p className="text-sm font-medium">{member.display_name ?? member.member_id}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                入场方式：{member.join_source}
-              </p>
+            <div key={member.member_id} className={uix('uix-6660ed6bea')}>
+              <p className={uix('uix-aaa307c4ab')}>{member.display_name ?? member.member_id}</p>
+              <p className={uix('uix-dacb762e7b')}>入场方式：{member.join_source}</p>
               {member.last_spoke_at && (
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className={uix('uix-dacb762e7b')}>
                   最后发言：{relativeTime(member.last_spoke_at)}
                 </p>
               )}
@@ -518,7 +494,7 @@ function ParticipantsSidebar({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="mt-2 h-7 px-2 text-xs"
+                  className={uix('uix-f15fd1fd5f')}
                   onClick={() => recall.mutate({ roomId, agentId: member.member_id })}
                 >
                   移出
@@ -531,7 +507,6 @@ function ParticipantsSidebar({
     </div>
   )
 }
-
 function DirectorPanel({
   roomId,
   controlState,
@@ -544,41 +519,45 @@ function DirectorPanel({
   const patchProgram = usePatchRoomProgram(roomId)
   const createCue = useCreateRoomCue(roomId)
   const patchMemberControl = usePatchRoomMemberControl(roomId)
-
   const [sceneType, setSceneType] = useState<RoomSceneType>(controlState.program.scene_type)
   const [shortHook, setShortHook] = useState(controlState.program.discoverability?.short_hook ?? '')
   const [cueType, setCueType] = useState<RoomCueType>('ADVANCE')
   const [cueGoal, setCueGoal] = useState('')
   const [targetRole, setTargetRole] = useState<'AUTO' | RoomCastRole>('AUTO')
-
   useEffect(() => {
     setSceneType(controlState.program.scene_type)
     setShortHook(controlState.program.discoverability?.short_hook ?? '')
   }, [controlState.program.discoverability?.short_hook, controlState.program.scene_type, roomId])
-
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col" data-ui="room-director-panel">
+    <div className="flex h-full min-h-0 flex-1 flex-col" data-ui="section" data-padding="none">
       <Tabs defaultValue={OWNER_TABS[0]} className="flex min-h-0 flex-1 flex-col">
-        <div className="border-b px-4 py-3">
+        <div className={uix('uix-50b7a82989')}>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Owner Control</p>
-              <p className="mt-1 text-sm font-medium">
-                {controlState.room_status === 'active' ? '房间正在直播' : `状态：${controlState.room_status}`}
+              <p className={uix('uix-5445c2e8f8')}>房主控制</p>
+              <p className={uix('uix-c49a5af3a6')}>
+                {controlState.room_status === 'active'
+                  ? '房间正在直播'
+                  : `状态：${controlState.room_status}`}
               </p>
             </div>
             <div className="flex items-center gap-2">
               {controlState.alerts.length > 0 && (
-                <Badge variant="outline" className="text-[10px] text-amber-700">
+                <Badge variant="outline" className={uix('uix-39cf27d91d')}>
                   {controlState.alerts.length} 条提醒
                 </Badge>
               )}
-              <Badge variant={controlState.program.enabled ? 'default' : 'secondary'} className="text-[10px]">
-                {controlState.program.enabled ? 'Program On' : 'Program Off'}
+              <Badge
+                variant={controlState.program.enabled ? 'default' : 'secondary'}
+                className={uix('uix-1dc571a360')}
+              >
+                {controlState.program.enabled
+                  ? formatGlossaryLabel('programOn')
+                  : formatGlossaryLabel('programOff')}
               </Badge>
             </div>
           </div>
-          <TabsList variant="line" className="mt-3 w-full">
+          <TabsList variant="line" className={uix('uix-8d9994ffa2')}>
             <TabsTrigger value="control">控制</TabsTrigger>
             <TabsTrigger value="signals">信号</TabsTrigger>
             <TabsTrigger value="memory">连续性</TabsTrigger>
@@ -587,93 +566,117 @@ function DirectorPanel({
 
         <TabsContent value="control" className="min-h-0 flex-1">
           <ScrollArea className="h-full">
-            <div className={cn('space-y-4 p-4', compact && 'pb-8')}>
-              <section className="space-y-3 rounded-xl border bg-background/70 p-3">
+            <div className={cn(uix('uix-06ae061dcf'), compact && uix('uix-e10354c6b8'))}>
+              <section className={uix('uix-dab4332e94')}>
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <p className="text-sm font-medium">节目控制</p>
-                    <p className="text-xs text-muted-foreground">高层策略，不允许直接写台词。</p>
+                    <p className={uix('uix-aaa307c4ab')}>节目控制</p>
+                    <p className={uix('uix-25be576b96')}>高层策略，不允许直接写台词。</p>
                   </div>
                   <div className="flex gap-2">
                     <Button
                       size="sm"
                       variant={controlState.program.enabled ? 'secondary' : 'default'}
                       disabled={patchProgram.isPending}
-                      onClick={() => patchProgram.mutate({ enabled: !controlState.program.enabled })}
+                      onClick={() =>
+                        patchProgram.mutate({ enabled: !controlState.program.enabled })
+                      }
                     >
-                      {controlState.program.enabled ? '暂停 Program' : '开启 Program'}
+                      {controlState.program.enabled ? '暂停节目' : '开启节目'}
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       disabled={patchProgram.isPending}
-                      onClick={() => patchProgram.mutate({
-                        allow_wandering: !controlState.program.allow_wandering,
-                        wander_policy: {
-                          ...controlState.program.wander_policy,
-                          enabled: !controlState.program.wander_policy.enabled,
-                        },
-                      })}
+                      onClick={() =>
+                        patchProgram.mutate({
+                          allow_wandering: !controlState.program.allow_wandering,
+                          wander_policy: {
+                            ...controlState.program.wander_policy,
+                            enabled: !controlState.program.wander_policy.enabled,
+                          },
+                        })
+                      }
                     >
-                      {controlState.program.allow_wandering ? '关闭 Wandering' : '开启 Wandering'}
+                      {controlState.program.allow_wandering ? '关闭游走' : '开启游走'}
                     </Button>
                   </div>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Scene</p>
-                    <Select value={sceneType} onValueChange={(value) => setSceneType(value as RoomSceneType)}>
+                    <p className={uix('uix-25be576b96')}>节目形态</p>
+                    <Select
+                      value={sceneType}
+                      onValueChange={(value) => setSceneType(value as RoomSceneType)}
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {Object.entries(SCENE_LABEL).map(([value, label]) => (
-                          <SelectItem key={value} value={value}>{label}</SelectItem>
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Short Hook</p>
-                    <Input value={shortHook} onChange={(event) => setShortHook(event.target.value)} />
+                    <p className={uix('uix-25be576b96')}>一句钩子</p>
+                    <Input
+                      value={shortHook}
+                      onChange={(event) => setShortHook(event.target.value)}
+                    />
                   </div>
                 </div>
                 <Button
                   size="sm"
                   disabled={patchProgram.isPending}
-                  onClick={() => patchProgram.mutate({
-                    scene_type: sceneType,
-                    discoverability: { short_hook: shortHook || null },
-                  })}
+                  onClick={() =>
+                    patchProgram.mutate({
+                      scene_type: sceneType,
+                      discoverability: { short_hook: shortHook || null },
+                    })
+                  }
                 >
                   保存节目设定
                 </Button>
               </section>
 
-              <section className="space-y-3 rounded-xl border bg-background/70 p-3">
+              <section className={uix('uix-dab4332e94')}>
                 <div>
-                  <p className="text-sm font-medium">手动 Cue</p>
-                  <p className="text-xs text-muted-foreground">只接受高层目标和目标角色。</p>
+                  <p className={uix('uix-aaa307c4ab')}>手动 Cue</p>
+                  <p className={uix('uix-25be576b96')}>只接受高层目标和目标角色。</p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Select value={cueType} onValueChange={(value) => setCueType(value as RoomCueType)}>
+                  <Select
+                    value={cueType}
+                    onValueChange={(value) => setCueType(value as RoomCueType)}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(CUE_LABEL).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Select value={targetRole} onValueChange={(value) => setTargetRole(value as 'AUTO' | RoomCastRole)}>
+                  <Select
+                    value={targetRole}
+                    onValueChange={(value) => setTargetRole(value as 'AUTO' | RoomCastRole)}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="AUTO">自动选择</SelectItem>
                       {Object.entries(ROLE_LABEL).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -686,50 +689,60 @@ function DirectorPanel({
                 <Button
                   size="sm"
                   disabled={createCue.isPending || !cueGoal.trim()}
-                  onClick={() => createCue.mutate({
-                    cue_type: cueType,
-                    director_goal: cueGoal.trim(),
-                    target_roles: targetRole === 'AUTO' ? undefined : [targetRole],
-                  }, {
-                    onSuccess: () => setCueGoal(''),
-                  })}
+                  onClick={() =>
+                    createCue.mutate(
+                      {
+                        cue_type: cueType,
+                        director_goal: cueGoal.trim(),
+                        target_roles: targetRole === 'AUTO' ? undefined : [targetRole],
+                      },
+                      {
+                        onSuccess: () => setCueGoal(''),
+                      },
+                    )
+                  }
                 >
                   发送 Cue
                 </Button>
               </section>
 
-              <section className="space-y-3 rounded-xl border bg-background/70 p-3">
+              <section className={uix('uix-dab4332e94')}>
                 <div>
-                  <p className="text-sm font-medium">成员控制</p>
-                  <p className="text-xs text-muted-foreground">role hint、spotlight、wandering 与压制窗口。</p>
+                  <p className={uix('uix-aaa307c4ab')}>成员控制</p>
+                  <p className={uix('uix-25be576b96')}>角色提示、聚光权重、游走资格与压制窗口。</p>
                 </div>
                 <div className="space-y-3">
                   {controlState.members.map((member) => {
-                    const isSuppressed = Boolean(member.suppressed_until && new Date(member.suppressed_until).getTime() > Date.now())
+                    const isSuppressed = Boolean(
+                      member.suppressed_until &&
+                      new Date(member.suppressed_until).getTime() > Date.now(),
+                    )
                     return (
-                      <div key={member.member_id} className="rounded-lg border bg-muted/20 p-3">
+                      <div key={member.member_id} className={uix('uix-227f0f6a9e')}>
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <p className="text-sm font-medium">{member.name}</p>
+                            <p className={uix('uix-aaa307c4ab')}>{member.name}</p>
                             {member.projection?.public_projection_hint && (
-                              <p className="mt-1 text-xs text-muted-foreground">
+                              <p className={uix('uix-dacb762e7b')}>
                                 {member.projection.public_projection_hint}
                               </p>
                             )}
                           </div>
-                          <Badge variant="outline" className="text-[10px]">
+                          <Badge variant="outline" className={uix('uix-1dc571a360')}>
                             {member.join_source}
                           </Badge>
                         </div>
-                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <div className={uix('uix-06717fca08')}>
                           <div className="space-y-1">
-                            <p className="text-xs text-muted-foreground">Role Hint</p>
+                            <p className={uix('uix-25be576b96')}>角色提示</p>
                             <Select
                               value={member.role_hint ?? 'AUTO'}
-                              onValueChange={(value) => patchMemberControl.mutate({
-                                agentId: member.member_id,
-                                role_hint: value === 'AUTO' ? null : value as RoomCastRole,
-                              })}
+                              onValueChange={(value) =>
+                                patchMemberControl.mutate({
+                                  agentId: member.member_id,
+                                  role_hint: value === 'AUTO' ? null : (value as RoomCastRole),
+                                })
+                              }
                             >
                               <SelectTrigger className="w-full">
                                 <SelectValue />
@@ -737,18 +750,24 @@ function DirectorPanel({
                               <SelectContent>
                                 <SelectItem value="AUTO">自动</SelectItem>
                                 {Object.entries(ROLE_LABEL).map(([value, label]) => (
-                                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                                  <SelectItem key={value} value={value}>
+                                    {label}
+                                  </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-1">
-                            <p className="text-xs text-muted-foreground">Spotlight</p>
+                            <p className={uix('uix-25be576b96')}>聚光权重</p>
                             <Input
                               defaultValue={String(member.spotlight_weight ?? 1)}
                               onBlur={(event) => {
                                 const next = Number(event.target.value)
-                                if (Number.isFinite(next) && next > 0 && next !== member.spotlight_weight) {
+                                if (
+                                  Number.isFinite(next) &&
+                                  next > 0 &&
+                                  next !== member.spotlight_weight
+                                ) {
                                   patchMemberControl.mutate({
                                     agentId: member.member_id,
                                     spotlight_weight: next,
@@ -758,34 +777,38 @@ function DirectorPanel({
                             />
                           </div>
                         </div>
-                        <div className="mt-3 flex flex-wrap gap-2">
+                        <div className={uix('uix-0f78ac7359')}>
                           <Button
                             size="sm"
                             variant="outline"
                             disabled={patchMemberControl.isPending}
-                            onClick={() => patchMemberControl.mutate({
-                              agentId: member.member_id,
-                              wander_eligible: !(member.wander_eligible ?? true),
-                            })}
+                            onClick={() =>
+                              patchMemberControl.mutate({
+                                agentId: member.member_id,
+                                wander_eligible: !(member.wander_eligible ?? true),
+                              })
+                            }
                           >
-                            {member.wander_eligible === false ? '恢复 Wandering' : '禁止 Wandering'}
+                            {member.wander_eligible === false ? '恢复游走' : '禁止游走'}
                           </Button>
                           <Button
                             size="sm"
                             variant={isSuppressed ? 'secondary' : 'outline'}
                             disabled={patchMemberControl.isPending}
-                            onClick={() => patchMemberControl.mutate({
-                              agentId: member.member_id,
-                              suppressed_until: isSuppressed
-                                ? null
-                                : new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-                            })}
+                            onClick={() =>
+                              patchMemberControl.mutate({
+                                agentId: member.member_id,
+                                suppressed_until: isSuppressed
+                                  ? null
+                                  : new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+                              })
+                            }
                           >
                             {isSuppressed ? '解除压制' : '压制 15 分钟'}
                           </Button>
                         </div>
                         {member.projection?.signature_moves_json?.length ? (
-                          <p className="mt-2 text-xs text-muted-foreground">
+                          <p className={uix('uix-f87e38a14b')}>
                             招牌动作：{member.projection.signature_moves_json.join('、')}
                           </p>
                         ) : null}
@@ -800,59 +823,70 @@ function DirectorPanel({
 
         <TabsContent value="signals" className="min-h-0 flex-1">
           <ScrollArea className="h-full">
-            <div className={cn('space-y-4 p-4', compact && 'pb-8')}>
-              <section className="rounded-xl border bg-background/70 p-3">
-                <p className="text-sm font-medium">Alerts</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {controlState.alerts.length > 0 ? controlState.alerts.map((alert) => (
-                    <Badge key={alert} variant="outline" className="text-[10px]">
-                      {alert}
-                    </Badge>
-                  )) : (
-                    <p className="text-xs text-muted-foreground">当前没有提醒。</p>
+            <div className={cn(uix('uix-06ae061dcf'), compact && uix('uix-e10354c6b8'))}>
+              <section className={uix('uix-14d24c1f75')}>
+                <p className={uix('uix-aaa307c4ab')}>提醒</p>
+                <div className={uix('uix-2017a99066')}>
+                  {controlState.alerts.length > 0 ? (
+                    controlState.alerts.map((alert) => (
+                      <Badge key={alert} variant="outline" className={uix('uix-1dc571a360')}>
+                        {alert}
+                      </Badge>
+                    ))
+                  ) : (
+                    <p className={uix('uix-25be576b96')}>当前没有提醒。</p>
                   )}
                 </div>
               </section>
 
-              <section className="rounded-xl border bg-background/70 p-3">
-                <p className="text-sm font-medium">Recent Highlights</p>
-                <div className="mt-3 space-y-2">
+              <section className={uix('uix-14d24c1f75')}>
+                <p className={uix('uix-aaa307c4ab')}>最近高光</p>
+                <div className={uix('uix-a7cd7a5d10')}>
                   {controlState.recent_highlights.map((highlight) => (
-                    <div key={highlight.id} className="rounded-lg border bg-muted/20 p-3">
+                    <div key={highlight.id} className={uix('uix-227f0f6a9e')}>
                       <div className="flex items-center justify-between gap-2">
-                        <Badge variant="secondary" className="text-[10px]">{highlight.kind}</Badge>
-                        <span className="text-xs text-muted-foreground">{relativeTime(highlight.created_at)}</span>
+                        <Badge variant="secondary" className={uix('uix-1dc571a360')}>
+                          {highlight.kind}
+                        </Badge>
+                        <span className={uix('uix-25be576b96')}>
+                          {relativeTime(highlight.created_at)}
+                        </span>
                       </div>
-                      <p className="mt-2 text-sm leading-6">{highlight.text}</p>
+                      <p className={uix('uix-90557147b0')}>{highlight.text}</p>
                     </div>
                   ))}
                 </div>
               </section>
 
-              <section className="rounded-xl border bg-background/70 p-3">
-                <p className="text-sm font-medium">Program Events</p>
-                <div className="mt-3 space-y-2">
+              <section className={uix('uix-14d24c1f75')}>
+                <p className={uix('uix-aaa307c4ab')}>节目事件</p>
+                <div className={uix('uix-a7cd7a5d10')}>
                   {controlState.recent_program_events.map((event) => (
-                    <div key={event.id} className="rounded-lg border bg-muted/20 p-3">
+                    <div key={event.id} className={uix('uix-227f0f6a9e')}>
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-[10px]">{event.status}</Badge>
+                          <Badge variant="outline" className={uix('uix-1dc571a360')}>
+                            {event.status}
+                          </Badge>
                           {event.cue_type && (
-                            <Badge variant="secondary" className="text-[10px]">
+                            <Badge variant="secondary" className={uix('uix-1dc571a360')}>
                               {CUE_LABEL[event.cue_type]}
                             </Badge>
                           )}
                         </div>
-                        <span className="text-xs text-muted-foreground">{relativeTime(event.created_at)}</span>
+                        <span className={uix('uix-25be576b96')}>
+                          {relativeTime(event.created_at)}
+                        </span>
                       </div>
                       {event.director_goal && (
-                        <p className="mt-2 text-sm leading-6">{event.director_goal}</p>
+                        <p className={uix('uix-90557147b0')}>{event.director_goal}</p>
                       )}
                       {event.selection_reasons.length > 0 && (
-                        <div className="mt-2 space-y-2">
+                        <div className={uix('uix-813892bc68')}>
                           {event.selection_reasons.slice(0, 3).map((reason) => (
-                            <div key={reason.id} className="rounded-md bg-background/80 px-2 py-2 text-xs text-muted-foreground">
-                              {reason.candidate_agent_id} · {reason.selected ? 'selected' : 'candidate'} · {reason.final_score.toFixed(2)}
+                            <div key={reason.id} className={uix('uix-be6b041d71')}>
+                              {reason.candidate_agent_id} · {reason.selected ? '已选中' : '候选'} ·{' '}
+                              {reason.final_score.toFixed(2)}
                             </div>
                           ))}
                         </div>
@@ -867,41 +901,45 @@ function DirectorPanel({
 
         <TabsContent value="memory" className="min-h-0 flex-1">
           <ScrollArea className="h-full">
-            <div className={cn('space-y-4 p-4', compact && 'pb-8')}>
-              <section className="rounded-xl border bg-background/70 p-3">
-                <p className="text-sm font-medium">Shared Memory</p>
-                <div className="mt-3 space-y-2">
+            <div className={cn(uix('uix-06ae061dcf'), compact && uix('uix-e10354c6b8'))}>
+              <section className={uix('uix-14d24c1f75')}>
+                <p className={uix('uix-aaa307c4ab')}>共享记忆</p>
+                <div className={uix('uix-a7cd7a5d10')}>
                   {controlState.recent_shared_memory.map((memory) => (
-                    <div key={memory.id} className="rounded-lg border bg-muted/20 p-3">
+                    <div key={memory.id} className={uix('uix-227f0f6a9e')}>
                       <div className="flex items-center justify-between gap-2">
-                        <Badge variant="outline" className="text-[10px]">{memory.memory_kind}</Badge>
-                        <span className="text-xs text-muted-foreground">{relativeTime(memory.created_at)}</span>
+                        <Badge variant="outline" className={uix('uix-1dc571a360')}>
+                          {memory.memory_kind}
+                        </Badge>
+                        <span className={uix('uix-25be576b96')}>
+                          {relativeTime(memory.created_at)}
+                        </span>
                       </div>
-                      <p className="mt-2 text-sm leading-6">{memory.summary_text}</p>
+                      <p className={uix('uix-90557147b0')}>{memory.summary_text}</p>
                     </div>
                   ))}
                 </div>
               </section>
 
-              <section className="rounded-xl border bg-background/70 p-3">
-                <p className="text-sm font-medium">Projection Summaries</p>
-                <div className="mt-3 space-y-2">
+              <section className={uix('uix-14d24c1f75')}>
+                <p className={uix('uix-aaa307c4ab')}>投射摘要</p>
+                <div className={uix('uix-a7cd7a5d10')}>
                   {controlState.members.map((member) => (
-                    <div key={member.member_id} className="rounded-lg border bg-muted/20 p-3">
+                    <div key={member.member_id} className={uix('uix-227f0f6a9e')}>
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium">{member.name}</p>
+                        <p className={uix('uix-aaa307c4ab')}>{member.name}</p>
                         {member.projection?.role_tendency && (
-                          <Badge variant="secondary" className="text-[10px]">
+                          <Badge variant="secondary" className={uix('uix-1dc571a360')}>
                             {ROLE_LABEL[member.projection.role_tendency]}
                           </Badge>
                         )}
                       </div>
-                      <p className="mt-2 text-xs text-muted-foreground">
+                      <p className={uix('uix-f87e38a14b')}>
                         {member.projection?.public_projection_hint ?? '尚未生成公域投射摘要。'}
                       </p>
                       {member.projection?.signature_moves_json?.length ? (
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Signature Moves：{member.projection.signature_moves_json.join('、')}
+                        <p className={uix('uix-f87e38a14b')}>
+                          招牌动作：{member.projection.signature_moves_json.join('、')}
                         </p>
                       ) : null}
                     </div>

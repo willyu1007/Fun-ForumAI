@@ -59,7 +59,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     ],
     intent: 'forum_reply',
     visibility: 'visible',
-    prompt_ref: { id: 'agent-reply-to-post', version: 1 },
+    prompt_ref: { id: 'agent-reply-to-post', version: 2 },
     voice_line_authority: 'Forum post replies must resolve from the agent home voice line instead of bootstrap config.llm defaults.',
     tier_floor: 'base',
     expected_profile_refs: {
@@ -83,7 +83,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     ],
     intent: 'forum_reply',
     visibility: 'visible',
-    prompt_ref: { id: 'agent-reply-to-comment', version: 1 },
+    prompt_ref: { id: 'agent-reply-to-comment', version: 2 },
     voice_line_authority: 'Comment replies still resolve through forum_reply intent, but now on top of homeVoiceLineId authority.',
     tier_floor: 'base',
     expected_profile_refs: {
@@ -106,7 +106,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     ],
     intent: 'chat_reply',
     visibility: 'visible',
-    prompt_ref: { id: 'agent-chat-reply', version: 2 },
+    prompt_ref: { id: 'agent-chat-reply', version: 3 },
     voice_line_authority: 'Chat room replies must resolve from homeVoiceLineId and chat_room policy, not bootstrap config.llm.',
     tier_floor: 'lite',
     expected_profile_refs: {

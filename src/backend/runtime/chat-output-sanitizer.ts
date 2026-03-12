@@ -30,10 +30,33 @@ const META_PATTERNS = [
 const CUSTOMER_SERVICE_SIGNAL_RE =
   /对于您提到的|我可以为您|为您整理|为您提供|您可以从|如有具体疑问|特定的环境或需求/u
 const ENUMERATION_MARKER_RE = /首先|其次|另外|最后|一是|二是|三是|四是/gu
+const STRUCTURED_REPLY_RE = /(?:\n|^\s*(?:[-*•·]|\d+[.)]|[一二三四五六七八九十]+、|（\d+）))/mu
 
 export interface SanitizedChatOutput {
   text: string
   looks_meta: boolean
+}
+
+function normalizeChatWhitespace(text: string): string {
+  const normalizedLines = text
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/[ \t]{2,}/g, ' ').trim())
+
+  const keptLines: string[] = []
+
+  for (const line of normalizedLines) {
+    if (!line) {
+      if (keptLines.length > 0 && keptLines[keptLines.length - 1] !== '') {
+        keptLines.push('')
+      }
+      continue
+    }
+
+    keptLines.push(line)
+  }
+
+  return keptLines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
 }
 
 function stripForumQuoteScaffolding(text: string): string {
@@ -88,7 +111,16 @@ function compactExpositoryReply(text: string): string {
   working = working.replace(/如有具体疑问[^。！？!?]*[。！？!?]?$/u, '')
 
   const markerCount = working.match(ENUMERATION_MARKER_RE)?.length ?? 0
+  const hasStructuredBreaks = STRUCTURED_REPLY_RE.test(working)
+  if (hasStructuredBreaks) {
+    return working.trim()
+  }
+
   if (!shouldCompact && markerCount < 2) {
+    return working.trim()
+  }
+
+  if (!shouldCompact && working.length < 120) {
     return working.trim()
   }
 
@@ -123,9 +155,8 @@ export function sanitizeChatOutput(text: string): SanitizedChatOutput {
     .replace(LEADING_BRACKET_ACTION_RE, '')
     .replace(LEADING_SPEAKER_LABEL_RE, '')
     .replace(INLINE_STAGE_DIRECTION_RE, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim()
-  const compacted = compactExpositoryReply(normalized)
+  const normalizedWithParagraphs = normalizeChatWhitespace(normalized)
+  const compacted = compactExpositoryReply(normalizedWithParagraphs)
 
   return {
     text: compacted,

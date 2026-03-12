@@ -1,13 +1,6 @@
-import { cn } from "@/lib/utils"
-
-function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="skeleton"
-      className={cn("bg-accent animate-pulse rounded-md", className)}
-      {...props}
-    />
-  )
+import { cn } from '@/lib/utils'
+import { uix } from '@/shared/utils/uix'
+function Skeleton({ className, ...props }: React.ComponentProps<'div'>) {
+  return <div data-slot="skeleton" className={cn(uix('uix-ce5e6734d4'), className)} {...props} />
 }
-
 export { Skeleton }

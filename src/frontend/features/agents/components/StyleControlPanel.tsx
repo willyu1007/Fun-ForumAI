@@ -2,36 +2,30 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAgentStyle, useUpdateAgentStyle } from '@/api/hooks'
 import type { StyleSettings } from '@/api/types'
 import { Skeleton } from '@/components/ui/skeleton'
-
+import { uix } from '@/shared/utils/uix'
 const MOOD_OPTIONS = [
   { value: 'optimistic', label: '乐观' },
   { value: 'neutral', label: '中立' },
   { value: 'critical', label: '批判' },
   { value: 'random', label: '随机' },
 ] as const
-
 const HABIT_OPTIONS = [
   { value: 'asks_questions', label: '善于提问' },
   { value: 'uses_analogies', label: '喜欢类比' },
   { value: 'tells_stories', label: '爱讲故事' },
   { value: 'summarizes', label: '善于总结' },
 ] as const
-
 interface StyleControlPanelProps {
   agentId: string
 }
-
 export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
   const { data, isLoading } = useAgentStyle(agentId)
   const updateStyle = useUpdateAgentStyle(agentId)
-
   const [local, setLocal] = useState<StyleSettings | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   useEffect(() => {
     if (data?.data) setLocal(data.data)
   }, [data])
-
   const save = useCallback(
     (next: StyleSettings) => {
       if (timerRef.current) clearTimeout(timerRef.current)
@@ -39,14 +33,12 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
     },
     [updateStyle],
   )
-
   useEffect(
     () => () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     },
     [],
   )
-
   const patch = useCallback(
     (partial: Partial<StyleSettings>) => {
       setLocal((prev) => {
@@ -58,7 +50,6 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
     },
     [save],
   )
-
   if (isLoading || !local) {
     return (
       <div className="space-y-4">
@@ -68,14 +59,12 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
       </div>
     )
   }
-
   const toggleHabit = (habit: string) => {
     const habits = local.habits.includes(habit)
       ? local.habits.filter((h) => h !== habit)
       : [...local.habits, habit]
     patch({ habits })
   }
-
   return (
     <div className="space-y-6">
       <SliderField
@@ -99,15 +88,13 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
       />
 
       <div>
-        <span className="mb-2 block text-sm font-medium">情绪倾向</span>
+        <span className={uix('uix-a2c41e6712')}>情绪倾向</span>
         <div className="flex flex-wrap gap-2">
           {MOOD_OPTIONS.map((opt) => (
             <label
               key={opt.value}
-              className={`cursor-pointer rounded-lg border px-3 py-1.5 text-sm transition-colors ${
-                local.mood === opt.value
-                  ? 'border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300'
-                  : 'border-border hover:bg-muted'
+              className={`${uix('uix-choice-chip')} ${
+                local.mood === opt.value ? uix('uix-c6b1a26b89') : uix('uix-94ec054230')
               }`}
             >
               <input
@@ -125,7 +112,7 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
       </div>
 
       <div>
-        <span className="mb-2 block text-sm font-medium">表达习惯</span>
+        <span className={uix('uix-a2c41e6712')}>表达习惯</span>
         <div className="flex flex-wrap gap-2">
           {HABIT_OPTIONS.map((opt) => {
             const active = local.habits.includes(opt.value)
@@ -134,10 +121,8 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
                 key={opt.value}
                 type="button"
                 onClick={() => toggleHabit(opt.value)}
-                className={`rounded-full border px-3 py-1 text-sm transition-colors ${
-                  active
-                    ? 'border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300'
-                    : 'border-border hover:bg-muted'
+                className={`${uix('uix-pill-button')} ${
+                  active ? uix('uix-c6b1a26b89') : uix('uix-94ec054230')
                 }`}
               >
                 {opt.label}
@@ -159,7 +144,6 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
     </div>
   )
 }
-
 function SliderField({
   label,
   value,
@@ -179,9 +163,9 @@ function SliderField({
 }) {
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between">
-        <span className="text-sm font-medium">{label}</span>
-        <span className="text-xs text-muted-foreground">{value}</span>
+      <div className={uix('uix-3a9d20850c')}>
+        <span className={uix('uix-aaa307c4ab')}>{label}</span>
+        <span className={uix('uix-25be576b96')}>{value}</span>
       </div>
       <input
         type="range"
@@ -192,7 +176,7 @@ function SliderField({
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full accent-sky-500"
       />
-      <div className="mt-0.5 flex justify-between text-xs text-muted-foreground">
+      <div className={uix('uix-9d4fa5789f')}>
         <span>{leftLabel}</span>
         <span>{rightLabel}</span>
       </div>

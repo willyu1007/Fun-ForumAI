@@ -1,23 +1,27 @@
 import { useState } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useCreateAgent } from '@/api/hooks'
 import type { Agent, StyleSettings } from '@/api/types'
 import { PERSONA_SEED_OPTIONS } from '../persona-seeds'
-
+import { uix } from '@/shared/utils/uix'
 interface AgentCreateWizardProps {
   open: boolean
   onClose: () => void
   onCreated: (agent: Agent) => void
 }
-
-const INTEREST_TAGS = ['科技', '哲学', '艺术', '生活', '编程', '社会', '游戏', '音乐', '电影', '美食']
-
+const INTEREST_TAGS = [
+  '科技',
+  '哲学',
+  '艺术',
+  '生活',
+  '编程',
+  '社会',
+  '游戏',
+  '音乐',
+  '电影',
+  '美食',
+]
 const DEFAULT_STYLE: StyleSettings = {
   formality: 3,
   verbosity: 3,
@@ -25,7 +29,6 @@ const DEFAULT_STYLE: StyleSettings = {
   habits: [],
   forum_activity: 3,
 }
-
 export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizardProps) {
   const [step, setStep] = useState(0)
   const [name, setName] = useState('')
@@ -34,9 +37,7 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
   const [interests, setInterests] = useState<string[]>([])
   const [style, setStyle] = useState<StyleSettings>(DEFAULT_STYLE)
   const [creating, setCreating] = useState(false)
-
   const createAgent = useCreateAgent()
-
   const reset = () => {
     setStep(0)
     setName('')
@@ -46,12 +47,10 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
     setStyle(DEFAULT_STYLE)
     setCreating(false)
   }
-
   const handleClose = () => {
     reset()
     onClose()
   }
-
   const doCreate = async (finalStyle: StyleSettings) => {
     if (!name.trim()) return
     setCreating(true)
@@ -72,9 +71,7 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
       setCreating(false)
     }
   }
-
   const skipAll = () => doCreate(DEFAULT_STYLE)
-
   const handleNext = () => {
     if (step === 1 && selectedPersona !== null) {
       setStyle(PERSONA_SEED_OPTIONS[selectedPersona].style)
@@ -85,13 +82,9 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
       doCreate(style)
     }
   }
-
   const toggleInterest = (tag: string) => {
-    setInterests((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-    )
+    setInterests((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
   }
-
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="sm:max-w-lg">
@@ -99,38 +92,36 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
           <DialogTitle>创建新 Agent</DialogTitle>
         </DialogHeader>
 
-        <div className="flex justify-center gap-1.5 py-2">
+        <div className={uix('uix-ebd4f09b6b')}>
           {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
-              className={`h-2 w-2 rounded-full transition-colors ${
-                i === step ? 'bg-sky-500' : i < step ? 'bg-sky-300' : 'bg-muted'
-              }`}
+              className={`${uix('uix-step-dot-base')} ${i === step ? uix('uix-fcdeb3110f') : i < step ? uix('uix-86e2be76b6') : uix('uix-2ef11f1cb2')}`}
             />
           ))}
         </div>
 
-        <div className="min-h-[260px]">
+        <div className={uix('uix-eb51ec3d17')}>
           {step === 0 && (
             <div className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium">名称 *</label>
+                <label className={uix('uix-04e0ee4b3b')}>名称 *</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="给你的 Agent 起个名字"
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+                  className={uix('uix-bb26c57321')}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">头像 URL（可选）</label>
+                <label className={uix('uix-04e0ee4b3b')}>头像 URL（可选）</label>
                 <input
                   type="text"
                   value={avatarUrl}
                   onChange={(e) => setAvatarUrl(e.target.value)}
                   placeholder="https://..."
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+                  className={uix('uix-bb26c57321')}
                 />
               </div>
             </div>
@@ -138,21 +129,19 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
 
           {step === 1 && (
             <div>
-              <p className="mb-3 text-sm text-muted-foreground">选择一个人设模板：</p>
+              <p className={uix('uix-b06cafa29c')}>选择一个人设模板：</p>
               <div className="grid grid-cols-2 gap-2">
                 {PERSONA_SEED_OPTIONS.map((t, i) => (
                   <button
                     key={t.name}
                     type="button"
                     onClick={() => setSelectedPersona(i)}
-                    className={`rounded-lg border p-3 text-left transition-colors ${
-                      selectedPersona === i
-                        ? 'border-sky-500 bg-sky-50 dark:bg-sky-950'
-                        : 'border-border hover:bg-muted'
+                    className={`${uix('uix-card-choice-left')} ${
+                      selectedPersona === i ? uix('uix-629487398f') : uix('uix-94ec054230')
                     }`}
                   >
-                    <span className="text-xl">{t.emoji}</span>
-                    <span className="ml-2 text-sm font-medium">{t.name}</span>
+                    <span className={uix('uix-d5c9b0001e')}>{t.emoji}</span>
+                    <span className={uix('uix-196bbe541a')}>{t.name}</span>
                   </button>
                 ))}
               </div>
@@ -161,7 +150,7 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
 
           {step === 2 && (
             <div>
-              <p className="mb-3 text-sm text-muted-foreground">选择兴趣标签：</p>
+              <p className={uix('uix-b06cafa29c')}>选择兴趣标签：</p>
               <div className="flex flex-wrap gap-2">
                 {INTEREST_TAGS.map((tag) => {
                   const active = interests.includes(tag)
@@ -170,10 +159,8 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
                       key={tag}
                       type="button"
                       onClick={() => toggleInterest(tag)}
-                      className={`rounded-full border px-3 py-1 text-sm transition-colors ${
-                        active
-                          ? 'border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300'
-                          : 'border-border hover:bg-muted'
+                      className={`${uix('uix-pill-button')} ${
+                        active ? uix('uix-c6b1a26b89') : uix('uix-94ec054230')
                       }`}
                     >
                       {tag}
@@ -186,11 +173,11 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
 
           {step === 3 && (
             <div className="space-y-5">
-              <p className="text-sm text-muted-foreground">微调风格参数：</p>
+              <p className={uix('uix-26f026f8ad')}>微调风格参数：</p>
               <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="text-sm font-medium">正式度</span>
-                  <span className="text-xs text-muted-foreground">{style.formality}</span>
+                <div className={uix('uix-3a9d20850c')}>
+                  <span className={uix('uix-aaa307c4ab')}>正式度</span>
+                  <span className={uix('uix-25be576b96')}>{style.formality}</span>
                 </div>
                 <input
                   type="range"
@@ -200,15 +187,15 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
                   onChange={(e) => setStyle((s) => ({ ...s, formality: Number(e.target.value) }))}
                   className="w-full accent-sky-500"
                 />
-                <div className="mt-0.5 flex justify-between text-xs text-muted-foreground">
+                <div className={uix('uix-9d4fa5789f')}>
                   <span>随意</span>
                   <span>正式</span>
                 </div>
               </div>
               <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="text-sm font-medium">详细度</span>
-                  <span className="text-xs text-muted-foreground">{style.verbosity}</span>
+                <div className={uix('uix-3a9d20850c')}>
+                  <span className={uix('uix-aaa307c4ab')}>详细度</span>
+                  <span className={uix('uix-25be576b96')}>{style.verbosity}</span>
                 </div>
                 <input
                   type="range"
@@ -218,7 +205,7 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
                   onChange={(e) => setStyle((s) => ({ ...s, verbosity: Number(e.target.value) }))}
                   className="w-full accent-sky-500"
                 />
-                <div className="mt-0.5 flex justify-between text-xs text-muted-foreground">
+                <div className={uix('uix-9d4fa5789f')}>
                   <span>简洁</span>
                   <span>详细</span>
                 </div>
@@ -227,7 +214,7 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
           )}
         </div>
 
-        <div className="flex items-center justify-between pt-2">
+        <div className={uix('uix-79a90db884')}>
           <Button variant="ghost" size="sm" onClick={skipAll} disabled={!name.trim() || creating}>
             跳过全部
           </Button>

@@ -1,8 +1,7 @@
-import * as React from "react"
-import { ScrollArea as ScrollAreaPrimitive } from "radix-ui"
-
-import { cn } from "@/lib/utils"
-
+import * as React from 'react'
+import { ScrollArea as ScrollAreaPrimitive } from 'radix-ui'
+import { cn } from '@/lib/utils'
+import { uix } from '@/shared/utils/uix'
 function ScrollArea({
   className,
   children,
@@ -11,12 +10,12 @@ function ScrollArea({
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
-      className={cn("relative", className)}
+      className={cn('relative', className)}
       {...props}
     >
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className="focus-visible:ring-ring/50 size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:outline-1"
+        className={uix('uix-fb53201eaa')}
       >
         {children}
       </ScrollAreaPrimitive.Viewport>
@@ -25,10 +24,9 @@ function ScrollArea({
     </ScrollAreaPrimitive.Root>
   )
 }
-
 function ScrollBar({
   className,
-  orientation = "vertical",
+  orientation = 'vertical',
   ...props
 }: React.ComponentProps<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>) {
   return (
@@ -36,21 +34,18 @@ function ScrollBar({
       data-slot="scroll-area-scrollbar"
       orientation={orientation}
       className={cn(
-        "flex touch-none p-px transition-colors select-none",
-        orientation === "vertical" &&
-          "h-full w-2.5 border-l border-l-transparent",
-        orientation === "horizontal" &&
-          "h-2.5 flex-col border-t border-t-transparent",
-        className
+        uix('uix-3b6aa9bc90'),
+        orientation === 'vertical' && uix('uix-6047875aab'),
+        orientation === 'horizontal' && uix('uix-8860d143f0'),
+        className,
       )}
       {...props}
     >
       <ScrollAreaPrimitive.ScrollAreaThumb
         data-slot="scroll-area-thumb"
-        className="bg-border relative flex-1 rounded-full"
+        className={uix('uix-5b0462f7f7')}
       />
     </ScrollAreaPrimitive.ScrollAreaScrollbar>
   )
 }
-
 export { ScrollArea, ScrollBar }

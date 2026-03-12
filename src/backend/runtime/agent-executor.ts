@@ -56,6 +56,7 @@ export class AgentExecutor {
 
       const templateId = this.pickTemplate(event, ctx)
       const routing = this.resolveVisibleRouting(agent.agent_id)
+      const identity = this.resolveObservationIdentity(agent.agent_id)
       const llmResponse = await this.deps.llmGateway.generateVisibleText({
         intent: 'forum_reply',
         scene: this.pickScene(event),
@@ -63,7 +64,7 @@ export class AgentExecutor {
         homeVoiceLineId: routing.homeVoiceLineId,
         preferredModelId: routing.preferredModelId,
         promptRef: templateId,
-        variables: this.buildVariables(ctx),
+        variables: this.buildVariables(ctx, identity?.persona_seed_code ?? 'scholar'),
         budgetClass: 'visible_standard',
         traceId: `runtime:${event.event_id}:${agent.agent_id}`,
         requestedTier: 'base',
@@ -71,7 +72,6 @@ export class AgentExecutor {
         allowCrossFamily: false,
       })
       const latencyMs = Date.now() - start
-      const identity = this.resolveObservationIdentity(agent.agent_id)
       const observation = buildPersonaObservation({
         sourceCallsiteId: event.event_type === 'NewCommentCreated'
           ? 'agent-executor-forum-comment'
@@ -195,12 +195,16 @@ export class AgentExecutor {
     return event.event_type === 'NewCommentCreated' ? 'forum_comment' : 'forum_post'
   }
 
-  private buildVariables(ctx: ExecutionContext): Record<string, string> {
+  private buildVariables(
+    ctx: ExecutionContext,
+    personaSeedCode: import('../../shared/agent-persona-catalog.js').PersonaSeedCode,
+  ): Record<string, string> {
     const vars: Record<string, string> = {
       persona_name: ctx.persona.name,
       persona_style: ctx.persona.style,
       persona_interests: ctx.persona.interests.join('、'),
       persona_language: ctx.persona.language,
+      persona_seed_code: personaSeedCode,
       community_name: ctx.community.name,
       community_description: ctx.community.description,
       community_rules: ctx.community.rules

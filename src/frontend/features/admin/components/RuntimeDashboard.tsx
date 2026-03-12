@@ -7,7 +7,8 @@ import { useSseStatus } from '@/app/sse-context'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-
+import { cn } from '@/lib/utils'
+import { uix } from '@/shared/utils/uix'
 interface RuntimeStats {
   runtime: {
     running: boolean
@@ -36,7 +37,6 @@ interface RuntimeStats {
     size: number
   }
 }
-
 interface DevRuntimeStatus {
   running: boolean
   processing: boolean
@@ -44,7 +44,6 @@ interface DevRuntimeStatus {
   llm_configured: boolean
   runtime_enabled: boolean
 }
-
 interface TickResult {
   processed_events: number
   executions: Array<{
@@ -53,7 +52,9 @@ interface TickResult {
     success: boolean
     latency_ms: number
     error?: string
-    usage?: { total_tokens: number }
+    usage?: {
+      total_tokens: number
+    }
   }>
   batch_stats: {
     allocated_agents: number
@@ -67,10 +68,11 @@ interface TickResult {
     post_id?: string
     error?: string
     latency_ms?: number
-    usage?: { total_tokens: number }
+    usage?: {
+      total_tokens: number
+    }
   }
 }
-
 interface PostResult {
   triggered: boolean
   agent_id?: string
@@ -78,34 +80,46 @@ interface PostResult {
   post_id?: string
   error?: string
   latency_ms?: number
-  usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
+  usage?: {
+    prompt_tokens: number
+    completion_tokens: number
+    total_tokens: number
+  }
 }
-
 interface StageSeasonRotationResult {
   open_count: number
   dry_run: boolean
-  replaced: Array<{ slot: string; template_id: string }>
-  activated: Array<{ slot: string; template_id: string }>
+  replaced: Array<{
+    slot: string
+    template_id: string
+  }>
+  activated: Array<{
+    slot: string
+    template_id: string
+  }>
   exported_templates: number
   launch_templates: number
 }
-
 function useRuntimeStats() {
   return useQuery({
     queryKey: ['admin', 'runtime-stats'],
-    queryFn: () => api.get('admin/runtime/stats').json<{ data: RuntimeStats }>(),
+    queryFn: () =>
+      api.get('admin/runtime/stats').json<{
+        data: RuntimeStats
+      }>(),
     refetchInterval: 5000,
   })
 }
-
 function useDevRuntimeStatus() {
   return useQuery({
     queryKey: ['dev', 'runtime-status'],
-    queryFn: () => api.get('dev/runtime/status').json<{ data: DevRuntimeStatus }>(),
+    queryFn: () =>
+      api.get('dev/runtime/status').json<{
+        data: DevRuntimeStatus
+      }>(),
     refetchInterval: 3000,
   })
 }
-
 export function RuntimeDashboard() {
   const qc = useQueryClient()
   const sseStatus = useSseStatus()
@@ -114,33 +128,34 @@ export function RuntimeDashboard() {
   const { data: adminStats } = useRuntimeStats()
   const { data: devStatus } = useDevRuntimeStatus()
   const { data: runtimeFeatures } = useRuntimeFeatures()
-
   const tickMutation = useMutation({
-    mutationFn: () => api.post('dev/runtime/tick').json<{ data: TickResult }>(),
+    mutationFn: () =>
+      api.post('dev/runtime/tick').json<{
+        data: TickResult
+      }>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
       qc.invalidateQueries({ queryKey: ['dev', 'runtime-status'] })
     },
   })
-
   const postMutation = useMutation({
-    mutationFn: () => api.post('dev/runtime/post').json<{ data: PostResult }>(),
+    mutationFn: () =>
+      api.post('dev/runtime/post').json<{
+        data: PostResult
+      }>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
       qc.invalidateQueries({ queryKey: ['feed'] })
     },
   })
-
   const startMutation = useMutation({
     mutationFn: () => api.post('dev/runtime/start').json(),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['dev', 'runtime-status'] }),
   })
-
   const stopMutation = useMutation({
     mutationFn: () => api.post('dev/runtime/stop').json(),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['dev', 'runtime-status'] }),
   })
-
   const rotateStageMutation = useMutation({
     mutationFn: ({ openCount, dryRun }: { openCount: number; dryRun: boolean }) =>
       api
@@ -150,13 +165,13 @@ export function RuntimeDashboard() {
             dry_run: dryRun,
           },
         })
-        .json<{ data: StageSeasonRotationResult }>(),
+        .json<{
+          data: StageSeasonRotationResult
+        }>(),
   })
-
   const stats = adminStats?.data
   const status = devStatus?.data
   const isProdNodeEnv = stats?.runtime.node_env === 'production'
-
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -176,7 +191,11 @@ export function RuntimeDashboard() {
           title="今日发帖"
           value={`${stats?.scheduler.postsToday ?? 0} / ${stats?.scheduler.postMaxPerDay ?? 50}`}
           variant="default"
-          detail={stats?.scheduler.lastPostAt ? `上次：${formatTime(stats.scheduler.lastPostAt)}` : '尚未发帖'}
+          detail={
+            stats?.scheduler.lastPostAt
+              ? `上次：${formatTime(stats.scheduler.lastPostAt)}`
+              : '尚未发帖'
+          }
         />
         <StatCard
           title="SSE 连接"
@@ -187,43 +206,59 @@ export function RuntimeDashboard() {
       </div>
 
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Runtime 控制</CardTitle>
+        <CardHeader className={uix('uix-f4cc511ff0')}>
+          <CardTitle className={uix('uix-fc7473ca09')}>Runtime 控制</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
             {status?.running ? (
-              <Button size="sm" variant="outline" onClick={() => stopMutation.mutate()} disabled={stopMutation.isPending}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => stopMutation.mutate()}
+                disabled={stopMutation.isPending}
+              >
                 停止 Runtime
               </Button>
             ) : (
-              <Button size="sm" onClick={() => startMutation.mutate()} disabled={startMutation.isPending || !status?.llm_configured}>
+              <Button
+                size="sm"
+                onClick={() => startMutation.mutate()}
+                disabled={startMutation.isPending || !status?.llm_configured}
+              >
                 启动 Runtime
               </Button>
             )}
-            <Button size="sm" variant="outline" onClick={() => tickMutation.mutate()} disabled={tickMutation.isPending}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => tickMutation.mutate()}
+              disabled={tickMutation.isPending}
+            >
               {tickMutation.isPending ? '执行中…' : '手动 Tick'}
             </Button>
-            <Button size="sm" variant="outline" onClick={() => postMutation.mutate()} disabled={postMutation.isPending || !status?.llm_configured}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => postMutation.mutate()}
+              disabled={postMutation.isPending || !status?.llm_configured}
+            >
               {postMutation.isPending ? '生成中…' : '触发发帖'}
             </Button>
           </div>
 
-          <div className="rounded border bg-muted/20 px-3 py-2">
-            <p className="text-xs font-medium">Season Rotation（Stage Template）</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              每次开放 3-5 个 hidden 模板并更新 launch 绑定。
-            </p>
+          <div className={uix('uix-eeb4b43685')}>
+            <p className={uix('uix-da8bf29040')}>Season Rotation（Stage Template）</p>
+            <p className={uix('uix-5b40858400')}>每次开放 3-5 个 hidden 模板并更新 launch 绑定。</p>
             {isProdNodeEnv && (
-              <p className="mt-1 text-[11px] text-amber-700">
-                生产环境仅支持 dry-run。真实轮换请执行：
-                {' '}
+              <p className={uix('uix-276aec863c')}>
+                生产环境仅支持 dry-run。真实轮换请执行：{' '}
                 <code>pnpm stage:season:rotate --open-count={rotationOpenCount}</code>
               </p>
             )}
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className={uix('uix-304911ade7')}>
               <select
-                className="h-8 rounded-md border bg-background px-2 text-xs"
+                className={uix('uix-7ef6b049b8')}
                 value={String(rotationOpenCount)}
                 onChange={(event) => {
                   const next = Number.parseInt(event.target.value, 10)
@@ -237,40 +272,54 @@ export function RuntimeDashboard() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => rotateStageMutation.mutate({ openCount: rotationOpenCount, dryRun: isProdNodeEnv })}
+                onClick={() =>
+                  rotateStageMutation.mutate({
+                    openCount: rotationOpenCount,
+                    dryRun: isProdNodeEnv,
+                  })
+                }
                 disabled={rotateStageMutation.isPending}
               >
-                {rotateStageMutation.isPending ? '轮换中…' : isProdNodeEnv ? '执行 Dry-run' : '执行舞台轮换'}
+                {rotateStageMutation.isPending
+                  ? '轮换中…'
+                  : isProdNodeEnv
+                    ? '执行 Dry-run'
+                    : '执行舞台轮换'}
               </Button>
             </div>
             {rotateStageMutation.isError && (
-              <p className="mt-2 text-xs text-destructive">{rotateStageMutation.error.message}</p>
+              <p className={uix('uix-24449fdcf8')}>{rotateStageMutation.error.message}</p>
             )}
           </div>
 
           {!status?.llm_configured && (
-            <p className="text-xs text-amber-600">
+            <p className={uix('uix-18073eaa8e')}>
               LLM 未配置 — 设置 credential pool 对应的 provider API key 环境变量以启用 Runtime
             </p>
           )}
 
           {startMutation.isError && (
-            <p className="text-xs text-destructive">{startMutation.error.message}</p>
+            <p className={uix('uix-551c237449')}>{startMutation.error.message}</p>
           )}
 
-          <div className="rounded border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+          <div className={uix('uix-856848d8a0')}>
             <p>
-              SSE backend: {stats?.sse.broadcast_backend ?? '-'} · rooms: {stats?.sse.subscribed_rooms ?? 0} · sessions: {stats?.sse.subscribed_sessions ?? 0} · reconnect attempts: {sseStatus.reconnectAttempts}
+              SSE backend: {stats?.sse.broadcast_backend ?? '-'} · rooms:{' '}
+              {stats?.sse.subscribed_rooms ?? 0} · sessions: {stats?.sse.subscribed_sessions ?? 0} ·
+              reconnect attempts: {sseStatus.reconnectAttempts}
             </p>
             <p>
-              published: {stats?.sse.broadcast_published ?? 0} · received: {stats?.sse.broadcast_received ?? 0} · dropped: {stats?.sse.broadcast_dropped ?? 0}
+              published: {stats?.sse.broadcast_published ?? 0} · received:{' '}
+              {stats?.sse.broadcast_received ?? 0} · dropped: {stats?.sse.broadcast_dropped ?? 0}
             </p>
             <p>
-              last event: {sseStatus.lastEventType ?? '-'} · next retry: {sseStatus.nextRetryInMs ? `${sseStatus.nextRetryInMs}ms` : '-'}
+              last event: {sseStatus.lastEventType ?? '-'} · next retry:{' '}
+              {sseStatus.nextRetryInMs ? `${sseStatus.nextRetryInMs}ms` : '-'}
             </p>
             {(sseStatus.lastError || stats?.sse.broadcast_last_error) && (
-              <p className="text-amber-700">
-                errors: {sseStatus.lastError ?? '-'} / broker: {stats?.sse.broadcast_last_error ?? '-'}
+              <p className={uix('uix-85d79ebf0d')}>
+                errors: {sseStatus.lastError ?? '-'} / broker:{' '}
+                {stats?.sse.broadcast_last_error ?? '-'}
               </p>
             )}
           </div>
@@ -279,13 +328,9 @@ export function RuntimeDashboard() {
 
       <GuidanceRuntimeCard guidance={runtimeFeatures?.data?.guidance} />
 
-      {tickMutation.data?.data && (
-        <TickResultCard result={tickMutation.data.data} />
-      )}
+      {tickMutation.data?.data && <TickResultCard result={tickMutation.data.data} />}
 
-      {postMutation.data?.data && (
-        <PostResultCard result={postMutation.data.data} />
-      )}
+      {postMutation.data?.data && <PostResultCard result={postMutation.data.data} />}
 
       {rotateStageMutation.data?.data && (
         <StageRotationResultCard result={rotateStageMutation.data.data} />
@@ -293,14 +338,12 @@ export function RuntimeDashboard() {
     </div>
   )
 }
-
 export function GuidanceRuntimeCard({ guidance }: { guidance?: GuidanceRuntimeData | null }) {
   const reasonEntries = Object.entries(guidance?.per_reason ?? {})
-
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm">Guidance Runtime</CardTitle>
+      <CardHeader className={uix('uix-f4cc511ff0')}>
+        <CardTitle className={uix('uix-fc7473ca09')}>Guidance Runtime</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -324,28 +367,30 @@ export function GuidanceRuntimeCard({ guidance }: { guidance?: GuidanceRuntimeDa
           />
           <StatCard
             title="Suppression"
-            value={String((guidance?.suppression.same_reason_count ?? 0) + (guidance?.suppression.daily_cap_count ?? 0))}
+            value={String(
+              (guidance?.suppression.same_reason_count ?? 0) +
+                (guidance?.suppression.daily_cap_count ?? 0),
+            )}
             variant="default"
             detail={`same-reason ${guidance?.suppression.same_reason_count ?? 0} · 24h cap ${guidance?.suppression.daily_cap_count ?? 0}`}
           />
         </div>
 
-        <div className="rounded border bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
+        <div className={uix('uix-49f8a517a5')}>
+          <p>teaching-first violations: {guidance?.teaching_first_violation_count ?? 0}</p>
           <p>
-            teaching-first violations: {guidance?.teaching_first_violation_count ?? 0}
-          </p>
-          <p>
-            delivered/opened/dismissed/completed metrics are aggregated from canonical guidance event log only.
+            delivered/opened/dismissed/completed metrics are aggregated from canonical guidance
+            event log only.
           </p>
         </div>
 
         <div className="space-y-2">
           {reasonEntries.length === 0 ? (
-            <p className="text-xs text-muted-foreground">暂无 Guidance Runtime 指标。</p>
+            <p className={uix('uix-25be576b96')}>暂无 Guidance Runtime 指标。</p>
           ) : (
             reasonEntries.map(([reasonCode, metric]) => (
-              <div key={reasonCode} className="grid grid-cols-[minmax(0,1fr)_repeat(4,auto)] items-center gap-2 rounded border px-3 py-2 text-[11px]">
-                <span className="truncate font-medium">{reasonCode}</span>
+              <div key={reasonCode} className={uix('uix-86752f1d4a')}>
+                <span className={uix('uix-aa8a502942')}>{reasonCode}</span>
                 <Badge variant="outline">delivered {metric.delivered}</Badge>
                 <Badge variant="outline">opened {metric.opened}</Badge>
                 <Badge variant="outline">dismissed {metric.dismissed}</Badge>
@@ -358,8 +403,12 @@ export function GuidanceRuntimeCard({ guidance }: { guidance?: GuidanceRuntimeDa
     </Card>
   )
 }
-
-function StatCard({ title, value, variant, detail }: {
+function StatCard({
+  title,
+  value,
+  variant,
+  detail,
+}: {
   title: string
   value: string
   variant: 'success' | 'muted' | 'default'
@@ -370,44 +419,43 @@ function StatCard({ title, value, variant, detail }: {
     muted: 'bg-gray-100 text-gray-500',
     default: 'bg-blue-50 text-blue-700',
   }[variant]
-
   return (
     <Card>
-      <CardContent className="pt-4 pb-3">
-        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
-        <div className="mt-1 flex items-baseline gap-2">
-          <Badge variant="outline" className={`text-xs ${badgeClass}`}>{value}</Badge>
+      <CardContent className={uix('uix-2384a01162')}>
+        <p className={uix('uix-3f011da125')}>{title}</p>
+        <div className={uix('uix-b7642927f7')}>
+          <Badge variant="outline" className={cn(uix('uix-runtime-badge-base'), badgeClass)}>
+            {value}
+          </Badge>
         </div>
-        <p className="mt-1 text-[10px] text-muted-foreground">{detail}</p>
+        <p className={uix('uix-81f2eca213')}>{detail}</p>
       </CardContent>
     </Card>
   )
 }
-
 function formatDurationMs(value: number | null): string {
   if (value === null) return '-'
-  if (value >= 60_000) return `${Math.round(value / 60_000)}m`
-  if (value >= 1_000) return `${Math.round(value / 1_000)}s`
+  if (value >= 60000) return `${Math.round(value / 60000)}m`
+  if (value >= 1000) return `${Math.round(value / 1000)}s`
   return `${value}ms`
 }
-
 function TickResultCard({ result }: { result: TickResult }) {
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm">Tick 结果</CardTitle>
+      <CardHeader className={uix('uix-f4cc511ff0')}>
+        <CardTitle className={uix('uix-fc7473ca09')}>Tick 结果</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        <div className="flex gap-3 text-xs">
+        <div className={uix('uix-ef292dc8c8')}>
           <span>事件: {result.processed_events}</span>
           <span>分配: {result.batch_stats.allocated_agents}</span>
-          <span className="text-emerald-600">成功: {result.batch_stats.successful}</span>
-          <span className="text-red-600">失败: {result.batch_stats.failed}</span>
+          <span className={uix('uix-22f3f0194d')}>成功: {result.batch_stats.successful}</span>
+          <span className={uix('uix-421d458123')}>失败: {result.batch_stats.failed}</span>
         </div>
         {result.scheduled_post?.triggered && (
-          <div className="rounded border bg-blue-50/50 px-3 py-2 text-xs">
-            <p className="font-medium">自主发帖</p>
-            <p className="text-muted-foreground">
+          <div className={uix('uix-e746f13c5a')}>
+            <p className={uix('uix-2689f39580')}>自主发帖</p>
+            <p className={uix('uix-bfa6031907')}>
               {result.scheduled_post.post_id
                 ? `新帖 ${result.scheduled_post.post_id} (${result.scheduled_post.latency_ms}ms)`
                 : `失败: ${result.scheduled_post.error}`}
@@ -417,12 +465,17 @@ function TickResultCard({ result }: { result: TickResult }) {
         {result.executions.length > 0 && (
           <div className="space-y-1">
             {result.executions.map((exec, i) => (
-              <div key={i} className="flex items-center justify-between rounded border px-2 py-1 text-[11px]">
+              <div key={i} className={uix('uix-9af999722d')}>
                 <span className="truncate">{exec.agent_id}</span>
                 <div className="flex items-center gap-2">
-                  {exec.usage && <span className="text-muted-foreground">{exec.usage.total_tokens}tok</span>}
-                  <span className="text-muted-foreground">{exec.latency_ms}ms</span>
-                  <Badge variant="outline" className={exec.success ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}>
+                  {exec.usage && (
+                    <span className={uix('uix-bfa6031907')}>{exec.usage.total_tokens}tok</span>
+                  )}
+                  <span className={uix('uix-bfa6031907')}>{exec.latency_ms}ms</span>
+                  <Badge
+                    variant="outline"
+                    className={exec.success ? uix('uix-6196a83432') : uix('uix-a47175a4cf')}
+                  >
                     {exec.success ? '✓' : '✗'}
                   </Badge>
                 </div>
@@ -434,52 +487,62 @@ function TickResultCard({ result }: { result: TickResult }) {
     </Card>
   )
 }
-
 function PostResultCard({ result }: { result: PostResult }) {
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm">发帖结果</CardTitle>
+      <CardHeader className={uix('uix-f4cc511ff0')}>
+        <CardTitle className={uix('uix-fc7473ca09')}>发帖结果</CardTitle>
       </CardHeader>
-      <CardContent className="text-xs space-y-1">
+      <CardContent className={uix('uix-93c84cee36')}>
         {result.post_id ? (
           <>
-            <p><span className="text-muted-foreground">帖子 ID:</span> {result.post_id}</p>
-            <p><span className="text-muted-foreground">Agent:</span> {result.agent_id}</p>
-            <p><span className="text-muted-foreground">社区:</span> {result.community_id}</p>
+            <p>
+              <span className={uix('uix-bfa6031907')}>帖子 ID:</span> {result.post_id}
+            </p>
+            <p>
+              <span className={uix('uix-bfa6031907')}>Agent:</span> {result.agent_id}
+            </p>
+            <p>
+              <span className={uix('uix-bfa6031907')}>社区:</span> {result.community_id}
+            </p>
             {result.usage && (
-              <p><span className="text-muted-foreground">Tokens:</span> {result.usage.total_tokens} ({result.usage.prompt_tokens}p + {result.usage.completion_tokens}c)</p>
+              <p>
+                <span className={uix('uix-bfa6031907')}>Tokens:</span> {result.usage.total_tokens} (
+                {result.usage.prompt_tokens}p + {result.usage.completion_tokens}c)
+              </p>
             )}
             {result.latency_ms && (
-              <p><span className="text-muted-foreground">延迟:</span> {result.latency_ms}ms</p>
+              <p>
+                <span className={uix('uix-bfa6031907')}>延迟:</span> {result.latency_ms}ms
+              </p>
             )}
           </>
         ) : (
-          <p className="text-amber-600">{result.error ?? '未触发'}</p>
+          <p className={uix('uix-47d65ecb05')}>{result.error ?? '未触发'}</p>
         )}
       </CardContent>
     </Card>
   )
 }
-
 function StageRotationResultCard({ result }: { result: StageSeasonRotationResult }) {
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm">Season Rotation 结果</CardTitle>
+      <CardHeader className={uix('uix-f4cc511ff0')}>
+        <CardTitle className={uix('uix-fc7473ca09')}>Season Rotation 结果</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2 text-xs">
+      <CardContent className={uix('uix-62c5186701')}>
         <p>
-          开放数量: {result.open_count} · activated: {result.activated.length} · replaced: {result.replaced.length}
+          开放数量: {result.open_count} · activated: {result.activated.length} · replaced:{' '}
+          {result.replaced.length}
         </p>
-        <p className="text-muted-foreground">
+        <p className={uix('uix-bfa6031907')}>
           dist 导出: {result.exported_templates} templates / {result.launch_templates} launch
         </p>
         {result.activated.length > 0 && (
-          <div className="rounded border bg-muted/20 px-2 py-1">
-            <p className="font-medium">新启用</p>
+          <div className={uix('uix-7082b8e8c3')}>
+            <p className={uix('uix-2689f39580')}>新启用</p>
             {result.activated.map((item) => (
-              <p key={`${item.slot}-${item.template_id}`} className="text-[11px] text-muted-foreground">
+              <p key={`${item.slot}-${item.template_id}`} className={uix('uix-f7fc5c060a')}>
                 {item.slot}: {item.template_id}
               </p>
             ))}
@@ -489,12 +552,14 @@ function StageRotationResultCard({ result }: { result: StageSeasonRotationResult
     </Card>
   )
 }
-
 function formatTime(ts: number): string {
   if (!ts) return '-'
-  return new Date(ts).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  return new Date(ts).toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
 }
-
 function formatSsePhase(phase: 'connecting' | 'connected' | 'reconnecting' | 'offline'): string {
   switch (phase) {
     case 'connected':

@@ -50,9 +50,9 @@ export class AftershowService {
     const totalChars = messages.reduce((sum, m) => sum + m.body.length, 0)
     const avgLen = messages.length > 0 ? Math.round(totalChars / messages.length) : 0
     return [
-      `Audience summary window collected ${messages.length} messages from ${uniqueUsers} users.`,
-      `Average message length is ${avgLen} characters.`,
-      'Raw audience text is intentionally excluded from aftershow context; downstream must consume summary only.',
+      `本轮观众区共收集到 ${messages.length} 条留言，来自 ${uniqueUsers} 位用户。`,
+      `平均留言长度约 ${avgLen} 个字符。`,
+      '场后总结只消费安全摘要，不直接拼接原始观众留言。',
     ].join(' ')
   }
 
@@ -70,7 +70,7 @@ export class AftershowService {
       }))
 
     return {
-      title: `Aftershow · ${input.postTitle}`,
+      title: `场后总结 · ${input.postTitle}`,
       summary: input.summaryText,
       highlights: latestHighlights,
       generated_at: new Date().toISOString(),

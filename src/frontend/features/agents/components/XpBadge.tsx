@@ -1,18 +1,16 @@
+import { uix } from '@/shared/utils/uix'
 interface XpBadgeProps {
   xp: number
   growthPointsTotal: number
   growthPointsAvailable: number
 }
-
 export default function XpBadge({ xp, growthPointsTotal, growthPointsAvailable }: XpBadgeProps) {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-12 min-w-20 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 px-3 text-xs font-bold text-white shadow">
-        XP
-      </div>
+      <div className={uix('uix-27312fbdce')}>XP</div>
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium text-foreground">{xp} XP</div>
-        <span className="text-xs text-muted-foreground">
+        <div className={uix('uix-5af1ba0eb8')}>{xp} XP</div>
+        <span className={uix('uix-25be576b96')}>
           待分配成长点 {growthPointsAvailable} · 累计 {growthPointsTotal}
         </span>
       </div>

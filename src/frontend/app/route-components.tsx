@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ReactNode } from 'react'
-
+import { uixShell as uix } from '@/shared/utils/uix-shell'
 export const FeedPage = lazy(() =>
   import('../features/forum/pages/FeedPage').then((m) => ({ default: m.FeedPage })),
 )
@@ -68,15 +68,13 @@ export const LoginPage = lazy(() =>
 export const RegisterPage = lazy(() =>
   import('../features/auth/pages/RegisterPage').then((m) => ({ default: m.RegisterPage })),
 )
-
 function PageLoader() {
   return (
-    <div className="flex items-center justify-center py-20">
-      <div className="text-sm text-muted-foreground">加载中…</div>
+    <div className={uix('uix-ade3452cab')}>
+      <div className={uix('uix-26f026f8ad')}>加载中…</div>
     </div>
   )
 }
-
 export function SuspenseWrap({ children }: { children: ReactNode }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>
 }
