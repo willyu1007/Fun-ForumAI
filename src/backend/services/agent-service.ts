@@ -29,6 +29,13 @@ export interface AgentServiceDeps {
 export class AgentService {
   constructor(private readonly deps: AgentServiceDeps) {}
 
+  private async refreshPersistedAgentViews(): Promise<void> {
+    await Promise.all([
+      this.deps.agentRepo.refreshPersisted?.() ?? Promise.resolve(),
+      this.deps.agentConfigRepo.refreshPersisted?.() ?? Promise.resolve(),
+    ])
+  }
+
   setConfigUpdatedHook(
     hook: (input: {
       agent_id: string
@@ -136,6 +143,15 @@ export class AgentService {
     return agent
   }
 
+  async getAgentPersisted(agentId: string): Promise<Agent> {
+    const cached = this.deps.agentRepo.findById(agentId)
+    if (cached) return cached
+    await this.refreshPersistedAgentViews()
+    const refreshed = this.deps.agentRepo.findById(agentId)
+    if (!refreshed) throw new NotFoundError('Agent', agentId)
+    return refreshed
+  }
+
   getAgentProfile(agentId: string): Agent {
     return this.getAgent(agentId)
   }
@@ -153,10 +169,9 @@ export class AgentService {
     configJson: Record<string, unknown>,
     adminUserId: string,
   ): Promise<AgentConfig> {
-    const agent = this.deps.agentRepo.findById(agentId)
-    if (!agent) throw new NotFoundError('Agent', agentId)
+    await this.getAgentPersisted(agentId)
 
-    const existing = this.deps.agentConfigRepo.findLatest(agentId)?.config_json ?? {}
+    const existing = (await this.getLatestConfigPersisted(agentId))?.config_json ?? {}
     const mergedConfig = mergeConfigJson(existing, configJson)
     const createInput = {
       agent_id: agentId,
@@ -185,6 +200,14 @@ export class AgentService {
   getLatestConfig(agentId: string): AgentConfig | null {
     const agent = this.deps.agentRepo.findById(agentId)
     if (!agent) throw new NotFoundError('Agent', agentId)
+    return this.deps.agentConfigRepo.findLatest(agentId)
+  }
+
+  async getLatestConfigPersisted(agentId: string): Promise<AgentConfig | null> {
+    await this.getAgentPersisted(agentId)
+    const cached = this.deps.agentConfigRepo.findLatest(agentId)
+    if (cached) return cached
+    await this.deps.agentConfigRepo.refreshPersisted?.()
     return this.deps.agentConfigRepo.findLatest(agentId)
   }
 

@@ -246,4 +246,91 @@ describe('RoomProgramEngine', () => {
       program_event_id: event.id,
     })
   })
+
+  it('prioritizes a pending manual cue even when a newer planned natural cue exists', async () => {
+    const watchabilityRepo = new InMemoryRoomWatchabilityRepository()
+    const state = makeLoadedState()
+
+    const manualBeat = await watchabilityRepo.createEpisodeBeat({
+      room_id: state.room.id,
+      episode_id: state.episode!.id,
+      ordinal: 7,
+      beat_type: 'CALLBACK',
+      cue_type: 'CALLBACK',
+      director_goal: '先消费 owner cue',
+      prompt_hint: '自然 callback',
+      target_role: 'HOST',
+      selected_speaker_agent_id: 'agent-1',
+      status: 'selected',
+      audit_json: null,
+    })
+    const manualEvent = await watchabilityRepo.createProgramEvent({
+      room_id: state.room.id,
+      episode_id: state.episode!.id,
+      beat_id: manualBeat.id,
+      event_type: 'PROGRAM_CUE',
+      status: 'PLANNED',
+      cue_type: 'CALLBACK',
+      director_goal: '先消费 owner cue',
+      selected_speaker_agent_id: 'agent-1',
+      idempotency_key: 'manual-cue:priority',
+      payload_json: { manual: true },
+    })
+
+    const naturalBeat = await watchabilityRepo.createEpisodeBeat({
+      room_id: state.room.id,
+      episode_id: state.episode!.id,
+      ordinal: 8,
+      beat_type: 'HOOK',
+      cue_type: 'ASK',
+      director_goal: '后续自然追问',
+      prompt_hint: '继续推进',
+      target_role: 'FOIL',
+      selected_speaker_agent_id: 'agent-2',
+      status: 'selected',
+      audit_json: null,
+    })
+    const naturalEvent = await watchabilityRepo.createProgramEvent({
+      room_id: state.room.id,
+      episode_id: state.episode!.id,
+      beat_id: naturalBeat.id,
+      event_type: 'PROGRAM_CUE',
+      status: 'PLANNED',
+      cue_type: 'ASK',
+      director_goal: '后续自然追问',
+      selected_speaker_agent_id: 'agent-2',
+      idempotency_key: 'natural-cue:newer',
+      payload_json: { manual: false },
+    })
+
+    const engine = new RoomProgramEngine({
+      stateLoader: {
+        load: async () => ({
+          ...state,
+          latestBeat: naturalBeat,
+          latestEvent: naturalEvent,
+        }),
+      } as never,
+      cuePlanner: new RoomCuePlanner(),
+      scorer: new RoomProgramScorer(),
+      watchabilityRepo,
+    })
+
+    const turn = await engine.planNextTurn({
+      roomId: state.room.id,
+      triggerAgentId: 'agent-trigger',
+      canSpeak: async () => true,
+    })
+
+    expect(turn).toEqual({
+      episode_id: state.episode!.id,
+      selected_speaker_agent_id: 'agent-1',
+      speaker_role: 'HOST',
+      cue_type: 'CALLBACK',
+      beat_type: 'CALLBACK',
+      director_goal: '先消费 owner cue',
+      beat_id: manualBeat.id,
+      program_event_id: manualEvent.id,
+    })
+  })
 })

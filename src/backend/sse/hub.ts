@@ -26,6 +26,8 @@ interface SseHubOptions {
   instanceId?: string
 }
 
+type RoomEventListener = (roomId: string, event: SseEvent) => void
+
 export class SseHub {
   private readonly instanceId: string
   private clients = new Map<string, SseClient>()
@@ -36,6 +38,7 @@ export class SseHub {
   private clientSessions = new Map<string, Set<string>>()
   private actorSubscriptions = new Map<string, Set<string>>()
   private clientActors = new Map<string, Set<string>>()
+  private roomEventListeners = new Set<RoomEventListener>()
   private broadcastAdapter: SseBroadcastAdapter | null = null
 
   constructor(options: SseHubOptions = {}) {
@@ -141,6 +144,13 @@ export class SseHub {
     const normalized = this.normalizeEvent(event)
     this.broadcastToRoomLocal(roomId, normalized)
     this.publishToCluster('room', normalized, { roomId })
+  }
+
+  onRoomEvent(listener: RoomEventListener): () => void {
+    this.roomEventListeners.add(listener)
+    return () => {
+      this.roomEventListeners.delete(listener)
+    }
   }
 
   broadcastToSession(sessionId: string, event: SseEvent): void {
@@ -254,6 +264,7 @@ export class SseHub {
   }
 
   private broadcastToRoomLocal(roomId: string, event: SseEvent): void {
+    this.notifyRoomEventListeners(roomId, event)
     const clientIds = this.roomSubscriptions.get(roomId)
     if (!clientIds || clientIds.size === 0) return
 
@@ -275,6 +286,16 @@ export class SseHub {
 
     for (const id of dead) {
       this.cleanupClient(id)
+    }
+  }
+
+  private notifyRoomEventListeners(roomId: string, event: SseEvent): void {
+    for (const listener of this.roomEventListeners) {
+      try {
+        listener(roomId, event)
+      } catch (err) {
+        console.warn('[SseHub] room event listener failed:', err)
+      }
     }
   }
 

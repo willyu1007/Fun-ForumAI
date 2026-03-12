@@ -129,6 +129,10 @@ export class PgAgentRepository implements AgentRepository {
     await this.prisma.agent.deleteMany({ where: { id } })
   }
 
+  async refreshPersisted(): Promise<void> {
+    await this.refreshCache()
+  }
+
   findById(id: string): Agent | null {
     return this.cache.get(id) ?? null
   }
@@ -360,6 +364,10 @@ export class PgAgentConfigRepository implements AgentConfigRepository {
     this.cache.set(id, config)
     this.agentLatest.set(input.agent_id, id)
     return config
+  }
+
+  async refreshPersisted(): Promise<void> {
+    await this.refreshCache()
   }
 
   findLatest(agentId: string): AgentConfig | null {

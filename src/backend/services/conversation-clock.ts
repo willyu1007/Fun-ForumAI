@@ -9,7 +9,7 @@ import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
 import type { RenderTierDecisionResult } from '../runtime/persona-runtime-types.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import type { SseHub } from '../sse/hub.js'
-import type { ChatMessageKind } from '../repos/types.js'
+import type { Agent, AgentConfig, ChatMessageKind, CreateChatMessageInput } from '../repos/types.js'
 import type { LeaderElector } from '../runtime/leader-elector.js'
 import type { PersonaStateService } from './persona-state-service.js'
 import type {
@@ -31,7 +31,6 @@ import {
 } from '../runtime/persona-observation.js'
 import type { RoomProgramEngine } from './room-program-engine.js'
 import type { RoomEcologyService } from './room-ecology-service.js'
-import type { CreateChatMessageInput } from '../repos/types.js'
 
 const MAX_MSG_PER_AGENT_PER_ROOM_HOUR = 6
 const MAX_MSG_PER_AGENT_GLOBAL_HOUR = 15
@@ -70,6 +69,7 @@ export interface ConversationClockDeps {
 interface AgentTimer {
   roomId: string
   agentId: string
+  tickInterval: number
   timer: ReturnType<typeof setTimeout>
 }
 
@@ -79,7 +79,11 @@ export class ConversationClock {
   private running = false
   private timerSync: ReturnType<typeof setInterval> | null = null
 
-  constructor(private readonly deps: ConversationClockDeps) {}
+  constructor(private readonly deps: ConversationClockDeps) {
+    this.deps.sseHub.onRoomEvent?.((roomId, event) => {
+      this.handleRoomBroadcast(roomId, event)
+    })
+  }
 
   setPromptLayerService(service: PromptLayerService | null): void {
     ;(this.deps as { promptLayerService?: PromptLayerService | null }).promptLayerService = service
@@ -123,12 +127,48 @@ export class ConversationClock {
     }
   }
 
+  private handleRoomBroadcast(
+    roomId: string,
+    event: { type: string; payload?: unknown },
+  ): void {
+    if (event.type !== 'ROOM_CONTROL_STATE_UPDATED') return
+    const payload = event.payload
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return
+
+    const payloadRecord = payload as Record<string, unknown>
+    if (payloadRecord.reason !== 'manual_cue') return
+
+    const payloadRoomId = typeof payloadRecord.room_id === 'string'
+      ? payloadRecord.room_id
+      : roomId
+    const selectedAgentId = typeof payloadRecord.selected_agent_id === 'string'
+      ? payloadRecord.selected_agent_id
+      : null
+    if (!selectedAgentId || payloadRoomId !== roomId) return
+
+    void this.prioritizeAgent(roomId, selectedAgentId).catch((err) => {
+      console.warn(`[ConversationClock] fast-lane broadcast failed for room=${roomId}:`, err)
+    })
+  }
+
   onAgentJoined(roomId: string, agentId: string, tickInterval: number): void {
     if (!this.running) return
     const stagger = Math.random() * STAGGER_MS
     setTimeout(() => {
       this.scheduleAgent(roomId, agentId, tickInterval)
     }, stagger)
+  }
+
+  async prioritizeAgent(roomId: string, agentId: string, delayMs = 250): Promise<void> {
+    if (!this.running) return
+    const key = this.timerKey(roomId, agentId)
+    const existing = this.timers.get(key)
+    const member = existing
+      ? null
+      : await this.deps.roomRepo.getMember(roomId, agentId)
+    const tickInterval = existing?.tickInterval ?? member?.personal_tick_interval
+    if (!tickInterval) return
+    this.scheduleAgent(roomId, agentId, tickInterval, Math.min(delayMs, tickInterval))
   }
 
   onAgentLeft(roomId: string, agentId: string): void {
@@ -197,7 +237,7 @@ export class ConversationClock {
     }
   }
 
-  private scheduleAgent(roomId: string, agentId: string, tickInterval: number): void {
+  private scheduleAgent(roomId: string, agentId: string, tickInterval: number, delayMs = tickInterval): void {
     const key = this.timerKey(roomId, agentId)
     const existing = this.timers.get(key)
     if (existing) clearTimeout(existing.timer)
@@ -206,9 +246,9 @@ export class ConversationClock {
       this.handleTick(roomId, agentId, tickInterval).catch((err) => {
         console.error(`[ConversationClock] Tick error for ${agentId} in ${roomId}:`, err)
       })
-    }, tickInterval)
+    }, delayMs)
 
-    this.timers.set(key, { roomId, agentId, timer })
+    this.timers.set(key, { roomId, agentId, tickInterval, timer })
   }
 
   private async handleTick(roomId: string, agentId: string, tickInterval: number): Promise<void> {
@@ -472,7 +512,14 @@ export class ConversationClock {
   }> {
     const room = await this.deps.roomRepo.findById(roomId)
     const agent = this.deps.agentRepo.findById(agentId)
+      ?? await this.deps.agentService.getAgentPersisted(agentId).catch(() => null)
     if (!room || !agent) return { kind: 'empty', body: '' }
+    const latestConfig = this.deps.agentService.getLatestConfigPersisted
+      ? await this.deps.agentService.getLatestConfigPersisted(agentId).catch(() =>
+          this.deps.agentService.getLatestConfig(agentId)
+        )
+      : this.deps.agentService.getLatestConfig(agentId)
+    const resolvedIdentity = this.resolveIdentity(agent, latestConfig)
 
     const recentMsgs = await this.deps.messageRepo.getLatestMessages(roomId, 10)
     const runtimeChatContext = this.deps.chatroomRuntimeContextBuilder
@@ -493,7 +540,7 @@ export class ConversationClock {
         if (!body) return []
         const a = this.deps.agentRepo.findById(m.author_id)
         const name = a?.display_name ?? m.author_id
-        return [`**${name}**：${body}`]
+        return [`发言人=${name}；内容=${body}`]
       })
       .join('\n')
 
@@ -501,8 +548,8 @@ export class ConversationClock {
       return { kind: 'normal', body: `[${agent.display_name}] 聊天测试消息` }
     }
 
-    let persona = this.resolvePersona(agentId, agent.display_name)
-    const observationIdentity = this.resolveObservationIdentity(agentId)
+    let persona = resolvedIdentity.visiblePersona
+    const observationIdentity = resolvedIdentity.observationIdentity
     let promptAudit: PromptComposeAudit | null = null
     let renderDecision: RenderTierDecisionResult | null = null
     let layers: {
@@ -649,7 +696,7 @@ export class ConversationClock {
       intent: 'chat_reply',
       scene: 'chat_room',
       agentId,
-      homeVoiceLineId: this.resolveHomeVoiceLineId(agentId),
+      homeVoiceLineId: resolvedIdentity.homeVoiceLineId,
       promptRef: PROMPT_TEMPLATE_REFS.agentChatReply,
       variables,
       budgetClass: 'visible_standard',
@@ -747,30 +794,41 @@ export class ConversationClock {
     return `${roomId}:${agentId}`
   }
 
-  private resolvePersona(agentId: string, fallbackName: string): {
-    name: string
-    style: string
-    interests: string[]
-    language: string
+  private resolveIdentity(agent: Agent, latestConfig: AgentConfig | null): {
+    visiblePersona: {
+      name: string
+      style: string
+      interests: string[]
+      language: string
+    }
+    homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
+    observationIdentity: {
+      persona_seed_code: import('../../shared/agent-persona-catalog.js').PersonaSeedCode
+      home_voice_line_id: import('../../shared/agent-persona-catalog.js').VoiceLineId
+    } | null
   } {
     try {
-      const agent = this.deps.agentService.getAgent(agentId)
-      const latestConfig = this.deps.agentService.getLatestConfig(agentId)
-      return resolveAgentIdentity(agent, latestConfig).visiblePersona
+      const resolved = resolveAgentIdentity(agent, latestConfig)
+      return {
+        visiblePersona: resolved.visiblePersona,
+        homeVoiceLineId: resolved.summary.home_voice_line_id,
+        observationIdentity: {
+          persona_seed_code: resolved.summary.persona_seed_code,
+          home_voice_line_id: resolved.summary.home_voice_line_id,
+        },
+      }
     } catch {
       return {
-        name: fallbackName,
-        style: '友善而富有洞察力',
-        interests: ['多元话题'],
-        language: '中文',
+        visiblePersona: {
+          name: agent.display_name,
+          style: '友善而富有洞察力',
+          interests: ['多元话题'],
+          language: '中文',
+        },
+        homeVoiceLineId: 'qwen-social-v1',
+        observationIdentity: null,
       }
     }
-  }
-
-  private resolveHomeVoiceLineId(agentId: string) {
-    const agent = this.deps.agentService.getAgent(agentId)
-    const latestConfig = this.deps.agentService.getLatestConfig(agentId)
-    return resolveAgentIdentity(agent, latestConfig).summary.home_voice_line_id
   }
 
   private extractTopicHints(roomName: string, messageBodies: string[]): string[] {
@@ -897,20 +955,4 @@ export class ConversationClock {
     }
   }
 
-  private resolveObservationIdentity(agentId: string): {
-    persona_seed_code: import('../../shared/agent-persona-catalog.js').PersonaSeedCode
-    home_voice_line_id: import('../../shared/agent-persona-catalog.js').VoiceLineId
-  } | null {
-    try {
-      const agent = this.deps.agentService.getAgent(agentId)
-      const latestConfig = this.deps.agentService.getLatestConfig(agentId)
-      const resolved = resolveAgentIdentity(agent, latestConfig)
-      return {
-        persona_seed_code: resolved.summary.persona_seed_code,
-        home_voice_line_id: resolved.summary.home_voice_line_id,
-      }
-    } catch {
-      return null
-    }
-  }
 }

@@ -183,6 +183,11 @@ export interface PlanRoomProgramCueResult {
   created_now: boolean
 }
 
+export interface PendingRoomProgramTurn {
+  beat: RoomEpisodeBeat
+  event: RoomProgramEvent
+}
+
 export interface RoomWatchabilityRepository {
   ensureProgram(room: Room): Promise<RoomProgram>
   updateProgram(roomId: string, patch: UpdateRoomProgramInput): Promise<RoomProgram | null>
@@ -200,6 +205,7 @@ export interface RoomWatchabilityRepository {
   planProgramCue(input: PlanRoomProgramCueInput): Promise<PlanRoomProgramCueResult>
   updateProgramEvent(id: string, patch: UpdateRoomProgramEventInput): Promise<RoomProgramEvent | null>
   getLatestProgramEvent(roomId: string): Promise<RoomProgramEvent | null>
+  getNextPlannedProgramTurn(roomId: string): Promise<PendingRoomProgramTurn | null>
   listRecentProgramEvents(roomId: string, limit: number): Promise<RoomProgramEvent[]>
   saveSelectionLedger(input: SaveRoomSelectionLedgerInput[]): Promise<RoomSelectionLedger[]>
   listSelectionLedger(programEventId: string): Promise<RoomSelectionLedger[]>
@@ -585,6 +591,28 @@ export class InMemoryRoomWatchabilityRepository implements RoomWatchabilityRepos
     const ids = this.eventIdsByRoom.get(roomId) ?? []
     if (ids.length === 0) return null
     return this.events.get(ids[ids.length - 1]) ?? null
+  }
+
+  async getNextPlannedProgramTurn(roomId: string): Promise<PendingRoomProgramTurn | null> {
+    const ids = this.eventIdsByRoom.get(roomId) ?? []
+    const pending = ids
+      .map((id) => this.events.get(id))
+      .filter((event): event is RoomProgramEvent => Boolean(event))
+      .filter((event) => event.event_type === 'PROGRAM_CUE' && event.status === 'PLANNED' && Boolean(event.beat_id))
+      .sort((a, b) => {
+        const manualDelta = Number(Boolean(b.payload_json?.manual)) - Number(Boolean(a.payload_json?.manual))
+        if (manualDelta !== 0) return manualDelta
+        return a.created_at.getTime() - b.created_at.getTime()
+      })
+
+    for (const event of pending) {
+      if (!event.beat_id || !event.episode_id) continue
+      const beat = (this.beatsByEpisode.get(event.episode_id) ?? []).find((entry) => entry.id === event.beat_id) ?? null
+      if (!beat) continue
+      return { beat, event }
+    }
+
+    return null
   }
 
   async listRecentProgramEvents(roomId: string, limit: number): Promise<RoomProgramEvent[]> {

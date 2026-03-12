@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events'
 import type { Response } from 'express'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SseHub } from '../hub.js'
 import type {
   SseBroadcastAdapter,
@@ -227,6 +227,37 @@ describe('SseHub', () => {
     expect(collectEvents(r1)).toEqual([expect.objectContaining({ type: 'MESSAGE_CREATED', payload: { room_id: 'room-9', id: 'm-1' } })])
     expect(collectEvents(r2)).toEqual([expect.objectContaining({ type: 'MESSAGE_CREATED', payload: { room_id: 'room-9', id: 'm-1' } })])
     expect(collectEvents(r3)).toEqual([])
+  })
+
+  it('notifies room event listeners for local and remote room broadcasts', async () => {
+    const hub1 = new SseHub({ instanceId: 'hub-1' })
+    const hub2 = new SseHub({ instanceId: 'hub-2' })
+    hubsToClose.push(hub1, hub2)
+
+    await hub1.setBroadcastAdapter(new MemoryBusBroadcastAdapter())
+    await hub2.setBroadcastAdapter(new MemoryBusBroadcastAdapter())
+
+    const localListener = vi.fn()
+    const remoteListener = vi.fn()
+    hub1.onRoomEvent(localListener)
+    hub2.onRoomEvent(remoteListener)
+
+    hub1.broadcastToRoom('room-fast-lane', {
+      type: 'ROOM_CONTROL_STATE_UPDATED',
+      payload: {
+        room_id: 'room-fast-lane',
+        reason: 'manual_cue',
+        selected_agent_id: 'agent-1',
+      },
+    })
+    await flushAsync()
+
+    expect(localListener).toHaveBeenCalledWith('room-fast-lane', expect.objectContaining({
+      type: 'ROOM_CONTROL_STATE_UPDATED',
+    }))
+    expect(remoteListener).toHaveBeenCalledWith('room-fast-lane', expect.objectContaining({
+      type: 'ROOM_CONTROL_STATE_UPDATED',
+    }))
   })
 
   it('fans out session-scoped events across hubs while honoring session subscriptions', async () => {

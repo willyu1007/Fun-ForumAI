@@ -726,11 +726,11 @@ tasks:
     updated: 2026-03-12
   - id: T-082
     slug: chatroom-live-experience-optimization
-    status: planned
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/chatroom-live-experience-optimization
-    updated: 2026-03-11
+    dev_docs_path: dev-docs/archive/chatroom-live-experience-optimization
+    updated: 2026-03-12
   - id: T-084
     slug: public-web-chinese-first-content-presentation
     status: in-progress

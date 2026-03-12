@@ -7,7 +7,10 @@ import {
   LLM_CALLSITE_INVENTORY,
   LLM_DIRECT_CALL_GUARD_COUNTS,
 } from '../callsite-inventory.js'
-import { resolveVoiceLineTierProfileRef } from '../voice-line-routing.js'
+import {
+  resolveIdentityWriteProfileRef,
+  resolveVoiceLineTierProfileRef,
+} from '../voice-line-routing.js'
 
 const BACKEND_ROOT = join(process.cwd(), 'src', 'backend')
 const INVENTORY_IMPLEMENTATION_PATH = join(
@@ -53,13 +56,14 @@ describe('LLM callsite inventory guard', () => {
       const routingTier = entry.tier_floor === 'identityWriteTier' ? 'premium' : entry.tier_floor
       expect(entry.expected_profile_refs).not.toBeNull()
       for (const [voiceLineId, expectedProfileId] of Object.entries(entry.expected_profile_refs ?? {})) {
-        expect(
-          resolveVoiceLineTierProfileRef(
-            voiceLineId as VoiceLineId,
-            entry.intent,
-            routingTier,
-          ),
-        ).toBe(expectedProfileId)
+        const resolved = entry.intent === 'identity_write'
+          ? resolveIdentityWriteProfileRef(voiceLineId as VoiceLineId, routingTier)
+          : resolveVoiceLineTierProfileRef(
+              voiceLineId as VoiceLineId,
+              entry.intent,
+              routingTier,
+            )
+        expect(resolved).toBe(expectedProfileId)
       }
     }
   })
