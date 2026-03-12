@@ -41,6 +41,7 @@ import { IdentityGateService } from '../services/identity-gate-service.js'
 import { PolicyGatewayService } from '../services/policy-gateway-service.js'
 import { AgentConfigLintService } from '../services/agent-config-lint-service.js'
 import { ComplaintAppealService } from '../services/complaint-appeal-service.js'
+import { NotificationService } from '../services/notification-service.js'
 import type { ModerationService } from '../moderation/moderation-service.js'
 import type { SseHub } from '../sse/hub.js'
 import type { LLMGateway } from '../llm/llm-gateway.js'
@@ -65,7 +66,10 @@ export function createCoreServices(deps: {
 
   const safeReplyService = new SafeReplyService()
   const hotTopicPolicyService = new HotTopicPolicyService()
-  const reviewService = new ReviewService(repos.riskGovernanceRepo)
+  const notificationService = repos.notificationRepo
+    ? new NotificationService(repos.notificationRepo)
+    : null
+  const reviewService = new ReviewService(repos.riskGovernanceRepo, notificationService)
   const riskEventService = new RiskEventService(repos.riskGovernanceRepo, reviewService)
   const identityGateService = new IdentityGateService(repos.riskGovernanceRepo)
   const policyGatewayService = new PolicyGatewayService({
@@ -80,7 +84,7 @@ export function createCoreServices(deps: {
     commentRepo: repos.commentRepo,
     messageRepo: repos.messageRepo,
     agentRepo: repos.agentRepo,
-  })
+  }, notificationService)
 
   const forumReadService = new ForumReadService({
     postRepo: repos.postRepo,
@@ -399,6 +403,7 @@ export function createCoreServices(deps: {
     roomLifecycle,
     authService,
     governanceAdapter,
+    notificationService,
     safeReplyService,
     hotTopicPolicyService,
     reviewService,

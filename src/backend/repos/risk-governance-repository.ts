@@ -29,6 +29,7 @@ import type {
   UpsertUserIdentityVerificationInput,
   UserIdentityVerification,
   RiskEventLog,
+  GovernanceAttachment,
 } from './types.js'
 
 export interface RiskGovernanceRepository {
@@ -51,7 +52,7 @@ export interface RiskGovernanceRepository {
   updateCase(id: string, input: UpdateModerationCaseInput): Promise<ModerationCase | null>
   findCaseById(id: string): Promise<ModerationCase | null>
   findLatestCaseByTarget(targetType: string, targetId: string): Promise<ModerationCase | null>
-  listCases(opts: PaginationOpts & { status?: string; case_type?: string }): Promise<PaginatedResult<ModerationCase>>
+  listCases(opts: PaginationOpts & { status?: string; case_type?: string; queue?: string }): Promise<PaginatedResult<ModerationCase>>
   addCaseTarget(input: CreateModerationCaseTargetInput): Promise<ModerationCaseTarget>
   updateCaseTargets(caseId: string, input: UpdateModerationCaseTargetInput): Promise<ModerationCaseTarget[]>
   listCaseTargets(caseId: string): Promise<ModerationCaseTarget[]>
@@ -59,6 +60,7 @@ export interface RiskGovernanceRepository {
   listEvidenceSnapshots(caseId: string): Promise<ModerationEvidenceSnapshot[]>
   createReviewTask(input: CreateReviewTaskInput): Promise<ReviewTask>
   updateReviewTask(id: string, input: UpdateReviewTaskInput): Promise<ReviewTask | null>
+  findReviewTaskById(id: string): Promise<ReviewTask | null>
   listReviewTasks(caseId: string): Promise<ReviewTask[]>
 
   createGovernanceActionLog(input: CreateGovernanceActionLogInput): Promise<GovernanceActionLog>
@@ -83,6 +85,29 @@ let counter = 0
 function cuid(prefix: string): string {
   counter += 1
   return `${prefix}_${Date.now()}_${counter}`
+}
+
+function normalizeAttachments(value: GovernanceAttachment[] | undefined): GovernanceAttachment[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is GovernanceAttachment =>
+    Boolean(item)
+    && typeof item.ref === 'string'
+    && item.ref.length > 0
+    && typeof item.type === 'string'
+    && item.type.length > 0)
+}
+
+function buildEvidencePackage(input: CreateModerationEvidenceSnapshotInput): Record<string, unknown> {
+  return {
+    snapshot_type: input.snapshot_type,
+    payload: input.payload ?? {},
+    content: input.content ?? null,
+    context: input.context ?? null,
+    policy_hits: input.policy_hits ?? null,
+    prompt_memory: input.prompt_memory ?? null,
+    topic_signals: input.topic_signals ?? null,
+    action_history: input.action_history ?? null,
+  }
 }
 
 function paginate<T extends { id: string }>(
@@ -271,16 +296,25 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
     const entity: ModerationCase = {
       id: cuid('mcase'),
       case_type: input.case_type,
+      queue: input.queue ?? 'MODERATION',
       status: input.status ?? 'OPEN',
       priority: input.priority ?? 50,
       summary_text: input.summary_text ?? null,
+      risk_summary: input.risk_summary ?? null,
       opened_reason: input.opened_reason ?? null,
       opened_by: input.opened_by ?? 'system',
+      primary_target_type: input.primary_target_type ?? null,
+      primary_target_id: input.primary_target_id ?? null,
       assigned_to_user_id: input.assigned_to_user_id ?? null,
+      sla_due_at: input.sla_due_at ?? null,
+      claimed_by_user_id: input.claimed_by_user_id ?? null,
+      claimed_at: input.claimed_at ?? null,
       linked_policy_snapshot_id: input.linked_policy_snapshot_id ?? null,
       linked_complaint_ticket_id: input.linked_complaint_ticket_id ?? null,
       linked_appeal_request_id: input.linked_appeal_request_id ?? null,
       resolution_action: input.resolution_action ?? null,
+      resolved_by_user_id: input.resolved_by_user_id ?? null,
+      resolution_note: input.resolution_note ?? null,
       resolved_at: input.resolved_at ?? null,
       created_at: now,
       updated_at: now,
@@ -294,13 +328,22 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
     if (!existing) return null
     const next: ModerationCase = {
       ...existing,
+      ...(input.queue !== undefined ? { queue: input.queue } : {}),
       ...(input.status !== undefined ? { status: input.status } : {}),
       ...(input.priority !== undefined ? { priority: input.priority } : {}),
       ...(input.summary_text !== undefined ? { summary_text: input.summary_text } : {}),
+      ...(input.risk_summary !== undefined ? { risk_summary: input.risk_summary } : {}),
+      ...(input.primary_target_type !== undefined ? { primary_target_type: input.primary_target_type } : {}),
+      ...(input.primary_target_id !== undefined ? { primary_target_id: input.primary_target_id } : {}),
       ...(input.assigned_to_user_id !== undefined ? { assigned_to_user_id: input.assigned_to_user_id } : {}),
+      ...(input.sla_due_at !== undefined ? { sla_due_at: input.sla_due_at } : {}),
+      ...(input.claimed_by_user_id !== undefined ? { claimed_by_user_id: input.claimed_by_user_id } : {}),
+      ...(input.claimed_at !== undefined ? { claimed_at: input.claimed_at } : {}),
       ...(input.linked_complaint_ticket_id !== undefined ? { linked_complaint_ticket_id: input.linked_complaint_ticket_id } : {}),
       ...(input.linked_appeal_request_id !== undefined ? { linked_appeal_request_id: input.linked_appeal_request_id } : {}),
       ...(input.resolution_action !== undefined ? { resolution_action: input.resolution_action } : {}),
+      ...(input.resolved_by_user_id !== undefined ? { resolved_by_user_id: input.resolved_by_user_id } : {}),
+      ...(input.resolution_note !== undefined ? { resolution_note: input.resolution_note } : {}),
       ...(input.resolved_at !== undefined ? { resolved_at: input.resolved_at } : {}),
       updated_at: new Date(),
     }
@@ -314,7 +357,10 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
 
   async findLatestCaseByTarget(targetType: string, targetId: string): Promise<ModerationCase | null> {
     const caseIds = Array.from(this.caseTargets.entries())
-      .filter(([, targets]) => targets.some((target) => target.target_type === targetType && target.target_id === targetId))
+      .filter(([, targets]) => targets.some((target) =>
+        target.target_type === targetType
+        && target.target_id === targetId
+        && target.relation_type === 'PRIMARY'))
       .map(([caseId]) => caseId)
 
     const matches = caseIds
@@ -329,11 +375,12 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
   }
 
   async listCases(
-    opts: PaginationOpts & { status?: string; case_type?: string },
+    opts: PaginationOpts & { status?: string; case_type?: string; queue?: string },
   ): Promise<PaginatedResult<ModerationCase>> {
     const items = Array.from(this.cases.values())
       .filter((item) => (opts.status ? item.status === opts.status : true))
       .filter((item) => (opts.case_type ? item.case_type === opts.case_type : true))
+      .filter((item) => (opts.queue ? item.queue === opts.queue : true))
       .sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime())
     return paginate(items, opts)
   }
@@ -344,7 +391,9 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
       case_id: input.case_id,
       target_type: input.target_type,
       target_id: input.target_id,
+      relation_type: input.relation_type ?? 'PRIMARY',
       channel: input.channel,
+      meta: input.meta ?? null,
       community_id: input.community_id ?? null,
       agent_id: input.agent_id ?? null,
       user_id: input.user_id ?? null,
@@ -364,6 +413,8 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
     const next = existing.map((target) => ({
       ...target,
       ...(input.target_id !== undefined ? { target_id: input.target_id } : {}),
+      ...(input.relation_type !== undefined ? { relation_type: input.relation_type } : {}),
+      ...(input.meta !== undefined ? { meta: input.meta } : {}),
       ...(input.room_id !== undefined ? { room_id: input.room_id } : {}),
       ...(input.session_id !== undefined ? { session_id: input.session_id } : {}),
       ...(input.message_id !== undefined ? { message_id: input.message_id } : {}),
@@ -381,7 +432,14 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
       id: cuid('evid'),
       case_id: input.case_id,
       snapshot_type: input.snapshot_type,
-      payload: input.payload,
+      payload: input.payload ?? {},
+      content: input.content ?? null,
+      context: input.context ?? null,
+      policy_hits: input.policy_hits ?? null,
+      prompt_memory: input.prompt_memory ?? null,
+      topic_signals: input.topic_signals ?? null,
+      action_history: input.action_history ?? null,
+      evidence_package: input.evidence_package ?? buildEvidencePackage(input),
       created_at: new Date(),
     }
     const items = this.evidenceSnapshots.get(input.case_id) ?? []
@@ -399,10 +457,17 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
     const entity: ReviewTask = {
       id: cuid('rtask'),
       case_id: input.case_id,
+      queue: input.queue ?? 'MODERATION',
       task_type: input.task_type,
       status: input.status ?? 'PENDING',
       assignee_user_id: input.assignee_user_id ?? null,
+      claim_token: input.claim_token ?? null,
+      claimed_by_user_id: input.claimed_by_user_id ?? null,
+      claimed_at: input.claimed_at ?? null,
+      assigned_role: input.assigned_role ?? null,
       due_at: input.due_at ?? null,
+      resolution_code: input.resolution_code ?? null,
+      operator_note: input.operator_note ?? null,
       completed_at: input.completed_at ?? null,
       created_at: now,
       updated_at: now,
@@ -419,14 +484,25 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
     if (!existing) return null
     const next: ReviewTask = {
       ...existing,
+      ...(input.queue !== undefined ? { queue: input.queue } : {}),
       ...(input.status !== undefined ? { status: input.status } : {}),
       ...(input.assignee_user_id !== undefined ? { assignee_user_id: input.assignee_user_id } : {}),
+      ...(input.claim_token !== undefined ? { claim_token: input.claim_token } : {}),
+      ...(input.claimed_by_user_id !== undefined ? { claimed_by_user_id: input.claimed_by_user_id } : {}),
+      ...(input.claimed_at !== undefined ? { claimed_at: input.claimed_at } : {}),
+      ...(input.assigned_role !== undefined ? { assigned_role: input.assigned_role } : {}),
       ...(input.due_at !== undefined ? { due_at: input.due_at } : {}),
+      ...(input.resolution_code !== undefined ? { resolution_code: input.resolution_code } : {}),
+      ...(input.operator_note !== undefined ? { operator_note: input.operator_note } : {}),
       ...(input.completed_at !== undefined ? { completed_at: input.completed_at } : {}),
       updated_at: new Date(),
     }
     this.reviewTasks.set(id, next)
     return next
+  }
+
+  async findReviewTaskById(id: string): Promise<ReviewTask | null> {
+    return this.reviewTasks.get(id) ?? null
   }
 
   async listReviewTasks(caseId: string): Promise<ReviewTask[]> {
@@ -466,10 +542,13 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
       reporter_user_id: input.reporter_user_id,
       target_type: input.target_type,
       target_id: input.target_id,
+      complaint_type: input.complaint_type,
       reason_code: input.reason_code,
       detail_text: input.detail_text ?? null,
+      attachments: normalizeAttachments(input.attachments),
       status: input.status ?? 'OPEN',
       linked_case_id: input.linked_case_id ?? null,
+      resolution: input.resolution ?? null,
       created_at: now,
       updated_at: now,
     }
@@ -484,6 +563,7 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
       ...existing,
       ...(input.status !== undefined ? { status: input.status } : {}),
       ...(input.linked_case_id !== undefined ? { linked_case_id: input.linked_case_id } : {}),
+      ...(input.resolution !== undefined ? { resolution: input.resolution } : {}),
       updated_at: new Date(),
     }
     this.complaintTickets.set(id, next)
@@ -509,12 +589,15 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
     const entity: AppealRequest = {
       id: cuid('appeal'),
       requester_user_id: input.requester_user_id,
+      requester_type: input.requester_type ?? 'USER',
       target_type: input.target_type,
       target_id: input.target_id,
+      appeal_type: input.appeal_type,
       linked_case_id: input.linked_case_id ?? null,
       linked_complaint_ticket_id: input.linked_complaint_ticket_id ?? null,
       reason: input.reason,
       status: input.status ?? 'OPEN',
+      result: input.result ?? null,
       created_at: now,
       updated_at: now,
     }
@@ -532,6 +615,7 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
       ...(input.linked_complaint_ticket_id !== undefined
         ? { linked_complaint_ticket_id: input.linked_complaint_ticket_id }
         : {}),
+      ...(input.result !== undefined ? { result: input.result } : {}),
       updated_at: new Date(),
     }
     this.appealRequests.set(id, next)

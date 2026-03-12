@@ -10,6 +10,7 @@ import { CommunityConfigScheduler } from '../runtime/community-config-scheduler.
 import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry-scheduler.js'
 import { getRuntimeBuildInfo } from '../lib/runtime-build-info.js'
 import { personaObservability } from '../runtime/persona-observability.js'
+import { NotFoundError } from '../lib/errors.js'
 import {
   GuidanceBellService,
   GuidanceCopyService,
@@ -147,6 +148,21 @@ const nurture = await createNurtureEngines({
     cultureDigest: infra.leaderElectors.cultureDigest,
   },
 })
+
+if (nurture.privateChannelServices) {
+  core.complaintAppealService.setPrivateSessionLookup(async (sessionId) => {
+    try {
+      const session = await nurture.privateChannelServices!.channelService.getSession(sessionId)
+      return {
+        id: session.id,
+        human_user_id: session.human_user_id,
+      }
+    } catch (err) {
+      if (err instanceof NotFoundError) return null
+      throw err
+    }
+  })
+}
 
 const guidanceCopyService = new GuidanceCopyService()
 const guidanceStateService = new GuidanceStateService(
@@ -345,6 +361,7 @@ export const chatroomControlService = core.chatroomControlService
 export const roomLifecycle = core.roomLifecycle
 export const authService = core.authService
 export const governanceAdapter = core.governanceAdapter
+export const notificationService = core.notificationService
 export const safeReplyService = core.safeReplyService
 export const hotTopicPolicyService = core.hotTopicPolicyService
 export const reviewService = core.reviewService

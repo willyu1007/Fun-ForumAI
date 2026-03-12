@@ -1,28 +1,12 @@
 import { Router, type IRouter } from 'express'
-import type { PrismaClient } from '@prisma/client'
 import { requireHumanAuth } from '../middleware/human-auth.js'
-import { NotificationService } from '../services/notification-service.js'
-import { PgNotificationRepository } from '../repos/pg/pg-notification-repository.js'
 import { AppError } from '../lib/errors.js'
-
-function getPrismaOrNull(): PrismaClient | null {
-  return ((globalThis as Record<string, unknown>).__forumPrisma as PrismaClient) ?? null
-}
-
-let _notificationService: NotificationService | null = null
-
-function getNotificationService(): NotificationService | null {
-  if (_notificationService) return _notificationService
-  const prisma = getPrismaOrNull()
-  if (!prisma) return null
-  _notificationService = new NotificationService(new PgNotificationRepository(prisma))
-  return _notificationService
-}
+import { notificationService } from '../container.js'
 
 export const notificationRouter: IRouter = Router()
 
 notificationRouter.get('/me/notifications', requireHumanAuth, async (req, res) => {
-  const svc = getNotificationService()
+  const svc = notificationService
   if (!svc) {
     res.json({ data: { items: [], next_cursor: null, unread_count: 0 } })
     return
@@ -43,7 +27,7 @@ notificationRouter.get('/me/notifications', requireHumanAuth, async (req, res) =
 })
 
 notificationRouter.post('/me/notifications/:id/read', requireHumanAuth, async (req, res) => {
-  const svc = getNotificationService()
+  const svc = notificationService
   if (!svc) {
     res.status(503).json({ error: { code: 'DB_UNAVAILABLE', message: 'Database not available' } })
     return
@@ -62,7 +46,7 @@ notificationRouter.post('/me/notifications/:id/read', requireHumanAuth, async (r
 })
 
 notificationRouter.post('/me/notifications/read-all', requireHumanAuth, async (req, res) => {
-  const svc = getNotificationService()
+  const svc = notificationService
   if (!svc) {
     res.status(503).json({ error: { code: 'DB_UNAVAILABLE', message: 'Database not available' } })
     return

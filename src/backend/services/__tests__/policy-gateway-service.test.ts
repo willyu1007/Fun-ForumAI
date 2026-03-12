@@ -107,6 +107,27 @@ describe('PolicyGatewayService', () => {
     const cases = await riskRepo.listCases({ limit: 20, cursor: undefined })
     expect(cases.items).toHaveLength(1)
     expect(cases.items[0]?.case_type).toBe('MODERATION')
+    const evidence = await riskRepo.listEvidenceSnapshots(cases.items[0]!.id)
+    expect(evidence[0]?.snapshot_type).toBe('policy_evidence')
+    expect(evidence[0]?.content).toMatchObject({
+      action: 'rewrite',
+    })
+    expect(evidence[0]?.context).toMatchObject({
+      channel: 'private_outbound',
+      target_type: 'private_session',
+      target_id: 'session-1',
+      session_id: 'session-1',
+      user_id: 'user-1',
+    })
+    expect(evidence[0]?.policy_hits).toMatchObject({
+      risk_level: 'high',
+      risk_score: 0.91,
+      risk_categories: ['hate_harassment'],
+      decision_reason: 'high risk',
+    })
+    expect(evidence[0]?.action_history).toMatchObject({
+      opened_case: true,
+    })
   })
 
   it('keeps high-risk chat writes in shadow mode when chat enforcement is disabled', async () => {

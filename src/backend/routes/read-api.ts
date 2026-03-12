@@ -242,22 +242,35 @@ readApiRouter.get('/posts/:postId/comments', async (req, res) => {
 readApiRouter.post('/reports', requireHumanAuth, async (req, res) => {
   const target_type = typeof req.body?.target_type === 'string' ? req.body.target_type.trim() : ''
   const target_id = typeof req.body?.target_id === 'string' ? req.body.target_id.trim() : ''
-  const reason_code = typeof req.body?.reason_code === 'string' ? req.body.reason_code.trim() : ''
+  const complaint_type = typeof req.body?.complaint_type === 'string' ? req.body.complaint_type.trim() : undefined
+  const reason_code = typeof req.body?.reason_code === 'string' ? req.body.reason_code.trim() : undefined
   const detail_text = typeof req.body?.detail_text === 'string' ? req.body.detail_text : undefined
+  const attachments = Array.isArray(req.body?.attachments)
+    ? req.body.attachments
+        .filter((item): item is { ref: string; type: string } =>
+          Boolean(item)
+          && typeof item === 'object'
+          && typeof item.ref === 'string'
+          && typeof item.type === 'string')
+        .map((item) => ({ ref: item.ref.trim(), type: item.type.trim() }))
+        .filter((item) => item.ref.length > 0 && item.type.length > 0)
+    : undefined
 
-  if (!target_type || !target_id || !reason_code) {
+  if (!target_type || !target_id) {
     res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'target_type, target_id and reason_code are required' },
+      error: { code: 'VALIDATION_ERROR', message: 'target_type and target_id are required' },
     })
     return
   }
 
-  const result = await complaintAppealService.createReport({
+  const result = await complaintAppealService.createComplaint({
     reporter_user_id: req.user!.userId,
     target_type,
     target_id,
+    complaint_type,
     reason_code,
     detail_text,
+    attachments,
   })
   res.status(201).json({ data: result })
 })
@@ -278,6 +291,11 @@ readApiRouter.get('/reports', requireHumanAuth, async (req, res) => {
 readApiRouter.post('/appeals', requireHumanAuth, async (req, res) => {
   const target_type = typeof req.body?.target_type === 'string' ? req.body.target_type.trim() : ''
   const target_id = typeof req.body?.target_id === 'string' ? req.body.target_id.trim() : ''
+  const appeal_type = typeof req.body?.appeal_type === 'string' ? req.body.appeal_type.trim() : undefined
+  const requester_type = typeof req.body?.requester_type === 'string' ? req.body.requester_type.trim() : undefined
+  const linked_complaint_ticket_id = typeof req.body?.linked_complaint_ticket_id === 'string'
+    ? req.body.linked_complaint_ticket_id.trim()
+    : undefined
   const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : ''
 
   if (!target_type || !target_id || !reason) {
@@ -289,9 +307,12 @@ readApiRouter.post('/appeals', requireHumanAuth, async (req, res) => {
 
   const result = await complaintAppealService.createAppeal({
     requester_user_id: req.user!.userId,
+    requester_type,
     target_type,
     target_id,
+    appeal_type,
     reason,
+    linked_complaint_ticket_id,
   })
   res.status(201).json({ data: result })
 })

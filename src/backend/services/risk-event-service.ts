@@ -7,6 +7,11 @@ function hashText(value: string): string {
   return createHash('sha256').update(value).digest('hex')
 }
 
+function toObjectSection(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
 export class RiskEventService {
   constructor(
     private readonly riskRepo: RiskGovernanceRepository,
@@ -51,12 +56,19 @@ export class RiskEventService {
     if (input.open_case) {
       moderationCase = await this.reviewService.openAutomatedCase({
         summary_text: `${input.channel} ${input.action}: ${input.reason}`,
+        risk_summary: {
+          source: 'policy_gateway',
+          risk_level: input.moderation.risk_level,
+          risk_score: input.moderation.risk_score,
+          risk_categories: input.moderation.risk_categories,
+        },
         opened_reason: input.reason,
         linked_policy_snapshot_id: snapshot.id,
         target: {
           case_id: '',
           target_type: input.target_type,
           target_id: input.target_id ?? snapshot.id,
+          relation_type: 'PRIMARY',
           channel: input.channel,
           community_id: input.community_id ?? null,
           agent_id: input.agent_id ?? null,
@@ -65,9 +77,42 @@ export class RiskEventService {
           session_id: input.session_id ?? null,
           message_id: input.message_id ?? null,
         },
-        evidence: input.evidence
-          ? [{ case_id: '', snapshot_type: 'policy_evidence', payload: input.evidence }]
-          : [],
+        evidence: [{
+          case_id: '',
+          snapshot_type: 'policy_evidence',
+          payload: input.evidence ?? {},
+          content: {
+            normalized_text: input.text.trim(),
+            action: input.action,
+            reason: input.reason,
+          },
+          context: {
+            channel: input.channel,
+            target_type: input.target_type,
+            target_id: input.target_id ?? snapshot.id,
+            community_id: input.community_id ?? null,
+            agent_id: input.agent_id ?? null,
+            user_id: input.user_id ?? null,
+            room_id: input.room_id ?? null,
+            session_id: input.session_id ?? null,
+            message_id: input.message_id ?? null,
+            scene: input.scene ?? null,
+          },
+          policy_hits: {
+            risk_level: input.moderation.risk_level,
+            risk_score: input.moderation.risk_score,
+            risk_categories: input.moderation.risk_categories,
+            decision_reason: input.moderation.details.decision_reason,
+            matched_rules: input.moderation.details.rule_filter.matched_rules,
+            classifier_categories: input.moderation.details.classifier_categories,
+          },
+          prompt_memory: toObjectSection(input.evidence?.prompt_memory),
+          topic_signals: toObjectSection(input.evidence?.topic_signals),
+          action_history: {
+            opened_case: true,
+            decision: input.decision,
+          },
+        }],
       })
     }
 

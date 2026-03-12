@@ -27,6 +27,7 @@ import { InMemoryAftershowRunRepository } from '../repos/aftershow-run-repositor
 import { InMemoryAftershowArtifactRepository } from '../repos/aftershow-artifact-repository.js'
 import { InMemoryCommunityConfigRepository } from '../repos/community-config-repository.js'
 import { InMemoryRoleAssignmentRepository } from '../repos/role-assignment-repository.js'
+import { InMemoryNotificationRepository } from '../repos/notification-repository.js'
 import { InMemoryUserRepository } from '../repos/user-repository.js'
 import { InMemoryGuidanceActorStateRepository } from '../repos/guidance-state-repository.js'
 import { InMemoryGuidanceInboxRepository } from '../repos/guidance-inbox-repository.js'
@@ -260,7 +261,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       aftershowArtifactRepo: new InMemoryAftershowArtifactRepository(),
       communityConfigRepo: new InMemoryCommunityConfigRepository(),
       roleAssignmentRepo: new InMemoryRoleAssignmentRepository(),
-      notificationRepo: null,
+      notificationRepo: new InMemoryNotificationRepository(),
       guidanceActorStateRepo: new InMemoryGuidanceActorStateRepository(),
       guidanceInboxRepo: new InMemoryGuidanceInboxRepository(),
       guidanceEventLogRepo: new InMemoryGuidanceEventLogRepository(),

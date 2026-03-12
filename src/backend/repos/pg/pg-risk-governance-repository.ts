@@ -43,6 +43,7 @@ import type {
   UpdateRiskEventLogInput,
   UpsertUserIdentityVerificationInput,
   UserIdentityVerification,
+  GovernanceAttachment,
 } from '../types.js'
 import type { RiskGovernanceRepository } from '../risk-governance-repository.js'
 
@@ -71,6 +72,29 @@ function toRecordOrNull(value: unknown): Record<string, unknown> | null {
 function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   return value.filter((item): item is string => typeof item === 'string')
+}
+
+function toGovernanceAttachments(value: unknown): GovernanceAttachment[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is GovernanceAttachment =>
+    Boolean(item)
+    && typeof item === 'object'
+    && !Array.isArray(item)
+    && typeof (item as { ref?: unknown }).ref === 'string'
+    && typeof (item as { type?: unknown }).type === 'string')
+}
+
+function buildEvidencePackage(input: CreateModerationEvidenceSnapshotInput): Record<string, unknown> {
+  return {
+    snapshot_type: input.snapshot_type,
+    payload: input.payload ?? {},
+    content: input.content ?? null,
+    context: input.context ?? null,
+    policy_hits: input.policy_hits ?? null,
+    prompt_memory: input.prompt_memory ?? null,
+    topic_signals: input.topic_signals ?? null,
+    action_history: input.action_history ?? null,
+  }
 }
 
 function toNullableJsonInput(
@@ -247,16 +271,25 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
     const row = await this.prisma.moderationCase.create({
       data: {
         caseType: input.case_type,
+        queue: input.queue ?? 'MODERATION',
         status: input.status ?? 'OPEN',
         priority: input.priority ?? 50,
         summaryText: input.summary_text ?? null,
+        riskSummaryJson: toNullableJsonInput(input.risk_summary),
         openedReason: input.opened_reason ?? null,
         openedBy: input.opened_by ?? 'system',
+        primaryTargetType: input.primary_target_type ?? null,
+        primaryTargetId: input.primary_target_id ?? null,
         assignedToUserId: input.assigned_to_user_id ?? null,
+        slaDueAt: input.sla_due_at ?? null,
+        claimedByUserId: input.claimed_by_user_id ?? null,
+        claimedAt: input.claimed_at ?? null,
         linkedPolicySnapshotId: input.linked_policy_snapshot_id ?? null,
         linkedComplaintTicketId: input.linked_complaint_ticket_id ?? null,
         linkedAppealRequestId: input.linked_appeal_request_id ?? null,
         resolutionAction: input.resolution_action ?? null,
+        resolvedByUserId: input.resolved_by_user_id ?? null,
+        resolutionNote: input.resolution_note ?? null,
         resolvedAt: input.resolved_at ?? null,
       },
     })
@@ -268,10 +301,17 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
       const row = await this.prisma.moderationCase.update({
         where: { id },
         data: {
+          ...(input.queue !== undefined ? { queue: input.queue } : {}),
           ...(input.status !== undefined ? { status: input.status } : {}),
           ...(input.priority !== undefined ? { priority: input.priority } : {}),
           ...(input.summary_text !== undefined ? { summaryText: input.summary_text } : {}),
+          ...(input.risk_summary !== undefined ? { riskSummaryJson: toNullableJsonInput(input.risk_summary) } : {}),
+          ...(input.primary_target_type !== undefined ? { primaryTargetType: input.primary_target_type } : {}),
+          ...(input.primary_target_id !== undefined ? { primaryTargetId: input.primary_target_id } : {}),
           ...(input.assigned_to_user_id !== undefined ? { assignedToUserId: input.assigned_to_user_id } : {}),
+          ...(input.sla_due_at !== undefined ? { slaDueAt: input.sla_due_at } : {}),
+          ...(input.claimed_by_user_id !== undefined ? { claimedByUserId: input.claimed_by_user_id } : {}),
+          ...(input.claimed_at !== undefined ? { claimedAt: input.claimed_at } : {}),
           ...(input.linked_complaint_ticket_id !== undefined
             ? { linkedComplaintTicketId: input.linked_complaint_ticket_id }
             : {}),
@@ -279,6 +319,8 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
             ? { linkedAppealRequestId: input.linked_appeal_request_id }
             : {}),
           ...(input.resolution_action !== undefined ? { resolutionAction: input.resolution_action } : {}),
+          ...(input.resolved_by_user_id !== undefined ? { resolvedByUserId: input.resolved_by_user_id } : {}),
+          ...(input.resolution_note !== undefined ? { resolutionNote: input.resolution_note } : {}),
           ...(input.resolved_at !== undefined ? { resolvedAt: input.resolved_at } : {}),
         },
       })
@@ -295,7 +337,7 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
 
   async findLatestCaseByTarget(targetType: string, targetId: string): Promise<ModerationCase | null> {
     const targets = await this.prisma.moderationCaseTarget.findMany({
-      where: { targetType, targetId },
+      where: { targetType, targetId, relationType: 'PRIMARY' },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     })
     const caseIds = [...new Set(targets.map((target) => target.caseId))]
@@ -310,12 +352,13 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
   }
 
   async listCases(
-    opts: PaginationOpts & { status?: string; case_type?: string },
+    opts: PaginationOpts & { status?: string; case_type?: string; queue?: string },
   ): Promise<PaginatedResult<ModerationCase>> {
     const rows = await this.prisma.moderationCase.findMany({
       where: {
         ...(opts.status ? { status: opts.status as PrismaModerationCase['status'] } : {}),
         ...(opts.case_type ? { caseType: opts.case_type as PrismaModerationCase['caseType'] } : {}),
+        ...(opts.queue ? { queue: opts.queue as PrismaModerationCase['queue'] } : {}),
       },
       orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
     })
@@ -328,7 +371,9 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
         caseId: input.case_id,
         targetType: input.target_type,
         targetId: input.target_id,
+        relationType: input.relation_type ?? 'PRIMARY',
         channel: input.channel,
+        metaJson: toNullableJsonInput(input.meta),
         communityId: input.community_id ?? null,
         agentId: input.agent_id ?? null,
         userId: input.user_id ?? null,
@@ -353,6 +398,8 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
       where: { caseId },
       data: {
         ...(input.target_id !== undefined ? { targetId: input.target_id } : {}),
+        ...(input.relation_type !== undefined ? { relationType: input.relation_type } : {}),
+        ...(input.meta !== undefined ? { metaJson: toNullableJsonInput(input.meta) } : {}),
         ...(input.room_id !== undefined ? { roomId: input.room_id } : {}),
         ...(input.session_id !== undefined ? { sessionId: input.session_id } : {}),
         ...(input.message_id !== undefined ? { messageId: input.message_id } : {}),
@@ -368,7 +415,14 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
       data: {
         caseId: input.case_id,
         snapshotType: input.snapshot_type,
-        payloadJson: toJsonInput(input.payload),
+        payloadJson: toJsonInput(input.payload ?? {}),
+        contentJson: toNullableJsonInput(input.content),
+        contextJson: toNullableJsonInput(input.context),
+        policyHitsJson: toNullableJsonInput(input.policy_hits),
+        promptMemoryJson: toNullableJsonInput(input.prompt_memory),
+        topicSignalsJson: toNullableJsonInput(input.topic_signals),
+        actionHistoryJson: toNullableJsonInput(input.action_history),
+        evidencePackageJson: toNullableJsonInput(input.evidence_package ?? buildEvidencePackage(input)),
       },
     })
     return this.toEvidenceSnapshot(row)
@@ -386,10 +440,17 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
     const row = await this.prisma.reviewTask.create({
       data: {
         caseId: input.case_id,
+        queue: input.queue ?? 'MODERATION',
         taskType: input.task_type,
         status: input.status ?? 'PENDING',
         assigneeUserId: input.assignee_user_id ?? null,
+        claimToken: input.claim_token ?? null,
+        claimedByUserId: input.claimed_by_user_id ?? null,
+        claimedAt: input.claimed_at ?? null,
+        assignedRole: input.assigned_role ?? null,
         dueAt: input.due_at ?? null,
+        resolutionCode: input.resolution_code ?? null,
+        operatorNote: input.operator_note ?? null,
         completedAt: input.completed_at ?? null,
       },
     })
@@ -401,9 +462,16 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
       const row = await this.prisma.reviewTask.update({
         where: { id },
         data: {
+          ...(input.queue !== undefined ? { queue: input.queue } : {}),
           ...(input.status !== undefined ? { status: input.status } : {}),
           ...(input.assignee_user_id !== undefined ? { assigneeUserId: input.assignee_user_id } : {}),
+          ...(input.claim_token !== undefined ? { claimToken: input.claim_token } : {}),
+          ...(input.claimed_by_user_id !== undefined ? { claimedByUserId: input.claimed_by_user_id } : {}),
+          ...(input.claimed_at !== undefined ? { claimedAt: input.claimed_at } : {}),
+          ...(input.assigned_role !== undefined ? { assignedRole: input.assigned_role } : {}),
           ...(input.due_at !== undefined ? { dueAt: input.due_at } : {}),
+          ...(input.resolution_code !== undefined ? { resolutionCode: input.resolution_code } : {}),
+          ...(input.operator_note !== undefined ? { operatorNote: input.operator_note } : {}),
           ...(input.completed_at !== undefined ? { completedAt: input.completed_at } : {}),
         },
       })
@@ -411,6 +479,11 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
     } catch {
       return null
     }
+  }
+
+  async findReviewTaskById(id: string): Promise<ReviewTask | null> {
+    const row = await this.prisma.reviewTask.findUnique({ where: { id } })
+    return row ? this.toReviewTask(row) : null
   }
 
   async listReviewTasks(caseId: string): Promise<ReviewTask[]> {
@@ -450,10 +523,13 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
         reporterUserId: input.reporter_user_id,
         targetType: input.target_type,
         targetId: input.target_id,
+        complaintType: input.complaint_type,
         reasonCode: input.reason_code,
         detailText: input.detail_text ?? null,
+        attachmentsJson: input.attachments ? (input.attachments as unknown as Prisma.InputJsonValue) : undefined,
         status: input.status ?? 'OPEN',
         linkedCaseId: input.linked_case_id ?? null,
+        resolutionJson: toNullableJsonInput(input.resolution),
       },
     })
     return this.toComplaintTicket(row)
@@ -466,6 +542,7 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
         data: {
           ...(input.status !== undefined ? { status: input.status } : {}),
           ...(input.linked_case_id !== undefined ? { linkedCaseId: input.linked_case_id } : {}),
+          ...(input.resolution !== undefined ? { resolutionJson: toNullableJsonInput(input.resolution) } : {}),
         },
       })
       return this.toComplaintTicket(row)
@@ -496,12 +573,15 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
     const row = await this.prisma.appealRequest.create({
       data: {
         requesterUserId: input.requester_user_id,
+        requesterType: input.requester_type ?? 'USER',
         targetType: input.target_type,
         targetId: input.target_id,
+        appealType: input.appeal_type,
         linkedCaseId: input.linked_case_id ?? null,
         linkedComplaintTicketId: input.linked_complaint_ticket_id ?? null,
         reason: input.reason,
         status: input.status ?? 'OPEN',
+        resultJson: toNullableJsonInput(input.result),
       },
     })
     return this.toAppealRequest(row)
@@ -517,6 +597,7 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
           ...(input.linked_complaint_ticket_id !== undefined
             ? { linkedComplaintTicketId: input.linked_complaint_ticket_id }
             : {}),
+          ...(input.result !== undefined ? { resultJson: toNullableJsonInput(input.result) } : {}),
         },
       })
       return this.toAppealRequest(row)
@@ -580,16 +661,25 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
     return {
       id: row.id,
       case_type: row.caseType,
+      queue: row.queue,
       status: row.status,
       priority: row.priority,
       summary_text: row.summaryText,
+      risk_summary: toRecordOrNull(row.riskSummaryJson),
       opened_reason: row.openedReason,
       opened_by: row.openedBy,
+      primary_target_type: row.primaryTargetType,
+      primary_target_id: row.primaryTargetId,
       assigned_to_user_id: row.assignedToUserId,
+      sla_due_at: row.slaDueAt,
+      claimed_by_user_id: row.claimedByUserId,
+      claimed_at: row.claimedAt,
       linked_policy_snapshot_id: row.linkedPolicySnapshotId,
       linked_complaint_ticket_id: row.linkedComplaintTicketId,
       linked_appeal_request_id: row.linkedAppealRequestId,
       resolution_action: row.resolutionAction,
+      resolved_by_user_id: row.resolvedByUserId,
+      resolution_note: row.resolutionNote,
       resolved_at: row.resolvedAt,
       created_at: row.createdAt,
       updated_at: row.updatedAt,
@@ -602,7 +692,9 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
       case_id: row.caseId,
       target_type: row.targetType,
       target_id: row.targetId,
+      relation_type: row.relationType,
       channel: row.channel,
+      meta: toRecordOrNull(row.metaJson),
       community_id: row.communityId,
       agent_id: row.agentId,
       user_id: row.userId,
@@ -614,11 +706,34 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
   }
 
   private toEvidenceSnapshot(row: PrismaModerationEvidenceSnapshot): ModerationEvidenceSnapshot {
+    const payload = toRecordOrNull(row.payloadJson) ?? {}
+    const content = toRecordOrNull(row.contentJson)
+    const context = toRecordOrNull(row.contextJson)
+    const policy_hits = toRecordOrNull(row.policyHitsJson)
+    const prompt_memory = toRecordOrNull(row.promptMemoryJson)
+    const topic_signals = toRecordOrNull(row.topicSignalsJson)
+    const action_history = toRecordOrNull(row.actionHistoryJson)
     return {
       id: row.id,
       case_id: row.caseId,
       snapshot_type: row.snapshotType,
-      payload: toRecordOrNull(row.payloadJson) ?? {},
+      payload,
+      content,
+      context,
+      policy_hits,
+      prompt_memory,
+      topic_signals,
+      action_history,
+      evidence_package: toRecordOrNull(row.evidencePackageJson) ?? {
+        snapshot_type: row.snapshotType,
+        payload,
+        content,
+        context,
+        policy_hits,
+        prompt_memory,
+        topic_signals,
+        action_history,
+      },
       created_at: row.createdAt,
     }
   }
@@ -627,10 +742,17 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
     return {
       id: row.id,
       case_id: row.caseId,
+      queue: row.queue,
       task_type: row.taskType,
       status: row.status,
       assignee_user_id: row.assigneeUserId,
+      claim_token: row.claimToken,
+      claimed_by_user_id: row.claimedByUserId,
+      claimed_at: row.claimedAt,
+      assigned_role: row.assignedRole,
       due_at: row.dueAt,
+      resolution_code: row.resolutionCode,
+      operator_note: row.operatorNote,
       completed_at: row.completedAt,
       created_at: row.createdAt,
       updated_at: row.updatedAt,
@@ -657,10 +779,13 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
       reporter_user_id: row.reporterUserId,
       target_type: row.targetType,
       target_id: row.targetId,
+      complaint_type: row.complaintType,
       reason_code: row.reasonCode,
       detail_text: row.detailText,
+      attachments: toGovernanceAttachments(row.attachmentsJson),
       status: row.status,
       linked_case_id: row.linkedCaseId,
+      resolution: toRecordOrNull(row.resolutionJson),
       created_at: row.createdAt,
       updated_at: row.updatedAt,
     }
@@ -670,12 +795,15 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
     return {
       id: row.id,
       requester_user_id: row.requesterUserId,
+      requester_type: row.requesterType,
       target_type: row.targetType,
       target_id: row.targetId,
+      appeal_type: row.appealType,
       linked_case_id: row.linkedCaseId,
       linked_complaint_ticket_id: row.linkedComplaintTicketId,
       reason: row.reason,
       status: row.status,
+      result: toRecordOrNull(row.resultJson),
       created_at: row.createdAt,
       updated_at: row.updatedAt,
     }
