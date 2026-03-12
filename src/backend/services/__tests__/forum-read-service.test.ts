@@ -7,6 +7,7 @@ import { InMemoryHumanVoteRepository } from '../../repos/human-vote-repository.j
 import { InMemoryPostMediaRepository } from '../../repos/post-media-repository.js'
 import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
 import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
+import { InMemoryRiskGovernanceRepository } from '../../repos/risk-governance-repository.js'
 
 function setup() {
   const postRepo = new InMemoryPostRepository()
@@ -16,8 +17,28 @@ function setup() {
   const postMediaRepo = new InMemoryPostMediaRepository()
   const communityRepo = new InMemoryCommunityRepository()
   const agentRepo = new InMemoryAgentRepository()
-  const svc = new ForumReadService({ postRepo, commentRepo, voteRepo, humanVoteRepo, postMediaRepo, communityRepo, agentRepo })
-  return { svc, postRepo, commentRepo, voteRepo, humanVoteRepo, postMediaRepo, communityRepo, agentRepo }
+  const riskRepo = new InMemoryRiskGovernanceRepository()
+  const svc = new ForumReadService({
+    postRepo,
+    commentRepo,
+    voteRepo,
+    humanVoteRepo,
+    postMediaRepo,
+    communityRepo,
+    agentRepo,
+    riskRepo,
+  })
+  return {
+    svc,
+    postRepo,
+    commentRepo,
+    voteRepo,
+    humanVoteRepo,
+    postMediaRepo,
+    communityRepo,
+    agentRepo,
+    riskRepo,
+  }
 }
 
 describe('ForumReadService', () => {
@@ -193,6 +214,52 @@ describe('ForumReadService', () => {
       expect(secondPage.items).toHaveLength(1)
       expect(secondPage.items[0].id).toBe(lowScoreNew.id)
     })
+
+    it('excludes no-recommend posts from hot and top feeds but keeps them in new', async () => {
+      await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'direct only',
+        body: 'x',
+        visibility: 'GRAY',
+        state: 'APPROVED',
+        moderation_metadata: {
+          topic_signals: {
+            hot_topic_flag: true,
+            topic_domain: 'ENTERTAINMENT',
+            distribution_state: 'NO_RECOMMEND',
+          },
+          distribution_state: 'NO_RECOMMEND',
+        },
+      })
+      const visible = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a2',
+        title: 'normal',
+        body: 'y',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+        moderation_metadata: {
+          topic_signals: {
+            hot_topic_flag: true,
+            topic_domain: 'SPORTS',
+            distribution_state: 'NORMAL',
+          },
+          distribution_state: 'NORMAL',
+        },
+      })
+
+      const hotFeed = await ctx.svc.getFeed({ sort: 'hot' })
+      const topFeed = await ctx.svc.getFeed({ sort: 'top' })
+      const newFeed = await ctx.svc.getFeed({ sort: 'new' })
+
+      expect(hotFeed.items.map((item) => item.id)).toEqual([visible.id])
+      expect(topFeed.items.map((item) => item.id)).toEqual([visible.id])
+      expect(newFeed.items).toHaveLength(2)
+      expect(newFeed.items.map((item) => item.distribution_state)).toEqual(
+        expect.arrayContaining(['NORMAL', 'NO_RECOMMEND']),
+      )
+    })
   })
 
   describe('getPost', () => {
@@ -221,6 +288,35 @@ describe('ForumReadService', () => {
     it('throws NotFoundError for unknown id', async () => {
       await expect(ctx.svc.getPost('unknown')).rejects.toThrow('not found')
     })
+
+    it('exposes topic signals from moderation metadata', async () => {
+      const post = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'T',
+        body: 'B',
+        visibility: 'GRAY',
+        state: 'APPROVED',
+        moderation_metadata: {
+          topic_signals: {
+            hot_topic_flag: true,
+            topic_domain: 'ENTERTAINMENT',
+            drift_detected: true,
+            distribution_state: 'NO_RECOMMEND',
+          },
+          distribution_state: 'NO_RECOMMEND',
+        },
+      })
+
+      const result = await ctx.svc.getPost(post.id)
+
+      expect(result.topic_signals).toMatchObject({
+        hot_topic_flag: true,
+        topic_domain: 'ENTERTAINMENT',
+        drift_detected: true,
+      })
+      expect(result.distribution_state).toBe('NO_RECOMMEND')
+    })
   })
 
   describe('getComments', () => {
@@ -246,6 +342,87 @@ describe('ForumReadService', () => {
 
     it('throws for unknown post', async () => {
       await expect(ctx.svc.getComments('nope', {})).rejects.toThrow('not found')
+    })
+
+    it('hydrates comment topic signals from the latest risk event payload', async () => {
+      const post = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'T',
+        body: 'B',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      const comment = await ctx.commentRepo.create({
+        post_id: post.id,
+        author_agent_id: 'a2',
+        body: 'C1',
+        visibility: 'GRAY',
+        state: 'APPROVED',
+      })
+      await ctx.riskRepo.createRiskEvent({
+        channel: 'forum_comment',
+        event_type: 'policy_gateway_decision',
+        action: 'allow',
+        target_type: 'comment',
+        target_id: comment.id,
+        payload: {
+          topic_signals: {
+            hot_topic_flag: true,
+            topic_domain: 'SPORTS',
+            distribution_state: 'NO_RECOMMEND',
+          },
+          distribution_state: 'NO_RECOMMEND',
+        },
+      })
+
+      const result = await ctx.svc.getComments(post.id, {})
+
+      expect(result.items[0]?.topic_signals).toMatchObject({
+        hot_topic_flag: true,
+        topic_domain: 'SPORTS',
+      })
+      expect(result.items[0]?.distribution_state).toBe('NO_RECOMMEND')
+    })
+
+    it('does not expose shadow-mode topic signals to comment readers', async () => {
+      const post = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'T',
+        body: 'B',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      const comment = await ctx.commentRepo.create({
+        post_id: post.id,
+        author_agent_id: 'a2',
+        body: 'C1',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      await ctx.riskRepo.createRiskEvent({
+        channel: 'forum_comment',
+        event_type: 'policy_gateway_decision',
+        action: 'allow',
+        target_type: 'comment',
+        target_id: comment.id,
+        payload: {
+          shadowed: true,
+          topic_signals: {
+            hot_topic_flag: true,
+            topic_domain: 'SPORTS',
+            distribution_state: 'NO_RECOMMEND',
+            policy_shadowed: true,
+          },
+          distribution_state: 'NO_RECOMMEND',
+        },
+      })
+
+      const result = await ctx.svc.getComments(post.id, {})
+
+      expect(result.items[0]?.topic_signals).toBeNull()
+      expect(result.items[0]?.distribution_state).toBe('NORMAL')
     })
   })
 

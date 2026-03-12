@@ -14,6 +14,7 @@ import type {
 import { NotFoundError } from '../lib/errors.js'
 import { config } from '../lib/config.js'
 import type { AchievementChronicleService } from './achievement-chronicle-service.js'
+import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
 
 export interface ForumReadServiceDeps {
   postRepo: PostRepository
@@ -24,6 +25,7 @@ export interface ForumReadServiceDeps {
   communityRepo: CommunityRepository
   agentRepo: AgentRepository
   achievementChronicleService?: AchievementChronicleService
+  riskRepo?: RiskGovernanceRepository
 }
 
 export interface PostMediaSummary {
@@ -62,6 +64,8 @@ export interface PostWithMeta extends Post {
   media: PostMediaSummary[]
   ai_label: string
   effective_moderation_label: string
+  topic_signals: Record<string, unknown> | null
+  distribution_state: string
 }
 
 export interface CommentWithAuthor extends Comment {
@@ -77,6 +81,8 @@ export interface CommentWithAuthor extends Comment {
   viewer_human_vote_direction: 'UP' | 'DOWN' | 'NEUTRAL' | null
   ai_label: string
   effective_moderation_label: string
+  topic_signals: Record<string, unknown> | null
+  distribution_state: string
 }
 
 export type FeedSort = 'new' | 'hot' | 'top'
@@ -84,6 +90,68 @@ import { HUMAN_VOTE_WEIGHT } from '../lib/constants.js'
 
 export class ForumReadService {
   constructor(private readonly deps: ForumReadServiceDeps) {}
+
+  private readTopicSignals(record: Record<string, unknown> | null | undefined): {
+    topic_signals: Record<string, unknown> | null
+    distribution_state: string
+  } {
+    const topicSignals = record?.topic_signals
+    const distributionState = typeof record?.distribution_state === 'string'
+      ? record.distribution_state
+      : typeof topicSignals?.distribution_state === 'string'
+        ? topicSignals.distribution_state
+        : 'NORMAL'
+    return {
+      topic_signals: topicSignals && typeof topicSignals === 'object' && !Array.isArray(topicSignals)
+        ? topicSignals as Record<string, unknown>
+        : null,
+      distribution_state: distributionState,
+    }
+  }
+
+  private async resolveCommentTopicSignals(commentId: string): Promise<{
+    topic_signals: Record<string, unknown> | null
+    distribution_state: string
+  }> {
+    if (!this.deps.riskRepo) {
+      return {
+        topic_signals: null,
+        distribution_state: 'NORMAL',
+      }
+    }
+    const events = await this.deps.riskRepo.listRiskEvents({
+      target_type: 'comment',
+      target_id: commentId,
+      limit: 1,
+      cursor: undefined,
+    })
+    const payload = events.items[0]?.payload
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return {
+        topic_signals: null,
+        distribution_state: 'NORMAL',
+      }
+    }
+    const topicSignals = payload.topic_signals
+    const shadowed = payload.shadowed === true
+      || (topicSignals && typeof topicSignals === 'object' && !Array.isArray(topicSignals) && topicSignals.policy_shadowed === true)
+    if (shadowed) {
+      return {
+        topic_signals: null,
+        distribution_state: 'NORMAL',
+      }
+    }
+    return {
+      topic_signals: topicSignals && typeof topicSignals === 'object' && !Array.isArray(topicSignals)
+        ? topicSignals as Record<string, unknown>
+        : null,
+      distribution_state: typeof payload.distribution_state === 'string'
+        ? payload.distribution_state
+        : typeof topicSignals?.distribution_state === 'string'
+          ? topicSignals.distribution_state
+          : 'NORMAL',
+    }
+  }
 
   private buildEffectiveModerationLabel(
     visibility: Post['visibility'] | Comment['visibility'],
@@ -208,6 +276,7 @@ export class ForumReadService {
     const community = this.resolveCommunityMeta(post.community_id)
     const commentCount = await this.deps.commentRepo.countByPost(post.id)
     const activityAt = lastReplyAt ?? post.created_at
+    const topicPresentation = this.readTopicSignals(post.moderation_metadata)
 
     return {
       ...post,
@@ -238,6 +307,8 @@ export class ForumReadService {
       media,
       ai_label: 'AI生成',
       effective_moderation_label: this.buildEffectiveModerationLabel(post.visibility, post.state),
+      topic_signals: topicPresentation.topic_signals,
+      distribution_state: topicPresentation.distribution_state,
     }
   }
 
@@ -272,22 +343,25 @@ export class ForumReadService {
         })),
       )),
     )
+    const rankedItems = opts.sort === 'hot' || opts.sort === 'top'
+      ? items.filter((item) => item.distribution_state !== 'NO_RECOMMEND')
+      : items
 
     if (opts.sort === 'hot') {
-      items.sort((a, b) => {
+      rankedItems.sort((a, b) => {
         const byHeat = b.heat_score - a.heat_score
         if (byHeat !== 0) return byHeat
         const activityA = (a.last_reply_at ?? a.created_at).getTime()
         const activityB = (b.last_reply_at ?? b.created_at).getTime()
         return activityB - activityA
       })
-      return this.paginateRanked(items, {
+      return this.paginateRanked(rankedItems, {
         cursor: opts.cursor,
         limit,
       })
     } else if (opts.sort === 'top') {
-      items.sort((a, b) => b.vote_score - a.vote_score || b.created_at.getTime() - a.created_at.getTime())
-      return this.paginateRanked(items, {
+      rankedItems.sort((a, b) => b.vote_score - a.vote_score || b.created_at.getTime() - a.created_at.getTime())
+      return this.paginateRanked(rankedItems, {
         cursor: opts.cursor,
         limit,
       })
@@ -324,6 +398,7 @@ export class ForumReadService {
 
     const items: CommentWithAuthor[] = await Promise.all(result.items.map(async (c) => {
       const votes = this.getDetailedVoteSummary('COMMENT', c.id, viewerUserId)
+      const topicPresentation = await this.resolveCommentTopicSignals(c.id)
       return {
         ...c,
         author: await this.resolveAuthor(c.author_agent_id),
@@ -338,6 +413,8 @@ export class ForumReadService {
         viewer_human_vote_direction: votes.viewer_direction,
         ai_label: 'AI生成',
         effective_moderation_label: this.buildEffectiveModerationLabel(c.visibility, c.state),
+        topic_signals: topicPresentation.topic_signals,
+        distribution_state: topicPresentation.distribution_state,
       }
     }))
 
@@ -349,6 +426,7 @@ export class ForumReadService {
     if (!comment) throw new NotFoundError('Comment', commentId)
 
     const votes = this.getDetailedVoteSummary('COMMENT', comment.id, viewerUserId)
+    const topicPresentation = await this.resolveCommentTopicSignals(comment.id)
     return {
       ...comment,
       author: await this.resolveAuthor(comment.author_agent_id),
@@ -363,6 +441,8 @@ export class ForumReadService {
       viewer_human_vote_direction: votes.viewer_direction,
       ai_label: 'AI生成',
       effective_moderation_label: this.buildEffectiveModerationLabel(comment.visibility, comment.state),
+      topic_signals: topicPresentation.topic_signals,
+      distribution_state: topicPresentation.distribution_state,
     }
   }
 

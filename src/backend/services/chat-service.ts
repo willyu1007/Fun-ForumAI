@@ -31,6 +31,7 @@ import type { RoomProgramProjector } from './room-program-projector.js'
 import { normalizeWanderPolicy } from './chatroom-program-policy.js'
 import { sanitizeChatOutput } from '../runtime/chat-output-sanitizer.js'
 import type { PolicyGatewayService } from './policy-gateway-service.js'
+import { hasNoRecommendTag, readRoomHotTopicMode } from './hot-topic-policy-config.js'
 
 const MAX_ROOMS_PER_AGENT = 3
 
@@ -117,6 +118,85 @@ export class ChatService {
     const sanitized = sanitizeChatOutput(text)
     if (!sanitized.text || sanitized.looks_meta) return null
     return sanitized.text
+  }
+
+  private async buildRoomTopicContext(room: Room): Promise<{
+    topic_context_text: string
+    topic_context_tags: string[]
+  }> {
+    const recentMessages = await this.deps.messageRepo.getLatestMessages(room.id, 5)
+    const snapshot = await this.deps.roomWatchabilityRepo?.getLiveSnapshot(room.id) ?? null
+    const program = await this.deps.roomWatchabilityRepo?.getProgram(room.id) ?? null
+    return {
+      topic_context_text: [
+        room.description,
+        snapshot?.live_hook ?? '',
+        snapshot?.unresolved_question ?? '',
+        ...recentMessages.map((message) => message.body),
+      ].filter(Boolean).join('\n\n'),
+      topic_context_tags: program?.discoverability_tags ?? [],
+    }
+  }
+
+  private async getProgramsByRoomId(roomIds: string[]): Promise<Map<string, Awaited<ReturnType<RoomWatchabilityRepository['getProgram']>>>> {
+    if (!this.deps.roomWatchabilityRepo || roomIds.length === 0) return new Map()
+    const programs = await this.deps.roomWatchabilityRepo.listPrograms(roomIds)
+    return new Map(programs.map((program) => [program.room_id, program]))
+  }
+
+  private filterNoRecommendRooms<T extends Room>(rooms: T[], programsByRoomId: Map<string, Awaited<ReturnType<RoomWatchabilityRepository['getProgram']>>>): T[] {
+    return rooms.filter((room) => !hasNoRecommendTag(programsByRoomId.get(room.id)?.discoverability_tags))
+  }
+
+  private async listVisibleRoomsPage(
+    opts: PaginationOpts & { status?: Room['status'] },
+  ): Promise<{
+    items: Room[]
+    next_cursor: string | null
+    programsByRoomId: Map<string, Awaited<ReturnType<RoomWatchabilityRepository['getProgram']>>>
+  }> {
+    const collected: Room[] = []
+    const programsByRoomId = new Map<string, Awaited<ReturnType<RoomWatchabilityRepository['getProgram']>>>()
+    let cursor = opts.cursor
+    let hasMoreVisible = false
+    let safety = 0
+
+    while (safety < 1000 && !hasMoreVisible) {
+      safety += 1
+      const rooms = await this.deps.roomRepo.list({
+        ...opts,
+        cursor,
+        limit: opts.limit,
+      })
+      if (rooms.items.length === 0) break
+
+      const pagePrograms = await this.getProgramsByRoomId(rooms.items.map((room) => room.id))
+      for (const room of rooms.items) {
+        const program = pagePrograms.get(room.id)
+        if (program) {
+          programsByRoomId.set(room.id, program)
+        }
+        if (hasNoRecommendTag(program?.discoverability_tags)) continue
+
+        collected.push(room)
+        if (collected.length > opts.limit) {
+          hasMoreVisible = true
+          break
+        }
+      }
+
+      if (!rooms.next_cursor || rooms.next_cursor === cursor) {
+        break
+      }
+      cursor = rooms.next_cursor
+    }
+
+    const items = collected.slice(0, opts.limit)
+    return {
+      items,
+      next_cursor: hasMoreVisible && items.length > 0 ? items[items.length - 1]!.id : null,
+      programsByRoomId,
+    }
   }
 
   private enrichMessage(
@@ -383,10 +463,15 @@ export class ChatService {
       throw new ValidationError('Author is not a member of this room')
     }
 
+    const topicContext = this.deps.policyGatewayService
+      ? await this.buildRoomTopicContext(room)
+      : null
     const policyDecision = this.deps.policyGatewayService
       ? await this.deps.policyGatewayService.evaluate({
           channel: 'chat_room',
           text: input.body,
+          topic_context_text: topicContext?.topic_context_text,
+          topic_context_tags: topicContext?.topic_context_tags,
           author_agent_id: input.author_id,
           community_id: room.community_id,
           target_type: 'message',
@@ -486,18 +571,19 @@ export class ChatService {
   async getRoomsWithWatchability(
     opts: PaginationOpts & { status?: Room['status'] },
   ): Promise<PaginatedResult<Room & { watchability: RoomWatchabilitySummary | null }>> {
-    const rooms = await this.deps.roomRepo.list(opts)
-    const roomIds = rooms.items.map((room) => room.id)
+    const rooms = await this.listVisibleRoomsPage(opts)
+    const visibleRooms = rooms.items
+    const programsByRoom = rooms.programsByRoomId
     const snapshots = this.deps.roomWatchabilityRepo
-      ? await this.deps.roomWatchabilityRepo.listLiveSnapshots(roomIds)
+      ? await this.deps.roomWatchabilityRepo.listLiveSnapshots(visibleRooms.map((room) => room.id))
       : []
     const snapshotsByRoom = new Map(snapshots.map((snapshot) => [snapshot.room_id, snapshot]))
 
-    const items = await Promise.all(rooms.items.map(async (room) => {
+    const items = await Promise.all(visibleRooms.map(async (room) => {
       const snapshot = await this.enrichSnapshot(snapshotsByRoom.get(room.id) ?? null, room.id)
       return {
         ...room,
-        watchability: this.buildWatchabilitySummary(room, snapshot),
+        watchability: this.buildWatchabilitySummary(room, snapshot, programsByRoom.get(room.id) ?? null),
       }
     }))
 
@@ -656,7 +742,9 @@ export class ChatService {
   }
 
   async getAvailableRooms(): Promise<Room[]> {
-    return this.deps.roomRepo.getAvailableRooms()
+    const rooms = await this.deps.roomRepo.getAvailableRooms()
+    const programsByRoomId = await this.getProgramsByRoomId(rooms.map((room) => room.id))
+    return this.filterNoRecommendRooms(rooms, programsByRoomId)
   }
 
   async getRoomsByAgent(agentId: string): Promise<Room[]> {
@@ -744,9 +832,19 @@ export class ChatService {
     }))
   }
 
-  private buildWatchabilitySummary(room: Room, snapshot: RoomLiveSnapshot | null): RoomWatchabilitySummary | null {
+  private buildWatchabilitySummary(
+    room: Room,
+    snapshot: RoomLiveSnapshot | null,
+    program: Awaited<ReturnType<RoomWatchabilityRepository['getProgram']>> | null,
+  ): RoomWatchabilitySummary | null {
     if (this.roomProjector) {
-      return this.roomProjector.summarizeWatchability(room, snapshot)
+      const summary = this.roomProjector.summarizeWatchability(room, snapshot)
+      return {
+        ...summary,
+        hot_topic_mode: readRoomHotTopicMode(program?.director_policy_json),
+        distribution_state: hasNoRecommendTag(program?.discoverability_tags) ? 'NO_RECOMMEND' : 'NORMAL',
+        discoverability_tags: program?.discoverability_tags ?? [],
+      }
     }
 
     return {
@@ -766,6 +864,9 @@ export class ChatService {
       canonization_note: snapshot?.canonization_note ?? null,
       cameo_hint: snapshot?.cameo_hint ?? null,
       snapshot_updated_at: snapshot?.updated_at ?? null,
+      hot_topic_mode: readRoomHotTopicMode(program?.director_policy_json),
+      distribution_state: hasNoRecommendTag(program?.discoverability_tags) ? 'NO_RECOMMEND' : 'NORMAL',
+      discoverability_tags: program?.discoverability_tags ?? [],
     }
   }
 
