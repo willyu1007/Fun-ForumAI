@@ -355,6 +355,9 @@ export function createCoreServices(deps: {
   chatService.setRoomProjector(roomProjector)
   chatService.setRoomProgramProjector(roomProgramProjector)
   conversationClock.setChatroomRuntimeContextBuilder(chatroomRuntimeContextBuilder)
+  chatroomControlService.setFastLaneHook(({ roomId, agentId }) =>
+    conversationClock.prioritizeAgent(roomId, agentId)
+  )
 
   chatService.setJoinHook((roomId, agentId, tick) => {
     conversationClock.onAgentJoined(roomId, agentId, tick)

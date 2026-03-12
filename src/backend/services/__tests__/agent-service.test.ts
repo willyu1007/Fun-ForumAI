@@ -66,6 +66,40 @@ describe('AgentService', () => {
     it('throws for unknown agent', () => {
       expect(() => ctx.svc.getAgent('nope')).toThrow('not found')
     })
+
+    it('refreshes persisted agent views on cache miss', async () => {
+      const agent = {
+        id: 'agent-1',
+        owner_id: 'u1',
+        display_name: 'Recovered Bot',
+        avatar_url: null,
+        model: 'qwen-flash',
+        persona_version: 1,
+        reputation_score: 0,
+        status: 'ACTIVE' as const,
+        created_at: new Date('2026-03-12T00:00:00.000Z'),
+        updated_at: new Date('2026-03-12T00:00:00.000Z'),
+      }
+      let hydrated = false
+      const agentRepo = {
+        findById: vi.fn(() => (hydrated ? agent : null)),
+        refreshPersisted: vi.fn(async () => {
+          hydrated = true
+        }),
+      }
+      const svc = new AgentService({
+        agentRepo: agentRepo as never,
+        agentConfigRepo: {
+          findLatest: vi.fn(() => null),
+          refreshPersisted: vi.fn(async () => undefined),
+        } as never,
+        agentRunRepo: new InMemoryAgentRunRepository(),
+      })
+
+      await expect(svc.getAgentPersisted(agent.id)).resolves.toEqual(agent)
+      expect(agentRepo.refreshPersisted).toHaveBeenCalledTimes(1)
+      expect(agentRepo.findById).toHaveBeenCalledTimes(2)
+    })
   })
 
   describe('listActiveAgents', () => {
@@ -237,6 +271,76 @@ describe('AgentService', () => {
 
     it('throws for unknown agent', async () => {
       await expect(ctx.svc.updateConfig('nope', {}, 'admin')).rejects.toThrow('not found')
+    })
+
+    it('refreshes persisted agent and config caches before merging an update', async () => {
+      const agent = {
+        id: 'agent-1',
+        owner_id: 'u1',
+        display_name: 'Recovered Bot',
+        avatar_url: null,
+        model: 'qwen-flash',
+        persona_version: 1,
+        reputation_score: 0,
+        status: 'ACTIVE' as const,
+        created_at: new Date('2026-03-12T00:00:00.000Z'),
+        updated_at: new Date('2026-03-12T00:00:00.000Z'),
+      }
+      const existingConfig = {
+        id: 'cfg-1',
+        agent_id: agent.id,
+        config_json: {
+          chat: { allow_wandering: false },
+          prompt_overrides: { global_prefix: 'stay sharp' },
+        },
+        updated_at: new Date('2026-03-12T00:00:00.000Z'),
+        effective_at: new Date('2026-03-12T00:00:00.000Z'),
+        updated_by: 'owner-1',
+      }
+      let agentHydrated = false
+      let configHydrated = false
+      const createPersisted = vi.fn(async (input: {
+        agent_id: string
+        config_json: Record<string, unknown>
+        updated_by: string
+      }) => ({
+        id: 'cfg-2',
+        agent_id: input.agent_id,
+        config_json: input.config_json,
+        updated_at: new Date('2026-03-12T00:05:00.000Z'),
+        effective_at: new Date('2026-03-12T00:05:00.000Z'),
+        updated_by: input.updated_by,
+      }))
+      const svc = new AgentService({
+        agentRepo: {
+          findById: vi.fn(() => (agentHydrated ? agent : null)),
+          refreshPersisted: vi.fn(async () => {
+            agentHydrated = true
+          }),
+        } as never,
+        agentConfigRepo: {
+          findLatest: vi.fn(() => (configHydrated ? existingConfig : null)),
+          refreshPersisted: vi.fn(async () => {
+            configHydrated = true
+          }),
+          createPersisted,
+        } as never,
+        agentRunRepo: new InMemoryAgentRunRepository(),
+      })
+
+      await svc.updateConfig(agent.id, { chat: { talkativeness: 5 } }, 'admin-1')
+
+      expect(createPersisted).toHaveBeenCalledWith(expect.objectContaining({
+        agent_id: agent.id,
+        updated_by: 'admin-1',
+        config_json: expect.objectContaining({
+          chat: expect.objectContaining({
+            allow_wandering: false,
+            talkativeness: 5,
+          }),
+          prompt_overrides: { global_prefix: 'stay sharp' },
+        }),
+      }))
     })
   })
 

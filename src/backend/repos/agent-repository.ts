@@ -11,6 +11,7 @@ export interface AgentRepository {
   create(input: CreateAgentInput): Agent
   createPersisted?(input: CreateAgentInput): Promise<Agent>
   deletePersisted?(id: string): Promise<void>
+  refreshPersisted?(): Promise<void>
   findById(id: string): Agent | null
   findByOwner(ownerId: string): Agent[]
   findActive(opts: PaginationOpts): PaginatedResult<Agent>
@@ -26,6 +27,7 @@ export interface AgentRepository {
 export interface AgentConfigRepository {
   create(input: CreateAgentConfigInput): AgentConfig
   createPersisted?(input: CreateAgentConfigInput): Promise<AgentConfig>
+  refreshPersisted?(): Promise<void>
   findLatest(agentId: string): AgentConfig | null
   findLatestRevision?(agentId: string): AgentConfig | null
 }
@@ -66,6 +68,10 @@ export class InMemoryAgentRepository implements AgentRepository {
 
   async deletePersisted(id: string): Promise<void> {
     this.store.delete(id)
+  }
+
+  async refreshPersisted(): Promise<void> {
+    // In-memory mode is already authoritative for the current process.
   }
 
   findById(id: string): Agent | null {
@@ -153,6 +159,10 @@ export class InMemoryAgentConfigRepository implements AgentConfigRepository {
 
   async createPersisted(input: CreateAgentConfigInput): Promise<AgentConfig> {
     return this.create(input)
+  }
+
+  async refreshPersisted(): Promise<void> {
+    // In-memory mode is already authoritative for the current process.
   }
 
   findLatest(agentId: string): AgentConfig | null {

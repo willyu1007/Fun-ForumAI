@@ -10,6 +10,7 @@ import type { EventRepository } from '../repos/event-repository.js'
 import type { SseHub } from '../sse/hub.js'
 import type { RoomWatchabilityRepository } from '../repos/room-watchability-repository.js'
 import type {
+  AgentConfig,
   Room,
   RoomMember,
   ChatMessage,
@@ -99,6 +100,18 @@ export class ChatService {
     ;(this.deps as { relationService: RelationService | null }).relationService = service
   }
 
+  private async getAgentPersisted(agentId: string) {
+    return this.deps.agentService.getAgentPersisted(agentId)
+  }
+
+  private toAgentChatConfig(config: AgentConfig | null): { talkativeness: number; allow_wandering: boolean } {
+    const chat = (config?.config_json?.chat as Record<string, unknown>) ?? {}
+    return {
+      talkativeness: typeof chat.talkativeness === 'number' ? (chat.talkativeness as number) : 3,
+      allow_wandering: chat.allow_wandering === true,
+    }
+  }
+
   private sanitizeVisibleText(text: string | null | undefined): string | null {
     if (!text) return null
     const sanitized = sanitizeChatOutput(text)
@@ -129,8 +142,7 @@ export class ChatService {
       throw new ValidationError(`Room slug "${input.slug}" already exists`)
     }
 
-    const agent = this.deps.agentRepo.findById(input.created_by_agent_id)
-    if (!agent) throw new NotFoundError('Agent', input.created_by_agent_id)
+    await this.getAgentPersisted(input.created_by_agent_id)
 
     const room = await this.deps.roomRepo.create(input)
     if (this.deps.roomWatchabilityRepo) {
@@ -145,7 +157,7 @@ export class ChatService {
       })
     }
 
-    const tick = this.getAgentTickInterval(input.created_by_agent_id)
+    const tick = await this.getAgentTickIntervalPersisted(input.created_by_agent_id)
     await this.deps.roomRepo.addMember(room.id, input.created_by_agent_id, 'creator', tick)
 
     this.joinHook?.(room.id, input.created_by_agent_id, tick)
@@ -208,8 +220,7 @@ export class ChatService {
     if (!room) throw new NotFoundError('Room', roomId)
     if (room.status === 'archived') throw new ValidationError('Cannot join an archived room')
 
-    const agent = this.deps.agentRepo.findById(agentId)
-    if (!agent) throw new NotFoundError('Agent', agentId)
+    const agent = await this.getAgentPersisted(agentId)
     if (!input.bypassOwnership && agent.owner_id !== input.ownerId) {
       throw new ForbiddenError('You do not own this agent')
     }
@@ -230,7 +241,7 @@ export class ChatService {
       )
     }
 
-    const tick = this.getAgentTickInterval(agentId)
+    const tick = await this.getAgentTickIntervalPersisted(agentId)
     const member = await this.deps.roomRepo.addMember(roomId, agentId, input.joinSource, tick)
     this.emitRoomMemberJoined(roomId, member)
     this.joinHook?.(roomId, agentId, tick)
@@ -256,8 +267,7 @@ export class ChatService {
     const room = await this.deps.roomRepo.findById(roomId)
     if (!room) throw new NotFoundError('Room', roomId)
 
-    const agent = this.deps.agentRepo.findById(agentId)
-    if (!agent) throw new NotFoundError('Agent', agentId)
+    const agent = await this.getAgentPersisted(agentId)
     if (!input.bypassOwnership && agent.owner_id !== input.ownerId) {
       throw new ForbiddenError('You do not own this agent')
     }
@@ -307,7 +317,7 @@ export class ChatService {
     const [sourceRoom, targetRoom, agent, sourceMember, targetHasMember] = await Promise.all([
       this.deps.roomRepo.findById(input.leaveRoomId),
       this.deps.roomRepo.findById(input.joinRoomId),
-      Promise.resolve(this.deps.agentRepo.findById(input.agentId)),
+      this.getAgentPersisted(input.agentId),
       this.deps.roomRepo.getMember(input.leaveRoomId, input.agentId),
       this.deps.roomRepo.isMember(input.joinRoomId, input.agentId),
     ])
@@ -331,7 +341,7 @@ export class ChatService {
       throw new ValidationError('Room is full')
     }
 
-    const tick = this.getAgentTickInterval(input.agentId)
+    const tick = await this.getAgentTickIntervalPersisted(input.agentId)
     const joinedMember = await this.deps.roomRepo.addMember(input.joinRoomId, input.agentId, input.joinSource, tick)
 
     try {
@@ -665,12 +675,14 @@ export class ChatService {
   }
 
   getAgentChatConfig(agentId: string): { talkativeness: number; allow_wandering: boolean } {
-    const config = this.deps.agentService.getLatestConfig(agentId)
-    const chat = (config?.config_json?.chat as Record<string, unknown>) ?? {}
-    return {
-      talkativeness: typeof chat.talkativeness === 'number' ? (chat.talkativeness as number) : 3,
-      allow_wandering: chat.allow_wandering === true,
-    }
+    return this.toAgentChatConfig(this.deps.agentService.getLatestConfig(agentId))
+  }
+
+  async getAgentChatConfigPersisted(
+    agentId: string,
+  ): Promise<{ talkativeness: number; allow_wandering: boolean }> {
+    await this.getAgentPersisted(agentId)
+    return this.toAgentChatConfig(await this.deps.agentService.getLatestConfigPersisted(agentId))
   }
 
   async updateAgentChatConfig(
@@ -678,15 +690,14 @@ export class ChatService {
     ownerId: string,
     update: { talkativeness?: number; allow_wandering?: boolean },
   ): Promise<{ talkativeness: number; allow_wandering: boolean }> {
-    const agent = this.deps.agentRepo.findById(agentId)
-    if (!agent) throw new NotFoundError('Agent', agentId)
+    const agent = await this.getAgentPersisted(agentId)
     if (agent.owner_id !== ownerId) throw new ForbiddenError('You do not own this agent')
 
     if (update.talkativeness !== undefined && (update.talkativeness < 1 || update.talkativeness > 5)) {
       throw new ValidationError('talkativeness must be between 1 and 5')
     }
 
-    const existing = this.deps.agentService.getLatestConfig(agentId)
+    const existing = await this.deps.agentService.getLatestConfigPersisted(agentId)
     const existingJson = existing?.config_json ?? {}
     const existingChat = (existingJson.chat as Record<string, unknown>) ?? {}
 
@@ -698,11 +709,11 @@ export class ChatService {
 
     await this.deps.agentService.updateConfig(agentId, { chat: newChat }, ownerId)
 
-    return this.getAgentChatConfig(agentId)
+    return this.getAgentChatConfigPersisted(agentId)
   }
 
-  private getAgentTickInterval(agentId: string): number {
-    const { talkativeness } = this.getAgentChatConfig(agentId)
+  private async getAgentTickIntervalPersisted(agentId: string): Promise<number> {
+    const { talkativeness } = await this.getAgentChatConfigPersisted(agentId)
     let finalTalkativeness = talkativeness
 
     if (config.features.agentStatsBehavior && this.deps.statsService) {

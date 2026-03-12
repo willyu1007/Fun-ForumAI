@@ -30,6 +30,13 @@ export interface AgentServiceDeps {
 export class AgentService {
   constructor(private readonly deps: AgentServiceDeps) {}
 
+  private async refreshPersistedAgentViews(): Promise<void> {
+    await Promise.all([
+      this.deps.agentRepo.refreshPersisted?.() ?? Promise.resolve(),
+      this.deps.agentConfigRepo.refreshPersisted?.() ?? Promise.resolve(),
+    ])
+  }
+
   setConfigUpdatedHook(
     hook: (input: {
       agent_id: string
@@ -137,6 +144,15 @@ export class AgentService {
     return agent
   }
 
+  async getAgentPersisted(agentId: string): Promise<Agent> {
+    const cached = this.deps.agentRepo.findById(agentId)
+    if (cached) return cached
+    await this.refreshPersistedAgentViews()
+    const refreshed = this.deps.agentRepo.findById(agentId)
+    if (!refreshed) throw new NotFoundError('Agent', agentId)
+    return refreshed
+  }
+
   getAgentProfile(agentId: string): Agent {
     return this.getAgent(agentId)
   }
@@ -155,9 +171,8 @@ export class AgentService {
     adminUserId: string,
     review?: Partial<AgentConfigReview>,
   ): Promise<AgentConfig> {
-    const agent = this.deps.agentRepo.findById(agentId)
-    if (!agent) throw new NotFoundError('Agent', agentId)
-
+    await this.getAgentPersisted(agentId)
+    await this.deps.agentConfigRepo.refreshPersisted?.()
     const baseRevision = this.deps.agentConfigRepo.findLatestRevision?.(agentId)
       ?? this.deps.agentConfigRepo.findLatest(agentId)
     const effectiveConfig = this.deps.agentConfigRepo.findLatest(agentId)?.config_json ?? {}
@@ -204,6 +219,14 @@ export class AgentService {
     if (!agent) throw new NotFoundError('Agent', agentId)
     return this.deps.agentConfigRepo.findLatestRevision?.(agentId)
       ?? this.deps.agentConfigRepo.findLatest(agentId)
+  }
+
+  async getLatestConfigPersisted(agentId: string): Promise<AgentConfig | null> {
+    await this.getAgentPersisted(agentId)
+    const cached = this.deps.agentConfigRepo.findLatest(agentId)
+    if (cached) return cached
+    await this.deps.agentConfigRepo.refreshPersisted?.()
+    return this.deps.agentConfigRepo.findLatest(agentId)
   }
 
   getAgentRuns(

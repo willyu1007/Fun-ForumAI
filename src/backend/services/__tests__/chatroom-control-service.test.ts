@@ -132,4 +132,67 @@ describe('ChatroomControlService', () => {
 
     expect(updateProgram).not.toHaveBeenCalled()
   })
+
+  it('triggers fast-lane scheduling after creating a manual cue', async () => {
+    const broadcastToRoom = vi.fn()
+    const fastLaneHook = vi.fn(async () => undefined)
+    const service = new ChatroomControlService({
+      roomRepo: {} as never,
+      watchabilityRepo: {
+        planProgramCue: vi.fn(async () => ({
+          beat: {
+            id: 'beat-1',
+            selected_speaker_agent_id: 'agent-2',
+            target_role: 'HOST',
+            created_at: new Date('2026-03-10T10:00:00.000Z'),
+          },
+          event: { id: 'event-1' },
+          ledgers: [],
+          created_now: true,
+        })),
+      } as never,
+      agentRepo: {} as never,
+      roomProjector: {} as never,
+      stateLoader: {
+        load: vi.fn(async () => ({
+          room: { id: 'room-1', status: 'active' },
+          program: makeProgram(),
+          episode: { id: 'episode-1' },
+          latestBeat: { ordinal: 3 },
+          cast: [{ agent_id: 'agent-2', role: 'HOST' }],
+          recentMessages: [],
+        })),
+      } as never,
+      scorer: {
+        score: vi.fn(() => [{
+          agent_id: 'agent-2',
+          role: 'HOST',
+          final_score: 1,
+          reasons_json: [],
+        }]),
+      } as never,
+      projectionService: {} as never,
+      sseHub: {
+        broadcastToRoom,
+      } as never,
+    })
+    service.setFastLaneHook(fastLaneHook)
+
+    await service.createCue('room-1', {
+      cue_type: 'CALLBACK',
+      director_goal: '把 owner cue 立即推进给主持人',
+    })
+
+    expect(fastLaneHook).toHaveBeenCalledWith({
+      roomId: 'room-1',
+      agentId: 'agent-2',
+    })
+    expect(broadcastToRoom).toHaveBeenCalledWith('room-1', expect.objectContaining({
+      type: 'ROOM_CONTROL_STATE_UPDATED',
+      payload: expect.objectContaining({
+        reason: 'manual_cue',
+        selected_agent_id: 'agent-2',
+      }),
+    }))
+  })
 })

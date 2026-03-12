@@ -311,7 +311,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     visibility: 'identity_write',
     prompt_ref: { id: 'internal-public-observation-identity-finalize', version: 1 },
     voice_line_authority: 'Public observation finalize must resolve from the agent home voice line through the identity-write lane, but can request a lower identity tier than private digest.',
-    tier_floor: 'identityWriteTier',
+    tier_floor: 'base',
     expected_profile_refs: {
       'qwen-social-v1': 'qwen-social-identity-write-base',
       'glm-deep-v1': 'glm-deep-identity-write-premium',

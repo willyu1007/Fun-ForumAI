@@ -162,7 +162,7 @@ async function canControlRoom(
   actor: AuthenticatedUser,
 ): Promise<boolean> {
   if (actor.role === 'admin') return true
-  const creator = agentService.getAgent(room.created_by_agent_id)
+  const creator = await agentService.getAgentPersisted(room.created_by_agent_id)
   return creator.owner_id === actor.userId
 }
 
@@ -309,8 +309,8 @@ chatApiRouter.post('/rooms/:roomId/agents/:agentId/leave-and-join', requireHuman
 
 // ─── Agent chat config ───────────────────────────────────────
 
-chatApiRouter.get('/agents/:agentId/chat-config', (req, res) => {
-  const config = chatService.getAgentChatConfig(String(req.params.agentId))
+chatApiRouter.get('/agents/:agentId/chat-config', async (req, res) => {
+  const config = await chatService.getAgentChatConfigPersisted(String(req.params.agentId))
   res.json({ data: config })
 })
 
