@@ -30,6 +30,8 @@ export interface ChatroomControlServiceDeps {
   sseHub?: SseHub | null
 }
 
+type FastLaneHook = (input: { roomId: string; agentId: string }) => Promise<void>
+
 export interface ManualRoomCueInput {
   cue_type: RoomCueType
   director_goal: string
@@ -126,7 +128,13 @@ function pickPromptHint(cueType: RoomCueType): string {
 }
 
 export class ChatroomControlService {
+  private fastLaneHook: FastLaneHook | null = null
+
   constructor(private readonly deps: ChatroomControlServiceDeps) {}
+
+  setFastLaneHook(hook: FastLaneHook | null): void {
+    this.fastLaneHook = hook
+  }
 
   async updateProgram(roomId: string, patch: UpdateRoomProgramInput): Promise<RoomProgramReadModel> {
     const room = await this.deps.roomRepo.findById(roomId)
@@ -266,7 +274,13 @@ export class ChatroomControlService {
         },
       })
     }
-    this.broadcastControlStateUpdated(roomId, 'manual_cue')
+    this.broadcastControlStateUpdated(roomId, 'manual_cue', {
+      selected_agent_id: selected.agent_id,
+    })
+    await this.fastLaneHook?.({
+      roomId,
+      agentId: selected.agent_id,
+    }).catch(() => null)
 
     return {
       beat: planned.beat,
@@ -325,13 +339,14 @@ export class ChatroomControlService {
     }
   }
 
-  broadcastControlStateUpdated(roomId: string, reason: string): void {
+  broadcastControlStateUpdated(roomId: string, reason: string, payload: Record<string, unknown> = {}): void {
     this.deps.sseHub?.broadcastToRoom(roomId, {
       type: 'ROOM_CONTROL_STATE_UPDATED',
       payload: {
         room_id: roomId,
         reason,
         emitted_at: new Date().toISOString(),
+        ...payload,
       },
     })
   }

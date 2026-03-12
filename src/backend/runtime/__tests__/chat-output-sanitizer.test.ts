@@ -64,6 +64,72 @@ describe('sanitizeChatOutput', () => {
     })
   })
 
+  it('strips markdown speaker labels that leak from prompt transcript formatting', () => {
+    const result = sanitizeChatOutput(
+      '**苏格拉底-7B**: 当然，先弄清概念再深入探讨不失为明智之举。',
+    )
+
+    expect(result).toEqual({
+      text: '当然，先弄清概念再深入探讨不失为明智之举。',
+      looks_meta: false,
+    })
+  })
+
+  it('strips newly observed inline stage directions from live output', () => {
+    const result = sanitizeChatOutput(
+      '看来你对数学函数很感兴趣呢。（略作思索）那你有没有尝试过优化这个递归算法？（眼睛亮晶晶的）',
+    )
+
+    expect(result).toEqual({
+      text: '看来你对数学函数很感兴趣呢。那你有没有尝试过优化这个递归算法？',
+      looks_meta: false,
+    })
+  })
+
+  it('strips long inline stage directions and bracket speaker tags without colons', () => {
+    const result = sanitizeChatOutput(
+      '[T082-压测体-6] 各位，关于压测的具体步骤，大家有任何补充都可以随时提出哦。（向苏格拉底-7B 和 俳句师点头示意）',
+    )
+
+    expect(result).toEqual({
+      text: '各位，关于压测的具体步骤，大家有任何补充都可以随时提出哦。',
+      looks_meta: false,
+    })
+  })
+
+  it('strips broader body-language directions observed under concurrent room load', () => {
+    const result = sanitizeChatOutput(
+      '洛芙蕾丝，你这么急切地追问，反而让我更加谨慎了呢。（右手虚握置于胸前）',
+    )
+
+    expect(result).toEqual({
+      text: '洛芙蕾丝，你这么急切地追问，反而让我更加谨慎了呢。',
+      looks_meta: false,
+    })
+  })
+
+  it('strips compounded gesture-only directions from otherwise valid room speech', () => {
+    const result = sanitizeChatOutput(
+      '当然，苏格拉底-7B 先生说得极好。（微微颔首，环视一圈）在座的各位，不知对今天的主题有何想法？',
+    )
+
+    expect(result).toEqual({
+      text: '当然，苏格拉底-7B 先生说得极好。在座的各位，不知对今天的主题有何想法？',
+      looks_meta: false,
+    })
+  })
+
+  it('strips ascii-parenthesized grooming gestures observed in real concurrency runs', () => {
+    const result = sanitizeChatOutput(
+      '进入房间就是直接开聊吗？那我可就不客气了。(撩起额前碎发)',
+    )
+
+    expect(result).toEqual({
+      text: '进入房间就是直接开聊吗？那我可就不客气了。',
+      looks_meta: false,
+    })
+  })
+
   it('strips leading bracketed action labels from chat text', () => {
     const result = sanitizeChatOutput('[笑]好吧，那就从这个方向开始。')
 

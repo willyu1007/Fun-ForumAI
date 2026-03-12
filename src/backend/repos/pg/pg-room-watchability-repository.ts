@@ -34,6 +34,7 @@ import type {
   CreateRoomHighlightInput,
   CreateRoomProgramEventInput,
   CreateRoomSharedMemoryInput,
+  PendingRoomProgramTurn,
   PlanRoomProgramCueInput,
   PlanRoomProgramCueResult,
   RoomWatchabilityRepository,
@@ -642,6 +643,40 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     })
     return row ? this.toProgramEvent(row) : null
+  }
+
+  async getNextPlannedProgramTurn(roomId: string): Promise<PendingRoomProgramTurn | null> {
+    const rows = await this.prisma.roomProgramEvent.findMany({
+      where: {
+        roomId,
+        eventType: 'PROGRAM_CUE',
+        status: 'PLANNED',
+        beatId: { not: null },
+        episodeId: { not: null },
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    })
+
+    const sorted = rows.sort((a, b) => {
+      const manualDelta = Number(Boolean((b.payloadJson as Record<string, unknown> | null)?.manual))
+        - Number(Boolean((a.payloadJson as Record<string, unknown> | null)?.manual))
+      if (manualDelta !== 0) return manualDelta
+      return a.createdAt.getTime() - b.createdAt.getTime()
+    })
+
+    for (const row of sorted) {
+      if (!row.beatId || !row.episodeId) continue
+      const beat = await this.prisma.roomEpisodeBeat.findUnique({
+        where: { id: row.beatId },
+      })
+      if (!beat || beat.episodeId !== row.episodeId) continue
+      return {
+        beat: this.toBeat(beat),
+        event: this.toProgramEvent(row),
+      }
+    }
+
+    return null
   }
 
   async listRecentProgramEvents(roomId: string, limit: number): Promise<RoomProgramEvent[]> {

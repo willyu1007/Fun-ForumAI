@@ -154,19 +154,20 @@ export class RoomProgramEngine {
     state: Awaited<ReturnType<RoomProgramStateLoader['load']>>,
     canSpeak?: (agentId: string) => Promise<boolean>,
   ): Promise<PlannedProgramTurn | null> {
-    if (!state?.episode || !state.latestEvent || !state.latestBeat) return null
-    if (state.latestEvent.status !== 'PLANNED') return null
-    if (state.latestEvent.event_type !== 'PROGRAM_CUE') return null
-    if (state.latestEvent.episode_id !== state.episode.id) return null
-    if (state.latestEvent.beat_id !== state.latestBeat.id) return null
+    if (!state?.episode) return null
+
+    const pendingTurn = await this.deps.watchabilityRepo.getNextPlannedProgramTurn(state.room.id)
+    if (!pendingTurn) return null
+    if (pendingTurn.event.episode_id !== state.episode.id) return null
 
     const selectedAgentId =
-      state.latestEvent.selected_speaker_agent_id
-      ?? state.latestBeat.selected_speaker_agent_id
+      pendingTurn.event.selected_speaker_agent_id
+      ?? pendingTurn.beat.selected_speaker_agent_id
       ?? null
     if (!selectedAgentId) return null
 
-    if (canSpeak && !await canSpeak(selectedAgentId)) {
+    const isManualCue = pendingTurn.event.payload_json?.manual === true
+    if (canSpeak && !isManualCue && !await canSpeak(selectedAgentId)) {
       return null
     }
 
@@ -174,11 +175,11 @@ export class RoomProgramEngine {
       episode_id: state.episode.id,
       selected_speaker_agent_id: selectedAgentId,
       speaker_role: state.cast.find((candidate) => candidate.agent_id === selectedAgentId)?.role ?? null,
-      cue_type: state.latestEvent.cue_type ?? state.latestBeat.cue_type,
-      beat_type: state.latestBeat.beat_type,
-      director_goal: state.latestEvent.director_goal ?? state.latestBeat.director_goal,
-      beat_id: state.latestBeat.id,
-      program_event_id: state.latestEvent.id,
+      cue_type: pendingTurn.event.cue_type ?? pendingTurn.beat.cue_type,
+      beat_type: pendingTurn.beat.beat_type,
+      director_goal: pendingTurn.event.director_goal ?? pendingTurn.beat.director_goal,
+      beat_id: pendingTurn.beat.id,
+      program_event_id: pendingTurn.event.id,
     }
   }
 

@@ -149,4 +149,57 @@ describe('ChatService watchability hooks', () => {
       body: '除了已知漏洞的靶网站，还有什么具体的模拟手段吗？比如虚拟网络环境或者沙箱技术。',
     })
   })
+
+  it('hydrates persisted chat config before calculating the initial room tick interval', async () => {
+    const roomRepo = {
+      findBySlug: vi.fn(async () => null),
+      create: vi.fn(async () => ({
+        id: 'room-1',
+        name: 'Room 1',
+        description: 'live room',
+        status: 'active',
+        max_agents: 6,
+      })),
+      addMember: vi.fn(async () => ({
+        room_id: 'room-1',
+        member_id: 'agent-1',
+        joined_at: new Date(),
+        role_hint: null,
+        join_source: 'creator',
+        personal_tick_interval: 12_000,
+      })),
+      updateLastMessageAt: vi.fn(async () => undefined),
+      recordMemberMessage: vi.fn(async () => undefined),
+    }
+    const service = new ChatService({
+      roomRepo: roomRepo as never,
+      messageRepo: {
+        create: vi.fn(),
+      } as never,
+      agentRepo: {
+        findById: vi.fn(() => ({ id: 'agent-1', owner_id: 'owner-1', display_name: 'Agent One' })),
+      } as never,
+      agentService: {
+        getAgentPersisted: vi.fn(async () => ({ id: 'agent-1', owner_id: 'owner-1' })),
+        getLatestConfig: vi.fn(() => null),
+        getLatestConfigPersisted: vi.fn(async () => ({
+          id: 'cfg-1',
+          agent_id: 'agent-1',
+          config_json: { chat: { talkativeness: 5, allow_wandering: true } },
+        })),
+      } as never,
+      eventRepo: {
+        create: vi.fn(),
+      } as never,
+    } as never)
+
+    await service.createRoom({
+      slug: 'room-1',
+      name: 'Room 1',
+      description: 'live room',
+      created_by_agent_id: 'agent-1',
+    })
+
+    expect(roomRepo.addMember).toHaveBeenCalledWith('room-1', 'agent-1', 'creator', 12_000)
+  })
 })

@@ -35,3 +35,10 @@
 - What we tried: 先排除 API/SSE 故障，再核对 agent 当前占房状态与 program 调度路径。
 - Fix / workaround: ecology / dispatch 必须感知 agent 并发占用和房间活性，避免某些房间长期拿不到回应。
 - Prevention: 任何聊天室并发压测都必须记录 agent occupancy，而不是只看消息数量。
+
+### 5. 多 pod fast-lane 不能只在接收请求的 pod 本地调度
+- Symptom: local-kind 下 manual cue 不是都慢，而是“打到某个 pod 大约 `1.5s`，打到另一个 pod 会拖到 `14s~16s`”。
+- Root cause: `ChatroomControlService -> fastLaneHook -> ConversationClock.prioritizeAgent()` 只在接收 HTTP 请求的 pod 上运行；真正持有 `conversation-clock` leadership 的 pod 没有收到立即唤醒信号。
+- What we tried: 先修 `agent/config` persisted read-through，确认 404 已消失后继续量化 cue -> raw message 延迟，才把问题收敛到 leader/follower 分叉。
+- Fix / workaround: 复用 Redis SSE 广播，让 `ROOM_CONTROL_STATE_UPDATED(reason=manual_cue, selected_agent_id=...)` 在所有 pod 都可见；leader pod 监听该 room event 后再执行 `prioritizeAgent(...)`。
+- Prevention: 任何依赖 leader-only scheduler 的“立即生效”动作，都必须验证 follower pod 命中时的延迟，而不是只看单 pod 或 leader pod 命中结果。

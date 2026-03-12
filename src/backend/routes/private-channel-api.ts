@@ -1,6 +1,6 @@
 import { Router, type IRouter } from 'express'
 import { requireHumanAuth } from '../middleware/human-auth.js'
-import { privateChannelServices, relationService } from '../container.js'
+import { agentRepo, agentService, privateChannelServices, relationService } from '../container.js'
 import { AppError, ValidationError } from '../lib/errors.js'
 import { ensureDevAuthUserPersisted } from '../lib/dev-auth-user.js'
 import { buildAgentReadPayload } from '../identity/agent-identity.js'
@@ -21,15 +21,18 @@ async function assertAgentOwner(
   agentId: string,
   userId: string,
 ): Promise<{ ok: true } | { ok: false; status: number; code: string; message: string }> {
-  const { agentRepo } = await import('../container.js')
-  const agent = agentRepo.findById(agentId)
-  if (!agent) {
-    return { ok: false, status: 404, code: 'NOT_FOUND', message: `Agent ${agentId} not found` }
+  try {
+    const agent = await agentService.getAgentPersisted(agentId)
+    if (agent.owner_id !== userId) {
+      return { ok: false, status: 403, code: 'FORBIDDEN', message: 'Not your agent' }
+    }
+    return { ok: true }
+  } catch (err) {
+    if (err instanceof AppError && err.code === 'NOT_FOUND') {
+      return { ok: false, status: 404, code: 'NOT_FOUND', message: `Agent ${agentId} not found` }
+    }
+    throw err
   }
-  if (agent.owner_id !== userId) {
-    return { ok: false, status: 403, code: 'FORBIDDEN', message: 'Not your agent' }
-  }
-  return { ok: true }
 }
 
 // ─── Session endpoints ──────────────────────────────────────
@@ -432,8 +435,9 @@ privateChannelRouter.get('/agents/:agentId/relations/summary', requireHumanAuth,
 
 privateChannelRouter.get('/me/agents', requireHumanAuth, async (req, res) => {
   try {
-    const { agentRepo: repo, agentService } = await import('../container.js')
-    const agents = repo.findByOwner(req.user!.userId)
+    await agentRepo.refreshPersisted?.()
+    const agents = agentRepo.findByOwner(req.user!.userId)
+    await Promise.all(agents.map((agent) => agentService.getLatestConfigPersisted(agent.id)))
     res.json({
       data: agents.map((agent) => buildAgentReadPayload(agent, agentService.getLatestConfig(agent.id))),
     })

@@ -308,6 +308,121 @@ describe('ConversationClock', () => {
     }))
   })
 
+  it('hydrates a missing agent from persisted storage before generating a room reply', async () => {
+    const getAgentPersisted = vi.fn(async () => ({
+      id: 'agent-2',
+      owner_id: 'owner-2',
+      display_name: 'Agent Two',
+      avatar_url: null,
+      model: 'qwen-flash',
+      persona_version: 1,
+      reputation_score: 0,
+      status: 'ACTIVE' as const,
+      created_at: new Date('2026-03-12T00:00:00.000Z'),
+      updated_at: new Date('2026-03-12T00:00:00.000Z'),
+    }))
+    const getLatestConfigPersisted = vi.fn(async () => null)
+    const clock = new ConversationClock({
+      roomRepo: {
+        findById: vi.fn(async () => ({
+          id: 'room-1',
+          status: 'active',
+          name: 'General',
+          description: '',
+        })),
+      } as never,
+      messageRepo: {
+        getLatestMessages: vi.fn(async () => []),
+      } as never,
+      agentRepo: {
+        findById: vi.fn(() => null),
+      } as never,
+      agentService: {
+        getAgentPersisted,
+        getLatestConfigPersisted,
+      } as never,
+      chatService: {} as never,
+      llmGateway: {
+        isConfigured: false,
+      } as never,
+      sseHub: {
+        broadcastToRoom: vi.fn(),
+      } as never,
+      eventRepo: {
+        create: vi.fn(() => ({ id: 'evt-1' })),
+      } as never,
+      agentRunRepo: {
+        create: vi.fn(),
+      } as never,
+    })
+
+    const result = await (clock as unknown as {
+      generateMessage: (roomId: string, agentId: string) => Promise<{
+        kind: 'normal' | 'skip_feedback' | 'empty'
+        body: string
+      }>
+    }).generateMessage('room-1', 'agent-2')
+
+    expect(result).toEqual({
+      kind: 'normal',
+      body: '[Agent Two] 聊天测试消息',
+    })
+    expect(getAgentPersisted).toHaveBeenCalledWith('agent-2')
+    expect(getLatestConfigPersisted).toHaveBeenCalledWith('agent-2')
+  })
+
+  it('prioritizes the selected speaker when a manual cue broadcast arrives from another pod', async () => {
+    type RoomEventListener = (roomId: string, event: { type: string; payload?: unknown }) => void
+    let roomListener: RoomEventListener | null = null
+    const clock = new ConversationClock({
+      roomRepo: {
+        getMember: vi.fn(async () => ({
+          member_id: 'agent-1',
+          personal_tick_interval: 12_000,
+        })),
+      } as never,
+      messageRepo: {} as never,
+      agentRepo: {} as never,
+      agentService: {} as never,
+      chatService: {} as never,
+      llmGateway: {} as never,
+      sseHub: {
+        broadcastToRoom: vi.fn(),
+        onRoomEvent: vi.fn((listener: (roomId: string, event: { type: string; payload?: unknown }) => void) => {
+          roomListener = listener
+          return () => {
+            roomListener = null
+          }
+        }),
+      } as never,
+      eventRepo: {} as never,
+      agentRunRepo: {} as never,
+    })
+
+    const harness = clock as unknown as {
+      running: boolean
+      scheduleAgent: (roomId: string, agentId: string, tickInterval: number, delayMs?: number) => void
+    }
+    const scheduleAgent = vi.fn()
+    harness.running = true
+    harness.scheduleAgent = scheduleAgent
+
+    expect(roomListener).not.toBeNull()
+    const emitRoomEvent: RoomEventListener = roomListener ?? (() => undefined)
+    emitRoomEvent('room-1', {
+      type: 'ROOM_CONTROL_STATE_UPDATED',
+      payload: {
+        room_id: 'room-1',
+        reason: 'manual_cue',
+        selected_agent_id: 'agent-1',
+      },
+    })
+
+    await vi.waitFor(() => {
+      expect(scheduleAgent).toHaveBeenCalledWith('room-1', 'agent-1', 12_000, 250)
+    })
+  })
+
   it('treats timer owner as wake-up signal and can select another speaker in program rooms', async () => {
     const roomProgramEngine = {
       planNextTurn: vi.fn(async () => ({

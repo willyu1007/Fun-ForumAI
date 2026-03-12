@@ -5,10 +5,13 @@ const LEADING_STAGE_DIRECTION_RE = /^(?:(?:（[^）\n]{1,24}）|\([^)\n]{1,24}\)
 const LEADING_ALERT_MARKER_RE = /^\[(?:!|！)\]\s*/u
 const LEADING_BRACKET_ACTION_RE =
   /^\[(?:笑|停顿|沉默|思考|思索|挑眉|皱眉|点头|摇头|叹气|耸肩|看向[^\]\n]{0,8}|望向[^\]\n]{0,8}|转向[^\]\n]{0,8})\]\s*/u
+const LEADING_BRACKET_SPEAKER_TAG_RE = /^(?:\[[^\]\n]{2,24}\]|【[^】\n]{2,24}】)\s*/u
+const LEADING_MARKDOWN_SPEAKER_LABEL_RE =
+  /^(?:(?:\*\*|__|`)[^*_\n`]{1,24}(?:\*\*|__|`))\s*[:：]\s*/u
 const LEADING_SPEAKER_LABEL_RE =
   /^(?:\[[^\]\n]{1,24}\]|【[^】\n]{1,24}】|[A-Za-z0-9_\-\u4E00-\u9FFF]{2,24})\s*[:：]\s*/u
 const INLINE_STAGE_DIRECTION_RE =
-  /[（(](?:[^）)\n]{0,12}(?:轻抚|前倾|后仰|神情|目光|表情|身体|手指|双手|双眸|手|桌面|桌上|椅背|屏幕|眼神|视线|敲击|摊手|挑眉|耸肩|点头|摇头|皱眉|停顿|低声|沉吟|沉思|苦笑|微笑|叹气|追问|补充|插话|看向|看着|望向|望着|转向|注视|凝视|紧盯)[^）)\n]{0,24}|追问|补充|插话|停顿)[）)]/gu
+  /[（(](?:[^）)\n]{0,24}(?:轻抚|前倾|后仰|神情|目光|表情|身体|手指|双手|双眸|眼睛|眼神|视线|右手|左手|手臂|胸前|额前|碎发|发丝|发梢|敲击|摊手|挑眉|耸肩|点头|点头示意|颔首|摇头|皱眉|停顿|低声|沉吟|沉思|思索|认真思考|略作思索|若有所思|苦笑|微笑|微微一笑|轻笑|眨眼|眼睛亮晶晶|虚握|撩起|捋起|拨开|拢了拢|抬眸|垂眸|环顾|环顾四周|环视|扫视|挥手示意|叹气|追问|补充|插话|看向|看着|望向|望着|转向|朝[^\n）)]{0,12}|向[^\n）)]{0,16}|注视|凝视|紧盯)[^）)\n]{0,28}|略作思索|眼睛亮晶晶的?|若有所思|认真思考|环顾四周|环视一圈|追问|补充|插话|停顿)[）)]/gu
 const FORUM_QUOTE_LINE_PATTERNS = [
   /^\[展开\]/,
   /^>+/,
@@ -153,6 +156,8 @@ export function sanitizeChatOutput(text: string): SanitizedChatOutput {
     .replace(LEADING_STAGE_DIRECTION_RE, '')
     .replace(LEADING_ALERT_MARKER_RE, '')
     .replace(LEADING_BRACKET_ACTION_RE, '')
+    .replace(LEADING_BRACKET_SPEAKER_TAG_RE, '')
+    .replace(LEADING_MARKDOWN_SPEAKER_LABEL_RE, '')
     .replace(LEADING_SPEAKER_LABEL_RE, '')
     .replace(INLINE_STAGE_DIRECTION_RE, '')
   const normalizedWithParagraphs = normalizeChatWhitespace(normalized)
