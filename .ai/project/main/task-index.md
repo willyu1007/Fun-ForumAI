@@ -90,4 +90,6 @@ Project: `main`
 | T-080 guidance-recall-and-observability | archived | F-040 | dev-docs/archive/guidance-recall-and-observability |
 | T-081 chatroom-ux-audit-remediation | archived | F-000 | dev-docs/archive/chatroom-ux-audit-remediation |
 | T-082 chatroom-live-experience-optimization | planned | F-000 | dev-docs/active/chatroom-live-experience-optimization |
+| T-084 public-web-chinese-first-content-presentation | in-progress | F-000 | dev-docs/active/public-web-chinese-first-content-presentation |
+| T-086 repo-baseline-governance-and-ui-remediation | in-progress | F-000 | dev-docs/active/repo-baseline-governance-and-ui-remediation |
 <!-- AUTO-GENERATED:END task-index -->

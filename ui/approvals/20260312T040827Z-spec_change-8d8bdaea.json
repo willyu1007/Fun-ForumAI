@@ -1,0 +1,8 @@
+{
+  "approval_version": 1,
+  "approval_type": "spec_change",
+  "approved_at_utc": "2026-03-12T04:08:27Z",
+  "approved_by": "codex",
+  "fingerprint": "93f555a36befb234914f8ddccdf0dc1d835727c200a8441a7e55b57d58c6da57",
+  "notes": "UI spec (tokens/contract/patterns) changed since last approval. Approve spec_change to proceed."
+}

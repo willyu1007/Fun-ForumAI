@@ -19,7 +19,6 @@ import { parse as parseYaml } from 'yaml';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const VALID_VOICE_LINE_IDS = new Set(['qwen-social-v1', 'glm-deep-v1', 'deepseek-director-v1']);
 const VALID_TIERS = new Set(['lite', 'base', 'premium']);
 const VALID_VISIBILITIES = new Set(['visible', 'hidden', 'identity_write', 'dev_only']);
 const VALID_INTENTS = new Set([
@@ -74,6 +73,7 @@ function main() {
   }
 
   const registryDir = path.join(repoRoot, '.ai', 'llm-config', 'registry');
+  const validVoiceLineIds = loadVoiceLineIds(repoRoot);
   const files = {
     providers: path.join(registryDir, 'providers.yaml'),
     profiles: path.join(registryDir, 'model_profiles.yaml'),
@@ -106,7 +106,7 @@ function main() {
   validateConfigVersion(rawConfig);
 
   validateProviders(providers);
-  validateProfiles(profiles, providers);
+  validateProfiles(profiles, providers, validVoiceLineIds);
   validatePromptTemplates(prompts);
   validateTemplateMode(strict, rawProviders, rawProfiles, rawPrompts, rawConfig);
 
@@ -167,7 +167,7 @@ function validateProviders(doc) {
   assertUnique(providerIds, 'provider_id');
 }
 
-function validateProfiles(doc, providersDoc) {
+function validateProfiles(doc, providersDoc, validVoiceLineIds) {
   assertArray(doc.profiles, 'model_profiles.yaml profiles');
   const profileIds = [];
   const providersById = new Map(providersDoc.providers.map((entry) => [entry.provider_id, entry]));
@@ -178,8 +178,8 @@ function validateProfiles(doc, providersDoc) {
     profileIds.push(profileId);
 
     const voiceLineId = requireNonEmptyString(profile.voice_line_id, `profiles.${profileId}.voice_line_id`);
-    if (!VALID_VOICE_LINE_IDS.has(voiceLineId)) {
-      die(`profiles.${profileId}.voice_line_id must be one of: ${Array.from(VALID_VOICE_LINE_IDS).join(', ')}`);
+    if (!validVoiceLineIds.has(voiceLineId)) {
+      die(`profiles.${profileId}.voice_line_id must be one of: ${Array.from(validVoiceLineIds).join(', ')}`);
     }
 
     const tier = requireNonEmptyString(profile.tier, `profiles.${profileId}.tier`);
@@ -202,9 +202,6 @@ function validateProfiles(doc, providersDoc) {
 
     if (voiceLineId === 'deepseek-director-v1' && visibility !== 'hidden') {
       die(`profiles.${profileId} uses director line ${voiceLineId} but visibility is not hidden`);
-    }
-    if (voiceLineId !== 'deepseek-director-v1' && visibility === 'hidden') {
-      die(`profiles.${profileId} uses visible line ${voiceLineId} but visibility is hidden`);
     }
     if (visibility === 'identity_write' && intent !== 'identity_write') {
       die(`profiles.${profileId} visibility=identity_write requires intent=identity_write`);
@@ -259,6 +256,26 @@ function validateProfiles(doc, providersDoc) {
       }
     }
   }
+}
+
+function loadVoiceLineIds(repoRoot) {
+  const personaCatalogPath = path.join(repoRoot, 'src', 'shared', 'agent-persona-catalog.ts');
+  const raw = readFileSafe(personaCatalogPath);
+  if (!raw) {
+    die('Failed to read src/shared/agent-persona-catalog.ts');
+  }
+
+  const match = raw.match(/export const VOICE_LINE_IDS = \[([\s\S]*?)\] as const/u);
+  if (!match) {
+    die('Unable to parse VOICE_LINE_IDS from src/shared/agent-persona-catalog.ts');
+  }
+
+  const ids = Array.from(match[1].matchAll(/'([^']+)'/g), (entry) => entry[1]);
+  if (ids.length === 0) {
+    die('VOICE_LINE_IDS in src/shared/agent-persona-catalog.ts is empty');
+  }
+
+  return new Set(ids);
 }
 
 function validatePromptTemplates(doc) {

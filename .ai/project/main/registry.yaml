@@ -731,3 +731,17 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/chatroom-live-experience-optimization
     updated: 2026-03-11
+  - id: T-084
+    slug: public-web-chinese-first-content-presentation
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/public-web-chinese-first-content-presentation
+    updated: 2026-03-12
+  - id: T-086
+    slug: repo-baseline-governance-and-ui-remediation
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/repo-baseline-governance-and-ui-remediation
+    updated: 2026-03-12

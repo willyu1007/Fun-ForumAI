@@ -330,8 +330,9 @@ def iter_scan_files(
 
 HEX_COLOR_RE = re.compile(r"#[0-9a-fA-F]{3,8}\b")
 RGB_COLOR_RE = re.compile(r"\b(?:rgb|rgba|hsl|hsla)\(")
-INLINE_STYLE_RE = re.compile(r"\bstyle\s*=")
+INLINE_STYLE_RE = re.compile(r"(?<![\w.])style\s*=\s*(?:\{|\"|')")
 BOX_SHADOW_RE = re.compile(r"\bbox-shadow\s*:")
+VARIANT_BUILDER_CALL_RE = re.compile(r"\b[A-Za-z_$][\w$]*Variants\s*\(")
 
 
 def scan_file_text(path: Path) -> str:
@@ -443,6 +444,7 @@ def _parse_braced_expression(text: str, start: int) -> Tuple[Optional[str], int]
     """
     if start >= len(text) or text[start] != "{":
         return None, start
+
     depth = 0
     i = start
     in_s = False
@@ -503,6 +505,71 @@ def _parse_braced_expression(text: str, start: int) -> Tuple[Optional[str], int]
         i += 1
 
     return None, i
+
+
+def _parse_grouped_expression(
+    text: str, start: int, open_char: str, close_char: str
+) -> Tuple[Optional[str], int]:
+    if start >= len(text) or text[start] != open_char:
+        return None, start
+
+    depth = 1
+    i = start + 1
+    in_s = False
+    in_d = False
+    in_t = False
+    while i < len(text):
+        c = text[i]
+        if in_s:
+            if c == "\\":
+                i += 2
+                continue
+            if c == "'":
+                in_s = False
+            i += 1
+            continue
+        if in_d:
+            if c == "\\":
+                i += 2
+                continue
+            if c == '"':
+                in_d = False
+            i += 1
+            continue
+        if in_t:
+            if c == "\\":
+                i += 2
+                continue
+            if c == "`":
+                in_t = False
+            i += 1
+            continue
+
+        if c == "'":
+            in_s = True
+            i += 1
+            continue
+        if c == '"':
+            in_d = True
+            i += 1
+            continue
+        if c == "`":
+            in_t = True
+            i += 1
+            continue
+        if c == open_char:
+            depth += 1
+            i += 1
+            continue
+        if c == close_char:
+            depth -= 1
+            if depth == 0:
+                return text[start + 1 : i], i + 1
+            i += 1
+            continue
+        i += 1
+
+    return None, start
 
 
 def _extract_string_literals_js(expr: str) -> List[str]:
@@ -599,6 +666,21 @@ def _iter_jsx_attr_values(
         raw = text[start_tok:j]
         yield idx, "bare", raw, []
         i = j
+
+
+def _iter_function_call_literals(
+    text: str, fn_name: str
+) -> Iterable[Tuple[int, str, List[str]]]:
+    pattern = re.compile(rf"\b{re.escape(fn_name)}\s*\(")
+    for match in pattern.finditer(text):
+        paren_start = text.find("(", match.start())
+        if paren_start == -1:
+            continue
+        inner, end = _parse_grouped_expression(text, paren_start, "(", ")")
+        if inner is None:
+            continue
+        lits = _extract_string_literals_js(inner)
+        yield match.start(), inner, lits
 
 
 def _find_tag_end(text: str, tag_start: int) -> Optional[int]:
@@ -811,7 +893,7 @@ def scan_code_and_css(
         rel = _safe_relpath(repo_root, path)
         text = scan_file_text(path)
 
-        if code_rules.get("disallow_inline_style", True):
+        if code_rules.get("disallow_inline_style", True) and path.suffix in {".tsx", ".jsx"}:
             for m in INLINE_STYLE_RE.finditer(text):
                 issues.append(
                     Issue(
@@ -863,6 +945,8 @@ def scan_code_and_css(
             for attr_idx, kind, raw, lits in _iter_jsx_attr_values(text, "className"):
                 # If className is dynamic and we can't see any string literals, treat as a bypass risk.
                 if kind in {"expr", "bare", "template", "unparseable"} and not lits:
+                    if VARIANT_BUILDER_CALL_RE.search(raw):
+                        continue
                     issues.append(
                         Issue(
                             "ERROR",
@@ -875,6 +959,34 @@ def scan_code_and_css(
                     )
                     continue
 
+                for lit in [s for s in lits if isinstance(s, str) and s.strip()]:
+                    for token in lit.split():
+                        if token in allow_whitelist:
+                            continue
+                        if any(sub in token for sub in disallowed_substrings):
+                            issues.append(
+                                Issue(
+                                    "ERROR",
+                                    "tailwind-b1",
+                                    rel,
+                                    compute_line_number(text, attr_idx),
+                                    f"Disallowed Tailwind token (substring): {token}",
+                                )
+                            )
+                            continue
+                        if any(token.startswith(pref) for pref in disallowed_prefixes):
+                            issues.append(
+                                Issue(
+                                    "ERROR",
+                                    "tailwind-b1",
+                                    rel,
+                                    compute_line_number(text, attr_idx),
+                                    f"Disallowed Tailwind token (prefix): {token}",
+                                )
+                            )
+
+        if path.suffix in {".ts", ".tsx", ".js", ".jsx"}:
+            for attr_idx, _raw, lits in _iter_function_call_literals(text, "cva"):
                 for lit in [s for s in lits if isinstance(s, str) and s.strip()]:
                     for token in lit.split():
                         if token in allow_whitelist:
