@@ -14,21 +14,6 @@ import type { AppealRequest, ComplaintTicket, Notification } from '@/api/types'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { uix } from '@/shared/utils/uix'
 
-const STATUS_STYLES: Record<string, string> = {
-  OPEN: 'bg-slate-100 text-slate-700',
-  LINKED: 'bg-blue-50 text-blue-700',
-  RESOLVED: 'bg-emerald-50 text-emerald-700',
-  REJECTED: 'bg-red-50 text-red-700',
-  READ: 'bg-slate-100 text-slate-700',
-  UNREAD: 'bg-cyan-50 text-cyan-700',
-}
-
-const TIMELINE_SOURCE_STYLES: Record<TimelineEntry['source'], string> = {
-  REPORT: 'bg-amber-50 text-amber-700',
-  APPEAL: 'bg-violet-50 text-violet-700',
-  GOVERNANCE: 'bg-cyan-50 text-cyan-700',
-}
-
 const STATUS_LABELS: Record<string, string> = {
   OPEN: '已提交',
   LINKED: '审核中',
@@ -36,15 +21,6 @@ const STATUS_LABELS: Record<string, string> = {
   REJECTED: '已结案',
   READ: '已读',
   UNREAD: '未读',
-}
-
-const TIMELINE_PHASE_STYLES: Record<TimelinePhase, string> = {
-  SUBMITTED: 'bg-slate-100 text-slate-700',
-  QUEUED: 'bg-blue-50 text-blue-700',
-  REOPENED: 'bg-amber-50 text-amber-700',
-  RESOLVED: 'bg-emerald-50 text-emerald-700',
-  CLOSED: 'bg-red-50 text-red-700',
-  UPDATE: 'bg-cyan-50 text-cyan-700',
 }
 
 const TIMELINE_PHASE_LABELS: Record<TimelinePhase, string> = {
@@ -204,9 +180,11 @@ function governancePhase(item: Notification): TimelinePhase {
   if (
     title.includes('进入审核')
     || title.includes('进入复核')
+    || title.includes('热点复核')
     || body.includes('已进入')
     || body.includes('进入审核')
     || body.includes('进入复核')
+    || body.includes('热点复核')
   ) {
     return 'QUEUED'
   }
@@ -215,7 +193,34 @@ function governancePhase(item: Notification): TimelinePhase {
   return 'UPDATE'
 }
 
-function phaseCopy(entry: Pick<TimelineEntry, 'source' | 'phase'>): string {
+function isHotTopicUpdate(value: { title?: string | null; body?: string | null }): boolean {
+  const text = `${value.title ?? ''} ${value.body ?? ''}`.toLowerCase()
+  return (
+    text.includes('热点')
+    || text.includes('漂移')
+    || text.includes('no_recommend')
+    || text.includes('不参与推荐')
+  )
+}
+
+function phaseCopy(entry: Pick<TimelineEntry, 'source' | 'phase'> & { hot_topic?: boolean }): string {
+  if (entry.hot_topic) {
+    switch (entry.phase) {
+      case 'QUEUED':
+        return '热点内容已进入复核队列，系统会继续核对允许域、漂移风险和分发范围。'
+      case 'REOPENED':
+        return '热点内容因漂移或分发限制被重新打开，复核会沿原 case 继续追加证据。'
+      case 'RESOLVED':
+        return '热点内容的分发结果已经更新，直达访问、推荐限制或恢复放行都会同步回这里。'
+      case 'CLOSED':
+        return '热点复核流程已结束，当前没有追加的限制动作。'
+      case 'SUBMITTED':
+      case 'UPDATE':
+      default:
+        return '这里会持续同步热点复核、漂移提醒和限制传播的状态回执。'
+    }
+  }
+
   if (entry.source === 'REPORT') {
     switch (entry.phase) {
       case 'SUBMITTED':
@@ -330,7 +335,11 @@ function buildTimelineEntries(
     phase: governancePhase(item),
     title: item.title,
     body: item.body ?? '治理状态已更新',
-    phase_copy: phaseCopy({ source: 'GOVERNANCE', phase: governancePhase(item) }),
+    phase_copy: phaseCopy({
+      source: 'GOVERNANCE',
+      phase: governancePhase(item),
+      hot_topic: isHotTopicUpdate({ title: item.title, body: item.body }),
+    }),
     surface_label: entrySurfaceLabel({
       targetType: item.target_type,
       notificationType: item.type,
@@ -364,7 +373,7 @@ function TicketRow({
   href: string | null
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+    <div className={uix('uix-d9ec640fb0')}>
       <div className="min-w-0 space-y-1">
         <p className={uix('uix-da8bf29040')}>{title}</p>
         <p className={uix('uix-abda0153e3')}>{contextLine}</p>
@@ -372,7 +381,22 @@ function TicketRow({
         <p className={uix('uix-cb59187521')}>{relativeTime(createdAt)}</p>
       </div>
       <div className="flex items-center gap-2">
-        <Badge variant="outline" className={STATUS_STYLES[status] ?? ''}>
+        <Badge
+          variant="outline"
+          className={
+            status === 'OPEN' || status === 'READ'
+              ? uix('uix-acde912ea7')
+              : status === 'LINKED'
+                ? uix('uix-6b1dc864d8')
+                : status === 'RESOLVED'
+                  ? uix('uix-6196a83432')
+                  : status === 'REJECTED'
+                    ? uix('uix-34778b4db1')
+                    : status === 'UNREAD'
+                      ? uix('uix-acde22e5d7')
+                      : ''
+          }
+        >
           {STATUS_LABELS[status] ?? status}
         </Badge>
         {href && (
@@ -409,7 +433,7 @@ function TimelineCard({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className={unreadCount > 0 ? 'bg-cyan-50 text-cyan-700' : ''}>
+            <Badge variant="outline" className={unreadCount > 0 ? uix('uix-acde22e5d7') : ''}>
               {unreadCount > 0 ? `${unreadCount} 条未读治理更新` : '治理更新已读完'}
             </Badge>
             <Button
@@ -436,23 +460,62 @@ function TimelineCard({
         {entries.map((entry) => (
           <div
             key={entry.id}
-            className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm shadow-slate-100"
+            className={uix('uix-dc5f8042a1')}
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className={uix('uix-da8bf29040')}>{entry.title}</p>
-                  <Badge variant="outline" className={TIMELINE_SOURCE_STYLES[entry.source]}>
+                  <Badge
+                    variant="outline"
+                    className={
+                      entry.source === 'REPORT'
+                        ? uix('uix-1e4ba8b8b0')
+                        : entry.source === 'APPEAL'
+                          ? uix('uix-650421c537')
+                          : uix('uix-acde22e5d7')
+                    }
+                  >
                     {entry.source === 'REPORT' ? '举报单' : entry.source === 'APPEAL' ? '申诉单' : '治理通知'}
                   </Badge>
-                  <Badge variant="outline" className={TIMELINE_PHASE_STYLES[entry.phase]}>
+                  <Badge
+                    variant="outline"
+                    className={
+                      entry.phase === 'SUBMITTED'
+                        ? uix('uix-acde912ea7')
+                        : entry.phase === 'QUEUED'
+                          ? uix('uix-6b1dc864d8')
+                          : entry.phase === 'REOPENED'
+                            ? uix('uix-1e4ba8b8b0')
+                            : entry.phase === 'RESOLVED'
+                              ? uix('uix-6196a83432')
+                              : entry.phase === 'CLOSED'
+                                ? uix('uix-34778b4db1')
+                                : uix('uix-acde22e5d7')
+                    }
+                  >
                     {TIMELINE_PHASE_LABELS[entry.phase]}
                   </Badge>
-                  <Badge variant="outline" className={STATUS_STYLES[entry.status] ?? ''}>
+                  <Badge
+                    variant="outline"
+                    className={
+                      entry.status === 'OPEN' || entry.status === 'READ'
+                        ? uix('uix-acde912ea7')
+                        : entry.status === 'LINKED'
+                          ? uix('uix-6b1dc864d8')
+                          : entry.status === 'RESOLVED'
+                            ? uix('uix-6196a83432')
+                            : entry.status === 'REJECTED'
+                              ? uix('uix-34778b4db1')
+                              : entry.status === 'UNREAD'
+                                ? uix('uix-acde22e5d7')
+                                : ''
+                    }
+                  >
                     {STATUS_LABELS[entry.status] ?? entry.status}
                   </Badge>
                   {entry.unread && (
-                    <Badge variant="outline" className="bg-cyan-50 text-cyan-700">
+                    <Badge variant="outline" className={uix('uix-acde22e5d7')}>
                       未读
                     </Badge>
                   )}
@@ -516,7 +579,7 @@ export function SafetyCenterPage() {
       <div className="space-y-4">
         <h1 className={uix('uix-65af6ac52c')}>举报与申诉</h1>
         <Card>
-          <CardContent className="space-y-3 pt-6">
+          <CardContent className={uix('uix-9ad47e61f2')}>
             <p className={uix('uix-fc7473ca09')}>登录后可以查看自己的举报和申诉处理状态。</p>
             <Button asChild>
               <Link to="/login">去登录</Link>
@@ -544,9 +607,14 @@ export function SafetyCenterPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+      <div className={uix('uix-a10c4b5d31')}>
         当前受理入口已覆盖帖子、评论、聊天室发言、私聊会话和主动私信提醒。
         流程会按“已提交 → 建 case → 进入审核/复核 → 重开或结案”逐步回写到这里。
+      </div>
+
+      <div className={uix('uix-7df92ecb84')}>
+        热点内容如果发生话题漂移，可能被改成“可直达，不参与推荐”，也可能重新进入 HOT_TOPIC 队列复核。
+        这类限制传播和恢复放行的回执，同样会出现在时间线里。
       </div>
 
       <TimelineCard

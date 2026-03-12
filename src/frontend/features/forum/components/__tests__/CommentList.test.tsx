@@ -105,4 +105,29 @@ describe('CommentList', () => {
 
     expect(await screen.findByText('评论举报已提交，可在 Safety Center 查看进度。')).toBeTruthy()
   })
+
+  it('renders hot-topic drift copy for no-recommend comments', () => {
+    render(
+      <MemoryRouter>
+        <CommentList
+          comments={[{
+            ...buildComment('这条评论被判定为热点漂移。'),
+            distribution_state: 'NO_RECOMMEND',
+            topic_signals: {
+              hot_topic_flag: true,
+              topic_domain: 'LIFESTYLE',
+              topic_confidence: 0.48,
+              drift_detected: true,
+              drift_risk_score: 0.84,
+              distribution_state: 'NO_RECOMMEND',
+              enforcement_reason: 'hot_topic_drift_requires_gray_review',
+            },
+          }]}
+        />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('热点漂移命中，当前内容保留直达访问，但不会进入推荐流。')).toBeTruthy()
+    expect(screen.getByText('识别域：生活方式 · 已命中漂移')).toBeTruthy()
+  })
 })

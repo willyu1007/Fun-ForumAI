@@ -352,16 +352,16 @@ function NotificationBell() {
               <span className={uix('uix-99bfd280cd')}>
                 {NOTIF_ICON[n.type] ?? <Info className={uix('uix-bbbc785fc1')} />}
               </span>
-              <div className="flex-1 min-w-0">
+              <div className={uix('uix-ae12a6d11e')}>
                 <span className={uix('uix-ffe787b841')}>{n.title}</span>
                 {n.body && <span className={uix('uix-77c57029c7')}>{n.body}</span>}
                 <span className={uix('uix-0e72078f5f')}>{relativeTime(n.created_at)}</span>
                 {n.type === 'AGENT_PROACTIVE' && n.target_id && (
-                  <div className="mt-1 flex items-center gap-2">
+                  <div className={uix('uix-f28ab3f4c5')}>
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-7 px-2 text-xs"
+                      className={uix('uix-0d642c87be')}
                       disabled={createReport.isPending}
                       onClick={(event) => {
                         event.stopPropagation()
@@ -371,7 +371,7 @@ function NotificationBell() {
                       {createReport.isPending ? '提交中…' : '举报此主动私信'}
                     </Button>
                     {proactiveReportState[n.id] && (
-                      <span className={proactiveReportState[n.id] === '已举报' ? uix('uix-0e72078f5f') : 'text-xs text-red-600'}>
+                      <span className={proactiveReportState[n.id] === '已举报' ? uix('uix-0e72078f5f') : uix('uix-551c237449')}>
                         {proactiveReportState[n.id]}
                       </span>
                     )}

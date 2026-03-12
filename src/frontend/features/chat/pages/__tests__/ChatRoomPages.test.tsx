@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChatRoomListPage } from '../ChatRoomListPage'
 import { ChatRoomPage } from '../ChatRoomPage'
 import {
+  useCommunities,
   useCreateReport,
   useCreateRoomCue,
   useCreateRoom,
@@ -24,6 +25,7 @@ import { useAuth } from '@/shared/hooks/use-auth'
 import { useChatRoomSse } from '../../hooks/use-chat-room-sse'
 
 vi.mock('@/api/hooks', () => ({
+  useCommunities: vi.fn(),
   useRooms: vi.fn(),
   useCreateRoom: vi.fn(),
   useCreateReport: vi.fn(),
@@ -49,6 +51,7 @@ vi.mock('../../hooks/use-chat-room-sse', () => ({
   useChatRoomSse: vi.fn(),
 }))
 
+const useCommunitiesMock = vi.mocked(useCommunities)
 const useRoomsMock = vi.mocked(useRooms)
 const useCreateRoomMock = vi.mocked(useCreateRoom)
 const useCreateReportMock = vi.mocked(useCreateReport)
@@ -101,6 +104,11 @@ describe('chat room pages', () => {
     useRoomControlStateMock.mockReturnValue({
       data: undefined,
     } as never)
+    useCommunitiesMock.mockReturnValue({
+      data: {
+        data: [],
+      },
+    } as never)
     useMyAgentsMock.mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -118,7 +126,7 @@ describe('chat room pages', () => {
           name: '深夜聊天室',
           slug: 'room-1',
           description: '一群 agent 在拆夜宵',
-          community_id: null,
+          community_id: 'community-1',
           created_by_agent_id: 'agent-1',
           max_agents: 4,
           status: 'active',
@@ -212,7 +220,9 @@ describe('chat room pages', () => {
           max_consecutive_turns: 1,
           idle_cue_after_ms: 30000,
           allow_wandering: true,
-          director_policy: {},
+          director_policy: {
+            hot_topic_mode: 'MANUAL_REVIEW_ONLY',
+          },
           wander_policy: {
             enabled: true,
             entry_cooldown_ms: 180000,
@@ -220,7 +230,7 @@ describe('chat room pages', () => {
             min_discoverability_score: 0.25,
           },
           discoverability: {
-            tags: [],
+            tags: ['no_recommend'],
             short_hook: null,
             default_view: 'live',
           },
@@ -233,6 +243,29 @@ describe('chat room pages', () => {
             message_count: 5,
           },
         },
+      },
+    } as never)
+    useCommunitiesMock.mockReturnValue({
+      data: {
+        data: [{
+          id: 'community-1',
+          name: 'Night Show',
+          slug: 'night-show',
+          description: null,
+          rules_json: {
+            hot_topic_policy_v1: {
+              mode: 'MANUAL_REVIEW_ONLY',
+              allowed_domains: ['ENTERTAINMENT', 'SPORTS'],
+              scene_modes: {},
+              user_copy: {
+                room_banner: '热点内容可能只保留直达访问。',
+              },
+            },
+          },
+          visibility_default: 'PUBLIC',
+          created_at: '2026-03-10T10:00:00.000Z',
+          updated_at: '2026-03-10T10:00:00.000Z',
+        }],
       },
     } as never)
     useRoomHighlightsMock.mockReturnValue({
@@ -352,6 +385,10 @@ describe('chat room pages', () => {
     expect(screen.getByText('旧梗已经重新连上主线。')).toBeTruthy()
     expect(screen.getByText('房主控制')).toBeTruthy()
     expect(screen.getByText('手动 Cue')).toBeTruthy()
+    expect(screen.getByText('AI live 房间')).toBeTruthy()
+    expect(screen.getByText('房间模式 · 灰度复核')).toBeTruthy()
+    expect(screen.getByText('社区模式 · 灰度复核')).toBeTruthy()
+    expect(screen.getByText('热点内容可能只保留直达访问。')).toBeTruthy()
     expect(screen.getByText('先把旧梗接回来。')).toBeTruthy()
     expect(screen.getAllByText('把刚才那个夜宵税的梗捡回来了。').length).toBeGreaterThan(0)
     expect(useRoomControlStateMock).toHaveBeenLastCalledWith('room-1', { enabled: true })
@@ -398,7 +435,9 @@ describe('chat room pages', () => {
           max_consecutive_turns: 1,
           idle_cue_after_ms: 30000,
           allow_wandering: true,
-          director_policy: {},
+          director_policy: {
+            hot_topic_mode: 'DISABLED',
+          },
           wander_policy: {
             enabled: false,
             entry_cooldown_ms: 180000,
@@ -539,6 +578,141 @@ describe('chat room pages', () => {
     })
 
     expect(await screen.findByText('聊天室举报已提交，可在 Safety Center 查看进度。')).toBeTruthy()
+  })
+
+  it('saves room hot-topic controls through the director panel contract', async () => {
+    const patchProgramMutate = vi.fn()
+    usePatchRoomProgramMock.mockReturnValue({
+      mutate: patchProgramMutate,
+      isPending: false,
+    } as never)
+    useAuthMock.mockReturnValue({
+      isAuthenticated: true,
+      user: { id: 'user-1', email: 'user@test.com', role: 'user' },
+    } as never)
+    useRoomMock.mockReturnValue({
+      data: {
+        data: {
+          id: 'room-1',
+          name: '深夜聊天室',
+          slug: 'room-1',
+          description: '围观梗和高光',
+          community_id: 'community-1',
+          created_by_agent_id: 'agent-1',
+          max_agents: 4,
+          status: 'active',
+          last_message_at: '2026-03-10T10:00:00.000Z',
+          created_at: '2026-03-10T10:00:00.000Z',
+          updated_at: '2026-03-10T10:00:00.000Z',
+          viewer_can_control: true,
+          members: [],
+          watchability: null,
+        },
+      },
+      isLoading: false,
+    } as never)
+    useRoomMessagesMock.mockReturnValue({ data: { data: [] } } as never)
+    useRoomLiveSnapshotMock.mockReturnValue({ data: { data: null } } as never)
+    useRoomCastMock.mockReturnValue({
+      data: { data: { room_id: 'room-1', episode_id: null, cast: [] } },
+    } as never)
+    useRoomProgramMock.mockReturnValue({
+      data: {
+        data: {
+          room_id: 'room-1',
+          enabled: true,
+          scene_type: 'FREE_CHAT',
+          pacing_preset: 'balanced',
+          target_cast_min: 2,
+          target_cast_max: 4,
+          callback_window: 18,
+          recap_every_turns: 10,
+          max_consecutive_turns: 1,
+          idle_cue_after_ms: 30000,
+          allow_wandering: true,
+          director_policy: {},
+          wander_policy: {
+            enabled: true,
+            entry_cooldown_ms: 180000,
+            max_parallel_rooms: 2,
+            min_discoverability_score: 0.25,
+          },
+          discoverability: {
+            tags: [],
+            short_hook: null,
+            default_view: 'live',
+          },
+          current_episode: null,
+        },
+      },
+    } as never)
+    useRoomHighlightsMock.mockReturnValue({ data: { data: [] } } as never)
+    useRoomControlStateMock.mockReturnValue({
+      data: {
+        data: {
+          room_id: 'room-1',
+          room_status: 'active',
+          program: {
+            room_id: 'room-1',
+            enabled: true,
+            scene_type: 'FREE_CHAT',
+            pacing_preset: 'balanced',
+            target_cast_min: 2,
+            target_cast_max: 4,
+            callback_window: 18,
+            recap_every_turns: 10,
+            max_consecutive_turns: 1,
+            idle_cue_after_ms: 30000,
+            allow_wandering: true,
+            director_policy: {
+              hot_topic_mode: 'DISABLED',
+            },
+            wander_policy: {
+              enabled: true,
+              entry_cooldown_ms: 180000,
+              max_parallel_rooms: 2,
+              min_discoverability_score: 0.25,
+            },
+            discoverability: {
+              tags: [],
+              short_hook: '旧梗重新回来了',
+              default_view: 'live',
+            },
+            current_episode: null,
+          },
+          snapshot: null,
+          cast: [],
+          members: [],
+          recent_highlights: [],
+          recent_program_events: [],
+          recent_shared_memory: [],
+          alerts: [],
+        },
+      },
+    } as never)
+
+    render(
+      <MemoryRouter initialEntries={['/rooms/room-1']}>
+        <Routes>
+          <Route path="/rooms/:roomId" element={<ChatRoomPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '允许进入推荐' }))
+    fireEvent.click(screen.getByRole('button', { name: '保存节目与热点设定' }))
+
+    expect(patchProgramMutate).toHaveBeenCalledWith({
+      scene_type: 'FREE_CHAT',
+      director_policy: {
+        hot_topic_mode: 'DISABLED',
+      },
+      discoverability: {
+        tags: ['no_recommend'],
+        short_hook: '旧梗重新回来了',
+        default_view: 'live',
+      },
+    })
   })
 
   it('preserves paragraphs in ambient room messages', () => {

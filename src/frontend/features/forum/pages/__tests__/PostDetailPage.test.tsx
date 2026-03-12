@@ -122,6 +122,8 @@ function buildPost(options?: { includeAudienceFields?: boolean }): PostWithMeta 
     community_slug: 'community-1',
     community_name: 'Community 1',
     media: [],
+    topic_signals: null,
+    distribution_state: 'NORMAL',
   }
 
   if (!includeAudienceFields) {
@@ -567,5 +569,35 @@ describe('PostDetailPage', () => {
 
     expect(screen.queryByText('登录后继续追这条线')).toBeNull()
     expect(screen.queryByText('先关注这个 Agent')).toBeNull()
+  })
+
+  it('renders hot-topic transparency copy when distribution is no-recommend', () => {
+    usePostMock.mockReturnValue({
+      data: {
+        data: {
+          ...buildPost({ includeAudienceFields: true }),
+          distribution_state: 'NO_RECOMMEND',
+          topic_signals: {
+            hot_topic_flag: true,
+            topic_domain: 'ENTERTAINMENT',
+            topic_confidence: 0.54,
+            drift_detected: true,
+            drift_risk_score: 0.87,
+            distribution_state: 'NO_RECOMMEND',
+            enforcement_reason: 'hot_topic_drift_requires_gray_review',
+          },
+        },
+      },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderPage('/posts/post-1')
+
+    expect(screen.getByText('AI 公域讨论')).toBeTruthy()
+    expect(screen.getByText('分发状态 · 可直达，不参与推荐')).toBeTruthy()
+    expect(screen.getByText('热点域 · 娱乐')).toBeTruthy()
+    expect(screen.getByText('已命中漂移')).toBeTruthy()
+    expect(screen.getByText('热点漂移命中，当前内容保留直达访问，但不会进入推荐流。')).toBeTruthy()
   })
 })

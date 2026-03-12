@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router'
 import {
+  useCommunities,
   useCreateReport,
   useCreateRoomCue,
   usePatchRoomMemberControl,
@@ -53,8 +54,18 @@ import type {
   RoomMember,
   RoomSceneType,
 } from '@/api/types'
+import {
+  describeTopicSignals,
+  hasNoRecommendRoomTag,
+  HOT_TOPIC_DISTRIBUTION_LABELS,
+  HOT_TOPIC_MODE_LABELS,
+  readCommunityHotTopicPolicy,
+  readRoomHotTopicMode,
+  readTopicSignals,
+} from '@/shared/utils/hot-topic-policy'
 import { useChatRoomSse } from '../hooks/use-chat-room-sse'
 import { uix } from '@/shared/utils/uix'
+
 const SCENE_LABEL: Record<RoomSceneType, string> = {
   FREE_CHAT: '自由群聊',
   TALK_SHOW: '脱口秀',
@@ -92,6 +103,12 @@ const CUE_LABEL: Record<RoomCueType, string> = {
   CLOSE: '收束',
 }
 const OWNER_TABS = ['control', 'signals', 'memory'] as const
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
 export function ChatRoomPage() {
   const { roomId } = useParams<{
     roomId: string
@@ -104,6 +121,7 @@ export function ChatRoomPage() {
   const createReport = useCreateReport()
   const { data: roomData, isLoading: roomLoading } = useRoom(roomId ?? '')
   const { data: msgData } = useRoomMessages(roomId ?? '')
+  const { data: communitiesData } = useCommunities()
   const { data: snapshotData } = useRoomLiveSnapshot(roomId ?? '')
   const { data: castData } = useRoomCast(roomId ?? '')
   const { data: programData } = useRoomProgram(roomId ?? '')
@@ -119,6 +137,13 @@ export function ChatRoomPage() {
   const program = programData?.data
   const highlights = highlightData?.data ?? []
   const controlState = controlStateData?.data ?? null
+  const community = communitiesData?.data?.find((item) => item.id === room?.community_id) ?? null
+  const communityHotTopicPolicy = readCommunityHotTopicPolicy(community?.rules_json)
+  const roomHotTopicMode = program
+    ? readRoomHotTopicMode(program)
+    : (room?.watchability?.hot_topic_mode ?? 'NORMAL')
+  const roomDiscoverabilityTags = program?.discoverability?.tags ?? room?.watchability?.discoverability_tags ?? []
+  const roomNoRecommend = hasNoRecommendRoomTag(roomDiscoverabilityTags)
   const { typingAgents } = useChatRoomSse(roomId ?? '')
   const highlightedMessageIds = new Set(highlights.map((item) => item.source_message_id))
   const agentNameMap = new Map<string, string>()
@@ -200,6 +225,16 @@ export function ChatRoomPage() {
           onToggleMembers={() => setShowMembers((value) => !value)}
           onOpenDirector={() => setShowDirectorSheet(true)}
           showDirectorButton={Boolean(controlState)}
+        />
+        <HotTopicNotice
+          roomMode={roomHotTopicMode}
+          communityMode={communityHotTopicPolicy?.mode ?? 'NORMAL'}
+          noRecommend={roomNoRecommend}
+          customCopy={
+            communityHotTopicPolicy?.userCopy.room_banner
+            ?? communityHotTopicPolicy?.userCopy.summary
+            ?? null
+          }
         />
 
         <ScrollArea className={uix('uix-83d918e44e')}>
@@ -408,6 +443,36 @@ function PublicStorylineRail({
     </div>
   )
 }
+
+function HotTopicNotice({
+  roomMode,
+  communityMode,
+  noRecommend,
+  customCopy,
+}: {
+  roomMode: 'NORMAL' | 'MANUAL_REVIEW_ONLY' | 'DISABLED' | null
+  communityMode: 'NORMAL' | 'MANUAL_REVIEW_ONLY' | 'DISABLED'
+  noRecommend: boolean
+  customCopy: string | null
+}) {
+  return (
+    <div className={uix('uix-7df92ecb84')}>
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="outline">AI live 房间</Badge>
+        <Badge variant="outline">房间模式 · {HOT_TOPIC_MODE_LABELS[roomMode ?? 'NORMAL']}</Badge>
+        <Badge variant="outline">社区模式 · {HOT_TOPIC_MODE_LABELS[communityMode]}</Badge>
+        <Badge variant="secondary">
+          分发状态 · {noRecommend ? HOT_TOPIC_DISTRIBUTION_LABELS.NO_RECOMMEND : HOT_TOPIC_DISTRIBUTION_LABELS.NORMAL}
+        </Badge>
+      </div>
+      <p className={uix('uix-470129e6c7')}>
+        聊天室里的发言主要用于围观和直达追更。命中热点灰度或被标成 no-recommend 的房间，仍可直达访问，但不会进入房间推荐流。
+      </p>
+      {customCopy && <p className={uix('uix-9e897853fd')}>{customCopy}</p>}
+    </div>
+  )
+}
+
 function HighlightStrip({ highlights }: { highlights: RoomHighlight[] }) {
   return (
     <div className={uix('uix-2777618df0')}>
@@ -453,6 +518,12 @@ function MessageBubble({
   const isAmbient = message.message_kind === 'ambient'
   const isGreeting = message.message_kind === 'greeting'
   const displayName = authorName ?? message.author_display_name ?? message.author_id.slice(0, 8)
+  const moderationMetadata = toRecord(message.moderation_metadata)
+  const topicSignals = readTopicSignals(toRecord(moderationMetadata?.topic_signals))
+  const distributionState = typeof moderationMetadata?.distribution_state === 'string'
+    ? moderationMetadata.distribution_state
+    : topicSignals?.distributionState ?? 'NORMAL'
+  const topicCopy = describeTopicSignals(topicSignals, distributionState)
   if (isAmbient) {
     return (
       <div className={uix('uix-28704040a4')}>
@@ -514,8 +585,16 @@ function MessageBubble({
           mode="chat"
           className={cn(uix('uix-dbcbe995b4'), isSkip && uix('uix-80518375ad'))}
         />
+        {topicCopy && (
+          <div className={cn(uix('uix-d7e2c0fd1c'), uix('uix-4d2deea2bf'))}>
+            <p>{topicCopy}</p>
+            <p className={uix('uix-276aec863c')}>
+              房间分发状态：{HOT_TOPIC_DISTRIBUTION_LABELS[distributionState] ?? distributionState}
+            </p>
+          </div>
+        )}
         {reportState && (
-          <p className={reportState.includes('失败') ? 'mt-2 text-sm text-red-600' : `${uix('uix-abda0153e3')} mt-2`}>
+          <p className={reportState.includes('失败') ? uix('uix-17ad2d4d55') : cn(uix('uix-abda0153e3'), uix('uix-4d2deea2bf'))}>
             {reportState}
           </p>
         )}
@@ -581,13 +660,28 @@ function DirectorPanel({
   const patchMemberControl = usePatchRoomMemberControl(roomId)
   const [sceneType, setSceneType] = useState<RoomSceneType>(controlState.program.scene_type)
   const [shortHook, setShortHook] = useState(controlState.program.discoverability?.short_hook ?? '')
+  const [hotTopicMode, setHotTopicMode] = useState<'NORMAL' | 'MANUAL_REVIEW_ONLY' | 'DISABLED'>(
+    readRoomHotTopicMode(controlState.program as never),
+  )
+  const [noRecommend, setNoRecommend] = useState(
+    hasNoRecommendRoomTag(controlState.program.discoverability?.tags),
+  )
   const [cueType, setCueType] = useState<RoomCueType>('ADVANCE')
   const [cueGoal, setCueGoal] = useState('')
   const [targetRole, setTargetRole] = useState<'AUTO' | RoomCastRole>('AUTO')
   useEffect(() => {
     setSceneType(controlState.program.scene_type)
     setShortHook(controlState.program.discoverability?.short_hook ?? '')
-  }, [controlState.program.discoverability?.short_hook, controlState.program.scene_type, roomId])
+    setHotTopicMode(readRoomHotTopicMode(controlState.program as never))
+    setNoRecommend(hasNoRecommendRoomTag(controlState.program.discoverability?.tags))
+  }, [controlState.program, roomId])
+
+  const discoverabilityTags = noRecommend
+    ? Array.from(new Set([...(controlState.program.discoverability?.tags ?? []), 'no_recommend']))
+    : (controlState.program.discoverability?.tags ?? []).filter(
+        (tag) => tag.trim().toLowerCase() !== 'no_recommend',
+      )
+
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col" data-ui="section" data-padding="none">
       <Tabs defaultValue={OWNER_TABS[0]} className="flex min-h-0 flex-1 flex-col">
@@ -688,6 +782,35 @@ function DirectorPanel({
                       onChange={(event) => setShortHook(event.target.value)}
                     />
                   </div>
+                  <div className="space-y-1">
+                    <p className={uix('uix-25be576b96')}>热点模式</p>
+                    <Select
+                      value={hotTopicMode}
+                      onValueChange={(value) => setHotTopicMode(value as typeof hotTopicMode)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(HOT_TOPIC_MODE_LABELS).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <p className={uix('uix-25be576b96')}>推荐流</p>
+                    <Button
+                      type="button"
+                      variant={noRecommend ? 'secondary' : 'outline'}
+                      className="w-full"
+                      onClick={() => setNoRecommend((current) => !current)}
+                    >
+                      {noRecommend ? '当前为 no_recommend' : '允许进入推荐'}
+                    </Button>
+                  </div>
                 </div>
                 <Button
                   size="sm"
@@ -695,11 +818,19 @@ function DirectorPanel({
                   onClick={() =>
                     patchProgram.mutate({
                       scene_type: sceneType,
-                      discoverability: { short_hook: shortHook || null },
+                      director_policy: {
+                        ...(controlState.program.director_policy ?? {}),
+                        hot_topic_mode: hotTopicMode,
+                      },
+                      discoverability: {
+                        ...(controlState.program.discoverability ?? {}),
+                        short_hook: shortHook || null,
+                        tags: discoverabilityTags,
+                      },
                     })
                   }
                 >
-                  保存节目设定
+                  保存节目与热点设定
                 </Button>
               </section>
 

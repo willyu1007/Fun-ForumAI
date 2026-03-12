@@ -172,6 +172,8 @@ export type GovernanceActionType =
   | 'fold'
   | 'quarantine'
   | 'reject'
+  | 'limit_agent'
+  | 'restore_agent'
   | 'ban_agent'
   | 'unban_agent'
 
@@ -224,6 +226,8 @@ export interface PostWithMeta extends Post {
   media: PostMediaItem[]
   ai_label?: string
   effective_moderation_label?: string
+  topic_signals: Record<string, unknown> | null
+  distribution_state: string
   aftershow_summary?: AftershowSummary | null
   aftershow_callouts?: AftershowCalloutItem[]
   audience_thread_meta?: AudienceThreadMeta | null
@@ -342,6 +346,8 @@ export interface Comment {
   viewer_human_vote_direction?: VoteDirection | null
   ai_label?: string
   effective_moderation_label?: string
+  topic_signals?: Record<string, unknown> | null
+  distribution_state?: string
 }
 
 export interface Vote {
@@ -627,6 +633,69 @@ export interface GovernanceResult {
   target_id: string
   new_visibility?: ContentVisibility
   new_state?: ContentState
+}
+
+export type ConfigRiskLevel = 'LOW' | 'HIGH'
+export type ConfigPatchStatus =
+  | 'PROPOSED'
+  | 'VALIDATED'
+  | 'APPROVED'
+  | 'SCHEDULED'
+  | 'APPLIED'
+  | 'REJECTED'
+  | 'ROLLED_BACK'
+
+export interface CommunityConfigPatch {
+  id: string
+  community_id: string
+  base_version_id: string | null
+  status: ConfigPatchStatus
+  risk_level: ConfigRiskLevel
+  patch_json: Record<string, unknown>
+  proposed_rules_json: Record<string, unknown> | null
+  summary: string | null
+  reason: string | null
+  proposed_by_user_id: string
+  validated_by_user_id: string | null
+  approved_by_user_id: string | null
+  applied_version_id: string | null
+  rejected_reason: string | null
+  validated_at: string | null
+  approved_at: string | null
+  effective_at: string | null
+  applied_at: string | null
+  rolled_back_at: string | null
+  meta: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CommunityConfigVersion {
+  id: string
+  community_id: string
+  version: number
+  rules_json: Record<string, unknown>
+  source_patch_id: string | null
+  status: 'ACTIVE' | 'ROLLED_BACK' | 'RETIRED'
+  risk_level: ConfigRiskLevel
+  created_by_user_id: string | null
+  rollback_from_version_id: string | null
+  effective_at: string | null
+  applied_at: string | null
+  rolled_back_at: string | null
+  meta: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CommunityConfigValidationResult {
+  patch: CommunityConfigPatch
+  validation_errors: string[]
+}
+
+export interface CommunityConfigApplyResult {
+  patch: CommunityConfigPatch
+  version: CommunityConfigVersion | null
 }
 
 export interface GovernanceActionLog {
@@ -1047,6 +1116,9 @@ export interface RoomWatchabilitySummary {
   canonization_note?: string | null
   cameo_hint?: string | null
   snapshot_updated_at: string | null
+  hot_topic_mode?: 'NORMAL' | 'MANUAL_REVIEW_ONLY' | 'DISABLED' | null
+  distribution_state?: 'NORMAL' | 'NO_RECOMMEND' | 'BLOCKED'
+  discoverability_tags?: string[]
 }
 
 export interface Room {

@@ -8,6 +8,7 @@ import type {
 } from '@/api/types'
 import {
   useAdminAgentRiskProfile,
+  useApplyCommunityHotTopicPolicy,
   useAssignModerationCase,
   useClaimModerationTask,
   useCreateDisclosureCapOverride,
@@ -33,6 +34,7 @@ vi.mock('../components/RuntimeDashboard', () => ({
 
 vi.mock('@/api/hooks', () => ({
   useAdminAgentRiskProfile: vi.fn(),
+  useApplyCommunityHotTopicPolicy: vi.fn(),
   useAssignModerationCase: vi.fn(),
   useClaimModerationTask: vi.fn(),
   useCreateDisclosureCapOverride: vi.fn(),
@@ -58,6 +60,7 @@ vi.mock('@/shared/hooks/use-auth', () => ({
 const useAssignModerationCaseMock = vi.mocked(useAssignModerationCase)
 const useClaimModerationTaskMock = vi.mocked(useClaimModerationTask)
 const useAdminAgentRiskProfileMock = vi.mocked(useAdminAgentRiskProfile)
+const useApplyCommunityHotTopicPolicyMock = vi.mocked(useApplyCommunityHotTopicPolicy)
 const useCreateDisclosureCapOverrideMock = vi.mocked(useCreateDisclosureCapOverride)
 const useDisclosureCapsMock = vi.mocked(useDisclosureCaps)
 const useGovernanceActionMock = vi.mocked(useGovernanceAction)
@@ -236,6 +239,58 @@ describe('AdminPanel', () => {
       isError: false,
       error: null,
     } as never)
+    useApplyCommunityHotTopicPolicyMock.mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue({
+        data: {
+          patch: {
+            id: 'patch-1',
+            community_id: 'community-1',
+            base_version_id: null,
+            status: 'APPLIED',
+            risk_level: 'HIGH',
+            patch_json: {},
+            proposed_rules_json: {},
+            summary: null,
+            reason: null,
+            proposed_by_user_id: 'admin-1',
+            validated_by_user_id: 'admin-1',
+            approved_by_user_id: 'admin-1',
+            applied_version_id: 'version-1',
+            rejected_reason: null,
+            validated_at: null,
+            approved_at: null,
+            effective_at: null,
+            applied_at: '2026-03-12T10:10:00.000Z',
+            rolled_back_at: null,
+            meta: null,
+            created_at: '2026-03-12T10:00:00.000Z',
+            updated_at: '2026-03-12T10:10:00.000Z',
+          },
+          version: {
+            id: 'version-1',
+            community_id: 'community-1',
+            version: 2,
+            rules_json: {},
+            source_patch_id: 'patch-1',
+            status: 'ACTIVE',
+            risk_level: 'HIGH',
+            created_by_user_id: 'admin-1',
+            rollback_from_version_id: null,
+            effective_at: null,
+            applied_at: '2026-03-12T10:10:00.000Z',
+            rolled_back_at: null,
+            meta: null,
+            created_at: '2026-03-12T10:00:00.000Z',
+            updated_at: '2026-03-12T10:10:00.000Z',
+          },
+        },
+      }),
+      isPending: false,
+      isSuccess: false,
+      isError: false,
+      error: null,
+      data: undefined,
+    } as never)
     useAdminAgentRiskProfileMock.mockReturnValue({
       data: undefined,
     } as never)
@@ -360,9 +415,22 @@ describe('AdminPanel', () => {
   it('renders agent risk profile and disclosure cap controls', async () => {
     const createCapMutate = vi.fn()
     const releaseCapMutate = vi.fn()
+    const governanceMutate = vi.fn().mockResolvedValue({
+      data: {
+        success: true,
+        action: 'limit_agent',
+        target_id: 'agent-risk',
+      },
+    })
     useCreateDisclosureCapOverrideMock.mockReturnValue({
       mutateAsync: createCapMutate,
       isPending: false,
+    } as never)
+    useGovernanceActionMock.mockReturnValue({
+      mutateAsync: governanceMutate,
+      isPending: false,
+      isError: false,
+      error: null,
     } as never)
     useReleaseDisclosureCapOverrideMock.mockReturnValue({
       mutateAsync: releaseCapMutate,
@@ -484,5 +552,96 @@ describe('AdminPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '释放当前 Override' }))
     expect(releaseCapMutate).toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: '限制当前 Agent' }))
+    await waitFor(() => {
+      expect(governanceMutate).toHaveBeenCalledWith({
+        action: 'limit_agent',
+        target_type: 'agent',
+        target_id: 'agent-risk',
+        reason: 'hot_topic_manual_review_only',
+      })
+    })
+  })
+
+  it('submits community hot-topic controls through the config workflow hook', async () => {
+    const applyPolicyMutate = vi.fn().mockResolvedValue({
+      data: {
+        patch: {
+          id: 'patch-2',
+          community_id: 'community-1',
+          base_version_id: null,
+          status: 'APPLIED',
+          risk_level: 'HIGH',
+          patch_json: {},
+          proposed_rules_json: {},
+          summary: null,
+          reason: null,
+          proposed_by_user_id: 'admin-1',
+          validated_by_user_id: 'admin-1',
+          approved_by_user_id: 'admin-1',
+          applied_version_id: 'version-2',
+          rejected_reason: null,
+          validated_at: null,
+          approved_at: null,
+          effective_at: null,
+          applied_at: '2026-03-12T10:10:00.000Z',
+          rolled_back_at: null,
+          meta: null,
+          created_at: '2026-03-12T10:00:00.000Z',
+          updated_at: '2026-03-12T10:10:00.000Z',
+        },
+        version: {
+          id: 'version-2',
+          community_id: 'community-1',
+          version: 3,
+          rules_json: {},
+          source_patch_id: 'patch-2',
+          status: 'ACTIVE',
+          risk_level: 'HIGH',
+          created_by_user_id: 'admin-1',
+          rollback_from_version_id: null,
+          effective_at: null,
+          applied_at: '2026-03-12T10:10:00.000Z',
+          rolled_back_at: null,
+          meta: null,
+          created_at: '2026-03-12T10:00:00.000Z',
+          updated_at: '2026-03-12T10:10:00.000Z',
+        },
+      },
+    })
+    useApplyCommunityHotTopicPolicyMock.mockReturnValue({
+      mutateAsync: applyPolicyMutate,
+      isPending: false,
+      isSuccess: false,
+      isError: false,
+      error: null,
+      data: undefined,
+    } as never)
+
+    render(<AdminPanel />)
+
+    fireEvent.change(screen.getByPlaceholderText('Community ID'), {
+      target: { value: 'community-1' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('例如：热点内容可能仅保留直达访问'), {
+      target: { value: '热点内容可能仅保留直达访问' },
+    })
+    fireEvent.click(screen.getByLabelText('娱乐'))
+    fireEvent.click(screen.getByRole('button', { name: '提交并应用热点策略' }))
+
+    await waitFor(() => {
+      expect(applyPolicyMutate).toHaveBeenCalledWith({
+        communityId: 'community-1',
+        mode: 'NORMAL',
+        allowedDomains: ['SPORTS', 'LIFESTYLE'],
+        userCopy: {
+          community_banner: '热点内容可能仅保留直达访问',
+          summary: '热点内容可能仅保留直达访问',
+        },
+        summary: 'Update hot topic policy',
+        reason: 'admin_hot_topic_policy_update',
+      })
+    })
   })
 })

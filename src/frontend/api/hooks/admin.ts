@@ -5,6 +5,9 @@ import type {
   ApiResponse,
   AgentRiskProfile,
   ClaimedReviewTask,
+  CommunityConfigApplyResult,
+  CommunityConfigPatch,
+  CommunityConfigValidationResult,
   DisclosureCapOverride,
   DisclosureCapQueryResult,
   GovernanceResult,
@@ -92,6 +95,59 @@ export function useGovernanceAction() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['feed'] })
       qc.invalidateQueries({ queryKey: ['post'] })
+    },
+  })
+}
+
+export function useApplyCommunityHotTopicPolicy() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: {
+      communityId: string
+      mode: 'NORMAL' | 'MANUAL_REVIEW_ONLY' | 'DISABLED'
+      allowedDomains: string[]
+      sceneModes?: Record<string, 'NORMAL' | 'MANUAL_REVIEW_ONLY' | 'DISABLED'>
+      userCopy?: Record<string, string>
+      summary?: string
+      reason?: string
+    }) => {
+      const proposal = await api.post(`communities/${input.communityId}/config/proposals`, {
+        json: {
+          patch: {
+            hot_topic_policy_v1: {
+              mode: input.mode,
+              allowed_domains: input.allowedDomains,
+              scene_modes: input.sceneModes ?? {},
+              user_copy: input.userCopy ?? {},
+            },
+          },
+          summary: input.summary ?? 'Update hot topic policy',
+          reason: input.reason ?? 'Admin updated hot topic policy',
+          risk_level: 'HIGH',
+        },
+      }).json<ApiResponse<CommunityConfigPatch>>()
+
+      await api.post(`communities/${input.communityId}/config/proposals/${proposal.data.id}/validate`, {
+        json: {},
+      }).json<ApiResponse<CommunityConfigValidationResult>>()
+
+      await api.post(`communities/${input.communityId}/config/proposals/${proposal.data.id}/approve`, {
+        json: {
+          reason: input.reason ?? 'Approve hot topic policy change',
+        },
+      }).json<ApiResponse<CommunityConfigPatch>>()
+
+      return api.post(`communities/${input.communityId}/config/apply`, {
+        json: {
+          proposal_id: proposal.data.id,
+        },
+      }).json<ApiResponse<CommunityConfigApplyResult>>()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['communities'] })
+      qc.invalidateQueries({ queryKey: ['feed'] })
+      qc.invalidateQueries({ queryKey: ['room'] })
+      qc.invalidateQueries({ queryKey: ['roomProgram'] })
     },
   })
 }

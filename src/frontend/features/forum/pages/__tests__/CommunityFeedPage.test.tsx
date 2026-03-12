@@ -1,0 +1,120 @@
+import { render, screen } from '@testing-library/react'
+import { useInfiniteQuery } from '@tanstack/react-query'
+import { MemoryRouter, Route, Routes } from 'react-router'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { CommunityFeedPage } from '../CommunityFeedPage'
+import { useCommunityBySlug } from '@/api/hooks'
+import { useSseNewCounts } from '@/api/use-sse'
+import { useAuth } from '@/shared/hooks/use-auth'
+import { useFeedViewStore } from '@/shared/stores/feed-view-store'
+
+vi.mock('@tanstack/react-query', () => ({
+  useInfiniteQuery: vi.fn(),
+}))
+
+vi.mock('@/api/hooks', () => ({
+  useCommunityBySlug: vi.fn(),
+}))
+
+vi.mock('@/api/use-sse', () => ({
+  useSseNewCounts: vi.fn(),
+}))
+
+vi.mock('@/shared/hooks/use-auth', () => ({
+  useAuth: vi.fn(),
+}))
+
+vi.mock('@/shared/stores/feed-view-store', () => ({
+  useFeedViewStore: vi.fn(),
+}))
+
+vi.mock('../../components/PostCard', () => ({
+  PostCard: () => <div data-testid="post-card" />,
+}))
+
+vi.mock('../../components/PostCompact', () => ({
+  PostCompact: () => <div data-testid="post-compact" />,
+}))
+
+vi.mock('../../components/FeedToolbar', () => ({
+  FeedToolbar: () => <div data-testid="feed-toolbar" />,
+}))
+
+vi.mock('../../components/NewContentBanner', () => ({
+  NewContentBanner: () => <div data-testid="new-content-banner" />,
+}))
+
+vi.mock('@/shared/components/LoadMore', () => ({
+  LoadMore: () => <div data-testid="load-more" />,
+}))
+
+const useInfiniteQueryMock = vi.mocked(useInfiniteQuery)
+const useCommunityBySlugMock = vi.mocked(useCommunityBySlug)
+const useSseNewCountsMock = vi.mocked(useSseNewCounts)
+const useAuthMock = vi.mocked(useAuth)
+const useFeedViewStoreMock = vi.mocked(useFeedViewStore)
+
+function renderPage() {
+  return render(
+    <MemoryRouter initialEntries={['/c/night-show']}>
+      <Routes>
+        <Route path="/c/:slug" element={<CommunityFeedPage />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+}
+
+describe('CommunityFeedPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useAuthMock.mockReturnValue({ isAuthenticated: true } as never)
+    useFeedViewStoreMock.mockReturnValue({ view: 'card' } as never)
+    useSseNewCountsMock.mockReturnValue({
+      newPostCount: 0,
+      clearNewPosts: vi.fn(),
+    } as never)
+    useInfiniteQueryMock.mockReturnValue({
+      data: {
+        pages: [{ data: [], meta: { cursor: null } }],
+      },
+      isLoading: false,
+      error: null,
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+      isFetchingNextPage: false,
+    } as never)
+  })
+
+  it('renders community hot-topic banner from rules_json', () => {
+    useCommunityBySlugMock.mockReturnValue({
+      data: {
+        id: 'community-1',
+        name: 'Night Show',
+        slug: 'night-show',
+        description: 'Agent talk show',
+        rules_json: {
+          hot_topic_policy_v1: {
+            mode: 'MANUAL_REVIEW_ONLY',
+            allowed_domains: ['ENTERTAINMENT', 'SPORTS'],
+            scene_modes: {},
+            user_copy: {
+              community_banner: '热点内容会先做灰度复核。',
+            },
+          },
+        },
+        visibility_default: 'PUBLIC',
+        created_at: '2026-03-10T10:00:00.000Z',
+        updated_at: '2026-03-10T10:00:00.000Z',
+      },
+      isLoading: false,
+    } as never)
+
+    renderPage()
+
+    expect(screen.getByText('热点模式 · 灰度复核')).toBeTruthy()
+    expect(screen.getByText('允许 · 娱乐')).toBeTruthy()
+    expect(screen.getByText('允许 · 体育')).toBeTruthy()
+    expect(screen.getByText(/本社区允许围观的热点域：娱乐、体育/)).toBeTruthy()
+    expect(screen.getByText('热点内容会先做灰度复核。')).toBeTruthy()
+  })
+})

@@ -110,13 +110,13 @@ export function PrivateChatPage() {
         ) : (
           <div className={uix('uix-894f9af854')}>
             <div className={uix('uix-043556acb2')}>
-              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm text-amber-900">
+              <div className={uix('uix-7caa0987bf')}>
                 大陆首发风控已生效：新建私聊、发送私聊和接收主动私信前，需要先通过实名审核。
               </div>
               <p className={uix('uix-42536e69e6')}>还没有对话</p>
               <p className={uix('uix-fc7473ca09')}>点击"新对话"开始与 {agent.display_name} 交流</p>
               {createSession.isError && (
-                <p className="mb-3 text-sm text-red-600">{createSession.error.message}</p>
+                <p className={uix('uix-fd4a8530d5')}>{createSession.error.message}</p>
               )}
               <Button onClick={handleNewSession} disabled={createSession.isPending}>
                 开始新对话
@@ -269,7 +269,7 @@ function ChatThread({
   }
   return (
     <>
-      <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+      <div className={uix('uix-f6b25d962d')}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span>
             私聊默认只允许更克制、非敏感的内容流转；触发规则的消息会被降温、拒送或拦截，并进入审查记录。
@@ -290,7 +290,7 @@ function ChatThread({
           </Button>
         </div>
         {sessionGovernanceMessage && (
-          <p className={sessionGovernanceMessage.includes('失败') ? 'mt-2 text-sm text-red-600' : 'mt-2 text-sm text-slate-600'}>
+          <p className={sessionGovernanceMessage.includes('失败') ? uix('uix-17ad2d4d55') : uix('uix-722c3bdb09')}>
             {sessionGovernanceMessage}
           </p>
         )}
@@ -307,12 +307,12 @@ function ChatThread({
           ))}
 
           {sendMessage.isPending && (
-            <div className="flex gap-2 items-start">
-              <Avatar className="h-8 w-8 shrink-0">
+            <div className={uix('uix-8d92c4b7e3')}>
+              <Avatar className={uix('uix-7781b415c4')}>
                 <AvatarFallback className={uix('uix-c2ff24b045')}>{agentName[0]}</AvatarFallback>
               </Avatar>
               <Card className={uix('uix-eebdac32e1')}>
-                <div className="flex gap-1">
+                <div className={uix('uix-46cbf5c0e0')}>
                   <span className="animate-bounce">·</span>
                   <span className={uix('uix-typing-dot-delay-100')}>·</span>
                   <span className={uix('uix-typing-dot-delay-200')}>·</span>
@@ -334,7 +334,7 @@ function ChatThread({
       />
 
       {(sendMessage.isError || endSession.isError) && (
-        <div className="border-t border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className={uix('uix-c61c4fa430')}>
           {sendMessage.isError ? sendMessage.error.message : endSession.error?.message}
         </div>
       )}
@@ -366,7 +366,7 @@ function MessageBubble({ message, agentName }: { message: PrivateMessage; agentN
   const deliveryLabel = message.delivery_status ? DELIVERY_BADGE[message.delivery_status] : null
   return (
     <div className={cn('flex gap-2 items-start', isHuman && 'flex-row-reverse')}>
-      <Avatar className="h-8 w-8 shrink-0">
+      <Avatar className={uix('uix-7781b415c4')}>
         <AvatarFallback
           className={cn(
             uix('uix-359090c2d5'),
@@ -384,7 +384,7 @@ function MessageBubble({ message, agentName }: { message: PrivateMessage; agentN
         )}
       >
         <p className={uix('uix-d6b7157957')}>{message.content}</p>
-        <div className="mt-2 flex items-center gap-2">
+        <div className={uix('uix-304911ade7')}>
           <span
             className={cn(
               uix('uix-cb59187521'),
@@ -394,7 +394,7 @@ function MessageBubble({ message, agentName }: { message: PrivateMessage; agentN
             {relativeTime(message.created_at)}
           </span>
           {deliveryLabel && (
-            <Badge variant="outline" className="h-5 text-[11px]">
+            <Badge variant="outline" className={uix('uix-afeb3c3617')}>
               {deliveryLabel}
             </Badge>
           )}

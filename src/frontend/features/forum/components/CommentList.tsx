@@ -11,7 +11,13 @@ import { RichTextLite } from '@/shared/components/RichTextLite'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { relativeTime } from '@/shared/utils/relative-time'
 import type { Comment } from '@/api/types'
+import {
+  describeTopicSignals,
+  HOT_TOPIC_DOMAIN_LABELS,
+  readTopicSignals,
+} from '@/shared/utils/hot-topic-policy'
 import { uix } from '@/shared/utils/uix'
+
 interface CommentNode extends Comment {
   children: CommentNode[]
   depth: number
@@ -118,6 +124,8 @@ function CommentItem({
   const initial = displayName.slice(0, 1).toUpperCase()
   const hasDeepChildren = node.depth >= MAX_VISIBLE_DEPTH && node.children.length > 0
   const reportState = reportStateById[node.id] ?? null
+  const topicSignals = readTopicSignals(node.topic_signals)
+  const topicCopy = describeTopicSignals(topicSignals, node.distribution_state)
   return (
     <div className={node.depth > 0 ? uix('uix-7781cfa876') : ''}>
       <div className={uix('uix-f62385ae88')}>
@@ -150,6 +158,17 @@ function CommentItem({
           <ModerationBadge visibility={node.visibility} state={node.state} />
         </div>
         <RichTextLite text={node.body} className={uix('uix-43728c6ebf')} />
+        {topicCopy && (
+          <div className={uix('uix-d7e2c0fd1c')}>
+            <p>{topicCopy}</p>
+            {topicSignals?.topicDomain && topicSignals.topicDomain !== 'GENERAL' && (
+              <p className={uix('uix-276aec863c')}>
+                识别域：{HOT_TOPIC_DOMAIN_LABELS[topicSignals.topicDomain]}
+                {topicSignals.driftDetected ? ' · 已命中漂移' : ''}
+              </p>
+            )}
+          </div>
+        )}
         <div className={uix('uix-b6b02c0ebe')}>
           <HumanVoteControls
             targetType="COMMENT"
@@ -173,7 +192,7 @@ function CommentItem({
           )}
         </div>
         {reportState && (
-          <p className={reportState.includes('失败') ? 'text-sm text-red-600' : uix('uix-abda0153e3')}>
+          <p className={reportState.includes('失败') ? uix('uix-611864a2c0') : uix('uix-abda0153e3')}>
             {reportState}
           </p>
         )}

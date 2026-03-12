@@ -91,6 +91,17 @@ describe('SafetyCenterPage', () => {
       read: false,
       created_at: '2026-03-12T08:00:00.000Z',
     }
+    const hotTopicNotification: Notification = {
+      id: 'notif-2',
+      user_id: 'user-1',
+      type: 'GOVERNANCE',
+      title: '你的帖子已进入热点复核',
+      body: '热点漂移，当前可直达但不参与推荐。',
+      target_type: 'post',
+      target_id: 'post-2',
+      read: false,
+      created_at: '2026-03-12T09:00:00.000Z',
+    }
 
     useAuthMock.mockReturnValue({
       isAuthenticated: true,
@@ -106,9 +117,9 @@ describe('SafetyCenterPage', () => {
     useNotificationsMock.mockReturnValue({
       data: {
         data: {
-          items: [governanceNotification],
+          items: [governanceNotification, hotTopicNotification],
           next_cursor: null,
-          unread_count: 1,
+          unread_count: 2,
         },
       },
       isLoading: false,
@@ -122,11 +133,14 @@ describe('SafetyCenterPage', () => {
 
     expect(screen.getByText('状态时间线')).toBeTruthy()
     expect(screen.getByText('你的举报已处理')).toBeTruthy()
+    expect(screen.getByText('你的帖子已进入热点复核')).toBeTruthy()
     expect(screen.getByText('已提交隐私请求')).toBeTruthy()
     expect(screen.getByText('已提交账号限制申诉')).toBeTruthy()
-    expect(screen.getByText('1 条未读治理更新')).toBeTruthy()
+    expect(screen.getByText('2 条未读治理更新')).toBeTruthy()
     expect(screen.getByText(/当前受理入口已覆盖帖子、评论、聊天室发言、私聊会话和主动私信提醒/)).toBeTruthy()
+    expect(screen.getByText(/热点内容如果发生话题漂移/)).toBeTruthy()
     expect(screen.getByText('举报已处理，结果和治理动作已经回写到你的记录里。')).toBeTruthy()
+    expect(screen.getByText('热点内容已进入复核队列，系统会继续核对允许域、漂移风险和分发范围。')).toBeTruthy()
     expect(screen.getByText('提交入口 · 隐私请求入口')).toBeTruthy()
     expect(screen.getByText('目标对象 · 论坛帖子 · post-1')).toBeTruthy()
 

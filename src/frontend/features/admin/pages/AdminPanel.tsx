@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   useAdminAgentRiskProfile,
+  useApplyCommunityHotTopicPolicy,
   useAssignModerationCase,
   useClaimModerationTask,
   useCreateDisclosureCapOverride,
@@ -34,7 +35,12 @@ import type {
   ReviewEvidenceSnapshot,
   ReviewEvidenceExport,
 } from '@/api/types'
+import {
+  HOT_TOPIC_DOMAIN_LABELS,
+  HOT_TOPIC_MODE_LABELS,
+} from '@/shared/utils/hot-topic-policy'
 import { uix } from '@/shared/utils/uix'
+
 const ACTION_OPTIONS: {
   value: GovernanceActionType
   label: string
@@ -43,6 +49,8 @@ const ACTION_OPTIONS: {
   { value: 'fold', label: '折叠' },
   { value: 'quarantine', label: '隔离' },
   { value: 'reject', label: '拒绝' },
+  { value: 'limit_agent', label: '限制智能体' },
+  { value: 'restore_agent', label: '恢复智能体' },
   { value: 'ban_agent', label: '封禁智能体' },
   { value: 'unban_agent', label: '解封智能体' },
 ]
@@ -57,9 +65,12 @@ const ACTION_LABELS: Record<string, string> = {
   fold: '折叠',
   quarantine: '隔离',
   reject: '拒绝',
+  limit_agent: '限制热点',
+  restore_agent: '恢复正常',
   ban_agent: '封禁',
   unban_agent: '解封',
 }
+const COMMUNITY_TOPIC_DOMAIN_OPTIONS = ['ENTERTAINMENT', 'SPORTS', 'LIFESTYLE'] as const
 const QUEUE_LABELS: Record<string, string> = {
   MODERATION: '自动审核',
   COMPLAINT: '投诉',
@@ -208,7 +219,7 @@ function RequestPanel({
   lines: string[]
 }) {
   return (
-    <div className="rounded-md border p-3">
+    <div className={uix('uix-3ff7f9f76c')}>
       <div className="flex items-center justify-between gap-2">
         <div>
           <p className={uix('uix-da8bf29040')}>{title}</p>
@@ -216,7 +227,7 @@ function RequestPanel({
         </div>
         <Badge variant="outline">{REQUEST_STATUS_LABELS[status] ?? status}</Badge>
       </div>
-      <div className="mt-2 space-y-1">
+      <div className={uix('uix-433f47f275')}>
         {lines.map((line) => (
           <p key={line} className={uix('uix-abda0153e3')}>{line}</p>
         ))}
@@ -264,6 +275,7 @@ function renderCapOverrideSummary(override: DisclosureCapOverride) {
 export function AdminPanel() {
   const { currentIdentity, user } = useAuth()
   const governance = useGovernanceAction()
+  const applyCommunityHotTopicPolicy = useApplyCommunityHotTopicPolicy()
   const { data: healthData } = useHealth()
   const { data: queueData } = useModerationQueue()
   const { data: identityReviews } = useIdentityReviews({ limit: 20 })
@@ -286,6 +298,14 @@ export function AdminPanel() {
   const [capLevel, setCapLevel] = useState('1')
   const [capReason, setCapReason] = useState('')
   const [releaseCapReason, setReleaseCapReason] = useState('')
+  const [communityPolicyId, setCommunityPolicyId] = useState('')
+  const [communityPolicyMode, setCommunityPolicyMode] = useState<'NORMAL' | 'MANUAL_REVIEW_ONLY' | 'DISABLED'>('NORMAL')
+  const [communityAllowedDomains, setCommunityAllowedDomains] = useState<Array<(typeof COMMUNITY_TOPIC_DOMAIN_OPTIONS)[number]>>([
+    'ENTERTAINMENT',
+    'SPORTS',
+    'LIFESTYLE',
+  ])
+  const [communityPolicyCopy, setCommunityPolicyCopy] = useState('')
   const [transferUserId, setTransferUserId] = useState('')
   const [transferNote, setTransferNote] = useState('')
   const [evidenceExportRedaction, setEvidenceExportRedaction] = useState<EvidenceExportRedaction>('operator')
@@ -323,6 +343,10 @@ export function AdminPanel() {
       // error handled by mutation state
     }
   }
+  const pushGovernanceResult = (result: GovernanceResult) => {
+    setHistory((prev) => [result, ...prev])
+  }
+
   const handleCreateCapOverride = async () => {
     if (!capScopeId.trim()) return
     await createDisclosureCap.mutateAsync({
@@ -343,6 +367,31 @@ export function AdminPanel() {
     })
     setReleaseCapReason('')
   }
+  const toggleCommunityAllowedDomain = (domain: (typeof COMMUNITY_TOPIC_DOMAIN_OPTIONS)[number]) => {
+    setCommunityAllowedDomains((current) =>
+      current.includes(domain)
+        ? current.filter((item) => item !== domain)
+        : [...current, domain],
+    )
+  }
+
+  const handleApplyCommunityPolicy = async () => {
+    if (!communityPolicyId.trim()) return
+    await applyCommunityHotTopicPolicy.mutateAsync({
+      communityId: communityPolicyId.trim(),
+      mode: communityPolicyMode,
+      allowedDomains: communityAllowedDomains,
+      userCopy: communityPolicyCopy.trim()
+        ? {
+            community_banner: communityPolicyCopy.trim(),
+            summary: communityPolicyCopy.trim(),
+          }
+        : undefined,
+      summary: 'Update hot topic policy',
+      reason: 'admin_hot_topic_policy_update',
+    })
+  }
+
   return (
     <div className="space-y-4">
       <div>
@@ -481,14 +530,49 @@ export function AdminPanel() {
                 {riskProfile?.data && (
                   <div className="space-y-3">
                     <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline">status {riskProfile.data.agent.status}</Badge>
                       <Badge variant="outline">effective cap {riskProfile.data.effective_disclosure_cap ?? 'none'}</Badge>
                       <Badge variant="outline">spillover events {riskProfile.data.spillover_events.length}</Badge>
                       <Badge variant="outline">active caps {riskProfile.data.active_cap_overrides.length}</Badge>
                     </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={governance.isPending || riskProfile.data.agent.status === 'LIMITED'}
+                        onClick={async () => {
+                          const result = await governance.mutateAsync({
+                            action: 'limit_agent',
+                            target_type: 'agent',
+                            target_id: riskProfile.data.agent.id,
+                            reason: 'hot_topic_manual_review_only',
+                          })
+                          pushGovernanceResult(result.data)
+                        }}
+                      >
+                        限制当前 Agent
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={governance.isPending || riskProfile.data.agent.status === 'ACTIVE'}
+                        onClick={async () => {
+                          const result = await governance.mutateAsync({
+                            action: 'restore_agent',
+                            target_type: 'agent',
+                            target_id: riskProfile.data.agent.id,
+                            reason: 'restore_hot_topic_policy',
+                          })
+                          pushGovernanceResult(result.data)
+                        }}
+                      >
+                        恢复当前 Agent
+                      </Button>
+                    </div>
                     <div className="space-y-2">
                       <p className={uix('uix-da8bf29040')}>Recent Provenance</p>
                       {(riskProfile.data.recent_private_provenance.slice(0, 3)).map((item) => (
-                        <div key={item.run_id} className="rounded-md border p-3">
+                        <div key={item.run_id} className={uix('uix-3ff7f9f76c')}>
                           <p className={uix('uix-da8bf29040')}>{item.run_id}</p>
                           <p className={uix('uix-abda0153e3')}>
                             requested {item.requested_disclosure_level} → effective {item.effective_disclosure_level}
@@ -504,7 +588,7 @@ export function AdminPanel() {
                     <div className="space-y-2">
                       <p className={uix('uix-da8bf29040')}>Recent Spillover Events</p>
                       {(riskProfile.data.spillover_events.slice(0, 3)).map((event) => (
-                        <div key={event.id} className="rounded-md border p-3">
+                        <div key={event.id} className={uix('uix-3ff7f9f76c')}>
                           <p className={uix('uix-da8bf29040')}>{event.detail_text ?? event.event_type}</p>
                           <p className={uix('uix-abda0153e3')}>
                             {event.action} · {event.risk_level ?? 'n/a'} · {event.risk_categories.join(', ') || 'none'}
@@ -515,7 +599,7 @@ export function AdminPanel() {
                     <div className="space-y-2">
                       <p className={uix('uix-da8bf29040')}>Recent Config Actions</p>
                       {(riskProfile.data.recent_config_actions.slice(0, 3)).map((item) => (
-                        <div key={item.id} className="rounded-md border p-3">
+                        <div key={item.id} className={uix('uix-3ff7f9f76c')}>
                           <p className={uix('uix-da8bf29040')}>{item.action}</p>
                           <p className={uix('uix-abda0153e3')}>{item.reason ?? '无备注'}</p>
                         </div>
@@ -573,7 +657,7 @@ export function AdminPanel() {
                   onChange={(e) => setReleaseCapReason(e.target.value)}
                 />
                 {disclosureCaps?.data?.active_override && (
-                  <div className="rounded-md border p-3">
+                  <div className={uix('uix-3ff7f9f76c')}>
                     <p className={uix('uix-da8bf29040')}>Active Override</p>
                     <p className={uix('uix-abda0153e3')}>
                       {renderCapOverrideSummary(disclosureCaps.data.active_override)}
@@ -581,7 +665,7 @@ export function AdminPanel() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="mt-2"
+                      className={uix('uix-4d2deea2bf')}
                       onClick={() => handleReleaseCapOverride(disclosureCaps.data.active_override!.id)}
                       disabled={releaseDisclosureCap.isPending}
                     >
@@ -592,7 +676,7 @@ export function AdminPanel() {
                 <div className="space-y-2">
                   <p className={uix('uix-da8bf29040')}>Recent Override History</p>
                   {(disclosureCaps?.data?.history ?? []).slice(0, 4).map((item) => (
-                    <div key={item.id} className="rounded-md border p-3">
+                    <div key={item.id} className={uix('uix-3ff7f9f76c')}>
                       <p className={uix('uix-da8bf29040')}>{renderCapOverrideSummary(item)}</p>
                       <p className={uix('uix-abda0153e3')}>{item.reason ?? '无原因'}</p>
                     </div>
@@ -602,7 +686,83 @@ export function AdminPanel() {
             </Card>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <Card>
+            <CardHeader className={uix('uix-f4cc511ff0')}>
+              <CardTitle className={uix('uix-fc7473ca09')}>Community 热点控制</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className={uix('uix-abda0153e3')}>
+                这里会复用 config proposal → validate → approve → apply 流程，对 `rules_json.hot_topic_policy_v1` 做高风险收紧。
+              </p>
+              <Input
+                placeholder="Community ID"
+                value={communityPolicyId}
+                onChange={(e) => setCommunityPolicyId(e.target.value)}
+              />
+              <div className="grid gap-3 lg:grid-cols-2">
+                <div className="space-y-1">
+                  <label className={uix('uix-b3691fbf2a')}>热点模式</label>
+                  <select
+                    value={communityPolicyMode}
+                    onChange={(e) => setCommunityPolicyMode(e.target.value as typeof communityPolicyMode)}
+                    className={uix('uix-34e5554f24')}
+                  >
+                    {Object.entries(HOT_TOPIC_MODE_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className={uix('uix-b3691fbf2a')}>用户提示文案</label>
+                  <Input
+                    placeholder="例如：热点内容可能仅保留直达访问"
+                    value={communityPolicyCopy}
+                    onChange={(e) => setCommunityPolicyCopy(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className={uix('uix-b3691fbf2a')}>允许进入热点推荐的域</label>
+                <div className="flex flex-wrap gap-2">
+                  {COMMUNITY_TOPIC_DOMAIN_OPTIONS.map((domain) => (
+                    <label
+                      key={domain}
+                      className={uix('uix-cc8c57f280')}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={communityAllowedDomains.includes(domain)}
+                        onChange={() => toggleCommunityAllowedDomain(domain)}
+                      />
+                      <span>{HOT_TOPIC_DOMAIN_LABELS[domain]}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => {
+                  void handleApplyCommunityPolicy()
+                }}
+                disabled={applyCommunityHotTopicPolicy.isPending || !communityPolicyId.trim()}
+              >
+                {applyCommunityHotTopicPolicy.isPending ? '应用中…' : '提交并应用热点策略'}
+              </Button>
+              {applyCommunityHotTopicPolicy.isSuccess && (
+                <p className={uix('uix-abda0153e3')}>
+                  已完成 proposal/validate/approve/apply，当前版本：
+                  {applyCommunityHotTopicPolicy.data.data.version?.id ?? 'scheduled'}
+                </p>
+              )}
+              {applyCommunityHotTopicPolicy.isError && (
+                <p className={uix('uix-551c237449')}>{applyCommunityHotTopicPolicy.error.message}</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className={uix('uix-4933602967')}>
             <Card>
               <CardHeader className={uix('uix-f4cc511ff0')}>
                 <CardTitle className={uix('uix-fc7473ca09')}>审核队列</CardTitle>
@@ -623,7 +783,7 @@ export function AdminPanel() {
                     }}
                     className={uix('uix-81af913189')}
                   >
-                    <div className="text-left">
+                    <div className={uix('uix-938390cb99')}>
                       <p className={uix('uix-da8bf29040')}>
                         {item.case_type} · {item.summary_text ?? item.id}
                       </p>
@@ -712,7 +872,7 @@ export function AdminPanel() {
                         释放回队列
                       </Button>
                       </div>
-                      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                      <div className={uix('uix-ce55a4e3e0')}>
                         <Input
                           placeholder="转派给用户 ID"
                           value={transferUserId}
@@ -776,7 +936,7 @@ export function AdminPanel() {
                         </div>
                         <div>
                           <p className={uix('uix-b3691fbf2a')}>Risk Summary</p>
-                          <pre className="mt-1 whitespace-pre-wrap break-all rounded-md bg-slate-50 p-2 text-xs text-slate-600">
+                          <pre className={uix('uix-0f17a55f63')}>
                             {formatJsonPreview(currentCase.risk_summary ?? { summary: null }) ?? '{}'}
                           </pre>
                         </div>
@@ -805,7 +965,7 @@ export function AdminPanel() {
 
                       <TabsContent value="evidence" className="space-y-2">
                         {caseDetail.data.evidence.map((evidence) => (
-                          <div key={evidence.id} className="rounded-md border p-2 text-left">
+                          <div key={evidence.id} className={uix('uix-aa56c9aa01')}>
                             <div className="flex flex-wrap items-center gap-2">
                               <p className={uix('uix-da8bf29040')}>{evidence.snapshot_type}</p>
                               {getEvidenceSections(evidence).map((section) => (
@@ -814,11 +974,11 @@ export function AdminPanel() {
                                 </Badge>
                               ))}
                             </div>
-                            <div className="mt-2 space-y-2">
+                            <div className={uix('uix-f4f6a4f40e')}>
                               {getEvidenceSections(evidence).map((section) => (
-                                <div key={`${evidence.id}-${section.key}-preview`} className="rounded-md bg-slate-50 p-2">
+                                <div key={`${evidence.id}-${section.key}-preview`} className={uix('uix-f2389d4df1')}>
                                   <p className={uix('uix-b3691fbf2a')}>{section.label}</p>
-                                  <pre className="mt-1 whitespace-pre-wrap break-all text-xs text-slate-600">
+                                  <pre className={uix('uix-4fdc9d7d12')}>
                                     {section.preview}
                                   </pre>
                                 </div>
@@ -834,7 +994,7 @@ export function AdminPanel() {
                       <TabsContent value="tasks" className="space-y-2">
                         {caseDetail.data.tasks.map((task) => (
                           <div key={task.id} className={uix('uix-81af913189')}>
-                            <div className="text-left">
+                            <div className={uix('uix-938390cb99')}>
                               <p className={uix('uix-da8bf29040')}>
                                 {task.task_type} · {task.status}
                               </p>
@@ -909,7 +1069,7 @@ export function AdminPanel() {
                             ))}
                           </div>
                         )}
-                        <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-all rounded-md bg-slate-50 p-2 text-xs text-slate-600">
+                        <pre className={uix('uix-6e2e4af21f')}>
                           {formatJsonPreview(evidenceExport?.data ?? { pending: true }, 2_400) ?? '{}'}
                         </pre>
                       </TabsContent>
