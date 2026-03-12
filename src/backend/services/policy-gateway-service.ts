@@ -4,6 +4,7 @@ import type { ModerationResult } from '../moderation/types.js'
 import type { ModerationEvaluator } from './forum-write-service.js'
 import type { MessageDeliveryStatus } from '../repos/types.js'
 import type { HotTopicPolicyService } from './hot-topic-policy-service.js'
+import type { PublicDisclosureCapService } from './public-disclosure-cap-service.js'
 import type { RiskEventService } from './risk-event-service.js'
 import type { SafeReplyService } from './safe-reply-service.js'
 
@@ -29,12 +30,45 @@ export interface PolicyGatewayResult {
   risk_event_id: string | null
 }
 
+interface SpilloverHit {
+  category: 'owner_endorsement_public' | 'owner_private_leak'
+  matched_pattern: string
+  reason: string
+}
+
+interface SpilloverEnforcement {
+  action: PolicyGatewayResult['action']
+  delivery_status: MessageDeliveryStatus
+  rewrite_cause: string
+  reason: string
+  refusal_text: string
+  override_cap_level: 0 | 1
+  override_source: 'owner_endorsement_public' | 'owner_private_leak'
+}
+
+const OWNER_PRIVATE_LEAK_RESPONSE = '请不要公开转述 Owner 或私聊中的原话，换成不涉及私域来源的公开表达。'
+const OWNER_ENDORSEMENT_RESPONSE = '请改成你自己的公开观点，不要把 Owner 的立场或授意直接带入公共场景。'
+
+const OWNER_PRIVATE_LEAK_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
+  { pattern: /(?:我的\s*owner|owner|主人|私聊|私信|私人聊天|private chat|private dm).{0,12}(?:说(?:[：:“"'，,\s]|过|道|了)|提到|告诉我|写道|said|told me)/i, label: 'owner_or_private_chat_direct_speech' },
+  { pattern: /(?:我的\s*owner|owner|主人|私聊|私信|私人聊天|private chat|private dm).{0,20}[“"'「『].{1,120}[”"'」』]/i, label: 'owner_or_private_chat_quote' },
+  { pattern: /(?:根据|依照|按照|转述|透露|爆料).{0,12}(?:我的\s*owner|owner|私聊|私信|private chat)/i, label: 'owner_private_relay' },
+]
+
+const OWNER_ENDORSEMENT_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
+  { pattern: /(?:我的\s*owner|owner|主人).{0,12}(?:认为|觉得|要求|希望|指示|建议|believes|thinks|wants)/i, label: 'owner_endorsement' },
+  { pattern: /(?:我的\s*owner|owner|主人).{0,12}(?:让我|要求我|指示我|asked me to|told me to).{0,20}(?:公开|发布|发(?:出(?:来)?)?|转达|告诉(?:大家|你们|你)|代为|代表|表态|宣传|声明|announce|share|post|say|speak|endorse)/i, label: 'owner_public_instruction' },
+  { pattern: /(?:代表|代替).{0,12}(?:我的\s*owner|owner|主人)/i, label: 'owner_as_principal' },
+  { pattern: /(?:according to|per)\s+my\s+owner/i, label: 'according_to_owner' },
+]
+
 export class PolicyGatewayService {
   constructor(private readonly deps: {
     moderator: ModerationEvaluator
     safeReplyService: SafeReplyService
     hotTopicPolicyService: HotTopicPolicyService
     riskEventService: RiskEventService
+    publicDisclosureCapService: PublicDisclosureCapService
   }) {}
 
   async evaluate(input: {
@@ -55,7 +89,7 @@ export class PolicyGatewayService {
     prefer_rewrite?: boolean
   }): Promise<PolicyGatewayResult> {
     const textForModeration = input.title ? `${input.title}\n\n${input.text}` : input.text
-    const moderation = input.existing_moderation ?? this.deps.moderator.evaluate({
+    const moderationBase = input.existing_moderation ?? this.deps.moderator.evaluate({
       text: textForModeration,
       author_agent_id: input.author_agent_id,
       community_id: input.community_id ?? 'global',
@@ -65,6 +99,12 @@ export class PolicyGatewayService {
           ? 'comment'
           : 'message',
     })
+    const spillover = this.shouldGuardPublicChannel(input.channel)
+      ? this.detectSpillover(textForModeration)
+      : null
+    const moderation = spillover
+      ? this.applySpilloverRisk(moderationBase, spillover)
+      : moderationBase
 
     const hotTopic = this.shouldApplyHotTopicPolicy(input.channel)
       ? this.deps.hotTopicPolicyService.evaluate({
@@ -97,6 +137,19 @@ export class PolicyGatewayService {
       reason = safeReply.reason
     }
 
+    const spilloverEnforcement = this.resolveSpilloverEnforcement({
+      spillover,
+      base_moderation: moderationBase,
+      hot_topic: hotTopic,
+    })
+    if (spilloverEnforcement) {
+      action = spilloverEnforcement.action
+      final_text = spilloverEnforcement.refusal_text
+      delivery_status = spilloverEnforcement.delivery_status
+      rewrite_cause = spilloverEnforcement.rewrite_cause
+      reason = spilloverEnforcement.reason
+    }
+
     const enforced = this.isEnforced(input.channel)
     const shadowed = !enforced && (action === 'rewrite' || action === 'block')
 
@@ -122,17 +175,31 @@ export class PolicyGatewayService {
         rewrite_cause,
         delivery_status,
         hot_topic: hotTopic,
+        spillover,
       },
       evidence: {
         moderation,
         hot_topic: hotTopic,
+        spillover,
       },
       open_case:
         moderation.state === 'PENDING'
         || moderation.risk_level === 'high'
         || action === 'block'
-        || Boolean(hotTopic?.drift_detected),
+        || Boolean(hotTopic?.drift_detected)
+        || Boolean(spilloverEnforcement),
     })
+
+    if (spilloverEnforcement && !shadowed) {
+      await this.deps.publicDisclosureCapService.ensureAutomaticAgentOverride({
+        agent_id: input.author_agent_id,
+        cap_level: spilloverEnforcement.override_cap_level,
+        source: spilloverEnforcement.override_source,
+        reason: spilloverEnforcement.reason,
+        linked_case_id: outcome.case?.id ?? null,
+        linked_risk_event_id: outcome.risk_event.id,
+      })
+    }
 
     return {
       action: shadowed ? 'allow' : action,
@@ -148,6 +215,7 @@ export class PolicyGatewayService {
         policy_enforced: enforced,
         policy_shadowed: shadowed,
         rewrite_cause,
+        spillover,
       },
       shadowed,
       case_id: outcome.case?.id ?? null,
@@ -187,6 +255,10 @@ export class PolicyGatewayService {
       && (channel === 'forum_post' || channel === 'forum_comment' || channel === 'chat_room')
   }
 
+  private shouldGuardPublicChannel(channel: PolicyGatewayChannel): boolean {
+    return channel === 'forum_post' || channel === 'forum_comment' || channel === 'chat_room'
+  }
+
   private isEnforced(channel: PolicyGatewayChannel): boolean {
     if (!config.features.riskControlV1) return false
     if (channel === 'forum_post' || channel === 'forum_comment') {
@@ -205,6 +277,103 @@ export class PolicyGatewayService {
       case 'private_inbound': return 'private_inbound'
       case 'private_outbound': return 'private_outbound'
       case 'proactive_dm': return 'proactive_dm'
+    }
+  }
+
+  private detectSpillover(text: string): SpilloverHit | null {
+    for (const candidate of OWNER_PRIVATE_LEAK_PATTERNS) {
+      if (candidate.pattern.test(text)) {
+        return {
+          category: 'owner_private_leak',
+          matched_pattern: candidate.label,
+          reason: 'owner_private_leak_detected',
+        }
+      }
+    }
+
+    for (const candidate of OWNER_ENDORSEMENT_PATTERNS) {
+      if (candidate.pattern.test(text)) {
+        return {
+          category: 'owner_endorsement_public',
+          matched_pattern: candidate.label,
+          reason: 'owner_endorsement_public_detected',
+        }
+      }
+    }
+
+    return null
+  }
+
+  private applySpilloverRisk(
+    moderation: ModerationResult,
+    spillover: SpilloverHit,
+  ): ModerationResult {
+    const category = spillover.category
+    const riskLevel = category === 'owner_private_leak'
+      ? 'high'
+      : moderation.risk_level === 'high'
+        ? 'high'
+        : 'medium'
+    const riskScore = Math.max(
+      moderation.risk_score,
+      category === 'owner_private_leak' ? 0.95 : 0.65,
+    )
+    const riskCategories = Array.from(new Set([
+      ...moderation.risk_categories.filter((item) => item !== 'clean'),
+      category,
+    ]))
+
+    return {
+      ...moderation,
+      risk_level: riskLevel,
+      risk_score: riskScore,
+      risk_categories: riskCategories.length > 0 ? riskCategories : [category],
+      details: {
+        ...moderation.details,
+        classifier_categories: Array.from(new Set([
+          ...moderation.details.classifier_categories.filter((item) => item !== 'clean'),
+          category,
+        ])),
+        decision_reason: `${moderation.details.decision_reason}; ${spillover.reason}`,
+      },
+    }
+  }
+
+  private resolveSpilloverEnforcement(input: {
+    spillover: SpilloverHit | null
+    base_moderation: ModerationResult
+    hot_topic: ReturnType<HotTopicPolicyService['evaluate']> | null
+  }): SpilloverEnforcement | null {
+    if (!input.spillover) return null
+
+    if (input.spillover.category === 'owner_private_leak') {
+      return {
+        action: 'block',
+        delivery_status: 'BLOCKED',
+        rewrite_cause: 'owner_private_leak',
+        reason: 'owner_private_leak_blocked',
+        refusal_text: OWNER_PRIVATE_LEAK_RESPONSE,
+        override_cap_level: 0,
+        override_source: 'owner_private_leak',
+      }
+    }
+
+    const elevatedByRisk = input.base_moderation.risk_level === 'medium' || input.base_moderation.risk_level === 'high'
+    const elevatedByTopic = Boolean(input.hot_topic?.drift_detected)
+    if (!elevatedByRisk && !elevatedByTopic) {
+      return null
+    }
+
+    return {
+      action: 'block',
+      delivery_status: 'BLOCKED',
+      rewrite_cause: 'owner_endorsement_public',
+      reason: elevatedByTopic
+        ? 'owner_endorsement_public_hot_topic_blocked'
+        : 'owner_endorsement_public_medium_risk_blocked',
+      refusal_text: OWNER_ENDORSEMENT_RESPONSE,
+      override_cap_level: 1,
+      override_source: 'owner_endorsement_public',
     }
   }
 }

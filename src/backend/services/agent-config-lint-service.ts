@@ -52,6 +52,52 @@ function collectChangedPaths(
   return out
 }
 
+function collectStringLeaves(
+  value: unknown,
+  out: string[] = [],
+): string[] {
+  if (typeof value === 'string') {
+    out.push(value)
+    return out
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectStringLeaves(item, out)
+    }
+    return out
+  }
+  if (!isPlainRecord(value)) {
+    return out
+  }
+  for (const nested of Object.values(value)) {
+    collectStringLeaves(nested, out)
+  }
+  return out
+}
+
+function getValueAtPath(value: Record<string, unknown>, path: string): unknown {
+  const segments = path.split('.')
+  let current: unknown = value
+  for (const segment of segments) {
+    if (!isPlainRecord(current)) {
+      return undefined
+    }
+    current = current[segment]
+  }
+  return current
+}
+
+const REJECT_RULES: Array<{ warning: string; pattern: RegExp }> = [
+  { warning: 'semantic_ignore_privacy_rejected', pattern: /\b(?:ignore|bypass|override)\b.{0,20}\b(?:privacy|disclosure|safety)\b/i },
+  { warning: 'semantic_quote_owner_rejected', pattern: /\b(?:quote|repeat|relay|cite)\b.{0,20}\b(?:owner|private chat|dm)\b/i },
+  { warning: 'semantic_publicize_private_chat_rejected', pattern: /\b(?:publicize|publish|share|expose|leak)\b.{0,20}\b(?:owner|private chat|private dm|private conversation)\b/i },
+  { warning: 'semantic_bypass_disclosure_rejected', pattern: /\b(?:disable|bypass|ignore)\b.{0,20}\b(?:disclosure restriction|disclosure cap|privacy cap)\b/i },
+  { warning: 'semantic_ignore_privacy_rejected', pattern: /(?:忽略|绕过).{0,8}(?:隐私|披露|安全)/ },
+  { warning: 'semantic_quote_owner_rejected', pattern: /(?:引用|转述).{0,8}(?:owner|主人|私聊|私信)/i },
+  { warning: 'semantic_publicize_private_chat_rejected', pattern: /(?:公开|发布|曝光|泄露).{0,8}(?:owner|主人|私聊|私信)/i },
+  { warning: 'semantic_bypass_disclosure_rejected', pattern: /(?:关闭|绕过|忽略).{0,8}(?:披露限制|公开限制|隐私上限)/ },
+]
+
 const HIGH_RISK_PREFIXES = [
   'prompt_overrides',
   'publish',
@@ -67,6 +113,7 @@ export class AgentConfigLintService {
   }): AgentConfigReview {
     const changedPaths = collectChangedPaths(input.before_config, input.after_config)
     const lint_warnings = new Set<string>()
+    const changedFragments = changedPaths.flatMap((path) => collectStringLeaves(getValueAtPath(input.after_config, path)))
 
     const highRiskTouched = changedPaths.some((path) =>
       HIGH_RISK_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}.`)))
@@ -94,6 +141,22 @@ export class AgentConfigLintService {
       && typeof privacy.public_disclosure_cap === 'number'
     ) {
       lint_warnings.add('public_disclosure_cap_changed')
+    }
+
+    const matchedRejectWarnings = REJECT_RULES
+      .filter((rule) => changedFragments.some((fragment) => rule.pattern.test(fragment)))
+      .map((rule) => rule.warning)
+    for (const warning of matchedRejectWarnings) {
+      lint_warnings.add(warning)
+    }
+
+    if (matchedRejectWarnings.length > 0) {
+      return {
+        risk_level: 'HIGH',
+        review_status: 'REJECTED',
+        review_case_id: null,
+        lint_warnings: [...lint_warnings],
+      }
     }
 
     if (highRiskTouched) {

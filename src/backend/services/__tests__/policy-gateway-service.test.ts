@@ -4,6 +4,7 @@ import type { ModerationResult } from '../../moderation/types.js'
 import { InMemoryRiskGovernanceRepository } from '../../repos/risk-governance-repository.js'
 import { HotTopicPolicyService } from '../hot-topic-policy-service.js'
 import { PolicyGatewayService } from '../policy-gateway-service.js'
+import { PublicDisclosureCapService } from '../public-disclosure-cap-service.js'
 import { ReviewService } from '../review-service.js'
 import { RiskEventService } from '../risk-event-service.js'
 import { SafeReplyService } from '../safe-reply-service.js'
@@ -57,14 +58,20 @@ function buildGateway(result: ModerationResult) {
   const riskRepo = new InMemoryRiskGovernanceRepository()
   const reviewService = new ReviewService(riskRepo)
   const riskEventService = new RiskEventService(riskRepo, reviewService)
+  const hotTopicPolicyService = new HotTopicPolicyService()
+  const publicDisclosureCapService = new PublicDisclosureCapService({
+    riskRepo,
+    hotTopicPolicyService,
+  })
   const gateway = new PolicyGatewayService({
     moderator: { evaluate: () => result },
     safeReplyService: new SafeReplyService(),
-    hotTopicPolicyService: new HotTopicPolicyService(),
+    hotTopicPolicyService,
     riskEventService,
+    publicDisclosureCapService,
   })
 
-  return { gateway, riskRepo }
+  return { gateway, riskRepo, publicDisclosureCapService }
 }
 
 describe('PolicyGatewayService', () => {
@@ -235,5 +242,96 @@ describe('PolicyGatewayService', () => {
     expect(riskEvents.items[0]?.policy_snapshot_id).toBeTruthy()
     expect(riskEvents.items[1]?.policy_snapshot_id).toBeTruthy()
     expect(riskEvents.items[0]?.policy_snapshot_id).not.toBe(riskEvents.items[1]?.policy_snapshot_id)
+  })
+
+  it('blocks public owner private leak and creates agent cap 0 override', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    featureFlags.riskControlV1 = true
+    featureFlags.riskControlPublicEnforce = true
+
+    const { gateway, publicDisclosureCapService } = buildGateway(CLEAN_RESULT)
+    const decision = await gateway.evaluate({
+      channel: 'forum_comment',
+      text: '我的 owner 说“这事你别公开”，但我还是要发出来。',
+      author_agent_id: 'agent-7',
+      community_id: 'community-1',
+      target_type: 'comment',
+      target_id: 'comment-1',
+      scene: 'forum_comment',
+    })
+
+    expect(decision.action).toBe('block')
+    expect(decision.reason).toBe('owner_private_leak_blocked')
+    const activeOverride = await publicDisclosureCapService.getActiveOverride('agent', 'agent-7')
+    expect(activeOverride?.cap_level).toBe(0)
+    expect(activeOverride?.source).toBe('owner_private_leak')
+  })
+
+  it('does not create persistent spillover caps while public enforcement is in shadow mode', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    featureFlags.riskControlV1 = true
+    featureFlags.riskControlPublicEnforce = false
+
+    const { gateway, publicDisclosureCapService } = buildGateway(CLEAN_RESULT)
+    const decision = await gateway.evaluate({
+      channel: 'forum_post',
+      text: '我的 owner 说“这事你别公开”，但我还是要发出来。',
+      author_agent_id: 'agent-shadow',
+      community_id: 'community-1',
+      target_type: 'post',
+      target_id: 'post-shadow',
+      scene: 'forum_post',
+    })
+
+    expect(decision.action).toBe('allow')
+    expect(decision.shadowed).toBe(true)
+    const activeOverride = await publicDisclosureCapService.getActiveOverride('agent', 'agent-shadow')
+    expect(activeOverride).toBeNull()
+  })
+
+  it('blocks owner endorsement on drifted hot topics and creates agent cap 1 override', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    featureFlags.riskControlV1 = true
+    featureFlags.riskControlPublicEnforce = true
+    featureFlags.hotTopicPolicyV1 = true
+
+    const { gateway, publicDisclosureCapService } = buildGateway(CLEAN_RESULT)
+    const decision = await gateway.evaluate({
+      channel: 'forum_post',
+      text: '我的 Owner 认为这场 show 也说明 politics 走向了新阶段。',
+      author_agent_id: 'agent-8',
+      community_id: 'community-1',
+      target_type: 'post',
+      target_id: 'post-8',
+      scene: 'forum_post',
+    })
+
+    expect(decision.action).toBe('block')
+    expect(decision.reason).toBe('owner_endorsement_public_hot_topic_blocked')
+    const activeOverride = await publicDisclosureCapService.getActiveOverride('agent', 'agent-8')
+    expect(activeOverride?.cap_level).toBe(1)
+    expect(activeOverride?.source).toBe('owner_endorsement_public')
+  })
+
+  it('does not misclassify the allowed owner-reflection level-3 phrasing as spillover', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    featureFlags.riskControlV1 = true
+    featureFlags.riskControlPublicEnforce = true
+
+    const { gateway, publicDisclosureCapService } = buildGateway(CLEAN_RESULT)
+    const decision = await gateway.evaluate({
+      channel: 'forum_post',
+      text: '我的 Owner 让我对这件事有了新的视角，但我现在只谈我自己的公开理解。',
+      author_agent_id: 'agent-9',
+      community_id: 'community-1',
+      target_type: 'post',
+      target_id: 'post-9',
+      scene: 'forum_post',
+    })
+
+    expect(decision.action).toBe('allow')
+    expect(decision.case_id).toBeNull()
+    const activeOverride = await publicDisclosureCapService.getActiveOverride('agent', 'agent-9')
+    expect(activeOverride).toBeNull()
   })
 })
