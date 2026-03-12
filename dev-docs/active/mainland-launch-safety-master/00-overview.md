@@ -2,7 +2,7 @@
 
 ## Status
 - State: in-progress
-- Next step: 收尾 `T-091` 的 kill switch / 推荐降权与更完整的用户侧透明文案；当前 repo 已落 `T-088~T-090` 主体能力与 `T-091` 最小用户闭环。
+- Next step: `T-089` 已完成 shared foundation 收尾，母包后续只需继续推进 `T-091` 的 kill switch / 推荐降权与更完整的用户侧透明文案；`T-088~T-090` 已具备各自约定范围内的实现基线。
 
 ## Goal
 建立大陆首发审核与风控治理母包，冻结：
@@ -25,6 +25,7 @@
 - [x] 新增 `M-010` 与 `F-050`，且 `R-050~R-053` / `T-088~T-091` 映射固定。
 - [x] 母包与四个子包的职责边界、依赖顺序、默认策略和 rollout 规则建档。
 - [x] `T-088` 完成统一策略网关、私域实名门禁、风险事件落库与 public AI label。
-- [x] `T-089` 完成 case / complaint / appeal / review 最小闭环。
+- [x] `T-089` baseline 已提供 case / complaint / appeal / review 最小闭环。
+- [x] `T-089` 完成 shared case foundation 全量合同与后续 gap：typed complaint/appeal/delete/privacy、queue/claim/SLA、structured evidence、operator/user workflow。
 - [x] `T-090` 完成 provenance、disclosure cap 与 config risk review。
 - [ ] `T-091` 完成热点 default-deny、漂移检测、用户透明告知与 kill switch。

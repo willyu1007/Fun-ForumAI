@@ -1,8 +1,8 @@
 # 03 Implementation Notes
 
 ## Current status
-- 状态：governance-package-created
-- 说明：已创建母包与四个子包任务束，并在项目治理中新增 `M-010 / F-050 / R-050~R-053 / T-087~T-091`。产品代码从 `T-088` 开始推进。
+- 状态：implementation-in-progress
+- 说明：已创建母包与四个子包任务束，并在项目治理中新增 `M-010 / F-050 / R-050~R-053 / T-087~T-091`。当前产品代码已完成 `T-088` 主体、`T-089` 八段 foundation slice 与 `T-090` 主体；`T-089` 在 code review 后补完 lifecycle/lock/export hardening，母包剩余实施重点回到 `T-091`。
 
 ## Execution log
 - 2026-03-12：
@@ -31,5 +31,42 @@
   - `PolicyGatewayService` 输出 `policy_snapshot_id`/`risk_event_id`，并在 forum post/comment/chat message 持久化后回绑真实 target id，修复自动 case 绑定到 snapshot/post 占位 id 的问题。
   - `ComplaintAppealService` 改为通过治理仓储按 target 直接查找既有 case，不再受 `listCases(limit=200)` 窗口影响。
   - 私聊消息读取补 owner 鉴权：`GET /agents/:agentId/chat/sessions/:sessionId/messages` 在 route fallback 层校验 agent owner，service 层再校验 session owner。
+- 2026-03-12（governance rebaseline）：
+  - 将 `T-089` 从“最小闭环已落”重定为“shared full foundation 已定界、按阶段补齐”，明确 repo 当前只完成 baseline。
+  - 固定 `T-089` 与 `T-090` / `T-091` 的边界：case/review/task/action-log/complaint/appeal/delete/privacy 留在 `T-089`；provenance/config 留给 `T-090`；hot-topic/transparency/kill switch 留给 `T-091`。
+  - 冻结 `policy_snapshot` 不跨对象复用的审计原则，并把 typed complaint/appeal/delete/privacy、queue/claim/SLA、structured evidence、Safety Center timeline/notification 列为 `T-089` 未完成 gap。
+- 2026-03-12（T-089 implementation slice 1）：
+  - 为 `complaint_tickets` / `appeal_requests` 引入 typed foundation：新增 complaint/appeal/requester enums 与 attachments/result/resolution 持久化字段，并补手写迁移 `20260312173000_t089_typed_complaint_appeal_foundation`。
+  - `ComplaintAppealService` 改成 canonical `createComplaint()` / `createAppeal()` + legacy façade，支持 `reason_code -> complaint_type` 推断、linked complaint 校验、typed priority。
+  - `ReviewService.ensureCase()` 落地 case-centered reuse/reopen 语义；resolved complaint case 被新投诉命中时不再新开 case，而是 reopen 原 case 并补 `REOPENED_REVIEW` task / action log。
+  - `POST /v1/reports`、`POST /v1/appeals`、frontend hooks、`PostDetailPage`、`SafetyCenterPage` 同步接入 typed complaint/appeal contract。
+- 2026-03-12（T-089 implementation slice 2）：
+  - 为 `moderation_cases` / `moderation_case_targets` / `review_tasks` 增加 queue、primary target、SLA、claim、resolution、relation metadata，并将 `findLatestCaseByTarget()` 收敛到 `PRIMARY` target。
+  - `ReviewService` 新增 `claimTask()`，resolve 时自动关闭 outstanding tasks，reopen 时自动创建 follow-up task；complaint/appeal/policy case 开始写 queue 与 risk summary。
+  - admin moderation API 新增 task claim 路由、queue 过滤和 resolution note；admin 前端最小展示 queue 与 task claim 状态。
+- 2026-03-12（T-089 implementation slice 3）：
+  - `ModerationEvidenceSnapshot` 从 payload-only 升级为结构化 evidence contract，补齐 `content/context/policy_hits/prompt_memory/topic_signals/action_history/evidence_package` 持久化字段与 repo 映射。
+  - 自动 moderation case、complaint/appeal、identity review、config review、case reopen 路径开始统一写结构化 evidence；admin case detail 也开始展示 evidence section 预览。
+  - 新增 structured evidence 回归测试，覆盖 privacy complaint、reopen case、policy gateway 和 admin moderation case detail。
+- 2026-03-12（T-089 implementation slice 4）：
+  - `ReviewService` 新增 case transfer 与 evidence export 聚合；admin moderation case detail 开始返回 linked complaint/appeal，构成最小 complaint/appeal panel。
+  - admin moderation API 新增 transfer route 与 evidence export route；admin 前端把 case detail 升级为 tabbed workbench，并支持转派与 JSON evidence export。
+  - 新增 review-service/admin-moderation-api 回归测试，覆盖 transfer、linked request panel 与 export contract。
+- 2026-03-12（T-089 implementation slice 5）：
+  - 共享 container 开始为 `ReviewService` / `ComplaintAppealService` 注入 `NotificationService`，`/v1/me/notifications` 也统一走 container wiring，补齐 in-memory 与 Prisma 路径的一致通知语义。
+  - complaint/appeal 创建、linked case resolve、case reopen 现在都会同步写 GOVERNANCE 通知，并把 linked complaint/appeal 的 status + resolution/result metadata 跟随 case 流转更新。
+  - Safety Center 升级为 timeline-first 用户面：整合 reports、appeals、governance notifications，增加未读治理更新计数、`全部标记已读` 操作与 richer ticket detail。
+- 2026-03-12（T-089 implementation slice 6）：
+  - 用户面举报入口已从帖子扩到 comment/chat/private/proactive：评论区、聊天室发言、私聊会话与通知 bell 的主动私信提醒都能直接发起 complaint，并在原位显示 Safety Center 回执。
+  - `ComplaintAppealService` / `ReviewService` 的 GOVERNANCE 通知正文改成“提交入口 + 目标对象 + case 状态”式 copy；Safety Center timeline 也开始展示阶段 badge、提交入口、目标对象与 workflow 说明。
+  - 新增 comment/chat/private/Layout/SafetyCenter 前端测试与通知正文断言，锁住更多举报入口和更细的用户面通知策略。
+- 2026-03-12（T-089 implementation slice 7 / closeout）：
+  - `ReviewService` 新增 case release policy 与 share-safe evidence export redaction，admin moderation API 对应补 release route 与 `redaction=operator|share` 校验。
+  - admin 前端补齐释放回队列、queue-specific SOP/checklist 与 export redaction notes，`AdminPanel` 前端测试也同步补上。
+  - `T-089` 至此完成 full foundation 收尾；bulk tooling 若后续需要，改由 follow-up task 承接，而不再留作母包阻塞项。
+- 2026-03-12（T-089 implementation slice 8 / review hardening）：
+  - `ReviewService` 补上 claim stealing、closed-case assign/resolve、duplicate reopen 的状态保护，并扩大 share export redaction 到 claim/assignee metadata。
+  - admin moderation UI 同步禁用非法 claim/reopen/assign/transfer/release 动作；后端 service/route 测试补齐对应 400/ValidationError 负路径。
+  - `T-089` 的 done 状态现在建立在负路径验证之上，而不再只依赖 happy path green。
 - 当前未完成项集中在 `T-091` 尾项：community/scene/agent kill switch、推荐降权/不推荐链路、更多聊天室/通知面透明文案。
 - schema 迁移文件已落 repo，但尚未对任何真实 DB 执行 `migrate deploy`；见 `04-verification.md`。

@@ -2,7 +2,7 @@ version: 1
 task_id: T-089
 project: main
 slug: review-case-and-complaint-foundation
-status: in-progress
+status: done
 updated: "2026-03-12"
 keywords:
   - review

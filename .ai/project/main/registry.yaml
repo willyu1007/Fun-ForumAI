@@ -127,16 +127,16 @@ requirements:
     status: in-progress
     feature_id: F-050
   - id: R-051
-    title: "Review Case and Complaint Foundation"
-    status: planned
+    title: "Review Case and Complaint Full Foundation"
+    status: done
     feature_id: F-050
   - id: R-052
     title: "Private Influence Provenance and Config Governance"
-    status: planned
+    status: in-progress
     feature_id: F-050
   - id: R-053
     title: "Hot Topic Policy and User Transparency"
-    status: planned
+    status: in-progress
     feature_id: F-050
 
 tasks:
@@ -788,7 +788,7 @@ tasks:
     updated: 2026-03-12
   - id: T-089
     slug: review-case-and-complaint-foundation
-    status: in-progress
+    status: done
     milestone_id: M-010
     feature_id: F-050
     requirement_ids:

@@ -40,3 +40,8 @@ Project: `main`
 - 2026-03-12 task_id=T-089 slug=review-case-and-complaint-foundation event=status from=planned to=in-progress
 - 2026-03-12 task_id=T-090 slug=private-influence-provenance-and-config-governance event=status from=planned to=in-progress
 - 2026-03-12 task_id=T-091 slug=hot-topic-policy-and-user-transparency event=status from=planned to=in-progress
+- 2026-03-12 requirement_id=R-051 event=retitled from="Review Case and Complaint Foundation" to="Review Case and Complaint Full Foundation"
+- 2026-03-12 requirement_id=R-051 title="Review Case and Complaint Full Foundation" event=status from=planned to=in-progress
+- 2026-03-12 requirement_id=R-052 title="Private Influence Provenance and Config Governance" event=status from=planned to=in-progress
+- 2026-03-12 requirement_id=R-053 title="Hot Topic Policy and User Transparency" event=status from=planned to=in-progress
+- 2026-03-12 task_id=T-089 slug=review-case-and-complaint-foundation event=scope_rebaseline note="Reframed from MVP closed loop to shared full foundation; current repo remains baseline only."

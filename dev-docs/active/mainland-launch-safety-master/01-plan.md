@@ -11,9 +11,10 @@
 3. 对大陆 public 关闭 availability-first fallback。
 
 ## Phase 2 Review And Complaint
-1. `T-089` 落 `policy_snapshots`、`moderation_cases`、`review_tasks`、`complaint_tickets`、`appeal_requests`。
-2. 最小 admin queue/case/evidence/manual review UI/API。
-3. 扩展 message/private/proactive 目标的治理动作持久化。
+1. `T-089` 冻结 case-centered full foundation：`policy_snapshots`、`moderation_cases`、`review_tasks`、`governance_action_logs`、`complaint_tickets`、`appeal_requests` 与 delete/privacy typed workflow。
+2. 升级 admin queue/case/evidence/complaint/appeal UI/API 到 claim/transfer/reopen/resolve、case detail tabs、evidence export。
+3. 升级 user safety surfaces：post/comment/chat/private/proactive 举报入口、Safety Center 时间线、治理状态变更通知。
+4. 保持 provenance/config 与 topic/transparency 边界在 `T-090` / `T-091`，不把这些逻辑吸回 `T-089`。
 
 ## Phase 3 Provenance And Config Governance
 1. `T-090` 记录 `used_memory_ids`、effective disclosure、rewrite cause。

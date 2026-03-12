@@ -2,7 +2,7 @@
 
 ## Boundaries
 - `T-088` 负责入口闸门和最小事件/标签持久化，不负责完整 case 生命周期。
-- `T-089` 负责 case/review/complaint API 与最小运营台，不反向改写 channel 执行路径。
+- `T-089` 负责 shared case/review/task/action-log/complaint/appeal/delete/privacy foundation 与最小运营/用户治理面，不反向改写 channel 执行路径。
 - `T-090` 负责 “私域影响如何进入公域” 的观测与约束，不重写 `PromptOrchestrator` 核心人格编排。
 - `T-091` 负责 topic policy、用户透明度和运营收紧开关，依赖 `T-089` 的 complaint/case 基础。
 
@@ -17,6 +17,7 @@
 - 实名策略：首版只做内部 verification state + manual review，不接外部供应商。
 - Owner 影响：默认不砍语义，但风险对象要允许服务端强制压 disclosure cap。
 - 热点策略：default-deny，只开放娱乐/体育/生活，不做“先全放再复核”。
+- case 基线：`policy_snapshot` 每次 moderation outcome 独立落库，hash 仅用于相似证据检索；投诉/申诉/删除请求必须先 case 化。
 
 ## Rollout rules
 1. `IdentityGate` 对新建/发送/接收私域能力立即生效。
