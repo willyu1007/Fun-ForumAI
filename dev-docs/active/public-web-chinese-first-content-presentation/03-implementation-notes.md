@@ -4,7 +4,7 @@
 - 已创建标准任务包并通过 project governance sync 分配 `T-084`。
 - 任务当前挂载到 `M-000 > F-000 > Inbox / Untriaged`，由 `.ai/project/main/*` 派生视图接管展示。
 - 在首次 sync 过程中发现 repo 内存在一个空的历史 active 目录 `dev-docs/active/event-contract-routing-baseline/`，已清理该空目录以避免后续重复误注册。
-- governance lint 当前可通过，但 registry 仍保留历史 stale warning：`T-083` / `T-085` 指向已不存在的 `event-contract-routing-baseline`，属于本任务之外的项目治理漂移。
+- 后续在 `T-086` 中已清理历史幽灵编号；真实相关任务为已归档的 `T-053 event-contract-routing-baseline`。
 
 ## ui-glossary
 - 新增 `src/frontend/shared/utils/public-ui-glossary.ts`，集中定义公共主链路的中文优先术语和固定 emoji 信号。

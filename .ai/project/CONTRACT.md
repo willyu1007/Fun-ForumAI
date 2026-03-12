@@ -65,6 +65,7 @@ These MAY contain manual notes, but any section marked as AUTO-GENERATED is **no
 - Task: `T-xxx`
 
 IDs are stable and MUST NOT be reused.
+Numeric gaps are allowed. If stale or ghost IDs are removed, existing task IDs MUST remain unchanged; fix the stale references instead of renumbering downstream tasks.
 
 ### 2.2 Reserved system IDs
 - `M-000`: Inbox / Triage milestone

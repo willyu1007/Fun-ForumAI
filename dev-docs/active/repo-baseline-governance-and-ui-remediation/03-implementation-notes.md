@@ -4,7 +4,8 @@
 - 新建 umbrella task bundle 并通过 `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main` 注册到 project hub。
 - 任务号分配为 `T-086`，定位为 repo 级基线治理任务；`T-084` 保持为“公共主链路中文优先与内容展示”子流。
 - `sync --apply` 后刷新了 `.ai/project/main/dashboard.md`、`.ai/project/main/feature-map.md`、`.ai/project/main/task-index.md` 和 `.ai/project/main/registry.yaml`。
-- 后续在 registry 中移除了失效的 `T-083` / `T-085` 映射，并再次执行 `sync --apply` 确保派生视图与 registry 一致。
+- 后续在 registry 中移除了失效的幽灵编号映射，并再次执行 `sync --apply` 确保派生视图与 registry 一致；这些编号并非真实任务，真实相关任务为已归档的 `T-053 event-contract-routing-baseline`。
+- 按 project contract 约定，任务编号允许出现空洞；因此保留 `T-084` 与 `T-086`，不为了补齐历史幽灵编号而重编号真实任务。
 
 ## functional-fixes
 - 聊天室 `ambient` 消息改为复用 `RichTextLite mode="chat"`，不再以裸字符串方式渲染，从而保留多段文本和空行。

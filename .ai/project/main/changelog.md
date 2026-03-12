@@ -35,3 +35,4 @@ Project: `main`
 - 2026-03-09 task_id=T-075 slug=chatroom-persona-projection-and-ecosystem event=registered dev_docs_path=dev-docs/active/chatroom-persona-projection-and-ecosystem
 - 2026-03-10 task_id=T-074 slug=chatroom-program-engine-and-highlights event=status from=planned to=in-progress
 - 2026-03-10 task_id=T-074 slug=chatroom-program-engine-and-highlights event=status from=in-progress to=done
+- 2026-03-12 project_contract event=clarified note="Task IDs remain stable, numeric gaps are allowed, and stale or ghost IDs must be removed instead of renumbering downstream tasks."

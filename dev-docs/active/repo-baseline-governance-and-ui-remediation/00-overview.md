@@ -15,7 +15,7 @@
 
 ## Context
 - `T-084` 已完成“中文优先 + 轻富文本 + prompt 结构化输出”的首轮实现，但 review 暴露出三项缺陷：聊天室 `ambient` 消息不保留分段、sanitizer 仍会压扁合法多行总结、Highlights 热帖作者链接回退。
-- repo 当前存在 project governance stale warning：`T-083` / `T-085` 指向缺失的 `event-contract-routing-baseline`。
+- 项目中曾存在 project governance stale warning：两个幽灵编号错误地指向缺失路径；真实相关任务是已归档的 `T-053 event-contract-routing-baseline`。
 - LLM registry validator 当前报 `qwen-social-public-observation-base uses visible line qwen-social-v1 but visibility is hidden`。
 - UI gate 基线报告显示 `3086` errors / `82` warnings，主要集中在 Web frontend 的 shared primitives、Layout、ChatRoomPage、PostDetailPage、FeedPage、HighlightsPage 及多个现有 feature 页。
 
