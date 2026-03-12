@@ -29,6 +29,18 @@ export interface PromptLayers {
   layer6_privacy?: string
 }
 
+export interface PromptAuditServerCapSource {
+  source_type: 'baseline' | 'agent_override' | 'community_override' | 'hot_topic_runtime'
+  scope_type: 'agent' | 'community' | 'runtime'
+  scope_id: string | null
+  cap_level: number
+  source: 'agent_privacy_settings' | 'manual' | 'owner_endorsement_public' | 'owner_private_leak' | 'hot_topic_drift'
+  override_id?: string | null
+  reason?: string | null
+  linked_case_id?: string | null
+  linked_risk_event_id?: string | null
+}
+
 export interface PromptComposeAudit {
   version: 'v1'
   scene: PromptScene
@@ -48,6 +60,7 @@ export interface PromptComposeAudit {
       effective_disclosure_level: number
       cap_source: 'owner_setting' | 'server_cap'
       public_disclosure_cap: number | null
+      server_cap_sources?: PromptAuditServerCapSource[]
       rewrite_cause?: string | null
     }
   }

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-12T12:44:01.549Z",
+  "updatedAt": "2026-03-12T21:44:10.368Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -231,6 +231,13 @@
       ]
     },
     {
+      "name": "DisclosureCapScopeType",
+      "values": [
+        "AGENT",
+        "COMMUNITY"
+      ]
+    },
+    {
       "name": "EventActorType",
       "values": [
         "AGENT",
@@ -420,6 +427,21 @@
         "ACTIVE",
         "ENDED",
         "ARCHIVED"
+      ]
+    },
+    {
+      "name": "PublicDisclosureCapOverrideSource",
+      "values": [
+        "MANUAL",
+        "OWNER_ENDORSEMENT_PUBLIC",
+        "OWNER_PRIVATE_LEAK"
+      ]
+    },
+    {
+      "name": "PublicDisclosureCapOverrideStatus",
+      "values": [
+        "ACTIVE",
+        "RELEASED"
       ]
     },
     {
@@ -13563,6 +13585,208 @@
           "type": "index",
           "fields": [
             "agentId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "PublicDisclosureCapOverride",
+      "dbName": "public_disclosure_cap_overrides",
+      "schema": null,
+      "columns": [
+        {
+          "name": "capLevel",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "cap_level",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdByUserId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "linkedCaseId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "linked_case_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "linkedRiskEventId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "linked_risk_event_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reason",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "releasedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "released_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "releasedByUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "released_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "releasedReason",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "released_reason",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "scopeId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scope_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "scopeType",
+          "type": "DisclosureCapScopeType",
+          "nullable": false,
+          "list": false,
+          "dbName": "scope_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "source",
+          "type": "PublicDisclosureCapOverrideSource",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "PublicDisclosureCapOverrideStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "ACTIVE",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "linkedCaseId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "linkedRiskEventId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "scopeType",
+            "scopeId",
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "status",
             "createdAt"
           ],
           "name": null,

@@ -19,6 +19,7 @@ import type { ChatService } from '../services/chat-service.js'
 import type { InclinationAssetService } from '../services/inclination-asset-service.js'
 import type { CommunityCultureDigestService } from '../services/community-culture-digest-service.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
+import type { PublicDisclosureCapService } from '../services/public-disclosure-cap-service.js'
 import type { XpService } from '../services/xp-service.js'
 import type { NurtureOrchestrator } from '../services/nurture-orchestrator.js'
 import type { AgentRunRepository } from '../repos/event-repository.js'
@@ -37,6 +38,7 @@ export function createRuntime(deps: {
   inclinationAssetService: InclinationAssetService
   communityCultureDigestService: CommunityCultureDigestService | null
   personaStateService: PersonaStateService
+  publicDisclosureCapService: PublicDisclosureCapService
   promptLayerService: PromptLayerService | null
   promptOrchestrator: PromptOrchestrator | null
   traitEngine: import('../services/trait-engine.js').TraitEngine | null
@@ -65,6 +67,7 @@ export function createRuntime(deps: {
     traitEngine: deps.traitEngine,
     instructionEngine: deps.instructionEngine,
     memoryService: deps.memoryService,
+    publicDisclosureCapService: deps.publicDisclosureCapService,
     promptLayerService: deps.promptLayerService,
     promptOrchestrator: deps.promptOrchestrator,
     communityPromptProfileCompiler,

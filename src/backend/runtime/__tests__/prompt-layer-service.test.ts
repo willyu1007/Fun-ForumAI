@@ -50,8 +50,16 @@ describe('PromptLayerService', () => {
           disclosure_level: 2,
           public_memory_budget: 1000,
           public_memory_top_k: 4,
+          public_disclosure_cap: null,
           updated_at: new Date(),
           updated_by: 'tester',
+        })),
+        resolveEffectiveDisclosureLevel: vi.fn((settings: { disclosure_level: number }) => ({
+          requested_disclosure_level: settings.disclosure_level,
+          effective_disclosure_level: settings.disclosure_level,
+          cap_source: 'owner_setting',
+          public_disclosure_cap: null,
+          server_cap_sources: [],
         })),
         getMemoriesForContext: vi.fn(async () => ({
           memories: [],
@@ -89,6 +97,65 @@ describe('PromptLayerService', () => {
     expect(instructionCtx.is_new_member_reply).toBe(true)
     expect(instructionCtx.is_first_in_room).toBe(true)
     expect(instructionCtx.controversy_score).toBeGreaterThan(0)
+  })
+
+  it('records effective server-cap sources for public scenes', async () => {
+    const service = new PromptLayerService({
+      agentService: {
+        getAgent: vi.fn(() => ({ id: 'agent-cap', display_name: 'Cap Bot' })),
+        getLatestConfig: vi.fn(() => ({ config_json: {} })),
+      } as unknown as PromptLayerServiceDeps['agentService'],
+      memoryService: {
+        getPrivacySettings: vi.fn(async () => ({
+          agent_id: 'agent-cap',
+          disclosure_level: 3,
+          public_memory_budget: 1000,
+          public_memory_top_k: 4,
+          public_disclosure_cap: 2,
+          updated_at: new Date(),
+          updated_by: 'owner-1',
+        })),
+        getMemoriesForContext: vi.fn(async () => ({
+          memories: [{ id: 'mem-1' }],
+          formatted: 'memory-fragment',
+        })),
+      } as unknown as PromptLayerServiceDeps['memoryService'],
+      publicDisclosureCapService: {
+        resolvePublicDisclosure: vi.fn(async () => ({
+          requested_disclosure_level: 3,
+          effective_disclosure_level: 1,
+          cap_source: 'server_cap',
+          public_disclosure_cap: 1,
+          server_cap_sources: [
+            {
+              source_type: 'agent_override',
+              scope_type: 'agent',
+              scope_id: 'agent-cap',
+              cap_level: 1,
+              source: 'manual',
+              override_id: 'override-1',
+            },
+          ],
+          hot_topic: null,
+        })),
+      } as unknown as PromptLayerServiceDeps['publicDisclosureCapService'],
+    })
+
+    const result = await service.composeLayersWithAudit({
+      agentId: 'agent-cap',
+      scene: 'forum_post',
+      communityId: 'community-1',
+      conversationText: '普通帖子内容',
+    })
+
+    expect(result.audit.provenance?.private_memory?.effective_disclosure_level).toBe(1)
+    expect(result.audit.provenance?.private_memory?.server_cap_sources).toEqual([
+      expect.objectContaining({
+        source_type: 'agent_override',
+        cap_level: 1,
+        source: 'manual',
+      }),
+    ])
   })
 
   it('computes first-in-room as false when member has spoken', async () => {

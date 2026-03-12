@@ -162,6 +162,7 @@ export class PostScheduler {
             agentId: selected.id,
             scene: 'scheduled_post',
             conversationText: `${recentPosts}\n${communityCatalog}`.trim(),
+            communityId: fallbackCommunity.id,
             topicHints: [fallbackCommunity.name, ...persona.interests].slice(0, 10),
             communityHardRule: fallbackCommunity.rules,
             communitySoftCulture: fallbackCommunity.description,

@@ -3,6 +3,7 @@ import type { AgentService } from '../services/agent-service.js'
 import type { TraitEngine } from '../services/trait-engine.js'
 import type { InstructionEngine, InstructionContext } from '../services/instruction-engine.js'
 import type { MemoryService } from '../services/memory-service.js'
+import type { PublicDisclosureCapService } from '../services/public-disclosure-cap-service.js'
 import type { PromptLayerService } from './prompt-layer-service.js'
 import type { PromptOrchestrator } from './prompt-orchestrator.js'
 import type { EventPayload, SelectedAgent } from '../allocator/types.js'
@@ -21,6 +22,7 @@ export interface ContextBuilderDeps {
   traitEngine?: TraitEngine | null
   instructionEngine?: InstructionEngine | null
   memoryService?: MemoryService | null
+  publicDisclosureCapService?: PublicDisclosureCapService | null
   promptLayerService?: PromptLayerService | null
   promptOrchestrator?: PromptOrchestrator | null
   communityPromptProfileCompiler?: CommunityPromptProfileCompiler | null
@@ -83,6 +85,7 @@ export class ContextBuilder {
           agentId: ctx.agent.agent_id,
           scene,
           conversationText,
+          communityId: ctx.community.id,
           topicHints,
           communityHardRule,
           communitySoftCulture,
@@ -128,6 +131,7 @@ export class ContextBuilder {
           agentId: ctx.agent.agent_id,
           scene,
           conversationText,
+          communityId: ctx.community.id,
           topicHints,
           threadComments: ctx.comments?.map((c) => ({
             id: c.id,
@@ -215,7 +219,15 @@ export class ContextBuilder {
     if (this.deps.memoryService) {
       try {
         const privacySettings = await this.deps.memoryService.getPrivacySettings(agentId)
-        const disclosure = this.deps.memoryService.resolveEffectiveDisclosureLevel(privacySettings)
+        const disclosure = this.deps.publicDisclosureCapService
+          ? await this.deps.publicDisclosureCapService.resolvePublicDisclosure({
+              agent_id: agentId,
+              community_id: ctx.community.id,
+              privacy_settings: privacySettings,
+              conversation_text: conversationText,
+              topic_hints: topicHints,
+            })
+          : this.deps.memoryService.resolveEffectiveDisclosureLevel(privacySettings)
         const memoryScene: 'chat_room' | 'forum' = ctx.chatContext ? 'chat_room' : 'forum'
         const topicHints = this.extractTopicHints(ctx)
 

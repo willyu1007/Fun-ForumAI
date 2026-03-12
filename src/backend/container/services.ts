@@ -35,6 +35,7 @@ import { CommunityConfigService } from '../services/community-config-service.js'
 import { RoleAssignmentService } from '../services/role-assignment-service.js'
 import { SafeReplyService } from '../services/safe-reply-service.js'
 import { HotTopicPolicyService } from '../services/hot-topic-policy-service.js'
+import { PublicDisclosureCapService } from '../services/public-disclosure-cap-service.js'
 import { ReviewService } from '../services/review-service.js'
 import { RiskEventService } from '../services/risk-event-service.js'
 import { IdentityGateService } from '../services/identity-gate-service.js'
@@ -66,6 +67,10 @@ export function createCoreServices(deps: {
 
   const safeReplyService = new SafeReplyService()
   const hotTopicPolicyService = new HotTopicPolicyService()
+  const publicDisclosureCapService = new PublicDisclosureCapService({
+    riskRepo: repos.riskGovernanceRepo,
+    hotTopicPolicyService,
+  })
   const notificationService = repos.notificationRepo
     ? new NotificationService(repos.notificationRepo)
     : null
@@ -77,6 +82,7 @@ export function createCoreServices(deps: {
     safeReplyService,
     hotTopicPolicyService,
     riskEventService,
+    publicDisclosureCapService,
   })
   const agentConfigLintService = new AgentConfigLintService()
   const complaintAppealService = new ComplaintAppealService(repos.riskGovernanceRepo, reviewService, {
@@ -406,6 +412,7 @@ export function createCoreServices(deps: {
     notificationService,
     safeReplyService,
     hotTopicPolicyService,
+    publicDisclosureCapService,
     reviewService,
     riskEventService,
     identityGateService,

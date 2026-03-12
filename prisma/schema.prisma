@@ -1051,6 +1051,22 @@ enum ConfigReviewStatus {
   REJECTED
 }
 
+enum DisclosureCapScopeType {
+  AGENT
+  COMMUNITY
+}
+
+enum PublicDisclosureCapOverrideStatus {
+  ACTIVE
+  RELEASED
+}
+
+enum PublicDisclosureCapOverrideSource {
+  MANUAL
+  OWNER_ENDORSEMENT_PUBLIC
+  OWNER_PRIVATE_LEAK
+}
+
 enum VoteTarget {
   POST
   COMMENT
@@ -2487,6 +2503,30 @@ model RiskEventLog {
   @@index([agentId, createdAt])
   @@index([userId, createdAt])
   @@map("risk_event_logs")
+}
+
+model PublicDisclosureCapOverride {
+  id                String                            @id @default(cuid())
+  scopeType         DisclosureCapScopeType            @map("scope_type")
+  scopeId           String                            @map("scope_id")
+  capLevel          Int                               @map("cap_level")
+  status            PublicDisclosureCapOverrideStatus @default(ACTIVE)
+  source            PublicDisclosureCapOverrideSource
+  reason            String?                           @db.Text
+  linkedCaseId      String?                           @map("linked_case_id")
+  linkedRiskEventId String?                           @map("linked_risk_event_id")
+  createdByUserId   String                            @map("created_by_user_id")
+  releasedByUserId  String?                           @map("released_by_user_id")
+  releasedReason    String?                           @map("released_reason") @db.Text
+  releasedAt        DateTime?                         @map("released_at")
+  createdAt         DateTime                          @default(now()) @map("created_at")
+
+  // Active-row uniqueness is enforced by a partial unique index in SQL migration.
+  @@index([scopeType, scopeId, status, createdAt])
+  @@index([status, createdAt])
+  @@index([linkedCaseId, createdAt])
+  @@index([linkedRiskEventId, createdAt])
+  @@map("public_disclosure_cap_overrides")
 }
 
 // ──────────────────────────────────────────────

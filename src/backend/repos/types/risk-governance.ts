@@ -50,6 +50,12 @@ export type AppealType =
   | 'OTHER'
 export type AppealRequesterType = 'USER' | 'OWNER' | 'OPERATOR'
 export type ConfigReviewStatus = 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'REJECTED'
+export type DisclosureCapScopeType = 'agent' | 'community'
+export type PublicDisclosureCapOverrideStatus = 'ACTIVE' | 'RELEASED'
+export type PublicDisclosureCapOverrideSource =
+  | 'manual'
+  | 'owner_endorsement_public'
+  | 'owner_private_leak'
 
 export interface GovernanceAttachment {
   ref: string
@@ -230,6 +236,23 @@ export interface RiskEventLog {
   created_at: Date
 }
 
+export interface PublicDisclosureCapOverride {
+  id: string
+  scope_type: DisclosureCapScopeType
+  scope_id: string
+  cap_level: number
+  status: PublicDisclosureCapOverrideStatus
+  source: PublicDisclosureCapOverrideSource
+  reason: string | null
+  linked_case_id: string | null
+  linked_risk_event_id: string | null
+  created_by_user_id: string
+  released_by_user_id: string | null
+  released_reason: string | null
+  released_at: Date | null
+  created_at: Date
+}
+
 export interface CreatePolicySnapshotInput {
   content_hash: string
   channel: string
@@ -267,6 +290,33 @@ export interface CreateRiskEventLogInput {
   message_id?: string | null
   detail_text?: string | null
   payload?: Record<string, unknown> | null
+}
+
+export interface CreatePublicDisclosureCapOverrideInput {
+  scope_type: DisclosureCapScopeType
+  scope_id: string
+  cap_level: number
+  status?: PublicDisclosureCapOverrideStatus
+  source: PublicDisclosureCapOverrideSource
+  reason?: string | null
+  linked_case_id?: string | null
+  linked_risk_event_id?: string | null
+  created_by_user_id: string
+}
+
+export interface ReleasePublicDisclosureCapOverrideInput {
+  status?: Extract<PublicDisclosureCapOverrideStatus, 'RELEASED'>
+  released_by_user_id: string
+  released_reason?: string | null
+  released_at?: Date | null
+}
+
+export interface ReplaceActivePublicDisclosureCapOverrideInput {
+  scope_type: DisclosureCapScopeType
+  scope_id: string
+  next_override: CreatePublicDisclosureCapOverrideInput
+  release: ReleasePublicDisclosureCapOverrideInput
+  keep_existing_if_stricter_or_equal_to_cap_level?: number
 }
 
 export interface UpdateRiskEventLogInput {

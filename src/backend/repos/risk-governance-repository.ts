@@ -8,6 +8,7 @@ import type {
   CreateModerationCaseTargetInput,
   CreateModerationEvidenceSnapshotInput,
   CreatePolicySnapshotInput,
+  CreatePublicDisclosureCapOverrideInput,
   CreateReviewTaskInput,
   CreateRiskEventLogInput,
   GovernanceActionLog,
@@ -18,6 +19,10 @@ import type {
   PaginatedResult,
   PaginationOpts,
   PolicySnapshot,
+  PublicDisclosureCapOverride,
+  PublicDisclosureCapOverrideStatus,
+  ReplaceActivePublicDisclosureCapOverrideInput,
+  ReleasePublicDisclosureCapOverrideInput,
   ReviewTask,
   UpdateAppealRequestInput,
   UpdateComplaintTicketInput,
@@ -47,6 +52,28 @@ export interface RiskGovernanceRepository {
   listRiskEvents(
     opts: PaginationOpts & { target_type?: string; target_id?: string; channel?: string; agent_id?: string; user_id?: string },
   ): Promise<PaginatedResult<RiskEventLog>>
+
+  createPublicDisclosureCapOverride(
+    input: CreatePublicDisclosureCapOverrideInput,
+  ): Promise<PublicDisclosureCapOverride>
+  releasePublicDisclosureCapOverride(
+    id: string,
+    input: ReleasePublicDisclosureCapOverrideInput,
+  ): Promise<PublicDisclosureCapOverride | null>
+  findActivePublicDisclosureCapOverride(
+    scopeType: 'agent' | 'community',
+    scopeId: string,
+  ): Promise<PublicDisclosureCapOverride | null>
+  listPublicDisclosureCapOverrides(
+    opts: PaginationOpts & {
+      scope_type?: 'agent' | 'community'
+      scope_id?: string
+      status?: PublicDisclosureCapOverrideStatus
+    },
+  ): Promise<PaginatedResult<PublicDisclosureCapOverride>>
+  replaceActivePublicDisclosureCapOverride(
+    input: ReplaceActivePublicDisclosureCapOverrideInput,
+  ): Promise<PublicDisclosureCapOverride>
 
   createCase(input: CreateModerationCaseInput): Promise<ModerationCase>
   updateCase(id: string, input: UpdateModerationCaseInput): Promise<ModerationCase | null>
@@ -131,6 +158,7 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
   private identityByUser = new Map<string, string[]>()
   private policySnapshots = new Map<string, PolicySnapshot>()
   private riskEvents = new Map<string, RiskEventLog>()
+  private publicDisclosureCapOverrides = new Map<string, PublicDisclosureCapOverride>()
   private cases = new Map<string, ModerationCase>()
   private caseTargets = new Map<string, ModerationCaseTarget[]>()
   private evidenceSnapshots = new Map<string, ModerationEvidenceSnapshot[]>()
@@ -289,6 +317,134 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
       .filter((item) => (opts.user_id ? item.user_id === opts.user_id : true))
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
     return paginate(items, opts)
+  }
+
+  async createPublicDisclosureCapOverride(
+    input: CreatePublicDisclosureCapOverrideInput,
+  ): Promise<PublicDisclosureCapOverride> {
+    const entity: PublicDisclosureCapOverride = {
+      id: cuid('dcap'),
+      scope_type: input.scope_type,
+      scope_id: input.scope_id,
+      cap_level: input.cap_level,
+      status: input.status ?? 'ACTIVE',
+      source: input.source,
+      reason: input.reason ?? null,
+      linked_case_id: input.linked_case_id ?? null,
+      linked_risk_event_id: input.linked_risk_event_id ?? null,
+      created_by_user_id: input.created_by_user_id,
+      released_by_user_id: null,
+      released_reason: null,
+      released_at: null,
+      created_at: new Date(),
+    }
+    this.publicDisclosureCapOverrides.set(entity.id, entity)
+    return entity
+  }
+
+  async releasePublicDisclosureCapOverride(
+    id: string,
+    input: ReleasePublicDisclosureCapOverrideInput,
+  ): Promise<PublicDisclosureCapOverride | null> {
+    const existing = this.publicDisclosureCapOverrides.get(id)
+    if (!existing) return null
+    const next: PublicDisclosureCapOverride = {
+      ...existing,
+      status: input.status ?? 'RELEASED',
+      released_by_user_id: input.released_by_user_id,
+      released_reason: input.released_reason ?? null,
+      released_at: input.released_at ?? new Date(),
+    }
+    this.publicDisclosureCapOverrides.set(id, next)
+    return next
+  }
+
+  async findActivePublicDisclosureCapOverride(
+    scopeType: 'agent' | 'community',
+    scopeId: string,
+  ): Promise<PublicDisclosureCapOverride | null> {
+    const items = Array.from(this.publicDisclosureCapOverrides.values())
+      .filter((item) =>
+        item.scope_type === scopeType
+        && item.scope_id === scopeId
+        && item.status === 'ACTIVE')
+      .sort((a, b) =>
+        a.cap_level - b.cap_level
+        || b.created_at.getTime() - a.created_at.getTime()
+        || b.id.localeCompare(a.id))
+    return items[0] ?? null
+  }
+
+  async listPublicDisclosureCapOverrides(
+    opts: PaginationOpts & {
+      scope_type?: 'agent' | 'community'
+      scope_id?: string
+      status?: PublicDisclosureCapOverrideStatus
+    },
+  ): Promise<PaginatedResult<PublicDisclosureCapOverride>> {
+    const items = Array.from(this.publicDisclosureCapOverrides.values())
+      .filter((item) =>
+        (opts.scope_type ? item.scope_type === opts.scope_type : true)
+        && (opts.scope_id ? item.scope_id === opts.scope_id : true)
+        && (opts.status ? item.status === opts.status : true))
+      .sort((a, b) =>
+        b.created_at.getTime() - a.created_at.getTime()
+        || b.id.localeCompare(a.id))
+    return paginate(items, opts)
+  }
+
+  async replaceActivePublicDisclosureCapOverride(
+    input: ReplaceActivePublicDisclosureCapOverrideInput,
+  ): Promise<PublicDisclosureCapOverride> {
+    const active = Array.from(this.publicDisclosureCapOverrides.values())
+      .filter((item) =>
+        item.scope_type === input.scope_type
+        && item.scope_id === input.scope_id
+        && item.status === 'ACTIVE')
+      .sort((a, b) =>
+        a.cap_level - b.cap_level
+        || b.created_at.getTime() - a.created_at.getTime()
+        || b.id.localeCompare(a.id))
+    const retained = input.keep_existing_if_stricter_or_equal_to_cap_level !== undefined
+      && active[0]
+      && active[0].cap_level <= input.keep_existing_if_stricter_or_equal_to_cap_level
+      ? active[0]
+      : null
+    const releasedAt = input.release.released_at ?? new Date()
+
+    for (const item of active) {
+      if (retained && item.id === retained.id) continue
+      this.publicDisclosureCapOverrides.set(item.id, {
+        ...item,
+        status: input.release.status ?? 'RELEASED',
+        released_by_user_id: input.release.released_by_user_id,
+        released_reason: input.release.released_reason ?? null,
+        released_at: releasedAt,
+      })
+    }
+
+    if (retained) {
+      return retained
+    }
+
+    const entity: PublicDisclosureCapOverride = {
+      id: cuid('dcap'),
+      scope_type: input.next_override.scope_type,
+      scope_id: input.next_override.scope_id,
+      cap_level: input.next_override.cap_level,
+      status: input.next_override.status ?? 'ACTIVE',
+      source: input.next_override.source,
+      reason: input.next_override.reason ?? null,
+      linked_case_id: input.next_override.linked_case_id ?? null,
+      linked_risk_event_id: input.next_override.linked_risk_event_id ?? null,
+      created_by_user_id: input.next_override.created_by_user_id,
+      released_by_user_id: null,
+      released_reason: null,
+      released_at: null,
+      created_at: new Date(),
+    }
+    this.publicDisclosureCapOverrides.set(entity.id, entity)
+    return entity
   }
 
   async createCase(input: CreateModerationCaseInput): Promise<ModerationCase> {

@@ -622,6 +622,12 @@ function summarizePromptAudit(audit: PromptComposeAudit): PersonaObservationProm
                   private_memory: {
                     ...audit.provenance.private_memory,
                     used_memory_ids: [...audit.provenance.private_memory.used_memory_ids],
+                    ...(audit.provenance.private_memory.server_cap_sources
+                      ? {
+                          server_cap_sources: audit.provenance.private_memory.server_cap_sources
+                            .map((item) => ({ ...item })),
+                        }
+                      : {}),
                   },
                 }
               : {}),
@@ -689,6 +695,50 @@ function normalizePromptAuditSummary(raw: Record<string, unknown>): PersonaObser
                       typeof privateMemoryRaw.public_disclosure_cap === 'number' || privateMemoryRaw.public_disclosure_cap === null
                         ? privateMemoryRaw.public_disclosure_cap
                         : null,
+                    server_cap_sources: Array.isArray(privateMemoryRaw.server_cap_sources)
+                      ? privateMemoryRaw.server_cap_sources.flatMap((item) => {
+                          if (!isRecord(item)) return []
+                          if (
+                            typeof item.source_type !== 'string'
+                            || typeof item.scope_type !== 'string'
+                            || typeof item.cap_level !== 'number'
+                            || typeof item.source !== 'string'
+                          ) {
+                            return []
+                          }
+                          return [{
+                            source_type: item.source_type as 'baseline' | 'agent_override' | 'community_override' | 'hot_topic_runtime',
+                            scope_type: item.scope_type as 'agent' | 'community' | 'runtime',
+                            scope_id:
+                              typeof item.scope_id === 'string' || item.scope_id === null
+                                ? item.scope_id
+                                : null,
+                            cap_level: item.cap_level,
+                            source: item.source as
+                              | 'agent_privacy_settings'
+                              | 'manual'
+                              | 'owner_endorsement_public'
+                              | 'owner_private_leak'
+                              | 'hot_topic_drift',
+                            override_id:
+                              typeof item.override_id === 'string' || item.override_id === null
+                                ? item.override_id
+                                : undefined,
+                            reason:
+                              typeof item.reason === 'string' || item.reason === null
+                                ? item.reason
+                                : undefined,
+                            linked_case_id:
+                              typeof item.linked_case_id === 'string' || item.linked_case_id === null
+                                ? item.linked_case_id
+                                : undefined,
+                            linked_risk_event_id:
+                              typeof item.linked_risk_event_id === 'string' || item.linked_risk_event_id === null
+                                ? item.linked_risk_event_id
+                                : undefined,
+                          }]
+                        })
+                      : [],
                     rewrite_cause:
                       typeof privateMemoryRaw.rewrite_cause === 'string' || privateMemoryRaw.rewrite_cause === null
                         ? privateMemoryRaw.rewrite_cause

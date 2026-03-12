@@ -7,6 +7,7 @@ import {
   ModerationCaseTarget as PrismaModerationCaseTarget,
   ModerationEvidenceSnapshot as PrismaModerationEvidenceSnapshot,
   PolicySnapshot as PrismaPolicySnapshot,
+  PublicDisclosureCapOverride as PrismaPublicDisclosureCapOverride,
   PrismaClient,
   ReviewTask as PrismaReviewTask,
   RiskEventLog as PrismaRiskEventLog,
@@ -22,6 +23,7 @@ import type {
   CreateModerationCaseTargetInput,
   CreateModerationEvidenceSnapshotInput,
   CreatePolicySnapshotInput,
+  CreatePublicDisclosureCapOverrideInput,
   CreateReviewTaskInput,
   CreateRiskEventLogInput,
   GovernanceActionLog,
@@ -32,6 +34,10 @@ import type {
   PaginatedResult,
   PaginationOpts,
   PolicySnapshot,
+  PublicDisclosureCapOverride,
+  PublicDisclosureCapOverrideStatus,
+  ReplaceActivePublicDisclosureCapOverrideInput,
+  ReleasePublicDisclosureCapOverrideInput,
   ReviewTask,
   RiskEventLog,
   UpdateAppealRequestInput,
@@ -265,6 +271,118 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     })
     return paginate(rows.map((row) => this.toRiskEvent(row)), opts)
+  }
+
+  async createPublicDisclosureCapOverride(
+    input: CreatePublicDisclosureCapOverrideInput,
+  ): Promise<PublicDisclosureCapOverride> {
+    const row = await this.prisma.publicDisclosureCapOverride.create({
+      data: this.toPublicDisclosureCapOverrideCreateData(input),
+    })
+    return this.toPublicDisclosureCapOverride(row)
+  }
+
+  async releasePublicDisclosureCapOverride(
+    id: string,
+    input: ReleasePublicDisclosureCapOverrideInput,
+  ): Promise<PublicDisclosureCapOverride | null> {
+    try {
+      const row = await this.prisma.publicDisclosureCapOverride.update({
+        where: { id },
+        data: {
+          status: input.status ?? 'RELEASED',
+          releasedByUserId: input.released_by_user_id,
+          releasedReason: input.released_reason ?? null,
+          releasedAt: input.released_at ?? new Date(),
+        },
+      })
+      return this.toPublicDisclosureCapOverride(row)
+    } catch {
+      return null
+    }
+  }
+
+  async findActivePublicDisclosureCapOverride(
+    scopeType: 'agent' | 'community',
+    scopeId: string,
+  ): Promise<PublicDisclosureCapOverride | null> {
+    const row = await this.prisma.publicDisclosureCapOverride.findFirst({
+      where: {
+        scopeType: scopeType === 'agent' ? 'AGENT' : 'COMMUNITY',
+        scopeId,
+        status: 'ACTIVE',
+      },
+      orderBy: [{ capLevel: 'asc' }, { createdAt: 'desc' }, { id: 'desc' }],
+    })
+    return row ? this.toPublicDisclosureCapOverride(row) : null
+  }
+
+  async listPublicDisclosureCapOverrides(
+    opts: PaginationOpts & {
+      scope_type?: 'agent' | 'community'
+      scope_id?: string
+      status?: PublicDisclosureCapOverrideStatus
+    },
+  ): Promise<PaginatedResult<PublicDisclosureCapOverride>> {
+    const rows = await this.prisma.publicDisclosureCapOverride.findMany({
+      where: {
+        ...(opts.scope_type
+          ? { scopeType: opts.scope_type === 'agent' ? 'AGENT' : 'COMMUNITY' }
+          : {}),
+        ...(opts.scope_id ? { scopeId: opts.scope_id } : {}),
+        ...(opts.status ? { status: opts.status } : {}),
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })
+    return paginate(rows.map((row) => this.toPublicDisclosureCapOverride(row)), opts)
+  }
+
+  async replaceActivePublicDisclosureCapOverride(
+    input: ReplaceActivePublicDisclosureCapOverrideInput,
+  ): Promise<PublicDisclosureCapOverride> {
+    const row = await this.prisma.$transaction(async (tx) => {
+      const activeRows = await tx.publicDisclosureCapOverride.findMany({
+        where: {
+          scopeType: input.scope_type === 'agent' ? 'AGENT' : 'COMMUNITY',
+          scopeId: input.scope_id,
+          status: 'ACTIVE',
+        },
+        orderBy: [{ capLevel: 'asc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      })
+      const retained = input.keep_existing_if_stricter_or_equal_to_cap_level !== undefined
+        && activeRows[0]
+        && activeRows[0].capLevel <= input.keep_existing_if_stricter_or_equal_to_cap_level
+        ? activeRows[0]
+        : null
+      const rowsToRelease = retained
+        ? activeRows.filter((row) => row.id !== retained.id)
+        : activeRows
+
+      if (rowsToRelease.length > 0) {
+        await tx.publicDisclosureCapOverride.updateMany({
+          where: {
+            id: { in: rowsToRelease.map((row) => row.id) },
+            status: 'ACTIVE',
+          },
+          data: {
+            status: input.release.status ?? 'RELEASED',
+            releasedByUserId: input.release.released_by_user_id,
+            releasedReason: input.release.released_reason ?? null,
+            releasedAt: input.release.released_at ?? new Date(),
+          },
+        })
+      }
+
+      if (retained) {
+        return retained
+      }
+
+      return tx.publicDisclosureCapOverride.create({
+        data: this.toPublicDisclosureCapOverrideCreateData(input.next_override),
+      })
+    })
+
+    return this.toPublicDisclosureCapOverride(row)
   }
 
   async createCase(input: CreateModerationCaseInput): Promise<ModerationCase> {
@@ -773,6 +891,43 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
     }
   }
 
+  private toPublicDisclosureCapOverride(
+    row: PrismaPublicDisclosureCapOverride,
+  ): PublicDisclosureCapOverride {
+    return {
+      id: row.id,
+      scope_type: row.scopeType === 'AGENT' ? 'agent' : 'community',
+      scope_id: row.scopeId,
+      cap_level: row.capLevel,
+      status: row.status,
+      source: this.fromDisclosureCapSource(row.source),
+      reason: row.reason,
+      linked_case_id: row.linkedCaseId,
+      linked_risk_event_id: row.linkedRiskEventId,
+      created_by_user_id: row.createdByUserId,
+      released_by_user_id: row.releasedByUserId,
+      released_reason: row.releasedReason,
+      released_at: row.releasedAt,
+      created_at: row.createdAt,
+    }
+  }
+
+  private toPublicDisclosureCapOverrideCreateData(
+    input: CreatePublicDisclosureCapOverrideInput,
+  ): Prisma.PublicDisclosureCapOverrideUncheckedCreateInput {
+    return {
+      scopeType: input.scope_type === 'agent' ? 'AGENT' : 'COMMUNITY',
+      scopeId: input.scope_id,
+      capLevel: input.cap_level,
+      status: input.status ?? 'ACTIVE',
+      source: this.toDisclosureCapSource(input.source),
+      reason: input.reason ?? null,
+      linkedCaseId: input.linked_case_id ?? null,
+      linkedRiskEventId: input.linked_risk_event_id ?? null,
+      createdByUserId: input.created_by_user_id,
+    }
+  }
+
   private toComplaintTicket(row: PrismaComplaintTicket): ComplaintTicket {
     return {
       id: row.id,
@@ -831,6 +986,32 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
       detail_text: row.detailText,
       payload: toRecordOrNull(row.payloadJson),
       created_at: row.createdAt,
+    }
+  }
+
+  private toDisclosureCapSource(
+    source: PublicDisclosureCapOverride['source'],
+  ): PrismaPublicDisclosureCapOverride['source'] {
+    switch (source) {
+      case 'manual':
+        return 'MANUAL'
+      case 'owner_endorsement_public':
+        return 'OWNER_ENDORSEMENT_PUBLIC'
+      case 'owner_private_leak':
+        return 'OWNER_PRIVATE_LEAK'
+    }
+  }
+
+  private fromDisclosureCapSource(
+    source: PrismaPublicDisclosureCapOverride['source'],
+  ): PublicDisclosureCapOverride['source'] {
+    switch (source) {
+      case 'MANUAL':
+        return 'manual'
+      case 'OWNER_ENDORSEMENT_PUBLIC':
+        return 'owner_endorsement_public'
+      case 'OWNER_PRIVATE_LEAK':
+        return 'owner_private_leak'
     }
   }
 }
