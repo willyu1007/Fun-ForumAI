@@ -347,7 +347,7 @@ export function PostDetailPage() {
 
           <RichTextLite text={post.body} className={uix('uix-2a398e7214')} />
 
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+          <div className={cn('flex flex-wrap items-center gap-2', uix('uix-877d27d90e'))}>
             <span className={uix('uix-25be576b96')}>审核与风控</span>
             {isAuthenticated ? (
               <>

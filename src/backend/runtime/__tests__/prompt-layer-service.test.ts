@@ -53,6 +53,12 @@ describe('PromptLayerService', () => {
           updated_at: new Date(),
           updated_by: 'tester',
         })),
+        resolveEffectiveDisclosureLevel: vi.fn(() => ({
+          requested_disclosure_level: 2,
+          effective_disclosure_level: 2,
+          cap_source: 'owner_setting',
+          public_disclosure_cap: null,
+        })),
         getMemoriesForContext: vi.fn(async () => ({
           memories: [],
           formatted: 'memory-fragment',
@@ -75,10 +81,11 @@ describe('PromptLayerService', () => {
     })
 
     expect(layers.layer1_traits).toBe('growth-fragment')
-    expect(layers.layer2_style).toContain('使用正式书面语')
-    expect(layers.layer2_style).toContain('简洁扼要')
+    expect(layers.layer2_style).toContain('保留书面质感，但像现场接话一样短句')
+    expect(layers.layer2_style).toContain('先给判断，再补半步理由')
     expect(layers.layer2_style).toContain('以批判性的思维')
     expect(layers.layer2_style).toContain('善于提问')
+    expect(layers.layer2_style).toContain('默认不用“您/您的”敬语')
     expect(layers.layer3_instructions).toContain('保持礼貌')
     expect(layers.layer4_overrides).toBe('prefix\nscene override\nsuffix')
     expect(layers.layer5_memory).toContain('memory-fragment')
@@ -89,6 +96,40 @@ describe('PromptLayerService', () => {
     expect(instructionCtx.is_new_member_reply).toBe(true)
     expect(instructionCtx.is_first_in_room).toBe(true)
     expect(instructionCtx.controversy_score).toBeGreaterThan(0)
+  })
+
+  it('returns a chat-room persona style that preserves persona but obeys live readability constraints', async () => {
+    const service = new PromptLayerService({
+      agentService: {
+        getAgent: vi.fn(() => ({ id: 'agent-chat-style', display_name: 'Chat Style Bot' })),
+        getLatestConfig: vi.fn(() => ({
+          config_json: {
+            persona: {
+              name: 'Chat Style Bot',
+              style: '学者型，表达偏正式，论述较展开，善于总结',
+              interests: ['AI', '产品'],
+              language: 'zh-CN',
+            },
+            style: {
+              formality: 4,
+              verbosity: 4,
+              mood: 'neutral',
+              habits: ['summarizes'],
+            },
+          },
+        })),
+      } as unknown as PromptLayerServiceDeps['agentService'],
+    })
+
+    const composed = await service.composeLayersWithAudit({
+      agentId: 'agent-chat-style',
+      scene: 'chat_room',
+      conversationText: '继续往下聊。',
+    })
+
+    expect(composed.persona?.style).toContain('保留正式气质，但句子短，像现场接话')
+    expect(composed.persona?.style).toContain('有层次，但先说结论')
+    expect(composed.persona?.style).toContain('默认不用“您/您的”敬语')
   })
 
   it('computes first-in-room as false when member has spoken', async () => {

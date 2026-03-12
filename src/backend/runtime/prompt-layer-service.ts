@@ -20,6 +20,23 @@ const DEFAULT_PERSONA: AgentPersona = {
   language: 'zh-CN',
 }
 
+const CHATROOM_STYLE_REWRITES: Array<[pattern: RegExp, replacement: string]> = [
+  [/使用正式书面语/gu, '保留书面质感，但像现场接话一样短句'],
+  [/使用轻松口语化的表达/gu, '保持口语感，直接回应当前争点'],
+  [/详细展开论述/gu, '有内容，但只补最关键的一层'],
+  [/简洁扼要/gu, '先给判断，再补半步理由'],
+  [/善于总结要点/gu, '只在收束时用极短要点'],
+]
+
+const CHATROOM_PERSONA_REWRITES: Array<[pattern: RegExp, replacement: string]> = [
+  [/表达偏正式/gu, '保留正式气质，但句子短，像现场接话'],
+  [/论述较展开/gu, '有层次，但先说结论'],
+  [/理性而优雅/gu, '理性而利落'],
+]
+
+const CHATROOM_SCENE_STYLE_SUFFIX =
+  '聊天室里先用短句接住当前一句，先给判断，再补一层；默认不用“您/您的”敬语，也不做客服式客套'
+
 export type PromptLayerScene = PromptScene
 
 export interface LayerComment {
@@ -130,7 +147,9 @@ export class PromptLayerService {
       }
     }
 
-    const styleLayer = this.buildStyleLayer(agentId, runtimeEnvelope)
+    const effectivePersona = this.adaptPersonaForScene(persona ?? this.getPersona(agentId), input.scene)
+
+    const styleLayer = this.buildStyleLayer(agentId, runtimeEnvelope, input.scene)
     if (styleLayer) {
       layers.layer2_style = styleLayer
     }
@@ -206,10 +225,14 @@ export class PromptLayerService {
     if (!opts?.suppressAuditLog) {
       this.emitAuditLog(agentId, audit)
     }
-    return { layers, audit, persona, runtimeEnvelope }
+    return { layers, audit, persona: effectivePersona, runtimeEnvelope }
   }
 
-  private buildStyleLayer(agentId: string, runtimeEnvelope: PersonaRuntimeEnvelope | null): string {
+  private buildStyleLayer(
+    agentId: string,
+    runtimeEnvelope: PersonaRuntimeEnvelope | null,
+    scene: PromptLayerScene,
+  ): string {
     try {
       const parts: string[] = []
       const baseStyle = runtimeEnvelope
@@ -244,9 +267,9 @@ export class PromptLayerService {
         }
       }
 
-      return parts.join('；')
+      return this.adaptStyleLayerForScene(parts.join('；'), scene)
     } catch {
-      return runtimeEnvelope?.projection.visibleStyle ?? ''
+      return this.adaptStyleLayerForScene(runtimeEnvelope?.projection.visibleStyle ?? '', scene)
     }
   }
 
@@ -272,6 +295,28 @@ export class PromptLayerService {
         style: runtimeEnvelope.projection.visibleStyle || DEFAULT_PERSONA.style,
       }
     }
+  }
+
+  private adaptPersonaForScene(persona: AgentPersona, scene: PromptLayerScene): AgentPersona {
+    if (scene !== 'chat_room') return persona
+
+    let style = persona.style.trim()
+    for (const [pattern, replacement] of CHATROOM_PERSONA_REWRITES) {
+      style = style.replace(pattern, replacement)
+    }
+    style = appendSceneSuffix(style, CHATROOM_SCENE_STYLE_SUFFIX)
+    return { ...persona, style }
+  }
+
+  private adaptStyleLayerForScene(styleText: string, scene: PromptLayerScene): string {
+    const trimmed = styleText.trim()
+    if (!trimmed || scene !== 'chat_room') return trimmed
+
+    let adapted = trimmed
+    for (const [pattern, replacement] of CHATROOM_STYLE_REWRITES) {
+      adapted = adapted.replace(pattern, replacement)
+    }
+    return appendSceneSuffix(adapted, CHATROOM_SCENE_STYLE_SUFFIX)
   }
 
   private buildOverrideLayer(agentId: string, scene: PromptLayerScene): string {
@@ -421,4 +466,11 @@ export class PromptLayerService {
         return ''
     }
   }
+}
+
+function appendSceneSuffix(text: string, suffix: string): string {
+  const trimmed = text.trim()
+  if (!trimmed) return suffix
+  if (trimmed.includes(suffix)) return trimmed
+  return `${trimmed}；${suffix}`
 }

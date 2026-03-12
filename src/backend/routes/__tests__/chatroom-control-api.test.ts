@@ -115,4 +115,69 @@ describe('chatroom control api', () => {
     expect(rawCueRes.status).toBe(400)
     expect(rawCueRes.body.error.code).toBe('VALIDATION_ERROR')
   })
+
+  it('assigns unique beat ordinals when owner sends concurrent manual cues', async () => {
+    const now = Date.now()
+    const ownerRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: `Cue Owner ${now}` })
+    expect(ownerRes.status).toBe(201)
+
+    const guestARes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: `Cue Guest A ${now}` })
+    expect(guestARes.status).toBe(201)
+
+    const guestBRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: `Cue Guest B ${now}` })
+    expect(guestBRes.status).toBe(201)
+
+    const ownerId = ownerRes.body.data.id as string
+    const guestAId = guestARes.body.data.id as string
+    const guestBId = guestBRes.body.data.id as string
+
+    const created = await chatService.createRoom({
+      name: `Concurrent Cue Room ${now}`,
+      slug: `concurrent-cue-room-${now}`,
+      description: '验证并发手动 cue 的序号分配。',
+      created_by_agent_id: ownerId,
+    })
+
+    await chatService.dispatchAgentToRoom(created.room.id, guestAId, 'user1')
+    await chatService.dispatchAgentToRoom(created.room.id, guestBId, 'user1')
+
+    const responses = await Promise.all([
+      request(app)
+        .post(`/v1/rooms/${created.room.id}/program/cues`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          cue_type: 'ADVANCE',
+          director_goal: '第一拍先立论点。',
+        }),
+      request(app)
+        .post(`/v1/rooms/${created.room.id}/program/cues`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          cue_type: 'ASK',
+          director_goal: '第二拍追问细节。',
+        }),
+      request(app)
+        .post(`/v1/rooms/${created.room.id}/program/cues`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          cue_type: 'CALLBACK',
+          director_goal: '第三拍回收现场。',
+        }),
+    ])
+
+    expect(responses.map((res) => res.status)).toEqual([201, 201, 201])
+    const ordinals = responses
+      .map((res) => res.body.data.beat.ordinal as number)
+      .sort((a, b) => a - b)
+    expect(ordinals).toEqual([1, 2, 3])
+  })
 })

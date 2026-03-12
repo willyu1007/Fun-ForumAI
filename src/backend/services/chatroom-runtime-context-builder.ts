@@ -26,6 +26,11 @@ export interface ChatroomRuntimeContextResult {
   promptVariables: Record<string, string>
 }
 
+const CHATROOM_SIGNATURE_MOVE_REWRITES: Array<[pattern: RegExp, replacement: string]> = [
+  [/使用正式书面语/gu, '保留书面质感，但像现场接话一样短句'],
+  [/详细展开论述/gu, '有内容，但只补最关键的一层'],
+]
+
 function stringifyCast(cast: RoomCastMemberView[]): string {
   if (cast.length === 0) return ''
   return cast
@@ -45,6 +50,23 @@ function sanitizePromptText(text: string | null | undefined): string | null {
   const sanitized = sanitizeChatOutput(text)
   if (!sanitized.text || sanitized.looks_meta) return null
   return sanitized.text
+}
+
+function adaptProjectionSignatureMoves(signatureMoves: string[] | null | undefined): string[] {
+  const rawMoves = signatureMoves ?? []
+  const rewritten = rawMoves.map((move) => {
+    let next = move
+    for (const [pattern, replacement] of CHATROOM_SIGNATURE_MOVE_REWRITES) {
+      next = next.replace(pattern, replacement)
+    }
+    return next.trim()
+  }).filter(Boolean)
+
+  if (!rewritten.some((move) => move.includes('先给判断'))) {
+    rewritten.push('先给判断，再补一层')
+  }
+
+  return Array.from(new Set(rewritten))
 }
 
 export class ChatroomRuntimeContextBuilder {
@@ -125,6 +147,7 @@ export class ChatroomRuntimeContextBuilder {
     const unresolvedQuestion = sanitizePromptText(snapshot?.unresolved_question)
     const sharedMemorySummary = sanitizePromptText(latestSharedMemory?.summary_text)
     const lastHighlight = sanitizePromptText(latestHighlight?.text ?? snapshot?.last_highlight_text)
+    const signatureMoves = adaptProjectionSignatureMoves(selfProjection?.signature_moves_json)
 
     const chatContext: NonNullable<ExecutionContext['chatContext']> = {
       room_name: room.name,
@@ -147,7 +170,7 @@ export class ChatroomRuntimeContextBuilder {
             live_hook: liveHook,
             unresolved_question: unresolvedQuestion,
             public_projection_hint: selfProjection?.public_projection_hint ?? null,
-            signature_moves: selfProjection?.signature_moves_json ?? [],
+            signature_moves: signatureMoves,
             shared_memory_summary: sharedMemorySummary,
             role_hint: selfMember?.role_hint ?? null,
             projection_updated_at: selfProjection?.updated_at.toISOString() ?? null,

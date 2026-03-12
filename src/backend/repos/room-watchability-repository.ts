@@ -459,6 +459,8 @@ export class InMemoryRoomWatchabilityRepository implements RoomWatchabilityRepos
       ? (this.beatsByEpisode.get(input.episode_id) ?? []).find((beat) => beat.id === existingEvent.beat_id) ?? null
       : null
     const existingLedgers = existingEvent ? this.ledgersByEvent.get(existingEvent.id) ?? [] : []
+    const latestBeat = await this.getLatestBeat(input.episode_id)
+    const effectiveOrdinal = existingBeat?.ordinal ?? Math.max(input.ordinal, (latestBeat?.ordinal ?? 0) + 1)
 
     if (existingEvent && existingBeat && existingLedgers.length > 0) {
       return {
@@ -472,7 +474,7 @@ export class InMemoryRoomWatchabilityRepository implements RoomWatchabilityRepos
     const beat = existingBeat ?? await this.createEpisodeBeat({
       room_id: input.room_id,
       episode_id: input.episode_id,
-      ordinal: input.ordinal,
+      ordinal: effectiveOrdinal,
       beat_type: input.beat_type,
       cue_type: input.cue_type,
       director_goal: input.director_goal,

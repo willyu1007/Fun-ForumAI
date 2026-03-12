@@ -293,7 +293,7 @@ describe('ConversationClock', () => {
 
     expect(compose).toHaveBeenCalledWith(expect.objectContaining({
       conversationText: expect.stringContaining('当前看点：Guest 正在追问一个关键前提。'),
-      sceneRule: '聊天室：General｜节目=DEBATE｜角色=FOIL｜episode=ep-7',
+      sceneRule: '聊天室：General｜节目=DEBATE｜角色=FOIL｜episode=ep-7｜live 接话先给判断，再补一层｜默认 1-3 行短句｜不用敬语或寒暄',
       shortTermState: expect.stringContaining('scene:DEBATE'),
       topicHints: expect.arrayContaining(['General']),
     }))

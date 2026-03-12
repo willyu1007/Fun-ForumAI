@@ -523,6 +523,11 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
           ? await tx.roomEpisodeBeat.findUnique({ where: { id: existingEvent.beatId } })
           : null
         const existingLedgers = await this.listSelectionLedgersTx(tx, existingEvent.id)
+        const effectiveOrdinal = existingBeat?.ordinal ?? await this.resolvePlannedBeatOrdinalTx(
+          tx,
+          input.episode_id,
+          input.ordinal,
+        )
 
         if (existingBeat && existingLedgers.length > 0) {
           return {
@@ -537,7 +542,7 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
           data: {
             roomId: input.room_id,
             episodeId: input.episode_id,
-            ordinal: input.ordinal,
+            ordinal: effectiveOrdinal,
             beatType: input.beat_type,
             cueType: input.cue_type,
             directorGoal: input.director_goal,
@@ -577,11 +582,12 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
         }
       }
 
+      const effectiveOrdinal = await this.resolvePlannedBeatOrdinalTx(tx, input.episode_id, input.ordinal)
       const beat = await tx.roomEpisodeBeat.create({
         data: {
           roomId: input.room_id,
           episodeId: input.episode_id,
-          ordinal: input.ordinal,
+          ordinal: effectiveOrdinal,
           beatType: input.beat_type,
           cueType: input.cue_type,
           directorGoal: input.director_goal,
@@ -1057,5 +1063,18 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
       where: { programEventId },
       orderBy: [{ selected: 'desc' }, { finalScore: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
     })
+  }
+
+  private async resolvePlannedBeatOrdinalTx(
+    tx: Prisma.TransactionClient,
+    episodeId: string,
+    suggestedOrdinal: number,
+  ): Promise<number> {
+    const latestBeat = await tx.roomEpisodeBeat.findFirst({
+      where: { episodeId },
+      orderBy: [{ ordinal: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      select: { ordinal: true },
+    })
+    return Math.max(suggestedOrdinal, (latestBeat?.ordinal ?? 0) + 1)
   }
 }

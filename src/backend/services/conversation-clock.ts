@@ -20,7 +20,7 @@ import type { RoomWatchabilityRepository } from '../repos/room-watchability-repo
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { LlmTokenUsage } from '../llm/types.js'
 import type { PromptComposeAudit } from '../runtime/types.js'
-import { sanitizeChatOutput } from '../runtime/chat-output-sanitizer.js'
+import { formatChatReplyForReadability, sanitizeChatOutput } from '../runtime/chat-output-sanitizer.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import type { PersonaObservationV1 } from '../runtime/persona-observation.js'
@@ -707,7 +707,7 @@ export class ConversationClock {
     })
     const latencyMs = response.latencyMs ?? 0
     const sanitized = sanitizeChatOutput(response.content)
-    const content = sanitized.text
+    const content = formatChatReplyForReadability(sanitized.text)
     const observation = buildPersonaObservation({
       sourceCallsiteId: 'conversation-clock-chat-reply',
       scene: 'chat_room',
@@ -874,9 +874,17 @@ export class ConversationClock {
   private buildChatSceneRule(roomName: string, runtimeChatContext: ChatroomRuntimeContextResult | null): string {
     const program = runtimeChatContext?.chatContext.program
     if (!program) {
-      return `聊天室：${roomName}`
+      return `聊天室：${roomName}｜live 接话先给判断，再补一层｜默认 1-3 行短句｜不用敬语或寒暄`
     }
-    return `聊天室：${roomName}｜节目=${program.scene_type}｜角色=${program.self_role ?? 'UNASSIGNED'}｜episode=${program.episode_id}`
+    return [
+      `聊天室：${roomName}`,
+      `节目=${program.scene_type}`,
+      `角色=${program.self_role ?? 'UNASSIGNED'}`,
+      `episode=${program.episode_id}`,
+      'live 接话先给判断，再补一层',
+      '默认 1-3 行短句',
+      '不用敬语或寒暄',
+    ].join('｜')
   }
 
   private buildChatShortTermState(

@@ -95,4 +95,103 @@ describe('PgRoomWatchabilityRepository', () => {
       status: 'ACTIVE',
     })
   })
+
+  it('recomputes beat ordinal after the advisory lock is acquired', async () => {
+    const createdAt = new Date('2026-03-10T10:06:00.000Z')
+    const tx = {
+      $executeRaw: vi.fn(async () => 1),
+      roomProgramEvent: {
+        findUnique: vi.fn(async () => null),
+        create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+          id: 'evt-1',
+          roomId: data.roomId,
+          episodeId: data.episodeId,
+          beatId: data.beatId,
+          eventType: data.eventType,
+          status: data.status,
+          cueType: data.cueType,
+          directorGoal: data.directorGoal,
+          selectedSpeakerAgentId: data.selectedSpeakerAgentId,
+          idempotencyKey: data.idempotencyKey,
+          payloadJson: data.payloadJson,
+          errorText: null,
+          createdAt,
+          updatedAt: createdAt,
+        })),
+      },
+      roomEpisodeBeat: {
+        findUnique: vi.fn(async () => null),
+        findFirst: vi
+          .fn()
+          .mockResolvedValueOnce({ ordinal: 4 })
+          .mockResolvedValueOnce({ ordinal: 4 }),
+        create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+          id: 'beat-5',
+          roomId: data.roomId,
+          episodeId: data.episodeId,
+          ordinal: data.ordinal,
+          beatType: data.beatType,
+          cueType: data.cueType,
+          directorGoal: data.directorGoal,
+          promptHint: data.promptHint,
+          anchorMessageId: data.anchorMessageId,
+          callbackMessageId: data.callbackMessageId,
+          targetRole: data.targetRole,
+          selectedSpeakerAgentId: data.selectedSpeakerAgentId,
+          status: data.status,
+          auditJson: data.auditJson,
+          createdAt,
+          completedAt: null,
+        })),
+      },
+      roomSelectionLedger: {
+        create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+          id: 'ledger-1',
+          roomId: data.roomId,
+          episodeId: data.episodeId,
+          beatId: data.beatId,
+          programEventId: data.programEventId,
+          candidateAgentId: data.candidateAgentId,
+          selected: data.selected,
+          finalScore: data.finalScore,
+          reasonsJson: data.reasonsJson,
+          createdAt,
+        })),
+        findMany: vi.fn(async () => []),
+      },
+    }
+    const prisma = {
+      $transaction: vi.fn(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
+    }
+
+    const repo = new PgRoomWatchabilityRepository(prisma as never)
+    const planned = await repo.planProgramCue({
+      room_id: 'room-1',
+      episode_id: 'ep-1',
+      ordinal: 1,
+      beat_type: 'HOOK',
+      cue_type: 'ADVANCE',
+      director_goal: '继续推进',
+      selected_speaker_agent_id: 'agent-1',
+      idempotency_key: 'manual-cue:room-1:1',
+      selection_ledger: [
+        {
+          candidate_agent_id: 'agent-1',
+          selected: true,
+          final_score: 1,
+          reasons_json: [],
+        },
+      ],
+    })
+
+    expect(tx.$executeRaw).toHaveBeenCalledOnce()
+    expect(tx.roomEpisodeBeat.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        roomId: 'room-1',
+        episodeId: 'ep-1',
+        ordinal: 5,
+      }),
+    })
+    expect(planned.beat.ordinal).toBe(5)
+  })
 })

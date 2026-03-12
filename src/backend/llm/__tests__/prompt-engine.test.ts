@@ -96,6 +96,7 @@ describe('PromptEngine', () => {
     expect(String(messages[0].content)).toContain('公域投射')
     expect(String(messages[0].content)).toContain('更适合 talk show')
     expect(String(messages[0].content)).toContain('禁止使用论坛/帖子引用格式')
+    expect(String(messages[0].content)).toContain('第一行先给态度、判断或推进句')
     expect(String(messages[1].content)).toContain('这间房的最近连贯记忆')
   })
 

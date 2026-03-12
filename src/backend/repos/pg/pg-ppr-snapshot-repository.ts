@@ -1,6 +1,6 @@
 import type { PrismaClient, PprSnapshot as PrismaPprSnapshot } from '@prisma/client'
 import type { CreatePprSnapshotInput, PprSnapshot } from '../types.js'
-import type { PprSnapshotRepository } from '../ppr-snapshot-repository.js'
+import { dedupeCreatePprSnapshotEntries, type PprSnapshotRepository } from '../ppr-snapshot-repository.js'
 
 export class PgPprSnapshotRepository implements PprSnapshotRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -17,8 +17,9 @@ export class PgPprSnapshotRepository implements PprSnapshotRepository {
         return
       }
 
+      const dedupedEntries = dedupeCreatePprSnapshotEntries(entries)
       await tx.pprSnapshot.createMany({
-        data: entries.map((entry) => ({
+        data: dedupedEntries.map((entry) => ({
           sourceAgentId: entry.source_agent_id,
           candidateAgentId: entry.candidate_agent_id,
           communityId: entry.community_id,

@@ -108,4 +108,73 @@ describe('ChatroomRuntimeContextBuilder', () => {
     expect(enabled.promptVariables.cast_snapshot).toContain('Host (HOST)')
     expect(enabled.promptVariables.last_highlight).toContain('benchmark')
   })
+
+  it('rewrites projection signature moves into chat-readable guidance', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const roomRepo = new InMemoryRoomRepository()
+    const watchabilityRepo = new InMemoryRoomWatchabilityRepository()
+
+    const host = agentRepo.create({ owner_id: 'u1', display_name: 'Host' })
+    const room = await roomRepo.create({
+      name: 'Projection Room',
+      slug: 'projection-room',
+      description: '围绕可扫读对话做验收',
+      created_by_agent_id: host.id,
+    })
+    await roomRepo.addMember(room.id, host.id, 'creator', 20_000)
+    await watchabilityRepo.ensureProgram(room)
+    await watchabilityRepo.updateProgram(room.id, {
+      enabled: true,
+      scene_type: 'FREE_CHAT',
+    })
+
+    const projector = new RoomProjector({
+      roomRepo,
+      messageRepo: new InMemoryMessageRepository(),
+      agentRepo,
+      watchabilityRepo,
+    })
+    await projector.refreshRoom(room.id)
+
+    const builder = new ChatroomRuntimeContextBuilder({
+      roomRepo,
+      agentRepo,
+      watchabilityRepo,
+      roomProjector: projector,
+      projectionService: {
+        getOrBuildMany: async () => new Map([
+          [host.id, {
+            id: 'projection-1',
+            agent_id: host.id,
+            scene_affinity_json: { FREE_CHAT: 0.9 },
+            banter_style: 'balanced',
+            conflict_threshold: 0.42,
+            callback_habit: 0.5,
+            public_projection_hint: '更适合 FREE_CHAT · 更偏即时反应',
+            signature_moves_json: ['使用正式书面语', '详细展开论述'],
+            disclosure_policy_json: {},
+            follow_targets_json: [],
+            avoid_targets_json: [],
+            created_at: new Date('2026-03-12T14:00:00.000Z'),
+            updated_at: new Date('2026-03-12T14:00:00.000Z'),
+            role_tendency: 'HOST',
+            spotlight_preference: 'MEDIUM',
+          }],
+        ]),
+      } as never,
+    })
+
+    const result = await builder.build({
+      room,
+      agentId: host.id,
+      recentMessages: [],
+    })
+
+    expect(result.chatContext.program?.signature_moves).toEqual([
+      '保留书面质感，但像现场接话一样短句',
+      '有内容，但只补最关键的一层',
+      '先给判断，再补一层',
+    ])
+    expect(result.promptVariables.signature_moves).toContain('先给判断，再补一层')
+  })
 })

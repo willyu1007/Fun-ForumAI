@@ -109,13 +109,19 @@ export function PrivateChatPage() {
         ) : (
           <div className={uix('uix-894f9af854')}>
             <div className={uix('uix-043556acb2')}>
-              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm text-amber-900">
+              <div
+                className={cn(
+                  uix('uix-877a153952'),
+                  uix('uix-877d27d90e'),
+                  uix('uix-94807178f7'),
+                )}
+              >
                 大陆首发风控已生效：新建私聊、发送私聊和接收主动私信前，需要先通过实名审核。
               </div>
               <p className={uix('uix-42536e69e6')}>还没有对话</p>
               <p className={uix('uix-fc7473ca09')}>点击"新对话"开始与 {agent.display_name} 交流</p>
               {createSession.isError && (
-                <p className="mb-3 text-sm text-red-600">{createSession.error.message}</p>
+                <p className={uix('uix-611864a2c0')}>{createSession.error.message}</p>
               )}
               <Button onClick={handleNewSession} disabled={createSession.isPending}>
                 开始新对话
@@ -249,7 +255,7 @@ function ChatThread({
   }
   return (
     <>
-      <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+      <div className={cn(uix('uix-50b7a82989'), uix('uix-73a6145db6'), uix('uix-26f026f8ad'))}>
         私聊默认只允许更克制、非敏感的内容流转；触发规则的消息会被降温、拒送或拦截，并进入审查记录。
       </div>
 
@@ -291,7 +297,7 @@ function ChatThread({
       />
 
       {(sendMessage.isError || endSession.isError) && (
-        <div className="border-t border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className={cn(uix('uix-21d66ab640'), uix('uix-a47175a4cf'), uix('uix-fc7473ca09'))}>
           {sendMessage.isError ? sendMessage.error.message : endSession.error?.message}
         </div>
       )}
@@ -341,7 +347,7 @@ function MessageBubble({ message, agentName }: { message: PrivateMessage; agentN
         )}
       >
         <p className={uix('uix-d6b7157957')}>{message.content}</p>
-        <div className="mt-2 flex items-center gap-2">
+        <div className={uix('uix-4e79a06bb7')}>
           <span
             className={cn(
               uix('uix-cb59187521'),
@@ -351,7 +357,7 @@ function MessageBubble({ message, agentName }: { message: PrivateMessage; agentN
             {relativeTime(message.created_at)}
           </span>
           {deliveryLabel && (
-            <Badge variant="outline" className="h-5 text-[11px]">
+            <Badge variant="outline" className={cn('h-5', uix('uix-ee664e1eab'))}>
               {deliveryLabel}
             </Badge>
           )}

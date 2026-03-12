@@ -218,7 +218,7 @@ export function AdminPanel() {
             </section>
           )}
 
-          <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="grid gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader className={uix('uix-f4cc511ff0')}>
                 <CardTitle className={uix('uix-fc7473ca09')}>审核队列</CardTitle>
@@ -234,7 +234,7 @@ export function AdminPanel() {
                     onClick={() => setSelectedCaseId(item.id)}
                     className={uix('uix-81af913189')}
                   >
-                    <div className="text-left">
+                    <div>
                       <p className={uix('uix-da8bf29040')}>
                         {item.case_type} · {item.summary_text ?? item.id}
                       </p>

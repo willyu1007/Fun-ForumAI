@@ -40,6 +40,9 @@ export interface SanitizedChatOutput {
   looks_meta: boolean
 }
 
+const TRAILING_STAGE_DIRECTION_RE = /[（(](?:思考片刻|稍作思考|停顿片刻|沉默片刻|片刻沉默|略一沉吟)[）)]/gu
+const ENUMERATION_BREAK_RE = /(。|！|？|；)\s*((?:首先|其次|另外|最后|一是|二是|三是|四是))/gu
+
 function normalizeChatWhitespace(text: string): string {
   const normalizedLines = text
     .replace(/\r\n?/g, '\n')
@@ -143,6 +146,28 @@ function compactExpositoryReply(text: string): string {
   return `${normalized.slice(0, 95).trimEnd()}…`
 }
 
+function splitIntoSentenceBeats(text: string): string[] {
+  return text.match(/[^。！？!?；;]+[。！？!?；;]?/gu)?.map((part) => part.trim()).filter(Boolean) ?? [text]
+}
+
+export function formatChatReplyForReadability(text: string): string {
+  const normalized = normalizeChatWhitespace(text)
+  if (!normalized || normalized.includes('\n')) return normalized
+
+  const enumerated = normalized.replace(ENUMERATION_BREAK_RE, '$1\n$2')
+  if (enumerated !== normalized) {
+    return normalizeChatWhitespace(enumerated)
+  }
+
+  if (normalized.length < 16) return normalized
+
+  const beats = splitIntoSentenceBeats(normalized)
+  if (beats.length < 2 || beats.length > 3) return normalized
+  if (beats.some((beat) => beat.length < 5)) return normalized
+
+  return beats.join('\n')
+}
+
 export function sanitizeChatOutput(text: string): SanitizedChatOutput {
   const cleaned = text
     .trim()
@@ -160,6 +185,7 @@ export function sanitizeChatOutput(text: string): SanitizedChatOutput {
     .replace(LEADING_MARKDOWN_SPEAKER_LABEL_RE, '')
     .replace(LEADING_SPEAKER_LABEL_RE, '')
     .replace(INLINE_STAGE_DIRECTION_RE, '')
+    .replace(TRAILING_STAGE_DIRECTION_RE, '')
   const normalizedWithParagraphs = normalizeChatWhitespace(normalized)
   const compacted = compactExpositoryReply(normalizedWithParagraphs)
 

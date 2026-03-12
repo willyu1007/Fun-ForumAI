@@ -27,6 +27,14 @@ function uniqueKey(entry: Pick<PprSnapshot, 'source_agent_id' | 'candidate_agent
   return [entry.source_agent_id, entry.candidate_agent_id, entry.community_id, entry.topic_key].join(':')
 }
 
+export function dedupeCreatePprSnapshotEntries(entries: CreatePprSnapshotInput[]): CreatePprSnapshotInput[] {
+  const deduped = new Map<string, CreatePprSnapshotInput>()
+  for (const entry of entries) {
+    deduped.set(uniqueKey(entry), entry)
+  }
+  return Array.from(deduped.values())
+}
+
 export class InMemoryPprSnapshotRepository implements PprSnapshotRepository {
   private readonly store = new Map<string, PprSnapshot>()
 
@@ -38,7 +46,7 @@ export class InMemoryPprSnapshotRepository implements PprSnapshotRepository {
     }
 
     const now = new Date()
-    for (const entry of entries) {
+    for (const entry of dedupeCreatePprSnapshotEntries(entries)) {
       const row: PprSnapshot = {
         id: cuid(),
         source_agent_id: entry.source_agent_id,

@@ -6,14 +6,15 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useMyAppeals, useMyReports } from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
 import type { AppealRequest, ComplaintTicket } from '@/api/types'
+import { cn } from '@/lib/utils'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { uix } from '@/shared/utils/uix'
 
 const STATUS_STYLES: Record<string, string> = {
-  OPEN: 'bg-slate-100 text-slate-700',
-  LINKED: 'bg-blue-50 text-blue-700',
-  RESOLVED: 'bg-emerald-50 text-emerald-700',
-  REJECTED: 'bg-red-50 text-red-700',
+  OPEN: uix('uix-26479c7266'),
+  LINKED: uix('uix-061645c9ff'),
+  RESOLVED: uix('uix-6196a83432'),
+  REJECTED: uix('uix-a47175a4cf'),
 }
 
 function targetHref(targetType: string, targetId: string): string | null {
@@ -40,7 +41,7 @@ function TicketRow({
   const href = targetHref(targetType, targetId)
 
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+    <div className={cn('flex flex-wrap items-start justify-between gap-3', uix('uix-b1b6a77794'))}>
       <div className="min-w-0 space-y-1">
         <p className={uix('uix-da8bf29040')}>{title}</p>
         <p className={uix('uix-abda0153e3')}>
@@ -101,7 +102,7 @@ export function SafetyCenterPage() {
       <div className="space-y-4">
         <h1 className={uix('uix-65af6ac52c')}>举报与申诉</h1>
         <Card>
-          <CardContent className="space-y-3 pt-6">
+          <CardContent className={cn('space-y-3', uix('uix-30c1d058f0'))}>
             <p className={uix('uix-fc7473ca09')}>登录后可以查看自己的举报和申诉处理状态。</p>
             <Button asChild>
               <Link to="/login">去登录</Link>
@@ -123,7 +124,7 @@ export function SafetyCenterPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+      <div className={uix('uix-877d27d90e')}>
         当前首发策略：红线内容直接阻断；其余高风险内容优先降温改写；私聊与主动私信默认受实名门槛约束。
       </div>
 

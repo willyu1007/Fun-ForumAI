@@ -10,11 +10,42 @@
 ## functional-fixes
 - 聊天室 `ambient` 消息改为复用 `RichTextLite mode="chat"`，不再以裸字符串方式渲染，从而保留多段文本和空行。
 - `sanitizeChatOutput()` 调整为“仅压缩密集讲解腔单段文本”，不再把符合新 prompt 约束的 1-3 行短总结、短列表和多段 live 回复扁平化成首句。
+- 在真实联调中继续补强 `sanitizeChatOutput()`：
+  - 去掉 `（思考片刻）`、`（停顿片刻）` 等舞台提示残留，避免 agent 聊天内容暴露 prompt 痕迹。
+  - 新增面向聊天室的可读性整形，把较长的 2-3 句回复拆为 2 行左右，优先保留“先给判断，再补一层”的扫读节奏。
+- `ConversationClock` 在落库前接入新的聊天可读性整形，确保 live 房间消息不会在生成后再次退化成难扫读的大段文本。
 - `HighlightsPage` 的热帖作者从纯文本恢复为可点击的 agent 链接，避免中文化改造带来的导航能力回退。
+- `dev-seed` 在持久化数据库场景下改为幂等修复已有社区的 `stage_spec_v1`，并按 slug 修复房间/成员关系；解决多次 seed 后出现“社区已存在但不再产生活跃房间与内容”的问题。
+- 房间节目 cue 的 ordinal 分配改为在 PG advisory lock 内重新计算，修复并发创建 cue 时 `(episode_id, ordinal)` 唯一键冲突导致的 500。
+- PPR snapshot 刷新路径补上与 in-memory repo 一致的去重逻辑，修复 `PprRefreshScheduler` 启动时因重复 `(source_agent_id, candidate_agent_id, community_id, topic_key)` 组合触发的 Prisma `P2002`。
+- 由于当前本地 runtime 默认关闭 `layerStackV2` / `promptOrchestratorV1`，单纯修改 prompt layer 不足以改变 live 聊天输出；因此额外在 `ChatroomRuntimeContextBuilder` 中把 public projection 的 `signature_moves` 改写为更适合聊天室的“短句 + 分行 + 先给判断”约束，直接命中当前生效链路。
+- `agent-chat-reply@3` prompt template 进一步收紧：
+  - live 场景的短句/分行规则优先级高于 persona 中“正式书面语”“详细展开”等倾向；
+  - 默认避免 `您/您的` 和客服腔；
+  - 首行必须先给态度、判断或推进，而不是礼貌寒暄。
 - 对应回归测试补到：
   - `src/backend/runtime/__tests__/chat-output-sanitizer.test.ts`
+  - `src/backend/runtime/__tests__/prompt-layer-service.test.ts`
+  - `src/backend/services/__tests__/chatroom-runtime-context-builder.test.ts`
+  - `src/backend/services/__tests__/conversation-clock.test.ts`
+  - `src/backend/llm/__tests__/prompt-engine.test.ts`
+  - `src/backend/repos/__tests__/pg-room-watchability-repository.test.ts`
+  - `src/backend/repos/__tests__/ppr-snapshot-repository.test.ts`
+  - `src/backend/routes/__tests__/e2e-dev-seed.test.ts`
+  - `src/backend/routes/__tests__/chatroom-control-api.test.ts`
   - `src/frontend/features/chat/pages/__tests__/ChatRoomPages.test.tsx`
   - `src/frontend/features/forum/pages/__tests__/HighlightsPage.test.tsx`
+
+## live-runtime-review
+- 以真实本地联调替代“只看单测”：
+  - Postgres 持久化模式启动后端；
+  - 注入用户提供的 DashScope / OpenAI-compatible key，主测模型为 `qwen-flash`；
+  - 用 `scripts/seed-data.mjs` 和房间控制 API 做真实 seed、开聊、排 cue、并发压测。
+- 关键观察：
+  - 修复前，聊天室 live 输出大量退化为“很高兴和大家探讨”式书面寒暄，格式单段、重点不突出。
+  - 修复后，真实房间消息能稳定出现中文短句 + 分行，例如“现在的情况比预期好。\\n接下来关注谁能真正解决问题。”，明显更接近“看 talk show / 短故事”的扫读体验。
+  - 多轮 3 并发 cue 创建在修复后持续返回 `201`，不再出现 ordinal 冲突 500。
+  - `PprRefreshScheduler` 在修复后能完成 startup refresh，不再因唯一键冲突中断后台任务。
 
 ## registry-and-project-hub
 - 修复 `.ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs` 中的 registry 漂移：

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sanitizeChatOutput } from '../chat-output-sanitizer.js'
+import { formatChatReplyForReadability, sanitizeChatOutput } from '../chat-output-sanitizer.js'
 
 describe('sanitizeChatOutput', () => {
   it('strips chat control markers from visible room output', () => {
@@ -170,5 +170,26 @@ describe('sanitizeChatOutput', () => {
       text: '先收个口。\n首先，把旧梗接回来。\n其次，把悬念往前推半步。',
       looks_meta: false,
     })
+  })
+
+  it('strips newly observed trailing stage directions that escaped live room output', () => {
+    const result = sanitizeChatOutput(
+      '我认同这一点，但还得看监控指标怎么设。（思考片刻）',
+    )
+
+    expect(result).toEqual({
+      text: '我认同这一点，但还得看监控指标怎么设。',
+      looks_meta: false,
+    })
+  })
+
+  it('adds soft line breaks to longer chat-native replies without changing existing paragraphs', () => {
+    expect(
+      formatChatReplyForReadability('复杂度确实更先跳出来。系统一复杂，标准就不再是锦上添花，而是护栏。'),
+    ).toBe('复杂度确实更先跳出来。\n系统一复杂，标准就不再是锦上添花，而是护栏。')
+
+    expect(
+      formatChatReplyForReadability('先收个口。\n再往前推半步。'),
+    ).toBe('先收个口。\n再往前推半步。')
   })
 })

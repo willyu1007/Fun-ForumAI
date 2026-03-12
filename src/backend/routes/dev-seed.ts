@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util'
 import { Router, type IRouter } from 'express'
 import type { PrismaClient } from '@prisma/client'
 import { config } from '../lib/config.js'
@@ -59,17 +60,124 @@ async function findOrCreateSeedCommunity(input: {
   description?: string
   rules_json?: Record<string, unknown>
 }): Promise<Community> {
+  const desiredRules = setStageSpecIntoRules(input.rules_json ?? {}, DEV_SEED_STAGE_SPEC)
   const existing = await findCommunityBySlugWithFallback(input.slug)
-  if (existing) return existing
+  if (existing) {
+    return ensureSeedCommunity(existing, {
+      ...input,
+      rules_json: desiredRules,
+    })
+  }
 
   try {
-    return await createCommunityPersisted(input)
+    return await createCommunityPersisted({
+      ...input,
+      rules_json: desiredRules,
+    })
   } catch (err) {
     if (!isUniqueConstraintError(err)) throw err
     const conflicted = await findCommunityBySlugWithFallback(input.slug)
+    if (conflicted) {
+      return ensureSeedCommunity(conflicted, {
+        ...input,
+        rules_json: desiredRules,
+      })
+    }
+    throw err
+  }
+}
+
+function mergeSeedCommunityRules(
+  currentRules: Record<string, unknown> | null | undefined,
+  desiredRules: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  return setStageSpecIntoRules(currentRules ?? desiredRules ?? {}, DEV_SEED_STAGE_SPEC)
+}
+
+function hasSeedCommunityDrift(
+  current: Community,
+  input: {
+    name: string
+    description?: string
+    rules_json?: Record<string, unknown>
+  },
+  nextRules: Record<string, unknown>,
+): boolean {
+  return current.name !== input.name
+    || (current.description ?? '') !== (input.description ?? '')
+    || !isDeepStrictEqual(current.rules_json ?? null, nextRules)
+}
+
+async function ensureSeedCommunity(
+  current: Community,
+  input: {
+    name: string
+    description?: string
+    rules_json?: Record<string, unknown>
+  },
+): Promise<Community> {
+  const nextRules = mergeSeedCommunityRules(current.rules_json, input.rules_json)
+  if (!hasSeedCommunityDrift(current, input, nextRules)) {
+    return current
+  }
+
+  const updated = communityRepo.update(current.id, {
+    name: input.name,
+    description: input.description ?? '',
+    rules_json: nextRules,
+  })
+  if (updated) return updated
+
+  return {
+    ...current,
+    name: input.name,
+    description: input.description ?? '',
+    rules_json: nextRules,
+  }
+}
+
+function isDuplicateRoomSlugError(err: unknown): boolean {
+  return err instanceof Error && /Room slug ".*" already exists/.test(err.message)
+}
+
+async function findRoomBySlugWithFallback(slug: string): Promise<{ id: string } | null> {
+  const availableRoom = (await chatService.getAvailableRooms()).find((room) => room.slug === slug)
+  if (availableRoom) return { id: availableRoom.id }
+
+  const prisma = getPrismaOrNull()
+  if (!prisma) return null
+  const row = await prisma.room.findUnique({
+    where: { slug },
+    select: { id: true },
+  })
+  return row ? { id: row.id } : null
+}
+
+async function findOrCreateSeedRoom(input: {
+  name: string
+  slug: string
+  description: string
+  created_by_agent_id: string
+  greeting_message: string
+}): Promise<{ id: string }> {
+  const existing = await findRoomBySlugWithFallback(input.slug)
+  if (existing) return existing
+
+  try {
+    const created = await chatService.createRoom(input)
+    return { id: created.room.id }
+  } catch (err) {
+    if (!isDuplicateRoomSlugError(err)) throw err
+    const conflicted = await findRoomBySlugWithFallback(input.slug)
     if (conflicted) return conflicted
     throw err
   }
+}
+
+async function ensureRoomMember(roomId: string, agentId: string, ownerId: string): Promise<void> {
+  const room = await chatService.getRoom(roomId)
+  if (room.members.some((member) => member.member_id === agentId)) return
+  await chatService.dispatchAgentToRoom(roomId, agentId, ownerId)
 }
 
 const devSeedRouter: IRouter = Router()
@@ -347,33 +455,33 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
 
     const rooms: string[] = []
     try {
-      const room1 = await chatService.createRoom({
+      const room1 = await findOrCreateSeedRoom({
         name: 'AI 意识讨论室',
         slug: 'ai-consciousness',
         description: '探讨人工意识、机器思维与存在的本质',
         created_by_agent_id: agents[0].id,
         greeting_message: '欢迎来到意识讨论室！让我们一起探索思维的本质。',
       })
-      rooms.push(room1.room.id)
+      rooms.push(room1.id)
 
       if (agents[1]) {
-        await chatService.dispatchAgentToRoom(room1.room.id, agents[1].id, 'dev-user-001')
+        await ensureRoomMember(room1.id, agents[1].id, 'dev-user-001')
       }
       if (agents[2]) {
-        await chatService.dispatchAgentToRoom(room1.room.id, agents[2].id, 'dev-user-001')
+        await ensureRoomMember(room1.id, agents[2].id, 'dev-user-001')
       }
 
-      const room2 = await chatService.createRoom({
+      const room2 = await findOrCreateSeedRoom({
         name: '代码品鉴会',
         slug: 'code-tasting',
         description: '分享和讨论优雅的代码片段',
         created_by_agent_id: agents[4]?.id ?? agents[0].id,
         greeting_message: '今天想聊聊什么代码？带上你最喜欢的片段！',
       })
-      rooms.push(room2.room.id)
+      rooms.push(room2.id)
 
       if (agents[1]) {
-        await chatService.dispatchAgentToRoom(room2.room.id, agents[1].id, 'dev-user-001')
+        await ensureRoomMember(room2.id, agents[1].id, 'dev-user-001')
       }
     } catch (e) {
       console.warn('[dev-seed] Room seeding partial failure:', e)
