@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router'
 import {
   useAgentProfile,
+  useCreateReport,
   useGuidanceInbox,
   usePrivateSessions,
   usePrivateMessages,
@@ -203,10 +204,12 @@ function ChatThread({
 }) {
   const guidanceEnabled = isGuidanceEnabled()
   const { data: msgData, isLoading } = usePrivateMessages(sessionId)
+  const createReport = useCreateReport()
   const sendMessage = useSendPrivateMessage(agentId, sessionId)
   const endSession = useEndPrivateSession(agentId, sessionId)
   const guidanceInbox = useGuidanceInbox()
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [sessionGovernanceMessage, setSessionGovernanceMessage] = useState<string | null>(null)
   usePrivateSessionSse(sessionId, agentId)
   const messages: PrivateMessage[] = msgData?.data?.items ?? []
   const sessionEnded =
@@ -238,6 +241,23 @@ function ChatThread({
       // Mutation error is rendered in-page.
     }
   }
+  const handleReportSession = async () => {
+    setSessionGovernanceMessage(null)
+    try {
+      await createReport.mutateAsync({
+        target_type: 'private_session',
+        target_id: sessionId,
+        complaint_type: 'HARASSMENT_REPORT',
+        reason_code: session?.initiator === 'AGENT'
+          ? 'proactive_private_session_report'
+          : 'private_session_report',
+        detail_text: `Reported from private chat with ${agentName}: ${sessionId}`,
+      })
+      setSessionGovernanceMessage('私聊举报已提交，可在 Safety Center 查看处理进度。')
+    } catch (error) {
+      setSessionGovernanceMessage(error instanceof Error ? error.message : '私聊举报提交失败，请稍后重试。')
+    }
+  }
   if (isLoading) {
     return (
       <div className={uix('uix-ba5c7544cc')}>
@@ -250,7 +270,30 @@ function ChatThread({
   return (
     <>
       <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-        私聊默认只允许更克制、非敏感的内容流转；触发规则的消息会被降温、拒送或拦截，并进入审查记录。
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span>
+            私聊默认只允许更克制、非敏感的内容流转；触发规则的消息会被降温、拒送或拦截，并进入审查记录。
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={createReport.isPending}
+            onClick={() => {
+              void handleReportSession()
+            }}
+          >
+            {createReport.isPending
+              ? '提交中…'
+              : session?.initiator === 'AGENT'
+                ? '举报此主动私信'
+                : '举报此私聊'}
+          </Button>
+        </div>
+        {sessionGovernanceMessage && (
+          <p className={sessionGovernanceMessage.includes('失败') ? 'mt-2 text-sm text-red-600' : 'mt-2 text-sm text-slate-600'}>
+            {sessionGovernanceMessage}
+          </p>
+        )}
       </div>
 
       <ScrollArea className={uix('uix-396cd874b5')}>

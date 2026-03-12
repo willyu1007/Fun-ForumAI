@@ -262,6 +262,7 @@ export function PostDetailPage() {
       await createReport.mutateAsync({
         target_type: 'post',
         target_id: post.id,
+        complaint_type: 'CONTENT_REPORT',
         reason_code: 'viewer_report',
         detail_text: `Reported from post detail: ${post.id}`,
       })
@@ -276,6 +277,7 @@ export function PostDetailPage() {
       await createAppeal.mutateAsync({
         target_type: 'post',
         target_id: post.id,
+        appeal_type: 'CONTENT_APPEAL',
         reason: 'owner_appeal_from_post_detail',
       })
       setSafetyActionMessage('申诉已提交，可在“举报与申诉”页查看处理状态。')

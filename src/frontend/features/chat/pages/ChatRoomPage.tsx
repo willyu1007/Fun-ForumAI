@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router'
 import {
+  useCreateReport,
   useCreateRoomCue,
   usePatchRoomMemberControl,
   usePatchRoomProgram,
@@ -97,8 +98,10 @@ export function ChatRoomPage() {
   }>()
   const [showMembers, setShowMembers] = useState(false)
   const [showDirectorSheet, setShowDirectorSheet] = useState(false)
+  const [reportStateByMessageId, setReportStateByMessageId] = useState<Record<string, string>>({})
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuth()
+  const createReport = useCreateReport()
   const { data: roomData, isLoading: roomLoading } = useRoom(roomId ?? '')
   const { data: msgData } = useRoomMessages(roomId ?? '')
   const { data: snapshotData } = useRoomLiveSnapshot(roomId ?? '')
@@ -132,6 +135,34 @@ export function ChatRoomPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length])
+
+  const handleReportMessage = async (message: ChatMessage) => {
+    if (!roomId) return
+    setReportStateByMessageId((current) => ({
+      ...current,
+      [message.id]: '',
+    }))
+
+    try {
+      await createReport.mutateAsync({
+        target_type: 'message',
+        target_id: message.id,
+        complaint_type: 'CONTENT_REPORT',
+        reason_code: 'chat_message_report',
+        detail_text: `Reported from room ${roomId}: ${message.body.slice(0, 160)}`,
+      })
+      setReportStateByMessageId((current) => ({
+        ...current,
+        [message.id]: '聊天室举报已提交，可在 Safety Center 查看进度。',
+      }))
+    } catch (error) {
+      setReportStateByMessageId((current) => ({
+        ...current,
+        [message.id]: error instanceof Error ? error.message : '聊天室举报提交失败，请稍后重试。',
+      }))
+    }
+  }
+
   if (roomLoading) {
     return (
       <div className={uix('uix-edaf7e98d8')}>
@@ -190,6 +221,10 @@ export function ChatRoomPage() {
                 message={msg}
                 highlighted={highlightedMessageIds.has(msg.id)}
                 authorName={agentNameMap.get(msg.author_id)}
+                canReport={isAuthenticated}
+                reportPending={createReport.isPending}
+                reportState={reportStateByMessageId[msg.id] ?? null}
+                onReport={handleReportMessage}
               />
             ))}
             {typingAgents.size > 0 && (
@@ -401,10 +436,18 @@ function MessageBubble({
   message,
   highlighted,
   authorName,
+  canReport,
+  reportPending,
+  reportState,
+  onReport,
 }: {
   message: ChatMessage
   highlighted: boolean
   authorName?: string
+  canReport: boolean
+  reportPending: boolean
+  reportState: string | null
+  onReport: (message: ChatMessage) => Promise<void>
 }) {
   const isSkip = message.message_kind === 'skip_feedback'
   const isAmbient = message.message_kind === 'ambient'
@@ -453,12 +496,29 @@ function MessageBubble({
           )}
           {highlighted && <Badge className={uix('uix-e8ed768905')}>高光</Badge>}
           <span className={uix('uix-25be576b96')}>{relativeTime(message.created_at)}</span>
+          {canReport && !isAmbient && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={reportPending}
+              onClick={() => {
+                void onReport(message)
+              }}
+            >
+              {reportPending ? '提交中…' : '举报发言'}
+            </Button>
+          )}
         </div>
         <RichTextLite
           text={message.body}
           mode="chat"
           className={cn(uix('uix-dbcbe995b4'), isSkip && uix('uix-80518375ad'))}
         />
+        {reportState && (
+          <p className={reportState.includes('失败') ? 'mt-2 text-sm text-red-600' : `${uix('uix-abda0153e3')} mt-2`}>
+            {reportState}
+          </p>
+        )}
       </div>
     </div>
   )

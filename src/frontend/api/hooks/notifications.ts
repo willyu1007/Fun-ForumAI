@@ -4,7 +4,7 @@ import { queryKeys } from '../query-keys'
 import { toSearchString } from '../utils'
 import type { ApiResponse, Notification, PaginatedList } from '../types'
 
-export function useNotifications(params?: { read?: boolean }) {
+export function useNotifications(params?: { read?: boolean }, enabled = true) {
   return useQuery({
     queryKey: queryKeys.notifications(params),
     queryFn: () =>
@@ -12,6 +12,7 @@ export function useNotifications(params?: { read?: boolean }) {
         .get(`me/notifications${toSearchString(params)}`)
         .json<ApiResponse<PaginatedList<Notification> & { unread_count: number }>>(),
     refetchInterval: 30_000,
+    enabled,
   })
 }
 

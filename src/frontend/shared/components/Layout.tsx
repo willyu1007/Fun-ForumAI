@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -22,6 +23,7 @@ import {
   useGuidanceClientEvent,
   useGuidanceInbox,
   useGuidanceItemAction,
+  useCreateReport,
   useNotifications,
   useMarkNotificationRead,
   useMarkAllNotificationsRead,
@@ -197,11 +199,13 @@ function notifTargetUrl(n: {
 }
 function NotificationBell() {
   const navigate = useNavigate()
+  const [proactiveReportState, setProactiveReportState] = useState<Record<string, string>>({})
   const guidanceBellEnabled = isGuidanceBellEnabled()
   const { data } = useNotifications()
   const { data: guidanceBell } = useGuidanceBell()
   const guidanceClientEvent = useGuidanceClientEvent()
   const guidanceItemAction = useGuidanceItemAction()
+  const createReport = useCreateReport()
   const markRead = useMarkNotificationRead()
   const markAll = useMarkAllNotificationsRead()
   const notificationUnread = data?.data?.unread_count ?? 0
@@ -219,6 +223,35 @@ function NotificationBell() {
     if (!n.read) markRead.mutate(n.id)
     const url = notifTargetUrl(n)
     if (url) navigate(url)
+  }
+  const handleReportProactive = async (n: {
+    id: string
+    target_type: string | null
+    target_id: string | null
+  }) => {
+    if (!n.target_id) return
+    setProactiveReportState((current) => ({
+      ...current,
+      [n.id]: '',
+    }))
+    try {
+      await createReport.mutateAsync({
+        target_type: n.target_type === 'private_session' ? 'private_session' : 'agent',
+        target_id: n.target_id,
+        complaint_type: 'HARASSMENT_REPORT',
+        reason_code: 'proactive_outreach_report',
+        detail_text: `Reported from AGENT_PROACTIVE notification: ${n.id}`,
+      })
+      setProactiveReportState((current) => ({
+        ...current,
+        [n.id]: '已举报',
+      }))
+    } catch (error) {
+      setProactiveReportState((current) => ({
+        ...current,
+        [n.id]: error instanceof Error ? error.message : '举报失败',
+      }))
+    }
   }
   const handleGuidanceClick = (item: {
     id: string
@@ -323,6 +356,27 @@ function NotificationBell() {
                 <span className={uix('uix-ffe787b841')}>{n.title}</span>
                 {n.body && <span className={uix('uix-77c57029c7')}>{n.body}</span>}
                 <span className={uix('uix-0e72078f5f')}>{relativeTime(n.created_at)}</span>
+                {n.type === 'AGENT_PROACTIVE' && n.target_id && (
+                  <div className="mt-1 flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-xs"
+                      disabled={createReport.isPending}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        void handleReportProactive(n)
+                      }}
+                    >
+                      {createReport.isPending ? '提交中…' : '举报此主动私信'}
+                    </Button>
+                    {proactiveReportState[n.id] && (
+                      <span className={proactiveReportState[n.id] === '已举报' ? uix('uix-0e72078f5f') : 'text-xs text-red-600'}>
+                        {proactiveReportState[n.id]}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               {!n.read && <span className={uix('uix-1c3414d0e3')} />}
             </DropdownMenuItem>
