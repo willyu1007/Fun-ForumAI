@@ -40,9 +40,10 @@ export const adminApiRouter: IRouter = Router()
 adminApiRouter.get('/admin/moderation/queue', requireHumanAuth, requireAdmin, async (req, res) => {
   const status = typeof req.query.status === 'string' ? req.query.status : undefined
   const case_type = typeof req.query.case_type === 'string' ? req.query.case_type : undefined
+  const queue = typeof req.query.queue === 'string' ? req.query.queue : undefined
   const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
   const limit = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : undefined
-  const result = await reviewService.listQueue({ status, case_type, cursor, limit })
+  const result = await reviewService.listQueue({ status, case_type, queue, cursor, limit })
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
 })
 
@@ -55,25 +56,75 @@ adminApiRouter.get('/admin/moderation/cases/:caseId', requireHumanAuth, requireA
   res.json({ data: detail })
 })
 
+adminApiRouter.get('/admin/moderation/cases/:caseId/evidence-export', requireHumanAuth, requireAdmin, async (req, res) => {
+  const redaction = typeof req.query.redaction === 'string' ? req.query.redaction.trim() : undefined
+  if (redaction && redaction !== 'operator' && redaction !== 'share') {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'redaction must be operator or share' } })
+    return
+  }
+  const exportBundle = await reviewService.buildEvidenceExport(String(req.params.caseId), { redaction })
+  if (!exportBundle) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Case not found' } })
+    return
+  }
+  res.json({ data: exportBundle })
+})
+
 adminApiRouter.post('/admin/moderation/cases/:caseId/assign', requireHumanAuth, requireAdmin, async (req, res) => {
   const assignee_user_id = typeof req.body?.assignee_user_id === 'string' ? req.body.assignee_user_id : null
-  const updated = await reviewService.assignCase(String(req.params.caseId), assignee_user_id)
+  const updated = await reviewService.assignCase(String(req.params.caseId), assignee_user_id, req.user!.userId)
   if (!updated) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Case not found' } })
     return
   }
   res.json({ data: updated })
+})
+
+adminApiRouter.post('/admin/moderation/cases/:caseId/transfer', requireHumanAuth, requireAdmin, async (req, res) => {
+  const assignee_user_id = typeof req.body?.assignee_user_id === 'string'
+    ? req.body.assignee_user_id.trim()
+    : ''
+  const assigned_role = typeof req.body?.assigned_role === 'string' ? req.body.assigned_role.trim() : undefined
+  const operator_note = typeof req.body?.operator_note === 'string' ? req.body.operator_note.trim() : undefined
+  if (!assignee_user_id) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'assignee_user_id is required' } })
+    return
+  }
+  const updated = await reviewService.transferCase(String(req.params.caseId), assignee_user_id, req.user!.userId, {
+    assigned_role,
+    operator_note,
+  })
+  if (!updated) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Case not found' } })
+    return
+  }
+  res.json({ data: updated })
+})
+
+adminApiRouter.post('/admin/moderation/cases/:caseId/release', requireHumanAuth, requireAdmin, async (req, res) => {
+  const operator_note = typeof req.body?.operator_note === 'string' ? req.body.operator_note.trim() : undefined
+  const released = await reviewService.releaseCase(String(req.params.caseId), req.user!.userId, {
+    operator_note,
+  })
+  if (!released) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Case not found' } })
+    return
+  }
+  res.json({ data: released })
 })
 
 adminApiRouter.post('/admin/moderation/cases/:caseId/resolve', requireHumanAuth, requireAdmin, async (req, res) => {
   const resolution_action = typeof req.body?.resolution_action === 'string'
     ? req.body.resolution_action.trim()
     : ''
+  const resolution_note = typeof req.body?.resolution_note === 'string'
+    ? req.body.resolution_note.trim()
+    : null
   if (!resolution_action) {
     res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'resolution_action is required' } })
     return
   }
-  const updated = await reviewService.resolveCase(String(req.params.caseId), resolution_action)
+  const updated = await reviewService.resolveCase(String(req.params.caseId), resolution_action, req.user!.userId, resolution_note)
   if (!updated) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Case not found' } })
     return
@@ -81,11 +132,25 @@ adminApiRouter.post('/admin/moderation/cases/:caseId/resolve', requireHumanAuth,
   res.json({ data: updated })
 })
 
+adminApiRouter.post('/admin/moderation/tasks/:taskId/claim', requireHumanAuth, requireAdmin, async (req, res) => {
+  const assigned_role = typeof req.body?.assigned_role === 'string' ? req.body.assigned_role.trim() : undefined
+  const operator_note = typeof req.body?.operator_note === 'string' ? req.body.operator_note.trim() : undefined
+  const result = await reviewService.claimTask(String(req.params.taskId), req.user!.userId, {
+    assigned_role,
+    operator_note,
+  })
+  if (!result) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Task not found' } })
+    return
+  }
+  res.json({ data: result })
+})
+
 adminApiRouter.post('/admin/moderation/cases/:caseId/reopen', requireHumanAuth, requireAdmin, async (req, res) => {
   const opened_reason = typeof req.body?.opened_reason === 'string'
     ? req.body.opened_reason.trim()
     : 'manual_reopen'
-  const updated = await reviewService.reopenCase(String(req.params.caseId), opened_reason)
+  const updated = await reviewService.reopenCase(String(req.params.caseId), opened_reason, req.user!.userId)
   if (!updated) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Case not found' } })
     return
@@ -132,7 +197,7 @@ adminApiRouter.post('/admin/identity-reviews/:userId', requireHumanAuth, require
       reviewed_by_user_id: req.user!.userId,
     },
   })
-  await reviewService.resolveCase(identityCase.id, `identity_${status.toLowerCase()}`)
+  await reviewService.resolveCase(identityCase.id, `identity_${status.toLowerCase()}`, req.user!.userId)
   res.json({ data: reviewRecord })
 })
 

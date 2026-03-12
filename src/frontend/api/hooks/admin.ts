@@ -3,12 +3,16 @@ import { api } from '../client'
 import { queryKeys } from '../query-keys'
 import type {
   ApiResponse,
+  ClaimedReviewTask,
   GovernanceResult,
   GovernanceActionType,
   IdentityVerification,
+  ReleasedReviewCase,
   ReviewCase,
   ReviewCaseDetail,
+  ReviewEvidenceExport,
   RuntimeFeaturesData,
+  TransferredReviewCase,
 } from '../types'
 
 function buildDisabledRuntimeFeaturesResponse(): ApiResponse<RuntimeFeaturesData> {
@@ -89,7 +93,7 @@ export function useGovernanceAction() {
   })
 }
 
-export function useModerationQueue(params?: { status?: string; case_type?: string; cursor?: string; limit?: number }) {
+export function useModerationQueue(params?: { status?: string; case_type?: string; queue?: string; cursor?: string; limit?: number }) {
   return useQuery({
     queryKey: queryKeys.adminModerationQueue(params),
     queryFn: () => api.get('admin/moderation/queue', { searchParams: params }).json<ApiResponse<ReviewCase[]>>(),
@@ -104,6 +108,23 @@ export function useModerationCase(caseId: string | null) {
   })
 }
 
+export function useModerationEvidenceExport(caseId: string | null, redaction: 'operator' | 'share' = 'operator') {
+  return useQuery({
+    queryKey: queryKeys.adminModerationEvidenceExport(caseId ?? 'missing', redaction),
+    queryFn: () =>
+      api.get(`admin/moderation/cases/${caseId}/evidence-export`, {
+        searchParams: { redaction },
+      }).json<ApiResponse<ReviewEvidenceExport>>(),
+    enabled: Boolean(caseId),
+  })
+}
+
+function invalidateModerationCaseQueries(qc: ReturnType<typeof useQueryClient>, caseId: string) {
+  qc.invalidateQueries({ queryKey: queryKeys.adminModerationQueue() })
+  qc.invalidateQueries({ queryKey: queryKeys.adminModerationCase(caseId) })
+  qc.invalidateQueries({ queryKey: ['admin', 'moderation-evidence-export', caseId] })
+}
+
 export function useAssignModerationCase() {
   const qc = useQueryClient()
   return useMutation({
@@ -112,8 +133,39 @@ export function useAssignModerationCase() {
         json: { assignee_user_id: body.assignee_user_id ?? null },
       }).json<ApiResponse<ReviewCase>>(),
     onSuccess: (_, variables) => {
-      qc.invalidateQueries({ queryKey: queryKeys.adminModerationQueue() })
-      qc.invalidateQueries({ queryKey: queryKeys.adminModerationCase(variables.case_id) })
+      invalidateModerationCaseQueries(qc, variables.case_id)
+    },
+  })
+}
+
+export function useTransferModerationCase() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { case_id: string; assignee_user_id: string; assigned_role?: string | null; operator_note?: string | null }) =>
+      api.post(`admin/moderation/cases/${body.case_id}/transfer`, {
+        json: {
+          assignee_user_id: body.assignee_user_id,
+          assigned_role: body.assigned_role ?? null,
+          operator_note: body.operator_note ?? null,
+        },
+      }).json<ApiResponse<TransferredReviewCase>>(),
+    onSuccess: (_, variables) => {
+      invalidateModerationCaseQueries(qc, variables.case_id)
+    },
+  })
+}
+
+export function useReleaseModerationCase() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { case_id: string; operator_note?: string | null }) =>
+      api.post(`admin/moderation/cases/${body.case_id}/release`, {
+        json: {
+          operator_note: body.operator_note ?? null,
+        },
+      }).json<ApiResponse<ReleasedReviewCase>>(),
+    onSuccess: (_, variables) => {
+      invalidateModerationCaseQueries(qc, variables.case_id)
     },
   })
 }
@@ -121,13 +173,31 @@ export function useAssignModerationCase() {
 export function useResolveModerationCase() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { case_id: string; resolution_action: string }) =>
+    mutationFn: (body: { case_id: string; resolution_action: string; resolution_note?: string | null }) =>
       api.post(`admin/moderation/cases/${body.case_id}/resolve`, {
-        json: { resolution_action: body.resolution_action },
+        json: {
+          resolution_action: body.resolution_action,
+          resolution_note: body.resolution_note ?? null,
+        },
       }).json<ApiResponse<ReviewCase>>(),
     onSuccess: (_, variables) => {
-      qc.invalidateQueries({ queryKey: queryKeys.adminModerationQueue() })
-      qc.invalidateQueries({ queryKey: queryKeys.adminModerationCase(variables.case_id) })
+      invalidateModerationCaseQueries(qc, variables.case_id)
+    },
+  })
+}
+
+export function useClaimModerationTask() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { task_id: string; case_id: string; assigned_role?: string | null; operator_note?: string | null }) =>
+      api.post(`admin/moderation/tasks/${body.task_id}/claim`, {
+        json: {
+          assigned_role: body.assigned_role ?? null,
+          operator_note: body.operator_note ?? null,
+        },
+      }).json<ApiResponse<ClaimedReviewTask>>(),
+    onSuccess: (_, variables) => {
+      invalidateModerationCaseQueries(qc, variables.case_id)
     },
   })
 }
@@ -140,8 +210,7 @@ export function useReopenModerationCase() {
         json: { opened_reason: body.opened_reason ?? 'manual_reopen' },
       }).json<ApiResponse<ReviewCase>>(),
     onSuccess: (_, variables) => {
-      qc.invalidateQueries({ queryKey: queryKeys.adminModerationQueue() })
-      qc.invalidateQueries({ queryKey: queryKeys.adminModerationCase(variables.case_id) })
+      invalidateModerationCaseQueries(qc, variables.case_id)
     },
   })
 }

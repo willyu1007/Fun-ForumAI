@@ -629,19 +629,40 @@ export interface GovernanceResult {
   new_state?: ContentState
 }
 
+export interface GovernanceActionLog {
+  id: string
+  case_id: string | null
+  action: string
+  target_type: string
+  target_id: string
+  actor_user_id: string
+  reason: string | null
+  result: Record<string, unknown> | null
+  created_at: string
+}
+
 export interface ReviewCase {
   id: string
   case_type: 'MODERATION' | 'COMPLAINT' | 'APPEAL' | 'IDENTITY_REVIEW' | 'CONFIG_REVIEW' | 'HOT_TOPIC'
+  queue: 'MODERATION' | 'COMPLAINT' | 'APPEAL' | 'IDENTITY_REVIEW' | 'CONFIG_REVIEW' | 'PRIVACY' | 'DELETION' | 'HOT_TOPIC'
   status: 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'DISMISSED'
   priority: number
   summary_text: string | null
+  risk_summary: Record<string, unknown> | null
   opened_reason: string | null
   opened_by: string
+  primary_target_type: string | null
+  primary_target_id: string | null
   assigned_to_user_id: string | null
+  sla_due_at: string | null
+  claimed_by_user_id: string | null
+  claimed_at: string | null
   linked_policy_snapshot_id: string | null
   linked_complaint_ticket_id: string | null
   linked_appeal_request_id: string | null
   resolution_action: string | null
+  resolved_by_user_id: string | null
+  resolution_note: string | null
   resolved_at: string | null
   created_at: string
   updated_at: string
@@ -652,7 +673,9 @@ export interface ReviewCaseTarget {
   case_id: string
   target_type: string
   target_id: string
+  relation_type: 'PRIMARY' | 'RELATED' | 'PARENT_THREAD' | 'SESSION_MEMBER' | 'OWNER' | 'AGENT'
   channel: string
+  meta: Record<string, unknown> | null
   community_id: string | null
   agent_id: string | null
   user_id: string | null
@@ -667,19 +690,48 @@ export interface ReviewEvidenceSnapshot {
   case_id: string
   snapshot_type: string
   payload: Record<string, unknown>
+  content: Record<string, unknown> | null
+  context: Record<string, unknown> | null
+  policy_hits: Record<string, unknown> | null
+  prompt_memory: Record<string, unknown> | null
+  topic_signals: Record<string, unknown> | null
+  action_history: Record<string, unknown> | null
+  evidence_package: Record<string, unknown> | null
   created_at: string
 }
 
 export interface ReviewTask {
   id: string
   case_id: string
+  queue: 'MODERATION' | 'COMPLAINT' | 'APPEAL' | 'IDENTITY_REVIEW' | 'CONFIG_REVIEW' | 'PRIVACY' | 'DELETION' | 'HOT_TOPIC'
   task_type: string
   status: 'PENDING' | 'ASSIGNED' | 'COMPLETED' | 'CANCELED'
   assignee_user_id: string | null
+  claim_token: string | null
+  claimed_by_user_id: string | null
+  claimed_at: string | null
+  assigned_role: string | null
   due_at: string | null
+  resolution_code: string | null
+  operator_note: string | null
   completed_at: string | null
   created_at: string
   updated_at: string
+}
+
+export interface ClaimedReviewTask {
+  task: ReviewTask
+  case: ReviewCase | null
+}
+
+export interface TransferredReviewCase {
+  task: ReviewTask | null
+  case: ReviewCase | null
+}
+
+export interface ReleasedReviewCase {
+  case: ReviewCase | null
+  tasks: ReviewTask[]
 }
 
 export interface ReviewCaseDetail {
@@ -687,6 +739,26 @@ export interface ReviewCaseDetail {
   targets: ReviewCaseTarget[]
   evidence: ReviewEvidenceSnapshot[]
   tasks: ReviewTask[]
+  linked_complaint: ComplaintTicket | null
+  linked_appeal: AppealRequest | null
+}
+
+export interface ReviewEvidenceExport {
+  case: ReviewCase
+  linked_complaint: ComplaintTicket | null
+  linked_appeal: AppealRequest | null
+  targets: ReviewCaseTarget[]
+  tasks: ReviewTask[]
+  action_logs: GovernanceActionLog[]
+  redaction_level: 'operator' | 'share'
+  redaction_notes: string[]
+  evidence: Array<{
+    id: string
+    snapshot_type: string
+    evidence_package: Record<string, unknown> | null
+    created_at: string
+  }>
+  exported_at: string
 }
 
 export interface IdentityVerification {
@@ -707,10 +779,20 @@ export interface ComplaintTicket {
   reporter_user_id: string
   target_type: string
   target_id: string
+  complaint_type:
+    | 'CONTENT_REPORT'
+    | 'PRIVACY_REQUEST'
+    | 'DELETION_REQUEST'
+    | 'IMPERSONATION_REPORT'
+    | 'MISLABEL_REPORT'
+    | 'HARASSMENT_REPORT'
+    | 'OTHER'
   reason_code: string
   detail_text: string | null
+  attachments: Array<{ ref: string; type: string }>
   status: 'OPEN' | 'LINKED' | 'RESOLVED' | 'REJECTED'
   linked_case_id: string | null
+  resolution: Record<string, unknown> | null
   created_at: string
   updated_at: string
 }
@@ -718,12 +800,15 @@ export interface ComplaintTicket {
 export interface AppealRequest {
   id: string
   requester_user_id: string
+  requester_type: 'USER' | 'OWNER' | 'OPERATOR'
   target_type: string
   target_id: string
+  appeal_type: 'CONTENT_APPEAL' | 'ACCOUNT_LIMIT_APPEAL' | 'AGENT_RESTRICTION_APPEAL' | 'OTHER'
   linked_case_id: string | null
   linked_complaint_ticket_id: string | null
   reason: string
   status: 'OPEN' | 'LINKED' | 'RESOLVED' | 'REJECTED'
+  result: Record<string, unknown> | null
   created_at: string
   updated_at: string
 }
