@@ -641,6 +641,46 @@ export interface GovernanceActionLog {
   created_at: string
 }
 
+export interface DisclosureCapOverride {
+  id: string
+  scope_type: 'agent' | 'community'
+  scope_id: string
+  cap_level: number
+  status: 'ACTIVE' | 'RELEASED'
+  source: 'manual' | 'owner_endorsement_public' | 'owner_private_leak'
+  reason: string | null
+  linked_case_id: string | null
+  linked_risk_event_id: string | null
+  created_by_user_id: string
+  released_by_user_id: string | null
+  released_reason: string | null
+  released_at: string | null
+  created_at: string
+}
+
+export interface RiskEventLog {
+  id: string
+  policy_snapshot_id: string | null
+  case_id: string | null
+  channel: string
+  event_type: string
+  action: string
+  risk_level: string | null
+  risk_score: number | null
+  risk_categories: string[]
+  target_type: string | null
+  target_id: string | null
+  community_id: string | null
+  agent_id: string | null
+  user_id: string | null
+  room_id: string | null
+  session_id: string | null
+  message_id: string | null
+  detail_text: string | null
+  payload: Record<string, unknown> | null
+  created_at: string
+}
+
 export interface ReviewCase {
   id: string
   case_type: 'MODERATION' | 'COMPLAINT' | 'APPEAL' | 'IDENTITY_REVIEW' | 'CONFIG_REVIEW' | 'HOT_TOPIC'
@@ -759,6 +799,46 @@ export interface ReviewEvidenceExport {
     created_at: string
   }>
   exported_at: string
+}
+
+export interface PromptAuditServerCapSource {
+  source_type: 'baseline' | 'agent_override' | 'community_override' | 'hot_topic_runtime'
+  scope_type: 'agent' | 'community' | 'runtime'
+  scope_id: string | null
+  cap_level: number
+  source: 'agent_privacy_settings' | 'manual' | 'owner_endorsement_public' | 'owner_private_leak' | 'hot_topic_drift'
+  override_id?: string | null
+  reason?: string | null
+  linked_case_id?: string | null
+  linked_risk_event_id?: string | null
+}
+
+export interface AgentPrivateProvenanceSummary {
+  run_id: string
+  used_memory_ids: string[]
+  requested_disclosure_level: number
+  effective_disclosure_level: number
+  cap_source: 'owner_setting' | 'server_cap'
+  public_disclosure_cap: number | null
+  server_cap_sources: PromptAuditServerCapSource[]
+}
+
+export interface AgentRiskProfile {
+  agent: Agent
+  latest_config: AgentConfig | null
+  spillover_events: RiskEventLog[]
+  recent_config_actions: GovernanceActionLog[]
+  recent_private_provenance: AgentPrivateProvenanceSummary[]
+  active_cap_overrides: DisclosureCapOverride[]
+  cap_history: DisclosureCapOverride[]
+  effective_disclosure_cap: number | null
+}
+
+export interface DisclosureCapQueryResult {
+  scope_type: 'agent' | 'community'
+  scope_id: string
+  active_override: DisclosureCapOverride | null
+  history: DisclosureCapOverride[]
 }
 
 export interface IdentityVerification {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AdminPanel } from '../AdminPanel'
 import type {
@@ -7,14 +7,18 @@ import type {
   ReviewEvidenceExport,
 } from '@/api/types'
 import {
+  useAdminAgentRiskProfile,
   useAssignModerationCase,
   useClaimModerationTask,
+  useCreateDisclosureCapOverride,
+  useDisclosureCaps,
   useGovernanceAction,
   useHealth,
   useIdentityReviews,
   useModerationCase,
   useModerationEvidenceExport,
   useModerationQueue,
+  useReleaseDisclosureCapOverride,
   useReleaseModerationCase,
   useReopenModerationCase,
   useResolveIdentityReview,
@@ -28,14 +32,18 @@ vi.mock('../components/RuntimeDashboard', () => ({
 }))
 
 vi.mock('@/api/hooks', () => ({
+  useAdminAgentRiskProfile: vi.fn(),
   useAssignModerationCase: vi.fn(),
   useClaimModerationTask: vi.fn(),
+  useCreateDisclosureCapOverride: vi.fn(),
+  useDisclosureCaps: vi.fn(),
   useGovernanceAction: vi.fn(),
   useHealth: vi.fn(),
   useIdentityReviews: vi.fn(),
   useModerationCase: vi.fn(),
   useModerationEvidenceExport: vi.fn(),
   useModerationQueue: vi.fn(),
+  useReleaseDisclosureCapOverride: vi.fn(),
   useReleaseModerationCase: vi.fn(),
   useReopenModerationCase: vi.fn(),
   useResolveIdentityReview: vi.fn(),
@@ -49,12 +57,16 @@ vi.mock('@/shared/hooks/use-auth', () => ({
 
 const useAssignModerationCaseMock = vi.mocked(useAssignModerationCase)
 const useClaimModerationTaskMock = vi.mocked(useClaimModerationTask)
+const useAdminAgentRiskProfileMock = vi.mocked(useAdminAgentRiskProfile)
+const useCreateDisclosureCapOverrideMock = vi.mocked(useCreateDisclosureCapOverride)
+const useDisclosureCapsMock = vi.mocked(useDisclosureCaps)
 const useGovernanceActionMock = vi.mocked(useGovernanceAction)
 const useHealthMock = vi.mocked(useHealth)
 const useIdentityReviewsMock = vi.mocked(useIdentityReviews)
 const useModerationCaseMock = vi.mocked(useModerationCase)
 const useModerationEvidenceExportMock = vi.mocked(useModerationEvidenceExport)
 const useModerationQueueMock = vi.mocked(useModerationQueue)
+const useReleaseDisclosureCapOverrideMock = vi.mocked(useReleaseDisclosureCapOverride)
 const useReleaseModerationCaseMock = vi.mocked(useReleaseModerationCase)
 const useReopenModerationCaseMock = vi.mocked(useReopenModerationCase)
 const useResolveIdentityReviewMock = vi.mocked(useResolveIdentityReview)
@@ -224,6 +236,16 @@ describe('AdminPanel', () => {
       isError: false,
       error: null,
     } as never)
+    useAdminAgentRiskProfileMock.mockReturnValue({
+      data: undefined,
+    } as never)
+    useDisclosureCapsMock.mockReturnValue({
+      data: undefined,
+    } as never)
+    useCreateDisclosureCapOverrideMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never)
     useModerationQueueMock.mockReturnValue({
       data: {
         data: [{
@@ -254,6 +276,10 @@ describe('AdminPanel', () => {
     } as never)
     useReleaseModerationCaseMock.mockReturnValue({
       mutate: vi.fn(),
+      isPending: false,
+    } as never)
+    useReleaseDisclosureCapOverrideMock.mockReturnValue({
+      mutateAsync: vi.fn(),
       isPending: false,
     } as never)
     useResolveModerationCaseMock.mockReturnValue({
@@ -315,10 +341,11 @@ describe('AdminPanel', () => {
     fireEvent.mouseDown(exportTab)
     fireEvent.click(exportTab)
 
-    const selects = document.querySelectorAll('select')
-    expect(selects.length).toBeGreaterThan(2)
+    const exportRedactionSelect = Array.from(document.querySelectorAll('select')).find((element) =>
+      Array.from(element.querySelectorAll('option')).some((option) => option.value === 'operator' || option.value === 'share'))
+    expect(exportRedactionSelect).toBeTruthy()
 
-    fireEvent.change(selects[2]!, {
+    fireEvent.change(exportRedactionSelect!, {
       target: { value: 'share' },
     })
 
@@ -328,5 +355,134 @@ describe('AdminPanel', () => {
 
     expect(screen.getByText('share export 已隐藏原文、prompt/memory 与用户标识。')).toBeTruthy()
     expect(screen.getByText((_, node) => node?.textContent === 'redaction share')).toBeTruthy()
+  })
+
+  it('renders agent risk profile and disclosure cap controls', async () => {
+    const createCapMutate = vi.fn()
+    const releaseCapMutate = vi.fn()
+    useCreateDisclosureCapOverrideMock.mockReturnValue({
+      mutateAsync: createCapMutate,
+      isPending: false,
+    } as never)
+    useReleaseDisclosureCapOverrideMock.mockReturnValue({
+      mutateAsync: releaseCapMutate,
+      isPending: false,
+    } as never)
+    useAdminAgentRiskProfileMock.mockImplementation((agentId) => (
+      agentId
+        ? {
+            data: {
+              data: {
+                agent: {
+                  id: 'agent-risk',
+                  owner_id: 'user-1',
+                  display_name: 'Risk Bot',
+                  avatar_url: null,
+                  model: 'gpt-4o',
+                  persona_version: 1,
+                  reputation_score: 0,
+                  status: 'ACTIVE',
+                  created_at: '2026-03-12T10:00:00.000Z',
+                  updated_at: '2026-03-12T10:00:00.000Z',
+                },
+                latest_config: null,
+                spillover_events: [{
+                  id: 'risk-1',
+                  policy_snapshot_id: 'snap-1',
+                  case_id: 'case-1',
+                  channel: 'forum_post',
+                  event_type: 'policy_gateway_decision',
+                  action: 'block',
+                  risk_level: 'high',
+                  risk_score: 0.9,
+                  risk_categories: ['owner_private_leak'],
+                  target_type: 'post',
+                  target_id: 'post-1',
+                  community_id: 'community-1',
+                  agent_id: 'agent-risk',
+                  user_id: null,
+                  room_id: null,
+                  session_id: null,
+                  message_id: null,
+                  detail_text: 'owner_private_leak_blocked',
+                  payload: null,
+                  created_at: '2026-03-12T10:00:00.000Z',
+                }],
+                recent_config_actions: [],
+                recent_private_provenance: [{
+                  run_id: 'run-1',
+                  used_memory_ids: ['mem-1'],
+                  requested_disclosure_level: 3,
+                  effective_disclosure_level: 1,
+                  cap_source: 'server_cap',
+                  public_disclosure_cap: 1,
+                  server_cap_sources: [{
+                    source_type: 'agent_override',
+                    scope_type: 'agent',
+                    scope_id: 'agent-risk',
+                    cap_level: 1,
+                    source: 'manual',
+                  }],
+                }],
+                active_cap_overrides: [],
+                cap_history: [],
+                effective_disclosure_cap: 1,
+              },
+            },
+          }
+        : { data: undefined }
+    ) as never)
+    useDisclosureCapsMock.mockImplementation((_scopeType, scopeId) => (
+      scopeId
+        ? {
+            data: {
+              data: {
+                scope_type: 'agent',
+                scope_id: scopeId,
+                active_override: {
+                  id: 'override-1',
+                  scope_type: 'agent',
+                  scope_id: scopeId,
+                  cap_level: 1,
+                  status: 'ACTIVE',
+                  source: 'manual',
+                  reason: 'manual tighten',
+                  linked_case_id: null,
+                  linked_risk_event_id: null,
+                  created_by_user_id: 'admin-1',
+                  released_by_user_id: null,
+                  released_reason: null,
+                  released_at: null,
+                  created_at: '2026-03-12T10:00:00.000Z',
+                },
+                history: [],
+              },
+            },
+          }
+        : { data: undefined }
+    ) as never)
+
+    render(<AdminPanel />)
+
+    await act(async () => {
+      fireEvent.change(screen.getByPlaceholderText('Agent ID'), {
+        target: { value: 'agent-risk' },
+      })
+      fireEvent.change(screen.getByPlaceholderText('scope id'), {
+        target: { value: 'agent-risk' },
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Agent 风险画像')).toBeTruthy()
+      expect(screen.getByText('owner_private_leak_blocked')).toBeTruthy()
+      expect(screen.getByText('Disclosure Cap 管理')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '设置 Cap Override' }))
+    expect(createCapMutate).toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: '释放当前 Override' }))
+    expect(releaseCapMutate).toHaveBeenCalled()
   })
 })

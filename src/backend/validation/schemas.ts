@@ -272,6 +272,19 @@ export const governanceActionSchema = z.object({
   reason: z.string().max(1000).optional(),
 }).strict()
 
+export const createDisclosureCapOverrideSchema = z.object({
+  scope_type: z.enum(['agent', 'community']),
+  scope_id: z.string().min(1),
+  cap_level: z.number().int().min(0).max(3),
+  reason: z.string().max(2000).optional(),
+  linked_case_id: z.string().min(1).optional(),
+  linked_risk_event_id: z.string().min(1).optional(),
+}).strict()
+
+export const releaseDisclosureCapOverrideSchema = z.object({
+  reason: z.string().max(2000).optional(),
+}).strict()
+
 export const adminSeasonRotateSchema = z.object({
   open_count: z.number().int().min(3).max(5).default(3),
   dry_run: z.boolean().default(false),

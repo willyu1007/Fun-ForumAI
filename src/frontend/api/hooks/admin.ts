@@ -3,7 +3,10 @@ import { api } from '../client'
 import { queryKeys } from '../query-keys'
 import type {
   ApiResponse,
+  AgentRiskProfile,
   ClaimedReviewTask,
+  DisclosureCapOverride,
+  DisclosureCapQueryResult,
   GovernanceResult,
   GovernanceActionType,
   IdentityVerification,
@@ -235,6 +238,76 @@ export function useResolveIdentityReview() {
       }).json<ApiResponse<IdentityVerification>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.adminIdentityReviews() })
+    },
+  })
+}
+
+export function useAdminAgentRiskProfile(agentId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.adminAgentRiskProfile(agentId ?? 'missing'),
+    queryFn: () => api.get(`admin/agents/${agentId}/risk-profile`).json<ApiResponse<AgentRiskProfile>>(),
+    enabled: Boolean(agentId),
+  })
+}
+
+export function useDisclosureCaps(scopeType: 'agent' | 'community', scopeId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.adminDisclosureCaps(scopeType, scopeId ?? 'missing'),
+    queryFn: () =>
+      api.get('admin/disclosure-caps', {
+        searchParams: { scope_type: scopeType, scope_id: scopeId ?? '' },
+      }).json<ApiResponse<DisclosureCapQueryResult>>(),
+    enabled: Boolean(scopeId),
+  })
+}
+
+export function useCreateDisclosureCapOverride() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: {
+      scope_type: 'agent' | 'community'
+      scope_id: string
+      cap_level: number
+      reason?: string | null
+      linked_case_id?: string | null
+      linked_risk_event_id?: string | null
+    }) =>
+      api.post('admin/disclosure-caps', {
+        json: {
+          scope_type: body.scope_type,
+          scope_id: body.scope_id,
+          cap_level: body.cap_level,
+          reason: body.reason ?? null,
+          linked_case_id: body.linked_case_id ?? null,
+          linked_risk_event_id: body.linked_risk_event_id ?? null,
+        },
+      }).json<ApiResponse<DisclosureCapOverride>>(),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminDisclosureCaps(variables.scope_type, variables.scope_id) })
+      if (variables.scope_type === 'agent') {
+        qc.invalidateQueries({ queryKey: queryKeys.adminAgentRiskProfile(variables.scope_id) })
+      }
+    },
+  })
+}
+
+export function useReleaseDisclosureCapOverride() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: {
+      override_id: string
+      scope_type: 'agent' | 'community'
+      scope_id: string
+      reason?: string | null
+    }) =>
+      api.post(`admin/disclosure-caps/${body.override_id}/release`, {
+        json: { reason: body.reason ?? null },
+      }).json<ApiResponse<DisclosureCapOverride>>(),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminDisclosureCaps(variables.scope_type, variables.scope_id) })
+      if (variables.scope_type === 'agent') {
+        qc.invalidateQueries({ queryKey: queryKeys.adminAgentRiskProfile(variables.scope_id) })
+      }
     },
   })
 }

@@ -1,13 +1,17 @@
 import { useState } from 'react'
 import {
+  useAdminAgentRiskProfile,
   useAssignModerationCase,
   useClaimModerationTask,
+  useCreateDisclosureCapOverride,
+  useDisclosureCaps,
   useGovernanceAction,
   useHealth,
   useIdentityReviews,
   useModerationCase,
   useModerationEvidenceExport,
   useModerationQueue,
+  useReleaseDisclosureCapOverride,
   useReleaseModerationCase,
   useReopenModerationCase,
   useResolveIdentityReview,
@@ -24,6 +28,7 @@ import { RuntimeDashboard } from '../components/RuntimeDashboard'
 import type {
   AppealRequest,
   ComplaintTicket,
+  DisclosureCapOverride,
   GovernanceActionType,
   GovernanceResult,
   ReviewEvidenceSnapshot,
@@ -95,6 +100,11 @@ const APPEAL_TYPE_LABELS: Record<string, string> = {
   ACCOUNT_LIMIT_APPEAL: '账号限制申诉',
   AGENT_RESTRICTION_APPEAL: '智能体限制申诉',
   OTHER: '其他申诉',
+}
+const CAP_SOURCE_LABELS: Record<string, string> = {
+  manual: '手动',
+  owner_endorsement_public: '公开代言',
+  owner_private_leak: '私域泄露',
 }
 
 const EVIDENCE_SECTIONS = [
@@ -247,6 +257,10 @@ function renderAppealPanel(item: AppealRequest | null) {
   )
 }
 
+function renderCapOverrideSummary(override: DisclosureCapOverride) {
+  return `cap=${override.cap_level} · ${CAP_SOURCE_LABELS[override.source] ?? override.source} · ${override.status}`
+}
+
 export function AdminPanel() {
   const { currentIdentity, user } = useAuth()
   const governance = useGovernanceAction()
@@ -260,10 +274,18 @@ export function AdminPanel() {
   const resolveCase = useResolveModerationCase()
   const reopenCase = useReopenModerationCase()
   const resolveIdentity = useResolveIdentityReview()
+  const createDisclosureCap = useCreateDisclosureCapOverride()
+  const releaseDisclosureCap = useReleaseDisclosureCapOverride()
   const [action, setAction] = useState<GovernanceActionType>('approve')
   const [targetType, setTargetType] = useState<string>('post')
   const [targetId, setTargetId] = useState('')
   const [reason, setReason] = useState('')
+  const [riskProfileAgentId, setRiskProfileAgentId] = useState('')
+  const [capScopeType, setCapScopeType] = useState<'agent' | 'community'>('agent')
+  const [capScopeId, setCapScopeId] = useState('')
+  const [capLevel, setCapLevel] = useState('1')
+  const [capReason, setCapReason] = useState('')
+  const [releaseCapReason, setReleaseCapReason] = useState('')
   const [transferUserId, setTransferUserId] = useState('')
   const [transferNote, setTransferNote] = useState('')
   const [evidenceExportRedaction, setEvidenceExportRedaction] = useState<EvidenceExportRedaction>('operator')
@@ -271,6 +293,8 @@ export function AdminPanel() {
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null)
   const { data: caseDetail } = useModerationCase(selectedCaseId)
   const { data: evidenceExport, refetch: refetchEvidenceExport } = useModerationEvidenceExport(selectedCaseId, evidenceExportRedaction)
+  const { data: riskProfile } = useAdminAgentRiskProfile(riskProfileAgentId || null)
+  const { data: disclosureCaps } = useDisclosureCaps(capScopeType, capScopeId || null)
   if (currentIdentity !== 'admin') {
     return (
       <div className="space-y-4">
@@ -298,6 +322,26 @@ export function AdminPanel() {
     } catch {
       // error handled by mutation state
     }
+  }
+  const handleCreateCapOverride = async () => {
+    if (!capScopeId.trim()) return
+    await createDisclosureCap.mutateAsync({
+      scope_type: capScopeType,
+      scope_id: capScopeId.trim(),
+      cap_level: Number(capLevel),
+      reason: capReason.trim() || null,
+    })
+    setCapReason('')
+  }
+  const handleReleaseCapOverride = async (overrideId: string) => {
+    if (!capScopeId.trim()) return
+    await releaseDisclosureCap.mutateAsync({
+      override_id: overrideId,
+      scope_type: capScopeType,
+      scope_id: capScopeId.trim(),
+      reason: releaseCapReason.trim() || null,
+    })
+    setReleaseCapReason('')
   }
   return (
     <div className="space-y-4">
@@ -417,6 +461,146 @@ export function AdminPanel() {
               </div>
             </section>
           )}
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <Card>
+              <CardHeader className={uix('uix-f4cc511ff0')}>
+                <CardTitle className={uix('uix-fc7473ca09')}>Agent 风险画像</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Agent ID"
+                    value={riskProfileAgentId}
+                    onChange={(e) => setRiskProfileAgentId(e.target.value)}
+                  />
+                </div>
+                {!riskProfile?.data && (
+                  <p className={uix('uix-abda0153e3')}>输入 Agent ID 后查看 spillover、provenance 与 cap 历史。</p>
+                )}
+                {riskProfile?.data && (
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline">effective cap {riskProfile.data.effective_disclosure_cap ?? 'none'}</Badge>
+                      <Badge variant="outline">spillover events {riskProfile.data.spillover_events.length}</Badge>
+                      <Badge variant="outline">active caps {riskProfile.data.active_cap_overrides.length}</Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <p className={uix('uix-da8bf29040')}>Recent Provenance</p>
+                      {(riskProfile.data.recent_private_provenance.slice(0, 3)).map((item) => (
+                        <div key={item.run_id} className="rounded-md border p-3">
+                          <p className={uix('uix-da8bf29040')}>{item.run_id}</p>
+                          <p className={uix('uix-abda0153e3')}>
+                            requested {item.requested_disclosure_level} → effective {item.effective_disclosure_level}
+                            {' · '}
+                            {item.cap_source}
+                          </p>
+                          <p className={uix('uix-abda0153e3')}>
+                            server caps: {item.server_cap_sources.map((source) => `${source.source_type}:${source.cap_level}`).join(', ') || 'none'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="space-y-2">
+                      <p className={uix('uix-da8bf29040')}>Recent Spillover Events</p>
+                      {(riskProfile.data.spillover_events.slice(0, 3)).map((event) => (
+                        <div key={event.id} className="rounded-md border p-3">
+                          <p className={uix('uix-da8bf29040')}>{event.detail_text ?? event.event_type}</p>
+                          <p className={uix('uix-abda0153e3')}>
+                            {event.action} · {event.risk_level ?? 'n/a'} · {event.risk_categories.join(', ') || 'none'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="space-y-2">
+                      <p className={uix('uix-da8bf29040')}>Recent Config Actions</p>
+                      {(riskProfile.data.recent_config_actions.slice(0, 3)).map((item) => (
+                        <div key={item.id} className="rounded-md border p-3">
+                          <p className={uix('uix-da8bf29040')}>{item.action}</p>
+                          <p className={uix('uix-abda0153e3')}>{item.reason ?? '无备注'}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className={uix('uix-f4cc511ff0')}>
+                <CardTitle className={uix('uix-fc7473ca09')}>Disclosure Cap 管理</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <select
+                    value={capScopeType}
+                    onChange={(e) => setCapScopeType(e.target.value as 'agent' | 'community')}
+                    className={uix('uix-34e5554f24')}
+                  >
+                    <option value="agent">agent</option>
+                    <option value="community">community</option>
+                  </select>
+                  <Input
+                    placeholder="scope id"
+                    value={capScopeId}
+                    onChange={(e) => setCapScopeId(e.target.value)}
+                  />
+                  <select
+                    value={capLevel}
+                    onChange={(e) => setCapLevel(e.target.value)}
+                    className={uix('uix-34e5554f24')}
+                  >
+                    {[0, 1, 2, 3].map((value) => (
+                      <option key={value} value={value}>{value}</option>
+                    ))}
+                  </select>
+                </div>
+                <Input
+                  placeholder="设置原因（选填）"
+                  value={capReason}
+                  onChange={(e) => setCapReason(e.target.value)}
+                />
+                <Button
+                  size="sm"
+                  onClick={handleCreateCapOverride}
+                  disabled={createDisclosureCap.isPending || !capScopeId.trim()}
+                >
+                  {createDisclosureCap.isPending ? '设置中…' : '设置 Cap Override'}
+                </Button>
+                <Input
+                  placeholder="释放原因（选填）"
+                  value={releaseCapReason}
+                  onChange={(e) => setReleaseCapReason(e.target.value)}
+                />
+                {disclosureCaps?.data?.active_override && (
+                  <div className="rounded-md border p-3">
+                    <p className={uix('uix-da8bf29040')}>Active Override</p>
+                    <p className={uix('uix-abda0153e3')}>
+                      {renderCapOverrideSummary(disclosureCaps.data.active_override)}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-2"
+                      onClick={() => handleReleaseCapOverride(disclosureCaps.data.active_override!.id)}
+                      disabled={releaseDisclosureCap.isPending}
+                    >
+                      {releaseDisclosureCap.isPending ? '释放中…' : '释放当前 Override'}
+                    </Button>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <p className={uix('uix-da8bf29040')}>Recent Override History</p>
+                  {(disclosureCaps?.data?.history ?? []).slice(0, 4).map((item) => (
+                    <div key={item.id} className="rounded-md border p-3">
+                      <p className={uix('uix-da8bf29040')}>{renderCapOverrideSummary(item)}</p>
+                      <p className={uix('uix-abda0153e3')}>{item.reason ?? '无原因'}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
             <Card>
