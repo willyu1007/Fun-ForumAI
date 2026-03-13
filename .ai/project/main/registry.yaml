@@ -859,13 +859,13 @@ tasks:
     updated: 2026-03-13
   - id: T-095
     slug: scene-selector-scheduled-post-forum-entry
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-060
     requirement_ids:
       - R-061
     dev_docs_path: dev-docs/active/scene-selector-scheduled-post-forum-entry
-    updated: 2026-03-13
+    updated: 2026-03-14
   - id: T-096
     slug: director-runtime-state-and-chatroom-unification
     status: in-progress

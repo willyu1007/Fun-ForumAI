@@ -133,6 +133,6 @@ Project: `main`
 | Task | Status | Dev Docs |
 | --- | --- | --- |
 | T-094 public-director-boundary-and-scene-contract | done | dev-docs/active/public-director-boundary-and-scene-contract |
-| T-095 scene-selector-scheduled-post-forum-entry | in-progress | dev-docs/active/scene-selector-scheduled-post-forum-entry |
+| T-095 scene-selector-scheduled-post-forum-entry | done | dev-docs/active/scene-selector-scheduled-post-forum-entry |
 | T-096 director-runtime-state-and-chatroom-unification | in-progress | dev-docs/active/director-runtime-state-and-chatroom-unification |
 <!-- AUTO-GENERATED:END feature-map -->

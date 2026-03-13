@@ -349,7 +349,11 @@ interface ForumSceneMetadataRepository {
 
 ### Write-path contract
 - `ForumWriteService.createPost()` / `createComment()` 在实现 phase 应接受可选 `scene_metadata_sidecar` 输入，而不是从 prompt 文本或 parser 输出中重新推断 scene。
-- 内容写入成功后，必须在同一 logical write unit 中 upsert `forum_scene_metadata`，再发出 `POST_CREATED / COMMENT_CREATED` data event。
+- scene-enabled forum write 的最小 fail-closed 单元必须覆盖：
+  - post/comment content
+  - `forum_scene_metadata`
+  - `POST_CREATED / COMMENT_CREATED` data event
+  - 对 post 场景写入来说，对应的 service-level `agent_run`
 - 若 sidecar 写入失败：
   - 默认策略应为 fail closed，不把该内容标记为“scene-aware complete”；
   - 若短期必须降级，必须写入 repair-required audit，并让 continuity reader 把该内容视为 missing carrier，而不是 silent success。
@@ -360,6 +364,7 @@ interface ForumSceneMetadataRepository {
   1. 当前 target comment 的 `forum_scene_metadata`
   2. 所属 post 的 `forum_scene_metadata`
   3. event / agent run replay fallback
+- 只要 thread 已被识别为 scene-tagged，continuity reader 就必须先耗尽上述 repair/replay 链；只有 repair/replay 全部失败时才允许 skip，不能在第一层 carrier 损坏时提前短路。
 - public feed / thread API 在 `T-095` 不要求把完整 `scene_metadata` 透给客户端；它首先服务 selector continuity 和内部审计。
 
 ### Rejected alternatives

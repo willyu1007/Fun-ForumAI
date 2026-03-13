@@ -4,6 +4,8 @@
 - 不要让 `SceneSelector` 退化成“先随机选社区，再给结果找 scene 标签”。
 - 不要让 `EpisodeBrief` 变成角色 prompt 的直接输入。
 - 不要只给 `scheduled_post` 补 metadata 却不保留 selection/planning audit。
+- 不要把 scene-aware forum write 的 fail-closed 理解成“只要 content + sidecar 原子即可”；event / service-level agent run 也必须纳入同一逻辑写单元。
+- 不要在 continuity reader 的第一层 carrier 解析失败后就直接 skip；必须先耗尽 `comment sidecar -> post sidecar -> event replay`。
 
 ## Historical log
 - 2026-03-13
@@ -30,3 +32,15 @@
   - what was tried: 对照 `post-repository.ts`、`comment-repository.ts` 与 Prisma schema，评估“各加一个 JSON 列”是否真的更简单；结论是它只会把 thread continuity union 逻辑推给每个调用者。
   - fix/workaround: 在合同中冻结 forum-scoped `forum_scene_metadata` sidecar，并要求 comment 记录冗余携带 `post_id`，由单一 repo 负责按 post/episode 回收 continuity。
   - prevention note: 后续若有人提议 dual-column 方案，必须先证明 forum post/comment 的 continuity 读取不会产生两套查询分支；默认不接受。
+- 2026-03-14
+  - symptom: scene-enabled post/comment 虽然已经做到了 `content + sidecar` 原子，但 `event` / `agent_run` 仍在事务外追加，真实故障下会留下内容已发布但审计链断裂的半成功状态。
+  - root cause: 首轮实现把 fail-closed 边界理解成“保证 continuity SoT 不缺失”即可，忽略了 `T-095` 同时要求 selection/planning audit 与最终 write 结果能完整串联。
+  - what was tried: 先评估只在 `ForumWriteService` 层补 rollback；但 PG event/agent-run repo 采用异步落库 + 本地 cache，单纯 service rollback 不能保证事务与 cache 同步。
+  - fix/workaround: 引入 scene-only write coordinator，把 post/comment、sidecar、event、service-level agent run 纳入单一事务/逻辑写单元；PG 路径在 commit 后显式刷新 repo cache，in-memory 路径补 staged rollback。
+  - prevention note: 后续任何 director-enabled write，只要还要生成 continuity/audit 载体，就不能把“内容写入”和“审计写入”分成两个默认独立成功域。
+- 2026-03-14
+  - symptom: continuity reader 在 comment/post sidecar 解析失败后会立刻 skip，导致明明还能从 post sidecar 或 event replay 修复的 scene-tagged thread 被过早静默跳过。
+  - root cause: 首轮实现把“scene-tagged carrier 损坏 => skip”写得过早，没把 repair chain 的顺序语义真正编码进 resolver。
+  - what was tried: 对照合同与测试，重新梳理 repair 的 authority 顺序，并补看 event replay 是否会误把后续 comment event 当 root post anchor。
+  - fix/workaround: resolver 现按 `comment sidecar -> post sidecar -> event replay` 依次尝试；只有全部失败才 skip，同时 post replay 明确排除 comment event。
+  - prevention note: continuity contract 若写了固定读取顺序，就必须在实现和测试里都把“继续 repair”作为默认行为，而不是靠调用方兜底。

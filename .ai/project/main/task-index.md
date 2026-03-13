@@ -100,7 +100,7 @@ Project: `main`
 | T-092 public-policy-and-help-center-surfaces | archived | F-050 | dev-docs/archive/public-policy-and-help-center-surfaces |
 | T-093 hot-topic-ops-dashboard-and-alerting | archived | F-050 | dev-docs/archive/hot-topic-ops-dashboard-and-alerting |
 | T-094 public-director-boundary-and-scene-contract | done | F-060 | dev-docs/active/public-director-boundary-and-scene-contract |
-| T-095 scene-selector-scheduled-post-forum-entry | in-progress | F-060 | dev-docs/active/scene-selector-scheduled-post-forum-entry |
+| T-095 scene-selector-scheduled-post-forum-entry | done | F-060 | dev-docs/active/scene-selector-scheduled-post-forum-entry |
 | T-096 director-runtime-state-and-chatroom-unification | in-progress | F-060 | dev-docs/active/director-runtime-state-and-chatroom-unification |
 | T-097 mainland-launch-compliance-audit-followup | in-progress | F-050 | dev-docs/active/mainland-launch-compliance-audit-followup |
 <!-- AUTO-GENERATED:END task-index -->

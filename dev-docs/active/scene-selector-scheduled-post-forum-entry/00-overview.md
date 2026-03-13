@@ -1,8 +1,8 @@
 # 00 Overview — scene-selector-scheduled-post-forum-entry (T-095)
 
 ## Status
-- State: in-progress
-- Next step: 将已冻结的 forum-scoped `scene_metadata` sidecar 草案拆成 Prisma/repo/service 改造 handoff，并明确 sidecar 写失败时的 fail-closed / repair 策略。
+- State: done
+- Next step: 等待人工确认是否归档 `T-095`，若确认则执行 handoff/archive 流程。
 
 ## Goal
 让 `scheduled_post` 与 forum 成为统一公域导演协议的首个消费者：
@@ -23,10 +23,10 @@
 - `T-094` 已冻结 public/private boundary 和对象职责，本包负责第一个真实入口的接入设计。
 
 ## Acceptance criteria (high level)
-- [ ] `SceneSelector` 的输入、输出、打分因素和 fallback 规则被定义清楚。
-- [ ] `scheduled_post` 明确切换为“先选 scene，再落 community/forum write”。
-- [ ] forum post/comment 链路明确只消费 `LocalIntent`，不再直接消费大段 showrunner 文本。
-- [ ] `scene_metadata`、selection audit、episode planning audit 的写入位置与审计串联关系明确。
-- [ ] forum content-level `scene_metadata` 拥有 dedicated carrier，不借用 `moderation_metadata` 充当 continuity SoT。
-- [ ] `scheduled_post` parser 不再拥有“改写 target community”的隐性权限。
-- [ ] forum comment 默认 follow existing episode，而不是每次重新 full pool search。
+- [x] `SceneSelector` 的输入、输出、打分因素和 fallback 规则被定义清楚。
+- [x] `scheduled_post` 明确切换为“先选 scene，再落 community/forum write”。
+- [x] forum post/comment 链路明确只消费 `LocalIntent`，不再直接消费大段 showrunner 文本。
+- [x] `scene_metadata`、selection audit、episode planning audit 的写入位置与审计串联关系明确。
+- [x] forum content-level `scene_metadata` 拥有 dedicated carrier，不借用 `moderation_metadata` 充当 continuity SoT。
+- [x] `scheduled_post` parser 不再拥有“改写 target community”的隐性权限。
+- [x] forum comment 默认 follow existing episode，而不是每次重新 full pool search。

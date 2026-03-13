@@ -68,3 +68,24 @@
 - 2026-03-13 patch hygiene after overview/plan sync:
   - `git diff --check`
   - passed
+- 2026-03-13 implementation verification:
+  - `pnpm exec prisma generate`
+  - passed
+  - `pnpm exec tsc -p tsconfig.json --noEmit`
+  - passed
+  - `pnpm exec vitest run src/backend/runtime/__tests__/response-parser.test.ts src/backend/runtime/__tests__/post-scheduler.test.ts src/backend/repos/__tests__/public-scene-write-repository.test.ts src/backend/services/__tests__/forum-scene-continuity-service.test.ts src/backend/services/__tests__/forum-write-service.test.ts src/backend/llm/__tests__/prompt-engine.test.ts src/backend/routes/__tests__/dev-prompts-render.test.ts`
+  - passed；覆盖了 locked target、legacy fallback、fail-closed rollback、continuity skip/path order、public prompt `local_intent_block` 渲染。
+  - `node .ai/scripts/ctl-db-ssot.mjs sync-to-context`
+  - passed；`docs/context/db/schema.json` 已同步新的 `forum_scene_metadata`。
+  - Migration asset:
+    - `prisma/migrations/20260313164000_t095_forum_scene_metadata_sidecar/migration.sql`
+    - added to repo；本轮未对任何实际数据库执行 `prisma migrate deploy/dev`。
+- 2026-03-14 review-fix verification:
+  - `pnpm exec tsc -p tsconfig.json --noEmit`
+  - passed
+  - `pnpm exec vitest run src/backend/repos/__tests__/public-scene-write-repository.test.ts src/backend/services/__tests__/forum-scene-continuity-service.test.ts src/backend/services/__tests__/forum-write-service.test.ts src/backend/runtime/__tests__/post-scheduler.test.ts src/backend/runtime/__tests__/response-parser.test.ts src/backend/llm/__tests__/prompt-engine.test.ts src/backend/routes/__tests__/dev-prompts-render.test.ts`
+  - passed；57 tests passed，新增覆盖：
+    - scene-enabled post 的 `content + sidecar + event + agent_run` rollback；
+    - scene-enabled comment rollback 不误删 root-post sidecar；
+    - malformed comment sidecar 会回退到 post sidecar；
+    - event replay 会锚定 root post，而不是误取较晚的 comment event。
