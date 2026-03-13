@@ -27,6 +27,7 @@ import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { AgentPublicProjectionService } from '../services/agent-public-projection-service.js'
 import type { PolicyGatewayService } from '../services/policy-gateway-service.js'
 import type { IdentityGateService } from '../services/identity-gate-service.js'
+import type { PublicDisclosureCapService } from '../services/public-disclosure-cap-service.js'
 
 export interface NurtureResult {
   traitEngine: import('../services/trait-engine.js').TraitEngine | null
@@ -68,6 +69,7 @@ export async function createNurtureEngines(deps: {
   incubationOrchestrator: IncubationOrchestrator
   policyGatewayService: PolicyGatewayService
   identityGateService: IdentityGateService
+  publicDisclosureCapService: PublicDisclosureCapService
   leaderElectors: {
     privateChannel: LeaderElector
     nurture: LeaderElector
@@ -317,6 +319,7 @@ export async function createNurtureEngines(deps: {
       traitEngine,
       instructionEngine,
       memoryService,
+      publicDisclosureCapService: deps.publicDisclosureCapService,
       statsService,
       personaStateService,
     })
@@ -407,6 +410,7 @@ export async function createNurtureEngines(deps: {
     traitEngine: null,
     instructionEngine: null,
     memoryService: null,
+    publicDisclosureCapService: deps.publicDisclosureCapService,
     statsService,
     personaStateService,
   })

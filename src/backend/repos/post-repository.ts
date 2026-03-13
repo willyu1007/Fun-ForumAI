@@ -7,6 +7,7 @@ export interface PostRepository {
   findByAuthor(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<Post>>
   updateVisibility(id: string, visibility: Post['visibility']): Promise<Post | null>
   updateState(id: string, state: Post['state']): Promise<Post | null>
+  updateModerationMetadata(id: string, moderationMetadata: Record<string, unknown> | null): Promise<Post | null>
 }
 
 let counter = 0
@@ -76,6 +77,14 @@ export class InMemoryPostRepository implements PostRepository {
     const post = this.store.get(id)
     if (!post) return null
     post.state = state
+    post.updated_at = new Date()
+    return post
+  }
+
+  async updateModerationMetadata(id: string, moderationMetadata: Record<string, unknown> | null): Promise<Post | null> {
+    const post = this.store.get(id)
+    if (!post) return null
+    post.moderation_metadata = moderationMetadata
     post.updated_at = new Date()
     return post
   }

@@ -1,0 +1,70 @@
+# 04 Verification — T-095
+
+- Planning-only task bundle initialized.
+- 2026-03-13 repo review:
+  - 已核对 `src/backend/runtime/post-scheduler.ts`、`src/backend/runtime/prompt-orchestrator.ts`、`src/backend/runtime/types.ts`、`docs/project/overview/LLM_forum_DevSpec.md` 与 `/Users/phoenix/Downloads/scene_pool_director_scene_aware_design.md` 中关于 `SceneSelector`、`EpisodeBrief`、`LocalIntent` 的建议。
+- 2026-03-13 design consistency check:
+  - 现有 `scheduled_post` 路径仍先 `pickRandomCommunity()`，验证了本包的核心缺口真实存在。
+  - 现有 public prompt 仍可经 `layer_showrunner` 注入 sceneRule/shortTermState，验证了本包必须把 public actor input 改为 `LocalIntent`。
+- 2026-03-13 contract-detail review:
+  - 已核对 `src/backend/runtime/post-scheduler.ts`、`src/backend/runtime/agent-executor.ts`、`src/backend/runtime/response-parser.ts`、`src/backend/runtime/data-plane-writer.ts`、`src/backend/allocator/types.ts` 与 `T-094` 合同草案。
+  - 结论：
+    - `scheduled_post` 当前确实由 parser/LLM 保留了 retarget community 的能力；
+    - forum comment 现有链路天然锚定 `post_id/comment_id`，适合默认 follow existing episode；
+    - 现有 `agent_run` 与 event payload 是最合适的 selection/planning audit 落点。
+- 2026-03-13 freeze review on candidate inventory and carriers:
+  - 已核对 `docs/stage-templates/v1/library.manifest.yaml`、`scripts/stage-templates-export.mjs`、`src/backend/stage/stage-template-ops.js`、`src/backend/services/forum-write-service.ts`、`src/backend/repos/types/forum.ts`、`src/backend/repos/post-repository.ts`、`src/backend/repos/comment-repository.ts`、`prisma/schema.prisma`。
+  - 结论：
+    - scene pool 的 authoring SoT 已存在于 `docs/stage-templates/v1/**`，适合作为 template/binding 候选来源；selector runtime 应读导出/缓存后的 catalog，而不是热路径逐次解析 YAML；
+    - `trigger event.payload_json` 与 `agent_run.output_json` 现有仓储能力足以承载 selection/planning audit；
+    - post/comment 当前没有 dedicated `scene_metadata` carrier，只有 `moderation_metadata` 或 moderation-only metadata，因此不能把它们当长期 continuity SoT。
+- 2026-03-13 forum carrier draft review:
+  - 已对照 `src/backend/repos/post-repository.ts`、`src/backend/repos/comment-repository.ts`、`src/backend/services/forum-write-service.ts`、`prisma/schema.prisma` 检查 forum 内容持久化的可落点和写入顺序约束。
+  - 结论：
+    - `Post` 与 `Comment` 当前 repo contract 不对称，直接在内容表上各自扩 JSON carrier 会放大 read/write 差异；
+    - forum-scoped sidecar 更适合承载 `scene_metadata`，同时为 `episode_id / selection_id / post_id` 等 continuity 查询保留可索引列；
+    - 由于 event 与 agent run 都在内容写入之后形成，content carrier 不应依赖 `agent_run_id` 才能成立。
+- 2026-03-13 status sync after contract detail:
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
+  - passed；`registry.yaml`、`changelog.md`、`dashboard.md`、`feature-map.md`、`task-index.md` 已刷新，`T-095` 状态进入 `in-progress`
+- 2026-03-13 governance lint rerun:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+- 2026-03-13 derived view spot-check:
+  - `rg -n "scene-selector-scheduled-post-forum-entry|event=status from=planned to=in-progress" .ai/project/main/changelog.md .ai/project/main/task-index.md .ai/project/main/feature-map.md`
+  - passed；`T-095` 在 changelog 和派生视图中均显示为 `in-progress`
+- 2026-03-13 patch hygiene after contract detail:
+  - `git diff --check`
+  - passed
+- 2026-03-13 final sanity after verification update:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+  - `git diff --check`
+  - passed
+- 2026-03-13 governance sync:
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
+  - passed；新 task 已进入 project hub 派生视图
+- 2026-03-13 governance lint:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+- 2026-03-13 patch hygiene:
+  - `git diff --check`
+  - passed
+- 2026-03-13 lint after freeze-review doc update:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+- 2026-03-13 patch hygiene after freeze-review doc update:
+  - `git diff --check`
+  - passed
+- 2026-03-13 lint after forum carrier draft:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+- 2026-03-13 patch hygiene after forum carrier draft:
+  - `git diff --check`
+  - passed
+- 2026-03-13 lint after overview/plan sync:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+- 2026-03-13 patch hygiene after overview/plan sync:
+  - `git diff --check`
+  - passed

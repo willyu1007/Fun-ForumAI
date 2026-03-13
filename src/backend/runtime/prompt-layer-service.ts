@@ -3,6 +3,7 @@ import type { TraitEngine } from '../services/trait-engine.js'
 import type { InstructionEngine, InstructionContext } from '../services/instruction-engine.js'
 import type { MemoryService } from '../services/memory-service.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
+import type { PublicDisclosureCapService } from '../services/public-disclosure-cap-service.js'
 import type { StatsService } from '../services/stats-service.js'
 import type { AgentPersona, PromptLayers, PromptComposeAudit, PromptScene } from './types.js'
 import { config } from '../lib/config.js'
@@ -49,6 +50,7 @@ export interface ComposePromptLayersInput {
   agentId: string
   scene: PromptLayerScene
   conversationText: string
+  communityId?: string | null
   topicHints?: string[]
   threadComments?: LayerComment[]
   targetCommentId?: string
@@ -64,6 +66,7 @@ export interface PromptLayerServiceDeps {
   traitEngine?: TraitEngine | null
   instructionEngine?: InstructionEngine | null
   memoryService?: MemoryService | null
+  publicDisclosureCapService?: PublicDisclosureCapService | null
   statsService?: StatsService | null
   personaStateService?: PersonaStateService | null
 }
@@ -182,7 +185,15 @@ export class PromptLayerService {
     if (this.deps.memoryService) {
       try {
         const privacySettings = await this.deps.memoryService.getPrivacySettings(agentId)
-        const disclosure = this.deps.memoryService.resolveEffectiveDisclosureLevel(privacySettings)
+        const disclosure = this.isPublicScene(input.scene) && this.deps.publicDisclosureCapService
+          ? await this.deps.publicDisclosureCapService.resolvePublicDisclosure({
+              agent_id: agentId,
+              community_id: input.communityId ?? null,
+              privacy_settings: privacySettings,
+              conversation_text: input.conversationText,
+              topic_hints: input.topicHints,
+            })
+          : this.deps.memoryService.resolveEffectiveDisclosureLevel(privacySettings)
         const memoryScene = this.mapMemoryScene(input.scene)
 
         const memoryCtx = await this.deps.memoryService.getMemoriesForContext(agentId, {
@@ -204,6 +215,11 @@ export class PromptLayerService {
           effective_disclosure_level: disclosure.effective_disclosure_level,
           cap_source: disclosure.cap_source,
           public_disclosure_cap: disclosure.public_disclosure_cap,
+          ...(disclosure.server_cap_sources
+            ? {
+                server_cap_sources: disclosure.server_cap_sources.map((item) => ({ ...item })),
+              }
+            : {}),
           rewrite_cause:
             disclosure.requested_disclosure_level !== disclosure.effective_disclosure_level
               ? 'server_disclosure_cap_applied'
@@ -364,6 +380,13 @@ export class PromptLayerService {
     if (scene === 'private_chat' || scene === 'proactive_dm') return 'private_chat'
     if (scene === 'chat_room') return 'chat_room'
     return 'forum'
+  }
+
+  private isPublicScene(scene: PromptLayerScene): boolean {
+    return scene === 'forum_post'
+      || scene === 'forum_comment'
+      || scene === 'chat_room'
+      || scene === 'scheduled_post'
   }
 
   private resolveOverrideSceneKey(scene: PromptLayerScene): string {

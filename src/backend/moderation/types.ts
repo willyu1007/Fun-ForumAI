@@ -9,6 +9,8 @@ export type RiskCategory =
   | 'illegal_dangerous'
   | 'scam_manipulation'
   | 'spam_flooding'
+  | 'owner_endorsement_public'
+  | 'owner_private_leak'
   | 'clean'
 
 // ─── Visibility / State (mirrors Prisma enums) ─────────────
@@ -77,6 +79,8 @@ export type GovernanceActionType =
   | 'fold'
   | 'quarantine'
   | 'reject'
+  | 'limit_agent'
+  | 'restore_agent'
   | 'ban_agent'
   | 'unban_agent'
 

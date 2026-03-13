@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-12T07:54:29.013Z",
+  "updatedAt": "2026-03-12T21:44:10.368Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -72,12 +72,29 @@
       ]
     },
     {
+      "name": "AppealRequesterType",
+      "values": [
+        "USER",
+        "OWNER",
+        "OPERATOR"
+      ]
+    },
+    {
       "name": "AppealStatus",
       "values": [
         "OPEN",
         "LINKED",
         "RESOLVED",
         "REJECTED"
+      ]
+    },
+    {
+      "name": "AppealType",
+      "values": [
+        "CONTENT_APPEAL",
+        "ACCOUNT_LIMIT_APPEAL",
+        "AGENT_RESTRICTION_APPEAL",
+        "OTHER"
       ]
     },
     {
@@ -112,6 +129,18 @@
         "LINKED",
         "RESOLVED",
         "REJECTED"
+      ]
+    },
+    {
+      "name": "ComplaintType",
+      "values": [
+        "CONTENT_REPORT",
+        "PRIVACY_REQUEST",
+        "DELETION_REQUEST",
+        "IMPERSONATION_REPORT",
+        "MISLABEL_REPORT",
+        "HARASSMENT_REPORT",
+        "OTHER"
       ]
     },
     {
@@ -199,6 +228,13 @@
         "COMPLETED",
         "FAILED",
         "SKIPPED"
+      ]
+    },
+    {
+      "name": "DisclosureCapScopeType",
+      "values": [
+        "AGENT",
+        "COMMUNITY"
       ]
     },
     {
@@ -350,6 +386,17 @@
       ]
     },
     {
+      "name": "ModerationTargetRelationType",
+      "values": [
+        "PRIMARY",
+        "RELATED",
+        "PARENT_THREAD",
+        "SESSION_MEMBER",
+        "OWNER",
+        "AGENT"
+      ]
+    },
+    {
       "name": "NotificationType",
       "values": [
         "AGENT_PROACTIVE",
@@ -383,6 +430,21 @@
       ]
     },
     {
+      "name": "PublicDisclosureCapOverrideSource",
+      "values": [
+        "MANUAL",
+        "OWNER_ENDORSEMENT_PUBLIC",
+        "OWNER_PRIVATE_LEAK"
+      ]
+    },
+    {
+      "name": "PublicDisclosureCapOverrideStatus",
+      "values": [
+        "ACTIVE",
+        "RELEASED"
+      ]
+    },
+    {
       "name": "ReviewCaseStatus",
       "values": [
         "OPEN",
@@ -399,6 +461,19 @@
         "APPEAL",
         "IDENTITY_REVIEW",
         "CONFIG_REVIEW",
+        "HOT_TOPIC"
+      ]
+    },
+    {
+      "name": "ReviewQueue",
+      "values": [
+        "MODERATION",
+        "COMPLAINT",
+        "APPEAL",
+        "IDENTITY_REVIEW",
+        "CONFIG_REVIEW",
+        "PRIVACY",
+        "DELETION",
         "HOT_TOPIC"
       ]
     },
@@ -5637,6 +5712,17 @@
       "schema": null,
       "columns": [
         {
+          "name": "appealType",
+          "type": "AppealType",
+          "nullable": false,
+          "list": false,
+          "dbName": "appeal_type",
+          "dbType": null,
+          "default": "CONTENT_APPEAL",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "createdAt",
           "type": "DateTime",
           "nullable": false,
@@ -5692,11 +5778,33 @@
           "unique": false
         },
         {
+          "name": "requesterType",
+          "type": "AppealRequesterType",
+          "nullable": false,
+          "list": false,
+          "dbName": "requester_type",
+          "dbType": null,
+          "default": "USER",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "requesterUserId",
           "type": "String",
           "nullable": false,
           "list": false,
           "dbName": "requester_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "resultJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "result_json",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -7714,6 +7822,28 @@
       "schema": null,
       "columns": [
         {
+          "name": "attachmentsJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "attachments_json",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "complaintType",
+          "type": "ComplaintType",
+          "nullable": false,
+          "list": false,
+          "dbName": "complaint_type",
+          "dbType": null,
+          "default": "CONTENT_REPORT",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "createdAt",
           "type": "DateTime",
           "nullable": false,
@@ -7774,6 +7904,17 @@
           "nullable": false,
           "list": false,
           "dbName": "reporter_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "resolutionJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "resolution_json",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -11279,6 +11420,28 @@
           "unique": false
         },
         {
+          "name": "claimedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "claimed_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "claimedByUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "claimed_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "createdAt",
           "type": "DateTime",
           "nullable": false,
@@ -11356,6 +11519,28 @@
           "unique": false
         },
         {
+          "name": "primaryTargetId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "primary_target_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "primaryTargetType",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "primary_target_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "priority",
           "type": "Int",
           "nullable": false,
@@ -11363,6 +11548,17 @@
           "dbName": null,
           "dbType": null,
           "default": "50",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "queue",
+          "type": "ReviewQueue",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "MODERATION",
           "primaryKey": false,
           "unique": false
         },
@@ -11378,11 +11574,55 @@
           "unique": false
         },
         {
+          "name": "resolutionNote",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "resolution_note",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "resolvedAt",
           "type": "DateTime",
           "nullable": true,
           "list": false,
           "dbName": "resolved_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "resolvedByUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "resolved_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "riskSummaryJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "risk_summary_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "slaDueAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "sla_due_at",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -11428,6 +11668,27 @@
           "type": "index",
           "fields": [
             "caseType",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "primaryTargetType",
+            "primaryTargetId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "queue",
+            "status",
+            "priority",
             "createdAt"
           ],
           "name": null,
@@ -11528,6 +11789,28 @@
           "unique": false
         },
         {
+          "name": "metaJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "meta_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "relationType",
+          "type": "ModerationTargetRelationType",
+          "nullable": false,
+          "list": false,
+          "dbName": "relation_type",
+          "dbType": null,
+          "default": "PRIMARY",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "roomId",
           "type": "String",
           "nullable": true,
@@ -11589,6 +11872,7 @@
           "type": "index",
           "fields": [
             "caseId",
+            "relationType",
             "createdAt"
           ],
           "name": null,
@@ -11598,7 +11882,8 @@
           "type": "index",
           "fields": [
             "targetType",
-            "targetId"
+            "targetId",
+            "relationType"
           ],
           "name": null,
           "map": null
@@ -11611,11 +11896,44 @@
       "schema": null,
       "columns": [
         {
+          "name": "actionHistoryJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "action_history_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "caseId",
           "type": "String",
           "nullable": false,
           "list": false,
           "dbName": "case_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "contentJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "content_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "contextJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "context_json",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -11629,6 +11947,17 @@
           "dbName": "created_at",
           "dbType": null,
           "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "evidencePackageJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "evidence_package_json",
+          "dbType": null,
+          "default": null,
           "primaryKey": false,
           "unique": false
         },
@@ -11655,11 +11984,44 @@
           "unique": false
         },
         {
+          "name": "policyHitsJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "policy_hits_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "promptMemoryJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "prompt_memory_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "snapshotType",
           "type": "String",
           "nullable": false,
           "list": false,
           "dbName": "snapshot_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "topicSignalsJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "topic_signals_json",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -13231,6 +13593,208 @@
       ]
     },
     {
+      "name": "PublicDisclosureCapOverride",
+      "dbName": "public_disclosure_cap_overrides",
+      "schema": null,
+      "columns": [
+        {
+          "name": "capLevel",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "cap_level",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdByUserId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "linkedCaseId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "linked_case_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "linkedRiskEventId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "linked_risk_event_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reason",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "releasedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "released_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "releasedByUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "released_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "releasedReason",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "released_reason",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "scopeId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scope_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "scopeType",
+          "type": "DisclosureCapScopeType",
+          "nullable": false,
+          "list": false,
+          "dbName": "scope_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "source",
+          "type": "PublicDisclosureCapOverrideSource",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "PublicDisclosureCapOverrideStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "ACTIVE",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "linkedCaseId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "linkedRiskEventId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "scopeType",
+            "scopeId",
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
       "name": "RawContextEvent",
       "dbName": "raw_context_events",
       "schema": null,
@@ -13406,6 +13970,17 @@
       "schema": null,
       "columns": [
         {
+          "name": "assignedRole",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "assigned_role",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "assigneeUserId",
           "type": "String",
           "nullable": true,
@@ -13422,6 +13997,39 @@
           "nullable": false,
           "list": false,
           "dbName": "case_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "claimedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "claimed_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "claimedByUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "claimed_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "claimToken",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "claim_token",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -13469,6 +14077,39 @@
           "dbType": null,
           "default": "cuid()",
           "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "operatorNote",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "operator_note",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "queue",
+          "type": "ReviewQueue",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "MODERATION",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "resolutionCode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "resolution_code",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
           "unique": false
         },
         {
@@ -13521,6 +14162,26 @@
           "type": "index",
           "fields": [
             "caseId",
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "claimedByUserId",
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "queue",
             "status",
             "createdAt"
           ],

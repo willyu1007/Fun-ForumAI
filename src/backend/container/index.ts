@@ -10,6 +10,7 @@ import { CommunityConfigScheduler } from '../runtime/community-config-scheduler.
 import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry-scheduler.js'
 import { getRuntimeBuildInfo } from '../lib/runtime-build-info.js'
 import { personaObservability } from '../runtime/persona-observability.js'
+import { NotFoundError } from '../lib/errors.js'
 import {
   GuidanceBellService,
   GuidanceCopyService,
@@ -139,6 +140,7 @@ const nurture = await createNurtureEngines({
   incubationOrchestrator: core.incubationOrchestrator,
   policyGatewayService: core.policyGatewayService,
   identityGateService: core.identityGateService,
+  publicDisclosureCapService: core.publicDisclosureCapService,
   leaderElectors: {
     privateChannel: infra.leaderElectors.privateChannel,
     nurture: infra.leaderElectors.nurture,
@@ -147,6 +149,21 @@ const nurture = await createNurtureEngines({
     cultureDigest: infra.leaderElectors.cultureDigest,
   },
 })
+
+if (nurture.privateChannelServices) {
+  core.complaintAppealService.setPrivateSessionLookup(async (sessionId) => {
+    try {
+      const session = await nurture.privateChannelServices!.channelService.getSession(sessionId)
+      return {
+        id: session.id,
+        human_user_id: session.human_user_id,
+      }
+    } catch (err) {
+      if (err instanceof NotFoundError) return null
+      throw err
+    }
+  })
+}
 
 const guidanceCopyService = new GuidanceCopyService()
 const guidanceStateService = new GuidanceStateService(
@@ -212,6 +229,7 @@ const rt = createRuntime({
   inclinationAssetService: llm.inclinationAssetService,
   communityCultureDigestService: core.communityCultureDigestService,
   personaStateService: core.personaStateService,
+  publicDisclosureCapService: core.publicDisclosureCapService,
   promptLayerService: nurture.promptLayerService,
   promptOrchestrator: nurture.promptOrchestrator,
   traitEngine: nurture.traitEngine,
@@ -346,8 +364,11 @@ export const chatroomControlService = core.chatroomControlService
 export const roomLifecycle = core.roomLifecycle
 export const authService = core.authService
 export const governanceAdapter = core.governanceAdapter
+export const hotTopicOpsService = core.hotTopicOpsService
+export const notificationService = core.notificationService
 export const safeReplyService = core.safeReplyService
 export const hotTopicPolicyService = core.hotTopicPolicyService
+export const publicDisclosureCapService = core.publicDisclosureCapService
 export const reviewService = core.reviewService
 export const riskEventService = core.riskEventService
 export const identityGateService = core.identityGateService

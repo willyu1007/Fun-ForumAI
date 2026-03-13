@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { RoomEpisode } from '../../repos/types.js'
+import type { ChatMessage, RoomEpisode } from '../../repos/types.js'
 import { RoomCuePlanner } from '../room-cue-planner.js'
 import type { LoadedRoomProgramState } from '../room-program-state-loader.js'
 
@@ -79,43 +79,45 @@ function makeState(overrides?: Partial<LoadedRoomProgramState>): LoadedRoomProgr
   }
 }
 
+function makeChatMessage(overrides: Partial<ChatMessage>): ChatMessage {
+  return {
+    id: 'msg-1',
+    room_id: 'room-1',
+    author_id: 'agent-1',
+    author_type: 'agent',
+    episode_id: null,
+    beat_id: null,
+    program_event_id: null,
+    speaker_role: null,
+    cue_type: null,
+    body: '',
+    message_kind: 'normal',
+    parent_message_id: null,
+    vote_score: 0,
+    visibility: 'PUBLIC',
+    state: 'APPROVED',
+    created_at: new Date('2026-03-10T09:00:00.000Z'),
+    ...overrides,
+  }
+}
+
 describe('RoomCuePlanner', () => {
   it('prefers unresolved questions with ASK cue', () => {
     const planner = new RoomCuePlanner()
     const questionTime = new Date(Date.now() - 5_000)
     const plan = planner.plan(makeState({
-      recentMessages: [{
+      recentMessages: [makeChatMessage({
         id: 'msg-q',
-        room_id: 'room-1',
         author_id: 'agent-2',
-        author_type: 'agent',
-        episode_id: null,
-        beat_id: null,
-        program_event_id: null,
-        speaker_role: null,
-        cue_type: null,
         body: '那到底是谁先开始夸大这个结论的？',
-        message_kind: 'normal',
-        parent_message_id: null,
-        vote_score: 0,
         created_at: questionTime,
-      }],
-      lastMessage: {
+      })],
+      lastMessage: makeChatMessage({
         id: 'msg-q',
-        room_id: 'room-1',
         author_id: 'agent-2',
-        author_type: 'agent',
-        episode_id: null,
-        beat_id: null,
-        program_event_id: null,
-        speaker_role: null,
-        cue_type: null,
         body: '那到底是谁先开始夸大这个结论的？',
-        message_kind: 'normal',
-        parent_message_id: null,
-        vote_score: 0,
         created_at: questionTime,
-      },
+      }),
     }), 'agent-trigger')
 
     expect(plan).toMatchObject({
@@ -140,38 +142,18 @@ describe('RoomCuePlanner', () => {
         }],
         turn_count: 6,
       },
-      recentMessages: [{
+      recentMessages: [makeChatMessage({
         id: 'msg-latest',
-        room_id: 'room-1',
         author_id: 'agent-1',
-        author_type: 'agent',
-        episode_id: null,
-        beat_id: null,
-        program_event_id: null,
-        speaker_role: null,
-        cue_type: null,
         body: '先把这个前提挂在这里。',
-        message_kind: 'normal',
-        parent_message_id: null,
-        vote_score: 0,
         created_at: new Date(),
-      }],
-      lastMessage: {
+      })],
+      lastMessage: makeChatMessage({
         id: 'msg-latest',
-        room_id: 'room-1',
         author_id: 'agent-1',
-        author_type: 'agent',
-        episode_id: null,
-        beat_id: null,
-        program_event_id: null,
-        speaker_role: null,
-        cue_type: null,
         body: '先把这个前提挂在这里。',
-        message_kind: 'normal',
-        parent_message_id: null,
-        vote_score: 0,
         created_at: new Date(),
-      },
+      }),
     }), 'agent-trigger')
 
     expect(plan).toMatchObject({
@@ -209,38 +191,18 @@ describe('RoomCuePlanner', () => {
         created_at: idleTime,
         updated_at: idleTime,
       },
-      recentMessages: [{
+      recentMessages: [makeChatMessage({
         id: 'msg-last',
-        room_id: 'room-1',
         author_id: 'agent-1',
-        author_type: 'agent',
-        episode_id: null,
-        beat_id: null,
-        program_event_id: null,
-        speaker_role: null,
-        cue_type: null,
         body: '行，那先到这。',
-        message_kind: 'normal',
-        parent_message_id: null,
-        vote_score: 0,
         created_at: idleTime,
-      }],
-      lastMessage: {
+      })],
+      lastMessage: makeChatMessage({
         id: 'msg-last',
-        room_id: 'room-1',
         author_id: 'agent-1',
-        author_type: 'agent',
-        episode_id: null,
-        beat_id: null,
-        program_event_id: null,
-        speaker_role: null,
-        cue_type: null,
         body: '行，那先到这。',
-        message_kind: 'normal',
-        parent_message_id: null,
-        vote_score: 0,
         created_at: idleTime,
-      },
+      }),
     }), 'agent-trigger')
 
     expect(plan).toMatchObject({

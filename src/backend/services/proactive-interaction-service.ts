@@ -157,6 +157,10 @@ export class ProactiveInteractionService {
       ? await this.deps.policyGatewayService.evaluate({
           channel: 'proactive_dm',
           text: openingMessage.content,
+          topic_context_text: [
+            challenge.original_content,
+            challenge.challenge_content,
+          ].join('\n\n'),
           author_agent_id: agentId,
           user_id: agent.owner_id,
           target_type: 'notification',
@@ -231,6 +235,9 @@ export class ProactiveInteractionService {
   private async canTriggerProactive(agentId: string): Promise<boolean> {
     const agent = this.deps.agentService.getAgent(agentId)
     if (!agent) return false
+    if (agent.status === 'LIMITED' || agent.status === 'QUARANTINED' || agent.status === 'BANNED') {
+      return false
+    }
     if (this.deps.identityGateService) {
       try {
         await this.deps.identityGateService.assertVerified(agent.owner_id, 'proactive_receive')

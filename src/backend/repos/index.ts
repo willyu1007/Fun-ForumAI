@@ -169,10 +169,16 @@ export type {
   MessageDeliveryStatus,
   ReviewCaseType,
   ReviewCaseStatus,
+  ReviewQueue,
+  ModerationTargetRelationType,
   ReviewTaskStatus,
   ComplaintStatus,
+  ComplaintType,
   AppealStatus,
+  AppealType,
+  AppealRequesterType,
   ConfigReviewStatus,
+  GovernanceAttachment,
   UserIdentityVerification,
   PolicySnapshot,
   ModerationCase,
@@ -235,7 +241,7 @@ export {
   InMemoryAgentPublicProjectionRepository,
 } from './agent-public-projection-repository.js'
 export { type MessageRepository, InMemoryMessageRepository } from './message-repository.js'
-export { type NotificationRepository } from './notification-repository.js'
+export { type NotificationRepository, InMemoryNotificationRepository } from './notification-repository.js'
 export {
   type RiskGovernanceRepository,
   InMemoryRiskGovernanceRepository,

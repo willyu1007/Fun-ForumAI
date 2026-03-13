@@ -101,7 +101,13 @@ export class GovernanceAdapter {
         await this.deps.commentRepo.updateState(action.target_id, result.new_state)
       }
     } else if (action.target_type === 'agent') {
-      if (action.action === 'ban_agent') {
+      if (action.action === 'limit_agent') {
+        const updated = this.deps.agentRepo.updateStatus(action.target_id, 'LIMITED')
+        if (!updated) throw new NotFoundError('Agent', action.target_id)
+      } else if (action.action === 'restore_agent') {
+        const updated = this.deps.agentRepo.updateStatus(action.target_id, 'ACTIVE')
+        if (!updated) throw new NotFoundError('Agent', action.target_id)
+      } else if (action.action === 'ban_agent') {
         const updated = this.deps.agentRepo.updateStatus(action.target_id, 'BANNED')
         if (!updated) throw new NotFoundError('Agent', action.target_id)
       } else if (action.action === 'unban_agent') {
@@ -111,6 +117,19 @@ export class GovernanceAdapter {
     } else if (action.target_type === 'message') {
       const message = await this.deps.messageRepo?.findById(action.target_id)
       if (!message) throw new NotFoundError('Message', action.target_id)
+      if (result.new_visibility) {
+        await this.deps.messageRepo?.updateVisibility(action.target_id, result.new_visibility)
+      }
+      if (result.new_state) {
+        await this.deps.messageRepo?.updateState(action.target_id, result.new_state)
+      }
+      const moderationMetadata = {
+        ...(message.moderation_metadata ?? {}),
+        governance_action: action.action,
+        governance_reason: action.reason ?? null,
+        governance_updated_at: new Date().toISOString(),
+      }
+      await this.deps.messageRepo?.updateModerationMetadata(action.target_id, moderationMetadata)
     }
   }
 

@@ -14,7 +14,7 @@ milestones:
     description: "Triage queue for new or unplanned work."
   - id: M-010
     title: "Mainland Launch Safety"
-    status: in-progress
+    status: done
     description: "Mainland launch risk-control, review, identity gating, provenance, and topic-policy delivery."
 
 features:
@@ -45,9 +45,14 @@ features:
     milestone_id: M-000
   - id: F-050
     title: "Risk Control & Review Launch Track"
-    status: in-progress
-    description: "Unified mainland launch moderation, identity gating, review case management, provenance governance, and hot-topic transparency."
+    status: done
+    description: "Unified mainland launch moderation, identity gating, review case management, provenance governance, hot-topic transparency, public help surfaces, and hot-topic ops."
     milestone_id: M-010
+  - id: F-060
+    title: "Public Scene Pool & Director Orchestration"
+    status: planned
+    description: "Unified public scene pool, director orchestration, scene selection, and chatroom/forum alignment with explicit private-channel boundary hardening."
+    milestone_id: M-000
 
 requirements:
   - id: R-010
@@ -124,20 +129,32 @@ requirements:
     feature_id: F-040
   - id: R-050
     title: "Policy Gateway and Channel Hardening"
-    status: in-progress
+    status: done
     feature_id: F-050
   - id: R-051
-    title: "Review Case and Complaint Foundation"
-    status: planned
+    title: "Review Case and Complaint Full Foundation"
+    status: done
     feature_id: F-050
   - id: R-052
     title: "Private Influence Provenance and Config Governance"
-    status: planned
+    status: done
     feature_id: F-050
   - id: R-053
     title: "Hot Topic Policy and User Transparency"
-    status: planned
+    status: done
     feature_id: F-050
+  - id: R-060
+    title: "Public Director Boundary and Scene Contract"
+    status: planned
+    feature_id: F-060
+  - id: R-061
+    title: "Scene Selector and Scheduled Post Forum Entry"
+    status: planned
+    feature_id: F-060
+  - id: R-062
+    title: "Director Runtime State and Chatroom Unification"
+    status: planned
+    feature_id: F-060
 
 tasks:
   - id: T-003
@@ -772,44 +789,89 @@ tasks:
     updated: 2026-03-12
   - id: T-087
     slug: mainland-launch-safety-master
-    status: in-progress
+    status: archived
     milestone_id: M-010
     feature_id: F-050
-    dev_docs_path: dev-docs/active/mainland-launch-safety-master
-    updated: 2026-03-12
+    dev_docs_path: dev-docs/archive/mainland-launch-safety-master
+    updated: 2026-03-13
   - id: T-088
     slug: policy-gateway-channel-hardening
-    status: in-progress
+    status: archived
     milestone_id: M-010
     feature_id: F-050
     requirement_ids:
       - R-050
-    dev_docs_path: dev-docs/active/policy-gateway-channel-hardening
-    updated: 2026-03-12
+    dev_docs_path: dev-docs/archive/policy-gateway-channel-hardening
+    updated: 2026-03-13
   - id: T-089
     slug: review-case-and-complaint-foundation
-    status: in-progress
+    status: archived
     milestone_id: M-010
     feature_id: F-050
     requirement_ids:
       - R-051
-    dev_docs_path: dev-docs/active/review-case-and-complaint-foundation
-    updated: 2026-03-12
+    dev_docs_path: dev-docs/archive/review-case-and-complaint-foundation
+    updated: 2026-03-13
   - id: T-090
     slug: private-influence-provenance-and-config-governance
-    status: in-progress
+    status: archived
     milestone_id: M-010
     feature_id: F-050
     requirement_ids:
       - R-052
-    dev_docs_path: dev-docs/active/private-influence-provenance-and-config-governance
-    updated: 2026-03-12
+    dev_docs_path: dev-docs/archive/private-influence-provenance-and-config-governance
+    updated: 2026-03-13
   - id: T-091
     slug: hot-topic-policy-and-user-transparency
-    status: in-progress
+    status: archived
     milestone_id: M-010
     feature_id: F-050
     requirement_ids:
       - R-053
-    dev_docs_path: dev-docs/active/hot-topic-policy-and-user-transparency
-    updated: 2026-03-12
+    dev_docs_path: dev-docs/archive/hot-topic-policy-and-user-transparency
+    updated: 2026-03-13
+  - id: T-092
+    slug: public-policy-and-help-center-surfaces
+    status: archived
+    milestone_id: M-010
+    feature_id: F-050
+    requirement_ids:
+      - R-053
+    dev_docs_path: dev-docs/archive/public-policy-and-help-center-surfaces
+    updated: 2026-03-13
+  - id: T-093
+    slug: hot-topic-ops-dashboard-and-alerting
+    status: archived
+    milestone_id: M-010
+    feature_id: F-050
+    requirement_ids:
+      - R-053
+    dev_docs_path: dev-docs/archive/hot-topic-ops-dashboard-and-alerting
+    updated: 2026-03-13
+  - id: T-094
+    slug: public-director-boundary-and-scene-contract
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-060
+    requirement_ids:
+      - R-060
+    dev_docs_path: dev-docs/active/public-director-boundary-and-scene-contract
+    updated: 2026-03-13
+  - id: T-095
+    slug: scene-selector-scheduled-post-forum-entry
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-060
+    requirement_ids:
+      - R-061
+    dev_docs_path: dev-docs/active/scene-selector-scheduled-post-forum-entry
+    updated: 2026-03-13
+  - id: T-096
+    slug: director-runtime-state-and-chatroom-unification
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-060
+    requirement_ids:
+      - R-062
+    dev_docs_path: dev-docs/active/director-runtime-state-and-chatroom-unification
+    updated: 2026-03-13

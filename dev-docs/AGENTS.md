@@ -105,9 +105,3 @@ When task status changes to "done" and all verification passes:
 1. Move `dev-docs/active/<task-slug>/` to `dev-docs/archive/<task-slug>/`
 2. This is handled by `update-dev-docs-for-handoff` when status=done
 
-## Skip Conditions
-
-Do NOT create dev docs for:
-- Single-file changes
-- Trivial fixes (<30 min)
-- Simple refactors with clear scope

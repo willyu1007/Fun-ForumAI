@@ -152,16 +152,16 @@ enum ChronicleType {
 }
 
 model AgentConfig {
-  id          String   @id @default(cuid())
-  agentId     String   @map("agent_id")
-  configJson  Json     @map("config_json")
-  riskLevel   ConfigRiskLevel   @default(LOW) @map("risk_level")
-  reviewStatus ConfigReviewStatus @default(NOT_REQUIRED) @map("review_status")
-  reviewCaseId String?  @map("review_case_id")
-  lintWarningsJson Json? @map("lint_warnings_json")
-  updatedAt   DateTime @default(now()) @map("updated_at")
-  effectiveAt DateTime @map("effective_at")
-  updatedBy   String   @map("updated_by")
+  id               String             @id @default(cuid())
+  agentId          String             @map("agent_id")
+  configJson       Json               @map("config_json")
+  riskLevel        ConfigRiskLevel    @default(LOW) @map("risk_level")
+  reviewStatus     ConfigReviewStatus @default(NOT_REQUIRED) @map("review_status")
+  reviewCaseId     String?            @map("review_case_id")
+  lintWarningsJson Json?              @map("lint_warnings_json")
+  updatedAt        DateTime           @default(now()) @map("updated_at")
+  effectiveAt      DateTime           @map("effective_at")
+  updatedBy        String             @map("updated_by")
 
   agent   Agent     @relation(fields: [agentId], references: [id])
   updater HumanUser @relation("ConfigUpdatedBy", fields: [updatedBy], references: [id])
@@ -980,6 +980,26 @@ enum ReviewCaseStatus {
   DISMISSED
 }
 
+enum ReviewQueue {
+  MODERATION
+  COMPLAINT
+  APPEAL
+  IDENTITY_REVIEW
+  CONFIG_REVIEW
+  PRIVACY
+  DELETION
+  HOT_TOPIC
+}
+
+enum ModerationTargetRelationType {
+  PRIMARY
+  RELATED
+  PARENT_THREAD
+  SESSION_MEMBER
+  OWNER
+  AGENT
+}
+
 enum ReviewTaskStatus {
   PENDING
   ASSIGNED
@@ -994,6 +1014,16 @@ enum ComplaintStatus {
   REJECTED
 }
 
+enum ComplaintType {
+  CONTENT_REPORT
+  PRIVACY_REQUEST
+  DELETION_REQUEST
+  IMPERSONATION_REPORT
+  MISLABEL_REPORT
+  HARASSMENT_REPORT
+  OTHER
+}
+
 enum AppealStatus {
   OPEN
   LINKED
@@ -1001,11 +1031,40 @@ enum AppealStatus {
   REJECTED
 }
 
+enum AppealType {
+  CONTENT_APPEAL
+  ACCOUNT_LIMIT_APPEAL
+  AGENT_RESTRICTION_APPEAL
+  OTHER
+}
+
+enum AppealRequesterType {
+  USER
+  OWNER
+  OPERATOR
+}
+
 enum ConfigReviewStatus {
   NOT_REQUIRED
   PENDING
   APPROVED
   REJECTED
+}
+
+enum DisclosureCapScopeType {
+  AGENT
+  COMMUNITY
+}
+
+enum PublicDisclosureCapOverrideStatus {
+  ACTIVE
+  RELEASED
+}
+
+enum PublicDisclosureCapOverrideSource {
+  MANUAL
+  OWNER_ENDORSEMENT_PUBLIC
+  OWNER_PRIVATE_LEAK
 }
 
 enum VoteTarget {
@@ -1487,22 +1546,22 @@ model AgentPublicProjection {
 }
 
 model RoomMessage {
-  id              String        @id @default(cuid())
-  roomId          String        @map("room_id")
-  authorAgentId   String        @map("author_agent_id")
-  episodeId       String?       @map("episode_id")
-  beatId          String?       @map("beat_id")
-  programEventId  String?       @map("program_event_id")
-  speakerRole     RoomCastRole? @map("speaker_role")
-  cueType         RoomCueType?  @map("cue_type")
-  body            String
-  messageKind     String        @default("normal") @map("message_kind")
-  parentMessageId String?       @map("parent_message_id")
-  voteScore       Int           @default(0) @map("vote_score")
-  visibility      Visibility    @default(PUBLIC)
-  state           ContentState  @default(PENDING)
-  moderationMetadataJson Json?  @map("moderation_metadata_json")
-  createdAt       DateTime      @default(now()) @map("created_at")
+  id                     String        @id @default(cuid())
+  roomId                 String        @map("room_id")
+  authorAgentId          String        @map("author_agent_id")
+  episodeId              String?       @map("episode_id")
+  beatId                 String?       @map("beat_id")
+  programEventId         String?       @map("program_event_id")
+  speakerRole            RoomCastRole? @map("speaker_role")
+  cueType                RoomCueType?  @map("cue_type")
+  body                   String
+  messageKind            String        @default("normal") @map("message_kind")
+  parentMessageId        String?       @map("parent_message_id")
+  voteScore              Int           @default(0) @map("vote_score")
+  visibility             Visibility    @default(PUBLIC)
+  state                  ContentState  @default(PENDING)
+  moderationMetadataJson Json?         @map("moderation_metadata_json")
+  createdAt              DateTime      @default(now()) @map("created_at")
 
   room         Room              @relation(fields: [roomId], references: [id])
   author       Agent             @relation(fields: [authorAgentId], references: [id])
@@ -1724,13 +1783,13 @@ enum DigestStatus {
 }
 
 model PrivateMessage {
-  id         String            @id @default(cuid())
-  sessionId  String            @map("session_id")
-  authorType PrivateAuthorType @map("author_type")
-  content    String
-  deliveryStatus MessageDeliveryStatus @default(DELIVERED) @map("delivery_status")
-  moderationMetadataJson Json? @map("moderation_metadata_json")
-  createdAt  DateTime          @default(now()) @map("created_at")
+  id                     String                @id @default(cuid())
+  sessionId              String                @map("session_id")
+  authorType             PrivateAuthorType     @map("author_type")
+  content                String
+  deliveryStatus         MessageDeliveryStatus @default(DELIVERED) @map("delivery_status")
+  moderationMetadataJson Json?                 @map("moderation_metadata_json")
+  createdAt              DateTime              @default(now()) @map("created_at")
 
   session PrivateSession @relation(fields: [sessionId], references: [id])
 
@@ -1910,13 +1969,13 @@ model PrivateShadowMemory {
 // ──────────────────────────────────────────────
 
 model AgentPrivacySettings {
-  agentId            String   @id @map("agent_id")
-  disclosureLevel    Int      @default(1) @map("disclosure_level")
-  publicMemoryBudget Int      @default(1000) @map("public_memory_budget")
-  publicMemoryTopK   Int      @default(4) @map("public_memory_top_k")
-  publicDisclosureCap Int?    @map("public_disclosure_cap")
-  updatedAt          DateTime @updatedAt @map("updated_at")
-  updatedBy          String   @map("updated_by")
+  agentId             String   @id @map("agent_id")
+  disclosureLevel     Int      @default(1) @map("disclosure_level")
+  publicMemoryBudget  Int      @default(1000) @map("public_memory_budget")
+  publicMemoryTopK    Int      @default(4) @map("public_memory_top_k")
+  publicDisclosureCap Int?     @map("public_disclosure_cap")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  updatedBy           String   @map("updated_by")
 
   agent   Agent     @relation(fields: [agentId], references: [id])
   updater HumanUser @relation("PrivacyUpdatedBy", fields: [updatedBy], references: [id])
@@ -2162,9 +2221,9 @@ model GuidanceInbox {
   createdAt        DateTime            @default(now()) @map("created_at")
   updatedAt        DateTime            @updatedAt @map("updated_at")
 
+  @@unique([actorType, actorId, dedupKey])
   @@index([actorType, actorId, status, updatedAt])
   @@index([actorType, actorId, unread, updatedAt])
-  @@unique([actorType, actorId, dedupKey])
   @@map("guidance_inbox")
 }
 
@@ -2180,16 +2239,16 @@ enum GuidanceInboxStatus {
 }
 
 model GuidanceEventLog {
-  id         String            @id @default(cuid())
-  actorType  GuidanceActorType @map("actor_type")
-  actorId    String            @map("actor_id")
-  eventType  String            @map("event_type")
-  dedupKey   String?           @map("dedup_key")
-  payloadJson Json?            @map("payload_json")
-  createdAt  DateTime          @default(now()) @map("created_at")
+  id          String            @id @default(cuid())
+  actorType   GuidanceActorType @map("actor_type")
+  actorId     String            @map("actor_id")
+  eventType   String            @map("event_type")
+  dedupKey    String?           @map("dedup_key")
+  payloadJson Json?             @map("payload_json")
+  createdAt   DateTime          @default(now()) @map("created_at")
 
-  @@index([actorType, actorId, createdAt])
   @@unique([actorType, actorId, dedupKey])
+  @@index([actorType, actorId, createdAt])
   @@map("guidance_event_log")
 }
 
@@ -2262,70 +2321,99 @@ model PolicySnapshot {
 }
 
 model ModerationCase {
-  id                    String           @id @default(cuid())
-  caseType              ReviewCaseType   @map("case_type")
-  status                ReviewCaseStatus @default(OPEN)
-  priority              Int              @default(50)
-  summaryText           String?          @map("summary_text") @db.Text
-  openedReason          String?          @map("opened_reason")
-  openedBy              String           @default("system") @map("opened_by")
-  assignedToUserId      String?          @map("assigned_to_user_id")
-  linkedPolicySnapshotId String?         @map("linked_policy_snapshot_id")
-  linkedComplaintTicketId String?        @map("linked_complaint_ticket_id")
-  linkedAppealRequestId String?          @map("linked_appeal_request_id")
-  resolutionAction      String?          @map("resolution_action")
-  resolvedAt            DateTime?        @map("resolved_at")
-  createdAt             DateTime         @default(now()) @map("created_at")
-  updatedAt             DateTime         @updatedAt @map("updated_at")
+  id                      String           @id @default(cuid())
+  caseType                ReviewCaseType   @map("case_type")
+  queue                   ReviewQueue      @default(MODERATION)
+  status                  ReviewCaseStatus @default(OPEN)
+  priority                Int              @default(50)
+  summaryText             String?          @map("summary_text") @db.Text
+  riskSummaryJson         Json?            @map("risk_summary_json")
+  openedReason            String?          @map("opened_reason")
+  openedBy                String           @default("system") @map("opened_by")
+  primaryTargetType       String?          @map("primary_target_type")
+  primaryTargetId         String?          @map("primary_target_id")
+  assignedToUserId        String?          @map("assigned_to_user_id")
+  slaDueAt                DateTime?        @map("sla_due_at")
+  claimedByUserId         String?          @map("claimed_by_user_id")
+  claimedAt               DateTime?        @map("claimed_at")
+  linkedPolicySnapshotId  String?          @map("linked_policy_snapshot_id")
+  linkedComplaintTicketId String?          @map("linked_complaint_ticket_id")
+  linkedAppealRequestId   String?          @map("linked_appeal_request_id")
+  resolutionAction        String?          @map("resolution_action")
+  resolvedByUserId        String?          @map("resolved_by_user_id")
+  resolutionNote          String?          @map("resolution_note") @db.Text
+  resolvedAt              DateTime?        @map("resolved_at")
+  createdAt               DateTime         @default(now()) @map("created_at")
+  updatedAt               DateTime         @updatedAt @map("updated_at")
 
+  @@index([queue, status, priority, createdAt])
   @@index([status, priority, createdAt])
   @@index([caseType, createdAt])
+  @@index([primaryTargetType, primaryTargetId, createdAt])
   @@map("moderation_cases")
 }
 
 model ModerationCaseTarget {
-  id          String   @id @default(cuid())
-  caseId      String   @map("case_id")
-  targetType  String   @map("target_type")
-  targetId    String   @map("target_id")
-  channel     String
-  communityId String?  @map("community_id")
-  agentId     String?  @map("agent_id")
-  userId      String?  @map("user_id")
-  roomId      String?  @map("room_id")
-  sessionId   String?  @map("session_id")
-  messageId   String?  @map("message_id")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id           String                       @id @default(cuid())
+  caseId       String                       @map("case_id")
+  targetType   String                       @map("target_type")
+  targetId     String                       @map("target_id")
+  relationType ModerationTargetRelationType @default(PRIMARY) @map("relation_type")
+  channel      String
+  metaJson     Json?                        @map("meta_json")
+  communityId  String?                      @map("community_id")
+  agentId      String?                      @map("agent_id")
+  userId       String?                      @map("user_id")
+  roomId       String?                      @map("room_id")
+  sessionId    String?                      @map("session_id")
+  messageId    String?                      @map("message_id")
+  createdAt    DateTime                     @default(now()) @map("created_at")
 
-  @@index([caseId, createdAt])
-  @@index([targetType, targetId])
+  @@index([caseId, relationType, createdAt])
+  @@index([targetType, targetId, relationType])
   @@map("moderation_case_targets")
 }
 
 model ModerationEvidenceSnapshot {
-  id           String   @id @default(cuid())
-  caseId       String   @map("case_id")
-  snapshotType String   @map("snapshot_type")
-  payloadJson  Json     @map("payload_json")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id                  String   @id @default(cuid())
+  caseId              String   @map("case_id")
+  snapshotType        String   @map("snapshot_type")
+  payloadJson         Json     @map("payload_json")
+  contentJson         Json?    @map("content_json")
+  contextJson         Json?    @map("context_json")
+  policyHitsJson      Json?    @map("policy_hits_json")
+  promptMemoryJson    Json?    @map("prompt_memory_json")
+  topicSignalsJson    Json?    @map("topic_signals_json")
+  actionHistoryJson   Json?    @map("action_history_json")
+  evidencePackageJson Json?    @map("evidence_package_json")
+  createdAt           DateTime @default(now()) @map("created_at")
 
   @@index([caseId, createdAt])
   @@map("moderation_evidence_snapshots")
 }
 
 model ReviewTask {
-  id             String           @id @default(cuid())
-  caseId         String           @map("case_id")
-  taskType       String           @map("task_type")
-  status         ReviewTaskStatus @default(PENDING)
-  assigneeUserId String?          @map("assignee_user_id")
-  dueAt          DateTime?        @map("due_at")
-  completedAt    DateTime?        @map("completed_at")
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
+  id              String           @id @default(cuid())
+  caseId          String           @map("case_id")
+  queue           ReviewQueue      @default(MODERATION)
+  taskType        String           @map("task_type")
+  status          ReviewTaskStatus @default(PENDING)
+  assigneeUserId  String?          @map("assignee_user_id")
+  claimToken      String?          @map("claim_token")
+  claimedByUserId String?          @map("claimed_by_user_id")
+  claimedAt       DateTime?        @map("claimed_at")
+  assignedRole    String?          @map("assigned_role")
+  dueAt           DateTime?        @map("due_at")
+  resolutionCode  String?          @map("resolution_code")
+  operatorNote    String?          @map("operator_note") @db.Text
+  completedAt     DateTime?        @map("completed_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
 
+  @@index([queue, status, createdAt])
   @@index([caseId, status, createdAt])
   @@index([assigneeUserId, status, createdAt])
+  @@index([claimedByUserId, status, createdAt])
   @@map("review_tasks")
 }
 
@@ -2346,16 +2434,19 @@ model GovernanceActionLog {
 }
 
 model ComplaintTicket {
-  id             String          @id @default(cuid())
-  reporterUserId String          @map("reporter_user_id")
-  targetType     String          @map("target_type")
-  targetId       String          @map("target_id")
-  reasonCode     String          @map("reason_code")
-  detailText     String?         @map("detail_text") @db.Text
-  status         ComplaintStatus @default(OPEN)
-  linkedCaseId   String?         @map("linked_case_id")
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @updatedAt @map("updated_at")
+  id              String          @id @default(cuid())
+  reporterUserId  String          @map("reporter_user_id")
+  targetType      String          @map("target_type")
+  targetId        String          @map("target_id")
+  complaintType   ComplaintType   @default(CONTENT_REPORT) @map("complaint_type")
+  reasonCode      String          @map("reason_code")
+  detailText      String?         @map("detail_text") @db.Text
+  attachmentsJson Json            @default("[]") @map("attachments_json")
+  status          ComplaintStatus @default(OPEN)
+  linkedCaseId    String?         @map("linked_case_id")
+  resolutionJson  Json?           @map("resolution_json")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
 
   @@index([status, createdAt])
   @@index([targetType, targetId, createdAt])
@@ -2364,16 +2455,19 @@ model ComplaintTicket {
 }
 
 model AppealRequest {
-  id                    String       @id @default(cuid())
-  requesterUserId       String       @map("requester_user_id")
-  targetType            String       @map("target_type")
-  targetId              String       @map("target_id")
-  linkedCaseId          String?      @map("linked_case_id")
-  linkedComplaintTicketId String?    @map("linked_complaint_ticket_id")
-  reason                String       @db.Text
-  status                AppealStatus @default(OPEN)
-  createdAt             DateTime     @default(now()) @map("created_at")
-  updatedAt             DateTime     @updatedAt @map("updated_at")
+  id                      String              @id @default(cuid())
+  requesterUserId         String              @map("requester_user_id")
+  requesterType           AppealRequesterType @default(USER) @map("requester_type")
+  targetType              String              @map("target_type")
+  targetId                String              @map("target_id")
+  appealType              AppealType          @default(CONTENT_APPEAL) @map("appeal_type")
+  linkedCaseId            String?             @map("linked_case_id")
+  linkedComplaintTicketId String?             @map("linked_complaint_ticket_id")
+  reason                  String              @db.Text
+  status                  AppealStatus        @default(OPEN)
+  resultJson              Json?               @map("result_json")
+  createdAt               DateTime            @default(now()) @map("created_at")
+  updatedAt               DateTime            @updatedAt @map("updated_at")
 
   @@index([status, createdAt])
   @@index([targetType, targetId, createdAt])
@@ -2409,6 +2503,30 @@ model RiskEventLog {
   @@index([agentId, createdAt])
   @@index([userId, createdAt])
   @@map("risk_event_logs")
+}
+
+model PublicDisclosureCapOverride {
+  id                String                            @id @default(cuid())
+  scopeType         DisclosureCapScopeType            @map("scope_type")
+  scopeId           String                            @map("scope_id")
+  capLevel          Int                               @map("cap_level")
+  status            PublicDisclosureCapOverrideStatus @default(ACTIVE)
+  source            PublicDisclosureCapOverrideSource
+  reason            String?                           @db.Text
+  linkedCaseId      String?                           @map("linked_case_id")
+  linkedRiskEventId String?                           @map("linked_risk_event_id")
+  createdByUserId   String                            @map("created_by_user_id")
+  releasedByUserId  String?                           @map("released_by_user_id")
+  releasedReason    String?                           @map("released_reason") @db.Text
+  releasedAt        DateTime?                         @map("released_at")
+  createdAt         DateTime                          @default(now()) @map("created_at")
+
+  // Active-row uniqueness is enforced by a partial unique index in SQL migration.
+  @@index([scopeType, scopeId, status, createdAt])
+  @@index([status, createdAt])
+  @@index([linkedCaseId, createdAt])
+  @@index([linkedRiskEventId, createdAt])
+  @@map("public_disclosure_cap_overrides")
 }
 
 // ──────────────────────────────────────────────

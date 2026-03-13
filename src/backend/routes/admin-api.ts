@@ -14,7 +14,9 @@ import {
   guidanceObservabilityService,
   reviewService,
   riskGovernanceRepo,
+  publicDisclosureCapService,
   privateChannelServices,
+  hotTopicOpsService,
 } from '../container.js'
 import { config } from '../lib/config.js'
 import { getRuntimeBuildInfo } from '../lib/runtime-build-info.js'
@@ -32,17 +34,39 @@ import {
   collectFallbackOrDegradedEntries,
 } from '../runtime/rollout-evidence-collector.js'
 import { validate } from '../validation/validate.js'
-import { governanceActionSchema } from '../validation/schemas.js'
+import {
+  createDisclosureCapOverrideSchema,
+  governanceActionSchema,
+  releaseDisclosureCapOverrideSchema,
+} from '../validation/schemas.js'
 import { resolveEffectiveDisclosureCap } from './admin-api-utils.js'
 
 export const adminApiRouter: IRouter = Router()
 
+const HOT_TOPIC_POST_DISTRIBUTION_STATES = new Set(['NORMAL', 'NO_RECOMMEND'])
+const HOT_TOPIC_ROOM_DISTRIBUTION_STATES = new Set(['NORMAL', 'NO_RECOMMEND', 'BLOCKED'])
+const HOT_TOPIC_ROOM_MODES = new Set(['NORMAL', 'MANUAL_REVIEW_ONLY', 'DISABLED'])
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isSpilloverRiskEvent(event: { risk_categories?: string[]; detail_text?: string | null }): boolean {
+  return Boolean(
+    event.risk_categories?.includes('owner_private_leak')
+    || event.risk_categories?.includes('owner_endorsement_public')
+    || event.detail_text?.includes('owner_private_leak')
+    || event.detail_text?.includes('owner_endorsement_public'),
+  )
+}
+
 adminApiRouter.get('/admin/moderation/queue', requireHumanAuth, requireAdmin, async (req, res) => {
   const status = typeof req.query.status === 'string' ? req.query.status : undefined
   const case_type = typeof req.query.case_type === 'string' ? req.query.case_type : undefined
+  const queue = typeof req.query.queue === 'string' ? req.query.queue : undefined
   const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
   const limit = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : undefined
-  const result = await reviewService.listQueue({ status, case_type, cursor, limit })
+  const result = await reviewService.listQueue({ status, case_type, queue, cursor, limit })
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
 })
 
@@ -55,25 +79,75 @@ adminApiRouter.get('/admin/moderation/cases/:caseId', requireHumanAuth, requireA
   res.json({ data: detail })
 })
 
+adminApiRouter.get('/admin/moderation/cases/:caseId/evidence-export', requireHumanAuth, requireAdmin, async (req, res) => {
+  const redaction = typeof req.query.redaction === 'string' ? req.query.redaction.trim() : undefined
+  if (redaction && redaction !== 'operator' && redaction !== 'share') {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'redaction must be operator or share' } })
+    return
+  }
+  const exportBundle = await reviewService.buildEvidenceExport(String(req.params.caseId), { redaction })
+  if (!exportBundle) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Case not found' } })
+    return
+  }
+  res.json({ data: exportBundle })
+})
+
 adminApiRouter.post('/admin/moderation/cases/:caseId/assign', requireHumanAuth, requireAdmin, async (req, res) => {
   const assignee_user_id = typeof req.body?.assignee_user_id === 'string' ? req.body.assignee_user_id : null
-  const updated = await reviewService.assignCase(String(req.params.caseId), assignee_user_id)
+  const updated = await reviewService.assignCase(String(req.params.caseId), assignee_user_id, req.user!.userId)
   if (!updated) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Case not found' } })
     return
   }
   res.json({ data: updated })
+})
+
+adminApiRouter.post('/admin/moderation/cases/:caseId/transfer', requireHumanAuth, requireAdmin, async (req, res) => {
+  const assignee_user_id = typeof req.body?.assignee_user_id === 'string'
+    ? req.body.assignee_user_id.trim()
+    : ''
+  const assigned_role = typeof req.body?.assigned_role === 'string' ? req.body.assigned_role.trim() : undefined
+  const operator_note = typeof req.body?.operator_note === 'string' ? req.body.operator_note.trim() : undefined
+  if (!assignee_user_id) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'assignee_user_id is required' } })
+    return
+  }
+  const updated = await reviewService.transferCase(String(req.params.caseId), assignee_user_id, req.user!.userId, {
+    assigned_role,
+    operator_note,
+  })
+  if (!updated) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Case not found' } })
+    return
+  }
+  res.json({ data: updated })
+})
+
+adminApiRouter.post('/admin/moderation/cases/:caseId/release', requireHumanAuth, requireAdmin, async (req, res) => {
+  const operator_note = typeof req.body?.operator_note === 'string' ? req.body.operator_note.trim() : undefined
+  const released = await reviewService.releaseCase(String(req.params.caseId), req.user!.userId, {
+    operator_note,
+  })
+  if (!released) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Case not found' } })
+    return
+  }
+  res.json({ data: released })
 })
 
 adminApiRouter.post('/admin/moderation/cases/:caseId/resolve', requireHumanAuth, requireAdmin, async (req, res) => {
   const resolution_action = typeof req.body?.resolution_action === 'string'
     ? req.body.resolution_action.trim()
     : ''
+  const resolution_note = typeof req.body?.resolution_note === 'string'
+    ? req.body.resolution_note.trim()
+    : null
   if (!resolution_action) {
     res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'resolution_action is required' } })
     return
   }
-  const updated = await reviewService.resolveCase(String(req.params.caseId), resolution_action)
+  const updated = await reviewService.resolveCase(String(req.params.caseId), resolution_action, req.user!.userId, resolution_note)
   if (!updated) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Case not found' } })
     return
@@ -81,11 +155,25 @@ adminApiRouter.post('/admin/moderation/cases/:caseId/resolve', requireHumanAuth,
   res.json({ data: updated })
 })
 
+adminApiRouter.post('/admin/moderation/tasks/:taskId/claim', requireHumanAuth, requireAdmin, async (req, res) => {
+  const assigned_role = typeof req.body?.assigned_role === 'string' ? req.body.assigned_role.trim() : undefined
+  const operator_note = typeof req.body?.operator_note === 'string' ? req.body.operator_note.trim() : undefined
+  const result = await reviewService.claimTask(String(req.params.taskId), req.user!.userId, {
+    assigned_role,
+    operator_note,
+  })
+  if (!result) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Task not found' } })
+    return
+  }
+  res.json({ data: result })
+})
+
 adminApiRouter.post('/admin/moderation/cases/:caseId/reopen', requireHumanAuth, requireAdmin, async (req, res) => {
   const opened_reason = typeof req.body?.opened_reason === 'string'
     ? req.body.opened_reason.trim()
     : 'manual_reopen'
-  const updated = await reviewService.reopenCase(String(req.params.caseId), opened_reason)
+  const updated = await reviewService.reopenCase(String(req.params.caseId), opened_reason, req.user!.userId)
   if (!updated) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Case not found' } })
     return
@@ -132,7 +220,7 @@ adminApiRouter.post('/admin/identity-reviews/:userId', requireHumanAuth, require
       reviewed_by_user_id: req.user!.userId,
     },
   })
-  await reviewService.resolveCase(identityCase.id, `identity_${status.toLowerCase()}`)
+  await reviewService.resolveCase(identityCase.id, `identity_${status.toLowerCase()}`, req.user!.userId)
   res.json({ data: reviewRecord })
 })
 
@@ -148,6 +236,12 @@ adminApiRouter.get('/admin/agents/:agentId/risk-profile', requireHumanAuth, requ
     limit: 20,
     cursor: undefined,
   })
+  const capHistory = await publicDisclosureCapService.listOverrides({
+    scope_type: 'agent',
+    scope_id: agentId,
+    limit: 20,
+  })
+  const activeAgentCap = await publicDisclosureCapService.getActiveOverride('agent', agentId)
   const configActionLogs = await riskGovernanceRepo.listGovernanceActionLogs('config_revision', agentId)
   const recentRuns = agentRunRepo.findByAgent(agentId, { limit: 20 }).items
   const recent_private_provenance = recentRuns
@@ -161,6 +255,8 @@ adminApiRouter.get('/admin/agents/:agentId/risk-profile', requireHumanAuth, requ
         requested_disclosure_level: privateMemory.requested_disclosure_level,
         effective_disclosure_level: privateMemory.effective_disclosure_level,
         cap_source: privateMemory.cap_source,
+        public_disclosure_cap: privateMemory.public_disclosure_cap,
+        server_cap_sources: privateMemory.server_cap_sources ?? [],
       }
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
@@ -169,15 +265,165 @@ adminApiRouter.get('/admin/agents/:agentId/risk-profile', requireHumanAuth, requ
     data: {
       agent,
       latest_config: latestConfig,
-      spillover_events: riskEvents.items,
+      spillover_events: riskEvents.items.filter((event) => isSpilloverRiskEvent(event)),
       recent_config_actions: configActionLogs,
       recent_private_provenance,
-      effective_disclosure_cap: resolveEffectiveDisclosureCap({
+      active_cap_overrides: activeAgentCap ? [activeAgentCap] : [],
+      cap_history: capHistory.items,
+      effective_disclosure_cap: [resolveEffectiveDisclosureCap({
         latestConfig,
         privacySettings,
-      }),
+      }), activeAgentCap?.cap_level ?? null]
+        .filter((value): value is number => typeof value === 'number')
+        .reduce<number | null>((min, value) => (min === null ? value : Math.min(min, value)), null),
     },
   })
+})
+
+adminApiRouter.get('/admin/disclosure-caps', requireHumanAuth, requireAdmin, async (req, res) => {
+  const scopeType = typeof req.query.scope_type === 'string' ? req.query.scope_type : ''
+  const scopeId = typeof req.query.scope_id === 'string' ? req.query.scope_id : ''
+  const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
+  const limit = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : 20
+
+  if ((scopeType !== 'agent' && scopeType !== 'community') || !scopeId) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'scope_type(agent|community) and scope_id are required' },
+    })
+    return
+  }
+
+  const [activeOverride, history] = await Promise.all([
+    publicDisclosureCapService.getActiveOverride(scopeType, scopeId),
+    publicDisclosureCapService.listOverrides({
+      scope_type: scopeType,
+      scope_id: scopeId,
+      limit: Math.min(limit, 100),
+      cursor,
+    }),
+  ])
+
+  res.json({
+    data: {
+      scope_type: scopeType,
+      scope_id: scopeId,
+      active_override: activeOverride,
+      history: history.items,
+    },
+    meta: {
+      cursor: history.next_cursor,
+    },
+  })
+})
+
+adminApiRouter.post(
+  '/admin/disclosure-caps',
+  requireHumanAuth,
+  requireAdmin,
+  validate(createDisclosureCapOverrideSchema),
+  async (req, res) => {
+    const created = await publicDisclosureCapService.createManualOverride({
+      scope_type: req.body.scope_type,
+      scope_id: req.body.scope_id,
+      cap_level: req.body.cap_level,
+      reason: req.body.reason ?? null,
+      linked_case_id: req.body.linked_case_id ?? null,
+      linked_risk_event_id: req.body.linked_risk_event_id ?? null,
+      created_by_user_id: req.user!.userId,
+    })
+    res.status(201).json({ data: created })
+  },
+)
+
+adminApiRouter.post(
+  '/admin/disclosure-caps/:overrideId/release',
+  requireHumanAuth,
+  requireAdmin,
+  validate(releaseDisclosureCapOverrideSchema),
+  async (req, res) => {
+    const released = await publicDisclosureCapService.releaseOverride(String(req.params.overrideId), {
+      released_by_user_id: req.user!.userId,
+      released_reason: req.body.reason ?? null,
+    })
+    if (!released) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Disclosure cap override not found' } })
+      return
+    }
+    res.json({ data: released })
+  },
+)
+
+adminApiRouter.get('/admin/hot-topic/dashboard', requireHumanAuth, requireAdmin, async (_req, res) => {
+  const dashboard = await hotTopicOpsService.getDashboard()
+  res.json({ data: dashboard.items, meta: { generated_at: dashboard.generated_at } })
+})
+
+adminApiRouter.get('/admin/hot-topic/alerts', requireHumanAuth, requireAdmin, async (_req, res) => {
+  const alerts = await hotTopicOpsService.getAlerts()
+  res.json({ data: alerts.items, meta: { generated_at: alerts.generated_at } })
+})
+
+adminApiRouter.post('/admin/hot-topic/posts/:postId/distribution', requireHumanAuth, requireAdmin, async (req, res) => {
+  if (!isRecord(req.body)) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Request body must be an object' } })
+    return
+  }
+
+  const distributionState = typeof req.body.distribution_state === 'string'
+    ? req.body.distribution_state.trim()
+    : ''
+  const reason = typeof req.body.reason === 'string' ? req.body.reason.trim() : null
+  if (!HOT_TOPIC_POST_DISTRIBUTION_STATES.has(distributionState)) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'distribution_state must be NORMAL or NO_RECOMMEND' },
+    })
+    return
+  }
+
+  const item = await hotTopicOpsService.updatePostDistribution({
+    post_id: String(req.params.postId),
+    distribution_state: distributionState as 'NORMAL' | 'NO_RECOMMEND',
+    actor_user_id: req.user!.userId,
+    reason,
+  })
+  res.json({ data: item })
+})
+
+adminApiRouter.post('/admin/hot-topic/rooms/:roomId/control', requireHumanAuth, requireAdmin, async (req, res) => {
+  if (!isRecord(req.body)) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Request body must be an object' } })
+    return
+  }
+
+  const hotTopicMode = typeof req.body.hot_topic_mode === 'string'
+    ? req.body.hot_topic_mode.trim()
+    : null
+  const distributionState = typeof req.body.distribution_state === 'string'
+    ? req.body.distribution_state.trim()
+    : null
+  const reason = typeof req.body.reason === 'string' ? req.body.reason.trim() : null
+
+  if (hotTopicMode !== null && !HOT_TOPIC_ROOM_MODES.has(hotTopicMode)) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'hot_topic_mode must be NORMAL, MANUAL_REVIEW_ONLY, or DISABLED' },
+    })
+    return
+  }
+  if (distributionState !== null && !HOT_TOPIC_ROOM_DISTRIBUTION_STATES.has(distributionState)) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'distribution_state must be NORMAL, NO_RECOMMEND, or BLOCKED' },
+    })
+    return
+  }
+
+  const item = await hotTopicOpsService.updateRoomControl({
+    room_id: String(req.params.roomId),
+    actor_user_id: req.user!.userId,
+    hot_topic_mode: hotTopicMode as 'NORMAL' | 'MANUAL_REVIEW_ONLY' | 'DISABLED' | undefined,
+    distribution_state: distributionState as 'NORMAL' | 'NO_RECOMMEND' | 'BLOCKED' | undefined,
+    reason,
+  })
+  res.json({ data: item })
 })
 
 adminApiRouter.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, async (_req, res) => {

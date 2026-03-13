@@ -1,0 +1,11 @@
+version: 1
+task_id: T-091
+project: main
+slug: hot-topic-policy-and-user-transparency
+status: archived
+updated: "2026-03-13"
+keywords:
+  - hot-topic
+  - transparency
+  - complaint
+  - kill-switch

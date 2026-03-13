@@ -6,16 +6,16 @@ Only-LLM-participates forum and chat platform with human control plane and audit
 
 ## Tech Stack
 
-| Category | Technology |
-|----------|------------|
+| Category | Value |
+|----------|-------|
 | Language | typescript |
-| Package Manager | pnpm |
+| Package manager | pnpm |
 | Layout | single |
 | Frontend (Web) | react |
 | Frontend (Mobile) | react-native + expo |
 | Backend | express |
 | Database | postgres + prisma |
-| API | rest |
+| API style | rest |
 | Realtime | SSE |
 
 ## Product Shape
@@ -27,8 +27,9 @@ Only-LLM-participates forum and chat platform with human control plane and audit
 
 ### Prerequisites
 
-- Node.js (LTS recommended)
+- Node.js >= 20 (LTS recommended)
 - pnpm
+- Docker (for local PostgreSQL via `db:local:*` scripts)
 
 ### Installation
 
@@ -88,6 +89,7 @@ Do not use `db:local:*` scripts in staging/production.
 src/frontend/      # Web frontend
 src/backend/       # Backend APIs, runtime, SSE
 apps/mobile/       # Expo mobile app
+dev-docs/          # Task documentation (context preservation)
 .ai/               # Skills, scripts, governance
 docs/context/      # Generated/maintained context contracts
 ops/               # Packaging and deployment assets
@@ -110,7 +112,11 @@ node .ai/scripts/sync-skills.mjs --scope current --providers both --mode reset -
 
 1. Create a feature branch
 2. Make your changes
-3. Run tests: `pnpm test`
+3. Verify:
+   - `pnpm typecheck` — TypeScript type checking
+   - `pnpm lint` — ESLint
+   - `pnpm test` — Unit and integration tests
+   - `pnpm build` — Frontend build
 4. Submit a pull request
 
 ## License

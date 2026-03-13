@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  useCreateReport,
   useGuidanceBell,
   useGuidanceClientEvent,
   useGuidanceInbox,
@@ -27,6 +28,7 @@ vi.mock('react-router', async () => {
 })
 
 vi.mock('@/api/hooks', () => ({
+  useCreateReport: vi.fn(),
   useGuidanceBell: vi.fn(),
   useGuidanceClientEvent: vi.fn(),
   useGuidanceInbox: vi.fn(),
@@ -62,13 +64,13 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
     onClick?: () => void
     className?: string
   }) => (
-    <button
-      type="button"
+    <div
+      role="menuitem"
       className={className ? `truncate ${className}` : 'truncate'}
       onClick={onClick}
     >
       {children}
-    </button>
+    </div>
   ),
   DropdownMenuLabel: ({ children, className }: { children: ReactNode; className?: string }) => (
     <div className={className ? `truncate ${className}` : 'truncate'}>{children}</div>
@@ -96,6 +98,7 @@ const useGuidanceBellMock = vi.mocked(useGuidanceBell)
 const useGuidanceClientEventMock = vi.mocked(useGuidanceClientEvent)
 const useGuidanceInboxMock = vi.mocked(useGuidanceInbox)
 const useGuidanceItemActionMock = vi.mocked(useGuidanceItemAction)
+const useCreateReportMock = vi.mocked(useCreateReport)
 const useNotificationsMock = vi.mocked(useNotifications)
 const useMarkNotificationReadMock = vi.mocked(useMarkNotificationRead)
 const useMarkAllNotificationsReadMock = vi.mocked(useMarkAllNotificationsRead)
@@ -112,6 +115,10 @@ describe('Layout', () => {
     useGuidanceClientEventMock.mockReturnValue({ mutate: vi.fn() } as never)
     useGuidanceInboxMock.mockReturnValue({ data: undefined } as never)
     useGuidanceItemActionMock.mockReturnValue({ mutate: vi.fn() } as never)
+    useCreateReportMock.mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue({ data: { id: 'complaint-notif-1' } }),
+      isPending: false,
+    } as never)
     useNotificationsMock.mockReturnValue({
       data: {
         data: {
@@ -236,5 +243,55 @@ describe('Layout', () => {
       action: 'open',
     })
     expect(navigateMock).toHaveBeenCalledWith('/posts/post-1')
+  })
+
+  it('reports a proactive notification without triggering the parent navigation click', async () => {
+    const mutateAsync = vi.fn().mockResolvedValue({ data: { id: 'complaint-notif-2' } })
+    useCreateReportMock.mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    } as never)
+    useNotificationsMock.mockReturnValue({
+      data: {
+        data: {
+          unread_count: 1,
+          items: [
+            {
+              id: 'notif-proactive-1',
+              user_id: 'user-1',
+              type: 'AGENT_PROACTIVE',
+              title: 'Moon Agent 想和你聊聊',
+              body: '一条主动私信提醒',
+              target_type: 'private_session',
+              target_id: 'session-1',
+              read: false,
+              created_at: '2026-03-12T08:00:00.000Z',
+            },
+          ],
+        },
+      },
+    } as never)
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route index element={<div>home</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '举报此主动私信' }))
+
+    expect(await screen.findByText('已举报')).toBeTruthy()
+    expect(mutateAsync).toHaveBeenCalledWith({
+      target_type: 'private_session',
+      target_id: 'session-1',
+      complaint_type: 'HARASSMENT_REPORT',
+      reason_code: 'proactive_outreach_report',
+      detail_text: 'Reported from AGENT_PROACTIVE notification: notif-proactive-1',
+    })
+    expect(navigateMock).not.toHaveBeenCalled()
   })
 })

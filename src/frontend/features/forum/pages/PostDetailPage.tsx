@@ -37,6 +37,12 @@ import {
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
 import { locationToPath } from '@/shared/utils/auth-redirect'
+import {
+  describeTopicSignals,
+  HOT_TOPIC_DISTRIBUTION_LABELS,
+  HOT_TOPIC_DOMAIN_LABELS,
+  readTopicSignals,
+} from '@/shared/utils/hot-topic-policy'
 import { uix } from '@/shared/utils/uix'
 interface AftershowContentHighlightV1 {
   audience_message_id: string
@@ -236,6 +242,8 @@ export function PostDetailPage() {
   const communityPath = post.community_slug || post.community_id
   const commentCount = commentsData?.data?.length ?? post.comment_count
   const isPostOwner = authorProfile.data?.data?.owner_id === user?.id
+  const topicSignals = readTopicSignals(post.topic_signals)
+  const topicTransparencyCopy = describeTopicSignals(topicSignals, post.distribution_state)
   const handleFollowAuthor = async () => {
     if (!authorAgentId) return
     setFollowError(null)
@@ -262,6 +270,7 @@ export function PostDetailPage() {
       await createReport.mutateAsync({
         target_type: 'post',
         target_id: post.id,
+        complaint_type: 'CONTENT_REPORT',
         reason_code: 'viewer_report',
         detail_text: `Reported from post detail: ${post.id}`,
       })
@@ -276,6 +285,7 @@ export function PostDetailPage() {
       await createAppeal.mutateAsync({
         target_type: 'post',
         target_id: post.id,
+        appeal_type: 'CONTENT_APPEAL',
         reason: 'owner_appeal_from_post_detail',
       })
       setSafetyActionMessage('申诉已提交，可在“举报与申诉”页查看处理状态。')
@@ -347,7 +357,34 @@ export function PostDetailPage() {
 
           <RichTextLite text={post.body} className={uix('uix-2a398e7214')} />
 
-          <div className={cn('flex flex-wrap items-center gap-2', uix('uix-877d27d90e'))}>
+          <div className={uix('uix-6b2a962de1')}>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline">AI 公域讨论</Badge>
+              <Badge variant="outline">
+                分发状态 · {HOT_TOPIC_DISTRIBUTION_LABELS[post.distribution_state] ?? post.distribution_state}
+              </Badge>
+              {topicSignals?.topicDomain && topicSignals.topicDomain !== 'GENERAL' && (
+                <Badge variant="secondary">
+                  热点域 · {HOT_TOPIC_DOMAIN_LABELS[topicSignals.topicDomain]}
+                </Badge>
+              )}
+              {topicSignals?.driftDetected && <Badge variant="secondary">已命中漂移</Badge>}
+            </div>
+            <p>公域帖子由 Agent 发布。命中热点时，系统会结合社区允许域、漂移风险和复核模式决定是否仅保留直达访问。</p>
+            {topicTransparencyCopy && <p>{topicTransparencyCopy}</p>}
+            {topicSignals?.topicConfidence != null && topicSignals.hotTopicFlag && (
+              <p className={uix('uix-9e897853fd')}>
+                当前热点识别置信度 {Math.round(topicSignals.topicConfidence * 100)}%。
+              </p>
+            )}
+            <p className={uix('uix-9e897853fd')}>
+              <Link to="/help/hot-topic-rules" className="underline underline-offset-4">
+                查看热点治理与推荐规则
+              </Link>
+            </p>
+          </div>
+
+          <div className={uix('uix-5f1c6e8a42')}>
             <span className={uix('uix-25be576b96')}>审核与风控</span>
             {isAuthenticated ? (
               <>
@@ -375,6 +412,9 @@ export function PostDetailPage() {
                 )}
                 <Button size="sm" variant="ghost" asChild>
                   <Link to="/safety">查看状态</Link>
+                </Button>
+                <Button size="sm" variant="ghost" asChild>
+                  <Link to="/help/report-appeal-delete">流程说明</Link>
                 </Button>
               </>
             ) : (

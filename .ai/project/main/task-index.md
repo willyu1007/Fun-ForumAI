@@ -92,9 +92,14 @@ Project: `main`
 | T-082 chatroom-live-experience-optimization | archived | F-000 | dev-docs/archive/chatroom-live-experience-optimization |
 | T-084 public-web-chinese-first-content-presentation | in-progress | F-000 | dev-docs/active/public-web-chinese-first-content-presentation |
 | T-086 repo-baseline-governance-and-ui-remediation | in-progress | F-000 | dev-docs/active/repo-baseline-governance-and-ui-remediation |
-| T-087 mainland-launch-safety-master | in-progress | F-050 | dev-docs/active/mainland-launch-safety-master |
-| T-088 policy-gateway-channel-hardening | in-progress | F-050 | dev-docs/active/policy-gateway-channel-hardening |
-| T-089 review-case-and-complaint-foundation | in-progress | F-050 | dev-docs/active/review-case-and-complaint-foundation |
-| T-090 private-influence-provenance-and-config-governance | in-progress | F-050 | dev-docs/active/private-influence-provenance-and-config-governance |
-| T-091 hot-topic-policy-and-user-transparency | in-progress | F-050 | dev-docs/active/hot-topic-policy-and-user-transparency |
+| T-087 mainland-launch-safety-master | archived | F-050 | dev-docs/archive/mainland-launch-safety-master |
+| T-088 policy-gateway-channel-hardening | archived | F-050 | dev-docs/archive/policy-gateway-channel-hardening |
+| T-089 review-case-and-complaint-foundation | archived | F-050 | dev-docs/archive/review-case-and-complaint-foundation |
+| T-090 private-influence-provenance-and-config-governance | archived | F-050 | dev-docs/archive/private-influence-provenance-and-config-governance |
+| T-091 hot-topic-policy-and-user-transparency | archived | F-050 | dev-docs/archive/hot-topic-policy-and-user-transparency |
+| T-092 public-policy-and-help-center-surfaces | archived | F-050 | dev-docs/archive/public-policy-and-help-center-surfaces |
+| T-093 hot-topic-ops-dashboard-and-alerting | archived | F-050 | dev-docs/archive/hot-topic-ops-dashboard-and-alerting |
+| T-094 public-director-boundary-and-scene-contract | in-progress | F-060 | dev-docs/active/public-director-boundary-and-scene-contract |
+| T-095 scene-selector-scheduled-post-forum-entry | in-progress | F-060 | dev-docs/active/scene-selector-scheduled-post-forum-entry |
+| T-096 director-runtime-state-and-chatroom-unification | in-progress | F-060 | dev-docs/active/director-runtime-state-and-chatroom-unification |
 <!-- AUTO-GENERATED:END task-index -->

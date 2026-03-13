@@ -1,0 +1,80 @@
+# 04 Verification — T-094
+
+- Planning-only task bundle initialized.
+- 2026-03-13 repo review:
+  - 已核对 `README.md`、`docs/project/overview/LLM_forum_PRD.md`、`docs/project/overview/LLM_forum_DevSpec.md`、`src/backend/runtime/prompt-orchestrator.ts`、`src/backend/runtime/post-scheduler.ts`、`src/backend/services/private-channel-service.ts`、`src/backend/services/proactive-interaction-service.ts`、`src/backend/services/chatroom-*.ts` 与历史 `T-046 / T-073 / T-074 / T-075` 文档。
+- 2026-03-13 governance query:
+  - `node .ai/scripts/ctl-project-governance.mjs query --project main --text "scene director scheduled post chatroom private boundary"`
+  - 结果：无直接命中的现成 task，说明该范围不是 registry 中的已成型同类任务；相邻前置任务需通过人工映射承接。
+- 2026-03-13 governance sync:
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
+  - passed；刷新了 `.ai/project/main/dashboard.md`、`feature-map.md`、`task-index.md`
+- 2026-03-13 governance lint:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+- 2026-03-13 patch hygiene:
+  - `git diff --check`
+  - passed
+- 2026-03-13 planning sync follow-up:
+  - 已对照 `/Users/phoenix/Downloads/scene_pool_director_scene_aware_design.md` 第 10、13、14、16、附录 C/D 节，再次核对三类缺口是否都已纳入当前三包。
+  - 结果：私域收口和 scene-pool asset/ops 已并入 `T-094`；指标/实验/人工 rubric 已并入 `T-096`；无需新增第四包。
+- 2026-03-13 contract-detail review:
+  - 已核对 `src/backend/stage/stage-spec.ts`、`src/backend/runtime/types.ts`、`src/backend/runtime/prompt-orchestrator.ts`、`src/backend/runtime/context-builder.ts`、`src/backend/runtime/post-scheduler.ts`、`src/backend/runtime/agent-executor.ts`、`src/backend/services/private-channel-service.ts`、`src/backend/services/proactive-interaction-service.ts`、`docs/stage-templates/v1/library.manifest.yaml`、`docs/stage-templates/v1/templates/stage-show-01.yaml`、`src/backend/stage/stage-template-ops.js`、`src/backend/lib/config.ts`。
+  - 结论：repo 现状确实混用了 `PromptScene`、调用入口和真实写入 surface；私域链路仍保留 `layer_showrunner` 注入点；资产层当前只有 `launch/hidden` 两态投影。
+- 2026-03-13 schema-tightening review:
+  - 已对照 `/Users/phoenix/Downloads/scene_pool_director_scene_aware_design.md` 中 `7.7.2 scene_binding_v1`、`7.7.3 episode_overlay_v1`、`13.4 LocalIntent` 建议草案，重新核对当前合同是否仍有模糊词或过宽字段。
+  - 结论：`scene_binding_v1` 若允许多挂载点会导致 selector/audit 歧义；`episode_overlay_v1` 若缺少 `facts_digest/source_links/safety` 不足以支撑热点治理；`LocalIntent.memory_scope='inherit'` 语义过宽，已在合同中收窄。
+- 2026-03-13 decision follow-up:
+  - 用户已确认：
+    - `LocalIntent.reference_scope` 采用低复杂度、surface-aware 的显式枚举方案
+    - `episode_overlay_v1.source_links` 采用条件强制方案
+  - 合同已同步到 `02-architecture.md`
+- 2026-03-13 freeze-review pass:
+  - 已对 `scene_binding_v1.entry_surfaces / activation.trigger_conditions / governance.risk_override`、`episode_overlay_v1.factual_basis`、`LocalIntent.target_ref / hard_constraints / soft_constraints` 做冻结前宽字段检查。
+  - 结论：若保留自由文本 `trigger_conditions / risk_override` 或弱类型 `target_ref`，`T-095` 会在 selector 和 write path 上重新发明一套语义；现已改为枚举/结构化 union。
+- 2026-03-13 post-freeze-review hygiene:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+  - `git diff --check`
+  - passed
+- 2026-03-13 post-decision hygiene:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+  - `git diff --check`
+  - passed
+- 2026-03-13 post-tightening hygiene:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+  - `git diff --check`
+  - passed
+- 2026-03-13 governance sync（planning summary refresh）:
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+  - passed
+- 2026-03-13 governance lint（post-summary）:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+- 2026-03-13 patch hygiene（post-summary）:
+  - `git diff --check`
+  - passed
+- 2026-03-13 final sanity:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+  - `git diff --check`
+  - passed
+- 2026-03-13 status sync after contract detail:
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
+  - passed；`registry.yaml`、`changelog.md`、`dashboard.md`、`feature-map.md`、`task-index.md` 已刷新，`T-094` 状态进入 `in-progress`
+- 2026-03-13 governance lint rerun:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+- 2026-03-13 derived view spot-check:
+  - `rg -n "T-094 public-director-boundary-and-scene-contract" .ai/project/main/task-index.md .ai/project/main/feature-map.md`
+  - passed；两处派生视图均显示 `T-094 = in-progress`
+- 2026-03-13 patch hygiene after contract detail:
+  - `git diff --check`
+  - passed
+- 2026-03-13 final sanity after verification update:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+  - `git diff --check`
+  - passed

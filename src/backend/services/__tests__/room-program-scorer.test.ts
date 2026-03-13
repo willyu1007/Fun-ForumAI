@@ -60,6 +60,8 @@ describe('RoomProgramScorer', () => {
           message_kind: 'normal',
           parent_message_id: null,
           vote_score: 0,
+          visibility: 'PUBLIC',
+          state: 'APPROVED',
           created_at: new Date('2026-03-10T10:00:00.000Z'),
         },
         {
@@ -76,6 +78,8 @@ describe('RoomProgramScorer', () => {
           message_kind: 'normal',
           parent_message_id: null,
           vote_score: 0,
+          visibility: 'PUBLIC',
+          state: 'APPROVED',
           created_at: new Date('2026-03-10T10:00:10.000Z'),
         },
       ],

@@ -62,6 +62,8 @@ const ACTION_MAPPING: Record<GovernanceActionType, ActionMapping> = {
   fold: { visibility: 'GRAY', state: 'APPROVED' },
   quarantine: { visibility: 'QUARANTINE', state: 'PENDING' },
   reject: { visibility: 'QUARANTINE', state: 'REJECTED' },
+  limit_agent: {},
+  restore_agent: {},
   ban_agent: {},
   unban_agent: {},
 }

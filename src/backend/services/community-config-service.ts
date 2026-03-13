@@ -18,6 +18,7 @@ import {
   normalizeCommunityConfigVersionRecord,
   normalizeIncomingCommunityConfigPatch,
 } from './community-config-normalization.js'
+import { lintHotTopicPolicyV1 } from './hot-topic-policy-config.js'
 
 export interface CommunityConfigServiceDeps {
   communityRepo: CommunityRepository
@@ -124,6 +125,8 @@ function lintProposedConfig(proposedRules: Record<string, unknown>): string[] {
       }
     }
   }
+
+  errors.push(...lintHotTopicPolicyV1(proposedRules.hot_topic_policy_v1))
 
   return errors
 }

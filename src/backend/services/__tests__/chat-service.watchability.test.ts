@@ -202,4 +202,197 @@ describe('ChatService watchability hooks', () => {
 
     expect(roomRepo.addMember).toHaveBeenCalledWith('room-1', 'agent-1', 'creator', 12_000)
   })
+
+  it('filters no-recommend rooms from watchability listings', async () => {
+    const deps = baseDeps()
+    const service = new ChatService({
+      ...deps,
+      roomRepo: {
+        ...deps.roomRepo,
+        list: vi.fn(async () => ({
+          items: [
+            {
+              id: 'room-1',
+              name: 'Room 1',
+              description: 'hidden room',
+              status: 'active',
+              max_agents: 4,
+              last_message_at: null,
+              created_at: new Date(),
+              updated_at: new Date(),
+            },
+            {
+              id: 'room-2',
+              name: 'Room 2',
+              description: 'visible room',
+              status: 'active',
+              max_agents: 4,
+              last_message_at: null,
+              created_at: new Date(),
+              updated_at: new Date(),
+            },
+          ],
+          next_cursor: null,
+        })),
+      } as never,
+      roomWatchabilityRepo: {
+        listPrograms: vi.fn(async () => [
+          {
+            room_id: 'room-1',
+            enabled: true,
+            scene_type: 'FREE_CHAT',
+            discoverability_tags: ['no_recommend'],
+          },
+          {
+            room_id: 'room-2',
+            enabled: true,
+            scene_type: 'FREE_CHAT',
+            discoverability_tags: [],
+          },
+        ]),
+        listLiveSnapshots: vi.fn(async () => []),
+      } as never,
+    } as never)
+
+    const result = await service.getRoomsWithWatchability({ limit: 20 })
+
+    expect(result.items.map((item) => item.id)).toEqual(['room-2'])
+  })
+
+  it('keeps pagination moving when hidden rooms are filtered out', async () => {
+    const deps = baseDeps()
+    const listMock = vi.fn(async (opts: { cursor?: string; limit: number }) => {
+      if (!opts.cursor) {
+        return {
+          items: [
+            {
+              id: 'room-1',
+              name: 'Room 1',
+              description: 'hidden room',
+              status: 'active',
+              max_agents: 4,
+              last_message_at: null,
+              created_at: new Date('2026-03-12T00:00:00Z'),
+              updated_at: new Date('2026-03-12T00:00:00Z'),
+            },
+          ],
+          next_cursor: 'room-1',
+        }
+      }
+      if (opts.cursor === 'room-1') {
+        return {
+          items: [
+            {
+              id: 'room-2',
+              name: 'Room 2',
+              description: 'visible room',
+              status: 'active',
+              max_agents: 4,
+              last_message_at: null,
+              created_at: new Date('2026-03-11T00:00:00Z'),
+              updated_at: new Date('2026-03-11T00:00:00Z'),
+            },
+          ],
+          next_cursor: 'room-2',
+        }
+      }
+      return {
+        items: [
+          {
+            id: 'room-3',
+            name: 'Room 3',
+            description: 'visible room 2',
+            status: 'active',
+            max_agents: 4,
+            last_message_at: null,
+            created_at: new Date('2026-03-10T00:00:00Z'),
+            updated_at: new Date('2026-03-10T00:00:00Z'),
+          },
+        ],
+        next_cursor: null,
+      }
+    })
+
+    const service = new ChatService({
+      ...deps,
+      roomRepo: {
+        ...deps.roomRepo,
+        list: listMock,
+      } as never,
+      roomWatchabilityRepo: {
+        listPrograms: vi.fn(async (roomIds: string[]) => roomIds.map((roomId) => ({
+          room_id: roomId,
+          enabled: true,
+          scene_type: 'FREE_CHAT',
+          discoverability_tags: roomId === 'room-1' ? ['no_recommend'] : [],
+        }))),
+        listLiveSnapshots: vi.fn(async () => []),
+      } as never,
+    } as never)
+
+    const firstPage = await service.getRoomsWithWatchability({ limit: 1 })
+
+    expect(firstPage.items.map((item) => item.id)).toEqual(['room-2'])
+    expect(firstPage.next_cursor).toBe('room-2')
+
+    const secondPage = await service.getRoomsWithWatchability({
+      limit: 1,
+      cursor: firstPage.next_cursor ?? undefined,
+    })
+
+    expect(secondPage.items.map((item) => item.id)).toEqual(['room-3'])
+    expect(secondPage.next_cursor).toBeNull()
+  })
+
+  it('filters no-recommend rooms from available-room discovery', async () => {
+    const deps = baseDeps()
+    const service = new ChatService({
+      ...deps,
+      roomRepo: {
+        ...deps.roomRepo,
+        getAvailableRooms: vi.fn(async () => [
+          {
+            id: 'room-1',
+            name: 'Room 1',
+            description: 'hidden room',
+            status: 'active',
+            max_agents: 4,
+            last_message_at: null,
+            created_at: new Date(),
+            updated_at: new Date(),
+          },
+          {
+            id: 'room-2',
+            name: 'Room 2',
+            description: 'visible room',
+            status: 'active',
+            max_agents: 4,
+            last_message_at: null,
+            created_at: new Date(),
+            updated_at: new Date(),
+          },
+        ]),
+      } as never,
+      roomWatchabilityRepo: {
+        listPrograms: vi.fn(async () => [
+          {
+            room_id: 'room-1',
+            enabled: true,
+            scene_type: 'FREE_CHAT',
+            discoverability_tags: ['no_recommend'],
+          },
+          {
+            room_id: 'room-2',
+            enabled: true,
+            scene_type: 'FREE_CHAT',
+            discoverability_tags: [],
+          },
+        ]),
+      } as never,
+    } as never)
+
+    const rooms = await service.getAvailableRooms()
+
+    expect(rooms.map((item) => item.id)).toEqual(['room-2'])
+  })
 })

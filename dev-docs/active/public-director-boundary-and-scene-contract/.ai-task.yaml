@@ -1,0 +1,12 @@
+version: 1
+task_id: T-094
+project: main
+slug: public-director-boundary-and-scene-contract
+status: in-progress
+updated: "2026-03-13"
+keywords:
+  - scene-pool
+  - director
+  - public-runtime
+  - private-boundary
+  - contract

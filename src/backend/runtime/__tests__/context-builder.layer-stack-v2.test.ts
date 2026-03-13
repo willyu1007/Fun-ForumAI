@@ -129,6 +129,12 @@ describe('ContextBuilder layer stack flag routing', () => {
         updated_at: new Date(),
         updated_by: 'tester',
       })),
+      resolveEffectiveDisclosureLevel: vi.fn((settings: { disclosure_level: number }) => ({
+        requested_disclosure_level: settings.disclosure_level,
+        effective_disclosure_level: settings.disclosure_level,
+        cap_source: 'owner_setting',
+        public_disclosure_cap: null,
+      })),
       getMemoriesForContext: vi.fn(async () => ({
         memories: [],
         formatted: 'legacy-memory',

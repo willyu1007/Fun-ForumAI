@@ -55,11 +55,14 @@ export function useCreateReport() {
     mutationFn: (body: {
       target_type: string
       target_id: string
-      reason_code: string
+      complaint_type?: string
+      reason_code?: string
       detail_text?: string
+      attachments?: Array<{ ref: string; type: string }>
     }) => api.post('reports', { json: body }).json<ApiResponse<Record<string, unknown>>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['myReports'] })
+      qc.invalidateQueries({ queryKey: ['notifications'] })
     },
   })
 }
@@ -70,10 +73,14 @@ export function useCreateAppeal() {
     mutationFn: (body: {
       target_type: string
       target_id: string
+      appeal_type?: string
+      requester_type?: string
       reason: string
+      linked_complaint_ticket_id?: string
     }) => api.post('appeals', { json: body }).json<ApiResponse<Record<string, unknown>>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['myAppeals'] })
+      qc.invalidateQueries({ queryKey: ['notifications'] })
     },
   })
 }

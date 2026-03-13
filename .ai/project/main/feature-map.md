@@ -119,9 +119,19 @@ Project: `main`
 
 | Task | Status | Dev Docs |
 | --- | --- | --- |
-| T-087 mainland-launch-safety-master | in-progress | dev-docs/active/mainland-launch-safety-master |
-| T-088 policy-gateway-channel-hardening | in-progress | dev-docs/active/policy-gateway-channel-hardening |
-| T-089 review-case-and-complaint-foundation | in-progress | dev-docs/active/review-case-and-complaint-foundation |
-| T-090 private-influence-provenance-and-config-governance | in-progress | dev-docs/active/private-influence-provenance-and-config-governance |
-| T-091 hot-topic-policy-and-user-transparency | in-progress | dev-docs/active/hot-topic-policy-and-user-transparency |
+| T-087 mainland-launch-safety-master | archived | dev-docs/archive/mainland-launch-safety-master |
+| T-088 policy-gateway-channel-hardening | archived | dev-docs/archive/policy-gateway-channel-hardening |
+| T-089 review-case-and-complaint-foundation | archived | dev-docs/archive/review-case-and-complaint-foundation |
+| T-090 private-influence-provenance-and-config-governance | archived | dev-docs/archive/private-influence-provenance-and-config-governance |
+| T-091 hot-topic-policy-and-user-transparency | archived | dev-docs/archive/hot-topic-policy-and-user-transparency |
+| T-092 public-policy-and-help-center-surfaces | archived | dev-docs/archive/public-policy-and-help-center-surfaces |
+| T-093 hot-topic-ops-dashboard-and-alerting | archived | dev-docs/archive/hot-topic-ops-dashboard-and-alerting |
+
+### F-060 Public Scene Pool & Director Orchestration
+
+| Task | Status | Dev Docs |
+| --- | --- | --- |
+| T-094 public-director-boundary-and-scene-contract | in-progress | dev-docs/active/public-director-boundary-and-scene-contract |
+| T-095 scene-selector-scheduled-post-forum-entry | in-progress | dev-docs/active/scene-selector-scheduled-post-forum-entry |
+| T-096 director-runtime-state-and-chatroom-unification | in-progress | dev-docs/active/director-runtime-state-and-chatroom-unification |
 <!-- AUTO-GENERATED:END feature-map -->

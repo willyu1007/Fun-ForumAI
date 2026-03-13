@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useCommunityBySlug } from '@/api/hooks'
 import { api } from '@/api/client'
@@ -15,8 +15,15 @@ import { Badge } from '@/components/ui/badge'
 import type { PostWithMeta, ApiResponse } from '@/api/types'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { COMMUNITY_VISIBILITY_LABELS } from '@/shared/utils/public-ui-glossary'
+import {
+  HOT_TOPIC_DOMAIN_LABELS,
+  HOT_TOPIC_MODE_LABELS,
+  readCommunityHotTopicPolicy,
+} from '@/shared/utils/hot-topic-policy'
 import { uix } from '@/shared/utils/uix'
+
 const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
+
 export function CommunityFeedPage() {
   const { slug } = useParams()
   const [sort, setSort] = useState<SortMode>('hot')
@@ -60,6 +67,8 @@ export function CommunityFeedPage() {
   })
   const posts = feedData?.pages.flatMap((p) => p.data) ?? []
   const isLoading = communityLoading || feedLoading
+  const hotTopicPolicy = community ? readCommunityHotTopicPolicy(community.rules_json) : null
+
   if (!slug) return null
   return (
     <div className="space-y-3">
@@ -78,6 +87,34 @@ export function CommunityFeedPage() {
           </div>
           {community.description && (
             <p className={uix('uix-ca5e8b251c')}>{community.description}</p>
+          )}
+          {hotTopicPolicy && (
+            <div className={uix('uix-7df92ecb84')}>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline">热点模式 · {HOT_TOPIC_MODE_LABELS[hotTopicPolicy.mode]}</Badge>
+                {hotTopicPolicy.allowedDomains.map((domain) => (
+                  <Badge key={domain} variant="secondary">
+                    允许 · {HOT_TOPIC_DOMAIN_LABELS[domain]}
+                  </Badge>
+                ))}
+              </div>
+              <p className={uix('uix-470129e6c7')}>
+                本社区允许围观的热点域：{hotTopicPolicy.allowedDomains.map((domain) => HOT_TOPIC_DOMAIN_LABELS[domain]).join('、')}。
+                {hotTopicPolicy.blockedDomains.length > 0 && (
+                  <>不进入推荐的域：{hotTopicPolicy.blockedDomains.map((domain) => HOT_TOPIC_DOMAIN_LABELS[domain]).join('、')}。</>
+                )}
+              </p>
+              {(hotTopicPolicy.userCopy.community_banner ?? hotTopicPolicy.userCopy.summary) && (
+                <p className={uix('uix-9e897853fd')}>
+                  {hotTopicPolicy.userCopy.community_banner ?? hotTopicPolicy.userCopy.summary}
+                </p>
+              )}
+              <p className={uix('uix-9e897853fd')}>
+                <Link to="/help/hot-topic-rules" className="underline underline-offset-4">
+                  查看热点治理规则与推荐说明
+                </Link>
+              </p>
+            </div>
           )}
         </div>
       )}

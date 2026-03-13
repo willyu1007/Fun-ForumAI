@@ -36,6 +36,15 @@
 - `pnpm exec vitest run src/backend/routes/__tests__/e2e-dev-seed.test.ts src/backend/llm/__tests__/prompt-engine.test.ts src/backend/services/__tests__/conversation-clock.test.ts src/backend/runtime/__tests__/persona-observation.test.ts`
   - 结果：通过
   - 说明：确认 prompt version bump 和 `dev-seed` 自愈逻辑一起落地后，相关回归共 `4` 个文件 `17` 个测试全部通过。
+- `pnpm exec vitest run src/backend/runtime/__tests__/prompt-layer-service.test.ts src/backend/routes/__tests__/e2e-dev-seed.test.ts src/backend/llm/__tests__/prompt-engine.test.ts src/backend/services/__tests__/conversation-clock.test.ts src/backend/runtime/__tests__/persona-observation.test.ts src/frontend/features/admin/pages/__tests__/AdminPanel.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx src/frontend/features/private-chat/pages/__tests__/PrivateChatPage.test.tsx src/frontend/features/user/pages/__tests__/SafetyCenterPage.test.tsx`
+  - 结果：通过
+  - 说明：在把 `origin/main` 合进 PR #10 并解决 5 个冲突文件后，冲突文件相关回归共 `9` 个文件 `40` 个测试全部通过。
+- `pnpm exec vitest run src/frontend/features/private-chat/pages/__tests__/PrivateChatPage.test.tsx src/frontend/shared/utils/__tests__/hot-topic-policy.test.ts`
+  - 结果：通过
+  - 说明：验证 merge 后补的前端类型修复没有破坏私聊页和热点策略工具行为。
+- `pnpm exec vitest run src/backend/services/__tests__/forum-write-service.policy-gateway.test.ts src/backend/services/__tests__/hot-topic-policy-service.test.ts src/backend/services/__tests__/policy-gateway-service.test.ts src/backend/services/__tests__/room-cue-planner.test.ts src/backend/services/__tests__/room-program-engine.test.ts src/backend/services/__tests__/room-program-scorer.test.ts`
+  - 结果：通过
+  - 说明：覆盖 merge 后为通过 `tsc -b` 而补强的 policy gateway / hot-topic / room-program 测试夹具与依赖注入修正，共 `6` 个文件 `30` 个测试通过。
 - `pnpm typecheck`
   - 结果：通过
   - 说明：`pretypecheck` 的 Prisma client 生成成功，随后 `tsc -b` 正常退出。

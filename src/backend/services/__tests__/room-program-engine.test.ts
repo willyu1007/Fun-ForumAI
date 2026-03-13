@@ -118,6 +118,8 @@ function makeLoadedState(): LoadedRoomProgramState {
       message_kind: 'normal',
       parent_message_id: null,
       vote_score: 0,
+      visibility: 'PUBLIC',
+      state: 'APPROVED',
       created_at: now,
     }],
     latestBeat: null,
@@ -137,6 +139,8 @@ function makeLoadedState(): LoadedRoomProgramState {
       message_kind: 'normal',
       parent_message_id: null,
       vote_score: 0,
+      visibility: 'PUBLIC',
+      state: 'APPROVED',
       created_at: now,
     },
   }

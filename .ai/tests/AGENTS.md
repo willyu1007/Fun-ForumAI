@@ -45,26 +45,6 @@ node .ai/tests/run.mjs --suite <name> --keep-artifacts
 
 Evidence includes: `run.json`, `runner.log`, per-test `*.stdout.log`, `*.stderr.log`.
 
-## Structure
-
-```
-.ai/tests/
-|-- run.mjs              # Entry point
-|-- lib/
-|   |-- evidence.mjs     # Evidence dir + logging
-|   |-- exec.mjs         # Command runner
-|   |-- python.mjs       # Python interpreter detection
-|   `-- text.mjs         # Assertion helpers
-`-- suites/
-    |-- ui/
-    |-- environment/
-    |-- database/
-    |-- context-awareness/
-    |-- api-index/
-    |-- deployment/
-    `-- iac/
-```
-
 ## Adding a New Suite
 
 1. Create `suites/<name>/index.mjs` exporting `run(ctx)`
@@ -73,5 +53,5 @@ Evidence includes: `run.json`, `runner.log`, per-test `*.stdout.log`, `*.stderr.
 
 ## Dependencies
 
-- Node.js >= 18
+- Node.js >= 20
 - Python 3.9+ (for `ui`, `environment`, `database` suites)

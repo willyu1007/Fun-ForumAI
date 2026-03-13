@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router'
 import {
   useAgentProfile,
+  useCreateReport,
   useGuidanceInbox,
   usePrivateSessions,
   usePrivateMessages,
@@ -109,19 +110,16 @@ export function PrivateChatPage() {
         ) : (
           <div className={uix('uix-894f9af854')}>
             <div className={uix('uix-043556acb2')}>
-              <div
-                className={cn(
-                  uix('uix-877a153952'),
-                  uix('uix-877d27d90e'),
-                  uix('uix-94807178f7'),
-                )}
-              >
+              <div className={uix('uix-7caa0987bf')}>
                 大陆首发风控已生效：新建私聊、发送私聊和接收主动私信前，需要先通过实名审核。
               </div>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/help/private-chat-verification">查看实名与私聊规则</Link>
+              </Button>
               <p className={uix('uix-42536e69e6')}>还没有对话</p>
               <p className={uix('uix-fc7473ca09')}>点击"新对话"开始与 {agent.display_name} 交流</p>
               {createSession.isError && (
-                <p className={uix('uix-611864a2c0')}>{createSession.error.message}</p>
+                <p className={uix('uix-fd4a8530d5')}>{createSession.error.message}</p>
               )}
               <Button onClick={handleNewSession} disabled={createSession.isPending}>
                 开始新对话
@@ -188,6 +186,10 @@ function ChatHeader({
 
       <span className={uix('uix-25be576b96')}>{sessionCount} 个对话</span>
 
+      <Button variant="ghost" size="sm" asChild>
+        <Link to="/help/private-chat-verification">实名规则</Link>
+      </Button>
+
       <div className={uix('uix-fb56d9cff3')}>
         <Button variant="outline" size="sm" onClick={onNewSession} disabled={isCreating}>
           {isCreating ? '创建中...' : '新对话'}
@@ -209,10 +211,12 @@ function ChatThread({
 }) {
   const guidanceEnabled = isGuidanceEnabled()
   const { data: msgData, isLoading } = usePrivateMessages(sessionId)
+  const createReport = useCreateReport()
   const sendMessage = useSendPrivateMessage(agentId, sessionId)
   const endSession = useEndPrivateSession(agentId, sessionId)
   const guidanceInbox = useGuidanceInbox()
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [sessionGovernanceMessage, setSessionGovernanceMessage] = useState<string | null>(null)
   usePrivateSessionSse(sessionId, agentId)
   const messages: PrivateMessage[] = msgData?.data?.items ?? []
   const sessionEnded =
@@ -244,6 +248,23 @@ function ChatThread({
       // Mutation error is rendered in-page.
     }
   }
+  const handleReportSession = async () => {
+    setSessionGovernanceMessage(null)
+    try {
+      await createReport.mutateAsync({
+        target_type: 'private_session',
+        target_id: sessionId,
+        complaint_type: 'HARASSMENT_REPORT',
+        reason_code: session?.initiator === 'AGENT'
+          ? 'proactive_private_session_report'
+          : 'private_session_report',
+        detail_text: `Reported from private chat with ${agentName}: ${sessionId}`,
+      })
+      setSessionGovernanceMessage('私聊举报已提交，可在 Safety Center 查看处理进度。')
+    } catch (error) {
+      setSessionGovernanceMessage(error instanceof Error ? error.message : '私聊举报提交失败，请稍后重试。')
+    }
+  }
   if (isLoading) {
     return (
       <div className={uix('uix-ba5c7544cc')}>
@@ -255,8 +276,31 @@ function ChatThread({
   }
   return (
     <>
-      <div className={cn(uix('uix-50b7a82989'), uix('uix-73a6145db6'), uix('uix-26f026f8ad'))}>
-        私聊默认只允许更克制、非敏感的内容流转；触发规则的消息会被降温、拒送或拦截，并进入审查记录。
+      <div className={uix('uix-f6b25d962d')}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span>
+            私聊默认只允许更克制、非敏感的内容流转；触发规则的消息会被降温、拒送或拦截，并进入审查记录。
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={createReport.isPending}
+            onClick={() => {
+              void handleReportSession()
+            }}
+          >
+            {createReport.isPending
+              ? '提交中…'
+              : session?.initiator === 'AGENT'
+                ? '举报此主动私信'
+                : '举报此私聊'}
+          </Button>
+        </div>
+        {sessionGovernanceMessage && (
+          <p className={sessionGovernanceMessage.includes('失败') ? uix('uix-17ad2d4d55') : uix('uix-722c3bdb09')}>
+            {sessionGovernanceMessage}
+          </p>
+        )}
       </div>
 
       <ScrollArea className={uix('uix-396cd874b5')}>
@@ -270,12 +314,12 @@ function ChatThread({
           ))}
 
           {sendMessage.isPending && (
-            <div className="flex gap-2 items-start">
-              <Avatar className="h-8 w-8 shrink-0">
+            <div className={uix('uix-8d92c4b7e3')}>
+              <Avatar className={uix('uix-7781b415c4')}>
                 <AvatarFallback className={uix('uix-c2ff24b045')}>{agentName[0]}</AvatarFallback>
               </Avatar>
               <Card className={uix('uix-eebdac32e1')}>
-                <div className="flex gap-1">
+                <div className={uix('uix-46cbf5c0e0')}>
                   <span className="animate-bounce">·</span>
                   <span className={uix('uix-typing-dot-delay-100')}>·</span>
                   <span className={uix('uix-typing-dot-delay-200')}>·</span>
@@ -297,7 +341,7 @@ function ChatThread({
       />
 
       {(sendMessage.isError || endSession.isError) && (
-        <div className={cn(uix('uix-21d66ab640'), uix('uix-a47175a4cf'), uix('uix-fc7473ca09'))}>
+        <div className={uix('uix-c61c4fa430')}>
           {sendMessage.isError ? sendMessage.error.message : endSession.error?.message}
         </div>
       )}
@@ -329,7 +373,7 @@ function MessageBubble({ message, agentName }: { message: PrivateMessage; agentN
   const deliveryLabel = message.delivery_status ? DELIVERY_BADGE[message.delivery_status] : null
   return (
     <div className={cn('flex gap-2 items-start', isHuman && 'flex-row-reverse')}>
-      <Avatar className="h-8 w-8 shrink-0">
+      <Avatar className={uix('uix-7781b415c4')}>
         <AvatarFallback
           className={cn(
             uix('uix-359090c2d5'),
@@ -347,7 +391,7 @@ function MessageBubble({ message, agentName }: { message: PrivateMessage; agentN
         )}
       >
         <p className={uix('uix-d6b7157957')}>{message.content}</p>
-        <div className={uix('uix-4e79a06bb7')}>
+        <div className={uix('uix-304911ade7')}>
           <span
             className={cn(
               uix('uix-cb59187521'),
@@ -357,7 +401,7 @@ function MessageBubble({ message, agentName }: { message: PrivateMessage; agentN
             {relativeTime(message.created_at)}
           </span>
           {deliveryLabel && (
-            <Badge variant="outline" className={cn('h-5', uix('uix-ee664e1eab'))}>
+            <Badge variant="outline" className={uix('uix-afeb3c3617')}>
               {deliveryLabel}
             </Badge>
           )}

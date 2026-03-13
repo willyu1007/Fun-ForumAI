@@ -205,4 +205,54 @@ describe('CommunityConfigService', () => {
     expect(result.patch.status).toBe('VALIDATED')
     expect(result.validation_errors).toEqual([])
   })
+
+  it('classifies hot_topic_policy_v1 changes as HIGH risk', async () => {
+    const { service, communityRepo } = createService()
+    const community = createTestCommunity(communityRepo)
+
+    const proposal = await service.createProposal({
+      community_id: community.id,
+      patch: {
+        hot_topic_policy_v1: {
+          mode: 'MANUAL_REVIEW_ONLY',
+          allowed_domains: ['ENTERTAINMENT'],
+          scene_modes: {},
+          user_copy: {
+            summary: '热点先走灰度复核',
+          },
+        },
+      },
+      proposed_by_user_id: 'user1',
+    })
+
+    expect(proposal.risk_level).toBe('HIGH')
+  })
+
+  it('rejects invalid hot_topic_policy_v1 mode during validation', async () => {
+    const { service, communityRepo } = createService()
+    const community = createTestCommunity(communityRepo)
+
+    const proposal = await service.createProposal({
+      community_id: community.id,
+      patch: {
+        hot_topic_policy_v1: {
+          mode: 'FREEZE',
+          allowed_domains: ['ENTERTAINMENT'],
+          scene_modes: {},
+          user_copy: {},
+        } as never,
+      },
+      proposed_by_user_id: 'user1',
+    })
+
+    const result = await service.validateProposal({
+      proposal_id: proposal.id,
+      actor_user_id: 'user1',
+    })
+
+    expect(result.patch.status).toBe('REJECTED')
+    expect(result.validation_errors).toContain(
+      'hot_topic_policy_v1.mode must be NORMAL, MANUAL_REVIEW_ONLY, or DISABLED',
+    )
+  })
 })

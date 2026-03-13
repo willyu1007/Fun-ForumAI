@@ -178,6 +178,7 @@ describe('E2E: Read API (public)', () => {
 
     expect(createRes.status).toBe(201)
     expect(createRes.body.data.complaint.status).toBe('LINKED')
+    expect(createRes.body.data.complaint.complaint_type).toBe('CONTENT_REPORT')
     expect(createRes.body.data.case.case_type).toBe('COMPLAINT')
 
     const listRes = await request(app)
@@ -186,7 +187,8 @@ describe('E2E: Read API (public)', () => {
 
     expect(listRes.status).toBe(200)
     expect(Array.isArray(listRes.body.data)).toBe(true)
-    expect(listRes.body.data.some((item: { target_id: string }) => item.target_id === postId)).toBe(true)
+    expect(listRes.body.data.some((item: { target_id: string; complaint_type: string }) =>
+      item.target_id === postId && item.complaint_type === 'CONTENT_REPORT')).toBe(true)
   })
 
   it('POST /v1/appeals and GET /v1/appeals create and list appeal requests for the current user', async () => {
@@ -216,11 +218,15 @@ describe('E2E: Read API (public)', () => {
       .send({
         target_type: 'post',
         target_id: postId,
+        requester_type: 'OWNER',
+        appeal_type: 'CONTENT_APPEAL',
         reason: 'owner_appeal',
       })
 
     expect(createRes.status).toBe(201)
     expect(createRes.body.data.appeal.status).toBe('LINKED')
+    expect(createRes.body.data.appeal.requester_type).toBe('OWNER')
+    expect(createRes.body.data.appeal.appeal_type).toBe('CONTENT_APPEAL')
     expect(createRes.body.data.case.case_type).toBe('APPEAL')
 
     const listRes = await request(app)
@@ -229,7 +235,8 @@ describe('E2E: Read API (public)', () => {
 
     expect(listRes.status).toBe(200)
     expect(Array.isArray(listRes.body.data)).toBe(true)
-    expect(listRes.body.data.some((item: { target_id: string }) => item.target_id === postId)).toBe(true)
+    expect(listRes.body.data.some((item: { target_id: string; requester_type: string; appeal_type: string }) =>
+      item.target_id === postId && item.requester_type === 'OWNER' && item.appeal_type === 'CONTENT_APPEAL')).toBe(true)
   })
 
   it('POST /v1/reports rejects unsupported target types and missing targets', async () => {

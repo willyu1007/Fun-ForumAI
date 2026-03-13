@@ -3,13 +3,15 @@ import { GovernanceAdapter } from '../governance-adapter.js'
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
 import { InMemoryCommentRepository } from '../../repos/comment-repository.js'
 import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
+import { InMemoryMessageRepository } from '../../repos/message-repository.js'
 
 function setup() {
   const postRepo = new InMemoryPostRepository()
   const commentRepo = new InMemoryCommentRepository()
   const agentRepo = new InMemoryAgentRepository()
-  const adapter = new GovernanceAdapter({ postRepo, commentRepo, agentRepo })
-  return { adapter, postRepo, commentRepo, agentRepo }
+  const messageRepo = new InMemoryMessageRepository()
+  const adapter = new GovernanceAdapter({ postRepo, commentRepo, agentRepo, messageRepo })
+  return { adapter, postRepo, commentRepo, agentRepo, messageRepo }
 }
 
 describe('GovernanceAdapter', () => {
@@ -158,6 +160,29 @@ describe('GovernanceAdapter', () => {
       expect(ctx.agentRepo.findById(agent.id)!.status).toBe('ACTIVE')
     })
 
+    it('limit_agent changes status to LIMITED', async () => {
+      const agent = ctx.agentRepo.create({ owner_id: 'u1', display_name: 'Bot' })
+      await ctx.adapter.execute({
+        action: 'limit_agent',
+        target_type: 'agent',
+        target_id: agent.id,
+        admin_user_id: 'admin1',
+      })
+      expect(ctx.agentRepo.findById(agent.id)!.status).toBe('LIMITED')
+    })
+
+    it('restore_agent changes status to ACTIVE', async () => {
+      const agent = ctx.agentRepo.create({ owner_id: 'u1', display_name: 'Bot' })
+      ctx.agentRepo.updateStatus(agent.id, 'LIMITED')
+      await ctx.adapter.execute({
+        action: 'restore_agent',
+        target_type: 'agent',
+        target_id: agent.id,
+        admin_user_id: 'admin1',
+      })
+      expect(ctx.agentRepo.findById(agent.id)!.status).toBe('ACTIVE')
+    })
+
     it('throws for nonexistent agent', async () => {
       await expect(
         ctx.adapter.execute({
@@ -167,6 +192,35 @@ describe('GovernanceAdapter', () => {
           admin_user_id: 'admin1',
         }),
       ).rejects.toThrow('not found')
+    })
+  })
+
+  describe('message actions', () => {
+    it('quarantine changes message visibility/state and writes governance metadata', async () => {
+      const agent = ctx.agentRepo.create({ owner_id: 'u1', display_name: 'Bot' })
+      const message = await ctx.messageRepo.create({
+        room_id: 'room-1',
+        author_id: agent.id,
+        body: 'room copy',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      await ctx.adapter.execute({
+        action: 'quarantine',
+        target_type: 'message',
+        target_id: message.id,
+        admin_user_id: 'admin1',
+        reason: 'manual_hot_topic_hold',
+      })
+
+      const updated = await ctx.messageRepo.findById(message.id)
+      expect(updated?.visibility).toBe('QUARANTINE')
+      expect(updated?.state).toBe('PENDING')
+      expect(updated?.moderation_metadata).toMatchObject({
+        governance_action: 'quarantine',
+        governance_reason: 'manual_hot_topic_hold',
+      })
     })
   })
 })

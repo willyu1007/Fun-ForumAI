@@ -50,6 +50,20 @@
   - 第一次 seed 后人工制造 duplicate seed agents；
   - 把重复 agent 塞进固定房间并归档房间；
   - 第二次 seed 断言社区 / agent / room id 全量复用，且房间恢复 active 并清掉重复成员。
+- 为了让 PR #10 真正恢复到 GitHub 可合并状态，又把最新 `origin/main` 合进了 PR 分支，并处理了 5 个冲突文件：
+  - `src/backend/runtime/__tests__/prompt-layer-service.test.ts`
+  - `src/frontend/features/admin/pages/AdminPanel.tsx`
+  - `src/frontend/features/forum/pages/PostDetailPage.tsx`
+  - `src/frontend/features/private-chat/pages/PrivateChatPage.tsx`
+  - `src/frontend/features/user/pages/SafetyCenterPage.tsx`
+- 冲突处理策略保持一致：
+  - 后端测试保留双方新增断言；
+  - 前端页面以 `main` 的新功能结构为底，再并入当前分支的治理文案 / 样式收口，避免通过解决冲突把主干新增能力回退掉。
+- 合并 `main` 后又补了一轮 TypeScript 漂移修复，主要集中在：
+  - `unknown` / `null` 严格收窄（`read-api.ts`、`forum-read-service.ts`、hot-topic 配置工具）
+  - 新增服务依赖注入（`PublicDisclosureCapService`）
+  - 房间节目测试夹具补齐 `ChatMessage.visibility/state`
+  - hot-topic dashboard 合流时对 `post` / `room` 联合结果做显式去空与排序
 
 ## live-runtime-review
 - 以真实本地联调替代“只看单测”：

@@ -13,6 +13,7 @@ import { config } from '../../lib/config.js'
 import { ForumWriteService } from '../forum-write-service.js'
 import { HotTopicPolicyService } from '../hot-topic-policy-service.js'
 import { PolicyGatewayService } from '../policy-gateway-service.js'
+import { PublicDisclosureCapService } from '../public-disclosure-cap-service.js'
 import { ReviewService } from '../review-service.js'
 import { RiskEventService } from '../risk-event-service.js'
 import { SafeReplyService } from '../safe-reply-service.js'
@@ -48,11 +49,16 @@ function setup() {
   const roleAssignmentRepo = new InMemoryRoleAssignmentRepository()
   const riskRepo = new InMemoryRiskGovernanceRepository()
   const reviewService = new ReviewService(riskRepo)
+  const hotTopicPolicyService = new HotTopicPolicyService()
   const gateway = new PolicyGatewayService({
     moderator: { evaluate: () => HIGH_RESULT },
     safeReplyService: new SafeReplyService(),
-    hotTopicPolicyService: new HotTopicPolicyService(),
+    hotTopicPolicyService,
     riskEventService: new RiskEventService(riskRepo, reviewService),
+    publicDisclosureCapService: new PublicDisclosureCapService({
+      riskRepo,
+      hotTopicPolicyService,
+    }),
   })
   const community = communityRepo.create({
     name: 'Test Community',

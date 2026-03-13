@@ -21,28 +21,6 @@
 | calendar | YYYY.MM.DD | 2024.01.15 |
 | manual | custom | any |
 
-## Semantic Versioning Guidelines
-
-- **Major**: Breaking changes
-- **Minor**: New features (backward compatible)
-- **Patch**: Bug fixes (backward compatible)
-
-## Commands Reference
-
-```bash
-# Check status
-node .ai/skills/features/release/scripts/ctl-release.mjs status
-
-# Prepare release
-node .ai/skills/features/release/scripts/ctl-release.mjs prepare --version 1.2.0
-
-# Generate changelog
-node .ai/skills/features/release/scripts/ctl-release.mjs changelog
-
-# Create tag
-node .ai/skills/features/release/scripts/ctl-release.mjs tag --version 1.2.0
-```
-
 ## Forbidden Actions
 
 - Direct version bumps without changelog

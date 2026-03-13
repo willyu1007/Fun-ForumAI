@@ -172,6 +172,8 @@ export type GovernanceActionType =
   | 'fold'
   | 'quarantine'
   | 'reject'
+  | 'limit_agent'
+  | 'restore_agent'
   | 'ban_agent'
   | 'unban_agent'
 
@@ -224,6 +226,8 @@ export interface PostWithMeta extends Post {
   media: PostMediaItem[]
   ai_label?: string
   effective_moderation_label?: string
+  topic_signals: Record<string, unknown> | null
+  distribution_state: string
   aftershow_summary?: AftershowSummary | null
   aftershow_callouts?: AftershowCalloutItem[]
   audience_thread_meta?: AudienceThreadMeta | null
@@ -342,6 +346,8 @@ export interface Comment {
   viewer_human_vote_direction?: VoteDirection | null
   ai_label?: string
   effective_moderation_label?: string
+  topic_signals?: Record<string, unknown> | null
+  distribution_state?: string
 }
 
 export interface Vote {
@@ -629,19 +635,143 @@ export interface GovernanceResult {
   new_state?: ContentState
 }
 
+export type ConfigRiskLevel = 'LOW' | 'HIGH'
+export type ConfigPatchStatus =
+  | 'PROPOSED'
+  | 'VALIDATED'
+  | 'APPROVED'
+  | 'SCHEDULED'
+  | 'APPLIED'
+  | 'REJECTED'
+  | 'ROLLED_BACK'
+
+export interface CommunityConfigPatch {
+  id: string
+  community_id: string
+  base_version_id: string | null
+  status: ConfigPatchStatus
+  risk_level: ConfigRiskLevel
+  patch_json: Record<string, unknown>
+  proposed_rules_json: Record<string, unknown> | null
+  summary: string | null
+  reason: string | null
+  proposed_by_user_id: string
+  validated_by_user_id: string | null
+  approved_by_user_id: string | null
+  applied_version_id: string | null
+  rejected_reason: string | null
+  validated_at: string | null
+  approved_at: string | null
+  effective_at: string | null
+  applied_at: string | null
+  rolled_back_at: string | null
+  meta: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CommunityConfigVersion {
+  id: string
+  community_id: string
+  version: number
+  rules_json: Record<string, unknown>
+  source_patch_id: string | null
+  status: 'ACTIVE' | 'ROLLED_BACK' | 'RETIRED'
+  risk_level: ConfigRiskLevel
+  created_by_user_id: string | null
+  rollback_from_version_id: string | null
+  effective_at: string | null
+  applied_at: string | null
+  rolled_back_at: string | null
+  meta: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CommunityConfigValidationResult {
+  patch: CommunityConfigPatch
+  validation_errors: string[]
+}
+
+export interface CommunityConfigApplyResult {
+  patch: CommunityConfigPatch
+  version: CommunityConfigVersion | null
+}
+
+export interface GovernanceActionLog {
+  id: string
+  case_id: string | null
+  action: string
+  target_type: string
+  target_id: string
+  actor_user_id: string
+  reason: string | null
+  result: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface DisclosureCapOverride {
+  id: string
+  scope_type: 'agent' | 'community'
+  scope_id: string
+  cap_level: number
+  status: 'ACTIVE' | 'RELEASED'
+  source: 'manual' | 'owner_endorsement_public' | 'owner_private_leak'
+  reason: string | null
+  linked_case_id: string | null
+  linked_risk_event_id: string | null
+  created_by_user_id: string
+  released_by_user_id: string | null
+  released_reason: string | null
+  released_at: string | null
+  created_at: string
+}
+
+export interface RiskEventLog {
+  id: string
+  policy_snapshot_id: string | null
+  case_id: string | null
+  channel: string
+  event_type: string
+  action: string
+  risk_level: string | null
+  risk_score: number | null
+  risk_categories: string[]
+  target_type: string | null
+  target_id: string | null
+  community_id: string | null
+  agent_id: string | null
+  user_id: string | null
+  room_id: string | null
+  session_id: string | null
+  message_id: string | null
+  detail_text: string | null
+  payload: Record<string, unknown> | null
+  created_at: string
+}
+
 export interface ReviewCase {
   id: string
   case_type: 'MODERATION' | 'COMPLAINT' | 'APPEAL' | 'IDENTITY_REVIEW' | 'CONFIG_REVIEW' | 'HOT_TOPIC'
+  queue: 'MODERATION' | 'COMPLAINT' | 'APPEAL' | 'IDENTITY_REVIEW' | 'CONFIG_REVIEW' | 'PRIVACY' | 'DELETION' | 'HOT_TOPIC'
   status: 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'DISMISSED'
   priority: number
   summary_text: string | null
+  risk_summary: Record<string, unknown> | null
   opened_reason: string | null
   opened_by: string
+  primary_target_type: string | null
+  primary_target_id: string | null
   assigned_to_user_id: string | null
+  sla_due_at: string | null
+  claimed_by_user_id: string | null
+  claimed_at: string | null
   linked_policy_snapshot_id: string | null
   linked_complaint_ticket_id: string | null
   linked_appeal_request_id: string | null
   resolution_action: string | null
+  resolved_by_user_id: string | null
+  resolution_note: string | null
   resolved_at: string | null
   created_at: string
   updated_at: string
@@ -652,7 +782,9 @@ export interface ReviewCaseTarget {
   case_id: string
   target_type: string
   target_id: string
+  relation_type: 'PRIMARY' | 'RELATED' | 'PARENT_THREAD' | 'SESSION_MEMBER' | 'OWNER' | 'AGENT'
   channel: string
+  meta: Record<string, unknown> | null
   community_id: string | null
   agent_id: string | null
   user_id: string | null
@@ -667,19 +799,48 @@ export interface ReviewEvidenceSnapshot {
   case_id: string
   snapshot_type: string
   payload: Record<string, unknown>
+  content: Record<string, unknown> | null
+  context: Record<string, unknown> | null
+  policy_hits: Record<string, unknown> | null
+  prompt_memory: Record<string, unknown> | null
+  topic_signals: Record<string, unknown> | null
+  action_history: Record<string, unknown> | null
+  evidence_package: Record<string, unknown> | null
   created_at: string
 }
 
 export interface ReviewTask {
   id: string
   case_id: string
+  queue: 'MODERATION' | 'COMPLAINT' | 'APPEAL' | 'IDENTITY_REVIEW' | 'CONFIG_REVIEW' | 'PRIVACY' | 'DELETION' | 'HOT_TOPIC'
   task_type: string
   status: 'PENDING' | 'ASSIGNED' | 'COMPLETED' | 'CANCELED'
   assignee_user_id: string | null
+  claim_token: string | null
+  claimed_by_user_id: string | null
+  claimed_at: string | null
+  assigned_role: string | null
   due_at: string | null
+  resolution_code: string | null
+  operator_note: string | null
   completed_at: string | null
   created_at: string
   updated_at: string
+}
+
+export interface ClaimedReviewTask {
+  task: ReviewTask
+  case: ReviewCase | null
+}
+
+export interface TransferredReviewCase {
+  task: ReviewTask | null
+  case: ReviewCase | null
+}
+
+export interface ReleasedReviewCase {
+  case: ReviewCase | null
+  tasks: ReviewTask[]
 }
 
 export interface ReviewCaseDetail {
@@ -687,6 +848,88 @@ export interface ReviewCaseDetail {
   targets: ReviewCaseTarget[]
   evidence: ReviewEvidenceSnapshot[]
   tasks: ReviewTask[]
+  linked_complaint: ComplaintTicket | null
+  linked_appeal: AppealRequest | null
+}
+
+export interface ReviewEvidenceExport {
+  case: ReviewCase
+  linked_complaint: ComplaintTicket | null
+  linked_appeal: AppealRequest | null
+  targets: ReviewCaseTarget[]
+  tasks: ReviewTask[]
+  action_logs: GovernanceActionLog[]
+  redaction_level: 'operator' | 'share'
+  redaction_notes: string[]
+  evidence: Array<{
+    id: string
+    snapshot_type: string
+    evidence_package: Record<string, unknown> | null
+    created_at: string
+  }>
+  exported_at: string
+}
+
+export interface PromptAuditServerCapSource {
+  source_type: 'baseline' | 'agent_override' | 'community_override' | 'hot_topic_runtime'
+  scope_type: 'agent' | 'community' | 'runtime'
+  scope_id: string | null
+  cap_level: number
+  source: 'agent_privacy_settings' | 'manual' | 'owner_endorsement_public' | 'owner_private_leak' | 'hot_topic_drift'
+  override_id?: string | null
+  reason?: string | null
+  linked_case_id?: string | null
+  linked_risk_event_id?: string | null
+}
+
+export interface AgentPrivateProvenanceSummary {
+  run_id: string
+  used_memory_ids: string[]
+  requested_disclosure_level: number
+  effective_disclosure_level: number
+  cap_source: 'owner_setting' | 'server_cap'
+  public_disclosure_cap: number | null
+  server_cap_sources: PromptAuditServerCapSource[]
+}
+
+export interface AgentRiskProfile {
+  agent: Agent
+  latest_config: AgentConfig | null
+  spillover_events: RiskEventLog[]
+  recent_config_actions: GovernanceActionLog[]
+  recent_private_provenance: AgentPrivateProvenanceSummary[]
+  active_cap_overrides: DisclosureCapOverride[]
+  cap_history: DisclosureCapOverride[]
+  effective_disclosure_cap: number | null
+}
+
+export interface DisclosureCapQueryResult {
+  scope_type: 'agent' | 'community'
+  scope_id: string
+  active_override: DisclosureCapOverride | null
+  history: DisclosureCapOverride[]
+}
+
+export interface HotTopicDashboardItem {
+  target_type: 'post' | 'room'
+  target_id: string
+  title: string
+  community_id: string | null
+  topic_domain: string
+  hot_score: number
+  drift_risk_score: number
+  report_count_24h: number
+  distribution_state: 'NORMAL' | 'NO_RECOMMEND' | 'BLOCKED'
+  restriction_state: 'NORMAL' | 'MANUAL_REVIEW_ONLY' | 'BLOCKED'
+  sampled_review_required: boolean
+  linked_case_id: string | null
+  latest_event_at: string | null
+}
+
+export interface HotTopicAlert {
+  severity: 'low' | 'medium' | 'high'
+  reason: string
+  item: HotTopicDashboardItem
 }
 
 export interface IdentityVerification {
@@ -707,10 +950,20 @@ export interface ComplaintTicket {
   reporter_user_id: string
   target_type: string
   target_id: string
+  complaint_type:
+    | 'CONTENT_REPORT'
+    | 'PRIVACY_REQUEST'
+    | 'DELETION_REQUEST'
+    | 'IMPERSONATION_REPORT'
+    | 'MISLABEL_REPORT'
+    | 'HARASSMENT_REPORT'
+    | 'OTHER'
   reason_code: string
   detail_text: string | null
+  attachments: Array<{ ref: string; type: string }>
   status: 'OPEN' | 'LINKED' | 'RESOLVED' | 'REJECTED'
   linked_case_id: string | null
+  resolution: Record<string, unknown> | null
   created_at: string
   updated_at: string
 }
@@ -718,12 +971,15 @@ export interface ComplaintTicket {
 export interface AppealRequest {
   id: string
   requester_user_id: string
+  requester_type: 'USER' | 'OWNER' | 'OPERATOR'
   target_type: string
   target_id: string
+  appeal_type: 'CONTENT_APPEAL' | 'ACCOUNT_LIMIT_APPEAL' | 'AGENT_RESTRICTION_APPEAL' | 'OTHER'
   linked_case_id: string | null
   linked_complaint_ticket_id: string | null
   reason: string
   status: 'OPEN' | 'LINKED' | 'RESOLVED' | 'REJECTED'
+  result: Record<string, unknown> | null
   created_at: string
   updated_at: string
 }
@@ -882,6 +1138,9 @@ export interface RoomWatchabilitySummary {
   canonization_note?: string | null
   cameo_hint?: string | null
   snapshot_updated_at: string | null
+  hot_topic_mode?: 'NORMAL' | 'MANUAL_REVIEW_ONLY' | 'DISABLED' | null
+  distribution_state?: 'NORMAL' | 'NO_RECOMMEND' | 'BLOCKED'
+  discoverability_tags?: string[]
 }
 
 export interface Room {
@@ -1009,6 +1268,8 @@ export interface ChatMessage {
   message_kind: ChatMessageKind
   parent_message_id: string | null
   vote_score: number
+  visibility: ContentVisibility
+  state: ContentState
   moderation_metadata?: Record<string, unknown> | null
   created_at: string
 }

@@ -582,6 +582,7 @@ export class ConversationClock {
           agentId,
           scene: 'chat_room',
           conversationText: chatConversationText,
+          communityId: room.community_id,
           topicHints: chatTopicHints,
           communitySoftCulture: room.description || '',
           sceneRule: chatSceneRule,
@@ -623,6 +624,7 @@ export class ConversationClock {
             agentId,
             scene: 'chat_room',
             conversationText: chatConversationText,
+            communityId: room.community_id,
             topicHints: chatTopicHints,
             roomMemberState: member
               ? { joined_at: member.joined_at, last_spoke_at: member.last_spoke_at }

@@ -102,6 +102,7 @@ export function inferCommunityConfigRiskLevel(
 ): ConfigRiskLevel {
   if (explicit === 'HIGH') return 'HIGH'
   if (hasOwn(normalizedPatch, 'stage_spec_v1')) return 'HIGH'
+  if (hasOwn(normalizedPatch, 'hot_topic_policy_v1')) return 'HIGH'
   if (hasOwn(normalizedPatch, 'notifications')) return 'HIGH'
   return 'LOW'
 }

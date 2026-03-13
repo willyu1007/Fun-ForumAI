@@ -266,10 +266,23 @@ export const createIncubationReviewVerdictSchema = z.object({
 }).strict()
 
 export const governanceActionSchema = z.object({
-  action: z.enum(['approve', 'fold', 'quarantine', 'reject', 'ban_agent', 'unban_agent']),
+  action: z.enum(['approve', 'fold', 'quarantine', 'reject', 'limit_agent', 'restore_agent', 'ban_agent', 'unban_agent']),
   target_type: z.enum(['post', 'comment', 'message', 'agent', 'private_session', 'notification', 'config_revision']),
   target_id: z.string().min(1),
   reason: z.string().max(1000).optional(),
+}).strict()
+
+export const createDisclosureCapOverrideSchema = z.object({
+  scope_type: z.enum(['agent', 'community']),
+  scope_id: z.string().min(1),
+  cap_level: z.number().int().min(0).max(3),
+  reason: z.string().max(2000).optional(),
+  linked_case_id: z.string().min(1).optional(),
+  linked_risk_event_id: z.string().min(1).optional(),
+}).strict()
+
+export const releaseDisclosureCapOverrideSchema = z.object({
+  reason: z.string().max(2000).optional(),
 }).strict()
 
 export const adminSeasonRotateSchema = z.object({

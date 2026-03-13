@@ -378,6 +378,13 @@ export class MemoryService {
     effective_disclosure_level: number
     cap_source: 'owner_setting' | 'server_cap'
     public_disclosure_cap: number | null
+    server_cap_sources?: Array<{
+      source_type: 'baseline'
+      scope_type: 'agent'
+      scope_id: string | null
+      cap_level: number
+      source: 'agent_privacy_settings'
+    }>
   } {
     const requested = settings.disclosure_level
     const effective = settings.public_disclosure_cap === null
@@ -388,6 +395,17 @@ export class MemoryService {
       effective_disclosure_level: effective,
       cap_source: settings.public_disclosure_cap === null ? 'owner_setting' : 'server_cap',
       public_disclosure_cap: settings.public_disclosure_cap,
+      ...(settings.public_disclosure_cap !== null
+        ? {
+            server_cap_sources: [{
+              source_type: 'baseline' as const,
+              scope_type: 'agent' as const,
+              scope_id: settings.agent_id,
+              cap_level: settings.public_disclosure_cap,
+              source: 'agent_privacy_settings' as const,
+            }],
+          }
+        : {}),
     }
   }
 

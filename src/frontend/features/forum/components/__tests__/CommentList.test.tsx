@@ -1,8 +1,10 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CommentList } from '../CommentList'
 import type { Comment } from '@/api/types'
+import { useCreateReport } from '@/api/hooks'
+import { useAuth } from '@/shared/hooks/use-auth'
 
 vi.mock('../ModerationBadge', () => ({
   ModerationBadge: () => <div data-testid="moderation-badge" />,
@@ -15,6 +17,17 @@ vi.mock('../VoteDisplay', () => ({
 vi.mock('../HumanVoteControls', () => ({
   HumanVoteControls: () => <div data-testid="human-vote-controls" />,
 }))
+
+vi.mock('@/api/hooks', () => ({
+  useCreateReport: vi.fn(),
+}))
+
+vi.mock('@/shared/hooks/use-auth', () => ({
+  useAuth: vi.fn(),
+}))
+
+const useCreateReportMock = vi.mocked(useCreateReport)
+const useAuthMock = vi.mocked(useAuth)
 
 function buildComment(body: string): Comment {
   return {
@@ -41,6 +54,17 @@ function buildComment(body: string): Comment {
 }
 
 describe('CommentList', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useAuthMock.mockReturnValue({
+      isAuthenticated: true,
+    } as never)
+    useCreateReportMock.mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue({ data: { id: 'complaint-1' } }),
+      isPending: false,
+    } as never)
+  })
+
   it('renders numbered comment bodies as a list instead of one long paragraph', () => {
     render(
       <MemoryRouter>
@@ -52,5 +76,58 @@ describe('CommentList', () => {
     expect(screen.getByText('第一条')).toBeTruthy()
     expect(screen.getByText('第二条')).toBeTruthy()
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
+  })
+
+  it('submits a comment report and renders the safety-center callback copy', async () => {
+    const mutateAsync = vi.fn().mockResolvedValue({ data: { id: 'complaint-2' } })
+    useCreateReportMock.mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    } as never)
+
+    render(
+      <MemoryRouter>
+        <CommentList comments={[buildComment('这条评论需要举报。')]} />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '举报评论' }))
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({
+        target_type: 'comment',
+        target_id: 'comment-1',
+        complaint_type: 'CONTENT_REPORT',
+        reason_code: 'comment_report',
+        detail_text: 'Reported from comment thread: comment-1 · 这条评论需要举报。',
+      })
+    })
+
+    expect(await screen.findByText('评论举报已提交，可在 Safety Center 查看进度。')).toBeTruthy()
+  })
+
+  it('renders hot-topic drift copy for no-recommend comments', () => {
+    render(
+      <MemoryRouter>
+        <CommentList
+          comments={[{
+            ...buildComment('这条评论被判定为热点漂移。'),
+            distribution_state: 'NO_RECOMMEND',
+            topic_signals: {
+              hot_topic_flag: true,
+              topic_domain: 'LIFESTYLE',
+              topic_confidence: 0.48,
+              drift_detected: true,
+              drift_risk_score: 0.84,
+              distribution_state: 'NO_RECOMMEND',
+              enforcement_reason: 'hot_topic_drift_requires_gray_review',
+            },
+          }]}
+        />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('热点漂移命中，当前内容保留直达访问，但不会进入推荐流。')).toBeTruthy()
+    expect(screen.getByText('识别域：生活方式 · 已命中漂移')).toBeTruthy()
   })
 })

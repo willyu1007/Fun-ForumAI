@@ -35,12 +35,15 @@ import { CommunityConfigService } from '../services/community-config-service.js'
 import { RoleAssignmentService } from '../services/role-assignment-service.js'
 import { SafeReplyService } from '../services/safe-reply-service.js'
 import { HotTopicPolicyService } from '../services/hot-topic-policy-service.js'
+import { PublicDisclosureCapService } from '../services/public-disclosure-cap-service.js'
 import { ReviewService } from '../services/review-service.js'
 import { RiskEventService } from '../services/risk-event-service.js'
 import { IdentityGateService } from '../services/identity-gate-service.js'
 import { PolicyGatewayService } from '../services/policy-gateway-service.js'
 import { AgentConfigLintService } from '../services/agent-config-lint-service.js'
 import { ComplaintAppealService } from '../services/complaint-appeal-service.js'
+import { NotificationService } from '../services/notification-service.js'
+import { HotTopicOpsService } from '../services/hot-topic-ops-service.js'
 import type { ModerationService } from '../moderation/moderation-service.js'
 import type { SseHub } from '../sse/hub.js'
 import type { LLMGateway } from '../llm/llm-gateway.js'
@@ -65,7 +68,14 @@ export function createCoreServices(deps: {
 
   const safeReplyService = new SafeReplyService()
   const hotTopicPolicyService = new HotTopicPolicyService()
-  const reviewService = new ReviewService(repos.riskGovernanceRepo)
+  const publicDisclosureCapService = new PublicDisclosureCapService({
+    riskRepo: repos.riskGovernanceRepo,
+    hotTopicPolicyService,
+  })
+  const notificationService = repos.notificationRepo
+    ? new NotificationService(repos.notificationRepo)
+    : null
+  const reviewService = new ReviewService(repos.riskGovernanceRepo, notificationService)
   const riskEventService = new RiskEventService(repos.riskGovernanceRepo, reviewService)
   const identityGateService = new IdentityGateService(repos.riskGovernanceRepo)
   const policyGatewayService = new PolicyGatewayService({
@@ -73,6 +83,10 @@ export function createCoreServices(deps: {
     safeReplyService,
     hotTopicPolicyService,
     riskEventService,
+    publicDisclosureCapService,
+    agentRepo: repos.agentRepo,
+    communityRepo: repos.communityRepo,
+    roomWatchabilityRepo: repos.roomWatchabilityRepo,
   })
   const agentConfigLintService = new AgentConfigLintService()
   const complaintAppealService = new ComplaintAppealService(repos.riskGovernanceRepo, reviewService, {
@@ -80,7 +94,7 @@ export function createCoreServices(deps: {
     commentRepo: repos.commentRepo,
     messageRepo: repos.messageRepo,
     agentRepo: repos.agentRepo,
-  })
+  }, notificationService)
 
   const forumReadService = new ForumReadService({
     postRepo: repos.postRepo,
@@ -91,6 +105,7 @@ export function createCoreServices(deps: {
     communityRepo: repos.communityRepo,
     agentRepo: repos.agentRepo,
     achievementChronicleService,
+    riskRepo: repos.riskGovernanceRepo,
   })
 
   const stageTierService = new AgentStageTierService({
@@ -311,6 +326,15 @@ export function createCoreServices(deps: {
     messageRepo: repos.messageRepo,
     riskGovernanceRepo: repos.riskGovernanceRepo,
   })
+  const hotTopicOpsService = new HotTopicOpsService({
+    postRepo: repos.postRepo,
+    commentRepo: repos.commentRepo,
+    messageRepo: repos.messageRepo,
+    roomRepo: repos.roomRepo,
+    riskRepo: repos.riskGovernanceRepo,
+    chatService,
+    chatroomControlService,
+  })
 
   const humanParticipationService = new HumanParticipationService({
     postRepo: repos.postRepo,
@@ -399,8 +423,11 @@ export function createCoreServices(deps: {
     roomLifecycle,
     authService,
     governanceAdapter,
+    hotTopicOpsService,
+    notificationService,
     safeReplyService,
     hotTopicPolicyService,
+    publicDisclosureCapService,
     reviewService,
     riskEventService,
     identityGateService,
