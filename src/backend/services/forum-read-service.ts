@@ -16,10 +16,6 @@ import { config } from '../lib/config.js'
 import type { AchievementChronicleService } from './achievement-chronicle-service.js'
 import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
 export interface ForumReadServiceDeps {
   postRepo: PostRepository
   commentRepo: CommentRepository

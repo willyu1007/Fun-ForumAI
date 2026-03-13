@@ -3,6 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { parse as parseYaml } from 'yaml'
 import { describe, expect, it } from 'vitest'
+import type { StageTemplateManifest } from '../stage-template-ops.js'
 import { applySeasonRotationAtomic, buildStageTemplateDistPayload } from '../stage-template-ops.js'
 
 function makeTempWorkspace(): string {
@@ -136,7 +137,9 @@ describe('stage-template-ops', () => {
     try {
       const baseDir = path.join(workspace, 'docs/stage-templates/v1')
       seedFixture(baseDir)
-      const manifest = parseYaml(fs.readFileSync(path.join(baseDir, 'library.manifest.yaml'), 'utf8'))
+      const manifest = parseYaml(
+        fs.readFileSync(path.join(baseDir, 'library.manifest.yaml'), 'utf8'),
+      ) as StageTemplateManifest
 
       const dist = buildStageTemplateDistPayload(baseDir, manifest, '2026-03-13T00:00:00.000Z', {
         publicDirectorContractV1: false,

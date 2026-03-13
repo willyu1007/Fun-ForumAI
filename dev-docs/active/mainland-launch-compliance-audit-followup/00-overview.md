@@ -2,7 +2,7 @@
 
 ## Status
 - State: in-progress
-- Next step: 对照外部 `content_audit.md` 与 `T-087~T-093` 最近提交，完成需求回归、真实链路验证、缺陷修复与收尾验收。
+- Next step: 推送已 rebase 的 PR 分支，确认 GitHub `mergeable` 恢复为可合并，并据最终状态决定是否直接 squash merge。
 
 ## Goal
 对大陆首发合规需求做一次 follow-up 审计回归：确认 `T-087~T-093` 当前仓库状态是否真正满足需求，补齐实现/测试/真实行为上的缺口，并为本轮修复保留可交接证据。

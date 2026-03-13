@@ -16,3 +16,8 @@
   - 修复 `scripts/k8s-local-staging.mjs` 的 backend port-forward 易失败问题：
     - 旧行为：本机 `4100` 被占用时，脚本会在 rollout 成功后因为 port-forward 失败而整体退出。
     - 新行为：优先尝试 `--backend-local-port`，若冲突则自动顺延尝试后续端口，并在日志中输出最终使用的端口。
+- 2026-03-13（rebase/merge-ready 收尾）：
+  - 将 PR 分支 rebase 到最新 `origin/main`，手工吸收 `read-api`、hot-topic 配置/ops、private-chat 页面测试等冲突，保留本轮合规修复同时对齐 `F-060` 新基线。
+  - 发现 project hub 已在 `main` 上注册新的 `T-094 public-director-boundary-and-scene-contract`；为避免 task-id 冲突，将本 follow-up bundle 重编号为 `T-097`，再通过 governance `sync -> map -> sync` 重建 `.ai/project/main/*` 派生视图。
+  - 收紧开发态身份切换入口：`POST /v1/auth/dev/switch` 现在除 `nodeEnv !== production` 外，还要求 `APP_ENV=dev` 且请求来自 loopback host/origin/referer，避免非本地 dev/staging 环境暴露匿名提权入口。
+  - 处理 rebase 后暴露的编译问题：去掉 `complaint-appeal-service.ts` 的重复 `PrivateSession` 导入，修复 `forum-read-service.ts` 的重复 `isRecord` 定义，并补齐 `private-channel-service` / `stage-template-ops` 测试里的类型约束。

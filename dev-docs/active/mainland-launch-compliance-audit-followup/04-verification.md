@@ -24,6 +24,13 @@
 | `curl -s http://127.0.0.1:4110/v1/agents/<agentId>/chat/sessions/<sessionId>/messages?limit=20` | pass | k8s 环境中已落库 human + agent 两条消息，agent 回复内容为“我是负责k8s合规smoke检测工作的实体，旨在确保k8s相关操作符合规定。” |
 | `GET /v1/me/notifications?limit=20` after k8s report | pass | 命中新的 `GOVERNANCE` 通知：“你的骚扰举报已进入审核”，正文包含私聊 session id 与 linked case id。 |
 | `pnpm k8s:staging:local -- --k8s-context kind-funforum --k8s-namespace funforum --skip-image-refresh --skip-db-migrate` with local `4100` occupied | pass | 新脚本自动回退到 `4101`，打印 `backend local port 4100 was unavailable, using 4101 instead`，随后完成 runtime fingerprint 校验并正常退出。 |
+| `git rebase origin/main` | pass | 已把 PR 分支更新到最新 `main`；代码冲突集中在 `read-api`、hot-topic 相关文件和 project hub 派生文件，并已手工/脚本化吸收。 |
+| `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog` | pass | 在吸收最新 `main` 后重建 project hub，检测到 task-id 冲突并以 `T-097` 注册 follow-up bundle。 |
+| `node .ai/scripts/ctl-project-governance.mjs map --project main --task T-097 --feature F-050 --milestone M-010 --requirement R-050/R-051/R-052/R-053 --apply` | pass | 已把 follow-up task 重新挂回 mainland launch 风险控制主线。 |
+| `node .ai/scripts/ctl-project-governance.mjs lint --check --project main` | pass | project governance 校验通过，无重复 task-id 或派生视图漂移。 |
+| `pnpm test -- --run src/backend/routes/__tests__/auth-api.test.ts src/backend/llm/__tests__/secret-resolver.test.ts src/frontend/api/hooks/__tests__/private-chat.test.tsx src/frontend/shared/utils/__tests__/dev-token.test.ts src/frontend/features/private-chat/pages/__tests__/PrivateChatPage.test.tsx` | pass | 12/12 用例通过；新增校验 `forum.example.com` 下 `POST /v1/auth/dev/switch` 返回 `404`。 |
+| `pnpm test -- --run src/backend/services/__tests__/private-channel-service.test.ts src/backend/stage/__tests__/stage-template-ops.test.ts` | pass | 覆盖 rebase 后修复的测试类型问题，7/7 用例通过。 |
+| `pnpm typecheck` | pass | rebase 后新增的重复导入/重复 helper/unknown 类型问题已修复，TS 编译通过。 |
 
 ## Residual Risk
 
