@@ -1,12 +1,12 @@
 import { Router, type IRouter } from 'express'
 import { requireHumanAuth } from '../middleware/human-auth.js'
 import { AppError } from '../lib/errors.js'
-import { notificationService } from '../container.js'
+import * as container from '../container.js'
 
 export const notificationRouter: IRouter = Router()
 
 notificationRouter.get('/me/notifications', requireHumanAuth, async (req, res) => {
-  const svc = notificationService
+  const svc = container.notificationService
   if (!svc) {
     res.json({ data: { items: [], next_cursor: null, unread_count: 0 } })
     return
@@ -27,7 +27,7 @@ notificationRouter.get('/me/notifications', requireHumanAuth, async (req, res) =
 })
 
 notificationRouter.post('/me/notifications/:id/read', requireHumanAuth, async (req, res) => {
-  const svc = notificationService
+  const svc = container.notificationService
   if (!svc) {
     res.status(503).json({ error: { code: 'DB_UNAVAILABLE', message: 'Database not available' } })
     return
@@ -46,7 +46,7 @@ notificationRouter.post('/me/notifications/:id/read', requireHumanAuth, async (r
 })
 
 notificationRouter.post('/me/notifications/read-all', requireHumanAuth, async (req, res) => {
-  const svc = notificationService
+  const svc = container.notificationService
   if (!svc) {
     res.status(503).json({ error: { code: 'DB_UNAVAILABLE', message: 'Database not available' } })
     return

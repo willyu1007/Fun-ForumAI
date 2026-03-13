@@ -12,6 +12,7 @@ import type {
 import type { PrivateSession } from '../repos/types.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
 import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
+import type { PrivateSession } from '../repos/types/private-channel.js'
 import type { ReviewService } from './review-service.js'
 import type { NotificationService } from './notification-service.js'
 

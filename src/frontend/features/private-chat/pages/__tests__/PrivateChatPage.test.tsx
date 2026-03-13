@@ -62,10 +62,7 @@ describe('PrivateChatPage', () => {
     vi.clearAllMocks()
     Element.prototype.scrollIntoView = vi.fn()
     isGuidanceEnabledMock.mockReturnValue(false)
-    usePrivateSessionSseMock.mockReturnValue({
-      phase: 'connected',
-      reconnectAttempts: 0,
-    })
+    usePrivateSessionSseMock.mockReturnValue({ phase: 'connected', reconnectAttempts: 0 })
     useAgentProfileMock.mockReturnValue({
       data: {
         data: {
@@ -149,6 +146,9 @@ describe('PrivateChatPage', () => {
         </Routes>
       </MemoryRouter>,
     )
+
+    expect(usePrivateMessagesMock).toHaveBeenCalledWith('agent-1', 'session-1')
+    expect(usePrivateSessionSseMock).toHaveBeenCalledWith('session-1', 'agent-1')
 
     expect(screen.getByRole('link', { name: '实名规则' }).getAttribute('href')).toBe('/help/private-chat-verification')
 

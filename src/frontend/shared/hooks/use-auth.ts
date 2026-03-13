@@ -60,9 +60,9 @@ export function useAuth() {
 
   // Dev-only identity switch (preserved for DevAuthToolbar)
   const switchIdentity = useCallback(
-    (identity: 'anonymous' | 'user' | 'admin') => {
-      setDevAuth(identity)
-      queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY })
+    async (identity: 'anonymous' | 'user' | 'admin') => {
+      await setDevAuth(identity)
+      await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY })
     },
     [queryClient],
   )

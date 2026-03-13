@@ -47,7 +47,11 @@ export function DevAuthToolbar() {
               variant={currentIdentity === id ? 'default' : 'outline'}
               size="sm"
               className={uix('uix-fe3d94994b')}
-              onClick={() => switchIdentity(id)}
+              onClick={() => {
+                void switchIdentity(id).catch((err: unknown) => {
+                  alert(`身份切换失败：${err instanceof Error ? err.message : '未知错误'}`)
+                })
+              }}
             >
               {label}
             </Button>

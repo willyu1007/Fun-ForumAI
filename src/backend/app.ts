@@ -15,7 +15,7 @@ import { chatApiRouter } from './routes/chat-api.js'
 import { agentNurtureRouter } from './routes/agent-growth-api.js'
 import { agentDashboardRouter } from './routes/agent-dashboard-api.js'
 import { createAuthRouter } from './routes/auth-api.js'
-import { requireHumanAuth, registerDevTokenSync } from './middleware/human-auth.js'
+import { createDevToken, requireHumanAuth, registerDevTokenSync, type AuthenticatedUser } from './middleware/human-auth.js'
 import { privateChannelRouter } from './routes/private-channel-api.js'
 import { notificationRouter } from './routes/notification-api.js'
 import { agentStatsRouter } from './routes/agent-stats-api.js'
@@ -26,6 +26,50 @@ import { buildPromptTemplateRef } from './llm/prompt-template-refs.js'
 import type { OwnerStylePins } from './identity/agent-identity.js'
 
 const app: Express = express()
+const DEV_AUTH_COOKIE_OPTIONS = {
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+}
+
+function isLoopbackHost(value: string | undefined): boolean {
+  if (!value) return false
+  try {
+    const parsed = value.includes('://') ? new URL(value) : new URL(`http://${value}`)
+    const hostname = parsed.hostname.toLowerCase()
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
+  } catch {
+    return false
+  }
+}
+
+function canUseDevIdentitySwitch(req: express.Request): boolean {
+  if (config.appEnv !== 'dev') return false
+  return isLoopbackHost(req.hostname)
+    || isLoopbackHost(req.get('origin'))
+    || isLoopbackHost(req.get('referer'))
+}
+
+function buildDevAuthProfile(user: AuthenticatedUser) {
+  return {
+    id: user.userId,
+    email: user.email,
+    displayName: user.role === 'admin' ? '开发管理员' : '开发用户',
+    avatarUrl: null,
+    planTier: user.role === 'admin' ? 'ADMIN' : 'FREE',
+    role: user.role,
+  }
+}
+
+function resolveDevIdentity(identity: unknown): AuthenticatedUser | null {
+  if (identity === 'user') {
+    return { userId: 'dev-user-001', email: 'dev-user@llm-forum.test', role: 'user', _devToken: true }
+  }
+  if (identity === 'admin') {
+    return { userId: 'dev-admin-001', email: 'dev-admin@llm-forum.test', role: 'admin', _devToken: true }
+  }
+  return null
+}
 
 function shouldCompress(req: express.Request, res: express.Response): boolean {
   if (req.path === '/v1/events/stream' || req.headers.accept?.includes('text/event-stream')) {
@@ -54,6 +98,38 @@ app.use('/v1', chatApiRouter)
 app.use('/v1', agentNurtureRouter)
 app.use('/v1', agentDashboardRouter)
 
+if (config.nodeEnv !== 'production') {
+  const devIdentityRouter = express.Router()
+  devIdentityRouter.post('/auth/dev/switch', (req, res) => {
+    if (!canUseDevIdentitySwitch(req)) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } })
+      return
+    }
+
+    const identity = req.body?.identity
+    if (identity === 'anonymous') {
+      res.clearCookie('auth_token', { path: '/' })
+      res.json({ data: { user: null } })
+      return
+    }
+
+    const user = resolveDevIdentity(identity)
+    if (!user) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'identity must be one of anonymous, user, admin',
+        },
+      })
+      return
+    }
+
+    res.cookie('auth_token', createDevToken(user), DEV_AUTH_COOKIE_OPTIONS)
+    res.json({ data: { user: buildDevAuthProfile(user) } })
+  })
+  app.use('/v1', devIdentityRouter)
+}
+
 if (authService) {
   const ensuredAuthService = authService
   registerDevTokenSync(async (user) => {
@@ -72,14 +148,7 @@ if (authService) {
   devAuthRouter.get('/auth/me', requireHumanAuth, (req, res) => {
     res.json({
       data: {
-        user: {
-          id: req.user!.userId,
-          email: req.user!.email,
-          displayName: req.user!.role === 'admin' ? '开发管理员' : '开发用户',
-          avatarUrl: null,
-          planTier: req.user!.role === 'admin' ? 'ADMIN' : 'FREE',
-          role: req.user!.role,
-        },
+        user: buildDevAuthProfile(req.user!),
       },
     })
   })

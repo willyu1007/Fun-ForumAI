@@ -86,8 +86,8 @@ export function readCommunityHotTopicPolicy(
 
   const allowedDomains = toStringArray(policy.allowed_domains)
     .filter(isHotTopicDomain)
-  const effectiveAllowedDomains = allowedDomains.length > 0
-    ? Array.from(new Set<HotTopicDomain>(allowedDomains))
+  const effectiveAllowedDomains: HotTopicDomain[] = allowedDomains.length > 0
+    ? Array.from(new Set(allowedDomains))
     : DEFAULT_ALLOWED_DOMAINS
   const sceneModesRecord = toRecord(policy.scene_modes)
   const sceneModes = Object.fromEntries(
@@ -95,10 +95,11 @@ export function readCommunityHotTopicPolicy(
       .filter(([key, value]) => key.trim().length > 0 && (value === 'NORMAL' || value === 'MANUAL_REVIEW_ONLY' || value === 'DISABLED'))
       .map(([key, value]) => [key, value as HotTopicMode]),
   )
-  const userCopy: Record<string, string> = Object.fromEntries(
-    Object.entries(toRecord(policy.user_copy) ?? {})
-      .filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].trim().length > 0)
-      .map(([key, copy]) => [key, copy.trim()] as const),
+  const userCopy = Object.fromEntries(
+    Object.entries(toRecord(policy.user_copy) ?? {}).flatMap(([key, copy]) =>
+      typeof copy === 'string' && copy.trim().length > 0
+        ? [[key, copy.trim()] as const]
+        : []),
   )
 
   return {

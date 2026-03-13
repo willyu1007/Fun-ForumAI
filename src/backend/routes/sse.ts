@@ -1,5 +1,5 @@
 import { Router, type IRouter } from 'express'
-import { privateChannelServices } from '../container.js'
+import * as container from '../container.js'
 import { config } from '../lib/config.js'
 import { resolveGuidanceActorContext, toGuidanceActorChannelKey } from '../guidance/http.js'
 import { tryAuthenticateHuman } from '../middleware/human-auth.js'
@@ -30,7 +30,7 @@ export function createSseRouter(hub: SseHub): IRouter {
         return
       }
 
-      const services = privateChannelServices
+      const services = container.privateChannelServices
       if (!services) {
         res.status(503).json({ error: { code: 'DB_UNAVAILABLE', message: 'Database not available' } })
         return
