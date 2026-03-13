@@ -147,6 +147,8 @@ describe('PrivateChatPage', () => {
       </MemoryRouter>,
     )
 
+    expect(screen.getByRole('link', { name: '实名规则' }).getAttribute('href')).toBe('/help/private-chat-verification')
+
     fireEvent.click(await screen.findByRole('button', { name: '举报此主动私信' }))
 
     await waitFor(() => {

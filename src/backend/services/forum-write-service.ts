@@ -487,6 +487,11 @@ export class ForumWriteService {
           scene: 'forum_post',
           existing_moderation: modResult,
           prefer_rewrite: false,
+          sampling_metrics: {
+            post_comment_count: 0,
+            room_message_count_hour: 0,
+            report_count_24h: 0,
+          },
         })
       : null
     if (gatewayDecision) {
@@ -665,6 +670,11 @@ export class ForumWriteService {
           scene: 'forum_comment',
           existing_moderation: modResult,
           prefer_rewrite: false,
+          sampling_metrics: {
+            post_comment_count: await this.deps.commentRepo.countByPost(post.id),
+            room_message_count_hour: 0,
+            report_count_24h: 0,
+          },
         })
       : null
     if (gatewayDecision) {

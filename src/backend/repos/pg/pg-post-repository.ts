@@ -116,6 +116,26 @@ export class PgPostRepository implements PostRepository {
     }
   }
 
+  async updateModerationMetadata(
+    id: string,
+    moderationMetadata: Record<string, unknown> | null,
+  ): Promise<Post | null> {
+    try {
+      const row = await this.prisma.post.update({
+        where: { id },
+        data: {
+          moderationMetadataJson:
+            (moderationMetadata ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+          updatedAt: new Date(),
+        },
+      })
+      return this.toDomain(row)
+    } catch (error) {
+      if (isNotFoundError(error)) return null
+      throw error
+    }
+  }
+
   private toDomain(row: PrismaPost): Post {
     return {
       id: row.id,

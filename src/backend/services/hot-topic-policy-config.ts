@@ -1,6 +1,7 @@
 import type { HotTopicDomain } from './hot-topic-policy-service.js'
 
 export type HotTopicMode = 'NORMAL' | 'MANUAL_REVIEW_ONLY' | 'DISABLED'
+export type AllowedHotTopicDomain = Exclude<HotTopicDomain, 'GENERAL' | 'SENSITIVE'>
 
 export interface CommunityHotTopicUserCopy {
   summary?: string
@@ -11,11 +12,25 @@ export interface CommunityHotTopicUserCopy {
   safety_notice?: string
 }
 
+export interface CommunityHotTopicKeywordOverrides {
+  allow: Partial<Record<AllowedHotTopicDomain, string[]>>
+  gray: string[]
+  deny: string[]
+}
+
+export interface CommunityHotTopicSamplingThresholds {
+  post_comment_count: number
+  room_message_count_hour: number
+  report_count_24h: number
+}
+
 export interface CommunityHotTopicPolicyV1 {
   mode: HotTopicMode
   allowed_domains: HotTopicDomain[]
   scene_modes: Record<string, HotTopicMode>
   user_copy: CommunityHotTopicUserCopy
+  keyword_overrides: CommunityHotTopicKeywordOverrides
+  sampling_thresholds: CommunityHotTopicSamplingThresholds
 }
 
 const MODE_SEVERITY: Record<HotTopicMode, number> = {
@@ -35,6 +50,16 @@ export const DEFAULT_COMMUNITY_HOT_TOPIC_POLICY_V1: CommunityHotTopicPolicyV1 = 
   allowed_domains: DEFAULT_ALLOWED_HOT_TOPIC_DOMAINS,
   scene_modes: {},
   user_copy: {},
+  keyword_overrides: {
+    allow: {},
+    gray: [],
+    deny: [],
+  },
+  sampling_thresholds: {
+    post_comment_count: 20,
+    room_message_count_hour: 20,
+    report_count_24h: 3,
+  },
 }
 
 function toRecord(value: unknown): Record<string, unknown> | null {
@@ -84,6 +109,69 @@ function normalizeUserCopy(value: unknown): CommunityHotTopicUserCopy {
   return Object.fromEntries(entries)
 }
 
+function normalizeKeywordList(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return Array.from(new Set(
+    value
+      .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      .map((item) => item.trim().toLowerCase()),
+  ))
+}
+
+function normalizeKeywordOverrides(value: unknown): CommunityHotTopicKeywordOverrides {
+  const record = toRecord(value)
+  if (!record) {
+    return {
+      allow: {},
+      gray: [],
+      deny: [],
+    }
+  }
+  const allowRecord = toRecord(record.allow)
+  const allow: Partial<Record<AllowedHotTopicDomain, string[]>> = {}
+  for (const domain of DEFAULT_ALLOWED_HOT_TOPIC_DOMAINS) {
+    const normalized = normalizeKeywordList(allowRecord?.[domain])
+    if (normalized.length > 0) {
+      allow[domain] = normalized
+    }
+  }
+  return {
+    allow,
+    gray: normalizeKeywordList(record.gray),
+    deny: normalizeKeywordList(record.deny),
+  }
+}
+
+function normalizeSamplingThreshold(
+  value: unknown,
+  fallback: number,
+): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+    ? Math.floor(value)
+    : fallback
+}
+
+function normalizeSamplingThresholds(value: unknown): CommunityHotTopicSamplingThresholds {
+  const record = toRecord(value)
+  if (!record) {
+    return { ...DEFAULT_COMMUNITY_HOT_TOPIC_POLICY_V1.sampling_thresholds }
+  }
+  return {
+    post_comment_count: normalizeSamplingThreshold(
+      record.post_comment_count,
+      DEFAULT_COMMUNITY_HOT_TOPIC_POLICY_V1.sampling_thresholds.post_comment_count,
+    ),
+    room_message_count_hour: normalizeSamplingThreshold(
+      record.room_message_count_hour,
+      DEFAULT_COMMUNITY_HOT_TOPIC_POLICY_V1.sampling_thresholds.room_message_count_hour,
+    ),
+    report_count_24h: normalizeSamplingThreshold(
+      record.report_count_24h,
+      DEFAULT_COMMUNITY_HOT_TOPIC_POLICY_V1.sampling_thresholds.report_count_24h,
+    ),
+  }
+}
+
 export function normalizeHotTopicMode(value: unknown, fallback: HotTopicMode = 'NORMAL'): HotTopicMode {
   return normalizeMode(value) ?? fallback
 }
@@ -97,6 +185,14 @@ export function readCommunityHotTopicPolicyV1(
     allowed_domains: [...DEFAULT_COMMUNITY_HOT_TOPIC_POLICY_V1.allowed_domains],
     scene_modes: {},
     user_copy: {},
+    keyword_overrides: {
+      allow: {},
+      gray: [],
+      deny: [],
+    },
+    sampling_thresholds: {
+      ...DEFAULT_COMMUNITY_HOT_TOPIC_POLICY_V1.sampling_thresholds,
+    },
   }
 
   return {
@@ -104,6 +200,8 @@ export function readCommunityHotTopicPolicyV1(
     allowed_domains: normalizeAllowedDomains(raw.allowed_domains),
     scene_modes: normalizeSceneModes(raw.scene_modes),
     user_copy: normalizeUserCopy(raw.user_copy),
+    keyword_overrides: normalizeKeywordOverrides(raw.keyword_overrides),
+    sampling_thresholds: normalizeSamplingThresholds(raw.sampling_thresholds),
   }
 }
 
@@ -156,6 +254,53 @@ export function lintHotTopicPolicyV1(value: unknown): string[] {
       const invalidKey = Object.entries(userCopy).find(([, copy]) => typeof copy !== 'string')
       if (invalidKey) {
         errors.push(`hot_topic_policy_v1.user_copy.${invalidKey[0]} must be a string`)
+      }
+    }
+  }
+
+  if (record.keyword_overrides !== undefined) {
+    const keywordOverrides = toRecord(record.keyword_overrides)
+    if (!keywordOverrides) {
+      errors.push('hot_topic_policy_v1.keyword_overrides must be an object')
+    } else {
+      if (keywordOverrides.allow !== undefined) {
+        const allowRecord = toRecord(keywordOverrides.allow)
+        if (!allowRecord) {
+          errors.push('hot_topic_policy_v1.keyword_overrides.allow must be an object')
+        } else {
+          const invalidAllowEntry = Object.entries(allowRecord).find(([domain, value]) =>
+            !DEFAULT_ALLOWED_HOT_TOPIC_DOMAINS.includes(domain as AllowedHotTopicDomain)
+            || !Array.isArray(value)
+            || value.some((item) => typeof item !== 'string' || !item.trim()))
+          if (invalidAllowEntry) {
+            errors.push(`hot_topic_policy_v1.keyword_overrides.allow.${invalidAllowEntry[0]} must be a non-empty string array`)
+          }
+        }
+      }
+      if (keywordOverrides.gray !== undefined
+        && (!Array.isArray(keywordOverrides.gray)
+          || keywordOverrides.gray.some((item) => typeof item !== 'string' || !item.trim()))) {
+        errors.push('hot_topic_policy_v1.keyword_overrides.gray must be a non-empty string array')
+      }
+      if (keywordOverrides.deny !== undefined
+        && (!Array.isArray(keywordOverrides.deny)
+          || keywordOverrides.deny.some((item) => typeof item !== 'string' || !item.trim()))) {
+        errors.push('hot_topic_policy_v1.keyword_overrides.deny must be a non-empty string array')
+      }
+    }
+  }
+
+  if (record.sampling_thresholds !== undefined) {
+    const thresholds = toRecord(record.sampling_thresholds)
+    if (!thresholds) {
+      errors.push('hot_topic_policy_v1.sampling_thresholds must be an object')
+    } else {
+      for (const key of ['post_comment_count', 'room_message_count_hour', 'report_count_24h'] as const) {
+        if (thresholds[key] !== undefined
+          && (typeof thresholds[key] !== 'number' || !Number.isFinite(thresholds[key]) || Number(thresholds[key]) < 0)) {
+          errors.push(`hot_topic_policy_v1.sampling_thresholds.${key} must be a non-negative number`)
+          break
+        }
       }
     }
   }

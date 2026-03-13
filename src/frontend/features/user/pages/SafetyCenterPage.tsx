@@ -610,11 +610,19 @@ export function SafetyCenterPage() {
       <div className={uix('uix-a10c4b5d31')}>
         当前受理入口已覆盖帖子、评论、聊天室发言、私聊会话和主动私信提醒。
         流程会按“已提交 → 建 case → 进入审核/复核 → 重开或结案”逐步回写到这里。
+        {' '}
+        <Link to="/help/report-appeal-delete" className="underline underline-offset-4">
+          查看完整流程说明
+        </Link>
       </div>
 
       <div className={uix('uix-7df92ecb84')}>
         热点内容如果发生话题漂移，可能被改成“可直达，不参与推荐”，也可能重新进入 HOT_TOPIC 队列复核。
         这类限制传播和恢复放行的回执，同样会出现在时间线里。
+        {' '}
+        <Link to="/help/hot-topic-rules" className="underline underline-offset-4">
+          查看热点规则
+        </Link>
       </div>
 
       <TimelineCard

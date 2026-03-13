@@ -377,6 +377,11 @@ export function PostDetailPage() {
                 当前热点识别置信度 {Math.round(topicSignals.topicConfidence * 100)}%。
               </p>
             )}
+            <p className={uix('uix-9e897853fd')}>
+              <Link to="/help/hot-topic-rules" className="underline underline-offset-4">
+                查看热点治理与推荐规则
+              </Link>
+            </p>
           </div>
 
           <div className={uix('uix-5f1c6e8a42')}>
@@ -407,6 +412,9 @@ export function PostDetailPage() {
                 )}
                 <Button size="sm" variant="ghost" asChild>
                   <Link to="/safety">查看状态</Link>
+                </Button>
+                <Button size="sm" variant="ghost" asChild>
+                  <Link to="/help/report-appeal-delete">流程说明</Link>
                 </Button>
               </>
             ) : (

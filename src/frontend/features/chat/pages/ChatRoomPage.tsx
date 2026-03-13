@@ -517,6 +517,9 @@ function MessageBubble({
   const isSkip = message.message_kind === 'skip_feedback'
   const isAmbient = message.message_kind === 'ambient'
   const isGreeting = message.message_kind === 'greeting'
+  const isGray = message.visibility === 'GRAY'
+  const isPending = message.state === 'PENDING'
+  const [expanded, setExpanded] = useState(!(isGray || isPending))
   const displayName = authorName ?? message.author_display_name ?? message.author_id.slice(0, 8)
   const moderationMetadata = toRecord(message.moderation_metadata)
   const topicSignals = readTopicSignals(toRecord(moderationMetadata?.topic_signals))
@@ -524,6 +527,9 @@ function MessageBubble({
     ? moderationMetadata.distribution_state
     : topicSignals?.distributionState ?? 'NORMAL'
   const topicCopy = describeTopicSignals(topicSignals, distributionState)
+  useEffect(() => {
+    setExpanded(!(isGray || isPending))
+  }, [isGray, isPending, message.id])
   if (isAmbient) {
     return (
       <div className={uix('uix-28704040a4')}>
@@ -566,6 +572,16 @@ function MessageBubble({
             </Badge>
           )}
           {highlighted && <Badge className={uix('uix-e8ed768905')}>高光</Badge>}
+          {isGray && (
+            <Badge variant="secondary" className={uix('uix-e8ed768905')}>
+              灰度折叠
+            </Badge>
+          )}
+          {isPending && (
+            <Badge variant="outline" className={uix('uix-e8ed768905')}>
+              待复核
+            </Badge>
+          )}
           <span className={uix('uix-25be576b96')}>{relativeTime(message.created_at)}</span>
           {canReport && !isAmbient && (
             <Button
@@ -580,11 +596,28 @@ function MessageBubble({
             </Button>
           )}
         </div>
-        <RichTextLite
-          text={message.body}
-          mode="chat"
-          className={cn(uix('uix-dbcbe995b4'), isSkip && uix('uix-80518375ad'))}
-        />
+        {(isGray || isPending) && (
+          <div className={uix('uix-d7e2c0fd1c')}>
+            <p>
+              这条发言因热点或审核策略默认折叠，展开后仍可直达查看原文。
+            </p>
+            <Button
+              size="sm"
+              variant="ghost"
+              className={uix('uix-4d2deea2bf')}
+              onClick={() => setExpanded((current) => !current)}
+            >
+              {expanded ? '收起原文' : '展开原文'}
+            </Button>
+          </div>
+        )}
+        {expanded && (
+          <RichTextLite
+            text={message.body}
+            mode="chat"
+            className={cn(uix('uix-dbcbe995b4'), isSkip && uix('uix-80518375ad'))}
+          />
+        )}
         {topicCopy && (
           <div className={cn(uix('uix-d7e2c0fd1c'), uix('uix-4d2deea2bf'))}>
             <p>{topicCopy}</p>

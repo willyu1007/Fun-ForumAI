@@ -43,6 +43,7 @@ import { PolicyGatewayService } from '../services/policy-gateway-service.js'
 import { AgentConfigLintService } from '../services/agent-config-lint-service.js'
 import { ComplaintAppealService } from '../services/complaint-appeal-service.js'
 import { NotificationService } from '../services/notification-service.js'
+import { HotTopicOpsService } from '../services/hot-topic-ops-service.js'
 import type { ModerationService } from '../moderation/moderation-service.js'
 import type { SseHub } from '../sse/hub.js'
 import type { LLMGateway } from '../llm/llm-gateway.js'
@@ -325,6 +326,15 @@ export function createCoreServices(deps: {
     messageRepo: repos.messageRepo,
     riskGovernanceRepo: repos.riskGovernanceRepo,
   })
+  const hotTopicOpsService = new HotTopicOpsService({
+    postRepo: repos.postRepo,
+    commentRepo: repos.commentRepo,
+    messageRepo: repos.messageRepo,
+    roomRepo: repos.roomRepo,
+    riskRepo: repos.riskGovernanceRepo,
+    chatService,
+    chatroomControlService,
+  })
 
   const humanParticipationService = new HumanParticipationService({
     postRepo: repos.postRepo,
@@ -413,6 +423,7 @@ export function createCoreServices(deps: {
     roomLifecycle,
     authService,
     governanceAdapter,
+    hotTopicOpsService,
     notificationService,
     safeReplyService,
     hotTopicPolicyService,

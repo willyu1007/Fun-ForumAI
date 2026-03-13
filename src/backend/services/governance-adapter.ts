@@ -117,6 +117,19 @@ export class GovernanceAdapter {
     } else if (action.target_type === 'message') {
       const message = await this.deps.messageRepo?.findById(action.target_id)
       if (!message) throw new NotFoundError('Message', action.target_id)
+      if (result.new_visibility) {
+        await this.deps.messageRepo?.updateVisibility(action.target_id, result.new_visibility)
+      }
+      if (result.new_state) {
+        await this.deps.messageRepo?.updateState(action.target_id, result.new_state)
+      }
+      const moderationMetadata = {
+        ...(message.moderation_metadata ?? {}),
+        governance_action: action.action,
+        governance_reason: action.reason ?? null,
+        governance_updated_at: new Date().toISOString(),
+      }
+      await this.deps.messageRepo?.updateModerationMetadata(action.target_id, moderationMetadata)
     }
   }
 

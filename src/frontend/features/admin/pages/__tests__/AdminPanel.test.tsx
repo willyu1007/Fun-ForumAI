@@ -8,6 +8,10 @@ import type {
 } from '@/api/types'
 import {
   useAdminAgentRiskProfile,
+  useAdminHotTopicAlerts,
+  useAdminHotTopicDashboard,
+  useAdminHotTopicPostDistribution,
+  useAdminHotTopicRoomControl,
   useApplyCommunityHotTopicPolicy,
   useAssignModerationCase,
   useClaimModerationTask,
@@ -34,6 +38,10 @@ vi.mock('../components/RuntimeDashboard', () => ({
 
 vi.mock('@/api/hooks', () => ({
   useAdminAgentRiskProfile: vi.fn(),
+  useAdminHotTopicAlerts: vi.fn(),
+  useAdminHotTopicDashboard: vi.fn(),
+  useAdminHotTopicPostDistribution: vi.fn(),
+  useAdminHotTopicRoomControl: vi.fn(),
   useApplyCommunityHotTopicPolicy: vi.fn(),
   useAssignModerationCase: vi.fn(),
   useClaimModerationTask: vi.fn(),
@@ -60,6 +68,10 @@ vi.mock('@/shared/hooks/use-auth', () => ({
 const useAssignModerationCaseMock = vi.mocked(useAssignModerationCase)
 const useClaimModerationTaskMock = vi.mocked(useClaimModerationTask)
 const useAdminAgentRiskProfileMock = vi.mocked(useAdminAgentRiskProfile)
+const useAdminHotTopicAlertsMock = vi.mocked(useAdminHotTopicAlerts)
+const useAdminHotTopicDashboardMock = vi.mocked(useAdminHotTopicDashboard)
+const useAdminHotTopicPostDistributionMock = vi.mocked(useAdminHotTopicPostDistribution)
+const useAdminHotTopicRoomControlMock = vi.mocked(useAdminHotTopicRoomControl)
 const useApplyCommunityHotTopicPolicyMock = vi.mocked(useApplyCommunityHotTopicPolicy)
 const useCreateDisclosureCapOverrideMock = vi.mocked(useCreateDisclosureCapOverride)
 const useDisclosureCapsMock = vi.mocked(useDisclosureCaps)
@@ -293,6 +305,24 @@ describe('AdminPanel', () => {
     } as never)
     useAdminAgentRiskProfileMock.mockReturnValue({
       data: undefined,
+    } as never)
+    useAdminHotTopicDashboardMock.mockReturnValue({
+      data: { data: [] },
+    } as never)
+    useAdminHotTopicAlertsMock.mockReturnValue({
+      data: { data: [] },
+    } as never)
+    useAdminHotTopicPostDistributionMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    } as never)
+    useAdminHotTopicRoomControlMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
     } as never)
     useDisclosureCapsMock.mockReturnValue({
       data: undefined,
@@ -621,6 +651,9 @@ describe('AdminPanel', () => {
 
     render(<AdminPanel />)
 
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Hot Topic' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Hot Topic' }))
+
     fireEvent.change(screen.getByPlaceholderText('Community ID'), {
       target: { value: 'community-1' },
     })
@@ -643,5 +676,147 @@ describe('AdminPanel', () => {
         reason: 'admin_hot_topic_policy_update',
       })
     })
+  })
+
+  it('renders hot-topic dashboard controls and submits post / room actions', async () => {
+    const postDistributionMutate = vi.fn().mockResolvedValue({
+      data: {
+        target_type: 'post',
+        target_id: 'post-hot-1',
+        title: 'Hot post',
+        community_id: 'community-1',
+        topic_domain: 'ENTERTAINMENT',
+        hot_score: 36,
+        drift_risk_score: 0.35,
+        report_count_24h: 2,
+        distribution_state: 'NO_RECOMMEND',
+        restriction_state: 'MANUAL_REVIEW_ONLY',
+        sampled_review_required: true,
+        linked_case_id: 'case-hot-1',
+        latest_event_at: '2026-03-12T10:10:00.000Z',
+      },
+    })
+    const roomControlMutate = vi.fn().mockResolvedValue({
+      data: {
+        target_type: 'room',
+        target_id: 'room-hot-1',
+        title: 'Hot room',
+        community_id: 'community-1',
+        topic_domain: 'SPORTS',
+        hot_score: 24,
+        drift_risk_score: 0.88,
+        report_count_24h: 1,
+        distribution_state: 'NO_RECOMMEND',
+        restriction_state: 'MANUAL_REVIEW_ONLY',
+        sampled_review_required: true,
+        linked_case_id: 'case-hot-2',
+        latest_event_at: '2026-03-12T10:11:00.000Z',
+      },
+    })
+    useAdminHotTopicDashboardMock.mockReturnValue({
+      data: {
+        data: [
+          {
+            target_type: 'post',
+            target_id: 'post-hot-1',
+            title: 'Hot post',
+            community_id: 'community-1',
+            topic_domain: 'ENTERTAINMENT',
+            hot_score: 36,
+            drift_risk_score: 0.35,
+            report_count_24h: 2,
+            distribution_state: 'NORMAL',
+            restriction_state: 'NORMAL',
+            sampled_review_required: true,
+            linked_case_id: 'case-hot-1',
+            latest_event_at: '2026-03-12T10:10:00.000Z',
+          },
+          {
+            target_type: 'room',
+            target_id: 'room-hot-1',
+            title: 'Hot room',
+            community_id: 'community-1',
+            topic_domain: 'SPORTS',
+            hot_score: 24,
+            drift_risk_score: 0.88,
+            report_count_24h: 1,
+            distribution_state: 'NO_RECOMMEND',
+            restriction_state: 'MANUAL_REVIEW_ONLY',
+            sampled_review_required: true,
+            linked_case_id: 'case-hot-2',
+            latest_event_at: '2026-03-12T10:11:00.000Z',
+          },
+        ],
+      },
+    } as never)
+    useAdminHotTopicAlertsMock.mockReturnValue({
+      data: {
+        data: [{
+          severity: 'high',
+          reason: 'drift_risk_high',
+          item: {
+            target_type: 'room',
+            target_id: 'room-hot-1',
+            title: 'Hot room',
+            community_id: 'community-1',
+            topic_domain: 'SPORTS',
+            hot_score: 24,
+            drift_risk_score: 0.88,
+            report_count_24h: 1,
+            distribution_state: 'NO_RECOMMEND',
+            restriction_state: 'MANUAL_REVIEW_ONLY',
+            sampled_review_required: true,
+            linked_case_id: 'case-hot-2',
+            latest_event_at: '2026-03-12T10:11:00.000Z',
+          },
+        }],
+      },
+    } as never)
+    useAdminHotTopicPostDistributionMock.mockReturnValue({
+      mutateAsync: postDistributionMutate,
+      isPending: false,
+      isError: false,
+      error: null,
+    } as never)
+    useAdminHotTopicRoomControlMock.mockReturnValue({
+      mutateAsync: roomControlMutate,
+      isPending: false,
+      isError: false,
+      error: null,
+    } as never)
+
+    render(<AdminPanel />)
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Hot Topic' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Hot Topic' }))
+
+    fireEvent.change(screen.getByPlaceholderText('操作原因（将写入治理日志）'), {
+      target: { value: 'manual hot topic control' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '切到 NO_RECOMMEND' }))
+
+    await waitFor(() => {
+      expect(postDistributionMutate).toHaveBeenCalledWith({
+        postId: 'post-hot-1',
+        distribution_state: 'NO_RECOMMEND',
+        reason: 'manual hot topic control',
+      })
+    })
+
+    fireEvent.change(screen.getByPlaceholderText('操作原因（将写入治理日志）'), {
+      target: { value: 'room tighten' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '恢复推荐流' }))
+
+    await waitFor(() => {
+      expect(roomControlMutate).toHaveBeenCalledWith({
+        roomId: 'room-hot-1',
+        distribution_state: 'NORMAL',
+        reason: 'room tighten',
+      })
+    })
+
+    expect(screen.getByText('热点告警')).toBeTruthy()
+    expect(screen.getAllByText((_, node) => node?.textContent?.includes('漂移风险高') ?? false).length).toBeGreaterThan(0)
   })
 })

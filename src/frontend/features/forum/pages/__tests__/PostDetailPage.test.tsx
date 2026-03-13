@@ -599,5 +599,7 @@ describe('PostDetailPage', () => {
     expect(screen.getByText('热点域 · 娱乐')).toBeTruthy()
     expect(screen.getByText('已命中漂移')).toBeTruthy()
     expect(screen.getByText('热点漂移命中，当前内容保留直达访问，但不会进入推荐流。')).toBeTruthy()
+    expect(screen.getByRole('link', { name: '查看热点治理与推荐规则' }).getAttribute('href')).toBe('/help/hot-topic-rules')
+    expect(screen.getByRole('link', { name: '流程说明' }).getAttribute('href')).toBe('/help/report-appeal-delete')
   })
 })

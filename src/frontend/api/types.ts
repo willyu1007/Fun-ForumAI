@@ -910,6 +910,28 @@ export interface DisclosureCapQueryResult {
   history: DisclosureCapOverride[]
 }
 
+export interface HotTopicDashboardItem {
+  target_type: 'post' | 'room'
+  target_id: string
+  title: string
+  community_id: string | null
+  topic_domain: string
+  hot_score: number
+  drift_risk_score: number
+  report_count_24h: number
+  distribution_state: 'NORMAL' | 'NO_RECOMMEND' | 'BLOCKED'
+  restriction_state: 'NORMAL' | 'MANUAL_REVIEW_ONLY' | 'BLOCKED'
+  sampled_review_required: boolean
+  linked_case_id: string | null
+  latest_event_at: string | null
+}
+
+export interface HotTopicAlert {
+  severity: 'low' | 'medium' | 'high'
+  reason: string
+  item: HotTopicDashboardItem
+}
+
 export interface IdentityVerification {
   id: string
   user_id: string
@@ -1246,6 +1268,8 @@ export interface ChatMessage {
   message_kind: ChatMessageKind
   parent_message_id: string | null
   vote_score: number
+  visibility: ContentVisibility
+  state: ContentState
   moderation_metadata?: Record<string, unknown> | null
   created_at: string
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useCommunityBySlug } from '@/api/hooks'
 import { api } from '@/api/client'
@@ -109,6 +109,11 @@ export function CommunityFeedPage() {
                   {hotTopicPolicy.userCopy.community_banner ?? hotTopicPolicy.userCopy.summary}
                 </p>
               )}
+              <p className={uix('uix-9e897853fd')}>
+                <Link to="/help/hot-topic-rules" className="underline underline-offset-4">
+                  查看热点治理规则与推荐说明
+                </Link>
+              </p>
             </div>
           )}
         </div>

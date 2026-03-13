@@ -85,6 +85,9 @@ function TopBar() {
 
         {/* Right: auth-dependent */}
         <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
+            <Link to="/help">帮助</Link>
+          </Button>
           {isAuthenticated ? (
             <>
               <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
@@ -134,6 +137,9 @@ function TopBar() {
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/safety">举报与申诉</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/help">规则与说明</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/admin">管控台</Link>

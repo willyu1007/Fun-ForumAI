@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import {
   useAdminAgentRiskProfile,
+  useAdminHotTopicAlerts,
+  useAdminHotTopicDashboard,
+  useAdminHotTopicPostDistribution,
+  useAdminHotTopicRoomControl,
   useApplyCommunityHotTopicPolicy,
   useAssignModerationCase,
   useClaimModerationTask,
@@ -32,6 +36,8 @@ import type {
   DisclosureCapOverride,
   GovernanceActionType,
   GovernanceResult,
+  HotTopicAlert,
+  HotTopicDashboardItem,
   ReviewEvidenceSnapshot,
   ReviewEvidenceExport,
 } from '@/api/types'
@@ -116,6 +122,18 @@ const CAP_SOURCE_LABELS: Record<string, string> = {
   manual: '手动',
   owner_endorsement_public: '公开代言',
   owner_private_leak: '私域泄露',
+}
+const HOT_TOPIC_ALERT_SEVERITY_LABELS: Record<HotTopicAlert['severity'], string> = {
+  high: '高',
+  medium: '中',
+  low: '低',
+}
+const HOT_TOPIC_ALERT_REASON_LABELS: Record<string, string> = {
+  distribution_blocked: '已阻断分发',
+  drift_risk_high: '漂移风险高',
+  distribution_no_recommend: '已切到不参与推荐',
+  sampled_review_required: '达到抽样复核阈值',
+  watch: '持续观察',
 }
 
 const EVIDENCE_SECTIONS = [
@@ -268,6 +286,111 @@ function renderAppealPanel(item: AppealRequest | null) {
   )
 }
 
+function HotTopicDashboardCard({
+  item,
+  onSetPostDistribution,
+  onSetRoomControl,
+  postPending,
+  roomPending,
+}: {
+  item: HotTopicDashboardItem
+  onSetPostDistribution: (item: HotTopicDashboardItem, distributionState: 'NORMAL' | 'NO_RECOMMEND') => Promise<void>
+  onSetRoomControl: (item: HotTopicDashboardItem, input: {
+    hot_topic_mode?: 'NORMAL' | 'MANUAL_REVIEW_ONLY' | 'DISABLED'
+    distribution_state?: 'NORMAL' | 'NO_RECOMMEND'
+  }) => Promise<void>
+  postPending: boolean
+  roomPending: boolean
+}) {
+  const isPost = item.target_type === 'post'
+  return (
+    <div className={uix('uix-3ff7f9f76c')}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className={uix('uix-da8bf29040')}>{item.title}</p>
+          <p className={uix('uix-abda0153e3')}>
+            {item.target_type}:{item.target_id}
+            {' · '}
+            {item.topic_domain}
+            {' · '}
+            hot score {item.hot_score}
+            {' · '}
+            reports {item.report_count_24h}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="outline">分发 {item.distribution_state}</Badge>
+          <Badge variant="outline">限制 {item.restriction_state}</Badge>
+          {item.sampled_review_required && <Badge>抽样复核</Badge>}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Badge variant="secondary">drift {item.drift_risk_score.toFixed(2)}</Badge>
+        {item.linked_case_id && <Badge variant="outline">case {item.linked_case_id}</Badge>}
+        {item.latest_event_at && <Badge variant="outline">{new Date(item.latest_event_at).toLocaleString()}</Badge>}
+      </div>
+      {isPost ? (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant={item.distribution_state === 'NO_RECOMMEND' ? 'secondary' : 'outline'}
+            disabled={postPending}
+            onClick={() => {
+              void onSetPostDistribution(
+                item,
+                item.distribution_state === 'NO_RECOMMEND' ? 'NORMAL' : 'NO_RECOMMEND',
+              )
+            }}
+          >
+            {item.distribution_state === 'NO_RECOMMEND' ? '恢复推荐态' : '切到 NO_RECOMMEND'}
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant={item.distribution_state === 'NO_RECOMMEND' ? 'secondary' : 'outline'}
+            disabled={roomPending}
+            onClick={() => {
+              void onSetRoomControl(item, {
+                distribution_state: item.distribution_state === 'NO_RECOMMEND' ? 'NORMAL' : 'NO_RECOMMEND',
+              })
+            }}
+          >
+            {item.distribution_state === 'NO_RECOMMEND' ? '恢复推荐流' : '切到 NO_RECOMMEND'}
+          </Button>
+          <Button
+            size="sm"
+            variant={item.restriction_state === 'MANUAL_REVIEW_ONLY' ? 'secondary' : 'outline'}
+            disabled={roomPending}
+            onClick={() => {
+              void onSetRoomControl(item, {
+                hot_topic_mode: item.restriction_state === 'MANUAL_REVIEW_ONLY'
+                  ? 'NORMAL'
+                  : 'MANUAL_REVIEW_ONLY',
+              })
+            }}
+          >
+            {item.restriction_state === 'MANUAL_REVIEW_ONLY' ? '恢复 NORMAL' : '设为 MANUAL_REVIEW_ONLY'}
+          </Button>
+          <Button
+            size="sm"
+            variant={item.restriction_state === 'BLOCKED' ? 'secondary' : 'outline'}
+            disabled={roomPending}
+            onClick={() => {
+              void onSetRoomControl(item, {
+                hot_topic_mode: item.restriction_state === 'BLOCKED' ? 'NORMAL' : 'DISABLED',
+              })
+            }}
+          >
+            {item.restriction_state === 'BLOCKED' ? '解除 DISABLED' : '设为 DISABLED'}
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function renderCapOverrideSummary(override: DisclosureCapOverride) {
   return `cap=${override.cap_level} · ${CAP_SOURCE_LABELS[override.source] ?? override.source} · ${override.status}`
 }
@@ -275,6 +398,10 @@ function renderCapOverrideSummary(override: DisclosureCapOverride) {
 export function AdminPanel() {
   const { currentIdentity, user } = useAuth()
   const governance = useGovernanceAction()
+  const { data: hotTopicDashboard } = useAdminHotTopicDashboard()
+  const { data: hotTopicAlerts } = useAdminHotTopicAlerts()
+  const setHotTopicPostDistribution = useAdminHotTopicPostDistribution()
+  const setHotTopicRoomControl = useAdminHotTopicRoomControl()
   const applyCommunityHotTopicPolicy = useApplyCommunityHotTopicPolicy()
   const { data: healthData } = useHealth()
   const { data: queueData } = useModerationQueue()
@@ -306,6 +433,7 @@ export function AdminPanel() {
     'LIFESTYLE',
   ])
   const [communityPolicyCopy, setCommunityPolicyCopy] = useState('')
+  const [hotTopicReason, setHotTopicReason] = useState('')
   const [transferUserId, setTransferUserId] = useState('')
   const [transferNote, setTransferNote] = useState('')
   const [evidenceExportRedaction, setEvidenceExportRedaction] = useState<EvidenceExportRedaction>('operator')
@@ -392,6 +520,36 @@ export function AdminPanel() {
     })
   }
 
+  const dashboardItems = hotTopicDashboard?.data ?? []
+  const alertItems = hotTopicAlerts?.data ?? []
+
+  const handleSetPostDistribution = async (
+    item: HotTopicDashboardItem,
+    distributionState: 'NORMAL' | 'NO_RECOMMEND',
+  ) => {
+    await setHotTopicPostDistribution.mutateAsync({
+      postId: item.target_id,
+      distribution_state: distributionState,
+      reason: hotTopicReason.trim() || 'admin_hot_topic_distribution_override',
+    })
+    setHotTopicReason('')
+  }
+
+  const handleSetRoomControl = async (
+    item: HotTopicDashboardItem,
+    input: {
+      hot_topic_mode?: 'NORMAL' | 'MANUAL_REVIEW_ONLY' | 'DISABLED'
+      distribution_state?: 'NORMAL' | 'NO_RECOMMEND'
+    },
+  ) => {
+    await setHotTopicRoomControl.mutateAsync({
+      roomId: item.target_id,
+      ...input,
+      reason: hotTopicReason.trim() || 'admin_hot_topic_room_control',
+    })
+    setHotTopicReason('')
+  }
+
   return (
     <div className="space-y-4">
       <div>
@@ -414,11 +572,163 @@ export function AdminPanel() {
       <Tabs defaultValue="governance">
         <TabsList>
           <TabsTrigger value="governance">治理操作</TabsTrigger>
+          <TabsTrigger value="hot-topic">Hot Topic</TabsTrigger>
           <TabsTrigger value="runtime">Runtime</TabsTrigger>
         </TabsList>
 
         <TabsContent value="runtime" className={uix('uix-0ab8667228')}>
           <RuntimeDashboard />
+        </TabsContent>
+
+        <TabsContent value="hot-topic" className={uix('uix-c52b72f5ca')}>
+          <div className="grid gap-4 xl:grid-cols-2">
+            <Card>
+              <CardHeader className={uix('uix-f4cc511ff0')}>
+                <CardTitle className={uix('uix-fc7473ca09')}>热点运营面板</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className={uix('uix-abda0153e3')}>
+                  hot score 规则固定为：帖子 = 24h 评论数 + 举报数 x5；房间 = 1h 消息数 + 举报数 x5。
+                  到达阈值后会标记 sampled review，并沿现有 HOT_TOPIC case 链路收口。
+                </p>
+                <Input
+                  placeholder="操作原因（将写入治理日志）"
+                  value={hotTopicReason}
+                  onChange={(e) => setHotTopicReason(e.target.value)}
+                />
+                {dashboardItems.length === 0 && (
+                  <p className={uix('uix-abda0153e3')}>当前没有热点面板数据。</p>
+                )}
+                <div className="space-y-3">
+                  {dashboardItems.map((item) => (
+                    <HotTopicDashboardCard
+                      key={`${item.target_type}:${item.target_id}`}
+                      item={item}
+                      onSetPostDistribution={handleSetPostDistribution}
+                      onSetRoomControl={handleSetRoomControl}
+                      postPending={setHotTopicPostDistribution.isPending}
+                      roomPending={setHotTopicRoomControl.isPending}
+                    />
+                  ))}
+                </div>
+                {setHotTopicPostDistribution.isError && (
+                  <p className={uix('uix-551c237449')}>{setHotTopicPostDistribution.error.message}</p>
+                )}
+                {setHotTopicRoomControl.isError && (
+                  <p className={uix('uix-551c237449')}>{setHotTopicRoomControl.error.message}</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className={uix('uix-f4cc511ff0')}>
+                  <CardTitle className={uix('uix-fc7473ca09')}>热点告警</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {alertItems.length === 0 && (
+                    <p className={uix('uix-abda0153e3')}>当前没有 medium/high 级别热点告警。</p>
+                  )}
+                  {alertItems.map((alert) => (
+                    <div key={`${alert.item.target_type}:${alert.item.target_id}:${alert.reason}`} className={uix('uix-3ff7f9f76c')}>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className={uix('uix-da8bf29040')}>{alert.item.title}</p>
+                        <Badge variant={alert.severity === 'high' ? 'destructive' : 'outline'}>
+                          {HOT_TOPIC_ALERT_SEVERITY_LABELS[alert.severity]}
+                        </Badge>
+                      </div>
+                      <p className={uix('uix-abda0153e3')}>
+                        {HOT_TOPIC_ALERT_REASON_LABELS[alert.reason] ?? alert.reason}
+                        {' · '}
+                        {alert.item.target_type}:{alert.item.target_id}
+                        {' · '}
+                        drift {alert.item.drift_risk_score.toFixed(2)}
+                      </p>
+                      {alert.item.linked_case_id && (
+                        <p className={uix('uix-abda0153e3')}>linked case: {alert.item.linked_case_id}</p>
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className={uix('uix-f4cc511ff0')}>
+                  <CardTitle className={uix('uix-fc7473ca09')}>Community 热点控制</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className={uix('uix-abda0153e3')}>
+                    这里会复用 config proposal → validate → approve → apply 流程，对 `rules_json.hot_topic_policy_v1` 做高风险收紧。
+                  </p>
+                  <Input
+                    placeholder="Community ID"
+                    value={communityPolicyId}
+                    onChange={(e) => setCommunityPolicyId(e.target.value)}
+                  />
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className={uix('uix-b3691fbf2a')}>热点模式</label>
+                      <select
+                        value={communityPolicyMode}
+                        onChange={(e) => setCommunityPolicyMode(e.target.value as typeof communityPolicyMode)}
+                        className={uix('uix-34e5554f24')}
+                      >
+                        {Object.entries(HOT_TOPIC_MODE_LABELS).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className={uix('uix-b3691fbf2a')}>用户提示文案</label>
+                      <Input
+                        placeholder="例如：热点内容可能仅保留直达访问"
+                        value={communityPolicyCopy}
+                        onChange={(e) => setCommunityPolicyCopy(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className={uix('uix-b3691fbf2a')}>允许进入热点推荐的域</label>
+                    <div className="flex flex-wrap gap-2">
+                      {COMMUNITY_TOPIC_DOMAIN_OPTIONS.map((domain) => (
+                        <label
+                          key={domain}
+                          className={uix('uix-cc8c57f280')}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={communityAllowedDomains.includes(domain)}
+                            onChange={() => toggleCommunityAllowedDomain(domain)}
+                          />
+                          <span>{HOT_TOPIC_DOMAIN_LABELS[domain]}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      void handleApplyCommunityPolicy()
+                    }}
+                    disabled={applyCommunityHotTopicPolicy.isPending || !communityPolicyId.trim()}
+                  >
+                    {applyCommunityHotTopicPolicy.isPending ? '应用中…' : '提交并应用热点策略'}
+                  </Button>
+                  {applyCommunityHotTopicPolicy.isSuccess && (
+                    <p className={uix('uix-abda0153e3')}>
+                      已完成 proposal/validate/approve/apply，当前版本：
+                      {applyCommunityHotTopicPolicy.data.data.version?.id ?? 'scheduled'}
+                    </p>
+                  )}
+                  {applyCommunityHotTopicPolicy.isError && (
+                    <p className={uix('uix-551c237449')}>{applyCommunityHotTopicPolicy.error.message}</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="governance" className={uix('uix-c52b72f5ca')}>
@@ -685,82 +995,6 @@ export function AdminPanel() {
               </CardContent>
             </Card>
           </div>
-
-          <Card>
-            <CardHeader className={uix('uix-f4cc511ff0')}>
-              <CardTitle className={uix('uix-fc7473ca09')}>Community 热点控制</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className={uix('uix-abda0153e3')}>
-                这里会复用 config proposal → validate → approve → apply 流程，对 `rules_json.hot_topic_policy_v1` 做高风险收紧。
-              </p>
-              <Input
-                placeholder="Community ID"
-                value={communityPolicyId}
-                onChange={(e) => setCommunityPolicyId(e.target.value)}
-              />
-              <div className="grid gap-3 lg:grid-cols-2">
-                <div className="space-y-1">
-                  <label className={uix('uix-b3691fbf2a')}>热点模式</label>
-                  <select
-                    value={communityPolicyMode}
-                    onChange={(e) => setCommunityPolicyMode(e.target.value as typeof communityPolicyMode)}
-                    className={uix('uix-34e5554f24')}
-                  >
-                    {Object.entries(HOT_TOPIC_MODE_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className={uix('uix-b3691fbf2a')}>用户提示文案</label>
-                  <Input
-                    placeholder="例如：热点内容可能仅保留直达访问"
-                    value={communityPolicyCopy}
-                    onChange={(e) => setCommunityPolicyCopy(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className={uix('uix-b3691fbf2a')}>允许进入热点推荐的域</label>
-                <div className="flex flex-wrap gap-2">
-                  {COMMUNITY_TOPIC_DOMAIN_OPTIONS.map((domain) => (
-                    <label
-                      key={domain}
-                      className={uix('uix-cc8c57f280')}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={communityAllowedDomains.includes(domain)}
-                        onChange={() => toggleCommunityAllowedDomain(domain)}
-                      />
-                      <span>{HOT_TOPIC_DOMAIN_LABELS[domain]}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <Button
-                size="sm"
-                onClick={() => {
-                  void handleApplyCommunityPolicy()
-                }}
-                disabled={applyCommunityHotTopicPolicy.isPending || !communityPolicyId.trim()}
-              >
-                {applyCommunityHotTopicPolicy.isPending ? '应用中…' : '提交并应用热点策略'}
-              </Button>
-              {applyCommunityHotTopicPolicy.isSuccess && (
-                <p className={uix('uix-abda0153e3')}>
-                  已完成 proposal/validate/approve/apply，当前版本：
-                  {applyCommunityHotTopicPolicy.data.data.version?.id ?? 'scheduled'}
-                </p>
-              )}
-              {applyCommunityHotTopicPolicy.isError && (
-                <p className={uix('uix-551c237449')}>{applyCommunityHotTopicPolicy.error.message}</p>
-              )}
-            </CardContent>
-          </Card>
 
           <div className={uix('uix-4933602967')}>
             <Card>

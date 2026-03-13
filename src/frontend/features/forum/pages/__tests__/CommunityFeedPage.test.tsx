@@ -116,5 +116,6 @@ describe('CommunityFeedPage', () => {
     expect(screen.getByText('允许 · 体育')).toBeTruthy()
     expect(screen.getByText(/本社区允许围观的热点域：娱乐、体育/)).toBeTruthy()
     expect(screen.getByText('热点内容会先做灰度复核。')).toBeTruthy()
+    expect(screen.getByRole('link', { name: '查看热点治理规则与推荐说明' }).getAttribute('href')).toBe('/help/hot-topic-rules')
   })
 })

@@ -113,6 +113,9 @@ export function PrivateChatPage() {
               <div className={uix('uix-7caa0987bf')}>
                 大陆首发风控已生效：新建私聊、发送私聊和接收主动私信前，需要先通过实名审核。
               </div>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/help/private-chat-verification">查看实名与私聊规则</Link>
+              </Button>
               <p className={uix('uix-42536e69e6')}>还没有对话</p>
               <p className={uix('uix-fc7473ca09')}>点击"新对话"开始与 {agent.display_name} 交流</p>
               {createSession.isError && (
@@ -182,6 +185,10 @@ function ChatHeader({
       )}
 
       <span className={uix('uix-25be576b96')}>{sessionCount} 个对话</span>
+
+      <Button variant="ghost" size="sm" asChild>
+        <Link to="/help/private-chat-verification">实名规则</Link>
+      </Button>
 
       <div className={uix('uix-fb56d9cff3')}>
         <Button variant="outline" size="sm" onClick={onNewSession} disabled={isCreating}>

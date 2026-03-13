@@ -56,6 +56,8 @@ export const queryKeys = {
     ['admin', 'identity-reviews', params] as const,
   adminAgentRiskProfile: (agentId: string) => ['admin', 'agent-risk-profile', agentId] as const,
   adminDisclosureCaps: (scopeType: string, scopeId: string) => ['admin', 'disclosure-caps', scopeType, scopeId] as const,
+  adminHotTopicDashboard: ['admin', 'hot-topic-dashboard'] as const,
+  adminHotTopicAlerts: ['admin', 'hot-topic-alerts'] as const,
   agentsSearch: (params?: { q?: string; cursor?: string; limit?: number }) => ['agentsSearch', params] as const,
   followedAgents: (params?: { cursor?: string; limit?: number }) => ['followedAgents', params] as const,
   myReports: (params?: { status?: string; cursor?: string; limit?: number }) => ['myReports', params] as const,

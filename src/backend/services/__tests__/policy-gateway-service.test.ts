@@ -437,6 +437,41 @@ describe('PolicyGatewayService', () => {
     expect(cases.items[0]?.queue).toBe('HOT_TOPIC')
   })
 
+  it('marks chat-room manual-review hot topics as pending review', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    featureFlags.riskControlV1 = true
+    featureFlags.riskControlChatEnforce = true
+    featureFlags.hotTopicPolicyV1 = true
+
+    const { gateway, riskRepo, agentId } = await buildGatewayWithHotTopicContext({
+      room_program_patch: {
+        director_policy_json: {
+          hot_topic_mode: 'MANUAL_REVIEW_ONLY',
+        },
+      },
+    })
+
+    const decision = await gateway.evaluate({
+      channel: 'chat_room',
+      text: '这档 show 的 finale 热度今晚还在冲榜。',
+      author_agent_id: agentId,
+      room_id: 'room-1',
+      target_type: 'message',
+      target_id: 'message-hot-1',
+      message_id: 'message-hot-1',
+    })
+
+    expect(decision.action).toBe('allow')
+    expect(decision.delivery_status).toBe('PENDING_REVIEW')
+    expect(decision.state_override).toBe('PENDING')
+    expect(decision.distribution_state).toBe('NO_RECOMMEND')
+    expect(decision.reason).toBe('hot_topic_manual_review_only')
+
+    const cases = await riskRepo.listCases({ limit: 20, cursor: undefined })
+    expect(cases.items[0]?.case_type).toBe('HOT_TOPIC')
+    expect(cases.items[0]?.queue).toBe('HOT_TOPIC')
+  })
+
   it('blocks allowed hot topics when the community kill switch is disabled', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     featureFlags.riskControlV1 = true
@@ -466,6 +501,52 @@ describe('PolicyGatewayService', () => {
     expect(decision.action).toBe('block')
     expect(decision.reason).toBe('hot_topic_disabled_by_kill_switch')
     expect(decision.distribution_state).toBe('BLOCKED')
+  })
+
+  it('opens a HOT_TOPIC case for high-propagation allowed topics even without drift', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    featureFlags.riskControlV1 = true
+    featureFlags.riskControlPublicEnforce = true
+    featureFlags.hotTopicPolicyV1 = true
+
+    const { gateway, riskRepo, communityId, agentId } = await buildGatewayWithHotTopicContext({
+      community_rules_json: {
+        hot_topic_policy_v1: {
+          mode: 'NORMAL',
+          allowed_domains: ['ENTERTAINMENT', 'SPORTS', 'LIFESTYLE'],
+          scene_modes: {},
+          user_copy: {},
+          sampling_thresholds: {
+            post_comment_count: 20,
+            room_message_count_hour: 20,
+            report_count_24h: 3,
+          },
+        },
+      },
+    })
+
+    const decision = await gateway.evaluate({
+      channel: 'forum_post',
+      text: '这场 sports finals 和球星复出已经把讨论热度彻底拉满。',
+      author_agent_id: agentId,
+      community_id: communityId,
+      target_type: 'post',
+      target_id: 'post-hot-3',
+      sampling_metrics: {
+        post_comment_count: 26,
+        room_message_count_hour: 0,
+        report_count_24h: 0,
+      },
+    })
+
+    expect(decision.action).toBe('allow')
+    expect(decision.distribution_state).toBe('NORMAL')
+    expect(decision.metadata?.topic_signals?.sampled_review_required).toBe(true)
+
+    const cases = await riskRepo.listCases({ limit: 20, cursor: undefined })
+    expect(cases.items[0]?.case_type).toBe('HOT_TOPIC')
+    expect(cases.items[0]?.queue).toBe('HOT_TOPIC')
+    expect(cases.items[0]?.priority).toBe(78)
   })
 
   it('blocks proactive dm when the agent is limited', async () => {

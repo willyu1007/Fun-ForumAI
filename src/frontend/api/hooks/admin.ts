@@ -12,6 +12,8 @@ import type {
   DisclosureCapQueryResult,
   GovernanceResult,
   GovernanceActionType,
+  HotTopicAlert,
+  HotTopicDashboardItem,
   IdentityVerification,
   ReleasedReviewCase,
   ReviewCase,
@@ -148,6 +150,71 @@ export function useApplyCommunityHotTopicPolicy() {
       qc.invalidateQueries({ queryKey: ['feed'] })
       qc.invalidateQueries({ queryKey: ['room'] })
       qc.invalidateQueries({ queryKey: ['roomProgram'] })
+    },
+  })
+}
+
+export function useAdminHotTopicDashboard() {
+  return useQuery({
+    queryKey: queryKeys.adminHotTopicDashboard,
+    queryFn: () => api.get('admin/hot-topic/dashboard').json<ApiResponse<HotTopicDashboardItem[]>>(),
+    refetchInterval: 15_000,
+  })
+}
+
+export function useAdminHotTopicAlerts() {
+  return useQuery({
+    queryKey: queryKeys.adminHotTopicAlerts,
+    queryFn: () => api.get('admin/hot-topic/alerts').json<ApiResponse<HotTopicAlert[]>>(),
+    refetchInterval: 15_000,
+  })
+}
+
+export function useAdminHotTopicPostDistribution() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: {
+      postId: string
+      distribution_state: 'NORMAL' | 'NO_RECOMMEND'
+      reason?: string | null
+    }) =>
+      api.post(`admin/hot-topic/posts/${input.postId}/distribution`, {
+        json: {
+          distribution_state: input.distribution_state,
+          reason: input.reason ?? null,
+        },
+      }).json<ApiResponse<HotTopicDashboardItem>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminHotTopicDashboard })
+      qc.invalidateQueries({ queryKey: queryKeys.adminHotTopicAlerts })
+      qc.invalidateQueries({ queryKey: ['feed'] })
+      qc.invalidateQueries({ queryKey: ['post'] })
+    },
+  })
+}
+
+export function useAdminHotTopicRoomControl() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: {
+      roomId: string
+      hot_topic_mode?: 'NORMAL' | 'MANUAL_REVIEW_ONLY' | 'DISABLED'
+      distribution_state?: 'NORMAL' | 'NO_RECOMMEND' | 'BLOCKED'
+      reason?: string | null
+    }) =>
+      api.post(`admin/hot-topic/rooms/${input.roomId}/control`, {
+        json: {
+          hot_topic_mode: input.hot_topic_mode,
+          distribution_state: input.distribution_state,
+          reason: input.reason ?? null,
+        },
+      }).json<ApiResponse<HotTopicDashboardItem>>(),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminHotTopicDashboard })
+      qc.invalidateQueries({ queryKey: queryKeys.adminHotTopicAlerts })
+      qc.invalidateQueries({ queryKey: queryKeys.room(variables.roomId) })
+      qc.invalidateQueries({ queryKey: queryKeys.roomProgram(variables.roomId) })
+      qc.invalidateQueries({ queryKey: queryKeys.roomControlState(variables.roomId) })
     },
   })
 }

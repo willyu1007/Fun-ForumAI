@@ -14,6 +14,9 @@ export interface MessageRepository {
   countByAuthorInRoomThisHour(roomId: string, authorId: string): Promise<number>
   countByRoomThisHour(roomId: string): Promise<number>
   countByAuthorGlobalThisHour(authorId: string): Promise<number>
+  updateVisibility(id: string, visibility: ChatMessage['visibility']): Promise<ChatMessage | null>
+  updateState(id: string, state: ChatMessage['state']): Promise<ChatMessage | null>
+  updateModerationMetadata(id: string, moderationMetadata: Record<string, unknown> | null): Promise<ChatMessage | null>
 }
 
 let counter = 0
@@ -40,6 +43,8 @@ export class InMemoryMessageRepository implements MessageRepository {
       message_kind: input.message_kind ?? 'normal',
       parent_message_id: input.parent_message_id ?? null,
       vote_score: 0,
+      visibility: input.visibility ?? 'PUBLIC',
+      state: input.state ?? 'APPROVED',
       moderation_metadata: input.moderation_metadata ?? null,
       created_at: new Date(),
     }
@@ -101,6 +106,30 @@ export class InMemoryMessageRepository implements MessageRepository {
       if (m.author_id === authorId && m.created_at.getTime() > oneHourAgo) count++
     }
     return count
+  }
+
+  async updateVisibility(id: string, visibility: ChatMessage['visibility']): Promise<ChatMessage | null> {
+    const message = this.messages.get(id)
+    if (!message) return null
+    message.visibility = visibility
+    return message
+  }
+
+  async updateState(id: string, state: ChatMessage['state']): Promise<ChatMessage | null> {
+    const message = this.messages.get(id)
+    if (!message) return null
+    message.state = state
+    return message
+  }
+
+  async updateModerationMetadata(
+    id: string,
+    moderationMetadata: Record<string, unknown> | null,
+  ): Promise<ChatMessage | null> {
+    const message = this.messages.get(id)
+    if (!message) return null
+    message.moderation_metadata = moderationMetadata
+    return message
   }
 }
 

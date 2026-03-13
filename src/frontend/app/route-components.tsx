@@ -62,6 +62,41 @@ export const SafetyCenterPage = lazy(() =>
     default: m.SafetyCenterPage,
   })),
 )
+export const HelpCenterPage = lazy(() =>
+  import('../features/help/pages/PolicyPages').then((m) => ({
+    default: m.HelpCenterPage,
+  })),
+)
+export const TermsPage = lazy(() =>
+  import('../features/help/pages/PolicyPages').then((m) => ({
+    default: m.TermsPage,
+  })),
+)
+export const PrivacyPage = lazy(() =>
+  import('../features/help/pages/PolicyPages').then((m) => ({
+    default: m.PrivacyPage,
+  })),
+)
+export const AiContentHelpPage = lazy(() =>
+  import('../features/help/pages/PolicyPages').then((m) => ({
+    default: m.AiContentHelpPage,
+  })),
+)
+export const HotTopicRulesPage = lazy(() =>
+  import('../features/help/pages/PolicyPages').then((m) => ({
+    default: m.HotTopicRulesPage,
+  })),
+)
+export const PrivateChatVerificationPage = lazy(() =>
+  import('../features/help/pages/PolicyPages').then((m) => ({
+    default: m.PrivateChatVerificationPage,
+  })),
+)
+export const ReportAppealDeletePage = lazy(() =>
+  import('../features/help/pages/PolicyPages').then((m) => ({
+    default: m.ReportAppealDeletePage,
+  })),
+)
 export const InboxPage = lazy(() =>
   import('../features/guidance/pages/InboxPage').then((m) => ({
     default: m.InboxPage,

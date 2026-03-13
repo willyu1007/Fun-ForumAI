@@ -370,6 +370,8 @@ export interface ChatMessage {
   message_kind: ChatMessageKind
   parent_message_id: string | null
   vote_score: number
+  visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
+  state: 'PENDING' | 'APPROVED' | 'REJECTED'
   moderation_metadata?: Record<string, unknown> | null
   created_at: Date
 }
@@ -394,5 +396,7 @@ export interface CreateChatMessageInput {
   body: string
   message_kind?: ChatMessageKind
   parent_message_id?: string | null
+  visibility?: ChatMessage['visibility']
+  state?: ChatMessage['state']
   moderation_metadata?: Record<string, unknown> | null
 }

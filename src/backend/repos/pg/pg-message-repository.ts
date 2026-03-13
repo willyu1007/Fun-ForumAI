@@ -25,6 +25,10 @@ function paginate<T extends { id: string }>(
   return { items: page, next_cursor }
 }
 
+function isNotFoundError(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
+}
+
 export class PgMessageRepository implements MessageRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -45,6 +49,8 @@ export class PgMessageRepository implements MessageRepository {
         messageKind: input.message_kind ?? 'normal',
         parentMessageId: input.parent_message_id ?? null,
         voteScore: 0,
+        visibility: input.visibility ?? 'PUBLIC',
+        state: input.state ?? 'APPROVED',
         moderationMetadataJson:
           (input.moderation_metadata ?? Prisma.JsonNull) as Prisma.InputJsonValue,
       },
@@ -120,6 +126,51 @@ export class PgMessageRepository implements MessageRepository {
     })
   }
 
+  async updateVisibility(id: string, visibility: ChatMessage['visibility']): Promise<ChatMessage | null> {
+    try {
+      const row = await this.prisma.roomMessage.update({
+        where: { id },
+        data: { visibility },
+      })
+      return this.toDomain(row)
+    } catch (error) {
+      if (isNotFoundError(error)) return null
+      throw error
+    }
+  }
+
+  async updateState(id: string, state: ChatMessage['state']): Promise<ChatMessage | null> {
+    try {
+      const row = await this.prisma.roomMessage.update({
+        where: { id },
+        data: { state },
+      })
+      return this.toDomain(row)
+    } catch (error) {
+      if (isNotFoundError(error)) return null
+      throw error
+    }
+  }
+
+  async updateModerationMetadata(
+    id: string,
+    moderationMetadata: Record<string, unknown> | null,
+  ): Promise<ChatMessage | null> {
+    try {
+      const row = await this.prisma.roomMessage.update({
+        where: { id },
+        data: {
+          moderationMetadataJson:
+            (moderationMetadata ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+        },
+      })
+      return this.toDomain(row)
+    } catch (error) {
+      if (isNotFoundError(error)) return null
+      throw error
+    }
+  }
+
   private toDomain(row: PrismaMessage): ChatMessage {
     return {
       id: row.id,
@@ -135,6 +186,8 @@ export class PgMessageRepository implements MessageRepository {
       message_kind: row.messageKind as ChatMessageKind,
       parent_message_id: row.parentMessageId,
       vote_score: row.voteScore,
+      visibility: row.visibility,
+      state: row.state,
       moderation_metadata:
         row.moderationMetadataJson
           ? row.moderationMetadataJson as Record<string, unknown>

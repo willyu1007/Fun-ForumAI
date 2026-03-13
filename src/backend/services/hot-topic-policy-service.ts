@@ -22,6 +22,14 @@ export interface HotTopicEvaluation {
   distribution_state: HotTopicDistributionState
   reason: string
   enforcement_reason: string
+  sampled_review_required: boolean
+  sampling_metrics: {
+    post_comment_count: number
+    room_message_count_hour: number
+    report_count_24h: number
+  }
+  gray_keyword_matches: string[]
+  deny_keyword_matches: string[]
 }
 
 interface KeywordMatchSummary {
@@ -59,15 +67,6 @@ const ALLOWED_DOMAINS: Exclude<HotTopicDomain, 'GENERAL' | 'SENSITIVE'>[] = [
 function collectMatches(text: string, keywords: string[]): string[] {
   const lowered = text.toLowerCase()
   return keywords.filter((keyword) => lowered.includes(keyword.toLowerCase()))
-}
-
-function summarizeMatches(corpus: string): KeywordMatchSummary {
-  return {
-    ENTERTAINMENT: collectMatches(corpus, DOMAIN_KEYWORDS.ENTERTAINMENT),
-    SPORTS: collectMatches(corpus, DOMAIN_KEYWORDS.SPORTS),
-    LIFESTYLE: collectMatches(corpus, DOMAIN_KEYWORDS.LIFESTYLE),
-    SENSITIVE: collectMatches(corpus, DOMAIN_KEYWORDS.SENSITIVE),
-  }
 }
 
 function totalMatchCount(matches: KeywordMatchSummary): number {
@@ -112,15 +111,53 @@ export class HotTopicPolicyService {
     tags?: string[]
     context_text?: string | null
     context_tags?: string[]
+    policy?: {
+      keyword_overrides?: {
+        allow?: Partial<Record<'ENTERTAINMENT' | 'SPORTS' | 'LIFESTYLE', string[]>>
+        gray?: string[]
+        deny?: string[]
+      }
+      sampling_thresholds?: {
+        post_comment_count?: number
+        room_message_count_hour?: number
+        report_count_24h?: number
+      }
+    } | null
+    sampling_metrics?: {
+      post_comment_count?: number
+      room_message_count_hour?: number
+      report_count_24h?: number
+    }
   }): HotTopicEvaluation {
+    const allowOverrides = input.policy?.keyword_overrides?.allow ?? {}
+    const grayOverrides = input.policy?.keyword_overrides?.gray ?? []
+    const denyOverrides = input.policy?.keyword_overrides?.deny ?? []
+    const thresholds = {
+      post_comment_count: input.policy?.sampling_thresholds?.post_comment_count ?? 20,
+      room_message_count_hour: input.policy?.sampling_thresholds?.room_message_count_hour ?? 20,
+      report_count_24h: input.policy?.sampling_thresholds?.report_count_24h ?? 3,
+    }
+    const samplingMetrics = {
+      post_comment_count: input.sampling_metrics?.post_comment_count ?? 0,
+      room_message_count_hour: input.sampling_metrics?.room_message_count_hour ?? 0,
+      report_count_24h: input.sampling_metrics?.report_count_24h ?? 0,
+    }
     const currentCorpus = [input.text, ...(input.tags ?? [])].join(' ').trim()
     const contextCorpus = [input.context_text ?? '', ...(input.context_tags ?? [])].join(' ').trim()
-    const currentMatches = summarizeMatches(currentCorpus)
-    const contextMatches = summarizeMatches(contextCorpus)
+    const currentMatches = summarizeMatchesWithOverrides(currentCorpus, allowOverrides)
+    const contextMatches = summarizeMatchesWithOverrides(contextCorpus, allowOverrides)
+    const deny_keyword_matches = unique([
+      ...collectMatches(currentCorpus, denyOverrides),
+      ...collectMatches(contextCorpus, denyOverrides),
+    ])
+    const gray_keyword_matches = unique([
+      ...collectMatches(currentCorpus, grayOverrides),
+      ...collectMatches(contextCorpus, grayOverrides),
+    ])
     const totalCurrent = totalMatchCount(currentMatches)
     const totalContext = totalMatchCount(contextMatches)
     const topic_domain = pickTopicDomain(currentMatches, contextMatches)
-    const hot_topic_flag = totalCurrent + totalContext > 0
+    const hot_topic_flag = totalCurrent + totalContext + gray_keyword_matches.length + deny_keyword_matches.length > 0
     const sensitive_matches = unique([
       ...currentMatches.SENSITIVE,
       ...contextMatches.SENSITIVE,
@@ -174,6 +211,14 @@ export class HotTopicPolicyService {
       : topic_domain !== 'GENERAL' && hot_topic_flag && topic_confidence < 0.6
         ? roundScore(0.42 + (0.6 - topic_confidence))
         : 0
+    const sampled_review_required = Boolean(
+      hot_topic_flag
+      && (
+        samplingMetrics.post_comment_count >= thresholds.post_comment_count
+        || samplingMetrics.room_message_count_hour >= thresholds.room_message_count_hour
+        || samplingMetrics.report_count_24h >= thresholds.report_count_24h
+      ),
+    )
 
     if (!hot_topic_flag) {
       return {
@@ -191,6 +236,33 @@ export class HotTopicPolicyService {
         distribution_state: 'NORMAL',
         reason: 'no_hot_topic_policy_match',
         enforcement_reason: 'no_hot_topic_policy_match',
+        sampled_review_required: false,
+        sampling_metrics: samplingMetrics,
+        gray_keyword_matches: [],
+        deny_keyword_matches: [],
+      }
+    }
+
+    if (deny_keyword_matches.length > 0) {
+      return {
+        allowed: false,
+        domain: topic_domain,
+        topic_domain,
+        hot_topic_flag: true,
+        topic_confidence,
+        drift_risk_score: Math.max(drift_risk_score, 0.9),
+        drift_detected,
+        matched_keywords,
+        allowed_matches,
+        sensitive_matches,
+        context_matches,
+        distribution_state: 'BLOCKED',
+        reason: 'hot_topic_keyword_deny_blocked',
+        enforcement_reason: 'hot_topic_keyword_deny_blocked',
+        sampled_review_required: true,
+        sampling_metrics: samplingMetrics,
+        gray_keyword_matches,
+        deny_keyword_matches,
       }
     }
 
@@ -213,16 +285,25 @@ export class HotTopicPolicyService {
         distribution_state: 'BLOCKED',
         reason,
         enforcement_reason: reason,
+        sampled_review_required: true,
+        sampling_metrics: samplingMetrics,
+        gray_keyword_matches,
+        deny_keyword_matches,
       }
     }
 
     const distribution_state: HotTopicDistributionState =
-      drift_detected || topic_confidence < 0.6 || (totalCurrent === 0 && totalContext > 0)
+      gray_keyword_matches.length > 0
+      || drift_detected
+      || topic_confidence < 0.6
+      || (totalCurrent === 0 && totalContext > 0)
         ? 'NO_RECOMMEND'
         : 'NORMAL'
 
     const enforcement_reason = distribution_state === 'NO_RECOMMEND'
-      ? drift_detected
+      ? gray_keyword_matches.length > 0
+        ? 'hot_topic_keyword_gray_review'
+        : drift_detected
         ? 'hot_topic_drift_requires_gray_review'
         : 'hot_topic_low_confidence_requires_gray_review'
       : topic_domain === 'ENTERTAINMENT'
@@ -246,6 +327,31 @@ export class HotTopicPolicyService {
       distribution_state,
       reason: enforcement_reason,
       enforcement_reason,
+      sampled_review_required,
+      sampling_metrics: samplingMetrics,
+      gray_keyword_matches,
+      deny_keyword_matches,
     }
+  }
+}
+
+function summarizeMatchesWithOverrides(
+  corpus: string,
+  overrides: Partial<Record<'ENTERTAINMENT' | 'SPORTS' | 'LIFESTYLE', string[]>>,
+): KeywordMatchSummary {
+  return {
+    ENTERTAINMENT: collectMatches(corpus, [
+      ...DOMAIN_KEYWORDS.ENTERTAINMENT,
+      ...(overrides.ENTERTAINMENT ?? []),
+    ]),
+    SPORTS: collectMatches(corpus, [
+      ...DOMAIN_KEYWORDS.SPORTS,
+      ...(overrides.SPORTS ?? []),
+    ]),
+    LIFESTYLE: collectMatches(corpus, [
+      ...DOMAIN_KEYWORDS.LIFESTYLE,
+      ...(overrides.LIFESTYLE ?? []),
+    ]),
+    SENSITIVE: collectMatches(corpus, DOMAIN_KEYWORDS.SENSITIVE),
   }
 }

@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router'
 import { Layout } from '../shared/components/Layout'
 import {
   AdminPanel,
+  AiContentHelpPage,
   AgentDashboardPage,
   AgentDirectoryPage,
   AgentManagePage,
@@ -11,14 +12,20 @@ import {
   CommunitiesPage,
   CommunityFeedPage,
   FeedPage,
+  HelpCenterPage,
   HighlightsPage,
   InboxPage,
   LoginPage,
   PostDetailPage,
+  PrivacyPage,
   PrivateChatPage,
+  PrivateChatVerificationPage,
+  ReportAppealDeletePage,
   RegisterPage,
   SafetyCenterPage,
   SuspenseWrap,
+  TermsPage,
+  HotTopicRulesPage,
 } from './route-components'
 
 export const router = createBrowserRouter([
@@ -38,6 +45,13 @@ export const router = createBrowserRouter([
       { path: 'posts/:postId', element: <SuspenseWrap><PostDetailPage /></SuspenseWrap> },
       { path: 'c/:slug', element: <SuspenseWrap><CommunityFeedPage /></SuspenseWrap> },
       { path: 'highlights', element: <SuspenseWrap><HighlightsPage /></SuspenseWrap> },
+      { path: 'help', element: <SuspenseWrap><HelpCenterPage /></SuspenseWrap> },
+      { path: 'terms', element: <SuspenseWrap><TermsPage /></SuspenseWrap> },
+      { path: 'privacy', element: <SuspenseWrap><PrivacyPage /></SuspenseWrap> },
+      { path: 'help/ai-content', element: <SuspenseWrap><AiContentHelpPage /></SuspenseWrap> },
+      { path: 'help/hot-topic-rules', element: <SuspenseWrap><HotTopicRulesPage /></SuspenseWrap> },
+      { path: 'help/private-chat-verification', element: <SuspenseWrap><PrivateChatVerificationPage /></SuspenseWrap> },
+      { path: 'help/report-appeal-delete', element: <SuspenseWrap><ReportAppealDeletePage /></SuspenseWrap> },
       { path: 'inbox', element: <SuspenseWrap><InboxPage /></SuspenseWrap> },
       { path: 'communities', element: <SuspenseWrap><CommunitiesPage /></SuspenseWrap> },
       { path: 'agents/:agentId', element: <SuspenseWrap><AgentProfilePage /></SuspenseWrap> },

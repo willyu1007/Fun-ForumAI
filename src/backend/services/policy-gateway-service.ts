@@ -133,6 +133,11 @@ export class PolicyGatewayService {
     scene?: string | null
     existing_moderation?: ModerationResult
     prefer_rewrite?: boolean
+    sampling_metrics?: {
+      post_comment_count?: number
+      room_message_count_hour?: number
+      report_count_24h?: number
+    }
   }): Promise<PolicyGatewayResult> {
     const textForModeration = input.title ? `${input.title}\n\n${input.text}` : input.text
     const moderationBase = input.existing_moderation ?? this.deps.moderator.evaluate({
@@ -153,17 +158,19 @@ export class PolicyGatewayService {
       : moderationBase
 
     const shouldEvaluateHotTopic = this.shouldEvaluateHotTopicPolicy(input.channel)
-    const [hotTopicContext, hotTopic] = shouldEvaluateHotTopic
-      ? await Promise.all([
-          this.resolveHotTopicPolicyContext(input),
-          Promise.resolve(this.deps.hotTopicPolicyService.evaluate({
-            text: textForModeration,
-            tags: input.tags,
-            context_text: input.topic_context_text,
-            context_tags: input.topic_context_tags,
-          })),
-        ])
-      : [null, null]
+    const hotTopicContext = shouldEvaluateHotTopic
+      ? await this.resolveHotTopicPolicyContext(input)
+      : null
+    const hotTopic = shouldEvaluateHotTopic
+      ? this.deps.hotTopicPolicyService.evaluate({
+          text: textForModeration,
+          tags: input.tags,
+          context_text: input.topic_context_text,
+          context_tags: input.topic_context_tags,
+          policy: hotTopicContext?.community_policy ?? null,
+          sampling_metrics: input.sampling_metrics,
+        })
+      : null
 
     const hotTopicEnforcement = this.resolveHotTopicEnforcement({
       channel: input.channel,
@@ -172,17 +179,18 @@ export class PolicyGatewayService {
       context: hotTopicContext,
     })
 
-    let action: PolicyGatewayResult['action'] = 'allow'
-    let final_text = input.text
-    let delivery_status: MessageDeliveryStatus = 'DELIVERED'
+    let action: PolicyGatewayResult['action']
+    let final_text: string
+    let delivery_status: MessageDeliveryStatus
     let rewrite_cause: string | null = null
-    let reason = 'policy_allow'
+    let reason: string
     let visibility_override: PolicyGatewayResult['visibility_override'] = hotTopicEnforcement?.visibility_override ?? null
     let state_override: PolicyGatewayResult['state_override'] = hotTopicEnforcement?.state_override ?? null
     let distribution_state: HotTopicDistributionState = hotTopicEnforcement?.distribution_state ?? 'NORMAL'
 
     if (hotTopicEnforcement?.action === 'block') {
       action = 'block'
+      final_text = input.text
       delivery_status = hotTopicEnforcement.delivery_status
       reason = hotTopicEnforcement.reason
       distribution_state = 'BLOCKED'
@@ -250,11 +258,18 @@ export class PolicyGatewayService {
           scene_key: hotTopicContext?.scene_key ?? null,
           room_no_recommend: hotTopicContext?.room_no_recommend ?? false,
           policy_shadowed: shadowed,
+          sampled_review_required: hotTopic.sampled_review_required,
+          sampling_metrics: hotTopic.sampling_metrics,
+          gray_keyword_matches: hotTopic.gray_keyword_matches,
+          deny_keyword_matches: hotTopic.deny_keyword_matches,
         }
       : null
 
     const ordinaryAllow = action === 'allow' && distribution_state === 'NORMAL' && !spilloverEnforcement
-    const hotTopicCase = Boolean(topicSignals?.hot_topic_flag) && !ordinaryAllow
+    const hotTopicCase = Boolean(
+      topicSignals?.hot_topic_flag
+      && (!ordinaryAllow || hotTopic?.sampled_review_required),
+    )
     const caseRouting = hotTopicCase
       ? {
           case_type: 'HOT_TOPIC' as ReviewCaseType,
@@ -263,6 +278,8 @@ export class PolicyGatewayService {
             ? 95
             : hotTopic?.drift_detected
               ? 90
+              : hotTopic?.sampled_review_required
+                ? 78
               : 82,
         }
       : null
@@ -314,6 +331,7 @@ export class PolicyGatewayService {
         || moderation.risk_level === 'high'
         || action === 'block'
         || distribution_state !== 'NORMAL'
+        || Boolean(hotTopic?.sampled_review_required)
         || Boolean(spilloverEnforcement),
       case_type: caseRouting?.case_type,
       queue: caseRouting?.queue,
@@ -672,9 +690,11 @@ export class PolicyGatewayService {
         visibility_override: input.channel === 'forum_post' || input.channel === 'forum_comment'
           ? 'GRAY'
           : null,
-        state_override: input.channel === 'forum_post' || input.channel === 'forum_comment'
-          ? 'APPROVED'
-          : null,
+        state_override: input.channel === 'chat_room'
+          ? 'PENDING'
+          : input.channel === 'forum_post' || input.channel === 'forum_comment'
+            ? 'APPROVED'
+            : null,
         pending_review: input.channel === 'chat_room',
       }
     }
