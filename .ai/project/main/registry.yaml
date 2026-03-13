@@ -850,7 +850,7 @@ tasks:
     updated: 2026-03-13
   - id: T-094
     slug: public-director-boundary-and-scene-contract
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-060
     requirement_ids:

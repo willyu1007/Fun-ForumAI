@@ -1,10 +1,11 @@
 {
   "envs": [
     "dev",
+    "dev.local",
     "prod",
     "staging"
   ],
-  "generated_at_utc": "2026-03-11T04:23:33Z",
+  "generated_at_utc": "2026-03-13T13:46:17Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "APP_ENV": {
@@ -857,6 +858,23 @@
       "state": "active",
       "type": "enum"
     },
+    "FF_PRIVATE_DIRECTOR_BOUNDARY_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Remove director/showrunner semantics from private chat and proactive opening prompt paths.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
     "FF_PROMPT_AUDIT_V1": {
       "default": "false",
       "deprecate_after": null,
@@ -908,6 +926,23 @@
       "state": "active",
       "type": "enum"
     },
+    "FF_PUBLIC_DIRECTOR_CONTRACT_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable shared public director contract read path and surface vocabulary exports.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
     "FF_PUBLIC_OBSERVATION_MEMORY": {
       "default": "false",
       "deprecate_after": null,
@@ -946,6 +981,23 @@
       "default": "true",
       "deprecate_after": null,
       "description": "Enable runtime feature snapshot endpoint and startup observability output.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_SCENE_POOL_ASSET_OPS_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable scene-pool v2 catalog projection, lifecycle mapping, and asset ops compatibility path.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null

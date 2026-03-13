@@ -6,7 +6,6 @@
   - `T-073 ~ T-075` 仅负责聊天室节目化与 projection/ecology；
   - `T-016` 继续保留为长期 backlog 仓库。
 - 本包挂接到新 feature `F-060 Public Scene Pool & Director Orchestration`，并占用 requirement `R-060`。
-- 当前没有产品代码改动；后续实现入口依赖 `T-095` 和 `T-096`。
 - 2026-03-13 覆盖性评审后，已把两类原先悬空的缺口并回本包：
   - scene-pool 资产层/轮换/运营化归属；
   - `private_chat` / `proactive_dm` 的执行级收口矩阵。
@@ -30,6 +29,23 @@
   - `scene_binding_v1.activation.trigger_conditions` 与 `governance.risk_override` 改为枚举，避免 selector 接入时出现 free-text 语义漂移；
   - `episode_overlay_v1` 显式禁止 `autonomous + external_verified` 组合，并限制 `facts_digest` 不得偷带导演语义；
   - `LocalIntent.target_ref` 改为结构化 union，并按 `delivery_surface` 固定可用形状。
+- 2026-03-13 已完成 T-094 最小实现接线：
+  - 在 `src/backend/stage/public-director-contract.js` / `.d.ts` 新增统一 contract 模块，集中导出 surface vocabulary、`stage_template_v2`、`scene_binding_v1`、`episode_overlay_v1`、`LocalIntent`、`PrivateChatContext`、`ProactiveDmOpeningContext`、`SceneMetadata` 与校验器；
+  - `src/backend/stage/stage-template-ops.js`、`scripts/stage-templates-export.mjs`、`scripts/stage-templates-validate.mjs` 已改为读取 legacy authoring SoT 并投影出 v2 scene-pool catalog；
+  - `PromptScene` 在 `src/backend/runtime/types.ts` 中保留为 legacy 调用场景枚举，不再承担 director contract 命名。
+- 2026-03-13 已完成私域边界收口：
+  - `src/backend/runtime/prompt-orchestrator.ts` 新增 private/proactive showrunner suppression；
+  - `src/backend/services/private-channel-service.ts` 与 `src/backend/services/proactive-interaction-service.ts` 在 `FF_PRIVATE_DIRECTOR_BOUNDARY_V1` 打开时不再注入 `layer_showrunner`；
+  - `src/backend/llm/prompt-engine.ts` 允许缺省 optional placeholder，以兼容 prompt 模板在私域边界收口期间的平滑过渡。
+- 2026-03-13 已完成 feature flag 与 env contract 接线：
+  - `FF_PUBLIC_DIRECTOR_CONTRACT_V1`
+  - `FF_PRIVATE_DIRECTOR_BOUNDARY_V1`
+  - `FF_SCENE_POOL_ASSET_OPS_V1`
+  - `env/secrets/dev.local.ref.yaml` 已补齐本地 secret refs，确保 `env-contractctl validate/generate` 可通过。
+- 2026-03-13 根据实施后 code review 继续做了三项 hardening：
+  - 把 scene-pool v2 dist/export/rotation 改成真实受 `FF_PUBLIC_DIRECTOR_CONTRACT_V1 + FF_SCENE_POOL_ASSET_OPS_V1` 双 flag 控制，flag-off 时保持 legacy v1 输出，不再默认改写 dist 结构；
+  - 把 `stage_template_v2.director.applicable_surfaces` 的默认值收窄为当前 legacy forum entry surfaces，并让 `scene_binding_v1.entry_surfaces` 按 director surface 做子集投影，避免合同内部自相矛盾；
+  - 把 `PromptEngine` 的 placeholder 宽免从“全局 optional schema 字段”收回到“仅 `agent-private-chat-reply` / `agent-proactive-dm-opening` 在 private boundary flag-on 时可缺省 `layer_showrunner`”，避免其他 prompt 静默丢占位符。
 
 ## Open follow-up actions
 - `T-095` 需基于本包冻结的 contract 设计 `SceneSelector` 和 `scheduled_post/forum` 接入。

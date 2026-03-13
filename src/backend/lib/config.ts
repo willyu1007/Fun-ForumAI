@@ -122,6 +122,8 @@ export const config = {
     layerStackV2: env.FF_LAYER_STACK_V2 === 'true',
     promptAuditV1: env.FF_PROMPT_AUDIT_V1 === 'true',
     promptOrchestratorV1: env.FF_PROMPT_ORCHESTRATOR_V1 === 'true',
+    publicDirectorContractV1: env.FF_PUBLIC_DIRECTOR_CONTRACT_V1 === 'true',
+    privateDirectorBoundaryV1: env.FF_PRIVATE_DIRECTOR_BOUNDARY_V1 === 'true',
     promptOrchestratorScenes: (env.FF_PROMPT_ORCHESTRATOR_SCENES || '')
       .split(',')
       .map((item) => item.trim())
@@ -158,6 +160,7 @@ export const config = {
     aftershowV1: env.FF_AFTERSHOW_V1 === 'true',
     aftershowAudienceSummaryV1: env.FF_AFTERSHOW_AUDIENCE_SUMMARY_V1 === 'true',
     stageRotationV1: env.FF_STAGE_ROTATION_V1 === 'true',
+    scenePoolAssetOpsV1: env.FF_SCENE_POOL_ASSET_OPS_V1 === 'true',
     eventContractV1: env.FF_EVENT_CONTRACT_V1 === 'true',
     controlPlaneConfigV1: env.FF_CONTROL_PLANE_CONFIG_V1 === 'true',
     aftershowEventPipelineV1: env.FF_AFTERSHOW_EVENT_PIPELINE_V1 === 'true',

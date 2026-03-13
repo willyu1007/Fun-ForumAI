@@ -14,6 +14,15 @@ function withLayerStackFlag<T>(enabled: boolean, run: () => Promise<T>): Promise
   })
 }
 
+function withFeatureFlags<T>(override: Partial<Record<string, boolean>>, run: () => Promise<T>): Promise<T> {
+  const featureFlags = config.features as unknown as Record<string, boolean>
+  const snapshot = { ...featureFlags }
+  Object.assign(featureFlags, override)
+  return run().finally(() => {
+    Object.assign(featureFlags, snapshot)
+  })
+}
+
 function buildSession(): PrivateSession {
   return {
     id: 'session-1',
@@ -183,16 +192,20 @@ describe('PrivateChannelService', () => {
     })
 
     await withLayerStackFlag(true, async () => {
-      const result = await service.sendMessage(session.id, 'user-1', ' 你好 ')
-      expect(result.agent_reply.content).toBe('你好呀')
-      expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
-        preferredModelId: 'qwen-flash-character',
-        promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
-        variables: expect.objectContaining({
-          persona_name: 'Agent One',
-          latest_user_message: '你好',
-        }),
-      }))
+      await withFeatureFlags({ privateDirectorBoundaryV1: true }, async () => {
+        const result = await service.sendMessage(session.id, 'user-1', ' 你好 ')
+        expect(result.agent_reply.content).toBe('你好呀')
+        expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
+          preferredModelId: 'qwen-flash-character',
+          promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
+          variables: expect.objectContaining({
+            persona_name: 'Agent One',
+            latest_user_message: '你好',
+          }),
+        }))
+        const firstCall = gatewayGenerate.mock.calls.at(0)?.[0] as { variables: Record<string, string> } | undefined
+        expect(firstCall?.variables.layer_showrunner).toBeUndefined()
+      })
     })
   })
 

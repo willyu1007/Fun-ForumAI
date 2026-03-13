@@ -21,7 +21,7 @@
 ## Context
 - `T-073 ~ T-075` 已在 chatroom 里建立 `program / beat / cue / highlight / cast / snapshot` 等节目原语。
 - 这些能力目前仍主要是 chatroom-local 语义，尚未映射到统一的 `template / binding / episode / phase / LocalIntent` 合同。
-- `scene_pool_director_scene_aware_design.md` 已明确：聊天室应复用统一导演协议，而不是再造一套系统。
+- `/Users/yurui/Downloads/scene_pool_design.md` 已明确：聊天室应复用统一导演协议，而不是再造一套系统；旧的 `scene_pool_director_scene_aware_design.md` 仅作为历史草案保留。
 - 需求文档同时要求对内容消费、养成体验和系统稳定性做成功判定与对照实验；这部分此前没有明确 owner。
 
 ## Acceptance criteria (high level)

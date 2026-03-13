@@ -21,6 +21,7 @@ import {
 } from '../runtime/persona-observation.js'
 import type { PolicyGatewayService } from './policy-gateway-service.js'
 import type { IdentityGateService } from './identity-gate-service.js'
+import { config } from '../lib/config.js'
 
 const MAX_PROACTIVE_PER_DAY = 2
 const PROACTIVE_COOLDOWN_MS = 4 * 60 * 60 * 1000
@@ -315,10 +316,12 @@ export class ProactiveInteractionService {
           layer_instructions: composed.layers.layer3_instructions ?? '',
           layer_community: composed.layers.layer_community ?? '',
           layer_relationship: composed.layers.layer_relationship ?? '',
-          layer_showrunner: composed.layers.layer_showrunner ?? '',
           layer_overrides: composed.layers.layer4_overrides ?? '',
           layer_memory: composed.layers.layer5_memory ?? '',
           layer_privacy: composed.layers.layer6_privacy ?? '',
+        }
+        if (!config.features.privateDirectorBoundaryV1) {
+          variables.layer_showrunner = composed.layers.layer_showrunner ?? ''
         }
 
         const startMs = Date.now()

@@ -207,6 +207,11 @@ export class PromptOrchestrator {
     return whitelist.includes(scene)
   }
 
+  private shouldSuppressShowrunnerLayer(scene: PromptScene): boolean {
+    if (!config.features.privateDirectorBoundaryV1) return false
+    return scene === 'private_chat' || scene === 'proactive_dm'
+  }
+
   private applyGovernance(
     input: PromptOrchestratorInput,
     persona: AgentPersona,
@@ -291,6 +296,11 @@ export class PromptOrchestrator {
       trimReasons.push('budget_exceeded_non_trimmable_privacy')
     }
 
+    const suppressShowrunnerLayer = this.shouldSuppressShowrunnerLayer(input.scene)
+    if (suppressShowrunnerLayer && (categories.scene_rule || categories.short_term_state)) {
+      this.pushLintWarning(lintWarnings, 'showrunner_suppressed_private_boundary')
+    }
+
     const communityLayer = this.joinSections([
       categories.community_hard
         ? `## 社区硬规则\n${categories.community_hard}`
@@ -299,14 +309,16 @@ export class PromptOrchestrator {
         ? `## 社区文化偏好\n${categories.community_soft}`
         : '',
     ])
-    const showrunnerLayer = this.joinSections([
-      categories.scene_rule
-        ? `## 场景规则\n${categories.scene_rule}`
-        : '',
-      categories.short_term_state
-        ? `## 短期剧情状态\n${categories.short_term_state}`
-        : '',
-    ])
+    const showrunnerLayer = suppressShowrunnerLayer
+      ? ''
+      : this.joinSections([
+          categories.scene_rule
+            ? `## 场景规则\n${categories.scene_rule}`
+            : '',
+          categories.short_term_state
+            ? `## 短期剧情状态\n${categories.short_term_state}`
+            : '',
+        ])
 
     const layers: PromptLayers = {
       layer1_traits: this.orUndefined(categories.persona_traits),

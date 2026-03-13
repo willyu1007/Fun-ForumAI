@@ -114,6 +114,49 @@ describe('PromptOrchestrator', () => {
     expect(result.audit.includedLayerIds).toContain('layer6_privacy')
   })
 
+  it('suppresses showrunner layer for private scenes when the private boundary flag is enabled', async () => {
+    const composeLayersWithAudit = vi.fn(async () => ({
+      layers: {
+        layer1_traits: 'growth',
+        layer6_privacy: 'privacy',
+      },
+      audit: { ...BASE_AUDIT, scene: 'private_chat' as const },
+    }))
+
+    const orchestrator = new PromptOrchestrator({
+      promptLayerService: {
+        composeLayersWithAudit,
+        getPersona: vi.fn(() => ({
+          name: 'Boundary Bot',
+          style: 'warm',
+          interests: ['nurture'],
+          language: 'zh-CN',
+        })),
+      } as unknown as PromptLayerService,
+    } as PromptOrchestratorDeps)
+
+    const result = await withFeatureFlags(
+      {
+        promptOrchestratorV1: true,
+        promptOrchestratorScenes: [],
+        privateDirectorBoundaryV1: true,
+      },
+      () =>
+        orchestrator.compose({
+          agentId: 'agent-boundary',
+          scene: 'private_chat',
+          conversationText: 'owner asks for advice',
+          sceneRule: '你正在推进一场私域剧情',
+          shortTermState: 'episode=private-1',
+          shortTermStateUpdatedAt: new Date(),
+        }),
+    )
+
+    expect(result.layers.layer_showrunner).toBeUndefined()
+    expect(result.audit.lintWarnings).toContain('showrunner_suppressed_private_boundary')
+    expect(result.audit.includedLayerIds).not.toContain('layer_showrunner')
+  })
+
   it('uses cache only for cacheable scenes', async () => {
     const composeLayersWithAudit = vi.fn(async () => ({
       layers: {

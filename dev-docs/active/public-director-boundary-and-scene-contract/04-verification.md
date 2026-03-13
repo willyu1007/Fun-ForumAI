@@ -1,6 +1,7 @@
 # 04 Verification — T-094
 
-- Planning-only task bundle initialized.
+- 2026-03-13 implementation baseline:
+  - 已完成 `public-director-contract` 模块、scene-pool v2 projection、private/proactive boundary cutover、feature flag/env contract 接线及对应测试补齐。
 - 2026-03-13 repo review:
   - 已核对 `README.md`、`docs/project/overview/LLM_forum_PRD.md`、`docs/project/overview/LLM_forum_DevSpec.md`、`src/backend/runtime/prompt-orchestrator.ts`、`src/backend/runtime/post-scheduler.ts`、`src/backend/services/private-channel-service.ts`、`src/backend/services/proactive-interaction-service.ts`、`src/backend/services/chatroom-*.ts` 与历史 `T-046 / T-073 / T-074 / T-075` 文档。
 - 2026-03-13 governance query:
@@ -16,13 +17,13 @@
   - `git diff --check`
   - passed
 - 2026-03-13 planning sync follow-up:
-  - 已对照 `/Users/phoenix/Downloads/scene_pool_director_scene_aware_design.md` 第 10、13、14、16、附录 C/D 节，再次核对三类缺口是否都已纳入当前三包。
+  - 已对照 `/Users/yurui/Downloads/scene_pool_design.md` 第 10、13、14、16、附录 C/D 节，再次核对三类缺口是否都已纳入当前三包。
   - 结果：私域收口和 scene-pool asset/ops 已并入 `T-094`；指标/实验/人工 rubric 已并入 `T-096`；无需新增第四包。
 - 2026-03-13 contract-detail review:
   - 已核对 `src/backend/stage/stage-spec.ts`、`src/backend/runtime/types.ts`、`src/backend/runtime/prompt-orchestrator.ts`、`src/backend/runtime/context-builder.ts`、`src/backend/runtime/post-scheduler.ts`、`src/backend/runtime/agent-executor.ts`、`src/backend/services/private-channel-service.ts`、`src/backend/services/proactive-interaction-service.ts`、`docs/stage-templates/v1/library.manifest.yaml`、`docs/stage-templates/v1/templates/stage-show-01.yaml`、`src/backend/stage/stage-template-ops.js`、`src/backend/lib/config.ts`。
   - 结论：repo 现状确实混用了 `PromptScene`、调用入口和真实写入 surface；私域链路仍保留 `layer_showrunner` 注入点；资产层当前只有 `launch/hidden` 两态投影。
 - 2026-03-13 schema-tightening review:
-  - 已对照 `/Users/phoenix/Downloads/scene_pool_director_scene_aware_design.md` 中 `7.7.2 scene_binding_v1`、`7.7.3 episode_overlay_v1`、`13.4 LocalIntent` 建议草案，重新核对当前合同是否仍有模糊词或过宽字段。
+  - 已对照 `/Users/yurui/Downloads/scene_pool_design.md` 中 `7.7.2 scene_binding_v1`、`7.7.3 episode_overlay_v1`、`13.4 LocalIntent` 建议草案，重新核对当前合同是否仍有模糊词或过宽字段。
   - 结论：`scene_binding_v1` 若允许多挂载点会导致 selector/audit 歧义；`episode_overlay_v1` 若缺少 `facts_digest/source_links/safety` 不足以支撑热点治理；`LocalIntent.memory_scope='inherit'` 语义过宽，已在合同中收窄。
 - 2026-03-13 decision follow-up:
   - 用户已确认：
@@ -76,5 +77,38 @@
 - 2026-03-13 final sanity after verification update:
   - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
   - passed
+  - `git diff --check`
+  - passed
+- 2026-03-13 targeted backend tests:
+  - `pnpm -s vitest run src/backend/llm/__tests__/prompt-engine.test.ts src/backend/runtime/__tests__/prompt-orchestrator.test.ts src/backend/services/__tests__/private-channel-service.test.ts src/backend/services/__tests__/proactive-interaction-service.test.ts src/backend/routes/__tests__/stage-template-scripts.test.ts src/backend/stage/__tests__/stage-template-ops.test.ts src/backend/stage/__tests__/public-director-contract.test.ts`
+  - passed；7 个测试文件、29 个用例全部通过。
+- 2026-03-13 env contract validate:
+  - `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py validate --root . --out dev-docs/active/public-director-boundary-and-scene-contract/artifacts/env/t094-public-director-contract/03-validation-log.md`
+  - passed；新增 flags 已进入 contract，`dev.local` secret refs 也已补齐。
+- 2026-03-13 env contract generate:
+  - `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py generate --root . --out dev-docs/active/public-director-boundary-and-scene-contract/artifacts/env/t094-public-director-contract/04-context-refresh.md`
+  - passed；已刷新 `env/.env.example`、`docs/env.md`、`docs/context/env/contract.json`。
+- 2026-03-13 governance sync after implementation:
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
+  - passed；`T-094` 的状态和说明已同步回 project hub 派生视图。
+- 2026-03-13 governance lint after implementation:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+- 2026-03-13 patch hygiene after implementation:
+  - `git diff --check`
+  - passed
+- 2026-03-13 environment suite:
+  - `node .ai/tests/run.mjs --suite environment`
+  - passed
+- 2026-03-13 review-fix targeted tests:
+  - `pnpm -s vitest run src/backend/llm/__tests__/prompt-engine.test.ts src/backend/routes/__tests__/stage-template-scripts.test.ts src/backend/stage/__tests__/stage-template-ops.test.ts src/backend/stage/__tests__/public-director-contract.test.ts src/backend/services/__tests__/private-channel-service.test.ts src/backend/services/__tests__/proactive-interaction-service.test.ts src/backend/runtime/__tests__/prompt-orchestrator.test.ts`
+  - passed；7 个测试文件、33 个用例全部通过。
+- 2026-03-13 scene-pool validate script, flag-off:
+  - `node scripts/stage-templates-validate.mjs`
+  - passed；legacy v1 校验路径保持可用。
+- 2026-03-13 scene-pool validate script, flag-on:
+  - `FF_PUBLIC_DIRECTOR_CONTRACT_V1=true FF_SCENE_POOL_ASSET_OPS_V1=true node scripts/stage-templates-validate.mjs`
+  - passed；v2 contract/surface/binding 校验路径可用。
+- 2026-03-13 patch hygiene after review fixes:
   - `git diff --check`
   - passed

@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 92 (planned: 1, in-progress: 17, blocked: 0, done: 0, archived: 74)
+- Tasks: 92 (planned: 1, in-progress: 16, blocked: 0, done: 1, archived: 74)
 
 ## Recent tasks
 
@@ -21,7 +21,7 @@ Project: `main`
 | T-091 hot-topic-policy-and-user-transparency | archived | F-050 | dev-docs/archive/hot-topic-policy-and-user-transparency |
 | T-092 public-policy-and-help-center-surfaces | archived | F-050 | dev-docs/archive/public-policy-and-help-center-surfaces |
 | T-093 hot-topic-ops-dashboard-and-alerting | archived | F-050 | dev-docs/archive/hot-topic-ops-dashboard-and-alerting |
-| T-094 public-director-boundary-and-scene-contract | in-progress | F-060 | dev-docs/active/public-director-boundary-and-scene-contract |
+| T-094 public-director-boundary-and-scene-contract | done | F-060 | dev-docs/active/public-director-boundary-and-scene-contract |
 | T-095 scene-selector-scheduled-post-forum-entry | in-progress | F-060 | dev-docs/active/scene-selector-scheduled-post-forum-entry |
 | T-096 director-runtime-state-and-chatroom-unification | in-progress | F-060 | dev-docs/active/director-runtime-state-and-chatroom-unification |
 | T-030 mobile-navigation-and-routing | archived | F-000 | dev-docs/archive/mobile-navigation-and-routing |

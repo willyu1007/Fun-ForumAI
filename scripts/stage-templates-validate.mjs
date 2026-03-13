@@ -3,10 +3,18 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { parse as parseYaml } from 'yaml'
+import {
+  buildSceneBindingV1FromManifestItem,
+  parseLegacyStageTemplateDocument,
+  projectLegacyTemplateToStageTemplateV2,
+} from '../src/backend/stage/public-director-contract.js'
 
 const root = process.cwd()
 const baseDir = path.join(root, 'docs/stage-templates/v1')
 const manifestPath = path.join(baseDir, 'library.manifest.yaml')
+const v2ContractEnabled =
+  process.env.FF_PUBLIC_DIRECTOR_CONTRACT_V1 === 'true'
+  && process.env.FF_SCENE_POOL_ASSET_OPS_V1 === 'true'
 
 function readJsonYaml(filePath) {
   const raw = fs.readFileSync(filePath, 'utf8')
@@ -71,11 +79,28 @@ for (const item of templates) {
   if (doc?.stage_spec?.version !== 'v1') {
     fail(`stage_spec.version must be v1 in ${relPath}`)
   }
+
+  if (v2ContractEnabled) {
+    try {
+      parseLegacyStageTemplateDocument(doc)
+      projectLegacyTemplateToStageTemplateV2(item, doc)
+    } catch (error) {
+      fail(`Director contract invalid for ${item.id}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
 }
 
-for (const item of launch) {
-  if (!item.binding || !item.binding.community_slug) {
-    fail(`Launch template must include binding.community_slug: ${item.id}`)
+if (v2ContractEnabled) {
+  for (const item of launch) {
+    if (!item.binding || !item.binding.community_slug) {
+      fail(`Launch template must include binding.community_slug: ${item.id}`)
+    }
+    const templatePath = path.join(baseDir, String(item.path || ''))
+    const templateDoc = readJsonYaml(templatePath)
+    const stageTemplate = projectLegacyTemplateToStageTemplateV2(item, templateDoc)
+    if (!buildSceneBindingV1FromManifestItem(item, stageTemplate.director)) {
+      fail(`Launch template must project an active scene binding: ${item.id}`)
+    }
   }
 }
 

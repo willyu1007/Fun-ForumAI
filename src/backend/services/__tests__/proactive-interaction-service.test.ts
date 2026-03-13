@@ -12,6 +12,15 @@ function withLayerStackFlag<T>(enabled: boolean, run: () => Promise<T>): Promise
   })
 }
 
+function withFeatureFlags<T>(override: Partial<Record<string, boolean>>, run: () => Promise<T>): Promise<T> {
+  const featureFlags = config.features as unknown as Record<string, boolean>
+  const snapshot = { ...featureFlags }
+  Object.assign(featureFlags, override)
+  return run().finally(() => {
+    Object.assign(featureFlags, snapshot)
+  })
+}
+
 describe('ProactiveInteractionService', () => {
   it('uses PromptOrchestrator + PromptEngine for proactive opening', async () => {
     const channelRepo = {
@@ -101,19 +110,23 @@ describe('ProactiveInteractionService', () => {
     })
 
     await withLayerStackFlag(true, async () => {
-      const ok = await service.onVoteReceived('agent-1', {
-        direction: 'UP',
-        target_type: 'POST',
-        target_id: 'post-1',
-        voter_agent_id: 'agent-voter',
+      await withFeatureFlags({ privateDirectorBoundaryV1: true }, async () => {
+        const ok = await service.onVoteReceived('agent-1', {
+          direction: 'UP',
+          target_type: 'POST',
+          target_id: 'post-1',
+          voter_agent_id: 'agent-voter',
+        })
+        expect(ok).toBe(true)
+        expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
+          promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
+          variables: expect.objectContaining({
+            trigger_type: 'vote_received',
+          }),
+        }))
+        const firstCall = gatewayGenerate.mock.calls.at(0)?.[0] as { variables: Record<string, string> } | undefined
+        expect(firstCall?.variables.layer_showrunner).toBeUndefined()
       })
-      expect(ok).toBe(true)
-      expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
-        promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
-        variables: expect.objectContaining({
-          trigger_type: 'vote_received',
-        }),
-      }))
     })
   })
 

@@ -1,6 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
+import {
+  buildScenePoolCatalogFromManifest,
+  parseLegacyStageTemplateDocument,
+} from './public-director-contract.js'
 
 /**
  * @typedef {{ community_slug: string, slot?: string, binding_type: 'core' | 'seasonal' } | null} StageTemplateBinding
@@ -36,6 +40,18 @@ export class StageTemplateValidationError extends Error {
     super(message)
     this.name = 'StageTemplateValidationError'
   }
+}
+
+function isFlagEnabled(flagName, override) {
+  if (typeof override === 'boolean') return override
+  return process.env[flagName] === 'true'
+}
+
+function shouldEmitScenePoolV2(options = {}) {
+  return (
+    isFlagEnabled('FF_PUBLIC_DIRECTOR_CONTRACT_V1', options.publicDirectorContractV1)
+    && isFlagEnabled('FF_SCENE_POOL_ASSET_OPS_V1', options.scenePoolAssetOpsV1)
+  )
 }
 
 /**
@@ -131,51 +147,90 @@ export function rotateStageTemplates(manifest, openCount) {
  * @param {string} baseDir
  * @param {StageTemplateManifest} manifest
  * @param {string} exportedAt
+ * @param {{ publicDirectorContractV1?: boolean, scenePoolAssetOpsV1?: boolean }} [options]
  * @returns {{
- *   library: { version: string, exported_at: string, templates: Array<Record<string, unknown>> },
- *   launch: { version: string, exported_at: string, templates: Array<Record<string, unknown>> },
+ *   library: { version: string, exported_at: string, templates: Array<Record<string, unknown>>, contract_version?: string, stage_templates?: Array<Record<string, unknown>>, scene_bindings?: Array<Record<string, unknown>>, surface_vocabulary?: Record<string, unknown> },
+ *   launch: { version: string, exported_at: string, templates: Array<Record<string, unknown>>, contract_version?: string, stage_templates?: Array<Record<string, unknown>>, scene_bindings?: Array<Record<string, unknown>>, surface_vocabulary?: Record<string, unknown> },
  *   exported_templates: number,
  *   launch_templates: number,
  * }}
  */
-export function buildStageTemplateDistPayload(baseDir, manifest, exportedAt) {
-  const templates = manifest.templates.map((item) => {
+export function buildStageTemplateDistPayload(baseDir, manifest, exportedAt, options = {}) {
+  if (!shouldEmitScenePoolV2(options)) {
+    const templates = manifest.templates.map((item) => {
+      const templateFilePath = path.join(baseDir, item.path)
+      const doc = readYamlFile(templateFilePath)
+      if (!doc || typeof doc !== 'object') {
+        throw new StageTemplateValidationError(`Template file must be an object: ${item.path}`)
+      }
+
+      const stageSpec = /** @type {{ stage_spec?: unknown }} */ (doc).stage_spec
+      if (!stageSpec) {
+        throw new StageTemplateValidationError(`Template missing stage_spec: ${item.path}`)
+      }
+
+      return {
+        id: item.id,
+        category: item.category,
+        status: item.status,
+        binding: item.binding ?? null,
+        stage_spec: stageSpec,
+        name: /** @type {{ name?: string }} */ (doc).name ?? item.id,
+      }
+    })
+    const launch = templates.filter((item) => item.status === 'launch')
+
+    return {
+      library: {
+        version: 'v1',
+        exported_at: exportedAt,
+        templates,
+      },
+      launch: {
+        version: 'v1',
+        exported_at: exportedAt,
+        templates: launch,
+      },
+      exported_templates: templates.length,
+      launch_templates: launch.length,
+    }
+  }
+
+  const templateDocs = manifest.templates.map((item) => {
     const templateFilePath = path.join(baseDir, item.path)
     const doc = readYamlFile(templateFilePath)
     if (!doc || typeof doc !== 'object') {
       throw new StageTemplateValidationError(`Template file must be an object: ${item.path}`)
     }
-
-    const stageSpec = /** @type {{ stage_spec?: unknown }} */ (doc).stage_spec
-    if (!stageSpec) {
-      throw new StageTemplateValidationError(`Template missing stage_spec: ${item.path}`)
+    try {
+      parseLegacyStageTemplateDocument(doc)
+    } catch (error) {
+      throw new StageTemplateValidationError(
+        `Template contract invalid: ${item.path}: ${error instanceof Error ? error.message : String(error)}`,
+      )
     }
-
-    return {
-      id: item.id,
-      category: item.category,
-      status: item.status,
-      binding: item.binding ?? null,
-      stage_spec: stageSpec,
-      name: /** @type {{ name?: string }} */ (doc).name ?? item.id,
-    }
+    return { id: item.id, doc }
   })
 
-  const launch = templates.filter((item) => item.status === 'launch')
+  const libraryCatalog = buildScenePoolCatalogFromManifest(manifest, templateDocs, exportedAt)
+  const launchTemplates = libraryCatalog.templates.filter((item) => item.status === 'launch')
+  const launchStageTemplates = libraryCatalog.stage_templates.filter((item) =>
+    item.lifecycle_status === 'core_active' || item.lifecycle_status === 'seasonal_active')
+  const launchBindings = libraryCatalog.scene_bindings.filter((item) => item.status === 'active')
 
   return {
-    library: {
-      version: 'v1',
-      exported_at: exportedAt,
-      templates,
-    },
+    library: libraryCatalog,
     launch: {
-      version: 'v1',
+      version: 'v2',
+      contract_version: 'public_director_contract_v1',
       exported_at: exportedAt,
-      templates: launch,
+      templates: launchTemplates,
+      stage_templates: launchStageTemplates,
+      scene_bindings: launchBindings,
+      surface_vocabulary: libraryCatalog.surface_vocabulary,
     },
-    exported_templates: templates.length,
-    launch_templates: launch.length,
+    exported_templates: libraryCatalog.templates.length,
+    launch_templates: launchTemplates.length,
   }
 }
 
@@ -186,6 +241,8 @@ export function buildStageTemplateDistPayload(baseDir, manifest, exportedAt) {
  *   dry_run: boolean
  *   now_iso?: string
  *   inject_failure_step?: 'after_library_commit' | 'after_dist_commit' | 'after_manifest_commit'
+ *   publicDirectorContractV1?: boolean
+ *   scenePoolAssetOpsV1?: boolean
  * }} input
  * @returns {{
  *   open_count: number
@@ -229,7 +286,10 @@ export function applySeasonRotationAtomic(input) {
     activated,
   })
 
-  const distPayload = buildStageTemplateDistPayload(input.base_dir, rotatedManifest, nowIso)
+  const distPayload = buildStageTemplateDistPayload(input.base_dir, rotatedManifest, nowIso, {
+    publicDirectorContractV1: input.publicDirectorContractV1,
+    scenePoolAssetOpsV1: input.scenePoolAssetOpsV1,
+  })
   const distDir = path.join(input.base_dir, 'dist')
   const libraryPath = path.join(distDir, 'library.json')
   const launchPath = path.join(distDir, 'launch.json')

@@ -24,3 +24,21 @@
   - what was tried: 先接受宽字段，再通过说明文字约束；但 review 发现这仍会让 `T-095` 在 forum/scheduled_post/comment 三条链路里各自解释一版。
   - fix/workaround: 把 `trigger_conditions`、`risk_override` 收成枚举，把 `target_ref` 收成 discriminated union，并加上按 `delivery_surface` 的可用形状约束。
   - prevention note: 任何会影响 selector 过滤、write target 或 actor reference 范围的字段，都不应以“string or optional bag”形式进入冻结合同。
+- 2026-03-13
+  - symptom: `env-contractctl generate` 首次执行失败，看起来像是新 feature flag 导致 env contract 断裂。
+  - root cause: 失败原因不是新增 flags，而是 repo 先前一直缺少 `env/secrets/dev.local.ref.yaml`，导致 `dev.local` 环境的 required secret refs 校验无法通过。
+  - what was tried: 先检查生成脚本，再回看 `03-validation-log.md` 的 redacted 错误输出，确认缺口集中在 `DATABASE_URL`、`JWT_SECRET`、`SERVICE_AUTH_SECRET` 等既有 secret refs。
+  - fix/workaround: 新增 `env/secrets/dev.local.ref.yaml`，沿用 `env://...` 本地 backend 引用模式补齐 secret refs，然后重新执行 validate/generate。
+  - prevention note: 之后凡是改 `env/contract.yaml`，先跑一次 `env-contractctl validate`，不要等到生成步骤失败后再排查基线缺口。
+- 2026-03-13
+  - symptom: 新增 feature flag 虽然写进了 config/env contract，但 scene-pool export/rotation 实际仍无条件输出 v2，导致“默认关闭”只停留在文档层。
+  - root cause: 实现时把合同投影逻辑直接接到了 dist/export 主路径，却没有把 rollout gate 一起接进真正的行为分支。
+  - what was tried: 先通过测试验证 v2 payload 是否正确，再回看评审意见，确认问题不在 payload 内容，而在默认行为被悄悄改写。
+  - fix/workaround: 把 v2 dist/export/rotation 改成要求 `FF_PUBLIC_DIRECTOR_CONTRACT_V1 && FF_SCENE_POOL_ASSET_OPS_V1` 同时打开，flag-off 时完全回退到 legacy v1 payload。
+  - prevention note: 后续凡是引入 feature flag，必须补一条“flag-off 兼容行为”测试，不能只测 flag-on happy path。
+- 2026-03-13
+  - symptom: 为了支持私域去导演化而放松 `PromptEngine` placeholder 校验后，所有模板都可能静默吞掉 optional placeholder，错误暴露时机变晚。
+  - root cause: 局部边界例外被做成了全局 schema 规则，导致 private fix 影响了公域 prompt 合同的 fail-fast 特性。
+  - what was tried: 先依赖 schema.required 收口，但 review 发现 registry 里很多真实占位符本来就不是 required。
+  - fix/workaround: 恢复全局严格校验，只对 `agent-private-chat-reply@1` 和 `agent-proactive-dm-opening@1` 在 private boundary flag-on 时允许缺省 `layer_showrunner`。
+  - prevention note: 之后凡是为了兼容某条链路而放宽 contract，优先做 callsite-scoped allowlist，不要先改全局校验器。

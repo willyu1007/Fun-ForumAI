@@ -1,0 +1,149 @@
+# Env Contract Validation
+
+- Timestamp (UTC): `2026-03-13T13:46:14Z`
+- Root: `/Volumes/DataDisk/Project/Fun-ForumAI`
+- Envs: `dev, dev.local, prod, staging`
+- Status: **PASS**
+
+## Errors
+- (none)
+
+## Warnings
+- (none)
+
+## Summary (redacted)
+```json
+{
+  "per_env": {
+    "dev": {
+      "secret_ref_keys": [
+        "dashscope_api_key",
+        "database_url",
+        "deepseek_api_key",
+        "jwt_secret",
+        "llm_api_key",
+        "runtime_redis_url",
+        "service_auth_secret",
+        "sse_redis_url",
+        "zai_api_key"
+      ],
+      "secrets_ref_file": "/Volumes/DataDisk/Project/Fun-ForumAI/env/secrets/dev.ref.yaml",
+      "used_secret_refs": [
+        "dashscope_api_key",
+        "database_url",
+        "deepseek_api_key",
+        "jwt_secret",
+        "llm_api_key",
+        "runtime_redis_url",
+        "service_auth_secret",
+        "sse_redis_url",
+        "zai_api_key"
+      ],
+      "values_file": "/Volumes/DataDisk/Project/Fun-ForumAI/env/values/dev.yaml",
+      "values_keys": [
+        "APP_ENV",
+        "PORT",
+        "SERVICE_NAME"
+      ]
+    },
+    "dev.local": {
+      "secret_ref_keys": [
+        "dashscope_api_key",
+        "database_url",
+        "deepseek_api_key",
+        "jwt_secret",
+        "llm_api_key",
+        "runtime_redis_url",
+        "service_auth_secret",
+        "sse_redis_url",
+        "zai_api_key"
+      ],
+      "secrets_ref_file": "/Volumes/DataDisk/Project/Fun-ForumAI/env/secrets/dev.local.ref.yaml",
+      "used_secret_refs": [
+        "dashscope_api_key",
+        "database_url",
+        "deepseek_api_key",
+        "jwt_secret",
+        "llm_api_key",
+        "runtime_redis_url",
+        "service_auth_secret",
+        "sse_redis_url",
+        "zai_api_key"
+      ],
+      "values_file": "/Volumes/DataDisk/Project/Fun-ForumAI/env/values/dev.local.yaml",
+      "values_keys": [
+        "EXPO_EAS_PROJECT_ID"
+      ]
+    },
+    "prod": {
+      "secret_ref_keys": [
+        "dashscope_api_key",
+        "database_url",
+        "deepseek_api_key",
+        "jwt_secret",
+        "llm_api_key",
+        "runtime_redis_url",
+        "service_auth_secret",
+        "sse_redis_url",
+        "zai_api_key"
+      ],
+      "secrets_ref_file": "/Volumes/DataDisk/Project/Fun-ForumAI/env/secrets/prod.ref.yaml",
+      "used_secret_refs": [
+        "dashscope_api_key",
+        "database_url",
+        "deepseek_api_key",
+        "jwt_secret",
+        "llm_api_key",
+        "runtime_redis_url",
+        "service_auth_secret",
+        "sse_redis_url",
+        "zai_api_key"
+      ],
+      "values_file": "/Volumes/DataDisk/Project/Fun-ForumAI/env/values/prod.yaml",
+      "values_keys": [
+        "APP_ENV",
+        "PORT",
+        "SERVICE_NAME"
+      ]
+    },
+    "staging": {
+      "secret_ref_keys": [
+        "dashscope_api_key",
+        "database_url",
+        "deepseek_api_key",
+        "jwt_secret",
+        "llm_api_key",
+        "runtime_redis_url",
+        "service_auth_secret",
+        "sse_redis_url",
+        "zai_api_key"
+      ],
+      "secrets_ref_file": "/Volumes/DataDisk/Project/Fun-ForumAI/env/secrets/staging.ref.yaml",
+      "used_secret_refs": [
+        "dashscope_api_key",
+        "database_url",
+        "deepseek_api_key",
+        "jwt_secret",
+        "llm_api_key",
+        "runtime_redis_url",
+        "service_auth_secret",
+        "sse_redis_url",
+        "zai_api_key"
+      ],
+      "values_file": "/Volumes/DataDisk/Project/Fun-ForumAI/env/values/staging.yaml",
+      "values_keys": [
+        "APP_ENV",
+        "PORT",
+        "SERVICE_NAME"
+      ]
+    }
+  },
+  "variables_non_secret": 97,
+  "variables_secret": 9,
+  "variables_total": 106
+}
+```
+
+## Notes
+- This report never includes secret values.
+- If this is used in CI, treat any ERROR as a merge blocker.

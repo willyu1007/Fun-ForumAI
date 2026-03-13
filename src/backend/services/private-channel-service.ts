@@ -28,6 +28,7 @@ import type {
   PrivateSessionStatus,
 } from '../repos/types.js'
 import { AppError, ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
+import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import type { PolicyGatewayService } from './policy-gateway-service.js'
 import type { IdentityGateService } from './identity-gate-service.js'
@@ -413,10 +414,10 @@ export class PrivateChannelService {
       layer_instructions: '',
       layer_community: '',
       layer_relationship: '',
-      layer_showrunner: '',
       layer_overrides: '',
       layer_memory: memories ? `## 你的记忆\n${memories}` : '',
       layer_privacy: '',
+      ...(config.features.privateDirectorBoundaryV1 ? {} : { layer_showrunner: '' }),
     }
   }
 
@@ -490,10 +491,12 @@ export class PrivateChannelService {
         layer_instructions: composed.layers.layer3_instructions ?? '',
         layer_community: composed.layers.layer_community ?? '',
         layer_relationship: composed.layers.layer_relationship ?? '',
-        layer_showrunner: composed.layers.layer_showrunner ?? '',
         layer_overrides: composed.layers.layer4_overrides ?? '',
         layer_memory: composed.layers.layer5_memory ?? '',
         layer_privacy: composed.layers.layer6_privacy ?? '',
+        ...(config.features.privateDirectorBoundaryV1
+          ? {}
+          : { layer_showrunner: composed.layers.layer_showrunner ?? '' }),
       },
       renderDecision: composed.runtimeEnvelope?.renderTierDecision ?? null,
       promptAudit: composed.audit,

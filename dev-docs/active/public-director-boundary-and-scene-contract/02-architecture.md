@@ -497,8 +497,8 @@ interface ProactiveDmOpeningContext {
 | `FF_DIRECTOR_EXPERIMENTS_V1` | `config.features.directorExperimentsV1` | `T-096` | 对照实验 bucket 和指标采集 |
 
 说明：
-- 这是命名建议，不是本包内的代码实现。
-- 后续实现必须沿用 repo 现有 `FF_* -> config.features.*` 风格，不得各包各起风格。
+- `FF_PUBLIC_DIRECTOR_CONTRACT_V1`、`FF_PRIVATE_DIRECTOR_BOUNDARY_V1`、`FF_SCENE_POOL_ASSET_OPS_V1` 已在 `env/contract.yaml` 与 `src/backend/lib/config.ts` 中完成接线，默认仍为关闭。
+- 其余 flags 仍属于后续 task 的命名冻结要求；后续实现必须沿用 repo 现有 `FF_* -> config.features.*` 风格，不得各包各起风格。
 
 ## Legacy mapping
 - `stage template` -> `stage_template_v2` 的基础外壳
@@ -522,7 +522,7 @@ interface ProactiveDmOpeningContext {
   - 不允许在后续消息中保留 `ProactiveDmOpeningContext`
 
 ## Compatibility
-- 在实现前，所有新对象均为文档级 contract，不改变现有 runtime。
+- 本包已实现最小读路径：统一 contract 模块、scene-pool v2 catalog projection、私域/主动私信去导演化边界，以及对应 feature flags。
 - 旧路径可继续运行，但后续实现不得新增绕开这些 contract 的平行语义。
 - 允许现有 public prompt 继续使用 orchestrator 渲染，但导演输入面必须逐步统一到 `LocalIntent`。
 - PolicyGateway 关于 owner/private quote 的禁止规则继续作为 hard guard，不被 director contract 覆盖。

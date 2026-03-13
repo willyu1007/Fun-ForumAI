@@ -2,6 +2,8 @@ import type { AllocationResult, EventPayload, SelectedAgent } from '../allocator
 import type { LlmTokenUsage } from '../llm/types.js'
 import type { PersonaRuntimeEnvelope } from './persona-runtime-types.js'
 
+// Legacy prompt invocation scene names. These are not the same contract as
+// director_surface / actor_surface / private_surface introduced by T-094.
 export type PromptScene =
   | 'forum_post'
   | 'forum_comment'

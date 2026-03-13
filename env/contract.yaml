@@ -444,6 +444,20 @@ variables:
     default: "false"
     description: Enable unified PromptOrchestrator runtime path.
 
+  FF_PUBLIC_DIRECTOR_CONTRACT_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable shared public director contract read path and surface vocabulary exports.
+
+  FF_PRIVATE_DIRECTOR_BOUNDARY_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Remove director/showrunner semantics from private chat and proactive opening prompt paths.
+
   FF_PROMPT_ORCHESTRATOR_SCENES:
     type: string
     required: false
@@ -686,3 +700,10 @@ variables:
     required: false
     default: "false"
     description: Enable stage template rotation scripts/control-plane integrations.
+
+  FF_SCENE_POOL_ASSET_OPS_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable scene-pool v2 catalog projection, lifecycle mapping, and asset ops compatibility path.

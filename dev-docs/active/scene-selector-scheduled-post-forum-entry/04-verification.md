@@ -2,7 +2,7 @@
 
 - Planning-only task bundle initialized.
 - 2026-03-13 repo review:
-  - 已核对 `src/backend/runtime/post-scheduler.ts`、`src/backend/runtime/prompt-orchestrator.ts`、`src/backend/runtime/types.ts`、`docs/project/overview/LLM_forum_DevSpec.md` 与 `/Users/phoenix/Downloads/scene_pool_director_scene_aware_design.md` 中关于 `SceneSelector`、`EpisodeBrief`、`LocalIntent` 的建议。
+  - 已核对 `src/backend/runtime/post-scheduler.ts`、`src/backend/runtime/prompt-orchestrator.ts`、`src/backend/runtime/types.ts`、`docs/project/overview/LLM_forum_DevSpec.md` 与 `/Users/yurui/Downloads/scene_pool_design.md` 中关于 `SceneSelector`、`EpisodeBrief`、`LocalIntent` 的建议。
 - 2026-03-13 design consistency check:
   - 现有 `scheduled_post` 路径仍先 `pickRandomCommunity()`，验证了本包的核心缺口真实存在。
   - 现有 public prompt 仍可经 `layer_showrunner` 注入 sceneRule/shortTermState，验证了本包必须把 public actor input 改为 `LocalIntent`。
