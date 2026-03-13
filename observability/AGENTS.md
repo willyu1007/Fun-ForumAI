@@ -3,7 +3,7 @@
 ## Conclusions (read first)
 
 - Observability contracts are defined in `docs/context/observability/`.
-- Use `ctl-observability.mjs` to manage metrics, logs, and traces definitions.
+- Use `node .ai/skills/features/observability/scripts/ctl-observability.mjs` to manage metrics, logs, and traces definitions.
 - AI proposes instrumentation; humans implement.
 
 ## Contract Files
@@ -17,47 +17,9 @@
 ## AI Workflow
 
 1. **Review** existing metrics/logs/traces contracts
-2. **Propose** new observability points via `ctl-observability`
+2. **Propose** new observability points via `node .ai/skills/features/observability/scripts/ctl-observability.mjs`
 3. **Generate** instrumentation hints
 4. **Document** in `handbook/`
-
-## Metric Types
-
-| Type | Use Case |
-|------|----------|
-| `counter` | Monotonically increasing values (requests, errors) |
-| `gauge` | Values that go up/down (connections, queue size) |
-| `histogram` | Distributions (latency, response size) |
-| `summary` | Similar to histogram with quantiles |
-
-## Log Levels
-
-| Level | Use Case |
-|-------|----------|
-| `debug` | Detailed debugging information |
-| `info` | General operational information |
-| `warn` | Warning conditions |
-| `error` | Error conditions |
-
-## Best Practices
-
-### Metric Naming
-
-- Use snake_case
-- Include unit suffix (e.g., `_seconds`, `_bytes`)
-- Prefix with service name for global metrics
-
-### Log Fields
-
-- Always include: timestamp, level, message, service
-- Use structured JSON format
-- Include correlation IDs for tracing
-
-### Traces
-
-- Follow OpenTelemetry conventions
-- Name spans descriptively
-- Include relevant attributes
 
 ## Forbidden Actions
 

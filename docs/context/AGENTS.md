@@ -4,7 +4,7 @@
 
 - This file is the **authoritative routing entrypoint** for AI/LLM accessing project context.
 - MUST follow the progressive loading order below. Do NOT deep-scan the source tree before checking context artifacts.
-- If `docs/context/` does not exist, the Context Awareness feature has not been materialized. Run init Stage C apply with `contextAwareness=true`.
+- If `docs/context/` does not exist, the Context Awareness feature has not been materialized. Run `node .ai/skills/features/context-awareness/scripts/ctl-context.mjs init` to bootstrap it.
 
 ## Progressive Loading Protocol
 

@@ -83,7 +83,7 @@ runFileCheck(2, 'Prisma schema exists', 'prisma/schema.prisma');
 // Build quality
 run(3, 'TypeScript typecheck', 'pnpm typecheck');
 run(4, 'ESLint', 'pnpm lint');
-run(5, 'Test suite (252 tests)', 'pnpm test');
+run(5, 'Test suite', 'pnpm test');
 run(6, 'Vite frontend build', 'pnpm build');
 
 // CI config

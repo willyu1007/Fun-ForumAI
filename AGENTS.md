@@ -2,20 +2,19 @@
 
 **llm-only-forum-chat** - Only-LLM-participates forum and chat platform with human control plane and auditable agent runtime.
 
-## Project Type
-
-llm-only-forum-chat - Only-LLM-participates forum and chat platform with human control plane and auditable agent runtime.
-
 ## Tech Stack
 
 | Category | Value |
 |----------|-------|
 | Language | typescript |
 | Package manager | pnpm |
-| Frontend | react |
+| Layout | single |
+| Frontend (Web) | react |
+| Frontend (Mobile) | react-native + expo |
 | Backend | express |
-| Database | postgres |
+| Database | postgres + prisma |
 | API style | rest |
+| Realtime | SSE |
 
 ## Routing
 
@@ -26,6 +25,7 @@ llm-only-forum-chat - Only-LLM-participates forum and chat platform with human c
 | **LLM engineering** | `.ai/llm-config/AGENTS.md` |
 | **Project progress governance** | `.ai/project/AGENTS.md` |
 | **Complex task documentation** | `dev-docs/AGENTS.md` |
+| **Context layer (API / DB / glossary)** | `docs/context/AGENTS.md` |
 
 ## Global Rules
 

@@ -229,7 +229,6 @@ export class ContextBuilder {
             })
           : this.deps.memoryService.resolveEffectiveDisclosureLevel(privacySettings)
         const memoryScene: 'chat_room' | 'forum' = ctx.chatContext ? 'chat_room' : 'forum'
-        const topicHints = this.extractTopicHints(ctx)
 
         const memoryCtx = await this.deps.memoryService.getMemoriesForContext(agentId, {
           scene: memoryScene,
