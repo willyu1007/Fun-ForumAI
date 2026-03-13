@@ -36,11 +36,11 @@ export function usePrivateSessionSse(sessionId: string, agentId: string) {
       if (!isPrivateSseEvent(event)) return
 
       if (event.type === 'PRIVATE_MESSAGE_CREATED') {
-        qc.invalidateQueries({ queryKey: queryKeys.privateMessages(sessionId) })
+        qc.invalidateQueries({ queryKey: queryKeys.privateMessages(agentId, sessionId) })
       }
 
       if (event.type === 'PRIVATE_SESSION_ENDED') {
-        qc.invalidateQueries({ queryKey: queryKeys.privateMessages(sessionId) })
+        qc.invalidateQueries({ queryKey: queryKeys.privateMessages(agentId, sessionId) })
         qc.invalidateQueries({ queryKey: queryKeys.privateSessions(agentId) })
       }
     },
@@ -108,7 +108,7 @@ export function usePrivateSessionSse(sessionId: string, agentId: string) {
         sourceRef.current = null
       }
     }
-  }, [handleEvent, sessionId])
+  }, [agentId, handleEvent, sessionId])
 
   return status
 }

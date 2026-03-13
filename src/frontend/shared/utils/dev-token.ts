@@ -17,16 +17,57 @@ export function generateDevToken(identity: 'anonymous' | 'user' | 'admin'): stri
   return btoa(payload).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-export function setDevAuth(identity: 'anonymous' | 'user' | 'admin'): DevUser | null {
-  if (identity === 'anonymous') {
-    document.cookie = 'auth_token=; max-age=0; path=/; SameSite=Lax'
-    localStorage.removeItem('dev_auth_token')
-    return null
+interface DevAuthSwitchResponse {
+  error?: {
+    message?: string
   }
-  const token = generateDevToken(identity)
-  document.cookie = `auth_token=${token}; path=/; max-age=86400; SameSite=Lax`
-  localStorage.setItem('dev_auth_token', token)
-  return DEV_USERS[identity]
+}
+
+async function syncDevAuthCookie(identity: 'anonymous' | 'user' | 'admin'): Promise<void> {
+  const response = await fetch('/v1/auth/dev/switch', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'same-origin',
+    body: JSON.stringify({ identity }),
+  })
+
+  if (response.ok) return
+
+  let message = '开发身份切换失败'
+  try {
+    const payload = (await response.json()) as DevAuthSwitchResponse
+    if (payload.error?.message) {
+      message = payload.error.message
+    }
+  } catch {
+    // ignore non-json errors
+  }
+
+  throw new Error(message)
+}
+
+export async function setDevAuth(identity: 'anonymous' | 'user' | 'admin'): Promise<DevUser | null> {
+  const previousToken = localStorage.getItem('dev_auth_token')
+  if (identity === 'anonymous') {
+    localStorage.removeItem('dev_auth_token')
+  } else {
+    localStorage.setItem('dev_auth_token', generateDevToken(identity))
+  }
+
+  try {
+    await syncDevAuthCookie(identity)
+  } catch (error) {
+    if (previousToken) {
+      localStorage.setItem('dev_auth_token', previousToken)
+    } else {
+      localStorage.removeItem('dev_auth_token')
+    }
+    throw error
+  }
+
+  return identity === 'anonymous' ? null : DEV_USERS[identity]
 }
 
 export function getCurrentDevUser(): DevUser | null {

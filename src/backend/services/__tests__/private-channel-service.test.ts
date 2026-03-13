@@ -114,7 +114,7 @@ describe('PrivateChannelService', () => {
       findTimedOutSessions: vi.fn(),
     }
 
-    const gatewayGenerate = vi.fn(async () => ({
+    const gatewayGenerate = vi.fn(async (_input: { variables: Record<string, string> }) => ({
       content: '你好呀',
       messages: [],
       usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 },

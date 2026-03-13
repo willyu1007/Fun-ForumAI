@@ -875,3 +875,15 @@ tasks:
       - R-062
     dev_docs_path: dev-docs/active/director-runtime-state-and-chatroom-unification
     updated: 2026-03-13
+  - id: T-097
+    slug: mainland-launch-compliance-audit-followup
+    status: in-progress
+    milestone_id: M-010
+    feature_id: F-050
+    requirement_ids:
+      - R-050
+      - R-051
+      - R-052
+      - R-053
+    dev_docs_path: dev-docs/active/mainland-launch-compliance-audit-followup
+    updated: 2026-03-13

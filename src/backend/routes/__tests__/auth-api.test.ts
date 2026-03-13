@@ -3,6 +3,62 @@ import request from 'supertest'
 import { app } from './e2e-helpers.js'
 
 describe('Auth API', () => {
+  it('switches dev identity by issuing an auth cookie for the dev toolbar', async () => {
+    const switchRes = await request(app)
+      .post('/v1/auth/dev/switch')
+      .set('Host', '127.0.0.1')
+      .send({ identity: 'admin' })
+
+    expect(switchRes.status).toBe(200)
+    expect(switchRes.body.data.user).toMatchObject({
+      email: 'dev-admin@llm-forum.test',
+      role: 'admin',
+    })
+
+    const cookies = switchRes.headers['set-cookie']
+    expect(cookies).toEqual(expect.arrayContaining([expect.stringContaining('auth_token=')]))
+
+    const meRes = await request(app)
+      .get('/v1/auth/me')
+      .set('Cookie', cookies)
+
+    expect(meRes.status).toBe(200)
+    expect(meRes.body.data.user).toMatchObject({
+      email: 'dev-admin@llm-forum.test',
+      role: 'admin',
+    })
+  })
+
+  it('clears the dev auth cookie when switching back to anonymous', async () => {
+    const switchRes = await request(app)
+      .post('/v1/auth/dev/switch')
+      .set('Host', '127.0.0.1')
+      .send({ identity: 'anonymous' })
+
+    expect(switchRes.status).toBe(200)
+    expect(switchRes.body.data.user).toBeNull()
+
+    const cookies = switchRes.headers['set-cookie']
+    expect(cookies).toEqual(expect.arrayContaining([expect.stringContaining('auth_token=;')]))
+
+    const meRes = await request(app)
+      .get('/v1/auth/me')
+      .set('Cookie', cookies)
+
+    expect(meRes.status).toBe(401)
+    expect(meRes.body.error.code).toBe('UNAUTHORIZED')
+  })
+
+  it('hides the dev identity switch outside local dev hosts', async () => {
+    const switchRes = await request(app)
+      .post('/v1/auth/dev/switch')
+      .set('Host', 'forum.example.com')
+      .send({ identity: 'admin' })
+
+    expect(switchRes.status).toBe(404)
+    expect(switchRes.body.error.code).toBe('NOT_FOUND')
+  })
+
   it('registers a user in dev in-memory mode and resolves auth/me from the issued cookie', async () => {
     const email = `guidance-auth-${Date.now()}@example.com`
     const password = 'password123'

@@ -103,10 +103,11 @@ function normalizeUserCopy(value: unknown): CommunityHotTopicUserCopy {
   const record = toRecord(value)
   if (!record) return {}
 
-  const entries = Object.entries(record)
-    .filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].trim().length > 0)
-    .map(([key, copy]) => [key, copy.trim()] as const)
-  return Object.fromEntries(entries)
+  const entries = Object.entries(record).flatMap(([key, copy]) =>
+    typeof copy === 'string' && copy.trim().length > 0
+      ? [[key, copy.trim()] as const]
+      : [])
+  return Object.fromEntries(entries) as CommunityHotTopicUserCopy
 }
 
 function normalizeKeywordList(value: unknown): string[] {

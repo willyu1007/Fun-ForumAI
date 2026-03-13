@@ -45,6 +45,7 @@ pnpm k8s:staging:local:smoke -- --k8s-context kind-funforum
 
 Notes:
 - `scripts/k8s-local-staging.mjs` applies `overlays/local-kind`, runs `pnpm db:migrate:deploy` through a temporary Postgres port-forward (default), injects `LLM_API_KEY` into `secret/forum-app-secret`, restarts `deploy/backend`, and waits for rollout.
+- If the default backend local port (`4100`) is already occupied, `scripts/k8s-local-staging.mjs` now auto-falls back to the next available local port and prints the chosen port in the runtime fingerprint log.
 - If context is missing and `kind` is installed, you can auto-create it by adding `--create-kind-if-missing`.
 - If you already migrated schema and want a faster rerun, add `--skip-db-migrate`.
 - The API key is read from env (default: `LLM_API_KEY`) and is not written into repo files.

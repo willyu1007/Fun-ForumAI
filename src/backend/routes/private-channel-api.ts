@@ -1,18 +1,17 @@
 import { Router, type IRouter } from 'express'
 import { requireHumanAuth } from '../middleware/human-auth.js'
-import { agentRepo, agentService, privateChannelServices, relationService } from '../container.js'
+import * as container from '../container.js'
 import { AppError, ValidationError } from '../lib/errors.js'
 import { ensureDevAuthUserPersisted } from '../lib/dev-auth-user.js'
 import { buildAgentReadPayload } from '../identity/agent-identity.js'
-import { guidanceOrchestrator } from '../container.js'
 import { trackGuidanceEventFromRequest } from '../guidance/http.js'
 
 function getServices() {
-  return privateChannelServices
+  return container.privateChannelServices
 }
 
 function getRelationService() {
-  return relationService
+  return container.relationService
 }
 
 export const privateChannelRouter: IRouter = Router()
@@ -22,7 +21,7 @@ async function assertAgentOwner(
   userId: string,
 ): Promise<{ ok: true } | { ok: false; status: number; code: string; message: string }> {
   try {
-    const agent = await agentService.getAgentPersisted(agentId)
+    const agent = await container.agentService.getAgentPersisted(agentId)
     if (agent.owner_id !== userId) {
       return { ok: false, status: 403, code: 'FORBIDDEN', message: 'Not your agent' }
     }
@@ -59,7 +58,7 @@ privateChannelRouter.post('/agents/:agentId/chat/sessions', requireHumanAuth, as
     await trackGuidanceEventFromRequest(
       req,
       res,
-      guidanceOrchestrator,
+      container.guidanceOrchestrator,
       'PRIVATE_SESSION_CREATED',
       {
         agent_id: String(req.params.agentId),
@@ -131,7 +130,7 @@ privateChannelRouter.post(
         await trackGuidanceEventFromRequest(
           req,
           res,
-          guidanceOrchestrator,
+          container.guidanceOrchestrator,
           'PRIVATE_FIRST_MESSAGE_SENT',
           {
             agent_id: String(req.params.agentId),
@@ -202,7 +201,7 @@ privateChannelRouter.post(
       await trackGuidanceEventFromRequest(
         req,
         res,
-        guidanceOrchestrator,
+        container.guidanceOrchestrator,
         'PRIVATE_SESSION_ENDED',
         {
           agent_id: String(req.params.agentId),
@@ -255,7 +254,7 @@ privateChannelRouter.get('/agents/:agentId/memories', requireHumanAuth, async (r
     await trackGuidanceEventFromRequest(
       req,
       res,
-      guidanceOrchestrator,
+      container.guidanceOrchestrator,
       'MEMORIES_VIEWED',
       {
         agent_id: String(req.params.agentId),
@@ -447,11 +446,11 @@ privateChannelRouter.get('/agents/:agentId/relations/summary', requireHumanAuth,
 
 privateChannelRouter.get('/me/agents', requireHumanAuth, async (req, res) => {
   try {
-    await agentRepo.refreshPersisted?.()
-    const agents = agentRepo.findByOwner(req.user!.userId)
-    await Promise.all(agents.map((agent) => agentService.getLatestConfigPersisted(agent.id)))
+    await container.agentRepo.refreshPersisted?.()
+    const agents = container.agentRepo.findByOwner(req.user!.userId)
+    await Promise.all(agents.map((agent) => container.agentService.getLatestConfigPersisted(agent.id)))
     res.json({
-      data: agents.map((agent) => buildAgentReadPayload(agent, agentService.getLatestConfig(agent.id))),
+      data: agents.map((agent) => buildAgentReadPayload(agent, container.agentService.getLatestConfig(agent.id))),
     })
   } catch (err) {
     handleError(res, err)

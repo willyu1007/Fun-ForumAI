@@ -12,14 +12,14 @@ export function usePrivateSessions(agentId: string) {
   })
 }
 
-export function usePrivateMessages(sessionId: string) {
+export function usePrivateMessages(agentId: string, sessionId: string) {
   return useQuery({
-    queryKey: queryKeys.privateMessages(sessionId),
+    queryKey: queryKeys.privateMessages(agentId, sessionId),
     queryFn: () =>
       api
-        .get(`agents/_/chat/sessions/${sessionId}/messages?limit=100`)
+        .get(`agents/${agentId}/chat/sessions/${sessionId}/messages?limit=100`)
         .json<ApiResponse<PaginatedList<PrivateMessage>>>(),
-    enabled: !!sessionId,
+    enabled: !!agentId && !!sessionId,
     refetchInterval: 0,
   })
 }
@@ -43,7 +43,7 @@ export function useSendPrivateMessage(agentId: string, sessionId: string) {
         .post(`agents/${agentId}/chat/sessions/${sessionId}/messages`, { json: { content } })
         .json<ApiResponse<SendMessageResult>>(),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.privateMessages(sessionId) })
+      qc.invalidateQueries({ queryKey: queryKeys.privateMessages(agentId, sessionId) })
     },
   })
 }
@@ -57,7 +57,7 @@ export function useEndPrivateSession(agentId: string, sessionId: string) {
         .json<ApiResponse<{ session: PrivateSession; digest_status: string }>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.privateSessions(agentId) })
-      qc.invalidateQueries({ queryKey: queryKeys.privateMessages(sessionId) })
+      qc.invalidateQueries({ queryKey: queryKeys.privateMessages(agentId, sessionId) })
     },
   })
 }

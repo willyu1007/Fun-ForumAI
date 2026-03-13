@@ -210,7 +210,7 @@ function ChatThread({
   session: PrivateSession | null
 }) {
   const guidanceEnabled = isGuidanceEnabled()
-  const { data: msgData, isLoading } = usePrivateMessages(sessionId)
+  const { data: msgData, isLoading } = usePrivateMessages(agentId, sessionId)
   const createReport = useCreateReport()
   const sendMessage = useSendPrivateMessage(agentId, sessionId)
   const endSession = useEndPrivateSession(agentId, sessionId)

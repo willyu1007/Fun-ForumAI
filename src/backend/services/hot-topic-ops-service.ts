@@ -375,14 +375,14 @@ export class HotTopicOpsService {
       }),
     )
 
-    const items: HotTopicDashboardItem[] = [...postItems, ...roomItems]
-      .flatMap((item) => (item ? [item satisfies HotTopicDashboardItem] : []))
-
-    items.sort((a, b) =>
-      b.hot_score - a.hot_score
-      || b.drift_risk_score - a.drift_risk_score
-      || (Date.parse(b.latest_event_at ?? '1970-01-01T00:00:00.000Z')
-        - Date.parse(a.latest_event_at ?? '1970-01-01T00:00:00.000Z')))
+    const combinedItems: Array<HotTopicDashboardItem | null> = [...postItems, ...roomItems]
+    const items = combinedItems
+      .filter((item): item is HotTopicDashboardItem => item !== null)
+      .sort((a, b) =>
+        b.hot_score - a.hot_score
+        || b.drift_risk_score - a.drift_risk_score
+        || (Date.parse(b.latest_event_at ?? '1970-01-01T00:00:00.000Z')
+          - Date.parse(a.latest_event_at ?? '1970-01-01T00:00:00.000Z')))
 
     return {
       generated_at: new Date().toISOString(),

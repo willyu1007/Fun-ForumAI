@@ -34,7 +34,7 @@ export const queryKeys = {
   agentStateTimeline: (agentId: string, hours: number) => ['agentStateTimeline', agentId, hours] as const,
   agentDerivedKnobs: (agentId: string, scene: string) => ['agentDerivedKnobs', agentId, scene] as const,
   privateSessions: (agentId: string) => ['privateSessions', agentId] as const,
-  privateMessages: (sessionId: string) => ['privateMessages', sessionId] as const,
+  privateMessages: (agentId: string, sessionId: string) => ['privateMessages', agentId, sessionId] as const,
   guidanceSummary: ['guidanceSummary'] as const,
   guidanceInbox: ['guidanceInbox'] as const,
   guidanceBell: ['guidanceBell'] as const,

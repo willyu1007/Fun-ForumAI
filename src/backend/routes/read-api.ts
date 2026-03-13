@@ -26,6 +26,12 @@ import { trackGuidanceEventFromRequest } from '../guidance/http.js'
 
 export const readApiRouter: IRouter = Router()
 
+function isAttachmentInput(item: unknown): item is { ref: string; type: string } {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return false
+  const record = item as Record<string, unknown>
+  return typeof record.ref === 'string' && typeof record.type === 'string'
+}
+
 async function buildAftershowSnapshot(postId: string): Promise<{
   post_id: string
   aftershow_summary: {
@@ -245,13 +251,10 @@ readApiRouter.post('/reports', requireHumanAuth, async (req, res) => {
   const complaint_type = typeof req.body?.complaint_type === 'string' ? req.body.complaint_type.trim() : undefined
   const reason_code = typeof req.body?.reason_code === 'string' ? req.body.reason_code.trim() : undefined
   const detail_text = typeof req.body?.detail_text === 'string' ? req.body.detail_text : undefined
-  const attachments = Array.isArray(req.body?.attachments)
-    ? (req.body.attachments as unknown[])
-        .filter((item): item is { ref: string; type: string } => {
-          if (!item || typeof item !== 'object' || Array.isArray(item)) return false
-          const record = item as Record<string, unknown>
-          return typeof record.ref === 'string' && typeof record.type === 'string'
-        })
+  const rawAttachments = Array.isArray(req.body?.attachments) ? req.body.attachments as unknown[] : null
+  const attachments = rawAttachments
+    ? rawAttachments
+        .filter(isAttachmentInput)
         .map((item) => ({ ref: item.ref.trim(), type: item.type.trim() }))
         .filter((item) => item.ref.length > 0 && item.type.length > 0)
     : undefined
