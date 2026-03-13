@@ -267,6 +267,45 @@ function defaultRedisUrl(namespace) {
   return `redis://redis.${namespace}.svc.cluster.local:6379`
 }
 
+async function startBackendPortForwardWithFallback({
+  context,
+  namespace,
+  podName,
+  preferredLocalPort,
+  containerPort,
+  maxAttempts = 10,
+}) {
+  const requestedPort = Number(preferredLocalPort)
+  let lastError = null
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const candidatePort = requestedPort + attempt
+    try {
+      const child = await startPortForward({
+        context,
+        namespace,
+        podName,
+        localPort: candidatePort,
+        containerPort,
+      })
+      return {
+        child,
+        localPort: candidatePort,
+        fellBackFromRequestedPort: candidatePort !== requestedPort,
+      }
+    } catch (error) {
+      lastError = error
+      const message = error instanceof Error ? error.message : String(error)
+      const isPortConflict = /address already in use|unable to listen on any of the requested ports/i.test(message)
+      if (!isPortConflict) {
+        throw error
+      }
+    }
+  }
+
+  throw lastError ?? new Error(`Unable to establish backend port-forward after ${maxAttempts} attempts`)
+}
+
 async function runSmokeSuite({ context, namespace }) {
   console.log('[staging] Running T-023~T-025 K8s smoke suite...')
   const scriptArgs = [
@@ -479,21 +518,29 @@ async function main() {
     if (backendPods.length === 0) {
       throw new Error(`No ready backend pod found for selector ${args.backendLabel}`)
     }
-    backendForward = await startPortForward({
+    const backendForwardResult = await startBackendPortForwardWithFallback({
       context: args.k8sContext,
       namespace: args.k8sNamespace,
       podName: backendPods[0],
-      localPort: asInt(args.backendLocalPort, 4100, '--backend-local-port'),
+      preferredLocalPort: asInt(args.backendLocalPort, 4100, '--backend-local-port'),
       containerPort: asInt(args.backendPort, 4000, '--backend-port'),
     })
+    backendForward = backendForwardResult.child
+    const backendLocalPort = backendForwardResult.localPort
+    if (backendForwardResult.fellBackFromRequestedPort) {
+      console.warn(
+        `[staging] WARN: backend local port ${args.backendLocalPort} was unavailable, using ${backendLocalPort} instead`,
+      )
+    }
 
-    const baseUrl = `http://127.0.0.1:${asInt(args.backendLocalPort, 4100, '--backend-local-port')}`
+    const baseUrl = `http://127.0.0.1:${backendLocalPort}`
     await waitForBackend(baseUrl)
     const runtimeFeatures = await fetchRuntimeFeatures(baseUrl, adminToken)
     validateRuntimeFeatures(runtimeFeatures, localBuildInfo)
     console.log('[staging] Runtime fingerprint verified:', JSON.stringify({
       code_fingerprint: runtimeFeatures.runtime.build.code_fingerprint,
       persona_runtime: runtimeFeatures.runtime.persona_runtime,
+      local_port: backendLocalPort,
     }))
   } finally {
     await stopChildProcess(backendForward)
