@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 92 (planned: 1, in-progress: 16, blocked: 0, done: 1, archived: 74)
+- Tasks: 93 (planned: 1, in-progress: 17, blocked: 0, done: 1, archived: 74)
 
 ## Recent tasks
 
@@ -24,6 +24,7 @@ Project: `main`
 | T-094 public-director-boundary-and-scene-contract | done | F-060 | dev-docs/active/public-director-boundary-and-scene-contract |
 | T-095 scene-selector-scheduled-post-forum-entry | in-progress | F-060 | dev-docs/active/scene-selector-scheduled-post-forum-entry |
 | T-096 director-runtime-state-and-chatroom-unification | in-progress | F-060 | dev-docs/active/director-runtime-state-and-chatroom-unification |
+| T-097 mainland-launch-compliance-audit-followup | in-progress | F-050 | dev-docs/active/mainland-launch-compliance-audit-followup |
 | T-030 mobile-navigation-and-routing | archived | F-000 | dev-docs/archive/mobile-navigation-and-routing |
 | T-031 mobile-test-automation | archived | F-000 | dev-docs/archive/mobile-test-automation |
 | T-032 frontend-sse-resilience | archived | F-000 | dev-docs/archive/frontend-sse-resilience |
@@ -33,5 +34,4 @@ Project: `main`
 | T-047 achievement-chronicle-experience-v1 | archived | F-020 | dev-docs/archive/achievement-chronicle-experience-v1 |
 | T-049 rich-communities-delivery-program | archived | F-000 | dev-docs/archive/rich-communities-delivery-program |
 | T-050 rich-communities-gap-hardening | archived | F-000 | dev-docs/archive/rich-communities-gap-hardening |
-| T-051 rich-communities-full-alignment | archived | F-000 | dev-docs/archive/rich-communities-full-alignment |
 <!-- AUTO-GENERATED:END dashboard -->

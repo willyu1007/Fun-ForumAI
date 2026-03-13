@@ -126,6 +126,7 @@ Project: `main`
 | T-091 hot-topic-policy-and-user-transparency | archived | dev-docs/archive/hot-topic-policy-and-user-transparency |
 | T-092 public-policy-and-help-center-surfaces | archived | dev-docs/archive/public-policy-and-help-center-surfaces |
 | T-093 hot-topic-ops-dashboard-and-alerting | archived | dev-docs/archive/hot-topic-ops-dashboard-and-alerting |
+| T-097 mainland-launch-compliance-audit-followup | in-progress | dev-docs/active/mainland-launch-compliance-audit-followup |
 
 ### F-060 Public Scene Pool & Director Orchestration
 
