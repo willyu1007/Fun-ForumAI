@@ -45,3 +45,17 @@ Project: `main`
 - 2026-03-12 requirement_id=R-052 title="Private Influence Provenance and Config Governance" event=status from=planned to=in-progress
 - 2026-03-12 requirement_id=R-053 title="Hot Topic Policy and User Transparency" event=status from=planned to=in-progress
 - 2026-03-12 task_id=T-089 slug=review-case-and-complaint-foundation event=scope_rebaseline note="Reframed from MVP closed loop to shared full foundation; current repo remains baseline only."
+- 2026-03-13 task_id=T-087 slug=mainland-launch-safety-master event=status from=in-progress to=archived
+- 2026-03-13 task_id=T-088 slug=policy-gateway-channel-hardening event=status from=in-progress to=archived
+- 2026-03-13 task_id=T-089 slug=review-case-and-complaint-foundation event=status from=done to=archived
+- 2026-03-13 task_id=T-090 slug=private-influence-provenance-and-config-governance event=status from=in-progress to=archived
+- 2026-03-13 task_id=T-091 slug=hot-topic-policy-and-user-transparency event=status from=in-progress to=archived
+- 2026-03-13 task_id=T-092 slug=public-policy-and-help-center-surfaces event=registered dev_docs_path=dev-docs/archive/public-policy-and-help-center-surfaces
+- 2026-03-13 task_id=T-093 slug=hot-topic-ops-dashboard-and-alerting event=registered dev_docs_path=dev-docs/archive/hot-topic-ops-dashboard-and-alerting
+- 2026-03-13 requirement_id=R-050 title="Policy Gateway and Channel Hardening" event=status from=in-progress to=done
+- 2026-03-13 requirement_id=R-052 title="Private Influence Provenance and Config Governance" event=status from=in-progress to=done
+- 2026-03-13 requirement_id=R-053 title="Hot Topic Policy and User Transparency" event=status from=in-progress to=done
+- 2026-03-13 task_id=T-092 slug=public-policy-and-help-center-surfaces event=reclassified milestone_id=M-010 feature_id=F-050 requirement_id=R-053
+- 2026-03-13 task_id=T-093 slug=hot-topic-ops-dashboard-and-alerting event=reclassified milestone_id=M-010 feature_id=F-050 requirement_id=R-053
+- 2026-03-13 feature_id=F-050 title="Risk Control & Review Launch Track" event=status from=in-progress to=done
+- 2026-03-13 milestone_id=M-010 title="Mainland Launch Safety" event=status from=in-progress to=done
