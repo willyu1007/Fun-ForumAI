@@ -27,15 +27,27 @@
 - `pnpm vitest run src/backend/repos/__tests__/ppr-snapshot-repository.test.ts src/backend/repos/__tests__/pg-room-watchability-repository.test.ts src/backend/routes/__tests__/e2e-dev-seed.test.ts src/backend/routes/__tests__/chatroom-control-api.test.ts src/backend/runtime/__tests__/chat-output-sanitizer.test.ts src/backend/runtime/__tests__/prompt-layer-service.test.ts src/backend/services/__tests__/chatroom-runtime-context-builder.test.ts src/backend/services/__tests__/conversation-clock.test.ts src/backend/llm/__tests__/prompt-engine.test.ts`
   - 结果：通过
   - 说明：覆盖 seed 修复、cue 并发唯一键、PPR 去重、聊天室 prompt/readability 约束和 live 消息整形链路。
+- `pnpm exec vitest run src/backend/routes/__tests__/e2e-dev-seed.test.ts src/backend/llm/__tests__/prompt-engine.test.ts src/backend/services/__tests__/conversation-clock.test.ts src/backend/runtime/__tests__/persona-observation.test.ts`
+  - 结果：首次失败，修复后通过
+  - 说明：失败时只剩 1 个重复 seed 成员未被清掉；根因是 `pruneStaleSeedRoomMembers()` 在 in-memory room repo 返回的共享 `members` 数组上边遍历边删除，导致跳过了后一个重复成员。改为“每轮取最新房间状态并删除 1 个脏成员直到收敛”后复测通过。
+- `pnpm exec vitest run src/backend/routes/__tests__/e2e-dev-seed.test.ts`
+  - 结果：通过
+  - 说明：单独验证 archived duplicate-filled room 的幂等修复路径已恢复绿色。
+- `pnpm exec vitest run src/backend/routes/__tests__/e2e-dev-seed.test.ts src/backend/llm/__tests__/prompt-engine.test.ts src/backend/services/__tests__/conversation-clock.test.ts src/backend/runtime/__tests__/persona-observation.test.ts`
+  - 结果：通过
+  - 说明：确认 prompt version bump 和 `dev-seed` 自愈逻辑一起落地后，相关回归共 `4` 个文件 `17` 个测试全部通过。
 - `pnpm typecheck`
   - 结果：通过
   - 说明：`pretypecheck` 的 Prisma client 生成成功，随后 `tsc -b` 正常退出。
+- `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+  - 结果：通过
+  - 说明：在补完本轮 PR #10 merge-readiness 的 dev-docs 后再次同步 project hub，输出 `[ok] Sync complete.`。
 - `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`
   - 结果：通过
   - 说明：validator 输出 `OK: registries are structurally and contractually valid.`
 - `node .ai/scripts/ctl-project-governance.mjs lint --strict --project main`
   - 结果：通过
-  - 说明：输出 `[ok] Lint passed.`
+  - 说明：在最新一次 project hub sync 之后复跑，输出 `[ok] Lint passed.`。
 - `python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py run --mode full`
   - 结果：通过
   - 说明：当前有效 evidence run 为 `.ai/.tmp/ui/20260312T045419Z-38209`

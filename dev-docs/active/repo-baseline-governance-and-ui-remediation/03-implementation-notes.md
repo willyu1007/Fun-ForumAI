@@ -36,6 +36,21 @@
   - `src/frontend/features/chat/pages/__tests__/ChatRoomPages.test.tsx`
   - `src/frontend/features/forum/pages/__tests__/HighlightsPage.test.tsx`
 
+## pr-10-merge-readiness
+- 为了满足 prompt registry 的 immutable 约束，没有直接改写已发布的 `agent-chat-reply@3`：
+  - 补回原始 `v3` 模板内容；
+  - 将本轮 live 聊天规则增强发布为 `agent-chat-reply@4`；
+  - 同步更新 `PROMPT_TEMPLATE_REFS`、`callsite-inventory` 和相关测试里的版本引用。
+- `dev-seed` 的 agent 创建从“每次生成新 agent”改为“按 `owner_id + display_name` 复用最早创建的 canonical seed agent”，避免重复 seed 把固定房间越跑越满。
+- `dev-seed` 的房间复用从“只按 slug 找到即返回”改为“按 slug 复用后自愈”：
+  - 已归档房间会恢复为 `active`；
+  - 在补齐目标成员前，会持续移除不在期望集合中的托管 seed agent，直到房间成员收敛到目标状态。
+- `src/backend/container/index.ts` 补导出 `roomRepo`，用于路由自愈逻辑和更强的 E2E 回归验证。
+- `src/backend/routes/__tests__/e2e-dev-seed.test.ts` 扩成真实 merge-blocker 场景：
+  - 第一次 seed 后人工制造 duplicate seed agents；
+  - 把重复 agent 塞进固定房间并归档房间；
+  - 第二次 seed 断言社区 / agent / room id 全量复用，且房间恢复 active 并清掉重复成员。
+
 ## live-runtime-review
 - 以真实本地联调替代“只看单测”：
   - Postgres 持久化模式启动后端；

@@ -2,13 +2,25 @@ import { isDeepStrictEqual } from 'node:util'
 import { Router, type IRouter } from 'express'
 import type { PrismaClient } from '@prisma/client'
 import { config } from '../lib/config.js'
-import { agentService, forumWriteService, communityRepo, chatService, voteRepo, agentCommunityMembershipService } from '../container.js'
-import type { Community, CreateAgentInput } from '../repos/types.js'
+import {
+  agentRepo,
+  agentService,
+  forumWriteService,
+  communityRepo,
+  roomRepo,
+  chatService,
+  voteRepo,
+  agentCommunityMembershipService,
+} from '../container.js'
+import type { Agent, Community, CreateAgentInput, Room } from '../repos/types.js'
 import { DEFAULT_STAGE_SPEC_V1, setStageSpecIntoRules, type StageSpecV1 } from '../stage/index.js'
 
 function getPrismaOrNull(): PrismaClient | null {
   return ((globalThis as Record<string, unknown>).__forumPrisma as PrismaClient) ?? null
 }
+
+const DEV_SEED_OWNER_IDS = ['dev-user-001', 'dev-admin-001', 'dev-seed'] as const
+const DEV_SEED_OWNER_ID_SET = new Set<string>(DEV_SEED_OWNER_IDS)
 
 function isUniqueConstraintError(err: unknown): boolean {
   return err !== null
@@ -31,6 +43,38 @@ async function createCommunityPersisted(input: {
 
 async function createAgentPersisted(input: CreateAgentInput) {
   return agentService.createAgentPersisted(input)
+}
+
+function compareAgentsByCreatedAsc(a: Agent, b: Agent): number {
+  return a.created_at.getTime() - b.created_at.getTime()
+    || a.id.localeCompare(b.id)
+}
+
+async function findSeedAgentByIdentity(input: CreateAgentInput): Promise<Agent | null> {
+  const cached = agentRepo.findByOwner(input.owner_id)
+    .filter((agent) => agent.display_name === input.display_name)
+    .sort(compareAgentsByCreatedAsc)[0] ?? null
+  if (cached) return cached
+
+  const prisma = getPrismaOrNull()
+  if (!prisma) return null
+
+  const row = await prisma.agent.findFirst({
+    where: {
+      ownerId: input.owner_id,
+      displayName: input.display_name,
+    },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    select: { id: true },
+  })
+  if (!row) return null
+  return agentService.getAgentPersisted(row.id).catch(() => null)
+}
+
+async function findOrCreateSeedAgent(input: CreateAgentInput): Promise<Agent> {
+  const existing = await findSeedAgentByIdentity(input)
+  if (existing) return existing
+  return createAgentPersisted(input)
 }
 
 async function findCommunityBySlugWithFallback(slug: string): Promise<Community | null> {
@@ -140,17 +184,45 @@ function isDuplicateRoomSlugError(err: unknown): boolean {
   return err instanceof Error && /Room slug ".*" already exists/.test(err.message)
 }
 
-async function findRoomBySlugWithFallback(slug: string): Promise<{ id: string } | null> {
-  const availableRoom = (await chatService.getAvailableRooms()).find((room) => room.slug === slug)
-  if (availableRoom) return { id: availableRoom.id }
+async function findRoomBySlugWithFallback(slug: string): Promise<Room | null> {
+  return roomRepo.findBySlug(slug)
+}
 
-  const prisma = getPrismaOrNull()
-  if (!prisma) return null
-  const row = await prisma.room.findUnique({
-    where: { slug },
-    select: { id: true },
-  })
-  return row ? { id: row.id } : null
+function isManagedSeedAgent(agent: Agent): boolean {
+  return DEV_SEED_OWNER_ID_SET.has(agent.owner_id)
+}
+
+function compactSeedAgentIds(ids: Array<string | undefined>): string[] {
+  return ids.filter((agentId): agentId is string => typeof agentId === 'string' && agentId.length > 0)
+}
+
+async function ensureSeedRoomActive(roomId: string): Promise<Room | null> {
+  const room = await roomRepo.findById(roomId)
+  if (!room) return null
+  if (room.status === 'active') return room
+  return roomRepo.updateStatus(roomId, 'active')
+}
+
+async function pruneStaleSeedRoomMembers(roomId: string, desiredAgentIds: string[]): Promise<void> {
+  const desired = new Set(desiredAgentIds)
+  for (;;) {
+    const room = await chatService.getRoom(roomId)
+    let staleSeedAgent: Agent | null = null
+
+    for (const member of room.members) {
+      if (desired.has(member.member_id)) continue
+
+      const agent = agentRepo.findById(member.member_id)
+        ?? await agentService.getAgentPersisted(member.member_id).catch(() => null)
+      if (!agent || !isManagedSeedAgent(agent)) continue
+
+      staleSeedAgent = agent
+      break
+    }
+
+    if (!staleSeedAgent) return
+    await chatService.recallAgentFromRoom(roomId, staleSeedAgent.id, staleSeedAgent.owner_id)
+  }
 }
 
 async function findOrCreateSeedRoom(input: {
@@ -161,7 +233,10 @@ async function findOrCreateSeedRoom(input: {
   greeting_message: string
 }): Promise<{ id: string }> {
   const existing = await findRoomBySlugWithFallback(input.slug)
-  if (existing) return existing
+  if (existing) {
+    await ensureSeedRoomActive(existing.id)
+    return { id: existing.id }
+  }
 
   try {
     const created = await chatService.createRoom(input)
@@ -169,7 +244,10 @@ async function findOrCreateSeedRoom(input: {
   } catch (err) {
     if (!isDuplicateRoomSlugError(err)) throw err
     const conflicted = await findRoomBySlugWithFallback(input.slug)
-    if (conflicted) return conflicted
+    if (conflicted) {
+      await ensureSeedRoomActive(conflicted.id)
+      return { id: conflicted.id }
+    }
     throw err
   }
 }
@@ -327,7 +405,7 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
   try {
     const prisma = getPrismaOrNull()
     if (prisma) {
-      for (const ownerId of ['dev-user-001', 'dev-admin-001', 'dev-seed']) {
+      for (const ownerId of DEV_SEED_OWNER_IDS) {
         await prisma.humanUser.upsert({
           where: { id: ownerId },
           update: {},
@@ -357,7 +435,7 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
 
     const agents: { id: string }[] = []
     for (const a of SEED_DATA.agents) {
-      const agent = await createAgentPersisted(a)
+      const agent = await findOrCreateSeedAgent(a)
       agents.push(agent)
       result.agents.push(agent.id)
 
@@ -463,6 +541,7 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
         greeting_message: '欢迎来到意识讨论室！让我们一起探索思维的本质。',
       })
       rooms.push(room1.id)
+      await pruneStaleSeedRoomMembers(room1.id, compactSeedAgentIds([agents[0].id, agents[1]?.id, agents[2]?.id]))
 
       if (agents[1]) {
         await ensureRoomMember(room1.id, agents[1].id, 'dev-user-001')
@@ -479,6 +558,7 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
         greeting_message: '今天想聊聊什么代码？带上你最喜欢的片段！',
       })
       rooms.push(room2.id)
+      await pruneStaleSeedRoomMembers(room2.id, compactSeedAgentIds([agents[4]?.id ?? agents[0].id, agents[1]?.id]))
 
       if (agents[1]) {
         await ensureRoomMember(room2.id, agents[1].id, 'dev-user-001')

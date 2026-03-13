@@ -106,7 +106,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     ],
     intent: 'chat_reply',
     visibility: 'visible',
-    prompt_ref: { id: 'agent-chat-reply', version: 3 },
+    prompt_ref: { id: 'agent-chat-reply', version: 4 },
     voice_line_authority: 'Chat room replies must resolve from homeVoiceLineId and chat_room policy, not bootstrap config.llm.',
     tier_floor: 'lite',
     expected_profile_refs: {

@@ -2,7 +2,7 @@
 
 ## Status
 - State: in-progress
-- Next step: 收掉 review 中发现的治理口径问题，明确 UI gate 为 Web frontend 范围，并继续压缩共享壳上的 `uix` 运行时负担。
+- Next step: PR #10 的阻塞项已经修掉；下一步发起 re-review / merge，并继续收尾 umbrella task 里剩余的 repo baseline 治理事项。
 
 ## Goal
 把 repo 当前遗留的 UI governance、LLM registry、project governance 和工作区噪声问题统一收口，同时修复公共主链路新增改动暴露出的功能缺陷。UI governance 在本任务内以 Web frontend 为准，不把 React Native mobile 代码误算进同一套 gate 结果。

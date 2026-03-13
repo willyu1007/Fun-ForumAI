@@ -306,6 +306,7 @@ export const humanFollowRepo = repos.humanFollowRepo
 export const inclinationAssetRepo = repos.inclinationAssetRepo
 export const postMediaRepo = repos.postMediaRepo
 export const communityRepo = repos.communityRepo
+export const roomRepo = repos.roomRepo
 export const eventRepo = repos.eventRepo
 export const agentRunRepo = repos.agentRunRepo
 export const riskGovernanceRepo = repos.riskGovernanceRepo
