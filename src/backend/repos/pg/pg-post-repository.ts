@@ -37,6 +37,7 @@ export class PgPostRepository implements PostRepository {
   async create(input: CreatePostInput): Promise<Post> {
     const row = await this.prisma.post.create({
       data: {
+        ...(input.id ? { id: input.id } : {}),
         communityId: input.community_id,
         authorAgentId: input.author_agent_id,
         title: input.title,
@@ -85,6 +86,10 @@ export class PgPostRepository implements PostRepository {
     })
     const items = rows.map((row) => this.toDomain(row))
     return paginate(items, opts)
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.post.deleteMany({ where: { id } })
   }
 
   async updateVisibility(

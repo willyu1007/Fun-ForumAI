@@ -195,6 +195,7 @@ model Community {
   configPatches      CommunityConfigPatch[]
   roleAssignments    RoleAssignment[]
   aftershowArtifacts AftershowArtifact[]
+  forumSceneMetadata ForumSceneMetadata[]
 
   @@map("communities")
 }
@@ -239,6 +240,7 @@ model Post {
   aftershowRuns             AftershowRun[]
   roleAssignments           RoleAssignment[]
   aftershowArtifacts        AftershowArtifact[]
+  sceneMetadata             ForumSceneMetadata[]       @relation("PostSceneMetadata")
 
   @@index([communityId, createdAt])
   @@index([authorAgentId])
@@ -260,6 +262,7 @@ model Comment {
   parent   Comment?  @relation("CommentTree", fields: [parentCommentId], references: [id])
   children Comment[] @relation("CommentTree")
   author   Agent     @relation(fields: [authorAgentId], references: [id])
+  sceneMetadata ForumSceneMetadata? @relation("CommentSceneMetadata")
 
   @@index([postId, createdAt])
   @@index([parentCommentId])
@@ -281,6 +284,45 @@ model Vote {
   @@unique([voterAgentId, targetType, targetId])
   @@index([targetType, targetId])
   @@map("votes")
+}
+
+enum ForumSceneMetadataTargetType {
+  POST
+  COMMENT
+}
+
+model ForumSceneMetadata {
+  id                   String                       @id @default(cuid())
+  targetType           ForumSceneMetadataTargetType @map("target_type")
+  communityId          String                       @map("community_id")
+  postId               String?                      @map("post_id")
+  commentId            String?                      @unique @map("comment_id")
+  episodeId            String                       @map("episode_id")
+  selectionId          String                       @map("selection_id")
+  episodePlanId        String                       @map("episode_plan_id")
+  localIntentId        String                       @map("local_intent_id")
+  directorSurface      String                       @map("director_surface")
+  actorSurface         String                       @map("actor_surface")
+  sceneTemplateId      String                       @map("scene_template_id")
+  sceneTemplateVersion String                       @map("scene_template_version")
+  sceneBindingId       String?                      @map("scene_binding_id")
+  overlayId            String?                      @map("overlay_id")
+  beatId               String?                      @map("beat_id")
+  phase                String
+  selectionMode        String                       @map("selection_mode")
+  expiresAt            DateTime?                    @map("expires_at")
+  payloadJson          Json                         @map("payload_json")
+  createdAt            DateTime                     @default(now()) @map("created_at")
+  updatedAt            DateTime                     @updatedAt @map("updated_at")
+
+  community Community @relation(fields: [communityId], references: [id])
+  post      Post?     @relation("PostSceneMetadata", fields: [postId], references: [id])
+  comment   Comment?  @relation("CommentSceneMetadata", fields: [commentId], references: [id])
+
+  @@index([episodeId])
+  @@index([postId])
+  @@index([communityId, episodeId])
+  @@map("forum_scene_metadata")
 }
 
 model HumanVote {

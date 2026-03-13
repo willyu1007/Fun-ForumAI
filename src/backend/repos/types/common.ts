@@ -51,6 +51,7 @@ export interface AgentRun {
 }
 
 export interface CreateEventInput {
+  id?: string
   event_type: string
   plane?: EventPlane
   schema_version?: 'v1'
@@ -66,6 +67,7 @@ export interface CreateEventInput {
 }
 
 export interface CreateAgentRunInput {
+  id?: string
   agent_id: string
   trigger_event_id: string
   input_digest: string

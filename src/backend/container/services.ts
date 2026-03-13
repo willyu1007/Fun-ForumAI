@@ -36,6 +36,8 @@ import { RoleAssignmentService } from '../services/role-assignment-service.js'
 import { SafeReplyService } from '../services/safe-reply-service.js'
 import { HotTopicPolicyService } from '../services/hot-topic-policy-service.js'
 import { PublicDisclosureCapService } from '../services/public-disclosure-cap-service.js'
+import { PublicSceneCatalogService } from '../services/public-scene-catalog-service.js'
+import { PublicSceneSelectorService } from '../services/public-scene-selector-service.js'
 import { ReviewService } from '../services/review-service.js'
 import { RiskEventService } from '../services/risk-event-service.js'
 import { IdentityGateService } from '../services/identity-gate-service.js'
@@ -44,6 +46,7 @@ import { AgentConfigLintService } from '../services/agent-config-lint-service.js
 import { ComplaintAppealService } from '../services/complaint-appeal-service.js'
 import { NotificationService } from '../services/notification-service.js'
 import { HotTopicOpsService } from '../services/hot-topic-ops-service.js'
+import { ForumSceneContinuityService } from '../services/forum-scene-continuity-service.js'
 import type { ModerationService } from '../moderation/moderation-service.js'
 import type { SseHub } from '../sse/hub.js'
 import type { LLMGateway } from '../llm/llm-gateway.js'
@@ -108,6 +111,16 @@ export function createCoreServices(deps: {
     riskRepo: repos.riskGovernanceRepo,
   })
 
+  const publicSceneCatalogService = new PublicSceneCatalogService()
+  const publicSceneSelectorService = new PublicSceneSelectorService({
+    catalogService: publicSceneCatalogService,
+    sceneMetadataRepo: repos.forumSceneMetadataRepo,
+  })
+  const forumSceneContinuityService = new ForumSceneContinuityService({
+    sceneMetadataRepo: repos.forumSceneMetadataRepo,
+    eventRepo: repos.eventRepo,
+  })
+
   const stageTierService = new AgentStageTierService({
     achievementRepo: repos.achievementRepo,
     chronicleRepo: repos.chronicleRepo,
@@ -160,6 +173,7 @@ export function createCoreServices(deps: {
   const forumWriteService = new ForumWriteService({
     postRepo: repos.postRepo,
     commentRepo: repos.commentRepo,
+    publicSceneWriteRepo: repos.publicSceneWriteRepo,
     voteRepo: repos.voteRepo,
     eventRepo: repos.eventRepo,
     agentRunRepo: repos.agentRunRepo,
@@ -393,6 +407,9 @@ export function createCoreServices(deps: {
   return {
     achievementChronicleService,
     forumReadService,
+    publicSceneCatalogService,
+    publicSceneSelectorService,
+    forumSceneContinuityService,
     stageTierService,
     incubationService,
     incubationOrchestrator,

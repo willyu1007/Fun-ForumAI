@@ -8,6 +8,8 @@ import { InMemoryCommunityRepository } from '../../repos/community-repository.js
 import { InMemoryAgentCommunityMembershipRepository } from '../../repos/agent-community-membership-repository.js'
 import { InMemoryIncubationRepository } from '../../repos/incubation-repository.js'
 import { InMemoryRoleAssignmentRepository } from '../../repos/role-assignment-repository.js'
+import { InMemoryForumSceneMetadataRepository } from '../../repos/forum-scene-metadata-repository.js'
+import { InMemoryPublicSceneWriteRepository } from '../../repos/public-scene-write-repository.js'
 import type { ModerationResult } from '../../moderation/types.js'
 import { config } from '../../lib/config.js'
 
@@ -104,6 +106,14 @@ function setup(modResult: ModerationResult = CLEAN_RESULT) {
   const membershipRepo = new InMemoryAgentCommunityMembershipRepository()
   const incubationRepo = new InMemoryIncubationRepository()
   const roleAssignmentRepo = new InMemoryRoleAssignmentRepository()
+  const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+  const publicSceneWriteRepo = new InMemoryPublicSceneWriteRepository({
+    postRepo,
+    commentRepo,
+    sceneMetadataRepo: forumSceneMetadataRepo,
+    eventRepo,
+    agentRunRepo,
+  })
   const community = communityRepo.create({
     name: 'Test Community',
     slug: `test-community-${Date.now()}`,
@@ -115,6 +125,7 @@ function setup(modResult: ModerationResult = CLEAN_RESULT) {
   const svc = new ForumWriteService({
     postRepo,
     commentRepo,
+    publicSceneWriteRepo,
     voteRepo,
     eventRepo,
     agentRunRepo,
@@ -136,6 +147,7 @@ function setup(modResult: ModerationResult = CLEAN_RESULT) {
     membershipRepo,
     roleAssignmentRepo,
     incubationRepo,
+    forumSceneMetadataRepo,
   }
 }
 
@@ -174,6 +186,96 @@ describe('ForumWriteService', () => {
       })
 
       expect((result.event.payload_json as Record<string, unknown>).chain_depth).toBe(3)
+    })
+
+    it('persists scene sidecar and emits public_scene audit for scene-enabled posts', async () => {
+      const { svc, communityId, forumSceneMetadataRepo } = setup()
+      const result = await svc.createPost({
+        actor_agent_id: 'a1',
+        run_id: 'run_scene',
+        community_id: communityId,
+        title: 'Scene title',
+        body: 'Scene body',
+        scene: {
+          scene_metadata: {
+            director_surface: 'scheduled_post',
+            actor_surface: 'forum_post',
+            scene_template_id: 'stage-theme-01',
+            scene_template_version: 'legacy-v1',
+            scene_binding_id: 'binding-1',
+            overlay_id: null,
+            episode_id: 'episode-1',
+            beat_id: null,
+            phase: 'opening',
+            selection_mode: 'pool_guided',
+            selection_id: 'selection-1',
+            episode_plan_id: 'plan-1',
+            local_intent_id: 'intent-1',
+            started_at: '2026-03-13T00:00:00.000Z',
+            expires_at: '2026-03-14T00:00:00.000Z',
+          },
+          episode_brief: {
+            episode_id: 'episode-1',
+            director_surface: 'scheduled_post',
+            actor_surface: 'forum_post',
+            template_id: 'stage-theme-01',
+            template_version: 'legacy-v1',
+            binding_id: 'binding-1',
+            phase: 'opening',
+            scene_goal: {
+              viewer_goal: '推进讨论',
+              growth_goal: '增加连贯性',
+            },
+            casting_directive: {
+              must_have_roles: [],
+              avoid_pairs: [],
+              core_quota: 2,
+              contrast_quota: 1,
+              wildcard_quota: 1,
+            },
+            open_loops: [],
+            must_hit_points: [],
+            avoid_repeat: [],
+            close_condition: {
+              ttl_hours: 24,
+              message_threshold: 12,
+              objective: '推进讨论',
+            },
+            expires_at: '2026-03-14T00:00:00.000Z',
+          },
+          local_intent: {
+            intent_id: 'intent-1',
+            delivery_surface: 'forum_post',
+            initiative: 'open_topic',
+            opinion_policy: 'free_opinion',
+            relation_focus: 'none',
+            tone_hint: 'neutral',
+            privacy_mode: 'public_only',
+            memory_scope: 'public_contextual',
+            reference_scope: 'episode_public_context',
+            prohibited_reference_types: ['owner_private_speech', 'private_memory', 'hidden_director_goal'],
+            target_ref: { kind: 'none' },
+            hard_constraints: ['不得改写目标社区'],
+            soft_constraints: ['推进讨论'],
+          },
+          local_intent_block: '## Local Intent\n- episode_id: episode-1',
+          selection_audit: { binding_id: 'binding-1' },
+          planning_audit: { episode_id: 'episode-1' },
+          fallback_reason: null,
+        },
+      })
+
+      const sidecar = await forumSceneMetadataRepo.findByPostId(result.post.id)
+      expect(sidecar?.episode_id).toBe('episode-1')
+      expect((result.event.payload_json as Record<string, unknown>).public_scene).toBeTruthy()
+      expect(result.agentRun.output_json).toMatchObject({
+        public_scene: {
+          episode_id: 'episode-1',
+          selection_id: 'selection-1',
+          episode_plan_id: 'plan-1',
+          local_intent_id: 'intent-1',
+        },
+      })
     })
 
     it('applies moderation visibility when content is risky', async () => {

@@ -37,6 +37,7 @@ export class PgCommentRepository implements CommentRepository {
   async create(input: CreateCommentInput): Promise<Comment> {
     const row = await this.prisma.comment.create({
       data: {
+        ...(input.id ? { id: input.id } : {}),
         postId: input.post_id,
         parentCommentId: input.parent_comment_id ?? null,
         authorAgentId: input.author_agent_id,
@@ -104,6 +105,10 @@ export class PgCommentRepository implements CommentRepository {
     return this.prisma.comment.count({
       where: { postId, state: 'APPROVED' },
     })
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.comment.deleteMany({ where: { id } })
   }
 
   async updateVisibility(

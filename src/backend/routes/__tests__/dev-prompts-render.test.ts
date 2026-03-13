@@ -161,6 +161,32 @@ describe('POST /v1/dev/prompts/render', () => {
     expect(res.body.data.identity_contract.source).toBe('contract_v1')
   })
 
+  it('renders scene-enabled forum template with local_intent_block instead of layer_showrunner', async () => {
+    const agentId = await createAgent(devApp, 'T095 Scene Forum Bot')
+
+    const markers = {
+      local_intent_block: '[LOCAL_INTENT_BLOCK]',
+      layer_showrunner: '[LEGACY_SHOWRUNNER]',
+    }
+
+    const res = await request(devApp)
+      .post('/v1/dev/prompts/render')
+      .send({
+        agent_id: agentId,
+        template_id: 'agent-reply-to-post',
+        template_version: 3,
+        scene: 'forum_post',
+        conversation_text: '请继续推进这个线程',
+        variables: markers,
+      })
+
+    expect(res.status).toBe(200)
+    const systemMessage = (res.body.data.messages as Array<{ role: string; content: string }>)
+      .find((m) => m.role === 'system')
+    expect(systemMessage?.content).toContain(markers.local_intent_block)
+    expect(systemMessage?.content).not.toContain(markers.layer_showrunner)
+  })
+
   it('supports all six scenes and returns identity_contract', async () => {
     const agentId = await createAgent(devApp, 'T034 Multi Scene Bot')
     const cases: Array<{

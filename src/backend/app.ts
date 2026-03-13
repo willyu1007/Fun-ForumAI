@@ -362,6 +362,7 @@ if (config.nodeEnv !== 'production') {
         community_candidates: '',
         inclination_injection: '',
         inclination_media_url: '',
+        local_intent_block: '## Local Intent\n- episode_id: debug\n- initiative: reply\n- tone_hint: neutral',
         owner_display_name: 'Owner',
         session_context: '',
         latest_user_message: body.conversation_text ?? '调试私聊内容',

@@ -12,6 +12,7 @@ import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { RenderTierDecisionResult } from './persona-runtime-types.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { AgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
+import type { PublicSceneSelectorService } from '../services/public-scene-selector-service.js'
 import type { PromptComposeAudit } from './types.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
@@ -39,6 +40,7 @@ export interface PostSchedulerDeps {
   inclinationAssetService?: Pick<InclinationAssetService, 'listPendingAgentIds' | 'getPendingForAgent'>
   promptOrchestrator?: PromptOrchestrator | null
   personaStateService?: PersonaStateService | null
+  publicSceneSelectorService?: PublicSceneSelectorService | null
 }
 
 export interface PostSchedulerResult {
@@ -127,9 +129,30 @@ export class PostScheduler {
       }
       const fallbackCommunity = this.pickRandomCommunity(eligibleCommunities)
       if (!fallbackCommunity) return { triggered: false, error: 'No communities' }
+      const sceneSelection = (
+        config.features.publicDirectorContractV1
+        && this.deps.publicSceneSelectorService
+      )
+        ? await this.deps.publicSceneSelectorService.selectScheduledPost({
+            agent: selected,
+            eligible_communities: eligibleCommunities,
+          })
+        : { kind: 'fallback' as const, reason: 'public_director_contract_disabled' }
+      const targetCommunity = sceneSelection.kind === 'scene'
+        ? sceneSelection.community
+        : fallbackCommunity
+      const scenePayload = sceneSelection.kind === 'scene'
+        ? sceneSelection.payload
+        : null
+      const scheduledFallbackReason = sceneSelection.kind === 'fallback'
+        ? sceneSelection.reason
+        : null
+      const promptRef = scenePayload
+        ? PROMPT_TEMPLATE_REFS.agentCreatePostScene
+        : PROMPT_TEMPLATE_REFS.agentCreatePost
 
       const persona = this.loadPersona(selected.id)
-      const recentPosts = await this.getRecentPostsSummary(fallbackCommunity.id)
+      const recentPosts = await this.getRecentPostsSummary(targetCommunity.id)
       const communityCatalog = this.toCommunityCatalog(eligibleCommunities)
       const observationIdentity = this.resolveObservationIdentity(selected.id)
       let promptAudit: PromptComposeAudit | null = null
@@ -161,11 +184,13 @@ export class PostScheduler {
           const composed = await this.deps.promptOrchestrator.compose({
             agentId: selected.id,
             scene: 'scheduled_post',
-            conversationText: `${recentPosts}\n${communityCatalog}`.trim(),
-            communityId: fallbackCommunity.id,
-            topicHints: [fallbackCommunity.name, ...persona.interests].slice(0, 10),
-            communityHardRule: fallbackCommunity.rules,
-            communitySoftCulture: fallbackCommunity.description,
+            conversationText: scenePayload
+              ? `${recentPosts}\n${scenePayload.local_intent_block}`.trim()
+              : `${recentPosts}\n${communityCatalog}`.trim(),
+            communityId: targetCommunity.id,
+            topicHints: [targetCommunity.name, ...persona.interests].slice(0, 10),
+            communityHardRule: targetCommunity.rules,
+            communitySoftCulture: targetCommunity.description,
             sceneRule: '你正在主动发起新的论坛帖子',
             shortTermState: `recent_posts_len=${recentPosts.length}`,
             shortTermStateUpdatedAt: new Date(),
@@ -197,13 +222,15 @@ export class PostScheduler {
         persona_style: persona.style,
         persona_interests: persona.interests.join('、'),
         persona_language: persona.language,
-        community_name: fallbackCommunity.name,
-        community_description: fallbackCommunity.description,
-        community_rules: fallbackCommunity.rules,
+        persona_seed_code: observationIdentity?.persona_seed_code ?? 'scholar',
+        community_name: targetCommunity.name,
+        community_description: targetCommunity.description,
+        community_rules: targetCommunity.rules,
         recent_posts: recentPosts,
-        community_candidates: communityCatalog,
+        community_candidates: scenePayload ? '' : communityCatalog,
         inclination_injection: this.buildInclinationInjection(selected.pending_asset),
         inclination_media_url: selected.pending_asset?.media_url ?? '',
+        local_intent_block: scenePayload?.local_intent_block ?? '',
         layer_traits: composedLayers.layer_traits,
         layer_style: composedLayers.layer_style,
         layer_instructions: composedLayers.layer_instructions,
@@ -220,11 +247,25 @@ export class PostScheduler {
         plane: 'RUNTIME',
         actor_type: 'agent',
         actor_id: selected.id,
-        community_id: fallbackCommunity.id,
+        community_id: targetCommunity.id,
         correlation_id: `scheduled-post:${selected.id}:${Date.now()}`,
         payload_json: {
           agent_id: selected.id,
           fallback_community_id: fallbackCommunity.id,
+          target_community_id: targetCommunity.id,
+          ...(scenePayload
+            ? {
+                public_scene: {
+                  episode_id: scenePayload.scene_metadata.episode_id,
+                  selection_id: scenePayload.scene_metadata.selection_id,
+                  episode_plan_id: scenePayload.scene_metadata.episode_plan_id,
+                  local_intent_id: scenePayload.scene_metadata.local_intent_id,
+                },
+              }
+            : {}),
+          ...(scheduledFallbackReason
+            ? { fallback_reason: scheduledFallbackReason }
+            : {}),
         },
       })
 
@@ -234,7 +275,7 @@ export class PostScheduler {
         agentId: selected.id,
         homeVoiceLineId: routing.homeVoiceLineId,
         preferredModelId: routing.preferredModelId,
-        promptRef: PROMPT_TEMPLATE_REFS.agentCreatePost,
+        promptRef,
         variables,
         budgetClass: 'visible_standard',
         traceId: `scheduled-post:${selected.id}:${Date.now()}`,
@@ -253,7 +294,7 @@ export class PostScheduler {
           : 'legacy_partial',
         personaSeedCode: observationIdentity?.persona_seed_code,
         homeVoiceLineId: observationIdentity?.home_voice_line_id,
-        promptRef: PROMPT_TEMPLATE_REFS.agentCreatePost,
+        promptRef,
         requestedTier: llmResponse.renderDecision.tier,
         resolvedTier: llmResponse.renderDecision.tier,
         renderDecision: llmResponse.renderDecision,
@@ -267,8 +308,9 @@ export class PostScheduler {
 
       const instruction = this.deps.responseParser.parseAsScheduledPost({
         text: llmResponse.content,
-        fallbackCommunityId: fallbackCommunity.id,
+        fallbackCommunityId: targetCommunity.id,
         communities: eligibleCommunities,
+        lockedCommunityId: scenePayload ? targetCommunity.id : undefined,
       })
 
       if (!instruction) {
@@ -284,6 +326,10 @@ export class PostScheduler {
           output_json: attachPersonaObservation(
             {
               fallback_community_id: fallbackCommunity.id,
+              target_community_id: targetCommunity.id,
+              ...(scheduledFallbackReason
+                ? { fallback_reason: scheduledFallbackReason }
+                : {}),
               error: 'Failed to parse LLM output as post',
             },
             failedObservation,
@@ -296,10 +342,20 @@ export class PostScheduler {
         return {
           triggered: true,
           agent_id: selected.id,
-          community_id: fallbackCommunity.id,
+          community_id: targetCommunity.id,
           error: 'Failed to parse LLM output as post',
           usage: llmResponse.usage,
           latency_ms: latencyMs,
+        }
+      }
+
+      if (scenePayload) {
+        instruction.public_scene = scenePayload
+      }
+      if (scheduledFallbackReason) {
+        instruction.audit_metadata = {
+          ...(instruction.audit_metadata ?? {}),
+          scheduled_post_fallback_reason: scheduledFallbackReason,
         }
       }
 

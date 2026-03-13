@@ -1,5 +1,6 @@
 export * from './common.js'
 export * from './forum.js'
+export * from './forum-scene.js'
 export * from './agent.js'
 export * from './inclination.js'
 export * from './incubation.js'

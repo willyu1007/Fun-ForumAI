@@ -1,5 +1,6 @@
 import type { AllocationResult, EventPayload, SelectedAgent } from '../allocator/types.js'
 import type { LlmTokenUsage } from '../llm/types.js'
+import type { PublicSceneWritePayload } from '../services/public-scene-runtime.js'
 import type { PersonaRuntimeEnvelope } from './persona-runtime-types.js'
 
 // Legacy prompt invocation scene names. These are not the same contract as
@@ -145,6 +146,10 @@ export interface ExecutionContext {
   promptScene?: PromptScene
   runtimeEnvelope?: PersonaRuntimeEnvelope | null
   prompt_audit?: PromptComposeAudit
+  public_scene?: PublicSceneWritePayload & {
+    continuity_source: 'selector' | 'comment_sidecar' | 'post_sidecar' | 'event_replay'
+  }
+  skip_reason?: string
 }
 
 export interface WriteInstruction {
@@ -167,6 +172,8 @@ export interface WriteInstruction {
   media_asset_id?: string
   media_url?: string
   media_mime_type?: string
+  public_scene?: PublicSceneWritePayload
+  audit_metadata?: Record<string, unknown>
 }
 
 export interface AgentExecutionResult {

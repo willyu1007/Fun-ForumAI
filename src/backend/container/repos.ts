@@ -11,10 +11,12 @@ import { InMemoryAgentSignalLogRepository } from '../repos/agent-signal-log-repo
 import { InMemoryCommunityRepository } from '../repos/community-repository.js'
 import { InMemoryCommunityCultureDigestRepository } from '../repos/community-culture-digest-repository.js'
 import { InMemoryEventRepository, InMemoryAgentRunRepository } from '../repos/event-repository.js'
+import { InMemoryForumSceneMetadataRepository } from '../repos/forum-scene-metadata-repository.js'
 import { InMemoryRoomRepository } from '../repos/room-repository.js'
 import { InMemoryRoomWatchabilityRepository } from '../repos/room-watchability-repository.js'
 import { InMemoryAgentPublicProjectionRepository } from '../repos/agent-public-projection-repository.js'
 import { InMemoryMessageRepository } from '../repos/message-repository.js'
+import { InMemoryPublicSceneWriteRepository } from '../repos/public-scene-write-repository.js'
 import { InMemoryStatsRepository } from '../repos/stats-repository.js'
 import { InMemoryPersonaStateRepository } from '../repos/persona-state-repository.js'
 import { InMemoryAchievementRepository } from '../repos/achievement-repository.js'
@@ -47,10 +49,12 @@ import type { AgentSignalLogRepository } from '../repos/agent-signal-log-reposit
 import type { CommunityRepository } from '../repos/community-repository.js'
 import type { CommunityCultureDigestRepository } from '../repos/community-culture-digest-repository.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
+import type { ForumSceneMetadataRepository } from '../repos/forum-scene-metadata-repository.js'
 import type { RoomRepository } from '../repos/room-repository.js'
 import type { RoomWatchabilityRepository } from '../repos/room-watchability-repository.js'
 import type { AgentPublicProjectionRepository } from '../repos/agent-public-projection-repository.js'
 import type { MessageRepository } from '../repos/message-repository.js'
+import type { PublicSceneWriteRepository } from '../repos/public-scene-write-repository.js'
 import type { RelationRepository } from '../repos/relation-repository.js'
 import type { StatsRepository } from '../repos/stats-repository.js'
 import type { PersonaStateRepository } from '../repos/persona-state-repository.js'
@@ -87,6 +91,8 @@ export interface Repositories {
   communityCultureDigestRepo: CommunityCultureDigestRepository
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
+  forumSceneMetadataRepo: ForumSceneMetadataRepository
+  publicSceneWriteRepo: PublicSceneWriteRepository
   roomRepo: RoomRepository
   roomWatchabilityRepo: RoomWatchabilityRepository
   agentPublicProjectionRepo: AgentPublicProjectionRepository
@@ -137,6 +143,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgCommunityRepository } = await import('../repos/pg/pg-community-repository.js')
     const { PgCommunityCultureDigestRepository } = await import('../repos/pg/pg-community-culture-digest-repository.js')
     const { PgEventRepository, PgAgentRunRepository } = await import('../repos/pg/pg-event-repository.js')
+    const { PgForumSceneMetadataRepository } = await import('../repos/pg/pg-forum-scene-metadata-repository.js')
     const { PgRoomRepository } = await import('../repos/pg/pg-room-repository.js')
     const { PgRoomWatchabilityRepository } = await import('../repos/pg/pg-room-watchability-repository.js')
     const { PgAgentPublicProjectionRepository } = await import('../repos/pg/pg-agent-public-projection-repository.js')
@@ -160,6 +167,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgGuidanceInboxRepository } = await import('../repos/pg/pg-guidance-inbox-repository.js')
     const { PgGuidanceEventLogRepository } = await import('../repos/pg/pg-guidance-event-log-repository.js')
     const { PgRiskGovernanceRepository } = await import('../repos/pg/pg-risk-governance-repository.js')
+    const { PgPublicSceneWriteRepository } = await import('../repos/pg/pg-public-scene-write-repository.js')
 
     const pr = new PgPostRepository(prisma)
     const cr = new PgCommentRepository(prisma)
@@ -176,6 +184,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const cdr = new PgCommunityCultureDigestRepository(prisma)
     const er = new PgEventRepository(prisma)
     const arr = new PgAgentRunRepository(prisma)
+    const forumSceneMetadataRepo = new PgForumSceneMetadataRepository(prisma)
     const rr = new PgRoomRepository(prisma)
     const rwr = new PgRoomWatchabilityRepository(prisma)
     const appr = new PgAgentPublicProjectionRepository(prisma)
@@ -198,9 +207,14 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const guidanceInboxRepo = new PgGuidanceInboxRepository(prisma)
     const guidanceEventLogRepo = new PgGuidanceEventLogRepository(prisma)
     const riskGovernanceRepo = new PgRiskGovernanceRepository(prisma)
+    const publicSceneWriteRepo = new PgPublicSceneWriteRepository({
+      prisma,
+      eventRepo: er,
+      agentRunRepo: arr,
+    })
 
     hydratables.push(
-      pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, rr, rwr, appr, mr,
+      pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, forumSceneMetadataRepo, rr, rwr, appr, mr,
       sr, achar, chr, ppr, stageTier, roleAssignmentRepo, psr,
     )
 
@@ -210,7 +224,8 @@ export async function createRepositories(usePrisma: boolean): Promise<{
         humanFollowRepo: hfr, inclinationAssetRepo: iar, postMediaRepo: pmr,
         agentRepo: ar, agentConfigRepo: acr, agentCommunityMembershipRepo: amr,
         agentSignalLogRepo: aslr, communityRepo: cmr, communityCultureDigestRepo: cdr,
-        eventRepo: er, agentRunRepo: arr, roomRepo: rr, roomWatchabilityRepo: rwr, agentPublicProjectionRepo: appr, messageRepo: mr,
+        eventRepo: er, agentRunRepo: arr, forumSceneMetadataRepo, publicSceneWriteRepo,
+        roomRepo: rr, roomWatchabilityRepo: rwr, agentPublicProjectionRepo: appr, messageRepo: mr,
         relationRepo: relr, userRepo: new PgUserRepository(prisma),
         statsRepo: sr, personaStateRepo: psr, achievementRepo: achar, chronicleRepo: chr,
         pprSnapshotRepo: ppr, stageTierSnapshotRepo: stageTier,
@@ -226,10 +241,16 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     }
   }
 
+  const postRepo = new InMemoryPostRepository()
+  const commentRepo = new InMemoryCommentRepository()
+  const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+  const eventRepo = new InMemoryEventRepository()
+  const agentRunRepo = new InMemoryAgentRunRepository()
+
   return {
     repos: {
-      postRepo: new InMemoryPostRepository(),
-      commentRepo: new InMemoryCommentRepository(),
+      postRepo,
+      commentRepo,
       voteRepo: new InMemoryVoteRepository(),
       humanVoteRepo: new InMemoryHumanVoteRepository(),
       humanFollowRepo: new InMemoryHumanFollowRepository(),
@@ -241,8 +262,16 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       agentSignalLogRepo: new InMemoryAgentSignalLogRepository(),
       communityRepo: new InMemoryCommunityRepository(),
       communityCultureDigestRepo: new InMemoryCommunityCultureDigestRepository(),
-      eventRepo: new InMemoryEventRepository(),
-      agentRunRepo: new InMemoryAgentRunRepository(),
+      eventRepo,
+      agentRunRepo,
+      forumSceneMetadataRepo,
+      publicSceneWriteRepo: new InMemoryPublicSceneWriteRepository({
+        postRepo,
+        commentRepo,
+        sceneMetadataRepo: forumSceneMetadataRepo,
+        eventRepo,
+        agentRunRepo,
+      }),
       roomRepo: new InMemoryRoomRepository(),
       roomWatchabilityRepo: new InMemoryRoomWatchabilityRepository(),
       agentPublicProjectionRepo: new InMemoryAgentPublicProjectionRepository(),

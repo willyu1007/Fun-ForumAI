@@ -7,6 +7,7 @@ export interface CommentRepository {
   findByPostAll(postId: string, opts: PaginationOpts): Promise<PaginatedResult<Comment>>
   findByPostsSince(postIds: string[], since: Date): Promise<Comment[]>
   countByPost(postId: string): Promise<number>
+  delete(id: string): Promise<void>
   updateVisibility(id: string, visibility: Comment['visibility']): Promise<Comment | null>
   updateState(id: string, state: Comment['state']): Promise<Comment | null>
 }
@@ -22,7 +23,7 @@ export class InMemoryCommentRepository implements CommentRepository {
   async create(input: CreateCommentInput): Promise<Comment> {
     const now = new Date()
     const comment: Comment = {
-      id: cuid(),
+      id: input.id ?? cuid(),
       post_id: input.post_id,
       parent_comment_id: input.parent_comment_id ?? null,
       author_agent_id: input.author_agent_id,
@@ -68,6 +69,10 @@ export class InMemoryCommentRepository implements CommentRepository {
     return Array.from(this.store.values())
       .filter((c) => c.post_id === postId && c.state === 'APPROVED')
       .length
+  }
+
+  async delete(id: string): Promise<void> {
+    this.store.delete(id)
   }
 
   async updateVisibility(id: string, visibility: Comment['visibility']): Promise<Comment | null> {

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type {
   PostRepository,
   CommentRepository,
@@ -14,6 +15,7 @@ import type {
   AgentRun,
 } from '../repos/index.js'
 import type { IncubationRepository } from '../repos/incubation-repository.js'
+import type { PublicSceneWriteRepository } from '../repos/public-scene-write-repository.js'
 import type { ModerationResult } from '../moderation/types.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
 import { config } from '../lib/config.js'
@@ -27,6 +29,8 @@ import {
 } from '../stage/index.js'
 import type { AgentStageTierService } from './agent-stage-tier-service.js'
 import type { PolicyGatewayResult, PolicyGatewayService } from './policy-gateway-service.js'
+import type { PublicSceneWritePayload } from './public-scene-runtime.js'
+import { buildForumSceneMetadataInput, buildPublicScenePayloadJson } from './public-scene-runtime.js'
 
 export interface ModerationEvaluator {
   evaluate(input: {
@@ -47,6 +51,7 @@ export type EventHook = (event: DomainEvent) => void
 export interface ForumWriteServiceDeps {
   postRepo: PostRepository
   commentRepo: CommentRepository
+  publicSceneWriteRepo?: PublicSceneWriteRepository
   voteRepo: VoteRepository
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
@@ -68,6 +73,8 @@ interface TrustContextInput {
   citation_urls?: string[]
   redaction_profile?: 'strong' | 'medium' | 'light'
 }
+
+export interface ForumSceneCarrierInput extends PublicSceneWritePayload {}
 
 export class ForumWriteService {
   constructor(private readonly deps: ForumWriteServiceDeps) {}
@@ -439,6 +446,50 @@ export class ForumWriteService {
     }
   }
 
+  private async createScenePost(input: {
+    post: Parameters<PostRepository['create']>[0]
+    scene: ForumSceneCarrierInput
+    event: Parameters<EventRepository['create']>[0]
+    agent_run: Parameters<AgentRunRepository['create']>[0]
+  }): Promise<{ post: Post; event: DomainEvent; agentRun: AgentRun }> {
+    if (!this.deps.publicSceneWriteRepo) {
+      throw new ValidationError('Public scene write repository is not configured')
+    }
+
+    return this.deps.publicSceneWriteRepo.createPost({
+      post: input.post,
+      scene_metadata: buildForumSceneMetadataInput({
+        community_id: input.post.community_id,
+        target_type: 'POST',
+        payload: input.scene,
+      }),
+      event: input.event,
+      agent_run: input.agent_run,
+    })
+  }
+
+  private async createSceneComment(input: {
+    community_id: string
+    comment: Parameters<CommentRepository['create']>[0]
+    scene: ForumSceneCarrierInput
+    event: Parameters<EventRepository['create']>[0]
+  }): Promise<{ comment: Comment; event: DomainEvent }> {
+    if (!this.deps.publicSceneWriteRepo) {
+      throw new ValidationError('Public scene write repository is not configured')
+    }
+
+    return this.deps.publicSceneWriteRepo.createComment({
+      comment: input.comment,
+      scene_metadata: buildForumSceneMetadataInput({
+        community_id: input.community_id,
+        target_type: 'COMMENT',
+        post_id: input.comment.post_id,
+        payload: input.scene,
+      }),
+      event: input.event,
+    })
+  }
+
   async createPost(input: {
     actor_agent_id: string
     run_id: string
@@ -448,6 +499,7 @@ export class ForumWriteService {
     tags?: string[]
     chain_depth?: number
     trust_context?: TrustContextInput
+    scene?: ForumSceneCarrierInput
   }): Promise<{ post: Post; moderation: ModerationResult; event: DomainEvent; agentRun: AgentRun }> {
     if (!input.title.trim()) throw new ValidationError('Title is required')
     if (!input.body.trim()) throw new ValidationError('Body is required')
@@ -499,7 +551,120 @@ export class ForumWriteService {
     }
     const effectiveModeration = this.applyPolicyDecisionToModeration(modResult, gatewayDecision)
 
-    const post = await this.deps.postRepo.create({
+    const moderationMetadata = {
+      ...(effectiveModeration.details as unknown as Record<string, unknown>),
+      ...(gatewayDecision
+        ? {
+            policy_action: gatewayDecision.action,
+            policy_reason: gatewayDecision.reason,
+            policy_case_id: gatewayDecision.case_id,
+            distribution_state: gatewayDecision.distribution_state,
+            topic_signals: gatewayDecision.metadata.topic_signals ?? null,
+            kill_switch: gatewayDecision.metadata.kill_switch ?? null,
+          }
+        : {}),
+      ...(stageContext.used_fallback ? { stage_spec_fallback: true } : {}),
+      stage_runtime_role: stageContext.role_key,
+      stage_runtime_tier: stageContext.agent_tier,
+      ...(input.trust_context
+        ? {
+            trust_context: {
+              job_id: input.trust_context.job_id,
+              grant_id: input.trust_context.grant_id,
+              source_bundle_count: input.trust_context.source_bundle_ids.length,
+              citation_urls: input.trust_context.citation_urls ?? [],
+              redaction_profile: input.trust_context.redaction_profile ?? null,
+            },
+          }
+        : {}),
+    }
+
+    const plannedPostId = input.scene ? randomUUID() : null
+    const plannedEventId = input.scene ? randomUUID() : null
+    const plannedAgentRunId = input.scene ? randomUUID() : null
+    const agentRunInputDigest =
+      `title:${input.title.length}|body:${input.body.length}|trust:${input.trust_context ? 'yes' : 'no'}`
+    const buildPostCreatedPayload = (post: Pick<Post, 'id' | 'community_id' | 'author_agent_id' | 'visibility' | 'state'>) => ({
+      post_id: post.id,
+      community_id: post.community_id,
+      author_agent_id: post.author_agent_id,
+      visibility: post.visibility,
+      state: post.state,
+      chain_depth: chainDepth,
+      ...(input.scene
+        ? {
+            public_scene: buildPublicScenePayloadJson(input.scene),
+          }
+        : {}),
+    })
+    const buildPostAgentRunOutput = (postId: string) => ({
+      post_id: postId,
+      ...(input.scene
+        ? {
+            public_scene: {
+              episode_id: input.scene.scene_metadata.episode_id,
+              selection_id: input.scene.scene_metadata.selection_id,
+              episode_plan_id: input.scene.scene_metadata.episode_plan_id,
+              local_intent_id: input.scene.scene_metadata.local_intent_id,
+            },
+          }
+        : {}),
+      ...(input.trust_context
+        ? {
+            trust_context: {
+              job_id: input.trust_context.job_id,
+              grant_id: input.trust_context.grant_id,
+              source_bundle_ids: input.trust_context.source_bundle_ids,
+              citation_urls: input.trust_context.citation_urls ?? [],
+            },
+          }
+        : {}),
+    })
+
+    const sceneWrite = input.scene
+      ? await this.createScenePost({
+          post: {
+            id: plannedPostId!,
+            community_id: input.community_id,
+            author_agent_id: input.actor_agent_id,
+            title: input.title,
+            body: input.body,
+            tags: input.tags,
+            visibility: effectiveModeration.visibility,
+            state: effectiveModeration.state,
+            moderation_metadata: moderationMetadata,
+          },
+          scene: input.scene,
+          event: {
+            id: plannedEventId!,
+            event_type: 'POST_CREATED',
+            plane: 'DATA',
+            schema_version: 'v1',
+            community_id: input.community_id,
+            post_id: plannedPostId!,
+            actor_type: 'agent',
+            actor_id: input.actor_agent_id,
+            correlation_id: `post:${plannedPostId!}`,
+            payload_json: buildPostCreatedPayload({
+              id: plannedPostId!,
+              community_id: input.community_id,
+              author_agent_id: input.actor_agent_id,
+              visibility: effectiveModeration.visibility,
+              state: effectiveModeration.state,
+            }),
+          },
+          agent_run: {
+            id: plannedAgentRunId!,
+            agent_id: input.actor_agent_id,
+            trigger_event_id: plannedEventId!,
+            input_digest: agentRunInputDigest,
+            output_json: buildPostAgentRunOutput(plannedPostId!),
+            moderation_result: modResult.verdict,
+          },
+        })
+      : null
+
+    const post = sceneWrite?.post ?? await this.deps.postRepo.create({
       community_id: input.community_id,
       author_agent_id: input.actor_agent_id,
       title: input.title,
@@ -507,33 +672,7 @@ export class ForumWriteService {
       tags: input.tags,
       visibility: effectiveModeration.visibility,
       state: effectiveModeration.state,
-      moderation_metadata: {
-        ...(effectiveModeration.details as unknown as Record<string, unknown>),
-        ...(gatewayDecision
-          ? {
-              policy_action: gatewayDecision.action,
-              policy_reason: gatewayDecision.reason,
-              policy_case_id: gatewayDecision.case_id,
-              distribution_state: gatewayDecision.distribution_state,
-              topic_signals: gatewayDecision.metadata.topic_signals ?? null,
-              kill_switch: gatewayDecision.metadata.kill_switch ?? null,
-            }
-          : {}),
-        ...(stageContext.used_fallback ? { stage_spec_fallback: true } : {}),
-        stage_runtime_role: stageContext.role_key,
-        stage_runtime_tier: stageContext.agent_tier,
-        ...(input.trust_context
-          ? {
-              trust_context: {
-                job_id: input.trust_context.job_id,
-                grant_id: input.trust_context.grant_id,
-                source_bundle_count: input.trust_context.source_bundle_ids.length,
-                citation_urls: input.trust_context.citation_urls ?? [],
-                redaction_profile: input.trust_context.redaction_profile ?? null,
-              },
-            }
-          : {}),
-      },
+      moderation_metadata: moderationMetadata,
     })
 
     if (gatewayDecision) {
@@ -566,7 +705,7 @@ export class ForumWriteService {
       }
     }
 
-    const event = this.deps.eventRepo.create({
+    const event = sceneWrite?.event ?? this.deps.eventRepo.create({
       event_type: 'POST_CREATED',
       plane: 'DATA',
       schema_version: 'v1',
@@ -575,33 +714,14 @@ export class ForumWriteService {
       actor_type: 'agent',
       actor_id: input.actor_agent_id,
       correlation_id: `post:${post.id}`,
-      payload_json: {
-        post_id: post.id,
-        community_id: post.community_id,
-        author_agent_id: post.author_agent_id,
-        visibility: post.visibility,
-        state: post.state,
-        chain_depth: chainDepth,
-      },
+      payload_json: buildPostCreatedPayload(post),
     })
 
-    const agentRun = this.deps.agentRunRepo.create({
+    const agentRun = sceneWrite?.agentRun ?? this.deps.agentRunRepo.create({
       agent_id: input.actor_agent_id,
       trigger_event_id: event.id,
-      input_digest: `title:${input.title.length}|body:${input.body.length}|trust:${input.trust_context ? 'yes' : 'no'}`,
-      output_json: {
-        post_id: post.id,
-        ...(input.trust_context
-          ? {
-              trust_context: {
-                job_id: input.trust_context.job_id,
-                grant_id: input.trust_context.grant_id,
-                source_bundle_ids: input.trust_context.source_bundle_ids,
-                citation_urls: input.trust_context.citation_urls ?? [],
-              },
-            }
-          : {}),
-      },
+      input_digest: agentRunInputDigest,
+      output_json: buildPostAgentRunOutput(post.id),
       moderation_result: modResult.verdict,
     })
 
@@ -618,6 +738,7 @@ export class ForumWriteService {
     body: string
     channel?: 'STAGE' | 'ASIDE'
     chain_depth?: number
+    scene?: ForumSceneCarrierInput
   }): Promise<{ comment: Comment; moderation: ModerationResult; event: DomainEvent }> {
     if (!input.body.trim()) throw new ValidationError('Body is required')
     const chainDepth = this.normalizeChainDepth(input.chain_depth)
@@ -681,15 +802,70 @@ export class ForumWriteService {
       this.deps.policyGatewayService?.assertAllowed(gatewayDecision)
     }
     const effectiveModeration = this.applyPolicyDecisionToModeration(modResult, gatewayDecision)
-
-    const comment = await this.deps.commentRepo.create({
-      post_id: input.post_id,
-      parent_comment_id: input.parent_comment_id ?? null,
-      author_agent_id: input.actor_agent_id,
-      body: input.body,
-      visibility: effectiveModeration.visibility,
-      state: effectiveModeration.state,
+    const isAside = input.channel === 'ASIDE'
+    const eventType = isAside ? 'ASIDE_COMMENT_CREATED' : 'COMMENT_CREATED'
+    const plannedCommentId = input.scene ? randomUUID() : null
+    const plannedCommentEventId = input.scene ? randomUUID() : null
+    const buildCommentCreatedPayload = (comment: Pick<Comment, 'id' | 'post_id' | 'parent_comment_id' | 'author_agent_id' | 'visibility' | 'state'>) => ({
+      comment_id: comment.id,
+      post_id: comment.post_id,
+      community_id: post.community_id,
+      author_agent_id: comment.author_agent_id,
+      parent_comment_id: comment.parent_comment_id,
+      visibility: comment.visibility,
+      state: comment.state,
+      channel: isAside ? 'ASIDE' : 'STAGE',
+      chain_depth: chainDepth,
+      ...(input.scene
+        ? {
+            public_scene: buildPublicScenePayloadJson(input.scene),
+          }
+        : {}),
     })
+
+    const sceneWrite = input.scene
+      ? await this.createSceneComment({
+          community_id: post.community_id,
+          comment: {
+            id: plannedCommentId!,
+            post_id: input.post_id,
+            parent_comment_id: input.parent_comment_id ?? null,
+            author_agent_id: input.actor_agent_id,
+            body: input.body,
+            visibility: effectiveModeration.visibility,
+            state: effectiveModeration.state,
+          },
+          scene: input.scene,
+          event: {
+            id: plannedCommentEventId!,
+            event_type: eventType,
+            plane: 'DATA',
+            schema_version: 'v1',
+            community_id: post.community_id,
+            post_id: input.post_id,
+            actor_type: 'agent',
+            actor_id: input.actor_agent_id,
+            correlation_id: `post:${input.post_id}`,
+            payload_json: buildCommentCreatedPayload({
+              id: plannedCommentId!,
+              post_id: input.post_id,
+              parent_comment_id: input.parent_comment_id ?? null,
+              author_agent_id: input.actor_agent_id,
+              visibility: effectiveModeration.visibility,
+              state: effectiveModeration.state,
+            }),
+          },
+        })
+      : null
+
+    const comment = sceneWrite?.comment ?? await this.deps.commentRepo.create({
+          post_id: input.post_id,
+          parent_comment_id: input.parent_comment_id ?? null,
+          author_agent_id: input.actor_agent_id,
+          body: input.body,
+          visibility: effectiveModeration.visibility,
+          state: effectiveModeration.state,
+        })
 
     if (gatewayDecision) {
       await this.deps.policyGatewayService?.finalizeRecordedOutcomeTarget(gatewayDecision, {
@@ -697,9 +873,7 @@ export class ForumWriteService {
       })
     }
 
-    const isAside = input.channel === 'ASIDE'
-    const eventType = isAside ? 'ASIDE_COMMENT_CREATED' : 'COMMENT_CREATED'
-    const event = this.deps.eventRepo.create({
+    const event = sceneWrite?.event ?? this.deps.eventRepo.create({
       event_type: eventType,
       plane: 'DATA',
       schema_version: 'v1',
@@ -708,17 +882,7 @@ export class ForumWriteService {
       actor_type: 'agent',
       actor_id: input.actor_agent_id,
       correlation_id: `post:${comment.post_id}`,
-      payload_json: {
-        comment_id: comment.id,
-        post_id: comment.post_id,
-        community_id: post.community_id,
-        author_agent_id: comment.author_agent_id,
-        parent_comment_id: comment.parent_comment_id,
-        visibility: comment.visibility,
-        state: comment.state,
-        channel: isAside ? 'ASIDE' : 'STAGE',
-        chain_depth: chainDepth,
-      },
+      payload_json: buildCommentCreatedPayload(comment),
     })
 
     this.notifyEvent(event)

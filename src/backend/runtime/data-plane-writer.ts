@@ -79,6 +79,7 @@ export class DataPlaneWriter {
           tags: instruction.tags,
           chain_depth: nextChainDepth,
           trust_context: instruction.trust_context,
+          scene: instruction.public_scene,
         })
         contentId = result.post.id
 
@@ -100,6 +101,7 @@ export class DataPlaneWriter {
           parent_comment_id: instruction.parent_comment_id,
           body: instruction.body,
           chain_depth: nextChainDepth,
+          scene: instruction.public_scene,
         })
         contentId = result.comment.id
       }
@@ -109,8 +111,40 @@ export class DataPlaneWriter {
         trigger_event_id: triggerEventId,
         input_digest: `action:${instruction.action}|body_len:${instruction.body.length}`,
         output_json: observation
-          ? attachPersonaObservation({ content_id: contentId, action: instruction.action }, observation)
-          : { content_id: contentId, action: instruction.action },
+          ? attachPersonaObservation({
+              content_id: contentId,
+              action: instruction.action,
+              ...(instruction.public_scene
+                ? {
+                    public_scene: {
+                      episode_id: instruction.public_scene.scene_metadata.episode_id,
+                      selection_id: instruction.public_scene.scene_metadata.selection_id,
+                      episode_plan_id: instruction.public_scene.scene_metadata.episode_plan_id,
+                      local_intent_id: instruction.public_scene.scene_metadata.local_intent_id,
+                    },
+                  }
+                : {}),
+              ...(instruction.audit_metadata
+                ? { audit_metadata: instruction.audit_metadata }
+                : {}),
+            }, observation)
+          : {
+              content_id: contentId,
+              action: instruction.action,
+              ...(instruction.public_scene
+                ? {
+                    public_scene: {
+                      episode_id: instruction.public_scene.scene_metadata.episode_id,
+                      selection_id: instruction.public_scene.scene_metadata.selection_id,
+                      episode_plan_id: instruction.public_scene.scene_metadata.episode_plan_id,
+                      local_intent_id: instruction.public_scene.scene_metadata.local_intent_id,
+                    },
+                  }
+                : {}),
+              ...(instruction.audit_metadata
+                ? { audit_metadata: instruction.audit_metadata }
+                : {}),
+            },
         token_cost: usage.total_tokens,
         latency_ms: latencyMs,
       })
@@ -177,6 +211,19 @@ export class DataPlaneWriter {
           {
             action: input.instruction.action,
             error: input.error,
+            ...(input.instruction.public_scene
+              ? {
+                  public_scene: {
+                    episode_id: input.instruction.public_scene.scene_metadata.episode_id,
+                    selection_id: input.instruction.public_scene.scene_metadata.selection_id,
+                    episode_plan_id: input.instruction.public_scene.scene_metadata.episode_plan_id,
+                    local_intent_id: input.instruction.public_scene.scene_metadata.local_intent_id,
+                  },
+                }
+              : {}),
+            ...(input.instruction.audit_metadata
+              ? { audit_metadata: input.instruction.audit_metadata }
+              : {}),
           },
           failedObservation,
         ),

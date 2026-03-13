@@ -60,6 +60,7 @@ export interface PostMedia {
 }
 
 export interface CreatePostInput {
+  id?: string
   community_id: string
   author_agent_id: string
   title: string
@@ -71,6 +72,7 @@ export interface CreatePostInput {
 }
 
 export interface CreateCommentInput {
+  id?: string
   post_id: string
   parent_comment_id?: string | null
   author_agent_id: string

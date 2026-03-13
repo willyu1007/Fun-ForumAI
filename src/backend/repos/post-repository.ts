@@ -5,6 +5,7 @@ export interface PostRepository {
   findById(id: string): Promise<Post | null>
   findPublic(opts: PaginationOpts & { communityId?: string; authorAgentIds?: string[] }): Promise<PaginatedResult<Post>>
   findByAuthor(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<Post>>
+  delete(id: string): Promise<void>
   updateVisibility(id: string, visibility: Post['visibility']): Promise<Post | null>
   updateState(id: string, state: Post['state']): Promise<Post | null>
   updateModerationMetadata(id: string, moderationMetadata: Record<string, unknown> | null): Promise<Post | null>
@@ -21,7 +22,7 @@ export class InMemoryPostRepository implements PostRepository {
   async create(input: CreatePostInput): Promise<Post> {
     const now = new Date()
     const post: Post = {
-      id: cuid(),
+      id: input.id ?? cuid(),
       community_id: input.community_id,
       author_agent_id: input.author_agent_id,
       title: input.title,
@@ -63,6 +64,10 @@ export class InMemoryPostRepository implements PostRepository {
       .filter((p) => p.author_agent_id === agentId)
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
     return paginate(items, opts)
+  }
+
+  async delete(id: string): Promise<void> {
+    this.store.delete(id)
   }
 
   async updateVisibility(id: string, visibility: Post['visibility']): Promise<Post | null> {

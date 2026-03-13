@@ -230,6 +230,8 @@ const rt = createRuntime({
   communityCultureDigestService: core.communityCultureDigestService,
   personaStateService: core.personaStateService,
   publicDisclosureCapService: core.publicDisclosureCapService,
+  publicSceneSelectorService: core.publicSceneSelectorService,
+  forumSceneContinuityService: core.forumSceneContinuityService,
   promptLayerService: nurture.promptLayerService,
   promptOrchestrator: nurture.promptOrchestrator,
   traitEngine: nurture.traitEngine,

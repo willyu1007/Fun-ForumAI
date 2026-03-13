@@ -109,17 +109,23 @@ export class ResponseParser {
     text: string
     fallbackCommunityId: string
     communities: CommunityCandidate[]
+    lockedCommunityId?: string
   }): WriteInstruction | null {
     const jsonResult = this.tryParseScheduledJson(input.text, input.communities)
     if (jsonResult) {
+      if (input.lockedCommunityId && jsonResult.community_id && jsonResult.community_id !== input.lockedCommunityId) {
+        return null
+      }
       return {
         action: 'create_post',
-        community_id: jsonResult.community_id ?? input.fallbackCommunityId,
+        community_id: input.lockedCommunityId
+          ?? jsonResult.community_id
+          ?? input.fallbackCommunityId,
         title: jsonResult.title,
         body: jsonResult.body,
       }
     }
-    return this.parseAsNewPost(input.text, input.fallbackCommunityId)
+    return this.parseAsNewPost(input.text, input.lockedCommunityId ?? input.fallbackCommunityId)
   }
 
   private tryParseScheduledJson(

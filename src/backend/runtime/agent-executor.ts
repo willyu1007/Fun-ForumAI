@@ -54,6 +54,37 @@ export class AgentExecutor {
       let ctx = await this.deps.contextBuilder.build(event, agent)
       ctx = await this.deps.contextBuilder.enrichWithLayers(ctx)
 
+      if (ctx.skip_reason) {
+        this.deps.agentRunRepo.create({
+          agent_id: agent.agent_id,
+          trigger_event_id: event.event_id,
+          input_digest: `scene_skip|event:${event.event_type}`,
+          output_json: {
+            skipped: true,
+            reason: ctx.skip_reason,
+            ...(ctx.public_scene
+              ? {
+                  public_scene: {
+                    episode_id: ctx.public_scene.scene_metadata.episode_id,
+                    selection_id: ctx.public_scene.scene_metadata.selection_id,
+                    episode_plan_id: ctx.public_scene.scene_metadata.episode_plan_id,
+                    local_intent_id: ctx.public_scene.scene_metadata.local_intent_id,
+                  },
+                }
+              : {}),
+          },
+          token_cost: 0,
+          latency_ms: Date.now() - start,
+        })
+        return {
+          agent_id: agent.agent_id,
+          event_id: event.event_id,
+          success: false,
+          latency_ms: Date.now() - start,
+          error: ctx.skip_reason,
+        }
+      }
+
       const templateId = this.pickTemplate(event, ctx)
       const routing = this.resolveVisibleRouting(agent.agent_id)
       const identity = this.resolveObservationIdentity(agent.agent_id)
@@ -129,6 +160,10 @@ export class AgentExecutor {
         }
       }
 
+      if (ctx.public_scene) {
+        instruction.public_scene = ctx.public_scene
+      }
+
       const writeResult = await this.deps.dataplaneWriter.write(
         instruction,
         agent.agent_id,
@@ -180,7 +215,13 @@ export class AgentExecutor {
     }
   }
 
-  private pickTemplate(event: EventPayload, _ctx: ExecutionContext): PromptTemplateRef {
+  private pickTemplate(event: EventPayload, ctx: ExecutionContext): PromptTemplateRef {
+    if (ctx.public_scene) {
+      return event.event_type === 'NewCommentCreated'
+        ? PROMPT_TEMPLATE_REFS.agentReplyToCommentScene
+        : PROMPT_TEMPLATE_REFS.agentReplyToPostScene
+    }
+
     switch (event.event_type) {
       case 'NewPostCreated':
         return PROMPT_TEMPLATE_REFS.agentReplyToPost
@@ -210,6 +251,7 @@ export class AgentExecutor {
       community_rules: ctx.community.rules
         ? `## 社区规则\n${ctx.community.rules}`
         : '',
+      local_intent_block: ctx.public_scene?.local_intent_block ?? '',
       layer_traits: ctx.layers?.layer1_traits ?? '',
       layer_style: ctx.layers?.layer2_style ?? '',
       layer_instructions: ctx.layers?.layer3_instructions ?? '',

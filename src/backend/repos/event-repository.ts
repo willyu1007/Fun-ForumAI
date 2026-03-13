@@ -9,12 +9,15 @@ import type {
 
 export interface EventRepository {
   create(input: CreateEventInput): DomainEvent
+  delete?(id: string): void
   findById(id: string): DomainEvent | null
   findByIdempotencyKey(key: string): DomainEvent | null
+  findByPostId(postId: string): DomainEvent[]
 }
 
 export interface AgentRunRepository {
   create(input: CreateAgentRunInput): AgentRun
+  delete?(id: string): void
   findById(id: string): AgentRun | null
   findByAgent(agentId: string, opts: PaginationOpts): PaginatedResult<AgentRun>
   findByEvent(eventId: string): AgentRun[]
@@ -36,7 +39,7 @@ export class InMemoryEventRepository implements EventRepository {
     }
 
     const event: DomainEvent = {
-      id: cuid('evt'),
+      id: input.id ?? cuid('evt'),
       event_type: input.event_type,
       plane: input.plane ?? 'DATA',
       schema_version: input.schema_version ?? 'v1',
@@ -62,10 +65,25 @@ export class InMemoryEventRepository implements EventRepository {
     return this.store.get(id) ?? null
   }
 
+  delete(id: string): void {
+    const event = this.store.get(id)
+    if (!event) return
+    this.store.delete(id)
+    if (event.idempotency_key) {
+      this.idempotencyIndex.delete(event.idempotency_key)
+    }
+  }
+
   findByIdempotencyKey(key: string): DomainEvent | null {
     const id = this.idempotencyIndex.get(key)
     if (!id) return null
     return this.store.get(id) ?? null
+  }
+
+  findByPostId(postId: string): DomainEvent[] {
+    return Array.from(this.store.values())
+      .filter((event) => event.post_id === postId)
+      .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
   }
 }
 
@@ -74,7 +92,7 @@ export class InMemoryAgentRunRepository implements AgentRunRepository {
 
   create(input: CreateAgentRunInput): AgentRun {
     const run: AgentRun = {
-      id: cuid('run'),
+      id: input.id ?? cuid('run'),
       agent_id: input.agent_id,
       trigger_event_id: input.trigger_event_id,
       input_digest: input.input_digest,
@@ -90,6 +108,10 @@ export class InMemoryAgentRunRepository implements AgentRunRepository {
 
   findById(id: string): AgentRun | null {
     return this.store.get(id) ?? null
+  }
+
+  delete(id: string): void {
+    this.store.delete(id)
   }
 
   findByAgent(agentId: string, opts: PaginationOpts): PaginatedResult<AgentRun> {

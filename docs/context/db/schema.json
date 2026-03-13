@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-12T21:44:10.368Z",
+  "updatedAt": "2026-03-13T15:18:59.290Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -251,6 +251,13 @@
         "DATA",
         "CONTROL",
         "RUNTIME"
+      ]
+    },
+    {
+      "name": "ForumSceneMetadataTargetType",
+      "values": [
+        "POST",
+        "COMMENT"
       ]
     },
     {
@@ -6737,6 +6744,15 @@
           "references": [
             "id"
           ]
+        },
+        {
+          "field": "sceneMetadata",
+          "to": "ForumSceneMetadata",
+          "optional": true,
+          "list": false,
+          "relationName": "CommentSceneMetadata",
+          "fields": [],
+          "references": []
         }
       ],
       "indexes": [
@@ -6928,6 +6944,15 @@
         {
           "field": "cultureDigests",
           "to": "CommunityCultureDigest",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "forumSceneMetadata",
+          "to": "ForumSceneMetadata",
           "optional": false,
           "list": true,
           "relationName": null,
@@ -8718,6 +8743,323 @@
             "plane",
             "eventType",
             "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "ForumSceneMetadata",
+      "dbName": "forum_scene_metadata",
+      "schema": null,
+      "columns": [
+        {
+          "name": "actorSurface",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "actor_surface",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "beatId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "beat_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "commentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "comment_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "directorSurface",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "director_surface",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "episodeId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "episode_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "episodePlanId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "episode_plan_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "expiresAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "expires_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "localIntentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "local_intent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "overlayId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "overlay_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "payloadJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "payload_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "phase",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "postId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "post_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneBindingId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "scene_binding_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneTemplateId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scene_template_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneTemplateVersion",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scene_template_version",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "selectionId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "selection_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "selectionMode",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "selection_mode",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetType",
+          "type": "ForumSceneMetadataTargetType",
+          "nullable": false,
+          "list": false,
+          "dbName": "target_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "comment",
+          "to": "Comment",
+          "optional": true,
+          "list": false,
+          "relationName": "CommentSceneMetadata",
+          "fields": [
+            "commentId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "community",
+          "to": "Community",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "communityId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "post",
+          "to": "Post",
+          "optional": true,
+          "list": false,
+          "relationName": "PostSceneMetadata",
+          "fields": [
+            "postId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "communityId",
+            "episodeId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "episodeId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "postId"
           ],
           "name": null,
           "map": null
@@ -12845,6 +13187,15 @@
           "optional": false,
           "list": true,
           "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "sceneMetadata",
+          "to": "ForumSceneMetadata",
+          "optional": false,
+          "list": true,
+          "relationName": "PostSceneMetadata",
           "fields": [],
           "references": []
         }

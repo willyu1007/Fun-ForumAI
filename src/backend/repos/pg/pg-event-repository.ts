@@ -38,7 +38,7 @@ function paginate<T extends { id: string }>(
 // for FK target persistence in the same process.
 const pendingEventWrites = new Map<string, Promise<void>>()
 
-function toPrismaPlane(plane: DomainEvent['plane']): PrismaEventPlane {
+export function toPrismaPlane(plane: DomainEvent['plane']): PrismaEventPlane {
   switch (plane) {
     case 'CONTROL':
       return 'CONTROL'
@@ -49,7 +49,7 @@ function toPrismaPlane(plane: DomainEvent['plane']): PrismaEventPlane {
   }
 }
 
-function toPrismaActorType(actorType: DomainEvent['actor_type']): PrismaEventActorType {
+export function toPrismaActorType(actorType: DomainEvent['actor_type']): PrismaEventActorType {
   switch (actorType) {
     case 'agent':
       return 'AGENT'
@@ -60,7 +60,7 @@ function toPrismaActorType(actorType: DomainEvent['actor_type']): PrismaEventAct
   }
 }
 
-function toDomainActorType(actorType: PrismaEventActorType): DomainEvent['actor_type'] {
+export function toDomainActorType(actorType: PrismaEventActorType): DomainEvent['actor_type'] {
   switch (actorType) {
     case 'AGENT':
       return 'agent'
@@ -80,11 +80,7 @@ export class PgEventRepository implements EventRepository {
   async hydrate(): Promise<void> {
     const rows = await this.prisma.event.findMany()
     for (const row of rows) {
-      const event = this.toDomain(row)
-      this.cache.set(event.id, event)
-      if (event.idempotency_key) {
-        this.idempotencyIndex.set(event.idempotency_key, event.id)
-      }
+      this.rememberPersisted(this.toDomain(row))
     }
   }
 
@@ -94,7 +90,7 @@ export class PgEventRepository implements EventRepository {
       if (existingId) return this.cache.get(existingId)!
     }
 
-    const id = randomUUID()
+    const id = input.id ?? randomUUID()
     const now = new Date()
     const event: DomainEvent = {
       id,
@@ -112,10 +108,7 @@ export class PgEventRepository implements EventRepository {
       idempotency_key: input.idempotency_key ?? null,
       created_at: now,
     }
-    this.cache.set(id, event)
-    if (event.idempotency_key) {
-      this.idempotencyIndex.set(event.idempotency_key, id)
-    }
+    this.rememberPersisted(event)
     const persistPromise = this.prisma.event
       .create({
         data: {
@@ -153,13 +146,39 @@ export class PgEventRepository implements EventRepository {
     return this.cache.get(id) ?? null
   }
 
+  delete(id: string): void {
+    const event = this.cache.get(id)
+    if (!event) return
+    this.cache.delete(id)
+    if (event.idempotency_key) {
+      this.idempotencyIndex.delete(event.idempotency_key)
+    }
+    pendingEventWrites.delete(id)
+    void this.prisma.event.deleteMany({ where: { id } }).catch((err) => {
+      console.error('[PgEventRepo] delete error:', err)
+    })
+  }
+
   findByIdempotencyKey(key: string): DomainEvent | null {
     const id = this.idempotencyIndex.get(key)
     if (!id) return null
     return this.cache.get(id) ?? null
   }
 
-  private toDomain(row: PrismaEvent): DomainEvent {
+  findByPostId(postId: string): DomainEvent[] {
+    return Array.from(this.cache.values())
+      .filter((event) => event.post_id === postId)
+      .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
+  }
+
+  rememberPersisted(event: DomainEvent): void {
+    this.cache.set(event.id, event)
+    if (event.idempotency_key) {
+      this.idempotencyIndex.set(event.idempotency_key, event.id)
+    }
+  }
+
+  static toDomain(row: PrismaEvent): DomainEvent {
     return {
       id: row.id,
       event_type: row.eventType,
@@ -177,6 +196,10 @@ export class PgEventRepository implements EventRepository {
       created_at: row.createdAt,
     }
   }
+
+  private toDomain(row: PrismaEvent): DomainEvent {
+    return PgEventRepository.toDomain(row)
+  }
 }
 
 export class PgAgentRunRepository implements AgentRunRepository {
@@ -187,12 +210,12 @@ export class PgAgentRunRepository implements AgentRunRepository {
   async hydrate(): Promise<void> {
     const rows = await this.prisma.agentRun.findMany()
     for (const row of rows) {
-      this.cache.set(row.id, this.toDomain(row))
+      this.rememberPersisted(this.toDomain(row))
     }
   }
 
   create(input: CreateAgentRunInput): AgentRun {
-    const id = randomUUID()
+    const id = input.id ?? randomUUID()
     const now = new Date()
     const run: AgentRun = {
       id,
@@ -205,7 +228,7 @@ export class PgAgentRunRepository implements AgentRunRepository {
       latency_ms: input.latency_ms ?? 0,
       created_at: now,
     }
-    this.cache.set(id, run)
+    this.rememberPersisted(run)
 
     const persistRun = () =>
       this.prisma.agentRun
@@ -247,6 +270,13 @@ export class PgAgentRunRepository implements AgentRunRepository {
     return this.cache.get(id) ?? null
   }
 
+  delete(id: string): void {
+    this.cache.delete(id)
+    void this.prisma.agentRun.deleteMany({ where: { id } }).catch((err) => {
+      console.error('[PgAgentRunRepo] delete error:', err)
+    })
+  }
+
   findByAgent(agentId: string, opts: PaginationOpts): PaginatedResult<AgentRun> {
     const items = Array.from(this.cache.values())
       .filter((r) => r.agent_id === agentId)
@@ -258,7 +288,11 @@ export class PgAgentRunRepository implements AgentRunRepository {
     return Array.from(this.cache.values()).filter((r) => r.trigger_event_id === eventId)
   }
 
-  private toDomain(row: PrismaAgentRun): AgentRun {
+  rememberPersisted(run: AgentRun): void {
+    this.cache.set(run.id, run)
+  }
+
+  static toDomain(row: PrismaAgentRun): AgentRun {
     return {
       id: row.id,
       agent_id: row.agentId,
@@ -270,5 +304,9 @@ export class PgAgentRunRepository implements AgentRunRepository {
       latency_ms: row.latencyMs,
       created_at: row.createdAt,
     }
+  }
+
+  private toDomain(row: PrismaAgentRun): AgentRun {
+    return PgAgentRunRepository.toDomain(row)
   }
 }

@@ -47,6 +47,7 @@ function buildVariables(overrides: Record<string, string> = {}): Record<string, 
     community_candidates: 'community-1 | general | General | 调试社区',
     inclination_injection: '',
     inclination_media_url: '',
+    local_intent_block: '## Local Intent\n- episode_id: test-episode\n- initiative: reply',
     topic: '提示词治理',
     layer_traits: '',
     layer_style: '',
@@ -164,6 +165,35 @@ describe('PromptEngine', () => {
           PROMPT_TEMPLATE_REFS.agentReplyToPost,
           variables,
         )),
+    ).toThrowError(LLMGatewayContractError)
+  })
+
+  it('renders scene-enabled forum templates with local_intent_block and without layer_showrunner', () => {
+    const engine = new PromptEngine()
+    const variables = buildVariables({
+      local_intent_block: '[LOCAL_INTENT_BLOCK]',
+      layer_showrunner: '[LEGACY_SHOWRUNNER]',
+    })
+
+    const messages = engine.render(
+      PROMPT_TEMPLATE_REFS.agentReplyToPostScene,
+      variables,
+    )
+
+    expect(String(messages[0].content)).toContain('[LOCAL_INTENT_BLOCK]')
+    expect(String(messages[0].content)).not.toContain('[LEGACY_SHOWRUNNER]')
+  })
+
+  it('requires local_intent_block for scene-enabled scheduled_post template', () => {
+    const engine = new PromptEngine()
+    const variables = buildVariables()
+    delete variables.local_intent_block
+
+    expect(() =>
+      engine.render(
+        PROMPT_TEMPLATE_REFS.agentCreatePostScene,
+        variables,
+      ),
     ).toThrowError(LLMGatewayContractError)
   })
 

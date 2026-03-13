@@ -74,6 +74,9 @@ export type {
   FollowAgentInput,
   CreateAgentInclinationAssetInput,
   CreatePostMediaInput,
+  ForumSceneMetadata,
+  ForumSceneMetadataTargetType,
+  CreateForumSceneMetadataInput,
   CreateAgentInput,
   CreateAgentConfigInput,
   CreateEventInput,
@@ -209,6 +212,14 @@ export type {
 
 export { type PostRepository, InMemoryPostRepository } from './post-repository.js'
 export { type CommentRepository, InMemoryCommentRepository } from './comment-repository.js'
+export {
+  type ForumSceneMetadataRepository,
+  InMemoryForumSceneMetadataRepository,
+} from './forum-scene-metadata-repository.js'
+export {
+  type PublicSceneWriteRepository,
+  InMemoryPublicSceneWriteRepository,
+} from './public-scene-write-repository.js'
 export { type VoteRepository, InMemoryVoteRepository } from './vote-repository.js'
 export { type HumanVoteRepository, InMemoryHumanVoteRepository } from './human-vote-repository.js'
 export { type HumanFollowRepository, InMemoryHumanFollowRepository } from './human-follow-repository.js'

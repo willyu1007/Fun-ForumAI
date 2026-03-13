@@ -11,6 +11,7 @@ import type { ExecutionContext, AgentPersona } from './types.js'
 import { config } from '../lib/config.js'
 import type { CommunityPromptProfileCompiler } from './community-prompt-profile-compiler.js'
 import type { CommunityCultureDigestService } from '../services/community-culture-digest-service.js'
+import type { ForumSceneContinuityService } from '../services/forum-scene-continuity-service.js'
 import {
   buildStyleInstructionText,
   resolveAgentIdentity,
@@ -27,6 +28,7 @@ export interface ContextBuilderDeps {
   promptOrchestrator?: PromptOrchestrator | null
   communityPromptProfileCompiler?: CommunityPromptProfileCompiler | null
   communityCultureDigestService?: CommunityCultureDigestService | null
+  forumSceneContinuityService?: ForumSceneContinuityService | null
 }
 
 const DEFAULT_PERSONA: AgentPersona = {
@@ -57,6 +59,26 @@ export class ContextBuilder {
         ctx.targetComment = ctx.comments.find((c) => c.id === targetId)
       } else {
         ctx.targetComment = ctx.comments[ctx.comments.length - 1]
+      }
+    }
+
+    if (
+      config.features.publicDirectorContractV1
+      && this.deps.forumSceneContinuityService
+      && (event.event_type === 'NewPostCreated' || event.event_type === 'NewCommentCreated')
+    ) {
+      const continuity = await this.deps.forumSceneContinuityService.resolve({
+        event,
+        post_author_agent_id: ctx.post?.author_agent_id,
+        target_comment_author_agent_id: ctx.targetComment?.author_agent_id,
+      })
+      if (continuity?.kind === 'skip') {
+        ctx.skip_reason = continuity.reason
+      } else if (continuity?.kind === 'continue') {
+        ctx.public_scene = {
+          ...continuity.payload,
+          continuity_source: continuity.source,
+        }
       }
     }
 

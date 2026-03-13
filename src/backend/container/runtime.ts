@@ -20,6 +20,8 @@ import type { InclinationAssetService } from '../services/inclination-asset-serv
 import type { CommunityCultureDigestService } from '../services/community-culture-digest-service.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { PublicDisclosureCapService } from '../services/public-disclosure-cap-service.js'
+import type { PublicSceneSelectorService } from '../services/public-scene-selector-service.js'
+import type { ForumSceneContinuityService } from '../services/forum-scene-continuity-service.js'
 import type { XpService } from '../services/xp-service.js'
 import type { NurtureOrchestrator } from '../services/nurture-orchestrator.js'
 import type { AgentRunRepository } from '../repos/event-repository.js'
@@ -39,6 +41,8 @@ export function createRuntime(deps: {
   communityCultureDigestService: CommunityCultureDigestService | null
   personaStateService: PersonaStateService
   publicDisclosureCapService: PublicDisclosureCapService
+  publicSceneSelectorService?: PublicSceneSelectorService | null
+  forumSceneContinuityService?: ForumSceneContinuityService | null
   promptLayerService: PromptLayerService | null
   promptOrchestrator: PromptOrchestrator | null
   traitEngine: import('../services/trait-engine.js').TraitEngine | null
@@ -72,6 +76,7 @@ export function createRuntime(deps: {
     promptOrchestrator: deps.promptOrchestrator,
     communityPromptProfileCompiler,
     communityCultureDigestService: deps.communityCultureDigestService,
+    forumSceneContinuityService: deps.forumSceneContinuityService,
   })
 
   const responseParser = new ResponseParser()
@@ -108,6 +113,7 @@ export function createRuntime(deps: {
       inclinationAssetService: deps.inclinationAssetService,
       promptOrchestrator: deps.promptOrchestrator,
       personaStateService: deps.personaStateService,
+      publicSceneSelectorService: deps.publicSceneSelectorService,
     },
     {
       postIntervalMs: config.runtime.postIntervalMs,
