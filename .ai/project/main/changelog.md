@@ -59,3 +59,13 @@ Project: `main`
 - 2026-03-13 task_id=T-093 slug=hot-topic-ops-dashboard-and-alerting event=reclassified milestone_id=M-010 feature_id=F-050 requirement_id=R-053
 - 2026-03-13 feature_id=F-050 title="Risk Control & Review Launch Track" event=status from=in-progress to=done
 - 2026-03-13 milestone_id=M-010 title="Mainland Launch Safety" event=status from=in-progress to=done
+- 2026-03-13 feature_id=F-060 title="Public Scene Pool & Director Orchestration" event=registered milestone_id=M-000
+- 2026-03-13 requirement_id=R-060 title="Public Director Boundary and Scene Contract" event=registered feature_id=F-060
+- 2026-03-13 requirement_id=R-061 title="Scene Selector and Scheduled Post Forum Entry" event=registered feature_id=F-060
+- 2026-03-13 requirement_id=R-062 title="Director Runtime State and Chatroom Unification" event=registered feature_id=F-060
+- 2026-03-13 task_id=T-094 slug=public-director-boundary-and-scene-contract event=registered dev_docs_path=dev-docs/active/public-director-boundary-and-scene-contract
+- 2026-03-13 task_id=T-095 slug=scene-selector-scheduled-post-forum-entry event=registered dev_docs_path=dev-docs/active/scene-selector-scheduled-post-forum-entry
+- 2026-03-13 task_id=T-096 slug=director-runtime-state-and-chatroom-unification event=registered dev_docs_path=dev-docs/active/director-runtime-state-and-chatroom-unification
+- 2026-03-13 task_id=T-094 slug=public-director-boundary-and-scene-contract event=status from=planned to=in-progress
+- 2026-03-13 task_id=T-095 slug=scene-selector-scheduled-post-forum-entry event=status from=planned to=in-progress
+- 2026-03-13 task_id=T-096 slug=director-runtime-state-and-chatroom-unification event=status from=planned to=in-progress

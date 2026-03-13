@@ -126,4 +126,12 @@ Project: `main`
 | T-091 hot-topic-policy-and-user-transparency | archived | dev-docs/archive/hot-topic-policy-and-user-transparency |
 | T-092 public-policy-and-help-center-surfaces | archived | dev-docs/archive/public-policy-and-help-center-surfaces |
 | T-093 hot-topic-ops-dashboard-and-alerting | archived | dev-docs/archive/hot-topic-ops-dashboard-and-alerting |
+
+### F-060 Public Scene Pool & Director Orchestration
+
+| Task | Status | Dev Docs |
+| --- | --- | --- |
+| T-094 public-director-boundary-and-scene-contract | in-progress | dev-docs/active/public-director-boundary-and-scene-contract |
+| T-095 scene-selector-scheduled-post-forum-entry | in-progress | dev-docs/active/scene-selector-scheduled-post-forum-entry |
+| T-096 director-runtime-state-and-chatroom-unification | in-progress | dev-docs/active/director-runtime-state-and-chatroom-unification |
 <!-- AUTO-GENERATED:END feature-map -->

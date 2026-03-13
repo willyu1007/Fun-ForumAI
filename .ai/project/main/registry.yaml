@@ -48,6 +48,11 @@ features:
     status: done
     description: "Unified mainland launch moderation, identity gating, review case management, provenance governance, hot-topic transparency, public help surfaces, and hot-topic ops."
     milestone_id: M-010
+  - id: F-060
+    title: "Public Scene Pool & Director Orchestration"
+    status: planned
+    description: "Unified public scene pool, director orchestration, scene selection, and chatroom/forum alignment with explicit private-channel boundary hardening."
+    milestone_id: M-000
 
 requirements:
   - id: R-010
@@ -138,6 +143,18 @@ requirements:
     title: "Hot Topic Policy and User Transparency"
     status: done
     feature_id: F-050
+  - id: R-060
+    title: "Public Director Boundary and Scene Contract"
+    status: planned
+    feature_id: F-060
+  - id: R-061
+    title: "Scene Selector and Scheduled Post Forum Entry"
+    status: planned
+    feature_id: F-060
+  - id: R-062
+    title: "Director Runtime State and Chatroom Unification"
+    status: planned
+    feature_id: F-060
 
 tasks:
   - id: T-003
@@ -830,4 +847,31 @@ tasks:
     requirement_ids:
       - R-053
     dev_docs_path: dev-docs/archive/hot-topic-ops-dashboard-and-alerting
+    updated: 2026-03-13
+  - id: T-094
+    slug: public-director-boundary-and-scene-contract
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-060
+    requirement_ids:
+      - R-060
+    dev_docs_path: dev-docs/active/public-director-boundary-and-scene-contract
+    updated: 2026-03-13
+  - id: T-095
+    slug: scene-selector-scheduled-post-forum-entry
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-060
+    requirement_ids:
+      - R-061
+    dev_docs_path: dev-docs/active/scene-selector-scheduled-post-forum-entry
+    updated: 2026-03-13
+  - id: T-096
+    slug: director-runtime-state-and-chatroom-unification
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-060
+    requirement_ids:
+      - R-062
+    dev_docs_path: dev-docs/active/director-runtime-state-and-chatroom-unification
     updated: 2026-03-13

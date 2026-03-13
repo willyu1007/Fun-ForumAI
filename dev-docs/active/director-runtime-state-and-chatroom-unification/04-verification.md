@@ -1,0 +1,44 @@
+# 04 Verification — T-096
+
+- Planning-only task bundle initialized.
+- 2026-03-13 repo review:
+  - 已核对 `src/backend/services/room-program-engine.ts`、`src/backend/services/room-projector.ts`、`src/backend/services/room-program-projector.ts`、`src/backend/services/chatroom-runtime-context-builder.ts`、`src/backend/services/conversation-clock.ts` 与历史 `T-073 ~ T-075` 架构文档。
+- 2026-03-13 architecture consistency check:
+  - 现有 chatroom 已具备 `program / beat / cue / highlight / cast` 原语，但尚未映射到统一 `template / binding / episode / phase / LocalIntent` 合同。
+  - 现有 runtime 缺少显式 `runtime_scene_state_v1` 权威对象，验证了本包的核心缺口成立。
+- 2026-03-13 contract-detail review:
+  - 已核对 `src/backend/services/room-program-engine.ts`、`src/backend/services/room-program-scorer.ts`、`src/backend/services/room-program-state-loader.ts`、`src/backend/services/room-projector.ts`、`src/backend/services/room-program-projector.ts`、`src/backend/services/chatroom-runtime-context-builder.ts`、`src/backend/services/conversation-clock.ts`、`src/backend/allocator/casting-director-policy.ts`、`src/backend/repos/room-watchability-repository.ts`、`src/backend/repos/types/chat.ts` 与需求文档中的 `runtime_scene_state_v1` / scene-aware casting / metrics 建议。
+  - 结论：
+    - chatroom 现有对象已经足够支撑 adaptor/read model，但仍缺 shared runtime authority 和唯一写权；
+    - `RoomProgramScorer` 当前只解决 turn 级 speaker scoring，不能替代 scene-aware casting 的 episode 级 roster shaping；
+    - `ChatroomRuntimeContextBuilder` 与 `ConversationClock` 仍把 `director_goal` 作为 actor-visible prompt variable，下一个阶段必须切到 `LocalIntent` 主 carrier。
+- 2026-03-13 decision freeze after architecture review:
+  - 基于现有 `RoomEpisode / RoomProgramEvent / RoomLiveSnapshot` 的职责分散，已冻结 dedicated runtime state table，拒绝 authority sidecar；
+  - 基于 `chatroom-runtime-context-builder.ts` 与 `conversation-clock.ts` 对 `director_goal` 的现有依赖，已冻结 staged cutover 到 `LocalIntent`，拒绝 big bang 与长期双轨。
+- 2026-03-13 implementation handoff review:
+  - 已核对 `src/backend/lib/config.ts`、`src/backend/repos/agent-public-projection-repository.ts`、`src/backend/repos/pg/pg-agent-public-projection-repository.ts`、`src/backend/repos/pg/pg-room-watchability-repository.ts` 的命名与分层模式。
+  - 结论：
+    - 新增 `runtime_scene_state` 适合遵循现有 `repo interface + in-memory + pg implementation` 模式；
+    - feature flag 应进入 `config.features.*` 与 env contract，而不是只停留在 task 文档；
+    - rollout 需要把 authority flag 与 prompt cutover flag 分开，避免一次性硬切。
+- 2026-03-13 governance sync:
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
+  - passed；`registry.yaml`、`changelog.md`、`dashboard.md`、`feature-map.md`、`task-index.md` 已刷新，`T-096` 状态进入 `in-progress`
+- 2026-03-13 governance lint:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+- 2026-03-13 patch hygiene:
+  - `git diff --check`
+  - passed
+- 2026-03-13 lint after decision freeze update:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+- 2026-03-13 patch hygiene after decision freeze update:
+  - `git diff --check`
+  - passed
+- 2026-03-13 lint after implementation handoff update:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+- 2026-03-13 patch hygiene after implementation handoff update:
+  - `git diff --check`
+  - passed

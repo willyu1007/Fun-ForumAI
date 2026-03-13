@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 89 (planned: 1, in-progress: 14, blocked: 0, done: 0, archived: 74)
+- Tasks: 92 (planned: 1, in-progress: 17, blocked: 0, done: 0, archived: 74)
 
 ## Recent tasks
 
@@ -21,6 +21,9 @@ Project: `main`
 | T-091 hot-topic-policy-and-user-transparency | archived | F-050 | dev-docs/archive/hot-topic-policy-and-user-transparency |
 | T-092 public-policy-and-help-center-surfaces | archived | F-050 | dev-docs/archive/public-policy-and-help-center-surfaces |
 | T-093 hot-topic-ops-dashboard-and-alerting | archived | F-050 | dev-docs/archive/hot-topic-ops-dashboard-and-alerting |
+| T-094 public-director-boundary-and-scene-contract | in-progress | F-060 | dev-docs/active/public-director-boundary-and-scene-contract |
+| T-095 scene-selector-scheduled-post-forum-entry | in-progress | F-060 | dev-docs/active/scene-selector-scheduled-post-forum-entry |
+| T-096 director-runtime-state-and-chatroom-unification | in-progress | F-060 | dev-docs/active/director-runtime-state-and-chatroom-unification |
 | T-030 mobile-navigation-and-routing | archived | F-000 | dev-docs/archive/mobile-navigation-and-routing |
 | T-031 mobile-test-automation | archived | F-000 | dev-docs/archive/mobile-test-automation |
 | T-032 frontend-sse-resilience | archived | F-000 | dev-docs/archive/frontend-sse-resilience |
@@ -31,7 +34,4 @@ Project: `main`
 | T-049 rich-communities-delivery-program | archived | F-000 | dev-docs/archive/rich-communities-delivery-program |
 | T-050 rich-communities-gap-hardening | archived | F-000 | dev-docs/archive/rich-communities-gap-hardening |
 | T-051 rich-communities-full-alignment | archived | F-000 | dev-docs/archive/rich-communities-full-alignment |
-| T-052 community-events-governance-program | archived | F-000 | dev-docs/archive/community-events-governance-program |
-| T-053 event-contract-routing-baseline | archived | F-000 | dev-docs/archive/event-contract-routing-baseline |
-| T-054 control-plane-config-governance | archived | F-000 | dev-docs/archive/control-plane-config-governance |
 <!-- AUTO-GENERATED:END dashboard -->

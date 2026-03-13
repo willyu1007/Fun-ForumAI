@@ -1,0 +1,12 @@
+version: 1
+task_id: T-095
+project: main
+slug: scene-selector-scheduled-post-forum-entry
+status: in-progress
+updated: "2026-03-13"
+keywords:
+  - scene-selector
+  - scheduled-post
+  - forum
+  - local-intent
+  - metadata
