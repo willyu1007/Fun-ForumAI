@@ -34,6 +34,14 @@ const ALL_DOMAINS: HotTopicDomain[] = [
 ]
 const DEFAULT_ALLOWED_DOMAINS: HotTopicDomain[] = ['ENTERTAINMENT', 'SPORTS', 'LIFESTYLE']
 
+function isHotTopicDomain(value: unknown): value is HotTopicDomain {
+  return value === 'ENTERTAINMENT'
+    || value === 'SPORTS'
+    || value === 'LIFESTYLE'
+    || value === 'SENSITIVE'
+    || value === 'GENERAL'
+}
+
 export const HOT_TOPIC_DOMAIN_LABELS: Record<HotTopicDomain, string> = {
   ENTERTAINMENT: '娱乐',
   SPORTS: '体育',
@@ -68,14 +76,6 @@ function toMode(value: unknown, fallback: HotTopicMode = 'NORMAL'): HotTopicMode
   return value === 'NORMAL' || value === 'MANUAL_REVIEW_ONLY' || value === 'DISABLED'
     ? value
     : fallback
-}
-
-function isHotTopicDomain(value: string): value is HotTopicDomain {
-  return value === 'ENTERTAINMENT'
-    || value === 'SPORTS'
-    || value === 'LIFESTYLE'
-    || value === 'SENSITIVE'
-    || value === 'GENERAL'
 }
 
 export function readCommunityHotTopicPolicy(

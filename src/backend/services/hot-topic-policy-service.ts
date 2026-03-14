@@ -1,5 +1,3 @@
-import type { CommunityHotTopicPolicyV1 } from './hot-topic-policy-config.js'
-
 export type HotTopicDomain =
   | 'ENTERTAINMENT'
   | 'SPORTS'
@@ -113,7 +111,22 @@ export class HotTopicPolicyService {
     tags?: string[]
     context_text?: string | null
     context_tags?: string[]
-    policy?: Partial<CommunityHotTopicPolicyV1> | null
+    policy?: {
+      mode?: unknown
+      allowed_domains?: unknown
+      scene_modes?: unknown
+      user_copy?: unknown
+      keyword_overrides?: {
+        allow?: Partial<Record<'ENTERTAINMENT' | 'SPORTS' | 'LIFESTYLE', string[]>>
+        gray?: string[]
+        deny?: string[]
+      }
+      sampling_thresholds?: {
+        post_comment_count?: number
+        room_message_count_hour?: number
+        report_count_24h?: number
+      }
+    } | null
     sampling_metrics?: {
       post_comment_count?: number
       room_message_count_hour?: number

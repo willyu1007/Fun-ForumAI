@@ -375,9 +375,8 @@ export class HotTopicOpsService {
       }),
     )
 
-    const combinedItems: Array<HotTopicDashboardItem | null> = [...postItems, ...roomItems]
-    const items = combinedItems
-      .filter((item): item is HotTopicDashboardItem => item !== null)
+    const items = [...postItems, ...roomItems]
+      .flatMap((item) => (item ? [item] : []))
       .sort((a, b) =>
         b.hot_score - a.hot_score
         || b.drift_risk_score - a.drift_risk_score
