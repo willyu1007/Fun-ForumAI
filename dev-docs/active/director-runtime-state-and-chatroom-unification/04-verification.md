@@ -42,3 +42,56 @@
 - 2026-03-13 patch hygiene after implementation handoff update:
   - `git diff --check`
   - passed
+- 2026-03-14 schema validation:
+  - `pnpm db:validate`
+  - passed；`prisma/schema.prisma` 与新增 `RuntimeSceneState` model 合法。
+- 2026-03-14 prisma formatting:
+  - `pnpm exec prisma format`
+  - passed
+- 2026-03-14 DB context refresh:
+  - `node .ai/scripts/ctl-db-ssot.mjs sync-to-context`
+  - passed；`docs/context/db/schema.json` 已刷新。
+- 2026-03-14 typecheck after T-096 implementation:
+  - `pnpm typecheck`
+  - passed
+- 2026-03-14 targeted runtime/prompt test suite:
+  - `pnpm vitest run src/backend/repos/__tests__/runtime-scene-state-repository.test.ts src/backend/services/__tests__/chatroom-scene-contract-resolver.test.ts src/backend/services/__tests__/runtime-scene-state-manager.test.ts src/backend/services/__tests__/room-program-engine.test.ts src/backend/services/__tests__/chatroom-control-service.test.ts src/backend/services/__tests__/chatroom-runtime-context-builder.test.ts src/backend/services/__tests__/room-projector.test.ts src/backend/services/__tests__/conversation-clock.test.ts src/backend/llm/__tests__/prompt-engine.test.ts src/backend/stage/__tests__/public-director-contract.test.ts`
+  - passed；42 tests / 10 files。
+- 2026-03-14 database suite:
+  - `node .ai/tests/run.mjs --suite database`
+  - passed；`database-sqlite-smoke` 通过。
+- 2026-03-14 create-only migration attempt:
+  - `pnpm exec prisma migrate dev --create-only --name t096_runtime_scene_states`
+  - blocked；本地 dev DB 存在历史 migration drift，Prisma 要求 reset，已拒绝执行破坏性 reset。
+- 2026-03-14 read-only migration diff fallback:
+  - `pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script`
+  - passed；确认 `runtime_scene_states` DDL 正确，因此手写最小增量 migration `20260314073000_t096_runtime_scene_states`，避免修改既有 migration 历史。
+- 2026-03-14 patch hygiene:
+  - `git diff --check`
+  - passed
+- 2026-03-14 governance lint after implementation:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - passed
+- 2026-03-14 post-review targeted fixes:
+  - 发现并修复 3 类实现问题：
+    - raw message event 未继承 planned cue 的 LocalIntent 审计字段，导致执行后 runtime audit 链断裂；
+    - loop_resolved 依赖 highlight 创建且错误地用当前 message id 结算 loop，导致 open loop 无法稳定闭环；
+    - manual cue speaker selection 未受 runtime active cast 约束，绕过了 scene-aware casting。
+- 2026-03-14 post-review typecheck:
+  - `pnpm typecheck`
+  - passed
+- 2026-03-14 post-review focused regression:
+  - `pnpm vitest run src/backend/services/__tests__/runtime-scene-state-manager.test.ts src/backend/services/__tests__/chatroom-control-service.test.ts src/backend/services/__tests__/room-program-projector.test.ts`
+  - passed；9 tests / 3 files。
+- 2026-03-14 post-review full T-096 regression:
+  - `pnpm vitest run src/backend/repos/__tests__/runtime-scene-state-repository.test.ts src/backend/services/__tests__/chatroom-scene-contract-resolver.test.ts src/backend/services/__tests__/runtime-scene-state-manager.test.ts src/backend/services/__tests__/room-program-engine.test.ts src/backend/services/__tests__/chatroom-control-service.test.ts src/backend/services/__tests__/chatroom-runtime-context-builder.test.ts src/backend/services/__tests__/room-projector.test.ts src/backend/services/__tests__/room-program-projector.test.ts src/backend/services/__tests__/conversation-clock.test.ts src/backend/llm/__tests__/prompt-engine.test.ts src/backend/stage/__tests__/public-director-contract.test.ts`
+  - passed；45 tests / 11 files。
+- 2026-03-14 post-review database suite:
+  - `node .ai/tests/run.mjs --suite database`
+  - passed；`database-sqlite-smoke` 通过。
+- 2026-03-14 post-review schema validation:
+  - `pnpm db:validate`
+  - passed
+- 2026-03-14 post-review patch hygiene:
+  - `git diff --check`
+  - passed

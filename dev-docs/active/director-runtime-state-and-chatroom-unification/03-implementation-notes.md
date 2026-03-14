@@ -20,8 +20,29 @@
   - 冻结了 shared runtime state 的写序：state authority 先更新，snapshot/read model 后刷新；
   - 列出了 chatroom cutover 的具体改造触点：`room-program-engine.ts`、`conversation-clock.ts`、`chatroom-runtime-context-builder.ts`、`room-program-projector.ts`、`chatroom-control-service.ts`；
   - 增加了 rollout matrix 和 env/config handoff，避免 feature flag 只写在架构文档里、不落到环境合同。
+- 2026-03-14 runtime authority / chatroom cutover 已落库到 repo：
+  - 升级 `src/backend/stage/public-director-contract.{js,d.ts}` 的 `RuntimeSceneStateV1` 为 richer shared-authority shape；
+  - 在 `prisma/schema.prisma` 新增 `RuntimeSceneState` model，并手写 `prisma/migrations/20260314073000_t096_runtime_scene_states/migration.sql`；
+  - 新增 `src/backend/repos/runtime-scene-state-repository.ts` 与 `src/backend/repos/pg/pg-runtime-scene-state-repository.ts`，同时把 repo 接入 `src/backend/container/repos.ts`；
+  - 新增 `ChatroomSceneContractResolver`、`ChatroomSceneAwareCastingService`、`RuntimeSceneStateManager`、`ChatroomLocalIntentService`；
+  - `RoomProjector` 现在在 authority flag 打开时负责 `ensureChatroomState()`，把真实 binding / legacy fallback、scene-aware active cast、aftershow=off 一起写入 runtime authority；
+  - `RoomProgramEngine` 现在只在 runtime active cast 内做 speaker scoring，并双写 `local_intent_id / local_intent / local_intent_block / episode_brief_min / director_goal_compat` 到 `RoomProgramEvent.payload_json`；
+  - `ChatroomControlService.createCue()` 保持外部 `cue_type + director_goal` 不变，但内部已经转换为统一 LocalIntent，并允许 cooldown 期间手动开启新 episode；
+  - `ChatroomRuntimeContextBuilder` 已同时输出 legacy prompt vars、`local_intent_block`、`room_public_context_summary`；
+  - `ConversationClock` 按 `FF_CHATROOM_LOCAL_INTENT_V1` 在 `agent-chat-reply@v4` 与 `agent-chat-reply@v5` 间切换；
+  - `RoomProgramProjector` 现在把 raw message / highlight 回写到 runtime authority，用于 close loop 与 cooldown lifecycle。
+- 2026-03-14 rollout / contract handoff：
+  - `src/backend/lib/config.ts`、`docs/env.md`、`docs/context/env/contract.json` 已加入 `FF_DIRECTOR_RUNTIME_STATE_V1`、`FF_CHATROOM_LOCAL_INTENT_V1`；
+  - `.ai/llm-config/registry/prompt_templates.yaml` 新增 `agent-chat-reply@5`，scene-enabled path 只消费 `LocalIntent + room public context summary + projection/privacy context`；
+  - `docs/context/db/schema.json` 已通过 `ctl-db-ssot sync-to-context` 刷新。
+- 2026-03-14 post-implementation review / fix：
+  - 修复了 `RoomProgramProjector` 在 raw message event 上丢失 `local_intent_id / episode_brief_min / director_goal_compat` 的问题，保证 `program_event_id -> payload_json.local_intent_id -> runtime_scene_state.audit` 链路在执行后仍然成立；
+  - 修复了 loop close 只在消息同时成为 highlight 时才会触发的耦合，并改为优先使用 `callback_message_id / anchor_message_id` 去解析真正要关闭的 open loop；
+  - 修复了 `ChatroomControlService.createCue()` 在 runtime authority 开启时仍可绕过 scene-aware active cast 的问题，manual cue 现在与 auto turn 一样受 active cast / suppression 约束；
+  - 将 scene-aware slot audit 与 suppressed agent ids 补回 `RuntimeSceneStateV1.cast` 与 cue audit，避免 runtime authority 只保留 active/standby 结果而丢掉编排依据；
+  - 把 `DIRECTOR_PHASE_ADVANCED` 事件发射移动到 runtime state optimistic update 成功之后，减少并发下的 phantom audit event 风险。
 
 ## Open follow-up actions
-- 实现阶段需要把 dedicated state table 映射成 Prisma schema、repo 与 state-manager service。
-- 实现阶段需要把 `director_goal_compat` 和 `LocalIntent` 的双写窗口压到最短，并补 fallback telemetry。
-- 实现阶段需要把 rollout checklist 落到 `config.ts`、`docs/env.md`、`docs/context/env/contract.json`。
+- 在 dev/staging 真实数据库上正式执行 migration deploy；当前 repo 已生成 migration，但未做 DB write。
+- authority-on shadow 阶段补 episode 级 telemetry 看板或查询脚本，方便比较 `eventRepo` 中的 `DIRECTOR_*` 事件。
+- cleanup 阶段清理 chatroom prompt 中对 raw `director_goal` 的残余依赖，并评估 compat path 是否还能进一步收窄。

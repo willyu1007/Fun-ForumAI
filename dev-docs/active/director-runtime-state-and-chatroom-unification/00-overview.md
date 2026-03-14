@@ -2,7 +2,7 @@
 
 ## Status
 - State: in-progress
-- Next step: 将已冻结的 dedicated runtime state table 与 chatroom `LocalIntent` staged cutover 拆成 Prisma/repo/service handoff，并明确 feature-flag 切换顺序。
+- Next step: 在 dev DB 正式应用 `runtime_scene_states` migration，并按 `FF_DIRECTOR_RUNTIME_STATE_V1 -> FF_CHATROOM_LOCAL_INTENT_V1` 顺序灰度验证 chatroom cutover。
 
 ## Goal
 把现有聊天室节目系统提升为统一公域导演协议的一部分：
