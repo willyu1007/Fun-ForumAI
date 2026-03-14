@@ -543,7 +543,6 @@ describe('PolicyGatewayService', () => {
     expect(decision.action).toBe('allow')
     expect(decision.distribution_state).toBe('NORMAL')
     const topicSignals = decision.metadata?.topic_signals as { sampled_review_required?: boolean } | undefined
->>>>>>> fix(types): restore clean typecheck
     expect(topicSignals?.sampled_review_required).toBe(true)
 
     const cases = await riskRepo.listCases({ limit: 20, cursor: undefined })
