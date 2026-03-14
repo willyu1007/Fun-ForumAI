@@ -1,5 +1,13 @@
 import type { ForumSceneMetadataRepository } from '../repos/forum-scene-metadata-repository.js'
-import type { EpisodeBrief, LocalIntent, SceneMetadata, ScenePoolCatalog, StageTemplateV2 } from '../stage/index.js'
+import type { ForumSceneMetadata } from '../repos/types.js'
+import type {
+  EpisodeBrief,
+  LocalIntent,
+  SceneBindingV1,
+  SceneMetadata,
+  ScenePoolCatalog,
+  StageTemplateV2,
+} from '../stage/index.js'
 import { PublicSceneCatalogService } from './public-scene-catalog-service.js'
 import {
   buildLocalIntentBlock,
@@ -18,6 +26,77 @@ interface EligibleCommunity {
 interface SelectedAgentLike {
   id: string
   display_name: string
+}
+
+interface EligibleTarget {
+  community_id: string
+  community_slug: string
+  writable: boolean
+  membership_source: 'direct' | 'derived'
+}
+
+interface ExistingEpisodeMetadata {
+  episode_id: string
+  director_surface: SceneMetadata['director_surface']
+  actor_surface: SceneMetadata['actor_surface']
+  scene_template_id: string
+  scene_template_version: string
+  scene_binding_id: string | null
+  overlay_id: string | null
+  phase: SceneMetadata['phase']
+  selection_mode: SceneMetadata['selection_mode']
+  expires_at: string | null
+}
+
+type SelectorEntryKind = 'scheduled_post' | 'forum_post_seed' | 'forum_comment_followup'
+type SelectorMode = 'pool_guided' | 'pool_strict' | 'autonomous_anchored'
+type EpisodeStrategy = 'new_episode' | 'continue_episode' | 'fallback_legacy'
+type SelectorHardFilterReason =
+  | 'surface_mismatch'
+  | 'binding_target_mismatch'
+  | 'binding_inactive'
+  | 'template_blocked'
+  | 'cooldown_active'
+  | 'daily_limit_reached'
+  | 'risk_rejected'
+  | 'continuity_required'
+
+interface CandidateScoreBreakdown {
+  viewer_fit: number
+  growth_fit: number
+  cast_fit: number
+  continuity_fit: number
+  freshness: number
+  novelty: number
+  editorial_priority: number
+  fatigue_penalty: number
+  risk_penalty: number
+  repeat_penalty: number
+  total_score: number
+}
+
+interface RankedCandidate {
+  binding: SceneBindingV1
+  template: StageTemplateV2
+  target: EligibleTarget
+  score_breakdown: CandidateScoreBreakdown
+}
+
+interface SelectorFallback {
+  reason: string
+  action: 'abort' | 'legacy_path' | 'continue_without_scene'
+}
+
+interface SelectorSceneResult {
+  kind: 'scene'
+  target: EligibleTarget
+  payload: PublicSceneWritePayload
+}
+
+interface SelectorFallbackResult {
+  kind: 'fallback'
+  fallback: SelectorFallback
+  audit: Record<string, unknown>
 }
 
 export type ScheduledPostSceneSelection =
@@ -43,15 +122,276 @@ export class PublicSceneSelectorService {
     agent: SelectedAgentLike
     eligible_communities: EligibleCommunity[]
   }): Promise<ScheduledPostSceneSelection> {
+    const eligibleTargets = input.eligible_communities.map((community) => ({
+      community_id: community.id,
+      community_slug: community.slug,
+      writable: true,
+      membership_source: 'direct' as const,
+    }))
+    const result = await this.selectNewEpisodeForumScene({
+      request_id: generateSceneId('scene_req'),
+      entry_kind: 'scheduled_post',
+      selector_mode: 'pool_guided',
+      director_surface: 'scheduled_post',
+      actor_surface: 'forum_post',
+      selected_agent: input.agent,
+      eligible_targets: eligibleTargets,
+    })
+    if (result.kind === 'fallback') {
+      return { kind: 'fallback', reason: result.fallback.reason }
+    }
+
+    const community = input.eligible_communities.find((item) => item.id === result.target.community_id)
+    if (!community) {
+      return { kind: 'fallback', reason: 'binding_target_missing' }
+    }
+
+    return {
+      kind: 'scene',
+      community,
+      payload: result.payload,
+    }
+  }
+
+  async selectForumPostSeed(input: {
+    agent: SelectedAgentLike
+    community: EligibleCommunity
+  }): Promise<ScheduledPostSceneSelection> {
+    const result = await this.selectNewEpisodeForumScene({
+      request_id: generateSceneId('scene_req'),
+      entry_kind: 'forum_post_seed',
+      selector_mode: 'pool_guided',
+      director_surface: 'forum',
+      actor_surface: 'forum_post',
+      selected_agent: input.agent,
+      eligible_targets: [{
+        community_id: input.community.id,
+        community_slug: input.community.slug,
+        writable: true,
+        membership_source: 'direct',
+      }],
+      locked_target: {
+        community_id: input.community.id,
+        community_slug: input.community.slug,
+      },
+    })
+    if (result.kind === 'fallback') {
+      return { kind: 'fallback', reason: result.fallback.reason }
+    }
+
+    return {
+      kind: 'scene',
+      community: input.community,
+      payload: result.payload,
+    }
+  }
+
+  async selectForumCommentFollowup(input: {
+    community_id: string
+    post_id: string
+    comment_id?: string
+    post_author_agent_id?: string
+    target_comment_author_agent_id?: string
+    existing_scene_metadata: ExistingEpisodeMetadata
+  }): Promise<
+    | {
+        kind: 'scene'
+        payload: PublicSceneWritePayload
+      }
+    | {
+        kind: 'fallback'
+        reason: string
+      }
+  > {
     const catalog = this.deps.catalogService.getLaunchCatalog()
     if (!catalog) {
       return { kind: 'fallback', reason: 'scene_catalog_unavailable' }
     }
 
-    const candidates = await this.rankCandidates(catalog, input.eligible_communities)
-    const selected = candidates[0]
+    const template = catalog.stage_templates.find((item) =>
+      item.template_id === input.existing_scene_metadata.scene_template_id
+      && item.template_version === input.existing_scene_metadata.scene_template_version)
+    if (!template) {
+      return { kind: 'fallback', reason: 'existing_episode_missing' }
+    }
+
+    const now = new Date()
+    const selectionId = generateSceneId('scene_sel')
+    const episodePlanId = generateSceneId('episode_plan')
+    const localIntentId = generateSceneId('local_intent')
+    const phase = input.existing_scene_metadata.phase === 'aftershow'
+      ? 'closure'
+      : input.existing_scene_metadata.phase
+    const targetRef = input.comment_id
+      ? {
+          kind: 'comment' as const,
+          post_id: input.post_id,
+          comment_id: input.comment_id,
+          ...(input.target_comment_author_agent_id
+            ? { agent_id: input.target_comment_author_agent_id }
+            : {}),
+        }
+      : input.post_author_agent_id
+        ? {
+            kind: 'agent' as const,
+            agent_id: input.post_author_agent_id,
+          }
+        : { kind: 'none' as const }
+    const episodeBrief: EpisodeBrief = {
+      episode_id: input.existing_scene_metadata.episode_id,
+      director_surface: input.existing_scene_metadata.director_surface,
+      actor_surface: 'forum_comment',
+      template_id: template.template_id,
+      template_version: template.template_version,
+      binding_id: input.existing_scene_metadata.scene_binding_id ?? undefined,
+      overlay_id: input.existing_scene_metadata.overlay_id ?? undefined,
+      phase,
+      scene_goal: template.director.scene_goal,
+      target_mood: undefined,
+      casting_directive: {
+        must_have_roles: template.director.casting_recipe.must_have_roles,
+        avoid_pairs: template.director.casting_recipe.avoid_pairs,
+        core_quota: template.director.casting_recipe.ratio.core,
+        contrast_quota: template.director.casting_recipe.ratio.contrast,
+        wildcard_quota: template.director.casting_recipe.ratio.wildcard,
+      },
+      open_loops: [],
+      must_hit_points: [],
+      avoid_repeat: [],
+      close_condition: {
+        ttl_hours: template.director.closing_policy.ttl_hours,
+        message_threshold: template.director.closing_policy.message_threshold,
+        objective: template.director.scene_goal.viewer_goal,
+      },
+      expires_at: input.existing_scene_metadata.expires_at ?? new Date(
+        now.getTime() + template.director.closing_policy.ttl_hours * 3600_000,
+      ).toISOString(),
+    }
+
+    const localIntent: LocalIntent = {
+      intent_id: localIntentId,
+      delivery_surface: 'forum_comment',
+      initiative: phase === 'closure' ? 'close' : 'reply',
+      opinion_policy: 'free_opinion',
+      relation_focus: deriveRelationFocus(template),
+      tone_hint: deriveToneHint(template),
+      privacy_mode: 'public_only',
+      memory_scope: 'public_episode_continuity',
+      reference_scope: 'thread_only',
+      prohibited_reference_types: ['owner_private_speech', 'private_memory', 'hidden_director_goal'],
+      target_ref: targetRef,
+      hard_constraints: [
+        '延续当前 episode，不重选场景',
+        '只依据公开线程内容继续推进',
+        '不要泄露任何隐藏导演目标或私域信息',
+      ],
+      soft_constraints: [
+        template.director.scene_goal.viewer_goal,
+        template.director.scene_goal.growth_goal,
+        `保持 episode phase=${phase}`,
+      ].filter((item) => item.trim().length > 0),
+    }
+
+    const sceneMetadata: SceneMetadata = {
+      director_surface: input.existing_scene_metadata.director_surface,
+      actor_surface: 'forum_comment',
+      scene_template_id: template.template_id,
+      scene_template_version: template.template_version,
+      scene_binding_id: input.existing_scene_metadata.scene_binding_id,
+      overlay_id: input.existing_scene_metadata.overlay_id,
+      episode_id: input.existing_scene_metadata.episode_id,
+      beat_id: null,
+      phase,
+      selection_mode: input.existing_scene_metadata.selection_mode,
+      selection_id: selectionId,
+      episode_plan_id: episodePlanId,
+      local_intent_id: localIntentId,
+      started_at: now.toISOString(),
+      expires_at: episodeBrief.expires_at,
+    }
+
+    const selectionAudit = {
+      selection_id: selectionId,
+      request_id: selectionId,
+      entry_kind: 'forum_comment_followup',
+      selector_mode: input.existing_scene_metadata.selection_mode,
+      episode_strategy: 'continue_episode',
+      hard_filter_reasons: [],
+      candidate_scores: [
+        {
+          binding_id: input.existing_scene_metadata.scene_binding_id,
+          community_id: input.community_id,
+          score_breakdown: {
+            viewer_fit: 20,
+            growth_fit: 16,
+            cast_fit: 8,
+            continuity_fit: 36,
+            freshness: 0,
+            novelty: 0,
+            editorial_priority: 10,
+            fatigue_penalty: 0,
+            risk_penalty: 0,
+            repeat_penalty: 0,
+            total_score: 90,
+          },
+        },
+      ],
+      fallback: null,
+    }
+    const planningAudit = {
+      request_id: selectionId,
+      entry_kind: 'forum_comment_followup',
+      episode_strategy: 'continue_episode',
+      episode_id: input.existing_scene_metadata.episode_id,
+      selection_id: selectionId,
+      episode_plan_id: episodePlanId,
+      local_intent_id: localIntentId,
+      target_community_id: input.community_id,
+      phase,
+    }
+
+    return {
+      kind: 'scene',
+      payload: {
+        scene_metadata: sceneMetadata,
+        episode_brief: episodeBrief,
+        local_intent: localIntent,
+        local_intent_block: buildLocalIntentBlock(localIntent, episodeBrief),
+        selection_audit: selectionAudit,
+        planning_audit: planningAudit,
+        fallback_reason: null,
+      },
+    }
+  }
+
+  private async selectNewEpisodeForumScene(input: {
+    request_id: string
+    entry_kind: Extract<SelectorEntryKind, 'scheduled_post' | 'forum_post_seed'>
+    selector_mode: SelectorMode
+    director_surface: Extract<SceneMetadata['director_surface'], 'forum' | 'scheduled_post'>
+    actor_surface: Extract<SceneMetadata['actor_surface'], 'forum_post'>
+    selected_agent: SelectedAgentLike
+    eligible_targets: EligibleTarget[]
+    locked_target?: {
+      community_id: string
+      community_slug: string
+    }
+  }): Promise<SelectorSceneResult | SelectorFallbackResult> {
+    const catalog = this.deps.catalogService.getLaunchCatalog()
+    if (!catalog) {
+      return this.buildFallbackResult(input, {
+        reason: 'scene_catalog_unavailable',
+        action: 'legacy_path',
+      }, [])
+    }
+
+    const ranking = await this.rankForumCandidates(catalog, input)
+    const selected = ranking.candidates[0]
     if (!selected) {
-      return { kind: 'fallback', reason: 'no_pool_match' }
+      return this.buildFallbackResult(input, {
+        reason: input.locked_target ? 'binding_target_missing' : 'no_pool_match',
+        action: 'legacy_path',
+      }, ranking.hard_filter_reasons)
     }
 
     const now = new Date()
@@ -59,12 +399,15 @@ export class PublicSceneSelectorService {
     const episodePlanId = generateSceneId('episode_plan')
     const localIntentId = generateSceneId('local_intent')
     const episodeId = generateSceneId('episode')
-    const expiresAt = new Date(now.getTime() + selected.template.director.closing_policy.ttl_hours * 3600_000)
+    const expiresAt = new Date(
+      now.getTime() + selected.template.director.closing_policy.ttl_hours * 3600_000,
+    ).toISOString()
+    const selectionMode = resolveSelectionMode(input.selector_mode, selected.template)
 
     const episodeBrief: EpisodeBrief = {
       episode_id: episodeId,
-      director_surface: 'scheduled_post',
-      actor_surface: 'forum_post',
+      director_surface: input.director_surface,
+      actor_surface: input.actor_surface,
       template_id: selected.template.template_id,
       template_version: selected.template.template_version,
       binding_id: selected.binding.binding_id,
@@ -86,7 +429,7 @@ export class PublicSceneSelectorService {
         message_threshold: selected.template.director.closing_policy.message_threshold,
         objective: selected.template.director.scene_goal.viewer_goal,
       },
-      expires_at: expiresAt.toISOString(),
+      expires_at: expiresAt,
     }
 
     const localIntent: LocalIntent = {
@@ -98,7 +441,7 @@ export class PublicSceneSelectorService {
       tone_hint: deriveToneHint(selected.template),
       privacy_mode: 'public_only',
       memory_scope: 'public_contextual',
-      reference_scope: 'episode_public_context',
+      reference_scope: 'seed_only',
       prohibited_reference_types: ['owner_private_speech', 'private_memory', 'hidden_director_goal'],
       target_ref: { kind: 'none' },
       hard_constraints: [
@@ -113,8 +456,8 @@ export class PublicSceneSelectorService {
     }
 
     const sceneMetadata: SceneMetadata = {
-      director_surface: 'scheduled_post',
-      actor_surface: 'forum_post',
+      director_surface: input.director_surface,
+      actor_surface: input.actor_surface,
       scene_template_id: selected.template.template_id,
       scene_template_version: selected.template.template_version,
       scene_binding_id: selected.binding.binding_id,
@@ -122,41 +465,51 @@ export class PublicSceneSelectorService {
       episode_id: episodeId,
       beat_id: null,
       phase: 'opening',
-      selection_mode: selected.template.director.autonomy_policy.require_pool_match_before_create
-        ? 'pool_strict'
-        : 'pool_guided',
+      selection_mode: selectionMode,
       selection_id: selectionId,
       episode_plan_id: episodePlanId,
       local_intent_id: localIntentId,
       started_at: now.toISOString(),
-      expires_at: expiresAt.toISOString(),
+      expires_at: expiresAt,
     }
 
     const selectionAudit = {
-      agent_id: input.agent.id,
-      community_id: selected.community.id,
-      binding_id: selected.binding.binding_id,
-      template_id: selected.template.template_id,
-      template_version: selected.template.template_version,
-      candidate_scores: candidates.map((item) => ({
+      selection_id: selectionId,
+      request_id: input.request_id,
+      entry_kind: input.entry_kind,
+      selector_mode: selectionMode,
+      episode_strategy: 'new_episode',
+      selected_candidate: {
+        binding_id: selected.binding.binding_id,
+        community_id: selected.target.community_id,
+        community_slug: selected.target.community_slug,
+        template_id: selected.template.template_id,
+        template_version: selected.template.template_version,
+      },
+      hard_filter_reasons: ranking.hard_filter_reasons,
+      candidate_scores: ranking.candidates.map((item) => ({
         binding_id: item.binding.binding_id,
-        community_id: item.community.id,
-        score: item.score,
+        community_id: item.target.community_id,
+        score_breakdown: item.score_breakdown,
       })),
+      fallback: null,
     }
     const planningAudit = {
-      agent_id: input.agent.id,
+      request_id: input.request_id,
+      entry_kind: input.entry_kind,
+      agent_id: input.selected_agent.id,
+      episode_strategy: 'new_episode',
       episode_id: episodeId,
       selection_id: selectionId,
       episode_plan_id: episodePlanId,
       local_intent_id: localIntentId,
-      target_community_id: selected.community.id,
+      target_community_id: selected.target.community_id,
       phase: 'opening',
     }
 
     return {
       kind: 'scene',
-      community: selected.community,
+      target: selected.target,
       payload: {
         scene_metadata: sceneMetadata,
         episode_brief: episodeBrief,
@@ -169,44 +522,183 @@ export class PublicSceneSelectorService {
     }
   }
 
-  private async rankCandidates(catalog: ScenePoolCatalog, eligibleCommunities: EligibleCommunity[]) {
-    const eligibleBySlug = new Map(eligibleCommunities.map((item) => [item.slug, item]))
-    const eligibleById = new Map(eligibleCommunities.map((item) => [item.id, item]))
+  private async rankForumCandidates(
+    catalog: ScenePoolCatalog,
+    input: {
+      entry_kind: Extract<SelectorEntryKind, 'scheduled_post' | 'forum_post_seed'>
+      selector_mode: SelectorMode
+      director_surface: Extract<SceneMetadata['director_surface'], 'forum' | 'scheduled_post'>
+      eligible_targets: EligibleTarget[]
+      locked_target?: {
+        community_id: string
+        community_slug: string
+      }
+    },
+  ): Promise<{
+    candidates: RankedCandidate[]
+    hard_filter_reasons: Array<{ candidate_ref: string; reason: SelectorHardFilterReason }>
+  }> {
+    const entrySurface = input.entry_kind === 'scheduled_post' ? 'scheduled_post' : 'forum'
+    const eligibleById = new Map(input.eligible_targets.map((item) => [item.community_id, item]))
+    const eligibleBySlug = new Map(input.eligible_targets.map((item) => [item.community_slug, item]))
+    const hardFilterReasons: Array<{ candidate_ref: string; reason: SelectorHardFilterReason }> = []
 
     const candidates = await Promise.all(
       catalog.scene_bindings
-        .filter((binding) => binding.status === 'active')
-        .filter((binding) => binding.entry_surfaces.includes('scheduled_post'))
+        .filter((binding) => binding.entry_surfaces.includes(entrySurface))
         .map(async (binding) => {
           if (binding.target.surface !== 'forum') return null
-          const community = binding.target.community_id
-            ? eligibleById.get(binding.target.community_id)
-            : eligibleBySlug.get(binding.target.community_slug)
-          if (!community) return null
-
+          const candidateRef = binding.binding_id
           const template = catalog.stage_templates.find((item) =>
             item.template_id === binding.template_id && item.template_version === binding.template_version)
-          if (!template) return null
-
-          const latest = await this.deps.sceneMetadataRepo.findLatestByCommunityId(community.id)
-          let score = binding.weights.editorial_priority * 100
-            + binding.weights.base_weight * 10
-            + binding.weights.freshness_bonus
-
-          if (latest?.scene_binding_id === binding.binding_id) {
-            score -= template.director.fatigue_policy.repeat_penalty * 50
+          if (!template || !template.director.applicable_surfaces.includes(input.director_surface)) {
+            hardFilterReasons.push({ candidate_ref: candidateRef, reason: 'surface_mismatch' })
+            return null
           }
-          if (latest?.scene_binding_id === binding.binding_id && latest.expires_at && latest.expires_at.getTime() > Date.now()) {
-            score -= Math.max(10, template.director.fatigue_policy.cooldown_hours)
+          if (!isTemplateLaunchable(template.lifecycle_status)) {
+            hardFilterReasons.push({ candidate_ref: candidateRef, reason: 'template_blocked' })
+            return null
+          }
+          if (!isBindingLive(binding, new Date())) {
+            hardFilterReasons.push({ candidate_ref: candidateRef, reason: 'binding_inactive' })
+            return null
+          }
+          if (binding.governance.risk_override === 'block') {
+            hardFilterReasons.push({ candidate_ref: candidateRef, reason: 'risk_rejected' })
+            return null
+          }
+          if (binding.governance.risk_override === 'strict_only' && input.selector_mode !== 'pool_strict') {
+            hardFilterReasons.push({ candidate_ref: candidateRef, reason: 'risk_rejected' })
+            return null
           }
 
-          return { binding, template, community, score }
+          const target = binding.target.community_id
+            ? eligibleById.get(binding.target.community_id)
+            : eligibleBySlug.get(binding.target.community_slug)
+          if (!target || !target.writable) {
+            hardFilterReasons.push({ candidate_ref: candidateRef, reason: 'binding_target_mismatch' })
+            return null
+          }
+          if (
+            input.locked_target
+            && (
+              target.community_id !== input.locked_target.community_id
+              || target.community_slug !== input.locked_target.community_slug
+            )
+          ) {
+            hardFilterReasons.push({ candidate_ref: candidateRef, reason: 'binding_target_mismatch' })
+            return null
+          }
+
+          const recentSince = new Date(Date.now() - 24 * 3600_000)
+          const recentScenes = await this.deps.sceneMetadataRepo.listByCommunityIdSince(target.community_id, recentSince)
+          const sameBindingRecent = recentScenes.filter((item) => item.scene_binding_id === binding.binding_id)
+          const maxRunsPerDay = binding.constraints.max_runs_per_day ?? template.director.fatigue_policy.max_runs_per_day
+          if (sameBindingRecent.length >= maxRunsPerDay) {
+            hardFilterReasons.push({ candidate_ref: candidateRef, reason: 'daily_limit_reached' })
+            return null
+          }
+
+          const cooldownHours = binding.constraints.cooldown_hours ?? template.director.fatigue_policy.cooldown_hours
+          const cooldownCutoff = new Date(Date.now() - cooldownHours * 3600_000)
+          const latestSameBinding = sameBindingRecent[0] ?? null
+          if (latestSameBinding && latestSameBinding.created_at.getTime() >= cooldownCutoff.getTime()) {
+            hardFilterReasons.push({ candidate_ref: candidateRef, reason: 'cooldown_active' })
+            return null
+          }
+
+          return {
+            binding,
+            template,
+            target,
+            score_breakdown: this.scoreCandidate({
+              binding,
+              template,
+              recentScenes,
+              sameBindingRecent,
+            }),
+          } satisfies RankedCandidate
         }),
     )
 
-    return candidates
-      .filter((item): item is NonNullable<typeof item> => item !== null)
-      .sort((a, b) => b.score - a.score)
+    return {
+      candidates: candidates
+        .filter((item): item is RankedCandidate => item !== null)
+        .sort((a, b) => b.score_breakdown.total_score - a.score_breakdown.total_score),
+      hard_filter_reasons: hardFilterReasons,
+    }
+  }
+
+  private scoreCandidate(input: {
+    binding: SceneBindingV1
+    template: StageTemplateV2
+    recentScenes: ForumSceneMetadata[]
+    sameBindingRecent: ForumSceneMetadata[]
+  }): CandidateScoreBreakdown {
+    const sameTemplateRecentCount = input.recentScenes.filter((item) =>
+      item.scene_template_id === input.template.template_id
+      && item.scene_template_version === input.template.template_version)
+      .length
+    const viewerFit = input.binding.weights.base_weight * 14
+    const growthFit = Math.max(6, input.template.director.casting_recipe.relationship_objectives.length * 4)
+    const castFit = input.template.director.casting_recipe.must_have_roles.length === 0 ? 10 : 7
+    const continuityFit = input.sameBindingRecent.length === 0 ? 14 : 4
+    const freshness = input.binding.weights.freshness_bonus * 8
+    const novelty = sameTemplateRecentCount === 0 ? 12 : Math.max(0, 8 - sameTemplateRecentCount * 2)
+    const editorialPriority = input.binding.weights.editorial_priority * 10
+    const fatiguePenalty = input.sameBindingRecent.length > 0
+      ? input.template.director.fatigue_policy.repeat_penalty * 16
+      : 0
+    const riskPenalty = input.binding.governance.risk_override === 'review_required' ? 6 : 0
+    const repeatPenalty = sameTemplateRecentCount * input.template.director.fatigue_policy.repeat_penalty * 10
+    return {
+      viewer_fit: roundScore(viewerFit),
+      growth_fit: roundScore(growthFit),
+      cast_fit: roundScore(castFit),
+      continuity_fit: roundScore(continuityFit),
+      freshness: roundScore(freshness),
+      novelty: roundScore(novelty),
+      editorial_priority: roundScore(editorialPriority),
+      fatigue_penalty: roundScore(fatiguePenalty),
+      risk_penalty: roundScore(riskPenalty),
+      repeat_penalty: roundScore(repeatPenalty),
+      total_score: roundScore(
+        viewerFit
+        + growthFit
+        + castFit
+        + continuityFit
+        + freshness
+        + novelty
+        + editorialPriority
+        - fatiguePenalty
+        - riskPenalty
+        - repeatPenalty,
+      ),
+    }
+  }
+
+  private buildFallbackResult(
+    input: {
+      request_id: string
+      entry_kind: SelectorEntryKind
+      selector_mode: SelectorMode
+    },
+    fallback: SelectorFallback,
+    hardFilterReasons: Array<{ candidate_ref: string; reason: SelectorHardFilterReason }>,
+  ): SelectorFallbackResult {
+    return {
+      kind: 'fallback',
+      fallback,
+      audit: {
+        selection_id: generateSceneId('scene_sel'),
+        request_id: input.request_id,
+        entry_kind: input.entry_kind,
+        selector_mode: input.selector_mode,
+        episode_strategy: 'fallback_legacy',
+        hard_filter_reasons: hardFilterReasons,
+        fallback,
+      },
+    }
   }
 }
 
@@ -229,4 +721,64 @@ function deriveRelationFocus(template: StageTemplateV2): LocalIntent['relation_f
   if (objectives.includes('ally')) return 'ally'
   if (objectives.includes('challenge')) return 'challenge'
   return 'none'
+}
+
+function isTemplateLaunchable(status: StageTemplateV2['lifecycle_status']): boolean {
+  return status === 'canary'
+    || status === 'seasonal_active'
+    || status === 'core_active'
+    || status === 'retiring'
+}
+
+function isBindingLive(binding: SceneBindingV1, now: Date): boolean {
+  if (!(binding.status === 'active' || binding.status === 'canary' || binding.status === 'retiring')) {
+    return false
+  }
+  if (binding.lifecycle.start_at && new Date(binding.lifecycle.start_at).getTime() > now.getTime()) {
+    return false
+  }
+  if (binding.lifecycle.end_at && new Date(binding.lifecycle.end_at).getTime() < now.getTime()) {
+    return false
+  }
+  const day = toWeekDay(now)
+  if (!binding.activation.allowed_days.includes(day)) {
+    return false
+  }
+  if (binding.activation.time_windows.length === 0) {
+    return true
+  }
+  const currentMinutes = now.getUTCHours() * 60 + now.getUTCMinutes()
+  return binding.activation.time_windows.some((window) => {
+    const [start, end] = window.split('-')
+    const startMinutes = toMinutes(start)
+    const endMinutes = toMinutes(end)
+    if (startMinutes === null || endMinutes === null) return false
+    if (startMinutes <= endMinutes) {
+      return currentMinutes >= startMinutes && currentMinutes <= endMinutes
+    }
+    return currentMinutes >= startMinutes || currentMinutes <= endMinutes
+  })
+}
+
+function toWeekDay(now: Date): SceneBindingV1['activation']['allowed_days'][number] {
+  return (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[now.getUTCDay()]
+}
+
+function toMinutes(value: string | undefined): number | null {
+  if (!value) return null
+  const [hours, minutes] = value.split(':').map((part) => Number.parseInt(part, 10))
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null
+  return hours * 60 + minutes
+}
+
+function resolveSelectionMode(requested: SelectorMode, template: StageTemplateV2): SceneMetadata['selection_mode'] {
+  if (requested === 'pool_strict') return 'pool_strict'
+  if (requested === 'autonomous_anchored') return 'autonomous_anchored'
+  return template.director.autonomy_policy.require_pool_match_before_create
+    ? 'pool_strict'
+    : 'pool_guided'
+}
+
+function roundScore(value: number): number {
+  return Number(value.toFixed(2))
 }

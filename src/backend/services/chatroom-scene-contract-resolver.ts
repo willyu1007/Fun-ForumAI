@@ -132,7 +132,7 @@ export class ChatroomSceneContractResolver {
     return {
       template: {
         template_id: templateId,
-        template_version: 'legacy-v1',
+        template_version: 'v2',
         name: preset.name,
         category: preset.category,
         lifecycle_status: 'core_active',

@@ -8,6 +8,7 @@ import {
   parsePublicScenePayload,
   type PublicSceneWritePayload,
 } from './public-scene-runtime.js'
+import type { PublicSceneSelectorService } from './public-scene-selector-service.js'
 
 export type ForumSceneContinuityResolution =
   | {
@@ -25,6 +26,7 @@ export class ForumSceneContinuityService {
     private readonly deps: {
       sceneMetadataRepo: ForumSceneMetadataRepository
       eventRepo: EventRepository
+      sceneSelectorService?: PublicSceneSelectorService
     },
   ) {}
 
@@ -52,6 +54,14 @@ export class ForumSceneContinuityService {
           payload: this.buildFollowupPayload(payload, input),
         }
       }
+      const rebuilt = await this.rebuildFromMetadata(commentSidecar, input)
+      if (rebuilt) {
+        return {
+          kind: 'continue',
+          source: 'comment_sidecar',
+          payload: rebuilt,
+        }
+      }
       skipReason = 'scene_tagged_comment_missing_payload'
     }
 
@@ -63,6 +73,14 @@ export class ForumSceneContinuityService {
           kind: 'continue',
           source: 'post_sidecar',
           payload: this.buildFollowupPayload(payload, input),
+        }
+      }
+      const rebuilt = await this.rebuildFromMetadata(postSidecar, input)
+      if (rebuilt) {
+        return {
+          kind: 'continue',
+          source: 'post_sidecar',
+          payload: rebuilt,
         }
       }
       skipReason ??= 'scene_tagged_post_missing_payload'
@@ -157,7 +175,7 @@ export class ForumSceneContinuityService {
       delivery_surface: 'forum_comment',
       initiative: 'reply',
       memory_scope: 'public_episode_continuity',
-      reference_scope: 'episode_public_context',
+      reference_scope: 'thread_only',
       target_ref: input.event.comment_id
         ? {
             kind: 'comment',
@@ -196,6 +214,37 @@ export class ForumSceneContinuityService {
       planning_audit: base.planning_audit ?? null,
       fallback_reason: base.fallback_reason ?? null,
     }
+  }
+
+  private async rebuildFromMetadata(
+    metadata: Awaited<ReturnType<ForumSceneMetadataRepository['findByPostId']>> extends infer T ? T : never,
+    input: {
+      event: EventPayload
+      post_author_agent_id?: string
+      target_comment_author_agent_id?: string
+    },
+  ): Promise<PublicSceneWritePayload | null> {
+    if (!metadata || !this.deps.sceneSelectorService) return null
+    const rebuilt = await this.deps.sceneSelectorService.selectForumCommentFollowup({
+      community_id: metadata.community_id,
+      post_id: metadata.post_id ?? input.event.post_id!,
+      comment_id: input.event.comment_id,
+      post_author_agent_id: input.post_author_agent_id,
+      target_comment_author_agent_id: input.target_comment_author_agent_id,
+      existing_scene_metadata: {
+        episode_id: metadata.episode_id,
+        director_surface: metadata.director_surface as SceneMetadata['director_surface'],
+        actor_surface: metadata.actor_surface as SceneMetadata['actor_surface'],
+        scene_template_id: metadata.scene_template_id,
+        scene_template_version: metadata.scene_template_version,
+        scene_binding_id: metadata.scene_binding_id,
+        overlay_id: metadata.overlay_id,
+        phase: metadata.phase,
+        selection_mode: metadata.selection_mode,
+        expires_at: metadata.expires_at?.toISOString() ?? null,
+      },
+    })
+    return rebuilt.kind === 'scene' ? rebuilt.payload : null
   }
 }
 

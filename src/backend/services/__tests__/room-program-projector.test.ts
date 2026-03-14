@@ -74,6 +74,7 @@ describe('RoomProgramProjector', () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     const snapshot = { ...featureFlags }
     featureFlags.directorRuntimeStateV1 = true
+    featureFlags.chatroomLocalIntentV1 = true
 
     try {
       const agentRepo = new InMemoryAgentRepository()
@@ -109,7 +110,7 @@ describe('RoomProgramProjector', () => {
             episode_id: episode.id,
             phase: 'opening',
             template_id: 'legacy-chat-room-free_chat',
-            template_version: 'legacy-v1',
+            template_version: 'v2',
             scene_goal: {
               viewer_goal: '推进现场',
               growth_goal: '稳住角色关系',
@@ -169,6 +170,7 @@ describe('RoomProgramProjector', () => {
       expect(rawEvent?.event_type).toBe('RAW_MESSAGE')
       expect(rawEvent?.payload_json?.local_intent_id).toBe('local-intent-1')
       expect(rawEvent?.payload_json?.callback_message_id).toBe('question-1')
+      expect(rawEvent?.payload_json).not.toHaveProperty('director_goal_compat')
       expect(handleSignal).toHaveBeenCalledWith(expect.objectContaining({
         type: 'turn_executed',
         local_intent_id: 'local-intent-1',

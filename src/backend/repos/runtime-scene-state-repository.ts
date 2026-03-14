@@ -83,7 +83,7 @@ export class InMemoryRuntimeSceneStateRepository implements RuntimeSceneStateRep
   async findActiveByRoom(roomId: string): Promise<RuntimeSceneState | null> {
     const entity = Array.from(this.store.values())
       .filter((item) => item.room_id === roomId)
-      .filter((item) => item.status === 'active' || item.status === 'closing' || item.status === 'cooldown')
+      .filter((item) => item.status === 'active' || item.status === 'closing' || item.status === 'cooldown' || item.status === 'closed')
       .sort((left, right) => right.updated_at.getTime() - left.updated_at.getTime())[0]
     return entity ? cloneState(entity) : null
   }

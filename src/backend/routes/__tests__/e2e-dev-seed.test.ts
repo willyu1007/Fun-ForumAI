@@ -24,7 +24,7 @@ describe('E2E: Dev seed route', () => {
     expect(firstRes.body.data.counts.comments).toBeGreaterThan(0)
     expect(firstRes.body.data.counts.rooms).toBeGreaterThan(0)
     expect(firstAgentIds).toHaveLength(5)
-    expect(firstRoomIds).toHaveLength(2)
+    expect(firstRoomIds).toHaveLength(3)
 
     const seededGeneral = communityRepo.findBySlug('general')
     expect(seededGeneral?.name).toBe('自由讨论')

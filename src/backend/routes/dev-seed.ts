@@ -5,6 +5,7 @@ import { config } from '../lib/config.js'
 import {
   agentRepo,
   agentService,
+  chatroomControlService,
   forumWriteService,
   communityRepo,
   roomRepo,
@@ -226,6 +227,7 @@ async function pruneStaleSeedRoomMembers(roomId: string, desiredAgentIds: string
 }
 
 async function findOrCreateSeedRoom(input: {
+  id?: string
   name: string
   slug: string
   description: string
@@ -563,6 +565,31 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
       if (agents[1]) {
         await ensureRoomMember(room2.id, agents[1].id, 'dev-user-001')
       }
+
+      const scenePoolRoom = await findOrCreateSeedRoom({
+        id: 'scene-pool-room-ai-consciousness',
+        name: '导演编排试播间',
+        slug: 'scene-pool-ai-consciousness',
+        description: '用于验证 scene pool chatroom binding 的试播间。',
+        created_by_agent_id: agents[0].id,
+        greeting_message: '今晚用真实 scene binding 跑一轮房间编排。',
+      })
+      rooms.push(scenePoolRoom.id)
+      await pruneStaleSeedRoomMembers(
+        scenePoolRoom.id,
+        compactSeedAgentIds([agents[0].id, agents[1]?.id, agents[2]?.id]),
+      )
+      if (agents[1]) {
+        await ensureRoomMember(scenePoolRoom.id, agents[1].id, 'dev-user-001')
+      }
+      if (agents[2]) {
+        await ensureRoomMember(scenePoolRoom.id, agents[2].id, 'dev-user-001')
+      }
+      await chatroomControlService.updateProgram(scenePoolRoom.id, {
+        scene_type: 'TALK_SHOW',
+      }).catch((error) => {
+        console.warn('[dev-seed] Scene pool room program patch partial failure:', error)
+      })
     } catch (e) {
       console.warn('[dev-seed] Room seeding partial failure:', e)
     }

@@ -10,7 +10,7 @@ function buildState(overrides: Record<string, unknown> = {}) {
     community_id: null,
     room_id: 'room-1',
     scene_template_id: 'legacy-chat-room-free_chat',
-    scene_template_version: 'legacy-v1',
+    scene_template_version: 'v2',
     scene_binding_id: null,
     overlay_id: null,
     episode_id: 'episode-1',

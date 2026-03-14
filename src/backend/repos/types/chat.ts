@@ -377,6 +377,7 @@ export interface ChatMessage {
 }
 
 export interface CreateRoomInput {
+  id?: string
   name: string
   slug: string
   description: string

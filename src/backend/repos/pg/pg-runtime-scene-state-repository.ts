@@ -48,7 +48,7 @@ export class PgRuntimeSceneStateRepository implements RuntimeSceneStateRepositor
     const row = await this.prisma.runtimeSceneState.findFirst({
       where: {
         roomId,
-        status: { in: ['active', 'closing', 'cooldown'] },
+        status: { in: ['active', 'closing', 'cooldown', 'closed'] },
       },
       orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
     })

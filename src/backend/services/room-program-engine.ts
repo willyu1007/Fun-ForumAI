@@ -8,6 +8,7 @@ import type { RoomWatchabilityRepository } from '../repos/room-watchability-repo
 import type { RuntimeSceneStateManager } from './runtime-scene-state-manager.js'
 import type { ChatroomSceneContractResolver } from './chatroom-scene-contract-resolver.js'
 import type { ChatroomLocalIntentService } from './chatroom-local-intent-service.js'
+import { stripChatroomCompatFields } from './chatroom-local-intent-redaction.js'
 
 export interface PlannedProgramTurn {
   episode_id: string
@@ -55,6 +56,10 @@ export class RoomProgramEngine {
           recentMessages: state.recentMessages,
         })
       : null
+
+    if (runtimeState?.state.status === 'closed') {
+      return null
+    }
 
     if (runtimeState?.state.status === 'cooldown') {
       const cooldownUntil = runtimeState.state.state_json.cooldown_until
@@ -144,6 +149,28 @@ export class RoomProgramEngine {
       cue.cue_type,
       selected.agent_id,
     ].join(':')
+    const eventPayload = stripChatroomCompatFields({
+      trigger_agent_id: input.triggerAgentId,
+      beat_type: cue.beat_type,
+      prompt_hint: cue.prompt_hint,
+      target_role: cue.target_role,
+      active_cast_agent_ids: activeCastAgentIds,
+      suppressed_agent_ids: ensuredRuntime?.state.state_json.cast.suppressed_agent_ids ?? [],
+      scene_casting_slot_audit: ensuredRuntime?.state.state_json.cast.slot_audit ?? null,
+      anchor_message_id: cue.anchor_message_id,
+      callback_message_id: cue.callback_message_id,
+      local_intent_id: localIntentBundle?.local_intent_id ?? null,
+      local_intent: localIntentBundle?.local_intent ?? null,
+      local_intent_block: localIntentBundle?.local_intent_block ?? null,
+      episode_brief_min: localIntentBundle?.episode_brief_min ?? null,
+      scene_source: localIntentBundle?.scene_source ?? null,
+      director_goal_compat: localIntentBundle?.director_goal_compat ?? cue.director_goal,
+      top_candidates: scoredCandidates.slice(0, 4).map((candidate) => ({
+        agent_id: candidate.agent_id,
+        final_score: candidate.final_score,
+      })),
+    })
+
     const plannedCue = await this.deps.watchabilityRepo.planProgramCue({
       room_id: state.room.id,
       episode_id: episode.id,
@@ -166,27 +193,7 @@ export class RoomProgramEngine {
       },
       event_status: 'PLANNED',
       idempotency_key: idempotencyKey,
-      event_payload_json: {
-        trigger_agent_id: input.triggerAgentId,
-        beat_type: cue.beat_type,
-        prompt_hint: cue.prompt_hint,
-        target_role: cue.target_role,
-        active_cast_agent_ids: activeCastAgentIds,
-        suppressed_agent_ids: ensuredRuntime?.state.state_json.cast.suppressed_agent_ids ?? [],
-        scene_casting_slot_audit: ensuredRuntime?.state.state_json.cast.slot_audit ?? null,
-        anchor_message_id: cue.anchor_message_id,
-        callback_message_id: cue.callback_message_id,
-        local_intent_id: localIntentBundle?.local_intent_id ?? null,
-        local_intent: localIntentBundle?.local_intent ?? null,
-        local_intent_block: localIntentBundle?.local_intent_block ?? null,
-        episode_brief_min: localIntentBundle?.episode_brief_min ?? null,
-        scene_source: localIntentBundle?.scene_source ?? null,
-        director_goal_compat: localIntentBundle?.director_goal_compat ?? cue.director_goal,
-        top_candidates: scoredCandidates.slice(0, 4).map((candidate) => ({
-          agent_id: candidate.agent_id,
-          final_score: candidate.final_score,
-        })),
-      },
+      event_payload_json: eventPayload,
       selection_ledger: scoredCandidates.slice(0, 4).map((candidate) => ({
         candidate_agent_id: candidate.agent_id,
         selected: candidate.agent_id === selected.agent_id,

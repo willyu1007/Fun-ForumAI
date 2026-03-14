@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { RoomCueType } from '../repos/types.js'
+import { config } from '../lib/config.js'
 import type { EpisodeBrief, LocalIntent, RuntimeSceneStateV1 } from '../stage/index.js'
 import { buildLocalIntentBlock } from './public-scene-runtime.js'
 import { ChatroomSceneContractResolver, type ResolvedChatroomSceneContract } from './chatroom-scene-contract-resolver.js'
@@ -57,6 +58,15 @@ function deriveTtlHours(expiresAt: string | null, startedAt: string): number | u
   return Math.max(1, Math.round(deltaMs / 3600_000))
 }
 
+function readObjectiveRefs(runtimeState: {
+  close_condition?: { objective_refs?: unknown }
+}): string[] {
+  const refs = runtimeState.close_condition?.objective_refs
+  return Array.isArray(refs)
+    ? refs.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    : []
+}
+
 export class ChatroomLocalIntentService {
   build(input: {
     cue_type: RoomCueType
@@ -72,6 +82,7 @@ export class ChatroomLocalIntentService {
     const relationFocus = ChatroomSceneContractResolver.deriveRelationFocus(input.resolved_scene.template)
     const toneHint = ChatroomSceneContractResolver.deriveToneHint(input.resolved_scene.template)
     const targetMessageId = input.callback_message_id ?? input.anchor_message_id ?? null
+    const objectiveRefs = readObjectiveRefs(input.runtime_state)
     const directorGoalCompat = input.director_goal.trim().length > 0
       ? input.director_goal.trim()
       : input.resolved_scene.template.director.scene_goal.viewer_goal
@@ -99,7 +110,7 @@ export class ChatroomLocalIntentService {
       close_condition: {
         ttl_hours: deriveTtlHours(input.runtime_state.expires_at, input.runtime_state.started_at),
         message_threshold: input.runtime_state.close_condition.message_threshold ?? undefined,
-        objective: input.runtime_state.close_condition.objective_refs[0] ?? undefined,
+        objective: objectiveRefs[0] ?? undefined,
       },
       expires_at: input.runtime_state.expires_at ?? input.runtime_state.updated_at,
     }
@@ -132,7 +143,11 @@ export class ChatroomLocalIntentService {
         input.resolved_scene.template.director.scene_goal.viewer_goal,
         input.resolved_scene.template.director.scene_goal.growth_goal,
         `保持 episode phase=${episodeBrief.phase}`,
-        directorGoalCompat,
+        ...(
+          config.features.chatroomLocalIntentV1
+            ? []
+            : [directorGoalCompat]
+        ),
       ].filter((item) => item.trim().length > 0),
     }
 

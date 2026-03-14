@@ -22,6 +22,7 @@ import type { RoomProjector } from './room-projector.js'
 import type { RoomProgramScorer } from './room-program-scorer.js'
 import type { RoomProgramStateLoader } from './room-program-state-loader.js'
 import type { RuntimeSceneStateManager } from './runtime-scene-state-manager.js'
+import { stripChatroomCompatFields } from './chatroom-local-intent-redaction.js'
 
 export interface ChatroomControlServiceDeps {
   roomRepo: RoomRepository
@@ -45,6 +46,14 @@ export interface ManualRoomCueInput {
   target_roles?: RoomCastRole[]
   anchor_message_id?: string | null
   callback_message_id?: string | null
+}
+
+function sanitizeProgramEventForExternalRead<T extends { payload_json?: Record<string, unknown> | null }>(event: T): T {
+  if (!event.payload_json) return event
+  return {
+    ...event,
+    payload_json: stripChatroomCompatFields(event.payload_json),
+  }
 }
 
 function assertPositiveInteger(value: number, field: string): void {
@@ -280,6 +289,22 @@ export class ChatroomControlService {
       throw new ValidationError('No eligible speaker found for this cue')
     }
 
+    const plannedPayload = stripChatroomCompatFields({
+      manual: true,
+      director_goal: input.director_goal,
+      active_cast_agent_ids: activeCastAgentIds,
+      suppressed_agent_ids: ensuredRuntime?.state.state_json.cast.suppressed_agent_ids ?? [],
+      scene_casting_slot_audit: ensuredRuntime?.state.state_json.cast.slot_audit ?? null,
+      anchor_message_id: input.anchor_message_id ?? null,
+      callback_message_id: input.callback_message_id ?? null,
+      local_intent_id: localIntentBundle?.local_intent_id ?? null,
+      local_intent: localIntentBundle?.local_intent ?? null,
+      local_intent_block: localIntentBundle?.local_intent_block ?? null,
+      episode_brief_min: localIntentBundle?.episode_brief_min ?? null,
+      scene_source: localIntentBundle?.scene_source ?? null,
+      director_goal_compat: localIntentBundle?.director_goal_compat ?? input.director_goal,
+    })
+
     const planned = await this.deps.watchabilityRepo.planProgramCue({
       room_id: roomId,
       episode_id: state.episode.id,
@@ -302,21 +327,7 @@ export class ChatroomControlService {
       },
       event_status: 'PLANNED',
       idempotency_key: `manual-cue:${roomId}:${Date.now()}:${input.cue_type}`,
-      event_payload_json: {
-        manual: true,
-        director_goal: input.director_goal,
-        active_cast_agent_ids: activeCastAgentIds,
-        suppressed_agent_ids: ensuredRuntime?.state.state_json.cast.suppressed_agent_ids ?? [],
-        scene_casting_slot_audit: ensuredRuntime?.state.state_json.cast.slot_audit ?? null,
-        anchor_message_id: input.anchor_message_id ?? null,
-        callback_message_id: input.callback_message_id ?? null,
-        local_intent_id: localIntentBundle?.local_intent_id ?? null,
-        local_intent: localIntentBundle?.local_intent ?? null,
-        local_intent_block: localIntentBundle?.local_intent_block ?? null,
-        episode_brief_min: localIntentBundle?.episode_brief_min ?? null,
-        scene_source: localIntentBundle?.scene_source ?? null,
-        director_goal_compat: localIntentBundle?.director_goal_compat ?? input.director_goal,
-      },
+      event_payload_json: plannedPayload,
       selection_ledger: scored.slice(0, 6).map((candidate) => ({
         candidate_agent_id: candidate.agent_id,
         selected: candidate.agent_id === selected.agent_id,
@@ -365,7 +376,7 @@ export class ChatroomControlService {
 
     return {
       beat: planned.beat,
-      event: planned.event,
+      event: sanitizeProgramEventForExternalRead(planned.event),
       selected_agent_id: selected.agent_id,
     }
   }
@@ -389,7 +400,7 @@ export class ChatroomControlService {
     const recentEvents = await this.deps.watchabilityRepo.listRecentProgramEvents(roomId, 6)
     const recentSharedMemory = await this.deps.watchabilityRepo.listSharedMemories(roomId, 6)
 
-    const programEvents = await Promise.all(recentEvents.map(async (event) => ({
+    const programEvents = await Promise.all(recentEvents.map(async (event) => sanitizeProgramEventForExternalRead({
       ...event,
       selection_reasons: await this.deps.watchabilityRepo.listSelectionLedger(event.id),
     })))

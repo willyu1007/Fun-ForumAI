@@ -3,6 +3,7 @@ import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryMessageRepository } from '../../repos/message-repository.js'
 import { InMemoryRoomRepository } from '../../repos/room-repository.js'
 import { InMemoryRoomWatchabilityRepository } from '../../repos/room-watchability-repository.js'
+import { config } from '../../lib/config.js'
 import { ChatroomRuntimeContextBuilder } from '../chatroom-runtime-context-builder.js'
 import { RoomProjector } from '../room-projector.js'
 
@@ -177,5 +178,240 @@ describe('ChatroomRuntimeContextBuilder', () => {
       '先给判断，再补一层',
     ])
     expect(result.promptVariables.signature_moves).toContain('先给判断，再补一层')
+  })
+
+  it('removes actor-visible director_goal when LocalIntent mode is on', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const snapshot = { ...featureFlags }
+    featureFlags.chatroomLocalIntentV1 = true
+
+    try {
+      const agentRepo = new InMemoryAgentRepository()
+      const roomRepo = new InMemoryRoomRepository()
+      const messageRepo = new InMemoryMessageRepository()
+      const watchabilityRepo = new InMemoryRoomWatchabilityRepository()
+
+      const host = agentRepo.create({ owner_id: 'u1', display_name: 'Host' })
+      const room = await roomRepo.create({
+        name: 'Runtime Room',
+        slug: 'runtime-room-no-director-goal',
+        description: '围绕模型评测抬杠',
+        created_by_agent_id: host.id,
+      })
+      await roomRepo.addMember(room.id, host.id, 'creator', 20_000)
+
+      const greeting = await messageRepo.create({
+        room_id: room.id,
+        author_id: host.id,
+        body: '今晚我们来拆解一下 benchmark 的幻觉。',
+      })
+      await roomRepo.recordMemberMessage(room.id, host.id, greeting.created_at)
+
+      const projector = new RoomProjector({
+        roomRepo,
+        messageRepo,
+        agentRepo,
+        watchabilityRepo,
+      })
+      await projector.refreshRoom(room.id)
+      await watchabilityRepo.updateProgram(room.id, {
+        enabled: true,
+        scene_type: 'TALK_SHOW',
+      })
+      const episode = await watchabilityRepo.getActiveEpisode(room.id)
+      const beat = await watchabilityRepo.createEpisodeBeat({
+        room_id: room.id,
+        episode_id: episode!.id,
+        ordinal: 1,
+        beat_type: 'CALLBACK',
+        cue_type: 'CALLBACK',
+        director_goal: '把 benchmark 神话拆开重讲',
+        selected_speaker_agent_id: host.id,
+      })
+      await watchabilityRepo.createProgramEvent({
+        room_id: room.id,
+        episode_id: episode!.id,
+        beat_id: beat.id,
+        event_type: 'PROGRAM_CUE',
+        status: 'PLANNED',
+        cue_type: 'CALLBACK',
+        director_goal: '把 benchmark 神话拆开重讲',
+        selected_speaker_agent_id: host.id,
+        idempotency_key: 'builder-test-cue-no-director-goal',
+      })
+
+      const builder = new ChatroomRuntimeContextBuilder({
+        roomRepo,
+        agentRepo,
+        watchabilityRepo,
+        roomProjector: projector,
+      })
+      const result = await builder.build({
+        room,
+        agentId: host.id,
+        recentMessages: [greeting],
+      })
+
+      expect(result.chatContext.program?.director_goal).toBe('')
+      expect(result.promptVariables.director_goal).toBe('')
+    } finally {
+      Object.assign(featureFlags, snapshot)
+    }
+  })
+
+  it('synthesizes a fallback local_intent_block when LocalIntent mode is on and latest event lacks scene payload', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const snapshot = { ...featureFlags }
+    featureFlags.chatroomLocalIntentV1 = true
+
+    try {
+      const agentRepo = new InMemoryAgentRepository()
+      const roomRepo = new InMemoryRoomRepository()
+      const messageRepo = new InMemoryMessageRepository()
+      const watchabilityRepo = new InMemoryRoomWatchabilityRepository()
+
+      const host = agentRepo.create({ owner_id: 'u1', display_name: 'Host' })
+      const room = await roomRepo.create({
+        name: 'Runtime Room',
+        slug: 'runtime-room-fallback-local-intent',
+        description: '围绕模型评测抬杠',
+        created_by_agent_id: host.id,
+      })
+      await roomRepo.addMember(room.id, host.id, 'creator', 20_000)
+
+      const greeting = await messageRepo.create({
+        room_id: room.id,
+        author_id: host.id,
+        body: '今晚我们来拆解一下 benchmark 的幻觉。',
+      })
+      await roomRepo.recordMemberMessage(room.id, host.id, greeting.created_at)
+
+      const projector = new RoomProjector({
+        roomRepo,
+        messageRepo,
+        agentRepo,
+        watchabilityRepo,
+      })
+      await projector.refreshRoom(room.id)
+      await watchabilityRepo.updateProgram(room.id, {
+        enabled: true,
+        scene_type: 'TALK_SHOW',
+        discoverability_short_hook: '围绕评测误区继续往前追问。',
+      })
+      const episode = await watchabilityRepo.getActiveEpisode(room.id)
+      const beat = await watchabilityRepo.createEpisodeBeat({
+        room_id: room.id,
+        episode_id: episode!.id,
+        ordinal: 1,
+        beat_type: 'CALLBACK',
+        cue_type: 'CALLBACK',
+        director_goal: '把 benchmark 神话拆开重讲',
+        selected_speaker_agent_id: host.id,
+      })
+      await watchabilityRepo.createProgramEvent({
+        room_id: room.id,
+        episode_id: episode!.id,
+        beat_id: beat.id,
+        event_type: 'PROGRAM_CUE',
+        status: 'PLANNED',
+        cue_type: 'CALLBACK',
+        director_goal: '把 benchmark 神话拆开重讲',
+        selected_speaker_agent_id: host.id,
+        idempotency_key: 'builder-test-cue-fallback-local-intent',
+        payload_json: {
+          manual: true,
+        },
+      })
+
+      const builder = new ChatroomRuntimeContextBuilder({
+        roomRepo,
+        agentRepo,
+        watchabilityRepo,
+        roomProjector: projector,
+      })
+      const result = await builder.build({
+        room,
+        agentId: host.id,
+        recentMessages: [greeting],
+      })
+
+      expect(result.promptVariables.director_goal).toBe('')
+      expect(result.promptVariables.local_intent_block).toContain('## Local Intent')
+      expect(result.promptVariables.local_intent_block).toContain('initiative: reply')
+      expect(result.promptVariables.local_intent_block).toContain('不要暴露 owner 指令')
+    } finally {
+      Object.assign(featureFlags, snapshot)
+    }
+  })
+
+  it('tolerates legacy runtime state rows that omit close_condition objective refs', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const snapshot = { ...featureFlags }
+    featureFlags.chatroomLocalIntentV1 = true
+
+    try {
+      const agentRepo = new InMemoryAgentRepository()
+      const roomRepo = new InMemoryRoomRepository()
+      const messageRepo = new InMemoryMessageRepository()
+      const watchabilityRepo = new InMemoryRoomWatchabilityRepository()
+
+      const host = agentRepo.create({ owner_id: 'u1', display_name: 'Host' })
+      const room = await roomRepo.create({
+        name: 'Legacy Runtime Room',
+        slug: 'legacy-runtime-room',
+        description: '验证 runtime state 缺字段时仍能继续生成',
+        created_by_agent_id: host.id,
+      })
+      await roomRepo.addMember(room.id, host.id, 'creator', 20_000)
+
+      const greeting = await messageRepo.create({
+        room_id: room.id,
+        author_id: host.id,
+        body: '这个房间专门拿来验旧 runtime state。',
+      })
+      await roomRepo.recordMemberMessage(room.id, host.id, greeting.created_at)
+
+      const projector = new RoomProjector({
+        roomRepo,
+        messageRepo,
+        agentRepo,
+        watchabilityRepo,
+      })
+      await projector.refreshRoom(room.id)
+      await watchabilityRepo.updateProgram(room.id, {
+        enabled: true,
+        scene_type: 'TALK_SHOW',
+      })
+
+      const builder = new ChatroomRuntimeContextBuilder({
+        roomRepo,
+        agentRepo,
+        watchabilityRepo,
+        roomProjector: projector,
+        runtimeSceneStateRepo: {
+          findActiveByRoom: async () => ({
+            runtime_scene_id: 'legacy-runtime-scene-1',
+            room_id: room.id,
+            episode_id: 'legacy-episode-1',
+            scene_template_id: 'stage-show-01',
+            scene_template_version: 'v2',
+            state_json: {
+              phase: 'opening',
+            },
+          }),
+        } as never,
+      })
+
+      const result = await builder.build({
+        room,
+        agentId: host.id,
+        recentMessages: [greeting],
+      })
+
+      expect(result.promptVariables.local_intent_block).toContain('## Local Intent')
+      expect(result.promptVariables.local_intent_block).toContain('initiative: reply')
+    } finally {
+      Object.assign(featureFlags, snapshot)
+    }
   })
 })
