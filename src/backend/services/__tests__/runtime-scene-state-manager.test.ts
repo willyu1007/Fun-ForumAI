@@ -5,6 +5,7 @@ import { config } from '../../lib/config.js'
 import { RuntimeSceneStateManager } from '../runtime-scene-state-manager.js'
 import { ChatroomSceneContractResolver } from '../chatroom-scene-contract-resolver.js'
 import { ChatroomSceneAwareCastingService } from '../chatroom-scene-aware-casting-service.js'
+import { DEFAULT_STAGE_SPEC_V1 } from '../../stage/index.js'
 
 function buildHarness() {
   const runtimeSceneStateRepo = new InMemoryRuntimeSceneStateRepository()
@@ -169,6 +170,7 @@ describe('RuntimeSceneStateManager', () => {
     })
 
     expect(ensured.state.state_json.aftershow.mode).toBe('off')
+    expect(ensured.state.state_json.audit.source).toBe('legacy_fallback')
     expect(ensured.state.state_json.cast.active_agent_ids).toContain('agent-1')
     expect(ensured.state.state_json.cast.slot_audit.target_active_count).toBeGreaterThan(0)
     expect(ensured.state.state_json.cast.suppressed_agent_ids).toEqual([])
@@ -223,6 +225,135 @@ describe('RuntimeSceneStateManager', () => {
     expect(updated?.state_json.phase).toBe('closure')
     expect(updated?.state_json.aftershow.status).toBe('not_applicable')
     expect(updated?.state_json.cooldown_until).not.toBeNull()
+    } finally {
+      Object.assign(featureFlags, snapshot)
+    }
+  })
+
+  it('marks aftershow-enabled scenes as closed and due instead of forcing cooldown', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const snapshot = { ...featureFlags }
+    featureFlags.directorRuntimeStateV1 = true
+
+    try {
+      const runtimeSceneStateRepo = new InMemoryRuntimeSceneStateRepository()
+      const eventRepo = new InMemoryEventRepository()
+      const manager = new RuntimeSceneStateManager({
+        runtimeSceneStateRepo,
+        eventRepo,
+        sceneResolver: {
+          resolve: () => ({
+            template: {
+              template_id: 'chatroom-template-1',
+              template_version: 'v2',
+              name: 'Chatroom Template',
+              category: 'show',
+              lifecycle_status: 'core_active',
+              stage_spec: DEFAULT_STAGE_SPEC_V1,
+              director: {
+                applicable_surfaces: ['chat_room'],
+                scene_goal: {
+                  viewer_goal: '把房间继续推成一档节目',
+                  growth_goal: '推动台上化学反应',
+                },
+                casting_recipe: {
+                  quota: 3,
+                  ratio: {
+                    core: 2,
+                    contrast: 1,
+                    wildcard: 1,
+                  },
+                  wildcard_cap: 1,
+                  must_have_roles: ['HOST'],
+                  avoid_pairs: [],
+                  relationship_objectives: ['bridge'],
+                },
+                beat_plan: {
+                  phases: ['opening', 'escalation', 'pivot', 'closure'],
+                  optional_beats: [],
+                },
+                fatigue_policy: {
+                  cooldown_hours: 1,
+                  repeat_penalty: 0.6,
+                  max_runs_per_day: 4,
+                },
+                closing_policy: {
+                  ttl_hours: 4,
+                  min_turns: 3,
+                  message_threshold: 4,
+                  aftershow_mode: 'threshold',
+                },
+                hot_topic_policy: {
+                  injection_mode: 'overlay_only',
+                  sensitive_topic_mode: 'standard',
+                },
+                autonomy_policy: {
+                  allow_autonomous_mutation: false,
+                  require_pool_match_before_create: false,
+                },
+              },
+            },
+            binding: {
+              binding_id: 'chatroom-binding-1',
+              template_id: 'chatroom-template-1',
+              template_version: 'v2',
+              binding_type: 'core',
+              status: 'active',
+              entry_surfaces: ['chat_room'],
+              target: {
+                surface: 'chat_room',
+                room_id: 'room-1',
+              },
+              lifecycle: {},
+              weights: {
+                editorial_priority: 8,
+                base_weight: 1,
+                freshness_bonus: 0,
+              },
+              activation: {
+                time_windows: [],
+                allowed_days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+                trigger_conditions: [],
+              },
+              governance: {},
+              constraints: {},
+            },
+            source: 'binding',
+            selection_mode: 'pool_guided',
+          }),
+        } as never,
+        sceneAwareCastingService: new ChatroomSceneAwareCastingService(),
+      })
+
+      const harness = buildHarness()
+      const ensured = await manager.ensureChatroomState({
+        room: harness.room,
+        program: harness.program,
+        episode: harness.episode,
+        cast: harness.cast,
+        members: harness.members,
+        recentMessages: [],
+      })
+      expect(ensured.state.state_json.aftershow.mode).toBe('threshold')
+      expect(ensured.state.state_json.aftershow.status).toBe('pending')
+      expect(ensured.state.state_json.audit.source).toBe('binding')
+
+      await manager.handleSignal({
+        type: 'turn_executed',
+        room_id: harness.room.id,
+        episode_id: harness.episode.id,
+        cue_type: 'CLOSE',
+        program_event_id: 'event-close-aftershow-1',
+        local_intent_id: 'local-intent-aftershow-1',
+        speaker_agent_id: 'agent-1',
+        body: '这拍先收住，后面进 aftershow。',
+      })
+
+      const updated = await runtimeSceneStateRepo.findByEpisodeId(harness.episode.id)
+      expect(updated?.status).toBe('closed')
+      expect(updated?.state_json.aftershow.mode).toBe('threshold')
+      expect(updated?.state_json.aftershow.status).toBe('due')
+      expect(updated?.state_json.cooldown_until).toBeNull()
     } finally {
       Object.assign(featureFlags, snapshot)
     }

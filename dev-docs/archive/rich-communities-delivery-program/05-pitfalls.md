@@ -45,7 +45,7 @@ This file exists to prevent repeating mistakes within this task.
 
 ### 2026-03-04 - Season Rotation 直接执行带来误操作风险
 - Symptom:
-  - 轮换动作会直接改写 `library.manifest.yaml` 与 `dist/*.json`，若参数错误会造成不必要换绑。
+  - 轮换动作会直接改写 legacy source manifest 与 `dist/*.json`，若参数错误会造成不必要换绑。
 - Context:
   - 首发已同时提供脚本和 Admin 按钮，两种入口都可触发真实写入。
 - What we tried:
@@ -58,7 +58,7 @@ This file exists to prevent repeating mistakes within this task.
   - 每次轮换都要走同一流程：`validate -> dry-run -> rotate -> export/verify -> commit`。
 - References (paths/commands/log keywords):
   - `POST /v1/admin/stage/season-rotate`
-  - `docs/stage-templates/v1/season-rotation-manual.md`
+  - scene-pool season rotation manual（legacy source tree；removed in T-099）
 
 ### 2026-03-04 - K8s smoke 在 rollout 窗口误选旧 Pod
 - Symptom:

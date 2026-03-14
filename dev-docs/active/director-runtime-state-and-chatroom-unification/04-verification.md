@@ -95,3 +95,16 @@
 - 2026-03-14 post-review patch hygiene:
   - `git diff --check`
   - passed
+- 2026-03-14 closure verification via T-098 remediation:
+  - `pnpm db:migrate:deploy`
+  - passed；真实 dev DB 已应用 `runtime_scene_states` / `forum_scene_metadata` 相关 migration。
+  - local smoke:
+    - `POST /v1/dev/seed`
+    - `PATCH /v1/rooms/scene-pool-room-ai-consciousness/program`
+    - `POST /v1/rooms/scene-pool-room-ai-consciousness/program/cues`
+    - `POST /v1/dev/runtime/post`
+  - passed；验证了 `scene_source=binding`、`scene_binding_id` 落盘、`close_condition.reason=threshold`、`aftershow.mode=threshold`、`audit.source=binding`、forum `selectionMode=pool_strict`。
+  - browser / staging:
+    - Chrome DevTools 下 `/rooms`、`/rooms/scene-pool-room-ai-consciousness`、`/v1/events/stream?rooms=...`、`/control-state` 访问正常；
+    - `LLM_API_KEY=*** pnpm k8s:staging:local -- --k8s-context kind-funforum`
+    - passed；runtime fingerprint 与本地代码一致。

@@ -511,8 +511,8 @@ stageIncubationRouter.post(
     if (config.nodeEnv === 'production' && !dryRun) {
       throw new ForbiddenError('Production environment only supports dry_run=true. Use script workflow for real season rotation.')
     }
-    const baseDir = path.join(process.cwd(), 'docs/stage-templates/v1')
-    const manifestPath = path.join(baseDir, 'library.manifest.yaml')
+    const baseDir = path.join(process.cwd(), 'docs/stage-templates/source')
+    const manifestPath = path.join(baseDir, 'manifest.yaml')
     if (!fs.existsSync(manifestPath)) {
       throw new NotFoundError('StageTemplateManifest', manifestPath)
     }
@@ -528,6 +528,7 @@ stageIncubationRouter.post(
     try {
       rotationResult = applySeasonRotationAtomic({
         base_dir: baseDir,
+        dist_dir: path.join(process.cwd(), 'docs/stage-templates/dist'),
         open_count: openCount,
         dry_run: dryRun,
       })

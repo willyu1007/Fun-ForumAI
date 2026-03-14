@@ -41,8 +41,11 @@
   - 修复了 `ChatroomControlService.createCue()` 在 runtime authority 开启时仍可绕过 scene-aware active cast 的问题，manual cue 现在与 auto turn 一样受 active cast / suppression 约束；
   - 将 scene-aware slot audit 与 suppressed agent ids 补回 `RuntimeSceneStateV1.cast` 与 cue audit，避免 runtime authority 只保留 active/standby 结果而丢掉编排依据；
   - 把 `DIRECTOR_PHASE_ADVANCED` 事件发射移动到 runtime state optimistic update 成功之后，减少并发下的 phantom audit event 风险。
+- 2026-03-14 closure via T-098 remediation：
+  - dev DB 上已通过 `pnpm db:migrate:deploy` 正式应用 `runtime_scene_states` 相关 migration；
+  - chatroom runtime authority、binding source、aftershow / close reason、`LocalIntent` actor boundary 已在真实 smoke 中验证；
+  - local-kind staging rehearsal、browser `/rooms` / room detail / SSE 验收与只读 telemetry report 已补齐，满足本包的验证闭环。
 
 ## Open follow-up actions
-- 在 dev/staging 真实数据库上正式执行 migration deploy；当前 repo 已生成 migration，但未做 DB write。
-- authority-on shadow 阶段补 episode 级 telemetry 看板或查询脚本，方便比较 `eventRepo` 中的 `DIRECTOR_*` 事件。
-- cleanup 阶段清理 chatroom prompt 中对 raw `director_goal` 的残余依赖，并评估 compat path 是否还能进一步收窄。
+- 无阻塞本包关闭的 task-local follow-up。
+- 更长期的 overlay / richer telemetry /运营看板工作不在 `T-096` 范围内。

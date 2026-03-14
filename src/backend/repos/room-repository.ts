@@ -57,7 +57,7 @@ export class InMemoryRoomRepository implements RoomRepository {
   async create(input: CreateRoomInput): Promise<Room> {
     const now = new Date()
     const room: Room = {
-      id: cuid(),
+      id: input.id ?? cuid(),
       name: input.name,
       slug: input.slug,
       description: input.description,

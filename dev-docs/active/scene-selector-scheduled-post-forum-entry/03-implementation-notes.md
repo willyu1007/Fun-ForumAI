@@ -11,7 +11,7 @@
   - 冻结 `EpisodeBrief -> LocalIntent` 的逐入口降维规则；
   - 明确 parser 不得改写 scheduled_post target，forum comment 默认 follow existing episode。
 - 2026-03-13 冻结前 review：
-  - 补齐 selector candidate source inventory，明确 template/binding 仍以 `docs/stage-templates/v1/**` 为 authoring SoT，但 runtime selector 应消费导出后的 library/dist 视图；
+  - 补齐 selector candidate source inventory，明确 template/binding 仍以 `docs/stage-templates/source/**` 为 authoring SoT，但 runtime selector 应消费导出后的 library/dist 视图；
   - 明确 overlay candidate 需区分 editorial / automated / autonomous 三类来源，且 `autonomous` 只在 `autonomous_anchored` 模式下入池；
   - 明确 continuity seed 的优先级为 `content scene_metadata > thread anchor ids > event payload / agent run replay`；
   - 明确 trigger event `payload_json`、`agent_run.output_json`、content-level `scene_metadata` 三层 carrier 的职责边界；
@@ -34,7 +34,7 @@
   - scene-enabled post/comment 写入走 `content + sidecar` 原子通路；
   - data event `payload_json.public_scene` 与 service-level `agentRun.output_json.public_scene` 会同时带上 `episode_id / selection_id / episode_plan_id / local_intent_id`。
 - `scheduled_post` 已接入 `PublicSceneSelectorService`：
-  - selector 从 `docs/stage-templates/v1/dist/launch.json` 读取导出 catalog；
+  - selector 从 `docs/stage-templates/dist/launch.json` 读取导出 catalog；
   - 命中 scene pool 时锁定 target community，使用 `agent-create-post@2` 与 `local_intent_block`；
   - 未命中或 catalog 不可用时，回退 legacy prompt，并把 `fallback_reason` 写入 runtime trigger event 与 write audit metadata。
 - `ResponseParser.parseAsScheduledPost()` 现支持 `lockedCommunityId`：

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-03-13T23:24:58.677Z",
+  "updatedAt": "2026-03-14T13:24:04.123Z",
   "artifacts": [
     {
       "id": "api-openapi",
@@ -80,8 +80,8 @@
       "tags": [
         "db"
       ],
-      "checksumSha256": "8cf609823e96c505131e9327af7f2aa12a6226105717dc3d23318dfcfcdc33b7",
-      "lastUpdated": "2026-03-13T23:24:58.675Z",
+      "checksumSha256": "d28a0f73cdabe801f7c33188cbd5a3dda68a4242fadc90b78b319180136e7485",
+      "lastUpdated": "2026-03-14T13:24:04.122Z",
       "source": {
         "kind": "command",
         "command": "node .ai/scripts/ctl-db-ssot.mjs sync-to-context",

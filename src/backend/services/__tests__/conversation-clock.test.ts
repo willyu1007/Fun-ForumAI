@@ -432,9 +432,105 @@ describe('ConversationClock', () => {
         variables: expect.objectContaining({
           local_intent_block: '[CHATROOM_LOCAL_INTENT]',
           room_public_context_summary: '[ROOM_PUBLIC_CONTEXT_SUMMARY]',
+          director_goal: '',
         }),
       }))
     } finally {
+      Object.assign(featureFlags, snapshot)
+    }
+  })
+
+  it('synthesizes a fallback local_intent_block when runtime chat context building fails', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const snapshot = { ...featureFlags }
+    featureFlags.chatroomLocalIntentV1 = true
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    try {
+      const generateVisibleText = vi.fn(async () => ({
+        content: '继续往下聊。',
+        messages: [],
+        usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+        latencyMs: 10,
+        platformRetryCount: 0,
+        renderDecision: {
+          voiceLineId: 'qwen-social-v1',
+          tier: 'base',
+          profileId: 'profile-1',
+          providerId: 'dashscope-openai',
+          modelId: 'qwen-plus',
+          region: 'cn',
+          endpointId: 'default',
+          credentialId: 'cred-1',
+          fallbackLevel: 'none',
+          reasons: ['runtime_floor'],
+          promptTemplateId: 'agent-chat-reply',
+          promptVersion: 5,
+        },
+        promptRef: { id: 'agent-chat-reply', version: 5 },
+      }))
+      const clock = new ConversationClock({
+        roomRepo: {
+          findById: vi.fn(async () => ({
+            id: 'room-1',
+            status: 'active',
+            name: 'General',
+            description: 'room desc',
+          })),
+          getMember: vi.fn(async () => null),
+        } as never,
+        messageRepo: {
+          getLatestMessages: vi.fn(async () => []),
+        } as never,
+        agentRepo: {
+          findById: vi.fn(() => ({
+            id: 'agent-1',
+            display_name: 'Agent One',
+          })),
+        } as never,
+        agentService: {
+          getAgent: vi.fn(() => ({
+            id: 'agent-1',
+            display_name: 'Agent One',
+          })),
+          getLatestConfig: vi.fn(() => null),
+        } as never,
+        chatService: {} as never,
+        llmGateway: {
+          isConfigured: true,
+          generateVisibleText,
+        } as never,
+        sseHub: {
+          broadcastToRoom: vi.fn(),
+        } as never,
+        eventRepo: {
+          create: vi.fn(() => ({ id: 'evt-1' })),
+        } as never,
+        agentRunRepo: {
+          create: vi.fn(),
+        } as never,
+        chatroomRuntimeContextBuilder: {
+          build: vi.fn(async () => {
+            throw new Error('legacy runtime row missing fields')
+          }),
+        } as never,
+      })
+
+      await (clock as unknown as {
+        generateMessage: (roomId: string, agentId: string) => Promise<unknown>
+      }).generateMessage('room-1', 'agent-1')
+
+      expect(generateVisibleText).toHaveBeenCalledWith(expect.objectContaining({
+        promptRef: { id: 'agent-chat-reply', version: 5 },
+        variables: expect.objectContaining({
+          director_goal: '',
+          local_intent_block: expect.stringContaining('## Local Intent'),
+        }),
+      }))
+      expect(warnSpy).toHaveBeenCalled()
+    } finally {
+      warnSpy.mockRestore()
       Object.assign(featureFlags, snapshot)
     }
   })

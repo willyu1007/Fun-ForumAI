@@ -197,6 +197,7 @@ describe('PromptEngine', () => {
 
     expect(String(messages[0].content)).toContain('[CHATROOM_LOCAL_INTENT]')
     expect(String(messages[0].content)).not.toContain('[LEGACY_SHOWRUNNER]')
+    expect(String(messages[0].content)).not.toContain('兼容目标')
     expect(String(messages[1].content)).toContain('[ROOM_PUBLIC_CONTEXT_SUMMARY]')
   })
 

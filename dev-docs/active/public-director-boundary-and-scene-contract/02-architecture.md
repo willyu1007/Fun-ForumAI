@@ -156,7 +156,7 @@ interface SceneBindingV1 {
 ```
 
 字段说明：
-- 当前 `library.manifest.yaml` 中的 `binding.community_slug / slot / binding_type` 是本对象的直接前身。
+- 当前 legacy source manifest 中的 `binding.community_slug / slot / binding_type` 是本对象的直接前身。
 - 一个 `scene_binding_v1` 只表示一个实际挂载点；如果同一模板同时上 forum 和 chatroom，必须拆成两条 binding。
 - `scheduled_post` 只允许出现在 `entry_surfaces`，不允许成为 `target.surface`；它是选戏入口，不是最终挂载面。
 - `canary_percent` 是未来替代“只能 launch/hidden”两态的关键字段。
@@ -471,7 +471,7 @@ interface ProactiveDmOpeningContext {
   - `episode_overlay_v1` 原始全文
 
 ## Scene pool asset and ops contract
-- 现有 `docs/stage-templates/v1/**` 是场景池底座，而不是旁路资产。
+- 当前 `docs/stage-templates/source/** + docs/stage-templates/dist/**` 是场景池底座，而不是旁路资产。
 - 新合同必须显式覆盖：
   - template 生命周期状态机
   - binding 与 seasonal slot 关系
@@ -480,9 +480,9 @@ interface ProactiveDmOpeningContext {
 - 当前资产层与 runtime 层的责任分工：
   - 资产层负责模板库、binding、rotation、dist export、rollback
   - runtime 层负责 selection、episode planning、local intent、state progression
-- 兼容原则：
-  - 当前 `library.manifest.yaml` 的 `status=launch|hidden` 仍可作为 legacy projection 存在
-  - 但后续运营/实现不得再把 `launch|hidden` 当作完整 scene lifecycle 的权威模型
+- 当前 authoring/runtime 语义：
+  - source 侧以 `manifest.yaml` 中的 `lifecycle_status + bindings[]` 为权威模型
+  - runtime 侧消费编译后的 `dist/*.json`，不再依赖 `launch|hidden` legacy projection
 
 ## Feature flag and rollout contract
 

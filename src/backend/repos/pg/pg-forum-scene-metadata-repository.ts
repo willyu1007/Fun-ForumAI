@@ -62,6 +62,19 @@ export class PgForumSceneMetadataRepository implements ForumSceneMetadataReposit
     return row ? this.toDomain(row) : null
   }
 
+  async listByCommunityIdSince(communityId: string, since: Date): Promise<ForumSceneMetadata[]> {
+    const rows = await this.prisma.forumSceneMetadata.findMany({
+      where: {
+        communityId,
+        createdAt: {
+          gte: since,
+        },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })
+    return rows.map((row) => this.toDomain(row))
+  }
+
   async deleteByTarget(input: { post_id?: string | null; comment_id?: string | null }): Promise<void> {
     if (input.post_id) {
       await this.prisma.forumSceneMetadata.deleteMany({

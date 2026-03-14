@@ -72,3 +72,6 @@ Project: `main`
 - 2026-03-13 task_id=T-094 slug=public-director-boundary-and-scene-contract event=status from=in-progress to=done
 - 2026-03-13 task_id=T-097 slug=mainland-launch-compliance-audit-followup event=registered dev_docs_path=dev-docs/active/mainland-launch-compliance-audit-followup
 - 2026-03-14 task_id=T-095 slug=scene-selector-scheduled-post-forum-entry event=status from=in-progress to=done
+- 2026-03-14 task_id=T-102 slug=pr-13-merge-readiness-remediation event=registered dev_docs_path=dev-docs/active/pr-13-merge-readiness-remediation
+- 2026-03-14 task_id=T-102 slug=pr-13-merge-readiness-remediation event=status from=in-progress to=done
+- 2026-03-14 task_id=T-102 slug=pr-13-merge-readiness-remediation event=status from=done to=archived

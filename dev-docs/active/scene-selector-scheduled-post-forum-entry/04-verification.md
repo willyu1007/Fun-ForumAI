@@ -13,9 +13,9 @@
     - forum comment 现有链路天然锚定 `post_id/comment_id`，适合默认 follow existing episode；
     - 现有 `agent_run` 与 event payload 是最合适的 selection/planning audit 落点。
 - 2026-03-13 freeze review on candidate inventory and carriers:
-  - 已核对 `docs/stage-templates/v1/library.manifest.yaml`、`scripts/stage-templates-export.mjs`、`src/backend/stage/stage-template-ops.js`、`src/backend/services/forum-write-service.ts`、`src/backend/repos/types/forum.ts`、`src/backend/repos/post-repository.ts`、`src/backend/repos/comment-repository.ts`、`prisma/schema.prisma`。
+  - 已核对 `docs/stage-templates/source/manifest.yaml`、`scripts/stage-templates-export.mjs`、`src/backend/stage/stage-template-ops.js`、`src/backend/services/forum-write-service.ts`、`src/backend/repos/types/forum.ts`、`src/backend/repos/post-repository.ts`、`src/backend/repos/comment-repository.ts`、`prisma/schema.prisma`。
   - 结论：
-    - scene pool 的 authoring SoT 已存在于 `docs/stage-templates/v1/**`，适合作为 template/binding 候选来源；selector runtime 应读导出/缓存后的 catalog，而不是热路径逐次解析 YAML；
+    - scene pool 的 authoring SoT 已存在于 `docs/stage-templates/source/**`，适合作为 template/binding 候选来源；selector runtime 应读导出/缓存后的 catalog，而不是热路径逐次解析 YAML；
     - `trigger event.payload_json` 与 `agent_run.output_json` 现有仓储能力足以承载 selection/planning audit；
     - post/comment 当前没有 dedicated `scene_metadata` carrier，只有 `moderation_metadata` 或 moderation-only metadata，因此不能把它们当长期 continuity SoT。
 - 2026-03-13 forum carrier draft review:

@@ -3,7 +3,7 @@ import path from 'node:path'
 import type { ScenePoolCatalog } from '../stage/index.js'
 import { config } from '../lib/config.js'
 
-const DEFAULT_LAUNCH_PATH = path.resolve(process.cwd(), 'docs/stage-templates/v1/dist/launch.json')
+const DEFAULT_LAUNCH_PATH = path.resolve(process.cwd(), 'docs/stage-templates/dist/launch.json')
 
 export class PublicSceneCatalogService {
   private cached: { mtime_ms: number; catalog: ScenePoolCatalog | null } | null = null

@@ -4,17 +4,16 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { parse as parseYaml } from 'yaml'
 import {
-  buildSceneBindingV1FromManifestItem,
-  parseLegacyStageTemplateDocument,
-  projectLegacyTemplateToStageTemplateV2,
+  buildSceneBindingV1ListFromManifestItem,
+  buildStageTemplateV2FromAuthoring,
+  normalizeManifestBindings,
+  parseStageTemplateAuthoringDocument,
+  parseStageTemplateAuthoringManifest,
 } from '../src/backend/stage/public-director-contract.js'
 
 const root = process.cwd()
-const baseDir = path.join(root, 'docs/stage-templates/v1')
-const manifestPath = path.join(baseDir, 'library.manifest.yaml')
-const v2ContractEnabled =
-  process.env.FF_PUBLIC_DIRECTOR_CONTRACT_V1 === 'true'
-  && process.env.FF_SCENE_POOL_ASSET_OPS_V1 === 'true'
+const baseDir = path.join(root, 'docs/stage-templates/source')
+const manifestPath = path.join(baseDir, 'manifest.yaml')
 
 function readJsonYaml(filePath) {
   const raw = fs.readFileSync(filePath, 'utf8')
@@ -35,8 +34,10 @@ if (!fs.existsSync(manifestPath)) {
 }
 
 const manifest = readJsonYaml(manifestPath)
-if (!Array.isArray(manifest.templates)) {
-  fail('Manifest templates must be an array')
+try {
+  parseStageTemplateAuthoringManifest(manifest)
+} catch (error) {
+  fail(`Manifest contract invalid: ${error instanceof Error ? error.message : String(error)}`)
 }
 
 const templates = manifest.templates
@@ -44,8 +45,9 @@ if (templates.length < 50) {
   fail(`Template count must be >= 50, got ${templates.length}`)
 }
 
-const launch = templates.filter((item) => item.status === 'launch')
-const hidden = templates.filter((item) => item.status === 'hidden')
+const launch = templates.filter((item) =>
+  item.lifecycle_status === 'core_active' || item.lifecycle_status === 'seasonal_active')
+const hidden = templates.filter((item) => item.lifecycle_status === 'hidden')
 if (launch.length !== 20) {
   fail(`Launch template count must be 20, got ${launch.length}`)
 }
@@ -76,31 +78,31 @@ for (const item of templates) {
   if (doc?.template_id !== item.id) {
     fail(`template_id mismatch in ${relPath}: expected ${item.id}`)
   }
+  if (doc?.template_version !== 'v2') {
+    fail(`template_version must be v2 in ${relPath}`)
+  }
   if (doc?.stage_spec?.version !== 'v1') {
     fail(`stage_spec.version must be v1 in ${relPath}`)
   }
 
-  if (v2ContractEnabled) {
-    try {
-      parseLegacyStageTemplateDocument(doc)
-      projectLegacyTemplateToStageTemplateV2(item, doc)
-    } catch (error) {
-      fail(`Director contract invalid for ${item.id}: ${error instanceof Error ? error.message : String(error)}`)
-    }
+  try {
+    parseStageTemplateAuthoringDocument(doc)
+    buildStageTemplateV2FromAuthoring(item, doc)
+  } catch (error) {
+    fail(`Director contract invalid for ${item.id}: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
-if (v2ContractEnabled) {
-  for (const item of launch) {
-    if (!item.binding || !item.binding.community_slug) {
-      fail(`Launch template must include binding.community_slug: ${item.id}`)
-    }
-    const templatePath = path.join(baseDir, String(item.path || ''))
-    const templateDoc = readJsonYaml(templatePath)
-    const stageTemplate = projectLegacyTemplateToStageTemplateV2(item, templateDoc)
-    if (!buildSceneBindingV1FromManifestItem(item, stageTemplate.director)) {
-      fail(`Launch template must project an active scene binding: ${item.id}`)
-    }
+for (const item of launch) {
+  const manifestBindings = normalizeManifestBindings(item)
+  if (manifestBindings.length === 0) {
+    fail(`Launch template must include at least one binding: ${item.id}`)
+  }
+  const templatePath = path.join(baseDir, String(item.path || ''))
+  const templateDoc = readJsonYaml(templatePath)
+  const stageTemplate = buildStageTemplateV2FromAuthoring(item, templateDoc)
+  if (buildSceneBindingV1ListFromManifestItem(item, stageTemplate.director).length === 0) {
+    fail(`Launch template must project an active scene binding: ${item.id}`)
   }
 }
 

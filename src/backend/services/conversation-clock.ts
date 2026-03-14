@@ -47,6 +47,49 @@ const AMBIENT_MESSAGES = [
   '👀',
 ]
 
+function hasMeaningfulText(value: string | null | undefined): value is string {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+function summarizeRecentRoomContext(recentText: string): string {
+  const collapsed = recentText
+    .split('\n')
+    .map((line) => line.replace(/^发言人=/u, '').trim())
+    .filter(Boolean)
+    .slice(-2)
+    .join(' | ')
+  if (!collapsed) return '先接住当前公开对话，再补一层有效信息。'
+  return collapsed.length <= 140 ? collapsed : `${collapsed.slice(0, 137)}...`
+}
+
+function buildFallbackChatroomLocalIntentBlock(input: {
+  roomName: string
+  roomDescription: string
+  recentText: string
+}): string {
+  const sceneGoal = input.roomDescription.trim().length > 0
+    ? input.roomDescription.trim()
+    : `延续「${input.roomName}」当前公开对话。`
+  return [
+    '## Local Intent',
+    `- episode_id: fallback:${input.roomName}`,
+    '- initiative: reply',
+    '- tone_hint: neutral',
+    '- relation_focus: none',
+    '- privacy_mode: public_only',
+    '- memory_scope: public_contextual',
+    '- reference_scope: room_window',
+    '- target_ref: none',
+    `- scene_goal: ${sceneGoal}`,
+    '- phase: opening',
+    '### Hard Constraints',
+    '- 只依据当前房间公开上下文接话',
+    '- 不要泄露隐藏导演目标或私域信息',
+    '### Soft Constraints',
+    `- 优先承接最近现场：${summarizeRecentRoomContext(input.recentText)}`,
+  ].join('\n')
+}
+
 export interface ConversationClockDeps {
   roomRepo: RoomRepository
   messageRepo: MessageRepository
@@ -553,7 +596,10 @@ export class ConversationClock {
           room,
           agentId,
           recentMessages: recentMsgs,
-        }).catch(() => null)
+        }).catch((error) => {
+          console.warn(`[ConversationClock] chatroom runtime context build failed for room=${roomId} agent=${agentId}:`, error)
+          return null
+        })
       : null
     const chatConversationText = this.buildChatConversationText(recentMsgs, runtimeChatContext)
     const chatTopicHints = this.extractTopicHints(room.name, this.buildTopicHintBodies(recentMsgs, runtimeChatContext))
@@ -569,6 +615,17 @@ export class ConversationClock {
         return [`发言人=${name}；内容=${body}`]
       })
       .join('\n')
+    const localIntentBlock = hasMeaningfulText(runtimeChatContext?.promptVariables.local_intent_block)
+      ? runtimeChatContext.promptVariables.local_intent_block
+      : (
+          config.features.chatroomLocalIntentV1
+            ? buildFallbackChatroomLocalIntentBlock({
+                roomName: room.name,
+                roomDescription: room.description || '',
+                recentText,
+              })
+            : ''
+        )
 
     if (!this.deps.llmGateway.isConfigured) {
       return { kind: 'normal', body: `[${agent.display_name}] 聊天测试消息` }
@@ -698,13 +755,15 @@ export class ConversationClock {
       episode_id: runtimeChatContext?.promptVariables.episode_id ?? '',
       current_beat: runtimeChatContext?.promptVariables.current_beat ?? '',
       cue_type: runtimeChatContext?.promptVariables.cue_type ?? '',
-      director_goal: runtimeChatContext?.promptVariables.director_goal ?? '',
+      director_goal: config.features.chatroomLocalIntentV1
+        ? ''
+        : (runtimeChatContext?.promptVariables.director_goal ?? ''),
       self_role: runtimeChatContext?.promptVariables.self_role ?? '',
       cast_snapshot: runtimeChatContext?.promptVariables.cast_snapshot ?? '',
       live_hook: runtimeChatContext?.promptVariables.live_hook ?? '',
       unresolved_question: runtimeChatContext?.promptVariables.unresolved_question ?? '',
       last_highlight: runtimeChatContext?.promptVariables.last_highlight ?? '',
-      local_intent_block: runtimeChatContext?.promptVariables.local_intent_block ?? '',
+      local_intent_block: localIntentBlock,
       room_public_context_summary: runtimeChatContext?.promptVariables.room_public_context_summary ?? '',
       public_projection_hint: runtimeChatContext?.promptVariables.public_projection_hint ?? '',
       signature_moves: runtimeChatContext?.promptVariables.signature_moves ?? '',

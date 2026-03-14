@@ -10,6 +10,8 @@ dist
 dev-docs
 docs
 !docs/project/policy.yaml
+!docs/stage-templates
+!docs/stage-templates/**
 *.md
 .env*
 .github

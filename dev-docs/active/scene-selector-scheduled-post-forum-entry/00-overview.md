@@ -2,7 +2,7 @@
 
 ## Status
 - State: done
-- Next step: 等待人工确认是否归档 `T-095`，若确认则执行 handoff/archive 流程。
+- Next step: 无 task-local 后续动作；本包随 `F-060` feature closeout 归档。
 
 ## Goal
 让 `scheduled_post` 与 forum 成为统一公域导演协议的首个消费者：

@@ -279,4 +279,136 @@ describe('ChatroomControlService', () => {
       Object.assign(featureFlags, snapshot)
     }
   })
+
+  it('redacts LocalIntent compat fields from exposed cue payloads when LocalIntent mode is on', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const snapshot = { ...featureFlags }
+    featureFlags.directorRuntimeStateV1 = true
+    featureFlags.chatroomLocalIntentV1 = true
+
+    const planProgramCue = vi.fn(async (input: { event_payload_json: Record<string, unknown> }) => ({
+      beat: {
+        id: 'beat-1',
+        selected_speaker_agent_id: 'agent-1',
+        target_role: 'HOST',
+        created_at: new Date('2026-03-10T10:00:00.000Z'),
+      },
+      event: {
+        id: 'event-1',
+        payload_json: input.event_payload_json,
+      },
+      ledgers: [],
+      created_now: true,
+    }))
+
+    try {
+      const service = new ChatroomControlService({
+        roomRepo: {} as never,
+        watchabilityRepo: {
+          planProgramCue,
+        } as never,
+        agentRepo: {} as never,
+        roomProjector: {} as never,
+        stateLoader: {
+          load: vi.fn(async () => ({
+            room: { id: 'room-1', status: 'active' },
+            program: makeProgram(),
+            episode: { id: 'episode-1' },
+            latestBeat: { ordinal: 0 },
+            cast: [{ agent_id: 'agent-1', role: 'HOST' }],
+            members: [],
+            recentMessages: [],
+          })),
+        } as never,
+        scorer: {
+          score: vi.fn(() => [{
+            agent_id: 'agent-1',
+            role: 'HOST',
+            final_score: 1,
+            reasons_json: [],
+          }]),
+        } as never,
+        projectionService: {} as never,
+        runtimeSceneStateManager: {
+          findActiveByRoom: vi.fn(async () => null),
+          ensureChatroomState: vi.fn(async () => ({
+            state: {
+              state_json: {
+                cast: {
+                  active_agent_ids: ['agent-1'],
+                  suppressed_agent_ids: [],
+                  slot_audit: {
+                    core_agent_ids: ['agent-1'],
+                    contrast_agent_ids: [],
+                    wildcard_agent_ids: [],
+                    must_have_role_hits: ['HOST'],
+                    target_active_count: 1,
+                  },
+                },
+              },
+            },
+            resolved: {
+              template: {
+                director: {
+                  scene_goal: {
+                    viewer_goal: '推进现场',
+                    growth_goal: '稳住节奏',
+                  },
+                  casting_recipe: {
+                    must_have_roles: ['HOST'],
+                    avoid_pairs: [],
+                    ratio: { core: 1, contrast: 0, wildcard: 0 },
+                  },
+                  closing_policy: {
+                    aftershow_mode: 'threshold',
+                  },
+                },
+              },
+              source: 'binding',
+            },
+          })),
+          handleSignal: vi.fn(async () => undefined),
+        } as never,
+        localIntentService: {
+          build: vi.fn(() => ({
+            local_intent_id: 'local-intent-1',
+            local_intent: { intent_id: 'local-intent-1' },
+            local_intent_block: '[LOCAL_INTENT]',
+            episode_brief_min: {
+              episode_id: 'episode-1',
+              phase: 'opening',
+              template_id: 'template-1',
+              template_version: 'v2',
+              scene_goal: {
+                viewer_goal: '推进现场',
+                growth_goal: '稳住节奏',
+              },
+              open_loops: [],
+              expires_at: '2026-03-15T00:00:00.000Z',
+            },
+            director_goal_compat: '把 owner cue 往前推半步',
+            scene_source: 'binding',
+          })),
+        } as never,
+        sseHub: {
+          broadcastToRoom: vi.fn(),
+        } as never,
+      })
+
+      const result = await service.createCue('room-1', {
+        cue_type: 'ADVANCE',
+        director_goal: '把 owner cue 往前推半步',
+      })
+
+      const payload = planProgramCue.mock.calls[0]?.[0]?.event_payload_json as Record<string, unknown>
+      expect(payload.local_intent_id).toBe('local-intent-1')
+      expect(payload.scene_source).toBe('binding')
+      expect(payload).not.toHaveProperty('director_goal')
+      expect(payload).not.toHaveProperty('director_goal_compat')
+      expect(result.event.payload_json).not.toHaveProperty('director_goal')
+      expect(result.event.payload_json).not.toHaveProperty('director_goal_compat')
+    } finally {
+      Object.assign(featureFlags, snapshot)
+    }
+  })
 })

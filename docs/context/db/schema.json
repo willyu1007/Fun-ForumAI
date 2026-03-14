@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-13T23:24:58.643Z",
+  "updatedAt": "2026-03-14T13:24:04.088Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -8353,6 +8353,400 @@
       ]
     },
     {
+      "name": "DirectorCurrentScopeSummary",
+      "dbName": null,
+      "schema": null,
+      "columns": [
+        {
+          "name": "actorSurface",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "actor_surface",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "episodeId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "episode_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "roomId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "room_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneBindingId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "scene_binding_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneTemplateId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "scene_template_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "scopeKey",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scope_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "selectionMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "selection_mode",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceRecordAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_record_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "summaryJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "surface",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": []
+    },
+    {
+      "name": "DirectorHistoricalDailySummary",
+      "dbName": "director_historical_daily_summaries",
+      "schema": null,
+      "columns": [
+        {
+          "name": "actorSurface",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "actor_surface",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "aftershowMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "aftershow_mode",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "aftershowStatus",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "aftershow_status",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "closeReason",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "close_reason",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "day",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "experimentBucket",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "experiment_bucket",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "refreshedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "refreshed_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "selectionMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "selection_mode",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "source",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "surface",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "totalCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "total_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "surface",
+            "day"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "day",
+            "surface",
+            "actorSurface",
+            "source",
+            "selectionMode",
+            "closeReason",
+            "aftershowMode",
+            "aftershowStatus",
+            "experimentBucket"
+          ],
+          "name": null,
+          "map": "director_historical_daily_summaries_scope_key"
+        }
+      ]
+    },
+    {
+      "name": "DirectorHistoryMaintenanceRun",
+      "dbName": null,
+      "schema": null,
+      "columns": [
+        {
+          "name": "archiveBatchId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "archive_batch_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "cutoffAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "cutoff_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "dryRun",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "dry_run",
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "jobType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "job_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "statsJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": []
+    },
+    {
       "name": "EpisodicCard",
       "dbName": "episodic_cards",
       "schema": null,
@@ -9060,6 +9454,317 @@
           "type": "index",
           "fields": [
             "postId"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "ForumSceneMetadataArchive",
+      "dbName": "forum_scene_metadata_archive",
+      "schema": null,
+      "columns": [
+        {
+          "name": "actorSurface",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "actor_surface",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "archiveBatchId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "archive_batch_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "archivedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "archived_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "archiveReason",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "archive_reason",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "beatId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "beat_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "commentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "comment_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "directorSurface",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "director_surface",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "episodeId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "episode_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "episodePlanId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "episode_plan_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "expiresAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "expires_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "localIntentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "local_intent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "overlayId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "overlay_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "payloadJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "payload_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "phase",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "postId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "post_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneBindingId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "scene_binding_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneTemplateId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scene_template_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneTemplateVersion",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scene_template_version",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "selectionId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "selection_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "selectionMode",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "selection_mode",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "target_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "archiveBatchId",
+            "archivedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "communityId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "episodeId"
           ],
           "name": null,
           "map": null
@@ -17361,6 +18066,230 @@
       ]
     },
     {
+      "name": "RoomProgramEventArchive",
+      "dbName": "room_program_events_archive",
+      "schema": null,
+      "columns": [
+        {
+          "name": "archiveBatchId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "archive_batch_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "archivedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "archived_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "archiveReason",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "archive_reason",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "beatId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "beat_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "cueType",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "cue_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "directorGoal",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "director_goal",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "episodeId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "episode_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "errorText",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "error_text",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "eventType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "event_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "idempotency_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "payloadJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "payload_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "roomId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "room_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "selectedSpeakerAgentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "selected_speaker_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "archiveBatchId",
+            "archivedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "episodeId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "roomId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
       "name": "RoomSelectionLedger",
       "dbName": "room_selection_ledgers",
       "schema": null,
@@ -17993,6 +18922,325 @@
         }
       ],
       "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "communityId",
+            "status"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "directorSurface",
+            "episodeId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "experimentBucket",
+            "status"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "roomId",
+            "status"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "RuntimeSceneStateArchive",
+      "dbName": "runtime_scene_states_archive",
+      "schema": null,
+      "columns": [
+        {
+          "name": "actorSurface",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "actor_surface",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "archiveBatchId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "archive_batch_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "archivedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "archived_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "archiveReason",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "archive_reason",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "cooldownUntil",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "cooldown_until",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "directorSurface",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "director_surface",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "episodeId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "episode_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "experimentBucket",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "experiment_bucket",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "fatigueScore",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "fatigue_score",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "overlayId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "overlay_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "phase",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "repetitionScore",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "repetition_score",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "roomId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "room_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "runtimeSceneId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "runtime_scene_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "sceneBindingId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "scene_binding_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneTemplateId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scene_template_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneTemplateVersion",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scene_template_version",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "stateJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "state_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "stateVersion",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "state_version",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "archiveBatchId",
+            "archivedAt"
+          ],
+          "name": null,
+          "map": null
+        },
         {
           "type": "index",
           "fields": [

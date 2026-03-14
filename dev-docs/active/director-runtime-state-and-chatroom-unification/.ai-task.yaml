@@ -2,8 +2,8 @@ version: 1
 task_id: T-096
 project: main
 slug: director-runtime-state-and-chatroom-unification
-status: in-progress
-updated: "2026-03-13"
+status: done
+updated: "2026-03-14"
 keywords:
   - runtime-scene-state
   - chatroom

@@ -8,6 +8,7 @@ import {
   type RoomLiveSnapshot as PrismaRoomLiveSnapshot,
   type RoomProgram as PrismaRoomProgram,
   type RoomProgramEvent as PrismaRoomProgramEvent,
+  type RoomProgramEventArchive as PrismaRoomProgramEventArchive,
   type RoomSharedMemory as PrismaRoomSharedMemory,
   type RoomSelectionLedger as PrismaRoomSelectionLedger,
 } from '@prisma/client'
@@ -644,9 +645,8 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
   }
 
   async getProgramEvent(id: string): Promise<RoomProgramEvent | null> {
-    const row = await this.prisma.roomProgramEvent.findUnique({
-      where: { id },
-    })
+    const row = await this.prisma.roomProgramEvent.findUnique({ where: { id } })
+      ?? await this.prisma.roomProgramEventArchive.findUnique({ where: { id } })
     return row ? this.toProgramEvent(row) : null
   }
 
@@ -956,15 +956,15 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
     }
   }
 
-  private toProgramEvent(row: PrismaRoomProgramEvent): RoomProgramEvent {
+  private toProgramEvent(row: PrismaRoomProgramEvent | PrismaRoomProgramEventArchive): RoomProgramEvent {
     return {
       id: row.id,
       room_id: row.roomId,
       episode_id: row.episodeId,
       beat_id: row.beatId,
-      event_type: row.eventType,
-      status: row.status,
-      cue_type: row.cueType,
+      event_type: row.eventType as RoomProgramEvent['event_type'],
+      status: row.status as RoomProgramEvent['status'],
+      cue_type: row.cueType as RoomProgramEvent['cue_type'],
       director_goal: row.directorGoal,
       selected_speaker_agent_id: row.selectedSpeakerAgentId,
       idempotency_key: row.idempotencyKey,

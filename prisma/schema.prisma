@@ -325,6 +325,39 @@ model ForumSceneMetadata {
   @@map("forum_scene_metadata")
 }
 
+model ForumSceneMetadataArchive {
+  id                   String    @id
+  targetType           String    @map("target_type")
+  communityId          String    @map("community_id")
+  postId               String?   @map("post_id")
+  commentId            String?   @map("comment_id")
+  episodeId            String    @map("episode_id")
+  selectionId          String    @map("selection_id")
+  episodePlanId        String    @map("episode_plan_id")
+  localIntentId        String    @map("local_intent_id")
+  directorSurface      String    @map("director_surface")
+  actorSurface         String    @map("actor_surface")
+  sceneTemplateId      String    @map("scene_template_id")
+  sceneTemplateVersion String    @map("scene_template_version")
+  sceneBindingId       String?   @map("scene_binding_id")
+  overlayId            String?   @map("overlay_id")
+  beatId               String?   @map("beat_id")
+  phase                String
+  selectionMode        String    @map("selection_mode")
+  expiresAt            DateTime? @map("expires_at")
+  payloadJson          Json      @map("payload_json")
+  createdAt            DateTime  @map("created_at")
+  updatedAt            DateTime  @map("updated_at")
+  archivedAt           DateTime  @default(now()) @map("archived_at")
+  archiveBatchId       String    @map("archive_batch_id")
+  archiveReason        String    @map("archive_reason")
+
+  @@index([communityId, createdAt])
+  @@index([episodeId])
+  @@index([archiveBatchId, archivedAt])
+  @@map("forum_scene_metadata_archive")
+}
+
 model HumanVote {
   id          String             @id @default(cuid())
   voterUserId String             @map("voter_user_id")
@@ -1455,6 +1488,31 @@ model RoomProgramEvent {
   @@map("room_program_events")
 }
 
+model RoomProgramEventArchive {
+  id                     String   @id
+  roomId                 String   @map("room_id")
+  episodeId              String?  @map("episode_id")
+  beatId                 String?  @map("beat_id")
+  eventType              String   @map("event_type")
+  status                 String
+  cueType                String?  @map("cue_type")
+  directorGoal           String?  @map("director_goal") @db.Text
+  selectedSpeakerAgentId String?  @map("selected_speaker_agent_id")
+  idempotencyKey         String   @unique @map("idempotency_key")
+  payloadJson            Json?    @map("payload_json")
+  errorText              String?  @map("error_text") @db.Text
+  createdAt              DateTime @map("created_at")
+  updatedAt              DateTime @map("updated_at")
+  archivedAt             DateTime @default(now()) @map("archived_at")
+  archiveBatchId         String   @map("archive_batch_id")
+  archiveReason          String   @map("archive_reason")
+
+  @@index([roomId, createdAt])
+  @@index([episodeId, createdAt])
+  @@index([archiveBatchId, archivedAt])
+  @@map("room_program_events_archive")
+}
+
 model RoomSelectionLedger {
   id               String   @id @default(cuid())
   roomId           String   @map("room_id")
@@ -1598,6 +1656,96 @@ model RuntimeSceneState {
   @@index([communityId, status])
   @@index([experimentBucket, status])
   @@map("runtime_scene_states")
+}
+
+model RuntimeSceneStateArchive {
+  id                   String    @id
+  runtimeSceneId       String    @unique @map("runtime_scene_id")
+  directorSurface      String    @map("director_surface")
+  actorSurface         String    @map("actor_surface")
+  communityId          String?   @map("community_id")
+  roomId               String?   @map("room_id")
+  episodeId            String    @unique @map("episode_id")
+  sceneTemplateId      String    @map("scene_template_id")
+  sceneTemplateVersion String    @map("scene_template_version")
+  sceneBindingId       String?   @map("scene_binding_id")
+  overlayId            String?   @map("overlay_id")
+  phase                String
+  status               String
+  fatigueScore         Float     @default(0) @map("fatigue_score")
+  repetitionScore      Float     @default(0) @map("repetition_score")
+  cooldownUntil        DateTime? @map("cooldown_until")
+  experimentBucket     String    @map("experiment_bucket")
+  stateVersion         Int       @default(0) @map("state_version")
+  stateJson            Json      @map("state_json")
+  createdAt            DateTime  @map("created_at")
+  updatedAt            DateTime  @map("updated_at")
+  archivedAt           DateTime  @default(now()) @map("archived_at")
+  archiveBatchId       String    @map("archive_batch_id")
+  archiveReason        String    @map("archive_reason")
+
+  @@index([directorSurface, episodeId])
+  @@index([roomId, status])
+  @@index([communityId, status])
+  @@index([experimentBucket, status])
+  @@index([archiveBatchId, archivedAt])
+  @@map("runtime_scene_states_archive")
+}
+
+model DirectorHistoryMaintenanceRun {
+  id             String    @id @default(cuid())
+  jobType        String    @map("job_type")
+  status         String
+  dryRun         Boolean   @default(false) @map("dry_run")
+  cutoffAt       DateTime? @map("cutoff_at")
+  archiveBatchId String?   @map("archive_batch_id")
+  statsJson      Json      @default("{}") @map("stats_json")
+  errorText      String?   @map("error_text") @db.Text
+  startedAt      DateTime  @default(now()) @map("started_at")
+  finishedAt     DateTime? @map("finished_at")
+
+  @@index([jobType, startedAt])
+  @@index([status, startedAt])
+  @@map("director_history_maintenance_runs")
+}
+
+model DirectorCurrentScopeSummary {
+  id              String    @id @default(cuid())
+  surface         String
+  scopeKey        String    @map("scope_key")
+  communityId     String?   @map("community_id")
+  roomId          String?   @map("room_id")
+  actorSurface    String?   @map("actor_surface")
+  episodeId       String?   @map("episode_id")
+  sceneTemplateId String?   @map("scene_template_id")
+  sceneBindingId  String?   @map("scene_binding_id")
+  selectionMode   String?   @map("selection_mode")
+  sourceRecordAt  DateTime? @map("source_record_at")
+  summaryJson     Json      @default("{}") @map("summary_json")
+  refreshedAt     DateTime  @default(now()) @map("refreshed_at")
+
+  @@unique([surface, scopeKey], map: "director_current_scope_summaries_scope_key")
+  @@index([surface, refreshedAt])
+  @@map("director_current_scope_summaries")
+}
+
+model DirectorHistoricalDailySummary {
+  id               String   @id @default(cuid())
+  day              DateTime
+  surface          String
+  actorSurface     String?  @map("actor_surface")
+  source           String?  @map("source")
+  selectionMode    String?  @map("selection_mode")
+  closeReason      String?  @map("close_reason")
+  aftershowMode    String?  @map("aftershow_mode")
+  aftershowStatus  String?  @map("aftershow_status")
+  experimentBucket String?  @map("experiment_bucket")
+  totalCount       Int      @default(0) @map("total_count")
+  refreshedAt      DateTime @default(now()) @map("refreshed_at")
+
+  @@unique([day, surface, actorSurface, source, selectionMode, closeReason, aftershowMode, aftershowStatus, experimentBucket], map: "director_historical_daily_summaries_scope_key")
+  @@index([surface, day])
+  @@map("director_historical_daily_summaries")
 }
 
 model AgentPublicProjection {

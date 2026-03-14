@@ -123,6 +123,7 @@ export function createCoreServices(deps: {
   const forumSceneContinuityService = new ForumSceneContinuityService({
     sceneMetadataRepo: repos.forumSceneMetadataRepo,
     eventRepo: repos.eventRepo,
+    sceneSelectorService: publicSceneSelectorService,
   })
 
   const stageTierService = new AgentStageTierService({

@@ -3,6 +3,8 @@ import { InMemoryEventRepository } from '../../repos/event-repository.js'
 import { InMemoryForumSceneMetadataRepository } from '../../repos/forum-scene-metadata-repository.js'
 import { ForumSceneContinuityService } from '../forum-scene-continuity-service.js'
 import { buildPublicScenePayloadJson, type PublicSceneWritePayload } from '../public-scene-runtime.js'
+import { PublicSceneSelectorService } from '../public-scene-selector-service.js'
+import { DEFAULT_STAGE_SPEC_V1, type ScenePoolCatalog } from '../../stage/index.js'
 
 function buildPayload(
   overrides: Partial<PublicSceneWritePayload['scene_metadata']> = {},
@@ -12,7 +14,7 @@ function buildPayload(
       director_surface: 'scheduled_post',
       actor_surface: 'forum_post',
       scene_template_id: 'stage-theme-01',
-      scene_template_version: 'legacy-v1',
+      scene_template_version: 'v2',
       scene_binding_id: 'binding-1',
       overlay_id: null,
       episode_id: 'episode-1',
@@ -31,7 +33,7 @@ function buildPayload(
       director_surface: 'scheduled_post',
       actor_surface: 'forum_post',
       template_id: overrides.scene_template_id ?? 'stage-theme-01',
-      template_version: overrides.scene_template_version ?? 'legacy-v1',
+      template_version: overrides.scene_template_version ?? 'v2',
       binding_id: overrides.scene_binding_id ?? 'binding-1',
       phase: overrides.phase === 'aftershow' ? 'closure' : overrides.phase ?? 'opening',
       scene_goal: {
@@ -91,6 +93,100 @@ function buildAllocatorEvent() {
   }
 }
 
+function makeCatalog(): ScenePoolCatalog {
+  return {
+    version: 'v2',
+    contract_version: 'public_director_contract_v1',
+    exported_at: '2026-03-14T00:00:00.000Z',
+    templates: [],
+    stage_templates: [
+      {
+        template_id: 'stage-theme-01',
+        template_version: 'v2',
+        name: 'stage-theme-01',
+        category: 'theme',
+        lifecycle_status: 'core_active',
+        stage_spec: DEFAULT_STAGE_SPEC_V1,
+        director: {
+          applicable_surfaces: ['forum', 'scheduled_post'],
+          scene_goal: {
+            viewer_goal: '推进讨论',
+            growth_goal: '增加连贯性',
+          },
+          casting_recipe: {
+            quota: 4,
+            ratio: {
+              core: 2,
+              contrast: 1,
+              wildcard: 1,
+            },
+            wildcard_cap: 1,
+            must_have_roles: [],
+            avoid_pairs: [],
+            relationship_objectives: ['bridge'],
+          },
+          beat_plan: {
+            phases: ['opening', 'escalation', 'pivot', 'closure'],
+            optional_beats: [],
+          },
+          fatigue_policy: {
+            cooldown_hours: 24,
+            repeat_penalty: 1,
+            max_runs_per_day: 3,
+          },
+          closing_policy: {
+            ttl_hours: 24,
+            min_turns: 3,
+            message_threshold: 12,
+            aftershow_mode: 'off',
+          },
+          hot_topic_policy: {
+            injection_mode: 'overlay_only',
+            sensitive_topic_mode: 'standard',
+          },
+          autonomy_policy: {
+            allow_autonomous_mutation: false,
+            require_pool_match_before_create: false,
+          },
+        },
+      },
+    ],
+    scene_bindings: [
+      {
+        binding_id: 'binding-1',
+        template_id: 'stage-theme-01',
+        template_version: 'v2',
+        binding_type: 'core',
+        status: 'active',
+        entry_surfaces: ['forum', 'scheduled_post'],
+        target: {
+          surface: 'forum',
+          community_slug: 'general',
+          seasonal_slot: null,
+        },
+        lifecycle: {},
+        weights: {
+          editorial_priority: 5,
+          base_weight: 1,
+          freshness_bonus: 0,
+        },
+        activation: {
+          time_windows: [],
+          allowed_days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+          trigger_conditions: [],
+        },
+        governance: {},
+        constraints: {},
+      },
+    ],
+    surface_vocabulary: {
+      director_surfaces: ['forum', 'chat_room', 'scheduled_post'],
+      actor_surfaces: ['forum_post', 'forum_comment', 'chat_room'],
+      private_surfaces: ['private_chat', 'proactive_dm'],
+    },
+  }
+}
+
 async function createPostSidecar(
   repo: InMemoryForumSceneMetadataRepository,
   payload: PublicSceneWritePayload | Record<string, unknown>,
@@ -108,7 +204,7 @@ async function createPostSidecar(
     director_surface: scene.scene_metadata?.director_surface ?? 'scheduled_post',
     actor_surface: scene.scene_metadata?.actor_surface ?? 'forum_post',
     scene_template_id: scene.scene_metadata?.scene_template_id ?? 'stage-theme-01',
-    scene_template_version: scene.scene_metadata?.scene_template_version ?? 'legacy-v1',
+    scene_template_version: scene.scene_metadata?.scene_template_version ?? 'v2',
     scene_binding_id: scene.scene_metadata?.scene_binding_id ?? 'binding-1',
     overlay_id: scene.scene_metadata?.overlay_id ?? null,
     beat_id: scene.scene_metadata?.beat_id ?? null,
@@ -193,6 +289,37 @@ describe('ForumSceneContinuityService', () => {
       kind: 'continue',
       source: 'post_sidecar',
     })
+  })
+
+  it('rebuilds followup payload from minimal metadata when the sidecar payload is malformed', async () => {
+    const sceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const eventRepo = new InMemoryEventRepository()
+    await createPostSidecar(sceneMetadataRepo, { invalid: true })
+
+    const service = new ForumSceneContinuityService({
+      sceneMetadataRepo,
+      eventRepo,
+      sceneSelectorService: new PublicSceneSelectorService({
+        catalogService: {
+          getLaunchCatalog: () => makeCatalog(),
+        } as never,
+        sceneMetadataRepo,
+      }),
+    })
+
+    const result = await service.resolve({
+      event: buildAllocatorEvent(),
+      post_author_agent_id: 'agent-1',
+      target_comment_author_agent_id: 'human-1',
+    })
+
+    expect(result).toMatchObject({
+      kind: 'continue',
+      source: 'post_sidecar',
+    })
+    if (result?.kind !== 'continue') return
+    expect(result.payload.local_intent.reference_scope).toBe('thread_only')
+    expect(result.payload.local_intent.hard_constraints).toContain('延续当前 episode，不重选场景')
   })
 
   it('replays from the root post event instead of a later comment event when sidecars are missing', async () => {

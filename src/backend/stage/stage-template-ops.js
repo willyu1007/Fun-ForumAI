@@ -3,11 +3,32 @@ import path from 'node:path'
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
 import {
   buildScenePoolCatalogFromManifest,
-  parseLegacyStageTemplateDocument,
+  parseStageTemplateAuthoringDocument,
+  parseStageTemplateAuthoringManifest,
 } from './public-director-contract.js'
 
 /**
- * @typedef {{ community_slug: string, slot?: string, binding_type: 'core' | 'seasonal' } | null} StageTemplateBinding
+ * @typedef {{
+ *   surface: 'forum'
+ *   community_id?: string
+ *   community_slug: string
+ *   seasonal_slot?: string | null
+ *   binding_type: 'core' | 'seasonal' | 'campaign' | 'event'
+ *   lifecycle: { start_at?: string, end_at?: string }
+ *   weights: { editorial_priority: number, base_weight: number, freshness_bonus: number }
+ *   activation: { time_windows: string[], allowed_days: Array<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'>, trigger_conditions: Array<'editorial_window' | 'community_event' | 'hot_topic_match' | 'continuity_followup' | 'manual_campaign'> }
+ *   governance: { canary_percent?: number, risk_override?: 'none' | 'review_required' | 'strict_only' | 'block' }
+ *   constraints: { max_runs_per_day?: number, cooldown_hours?: number }
+ * } | {
+ *   surface: 'chat_room'
+ *   room_id: string
+ *   binding_type: 'core' | 'seasonal' | 'campaign' | 'event'
+ *   lifecycle: { start_at?: string, end_at?: string }
+ *   weights: { editorial_priority: number, base_weight: number, freshness_bonus: number }
+ *   activation: { time_windows: string[], allowed_days: Array<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'>, trigger_conditions: Array<'editorial_window' | 'community_event' | 'hot_topic_match' | 'continuity_followup' | 'manual_campaign'> }
+ *   governance: { canary_percent?: number, risk_override?: 'none' | 'review_required' | 'strict_only' | 'block' }
+ *   constraints: { max_runs_per_day?: number, cooldown_hours?: number }
+ * }} StageTemplateBinding
  */
 
 /**
@@ -15,15 +36,16 @@ import {
  *   id: string
  *   category: string
  *   path: string
- *   status: 'launch' | 'hidden'
- *   binding: StageTemplateBinding
+ *   lifecycle_status: 'draft' | 'hidden' | 'canary' | 'seasonal_active' | 'core_active' | 'retiring' | 'archived' | 'blocked'
+ *   bindings: StageTemplateBinding[]
  * }} StageTemplateManifestItem
  */
 
 /**
  * @typedef {{
- *   version: string
+ *   version: 'v2'
  *   generated_at?: string
+ *   launch?: Record<string, unknown>
  *   templates: StageTemplateManifestItem[]
  *   seasonal_slots: Array<{ slot: string, community_slug: string }>
  *   rotation_audit?: Array<{
@@ -42,16 +64,26 @@ export class StageTemplateValidationError extends Error {
   }
 }
 
-function isFlagEnabled(flagName, override) {
-  if (typeof override === 'boolean') return override
-  return process.env[flagName] === 'true'
-}
-
-function shouldEmitScenePoolV2(options = {}) {
-  return (
-    isFlagEnabled('FF_PUBLIC_DIRECTOR_CONTRACT_V1', options.publicDirectorContractV1)
-    && isFlagEnabled('FF_SCENE_POOL_ASSET_OPS_V1', options.scenePoolAssetOpsV1)
-  )
+function createSeasonalBinding(slot) {
+  return {
+    surface: 'forum',
+    community_slug: slot.community_slug,
+    seasonal_slot: slot.slot,
+    binding_type: 'seasonal',
+    lifecycle: {},
+    weights: {
+      editorial_priority: 10,
+      base_weight: 1,
+      freshness_bonus: 1,
+    },
+    activation: {
+      time_windows: [],
+      allowed_days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+      trigger_conditions: [],
+    },
+    governance: {},
+    constraints: {},
+  }
 }
 
 /**
@@ -80,17 +112,60 @@ export function writeYamlFileAtomic(filePath, payload) {
 }
 
 /**
- * @param {StageTemplateManifest} manifest
+ * @param {StageTemplateManifestItem} item
+ * @returns {StageTemplateBinding[]}
+ */
+function normalizeManifestBindings(item) {
+  return Array.isArray(item.bindings) ? item.bindings.filter(Boolean) : []
+}
+
+/**
+ * @param {StageTemplateBinding} binding
+ * @returns {boolean}
+ */
+function isForumBinding(binding) {
+  return binding.surface === 'forum'
+}
+
+/**
+ * @param {StageTemplateManifestItem} item
+ * @param {string} slot
+ */
+function detachRotatedForumBinding(item, slot) {
+  item.bindings = normalizeManifestBindings(item).filter((binding) => {
+    if (!isForumBinding(binding)) return true
+    return binding.seasonal_slot !== slot || binding.binding_type !== 'seasonal'
+  })
+}
+
+/**
+ * @param {StageTemplateManifestItem} item
+ * @param {StageTemplateBinding} binding
+ */
+function attachLaunchBinding(item, binding) {
+  const preserved = normalizeManifestBindings(item).filter((existing) => {
+    if (!isForumBinding(binding)) {
+      return true
+    }
+    if (!isForumBinding(existing)) {
+      return true
+    }
+    return !(
+      existing.community_slug === binding.community_slug
+      && (existing.seasonal_slot ?? null) === (binding.seasonal_slot ?? null)
+      && existing.binding_type === binding.binding_type
+    )
+  })
+  item.bindings = [...preserved, binding]
+}
+
+/**
+ * @param {StageTemplateManifest} manifestInput
  * @param {number} openCount
  * @returns {{ manifest: StageTemplateManifest, replaced: Array<{ slot: string, template_id: string }>, activated: Array<{ slot: string, template_id: string }> }}
  */
-export function rotateStageTemplates(manifest, openCount) {
-  if (!Array.isArray(manifest?.templates)) {
-    throw new StageTemplateValidationError('manifest.templates must be an array')
-  }
-  if (!Array.isArray(manifest?.seasonal_slots)) {
-    throw new StageTemplateValidationError('manifest.seasonal_slots must be an array')
-  }
+export function rotateStageTemplates(manifestInput, openCount) {
+  const manifest = parseStageTemplateAuthoringManifest(manifestInput)
   if (!Number.isFinite(openCount) || openCount < 3 || openCount > 5) {
     throw new StageTemplateValidationError('open_count must be between 3 and 5')
   }
@@ -98,7 +173,7 @@ export function rotateStageTemplates(manifest, openCount) {
   /** @type {StageTemplateManifest} */
   const nextManifest = structuredClone(manifest)
   const templates = nextManifest.templates
-  const hidden = templates.filter((item) => item.status === 'hidden')
+  const hidden = templates.filter((item) => item.lifecycle_status === 'hidden')
   if (hidden.length < openCount) {
     throw new StageTemplateValidationError(`Not enough hidden templates to open ${openCount}; hidden=${hidden.length}`)
   }
@@ -115,24 +190,23 @@ export function rotateStageTemplates(manifest, openCount) {
 
   for (let i = 0; i < openCount; i += 1) {
     const slot = slots[i]
-    const existingLaunch = templates.find((item) => item.status === 'launch' && item.binding?.slot === slot.slot)
+    const existingLaunch = templates.find((item) =>
+      item.lifecycle_status === 'seasonal_active'
+      && normalizeManifestBindings(item).some((binding) =>
+        isForumBinding(binding) && binding.seasonal_slot === slot.slot && binding.binding_type === 'seasonal'))
     const nextTemplate = hidden[i]
     if (!nextTemplate) {
       throw new StageTemplateValidationError(`Failed to resolve hidden template for slot ${slot.slot}`)
     }
 
     if (existingLaunch) {
-      existingLaunch.status = 'hidden'
-      existingLaunch.binding = null
+      existingLaunch.lifecycle_status = 'hidden'
+      detachRotatedForumBinding(existingLaunch, slot.slot)
       replaced.push({ slot: slot.slot, template_id: existingLaunch.id })
     }
 
-    nextTemplate.status = 'launch'
-    nextTemplate.binding = {
-      community_slug: slot.community_slug,
-      slot: slot.slot,
-      binding_type: 'seasonal',
-    }
+    nextTemplate.lifecycle_status = 'seasonal_active'
+    attachLaunchBinding(nextTemplate, createSeasonalBinding(slot))
     activated.push({ slot: slot.slot, template_id: nextTemplate.id })
   }
 
@@ -145,57 +219,17 @@ export function rotateStageTemplates(manifest, openCount) {
 
 /**
  * @param {string} baseDir
- * @param {StageTemplateManifest} manifest
+ * @param {StageTemplateManifest} manifestInput
  * @param {string} exportedAt
- * @param {{ publicDirectorContractV1?: boolean, scenePoolAssetOpsV1?: boolean }} [options]
  * @returns {{
- *   library: { version: string, exported_at: string, templates: Array<Record<string, unknown>>, contract_version?: string, stage_templates?: Array<Record<string, unknown>>, scene_bindings?: Array<Record<string, unknown>>, surface_vocabulary?: Record<string, unknown> },
- *   launch: { version: string, exported_at: string, templates: Array<Record<string, unknown>>, contract_version?: string, stage_templates?: Array<Record<string, unknown>>, scene_bindings?: Array<Record<string, unknown>>, surface_vocabulary?: Record<string, unknown> },
+ *   library: { version: 'v2', exported_at: string, templates: Array<Record<string, unknown>>, contract_version: 'public_director_contract_v1', stage_templates: Array<Record<string, unknown>>, scene_bindings: Array<Record<string, unknown>>, surface_vocabulary: Record<string, unknown> },
+ *   launch: { version: 'v2', exported_at: string, templates: Array<Record<string, unknown>>, contract_version: 'public_director_contract_v1', stage_templates: Array<Record<string, unknown>>, scene_bindings: Array<Record<string, unknown>>, surface_vocabulary: Record<string, unknown> },
  *   exported_templates: number,
  *   launch_templates: number,
  * }}
  */
-export function buildStageTemplateDistPayload(baseDir, manifest, exportedAt, options = {}) {
-  if (!shouldEmitScenePoolV2(options)) {
-    const templates = manifest.templates.map((item) => {
-      const templateFilePath = path.join(baseDir, item.path)
-      const doc = readYamlFile(templateFilePath)
-      if (!doc || typeof doc !== 'object') {
-        throw new StageTemplateValidationError(`Template file must be an object: ${item.path}`)
-      }
-
-      const stageSpec = /** @type {{ stage_spec?: unknown }} */ (doc).stage_spec
-      if (!stageSpec) {
-        throw new StageTemplateValidationError(`Template missing stage_spec: ${item.path}`)
-      }
-
-      return {
-        id: item.id,
-        category: item.category,
-        status: item.status,
-        binding: item.binding ?? null,
-        stage_spec: stageSpec,
-        name: /** @type {{ name?: string }} */ (doc).name ?? item.id,
-      }
-    })
-    const launch = templates.filter((item) => item.status === 'launch')
-
-    return {
-      library: {
-        version: 'v1',
-        exported_at: exportedAt,
-        templates,
-      },
-      launch: {
-        version: 'v1',
-        exported_at: exportedAt,
-        templates: launch,
-      },
-      exported_templates: templates.length,
-      launch_templates: launch.length,
-    }
-  }
-
+export function buildStageTemplateDistPayload(baseDir, manifestInput, exportedAt) {
+  const manifest = parseStageTemplateAuthoringManifest(manifestInput)
   const templateDocs = manifest.templates.map((item) => {
     const templateFilePath = path.join(baseDir, item.path)
     const doc = readYamlFile(templateFilePath)
@@ -203,7 +237,7 @@ export function buildStageTemplateDistPayload(baseDir, manifest, exportedAt, opt
       throw new StageTemplateValidationError(`Template file must be an object: ${item.path}`)
     }
     try {
-      parseLegacyStageTemplateDocument(doc)
+      parseStageTemplateAuthoringDocument(doc)
     } catch (error) {
       throw new StageTemplateValidationError(
         `Template contract invalid: ${item.path}: ${error instanceof Error ? error.message : String(error)}`,
@@ -237,12 +271,11 @@ export function buildStageTemplateDistPayload(baseDir, manifest, exportedAt, opt
 /**
  * @param {{
  *   base_dir: string
+ *   dist_dir?: string
  *   open_count: number
  *   dry_run: boolean
  *   now_iso?: string
  *   inject_failure_step?: 'after_library_commit' | 'after_dist_commit' | 'after_manifest_commit'
- *   publicDirectorContractV1?: boolean
- *   scenePoolAssetOpsV1?: boolean
  * }} input
  * @returns {{
  *   open_count: number
@@ -254,7 +287,7 @@ export function buildStageTemplateDistPayload(baseDir, manifest, exportedAt, opt
  * }}
  */
 export function applySeasonRotationAtomic(input) {
-  const manifestPath = path.join(input.base_dir, 'library.manifest.yaml')
+  const manifestPath = path.join(input.base_dir, 'manifest.yaml')
   if (!fs.existsSync(manifestPath)) {
     throw new StageTemplateValidationError(`Manifest not found: ${manifestPath}`)
   }
@@ -286,11 +319,8 @@ export function applySeasonRotationAtomic(input) {
     activated,
   })
 
-  const distPayload = buildStageTemplateDistPayload(input.base_dir, rotatedManifest, nowIso, {
-    publicDirectorContractV1: input.publicDirectorContractV1,
-    scenePoolAssetOpsV1: input.scenePoolAssetOpsV1,
-  })
-  const distDir = path.join(input.base_dir, 'dist')
+  const distPayload = buildStageTemplateDistPayload(input.base_dir, rotatedManifest, nowIso)
+  const distDir = input.dist_dir ?? path.join(path.dirname(input.base_dir), 'dist')
   const libraryPath = path.join(distDir, 'library.json')
   const launchPath = path.join(distDir, 'launch.json')
 

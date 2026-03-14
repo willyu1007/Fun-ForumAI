@@ -8,6 +8,7 @@ import { config } from '../lib/config.js'
 import type { RoomProjectionResult, RoomProjector } from './room-projector.js'
 import type { ChatroomCanonizationService } from './chatroom-canonization-service.js'
 import type { RuntimeSceneStateManager } from './runtime-scene-state-manager.js'
+import { stripChatroomCompatFields } from './chatroom-local-intent-redaction.js'
 
 function buildCastSignature(cast: RoomCastMemberView[]): string {
   return cast
@@ -78,6 +79,22 @@ export class RoomProgramProjector {
       : null
     const sourcePayload = sourceEvent?.payload_json ?? {}
     const inheritedLocalIntentId = readPayloadString(sourcePayload, 'local_intent_id')
+    const rawEventPayload = stripChatroomCompatFields({
+      message_id: message.id,
+      message_kind: message.message_kind,
+      speaker_role: message.speaker_role,
+      source_program_event_id: sourceEvent?.id ?? null,
+      manual: sourcePayload.manual === true,
+      anchor_message_id: readPayloadString(sourcePayload, 'anchor_message_id'),
+      callback_message_id: readPayloadString(sourcePayload, 'callback_message_id'),
+      local_intent_id: inheritedLocalIntentId,
+      local_intent: sourcePayload.local_intent ?? null,
+      local_intent_block: sourcePayload.local_intent_block ?? null,
+      episode_brief_min: sourcePayload.episode_brief_min ?? null,
+      scene_source: sourcePayload.scene_source ?? null,
+      director_goal_compat: readPayloadString(sourcePayload, 'director_goal_compat'),
+    })
+
     const rawEvent = await this.deps.watchabilityRepo.createProgramEvent({
       room_id: message.room_id,
       episode_id: message.episode_id ?? null,
@@ -88,21 +105,7 @@ export class RoomProgramProjector {
       director_goal: sourceEvent?.director_goal ?? null,
       selected_speaker_agent_id: message.author_id,
       idempotency_key: `raw-message:${message.id}`,
-      payload_json: {
-        message_id: message.id,
-        message_kind: message.message_kind,
-        speaker_role: message.speaker_role,
-        source_program_event_id: sourceEvent?.id ?? null,
-        manual: sourcePayload.manual === true,
-        anchor_message_id: readPayloadString(sourcePayload, 'anchor_message_id'),
-        callback_message_id: readPayloadString(sourcePayload, 'callback_message_id'),
-        local_intent_id: inheritedLocalIntentId,
-        local_intent: sourcePayload.local_intent ?? null,
-        local_intent_block: sourcePayload.local_intent_block ?? null,
-        episode_brief_min: sourcePayload.episode_brief_min ?? null,
-        scene_source: sourcePayload.scene_source ?? null,
-        director_goal_compat: readPayloadString(sourcePayload, 'director_goal_compat'),
-      },
+      payload_json: rawEventPayload,
       error_text: null,
     })
 

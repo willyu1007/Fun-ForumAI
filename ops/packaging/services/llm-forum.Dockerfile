@@ -35,6 +35,8 @@ COPY src/shared ./src/shared
 COPY .ai/llm-config ./.ai/llm-config
 COPY env/secrets ./env/secrets
 COPY docs/project/policy.yaml ./docs/project/policy.yaml
+COPY docs/stage-templates/source ./docs/stage-templates/source
+COPY docs/stage-templates/dist ./docs/stage-templates/dist
 
 USER node
 EXPOSE 4000

@@ -5,11 +5,42 @@ export const ACTOR_SURFACES = ['forum_post', 'forum_comment', 'chat_room']
 export const PRIVATE_SURFACES = ['private_chat', 'proactive_dm']
 
 const WEEK_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
-const LEGACY_FORUM_ENTRY_SURFACES = ['forum', 'scheduled_post']
+const FORUM_ENTRY_SURFACES = ['forum', 'scheduled_post']
+const TEMPLATE_CATEGORIES = ['theme', 'show', 'world', 't4']
+const LIFECYCLE_STATUSES = [
+  'draft',
+  'hidden',
+  'canary',
+  'seasonal_active',
+  'core_active',
+  'retiring',
+  'archived',
+  'blocked',
+]
+const BINDING_TYPES = ['core', 'seasonal', 'campaign', 'event']
+const BINDING_STATUSES = ['draft', 'canary', 'active', 'retiring', 'paused', 'archived']
+const TRIGGER_CONDITIONS = [
+  'editorial_window',
+  'community_event',
+  'hot_topic_match',
+  'continuity_followup',
+  'manual_campaign',
+]
 
 export const directorSurfaceSchema = z.enum(DIRECTOR_SURFACES)
 export const actorSurfaceSchema = z.enum(ACTOR_SURFACES)
 export const privateSurfaceSchema = z.enum(PRIVATE_SURFACES)
+
+const templateCategorySchema = z.enum(TEMPLATE_CATEGORIES)
+const lifecycleStatusSchema = z.enum(LIFECYCLE_STATUSES)
+const bindingTypeSchema = z.enum(BINDING_TYPES)
+const bindingStatusSchema = z.enum(BINDING_STATUSES)
+const weekDaySchema = z.enum(WEEK_DAYS)
+const triggerConditionSchema = z.enum(TRIGGER_CONDITIONS)
+
+const stageSpecEnvelopeSchema = z.object({
+  version: z.literal('v1'),
+}).passthrough()
 
 export const stageTemplateDirectorSchema = z.object({
   applicable_surfaces: z.array(directorSurfaceSchema).min(1).default([...DIRECTOR_SURFACES]),
@@ -96,35 +127,105 @@ export const stageTemplateDirectorSchema = z.object({
   }),
 }).strict()
 
-const legacyStageSpecEnvelopeSchema = z.object({
-  version: z.literal('v1'),
-}).passthrough()
+const bindingLifecycleSchema = z.object({
+  start_at: z.string().min(1).optional(),
+  end_at: z.string().min(1).optional(),
+}).strict()
 
-const legacyTemplateDocumentSchema = z.object({
+const bindingWeightsSchema = z.object({
+  editorial_priority: z.number().min(0).max(100),
+  base_weight: z.number().min(0).max(100),
+  freshness_bonus: z.number().min(0).max(100),
+}).strict()
+
+const bindingActivationSchema = z.object({
+  time_windows: z.array(z.string().regex(/^\d{2}:\d{2}-\d{2}:\d{2}$/)),
+  allowed_days: z.array(weekDaySchema),
+  trigger_conditions: z.array(triggerConditionSchema),
+}).strict()
+
+const bindingGovernanceSchema = z.object({
+  canary_percent: z.number().int().min(1).max(100).optional(),
+  risk_override: z.enum(['none', 'review_required', 'strict_only', 'block']).optional(),
+}).strict()
+
+const bindingConstraintsSchema = z.object({
+  max_runs_per_day: z.number().int().min(1).max(128).optional(),
+  cooldown_hours: z.number().int().min(0).max(168).optional(),
+}).strict()
+
+const authoringBindingBaseSchema = z.object({
+  binding_type: bindingTypeSchema,
+  lifecycle: bindingLifecycleSchema,
+  weights: bindingWeightsSchema,
+  activation: bindingActivationSchema,
+  governance: bindingGovernanceSchema,
+  constraints: bindingConstraintsSchema,
+}).strict()
+
+export const stageTemplateAuthoringBindingSchema = z.discriminatedUnion('surface', [
+  z.object({
+    surface: z.literal('forum'),
+    community_id: z.string().min(1).optional(),
+    community_slug: z.string().min(1),
+    seasonal_slot: z.string().min(1).nullable().optional(),
+  }).merge(authoringBindingBaseSchema),
+  z.object({
+    surface: z.literal('chat_room'),
+    room_id: z.string().min(1),
+  }).merge(authoringBindingBaseSchema),
+])
+
+const rotationAuditSchema = z.object({
+  at: z.string().min(1),
+  open_count: z.number().int().min(1),
+  replaced: z.array(z.object({
+    slot: z.string().min(1),
+    template_id: z.string().min(1),
+  }).strict()),
+  activated: z.array(z.object({
+    slot: z.string().min(1),
+    template_id: z.string().min(1),
+  }).strict()),
+}).strict()
+
+export const stageTemplateAuthoringManifestItemSchema = z.object({
+  id: z.string().min(1),
+  category: templateCategorySchema,
+  path: z.string().min(1),
+  lifecycle_status: lifecycleStatusSchema,
+  bindings: z.array(stageTemplateAuthoringBindingSchema),
+}).strict()
+
+export const stageTemplateAuthoringManifestSchema = z.object({
+  version: z.literal('v2'),
+  generated_at: z.string().min(1).optional(),
+  launch: z.object({}).passthrough().optional(),
+  seasonal_slots: z.array(z.object({
+    slot: z.string().min(1),
+    community_slug: z.string().min(1),
+  }).strict()),
+  rotation_audit: z.array(rotationAuditSchema).optional(),
+  templates: z.array(stageTemplateAuthoringManifestItemSchema),
+}).strict()
+
+export const stageTemplateAuthoringDocumentSchema = z.object({
   template_id: z.string().min(1),
-  name: z.string().min(1).optional(),
-  category: z.enum(['theme', 'show', 'world', 't4']).optional(),
-  visibility: z.enum(['launch', 'hidden']).optional(),
-  stage_spec: legacyStageSpecEnvelopeSchema,
-  director: stageTemplateDirectorSchema.optional(),
-}).passthrough()
+  template_version: z.literal('v2'),
+  name: z.string().min(1),
+  category: templateCategorySchema,
+  notes: z.string().min(1).optional(),
+  stage_spec: stageSpecEnvelopeSchema,
+  director: stageTemplateDirectorSchema,
+}).strict()
 
 export const stageTemplateV2Schema = z.object({
   template_id: z.string().min(1),
-  template_version: z.string().min(1).default('legacy-v1'),
+  template_version: z.string().min(1),
   name: z.string().min(1),
-  category: z.enum(['theme', 'show', 'world', 't4']),
-  lifecycle_status: z.enum([
-    'draft',
-    'hidden',
-    'canary',
-    'seasonal_active',
-    'core_active',
-    'retiring',
-    'archived',
-    'blocked',
-  ]),
-  stage_spec: legacyStageSpecEnvelopeSchema,
+  category: templateCategorySchema,
+  lifecycle_status: lifecycleStatusSchema,
+  stage_spec: stageSpecEnvelopeSchema,
   director: stageTemplateDirectorSchema,
 }).strict()
 
@@ -145,46 +246,23 @@ export const sceneBindingV1Schema = z.object({
   binding_id: z.string().min(1),
   template_id: z.string().min(1),
   template_version: z.string().min(1),
-  binding_type: z.enum(['core', 'seasonal', 'campaign', 'event']),
-  status: z.enum(['draft', 'canary', 'active', 'retiring', 'paused', 'archived']),
+  binding_type: bindingTypeSchema,
+  status: bindingStatusSchema,
   entry_surfaces: z.array(z.enum(['forum', 'scheduled_post', 'chat_room'])).min(1),
   target: sceneBindingTargetSchema,
-  lifecycle: z.object({
-    start_at: z.string().min(1).optional(),
-    end_at: z.string().min(1).optional(),
-  }).strict().default({}),
-  weights: z.object({
-    editorial_priority: z.number().min(0).max(100).default(0),
-    base_weight: z.number().min(0).max(100).default(1),
-    freshness_bonus: z.number().min(0).max(100).default(0),
-  }).strict().default({
+  lifecycle: bindingLifecycleSchema.default({}),
+  weights: bindingWeightsSchema.default({
     editorial_priority: 0,
     base_weight: 1,
     freshness_bonus: 0,
   }),
-  activation: z.object({
-    time_windows: z.array(z.string().regex(/^\d{2}:\d{2}-\d{2}:\d{2}$/)).default([]),
-    allowed_days: z.array(z.enum(WEEK_DAYS)).default([...WEEK_DAYS]),
-    trigger_conditions: z.array(z.enum([
-      'editorial_window',
-      'community_event',
-      'hot_topic_match',
-      'continuity_followup',
-      'manual_campaign',
-    ])).default([]),
-  }).strict().default({
+  activation: bindingActivationSchema.default({
     time_windows: [],
     allowed_days: [...WEEK_DAYS],
     trigger_conditions: [],
   }),
-  governance: z.object({
-    canary_percent: z.number().int().min(1).max(100).optional(),
-    risk_override: z.enum(['none', 'review_required', 'strict_only', 'block']).optional(),
-  }).strict().default({}),
-  constraints: z.object({
-    max_runs_per_day: z.number().int().min(1).max(128).optional(),
-    cooldown_hours: z.number().int().min(0).max(168).optional(),
-  }).strict().default({}),
+  governance: bindingGovernanceSchema.default({}),
+  constraints: bindingConstraintsSchema.default({}),
 }).strict()
 
 export const episodeOverlayV1Schema = z.object({
@@ -285,7 +363,10 @@ export const runtimeSceneStateV1Schema = z.object({
     phase_entered_at: z.string().min(1),
   }).strict(),
   close_condition: z.object({
-    reason: z.enum(['ttl', 'message_threshold', 'objective_met', 'manual', 'risk_stop', 'fatigue_stop']).nullable(),
+    reason: z.preprocess(
+      (value) => value === 'message_threshold' ? 'threshold' : value,
+      z.enum(['ttl', 'threshold', 'objective_met', 'manual', 'risk_stop', 'fatigue_stop']).nullable(),
+    ),
     satisfied: z.boolean(),
     objective_refs: z.array(z.string().min(1)).default([]),
     ttl_at: z.string().min(1).nullable(),
@@ -305,6 +386,7 @@ export const runtimeSceneStateV1Schema = z.object({
   audit: z.object({
     selection_id: z.string().min(1).nullable(),
     episode_plan_id: z.string().min(1).nullable(),
+    source: z.enum(['binding', 'legacy_fallback']),
     latest_local_intent_id: z.string().min(1).nullable(),
     latest_program_event_id: z.string().min(1).nullable(),
     state_version: z.number().int().min(0),
@@ -420,111 +502,200 @@ export const proactiveDmOpeningContextSchema = z.object({
   opening_only: z.literal(true),
 }).strict()
 
-export function parseLegacyStageTemplateDocument(input) {
-  return legacyTemplateDocumentSchema.parse(input)
+export function parseStageTemplateAuthoringDocument(input) {
+  return stageTemplateAuthoringDocumentSchema.parse(input)
 }
 
-export function projectLegacyLifecycleStatus(item) {
-  if (item.status === 'launch') {
-    return item.binding?.binding_type === 'seasonal' ? 'seasonal_active' : 'core_active'
+export function parseStageTemplateAuthoringManifest(input) {
+  return stageTemplateAuthoringManifestSchema.parse(input)
+}
+
+function projectLifecycleStatusToBindingStatus(lifecycleStatus) {
+  switch (lifecycleStatus) {
+    case 'draft':
+      return 'draft'
+    case 'canary':
+      return 'canary'
+    case 'core_active':
+    case 'seasonal_active':
+      return 'active'
+    case 'retiring':
+      return 'retiring'
+    case 'archived':
+      return 'archived'
+    case 'hidden':
+    case 'blocked':
+    default:
+      return 'paused'
   }
-  return 'hidden'
 }
 
-function getLegacyDefaultDirectorSurfaces() {
-  return [...LEGACY_FORUM_ENTRY_SURFACES]
+function projectLifecycleStatusToCatalogStatus(lifecycleStatus) {
+  switch (lifecycleStatus) {
+    case 'core_active':
+    case 'seasonal_active':
+    case 'canary':
+    case 'retiring':
+      return 'launch'
+    default:
+      return 'hidden'
+  }
 }
 
-function buildStageTemplateDirector(item, directorInput) {
-  return stageTemplateDirectorSchema.parse({
-    ...directorInput,
-    applicable_surfaces: directorInput?.applicable_surfaces ?? getLegacyDefaultDirectorSurfaces(item),
-  })
+export function normalizeManifestBindings(item) {
+  return Array.isArray(item.bindings) ? item.bindings.filter(Boolean) : []
 }
 
-function resolveLegacyBindingEntrySurfaces(director) {
-  const applicableSurfaces = director?.applicable_surfaces ?? getLegacyDefaultDirectorSurfaces()
-  return LEGACY_FORUM_ENTRY_SURFACES.filter((surface) => applicableSurfaces.includes(surface))
+function resolveBindingEntrySurfaces(binding, director) {
+  if (binding.surface === 'chat_room') {
+    if (!director.applicable_surfaces.includes('chat_room')) {
+      throw new Error('Chat room binding requires director.applicable_surfaces to include chat_room')
+    }
+    return ['chat_room']
+  }
+
+  const entrySurfaces = FORUM_ENTRY_SURFACES.filter((surface) => director.applicable_surfaces.includes(surface))
+  if (entrySurfaces.length === 0) {
+    throw new Error('Forum binding requires director.applicable_surfaces to include forum or scheduled_post')
+  }
+  return entrySurfaces
 }
 
-function buildBindingId(item) {
-  if (!item.binding) return `${item.id}:unbound`
-  const slotSuffix = item.binding.slot ? `:${item.binding.slot}` : ''
-  return `${item.id}:forum:${item.binding.community_slug}:${item.binding.binding_type}${slotSuffix}`
+function buildBindingId(item, binding) {
+  if (binding.surface === 'chat_room') {
+    return `${item.id}:chat_room:${binding.room_id}:${binding.binding_type}`
+  }
+  const slotSuffix = binding.seasonal_slot ? `:${binding.seasonal_slot}` : ''
+  return `${item.id}:forum:${binding.community_slug}:${binding.binding_type}${slotSuffix}`
 }
 
-export function buildSceneBindingV1FromManifestItem(item, director = null) {
-  if (!item.binding) return null
+function buildSceneBindingV1FromManifestBinding(item, binding, director) {
+  if (binding.surface === 'chat_room') {
+    return sceneBindingV1Schema.parse({
+      binding_id: buildBindingId(item, binding),
+      template_id: item.id,
+      template_version: 'v2',
+      binding_type: binding.binding_type,
+      status: projectLifecycleStatusToBindingStatus(item.lifecycle_status),
+      entry_surfaces: resolveBindingEntrySurfaces(binding, director),
+      target: {
+        surface: 'chat_room',
+        room_id: binding.room_id,
+      },
+      lifecycle: binding.lifecycle,
+      weights: binding.weights,
+      activation: binding.activation,
+      governance: binding.governance,
+      constraints: binding.constraints,
+    })
+  }
+
   return sceneBindingV1Schema.parse({
-    binding_id: buildBindingId(item),
+    binding_id: buildBindingId(item, binding),
     template_id: item.id,
-    template_version: 'legacy-v1',
-    binding_type: item.binding.binding_type,
-    status: item.status === 'launch' ? 'active' : 'paused',
-    entry_surfaces: resolveLegacyBindingEntrySurfaces(director),
+    template_version: 'v2',
+    binding_type: binding.binding_type,
+    status: projectLifecycleStatusToBindingStatus(item.lifecycle_status),
+    entry_surfaces: resolveBindingEntrySurfaces(binding, director),
     target: {
       surface: 'forum',
-      community_slug: item.binding.community_slug,
-      seasonal_slot: item.binding.slot ?? null,
+      community_id: binding.community_id,
+      community_slug: binding.community_slug,
+      seasonal_slot: binding.seasonal_slot ?? null,
     },
-    lifecycle: {},
-    weights: {
-      editorial_priority: item.binding.binding_type === 'seasonal' ? 10 : 5,
-      base_weight: 1,
-      freshness_bonus: item.binding.binding_type === 'seasonal' ? 1 : 0,
-    },
-    activation: {
-      time_windows: [],
-      allowed_days: [...WEEK_DAYS],
-      trigger_conditions: [],
-    },
-    governance: {},
-    constraints: {},
+    lifecycle: binding.lifecycle,
+    weights: binding.weights,
+    activation: binding.activation,
+    governance: binding.governance,
+    constraints: binding.constraints,
   })
 }
 
-export function projectLegacyTemplateToStageTemplateV2(item, templateDoc) {
-  const doc = parseLegacyStageTemplateDocument(templateDoc)
-  const director = buildStageTemplateDirector(item, doc.director)
+export function buildSceneBindingV1ListFromManifestItem(item, director) {
+  return normalizeManifestBindings(item).map((binding) =>
+    buildSceneBindingV1FromManifestBinding(item, binding, director))
+}
+
+export function buildSceneBindingV1FromManifestItem(item, director) {
+  return buildSceneBindingV1ListFromManifestItem(item, director)[0] ?? null
+}
+
+export function buildStageTemplateV2FromAuthoring(itemInput, templateDocInput) {
+  const item = stageTemplateAuthoringManifestItemSchema.parse(itemInput)
+  const templateDoc = parseStageTemplateAuthoringDocument(templateDocInput)
+  if (templateDoc.template_id !== item.id) {
+    throw new Error(`Template document id mismatch: manifest=${item.id} doc=${templateDoc.template_id}`)
+  }
+  if (templateDoc.category !== item.category) {
+    throw new Error(`Template category mismatch: ${item.id}`)
+  }
+
   return stageTemplateV2Schema.parse({
-    template_id: item.id,
-    template_version: 'legacy-v1',
-    name: doc.name ?? item.id,
-    category: doc.category ?? item.category,
-    lifecycle_status: projectLegacyLifecycleStatus(item),
-    stage_spec: doc.stage_spec,
-    director,
+    template_id: templateDoc.template_id,
+    template_version: templateDoc.template_version,
+    name: templateDoc.name,
+    category: templateDoc.category,
+    lifecycle_status: item.lifecycle_status,
+    stage_spec: templateDoc.stage_spec,
+    director: templateDoc.director,
   })
 }
 
-export function buildScenePoolCatalogFromManifest(manifest, templateDocs, exportedAt) {
+function buildCatalogBindingPreview(binding) {
+  if (!binding) return null
+  if (binding.surface === 'chat_room') {
+    return {
+      surface: 'chat_room',
+      room_id: binding.room_id,
+      binding_type: binding.binding_type,
+    }
+  }
+  return {
+    surface: 'forum',
+    community_slug: binding.community_slug,
+    seasonal_slot: binding.seasonal_slot ?? null,
+    binding_type: binding.binding_type,
+  }
+}
+
+function pickPrimaryBinding(item) {
+  const bindings = normalizeManifestBindings(item)
+  return bindings.find((binding) => binding.surface === 'forum') ?? bindings[0] ?? null
+}
+
+export function buildScenePoolCatalogFromManifest(manifestInput, templateDocs, exportedAt) {
+  const manifest = parseStageTemplateAuthoringManifest(manifestInput)
   const templateDocsById = new Map(templateDocs.map((entry) => [entry.id, entry.doc]))
   const templates = []
   const stageTemplates = []
   const sceneBindings = []
 
-  for (const item of manifest.templates ?? []) {
+  for (const item of manifest.templates) {
     const doc = templateDocsById.get(item.id)
     if (!doc) {
       throw new Error(`Missing template document for manifest item: ${item.id}`)
     }
-    const stageTemplate = projectLegacyTemplateToStageTemplateV2(item, doc)
-    const sceneBinding = buildSceneBindingV1FromManifestItem(item, stageTemplate.director)
+
+    const stageTemplate = buildStageTemplateV2FromAuthoring(item, doc)
+    const sceneBindingList = buildSceneBindingV1ListFromManifestItem(item, stageTemplate.director)
+    const primaryBinding = pickPrimaryBinding(item)
+    const primarySceneBinding = sceneBindingList[0] ?? null
+
     templates.push({
       id: item.id,
-      category: item.category,
-      status: item.status,
-      binding: item.binding ?? null,
+      category: stageTemplate.category,
+      status: projectLifecycleStatusToCatalogStatus(stageTemplate.lifecycle_status),
+      binding: buildCatalogBindingPreview(primaryBinding),
       stage_spec: stageTemplate.stage_spec,
       name: stageTemplate.name,
       director: stageTemplate.director,
       lifecycle_status: stageTemplate.lifecycle_status,
       stage_template_v2: stageTemplate,
-      scene_binding_v1: sceneBinding,
+      scene_binding_v1: primarySceneBinding,
     })
     stageTemplates.push(stageTemplate)
-    if (sceneBinding) {
-      sceneBindings.push(sceneBinding)
+    if (sceneBindingList.length > 0) {
+      sceneBindings.push(...sceneBindingList)
     }
   }
 

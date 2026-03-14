@@ -5,9 +5,9 @@ import path from 'node:path'
 import { buildStageTemplateDistPayload, readYamlFile } from '../src/backend/stage/stage-template-ops.js'
 
 const root = process.cwd()
-const baseDir = path.join(root, 'docs/stage-templates/v1')
-const distDir = path.join(baseDir, 'dist')
-const manifestPath = path.join(baseDir, 'library.manifest.yaml')
+const baseDir = path.join(root, 'docs/stage-templates/source')
+const distDir = path.join(root, 'docs/stage-templates/dist')
+const manifestPath = path.join(baseDir, 'manifest.yaml')
 
 function writeJson(filePath, payload) {
   fs.writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')

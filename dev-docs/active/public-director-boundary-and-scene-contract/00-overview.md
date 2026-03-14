@@ -2,7 +2,7 @@
 
 ## Status
 - State: done
-- Next step: 将已落地的 contract/flag/boundary handoff 给 `T-095` / `T-096`，并在获批后归档本 task bundle。
+- Next step: 无 task-local 后续动作；本包随 `F-060` feature closeout 归档。
 
 ## Goal
 冻结公域导演层的边界与统一协议，明确：

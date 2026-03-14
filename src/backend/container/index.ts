@@ -7,6 +7,7 @@ import { createAllocator } from './allocator.js'
 import { createNurtureEngines } from './nurture.js'
 import { createRuntime } from './runtime.js'
 import { CommunityConfigScheduler } from '../runtime/community-config-scheduler.js'
+import { DirectorHistoryMaintenanceScheduler } from '../runtime/director-history-maintenance-scheduler.js'
 import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry-scheduler.js'
 import { getRuntimeBuildInfo } from '../lib/runtime-build-info.js'
 import { personaObservability } from '../runtime/persona-observability.js'
@@ -120,6 +121,14 @@ const roleAssignmentExpiryScheduler = new RoleAssignmentExpiryScheduler(
     batchLimit: config.runtime.roleAssignmentExpiryBatchLimit,
   },
 )
+
+const directorHistoryMaintenanceScheduler = config.db.usePrisma
+  ? new DirectorHistoryMaintenanceScheduler(
+      {
+        leaderElector: infra.leaderElectors.directorHistoryMaintenanceScheduler,
+      },
+    )
+  : null
 
 // ─── 5. Nurture Engines (Prisma-only heavy path) ────────────
 const nurture = await createNurtureEngines({
@@ -395,7 +404,7 @@ export const achievementsScheduler = nurture.achievementsScheduler
 export const cultureDigestScheduler = nurture.cultureDigestScheduler
 export const privateChannelServices = nurture.privateChannelServices
 export const privateChannelScheduler = nurture.privateChannelScheduler
-export { communityConfigScheduler, roleAssignmentExpiryScheduler }
+export { communityConfigScheduler, roleAssignmentExpiryScheduler, directorHistoryMaintenanceScheduler }
 export {
   guidanceBellService,
   guidanceCopyService,

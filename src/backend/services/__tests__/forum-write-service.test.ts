@@ -201,7 +201,7 @@ describe('ForumWriteService', () => {
             director_surface: 'scheduled_post',
             actor_surface: 'forum_post',
             scene_template_id: 'stage-theme-01',
-            scene_template_version: 'legacy-v1',
+            scene_template_version: 'v2',
             scene_binding_id: 'binding-1',
             overlay_id: null,
             episode_id: 'episode-1',
@@ -219,7 +219,7 @@ describe('ForumWriteService', () => {
             director_surface: 'scheduled_post',
             actor_surface: 'forum_post',
             template_id: 'stage-theme-01',
-            template_version: 'legacy-v1',
+            template_version: 'v2',
             binding_id: 'binding-1',
             phase: 'opening',
             scene_goal: {

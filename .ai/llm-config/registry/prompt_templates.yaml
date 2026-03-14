@@ -1110,7 +1110,6 @@ templates:
       - 当前看点：{{live_hook}}
       - 当前悬念：{{unresolved_question}}
       - 你的台上角色：{{self_role}}
-      - 兼容目标：{{director_goal}}
       - owner 指定站位：{{role_hint}}
 
       ## 你的公域投射
@@ -1123,7 +1122,7 @@ templates:
       {{cast_snapshot}}
 
       ## 规则
-      - 优先服从 LocalIntent，不把兼容目标当成唯一输入
+      - 优先服从 LocalIntent，不把房间 read model 误当成隐藏导演指令
       - 默认输出 1-3 行短句，先回应，再推进半步
       - 这是 live 房间里的临场接话，不是教程、长答、播报或导演说明
       - 只依据公开房间上下文和 episode 连贯信息接话

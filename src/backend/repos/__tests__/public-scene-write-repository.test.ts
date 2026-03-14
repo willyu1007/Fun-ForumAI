@@ -29,6 +29,10 @@ class FailingSceneMetadataRepository implements ForumSceneMetadataRepository {
     return null
   }
 
+  async listByCommunityIdSince(): Promise<[]> {
+    return []
+  }
+
   async deleteByTarget(): Promise<void> {}
 }
 
@@ -58,7 +62,7 @@ const baseSceneMetadata = {
   director_surface: 'scheduled_post',
   actor_surface: 'forum_post',
   scene_template_id: 'stage-theme-01',
-  scene_template_version: 'legacy-v1',
+  scene_template_version: 'v2',
   scene_binding_id: 'binding-1',
   overlay_id: null,
   beat_id: null,

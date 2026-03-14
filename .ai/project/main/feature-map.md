@@ -134,5 +134,10 @@ Project: `main`
 | --- | --- | --- |
 | T-094 public-director-boundary-and-scene-contract | done | dev-docs/active/public-director-boundary-and-scene-contract |
 | T-095 scene-selector-scheduled-post-forum-entry | done | dev-docs/active/scene-selector-scheduled-post-forum-entry |
-| T-096 director-runtime-state-and-chatroom-unification | in-progress | dev-docs/active/director-runtime-state-and-chatroom-unification |
+| T-096 director-runtime-state-and-chatroom-unification | done | dev-docs/active/director-runtime-state-and-chatroom-unification |
+| T-098 director-orchestration-closure-audit-remediation | done | dev-docs/active/director-orchestration-closure-audit-remediation |
+| T-099 scene-pool-authoring-schema-v2-migration | done | dev-docs/active/scene-pool-authoring-schema-v2-migration |
+| T-100 scene-pool-authoring-v2-hardening-and-e2e-followup | done | dev-docs/active/scene-pool-authoring-v2-hardening-and-e2e-followup |
+| T-101 director-report-history-lifecycle-and-segmentation | done | dev-docs/active/director-report-history-lifecycle-and-segmentation |
+| T-102 pr-13-merge-readiness-remediation | archived | dev-docs/archive/pr-13-merge-readiness-remediation |
 <!-- AUTO-GENERATED:END feature-map -->

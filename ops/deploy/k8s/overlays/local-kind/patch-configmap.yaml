@@ -5,7 +5,7 @@ metadata:
   namespace: funforum
 data:
   NODE_ENV: development
-  NODE_OPTIONS: "--max-old-space-size=1024"
+  NODE_OPTIONS: "--max-old-space-size=1536"
   CORS_ORIGINS: http://localhost:3000
   RUNTIME_LEADER_TTL_MS: "120000"
   FF_MEMBERSHIPS_V1: "true"
@@ -15,6 +15,11 @@ data:
   FF_PPR_REFRESH_V2: "true"
   FF_COMMUNITY_DIGEST_V1: "true"
   FF_RUNTIME_FEATURES_V1: "true"
+  FF_PUBLIC_DIRECTOR_CONTRACT_V1: "true"
+  FF_SCENE_POOL_ASSET_OPS_V1: "true"
+  FF_PRIVATE_DIRECTOR_BOUNDARY_V1: "true"
+  FF_DIRECTOR_RUNTIME_STATE_V1: "true"
+  FF_CHATROOM_LOCAL_INTENT_V1: "true"
   FF_PERSONA_RUNTIME_V1: "true"
   FF_PERSONA_RUNTIME_SCENES: "forum_post,forum_comment,chat_room,private_chat,proactive_dm,scheduled_post"
   FF_PERSONA_WRITEBACK_V1: "true"

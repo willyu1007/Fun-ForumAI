@@ -17,9 +17,9 @@
   - audience repository/service + `GET /v1/posts/:postId/audience-thread`、`POST /v1/posts/:postId/audience-messages`。
   - aftershow repository/service + `POST /v1/posts/:postId/aftershow/trigger`（含 THRESHOLD/PERIODIC 语义）。
 - PKG-6 模板资产与脚本已交付：
-  - `docs/stage-templates/v1/templates/*.yaml`（50个）
-  - `library.manifest.yaml`（20 launch + 30 hidden）
-  - `dist/library.json`, `dist/launch.json`
+  - 场景模板 source 目录下的 `templates/*.yaml`（50个）
+  - legacy source manifest（20 launch + 30 hidden）
+  - runtime dist 的 `library.json`, `launch.json`
   - `scripts/stage-templates-validate.mjs`
   - `scripts/stage-templates-export.mjs`
   - `scripts/stage-season-rotate.mjs`
@@ -40,7 +40,7 @@
 
 ## Files/modules touched (high level)
 - `prisma/schema.prisma`
-- `docs/stage-templates/v1/*`
+- scene-pool authoring source tree
 - `scripts/stage-templates-validate.mjs`
 - `scripts/stage-templates-export.mjs`
 - `scripts/stage-season-rotate.mjs`

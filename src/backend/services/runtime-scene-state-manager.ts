@@ -111,6 +111,37 @@ function nowIso(): string {
   return new Date().toISOString()
 }
 
+function buildInitialAftershowState(
+  mode: RuntimeSceneStateV1['aftershow']['mode'],
+): RuntimeSceneStateV1['aftershow'] {
+  return {
+    mode,
+    status: mode === 'off' ? 'not_applicable' : 'pending',
+    artifact_ref: null,
+  }
+}
+
+function syncAftershowState(
+  current: RuntimeSceneStateV1['aftershow'],
+  mode: RuntimeSceneStateV1['aftershow']['mode'],
+): RuntimeSceneStateV1['aftershow'] {
+  if (current.mode === mode) return current
+  if (mode === 'off') {
+    return {
+      mode,
+      status: 'not_applicable',
+      artifact_ref: current.artifact_ref,
+    }
+  }
+  return {
+    mode,
+    status: current.status === 'published' || current.status === 'skipped'
+      ? current.status
+      : 'pending',
+    artifact_ref: current.artifact_ref,
+  }
+}
+
 export class RuntimeSceneStateManager {
   constructor(
     private readonly deps: {
@@ -214,11 +245,7 @@ export class RuntimeSceneStateManager {
           message_threshold: resolved.template.director.closing_policy.message_threshold,
           evaluated_at: startedAtIso,
         },
-        aftershow: {
-          mode: 'off',
-          status: 'not_applicable',
-          artifact_ref: null,
-        },
+        aftershow: buildInitialAftershowState(resolved.template.director.closing_policy.aftershow_mode),
         cooldown_until: null,
         experiment: {
           bucket: assignExperimentBucket(input.episode.id),
@@ -227,6 +254,7 @@ export class RuntimeSceneStateManager {
         audit: {
           selection_id: null,
           episode_plan_id: null,
+          source: resolved.source,
           latest_local_intent_id: null,
           latest_program_event_id: null,
           state_version: 1,
@@ -390,7 +418,7 @@ export class RuntimeSceneStateManager {
       this.emitSignalEvent('DIRECTOR_PHASE_ADVANCED', current, updated.state_json, phaseAdvancePayload)
     }
 
-    if (signal.type === 'close_requested' || (signal.type === 'turn_executed' && updated.status === 'cooldown')) {
+    if (signal.type === 'close_requested' || (signal.type === 'turn_executed' && updated.status !== 'active')) {
       this.emitRuntimeEvent('DIRECTOR_EPISODE_CLOSED', {
         id: signal.room_id,
         community_id: current.community_id,
@@ -434,6 +462,7 @@ export class RuntimeSceneStateManager {
     next.scene_template_id = resolved.template.template_id
     next.scene_template_version = resolved.template.template_version
     next.scene_binding_id = resolved.binding?.binding_id ?? null
+    next.audit.source = resolved.source
     next.cast.active_agent_ids = sceneCasting.active_agent_ids
     next.cast.standby_agent_ids = sceneCasting.standby_agent_ids
     next.cast.suppressed_agent_ids = sceneCasting.suppressed_agent_ids
@@ -462,12 +491,17 @@ export class RuntimeSceneStateManager {
     next.close_condition.message_threshold = resolved.template.director.closing_policy.message_threshold
     next.close_condition.objective_refs = [resolved.template.director.scene_goal.viewer_goal]
     next.close_condition.ttl_at = nextExpiresAt
+    next.aftershow = syncAftershowState(
+      next.aftershow,
+      resolved.template.director.closing_policy.aftershow_mode,
+    )
     next.expires_at = nextExpiresAt
 
     const currentComparable = JSON.stringify({
       scene_template_id: current.scene_template_id,
       scene_template_version: current.scene_template_version,
       scene_binding_id: current.scene_binding_id,
+      source: current.audit.source ?? null,
       cast: current.cast,
       dynamics: current.dynamics,
       close_condition: current.close_condition,
@@ -477,6 +511,7 @@ export class RuntimeSceneStateManager {
       scene_template_id: next.scene_template_id,
       scene_template_version: next.scene_template_version,
       scene_binding_id: next.scene_binding_id,
+      source: next.audit.source,
       cast: next.cast,
       dynamics: next.dynamics,
       close_condition: next.close_condition,
@@ -502,7 +537,7 @@ export class RuntimeSceneStateManager {
       state.close_condition.message_threshold
       && state.dynamics.message_count >= state.close_condition.message_threshold
     ) {
-      this.closeState(state, 'message_threshold', now)
+      this.closeState(state, 'threshold', now)
       return
     }
     if (state.dynamics.fatigue_score >= 1 || state.dynamics.repetition_score >= 0.92) {
@@ -516,15 +551,21 @@ export class RuntimeSceneStateManager {
     now: Date,
   ): void {
     const nowIsoValue = now.toISOString()
+    const aftershowMode = state.aftershow.mode
     state.phase = 'closure'
-    state.status = 'cooldown'
+    state.status = aftershowMode === 'off' ? 'cooldown' : 'closed'
     state.close_condition.reason = reason
     state.close_condition.satisfied = true
     state.close_condition.evaluated_at = nowIsoValue
-    state.aftershow.mode = 'off'
-    state.aftershow.status = 'not_applicable'
+    state.aftershow.status = aftershowMode === 'off'
+      ? 'not_applicable'
+      : aftershowMode === 'manual'
+        ? 'pending'
+        : 'due'
     state.closed_at = nowIsoValue
-    state.cooldown_until = new Date(now.getTime() + DEFAULT_CHATROOM_COOLDOWN_MS).toISOString()
+    state.cooldown_until = aftershowMode === 'off'
+      ? new Date(now.getTime() + DEFAULT_CHATROOM_COOLDOWN_MS).toISOString()
+      : null
     state.dynamics.phase_entered_at = nowIsoValue
   }
 

@@ -47,6 +47,7 @@ export class PgRoomRepository implements RoomRepository {
   async create(input: CreateRoomInput): Promise<Room> {
     const row = await this.prisma.room.create({
       data: {
+        ...(input.id ? { id: input.id } : {}),
         name: input.name,
         slug: input.slug,
         description: input.description,

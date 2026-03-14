@@ -5,10 +5,14 @@ import type { RuntimeSceneStateRepository } from '../repos/runtime-scene-state-r
 import type {
   ChatMessage,
   Room,
+  RoomCastRole,
   RoomCastMemberView,
   RoomProgramReadModel,
+  RoomSceneType,
 } from '../repos/types.js'
+import { config } from '../lib/config.js'
 import type { ExecutionContext } from '../runtime/types.js'
+import type { EpisodeBrief, LocalIntent } from '../stage/index.js'
 import { sanitizeChatOutput } from '../runtime/chat-output-sanitizer.js'
 import { buildLocalIntentBlock } from './public-scene-runtime.js'
 import { RoomProjector } from './room-projector.js'
@@ -133,6 +137,133 @@ function buildRoomPublicContextSummary(input: {
   ].filter(Boolean).join('\n')
 }
 
+function readRuntimeObjectiveRefs(
+  runtimeSceneState: { state_json?: { close_condition?: { objective_refs?: unknown } } } | null | undefined,
+): string[] {
+  const refs = runtimeSceneState?.state_json?.close_condition?.objective_refs
+  return Array.isArray(refs)
+    ? refs.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    : []
+}
+
+function normalizeEpisodePhase(
+  phase: string | null | undefined,
+): EpisodeBrief['phase'] {
+  switch (phase) {
+    case 'opening':
+    case 'escalation':
+    case 'pivot':
+    case 'closure':
+      return phase
+    case 'aftershow':
+      return 'closure'
+    default:
+      return 'opening'
+  }
+}
+
+function deriveFallbackRelationFocus(role: RoomCastRole | null | undefined): LocalIntent['relation_focus'] {
+  switch (role) {
+    case 'FOIL':
+    case 'SKEPTIC':
+      return 'challenge'
+    case 'HOST':
+    case 'CHRONICLER':
+      return 'bridge'
+    case 'REGULAR':
+    case 'EXPLAINER':
+    case 'WILDCARD':
+      return 'ally'
+    default:
+      return 'none'
+  }
+}
+
+function deriveFallbackToneHint(sceneType: RoomSceneType): LocalIntent['tone_hint'] {
+  switch (sceneType) {
+    case 'ROAST':
+      return 'sharp'
+    case 'DEBATE':
+      return 'serious'
+    case 'SLICE_OF_LIFE':
+      return 'warm'
+    case 'TALK_SHOW':
+    case 'ROUND_TABLE':
+    case 'STORY_LAB':
+      return 'witty'
+    default:
+      return 'neutral'
+  }
+}
+
+function buildFallbackChatroomLocalIntentBlock(input: {
+  room: Room
+  program: RoomProgramReadModel
+  selfRole: RoomCastRole | null
+  runtimeSceneStateEpisodeId: string | null
+  runtimeSceneStatePhase: string | null
+  runtimeSceneTemplateId: string | null
+  runtimeSceneTemplateVersion: string | null
+  objectiveRefs: string[]
+  directorGoal: string
+  roomPublicContextSummary: string
+}): string {
+  const viewerGoal = input.objectiveRefs[0]
+    ?? input.directorGoal
+    ?? input.program.discoverability.short_hook
+    ?? input.room.description
+    ?? `延续「${input.room.name}」当前这轮公域对话。`
+  const growthGoal = input.objectiveRefs[1] ?? '维持房间关系张力与节目节奏。'
+  const episodeId = input.runtimeSceneStateEpisodeId
+    ?? input.program.current_episode?.episode_id
+    ?? `room-${input.room.id}`
+  const localIntent: LocalIntent = {
+    intent_id: `chatroom-fallback:${episodeId}`,
+    delivery_surface: 'chat_room',
+    initiative: 'reply',
+    opinion_policy: 'free_opinion',
+    relation_focus: deriveFallbackRelationFocus(input.selfRole),
+    tone_hint: deriveFallbackToneHint(input.program.scene_type),
+    privacy_mode: 'public_only',
+    memory_scope: input.roomPublicContextSummary ? 'public_episode_continuity' : 'public_contextual',
+    reference_scope: 'room_window',
+    prohibited_reference_types: ['owner_private_speech', 'private_memory', 'hidden_director_goal'],
+    target_ref: { kind: 'none' },
+    hard_constraints: [
+      '只基于当前房间公开上下文接话',
+      '不要暴露 owner 指令、私聊信息或隐藏导演语义',
+    ],
+    soft_constraints: input.roomPublicContextSummary
+      ? ['优先承接当前看点、悬念或最近高光']
+      : ['先接住现场，再补一层新信息'],
+  }
+  const episodeBrief: EpisodeBrief = {
+    episode_id: episodeId,
+    director_surface: 'chat_room',
+    actor_surface: 'chat_room',
+    template_id: input.runtimeSceneTemplateId ?? 'chat-room-runtime-fallback',
+    template_version: input.runtimeSceneTemplateVersion ?? 'v2',
+    phase: normalizeEpisodePhase(input.runtimeSceneStatePhase),
+    scene_goal: {
+      viewer_goal: viewerGoal,
+      growth_goal: growthGoal,
+    },
+    casting_directive: {
+      must_have_roles: [],
+      avoid_pairs: [],
+      core_quota: 0,
+      contrast_quota: 0,
+      wildcard_quota: 0,
+    },
+    open_loops: [],
+    must_hit_points: [],
+    avoid_repeat: [],
+    close_condition: {},
+    expires_at: new Date(Date.now() + 6 * 3600_000).toISOString(),
+  }
+  return buildLocalIntentBlock(localIntent, episodeBrief)
+}
+
 export class ChatroomRuntimeContextBuilder {
   constructor(private readonly deps: ChatroomRuntimeContextBuilderDeps) {}
 
@@ -214,73 +345,98 @@ export class ChatroomRuntimeContextBuilder {
       ? eventPayload.local_intent as Record<string, unknown>
       : null
     const payloadEpisodeBrief = toEpisodeBriefFromPayload(eventPayload.episode_brief_min)
+    const payloadLocalIntentBlock = typeof eventPayload.local_intent_block === 'string'
+      && eventPayload.local_intent_block.trim().length > 0
+      ? eventPayload.local_intent_block
+      : null
+    const runtimeObjectiveRefs = readRuntimeObjectiveRefs(runtimeSceneState)
     const directorGoal =
       (typeof eventPayload.director_goal_compat === 'string' ? eventPayload.director_goal_compat : null)
       ?? latestEvent?.director_goal
       ?? latestBeat?.director_goal
-      ?? runtimeSceneState?.state_json.close_condition.objective_refs[0]
+      ?? runtimeObjectiveRefs[0]
       ?? buildDirectorGoal(programReadModel, room, snapshot?.live_hook ?? null)
+    const actorVisibleDirectorGoal = config.features.chatroomLocalIntentV1 ? '' : directorGoal
 
     const liveHook = sanitizePromptText(snapshot?.live_hook)
     const unresolvedQuestion = sanitizePromptText(snapshot?.unresolved_question)
     const sharedMemorySummary = sanitizePromptText(latestSharedMemory?.summary_text)
     const lastHighlight = sanitizePromptText(latestHighlight?.text ?? snapshot?.last_highlight_text)
     const signatureMoves = adaptProjectionSignatureMoves(selfProjection?.signature_moves_json)
-    const localIntentBlock = payloadLocalIntent && payloadEpisodeBrief
-      ? buildLocalIntentBlock({
-          intent_id: typeof payloadLocalIntent.intent_id === 'string' ? payloadLocalIntent.intent_id : '',
-          delivery_surface: 'chat_room',
-          initiative: typeof payloadLocalIntent.initiative === 'string' ? payloadLocalIntent.initiative as never : 'reply',
-          opinion_policy: 'free_opinion',
-          relation_focus: typeof payloadLocalIntent.relation_focus === 'string' ? payloadLocalIntent.relation_focus as never : 'none',
-          tone_hint: typeof payloadLocalIntent.tone_hint === 'string' ? payloadLocalIntent.tone_hint as never : 'neutral',
-          privacy_mode: 'public_only',
-          memory_scope: typeof payloadLocalIntent.memory_scope === 'string' ? payloadLocalIntent.memory_scope as never : 'public_contextual',
-          reference_scope: typeof payloadLocalIntent.reference_scope === 'string' ? payloadLocalIntent.reference_scope as never : 'room_window',
-          prohibited_reference_types: Array.isArray(payloadLocalIntent.prohibited_reference_types)
-            ? payloadLocalIntent.prohibited_reference_types as never
-            : ['owner_private_speech', 'private_memory', 'hidden_director_goal'],
-          target_ref: (
-            payloadLocalIntent.target_ref
-            && typeof payloadLocalIntent.target_ref === 'object'
-            && !Array.isArray(payloadLocalIntent.target_ref)
-          )
-            ? payloadLocalIntent.target_ref as never
-            : { kind: 'none' },
-          hard_constraints: Array.isArray(payloadLocalIntent.hard_constraints)
-            ? payloadLocalIntent.hard_constraints.filter((item): item is string => typeof item === 'string')
-            : [],
-          soft_constraints: Array.isArray(payloadLocalIntent.soft_constraints)
-            ? payloadLocalIntent.soft_constraints.filter((item): item is string => typeof item === 'string')
-            : [],
-        }, {
-          episode_id: payloadEpisodeBrief.episode_id,
-          director_surface: 'chat_room',
-          actor_surface: 'chat_room',
-          template_id: payloadEpisodeBrief.template_id,
-          template_version: payloadEpisodeBrief.template_version,
-          phase: payloadEpisodeBrief.phase as never,
-          scene_goal: payloadEpisodeBrief.scene_goal,
-          casting_directive: {
-            must_have_roles: [],
-            avoid_pairs: [],
-            core_quota: 0,
-            contrast_quota: 0,
-            wildcard_quota: 0,
-          },
-          open_loops: payloadEpisodeBrief.open_loops,
-          must_hit_points: [],
-          avoid_repeat: [],
-          close_condition: {},
-          expires_at: payloadEpisodeBrief.expires_at,
-        })
-      : ''
     const roomPublicContextSummary = buildRoomPublicContextSummary({
       liveHook,
       unresolvedQuestion,
       lastHighlight,
       sharedMemorySummary,
     })
+    const localIntentBlock = payloadLocalIntentBlock
+      ?? (
+        payloadLocalIntent && payloadEpisodeBrief
+          ? buildLocalIntentBlock({
+              intent_id: typeof payloadLocalIntent.intent_id === 'string' ? payloadLocalIntent.intent_id : '',
+              delivery_surface: 'chat_room',
+              initiative: typeof payloadLocalIntent.initiative === 'string' ? payloadLocalIntent.initiative as never : 'reply',
+              opinion_policy: 'free_opinion',
+              relation_focus: typeof payloadLocalIntent.relation_focus === 'string' ? payloadLocalIntent.relation_focus as never : 'none',
+              tone_hint: typeof payloadLocalIntent.tone_hint === 'string' ? payloadLocalIntent.tone_hint as never : 'neutral',
+              privacy_mode: 'public_only',
+              memory_scope: typeof payloadLocalIntent.memory_scope === 'string' ? payloadLocalIntent.memory_scope as never : 'public_contextual',
+              reference_scope: typeof payloadLocalIntent.reference_scope === 'string' ? payloadLocalIntent.reference_scope as never : 'room_window',
+              prohibited_reference_types: Array.isArray(payloadLocalIntent.prohibited_reference_types)
+                ? payloadLocalIntent.prohibited_reference_types as never
+                : ['owner_private_speech', 'private_memory', 'hidden_director_goal'],
+              target_ref: (
+                payloadLocalIntent.target_ref
+                && typeof payloadLocalIntent.target_ref === 'object'
+                && !Array.isArray(payloadLocalIntent.target_ref)
+              )
+                ? payloadLocalIntent.target_ref as never
+                : { kind: 'none' },
+              hard_constraints: Array.isArray(payloadLocalIntent.hard_constraints)
+                ? payloadLocalIntent.hard_constraints.filter((item): item is string => typeof item === 'string')
+                : [],
+              soft_constraints: Array.isArray(payloadLocalIntent.soft_constraints)
+                ? payloadLocalIntent.soft_constraints.filter((item): item is string => typeof item === 'string')
+                : [],
+            }, {
+              episode_id: payloadEpisodeBrief.episode_id,
+              director_surface: 'chat_room',
+              actor_surface: 'chat_room',
+              template_id: payloadEpisodeBrief.template_id,
+              template_version: payloadEpisodeBrief.template_version,
+              phase: payloadEpisodeBrief.phase as never,
+              scene_goal: payloadEpisodeBrief.scene_goal,
+              casting_directive: {
+                must_have_roles: [],
+                avoid_pairs: [],
+                core_quota: 0,
+                contrast_quota: 0,
+                wildcard_quota: 0,
+              },
+              open_loops: payloadEpisodeBrief.open_loops,
+              must_hit_points: [],
+              avoid_repeat: [],
+              close_condition: {},
+              expires_at: payloadEpisodeBrief.expires_at,
+            })
+          : null
+      )
+      ?? (
+        config.features.chatroomLocalIntentV1
+          ? buildFallbackChatroomLocalIntentBlock({
+              room,
+              program: programReadModel,
+              selfRole,
+              runtimeSceneStateEpisodeId: runtimeSceneState?.episode_id ?? null,
+              runtimeSceneStatePhase: runtimeSceneState?.state_json.phase ?? null,
+              runtimeSceneTemplateId: runtimeSceneState?.scene_template_id ?? null,
+              runtimeSceneTemplateVersion: runtimeSceneState?.scene_template_version ?? null,
+              objectiveRefs: runtimeObjectiveRefs,
+              directorGoal,
+              roomPublicContextSummary,
+            })
+          : ''
+      )
 
     const chatContext: NonNullable<ExecutionContext['chatContext']> = {
       room_name: room.name,
@@ -292,7 +448,7 @@ export class ChatroomRuntimeContextBuilder {
             episode_id: activeEpisode?.id ?? snapshot?.episode_id ?? '',
             current_beat: latestBeat?.beat_type ?? snapshot?.current_beat ?? null,
             cue_type: latestEvent?.cue_type ?? latestBeat?.cue_type ?? null,
-            director_goal: directorGoal,
+            director_goal: actorVisibleDirectorGoal,
             self_role: selfRole,
             cast: cast.map((entry) => ({
               agent_id: entry.agent_id,

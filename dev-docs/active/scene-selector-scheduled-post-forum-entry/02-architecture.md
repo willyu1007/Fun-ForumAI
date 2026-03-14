@@ -165,14 +165,14 @@ interface SceneSelectionResult {
 
 | Candidate set | Authoring / source of truth | Runtime read contract | Notes |
 | --- | --- | --- | --- |
-| template candidates | `docs/stage-templates/v1/library.manifest.yaml` + `docs/stage-templates/v1/templates/*.yaml` | 由 `scripts/stage-templates-export.mjs` 生成的 dist/library view，或等价的缓存化 scene-pool catalog | selector 不应在热路径逐次解析原始 YAML |
+| template candidates | `docs/stage-templates/source/manifest.yaml` + `docs/stage-templates/source/templates/*.yaml` | 由 `scripts/stage-templates-export.mjs` 生成的 dist/library view，或等价的缓存化 scene-pool catalog | selector 不应在热路径逐次解析原始 YAML |
 | binding candidates | manifest 中的 `binding` / `seasonal_slots`，映射到 `scene_binding_v1` | materialized `scene_binding_v1[]` | 仅 `canary / active / retiring` 可进入候选；`draft / paused / archived` 在硬过滤前剔除 |
 | overlay candidates | editorial ops、hot topic policy/public event detector、autonomous overlay synthesis | `episode_overlay_v1[]` | `autonomous` 仅在 `selector_mode='autonomous_anchored'` 且 `T-094` policy 允许时可入池 |
 | continuity seeds | 已发布内容上的 `scene_metadata`、thread ancestry、event/agent run audit | thread-local continuity snapshot | 优先级必须是 `scene_metadata` > thread anchor ids > event payload / agent run replay |
 | eligible targets | agent writable community 集合 + forum community catalog | `eligible_targets[]` | `scheduled_post` 才需要 target search；`forum_comment_followup` 默认没有 target search |
 
 ### Candidate assembly rules
-- template catalog 的 authoring SoT 继续在 `docs/stage-templates/v1/**`，但 selector runtime 应消费导出后的 library/dist 视图，而不是直接耦合到 YAML 文件系统。
+- template catalog 的 authoring SoT 继续在 `docs/stage-templates/source/**`，但 selector runtime 应消费导出后的 library/dist 视图，而不是直接耦合到 YAML 文件系统。
 - `scene_binding_v1` 是 selector 的第一层 target authority。若 binding target 与 `eligible_targets` 不相交，必须在硬过滤阶段淘汰，而不是留给 LLM/parser“自由发挥”。
 - overlay 候选必须显式分为三类：
   - editorial/manual overlay
