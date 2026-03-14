@@ -303,10 +303,10 @@ describe('ComplaintAppealService', () => {
     const notifications = await notificationService.list('user-private', { limit: 20, cursor: undefined })
     expect(notifications.items.some((item) =>
       item.type === 'GOVERNANCE'
-      && item.title === '你的骚扰举报已进入审核')).toBe(true)
+      && item.title === '你的私聊治理已进入审核')).toBe(true)
     expect(notifications.items.some((item) =>
-      item.title === '你的骚扰举报已进入审核'
-      && item.body?.includes('私聊会话')
+      item.title === '你的私聊治理已进入审核'
+      && item.body?.includes('私聊治理入口')
       && item.body.includes('session-owned'))).toBe(true)
 
     await expect(service.createComplaint({

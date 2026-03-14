@@ -10,6 +10,7 @@ import type {
 import { ValidationError } from '../lib/errors.js'
 import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
 import type { NotificationService } from './notification-service.js'
+import { complaintAudienceLabel } from './governance-request-copy.js'
 
 export interface CaseDetail {
   case: ModerationCase
@@ -161,22 +162,14 @@ export class ReviewService {
     })
   }
 
-  private complaintNotificationTitle(complaintType: string | null | undefined, status: 'RESOLVED' | 'REJECTED' | 'LINKED'): string {
-    const base = complaintType === 'PRIVACY_REQUEST'
-      ? '你的隐私请求'
-      : complaintType === 'DELETION_REQUEST'
-        ? '你的删除请求'
-        : complaintType === 'IMPERSONATION_REPORT'
-          ? '你的冒充举报'
-          : complaintType === 'MISLABEL_REPORT'
-            ? '你的误标举报'
-            : complaintType === 'HARASSMENT_REPORT'
-              ? '你的骚扰举报'
-              : complaintType === 'OTHER'
-                ? '你的投诉'
-                : '你的举报'
-    if (status === 'LINKED') return `${base}已重新进入审核`
-    if (status === 'REJECTED') return `${base}已结案`
+  private complaintNotificationTitle(input: {
+    complaintType: string | null | undefined
+    reasonCode: string | null | undefined
+    status: 'RESOLVED' | 'REJECTED' | 'LINKED'
+  }): string {
+    const base = complaintAudienceLabel(input.complaintType, input.reasonCode)
+    if (input.status === 'LINKED') return `${base}已重新进入审核`
+    if (input.status === 'REJECTED') return `${base}已结案`
     return `${base}已处理`
   }
 
@@ -314,7 +307,11 @@ export class ReviewService {
       })
       await this.createGovernanceNotification({
         user_id: links.linked_complaint.reporter_user_id,
-        title: this.complaintNotificationTitle(links.linked_complaint.complaint_type, ticketStatus),
+        title: this.complaintNotificationTitle({
+          complaintType: links.linked_complaint.complaint_type,
+          reasonCode: links.linked_complaint.reason_code,
+          status: ticketStatus,
+        }),
         body: this.resolutionNotificationBody({
           caseId: input.moderationCase.id,
           resolutionAction: input.resolutionAction,
@@ -367,7 +364,11 @@ export class ReviewService {
       })
       await this.createGovernanceNotification({
         user_id: links.linked_complaint.reporter_user_id,
-        title: this.complaintNotificationTitle(links.linked_complaint.complaint_type, 'LINKED'),
+        title: this.complaintNotificationTitle({
+          complaintType: links.linked_complaint.complaint_type,
+          reasonCode: links.linked_complaint.reason_code,
+          status: 'LINKED',
+        }),
         body: this.reopenNotificationBody({
           caseId: input.moderationCase.id,
           openedReason: input.openedReason,
