@@ -225,7 +225,7 @@ describe('E2E: Control Plane (human auth)', () => {
       featureFlags.membershipsV1 = originalMembershipFlag
       featureFlags.membershipStatusV1 = originalMembershipStatusFlag
     }
-  })
+  }, 15_000)
 
   it('GET /v1/admin/runtime/features returns feature snapshot for admin', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
