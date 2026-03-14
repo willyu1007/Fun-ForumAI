@@ -358,11 +358,23 @@ function validateRuntimeFeatures(features, localBuildInfo) {
 
   const flags = features?.flags ?? {}
   const requiredScenes = ['forum_post', 'forum_comment', 'chat_room', 'private_chat', 'proactive_dm', 'scheduled_post']
+  const requiredDirectorFlags = [
+    'publicDirectorContractV1',
+    'scenePoolAssetOpsV1',
+    'privateDirectorBoundaryV1',
+    'directorRuntimeStateV1',
+    'chatroomLocalIntentV1',
+  ]
   if (flags.personaRuntimeV1 !== true) {
     throw new Error('Runtime features show personaRuntimeV1=false after local-kind reconciliation')
   }
   if (flags.personaWritebackV1 !== true) {
     throw new Error('Runtime features show personaWritebackV1=false after local-kind reconciliation')
+  }
+  for (const flagName of requiredDirectorFlags) {
+    if (flags[flagName] !== true) {
+      throw new Error(`Runtime features show ${flagName}=false after local-kind reconciliation`)
+    }
   }
   if (!Array.isArray(flags.personaRuntimeScenes)) {
     throw new Error('Runtime features are missing personaRuntimeScenes array')
