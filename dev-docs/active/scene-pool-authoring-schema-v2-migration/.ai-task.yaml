@@ -1,0 +1,12 @@
+version: 1
+task_id: T-099
+project: main
+slug: scene-pool-authoring-schema-v2-migration
+status: done
+updated: "2026-03-14"
+keywords:
+  - stage-template
+  - authoring-v2
+  - scene-pool
+  - runtime-catalog
+  - legacy-projector

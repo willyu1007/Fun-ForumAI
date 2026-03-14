@@ -23,7 +23,7 @@ Status: completed
 
 ## Phase 3 Asset And Ops Mapping
 Status: completed
-1. 把现有 `docs/stage-templates/v1/**`、manifest、rotation、validate、atomic publish/rollback 链路映射到新 scene-pool 合同。
+1. 把现有 `docs/stage-templates/source/**`、`manifest.yaml`、rotation、validate、atomic publish/rollback 链路映射到新 scene-pool 合同。
 2. 冻结 template 生命周期：`draft / hidden / canary / active / retiring / archived / blocked`。
 3. 标注哪些能力后续由实现侧直接升级，哪些只需兼容承接。
 

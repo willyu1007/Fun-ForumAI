@@ -101,6 +101,10 @@ Project: `main`
 | T-093 hot-topic-ops-dashboard-and-alerting | archived | F-050 | dev-docs/archive/hot-topic-ops-dashboard-and-alerting |
 | T-094 public-director-boundary-and-scene-contract | done | F-060 | dev-docs/active/public-director-boundary-and-scene-contract |
 | T-095 scene-selector-scheduled-post-forum-entry | done | F-060 | dev-docs/active/scene-selector-scheduled-post-forum-entry |
-| T-096 director-runtime-state-and-chatroom-unification | in-progress | F-060 | dev-docs/active/director-runtime-state-and-chatroom-unification |
+| T-096 director-runtime-state-and-chatroom-unification | done | F-060 | dev-docs/active/director-runtime-state-and-chatroom-unification |
 | T-097 mainland-launch-compliance-audit-followup | in-progress | F-050 | dev-docs/active/mainland-launch-compliance-audit-followup |
+| T-098 director-orchestration-closure-audit-remediation | done | F-060 | dev-docs/active/director-orchestration-closure-audit-remediation |
+| T-099 scene-pool-authoring-schema-v2-migration | done | F-060 | dev-docs/active/scene-pool-authoring-schema-v2-migration |
+| T-100 scene-pool-authoring-v2-hardening-and-e2e-followup | done | F-060 | dev-docs/active/scene-pool-authoring-v2-hardening-and-e2e-followup |
+| T-101 director-report-history-lifecycle-and-segmentation | done | F-060 | dev-docs/active/director-report-history-lifecycle-and-segmentation |
 <!-- AUTO-GENERATED:END task-index -->

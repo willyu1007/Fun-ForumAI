@@ -1,0 +1,100 @@
+# 04 Verification — T-098
+
+- 2026-03-14 baseline review:
+  - 已核对 `T-094 ~ T-096` task bundles、最近相关 commits、`/Users/yurui/Downloads/scene_pool_design.md` 与当前代码入口。
+  - 结论：当前相关单测与 `typecheck` 为绿，但实现仍存在跨包未闭环问题。
+- 2026-03-14 baseline regression:
+  - `pnpm vitest run src/backend/stage/__tests__/public-director-contract.test.ts src/backend/runtime/__tests__/prompt-orchestrator.test.ts src/backend/services/__tests__/private-channel-service.test.ts src/backend/services/__tests__/proactive-interaction-service.test.ts src/backend/runtime/__tests__/post-scheduler.test.ts src/backend/services/__tests__/forum-scene-continuity-service.test.ts src/backend/services/__tests__/forum-write-service.test.ts src/backend/services/__tests__/runtime-scene-state-manager.test.ts src/backend/services/__tests__/chatroom-control-service.test.ts src/backend/services/__tests__/chatroom-runtime-context-builder.test.ts src/backend/services/__tests__/room-program-engine.test.ts src/backend/services/__tests__/room-program-projector.test.ts src/backend/services/__tests__/conversation-clock.test.ts src/backend/repos/__tests__/runtime-scene-state-repository.test.ts src/backend/repos/__tests__/public-scene-write-repository.test.ts`
+  - passed；79 tests / 15 files。
+- 2026-03-14 baseline typecheck:
+  - `pnpm exec tsc -p tsconfig.json --noEmit`
+  - passed。
+- 2026-03-14 implementation regression:
+  - `pnpm vitest run src/backend/services/__tests__/public-scene-selector-service.test.ts src/backend/services/__tests__/forum-scene-continuity-service.test.ts src/backend/services/__tests__/forum-write-service.test.ts src/backend/services/__tests__/chatroom-scene-contract-resolver.test.ts src/backend/services/__tests__/runtime-scene-state-manager.test.ts src/backend/services/__tests__/room-program-engine.test.ts src/backend/services/__tests__/room-program-projector.test.ts src/backend/services/__tests__/conversation-clock.test.ts src/backend/services/__tests__/chatroom-runtime-context-builder.test.ts src/backend/services/__tests__/chatroom-local-intent-service.test.ts src/backend/llm/__tests__/prompt-engine.test.ts src/backend/stage/__tests__/public-director-contract.test.ts src/backend/stage/__tests__/stage-template-ops.test.ts src/backend/routes/__tests__/stage-template-scripts.test.ts src/backend/runtime/__tests__/post-scheduler.test.ts`
+  - passed；85 tests / 15 files。
+- 2026-03-14 asset export / validate:
+  - `FF_PUBLIC_DIRECTOR_CONTRACT_V1=true FF_SCENE_POOL_ASSET_OPS_V1=true node scripts/stage-templates-export.mjs`
+  - `FF_PUBLIC_DIRECTOR_CONTRACT_V1=true FF_SCENE_POOL_ASSET_OPS_V1=true node scripts/stage-templates-validate.mjs`
+  - passed；导出的 `docs/stage-templates/dist/launch.json` 包含 `chat_room=1`、`forum=20` 个 active binding，`stage-show-01:chat_room:scene-pool-room-ai-consciousness:core` 可见。
+- 2026-03-14 local DB drift repair:
+  - 本地真实 smoke 首次失败，原因不是代码回归，而是环境未跑现有 migration：`public.forum_scene_metadata`、`public.runtime_scene_states` 缺失。
+  - 通过 `pnpm db:migrate:deploy` 应用现有 migration 后恢复正常。
+- 2026-03-14 local runtime smoke:
+  - 启动 backend：
+    - `PORT=4100 NODE_ENV=development RUNTIME_ENABLED=false FF_PUBLIC_DIRECTOR_CONTRACT_V1=true FF_SCENE_POOL_ASSET_OPS_V1=true FF_PRIVATE_DIRECTOR_BOUNDARY_V1=true FF_DIRECTOR_RUNTIME_STATE_V1=true FF_CHATROOM_LOCAL_INTENT_V1=true DASHSCOPE_API_KEY=*** LLM_API_KEY=*** LLM_MODEL=qwen-flash pnpm start`
+  - `POST /v1/dev/seed`
+    - 成功，返回 `rooms=3`，包含 `scene-pool-room-ai-consciousness`。
+  - `PATCH /v1/rooms/scene-pool-room-ai-consciousness/program`
+    - 将 `scene_type` 设置为 `TALK_SHOW`。
+  - `POST /v1/rooms/scene-pool-room-ai-consciousness/program/cues`
+    - 使用 owner token 手动加入 `洛芙蕾丝` / `辩论大师` 后成功出 cue；
+    - `payload_json.scene_source = binding`
+    - `payload_json.episode_brief_min.template_id = stage-show-01`
+    - `local_intent_block` 与 actor-visible `soft_constraints` 不再暴露 `director_goal_compat`
+    - hidden payload 仍保留 `director_goal_compat` 供审计使用。
+  - direct DB check:
+    - `runtime_scene_states.scene_binding_id = stage-show-01:chat_room:scene-pool-room-ai-consciousness:core`
+    - `state_json.audit.source = binding`
+    - `state_json.close_condition.reason = threshold`
+    - `state_json.aftershow.mode = threshold`
+    - `state_json.aftershow.status = due`
+    - `status = closed`
+  - `POST /v1/dev/runtime/post`
+    - 成功写入 forum 根帖。
+  - direct DB check:
+    - 最新 `forum_scene_metadata` 为 `selectionMode=pool_strict`
+    - `directorSurface=scheduled_post`
+    - `actorSurface=forum_post`
+    - `sceneBindingId=stage-theme-02:forum:philosophy:core`
+    - `fallback_reason = null`
+    - `selection_audit.candidate_scores`、`hard_filter_reasons` 与 `planning_audit` 已落盘。
+- 2026-03-14 read-only telemetry / rubric evidence:
+  - `node scripts/director-closure-report.mjs`
+  - 输出目录：`.ai/.tmp/t098-director-closure/2026-03-14T020812-699Z/`
+  - 结果摘要：
+    - `forum.scene_hit_rate = 100.0%`
+    - `forum.selector_fallback_rate = 0.0%`
+    - `chatroom.binding_hit_rate = 33.3%`
+    - `chatroom.runtime_sources = [{ legacy_fallback: 8 }, { binding: 4 }]`
+  - 说明：
+    - chatroom 指标混入了修复前历史 episode，因此仍可见 `legacy_fallback/off/not_applicable` 老数据；
+    - 新生成 episode 已验证命中 `binding/threshold/due`，报告可作为修复前后对照；
+    - `review-sheet.md` 已生成 forum/chatroom 各 1 组 rubric sample，等待人工补分。
+- 2026-03-14 browser verification:
+  - 本地启动前端与 4000 backend：
+    - `PORT=4000 ... pnpm start`
+    - `pnpm dev:frontend`
+  - Chrome DevTools 观察结果：
+    - `/rooms` 可见 `导演编排试播间`，房间卡片展示 `脱口秀`、连续性、设定落点与最近活跃状态；
+    - `/rooms/scene-pool-room-ai-consciousness` 可见 `TALK_SHOW` 节目态、active cast、recent highlights 与 owner control 面板；
+    - Network 中可见 `GET /v1/events/stream?rooms=scene-pool-room-ai-consciousness [200]`、`GET /v1/rooms/scene-pool-room-ai-consciousness/control-state [200]`、`GET /v1/rooms/scene-pool-room-ai-consciousness/program [200]`，说明 SSE 与控制态查询正常。
+- 2026-03-14 local-kind staging rehearsal:
+  - `LLM_API_KEY=*** pnpm k8s:staging:local -- --k8s-context kind-funforum`
+  - passed。
+  - 结果：
+    - backend 镜像构建、kind load、overlay apply、DB migrate、secret 注入、backend rollout 均完成；
+    - runtime fingerprint verified：
+      - `code_fingerprint=sha256:c72514f81d152a6aa56754a094e9b7d633ec5849129bdf49f9ff51eac40509d4`
+      - `persona_runtime.scenes=["forum_post","forum_comment","chat_room","private_chat","proactive_dm","scheduled_post"]`
+- 2026-03-14 design coverage audit against `/Users/yurui/Downloads/scene_pool_design.md`:
+  - 已覆盖：
+    - 场景池主要服务 forum / chatroom 导演层，而不是私聊剧情化链路；
+    - 导演调度“行为与节奏”，角色只消费最小 `LocalIntent`；
+    - `scheduled_post` 成为真实 SceneSelector 入口，forum/comment followup 入口也已补齐；
+    - `scene_binding` 已支持 `forum` + `chat_room`，并带 lifecycle / activation / governance / weight；
+    - `runtime_scene_state` 已承担 continuity / phase / close / aftershow / cooldown；
+    - `aftershow_mode`、`message_threshold -> threshold` 命名收敛、scene hit / fallback / bucket / close reason 指标均已可读。
+  - 部分覆盖：
+    - private channel 边界：`FF_PRIVATE_DIRECTOR_BOUNDARY_V1` 打开时，私聊 / proactive DM 已不再向模板变量下发 `layer_showrunner`；但 T-098 未对私聊链路做额外 smoke，故仅记为边界已存在、非本包主验收面。
+    - experiment / rubric：已有 bucket 落盘、只读报告与 rubric sheet，但尚未形成运营后台级持续报表。
+  - 未覆盖且已显式记录：
+    - editorial overlay 资产与自动 / 自主 overlay 生产链未在本包落地；
+    - overlay 相关能力只停留在对象预留与 omission 记录，没有被误记为“已完成”。
+- 2026-03-14 assistant rubric pass:
+  - 已对 `.ai/.tmp/t098-director-closure/2026-03-14T020812-699Z/review-sheet.md` 完成 desk review 填分。
+  - 评分摘要：
+    - forum sample：`watchability=4`、`continuity_clarity=4`、`director_boundary_compliance=5`、`persona_distinctiveness=3`、`fallback_visibility=4`
+    - chatroom sample：`watchability=2`、`continuity_clarity=3`、`director_boundary_compliance=5`、`persona_distinctiveness=2`、`fallback_visibility=4`
+  - 结论：
+    - forum 链路质量已经达到“可上线灰度”的基线；
+    - chatroom 链路在导演合同和 runtime 闭环上已达标，但样本观感被测试占位消息拉低，后续应优先治理内容质量，而不是再补合同层。

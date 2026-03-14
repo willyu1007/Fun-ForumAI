@@ -20,7 +20,7 @@
   - 已对照 `/Users/yurui/Downloads/scene_pool_design.md` 第 10、13、14、16、附录 C/D 节，再次核对三类缺口是否都已纳入当前三包。
   - 结果：私域收口和 scene-pool asset/ops 已并入 `T-094`；指标/实验/人工 rubric 已并入 `T-096`；无需新增第四包。
 - 2026-03-13 contract-detail review:
-  - 已核对 `src/backend/stage/stage-spec.ts`、`src/backend/runtime/types.ts`、`src/backend/runtime/prompt-orchestrator.ts`、`src/backend/runtime/context-builder.ts`、`src/backend/runtime/post-scheduler.ts`、`src/backend/runtime/agent-executor.ts`、`src/backend/services/private-channel-service.ts`、`src/backend/services/proactive-interaction-service.ts`、`docs/stage-templates/v1/library.manifest.yaml`、`docs/stage-templates/v1/templates/stage-show-01.yaml`、`src/backend/stage/stage-template-ops.js`、`src/backend/lib/config.ts`。
+  - 已核对 `src/backend/stage/stage-spec.ts`、`src/backend/runtime/types.ts`、`src/backend/runtime/prompt-orchestrator.ts`、`src/backend/runtime/context-builder.ts`、`src/backend/runtime/post-scheduler.ts`、`src/backend/runtime/agent-executor.ts`、`src/backend/services/private-channel-service.ts`、`src/backend/services/proactive-interaction-service.ts`、`docs/stage-templates/source/manifest.yaml`、`docs/stage-templates/source/templates/stage-show-01.yaml`、`src/backend/stage/stage-template-ops.js`、`src/backend/lib/config.ts`。
   - 结论：repo 现状确实混用了 `PromptScene`、调用入口和真实写入 surface；私域链路仍保留 `layer_showrunner` 注入点；资产层当前只有 `launch/hidden` 两态投影。
 - 2026-03-13 schema-tightening review:
   - 已对照 `/Users/yurui/Downloads/scene_pool_design.md` 中 `7.7.2 scene_binding_v1`、`7.7.3 episode_overlay_v1`、`13.4 LocalIntent` 建议草案，重新核对当前合同是否仍有模糊词或过宽字段。

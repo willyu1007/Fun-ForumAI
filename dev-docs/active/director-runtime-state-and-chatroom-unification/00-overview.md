@@ -1,8 +1,8 @@
 # 00 Overview — director-runtime-state-and-chatroom-unification (T-096)
 
 ## Status
-- State: in-progress
-- Next step: 在 dev DB 正式应用 `runtime_scene_states` migration，并按 `FF_DIRECTOR_RUNTIME_STATE_V1 -> FF_CHATROOM_LOCAL_INTENT_V1` 顺序灰度验证 chatroom cutover。
+- State: done
+- Next step: 无 task-local 后续动作；本包由 `T-098` remediation 完成真实 smoke、browser 与 local-kind staging 验收后归档。
 
 ## Goal
 把现有聊天室节目系统提升为统一公域导演协议的一部分：
@@ -25,9 +25,9 @@
 - 需求文档同时要求对内容消费、养成体验和系统稳定性做成功判定与对照实验；这部分此前没有明确 owner。
 
 ## Acceptance criteria (high level)
-- [ ] `runtime_scene_state_v1` 的核心字段、写入点和读写职责被冻结。
-- [ ] scene-aware casting 如何复用现有 `core / contrast / wildcard` 并读取 scene recipe 被明确下来。
-- [ ] chatroom `program / beat / cue / highlight` 到统一 director contract 的 adaptor 关系被明确下来。
-- [ ] continuity / ending / fatigue / aftershow / cooldown 的 state-driven 设计被写清楚。
-- [ ] chatroom actor 输入切到 `LocalIntent + room public context summary`，不再把 `director_goal` 当成主 carrier。
-- [ ] 指标、实验和人工节目评审方案被写清楚，能支持后续判断“更可控且更好看”。
+- [x] `runtime_scene_state_v1` 的核心字段、写入点和读写职责被冻结。
+- [x] scene-aware casting 如何复用现有 `core / contrast / wildcard` 并读取 scene recipe 被明确下来。
+- [x] chatroom `program / beat / cue / highlight` 到统一 director contract 的 adaptor 关系被明确下来。
+- [x] continuity / ending / fatigue / aftershow / cooldown 的 state-driven 设计被写清楚。
+- [x] chatroom actor 输入切到 `LocalIntent + room public context summary`，不再把 `director_goal` 当成主 carrier。
+- [x] 指标、实验和人工节目评审方案被写清楚，能支持后续判断“更可控且更好看”。

@@ -11,10 +11,13 @@
   - `R-060 Public Director Boundary and Scene Contract`
   - `R-061 Scene Selector and Scheduled Post Forum Entry`
   - `R-062 Director Runtime State and Chatroom Unification`
+  - `R-063 Scene Pool Authoring Schema Migration and Legacy Projector Removal`
 - Task packages
   - `T-094 public-director-boundary-and-scene-contract`
   - `T-095 scene-selector-scheduled-post-forum-entry`
   - `T-096 director-runtime-state-and-chatroom-unification`
+  - `T-098 director-orchestration-closure-audit-remediation`
+  - `T-099 scene-pool-authoring-schema-v2-migration`
 
 ## Frozen decisions
 - 导演层只服务 `forum` / `chat_room` / `scheduled_post`。
@@ -34,7 +37,7 @@
 - `scene_metadata`
 - public/private boundary matrix
 - `private_chat` / `proactive_dm` 收口执行矩阵
-- `docs/stage-templates/v1/**`、轮换脚本与原子发布链路的升级规划
+- `docs/stage-templates/source/**`、轮换脚本与原子发布链路的升级规划
 - feature flag 与灰度矩阵
 - 旧对象到新对象的映射与迁移/回退方案
 
@@ -45,6 +48,10 @@
    - 在 `scheduled_post + forum` 上试点 `SceneSelector -> EpisodeBrief -> LocalIntent -> scene_metadata`。
 3. `T-096`
    - 接 runtime scene state、scene-aware casting、chatroom adaptor、success metrics 与实验矩阵。
+4. `T-098`
+   - 修复 `T-094 ~ T-096` 的闭环缺口，补齐 selector、chatroom binding、runtime authority 与可执行验证。
+5. `T-099`
+   - 把 scene pool 资产层从 legacy authoring 兼容结构迁到单一 source schema，并删除 legacy projector。
 
 ## Cross-package dependency matrix
 - `T-095` 依赖 `T-094` 输出：
@@ -62,8 +69,13 @@
 - `T-096` 同时依赖 `T-095` 输出：
   - public-side `scene_metadata` 与 audit 串联形状
   - `EpisodeBrief -> LocalIntent` 的降维前提
+- `T-099` 依赖 `T-098` 输出：
+  - runtime catalog `v2` wire shape 已稳定
+  - forum/chatroom binding 基线已存在
+  - runtime authority 与 prompt boundary 已可作为迁移回归基线
 - 反向约束
   - `T-095`、`T-096` 不得反向改写 `T-094` 已冻结的边界。
+  - `T-099` 不得重新设计 runtime contract，只能迁移 source/toolchain 并删除 legacy 兼容层。
   - 若后续出现新需求，只能在 `overlay / rollout / adaptor` 层扩张，不能把 private/director 重新揉在一起。
 
 ## Deliverables
@@ -74,6 +86,7 @@
 - `private_chat` / `proactive_dm` 负向约束清单与执行收口矩阵
 - `F-060` 三包职责/依赖/非目标总览
 - implementation handoff 顺序：`T-095` -> `T-096`
+ - implementation hardening 顺序：`T-098` -> `T-099`
 
 ## Out of scope
 - 产品代码实现

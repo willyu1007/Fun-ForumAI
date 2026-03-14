@@ -7,7 +7,7 @@ Status: completed
 3. 锁定 `core / contrast / wildcard` 继续保留，但由 scene recipe 驱动。
 
 ## Phase 1 Runtime State Contract
-Status: in-progress
+Status: completed
 1. 冻结 `runtime_scene_state_v1` 字段。
 2. 冻结 `open_loops / resolved_loops / fatigue_score / repetition_score / close_condition` 的职责。
 3. 明确 runtime state 与 content metadata / agent runs 的关联关系。
@@ -15,14 +15,14 @@ Status: in-progress
 5. 冻结 dedicated state table 方案，拒绝 room-local authority sidecar。
 
 ## Phase 2 Scene-aware Casting
-Status: in-progress
+Status: completed
 1. 定义不同 scene template 下的 casting recipe。
 2. 明确 `core / contrast / wildcard` 与 scene recipe 的映射。
 3. 明确与现有 `CastingDirectorPolicy`、thread guards、spotlight control 的兼容方式。
 4. 区分“episode 级 roster shaping”和“turn 级 speaker scoring”。
 
 ## Phase 3 Chatroom Adaptor
-Status: in-progress
+Status: completed
 1. 明确 `RoomProgram`、`RoomEpisodeBeat`、`RoomProgramEvent`、`RoomHighlight` 的统一语义映射。
 2. 明确 `ConversationClock / RoomProgramEngine / RoomProjector / RoomProgramProjector` 与共享 contract 的边界。
 3. 明确 chatroom 如何消费 `LocalIntent`。
@@ -30,13 +30,13 @@ Status: in-progress
 5. 冻结 staged cutover，拒绝长期双轨。
 
 ## Phase 4 Continuity / Ending / Fatigue
-Status: in-progress
+Status: completed
 1. 明确 state-driven phase progression。
 2. 明确 ending / aftershow / cooldown 的触发条件与 state updates。
 3. 明确 continuity seed 与 open/resolved loop 的读写边界。
 
 ## Phase 5 Observability And Experiments
-Status: in-progress
+Status: completed
 1. 定义内容消费指标、agent 养成指标、系统质量指标。
 2. 定义 A/B/C 对照实验：
    - 纯自由发挥
@@ -46,7 +46,7 @@ Status: in-progress
 4. 冻结 experiment bucket 的 episode-level carrier 与事件采集点。
 
 ## Phase 6 Verification
-Status: planned
+Status: completed
 1. runtime state contract 测试计划。
 2. scene-aware casting contract 测试计划。
 3. chatroom adaptor consistency 测试计划。

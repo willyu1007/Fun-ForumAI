@@ -2,7 +2,7 @@
 
 ## Boundaries
 - Backend service/repo/router 层修复，不改前端数据协议核心结构。
-- Stage template 资产继续存放于仓库 `docs/stage-templates/v1/`。
+- Stage template 资产继续存放于仓库的场景模板 source 目录中。
 - 生产运维策略由 API guard + 脚本流程共同约束。
 
 ## Key Interface Changes
