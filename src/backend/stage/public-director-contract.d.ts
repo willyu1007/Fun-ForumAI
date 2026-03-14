@@ -1,6 +1,5 @@
 import type { ZodType } from 'zod'
 import type { StageSpecV1 } from './stage-spec.js'
-import type { StageTemplateManifest, StageTemplateManifestItem } from './stage-template-ops.js'
 
 export type DirectorSurface = 'forum' | 'chat_room' | 'scheduled_post'
 export type ActorSurface = 'forum_post' | 'forum_comment' | 'chat_room'
@@ -51,6 +50,99 @@ export interface StageTemplateDirector {
     allow_autonomous_mutation: boolean
     require_pool_match_before_create: boolean
   }
+}
+
+export type StageTemplateAuthoringBinding =
+  | {
+      surface: 'forum'
+      community_id?: string
+      community_slug: string
+      seasonal_slot?: string | null
+      binding_type: 'core' | 'seasonal' | 'campaign' | 'event'
+      lifecycle: {
+        start_at?: string
+        end_at?: string
+      }
+      weights: {
+        editorial_priority: number
+        base_weight: number
+        freshness_bonus: number
+      }
+      activation: {
+        time_windows: string[]
+        allowed_days: Array<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'>
+        trigger_conditions: Array<'editorial_window' | 'community_event' | 'hot_topic_match' | 'continuity_followup' | 'manual_campaign'>
+      }
+      governance: {
+        canary_percent?: number
+        risk_override?: 'none' | 'review_required' | 'strict_only' | 'block'
+      }
+      constraints: {
+        max_runs_per_day?: number
+        cooldown_hours?: number
+      }
+    }
+  | {
+      surface: 'chat_room'
+      room_id: string
+      binding_type: 'core' | 'seasonal' | 'campaign' | 'event'
+      lifecycle: {
+        start_at?: string
+        end_at?: string
+      }
+      weights: {
+        editorial_priority: number
+        base_weight: number
+        freshness_bonus: number
+      }
+      activation: {
+        time_windows: string[]
+        allowed_days: Array<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'>
+        trigger_conditions: Array<'editorial_window' | 'community_event' | 'hot_topic_match' | 'continuity_followup' | 'manual_campaign'>
+      }
+      governance: {
+        canary_percent?: number
+        risk_override?: 'none' | 'review_required' | 'strict_only' | 'block'
+      }
+      constraints: {
+        max_runs_per_day?: number
+        cooldown_hours?: number
+      }
+    }
+
+export interface StageTemplateAuthoringManifestItem {
+  id: string
+  category: 'theme' | 'show' | 'world' | 't4'
+  path: string
+  lifecycle_status: 'draft' | 'hidden' | 'canary' | 'seasonal_active' | 'core_active' | 'retiring' | 'archived' | 'blocked'
+  bindings: StageTemplateAuthoringBinding[]
+}
+
+export interface StageTemplateAuthoringManifest {
+  version: 'v2'
+  generated_at?: string
+  launch?: Record<string, unknown>
+  templates: StageTemplateAuthoringManifestItem[]
+  seasonal_slots: Array<{
+    slot: string
+    community_slug: string
+  }>
+  rotation_audit?: Array<{
+    at: string
+    open_count: number
+    replaced: Array<{ slot: string; template_id: string }>
+    activated: Array<{ slot: string; template_id: string }>
+  }>
+}
+
+export interface StageTemplateAuthoringDocument {
+  template_id: string
+  template_version: 'v2'
+  name: string
+  category: 'theme' | 'show' | 'world' | 't4'
+  notes?: string
+  stage_spec: StageSpecV1 | (Record<string, unknown> & { version: 'v1' })
+  director: StageTemplateDirector
 }
 
 export interface StageTemplateV2 {
@@ -193,7 +285,7 @@ export interface RuntimeSceneStateV1 {
     phase_entered_at: string
   }
   close_condition: {
-    reason: 'ttl' | 'message_threshold' | 'objective_met' | 'manual' | 'risk_stop' | 'fatigue_stop' | null
+    reason: 'ttl' | 'threshold' | 'objective_met' | 'manual' | 'risk_stop' | 'fatigue_stop' | null
     satisfied: boolean
     objective_refs: string[]
     ttl_at: string | null
@@ -213,6 +305,7 @@ export interface RuntimeSceneStateV1 {
   audit: {
     selection_id: string | null
     episode_plan_id: string | null
+    source: 'binding' | 'legacy_fallback'
     latest_local_intent_id: string | null
     latest_program_event_id: string | null
     state_version: number
@@ -319,7 +412,16 @@ export interface ScenePoolCatalogEntry {
   id: string
   category: string
   status: 'launch' | 'hidden'
-  binding: StageTemplateManifestItem['binding']
+  binding: {
+    surface: 'forum'
+    community_slug: string
+    seasonal_slot?: string | null
+    binding_type: 'core' | 'seasonal' | 'campaign' | 'event'
+  } | {
+    surface: 'chat_room'
+    room_id: string
+    binding_type: 'core' | 'seasonal' | 'campaign' | 'event'
+  } | null
   stage_spec: Record<string, unknown> & { version: 'v1' }
   name: string
   director: StageTemplateDirector
@@ -350,6 +452,10 @@ export const directorSurfaceSchema: ZodType<DirectorSurface>
 export const actorSurfaceSchema: ZodType<ActorSurface>
 export const privateSurfaceSchema: ZodType<PrivateSurface>
 export const stageTemplateDirectorSchema: ZodType<StageTemplateDirector>
+export const stageTemplateAuthoringBindingSchema: ZodType<StageTemplateAuthoringBinding>
+export const stageTemplateAuthoringManifestItemSchema: ZodType<StageTemplateAuthoringManifestItem>
+export const stageTemplateAuthoringManifestSchema: ZodType<StageTemplateAuthoringManifest>
+export const stageTemplateAuthoringDocumentSchema: ZodType<StageTemplateAuthoringDocument>
 export const stageTemplateV2Schema: ZodType<StageTemplateV2>
 export const sceneBindingV1Schema: ZodType<SceneBindingV1>
 export const episodeOverlayV1Schema: ZodType<EpisodeOverlayV1>
@@ -360,31 +466,23 @@ export const sceneMetadataSchema: ZodType<SceneMetadata>
 export const privateChatContextSchema: ZodType<PrivateChatContext>
 export const proactiveDmOpeningContextSchema: ZodType<ProactiveDmOpeningContext>
 
-export function parseLegacyStageTemplateDocument(input: unknown): {
-  template_id: string
-  name?: string
-  category?: 'theme' | 'show' | 'world' | 't4'
-  visibility?: 'launch' | 'hidden'
-  stage_spec: Record<string, unknown> & { version: 'v1' }
-  director?: StageTemplateDirector
-}
-
-export function projectLegacyLifecycleStatus(
-  item: Pick<StageTemplateManifestItem, 'status' | 'binding'>,
-): StageTemplateV2['lifecycle_status']
-
+export function parseStageTemplateAuthoringDocument(input: unknown): StageTemplateAuthoringDocument
+export function parseStageTemplateAuthoringManifest(input: unknown): StageTemplateAuthoringManifest
+export function normalizeManifestBindings(item: StageTemplateAuthoringManifestItem): StageTemplateAuthoringBinding[]
+export function buildSceneBindingV1ListFromManifestItem(
+  item: StageTemplateAuthoringManifestItem,
+  director: StageTemplateDirector,
+): SceneBindingV1[]
 export function buildSceneBindingV1FromManifestItem(
-  item: StageTemplateManifestItem,
-  director?: StageTemplateDirector | null,
+  item: StageTemplateAuthoringManifestItem,
+  director: StageTemplateDirector,
 ): SceneBindingV1 | null
-
-export function projectLegacyTemplateToStageTemplateV2(
-  item: StageTemplateManifestItem,
+export function buildStageTemplateV2FromAuthoring(
+  item: StageTemplateAuthoringManifestItem,
   templateDoc: unknown,
 ): StageTemplateV2
-
 export function buildScenePoolCatalogFromManifest(
-  manifest: StageTemplateManifest,
+  manifest: StageTemplateAuthoringManifest,
   templateDocs: Array<{ id: string; doc: unknown }>,
   exportedAt: string,
 ): ScenePoolCatalog

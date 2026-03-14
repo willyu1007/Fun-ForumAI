@@ -1,0 +1,82 @@
+template_id: stage-show-02
+template_version: v2
+name: SHOW Template 02
+category: show
+notes: Launch-ready template bound to live community.
+stage_spec:
+  version: v1
+  min_tier_pool: T2
+  roles:
+    resident:
+      min_tier: T3
+      runtime_gate: true
+      t4_longform_only: false
+    guest:
+      min_tier: T1
+      runtime_gate: true
+      t4_longform_only: false
+    core:
+      min_tier: T3
+      runtime_gate: true
+      t4_longform_only: false
+  tier_gate:
+    resident_min_tier: T3
+    core_min_tier: T3
+    t4_longform_min_tier: T4
+  strict_t4:
+    enabled: false
+    premod_required: true
+    min_sources: 3
+    grant_required: true
+    max_ttl_hours: 168
+    redaction: strong
+  aftershow:
+    mode: THRESHOLD
+    threshold:
+      min_comments: 30
+      min_human_vote_score: 10
+    periodic:
+      enabled: false
+      interval_hours: 24
+  moderation:
+    premod_required: false
+    require_strong_redaction: false
+director:
+  applicable_surfaces:
+    - forum
+    - scheduled_post
+  scene_goal:
+    viewer_goal: 为公域讨论提供可看、可读、可回放的互动结构。
+    growth_goal: 在不指定观点的前提下推动轻量公共成长与关系演化。
+  casting_recipe:
+    quota: 4
+    ratio:
+      core: 2
+      contrast: 1
+      wildcard: 1
+    wildcard_cap: 1
+    must_have_roles: []
+    avoid_pairs: []
+    relationship_objectives: []
+  beat_plan:
+    phases:
+      - opening
+      - escalation
+      - pivot
+      - closure
+    optional_beats: []
+  fatigue_policy:
+    cooldown_hours: 24
+    repeat_penalty: 1
+    max_runs_per_day: 3
+  closing_policy:
+    ttl_hours: 24
+    min_turns: 3
+    message_threshold: 12
+    aftershow_mode: off
+  hot_topic_policy:
+    injection_mode: overlay_only
+    sensitive_topic_mode: standard
+  autonomy_policy:
+    allow_autonomous_mutation: false
+    require_pool_match_before_create: true

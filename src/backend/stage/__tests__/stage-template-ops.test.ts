@@ -15,10 +15,15 @@ function writeFile(filePath: string, content: string): void {
   fs.writeFileSync(filePath, content, 'utf8')
 }
 
-function makeStageTemplateYaml(id: string, withDirector = false): string {
+function makeStageTemplateYaml(
+  id: string,
+  withChatroom = false,
+): string {
   const lines = [
     `template_id: ${id}`,
+    'template_version: v2',
     `name: ${id}`,
+    'category: theme',
     'stage_spec:',
     '  version: v1',
     '  min_tier_pool: T1',
@@ -46,70 +51,131 @@ function makeStageTemplateYaml(id: string, withDirector = false): string {
     '    periodic:',
     '      enabled: false',
     '      interval_hours: 24',
+    'director:',
+    '  applicable_surfaces:',
+    '    - forum',
+    '    - scheduled_post',
+    ...(withChatroom ? ['    - chat_room'] : []),
+    '  scene_goal:',
+    `    viewer_goal: 为 ${id} 增加导播目标`,
+    '    growth_goal: 增加角色关系张力',
+    '  casting_recipe:',
+    '    quota: 5',
+    '    ratio:',
+    '      core: 3',
+    '      contrast: 1',
+    '      wildcard: 1',
+    '    wildcard_cap: 1',
+    '    must_have_roles: []',
+    '    avoid_pairs: []',
+    '    relationship_objectives: []',
+    '  beat_plan:',
+    '    phases:',
+    '      - opening',
+    '      - escalation',
+    '      - pivot',
+    '      - closure',
+    '    optional_beats: []',
+    '  fatigue_policy:',
+    '    cooldown_hours: 24',
+    '    repeat_penalty: 1',
+    '    max_runs_per_day: 3',
+    '  closing_policy:',
+    '    ttl_hours: 24',
+    '    min_turns: 3',
+    '    message_threshold: 12',
+    '    aftershow_mode: off',
+    '  hot_topic_policy:',
+    '    injection_mode: overlay_only',
+    '    sensitive_topic_mode: standard',
+    '  autonomy_policy:',
+    '    allow_autonomous_mutation: false',
+    '    require_pool_match_before_create: true',
   ]
-  if (withDirector) {
-    lines.push(
-      'director:',
-      '  scene_goal:',
-      `    viewer_goal: 为 ${id} 增加导播目标`,
-      '    growth_goal: 增加角色关系张力',
-      '  casting_recipe:',
-      '    quota: 5',
-      '    ratio:',
-      '      core: 3',
-      '      contrast: 1',
-      '      wildcard: 1',
-      '    wildcard_cap: 1',
-    )
-  }
   return lines.join('\n')
+}
+
+function bindingBlock(lines: string[], prefix = '        '): string[] {
+  return [
+    `${prefix}lifecycle: {}`,
+    `${prefix}weights:`,
+    `${prefix}  editorial_priority: 10`,
+    `${prefix}  base_weight: 1`,
+    `${prefix}  freshness_bonus: 1`,
+    `${prefix}activation:`,
+    `${prefix}  time_windows: []`,
+    `${prefix}  allowed_days: [mon, tue, wed, thu, fri, sat, sun]`,
+    `${prefix}  trigger_conditions: []`,
+    `${prefix}governance: {}`,
+    `${prefix}constraints: {}`,
+  ]
 }
 
 function seedFixture(baseDir: string): void {
   writeFile(
-    path.join(baseDir, 'library.manifest.yaml'),
+    path.join(baseDir, 'manifest.yaml'),
     [
-      'version: v1',
+      'version: v2',
       'templates:',
       '  - id: launch-1',
       '    category: theme',
       '    path: templates/launch-1.yaml',
-      '    status: launch',
-      '    binding:',
-      '      community_slug: season-slot-1',
-      '      slot: season-slot-1',
-      '      binding_type: seasonal',
+      '    lifecycle_status: seasonal_active',
+      '    bindings:',
+      '      - surface: forum',
+      '        community_slug: season-slot-1',
+      '        seasonal_slot: season-slot-1',
+      '        binding_type: seasonal',
+      ...bindingBlock([]),
+      '      - surface: chat_room',
+      '        room_id: scene-pool-room-ai-consciousness',
+      '        binding_type: core',
+      '        lifecycle: {}',
+      '        weights:',
+      '          editorial_priority: 8',
+      '          base_weight: 1',
+      '          freshness_bonus: 0',
+      '        activation:',
+      '          time_windows: []',
+      '          allowed_days: [mon, tue, wed, thu, fri, sat, sun]',
+      '          trigger_conditions: []',
+      '        governance: {}',
+      '        constraints: {}',
       '  - id: launch-2',
       '    category: theme',
       '    path: templates/launch-2.yaml',
-      '    status: launch',
-      '    binding:',
-      '      community_slug: season-slot-2',
-      '      slot: season-slot-2',
-      '      binding_type: seasonal',
+      '    lifecycle_status: seasonal_active',
+      '    bindings:',
+      '      - surface: forum',
+      '        community_slug: season-slot-2',
+      '        seasonal_slot: season-slot-2',
+      '        binding_type: seasonal',
+      ...bindingBlock([]),
       '  - id: launch-3',
       '    category: theme',
       '    path: templates/launch-3.yaml',
-      '    status: launch',
-      '    binding:',
-      '      community_slug: season-slot-3',
-      '      slot: season-slot-3',
-      '      binding_type: seasonal',
+      '    lifecycle_status: seasonal_active',
+      '    bindings:',
+      '      - surface: forum',
+      '        community_slug: season-slot-3',
+      '        seasonal_slot: season-slot-3',
+      '        binding_type: seasonal',
+      ...bindingBlock([]),
       '  - id: hidden-1',
       '    category: theme',
       '    path: templates/hidden-1.yaml',
-      '    status: hidden',
-      '    binding: null',
+      '    lifecycle_status: hidden',
+      '    bindings: []',
       '  - id: hidden-2',
       '    category: theme',
       '    path: templates/hidden-2.yaml',
-      '    status: hidden',
-      '    binding: null',
+      '    lifecycle_status: hidden',
+      '    bindings: []',
       '  - id: hidden-3',
       '    category: theme',
       '    path: templates/hidden-3.yaml',
-      '    status: hidden',
-      '    binding: null',
+      '    lifecycle_status: hidden',
+      '    bindings: []',
       'seasonal_slots:',
       '  - slot: season-slot-1',
       '    community_slug: season-slot-1',
@@ -123,50 +189,56 @@ function seedFixture(baseDir: string): void {
   for (const id of ['launch-1', 'launch-2', 'launch-3', 'hidden-1', 'hidden-2', 'hidden-3']) {
     writeFile(
       path.join(baseDir, `templates/${id}.yaml`),
-      makeStageTemplateYaml(id, id === 'hidden-1'),
+      makeStageTemplateYaml(id, id === 'launch-1'),
     )
   }
-
-  writeFile(path.join(baseDir, 'dist/library.json'), '{"version":"before"}\n')
-  writeFile(path.join(baseDir, 'dist/launch.json'), '{"version":"before"}\n')
 }
 
 describe('stage-template-ops', () => {
-  it('keeps legacy v1 dist payloads when scene-pool flags are off', () => {
+  it('builds v2 dist payloads from authoring v2 source', () => {
     const workspace = makeTempWorkspace()
     try {
-      const baseDir = path.join(workspace, 'docs/stage-templates/v1')
+      const baseDir = path.join(workspace, 'docs/stage-templates/source')
       seedFixture(baseDir)
       const manifest = parseYaml(
-        fs.readFileSync(path.join(baseDir, 'library.manifest.yaml'), 'utf8'),
+        fs.readFileSync(path.join(baseDir, 'manifest.yaml'), 'utf8'),
       ) as StageTemplateManifest
 
-      const dist = buildStageTemplateDistPayload(baseDir, manifest, '2026-03-13T00:00:00.000Z', {
-        publicDirectorContractV1: false,
-        scenePoolAssetOpsV1: false,
-      })
+      const dist = buildStageTemplateDistPayload(baseDir, manifest, '2026-03-13T00:00:00.000Z')
 
-      expect(dist.library.version).toBe('v1')
-      expect(dist.launch.version).toBe('v1')
-      expect(dist.library).not.toHaveProperty('stage_templates')
-      expect(dist.library.templates).toHaveLength(6)
+      expect(dist.library.version).toBe('v2')
+      expect(dist.launch.version).toBe('v2')
+      expect(dist.library.stage_templates).toHaveLength(6)
+      expect(dist.launch.stage_templates).toHaveLength(3)
+      expect(dist.library.scene_bindings).toHaveLength(4)
+      expect(
+        dist.library.scene_bindings.filter((item) =>
+          typeof item === 'object'
+          && item !== null
+          && 'target' in item
+          && typeof item.target === 'object'
+          && item.target !== null
+          && 'surface' in item.target
+          && item.target.surface === 'chat_room',
+        ),
+      ).toHaveLength(1)
     } finally {
       fs.rmSync(workspace, { recursive: true, force: true })
     }
   })
 
-  it('applies season rotation and writes v2 manifest/dist when scene-pool flags are on', () => {
+  it('applies season rotation and writes v2 manifest/dist into source/dist layout', () => {
     const workspace = makeTempWorkspace()
     try {
-      const baseDir = path.join(workspace, 'docs/stage-templates/v1')
+      const baseDir = path.join(workspace, 'docs/stage-templates/source')
+      const distDir = path.join(workspace, 'docs/stage-templates/dist')
       seedFixture(baseDir)
 
       const result = applySeasonRotationAtomic({
         base_dir: baseDir,
+        dist_dir: distDir,
         open_count: 3,
         dry_run: false,
-        publicDirectorContractV1: true,
-        scenePoolAssetOpsV1: true,
       })
 
       expect(result.dry_run).toBe(false)
@@ -175,28 +247,24 @@ describe('stage-template-ops', () => {
       expect(result.exported_templates).toBe(6)
       expect(result.launch_templates).toBe(3)
 
-      const manifest = parseYaml(fs.readFileSync(path.join(baseDir, 'library.manifest.yaml'), 'utf8')) as {
+      const manifest = parseYaml(fs.readFileSync(path.join(baseDir, 'manifest.yaml'), 'utf8')) as {
         rotation_audit?: unknown[]
       }
       expect(Array.isArray(manifest.rotation_audit)).toBe(true)
       expect(manifest.rotation_audit).toHaveLength(1)
 
-      const library = JSON.parse(fs.readFileSync(path.join(baseDir, 'dist/library.json'), 'utf8')) as {
+      const library = JSON.parse(fs.readFileSync(path.join(distDir, 'library.json'), 'utf8')) as {
         version: string
-        templates: Array<{
-          id: string
-          stage_template_v2: {
-            lifecycle_status: string
-            director: { scene_goal: { viewer_goal: string } }
-          }
-        }>
+        scene_bindings: Array<unknown>
+      }
+      const launch = JSON.parse(fs.readFileSync(path.join(distDir, 'launch.json'), 'utf8')) as {
+        stage_templates: Array<unknown>
         scene_bindings: Array<unknown>
       }
       expect(library.version).toBe('v2')
-      expect(library.templates).toHaveLength(6)
-      expect(library.scene_bindings).toHaveLength(3)
-      expect(library.templates.find((item) => item.id === 'hidden-1')?.stage_template_v2.director.scene_goal.viewer_goal)
-        .toContain('导播目标')
+      expect(library.scene_bindings).toHaveLength(4)
+      expect(launch.stage_templates).toHaveLength(3)
+      expect(launch.scene_bindings).toHaveLength(3)
     } finally {
       fs.rmSync(workspace, { recursive: true, force: true })
     }
@@ -205,25 +273,27 @@ describe('stage-template-ops', () => {
   it('rolls back manifest and dist when write pipeline fails', () => {
     const workspace = makeTempWorkspace()
     try {
-      const baseDir = path.join(workspace, 'docs/stage-templates/v1')
+      const baseDir = path.join(workspace, 'docs/stage-templates/source')
+      const distDir = path.join(workspace, 'docs/stage-templates/dist')
       seedFixture(baseDir)
+      writeFile(path.join(distDir, 'library.json'), '{"version":"before"}\n')
+      writeFile(path.join(distDir, 'launch.json'), '{"version":"before"}\n')
 
-      const manifestBefore = fs.readFileSync(path.join(baseDir, 'library.manifest.yaml'), 'utf8')
-      const libraryBefore = fs.readFileSync(path.join(baseDir, 'dist/library.json'), 'utf8')
-      const launchBefore = fs.readFileSync(path.join(baseDir, 'dist/launch.json'), 'utf8')
+      const manifestBefore = fs.readFileSync(path.join(baseDir, 'manifest.yaml'), 'utf8')
+      const libraryBefore = fs.readFileSync(path.join(distDir, 'library.json'), 'utf8')
+      const launchBefore = fs.readFileSync(path.join(distDir, 'launch.json'), 'utf8')
 
       expect(() => applySeasonRotationAtomic({
         base_dir: baseDir,
+        dist_dir: distDir,
         open_count: 3,
         dry_run: false,
         inject_failure_step: 'after_dist_commit',
-        publicDirectorContractV1: true,
-        scenePoolAssetOpsV1: true,
       })).toThrow('Season rotation failed')
 
-      const manifestAfter = fs.readFileSync(path.join(baseDir, 'library.manifest.yaml'), 'utf8')
-      const libraryAfter = fs.readFileSync(path.join(baseDir, 'dist/library.json'), 'utf8')
-      const launchAfter = fs.readFileSync(path.join(baseDir, 'dist/launch.json'), 'utf8')
+      const manifestAfter = fs.readFileSync(path.join(baseDir, 'manifest.yaml'), 'utf8')
+      const libraryAfter = fs.readFileSync(path.join(distDir, 'library.json'), 'utf8')
+      const launchAfter = fs.readFileSync(path.join(distDir, 'launch.json'), 'utf8')
 
       expect(manifestAfter).toBe(manifestBefore)
       expect(libraryAfter).toBe(libraryBefore)
