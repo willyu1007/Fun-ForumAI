@@ -1,4 +1,5 @@
 import { NotFoundError, ValidationError } from '../lib/errors.js'
+import { config } from '../lib/config.js'
 import type { AgentRepository } from '../repos/agent-repository.js'
 import type { RoomRepository, UpdateRoomMemberControlInput } from '../repos/room-repository.js'
 import type {
@@ -15,9 +16,12 @@ import type {
 } from '../repos/types.js'
 import type { SseHub } from '../sse/hub.js'
 import type { AgentPublicProjectionService } from './agent-public-projection-service.js'
+import type { ChatroomLocalIntentService } from './chatroom-local-intent-service.js'
+import type { ChatroomSceneContractResolver } from './chatroom-scene-contract-resolver.js'
 import type { RoomProjector } from './room-projector.js'
 import type { RoomProgramScorer } from './room-program-scorer.js'
 import type { RoomProgramStateLoader } from './room-program-state-loader.js'
+import type { RuntimeSceneStateManager } from './runtime-scene-state-manager.js'
 
 export interface ChatroomControlServiceDeps {
   roomRepo: RoomRepository
@@ -27,6 +31,9 @@ export interface ChatroomControlServiceDeps {
   stateLoader: RoomProgramStateLoader
   scorer: RoomProgramScorer
   projectionService: AgentPublicProjectionService
+  runtimeSceneStateManager?: RuntimeSceneStateManager | null
+  sceneResolver?: ChatroomSceneContractResolver | null
+  localIntentService?: ChatroomLocalIntentService | null
   sseHub?: SseHub | null
 }
 
@@ -189,6 +196,20 @@ export class ChatroomControlService {
     if (!state.program.enabled) {
       throw new ValidationError('Room program is disabled')
     }
+
+    if (config.features.directorRuntimeStateV1) {
+      const runtimeState = await this.deps.runtimeSceneStateManager?.findActiveByRoom(roomId) ?? null
+      if (runtimeState && (runtimeState.status === 'cooldown' || runtimeState.status === 'closed')) {
+        await this.deps.watchabilityRepo.endActiveEpisode(roomId).catch(() => null)
+        await this.deps.roomProjector.refreshRoom(roomId)
+        state = await this.deps.stateLoader.load(roomId)
+      }
+    }
+
+    if (!state) {
+      throw new NotFoundError('Room', roomId)
+    }
+
     if (!state.episode) {
       await this.deps.roomProjector.refreshRoom(roomId)
       state = await this.deps.stateLoader.load(roomId)
@@ -212,8 +233,43 @@ export class ChatroomControlService {
       },
     }
 
+    const ensuredRuntime = config.features.directorRuntimeStateV1
+      ? await this.deps.runtimeSceneStateManager?.ensureChatroomState({
+          room: state.room,
+          program: state.program,
+          episode: state.episode,
+          cast: state.cast,
+          members: state.members,
+          recentMessages: state.recentMessages,
+        })
+      : null
+    const sceneContract = ensuredRuntime?.resolved
+      ?? this.deps.sceneResolver?.resolve({
+        roomId,
+        sceneType: state.program.scene_type,
+      })
+      ?? null
+    const localIntentBundle =
+      config.features.directorRuntimeStateV1
+      && sceneContract
+      && ensuredRuntime
+      && this.deps.localIntentService
+        ? this.deps.localIntentService.build({
+            cue_type: input.cue_type,
+            director_goal: input.director_goal,
+            anchor_message_id: input.anchor_message_id ?? null,
+            callback_message_id: input.callback_message_id ?? null,
+            runtime_state: ensuredRuntime.state.state_json,
+            resolved_scene: sceneContract,
+            manual: true,
+          })
+        : null
+    const activeCastAgentIds = ensuredRuntime?.state.state_json.cast.active_agent_ids ?? []
+    const eligibleCast = activeCastAgentIds.length > 0
+      ? state.cast.filter((candidate) => activeCastAgentIds.includes(candidate.agent_id))
+      : state.cast
     const scored = this.deps.scorer.score({
-      cast: state.cast,
+      cast: eligibleCast.length > 0 ? eligibleCast : state.cast,
       recentMessages: state.recentMessages,
       cue,
       scene_type: state.program.scene_type,
@@ -239,6 +295,9 @@ export class ChatroomControlService {
       beat_status: 'selected',
       beat_audit_json: {
         ...cue.audit_json,
+        active_cast_agent_ids: activeCastAgentIds,
+        suppressed_agent_ids: ensuredRuntime?.state.state_json.cast.suppressed_agent_ids ?? [],
+        scene_casting_slot_audit: ensuredRuntime?.state.state_json.cast.slot_audit ?? null,
         selected_agent_id: selected.agent_id,
       },
       event_status: 'PLANNED',
@@ -246,6 +305,17 @@ export class ChatroomControlService {
       event_payload_json: {
         manual: true,
         director_goal: input.director_goal,
+        active_cast_agent_ids: activeCastAgentIds,
+        suppressed_agent_ids: ensuredRuntime?.state.state_json.cast.suppressed_agent_ids ?? [],
+        scene_casting_slot_audit: ensuredRuntime?.state.state_json.cast.slot_audit ?? null,
+        anchor_message_id: input.anchor_message_id ?? null,
+        callback_message_id: input.callback_message_id ?? null,
+        local_intent_id: localIntentBundle?.local_intent_id ?? null,
+        local_intent: localIntentBundle?.local_intent ?? null,
+        local_intent_block: localIntentBundle?.local_intent_block ?? null,
+        episode_brief_min: localIntentBundle?.episode_brief_min ?? null,
+        scene_source: localIntentBundle?.scene_source ?? null,
+        director_goal_compat: localIntentBundle?.director_goal_compat ?? input.director_goal,
       },
       selection_ledger: scored.slice(0, 6).map((candidate) => ({
         candidate_agent_id: candidate.agent_id,
@@ -254,6 +324,17 @@ export class ChatroomControlService {
         reasons_json: candidate.reasons_json,
       })),
     })
+
+    if (config.features.directorRuntimeStateV1) {
+      await this.deps.runtimeSceneStateManager?.handleSignal({
+        type: 'turn_planned',
+        room_id: roomId,
+        episode_id: state.episode.id,
+        cue_type: input.cue_type,
+        program_event_id: planned.event.id,
+        local_intent_id: localIntentBundle?.local_intent_id ?? null,
+      })
+    }
 
     if (planned.created_now) {
       this.deps.sseHub?.broadcastToRoom(roomId, {

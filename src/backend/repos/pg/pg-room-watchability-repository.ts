@@ -643,6 +643,13 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
     }
   }
 
+  async getProgramEvent(id: string): Promise<RoomProgramEvent | null> {
+    const row = await this.prisma.roomProgramEvent.findUnique({
+      where: { id },
+    })
+    return row ? this.toProgramEvent(row) : null
+  }
+
   async getLatestProgramEvent(roomId: string): Promise<RoomProgramEvent | null> {
     const row = await this.prisma.roomProgramEvent.findFirst({
       where: { roomId },

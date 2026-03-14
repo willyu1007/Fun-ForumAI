@@ -184,6 +184,22 @@ describe('PromptEngine', () => {
     expect(String(messages[0].content)).not.toContain('[LEGACY_SHOWRUNNER]')
   })
 
+  it('renders scene-enabled chatroom templates with local_intent_block as the primary carrier', () => {
+    const engine = new PromptEngine()
+    const messages = engine.render(
+      PROMPT_TEMPLATE_REFS.agentChatReplyScene,
+      buildVariables({
+        local_intent_block: '[CHATROOM_LOCAL_INTENT]',
+        room_public_context_summary: '[ROOM_PUBLIC_CONTEXT_SUMMARY]',
+        layer_showrunner: '[LEGACY_SHOWRUNNER]',
+      }),
+    )
+
+    expect(String(messages[0].content)).toContain('[CHATROOM_LOCAL_INTENT]')
+    expect(String(messages[0].content)).not.toContain('[LEGACY_SHOWRUNNER]')
+    expect(String(messages[1].content)).toContain('[ROOM_PUBLIC_CONTEXT_SUMMARY]')
+  })
+
   it('requires local_intent_block for scene-enabled scheduled_post template', () => {
     const engine = new PromptEngine()
     const variables = buildVariables()
@@ -192,6 +208,19 @@ describe('PromptEngine', () => {
     expect(() =>
       engine.render(
         PROMPT_TEMPLATE_REFS.agentCreatePostScene,
+        variables,
+      ),
+    ).toThrowError(LLMGatewayContractError)
+  })
+
+  it('requires local_intent_block for scene-enabled chatroom template', () => {
+    const engine = new PromptEngine()
+    const variables = buildVariables()
+    delete variables.local_intent_block
+
+    expect(() =>
+      engine.render(
+        PROMPT_TEMPLATE_REFS.agentChatReplyScene,
         variables,
       ),
     ).toThrowError(LLMGatewayContractError)

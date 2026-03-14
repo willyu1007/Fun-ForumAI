@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { config } from '../../lib/config.js'
 import { ChatroomControlService } from '../chatroom-control-service.js'
 
 function makeProgram() {
@@ -194,5 +195,88 @@ describe('ChatroomControlService', () => {
         selected_agent_id: 'agent-2',
       }),
     }))
+  })
+
+  it('limits manual cue speaker selection to the scene-aware active cast when runtime authority is on', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const snapshot = { ...featureFlags }
+    featureFlags.directorRuntimeStateV1 = true
+
+    try {
+      const service = new ChatroomControlService({
+        roomRepo: {} as never,
+        watchabilityRepo: {
+          planProgramCue: vi.fn(async (input) => ({
+            beat: {
+              id: 'beat-1',
+              selected_speaker_agent_id: input.selected_speaker_agent_id,
+              target_role: input.target_role,
+              created_at: new Date('2026-03-10T10:00:00.000Z'),
+            },
+            event: { id: 'event-1' },
+            ledgers: [],
+            created_now: true,
+          })),
+        } as never,
+        agentRepo: {} as never,
+        roomProjector: {} as never,
+        stateLoader: {
+          load: vi.fn(async () => ({
+            room: { id: 'room-1', status: 'active' },
+            program: makeProgram(),
+            episode: { id: 'episode-1' },
+            latestBeat: { ordinal: 0 },
+            cast: [
+              { agent_id: 'agent-2', role: 'FOIL' },
+              { agent_id: 'agent-1', role: 'HOST' },
+            ],
+            members: [],
+            recentMessages: [],
+          })),
+        } as never,
+        scorer: {
+          score: vi.fn(({ cast }) => cast.map((candidate: { agent_id: string; role: string }) => ({
+            agent_id: candidate.agent_id,
+            role: candidate.role,
+            final_score: 1,
+            reasons_json: [],
+          }))),
+        } as never,
+        projectionService: {} as never,
+        runtimeSceneStateManager: {
+          findActiveByRoom: vi.fn(async () => null),
+          ensureChatroomState: vi.fn(async () => ({
+            state: {
+              state_json: {
+                cast: {
+                  active_agent_ids: ['agent-1'],
+                  suppressed_agent_ids: ['agent-2'],
+                  slot_audit: {
+                    core_agent_ids: ['agent-1'],
+                    contrast_agent_ids: ['agent-2'],
+                    wildcard_agent_ids: [],
+                    must_have_role_hits: ['HOST'],
+                    target_active_count: 1,
+                  },
+                },
+              },
+            },
+          })),
+          handleSignal: vi.fn(async () => undefined),
+        } as never,
+        sseHub: {
+          broadcastToRoom: vi.fn(),
+        } as never,
+      })
+
+      const result = await service.createCue('room-1', {
+        cue_type: 'ADVANCE',
+        director_goal: '只让 active cast 接住这拍',
+      })
+
+      expect(result.selected_agent_id).toBe('agent-1')
+    } finally {
+      Object.assign(featureFlags, snapshot)
+    }
   })
 })

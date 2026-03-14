@@ -202,6 +202,7 @@ export interface RoomWatchabilityRepository {
   createEpisodeBeat(input: CreateRoomEpisodeBeatInput): Promise<RoomEpisodeBeat>
   getLatestBeat(episodeId: string): Promise<RoomEpisodeBeat | null>
   createProgramEvent(input: CreateRoomProgramEventInput): Promise<RoomProgramEvent>
+  getProgramEvent(id: string): Promise<RoomProgramEvent | null>
   planProgramCue(input: PlanRoomProgramCueInput): Promise<PlanRoomProgramCueResult>
   updateProgramEvent(id: string, patch: UpdateRoomProgramEventInput): Promise<RoomProgramEvent | null>
   getLatestProgramEvent(roomId: string): Promise<RoomProgramEvent | null>
@@ -587,6 +588,10 @@ export class InMemoryRoomWatchabilityRepository implements RoomWatchabilityRepos
     }
     this.events.set(id, updated)
     return updated
+  }
+
+  async getProgramEvent(id: string): Promise<RoomProgramEvent | null> {
+    return this.events.get(id) ?? null
   }
 
   async getLatestProgramEvent(roomId: string): Promise<RoomProgramEvent | null> {

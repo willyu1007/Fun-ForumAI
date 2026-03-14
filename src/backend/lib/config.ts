@@ -123,6 +123,8 @@ export const config = {
     promptAuditV1: env.FF_PROMPT_AUDIT_V1 === 'true',
     promptOrchestratorV1: env.FF_PROMPT_ORCHESTRATOR_V1 === 'true',
     publicDirectorContractV1: env.FF_PUBLIC_DIRECTOR_CONTRACT_V1 === 'true',
+    directorRuntimeStateV1: env.FF_DIRECTOR_RUNTIME_STATE_V1 === 'true',
+    chatroomLocalIntentV1: env.FF_CHATROOM_LOCAL_INTENT_V1 === 'true',
     privateDirectorBoundaryV1: env.FF_PRIVATE_DIRECTOR_BOUNDARY_V1 === 'true',
     promptOrchestratorScenes: (env.FF_PROMPT_ORCHESTRATOR_SCENES || '')
       .split(',')

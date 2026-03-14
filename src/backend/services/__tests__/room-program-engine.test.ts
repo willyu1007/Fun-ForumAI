@@ -248,6 +248,8 @@ describe('RoomProgramEngine', () => {
       director_goal: '把 owner 的追问接起来',
       beat_id: beat.id,
       program_event_id: event.id,
+      local_intent_id: null,
+      director_goal_compat: '把 owner 的追问接起来',
     })
   })
 
@@ -335,6 +337,8 @@ describe('RoomProgramEngine', () => {
       director_goal: '先消费 owner cue',
       beat_id: manualBeat.id,
       program_event_id: manualEvent.id,
+      local_intent_id: null,
+      director_goal_compat: '先消费 owner cue',
     })
   })
 })

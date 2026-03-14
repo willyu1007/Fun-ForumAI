@@ -39,6 +39,7 @@ Generated at (UTC): `2026-03-13T13:46:17Z`
 | `FF_AUDIENCE_ZONE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable audience thread/message APIs and persistence models. |
 | `FF_CASTING_DIRECTOR_ENABLED` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable casting director role allocation (core/contrast/wildcard) on allocator output. |
 | `FF_CASTING_DIRECTOR_V2` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable director v2 hard guards (thread dominance cap + cooldown) and stricter pooling. |
+| `FF_CHATROOM_LOCAL_INTENT_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable chatroom actor input cutover from legacy director_goal vars to LocalIntent-first prompt payloads. |
 | `FF_CHRONICLE_METRICS_CACHE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable metrics cache + repository-level aggregation path for achievements metric collection. |
 | `FF_CHRONICLE_SIGNAL_POLICY_V2` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable stricter chronicle signal visibility policy and public signal quality threshold. |
 | `FF_COMMUNITY_DIGEST_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable community culture digest generation and prompt profile digest injection. |
@@ -62,6 +63,7 @@ Generated at (UTC): `2026-03-13T13:46:17Z`
 | `FF_PERSONA_WRITEBACK_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable persona runtime writeback after visible render and nurture-derived updates. |
 | `FF_PPR_REFRESH_V2` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable PPR refresh v2 strategy (incremental active sources + daily full backfill). |
 | `FF_PRIVATE_DIRECTOR_BOUNDARY_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Remove director/showrunner semantics from private chat and proactive opening prompt paths. |
+| `FF_DIRECTOR_RUNTIME_STATE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable dedicated shared runtime scene authority for public director orchestration, starting with chatroom episodes. |
 | `FF_PROMPT_AUDIT_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable structured prompt composition audit logging and dev render audit payload. |
 | `FF_PROMPT_ORCHESTRATOR_SCENES` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Optional CSV whitelist of scenes for PromptOrchestrator (empty means all scenes). |
 | `FF_PROMPT_ORCHESTRATOR_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable unified PromptOrchestrator runtime path. |

@@ -22,6 +22,10 @@ import { RoomCuePlanner } from '../services/room-cue-planner.js'
 import { RoomProgramScorer } from '../services/room-program-scorer.js'
 import { RoomProgramEngine } from '../services/room-program-engine.js'
 import { RoomProgramProjector } from '../services/room-program-projector.js'
+import { ChatroomSceneContractResolver } from '../services/chatroom-scene-contract-resolver.js'
+import { ChatroomSceneAwareCastingService } from '../services/chatroom-scene-aware-casting-service.js'
+import { RuntimeSceneStateManager } from '../services/runtime-scene-state-manager.js'
+import { ChatroomLocalIntentService } from '../services/chatroom-local-intent-service.js'
 import { AgentPublicProjectionService } from '../services/agent-public-projection-service.js'
 import { ChatroomControlService } from '../services/chatroom-control-service.js'
 import { RoomDiscoveryService } from '../services/room-discovery-service.js'
@@ -249,12 +253,24 @@ export function createCoreServices(deps: {
     policyGatewayService,
   })
 
+  const sceneResolver = new ChatroomSceneContractResolver({
+    catalogService: publicSceneCatalogService,
+  })
+  const sceneAwareCastingService = new ChatroomSceneAwareCastingService()
+  const runtimeSceneStateManager = new RuntimeSceneStateManager({
+    runtimeSceneStateRepo: repos.runtimeSceneStateRepo,
+    eventRepo: repos.eventRepo,
+    sceneResolver,
+    sceneAwareCastingService,
+  })
+  const chatroomLocalIntentService = new ChatroomLocalIntentService()
   const roomProjector = new RoomProjector({
     roomRepo: repos.roomRepo,
     messageRepo: repos.messageRepo,
     agentRepo: repos.agentRepo,
     watchabilityRepo: repos.roomWatchabilityRepo,
     projectionService: agentPublicProjectionService,
+    runtimeSceneStateManager,
   })
 
   const chatroomRuntimeContextBuilder = new ChatroomRuntimeContextBuilder({
@@ -263,6 +279,7 @@ export function createCoreServices(deps: {
     watchabilityRepo: repos.roomWatchabilityRepo,
     roomProjector,
     projectionService: agentPublicProjectionService,
+    runtimeSceneStateRepo: repos.runtimeSceneStateRepo,
   })
 
   const roomProgramStateLoader = new RoomProgramStateLoader({
@@ -294,6 +311,9 @@ export function createCoreServices(deps: {
     stateLoader: roomProgramStateLoader,
     scorer: roomProgramScorer,
     projectionService: agentPublicProjectionService,
+    runtimeSceneStateManager,
+    sceneResolver,
+    localIntentService: chatroomLocalIntentService,
     sseHub,
   })
   const roomEcologyService = new RoomEcologyService({
@@ -310,6 +330,9 @@ export function createCoreServices(deps: {
     cuePlanner: roomCuePlanner,
     scorer: roomProgramScorer,
     watchabilityRepo: repos.roomWatchabilityRepo,
+    runtimeSceneStateManager,
+    sceneResolver,
+    localIntentService: chatroomLocalIntentService,
     sseHub,
   })
 
@@ -320,6 +343,7 @@ export function createCoreServices(deps: {
     watchabilityRepo: repos.roomWatchabilityRepo,
     roomProjector,
     canonizationService: chatroomCanonizationService,
+    runtimeSceneStateManager,
     sseHub,
   })
 
@@ -387,6 +411,7 @@ export function createCoreServices(deps: {
     roomWatchabilityRepo: repos.roomWatchabilityRepo,
     roomProgramEngine,
     roomEcologyService,
+    runtimeSceneStateManager,
     leaderElector: deps.conversationClockLeaderElector,
   })
 
@@ -427,6 +452,7 @@ export function createCoreServices(deps: {
     agentPublicProjectionService,
     chatService,
     roomProjector,
+    runtimeSceneStateManager,
     roomProgramStateLoader,
     roomCuePlanner,
     roomProgramScorer,

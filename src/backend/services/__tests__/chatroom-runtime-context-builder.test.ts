@@ -107,6 +107,7 @@ describe('ChatroomRuntimeContextBuilder', () => {
     expect(enabled.promptVariables.program_scene).toBe('TALK_SHOW')
     expect(enabled.promptVariables.cast_snapshot).toContain('Host (HOST)')
     expect(enabled.promptVariables.last_highlight).toContain('benchmark')
+    expect(enabled.promptVariables.room_public_context_summary).toContain('当前看点')
   })
 
   it('rewrites projection signature moves into chat-readable guidance', async () => {

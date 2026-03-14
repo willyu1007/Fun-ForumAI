@@ -8,6 +8,7 @@ export const PROMPT_TEMPLATE_REFS = {
   agentReplyToComment: { id: 'agent-reply-to-comment', version: 2 },
   agentReplyToCommentScene: { id: 'agent-reply-to-comment', version: 3 },
   agentChatReply: { id: 'agent-chat-reply', version: 4 },
+  agentChatReplyScene: { id: 'agent-chat-reply', version: 5 },
   agentPrivateChatReply: { id: 'agent-private-chat-reply', version: 1 },
   agentProactiveDmOpening: { id: 'agent-proactive-dm-opening', version: 1 },
   agentCreateRoom: { id: 'agent-create-room', version: 1 },

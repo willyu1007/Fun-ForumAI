@@ -31,6 +31,7 @@ import {
 } from '../runtime/persona-observation.js'
 import type { RoomProgramEngine } from './room-program-engine.js'
 import type { RoomEcologyService } from './room-ecology-service.js'
+import type { RuntimeSceneStateManager } from './runtime-scene-state-manager.js'
 
 const MAX_MSG_PER_AGENT_PER_ROOM_HOUR = 6
 const MAX_MSG_PER_AGENT_GLOBAL_HOUR = 15
@@ -63,6 +64,7 @@ export interface ConversationClockDeps {
   roomWatchabilityRepo?: RoomWatchabilityRepository | null
   roomProgramEngine?: RoomProgramEngine | null
   roomEcologyService?: RoomEcologyService | null
+  runtimeSceneStateManager?: RuntimeSceneStateManager | null
   leaderElector?: LeaderElector
 }
 
@@ -414,7 +416,15 @@ export class ConversationClock {
             result.renderDecision,
             programMessageInput,
           )
-          await this.deps.roomProgramEngine?.markProgramEvent(plannedTurn.program_event_id, 'EXECUTED')
+          await this.deps.roomProgramEngine?.markProgramEvent(
+            plannedTurn.program_event_id,
+            'EXECUTED',
+            null,
+            {
+              body: result.body,
+              local_intent_id: plannedTurn.local_intent_id,
+            },
+          )
           await this.recordGeneratedMessageRun({
             roomId,
             agentId: selectedAgentId,
@@ -436,7 +446,15 @@ export class ConversationClock {
             result.renderDecision,
             programMessageInput,
           )
-          await this.deps.roomProgramEngine?.markProgramEvent(plannedTurn.program_event_id, 'EXECUTED')
+          await this.deps.roomProgramEngine?.markProgramEvent(
+            plannedTurn.program_event_id,
+            'EXECUTED',
+            null,
+            {
+              body: result.body,
+              local_intent_id: plannedTurn.local_intent_id,
+            },
+          )
           await this.recordGeneratedMessageRun({
             roomId,
             agentId: selectedAgentId,
@@ -467,7 +485,15 @@ export class ConversationClock {
           result.renderDecision,
           programMessageInput,
         )
-        await this.deps.roomProgramEngine?.markProgramEvent(plannedTurn.program_event_id, 'EXECUTED')
+        await this.deps.roomProgramEngine?.markProgramEvent(
+          plannedTurn.program_event_id,
+          'EXECUTED',
+          null,
+          {
+            body: ambient,
+            local_intent_id: plannedTurn.local_intent_id,
+          },
+        )
       } catch (error) {
         await this.deps.roomProgramEngine?.markProgramEvent(
           plannedTurn.program_event_id,
@@ -678,6 +704,8 @@ export class ConversationClock {
       live_hook: runtimeChatContext?.promptVariables.live_hook ?? '',
       unresolved_question: runtimeChatContext?.promptVariables.unresolved_question ?? '',
       last_highlight: runtimeChatContext?.promptVariables.last_highlight ?? '',
+      local_intent_block: runtimeChatContext?.promptVariables.local_intent_block ?? '',
+      room_public_context_summary: runtimeChatContext?.promptVariables.room_public_context_summary ?? '',
       public_projection_hint: runtimeChatContext?.promptVariables.public_projection_hint ?? '',
       signature_moves: runtimeChatContext?.promptVariables.signature_moves ?? '',
       shared_memory_summary: runtimeChatContext?.promptVariables.shared_memory_summary ?? '',
@@ -694,12 +722,15 @@ export class ConversationClock {
       layer_privacy: layers.layer_privacy,
     }
 
+    const promptRef = config.features.chatroomLocalIntentV1
+      ? PROMPT_TEMPLATE_REFS.agentChatReplyScene
+      : PROMPT_TEMPLATE_REFS.agentChatReply
     const response = await this.deps.llmGateway.generateVisibleText({
       intent: 'chat_reply',
       scene: 'chat_room',
       agentId,
       homeVoiceLineId: resolvedIdentity.homeVoiceLineId,
-      promptRef: PROMPT_TEMPLATE_REFS.agentChatReply,
+      promptRef,
       variables,
       budgetClass: 'visible_standard',
       traceId: `chat-room:${roomId}:${agentId}:${Date.now()}`,
@@ -718,7 +749,7 @@ export class ConversationClock {
       coverageStatus: 'migrated_visible',
       personaSeedCode: observationIdentity?.persona_seed_code,
       homeVoiceLineId: observationIdentity?.home_voice_line_id,
-      promptRef: PROMPT_TEMPLATE_REFS.agentChatReply,
+      promptRef,
       requestedTier: response.renderDecision.tier,
       resolvedTier: response.renderDecision.tier,
       renderDecision: response.renderDecision,

@@ -4,8 +4,10 @@ import type { RoomRepository } from '../repos/room-repository.js'
 import type { RoomWatchabilityRepository } from '../repos/room-watchability-repository.js'
 import type { ChatMessage, RoomCastMemberView, RoomHighlightKind } from '../repos/types.js'
 import type { SseHub } from '../sse/hub.js'
+import { config } from '../lib/config.js'
 import type { RoomProjectionResult, RoomProjector } from './room-projector.js'
 import type { ChatroomCanonizationService } from './chatroom-canonization-service.js'
+import type { RuntimeSceneStateManager } from './runtime-scene-state-manager.js'
 
 function buildCastSignature(cast: RoomCastMemberView[]): string {
   return cast
@@ -32,6 +34,10 @@ function deriveHighlight(message: ChatMessage): { kind: RoomHighlightKind; score
   return null
 }
 
+function readPayloadString(payload: Record<string, unknown> | null | undefined, key: string): string | null {
+  return typeof payload?.[key] === 'string' ? payload[key] : null
+}
+
 export interface RoomProgramProjectorDeps {
   roomRepo: RoomRepository
   messageRepo: MessageRepository
@@ -39,6 +45,7 @@ export interface RoomProgramProjectorDeps {
   watchabilityRepo: RoomWatchabilityRepository
   roomProjector: RoomProjector
   canonizationService?: ChatroomCanonizationService | null
+  runtimeSceneStateManager?: RuntimeSceneStateManager | null
   sseHub?: SseHub | null
 }
 
@@ -66,25 +73,91 @@ export class RoomProgramProjector {
   }
 
   private async recordProgramMessage(message: ChatMessage): Promise<void> {
-    await this.deps.watchabilityRepo.createProgramEvent({
+    const sourceEvent = message.program_event_id
+      ? await this.deps.watchabilityRepo.getProgramEvent(message.program_event_id)
+      : null
+    const sourcePayload = sourceEvent?.payload_json ?? {}
+    const inheritedLocalIntentId = readPayloadString(sourcePayload, 'local_intent_id')
+    const rawEvent = await this.deps.watchabilityRepo.createProgramEvent({
       room_id: message.room_id,
       episode_id: message.episode_id ?? null,
       beat_id: message.beat_id ?? null,
       event_type: 'RAW_MESSAGE',
       status: 'EXECUTED',
-      cue_type: message.cue_type ?? null,
-      director_goal: null,
+      cue_type: message.cue_type ?? sourceEvent?.cue_type ?? null,
+      director_goal: sourceEvent?.director_goal ?? null,
       selected_speaker_agent_id: message.author_id,
       idempotency_key: `raw-message:${message.id}`,
       payload_json: {
         message_id: message.id,
         message_kind: message.message_kind,
         speaker_role: message.speaker_role,
+        source_program_event_id: sourceEvent?.id ?? null,
+        manual: sourcePayload.manual === true,
+        anchor_message_id: readPayloadString(sourcePayload, 'anchor_message_id'),
+        callback_message_id: readPayloadString(sourcePayload, 'callback_message_id'),
+        local_intent_id: inheritedLocalIntentId,
+        local_intent: sourcePayload.local_intent ?? null,
+        local_intent_block: sourcePayload.local_intent_block ?? null,
+        episode_brief_min: sourcePayload.episode_brief_min ?? null,
+        scene_source: sourcePayload.scene_source ?? null,
+        director_goal_compat: readPayloadString(sourcePayload, 'director_goal_compat'),
       },
       error_text: null,
     })
 
     const highlight = deriveHighlight(message)
+    if (config.features.directorRuntimeStateV1 && message.episode_id) {
+      await this.deps.runtimeSceneStateManager?.handleSignal({
+        type: 'turn_executed',
+        room_id: message.room_id,
+        episode_id: message.episode_id,
+        cue_type: message.cue_type,
+        program_event_id: message.program_event_id ?? rawEvent.id,
+        local_intent_id: inheritedLocalIntentId,
+        speaker_agent_id: message.author_id,
+        body: message.body,
+      }).catch(() => null)
+
+      if (/[?？]/.test(message.body)) {
+        await this.deps.runtimeSceneStateManager?.handleSignal({
+          type: 'loop_opened',
+          room_id: message.room_id,
+          episode_id: message.episode_id,
+          loop_id: `message:${message.id}`,
+          summary: message.body,
+          source: 'message',
+        }).catch(() => null)
+      }
+    }
+
+    if (
+      config.features.directorRuntimeStateV1
+      && message.episode_id
+      && (message.cue_type === 'CALLBACK' || message.cue_type === 'SUMMARIZE')
+    ) {
+      const currentState = await this.deps.runtimeSceneStateManager?.findByEpisodeId(message.episode_id) ?? null
+      const referencedMessageId =
+        readPayloadString(sourcePayload, 'callback_message_id')
+        ?? readPayloadString(sourcePayload, 'anchor_message_id')
+      const preferredLoopId = referencedMessageId ? `message:${referencedMessageId}` : null
+      const resolvedLoopId = currentState?.state_json.continuity.open_loops
+        .find((loop) => loop.loop_id === preferredLoopId)?.loop_id
+        ?? preferredLoopId
+        ?? currentState?.state_json.continuity.open_loops[0]?.loop_id
+        ?? null
+      if (resolvedLoopId) {
+        await this.deps.runtimeSceneStateManager?.handleSignal({
+          type: 'loop_resolved',
+          room_id: message.room_id,
+          episode_id: message.episode_id,
+          loop_id: resolvedLoopId,
+          summary: message.body,
+          resolution_type: message.cue_type === 'CALLBACK' ? 'callback' : 'answered',
+        }).catch(() => null)
+      }
+    }
+
     if (!highlight || highlight.score < 0.6) return
 
     const created = await this.deps.watchabilityRepo.createHighlight({

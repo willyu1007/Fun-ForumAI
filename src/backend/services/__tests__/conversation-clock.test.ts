@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ConversationClock } from '../conversation-clock.js'
+import { config } from '../../lib/config.js'
 
 type ConversationClockHarness = {
   running: boolean
@@ -306,6 +307,136 @@ describe('ConversationClock', () => {
         projection_updated_at: '2026-03-10T10:00:00.000Z',
       }),
     }))
+  })
+
+  it('switches to the scene-enabled chatroom prompt when LocalIntent mode is on', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const snapshot = { ...featureFlags }
+    featureFlags.chatroomLocalIntentV1 = true
+
+    try {
+      const generateVisibleText = vi.fn(async () => ({
+        content: '继续往下聊。',
+        messages: [],
+        usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+        latencyMs: 10,
+        platformRetryCount: 0,
+        renderDecision: {
+          voiceLineId: 'qwen-social-v1',
+          tier: 'base',
+          profileId: 'profile-1',
+          providerId: 'dashscope-openai',
+          modelId: 'qwen-plus',
+          region: 'cn',
+          endpointId: 'default',
+          credentialId: 'cred-1',
+          fallbackLevel: 'none',
+          reasons: ['runtime_floor'],
+          promptTemplateId: 'agent-chat-reply',
+          promptVersion: 5,
+        },
+        promptRef: { id: 'agent-chat-reply', version: 5 },
+      }))
+      const clock = new ConversationClock({
+        roomRepo: {
+          findById: vi.fn(async () => ({
+            id: 'room-1',
+            status: 'active',
+            name: 'General',
+            description: 'room desc',
+          })),
+          getMember: vi.fn(async () => null),
+        } as never,
+        messageRepo: {
+          getLatestMessages: vi.fn(async () => []),
+        } as never,
+        agentRepo: {
+          findById: vi.fn(() => ({
+            id: 'agent-1',
+            display_name: 'Agent One',
+          })),
+        } as never,
+        agentService: {
+          getAgent: vi.fn(() => ({
+            id: 'agent-1',
+            display_name: 'Agent One',
+          })),
+          getLatestConfig: vi.fn(() => null),
+        } as never,
+        chatService: {} as never,
+        llmGateway: {
+          isConfigured: true,
+          generateVisibleText,
+        } as never,
+        sseHub: {
+          broadcastToRoom: vi.fn(),
+        } as never,
+        eventRepo: {
+          create: vi.fn(() => ({ id: 'evt-1' })),
+        } as never,
+        agentRunRepo: {
+          create: vi.fn(),
+        } as never,
+        chatroomRuntimeContextBuilder: {
+          build: vi.fn(async () => ({
+            chatContext: {
+              room_name: 'General',
+              room_description: 'room desc',
+              recent_messages: [],
+              program: {
+                scene_type: 'TALK_SHOW',
+                episode_id: 'ep-1',
+                current_beat: null,
+                cue_type: 'ADVANCE',
+                director_goal: '继续推进',
+                self_role: 'HOST',
+                cast: [],
+                live_hook: 'Host 正在推进',
+                unresolved_question: null,
+                public_projection_hint: '更适合 talk show',
+                signature_moves: ['先给判断，再补一层'],
+                shared_memory_summary: '最近一直在对齐 runtime state。',
+                role_hint: 'HOST',
+                projection_updated_at: '2026-03-10T10:00:00.000Z',
+              },
+            },
+            promptVariables: {
+              program_scene: 'TALK_SHOW',
+              episode_id: 'ep-1',
+              current_beat: '',
+              cue_type: 'ADVANCE',
+              director_goal: '继续推进',
+              self_role: 'HOST',
+              cast_snapshot: '',
+              live_hook: 'Host 正在推进',
+              unresolved_question: '',
+              last_highlight: '',
+              local_intent_block: '[CHATROOM_LOCAL_INTENT]',
+              room_public_context_summary: '[ROOM_PUBLIC_CONTEXT_SUMMARY]',
+              public_projection_hint: '更适合 talk show',
+              signature_moves: '先给判断，再补一层',
+              shared_memory_summary: '最近一直在对齐 runtime state。',
+              role_hint: 'HOST',
+              projection_updated_at: '2026-03-10T10:00:00.000Z',
+            },
+          })),
+        } as never,
+      })
+
+      await (clock as unknown as {
+        generateMessage: (roomId: string, agentId: string) => Promise<unknown>
+      }).generateMessage('room-1', 'agent-1')
+
+      expect(generateVisibleText).toHaveBeenCalledWith(expect.objectContaining({
+        promptRef: { id: 'agent-chat-reply', version: 5 },
+        variables: expect.objectContaining({
+          local_intent_block: '[CHATROOM_LOCAL_INTENT]',
+          room_public_context_summary: '[ROOM_PUBLIC_CONTEXT_SUMMARY]',
+        }),
+      }))
+    } finally {
+      Object.assign(featureFlags, snapshot)
+    }
   })
 
   it('hydrates a missing agent from persisted storage before generating a room reply', async () => {
