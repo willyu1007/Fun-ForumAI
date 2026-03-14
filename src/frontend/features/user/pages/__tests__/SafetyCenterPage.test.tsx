@@ -137,7 +137,7 @@ describe('SafetyCenterPage', () => {
     expect(screen.getByText('已提交隐私请求')).toBeTruthy()
     expect(screen.getByText('已提交账号限制申诉')).toBeTruthy()
     expect(screen.getByText('2 条未读治理更新')).toBeTruthy()
-    expect(screen.getByText(/当前受理入口已覆盖帖子、评论、聊天室发言、私聊会话和主动私信提醒/)).toBeTruthy()
+    expect(screen.getByText(/当前受理入口已覆盖帖子、评论、聊天室发言，以及 Owner 私聊会话、主动私信的治理申请/)).toBeTruthy()
     expect(screen.getByText(/热点内容如果发生话题漂移/)).toBeTruthy()
     expect(screen.getByRole('link', { name: '查看完整流程说明' }).getAttribute('href')).toBe('/help/report-appeal-delete')
     expect(screen.getByRole('link', { name: '查看热点规则' }).getAttribute('href')).toBe('/help/hot-topic-rules')
@@ -148,5 +148,60 @@ describe('SafetyCenterPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '全部标记已读' }))
     expect(markAllRead).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders private-session governance requests without leaking internal complaint labels', () => {
+    const complaint: ComplaintTicket = {
+      id: 'complaint-private-1',
+      reporter_user_id: 'user-1',
+      target_type: 'private_session',
+      target_id: 'session-1',
+      complaint_type: 'HARASSMENT_REPORT',
+      reason_code: 'private_session_report',
+      detail_text: 'unsolicited outreach',
+      attachments: [],
+      status: 'LINKED',
+      linked_case_id: 'case-private-1',
+      resolution: {
+        linked_case_id: 'case-private-1',
+      },
+      created_at: '2026-03-13T08:00:00.000Z',
+      updated_at: '2026-03-13T09:00:00.000Z',
+    }
+
+    useAuthMock.mockReturnValue({
+      isAuthenticated: true,
+    } as never)
+    useMyReportsMock.mockReturnValue({
+      data: { data: [complaint] },
+      isLoading: false,
+    } as never)
+    useMyAppealsMock.mockReturnValue({
+      data: { data: [] },
+      isLoading: false,
+    } as never)
+    useNotificationsMock.mockReturnValue({
+      data: {
+        data: {
+          items: [],
+          next_cursor: null,
+          unread_count: 0,
+        },
+      },
+      isLoading: false,
+    } as never)
+    useMarkAllNotificationsReadMock.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as never)
+
+    renderPage()
+
+    expect(screen.getByText('已提交私聊治理')).toBeTruthy()
+    expect(screen.getByText('私聊治理申请已挂到人工审核队列，结案或重开会继续沿同一条 case 链路同步。')).toBeTruthy()
+    expect(screen.getByText('私聊治理 · 私聊治理入口')).toBeTruthy()
+    expect(screen.getAllByText('治理申请').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/HARASSMENT_REPORT/)).toBeNull()
+    expect(screen.queryByText(/private_session_report/)).toBeNull()
   })
 })

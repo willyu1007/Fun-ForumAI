@@ -152,7 +152,7 @@ describe('PrivateChatPage', () => {
 
     expect(screen.getByRole('link', { name: '实名规则' }).getAttribute('href')).toBe('/help/private-chat-verification')
 
-    fireEvent.click(await screen.findByRole('button', { name: '举报此主动私信' }))
+    fireEvent.click(await screen.findByRole('button', { name: '发起主动私信治理' }))
 
     await waitFor(() => {
       expect(mutateAsync).toHaveBeenCalledWith({
@@ -164,6 +164,6 @@ describe('PrivateChatPage', () => {
       })
     })
 
-    expect(await screen.findByText('私聊举报已提交，可在 Safety Center 查看处理进度。')).toBeTruthy()
+    expect(await screen.findByText('私聊治理请求已提交，可在 Safety Center 查看处理进度。')).toBeTruthy()
   })
 })

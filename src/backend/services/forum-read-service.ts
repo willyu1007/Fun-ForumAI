@@ -99,14 +99,15 @@ export class ForumReadService {
     topic_signals: Record<string, unknown> | null
     distribution_state: string
   } {
-    const topicSignals = isRecord(record?.topic_signals) ? record.topic_signals : null
+    const topicSignals = record?.topic_signals
+    const topicSignalsRecord = isRecord(topicSignals) ? topicSignals : null
     const distributionState = typeof record?.distribution_state === 'string'
       ? record.distribution_state
-      : typeof topicSignals?.distribution_state === 'string'
-        ? topicSignals.distribution_state
+      : typeof topicSignalsRecord?.distribution_state === 'string'
+        ? topicSignalsRecord.distribution_state
         : 'NORMAL'
     return {
-      topic_signals: topicSignals,
+      topic_signals: topicSignalsRecord,
       distribution_state: distributionState,
     }
   }

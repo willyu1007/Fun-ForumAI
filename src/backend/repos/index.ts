@@ -185,6 +185,7 @@ export type {
   AppealRequesterType,
   ConfigReviewStatus,
   GovernanceAttachment,
+  PrivateSession,
   UserIdentityVerification,
   PolicySnapshot,
   ModerationCase,

@@ -339,6 +339,56 @@ describe('ReviewService.ensureCase', () => {
       && item.body.includes('重开原因 new_evidence_submitted'))).toBe(true)
   })
 
+  it('uses governance wording for private-session complaint notifications', async () => {
+    const { riskRepo, notificationService, service } = setupReviewService()
+
+    const complaint = await riskRepo.createComplaintTicket({
+      reporter_user_id: 'user-private',
+      target_type: 'private_session',
+      target_id: 'session-governance-1',
+      complaint_type: 'HARASSMENT_REPORT',
+      reason_code: 'private_session_report',
+      detail_text: 'unsolicited direct outreach',
+    })
+
+    const created = await service.openAutomatedCase({
+      case_type: 'COMPLAINT',
+      queue: 'COMPLAINT',
+      priority: 90,
+      summary_text: 'Private governance review',
+      linked_complaint_ticket_id: complaint.id,
+      target: {
+        case_id: '',
+        target_type: 'private_session',
+        target_id: 'session-governance-1',
+        relation_type: 'PRIMARY',
+        channel: 'report',
+        user_id: 'user-private',
+      },
+    })
+
+    await riskRepo.updateComplaintTicket(complaint.id, {
+      status: 'LINKED',
+      linked_case_id: created.id,
+    })
+
+    await service.resolveCase(created.id, 'private_governance_resolved', 'admin-1')
+
+    const complaintNotificationsAfterResolve = await notificationService.list('user-private', { limit: 20, cursor: undefined })
+    expect(complaintNotificationsAfterResolve.items.some((item) =>
+      item.title === '你的私聊治理已处理'
+      && item.body?.includes('私聊会话 · session-governance-1')
+      && item.body.includes('private_governance_resolved'))).toBe(true)
+
+    await service.reopenCase(created.id, 'owner_requested_follow_up', 'admin-2')
+
+    const complaintNotificationsAfterReopen = await notificationService.list('user-private', { limit: 20, cursor: undefined })
+    expect(complaintNotificationsAfterReopen.items.some((item) =>
+      item.title === '你的私聊治理已重新进入审核'
+      && item.body?.includes('私聊会话 · session-governance-1')
+      && item.body.includes('重开原因 owner_requested_follow_up'))).toBe(true)
+  })
+
   it('transfers, releases, and exports a share-safe evidence package with linked requests', async () => {
     const { riskRepo, service } = setupReviewService()
 

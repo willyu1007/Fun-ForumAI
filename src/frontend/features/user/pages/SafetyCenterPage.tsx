@@ -65,6 +65,7 @@ type TimelinePhase = 'SUBMITTED' | 'QUEUED' | 'REOPENED' | 'RESOLVED' | 'CLOSED'
 type TimelineEntry = {
   id: string
   source: 'REPORT' | 'APPEAL' | 'GOVERNANCE'
+  source_label: string
   phase: TimelinePhase
   title: string
   body: string
@@ -104,6 +105,19 @@ function targetLabel(targetType: string | null | undefined, targetId: string | n
   return `${targetTypeLabel(targetType)} · ${targetId}`
 }
 
+function governanceRequestLabel(reasonCode: string | null | undefined): string | null {
+  const normalized = reasonCode?.trim().toLowerCase() ?? ''
+  if (normalized === 'private_session_report') return '私聊治理'
+  if (normalized === 'proactive_private_session_report' || normalized === 'proactive_outreach_report') {
+    return '主动私信治理'
+  }
+  return null
+}
+
+function complaintDisplayLabel(complaintType: string | null | undefined, reasonCode: string | null | undefined): string {
+  return governanceRequestLabel(reasonCode) ?? COMPLAINT_TYPE_LABELS[complaintType ?? ''] ?? complaintType ?? '治理申请'
+}
+
 function entrySurfaceLabel(input: {
   targetType: string | null | undefined
   reasonCode?: string | null
@@ -112,9 +126,9 @@ function entrySurfaceLabel(input: {
   const reasonCode = input.reasonCode?.trim().toLowerCase() ?? ''
   if (reasonCode === 'comment_report') return '评论区'
   if (reasonCode === 'chat_message_report') return '聊天室 live 对话'
-  if (reasonCode === 'proactive_private_session_report') return '主动私信会话'
-  if (reasonCode === 'private_session_report') return '私聊会话'
-  if (reasonCode === 'proactive_outreach_report') return '通知中心的主动私信提醒'
+  if (reasonCode === 'proactive_private_session_report') return '主动私信治理入口'
+  if (reasonCode === 'private_session_report') return '私聊治理入口'
+  if (reasonCode === 'proactive_outreach_report') return '通知中心的主动私信治理入口'
   if (reasonCode === 'privacy_request') return '隐私请求入口'
   if (reasonCode === 'deletion_request') return '删除请求入口'
   if (reasonCode === 'impersonation_report') return '冒充举报入口'
@@ -203,7 +217,9 @@ function isHotTopicUpdate(value: { title?: string | null; body?: string | null }
   )
 }
 
-function phaseCopy(entry: Pick<TimelineEntry, 'source' | 'phase'> & { hot_topic?: boolean }): string {
+function phaseCopy(
+  entry: Pick<TimelineEntry, 'source' | 'phase'> & { hot_topic?: boolean; governance_label?: string | null },
+): string {
   if (entry.hot_topic) {
     switch (entry.phase) {
       case 'QUEUED':
@@ -218,6 +234,24 @@ function phaseCopy(entry: Pick<TimelineEntry, 'source' | 'phase'> & { hot_topic?
       case 'UPDATE':
       default:
         return '这里会持续同步热点复核、漂移提醒和限制传播的状态回执。'
+    }
+  }
+
+  if (entry.source === 'REPORT' && entry.governance_label) {
+    switch (entry.phase) {
+      case 'SUBMITTED':
+        return `${entry.governance_label}已登记，系统会先建 case 并补齐证据快照。`
+      case 'QUEUED':
+        return `${entry.governance_label}已挂到人工审核队列，结案或重开会继续沿同一条 case 链路同步。`
+      case 'RESOLVED':
+        return `${entry.governance_label}已处理，结果和治理动作已经回写到你的记录里。`
+      case 'CLOSED':
+        return `${entry.governance_label}已结案，当前没有追加动作。`
+      case 'REOPENED':
+        return `${entry.governance_label}关联的 case 已重新打开，审核会继续追加证据。`
+      case 'UPDATE':
+      default:
+        return `${entry.governance_label}流程仍在推进，新的治理回执会继续出现在这里。`
     }
   }
 
@@ -294,27 +328,36 @@ function buildTimelineEntries(
   appeals: AppealRequest[],
   governanceUpdates: Notification[],
 ): TimelineEntry[] {
-  const reportEntries: TimelineEntry[] = reports.map((item) => ({
-    id: `report-${item.id}`,
-    source: 'REPORT',
-    phase: complaintPhase(item.status),
-    title: `已提交${COMPLAINT_TYPE_LABELS[item.complaint_type] ?? item.complaint_type}`,
-    body: complaintDetail(item),
-    phase_copy: phaseCopy({ source: 'REPORT', phase: complaintPhase(item.status) }),
-    surface_label: entrySurfaceLabel({
-      targetType: item.target_type,
-      reasonCode: item.reason_code,
-    }),
-    target_label: targetLabel(item.target_type, item.target_id),
-    created_at: item.created_at,
-    status: item.status,
-    href: targetHref(item.target_type, item.target_id),
-    unread: false,
-  }))
+  const reportEntries: TimelineEntry[] = reports.map((item) => {
+    const governanceLabel = governanceRequestLabel(item.reason_code)
+    return {
+      id: `report-${item.id}`,
+      source: 'REPORT',
+      source_label: governanceLabel ? '治理申请' : '举报单',
+      phase: complaintPhase(item.status),
+      title: `已提交${complaintDisplayLabel(item.complaint_type, item.reason_code)}`,
+      body: complaintDetail(item),
+      phase_copy: phaseCopy({
+        source: 'REPORT',
+        phase: complaintPhase(item.status),
+        governance_label: governanceLabel ? `${governanceLabel}申请` : null,
+      }),
+      surface_label: entrySurfaceLabel({
+        targetType: item.target_type,
+        reasonCode: item.reason_code,
+      }),
+      target_label: targetLabel(item.target_type, item.target_id),
+      created_at: item.created_at,
+      status: item.status,
+      href: targetHref(item.target_type, item.target_id),
+      unread: false,
+    }
+  })
 
   const appealEntries: TimelineEntry[] = appeals.map((item) => ({
     id: `appeal-${item.id}`,
     source: 'APPEAL',
+    source_label: '申诉单',
     phase: appealPhase(item.status),
     title: `已提交${APPEAL_TYPE_LABELS[item.appeal_type] ?? item.appeal_type}`,
     body: appealDetail(item),
@@ -332,6 +375,7 @@ function buildTimelineEntries(
   const notificationEntries: TimelineEntry[] = governanceUpdates.map((item) => ({
     id: `notification-${item.id}`,
     source: 'GOVERNANCE',
+    source_label: '治理通知',
     phase: governancePhase(item),
     title: item.title,
     body: item.body ?? '治理状态已更新',
@@ -473,10 +517,10 @@ function TimelineCard({
                         ? uix('uix-1e4ba8b8b0')
                         : entry.source === 'APPEAL'
                           ? uix('uix-650421c537')
-                          : uix('uix-acde22e5d7')
+                        : uix('uix-acde22e5d7')
                     }
                   >
-                    {entry.source === 'REPORT' ? '举报单' : entry.source === 'APPEAL' ? '申诉单' : '治理通知'}
+                    {entry.source_label}
                   </Badge>
                   <Badge
                     variant="outline"
@@ -540,10 +584,13 @@ function TimelineCard({
 }
 
 function renderComplaintRow(item: ComplaintTicket) {
+  const governanceLabel = governanceRequestLabel(item.reason_code)
   return (
     <TicketRow
       key={item.id}
-      title={`${COMPLAINT_TYPE_LABELS[item.complaint_type] ?? item.complaint_type} · ${item.reason_code}`}
+      title={governanceLabel
+        ? `${governanceLabel} · ${entrySurfaceLabel({ targetType: item.target_type, reasonCode: item.reason_code })}`
+        : `${complaintDisplayLabel(item.complaint_type, item.reason_code)} · ${item.reason_code}`}
       status={item.status}
       createdAt={item.created_at}
       contextLine={`提交入口 · ${entrySurfaceLabel({ targetType: item.target_type, reasonCode: item.reason_code })} · 目标对象 · ${targetLabel(item.target_type, item.target_id)}`}
@@ -603,12 +650,12 @@ export function SafetyCenterPage() {
       <div>
         <h1 className={uix('uix-65af6ac52c')}>举报与申诉</h1>
         <p className={uix('uix-25be576b96')}>
-          查看你提交过的举报与申诉。被风控拦截、折叠或需要人工复核的内容，会在这里留下状态轨迹。
+          查看你提交过的举报、申诉和私聊治理申请。被风控拦截、折叠或需要人工复核的内容，会在这里留下状态轨迹。
         </p>
       </div>
 
       <div className={uix('uix-a10c4b5d31')}>
-        当前受理入口已覆盖帖子、评论、聊天室发言、私聊会话和主动私信提醒。
+        当前受理入口已覆盖帖子、评论、聊天室发言，以及 Owner 私聊会话、主动私信的治理申请。
         流程会按“已提交 → 建 case → 进入审核/复核 → 重开或结案”逐步回写到这里。
         私聊与主动私信仍默认受实名门槛约束。
         {' '}

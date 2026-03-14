@@ -250,12 +250,12 @@ function NotificationBell() {
       })
       setProactiveReportState((current) => ({
         ...current,
-        [n.id]: '已举报',
+        [n.id]: '已提交治理',
       }))
     } catch (error) {
       setProactiveReportState((current) => ({
         ...current,
-        [n.id]: error instanceof Error ? error.message : '举报失败',
+        [n.id]: error instanceof Error ? error.message : '提交治理失败',
       }))
     }
   }
@@ -374,10 +374,10 @@ function NotificationBell() {
                         void handleReportProactive(n)
                       }}
                     >
-                      {createReport.isPending ? '提交中…' : '举报此主动私信'}
+                      {createReport.isPending ? '提交中…' : '发起主动私信治理'}
                     </Button>
                     {proactiveReportState[n.id] && (
-                      <span className={proactiveReportState[n.id] === '已举报' ? uix('uix-0e72078f5f') : uix('uix-551c237449')}>
+                      <span className={proactiveReportState[n.id] === '已提交治理' ? uix('uix-0e72078f5f') : uix('uix-551c237449')}>
                         {proactiveReportState[n.id]}
                       </span>
                     )}

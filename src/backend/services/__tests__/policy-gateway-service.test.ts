@@ -105,7 +105,7 @@ async function buildGatewayWithHotTopicContext(input: {
   const community = communityRepo.create({
     name: 'Hot Topic Community',
     slug: `hot-topic-${Date.now()}`,
-    rules_json: input.community_rules_json ?? undefined,
+    ...(input.community_rules_json ? { rules_json: input.community_rules_json } : {}),
   })
 
   if (input.room_program_patch) {
@@ -542,7 +542,7 @@ describe('PolicyGatewayService', () => {
 
     expect(decision.action).toBe('allow')
     expect(decision.distribution_state).toBe('NORMAL')
-    const topicSignals = decision.metadata?.topic_signals as Record<string, unknown> | undefined
+    const topicSignals = decision.metadata?.topic_signals as { sampled_review_required?: boolean } | undefined
     expect(topicSignals?.sampled_review_required).toBe(true)
 
     const cases = await riskRepo.listCases({ limit: 20, cursor: undefined })

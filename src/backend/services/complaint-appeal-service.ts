@@ -14,6 +14,11 @@ import type { RiskGovernanceRepository } from '../repos/risk-governance-reposito
 import type { PrivateSession } from '../repos/types/private-channel.js'
 import type { ReviewService } from './review-service.js'
 import type { NotificationService } from './notification-service.js'
+import {
+  complaintAudienceLabel,
+  governanceRequestEntryLabel,
+  governanceRequestLabel,
+} from './governance-request-copy.js'
 
 const REPORTABLE_TARGET_TYPES = new Set([
   'post',
@@ -205,24 +210,8 @@ export class ComplaintAppealService {
     }
   }
 
-  private complaintNotificationTitle(complaintType: ComplaintType): string {
-    switch (complaintType) {
-      case 'PRIVACY_REQUEST':
-        return '你的隐私请求已进入审核'
-      case 'DELETION_REQUEST':
-        return '你的删除请求已进入审核'
-      case 'IMPERSONATION_REPORT':
-        return '你的冒充举报已进入审核'
-      case 'MISLABEL_REPORT':
-        return '你的误标举报已进入审核'
-      case 'HARASSMENT_REPORT':
-        return '你的骚扰举报已进入审核'
-      case 'OTHER':
-        return '你的投诉已进入审核'
-      case 'CONTENT_REPORT':
-      default:
-        return '你的举报已进入审核'
-    }
+  private complaintNotificationTitle(complaintType: ComplaintType, reasonCode: string): string {
+    return `${complaintAudienceLabel(complaintType, reasonCode)}已进入审核`
   }
 
   private targetLabel(targetType: ReportableTargetType, targetId: string): string {
@@ -241,12 +230,12 @@ export class ComplaintAppealService {
   }
 
   private complaintSurfaceLabel(targetType: ReportableTargetType, reasonCode: string): string {
+    const governanceEntryLabel = governanceRequestEntryLabel(reasonCode)
+    if (governanceEntryLabel) return governanceEntryLabel
+
     const normalized = reasonCode.trim().toLowerCase()
     if (normalized === 'comment_report') return '评论区'
     if (normalized === 'chat_message_report') return '聊天室 live 对话'
-    if (normalized === 'proactive_private_session_report') return '主动私信会话'
-    if (normalized === 'proactive_outreach_report') return '通知中心的主动私信提醒'
-    if (normalized === 'private_session_report') return '私聊会话'
     if (normalized === 'privacy_request') return '隐私请求入口'
     if (normalized === 'deletion_request') return '删除请求入口'
     if (normalized === 'impersonation_report') return '冒充举报入口'
@@ -292,7 +281,9 @@ export class ComplaintAppealService {
       ? '隐私队列'
       : input.queue === 'DELETION'
         ? '删除队列'
-        : '投诉队列'
+        : governanceRequestLabel(input.reasonCode)
+          ? '治理队列'
+          : '投诉队列'
     return `提交入口 ${this.complaintSurfaceLabel(input.targetType, input.reasonCode)} · 目标对象 ${this.targetLabel(input.targetType, input.targetId)} · case ${input.linkedCaseId} · 已进入${queueLabel}`
   }
 
@@ -433,7 +424,7 @@ export class ComplaintAppealService {
       })
       await this.createGovernanceNotification({
         user_id: input.reporter_user_id,
-        title: this.complaintNotificationTitle(complaint_type),
+        title: this.complaintNotificationTitle(complaint_type, reason_code),
         body: this.complaintNotificationBody({
           complaintType: complaint_type,
           linkedCaseId: linkedCase.id,

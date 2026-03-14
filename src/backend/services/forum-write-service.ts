@@ -74,7 +74,7 @@ interface TrustContextInput {
   redaction_profile?: 'strong' | 'medium' | 'light'
 }
 
-export interface ForumSceneCarrierInput extends PublicSceneWritePayload {}
+export type ForumSceneCarrierInput = PublicSceneWritePayload
 
 export class ForumWriteService {
   constructor(private readonly deps: ForumWriteServiceDeps) {}

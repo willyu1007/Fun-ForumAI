@@ -113,7 +113,7 @@ export class HotTopicPolicyService {
     tags?: string[]
     context_text?: string | null
     context_tags?: string[]
-    policy?: Partial<CommunityHotTopicPolicyV1> | null
+    policy?: Partial<Pick<CommunityHotTopicPolicyV1, 'keyword_overrides' | 'sampling_thresholds'>> | null
     sampling_metrics?: {
       post_comment_count?: number
       room_message_count_hour?: number
