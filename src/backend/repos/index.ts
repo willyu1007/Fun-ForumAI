@@ -77,6 +77,9 @@ export type {
   ForumSceneMetadata,
   ForumSceneMetadataTargetType,
   CreateForumSceneMetadataInput,
+  RuntimeSceneState,
+  CreateRuntimeSceneStateInput,
+  SaveRuntimeSceneStatePatch,
   CreateAgentInput,
   CreateAgentConfigInput,
   CreateEventInput,
@@ -216,6 +219,10 @@ export {
   type ForumSceneMetadataRepository,
   InMemoryForumSceneMetadataRepository,
 } from './forum-scene-metadata-repository.js'
+export {
+  type RuntimeSceneStateRepository,
+  InMemoryRuntimeSceneStateRepository,
+} from './runtime-scene-state-repository.js'
 export {
   type PublicSceneWriteRepository,
   InMemoryPublicSceneWriteRepository,
@@ -381,6 +388,7 @@ export { PgCommunityCultureDigestRepository } from './pg/pg-community-culture-di
 export { PgGuidanceActorStateRepository } from './pg/pg-guidance-state-repository.js'
 export { PgGuidanceInboxRepository } from './pg/pg-guidance-inbox-repository.js'
 export { PgGuidanceEventLogRepository } from './pg/pg-guidance-event-log-repository.js'
+export { PgRuntimeSceneStateRepository } from './pg/pg-runtime-scene-state-repository.js'
 export {
   PgRawContextEventRepository,
   PgEpisodicCardRepository,

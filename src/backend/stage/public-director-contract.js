@@ -224,44 +224,95 @@ export const episodeOverlayV1Schema = z.object({
   }).strict(),
 }).strict()
 
+const runtimeSceneLoopSchema = z.object({
+  loop_id: z.string().min(1),
+  summary: z.string().min(1),
+  source: z.enum(['cue', 'message', 'highlight', 'shared_memory', 'manual']),
+  opened_at: z.string().min(1),
+}).strict()
+
+const runtimeSceneResolvedLoopSchema = z.object({
+  loop_id: z.string().min(1),
+  summary: z.string().min(1),
+  resolution_type: z.enum(['answered', 'callback', 'dropped', 'aftershow']),
+  resolved_at: z.string().min(1),
+}).strict()
+
 export const runtimeSceneStateV1Schema = z.object({
-  episode_id: z.string().min(1),
+  runtime_scene_id: z.string().min(1),
   director_surface: z.enum(['forum', 'chat_room']),
   actor_surface: actorSurfaceSchema,
-  template_id: z.string().min(1),
-  template_version: z.string().min(1),
-  binding_id: z.string().min(1).nullable(),
+  community_id: z.string().min(1).nullable(),
+  room_id: z.string().min(1).nullable(),
+  scene_template_id: z.string().min(1),
+  scene_template_version: z.string().min(1),
+  scene_binding_id: z.string().min(1).nullable(),
   overlay_id: z.string().min(1).nullable(),
+  episode_id: z.string().min(1),
   phase: z.enum(['opening', 'escalation', 'pivot', 'closure', 'aftershow']),
-  active_agent_ids: z.array(z.string().min(1)).default([]),
-  standby_agent_ids: z.array(z.string().min(1)).default([]),
-  recently_spoke_agent_ids: z.array(z.string().min(1)).default([]),
-  open_loops: z.array(z.object({
-    loop_id: z.string().min(1),
-    summary: z.string().min(1),
-    opened_at: z.string().min(1),
-    owner: z.enum(['scene', 'cast', 'audience']),
-  }).strict()).default([]),
-  resolved_loops: z.array(z.object({
-    loop_id: z.string().min(1),
-    summary: z.string().min(1),
-    resolved_at: z.string().min(1),
-    resolution_type: z.enum(['answered', 'dropped', 'deferred']),
-  }).strict()).default([]),
-  turn_count: z.number().int().min(0).default(0),
-  heat_score: z.number().min(0).default(0),
-  fatigue_score: z.number().min(0).default(0),
-  repetition_score: z.number().min(0).default(0),
-  previous_episode_ids: z.array(z.string().min(1)).default([]),
+  status: z.enum(['active', 'closing', 'closed', 'cooldown']),
+  cast: z.object({
+    active_agent_ids: z.array(z.string().min(1)).default([]),
+    standby_agent_ids: z.array(z.string().min(1)).default([]),
+    suppressed_agent_ids: z.array(z.string().min(1)).default([]),
+    recently_spoke_agent_ids: z.array(z.string().min(1)).default([]),
+    slot_audit: z.object({
+      core_agent_ids: z.array(z.string().min(1)).default([]),
+      contrast_agent_ids: z.array(z.string().min(1)).default([]),
+      wildcard_agent_ids: z.array(z.string().min(1)).default([]),
+      must_have_role_hits: z.array(z.string().min(1)).default([]),
+      target_active_count: z.number().int().min(0).default(0),
+    }).strict().default({
+      core_agent_ids: [],
+      contrast_agent_ids: [],
+      wildcard_agent_ids: [],
+      must_have_role_hits: [],
+      target_active_count: 0,
+    }),
+    cast_version: z.number().int().min(0).default(0),
+  }).strict(),
+  continuity: z.object({
+    previous_episode_ids: z.array(z.string().min(1)).default([]),
+    open_loops: z.array(runtimeSceneLoopSchema).default([]),
+    resolved_loops: z.array(runtimeSceneResolvedLoopSchema).default([]),
+  }).strict(),
+  dynamics: z.object({
+    turn_count: z.number().int().min(0).default(0),
+    message_count: z.number().int().min(0).default(0),
+    heat_score: z.number().min(0).default(0),
+    fatigue_score: z.number().min(0).default(0),
+    repetition_score: z.number().min(0).default(0),
+    phase_entered_at: z.string().min(1),
+  }).strict(),
   close_condition: z.object({
-    reason: z.enum(['ttl', 'message_threshold', 'objective_met', 'fatigue_stop', 'risk_stop', 'manual']),
+    reason: z.enum(['ttl', 'message_threshold', 'objective_met', 'manual', 'risk_stop', 'fatigue_stop']).nullable(),
     satisfied: z.boolean(),
-    expires_at: z.string().min(1).optional(),
-    threshold_value: z.number().optional(),
+    objective_refs: z.array(z.string().min(1)).default([]),
+    ttl_at: z.string().min(1).nullable(),
+    message_threshold: z.number().int().min(1).nullable(),
+    evaluated_at: z.string().min(1),
+  }).strict(),
+  aftershow: z.object({
+    mode: z.enum(['off', 'threshold', 'periodic', 'manual']),
+    status: z.enum(['not_applicable', 'pending', 'due', 'published', 'skipped']),
+    artifact_ref: z.string().min(1).nullable(),
+  }).strict(),
+  cooldown_until: z.string().min(1).nullable(),
+  experiment: z.object({
+    bucket: z.enum(['A', 'B', 'C']),
+    assignment_source: z.enum(['feature_flag', 'room_override', 'manual']),
+  }).strict(),
+  audit: z.object({
+    selection_id: z.string().min(1).nullable(),
+    episode_plan_id: z.string().min(1).nullable(),
+    latest_local_intent_id: z.string().min(1).nullable(),
+    latest_program_event_id: z.string().min(1).nullable(),
+    state_version: z.number().int().min(0),
   }).strict(),
   started_at: z.string().min(1),
   updated_at: z.string().min(1),
-  expires_at: z.string().min(1).optional(),
+  expires_at: z.string().min(1).nullable(),
+  closed_at: z.string().min(1).nullable(),
 }).strict()
 
 export const episodeBriefSchema = z.object({

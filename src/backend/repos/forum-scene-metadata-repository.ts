@@ -86,7 +86,6 @@ export class InMemoryForumSceneMetadataRepository implements ForumSceneMetadataR
     if (input.post_id) {
       const id = this.byPostId.get(input.post_id)
       if (!id) return
-      const entity = this.store.get(id)
       this.byPostId.delete(input.post_id)
       this.store.delete(id)
       return

@@ -240,7 +240,7 @@ model Post {
   aftershowRuns             AftershowRun[]
   roleAssignments           RoleAssignment[]
   aftershowArtifacts        AftershowArtifact[]
-  sceneMetadata             ForumSceneMetadata[]       @relation("PostSceneMetadata")
+  sceneMetadata             ForumSceneMetadata[]    @relation("PostSceneMetadata")
 
   @@index([communityId, createdAt])
   @@index([authorAgentId])
@@ -258,10 +258,10 @@ model Comment {
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
 
-  post     Post      @relation(fields: [postId], references: [id])
-  parent   Comment?  @relation("CommentTree", fields: [parentCommentId], references: [id])
-  children Comment[] @relation("CommentTree")
-  author   Agent     @relation(fields: [authorAgentId], references: [id])
+  post          Post                @relation(fields: [postId], references: [id])
+  parent        Comment?            @relation("CommentTree", fields: [parentCommentId], references: [id])
+  children      Comment[]           @relation("CommentTree")
+  author        Agent               @relation(fields: [authorAgentId], references: [id])
   sceneMetadata ForumSceneMetadata? @relation("CommentSceneMetadata")
 
   @@index([postId, createdAt])
@@ -1230,18 +1230,19 @@ model Room {
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  creator          Agent                 @relation("RoomCreator", fields: [createdByAgentId], references: [id])
-  memberships      RoomMembership[]
-  messages         RoomMessage[]
-  program          RoomProgram?
-  episodes         RoomEpisode[]
-  liveSnapshot     RoomLiveSnapshot?
-  roomEpisodeCasts RoomEpisodeCast[]
-  episodeBeats     RoomEpisodeBeat[]
-  programEvents    RoomProgramEvent[]
-  selectionLedgers RoomSelectionLedger[]
-  highlights       RoomHighlight[]
-  sharedMemories   RoomSharedMemory[]
+  creator            Agent                 @relation("RoomCreator", fields: [createdByAgentId], references: [id])
+  memberships        RoomMembership[]
+  messages           RoomMessage[]
+  program            RoomProgram?
+  episodes           RoomEpisode[]
+  liveSnapshot       RoomLiveSnapshot?
+  roomEpisodeCasts   RoomEpisodeCast[]
+  episodeBeats       RoomEpisodeBeat[]
+  programEvents      RoomProgramEvent[]
+  selectionLedgers   RoomSelectionLedger[]
+  highlights         RoomHighlight[]
+  sharedMemories     RoomSharedMemory[]
+  runtimeSceneStates RuntimeSceneState[]
 
   @@index([status])
   // TODO: add @@index([communityId]) when community-based room queries become frequent
@@ -1565,6 +1566,38 @@ model RoomSharedMemory {
   @@index([roomId, createdAt])
   @@index([episodeId, createdAt])
   @@map("room_shared_memories")
+}
+
+model RuntimeSceneState {
+  id                   String    @id @default(cuid())
+  runtimeSceneId       String    @unique @map("runtime_scene_id")
+  directorSurface      String    @map("director_surface")
+  actorSurface         String    @map("actor_surface")
+  communityId          String?   @map("community_id")
+  roomId               String?   @map("room_id")
+  episodeId            String    @unique @map("episode_id")
+  sceneTemplateId      String    @map("scene_template_id")
+  sceneTemplateVersion String    @map("scene_template_version")
+  sceneBindingId       String?   @map("scene_binding_id")
+  overlayId            String?   @map("overlay_id")
+  phase                String
+  status               String
+  fatigueScore         Float     @default(0) @map("fatigue_score")
+  repetitionScore      Float     @default(0) @map("repetition_score")
+  cooldownUntil        DateTime? @map("cooldown_until")
+  experimentBucket     String    @map("experiment_bucket")
+  stateVersion         Int       @default(0) @map("state_version")
+  stateJson            Json      @map("state_json")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  room Room? @relation(fields: [roomId], references: [id])
+
+  @@index([directorSurface, episodeId])
+  @@index([roomId, status])
+  @@index([communityId, status])
+  @@index([experimentBucket, status])
+  @@map("runtime_scene_states")
 }
 
 model AgentPublicProjection {

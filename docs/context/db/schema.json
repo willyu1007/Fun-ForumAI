@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-13T15:18:59.290Z",
+  "updatedAt": "2026-03-13T23:24:58.643Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -15285,6 +15285,15 @@
           "references": []
         },
         {
+          "field": "runtimeSceneStates",
+          "to": "RuntimeSceneState",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "selectionLedgers",
           "to": "RoomSelectionLedger",
           "optional": false,
@@ -17725,6 +17734,297 @@
           "fields": [
             "roomId",
             "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "RuntimeSceneState",
+      "dbName": "runtime_scene_states",
+      "schema": null,
+      "columns": [
+        {
+          "name": "actorSurface",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "actor_surface",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "cooldownUntil",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "cooldown_until",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "directorSurface",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "director_surface",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "episodeId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "episode_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "experimentBucket",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "experiment_bucket",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "fatigueScore",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "fatigue_score",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "overlayId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "overlay_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "phase",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "repetitionScore",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "repetition_score",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "roomId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "room_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "runtimeSceneId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "runtime_scene_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "sceneBindingId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "scene_binding_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneTemplateId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scene_template_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneTemplateVersion",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scene_template_version",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "stateJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "state_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "stateVersion",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "state_version",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "room",
+          "to": "Room",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "roomId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "communityId",
+            "status"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "directorSurface",
+            "episodeId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "experimentBucket",
+            "status"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "roomId",
+            "status"
           ],
           "name": null,
           "map": null

@@ -33,7 +33,7 @@ function buildPayload(
       template_id: overrides.scene_template_id ?? 'stage-theme-01',
       template_version: overrides.scene_template_version ?? 'legacy-v1',
       binding_id: overrides.scene_binding_id ?? 'binding-1',
-      phase: overrides.phase ?? 'opening',
+      phase: overrides.phase === 'aftershow' ? 'closure' : overrides.phase ?? 'opening',
       scene_goal: {
         viewer_goal: '推进讨论',
         growth_goal: '增加连贯性',

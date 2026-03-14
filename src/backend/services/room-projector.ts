@@ -2,6 +2,7 @@ import type { AgentRepository } from '../repos/agent-repository.js'
 import type { MessageRepository } from '../repos/message-repository.js'
 import type { RoomRepository } from '../repos/room-repository.js'
 import type { RoomWatchabilityRepository } from '../repos/room-watchability-repository.js'
+import { config } from '../lib/config.js'
 import type {
   ChatMessage,
   RoomCallbackCandidate,
@@ -12,6 +13,7 @@ import type {
   RoomWatchabilitySummary,
 } from '../repos/types.js'
 import type { AgentPublicProjectionService } from './agent-public-projection-service.js'
+import type { RuntimeSceneStateManager } from './runtime-scene-state-manager.js'
 import {
   buildLiveHook,
   buildRecapShort,
@@ -78,6 +80,7 @@ export interface RoomProjectorDeps {
   agentRepo: AgentRepository
   watchabilityRepo: RoomWatchabilityRepository
   projectionService?: AgentPublicProjectionService | null
+  runtimeSceneStateManager?: RuntimeSceneStateManager | null
 }
 
 export interface RoomProjectionResult {
@@ -238,6 +241,19 @@ export class RoomProjector {
       member_spotlight_weight: members.find((member) => member.member_id === entry.agent_id)?.spotlight_weight ?? 1,
       projection: projections.get(entry.agent_id) ?? null,
     }))
+
+    if (config.features.directorRuntimeStateV1 && program.enabled) {
+      await this.deps.runtimeSceneStateManager?.ensureChatroomState({
+        room,
+        program,
+        episode,
+        cast,
+        members,
+        recentMessages,
+      }).catch((error) => {
+        console.warn(`[RoomProjector] failed to sync runtime scene state for room=${roomId}:`, error)
+      })
+    }
 
     return {
       program,

@@ -143,43 +143,84 @@ export interface EpisodeOverlayV1 {
 }
 
 export interface RuntimeSceneStateV1 {
-  episode_id: string
+  runtime_scene_id: string
   director_surface: 'forum' | 'chat_room'
   actor_surface: ActorSurface
-  template_id: string
-  template_version: string
-  binding_id: string | null
+  community_id: string | null
+  room_id: string | null
+  scene_template_id: string
+  scene_template_version: string
+  scene_binding_id: string | null
   overlay_id: string | null
+  episode_id: string
   phase: 'opening' | 'escalation' | 'pivot' | 'closure' | 'aftershow'
-  active_agent_ids: string[]
-  standby_agent_ids: string[]
-  recently_spoke_agent_ids: string[]
-  open_loops: Array<{
-    loop_id: string
-    summary: string
-    opened_at: string
-    owner: 'scene' | 'cast' | 'audience'
-  }>
-  resolved_loops: Array<{
-    loop_id: string
-    summary: string
-    resolved_at: string
-    resolution_type: 'answered' | 'dropped' | 'deferred'
-  }>
-  turn_count: number
-  heat_score: number
-  fatigue_score: number
-  repetition_score: number
-  previous_episode_ids: string[]
+  status: 'active' | 'closing' | 'closed' | 'cooldown'
+  cast: {
+    active_agent_ids: string[]
+    standby_agent_ids: string[]
+    suppressed_agent_ids: string[]
+    recently_spoke_agent_ids: string[]
+    slot_audit: {
+      core_agent_ids: string[]
+      contrast_agent_ids: string[]
+      wildcard_agent_ids: string[]
+      must_have_role_hits: string[]
+      target_active_count: number
+    }
+    cast_version: number
+  }
+  continuity: {
+    previous_episode_ids: string[]
+    open_loops: Array<{
+      loop_id: string
+      summary: string
+      source: 'cue' | 'message' | 'highlight' | 'shared_memory' | 'manual'
+      opened_at: string
+    }>
+    resolved_loops: Array<{
+      loop_id: string
+      summary: string
+      resolution_type: 'answered' | 'callback' | 'dropped' | 'aftershow'
+      resolved_at: string
+    }>
+  }
+  dynamics: {
+    turn_count: number
+    message_count: number
+    heat_score: number
+    fatigue_score: number
+    repetition_score: number
+    phase_entered_at: string
+  }
   close_condition: {
-    reason: 'ttl' | 'message_threshold' | 'objective_met' | 'fatigue_stop' | 'risk_stop' | 'manual'
+    reason: 'ttl' | 'message_threshold' | 'objective_met' | 'manual' | 'risk_stop' | 'fatigue_stop' | null
     satisfied: boolean
-    expires_at?: string
-    threshold_value?: number
+    objective_refs: string[]
+    ttl_at: string | null
+    message_threshold: number | null
+    evaluated_at: string
+  }
+  aftershow: {
+    mode: 'off' | 'threshold' | 'periodic' | 'manual'
+    status: 'not_applicable' | 'pending' | 'due' | 'published' | 'skipped'
+    artifact_ref: string | null
+  }
+  cooldown_until: string | null
+  experiment: {
+    bucket: 'A' | 'B' | 'C'
+    assignment_source: 'feature_flag' | 'room_override' | 'manual'
+  }
+  audit: {
+    selection_id: string | null
+    episode_plan_id: string | null
+    latest_local_intent_id: string | null
+    latest_program_event_id: string | null
+    state_version: number
   }
   started_at: string
   updated_at: string
-  expires_at?: string
+  expires_at: string | null
+  closed_at: string | null
 }
 
 export interface EpisodeBrief {

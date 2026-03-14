@@ -1,5 +1,5 @@
 import type { ForumSceneMetadataRepository } from '../repos/forum-scene-metadata-repository.js'
-import type { EpisodeBrief, LocalIntent, SceneBindingV1, SceneMetadata, ScenePoolCatalog, StageTemplateV2 } from '../stage/index.js'
+import type { EpisodeBrief, LocalIntent, SceneMetadata, ScenePoolCatalog, StageTemplateV2 } from '../stage/index.js'
 import { PublicSceneCatalogService } from './public-scene-catalog-service.js'
 import {
   buildLocalIntentBlock,
@@ -176,9 +176,9 @@ export class PublicSceneSelectorService {
     const candidates = await Promise.all(
       catalog.scene_bindings
         .filter((binding) => binding.status === 'active')
-        .filter((binding) => binding.target.surface === 'forum')
         .filter((binding) => binding.entry_surfaces.includes('scheduled_post'))
         .map(async (binding) => {
+          if (binding.target.surface !== 'forum') return null
           const community = binding.target.community_id
             ? eligibleById.get(binding.target.community_id)
             : eligibleBySlug.get(binding.target.community_slug)
