@@ -194,4 +194,43 @@ describe('PgRoomWatchabilityRepository', () => {
     })
     expect(planned.beat.ordinal).toBe(5)
   })
+
+  it('falls back to archived program events when a hot-row lookup misses', async () => {
+    const hotFindUnique = vi.fn(async () => null)
+    const archiveFindUnique = vi.fn(async () => ({
+      id: 'evt-archived-1',
+      roomId: 'room-1',
+      episodeId: 'episode-1',
+      beatId: null,
+      eventType: 'RAW_MESSAGE',
+      status: 'EXECUTED',
+      cueType: 'CALLBACK',
+      directorGoal: '回收旧梗',
+      selectedSpeakerAgentId: 'agent-1',
+      idempotencyKey: 'raw-message:archived-1',
+      payloadJson: { source: 'archive' },
+      errorText: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      archivedAt: new Date('2026-03-14T00:00:00.000Z'),
+      archiveBatchId: 'batch-1',
+      archiveReason: 'retention_window_elapsed',
+    }))
+
+    const repo = new PgRoomWatchabilityRepository({
+      roomProgramEvent: { findUnique: hotFindUnique },
+      roomProgramEventArchive: { findUnique: archiveFindUnique },
+    } as never)
+
+    const event = await repo.getProgramEvent('evt-archived-1')
+
+    expect(hotFindUnique).toHaveBeenCalledWith({ where: { id: 'evt-archived-1' } })
+    expect(archiveFindUnique).toHaveBeenCalledWith({ where: { id: 'evt-archived-1' } })
+    expect(event).toMatchObject({
+      id: 'evt-archived-1',
+      room_id: 'room-1',
+      event_type: 'RAW_MESSAGE',
+      payload_json: { source: 'archive' },
+    })
+  })
 })

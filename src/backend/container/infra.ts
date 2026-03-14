@@ -164,6 +164,7 @@ export async function createInfrastructure(): Promise<InfraResult> {
       cultureDigest: createLeaderElector('culture-digest'),
       communityConfigScheduler: createLeaderElector('community-config-scheduler'),
       roleAssignmentExpiryScheduler: createLeaderElector('role-assignment-expiry-scheduler'),
+      directorHistoryMaintenanceScheduler: createLeaderElector('director-history-maintenance-scheduler'),
       guidanceRecallScheduler: createLeaderElector('guidance-recall-scheduler'),
     },
   }
