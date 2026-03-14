@@ -933,3 +933,12 @@ tasks:
       - R-064
     dev_docs_path: dev-docs/active/director-report-history-lifecycle-and-segmentation
     updated: 2026-03-14
+  - id: T-102
+    slug: pr-13-merge-readiness-remediation
+    status: archived
+    milestone_id: M-000
+    feature_id: F-060
+    requirement_ids:
+      - R-064
+    dev_docs_path: dev-docs/archive/pr-13-merge-readiness-remediation
+    updated: 2026-03-14

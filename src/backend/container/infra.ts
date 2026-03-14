@@ -37,6 +37,7 @@ export interface InfraResult {
     cultureDigest: LeaderElector
     communityConfigScheduler: LeaderElector
     roleAssignmentExpiryScheduler: LeaderElector
+    directorHistoryMaintenanceScheduler: LeaderElector
     guidanceRecallScheduler: LeaderElector
   }
 }

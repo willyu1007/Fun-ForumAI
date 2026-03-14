@@ -107,4 +107,5 @@ Project: `main`
 | T-099 scene-pool-authoring-schema-v2-migration | done | F-060 | dev-docs/active/scene-pool-authoring-schema-v2-migration |
 | T-100 scene-pool-authoring-v2-hardening-and-e2e-followup | done | F-060 | dev-docs/active/scene-pool-authoring-v2-hardening-and-e2e-followup |
 | T-101 director-report-history-lifecycle-and-segmentation | done | F-060 | dev-docs/active/director-report-history-lifecycle-and-segmentation |
+| T-102 pr-13-merge-readiness-remediation | archived | F-060 | dev-docs/archive/pr-13-merge-readiness-remediation |
 <!-- AUTO-GENERATED:END task-index -->

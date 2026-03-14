@@ -10,7 +10,11 @@ import {
   sceneMetadataSchema,
 } from '../public-director-contract.js'
 
-function makeForumBinding(overrides: Partial<Record<string, unknown>> = {}) {
+type ManifestItemInput = Parameters<typeof buildStageTemplateV2FromAuthoring>[0]
+type ManifestBindingInput = ManifestItemInput['bindings'][number]
+type ForumBindingInput = Extract<ManifestBindingInput, { surface: 'forum' }>
+
+function makeForumBinding(overrides: Partial<ForumBindingInput> = {}): ForumBindingInput {
   return {
     surface: 'forum' as const,
     community_slug: 'general',
@@ -24,7 +28,7 @@ function makeForumBinding(overrides: Partial<Record<string, unknown>> = {}) {
     },
     activation: {
       time_windows: [],
-      allowed_days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const,
+      allowed_days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
       trigger_conditions: [],
     },
     governance: {},
@@ -42,7 +46,7 @@ describe('public-director-contract', () => {
         path: 'templates/stage-theme-01.yaml',
         lifecycle_status: 'core_active',
         bindings: [makeForumBinding()],
-      },
+      } satisfies ManifestItemInput,
       {
         template_id: 'stage-theme-01',
         template_version: 'v2',
@@ -116,7 +120,7 @@ describe('public-director-contract', () => {
           },
         }),
       ],
-    }
+    } satisfies ManifestItemInput
     const binding = buildSceneBindingV1FromManifestItem(item, {
       applicable_surfaces: ['forum', 'scheduled_post'],
       scene_goal: {
@@ -173,7 +177,7 @@ describe('public-director-contract', () => {
       path: 'templates/stage-theme-chat-only.yaml',
       lifecycle_status: 'core_active',
       bindings: [makeForumBinding()],
-    } as const
+    } satisfies ManifestItemInput
     const projected = buildStageTemplateV2FromAuthoring(item, {
       template_id: 'stage-theme-chat-only',
       template_version: 'v2',
@@ -248,14 +252,14 @@ describe('public-director-contract', () => {
           },
           activation: {
             time_windows: [],
-            allowed_days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const,
+            allowed_days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
             trigger_conditions: [],
           },
           governance: {},
           constraints: {},
         },
       ],
-    }
+    } satisfies ManifestItemInput
     const projected = buildStageTemplateV2FromAuthoring(item, {
       template_id: 'stage-show-chat',
       template_version: 'v2',

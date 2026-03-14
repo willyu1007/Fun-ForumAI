@@ -57,18 +57,17 @@ export class RoomProgramEngine {
         })
       : null
 
-    if (runtimeState?.state.status === 'closed') {
-      return null
-    }
-
-    if (runtimeState?.state.status === 'cooldown') {
-      const cooldownUntil = runtimeState.state.state_json.cooldown_until
-        ? new Date(runtimeState.state.state_json.cooldown_until)
-        : null
-      if (cooldownUntil && cooldownUntil.getTime() > Date.now()) {
-        return null
+    if (runtimeState?.state.status === 'cooldown' || runtimeState?.state.status === 'closed') {
+      if (runtimeState.state.status === 'cooldown') {
+        const cooldownUntil = runtimeState.state.state_json.cooldown_until
+          ? new Date(runtimeState.state.state_json.cooldown_until)
+          : null
+        if (cooldownUntil && cooldownUntil.getTime() > Date.now()) {
+          return null
+        }
       }
-      const rotated = await this.rotateEpisodeAfterCooldown(state)
+
+      const rotated = await this.rotateEpisodeAfterFinalization(state)
       if (!rotated) return null
       state = rotated
     }
@@ -323,7 +322,7 @@ export class RoomProgramEngine {
     })
   }
 
-  private async rotateEpisodeAfterCooldown(state: LoadedRoomProgramState): Promise<LoadedRoomProgramState | null> {
+  private async rotateEpisodeAfterFinalization(state: LoadedRoomProgramState): Promise<LoadedRoomProgramState | null> {
     await this.deps.watchabilityRepo.endActiveEpisode(state.room.id)
     const nextEpisode = await this.deps.watchabilityRepo.ensureActiveEpisode(state.room.id, state.program.id)
     if (state.cast.length > 0) {

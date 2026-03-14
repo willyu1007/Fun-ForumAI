@@ -294,7 +294,6 @@ describe('ForumSceneContinuityService', () => {
   it('rebuilds followup payload from minimal metadata when the sidecar payload is malformed', async () => {
     const sceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
     const eventRepo = new InMemoryEventRepository()
-    const payload = buildPayload()
     await createPostSidecar(sceneMetadataRepo, { invalid: true })
 
     const service = new ForumSceneContinuityService({

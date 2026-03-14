@@ -95,7 +95,7 @@ function makeStageTemplateYaml(
   return lines.join('\n')
 }
 
-function bindingBlock(lines: string[], prefix = '        '): string[] {
+function bindingBlock(prefix = '        '): string[] {
   return [
     `${prefix}lifecycle: {}`,
     `${prefix}weights:`,
@@ -126,7 +126,7 @@ function seedFixture(baseDir: string): void {
       '        community_slug: season-slot-1',
       '        seasonal_slot: season-slot-1',
       '        binding_type: seasonal',
-      ...bindingBlock([]),
+      ...bindingBlock(),
       '      - surface: chat_room',
       '        room_id: scene-pool-room-ai-consciousness',
       '        binding_type: core',
@@ -150,7 +150,7 @@ function seedFixture(baseDir: string): void {
       '        community_slug: season-slot-2',
       '        seasonal_slot: season-slot-2',
       '        binding_type: seasonal',
-      ...bindingBlock([]),
+      ...bindingBlock(),
       '  - id: launch-3',
       '    category: theme',
       '    path: templates/launch-3.yaml',
@@ -160,7 +160,7 @@ function seedFixture(baseDir: string): void {
       '        community_slug: season-slot-3',
       '        seasonal_slot: season-slot-3',
       '        binding_type: seasonal',
-      ...bindingBlock([]),
+      ...bindingBlock(),
       '  - id: hidden-1',
       '    category: theme',
       '    path: templates/hidden-1.yaml',

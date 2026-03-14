@@ -1,0 +1,13 @@
+version: 1
+task_id: T-102
+project: main
+slug: pr-13-merge-readiness-remediation
+status: archived
+updated: "2026-03-14"
+keywords:
+  - pr-13
+  - remediation
+  - merge-readiness
+  - runtime
+  - archive
+  - typecheck

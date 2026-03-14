@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { InMemoryRoomWatchabilityRepository } from '../../repos/room-watchability-repository.js'
 import type { RoomCastMemberView } from '../../repos/types.js'
+import { config } from '../../lib/config.js'
 import { RoomProgramEngine } from '../room-program-engine.js'
 import { RoomCuePlanner } from '../room-cue-planner.js'
 import { RoomProgramScorer } from '../room-program-scorer.js'
@@ -340,5 +341,71 @@ describe('RoomProgramEngine', () => {
       local_intent_id: null,
       director_goal_compat: '先消费 owner cue',
     })
+  })
+
+  it('rolls over a closed runtime episode before planning the next turn', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const snapshot = { ...featureFlags }
+    featureFlags.directorRuntimeStateV1 = true
+
+    try {
+      const watchabilityRepo = new InMemoryRoomWatchabilityRepository()
+      const state = makeLoadedState()
+      const endedEpisode = vi.fn(async () => ({
+        ...state.episode!,
+        status: 'ENDED' as const,
+        ended_at: new Date('2026-03-10T10:05:00.000Z'),
+      }))
+
+      const engine = new RoomProgramEngine({
+        stateLoader: {
+          load: vi.fn()
+            .mockResolvedValueOnce(state)
+            .mockResolvedValueOnce({
+              ...state,
+              episode: {
+                ...state.episode!,
+                id: 'episode-2',
+              },
+            }),
+        } as never,
+        cuePlanner: {
+          plan: vi.fn(() => null),
+        } as never,
+        scorer: {
+          score: vi.fn(() => []),
+        } as never,
+        watchabilityRepo: {
+          ...watchabilityRepo,
+          endActiveEpisode: endedEpisode,
+          ensureActiveEpisode: vi.fn(async () => ({
+            ...state.episode!,
+            id: 'episode-2',
+          })),
+          replaceEpisodeCast: vi.fn(async () => []),
+          getNextPlannedProgramTurn: vi.fn(async () => null),
+        } as never,
+        runtimeSceneStateManager: {
+          ensureChatroomState: vi.fn(async () => ({
+            state: {
+              status: 'closed',
+              state_json: {
+                cooldown_until: null,
+              },
+            },
+          })),
+        } as never,
+      })
+
+      await engine.planNextTurn({
+        roomId: state.room.id,
+        triggerAgentId: 'agent-trigger',
+        canSpeak: async () => true,
+      })
+
+      expect(endedEpisode).toHaveBeenCalledWith(state.room.id)
+    } finally {
+      Object.assign(featureFlags, snapshot)
+    }
   })
 })

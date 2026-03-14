@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import {
-  generateDirectorClosureReport,
-  isRuntimeSceneArchiveCandidate,
-  summarizeHistoricalChatroomDailyRows,
-  summarizeHistoricalForumDailyRows,
-} from '../../../../scripts/lib/director-history-shared.mjs'
+// @ts-expect-error test imports a repo script without a dedicated TS module contract
+import { generateDirectorClosureReport, isRuntimeSceneArchiveCandidate, summarizeHistoricalChatroomDailyRows, summarizeHistoricalForumDailyRows } from '../../../../scripts/lib/director-history-shared.mjs'
 
 describe('director history shared helpers', () => {
   it('only archives finalized runtime states that are no longer the protected latest row for a live room', () => {

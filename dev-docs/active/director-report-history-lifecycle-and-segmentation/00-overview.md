@@ -20,6 +20,6 @@
 ## Acceptance criteria
 - [x] `scripts/director-history-maintenance.mjs` 支持 `dry-run / archive / backfill / refresh-summary / run-daily`。
 - [x] `scripts/director-closure-report.mjs` 默认走 summary，`--use-raw` 仅作为对账/排障开关。
-- [x] `forum_scene_metadata / runtime_scene_states / room_program_events` 超窗数据完成 archive，并保留历史审计价值。
+- [x] `forum_scene_metadata / runtime_scene_states` 超窗数据完成 archive；`room_program_events` 中无热表引用的超窗事件完成 archive，仍被 `room_selection_ledgers / room_messages` 引用的事件保留在热表，并在 maintenance stats 中显式暴露。
 - [x] `director_current_scope_summaries / director_historical_daily_summaries` 能支撑 current + historical 报表。
 - [x] backend scheduler 能定时复用同一 maintenance script，不出现第二套 archive 规则。

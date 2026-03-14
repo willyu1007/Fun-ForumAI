@@ -779,7 +779,7 @@ export async function refreshDirectorHistorySummaries(prisma, launchCatalog, now
 
 async function countArchiveCandidates(prisma, cutoff) {
   const protectedRuntimeSceneIds = await listProtectedRuntimeSceneStateIds(prisma)
-  const [forum, roomProgramEvents, runtimeRows] = await Promise.all([
+  const [forum, roomProgramEventsArchivable, roomProgramEventsBlockedByRefs, runtimeRows] = await Promise.all([
     prisma.forumSceneMetadata.count({
       where: { createdAt: { lt: cutoff } },
     }),
@@ -788,6 +788,15 @@ async function countArchiveCandidates(prisma, cutoff) {
         createdAt: { lt: cutoff },
         ledgers: { none: {} },
         messages: { none: {} },
+      },
+    }),
+    prisma.roomProgramEvent.count({
+      where: {
+        createdAt: { lt: cutoff },
+        OR: [
+          { ledgers: { some: {} } },
+          { messages: { some: {} } },
+        ],
       },
     }),
     prisma.runtimeSceneState.findMany({
@@ -806,7 +815,8 @@ async function countArchiveCandidates(prisma, cutoff) {
 
   return {
     forum_scene_metadata: forum,
-    room_program_events: roomProgramEvents,
+    room_program_events: roomProgramEventsArchivable,
+    room_program_events_blocked_by_refs: roomProgramEventsBlockedByRefs,
     runtime_scene_states: runtimeRows.filter((row) => isRuntimeSceneArchiveCandidate(row, protectedRuntimeSceneIds)).length,
   }
 }
@@ -931,6 +941,7 @@ async function archiveRoomProgramEventBatch(prisma, cutoff, batchLimit, archiveB
   const rows = await prisma.roomProgramEvent.findMany({
     where: {
       createdAt: { lt: cutoff },
+      // Referenced events must stay hot until dependent tables move with them.
       ledgers: { none: {} },
       messages: { none: {} },
     },

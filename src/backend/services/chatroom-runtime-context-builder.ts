@@ -215,7 +215,7 @@ function buildFallbackChatroomLocalIntentBlock(input: {
     ?? `延续「${input.room.name}」当前这轮公域对话。`
   const growthGoal = input.objectiveRefs[1] ?? '维持房间关系张力与节目节奏。'
   const episodeId = input.runtimeSceneStateEpisodeId
-    ?? input.program.current_episode_id
+    ?? input.program.current_episode?.episode_id
     ?? `room-${input.room.id}`
   const localIntent: LocalIntent = {
     intent_id: `chatroom-fallback:${episodeId}`,

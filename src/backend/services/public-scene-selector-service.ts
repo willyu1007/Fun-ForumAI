@@ -50,7 +50,6 @@ interface ExistingEpisodeMetadata {
 
 type SelectorEntryKind = 'scheduled_post' | 'forum_post_seed' | 'forum_comment_followup'
 type SelectorMode = 'pool_guided' | 'pool_strict' | 'autonomous_anchored'
-type EpisodeStrategy = 'new_episode' | 'continue_episode' | 'fallback_legacy'
 type SelectorHardFilterReason =
   | 'surface_mismatch'
   | 'binding_target_mismatch'

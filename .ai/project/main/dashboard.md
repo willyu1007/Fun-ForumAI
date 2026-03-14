@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 97 (planned: 1, in-progress: 15, blocked: 0, done: 7, archived: 74)
+- Tasks: 98 (planned: 1, in-progress: 15, blocked: 0, done: 7, archived: 75)
 
 ## Recent tasks
 
@@ -20,6 +20,7 @@ Project: `main`
 | T-099 scene-pool-authoring-schema-v2-migration | done | F-060 | dev-docs/active/scene-pool-authoring-schema-v2-migration |
 | T-100 scene-pool-authoring-v2-hardening-and-e2e-followup | done | F-060 | dev-docs/active/scene-pool-authoring-v2-hardening-and-e2e-followup |
 | T-101 director-report-history-lifecycle-and-segmentation | done | F-060 | dev-docs/active/director-report-history-lifecycle-and-segmentation |
+| T-102 pr-13-merge-readiness-remediation | archived | F-060 | dev-docs/archive/pr-13-merge-readiness-remediation |
 | T-087 mainland-launch-safety-master | archived | F-050 | dev-docs/archive/mainland-launch-safety-master |
 | T-088 policy-gateway-channel-hardening | archived | F-050 | dev-docs/archive/policy-gateway-channel-hardening |
 | T-089 review-case-and-complaint-foundation | archived | F-050 | dev-docs/archive/review-case-and-complaint-foundation |
@@ -33,5 +34,4 @@ Project: `main`
 | T-031 mobile-test-automation | archived | F-000 | dev-docs/archive/mobile-test-automation |
 | T-032 frontend-sse-resilience | archived | F-000 | dev-docs/archive/frontend-sse-resilience |
 | T-033 realtime-protocol-evaluation | archived | F-000 | dev-docs/archive/realtime-protocol-evaluation |
-| T-043 human-vote-follow-search-web-v1 | archived | F-000 | dev-docs/archive/human-vote-follow-search-web-v1 |
 <!-- AUTO-GENERATED:END dashboard -->

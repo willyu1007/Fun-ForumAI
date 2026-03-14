@@ -32,40 +32,46 @@ function makeInput() {
           core_agent_ids: ['agent-1'],
           contrast_agent_ids: ['agent-2'],
           wildcard_agent_ids: [],
+          must_have_role_hits: ['HOST', 'FOIL'],
           target_active_count: 2,
-          quota: 2,
         },
+        cast_version: 1,
       },
       continuity: {
         previous_episode_ids: [],
         open_loops: [],
         resolved_loops: [],
       },
-      close_condition: {
-        ttl_hours: 4,
-        min_turns: 3,
-        message_threshold: 12,
-        objective_refs: ['把房间推成更像节目的一拍'],
+      dynamics: {
+        turn_count: 2,
+        message_count: 2,
+        heat_score: 0.2,
+        fatigue_score: 0.1,
+        repetition_score: 0,
+        phase_entered_at: '2026-03-14T00:00:00.000Z',
       },
-      fatigue: {
-        score: 0.1,
-        repeated_template_ids: [],
-        suppressed_agent_ids: [],
+      close_condition: {
+        reason: null,
+        satisfied: false,
+        ttl_at: '2026-03-14T04:00:00.000Z',
+        message_threshold: 12,
+        evaluated_at: '2026-03-14T00:30:00.000Z',
+        objective_refs: ['把房间推成更像节目的一拍'],
       },
       aftershow: {
         mode: 'threshold',
         status: 'pending',
-        scheduled_at: null,
-        last_triggered_at: null,
+        artifact_ref: null,
       },
       experiment: {
         bucket: 'A',
-        features: ['intent_primary'],
+        assignment_source: 'feature_flag',
       },
       audit: {
+        selection_id: null,
+        episode_plan_id: null,
         state_version: 1,
         source: 'binding',
-        latest_signal_type: null,
         latest_program_event_id: null,
         latest_local_intent_id: null,
       },
@@ -73,6 +79,7 @@ function makeInput() {
       expires_at: '2026-03-14T04:00:00.000Z',
       cooldown_until: null,
       updated_at: '2026-03-14T00:30:00.000Z',
+      closed_at: null,
     },
     resolved_scene: {
       template: {
@@ -149,7 +156,7 @@ function makeInput() {
       source: 'binding' as const,
       selection_mode: 'pool_strict' as const,
     },
-  } as const
+  } satisfies Parameters<ChatroomLocalIntentService['build']>[0]
 }
 
 describe('ChatroomLocalIntentService', () => {
