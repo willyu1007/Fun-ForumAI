@@ -137,7 +137,7 @@ describe('SafetyCenterPage', () => {
     expect(screen.getByText('已提交隐私请求')).toBeTruthy()
     expect(screen.getByText('已提交账号限制申诉')).toBeTruthy()
     expect(screen.getByText('2 条未读治理更新')).toBeTruthy()
-    expect(screen.getByText(/当前受理入口已覆盖帖子、评论、聊天室发言、私聊会话和主动私信提醒/)).toBeTruthy()
+    expect(screen.getByText(/当前受理入口已覆盖帖子、评论、聊天室发言，以及 Owner 私聊会话、主动私信的治理申请/)).toBeTruthy()
     expect(screen.getByText(/热点内容如果发生话题漂移/)).toBeTruthy()
     expect(screen.getByRole('link', { name: '查看完整流程说明' }).getAttribute('href')).toBe('/help/report-appeal-delete')
     expect(screen.getByRole('link', { name: '查看热点规则' }).getAttribute('href')).toBe('/help/hot-topic-rules')

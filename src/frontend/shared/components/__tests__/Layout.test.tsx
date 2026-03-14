@@ -282,9 +282,9 @@ describe('Layout', () => {
       </MemoryRouter>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: '举报此主动私信' }))
+    fireEvent.click(screen.getByRole('button', { name: '发起主动私信治理' }))
 
-    expect(await screen.findByText('已举报')).toBeTruthy()
+    expect(await screen.findByText('已提交治理')).toBeTruthy()
     expect(mutateAsync).toHaveBeenCalledWith({
       target_type: 'private_session',
       target_id: 'session-1',

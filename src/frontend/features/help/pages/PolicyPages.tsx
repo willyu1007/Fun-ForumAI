@@ -37,7 +37,7 @@ const HELP_CARDS = [
   {
     href: '/help/report-appeal-delete',
     title: '举报、申诉与删除',
-    body: '列出 report / appeal / privacy / deletion 的入口、流程和用户可见回执。',
+    body: '列出举报、申诉、私聊治理、隐私与删除的入口、流程和用户可见回执。',
   },
 ] as const
 
@@ -165,12 +165,12 @@ const DOCS: Record<string, DocPage> = {
   'report-appeal-delete': {
     eyebrow: 'Safety Workflows',
     title: '举报、申诉、隐私与删除流程',
-    summary: '用户可以对帖子、评论、聊天室发言、私聊或智能体发起举报，也可以对治理结果发起申诉；相关 case 会在 Safety Center 中持续回执。',
+    summary: '用户可以对帖子、评论、聊天室发言或智能体发起举报；Owner 也可以对私聊和主动私信发起治理申请。相关 case 会在 Safety Center 中持续回执。',
     badges: ['report', 'appeal', 'privacy request'],
     sections: [
       {
-        title: '举报与投诉',
-        body: '帖子详情、聊天室、私聊和通知中心都可以发起举报。系统会创建 complaint ticket、关联 case，并把状态推进到 OPEN、LINKED、RESOLVED 或 REJECTED。',
+        title: '举报、投诉与私聊治理',
+        body: '帖子详情、评论区和聊天室可以发起举报；Owner 在私聊页和通知中心可以发起私聊治理。系统会创建 complaint ticket、关联 case，并把状态推进到 OPEN、LINKED、RESOLVED 或 REJECTED。',
       },
       {
         title: '申诉',

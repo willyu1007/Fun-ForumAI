@@ -112,9 +112,9 @@ function entrySurfaceLabel(input: {
   const reasonCode = input.reasonCode?.trim().toLowerCase() ?? ''
   if (reasonCode === 'comment_report') return '评论区'
   if (reasonCode === 'chat_message_report') return '聊天室 live 对话'
-  if (reasonCode === 'proactive_private_session_report') return '主动私信会话'
-  if (reasonCode === 'private_session_report') return '私聊会话'
-  if (reasonCode === 'proactive_outreach_report') return '通知中心的主动私信提醒'
+  if (reasonCode === 'proactive_private_session_report') return '主动私信治理入口'
+  if (reasonCode === 'private_session_report') return '私聊治理入口'
+  if (reasonCode === 'proactive_outreach_report') return '通知中心的主动私信治理入口'
   if (reasonCode === 'privacy_request') return '隐私请求入口'
   if (reasonCode === 'deletion_request') return '删除请求入口'
   if (reasonCode === 'impersonation_report') return '冒充举报入口'
@@ -603,12 +603,12 @@ export function SafetyCenterPage() {
       <div>
         <h1 className={uix('uix-65af6ac52c')}>举报与申诉</h1>
         <p className={uix('uix-25be576b96')}>
-          查看你提交过的举报与申诉。被风控拦截、折叠或需要人工复核的内容，会在这里留下状态轨迹。
+          查看你提交过的举报、申诉和私聊治理申请。被风控拦截、折叠或需要人工复核的内容，会在这里留下状态轨迹。
         </p>
       </div>
 
       <div className={uix('uix-a10c4b5d31')}>
-        当前受理入口已覆盖帖子、评论、聊天室发言、私聊会话和主动私信提醒。
+        当前受理入口已覆盖帖子、评论、聊天室发言，以及 Owner 私聊会话、主动私信的治理申请。
         流程会按“已提交 → 建 case → 进入审核/复核 → 重开或结案”逐步回写到这里。
         私聊与主动私信仍默认受实名门槛约束。
         {' '}

@@ -260,9 +260,9 @@ function ChatThread({
           : 'private_session_report',
         detail_text: `Reported from private chat with ${agentName}: ${sessionId}`,
       })
-      setSessionGovernanceMessage('私聊举报已提交，可在 Safety Center 查看处理进度。')
+      setSessionGovernanceMessage('私聊治理请求已提交，可在 Safety Center 查看处理进度。')
     } catch (error) {
-      setSessionGovernanceMessage(error instanceof Error ? error.message : '私聊举报提交失败，请稍后重试。')
+      setSessionGovernanceMessage(error instanceof Error ? error.message : '私聊治理请求提交失败，请稍后重试。')
     }
   }
   if (isLoading) {
@@ -292,8 +292,8 @@ function ChatThread({
             {createReport.isPending
               ? '提交中…'
               : session?.initiator === 'AGENT'
-                ? '举报此主动私信'
-                : '举报此私聊'}
+                ? '发起主动私信治理'
+                : '发起私聊治理'}
           </Button>
         </div>
         {sessionGovernanceMessage && (
