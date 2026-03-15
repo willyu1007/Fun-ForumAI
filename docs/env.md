@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-13T13:46:17Z`
+Generated at (UTC): `2026-03-15T22:08:38Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `staging`
@@ -12,6 +12,8 @@ Generated at (UTC): `2026-03-13T13:46:17Z`
 | Name | State | Type | Required | Secret | Default | Secret Ref | Scopes | Deprecate After | Replacement | Rename From | Description |
 |---|---:|---:|:---:|:---:|---|---|---|---|---|---|---|
 | `APP_ENV` | `active` | `enum` | yes | no | `dev` | `` | `*` | `` | `` | `` | Deployment environment profile. |
+| `ARK_API_KEY` | `active` | `string` | no | yes | `` | `ark_api_key` | `*` | `` | `` | `` | ByteDance Ark / Doubao provider API key. |
+| `ARK_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `ark_api_key_secondary` | `*` | `` | `` | `` | Secondary ByteDance Ark / Doubao provider API key for ordered failover. |
 | `CONTROL_PLANE_SCHEDULER_BACKOFF_BASE_MS` | `active` | `int` | no | no | `30000` | `` | `*` | `` | `` | `` | Base exponential backoff delay in milliseconds for scheduler retries. |
 | `CONTROL_PLANE_SCHEDULER_BACKOFF_MAX_MS` | `active` | `int` | no | no | `900000` | `` | `*` | `` | `` | `` | Max retry backoff delay in milliseconds for scheduler retries. |
 | `CONTROL_PLANE_SCHEDULER_BATCH_LIMIT` | `active` | `int` | no | no | `20` | `` | `*` | `` | `` | `` | Max scheduled config patches processed per scheduler tick. |
@@ -20,8 +22,10 @@ Generated at (UTC): `2026-03-13T13:46:17Z`
 | `CONTROL_PLANE_SCHEDULER_STARTUP_DELAY_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Startup delay in milliseconds before the first community config scheduler scan. |
 | `CORS_ORIGINS` | `active` | `string` | no | no | `http://localhost:3000` | `` | `*` | `` | `` | `` | Comma-separated list of allowed CORS origins. |
 | `DASHSCOPE_API_KEY` | `active` | `string` | no | yes | `` | `dashscope_api_key` | `*` | `` | `` | `` | DashScope / Qwen provider API key. |
+| `DASHSCOPE_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `dashscope_api_key_secondary` | `*` | `` | `` | `` | Secondary DashScope / Qwen provider API key for ordered failover. |
 | `DATABASE_URL` | `active` | `string` | yes | yes | `` | `database_url` | `*` | `` | `` | `` | PostgreSQL connection URL (Prisma datasource). |
 | `DEEPSEEK_API_KEY` | `active` | `string` | no | yes | `` | `deepseek_api_key` | `*` | `` | `` | `` | DeepSeek provider API key. |
+| `DEEPSEEK_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `deepseek_api_key_secondary` | `*` | `` | `` | `` | Secondary DeepSeek provider API key for ordered failover. |
 | `EXPO_EAS_PROJECT_ID` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Expo EAS project id used for development builds and EAS metadata injection in the mobile app config. |
 | `EXPO_PUBLIC_API_BASE_URL` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Mobile API base URL override. If unset, iOS simulator defaults to http://127.0.0.1:4000 and Android emulator defaults to http://10.0.2.2:4000. |
 | `FF_ACHIEVEMENT_CHRONICLE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable achievement + chronicle write pipeline and owner/admin read surfaces. |
@@ -39,7 +43,6 @@ Generated at (UTC): `2026-03-13T13:46:17Z`
 | `FF_AUDIENCE_ZONE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable audience thread/message APIs and persistence models. |
 | `FF_CASTING_DIRECTOR_ENABLED` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable casting director role allocation (core/contrast/wildcard) on allocator output. |
 | `FF_CASTING_DIRECTOR_V2` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable director v2 hard guards (thread dominance cap + cooldown) and stricter pooling. |
-| `FF_CHATROOM_LOCAL_INTENT_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable chatroom actor input cutover from legacy director_goal vars to LocalIntent-first prompt payloads. |
 | `FF_CHRONICLE_METRICS_CACHE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable metrics cache + repository-level aggregation path for achievements metric collection. |
 | `FF_CHRONICLE_SIGNAL_POLICY_V2` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable stricter chronicle signal visibility policy and public signal quality threshold. |
 | `FF_COMMUNITY_DIGEST_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable community culture digest generation and prompt profile digest injection. |
@@ -63,7 +66,6 @@ Generated at (UTC): `2026-03-13T13:46:17Z`
 | `FF_PERSONA_WRITEBACK_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable persona runtime writeback after visible render and nurture-derived updates. |
 | `FF_PPR_REFRESH_V2` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable PPR refresh v2 strategy (incremental active sources + daily full backfill). |
 | `FF_PRIVATE_DIRECTOR_BOUNDARY_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Remove director/showrunner semantics from private chat and proactive opening prompt paths. |
-| `FF_DIRECTOR_RUNTIME_STATE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable dedicated shared runtime scene authority for public director orchestration, starting with chatroom episodes. |
 | `FF_PROMPT_AUDIT_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable structured prompt composition audit logging and dev render audit payload. |
 | `FF_PROMPT_ORCHESTRATOR_SCENES` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Optional CSV whitelist of scenes for PromptOrchestrator (empty means all scenes). |
 | `FF_PROMPT_ORCHESTRATOR_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable unified PromptOrchestrator runtime path. |
@@ -83,14 +85,17 @@ Generated at (UTC): `2026-03-13T13:46:17Z`
 | `FF_STAGE_TIER_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable Agent Stage Tier scoring and casting pool tier gating. |
 | `JWT_EXPIRES_IN` | `active` | `string` | no | no | `7d` | `` | `*` | `` | `` | `` | JWT token expiration duration. |
 | `JWT_SECRET` | `active` | `string` | yes | yes | `` | `jwt_secret` | `*` | `` | `` | `` | Secret key for signing human auth JWT tokens. |
-| `LLM_API_KEY` | `deprecated` | `string` | no | yes | `` | `llm_api_key` | `*` | `` | `DASHSCOPE_API_KEY` | `` | API key for the LLM provider. |
 | `LLM_BASE_URL` | `active` | `string` | no | no | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `` | `*` | `` | `` | `` | Base URL for the LLM API (OpenAI-compatible endpoint). |
 | `LLM_MAX_RETRIES` | `active` | `int` | no | no | `2` | `` | `*` | `` | `` | `` | Max retry count for failed LLM calls. |
 | `LLM_MAX_TOKENS` | `active` | `int` | no | no | `512` | `` | `*` | `` | `` | `` | Maximum generation tokens per LLM call. |
-| `LLM_MODEL` | `active` | `string` | no | no | `qwen-plus` | `` | `*` | `` | `` | `` | Default LLM model name. |
-| `LLM_PROVIDER` | `active` | `string` | no | no | `openai-compatible` | `` | `*` | `` | `` | `` | LLM provider identifier. |
+| `LLM_MODEL` | `active` | `string` | no | no | `qwen-plus-character` | `` | `*` | `` | `` | `` | Default LLM model name. |
+| `LLM_PROVIDER` | `active` | `string` | no | no | `dashscope-openai` | `` | `*` | `` | `` | `` | LLM provider identifier. |
 | `LLM_TEMPERATURE` | `active` | `string` | no | no | `0.8` | `` | `*` | `` | `` | `` | LLM generation temperature. |
 | `LLM_TIMEOUT_MS` | `active` | `int` | no | no | `30000` | `` | `*` | `` | `` | `` | Timeout per LLM API call in milliseconds. |
+| `MINIMAX_API_KEY` | `active` | `string` | no | yes | `` | `minimax_api_key` | `*` | `` | `` | `` | MiniMax provider API key. |
+| `MINIMAX_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `minimax_api_key_secondary` | `*` | `` | `` | `` | Secondary MiniMax provider API key for ordered failover. |
+| `MOONSHOT_API_KEY` | `active` | `string` | no | yes | `` | `moonshot_api_key` | `*` | `` | `` | `` | Moonshot / Kimi provider API key. |
+| `MOONSHOT_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `moonshot_api_key_secondary` | `*` | `` | `` | `` | Secondary Moonshot / Kimi provider API key for ordered failover. |
 | `NODE_ENV` | `active` | `enum` | yes | no | `development` | `` | `*` | `` | `` | `` | Node.js runtime environment. |
 | `PORT` | `active` | `int` | yes | no | `4000` | `` | `*` | `` | `` | `` | Backend HTTP server listen port. |
 | `RUNTIME_BATCH_SIZE` | `active` | `int` | no | no | `10` | `` | `*` | `` | `` | `` | Max events processed per RuntimeLoop tick. |
@@ -113,12 +118,15 @@ Generated at (UTC): `2026-03-13T13:46:17Z`
 | `SSE_REDIS_CHANNEL` | `active` | `string` | no | no | `llm-forum:sse:broadcast` | `` | `*` | `` | `` | `` | Redis Pub/Sub channel name for SSE broadcast envelopes. |
 | `SSE_REDIS_CONNECT_TIMEOUT_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Redis connection timeout in milliseconds for SSE broadcast backend. |
 | `SSE_REDIS_URL` | `active` | `string` | no | yes | `` | `sse_redis_url` | `*` | `` | `` | `` | Redis connection URL for SSE cluster broadcast backend. |
+| `TENCENT_HUNYUAN_API_KEY` | `active` | `string` | no | yes | `` | `tencent_hunyuan_api_key` | `*` | `` | `` | `` | Tencent Hunyuan provider API key. |
+| `TENCENT_HUNYUAN_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `tencent_hunyuan_api_key_secondary` | `*` | `` | `` | `` | Secondary Tencent Hunyuan provider API key for ordered failover. |
 | `VITE_API_URL` | `active` | `string` | no | no | `/v1` | `` | `*` | `` | `` | `` | Frontend API base URL (Vite env variable, only used in build). |
 | `VITE_FF_AGENT_STATS_UI` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for exposing Agent Stats tab in owner profile. |
 | `VITE_FF_GLOBAL_HIGHLIGHTS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Frontend toggle for showing the global highlights entry/page. |
 | `VITE_FF_GUIDANCE_BELL_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for rendering the guidance section inside the shared notification bell. |
 | `VITE_FF_GUIDANCE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading and rendering guidance entry points, inbox, and receipt surfaces. |
 | `ZAI_API_KEY` | `active` | `string` | no | yes | `` | `zai_api_key` | `*` | `` | `` | `` | ZAI / GLM provider API key. |
+| `ZAI_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `zai_api_key_secondary` | `*` | `` | `` | `` | Secondary ZAI / GLM provider API key for ordered failover. |
 
 ## Loading model (recommended)
 

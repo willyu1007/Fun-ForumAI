@@ -156,6 +156,7 @@ export class LLMGateway {
             stop: request.stop,
             provider: {
               provider_id: candidate.provider_id,
+              gateway_kind: credential.provider.gateway_kind,
               base_url: credential.pool.endpoint,
               api_key: credential.apiKey,
               timeout_ms: credential.provider.defaults.timeout_ms,

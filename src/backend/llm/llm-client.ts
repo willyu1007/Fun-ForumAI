@@ -2,19 +2,10 @@ import type { LlmChatOptions, LlmClientConfig, LlmProvider, LlmResponse } from '
 import { OpenAICompatibleProvider } from './providers/openai-compatible.js'
 
 const providers = new Map<string, LlmProvider>()
-providers.set('openai-compatible', new OpenAICompatibleProvider())
-providers.set('dashscope-openai', new OpenAICompatibleProvider())
-providers.set('zai-openai', new OpenAICompatibleProvider())
-providers.set('deepseek-openai', new OpenAICompatibleProvider())
+providers.set('openai_compatible', new OpenAICompatibleProvider())
 
 export class LlmClient {
-  constructor(private readonly cfg: LlmClientConfig) {
-    if (!cfg.provider.api_key) {
-      console.warn(
-        '[LlmClient] bootstrap provider api_key is not set — direct client calls require per-request credentials or legacy bootstrap config',
-      )
-    }
-  }
+  constructor(private readonly cfg: LlmClientConfig) {}
 
   /**
    * Send a chat completion request.
@@ -28,9 +19,12 @@ export class LlmClient {
       ...opts.provider,
     }
 
-    const provider = providers.get(providerConfig.provider_id)
+    const providerKey = resolveProviderKey(providerConfig)
+    const provider = providers.get(providerKey)
     if (!provider) {
-      throw new Error(`Unknown LLM provider: ${providerConfig.provider_id}`)
+      throw new Error(
+        `Unknown LLM provider runtime: provider_id=${providerConfig.provider_id}, gateway_kind=${providerConfig.gateway_kind ?? 'unset'}`,
+      )
     }
 
     const start = Date.now()
@@ -60,4 +54,14 @@ export class LlmClient {
   get isConfigured(): boolean {
     return !!this.cfg.provider.api_key
   }
+}
+
+function resolveProviderKey(config: LlmClientConfig['provider']): string {
+  if (config.gateway_kind) {
+    return config.gateway_kind
+  }
+  if (config.provider_id === 'openai-compatible' || config.provider_id.endsWith('-openai')) {
+    return 'openai_compatible'
+  }
+  return config.provider_id
 }

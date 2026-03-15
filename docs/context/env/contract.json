@@ -5,7 +5,7 @@
     "prod",
     "staging"
   ],
-  "generated_at_utc": "2026-03-13T13:46:17Z",
+  "generated_at_utc": "2026-03-15T22:08:38Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "APP_ENV": {
@@ -24,6 +24,40 @@
       "secret_ref": null,
       "state": "active",
       "type": "enum"
+    },
+    "ARK_API_KEY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "ByteDance Ark / Doubao provider API key.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "ark_api_key",
+      "state": "active",
+      "type": "string"
+    },
+    "ARK_API_KEY_SECONDARY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Secondary ByteDance Ark / Doubao provider API key for ordered failover.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "ark_api_key_secondary",
+      "state": "active",
+      "type": "string"
     },
     "CONTROL_PLANE_SCHEDULER_BACKOFF_BASE_MS": {
       "default": 30000,
@@ -161,6 +195,23 @@
       "state": "active",
       "type": "string"
     },
+    "DASHSCOPE_API_KEY_SECONDARY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Secondary DashScope / Qwen provider API key for ordered failover.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "dashscope_api_key_secondary",
+      "state": "active",
+      "type": "string"
+    },
     "DATABASE_URL": {
       "default": null,
       "deprecate_after": null,
@@ -192,6 +243,23 @@
       "scopes": null,
       "secret": true,
       "secret_ref": "deepseek_api_key",
+      "state": "active",
+      "type": "string"
+    },
+    "DEEPSEEK_API_KEY_SECONDARY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Secondary DeepSeek provider API key for ordered failover.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "deepseek_api_key_secondary",
       "state": "active",
       "type": "string"
     },
@@ -471,23 +539,6 @@
       "default": "true",
       "deprecate_after": null,
       "description": "Enable director v2 hard guards (thread dominance cap + cooldown) and stricter pooling.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": false,
-      "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
-      "type": "enum"
-    },
-    "FF_CHATROOM_LOCAL_INTENT_V1": {
-      "default": "false",
-      "deprecate_after": null,
-      "description": "Enable chatroom actor input cutover from legacy director_goal vars to LocalIntent-first prompt payloads.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
@@ -892,23 +943,6 @@
       "state": "active",
       "type": "enum"
     },
-    "FF_DIRECTOR_RUNTIME_STATE_V1": {
-      "default": "false",
-      "deprecate_after": null,
-      "description": "Enable dedicated shared runtime scene authority for public director orchestration, starting with chatroom episodes.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": false,
-      "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
-      "type": "enum"
-    },
     "FF_PROMPT_AUDIT_V1": {
       "default": "false",
       "deprecate_after": null,
@@ -1232,23 +1266,6 @@
       "state": "active",
       "type": "string"
     },
-    "LLM_API_KEY": {
-      "default": null,
-      "deprecate_after": null,
-      "description": "API key for the LLM provider.",
-      "legacy": {
-        "deprecated": true,
-        "replaced_by": "DASHSCOPE_API_KEY"
-      },
-      "migration": null,
-      "replacement": "DASHSCOPE_API_KEY",
-      "required": false,
-      "scopes": null,
-      "secret": true,
-      "secret_ref": "llm_api_key",
-      "state": "deprecated",
-      "type": "string"
-    },
     "LLM_BASE_URL": {
       "default": "https://dashscope.aliyuncs.com/compatible-mode/v1",
       "deprecate_after": null,
@@ -1301,7 +1318,7 @@
       "type": "int"
     },
     "LLM_MODEL": {
-      "default": "qwen-plus",
+      "default": "qwen-plus-character",
       "deprecate_after": null,
       "description": "Default LLM model name.",
       "legacy": {
@@ -1318,7 +1335,7 @@
       "type": "string"
     },
     "LLM_PROVIDER": {
-      "default": "openai-compatible",
+      "default": "dashscope-openai",
       "deprecate_after": null,
       "description": "LLM provider identifier.",
       "legacy": {
@@ -1367,6 +1384,74 @@
       "secret_ref": null,
       "state": "active",
       "type": "int"
+    },
+    "MINIMAX_API_KEY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "MiniMax provider API key.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "minimax_api_key",
+      "state": "active",
+      "type": "string"
+    },
+    "MINIMAX_API_KEY_SECONDARY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Secondary MiniMax provider API key for ordered failover.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "minimax_api_key_secondary",
+      "state": "active",
+      "type": "string"
+    },
+    "MOONSHOT_API_KEY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Moonshot / Kimi provider API key.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "moonshot_api_key",
+      "state": "active",
+      "type": "string"
+    },
+    "MOONSHOT_API_KEY_SECONDARY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Secondary Moonshot / Kimi provider API key for ordered failover.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "moonshot_api_key_secondary",
+      "state": "active",
+      "type": "string"
     },
     "NODE_ENV": {
       "default": "development",
@@ -1742,6 +1827,40 @@
       "state": "active",
       "type": "string"
     },
+    "TENCENT_HUNYUAN_API_KEY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Tencent Hunyuan provider API key.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "tencent_hunyuan_api_key",
+      "state": "active",
+      "type": "string"
+    },
+    "TENCENT_HUNYUAN_API_KEY_SECONDARY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Secondary Tencent Hunyuan provider API key for ordered failover.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "tencent_hunyuan_api_key_secondary",
+      "state": "active",
+      "type": "string"
+    },
     "VITE_API_URL": {
       "default": "/v1",
       "deprecate_after": null,
@@ -1841,6 +1960,23 @@
       "scopes": null,
       "secret": true,
       "secret_ref": "zai_api_key",
+      "state": "active",
+      "type": "string"
+    },
+    "ZAI_API_KEY_SECONDARY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Secondary ZAI / GLM provider API key for ordered failover.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "zai_api_key_secondary",
       "state": "active",
       "type": "string"
     }

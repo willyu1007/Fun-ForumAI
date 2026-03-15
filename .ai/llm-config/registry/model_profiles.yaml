@@ -18,6 +18,18 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: fast
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 85
+        quality_class: fast
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-instruct-20251111
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 80
+        quality_class: balanced
     fallback: []
 
   - profile_id: qwen-social-forum-reply-base
@@ -32,11 +44,23 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: balanced
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-instruct-20251111
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 88
+        quality_class: balanced
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: fast
       - provider_id: dashscope-openai
         model_id: qwen-flash-character
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
-        weight: 80
+        weight: 70
         quality_class: fast
     fallback: []
 
@@ -52,11 +76,23 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: balanced
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-instruct-20251111
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 88
+        quality_class: balanced
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: fast
       - provider_id: dashscope-openai
         model_id: qwen-flash-character
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
-        weight: 80
+        weight: 70
         quality_class: fast
     fallback: []
 
@@ -72,11 +108,23 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: balanced
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-instruct-20251111
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 88
+        quality_class: balanced
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: fast
       - provider_id: dashscope-openai
         model_id: qwen-flash-character
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
-        weight: 80
+        weight: 70
         quality_class: fast
     fallback: []
 
@@ -92,11 +140,23 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: balanced
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-instruct-20251111
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 88
+        quality_class: balanced
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: fast
       - provider_id: dashscope-openai
         model_id: qwen-flash-character
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
-        weight: 80
+        weight: 70
         quality_class: fast
     fallback:
       - level: same-line
@@ -132,11 +192,23 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: balanced
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-instruct-20251111
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 88
+        quality_class: balanced
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: fast
       - provider_id: dashscope-openai
         model_id: qwen-flash-character
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
-        weight: 60
+        weight: 70
         quality_class: fast
     fallback: []
 
@@ -156,7 +228,7 @@ profiles:
         model_id: qwen-plus-character
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
-        weight: 80
+        weight: 85
         quality_class: balanced
     fallback: []
 
@@ -200,6 +272,12 @@ profiles:
         endpoint_id: zai-cn
         weight: 100
         quality_class: fast
+      - provider_id: moonshot-openai
+        model_id: kimi-k2-turbo-preview
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 88
+        quality_class: fast
     fallback: []
 
   - profile_id: glm-deep-forum-reply-base
@@ -209,11 +287,35 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: zai-openai
-        model_id: glm-4-plus
+        model_id: glm-5
         region: cn
         endpoint_id: zai-cn
         weight: 100
-        quality_class: balanced
+        quality_class: premium
+      - provider_id: moonshot-openai
+        model_id: kimi-k2-0905-preview
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 92
+        quality_class: premium
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-thinking-20251109
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 86
+        quality_class: premium
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-pro-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: premium
+      - provider_id: zai-openai
+        model_id: glm-4-air
+        region: cn
+        endpoint_id: zai-cn
+        weight: 70
+        quality_class: fast
     fallback: []
 
   - profile_id: glm-deep-scheduled-post-base
@@ -223,11 +325,35 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: zai-openai
-        model_id: glm-4-plus
+        model_id: glm-5
         region: cn
         endpoint_id: zai-cn
         weight: 100
-        quality_class: balanced
+        quality_class: premium
+      - provider_id: moonshot-openai
+        model_id: kimi-k2-0905-preview
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 92
+        quality_class: premium
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-thinking-20251109
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 86
+        quality_class: premium
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-pro-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: premium
+      - provider_id: zai-openai
+        model_id: glm-4-air
+        region: cn
+        endpoint_id: zai-cn
+        weight: 70
+        quality_class: fast
     fallback:
       - level: same-line
         profile_id: glm-deep-scheduled-post-premium
@@ -240,10 +366,28 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: zai-openai
-        model_id: glm-4.5
+        model_id: glm-5
         region: cn
         endpoint_id: zai-cn
         weight: 100
+        quality_class: premium
+      - provider_id: moonshot-openai
+        model_id: kimi-k2-0905-preview
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 92
+        quality_class: premium
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-thinking-20251109
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 86
+        quality_class: premium
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-pro-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
         quality_class: premium
     fallback:
       - level: same-line
@@ -257,11 +401,35 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: zai-openai
-        model_id: glm-4-plus
+        model_id: glm-5
         region: cn
         endpoint_id: zai-cn
         weight: 100
-        quality_class: balanced
+        quality_class: premium
+      - provider_id: moonshot-openai
+        model_id: kimi-k2-0905-preview
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 92
+        quality_class: premium
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-thinking-20251109
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 86
+        quality_class: premium
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-pro-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: premium
+      - provider_id: zai-openai
+        model_id: glm-4-air
+        region: cn
+        endpoint_id: zai-cn
+        weight: 70
+        quality_class: fast
     fallback: []
 
   - profile_id: glm-deep-proactive-opening-base
@@ -271,11 +439,35 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: zai-openai
-        model_id: glm-4-plus
+        model_id: glm-5
         region: cn
         endpoint_id: zai-cn
         weight: 100
-        quality_class: balanced
+        quality_class: premium
+      - provider_id: moonshot-openai
+        model_id: kimi-k2-0905-preview
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 92
+        quality_class: premium
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-thinking-20251109
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 86
+        quality_class: premium
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-pro-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: premium
+      - provider_id: zai-openai
+        model_id: glm-4-air
+        region: cn
+        endpoint_id: zai-cn
+        weight: 70
+        quality_class: fast
     fallback: []
 
   - profile_id: glm-deep-identity-write-premium
@@ -285,10 +477,28 @@ profiles:
     visibility: identity_write
     candidates:
       - provider_id: zai-openai
-        model_id: glm-4.5
+        model_id: glm-5
         region: cn
         endpoint_id: zai-cn
         weight: 100
+        quality_class: premium
+      - provider_id: moonshot-openai
+        model_id: kimi-k2-thinking
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 92
+        quality_class: premium
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-thinking-20251109
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 86
+        quality_class: premium
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-pro-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
         quality_class: premium
     fallback: []
 
@@ -299,17 +509,29 @@ profiles:
     visibility: hidden
     candidates:
       - provider_id: zai-openai
-        model_id: glm-4-plus
+        model_id: glm-5
         region: cn
         endpoint_id: zai-cn
         weight: 100
-        quality_class: balanced
-      - provider_id: dashscope-openai
-        model_id: qwen-plus-character
-        region: cn-beijing
-        endpoint_id: dashscope-cn-beijing
-        weight: 60
-        quality_class: balanced
+        quality_class: premium
+      - provider_id: moonshot-openai
+        model_id: kimi-k2-0905-preview
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 90
+        quality_class: premium
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-thinking-20251109
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 84
+        quality_class: premium
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-pro-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 80
+        quality_class: premium
     fallback: []
 
   - profile_id: glm-deep-private-digest-base
@@ -319,17 +541,29 @@ profiles:
     visibility: hidden
     candidates:
       - provider_id: zai-openai
-        model_id: glm-4-plus
+        model_id: glm-5
         region: cn
         endpoint_id: zai-cn
         weight: 100
-        quality_class: balanced
-      - provider_id: dashscope-openai
-        model_id: qwen-plus-character
-        region: cn-beijing
-        endpoint_id: dashscope-cn-beijing
-        weight: 60
-        quality_class: balanced
+        quality_class: premium
+      - provider_id: moonshot-openai
+        model_id: kimi-k2-0905-preview
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 90
+        quality_class: premium
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-thinking-20251109
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 84
+        quality_class: premium
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-pro-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 80
+        quality_class: premium
     fallback: []
 
   - profile_id: deepseek-director-public-observation-base
@@ -452,8 +686,6 @@ profiles:
         profile_id: deepseek-director-director-plan-base
         reason: degrade inside the hidden director line only
 
-  # ─── MiniMax Her v1 (social / empathetic voice) ───
-
   - profile_id: minimax-her-chat-reply-lite
     voice_line_id: minimax-her-v1
     tier: lite
@@ -461,11 +693,23 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: minimax-openai
-        model_id: MiniMax-M2-her
+        model_id: MiniMax-M2.5-highspeed
         region: cn
         endpoint_id: minimax-cn
         weight: 100
         quality_class: fast
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 88
+        quality_class: fast
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-instruct-20251111
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 82
+        quality_class: balanced
     fallback: []
 
   - profile_id: minimax-her-forum-reply-base
@@ -475,11 +719,29 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: minimax-openai
-        model_id: MiniMax-M2-her
+        model_id: MiniMax-M2.5
         region: cn
         endpoint_id: minimax-cn
         weight: 100
         quality_class: balanced
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-instruct-20251111
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 88
+        quality_class: balanced
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: fast
+      - provider_id: minimax-openai
+        model_id: MiniMax-M2.5-highspeed
+        region: cn
+        endpoint_id: minimax-cn
+        weight: 70
+        quality_class: fast
     fallback: []
 
   - profile_id: minimax-her-scheduled-post-base
@@ -489,11 +751,29 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: minimax-openai
-        model_id: MiniMax-M2-her
+        model_id: MiniMax-M2.5
         region: cn
         endpoint_id: minimax-cn
         weight: 100
         quality_class: balanced
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-instruct-20251111
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 88
+        quality_class: balanced
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: fast
+      - provider_id: minimax-openai
+        model_id: MiniMax-M2.5-highspeed
+        region: cn
+        endpoint_id: minimax-cn
+        weight: 70
+        quality_class: fast
     fallback: []
 
   - profile_id: minimax-her-private-reply-base
@@ -503,11 +783,29 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: minimax-openai
-        model_id: MiniMax-M2-her
+        model_id: MiniMax-M2.5
         region: cn
         endpoint_id: minimax-cn
         weight: 100
         quality_class: balanced
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-instruct-20251111
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 88
+        quality_class: balanced
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: fast
+      - provider_id: minimax-openai
+        model_id: MiniMax-M2.5-highspeed
+        region: cn
+        endpoint_id: minimax-cn
+        weight: 70
+        quality_class: fast
     fallback: []
 
   - profile_id: minimax-her-proactive-opening-base
@@ -517,11 +815,29 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: minimax-openai
-        model_id: MiniMax-M2-her
+        model_id: MiniMax-M2.5
         region: cn
         endpoint_id: minimax-cn
         weight: 100
         quality_class: balanced
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-instruct-20251111
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 88
+        quality_class: balanced
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: fast
+      - provider_id: minimax-openai
+        model_id: MiniMax-M2.5-highspeed
+        region: cn
+        endpoint_id: minimax-cn
+        weight: 70
+        quality_class: fast
     fallback: []
 
   - profile_id: minimax-her-identity-write-premium
@@ -531,14 +847,76 @@ profiles:
     visibility: identity_write
     candidates:
       - provider_id: minimax-openai
-        model_id: MiniMax-M2-her
+        model_id: MiniMax-M2.5
         region: cn
         endpoint_id: minimax-cn
         weight: 100
         quality_class: premium
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-instruct-20251111
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 88
+        quality_class: balanced
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: fast
     fallback: []
 
-  # ─── Kimi Deep v1 (long-context / analytical voice) ───
+  - profile_id: minimax-her-public-observation-base
+    voice_line_id: minimax-her-v1
+    tier: base
+    intent: public_observation_digest
+    visibility: hidden
+    candidates:
+      - provider_id: minimax-openai
+        model_id: MiniMax-M2.5
+        region: cn
+        endpoint_id: minimax-cn
+        weight: 100
+        quality_class: balanced
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-instruct-20251111
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 86
+        quality_class: balanced
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 80
+        quality_class: fast
+    fallback: []
+
+  - profile_id: minimax-her-private-digest-base
+    voice_line_id: minimax-her-v1
+    tier: base
+    intent: private_digest
+    visibility: hidden
+    candidates:
+      - provider_id: minimax-openai
+        model_id: MiniMax-M2.5
+        region: cn
+        endpoint_id: minimax-cn
+        weight: 100
+        quality_class: balanced
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-instruct-20251111
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 86
+        quality_class: balanced
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 80
+        quality_class: fast
+    fallback: []
 
   - profile_id: kimi-deep-chat-reply-lite
     voice_line_id: kimi-deep-v1
@@ -547,10 +925,16 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: moonshot-openai
-        model_id: kimi-k2.5
+        model_id: kimi-k2-turbo-preview
         region: cn
         endpoint_id: moonshot-cn
         weight: 100
+        quality_class: fast
+      - provider_id: zai-openai
+        model_id: glm-4-air
+        region: cn
+        endpoint_id: zai-cn
+        weight: 88
         quality_class: fast
     fallback: []
 
@@ -561,11 +945,35 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: moonshot-openai
-        model_id: kimi-k2.5
+        model_id: kimi-k2-0905-preview
         region: cn
         endpoint_id: moonshot-cn
         weight: 100
-        quality_class: balanced
+        quality_class: premium
+      - provider_id: zai-openai
+        model_id: glm-5
+        region: cn
+        endpoint_id: zai-cn
+        weight: 92
+        quality_class: premium
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-thinking-20251109
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 86
+        quality_class: premium
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-pro-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: premium
+      - provider_id: moonshot-openai
+        model_id: kimi-k2-turbo-preview
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 70
+        quality_class: fast
     fallback: []
 
   - profile_id: kimi-deep-scheduled-post-base
@@ -575,11 +983,35 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: moonshot-openai
-        model_id: kimi-k2.5
+        model_id: kimi-k2-0905-preview
         region: cn
         endpoint_id: moonshot-cn
         weight: 100
-        quality_class: balanced
+        quality_class: premium
+      - provider_id: zai-openai
+        model_id: glm-5
+        region: cn
+        endpoint_id: zai-cn
+        weight: 92
+        quality_class: premium
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-thinking-20251109
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 86
+        quality_class: premium
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-pro-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: premium
+      - provider_id: moonshot-openai
+        model_id: kimi-k2-turbo-preview
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 70
+        quality_class: fast
     fallback: []
 
   - profile_id: kimi-deep-private-reply-base
@@ -589,11 +1021,35 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: moonshot-openai
-        model_id: kimi-k2.5
+        model_id: kimi-k2-0905-preview
         region: cn
         endpoint_id: moonshot-cn
         weight: 100
-        quality_class: balanced
+        quality_class: premium
+      - provider_id: zai-openai
+        model_id: glm-5
+        region: cn
+        endpoint_id: zai-cn
+        weight: 92
+        quality_class: premium
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-thinking-20251109
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 86
+        quality_class: premium
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-pro-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: premium
+      - provider_id: moonshot-openai
+        model_id: kimi-k2-turbo-preview
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 70
+        quality_class: fast
     fallback: []
 
   - profile_id: kimi-deep-proactive-opening-base
@@ -603,11 +1059,35 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: moonshot-openai
-        model_id: kimi-k2.5
+        model_id: kimi-k2-0905-preview
         region: cn
         endpoint_id: moonshot-cn
         weight: 100
-        quality_class: balanced
+        quality_class: premium
+      - provider_id: zai-openai
+        model_id: glm-5
+        region: cn
+        endpoint_id: zai-cn
+        weight: 92
+        quality_class: premium
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-thinking-20251109
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 86
+        quality_class: premium
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-pro-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: premium
+      - provider_id: moonshot-openai
+        model_id: kimi-k2-turbo-preview
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 70
+        quality_class: fast
     fallback: []
 
   - profile_id: kimi-deep-identity-write-premium
@@ -617,9 +1097,91 @@ profiles:
     visibility: identity_write
     candidates:
       - provider_id: moonshot-openai
-        model_id: kimi-k2.5
+        model_id: kimi-k2-thinking
         region: cn
         endpoint_id: moonshot-cn
         weight: 100
+        quality_class: premium
+      - provider_id: zai-openai
+        model_id: glm-5
+        region: cn
+        endpoint_id: zai-cn
+        weight: 92
+        quality_class: premium
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-thinking-20251109
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 86
+        quality_class: premium
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-pro-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: premium
+    fallback: []
+
+  - profile_id: kimi-deep-public-observation-base
+    voice_line_id: kimi-deep-v1
+    tier: base
+    intent: public_observation_digest
+    visibility: hidden
+    candidates:
+      - provider_id: moonshot-openai
+        model_id: kimi-k2-0905-preview
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 100
+        quality_class: premium
+      - provider_id: zai-openai
+        model_id: glm-5
+        region: cn
+        endpoint_id: zai-cn
+        weight: 90
+        quality_class: premium
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-thinking-20251109
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 84
+        quality_class: premium
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-pro-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 80
+        quality_class: premium
+    fallback: []
+
+  - profile_id: kimi-deep-private-digest-base
+    voice_line_id: kimi-deep-v1
+    tier: base
+    intent: private_digest
+    visibility: hidden
+    candidates:
+      - provider_id: moonshot-openai
+        model_id: kimi-k2-0905-preview
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 100
+        quality_class: premium
+      - provider_id: zai-openai
+        model_id: glm-5
+        region: cn
+        endpoint_id: zai-cn
+        weight: 90
+        quality_class: premium
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-thinking-20251109
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 84
+        quality_class: premium
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-pro-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 80
         quality_class: premium
     fallback: []

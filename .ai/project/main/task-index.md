@@ -110,4 +110,5 @@ Project: `main`
 | T-102 pr-13-merge-readiness-remediation | archived | F-060 | dev-docs/archive/pr-13-merge-readiness-remediation |
 | T-103 personality-compiler-inference-profile-v1 | done | F-020 | dev-docs/active/personality-compiler-inference-profile-v1 |
 | T-104 architecture-decomposition-eight-priority-files | in-progress | F-000 | dev-docs/active/architecture-decomposition-eight-priority-files |
+| T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-000 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 <!-- AUTO-GENERATED:END task-index -->

@@ -26,15 +26,10 @@ pricing:
     prompt_per_1k_cny: 0.01
     completion_per_1k_cny: 0.03
 
-  - model_id: glm-4-plus
+  - model_id: glm-5
     provider_id: zai-openai
-    prompt_per_1k_cny: 0.03
-    completion_per_1k_cny: 0.09
-
-  - model_id: glm-4.5
-    provider_id: zai-openai
-    prompt_per_1k_cny: 0.07
-    completion_per_1k_cny: 0.16
+    prompt_per_1k_cny: 0.05
+    completion_per_1k_cny: 0.12
 
   - model_id: deepseek-chat
     provider_id: deepseek-openai
@@ -46,14 +41,47 @@ pricing:
     prompt_per_1k_cny: 0.03
     completion_per_1k_cny: 0.07
 
-  # Moonshot / Kimi models (reserved for GAP-C2 provider expansion)
-  - model_id: kimi-k2.5
+  - model_id: kimi-k2-turbo-preview
+    provider_id: moonshot-openai
+    prompt_per_1k_cny: 0.008
+    completion_per_1k_cny: 0.03
+
+  - model_id: kimi-k2-0905-preview
     provider_id: moonshot-openai
     prompt_per_1k_cny: 0.02
     completion_per_1k_cny: 0.06
 
-  # MiniMax models (reserved for GAP-C2 provider expansion)
-  - model_id: MiniMax-M2-her
+  - model_id: kimi-k2-thinking
+    provider_id: moonshot-openai
+    prompt_per_1k_cny: 0.03
+    completion_per_1k_cny: 0.08
+
+  - model_id: MiniMax-M2.5-highspeed
     provider_id: minimax-openai
-    prompt_per_1k_cny: 0.01
-    completion_per_1k_cny: 0.03
+    prompt_per_1k_cny: 0.0021
+    completion_per_1k_cny: 0.0084
+
+  - model_id: MiniMax-M2.5
+    provider_id: minimax-openai
+    prompt_per_1k_cny: 0.0021
+    completion_per_1k_cny: 0.0084
+
+  - model_id: hunyuan-2.0-instruct-20251111
+    provider_id: tencent-openai
+    prompt_per_1k_cny: 0.001
+    completion_per_1k_cny: 0.004
+
+  - model_id: hunyuan-2.0-thinking-20251109
+    provider_id: tencent-openai
+    prompt_per_1k_cny: 0.004
+    completion_per_1k_cny: 0.016
+
+  - model_id: doubao-seed-2-0-lite-260215
+    provider_id: ark-openai
+    prompt_per_1k_cny: 0.0006
+    completion_per_1k_cny: 0.0024
+
+  - model_id: doubao-seed-2-0-pro-260215
+    provider_id: ark-openai
+    prompt_per_1k_cny: 0.003
+    completion_per_1k_cny: 0.009

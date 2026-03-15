@@ -28,7 +28,7 @@ Options:
   --k8s-namespace <name>          Namespace (default: funforum)
   --overlay <path>                Kustomize overlay path (default: ops/deploy/k8s/overlays/local-kind)
   --secret-name <name>            Secret resource name (default: forum-app-secret)
-  --llm-api-key-env <name>        Environment variable for API key (default: LLM_API_KEY)
+  --dashscope-api-key-env <name>  Environment variable for the primary DashScope API key (default: DASHSCOPE_API_KEY)
   --image-tag <image>             Backend image tag to build/load (default: fun-forum-api:dev)
   --kind-load-image <image>       Backward-compatible alias for --image-tag
   --dockerfile <path>             Dockerfile used for the backend image build (default: ops/packaging/services/llm-forum.Dockerfile)
@@ -45,10 +45,10 @@ Options:
   --help
 
 Examples:
-  LLM_API_KEY=*** node scripts/k8s-local-staging.mjs
-  LLM_API_KEY=*** node scripts/k8s-local-staging.mjs --create-kind-if-missing
-  LLM_API_KEY=*** node scripts/k8s-local-staging.mjs --skip-db-migrate
-  LLM_API_KEY=*** pnpm k8s:staging:local:smoke -- --k8s-context kind-funforum
+  DASHSCOPE_API_KEY=*** node scripts/k8s-local-staging.mjs
+  DASHSCOPE_API_KEY=*** node scripts/k8s-local-staging.mjs --create-kind-if-missing
+  DASHSCOPE_API_KEY=*** node scripts/k8s-local-staging.mjs --skip-db-migrate
+  DASHSCOPE_API_KEY=*** pnpm k8s:staging:local:smoke -- --k8s-context kind-funforum
 `)
   process.exit(exitCode)
 }
@@ -391,7 +391,7 @@ async function main() {
     k8sNamespace: 'funforum',
     overlay: 'ops/deploy/k8s/overlays/local-kind',
     secretName: 'forum-app-secret',
-    llmApiKeyEnv: 'LLM_API_KEY',
+    dashscopeApiKeyEnv: 'DASHSCOPE_API_KEY',
     imageTag: 'fun-forum-api:dev',
     dockerfile: 'ops/packaging/services/llm-forum.Dockerfile',
     buildContext: '.',
@@ -435,14 +435,15 @@ async function main() {
     secretName: args.secretName,
   })
 
-  const llmApiKey = (
-    process.env[String(args.llmApiKeyEnv)] ||
+  const dashscopeApiKey = (
+    process.env[String(args.dashscopeApiKeyEnv)] ||
     existingSecretData.DASHSCOPE_API_KEY ||
-    existingSecretData.LLM_API_KEY ||
     ''
   )
-  if (!llmApiKey.trim()) {
-    throw new Error(`Missing API key env "${args.llmApiKeyEnv}" and no reusable API key was found in secret/${args.secretName}`)
+  if (!dashscopeApiKey.trim()) {
+    throw new Error(
+      `Missing API key env "${args.dashscopeApiKeyEnv}" and no reusable DashScope API key was found in secret/${args.secretName}`,
+    )
   }
 
   await maybeRefreshImage({
@@ -471,10 +472,28 @@ async function main() {
     JWT_SECRET: process.env.JWT_SECRET || existingSecretData.JWT_SECRET || 'local-dev-jwt-secret',
     SERVICE_AUTH_SECRET:
       process.env.SERVICE_AUTH_SECRET || existingSecretData.SERVICE_AUTH_SECRET || 'local-dev-service-auth-secret',
-    LLM_API_KEY: llmApiKey,
-    DASHSCOPE_API_KEY: process.env.DASHSCOPE_API_KEY || existingSecretData.DASHSCOPE_API_KEY || llmApiKey,
+    DASHSCOPE_API_KEY: process.env.DASHSCOPE_API_KEY || existingSecretData.DASHSCOPE_API_KEY || dashscopeApiKey,
+    DASHSCOPE_API_KEY_SECONDARY:
+      process.env.DASHSCOPE_API_KEY_SECONDARY || existingSecretData.DASHSCOPE_API_KEY_SECONDARY || '',
     ZAI_API_KEY: process.env.ZAI_API_KEY || existingSecretData.ZAI_API_KEY || '',
+    ZAI_API_KEY_SECONDARY:
+      process.env.ZAI_API_KEY_SECONDARY || existingSecretData.ZAI_API_KEY_SECONDARY || '',
     DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY || existingSecretData.DEEPSEEK_API_KEY || '',
+    DEEPSEEK_API_KEY_SECONDARY:
+      process.env.DEEPSEEK_API_KEY_SECONDARY || existingSecretData.DEEPSEEK_API_KEY_SECONDARY || '',
+    MOONSHOT_API_KEY: process.env.MOONSHOT_API_KEY || existingSecretData.MOONSHOT_API_KEY || '',
+    MOONSHOT_API_KEY_SECONDARY:
+      process.env.MOONSHOT_API_KEY_SECONDARY || existingSecretData.MOONSHOT_API_KEY_SECONDARY || '',
+    MINIMAX_API_KEY: process.env.MINIMAX_API_KEY || existingSecretData.MINIMAX_API_KEY || '',
+    MINIMAX_API_KEY_SECONDARY:
+      process.env.MINIMAX_API_KEY_SECONDARY || existingSecretData.MINIMAX_API_KEY_SECONDARY || '',
+    TENCENT_HUNYUAN_API_KEY:
+      process.env.TENCENT_HUNYUAN_API_KEY || existingSecretData.TENCENT_HUNYUAN_API_KEY || '',
+    TENCENT_HUNYUAN_API_KEY_SECONDARY:
+      process.env.TENCENT_HUNYUAN_API_KEY_SECONDARY || existingSecretData.TENCENT_HUNYUAN_API_KEY_SECONDARY || '',
+    ARK_API_KEY: process.env.ARK_API_KEY || existingSecretData.ARK_API_KEY || '',
+    ARK_API_KEY_SECONDARY:
+      process.env.ARK_API_KEY_SECONDARY || existingSecretData.ARK_API_KEY_SECONDARY || '',
   }
 
   const secretManifest = JSON.stringify(

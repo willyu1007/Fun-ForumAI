@@ -371,6 +371,12 @@ export const VOICE_LINE_CATALOG: Record<VoiceLineId, VoiceLineCatalogEntry> = {
       identity_write: {
         premium: 'minimax-her-identity-write-premium',
       },
+      public_observation_digest: {
+        base: 'minimax-her-public-observation-base',
+      },
+      private_digest: {
+        base: 'minimax-her-private-digest-base',
+      },
     },
     identityWriteProfileRef: 'minimax-her-identity-write-premium',
   },
@@ -402,6 +408,12 @@ export const VOICE_LINE_CATALOG: Record<VoiceLineId, VoiceLineCatalogEntry> = {
       },
       identity_write: {
         premium: 'kimi-deep-identity-write-premium',
+      },
+      public_observation_digest: {
+        base: 'kimi-deep-public-observation-base',
+      },
+      private_digest: {
+        base: 'kimi-deep-private-digest-base',
       },
     },
     identityWriteProfileRef: 'kimi-deep-identity-write-premium',

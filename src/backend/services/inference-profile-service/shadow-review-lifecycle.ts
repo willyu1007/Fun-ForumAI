@@ -1,6 +1,6 @@
 import type { VoiceLineId } from '../../../shared/agent-persona-catalog.js'
+import type { UsageLedgerEntry } from '../../llm/gateway-contract.js'
 import { collectCostBaselineFromLedger, collectFallbackOrDegradedEntries } from '../../runtime/rollout-evidence-collector.js'
-import { personaObservability } from '../../runtime/persona-observability.js'
 import type {
   AgentInferenceProfile,
   AgentInferenceShadowReview,
@@ -14,6 +14,7 @@ import {
   toRuntimeShadowReview,
 } from './codec.js'
 import {
+  buildAgentScopedObservabilitySnapshot,
   buildCollectedShadowReviewSummary,
   buildNotRunGateSnapshot,
   buildRunningShadowReviewEvidence,
@@ -122,7 +123,9 @@ export async function createShadowReview(
     )
   }
 
-  const observabilitySnapshot = await personaObservability.snapshotAggregated()
+  const observabilitySnapshot = buildAgentScopedObservabilitySnapshot(
+    await listAgentLedgerEntries(deps, input.agentId),
+  )
   const summary = buildRunningShadowReviewSummary()
   const evidence = buildRunningShadowReviewEvidence(observabilitySnapshot)
   const created = await deps.personaStateRepo.createInferenceShadowReview({
@@ -204,14 +207,12 @@ export async function collectShadowReviewEvidence(
     review: AgentInferenceShadowReview
   },
 ): Promise<AgentInferenceShadowReview> {
-  const afterObservability = await personaObservability.snapshotAggregated()
+  const agentLedgerEntries = await listAgentLedgerEntries(deps, input.agentId)
+  const afterObservability = buildAgentScopedObservabilitySnapshot(agentLedgerEntries)
   const beforeObservability = input.review.evidence.beforeObservability
   const identityWriteDelta = buildIdentityWriteDelta(beforeObservability, afterObservability)
-  const ledgerEntries = deps.usageLedgerRepo
-    ? await deps.usageLedgerRepo.listByAgent(input.agentId, 500)
-    : []
   const startedAt = new Date(input.review.startedAt)
-  const windowEntries = ledgerEntries.filter((entry) => new Date(entry.created_at) >= startedAt)
+  const windowEntries = agentLedgerEntries.filter((entry) => new Date(entry.created_at) >= startedAt)
   const fallbackEntries = collectFallbackOrDegradedEntries(windowEntries)
   const { attribution, gate } = deps.usageLedgerRepo
     ? await collectCostBaselineFromLedger(deps.usageLedgerRepo, input.agentId, startedAt)
@@ -325,4 +326,14 @@ export async function resolveShadowReviewCase(
   } catch {
     // Ignore already-resolved or missing review cases so the inference flow remains deterministic.
   }
+}
+
+async function listAgentLedgerEntries(
+  deps: InferenceProfileServiceDeps,
+  agentId: string,
+): Promise<UsageLedgerEntry[]> {
+  if (!deps.usageLedgerRepo) {
+    return []
+  }
+  return deps.usageLedgerRepo.listByAgent(agentId, 500)
 }

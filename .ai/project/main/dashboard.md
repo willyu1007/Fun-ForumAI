@@ -8,12 +8,13 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 100 (planned: 1, in-progress: 16, blocked: 0, done: 6, archived: 77)
+- Tasks: 101 (planned: 1, in-progress: 17, blocked: 0, done: 6, archived: 77)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-000 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-094 public-director-boundary-and-scene-contract | archived | F-060 | dev-docs/archive/public-director-boundary-and-scene-contract |
 | T-095 scene-selector-scheduled-post-forum-entry | archived | F-060 | dev-docs/archive/scene-selector-scheduled-post-forum-entry |
 | T-103 personality-compiler-inference-profile-v1 | done | F-020 | dev-docs/active/personality-compiler-inference-profile-v1 |
@@ -32,4 +33,5 @@ Project: `main`
 | T-092 public-policy-and-help-center-surfaces | archived | F-050 | dev-docs/archive/public-policy-and-help-center-surfaces |
 | T-093 hot-topic-ops-dashboard-and-alerting | archived | F-050 | dev-docs/archive/hot-topic-ops-dashboard-and-alerting |
 | T-097 mainland-launch-compliance-audit-followup | in-progress | F-050 | dev-docs/active/mainland-launch-compliance-audit-followup |
+| T-030 mobile-navigation-and-routing | archived | F-000 | dev-docs/archive/mobile-navigation-and-routing |
 <!-- AUTO-GENERATED:END dashboard -->

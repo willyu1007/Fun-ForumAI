@@ -27,21 +27,14 @@ pools:
         model_id: qwen-max
         admission: admitted
         note: incumbent premium visible slot
-      - provider_id: moonshot-openai
-        model_id: kimi-k2.5
-        admission: shadow
-        compare_baseline_model_id: qwen-plus-character
-        note: long-context challenger, visible only after shadow compare
       - provider_id: tencent-openai
-        model_id: hunyuan-character-lite
-        admission: shadow
-        compare_baseline_model_id: qwen-plus-character
-        note: Tencent mainland challenger, gated behind shadow compare
+        model_id: hunyuan-2.0-instruct-20251111
+        admission: admitted
+        note: admitted mainland social challenger
       - provider_id: ark-openai
-        model_id: doubao-1.5-thinking-pro
-        admission: blocked
-        compare_baseline_model_id: qwen-plus-character
-        note: reserved for future admission; blocked from visible pool
+        model_id: doubao-seed-2-0-lite-260215
+        admission: admitted
+        note: admitted fast social challenger
 
   - voice_line_id: glm-deep-v1
     core_family: sage
@@ -56,28 +49,25 @@ pools:
         admission: admitted
         note: incumbent fast visible slot
       - provider_id: zai-openai
-        model_id: glm-4-plus
+        model_id: glm-5
         admission: admitted
-        note: incumbent balanced visible slot
-      - provider_id: zai-openai
-        model_id: glm-4.5
-        admission: admitted
-        note: incumbent premium visible slot
+        note: incumbent balanced and premium visible slot
       - provider_id: moonshot-openai
-        model_id: kimi-k2.5
-        admission: shadow
-        compare_baseline_model_id: glm-4-plus
-        note: same-family shadow challenger
+        model_id: kimi-k2-turbo-preview
+        admission: admitted
+        note: admitted fast same-family challenger
+      - provider_id: moonshot-openai
+        model_id: kimi-k2-0905-preview
+        admission: admitted
+        note: admitted long-context same-family challenger
       - provider_id: tencent-openai
-        model_id: hunyuan-long-context
-        admission: shadow
-        compare_baseline_model_id: glm-4-plus
-        note: Tencent analytical challenger
+        model_id: hunyuan-2.0-thinking-20251109
+        admission: admitted
+        note: admitted mainland reasoning challenger
       - provider_id: ark-openai
-        model_id: doubao-1.5-pro
-        admission: blocked
-        compare_baseline_model_id: glm-4-plus
-        note: reserved until callback fidelity is proven
+        model_id: doubao-seed-2-0-pro-260215
+        admission: admitted
+        note: admitted mainland sage challenger
 
   - voice_line_id: minimax-her-v1
     core_family: hearth
@@ -88,24 +78,21 @@ pools:
       - callback_fidelity
     candidates:
       - provider_id: minimax-openai
-        model_id: MiniMax-M2-her
+        model_id: MiniMax-M2.5-highspeed
         admission: admitted
-        note: incumbent visible slot
-      - provider_id: dashscope-openai
-        model_id: qwen-plus-character
-        admission: shadow
-        compare_baseline_model_id: MiniMax-M2-her
-        note: warm social fallback challenger
+        note: incumbent fast visible slot
+      - provider_id: minimax-openai
+        model_id: MiniMax-M2.5
+        admission: admitted
+        note: incumbent balanced visible slot
       - provider_id: tencent-openai
-        model_id: hunyuan-empathic
-        admission: shadow
-        compare_baseline_model_id: MiniMax-M2-her
-        note: Tencent empathetic challenger
+        model_id: hunyuan-2.0-instruct-20251111
+        admission: admitted
+        note: admitted empathetic mainland challenger
       - provider_id: ark-openai
-        model_id: doubao-1.5-lite
-        admission: blocked
-        compare_baseline_model_id: MiniMax-M2-her
-        note: blocked until continuity review passes
+        model_id: doubao-seed-2-0-lite-260215
+        admission: admitted
+        note: admitted warm fast challenger
 
   - voice_line_id: kimi-deep-v1
     core_family: sage
@@ -116,21 +103,26 @@ pools:
       - callback_fidelity
     candidates:
       - provider_id: moonshot-openai
-        model_id: kimi-k2.5
+        model_id: kimi-k2-turbo-preview
         admission: admitted
-        note: incumbent visible slot
+        note: incumbent fast visible slot
+      - provider_id: moonshot-openai
+        model_id: kimi-k2-0905-preview
+        admission: admitted
+        note: incumbent balanced visible slot
       - provider_id: zai-openai
-        model_id: glm-4-plus
-        admission: shadow
-        compare_baseline_model_id: kimi-k2.5
-        note: same-family shadow challenger
+        model_id: glm-4-air
+        admission: admitted
+        note: admitted fast same-family challenger
+      - provider_id: zai-openai
+        model_id: glm-5
+        admission: admitted
+        note: admitted same-family challenger
       - provider_id: tencent-openai
-        model_id: hunyuan-long-context
-        admission: shadow
-        compare_baseline_model_id: kimi-k2.5
-        note: Tencent long-context challenger
+        model_id: hunyuan-2.0-thinking-20251109
+        admission: admitted
+        note: admitted mainland long-context challenger
       - provider_id: ark-openai
-        model_id: doubao-1.5-thinking-pro
-        admission: blocked
-        compare_baseline_model_id: kimi-k2.5
-        note: reserved until shadow compare is available
+        model_id: doubao-seed-2-0-pro-260215
+        admission: admitted
+        note: admitted mainland sage challenger

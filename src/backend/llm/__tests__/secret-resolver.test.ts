@@ -32,7 +32,7 @@ describe('SecretResolver', () => {
     expect(resolver.resolve('secret-ref:dashscope_api_key')).toBe('secret-token')
   })
 
-  it('falls back to LLM_API_KEY when a provider-specific env key is absent', () => {
+  it('throws when a provider-specific env key is absent', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'secret-resolver-fallback-'))
     const secretsFilePath = join(tempDir, 'dev.ref.yaml')
     const policyPath = join(tempDir, 'policy.yaml')
@@ -49,14 +49,14 @@ describe('SecretResolver', () => {
 
     const resolver = new SecretResolver({
       appEnv: 'dev',
-      env: {
-        LLM_API_KEY: 'shared-llm-token',
-      },
+      env: {},
       secretsFilePath,
       policyPath,
     })
 
-    expect(resolver.resolve('secret-ref:dashscope_api_key')).toBe('shared-llm-token')
+    expect(() => resolver.resolve('secret-ref:dashscope_api_key')).toThrow(
+      'Environment secret is missing: DASHSCOPE_API_KEY',
+    )
   })
 
   it('resolves file-backed secrets', () => {

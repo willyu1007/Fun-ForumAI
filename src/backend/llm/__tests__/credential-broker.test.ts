@@ -1,0 +1,146 @@
+import { describe, expect, it, vi } from 'vitest'
+import { CredentialBroker } from '../credential-broker.js'
+import type { LlmRegistryBundle } from '../registry-loader.js'
+
+function buildBundle() : LlmRegistryBundle {
+  return {
+    providers: {
+      version: 1,
+      providers: [
+        {
+          provider_id: 'moonshot-openai',
+          display_name: 'Moonshot',
+          gateway_kind: 'openai_compatible',
+          auth: {
+            type: 'api_key',
+            credential_ref_required: true,
+            credential_ref: 'secret-ref:moonshot_api_key',
+          },
+          routing: {
+            regions: ['cn'],
+            default_region: 'cn',
+          },
+          capabilities: {
+            chat: true,
+            json_mode: true,
+            tool_calling: true,
+            streaming: true,
+          },
+          defaults: {
+            timeout_ms: 30_000,
+            max_retries: 2,
+          },
+        },
+      ],
+    },
+    modelProfiles: {
+      version: 1,
+      profiles: [],
+    },
+    promptTemplates: {
+      version: 1,
+      templates: [],
+    },
+    credentialPools: {
+      version: 1,
+      pools: [
+        {
+          credential_id: 'moonshot-primary',
+          provider_id: 'moonshot-openai',
+          region: 'cn',
+          endpoint_id: 'moonshot-cn',
+          endpoint: 'https://api.moonshot.cn/v1',
+          credential_ref: 'secret-ref:moonshot_primary',
+          priority: 10,
+          health: 'degraded',
+          enabled: true,
+          scope_tags: ['visible'],
+          allowed_model_ids: ['kimi-k2-0905-preview'],
+        },
+        {
+          credential_id: 'moonshot-secondary',
+          provider_id: 'moonshot-openai',
+          region: 'cn',
+          endpoint_id: 'moonshot-cn',
+          endpoint: 'https://api.moonshot.cn/v1',
+          credential_ref: 'secret-ref:moonshot_secondary',
+          priority: 20,
+          health: 'healthy',
+          enabled: true,
+          scope_tags: ['visible'],
+          allowed_model_ids: ['kimi-k2-0905-preview'],
+        },
+      ],
+    },
+    routingPolicies: {
+      version: 1,
+      policies: [],
+    },
+    providerAdmission: {
+      version: 1,
+      pools: [],
+    },
+    modelPricing: {
+      version: 1,
+      pricing: [],
+    },
+  }
+}
+
+describe('CredentialBroker', () => {
+  it('keeps manual primary ordering even when the primary pool is degraded', () => {
+    const bundle = buildBundle()
+    const broker = new CredentialBroker({
+      bundle,
+      secretResolver: {
+        resolve: vi.fn((ref: string) => `${ref}-value`),
+      } as never,
+    })
+
+    const resolved = broker.resolve({
+      candidate: {
+        provider_id: 'moonshot-openai',
+        model_id: 'kimi-k2-0905-preview',
+        region: 'cn',
+        endpoint_id: 'moonshot-cn',
+        weight: 100,
+        quality_class: 'premium',
+      },
+      visibility: 'visible',
+      budgetClass: 'visible_standard',
+    })
+
+    expect(resolved.pool.credential_id).toBe('moonshot-primary')
+  })
+
+  it('falls through to the secondary pool when the primary secret fails to resolve', () => {
+    const bundle = buildBundle()
+    const broker = new CredentialBroker({
+      bundle,
+      secretResolver: {
+        resolve: vi.fn((ref: string) => {
+          if (ref === 'secret-ref:moonshot_primary') {
+            throw new Error('missing primary key')
+          }
+          return 'secondary-key'
+        }),
+      } as never,
+    })
+
+    const resolved = broker.resolve({
+      candidate: {
+        provider_id: 'moonshot-openai',
+        model_id: 'kimi-k2-0905-preview',
+        region: 'cn',
+        endpoint_id: 'moonshot-cn',
+        weight: 100,
+        quality_class: 'premium',
+      },
+      visibility: 'visible',
+      budgetClass: 'visible_standard',
+    })
+
+    expect(resolved.pool.credential_id).toBe('moonshot-secondary')
+    expect(resolved.apiKey).toBe('secondary-key')
+  })
+})

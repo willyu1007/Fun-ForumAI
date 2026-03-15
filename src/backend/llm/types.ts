@@ -38,6 +38,7 @@ export interface LlmResponse {
 
 export interface LlmProviderConfig {
   provider_id: string
+  gateway_kind?: 'openai_compatible' | 'native'
   base_url: string
   api_key: string
   timeout_ms: number

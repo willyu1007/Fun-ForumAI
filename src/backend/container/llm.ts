@@ -37,7 +37,7 @@ export function createLlmServices(deps: {
     provider: {
       provider_id: config.llm.provider,
       base_url: config.llm.baseUrl,
-      api_key: config.llm.apiKey,
+      api_key: '',
       timeout_ms: config.llm.timeoutMs,
       max_retries: config.llm.maxRetries,
     },

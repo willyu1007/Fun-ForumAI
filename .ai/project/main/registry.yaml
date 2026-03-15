@@ -964,3 +964,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/architecture-decomposition-eight-priority-files
     updated: 2026-03-15
+  - id: T-901
+    slug: provider-runtime-alignment-and-model-activation-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/provider-runtime-alignment-and-model-activation-v1
+    updated: 2026-03-16

@@ -53,7 +53,7 @@ MUST 满足如下目标（按 `docs/project/overview/non-functional-requirements
 | 帖子/评论强一致读写 | `DB_PERSISTENCE=true` | RDS PostgreSQL 高可用版，开启备份 | 生产用 4c16g 起，PITR + 慢 SQL 监控 |
 | 成本可控的弹性 | 峰谷明显、任务突发 | ECI 承担突发任务 | ECI 配额 + HPA/KEDA（队列长度驱动） |
 | 可观测 | 需定位跨实例问题 | 接入 SLS + CloudMonitor | 增加 Managed Prometheus + tracing |
-| 安全与密钥 | 含 `LLM_API_KEY`/JWT/HMAC | RAM 角色 + Secret 管理，不落库不入 git | KMS 默认凭据或后续升级付费 KMS |
+| 安全与密钥 | 含 provider API keys / JWT / HMAC | RAM 角色 + Secret 管理，不落库不入 git | KMS 默认凭据或后续升级付费 KMS |
 | 交付与回滚 | 已有 deploy/rollback 脚本 | CI 通过后发布；保留回滚版本 | 分环境发布门禁 + 自动化 smoke |
 
 ---
@@ -245,4 +245,3 @@ MUST 每周复核：
 - 运维执行 SHOULD 参考：
   - `ops/deploy/handbook/runbooks/runtime-staging-rollout-and-backout.md`
   - `ops/deploy/handbook/runbooks/rollback-procedure.md`
-

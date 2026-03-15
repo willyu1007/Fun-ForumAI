@@ -117,7 +117,74 @@ async function createContext(opts: { growthPointsTotal?: number } = {}) {
     last_render_decision_json: null,
   })
 
-  return { agent, personaStateRepo, service, usageLedgerRepo }
+  return { agent, agentService, personaStateRepo, service, usageLedgerRepo }
+}
+
+function buildLedgerEntry(input: {
+  traceId: string
+  agentId: string
+  intent?: 'proactive_opening' | 'identity_write'
+  visibility?: 'visible' | 'identity_write'
+  success?: boolean
+  createdAt?: string
+}) {
+  const intent = input.intent ?? 'proactive_opening'
+  const visibility = input.visibility ?? 'visible'
+  const success = input.success ?? true
+  const promptRef =
+    intent === 'identity_write'
+      ? { id: 'agent-identity-write', version: 1 as const }
+      : { id: 'agent-proactive-dm-opening', version: 1 as const }
+  const renderDecision =
+    intent === 'identity_write'
+      ? {
+          voiceLineId: 'qwen-social-v1' as const,
+          tier: 'premium' as const,
+          profileId: 'qwen-social-identity-write-premium',
+          providerId: 'dashscope-openai',
+          modelId: 'qwen-max',
+          region: 'cn-beijing',
+          endpointId: 'dashscope-cn-beijing',
+          fallbackLevel: 'none' as const,
+          reasons: ['initial_profile_resolution'],
+          promptTemplateId: 'agent-identity-write',
+          promptVersion: 1,
+        }
+      : {
+          voiceLineId: 'qwen-social-v1' as const,
+          tier: 'base' as const,
+          profileId: 'qwen-social-proactive-opening-base',
+          providerId: 'dashscope-openai',
+          modelId: 'qwen-plus-character',
+          region: 'cn-beijing',
+          endpointId: 'dashscope-cn-beijing',
+          fallbackLevel: 'none' as const,
+          reasons: ['initial_profile_resolution'],
+          promptTemplateId: 'agent-proactive-dm-opening',
+          promptVersion: 1,
+        }
+
+  return {
+    trace_id: input.traceId,
+    agent_id: input.agentId,
+    intent,
+    visibility,
+    scene: intent === 'identity_write' ? 'background_hidden' : 'proactive_dm',
+    prompt_ref: promptRef,
+    render_decision: renderDecision,
+    usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 },
+    success,
+    provider_id: renderDecision.providerId,
+    model_id: renderDecision.modelId,
+    profile_id: renderDecision.profileId,
+    billing_class: intent === 'identity_write' ? 'identity_write' : 'visible_standard',
+    estimated_cost_cny: 0.01,
+    reserved_cost_cny: 0.01,
+    actual_cost_cny: success ? 0.001 : 0,
+    latency_ms: 20,
+    ...(success ? {} : { error_code: 'UpstreamError' as const }),
+    created_at: input.createdAt ?? new Date().toISOString(),
+  }
 }
 
 describe('InferenceProfileService', () => {
@@ -293,6 +360,100 @@ describe('InferenceProfileService', () => {
 
     const debugAfter = await service.getDebug(agent.id)
     expect(debugAfter.shadowReview?.status).toBe('applied')
+  })
+
+  it('collects shadow review observability from the target agent only', async () => {
+    const { agent, agentService, service, usageLedgerRepo } = await createContext()
+    const otherAgent = await agentService.createAgentPersisted({
+      owner_id: 'owner-2',
+      display_name: 'Noise Bot',
+      persona_seed_code: 'comedian',
+    })
+
+    for (let index = 0; index < 5; index += 1) {
+      await service.resolveVisibleRoute({
+        agentId: agent.id,
+        requestedTier: 'base',
+      })
+    }
+
+    await usageLedgerRepo.insert(
+      buildLedgerEntry({
+        traceId: 'agent-before-identity',
+        agentId: agent.id,
+        intent: 'identity_write',
+        visibility: 'identity_write',
+      }),
+    )
+    await usageLedgerRepo.insert(
+      buildLedgerEntry({
+        traceId: 'other-before-identity-1',
+        agentId: otherAgent.id,
+        intent: 'identity_write',
+        visibility: 'identity_write',
+      }),
+    )
+    await usageLedgerRepo.insert(
+      buildLedgerEntry({
+        traceId: 'other-before-identity-2',
+        agentId: otherAgent.id,
+        intent: 'identity_write',
+        visibility: 'identity_write',
+      }),
+    )
+
+    const started = await service.startShadowReview(agent.id, 'admin-1')
+    const startedAtMs = new Date(started.startedAt).getTime()
+
+    for (let index = 0; index < 3; index += 1) {
+      await usageLedgerRepo.insert(
+        buildLedgerEntry({
+          traceId: `agent-visible-${index}`,
+          agentId: agent.id,
+          createdAt: new Date(startedAtMs + (index + 1) * 1_000).toISOString(),
+        }),
+      )
+    }
+
+    await usageLedgerRepo.insert(
+      buildLedgerEntry({
+        traceId: 'agent-after-identity-failure',
+        agentId: agent.id,
+        intent: 'identity_write',
+        visibility: 'identity_write',
+        success: false,
+        createdAt: new Date(startedAtMs + 10_000).toISOString(),
+      }),
+    )
+    await usageLedgerRepo.insert(
+      buildLedgerEntry({
+        traceId: 'other-after-identity-1',
+        agentId: otherAgent.id,
+        intent: 'identity_write',
+        visibility: 'identity_write',
+        createdAt: new Date(startedAtMs + 11_000).toISOString(),
+      }),
+    )
+    await usageLedgerRepo.insert(
+      buildLedgerEntry({
+        traceId: 'other-after-identity-2',
+        agentId: otherAgent.id,
+        intent: 'identity_write',
+        visibility: 'identity_write',
+        createdAt: new Date(startedAtMs + 12_000).toISOString(),
+      }),
+    )
+
+    const collected = await service.collectShadowReview(agent.id, 'admin-1')
+
+    expect(collected.status).toBe('collected')
+    expect(collected.evidence.beforeObservability.context_memory.identity_writes.success_total).toBe(1)
+    expect(collected.evidence.beforeObservability.context_memory.identity_writes.failure_total).toBe(0)
+    expect(collected.evidence.afterObservability.context_memory.identity_writes.success_total).toBe(1)
+    expect(collected.evidence.afterObservability.context_memory.identity_writes.failure_total).toBe(1)
+    expect(collected.evidence.identityWriteDelta.before_success_total).toBe(1)
+    expect(collected.evidence.identityWriteDelta.after_success_total).toBe(1)
+    expect(collected.evidence.identityWriteDelta.after_failure_total).toBe(1)
   })
 
   it('keeps rare reanchor blocked until the higher growth gate is unlocked', async () => {

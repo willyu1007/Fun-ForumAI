@@ -8,7 +8,14 @@ import type {
   ShadowReviewRecommendation,
   ShadowReviewSummary,
 } from '../../runtime/inference-profile-types.js'
-import type { PersonaObservabilitySnapshot } from '../../runtime/persona-observability.js'
+import {
+  PERSONA_BLIND_REVIEW_RUBRIC,
+  PERSONA_RENDER_LOG_REQUIRED_FIELDS,
+  PERSONA_REPLAY_EVAL_SLICES,
+  createEmptyContextMemoryMetrics,
+  evaluatePersonaRolloutGates,
+  type PersonaObservabilitySnapshot,
+} from '../../runtime/persona-observability.js'
 import type { PersonaGateSnapshotV1 } from '../../runtime/persona-observation.js'
 import { buildIdentityWriteDelta } from './codec.js'
 
@@ -38,6 +45,36 @@ export function buildRunningShadowReviewEvidence(
       sampleWindowMinutes: 0,
     },
     fallbackEntries: [],
+  }
+}
+
+export function buildAgentScopedObservabilitySnapshot(
+  entries: UsageLedgerEntry[],
+): PersonaObservabilitySnapshot {
+  const contextMemory = createEmptyContextMemoryMetrics()
+  const sortedEntries = [...entries].sort((a, b) => a.created_at.localeCompare(b.created_at))
+
+  for (const entry of sortedEntries) {
+    if (entry.intent === 'identity_write' || entry.visibility === 'identity_write') {
+      if (entry.success) {
+        contextMemory.identity_writes.success_total += 1
+      } else {
+        contextMemory.identity_writes.failure_total += 1
+      }
+      contextMemory.updated_at = entry.created_at
+    }
+  }
+
+  return {
+    render_log: {
+      required_fields: PERSONA_RENDER_LOG_REQUIRED_FIELDS,
+    },
+    evaluation: {
+      blind_review_rubric: PERSONA_BLIND_REVIEW_RUBRIC,
+      replay_slices: PERSONA_REPLAY_EVAL_SLICES,
+    },
+    context_memory: contextMemory,
+    rollout_gates: evaluatePersonaRolloutGates(contextMemory),
   }
 }
 

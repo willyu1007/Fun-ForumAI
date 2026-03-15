@@ -155,10 +155,9 @@ function buildScopeTags(visibility: LLMVisibility, budgetClass: string, extraTag
 }
 
 function comparePools(a: CredentialPoolEntry, b: CredentialPoolEntry): number {
-  const healthScore = (pool: CredentialPoolEntry) => pool.health === 'healthy' ? 2 : pool.health === 'degraded' ? 1 : 0
   const headroom = (pool: CredentialPoolEntry) => (pool.rpm_headroom ?? 0) + (pool.tpm_headroom ?? 0)
   return (
-    healthScore(b) - healthScore(a) ||
+    a.priority - b.priority ||
     headroom(b) - headroom(a) ||
     a.credential_id.localeCompare(b.credential_id)
   )

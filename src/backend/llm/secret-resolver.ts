@@ -40,14 +40,6 @@ interface SecretResolverOptions {
   bwsExecutable?: string
 }
 
-const ENV_SECRET_FALLBACKS: Record<string, string[]> = {
-  DASHSCOPE_API_KEY: ['LLM_API_KEY'],
-  ZAI_API_KEY: ['LLM_API_KEY'],
-  DEEPSEEK_API_KEY: ['LLM_API_KEY'],
-  MOONSHOT_API_KEY: ['LLM_API_KEY'],
-  MINIMAX_API_KEY: ['LLM_API_KEY'],
-}
-
 export class SecretResolver {
   private readonly env: NodeJS.ProcessEnv
   private readonly secretsFilePath: string
@@ -124,13 +116,6 @@ export class SecretResolver {
   private resolveEnvVar(name: string): string {
     const value = this.env[name]
     if (!value) {
-      const fallback = ENV_SECRET_FALLBACKS[name]?.find((alias) => {
-        const candidate = this.env[alias]
-        return typeof candidate === 'string' && candidate.length > 0
-      })
-      if (fallback) {
-        return this.env[fallback] as string
-      }
       throw new LLMGatewayContractError(
         'AuthError',
         `Environment secret is missing: ${name}`,

@@ -392,6 +392,30 @@ policies:
     allowed_fallback_levels:
       - none
 
+  - profile_id: minimax-her-public-observation-base
+    route_order:
+      - intent_scene_fit
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: minimax-her-private-digest-base
+    route_order:
+      - intent_scene_fit
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
   # ─── Kimi Deep v1 ───
 
   - profile_id: kimi-deep-chat-reply-lite
@@ -454,6 +478,30 @@ policies:
       - intent_scene_fit
       - voice_line_tier
       - profile_candidates
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: kimi-deep-public-observation-base
+    route_order:
+      - intent_scene_fit
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+    allow_fallback_within_line: false
+    allow_cross_family: false
+    allowed_fallback_levels:
+      - none
+
+  - profile_id: kimi-deep-private-digest-base
+    route_order:
+      - intent_scene_fit
+      - profile_candidates
+      - region_policy
+      - headroom
       - health
     allow_fallback_within_line: false
     allow_cross_family: false

@@ -292,6 +292,7 @@ const credentialPoolsSchema = z
           endpoint_id: z.string().min(1),
           endpoint: z.string().url(),
           credential_ref: z.string().min(1),
+          priority: z.number().int().positive(),
           health: credentialHealthSchema,
           enabled: z.boolean().optional(),
           scope_tags: z.array(z.string().min(1)).optional(),

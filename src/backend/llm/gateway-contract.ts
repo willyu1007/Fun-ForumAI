@@ -101,6 +101,7 @@ export interface CredentialPoolEntry {
   endpoint_id: string
   endpoint: string
   credential_ref: string
+  priority: number
   health: 'healthy' | 'degraded' | 'blocked'
   enabled?: boolean
   scope_tags?: string[]

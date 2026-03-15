@@ -1,0 +1,16 @@
+version: 1
+task_id: T-901
+project: main
+slug: provider-runtime-alignment-and-model-activation-v1
+status: in-progress
+updated: "2026-03-16"
+depends_on:
+  - T-103
+keywords:
+  - provider
+  - llm
+  - routing
+  - admission
+  - credential-pool
+  - shadow-review
+
