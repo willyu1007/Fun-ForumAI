@@ -1,10 +1,10 @@
 import type {
   LlmRegistryBundle,
-  ModelProfileCandidate,
   ModelProfileEntry,
   ProviderAdmissionCandidateEntry,
   ProviderAdmissionPoolEntry,
 } from './registry-loader.js'
+import type { ModelProfileCandidate } from './gateway-contract.js'
 import { LLMGatewayContractError } from './gateway-contract.js'
 
 export interface ProviderAdmissionFilterResult {

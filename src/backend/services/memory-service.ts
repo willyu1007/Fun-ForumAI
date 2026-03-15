@@ -19,7 +19,6 @@ import type { EventRepository, AgentRunRepository } from '../repos/event-reposit
 import type {
   AgentMemory,
   AgentPrivacySettingsEntity,
-  ChronicleEntry,
   ContextMemoryScene,
   CreateAgentMemoryInput,
   EvidenceRef,
@@ -35,15 +34,10 @@ import type {
   ContextJournalService,
   IdentityFinalizer,
   SummaryOrchestrator,
-  SummaryDistillResult,
-  IdentityFinalizeResult,
-  TypedRetrievalState,
 } from '../context-memory/contracts.js'
 import { DefaultMemoryPackRenderer, DefaultRetrievalPacker } from '../context-memory/memory-pack.js'
 import {
-  buildChatRoomWindowRawEvent,
   buildChatRoomWindowRawEventId,
-  buildForumThreadRawEvent,
   buildForumThreadRawEventId,
   buildPrivateSessionRawEvent,
   buildPrivateSessionRawEventId,
@@ -54,20 +48,33 @@ import {
   buildPersonaObservation,
   recordPersonaObservation,
 } from '../runtime/persona-observation.js'
+import { buildTranscript, parseDigestResponse } from './memory-service/digest.js'
+import {
+  backfillLegacyPublicObservations,
+  emptyTypedRetrievalState,
+  loadTypedRetrievalState,
+  selectLegacyMemories,
+} from './memory-service/retrieval.js'
+import {
+  average,
+  buildNightlyCompactionSummary,
+  clamp01,
+  compactEpisodicCards,
+  listAllEpisodicCards,
+} from './memory-service/maintenance.js'
+import {
+  ingestTypedPublicObservation,
+  isUniqueConstraintError,
+  persistTypedContextState,
+} from './memory-service/typed-context.js'
 
 const DECAY_FACTOR_PER_DAY = 0.995
 const FORGET_THRESHOLD = 0.05
 const MIN_MESSAGES_FOR_DIGEST = 4
-const TYPED_EPISODIC_RETRIEVAL_LIMIT = 8
-const TYPED_SHADOW_RETRIEVAL_LIMIT = 3
-const NIGHTLY_EPISODIC_KEEP = 18
 const NIGHTLY_SHADOW_KEEP = 4
-const NIGHTLY_EPISODIC_DECAY = 0.92
 const NIGHTLY_TENSION_DECAY = 0.94
-const NIGHTLY_EPISODIC_FORGET_THRESHOLD = 0.18
 const NIGHTLY_TENSION_FORGET_THRESHOLD = 0.22
 const NIGHTLY_COMPACTION_MIN_CARDS = 2
-const NIGHTLY_COMPACTION_LOOKBACK_DAYS = 7
 
 export interface ContextMemoryRuntimeDeps {
   journalService: ContextJournalService
@@ -211,15 +218,34 @@ export class MemoryService {
       filtered = allMemories.filter((memory) => memory.privacy_floor <= opts.disclosureLevel)
     }
 
-    const selectedLegacy = this.selectLegacyMemories(filtered, opts.topicHints, effectiveTopK, effectiveBudget)
+    const selectedLegacy = selectLegacyMemories({
+      memories: filtered,
+      topicHints: opts.topicHints,
+      topK: effectiveTopK,
+      tokenBudget: effectiveBudget,
+    })
     let typed = this.deps.contextMemory
-      ? await this.loadTypedRetrievalState(agentId, effectiveTopK, opts.scene)
+      ? await loadTypedRetrievalState({
+          runtime: this.deps.contextMemory,
+          agentId,
+          topK: effectiveTopK,
+          scene: opts.scene,
+        })
       : emptyTypedRetrievalState()
 
     if (this.deps.contextMemory && typed.publicEpisodicCards.length === 0) {
-      const backfilledCount = await this.backfillLegacyPublicObservations(agentId, selectedLegacy)
+      const backfilledCount = await backfillLegacyPublicObservations({
+        runtime: this.deps.contextMemory,
+        agentId,
+        memories: selectedLegacy,
+      })
       if (backfilledCount > 0) {
-        typed = await this.loadTypedRetrievalState(agentId, effectiveTopK, opts.scene)
+        typed = await loadTypedRetrievalState({
+          runtime: this.deps.contextMemory,
+          agentId,
+          topK: effectiveTopK,
+          scene: opts.scene,
+        })
       }
     }
 
@@ -490,7 +516,12 @@ export class MemoryService {
       const extracted = await runtime.summaryOrchestrator.extract(rawEvent)
       const distilled = await runtime.summaryOrchestrator.distill(rawEvent, extracted)
       const finalized = await runtime.identityFinalizer.finalize(agentId, distilled)
-      await this.persistTypedContextState(agentId, distilled, finalized)
+      await persistTypedContextState({
+        runtime: this.deps.contextMemory,
+        agentId,
+        distilled,
+        finalized,
+      })
       personaObservability.recordTypedWrite(true)
 
       const existing = await this.findPrivateDigestByEventId(agentId, rawEvent.id)
@@ -537,7 +568,7 @@ export class MemoryService {
       temperature: 0.3,
     })
 
-    const parsed = this.parseDigestResponse(llmResponse.content)
+    const parsed = parseDigestResponse(llmResponse.content)
     const memory = await this.deps.memoryRepo.createMemory({
       agent_id: agentId,
       source_type: 'PRIVATE_CHAT',
@@ -597,209 +628,6 @@ export class MemoryService {
       })).catch((hookError) => {
         console.error('[MemoryService] digest hook failed:', hookError)
       })
-    }
-  }
-
-  private async loadTypedRetrievalState(
-    agentId: string,
-    topK: number,
-    scene: ContextMemoryScene,
-  ): Promise<TypedRetrievalState> {
-    const runtime = this.deps.contextMemory
-    if (!runtime) return emptyTypedRetrievalState()
-
-    const chronicleVisibility = scene === 'private_chat'
-      ? ['OWNER_ONLY', 'PUBLIC'] as const
-      : ['PUBLIC'] as const
-
-    const [
-      privateCards,
-      allCards,
-      ownerRelations,
-      communityRelations,
-      roomRelations,
-      agentRelations,
-      selfModel,
-      tensions,
-      privateShadows,
-      chronicleEntries,
-    ] = await Promise.all([
-      runtime.episodicCardRepo.listByAgent(agentId, {
-        limit: Math.max(topK * 2, TYPED_EPISODIC_RETRIEVAL_LIMIT),
-        scene: 'private_chat',
-      }),
-      runtime.episodicCardRepo.listByAgent(agentId, {
-        limit: Math.max(topK * 3, TYPED_EPISODIC_RETRIEVAL_LIMIT),
-      }),
-      runtime.relationStateRepo.listByAgent(agentId, { limit: 3, channel: 'owner' }),
-      runtime.relationStateRepo.listByAgent(agentId, { limit: 3, channel: 'community' }),
-      runtime.relationStateRepo.listByAgent(agentId, { limit: 3, channel: 'room' }),
-      runtime.relationStateRepo.listByAgent(agentId, { limit: 5, channel: 'agent' }),
-      runtime.selfModelStateRepo.findByAgent(agentId),
-      runtime.activeTensionRepo.listByAgent(agentId, 3),
-      runtime.privateShadowRepo.listByAgent(agentId, TYPED_SHADOW_RETRIEVAL_LIMIT),
-      runtime.chronicleRepo
-        ? runtime.chronicleRepo.findByAgent(agentId, { limit: 2, visibility: [...chronicleVisibility] })
-        : Promise.resolve<PaginatedResult<ChronicleEntry>>({ items: [], next_cursor: null }),
-    ])
-
-    return {
-      privateEpisodicCards: privateCards.items,
-      publicEpisodicCards: allCards.items.filter((card) => card.scene !== 'private_chat'),
-      ownerRelation: ownerRelations.items[0] ?? null,
-      communityRelations: communityRelations.items,
-      roomRelations: roomRelations.items,
-      agentRelations: agentRelations.items,
-      selfModel,
-      tensions,
-      privateShadows,
-      chronicleEntries: chronicleEntries.items,
-    }
-  }
-
-  private async backfillLegacyPublicObservations(
-    agentId: string,
-    memories: AgentMemory[],
-  ): Promise<number> {
-    const runtime = this.deps.contextMemory
-    if (!runtime) return 0
-
-    const candidates = memories
-      .filter((memory) => memory.agent_id === agentId)
-      .filter((memory) => memory.source_type === 'PUBLIC_OBSERVATION')
-      .sort((a, b) => b.importance_score - a.importance_score || b.created_at.getTime() - a.created_at.getTime())
-      .slice(0, 2)
-
-    let backfilled = 0
-    for (const memory of candidates) {
-      const scene = inferLegacyPublicObservationScene(memory)
-      const rawEventId = legacyPublicObservationRawEventId(memory.id)
-      const existing = await runtime.rawEventRepo.findById(rawEventId)
-      if (existing) continue
-
-      const sourceRefId = memory.source_ref_id ?? memory.id
-      const counterpartId = scene === 'chat_room'
-        ? sourceRefId
-        : null
-
-      await runtime.rawEventRepo.upsert({
-        id: rawEventId,
-        agent_id: memory.agent_id,
-        scene,
-        source_type: scene === 'chat_room' ? 'chat_room_window' : 'forum_thread',
-        source_ref_id: sourceRefId,
-        counterpart_id: counterpartId,
-        transcript: buildLegacyPublicObservationTranscript(memory),
-        evidence_refs: [
-          `legacy_memory:${memory.id}`,
-          ...(memory.source_event_id ? [`legacy_event:${memory.source_event_id}`] : []),
-        ],
-        created_at: memory.created_at,
-      })
-
-      await runtime.episodicCardRepo.upsert({
-        id: legacyPublicObservationCardId(memory.id),
-        agent_id: memory.agent_id,
-        event_id: rawEventId,
-        scene,
-        title: buildLegacyPublicObservationTitle(memory),
-        summary: memory.summary_text,
-        topic_tags: [...memory.topic_tags],
-        evidence_refs: [
-          `legacy_memory:${memory.id}`,
-          ...(memory.source_event_id ? [`legacy_event:${memory.source_event_id}`] : []),
-        ],
-        salience: clamp01(memory.importance_score),
-        created_at: memory.created_at,
-      })
-      backfilled += 1
-    }
-
-    return backfilled
-  }
-
-  private selectLegacyMemories(
-    memories: AgentMemory[],
-    topicHints: string[],
-    topK: number,
-    tokenBudget: number,
-  ): AgentMemory[] {
-    const scored = memories.map((memory) => {
-      const tagMatchScore = this.computeTagMatch(memory.topic_tags, topicHints)
-      const ageDays = Math.max(0, (Date.now() - memory.created_at.getTime()) / (24 * 60 * 60 * 1000))
-      const recencyBoost = Math.max(0, 1 - ageDays / 7) * 0.15
-      const combinedScore = tagMatchScore * 0.45 + memory.importance_score * 0.4 + recencyBoost
-      return { memory, score: combinedScore }
-    })
-
-    scored.sort((a, b) => b.score - a.score)
-    const selected: AgentMemory[] = []
-    const usedPrimaryTags = new Set<string>()
-    for (const item of scored) {
-      if (selected.length >= topK) break
-      const primaryTag = item.memory.topic_tags[0]?.toLowerCase() ?? ''
-      if (primaryTag && usedPrimaryTags.has(primaryTag) && selected.length < topK - 1) {
-        continue
-      }
-      selected.push(item.memory)
-      if (primaryTag) usedPrimaryTags.add(primaryTag)
-    }
-
-    let totalTokens = 0
-    const budgetFiltered: AgentMemory[] = []
-    for (const memory of selected) {
-      const estimatedTokens = Math.ceil(memory.summary_text.length / 3)
-      if (totalTokens + estimatedTokens > tokenBudget) break
-      budgetFiltered.push(memory)
-      totalTokens += estimatedTokens
-    }
-    return budgetFiltered
-  }
-
-  private computeTagMatch(memoryTags: string[], topicHints: string[]): number {
-    if (memoryTags.length === 0 || topicHints.length === 0) return 0
-    const hintSet = new Set(topicHints.map((hint) => hint.toLowerCase()))
-    let matches = 0
-    for (const tag of memoryTags) {
-      if (hintSet.has(tag.toLowerCase())) matches++
-    }
-    return matches / Math.max(memoryTags.length, topicHints.length)
-  }
-
-  private parseDigestResponse(content: string): {
-    summary_text: string
-    topic_tags: string[]
-    key_facts: string[]
-    sentiment: string
-    importance_score: number
-    parse_success: boolean
-  } {
-    try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>
-        return {
-          summary_text: String(parsed.summary_text || content),
-          topic_tags: Array.isArray(parsed.topic_tags) ? parsed.topic_tags.filter((item): item is string => typeof item === 'string') : [],
-          key_facts: Array.isArray(parsed.key_facts) ? parsed.key_facts.filter((item): item is string => typeof item === 'string') : [],
-          sentiment: String(parsed.sentiment || 'neutral'),
-          importance_score: typeof parsed.importance_score === 'number'
-            ? Math.min(1, Math.max(0, parsed.importance_score))
-            : 0.5,
-          parse_success: true,
-        }
-      }
-    } catch {
-      // JSON parse failed, fall back to plain text
-    }
-
-    return {
-      summary_text: content,
-      topic_tags: [],
-      key_facts: [],
-      sentiment: 'neutral',
-      importance_score: 0.5,
-      parse_success: false,
     }
   }
 
@@ -921,67 +749,16 @@ export class MemoryService {
   ): Promise<void> {
     if (!this.deps.contextMemory || !input.typed_context) return
     try {
-      await this.ingestTypedPublicObservation(memory, input, sourceEventId)
+      await ingestTypedPublicObservation({
+        runtime: this.deps.contextMemory,
+        memory,
+        sourceEventId,
+        payload: input,
+      })
       personaObservability.recordTypedWrite(true)
     } catch (err) {
       personaObservability.recordTypedWrite(false)
       console.error('[MemoryService] typed public observation ingest failed:', err)
-    }
-  }
-
-  private async ingestTypedPublicObservation(
-    memory: AgentMemory,
-    input: Parameters<MemoryService['createPublicObservationMemory']>[0],
-    sourceEventId?: string,
-  ): Promise<void> {
-    const runtime = this.deps.contextMemory
-    const typedContext = input.typed_context
-    if (!runtime || !typedContext) return
-
-    const rawEvent = typedContext.scene === 'forum'
-      ? buildForumThreadRawEvent({
-        eventId: buildForumThreadRawEventId(sourceEventId ?? memory.id),
-        agentId: input.agent_id,
-        postId: input.source_ref_id,
-        communityId: typedContext.counterpart_id ?? null,
-        transcript: typedContext.transcript,
-        evidenceRefs: typedContext.evidence_refs,
-        createdAt: typedContext.created_at ?? memory.created_at,
-      })
-      : buildChatRoomWindowRawEvent({
-        eventId: buildChatRoomWindowRawEventId(sourceEventId ?? memory.id),
-        agentId: input.agent_id,
-        roomId: input.source_ref_id,
-        transcript: typedContext.transcript,
-        evidenceRefs: typedContext.evidence_refs,
-        createdAt: typedContext.created_at ?? memory.created_at,
-      })
-
-    const recorded = await runtime.journalService.record(rawEvent)
-    const extracted = await runtime.summaryOrchestrator.extract(recorded)
-    const distilled = await runtime.summaryOrchestrator.distill(recorded, extracted)
-    const finalized = await runtime.identityFinalizer.finalize(input.agent_id, distilled)
-    await this.persistTypedContextState(input.agent_id, distilled, finalized)
-  }
-
-  private async persistTypedContextState(
-    agentId: string,
-    distilled: SummaryDistillResult,
-    finalized: IdentityFinalizeResult,
-  ): Promise<void> {
-    const runtime = this.deps.contextMemory
-    if (!runtime) return
-
-    await Promise.all(distilled.episodicCards.map((card) => runtime.episodicCardRepo.upsert(card)))
-    if (finalized.relationState) {
-      await runtime.relationStateRepo.upsert(finalized.relationState)
-    }
-    if (finalized.selfModel) {
-      await runtime.selfModelStateRepo.upsert(finalized.selfModel)
-    }
-    await runtime.activeTensionRepo.replaceForAgent(agentId, finalized.tensions)
-    if (finalized.privateShadow) {
-      await runtime.privateShadowRepo.upsert(finalized.privateShadow)
     }
   }
 
@@ -991,14 +768,14 @@ export class MemoryService {
 
     try {
       const [allCards, shadows, tensions, selfModel] = await Promise.all([
-        this.listAllEpisodicCards(agentId),
+        listAllEpisodicCards({ runtime: this.deps.contextMemory, agentId }),
         runtime.privateShadowRepo.listByAgent(agentId, 12),
         runtime.activeTensionRepo.listByAgent(agentId, 10),
         runtime.selfModelStateRepo.findByAgent(agentId),
       ])
 
       const now = new Date()
-      const compacted = this.compactEpisodicCards(allCards, now)
+      const compacted = compactEpisodicCards(allCards, now)
       const nextTensions = tensions
         .map((item) => ({
           id: item.id,
@@ -1066,7 +843,7 @@ export class MemoryService {
             type: 'HIGHLIGHT',
             occurred_at: now,
             title: 'Nightly Context Compaction',
-            summary: this.buildNightlyCompactionSummary(compacted.mergeCandidates),
+            summary: buildNightlyCompactionSummary(compacted.mergeCandidates),
             importance_score: clamp01(average(compacted.mergeCandidates.map((card) => card.salience)) + 0.05),
             evidence,
             tags: ['context:nightly', 'context:compaction', ...Array.from(new Set(compacted.mergeCandidates.map((card) => `scene:${card.scene}`)))],
@@ -1094,149 +871,4 @@ export class MemoryService {
       throw error
     }
   }
-
-  private compactEpisodicCards(
-    cards: TypedRetrievalState['privateEpisodicCards'],
-    now: Date,
-  ): {
-    kept: TypedRetrievalState['privateEpisodicCards']
-    prunedIds: string[]
-    mergeCandidates: TypedRetrievalState['privateEpisodicCards']
-  } {
-    const decayed = cards.map((card) => ({
-      ...card,
-      salience: clamp01(card.salience * episodicDecayFactor(card.created_at, now)),
-    }))
-    const mergeCandidates = decayed
-      .filter((card) => ageDays(card.created_at, now) >= NIGHTLY_COMPACTION_LOOKBACK_DAYS)
-      .filter((card) => card.salience >= 0.45)
-      .sort((a, b) => b.salience - a.salience || b.created_at.getTime() - a.created_at.getTime())
-      .slice(0, 4)
-
-    const kept = decayed
-      .filter((card) => card.salience >= NIGHTLY_EPISODIC_FORGET_THRESHOLD)
-      .sort((a, b) => b.salience - a.salience || b.created_at.getTime() - a.created_at.getTime())
-      .slice(0, NIGHTLY_EPISODIC_KEEP)
-    const keepIds = new Set(kept.map((card) => card.id))
-    const prunedIds = decayed
-      .filter((card) => !keepIds.has(card.id))
-      .map((card) => card.id)
-
-    return { kept, prunedIds, mergeCandidates }
-  }
-
-  private buildNightlyCompactionSummary(cards: TypedRetrievalState['privateEpisodicCards']): string {
-    const scenes = Array.from(new Set(cards.map((card) => (
-      card.scene === 'private_chat' ? '私聊' : card.scene === 'forum' ? '论坛' : '聊天室'
-    )))).join('、')
-    const titles = cards.slice(0, 3).map((card) => card.title).join(' / ')
-    return `夜间整理了来自${scenes}的长期经历脉络，保留了这些高信号片段：${titles}。`
-  }
-
-  private async listAllEpisodicCards(
-    agentId: string,
-  ): Promise<TypedRetrievalState['privateEpisodicCards']> {
-    const runtime = this.deps.contextMemory
-    if (!runtime) return []
-
-    const items: TypedRetrievalState['privateEpisodicCards'] = []
-    let cursor: string | undefined
-    let safety = 0
-
-    while (safety < 1000) {
-      safety += 1
-      const page = await runtime.episodicCardRepo.listByAgent(agentId, {
-        cursor,
-        limit: 100,
-      })
-      items.push(...page.items)
-      if (!page.next_cursor || page.next_cursor === cursor) {
-        break
-      }
-      cursor = page.next_cursor
-    }
-
-    return items
-  }
-}
-
-function buildTranscript(messages: Array<{ author_type: 'HUMAN' | 'AGENT'; content: string }>): string {
-  return messages
-    .map((message) => `${message.author_type === 'HUMAN' ? 'Owner' : 'Agent'}: ${message.content}`)
-    .join('\n\n')
-}
-
-function legacyPublicObservationRawEventId(memoryId: string): string {
-  return `ctxevent:legacy-public-observation:${memoryId}`
-}
-
-function legacyPublicObservationCardId(memoryId: string): string {
-  return `ctxepisode:legacy-public-observation:${memoryId}:1`
-}
-
-function inferLegacyPublicObservationScene(memory: AgentMemory): Extract<ContextMemoryScene, 'forum' | 'chat_room'> {
-  return memory.source_ref_type === 'room' ? 'chat_room' : 'forum'
-}
-
-function buildLegacyPublicObservationTranscript(memory: AgentMemory): string {
-  const keyFacts = memory.key_facts.length > 0
-    ? memory.key_facts.map((fact, index) => `线索${index + 1}: ${fact}`)
-    : ['线索1: 缺少结构化线索，使用兼容摘要回填 typed public observation。']
-  return [
-    `兼容摘要: ${memory.summary_text}`,
-    ...keyFacts,
-  ].join('\n')
-}
-
-function buildLegacyPublicObservationTitle(memory: AgentMemory): string {
-  const firstFact = memory.key_facts[0]?.trim()
-  if (firstFact) return trim(firstFact, 32)
-  const prefix = memory.source_ref_type === 'room' ? '聊天室公共观察' : '论坛公共观察'
-  return trim(`${prefix} | ${memory.summary_text}`, 32)
-}
-
-function emptyTypedRetrievalState(): TypedRetrievalState {
-  return {
-    privateEpisodicCards: [],
-    publicEpisodicCards: [],
-    ownerRelation: null,
-    communityRelations: [],
-    roomRelations: [],
-    agentRelations: [],
-    selfModel: null,
-    tensions: [],
-    privateShadows: [],
-    chronicleEntries: [],
-  }
-}
-
-function isUniqueConstraintError(err: unknown): boolean {
-  return Boolean(
-    err &&
-    typeof err === 'object' &&
-    'code' in err &&
-    (err as { code?: string }).code === 'P2002',
-  )
-}
-
-function ageDays(from: Date, to: Date): number {
-  return Math.max(0, (to.getTime() - from.getTime()) / (24 * 60 * 60 * 1000))
-}
-
-function episodicDecayFactor(createdAt: Date, now: Date): number {
-  return Math.pow(NIGHTLY_EPISODIC_DECAY, Math.max(1, ageDays(createdAt, now)))
-}
-
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value))
-}
-
-function average(values: number[]): number {
-  if (values.length === 0) return 0
-  return values.reduce((sum, value) => sum + value, 0) / values.length
-}
-
-function trim(value: string, maxLength: number): string {
-  if (value.length <= maxLength) return value
-  return `${value.slice(0, Math.max(0, maxLength - 3))}...`
 }

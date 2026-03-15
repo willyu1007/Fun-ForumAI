@@ -96,12 +96,12 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
   },
   {
     source_id: 'conversation-clock-chat-reply',
-    source_file: 'src/backend/services/conversation-clock.ts',
+    source_file: 'src/backend/services/conversation-clock/message-generator.ts',
     scene: 'chat_room',
     dispatch_calls: ['llmGateway.generateVisibleText'],
     evidence_patterns: [
       'PROMPT_TEMPLATE_REFS.agentChatReply',
-      'this.deps.llmGateway.generateVisibleText({',
+      'context.deps.llmGateway.generateVisibleText({',
       "intent: 'chat_reply'",
     ],
     intent: 'chat_reply',
