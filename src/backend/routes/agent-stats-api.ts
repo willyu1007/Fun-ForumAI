@@ -3,7 +3,7 @@ import { requireHumanAuth } from '../middleware/human-auth.js'
 import { validate } from '../validation/validate.js'
 import { allocateStatsSchema, previewStatsAllocationSchema } from '../validation/schemas.js'
 import { config } from '../lib/config.js'
-import { statsService } from '../container.js'
+import { inferenceProfileService, statsService } from '../container.js'
 
 export const agentStatsRouter: IRouter = Router()
 
@@ -24,11 +24,15 @@ async function assertAgentOwner(
 
 function ensureFeatureEnabled(res: Response): boolean {
   if (!config.features.agentStatsV1) {
-    res.status(404).json({ error: { code: 'FEATURE_DISABLED', message: 'Agent stats feature is disabled' } })
+    res
+      .status(404)
+      .json({ error: { code: 'FEATURE_DISABLED', message: 'Agent stats feature is disabled' } })
     return false
   }
   if (!statsService) {
-    res.status(503).json({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Stats service unavailable' } })
+    res
+      .status(503)
+      .json({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Stats service unavailable' } })
     return false
   }
   return true
@@ -40,7 +44,9 @@ agentStatsRouter.get('/agents/:agentId/stats', requireHumanAuth, async (req, res
   const agentId = String(req.params.agentId)
   const ownership = await assertAgentOwner(agentId, req.user!.userId)
   if (!ownership.ok) {
-    res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+    res
+      .status(ownership.status)
+      .json({ error: { code: ownership.code, message: ownership.message } })
     return
   }
 
@@ -60,7 +66,9 @@ agentStatsRouter.get('/agents/:agentId/stats/events', requireHumanAuth, async (r
   const agentId = String(req.params.agentId)
   const ownership = await assertAgentOwner(agentId, req.user!.userId)
   if (!ownership.ok) {
-    res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+    res
+      .status(ownership.status)
+      .json({ error: { code: ownership.code, message: ownership.message } })
     return
   }
 
@@ -83,29 +91,35 @@ agentStatsRouter.get('/agents/:agentId/stats/events', requireHumanAuth, async (r
   })
 })
 
-agentStatsRouter.get('/agents/:agentId/stats/state-timeline', requireHumanAuth, async (req, res) => {
-  if (!ensureFeatureEnabled(res)) return
+agentStatsRouter.get(
+  '/agents/:agentId/stats/state-timeline',
+  requireHumanAuth,
+  async (req, res) => {
+    if (!ensureFeatureEnabled(res)) return
 
-  const agentId = String(req.params.agentId)
-  const ownership = await assertAgentOwner(agentId, req.user!.userId)
-  if (!ownership.ok) {
-    res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
-    return
-  }
+    const agentId = String(req.params.agentId)
+    const ownership = await assertAgentOwner(agentId, req.user!.userId)
+    if (!ownership.ok) {
+      res
+        .status(ownership.status)
+        .json({ error: { code: ownership.code, message: ownership.message } })
+      return
+    }
 
-  const hours = Number.parseInt(String(req.query.hours ?? '24'), 10)
-  const points = await statsService!.getStateTimeline(agentId, hours)
-  res.json({
-    data: points.map((point) => ({
-      at: point.at.toISOString(),
-      valence: point.valence,
-      arousal: point.arousal,
-      confidence: point.confidence,
-      irritability: point.irritability,
-      fatigue: point.fatigue,
-    })),
-  })
-})
+    const hours = Number.parseInt(String(req.query.hours ?? '24'), 10)
+    const points = await statsService!.getStateTimeline(agentId, hours)
+    res.json({
+      data: points.map((point) => ({
+        at: point.at.toISOString(),
+        valence: point.valence,
+        arousal: point.arousal,
+        confidence: point.confidence,
+        irritability: point.irritability,
+        fatigue: point.fatigue,
+      })),
+    })
+  },
+)
 
 agentStatsRouter.post(
   '/agents/:agentId/stats/preview-allocation',
@@ -117,11 +131,17 @@ agentStatsRouter.post(
     const agentId = String(req.params.agentId)
     const ownership = await assertAgentOwner(agentId, req.user!.userId)
     if (!ownership.ok) {
-      res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+      res
+        .status(ownership.status)
+        .json({ error: { code: ownership.code, message: ownership.message } })
       return
     }
 
     const preview = await statsService!.previewAllocation(agentId, req.body)
+    const personalityNarrative = await inferenceProfileService.previewNarrative(
+      agentId,
+      preview.after,
+    )
     res.json({
       data: {
         before: serializeStats(preview.before),
@@ -129,6 +149,7 @@ agentStatsRouter.post(
         cost_points: preview.cost_points,
         remaining_points: preview.remaining_points,
         derived: preview.derived,
+        personality_narrative: personalityNarrative,
       },
     })
   },
@@ -144,7 +165,9 @@ agentStatsRouter.post(
     const agentId = String(req.params.agentId)
     const ownership = await assertAgentOwner(agentId, req.user!.userId)
     if (!ownership.ok) {
-      res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+      res
+        .status(ownership.status)
+        .json({ error: { code: ownership.code, message: ownership.message } })
       return
     }
 
@@ -168,17 +191,26 @@ agentStatsRouter.get('/agents/:agentId/stats/derived', requireHumanAuth, async (
   const agentId = String(req.params.agentId)
   const ownership = await assertAgentOwner(agentId, req.user!.userId)
   if (!ownership.ok) {
-    res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+    res
+      .status(ownership.status)
+      .json({ error: { code: ownership.code, message: ownership.message } })
     return
   }
 
   const sceneRaw = typeof req.query.scene === 'string' ? req.query.scene : 'forum'
-  const scene = (sceneRaw === 'forum' || sceneRaw === 'chat' || sceneRaw === 'relation' || sceneRaw === 'vote' || sceneRaw === 'memory')
-    ? sceneRaw
-    : 'forum'
+  const scene =
+    sceneRaw === 'forum' ||
+    sceneRaw === 'chat' ||
+    sceneRaw === 'relation' ||
+    sceneRaw === 'vote' ||
+    sceneRaw === 'memory'
+      ? sceneRaw
+      : 'forum'
 
-  const privacyTopK = req.query.privacy_top_k !== undefined ? Number(req.query.privacy_top_k) : undefined
-  const privacyBudget = req.query.privacy_budget !== undefined ? Number(req.query.privacy_budget) : undefined
+  const privacyTopK =
+    req.query.privacy_top_k !== undefined ? Number(req.query.privacy_top_k) : undefined
+  const privacyBudget =
+    req.query.privacy_budget !== undefined ? Number(req.query.privacy_budget) : undefined
 
   const derived = await statsService!.derive(agentId, scene, {
     privacy_top_k: Number.isFinite(privacyTopK) ? privacyTopK : undefined,

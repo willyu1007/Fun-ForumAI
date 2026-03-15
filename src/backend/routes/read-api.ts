@@ -12,6 +12,7 @@ import {
   roleAssignmentService,
   communityRepo,
   complaintAppealService,
+  inferenceProfileService,
 } from '../container.js'
 import { config } from '../lib/config.js'
 import { ValidationError } from '../lib/errors.js'
@@ -93,9 +94,10 @@ async function buildAftershowSnapshot(postId: string): Promise<{
           thread_id: thread.thread.id,
           status: thread.thread.status,
           message_count: thread.messages.length,
-          latest_message_at: thread.messages.length > 0
-            ? thread.messages[thread.messages.length - 1]?.created_at
-            : null,
+          latest_message_at:
+            thread.messages.length > 0
+              ? thread.messages[thread.messages.length - 1]?.created_at
+              : null,
         }
       : null,
   }
@@ -129,7 +131,10 @@ readApiRouter.get('/inclination-assets/media/local/*storageKey', async (req, res
 
 readApiRouter.get('/feed', async (req, res) => {
   const user = tryAuthenticateHuman(req)
-  const { cursor, limit, community_id, sort, viewer_agent_id } = req.query as Record<string, string | undefined>
+  const { cursor, limit, community_id, sort, viewer_agent_id } = req.query as Record<
+    string,
+    string | undefined
+  >
   const parsedLimit = limit ? parseInt(limit, 10) : undefined
   if (parsedLimit !== undefined && (isNaN(parsedLimit) || parsedLimit < 1)) {
     res.status(400).json({
@@ -138,8 +143,8 @@ readApiRouter.get('/feed', async (req, res) => {
     return
   }
   const validSorts = ['new', 'hot', 'top'] as const
-  const feedSort = validSorts.includes(sort as typeof validSorts[number])
-    ? (sort as typeof validSorts[number])
+  const feedSort = validSorts.includes(sort as (typeof validSorts)[number])
+    ? (sort as (typeof validSorts)[number])
     : undefined
   const followingOnly = String(req.query.following_only ?? 'false') === 'true'
   if (followingOnly && !user) {
@@ -148,9 +153,8 @@ readApiRouter.get('/feed', async (req, res) => {
     })
     return
   }
-  const followingAgentIds = followingOnly && user
-    ? humanParticipationService.listFollowingAgentIds(user.userId)
-    : undefined
+  const followingAgentIds =
+    followingOnly && user ? humanParticipationService.listFollowingAgentIds(user.userId) : undefined
   const result = await forumReadService.getFeed({
     cursor,
     limit: parsedLimit,
@@ -175,7 +179,9 @@ readApiRouter.get('/feed', async (req, res) => {
       guidanceOrchestrator,
       followingOnly ? 'FOLLOWING_FEED_VIEWED' : 'FEED_VIEWED',
       { following_only: followingOnly },
-      { dedup_key: `${followingOnly ? 'following_feed' : 'feed'}:${cursor ?? 'root'}:${feedSort ?? 'default'}` },
+      {
+        dedup_key: `${followingOnly ? 'following_feed' : 'feed'}:${cursor ?? 'root'}:${feedSort ?? 'default'}`,
+      },
     )
     res.json({ data: enriched, meta: { cursor: result.next_cursor } })
     return
@@ -187,7 +193,9 @@ readApiRouter.get('/feed', async (req, res) => {
     guidanceOrchestrator,
     followingOnly ? 'FOLLOWING_FEED_VIEWED' : 'FEED_VIEWED',
     { following_only: followingOnly },
-    { dedup_key: `${followingOnly ? 'following_feed' : 'feed'}:${cursor ?? 'root'}:${feedSort ?? 'default'}` },
+    {
+      dedup_key: `${followingOnly ? 'following_feed' : 'feed'}:${cursor ?? 'root'}:${feedSort ?? 'default'}`,
+    },
   )
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
 })
@@ -238,20 +246,28 @@ readApiRouter.get('/posts/:postId', async (req, res) => {
 readApiRouter.get('/posts/:postId/comments', async (req, res) => {
   const user = tryAuthenticateHuman(req)
   const { cursor, limit } = req.query as Record<string, string | undefined>
-  const result = await forumReadService.getComments(req.params.postId, {
-    cursor,
-    limit: limit ? parseInt(limit, 10) : undefined,
-  }, user?.userId)
+  const result = await forumReadService.getComments(
+    req.params.postId,
+    {
+      cursor,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    },
+    user?.userId,
+  )
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
 })
 
 readApiRouter.post('/reports', requireHumanAuth, async (req, res) => {
   const target_type = typeof req.body?.target_type === 'string' ? req.body.target_type.trim() : ''
   const target_id = typeof req.body?.target_id === 'string' ? req.body.target_id.trim() : ''
-  const complaint_type = typeof req.body?.complaint_type === 'string' ? req.body.complaint_type.trim() : undefined
-  const reason_code = typeof req.body?.reason_code === 'string' ? req.body.reason_code.trim() : undefined
+  const complaint_type =
+    typeof req.body?.complaint_type === 'string' ? req.body.complaint_type.trim() : undefined
+  const reason_code =
+    typeof req.body?.reason_code === 'string' ? req.body.reason_code.trim() : undefined
   const detail_text = typeof req.body?.detail_text === 'string' ? req.body.detail_text : undefined
-  const rawAttachments = Array.isArray(req.body?.attachments) ? req.body.attachments as unknown[] : null
+  const rawAttachments = Array.isArray(req.body?.attachments)
+    ? (req.body.attachments as unknown[])
+    : null
   const attachments = rawAttachments
     ? rawAttachments
         .filter(isAttachmentInput)
@@ -294,16 +310,22 @@ readApiRouter.get('/reports', requireHumanAuth, async (req, res) => {
 readApiRouter.post('/appeals', requireHumanAuth, async (req, res) => {
   const target_type = typeof req.body?.target_type === 'string' ? req.body.target_type.trim() : ''
   const target_id = typeof req.body?.target_id === 'string' ? req.body.target_id.trim() : ''
-  const appeal_type = typeof req.body?.appeal_type === 'string' ? req.body.appeal_type.trim() : undefined
-  const requester_type = typeof req.body?.requester_type === 'string' ? req.body.requester_type.trim() : undefined
-  const linked_complaint_ticket_id = typeof req.body?.linked_complaint_ticket_id === 'string'
-    ? req.body.linked_complaint_ticket_id.trim()
-    : undefined
+  const appeal_type =
+    typeof req.body?.appeal_type === 'string' ? req.body.appeal_type.trim() : undefined
+  const requester_type =
+    typeof req.body?.requester_type === 'string' ? req.body.requester_type.trim() : undefined
+  const linked_complaint_ticket_id =
+    typeof req.body?.linked_complaint_ticket_id === 'string'
+      ? req.body.linked_complaint_ticket_id.trim()
+      : undefined
   const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : ''
 
   if (!target_type || !target_id || !reason) {
     res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'target_type, target_id and reason are required' },
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'target_type, target_id and reason are required',
+      },
     })
     return
   }
@@ -332,24 +354,29 @@ readApiRouter.get('/posts/:postId/audience-thread', async (req, res) => {
   res.json({ data: result })
 })
 
-readApiRouter.post('/posts/:postId/audience-messages', requireHumanAuth, validate(createAudienceMessageSchema), async (req, res) => {
-  if (!config.features.audienceZoneV1) {
-    res.status(403).json({
-      error: { code: 'FORBIDDEN', message: 'Audience API is disabled by feature flag.' },
+readApiRouter.post(
+  '/posts/:postId/audience-messages',
+  requireHumanAuth,
+  validate(createAudienceMessageSchema),
+  async (req, res) => {
+    if (!config.features.audienceZoneV1) {
+      res.status(403).json({
+        error: { code: 'FORBIDDEN', message: 'Audience API is disabled by feature flag.' },
+      })
+      return
+    }
+
+    const body = req.body.body
+
+    const result = await audienceService.createMessage({
+      post_id: String(req.params.postId),
+      actor_user_id: req.user!.userId,
+      body,
     })
-    return
-  }
 
-  const body = req.body.body
-
-  const result = await audienceService.createMessage({
-    post_id: String(req.params.postId),
-    actor_user_id: req.user!.userId,
-    body,
-  })
-
-  res.status(201).json({ data: result })
-})
+    res.status(201).json({ data: result })
+  },
+)
 
 readApiRouter.get('/appeals', requireHumanAuth, async (req, res) => {
   const status = typeof req.query.status === 'string' ? req.query.status : undefined
@@ -452,17 +479,34 @@ readApiRouter.get('/agents', (req, res) => {
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
 })
 
-readApiRouter.get('/agents/:agentId/profile', (req, res) => {
+readApiRouter.get('/agents/:agentId/profile', async (req, res) => {
   const user = tryAuthenticateHuman(req)
   const agent = agentService.getAgentProfile(req.params.agentId)
   const latestConfig = agentService.getLatestConfig(agent.id)
-  const is_followed = user && config.features.humanParticipationV1
-    ? humanParticipationService.isFollowing(user.userId, agent.id)
-    : false
+  const is_followed =
+    user && config.features.humanParticipationV1
+      ? humanParticipationService.isFollowing(user.userId, agent.id)
+      : false
+  const isOwner = Boolean(user && user.userId === agent.owner_id)
+  const isAdmin = user?.role === 'admin'
+  const inferenceDebug = isAdmin ? await inferenceProfileService.getDebug(agent.id) : null
+  const personalityNarrative = inferenceDebug
+    ? inferenceDebug.narrative
+    : isOwner
+      ? await inferenceProfileService.getNarrative(agent.id)
+      : null
+
   res.json({
     data: {
       ...buildAgentReadPayload(agent, latestConfig),
       is_followed,
+      personality_narrative: personalityNarrative,
+      inference_profile_debug: inferenceDebug
+        ? {
+            profile: inferenceDebug.profile,
+            snapshot: inferenceDebug.snapshot,
+          }
+        : null,
     },
   })
 })

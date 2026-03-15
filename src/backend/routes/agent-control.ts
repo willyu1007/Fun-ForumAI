@@ -1,7 +1,13 @@
 import { Router, type IRouter } from 'express'
 import multer from 'multer'
 import { requireHumanAuth } from '../middleware/human-auth.js'
-import { agentConfigLintService, agentService, inclinationAssetService, reviewService } from '../container.js'
+import {
+  agentConfigLintService,
+  agentService,
+  inclinationAssetService,
+  inferenceProfileService,
+  reviewService,
+} from '../container.js'
 import { config } from '../lib/config.js'
 import { ForbiddenError, ValidationError } from '../lib/errors.js'
 import { ensureDevAuthUserPersisted } from '../lib/dev-auth-user.js'
@@ -12,6 +18,7 @@ import { guidanceOrchestrator } from '../container.js'
 import { trackGuidanceEventFromRequest } from '../guidance/http.js'
 import {
   createAgentSchema,
+  patchAgentInferenceProfileSchema,
   updateAgentConfigSchema,
   updateAgentProfileSchema,
 } from '../validation/schemas.js'
@@ -43,7 +50,10 @@ function mergeConfigJson(
   return merged
 }
 
-function assertOwnerOrAdmin(agentId: string, actor: { userId: string; role: 'user' | 'admin' }): void {
+function assertOwnerOrAdmin(
+  agentId: string,
+  actor: { userId: string; role: 'user' | 'admin' },
+): void {
   const existing = agentService.getAgent(agentId)
   const isAllowed = actor.role === 'admin' || existing.owner_id === actor.userId
   if (!isAllowed) {
@@ -51,24 +61,29 @@ function assertOwnerOrAdmin(agentId: string, actor: { userId: string; role: 'use
   }
 }
 
-agentControlRouter.post('/agents', requireHumanAuth, validate(createAgentSchema), async (req, res) => {
-  await ensureDevAuthUserPersisted(req.user!)
-  const agent = await agentService.createAgentPersisted({
-    owner_id: req.user!.userId,
-    ...req.body,
-  })
-  await trackGuidanceEventFromRequest(
-    req,
-    res,
-    guidanceOrchestrator,
-    'AGENT_CREATED',
-    { agent_id: agent.id },
-    { dedup_key: `agent_created:${req.user!.userId}:${agent.id}` },
-  )
-  res.status(201).json({
-    data: buildAgentReadPayload(agent, agentService.getLatestConfig(agent.id)),
-  })
-})
+agentControlRouter.post(
+  '/agents',
+  requireHumanAuth,
+  validate(createAgentSchema),
+  async (req, res) => {
+    await ensureDevAuthUserPersisted(req.user!)
+    const agent = await agentService.createAgentPersisted({
+      owner_id: req.user!.userId,
+      ...req.body,
+    })
+    await trackGuidanceEventFromRequest(
+      req,
+      res,
+      guidanceOrchestrator,
+      'AGENT_CREATED',
+      { agent_id: agent.id },
+      { dedup_key: `agent_created:${req.user!.userId}:${agent.id}` },
+    )
+    res.status(201).json({
+      data: buildAgentReadPayload(agent, agentService.getLatestConfig(agent.id)),
+    })
+  },
+)
 
 agentControlRouter.patch(
   '/agents/:agentId/profile',
@@ -124,115 +139,191 @@ agentControlRouter.patch(
     res.json({
       data: config,
       meta: {
-        effective_immediately: config.review_status === 'NOT_REQUIRED' || config.review_status === 'APPROVED',
+        effective_immediately:
+          config.review_status === 'NOT_REQUIRED' || config.review_status === 'APPROVED',
       },
     })
   },
 )
 
-agentControlRouter.post('/agents/:agentId/inclination-asset/url', requireHumanAuth, async (req, res) => {
-  if (!config.features.multimodalAgentInclinationV1) {
-    res.status(403).json({
-      error: { code: 'FORBIDDEN', message: 'Multimodal agent inclination is disabled by feature flag.' },
-    })
-    return
-  }
-
-  const source_url = String(req.body?.source_url ?? '').trim()
-  const owner_note = typeof req.body?.owner_note === 'string' ? req.body.owner_note : undefined
-  if (!source_url) {
-    throw new ValidationError('source_url is required')
-  }
-
-  const data = await inclinationAssetService.createFromUrl({
-    agent_id: String(req.params.agentId),
-    owner_user_id: req.user!.userId,
-    source_url,
-    owner_note,
-  })
-
-  res.status(201).json({ data })
-})
-
-agentControlRouter.post('/agents/:agentId/inclination-asset/upload', requireHumanAuth, async (req, res, next) => {
-  if (!config.features.multimodalAgentInclinationV1) {
-    res.status(403).json({
-      error: { code: 'FORBIDDEN', message: 'Multimodal agent inclination is disabled by feature flag.' },
-    })
-    return
-  }
-
-  inclinationUpload.single('file')(req, res, async (err) => {
-    if (err) {
-      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-        next(new ValidationError('media exceeds 10MB limit'))
-        return
-      }
-      next(new ValidationError('invalid upload payload'))
-      return
-    }
-
-    try {
-      if (!req.file || req.file.size <= 0) {
-        throw new ValidationError('file is required')
-      }
-
-      const ownerNoteRaw = (req.body as Record<string, unknown> | undefined)?.owner_note
-      const owner_note = typeof ownerNoteRaw === 'string' ? ownerNoteRaw : undefined
-
-      const data = await inclinationAssetService.createFromUpload({
-        agent_id: String(req.params.agentId),
-        owner_user_id: req.user!.userId,
-        owner_note,
-        original_name: req.file.originalname,
-        mime_type: req.file.mimetype,
-        bytes: req.file.buffer,
-      })
-
-      res.status(201).json({ data })
-    } catch (uploadErr) {
-      next(uploadErr)
-    }
-  })
-})
-
-agentControlRouter.get('/agents/:agentId/inclination-asset/current', requireHumanAuth, (req, res) => {
-  if (!config.features.multimodalAgentInclinationV1) {
-    res.status(403).json({
-      error: { code: 'FORBIDDEN', message: 'Multimodal agent inclination is disabled by feature flag.' },
-    })
-    return
-  }
-  const data = inclinationAssetService.getCurrent(String(req.params.agentId), req.user!.userId)
-  res.json({ data })
-})
-
-agentControlRouter.delete('/agents/:agentId/inclination-asset/current', requireHumanAuth, (req, res) => {
-  if (!config.features.multimodalAgentInclinationV1) {
-    res.status(403).json({
-      error: { code: 'FORBIDDEN', message: 'Multimodal agent inclination is disabled by feature flag.' },
-    })
-    return
-  }
-  const data = inclinationAssetService.cancelCurrent(String(req.params.agentId), req.user!.userId)
-  res.json({ data })
-})
-
-agentControlRouter.get(
-  '/agents/:agentId/runs',
+agentControlRouter.patch(
+  '/agents/:agentId/inference-profile',
   requireHumanAuth,
-  (req, res) => {
+  validate(patchAgentInferenceProfileSchema),
+  async (req, res) => {
+    if (req.user!.role !== 'admin') {
+      throw new ForbiddenError('Only admin can manage inference profiles')
+    }
+
     const agentId = String(req.params.agentId)
-    assertOwnerOrAdmin(agentId, req.user!)
-    const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
-    const limitStr = typeof req.query.limit === 'string' ? req.query.limit : undefined
-    const result = agentService.getAgentRuns(agentId, {
-      cursor,
-      limit: limitStr ? parseInt(limitStr, 10) : undefined,
-    })
+    const action = req.body.action
+    const result =
+      action === 'start_shadow_review'
+        ? {
+            shadow_review: await inferenceProfileService.startShadowReview(
+              agentId,
+              req.user!.userId,
+            ),
+            profile: await inferenceProfileService.getProfile(agentId),
+          }
+        : action === 'collect_shadow_review'
+          ? {
+              shadow_review: await inferenceProfileService.collectShadowReview(
+                agentId,
+                req.user!.userId,
+              ),
+              profile: await inferenceProfileService.getProfile(agentId),
+            }
+          : {
+              profile:
+                action === 'approve_shadow'
+                  ? await inferenceProfileService.approveShadow(agentId, req.user!.userId)
+                  : action === 'block_challenger'
+                    ? await inferenceProfileService.blockChallenger(agentId, req.user!.userId)
+                    : await inferenceProfileService.setManualVoiceLineLock(
+                        agentId,
+                        Boolean(req.body.locked),
+                        req.user!.userId,
+                      ),
+              shadow_review: (await inferenceProfileService.getDebug(agentId)).shadowReview,
+            }
+
     res.json({
-      data: result.items.map((run) => normalizeAgentRunReadPayload(run)),
-      meta: { cursor: result.next_cursor },
+      data: result.profile,
+      meta: {
+        shadow_review: result.shadow_review,
+      },
     })
   },
 )
+
+agentControlRouter.post(
+  '/agents/:agentId/inclination-asset/url',
+  requireHumanAuth,
+  async (req, res) => {
+    if (!config.features.multimodalAgentInclinationV1) {
+      res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Multimodal agent inclination is disabled by feature flag.',
+        },
+      })
+      return
+    }
+
+    const source_url = String(req.body?.source_url ?? '').trim()
+    const owner_note = typeof req.body?.owner_note === 'string' ? req.body.owner_note : undefined
+    if (!source_url) {
+      throw new ValidationError('source_url is required')
+    }
+
+    const data = await inclinationAssetService.createFromUrl({
+      agent_id: String(req.params.agentId),
+      owner_user_id: req.user!.userId,
+      source_url,
+      owner_note,
+    })
+
+    res.status(201).json({ data })
+  },
+)
+
+agentControlRouter.post(
+  '/agents/:agentId/inclination-asset/upload',
+  requireHumanAuth,
+  async (req, res, next) => {
+    if (!config.features.multimodalAgentInclinationV1) {
+      res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Multimodal agent inclination is disabled by feature flag.',
+        },
+      })
+      return
+    }
+
+    inclinationUpload.single('file')(req, res, async (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+          next(new ValidationError('media exceeds 10MB limit'))
+          return
+        }
+        next(new ValidationError('invalid upload payload'))
+        return
+      }
+
+      try {
+        if (!req.file || req.file.size <= 0) {
+          throw new ValidationError('file is required')
+        }
+
+        const ownerNoteRaw = (req.body as Record<string, unknown> | undefined)?.owner_note
+        const owner_note = typeof ownerNoteRaw === 'string' ? ownerNoteRaw : undefined
+
+        const data = await inclinationAssetService.createFromUpload({
+          agent_id: String(req.params.agentId),
+          owner_user_id: req.user!.userId,
+          owner_note,
+          original_name: req.file.originalname,
+          mime_type: req.file.mimetype,
+          bytes: req.file.buffer,
+        })
+
+        res.status(201).json({ data })
+      } catch (uploadErr) {
+        next(uploadErr)
+      }
+    })
+  },
+)
+
+agentControlRouter.get(
+  '/agents/:agentId/inclination-asset/current',
+  requireHumanAuth,
+  (req, res) => {
+    if (!config.features.multimodalAgentInclinationV1) {
+      res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Multimodal agent inclination is disabled by feature flag.',
+        },
+      })
+      return
+    }
+    const data = inclinationAssetService.getCurrent(String(req.params.agentId), req.user!.userId)
+    res.json({ data })
+  },
+)
+
+agentControlRouter.delete(
+  '/agents/:agentId/inclination-asset/current',
+  requireHumanAuth,
+  (req, res) => {
+    if (!config.features.multimodalAgentInclinationV1) {
+      res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Multimodal agent inclination is disabled by feature flag.',
+        },
+      })
+      return
+    }
+    const data = inclinationAssetService.cancelCurrent(String(req.params.agentId), req.user!.userId)
+    res.json({ data })
+  },
+)
+
+agentControlRouter.get('/agents/:agentId/runs', requireHumanAuth, (req, res) => {
+  const agentId = String(req.params.agentId)
+  assertOwnerOrAdmin(agentId, req.user!)
+  const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
+  const limitStr = typeof req.query.limit === 'string' ? req.query.limit : undefined
+  const result = agentService.getAgentRuns(agentId, {
+    cursor,
+    limit: limitStr ? parseInt(limitStr, 10) : undefined,
+  })
+  res.json({
+    data: result.items.map((run) => normalizeAgentRunReadPayload(run)),
+    meta: { cursor: result.next_cursor },
+  })
+})

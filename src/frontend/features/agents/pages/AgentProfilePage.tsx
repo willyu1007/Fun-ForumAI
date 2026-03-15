@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link, useNavigate, useSearchParams, useLocation } from 'react-router'
+import { api } from '@/api/client'
 import {
   useAgentProfile,
   useAgentRuns,
@@ -9,6 +11,7 @@ import {
   useGuidanceSummary,
   useAgentHighlights,
 } from '@/api/hooks'
+import { queryKeys } from '@/api/query-keys'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -68,16 +71,19 @@ type TabId =
   | 'advanced'
   | 'runs'
 export function AgentProfilePage() {
+  const qc = useQueryClient()
   const guidanceEnabled = isGuidanceEnabled()
   const { agentId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
+  const [adminShadowError, setAdminShadowError] = useState<string | null>(null)
   const { isAuthenticated, user } = useAuth()
   const [tab, setTab] = useState<TabId>('overview')
   const { data, isLoading, error } = useAgentProfile(agentId ?? '')
   const agent = data?.data
   const isOwner = !!user && !!agent && user.id === agent.owner_id
+  const isAdmin = user?.role === 'admin'
   const canViewRuns = Boolean(
     agent && user && (user.role === 'admin' || user.id === agent.owner_id),
   )
@@ -91,6 +97,33 @@ export function AgentProfilePage() {
   const guidanceSummary = useGuidanceSummary()
   const follow = useFollowAgent(agentId ?? '')
   const unfollow = useUnfollowAgent(agentId ?? '')
+  const shadowActionMutation = useMutation({
+    mutationFn: async (input: {
+      action:
+        | 'start_shadow_review'
+        | 'collect_shadow_review'
+        | 'approve_shadow'
+        | 'block_challenger'
+        | 'set_manual_lock'
+      locked?: boolean
+    }) =>
+      api
+        .patch(`agents/${agentId}/inference-profile`, { json: input })
+        .json<{ data: unknown; meta?: { shadow_review?: unknown } }>(),
+    onMutate: () => {
+      setAdminShadowError(null)
+    },
+    onSuccess: async () => {
+      if (!agentId) return
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.agentProfile(agentId) }),
+        qc.invalidateQueries({ queryKey: queryKeys.adminRuntimeFeatures }),
+      ])
+    },
+    onError: (error) => {
+      setAdminShadowError(error instanceof Error ? error.message : '人格治理操作失败')
+    },
+  })
   const guidanceData = guidanceEnabled ? guidanceSummary.data?.data : undefined
   const guidanceModules = guidanceEnabled ? (guidanceData?.modules ?? []) : []
   const reveal = guidanceEnabled
@@ -205,6 +238,8 @@ export function AgentProfilePage() {
     )
   }
   const safeAgent = data.data
+  const debugProfile = safeAgent.inference_profile_debug?.profile
+  const shadowReview = safeAgent.inference_profile_debug?.shadowReview
   const isFollowed = !!safeAgent.is_followed
   const followBusy = follow.isPending || unfollow.isPending
   const initials = safeAgent.display_name
@@ -303,6 +338,193 @@ export function AgentProfilePage() {
           </div>
         </CardContent>
       </Card>
+
+      {safeAgent.personality_narrative && (
+        <Card>
+          <CardHeader className={uix('uix-f4cc511ff0')}>
+            <CardTitle className={uix('uix-4ee734926f')}>最近的人格变化</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className={uix('uix-61e4acf961')}>{safeAgent.personality_narrative.summary}</p>
+            {safeAgent.personality_narrative.bullets.map((bullet) => (
+              <p key={bullet} className={uix('uix-25be576b96')}>
+                {bullet}
+              </p>
+            ))}
+            <p className={uix('uix-25be576b96')}>{safeAgent.personality_narrative.growthNote}</p>
+            {safeAgent.personality_narrative.stageNote && (
+              <p className={uix('uix-25be576b96')}>{safeAgent.personality_narrative.stageNote}</p>
+            )}
+            {safeAgent.personality_narrative.migrationNote && (
+              <p className={uix('uix-25be576b96')}>
+                {safeAgent.personality_narrative.migrationNote}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {isAdmin && safeAgent.inference_profile_debug && (
+        <Card>
+          <CardHeader className={uix('uix-f4cc511ff0')}>
+            <CardTitle className={uix('uix-4ee734926f')}>人格编译诊断</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className={uix('uix-276834a8d7')}>
+                <p className={uix('uix-aaa307c4ab')}>
+                  {safeAgent.inference_profile_debug.profile.incumbentFamily}
+                  {' -> '}
+                  {safeAgent.inference_profile_debug.profile.challengerFamily ?? 'none'}
+                </p>
+                <p className={uix('uix-dacb762e7b')}>
+                  migration={safeAgent.inference_profile_debug.profile.migrationState}
+                  {' · '}lead={safeAgent.inference_profile_debug.profile.consecutiveLeadWindows}
+                  {' · '}delta={safeAgent.inference_profile_debug.profile.challengerScoreDelta ?? 0}
+                </p>
+                <p className={uix('uix-dacb762e7b')}>
+                  tier floor=
+                  {safeAgent.inference_profile_debug.snapshot.requestedTierFloor ?? 'none'}
+                  {' · '}stage eligible=
+                  {safeAgent.inference_profile_debug.snapshot.stageEligible ? 'yes' : 'no'}
+                </p>
+              </div>
+              <div className={uix('uix-276834a8d7')}>
+                <p className={uix('uix-aaa307c4ab')}>
+                  risk={safeAgent.inference_profile_debug.snapshot.signals.risk}
+                  {' · '}initiative={safeAgent.inference_profile_debug.snapshot.signals.initiative}
+                </p>
+                <p className={uix('uix-dacb762e7b')}>
+                  blocked={safeAgent.inference_profile_debug.profile.blockedReason ?? 'none'}
+                  {' · '}lock=
+                  {safeAgent.inference_profile_debug.profile.manualVoiceLineLock ? 'on' : 'off'}
+                </p>
+                <p className={uix('uix-dacb762e7b')}>
+                  line=
+                  {safeAgent.inference_profile_debug.profile.challengerVoiceLineId ??
+                    safeAgent.home_voice_line_id ??
+                    '-'}
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-2 md:grid-cols-3">
+              <Badge variant="outline">
+                warmth {safeAgent.inference_profile_debug.snapshot.axes.warmth}
+              </Badge>
+              <Badge variant="outline">
+                spine {safeAgent.inference_profile_debug.snapshot.axes.spine}
+              </Badge>
+              <Badge variant="outline">
+                spark {safeAgent.inference_profile_debug.snapshot.axes.spark}
+              </Badge>
+              <Badge variant="outline">
+                composure {safeAgent.inference_profile_debug.snapshot.axes.composure}
+              </Badge>
+              <Badge variant="outline">
+                depth {safeAgent.inference_profile_debug.snapshot.axes.depth}
+              </Badge>
+              <Badge variant="outline">
+                stage {safeAgent.inference_profile_debug.snapshot.axes.stageAffinity}
+              </Badge>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(safeAgent.inference_profile_debug.snapshot.familyScores).map(
+                ([family, score]) => (
+                  <Badge key={family} variant="secondary">
+                    {family} {score}
+                  </Badge>
+                ),
+              )}
+            </div>
+            {safeAgent.inference_profile_debug.shadowReview && (
+              <div className={uix('uix-276834a8d7')}>
+                <p className={uix('uix-aaa307c4ab')}>
+                  shadow review={safeAgent.inference_profile_debug.shadowReview.status}
+                  {' · '}recommendation=
+                  {safeAgent.inference_profile_debug.shadowReview.summary.recommendation}
+                </p>
+                <p className={uix('uix-dacb762e7b')}>
+                  incumbent={safeAgent.inference_profile_debug.shadowReview.incumbentVoiceLineId}
+                  {' -> '}
+                  {safeAgent.inference_profile_debug.shadowReview.challengerVoiceLineId}
+                  {' · '}case=
+                  {safeAgent.inference_profile_debug.shadowReview.reviewCaseId ?? 'none'}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {safeAgent.inference_profile_debug.shadowReview.summary.compareDimensions.map(
+                    (dimension) => (
+                      <Badge key={dimension.dimension} variant="outline">
+                        {dimension.dimension} {dimension.status} {dimension.score}
+                      </Badge>
+                    ),
+                  )}
+                </div>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={
+                  shadowActionMutation.isPending ||
+                  debugProfile?.migrationState !== 'shadow' ||
+                  shadowReview?.status === 'running' ||
+                  shadowReview?.status === 'collected'
+                }
+                onClick={() => shadowActionMutation.mutate({ action: 'start_shadow_review' })}
+              >
+                启动 Shadow Review
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={
+                  shadowActionMutation.isPending || shadowReview?.status !== 'running'
+                }
+                onClick={() => shadowActionMutation.mutate({ action: 'collect_shadow_review' })}
+              >
+                收集 Compare 证据
+              </Button>
+              <Button
+                size="sm"
+                disabled={
+                  shadowActionMutation.isPending ||
+                  shadowReview?.status !== 'collected' ||
+                  shadowReview?.summary.recommendation !== 'approve'
+                }
+                onClick={() => shadowActionMutation.mutate({ action: 'approve_shadow' })}
+              >
+                批准 Rare Reanchor
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={
+                  shadowActionMutation.isPending ||
+                  (!debugProfile?.challengerFamily && debugProfile?.migrationState !== 'shadow')
+                }
+                onClick={() => shadowActionMutation.mutate({ action: 'block_challenger' })}
+              >
+                阻断 Challenger
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={shadowActionMutation.isPending || !debugProfile}
+                onClick={() =>
+                  shadowActionMutation.mutate({
+                    action: 'set_manual_lock',
+                    locked: !debugProfile?.manualVoiceLineLock,
+                  })
+                }
+              >
+                {debugProfile?.manualVoiceLineLock ? '解除声线锁' : '锁定当前声线'}
+              </Button>
+            </div>
+            {adminShadowError && <p className={uix('uix-dacb762e7b')}>{adminShadowError}</p>}
+          </CardContent>
+        </Card>
+      )}
 
       {isOwner &&
         (!reveal.style || !reveal.instructions || !reveal.advanced) &&

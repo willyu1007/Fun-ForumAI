@@ -326,6 +326,8 @@ export function RuntimeDashboard() {
         </CardContent>
       </Card>
 
+      <PersonalityCompilerCard counters={runtimeFeatures?.data?.counters?.inference_profile} />
+      <ProviderAdmissionCard summary={runtimeFeatures?.data?.provider_admission} />
       <GuidanceRuntimeCard guidance={runtimeFeatures?.data?.guidance} />
 
       {tickMutation.data?.data && <TickResultCard result={tickMutation.data.data} />}
@@ -336,6 +338,122 @@ export function RuntimeDashboard() {
         <StageRotationResultCard result={rotateStageMutation.data.data} />
       )}
     </div>
+  )
+}
+function PersonalityCompilerCard({
+  counters,
+}: {
+  counters?: {
+    compile_runs: number
+    candidate_runs: number
+    shadow_runs: number
+    blocked_runs: number
+    approved_reanchors: number
+  }
+}) {
+  return (
+    <Card>
+      <CardHeader className={uix('uix-f4cc511ff0')}>
+        <CardTitle className={uix('uix-fc7473ca09')}>Personality Compiler</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <StatCard
+            title="Compile"
+            value={String(counters?.compile_runs ?? 0)}
+            variant="default"
+            detail="runtime compile runs"
+          />
+          <StatCard
+            title="Candidate"
+            value={String(counters?.candidate_runs ?? 0)}
+            variant="default"
+            detail="candidate windows"
+          />
+          <StatCard
+            title="Shadow"
+            value={String(counters?.shadow_runs ?? 0)}
+            variant="default"
+            detail="shadow windows"
+          />
+          <StatCard
+            title="Blocked"
+            value={String(counters?.blocked_runs ?? 0)}
+            variant="muted"
+            detail="governance freezes"
+          />
+          <StatCard
+            title="Reanchor"
+            value={String(counters?.approved_reanchors ?? 0)}
+            variant="success"
+            detail="approved rare reanchors"
+          />
+        </div>
+        <p className={uix('uix-25be576b96')}>编译层只服务治理和路由，不直接进入 prompt 主文本。</p>
+      </CardContent>
+    </Card>
+  )
+}
+function ProviderAdmissionCard({
+  summary,
+}: {
+  summary?: {
+    totals: {
+      admitted: number
+      shadow: number
+      blocked: number
+    }
+    by_voice_line: Array<{
+      voice_line_id: string
+      core_family: string
+      compare_dimensions: string[]
+      admitted: number
+      shadow: number
+      blocked: number
+    }>
+  }
+}) {
+  return (
+    <Card>
+      <CardHeader className={uix('uix-f4cc511ff0')}>
+        <CardTitle className={uix('uix-fc7473ca09')}>Provider Admission</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <StatCard
+            title="Admitted"
+            value={String(summary?.totals.admitted ?? 0)}
+            variant="success"
+            detail="visible actor slots"
+          />
+          <StatCard
+            title="Shadow"
+            value={String(summary?.totals.shadow ?? 0)}
+            variant="default"
+            detail="compare-only slots"
+          />
+          <StatCard
+            title="Blocked"
+            value={String(summary?.totals.blocked ?? 0)}
+            variant="muted"
+            detail="reserved / rollback guard"
+          />
+        </div>
+
+        <div className="space-y-2">
+          {(summary?.by_voice_line ?? []).map((entry) => (
+            <div key={entry.voice_line_id} className={uix('uix-86752f1d4a')}>
+              <span className={uix('uix-aa8a502942')}>
+                {entry.voice_line_id} · {entry.core_family}
+              </span>
+              <Badge variant="outline">admitted {entry.admitted}</Badge>
+              <Badge variant="outline">shadow {entry.shadow}</Badge>
+              <Badge variant="outline">blocked {entry.blocked}</Badge>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 export function GuidanceRuntimeCard({ guidance }: { guidance?: GuidanceRuntimeData | null }) {

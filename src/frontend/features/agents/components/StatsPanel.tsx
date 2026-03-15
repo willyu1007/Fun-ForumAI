@@ -221,6 +221,30 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
                   {previewData.derived.memory.effective_top_k}
                 </span>
               </p>
+              {previewData.personality_narrative && (
+                <div className="space-y-2 border-t border-slate-200 pt-3">
+                  <p className={uix('uix-2689f39580')}>人格变化预览</p>
+                  <p>{previewData.personality_narrative.summary}</p>
+                  {previewData.personality_narrative.bullets.map((bullet) => (
+                    <p key={bullet} className={uix('uix-25be576b96')}>
+                      {bullet}
+                    </p>
+                  ))}
+                  <p className={uix('uix-25be576b96')}>
+                    {previewData.personality_narrative.growthNote}
+                  </p>
+                  {previewData.personality_narrative.stageNote && (
+                    <p className={uix('uix-25be576b96')}>
+                      {previewData.personality_narrative.stageNote}
+                    </p>
+                  )}
+                  {previewData.personality_narrative.migrationNote && (
+                    <p className={uix('uix-25be576b96')}>
+                      {previewData.personality_narrative.migrationNote}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
           {previewIsStale && (

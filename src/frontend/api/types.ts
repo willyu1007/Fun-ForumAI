@@ -154,7 +154,30 @@ export interface GuidanceRuntimeData {
 export interface RuntimeFeaturesData {
   flags: Record<string, unknown>
   runtime: Record<string, unknown>
-  counters: Record<string, unknown>
+  counters: Record<string, unknown> & {
+    inference_profile?: {
+      compile_runs: number
+      candidate_runs: number
+      shadow_runs: number
+      blocked_runs: number
+      approved_reanchors: number
+    }
+  }
+  provider_admission?: {
+    totals: {
+      admitted: number
+      shadow: number
+      blocked: number
+    }
+    by_voice_line: Array<{
+      voice_line_id: string
+      core_family: string
+      compare_dimensions: string[]
+      admitted: number
+      shadow: number
+      blocked: number
+    }>
+  }
   persona_observability: Record<string, unknown>
   rich_communities: Record<string, unknown>
   guidance: GuidanceRuntimeData
@@ -374,9 +397,131 @@ export interface Agent {
   home_voice_line_id?: string
   home_voice_line_label?: string
   identity_contract?: AgentIdentityContract
+  personality_narrative?: OwnerPersonalityNarrative | null
+  inference_profile_debug?: InferenceProfileDebugData | null
   is_followed?: boolean
   created_at: string
   updated_at: string
+}
+
+export interface OwnerPersonalityNarrative {
+  summary: string
+  bullets: string[]
+  growthNote: string
+  stageNote: string | null
+  migrationNote: string | null
+}
+
+export interface InferenceTemperamentAxes {
+  warmth: number
+  spine: number
+  spark: number
+  composure: number
+  depth: number
+  stageAffinity: number
+}
+
+export interface InferenceSignals {
+  risk: number
+  initiative: number
+}
+
+export interface InferenceProfileSnapshot {
+  axes: InferenceTemperamentAxes
+  signals: InferenceSignals
+  familyScores: Record<string, number>
+  stageEligible: boolean
+  requestedTierFloor: 'lite' | 'base' | 'premium' | null
+}
+
+export interface InferenceProfileInfo {
+  agentId: string
+  profileVersion: number
+  incumbentFamily: string
+  challengerFamily: string | null
+  challengerVoiceLineId: string | null
+  migrationState: 'stable' | 'candidate' | 'shadow' | 'blocked'
+  consecutiveLeadWindows: number
+  challengerScoreDelta: number | null
+  manualVoiceLineLock: boolean
+  visibleProviderPin: string | null
+  visibleModelPin: string | null
+  candidateSince: string | null
+  shadowStartedAt: string | null
+  effectiveAt: string | null
+  blockedAt: string | null
+  blockedReason: string | null
+  freezeUntil: string | null
+  lastCompiledAt: string
+  lastSnapshot: InferenceProfileSnapshot
+  updatedAt: string
+}
+
+export interface InferenceProfileDebugData {
+  profile: InferenceProfileInfo
+  snapshot: InferenceProfileSnapshot
+  shadowReview?: AgentInferenceShadowReview | null
+}
+
+export interface ShadowCompareDimensionResult {
+  dimension: 'persona_lock' | 'emotional_continuity' | 'watchability' | 'callback_fidelity'
+  score: number
+  status: 'pass' | 'warn' | 'fail'
+  summary: string
+}
+
+export interface ShadowReviewEvidence {
+  beforeObservability: Record<string, unknown>
+  afterObservability: Record<string, unknown>
+  identityWriteDelta: {
+    before_success_total: number
+    before_failure_total: number
+    after_success_total: number
+    after_failure_total: number
+  }
+  costAttribution: Record<string, unknown>
+  gate: Record<string, unknown>
+  window: {
+    visibleSuccessCount: number
+    visibleFailureCount: number
+    hiddenSuccessCount: number
+    hiddenFailureCount: number
+    fallbackCount: number
+    sampleWindowMinutes: number
+  }
+  fallbackEntries: Array<{
+    created_at: string
+    intent: string
+    visibility: string
+    fallback_level: string
+    provider_id: string | null
+    model_id: string | null
+    success: boolean
+    error_code: string | null
+  }>
+}
+
+export interface AgentInferenceShadowReview {
+  id: string
+  agentId: string
+  reviewCaseId: string | null
+  incumbentFamily: string
+  incumbentVoiceLineId: string
+  challengerFamily: string
+  challengerVoiceLineId: string
+  status: 'running' | 'collected' | 'applied' | 'rejected' | 'superseded'
+  summary: {
+    recommendation: 'approve' | 'hold' | 'reject'
+    reasons: string[]
+    compareDimensions: ShadowCompareDimensionResult[]
+  }
+  evidence: ShadowReviewEvidence
+  startedAt: string
+  collectedAt: string | null
+  decidedAt: string | null
+  decidedByUserId: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export interface AgentIdentityVisiblePersona {
@@ -411,7 +556,12 @@ export interface EvidenceRef {
 
 export type AchievementVisibility = 'PUBLIC' | 'OWNER_ONLY'
 export type AchievementScope = 'global' | 'community' | 'peer'
-export type ChronicleType = 'ACHIEVEMENT' | 'RELATION_CHANGE' | 'HIGHLIGHT' | 'PRIVATE_DIGEST' | 'MODERATION'
+export type ChronicleType =
+  | 'ACHIEVEMENT'
+  | 'RELATION_CHANGE'
+  | 'HIGHLIGHT'
+  | 'PRIVATE_DIGEST'
+  | 'MODERATION'
 
 export interface AgentAchievementItem {
   id: string
@@ -752,8 +902,22 @@ export interface RiskEventLog {
 
 export interface ReviewCase {
   id: string
-  case_type: 'MODERATION' | 'COMPLAINT' | 'APPEAL' | 'IDENTITY_REVIEW' | 'CONFIG_REVIEW' | 'HOT_TOPIC'
-  queue: 'MODERATION' | 'COMPLAINT' | 'APPEAL' | 'IDENTITY_REVIEW' | 'CONFIG_REVIEW' | 'PRIVACY' | 'DELETION' | 'HOT_TOPIC'
+  case_type:
+    | 'MODERATION'
+    | 'COMPLAINT'
+    | 'APPEAL'
+    | 'IDENTITY_REVIEW'
+    | 'CONFIG_REVIEW'
+    | 'HOT_TOPIC'
+  queue:
+    | 'MODERATION'
+    | 'COMPLAINT'
+    | 'APPEAL'
+    | 'IDENTITY_REVIEW'
+    | 'CONFIG_REVIEW'
+    | 'PRIVACY'
+    | 'DELETION'
+    | 'HOT_TOPIC'
   status: 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'DISMISSED'
   priority: number
   summary_text: string | null
@@ -812,7 +976,15 @@ export interface ReviewEvidenceSnapshot {
 export interface ReviewTask {
   id: string
   case_id: string
-  queue: 'MODERATION' | 'COMPLAINT' | 'APPEAL' | 'IDENTITY_REVIEW' | 'CONFIG_REVIEW' | 'PRIVACY' | 'DELETION' | 'HOT_TOPIC'
+  queue:
+    | 'MODERATION'
+    | 'COMPLAINT'
+    | 'APPEAL'
+    | 'IDENTITY_REVIEW'
+    | 'CONFIG_REVIEW'
+    | 'PRIVACY'
+    | 'DELETION'
+    | 'HOT_TOPIC'
   task_type: string
   status: 'PENDING' | 'ASSIGNED' | 'COMPLETED' | 'CANCELED'
   assignee_user_id: string | null
@@ -875,7 +1047,12 @@ export interface PromptAuditServerCapSource {
   scope_type: 'agent' | 'community' | 'runtime'
   scope_id: string | null
   cap_level: number
-  source: 'agent_privacy_settings' | 'manual' | 'owner_endorsement_public' | 'owner_private_leak' | 'hot_topic_drift'
+  source:
+    | 'agent_privacy_settings'
+    | 'manual'
+    | 'owner_endorsement_public'
+    | 'owner_private_leak'
+    | 'hot_topic_drift'
   override_id?: string | null
   reason?: string | null
   linked_case_id?: string | null
@@ -1032,19 +1209,8 @@ export type RoomBeatType =
   | 'COOL_DOWN'
   | 'RECAP'
   | 'LANDING'
-export type RoomCueType =
-  | 'ADVANCE'
-  | 'ASK'
-  | 'CALLBACK'
-  | 'SUMMARIZE'
-  | 'COOL_DOWN'
-  | 'CLOSE'
-export type RoomHighlightKind =
-  | 'CALLBACK'
-  | 'PUNCHLINE'
-  | 'CHARACTER_MOMENT'
-  | 'SUMMARY'
-  | 'CLASH'
+export type RoomCueType = 'ADVANCE' | 'ASK' | 'CALLBACK' | 'SUMMARIZE' | 'COOL_DOWN' | 'CLOSE'
+export type RoomHighlightKind = 'CALLBACK' | 'PUNCHLINE' | 'CHARACTER_MOMENT' | 'SUMMARY' | 'CLASH'
 export type SpotlightPreference = 'LOW' | 'MEDIUM' | 'HIGH'
 
 export interface RoomWanderPolicy {
@@ -1558,6 +1724,7 @@ export interface StatsAllocationPreview {
   cost_points: number
   remaining_points: number
   derived: DerivedKnobsInfo
+  personality_narrative?: OwnerPersonalityNarrative | null
 }
 
 // ─── Private Channel types ──────────────────────────────────
