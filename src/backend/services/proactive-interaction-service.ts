@@ -10,6 +10,7 @@ import type { RenderTierDecisionResult } from '../runtime/persona-runtime-types.
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import type { PersonaStateService } from './persona-state-service.js'
+import type { InferenceProfileService } from './inference-profile-service.js'
 import type { PromptComposeAudit } from '../runtime/types.js'
 import type { LlmTokenUsage } from '../llm/types.js'
 import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
@@ -32,6 +33,7 @@ export interface ProactiveInteractionDeps {
   llmGateway: LLMGateway
   promptOrchestrator?: PromptOrchestrator | null
   personaStateService?: PersonaStateService | null
+  inferenceProfileService?: InferenceProfileService | null
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
   notificationService: NotificationService
@@ -290,8 +292,8 @@ export class ProactiveInteractionService {
     const identity = resolveAgentIdentity(agent, latestConfig)
     const personaName = identity.visiblePersona.name
     const personaStyle = identity.visiblePersona.style
-    const homeVoiceLineId = identity.summary.home_voice_line_id
-    const preferredModelId = resolvePreferredVisibleModelId(agent.model, homeVoiceLineId)
+    const defaultHomeVoiceLineId = identity.summary.home_voice_line_id
+    const defaultPreferredModelId = resolvePreferredVisibleModelId(agent.model, defaultHomeVoiceLineId)
 
     if (this.deps.promptOrchestrator) {
       try {
@@ -324,18 +326,29 @@ export class ProactiveInteractionService {
           variables.layer_showrunner = composed.layers.layer_showrunner ?? ''
         }
 
+        const routing = this.deps.inferenceProfileService
+          ? await this.deps.inferenceProfileService.resolveVisibleRoute({
+              agentId,
+              requestedTier: composed.runtimeEnvelope?.renderTierDecision.requestedTier ?? 'base',
+            })
+          : {
+              homeVoiceLineId: defaultHomeVoiceLineId,
+              preferredModelId: defaultPreferredModelId,
+              requestedTier: composed.runtimeEnvelope?.renderTierDecision.requestedTier ?? 'base',
+            }
+
         const startMs = Date.now()
         const response = await this.deps.llmGateway.generateVisibleText({
           intent: 'proactive_opening',
           scene: 'proactive_dm',
           agentId,
-          homeVoiceLineId,
-          preferredModelId,
+          homeVoiceLineId: routing.homeVoiceLineId,
+          preferredModelId: routing.preferredModelId,
           promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
           variables,
           budgetClass: 'visible_standard',
           traceId: `proactive-dm:${agentId}:${Date.now()}`,
-          requestedTier: 'base',
+          requestedTier: routing.requestedTier,
           allowFallbackWithinLine: true,
           allowCrossFamily: false,
           temperature: 0.8,
@@ -356,13 +369,23 @@ export class ProactiveInteractionService {
       }
     }
 
+    const legacyRouting = this.deps.inferenceProfileService
+      ? await this.deps.inferenceProfileService.resolveVisibleRoute({
+          agentId,
+          requestedTier: 'base',
+        })
+      : {
+          homeVoiceLineId: defaultHomeVoiceLineId,
+          preferredModelId: defaultPreferredModelId,
+          requestedTier: 'base' as const,
+        }
     const startMs = Date.now()
     const response = await this.deps.llmGateway.generateVisibleText({
       intent: 'proactive_opening',
       scene: 'proactive_dm',
       agentId,
-      homeVoiceLineId,
-      preferredModelId,
+      homeVoiceLineId: legacyRouting.homeVoiceLineId,
+      preferredModelId: legacyRouting.preferredModelId,
       promptRef: PROMPT_TEMPLATE_REFS.internalProactiveDmOpeningLegacy,
       variables: {
         persona_name: personaName,
@@ -372,7 +395,7 @@ export class ProactiveInteractionService {
       },
       budgetClass: 'visible_standard',
       traceId: `proactive-dm-legacy:${agentId}:${Date.now()}`,
-      requestedTier: 'base',
+      requestedTier: legacyRouting.requestedTier,
       allowFallbackWithinLine: true,
       allowCrossFamily: false,
       temperature: 0.8,
@@ -420,8 +443,8 @@ export class ProactiveInteractionService {
       promptRef: input.openingMessage.sourceCallsiteId === 'proactive-orchestrated-opening'
         ? PROMPT_TEMPLATE_REFS.agentProactiveDmOpening
         : { id: 'internal-proactive-dm-opening-legacy', version: 1 },
-      requestedTier: 'base',
-      resolvedTier: 'base',
+      requestedTier: input.openingMessage.gatewayRenderDecision.tier,
+      resolvedTier: input.openingMessage.gatewayRenderDecision.tier,
       renderDecision: input.openingMessage.gatewayRenderDecision,
       usage: input.openingMessage.usage,
       latencyMs: input.openingMessage.latencyMs,

@@ -9,7 +9,11 @@ import type { UsageLedgerRepository } from '../llm/usage-ledger.js'
 import { createDefaultBudgetChecker } from '../llm/default-budget-checker.js'
 import { BudgetGuard } from '../llm/budget-guard.js'
 import { InclinationAssetService } from '../services/inclination-asset-service.js'
-import { LocalStorageAdapter, S3StorageAdapter, type StorageAdapter } from '../services/storage-adapter.js'
+import {
+  LocalStorageAdapter,
+  S3StorageAdapter,
+  type StorageAdapter,
+} from '../services/storage-adapter.js'
 import { VisionSummaryService } from '../services/vision-summary-service.js'
 import { config } from '../lib/config.js'
 import type { AgentRepository } from '../repos/agent-repository.js'
@@ -64,8 +68,7 @@ export function createLlmServices(deps: {
   })
 
   const inclinationAssetStorage: StorageAdapter =
-    config.inclinationAssets.storageBackend === 's3' &&
-    config.inclinationAssets.s3.bucket
+    config.inclinationAssets.storageBackend === 's3' && config.inclinationAssets.s3.bucket
       ? new S3StorageAdapter({
           bucket: config.inclinationAssets.s3.bucket,
           region: config.inclinationAssets.s3.region,
@@ -95,6 +98,7 @@ export function createLlmServices(deps: {
   })
 
   return {
+    registryBundle,
     llmClient,
     llmGateway,
     promptEngine,

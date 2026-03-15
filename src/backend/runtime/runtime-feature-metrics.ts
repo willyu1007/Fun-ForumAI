@@ -1,7 +1,4 @@
-import type {
-  PersonaObservationCounters,
-  PersonaObservationV1,
-} from './persona-observation.js'
+import type { PersonaObservationCounters, PersonaObservationV1 } from './persona-observation.js'
 
 export interface RuntimeFeatureMetricsSnapshot {
   allocator: {
@@ -19,6 +16,13 @@ export interface RuntimeFeatureMetricsSnapshot {
     trim_applied_calls: number
     trimmed_categories: number
     cache_hit_calls: number
+  }
+  inference_profile: {
+    compile_runs: number
+    candidate_runs: number
+    shadow_runs: number
+    blocked_runs: number
+    approved_reanchors: number
   }
   persona: PersonaObservationCounters
   updated_at: string
@@ -41,6 +45,13 @@ class RuntimeFeatureMetrics {
       trim_applied_calls: 0,
       trimmed_categories: 0,
       cache_hit_calls: 0,
+    },
+    inference_profile: {
+      compile_runs: 0,
+      candidate_runs: 0,
+      shadow_runs: 0,
+      blocked_runs: 0,
+      approved_reanchors: 0,
     },
     persona: {
       observed_runs_total: 0,
@@ -105,10 +116,25 @@ class RuntimeFeatureMetrics {
     this.touch()
   }
 
-  recordPersonaObservation(
-    observation: PersonaObservationV1,
-    opts: { complete: boolean },
-  ): void {
+  recordInferenceProfileCompile(state: 'stable' | 'candidate' | 'shadow' | 'blocked'): void {
+    const metrics = this.snapshotState.inference_profile
+    metrics.compile_runs += 1
+    if (state === 'candidate') {
+      metrics.candidate_runs += 1
+    } else if (state === 'shadow') {
+      metrics.shadow_runs += 1
+    } else if (state === 'blocked') {
+      metrics.blocked_runs += 1
+    }
+    this.touch()
+  }
+
+  recordInferenceProfileReanchor(): void {
+    this.snapshotState.inference_profile.approved_reanchors += 1
+    this.touch()
+  }
+
+  recordPersonaObservation(observation: PersonaObservationV1, opts: { complete: boolean }): void {
     const persona = this.snapshotState.persona
     persona.observed_runs_total += 1
 

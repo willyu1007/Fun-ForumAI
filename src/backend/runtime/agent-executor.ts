@@ -9,6 +9,7 @@ import type { AgentExecutionResult, ExecutionContext } from './types.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { AgentRunRepository } from '../repos/event-repository.js'
 import type { AgentService } from '../services/agent-service.js'
+import type { InferenceProfileService } from '../services/inference-profile-service.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
 import {
@@ -25,6 +26,7 @@ export interface AgentExecutorDeps {
   agentRunRepo: AgentRunRepository
   agentService: AgentService
   personaStateService?: PersonaStateService | null
+  inferenceProfileService?: InferenceProfileService | null
 }
 
 export class AgentExecutor {
@@ -86,7 +88,7 @@ export class AgentExecutor {
       }
 
       const templateId = this.pickTemplate(event, ctx)
-      const routing = this.resolveVisibleRouting(agent.agent_id)
+      const routing = await this.resolveVisibleRouting(agent.agent_id, 'base')
       const identity = this.resolveObservationIdentity(agent.agent_id)
       const llmResponse = await this.deps.llmGateway.generateVisibleText({
         intent: 'forum_reply',
@@ -98,7 +100,7 @@ export class AgentExecutor {
         variables: this.buildVariables(ctx, identity?.persona_seed_code ?? 'scholar'),
         budgetClass: 'visible_standard',
         traceId: `runtime:${event.event_id}:${agent.agent_id}`,
-        requestedTier: 'base',
+        requestedTier: routing.requestedTier,
         allowFallbackWithinLine: false,
         allowCrossFamily: false,
       })
@@ -289,10 +291,14 @@ export class AgentExecutor {
     return vars
   }
 
-  private resolveVisibleRouting(agentId: string): {
+  private async resolveVisibleRouting(agentId: string, requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier): Promise<{
     homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
     preferredModelId?: string
-  } {
+    requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier
+  }> {
+    if (this.deps.inferenceProfileService) {
+      return this.deps.inferenceProfileService.resolveVisibleRoute({ agentId, requestedTier })
+    }
     const agent = this.deps.agentService.getAgent(agentId)
     const latestConfig = this.deps.agentService.getLatestConfig(agentId)
     const resolved = resolveAgentIdentity(agent, latestConfig)
@@ -300,6 +306,7 @@ export class AgentExecutor {
     return {
       homeVoiceLineId,
       preferredModelId: resolvePreferredVisibleModelId(agent?.model, homeVoiceLineId),
+      requestedTier,
     }
   }
 

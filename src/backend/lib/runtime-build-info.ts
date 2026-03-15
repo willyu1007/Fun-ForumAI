@@ -13,6 +13,8 @@ const RUNTIME_FINGERPRINT_FILES = [
   'src/backend/llm/llm-gateway.ts',
   'src/backend/llm/model-preference.ts',
   '.ai/llm-config/registry/model_profiles.yaml',
+  '.ai/llm-config/registry/provider_admission.yaml',
+  '.ai/llm-config/registry/providers.yaml',
   'src/backend/context-memory/memory-pack.ts',
   'src/backend/repos/pg/pg-persona-observability-repository.ts',
   'src/backend/services/memory-service.ts',
@@ -43,8 +45,7 @@ export function getRuntimeBuildInfo(): RuntimeBuildInfo {
   if (cachedBuildInfo) return cachedBuildInfo
 
   const packageJson = safeReadPackageJson()
-  const fingerprintBasis = RUNTIME_FINGERPRINT_FILES
-    .map((path) => resolve(REPO_ROOT, path))
+  const fingerprintBasis = RUNTIME_FINGERPRINT_FILES.map((path) => resolve(REPO_ROOT, path))
     .filter((path) => existsSync(path))
     .map((path) => relative(REPO_ROOT, path))
 

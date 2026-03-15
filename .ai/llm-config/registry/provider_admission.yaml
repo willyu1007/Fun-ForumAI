@@ -1,0 +1,136 @@
+# Provider admission registry
+#
+# Defines which provider/model candidates are admitted into visible actor pools.
+# Candidates marked as `shadow` or `blocked` may exist for comparison and planning,
+# but must not be selected for visible output until promoted to `admitted`.
+
+version: 1
+
+pools:
+  - voice_line_id: qwen-social-v1
+    core_family: anchor
+    compare_dimensions:
+      - persona_lock
+      - emotional_continuity
+      - watchability
+      - callback_fidelity
+    candidates:
+      - provider_id: dashscope-openai
+        model_id: qwen-flash-character
+        admission: admitted
+        note: incumbent fast visible slot
+      - provider_id: dashscope-openai
+        model_id: qwen-plus-character
+        admission: admitted
+        note: incumbent balanced visible slot
+      - provider_id: dashscope-openai
+        model_id: qwen-max
+        admission: admitted
+        note: incumbent premium visible slot
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        admission: shadow
+        compare_baseline_model_id: qwen-plus-character
+        note: long-context challenger, visible only after shadow compare
+      - provider_id: tencent-openai
+        model_id: hunyuan-character-lite
+        admission: shadow
+        compare_baseline_model_id: qwen-plus-character
+        note: Tencent mainland challenger, gated behind shadow compare
+      - provider_id: ark-openai
+        model_id: doubao-1.5-thinking-pro
+        admission: blocked
+        compare_baseline_model_id: qwen-plus-character
+        note: reserved for future admission; blocked from visible pool
+
+  - voice_line_id: glm-deep-v1
+    core_family: sage
+    compare_dimensions:
+      - persona_lock
+      - emotional_continuity
+      - watchability
+      - callback_fidelity
+    candidates:
+      - provider_id: zai-openai
+        model_id: glm-4-air
+        admission: admitted
+        note: incumbent fast visible slot
+      - provider_id: zai-openai
+        model_id: glm-4-plus
+        admission: admitted
+        note: incumbent balanced visible slot
+      - provider_id: zai-openai
+        model_id: glm-4.5
+        admission: admitted
+        note: incumbent premium visible slot
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        admission: shadow
+        compare_baseline_model_id: glm-4-plus
+        note: same-family shadow challenger
+      - provider_id: tencent-openai
+        model_id: hunyuan-long-context
+        admission: shadow
+        compare_baseline_model_id: glm-4-plus
+        note: Tencent analytical challenger
+      - provider_id: ark-openai
+        model_id: doubao-1.5-pro
+        admission: blocked
+        compare_baseline_model_id: glm-4-plus
+        note: reserved until callback fidelity is proven
+
+  - voice_line_id: minimax-her-v1
+    core_family: hearth
+    compare_dimensions:
+      - persona_lock
+      - emotional_continuity
+      - watchability
+      - callback_fidelity
+    candidates:
+      - provider_id: minimax-openai
+        model_id: MiniMax-M2-her
+        admission: admitted
+        note: incumbent visible slot
+      - provider_id: dashscope-openai
+        model_id: qwen-plus-character
+        admission: shadow
+        compare_baseline_model_id: MiniMax-M2-her
+        note: warm social fallback challenger
+      - provider_id: tencent-openai
+        model_id: hunyuan-empathic
+        admission: shadow
+        compare_baseline_model_id: MiniMax-M2-her
+        note: Tencent empathetic challenger
+      - provider_id: ark-openai
+        model_id: doubao-1.5-lite
+        admission: blocked
+        compare_baseline_model_id: MiniMax-M2-her
+        note: blocked until continuity review passes
+
+  - voice_line_id: kimi-deep-v1
+    core_family: sage
+    compare_dimensions:
+      - persona_lock
+      - emotional_continuity
+      - watchability
+      - callback_fidelity
+    candidates:
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        admission: admitted
+        note: incumbent visible slot
+      - provider_id: zai-openai
+        model_id: glm-4-plus
+        admission: shadow
+        compare_baseline_model_id: kimi-k2.5
+        note: same-family shadow challenger
+      - provider_id: tencent-openai
+        model_id: hunyuan-long-context
+        admission: shadow
+        compare_baseline_model_id: kimi-k2.5
+        note: Tencent long-context challenger
+      - provider_id: ark-openai
+        model_id: doubao-1.5-thinking-pro
+        admission: blocked
+        compare_baseline_model_id: kimi-k2.5
+        note: reserved until shadow compare is available

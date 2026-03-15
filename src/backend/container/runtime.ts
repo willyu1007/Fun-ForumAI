@@ -19,6 +19,7 @@ import type { ChatService } from '../services/chat-service.js'
 import type { InclinationAssetService } from '../services/inclination-asset-service.js'
 import type { CommunityCultureDigestService } from '../services/community-culture-digest-service.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
+import type { InferenceProfileService } from '../services/inference-profile-service.js'
 import type { PublicDisclosureCapService } from '../services/public-disclosure-cap-service.js'
 import type { PublicSceneSelectorService } from '../services/public-scene-selector-service.js'
 import type { ForumSceneContinuityService } from '../services/forum-scene-continuity-service.js'
@@ -40,6 +41,7 @@ export function createRuntime(deps: {
   inclinationAssetService: InclinationAssetService
   communityCultureDigestService: CommunityCultureDigestService | null
   personaStateService: PersonaStateService
+  inferenceProfileService: InferenceProfileService
   publicDisclosureCapService: PublicDisclosureCapService
   publicSceneSelectorService?: PublicSceneSelectorService | null
   forumSceneContinuityService?: ForumSceneContinuityService | null
@@ -98,6 +100,7 @@ export function createRuntime(deps: {
     agentRunRepo: deps.agentRunRepo,
     agentService: deps.agentService,
     personaStateService: deps.personaStateService,
+    inferenceProfileService: deps.inferenceProfileService,
   })
 
   const postScheduler = new PostScheduler(
@@ -113,6 +116,7 @@ export function createRuntime(deps: {
       inclinationAssetService: deps.inclinationAssetService,
       promptOrchestrator: deps.promptOrchestrator,
       personaStateService: deps.personaStateService,
+      inferenceProfileService: deps.inferenceProfileService,
       publicSceneSelectorService: deps.publicSceneSelectorService,
     },
     {

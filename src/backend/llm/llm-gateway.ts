@@ -14,7 +14,11 @@ import { LlmClient } from './llm-client.js'
 import { PromptEngine } from './prompt-engine.js'
 import type { LlmMessage, LlmTokenUsage } from './types.js'
 import type { LlmRegistryBundle, ModelPricingEntry, ModelProfileEntry } from './registry-loader.js'
-import { resolveIdentityWriteProfileRef, resolveVoiceLineTierProfileRef } from './voice-line-routing.js'
+import { filterVisibleProfileCandidates } from './provider-admission.js'
+import {
+  resolveIdentityWriteProfileRef,
+  resolveVoiceLineTierProfileRef,
+} from './voice-line-routing.js'
 import { UsageLedgerWriter } from './usage-ledger.js'
 
 interface RouteCandidate {
@@ -40,13 +44,18 @@ export class LLMGateway {
 
   constructor(private readonly options: LlmGatewayOptions) {
     this.profilesById = new Map(
-      options.bundle.modelProfiles.profiles.map((profile) => [profile.profile_id, profile] as const),
+      options.bundle.modelProfiles.profiles.map(
+        (profile) => [profile.profile_id, profile] as const,
+      ),
     )
     this.pricingByModelId = new Map(
-      options.bundle.modelPricing.pricing.map((p: ModelPricingEntry) => [
-        p.model_id,
-        { prompt: p.prompt_per_1k_cny, completion: p.completion_per_1k_cny },
-      ] as const),
+      options.bundle.modelPricing.pricing.map(
+        (p: ModelPricingEntry) =>
+          [
+            p.model_id,
+            { prompt: p.prompt_per_1k_cny, completion: p.completion_per_1k_cny },
+          ] as const,
+      ),
     )
   }
 
@@ -77,16 +86,34 @@ export class LLMGateway {
   }
 
   async chat(request: LLMGatewayRequest): Promise<LLMGatewayResponse> {
-    const messages = request.promptMessages ?? this.options.promptEngine.render(request.promptRef, request.variables)
+    const messages =
+      request.promptMessages ??
+      this.options.promptEngine.render(request.promptRef, request.variables)
     const routePlan = this.buildRoutePlan(request)
     let lastError: unknown = null
 
     for (const route of routePlan) {
-      const orderedCandidates = prioritizeCandidates(route.profile.candidates, request.preferredModelId)
+      const { candidates, reasons } = this.resolveCandidatesForRequest(route.profile, request)
+      if (candidates.length === 0) {
+        lastError = new LLMGatewayContractError(
+          'RegistryResolutionError',
+          'No admitted candidates available for this visible profile',
+          {
+            profile_id: route.profile.profile_id,
+            voice_line_id: route.profile.voice_line_id,
+          },
+        )
+        continue
+      }
+      const orderedCandidates = prioritizeCandidates(candidates, request.preferredModelId)
       for (const candidate of orderedCandidates) {
         const estimatedUsage = estimateUsage(messages, request.maxTokens)
         const estimatedCost = this.estimateCost(candidate.model_id, estimatedUsage)
-        const renderReasons = buildRenderReasons(route.reasons, request.preferredModelId, candidate.model_id)
+        const renderReasons = buildRenderReasons(
+          [...route.reasons, ...reasons],
+          request.preferredModelId,
+          candidate.model_id,
+        )
 
         await this.options.budgetGuard.assertAllowed({
           agentId: request.agentId,
@@ -223,7 +250,11 @@ export class LLMGateway {
 
   private buildRoutePlan(request: LLMGatewayRequest): RouteCandidate[] {
     const initialProfileId = this.resolveInitialProfileId(request)
-    const queue: Array<{ profileId: string; fallbackLevel: RoutingFallbackLevel; reasons: string[] }> = [
+    const queue: Array<{
+      profileId: string
+      fallbackLevel: RoutingFallbackLevel
+      reasons: string[]
+    }> = [
       {
         profileId: initialProfileId,
         fallbackLevel: 'none',
@@ -239,9 +270,13 @@ export class LLMGateway {
       visited.add(next.profileId)
       const profile = this.profilesById.get(next.profileId)
       if (!profile) {
-        throw new LLMGatewayContractError('RegistryResolutionError', 'Profile not found in registry bundle', {
-          profile_id: next.profileId,
-        })
+        throw new LLMGatewayContractError(
+          'RegistryResolutionError',
+          'Profile not found in registry bundle',
+          {
+            profile_id: next.profileId,
+          },
+        )
       }
 
       plan.push({
@@ -269,6 +304,25 @@ export class LLMGateway {
     }
 
     return plan
+  }
+
+  private resolveCandidatesForRequest(
+    profile: ModelProfileEntry,
+    request: LLMGatewayRequest,
+  ): { candidates: typeof profile.candidates; reasons: string[] } {
+    if (request.visibility !== 'visible') {
+      return { candidates: profile.candidates, reasons: [] }
+    }
+
+    const filtered = filterVisibleProfileCandidates(this.options.bundle, profile)
+    const reasons = ['provider_admission_pool']
+    if (filtered.filteredCounts.shadow > 0 || filtered.filteredCounts.blocked > 0) {
+      reasons.push('provider_admission_filtered')
+    }
+    return {
+      candidates: filtered.admittedCandidates,
+      reasons,
+    }
   }
 
   private resolveInitialProfileId(request: LLMGatewayRequest): string {
@@ -315,11 +369,18 @@ export class LLMGateway {
     level: RoutingFallbackLevel,
     visibility: LLMVisibility,
     request: LLMGatewayRequest,
-    policy: { allow_fallback_within_line: boolean; allow_cross_family: boolean; allowed_fallback_levels: RoutingFallbackLevel[] },
+    policy: {
+      allow_fallback_within_line: boolean
+      allow_cross_family: boolean
+      allowed_fallback_levels: RoutingFallbackLevel[]
+    },
   ): boolean {
     if (!policy.allowed_fallback_levels.includes(level)) return false
     if (level === 'none') return false
-    if (level === 'same-line' && (!policy.allow_fallback_within_line || !request.allowFallbackWithinLine)) {
+    if (
+      level === 'same-line' &&
+      (!policy.allow_fallback_within_line || !request.allowFallbackWithinLine)
+    ) {
       return false
     }
     if (
@@ -354,7 +415,13 @@ function estimateUsage(messages: LlmMessage[], maxTokens = 512): LlmTokenUsage {
 }
 
 function shouldTryNextRoute(code: string): boolean {
-  return ['AuthError', 'RateLimitError', 'TimeoutError', 'TransientError', 'UpstreamError'].includes(code)
+  return [
+    'AuthError',
+    'RateLimitError',
+    'TimeoutError',
+    'TransientError',
+    'UpstreamError',
+  ].includes(code)
 }
 
 function classifyGatewayError(error: unknown): LLMGatewayErrorCode {
@@ -381,7 +448,11 @@ function classifyGatewayError(error: unknown): LLMGatewayErrorCode {
   if (message.includes('budget')) {
     return 'BudgetExceededError'
   }
-  if (message.includes('fetch failed') || message.includes('econnreset') || message.includes('etimedout')) {
+  if (
+    message.includes('fetch failed') ||
+    message.includes('econnreset') ||
+    message.includes('etimedout')
+  ) {
     return 'TransientError'
   }
   return 'UpstreamError'

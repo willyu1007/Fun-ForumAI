@@ -12,6 +12,7 @@ import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
 import type { RenderTierDecisionResult } from '../runtime/persona-runtime-types.js'
 import type { PromptComposeAudit } from '../runtime/types.js'
 import type { PersonaStateService } from './persona-state-service.js'
+import type { InferenceProfileService } from './inference-profile-service.js'
 import {
   attachPersonaObservation,
   buildPersonaObservation,
@@ -53,6 +54,7 @@ export interface PrivateChannelServiceDeps {
   llmGateway: LLMGateway
   promptOrchestrator?: PromptOrchestrator | null
   personaStateService?: PersonaStateService | null
+  inferenceProfileService?: InferenceProfileService | null
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
   budgetService: BudgetService | null
@@ -202,7 +204,10 @@ export class PrivateChannelService {
     }
 
     const replyPlan = await this.buildRequestForReply(session, effectiveHumanContent)
-    const routing = this.resolveVisibleRouting(session.agent_id)
+    const routing = await this.resolveVisibleRouting(
+      session.agent_id,
+      replyPlan.renderDecision?.requestedTier ?? 'base',
+    )
     const startMs = Date.now()
     const llmResponse = await this.deps.llmGateway.generateVisibleText({
       intent: 'private_reply',
@@ -214,7 +219,7 @@ export class PrivateChannelService {
       variables: replyPlan.variables,
       budgetClass: 'visible_standard',
       traceId: `private-chat:${session.id}:${humanMsg.id}`,
-      requestedTier: 'base',
+      requestedTier: routing.requestedTier,
       allowFallbackWithinLine: false,
       allowCrossFamily: false,
       temperature: 0.8,
@@ -525,10 +530,14 @@ export class PrivateChannelService {
       .join('\n\n')
   }
 
-  private resolveVisibleRouting(agentId: string): {
+  private async resolveVisibleRouting(agentId: string, requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier): Promise<{
     homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
     preferredModelId?: string
-  } {
+    requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier
+  }> {
+    if (this.deps.inferenceProfileService) {
+      return this.deps.inferenceProfileService.resolveVisibleRoute({ agentId, requestedTier })
+    }
     const agent = this.deps.agentService.getAgent(agentId)
     const latestConfig = this.deps.agentService.getLatestConfig(agentId)
     const resolved = resolveAgentIdentity(agent, latestConfig)
@@ -536,6 +545,7 @@ export class PrivateChannelService {
     return {
       homeVoiceLineId,
       preferredModelId: resolvePreferredVisibleModelId(agent?.model, homeVoiceLineId),
+      requestedTier,
     }
   }
 

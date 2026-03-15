@@ -105,3 +105,43 @@ providers:
     defaults:
       timeout_ms: 30000
       max_retries: 2
+
+  - provider_id: tencent-openai
+    display_name: Tencent Hunyuan OpenAI-Compatible
+    gateway_kind: openai_compatible
+    auth:
+      type: api_key
+      credential_ref_required: true
+      credential_ref: secret-ref:tencent_hunyuan_api_key
+    routing:
+      regions:
+        - cn
+      default_region: cn
+    capabilities:
+      chat: true
+      json_mode: true
+      tool_calling: true
+      streaming: true
+    defaults:
+      timeout_ms: 30000
+      max_retries: 2
+
+  - provider_id: ark-openai
+    display_name: ByteDance Ark OpenAI-Compatible
+    gateway_kind: openai_compatible
+    auth:
+      type: api_key
+      credential_ref_required: true
+      credential_ref: secret-ref:ark_api_key
+    routing:
+      regions:
+        - cn
+      default_region: cn
+    capabilities:
+      chat: true
+      json_mode: true
+      tool_calling: true
+      streaming: true
+    defaults:
+      timeout_ms: 30000
+      max_retries: 2

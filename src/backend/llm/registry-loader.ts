@@ -76,6 +76,28 @@ export interface RoutingPoliciesRegistryFile {
   policies: RoutingPolicyEntry[]
 }
 
+export interface ProviderAdmissionCandidateEntry {
+  provider_id: string
+  model_id: string
+  admission: 'admitted' | 'shadow' | 'blocked'
+  compare_baseline_model_id?: string
+  note?: string
+}
+
+export interface ProviderAdmissionPoolEntry {
+  voice_line_id: VoiceLineId
+  core_family: 'hearth' | 'blade' | 'spark' | 'sage' | 'anchor'
+  compare_dimensions: Array<
+    'persona_lock' | 'emotional_continuity' | 'watchability' | 'callback_fidelity'
+  >
+  candidates: ProviderAdmissionCandidateEntry[]
+}
+
+export interface ProviderAdmissionRegistryFile {
+  version: number
+  pools: ProviderAdmissionPoolEntry[]
+}
+
 export interface ModelPricingEntry {
   model_id: string
   provider_id: string
@@ -94,6 +116,7 @@ export interface LlmRegistryBundle {
   promptTemplates: PromptTemplatesRegistryFile
   credentialPools: CredentialPoolsRegistryFile
   routingPolicies: RoutingPoliciesRegistryFile
+  providerAdmission: ProviderAdmissionRegistryFile
   modelPricing: ModelPricingRegistryFile
 }
 
@@ -103,6 +126,7 @@ export interface LlmRegistryPaths {
   promptTemplates?: string
   credentialPools?: string
   routingPolicies?: string
+  providerAdmission?: string
   modelPricing?: string
 }
 
@@ -133,125 +157,201 @@ const routeOrderSchema = z.enum([
   'headroom',
   'health',
 ])
+const coreFamilySchema = z.enum(['hearth', 'blade', 'spark', 'sage', 'anchor'])
+const admissionStateSchema = z.enum(['admitted', 'shadow', 'blocked'])
+const admissionCompareDimensionSchema = z.enum([
+  'persona_lock',
+  'emotional_continuity',
+  'watchability',
+  'callback_fidelity',
+])
 
-const providerRegistrySchema = z.object({
-  version: z.number().int().positive(),
-  providers: z.array(
-    z.object({
-      provider_id: z.string().min(1),
-      display_name: z.string().min(1),
-      gateway_kind: z.enum(['openai_compatible', 'native']),
-      auth: z.object({
-        type: z.literal('api_key'),
-        credential_ref_required: z.boolean(),
-        credential_ref: z.string().min(1),
-      }).strict(),
-      routing: z.object({
-        regions: z.array(z.string().min(1)).min(1),
-        default_region: z.string().min(1),
-      }).strict(),
-      capabilities: z.object({
-        chat: z.boolean(),
-        json_mode: z.boolean(),
-        tool_calling: z.boolean(),
-        streaming: z.boolean(),
-      }).strict(),
-      defaults: z.object({
-        timeout_ms: z.number().int().positive(),
-        max_retries: z.number().int().min(0),
-      }).strict(),
-    }).strict(),
-  ),
-}).strict()
-
-const modelProfileSchema = z.object({
-  version: z.number().int().positive(),
-  profiles: z.array(
-    z.object({
-      profile_id: z.string().min(1),
-      voice_line_id: voiceLineIdSchema,
-      tier: renderTierSchema,
-      intent: routingIntentSchema,
-      visibility: lLMVisibilityEnum,
-      candidates: z.array(
-        z.object({
+const providerRegistrySchema = z
+  .object({
+    version: z.number().int().positive(),
+    providers: z.array(
+      z
+        .object({
           provider_id: z.string().min(1),
-          model_id: z.string().min(1),
+          display_name: z.string().min(1),
+          gateway_kind: z.enum(['openai_compatible', 'native']),
+          auth: z
+            .object({
+              type: z.literal('api_key'),
+              credential_ref_required: z.boolean(),
+              credential_ref: z.string().min(1),
+            })
+            .strict(),
+          routing: z
+            .object({
+              regions: z.array(z.string().min(1)).min(1),
+              default_region: z.string().min(1),
+            })
+            .strict(),
+          capabilities: z
+            .object({
+              chat: z.boolean(),
+              json_mode: z.boolean(),
+              tool_calling: z.boolean(),
+              streaming: z.boolean(),
+            })
+            .strict(),
+          defaults: z
+            .object({
+              timeout_ms: z.number().int().positive(),
+              max_retries: z.number().int().min(0),
+            })
+            .strict(),
+        })
+        .strict(),
+    ),
+  })
+  .strict()
+
+const modelProfileSchema = z
+  .object({
+    version: z.number().int().positive(),
+    profiles: z.array(
+      z
+        .object({
+          profile_id: z.string().min(1),
+          voice_line_id: voiceLineIdSchema,
+          tier: renderTierSchema,
+          intent: routingIntentSchema,
+          visibility: lLMVisibilityEnum,
+          candidates: z
+            .array(
+              z
+                .object({
+                  provider_id: z.string().min(1),
+                  model_id: z.string().min(1),
+                  region: z.string().min(1),
+                  endpoint_id: z.string().min(1),
+                  weight: z.number().positive(),
+                  quality_class: qualityClassSchema,
+                })
+                .strict(),
+            )
+            .min(1),
+          fallback: z.array(
+            z
+              .object({
+                level: modelProfileFallbackLevelSchema,
+                profile_id: z.string().min(1).optional(),
+                provider_id: z.string().min(1).optional(),
+                model_id: z.string().min(1).optional(),
+                reason: z.string().min(1),
+              })
+              .strict(),
+          ),
+        })
+        .strict(),
+    ),
+  })
+  .strict()
+
+const promptVariablePropertySchema = z
+  .object({
+    type: z.literal('string'),
+  })
+  .strict()
+
+const promptTemplateSchema = z
+  .object({
+    version: z.number().int().positive(),
+    templates: z.array(
+      z
+        .object({
+          prompt_template_id: z.string().min(1),
+          version: z.number().int().positive(),
+          description: z.string().min(1),
+          variables_schema: z
+            .object({
+              type: z.literal('object'),
+              properties: z.record(z.string().min(1), promptVariablePropertySchema),
+              required: z.array(z.string().min(1)),
+            })
+            .strict(),
+          system_prompt: z.string().min(1),
+          user_prompt: z.string().min(1),
+        })
+        .strict(),
+    ),
+  })
+  .strict()
+
+const credentialPoolsSchema = z
+  .object({
+    version: z.number().int().positive(),
+    pools: z.array(
+      z
+        .object({
+          credential_id: z.string().min(1),
+          provider_id: z.string().min(1),
           region: z.string().min(1),
           endpoint_id: z.string().min(1),
-          weight: z.number().positive(),
-          quality_class: qualityClassSchema,
-        }).strict(),
-      ).min(1),
-      fallback: z.array(
-        z.object({
-          level: modelProfileFallbackLevelSchema,
-          profile_id: z.string().min(1).optional(),
-          provider_id: z.string().min(1).optional(),
-          model_id: z.string().min(1).optional(),
-          reason: z.string().min(1),
-        }).strict(),
-      ),
-    }).strict(),
-  ),
-}).strict()
+          endpoint: z.string().url(),
+          credential_ref: z.string().min(1),
+          health: credentialHealthSchema,
+          enabled: z.boolean().optional(),
+          scope_tags: z.array(z.string().min(1)).optional(),
+          allowed_model_ids: z.array(z.string().min(1)).optional(),
+          rpm_headroom: z.number().int().min(0).optional(),
+          tpm_headroom: z.number().int().min(0).optional(),
+        })
+        .strict(),
+    ),
+  })
+  .strict()
 
-const promptVariablePropertySchema = z.object({
-  type: z.literal('string'),
-}).strict()
+const routingPoliciesSchema = z
+  .object({
+    version: z.number().int().positive(),
+    policies: z.array(
+      z
+        .object({
+          profile_id: z.string().min(1),
+          route_order: z.array(routeOrderSchema).min(1),
+          allow_fallback_within_line: z.boolean(),
+          allow_cross_family: z.boolean(),
+          allowed_fallback_levels: z.array(routingFallbackLevelSchema).min(1),
+        })
+        .strict(),
+    ),
+  })
+  .strict()
 
-const promptTemplateSchema = z.object({
-  version: z.number().int().positive(),
-  templates: z.array(
-    z.object({
-      prompt_template_id: z.string().min(1),
-      version: z.number().int().positive(),
-      description: z.string().min(1),
-      variables_schema: z.object({
-        type: z.literal('object'),
-        properties: z.record(z.string().min(1), promptVariablePropertySchema),
-        required: z.array(z.string().min(1)),
-      }).strict(),
-      system_prompt: z.string().min(1),
-      user_prompt: z.string().min(1),
-    }).strict(),
-  ),
-}).strict()
+const providerAdmissionSchema = z
+  .object({
+    version: z.number().int().positive(),
+    pools: z.array(
+      z
+        .object({
+          voice_line_id: voiceLineIdSchema,
+          core_family: coreFamilySchema,
+          compare_dimensions: z.array(admissionCompareDimensionSchema).min(1),
+          candidates: z
+            .array(
+              z
+                .object({
+                  provider_id: z.string().min(1),
+                  model_id: z.string().min(1),
+                  admission: admissionStateSchema,
+                  compare_baseline_model_id: z.string().min(1).optional(),
+                  note: z.string().min(1).optional(),
+                })
+                .strict(),
+            )
+            .min(1),
+        })
+        .strict(),
+    ),
+  })
+  .strict()
 
-const credentialPoolsSchema = z.object({
-  version: z.number().int().positive(),
-  pools: z.array(
-    z.object({
-      credential_id: z.string().min(1),
-      provider_id: z.string().min(1),
-      region: z.string().min(1),
-      endpoint_id: z.string().min(1),
-      endpoint: z.string().url(),
-      credential_ref: z.string().min(1),
-      health: credentialHealthSchema,
-      enabled: z.boolean().optional(),
-      scope_tags: z.array(z.string().min(1)).optional(),
-      allowed_model_ids: z.array(z.string().min(1)).optional(),
-      rpm_headroom: z.number().int().min(0).optional(),
-      tpm_headroom: z.number().int().min(0).optional(),
-    }).strict(),
-  ),
-}).strict()
-
-const routingPoliciesSchema = z.object({
-  version: z.number().int().positive(),
-  policies: z.array(
-    z.object({
-      profile_id: z.string().min(1),
-      route_order: z.array(routeOrderSchema).min(1),
-      allow_fallback_within_line: z.boolean(),
-      allow_cross_family: z.boolean(),
-      allowed_fallback_levels: z.array(routingFallbackLevelSchema).min(1),
-    }).strict(),
-  ),
-}).strict()
-
-export function loadProvidersRegistry(registryPath = defaultRegistryPath('providers.yaml')): ProvidersRegistryFile {
+export function loadProvidersRegistry(
+  registryPath = defaultRegistryPath('providers.yaml'),
+): ProvidersRegistryFile {
   return parseYamlFile(registryPath, providerRegistrySchema, 'providers registry')
 }
 
@@ -279,15 +379,23 @@ export function loadRoutingPoliciesRegistry(
   return parseYamlFile(registryPath, routingPoliciesSchema, 'routing policies registry')
 }
 
+export function loadProviderAdmissionRegistry(
+  registryPath = defaultRegistryPath('provider_admission.yaml'),
+): ProviderAdmissionRegistryFile {
+  return parseYamlFile(registryPath, providerAdmissionSchema, 'provider admission registry')
+}
+
 const modelPricingSchema = z.object({
   version: z.number().int().positive(),
   pricing: z.array(
-    z.object({
-      model_id: z.string().min(1),
-      provider_id: z.string().min(1),
-      prompt_per_1k_cny: z.number().nonnegative(),
-      completion_per_1k_cny: z.number().nonnegative(),
-    }).strict(),
+    z
+      .object({
+        model_id: z.string().min(1),
+        provider_id: z.string().min(1),
+        prompt_per_1k_cny: z.number().nonnegative(),
+        completion_per_1k_cny: z.number().nonnegative(),
+      })
+      .strict(),
   ),
 })
 
@@ -304,6 +412,7 @@ export function loadLlmRegistryBundle(paths: LlmRegistryPaths = {}): LlmRegistry
     promptTemplates: loadPromptTemplatesRegistry(paths.promptTemplates),
     credentialPools: loadCredentialPoolsRegistry(paths.credentialPools),
     routingPolicies: loadRoutingPoliciesRegistry(paths.routingPolicies),
+    providerAdmission: loadProviderAdmissionRegistry(paths.providerAdmission),
     modelPricing: loadModelPricingRegistry(paths.modelPricing),
   }
 
@@ -319,12 +428,14 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
   )
   const credentialIds = bundle.credentialPools.pools.map((entry) => entry.credential_id)
   const policyProfileIds = bundle.routingPolicies.policies.map((entry) => entry.profile_id)
+  const admissionPoolVoiceLines = bundle.providerAdmission.pools.map((entry) => entry.voice_line_id)
 
   assertUnique(providerIds, 'provider_id')
   assertUnique(profileIds, 'profile_id')
   assertUnique(promptKeys, 'prompt_template_id@version')
   assertUnique(credentialIds, 'credential_id')
   assertUnique(policyProfileIds, 'routing policy profile_id')
+  assertUnique(admissionPoolVoiceLines, 'provider admission voice_line_id')
 
   const providersById = new Map(
     bundle.providers.providers.map((entry) => [entry.provider_id, entry] as const),
@@ -334,6 +445,9 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
   )
   const policyByProfileId = new Map(
     bundle.routingPolicies.policies.map((entry) => [entry.profile_id, entry] as const),
+  )
+  const admissionPoolByVoiceLineId = new Map(
+    bundle.providerAdmission.pools.map((entry) => [entry.voice_line_id, entry] as const),
   )
 
   for (const provider of bundle.providers.providers) {
@@ -367,10 +481,9 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
 
   for (const profile of bundle.modelProfiles.profiles) {
     if (!policyByProfileId.has(profile.profile_id)) {
-      throw registryError(
-        `Profile ${profile.profile_id} is missing a routing policy`,
-        { profile_id: profile.profile_id },
-      )
+      throw registryError(`Profile ${profile.profile_id} is missing a routing policy`, {
+        profile_id: profile.profile_id,
+      })
     }
 
     const line = VOICE_LINE_CATALOG[profile.voice_line_id]
@@ -381,17 +494,17 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
     }
 
     if (profile.visibility === 'dev_only') {
-      throw registryError(
-        `Model profiles cannot use dev_only visibility: ${profile.profile_id}`,
-        { profile_id: profile.profile_id, visibility: profile.visibility },
-      )
+      throw registryError(`Model profiles cannot use dev_only visibility: ${profile.profile_id}`, {
+        profile_id: profile.profile_id,
+        visibility: profile.visibility,
+      })
     }
 
     if (line.directorOnly && profile.visibility !== 'hidden') {
-      throw registryError(
-        `Director-only voice line ${profile.voice_line_id} must stay hidden`,
-        { profile_id: profile.profile_id, visibility: profile.visibility },
-      )
+      throw registryError(`Director-only voice line ${profile.voice_line_id} must stay hidden`, {
+        profile_id: profile.profile_id,
+        visibility: profile.visibility,
+      })
     }
 
     if (!line.visible && profile.visibility === 'visible') {
@@ -401,6 +514,18 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
       )
     }
 
+    const visibleAdmissionPool =
+      profile.visibility === 'visible'
+        ? admissionPoolByVoiceLineId.get(profile.voice_line_id)
+        : null
+    if (profile.visibility === 'visible' && !visibleAdmissionPool) {
+      throw registryError(
+        `Visible profile ${profile.profile_id} is missing a provider admission pool`,
+        { profile_id: profile.profile_id, voice_line_id: profile.voice_line_id },
+      )
+    }
+
+    let admittedVisibleCandidateCount = 0
     for (const candidate of profile.candidates) {
       const provider = providersById.get(candidate.provider_id)
       if (!provider) {
@@ -420,11 +545,12 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
         )
       }
 
-      const matchingPool = bundle.credentialPools.pools.find((pool) => (
-        pool.provider_id === candidate.provider_id &&
-        pool.region === candidate.region &&
-        pool.endpoint_id === candidate.endpoint_id
-      ))
+      const matchingPool = bundle.credentialPools.pools.find(
+        (pool) =>
+          pool.provider_id === candidate.provider_id &&
+          pool.region === candidate.region &&
+          pool.endpoint_id === candidate.endpoint_id,
+      )
       if (!matchingPool) {
         throw registryError(
           `Profile ${profile.profile_id} candidate ${candidate.provider_id}/${candidate.model_id} has no credential pool`,
@@ -436,6 +562,34 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
           },
         )
       }
+
+      if (profile.visibility === 'visible') {
+        const admission = visibleAdmissionPool?.candidates.find(
+          (entry) =>
+            entry.provider_id === candidate.provider_id && entry.model_id === candidate.model_id,
+        )
+        if (!admission) {
+          throw registryError(
+            `Visible profile ${profile.profile_id} candidate ${candidate.provider_id}/${candidate.model_id} is missing provider admission metadata`,
+            {
+              profile_id: profile.profile_id,
+              voice_line_id: profile.voice_line_id,
+              provider_id: candidate.provider_id,
+              model_id: candidate.model_id,
+            },
+          )
+        }
+        if (admission.admission === 'admitted') {
+          admittedVisibleCandidateCount += 1
+        }
+      }
+    }
+
+    if (profile.visibility === 'visible' && admittedVisibleCandidateCount === 0) {
+      throw registryError(
+        `Visible profile ${profile.profile_id} has no admitted provider candidates`,
+        { profile_id: profile.profile_id, voice_line_id: profile.voice_line_id },
+      )
     }
 
     for (const fallback of profile.fallback) {
@@ -450,16 +604,52 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
 
   for (const policy of bundle.routingPolicies.policies) {
     if (!profilesById.has(policy.profile_id)) {
-      throw registryError(
-        `Routing policy references unknown profile ${policy.profile_id}`,
-        { profile_id: policy.profile_id },
-      )
+      throw registryError(`Routing policy references unknown profile ${policy.profile_id}`, {
+        profile_id: policy.profile_id,
+      })
     }
     if (!policy.allowed_fallback_levels.includes('none')) {
       throw registryError(
         `Routing policy ${policy.profile_id} must include none in allowed_fallback_levels`,
         { profile_id: policy.profile_id },
       )
+    }
+  }
+
+  for (const pool of bundle.providerAdmission.pools) {
+    const line = VOICE_LINE_CATALOG[pool.voice_line_id]
+    if (!line.visible) {
+      throw registryError(
+        `Provider admission pool ${pool.voice_line_id} must target a visible voice line`,
+        { voice_line_id: pool.voice_line_id },
+      )
+    }
+    const candidateKeys = pool.candidates.map((entry) => `${entry.provider_id}/${entry.model_id}`)
+    assertUnique(candidateKeys, `provider admission candidates for ${pool.voice_line_id}`)
+    for (const candidate of pool.candidates) {
+      if (!providersById.has(candidate.provider_id)) {
+        throw registryError(
+          `Provider admission pool ${pool.voice_line_id} references unknown provider ${candidate.provider_id}`,
+          {
+            voice_line_id: pool.voice_line_id,
+            provider_id: candidate.provider_id,
+            model_id: candidate.model_id,
+          },
+        )
+      }
+      if (
+        candidate.compare_baseline_model_id &&
+        !pool.candidates.some((entry) => entry.model_id === candidate.compare_baseline_model_id)
+      ) {
+        throw registryError(
+          `Provider admission pool ${pool.voice_line_id} compare_baseline_model_id must reference another model in the same pool`,
+          {
+            voice_line_id: pool.voice_line_id,
+            model_id: candidate.model_id,
+            compare_baseline_model_id: candidate.compare_baseline_model_id,
+          },
+        )
+      }
     }
   }
 
@@ -503,16 +693,13 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
         )
       }
       if (profile.voice_line_id !== line.id || profile.tier !== tier) {
-        throw registryError(
-          `Voice line catalog tierProfileRefs mismatch for ${line.id}/${tier}`,
-          {
-            voice_line_id: line.id,
-            tier,
-            profile_id: profileId,
-            profile_voice_line_id: profile.voice_line_id,
-            profile_tier: profile.tier,
-          },
-        )
+        throw registryError(`Voice line catalog tierProfileRefs mismatch for ${line.id}/${tier}`, {
+          voice_line_id: line.id,
+          tier,
+          profile_id: profileId,
+          profile_voice_line_id: profile.voice_line_id,
+          profile_tier: profile.tier,
+        })
       }
     }
 
@@ -520,12 +707,18 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
       for (const [tier, profileId] of Object.entries(tierMap ?? {})) {
         const profile = profilesById.get(profileId)
         if (!profile) {
-          throw registryError(
-            `Voice line catalog references unknown profile ${profileId}`,
-            { voice_line_id: line.id, intent, tier, profile_id: profileId },
-          )
+          throw registryError(`Voice line catalog references unknown profile ${profileId}`, {
+            voice_line_id: line.id,
+            intent,
+            tier,
+            profile_id: profileId,
+          })
         }
-        if (profile.voice_line_id !== line.id || profile.intent !== intent || profile.tier !== tier) {
+        if (
+          profile.voice_line_id !== line.id ||
+          profile.intent !== intent ||
+          profile.tier !== tier
+        ) {
           throw registryError(
             `Voice line catalog mapping mismatch for ${line.id}/${intent}/${tier}`,
             {
@@ -569,11 +762,7 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
   }
 }
 
-function parseYamlFile<T>(
-  path: string,
-  schema: z.ZodType<T>,
-  label: string,
-): T {
+function parseYamlFile<T>(path: string, schema: z.ZodType<T>, label: string): T {
   let raw: string
   try {
     raw = readFileSync(path, 'utf-8')
@@ -626,7 +815,10 @@ function collectTemplatePlaceholders(...templates: string[]): Set<string> {
   return placeholders
 }
 
-function registryError(message: string, details?: Record<string, unknown>): LLMGatewayContractError {
+function registryError(
+  message: string,
+  details?: Record<string, unknown>,
+): LLMGatewayContractError {
   return new LLMGatewayContractError('RegistryResolutionError', message, details)
 }
 

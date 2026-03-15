@@ -9,6 +9,7 @@ import type { AgentInclinationAsset } from '../repos/types.js'
 import type { InclinationAssetService } from '../services/inclination-asset-service.js'
 import type { PromptOrchestrator } from './prompt-orchestrator.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
+import type { InferenceProfileService } from '../services/inference-profile-service.js'
 import type { RenderTierDecisionResult } from './persona-runtime-types.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { AgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
@@ -40,6 +41,7 @@ export interface PostSchedulerDeps {
   inclinationAssetService?: Pick<InclinationAssetService, 'listPendingAgentIds' | 'getPendingForAgent'>
   promptOrchestrator?: PromptOrchestrator | null
   personaStateService?: PersonaStateService | null
+  inferenceProfileService?: InferenceProfileService | null
   publicSceneSelectorService?: PublicSceneSelectorService | null
 }
 
@@ -115,7 +117,7 @@ export class PostScheduler {
     try {
       const selected = this.pickAgent()
       if (!selected) return { triggered: false, error: 'No active agents' }
-      const routing = this.resolveVisibleRouting(selected.id)
+      const routing = await this.resolveVisibleRouting(selected.id, 'base')
 
       const communities = await this.listCommunities()
       if (communities.length === 0) return { triggered: false, error: 'No communities' }
@@ -279,7 +281,7 @@ export class PostScheduler {
         variables,
         budgetClass: 'visible_standard',
         traceId: `scheduled-post:${selected.id}:${Date.now()}`,
-        requestedTier: 'base',
+        requestedTier: routing.requestedTier,
         allowFallbackWithinLine: true,
         allowCrossFamily: false,
       })
@@ -558,10 +560,14 @@ export class PostScheduler {
     }
   }
 
-  private resolveVisibleRouting(agentId: string): {
+  private async resolveVisibleRouting(agentId: string, requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier): Promise<{
     homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
     preferredModelId?: string
-  } {
+    requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier
+  }> {
+    if (this.deps.inferenceProfileService) {
+      return this.deps.inferenceProfileService.resolveVisibleRoute({ agentId, requestedTier })
+    }
     const agent = this.deps.agentService.getAgent(agentId)
     const latestConfig = this.deps.agentService.getLatestConfig(agentId)
     const resolved = resolveAgentIdentity(agent, latestConfig)
@@ -569,6 +575,7 @@ export class PostScheduler {
     return {
       homeVoiceLineId,
       preferredModelId: resolvePreferredVisibleModelId(agent?.model, homeVoiceLineId),
+      requestedTier,
     }
   }
 

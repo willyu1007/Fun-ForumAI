@@ -12,6 +12,7 @@ import type { SseHub } from '../sse/hub.js'
 import type { Agent, AgentConfig, ChatMessageKind, CreateChatMessageInput } from '../repos/types.js'
 import type { LeaderElector } from '../runtime/leader-elector.js'
 import type { PersonaStateService } from './persona-state-service.js'
+import type { InferenceProfileService } from './inference-profile-service.js'
 import type {
   ChatroomRuntimeContextBuilder,
   ChatroomRuntimeContextResult,
@@ -103,6 +104,7 @@ export interface ConversationClockDeps {
   promptLayerService?: PromptLayerService | null
   promptOrchestrator?: PromptOrchestrator | null
   personaStateService?: PersonaStateService | null
+  inferenceProfileService?: InferenceProfileService | null
   chatroomRuntimeContextBuilder?: ChatroomRuntimeContextBuilder | null
   roomWatchabilityRepo?: RoomWatchabilityRepository | null
   roomProgramEngine?: RoomProgramEngine | null
@@ -784,16 +786,26 @@ export class ConversationClock {
     const promptRef = config.features.chatroomLocalIntentV1
       ? PROMPT_TEMPLATE_REFS.agentChatReplyScene
       : PROMPT_TEMPLATE_REFS.agentChatReply
+    const routing = this.deps.inferenceProfileService
+      ? await this.deps.inferenceProfileService.resolveVisibleRoute({
+          agentId,
+          requestedTier: renderDecision?.requestedTier ?? 'lite',
+        })
+      : {
+          homeVoiceLineId: resolvedIdentity.homeVoiceLineId,
+          requestedTier: renderDecision?.requestedTier ?? 'lite',
+        }
     const response = await this.deps.llmGateway.generateVisibleText({
       intent: 'chat_reply',
       scene: 'chat_room',
       agentId,
-      homeVoiceLineId: resolvedIdentity.homeVoiceLineId,
+      homeVoiceLineId: routing.homeVoiceLineId,
+      preferredModelId: routing.preferredModelId,
       promptRef,
       variables,
       budgetClass: 'visible_standard',
       traceId: `chat-room:${roomId}:${agentId}:${Date.now()}`,
-      requestedTier: 'lite',
+      requestedTier: routing.requestedTier,
       allowFallbackWithinLine: false,
       allowCrossFamily: false,
     })
