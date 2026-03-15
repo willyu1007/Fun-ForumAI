@@ -948,7 +948,7 @@ tasks:
     updated: 2026-03-14
   - id: T-103
     slug: personality-compiler-inference-profile-v1
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:

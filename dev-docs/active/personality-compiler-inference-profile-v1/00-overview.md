@@ -3,7 +3,7 @@
 ## Status
 
 - State: done
-- Next step: 若继续推进 provider 级 compare automation / rollout playbook，应新开后续任务包承接，不再并入 T-103。
+- Next step: 若继续推进 provider 级 compare automation、agent-scoped shadow evidence 或 rollout playbook，应新开 `T-9xx` 承接；T-103 本体已可在获得确认后归档。
 
 ## Goal
 

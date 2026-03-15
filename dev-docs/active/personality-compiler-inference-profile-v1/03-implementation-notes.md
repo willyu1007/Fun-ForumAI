@@ -20,4 +20,5 @@
   - `setManualVoiceLineLock(false)` 会重新计算 blockedReason/migrationState，解除 manual lock 后不再卡在 `blocked/manual_lock`；
   - inference-profile 非法状态流转改为 `ValidationError`，控制面返回 400 而不是 500。
 - 2026-03-15: admin profile 页的 shadow compare 按钮约束与后端状态机对齐，`collect` 仅在 `running` review 时可用。
+- 2026-03-15: 收口 audit 中发现的 read-surface 回归：`GET /v1/agents/:agentId/profile` 的 admin `inference_profile_debug` 之前漏掉 `shadowReview`，导致前端在 `start_shadow_review` 后无法通过 profile refetch 拿到 running/collected 状态，`collect/approve` 按钮会错误禁用。现已补齐返回字段，并新增 e2e 覆盖。
 - 2026-03-15: 当前 provider admission 仍主要是“静态 registry + gateway guardrail + admin summary”模式；后续需要继续补 provider 级 compare automation、evidence job 和 rollout playbook。

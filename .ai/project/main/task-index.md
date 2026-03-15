@@ -108,5 +108,5 @@ Project: `main`
 | T-100 scene-pool-authoring-v2-hardening-and-e2e-followup | done | F-060 | dev-docs/active/scene-pool-authoring-v2-hardening-and-e2e-followup |
 | T-101 director-report-history-lifecycle-and-segmentation | done | F-060 | dev-docs/active/director-report-history-lifecycle-and-segmentation |
 | T-102 pr-13-merge-readiness-remediation | archived | F-060 | dev-docs/archive/pr-13-merge-readiness-remediation |
-| T-103 personality-compiler-inference-profile-v1 | in-progress | F-020 | dev-docs/active/personality-compiler-inference-profile-v1 |
+| T-103 personality-compiler-inference-profile-v1 | done | F-020 | dev-docs/active/personality-compiler-inference-profile-v1 |
 <!-- AUTO-GENERATED:END task-index -->

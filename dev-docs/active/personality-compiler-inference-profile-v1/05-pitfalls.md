@@ -24,3 +24,9 @@
   What we tried: 直接把 `manual_voice_line_lock` 写成 false；blocked 状态仍残留。
   Fix: 解锁时基于当前 snapshot/growth/risk 重新计算 blockedReason 与 migrationState。
   Prevention: 任何会改变治理门控条件的控制面动作，都不能直接复用旧 compile 结果。
+
+- Symptom: admin 在 profile 页点击 `启动 Shadow Review` 后，页面 refetch 仍看不到 running/collected review，`collect/approve` 按钮被错误禁用。
+  Root cause: `GET /v1/agents/:agentId/profile` 的 admin `inference_profile_debug` 只返回 `profile + snapshot`，漏掉了前端实际消费的 `shadowReview`。
+  What we tried: 先检查 mutation 返回；只能在 patch 响应 `meta.shadow_review` 里看到 review，refetch 后仍丢失。
+  Fix: 读接口补齐 `shadowReview`，并新增 e2e 断言覆盖 start/collect 后的 profile 读面。
+  Prevention: 对 control-plane 状态机，不能只测 mutation 响应；必须同时验证 read-model refetch 是否携带同一状态。

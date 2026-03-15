@@ -2062,6 +2062,18 @@ describe('E2E: Control Plane (human auth)', () => {
     expect(startRes.status).toBe(200)
     expect(startRes.body.meta.shadow_review.status).toBe('running')
 
+    const debugProfileAfterStart = await request(app)
+      .get(`/v1/agents/${agentId}/profile`)
+      .set('Authorization', `Bearer ${adminToken}`)
+    expect(debugProfileAfterStart.status).toBe(200)
+    expect(debugProfileAfterStart.body.data.inference_profile_debug.shadowReview.status).toBe(
+      'running',
+    )
+    expect(
+      debugProfileAfterStart.body.data.inference_profile_debug.shadowReview
+        .challengerVoiceLineId,
+    ).toBe('kimi-deep-v1')
+
     for (let index = 0; index < 3; index += 1) {
       await usageLedgerRepo.insert({
         trace_id: `shadow-review-${Date.now()}-${index}`,
@@ -2107,6 +2119,18 @@ describe('E2E: Control Plane (human auth)', () => {
     expect(res.status).toBe(200)
     expect(res.body.meta.shadow_review.status).toBe('collected')
     expect(res.body.meta.shadow_review.summary.recommendation).toBe('approve')
+
+    const debugProfileAfterCollect = await request(app)
+      .get(`/v1/agents/${agentId}/profile`)
+      .set('Authorization', `Bearer ${adminToken}`)
+    expect(debugProfileAfterCollect.status).toBe(200)
+    expect(debugProfileAfterCollect.body.data.inference_profile_debug.shadowReview.status).toBe(
+      'collected',
+    )
+    expect(
+      debugProfileAfterCollect.body.data.inference_profile_debug.shadowReview.summary
+        .recommendation,
+    ).toBe('approve')
 
     const approveRes = await request(app)
       .patch(`/v1/agents/${agentId}/inference-profile`)

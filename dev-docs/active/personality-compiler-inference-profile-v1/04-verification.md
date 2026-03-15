@@ -36,3 +36,9 @@
   - 结果：9 个测试文件、91 个测试全部通过
 - 2026-03-15: `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`
   - 结果：通过（Providers: 7 / Profiles: 37 / Provider admission pools: 4 / Prompt templates: 25 / Config keys: 30）
+- 2026-03-15: `pnpm exec vitest run src/backend/routes/__tests__/e2e-control-plane.test.ts -t "PATCH /v1/agents/:agentId/inference-profile can collect shadow review evidence for admin"`
+  - 结果：通过；新增断言确认 admin profile 读面会返回 `inference_profile_debug.shadowReview.running/collected`
+- 2026-03-15: `pnpm exec tsc --noEmit`
+  - 结果：通过
+- 2026-03-15: `DASHSCOPE_API_KEY=<redacted> node --input-type=module --import tsx -e "...llmGateway.generateVisibleText(... preferredModelId='kimi-k2.5' ...)"`
+  - 结果：通过；真实 DashScope/Qwen 调用返回 `providerId=dashscope-openai`、`modelId=qwen-plus-character`、`reasons=[initial_profile_resolution, provider_admission_pool]`，证明 visible 路由不会因 shadow 候选 `preferredModelId` 越过 provider admission

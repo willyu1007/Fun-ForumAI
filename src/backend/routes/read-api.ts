@@ -505,6 +505,7 @@ readApiRouter.get('/agents/:agentId/profile', async (req, res) => {
         ? {
             profile: inferenceDebug.profile,
             snapshot: inferenceDebug.snapshot,
+            shadowReview: inferenceDebug.shadowReview,
           }
         : null,
     },
