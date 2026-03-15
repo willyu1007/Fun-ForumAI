@@ -858,22 +858,22 @@ tasks:
     updated: 2026-03-13
   - id: T-094
     slug: public-director-boundary-and-scene-contract
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-060
     requirement_ids:
       - R-060
-    dev_docs_path: dev-docs/active/public-director-boundary-and-scene-contract
-    updated: 2026-03-13
+    dev_docs_path: dev-docs/archive/public-director-boundary-and-scene-contract
+    updated: 2026-03-15
   - id: T-095
     slug: scene-selector-scheduled-post-forum-entry
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-060
     requirement_ids:
       - R-061
-    dev_docs_path: dev-docs/active/scene-selector-scheduled-post-forum-entry
-    updated: 2026-03-14
+    dev_docs_path: dev-docs/archive/scene-selector-scheduled-post-forum-entry
+    updated: 2026-03-15
   - id: T-096
     slug: director-runtime-state-and-chatroom-unification
     status: done
