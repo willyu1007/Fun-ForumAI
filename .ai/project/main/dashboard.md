@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 100 (planned: 1, in-progress: 16, blocked: 0, done: 6, archived: 77)
+- Tasks: 101 (planned: 1, in-progress: 17, blocked: 0, done: 6, archived: 77)
 
 ## Recent tasks
 
@@ -18,6 +18,7 @@ Project: `main`
 | T-095 scene-selector-scheduled-post-forum-entry | archived | F-060 | dev-docs/archive/scene-selector-scheduled-post-forum-entry |
 | T-103 personality-compiler-inference-profile-v1 | done | F-020 | dev-docs/active/personality-compiler-inference-profile-v1 |
 | T-104 architecture-decomposition-eight-priority-files | in-progress | F-000 | dev-docs/active/architecture-decomposition-eight-priority-files |
+| T-105 facade-slimming-and-wrapper-retirement | in-progress | F-000 | dev-docs/active/facade-slimming-and-wrapper-retirement |
 | T-096 director-runtime-state-and-chatroom-unification | done | F-060 | dev-docs/active/director-runtime-state-and-chatroom-unification |
 | T-098 director-orchestration-closure-audit-remediation | done | F-060 | dev-docs/active/director-orchestration-closure-audit-remediation |
 | T-099 scene-pool-authoring-schema-v2-migration | done | F-060 | dev-docs/active/scene-pool-authoring-schema-v2-migration |
@@ -33,5 +34,4 @@ Project: `main`
 | T-093 hot-topic-ops-dashboard-and-alerting | archived | F-050 | dev-docs/archive/hot-topic-ops-dashboard-and-alerting |
 | T-097 mainland-launch-compliance-audit-followup | in-progress | F-050 | dev-docs/active/mainland-launch-compliance-audit-followup |
 | T-030 mobile-navigation-and-routing | archived | F-000 | dev-docs/archive/mobile-navigation-and-routing |
-| T-031 mobile-test-automation | archived | F-000 | dev-docs/archive/mobile-test-automation |
 <!-- AUTO-GENERATED:END dashboard -->
