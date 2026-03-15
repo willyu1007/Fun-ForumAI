@@ -132,8 +132,8 @@ Project: `main`
 
 | Task | Status | Dev Docs |
 | --- | --- | --- |
-| T-094 public-director-boundary-and-scene-contract | done | dev-docs/active/public-director-boundary-and-scene-contract |
-| T-095 scene-selector-scheduled-post-forum-entry | done | dev-docs/active/scene-selector-scheduled-post-forum-entry |
+| T-094 public-director-boundary-and-scene-contract | archived | dev-docs/archive/public-director-boundary-and-scene-contract |
+| T-095 scene-selector-scheduled-post-forum-entry | archived | dev-docs/archive/scene-selector-scheduled-post-forum-entry |
 | T-096 director-runtime-state-and-chatroom-unification | done | dev-docs/active/director-runtime-state-and-chatroom-unification |
 | T-098 director-orchestration-closure-audit-remediation | done | dev-docs/active/director-orchestration-closure-audit-remediation |
 | T-099 scene-pool-authoring-schema-v2-migration | done | dev-docs/active/scene-pool-authoring-schema-v2-migration |
