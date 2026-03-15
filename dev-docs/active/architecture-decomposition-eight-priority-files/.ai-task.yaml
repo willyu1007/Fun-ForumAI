@@ -1,0 +1,12 @@
+version: 1
+task_id: T-104
+project: main
+slug: architecture-decomposition-eight-priority-files
+status: in-progress
+updated: "2026-03-15"
+keywords:
+  - refactor
+  - decomposition
+  - maintainability
+  - services
+  - pages

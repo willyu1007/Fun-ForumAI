@@ -957,3 +957,10 @@ tasks:
       - R-029
     dev_docs_path: dev-docs/active/personality-compiler-inference-profile-v1
     updated: 2026-03-15
+  - id: T-104
+    slug: architecture-decomposition-eight-priority-files
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/architecture-decomposition-eight-priority-files
+    updated: 2026-03-15

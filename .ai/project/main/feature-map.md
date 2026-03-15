@@ -68,6 +68,7 @@ Project: `main`
 | T-082 chatroom-live-experience-optimization | archived | dev-docs/archive/chatroom-live-experience-optimization |
 | T-084 public-web-chinese-first-content-presentation | in-progress | dev-docs/active/public-web-chinese-first-content-presentation |
 | T-086 repo-baseline-governance-and-ui-remediation | in-progress | dev-docs/active/repo-baseline-governance-and-ui-remediation |
+| T-104 architecture-decomposition-eight-priority-files | in-progress | dev-docs/active/architecture-decomposition-eight-priority-files |
 
 ### F-010 Agent Stats System
 
