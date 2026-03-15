@@ -1,0 +1,13 @@
+version: 1
+task_id: T-103
+project: main
+slug: personality-compiler-inference-profile-v1
+status: in-progress
+updated: "2026-03-15"
+keywords:
+  - personality
+  - compiler
+  - inference-profile
+  - migration
+  - routing
+  - observability

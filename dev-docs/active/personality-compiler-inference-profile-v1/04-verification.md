@@ -1,0 +1,38 @@
+# 04 Verification
+
+- 2026-03-15: `pnpm prisma generate`
+  - 结果：通过
+- 2026-03-15: `pnpm exec tsc --noEmit`
+  - 结果：通过
+- 2026-03-15: `pnpm exec vitest run src/frontend/features/agents/components/__tests__/StatsPanel.test.tsx src/frontend/features/agents/pages/__tests__/AgentProfilePage.test.tsx src/frontend/features/admin/components/__tests__/RuntimeDashboard.test.tsx`
+  - 结果：3 个测试文件、9 个测试全部通过
+- 2026-03-15: `pnpm exec vitest run src/backend/services/__tests__/inference-profile-service.test.ts`
+  - 结果：1 个测试文件、2 个测试全部通过
+- 2026-03-15: `pnpm exec vitest run src/backend/routes/__tests__/e2e-read-api.test.ts src/backend/routes/__tests__/e2e-control-plane.test.ts`
+  - 结果：2 个测试文件、60 个测试全部通过
+- 2026-03-15: `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`
+  - 结果：通过（Providers: 7 / Profiles: 37 / Provider admission pools: 4 / Prompt templates: 25 / Config keys: 30）
+- 2026-03-15: `pnpm exec vitest run src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/frontend/features/admin/components/__tests__/RuntimeDashboard.test.tsx`
+  - 结果：3 个测试文件、15 个测试全部通过
+- 2026-03-15: `pnpm exec prettier --write .ai/llm-config/AGENTS.md .ai/llm-config/registry/config_keys.yaml .ai/llm-config/registry/providers.yaml .ai/llm-config/registry/provider_admission.yaml .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs dev-docs/active/personality-compiler-inference-profile-v1/00-overview.md dev-docs/active/personality-compiler-inference-profile-v1/01-plan.md dev-docs/active/personality-compiler-inference-profile-v1/02-architecture.md dev-docs/active/personality-compiler-inference-profile-v1/03-implementation-notes.md dev-docs/active/personality-compiler-inference-profile-v1/04-verification.md src/backend/llm/registry-loader.ts src/backend/llm/provider-admission.ts src/backend/llm/llm-gateway.ts src/backend/container/llm.ts src/backend/container/index.ts src/backend/routes/admin-api.ts src/backend/lib/runtime-build-info.ts src/frontend/api/types.ts src/frontend/features/admin/components/RuntimeDashboard.tsx src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/llm-gateway.test.ts`
+  - 结果：通过
+- 2026-03-15: `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`（post-format rerun）
+  - 结果：通过（Providers: 7 / Profiles: 37 / Provider admission pools: 4 / Prompt templates: 25 / Config keys: 30）
+- 2026-03-15: `pnpm exec tsc --noEmit`（post-format rerun）
+  - 结果：通过
+- 2026-03-15: `pnpm exec vitest run src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/frontend/features/admin/components/__tests__/RuntimeDashboard.test.tsx`（post-format rerun）
+  - 结果：3 个测试文件、15 个测试全部通过
+- 2026-03-15: `pnpm exec vitest run src/backend/services/__tests__/xp-service.test.ts src/backend/services/__tests__/inference-profile-service.test.ts src/frontend/features/agents/pages/__tests__/AgentProfilePage.test.tsx`
+  - 结果：3 个测试文件、8 个测试全部通过
+- 2026-03-15: `pnpm exec vitest run src/backend/routes/__tests__/e2e-control-plane.test.ts`
+  - 结果：1 个测试文件、42 个测试全部通过
+- 2026-03-15: `pnpm exec tsc --noEmit`（shadow compare + in-memory xp + admin actions rerun）
+  - 结果：通过
+- 2026-03-15: `git diff --check`
+  - 结果：通过
+- 2026-03-15: `pnpm exec vitest run src/backend/services/__tests__/inference-profile-service.test.ts src/backend/services/__tests__/xp-service.test.ts src/backend/routes/__tests__/e2e-control-plane.test.ts -t "inference-profile" src/frontend/features/agents/pages/__tests__/AgentProfilePage.test.tsx`
+  - 结果：相关 service / e2e / frontend 修复回归全部通过
+- 2026-03-15: `pnpm exec vitest run src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/frontend/features/admin/components/__tests__/RuntimeDashboard.test.tsx src/frontend/features/agents/components/__tests__/StatsPanel.test.tsx src/frontend/features/agents/pages/__tests__/AgentProfilePage.test.tsx src/backend/services/__tests__/xp-service.test.ts src/backend/services/__tests__/inference-profile-service.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts src/backend/routes/__tests__/e2e-control-plane.test.ts`
+  - 结果：9 个测试文件、91 个测试全部通过
+- 2026-03-15: `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`
+  - 结果：通过（Providers: 7 / Profiles: 37 / Provider admission pools: 4 / Prompt templates: 25 / Config keys: 30）

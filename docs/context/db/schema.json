@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-14T13:24:04.088Z",
+  "updatedAt": "2026-03-15T02:26:41.359Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -1812,6 +1812,24 @@
           "references": []
         },
         {
+          "field": "inferenceProfile",
+          "to": "AgentInferenceProfile",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "inferenceShadowReviews",
+          "to": "AgentInferenceShadowReview",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "instructions",
           "to": "AgentInstruction",
           "optional": false,
@@ -3339,6 +3357,478 @@
           "fields": [
             "ownerUserId",
             "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "AgentInferenceProfile",
+      "dbName": "agent_inference_profiles",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "blockedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "blocked_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "blockedReason",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "blocked_reason",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "candidateSince",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "candidate_since",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "challengerFamily",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "challenger_family",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "challengerScoreDelta",
+          "type": "Float",
+          "nullable": true,
+          "list": false,
+          "dbName": "challenger_score_delta",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "challengerVoiceLineId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "challenger_voice_line_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "consecutiveLeadWindows",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "consecutive_lead_windows",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "effectiveAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "effective_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "freezeUntil",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "freeze_until",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "incumbentFamily",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "incumbent_family",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "lastCompiledAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "last_compiled_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "lastSnapshotJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "last_snapshot_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "manualVoiceLineLock",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "manual_voice_line_lock",
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "migrationState",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "migration_state",
+          "dbType": null,
+          "default": "\"stable\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "profileVersion",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "profile_version",
+          "dbType": null,
+          "default": "1",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "shadowStartedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "shadow_started_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "visibleModelPin",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "visible_model_pin",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "visibleProviderPin",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "visible_provider_pin",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "migrationState",
+            "updatedAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "AgentInferenceShadowReview",
+      "dbName": "agent_inference_shadow_reviews",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "challengerFamily",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "challenger_family",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "challengerVoiceLineId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "challenger_voice_line_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "collectedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "collected_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "decidedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "decided_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "decidedByUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "decided_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "evidenceJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "evidence_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "incumbentFamily",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "incumbent_family",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "incumbentVoiceLineId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "incumbent_voice_line_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reviewCaseId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "review_case_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "startedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "started_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "\"running\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "summaryJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "summary_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "status",
+            "updatedAt"
           ],
           "name": null,
           "map": null

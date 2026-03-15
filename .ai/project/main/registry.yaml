@@ -111,6 +111,10 @@ requirements:
     title: "Context and Memory Plane"
     status: in-progress
     feature_id: F-020
+  - id: R-031
+    title: "Derived Personality Compiler and Inference Profile"
+    status: in-progress
+    feature_id: F-020
   - id: R-040
     title: "Guidance Contract and Orchestration"
     status: in-progress
@@ -942,3 +946,14 @@ tasks:
       - R-064
     dev_docs_path: dev-docs/archive/pr-13-merge-readiness-remediation
     updated: 2026-03-14
+  - id: T-103
+    slug: personality-compiler-inference-profile-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-031
+      - R-027
+      - R-029
+    dev_docs_path: dev-docs/active/personality-compiler-inference-profile-v1
+    updated: 2026-03-15

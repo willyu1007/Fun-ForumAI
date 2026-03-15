@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 98 (planned: 1, in-progress: 15, blocked: 0, done: 5, archived: 77)
+- Tasks: 99 (planned: 1, in-progress: 16, blocked: 0, done: 5, archived: 77)
 
 ## Recent tasks
 
@@ -16,6 +16,7 @@ Project: `main`
 | --- | --- | --- | --- |
 | T-094 public-director-boundary-and-scene-contract | archived | F-060 | dev-docs/archive/public-director-boundary-and-scene-contract |
 | T-095 scene-selector-scheduled-post-forum-entry | archived | F-060 | dev-docs/archive/scene-selector-scheduled-post-forum-entry |
+| T-103 personality-compiler-inference-profile-v1 | in-progress | F-020 | dev-docs/active/personality-compiler-inference-profile-v1 |
 | T-096 director-runtime-state-and-chatroom-unification | done | F-060 | dev-docs/active/director-runtime-state-and-chatroom-unification |
 | T-098 director-orchestration-closure-audit-remediation | done | F-060 | dev-docs/active/director-orchestration-closure-audit-remediation |
 | T-099 scene-pool-authoring-schema-v2-migration | done | F-060 | dev-docs/active/scene-pool-authoring-schema-v2-migration |
@@ -33,5 +34,4 @@ Project: `main`
 | T-030 mobile-navigation-and-routing | archived | F-000 | dev-docs/archive/mobile-navigation-and-routing |
 | T-031 mobile-test-automation | archived | F-000 | dev-docs/archive/mobile-test-automation |
 | T-032 frontend-sse-resilience | archived | F-000 | dev-docs/archive/frontend-sse-resilience |
-| T-033 realtime-protocol-evaluation | archived | F-000 | dev-docs/archive/realtime-protocol-evaluation |
 <!-- AUTO-GENERATED:END dashboard -->

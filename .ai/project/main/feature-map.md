@@ -98,6 +98,7 @@ Project: `main`
 | T-071 local-kind-runtime-consistency-remediation | archived | dev-docs/archive/local-kind-runtime-consistency-remediation |
 | T-072 persona-rollout-gate-evidence-remediation | in-progress | dev-docs/active/persona-rollout-gate-evidence-remediation |
 | T-076 persona-runtime-integration-audit | archived | dev-docs/archive/persona-runtime-integration-audit |
+| T-103 personality-compiler-inference-profile-v1 | in-progress | dev-docs/active/personality-compiler-inference-profile-v1 |
 
 ### F-030 Mobile Runtime Delivery
 
