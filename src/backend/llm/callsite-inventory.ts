@@ -233,12 +233,12 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
   },
   {
     source_id: 'memory-private-digest',
-    source_file: 'src/backend/services/memory-service.ts',
+    source_file: 'src/backend/services/memory-service/digest-pipeline.ts',
     scene: 'background_hidden',
     dispatch_calls: ['llmGateway.generateHiddenArtifact'],
     evidence_patterns: [
       'PROMPT_TEMPLATE_REFS.internalPrivateChatDigest',
-      'this.deps.llmGateway.generateHiddenArtifact({',
+      'deps.llmGateway.generateHiddenArtifact({',
       "intent: 'private_digest'",
     ],
     intent: 'private_digest',

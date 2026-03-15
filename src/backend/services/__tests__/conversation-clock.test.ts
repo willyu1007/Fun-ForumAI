@@ -1,32 +1,56 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ConversationClock } from '../conversation-clock.js'
 import { config } from '../../lib/config.js'
+import { createConversationClockContext } from '../conversation-clock/runtime-adapter.js'
+import { generateMessage } from '../conversation-clock/message-generator.js'
+import {
+  handleRoomBroadcast,
+  handleTick,
+  syncActiveRoomTimers,
+} from '../conversation-clock/tick-runner.js'
+import type { ConversationClockDeps } from '../conversation-clock/types.js'
 
-type ConversationClockHarness = {
-  running: boolean
-  scheduleAgent: (roomId: string, agentId: string, tickInterval: number) => void
-  handleTick: (roomId: string, agentId: string, tickInterval: number) => Promise<void>
-  generateMessage: (
-    roomId: string,
-    agentId: string,
-  ) => Promise<{
-    kind: 'normal' | 'skip_feedback' | 'empty'
-    body: string
-  }>
-  postMessage: (
-    roomId: string,
-    agentId: string,
-    body: string,
-    kind: 'normal' | 'skip_feedback' | 'ambient' | 'greeting',
-    renderDecision?: unknown,
-    metadata?: unknown,
-  ) => Promise<void>
+function createClockHarness(
+  deps: ConversationClockDeps,
+  options: { running?: boolean } = {},
+) {
+  let running = options.running ?? false
+  const timers = new Map()
+  const roomLocks = new Set<string>()
+  const timerKey = (roomId: string, agentId: string) => `${roomId}:${agentId}`
+  const onAgentLeft = (roomId: string, agentId: string) => {
+    const key = timerKey(roomId, agentId)
+    const existing = timers.get(key)
+    if (existing) {
+      clearTimeout(existing.timer)
+      timers.delete(key)
+    }
+  }
+
+  const context = createConversationClockContext({
+    deps,
+    state: {
+      getRunning: () => running,
+      timers,
+      roomLocks,
+      timerKey,
+      onAgentLeft,
+    },
+  })
+
+  return {
+    context,
+    timers,
+    roomLocks,
+    setRunning(value: boolean) {
+      running = value
+    },
+  }
 }
 
 describe('ConversationClock', () => {
   it('consumes runtime render decisions when ambient fallback posts a visible message', async () => {
     const recordVisibleRender = vi.fn(async () => undefined)
-    const clock = new ConversationClock({
+    const harness = createClockHarness({
       roomRepo: {
         findById: vi.fn(async () => ({
           id: 'room-1',
@@ -129,14 +153,11 @@ describe('ConversationClock', () => {
       personaStateService: {
         recordVisibleRender,
       } as never,
-    })
+    } as never, { running: true })
 
-    ;(clock as unknown as { running: boolean }).running = true
-    ;(clock as unknown as { scheduleAgent: (roomId: string, agentId: string, tickInterval: number) => void }).scheduleAgent = vi.fn()
+    harness.context.scheduleAgent = vi.fn()
 
-    await (clock as unknown as {
-      handleTick: (roomId: string, agentId: string, tickInterval: number) => Promise<void>
-    }).handleTick('room-1', 'agent-1', 1_000)
+    await handleTick(harness.context, 'room-1', 'agent-1', 1_000)
 
     expect(recordVisibleRender).toHaveBeenCalledWith({
       agentId: 'agent-1',
@@ -191,7 +212,7 @@ describe('ConversationClock', () => {
       },
       runtimeEnvelope: null,
     }))
-    const clock = new ConversationClock({
+    const harness = createClockHarness({
       roomRepo: {
         findById: vi.fn(async () => ({
           id: 'room-1',
@@ -286,11 +307,9 @@ describe('ConversationClock', () => {
           },
         })),
       } as never,
-    })
+    } as never, { running: true })
 
-    await (clock as unknown as {
-      generateMessage: (roomId: string, agentId: string) => Promise<unknown>
-    }).generateMessage('room-1', 'agent-1')
+    await generateMessage(harness.context, 'room-1', 'agent-1')
 
     expect(compose).toHaveBeenCalledWith(expect.objectContaining({
       conversationText: expect.stringContaining('当前看点：Guest 正在追问一个关键前提。'),
@@ -337,7 +356,7 @@ describe('ConversationClock', () => {
         },
         promptRef: { id: 'agent-chat-reply', version: 5 },
       }))
-      const clock = new ConversationClock({
+      const harness = createClockHarness({
         roomRepo: {
           findById: vi.fn(async () => ({
             id: 'room-1',
@@ -421,11 +440,9 @@ describe('ConversationClock', () => {
             },
           })),
         } as never,
-      })
+      } as never, { running: true })
 
-      await (clock as unknown as {
-        generateMessage: (roomId: string, agentId: string) => Promise<unknown>
-      }).generateMessage('room-1', 'agent-1')
+      await generateMessage(harness.context, 'room-1', 'agent-1')
 
       expect(generateVisibleText).toHaveBeenCalledWith(expect.objectContaining({
         promptRef: { id: 'agent-chat-reply', version: 5 },
@@ -470,7 +487,7 @@ describe('ConversationClock', () => {
         },
         promptRef: { id: 'agent-chat-reply', version: 5 },
       }))
-      const clock = new ConversationClock({
+      const harness = createClockHarness({
         roomRepo: {
           findById: vi.fn(async () => ({
             id: 'room-1',
@@ -515,11 +532,9 @@ describe('ConversationClock', () => {
             throw new Error('legacy runtime row missing fields')
           }),
         } as never,
-      })
+      } as never, { running: true })
 
-      await (clock as unknown as {
-        generateMessage: (roomId: string, agentId: string) => Promise<unknown>
-      }).generateMessage('room-1', 'agent-1')
+      await generateMessage(harness.context, 'room-1', 'agent-1')
 
       expect(generateVisibleText).toHaveBeenCalledWith(expect.objectContaining({
         promptRef: { id: 'agent-chat-reply', version: 5 },
@@ -549,7 +564,7 @@ describe('ConversationClock', () => {
       updated_at: new Date('2026-03-12T00:00:00.000Z'),
     }))
     const getLatestConfigPersisted = vi.fn(async () => null)
-    const clock = new ConversationClock({
+    const harness = createClockHarness({
       roomRepo: {
         findById: vi.fn(async () => ({
           id: 'room-1',
@@ -581,14 +596,9 @@ describe('ConversationClock', () => {
       agentRunRepo: {
         create: vi.fn(),
       } as never,
-    })
+    } as never, { running: true })
 
-    const result = await (clock as unknown as {
-      generateMessage: (roomId: string, agentId: string) => Promise<{
-        kind: 'normal' | 'skip_feedback' | 'empty'
-        body: string
-      }>
-    }).generateMessage('room-1', 'agent-2')
+    const result = await generateMessage(harness.context, 'room-1', 'agent-2')
 
     expect(result).toEqual({
       kind: 'normal',
@@ -599,15 +609,15 @@ describe('ConversationClock', () => {
   })
 
   it('prioritizes the selected speaker when a manual cue broadcast arrives from another pod', async () => {
-    type RoomEventListener = (roomId: string, event: { type: string; payload?: unknown }) => void
-    let roomListener: RoomEventListener | null = null
-    const clock = new ConversationClock({
-      roomRepo: {
-        getMember: vi.fn(async () => ({
-          member_id: 'agent-1',
-          personal_tick_interval: 12_000,
-        })),
-      } as never,
+    const scheduleAgent = vi.fn()
+    const roomRepo = {
+      getMember: vi.fn(async () => ({
+        member_id: 'agent-1',
+        personal_tick_interval: 12_000,
+      })),
+    }
+    const harness = createClockHarness({
+      roomRepo,
       messageRepo: {} as never,
       agentRepo: {} as never,
       agentService: {} as never,
@@ -615,28 +625,13 @@ describe('ConversationClock', () => {
       llmGateway: {} as never,
       sseHub: {
         broadcastToRoom: vi.fn(),
-        onRoomEvent: vi.fn((listener: (roomId: string, event: { type: string; payload?: unknown }) => void) => {
-          roomListener = listener
-          return () => {
-            roomListener = null
-          }
-        }),
       } as never,
       eventRepo: {} as never,
       agentRunRepo: {} as never,
-    })
+    } as never, { running: true })
+    harness.context.scheduleAgent = scheduleAgent
 
-    const harness = clock as unknown as {
-      running: boolean
-      scheduleAgent: (roomId: string, agentId: string, tickInterval: number, delayMs?: number) => void
-    }
-    const scheduleAgent = vi.fn()
-    harness.running = true
-    harness.scheduleAgent = scheduleAgent
-
-    expect(roomListener).not.toBeNull()
-    const emitRoomEvent: RoomEventListener = roomListener ?? (() => undefined)
-    emitRoomEvent('room-1', {
+    handleRoomBroadcast(harness.context, 'room-1', {
       type: 'ROOM_CONTROL_STATE_UPDATED',
       payload: {
         room_id: 'room-1',
@@ -665,7 +660,7 @@ describe('ConversationClock', () => {
       markProgramEvent: vi.fn(async () => undefined),
     }
 
-    const clock = new ConversationClock({
+    const harness = createClockHarness({
       roomRepo: {
         findById: vi.fn(async () => ({
           id: 'room-1',
@@ -703,18 +698,16 @@ describe('ConversationClock', () => {
         getProgram: vi.fn(async () => ({ enabled: true })),
       } as never,
       roomProgramEngine: roomProgramEngine as never,
-    })
+    } as never, { running: true })
 
-    const harness = clock as unknown as ConversationClockHarness
-    harness.running = true
-    harness.scheduleAgent = vi.fn()
-    vi.spyOn(harness, 'generateMessage').mockResolvedValue({
+    harness.context.scheduleAgent = vi.fn()
+    vi.spyOn(harness.context, 'generateMessage').mockResolvedValue({
       kind: 'normal',
       body: '这句应该让别的角色来讲。',
     })
-    const postSpy = vi.spyOn(harness, 'postMessage').mockResolvedValue(undefined)
+    const postSpy = vi.spyOn(harness.context, 'postMessage').mockResolvedValue(undefined)
 
-    await harness.handleTick('room-1', 'agent-1', 1_000)
+    await handleTick(harness.context, 'room-1', 'agent-1', 1_000)
 
     expect(roomProgramEngine.planNextTurn).toHaveBeenCalledWith(expect.objectContaining({
       roomId: 'room-1',
@@ -746,7 +739,7 @@ describe('ConversationClock', () => {
       },
     ])
 
-    const clock = new ConversationClock({
+    const harness = createClockHarness({
       roomRepo: {
         list,
         getMembers,
@@ -762,22 +755,15 @@ describe('ConversationClock', () => {
       leaderElector: {
         ensureLeadership,
       } as never,
-    })
+    } as never, { running: true })
+    harness.context.scheduleAgent = vi.fn()
 
-    const harness = clock as unknown as {
-      running: boolean
-      scheduleAgent: (roomId: string, agentId: string, tickInterval: number) => void
-      syncActiveRoomTimers: () => Promise<void>
-    }
-    harness.running = true
-    harness.scheduleAgent = vi.fn()
-
-    await harness.syncActiveRoomTimers()
+    await syncActiveRoomTimers(harness.context)
 
     expect(ensureLeadership).toHaveBeenCalledTimes(1)
     expect(list).toHaveBeenCalledWith({ limit: 200, status: 'active' })
     expect(getMembers).toHaveBeenCalledWith('room-1')
-    expect(harness.scheduleAgent).toHaveBeenCalledWith('room-1', 'agent-1', 25_000)
+    expect(harness.context.scheduleAgent).toHaveBeenCalledWith('room-1', 'agent-1', 25_000)
   })
 
   it('skips active room timer hydration when this pod is not leader', async () => {
@@ -785,7 +771,7 @@ describe('ConversationClock', () => {
     const list = vi.fn()
     const getMembers = vi.fn()
 
-    const clock = new ConversationClock({
+    const harness = createClockHarness({
       roomRepo: {
         list,
         getMembers,
@@ -801,21 +787,14 @@ describe('ConversationClock', () => {
       leaderElector: {
         ensureLeadership,
       } as never,
-    })
+    } as never, { running: true })
+    harness.context.scheduleAgent = vi.fn()
 
-    const harness = clock as unknown as {
-      running: boolean
-      scheduleAgent: (roomId: string, agentId: string, tickInterval: number) => void
-      syncActiveRoomTimers: () => Promise<void>
-    }
-    harness.running = true
-    harness.scheduleAgent = vi.fn()
-
-    await harness.syncActiveRoomTimers()
+    await syncActiveRoomTimers(harness.context)
 
     expect(ensureLeadership).toHaveBeenCalledTimes(1)
     expect(list).not.toHaveBeenCalled()
     expect(getMembers).not.toHaveBeenCalled()
-    expect(harness.scheduleAgent).not.toHaveBeenCalled()
+    expect(harness.context.scheduleAgent).not.toHaveBeenCalled()
   })
 })

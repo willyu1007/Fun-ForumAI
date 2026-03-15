@@ -3,18 +3,11 @@ import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
 import type { ChatroomRuntimeContextBuilder } from './chatroom-runtime-context-builder.js'
 import type { RoomEcologyService } from './room-ecology-service.js'
 import { TIMER_SYNC_INTERVAL_MS } from './conversation-clock/constants.js'
-import {
-  generateMessage as generateMessageImpl,
-  postMessage as postMessageImpl,
-  recordGeneratedMessageRun as recordGeneratedMessageRunImpl,
-} from './conversation-clock/message-generator.js'
-import { handleProgramTick as handleProgramTickImpl } from './conversation-clock/program-tick.js'
+import { createConversationClockContext } from './conversation-clock/runtime-adapter.js'
 import {
   bootstrap as bootstrapImpl,
   handleRoomBroadcast as handleRoomBroadcastImpl,
-  handleTick as handleTickImpl,
   prioritizeAgent as prioritizeAgentImpl,
-  scheduleAgent as scheduleAgentImpl,
   scheduleAgentJoin as scheduleAgentJoinImpl,
   syncActiveRoomTimers as syncActiveRoomTimersImpl,
   syncRoomStatus as syncRoomStatusImpl,
@@ -32,10 +25,21 @@ export class ConversationClock {
   private roomLocks = new Set<string>()
   private running = false
   private timerSync: ReturnType<typeof setInterval> | null = null
+  private readonly context: ConversationClockContext
 
   constructor(private readonly deps: ConversationClockDeps) {
+    this.context = createConversationClockContext({
+      deps: this.deps,
+      state: {
+        getRunning: () => this.running,
+        timers: this.timers,
+        roomLocks: this.roomLocks,
+        timerKey: (roomId, agentId) => this.timerKey(roomId, agentId),
+        onAgentLeft: (roomId, agentId) => this.detachAgentTimer(roomId, agentId),
+      },
+    })
     this.deps.sseHub.onRoomEvent?.((roomId, event) => {
-      this.handleRoomBroadcast(roomId, event)
+      handleRoomBroadcastImpl(this.context, roomId, event)
     })
   }
 
@@ -65,11 +69,11 @@ export class ConversationClock {
     if (this.running) return
     this.running = true
     this.timerSync = setInterval(() => {
-      void this.syncActiveRoomTimers().catch((err) => {
+      void syncActiveRoomTimersImpl(this.context).catch((err) => {
         console.error('[ConversationClock] Timer sync failed:', err)
       })
     }, TIMER_SYNC_INTERVAL_MS)
-    void this.bootstrap()
+    void bootstrapImpl(this.context)
   }
 
   stop(): void {
@@ -89,14 +93,26 @@ export class ConversationClock {
 
   onAgentJoined(roomId: string, agentId: string, tickInterval: number): void {
     if (!this.running) return
-    this.scheduleAgentJoin(roomId, agentId, tickInterval)
+    scheduleAgentJoinImpl(this.context, roomId, agentId, tickInterval)
   }
 
   async prioritizeAgent(roomId: string, agentId: string, delayMs = 250): Promise<void> {
-    return prioritizeAgentImpl(this.getContext(), roomId, agentId, delayMs)
+    return prioritizeAgentImpl(this.context, roomId, agentId, delayMs)
   }
 
   onAgentLeft(roomId: string, agentId: string): void {
+    this.detachAgentTimer(roomId, agentId)
+  }
+
+  onRoomStatusChanged(roomId: string, status: string): void {
+    void syncRoomStatusImpl(this.context, roomId, status)
+  }
+
+  private timerKey(roomId: string, agentId: string): string {
+    return `${roomId}:${agentId}`
+  }
+
+  private detachAgentTimer(roomId: string, agentId: string): void {
     const key = this.timerKey(roomId, agentId)
     const existing = this.timers.get(key)
     if (existing) {
@@ -104,102 +120,4 @@ export class ConversationClock {
       this.timers.delete(key)
     }
   }
-
-  onRoomStatusChanged(roomId: string, status: string): void {
-    void this.syncRoomStatus(roomId, status)
-  }
-
-  private getContext(): ConversationClockContext {
-    return {
-      deps: this.deps,
-      running: this.running,
-      timers: this.timers,
-      roomLocks: this.roomLocks,
-      timerKey: (roomId, agentId) => this.timerKey(roomId, agentId),
-      scheduleAgent: (roomId, agentId, tickInterval, delayMs) => {
-        if (delayMs === undefined) {
-          this.scheduleAgent(roomId, agentId, tickInterval)
-          return
-        }
-        this.scheduleAgent(roomId, agentId, tickInterval, delayMs)
-      },
-      onAgentLeft: (roomId, agentId) => this.onAgentLeft(roomId, agentId),
-      handleProgramTick: (roomId, triggerAgentId) =>
-        this.handleProgramTick(roomId, triggerAgentId),
-      generateMessage: (roomId, agentId) => this.generateMessage(roomId, agentId),
-      postMessage: (roomId, agentId, body, kind, renderDecision, metadata) =>
-        this.postMessage(roomId, agentId, body, kind, renderDecision, metadata),
-      recordGeneratedMessageRun: (input) => this.recordGeneratedMessageRun(input),
-    }
-  }
-
-  private bootstrap(): Promise<void> {
-    return bootstrapImpl(this.getContext())
-  }
-
-  private handleRoomBroadcast(
-    roomId: string,
-    event: { type: string; payload?: unknown },
-  ): void {
-    handleRoomBroadcastImpl(this.getContext(), roomId, event)
-  }
-
-  async handleTick(
-    roomId: string,
-    agentId: string,
-    tickInterval: number,
-  ): Promise<void> {
-    return handleTickImpl(this.getContext(), roomId, agentId, tickInterval)
-  }
-
-  private scheduleAgent(
-    roomId: string,
-    agentId: string,
-    tickInterval: number,
-    delayMs?: number,
-  ): void {
-    scheduleAgentImpl(this.getContext(), roomId, agentId, tickInterval, delayMs)
-  }
-
-  private scheduleAgentJoin(roomId: string, agentId: string, tickInterval: number): void {
-    scheduleAgentJoinImpl(this.getContext(), roomId, agentId, tickInterval)
-  }
-
-  private syncActiveRoomTimers(): Promise<void> {
-    return syncActiveRoomTimersImpl(this.getContext())
-  }
-
-  private syncRoomStatus(roomId: string, status: string): Promise<void> {
-    return syncRoomStatusImpl(this.getContext(), roomId, status)
-  }
-
-  private handleProgramTick(roomId: string, triggerAgentId: string): Promise<void> {
-    return handleProgramTickImpl(this.getContext(), roomId, triggerAgentId)
-  }
-
-  private generateMessage(roomId: string, agentId: string) {
-    return generateMessageImpl(this.getContext(), roomId, agentId)
-  }
-
-  private postMessage(
-    roomId: string,
-    agentId: string,
-    body: string,
-    kind: 'normal' | 'skip_feedback' | 'ambient' | 'greeting',
-    renderDecision?: Parameters<typeof postMessageImpl>[5],
-    metadata?: Parameters<typeof postMessageImpl>[6],
-  ) {
-    return postMessageImpl(this.getContext(), roomId, agentId, body, kind, renderDecision, metadata)
-  }
-
-  private recordGeneratedMessageRun(
-    input: Parameters<typeof recordGeneratedMessageRunImpl>[1],
-  ) {
-    return recordGeneratedMessageRunImpl(this.getContext(), input)
-  }
-
-  private timerKey(roomId: string, agentId: string): string {
-    return `${roomId}:${agentId}`
-  }
-
 }
