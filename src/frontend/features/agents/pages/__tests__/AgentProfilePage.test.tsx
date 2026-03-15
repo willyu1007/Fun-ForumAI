@@ -12,6 +12,7 @@ import {
   useGuidanceSummary,
   useUnfollowAgent,
 } from '@/api/hooks'
+import type { Agent } from '@/api/types'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 
@@ -104,7 +105,7 @@ function renderPage(path = '/agents/agent-1') {
   )
 }
 
-function buildAgent(overrides?: Partial<ReturnType<typeof useAgentProfileMock>['data']>) {
+function buildAgent(overrides?: Partial<Agent>) {
   return {
     id: 'agent-1',
     owner_id: 'owner-1',
@@ -294,6 +295,8 @@ describe('AgentProfilePage', () => {
         data: buildAgent({
           inference_profile_debug: {
             profile: {
+              agentId: 'agent-1',
+              profileVersion: 3,
               incumbentFamily: 'anchor',
               challengerFamily: 'sage',
               challengerVoiceLineId: 'kimi-deep-v1',
@@ -301,7 +304,39 @@ describe('AgentProfilePage', () => {
               consecutiveLeadWindows: 5,
               challengerScoreDelta: 9,
               manualVoiceLineLock: false,
+              visibleProviderPin: 'openai',
+              visibleModelPin: 'gpt-test',
+              candidateSince: '2026-03-10T00:00:00.000Z',
+              shadowStartedAt: '2026-03-11T00:00:00.000Z',
+              effectiveAt: null,
+              blockedAt: null,
               blockedReason: null,
+              freezeUntil: null,
+              lastCompiledAt: '2026-03-12T00:00:00.000Z',
+              lastSnapshot: {
+                axes: {
+                  warmth: 30,
+                  spine: 42,
+                  spark: 20,
+                  composure: 81,
+                  depth: 93,
+                  stageAffinity: 32,
+                },
+                signals: {
+                  risk: 14,
+                  initiative: 44,
+                },
+                familyScores: {
+                  hearth: 22,
+                  blade: 19,
+                  spark: 15,
+                  sage: 74,
+                  anchor: 61,
+                },
+                stageEligible: false,
+                requestedTierFloor: 'base',
+              },
+              updatedAt: '2026-03-12T00:00:00.000Z',
             },
             snapshot: {
               axes: {
@@ -327,14 +362,46 @@ describe('AgentProfilePage', () => {
               requestedTierFloor: 'base',
             },
             shadowReview: {
+              id: 'shadow-1',
+              agentId: 'agent-1',
+              incumbentFamily: 'anchor',
               status: 'collected',
               incumbentVoiceLineId: 'qwen-social-v1',
+              challengerFamily: 'sage',
               challengerVoiceLineId: 'kimi-deep-v1',
               reviewCaseId: 'case-1',
               summary: {
                 recommendation: 'approve',
+                reasons: ['challenger_outperformed_anchor'],
                 compareDimensions: [],
               },
+              evidence: {
+                beforeObservability: {},
+                afterObservability: {},
+                identityWriteDelta: {
+                  before_success_total: 1,
+                  before_failure_total: 0,
+                  after_success_total: 2,
+                  after_failure_total: 0,
+                },
+                costAttribution: {},
+                gate: {},
+                window: {
+                  visibleSuccessCount: 4,
+                  visibleFailureCount: 0,
+                  hiddenSuccessCount: 3,
+                  hiddenFailureCount: 0,
+                  fallbackCount: 0,
+                  sampleWindowMinutes: 60,
+                },
+                fallbackEntries: [],
+              },
+              startedAt: '2026-03-11T00:00:00.000Z',
+              collectedAt: '2026-03-12T00:00:00.000Z',
+              decidedAt: null,
+              decidedByUserId: null,
+              createdAt: '2026-03-11T00:00:00.000Z',
+              updatedAt: '2026-03-12T00:00:00.000Z',
             },
           },
         }),
