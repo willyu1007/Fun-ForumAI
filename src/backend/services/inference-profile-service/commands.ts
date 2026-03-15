@@ -11,20 +11,22 @@ import {
   finalizeShadowReview,
 } from './shadow-review-lifecycle.js'
 import { buildVisibleRouteDecision } from './route-resolution.js'
-import type { InferenceProfileServiceDeps, ResolveVisibleRouteInput } from './types.js'
+import type {
+  InferenceProfileEvaluationResult,
+  InferenceProfileServiceDeps,
+  ResolveVisibleRouteInput,
+} from './types.js'
 
 export async function resolveInferenceVisibleRoute(
   deps: InferenceProfileServiceDeps,
   input: ResolveVisibleRouteInput,
 ) {
-  const agent = deps.agentService.getAgent(input.agentId)
-  const latestConfig = deps.agentService.getLatestConfig(input.agentId)
-  const identity = resolveAgentIdentity(agent, latestConfig)
+  const { agent, homeVoiceLineId } = getAgentRoutingContext(deps, input.agentId)
   const compiled = await evaluateInferenceProfile(deps, input.agentId, { persist: true })
   return buildVisibleRouteDecision({
     requestedTier: input.requestedTier,
     requestedTierFloor: compiled.snapshot.requestedTierFloor,
-    homeVoiceLineId: identity.summary.home_voice_line_id,
+    homeVoiceLineId,
     agentModel: agent.model,
     visibleModelPin: compiled.profile.visibleModelPin,
     profile: compiled.profile,
@@ -69,27 +71,22 @@ export async function approveShadow(
   )
 
   const recompiled = await evaluateInferenceProfile(deps, agentId, { persist: false })
-  const persisted = await deps.personaStateRepo.saveInferenceProfile({
-    agent_id: agentId,
-    profile_version: recompiled.profile.profileVersion,
-    incumbent_family: recompiled.profile.incumbentFamily,
-    challenger_family: null,
-    challenger_voice_line_id: null,
-    migration_state: 'stable',
-    consecutive_lead_windows: 0,
-    challenger_score_delta: null,
-    manual_voice_line_lock: recompiled.profile.manualVoiceLineLock,
-    visible_provider_pin: recompiled.profile.visibleProviderPin,
-    visible_model_pin: recompiled.profile.visibleModelPin,
-    candidate_since: null,
-    shadow_started_at: null,
-    effective_at: new Date(),
-    blocked_at: null,
-    blocked_reason: null,
-    freeze_until: recompiled.profile.freezeUntil ? new Date(recompiled.profile.freezeUntil) : null,
-    last_compiled_at: new Date(),
-    last_snapshot_json: serializeSnapshot(recompiled.snapshot),
-  })
+  const persisted = await deps.personaStateRepo.saveInferenceProfile(buildPersistedProfileInput(
+    recompiled,
+    {
+      challenger_family: null,
+      challenger_voice_line_id: null,
+      migration_state: 'stable',
+      consecutive_lead_windows: 0,
+      challenger_score_delta: null,
+      candidate_since: null,
+      shadow_started_at: null,
+      effective_at: new Date(),
+      blocked_at: null,
+      blocked_reason: null,
+      last_compiled_at: new Date(),
+    },
+  ))
   await finalizeShadowReview(
     deps,
     compiled.shadowReview.id,
@@ -106,9 +103,7 @@ export async function startShadowReview(
   agentId: string,
   actorUserId = 'system',
 ) {
-  const agent = deps.agentService.getAgent(agentId)
-  const latestConfig = deps.agentService.getLatestConfig(agentId)
-  const identity = resolveAgentIdentity(agent, latestConfig)
+  const { homeVoiceLineId } = getAgentRoutingContext(deps, agentId)
   const compiled = await evaluateInferenceProfile(deps, agentId, { persist: true })
   if (compiled.profile.migrationState !== 'shadow' || !compiled.profile.challengerVoiceLineId) {
     throw new ValidationError('No shadow challenger available for review')
@@ -125,7 +120,7 @@ export async function startShadowReview(
     agentId,
     actorUserId,
     incumbentFamily: compiled.profile.incumbentFamily,
-    incumbentVoiceLineId: identity.summary.home_voice_line_id,
+    incumbentVoiceLineId: homeVoiceLineId,
     challengerFamily: compiled.profile.challengerFamily!,
     challengerVoiceLineId: compiled.profile.challengerVoiceLineId,
     shadowStartedAt: compiled.profile.shadowStartedAt,
@@ -139,9 +134,7 @@ export async function collectShadowReview(
   agentId: string,
   actorUserId = 'system',
 ) {
-  const agent = deps.agentService.getAgent(agentId)
-  const latestConfig = deps.agentService.getLatestConfig(agentId)
-  const identity = resolveAgentIdentity(agent, latestConfig)
+  const { homeVoiceLineId } = getAgentRoutingContext(deps, agentId)
   const compiled = await evaluateInferenceProfile(deps, agentId, { persist: true })
   if (compiled.profile.migrationState !== 'shadow' || !compiled.profile.challengerVoiceLineId) {
     throw new ValidationError('No shadow challenger available for review')
@@ -163,7 +156,7 @@ export async function collectShadowReview(
     actorUserId,
     compiled,
     review,
-    incumbentVoiceLineId: identity.summary.home_voice_line_id,
+    incumbentVoiceLineId: homeVoiceLineId,
   })
 }
 
@@ -196,46 +189,24 @@ export async function setManualVoiceLineLock(
     blockedReason: nextBlockedReason,
     shadowWindow: (await detectRecentRespec(deps, agentId)) ? 2 : 5,
   })
-  const persisted = await deps.personaStateRepo.saveInferenceProfile({
-    agent_id: agentId,
-    profile_version: compiled.profile.profileVersion,
-    incumbent_family: compiled.profile.incumbentFamily,
-    challenger_family: compiled.profile.challengerFamily,
-    challenger_voice_line_id: compiled.profile.challengerVoiceLineId,
-    migration_state: nextMigrationState,
-    consecutive_lead_windows: compiled.profile.consecutiveLeadWindows,
-    challenger_score_delta: compiled.profile.challengerScoreDelta,
-    manual_voice_line_lock: locked,
-    visible_provider_pin: compiled.profile.visibleProviderPin,
-    visible_model_pin: compiled.profile.visibleModelPin,
-    candidate_since:
-      nextMigrationState === 'candidate' || nextMigrationState === 'shadow'
-        ? compiled.profile.candidateSince
-          ? new Date(compiled.profile.candidateSince)
-          : new Date()
-        : null,
-    shadow_started_at:
-      nextMigrationState === 'shadow'
-        ? compiled.profile.shadowStartedAt
-          ? new Date(compiled.profile.shadowStartedAt)
-          : new Date()
-        : null,
-    effective_at: compiled.profile.effectiveAt ? new Date(compiled.profile.effectiveAt) : null,
-    blocked_at: nextMigrationState === 'blocked' ? new Date() : null,
-    blocked_reason: nextBlockedReason,
-    freeze_until: compiled.profile.freezeUntil ? new Date(compiled.profile.freezeUntil) : null,
-    last_compiled_at: new Date(compiled.profile.lastCompiledAt),
-    last_snapshot_json: serializeSnapshot(compiled.snapshot),
-  })
-  if (locked && compiled.shadowReview && compiled.shadowReview.status !== 'applied') {
-    await finalizeShadowReview(
-      deps,
-      compiled.shadowReview.id,
-      'rejected',
-      actorUserId,
-      'shadow_compare_manual_lock',
-    )
-  }
+  const persisted = await deps.personaStateRepo.saveInferenceProfile(buildPersistedProfileInput(
+    compiled,
+    {
+      manual_voice_line_lock: locked,
+      migration_state: nextMigrationState,
+      blocked_at: nextMigrationState === 'blocked' ? new Date() : null,
+      blocked_reason: nextBlockedReason,
+      candidate_since:
+        nextMigrationState === 'candidate' || nextMigrationState === 'shadow'
+          ? toDate(compiled.profile.candidateSince) ?? new Date()
+          : null,
+      shadow_started_at:
+        nextMigrationState === 'shadow'
+          ? toDate(compiled.profile.shadowStartedAt) ?? new Date()
+          : null,
+    },
+  ))
+  await rejectPendingShadowReview(deps, compiled, locked, actorUserId, 'shadow_compare_manual_lock')
   return toRuntimeProfile(persisted)
 }
 
@@ -246,37 +217,82 @@ export async function blockChallenger(
 ) {
   const compiled = await evaluateInferenceProfile(deps, agentId, { persist: false })
   const freezeUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-  const persisted = await deps.personaStateRepo.saveInferenceProfile({
-    agent_id: agentId,
+  const persisted = await deps.personaStateRepo.saveInferenceProfile(buildPersistedProfileInput(
+    compiled,
+    {
+      migration_state: compiled.profile.challengerFamily ? 'blocked' : 'stable',
+      blocked_at: compiled.profile.challengerFamily ? new Date() : null,
+      blocked_reason: compiled.profile.challengerFamily ? 'admin_block' : null,
+      freeze_until: compiled.profile.challengerFamily ? freezeUntil : null,
+    },
+  ))
+  await rejectPendingShadowReview(deps, compiled, true, actorUserId, 'shadow_compare_rejected')
+  return toRuntimeProfile(persisted)
+}
+
+type SaveInferenceProfileInput = Parameters<
+  InferenceProfileServiceDeps['personaStateRepo']['saveInferenceProfile']
+>[0]
+
+function getAgentRoutingContext(deps: InferenceProfileServiceDeps, agentId: string) {
+  const agent = deps.agentService.getAgent(agentId)
+  const latestConfig = deps.agentService.getLatestConfig(agentId)
+  const identity = resolveAgentIdentity(agent, latestConfig)
+  return {
+    agent,
+    homeVoiceLineId: identity.summary.home_voice_line_id,
+  }
+}
+
+function buildPersistedProfileInput(
+  compiled: InferenceProfileEvaluationResult,
+  overrides: Partial<SaveInferenceProfileInput>,
+): SaveInferenceProfileInput {
+  return {
+    agent_id: compiled.profile.agentId,
     profile_version: compiled.profile.profileVersion,
     incumbent_family: compiled.profile.incumbentFamily,
     challenger_family: compiled.profile.challengerFamily,
     challenger_voice_line_id: compiled.profile.challengerVoiceLineId,
-    migration_state: compiled.profile.challengerFamily ? 'blocked' : 'stable',
+    migration_state: compiled.profile.migrationState,
     consecutive_lead_windows: compiled.profile.consecutiveLeadWindows,
     challenger_score_delta: compiled.profile.challengerScoreDelta,
     manual_voice_line_lock: compiled.profile.manualVoiceLineLock,
     visible_provider_pin: compiled.profile.visibleProviderPin,
     visible_model_pin: compiled.profile.visibleModelPin,
-    candidate_since: compiled.profile.candidateSince ? new Date(compiled.profile.candidateSince) : null,
-    shadow_started_at: compiled.profile.shadowStartedAt
-      ? new Date(compiled.profile.shadowStartedAt)
-      : null,
-    effective_at: compiled.profile.effectiveAt ? new Date(compiled.profile.effectiveAt) : null,
-    blocked_at: compiled.profile.challengerFamily ? new Date() : null,
-    blocked_reason: compiled.profile.challengerFamily ? 'admin_block' : null,
-    freeze_until: compiled.profile.challengerFamily ? freezeUntil : null,
-    last_compiled_at: new Date(compiled.profile.lastCompiledAt),
+    candidate_since: toDate(compiled.profile.candidateSince),
+    shadow_started_at: toDate(compiled.profile.shadowStartedAt),
+    effective_at: toDate(compiled.profile.effectiveAt),
+    blocked_at: toDate(compiled.profile.blockedAt),
+    blocked_reason: compiled.profile.blockedReason,
+    freeze_until: toDate(compiled.profile.freezeUntil),
+    last_compiled_at: toDate(compiled.profile.lastCompiledAt) ?? new Date(),
     last_snapshot_json: serializeSnapshot(compiled.snapshot),
-  })
-  if (compiled.shadowReview && compiled.shadowReview.status !== 'applied') {
-    await finalizeShadowReview(
-      deps,
-      compiled.shadowReview.id,
-      'rejected',
-      actorUserId,
-      'shadow_compare_rejected',
-    )
+    ...overrides,
   }
-  return toRuntimeProfile(persisted)
+}
+
+async function rejectPendingShadowReview(
+  deps: InferenceProfileServiceDeps,
+  compiled: InferenceProfileEvaluationResult,
+  shouldReject: boolean,
+  actorUserId: string,
+  resolutionAction: string,
+): Promise<void> {
+  if (!shouldReject || !compiled.shadowReview || compiled.shadowReview.status === 'applied') {
+    return
+  }
+
+  await finalizeShadowReview(
+    deps,
+    compiled.shadowReview.id,
+    'rejected',
+    actorUserId,
+    resolutionAction,
+  )
+}
+
+function toDate(value: Date | string | null | undefined): Date | null {
+  if (!value) return null
+  return value instanceof Date ? value : new Date(value)
 }

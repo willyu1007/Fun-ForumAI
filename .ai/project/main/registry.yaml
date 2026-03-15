@@ -964,10 +964,3 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/architecture-decomposition-eight-priority-files
     updated: 2026-03-15
-  - id: T-105
-    slug: facade-slimming-and-wrapper-retirement
-    status: in-progress
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/active/facade-slimming-and-wrapper-retirement
-    updated: 2026-03-15

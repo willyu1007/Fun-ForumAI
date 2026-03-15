@@ -10,7 +10,7 @@ import {
 } from '../../runtime/persona-observation.js'
 import { buildTranscript, parseDigestResponse } from './digest.js'
 import { MIN_MESSAGES_FOR_DIGEST } from './constants.js'
-import { persistTypedContextState } from './typed-context.js'
+import { runTypedContextPipeline } from './typed-context.js'
 import type {
   AgentMemory,
   MemoryServiceDeps,
@@ -73,12 +73,11 @@ async function generateTypedDigest(
   createdAt: Date,
 ): Promise<AgentMemory> {
   const runtime = deps.contextMemory
-  if (!runtime) {
-    throw new Error('context_memory_runtime_missing')
-  }
   try {
-    const rawEvent = await runtime.journalService.record(
-      buildPrivateSessionRawEvent({
+    const { recorded, distilled } = await runTypedContextPipeline({
+      runtime,
+      agentId,
+      rawEvent: buildPrivateSessionRawEvent({
         eventId: buildPrivateSessionRawEventId(sessionId),
         agentId,
         sessionId,
@@ -86,26 +85,17 @@ async function generateTypedDigest(
         transcript,
         createdAt,
       }),
-    )
-    const extracted = await runtime.summaryOrchestrator.extract(rawEvent)
-    const distilled = await runtime.summaryOrchestrator.distill(rawEvent, extracted)
-    const finalized = await runtime.identityFinalizer.finalize(agentId, distilled)
-    await persistTypedContextState({
-      runtime,
-      agentId,
-      distilled,
-      finalized,
     })
     personaObservability.recordTypedWrite(true)
 
-    const existing = await findPrivateDigestByEventId(deps, agentId, rawEvent.id)
+    const existing = await findPrivateDigestByEventId(deps, agentId, recorded.id)
     if (existing) return existing
 
     return deps.memoryRepo.createMemory({
       agent_id: agentId,
       source_type: 'PRIVATE_CHAT',
       source_session_id: sessionId,
-      source_event_id: rawEvent.id,
+      source_event_id: recorded.id,
       summary_text: distilled.compatibilityDigest.summary_text,
       topic_tags: distilled.compatibilityDigest.topic_tags,
       key_facts: distilled.compatibilityDigest.key_facts,

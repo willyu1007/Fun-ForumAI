@@ -69,7 +69,6 @@ Project: `main`
 | T-084 public-web-chinese-first-content-presentation | in-progress | dev-docs/active/public-web-chinese-first-content-presentation |
 | T-086 repo-baseline-governance-and-ui-remediation | in-progress | dev-docs/active/repo-baseline-governance-and-ui-remediation |
 | T-104 architecture-decomposition-eight-priority-files | in-progress | dev-docs/active/architecture-decomposition-eight-priority-files |
-| T-105 facade-slimming-and-wrapper-retirement | in-progress | dev-docs/active/facade-slimming-and-wrapper-retirement |
 
 ### F-010 Agent Stats System
 

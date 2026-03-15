@@ -13,3 +13,7 @@
 ## Historical notes
 - `AdminPanel.test.tsx` and some other UI tests spend noticeable time in import/environment setup before executing assertions. That is expected in this repo and should not be mistaken for a deadlock by itself.
 - `src/backend/routes/__tests__/dev-prompts-render.test.ts` currently stalls in collection/setup when run standalone. This is a repo-level blocker, but it is not required to finish the 8-file decomposition itself.
+- If a follow-up phase is still working on the same decomposition surface, keep it attached to the original umbrella task.
+  - Spinning up a second task bundle for the same 8-file refactor adds governance and documentation weight, which works against the slimming goal.
+- Governance sync does not automatically prune stale task entries when a task bundle disappears.
+  - If a duplicate or superseded bundle was already registered, remove the registry/dashboard/task-index entries explicitly or they will keep polluting the project hub.

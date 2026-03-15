@@ -76,3 +76,20 @@
 - Full targeted verification passed for all 8 target surfaces.
 - Repo-level `typecheck` and `lint` passed.
 - Repo-level `test` was attempted twice. After fixing a real regression in `callsite-inventory.test.ts`, the remaining blocker is `src/backend/routes/__tests__/dev-prompts-render.test.ts`, which stalls in collection/setup (`0/8`) when run standalone and when reached from `pnpm test`. This blocker is outside the 8-file decomposition scope.
+
+## Phase 5
+- Slimming recovery was attached back to `T-104` instead of keeping a second follow-up bundle for the same decomposition surface.
+- `InferenceProfileService` recovery:
+  - reduced repeated routing/identity plumbing in `inference-profile-service/commands.ts`
+  - introduced shared helpers for agent routing context, persisted profile payload construction, and pending shadow-review rejection
+  - kept the thin entry file intact while trimming repeated orchestration inside the internal command module
+- `MemoryService` recovery:
+  - introduced a shared `runTypedContextPipeline` helper in `memory-service/typed-context.ts`
+  - `memory-service/digest-pipeline.ts` now reuses the typed-context pipeline instead of re-implementing extract/distill/finalize/persist inline
+- Governance recovery:
+  - the temporary `facade-slimming-and-wrapper-retirement` bundle was folded back into `T-104`
+  - project governance is re-synced from the umbrella task instead of carrying a duplicate follow-up task
+  - stale `T-105` / accidental `T-106` registry entries were manually removed because governance sync did not automatically prune missing task bundles
+- Net effect:
+  - the decomposition remains intact
+  - recovery work removes follow-up duplication instead of layering another abstraction pass on top of `T-104`

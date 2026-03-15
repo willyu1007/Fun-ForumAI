@@ -36,3 +36,10 @@
   - `pnpm test`
   - `pnpm lint`
 - Update handoff docs and prepare archival criteria once green.
+
+## Phase 5
+- Recover unnecessary follow-up overhead without reopening the decomposition scope:
+  - fold the façade-slimming follow-up back into `T-104`
+  - remove duplicate task-bundle/governance records
+  - collapse duplicated backend orchestration where the split introduced low-value repetition
+- Re-run the affected backend suites plus repo gates and record the recovery in `04-verification.md`.

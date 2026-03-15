@@ -52,3 +52,22 @@
     - `pnpm vitest run --maxWorkers=1 src/backend/routes/__tests__/dev-prompts-render.test.ts`
     - Behavior: stalls in collection/setup at `0/8` for >20s and also causes the same stop when reached from `pnpm test`.
     - Scope note: outside the 8 target files in `T-104`.
+
+## Phase 5
+- Recovery-targeted suites:
+  - `pnpm exec vitest run --maxWorkers=1 src/backend/services/__tests__/inference-profile-service.test.ts src/backend/services/__tests__/xp-service.test.ts src/backend/services/__tests__/memory-service.context-memory.test.ts src/backend/services/__tests__/memory-service.nurture.test.ts`
+  - Result: passed
+  - Totals: `4` files, `10` tests passed
+- Repo gates:
+  - `pnpm typecheck`
+  - Result: passed
+  - `pnpm lint`
+  - Result: passed
+- Full suite:
+  - `pnpm test`
+  - Result: passed
+  - Totals: `191` files, `991` tests passed
+- Governance verification:
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: passed
+  - Note: only the pre-existing `T-103` acceptance-checkbox warning remains

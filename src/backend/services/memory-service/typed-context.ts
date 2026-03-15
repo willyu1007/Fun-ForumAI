@@ -8,6 +8,34 @@ import type { IdentityFinalizeResult, SummaryDistillResult } from '../../context
 import type { AgentMemory, ContextMemoryScene } from '../../repos/types.js'
 import type { ContextMemoryRuntimeDeps } from '../memory-service.js'
 
+export async function runTypedContextPipeline(input: {
+  runtime: ContextMemoryRuntimeDeps | null | undefined
+  agentId: string
+  rawEvent: Parameters<ContextMemoryRuntimeDeps['journalService']['record']>[0]
+}): Promise<{
+  recorded: Awaited<ReturnType<ContextMemoryRuntimeDeps['journalService']['record']>>
+  distilled: SummaryDistillResult
+  finalized: IdentityFinalizeResult
+}> {
+  const runtime = input.runtime
+  if (!runtime) {
+    throw new Error('context_memory_runtime_missing')
+  }
+
+  const recorded = await runtime.journalService.record(input.rawEvent)
+  const extracted = await runtime.summaryOrchestrator.extract(recorded)
+  const distilled = await runtime.summaryOrchestrator.distill(recorded, extracted)
+  const finalized = await runtime.identityFinalizer.finalize(input.agentId, distilled)
+  await persistTypedContextState({
+    runtime,
+    agentId: input.agentId,
+    distilled,
+    finalized,
+  })
+
+  return { recorded, distilled, finalized }
+}
+
 export async function ingestTypedPublicObservation(input: {
   runtime: ContextMemoryRuntimeDeps | null | undefined
   memory: AgentMemory
@@ -47,15 +75,10 @@ export async function ingestTypedPublicObservation(input: {
         createdAt: typedContext.created_at ?? input.memory.created_at,
       })
 
-  const recorded = await runtime.journalService.record(rawEvent)
-  const extracted = await runtime.summaryOrchestrator.extract(recorded)
-  const distilled = await runtime.summaryOrchestrator.distill(recorded, extracted)
-  const finalized = await runtime.identityFinalizer.finalize(input.payload.agent_id, distilled)
-  await persistTypedContextState({
+  await runTypedContextPipeline({
     runtime,
     agentId: input.payload.agent_id,
-    distilled,
-    finalized,
+    rawEvent,
   })
 }
 
