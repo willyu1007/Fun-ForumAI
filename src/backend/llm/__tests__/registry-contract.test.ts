@@ -3,10 +3,7 @@ import {
   VOICE_LINE_CATALOG,
   type VoiceLineRoutingIntent,
 } from '../../../shared/agent-persona-catalog.js'
-import {
-  loadLlmRegistryBundle,
-  loadPromptTemplatesRegistry,
-} from '../registry-loader.js'
+import { loadLlmRegistryBundle, loadPromptTemplatesRegistry } from '../registry-loader.js'
 import {
   resolveIdentityWriteProfileRef,
   resolveVoiceLineTierProfileRef,
@@ -22,6 +19,7 @@ describe('LLM registry contract', () => {
     expect(bundle.promptTemplates.templates.length).toBeGreaterThan(0)
     expect(bundle.credentialPools.pools.length).toBeGreaterThan(0)
     expect(bundle.routingPolicies.policies.length).toBeGreaterThan(0)
+    expect(bundle.providerAdmission.pools.length).toBeGreaterThan(0)
   })
 
   it('resolves intent-aware voice-line tier profile refs from the shared voice-line catalog', () => {
@@ -64,12 +62,12 @@ describe('LLM registry contract', () => {
     expect(directorLine.visible).toBe(false)
     expect(directorLine.directorOnly).toBe(true)
     expect(resolveIdentityWriteProfileRef('deepseek-director-v1', 'premium')).toBeNull()
-    expect(
-      resolveVoiceLineTierProfileRef('deepseek-director-v1', 'director_plan', 'base'),
-    ).toBe('deepseek-director-director-plan-base')
-    expect(
-      resolveVoiceLineTierProfileRef('deepseek-director-v1', 'director_plan', 'premium'),
-    ).toBe('deepseek-director-director-plan-premium')
+    expect(resolveVoiceLineTierProfileRef('deepseek-director-v1', 'director_plan', 'base')).toBe(
+      'deepseek-director-director-plan-base',
+    )
+    expect(resolveVoiceLineTierProfileRef('deepseek-director-v1', 'director_plan', 'premium')).toBe(
+      'deepseek-director-director-plan-premium',
+    )
   })
 
   it('keeps qwen identity-write tiers split between public and private adaptation lanes', () => {
@@ -78,11 +76,19 @@ describe('LLM registry contract', () => {
       bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
     )
 
-    expect(resolveIdentityWriteProfileRef('qwen-social-v1', 'base')).toBe('qwen-social-identity-write-base')
-    expect(resolveIdentityWriteProfileRef('qwen-social-v1', 'premium')).toBe('qwen-social-identity-write-premium')
-    expect(profilesById.get('qwen-social-identity-write-base')?.candidates[0]?.model_id).toBe('qwen-plus-character')
+    expect(resolveIdentityWriteProfileRef('qwen-social-v1', 'base')).toBe(
+      'qwen-social-identity-write-base',
+    )
+    expect(resolveIdentityWriteProfileRef('qwen-social-v1', 'premium')).toBe(
+      'qwen-social-identity-write-premium',
+    )
+    expect(profilesById.get('qwen-social-identity-write-base')?.candidates[0]?.model_id).toBe(
+      'qwen-plus-character',
+    )
     expect(
-      profilesById.get('qwen-social-identity-write-premium')?.candidates.some((candidate) => candidate.model_id === 'qwen-plus-character'),
+      profilesById
+        .get('qwen-social-identity-write-premium')
+        ?.candidates.some((candidate) => candidate.model_id === 'qwen-plus-character'),
     ).toBe(true)
   })
 
@@ -94,6 +100,17 @@ describe('LLM registry contract', () => {
 
     for (const promptRef of Object.values(PROMPT_TEMPLATE_REFS)) {
       expect(promptTemplateKeys.has(`${promptRef.id}@${promptRef.version}`)).toBe(true)
+    }
+  })
+
+  it('keeps every visible voice line behind an explicit provider admission pool', () => {
+    const bundle = loadLlmRegistryBundle()
+    const poolVoiceLines = new Set(
+      bundle.providerAdmission.pools.map((entry) => entry.voice_line_id),
+    )
+
+    for (const line of Object.values(VOICE_LINE_CATALOG).filter((entry) => entry.visible)) {
+      expect(poolVoiceLines.has(line.id)).toBe(true)
     }
   })
 })

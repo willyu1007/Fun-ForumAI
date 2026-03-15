@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AgentProfilePage } from '../AgentProfilePage'
@@ -91,12 +92,15 @@ const useAuthMock = vi.mocked(useAuth)
 const isGuidanceEnabledMock = vi.mocked(isGuidanceEnabled)
 
 function renderPage(path = '/agents/agent-1') {
+  const queryClient = new QueryClient()
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route path="/agents/:agentId" element={<AgentProfilePage />} />
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/agents/:agentId" element={<AgentProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
   )
 }
 
@@ -278,5 +282,73 @@ describe('AgentProfilePage', () => {
     renderPage()
 
     expect(screen.queryByText('登录后关注这个 Agent')).toBeNull()
+  })
+
+  it('shows admin shadow review actions when compile debug is available', () => {
+    useAuthMock.mockReturnValue({
+      isAuthenticated: true,
+      user: { id: 'admin-1', role: 'admin' },
+    } as never)
+    useAgentProfileMock.mockReturnValue({
+      data: {
+        data: buildAgent({
+          inference_profile_debug: {
+            profile: {
+              incumbentFamily: 'anchor',
+              challengerFamily: 'sage',
+              challengerVoiceLineId: 'kimi-deep-v1',
+              migrationState: 'shadow',
+              consecutiveLeadWindows: 5,
+              challengerScoreDelta: 9,
+              manualVoiceLineLock: false,
+              blockedReason: null,
+            },
+            snapshot: {
+              axes: {
+                warmth: 30,
+                spine: 42,
+                spark: 20,
+                composure: 81,
+                depth: 93,
+                stageAffinity: 32,
+              },
+              signals: {
+                risk: 14,
+                initiative: 44,
+              },
+              familyScores: {
+                hearth: 22,
+                blade: 19,
+                spark: 15,
+                sage: 74,
+                anchor: 61,
+              },
+              stageEligible: false,
+              requestedTierFloor: 'base',
+            },
+            shadowReview: {
+              status: 'collected',
+              incumbentVoiceLineId: 'qwen-social-v1',
+              challengerVoiceLineId: 'kimi-deep-v1',
+              reviewCaseId: 'case-1',
+              summary: {
+                recommendation: 'approve',
+                compareDimensions: [],
+              },
+            },
+          },
+        }),
+      },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderPage()
+
+    expect(screen.getByText('启动 Shadow Review')).toBeTruthy()
+    expect(screen.getByText('收集 Compare 证据')).toBeTruthy()
+    expect(screen.getByText('批准 Rare Reanchor')).toBeTruthy()
+    expect(screen.getByText('阻断 Challenger')).toBeTruthy()
+    expect(screen.getByText('锁定当前声线')).toBeTruthy()
   })
 })

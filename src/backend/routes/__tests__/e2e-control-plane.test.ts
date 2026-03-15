@@ -1,8 +1,26 @@
 import { describe, it, expect, vi } from 'vitest'
 import request from 'supertest'
 import jwt from 'jsonwebtoken'
-import { app, config, servicePost, adminToken, userToken, user2Token, setupFeatureFlagGuard, waitFor, createTestCommunity } from './e2e-helpers.js'
-import { incubationService, chatService, eventRepo, communityConfigScheduler } from '../../container.js'
+import {
+  app,
+  config,
+  servicePost,
+  adminToken,
+  userToken,
+  user2Token,
+  setupFeatureFlagGuard,
+  waitFor,
+  createTestCommunity,
+} from './e2e-helpers.js'
+import {
+  incubationService,
+  chatService,
+  eventRepo,
+  communityConfigScheduler,
+  inferenceProfileService,
+  usageLedgerRepo,
+  xpService,
+} from '../../container.js'
 import { DEFAULT_STAGE_SPEC_V1 } from '../../stage/index.js'
 
 setupFeatureFlagGuard()
@@ -71,8 +89,9 @@ describe('E2E: Control Plane (human auth)', () => {
 
     const feedRes = await request(app).get('/v1/feed')
     expect(feedRes.status).toBe(200)
-    const targetPost = (feedRes.body.data as Array<{ id: string; author: { avatar_url: string | null } }>)
-      .find((item) => item.id === postId)
+    const targetPost = (
+      feedRes.body.data as Array<{ id: string; author: { avatar_url: string | null } }>
+    ).find((item) => item.id === postId)
     expect(targetPost).toBeTruthy()
     expect(targetPost?.author.avatar_url).toBe(avatarUrl)
   })
@@ -138,7 +157,10 @@ describe('E2E: Control Plane (human auth)', () => {
     expect(profileRes.body.data.persona_seed_label).toBe('哲学家型')
     expect(profileRes.body.data.home_voice_line_label).toBe('Qwen Social v1')
     expect(profileRes.body.data.identity_contract.source).toBe('contract_v1')
-    expect(profileRes.body.data.identity_contract.owner_style_pins.interests).toEqual(['哲学', '科技'])
+    expect(profileRes.body.data.identity_contract.owner_style_pins.interests).toEqual([
+      '哲学',
+      '科技',
+    ])
   })
 
   it('PATCH /v1/agents/:agentId/memberships updates explicit memberships', async () => {
@@ -147,8 +169,14 @@ describe('E2E: Control Plane (human auth)', () => {
     featureFlags.membershipsV1 = true
 
     try {
-      const communityA = await createTestCommunity({ name: 'Membership A', slug: `membership-a-${Date.now()}` })
-      const communityB = await createTestCommunity({ name: 'Membership B', slug: `membership-b-${Date.now()}` })
+      const communityA = await createTestCommunity({
+        name: 'Membership A',
+        slug: `membership-a-${Date.now()}`,
+      })
+      const communityB = await createTestCommunity({
+        name: 'Membership B',
+        slug: `membership-b-${Date.now()}`,
+      })
 
       const createRes = await request(app)
         .post('/v1/agents')
@@ -170,7 +198,11 @@ describe('E2E: Control Plane (human auth)', () => {
         .send({ add: [], remove: [communityA.id] })
       expect(removeRes.status).toBe(200)
       expect(removeRes.body.data.updated.removed).toEqual([communityA.id])
-      expect(removeRes.body.data.active_memberships.map((item: { community_id: string }) => item.community_id)).toEqual([communityB.id])
+      expect(
+        removeRes.body.data.active_memberships.map(
+          (item: { community_id: string }) => item.community_id,
+        ),
+      ).toEqual([communityB.id])
 
       const forbidden = await request(app)
         .patch(`/v1/agents/${agentId}/memberships`)
@@ -196,7 +228,10 @@ describe('E2E: Control Plane (human auth)', () => {
     featureFlags.membershipStatusV1 = true
 
     try {
-      const community = await createTestCommunity({ name: 'Membership Ban', slug: `membership-ban-${Date.now()}` })
+      const community = await createTestCommunity({
+        name: 'Membership Ban',
+        slug: `membership-ban-${Date.now()}`,
+      })
       const createRes = await request(app)
         .post('/v1/agents')
         .set('Authorization', `Bearer ${userToken}`)
@@ -247,27 +282,31 @@ describe('E2E: Control Plane (human auth)', () => {
       expect(typeof res.body.data.runtime.build).toBe('object')
       expect(typeof res.body.data.runtime.build.code_fingerprint).toBe('string')
       expect(Array.isArray(res.body.data.runtime.build.fingerprint_basis)).toBe(true)
-      expect(res.body.data.runtime.persona_runtime).toEqual(expect.objectContaining({
-        enabled: expect.any(Boolean),
-        scenes: expect.any(Array),
-        writeback_enabled: expect.any(Boolean),
-      }))
-      expect(res.body.data.guidance).toEqual(expect.objectContaining({
-        flags: {
-          guidance_v1: expect.any(Boolean),
-          guidance_recall_v1: true,
-        },
-        bell: {
-          unread_count: expect.any(Number),
-          active_count: expect.any(Number),
-        },
-        per_reason: expect.any(Object),
-        suppression: {
-          same_reason_count: expect.any(Number),
-          daily_cap_count: expect.any(Number),
-        },
-        teaching_first_violation_count: expect.any(Number),
-      }))
+      expect(res.body.data.runtime.persona_runtime).toEqual(
+        expect.objectContaining({
+          enabled: expect.any(Boolean),
+          scenes: expect.any(Array),
+          writeback_enabled: expect.any(Boolean),
+        }),
+      )
+      expect(res.body.data.guidance).toEqual(
+        expect.objectContaining({
+          flags: {
+            guidance_v1: expect.any(Boolean),
+            guidance_recall_v1: true,
+          },
+          bell: {
+            unread_count: expect.any(Number),
+            active_count: expect.any(Number),
+          },
+          per_reason: expect.any(Object),
+          suppression: {
+            same_reason_count: expect.any(Number),
+            daily_cap_count: expect.any(Number),
+          },
+          teaching_first_violation_count: expect.any(Number),
+        }),
+      )
       expect(res.body.data.guidance).toHaveProperty('avg_delivery_delay_ms')
       expect(res.body.data.observability).toHaveProperty('render_log.required_fields')
       expect(res.body.data.observability).toHaveProperty('evaluation.blind_review_rubric')
@@ -386,57 +425,53 @@ describe('E2E: Control Plane (human auth)', () => {
     const originalIncubation = featureFlags.incubationV1
     featureFlags.incubationV1 = true
 
-    const grantSpy = vi
-      .spyOn(incubationService, 'grantJob')
-      .mockResolvedValue({
-        id: 'grant-1',
-        job_id: 'job-1',
-        reviewer_agent_id: null,
-        reviewer_user_id: 'admin1',
-        status: 'ACTIVE',
-        reason: 'grant reason',
-        ttl_hours: 24,
-        scope: 'ABSTRACT_ONLY',
-        anonymity_level: 'strong',
-        quote_policy: 'PARAPHRASE_ONLY',
-        no_go_topics: [],
-        policy: null,
-        granted_at: new Date(),
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        revoked_at: null,
+    const grantSpy = vi.spyOn(incubationService, 'grantJob').mockResolvedValue({
+      id: 'grant-1',
+      job_id: 'job-1',
+      reviewer_agent_id: null,
+      reviewer_user_id: 'admin1',
+      status: 'ACTIVE',
+      reason: 'grant reason',
+      ttl_hours: 24,
+      scope: 'ABSTRACT_ONLY',
+      anonymity_level: 'strong',
+      quote_policy: 'PARAPHRASE_ONLY',
+      no_go_topics: [],
+      policy: null,
+      granted_at: new Date(),
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      revoked_at: null,
+      meta: null,
+      created_at: new Date(),
+      updated_at: new Date(),
+    })
+    const reviewSpy = vi.spyOn(incubationService, 'reviewJob').mockResolvedValue({
+      job: {
+        id: 'job-1',
+        post_id: 'post-1',
+        community_id: 'community-1',
+        proposer_agent_id: 'agent-1',
+        status: 'PENDING',
+        phase: 'AWAIT_GRANT',
+        strict_t4: true,
+        grant_required: true,
+        premod_required: true,
+        redaction_level: 'strong',
+        source_count: 0,
+        idempotency_key: null,
+        source_session_id: null,
+        source_memory_id: null,
+        research: null,
+        draft: null,
+        review: null,
+        requested_at: new Date(),
+        expires_at: null,
         meta: null,
         created_at: new Date(),
         updated_at: new Date(),
-      })
-    const reviewSpy = vi
-      .spyOn(incubationService, 'reviewJob')
-      .mockResolvedValue({
-        job: {
-          id: 'job-1',
-          post_id: 'post-1',
-          community_id: 'community-1',
-          proposer_agent_id: 'agent-1',
-          status: 'PENDING',
-          phase: 'AWAIT_GRANT',
-          strict_t4: true,
-          grant_required: true,
-          premod_required: true,
-          redaction_level: 'strong',
-          source_count: 0,
-          idempotency_key: null,
-          source_session_id: null,
-          source_memory_id: null,
-          research: null,
-          draft: null,
-          review: null,
-          requested_at: new Date(),
-          expires_at: null,
-          meta: null,
-          created_at: new Date(),
-          updated_at: new Date(),
-        },
-        next_action: 'grant_required',
-      })
+      },
+      next_action: 'grant_required',
+    })
 
     try {
       const grantRes = await request(app)
@@ -491,37 +526,35 @@ describe('E2E: Control Plane (human auth)', () => {
     expect(ownerAgentRes.status).toBe(201)
     const proposerAgentId = ownerAgentRes.body.data.id as string
 
-    const getJobSpy = vi
-      .spyOn(incubationService, 'getJob')
-      .mockResolvedValue({
-        job: {
-          id: 'job-view-1',
-          post_id: null,
-          community_id: 'community-1',
-          proposer_agent_id: proposerAgentId,
-          status: 'PENDING',
-          phase: 'AWAIT_GRANT',
-          strict_t4: true,
-          grant_required: true,
-          premod_required: true,
-          redaction_level: 'strong',
-          source_count: 0,
-          idempotency_key: null,
-          source_session_id: null,
-          source_memory_id: null,
-          research: null,
-          draft: null,
-          review: null,
-          requested_at: new Date(),
-          expires_at: null,
-          meta: null,
-          created_at: new Date(),
-          updated_at: new Date(),
-        },
-        grants: [],
-        source_bundles: [],
-        events: [],
-      })
+    const getJobSpy = vi.spyOn(incubationService, 'getJob').mockResolvedValue({
+      job: {
+        id: 'job-view-1',
+        post_id: null,
+        community_id: 'community-1',
+        proposer_agent_id: proposerAgentId,
+        status: 'PENDING',
+        phase: 'AWAIT_GRANT',
+        strict_t4: true,
+        grant_required: true,
+        premod_required: true,
+        redaction_level: 'strong',
+        source_count: 0,
+        idempotency_key: null,
+        source_session_id: null,
+        source_memory_id: null,
+        research: null,
+        draft: null,
+        review: null,
+        requested_at: new Date(),
+        expires_at: null,
+        meta: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      },
+      grants: [],
+      source_bundles: [],
+      events: [],
+    })
 
     try {
       const res = await request(app)
@@ -547,58 +580,56 @@ describe('E2E: Control Plane (human auth)', () => {
     expect(ownerAgentRes.status).toBe(201)
     const proposerAgentId = ownerAgentRes.body.data.id as string
 
-    const getJobSpy = vi
-      .spyOn(incubationService, 'getJob')
-      .mockResolvedValue({
-        job: {
-          id: 'job-view-2',
-          post_id: null,
-          community_id: 'community-1',
-          proposer_agent_id: proposerAgentId,
-          status: 'PENDING',
-          phase: 'AWAIT_GRANT',
-          strict_t4: true,
-          grant_required: true,
-          premod_required: true,
-          redaction_level: 'strong',
-          source_count: 0,
-          idempotency_key: null,
-          source_session_id: null,
-          source_memory_id: null,
-          research: null,
-          draft: null,
-          review: null,
-          requested_at: new Date(),
-          expires_at: null,
+    const getJobSpy = vi.spyOn(incubationService, 'getJob').mockResolvedValue({
+      job: {
+        id: 'job-view-2',
+        post_id: null,
+        community_id: 'community-1',
+        proposer_agent_id: proposerAgentId,
+        status: 'PENDING',
+        phase: 'AWAIT_GRANT',
+        strict_t4: true,
+        grant_required: true,
+        premod_required: true,
+        redaction_level: 'strong',
+        source_count: 0,
+        idempotency_key: null,
+        source_session_id: null,
+        source_memory_id: null,
+        research: null,
+        draft: null,
+        review: null,
+        requested_at: new Date(),
+        expires_at: null,
+        meta: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      },
+      grants: [
+        {
+          id: 'grant-reviewer-1',
+          job_id: 'job-view-2',
+          reviewer_agent_id: null,
+          reviewer_user_id: 'user2',
+          status: 'ACTIVE',
+          reason: 'review access',
+          ttl_hours: 24,
+          scope: 'ABSTRACT_ONLY',
+          anonymity_level: 'strong',
+          quote_policy: 'PARAPHRASE_ONLY',
+          no_go_topics: [],
+          policy: null,
+          granted_at: new Date(),
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          revoked_at: null,
           meta: null,
           created_at: new Date(),
           updated_at: new Date(),
         },
-        grants: [
-          {
-            id: 'grant-reviewer-1',
-            job_id: 'job-view-2',
-            reviewer_agent_id: null,
-            reviewer_user_id: 'user2',
-            status: 'ACTIVE',
-            reason: 'review access',
-            ttl_hours: 24,
-            scope: 'ABSTRACT_ONLY',
-            anonymity_level: 'strong',
-            quote_policy: 'PARAPHRASE_ONLY',
-            no_go_topics: [],
-            policy: null,
-            granted_at: new Date(),
-            expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
-            revoked_at: null,
-            meta: null,
-            created_at: new Date(),
-            updated_at: new Date(),
-          },
-        ],
-        source_bundles: [],
-        events: [],
-      })
+      ],
+      source_bundles: [],
+      events: [],
+    })
 
     try {
       const res = await request(app)
@@ -937,10 +968,12 @@ describe('E2E: Control Plane (human auth)', () => {
       expect(historyRes.status).toBe(200)
       expect(Array.isArray(historyRes.body.data.versions)).toBe(true)
       expect(Array.isArray(historyRes.body.data.patches)).toBe(true)
-      const appliedPatch = (historyRes.body.data.patches as Array<{
-        id: string
-        patch_json: Record<string, unknown>
-      }>).find((item) => item.id === proposalId)
+      const appliedPatch = (
+        historyRes.body.data.patches as Array<{
+          id: string
+          patch_json: Record<string, unknown>
+        }>
+      ).find((item) => item.id === proposalId)
       expect(appliedPatch?.patch_json).toEqual({
         stage_spec_v1: {
           aftershow: {
@@ -1134,7 +1167,9 @@ describe('E2E: Control Plane (human auth)', () => {
         .get(`/v1/communities/${community.id}/config`)
         .set('Authorization', `Bearer ${adminToken}`)
       expect(configRes.status).toBe(200)
-      expect(configRes.body.data.rules_json.stage_spec_v1.human_participation.agent_reads_audience_zone).toBe(true)
+      expect(
+        configRes.body.data.rules_json.stage_spec_v1.human_participation.agent_reads_audience_zone,
+      ).toBe(true)
     } finally {
       featureFlags.controlPlaneConfigV1 = originalControlPlane
     }
@@ -1367,26 +1402,31 @@ describe('E2E: Control Plane (human auth)', () => {
       expect(scheduleRes.body.data.version).toBeNull()
 
       const history = await waitFor(
-        async () => request(app)
-          .get(`/v1/communities/${community.id}/config/history`)
-          .set('Authorization', `Bearer ${adminToken}`),
+        async () =>
+          request(app)
+            .get(`/v1/communities/${community.id}/config/history`)
+            .set('Authorization', `Bearer ${adminToken}`),
         {
           timeoutMs: 12_000,
           intervalMs: 300,
           pass: (res) => {
-            const patches = res.body?.data?.patches as Array<{ id: string; status: string }> | undefined
+            const patches = res.body?.data?.patches as
+              | Array<{ id: string; status: string }>
+              | undefined
             const target = patches?.find((item) => item.id === proposalId)
             return target?.status === 'APPLIED'
           },
         },
       )
 
-      const appliedPatch = (history.body.data.patches as Array<{ id: string; status: string }>)
-        .find((item) => item.id === proposalId)
+      const appliedPatch = (
+        history.body.data.patches as Array<{ id: string; status: string }>
+      ).find((item) => item.id === proposalId)
       expect(appliedPatch?.status).toBe('APPLIED')
 
-      const activeVersion = (history.body.data.versions as Array<{ status: string; source_patch_id: string | null }>)
-        .find((item) => item.status === 'ACTIVE' && item.source_patch_id === proposalId)
+      const activeVersion = (
+        history.body.data.versions as Array<{ status: string; source_patch_id: string | null }>
+      ).find((item) => item.status === 'ACTIVE' && item.source_patch_id === proposalId)
       expect(activeVersion).toBeTruthy()
     } finally {
       featureFlags.controlPlaneConfigV1 = originalControlPlane
@@ -1887,5 +1927,217 @@ describe('E2E: Control Plane (human auth)', () => {
       featureFlags.membershipsV1 = originalMemberships
       featureFlags.membershipStatusV1 = originalMembershipStatus
     }
+  })
+
+  it('PATCH /v1/agents/:agentId/inference-profile can collect shadow review evidence for admin', async () => {
+    const createRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        display_name: 'Shadow Review Bot',
+        persona_seed_code: 'philosopher',
+      })
+    expect(createRes.status).toBe(201)
+    const agentId = createRes.body.data.id as string
+
+    const testDeps = (
+      inferenceProfileService as unknown as {
+        deps: {
+          statsRepo: {
+            getOrCreateStats(agentId: string): Promise<{
+              version: number
+              unspent_points: number
+              granted_points_total: number
+            }>
+            saveStats(input: {
+              agent_id: string
+              expected_version: number
+              unspent_points: number
+              granted_points_total: number
+              sociability: number
+              curiosity: number
+              assertiveness: number
+              empathy: number
+              brashness: number
+              cynicism: number
+              stubbornness: number
+              volatility: number
+              memory: number
+              learning: number
+            }): Promise<unknown>
+          }
+          personaStateRepo: {
+            saveState(input: {
+              agent_id: string
+              current_vector_json: Record<string, unknown>
+              anchor_vector_json: Record<string, unknown>
+              maturity: string
+              confidence: number
+              drift_score: number
+              last_render_decision_json: Record<string, unknown> | null
+            }): Promise<unknown>
+          }
+        }
+      }
+    ).deps
+
+    const currentStats = await testDeps.statsRepo.getOrCreateStats(agentId)
+    await testDeps.statsRepo.saveStats({
+      agent_id: agentId,
+      expected_version: currentStats.version,
+      unspent_points: currentStats.unspent_points,
+      granted_points_total: currentStats.granted_points_total,
+      sociability: 0,
+      curiosity: 20,
+      assertiveness: 0,
+      empathy: 0,
+      brashness: 0,
+      cynicism: 0,
+      stubbornness: 0,
+      volatility: 0,
+      memory: 100,
+      learning: 100,
+    })
+
+    await testDeps.personaStateRepo.saveState({
+      agent_id: agentId,
+      current_vector_json: {
+        warmth: 10,
+        sharpness: 20,
+        expressiveness: 10,
+        theatricality: 5,
+        rigor: 95,
+        spontaneity: 15,
+        curiosity: 95,
+        assertiveness: 10,
+        sensitivity: 40,
+        stability: 50,
+      },
+      anchor_vector_json: {
+        warmth: 45,
+        sharpness: 40,
+        expressiveness: 35,
+        theatricality: 20,
+        rigor: 80,
+        spontaneity: 25,
+        curiosity: 85,
+        assertiveness: 30,
+        sensitivity: 55,
+        stability: 85,
+      },
+      maturity: 'forming',
+      confidence: 0.72,
+      drift_score: 12,
+      last_render_decision_json: null,
+    })
+
+    await xpService?.awardXP(agentId, 'legacy_migrated', 500, {
+      dedup_key: `shadow-review-bootstrap:${agentId}`,
+    })
+
+    const shadowDebug = await waitFor(
+      async () => {
+        await inferenceProfileService.resolveVisibleRoute({
+          agentId,
+          requestedTier: 'base',
+        })
+        return inferenceProfileService.getDebug(agentId)
+      },
+      {
+        timeoutMs: 1500,
+        intervalMs: 40,
+        pass: (value) => value.profile.migrationState === 'shadow',
+      },
+    )
+
+    expect(shadowDebug.profile.challengerVoiceLineId).toBe('kimi-deep-v1')
+
+    const startRes = await request(app)
+      .patch(`/v1/agents/${agentId}/inference-profile`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        action: 'start_shadow_review',
+      })
+
+    expect(startRes.status).toBe(200)
+    expect(startRes.body.meta.shadow_review.status).toBe('running')
+
+    for (let index = 0; index < 3; index += 1) {
+      await usageLedgerRepo.insert({
+        trace_id: `shadow-review-${Date.now()}-${index}`,
+        agent_id: agentId,
+        intent: 'proactive_opening',
+        visibility: 'visible',
+        scene: 'proactive_dm',
+        prompt_ref: { id: 'agent-proactive-dm-opening', version: 1 },
+        render_decision: {
+          voiceLineId: 'qwen-social-v1',
+          tier: 'base',
+          profileId: 'qwen-social-proactive-opening-base',
+          providerId: 'dashscope-openai',
+          modelId: 'qwen-plus-character',
+          region: 'cn-beijing',
+          endpointId: 'dashscope-cn-beijing',
+          fallbackLevel: 'none',
+          reasons: ['initial_profile_resolution'],
+          promptTemplateId: 'agent-proactive-dm-opening',
+          promptVersion: 1,
+        },
+        usage: { prompt_tokens: 18, completion_tokens: 9, total_tokens: 27 },
+        success: true,
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen-plus-character',
+        profile_id: 'qwen-social-proactive-opening-base',
+        billing_class: 'visible_standard',
+        estimated_cost_cny: 0.01,
+        reserved_cost_cny: 0.01,
+        actual_cost_cny: 0.0008,
+        latency_ms: 15,
+        created_at: new Date().toISOString(),
+      })
+    }
+
+    const res = await request(app)
+      .patch(`/v1/agents/${agentId}/inference-profile`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        action: 'collect_shadow_review',
+      })
+
+    expect(res.status).toBe(200)
+    expect(res.body.meta.shadow_review.status).toBe('collected')
+    expect(res.body.meta.shadow_review.summary.recommendation).toBe('approve')
+
+    const approveRes = await request(app)
+      .patch(`/v1/agents/${agentId}/inference-profile`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        action: 'approve_shadow',
+      })
+
+    expect(approveRes.status).toBe(200)
+    expect(approveRes.body.data.migrationState).toBe('stable')
+
+    const profileRes = await request(app).get(`/v1/agents/${agentId}/profile`)
+    expect(profileRes.status).toBe(200)
+    expect(profileRes.body.data.home_voice_line_id).toBe('kimi-deep-v1')
+  })
+
+  it('PATCH /v1/agents/:agentId/inference-profile returns 400 for invalid transition', async () => {
+    const createRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Shadow Invalid Transition Bot' })
+    const agentId = createRes.body.data.id as string
+
+    const res = await request(app)
+      .patch(`/v1/agents/${agentId}/inference-profile`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        action: 'approve_shadow',
+      })
+
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('VALIDATION_ERROR')
   })
 })

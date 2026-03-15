@@ -198,6 +198,38 @@ function buildBundle(): LlmRegistryBundle {
         },
       ],
     },
+    providerAdmission: {
+      version: 1,
+      pools: [
+        {
+          voice_line_id: 'qwen-social-v1',
+          core_family: 'anchor',
+          compare_dimensions: [
+            'persona_lock',
+            'emotional_continuity',
+            'watchability',
+            'callback_fidelity',
+          ],
+          candidates: [
+            {
+              provider_id: 'dashscope-openai',
+              model_id: 'qwen-plus-character',
+              admission: 'admitted',
+            },
+            {
+              provider_id: 'dashscope-openai',
+              model_id: 'qwen-flash-character',
+              admission: 'admitted',
+            },
+            {
+              provider_id: 'dashscope-openai',
+              model_id: 'qwen-max',
+              admission: 'admitted',
+            },
+          ],
+        },
+      ],
+    },
     modelPricing: {
       version: 1,
       pricing: [],
@@ -238,7 +270,11 @@ describe('LLMGateway', () => {
       llmClient,
       credentialBroker: new CredentialBroker({
         bundle,
-        secretResolver: { resolve: vi.fn(() => { throw new Error('missing secret') }) } as never,
+        secretResolver: {
+          resolve: vi.fn(() => {
+            throw new Error('missing secret')
+          }),
+        } as never,
       }),
       usageLedger: new UsageLedgerWriter(),
       budgetGuard: new BudgetGuard(),
@@ -311,20 +347,22 @@ describe('LLMGateway', () => {
       budgetGuard: new BudgetGuard(async () => ({ allowed: false, reason: 'quota exhausted' })),
     })
 
-    await expect(gateway.generateVisibleText({
-      intent: 'proactive_opening',
-      scene: 'proactive_dm',
-      agentId: 'agent-1',
-      homeVoiceLineId: 'qwen-social-v1',
-      promptRef: { id: 'agent-proactive-dm-opening', version: 1 },
-      variables: {},
-      promptMessages: [{ role: 'user', content: 'open' }],
-      budgetClass: 'visible_standard',
-      traceId: 'trace-budget',
-      requestedTier: 'base',
-      allowFallbackWithinLine: true,
-      allowCrossFamily: false,
-    })).rejects.toMatchObject({ code: 'BudgetExceededError' })
+    await expect(
+      gateway.generateVisibleText({
+        intent: 'proactive_opening',
+        scene: 'proactive_dm',
+        agentId: 'agent-1',
+        homeVoiceLineId: 'qwen-social-v1',
+        promptRef: { id: 'agent-proactive-dm-opening', version: 1 },
+        variables: {},
+        promptMessages: [{ role: 'user', content: 'open' }],
+        budgetClass: 'visible_standard',
+        traceId: 'trace-budget',
+        requestedTier: 'base',
+        allowFallbackWithinLine: true,
+        allowCrossFamily: false,
+      }),
+    ).rejects.toMatchObject({ code: 'BudgetExceededError' })
 
     expect(chatSpy).not.toHaveBeenCalled()
   })
@@ -375,7 +413,10 @@ describe('LLMGateway', () => {
 
   it('prioritizes a preferred model inside the resolved profile before falling back by weight', async () => {
     const bundle = buildBundle()
-    bundle.credentialPools.pools[0]!.allowed_model_ids = ['qwen-plus-character', 'qwen-flash-character']
+    bundle.credentialPools.pools[0]!.allowed_model_ids = [
+      'qwen-plus-character',
+      'qwen-flash-character',
+    ]
 
     const usageLedger = new UsageLedgerWriter()
     const llmClient = buildLlmClient()
@@ -413,9 +454,11 @@ describe('LLMGateway', () => {
       allowCrossFamily: false,
     })
 
-    expect(chatSpy).toHaveBeenCalledWith(expect.objectContaining({
-      model: 'qwen-flash-character',
-    }))
+    expect(chatSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'qwen-flash-character',
+      }),
+    )
     expect(response.renderDecision.modelId).toBe('qwen-flash-character')
     expect(response.renderDecision.reasons).toContain('preferred_model_hint')
     expect(usageLedger.list()[0]?.model_id).toBe('qwen-flash-character')
@@ -461,12 +504,84 @@ describe('LLMGateway', () => {
       allowCrossFamily: false,
     })
 
-    expect(chatSpy).toHaveBeenCalledWith(expect.objectContaining({
-      model: 'qwen-plus-character',
-    }))
+    expect(chatSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'qwen-plus-character',
+      }),
+    )
     expect(response.renderDecision.profileId).toBe('qwen-social-identity-write-base')
     expect(response.renderDecision.modelId).toBe('qwen-plus-character')
     expect(usageLedger.list()[0]?.profile_id).toBe('qwen-social-identity-write-base')
+  })
+
+  it('filters visible shadow candidates out of the active route plan', async () => {
+    const bundle = buildBundle()
+    bundle.credentialPools.pools[0]!.allowed_model_ids = [
+      'qwen-plus-character',
+      'qwen-flash-character',
+    ]
+    bundle.providerAdmission.pools[0]!.candidates = [
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen-plus-character',
+        admission: 'admitted',
+      },
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen-flash-character',
+        admission: 'shadow',
+        compare_baseline_model_id: 'qwen-plus-character',
+      },
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen-max',
+        admission: 'admitted',
+      },
+    ]
+
+    const llmClient = buildLlmClient()
+    const chatSpy = vi.spyOn(llmClient, 'chat').mockResolvedValue({
+      content: 'admitted only',
+      usage: { prompt_tokens: 10, completion_tokens: 8, total_tokens: 18 },
+      model: 'qwen-plus-character',
+      finish_reason: 'stop',
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: { resolve: vi.fn(() => 'secret') } as never,
+      }),
+      usageLedger: new UsageLedgerWriter(),
+      budgetGuard: new BudgetGuard(),
+    })
+
+    const response = await gateway.generateVisibleText({
+      intent: 'proactive_opening',
+      scene: 'proactive_dm',
+      agentId: 'agent-1',
+      homeVoiceLineId: 'qwen-social-v1',
+      preferredModelId: 'qwen-flash-character',
+      promptRef: { id: 'agent-proactive-dm-opening', version: 1 },
+      variables: {},
+      promptMessages: [{ role: 'user', content: 'open' }],
+      budgetClass: 'visible_standard',
+      traceId: 'trace-admission',
+      requestedTier: 'base',
+      allowFallbackWithinLine: true,
+      allowCrossFamily: false,
+    })
+
+    expect(chatSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'qwen-plus-character',
+      }),
+    )
+    expect(response.renderDecision.reasons).toContain('provider_admission_pool')
+    expect(response.renderDecision.reasons).toContain('provider_admission_filtered')
+    expect(response.renderDecision.modelId).toBe('qwen-plus-character')
   })
 
   it('tries the next candidate in the same hidden profile when the preferred credential is missing', async () => {
