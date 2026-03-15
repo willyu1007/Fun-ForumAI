@@ -9,7 +9,7 @@ import { useAdminPanelController } from './admin-panel/use-admin-panel-controlle
 export function AdminPanel() {
   const controller = useAdminPanelController()
 
-  if (controller.currentIdentity !== 'admin') {
+  if (controller.auth.currentIdentity !== 'admin') {
     return (
       <div className="space-y-4">
         <h1 className={uix('uix-65af6ac52c')}>管控台</h1>
@@ -29,16 +29,16 @@ export function AdminPanel() {
         <p className={uix('uix-25be576b96')}>内容审核、治理操作与 Runtime 管理</p>
       </div>
 
-      {controller.healthData && (
+      {controller.runtime.healthData && (
         <div className={uix('uix-b61447e6ca')}>
           <span>系统状态</span>
           <Badge variant="outline" className={uix('uix-2801f8f0b2')}>
-            {controller.healthData.data.status === 'ok'
+            {controller.runtime.healthData.data.status === 'ok'
               ? '正常'
-              : controller.healthData.data.status}
+              : controller.runtime.healthData.data.status}
           </Badge>
           <span className={uix('uix-bfa6031907')}>
-            运行 {Math.round(controller.healthData.data.uptime)} 秒
+            运行 {Math.round(controller.runtime.healthData.data.uptime)} 秒
           </span>
         </div>
       )}
@@ -55,11 +55,17 @@ export function AdminPanel() {
         </TabsContent>
 
         <TabsContent value="hot-topic">
-          <HotTopicTab controller={controller} />
+          <HotTopicTab hotTopic={controller.hotTopic} />
         </TabsContent>
 
         <TabsContent value="governance">
-          <GovernanceTab controller={controller} />
+          <GovernanceTab
+            auth={controller.auth}
+            governance={controller.governance}
+            riskProfile={controller.riskProfile}
+            disclosureCaps={controller.disclosureCaps}
+            review={controller.review}
+          />
         </TabsContent>
       </Tabs>
     </div>

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { uix } from '@/shared/utils/uix'
 import type { AdminPanelController } from './use-admin-panel-controller'
+import { AgentRiskProfileCard } from './AgentRiskProfileCard'
 import {
   ACTION_LABELS,
   ACTION_OPTIONS,
@@ -11,14 +12,22 @@ import {
   STATE_LABELS,
   VISIBILITY_LABELS,
 } from './constants'
-import {
-  AgentRiskProfileCard,
-  DisclosureCapCard,
-  IdentityReviewCard,
-  ReviewQueueCard,
-} from './GovernanceSections'
+import { DisclosureCapCard } from './DisclosureCapCard'
+import { IdentityReviewCard } from './IdentityReviewCard'
+import { ReviewQueueCard } from './ReviewQueueCard'
 
-export function GovernanceTab({ controller }: { controller: AdminPanelController }) {
+type GovernanceTabProps = Pick<
+  AdminPanelController,
+  'auth' | 'governance' | 'riskProfile' | 'disclosureCaps' | 'review'
+>
+
+export function GovernanceTab({
+  auth,
+  governance,
+  riskProfile,
+  disclosureCaps,
+  review,
+}: GovernanceTabProps) {
   return (
     <div className={uix('uix-c52b72f5ca')}>
       <Card>
@@ -30,9 +39,9 @@ export function GovernanceTab({ controller }: { controller: AdminPanelController
             <div>
               <label className={uix('uix-b3691fbf2a')}>操作类型</label>
               <select
-                value={controller.action}
+                value={governance.action}
                 onChange={(event) =>
-                  controller.setAction(event.target.value as typeof controller.action)
+                  governance.setAction(event.target.value as typeof governance.action)
                 }
                 className={uix('uix-34e5554f24')}
               >
@@ -46,8 +55,8 @@ export function GovernanceTab({ controller }: { controller: AdminPanelController
             <div>
               <label className={uix('uix-b3691fbf2a')}>目标类型</label>
               <select
-                value={controller.targetType}
-                onChange={(event) => controller.setTargetType(event.target.value)}
+                value={governance.targetType}
+                onChange={(event) => governance.setTargetType(event.target.value)}
                 className={uix('uix-34e5554f24')}
               >
                 {TARGET_OPTIONS.map((target) => (
@@ -60,38 +69,38 @@ export function GovernanceTab({ controller }: { controller: AdminPanelController
           </div>
           <Input
             placeholder="目标 ID（如 post_123…）"
-            value={controller.targetId}
-            onChange={(event) => controller.setTargetId(event.target.value)}
+            value={governance.targetId}
+            onChange={(event) => governance.setTargetId(event.target.value)}
             className={uix('uix-fc76479a37')}
           />
           <Input
             placeholder="原因（选填）"
-            value={controller.reason}
-            onChange={(event) => controller.setReason(event.target.value)}
+            value={governance.reason}
+            onChange={(event) => governance.setReason(event.target.value)}
             className={uix('uix-fc76479a37')}
           />
           <Button
             size="sm"
             onClick={() => {
-              void controller.handleSubmit()
+              void governance.handleSubmit()
             }}
-            disabled={controller.governance.isPending || !controller.targetId.trim()}
+            disabled={governance.mutation.isPending || !governance.targetId.trim()}
           >
-            {controller.governance.isPending ? '执行中…' : '执行操作'}
+            {governance.mutation.isPending ? '执行中…' : '执行操作'}
           </Button>
-          {controller.governance.isError && (
+          {governance.mutation.isError && (
             <p className={uix('uix-551c237449')}>
-              {controller.governance.error.message}
+              {governance.mutation.error.message}
             </p>
           )}
         </CardContent>
       </Card>
 
-      {controller.history.length > 0 && (
+      {governance.history.length > 0 && (
         <section>
           <h2 className={uix('uix-673a51ffad')}>操作记录</h2>
           <div className="space-y-1">
-            {controller.history.map((result, index) => (
+            {governance.history.map((result, index) => (
               <div key={index} className={uix('uix-81af913189')}>
                 <div>
                   <p className={uix('uix-da8bf29040')}>
@@ -119,12 +128,12 @@ export function GovernanceTab({ controller }: { controller: AdminPanelController
       )}
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <AgentRiskProfileCard controller={controller} />
-        <DisclosureCapCard controller={controller} />
+        <AgentRiskProfileCard governance={governance} riskProfile={riskProfile} />
+        <DisclosureCapCard disclosureCaps={disclosureCaps} />
       </div>
 
-      <ReviewQueueCard controller={controller} />
-      <IdentityReviewCard controller={controller} />
+      <ReviewQueueCard auth={auth} review={review} />
+      <IdentityReviewCard review={review} />
     </div>
   )
 }

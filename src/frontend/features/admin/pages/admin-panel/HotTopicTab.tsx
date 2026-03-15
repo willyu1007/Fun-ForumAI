@@ -15,7 +15,9 @@ import {
 } from './constants'
 import { HotTopicDashboardCard } from './shared'
 
-export function HotTopicTab({ controller }: { controller: AdminPanelController }) {
+type HotTopicTabProps = Pick<AdminPanelController, 'hotTopic'>
+
+export function HotTopicTab({ hotTopic }: HotTopicTabProps) {
   return (
     <div className={uix('uix-c52b72f5ca')}>
       <div className="grid gap-4 xl:grid-cols-2">
@@ -30,32 +32,32 @@ export function HotTopicTab({ controller }: { controller: AdminPanelController }
             </p>
             <Input
               placeholder="操作原因（将写入治理日志）"
-              value={controller.hotTopicReason}
-              onChange={(event) => controller.setHotTopicReason(event.target.value)}
+              value={hotTopic.hotTopicReason}
+              onChange={(event) => hotTopic.setHotTopicReason(event.target.value)}
             />
-            {controller.dashboardItems.length === 0 && (
+            {hotTopic.dashboardItems.length === 0 && (
               <p className={uix('uix-abda0153e3')}>当前没有热点面板数据。</p>
             )}
             <div className="space-y-3">
-              {controller.dashboardItems.map((item) => (
+              {hotTopic.dashboardItems.map((item) => (
                 <HotTopicDashboardCard
                   key={`${item.target_type}:${item.target_id}`}
                   item={item}
-                  onSetPostDistribution={controller.handleSetPostDistribution}
-                  onSetRoomControl={controller.handleSetRoomControl}
-                  postPending={controller.setHotTopicPostDistribution.isPending}
-                  roomPending={controller.setHotTopicRoomControl.isPending}
+                  onSetPostDistribution={hotTopic.handleSetPostDistribution}
+                  onSetRoomControl={hotTopic.handleSetRoomControl}
+                  postPending={hotTopic.setPostDistributionMutation.isPending}
+                  roomPending={hotTopic.setRoomControlMutation.isPending}
                 />
               ))}
             </div>
-            {controller.setHotTopicPostDistribution.isError && (
+            {hotTopic.setPostDistributionMutation.isError && (
               <p className={uix('uix-551c237449')}>
-                {controller.setHotTopicPostDistribution.error.message}
+                {hotTopic.setPostDistributionMutation.error.message}
               </p>
             )}
-            {controller.setHotTopicRoomControl.isError && (
+            {hotTopic.setRoomControlMutation.isError && (
               <p className={uix('uix-551c237449')}>
-                {controller.setHotTopicRoomControl.error.message}
+                {hotTopic.setRoomControlMutation.error.message}
               </p>
             )}
           </CardContent>
@@ -67,12 +69,12 @@ export function HotTopicTab({ controller }: { controller: AdminPanelController }
               <CardTitle className={uix('uix-fc7473ca09')}>热点告警</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {controller.alertItems.length === 0 && (
+              {hotTopic.alertItems.length === 0 && (
                 <p className={uix('uix-abda0153e3')}>
                   当前没有 medium/high 级别热点告警。
                 </p>
               )}
-              {controller.alertItems.map((alert) => (
+              {hotTopic.alertItems.map((alert) => (
                 <div
                   key={`${alert.item.target_type}:${alert.item.target_id}:${alert.reason}`}
                   className={uix('uix-3ff7f9f76c')}
@@ -109,17 +111,17 @@ export function HotTopicTab({ controller }: { controller: AdminPanelController }
               </p>
               <Input
                 placeholder="Community ID"
-                value={controller.communityPolicyId}
-                onChange={(event) => controller.setCommunityPolicyId(event.target.value)}
+                value={hotTopic.communityPolicyId}
+                onChange={(event) => hotTopic.setCommunityPolicyId(event.target.value)}
               />
               <div className="grid gap-3 lg:grid-cols-2">
                 <div className="space-y-1">
                   <label className={uix('uix-b3691fbf2a')}>热点模式</label>
                   <select
-                    value={controller.communityPolicyMode}
+                    value={hotTopic.communityPolicyMode}
                     onChange={(event) =>
-                      controller.setCommunityPolicyMode(
-                        event.target.value as typeof controller.communityPolicyMode,
+                      hotTopic.setCommunityPolicyMode(
+                        event.target.value as typeof hotTopic.communityPolicyMode,
                       )
                     }
                     className={uix('uix-34e5554f24')}
@@ -135,8 +137,8 @@ export function HotTopicTab({ controller }: { controller: AdminPanelController }
                   <label className={uix('uix-b3691fbf2a')}>用户提示文案</label>
                   <Input
                     placeholder="例如：热点内容可能仅保留直达访问"
-                    value={controller.communityPolicyCopy}
-                    onChange={(event) => controller.setCommunityPolicyCopy(event.target.value)}
+                    value={hotTopic.communityPolicyCopy}
+                    onChange={(event) => hotTopic.setCommunityPolicyCopy(event.target.value)}
                   />
                 </div>
               </div>
@@ -147,8 +149,8 @@ export function HotTopicTab({ controller }: { controller: AdminPanelController }
                     <label key={domain} className={uix('uix-cc8c57f280')}>
                       <input
                         type="checkbox"
-                        checked={controller.communityAllowedDomains.includes(domain)}
-                        onChange={() => controller.toggleCommunityAllowedDomain(domain)}
+                        checked={hotTopic.communityAllowedDomains.includes(domain)}
+                        onChange={() => hotTopic.toggleCommunityAllowedDomain(domain)}
                       />
                       <span>{HOT_TOPIC_DOMAIN_LABELS[domain]}</span>
                     </label>
@@ -158,26 +160,26 @@ export function HotTopicTab({ controller }: { controller: AdminPanelController }
               <Button
                 size="sm"
                 onClick={() => {
-                  void controller.handleApplyCommunityPolicy()
+                  void hotTopic.handleApplyCommunityPolicy()
                 }}
                 disabled={
-                  controller.applyCommunityHotTopicPolicy.isPending ||
-                  !controller.communityPolicyId.trim()
+                  hotTopic.applyCommunityPolicyMutation.isPending ||
+                  !hotTopic.communityPolicyId.trim()
                 }
               >
-                {controller.applyCommunityHotTopicPolicy.isPending
+                {hotTopic.applyCommunityPolicyMutation.isPending
                   ? '应用中…'
                   : '提交并应用热点策略'}
               </Button>
-              {controller.applyCommunityHotTopicPolicy.isSuccess && (
+              {hotTopic.applyCommunityPolicyMutation.isSuccess && (
                 <p className={uix('uix-abda0153e3')}>
                   已完成 proposal/validate/approve/apply，当前版本：
-                  {controller.applyCommunityHotTopicPolicy.data.data.version?.id ?? 'scheduled'}
+                  {hotTopic.applyCommunityPolicyMutation.data.data.version?.id ?? 'scheduled'}
                 </p>
               )}
-              {controller.applyCommunityHotTopicPolicy.isError && (
+              {hotTopic.applyCommunityPolicyMutation.isError && (
                 <p className={uix('uix-551c237449')}>
-                  {controller.applyCommunityHotTopicPolicy.error.message}
+                  {hotTopic.applyCommunityPolicyMutation.error.message}
                 </p>
               )}
             </CardContent>

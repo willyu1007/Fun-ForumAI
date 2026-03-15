@@ -16,8 +16,13 @@ import { useChatRoomController } from './chat-room-page/use-chat-room-controller
 
 export function ChatRoomPage() {
   const controller = useChatRoomController()
+  const room = controller.room
+  const viewer = controller.viewer
+  const reporting = controller.reporting
+  const director = controller.director
+  const presentation = controller.presentation
 
-  if (controller.roomLoading) {
+  if (room.roomLoading) {
     return (
       <div className={uix('uix-edaf7e98d8')}>
         <Skeleton className="h-8 w-48" />
@@ -26,7 +31,7 @@ export function ChatRoomPage() {
     )
   }
 
-  if (!controller.room) {
+  if (!room.room) {
     return <div className={uix('uix-3973a73bc4')}>聊天室不存在</div>
   }
 
@@ -34,85 +39,85 @@ export function ChatRoomPage() {
     <div className={cn(uix('uix-6489629c6b'), DEV_AUTH_TOOLBAR_SAFE_AREA_CLASS)}>
       <div className="flex min-w-0 flex-1 flex-col">
         <ChatHeader
-          name={controller.room.name}
-          status={controller.room.status}
-          memberCount={controller.room.members?.length ?? 0}
-          sceneType={controller.snapshot?.scene_type ?? controller.program?.scene_type ?? 'FREE_CHAT'}
+          name={room.room.name}
+          status={room.room.status}
+          memberCount={room.room.members?.length ?? 0}
+          sceneType={room.snapshot?.scene_type ?? room.program?.scene_type ?? 'FREE_CHAT'}
           liveHook={
-            controller.snapshot?.live_hook ??
-            controller.room.watchability?.live_hook ??
-            controller.room.description
+            room.snapshot?.live_hook ?? room.room.watchability?.live_hook ?? room.room.description
           }
           unresolvedQuestion={
-            controller.snapshot?.unresolved_question ??
-            controller.room.watchability?.unresolved_question ??
+            room.snapshot?.unresolved_question ??
+            room.room.watchability?.unresolved_question ??
             null
           }
-          recapShort={controller.snapshot?.recap_short ?? null}
-          cast={controller.cast?.cast ?? []}
-          programEnabled={controller.program?.enabled ?? false}
+          recapShort={room.snapshot?.recap_short ?? null}
+          cast={room.cast?.cast ?? []}
+          programEnabled={room.program?.enabled ?? false}
           currentBeat={
-            controller.snapshot?.current_beat ??
-            controller.program?.current_episode?.current_beat ??
+            room.snapshot?.current_beat ??
+            room.program?.current_episode?.current_beat ??
             null
           }
-          lastHighlight={controller.highlights[0] ?? null}
-          energy={controller.snapshot?.energy ?? controller.room.watchability?.energy ?? 0}
-          tension={controller.snapshot?.tension ?? controller.room.watchability?.tension ?? 0}
-          onToggleMembers={() => controller.setShowMembers((value) => !value)}
-          onOpenDirector={() => controller.setShowDirectorSheet(true)}
-          showDirectorButton={Boolean(controller.controlState)}
+          lastHighlight={room.highlights[0] ?? null}
+          energy={room.snapshot?.energy ?? room.room.watchability?.energy ?? 0}
+          tension={room.snapshot?.tension ?? room.room.watchability?.tension ?? 0}
+          onToggleMembers={() => viewer.setShowMembers((value) => !value)}
+          onOpenDirector={() => director.setShowDirectorSheet(true)}
+          showDirectorButton={Boolean(director.controlState)}
         />
 
         <HotTopicNotice
-          roomMode={controller.roomHotTopicMode}
-          communityMode={controller.communityHotTopicPolicy?.mode ?? 'NORMAL'}
-          noRecommend={controller.roomNoRecommend}
+          roomMode={presentation.roomHotTopicMode}
+          communityMode={presentation.communityHotTopicPolicy?.mode ?? 'NORMAL'}
+          noRecommend={presentation.roomNoRecommend}
           customCopy={
-            controller.communityHotTopicPolicy?.userCopy.room_banner ??
-            controller.communityHotTopicPolicy?.userCopy.summary ??
+            presentation.communityHotTopicPolicy?.userCopy.room_banner ??
+            presentation.communityHotTopicPolicy?.userCopy.summary ??
             null
           }
         />
 
         <ScrollArea className={uix('uix-83d918e44e')}>
           <div className="space-y-3">
-            {(controller.publicContinuity || controller.publicCanon || controller.publicCameo) && (
+            {(presentation.publicContinuity ||
+              presentation.publicCanon ||
+              presentation.publicCameo) && (
               <PublicStorylineRail
-                continuitySummary={controller.publicContinuity}
-                canonizationNote={controller.publicCanon}
-                cameoHint={controller.publicCameo}
+                continuitySummary={presentation.publicContinuity}
+                canonizationNote={presentation.publicCanon}
+                cameoHint={presentation.publicCameo}
               />
             )}
-            {controller.highlights.length > 0 && (
-              <HighlightStrip highlights={controller.highlights} />
+            {room.highlights.length > 0 && (
+              <HighlightStrip highlights={room.highlights} />
             )}
-            {controller.messages.length === 0 && (
+            {room.messages.length === 0 && (
               <div className={uix('uix-634db381a1')}>
                 暂时没有消息，等待 Agent 们开始对话...
               </div>
             )}
-            {controller.messages.map((message) => (
+            {room.messages.map((message) => (
               <MessageBubble
                 key={message.id}
                 message={message}
-                highlighted={controller.highlightedMessageIds.has(message.id)}
-                authorName={controller.agentNameMap.get(message.author_id)}
-                canReport={controller.isAuthenticated}
-                reportPending={controller.createReport.isPending}
-                reportState={controller.reportStateByMessageId[message.id] ?? null}
-                onReport={controller.handleReportMessage}
+                highlighted={presentation.highlightedMessageIds.has(message.id)}
+                authorName={presentation.agentNameMap.get(message.author_id)}
+                canReport={viewer.isAuthenticated}
+                reportPending={reporting.createReport.isPending}
+                reportState={reporting.reportStateByMessageId[message.id] ?? null}
+                onReport={reporting.handleReportMessage}
               />
             ))}
-            {controller.typingAgents.size > 0 && (
+            {presentation.typingAgents.size > 0 && (
               <div className={uix('uix-29a3467e30')}>
-                {Array.from(controller.typingAgents)
-                  .map((id) => controller.agentNameMap.get(id) ?? id.slice(0, 8))
+                {Array.from(presentation.typingAgents)
+                  .map((id) => presentation.agentNameMap.get(id) ?? id.slice(0, 8))
                   .join(', ')}{' '}
                 正在思考...
               </div>
             )}
-            <div ref={controller.messagesEndRef} />
+            <div ref={presentation.messagesEndRef} />
           </div>
         </ScrollArea>
 
@@ -123,22 +128,22 @@ export function ChatRoomPage() {
         </div>
       </div>
 
-      {controller.showMembers && controller.room.members && (
+      {viewer.showMembers && room.room.members && (
         <ParticipantsSidebar
-          members={controller.room.members}
-          roomId={controller.room.id}
-          canControl={Boolean(controller.controlState)}
+          members={room.room.members}
+          roomId={room.room.id}
+          canControl={Boolean(director.controlState)}
         />
       )}
 
-      {controller.controlState && (
+      {director.controlState && (
         <>
           <aside className={uix('uix-0ee0f941cf')}>
-            <DirectorPanel roomId={controller.room.id} controlState={controller.controlState} />
+            <DirectorPanel roomId={room.room.id} controlState={director.controlState} />
           </aside>
           <Sheet
-            open={controller.showDirectorSheet}
-            onOpenChange={controller.setShowDirectorSheet}
+            open={director.showDirectorSheet}
+            onOpenChange={director.setShowDirectorSheet}
           >
             <SheetContent side="right" className={uix('uix-bfe1b1b1b7')}>
               <SheetHeader className={uix('uix-65fdbade20')}>
@@ -146,8 +151,8 @@ export function ChatRoomPage() {
                 <SheetDescription>仅 creator owner 可见的房间控制面。</SheetDescription>
               </SheetHeader>
               <DirectorPanel
-                roomId={controller.room.id}
-                controlState={controller.controlState}
+                roomId={room.room.id}
+                controlState={director.controlState}
                 compact
               />
             </SheetContent>

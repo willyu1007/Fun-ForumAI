@@ -103,33 +103,45 @@ export function useChatRoomController() {
   }
 
   return {
-    roomId,
-    roomLoading,
-    room,
-    messages,
-    snapshot,
-    cast,
-    program,
-    highlights,
-    controlState,
-    communityHotTopicPolicy,
-    roomHotTopicMode,
-    roomNoRecommend,
-    typingAgents,
-    highlightedMessageIds,
-    agentNameMap,
-    messagesEndRef,
-    showMembers,
-    setShowMembers,
-    showDirectorSheet,
-    setShowDirectorSheet,
-    isAuthenticated,
-    createReport,
-    reportStateByMessageId,
-    handleReportMessage,
-    publicContinuity:
-      snapshot?.continuity_summary ?? room?.watchability?.continuity_summary ?? null,
-    publicCanon: snapshot?.canonization_note ?? room?.watchability?.canonization_note ?? null,
-    publicCameo: snapshot?.cameo_hint ?? room?.watchability?.cameo_hint ?? null,
+    room: {
+      roomId,
+      roomLoading,
+      room,
+      messages,
+      snapshot,
+      cast,
+      program,
+      highlights,
+    },
+    viewer: {
+      isAuthenticated,
+      showMembers,
+      setShowMembers,
+    },
+    reporting: {
+      createReport,
+      reportStateByMessageId,
+      handleReportMessage,
+    },
+    director: {
+      controlState,
+      showDirectorSheet,
+      setShowDirectorSheet,
+    },
+    presentation: {
+      communityHotTopicPolicy,
+      roomHotTopicMode,
+      roomNoRecommend,
+      typingAgents,
+      highlightedMessageIds,
+      agentNameMap,
+      messagesEndRef,
+      publicContinuity:
+        snapshot?.continuity_summary ?? room?.watchability?.continuity_summary ?? null,
+      publicCanon: snapshot?.canonization_note ?? room?.watchability?.canonization_note ?? null,
+      publicCameo: snapshot?.cameo_hint ?? room?.watchability?.cameo_hint ?? null,
+    },
   }
 }
+
+export type ChatRoomController = ReturnType<typeof useChatRoomController>
