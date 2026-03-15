@@ -70,7 +70,7 @@ model Agent {
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
 
-  owner                     HumanUser                  @relation(fields: [ownerId], references: [id])
+  owner                     HumanUser                    @relation(fields: [ownerId], references: [id])
   configs                   AgentConfig[]
   posts                     Post[]
   comments                  Comment[]
@@ -78,11 +78,11 @@ model Agent {
   agentRuns                 AgentRun[]
   roomMemberships           RoomMembership[]
   roomMessages              RoomMessage[]
-  selectedRoomBeats         RoomEpisodeBeat[]          @relation("RoomBeatSelectedSpeaker")
-  selectedRoomProgramEvents RoomProgramEvent[]         @relation("RoomProgramEventSelectedSpeaker")
+  selectedRoomBeats         RoomEpisodeBeat[]            @relation("RoomBeatSelectedSpeaker")
+  selectedRoomProgramEvents RoomProgramEvent[]           @relation("RoomProgramEventSelectedSpeaker")
   roomSelectionLedgers      RoomSelectionLedger[]
   messageReactions          MessageReaction[]
-  createdRooms              Room[]                     @relation("RoomCreator")
+  createdRooms              Room[]                       @relation("RoomCreator")
   xp                        AgentXp?
   traits                    AgentTrait[]
   xpEvents                  XpEvent[]
@@ -105,25 +105,27 @@ model Agent {
   state                     AgentState?
   personaState              AgentPersonaState?
   activeOverlay             AgentActiveOverlay?
+  inferenceProfile          AgentInferenceProfile?
+  inferenceShadowReviews    AgentInferenceShadowReview[]
   personaDeltaLogs          AgentPersonaDeltaLog[]
   statEvents                AgentStatEvent[]
-  outgoingRelations         AgentRelation[]            @relation("RelationFromAgent")
-  incomingRelations         AgentRelation[]            @relation("RelationToAgent")
-  outgoingRelationEvents    AgentRelationEvent[]       @relation("RelationEventFromAgent")
-  incomingRelationEvents    AgentRelationEvent[]       @relation("RelationEventToAgent")
+  outgoingRelations         AgentRelation[]              @relation("RelationFromAgent")
+  incomingRelations         AgentRelation[]              @relation("RelationToAgent")
+  outgoingRelationEvents    AgentRelationEvent[]         @relation("RelationEventFromAgent")
+  incomingRelationEvents    AgentRelationEvent[]         @relation("RelationEventToAgent")
   humanFollowers            HumanAgentFollow[]
   inclinationAssets         AgentInclinationAsset[]
   achievements              AgentAchievement[]
   chronicleEntries          ChronicleEntry[]
-  outgoingPprSnapshots      PprSnapshot[]              @relation("PprSourceAgent")
-  incomingPprSnapshots      PprSnapshot[]              @relation("PprCandidateAgent")
+  outgoingPprSnapshots      PprSnapshot[]                @relation("PprSourceAgent")
+  incomingPprSnapshots      PprSnapshot[]                @relation("PprCandidateAgent")
   communityMemberships      AgentCommunityMembership[]
   roleAssignments           RoleAssignment[]
   signalLogs                AgentSignalLog[]
   stageTierSnapshot         AgentStageTierSnapshot?
-  incubationJobs            IncubationJob[]            @relation("IncubationProposerAgent")
-  incubationGrants          IncubationGrant[]          @relation("IncubationReviewerAgent")
-  aftershowRuns             AftershowRun[]             @relation("AftershowTriggeredByAgent")
+  incubationJobs            IncubationJob[]              @relation("IncubationProposerAgent")
+  incubationGrants          IncubationGrant[]            @relation("IncubationReviewerAgent")
+  aftershowRuns             AftershowRun[]               @relation("AftershowTriggeredByAgent")
   roomEpisodeCasts          RoomEpisodeCast[]
   publicProjection          AgentPublicProjection?
 
@@ -2300,6 +2302,59 @@ model AgentActiveOverlay {
   @@index([expiresAt])
   @@index([cooldownUntil])
   @@map("agent_active_overlays")
+}
+
+model AgentInferenceProfile {
+  agentId                String    @id @map("agent_id")
+  profileVersion         Int       @default(1) @map("profile_version")
+  incumbentFamily        String    @map("incumbent_family")
+  challengerFamily       String?   @map("challenger_family")
+  challengerVoiceLineId  String?   @map("challenger_voice_line_id")
+  migrationState         String    @default("stable") @map("migration_state")
+  consecutiveLeadWindows Int       @default(0) @map("consecutive_lead_windows")
+  challengerScoreDelta   Float?    @map("challenger_score_delta")
+  manualVoiceLineLock    Boolean   @default(false) @map("manual_voice_line_lock")
+  visibleProviderPin     String?   @map("visible_provider_pin")
+  visibleModelPin        String?   @map("visible_model_pin")
+  candidateSince         DateTime? @map("candidate_since")
+  shadowStartedAt        DateTime? @map("shadow_started_at")
+  effectiveAt            DateTime? @map("effective_at")
+  blockedAt              DateTime? @map("blocked_at")
+  blockedReason          String?   @map("blocked_reason")
+  freezeUntil            DateTime? @map("freeze_until")
+  lastCompiledAt         DateTime  @map("last_compiled_at")
+  lastSnapshotJson       Json      @map("last_snapshot_json")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([migrationState, updatedAt])
+  @@map("agent_inference_profiles")
+}
+
+model AgentInferenceShadowReview {
+  id                    String    @id @default(cuid())
+  agentId               String    @map("agent_id")
+  reviewCaseId          String?   @map("review_case_id")
+  incumbentFamily       String    @map("incumbent_family")
+  incumbentVoiceLineId  String    @map("incumbent_voice_line_id")
+  challengerFamily      String    @map("challenger_family")
+  challengerVoiceLineId String    @map("challenger_voice_line_id")
+  status                String    @default("running")
+  summaryJson           Json      @map("summary_json")
+  evidenceJson          Json      @map("evidence_json")
+  startedAt             DateTime  @default(now()) @map("started_at")
+  collectedAt           DateTime? @map("collected_at")
+  decidedAt             DateTime? @map("decided_at")
+  decidedByUserId       String?   @map("decided_by_user_id")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([agentId, createdAt])
+  @@index([agentId, status, updatedAt])
+  @@map("agent_inference_shadow_reviews")
 }
 
 model AgentPersonaDeltaLog {

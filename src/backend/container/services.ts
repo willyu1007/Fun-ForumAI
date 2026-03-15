@@ -10,6 +10,7 @@ import { ChatService } from '../services/chat-service.js'
 import { AuthService } from '../services/auth-service.js'
 import { StatsService } from '../services/stats-service.js'
 import { PersonaStateService } from '../services/persona-state-service.js'
+import { InferenceProfileService } from '../services/inference-profile-service.js'
 import { AchievementChronicleService } from '../services/achievement-chronicle-service.js'
 import { AchievementsOrchestrator } from '../services/achievements-orchestrator.js'
 import { AgentStageTierService } from '../services/agent-stage-tier-service.js'
@@ -55,6 +56,7 @@ import type { ModerationService } from '../moderation/moderation-service.js'
 import type { SseHub } from '../sse/hub.js'
 import type { LLMGateway } from '../llm/llm-gateway.js'
 import type { LeaderElector } from '../runtime/leader-elector.js'
+import type { UsageLedgerRepository } from '../llm/usage-ledger.js'
 import type { Repositories } from './repos.js'
 
 export function createCoreServices(deps: {
@@ -62,6 +64,7 @@ export function createCoreServices(deps: {
   sseHub: SseHub
   moderator: ModerationService
   llmGateway: LLMGateway
+  usageLedgerRepo?: UsageLedgerRepository | null
   roomLifecycleLeaderElector: LeaderElector
   conversationClockLeaderElector: LeaderElector
 }) {
@@ -96,12 +99,17 @@ export function createCoreServices(deps: {
     roomWatchabilityRepo: repos.roomWatchabilityRepo,
   })
   const agentConfigLintService = new AgentConfigLintService()
-  const complaintAppealService = new ComplaintAppealService(repos.riskGovernanceRepo, reviewService, {
-    postRepo: repos.postRepo,
-    commentRepo: repos.commentRepo,
-    messageRepo: repos.messageRepo,
-    agentRepo: repos.agentRepo,
-  }, notificationService)
+  const complaintAppealService = new ComplaintAppealService(
+    repos.riskGovernanceRepo,
+    reviewService,
+    {
+      postRepo: repos.postRepo,
+      commentRepo: repos.commentRepo,
+      messageRepo: repos.messageRepo,
+      agentRepo: repos.agentRepo,
+    },
+    notificationService,
+  )
 
   const forumReadService = new ForumReadService({
     postRepo: repos.postRepo,
@@ -230,6 +238,16 @@ export function createCoreServices(deps: {
     personaStateRepo: repos.personaStateRepo,
     agentService,
     statsService,
+  })
+  const inferenceProfileService = new InferenceProfileService({
+    agentService,
+    statsService,
+    statsRepo: repos.statsRepo,
+    personaStateService,
+    personaStateRepo: repos.personaStateRepo,
+    usageLedgerRepo: deps.usageLedgerRepo ?? null,
+    reviewService,
+    xpService: null,
   })
 
   const agentPublicProjectionService = new AgentPublicProjectionService({
@@ -408,6 +426,7 @@ export function createCoreServices(deps: {
     promptLayerService: null,
     promptOrchestrator: null,
     personaStateService,
+    inferenceProfileService,
     chatroomRuntimeContextBuilder,
     roomWatchabilityRepo: repos.roomWatchabilityRepo,
     roomProgramEngine,
@@ -420,7 +439,7 @@ export function createCoreServices(deps: {
   chatService.setRoomProgramProjector(roomProgramProjector)
   conversationClock.setChatroomRuntimeContextBuilder(chatroomRuntimeContextBuilder)
   chatroomControlService.setFastLaneHook(({ roomId, agentId }) =>
-    conversationClock.prioritizeAgent(roomId, agentId)
+    conversationClock.prioritizeAgent(roomId, agentId),
   )
 
   chatService.setJoinHook((roomId, agentId, tick) => {
@@ -450,6 +469,7 @@ export function createCoreServices(deps: {
     communityCultureDigestService,
     statsService,
     personaStateService,
+    inferenceProfileService,
     agentPublicProjectionService,
     chatService,
     roomProjector,

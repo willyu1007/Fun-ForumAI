@@ -1,11 +1,24 @@
-import { Prisma, type AgentActiveOverlay as PrismaAgentActiveOverlay, type AgentPersonaDeltaLog as PrismaAgentPersonaDeltaLog, type AgentPersonaState as PrismaAgentPersonaState, type PrismaClient } from '@prisma/client'
+import {
+  Prisma,
+  type AgentActiveOverlay as PrismaAgentActiveOverlay,
+  type AgentInferenceProfile as PrismaAgentInferenceProfile,
+  type AgentInferenceShadowReview as PrismaAgentInferenceShadowReview,
+  type AgentPersonaDeltaLog as PrismaAgentPersonaDeltaLog,
+  type AgentPersonaState as PrismaAgentPersonaState,
+  type PrismaClient,
+} from '@prisma/client'
 import type {
   AgentActiveOverlayEntity,
+  AgentInferenceProfileEntity,
+  AgentInferenceShadowReviewEntity,
   AgentPersonaDeltaLogEntity,
   AgentPersonaStateEntity,
+  CreateAgentInferenceShadowReviewInput,
   CreateAgentPersonaDeltaLogInput,
+  SaveAgentInferenceProfileInput,
   SaveAgentActiveOverlayInput,
   SaveAgentPersonaStateInput,
+  UpdateAgentInferenceShadowReviewInput,
 } from '../types.js'
 import type { PersonaStateRepository } from '../persona-state-repository.js'
 
@@ -32,12 +45,15 @@ export class PgPersonaStateRepository implements PersonaStateRepository {
           maturity: input.maturity,
           confidence: input.confidence,
           driftScore: input.drift_score,
-          lastRenderDecisionJson: (input.last_render_decision_json ?? null) as Prisma.InputJsonValue,
+          lastRenderDecisionJson: (input.last_render_decision_json ??
+            null) as Prisma.InputJsonValue,
           version: { increment: 1 },
         },
       })
       if (updated.count === 0) return null
-      const latest = await this.prisma.agentPersonaState.findUnique({ where: { agentId: input.agent_id } })
+      const latest = await this.prisma.agentPersonaState.findUnique({
+        where: { agentId: input.agent_id },
+      })
       return latest ? this.toStateEntity(latest) : null
     }
 
@@ -110,7 +126,123 @@ export class PgPersonaStateRepository implements PersonaStateRepository {
     await this.prisma.agentActiveOverlay.deleteMany({ where: { agentId } })
   }
 
-  async createDeltaLog(input: CreateAgentPersonaDeltaLogInput): Promise<AgentPersonaDeltaLogEntity> {
+  async findInferenceProfile(agentId: string): Promise<AgentInferenceProfileEntity | null> {
+    const row = await this.prisma.agentInferenceProfile.findUnique({ where: { agentId } })
+    return row ? this.toInferenceProfileEntity(row) : null
+  }
+
+  async saveInferenceProfile(
+    input: SaveAgentInferenceProfileInput,
+  ): Promise<AgentInferenceProfileEntity> {
+    const row = await this.prisma.agentInferenceProfile.upsert({
+      where: { agentId: input.agent_id },
+      create: {
+        agentId: input.agent_id,
+        profileVersion: input.profile_version ?? 1,
+        incumbentFamily: input.incumbent_family,
+        challengerFamily: input.challenger_family ?? null,
+        challengerVoiceLineId: input.challenger_voice_line_id ?? null,
+        migrationState: input.migration_state,
+        consecutiveLeadWindows: input.consecutive_lead_windows,
+        challengerScoreDelta: input.challenger_score_delta ?? null,
+        manualVoiceLineLock: input.manual_voice_line_lock,
+        visibleProviderPin: input.visible_provider_pin ?? null,
+        visibleModelPin: input.visible_model_pin ?? null,
+        candidateSince: input.candidate_since ?? null,
+        shadowStartedAt: input.shadow_started_at ?? null,
+        effectiveAt: input.effective_at ?? null,
+        blockedAt: input.blocked_at ?? null,
+        blockedReason: input.blocked_reason ?? null,
+        freezeUntil: input.freeze_until ?? null,
+        lastCompiledAt: input.last_compiled_at,
+        lastSnapshotJson: input.last_snapshot_json as Prisma.InputJsonValue,
+      },
+      update: {
+        profileVersion: input.profile_version ?? undefined,
+        incumbentFamily: input.incumbent_family,
+        challengerFamily: input.challenger_family ?? null,
+        challengerVoiceLineId: input.challenger_voice_line_id ?? null,
+        migrationState: input.migration_state,
+        consecutiveLeadWindows: input.consecutive_lead_windows,
+        challengerScoreDelta: input.challenger_score_delta ?? null,
+        manualVoiceLineLock: input.manual_voice_line_lock,
+        visibleProviderPin: input.visible_provider_pin ?? null,
+        visibleModelPin: input.visible_model_pin ?? null,
+        candidateSince: input.candidate_since ?? null,
+        shadowStartedAt: input.shadow_started_at ?? null,
+        effectiveAt: input.effective_at ?? null,
+        blockedAt: input.blocked_at ?? null,
+        blockedReason: input.blocked_reason ?? null,
+        freezeUntil: input.freeze_until ?? null,
+        lastCompiledAt: input.last_compiled_at,
+        lastSnapshotJson: input.last_snapshot_json as Prisma.InputJsonValue,
+      },
+    })
+    return this.toInferenceProfileEntity(row)
+  }
+
+  async findLatestInferenceShadowReview(
+    agentId: string,
+  ): Promise<AgentInferenceShadowReviewEntity | null> {
+    const row = await this.prisma.agentInferenceShadowReview.findFirst({
+      where: { agentId },
+      orderBy: [{ createdAt: 'desc' }],
+    })
+    return row ? this.toInferenceShadowReviewEntity(row) : null
+  }
+
+  async createInferenceShadowReview(
+    input: CreateAgentInferenceShadowReviewInput,
+  ): Promise<AgentInferenceShadowReviewEntity> {
+    const row = await this.prisma.agentInferenceShadowReview.create({
+      data: {
+        agentId: input.agent_id,
+        reviewCaseId: input.review_case_id ?? null,
+        incumbentFamily: input.incumbent_family,
+        incumbentVoiceLineId: input.incumbent_voice_line_id,
+        challengerFamily: input.challenger_family,
+        challengerVoiceLineId: input.challenger_voice_line_id,
+        status: input.status,
+        summaryJson: input.summary_json as Prisma.InputJsonValue,
+        evidenceJson: input.evidence_json as Prisma.InputJsonValue,
+        startedAt: input.started_at,
+        collectedAt: input.collected_at ?? null,
+        decidedAt: input.decided_at ?? null,
+        decidedByUserId: input.decided_by_user_id ?? null,
+      },
+    })
+    return this.toInferenceShadowReviewEntity(row)
+  }
+
+  async updateInferenceShadowReview(
+    reviewId: string,
+    input: UpdateAgentInferenceShadowReviewInput,
+  ): Promise<AgentInferenceShadowReviewEntity | null> {
+    const row = await this.prisma.agentInferenceShadowReview
+      .update({
+        where: { id: reviewId },
+        data: {
+          reviewCaseId: input.review_case_id,
+          status: input.status,
+          summaryJson: input.summary_json as Prisma.InputJsonValue | undefined,
+          evidenceJson: input.evidence_json as Prisma.InputJsonValue | undefined,
+          collectedAt: input.collected_at,
+          decidedAt: input.decided_at,
+          decidedByUserId: input.decided_by_user_id,
+        },
+      })
+      .catch((err) => {
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
+          return null
+        }
+        throw err
+      })
+    return row ? this.toInferenceShadowReviewEntity(row) : null
+  }
+
+  async createDeltaLog(
+    input: CreateAgentPersonaDeltaLogInput,
+  ): Promise<AgentPersonaDeltaLogEntity> {
     const row = await this.prisma.agentPersonaDeltaLog.create({
       data: {
         agentId: input.agent_id,
@@ -146,7 +278,9 @@ export class PgPersonaStateRepository implements PersonaStateRepository {
       maturity: row.maturity,
       confidence: row.confidence,
       drift_score: row.driftScore,
-      last_render_decision_json: row.lastRenderDecisionJson ? toJsonObject(row.lastRenderDecisionJson) : null,
+      last_render_decision_json: row.lastRenderDecisionJson
+        ? toJsonObject(row.lastRenderDecisionJson)
+        : null,
       updated_at: row.updatedAt,
       version: row.version,
     }
@@ -184,6 +318,54 @@ export class PgPersonaStateRepository implements PersonaStateRepository {
       writeback_applied: row.writebackApplied,
       reason: row.reason,
       created_at: row.createdAt,
+    }
+  }
+
+  private toInferenceProfileEntity(row: PrismaAgentInferenceProfile): AgentInferenceProfileEntity {
+    return {
+      agent_id: row.agentId,
+      profile_version: row.profileVersion,
+      incumbent_family: row.incumbentFamily,
+      challenger_family: row.challengerFamily,
+      challenger_voice_line_id: row.challengerVoiceLineId,
+      migration_state: row.migrationState,
+      consecutive_lead_windows: row.consecutiveLeadWindows,
+      challenger_score_delta: row.challengerScoreDelta,
+      manual_voice_line_lock: row.manualVoiceLineLock,
+      visible_provider_pin: row.visibleProviderPin,
+      visible_model_pin: row.visibleModelPin,
+      candidate_since: row.candidateSince,
+      shadow_started_at: row.shadowStartedAt,
+      effective_at: row.effectiveAt,
+      blocked_at: row.blockedAt,
+      blocked_reason: row.blockedReason,
+      freeze_until: row.freezeUntil,
+      last_compiled_at: row.lastCompiledAt,
+      last_snapshot_json: toJsonObject(row.lastSnapshotJson),
+      updated_at: row.updatedAt,
+    }
+  }
+
+  private toInferenceShadowReviewEntity(
+    row: PrismaAgentInferenceShadowReview,
+  ): AgentInferenceShadowReviewEntity {
+    return {
+      id: row.id,
+      agent_id: row.agentId,
+      review_case_id: row.reviewCaseId,
+      incumbent_family: row.incumbentFamily,
+      incumbent_voice_line_id: row.incumbentVoiceLineId,
+      challenger_family: row.challengerFamily,
+      challenger_voice_line_id: row.challengerVoiceLineId,
+      status: row.status,
+      summary_json: toJsonObject(row.summaryJson),
+      evidence_json: toJsonObject(row.evidenceJson),
+      started_at: row.startedAt,
+      collected_at: row.collectedAt,
+      decided_at: row.decidedAt,
+      decided_by_user_id: row.decidedByUserId,
+      created_at: row.createdAt,
+      updated_at: row.updatedAt,
     }
   }
 }

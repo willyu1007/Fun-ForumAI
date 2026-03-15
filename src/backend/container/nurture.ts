@@ -24,10 +24,12 @@ import type { GovernanceAdapter } from '../services/governance-adapter.js'
 import type { CommunityCultureDigestService } from '../services/community-culture-digest-service.js'
 import type { IncubationOrchestrator } from '../services/incubation-orchestrator.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
+import type { InferenceProfileService } from '../services/inference-profile-service.js'
 import type { AgentPublicProjectionService } from '../services/agent-public-projection-service.js'
 import type { PolicyGatewayService } from '../services/policy-gateway-service.js'
 import type { IdentityGateService } from '../services/identity-gate-service.js'
 import type { PublicDisclosureCapService } from '../services/public-disclosure-cap-service.js'
+import { XpService } from '../services/xp-service.js'
 
 export interface NurtureResult {
   traitEngine: import('../services/trait-engine.js').TraitEngine | null
@@ -61,6 +63,7 @@ export async function createNurtureEngines(deps: {
   chatService: ChatService
   statsService: StatsService
   personaStateService: PersonaStateService
+  inferenceProfileService: InferenceProfileService
   agentPublicProjectionService: AgentPublicProjectionService
   conversationClock: ConversationClock
   achievementsOrchestrator: AchievementsOrchestrator
@@ -80,7 +83,7 @@ export async function createNurtureEngines(deps: {
 }): Promise<NurtureResult> {
   const {
     repos, llmGateway, promptEngine, sseHub,
-    forumReadService, agentService, chatService, statsService, personaStateService, agentPublicProjectionService,
+    forumReadService, agentService, chatService, statsService, personaStateService, inferenceProfileService, agentPublicProjectionService,
     conversationClock, achievementsOrchestrator, governanceAdapter,
     communityCultureDigestService, incubationOrchestrator,
     policyGatewayService, identityGateService,
@@ -88,7 +91,7 @@ export async function createNurtureEngines(deps: {
 
   let traitEngine: import('../services/trait-engine.js').TraitEngine | null = null
   let instructionEngine: import('../services/instruction-engine.js').InstructionEngine | null = null
-  let xpEngine: import('../services/xp-service.js').XpService | null = null
+  let xpEngine: import('../services/xp-service.js').XpService | null = new XpService(null)
   let memoryService: import('../services/memory-service.js').MemoryService | null = null
   let relationService: RelationService | null = null
   let relationScheduler: RelationScheduler | null = null
@@ -101,6 +104,9 @@ export async function createNurtureEngines(deps: {
   let proactiveEventHandler: NurtureResult['proactiveEventHandler'] = null
   let publicObservationEventHandler: NurtureResult['publicObservationEventHandler'] = null
 
+  statsService.setXpService(xpEngine)
+  chatService.setXpService(xpEngine)
+
   if (config.db.usePrisma) {
     const { getPrismaClient } = await import('../persistence/prisma-client.js')
     const prisma = getPrismaClient()
@@ -108,7 +114,6 @@ export async function createNurtureEngines(deps: {
 
     const { TraitEngine } = await import('../services/trait-engine.js')
     const { InstructionEngine } = await import('../services/instruction-engine.js')
-    const { XpService } = await import('../services/xp-service.js')
     const { MemoryService } = await import('../services/memory-service.js')
     const { NotificationService } = await import('../services/notification-service.js')
     const { ProactiveInteractionService } = await import('../services/proactive-interaction-service.js')
@@ -135,6 +140,7 @@ export async function createNurtureEngines(deps: {
     instructionEngine = new InstructionEngine(prisma)
     xpEngine = new XpService(prisma)
     statsService.setXpService(xpEngine)
+    chatService.setXpService(xpEngine)
 
     if (repos.relationRepo) {
       relationService = new RelationService({
@@ -249,6 +255,7 @@ export async function createNurtureEngines(deps: {
       agentService,
       llmGateway,
       personaStateService,
+      inferenceProfileService,
       eventRepo: repos.eventRepo,
       agentRunRepo: repos.agentRunRepo,
       notificationService,
@@ -277,6 +284,7 @@ export async function createNurtureEngines(deps: {
       agentService,
       llmGateway,
       personaStateService,
+      inferenceProfileService,
       eventRepo: repos.eventRepo,
       agentRunRepo: repos.agentRunRepo,
       budgetService,
@@ -294,7 +302,6 @@ export async function createNurtureEngines(deps: {
       leaderElector: deps.leaderElectors.privateChannel,
     })
 
-    chatService.setXpService(xpEngine)
     chatService.setNurtureOrchestrator(nurtureOrchestrator)
     chatService.setPublicObservationService(publicObservationDigestService)
     chatService.setRelationService(relationService)

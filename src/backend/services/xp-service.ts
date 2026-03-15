@@ -16,6 +16,17 @@ interface XpAwardOptions {
   dedup_key?: string
 }
 
+interface InMemoryXpEventRecord {
+  id: string
+  agentId: string
+  source: XpSource
+  title: string
+  description: string
+  xpDelta: number
+  dedupKey: string | null
+  createdAt: Date
+}
+
 const PRIVATE_CHAT_XP_CONFIG = {
   base_xp: 3,
   daily_cap: 5,
@@ -23,6 +34,10 @@ const PRIVATE_CHAT_XP_CONFIG = {
 } as const
 
 export class XpService {
+  private readonly memoryXp = new Map<string, number>()
+  private readonly memoryEvents: InMemoryXpEventRecord[] = []
+  private memoryEventSeq = 0
+
   constructor(private readonly prisma: PrismaClient | null) {}
 
   async awardPrivateChatXP(
@@ -30,7 +45,9 @@ export class XpService {
     messageCount: number,
     opts: XpAwardOptions = {},
   ): Promise<{ awarded: boolean; xp: number; reason?: string }> {
-    if (!this.prisma) return { awarded: false, xp: 0, reason: 'no_db' }
+    if (!this.prisma) {
+      return this.awardPrivateChatXpInMemory(agentId, messageCount, opts)
+    }
 
     if (messageCount < PRIVATE_CHAT_XP_CONFIG.min_messages_for_xp) {
       return { awarded: false, xp: 0, reason: 'too_few_messages' }
@@ -93,7 +110,9 @@ export class XpService {
     amount: number,
     opts: XpAwardOptions = {},
   ): Promise<{ xp: number; skipped?: boolean }> {
-    if (!this.prisma) return { xp: 0 }
+    if (!this.prisma) {
+      return this.awardXpInMemory(agentId, source, amount, opts)
+    }
     if (!Number.isInteger(amount) || amount <= 0) return { xp: 0 }
 
     const normalizedDedup = this.normalizeDedupKey(opts.dedup_key) ?? null
@@ -129,10 +148,17 @@ export class XpService {
   }
 
   async hasRecentXpDedupKey(agentId: string, dedupKey: string, windowMs: number): Promise<boolean> {
-    if (!this.prisma) return false
-
     const normalizedKey = this.normalizeDedupKey(dedupKey)
     if (!normalizedKey) return false
+    if (!this.prisma) {
+      const since = Date.now() - Math.max(windowMs, 0)
+      return this.memoryEvents.some(
+        (event) =>
+          event.agentId === agentId &&
+          event.dedupKey === normalizedKey &&
+          event.createdAt.getTime() >= since,
+      )
+    }
 
     const since = new Date(Date.now() - Math.max(windowMs, 0))
     const existing = await this.prisma.xpEvent.findFirst({
@@ -148,7 +174,9 @@ export class XpService {
   }
 
   async getXp(agentId: string): Promise<{ xp: number }> {
-    if (!this.prisma) return { xp: 0 }
+    if (!this.prisma) {
+      return { xp: this.memoryXp.get(agentId) ?? 0 }
+    }
     const xp = await this.prisma.agentXp.findUnique({ where: { agentId } })
     return { xp: xp?.xp ?? 0 }
   }
@@ -174,7 +202,20 @@ export class XpService {
     xp_delta: number
     created_at: Date
   }>> {
-    if (!this.prisma) return []
+    if (!this.prisma) {
+      return this.memoryEvents
+        .filter((event) => event.agentId === agentId)
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .slice(0, limit)
+        .map((event) => ({
+          id: event.id,
+          source: event.source,
+          title: event.title,
+          description: event.description,
+          xp_delta: event.xpDelta,
+          created_at: event.createdAt,
+        }))
+    }
 
     const events = await this.prisma.xpEvent.findMany({
       where: { agentId },
@@ -217,8 +258,99 @@ export class XpService {
     return `${source} -> +${amount} XP | dedup_key=${normalizedKey}`
   }
 
+  private async awardPrivateChatXpInMemory(
+    agentId: string,
+    messageCount: number,
+    opts: XpAwardOptions,
+  ): Promise<{ awarded: boolean; xp: number; reason?: string }> {
+    if (messageCount < PRIVATE_CHAT_XP_CONFIG.min_messages_for_xp) {
+      return { awarded: false, xp: this.memoryXp.get(agentId) ?? 0, reason: 'too_few_messages' }
+    }
+
+    const normalizedDedup = this.normalizeDedupKey(opts.dedup_key) ?? null
+    if (normalizedDedup) {
+      const duplicate = this.memoryEvents.find(
+        (event) => event.agentId === agentId && event.dedupKey === normalizedDedup,
+      )
+      if (duplicate) {
+        return { awarded: false, xp: this.memoryXp.get(agentId) ?? 0, reason: 'dedup_hit' }
+      }
+    }
+
+    const todayStart = new Date()
+    todayStart.setUTCHours(0, 0, 0, 0)
+    const todayDigestCount = this.memoryEvents.filter(
+      (event) =>
+        event.agentId === agentId &&
+        event.source === 'private_chat_digest' &&
+        event.createdAt >= todayStart,
+    ).length
+
+    if (todayDigestCount >= PRIVATE_CHAT_XP_CONFIG.daily_cap) {
+      return { awarded: false, xp: this.memoryXp.get(agentId) ?? 0, reason: 'daily_cap_reached' }
+    }
+
+    const xp = (this.memoryXp.get(agentId) ?? 0) + PRIVATE_CHAT_XP_CONFIG.base_xp
+    this.memoryXp.set(agentId, xp)
+    this.memoryEvents.push({
+      id: this.nextMemoryEventId(),
+      agentId,
+      source: 'private_chat_digest',
+      title: this.sourceTitle('private_chat_digest'),
+      description: this.buildXpDescription(
+        'private_chat_digest',
+        PRIVATE_CHAT_XP_CONFIG.base_xp,
+        opts.dedup_key,
+      ),
+      xpDelta: PRIVATE_CHAT_XP_CONFIG.base_xp,
+      dedupKey: normalizedDedup,
+      createdAt: new Date(),
+    })
+    return { awarded: true, xp }
+  }
+
+  private async awardXpInMemory(
+    agentId: string,
+    source: XpSource,
+    amount: number,
+    opts: XpAwardOptions,
+  ): Promise<{ xp: number; skipped?: boolean }> {
+    if (!Number.isInteger(amount) || amount <= 0) {
+      return { xp: this.memoryXp.get(agentId) ?? 0 }
+    }
+
+    const normalizedDedup = this.normalizeDedupKey(opts.dedup_key) ?? null
+    if (normalizedDedup) {
+      const duplicate = this.memoryEvents.find(
+        (event) => event.agentId === agentId && event.dedupKey === normalizedDedup,
+      )
+      if (duplicate) {
+        return { xp: this.memoryXp.get(agentId) ?? 0, skipped: true }
+      }
+    }
+
+    const xp = (this.memoryXp.get(agentId) ?? 0) + amount
+    this.memoryXp.set(agentId, xp)
+    this.memoryEvents.push({
+      id: this.nextMemoryEventId(),
+      agentId,
+      source,
+      title: this.sourceTitle(source),
+      description: this.buildXpDescription(source, amount, opts.dedup_key),
+      xpDelta: amount,
+      dedupKey: normalizedDedup,
+      createdAt: new Date(),
+    })
+    return { xp }
+  }
+
   private normalizeDedupKey(raw?: string): string | undefined {
     const normalized = raw?.trim()
     return normalized ? normalized : undefined
+  }
+
+  private nextMemoryEventId(): string {
+    this.memoryEventSeq += 1
+    return `xp_mem_${this.memoryEventSeq}`
   }
 }

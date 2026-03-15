@@ -52,7 +52,8 @@ if (config.db.usePrisma) {
   const { PgUsageLedgerRepository } = await import('../repos/pg/pg-usage-ledger-repository.js')
   pgUsageLedgerRepo = new PgUsageLedgerRepository(getPrismaClient())
 
-  const { PgPersonaObservabilityRepository } = await import('../repos/pg/pg-persona-observability-repository.js')
+  const { PgPersonaObservabilityRepository } =
+    await import('../repos/pg/pg-persona-observability-repository.js')
   const build = getRuntimeBuildInfo()
   const instanceId = `${build.hostname ?? 'local'}:${process.pid}`
   personaObservability.setRepository(
@@ -77,13 +78,16 @@ const core = createCoreServices({
   sseHub: infra.sseHub,
   moderator: infra.moderator,
   llmGateway: llm.llmGateway,
+  usageLedgerRepo: llm.usageLedgerRepo,
   roomLifecycleLeaderElector: infra.leaderElectors.roomLifecycle,
   conversationClockLeaderElector: infra.leaderElectors.conversationClock,
 })
 
 core.achievementChronicleService.setRecordHook((input) => {
   if (input.visibility !== 'PUBLIC') return
-  return core.agentPublicProjectionService.refresh(input.agent_id, { reason: 'chronicle' }).then(() => undefined)
+  return core.agentPublicProjectionService
+    .refresh(input.agent_id, { reason: 'chronicle' })
+    .then(() => undefined)
 })
 
 core.agentService.setConfigUpdatedHook((input) => {
@@ -92,7 +96,9 @@ core.agentService.setConfigUpdatedHook((input) => {
   if (JSON.stringify(beforePins) === JSON.stringify(afterPins)) {
     return
   }
-  return core.agentPublicProjectionService.refresh(input.agent_id, { reason: 'owner_style_pin' }).then(() => undefined)
+  return core.agentPublicProjectionService
+    .refresh(input.agent_id, { reason: 'owner_style_pin' })
+    .then(() => undefined)
 })
 
 const communityConfigScheduler = new CommunityConfigScheduler(
@@ -123,11 +129,9 @@ const roleAssignmentExpiryScheduler = new RoleAssignmentExpiryScheduler(
 )
 
 const directorHistoryMaintenanceScheduler = config.db.usePrisma
-  ? new DirectorHistoryMaintenanceScheduler(
-      {
-        leaderElector: infra.leaderElectors.directorHistoryMaintenanceScheduler,
-      },
-    )
+  ? new DirectorHistoryMaintenanceScheduler({
+      leaderElector: infra.leaderElectors.directorHistoryMaintenanceScheduler,
+    })
   : null
 
 // ─── 5. Nurture Engines (Prisma-only heavy path) ────────────
@@ -141,6 +145,7 @@ const nurture = await createNurtureEngines({
   chatService: core.chatService,
   statsService: core.statsService,
   personaStateService: core.personaStateService,
+  inferenceProfileService: core.inferenceProfileService,
   agentPublicProjectionService: core.agentPublicProjectionService,
   conversationClock: core.conversationClock,
   achievementsOrchestrator: core.achievementsOrchestrator,
@@ -174,6 +179,10 @@ if (nurture.privateChannelServices) {
   })
 }
 
+if (nurture.xpService) {
+  core.inferenceProfileService.setXpService(nurture.xpService)
+}
+
 const guidanceCopyService = new GuidanceCopyService()
 const guidanceStateService = new GuidanceStateService(
   repos.guidanceActorStateRepo,
@@ -198,16 +207,14 @@ const guidanceOrchestrator = new GuidanceOrchestrator({
   copyService: guidanceCopyService,
   delivery: guidanceDelivery,
 })
-const guidanceRecallScheduler = new GuidanceRecallScheduler(
-  {
-    stateRepo: repos.guidanceActorStateRepo,
-    inboxRepo: repos.guidanceInboxRepo,
-    eventLogRepo: repos.guidanceEventLogRepo,
-    copyService: guidanceCopyService,
-    bellService: guidanceBellService,
-    leaderElector: infra.leaderElectors.guidanceRecallScheduler,
-  },
-)
+const guidanceRecallScheduler = new GuidanceRecallScheduler({
+  stateRepo: repos.guidanceActorStateRepo,
+  inboxRepo: repos.guidanceInboxRepo,
+  eventLogRepo: repos.guidanceEventLogRepo,
+  copyService: guidanceCopyService,
+  bellService: guidanceBellService,
+  leaderElector: infra.leaderElectors.guidanceRecallScheduler,
+})
 
 if (nurture.memoryService) {
   nurture.memoryService.appendDigestHook(async (input) => {
@@ -238,6 +245,7 @@ const rt = createRuntime({
   inclinationAssetService: llm.inclinationAssetService,
   communityCultureDigestService: core.communityCultureDigestService,
   personaStateService: core.personaStateService,
+  inferenceProfileService: core.inferenceProfileService,
   publicDisclosureCapService: core.publicDisclosureCapService,
   publicSceneSelectorService: core.publicSceneSelectorService,
   forumSceneContinuityService: core.forumSceneContinuityService,
@@ -286,30 +294,44 @@ core.forumWriteService.setEventHook((event) => {
   if (event.event_type === 'VOTE_CAST') {
     const payload = event.payload_json
     const direction = typeof payload.direction === 'string' ? payload.direction : ''
-    const targetAgentId = typeof payload.target_author_agent_id === 'string' ? payload.target_author_agent_id : ''
+    const targetAgentId =
+      typeof payload.target_author_agent_id === 'string' ? payload.target_author_agent_id : ''
     const voteId = typeof payload.vote_id === 'string' ? payload.vote_id : ''
     if (direction === 'UP' && targetAgentId) {
       if (config.features.nurturePipelineV2 && nurture.nurtureOrchestrator) {
-        nurture.nurtureOrchestrator.onContentProduced(targetAgentId, 'vote_received', 1, {
-          dedup_key: voteId ? `vote:${voteId}` : undefined,
-        }).catch((err) => {
-          console.error('[Container] vote_received XP award failed:', err)
-        })
+        nurture.nurtureOrchestrator
+          .onContentProduced(targetAgentId, 'vote_received', 1, {
+            dedup_key: voteId ? `vote:${voteId}` : undefined,
+          })
+          .catch((err) => {
+            console.error('[Container] vote_received XP award failed:', err)
+          })
       } else if (nurture.xpService) {
-        nurture.xpService.awardXP(targetAgentId, 'vote_received', 1, {
-          dedup_key: voteId ? `vote:${voteId}` : undefined,
-        }).catch((err) => {
-          console.error('[Container] vote_received XP award failed:', err)
-        })
+        nurture.xpService
+          .awardXP(targetAgentId, 'vote_received', 1, {
+            dedup_key: voteId ? `vote:${voteId}` : undefined,
+          })
+          .catch((err) => {
+            console.error('[Container] vote_received XP award failed:', err)
+          })
       }
     }
   }
-  if (config.features.socialGraphV1 && nurture.relationService && event.event_type === 'COMMENT_CREATED') {
+  if (
+    config.features.socialGraphV1 &&
+    nurture.relationService &&
+    event.event_type === 'COMMENT_CREATED'
+  ) {
     nurture.relationService.onForumCommentEvent(event).catch((err) => {
       console.error('[Container] Relation forum signal failed:', err)
     })
   }
-  if (config.features.socialGraphV1 && config.features.agentStatsVotePolicy && nurture.relationService && event.event_type === 'VOTE_CAST') {
+  if (
+    config.features.socialGraphV1 &&
+    config.features.agentStatsVotePolicy &&
+    nurture.relationService &&
+    event.event_type === 'VOTE_CAST'
+  ) {
     nurture.relationService.onVoteEvent(event).catch((err) => {
       console.error('[Container] Relation vote signal failed:', err)
     })
@@ -345,6 +367,7 @@ export const eventQueue = infra.eventQueue
 
 export const llmClient = llm.llmClient
 export const llmGateway = llm.llmGateway
+export const llmRegistryBundle = llm.registryBundle
 export const usageLedger = llm.usageLedger
 export const usageLedgerRepo = llm.usageLedgerRepo
 export const promptEngine = llm.promptEngine
@@ -366,6 +389,7 @@ export const agentCommunityMembershipService = core.agentCommunityMembershipServ
 export const communityCultureDigestService = core.communityCultureDigestService
 export const statsService = core.statsService
 export const personaStateService = core.personaStateService
+export const inferenceProfileService = core.inferenceProfileService
 export const agentPublicProjectionService = core.agentPublicProjectionService
 export const chatService = core.chatService
 export const roomDiscoveryService = core.roomDiscoveryService
@@ -404,7 +428,11 @@ export const achievementsScheduler = nurture.achievementsScheduler
 export const cultureDigestScheduler = nurture.cultureDigestScheduler
 export const privateChannelServices = nurture.privateChannelServices
 export const privateChannelScheduler = nurture.privateChannelScheduler
-export { communityConfigScheduler, roleAssignmentExpiryScheduler, directorHistoryMaintenanceScheduler }
+export {
+  communityConfigScheduler,
+  roleAssignmentExpiryScheduler,
+  directorHistoryMaintenanceScheduler,
+}
 export {
   guidanceBellService,
   guidanceCopyService,

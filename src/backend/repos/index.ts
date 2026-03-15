@@ -148,15 +148,20 @@ export type {
   AgentState,
   AgentStatEvent,
   AgentStatEventType,
+  AgentInferenceProfileEntity,
+  AgentInferenceShadowReviewEntity,
   AgentPersonaStateEntity,
   AgentActiveOverlayEntity,
   AgentPersonaDeltaLogEntity,
   CreateAgentStatEventInput,
   CreateAgentPersonaDeltaLogInput,
+  CreateAgentInferenceShadowReviewInput,
   SaveAgentStatsInput,
   SaveAgentStateInput,
+  SaveAgentInferenceProfileInput,
   SaveAgentPersonaStateInput,
   SaveAgentActiveOverlayInput,
+  UpdateAgentInferenceShadowReviewInput,
   AgentStatePoint,
   GuidanceActorType,
   GuidanceTrack,
@@ -230,8 +235,14 @@ export {
 } from './public-scene-write-repository.js'
 export { type VoteRepository, InMemoryVoteRepository } from './vote-repository.js'
 export { type HumanVoteRepository, InMemoryHumanVoteRepository } from './human-vote-repository.js'
-export { type HumanFollowRepository, InMemoryHumanFollowRepository } from './human-follow-repository.js'
-export { type InclinationAssetRepository, InMemoryInclinationAssetRepository } from './inclination-asset-repository.js'
+export {
+  type HumanFollowRepository,
+  InMemoryHumanFollowRepository,
+} from './human-follow-repository.js'
+export {
+  type InclinationAssetRepository,
+  InMemoryInclinationAssetRepository,
+} from './inclination-asset-repository.js'
 export { type PostMediaRepository, InMemoryPostMediaRepository } from './post-media-repository.js'
 export {
   type AgentRepository,
@@ -239,10 +250,7 @@ export {
   InMemoryAgentRepository,
   InMemoryAgentConfigRepository,
 } from './agent-repository.js'
-export {
-  type CommunityRepository,
-  InMemoryCommunityRepository,
-} from './community-repository.js'
+export { type CommunityRepository, InMemoryCommunityRepository } from './community-repository.js'
 export {
   type AgentCommunityMembershipRepository,
   InMemoryAgentCommunityMembershipRepository,
@@ -260,19 +268,16 @@ export {
   InMemoryAgentPublicProjectionRepository,
 } from './agent-public-projection-repository.js'
 export { type MessageRepository, InMemoryMessageRepository } from './message-repository.js'
-export { type NotificationRepository, InMemoryNotificationRepository } from './notification-repository.js'
+export {
+  type NotificationRepository,
+  InMemoryNotificationRepository,
+} from './notification-repository.js'
 export {
   type RiskGovernanceRepository,
   InMemoryRiskGovernanceRepository,
 } from './risk-governance-repository.js'
-export {
-  type RelationRepository,
-  InMemoryRelationRepository,
-} from './relation-repository.js'
-export {
-  type StatsRepository,
-  InMemoryStatsRepository,
-} from './stats-repository.js'
+export { type RelationRepository, InMemoryRelationRepository } from './relation-repository.js'
+export { type StatsRepository, InMemoryStatsRepository } from './stats-repository.js'
 export {
   type PersonaStateRepository,
   InMemoryPersonaStateRepository,
@@ -281,10 +286,7 @@ export {
   type AchievementRepository,
   InMemoryAchievementRepository,
 } from './achievement-repository.js'
-export {
-  type ChronicleRepository,
-  InMemoryChronicleRepository,
-} from './chronicle-repository.js'
+export { type ChronicleRepository, InMemoryChronicleRepository } from './chronicle-repository.js'
 export {
   type AgentSignalLogRepository,
   type AgentSignalMetrics,
@@ -294,14 +296,8 @@ export {
   type AgentStageTierSnapshotRepository,
   InMemoryAgentStageTierSnapshotRepository,
 } from './agent-stage-tier-snapshot-repository.js'
-export {
-  type IncubationRepository,
-  InMemoryIncubationRepository,
-} from './incubation-repository.js'
-export {
-  type AudienceRepository,
-  InMemoryAudienceRepository,
-} from './audience-repository.js'
+export { type IncubationRepository, InMemoryIncubationRepository } from './incubation-repository.js'
+export { type AudienceRepository, InMemoryAudienceRepository } from './audience-repository.js'
 export {
   type AftershowRunRepository,
   InMemoryAftershowRunRepository,

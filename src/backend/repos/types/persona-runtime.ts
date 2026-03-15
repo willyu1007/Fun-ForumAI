@@ -41,6 +41,48 @@ export interface AgentPersonaDeltaLogEntity {
   created_at: Date
 }
 
+export interface AgentInferenceProfileEntity {
+  agent_id: string
+  profile_version: number
+  incumbent_family: string
+  challenger_family: string | null
+  challenger_voice_line_id: string | null
+  migration_state: string
+  consecutive_lead_windows: number
+  challenger_score_delta: number | null
+  manual_voice_line_lock: boolean
+  visible_provider_pin: string | null
+  visible_model_pin: string | null
+  candidate_since: Date | null
+  shadow_started_at: Date | null
+  effective_at: Date | null
+  blocked_at: Date | null
+  blocked_reason: string | null
+  freeze_until: Date | null
+  last_compiled_at: Date
+  last_snapshot_json: Record<string, unknown>
+  updated_at: Date
+}
+
+export interface AgentInferenceShadowReviewEntity {
+  id: string
+  agent_id: string
+  review_case_id: string | null
+  incumbent_family: string
+  incumbent_voice_line_id: string
+  challenger_family: string
+  challenger_voice_line_id: string
+  status: string
+  summary_json: Record<string, unknown>
+  evidence_json: Record<string, unknown>
+  started_at: Date
+  collected_at: Date | null
+  decided_at: Date | null
+  decided_by_user_id: string | null
+  created_at: Date
+  updated_at: Date
+}
+
 export interface SaveAgentPersonaStateInput {
   agent_id: string
   current_vector_json: Record<string, unknown>
@@ -78,4 +120,52 @@ export interface CreateAgentPersonaDeltaLogInput {
   applied_delta_json: Record<string, unknown>
   writeback_applied: boolean
   reason: string
+}
+
+export interface SaveAgentInferenceProfileInput {
+  agent_id: string
+  profile_version?: number
+  incumbent_family: string
+  challenger_family?: string | null
+  challenger_voice_line_id?: string | null
+  migration_state: string
+  consecutive_lead_windows: number
+  challenger_score_delta?: number | null
+  manual_voice_line_lock: boolean
+  visible_provider_pin?: string | null
+  visible_model_pin?: string | null
+  candidate_since?: Date | null
+  shadow_started_at?: Date | null
+  effective_at?: Date | null
+  blocked_at?: Date | null
+  blocked_reason?: string | null
+  freeze_until?: Date | null
+  last_compiled_at: Date
+  last_snapshot_json: Record<string, unknown>
+}
+
+export interface CreateAgentInferenceShadowReviewInput {
+  agent_id: string
+  review_case_id?: string | null
+  incumbent_family: string
+  incumbent_voice_line_id: string
+  challenger_family: string
+  challenger_voice_line_id: string
+  status: string
+  summary_json: Record<string, unknown>
+  evidence_json: Record<string, unknown>
+  started_at: Date
+  collected_at?: Date | null
+  decided_at?: Date | null
+  decided_by_user_id?: string | null
+}
+
+export interface UpdateAgentInferenceShadowReviewInput {
+  review_case_id?: string | null
+  status?: string
+  summary_json?: Record<string, unknown>
+  evidence_json?: Record<string, unknown>
+  collected_at?: Date | null
+  decided_at?: Date | null
+  decided_by_user_id?: string | null
 }

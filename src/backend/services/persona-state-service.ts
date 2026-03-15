@@ -85,6 +85,16 @@ export class PersonaStateService {
     }
   }
 
+  async getCurrentState(agentId: string): Promise<PersonaState> {
+    const identity = this.resolveIdentity(agentId)
+    return this.getOrCreateState(agentId, identity.seed)
+  }
+
+  async getCurrentOverlay(agentId: string): Promise<ActiveOverlay | null> {
+    const stored = await this.deps.personaStateRepo.findOverlay(agentId)
+    return stored ? this.overlayFromEntity(stored) : null
+  }
+
   async prepareRuntimeEnvelope(input: PersonaRenderCueInput): Promise<PersonaRuntimeEnvelope> {
     const identity = this.resolveIdentity(input.agentId)
     const state = await this.getOrCreateState(input.agentId, identity.seed)
