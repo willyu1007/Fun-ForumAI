@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import { spawn } from 'node:child_process'
 import { resolve } from 'node:path'
 import type { LeaderElector } from './leader-elector.js'
@@ -79,6 +80,14 @@ export class DirectorHistoryMaintenanceScheduler {
 
   get isRunning(): boolean {
     return this.running
+  }
+
+  isLaunchCatalogReady(): boolean {
+    try {
+      return fs.statSync(this.launchPath).isFile()
+    } catch {
+      return false
+    }
   }
 
   private async tick(): Promise<void> {

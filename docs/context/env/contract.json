@@ -5,7 +5,7 @@
     "prod",
     "staging"
   ],
-  "generated_at_utc": "2026-03-16T06:58:21Z",
+  "generated_at_utc": "2026-03-16T09:45:32Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "APP_ENV": {
@@ -620,23 +620,6 @@
       "state": "active",
       "type": "enum"
     },
-    "FF_CONTROL_PLANE_CONFIG_V1": {
-      "default": "false",
-      "deprecate_after": null,
-      "description": "Enable control-plane config proposal/approve/apply/rollback workflow.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": false,
-      "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
-      "type": "enum"
-    },
     "FF_EVENT_CONTRACT_V1": {
       "default": "false",
       "deprecate_after": null,
@@ -726,23 +709,6 @@
       "default": "false",
       "deprecate_after": null,
       "description": "Enable PRIVATE_DIGEST -> incubation seed orchestration.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": false,
-      "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
-      "type": "enum"
-    },
-    "FF_INCUBATION_TRUST_HARD_ENFORCE": {
-      "default": "false",
-      "deprecate_after": null,
-      "description": "Enforce structured trust_context checks for strict T4 posts.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null

@@ -178,4 +178,18 @@ describe('ChatroomLocalIntentService', () => {
     expect(result.episode_brief.close_condition.objective).toBeUndefined()
     expect(result.local_intent_block).toContain('## Local Intent')
   })
+
+  it('keeps working when the resolved scene comes from the room program fallback', () => {
+    const service = new ChatroomLocalIntentService()
+    const input = structuredClone(makeInput()) as Parameters<ChatroomLocalIntentService['build']>[0]
+    input.resolved_scene.binding = null
+    input.resolved_scene.source = 'room_program'
+    input.resolved_scene.selection_mode = 'autonomous_anchored'
+
+    const result = service.build(input)
+
+    expect(result.scene_source).toBe('room_program')
+    expect(result.episode_brief.binding_id).toBeUndefined()
+    expect(result.local_intent.soft_constraints).toContain('把房间推成一段更有看点的 talk show')
+  })
 })

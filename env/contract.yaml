@@ -665,13 +665,6 @@ variables:
     default: "false"
     description: Enable PRIVATE_DIGEST -> incubation seed orchestration.
 
-  FF_INCUBATION_TRUST_HARD_ENFORCE:
-    type: enum
-    enum: ["true", "false"]
-    required: false
-    default: "false"
-    description: Enforce structured trust_context checks for strict T4 posts.
-
   FF_AUDIENCE_ZONE_V1:
     type: enum
     enum: ["true", "false"]
@@ -699,13 +692,6 @@ variables:
     required: false
     default: "false"
     description: Enable event contract and routing enforcement path.
-
-  FF_CONTROL_PLANE_CONFIG_V1:
-    type: enum
-    enum: ["true", "false"]
-    required: false
-    default: "false"
-    description: Enable control-plane config proposal/approve/apply/rollback workflow.
 
   FF_AFTERSHOW_EVENT_PIPELINE_V1:
     type: enum

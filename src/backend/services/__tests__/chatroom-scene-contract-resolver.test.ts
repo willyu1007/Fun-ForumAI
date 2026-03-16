@@ -102,16 +102,52 @@ describe('ChatroomSceneContractResolver', () => {
     expect(resolved.selection_mode).toBe('pool_strict')
   })
 
-  it('rejects chatroom resolution when the launch catalog is missing', () => {
+  it('falls back to a room-program contract when the launch catalog is missing', () => {
     const resolver = new ChatroomSceneContractResolver({
       catalogService: {
         getLaunchCatalog: () => null,
       } as never,
     })
 
-    expect(() => resolver.resolve({
+    const resolved = resolver.resolve({
       roomId: 'room-1',
       sceneType: 'TALK_SHOW',
-    })).toThrow('missing launch catalog')
+    })
+
+    expect(resolved.source).toBe('room_program')
+    expect(resolved.binding).toBeNull()
+    expect(resolved.template.template_id).toBe('room-program-talk_show')
+    expect(resolved.template.name).toBe('Chat Room Talk Show')
+    expect(resolved.selection_mode).toBe('autonomous_anchored')
+  })
+
+  it('falls back to a room-program contract when no room-specific binding exists', () => {
+    const resolver = new ChatroomSceneContractResolver({
+      catalogService: {
+        getLaunchCatalog: () => ({
+          version: 'v2',
+          contract_version: 'public_director_contract_v1',
+          exported_at: '2026-03-14T00:00:00.000Z',
+          templates: [],
+          stage_templates: [],
+          scene_bindings: [],
+          surface_vocabulary: {
+            director_surfaces: ['forum', 'scheduled_post', 'chat_room'],
+            actor_surfaces: ['forum_post', 'forum_comment', 'chat_room'],
+            private_surfaces: ['private_chat', 'proactive_dm'],
+          },
+        }),
+      } as never,
+    })
+
+    const resolved = resolver.resolve({
+      roomId: 'room-1',
+      sceneType: 'DEBATE',
+    })
+
+    expect(resolved.source).toBe('room_program')
+    expect(resolved.binding).toBeNull()
+    expect(resolved.template.template_id).toBe('room-program-debate')
+    expect(resolved.template.category).toBe('t4')
   })
 })

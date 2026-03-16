@@ -364,7 +364,7 @@ describe('PostScheduler', () => {
     )
   })
 
-  it('skips scheduled_post when selector cannot provide a public scene', async () => {
+  it('falls back to unlocked community scheduling when selector cannot provide a public scene', async () => {
     const write = vi.fn(async () => ({ success: true, content_id: 'post-fallback-1' }))
     const deps = createDeps(write, {
       sceneSelection: {
@@ -379,16 +379,32 @@ describe('PostScheduler', () => {
 
     const result = await scheduler.createPost()
 
-    expect(result).toEqual({
+    expect(result).toEqual(expect.objectContaining({
       triggered: true,
       agent_id: 'agent-1',
-      error: 'Public scene unavailable: scene_catalog_unavailable',
-    })
-    expect(deps.llmGateway.generateVisibleText).not.toHaveBeenCalled()
-    expect(write).not.toHaveBeenCalled()
+      community_id: 'community-1',
+      post_id: 'post-fallback-1',
+    }))
+    expect((deps.llmGateway.generateVisibleText as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].promptRef)
+      .toEqual({ id: 'agent-create-post', version: 1 })
+    expect((deps.responseParser.parseAsScheduledPost as ReturnType<typeof vi.fn>).mock.calls[0]?.[0])
+      .toEqual(expect.objectContaining({
+        fallbackCommunityId: 'community-1',
+        lockedCommunityId: undefined,
+      }))
+    expect(write).toHaveBeenCalledTimes(1)
+    const fallbackInstruction = (write as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as Record<string, unknown> | undefined
+    expect(fallbackInstruction).toEqual(expect.objectContaining({
+      community_id: 'community-1',
+    }))
+    expect(fallbackInstruction?.public_scene).toBeUndefined()
+    expect(fallbackInstruction?.audit_metadata).toEqual(expect.objectContaining({
+      scheduled_post_scene_selection: 'fallback',
+      scheduled_post_scene_reason: 'scene_catalog_unavailable',
+    }))
   })
 
-  it('reports selector service misconfiguration as a triggered scheduling failure', async () => {
+  it('falls back to unlocked community scheduling when the selector service is unavailable', async () => {
     const write = vi.fn(async () => ({ success: true, content_id: 'post-1' }))
     const deps = createDeps(write)
     deps.publicSceneSelectorService = null
@@ -399,12 +415,19 @@ describe('PostScheduler', () => {
 
     const result = await scheduler.createPost()
 
-    expect(result).toEqual({
+    expect(result).toEqual(expect.objectContaining({
       triggered: true,
       agent_id: 'agent-1',
-      error: 'Public scene selector unavailable',
-    })
-    expect(deps.llmGateway.generateVisibleText).not.toHaveBeenCalled()
-    expect(write).not.toHaveBeenCalled()
+      community_id: 'community-1',
+      post_id: 'post-1',
+    }))
+    expect((deps.llmGateway.generateVisibleText as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].promptRef)
+      .toEqual({ id: 'agent-create-post', version: 1 })
+    expect(write).toHaveBeenCalledTimes(1)
+    const selectorFallbackInstruction = (write as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as Record<string, unknown> | undefined
+    expect(selectorFallbackInstruction?.audit_metadata).toEqual(expect.objectContaining({
+      scheduled_post_scene_selection: 'fallback',
+      scheduled_post_scene_reason: 'scene_selector_unavailable',
+    }))
   })
 })

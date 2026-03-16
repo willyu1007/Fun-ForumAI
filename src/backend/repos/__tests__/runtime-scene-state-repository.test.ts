@@ -70,6 +70,22 @@ function buildState(overrides: Record<string, unknown> = {}) {
 }
 
 describe('InMemoryRuntimeSceneStateRepository', () => {
+  it('accepts room-program runtime scene authority in the canonical state schema', () => {
+    const state = buildState({
+      scene_binding_id: null,
+      audit: {
+        selection_id: null,
+        episode_plan_id: null,
+        source: 'room_program',
+        latest_local_intent_id: null,
+        latest_program_event_id: null,
+        state_version: 1,
+      },
+    })
+
+    expect(state.audit.source).toBe('room_program')
+  })
+
   it('creates, looks up by room/episode, and updates with optimistic versioning', async () => {
     const repo = new InMemoryRuntimeSceneStateRepository()
     const initialState = buildState()

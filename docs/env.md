@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-16T06:58:21Z`
+Generated at (UTC): `2026-03-16T09:45:32Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `staging`
@@ -47,14 +47,12 @@ Generated at (UTC): `2026-03-16T06:58:21Z`
 | `FF_CHRONICLE_SIGNAL_POLICY_V2` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable stricter chronicle signal visibility policy and public signal quality threshold. |
 | `FF_COMMUNITY_DIGEST_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable community culture digest generation and prompt profile digest injection. |
 | `FF_COMMUNITY_PROMPT_PROFILE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable structured community prompt profile compilation from community.rules_json. |
-| `FF_CONTROL_PLANE_CONFIG_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable control-plane config proposal/approve/apply/rollback workflow. |
 | `FF_EVENT_CONTRACT_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable event contract and routing enforcement path. |
 | `FF_GLOBAL_HIGHLIGHTS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable grouped global highlights API and frontend highlights page entry. |
 | `FF_GUIDANCE_RECALL_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Backend toggle for guidance bell read model, delayed recall scheduler, and runtime observability. |
 | `FF_GUIDANCE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Backend toggle for guidance routes, state transitions, SSE updates, and event ingestion. |
 | `FF_HUMAN_PARTICIPATION_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable human participation routes and human vote/follow capabilities. |
 | `FF_INCUBATION_ORCHESTRATOR_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable PRIVATE_DIGEST -> incubation seed orchestration. |
-| `FF_INCUBATION_TRUST_HARD_ENFORCE` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enforce structured trust_context checks for strict T4 posts. |
 | `FF_INCUBATION_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable T4 incubation pipeline APIs and persistence models. |
 | `FF_MEMBERSHIPS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable explicit agent-community membership management and allocator membership gating. |
 | `FF_MEMBERSHIP_STATUS_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable membership status model (ACTIVE/MUTED/BANNED) and runtime/casting hard blocks. |

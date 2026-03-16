@@ -1,5 +1,5 @@
 import type { LLMGateway } from '../llm/llm-gateway.js'
-import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
+import { buildPromptTemplateRef, PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import type { ForumReadService } from '../services/forum-read-service.js'
 import type { AgentService } from '../services/agent-service.js'
 import type { ResponseParser } from './response-parser.js'
@@ -129,33 +129,35 @@ export class PostScheduler {
           error: 'Selected agent has no writable communities',
         }
       }
-      if (!this.deps.publicSceneSelectorService) {
-        return {
-          triggered: true,
-          agent_id: selected.id,
-          error: 'Public scene selector unavailable',
-        }
-      }
-      const sceneSelection = await this.deps.publicSceneSelectorService.selectScheduledPost({
-        agent: selected,
-        eligible_communities: eligibleCommunities,
-      })
-      if (sceneSelection.kind === 'skip') {
+      const fallbackCommunity = this.pickRandomCommunity(eligibleCommunities)
+      if (!fallbackCommunity) return { triggered: false, error: 'No communities' }
+      const sceneSelection = this.deps.publicSceneSelectorService
+        ? await this.deps.publicSceneSelectorService.selectScheduledPost({
+            agent: selected,
+            eligible_communities: eligibleCommunities,
+          })
+        : { kind: 'skip' as const, reason: 'scene_selector_unavailable' }
+      const targetCommunity = sceneSelection.kind === 'scene'
+        ? sceneSelection.community
+        : fallbackCommunity
+      const scenePayload = sceneSelection.kind === 'scene'
+        ? sceneSelection.payload
+        : null
+      const scheduledFallbackReason = sceneSelection.kind === 'skip'
+        ? sceneSelection.reason
+        : null
+      if (scheduledFallbackReason) {
         console.warn(
-          `[PostScheduler] Skipping scheduled post for agent=${selected.id}: ${sceneSelection.reason}`,
+          `[PostScheduler] Falling back to community scheduling for agent=${selected.id}: ${scheduledFallbackReason}`,
         )
-        return {
-          triggered: true,
-          agent_id: selected.id,
-          error: `Public scene unavailable: ${sceneSelection.reason}`,
-        }
       }
-      const targetCommunity = sceneSelection.community
-      const scenePayload = sceneSelection.payload
-      const promptRef = PROMPT_TEMPLATE_REFS.agentCreatePostScene
+      const promptRef = scenePayload
+        ? PROMPT_TEMPLATE_REFS.agentCreatePostScene
+        : buildPromptTemplateRef('agent-create-post', 1)
 
       const persona = this.loadPersona(selected.id)
       const recentPosts = await this.getRecentPostsSummary(targetCommunity.id)
+      const communityCatalog = this.toCommunityCatalog(eligibleCommunities)
       const observationIdentity = this.resolveObservationIdentity(selected.id)
       let promptAudit: PromptComposeAudit | null = null
       let composedLayers: {
@@ -185,7 +187,9 @@ export class PostScheduler {
         const composed = await this.deps.promptOrchestrator.compose({
           agentId: selected.id,
           scene: 'scheduled_post',
-          conversationText: `${recentPosts}\n${scenePayload.local_intent_block}`.trim(),
+          conversationText: scenePayload
+            ? `${recentPosts}\n${scenePayload.local_intent_block}`.trim()
+            : `${recentPosts}\n${communityCatalog}`.trim(),
           communityId: targetCommunity.id,
           topicHints: [targetCommunity.name, ...persona.interests].slice(0, 10),
           communityHardRule: targetCommunity.rules,
@@ -223,10 +227,10 @@ export class PostScheduler {
         community_description: targetCommunity.description,
         community_rules: targetCommunity.rules,
         recent_posts: recentPosts,
-        community_candidates: '',
+        community_candidates: scenePayload ? '' : communityCatalog,
         inclination_injection: this.buildInclinationInjection(selected.pending_asset),
         inclination_media_url: selected.pending_asset?.media_url ?? '',
-        local_intent_block: scenePayload.local_intent_block,
+        local_intent_block: scenePayload?.local_intent_block ?? '',
         layer_traits: composedLayers.layer_traits,
         layer_style: composedLayers.layer_style,
         layer_instructions: composedLayers.layer_instructions,
@@ -247,13 +251,26 @@ export class PostScheduler {
         correlation_id: `scheduled-post:${selected.id}:${Date.now()}`,
         payload_json: {
           agent_id: selected.id,
+          fallback_community_id: fallbackCommunity.id,
           target_community_id: targetCommunity.id,
-          public_scene: {
-            episode_id: scenePayload.scene_metadata.episode_id,
-            selection_id: scenePayload.scene_metadata.selection_id,
-            episode_plan_id: scenePayload.scene_metadata.episode_plan_id,
-            local_intent_id: scenePayload.scene_metadata.local_intent_id,
-          },
+          ...(scenePayload
+            ? {
+                public_scene: {
+                  episode_id: scenePayload.scene_metadata.episode_id,
+                  selection_id: scenePayload.scene_metadata.selection_id,
+                  episode_plan_id: scenePayload.scene_metadata.episode_plan_id,
+                  local_intent_id: scenePayload.scene_metadata.local_intent_id,
+                },
+              }
+            : {}),
+          ...(scheduledFallbackReason
+            ? {
+                scene_selection: {
+                  status: 'fallback',
+                  reason: scheduledFallbackReason,
+                },
+              }
+            : {}),
         },
       })
 
@@ -298,7 +315,7 @@ export class PostScheduler {
         text: llmResponse.content,
         fallbackCommunityId: targetCommunity.id,
         communities: eligibleCommunities,
-        lockedCommunityId: targetCommunity.id,
+        lockedCommunityId: scenePayload ? targetCommunity.id : undefined,
       })
 
       if (!instruction) {
@@ -313,7 +330,16 @@ export class PostScheduler {
           input_digest: `scheduled_post_parse_failed|len:${llmResponse.content.length}`,
           output_json: attachPersonaObservation(
             {
+              fallback_community_id: fallbackCommunity.id,
               target_community_id: targetCommunity.id,
+              ...(scheduledFallbackReason
+                ? {
+                    scene_selection: {
+                      status: 'fallback',
+                      reason: scheduledFallbackReason,
+                    },
+                  }
+                : {}),
               error: 'Failed to parse LLM output as post',
             },
             failedObservation,
@@ -333,7 +359,16 @@ export class PostScheduler {
         }
       }
 
-      instruction.public_scene = scenePayload
+      if (scenePayload) {
+        instruction.public_scene = scenePayload
+      }
+      if (scheduledFallbackReason) {
+        instruction.audit_metadata = {
+          ...(instruction.audit_metadata ?? {}),
+          scheduled_post_scene_selection: 'fallback',
+          scheduled_post_scene_reason: scheduledFallbackReason,
+        }
+      }
 
       if (selected.pending_asset && config.features.multimodalAgentInclinationV1) {
         instruction.media_asset_id = selected.pending_asset.id
@@ -485,6 +520,21 @@ export class PostScheduler {
 
     const activeCommunityIds = new Set(this.deps.membershipRepo.listActiveCommunityIdsByAgent(agentId))
     return communities.filter((item) => activeCommunityIds.has(item.id))
+  }
+
+  private pickRandomCommunity(communities: CommunityCandidate[]): CommunityCandidate | null {
+    if (communities.length === 0) return null
+    return communities[Math.floor(Math.random() * communities.length)] ?? null
+  }
+
+  private toCommunityCatalog(communities: CommunityCandidate[]): string {
+    if (communities.length === 0) return '（无候选社区）'
+    return communities
+      .map((community) =>
+        [community.id, community.slug, community.name, community.description]
+          .map((part) => part.trim() || '（空）')
+          .join(' | '))
+      .join('\n')
   }
 
   private requiresMembershipScopedPosting(): boolean {

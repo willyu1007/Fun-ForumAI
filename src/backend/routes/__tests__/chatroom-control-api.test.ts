@@ -116,7 +116,7 @@ describe('chatroom control api', () => {
     expect(rawCueRes.body.error.code).toBe('VALIDATION_ERROR')
   })
 
-  it('rejects manual cues when the room program is enabled but no scene binding exists', async () => {
+  it('allows manual cues for runtime-created rooms even when no scene binding exists', async () => {
     const now = Date.now()
     const ownerRes = await request(app)
       .post('/v1/agents')
@@ -185,14 +185,8 @@ describe('chatroom control api', () => {
         }),
     ])
 
-    expect(responses.map((res) => res.status)).toEqual([400, 400, 400])
-    expect(responses.map((res) => res.body.error.code)).toEqual([
-      'VALIDATION_ERROR',
-      'VALIDATION_ERROR',
-      'VALIDATION_ERROR',
-    ])
-    expect(responses.every((res) =>
-      /scene binding|launch catalog/u.test(String(res.body.error.message)),
-    )).toBe(true)
+    expect(responses.map((res) => res.status)).toEqual([201, 201, 201])
+    expect(responses.every((res) => typeof res.body.data.selected_agent_id === 'string')).toBe(true)
+    expect(responses.every((res) => res.body.data.event.id)).toBe(true)
   })
 })
