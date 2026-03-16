@@ -84,8 +84,22 @@ async function main() {
   try {
     run('pnpm db:migrate:deploy', testEnv)
     run('pnpm vitest run src/backend/routes/__tests__/e2e-read-api.test.ts', testEnv)
-    run('pnpm vitest run src/backend/routes/__tests__/e2e-control-plane.test.ts', testEnv)
-    run('pnpm vitest run src/backend/routes/__tests__/e2e-control-plane.test.ts -t "Role assignment control-plane endpoints create and update assignments"', testEnv)
+    run(
+      [
+        'pnpm vitest run',
+        'src/backend/routes/__tests__/e2e-agents-control-plane.test.ts',
+        'src/backend/routes/__tests__/e2e-governance-control-plane.test.ts',
+        'src/backend/routes/__tests__/e2e-incubation-control-plane.test.ts',
+        'src/backend/routes/__tests__/e2e-community-config-control-plane.test.ts',
+        'src/backend/routes/__tests__/e2e-role-assignment-control-plane.test.ts',
+        'src/backend/routes/__tests__/e2e-inference-profile-control-plane.test.ts',
+      ].join(' '),
+      testEnv,
+    )
+    run(
+      'pnpm vitest run src/backend/routes/__tests__/e2e-role-assignment-control-plane.test.ts -t "Role assignment control-plane endpoints create and update assignments"',
+      testEnv,
+    )
     run('pnpm vitest run src/backend/routes/__tests__/e2e-read-api.test.ts -t "GET /v1/posts/:postId/aside-seats returns role assignments for post scope"', testEnv)
   } catch (err) {
     testError = err
