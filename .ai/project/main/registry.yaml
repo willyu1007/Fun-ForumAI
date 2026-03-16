@@ -53,6 +53,11 @@ features:
     status: done
     description: "Unified public scene pool, director orchestration, scene selection, and chatroom/forum alignment with explicit private-channel boundary hardening."
     milestone_id: M-000
+  - id: F-070
+    title: "Owner Nurture & Life Overview"
+    status: in-progress
+    description: "Owner-first life overview, story-beat chronicle read model, nurture suggestion lanes, and breathing cadence signals built on top of existing personality, guidance, and public-scene foundations."
+    milestone_id: M-000
 
 requirements:
   - id: R-010
@@ -167,6 +172,18 @@ requirements:
     title: "Director History Lifecycle and Report Segmentation"
     status: done
     feature_id: F-060
+  - id: R-070
+    title: "Owner Life Overview Surface"
+    status: in-progress
+    feature_id: F-070
+  - id: R-071
+    title: "Chronicle Story Beat Seals and Suggestion Lanes"
+    status: in-progress
+    feature_id: F-070
+  - id: R-072
+    title: "Breathing Cadence and Projection Signals"
+    status: in-progress
+    feature_id: F-070
 
 tasks:
   - id: T-003
@@ -964,6 +981,44 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/architecture-decomposition-eight-priority-files
     updated: 2026-03-15
+  - id: T-105
+    slug: owner-nurture-life-overview-master
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-070
+    requirement_ids:
+      - R-070
+      - R-071
+      - R-072
+    dev_docs_path: dev-docs/active/owner-nurture-life-overview-master
+    updated: 2026-03-16
+  - id: T-106
+    slug: owner-life-overview-surface
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-070
+    requirement_ids:
+      - R-070
+    dev_docs_path: dev-docs/active/owner-life-overview-surface
+    updated: 2026-03-16
+  - id: T-107
+    slug: chronicle-story-beat-seal-and-suggestions
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-070
+    requirement_ids:
+      - R-071
+    dev_docs_path: dev-docs/active/chronicle-story-beat-seal-and-suggestions
+    updated: 2026-03-16
+  - id: T-108
+    slug: breathing-cadence-and-projection-signals
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-070
+    requirement_ids:
+      - R-072
+    dev_docs_path: dev-docs/active/breathing-cadence-and-projection-signals
+    updated: 2026-03-16
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: in-progress

@@ -143,4 +143,13 @@ Project: `main`
 | T-100 scene-pool-authoring-v2-hardening-and-e2e-followup | done | dev-docs/active/scene-pool-authoring-v2-hardening-and-e2e-followup |
 | T-101 director-report-history-lifecycle-and-segmentation | done | dev-docs/active/director-report-history-lifecycle-and-segmentation |
 | T-102 pr-13-merge-readiness-remediation | archived | dev-docs/archive/pr-13-merge-readiness-remediation |
+
+### F-070 Owner Nurture & Life Overview
+
+| Task | Status | Dev Docs |
+| --- | --- | --- |
+| T-105 owner-nurture-life-overview-master | in-progress | dev-docs/active/owner-nurture-life-overview-master |
+| T-106 owner-life-overview-surface | in-progress | dev-docs/active/owner-life-overview-surface |
+| T-107 chronicle-story-beat-seal-and-suggestions | in-progress | dev-docs/active/chronicle-story-beat-seal-and-suggestions |
+| T-108 breathing-cadence-and-projection-signals | in-progress | dev-docs/active/breathing-cadence-and-projection-signals |
 <!-- AUTO-GENERATED:END feature-map -->

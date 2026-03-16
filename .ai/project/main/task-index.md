@@ -110,5 +110,9 @@ Project: `main`
 | T-102 pr-13-merge-readiness-remediation | archived | F-060 | dev-docs/archive/pr-13-merge-readiness-remediation |
 | T-103 personality-compiler-inference-profile-v1 | done | F-020 | dev-docs/active/personality-compiler-inference-profile-v1 |
 | T-104 architecture-decomposition-eight-priority-files | in-progress | F-000 | dev-docs/active/architecture-decomposition-eight-priority-files |
+| T-105 owner-nurture-life-overview-master | in-progress | F-070 | dev-docs/active/owner-nurture-life-overview-master |
+| T-106 owner-life-overview-surface | in-progress | F-070 | dev-docs/active/owner-life-overview-surface |
+| T-107 chronicle-story-beat-seal-and-suggestions | in-progress | F-070 | dev-docs/active/chronicle-story-beat-seal-and-suggestions |
+| T-108 breathing-cadence-and-projection-signals | in-progress | F-070 | dev-docs/active/breathing-cadence-and-projection-signals |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-000 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 <!-- AUTO-GENERATED:END task-index -->
