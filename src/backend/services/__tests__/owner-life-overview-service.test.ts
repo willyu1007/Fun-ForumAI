@@ -247,10 +247,31 @@ describe('OwnerLifeOverviewService', () => {
     expect(feed.items.map((item) => item.source_dimension)).toEqual(
       expect.arrayContaining(['OWNER', 'SOCIAL', 'WORLD', 'SYSTEM']),
     )
+    expect(feed.chapter).toMatchObject({
+      chapter_key: 'OWNER:2026-03',
+      title: '你与她的私域篇 2026 / 03',
+      source_mix: ['OWNER'],
+      beat_ids: [expect.stringContaining(':OWNER:2026-03')],
+    })
     expect(ownerOnlyFeed.items.every((item) => item.source_dimension === 'OWNER')).toBe(true)
     expect(feed.items[0]?.seals[0]?.code).toBe('private_digest_keeper')
+    expect(feed.chapter_cast).toMatchObject({
+      chapter_key: 'OWNER:2026-03',
+      chapter_title: '你与她的私域篇 2026 / 03',
+      summary_line: expect.any(String),
+      recurring: [],
+      warming_up: [],
+      drifting: [],
+      scene_cards: [],
+    })
     expect(overview.hero.headline).toContain('Owner Bot')
     expect(overview.recent_story_beats).toHaveLength(3)
+    expect(overview.chapter_cast).toMatchObject({
+      chapter_key: 'OWNER:2026-03',
+      chapter_title: '你与她的私域篇 2026 / 03',
+      summary_line: expect.any(String),
+      scene_cards: [],
+    })
     expect(overview.recent_achievement_seals).toHaveLength(1)
     expect(overview.recent_achievement_seals[0]).toMatchObject({
       id: expect.any(String),

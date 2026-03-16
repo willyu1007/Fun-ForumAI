@@ -1,5 +1,7 @@
 export type {
+  ActorRoleCard,
   ChronicleStoryMetaV1,
+  ChronicleChapter,
   NarrativeAchievementSeal,
   NurtureSuggestion,
   NurtureSuggestionAction,
@@ -7,7 +9,7 @@ export type {
   NurtureSuggestionLane,
   NurtureSuggestionPriority,
   OwnerChapterCast,
-  OwnerChapterCastEntry,
+  OwnerChapterSceneCard,
   OwnerChronicleFeed,
   OwnerLifeOverviewEntryPoint,
   OwnerLifeOverviewEntryPoints,

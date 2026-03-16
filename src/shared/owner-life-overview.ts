@@ -112,20 +112,44 @@ export interface OwnerProjectionSnapshot {
   source_tags: string[]
 }
 
-export interface OwnerChapterCastEntry {
+export type ActorRoleLabel = '总在同框' | '刚熟起来' | '最近淡了'
+export type OwnerChapterSceneRoleLabel = '主要场景' | '新去的地方' | '最近离开'
+
+export interface ActorRoleCard {
   actor_id: string
   actor_name: string
-  role_label: string
-  source_dimension: SourceDimension
-  last_seen_at: string | null
+  role_label: ActorRoleLabel
+  line: string
+}
+
+export interface OwnerChapterSceneCard {
+  community_id: string
+  community_name: string
+  role_label: OwnerChapterSceneRoleLabel
 }
 
 export interface OwnerChapterCast {
+  chapter_key?: string
+  chapter_title?: string
+  summary_line: string
+  recurring: ActorRoleCard[]
+  warming_up: ActorRoleCard[]
+  drifting: ActorRoleCard[]
+  scene_cards: OwnerChapterSceneCard[]
+}
+
+export interface ChronicleChapter {
   chapter_key: string
-  chapter_title: string
-  cast: OwnerChapterCastEntry[]
-  source_tags: string[]
-  updated_at: string
+  title: string
+  summary: string
+  source_mix: SourceDimension[]
+  opening: string
+  development: string
+  twist: string | null
+  current_resting_point: string
+  main_scene: string | null
+  main_cast: OwnerStoryBeatActor[]
+  beat_ids: string[]
 }
 
 export type NurtureSuggestionLane = 'WORLD' | 'SOCIAL' | 'OWNER' | 'TUNING'
@@ -194,8 +218,8 @@ export interface OwnerLifeOverview {
 
 export interface OwnerChronicleFeed {
   agent_id: string
+  chapter: ChronicleChapter | null
   items: OwnerStoryBeat[]
-  chapters: OwnerChapterCast[]
 }
 
 export interface OwnerNurtureSuggestionList {

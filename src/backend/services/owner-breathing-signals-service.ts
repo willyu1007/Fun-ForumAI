@@ -13,6 +13,7 @@ import type {
   OwnerNowSnapshot,
   OwnerProjectionSnapshot,
 } from '../../shared/owner-life-overview.js'
+import { humanizeChronicleEntryForOwner } from './owner-chronicle-humanizer.js'
 
 function clampText(value: string | null | undefined, fallback: string): string {
   const normalized = (value ?? '').replace(/\s+/g, ' ').trim()
@@ -181,13 +182,14 @@ export class OwnerBreathingSignalsService {
     const sceneNarrative = mapSceneNarrative(topScene)
     const latestOwnerMemory = privateMemories.items[0] ?? null
     const recentBeat = chronicle.items[0] ?? null
+    const recentBeatTitle = recentBeat ? humanizeChronicleEntryForOwner(recentBeat).title : null
     const derived = this.deps.statsService.getDerivedSync(agentId)
     const mood = buildMoodDescriptor({
       sentiment: latestOwnerMemory?.sentiment ?? null,
       cautionRate: derived.expression.caution_rate,
       controversyAppetite: derived.participation.controversy_appetite,
     })
-    const recentCompany = await this.buildRecentCompany(agentId, rooms, recentBeat)
+    const recentCompany = await this.buildRecentCompany(agentId, rooms, recentBeatTitle)
     const lastActiveAt = [
       recentBeat?.occurred_at.toISOString() ?? null,
       latestOwnerMemory?.created_at.toISOString() ?? null,
@@ -233,6 +235,7 @@ export class OwnerBreathingSignalsService {
 
     const latestOwnerMemory = privateMemories.items[0] ?? null
     const recentBeat = chronicle.items[0] ?? null
+    const recentBeatTitle = recentBeat ? humanizeChronicleEntryForOwner(recentBeat).title : null
     const mood = buildMoodDescriptor({
       sentiment: latestOwnerMemory?.sentiment ?? null,
       cautionRate: this.deps.statsService.getDerivedSync(agentId).expression.caution_rate,
@@ -251,8 +254,8 @@ export class OwnerBreathingSignalsService {
     ]).slice(0, 4)
     const borrowedMotifs = unique([...(projection?.signature_moves_json ?? [])]).slice(0, 4)
 
-    const carryoverTheme = recentBeat
-      ? `最近从你这里带走的是「${recentBeat.title}」后面的那股延续感。`
+    const carryoverTheme = recentBeatTitle
+      ? `最近从你这里带走的是「${recentBeatTitle}」后面的那股延续感。`
       : pinnedInterests.length > 0
         ? `最近从你这里带走的是 ${pinnedInterests.join('、')} 这几条偏好。`
         : '最近从你这里带走的是一层还没完全成形的陪伴感。'
@@ -297,9 +300,7 @@ export class OwnerBreathingSignalsService {
   private async buildRecentCompany(
     agentId: string,
     rooms: Awaited<ReturnType<RoomRepository['getRoomsByAgent']>>,
-    recentBeat:
-      | Awaited<ReturnType<AchievementChronicleService['listChronicleForOwner']>>['items'][number]
-      | null,
+    recentBeatTitle: string | null,
   ): Promise<OwnerNowCompany[]> {
     const items: OwnerNowCompany[] = []
     const seen = new Set<string>()
@@ -316,7 +317,7 @@ export class OwnerBreathingSignalsService {
             actor_name: actor.display_name,
             tone_label: `最近总在「${room.name}」这类场里和她同框。`,
             chapter_key: null,
-            chapter_title: recentBeat?.title ?? null,
+            chapter_title: recentBeatTitle,
           })
         } catch {
           continue

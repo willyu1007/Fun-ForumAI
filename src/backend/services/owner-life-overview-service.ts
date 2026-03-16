@@ -10,11 +10,14 @@ import type { RelationService } from './relation-service.js'
 import type { MemoryService } from './memory-service.js'
 import type { AgentAchievement, ChronicleEntry } from '../repos/types.js'
 import type {
+  ActorRoleCard,
+  ChronicleChapter,
   NarrativeAchievementSeal,
   NurtureSuggestion,
   NurtureSuggestionLane,
   NurtureSuggestionPriority,
   OwnerChapterCast,
+  OwnerChapterSceneCard,
   OwnerChronicleFeed,
   OwnerLifeOverview,
   OwnerNurtureSuggestionList,
@@ -22,18 +25,17 @@ import type {
   SourceDimension,
 } from '../../shared/owner-life-overview.js'
 import { readChronicleStoryMeta } from './chronicle-story-meta.js'
+import { humanizeChronicleEntryForOwner } from './owner-chronicle-humanizer.js'
 import { OwnerBreathingSignalsService } from './owner-breathing-signals-service.js'
 
 function unique<T>(items: T[]): T[] {
   return Array.from(new Set(items))
 }
 
-function safeSummary(text: string): string {
-  const normalized = text.replace(/\s+/g, ' ').trim()
-  return normalized.length <= 140 ? normalized : `${normalized.slice(0, 139).trimEnd()}…`
-}
-
 function buildSealLabel(achievement: AgentAchievement): string {
+  if (new RegExp(`(?:^|\\s|·)T${achievement.tier}$`).test(achievement.name)) {
+    return achievement.name
+  }
   return `${achievement.name} T${achievement.tier}`
 }
 
@@ -62,14 +64,17 @@ function scopeMatchesBeat(achievement: AgentAchievement, beat: ChronicleEntry): 
   return true
 }
 
-function buildSealReasonLine(achievement: AgentAchievement, beat: ChronicleEntry): string {
+function buildSealReasonLine(
+  achievement: AgentAchievement,
+  beatTitle: string,
+): string {
   if (achievement.scope === 'community') {
-    return `这枚印记主要和「${beat.title}」所属的场域经历相连。`
+    return `这枚印记主要和「${beatTitle}」所属的场域经历相连。`
   }
   if (achievement.scope === 'peer') {
-    return `这枚印记主要和「${beat.title}」里的关系推进相连。`
+    return `这枚印记主要和「${beatTitle}」里的关系推进相连。`
   }
-  return `这枚印记主要和「${beat.title}」这一段经历相连。`
+  return `这枚印记主要和「${beatTitle}」这一段经历相连。`
 }
 
 function buildScopeLabel(achievement: AgentAchievement, beat: ChronicleEntry): string {
@@ -112,7 +117,8 @@ function scoreAchievementAgainstBeat(achievement: AgentAchievement, beat: Chroni
 
 function toSeal(achievement: AgentAchievement, beat: ChronicleEntry): NarrativeAchievementSeal {
   const storyMeta = readChronicleStoryMeta(beat)
-  const reasonLine = buildSealReasonLine(achievement, beat)
+  const humanizedBeat = humanizeChronicleEntryForOwner(beat)
+  const reasonLine = buildSealReasonLine(achievement, humanizedBeat.title)
 
   return {
     id: achievement.id,
@@ -134,7 +140,7 @@ function toSeal(achievement: AgentAchievement, beat: ChronicleEntry): NarrativeA
     story_link: {
       beat_id: beat.id,
       chapter_key: storyMeta.chapter_key,
-      title: beat.title,
+      title: humanizedBeat.title,
     },
     achieved_at: achievement.achieved_at.toISOString(),
     source_tags: unique([
@@ -164,16 +170,138 @@ function collectRecentAchievementSeals(beats: OwnerStoryBeat[], limit = 3): Narr
   return items
 }
 
-function deriveRoleLabel(input: {
+type ActorBucket = 'recurring' | 'warming_up' | 'drifting'
+
+interface ChapterActorAggregate {
   actorId: string
-  ownerAgentId: string
+  actorName: string
+  occurrences: number
+  firstSeenAt: string
+  lastSeenAt: string
+  lastSceneLabel: string | null
+}
+
+function summarizeArc(sourceDimension: SourceDimension, beats: OwnerStoryBeat[]): string {
+  if (beats.some((beat) => beat.story_kind === 'private_afterglow')) return '私域余温'
+  if (beats.some((beat) => beat.story_kind === 'relation_shift')) return '关系推进'
+  if (beats.some((beat) => beat.story_kind === 'system_adjustment')) return '边界调整'
+  if (sourceDimension === 'OWNER') return 'owner 线起伏'
+  if (sourceDimension === 'SOCIAL') return '同场来回'
+  if (sourceDimension === 'SYSTEM') return '边界变化'
+  return '公开场推进'
+}
+
+function sourceDimensionNoun(sourceDimension: SourceDimension): string {
+  switch (sourceDimension) {
+    case 'OWNER':
+      return 'owner 线'
+    case 'SOCIAL':
+      return '关系线'
+    case 'SYSTEM':
+      return '系统边界'
+    case 'WORLD':
+    default:
+      return '公共场'
+  }
+}
+
+function extractCommunityIds(entry: ChronicleEntry): string[] {
+  return entry.tags
+    .filter((tag) => tag.startsWith('community:'))
+    .map((tag) => tag.slice('community:'.length))
+    .filter((value) => value.length > 0)
+}
+
+function pickMainScene(beats: OwnerStoryBeat[]): string | null {
+  const counts = new Map<string, number>()
+  for (const beat of beats) {
+    if (!beat.scene_label) continue
+    counts.set(beat.scene_label, (counts.get(beat.scene_label) ?? 0) + 1)
+  }
+
+  let best: { label: string; count: number } | null = null
+  for (const [label, count] of counts.entries()) {
+    if (!best || count > best.count) {
+      best = { label, count }
+    }
+  }
+
+  return best?.label ?? null
+}
+
+function buildChapterSummary(input: {
+  sourceDimension: SourceDimension
+  mainScene: string | null
+  leadActorName: string | null
+  beats: OwnerStoryBeat[]
+}): string {
+  const sceneLabel = input.mainScene ?? sourceDimensionNoun(input.sourceDimension)
+  const hookLabel = input.leadActorName ?? input.beats[0]?.title ?? '最近这段经历'
+  return `这段时间她主要在 ${sceneLabel} 打转，围着 ${hookLabel} 发生了几次 ${summarizeArc(input.sourceDimension, input.beats)}。`
+}
+
+function buildChronicleSentence(label: string | null, fallback: string): string {
+  if (!label || label.trim().length === 0) return fallback
+  return label
+}
+
+function buildActorCardLine(input: {
+  bucket: ActorBucket
+  actorName: string
+  sceneLabel: string | null
   relationIds: Set<string>
   activeRoomIds: Set<string>
+  actorId: string
 }): string {
-  if (input.actorId === input.ownerAgentId) return '主角'
-  if (input.relationIds.has(input.actorId)) return '关系推进者'
-  if (input.activeRoomIds.has(input.actorId)) return '同场角色'
-  return '章节配角'
+  const sceneHint = input.sceneLabel ?? '同一段故事里'
+  if (input.bucket === 'recurring') {
+    const toneLabel = input.relationIds.has(input.actorId)
+      ? '已经有点自然熟'
+      : input.activeRoomIds.has(input.actorId)
+        ? '像固定搭子一样顺'
+        : '慢慢稳定下来了'
+    return `${input.actorName} 最近总在 ${sceneHint} 一起出现，气氛 ${toneLabel}。`
+  }
+  if (input.bucket === 'warming_up') {
+    return `${input.actorName} 这段时间开始有来有回，像是刚找到接话节奏。`
+  }
+  return `${input.actorName} 前阵子常出现，这几天明显少了。`
+}
+
+function buildChapterCastSummary(input: {
+  recurring: ActorRoleCard[]
+  warmingUp: ActorRoleCard[]
+  drifting: ActorRoleCard[]
+  sceneCards: OwnerChapterSceneCard[]
+}): string {
+  if (input.recurring.length > 0 && input.sceneCards[0]) {
+    return `这一章大多发生在 ${input.sceneCards[0].community_name}，最近总和 ${input.recurring
+      .slice(0, 2)
+      .map((item) => item.actor_name)
+      .join('、')} 同框。`
+  }
+  if (input.recurring.length > 0) {
+    return `这一章最近最稳定的同框角色是 ${input.recurring
+      .slice(0, 2)
+      .map((item) => item.actor_name)
+      .join('、')}。`
+  }
+  if (input.warmingUp.length > 0) {
+    return `这一章开始冒出新的来回角色，像 ${input.warmingUp
+      .slice(0, 2)
+      .map((item) => item.actor_name)
+      .join('、')}。`
+  }
+  if (input.drifting.length > 0) {
+    return `这一章有些旧角色开始退场，像 ${input.drifting
+      .slice(0, 2)
+      .map((item) => item.actor_name)
+      .join('、')} 这条线在变淡。`
+  }
+  if (input.sceneCards[0]) {
+    return `这一章大多发生在 ${input.sceneCards[0].community_name}。`
+  }
+  return '这一章的角色关系还在形成中。'
 }
 
 function priorityRank(priority: NurtureSuggestionPriority): number {
@@ -256,10 +384,14 @@ export class OwnerLifeOverviewService {
     ])
 
     const recentStoryBeats = chronicleFeed.items.slice(0, 3)
-    const chapterCast = chronicleFeed.chapters[0] ?? null
+    const chapterCast = chronicleFeed.chapter_cast
     const recentAchievementSeals = collectRecentAchievementSeals(recentStoryBeats)
     const generatedAt = new Date().toISOString()
-    const degraded = recentStoryBeats.length < 3 || suggestions.items.length < 3 || chapterCast === null
+    const degraded =
+      recentStoryBeats.length < 3 ||
+      suggestions.items.length < 3 ||
+      chronicleFeed.chapter === null ||
+      chapterCast === null
 
     return {
       agent_id: agent.id,
@@ -281,7 +413,10 @@ export class OwnerLifeOverviewService {
         chronicle: {
           label: '查看编年史',
           href: `/agents/${agent.id}?tab=achievements`,
-          hint: chapterCast ? `继续沿着「${chapterCast.chapter_title}」往下看。` : '去看完整经历线。',
+          hint:
+            chronicleFeed.chapter?.title ?? chapterCast?.chapter_title
+              ? `继续沿着「${chronicleFeed.chapter?.title ?? chapterCast?.chapter_title}」往下看。`
+              : '去看完整经历线。',
         },
         system: {
           label: '进入系统面板',
@@ -306,7 +441,13 @@ export class OwnerLifeOverviewService {
       scene_label?: string
       source_dimension?: SourceDimension
     } = {},
-  ): Promise<OwnerChronicleFeed & { next_cursor: string | null; folded_count: number }> {
+  ): Promise<
+    OwnerChronicleFeed & {
+      chapter_cast: OwnerChapterCast | null
+      next_cursor: string | null
+      folded_count: number
+    }
+  > {
     this.deps.agentService.getAgent(agentId)
 
     const requestLimit = Math.min(Math.max(opts.limit ?? 12, 1), 50)
@@ -322,14 +463,22 @@ export class OwnerLifeOverviewService {
     const beats = chronicle.items.map((entry) => this.toOwnerStoryBeat(entry, achievements.items))
     const filteredBeats = beats.filter((beat) => this.matchesBeatFilters(beat, opts))
     const pagedBeats = filteredBeats.slice(0, requestLimit)
-    const pagedEntryIds = new Set(pagedBeats.map((beat) => beat.chronicle_entry_id))
-    const pagedEntries = chronicle.items.filter((entry) => pagedEntryIds.has(entry.id))
-    const chapters = await this.buildChapterCast(agentId, pagedEntries)
+    const filteredEntryIds = new Set(filteredBeats.map((beat) => beat.chronicle_entry_id))
+    const filteredEntries = chronicle.items.filter((entry) => filteredEntryIds.has(entry.id))
+    const focusChapterKey = opts.chapter_key ?? pagedBeats[0]?.chapter_key ?? filteredBeats[0]?.chapter_key ?? null
+    const chapterEntries = focusChapterKey
+      ? filteredEntries.filter((entry) => readChronicleStoryMeta(entry).chapter_key === focusChapterKey)
+      : []
+    const chapterBeats = focusChapterKey
+      ? filteredBeats.filter((beat) => beat.chapter_key === focusChapterKey)
+      : []
+    const { chapter, chapterCast } = await this.buildChapterReadModel(agentId, chapterBeats, chapterEntries)
 
     return {
       agent_id: agentId,
+      chapter,
       items: pagedBeats,
-      chapters,
+      chapter_cast: chapterCast,
       next_cursor: chronicle.next_cursor,
       folded_count: chronicle.folded_count,
     }
@@ -481,17 +630,53 @@ export class OwnerLifeOverviewService {
     return true
   }
 
-  private async buildChapterCast(agentId: string, entries: ChronicleEntry[]): Promise<OwnerChapterCast[]> {
-    if (entries.length === 0) return []
-
-    const groups = new Map<string, ChronicleEntry[]>()
-    for (const entry of entries) {
-      const storyMeta = readChronicleStoryMeta(entry)
-      const list = groups.get(storyMeta.chapter_key) ?? []
-      list.push(entry)
-      groups.set(storyMeta.chapter_key, list)
+  private async buildChapterReadModel(
+    agentId: string,
+    beats: OwnerStoryBeat[],
+    entries: ChronicleEntry[],
+  ): Promise<{ chapter: ChronicleChapter | null; chapterCast: OwnerChapterCast | null }> {
+    if (beats.length === 0 || entries.length === 0) {
+      return {
+        chapter: null,
+        chapterCast: null,
+      }
     }
 
+    const [activeRoomMemberIds, relationIds, memberships] = await Promise.all([
+      this.listActiveRoomMemberIds(agentId),
+      this.listRelationIds(agentId),
+      Promise.resolve(this.deps.membershipService.listActive(agentId)),
+    ])
+
+    const storyMeta = readChronicleStoryMeta(entries[0])
+    const activeCommunityIds = new Set(memberships.map((item) => item.community_id))
+    const actorAggregates = this.buildChapterActorAggregates(agentId, beats)
+    const sceneCards = this.buildSceneCards(entries, activeCommunityIds)
+    const recurring = this.buildActorCards('recurring', actorAggregates, relationIds, activeRoomMemberIds)
+    const warmingUp = this.buildActorCards('warming_up', actorAggregates, relationIds, activeRoomMemberIds)
+    const drifting = this.buildActorCards('drifting', actorAggregates, relationIds, activeRoomMemberIds)
+    const chapterCast: OwnerChapterCast = {
+      chapter_key: storyMeta.chapter_key,
+      chapter_title: storyMeta.chapter_title,
+      summary_line: buildChapterCastSummary({
+        recurring,
+        warmingUp,
+        drifting,
+        sceneCards,
+      }),
+      recurring,
+      warming_up: warmingUp,
+      drifting,
+      scene_cards: sceneCards,
+    }
+
+    return {
+      chapter: this.buildChronicleChapter(storyMeta.source_dimension, beats, chapterCast),
+      chapterCast,
+    }
+  }
+
+  private async listActiveRoomMemberIds(agentId: string): Promise<Set<string>> {
     const rooms = await this.deps.roomRepo.getRoomsByAgent(agentId)
     const activeRoomMemberIds = new Set<string>()
     for (const room of rooms.slice(0, 3)) {
@@ -500,59 +685,243 @@ export class OwnerLifeOverviewService {
         activeRoomMemberIds.add(member.member_id)
       }
     }
+    return activeRoomMemberIds
+  }
 
+  private async listRelationIds(agentId: string): Promise<Set<string>> {
     const relationIds = new Set<string>()
-    if (this.relationService) {
-      const following = await this.relationService.listRelations(agentId, {
-        view: 'following',
-        limit: 8,
-      })
-      for (const item of following.items) {
-        relationIds.add(item.pair_agent_id)
+    if (!this.relationService) {
+      return relationIds
+    }
+
+    const following = await this.relationService.listRelations(agentId, {
+      view: 'following',
+      limit: 8,
+    })
+    for (const item of following.items) {
+      relationIds.add(item.pair_agent_id)
+    }
+    return relationIds
+  }
+
+  private buildChapterActorAggregates(agentId: string, beats: OwnerStoryBeat[]): Record<ActorBucket, ChapterActorAggregate[]> {
+    const stats = new Map<string, ChapterActorAggregate>()
+
+    for (const beat of beats) {
+      for (const actor of beat.actors) {
+        if (actor.actor_id === agentId) continue
+        const existing = stats.get(actor.actor_id)
+        const occurredAt = beat.occurred_at
+        if (!existing) {
+          stats.set(actor.actor_id, {
+            actorId: actor.actor_id,
+            actorName: actor.actor_name,
+            occurrences: 1,
+            firstSeenAt: occurredAt,
+            lastSeenAt: occurredAt,
+            lastSceneLabel: beat.scene_label,
+          })
+          continue
+        }
+
+        existing.occurrences += 1
+        if (new Date(occurredAt).getTime() > new Date(existing.lastSeenAt).getTime()) {
+          existing.lastSeenAt = occurredAt
+          existing.lastSceneLabel = beat.scene_label
+        }
+        if (new Date(occurredAt).getTime() < new Date(existing.firstSeenAt).getTime()) {
+          existing.firstSeenAt = occurredAt
+        }
       }
     }
 
-    const agent = this.deps.agentService.getAgent(agentId)
+    const latestBeatAt = beats[0]?.occurred_at ?? null
+    const recurring: ChapterActorAggregate[] = []
+    const warmingUp: ChapterActorAggregate[] = []
+    const drifting: ChapterActorAggregate[] = []
 
-    return [...groups.entries()].map(([chapterKey, chapterEntries]) => {
-      const storyMeta = readChronicleStoryMeta(chapterEntries[0])
-      const actorIds = unique([agentId, ...chapterEntries.flatMap((entry) => entry.actors)]).slice(0, 6)
-
-      const cast = actorIds
-        .map((actorId) => {
-          try {
-            const actor = this.deps.agentService.getAgent(actorId)
-            return {
-              actor_id: actor.id,
-              actor_name: actor.display_name,
-              role_label: deriveRoleLabel({
-                actorId: actor.id,
-                ownerAgentId: agent.id,
-                relationIds,
-                activeRoomIds: activeRoomMemberIds,
-              }),
-              source_dimension: storyMeta.source_dimension,
-              last_seen_at:
-                chapterEntries.find((entry) => entry.actors.includes(actor.id))?.occurred_at.toISOString() ?? null,
-            }
-          } catch {
-            return null
-          }
-        })
-        .filter((item): item is OwnerChapterCast['cast'][number] => item !== null)
-
-      return {
-        chapter_key: chapterKey,
-        chapter_title: storyMeta.chapter_title,
-        cast,
-        source_tags: storyMeta.source_tags,
-        updated_at: chapterEntries[0].occurred_at.toISOString(),
+    for (const item of stats.values()) {
+      if (item.occurrences >= 2) {
+        recurring.push(item)
+        continue
       }
-    })
+      if (latestBeatAt && item.lastSeenAt === latestBeatAt) {
+        warmingUp.push(item)
+        continue
+      }
+      drifting.push(item)
+    }
+
+    const sortByFreshness = (left: ChapterActorAggregate, right: ChapterActorAggregate) =>
+      new Date(right.lastSeenAt).getTime() - new Date(left.lastSeenAt).getTime() ||
+      right.occurrences - left.occurrences
+
+    recurring.sort(sortByFreshness)
+    warmingUp.sort(sortByFreshness)
+    drifting.sort(sortByFreshness)
+
+    return {
+      recurring,
+      warming_up: warmingUp,
+      drifting,
+    }
+  }
+
+  private buildActorCards(
+    bucket: ActorBucket,
+    grouped: Record<ActorBucket, ChapterActorAggregate[]>,
+    relationIds: Set<string>,
+    activeRoomMemberIds: Set<string>,
+  ): ActorRoleCard[] {
+    const roleLabel =
+      bucket === 'recurring' ? '总在同框' : bucket === 'warming_up' ? '刚熟起来' : '最近淡了'
+
+    return grouped[bucket].slice(0, 3).map((item) => ({
+      actor_id: item.actorId,
+      actor_name: item.actorName,
+      role_label: roleLabel,
+      line: buildActorCardLine({
+        bucket,
+        actorName: item.actorName,
+        sceneLabel: item.lastSceneLabel,
+        relationIds,
+        activeRoomIds: activeRoomMemberIds,
+        actorId: item.actorId,
+      }),
+    }))
+  }
+
+  private buildSceneCards(
+    entries: ChronicleEntry[],
+    activeCommunityIds: Set<string>,
+  ): OwnerChapterSceneCard[] {
+    const sceneStats = new Map<string, { count: number; lastSeenAt: number }>()
+
+    for (const entry of entries) {
+      const occurredAt = entry.occurred_at.getTime()
+      for (const communityId of extractCommunityIds(entry)) {
+        const existing = sceneStats.get(communityId)
+        if (existing) {
+          existing.count += 1
+          existing.lastSeenAt = Math.max(existing.lastSeenAt, occurredAt)
+        } else {
+          sceneStats.set(communityId, {
+            count: 1,
+            lastSeenAt: occurredAt,
+          })
+        }
+      }
+    }
+
+    if (sceneStats.size === 0) {
+      return []
+    }
+
+    return unique([...sceneStats.keys(), ...activeCommunityIds])
+      .map((communityId) => {
+        const community = this.deps.communityRepo.findById(communityId)
+        if (!community) return null
+
+        const stats = sceneStats.get(communityId)
+        const roleLabel =
+          stats && activeCommunityIds.has(communityId)
+            ? '主要场景'
+            : activeCommunityIds.has(communityId)
+              ? '新去的地方'
+              : '最近离开'
+
+        return {
+          community_id: community.id,
+          community_name: community.name,
+          role_label: roleLabel,
+          count: stats?.count ?? 0,
+          lastSeenAt: stats?.lastSeenAt ?? 0,
+        }
+      })
+      .filter((item): item is OwnerChapterSceneCard & { count: number; lastSeenAt: number } => item !== null)
+      .sort((left, right) => {
+        const roleRank = (value: OwnerChapterSceneCard['role_label']): number => {
+          if (value === '主要场景') return 0
+          if (value === '新去的地方') return 1
+          return 2
+        }
+        return roleRank(left.role_label) - roleRank(right.role_label) ||
+          right.count - left.count ||
+          right.lastSeenAt - left.lastSeenAt
+      })
+      .slice(0, 3)
+      .map(({ count: _count, lastSeenAt: _lastSeenAt, ...item }) => item)
+  }
+
+  private buildChronicleChapter(
+    sourceDimension: SourceDimension,
+    beats: OwnerStoryBeat[],
+    chapterCast: OwnerChapterCast,
+  ): ChronicleChapter {
+    const latestBeat = beats[0]
+    const earliestBeat = beats[beats.length - 1] ?? latestBeat
+    const middleBeat = beats[Math.floor((beats.length - 1) / 2)] ?? latestBeat
+    const twistBeat =
+      beats.find(
+        (beat, index) =>
+          index > 0 &&
+          index < beats.length - 1 &&
+          ((beat.emotion_before && beat.emotion_after && beat.emotion_before !== beat.emotion_after) ||
+            beat.seals.length > 0),
+      ) ?? null
+    const mainScene = chapterCast.scene_cards[0]?.community_name ?? pickMainScene(beats)
+    const leadActorName =
+      chapterCast.recurring[0]?.actor_name ??
+      chapterCast.warming_up[0]?.actor_name ??
+      chapterCast.drifting[0]?.actor_name ??
+      null
+    const mainCast = unique(
+      [
+        ...chapterCast.recurring,
+        ...chapterCast.warming_up,
+        ...chapterCast.drifting,
+      ].map((item) => JSON.stringify({ actor_id: item.actor_id, actor_name: item.actor_name })),
+    )
+      .slice(0, 4)
+      .map((item) => JSON.parse(item) as ChronicleChapter['main_cast'][number])
+
+    return {
+      chapter_key: latestBeat.chapter_key,
+      title: latestBeat.chapter_title,
+      summary: buildChapterSummary({
+        sourceDimension,
+        mainScene,
+        leadActorName,
+        beats,
+      }),
+      source_mix: unique(beats.map((beat) => beat.source_dimension)),
+      opening: buildChronicleSentence(
+        earliestBeat.summary,
+        `起于「${earliestBeat.title}」这一段经历。`,
+      ),
+      development: buildChronicleSentence(
+        middleBeat.outcome_sentence ?? middleBeat.summary,
+        `后来故事继续往「${middleBeat.title}」推了一步。`,
+      ),
+      twist: twistBeat
+        ? buildChronicleSentence(
+            twistBeat.outcome_sentence ?? twistBeat.reaction_sentence,
+            `中间在「${twistBeat.title}」这里出现了转折。`,
+          )
+        : null,
+      current_resting_point: buildChronicleSentence(
+        latestBeat.next_hook ?? latestBeat.outcome_sentence,
+        `现在停在「${latestBeat.title}」之后的余波里。`,
+      ),
+      main_scene: mainScene,
+      main_cast: mainCast,
+      beat_ids: beats.map((beat) => beat.id),
+    }
   }
 
   private toOwnerStoryBeat(entry: ChronicleEntry, achievements: AgentAchievement[]): OwnerStoryBeat {
     const storyMeta = readChronicleStoryMeta(entry)
+    const humanized = humanizeChronicleEntryForOwner(entry)
     const seals = achievements
       .map((achievement) => ({
         achievement,
@@ -582,8 +951,8 @@ export class OwnerLifeOverviewService {
       story_kind: storyMeta.story_kind,
       chapter_key: storyMeta.chapter_key,
       chapter_title: storyMeta.chapter_title,
-      title: entry.title,
-      summary: safeSummary(entry.summary),
+      title: humanized.title,
+      summary: humanized.summary,
       scene_label: storyMeta.scene_label ?? entry.location,
       emotion_before: storyMeta.emotion_before,
       emotion_after: storyMeta.emotion_after,

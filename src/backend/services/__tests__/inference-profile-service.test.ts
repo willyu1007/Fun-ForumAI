@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { InMemoryUsageLedgerRepository } from '../../llm/usage-ledger.js'
+import type { UsageLedgerEntry } from '../../llm/gateway-contract.js'
 import { personaObservability } from '../../runtime/persona-observability.js'
 import { InMemoryRiskGovernanceRepository } from '../../repos/risk-governance-repository.js'
 import {
@@ -127,7 +128,7 @@ function buildLedgerEntry(input: {
   visibility?: 'visible' | 'identity_write'
   success?: boolean
   createdAt?: string
-}) {
+}): UsageLedgerEntry {
   const intent = input.intent ?? 'proactive_opening'
   const visibility = input.visibility ?? 'visible'
   const success = input.success ?? true

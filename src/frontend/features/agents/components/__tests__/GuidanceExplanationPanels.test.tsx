@@ -141,8 +141,8 @@ describe('owner explanation surfaces', () => {
       data: {
         data: {
           agent_id: 'agent-1',
+          chapter: null,
           items: [],
-          chapters: [],
         },
       },
       isLoading: false,
@@ -211,6 +211,19 @@ describe('owner explanation surfaces', () => {
       data: {
         data: {
           agent_id: 'agent-1',
+          chapter: {
+            chapter_key: 'OWNER:2026-03',
+            title: '你与她的私域篇 2026 / 03',
+            summary: '这段时间她主要在 私域余温 打转，围着 搭子 发生了几次私域余温。',
+            source_mix: ['OWNER'],
+            opening: '起于昨晚那段更靠近彼此的夜聊。',
+            development: '后来它把那股余温悄悄带到了今天。',
+            twist: '中间在「那次夜聊还留着余温」这里开始更愿意靠近。',
+            current_resting_point: '下一段适合把这股余温带回公共场。',
+            main_scene: '私域余温',
+            main_cast: [{ actor_id: 'agent-2', actor_name: '搭子' }],
+            beat_ids: ['beat-1'],
+          },
           items: [
             {
               id: 'beat-1',
@@ -261,23 +274,6 @@ describe('owner explanation surfaces', () => {
               ],
             },
           ],
-          chapters: [
-            {
-              chapter_key: 'OWNER:2026-03',
-              chapter_title: '你与她的私域篇 2026 / 03',
-              cast: [
-                {
-                  actor_id: 'agent-2',
-                  actor_name: '搭子',
-                  role_label: '关系推进者',
-                  source_dimension: 'OWNER',
-                  last_seen_at: '2026-03-12T00:00:00.000Z',
-                },
-              ],
-              source_tags: ['owner:afterglow'],
-              updated_at: '2026-03-12T00:00:00.000Z',
-            },
-          ],
         },
       },
       isLoading: false,
@@ -320,6 +316,8 @@ describe('owner explanation surfaces', () => {
 
     expect(screen.getByText('筛选这条人生线')).toBeTruthy()
     expect(screen.getByText('那次夜聊还留着余温')).toBeTruthy()
+    expect(screen.getByText('起于昨晚那段更靠近彼此的夜聊。')).toBeTruthy()
+    expect(screen.getByText('下一段适合把这股余温带回公共场。')).toBeTruthy()
     expect(screen.getByText('情绪起伏：观望 到 更愿意靠近')).toBeTruthy()
     expect(screen.getByText('Private Digest Keeper T2')).toBeTruthy()
     expect(screen.getByText('继续推进这一章')).toBeTruthy()

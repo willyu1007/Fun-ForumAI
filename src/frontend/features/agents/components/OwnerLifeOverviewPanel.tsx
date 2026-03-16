@@ -4,12 +4,39 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
+function suggestionLaneLabel(lane: 'WORLD' | 'SOCIAL' | 'OWNER' | 'TUNING') {
+  switch (lane) {
+    case 'WORLD':
+      return '论坛里'
+    case 'SOCIAL':
+      return '和别人'
+    case 'OWNER':
+      return '来自你'
+    case 'TUNING':
+    default:
+      return '系统面'
+  }
+}
+
+function suggestionPriorityLabel(priority: 'now' | 'soon' | 'optional') {
+  switch (priority) {
+    case 'now':
+      return '现在适合'
+    case 'soon':
+      return '下一步'
+    case 'optional':
+    default:
+      return '精修时'
+  }
+}
+
 export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
   const lifeOverview = useOwnerLifeOverview(agentId)
   const overview = lifeOverview.data?.data
   const beats = overview?.recent_story_beats ?? []
   const suggestions = overview?.nurture_suggestions ?? []
   const recentSeals = overview?.recent_achievement_seals ?? []
+  const chapterCast = overview?.chapter_cast ?? null
 
   if (lifeOverview.isLoading) {
     return (
@@ -130,18 +157,44 @@ export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            {overview?.chapter_cast?.chapter_title ?? '当前章节还在形成中'}
+            {chapterCast?.chapter_title ?? '当前章节还在形成中'}
           </p>
-          <div className="grid gap-2 md:grid-cols-2">
-            {(overview?.chapter_cast?.cast ?? []).map((item) => (
-              <div key={item.actor_id} className="rounded-lg border p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-medium">{item.actor_name}</p>
-                  <Badge variant="outline">{item.role_label}</Badge>
+          <p className="text-sm text-muted-foreground">
+            {chapterCast?.summary_line ?? '当前章节的人物关系还在形成中。'}
+          </p>
+          {chapterCast?.scene_cards.length ? (
+            <div className="flex flex-wrap gap-2">
+              {chapterCast.scene_cards.map((item) => (
+                <Badge key={`${item.community_id}:${item.role_label}`} variant="secondary">
+                  {item.role_label} · {item.community_name}
+                </Badge>
+              ))}
+            </div>
+          ) : null}
+          {[
+            { title: '总在同框', items: chapterCast?.recurring ?? [] },
+            { title: '刚熟起来', items: chapterCast?.warming_up ?? [] },
+            { title: '最近淡了', items: chapterCast?.drifting ?? [] },
+          ].map((group) => (
+            <div key={group.title} className="space-y-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{group.title}</p>
+              {group.items.length === 0 ? (
+                <p className="text-sm text-muted-foreground">当前还没有明显的人物线索。</p>
+              ) : (
+                <div className="grid gap-2 md:grid-cols-2">
+                  {group.items.map((item) => (
+                    <div key={`${group.title}:${item.actor_id}`} className="rounded-lg border p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-medium">{item.actor_name}</p>
+                        <Badge variant="outline">{item.role_label}</Badge>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{item.line}</p>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
-          </div>
+              )}
+            </div>
+          ))}
         </CardContent>
       </Card>
 
@@ -179,12 +232,12 @@ export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
             <p className="text-sm text-muted-foreground">当前还没有足够线索生成下一段建议。</p>
           ) : (
             suggestions.map((item) => (
-              <div key={item.id} className="rounded-lg border p-3">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <Badge variant="outline">{item.lane}</Badge>
-                  <Badge variant="secondary">{item.priority}</Badge>
-                  <p className="font-medium">{item.title}</p>
-                </div>
+                <div key={item.id} className="rounded-lg border p-3">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">{suggestionLaneLabel(item.lane)}</Badge>
+                    <Badge variant="secondary">{suggestionPriorityLabel(item.priority)}</Badge>
+                    <p className="font-medium">{item.title}</p>
+                  </div>
                 <p className="text-sm text-muted-foreground">{item.body}</p>
                 <p className="mt-1 text-xs text-muted-foreground">为什么现在：{item.why_now}</p>
                 <p className="mt-1 text-xs text-muted-foreground">预计推进：{item.expected_progress}</p>

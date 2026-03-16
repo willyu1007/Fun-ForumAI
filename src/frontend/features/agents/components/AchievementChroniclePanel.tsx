@@ -15,6 +15,7 @@ import { relativeTime } from '@/shared/utils/relative-time'
 import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
 import { GuidanceInlineRail } from '@/features/guidance/components/GuidanceInlineRail'
 import type {
+  ChronicleChapter,
   GuidanceItemCard as GuidanceItemCardView,
   OwnerStoryBeat,
   SourceDimension,
@@ -43,6 +44,32 @@ function tierLabel(tier: 1 | 2 | 3): string {
   return 'T1'
 }
 
+function suggestionLaneLabel(lane: 'WORLD' | 'SOCIAL' | 'OWNER' | 'TUNING') {
+  switch (lane) {
+    case 'WORLD':
+      return '论坛里'
+    case 'SOCIAL':
+      return '和别人'
+    case 'OWNER':
+      return '来自你'
+    case 'TUNING':
+    default:
+      return '系统面'
+  }
+}
+
+function suggestionPriorityLabel(priority: 'now' | 'soon' | 'optional') {
+  switch (priority) {
+    case 'now':
+      return '现在适合'
+    case 'soon':
+      return '下一步'
+    case 'optional':
+    default:
+      return '精修时'
+  }
+}
+
 function buildActorOptions(items: OwnerStoryBeat[]) {
   const seen = new Set<string>()
   return items.flatMap((item) =>
@@ -68,6 +95,31 @@ function buildSceneOptions(items: OwnerStoryBeat[]) {
       seen.add(item)
       return true
     })
+}
+
+function buildChapterOptions(items: OwnerStoryBeat[], chapter: ChronicleChapter | null) {
+  const seen = new Set<string>()
+  const options = items
+    .filter((item) => {
+      if (seen.has(item.chapter_key)) {
+        return false
+      }
+      seen.add(item.chapter_key)
+      return true
+    })
+    .map((item) => ({
+      chapter_key: item.chapter_key,
+      chapter_title: item.chapter_title,
+    }))
+
+  if (chapter && !seen.has(chapter.chapter_key)) {
+    options.unshift({
+      chapter_key: chapter.chapter_key,
+      chapter_title: chapter.title,
+    })
+  }
+
+  return options
 }
 
 export default function AchievementChroniclePanel({
@@ -141,8 +193,11 @@ export default function AchievementChroniclePanel({
 
   const ownerFeed = ownerChronicleQuery.data?.data
   const ownerItems = useMemo(() => ownerFeed?.items ?? [], [ownerFeed?.items])
-  const ownerChapters = useMemo(() => ownerFeed?.chapters ?? [], [ownerFeed?.chapters])
-  const ownerChapter = ownerChapters[0] ?? null
+  const ownerChapter = ownerFeed?.chapter ?? null
+  const ownerChapterOptions = useMemo(
+    () => buildChapterOptions(ownerItems, ownerChapter),
+    [ownerItems, ownerChapter],
+  )
   const ownerSuggestions = ownerSuggestionsQuery.data?.data.items ?? []
   const actorOptions = useMemo(() => buildActorOptions(ownerItems), [ownerItems])
   const sceneOptions = useMemo(() => buildSceneOptions(ownerItems), [ownerItems])
@@ -173,7 +228,7 @@ export default function AchievementChroniclePanel({
               >
                 全部章节
               </Button>
-              {ownerChapters.map((chapter) => (
+              {ownerChapterOptions.map((chapter) => (
                 <Button
                   key={chapter.chapter_key}
                   variant={chapter.chapter_key === chapterKey ? 'secondary' : 'outline'}
@@ -263,15 +318,45 @@ export default function AchievementChroniclePanel({
             ) : ownerChapter ? (
               <>
                 <div>
-                  <p className={uix('uix-c49a5af3a6')}>{ownerChapter.chapter_title}</p>
-                  <p className={uix('uix-dacb762e7b')}>
-                    这章里最近最常出现的是这些角色与场景，它们会直接影响首页的角色表和故事预览。
-                  </p>
+                  <p className={uix('uix-c49a5af3a6')}>{ownerChapter.title}</p>
+                  <p className={uix('uix-dacb762e7b')}>{ownerChapter.summary}</p>
                 </div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">起于什么</p>
+                    <p className={uix('uix-dacb762e7b')}>{ownerChapter.opening}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">后来怎么发展</p>
+                    <p className={uix('uix-dacb762e7b')}>{ownerChapter.development}</p>
+                  </div>
+                  {ownerChapter.twist ? (
+                    <div className="rounded-lg border p-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">哪里转了一下</p>
+                      <p className={uix('uix-dacb762e7b')}>{ownerChapter.twist}</p>
+                    </div>
+                  ) : null}
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">现在停在何处</p>
+                    <p className={uix('uix-dacb762e7b')}>{ownerChapter.current_resting_point}</p>
+                  </div>
+                </div>
+                {ownerChapter.main_scene ? (
+                  <Badge variant="secondary">主要场景 · {ownerChapter.main_scene}</Badge>
+                ) : null}
+                {ownerChapter.source_mix.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {ownerChapter.source_mix.map((item) => (
+                      <Badge key={item} variant="outline">
+                        {SOURCE_DIMENSION_OPTIONS.find((option) => option.value === item)?.label ?? item}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
                 <div className="flex flex-wrap gap-2">
-                  {ownerChapter.cast.map((item) => (
+                  {ownerChapter.main_cast.map((item) => (
                     <Badge key={item.actor_id} variant="outline">
-                      {item.actor_name} · {item.role_label}
+                      {item.actor_name}
                     </Badge>
                   ))}
                 </div>
@@ -339,15 +424,6 @@ export default function AchievementChroniclePanel({
                         ))}
                       </div>
                     ) : null}
-                    {item.source_tags.length > 0 ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {item.source_tags.map((tag) => (
-                          <Badge key={tag} variant="outline">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : null}
                   </div>
                 ))}
               </div>
@@ -372,8 +448,8 @@ export default function AchievementChroniclePanel({
               ownerSuggestions.slice(0, 3).map((item) => (
                 <div key={item.id} className={uix('uix-cae5cb4b5b')}>
                   <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">{item.lane}</Badge>
-                    <Badge variant="secondary">{item.priority}</Badge>
+                    <Badge variant="outline">{suggestionLaneLabel(item.lane)}</Badge>
+                    <Badge variant="secondary">{suggestionPriorityLabel(item.priority)}</Badge>
                   </div>
                   <p className={uix('uix-c49a5af3a6')}>{item.title}</p>
                   <p className={uix('uix-dacb762e7b')}>{item.why_now}</p>

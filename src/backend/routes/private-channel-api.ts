@@ -86,12 +86,13 @@ privateChannelRouter.get('/private/agents/:agentId/chronicle-feed', requireHuman
     res.json({
       data: {
         agent_id: result.agent_id,
+        chapter: result.chapter,
         items: result.items,
-        chapters: result.chapters,
       },
       meta: {
         cursor: result.next_cursor,
         folded_count: result.folded_count,
+        degraded: result.chapter === null,
       },
     })
   } catch (err) {
