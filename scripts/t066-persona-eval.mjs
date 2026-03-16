@@ -112,7 +112,7 @@ function summarizeVisibilityRuns(runs, predicate = () => true) {
 }
 
 function isObservationComplete(observation) {
-  if (observation.coverage_status === 'migrated_visible') {
+  if (observation.coverage_status === 'visible_complete') {
     return Boolean(
       observation.trace_id &&
       observation.source_callsite_id &&
@@ -221,16 +221,16 @@ function deriveOverallStatus(results) {
 }
 
 function buildGateSummary(runs, manifest) {
-  const migratedVisible = runs.filter(
-    (run) => run.observation.visibility === 'visible' && run.observation.coverage_status === 'migrated_visible',
+  const visibleCompleteRuns = runs.filter(
+    (run) => run.observation.visibility === 'visible' && run.observation.coverage_status === 'visible_complete',
   )
   const visibleRuns = summarizeVisibilityRuns(runs)
   const partialCoverage = runs.filter(
-    (run) => run.observation.coverage_status === 'legacy_partial' || run.observation.coverage_status === 'hidden_partial',
+    (run) => run.observation.coverage_status === 'visible_partial' || run.observation.coverage_status === 'hidden_partial',
   )
-  const migratedVisibleComplete = migratedVisible.every((run) => isObservationComplete(run.observation))
+  const visibleComplete = visibleCompleteRuns.every((run) => isObservationComplete(run.observation))
   const partialComplete = partialCoverage.every((run) => isObservationComplete(run.observation))
-  const completenessActual = `migrated_visible=${migratedVisible.filter((run) => isObservationComplete(run.observation)).length}/${migratedVisible.length}, partial=${partialCoverage.filter((run) => isObservationComplete(run.observation)).length}/${partialCoverage.length}`
+  const completenessActual = `visible_complete=${visibleCompleteRuns.filter((run) => isObservationComplete(run.observation)).length}/${visibleCompleteRuns.length}, partial=${partialCoverage.filter((run) => isObservationComplete(run.observation)).length}/${partialCoverage.length}`
 
   const parseRuns = runs.filter((run) => typeof run.observation.parse_success === 'boolean')
   const parseSuccessRate = ratio(parseRuns.filter((run) => run.observation.parse_success === true).length, parseRuns.length)
@@ -253,20 +253,20 @@ function buildGateSummary(runs, manifest) {
   const avgVisibleCost = visibleCosts.length
     ? visibleCosts.reduce((sum, value) => sum + value, 0) / visibleCosts.length
     : null
-  const completenessStatus = visibleRuns.length > 0 && migratedVisible.length === 0
+  const completenessStatus = visibleRuns.length > 0 && visibleCompleteRuns.length === 0
     ? 'not_run'
-    : migratedVisibleComplete && partialComplete
+    : visibleComplete && partialComplete
       ? 'pass'
       : 'fail'
-  const completenessNote = visibleRuns.length > 0 && migratedVisible.length === 0
-    ? 'No migrated_visible samples observed in current corpus.'
+  const completenessNote = visibleRuns.length > 0 && visibleCompleteRuns.length === 0
+    ? 'No visible_complete samples observed in current corpus.'
     : undefined
 
   const results = [
     gateResult(
       'render-log-completeness',
       'blocking',
-      'migrated visible=100%, legacy/hidden has source_callsite_id+coverage_status',
+      'visible complete=100%, partial runs have source_callsite_id+coverage_status',
       completenessStatus,
       completenessActual,
       completenessNote,

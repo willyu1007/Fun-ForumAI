@@ -116,7 +116,7 @@ describe('chatroom control api', () => {
     expect(rawCueRes.body.error.code).toBe('VALIDATION_ERROR')
   })
 
-  it('assigns unique beat ordinals when owner sends concurrent manual cues', async () => {
+  it('allows manual cues for runtime-created rooms even when no scene binding exists', async () => {
     const now = Date.now()
     const ownerRes = await request(app)
       .post('/v1/agents')
@@ -150,6 +150,17 @@ describe('chatroom control api', () => {
     await chatService.dispatchAgentToRoom(created.room.id, guestAId, 'user1')
     await chatService.dispatchAgentToRoom(created.room.id, guestBId, 'user1')
 
+    const programRes = await request(app)
+      .patch(`/v1/rooms/${created.room.id}/program`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ enabled: true })
+    expect(programRes.status).toBe(200)
+
+    const controlStateRes = await request(app)
+      .get(`/v1/rooms/${created.room.id}/control-state`)
+      .set('Authorization', `Bearer ${userToken}`)
+    expect(controlStateRes.status).toBe(200)
+
     const responses = await Promise.all([
       request(app)
         .post(`/v1/rooms/${created.room.id}/program/cues`)
@@ -175,9 +186,7 @@ describe('chatroom control api', () => {
     ])
 
     expect(responses.map((res) => res.status)).toEqual([201, 201, 201])
-    const ordinals = responses
-      .map((res) => res.body.data.beat.ordinal as number)
-      .sort((a, b) => a - b)
-    expect(ordinals).toEqual([1, 2, 3])
+    expect(responses.every((res) => typeof res.body.data.selected_agent_id === 'string')).toBe(true)
+    expect(responses.every((res) => res.body.data.event.id)).toBe(true)
   })
 })

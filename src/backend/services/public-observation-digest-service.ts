@@ -67,12 +67,12 @@ export class PublicObservationDigestService {
       personaObservability.recordPublicIngress('forum')
 
       if (!await this.shouldProceedByEventDedup(agentId, 'forum', event.id)) return
-      if (!await this.shouldProceedByCooldown(agentId, 'forum', 'post', postId, po.forumCooldownMs)) return
+      if (!await this.shouldProceedByCooldown(agentId, 'forum', postId, po.forumCooldownMs)) return
 
       const transcript = this.buildForumTranscript(post.title, post.body, comments.items.map((comment) => comment.body))
       const summary = await this.summarize('forum', transcript, agentId)
 
-      if (!await this.shouldProceedByCooldown(agentId, 'forum', 'post', postId, po.forumCooldownMs)) return
+      if (!await this.shouldProceedByCooldown(agentId, 'forum', postId, po.forumCooldownMs)) return
 
       const memory = await this.deps.memoryService.createPublicObservationMemory({
         agent_id: agentId,
@@ -127,13 +127,13 @@ export class PublicObservationDigestService {
       personaObservability.recordPublicIngress('chat_room')
 
       if (!await this.shouldProceedByEventDedup(input.authorAgentId, 'chat_room', input.messageId)) return
-      if (!await this.shouldProceedByCooldown(input.authorAgentId, 'chat_room', 'room', input.roomId, po.roomCooldownMs)) return
+      if (!await this.shouldProceedByCooldown(input.authorAgentId, 'chat_room', input.roomId, po.roomCooldownMs)) return
 
       const messages = await this.deps.messageRepo.getLatestMessages(input.roomId, 80)
       const transcript = this.buildRoomTranscript(room.name, room.description || '', messages.map((message) => message.body))
       const summary = await this.summarize('room', transcript, input.authorAgentId)
 
-      if (!await this.shouldProceedByCooldown(input.authorAgentId, 'chat_room', 'room', input.roomId, po.roomCooldownMs)) return
+      if (!await this.shouldProceedByCooldown(input.authorAgentId, 'chat_room', input.roomId, po.roomCooldownMs)) return
 
       const memory = await this.deps.memoryService.createPublicObservationMemory({
         agent_id: input.authorAgentId,
@@ -206,10 +206,6 @@ export class PublicObservationDigestService {
         source_event_id: sourceEventId,
         forgotten: false,
       })
-
-      if (existing.items.length > 0) {
-        personaObservability.recordLegacyMigrationFallback('public_dedup')
-      }
       return existing.items.length === 0
     } catch (err) {
       console.warn('[PublicObservationDigestService] event dedup check failed, fallback to continue:', err)
@@ -220,12 +216,11 @@ export class PublicObservationDigestService {
   private async shouldProceedByCooldown(
     agentId: string,
     scene: 'forum' | 'chat_room',
-    sourceRefType: string,
     sourceRefId: string,
     cooldownMs: number,
   ): Promise<boolean> {
     try {
-      return await this.isCooledDown(agentId, scene, sourceRefType, sourceRefId, cooldownMs)
+      return await this.isCooledDown(agentId, scene, sourceRefId, cooldownMs)
     } catch (err) {
       console.warn('[PublicObservationDigestService] cooldown check failed, fallback to continue:', err)
       return true
@@ -235,7 +230,6 @@ export class PublicObservationDigestService {
   private async isCooledDown(
     agentId: string,
     scene: 'forum' | 'chat_room',
-    sourceRefType: string,
     sourceRefId: string,
     cooldownMs: number,
   ): Promise<boolean> {
@@ -246,19 +240,7 @@ export class PublicObservationDigestService {
     if (typedLatest) {
       return Date.now() - typedLatest.getTime() >= cooldownMs
     }
-
-    const latest = await this.deps.memoryService.listMemories(agentId, {
-      limit: 1,
-      source_type: 'PUBLIC_OBSERVATION',
-      source_ref_type: sourceRefType,
-      source_ref_id: sourceRefId,
-      forgotten: false,
-    })
-
-    const last = latest.items[0]
-    if (!last) return true
-    personaObservability.recordLegacyMigrationFallback('public_cooldown')
-    return Date.now() - last.created_at.getTime() >= cooldownMs
+    return true
   }
 
   private buildForumTranscript(title: string, body: string, commentBodies: string[]): string {

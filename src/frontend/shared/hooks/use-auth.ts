@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authApi, type UserProfile } from '@/api/auth'
-import { setDevAuth, type DevUser } from '../utils/dev-token'
+import { setDevAuth } from '../utils/dev-token'
 
 const AUTH_QUERY_KEY = ['auth', 'me'] as const
 
@@ -73,14 +73,8 @@ export function useAuth() {
       ? 'admin'
       : 'user'
 
-  // Shim for DevAuthToolbar compatibility: expose a DevUser-shaped object
-  const devUser: DevUser | null = user
-    ? { userId: user.id, email: user.email, role: user.role }
-    : null
-
   return {
     user: user ?? null,
-    devUser,
     isLoading,
     isAuthenticated: !!user,
     currentIdentity,

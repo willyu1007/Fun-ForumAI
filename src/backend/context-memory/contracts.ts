@@ -47,7 +47,7 @@ export interface SummaryDistillResult {
   selfModel: UpsertContextSelfModelStateInput | null
   tensions: UpsertContextActiveTensionItemInput[]
   privateShadow: UpsertContextPrivateShadowMemoryInput | null
-  compatibilityDigest: {
+  memoryDigest: {
     summary_text: string
     topic_tags: string[]
     key_facts: string[]
@@ -81,8 +81,7 @@ export interface MemoryPack {
   selectedMemories: AgentMemory[]
   tokenEstimate: number
   observability: {
-    publicObservationSource: 'typed' | 'legacy' | 'empty'
-    usedLegacyFallback: boolean
+    publicObservationSource: 'typed' | 'empty'
   }
 }
 
@@ -119,7 +118,6 @@ export interface RetrievalPacker {
     topicHints: string[]
     disclosureLevel: number
     tokenBudget: number
-    legacyMemories: AgentMemory[]
     typed: TypedRetrievalState
   }): MemoryPack
 }

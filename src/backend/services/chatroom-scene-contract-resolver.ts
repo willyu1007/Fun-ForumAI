@@ -5,88 +5,80 @@ import type { PublicSceneCatalogService } from './public-scene-catalog-service.j
 export interface ResolvedChatroomSceneContract {
   template: StageTemplateV2
   binding: SceneBindingV1 | null
-  source: 'binding' | 'legacy_fallback'
+  source: 'binding' | 'room_program'
   selection_mode: 'pool_guided' | 'pool_strict' | 'autonomous_anchored'
 }
 
-const CHATROOM_SCENE_PRESETS: Record<RoomSceneType, {
+const ROOM_PROGRAM_SCENE_PRESETS: Record<RoomSceneType, {
   name: string
   category: StageTemplateV2['category']
   viewerGoal: string
   growthGoal: string
   mustHaveRoles: string[]
   relationshipObjectives: string[]
-  tone: 'neutral' | 'witty' | 'serious' | 'warm' | 'sharp'
   messageThreshold: number
 }> = {
   FREE_CHAT: {
-    name: 'Legacy Chat Room Free Chat',
+    name: 'Chat Room Free Chat',
     category: 'show',
     viewerGoal: '让房间像自然 live 群聊一样继续往前推。',
     growthGoal: '用轻量互动稳住角色存在感和互相接话习惯。',
     mustHaveRoles: ['HOST'],
     relationshipObjectives: ['bridge'],
-    tone: 'neutral',
     messageThreshold: 10,
   },
   TALK_SHOW: {
-    name: 'Legacy Chat Room Talk Show',
+    name: 'Chat Room Talk Show',
     category: 'show',
     viewerGoal: '让房间更像带节奏的 talk show，而不是松散闲聊。',
     growthGoal: '放大角色之间的台上化学反应和出场辨识度。',
     mustHaveRoles: ['HOST', 'FOIL'],
     relationshipObjectives: ['challenge', 'bridge'],
-    tone: 'witty',
     messageThreshold: 12,
   },
   ROUND_TABLE: {
-    name: 'Legacy Chat Room Round Table',
+    name: 'Chat Room Round Table',
     category: 'theme',
     viewerGoal: '让多位角色围绕同一议题形成有序接力。',
     growthGoal: '鼓励角色在公开场里建立稳定的协作与分工。',
     mustHaveRoles: ['HOST', 'EXPLAINER'],
     relationshipObjectives: ['ally', 'bridge'],
-    tone: 'serious',
     messageThreshold: 12,
   },
   ROAST: {
-    name: 'Legacy Chat Room Roast',
+    name: 'Chat Room Roast',
     category: 'show',
     viewerGoal: '让现场保留火花和梗感，但不失控。',
     growthGoal: '放大角色之间的反打与回收能力。',
     mustHaveRoles: ['HOST', 'FOIL', 'WILDCARD'],
     relationshipObjectives: ['challenge'],
-    tone: 'sharp',
     messageThreshold: 9,
   },
   DEBATE: {
-    name: 'Legacy Chat Room Debate',
+    name: 'Chat Room Debate',
     category: 't4',
     viewerGoal: '让争议被掰开讲清，而不是平铺附和。',
     growthGoal: '训练角色在公开冲突中的立场稳定性与回应能力。',
     mustHaveRoles: ['HOST', 'SKEPTIC'],
     relationshipObjectives: ['challenge'],
-    tone: 'serious',
     messageThreshold: 12,
   },
   SLICE_OF_LIFE: {
-    name: 'Legacy Chat Room Slice Of Life',
+    name: 'Chat Room Slice Of Life',
     category: 'world',
     viewerGoal: '让房间像群像日常一样自然流动。',
     growthGoal: '积累轻量角色关系和连续性小梗。',
     mustHaveRoles: ['HOST'],
     relationshipObjectives: ['ally', 'bridge'],
-    tone: 'warm',
     messageThreshold: 8,
   },
   STORY_LAB: {
-    name: 'Legacy Chat Room Story Lab',
+    name: 'Chat Room Story Lab',
     category: 'world',
     viewerGoal: '让房间像共同搭戏一样往前试探和加码。',
     growthGoal: '鼓励角色在公共即兴里形成更鲜明的互补关系。',
     mustHaveRoles: ['HOST', 'WILDCARD'],
     relationshipObjectives: ['bridge', 'challenge'],
-    tone: 'witty',
     messageThreshold: 11,
   },
 }
@@ -113,7 +105,8 @@ export class ChatroomSceneContractResolver {
         )
       if (binding) {
         const template = catalog.stage_templates.find((item) =>
-          item.template_id === binding.template_id && item.template_version === binding.template_version)
+          item.template_id === binding.template_id
+          && item.template_version === binding.template_version)
         if (template) {
           return {
             template,
@@ -127,12 +120,36 @@ export class ChatroomSceneContractResolver {
       }
     }
 
-    const preset = CHATROOM_SCENE_PRESETS[input.sceneType]
-    const templateId = `legacy-chat-room-${input.sceneType.toLowerCase()}`
+    return this.buildRoomProgramContract(input.sceneType)
+  }
+
+  static deriveToneHint(template: StageTemplateV2): 'neutral' | 'witty' | 'serious' | 'warm' | 'sharp' {
+    switch (template.category) {
+      case 'show':
+        return 'witty'
+      case 'world':
+        return 'warm'
+      case 't4':
+        return 'serious'
+      default:
+        return 'neutral'
+    }
+  }
+
+  static deriveRelationFocus(template: StageTemplateV2): 'challenge' | 'ally' | 'bridge' | 'none' {
+    const objectives = template.director.casting_recipe.relationship_objectives.join(' ').toLowerCase()
+    if (objectives.includes('bridge')) return 'bridge'
+    if (objectives.includes('ally')) return 'ally'
+    if (objectives.includes('challenge')) return 'challenge'
+    return 'none'
+  }
+
+  private buildRoomProgramContract(sceneType: RoomSceneType): ResolvedChatroomSceneContract {
+    const preset = ROOM_PROGRAM_SCENE_PRESETS[sceneType]
     return {
       template: {
-        template_id: templateId,
-        template_version: 'v2',
+        template_id: `room-program-${sceneType.toLowerCase()}`,
+        template_version: 'runtime-v1',
         name: preset.name,
         category: preset.category,
         lifecycle_status: 'core_active',
@@ -181,29 +198,8 @@ export class ChatroomSceneContractResolver {
         },
       },
       binding: null,
-      source: 'legacy_fallback',
+      source: 'room_program',
       selection_mode: 'autonomous_anchored',
     }
-  }
-
-  static deriveToneHint(template: StageTemplateV2): 'neutral' | 'witty' | 'serious' | 'warm' | 'sharp' {
-    switch (template.category) {
-      case 'show':
-        return 'witty'
-      case 'world':
-        return 'warm'
-      case 't4':
-        return 'serious'
-      default:
-        return 'neutral'
-    }
-  }
-
-  static deriveRelationFocus(template: StageTemplateV2): 'challenge' | 'ally' | 'bridge' | 'none' {
-    const objectives = template.director.casting_recipe.relationship_objectives.join(' ').toLowerCase()
-    if (objectives.includes('bridge')) return 'bridge'
-    if (objectives.includes('ally')) return 'ally'
-    if (objectives.includes('challenge')) return 'challenge'
-    return 'none'
   }
 }

@@ -1,5 +1,4 @@
 import type { LlmMessage } from './types.js'
-import { config } from '../lib/config.js'
 import {
   LLMGatewayContractError,
   type PromptTemplateRef,
@@ -164,7 +163,6 @@ function validateTemplatePlaceholders(
 }
 
 function canOmitPlaceholder(promptRef: PromptTemplateRef, key: string): boolean {
-  if (!config.features.privateDirectorBoundaryV1) return false
   const allowlist = PRIVATE_BOUNDARY_OPTIONAL_PLACEHOLDERS[getPromptTemplateKey(promptRef)] ?? []
   return allowlist.includes(key)
 }

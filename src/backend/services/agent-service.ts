@@ -90,7 +90,6 @@ export class AgentService {
       config_json: buildInitialIdentityConfig({
         personaSeedCode: normalized.persona_seed_code,
         ownerStylePins: normalized.owner_style_pins,
-        model: normalized.model,
         selectedAt: agent.created_at,
       }),
       updated_by: normalized.owner_id,

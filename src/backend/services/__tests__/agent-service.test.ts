@@ -11,6 +11,21 @@ function setup() {
   return { svc, agentRepo, agentConfigRepo, agentRunRepo }
 }
 
+function expectCanonicalIdentityConfig(configJson: Record<string, unknown>) {
+  expect(configJson).toEqual(expect.objectContaining({
+    personaSeed: expect.objectContaining({
+      seedCode: 'scholar',
+    }),
+    ownerStylePins: expect.objectContaining({
+      mood: 'neutral',
+    }),
+    voice: expect.objectContaining({
+      homeVoiceLineId: 'qwen-social-v1',
+      locked: true,
+    }),
+  }))
+}
+
 describe('AgentService', () => {
   let ctx: ReturnType<typeof setup>
 
@@ -118,7 +133,8 @@ describe('AgentService', () => {
     it('creates a config entry', async () => {
       const a = ctx.svc.createAgent({ owner_id: 'u1', display_name: 'Bot' })
       const cfg = await ctx.svc.updateConfig(a.id, { temp: 0.7 }, 'admin1')
-      expect(cfg.config_json).toEqual({ temp: 0.7 })
+      expect(cfg.config_json).toMatchObject({ temp: 0.7 })
+      expectCanonicalIdentityConfig(cfg.config_json)
       expect(cfg.updated_by).toBe('admin1')
     })
 
@@ -138,7 +154,8 @@ describe('AgentService', () => {
       )
 
       expect(pending.review_status).toBe('PENDING')
-      expect(ctx.svc.getLatestConfig(a.id)?.config_json).toEqual({ temp: 0.7 })
+      expect(ctx.svc.getLatestConfig(a.id)?.config_json).toMatchObject({ temp: 0.7 })
+      expectCanonicalIdentityConfig(ctx.svc.getLatestConfig(a.id)?.config_json as Record<string, unknown>)
     })
 
     it('merges follow-up edits on top of the latest pending revision', async () => {
@@ -173,7 +190,9 @@ describe('AgentService', () => {
         proactive: { enabled: true },
         privacy: { disclosureLevel: 2 },
       })
-      expect(ctx.svc.getLatestConfig(a.id)?.config_json).toEqual({ temp: 0.7 })
+      expectCanonicalIdentityConfig(followup.config_json)
+      expect(ctx.svc.getLatestConfig(a.id)?.config_json).toMatchObject({ temp: 0.7 })
+      expectCanonicalIdentityConfig(ctx.svc.getLatestConfig(a.id)?.config_json as Record<string, unknown>)
       expect(ctx.svc.getLatestConfigRevision(a.id)?.config_json).toMatchObject({
         temp: 0.7,
         proactive: { enabled: true },
@@ -218,7 +237,8 @@ describe('AgentService', () => {
       )
 
       expect(rejected.review_status).toBe('REJECTED')
-      expect(ctx.svc.getLatestConfig(a.id)?.config_json).toEqual({ temp: 0.7 })
+      expect(ctx.svc.getLatestConfig(a.id)?.config_json).toMatchObject({ temp: 0.7 })
+      expectCanonicalIdentityConfig(ctx.svc.getLatestConfig(a.id)?.config_json as Record<string, unknown>)
       expect(ctx.svc.getLatestConfigRevision(a.id)?.review_status).toBe('REJECTED')
     })
 
@@ -369,7 +389,8 @@ describe('AgentService', () => {
       const a = ctx.svc.createAgent({ owner_id: 'u1', display_name: 'Bot' })
       await ctx.svc.updateConfig(a.id, { v: 1 }, 'admin')
       await ctx.svc.updateConfig(a.id, { v: 2 }, 'admin')
-      expect(ctx.svc.getLatestConfig(a.id)?.config_json).toEqual({ v: 2 })
+      expect(ctx.svc.getLatestConfig(a.id)?.config_json).toMatchObject({ v: 2 })
+      expectCanonicalIdentityConfig(ctx.svc.getLatestConfig(a.id)?.config_json as Record<string, unknown>)
     })
 
     it('returns null if no config', () => {

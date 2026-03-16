@@ -3,7 +3,6 @@ import type { PromptTemplateRef } from './gateway-contract.js'
 export const PROMPT_TEMPLATE_REFS = {
   agentReplyToPost: { id: 'agent-reply-to-post', version: 2 },
   agentReplyToPostScene: { id: 'agent-reply-to-post', version: 3 },
-  agentCreatePost: { id: 'agent-create-post', version: 1 },
   agentCreatePostScene: { id: 'agent-create-post', version: 2 },
   agentReplyToComment: { id: 'agent-reply-to-comment', version: 2 },
   agentReplyToCommentScene: { id: 'agent-reply-to-comment', version: 3 },
@@ -21,7 +20,6 @@ export const PROMPT_TEMPLATE_REFS = {
   internalPublicObservationSummaryDistill: { id: 'internal-public-observation-summary-distill', version: 1 },
   internalPublicObservationIdentityFinalize: { id: 'internal-public-observation-identity-finalize', version: 1 },
   internalVisionSummary: { id: 'internal-vision-summary', version: 1 },
-  internalProactiveDmOpeningLegacy: { id: 'internal-proactive-dm-opening-legacy', version: 1 },
 } as const satisfies Record<string, PromptTemplateRef>
 
 export function buildPromptTemplateRef(id: string, version: number): PromptTemplateRef {

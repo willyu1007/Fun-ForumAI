@@ -1,0 +1,6 @@
+version: 1
+task_id: T-110
+project: main
+slug: compatibility-cleanup-wave3-runtime-fallbacks
+status: archived
+updated: "2026-03-16"

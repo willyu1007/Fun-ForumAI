@@ -261,7 +261,6 @@ describe('ForumWriteService', () => {
           local_intent_block: '## Local Intent\n- episode_id: episode-1',
           selection_audit: { binding_id: 'binding-1' },
           planning_audit: { episode_id: 'episode-1' },
-          fallback_reason: null,
         },
       })
 
@@ -397,12 +396,10 @@ describe('ForumWriteService', () => {
       }
     })
 
-    it('enforces structured trust_context in strict T4 when hard enforce is enabled', async () => {
+    it('enforces structured trust_context in strict T4', async () => {
       const featureFlags = config.features as unknown as Record<string, boolean>
       const originalStageRoleRuntime = featureFlags.stageRoleRuntimeV1
-      const originalTrustHardEnforce = featureFlags.incubationTrustHardEnforce
       featureFlags.stageRoleRuntimeV1 = true
-      featureFlags.incubationTrustHardEnforce = true
 
       try {
         const { svc, communityRepo, communityId } = setup()
@@ -419,42 +416,36 @@ describe('ForumWriteService', () => {
         ).rejects.toThrow('trust_context')
       } finally {
         featureFlags.stageRoleRuntimeV1 = originalStageRoleRuntime
-        featureFlags.incubationTrustHardEnforce = originalTrustHardEnforce
       }
     })
 
-    it('falls back to legacy strict gate when hard enforce is disabled', async () => {
+    it('rejects legacy inline grant markup without structured trust_context', async () => {
       const featureFlags = config.features as unknown as Record<string, boolean>
       const originalStageRoleRuntime = featureFlags.stageRoleRuntimeV1
-      const originalTrustHardEnforce = featureFlags.incubationTrustHardEnforce
       featureFlags.stageRoleRuntimeV1 = true
-      featureFlags.incubationTrustHardEnforce = false
 
       try {
         const { svc, communityRepo, communityId } = setup()
         communityRepo.update(communityId, { rules_json: { stage_spec_v1: buildStrictT4StageSpec() } })
 
-        const result = await svc.createPost({
-          actor_agent_id: 'a1',
-          run_id: 'r-strict-legacy-fallback',
-          community_id: communityId,
-          title: 'Strict T4 legacy',
-          body: `[grant:legacy-1] https://a.example.com/source https://b.example.com/source ${'x'.repeat(1_300)}`,
-        })
-
-        expect(result.post.id).toBeTruthy()
+        await expect(
+          svc.createPost({
+            actor_agent_id: 'a1',
+            run_id: 'r-strict-legacy-fallback',
+            community_id: communityId,
+            title: 'Strict T4 legacy',
+            body: `[grant:legacy-1] https://a.example.com/source https://b.example.com/source ${'x'.repeat(1_300)}`,
+          }),
+        ).rejects.toThrow('trust_context')
       } finally {
         featureFlags.stageRoleRuntimeV1 = originalStageRoleRuntime
-        featureFlags.incubationTrustHardEnforce = originalTrustHardEnforce
       }
     })
 
     it('rejects structured trust_context when grant is expired', async () => {
       const featureFlags = config.features as unknown as Record<string, boolean>
       const originalStageRoleRuntime = featureFlags.stageRoleRuntimeV1
-      const originalTrustHardEnforce = featureFlags.incubationTrustHardEnforce
       featureFlags.stageRoleRuntimeV1 = true
-      featureFlags.incubationTrustHardEnforce = true
 
       try {
         const { svc, communityRepo, communityId, incubationRepo } = setup()
@@ -503,16 +494,13 @@ describe('ForumWriteService', () => {
         ).rejects.toThrow('expired')
       } finally {
         featureFlags.stageRoleRuntimeV1 = originalStageRoleRuntime
-        featureFlags.incubationTrustHardEnforce = originalTrustHardEnforce
       }
     })
 
     it('accepts valid trust_context and marks incubation job as DONE', async () => {
       const featureFlags = config.features as unknown as Record<string, boolean>
       const originalStageRoleRuntime = featureFlags.stageRoleRuntimeV1
-      const originalTrustHardEnforce = featureFlags.incubationTrustHardEnforce
       featureFlags.stageRoleRuntimeV1 = true
-      featureFlags.incubationTrustHardEnforce = true
 
       try {
         const { svc, communityRepo, communityId, incubationRepo } = setup()
@@ -565,7 +553,6 @@ describe('ForumWriteService', () => {
         expect(events.some((event) => event.event_type === 'INCUBATION_PUBLISHED')).toBe(true)
       } finally {
         featureFlags.stageRoleRuntimeV1 = originalStageRoleRuntime
-        featureFlags.incubationTrustHardEnforce = originalTrustHardEnforce
       }
     })
   })

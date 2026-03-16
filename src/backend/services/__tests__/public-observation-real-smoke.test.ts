@@ -341,7 +341,7 @@ describe('Public observation real smoke', () => {
               evidence_refs: ['domain_event:evt-forum-1'],
             },
           ],
-          compatibility_digest: {
+          memory_digest: {
             summary_text: '论坛里围绕播客留白与叙事密度形成了一次高信号公共讨论。',
             topic_tags: ['播客', '节奏'],
             key_facts: ['大家在讨论停顿的价值'],
@@ -488,7 +488,7 @@ describe('Public observation real smoke', () => {
             confidence: 0.78,
             evidence_refs: ['room:rhythm-lab'],
           },
-          compatibility_digest: {
+          memory_digest: {
             summary_text: '聊天室里围绕表达节奏与密度形成了一次连续讨论。',
             topic_tags: ['节奏', '聊天'],
             key_facts: ['大家反复提到呼吸感'],

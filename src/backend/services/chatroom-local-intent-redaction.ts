@@ -1,5 +1,3 @@
-import { config } from '../lib/config.js'
-
 type JsonRecord = Record<string, unknown>
 
 function isJsonRecord(value: unknown): value is JsonRecord {
@@ -7,12 +5,15 @@ function isJsonRecord(value: unknown): value is JsonRecord {
 }
 
 export function stripChatroomCompatFields<T>(payload: T): T {
-  if (!config.features.chatroomLocalIntentV1 || !isJsonRecord(payload)) {
+  if (!isJsonRecord(payload)) {
     return payload
   }
 
   const next = { ...payload }
-  delete next.director_goal
-  delete next.director_goal_compat
+  for (const key of Object.keys(next)) {
+    if (key === 'director_goal' || key.startsWith('director_goal_')) {
+      delete next[key]
+    }
+  }
   return next as T
 }

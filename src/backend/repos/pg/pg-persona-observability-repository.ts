@@ -49,10 +49,6 @@ export class PgPersonaObservabilityRepository implements PersonaObservabilityRep
         identityWriteFailureTotal: true,
         retrievalTotal: true,
         retrievalPublicTypedHits: true,
-        retrievalPublicLegacyHits: true,
-        retrievalLegacyFallbackTotal: true,
-        migrationPublicDedupLegacyFallbacks: true,
-        migrationPublicCooldownLegacyFallbacks: true,
         migrationPublicDualWriteTotal: true,
         nightlyCompactionRunsTotal: true,
         nightlyCompactionCreatedTotal: true,
@@ -73,10 +69,6 @@ export class PgPersonaObservabilityRepository implements PersonaObservabilityRep
     metrics.identity_writes.failure_total = aggregate._sum.identityWriteFailureTotal ?? 0
     metrics.retrieval.total = aggregate._sum.retrievalTotal ?? 0
     metrics.retrieval.public_typed_hits = aggregate._sum.retrievalPublicTypedHits ?? 0
-    metrics.retrieval.public_legacy_hits = aggregate._sum.retrievalPublicLegacyHits ?? 0
-    metrics.retrieval.legacy_fallback_total = aggregate._sum.retrievalLegacyFallbackTotal ?? 0
-    metrics.migration.public_dedup_legacy_fallbacks = aggregate._sum.migrationPublicDedupLegacyFallbacks ?? 0
-    metrics.migration.public_cooldown_legacy_fallbacks = aggregate._sum.migrationPublicCooldownLegacyFallbacks ?? 0
     metrics.migration.public_dual_write_total = aggregate._sum.migrationPublicDualWriteTotal ?? 0
     metrics.nightly_compaction.runs_total = aggregate._sum.nightlyCompactionRunsTotal ?? 0
     metrics.nightly_compaction.created_total = aggregate._sum.nightlyCompactionCreatedTotal ?? 0
@@ -151,10 +143,6 @@ function createCreateData(
     identityWriteFailureTotal: delta.identityWriteFailureTotal ?? 0,
     retrievalTotal: delta.retrievalTotal ?? 0,
     retrievalPublicTypedHits: delta.retrievalPublicTypedHits ?? 0,
-    retrievalPublicLegacyHits: delta.retrievalPublicLegacyHits ?? 0,
-    retrievalLegacyFallbackTotal: delta.retrievalLegacyFallbackTotal ?? 0,
-    migrationPublicDedupLegacyFallbacks: delta.migrationPublicDedupLegacyFallbacks ?? 0,
-    migrationPublicCooldownLegacyFallbacks: delta.migrationPublicCooldownLegacyFallbacks ?? 0,
     migrationPublicDualWriteTotal: delta.migrationPublicDualWriteTotal ?? 0,
     nightlyCompactionRunsTotal: delta.nightlyCompactionRunsTotal ?? 0,
     nightlyCompactionCreatedTotal: delta.nightlyCompactionCreatedTotal ?? 0,
@@ -174,10 +162,6 @@ function createUpdateData(delta: PersonaObservabilityMetricDelta): Prisma.Person
   applyIncrement(update, 'identityWriteFailureTotal', delta.identityWriteFailureTotal)
   applyIncrement(update, 'retrievalTotal', delta.retrievalTotal)
   applyIncrement(update, 'retrievalPublicTypedHits', delta.retrievalPublicTypedHits)
-  applyIncrement(update, 'retrievalPublicLegacyHits', delta.retrievalPublicLegacyHits)
-  applyIncrement(update, 'retrievalLegacyFallbackTotal', delta.retrievalLegacyFallbackTotal)
-  applyIncrement(update, 'migrationPublicDedupLegacyFallbacks', delta.migrationPublicDedupLegacyFallbacks)
-  applyIncrement(update, 'migrationPublicCooldownLegacyFallbacks', delta.migrationPublicCooldownLegacyFallbacks)
   applyIncrement(update, 'migrationPublicDualWriteTotal', delta.migrationPublicDualWriteTotal)
   applyIncrement(update, 'nightlyCompactionRunsTotal', delta.nightlyCompactionRunsTotal)
   applyIncrement(update, 'nightlyCompactionCreatedTotal', delta.nightlyCompactionCreatedTotal)
@@ -198,10 +182,6 @@ function createResetData(runtimeKey: string): Prisma.PersonaObservabilityMetrics
     identityWriteFailureTotal: 0,
     retrievalTotal: 0,
     retrievalPublicTypedHits: 0,
-    retrievalPublicLegacyHits: 0,
-    retrievalLegacyFallbackTotal: 0,
-    migrationPublicDedupLegacyFallbacks: 0,
-    migrationPublicCooldownLegacyFallbacks: 0,
     migrationPublicDualWriteTotal: 0,
     nightlyCompactionRunsTotal: 0,
     nightlyCompactionCreatedTotal: 0,

@@ -29,8 +29,8 @@ import { runtimeFeatureMetrics } from './runtime-feature-metrics.js'
 export type PersonaObservationVersion = 'persona-observation-v1'
 export type PersonaObservationScene = PromptScene | 'background_hidden' | 'inclination_asset'
 export type PersonaObservationCoverageStatus =
-  | 'migrated_visible'
-  | 'legacy_partial'
+  | 'visible_complete'
+  | 'visible_partial'
   | 'hidden_partial'
 
 export interface PersonaObservationPromptAuditSummary {
@@ -147,8 +147,8 @@ export interface PersonaObservationCounters {
   observed_runs_total: number
   observed_visible_runs_total: number
   observed_hidden_runs_total: number
-  migrated_visible_runs_total: number
-  legacy_partial_runs_total: number
+  visible_complete_runs_total: number
+  visible_partial_runs_total: number
   hidden_partial_runs_total: number
   complete_runs_total: number
   parse_attempt_total: number
@@ -260,7 +260,7 @@ export const DEFAULT_PERSONA_GATE_SNAPSHOT_V1: PersonaGateSnapshotV1 = {
     {
       gate_id: 'render-log-completeness',
       kind: 'blocking',
-      threshold: 'migrated visible=100%, legacy/hidden has source_callsite_id+coverage_status',
+      threshold: 'visible complete=100%, partial runs have source_callsite_id+coverage_status',
       status: 'not_run',
       actual: null,
     },
@@ -342,7 +342,7 @@ export function buildPersonaObservation(input: BuildPersonaObservationInput): Pe
   const resolvedTier = input.resolvedTier ?? fallbackTier
   const coverageStatus =
     input.coverageStatus ??
-    (input.visibility === 'visible' ? 'legacy_partial' : 'hidden_partial')
+    (input.visibility === 'visible' ? 'visible_partial' : 'hidden_partial')
 
   const renderDecision = normalizeRenderDecision({
     coverageStatus,
@@ -425,7 +425,7 @@ export function readPersonaObservation(
       : 'hidden',
     coverage_status: typeof raw.coverage_status === 'string'
       ? (raw.coverage_status as PersonaObservationCoverageStatus)
-      : 'legacy_partial',
+      : (raw.visibility === 'hidden' ? 'hidden_partial' : 'visible_partial'),
     ...(typeof raw.persona_seed_code === 'string'
       ? { persona_seed_code: raw.persona_seed_code as PersonaSeedCode }
       : {}),
@@ -507,7 +507,7 @@ export function recordPersonaObservation(observation: PersonaObservationV1): voi
 }
 
 export function isPersonaObservationComplete(observation: PersonaObservationV1): boolean {
-  if (observation.coverage_status === 'migrated_visible') {
+  if (observation.coverage_status === 'visible_complete') {
     return Boolean(
       observation.trace_id &&
       observation.source_callsite_id &&
@@ -541,8 +541,8 @@ export function buildPersonaObservabilitySummary(
       complete_runs: counters.complete_runs_total,
       observed_runs: counters.observed_runs_total,
       rate: ratio(counters.complete_runs_total, counters.observed_runs_total),
-      migrated_visible_runs: counters.migrated_visible_runs_total,
-      legacy_partial_runs: counters.legacy_partial_runs_total,
+      visible_complete_runs: counters.visible_complete_runs_total,
+      visible_partial_runs: counters.visible_partial_runs_total,
       hidden_partial_runs: counters.hidden_partial_runs_total,
     },
     fallback_mix: {
@@ -670,12 +670,10 @@ function normalizePromptAuditSummary(raw: Record<string, unknown>): PersonaObser
             ...(communityProfileRaw
               && typeof communityProfileRaw.source === 'string'
               && typeof communityProfileRaw.version === 'string'
-              && typeof communityProfileRaw.fallback === 'boolean'
               ? {
                   community_profile: {
                     source: communityProfileRaw.source,
                     version: communityProfileRaw.version,
-                    fallback: communityProfileRaw.fallback,
                   },
                 }
               : {}),
@@ -812,10 +810,10 @@ function normalizeRenderDecision(input: {
 
   const reasons = inferred?.reasons ? [...inferred.reasons] : []
   if (input.llmProviderId) {
-    reasons.push(`legacy_provider_config=${input.llmProviderId}`)
+    reasons.push(`provider_config_source=${input.llmProviderId}`)
   }
   if (input.llmModelId) {
-    reasons.push(`legacy_runtime_model=${input.llmModelId}`)
+    reasons.push(`runtime_model_source=${input.llmModelId}`)
   }
 
   const providerId = input.llmProviderId ?? inferred?.provider_id
@@ -880,12 +878,12 @@ function validatePersonaObservation(observation: PersonaObservationV1): void {
     throw new Error('persona observation requires source_callsite_id')
   }
 
-  if (observation.coverage_status !== 'migrated_visible') {
+  if (observation.coverage_status !== 'visible_complete') {
     return
   }
 
   if (!isPersonaObservationComplete(observation)) {
-    throw new Error('migrated visible persona observation is missing required fields')
+    throw new Error('visible-complete persona observation is missing required fields')
   }
 }
 

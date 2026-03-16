@@ -71,7 +71,7 @@ describe('extract → distill pipeline (integration with LLM mock)', () => {
         summary: '我把 Owner 的偏好带入了公共表达。',
         public_safe_shadow: '最近更在意表达中的细节。',
       },
-      compatibility_digest: {
+      memory_digest: {
         summary_text: '与 Owner 聊了咖啡烘焙的取舍。',
         topic_tags: ['咖啡'],
         key_facts: ['浅烘偏好'],
@@ -117,7 +117,7 @@ describe('extract → distill pipeline (integration with LLM mock)', () => {
     expect(distilled.tensions).toHaveLength(1)
     expect(distilled.tensions[0].label).toBe('感性 vs 分析')
     expect(distilled.privateShadow).not.toBeNull()
-    expect(distilled.compatibilityDigest.sentiment).toBe('positive')
+    expect(distilled.memoryDigest.sentiment).toBe('positive')
 
     const storedEvent = await rawEventRepo.findById(recorded.id)
     expect(storedEvent).not.toBeNull()
@@ -155,7 +155,7 @@ describe('extract → distill pipeline (integration with LLM mock)', () => {
       self_model: null,
       tensions: [],
       private_shadow: null,
-      compatibility_digest: {
+      memory_digest: {
         summary_text: 'AI 辅助创作讨论。',
         topic_tags: ['AI'],
         key_facts: ['态度分裂'],
@@ -254,7 +254,7 @@ describe('extract → distill pipeline (integration with LLM mock)', () => {
     expect(distilled.selfModel).toBeNull()
     expect(distilled.tensions).toHaveLength(0)
     expect(distilled.privateShadow).toBeNull()
-    expect(distilled.compatibilityDigest.summary_text).toBe('ok')
-    expect(distilled.compatibilityDigest.sentiment).toBe('neutral')
+    expect(distilled.memoryDigest.summary_text).toBe('ok')
+    expect(distilled.memoryDigest.sentiment).toBe('neutral')
   })
 })

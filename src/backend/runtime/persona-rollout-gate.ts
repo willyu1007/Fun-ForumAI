@@ -510,7 +510,7 @@ export function buildPersonaRolloutPreReview(
       code: 'render-log-completeness-failed',
       severity: 'blocking',
       message: renderLogCompleteness?.note
-        ?? 'render-log-completeness gate did not pass for migrated visible observations.',
+        ?? 'render-log-completeness gate did not pass for visible-complete observations.',
     })
   }
 

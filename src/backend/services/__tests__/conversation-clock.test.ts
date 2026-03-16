@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest'
-import { config } from '../../lib/config.js'
 import { createConversationClockContext } from '../conversation-clock/runtime-adapter.js'
 import { generateMessage } from '../conversation-clock/message-generator.js'
 import {
@@ -328,12 +327,7 @@ describe('ConversationClock', () => {
     }))
   })
 
-  it('switches to the scene-enabled chatroom prompt when LocalIntent mode is on', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
-    const snapshot = { ...featureFlags }
-    featureFlags.chatroomLocalIntentV1 = true
-
-    try {
+  it('uses the scene-enabled chatroom prompt variables for runtime chat replies', async () => {
       const generateVisibleText = vi.fn(async () => ({
         content: '继续往下聊。',
         messages: [],
@@ -452,16 +446,9 @@ describe('ConversationClock', () => {
           director_goal: '',
         }),
       }))
-    } finally {
-      Object.assign(featureFlags, snapshot)
-    }
   })
 
   it('synthesizes a fallback local_intent_block when runtime chat context building fails', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
-    const snapshot = { ...featureFlags }
-    featureFlags.chatroomLocalIntentV1 = true
-
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
 
     try {
@@ -529,7 +516,7 @@ describe('ConversationClock', () => {
         } as never,
         chatroomRuntimeContextBuilder: {
           build: vi.fn(async () => {
-            throw new Error('legacy runtime row missing fields')
+            throw new Error('runtime row missing fields')
           }),
         } as never,
       } as never, { running: true })
@@ -546,7 +533,6 @@ describe('ConversationClock', () => {
       expect(warnSpy).toHaveBeenCalled()
     } finally {
       warnSpy.mockRestore()
-      Object.assign(featureFlags, snapshot)
     }
   })
 

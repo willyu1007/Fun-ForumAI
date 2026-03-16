@@ -220,7 +220,7 @@ describe('HumanParticipationService', () => {
       expect(beta?.is_followed).toBe(false)
       expect(alpha?.persona_seed_code).toBe('scholar')
       expect(alpha?.home_voice_line_id).toBe('qwen-social-v1')
-      expect(alpha?.identity_contract_source).toBe('legacy_default')
+      expect(alpha?.identity_contract_source).toBe('contract_v1')
     })
 
     it('clamps limit between 1 and 100', () => {

@@ -70,11 +70,10 @@ describe('RoomProgramProjector', () => {
     })
   })
 
-  it('inherits LocalIntent audit fields into raw message events and resolves referenced open loops', async () => {
+  it('inherits scene audit fields into raw message events and resolves referenced open loops', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     const snapshot = { ...featureFlags }
     featureFlags.directorRuntimeStateV1 = true
-    featureFlags.chatroomLocalIntentV1 = true
 
     try {
       const agentRepo = new InMemoryAgentRepository()
@@ -109,7 +108,7 @@ describe('RoomProgramProjector', () => {
           episode_brief_min: {
             episode_id: episode.id,
             phase: 'opening',
-            template_id: 'legacy-chat-room-free_chat',
+            template_id: 'chatroom-template-1',
             template_version: 'v2',
             scene_goal: {
               viewer_goal: '推进现场',
@@ -119,8 +118,7 @@ describe('RoomProgramProjector', () => {
             expires_at: '2026-03-15T00:00:00.000Z',
           },
           callback_message_id: 'question-1',
-          scene_source: 'legacy_fallback',
-          director_goal_compat: '把前面的追问接住',
+          scene_source: 'binding',
         },
       })
       const handleSignal = vi.fn(async () => undefined)
@@ -170,7 +168,6 @@ describe('RoomProgramProjector', () => {
       expect(rawEvent?.event_type).toBe('RAW_MESSAGE')
       expect(rawEvent?.payload_json?.local_intent_id).toBe('local-intent-1')
       expect(rawEvent?.payload_json?.callback_message_id).toBe('question-1')
-      expect(rawEvent?.payload_json).not.toHaveProperty('director_goal_compat')
       expect(handleSignal).toHaveBeenCalledWith(expect.objectContaining({
         type: 'turn_executed',
         local_intent_id: 'local-intent-1',

@@ -22,7 +22,6 @@ import {
 } from '../runtime/persona-observation.js'
 import type { PolicyGatewayService } from './policy-gateway-service.js'
 import type { IdentityGateService } from './identity-gate-service.js'
-import { config } from '../lib/config.js'
 
 const MAX_PROACTIVE_PER_DAY = 2
 const PROACTIVE_COOLDOWN_MS = 4 * 60 * 60 * 1000
@@ -282,7 +281,7 @@ export class ProactiveInteractionService {
     usage: LlmTokenUsage
     latencyMs: number
     promptAudit: PromptComposeAudit | null
-    sourceCallsiteId: 'proactive-orchestrated-opening' | 'proactive-legacy-opening'
+    sourceCallsiteId: 'proactive-orchestrated-opening'
     gatewayRenderDecision: RenderDecision
     llmProviderId?: string
     llmModelId?: string
@@ -290,112 +289,62 @@ export class ProactiveInteractionService {
     const agent = this.deps.agentService.getAgent(agentId)
     const latestConfig = this.deps.agentService.getLatestConfig(agentId)
     const identity = resolveAgentIdentity(agent, latestConfig)
-    const personaName = identity.visiblePersona.name
-    const personaStyle = identity.visiblePersona.style
     const defaultHomeVoiceLineId = identity.summary.home_voice_line_id
     const defaultPreferredModelId = resolvePreferredVisibleModelId(agent.model, defaultHomeVoiceLineId)
 
-    if (this.deps.promptOrchestrator) {
-      try {
-        const composed = await this.deps.promptOrchestrator.compose({
-          agentId,
-          scene: 'proactive_dm',
-          conversationText: `${trigger.trigger}\n${trigger.context}`,
-          topicHints: [trigger.trigger],
-          shortTermState: trigger.context.slice(0, 200),
-          shortTermStateUpdatedAt: new Date(),
-        })
-
-        const variables: Record<string, string> = {
-          persona_name: composed.persona.name,
-          persona_style: composed.persona.style,
-          persona_interests: composed.persona.interests.join('、'),
-          persona_language: composed.persona.language,
-          trigger_type: trigger.trigger,
-          trigger_context: trigger.context,
-          layer_traits: composed.layers.layer1_traits ?? '',
-          layer_style: composed.layers.layer2_style ?? '',
-          layer_instructions: composed.layers.layer3_instructions ?? '',
-          layer_community: composed.layers.layer_community ?? '',
-          layer_relationship: composed.layers.layer_relationship ?? '',
-          layer_overrides: composed.layers.layer4_overrides ?? '',
-          layer_memory: composed.layers.layer5_memory ?? '',
-          layer_privacy: composed.layers.layer6_privacy ?? '',
-        }
-        if (!config.features.privateDirectorBoundaryV1) {
-          variables.layer_showrunner = composed.layers.layer_showrunner ?? ''
-        }
-
-        const routing = this.deps.inferenceProfileService
-          ? await this.deps.inferenceProfileService.resolveVisibleRoute({
-              agentId,
-              requestedTier: composed.runtimeEnvelope?.renderTierDecision.requestedTier ?? 'base',
-            })
-          : {
-              homeVoiceLineId: defaultHomeVoiceLineId,
-              preferredModelId: defaultPreferredModelId,
-              requestedTier: composed.runtimeEnvelope?.renderTierDecision.requestedTier ?? 'base',
-            }
-
-        const startMs = Date.now()
-        const response = await this.deps.llmGateway.generateVisibleText({
-          intent: 'proactive_opening',
-          scene: 'proactive_dm',
-          agentId,
-          homeVoiceLineId: routing.homeVoiceLineId,
-          preferredModelId: routing.preferredModelId,
-          promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
-          variables,
-          budgetClass: 'visible_standard',
-          traceId: `proactive-dm:${agentId}:${Date.now()}`,
-          requestedTier: routing.requestedTier,
-          allowFallbackWithinLine: true,
-          allowCrossFamily: false,
-          temperature: 0.8,
-        })
-        return {
-          content: response.content,
-          usage: response.usage,
-          latencyMs: Date.now() - startMs,
-          promptAudit: composed.audit,
-          sourceCallsiteId: 'proactive-orchestrated-opening',
-          gatewayRenderDecision: response.renderDecision,
-          llmProviderId: response.renderDecision.providerId,
-          llmModelId: response.renderDecision.modelId,
-          renderDecision: composed.runtimeEnvelope?.renderTierDecision ?? null,
-        }
-      } catch (err) {
-        console.warn('[ProactiveInteraction] PromptOrchestrator compose failed, fallback to legacy path:', err)
-      }
+    if (!this.deps.promptOrchestrator) {
+      throw new Error('PromptOrchestrator is not configured for proactive DM')
     }
 
-    const legacyRouting = this.deps.inferenceProfileService
+    const composed = await this.deps.promptOrchestrator.compose({
+      agentId,
+      scene: 'proactive_dm',
+      conversationText: `${trigger.trigger}\n${trigger.context}`,
+      topicHints: [trigger.trigger],
+      shortTermState: trigger.context.slice(0, 200),
+      shortTermStateUpdatedAt: new Date(),
+    })
+
+    const variables: Record<string, string> = {
+      persona_name: composed.persona.name,
+      persona_style: composed.persona.style,
+      persona_interests: composed.persona.interests.join('、'),
+      persona_language: composed.persona.language,
+      trigger_type: trigger.trigger,
+      trigger_context: trigger.context,
+      layer_traits: composed.layers.layer1_traits ?? '',
+      layer_style: composed.layers.layer2_style ?? '',
+      layer_instructions: composed.layers.layer3_instructions ?? '',
+      layer_community: composed.layers.layer_community ?? '',
+      layer_relationship: composed.layers.layer_relationship ?? '',
+      layer_showrunner: composed.layers.layer_showrunner ?? '',
+      layer_overrides: composed.layers.layer4_overrides ?? '',
+      layer_memory: composed.layers.layer5_memory ?? '',
+      layer_privacy: composed.layers.layer6_privacy ?? '',
+    }
+
+    const routing = this.deps.inferenceProfileService
       ? await this.deps.inferenceProfileService.resolveVisibleRoute({
           agentId,
-          requestedTier: 'base',
+          requestedTier: composed.runtimeEnvelope?.renderTierDecision.requestedTier ?? 'base',
         })
       : {
           homeVoiceLineId: defaultHomeVoiceLineId,
           preferredModelId: defaultPreferredModelId,
-          requestedTier: 'base' as const,
+          requestedTier: composed.runtimeEnvelope?.renderTierDecision.requestedTier ?? 'base',
         }
     const startMs = Date.now()
     const response = await this.deps.llmGateway.generateVisibleText({
       intent: 'proactive_opening',
       scene: 'proactive_dm',
       agentId,
-      homeVoiceLineId: legacyRouting.homeVoiceLineId,
-      preferredModelId: legacyRouting.preferredModelId,
-      promptRef: PROMPT_TEMPLATE_REFS.internalProactiveDmOpeningLegacy,
-      variables: {
-        persona_name: personaName,
-        persona_style: personaStyle,
-        trigger_type: trigger.trigger,
-        trigger_context: trigger.context,
-      },
+      homeVoiceLineId: routing.homeVoiceLineId,
+      preferredModelId: routing.preferredModelId,
+      promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
+      variables,
       budgetClass: 'visible_standard',
-      traceId: `proactive-dm-legacy:${agentId}:${Date.now()}`,
-      requestedTier: legacyRouting.requestedTier,
+      traceId: `proactive-dm:${agentId}:${Date.now()}`,
+      requestedTier: routing.requestedTier,
       allowFallbackWithinLine: true,
       allowCrossFamily: false,
       temperature: 0.8,
@@ -403,11 +352,11 @@ export class ProactiveInteractionService {
 
     return {
       content: response.content,
-      renderDecision: null,
+      renderDecision: composed.runtimeEnvelope?.renderTierDecision ?? null,
       usage: response.usage,
       latencyMs: Date.now() - startMs,
-      promptAudit: null,
-      sourceCallsiteId: 'proactive-legacy-opening',
+      promptAudit: composed.audit,
+      sourceCallsiteId: 'proactive-orchestrated-opening',
       gatewayRenderDecision: response.renderDecision,
       llmProviderId: response.renderDecision.providerId,
       llmModelId: response.renderDecision.modelId,
@@ -425,7 +374,7 @@ export class ProactiveInteractionService {
       usage: LlmTokenUsage
       latencyMs: number
       promptAudit: PromptComposeAudit | null
-      sourceCallsiteId: 'proactive-orchestrated-opening' | 'proactive-legacy-opening'
+      sourceCallsiteId: 'proactive-orchestrated-opening'
       gatewayRenderDecision: RenderDecision
       llmProviderId?: string
       llmModelId?: string
@@ -437,12 +386,10 @@ export class ProactiveInteractionService {
       scene: 'proactive_dm',
       intent: 'proactive_opening',
       visibility: 'visible',
-      coverageStatus: 'migrated_visible',
+      coverageStatus: 'visible_complete',
       personaSeedCode: identity?.persona_seed_code,
       homeVoiceLineId: identity?.home_voice_line_id,
-      promptRef: input.openingMessage.sourceCallsiteId === 'proactive-orchestrated-opening'
-        ? PROMPT_TEMPLATE_REFS.agentProactiveDmOpening
-        : { id: 'internal-proactive-dm-opening-legacy', version: 1 },
+      promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
       requestedTier: input.openingMessage.gatewayRenderDecision.tier,
       resolvedTier: input.openingMessage.gatewayRenderDecision.tier,
       renderDecision: input.openingMessage.gatewayRenderDecision,

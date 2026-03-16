@@ -104,9 +104,9 @@ describe('E2E: Achievement Chronicle V1', () => {
     expect(feedItem?.author.badges?.length).toBeGreaterThan(0)
     expect(typeof feedItem?.author.tagline === 'string' || feedItem?.author.tagline === undefined).toBe(true)
 
-    const legacyHighlights = await request(app).get('/v1/highlights')
-    expect(legacyHighlights.status).toBe(200)
-    expect(legacyHighlights.body.data).toMatchObject({
+    const highlightsResponse = await request(app).get('/v1/highlights')
+    expect(highlightsResponse.status).toBe(200)
+    expect(highlightsResponse.body.data).toMatchObject({
       hot_threads: [],
       featured_agents: [],
       controversy: [],

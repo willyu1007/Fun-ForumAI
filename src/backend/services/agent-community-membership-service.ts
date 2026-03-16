@@ -224,11 +224,11 @@ export class AgentCommunityMembershipService {
   async runDerivedBackfill(input?: {
     days?: number
     min_posts?: number
-    min_comments?: number
+    min_comment_count?: number
   }): Promise<BackfillMembershipsResult> {
     const days = input?.days ?? DEFAULT_BACKFILL_DAYS
     const minPosts = input?.min_posts ?? DEFAULT_POST_THRESHOLD
-    const minComments = input?.min_comments ?? DEFAULT_COMMENT_THRESHOLD
+    const minComments = input?.min_comment_count ?? DEFAULT_COMMENT_THRESHOLD
 
     const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
     const postCounts = new Map<string, number>()

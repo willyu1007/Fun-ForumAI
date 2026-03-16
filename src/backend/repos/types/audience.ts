@@ -40,9 +40,8 @@ export interface AftershowRun {
   community_id: string
   mode: 'OFF' | 'THRESHOLD' | 'PERIODIC' | 'MANUAL'
   status: AftershowRunStatus
-  threshold_min_comments: number
   threshold_min_audience_comments: number
-  threshold_min_human_votes: number
+  threshold_min_human_vote_score: number
   comments_at_trigger: number
   audience_message_count_at_trigger: number
   human_vote_score_at_trigger: number
@@ -83,9 +82,8 @@ export interface CreateAftershowRunInput {
   community_id: string
   mode: 'OFF' | 'THRESHOLD' | 'PERIODIC' | 'MANUAL'
   status?: AftershowRunStatus
-  threshold_min_comments?: number
   threshold_min_audience_comments?: number
-  threshold_min_human_votes?: number
+  threshold_min_human_vote_score?: number
   comments_at_trigger?: number
   audience_message_count_at_trigger?: number
   human_vote_score_at_trigger?: number

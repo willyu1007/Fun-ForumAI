@@ -13,17 +13,34 @@ describe('PromptLayerService', () => {
         getAgent: vi.fn(() => ({ id: 'agent-1', display_name: 'Layer Bot' })),
         getLatestConfig: vi.fn(() => ({
           config_json: {
-            persona: {
-              name: 'Layer Bot',
-              style: '理性克制',
-              interests: ['AI', '产品'],
-              language: 'zh-CN',
+            personaSeed: {
+              seedCode: 'scholar',
+              displayName: 'Layer Bot',
+              seedVersion: 1,
+              compatibleVoiceLines: ['qwen-social-v1'],
+              starterStyleProjection: {
+                formality: 4,
+                verbosity: 2,
+                mood: 'critical',
+                habits: ['asks_questions', 'summarizes'],
+                forum_activity: 3,
+              },
             },
-            style: {
+            ownerStylePins: {
               formality: 4,
               verbosity: 2,
               mood: 'critical',
               habits: ['asks_questions', 'summarizes'],
+              interests: ['AI', '产品'],
+            },
+            voice: {
+              homeVoiceLineId: 'qwen-social-v1',
+              locked: true,
+              lineVersion: 1,
+              migrationPolicy: {
+                allowRareReanchor: false,
+                maxMigrations: 1,
+              },
             },
             prompt_overrides: {
               global_prefix: 'prefix',
@@ -84,7 +101,7 @@ describe('PromptLayerService', () => {
 
     expect(layers.layer1_traits).toBe('growth-fragment')
     expect(layers.layer2_style).toContain('保留书面质感，但像现场接话一样短句')
-    expect(layers.layer2_style).toContain('先给判断，再补半步理由')
+    expect(layers.layer2_style).toContain('先给判断，再补一层')
     expect(layers.layer2_style).toContain('以批判性的思维')
     expect(layers.layer2_style).toContain('善于提问')
     expect(layers.layer2_style).toContain('默认不用“您/您的”敬语')
@@ -106,17 +123,34 @@ describe('PromptLayerService', () => {
         getAgent: vi.fn(() => ({ id: 'agent-chat-style', display_name: 'Chat Style Bot' })),
         getLatestConfig: vi.fn(() => ({
           config_json: {
-            persona: {
-              name: 'Chat Style Bot',
-              style: '学者型，表达偏正式，论述较展开，善于总结',
-              interests: ['AI', '产品'],
-              language: 'zh-CN',
+            personaSeed: {
+              seedCode: 'scholar',
+              displayName: 'Chat Style Bot',
+              seedVersion: 1,
+              compatibleVoiceLines: ['qwen-social-v1'],
+              starterStyleProjection: {
+                formality: 4,
+                verbosity: 4,
+                mood: 'neutral',
+                habits: ['summarizes'],
+                forum_activity: 3,
+              },
             },
-            style: {
+            ownerStylePins: {
               formality: 4,
               verbosity: 4,
               mood: 'neutral',
               habits: ['summarizes'],
+              interests: ['AI', '产品'],
+            },
+            voice: {
+              homeVoiceLineId: 'qwen-social-v1',
+              locked: true,
+              lineVersion: 1,
+              migrationPolicy: {
+                allowRareReanchor: false,
+                maxMigrations: 1,
+              },
             },
           },
         })),

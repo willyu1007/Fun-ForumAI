@@ -1,0 +1,6 @@
+version: 1
+task_id: T-111
+project: main
+slug: compatibility-cleanup-final-pass
+status: archived
+updated: "2026-03-16"

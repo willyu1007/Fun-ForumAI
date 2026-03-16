@@ -9,20 +9,17 @@ describe('AchievementChronicleService', () => {
   const features = config.features as unknown as Record<string, boolean>
   const originalChronicle = features.achievementChronicleV1
   const originalPublic = features.achievementPublicHighlights
-  const originalSignalPolicy = features.chronicleSignalPolicyV2
   const originalSignalLog = features.signalLogV1
 
   beforeEach(() => {
     features.achievementChronicleV1 = true
     features.achievementPublicHighlights = true
-    features.chronicleSignalPolicyV2 = true
     features.signalLogV1 = false
   })
 
   afterEach(() => {
     features.achievementChronicleV1 = originalChronicle
     features.achievementPublicHighlights = originalPublic
-    features.chronicleSignalPolicyV2 = originalSignalPolicy
     features.signalLogV1 = originalSignalLog
   })
 

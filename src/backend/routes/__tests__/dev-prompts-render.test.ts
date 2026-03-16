@@ -243,9 +243,9 @@ describe('POST /v1/dev/prompts/render', () => {
     }
   })
 
-  it('reports legacy_default identity for agents without contract config', async () => {
+  it('reports default contract_v1 identity for agents without contract config', async () => {
     const { agentService } = await import('../../container.js')
-    const legacyAgent = agentService.createAgent({
+    const defaultContractAgent = agentService.createAgent({
       owner_id: 'legacy-user',
       display_name: 'Legacy Default Bot',
     })
@@ -253,7 +253,7 @@ describe('POST /v1/dev/prompts/render', () => {
     const res = await request(devApp)
       .post('/v1/dev/prompts/render')
       .send({
-        agent_id: legacyAgent.id,
+        agent_id: defaultContractAgent.id,
         template_id: 'agent-chat-reply',
         template_version: 2,
         scene: 'chat_room',
@@ -262,7 +262,7 @@ describe('POST /v1/dev/prompts/render', () => {
 
     expect(res.status).toBe(200)
     expect(res.body.data.identity_contract).toMatchObject({
-      source: 'legacy_default',
+      source: 'contract_v1',
       persona_seed_code: 'scholar',
       home_voice_line_id: 'qwen-social-v1',
     })

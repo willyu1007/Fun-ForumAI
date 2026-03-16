@@ -242,17 +242,11 @@ export class AchievementChronicleService {
     const badges = selectTopUniqueBadges(achievements.items, 2)
 
     const publicDensity = applyDensity(chronicle.items, 3)
-    const candidateEntries = config.features.chronicleSignalPolicyV2
-      ? compressSignalEntries(publicDensity.items)
-      : publicDensity.items
+    const candidateEntries = compressSignalEntries(publicDensity.items)
 
     const topChronicle = candidateEntries
       .filter((entry) => (config.features.signalLogV1 ? !isSignalEntry(entry) : true))
-      .filter((entry) => (
-        config.features.chronicleSignalPolicyV2
-          ? isHighQualityPublicEntry(entry)
-          : true
-      ))
+      .filter((entry) => isHighQualityPublicEntry(entry))
       .slice()
       .sort((a, b) => b.importance_score - a.importance_score || b.occurred_at.getTime() - a.occurred_at.getTime())
       .slice(0, 3)

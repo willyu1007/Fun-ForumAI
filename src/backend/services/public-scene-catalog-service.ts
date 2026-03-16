@@ -1,7 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import type { ScenePoolCatalog } from '../stage/index.js'
-import { config } from '../lib/config.js'
 
 const DEFAULT_LAUNCH_PATH = path.resolve(process.cwd(), 'docs/stage-templates/dist/launch.json')
 
@@ -11,10 +10,6 @@ export class PublicSceneCatalogService {
   constructor(private readonly launchPath = DEFAULT_LAUNCH_PATH) {}
 
   getLaunchCatalog(): ScenePoolCatalog | null {
-    if (!(config.features.publicDirectorContractV1 && config.features.scenePoolAssetOpsV1)) {
-      return null
-    }
-
     try {
       const stat = fs.statSync(this.launchPath)
       if (this.cached && this.cached.mtime_ms === stat.mtimeMs) {

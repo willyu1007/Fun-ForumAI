@@ -12,9 +12,8 @@ function toDomain(row: {
   communityId: string
   mode: string
   status: 'CREATED' | 'SKIPPED' | 'COMPLETED'
-  thresholdMinComments: number
   thresholdMinAudienceComments: number
-  thresholdMinHumanVotes: number
+  thresholdMinHumanVoteScore: number
   commentsAtTrigger: number
   audienceMessageCountAtTrigger: number
   humanVoteScoreAtTrigger: number
@@ -32,9 +31,8 @@ function toDomain(row: {
     community_id: row.communityId,
     mode: row.mode as AftershowRun['mode'],
     status: row.status,
-    threshold_min_comments: row.thresholdMinComments,
     threshold_min_audience_comments: row.thresholdMinAudienceComments,
-    threshold_min_human_votes: row.thresholdMinHumanVotes,
+    threshold_min_human_vote_score: row.thresholdMinHumanVoteScore,
     comments_at_trigger: row.commentsAtTrigger,
     audience_message_count_at_trigger: row.audienceMessageCountAtTrigger,
     human_vote_score_at_trigger: row.humanVoteScoreAtTrigger,
@@ -60,9 +58,8 @@ export class PgAftershowRunRepository implements AftershowRunRepository {
         communityId: input.community_id,
         mode: input.mode,
         status: input.status ?? 'CREATED',
-        thresholdMinComments: input.threshold_min_comments ?? 30,
-        thresholdMinAudienceComments: input.threshold_min_audience_comments ?? (input.threshold_min_comments ?? 30),
-        thresholdMinHumanVotes: input.threshold_min_human_votes ?? 10,
+        thresholdMinAudienceComments: input.threshold_min_audience_comments ?? 30,
+        thresholdMinHumanVoteScore: input.threshold_min_human_vote_score ?? 10,
         commentsAtTrigger: input.comments_at_trigger ?? 0,
         audienceMessageCountAtTrigger: input.audience_message_count_at_trigger ?? 0,
         humanVoteScoreAtTrigger: input.human_vote_score_at_trigger ?? 0,

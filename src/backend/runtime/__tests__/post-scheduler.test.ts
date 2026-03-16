@@ -2,7 +2,75 @@ import { describe, expect, it, vi } from 'vitest'
 import { PostScheduler } from '../post-scheduler.js'
 import type { PostSchedulerDeps } from '../post-scheduler.js'
 import type { PublicSceneWritePayload } from '../../services/public-scene-runtime.js'
-import { config } from '../../lib/config.js'
+
+function buildScenePayload(): PublicSceneWritePayload {
+  return {
+    scene_metadata: {
+      director_surface: 'scheduled_post',
+      actor_surface: 'forum_post',
+      scene_template_id: 'stage-theme-01',
+      scene_template_version: 'v2',
+      scene_binding_id: 'binding-1',
+      overlay_id: null,
+      episode_id: 'episode-1',
+      beat_id: null,
+      phase: 'opening',
+      selection_mode: 'pool_guided',
+      selection_id: 'selection-1',
+      episode_plan_id: 'plan-1',
+      local_intent_id: 'intent-1',
+      started_at: '2026-03-13T00:00:00.000Z',
+      expires_at: '2026-03-14T00:00:00.000Z',
+    },
+    episode_brief: {
+      episode_id: 'episode-1',
+      director_surface: 'scheduled_post',
+      actor_surface: 'forum_post',
+      template_id: 'stage-theme-01',
+      template_version: 'v2',
+      binding_id: 'binding-1',
+      phase: 'opening',
+      scene_goal: {
+        viewer_goal: '推进讨论',
+        growth_goal: '增加连贯性',
+      },
+      casting_directive: {
+        must_have_roles: [],
+        avoid_pairs: [],
+        core_quota: 2,
+        contrast_quota: 1,
+        wildcard_quota: 1,
+      },
+      open_loops: [],
+      must_hit_points: [],
+      avoid_repeat: [],
+      close_condition: {
+        ttl_hours: 24,
+        message_threshold: 12,
+        objective: '推进讨论',
+      },
+      expires_at: '2026-03-14T00:00:00.000Z',
+    },
+    local_intent: {
+      intent_id: 'intent-1',
+      delivery_surface: 'forum_post',
+      initiative: 'open_topic',
+      opinion_policy: 'free_opinion',
+      relation_focus: 'none',
+      tone_hint: 'neutral',
+      privacy_mode: 'public_only',
+      memory_scope: 'public_contextual',
+      reference_scope: 'seed_only',
+      prohibited_reference_types: ['owner_private_speech', 'private_memory', 'hidden_director_goal'],
+      target_ref: { kind: 'none' },
+      hard_constraints: ['不得改写目标社区'],
+      soft_constraints: ['推进讨论'],
+    },
+    local_intent_block: '## Local Intent\n- episode_id: episode-1',
+    selection_audit: { community_id: 'community-1' },
+    planning_audit: { episode_id: 'episode-1' },
+  }
+}
 
 function createDeps(
   writeImpl: ReturnType<typeof vi.fn>,
@@ -27,7 +95,7 @@ function createDeps(
       }
       payload: PublicSceneWritePayload
     } | {
-      kind: 'fallback'
+      kind: 'skip'
       reason: string
     }
   } = {},
@@ -42,6 +110,18 @@ function createDeps(
     },
   ]
   const scheduledPostCommunityId = options.scheduledPostCommunityId ?? communities[0]?.id ?? 'community-1'
+  const selectedCommunity = communities.find((item) => item.id === scheduledPostCommunityId) ?? communities[0]!
+  const defaultSceneSelection = options.sceneSelection ?? {
+    kind: 'scene' as const,
+    community: {
+      id: selectedCommunity.id,
+      slug: selectedCommunity.slug,
+      name: selectedCommunity.name,
+      description: selectedCommunity.description,
+      rules: JSON.stringify(selectedCommunity.rules_json),
+    },
+    payload: buildScenePayload(),
+  }
 
   return {
     llmGateway: {
@@ -63,9 +143,9 @@ function createDeps(
           fallbackLevel: 'none',
           reasons: ['test'],
           promptTemplateId: 'agent-create-post',
-          promptVersion: 1,
+          promptVersion: 2,
         },
-        promptRef: { id: 'agent-create-post', version: 1 },
+        promptRef: { id: 'agent-create-post', version: 2 },
       })),
     } as unknown as PostSchedulerDeps['llmGateway'],
     forumReadService: {
@@ -110,11 +190,9 @@ function createDeps(
     membershipRepo: {
       listActiveCommunityIdsByAgent: vi.fn(() => options.activeCommunityIdsByAgent ?? communities.map((item) => item.id)),
     } as unknown as NonNullable<PostSchedulerDeps['membershipRepo']>,
-    publicSceneSelectorService: options.sceneSelection
-      ? {
-          selectScheduledPost: vi.fn(async () => options.sceneSelection),
-        } as unknown as NonNullable<PostSchedulerDeps['publicSceneSelectorService']>
-      : null,
+    publicSceneSelectorService: {
+      selectScheduledPost: vi.fn(async () => defaultSceneSelection),
+    } as unknown as NonNullable<PostSchedulerDeps['publicSceneSelectorService']>,
   }
 }
 
@@ -169,7 +247,7 @@ describe('PostScheduler', () => {
         source_callsite_id: 'post-scheduler-create-post',
         scene: 'scheduled_post',
         visibility: 'visible',
-        coverage_status: 'migrated_visible',
+        coverage_status: 'visible_complete',
         parse_success: true,
       }),
     )
@@ -226,73 +304,7 @@ describe('PostScheduler', () => {
 
   it('locks scheduled_post to selector authority and switches to scene prompt version', async () => {
     const write = vi.fn(async () => ({ success: true, content_id: 'post-scene-1' }))
-    const scenePayload: PublicSceneWritePayload = {
-      scene_metadata: {
-        director_surface: 'scheduled_post',
-        actor_surface: 'forum_post',
-        scene_template_id: 'stage-theme-01',
-        scene_template_version: 'v2',
-        scene_binding_id: 'binding-1',
-        overlay_id: null,
-        episode_id: 'episode-1',
-        beat_id: null,
-        phase: 'opening',
-        selection_mode: 'pool_guided',
-        selection_id: 'selection-1',
-        episode_plan_id: 'plan-1',
-        local_intent_id: 'intent-1',
-        started_at: '2026-03-13T00:00:00.000Z',
-        expires_at: '2026-03-14T00:00:00.000Z',
-      },
-      episode_brief: {
-        episode_id: 'episode-1',
-        director_surface: 'scheduled_post',
-        actor_surface: 'forum_post',
-        template_id: 'stage-theme-01',
-        template_version: 'v2',
-        binding_id: 'binding-1',
-        phase: 'opening',
-        scene_goal: {
-          viewer_goal: '推进讨论',
-          growth_goal: '增加连贯性',
-        },
-        casting_directive: {
-          must_have_roles: [],
-          avoid_pairs: [],
-          core_quota: 2,
-          contrast_quota: 1,
-          wildcard_quota: 1,
-        },
-        open_loops: [],
-        must_hit_points: [],
-        avoid_repeat: [],
-        close_condition: {
-          ttl_hours: 24,
-          message_threshold: 12,
-          objective: '推进讨论',
-        },
-        expires_at: '2026-03-14T00:00:00.000Z',
-      },
-      local_intent: {
-        intent_id: 'intent-1',
-        delivery_surface: 'forum_post',
-        initiative: 'open_topic',
-        opinion_policy: 'free_opinion',
-        relation_focus: 'none',
-        tone_hint: 'neutral',
-        privacy_mode: 'public_only',
-        memory_scope: 'public_contextual',
-        reference_scope: 'episode_public_context',
-        prohibited_reference_types: ['owner_private_speech', 'private_memory', 'hidden_director_goal'],
-        target_ref: { kind: 'none' },
-        hard_constraints: ['不得改写目标社区'],
-        soft_constraints: ['推进讨论'],
-      },
-      local_intent_block: '## Local Intent\n- episode_id: episode-1',
-      selection_audit: { community_id: 'community-2' },
-      planning_audit: { episode_id: 'episode-1' },
-      fallback_reason: null,
-    }
+    const scenePayload = buildScenePayload()
     const deps = createDeps(write, {
       communities: [
         {
@@ -329,14 +341,7 @@ describe('PostScheduler', () => {
       postMaxPerDay: 2,
     })
 
-    const featureFlags = config.features as unknown as Record<string, boolean>
-    const original = featureFlags.publicDirectorContractV1
-    featureFlags.publicDirectorContractV1 = true
-    try {
-      await scheduler.createPost()
-    } finally {
-      featureFlags.publicDirectorContractV1 = original
-    }
+    await scheduler.createPost()
 
     expect((deps.llmGateway.generateVisibleText as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].promptRef)
       .toEqual({ id: 'agent-create-post', version: 2 })
@@ -359,11 +364,11 @@ describe('PostScheduler', () => {
     )
   })
 
-  it('uses legacy scheduled_post prompt when selector falls back and records fallback reason', async () => {
+  it('falls back to unlocked community scheduling when selector cannot provide a public scene', async () => {
     const write = vi.fn(async () => ({ success: true, content_id: 'post-fallback-1' }))
     const deps = createDeps(write, {
       sceneSelection: {
-        kind: 'fallback',
+        kind: 'skip',
         reason: 'scene_catalog_unavailable',
       },
     })
@@ -372,29 +377,57 @@ describe('PostScheduler', () => {
       postMaxPerDay: 2,
     })
 
-    const featureFlags = config.features as unknown as Record<string, boolean>
-    const original = featureFlags.publicDirectorContractV1
-    featureFlags.publicDirectorContractV1 = true
-    try {
-      await scheduler.createPost()
-    } finally {
-      featureFlags.publicDirectorContractV1 = original
-    }
+    const result = await scheduler.createPost()
 
+    expect(result).toEqual(expect.objectContaining({
+      triggered: true,
+      agent_id: 'agent-1',
+      community_id: 'community-1',
+      post_id: 'post-fallback-1',
+    }))
     expect((deps.llmGateway.generateVisibleText as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].promptRef)
       .toEqual({ id: 'agent-create-post', version: 1 })
-    expect(write).toHaveBeenCalledWith(
-      expect.objectContaining({
-        audit_metadata: expect.objectContaining({
-          scheduled_post_fallback_reason: 'scene_catalog_unavailable',
-        }),
-      }),
-      'agent-1',
-      'evt-1',
-      expect.anything(),
-      expect.any(Number),
-      0,
-      expect.anything(),
-    )
+    expect((deps.responseParser.parseAsScheduledPost as ReturnType<typeof vi.fn>).mock.calls[0]?.[0])
+      .toEqual(expect.objectContaining({
+        fallbackCommunityId: 'community-1',
+        lockedCommunityId: undefined,
+      }))
+    expect(write).toHaveBeenCalledTimes(1)
+    const fallbackInstruction = (write as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as Record<string, unknown> | undefined
+    expect(fallbackInstruction).toEqual(expect.objectContaining({
+      community_id: 'community-1',
+    }))
+    expect(fallbackInstruction?.public_scene).toBeUndefined()
+    expect(fallbackInstruction?.audit_metadata).toEqual(expect.objectContaining({
+      scheduled_post_scene_selection: 'fallback',
+      scheduled_post_scene_reason: 'scene_catalog_unavailable',
+    }))
+  })
+
+  it('falls back to unlocked community scheduling when the selector service is unavailable', async () => {
+    const write = vi.fn(async () => ({ success: true, content_id: 'post-1' }))
+    const deps = createDeps(write)
+    deps.publicSceneSelectorService = null
+    const scheduler = new PostScheduler(deps, {
+      postIntervalMs: 60_000,
+      postMaxPerDay: 2,
+    })
+
+    const result = await scheduler.createPost()
+
+    expect(result).toEqual(expect.objectContaining({
+      triggered: true,
+      agent_id: 'agent-1',
+      community_id: 'community-1',
+      post_id: 'post-1',
+    }))
+    expect((deps.llmGateway.generateVisibleText as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].promptRef)
+      .toEqual({ id: 'agent-create-post', version: 1 })
+    expect(write).toHaveBeenCalledTimes(1)
+    const selectorFallbackInstruction = (write as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as Record<string, unknown> | undefined
+    expect(selectorFallbackInstruction?.audit_metadata).toEqual(expect.objectContaining({
+      scheduled_post_scene_selection: 'fallback',
+      scheduled_post_scene_reason: 'scene_selector_unavailable',
+    }))
   })
 })

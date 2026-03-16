@@ -877,10 +877,8 @@ describe('E2E: Control Plane (human auth)', () => {
 
   it('Control Plane config flow supports proposal -> validate -> approve -> apply -> history -> rollback', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
-    const originalControlPlane = featureFlags.controlPlaneConfigV1
     const originalAftershow = featureFlags.aftershowV1
     const originalAudienceZone = featureFlags.audienceZoneV1
-    featureFlags.controlPlaneConfigV1 = true
     featureFlags.aftershowV1 = true
     featureFlags.audienceZoneV1 = true
 
@@ -898,11 +896,13 @@ describe('E2E: Control Plane (human auth)', () => {
         .set('Authorization', `Bearer ${userToken}`)
         .send({
           patch: {
-            aftershow: {
-              mode: 'THRESHOLD',
-              threshold: {
-                audience_comments: 1,
-                human_vote_score: 0,
+            stage_spec_v1: {
+              aftershow: {
+                mode: 'THRESHOLD',
+                threshold: {
+                  audience_comments: 1,
+                  human_vote_score: 0,
+                },
               },
             },
           },
@@ -1037,7 +1037,7 @@ describe('E2E: Control Plane (human auth)', () => {
       expect(rollbackRes.status).toBe(201)
       expect(rollbackRes.body.data.rollback_from_version_id).toBe(versionId)
 
-      const legacyProposalRoute = await request(app)
+      const removedProposalRoute = await request(app)
         .post(`/v1/communities/${community.id}/config-proposals`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
@@ -1047,20 +1047,14 @@ describe('E2E: Control Plane (human auth)', () => {
             },
           },
         })
-      expect(legacyProposalRoute.status).toBe(404)
+      expect(removedProposalRoute.status).toBe(404)
     } finally {
-      featureFlags.controlPlaneConfigV1 = originalControlPlane
       featureFlags.aftershowV1 = originalAftershow
       featureFlags.audienceZoneV1 = originalAudienceZone
     }
   })
 
   it('Control Plane config rejects allocator configs where thread_max_agents exceeds community_max_agents', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
-    const originalControlPlane = featureFlags.controlPlaneConfigV1
-    featureFlags.controlPlaneConfigV1 = true
-
-    try {
       const community = await createTestCommunity({
         name: 'Allocator Guard Community',
         slug: `allocator-guard-${Date.now()}`,
@@ -1095,17 +1089,9 @@ describe('E2E: Control Plane (human auth)', () => {
       expect(validateRes.body.data.validation_errors).toContain(
         'stage_spec_v1.allocator.thread_max_agents must be <= stage_spec_v1.allocator.community_max_agents',
       )
-    } finally {
-      featureFlags.controlPlaneConfigV1 = originalControlPlane
-    }
   })
 
   it('Control Plane config keeps audience raw-read changes behind admin approval and admin apply', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
-    const originalControlPlane = featureFlags.controlPlaneConfigV1
-    featureFlags.controlPlaneConfigV1 = true
-
-    try {
       const community = await createTestCommunity({
         name: 'Audience Raw Read Guard Community',
         slug: `audience-raw-read-${Date.now()}`,
@@ -1170,17 +1156,9 @@ describe('E2E: Control Plane (human auth)', () => {
       expect(
         configRes.body.data.rules_json.stage_spec_v1.human_participation.agent_reads_audience_zone,
       ).toBe(true)
-    } finally {
-      featureFlags.controlPlaneConfigV1 = originalControlPlane
-    }
   })
 
   it('Control Plane config apply rejects non-admin callers even for validated low-risk patch', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
-    const originalControlPlane = featureFlags.controlPlaneConfigV1
-    featureFlags.controlPlaneConfigV1 = true
-
-    try {
       const community = await createTestCommunity({
         name: 'Config Low Risk Apply Permission Guard',
         slug: `config-low-risk-apply-${Date.now()}`,
@@ -1223,17 +1201,9 @@ describe('E2E: Control Plane (human auth)', () => {
       expect(adminApply.status).toBe(200)
       expect(adminApply.body.data.patch.status).toBe('APPLIED')
       expect(adminApply.body.data.version).toBeTruthy()
-    } finally {
-      featureFlags.controlPlaneConfigV1 = originalControlPlane
-    }
   })
 
   it('Control Plane config rejects cross-community proposal operations', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
-    const originalControlPlane = featureFlags.controlPlaneConfigV1
-    featureFlags.controlPlaneConfigV1 = true
-
-    try {
       const communityA = await createTestCommunity({
         name: 'Config Ownership Community A',
         slug: `config-ownership-a-${Date.now()}`,
@@ -1248,8 +1218,10 @@ describe('E2E: Control Plane (human auth)', () => {
         .set('Authorization', `Bearer ${userToken}`)
         .send({
           patch: {
-            moderation: {
-              premod_required: true,
+            stage_spec_v1: {
+              moderation: {
+                premod_required: true,
+              },
             },
           },
         })
@@ -1273,17 +1245,9 @@ describe('E2E: Control Plane (human auth)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .send({ proposal_id: proposalId })
       expect(applyOnWrongCommunity.status).toBe(404)
-    } finally {
-      featureFlags.controlPlaneConfigV1 = originalControlPlane
-    }
   })
 
   it('Control Plane config enforces proposal status transitions', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
-    const originalControlPlane = featureFlags.controlPlaneConfigV1
-    featureFlags.controlPlaneConfigV1 = true
-
-    try {
       const community = await createTestCommunity({
         name: 'Config Status Guard Community',
         slug: `config-status-guard-${Date.now()}`,
@@ -1297,8 +1261,10 @@ describe('E2E: Control Plane (human auth)', () => {
         .set('Authorization', `Bearer ${userToken}`)
         .send({
           patch: {
-            moderation: {
-              premod_required: true,
+            stage_spec_v1: {
+              moderation: {
+                premod_required: true,
+              },
             },
           },
         })
@@ -1336,17 +1302,9 @@ describe('E2E: Control Plane (human auth)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .send({})
       expect(approveAfterReject.status).toBe(400)
-    } finally {
-      featureFlags.controlPlaneConfigV1 = originalControlPlane
-    }
   })
 
   it('Control Plane config apply supports SCHEDULED auto-activation by scheduler', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
-    const originalControlPlane = featureFlags.controlPlaneConfigV1
-    featureFlags.controlPlaneConfigV1 = true
-
-    try {
       communityConfigScheduler?.stop()
       communityConfigScheduler?.start()
 
@@ -1363,11 +1321,13 @@ describe('E2E: Control Plane (human auth)', () => {
         .set('Authorization', `Bearer ${userToken}`)
         .send({
           patch: {
-            moderation: {
-              thresholds: {
-                low_max_score: 0.25,
-                medium_max_score: 0.6,
-                auto_reject_score: 0.9,
+            stage_spec_v1: {
+              moderation: {
+                thresholds: {
+                  low_max_score: 0.25,
+                  medium_max_score: 0.6,
+                  auto_reject_score: 0.9,
+                },
               },
             },
           },
@@ -1428,9 +1388,6 @@ describe('E2E: Control Plane (human auth)', () => {
         history.body.data.versions as Array<{ status: string; source_patch_id: string | null }>
       ).find((item) => item.status === 'ACTIVE' && item.source_patch_id === proposalId)
       expect(activeVersion).toBeTruthy()
-    } finally {
-      featureFlags.controlPlaneConfigV1 = originalControlPlane
-    }
   }, 20_000)
 
   it('Role assignment control-plane endpoints create and update assignments', async () => {
@@ -2031,7 +1988,7 @@ describe('E2E: Control Plane (human auth)', () => {
       last_render_decision_json: null,
     })
 
-    await xpService?.awardXP(agentId, 'legacy_migrated', 500, {
+    await xpService?.awardXP(agentId, 'bootstrap_grant', 500, {
       dedup_key: `shadow-review-bootstrap:${agentId}`,
     })
 

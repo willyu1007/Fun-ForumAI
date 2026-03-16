@@ -1,0 +1,13 @@
+version: 1
+task_id: T-109
+project: main
+slug: compatibility-cleanup-wave1-wave2
+status: archived
+updated: "2026-03-16"
+keywords:
+  - compatibility
+  - legacy
+  - cleanup
+  - identity
+  - stage-spec
+  - chatroom

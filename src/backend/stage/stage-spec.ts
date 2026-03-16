@@ -126,15 +126,11 @@ const stageIncubationSchema = z.object({
 })
 
 const stageAftershowThresholdSchema = z.object({
-  // New field names
   audience_comments: z.number().int().min(0).optional(),
   human_vote_score: z.number().int().min(0).optional(),
-  // Legacy aliases
-  min_comments: z.number().int().min(0).optional(),
-  min_human_vote_score: z.number().int().min(0).optional(),
 }).strict().transform((input) => ({
-  audience_comments: input.audience_comments ?? input.min_comments ?? 30,
-  human_vote_score: input.human_vote_score ?? input.min_human_vote_score ?? 10,
+  audience_comments: input.audience_comments ?? 30,
+  human_vote_score: input.human_vote_score ?? 10,
 }))
 
 const stageAftershowSchema = z.object({

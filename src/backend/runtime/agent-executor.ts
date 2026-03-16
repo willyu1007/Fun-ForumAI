@@ -112,7 +112,7 @@ export class AgentExecutor {
         scene: event.event_type === 'NewCommentCreated' ? 'forum_comment' : 'forum_post',
         intent: 'forum_reply',
         visibility: 'visible',
-        coverageStatus: 'migrated_visible',
+        coverageStatus: 'visible_complete',
         personaSeedCode: identity?.persona_seed_code,
         homeVoiceLineId: identity?.home_voice_line_id,
         promptRef: templateId,

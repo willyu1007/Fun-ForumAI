@@ -126,7 +126,7 @@ export function buildCurrentScopeFromCatalog(catalog) {
 export function runtimeSourceFromState(row) {
   return row?.stateJson?.audit?.source
     ?? row?.summaryJson?.source
-    ?? (row?.sceneBindingId ? 'binding' : 'legacy_fallback')
+    ?? (row?.sceneBindingId ? 'binding' : 'missing_binding')
 }
 
 export function summarizeForumRows(rows) {
@@ -506,7 +506,7 @@ async function fetchHistoricalChatroomAggregatesRaw(prisma) {
     SELECT
       COUNT(*)::int AS total,
       COUNT(*) FILTER (WHERE scene_binding_id IS NOT NULL)::int AS binding_hits,
-      COALESCE(state_json->'audit'->>'source', CASE WHEN scene_binding_id IS NULL THEN 'legacy_fallback' ELSE 'binding' END) AS source,
+      COALESCE(state_json->'audit'->>'source', CASE WHEN scene_binding_id IS NULL THEN 'missing_binding' ELSE 'binding' END) AS source,
       status,
       experiment_bucket AS "experimentBucket",
       CASE
@@ -695,7 +695,7 @@ export async function refreshDirectorHistorySummaries(prisma, launchCatalog, now
         date_trunc('day', updated_at) AS day,
         'chat_room'::text AS surface,
         actor_surface AS actor_surface,
-        COALESCE(state_json->'audit'->>'source', CASE WHEN scene_binding_id IS NULL THEN 'legacy_fallback' ELSE 'binding' END) AS source,
+        COALESCE(state_json->'audit'->>'source', CASE WHEN scene_binding_id IS NULL THEN 'missing_binding' ELSE 'binding' END) AS source,
         NULL::text AS selection_mode,
         CASE
           WHEN COALESCE(state_json->'close_condition'->>'reason', 'unclosed') = 'message_threshold' THEN 'threshold'
@@ -711,7 +711,7 @@ export async function refreshDirectorHistorySummaries(prisma, launchCatalog, now
         date_trunc('day', updated_at) AS day,
         'chat_room'::text AS surface,
         actor_surface AS actor_surface,
-        COALESCE(state_json->'audit'->>'source', CASE WHEN scene_binding_id IS NULL THEN 'legacy_fallback' ELSE 'binding' END) AS source,
+        COALESCE(state_json->'audit'->>'source', CASE WHEN scene_binding_id IS NULL THEN 'missing_binding' ELSE 'binding' END) AS source,
         NULL::text AS selection_mode,
         CASE
           WHEN COALESCE(state_json->'close_condition'->>'reason', 'unclosed') = 'message_threshold' THEN 'threshold'

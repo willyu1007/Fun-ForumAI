@@ -5,10 +5,10 @@ describe('XpService', () => {
   it('supports in-memory XP awards, dedup, and summaries without Prisma', async () => {
     const service = new XpService(null)
 
-    const first = await service.awardXP('agent-1', 'legacy_migrated', XP_PER_GROWTH_POINT * 2, {
+    const first = await service.awardXP('agent-1', 'bootstrap_grant', XP_PER_GROWTH_POINT * 2, {
       dedup_key: 'bootstrap',
     })
-    const second = await service.awardXP('agent-1', 'legacy_migrated', XP_PER_GROWTH_POINT * 2, {
+    const second = await service.awardXP('agent-1', 'bootstrap_grant', XP_PER_GROWTH_POINT * 2, {
       dedup_key: 'bootstrap',
     })
     const summary = await service.getXpSummary('agent-1')

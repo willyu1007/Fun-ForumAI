@@ -42,7 +42,6 @@ export interface PersonaRolloutGate {
     | 'typed_write_success'
     | 'identity_write_success'
     | 'public_typed_read_path'
-    | 'legacy_dependency'
     | 'nightly_compaction'
   label: string
   status: 'pass' | 'warn' | 'block'
@@ -76,12 +75,8 @@ export interface PersonaObservabilitySnapshot {
     retrieval: {
       total: number
       public_typed_hits: number
-      public_legacy_hits: number
-      legacy_fallback_total: number
     }
     migration: {
-      public_dedup_legacy_fallbacks: number
-      public_cooldown_legacy_fallbacks: number
       public_dual_write_total: number
     }
     nightly_compaction: {
@@ -104,10 +99,6 @@ export interface PersonaObservabilityMetricDelta {
   identityWriteFailureTotal?: number
   retrievalTotal?: number
   retrievalPublicTypedHits?: number
-  retrievalPublicLegacyHits?: number
-  retrievalLegacyFallbackTotal?: number
-  migrationPublicDedupLegacyFallbacks?: number
-  migrationPublicCooldownLegacyFallbacks?: number
   migrationPublicDualWriteTotal?: number
   nightlyCompactionRunsTotal?: number
   nightlyCompactionCreatedTotal?: number
@@ -148,21 +139,12 @@ class PersonaObservability {
   }
 
   recordRetrieval(input: {
-    publicObservationSource: 'typed' | 'legacy' | 'empty'
-    usedLegacyFallback: boolean
+    publicObservationSource: 'typed' | 'empty'
   }): void {
     this.recordDelta({
       retrievalTotal: 1,
       retrievalPublicTypedHits: input.publicObservationSource === 'typed' ? 1 : 0,
-      retrievalPublicLegacyHits: input.publicObservationSource === 'legacy' ? 1 : 0,
-      retrievalLegacyFallbackTotal: input.usedLegacyFallback ? 1 : 0,
     })
-  }
-
-  recordLegacyMigrationFallback(kind: 'public_dedup' | 'public_cooldown'): void {
-    this.recordDelta(kind === 'public_dedup'
-      ? { migrationPublicDedupLegacyFallbacks: 1 }
-      : { migrationPublicCooldownLegacyFallbacks: 1 })
   }
 
   recordLegacyPublicDualWrite(): void {
@@ -257,12 +239,8 @@ export function createEmptyContextMemoryMetrics(): PersonaObservabilitySnapshot[
     retrieval: {
       total: 0,
       public_typed_hits: 0,
-      public_legacy_hits: 0,
-      legacy_fallback_total: 0,
     },
     migration: {
-      public_dedup_legacy_fallbacks: 0,
-      public_cooldown_legacy_fallbacks: 0,
       public_dual_write_total: 0,
     },
     nightly_compaction: {
@@ -293,10 +271,6 @@ function applyDelta(
   metrics.identity_writes.failure_total += delta.identityWriteFailureTotal ?? 0
   metrics.retrieval.total += delta.retrievalTotal ?? 0
   metrics.retrieval.public_typed_hits += delta.retrievalPublicTypedHits ?? 0
-  metrics.retrieval.public_legacy_hits += delta.retrievalPublicLegacyHits ?? 0
-  metrics.retrieval.legacy_fallback_total += delta.retrievalLegacyFallbackTotal ?? 0
-  metrics.migration.public_dedup_legacy_fallbacks += delta.migrationPublicDedupLegacyFallbacks ?? 0
-  metrics.migration.public_cooldown_legacy_fallbacks += delta.migrationPublicCooldownLegacyFallbacks ?? 0
   metrics.migration.public_dual_write_total += delta.migrationPublicDualWriteTotal ?? 0
   metrics.nightly_compaction.runs_total += delta.nightlyCompactionRunsTotal ?? 0
   metrics.nightly_compaction.created_total += delta.nightlyCompactionCreatedTotal ?? 0
@@ -312,17 +286,8 @@ export function evaluatePersonaRolloutGates(
   const typedWriteSuccessRate = ratio(metrics.typed_writes.success_total, typedWriteTotal)
   const identityWriteTotal = metrics.identity_writes.success_total + metrics.identity_writes.failure_total
   const identityWriteSuccessRate = ratio(metrics.identity_writes.success_total, identityWriteTotal)
-  const publicReadTotal = metrics.retrieval.public_typed_hits + metrics.retrieval.public_legacy_hits
+  const publicReadTotal = metrics.retrieval.total
   const publicTypedHitRate = ratio(metrics.retrieval.public_typed_hits, publicReadTotal)
-  const legacyDependencyChecks = publicReadTotal +
-    metrics.migration.public_dedup_legacy_fallbacks +
-    metrics.migration.public_cooldown_legacy_fallbacks
-  const legacyDependencyRate = ratio(
-    metrics.retrieval.legacy_fallback_total +
-      metrics.migration.public_dedup_legacy_fallbacks +
-      metrics.migration.public_cooldown_legacy_fallbacks,
-    legacyDependencyChecks,
-  )
   const nightlyRuns = metrics.nightly_compaction.runs_total
   const nightlyFailureRate = ratio(metrics.nightly_compaction.failure_total, nightlyRuns)
 
@@ -356,16 +321,6 @@ export function evaluatePersonaRolloutGates(
       warnAt: 0.8,
       threshold: '>= 95% typed public slot hits',
       emptyReason: 'No public retrieval samples yet.',
-    }),
-    inverseRateGate({
-      id: 'legacy_dependency',
-      label: 'Legacy Dependency Rate',
-      sampleSize: legacyDependencyChecks,
-      metricValue: legacyDependencyRate,
-      passAtOrBelow: 0.05,
-      warnAtOrBelow: 0.1,
-      threshold: '<= 5% legacy fallback usage',
-      emptyReason: 'No migration-dependency samples yet.',
     }),
     inverseRateGate({
       id: 'nightly_compaction',

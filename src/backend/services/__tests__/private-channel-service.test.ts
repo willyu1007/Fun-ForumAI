@@ -1,27 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { config } from '../../lib/config.js'
 import { PrivateChannelService } from '../private-channel-service.js'
 import type { PromptOrchestrator } from '../../runtime/prompt-orchestrator.js'
 import type { PrivateSession } from '../../repos/types.js'
 import { PROMPT_TEMPLATE_REFS } from '../../llm/prompt-template-refs.js'
-
-function withLayerStackFlag<T>(enabled: boolean, run: () => Promise<T>): Promise<T> {
-  const featureFlags = config.features as unknown as Record<string, boolean>
-  const original = featureFlags.layerStackV2
-  featureFlags.layerStackV2 = enabled
-  return run().finally(() => {
-    featureFlags.layerStackV2 = original
-  })
-}
-
-function withFeatureFlags<T>(override: Partial<Record<string, boolean>>, run: () => Promise<T>): Promise<T> {
-  const featureFlags = config.features as unknown as Record<string, boolean>
-  const snapshot = { ...featureFlags }
-  Object.assign(featureFlags, override)
-  return run().finally(() => {
-    Object.assign(featureFlags, snapshot)
-  })
-}
 
 function buildSession(): PrivateSession {
   return {
@@ -191,25 +172,21 @@ describe('PrivateChannelService', () => {
       sseHub: null,
     })
 
-    await withLayerStackFlag(true, async () => {
-      await withFeatureFlags({ privateDirectorBoundaryV1: true }, async () => {
-        const result = await service.sendMessage(session.id, 'user-1', ' 你好 ')
-        expect(result.agent_reply.content).toBe('你好呀')
-        expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
-          preferredModelId: 'qwen-flash-character',
-          promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
-          variables: expect.objectContaining({
-            persona_name: 'Agent One',
-            latest_user_message: '你好',
-          }),
-        }))
-        const firstCall = gatewayGenerate.mock.calls.at(0)?.[0] as { variables: Record<string, string> } | undefined
-        expect(firstCall?.variables.layer_showrunner).toBeUndefined()
-      })
-    })
+    const result = await service.sendMessage(session.id, 'user-1', ' 你好 ')
+    expect(result.agent_reply.content).toBe('你好呀')
+    expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
+      preferredModelId: 'qwen-flash-character',
+      promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
+      variables: expect.objectContaining({
+        persona_name: 'Agent One',
+        latest_user_message: '你好',
+      }),
+    }))
+    const firstCall = gatewayGenerate.mock.calls.at(0)?.[0] as { variables: Record<string, string> } | undefined
+    expect(firstCall?.variables.layer_showrunner).toBe('')
   })
 
-  it('falls back to legacy hand-written prompt when orchestrator fails', async () => {
+  it('fails fast when private prompt orchestration fails', async () => {
     const session = buildSession()
     const gatewayGenerate = vi.fn(async (_input: { variables: Record<string, string> }) => ({
       content: 'fallback reply',
@@ -297,17 +274,8 @@ describe('PrivateChannelService', () => {
       sseHub: null,
     })
 
-    await withLayerStackFlag(true, async () => {
-      await service.sendMessage(session.id, 'user-1', ' question ')
-      const firstCall = gatewayGenerate.mock.calls.at(0)
-      expect(firstCall).toBeDefined()
-      const call = firstCall![0] as unknown as {
-        promptRef: typeof PROMPT_TEMPLATE_REFS.agentPrivateChatReply
-        variables: Record<string, string>
-      }
-      expect(call.promptRef).toEqual(PROMPT_TEMPLATE_REFS.agentPrivateChatReply)
-      expect(call.variables.session_context).toContain('场景：与 Owner 的私人对话')
-    })
+    await expect(service.sendMessage(session.id, 'user-1', ' question ')).rejects.toThrow('compose failed')
+    expect(gatewayGenerate).not.toHaveBeenCalled()
   })
 
   it('rejects message listing for a non-owner session reader', async () => {

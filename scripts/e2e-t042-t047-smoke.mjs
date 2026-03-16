@@ -466,8 +466,8 @@ async function testT047_AchievementChronicle(ctx) {
     }
   }
 
-  const legacyHighlights = await api('GET', '/v1/highlights')
-  log('P14: Legacy GET /highlights still works', legacyHighlights.status === 200)
+  const highlightsResponse = await api('GET', '/v1/highlights')
+  log('P14: GET /highlights works', highlightsResponse.status === 200)
 }
 
 // ═══════════════════════════════════════════════════════════════

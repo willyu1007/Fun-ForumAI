@@ -5,7 +5,7 @@
     "prod",
     "staging"
   ],
-  "generated_at_utc": "2026-03-15T22:08:38Z",
+  "generated_at_utc": "2026-03-16T09:45:32Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "APP_ENV": {
@@ -620,23 +620,6 @@
       "state": "active",
       "type": "enum"
     },
-    "FF_CONTROL_PLANE_CONFIG_V1": {
-      "default": "false",
-      "deprecate_after": null,
-      "description": "Enable control-plane config proposal/approve/apply/rollback workflow.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": false,
-      "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
-      "type": "enum"
-    },
     "FF_EVENT_CONTRACT_V1": {
       "default": "false",
       "deprecate_after": null,
@@ -739,44 +722,10 @@
       "state": "active",
       "type": "enum"
     },
-    "FF_INCUBATION_TRUST_HARD_ENFORCE": {
-      "default": "false",
-      "deprecate_after": null,
-      "description": "Enforce structured trust_context checks for strict T4 posts.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": false,
-      "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
-      "type": "enum"
-    },
     "FF_INCUBATION_V1": {
       "default": "false",
       "deprecate_after": null,
       "description": "Enable T4 incubation pipeline APIs and persistence models.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": false,
-      "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
-      "type": "enum"
-    },
-    "FF_LAYER_STACK_V2": {
-      "default": "false",
-      "deprecate_after": null,
-      "description": "Enable shared prompt layer composition for runtime and chatroom paths.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
@@ -926,78 +875,10 @@
       "state": "active",
       "type": "enum"
     },
-    "FF_PRIVATE_DIRECTOR_BOUNDARY_V1": {
-      "default": "false",
-      "deprecate_after": null,
-      "description": "Remove director/showrunner semantics from private chat and proactive opening prompt paths.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": false,
-      "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
-      "type": "enum"
-    },
     "FF_PROMPT_AUDIT_V1": {
       "default": "false",
       "deprecate_after": null,
       "description": "Enable structured prompt composition audit logging and dev render audit payload.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": false,
-      "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
-      "type": "enum"
-    },
-    "FF_PROMPT_ORCHESTRATOR_SCENES": {
-      "default": "",
-      "deprecate_after": null,
-      "description": "Optional CSV whitelist of scenes for PromptOrchestrator (empty means all scenes).",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": false,
-      "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
-      "type": "string"
-    },
-    "FF_PROMPT_ORCHESTRATOR_V1": {
-      "default": "false",
-      "deprecate_after": null,
-      "description": "Enable unified PromptOrchestrator runtime path.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": false,
-      "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
-      "type": "enum"
-    },
-    "FF_PUBLIC_DIRECTOR_CONTRACT_V1": {
-      "default": "false",
-      "deprecate_after": null,
-      "description": "Enable shared public director contract read path and surface vocabulary exports.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
@@ -1062,27 +943,10 @@
       "state": "active",
       "type": "enum"
     },
-    "FF_SCENE_POOL_ASSET_OPS_V1": {
-      "default": "false",
-      "deprecate_after": null,
-      "description": "Enable scene-pool v2 catalog projection, lifecycle mapping, and asset ops compatibility path.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": false,
-      "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
-      "type": "enum"
-    },
     "FF_SIGNAL_LOG_V1": {
       "default": "true",
       "deprecate_after": null,
-      "description": "Enable signal dual-write to agent_signal_logs and metrics read-path migration.",
+      "description": "Enable signal dual-write to agent_signal_logs and metrics-backed reads.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null

@@ -407,13 +407,6 @@ variables:
     default: 5000
     description: Redis connection timeout in milliseconds for SSE broadcast backend.
 
-  FF_LAYER_STACK_V2:
-    type: enum
-    enum: ["true", "false"]
-    required: false
-    default: "false"
-    description: Enable shared prompt layer composition for runtime and chatroom paths.
-
   FF_ALLOCATOR_PPR_ENABLED:
     type: enum
     enum: ["true", "false"]
@@ -440,7 +433,7 @@ variables:
     enum: ["true", "false"]
     required: false
     default: "true"
-    description: Enable signal dual-write to agent_signal_logs and metrics read-path migration.
+    description: Enable signal dual-write to agent_signal_logs and metrics-backed reads.
 
   FF_CASTING_DIRECTOR_V2:
     type: enum
@@ -504,33 +497,6 @@ variables:
     required: false
     default: "false"
     description: Enable structured prompt composition audit logging and dev render audit payload.
-
-  FF_PROMPT_ORCHESTRATOR_V1:
-    type: enum
-    enum: ["true", "false"]
-    required: false
-    default: "false"
-    description: Enable unified PromptOrchestrator runtime path.
-
-  FF_PUBLIC_DIRECTOR_CONTRACT_V1:
-    type: enum
-    enum: ["true", "false"]
-    required: false
-    default: "false"
-    description: Enable shared public director contract read path and surface vocabulary exports.
-
-  FF_PRIVATE_DIRECTOR_BOUNDARY_V1:
-    type: enum
-    enum: ["true", "false"]
-    required: false
-    default: "false"
-    description: Remove director/showrunner semantics from private chat and proactive opening prompt paths.
-
-  FF_PROMPT_ORCHESTRATOR_SCENES:
-    type: string
-    required: false
-    default: ""
-    description: Optional CSV whitelist of scenes for PromptOrchestrator (empty means all scenes).
 
   FF_PERSONA_RUNTIME_V1:
     type: enum
@@ -699,13 +665,6 @@ variables:
     default: "false"
     description: Enable PRIVATE_DIGEST -> incubation seed orchestration.
 
-  FF_INCUBATION_TRUST_HARD_ENFORCE:
-    type: enum
-    enum: ["true", "false"]
-    required: false
-    default: "false"
-    description: Enforce structured trust_context checks for strict T4 posts.
-
   FF_AUDIENCE_ZONE_V1:
     type: enum
     enum: ["true", "false"]
@@ -734,13 +693,6 @@ variables:
     default: "false"
     description: Enable event contract and routing enforcement path.
 
-  FF_CONTROL_PLANE_CONFIG_V1:
-    type: enum
-    enum: ["true", "false"]
-    required: false
-    default: "false"
-    description: Enable control-plane config proposal/approve/apply/rollback workflow.
-
   FF_AFTERSHOW_EVENT_PIPELINE_V1:
     type: enum
     enum: ["true", "false"]
@@ -768,10 +720,3 @@ variables:
     required: false
     default: "false"
     description: Enable stage template rotation scripts/control-plane integrations.
-
-  FF_SCENE_POOL_ASSET_OPS_V1:
-    type: enum
-    enum: ["true", "false"]
-    required: false
-    default: "false"
-    description: Enable scene-pool v2 catalog projection, lifecycle mapping, and asset ops compatibility path.

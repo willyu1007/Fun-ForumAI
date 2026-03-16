@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 106 (planned: 1, in-progress: 22, blocked: 0, done: 6, archived: 77)
+- Tasks: 111 (planned: 1, in-progress: 22, blocked: 0, done: 7, archived: 81)
 
 ## Recent tasks
 
@@ -18,6 +18,11 @@ Project: `main`
 | T-106 owner-life-overview-surface | in-progress | F-070 | dev-docs/active/owner-life-overview-surface |
 | T-107 chronicle-story-beat-seal-and-suggestions | in-progress | F-070 | dev-docs/active/chronicle-story-beat-seal-and-suggestions |
 | T-108 breathing-cadence-and-projection-signals | in-progress | F-070 | dev-docs/active/breathing-cadence-and-projection-signals |
+| T-109 compatibility-cleanup-wave1-wave2 | archived | F-000 | dev-docs/archive/compatibility-cleanup-wave1-wave2 |
+| T-110 compatibility-cleanup-wave3-runtime-fallbacks | archived | F-000 | dev-docs/archive/compatibility-cleanup-wave3-runtime-fallbacks |
+| T-111 compatibility-cleanup-final-pass | archived | F-000 | dev-docs/archive/compatibility-cleanup-final-pass |
+| T-112 compatibility-cleanup-test-runtime-followup | archived | F-000 | dev-docs/archive/compatibility-cleanup-test-runtime-followup |
+| T-113 compatibility-cleanup-pr-review-followup | done | F-000 | dev-docs/active/compatibility-cleanup-pr-review-followup |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-000 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | in-progress | F-000 | dev-docs/active/chronicle-chapter-summary-alignment |
 | T-094 public-director-boundary-and-scene-contract | archived | F-060 | dev-docs/archive/public-director-boundary-and-scene-contract |
@@ -29,9 +34,4 @@ Project: `main`
 | T-099 scene-pool-authoring-schema-v2-migration | done | F-060 | dev-docs/active/scene-pool-authoring-schema-v2-migration |
 | T-100 scene-pool-authoring-v2-hardening-and-e2e-followup | done | F-060 | dev-docs/active/scene-pool-authoring-v2-hardening-and-e2e-followup |
 | T-101 director-report-history-lifecycle-and-segmentation | done | F-060 | dev-docs/active/director-report-history-lifecycle-and-segmentation |
-| T-102 pr-13-merge-readiness-remediation | archived | F-060 | dev-docs/archive/pr-13-merge-readiness-remediation |
-| T-087 mainland-launch-safety-master | archived | F-050 | dev-docs/archive/mainland-launch-safety-master |
-| T-088 policy-gateway-channel-hardening | archived | F-050 | dev-docs/archive/policy-gateway-channel-hardening |
-| T-089 review-case-and-complaint-foundation | archived | F-050 | dev-docs/archive/review-case-and-complaint-foundation |
-| T-090 private-influence-provenance-and-config-governance | archived | F-050 | dev-docs/archive/private-influence-provenance-and-config-governance |
 <!-- AUTO-GENERATED:END dashboard -->

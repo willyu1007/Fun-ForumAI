@@ -477,8 +477,12 @@ if (config.features.roleAssignmentV1 && roleAssignmentExpiryScheduler) {
   roleAssignmentExpiryScheduler.start()
 }
 
-if (config.db.usePrisma && config.features.publicDirectorContractV1 && directorHistoryMaintenanceScheduler) {
-  directorHistoryMaintenanceScheduler.start()
+if (config.db.usePrisma && directorHistoryMaintenanceScheduler) {
+  if (directorHistoryMaintenanceScheduler.isLaunchCatalogReady()) {
+    directorHistoryMaintenanceScheduler.start()
+  } else {
+    console.log('[App] Director history maintenance skipped: launch catalog artifact is not ready')
+  }
 }
 
 if (config.features.guidanceV1 && config.features.guidanceRecallV1 && guidanceRecallScheduler) {

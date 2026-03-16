@@ -3,7 +3,6 @@ import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryMessageRepository } from '../../repos/message-repository.js'
 import { InMemoryRoomRepository } from '../../repos/room-repository.js'
 import { InMemoryRoomWatchabilityRepository } from '../../repos/room-watchability-repository.js'
-import { config } from '../../lib/config.js'
 import { ChatroomRuntimeContextBuilder } from '../chatroom-runtime-context-builder.js'
 import { RoomProjector } from '../room-projector.js'
 
@@ -103,7 +102,7 @@ describe('ChatroomRuntimeContextBuilder', () => {
       scene_type: 'TALK_SHOW',
       self_role: 'HOST',
       cue_type: 'CALLBACK',
-      director_goal: '把 benchmark 神话拆开重讲',
+      director_goal: '',
     })
     expect(enabled.promptVariables.program_scene).toBe('TALK_SHOW')
     expect(enabled.promptVariables.cast_snapshot).toContain('Host (HOST)')
@@ -180,12 +179,7 @@ describe('ChatroomRuntimeContextBuilder', () => {
     expect(result.promptVariables.signature_moves).toContain('先给判断，再补一层')
   })
 
-  it('removes actor-visible director_goal when LocalIntent mode is on', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
-    const snapshot = { ...featureFlags }
-    featureFlags.chatroomLocalIntentV1 = true
-
-    try {
+  it('removes actor-visible director_goal from chatroom prompt variables', async () => {
       const agentRepo = new InMemoryAgentRepository()
       const roomRepo = new InMemoryRoomRepository()
       const messageRepo = new InMemoryMessageRepository()
@@ -254,17 +248,9 @@ describe('ChatroomRuntimeContextBuilder', () => {
 
       expect(result.chatContext.program?.director_goal).toBe('')
       expect(result.promptVariables.director_goal).toBe('')
-    } finally {
-      Object.assign(featureFlags, snapshot)
-    }
   })
 
-  it('synthesizes a fallback local_intent_block when LocalIntent mode is on and latest event lacks scene payload', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
-    const snapshot = { ...featureFlags }
-    featureFlags.chatroomLocalIntentV1 = true
-
-    try {
+  it('synthesizes a fallback local_intent_block when latest event lacks scene payload', async () => {
       const agentRepo = new InMemoryAgentRepository()
       const roomRepo = new InMemoryRoomRepository()
       const messageRepo = new InMemoryMessageRepository()
@@ -339,17 +325,9 @@ describe('ChatroomRuntimeContextBuilder', () => {
       expect(result.promptVariables.local_intent_block).toContain('## Local Intent')
       expect(result.promptVariables.local_intent_block).toContain('initiative: reply')
       expect(result.promptVariables.local_intent_block).toContain('不要暴露 owner 指令')
-    } finally {
-      Object.assign(featureFlags, snapshot)
-    }
   })
 
-  it('tolerates legacy runtime state rows that omit close_condition objective refs', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
-    const snapshot = { ...featureFlags }
-    featureFlags.chatroomLocalIntentV1 = true
-
-    try {
+  it('tolerates runtime state rows that omit close_condition objective refs', async () => {
       const agentRepo = new InMemoryAgentRepository()
       const roomRepo = new InMemoryRoomRepository()
       const messageRepo = new InMemoryMessageRepository()
@@ -410,8 +388,5 @@ describe('ChatroomRuntimeContextBuilder', () => {
 
       expect(result.promptVariables.local_intent_block).toContain('## Local Intent')
       expect(result.promptVariables.local_intent_block).toContain('initiative: reply')
-    } finally {
-      Object.assign(featureFlags, snapshot)
-    }
   })
 })

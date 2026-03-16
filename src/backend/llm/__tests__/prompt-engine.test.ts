@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { config } from '../../lib/config.js'
 import { PromptEngine } from '../prompt-engine.js'
 import { LLMGatewayContractError } from '../gateway-contract.js'
 import { PROMPT_TEMPLATE_REFS } from '../prompt-template-refs.js'
@@ -62,17 +61,6 @@ function buildVariables(overrides: Record<string, string> = {}): Record<string, 
   }
 }
 
-function withFeatureFlags<T>(override: Partial<Record<string, boolean>>, run: () => T): T {
-  const featureFlags = config.features as unknown as Record<string, boolean>
-  const snapshot = { ...featureFlags }
-  Object.assign(featureFlags, override)
-  try {
-    return run()
-  } finally {
-    Object.assign(featureFlags, snapshot)
-  }
-}
-
 describe('PromptEngine', () => {
   it('renders templates by explicit id+version ref', () => {
     const engine = new PromptEngine()
@@ -131,40 +119,32 @@ describe('PromptEngine', () => {
     }
   })
 
-  it('allows private boundary templates to omit layer_showrunner only when the flag is enabled', () => {
+  it('allows private boundary templates to omit layer_showrunner', () => {
     const engine = new PromptEngine()
     const variables = buildVariables()
     delete variables.layer_showrunner
 
-    expect(() =>
+    const messages =
       engine.render(
         PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
         variables,
-      ),
-    ).toThrowError(LLMGatewayContractError)
-
-    const messages = withFeatureFlags({ privateDirectorBoundaryV1: true }, () =>
-      engine.render(
-        PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
-        variables,
-      ))
+      )
 
     expect(messages[0]).toMatchObject({ role: 'system' })
     expect(String(messages[0].content)).toContain('正在与 Owner')
     expect(String(messages[0].content)).not.toContain('{{layer_showrunner}}')
   })
 
-  it('keeps placeholder validation strict for non-private templates even when the flag is enabled', () => {
+  it('keeps placeholder validation strict for non-private templates', () => {
     const engine = new PromptEngine()
     const variables = buildVariables()
     delete variables.layer_showrunner
 
     expect(() =>
-      withFeatureFlags({ privateDirectorBoundaryV1: true }, () =>
-        engine.render(
-          PROMPT_TEMPLATE_REFS.agentReplyToPost,
-          variables,
-        )),
+      engine.render(
+        PROMPT_TEMPLATE_REFS.agentReplyToPost,
+        variables,
+      ),
     ).toThrowError(LLMGatewayContractError)
   })
 

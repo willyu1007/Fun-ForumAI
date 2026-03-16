@@ -78,22 +78,6 @@ export interface ProviderRegistryEntry {
   }
 }
 
-/**
- * @deprecated Use ModelProfileEntry from registry-loader.ts instead.
- * Kept for backward compatibility; will be removed in a future release.
- */
-export interface ModelCatalogEntry {
-  model_id: string
-  provider_id: string
-  family: string
-  line: string
-  tier: RenderTier
-  scene_fit: PromptScene[]
-  role_fit: VoiceLineRoutingIntent[]
-  quality_class: 'fast' | 'balanced' | 'premium'
-  home_line_eligible: boolean
-}
-
 export interface CredentialPoolEntry {
   credential_id: string
   provider_id: string

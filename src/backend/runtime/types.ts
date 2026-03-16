@@ -55,7 +55,6 @@ export interface PromptComposeAudit {
     community_profile?: {
       source: string
       version: string
-      fallback: boolean
     }
     private_memory?: {
       used_memory_ids: string[]
@@ -88,7 +87,6 @@ export interface ExecutionContext {
       }
       provenance: {
         source: string
-        used_fallback: boolean
       }
     }
   }

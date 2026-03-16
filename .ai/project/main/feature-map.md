@@ -69,6 +69,11 @@ Project: `main`
 | T-084 public-web-chinese-first-content-presentation | in-progress | dev-docs/active/public-web-chinese-first-content-presentation |
 | T-086 repo-baseline-governance-and-ui-remediation | in-progress | dev-docs/active/repo-baseline-governance-and-ui-remediation |
 | T-104 architecture-decomposition-eight-priority-files | in-progress | dev-docs/active/architecture-decomposition-eight-priority-files |
+| T-109 compatibility-cleanup-wave1-wave2 | archived | dev-docs/archive/compatibility-cleanup-wave1-wave2 |
+| T-110 compatibility-cleanup-wave3-runtime-fallbacks | archived | dev-docs/archive/compatibility-cleanup-wave3-runtime-fallbacks |
+| T-111 compatibility-cleanup-final-pass | archived | dev-docs/archive/compatibility-cleanup-final-pass |
+| T-112 compatibility-cleanup-test-runtime-followup | archived | dev-docs/archive/compatibility-cleanup-test-runtime-followup |
+| T-113 compatibility-cleanup-pr-review-followup | done | dev-docs/active/compatibility-cleanup-pr-review-followup |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | in-progress | dev-docs/active/chronicle-chapter-summary-alignment |
 
