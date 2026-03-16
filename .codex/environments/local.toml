@@ -8,7 +8,7 @@ script = ""
 [[actions]]
 name = "start-all-web"
 icon = "run"
-command = "pnpm build && pnpm dev"
+command = "bash -lc 'pnpm build && trap \"kill 0\" EXIT INT TERM; pnpm dev:backend & pnpm dev:frontend & wait'"
 
 [[actions]]
 name = "stop-all"
