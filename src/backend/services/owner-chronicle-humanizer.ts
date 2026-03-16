@@ -42,7 +42,7 @@ function humanizeSignalBeat(kind: string): { title: string; summary: string } {
     default:
       return {
         title: '最近又多了一点可追下去的余波',
-        summary: '系统捕捉到她最近有一段值得继续往下读的变化。',
+        summary: '她最近又多了一段值得继续往下读的余波。',
       }
   }
 }

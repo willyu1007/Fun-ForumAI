@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -126,6 +126,27 @@ function buildAgent(overrides?: Partial<Agent>) {
     status: 'ACTIVE',
     persona_seed_label: 'Seed',
     home_voice_line_label: 'Voice',
+    identity_contract: {
+      source: 'contract_v1',
+      persona_seed_code: 'seed',
+      persona_seed_label: 'Seed',
+      home_voice_line_id: 'voice-1',
+      home_voice_line_label: 'Voice',
+      owner_style_pins: {
+        formality: 3,
+        verbosity: 3,
+        mood: 'steady',
+        habits: ['先接住别人的情绪'],
+        forum_activity: 3,
+        interests: ['音乐'],
+      },
+      visible_persona: {
+        name: 'Agent One',
+        style: '像一个会把最近几段经历慢慢接成一章的人。',
+        interests: ['音乐'],
+        language: 'zh-CN',
+      },
+    },
     is_followed: false,
     created_at: '2026-03-10T00:00:00.000Z',
     updated_at: '2026-03-10T00:00:00.000Z',
@@ -513,11 +534,33 @@ describe('AgentProfilePage', () => {
     expect(screen.getByText('近期成就印记')).toBeTruthy()
     expect(screen.getByText('下一段怎么养')).toBeTruthy()
     expect(screen.getByText('继续往下')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '带一段经历给她' })).toBeTruthy()
+    expect(screen.getByText('编年史')).toBeTruthy()
+    expect(screen.queryByText('成就线')).toBeNull()
+    expect(screen.getByText('角色底色')).toBeTruthy()
+    expect(screen.queryByText('声誉 88')).toBeNull()
+    expect(screen.queryByText('人格 v2')).toBeNull()
+    expect(screen.getByRole('button', { name: '管理信息' })).toBeTruthy()
     expect(screen.getAllByText('查看编年史').length).toBeGreaterThan(0)
     expect(screen.getByText('运行记录')).toBeTruthy()
     expect(screen.queryByText('登录后关注这个 Agent')).toBeNull()
     expect(useAgentHighlightsMock).toHaveBeenCalledWith('agent-1', false)
     expect(useAgentRunsMock).toHaveBeenCalledWith('agent-1', undefined, { enabled: true })
+  })
+
+  it('keeps management metadata collapsed behind an owner-only toggle', () => {
+    useAuthMock.mockReturnValue({
+      isAuthenticated: true,
+      user: { id: 'owner-1', role: 'user' },
+    } as never)
+
+    renderPage()
+
+    expect(screen.queryByText('兼容模型')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '管理信息' }))
+    expect(screen.getByText('兼容模型')).toBeTruthy()
+    expect(screen.getByText('Agent ID')).toBeTruthy()
+    expect(screen.queryByText('所有者')).toBeNull()
   })
 
   it('keeps the owner life overview above older narrative cards on the default overview route', () => {
@@ -564,6 +607,77 @@ describe('AgentProfilePage', () => {
     renderPage()
 
     expect(screen.queryByText('登录后关注这个 Agent')).toBeNull()
+  })
+
+  it('renders owner degraded states with life-home wording instead of raw system labels', () => {
+    useAuthMock.mockReturnValue({
+      isAuthenticated: true,
+      user: { id: 'owner-1', role: 'user' },
+    } as never)
+    useOwnerLifeOverviewMock.mockReturnValue({
+      data: {
+        data: {
+          agent_id: 'agent-1',
+          hero: {
+            headline: null,
+            tagline: null,
+            supporting_line: null,
+            source_tags: [],
+          },
+          now: {
+            headline: null,
+            scene_label: null,
+            presence_label: null,
+            mood_label: null,
+            next_tendency_label: null,
+            recent_company: [],
+            last_active_at: null,
+            source_tags: [],
+          },
+          recent_story_beats: [],
+          owner_projection: {
+            headline: null,
+            carryover_theme: null,
+            emotional_residue_label: null,
+            public_echo_line: null,
+            borrowed_motifs: [],
+            carryover_topics: [],
+            latest_session: null,
+            privacy_mode_note: null,
+            source_tags: [],
+          },
+          chapter_cast: null,
+          recent_achievement_seals: [],
+          nurture_suggestions: [],
+          entry_points: {
+            chronicle: {
+              label: '查看编年史',
+              href: '/agents/agent-1?tab=achievements',
+              hint: '继续沿着章节往下看。',
+            },
+            system: {
+              label: '进入系统面板',
+              href: '/agents/agent-1?tab=privacy',
+              hint: '控制面保留在二级导航里。',
+            },
+          },
+          meta: {
+            generated_at: '2026-03-12T00:00:00.000Z',
+            degraded: true,
+          },
+        },
+      },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderPage()
+
+    expect(screen.getByText('轻读模式')).toBeTruthy()
+    expect(screen.queryByText('degraded')).toBeNull()
+    expect(screen.getByText('她现在还在长出更稳定的气息。')).toBeTruthy()
+    expect(screen.getByText('最近的经历还没密到能编成一章。')).toBeTruthy()
+    expect(screen.getByText('等下一段经历落下来，这里会出现更合适的养法。')).toBeTruthy()
   })
 
   it('shows admin shadow review actions when compile debug is available', () => {

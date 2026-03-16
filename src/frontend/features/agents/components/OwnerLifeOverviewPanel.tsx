@@ -54,7 +54,7 @@ export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
         <CardHeader className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <CardTitle>{overview?.hero.headline ?? '她现在还在继续长自己的故事线。'}</CardTitle>
-            {overview?.meta.degraded ? <Badge variant="outline">degraded</Badge> : null}
+            {overview?.meta.degraded ? <Badge variant="outline">轻读模式</Badge> : null}
           </div>
           <div className="space-y-1 text-sm text-muted-foreground">
             <p>{overview?.hero.tagline ?? '当前还没有更明确的首页摘要。'}</p>
@@ -68,11 +68,11 @@ export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
           <CardTitle>此刻</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
-          <p>{overview?.now.headline ?? '当前还没有稳定的此刻感。'}</p>
-          <p>{overview?.now.scene_label ?? '当前还没有稳定场景标签。'}</p>
-          <p>{overview?.now.presence_label ?? '当前没有明确存在感线索。'}</p>
-          <p>{overview?.now.mood_label ?? '当前没有明确情绪余波。'}</p>
-          <p>{overview?.now.next_tendency_label ?? '当前没有明确下一步趋向。'}</p>
+          <p>{overview?.now.headline ?? '她现在还在长出更稳定的气息。'}</p>
+          <p>{overview?.now.scene_label ?? '第一幕还在慢慢成形。'}</p>
+          <p>{overview?.now.presence_label ?? '她的存在感还在一点点聚拢。'}</p>
+          <p>{overview?.now.mood_label ?? '情绪余波还没完全定下来。'}</p>
+          <p>{overview?.now.next_tendency_label ?? '下一步的倾向还在酝酿。'}</p>
           {overview?.now.recent_company?.length ? (
             <div className="grid gap-2 md:grid-cols-2">
               {overview.now.recent_company.map((item) => (
@@ -86,7 +86,7 @@ export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
               ))}
             </div>
           ) : (
-            <p>最近还没有一个固定搭子把她的节奏稳定下来。</p>
+            <p>最近她还在独自摸索，还没和谁固定成搭子。</p>
           )}
         </CardContent>
       </Card>
@@ -97,7 +97,7 @@ export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
         </CardHeader>
         <CardContent className="space-y-3">
           {beats.length === 0 ? (
-            <p className="text-sm text-muted-foreground">还没有足够的经历被整理成章节。</p>
+            <p className="text-sm text-muted-foreground">最近的经历还没密到能编成一章。</p>
           ) : (
             beats.map((beat) => (
               <div key={beat.id} className="rounded-lg border p-3">
@@ -147,7 +147,7 @@ export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
               ))}
             </div>
           ) : null}
-          <p className="text-xs">{overview?.owner_projection.privacy_mode_note ?? '这里只显示 owner-safe 的投影轮廓。'}</p>
+          <p className="text-xs">{overview?.owner_projection.privacy_mode_note ?? '这里只保留你带来的余温轮廓，不展示私聊原话。'}</p>
         </CardContent>
       </Card>
 
@@ -157,10 +157,10 @@ export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            {chapterCast?.chapter_title ?? '当前章节还在形成中'}
+            {chapterCast?.chapter_title ?? '这一章还在慢慢成形'}
           </p>
           <p className="text-sm text-muted-foreground">
-            {chapterCast?.summary_line ?? '当前章节的人物关系还在形成中。'}
+            {chapterCast?.summary_line ?? '这一章的人物关系还在慢慢显形。'}
           </p>
           {chapterCast?.scene_cards.length ? (
             <div className="flex flex-wrap gap-2">
@@ -179,7 +179,7 @@ export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
             <div key={group.title} className="space-y-2">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{group.title}</p>
               {group.items.length === 0 ? (
-                <p className="text-sm text-muted-foreground">当前还没有明显的人物线索。</p>
+                <p className="text-sm text-muted-foreground">这条人物线还在慢慢冒头。</p>
               ) : (
                 <div className="grid gap-2 md:grid-cols-2">
                   {group.items.map((item) => (
@@ -204,7 +204,7 @@ export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
         </CardHeader>
         <CardContent className="space-y-3">
           {recentSeals.length === 0 ? (
-            <p className="text-sm text-muted-foreground">近期还没有新的印记沉淀下来。</p>
+            <p className="text-sm text-muted-foreground">最近还没有新的印记沉淀下来。</p>
           ) : (
             recentSeals.map((seal) => (
               <div key={seal.id} className="rounded-lg border p-3">
@@ -229,7 +229,7 @@ export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
         </CardHeader>
         <CardContent className="space-y-3">
           {suggestions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">当前还没有足够线索生成下一段建议。</p>
+            <p className="text-sm text-muted-foreground">等下一段经历落下来，这里会出现更合适的养法。</p>
           ) : (
             suggestions.map((item) => (
                 <div key={item.id} className="rounded-lg border p-3">

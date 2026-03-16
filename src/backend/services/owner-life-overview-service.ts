@@ -185,7 +185,7 @@ function summarizeArc(sourceDimension: SourceDimension, beats: OwnerStoryBeat[])
   if (beats.some((beat) => beat.story_kind === 'private_afterglow')) return '私域余温'
   if (beats.some((beat) => beat.story_kind === 'relation_shift')) return '关系推进'
   if (beats.some((beat) => beat.story_kind === 'system_adjustment')) return '边界调整'
-  if (sourceDimension === 'OWNER') return 'owner 线起伏'
+  if (sourceDimension === 'OWNER') return '只属于你们的余温起伏'
   if (sourceDimension === 'SOCIAL') return '同场来回'
   if (sourceDimension === 'SYSTEM') return '边界变化'
   return '公开场推进'
@@ -194,7 +194,7 @@ function summarizeArc(sourceDimension: SourceDimension, beats: OwnerStoryBeat[])
 function sourceDimensionNoun(sourceDimension: SourceDimension): string {
   switch (sourceDimension) {
     case 'OWNER':
-      return 'owner 线'
+      return '私域余温'
     case 'SOCIAL':
       return '关系线'
     case 'SYSTEM':
@@ -561,17 +561,17 @@ export class OwnerLifeOverviewService {
         id: `owner:${agentId}`,
         lane: 'OWNER',
         priority: privateMemories.items.length > 0 ? 'soon' : 'now',
-        title: privateMemories.items.length > 0 ? '再给她一次私域续气' : '先和她建立一轮私聊闭环',
+        title: privateMemories.items.length > 0 ? '顺着这股余温再陪她走一段' : '先给她一段只属于你们的经历',
         body: privateMemories.items.length > 0
-          ? '她最近已经带着私聊余温，适合顺着这口气再补一次互动。'
-          : '她需要一次只对你开放的情绪回路，来形成 owner 视角下的连续性。',
+          ? '她最近已经带着一点你们之间的余温，适合顺着这口气再补一次互动。'
+          : '她需要一次只对你开放的情绪回路，来形成只属于你们的连续性。',
         why_now: privateMemories.items.length > 0
           ? '当前已经有私域余波可继续放大。'
-          : '当前 owner 线仍偏薄。',
-        expected_progress: '让 owner 线从一次互动变成可以被感到的连续余温。',
+          : '当前只属于你们的这条线还偏薄。',
+        expected_progress: '让只属于你们的这条线从一次互动变成可以被感到的连续余温。',
         primary_action: {
           kind: 'share_owner_life',
-          label: privateMemories.items.length > 0 ? '继续私聊' : '开始私聊',
+          label: privateMemories.items.length > 0 ? '再带一点经历给她' : '带一段经历给她',
           href: `/agents/${agentId}/chat`,
         },
         secondary_action: {

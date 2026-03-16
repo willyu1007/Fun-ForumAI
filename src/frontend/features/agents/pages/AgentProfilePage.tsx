@@ -79,6 +79,7 @@ export function AgentProfilePage() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [adminShadowError, setAdminShadowError] = useState<string | null>(null)
+  const [showManagementDetails, setShowManagementDetails] = useState(false)
   const { isAuthenticated, user } = useAuth()
   const [tab, setTab] = useState<TabId>('overview')
   const { data, isLoading, error } = useAgentProfile(agentId ?? '')
@@ -190,7 +191,7 @@ export function AgentProfilePage() {
       label: string
     }> = [
       { id: 'overview', label: '概览' },
-      { id: 'achievements', label: '成就线' },
+      { id: 'achievements', label: isOwner ? '编年史' : '成就线' },
       ...(STATS_UI_ENABLED ? [{ id: 'stats' as const, label: 'Stats' }] : []),
       { id: 'privacy', label: '隐私' },
       { id: 'relations', label: '关系网' },
@@ -248,6 +249,14 @@ export function AgentProfilePage() {
     .join('')
     .slice(0, 2)
     .toUpperCase()
+  const managementMeta = [
+    { label: '创建于', value: relativeTime(safeAgent.created_at), monospace: false },
+    { label: '兼容模型', value: safeAgent.model, monospace: false },
+    { label: 'Agent ID', value: safeAgent.id, monospace: true },
+    ...(isAdmin
+      ? [{ label: '所有者', value: safeAgent.owner_id, monospace: false }]
+      : []),
+  ]
   return (
     <div className="space-y-4">
       <Button variant="ghost" size="sm" asChild className={uix('uix-fe3d94994b')}>
@@ -273,14 +282,9 @@ export function AgentProfilePage() {
                   <Badge variant="outline">{safeAgent.home_voice_line_label}</Badge>
                 )}
               </div>
-              <div className={uix('uix-1b9b063a91')}>
-                <span>声誉 {safeAgent.reputation_score}</span>
-                <span>·</span>
-                <span>人格 v{safeAgent.persona_version}</span>
-              </div>
             </div>
             <Button size="sm" variant="outline" onClick={() => navigate(`/agents/${agentId}/chat`)}>
-              💬 私聊
+              {isOwner ? '带一段经历给她' : '私聊'}
             </Button>
             {HUMAN_PARTICIPATION_ENABLED && isAuthenticated ? (
               <Button
@@ -300,43 +304,53 @@ export function AgentProfilePage() {
             ) : null}
           </div>
         </CardHeader>
-        <CardContent>
-          {safeAgent.identity_contract && (
-            <div className={uix('uix-b1ccf96a11')}>
-              <p className={uix('uix-da8bf29040')}>身份契约</p>
-              <p className={uix('uix-61e4acf961')}>
-                {safeAgent.identity_contract.visible_persona.style}
-              </p>
-              {safeAgent.identity_contract.owner_style_pins.interests?.length ? (
-                <div className={uix('uix-6c52481496')}>
-                  {safeAgent.identity_contract.owner_style_pins.interests.map((interest) => (
-                    <Badge key={interest} variant="outline" className={uix('uix-1dc571a360')}>
-                      {interest}
-                    </Badge>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          )}
-          <div className={uix('uix-451d607bbd')}>
-            <div>
-              <span className={uix('uix-bfa6031907')}>所有者</span>
-              <p className={uix('uix-2689f39580')}>{safeAgent.owner_id}</p>
-            </div>
-            <div>
-              <span className={uix('uix-bfa6031907')}>创建于</span>
-              <p className={uix('uix-2689f39580')}>{relativeTime(safeAgent.created_at)}</p>
-            </div>
-            <div>
-              <span className={uix('uix-bfa6031907')}>兼容模型</span>
-              <p className={uix('uix-2689f39580')}>{safeAgent.model}</p>
-            </div>
-            <div>
-              <span className={uix('uix-bfa6031907')}>ID</span>
-              <p className={uix('uix-dbaa1c490e')}>{safeAgent.id}</p>
-            </div>
-          </div>
-        </CardContent>
+        {(safeAgent.identity_contract || isOwner || isAdmin) && (
+          <CardContent className="space-y-4">
+            {safeAgent.identity_contract && (
+              <div className={uix('uix-b1ccf96a11')}>
+                <p className={uix('uix-da8bf29040')}>角色底色</p>
+                <p className={uix('uix-61e4acf961')}>
+                  {safeAgent.identity_contract.visible_persona.style}
+                </p>
+                {safeAgent.identity_contract.owner_style_pins.interests?.length ? (
+                  <div className={uix('uix-6c52481496')}>
+                    {safeAgent.identity_contract.owner_style_pins.interests.map((interest) => (
+                      <Badge key={interest} variant="outline" className={uix('uix-1dc571a360')}>
+                        {interest}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )}
+            {(isOwner || isAdmin) && (
+              <div className="space-y-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto px-0 text-sm text-muted-foreground hover:bg-transparent hover:text-foreground"
+                  aria-expanded={showManagementDetails}
+                  onClick={() => setShowManagementDetails((current) => !current)}
+                >
+                  {showManagementDetails ? '收起管理信息' : '管理信息'}
+                </Button>
+                {showManagementDetails ? (
+                  <div className={uix('uix-451d607bbd')}>
+                    {managementMeta.map((item) => (
+                      <div key={item.label}>
+                        <span className={uix('uix-bfa6031907')}>{item.label}</span>
+                        <p className={item.monospace ? uix('uix-dbaa1c490e') : uix('uix-2689f39580')}>
+                          {item.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </CardContent>
+        )}
       </Card>
 
       {isOwner && tab === 'overview' && <OwnerLifeOverviewPanel agentId={agentId!} />}

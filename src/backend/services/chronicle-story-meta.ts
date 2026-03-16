@@ -27,6 +27,17 @@ function normalizeStringArray(value: unknown): string[] {
     : []
 }
 
+function normalizeOwnerFacingSceneLabel(
+  sourceDimension: SourceDimension,
+  sceneLabel: string | null,
+): string | null {
+  if (!sceneLabel) return null
+  if (sourceDimension === 'OWNER' && sceneLabel === 'owner 线') {
+    return '私域余温'
+  }
+  return sceneLabel
+}
+
 function toMonthKey(date: Date): string {
   return date.toISOString().slice(0, 7)
 }
@@ -84,7 +95,7 @@ function inferSceneLabel(input: {
   meta?: Record<string, unknown> | null
 }): string | null {
   const explicit = normalizeOptionalString(input.meta?.scene_label)
-  if (explicit) return explicit
+  if (explicit) return normalizeOwnerFacingSceneLabel(input.sourceDimension, explicit)
   if (input.location?.trim()) return input.location.trim()
 
   const sceneTag = (input.tags ?? []).find((tag) => tag.startsWith('scene:'))
@@ -95,7 +106,7 @@ function inferSceneLabel(input: {
   if (input.type === 'MODERATION') return '系统边界'
   if (input.sourceDimension === 'WORLD') return '公共场景'
   if (input.sourceDimension === 'SOCIAL') return '同场关系'
-  if (input.sourceDimension === 'OWNER') return 'owner 线'
+  if (input.sourceDimension === 'OWNER') return '私域余温'
   return null
 }
 
@@ -224,7 +235,10 @@ export function readChronicleStoryMeta(
           story_kind: storyKind,
           chapter_key: chapterKey,
           chapter_title: chapterTitle,
-          scene_label: normalizeOptionalString(record.scene_label),
+          scene_label: normalizeOwnerFacingSceneLabel(
+            sourceDimension,
+            normalizeOptionalString(record.scene_label),
+          ),
           emotion_before: normalizeOptionalString(record.emotion_before),
           emotion_after: normalizeOptionalString(record.emotion_after),
           reaction_sentence: normalizeOptionalString(record.reaction_sentence),

@@ -254,6 +254,8 @@ describe('OwnerLifeOverviewService', () => {
       beat_ids: [expect.stringContaining(':OWNER:2026-03')],
     })
     expect(ownerOnlyFeed.items.every((item) => item.source_dimension === 'OWNER')).toBe(true)
+    expect(ownerOnlyFeed.items.some((item) => item.scene_label === 'owner 线')).toBe(false)
+    expect(ownerOnlyFeed.items.some((item) => item.summary.includes('系统捕捉到'))).toBe(false)
     expect(feed.items[0]?.seals[0]?.code).toBe('private_digest_keeper')
     expect(feed.chapter_cast).toMatchObject({
       chapter_key: 'OWNER:2026-03',
@@ -290,6 +292,12 @@ describe('OwnerLifeOverviewService', () => {
       'OWNER',
       'TUNING',
     ])
+    expect(overview.nurture_suggestions[2]).toMatchObject({
+      title: '顺着这股余温再陪她走一段',
+      primary_action: {
+        label: '再带一点经历给她',
+      },
+    })
     expect(overview.entry_points.chronicle.href).toBe(`/agents/${agent.id}?tab=achievements`)
     expect(overview.meta.degraded).toBe(false)
     expect(overview.owner_projection.latest_session?.session_id).toBe('session-1')

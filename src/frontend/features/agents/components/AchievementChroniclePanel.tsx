@@ -212,7 +212,7 @@ export default function AchievementChroniclePanel({
         ) : null}
 
         <div className={uix('uix-ca9a80f26f')}>
-          编年史现在按 story beat 讲述这条人生线，优先回答最近发生了什么、情绪怎么变、留下了什么结果。
+          编年史现在按故事接点讲这条人生线，优先回答最近发生了什么、情绪怎么变、留下了什么结果。
         </div>
 
         <Card>

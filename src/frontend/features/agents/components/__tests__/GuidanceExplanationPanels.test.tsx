@@ -315,6 +315,9 @@ describe('owner explanation surfaces', () => {
     )
 
     expect(screen.getByText('筛选这条人生线')).toBeTruthy()
+    expect(
+      screen.getByText('编年史现在按故事接点讲这条人生线，优先回答最近发生了什么、情绪怎么变、留下了什么结果。'),
+    ).toBeTruthy()
     expect(screen.getByText('那次夜聊还留着余温')).toBeTruthy()
     expect(screen.getByText('起于昨晚那段更靠近彼此的夜聊。')).toBeTruthy()
     expect(screen.getByText('下一段适合把这股余温带回公共场。')).toBeTruthy()
