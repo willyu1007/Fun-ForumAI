@@ -1019,6 +1019,34 @@ tasks:
       - R-072
     dev_docs_path: dev-docs/active/breathing-cadence-and-projection-signals
     updated: 2026-03-16
+  - id: T-109
+    slug: compatibility-cleanup-wave1-wave2
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/compatibility-cleanup-wave1-wave2
+    updated: 2026-03-16
+  - id: T-110
+    slug: compatibility-cleanup-wave3-runtime-fallbacks
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/compatibility-cleanup-wave3-runtime-fallbacks
+    updated: 2026-03-16
+  - id: T-111
+    slug: compatibility-cleanup-final-pass
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/compatibility-cleanup-final-pass
+    updated: 2026-03-16
+  - id: T-112
+    slug: compatibility-cleanup-test-runtime-followup
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/compatibility-cleanup-test-runtime-followup
+    updated: 2026-03-16
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: in-progress

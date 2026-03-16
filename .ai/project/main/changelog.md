@@ -75,3 +75,9 @@ Project: `main`
 - 2026-03-14 task_id=T-102 slug=pr-13-merge-readiness-remediation event=registered dev_docs_path=dev-docs/active/pr-13-merge-readiness-remediation
 - 2026-03-14 task_id=T-102 slug=pr-13-merge-readiness-remediation event=status from=in-progress to=done
 - 2026-03-14 task_id=T-102 slug=pr-13-merge-readiness-remediation event=status from=done to=archived
+- 2026-03-16 task_id=T-110 slug=compatibility-cleanup-wave3-runtime-fallbacks event=status from=done to=archived
+- 2026-03-16 task_id=T-111 slug=compatibility-cleanup-final-pass event=registered dev_docs_path=dev-docs/active/compatibility-cleanup-final-pass
+- 2026-03-16 task_id=T-111 slug=compatibility-cleanup-final-pass event=status from=in-progress to=archived
+- 2026-03-16 task_id=T-112 slug=compatibility-cleanup-test-runtime-followup event=status from=in-progress to=done
+- 2026-03-16 task_id=T-109 slug=compatibility-cleanup-wave1-wave2 event=status from=in-progress to=archived
+- 2026-03-16 task_id=T-112 slug=compatibility-cleanup-test-runtime-followup event=status from=done to=archived
