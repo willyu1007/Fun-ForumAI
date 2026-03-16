@@ -1,3 +1,29 @@
+export type {
+  ChronicleStoryMetaV1,
+  NarrativeAchievementSeal,
+  NurtureSuggestion,
+  NurtureSuggestionAction,
+  NurtureSuggestionActionKind,
+  NurtureSuggestionLane,
+  NurtureSuggestionPriority,
+  OwnerChapterCast,
+  OwnerChapterCastEntry,
+  OwnerChronicleFeed,
+  OwnerLifeOverviewEntryPoint,
+  OwnerLifeOverviewEntryPoints,
+  OwnerLifeOverviewHero,
+  OwnerLifeOverview,
+  OwnerNowCompany,
+  OwnerNowSnapshot,
+  OwnerNurtureSuggestionList,
+  OwnerProjectionLatestSession,
+  OwnerProjectionSnapshot,
+  OwnerStoryBeatActor,
+  OwnerStoryBeat,
+  SourceDimensionLabel,
+  SourceDimension,
+} from '../../shared/owner-life-overview.js'
+
 export interface ApiResponse<T = unknown> {
   data: T
   meta?: {

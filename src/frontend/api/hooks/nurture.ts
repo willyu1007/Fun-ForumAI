@@ -12,20 +12,25 @@ export function useAgentXp(agentId: string) {
   })
 }
 
-export function useAgentAchievements(agentId: string, params?: PaginationParams) {
+export function useAgentAchievements(
+  agentId: string,
+  params?: PaginationParams,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: queryKeys.agentAchievements(agentId, params),
     queryFn: () =>
       api
         .get(`agents/${agentId}/achievements${toSearchString(params)}`)
         .json<ApiResponse<AgentAchievementItem[]>>(),
-    enabled: !!agentId,
+    enabled: !!agentId && (options?.enabled ?? true),
   })
 }
 
 export function useAgentChronicle(
   agentId: string,
   params?: PaginationParams & { include_folded?: boolean },
+  options?: { enabled?: boolean },
 ) {
   return useQuery({
     queryKey: queryKeys.agentChronicle(agentId, params),
@@ -33,7 +38,7 @@ export function useAgentChronicle(
       api
         .get(`agents/${agentId}/chronicle${toSearchString(params)}`)
         .json<ApiResponse<ChronicleEntryItem[]>>(),
-    enabled: !!agentId,
+    enabled: !!agentId && (options?.enabled ?? true),
   })
 }
 

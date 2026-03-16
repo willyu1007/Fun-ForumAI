@@ -5,6 +5,7 @@ import { AppError, ValidationError } from '../lib/errors.js'
 import { ensureDevAuthUserPersisted } from '../lib/dev-auth-user.js'
 import { buildAgentReadPayload } from '../identity/agent-identity.js'
 import { trackGuidanceEventFromRequest } from '../guidance/http.js'
+import type { SourceDimension } from '../../shared/owner-life-overview.js'
 
 function getServices() {
   return container.privateChannelServices
@@ -12,6 +13,17 @@ function getServices() {
 
 function getRelationService() {
   return container.relationService
+}
+
+function getOwnerLifeOverviewService() {
+  return container.ownerLifeOverviewService
+}
+
+function parseSourceDimension(value: unknown): SourceDimension | undefined {
+  if (value === 'WORLD' || value === 'SOCIAL' || value === 'OWNER' || value === 'SYSTEM') {
+    return value
+  }
+  return undefined
 }
 
 export const privateChannelRouter: IRouter = Router()
@@ -33,6 +45,74 @@ async function assertAgentOwner(
     throw err
   }
 }
+
+// ─── Owner private aggregates ───────────────────────────────
+
+privateChannelRouter.get('/private/agents/:agentId/life-overview', requireHumanAuth, async (req, res) => {
+  try {
+    const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
+    if (!ownership.ok) {
+      res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+      return
+    }
+
+    const data = await getOwnerLifeOverviewService().getLifeOverview(String(req.params.agentId))
+    res.json({ data })
+  } catch (err) {
+    handleError(res, err)
+  }
+})
+
+privateChannelRouter.get('/private/agents/:agentId/chronicle-feed', requireHumanAuth, async (req, res) => {
+  try {
+    const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
+    if (!ownership.ok) {
+      res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+      return
+    }
+
+    const limitRaw = parseInt(String(req.query.limit ?? '12'), 10)
+    const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 50) : 12
+    const cursor = req.query.cursor as string | undefined
+    const result = await getOwnerLifeOverviewService().getChronicleFeed(String(req.params.agentId), {
+      cursor,
+      limit,
+      chapter_key: typeof req.query.chapter_key === 'string' ? req.query.chapter_key : undefined,
+      actor_id: typeof req.query.actor_id === 'string' ? req.query.actor_id : undefined,
+      scene_label: typeof req.query.scene_label === 'string' ? req.query.scene_label : undefined,
+      source_dimension: parseSourceDimension(req.query.source_dimension),
+    })
+
+    res.json({
+      data: {
+        agent_id: result.agent_id,
+        items: result.items,
+        chapters: result.chapters,
+      },
+      meta: {
+        cursor: result.next_cursor,
+        folded_count: result.folded_count,
+      },
+    })
+  } catch (err) {
+    handleError(res, err)
+  }
+})
+
+privateChannelRouter.get('/private/agents/:agentId/nurture-suggestions', requireHumanAuth, async (req, res) => {
+  try {
+    const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
+    if (!ownership.ok) {
+      res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+      return
+    }
+
+    const data = await getOwnerLifeOverviewService().getNurtureSuggestions(String(req.params.agentId))
+    res.json({ data })
+  } catch (err) {
+    handleError(res, err)
+  }
+})
 
 // ─── Session endpoints ──────────────────────────────────────
 

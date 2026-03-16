@@ -12,6 +12,8 @@ import {
   useAgentRelations,
   useAgentRelationSummary,
   useGuidanceItemAction,
+  useOwnerChronicleFeed,
+  useOwnerNurtureSuggestions,
   usePrivacySettings,
   useUpdatePrivacySettings,
 } from '@/api/hooks'
@@ -26,6 +28,8 @@ vi.mock('@/api/hooks', () => ({
   useAgentRelations: vi.fn(),
   useAgentRelationSummary: vi.fn(),
   useGuidanceItemAction: vi.fn(),
+  useOwnerChronicleFeed: vi.fn(),
+  useOwnerNurtureSuggestions: vi.fn(),
 }))
 
 vi.mock('@/shared/hooks/use-auth', () => ({
@@ -40,6 +44,8 @@ const useAgentChronicleMock = vi.mocked(useAgentChronicle)
 const useAgentRelationsMock = vi.mocked(useAgentRelations)
 const useAgentRelationSummaryMock = vi.mocked(useAgentRelationSummary)
 const useGuidanceItemActionMock = vi.mocked(useGuidanceItemAction)
+const useOwnerChronicleFeedMock = vi.mocked(useOwnerChronicleFeed)
+const useOwnerNurtureSuggestionsMock = vi.mocked(useOwnerNurtureSuggestions)
 const useAuthMock = vi.mocked(useAuth)
 
 const guidanceItem = {
@@ -131,6 +137,26 @@ describe('owner explanation surfaces', () => {
     useGuidanceItemActionMock.mockReturnValue({
       mutate: vi.fn(),
     } as never)
+    useOwnerChronicleFeedMock.mockReturnValue({
+      data: {
+        data: {
+          agent_id: 'agent-1',
+          items: [],
+          chapters: [],
+        },
+      },
+      isLoading: false,
+    } as never)
+    useOwnerNurtureSuggestionsMock.mockReturnValue({
+      data: {
+        data: {
+          agent_id: 'agent-1',
+          generated_at: '2026-03-11T00:00:00.000Z',
+          items: [],
+        },
+      },
+      isLoading: false,
+    } as never)
     useAuthMock.mockReturnValue({
       isAuthenticated: true,
     } as never)
@@ -178,6 +204,127 @@ describe('owner explanation surfaces', () => {
     expect(screen.getByText('去看它在公开场合的变化')).toBeTruthy()
     expect(screen.queryByText('成就线是养成结果在公开舞台上的外显')).toBeNull()
     expect(useAgentRelationsMock).toHaveBeenCalledWith('agent-1', { view: 'friends', limit: 3 }, false)
+  })
+
+  it('uses the owner chronicle feed as the canonical deep-dive surface in owner mode', () => {
+    useOwnerChronicleFeedMock.mockReturnValue({
+      data: {
+        data: {
+          agent_id: 'agent-1',
+          items: [
+            {
+              id: 'beat-1',
+              chronicle_entry_id: 'chronicle-1',
+              source_dimension: 'OWNER',
+              source_label: '来自你',
+              story_kind: 'private_afterglow',
+              chapter_key: 'OWNER:2026-03',
+              chapter_title: '你与她的私域篇 2026 / 03',
+              title: '那次夜聊还留着余温',
+              summary: '它把你昨晚带来的那股气氛，悄悄带到了今天。',
+              scene_label: '私域余温',
+              emotion_before: '观望',
+              emotion_after: '更愿意靠近',
+              reaction_sentence: '开始更愿意把话题往回忆和偏爱上拐。',
+              outcome_sentence: '今天的公开表达明显更柔和。',
+              next_hook: '下一段适合把这股余温带回公共场。',
+              actors: [{ actor_id: 'agent-2', actor_name: '搭子' }],
+              source_tags: ['owner:afterglow'],
+              occurred_at: '2026-03-12T00:00:00.000Z',
+              importance_score: 0.8,
+              seals: [
+                {
+                  id: 'seal-1',
+                  achievement_id: 'seal-1',
+                  code: 'private_digest_keeper',
+                  name: 'Private Digest Keeper',
+                  category: 'private',
+                  tier: 2,
+                  rarity_label: '少见',
+                  visibility: 'OWNER_ONLY',
+                  source_dimension: 'OWNER',
+                  source_label: '来自你',
+                  scope: 'global',
+                  scope_key: '__global__',
+                  scope_label: '整段人生线',
+                  seal_label: 'Private Digest Keeper T2',
+                  summary_line: '这枚印记主要和「那次夜聊还留着余温」这一段经历相连。',
+                  reason_line: '这枚印记主要和「那次夜聊还留着余温」这一段经历相连。',
+                  story_link: {
+                    beat_id: 'chronicle-1',
+                    chapter_key: 'OWNER:2026-03',
+                    title: '那次夜聊还留着余温',
+                  },
+                  achieved_at: '2026-03-12T00:00:00.000Z',
+                  source_tags: ['source:owner'],
+                },
+              ],
+            },
+          ],
+          chapters: [
+            {
+              chapter_key: 'OWNER:2026-03',
+              chapter_title: '你与她的私域篇 2026 / 03',
+              cast: [
+                {
+                  actor_id: 'agent-2',
+                  actor_name: '搭子',
+                  role_label: '关系推进者',
+                  source_dimension: 'OWNER',
+                  last_seen_at: '2026-03-12T00:00:00.000Z',
+                },
+              ],
+              source_tags: ['owner:afterglow'],
+              updated_at: '2026-03-12T00:00:00.000Z',
+            },
+          ],
+        },
+      },
+      isLoading: false,
+    } as never)
+    useOwnerNurtureSuggestionsMock.mockReturnValue({
+      data: {
+        data: {
+          agent_id: 'agent-1',
+          generated_at: '2026-03-12T00:00:00.000Z',
+          items: [
+            {
+              id: 'owner:agent-1',
+              lane: 'OWNER',
+              priority: 'soon',
+              title: '顺着这股余温再和她说一点生活里的事',
+              body: '她已经带着一点 owner 余温。',
+              why_now: '这股情绪还没散，最适合继续接住。',
+              expected_progress: 'owner 线会从一次互动变成连续余波',
+              primary_action: {
+                kind: 'share_owner_life',
+                label: '继续私聊',
+                href: '/agents/agent-1/chat',
+              },
+              secondary_action: null,
+              source_tags: ['lane:owner'],
+            },
+          ],
+        },
+      },
+      isLoading: false,
+    } as never)
+
+    renderWithRouter(
+      <AchievementChroniclePanel
+        agentId="agent-1"
+        ownerMode
+        showRelationNodes
+      />,
+    )
+
+    expect(screen.getByText('筛选这条人生线')).toBeTruthy()
+    expect(screen.getByText('那次夜聊还留着余温')).toBeTruthy()
+    expect(screen.getByText('情绪起伏：观望 到 更愿意靠近')).toBeTruthy()
+    expect(screen.getByText('Private Digest Keeper T2')).toBeTruthy()
+    expect(screen.getByText('继续推进这一章')).toBeTruthy()
+    expect(screen.queryByText('成就墙')).toBeNull()
+    expect(useAgentAchievementsMock).toHaveBeenCalledWith('agent-1', { limit: 60 }, { enabled: false })
   })
 
   it('shows the relation explanation rail when no canonical item is available', () => {

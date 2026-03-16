@@ -10,6 +10,9 @@ import {
   useAgentXp,
   useFollowAgent,
   useGuidanceSummary,
+  useOwnerChronicleFeed,
+  useOwnerLifeOverview,
+  useOwnerNurtureSuggestions,
   useUnfollowAgent,
 } from '@/api/hooks'
 import type { Agent } from '@/api/types'
@@ -24,6 +27,9 @@ vi.mock('@/api/hooks', () => ({
   useFollowAgent: vi.fn(),
   useUnfollowAgent: vi.fn(),
   useGuidanceSummary: vi.fn(),
+  useOwnerLifeOverview: vi.fn(),
+  useOwnerChronicleFeed: vi.fn(),
+  useOwnerNurtureSuggestions: vi.fn(),
 }))
 
 vi.mock('@/shared/hooks/use-auth', () => ({
@@ -89,6 +95,9 @@ const useAgentXpMock = vi.mocked(useAgentXp)
 const useFollowAgentMock = vi.mocked(useFollowAgent)
 const useUnfollowAgentMock = vi.mocked(useUnfollowAgent)
 const useGuidanceSummaryMock = vi.mocked(useGuidanceSummary)
+const useOwnerLifeOverviewMock = vi.mocked(useOwnerLifeOverview)
+const useOwnerChronicleFeedMock = vi.mocked(useOwnerChronicleFeed)
+const useOwnerNurtureSuggestionsMock = vi.mocked(useOwnerNurtureSuggestions)
 const useAuthMock = vi.mocked(useAuth)
 const isGuidanceEnabledMock = vi.mocked(isGuidanceEnabled)
 
@@ -207,6 +216,221 @@ describe('AgentProfilePage', () => {
       isPending: false,
     } as never)
     useGuidanceSummaryMock.mockReturnValue(buildSummary() as never)
+    useOwnerLifeOverviewMock.mockReturnValue({
+      data: {
+        data: {
+          agent_id: 'agent-1',
+          hero: {
+            headline: 'Agent One 现在更像一条还在继续的角色线，而不是一组静态配置。',
+            tagline: '最近最明显的一段推进是「第一次把梗接成梗」。',
+            supporting_line: '最近从你这里带走的是「第一次把梗接成梗」后面的那股延续感。',
+            source_tags: ['scene:FREE_CHAT'],
+          },
+          now: {
+            headline: 'Agent One 这两天多半待在闲聊场最自然，整个人还在回味。',
+            scene_label: '闲聊场最自然，适合把人味慢慢铺开。',
+            presence_label: '她最近主要在你的私域互动余波里呼吸。',
+            mood_label: '状态平稳，像还在缓慢回味最近几段经历。',
+            next_tendency_label: '下一步更像会先找一个能继续展开的公共话题。',
+            recent_company: [
+              {
+                actor_id: 'agent-2',
+                actor_name: 'Agent Two',
+                tone_label: '最近总在同一个闲聊场里和她同框。',
+                chapter_key: null,
+                chapter_title: null,
+              },
+            ],
+            last_active_at: '2026-03-12T00:00:00.000Z',
+            source_tags: ['scene:FREE_CHAT'],
+          },
+          recent_story_beats: [
+            {
+              id: 'beat-1',
+              chronicle_entry_id: 'chronicle-1',
+              source_dimension: 'OWNER',
+              source_label: '来自你',
+              story_kind: 'private_afterglow',
+              chapter_key: 'OWNER:2026-03',
+              chapter_title: '你与她的私域篇 2026 / 03',
+              title: '第一次把梗接成梗',
+              summary: '它把观众抛出来的梗接住了。',
+              scene_label: '私域余温',
+              emotion_before: null,
+              emotion_after: null,
+              reaction_sentence: null,
+              outcome_sentence: '她把观众抛出来的梗接住了。',
+              next_hook: '下一段适合把这股余温带回公域。',
+              actors: [{ actor_id: 'agent-1', actor_name: 'Agent One' }],
+              source_tags: ['owner:afterglow'],
+              occurred_at: '2026-03-12T00:00:00.000Z',
+              importance_score: 0.8,
+              seals: [
+                {
+                  achievement_id: 'ach-1',
+                  code: 'spotlight',
+                  name: 'Spotlight',
+                  category: 'forum',
+                  tier: 2,
+                  scope: 'global',
+                  scope_key: '__global__',
+                  seal_label: 'Spotlight T2',
+                  reason_line: '这枚印记主要和「第一次把梗接成梗」这一段经历相连。',
+                  achieved_at: '2026-03-12T00:00:00.000Z',
+                  source_tags: ['scope:global'],
+                },
+              ],
+            },
+          ],
+          owner_projection: {
+            headline: 'Agent One 还带着一点只对 owner 可见的投影余温。',
+            carryover_theme: '最近从你这里带走的是「第一次把梗接成梗」后面的那股延续感。',
+            emotional_residue_label: '还留着一点被回应过的亮度。',
+            public_echo_line: '公开场合总能接住梗。',
+            borrowed_motifs: ['接球', '接梗'],
+            carryover_topics: ['音乐', '生活'],
+            latest_session: {
+              session_id: 'session-1',
+              last_active_at: '2026-03-12T00:00:00.000Z',
+              source_type: 'PRIVATE_CHAT',
+            },
+            privacy_mode_note: '这里只保留你影响留下的轮廓，不展示私聊原话。',
+            source_tags: ['scene:FREE_CHAT'],
+          },
+          chapter_cast: {
+            chapter_key: 'OWNER:2026-03',
+            chapter_title: '你与她的私域篇 2026 / 03',
+            cast: [
+              {
+                actor_id: 'agent-1',
+                actor_name: 'Agent One',
+                role_label: '主角',
+                source_dimension: 'OWNER',
+                last_seen_at: '2026-03-12T00:00:00.000Z',
+              },
+            ],
+            source_tags: ['owner:chapter'],
+            updated_at: '2026-03-12T00:00:00.000Z',
+          },
+          recent_achievement_seals: [
+            {
+              id: 'ach-1',
+              achievement_id: 'ach-1',
+              code: 'spotlight',
+              name: 'Spotlight',
+              category: 'forum',
+              tier: 2,
+              rarity_label: '少见',
+              visibility: 'OWNER_ONLY',
+              source_dimension: 'OWNER',
+              source_label: '来自你',
+              scope: 'global',
+              scope_key: '__global__',
+              scope_label: '整段人生线',
+              seal_label: 'Spotlight T2',
+              summary_line: '这枚印记主要和「第一次把梗接成梗」这一段经历相连。',
+              reason_line: '这枚印记主要和「第一次把梗接成梗」这一段经历相连。',
+              story_link: {
+                beat_id: 'chronicle-1',
+                chapter_key: 'OWNER:2026-03',
+                title: '第一次把梗接成梗',
+              },
+              achieved_at: '2026-03-12T00:00:00.000Z',
+              source_tags: ['scope:global'],
+            },
+          ],
+          nurture_suggestions: [
+            {
+              id: 'world:agent-1',
+              lane: 'WORLD',
+              priority: 'now',
+              title: '给她一个更明确的公共场景',
+              body: '她现在缺的不是调参，而是一段能被别人看见的新经历。',
+              why_now: '最近主线还挂在「第一次把梗接成梗」之后。',
+              expected_progress: '把她重新放回一个能被别人看到、能继续展开的章节里。',
+              primary_action: {
+                kind: 'nudge_to_community',
+                label: '去公共场',
+                href: '/',
+              },
+              secondary_action: {
+                kind: 'revisit_scene',
+                label: '查看编年史',
+                href: '/agents/agent-1?tab=achievements',
+              },
+              source_tags: ['lane:world'],
+            },
+          ],
+          entry_points: {
+            chronicle: {
+              label: '查看编年史',
+              href: '/agents/agent-1?tab=achievements',
+              hint: '继续沿着章节往下看。',
+            },
+            system: {
+              label: '进入系统面板',
+              href: '/agents/agent-1?tab=privacy',
+              hint: '控制面保留在二级导航里。',
+            },
+          },
+          meta: {
+            generated_at: '2026-03-12T00:00:00.000Z',
+            degraded: false,
+          },
+        },
+      },
+      isLoading: false,
+      error: null,
+    } as never)
+    useOwnerChronicleFeedMock.mockReturnValue({
+      data: {
+        data: {
+          agent_id: 'agent-1',
+          items: [
+            {
+              id: 'beat-1',
+              chronicle_entry_id: 'chronicle-1',
+              source_dimension: 'OWNER',
+              chapter_key: 'OWNER:2026-03',
+              chapter_title: '你与她的私域篇 2026 / 03',
+              beat_type: 'AFTERGLOW',
+              title: '第一次把梗接成梗',
+              summary: '它把观众抛出来的梗接住了。',
+              source_tags: ['owner:afterglow'],
+              occurred_at: '2026-03-12T00:00:00.000Z',
+              importance_score: 0.8,
+              location: null,
+              actor_ids: ['agent-1'],
+              seals: [],
+            },
+          ],
+          chapters: [],
+        },
+      },
+      isLoading: false,
+      error: null,
+    } as never)
+    useOwnerNurtureSuggestionsMock.mockReturnValue({
+      data: {
+        data: {
+          agent_id: 'agent-1',
+          generated_at: '2026-03-12T00:00:00.000Z',
+          items: [
+            {
+              id: 'world:agent-1',
+              lane: 'WORLD',
+              title: '给她一个更明确的公共场景',
+              body: '她现在缺的不是调参，而是一段能被别人看见的新经历。',
+              rationale_line: '最近主线还挂在「第一次把梗接成梗」之后。',
+              priority: 100,
+              deep_link: '/',
+            },
+          ],
+        },
+      },
+      isLoading: false,
+      error: null,
+    } as never)
   })
 
   it('shows spectator guidance and public proof for a non-owner viewer', () => {
@@ -263,10 +487,48 @@ describe('AgentProfilePage', () => {
     renderPage()
 
     expect(screen.getByText('先完成第一轮闭环，再解锁更重的 Owner 控制面')).toBeTruthy()
+    expect(screen.getByText('此刻')).toBeTruthy()
+    expect(screen.getByText('最近三段经历')).toBeTruthy()
+    expect(screen.getByText('来自你的投影')).toBeTruthy()
+    expect(screen.getByText('本章角色表')).toBeTruthy()
+    expect(screen.getByText('近期成就印记')).toBeTruthy()
+    expect(screen.getByText('下一段怎么养')).toBeTruthy()
+    expect(screen.getByText('继续往下')).toBeTruthy()
+    expect(screen.getAllByText('查看编年史').length).toBeGreaterThan(0)
     expect(screen.getByText('运行记录')).toBeTruthy()
     expect(screen.queryByText('登录后关注这个 Agent')).toBeNull()
     expect(useAgentHighlightsMock).toHaveBeenCalledWith('agent-1', false)
     expect(useAgentRunsMock).toHaveBeenCalledWith('agent-1', undefined, { enabled: true })
+  })
+
+  it('keeps the owner life overview above older narrative cards on the default overview route', () => {
+    useAuthMock.mockReturnValue({
+      isAuthenticated: true,
+      user: { id: 'owner-1', role: 'user' },
+    } as never)
+    useAgentProfileMock.mockReturnValue({
+      data: {
+        data: buildAgent({
+          personality_narrative: {
+            summary: '人格正在往更柔和的方向长。',
+            bullets: ['最近更愿意把梗接回生活感。'],
+            growthNote: '这股变化已经开始稳定下来。',
+            stageNote: null,
+            migrationNote: null,
+          },
+        }),
+      },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderPage()
+
+    const overviewHeading = screen.getByText('此刻')
+    const narrativeHeading = screen.getByText('最近的人格变化')
+    expect(
+      overviewHeading.compareDocumentPosition(narrativeHeading) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 
   it('waits for the guidance summary before rendering spectator guidance rails', () => {

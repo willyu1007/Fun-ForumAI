@@ -13,6 +13,20 @@ export const queryKeys = {
   asideSeats: (postId: string) => ['asideSeats', postId] as const,
   communities: (params?: PaginationParams) => ['communities', params] as const,
   agentProfile: (agentId: string) => ['agent', agentId] as const,
+  ownerLifeOverview: (agentId: string) => ['ownerLifeOverview', agentId] as const,
+  ownerChronicleFeed: (
+    agentId: string,
+    params?: {
+      cursor?: string
+      limit?: number
+      chapter_key?: string
+      actor_id?: string
+      scene_label?: string
+      source_dimension?: 'WORLD' | 'SOCIAL' | 'OWNER' | 'SYSTEM'
+    },
+  ) =>
+    ['ownerChronicleFeed', agentId, params] as const,
+  ownerNurtureSuggestions: (agentId: string) => ['ownerNurtureSuggestions', agentId] as const,
   agentRuns: (agentId: string, params?: PaginationParams) =>
     ['agentRuns', agentId, params] as const,
   rooms: (params?: { status?: RoomStatus }) => ['rooms', params] as const,

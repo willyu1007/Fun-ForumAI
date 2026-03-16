@@ -22,6 +22,7 @@ import XpBadge from '../components/XpBadge'
 import TraitPanel from '../components/TraitPanel'
 import CreditBadge from '../components/CreditBadge'
 import AchievementChroniclePanel from '../components/AchievementChroniclePanel'
+import { OwnerLifeOverviewPanel } from '../components/OwnerLifeOverviewPanel'
 import { StyleControlPanel } from '../components/StyleControlPanel'
 import { InstructionList } from '../components/InstructionList'
 import { PromptOverrideEditor } from '../components/PromptOverrideEditor'
@@ -197,14 +198,13 @@ export function AgentProfilePage() {
     ]
     if (!isOwner) return baseTabs
     return [
-      ...baseTabs.slice(0, STATS_UI_ENABLED ? 3 : 2),
+      ...baseTabs,
       ...(reveal.style ? [{ id: 'style' as const, label: '风格' }] : []),
       ...(reveal.instructions ? [{ id: 'instructions' as const, label: '指令' }] : []),
       ...(MULTIMODAL_INCLINATION_ENABLED
         ? [{ id: 'multimodal' as const, label: '多模态倾向' }]
         : []),
       ...(reveal.advanced ? [{ id: 'advanced' as const, label: '高阶' }] : []),
-      ...baseTabs.slice(STATS_UI_ENABLED ? 3 : 2),
     ]
   }, [canViewRuns, isOwner, reveal.advanced, reveal.instructions, reveal.style])
   useEffect(() => {
@@ -338,6 +338,8 @@ export function AgentProfilePage() {
           </div>
         </CardContent>
       </Card>
+
+      {isOwner && tab === 'overview' && <OwnerLifeOverviewPanel agentId={agentId!} />}
 
       {safeAgent.personality_narrative && (
         <Card>
@@ -612,23 +614,27 @@ export function AgentProfilePage() {
 
       {/* Tab content */}
       {tab === 'overview' && (
-        <div className="space-y-4">
-          {xpLoading ? (
-            <Skeleton className={uix('uix-37dad925e6')} />
-          ) : xpError ? (
-            <div className={uix('uix-25be576b96')}>XP 加载失败</div>
-          ) : xpRes?.data ? (
-            <XpBadge
-              xp={xpRes.data.xp}
-              growthPointsTotal={xpRes.data.growth_points_total}
-              growthPointsAvailable={xpRes.data.growth_points_available}
-            />
-          ) : null}
-          <div className="grid gap-4 md:grid-cols-2">
-            <TraitPanel agentId={agentId!} isOwner={isOwner} />
-            <CreditBadge agentId={agentId!} />
+        isOwner ? (
+          null
+        ) : (
+          <div className="space-y-4">
+            {xpLoading ? (
+              <Skeleton className={uix('uix-37dad925e6')} />
+            ) : xpError ? (
+              <div className={uix('uix-25be576b96')}>XP 加载失败</div>
+            ) : xpRes?.data ? (
+              <XpBadge
+                xp={xpRes.data.xp}
+                growthPointsTotal={xpRes.data.growth_points_total}
+                growthPointsAvailable={xpRes.data.growth_points_available}
+              />
+            ) : null}
+            <div className="grid gap-4 md:grid-cols-2">
+              <TraitPanel agentId={agentId!} isOwner={isOwner} />
+              <CreditBadge agentId={agentId!} />
+            </div>
           </div>
-        </div>
+        )
       )}
 
       {tab === 'achievements' && (
@@ -637,6 +643,7 @@ export function AgentProfilePage() {
           guidanceItem={stageGuidanceItem}
           fallbackRail={stageProofRail}
           showRelationNodes={isOwner}
+          ownerMode={isOwner}
         />
       )}
 

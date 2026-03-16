@@ -22,6 +22,7 @@ import {
   GuidanceStateService,
 } from '../guidance/index.js'
 import { handleGuidanceDigestHook, handleGuidanceForumFanout } from '../guidance/feature-gates.js'
+import { OwnerLifeOverviewService } from '../services/owner-life-overview-service.js'
 
 function extractOwnerStylePins(configJson: Record<string, unknown>): Record<string, unknown> {
   const identity = configJson.identity
@@ -214,6 +215,22 @@ const guidanceRecallScheduler = new GuidanceRecallScheduler({
   copyService: guidanceCopyService,
   bellService: guidanceBellService,
   leaderElector: infra.leaderElectors.guidanceRecallScheduler,
+})
+
+export const ownerLifeOverviewService = new OwnerLifeOverviewService({
+  agentService: core.agentService,
+  chronicleService: core.achievementChronicleService,
+  projectionService: core.agentPublicProjectionService,
+  membershipService: core.agentCommunityMembershipService,
+  communityRepo: repos.communityRepo,
+  roomRepo: repos.roomRepo,
+  runtimeSceneStateManager: core.runtimeSceneStateManager,
+  statsService: core.statsService,
+})
+
+ownerLifeOverviewService.attachRuntimeDeps({
+  memoryService: nurture.privateChannelServices?.memoryService ?? null,
+  relationService: nurture.relationService,
 })
 
 if (nurture.memoryService) {

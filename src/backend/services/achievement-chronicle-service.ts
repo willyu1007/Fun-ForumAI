@@ -8,6 +8,7 @@ import type {
   ChronicleEntry,
   EvidenceRef,
 } from '../repos/index.js'
+import { buildChronicleStoryMetaV1, withChronicleStoryMeta } from './chronicle-story-meta.js'
 
 export interface AchievementChronicleServiceDeps {
   achievementRepo: AchievementRepository
@@ -300,10 +301,22 @@ export class AchievementChronicleService {
     maxEvidence?: number
     occurred_at?: Date
   }): Promise<ChronicleEntry> {
+    const occurredAt = input.occurred_at ?? new Date()
+    const storyMeta = buildChronicleStoryMetaV1({
+      occurred_at: occurredAt,
+      visibility: input.visibility,
+      type: input.type,
+      title: input.title,
+      summary: input.summary,
+      location: input.location,
+      tags: input.tags,
+      meta: input.meta,
+    })
     const created = await this.deps.chronicleRepo.create({
       ...input,
       evidence: ensureEvidence(input.evidence, input.maxEvidence ?? 5),
-      occurred_at: input.occurred_at,
+      occurred_at: occurredAt,
+      meta: withChronicleStoryMeta(input.meta, storyMeta),
     })
     if (this.deps.onRecord) {
       Promise.resolve(this.deps.onRecord({
