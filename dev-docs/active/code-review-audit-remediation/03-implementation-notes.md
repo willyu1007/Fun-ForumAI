@@ -1,0 +1,42 @@
+# 03 Implementation Notes
+
+- 2026-03-16: Task created to validate `/Users/yurui/Downloads/fun_forumai_code_review.md` against the repo before fixing anything.
+- 2026-03-16: Audit triage summary against the current repo:
+  - `FFAI-01` true: `app.ts` had import-time background-service startup before persistence warm-up.
+  - `FFAI-02` true: `RUNTIME_ENABLED` did not silence the broader background-service surface.
+  - `FFAI-03` partially true: the Web client was inconsistent with the cookie-first auth path and SSE credentialing, but bearer tokens remain a real contract for mobile, so the backend auth response was not removed.
+  - `FFAI-04` true: frontend SSE auto-refresh listened for `VOTE_UPSERTED` while the backend broadcast `VOTE_CAST` / `AGENT_VOTE_CAST`.
+  - `FFAI-05` true: production-like deployments could start with default JWT / service-auth secrets.
+  - `FFAI-06` true: startup backfill was skipped when any active membership existed, which could miss partial datasets.
+  - `FFAI-07` true: `hydrateRepositories()` naming/logging no longer matched the real persistence warm-up behavior.
+  - `FFAI-08` false/stale: the cited `persistence-sync.ts` file is not present in the current repo.
+  - `FFAI-09` partially true: app/auth dev-boundary checks were split across `NODE_ENV` and `APP_ENV`; the core app/auth surfaces were unified in this pass.
+- 2026-03-16: Backend bootstrap and persistence flow were corrected:
+  - background `.start()` calls were removed from `app.ts` module evaluation and moved into explicit `startBackgroundServices()` / `stopBackgroundServices()` lifecycle functions
+  - `server.ts` now runs persistence warm-up first, then starts background services
+  - `initPersistence()` now always runs the idempotent membership derived backfill when the feature flag is enabled
+  - `hydrateRepositories()` was renamed to `warmPersistenceState()` and its logs now describe persistence/PPR warm-up instead of generic repository hydration
+- 2026-03-16: Production-like environment safeguards were tightened:
+  - `config.appEnv` now resolves from explicit `APP_ENV` or falls back from `NODE_ENV=production` to `prod`
+  - default JWT and service-auth secrets now fail fast whenever the deployment is not `dev`
+  - cookie security and dev-only route/auth checks now use `allowDevTools` / `secureCookies` derived from the deployment mode
+- 2026-03-16: Follow-up review tightened the production boundary further:
+  - `NODE_ENV=production` is now always treated as production-like even if `APP_ENV` is mis-set to `dev`
+  - dev-only surfaces remain disabled and secret fail-fast remains enforced under that misconfiguration path
+- 2026-03-16: Web auth/SSE transport was aligned with the cookie-first model:
+  - the Web `ky` client now uses `credentials: 'include'` and no longer injects a bearer token by scraping cookies/local storage
+  - browser SSE clients now opt into credentialed connections with `withCredentials: true`
+  - the dev auth helper no longer persists a local bearer fallback for normal Web requests
+- 2026-03-16: Frontend vote refresh drift was fixed:
+  - `useSseAutoRefresh()` now invalidates post/feed queries for `VOTE_CAST` and `AGENT_VOTE_CAST` while keeping `VOTE_UPSERTED` compatibility
+- 2026-03-16: Follow-up review found one remaining contract/documentation drift:
+  - `RUNTIME_ENABLED` now gates automatic startup of the broader background-service surface, so `env/contract.yaml` was updated and regenerated outputs (`env/.env.example`, `docs/env.md`, `docs/context/env/contract.json`) now describe the current semantics instead of the old RuntimeLoop-only wording
+- 2026-03-17: Oversized control-plane route e2e coverage was split by responsibility:
+  - the previous monolithic `src/backend/routes/__tests__/e2e-control-plane.test.ts` was removed after reaching 2k+ lines and mixing multiple control-plane domains
+  - coverage now lives in focused files for agents, governance/admin flows, incubation, community config, role assignment, and inference-profile
+  - the split preserved all existing cases while reducing failure blast radius and making shared-state debugging more local
+  - `scripts/e2e-pg-isolated.mjs` was updated to run the new test file set plus the role-assignment-focused target, so isolated Postgres E2E tooling remains functional after the split
+- 2026-03-17: Follow-up code-quality review fixes:
+  - `scripts/t048-staging-evidence.mjs` now imports and calls `warmPersistenceState()` instead of the removed `hydrateRepositories()` symbol, restoring the published `pnpm evidence:t048:staging` workflow after the persistence warm-up rename
+  - `POST /v1/admin/stage/season-rotate` now uses the production-like deployment guard (`!config.allowDevTools`) for non-`dry_run` execution, instead of checking only `NODE_ENV=production`
+  - the governance control-plane e2e test was updated to assert the new production-like guard directly, so APP_ENV-driven non-dev deployments stay covered

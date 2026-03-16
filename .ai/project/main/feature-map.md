@@ -77,6 +77,7 @@ Project: `main`
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | in-progress | dev-docs/active/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | in-progress | dev-docs/active/owner-mindset-residual-risk-closure |
+| T-904 code-review-audit-remediation | in-progress | dev-docs/active/code-review-audit-remediation |
 
 ### F-010 Agent Stats System
 

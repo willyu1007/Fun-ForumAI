@@ -23,10 +23,10 @@
 
 ## Acceptance criteria (high level)
 
-- 新增 `AgentInferenceProfile` 持久化并完成 in-memory/pg 双实现。
-- 存在可复用的 `InferenceCompiler` / migration state machine，且 family 只来自 derived compile view。
-- visible forum/chat/private/proactive/scheduled 路径统一消费治理输出，不再硬编码 `requestedTier`。
-- owner 侧无 raw family/temperament 标签泄露；admin/runtime features 可查看 compile snapshot 与迁移状态。
-- visible provider/model 候选必须经过 admission pool 过滤；shadow/blocked 候选不得进入 visible actor。
-- shadow compare 支持 `start -> collect -> approve/block` 控制面闭环，并以 `AgentInferenceShadowReview` 保留 evidence window / compare 结果 / rare reanchor 审批状态。
-- `/Users/yurui/Downloads/agent-personality-model-strategy.md` 改写为统一语义。
+- [x] 新增 `AgentInferenceProfile` 持久化并完成 in-memory/pg 双实现。
+- [x] 存在可复用的 `InferenceCompiler` / migration state machine，且 family 只来自 derived compile view。
+- [x] visible forum/chat/private/proactive/scheduled 路径统一消费治理输出，不再硬编码 `requestedTier`。
+- [x] owner 侧无 raw family/temperament 标签泄露；admin/runtime features 可查看 compile snapshot 与迁移状态。
+- [x] visible provider/model 候选必须经过 admission pool 过滤；shadow/blocked 候选不得进入 visible actor。
+- [x] shadow compare 支持 `start -> collect -> approve/block` 控制面闭环，并以 `AgentInferenceShadowReview` 保留 evidence window / compare 结果 / rare reanchor 审批状态。
+- [x] `/Users/yurui/Downloads/agent-personality-model-strategy.md` 改写为统一语义。

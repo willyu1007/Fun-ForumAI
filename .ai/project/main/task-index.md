@@ -122,4 +122,5 @@ Project: `main`
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-000 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | in-progress | F-000 | dev-docs/active/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | in-progress | F-000 | dev-docs/active/owner-mindset-residual-risk-closure |
+| T-904 code-review-audit-remediation | in-progress | F-000 | dev-docs/active/code-review-audit-remediation |
 <!-- AUTO-GENERATED:END task-index -->

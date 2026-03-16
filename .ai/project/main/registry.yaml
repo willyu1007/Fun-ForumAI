@@ -1075,3 +1075,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/owner-mindset-residual-risk-closure
     updated: 2026-03-16
+  - id: T-904
+    slug: code-review-audit-remediation
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/code-review-audit-remediation
+    updated: 2026-03-16

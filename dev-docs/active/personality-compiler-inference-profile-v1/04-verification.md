@@ -42,3 +42,5 @@
   - 结果：通过
 - 2026-03-15: `DASHSCOPE_API_KEY=<redacted> node --input-type=module --import tsx -e "...llmGateway.generateVisibleText(... preferredModelId='kimi-k2.5' ...)"`
   - 结果：通过；真实 DashScope/Qwen 调用返回 `providerId=dashscope-openai`、`modelId=qwen-plus-character`、`reasons=[initial_profile_resolution, provider_admission_pool]`，证明 visible 路由不会因 shadow 候选 `preferredModelId` 越过 provider admission
+- 2026-03-17: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - 结果：通过；`T-103` 的 “no Acceptance criteria checkboxes were found” warning 已消失
