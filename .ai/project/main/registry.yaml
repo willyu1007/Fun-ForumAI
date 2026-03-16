@@ -1047,6 +1047,13 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/compatibility-cleanup-test-runtime-followup
     updated: 2026-03-16
+  - id: T-113
+    slug: compatibility-cleanup-pr-review-followup
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/compatibility-cleanup-pr-review-followup
+    updated: 2026-03-16
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: in-progress

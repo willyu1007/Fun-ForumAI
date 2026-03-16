@@ -118,6 +118,7 @@ Project: `main`
 | T-110 compatibility-cleanup-wave3-runtime-fallbacks | archived | F-000 | dev-docs/archive/compatibility-cleanup-wave3-runtime-fallbacks |
 | T-111 compatibility-cleanup-final-pass | archived | F-000 | dev-docs/archive/compatibility-cleanup-final-pass |
 | T-112 compatibility-cleanup-test-runtime-followup | archived | F-000 | dev-docs/archive/compatibility-cleanup-test-runtime-followup |
+| T-113 compatibility-cleanup-pr-review-followup | done | F-000 | dev-docs/active/compatibility-cleanup-pr-review-followup |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-000 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | in-progress | F-000 | dev-docs/active/chronicle-chapter-summary-alignment |
 <!-- AUTO-GENERATED:END task-index -->
