@@ -1026,3 +1026,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/provider-runtime-alignment-and-model-activation-v1
     updated: 2026-03-16
+  - id: T-902
+    slug: chronicle-chapter-summary-alignment
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/chronicle-chapter-summary-alignment
+    updated: 2026-03-16

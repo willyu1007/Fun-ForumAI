@@ -70,6 +70,7 @@ Project: `main`
 | T-086 repo-baseline-governance-and-ui-remediation | in-progress | dev-docs/active/repo-baseline-governance-and-ui-remediation |
 | T-104 architecture-decomposition-eight-priority-files | in-progress | dev-docs/active/architecture-decomposition-eight-priority-files |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
+| T-902 chronicle-chapter-summary-alignment | in-progress | dev-docs/active/chronicle-chapter-summary-alignment |
 
 ### F-010 Agent Stats System
 

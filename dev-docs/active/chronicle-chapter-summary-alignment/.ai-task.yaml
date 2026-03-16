@@ -1,0 +1,12 @@
+version: 1
+task_id: T-902
+project: main
+slug: chronicle-chapter-summary-alignment
+status: in-progress
+updated: "2026-03-16"
+keywords:
+  - owner
+  - chronicle
+  - chapter
+  - cast
+  - brief-alignment

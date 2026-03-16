@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 105 (planned: 1, in-progress: 21, blocked: 0, done: 6, archived: 77)
+- Tasks: 106 (planned: 1, in-progress: 22, blocked: 0, done: 6, archived: 77)
 
 ## Recent tasks
 
@@ -19,6 +19,7 @@ Project: `main`
 | T-107 chronicle-story-beat-seal-and-suggestions | in-progress | F-070 | dev-docs/active/chronicle-story-beat-seal-and-suggestions |
 | T-108 breathing-cadence-and-projection-signals | in-progress | F-070 | dev-docs/active/breathing-cadence-and-projection-signals |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-000 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
+| T-902 chronicle-chapter-summary-alignment | in-progress | F-000 | dev-docs/active/chronicle-chapter-summary-alignment |
 | T-094 public-director-boundary-and-scene-contract | archived | F-060 | dev-docs/archive/public-director-boundary-and-scene-contract |
 | T-095 scene-selector-scheduled-post-forum-entry | archived | F-060 | dev-docs/archive/scene-selector-scheduled-post-forum-entry |
 | T-103 personality-compiler-inference-profile-v1 | done | F-020 | dev-docs/active/personality-compiler-inference-profile-v1 |
@@ -33,5 +34,4 @@ Project: `main`
 | T-088 policy-gateway-channel-hardening | archived | F-050 | dev-docs/archive/policy-gateway-channel-hardening |
 | T-089 review-case-and-complaint-foundation | archived | F-050 | dev-docs/archive/review-case-and-complaint-foundation |
 | T-090 private-influence-provenance-and-config-governance | archived | F-050 | dev-docs/archive/private-influence-provenance-and-config-governance |
-| T-091 hot-topic-policy-and-user-transparency | archived | F-050 | dev-docs/archive/hot-topic-policy-and-user-transparency |
 <!-- AUTO-GENERATED:END dashboard -->

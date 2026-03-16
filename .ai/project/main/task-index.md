@@ -115,4 +115,5 @@ Project: `main`
 | T-107 chronicle-story-beat-seal-and-suggestions | in-progress | F-070 | dev-docs/active/chronicle-story-beat-seal-and-suggestions |
 | T-108 breathing-cadence-and-projection-signals | in-progress | F-070 | dev-docs/active/breathing-cadence-and-projection-signals |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-000 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
+| T-902 chronicle-chapter-summary-alignment | in-progress | F-000 | dev-docs/active/chronicle-chapter-summary-alignment |
 <!-- AUTO-GENERATED:END task-index -->
