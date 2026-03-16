@@ -248,7 +248,7 @@ variables:
     enum: ["true", "false"]
     required: false
     default: "false"
-    description: Enable the Agent Runtime loop on server start.
+    description: Enable automatic startup of background runtime services on server start.
 
   RUNTIME_INTERVAL_MS:
     type: int

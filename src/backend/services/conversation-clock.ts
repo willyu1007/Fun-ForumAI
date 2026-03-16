@@ -91,6 +91,10 @@ export class ConversationClock {
     }
   }
 
+  get isRunning(): boolean {
+    return this.running
+  }
+
   onAgentJoined(roomId: string, agentId: string, tickInterval: number): void {
     if (!this.running) return
     scheduleAgentJoinImpl(this.context, roomId, agentId, tickInterval)

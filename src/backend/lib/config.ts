@@ -1,5 +1,8 @@
 const env = process.env
 
+const DEFAULT_JWT_SECRET = 'dev-jwt-secret-change-in-production'
+const DEFAULT_SERVICE_AUTH_SECRET = 'dev-service-secret-change-in-production'
+
 function safeInt(raw: string | undefined, fallback: number): number {
   if (!raw) return fallback
   const n = parseInt(raw, 10)
@@ -12,10 +15,60 @@ function safeFloat(raw: string | undefined, fallback: number): number {
   return Number.isNaN(n) ? fallback : n
 }
 
+function resolveAppEnv(raw: string | undefined, nodeEnv: string): 'dev' | 'staging' | 'prod' {
+  if (raw === 'dev' || raw === 'staging' || raw === 'prod') {
+    return raw
+  }
+  if (nodeEnv === 'production') {
+    return 'prod'
+  }
+  return 'dev'
+}
+
+function requireNonDefaultSecret(input: {
+  name: string
+  value: string
+  fallback: string
+  enforce: boolean
+  modeLabel: string
+}): void {
+  if (!input.enforce) return
+  if (input.value !== input.fallback) return
+  throw new Error(`[config] ${input.name} is required when ${input.modeLabel}`)
+}
+
+const nodeEnv = env.NODE_ENV || 'development'
+const appEnv = resolveAppEnv(env.APP_ENV, nodeEnv)
+const productionLike = nodeEnv === 'production' || appEnv !== 'dev'
+const allowDevTools = !productionLike
+const secureCookies = productionLike
+const jwtSecret = env.JWT_SECRET || DEFAULT_JWT_SECRET
+const serviceAuthSecret = env.SERVICE_AUTH_SECRET || DEFAULT_SERVICE_AUTH_SECRET
+const secretRequirementLabel = nodeEnv === 'production'
+  ? 'NODE_ENV=production'
+  : `APP_ENV=${appEnv}`
+
+requireNonDefaultSecret({
+  name: 'JWT_SECRET',
+  value: jwtSecret,
+  fallback: DEFAULT_JWT_SECRET,
+  enforce: productionLike,
+  modeLabel: secretRequirementLabel,
+})
+requireNonDefaultSecret({
+  name: 'SERVICE_AUTH_SECRET',
+  value: serviceAuthSecret,
+  fallback: DEFAULT_SERVICE_AUTH_SECRET,
+  enforce: productionLike,
+  modeLabel: secretRequirementLabel,
+})
+
 export const config = {
   port: safeInt(env.PORT, 4000),
-  nodeEnv: env.NODE_ENV || 'development',
-  appEnv: env.APP_ENV === 'staging' || env.APP_ENV === 'prod' ? env.APP_ENV : 'dev',
+  nodeEnv,
+  appEnv,
+  allowDevTools,
+  secureCookies,
   launch: {
     market: env.APP_MARKET === 'mainland' ? 'mainland' : 'global',
   },
@@ -27,11 +80,11 @@ export const config = {
     usePrisma: env.DB_PERSISTENCE === 'true',
   },
   auth: {
-    jwtSecret: env.JWT_SECRET || 'dev-jwt-secret-change-in-production',
+    jwtSecret,
     jwtExpiresIn: env.JWT_EXPIRES_IN || '7d',
   },
   serviceAuth: {
-    secret: env.SERVICE_AUTH_SECRET || 'dev-service-secret-change-in-production',
+    secret: serviceAuthSecret,
     timestampToleranceMs: 5 * 60 * 1000,
   },
   // Bootstrap-only defaults until the versioned gateway/router becomes the

@@ -49,24 +49,7 @@ async function syncDevAuthCookie(identity: 'anonymous' | 'user' | 'admin'): Prom
 }
 
 export async function setDevAuth(identity: 'anonymous' | 'user' | 'admin'): Promise<DevUser | null> {
-  const previousToken = localStorage.getItem('dev_auth_token')
-  if (identity === 'anonymous') {
-    localStorage.removeItem('dev_auth_token')
-  } else {
-    localStorage.setItem('dev_auth_token', generateDevToken(identity))
-  }
-
-  try {
-    await syncDevAuthCookie(identity)
-  } catch (error) {
-    if (previousToken) {
-      localStorage.setItem('dev_auth_token', previousToken)
-    } else {
-      localStorage.removeItem('dev_auth_token')
-    }
-    throw error
-  }
-
+  await syncDevAuthCookie(identity)
   return identity === 'anonymous' ? null : DEV_USERS[identity]
 }
 

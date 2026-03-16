@@ -426,8 +426,8 @@ stageIncubationRouter.post(
 
     const openCount = req.body.open_count
     const dryRun = req.body.dry_run
-    if (config.nodeEnv === 'production' && !dryRun) {
-      throw new ForbiddenError('Production environment only supports dry_run=true. Use script workflow for real season rotation.')
+    if (!config.allowDevTools && !dryRun) {
+      throw new ForbiddenError('Production-like deployments only support dry_run=true. Use script workflow for real season rotation.')
     }
     const baseDir = path.join(process.cwd(), 'docs/stage-templates/source')
     const manifestPath = path.join(baseDir, 'manifest.yaml')

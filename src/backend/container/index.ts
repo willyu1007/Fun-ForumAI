@@ -460,10 +460,10 @@ export const postScheduler = rt.postScheduler
 export const runtimeLoop = rt.runtimeLoop
 export const eventBridge = rt.eventBridge
 
-// ─── Repository Hydration (Pg mode) ─────────────────────────
-export async function hydrateRepositories(): Promise<void> {
+// ─── Persistence warm-up (Pg mode) ───────────────────────────
+export async function warmPersistenceState(): Promise<void> {
   if (hydratables.length === 0) return
-  console.log('[Container] Hydrating Pg repositories from database...')
+  console.log('[Container] Warming persistence state...')
   await Promise.all(hydratables.map((r) => r.hydrate()))
   if (config.features.allocatorPprEnabled) {
     const snapshots = await repos.pprSnapshotRepo.listUnexpired({ limit: 200_000 })
@@ -479,12 +479,12 @@ export async function hydrateRepositories(): Promise<void> {
         expires_at: row.expires_at,
       })),
     )
-    console.log(`[Container] PPR snapshots loaded: ${snapshots.length}`)
+    console.log(`[Container] PPR snapshot state warmed: ${snapshots.length}`)
   } else {
     alloc.graphRelevanceProvider.hydrate([])
-    console.log('[Container] PPR hydration skipped (FF_ALLOCATOR_PPR_ENABLED=false)')
+    console.log('[Container] PPR snapshot warm-up skipped (FF_ALLOCATOR_PPR_ENABLED=false)')
   }
-  console.log(`[Container] ${hydratables.length} repositories hydrated`)
+  console.log(`[Container] ${hydratables.length} persistence adapters warmed`)
 }
 
 // ─── Shutdown ───────────────────────────────────────────────

@@ -9,7 +9,7 @@ import { healthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { devSeedRouter } from './routes/dev-seed.js'
-import { runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, hydrateRepositories, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, roleAssignmentExpiryScheduler, directorHistoryMaintenanceScheduler, guidanceRecallScheduler, promptLayerService, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService } from './container.js'
+import { runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, warmPersistenceState, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, roleAssignmentExpiryScheduler, directorHistoryMaintenanceScheduler, guidanceRecallScheduler, promptLayerService, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
 import { agentNurtureRouter } from './routes/agent-growth-api.js'
@@ -44,7 +44,7 @@ function isLoopbackHost(value: string | undefined): boolean {
 }
 
 function canUseDevIdentitySwitch(req: express.Request): boolean {
-  if (config.appEnv !== 'dev') return false
+  if (!config.allowDevTools) return false
   return isLoopbackHost(req.hostname)
     || isLoopbackHost(req.get('origin'))
     || isLoopbackHost(req.get('referer'))
@@ -98,7 +98,7 @@ app.use('/v1', chatApiRouter)
 app.use('/v1', agentNurtureRouter)
 app.use('/v1', agentDashboardRouter)
 
-if (config.nodeEnv !== 'production') {
+if (config.allowDevTools) {
   const devIdentityRouter = express.Router()
   devIdentityRouter.post('/auth/dev/switch', (req, res) => {
     if (!canUseDevIdentitySwitch(req)) {
@@ -141,7 +141,7 @@ if (authService) {
     })
   })
   app.use('/v1', createAuthRouter(ensuredAuthService))
-} else if (config.nodeEnv !== 'production') {
+} else if (config.allowDevTools) {
   registerDevTokenSync(null)
   // Minimal dev-only auth/me so DevAuthToolbar works without DB
   const devAuthRouter = express.Router()
@@ -167,7 +167,7 @@ app.use('/v1', agentStatsRouter)
 
 // ─── Dev runtime endpoints ──────────────────────────────────
 
-if (config.nodeEnv !== 'production') {
+if (config.allowDevTools) {
   app.post('/v1/dev/runtime/tick', async (_req, res) => {
     try {
       const result = await runtimeLoop.tick()
@@ -433,77 +433,96 @@ app.use((_req, res) => {
   })
 })
 
-// ─── Auto-start runtime if configured ───────────────────────
+// ─── Explicit background-service lifecycle ───────────────────
 
-if (config.runtime.enabled && llmGateway.isConfigured) {
-  console.log('[App] RUNTIME_ENABLED=true, starting RuntimeLoop...')
-  runtimeLoop.start()
-} else if (config.runtime.enabled && !llmGateway.isConfigured) {
-  console.warn('[App] RUNTIME_ENABLED=true but no usable LLM credential resolved — RuntimeLoop not started')
-}
+export function startBackgroundServices(): void {
+  if (!config.runtime.enabled) {
+    console.log('[App] RUNTIME_ENABLED=false, background services auto-start skipped')
+    return
+  }
 
-roomLifecycle.start()
-conversationClock.start()
-
-if (privateChannelScheduler) {
-  privateChannelScheduler.start()
-}
-
-if (nurtureScheduler) {
-  nurtureScheduler.start()
-}
-
-if (relationScheduler) {
-  relationScheduler.start()
-}
-
-if (achievementsScheduler) {
-  achievementsScheduler.start()
-}
-
-if (pprRefreshScheduler) {
-  pprRefreshScheduler.start()
-}
-
-if (cultureDigestScheduler) {
-  cultureDigestScheduler.start()
-}
-
-if (communityConfigScheduler) {
-  communityConfigScheduler.start()
-}
-
-if (config.features.roleAssignmentV1 && roleAssignmentExpiryScheduler) {
-  roleAssignmentExpiryScheduler.start()
-}
-
-if (config.db.usePrisma && directorHistoryMaintenanceScheduler) {
-  if (directorHistoryMaintenanceScheduler.isLaunchCatalogReady()) {
-    directorHistoryMaintenanceScheduler.start()
+  if (llmGateway.isConfigured) {
+    console.log('[App] RUNTIME_ENABLED=true, starting background services...')
+    runtimeLoop.start()
   } else {
-    console.log('[App] Director history maintenance skipped: launch catalog artifact is not ready')
+    console.warn('[App] RUNTIME_ENABLED=true but no usable LLM credential resolved — RuntimeLoop not started')
+  }
+
+  roomLifecycle.start()
+  conversationClock.start()
+
+  if (privateChannelScheduler) {
+    privateChannelScheduler.start()
+  }
+
+  if (nurtureScheduler) {
+    nurtureScheduler.start()
+  }
+
+  if (relationScheduler) {
+    relationScheduler.start()
+  }
+
+  if (achievementsScheduler) {
+    achievementsScheduler.start()
+  }
+
+  if (pprRefreshScheduler) {
+    pprRefreshScheduler.start()
+  }
+
+  if (cultureDigestScheduler) {
+    cultureDigestScheduler.start()
+  }
+
+  if (communityConfigScheduler) {
+    communityConfigScheduler.start()
+  }
+
+  if (config.features.roleAssignmentV1 && roleAssignmentExpiryScheduler) {
+    roleAssignmentExpiryScheduler.start()
+  }
+
+  if (config.db.usePrisma && directorHistoryMaintenanceScheduler) {
+    if (directorHistoryMaintenanceScheduler.isLaunchCatalogReady()) {
+      directorHistoryMaintenanceScheduler.start()
+    } else {
+      console.log('[App] Director history maintenance skipped: launch catalog artifact is not ready')
+    }
+  }
+
+  if (config.features.guidanceV1 && config.features.guidanceRecallV1 && guidanceRecallScheduler) {
+    guidanceRecallScheduler.start()
   }
 }
 
-if (config.features.guidanceV1 && config.features.guidanceRecallV1 && guidanceRecallScheduler) {
-  guidanceRecallScheduler.start()
+export function stopBackgroundServices(): void {
+  runtimeLoop.stop()
+  roomLifecycle.stop()
+  conversationClock.stop()
+  privateChannelScheduler?.stop()
+  nurtureScheduler?.stop()
+  relationScheduler?.stop()
+  achievementsScheduler?.stop()
+  pprRefreshScheduler?.stop()
+  cultureDigestScheduler?.stop()
+  communityConfigScheduler?.stop()
+  roleAssignmentExpiryScheduler?.stop()
+  directorHistoryMaintenanceScheduler?.stop()
+  guidanceRecallScheduler?.stop()
 }
 
 // ─── Persistence initialization ─────────────────────────────
 
 export async function initPersistence(): Promise<void> {
   if (config.db.usePrisma) {
-    await hydrateRepositories()
-    console.log('[App] DB persistence enabled — Pg repositories hydrated')
+    await warmPersistenceState()
+    console.log('[App] DB persistence enabled — persistence state warmed')
   }
 
   if (config.features.membershipsV1) {
-    if (!agentCommunityMembershipService.hasAnyActiveMemberships()) {
-      const summary = await agentCommunityMembershipService.runDerivedBackfill()
-      console.log('[MembershipBackfill] completed', JSON.stringify(summary))
-    } else {
-      console.log('[MembershipBackfill] skipped (active memberships already present)')
-    }
+    const summary = await agentCommunityMembershipService.runDerivedBackfill()
+    console.log('[MembershipBackfill] completed', JSON.stringify(summary))
   }
 }
 

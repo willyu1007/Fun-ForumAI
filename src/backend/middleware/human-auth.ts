@@ -58,7 +58,7 @@ function resolveUserFromToken(token: string): AuthenticatedUser | null {
     // JWT verification failed — fall through to dev token in non-production
   }
 
-  if (config.nodeEnv !== 'production') {
+  if (config.allowDevTools) {
     const devPayload = tryDevToken(token)
     if (devPayload) {
       return { ...devPayload, _devToken: true }
@@ -80,7 +80,7 @@ export function tryAuthenticateHuman(req: Request): AuthenticatedUser | null {
 
 async function syncDevTokenIdentityIfNeeded(user: AuthenticatedUser): Promise<void> {
   if (!user._devToken) return
-  if (config.nodeEnv === 'production') return
+  if (!config.allowDevTools) return
   if (!config.db.usePrisma) return
   if (!devTokenSyncFn) return
   await devTokenSyncFn(user)

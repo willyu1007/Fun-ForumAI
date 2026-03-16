@@ -7,7 +7,7 @@ import { config } from '../lib/config.js'
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: config.nodeEnv === 'production',
+  secure: config.secureCookies,
   sameSite: 'lax' as const,
   path: '/',
   maxAge: 7 * 24 * 60 * 60 * 1000,

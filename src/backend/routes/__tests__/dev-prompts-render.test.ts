@@ -8,10 +8,16 @@ function createDevToken(user: { userId: string; email: string; role: 'user' | 'a
 
 async function loadAppWithNodeEnv(nodeEnv: 'test' | 'production'): Promise<Express> {
   const previousNodeEnv = process.env.NODE_ENV
+  const previousJwtSecret = process.env.JWT_SECRET
+  const previousServiceSecret = process.env.SERVICE_AUTH_SECRET
   process.env.NODE_ENV = nodeEnv
+  process.env.JWT_SECRET = 'test-jwt-secret'
+  process.env.SERVICE_AUTH_SECRET = 'test-service-secret'
   vi.resetModules()
   const mod = await import('../../app.js')
   process.env.NODE_ENV = previousNodeEnv
+  process.env.JWT_SECRET = previousJwtSecret
+  process.env.SERVICE_AUTH_SECRET = previousServiceSecret
   return mod.app
 }
 

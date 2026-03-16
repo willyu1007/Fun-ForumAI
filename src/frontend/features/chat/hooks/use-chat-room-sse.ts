@@ -154,7 +154,9 @@ export function useChatRoomSse(roomId: string) {
 
       setStatus({ phase: retriesRef.current > 0 ? 'reconnecting' : 'connecting', reconnectAttempts: retriesRef.current })
 
-      const es = new EventSource(`/v1/events/stream?rooms=${roomId}`)
+      const es = new EventSource(`/v1/events/stream?rooms=${roomId}`, {
+        withCredentials: true,
+      })
       sourceRef.current = es
 
       es.onopen = () => {

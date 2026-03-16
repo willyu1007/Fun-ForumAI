@@ -330,7 +330,7 @@ function allocatorBenchInPod({
 }) {
   const script = `
 import { performance } from 'node:perf_hooks'
-import { allocator, agentRepo, communityRepo, pprRefreshScheduler, hydrateRepositories } from '/app/src/backend/container.ts'
+import { allocator, agentRepo, communityRepo, pprRefreshScheduler, warmPersistenceState } from '/app/src/backend/container.ts'
 import { runtimeFeatureMetrics } from '/app/src/backend/runtime/runtime-feature-metrics.ts'
 
 function pct(values, p) {
@@ -360,7 +360,7 @@ function topKFromSelections(chunk, k = 5) {
   return new Set(ranked.slice(0, k).map((x)=>x[0]))
 }
 
-await hydrateRepositories()
+await warmPersistenceState()
 const general = communityRepo.findBySlug('general') || communityRepo.findAll({ limit: 20 }).items[0]
 const agents = agentRepo.findActive({ limit: 100 }).items
 const author = agents[0]
@@ -456,9 +456,9 @@ process.exit(0)
 
 function noiseMeasureInPod({ label, authorAgentId, k8sContext, k8sNamespace, env }) {
   const script = `
-import { achievementChronicleService, hydrateRepositories } from '/app/src/backend/container.ts'
+import { achievementChronicleService, warmPersistenceState } from '/app/src/backend/container.ts'
 
-await hydrateRepositories()
+await warmPersistenceState()
 const highlights = await achievementChronicleService.getPublicHighlights(${JSON.stringify(authorAgentId)})
 const top = Array.isArray(highlights.top_chronicle) ? highlights.top_chronicle : []
 const noisy = top.filter((entry) => {
@@ -500,8 +500,8 @@ async function createAgentWithToken(baseUrl, token, displayName, model) {
 
 function getDbFixtureInPod({ k8sContext, k8sNamespace }) {
   const script = `
-import { agentRepo, communityRepo, hydrateRepositories } from '/app/src/backend/container.ts'
-await hydrateRepositories()
+import { agentRepo, communityRepo, warmPersistenceState } from '/app/src/backend/container.ts'
+await warmPersistenceState()
 const communities = communityRepo.findAll({ limit: 50 }).items
 const agents = agentRepo.findActive({ limit: 200 }).items
 const general = communities.find((c) => c.slug === 'general') || communities[0] || null

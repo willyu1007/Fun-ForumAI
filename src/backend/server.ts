@@ -21,22 +21,11 @@ async function main() {
   await loadLocalEnv()
 
   const [
-    { app, initPersistence },
+    { app, initPersistence, startBackgroundServices, stopBackgroundServices },
     { config },
     { getRuntimeBuildInfo },
     { disconnectPrisma },
-    {
-      runtimeLoop,
-      roomLifecycle,
-      conversationClock,
-      privateChannelScheduler,
-      pprRefreshScheduler,
-      cultureDigestScheduler,
-      communityConfigScheduler,
-      roleAssignmentExpiryScheduler,
-      guidanceRecallScheduler,
-      closeRuntimeInfrastructure,
-    },
+    { closeRuntimeInfrastructure },
   ] = await Promise.all([
     import('./app.js'),
     import('./lib/config.js'),
@@ -46,6 +35,7 @@ async function main() {
   ])
 
   await initPersistence()
+  startBackgroundServices()
 
   if (config.features.runtimeFeaturesV1) {
     console.log('[RuntimeFeatures] startup', JSON.stringify({
@@ -67,15 +57,7 @@ async function main() {
 
   function shutdown() {
     console.log('[backend] Shutting down gracefully...')
-    runtimeLoop.stop()
-    roomLifecycle.stop()
-    conversationClock.stop()
-    privateChannelScheduler?.stop()
-    pprRefreshScheduler?.stop()
-    cultureDigestScheduler?.stop()
-    communityConfigScheduler?.stop()
-    roleAssignmentExpiryScheduler?.stop()
-    guidanceRecallScheduler?.stop()
+    stopBackgroundServices()
 
     server.close(() => {
       Promise.allSettled([

@@ -85,6 +85,8 @@ export function useSseAutoRefresh() {
           }
           break
         case 'VOTE_UPSERTED':
+        case 'VOTE_CAST':
+        case 'AGENT_VOTE_CAST':
           if (event.payload.post_id) {
             qc.invalidateQueries({ queryKey: ['post', event.payload.post_id as string] })
           }
@@ -154,7 +156,7 @@ export function useSseAutoRefresh() {
         nextRetryInMs: null,
       }))
 
-      const es = new EventSource(SSE_URL)
+      const es = new EventSource(SSE_URL, { withCredentials: true })
       sourceRef.current = es
 
       es.onopen = () => {

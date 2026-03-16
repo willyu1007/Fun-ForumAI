@@ -12,8 +12,10 @@ class FakeEventSource {
   onmessage: ((event: MessageEvent) => void) | null = null
   onerror: (() => void) | null = null
   close = vi.fn()
+  readonly init?: EventSourceInit
 
-  constructor(public readonly url: string) {
+  constructor(public readonly url: string, init?: EventSourceInit) {
+    this.init = init
     FakeEventSource.instances.push(this)
   }
 }
@@ -54,6 +56,7 @@ describe('useChatRoomSse', () => {
 
     const instance = FakeEventSource.instances[0]
     expect(instance.url).toContain('/v1/events/stream?rooms=room-1')
+    expect(instance.init).toEqual({ withCredentials: true })
 
     act(() => {
       instance.onmessage?.({

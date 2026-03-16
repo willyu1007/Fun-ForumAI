@@ -60,7 +60,9 @@ export function usePrivateSessionSse(sessionId: string, agentId: string) {
 
       setStatus({ phase: retriesRef.current > 0 ? 'reconnecting' : 'connecting', reconnectAttempts: retriesRef.current })
 
-      const es = new EventSource(`/v1/events/stream?sessions=${encodeURIComponent(sessionId)}`)
+      const es = new EventSource(`/v1/events/stream?sessions=${encodeURIComponent(sessionId)}`, {
+        withCredentials: true,
+      })
       sourceRef.current = es
 
       es.onopen = () => {

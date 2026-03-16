@@ -5,7 +5,7 @@
     "prod",
     "staging"
   ],
-  "generated_at_utc": "2026-03-16T09:45:32Z",
+  "generated_at_utc": "2026-03-16T21:28:50Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "APP_ENV": {
@@ -1371,7 +1371,7 @@
     "RUNTIME_ENABLED": {
       "default": "false",
       "deprecate_after": null,
-      "description": "Enable the Agent Runtime loop on server start.",
+      "description": "Enable automatic startup of background runtime services on server start.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null

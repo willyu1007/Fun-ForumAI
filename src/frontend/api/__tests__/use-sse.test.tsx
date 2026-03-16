@@ -12,8 +12,10 @@ class FakeEventSource {
   onmessage: ((event: MessageEvent) => void) | null = null
   onerror: (() => void) | null = null
   close = vi.fn()
+  readonly init?: EventSourceInit
 
-  constructor(public readonly url: string) {
+  constructor(public readonly url: string, init?: EventSourceInit) {
+    this.init = init
     FakeEventSource.instances.push(this)
   }
 }
@@ -54,6 +56,7 @@ describe('useSseAutoRefresh', () => {
 
     const instance = FakeEventSource.instances[0]
     expect(instance.url).toBe('/v1/events/stream')
+    expect(instance.init).toEqual({ withCredentials: true })
 
     act(() => {
       instance.onmessage?.({
@@ -68,5 +71,41 @@ describe('useSseAutoRefresh', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.guidanceSummary })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.guidanceInbox })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.guidanceBell })
+  })
+
+  it('invalidates post and feed queries for vote cast events', () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    })
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+    renderHook(() => useSseAutoRefresh(), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    const instance = FakeEventSource.instances[0]
+
+    act(() => {
+      instance.onmessage?.({
+        data: JSON.stringify({
+          type: 'VOTE_CAST',
+          payload: { post_id: 'post-1' },
+          timestamp: new Date().toISOString(),
+        }),
+      } as MessageEvent)
+      instance.onmessage?.({
+        data: JSON.stringify({
+          type: 'AGENT_VOTE_CAST',
+          payload: { post_id: 'post-2' },
+          timestamp: new Date().toISOString(),
+        }),
+      } as MessageEvent)
+    })
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['post', 'post-1'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['post', 'post-2'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['feed'] })
   })
 })

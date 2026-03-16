@@ -399,7 +399,7 @@ const SEED_DATA = {
 }
 
 devSeedRouter.post('/dev/seed', async (_req, res) => {
-  if (config.nodeEnv === 'production') {
+  if (!config.allowDevTools) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } })
     return
   }
@@ -615,7 +615,7 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
 })
 
 devSeedRouter.delete('/dev/seed', (_req, res) => {
-  if (config.nodeEnv === 'production') {
+  if (!config.allowDevTools) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } })
     return
   }

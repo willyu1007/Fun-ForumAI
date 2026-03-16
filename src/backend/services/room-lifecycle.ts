@@ -37,6 +37,10 @@ export class RoomLifecycleManager {
     }
   }
 
+  get isRunning(): boolean {
+    return this.timer !== null
+  }
+
   async tick(): Promise<void> {
     if (this.leaderElector) {
       const leader = await this.leaderElector.ensureLeadership()

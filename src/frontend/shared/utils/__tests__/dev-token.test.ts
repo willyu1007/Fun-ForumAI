@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { generateDevToken, setDevAuth } from '../dev-token'
+import { setDevAuth } from '../dev-token'
 
 describe('setDevAuth', () => {
   beforeEach(() => {
@@ -11,7 +11,7 @@ describe('setDevAuth', () => {
     vi.unstubAllGlobals()
   })
 
-  it('syncs the dev auth cookie through the backend and persists the local token', async () => {
+  it('syncs the dev auth cookie through the backend without persisting a local bearer token', async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,
       json: async () => ({ data: { user: { id: 'dev-user-001' } } }),
@@ -24,7 +24,7 @@ describe('setDevAuth', () => {
       userId: 'dev-user-001',
       role: 'user',
     })
-    expect(localStorage.getItem('dev_auth_token')).toBe(generateDevToken('user'))
+    expect(localStorage.getItem('dev_auth_token')).toBeNull()
     expect(fetchMock).toHaveBeenCalledWith('/v1/auth/dev/switch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -33,7 +33,7 @@ describe('setDevAuth', () => {
     })
   })
 
-  it('rolls back the local token when cookie sync fails', async () => {
+  it('throws when cookie sync fails', async () => {
     const fetchMock = vi.fn(async () => ({
       ok: false,
       json: async () => ({ error: { message: 'boom' } }),

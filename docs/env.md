@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-16T09:45:32Z`
+Generated at (UTC): `2026-03-16T21:28:50Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `staging`
@@ -91,7 +91,7 @@ Generated at (UTC): `2026-03-16T09:45:32Z`
 | `NODE_ENV` | `active` | `enum` | yes | no | `development` | `` | `*` | `` | `` | `` | Node.js runtime environment. |
 | `PORT` | `active` | `int` | yes | no | `4000` | `` | `*` | `` | `` | `` | Backend HTTP server listen port. |
 | `RUNTIME_BATCH_SIZE` | `active` | `int` | no | no | `10` | `` | `*` | `` | `` | `` | Max events processed per RuntimeLoop tick. |
-| `RUNTIME_ENABLED` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable the Agent Runtime loop on server start. |
+| `RUNTIME_ENABLED` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable automatic startup of background runtime services on server start. |
 | `RUNTIME_INTERVAL_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | RuntimeLoop tick interval in milliseconds. |
 | `RUNTIME_LEADER_BACKEND` | `active` | `enum` | no | no | `in-memory` | `` | `*` | `` | `` | `` | Runtime leader election backend selection. |
 | `RUNTIME_LEADER_TTL_MS` | `active` | `int` | no | no | `15000` | `` | `*` | `` | `` | `` | Lease TTL for runtime distributed leader locks. |
