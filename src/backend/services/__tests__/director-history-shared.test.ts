@@ -78,7 +78,7 @@ describe('director history shared helpers', () => {
       },
       {
         totalCount: 1,
-        source: 'legacy_fallback',
+        source: 'missing_binding',
         status: 'cooldown',
         experimentBucket: 'B',
         closeReason: 'ttl',
@@ -91,7 +91,7 @@ describe('director history shared helpers', () => {
     expect(summary.binding_hits).toBe(4)
     expect(summary.runtime_sources).toEqual([
       { source: 'binding', count: 4 },
-      { source: 'legacy_fallback', count: 1 },
+      { source: 'missing_binding', count: 1 },
     ])
     expect(summary.close_reasons).toEqual([
       { reason: 'threshold', count: 4 },

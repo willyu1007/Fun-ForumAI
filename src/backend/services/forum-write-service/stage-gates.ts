@@ -48,33 +48,12 @@ function rejectStrictT4(reason: string, message: string): never {
   throw new ValidationError(message)
 }
 
-function assertLegacyLongformTrustGate(input: {
-  body: string
-  stage_spec: StageSpecV1
-}): void {
-  if (input.stage_spec.strict_t4.grant_required && !/\[grant:[^\]]+\]/i.test(input.body)) {
-    rejectStrictT4(
-      'grant_marker_missing',
-      'T4 strict mode requires grant marker: [grant:<job_or_grant_id>]',
-    )
-  }
-
-  const sourceMatches = input.body.match(/https?:\/\/\S+/gi) ?? []
-  const sourceCount = new Set(sourceMatches.map((item) => item.toLowerCase())).size
-  if (sourceCount < input.stage_spec.strict_t4.min_sources) {
-    rejectStrictT4(
-      'source_count_insufficient',
-      `T4 strict mode requires at least ${input.stage_spec.strict_t4.min_sources} sources`,
-    )
-  }
-}
-
-function assertLegacyStrongRedaction(body: string): void {
+function assertStrictStrongRedaction(body: string): void {
   const hasEmail = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(body)
   const hasPhone = /\+?\d[\d\s()-]{7,}\d/.test(body)
   if (hasEmail || hasPhone) {
     rejectStrictT4(
-      'legacy_redaction_violation',
+      'redaction_violation',
       'T4 strict mode requires strong redaction (remove direct email/phone identifiers)',
     )
   }
@@ -98,30 +77,14 @@ async function assertLongformT4Gate(
 
   if (!input.stage_spec.strict_t4.enabled) return
 
-  const enforceStructured = config.features.incubationTrustHardEnforce
   const trustContext = input.trust_context
   const incubationRepo = context.deps.incubationRepo
 
   if (!incubationRepo || !trustContext) {
-    if (enforceStructured) {
-      rejectStrictT4(
-        'trust_context_missing',
-        'T4 strict mode requires trust_context with grant and source bundle references',
-      )
-    }
-    console.warn(
-      '[ForumWriteService] fallback to legacy strict_t4 trust gate',
-      JSON.stringify({
-        enforceStructured,
-        hasIncubationRepo: Boolean(incubationRepo),
-        hasTrustContext: Boolean(trustContext),
-      }),
+    rejectStrictT4(
+      'trust_context_missing',
+      'T4 strict mode requires trust_context with grant and source bundle references',
     )
-    assertLegacyLongformTrustGate(input)
-    if (input.stage_spec.strict_t4.redaction === 'strong') {
-      assertLegacyStrongRedaction(input.body)
-    }
-    return
   }
 
   const job = await incubationRepo.findJobById(trustContext.job_id)
@@ -173,7 +136,7 @@ async function assertLongformT4Gate(
     if (profile !== 'strong') {
       rejectStrictT4('redaction_profile', 'trust_context redaction profile must be strong')
     }
-    assertLegacyStrongRedaction(input.body)
+  assertStrictStrongRedaction(input.body)
   }
 }
 

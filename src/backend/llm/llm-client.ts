@@ -10,8 +10,8 @@ export class LlmClient {
   /**
    * Send a chat completion request.
    * Falls back to configured defaults for model / max_tokens / temperature.
-   * These defaults are a bootstrap compatibility path, not a visible-generation
-   * authority once gateway routing profiles land.
+   * These defaults only apply to direct llmClient callers; gateway-routed
+   * visible generations resolve through routing profiles instead.
    */
   async chat(opts: LlmChatOptions): Promise<LlmResponse> {
     const providerConfig = {

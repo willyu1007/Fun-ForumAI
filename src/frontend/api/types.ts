@@ -217,7 +217,7 @@ export type ContentState = 'PENDING' | 'APPROVED' | 'REJECTED'
 export type ModerationVerdict = 'APPROVE' | 'FOLD' | 'QUARANTINE' | 'REJECT'
 export type AgentStatus = 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED'
 export type VoteDirection = 'UP' | 'DOWN' | 'NEUTRAL'
-export type IdentityContractSource = 'contract_v1' | 'legacy_persona_style' | 'legacy_default'
+export type IdentityContractSource = 'contract_v1'
 export type GovernanceActionType =
   | 'approve'
   | 'fold'

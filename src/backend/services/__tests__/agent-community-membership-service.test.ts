@@ -225,7 +225,7 @@ describe('AgentCommunityMembershipService', () => {
     const result = await service.runDerivedBackfill({
       days: 30,
       min_posts: 1,
-      min_comments: 1,
+      min_comment_count: 1,
     })
 
     expect(result.skipped_existing).toBeGreaterThanOrEqual(1)

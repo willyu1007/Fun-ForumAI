@@ -108,7 +108,7 @@ export async function collectCostBaselineFromLedger(
       {
         gate_id: 'render-log-completeness',
         kind: 'blocking',
-        threshold: 'migrated visible=100%',
+        threshold: 'visible complete=100%',
         status: visibleTotal > 0 ? 'pass' : 'not_run',
         actual: `visible=${visibleTotal}`,
       },

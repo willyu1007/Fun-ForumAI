@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto'
 import type { RoomCueType } from '../repos/types.js'
-import { config } from '../lib/config.js'
 import type { EpisodeBrief, LocalIntent, RuntimeSceneStateV1 } from '../stage/index.js'
 import { buildLocalIntentBlock } from './public-scene-runtime.js'
 import { ChatroomSceneContractResolver, type ResolvedChatroomSceneContract } from './chatroom-scene-contract-resolver.js'
@@ -11,7 +10,6 @@ export interface ChatroomLocalIntentBundle {
   local_intent_block: string
   episode_brief: EpisodeBrief
   episode_brief_min: Pick<EpisodeBrief, 'episode_id' | 'phase' | 'template_id' | 'template_version' | 'scene_goal' | 'open_loops' | 'expires_at'>
-  director_goal_compat: string
   scene_source: ResolvedChatroomSceneContract['source']
 }
 
@@ -83,9 +81,6 @@ export class ChatroomLocalIntentService {
     const toneHint = ChatroomSceneContractResolver.deriveToneHint(input.resolved_scene.template)
     const targetMessageId = input.callback_message_id ?? input.anchor_message_id ?? null
     const objectiveRefs = readObjectiveRefs(input.runtime_state)
-    const directorGoalCompat = input.director_goal.trim().length > 0
-      ? input.director_goal.trim()
-      : input.resolved_scene.template.director.scene_goal.viewer_goal
 
     const episodeBrief: EpisodeBrief = {
       episode_id: input.runtime_state.episode_id,
@@ -143,11 +138,6 @@ export class ChatroomLocalIntentService {
         input.resolved_scene.template.director.scene_goal.viewer_goal,
         input.resolved_scene.template.director.scene_goal.growth_goal,
         `保持 episode phase=${episodeBrief.phase}`,
-        ...(
-          config.features.chatroomLocalIntentV1
-            ? []
-            : [directorGoalCompat]
-        ),
       ].filter((item) => item.trim().length > 0),
     }
 
@@ -165,7 +155,6 @@ export class ChatroomLocalIntentService {
         open_loops: episodeBrief.open_loops,
         expires_at: episodeBrief.expires_at,
       },
-      director_goal_compat: directorGoalCompat,
       scene_source: input.resolved_scene.source,
     }
   }

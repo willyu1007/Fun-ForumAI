@@ -9,11 +9,10 @@ export interface CommunityPromptProfile {
   }
   provenance: {
     source:
+      | 'community_description'
       | 'rules_json.personality.prompt_profile_v1'
       | 'community_culture_digests'
       | 'rules_json+community_culture_digests'
-      | 'legacy'
-    used_fallback: boolean
   }
 }
 
@@ -129,8 +128,7 @@ export class CommunityPromptProfileCompiler {
         hard_rules_text: '',
         soft_culture_text: input.communityDescription?.trim() ?? '',
         provenance: {
-          source: 'legacy',
-          used_fallback: true,
+          source: 'community_description',
         },
       }
     }
@@ -156,7 +154,6 @@ export class CommunityPromptProfileCompiler {
         : {}),
       provenance: {
         source,
-        used_fallback: false,
       },
     }
   }

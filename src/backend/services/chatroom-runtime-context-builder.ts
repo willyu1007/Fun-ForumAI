@@ -10,7 +10,6 @@ import type {
   RoomProgramReadModel,
   RoomSceneType,
 } from '../repos/types.js'
-import { config } from '../lib/config.js'
 import type { ExecutionContext } from '../runtime/types.js'
 import type { EpisodeBrief, LocalIntent } from '../stage/index.js'
 import { sanitizeChatOutput } from '../runtime/chat-output-sanitizer.js'
@@ -351,12 +350,10 @@ export class ChatroomRuntimeContextBuilder {
       : null
     const runtimeObjectiveRefs = readRuntimeObjectiveRefs(runtimeSceneState)
     const directorGoal =
-      (typeof eventPayload.director_goal_compat === 'string' ? eventPayload.director_goal_compat : null)
-      ?? latestEvent?.director_goal
+      latestEvent?.director_goal
       ?? latestBeat?.director_goal
       ?? runtimeObjectiveRefs[0]
       ?? buildDirectorGoal(programReadModel, room, snapshot?.live_hook ?? null)
-    const actorVisibleDirectorGoal = config.features.chatroomLocalIntentV1 ? '' : directorGoal
 
     const liveHook = sanitizePromptText(snapshot?.live_hook)
     const unresolvedQuestion = sanitizePromptText(snapshot?.unresolved_question)
@@ -422,20 +419,18 @@ export class ChatroomRuntimeContextBuilder {
           : null
       )
       ?? (
-        config.features.chatroomLocalIntentV1
-          ? buildFallbackChatroomLocalIntentBlock({
-              room,
-              program: programReadModel,
-              selfRole,
-              runtimeSceneStateEpisodeId: runtimeSceneState?.episode_id ?? null,
-              runtimeSceneStatePhase: runtimeSceneState?.state_json.phase ?? null,
-              runtimeSceneTemplateId: runtimeSceneState?.scene_template_id ?? null,
-              runtimeSceneTemplateVersion: runtimeSceneState?.scene_template_version ?? null,
-              objectiveRefs: runtimeObjectiveRefs,
-              directorGoal,
-              roomPublicContextSummary,
-            })
-          : ''
+        buildFallbackChatroomLocalIntentBlock({
+          room,
+          program: programReadModel,
+          selfRole,
+          runtimeSceneStateEpisodeId: runtimeSceneState?.episode_id ?? null,
+          runtimeSceneStatePhase: runtimeSceneState?.state_json.phase ?? null,
+          runtimeSceneTemplateId: runtimeSceneState?.scene_template_id ?? null,
+          runtimeSceneTemplateVersion: runtimeSceneState?.scene_template_version ?? null,
+          objectiveRefs: runtimeObjectiveRefs,
+          directorGoal,
+          roomPublicContextSummary,
+        })
       )
 
     const chatContext: NonNullable<ExecutionContext['chatContext']> = {
@@ -448,7 +443,7 @@ export class ChatroomRuntimeContextBuilder {
             episode_id: activeEpisode?.id ?? snapshot?.episode_id ?? '',
             current_beat: latestBeat?.beat_type ?? snapshot?.current_beat ?? null,
             cue_type: latestEvent?.cue_type ?? latestBeat?.cue_type ?? null,
-            director_goal: actorVisibleDirectorGoal,
+            director_goal: '',
             self_role: selfRole,
             cast: cast.map((entry) => ({
               agent_id: entry.agent_id,

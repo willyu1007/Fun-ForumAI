@@ -106,7 +106,7 @@ describe('context-memory runtime', () => {
       selfModel: null,
       tensions: [],
       privateShadow: null,
-      compatibilityDigest: {
+      memoryDigest: {
         summary_text: 'summary',
         topic_tags: [],
         key_facts: [],
@@ -176,7 +176,7 @@ describe('context-memory runtime', () => {
       selfModel: null,
       tensions: [],
       privateShadow: null,
-      compatibilityDigest: {
+      memoryDigest: {
         summary_text: 'summary',
         topic_tags: [],
         key_facts: [],

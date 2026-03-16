@@ -18,9 +18,9 @@ function baseOfflineGate(overrides: Partial<PersonaGateSnapshotV1> = {}): Person
       {
         gate_id: 'render-log-completeness',
         kind: 'blocking',
-        threshold: 'migrated visible=100%',
+        threshold: 'visible complete=100%',
         status: 'pass',
-        actual: 'migrated_visible=4/4',
+        actual: 'visible_complete=4/4',
       },
       {
         gate_id: 'visible-render-cost',
@@ -174,9 +174,9 @@ describe('persona rollout gate', () => {
           {
             gate_id: 'render-log-completeness',
             kind: 'blocking',
-            threshold: 'migrated visible=100%',
+            threshold: 'visible complete=100%',
             status: 'pass',
-            actual: 'migrated_visible=4/4',
+            actual: 'visible_complete=4/4',
           },
           {
             gate_id: 'identity-write-success',
@@ -203,9 +203,9 @@ describe('persona rollout gate', () => {
           {
             gate_id: 'render-log-completeness',
             kind: 'blocking',
-            threshold: 'migrated visible=100%',
+            threshold: 'visible complete=100%',
             status: 'pass',
-            actual: 'migrated_visible=4/4',
+            actual: 'visible_complete=4/4',
           },
           {
             gate_id: 'visible-render-cost',
@@ -221,9 +221,9 @@ describe('persona rollout gate', () => {
           {
             gate_id: 'render-log-completeness',
             kind: 'blocking',
-            threshold: 'migrated visible=100%',
+            threshold: 'visible complete=100%',
             status: 'pass',
-            actual: 'migrated_visible=4/4',
+            actual: 'visible_complete=4/4',
           },
           {
             gate_id: 'visible-render-cost',
@@ -249,9 +249,9 @@ describe('persona rollout gate', () => {
           {
             gate_id: 'render-log-completeness',
             kind: 'blocking',
-            threshold: 'migrated visible=100%',
+            threshold: 'visible complete=100%',
             status: 'pass',
-            actual: 'migrated_visible=4/4',
+            actual: 'visible_complete=4/4',
           },
           {
             gate_id: 'identity-write-success',
@@ -296,9 +296,9 @@ describe('persona rollout gate', () => {
           {
             gate_id: 'render-log-completeness',
             kind: 'blocking',
-            threshold: 'migrated visible=100%',
+            threshold: 'visible complete=100%',
             status: 'pass',
-            actual: 'migrated_visible=4/4',
+            actual: 'visible_complete=4/4',
           },
           {
             gate_id: 'visible-render-cost',
@@ -314,9 +314,9 @@ describe('persona rollout gate', () => {
           {
             gate_id: 'render-log-completeness',
             kind: 'blocking',
-            threshold: 'migrated visible=100%',
+            threshold: 'visible complete=100%',
             status: 'pass',
-            actual: 'migrated_visible=4/4',
+            actual: 'visible_complete=4/4',
           },
           {
             gate_id: 'visible-render-cost',
@@ -345,9 +345,9 @@ describe('persona rollout gate', () => {
           {
             gate_id: 'render-log-completeness',
             kind: 'blocking',
-            threshold: 'migrated visible=100%',
+            threshold: 'visible complete=100%',
             status: 'pass',
-            actual: 'migrated_visible=4/4',
+            actual: 'visible_complete=4/4',
           },
           {
             gate_id: 'visible-render-cost',
@@ -363,9 +363,9 @@ describe('persona rollout gate', () => {
           {
             gate_id: 'render-log-completeness',
             kind: 'blocking',
-            threshold: 'migrated visible=100%',
+            threshold: 'visible complete=100%',
             status: 'pass',
-            actual: 'migrated_visible=4/4',
+            actual: 'visible_complete=4/4',
           },
           {
             gate_id: 'visible-render-cost',
@@ -399,9 +399,9 @@ describe('persona rollout gate', () => {
           {
             gate_id: 'render-log-completeness',
             kind: 'blocking',
-            threshold: 'migrated visible=100%',
+            threshold: 'visible complete=100%',
             status: 'pass',
-            actual: 'migrated_visible=4/4',
+            actual: 'visible_complete=4/4',
           },
           {
             gate_id: 'visible-render-cost',
@@ -417,9 +417,9 @@ describe('persona rollout gate', () => {
           {
             gate_id: 'render-log-completeness',
             kind: 'blocking',
-            threshold: 'migrated visible=100%',
+            threshold: 'visible complete=100%',
             status: 'pass',
-            actual: 'migrated_visible=4/4',
+            actual: 'visible_complete=4/4',
           },
           {
             gate_id: 'visible-render-cost',
@@ -445,9 +445,9 @@ describe('persona rollout gate', () => {
           {
             gate_id: 'render-log-completeness',
             kind: 'blocking',
-            threshold: 'migrated visible=100%',
+            threshold: 'visible complete=100%',
             status: 'pass',
-            actual: 'migrated_visible=4/4',
+            actual: 'visible_complete=4/4',
           },
         ],
       }),
@@ -493,9 +493,9 @@ describe('persona rollout gate', () => {
           {
             gate_id: 'render-log-completeness',
             kind: 'blocking',
-            threshold: 'migrated visible=100%',
+            threshold: 'visible complete=100%',
             status: 'pass',
-            actual: 'migrated_visible=4/4',
+            actual: 'visible_complete=4/4',
           },
         ],
       }),
@@ -546,9 +546,9 @@ describe('persona rollout gate', () => {
           {
             gate_id: 'render-log-completeness',
             kind: 'blocking',
-            threshold: 'migrated visible=100%',
+            threshold: 'visible complete=100%',
             status: 'pass',
-            actual: 'migrated_visible=4/4',
+            actual: 'visible_complete=4/4',
           },
         ],
       }),
@@ -628,9 +628,9 @@ describe('persona rollout gate', () => {
           {
             gate_id: 'render-log-completeness',
             kind: 'blocking',
-            threshold: 'migrated visible=100%',
+            threshold: 'visible complete=100%',
             status: 'pass',
-            actual: 'migrated_visible=4/4',
+            actual: 'visible_complete=4/4',
           },
         ],
       }),
@@ -675,9 +675,9 @@ describe('persona rollout gate', () => {
           {
             gate_id: 'render-log-completeness',
             kind: 'blocking',
-            threshold: 'migrated visible=100%',
+            threshold: 'visible complete=100%',
             status: 'pass',
-            actual: 'migrated_visible=4/4',
+            actual: 'visible_complete=4/4',
           },
         ],
       }),
@@ -731,9 +731,9 @@ describe('persona rollout gate', () => {
           {
             gate_id: 'render-log-completeness',
             kind: 'blocking',
-            threshold: 'migrated visible=100%',
+            threshold: 'visible complete=100%',
             status: 'pass',
-            actual: 'migrated_visible=4/4',
+            actual: 'visible_complete=4/4',
           },
         ],
       }),

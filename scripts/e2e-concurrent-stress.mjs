@@ -194,7 +194,9 @@ async function main() {
     console.log('\n=== Observability Counters ===')
     console.log(`  Identity writes: success=${cm?.identity_writes?.success_total ?? 0}, failure=${cm?.identity_writes?.failure_total ?? 0}`)
     console.log(`  Typed writes: success=${cm?.typed_writes?.success_total ?? 0}, failure=${cm?.typed_writes?.failure_total ?? 0}`)
-    console.log(`  Retrieval: total=${cm?.retrieval?.total ?? 0}, typed=${cm?.retrieval?.public_typed_hits ?? 0}, legacy=${cm?.retrieval?.public_legacy_hits ?? 0}`)
+    const retrievalTotal = cm?.retrieval?.total ?? 0
+    const typedHits = cm?.retrieval?.public_typed_hits ?? 0
+    console.log(`  Retrieval: total=${retrievalTotal}, typed=${typedHits}, empty=${Math.max(0, retrievalTotal - typedHits)}`)
     console.log(`  Public ingress: forum=${cm?.public_ingress?.forum_total ?? 0}, chat_room=${cm?.public_ingress?.chat_room_total ?? 0}`)
 
     const renderLog = observability.render_log_preview

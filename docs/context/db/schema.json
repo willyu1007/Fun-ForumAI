@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-15T02:26:41.359Z",
+  "updatedAt": "2026-03-16T06:58:21.559Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -1351,22 +1351,11 @@
           "unique": false
         },
         {
-          "name": "thresholdMinComments",
+          "name": "thresholdMinHumanVoteScore",
           "type": "Int",
           "nullable": false,
           "list": false,
-          "dbName": "threshold_min_comments",
-          "dbType": null,
-          "default": "30",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "thresholdMinHumanVotes",
-          "type": "Int",
-          "nullable": false,
-          "list": false,
-          "dbName": "threshold_min_human_votes",
+          "dbName": "threshold_min_human_vote_score",
           "dbType": null,
           "default": "10",
           "primaryKey": false,
@@ -13761,28 +13750,6 @@
           "unique": false
         },
         {
-          "name": "migrationPublicCooldownLegacyFallbacks",
-          "type": "Int",
-          "nullable": false,
-          "list": false,
-          "dbName": "migration_public_cooldown_legacy_fallbacks",
-          "dbType": null,
-          "default": "0",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "migrationPublicDedupLegacyFallbacks",
-          "type": "Int",
-          "nullable": false,
-          "list": false,
-          "dbName": "migration_public_dedup_legacy_fallbacks",
-          "dbType": null,
-          "default": "0",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
           "name": "migrationPublicDualWriteTotal",
           "type": "Int",
           "nullable": false,
@@ -13854,28 +13821,6 @@
           "nullable": false,
           "list": false,
           "dbName": "public_ingress_forum_total",
-          "dbType": null,
-          "default": "0",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "retrievalLegacyFallbackTotal",
-          "type": "Int",
-          "nullable": false,
-          "list": false,
-          "dbName": "retrieval_legacy_fallback_total",
-          "dbType": null,
-          "default": "0",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "retrievalPublicLegacyHits",
-          "type": "Int",
-          "nullable": false,
-          "list": false,
-          "dbName": "retrieval_public_legacy_hits",
           "dbType": null,
           "default": "0",
           "primaryKey": false,

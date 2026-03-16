@@ -212,7 +212,6 @@ export class ForumSceneContinuityService {
       local_intent_block: buildLocalIntentBlock(localIntent, episodeBrief),
       selection_audit: base.selection_audit ?? null,
       planning_audit: base.planning_audit ?? null,
-      fallback_reason: base.fallback_reason ?? null,
     }
   }
 

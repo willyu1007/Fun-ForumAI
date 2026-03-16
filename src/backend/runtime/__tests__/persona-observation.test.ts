@@ -7,13 +7,13 @@ import {
 } from '../persona-observation.js'
 
 describe('persona-observation', () => {
-  it('requires full migrated-visible attribution fields', () => {
+  it('requires full visible-complete attribution fields', () => {
     const observation = buildPersonaObservation({
       sourceCallsiteId: 'conversation-clock-chat-reply',
       scene: 'chat_room',
       intent: 'chat_reply',
       visibility: 'visible',
-      coverageStatus: 'migrated_visible',
+      coverageStatus: 'visible_complete',
       personaSeedCode: 'scholar',
       homeVoiceLineId: 'qwen-social-v1',
       promptRef: { id: 'agent-chat-reply', version: 4 },
@@ -48,7 +48,7 @@ describe('persona-observation', () => {
     expect(observation.prompt_audit?.included_layer_ids).toEqual(['layer1_traits'])
   })
 
-  it('allows partial hidden or legacy envelopes', () => {
+  it('allows partial hidden envelopes', () => {
     const hidden = buildPersonaObservation({
       sourceCallsiteId: 'public-observation-digest',
       scene: 'background_hidden',
@@ -67,7 +67,7 @@ describe('persona-observation', () => {
       scene: 'private_chat',
       intent: 'private_reply',
       visibility: 'visible',
-      coverageStatus: 'legacy_partial',
+      coverageStatus: 'visible_partial',
       parseSuccess: true,
     })
 
@@ -95,8 +95,8 @@ describe('persona-observation', () => {
       observed_runs_total: 2,
       observed_visible_runs_total: 1,
       observed_hidden_runs_total: 1,
-      migrated_visible_runs_total: 0,
-      legacy_partial_runs_total: 1,
+      visible_complete_runs_total: 0,
+      visible_partial_runs_total: 1,
       hidden_partial_runs_total: 1,
       complete_runs_total: 2,
       parse_attempt_total: 1,

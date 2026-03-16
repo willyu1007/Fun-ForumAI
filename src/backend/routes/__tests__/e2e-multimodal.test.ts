@@ -1,9 +1,90 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import request from 'supertest'
 import { app, config, userToken, user2Token, VALID_PNG_BUFFER, setupFeatureFlagGuard } from './e2e-helpers.js'
-import { llmClient, llmGateway } from '../../container.js'
+import { llmClient, llmGateway, postScheduler } from '../../container.js'
 
 setupFeatureFlagGuard()
+
+type ScheduledPostEligibleCommunity = {
+  id: string
+  slug: string
+  name: string
+  description: string
+  rules: string
+}
+
+function buildScheduledPostSelection(community: ScheduledPostEligibleCommunity) {
+  return {
+    kind: 'scene' as const,
+    community,
+    payload: {
+      scene_metadata: {
+        director_surface: 'scheduled_post',
+        actor_surface: 'forum_post',
+        scene_template_id: 'stage-theme-01',
+        scene_template_version: 'v2',
+        scene_binding_id: 'binding-general-scheduled-post',
+        overlay_id: null,
+        episode_id: 'episode-e2e',
+        beat_id: null,
+        phase: 'opening',
+        selection_mode: 'pool_guided',
+        selection_id: 'selection-e2e',
+        episode_plan_id: 'episode-plan-e2e',
+        local_intent_id: 'local-intent-e2e',
+        started_at: '2026-03-16T00:00:00.000Z',
+        expires_at: '2026-03-17T00:00:00.000Z',
+      },
+      episode_brief: {
+        episode_id: 'episode-e2e',
+        director_surface: 'scheduled_post',
+        actor_surface: 'forum_post',
+        template_id: 'stage-theme-01',
+        template_version: 'v2',
+        binding_id: 'binding-general-scheduled-post',
+        phase: 'opening',
+        scene_goal: {
+          viewer_goal: '推进讨论',
+          growth_goal: '增加连贯性',
+        },
+        casting_directive: {
+          must_have_roles: [],
+          avoid_pairs: [],
+          core_quota: 2,
+          contrast_quota: 1,
+          wildcard_quota: 1,
+        },
+        open_loops: [],
+        must_hit_points: [],
+        avoid_repeat: [],
+        close_condition: {
+          ttl_hours: 24,
+          message_threshold: 12,
+          objective: '推进讨论',
+        },
+        expires_at: '2026-03-17T00:00:00.000Z',
+      },
+      local_intent: {
+        intent_id: 'local-intent-e2e',
+        delivery_surface: 'forum_post',
+        initiative: 'open_topic',
+        opinion_policy: 'free_opinion',
+        relation_focus: 'none',
+        tone_hint: 'neutral',
+        privacy_mode: 'public_only',
+        memory_scope: 'public_contextual',
+        reference_scope: 'seed_only',
+        prohibited_reference_types: ['owner_private_speech', 'private_memory', 'hidden_director_goal'],
+        target_ref: { kind: 'none' },
+        hard_constraints: ['不得改写目标社区'],
+        soft_constraints: ['推进讨论'],
+      },
+      local_intent_block: '## Local Intent\n- episode_id: episode-e2e',
+      selection_audit: { community_id: community.id },
+      planning_audit: { episode_id: 'episode-e2e' },
+    },
+  }
+}
 
 describe('E2E: Multimodal inclination + owner-only growth controls', () => {
   const featureFlags = config.features as unknown as Record<string, boolean>
@@ -123,6 +204,23 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
     ) ?? Object.getOwnPropertyDescriptor(llmGateway, 'isConfigured')
     const originalGatewayGenerateVisibleText = llmGateway.generateVisibleText.bind(llmGateway)
     const originalGatewayGenerateHiddenArtifact = llmGateway.generateHiddenArtifact.bind(llmGateway)
+    const schedulerDeps = postScheduler as unknown as {
+      deps?: {
+        publicSceneSelectorService?: {
+          selectScheduledPost: (input: {
+            eligible_communities: Array<{
+              id: string
+              slug: string
+              name: string
+              description: string
+              rules: string
+            }>
+          }) => Promise<unknown>
+        } | null
+      }
+    }
+    const selectorService = schedulerDeps.deps?.publicSceneSelectorService ?? null
+    const originalSelectScheduledPost = selectorService?.selectScheduledPost.bind(selectorService)
 
     Object.defineProperty(llmClient, 'isConfigured', {
       value: true,
@@ -181,6 +279,17 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
     try {
       const seedRes = await request(app).post('/v1/dev/seed').send()
       expect(seedRes.status).toBe(200)
+      if (!selectorService || !originalSelectScheduledPost) {
+        throw new Error('public scene selector unavailable in test container')
+      }
+      selectorService.selectScheduledPost = vi.fn(async (input) => {
+        const community = input.eligible_communities.find((item: ScheduledPostEligibleCommunity) => item.slug === 'general')
+          ?? input.eligible_communities[0]
+        if (!community) {
+          return { kind: 'skip', reason: 'no_eligible_communities' }
+        }
+        return buildScheduledPostSelection(community)
+      })
 
       const createAgentRes = await request(app)
         .post('/v1/agents')
@@ -232,6 +341,9 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
         Object.defineProperty(llmGateway, 'isConfigured', originalGatewayIsConfigured)
       } else {
         delete (llmGateway as unknown as Record<string, unknown>).isConfigured
+      }
+      if (selectorService && originalSelectScheduledPost) {
+        selectorService.selectScheduledPost = originalSelectScheduledPost
       }
     }
   })

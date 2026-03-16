@@ -1,25 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { config } from '../../lib/config.js'
 import { ProactiveInteractionService } from '../proactive-interaction-service.js'
 import { PROMPT_TEMPLATE_REFS } from '../../llm/prompt-template-refs.js'
-
-function withLayerStackFlag<T>(enabled: boolean, run: () => Promise<T>): Promise<T> {
-  const featureFlags = config.features as unknown as Record<string, boolean>
-  const original = featureFlags.layerStackV2
-  featureFlags.layerStackV2 = enabled
-  return run().finally(() => {
-    featureFlags.layerStackV2 = original
-  })
-}
-
-function withFeatureFlags<T>(override: Partial<Record<string, boolean>>, run: () => Promise<T>): Promise<T> {
-  const featureFlags = config.features as unknown as Record<string, boolean>
-  const snapshot = { ...featureFlags }
-  Object.assign(featureFlags, override)
-  return run().finally(() => {
-    Object.assign(featureFlags, snapshot)
-  })
-}
 
 describe('ProactiveInteractionService', () => {
   it('uses PromptOrchestrator + PromptEngine for proactive opening', async () => {
@@ -109,28 +90,24 @@ describe('ProactiveInteractionService', () => {
       notificationService: { create: vi.fn(async () => ({ id: 'notif-1' })) } as never,
     })
 
-    await withLayerStackFlag(true, async () => {
-      await withFeatureFlags({ privateDirectorBoundaryV1: true }, async () => {
-        const ok = await service.onVoteReceived('agent-1', {
-          direction: 'UP',
-          target_type: 'POST',
-          target_id: 'post-1',
-          voter_agent_id: 'agent-voter',
-        })
-        expect(ok).toBe(true)
-        expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
-          promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
-          variables: expect.objectContaining({
-            trigger_type: 'vote_received',
-          }),
-        }))
-        const firstCall = gatewayGenerate.mock.calls.at(0)?.[0] as { variables: Record<string, string> } | undefined
-        expect(firstCall?.variables.layer_showrunner).toBeUndefined()
-      })
+    const ok = await service.onVoteReceived('agent-1', {
+      direction: 'UP',
+      target_type: 'POST',
+      target_id: 'post-1',
+      voter_agent_id: 'agent-voter',
     })
+    expect(ok).toBe(true)
+    expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
+      promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
+      variables: expect.objectContaining({
+        trigger_type: 'vote_received',
+      }),
+    }))
+    const firstCall = gatewayGenerate.mock.calls.at(0)?.[0] as { variables: Record<string, string> } | undefined
+    expect(firstCall?.variables.layer_showrunner).toBe('')
   })
 
-  it('falls back to legacy prompt when orchestrator path fails', async () => {
+  it('fails fast when proactive prompt orchestration fails', async () => {
     const gatewayGenerate = vi.fn(async (_input: Record<string, unknown>) => ({
       content: 'legacy opening',
       usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 },
@@ -148,10 +125,10 @@ describe('ProactiveInteractionService', () => {
         credentialId: 'cred-1',
         fallbackLevel: 'none',
         reasons: ['test'],
-        promptTemplateId: 'internal-proactive-dm-opening-legacy',
+        promptTemplateId: 'agent-proactive-dm-opening',
         promptVersion: 1,
       },
-      promptRef: PROMPT_TEMPLATE_REFS.internalProactiveDmOpeningLegacy,
+      promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
     }))
 
     const service = new ProactiveInteractionService({
@@ -208,18 +185,12 @@ describe('ProactiveInteractionService', () => {
       notificationService: { create: vi.fn(async () => ({ id: 'notif-1' })) } as never,
     })
 
-    await withLayerStackFlag(true, async () => {
-      const ok = await service.onVoteReceived('agent-1', {
-        direction: 'UP',
-        target_type: 'POST',
-        target_id: 'post-1',
-        voter_agent_id: 'agent-voter',
-      })
-      expect(ok).toBe(true)
-      const firstCall = gatewayGenerate.mock.calls.at(0)
-      expect(firstCall).toBeDefined()
-      const call = firstCall![0] as unknown as { promptRef: typeof PROMPT_TEMPLATE_REFS.internalProactiveDmOpeningLegacy }
-      expect(call.promptRef).toEqual(PROMPT_TEMPLATE_REFS.internalProactiveDmOpeningLegacy)
-    })
+    await expect(service.onVoteReceived('agent-1', {
+      direction: 'UP',
+      target_type: 'POST',
+      target_id: 'post-1',
+      voter_agent_id: 'agent-voter',
+    })).rejects.toThrow('compose failed')
+    expect(gatewayGenerate).not.toHaveBeenCalled()
   })
 })

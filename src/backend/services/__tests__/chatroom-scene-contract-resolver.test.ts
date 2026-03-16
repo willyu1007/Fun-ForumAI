@@ -102,22 +102,16 @@ describe('ChatroomSceneContractResolver', () => {
     expect(resolved.selection_mode).toBe('pool_strict')
   })
 
-  it('falls back to deterministic legacy templates when no binding is available', () => {
+  it('rejects chatroom resolution when the launch catalog is missing', () => {
     const resolver = new ChatroomSceneContractResolver({
       catalogService: {
         getLaunchCatalog: () => null,
       } as never,
     })
 
-    const resolved = resolver.resolve({
+    expect(() => resolver.resolve({
       roomId: 'room-1',
       sceneType: 'TALK_SHOW',
-    })
-
-    expect(resolved.source).toBe('legacy_fallback')
-    expect(resolved.binding).toBeNull()
-    expect(resolved.template.template_id).toBe('legacy-chat-room-talk_show')
-    expect(resolved.template.director.closing_policy.aftershow_mode).toBe('off')
-    expect(resolved.selection_mode).toBe('autonomous_anchored')
+    })).toThrow('missing launch catalog')
   })
 })

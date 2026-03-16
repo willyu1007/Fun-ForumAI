@@ -96,11 +96,11 @@ async function generateTypedDigest(
       source_type: 'PRIVATE_CHAT',
       source_session_id: sessionId,
       source_event_id: recorded.id,
-      summary_text: distilled.compatibilityDigest.summary_text,
-      topic_tags: distilled.compatibilityDigest.topic_tags,
-      key_facts: distilled.compatibilityDigest.key_facts,
-      sentiment: distilled.compatibilityDigest.sentiment,
-      importance_score: distilled.compatibilityDigest.importance_score,
+      summary_text: distilled.memoryDigest.summary_text,
+      topic_tags: distilled.memoryDigest.topic_tags,
+      key_facts: distilled.memoryDigest.key_facts,
+      sentiment: distilled.memoryDigest.sentiment,
+      importance_score: distilled.memoryDigest.importance_score,
       privacy_floor: 1,
     })
   } catch (error) {

@@ -87,10 +87,8 @@ export function createAllocator(deps: {
         membership_repo: repos.agentCommunityMembershipRepo,
       })
       const community = repos.communityRepo.findById(communityId)
-      const stageResolved = config.features.stageSpecV1
-        ? resolveStageSpecFromRules(community?.rules_json ?? null, { community_id: communityId })
-        : null
-      const minTierPool = stageResolved?.stage_spec.min_tier_pool ?? 'T1'
+      const stageResolved = resolveStageSpecFromRules(community?.rules_json ?? null, { community_id: communityId })
+      const minTierPool = stageResolved.stage_spec.min_tier_pool
       const tierMap = config.features.stageTierV1
         ? stageTierService.getLatestSnapshotMap(agents.items.map((agent) => agent.id))
         : new Map()

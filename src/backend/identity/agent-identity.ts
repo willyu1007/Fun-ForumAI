@@ -13,8 +13,6 @@ import {
 
 export type IdentityContractSource =
   | 'contract_v1'
-  | 'legacy_persona_style'
-  | 'legacy_default'
 
 export interface OwnerStylePins {
   formality?: number
@@ -45,17 +43,10 @@ export interface AgentVoiceConfig {
   }
 }
 
-export interface LegacyIdentityMigration {
-  source: string
-  preservedModel: string | null
-  migratedAt: string
-}
-
 export interface AgentPersonaConfigContract {
   personaSeed: PersonaSeedConfig
   voice: AgentVoiceConfig
   ownerStylePins: OwnerStylePins
-  legacyIdentityMigration: LegacyIdentityMigration
 }
 
 export interface VisiblePersona {
@@ -87,88 +78,39 @@ const DEFAULT_STYLE_PINS: Required<Omit<OwnerStylePins, 'interests'>> = {
   forum_activity: 3,
 }
 
-type LegacyPersonaConfig = {
-  name?: string
-  style?: string
-  interests: string[]
-  language?: string
-}
-
 export function resolveAgentIdentity(agent: Agent, latestConfig: AgentConfig | null): ResolvedAgentIdentity {
-  const configJson = latestConfig?.config_json ?? {}
-  const personaSeedRecord = toRecord(configJson.personaSeed)
-  const voiceRecord = toRecord(configJson.voice)
-
-  if (personaSeedRecord || voiceRecord) {
-    const contract = resolveContractFromConfig(configJson, agent)
-    return buildResolvedIdentity(agent, contract, 'contract_v1')
-  }
-
-  const legacyPersona = readLegacyPersona(configJson)
-  const legacyStylePins = readLegacyStylePins(configJson)
-  if (
-    legacyPersona.name ||
-    legacyPersona.style ||
-    legacyPersona.interests.length > 0 ||
-    hasStyleSignals(legacyStylePins)
-  ) {
-    const inferredSeed = inferSeedFromPins(legacyStylePins)
-    const contract = buildInitialIdentityContract({
-      personaSeedCode: inferredSeed,
-      ownerStylePins: {
-        ...legacyStylePins,
-        interests: legacyPersona.interests.length > 0
-          ? legacyPersona.interests
-          : legacyStylePins.interests,
-      },
-      model: agent.model,
-      selectedAt: resolveSelectedAt(agent, latestConfig),
-      migrationSource: 'legacy_persona_style',
-    })
-    return buildResolvedIdentity(agent, contract, 'legacy_persona_style', legacyPersona)
-  }
-
-  const contract = buildInitialIdentityContract({
-    personaSeedCode: DEFAULT_PERSONA_SEED_CODE,
-    model: agent.model,
-    selectedAt: resolveSelectedAt(agent, latestConfig),
-    migrationSource: 'legacy_default',
-  })
-  return buildResolvedIdentity(agent, contract, 'legacy_default')
+  const contract = resolveContractFromConfig(sanitizeIdentityConfig(latestConfig?.config_json ?? {}), agent)
+  return buildResolvedIdentity(agent, contract)
 }
 
 export function buildInitialIdentityConfig(input: {
   personaSeedCode?: string
   ownerStylePins?: OwnerStylePins
-  model?: string | null
   selectedAt?: Date
 }): Record<string, unknown> {
   const contract = buildInitialIdentityContract({
     personaSeedCode: input.personaSeedCode,
     ownerStylePins: input.ownerStylePins,
-    model: input.model ?? null,
     selectedAt: input.selectedAt ?? new Date(),
-    migrationSource: input.model ? 'create_with_model_compat' : 'create_contract_v1',
   })
 
   return {
     personaSeed: contract.personaSeed,
     voice: contract.voice,
     ownerStylePins: contract.ownerStylePins,
-    legacyIdentityMigration: contract.legacyIdentityMigration,
-    style: toLegacyStyleRecord(contract.ownerStylePins),
   }
 }
 
 export function sanitizeIdentityConfig(configJson: Record<string, unknown>): Record<string, unknown> {
-  const next = { ...configJson }
+  const next: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(configJson)) {
+    if (key === 'persona' || key === 'style') continue
+    if (key.startsWith('legacy') && key.endsWith('Migration')) continue
+    next[key] = value
+  }
   const personaSeedRecord = toRecord(next.personaSeed)
   const voiceRecord = toRecord(next.voice)
   const ownerStylePinsRecord = toRecord(next.ownerStylePins)
-
-  if (!personaSeedRecord && !voiceRecord && !ownerStylePinsRecord && !('legacyIdentityMigration' in next)) {
-    return next
-  }
 
   const seedCode = normalizePersonaSeedCode(personaSeedRecord?.seedCode)
   const personaSeed = PERSONA_SEED_CATALOG[seedCode]
@@ -199,9 +141,7 @@ export function sanitizeIdentityConfig(configJson: Record<string, unknown>): Rec
       maxMigrations: safePositiveInt(toRecord(voiceRecord?.migrationPolicy)?.maxMigrations, 1),
     },
   } satisfies AgentVoiceConfig
-  next.ownerStylePins = normalizeOwnerStylePins(ownerStylePinsRecord)
-  next.legacyIdentityMigration = normalizeLegacyIdentityMigration(next.legacyIdentityMigration, null)
-  next.style = toLegacyStyleRecord(next.ownerStylePins as OwnerStylePins)
+  next.ownerStylePins = normalizeOwnerStylePins(ownerStylePinsRecord ?? personaSeed.starterStyleProjection)
 
   return next
 }
@@ -223,20 +163,10 @@ export function applyStyleSettingsPatch(
 ): Record<string, unknown> {
   const current = readIdentityStylePins(configJson)
   const nextPins = normalizeOwnerStylePins({ ...current, ...patch })
-
-  const next = { ...configJson }
-  if (hasIdentityContract(next)) {
-    next.ownerStylePins = {
-      ...toRecord(next.ownerStylePins),
-      ...nextPins,
-      interests: readInterestPins(next.ownerStylePins),
-    }
-    next.style = toLegacyStyleRecord(next.ownerStylePins as OwnerStylePins)
-    return sanitizeIdentityConfig(next)
-  }
-
-  next.style = toLegacyStyleRecord(nextPins)
-  return next
+  return sanitizeIdentityConfig({
+    ...configJson,
+    ownerStylePins: nextPins,
+  })
 }
 
 export function buildAgentReadPayload(agent: Agent, latestConfig: AgentConfig | null): Record<string, unknown> {
@@ -322,9 +252,7 @@ export function buildStyleInstructionText(pins: OwnerStylePins): string {
 function buildInitialIdentityContract(input: {
   personaSeedCode?: string
   ownerStylePins?: OwnerStylePins
-  model?: string | null
   selectedAt: Date
-  migrationSource: string
 }): AgentPersonaConfigContract {
   const seedCode = normalizePersonaSeedCode(input.personaSeedCode)
   const personaSeed = PERSONA_SEED_CATALOG[seedCode]
@@ -357,11 +285,6 @@ function buildInitialIdentityContract(input: {
       },
     },
     ownerStylePins: mergedPins,
-    legacyIdentityMigration: {
-      source: input.migrationSource,
-      preservedModel: input.model ?? null,
-      migratedAt: input.selectedAt.toISOString(),
-    },
   }
 }
 
@@ -397,22 +320,19 @@ function resolveContractFromConfig(configJson: Record<string, unknown>, agent: A
         maxMigrations: safePositiveInt(toRecord(voiceRecord?.migrationPolicy)?.maxMigrations, 1),
       },
     },
-    ownerStylePins: normalizeOwnerStylePins(configJson.ownerStylePins),
-    legacyIdentityMigration: normalizeLegacyIdentityMigration(configJson.legacyIdentityMigration, agent.model),
+    ownerStylePins: normalizeOwnerStylePins(configJson.ownerStylePins ?? personaSeed.starterStyleProjection),
   }
 }
 
 function buildResolvedIdentity(
   agent: Agent,
   contract: AgentPersonaConfigContract,
-  source: IdentityContractSource,
-  legacyPersona?: LegacyPersonaConfig,
 ): ResolvedAgentIdentity {
   const voiceLine = VOICE_LINE_CATALOG[contract.voice.homeVoiceLineId]
-  const visiblePersona = buildVisiblePersona(agent, contract, source, legacyPersona)
+  const visiblePersona = buildVisiblePersona(agent, contract)
 
   return {
-    source,
+    source: 'contract_v1',
     contract,
     visiblePersona,
     summary: {
@@ -427,23 +347,10 @@ function buildResolvedIdentity(
 function buildVisiblePersona(
   agent: Agent,
   contract: AgentPersonaConfigContract,
-  source: IdentityContractSource,
-  legacyPersona?: LegacyPersonaConfig,
 ): VisiblePersona {
-  const interests = legacyPersona?.interests?.length
-    ? legacyPersona.interests
-    : contract.ownerStylePins.interests?.length
-      ? contract.ownerStylePins.interests
-      : DEFAULT_INTERESTS
-
-  if (source === 'legacy_persona_style') {
-    return {
-      name: legacyPersona?.name || agent.display_name,
-      style: legacyPersona?.style || buildPersonaStyleText(contract.personaSeed.displayName, contract.ownerStylePins),
-      interests,
-      language: legacyPersona?.language || DEFAULT_LANGUAGE,
-    }
-  }
+  const interests = contract.ownerStylePins.interests?.length
+    ? contract.ownerStylePins.interests
+    : DEFAULT_INTERESTS
 
   return {
     name: agent.display_name,
@@ -487,26 +394,9 @@ function buildPersonaStyleText(seedLabel: string, pins: OwnerStylePins): string 
   return styleParts.length > 0 ? `${seedLabel}，${styleParts.join('，')}` : seedLabel
 }
 
-function readLegacyPersona(configJson: Record<string, unknown>): LegacyPersonaConfig {
-  const persona = toRecord(configJson.persona)
-  return {
-    name: typeof persona?.name === 'string' ? persona.name : undefined,
-    style: typeof persona?.style === 'string' ? persona.style : undefined,
-    interests: readInterestPins(persona),
-    language: typeof persona?.language === 'string' ? persona.language : undefined,
-  }
-}
-
-function readLegacyStylePins(configJson: Record<string, unknown>): OwnerStylePins {
-  return normalizeOwnerStylePins(configJson.style)
-}
-
 function readIdentityStylePins(configJson: Record<string, unknown>): OwnerStylePins {
   const ownerPins = toRecord(configJson.ownerStylePins)
-  if (ownerPins) {
-    return normalizeOwnerStylePins(ownerPins)
-  }
-  return readLegacyStylePins(configJson)
+  return normalizeOwnerStylePins(ownerPins)
 }
 
 function normalizeOwnerStylePins(input: unknown): OwnerStylePins {
@@ -518,27 +408,6 @@ function normalizeOwnerStylePins(input: unknown): OwnerStylePins {
     habits: normalizeHabitList(record?.habits),
     forum_activity: clampStyleNumber(record?.forum_activity),
     interests: readInterestPins(record),
-  }
-}
-
-function toLegacyStyleRecord(input: OwnerStylePins): Record<string, unknown> {
-  return {
-    formality: input.formality ?? DEFAULT_STYLE_PINS.formality,
-    verbosity: input.verbosity ?? DEFAULT_STYLE_PINS.verbosity,
-    mood: input.mood ?? DEFAULT_STYLE_PINS.mood,
-    habits: input.habits ?? [],
-    forum_activity: input.forum_activity ?? DEFAULT_STYLE_PINS.forum_activity,
-  }
-}
-
-function normalizeLegacyIdentityMigration(input: unknown, preservedModel: string | null): LegacyIdentityMigration {
-  const record = toRecord(input)
-  return {
-    source: typeof record?.source === 'string' ? record.source : 'contract_v1',
-    preservedModel: typeof record?.preservedModel === 'string'
-      ? record.preservedModel
-      : preservedModel,
-    migratedAt: normalizeIsoString(record?.migratedAt) ?? new Date().toISOString(),
   }
 }
 
@@ -600,24 +469,10 @@ function normalizeIsoString(input: unknown): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
 
-function inferSeedFromPins(pins: OwnerStylePins): PersonaSeedCode {
-  if (pins.mood === 'critical') return 'sharp-tongue'
-  if (pins.mood === 'optimistic' && pins.habits?.includes('tells_stories')) return 'warmhearted'
-  if (pins.habits?.includes('asks_questions') && (pins.verbosity ?? 3) >= 4) return 'philosopher'
-  if (pins.mood === 'random' || pins.habits?.includes('uses_analogies')) return 'comedian'
-  if (pins.habits?.includes('summarizes') && (pins.formality ?? 3) >= 4) return 'scholar'
-  if (pins.habits?.includes('summarizes')) return 'mediator'
-  return DEFAULT_PERSONA_SEED_CODE
-}
-
 function assertVisibleVoiceLine(voiceLineId: VoiceLineId): void {
   if (!VOICE_LINE_CATALOG[voiceLineId].visible) {
     throw new ValidationError(`hidden-only voice line cannot be used as homeVoiceLineId: ${voiceLineId}`)
   }
-}
-
-function hasIdentityContract(configJson: Record<string, unknown>): boolean {
-  return Boolean(toRecord(configJson.personaSeed) || toRecord(configJson.voice) || toRecord(configJson.ownerStylePins))
 }
 
 function resolveSelectedAt(agent: Partial<Pick<Agent, 'created_at'>>, latestConfig?: AgentConfig | null): Date {
@@ -630,17 +485,6 @@ function resolveSelectedAt(agent: Partial<Pick<Agent, 'created_at'>>, latestConf
     return createdAt
   }
   return new Date()
-}
-
-function hasStyleSignals(pins: OwnerStylePins): boolean {
-  return Boolean(
-    pins.formality !== undefined ||
-    pins.verbosity !== undefined ||
-    pins.mood !== undefined ||
-    (pins.habits?.length ?? 0) > 0 ||
-    pins.forum_activity !== undefined ||
-    (pins.interests?.length ?? 0) > 0,
-  )
 }
 
 function toRecord(input: unknown): Record<string, unknown> | null {

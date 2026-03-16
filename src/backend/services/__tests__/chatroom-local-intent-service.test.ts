@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { config } from '../../lib/config.js'
 import { DEFAULT_STAGE_SPEC_V1 } from '../../stage/index.js'
 import { ChatroomLocalIntentService } from '../chatroom-local-intent-service.js'
 
@@ -160,39 +159,13 @@ function makeInput() {
 }
 
 describe('ChatroomLocalIntentService', () => {
-  it('keeps director goal compat in actor-visible soft constraints when LocalIntent mode is off', () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
-    const snapshot = { ...featureFlags }
-    featureFlags.chatroomLocalIntentV1 = false
+  it('always hides director goal compat from actor-visible local intent', () => {
+    const service = new ChatroomLocalIntentService()
+    const result = service.build(makeInput())
 
-    try {
-      const service = new ChatroomLocalIntentService()
-      const result = service.build(makeInput())
-
-      expect(result.director_goal_compat).toBe('把 owner 的隐形导演 cue 往前推半步')
-      expect(result.local_intent.soft_constraints).toContain('把 owner 的隐形导演 cue 往前推半步')
-      expect(result.local_intent_block).toContain('把 owner 的隐形导演 cue 往前推半步')
-    } finally {
-      Object.assign(featureFlags, snapshot)
-    }
-  })
-
-  it('hides director goal compat from actor-visible LocalIntent when LocalIntent mode is on', () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
-    const snapshot = { ...featureFlags }
-    featureFlags.chatroomLocalIntentV1 = true
-
-    try {
-      const service = new ChatroomLocalIntentService()
-      const result = service.build(makeInput())
-
-      expect(result.director_goal_compat).toBe('把 owner 的隐形导演 cue 往前推半步')
-      expect(result.local_intent.soft_constraints).not.toContain('把 owner 的隐形导演 cue 往前推半步')
-      expect(result.local_intent_block).not.toContain('把 owner 的隐形导演 cue 往前推半步')
-      expect(result.local_intent.soft_constraints).toContain('把房间推成一段更有看点的 talk show')
-    } finally {
-      Object.assign(featureFlags, snapshot)
-    }
+    expect(result.local_intent.soft_constraints).not.toContain('把 owner 的隐形导演 cue 往前推半步')
+    expect(result.local_intent_block).not.toContain('把 owner 的隐形导演 cue 往前推半步')
+    expect(result.local_intent.soft_constraints).toContain('把房间推成一段更有看点的 talk show')
   })
 
   it('tolerates runtime state payloads that omit objective_refs', () => {

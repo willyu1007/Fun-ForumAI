@@ -246,6 +246,30 @@ describe('AchievementsOrchestrator', () => {
     })
 
     const now = new Date('2026-03-01T08:00:00.000Z')
+    await chronicleRepo.create({
+      agent_id: agent.id,
+      visibility: 'PUBLIC',
+      type: 'HIGHLIGHT',
+      title: 'Global Chronicle Signal',
+      summary: '一条全局公共 chronicle，用于点亮 daily spotlight。',
+      importance_score: 0.88,
+      evidence: [{ kind: 'chronicle', ref_id: 'global-chronicle' }],
+      tags: ['signal:forum_post'],
+      meta: { scope: 'global', scope_key: '__global__' },
+      occurred_at: now,
+    })
+    await chronicleRepo.create({
+      agent_id: agent.id,
+      visibility: 'PUBLIC',
+      type: 'HIGHLIGHT',
+      title: 'Cross Scene Signal',
+      summary: '另一条全局公共 chronicle，用于满足 cross-scene 指标。',
+      importance_score: 0.91,
+      evidence: [{ kind: 'cross_scene', ref_id: 'cross-scene-1' }],
+      tags: ['signal:forum_comment'],
+      meta: { scope: 'global', scope_key: '__global__' },
+      occurred_at: now,
+    })
     await orchestrator.runDailyBatch(now)
     await orchestrator.runWeeklyBatch(now)
 

@@ -20,7 +20,7 @@ describe('MemoryService context-memory runtime', () => {
     vi.restoreAllMocks()
   })
 
-  it('runs private typed pipeline and still emits a compatibility AgentMemory', async () => {
+  it('runs private typed pipeline and still emits an AgentMemory artifact', async () => {
     const onDigestCompleted = vi.fn().mockResolvedValue(undefined)
     const createMemory = vi.fn().mockResolvedValue({
       id: 'mem-1',
@@ -137,7 +137,7 @@ describe('MemoryService context-memory runtime', () => {
               public_safe_shadow: '我更在意表达里的细节。',
               evidence_refs: ['evt-1'],
             },
-            compatibilityDigest: {
+            memoryDigest: {
               summary_text: '兼容摘要',
               topic_tags: ['咖啡'],
               key_facts: ['fact'],
@@ -212,7 +212,7 @@ describe('MemoryService context-memory runtime', () => {
     expect(updateDigestStatus).toHaveBeenCalledWith('session-1', 'COMPLETED')
   })
 
-  it('ingests forum public observation into typed context while keeping legacy AgentMemory', async () => {
+  it('ingests forum public observation into typed context while keeping the AgentMemory artifact', async () => {
     const record = vi.fn(async (event) => event)
     const extract = vi.fn().mockResolvedValue({
       summaryText: '论坛摘要',
@@ -254,7 +254,7 @@ describe('MemoryService context-memory runtime', () => {
       selfModel: null,
       tensions: [],
       privateShadow: null,
-      compatibilityDigest: {
+      memoryDigest: {
         summary_text: '论坛摘要',
         topic_tags: ['播客'],
         key_facts: ['大家在聊节目节奏'],
@@ -355,7 +355,7 @@ describe('MemoryService context-memory runtime', () => {
     }))
   })
 
-  it('backfills legacy public observation into typed retrieval on first read', async () => {
+  it('does not backfill AgentMemory public observations into typed retrieval on first read', async () => {
     const rawEventRepo = new InMemoryRawContextEventRepository()
     const episodicCardRepo = new InMemoryEpisodicCardRepository()
     const incrementAccessCount = vi.fn().mockResolvedValue(undefined)
@@ -407,20 +407,10 @@ describe('MemoryService context-memory runtime', () => {
       topK: 4,
     })
 
-    expect(result.formatted).toContain('公共回声')
-    expect(result.formatted).toContain('论坛观察 |')
-    expect(await rawEventRepo.findById('ctxevent:legacy-public-observation:mem-public-legacy-1')).toMatchObject({
-      agent_id: 'agent-1',
-      scene: 'forum',
-      source_ref_id: 'post-1',
-    })
+    expect(result.formatted).toBe('')
+    expect(await rawEventRepo.findById('ctxevent:legacy-public-observation:mem-public-legacy-1')).toBeNull()
     const cards = await episodicCardRepo.listByAgent('agent-1', { limit: 10, scene: 'forum' })
-    expect(cards.items).toHaveLength(1)
-    expect(cards.items[0]).toMatchObject({
-      id: 'ctxepisode:legacy-public-observation:mem-public-legacy-1:1',
-      event_id: 'ctxevent:legacy-public-observation:mem-public-legacy-1',
-      scene: 'forum',
-    })
+    expect(cards.items).toHaveLength(0)
     expect(incrementAccessCount).not.toHaveBeenCalled()
   })
 

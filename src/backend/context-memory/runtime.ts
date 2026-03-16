@@ -134,7 +134,7 @@ export class LlmSummaryOrchestrator implements SummaryOrchestrator {
     const selfModel = selfModelFromDistill(event, parsed.self_model)
     const tensions = tensionsFromDistill(event, arrayField(parsed.tensions))
     const privateShadow = privateShadowFromDistill(event, parsed.private_shadow, extracted.publicSafeShadowHint)
-    const compatibilityDigest = compatibilityDigestFromDistill(parsed.compatibility_digest, extracted)
+    const memoryDigest = memoryDigestFromDistill(parsed.memory_digest, extracted)
 
     return {
       origin: {
@@ -147,7 +147,7 @@ export class LlmSummaryOrchestrator implements SummaryOrchestrator {
       selfModel,
       tensions,
       privateShadow,
-      compatibilityDigest,
+      memoryDigest,
     }
   }
 }
@@ -439,10 +439,10 @@ function privateShadowFromDistill(
   }
 }
 
-function compatibilityDigestFromDistill(
+function memoryDigestFromDistill(
   value: unknown,
   extracted: SummaryExtractResult,
-): SummaryDistillResult['compatibilityDigest'] {
+): SummaryDistillResult['memoryDigest'] {
   const record = toRecord(value)
   return {
     summary_text: stringField(record?.summary_text, extracted.summaryText),

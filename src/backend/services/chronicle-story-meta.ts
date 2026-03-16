@@ -120,7 +120,7 @@ function linkedAchievementCodes(tags?: string[]): string[] {
     .map((tag) => tag.slice('achievement:'.length))
 }
 
-function legacyBeatTypeToStoryKind(beatType: string, sourceDimension: SourceDimension): string {
+function beatTypeToStoryKind(beatType: string, sourceDimension: SourceDimension): string {
   switch (beatType) {
     case 'AFTERGLOW':
       return 'private_afterglow'
@@ -242,7 +242,7 @@ export function readChronicleStoryMeta(
         version: 1,
         source_dimension: sourceDimension,
         source_label: toSourceLabel(sourceDimension),
-        story_kind: legacyBeatTypeToStoryKind(beatType, sourceDimension),
+        story_kind: beatTypeToStoryKind(beatType, sourceDimension),
         chapter_key: chapterKey,
         chapter_title: chapterTitle,
         scene_label: inferSceneLabel({

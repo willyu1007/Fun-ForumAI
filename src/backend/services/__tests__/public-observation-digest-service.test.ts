@@ -53,6 +53,7 @@ function makeForumService(params: {
   commentCount: number
   participantCount: number
   heatScore: number
+  typedLatestImpl?: () => Promise<Date | null>
   listMemoriesImpl?: (opts: MemoryListOpts) => Promise<{ items: Array<{ created_at: Date }>; next_cursor: null }>
 }) {
   const createPublicObservationMemory = vi.fn().mockResolvedValue(undefined)
@@ -60,6 +61,9 @@ function makeForumService(params: {
     if (params.listMemoriesImpl) return params.listMemoriesImpl(opts)
     return Promise.resolve({ items: [], next_cursor: null as null })
   })
+  const getLatestTypedPublicObservationAt = vi.fn(() => (
+    params.typedLatestImpl ? params.typedLatestImpl() : Promise.resolve(null)
+  ))
 
   const service = new PublicObservationDigestService({
     llmGateway: { isConfigured: false } as never,
@@ -80,14 +84,14 @@ function makeForumService(params: {
     messageRepo: {} as never,
     memoryService: {
       hasTypedPublicObservationEvent: vi.fn().mockResolvedValue(false),
-      getLatestTypedPublicObservationAt: vi.fn().mockResolvedValue(null),
+      getLatestTypedPublicObservationAt,
       listMemories,
       createPublicObservationMemory,
     } as never,
     ...makeObservationDeps(),
   })
 
-  return { service, createPublicObservationMemory, listMemories }
+  return { service, createPublicObservationMemory, getLatestTypedPublicObservationAt, listMemories }
 }
 
 function makeRoomService(params: {
@@ -392,7 +396,7 @@ describe('PublicObservationDigestService', () => {
     expect(createPublicObservationMemory).not.toHaveBeenCalled()
   })
 
-  it('room cooldown uses typed raw events before falling back to legacy memories', async () => {
+  it('room cooldown uses typed public-observation timestamps as the canonical gate', async () => {
     const now = new Date('2026-02-27T08:00:00.000Z')
     const createPublicObservationMemory = vi.fn().mockResolvedValue(undefined)
     const listMemories = vi.fn().mockResolvedValue({ items: [], next_cursor: null })
@@ -431,20 +435,20 @@ describe('PublicObservationDigestService', () => {
   })
 
   it('rechecks cooldown before write to prevent TOCTOU duplicates', async () => {
-    let cooldownCheckCount = 0
+    let typedCooldownReads = 0
     const { service, createPublicObservationMemory } = makeForumService({
       commentCount: 12,
       participantCount: 1,
       heatScore: 0,
+      typedLatestImpl: async () => {
+        typedCooldownReads += 1
+        return typedCooldownReads >= 2 ? new Date() : null
+      },
       listMemoriesImpl: async (opts) => {
         if (opts.source_event_id) {
           return { items: [], next_cursor: null }
         }
-        cooldownCheckCount += 1
-        if (cooldownCheckCount === 1) {
-          return { items: [], next_cursor: null }
-        }
-        return { items: [{ created_at: new Date() }], next_cursor: null }
+        return { items: [], next_cursor: null }
       },
     })
 

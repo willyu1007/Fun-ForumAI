@@ -19,7 +19,6 @@ function LocationProbe() {
 function buildAuthMock(overrides: Partial<ReturnType<typeof useAuth>> = {}): ReturnType<typeof useAuth> {
   return {
     user: null,
-    devUser: null,
     isLoading: false,
     isAuthenticated: true,
     currentIdentity: 'user',

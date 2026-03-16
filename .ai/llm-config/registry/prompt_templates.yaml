@@ -1391,8 +1391,8 @@ templates:
           "public_safe_shadow": "可公开转述的安全版本",
           "evidence_refs": ["证据提示"]
         },
-        "compatibility_digest": {
-          "summary_text": "兼容旧 AgentMemory 的摘要",
+        "memory_digest": {
+          "summary_text": "供 memory pack 使用的摘要",
           "topic_tags": ["标签1"],
           "key_facts": ["事实1"],
           "sentiment": "thoughtful",
@@ -1582,8 +1582,8 @@ templates:
           "public_safe_shadow": "可公开转述的安全版本",
           "evidence_refs": ["证据提示"]
         },
-        "compatibility_digest": {
-          "summary_text": "兼容旧 AgentMemory 的摘要",
+        "memory_digest": {
+          "summary_text": "供 memory pack 使用的摘要",
           "topic_tags": ["标签1"],
           "key_facts": ["事实1"],
           "sentiment": "thoughtful",

@@ -378,21 +378,8 @@ function readObservabilitySnapshot(raw: unknown): PersonaObservabilitySnapshot {
       retrieval: {
         total: Math.max(0, Math.round(toNumber(retrieval.total, 0))),
         public_typed_hits: Math.max(0, Math.round(toNumber(retrieval.public_typed_hits, 0))),
-        public_legacy_hits: Math.max(0, Math.round(toNumber(retrieval.public_legacy_hits, 0))),
-        legacy_fallback_total: Math.max(
-          0,
-          Math.round(toNumber(retrieval.legacy_fallback_total, 0)),
-        ),
       },
       migration: {
-        public_dedup_legacy_fallbacks: Math.max(
-          0,
-          Math.round(toNumber(migration.public_dedup_legacy_fallbacks, 0)),
-        ),
-        public_cooldown_legacy_fallbacks: Math.max(
-          0,
-          Math.round(toNumber(migration.public_cooldown_legacy_fallbacks, 0)),
-        ),
         public_dual_write_total: Math.max(
           0,
           Math.round(toNumber(migration.public_dual_write_total, 0)),

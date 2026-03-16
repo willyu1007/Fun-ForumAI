@@ -83,7 +83,7 @@ interface RankedCandidate {
 
 interface SelectorFallback {
   reason: string
-  action: 'abort' | 'legacy_path' | 'continue_without_scene'
+  action: 'abort' | 'continue_without_scene'
 }
 
 interface SelectorSceneResult {
@@ -92,9 +92,9 @@ interface SelectorSceneResult {
   payload: PublicSceneWritePayload
 }
 
-interface SelectorFallbackResult {
-  kind: 'fallback'
-  fallback: SelectorFallback
+interface SelectorSkipResult {
+  kind: 'skip'
+  skip: SelectorFallback
   audit: Record<string, unknown>
 }
 
@@ -105,7 +105,7 @@ export type ScheduledPostSceneSelection =
       payload: PublicSceneWritePayload
     }
   | {
-      kind: 'fallback'
+      kind: 'skip'
       reason: string
     }
 
@@ -136,13 +136,13 @@ export class PublicSceneSelectorService {
       selected_agent: input.agent,
       eligible_targets: eligibleTargets,
     })
-    if (result.kind === 'fallback') {
-      return { kind: 'fallback', reason: result.fallback.reason }
+    if (result.kind === 'skip') {
+      return { kind: 'skip', reason: result.skip.reason }
     }
 
     const community = input.eligible_communities.find((item) => item.id === result.target.community_id)
     if (!community) {
-      return { kind: 'fallback', reason: 'binding_target_missing' }
+      return { kind: 'skip', reason: 'binding_target_missing' }
     }
 
     return {
@@ -174,8 +174,8 @@ export class PublicSceneSelectorService {
         community_slug: input.community.slug,
       },
     })
-    if (result.kind === 'fallback') {
-      return { kind: 'fallback', reason: result.fallback.reason }
+    if (result.kind === 'skip') {
+      return { kind: 'skip', reason: result.skip.reason }
     }
 
     return {
@@ -198,20 +198,20 @@ export class PublicSceneSelectorService {
         payload: PublicSceneWritePayload
       }
     | {
-        kind: 'fallback'
+        kind: 'skip'
         reason: string
       }
   > {
     const catalog = this.deps.catalogService.getLaunchCatalog()
     if (!catalog) {
-      return { kind: 'fallback', reason: 'scene_catalog_unavailable' }
+      return { kind: 'skip', reason: 'scene_catalog_unavailable' }
     }
 
     const template = catalog.stage_templates.find((item) =>
       item.template_id === input.existing_scene_metadata.scene_template_id
       && item.template_version === input.existing_scene_metadata.scene_template_version)
     if (!template) {
-      return { kind: 'fallback', reason: 'existing_episode_missing' }
+      return { kind: 'skip', reason: 'existing_episode_missing' }
     }
 
     const now = new Date()
@@ -358,7 +358,6 @@ export class PublicSceneSelectorService {
         local_intent_block: buildLocalIntentBlock(localIntent, episodeBrief),
         selection_audit: selectionAudit,
         planning_audit: planningAudit,
-        fallback_reason: null,
       },
     }
   }
@@ -375,21 +374,21 @@ export class PublicSceneSelectorService {
       community_id: string
       community_slug: string
     }
-  }): Promise<SelectorSceneResult | SelectorFallbackResult> {
+  }): Promise<SelectorSceneResult | SelectorSkipResult> {
     const catalog = this.deps.catalogService.getLaunchCatalog()
     if (!catalog) {
-      return this.buildFallbackResult(input, {
+      return this.buildSkipResult(input, {
         reason: 'scene_catalog_unavailable',
-        action: 'legacy_path',
+        action: 'abort',
       }, [])
     }
 
     const ranking = await this.rankForumCandidates(catalog, input)
     const selected = ranking.candidates[0]
     if (!selected) {
-      return this.buildFallbackResult(input, {
+      return this.buildSkipResult(input, {
         reason: input.locked_target ? 'binding_target_missing' : 'no_pool_match',
-        action: 'legacy_path',
+        action: 'abort',
       }, ranking.hard_filter_reasons)
     }
 
@@ -516,7 +515,6 @@ export class PublicSceneSelectorService {
         local_intent_block: buildLocalIntentBlock(localIntent, episodeBrief),
         selection_audit: selectionAudit,
         planning_audit: planningAudit,
-        fallback_reason: null,
       },
     }
   }
@@ -676,7 +674,7 @@ export class PublicSceneSelectorService {
     }
   }
 
-  private buildFallbackResult(
+  private buildSkipResult(
     input: {
       request_id: string
       entry_kind: SelectorEntryKind
@@ -684,16 +682,16 @@ export class PublicSceneSelectorService {
     },
     fallback: SelectorFallback,
     hardFilterReasons: Array<{ candidate_ref: string; reason: SelectorHardFilterReason }>,
-  ): SelectorFallbackResult {
+  ): SelectorSkipResult {
     return {
-      kind: 'fallback',
-      fallback,
+      kind: 'skip',
+      skip: fallback,
       audit: {
         selection_id: generateSceneId('scene_sel'),
         request_id: input.request_id,
         entry_kind: input.entry_kind,
         selector_mode: input.selector_mode,
-        episode_strategy: 'fallback_legacy',
+        episode_strategy: 'selection_skipped',
         hard_filter_reasons: hardFilterReasons,
         fallback,
       },

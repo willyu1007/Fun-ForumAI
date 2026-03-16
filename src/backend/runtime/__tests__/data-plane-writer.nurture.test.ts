@@ -149,7 +149,7 @@ describe('DataPlaneWriter nurture routing', () => {
       scene: 'scheduled_post',
       intent: 'scheduled_post',
       visibility: 'visible',
-      coverageStatus: 'migrated_visible',
+      coverageStatus: 'visible_complete',
       personaSeedCode: 'scholar',
       homeVoiceLineId: 'qwen-social-v1',
       requestedTier: 'base',
@@ -185,7 +185,7 @@ describe('DataPlaneWriter nurture routing', () => {
         error: 'db down',
         persona_observation: expect.objectContaining({
           source_callsite_id: 'post-scheduler-create-post',
-          coverage_status: 'migrated_visible',
+          coverage_status: 'visible_complete',
           error: 'db down',
         }),
       }),

@@ -81,7 +81,6 @@ export interface PromptOrchestratorInput extends ComposePromptLayersInput {
   communityProfileProvenance?: {
     source: string
     version: string
-    fallback: boolean
   }
 }
 
@@ -116,7 +115,8 @@ export class PromptOrchestrator {
   }
 
   isSceneEnabled(scene: PromptScene): boolean {
-    return this.isEnabledForScene(scene)
+    void scene
+    return true
   }
 
   async compose(input: PromptOrchestratorInput): Promise<PromptOrchestratorResult> {
@@ -138,14 +138,9 @@ export class PromptOrchestrator {
       }
     }
 
-    const orchestratorEnabled = this.isEnabledForScene(input.scene)
     const now = Date.now()
-    if (orchestratorEnabled) {
-      this.pruneCache(now)
-    }
-    const cacheKey = orchestratorEnabled
-      ? this.buildCacheKey(input, runtimeEnvelope?.cacheSalt ?? '')
-      : null
+    this.pruneCache(now)
+    const cacheKey = this.buildCacheKey(input, runtimeEnvelope?.cacheSalt ?? '')
 
     if (cacheKey) {
       const cached = this.cache.get(cacheKey)
@@ -169,17 +164,6 @@ export class PromptOrchestrator {
     )
     const persona = base.persona ?? this.deps.promptLayerService.getPersona(input.agentId)
 
-    if (!orchestratorEnabled) {
-      const fallbackResult: PromptOrchestratorResult = {
-        persona,
-        layers: base.layers,
-        audit: base.audit,
-        runtimeEnvelope: base.runtimeEnvelope ?? runtimeEnvelope,
-      }
-      this.emitAuditLog(input.agentId, fallbackResult.audit)
-      return fallbackResult
-    }
-
     const result = this.applyGovernance(
       input,
       persona,
@@ -200,15 +184,7 @@ export class PromptOrchestrator {
     return result
   }
 
-  private isEnabledForScene(scene: PromptScene): boolean {
-    if (!config.features.promptOrchestratorV1) return false
-    const whitelist = config.features.promptOrchestratorScenes
-    if (whitelist.length === 0) return true
-    return whitelist.includes(scene)
-  }
-
   private shouldSuppressShowrunnerLayer(scene: PromptScene): boolean {
-    if (!config.features.privateDirectorBoundaryV1) return false
     return scene === 'private_chat' || scene === 'proactive_dm'
   }
 

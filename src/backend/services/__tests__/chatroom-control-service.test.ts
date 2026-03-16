@@ -280,11 +280,10 @@ describe('ChatroomControlService', () => {
     }
   })
 
-  it('redacts LocalIntent compat fields from exposed cue payloads when LocalIntent mode is on', async () => {
+  it('redacts hidden director fields from exposed cue payloads', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     const snapshot = { ...featureFlags }
     featureFlags.directorRuntimeStateV1 = true
-    featureFlags.chatroomLocalIntentV1 = true
 
     const planProgramCue = vi.fn(async (input: { event_payload_json: Record<string, unknown> }) => ({
       beat: {
@@ -386,7 +385,6 @@ describe('ChatroomControlService', () => {
               open_loops: [],
               expires_at: '2026-03-15T00:00:00.000Z',
             },
-            director_goal_compat: '把 owner cue 往前推半步',
             scene_source: 'binding',
           })),
         } as never,
@@ -404,9 +402,7 @@ describe('ChatroomControlService', () => {
       expect(payload.local_intent_id).toBe('local-intent-1')
       expect(payload.scene_source).toBe('binding')
       expect(payload).not.toHaveProperty('director_goal')
-      expect(payload).not.toHaveProperty('director_goal_compat')
       expect(result.event.payload_json).not.toHaveProperty('director_goal')
-      expect(result.event.payload_json).not.toHaveProperty('director_goal_compat')
     } finally {
       Object.assign(featureFlags, snapshot)
     }

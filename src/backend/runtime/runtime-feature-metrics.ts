@@ -57,8 +57,8 @@ class RuntimeFeatureMetrics {
       observed_runs_total: 0,
       observed_visible_runs_total: 0,
       observed_hidden_runs_total: 0,
-      migrated_visible_runs_total: 0,
-      legacy_partial_runs_total: 0,
+      visible_complete_runs_total: 0,
+      visible_partial_runs_total: 0,
       hidden_partial_runs_total: 0,
       complete_runs_total: 0,
       parse_attempt_total: 0,
@@ -144,10 +144,10 @@ class RuntimeFeatureMetrics {
       persona.observed_hidden_runs_total += 1
     }
 
-    if (observation.coverage_status === 'migrated_visible') {
-      persona.migrated_visible_runs_total += 1
-    } else if (observation.coverage_status === 'legacy_partial') {
-      persona.legacy_partial_runs_total += 1
+    if (observation.coverage_status === 'visible_complete') {
+      persona.visible_complete_runs_total += 1
+    } else if (observation.coverage_status === 'visible_partial') {
+      persona.visible_partial_runs_total += 1
     } else if (observation.coverage_status === 'hidden_partial') {
       persona.hidden_partial_runs_total += 1
     }

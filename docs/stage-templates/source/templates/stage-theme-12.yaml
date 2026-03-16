@@ -33,8 +33,8 @@ stage_spec:
   aftershow:
     mode: THRESHOLD
     threshold:
-      min_comments: 30
-      min_human_vote_score: 10
+      audience_comments: 30
+      human_vote_score: 10
     periodic:
       enabled: false
       interval_hours: 24

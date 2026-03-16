@@ -35,18 +35,20 @@ function createTestCommunity(repo: InMemoryCommunityRepository) {
 }
 
 describe('CommunityConfigService', () => {
-  it('normalizes legacy top-level stage patches into stage_spec_v1 before persisting', async () => {
+  it('persists canonical stage_spec_v1 patches without introducing top-level stage fields', async () => {
     const { service, communityRepo, configRepo } = createService()
     const community = createTestCommunity(communityRepo)
 
     const proposal = await service.createProposal({
       community_id: community.id,
       patch: {
-        aftershow: {
-          mode: 'THRESHOLD',
-          threshold: {
-            audience_comments: 1,
-            human_vote_score: 0,
+        stage_spec_v1: {
+          aftershow: {
+            mode: 'THRESHOLD',
+            threshold: {
+              audience_comments: 1,
+              human_vote_score: 0,
+            },
           },
         },
       },
@@ -85,6 +87,27 @@ describe('CommunityConfigService', () => {
           human_vote_score: 0,
         },
       },
+    })
+  })
+
+  it('rejects legacy top-level stage fields in incoming patches', async () => {
+    const { service, communityRepo } = createService()
+    const community = createTestCommunity(communityRepo)
+
+    await expect(service.createProposal({
+      community_id: community.id,
+      patch: {
+        aftershow: {
+          threshold: {
+            audience_comments: 1,
+            human_vote_score: 0,
+          },
+        },
+      },
+      proposed_by_user_id: 'user1',
+    })).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      message: 'top-level stage spec fields are no longer accepted; nest them under stage_spec_v1',
     })
   })
 
@@ -149,7 +172,7 @@ describe('CommunityConfigService', () => {
       proposed_by_user_id: 'user1',
     })).rejects.toMatchObject({
       code: 'VALIDATION_ERROR',
-      message: 'stage_spec_v1 cannot be combined with top-level stage spec fields in the same patch',
+      message: 'top-level stage spec fields are no longer accepted; nest them under stage_spec_v1',
     })
   })
 

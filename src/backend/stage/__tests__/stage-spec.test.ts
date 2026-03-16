@@ -30,8 +30,8 @@ describe('StageSpecV1', () => {
       aftershow: {
         mode: 'PERIODIC',
         threshold: {
-          min_comments: 30,
-          min_human_vote_score: 10,
+          audience_comments: 30,
+          human_vote_score: 10,
         },
         periodic: {
           enabled: false,
@@ -50,7 +50,7 @@ describe('StageSpecV1', () => {
     expect(parsed.incubation.enabled).toBe(false)
   })
 
-  it('parses enhanced v1 fields and keeps legacy threshold aliases compatible', () => {
+  it('parses enhanced v1 fields with canonical aftershow thresholds', () => {
     const parsed = parseStageSpecV1({
       version: 'v1',
       allocator: {
@@ -100,8 +100,8 @@ describe('StageSpecV1', () => {
         enabled: false,
         mode: 'THRESHOLD',
         threshold: {
-          min_comments: 99,
-          min_human_vote_score: 12,
+          audience_comments: 99,
+          human_vote_score: 12,
         },
       },
     })

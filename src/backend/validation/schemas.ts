@@ -170,8 +170,6 @@ export const patchCommunityStageSpecSchema = z
       threshold: z.object({
         audience_comments: z.number().int().min(0).optional(),
         human_vote_score: z.number().int().min(0).optional(),
-        min_comments: z.number().int().min(0).optional(),
-        min_human_vote_score: z.number().int().min(0).optional(),
       }),
       periodic: z.object({
         enabled: z.boolean(),

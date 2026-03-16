@@ -18,7 +18,6 @@ export interface PublicSceneWritePayload {
   local_intent_block: string
   selection_audit?: Record<string, unknown> | null
   planning_audit?: Record<string, unknown> | null
-  fallback_reason?: string | null
 }
 
 export function generateSceneId(prefix: string): string {
@@ -61,7 +60,6 @@ export function buildPublicScenePayloadJson(payload: PublicSceneWritePayload): R
     local_intent_block: payload.local_intent_block,
     selection_audit: payload.selection_audit ?? null,
     planning_audit: payload.planning_audit ?? null,
-    fallback_reason: payload.fallback_reason ?? null,
   }
 }
 
@@ -84,7 +82,6 @@ export function parsePublicScenePayload(input: unknown): PublicSceneWritePayload
       local_intent_block: localIntentBlock,
       selection_audit: toRecord(record.selection_audit),
       planning_audit: toRecord(record.planning_audit),
-      fallback_reason: typeof record.fallback_reason === 'string' ? record.fallback_reason : null,
     }
   } catch {
     return null

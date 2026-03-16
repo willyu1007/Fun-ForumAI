@@ -386,7 +386,7 @@ export const runtimeSceneStateV1Schema = z.object({
   audit: z.object({
     selection_id: z.string().min(1).nullable(),
     episode_plan_id: z.string().min(1).nullable(),
-    source: z.enum(['binding', 'legacy_fallback']),
+    source: z.literal('binding'),
     latest_local_intent_id: z.string().min(1).nullable(),
     latest_program_event_id: z.string().min(1).nullable(),
     state_version: z.number().int().min(0),

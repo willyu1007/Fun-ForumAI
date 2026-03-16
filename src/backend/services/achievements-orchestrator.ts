@@ -347,20 +347,11 @@ export class AchievementsOrchestrator {
       T: this.scorer.timeDecay(occurredAt),
     })
 
-    const legacySignalVisibility: 'PUBLIC' | 'OWNER_ONLY' =
-      signal.kind === 'private_digest' || signal.kind === 'governance'
-        ? 'OWNER_ONLY'
-        : 'PUBLIC'
-    const signalDecision = config.features.chronicleSignalPolicyV2
-      ? this.signalPolicy.resolve({
-          kind: signal.kind,
-          evidence,
-          importanceScore: signalImportance,
-        })
-      : {
-          visibility: legacySignalVisibility,
-          reason: 'legacy_signal_visibility',
-        }
+    const signalDecision = this.signalPolicy.resolve({
+      kind: signal.kind,
+      evidence,
+      importanceScore: signalImportance,
+    })
 
     const effectiveSignalVisibility = config.features.signalLogV1
       ? 'OWNER_ONLY'

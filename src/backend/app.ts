@@ -477,7 +477,7 @@ if (config.features.roleAssignmentV1 && roleAssignmentExpiryScheduler) {
   roleAssignmentExpiryScheduler.start()
 }
 
-if (config.db.usePrisma && config.features.publicDirectorContractV1 && directorHistoryMaintenanceScheduler) {
+if (config.db.usePrisma && directorHistoryMaintenanceScheduler) {
   directorHistoryMaintenanceScheduler.start()
 }
 

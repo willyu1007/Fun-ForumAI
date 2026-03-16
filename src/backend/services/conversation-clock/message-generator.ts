@@ -1,7 +1,6 @@
 import { PROMPT_TEMPLATE_REFS } from '../../llm/prompt-template-refs.js'
 import type { PromptComposeAudit } from '../../runtime/types.js'
 import { formatChatReplyForReadability, sanitizeChatOutput } from '../../runtime/chat-output-sanitizer.js'
-import { config } from '../../lib/config.js'
 import {
   attachPersonaObservation,
   buildPersonaObservation,
@@ -83,13 +82,11 @@ export async function generateMessage(
     .join('\n')
   const localIntentBlock = hasMeaningfulText(runtimeChatContext?.promptVariables.local_intent_block)
     ? runtimeChatContext.promptVariables.local_intent_block
-    : config.features.chatroomLocalIntentV1
-      ? buildFallbackChatroomLocalIntentBlock({
-          roomName: room.name,
-          roomDescription: room.description || '',
-          recentText,
-        })
-      : ''
+    : buildFallbackChatroomLocalIntentBlock({
+        roomName: room.name,
+        roomDescription: room.description || '',
+        recentText,
+      })
 
   if (!context.deps.llmGateway.isConfigured) {
     return { kind: 'normal', body: `[${agent.display_name}] 聊天测试消息` }
@@ -110,96 +107,73 @@ export async function generateMessage(
     layer_memory: '',
     layer_privacy: '',
   }
-  let orchestratorApplied = false
-
   if (context.deps.promptOrchestrator?.isSceneEnabled('chat_room')) {
-    try {
-      const member = await context.deps.roomRepo.getMember(roomId, agentId)
-      const composed = await context.deps.promptOrchestrator.compose({
+    const member = await context.deps.roomRepo.getMember(roomId, agentId)
+    const composed = await context.deps.promptOrchestrator.compose({
+      agentId,
+      scene: 'chat_room',
+      conversationText: chatConversationText,
+      communityId: room.community_id,
+      topicHints: chatTopicHints,
+      communitySoftCulture: room.description || '',
+      sceneRule: chatSceneRule,
+      shortTermState: chatShortTermState,
+      shortTermStateUpdatedAt: recentMsgs[recentMsgs.length - 1]?.created_at ?? null,
+      roomMemberState: member
+        ? { joined_at: member.joined_at, last_spoke_at: member.last_spoke_at }
+        : undefined,
+    })
+    layers = {
+      layer_traits: composed.layers.layer1_traits ?? '',
+      layer_style: composed.layers.layer2_style ?? '',
+      layer_instructions: composed.layers.layer3_instructions ?? '',
+      layer_community: composed.layers.layer_community ?? '',
+      layer_relationship: composed.layers.layer_relationship ?? '',
+      layer_showrunner: composed.layers.layer_showrunner ?? '',
+      layer_overrides: composed.layers.layer4_overrides ?? '',
+      layer_memory: composed.layers.layer5_memory ?? '',
+      layer_privacy: composed.layers.layer6_privacy ?? '',
+    }
+    promptAudit = composed.audit
+    persona = composed.persona
+    renderDecision = composed.runtimeEnvelope?.renderTierDecision ?? null
+  } else if (context.deps.promptLayerService) {
+    const member = await context.deps.roomRepo.getMember(roomId, agentId)
+    const composed = await context.deps.promptLayerService.composeLayersWithAudit(
+      {
         agentId,
         scene: 'chat_room',
         conversationText: chatConversationText,
         communityId: room.community_id,
         topicHints: chatTopicHints,
-        communitySoftCulture: room.description || '',
-        sceneRule: chatSceneRule,
-        shortTermState: chatShortTermState,
-        shortTermStateUpdatedAt: recentMsgs[recentMsgs.length - 1]?.created_at ?? null,
         roomMemberState: member
           ? { joined_at: member.joined_at, last_spoke_at: member.last_spoke_at }
           : undefined,
-      })
-      layers = {
-        layer_traits: composed.layers.layer1_traits ?? '',
-        layer_style: composed.layers.layer2_style ?? '',
-        layer_instructions: composed.layers.layer3_instructions ?? '',
-        layer_community: composed.layers.layer_community ?? '',
-        layer_relationship: composed.layers.layer_relationship ?? '',
-        layer_showrunner: composed.layers.layer_showrunner ?? '',
-        layer_overrides: composed.layers.layer4_overrides ?? '',
-        layer_memory: composed.layers.layer5_memory ?? '',
-        layer_privacy: composed.layers.layer6_privacy ?? '',
-      }
-      promptAudit = composed.audit
+      },
+      { suppressAuditLog: true },
+    )
+    layers = {
+      layer_traits: composed.layers.layer1_traits ?? '',
+      layer_style: composed.layers.layer2_style ?? '',
+      layer_instructions: composed.layers.layer3_instructions ?? '',
+      layer_community: composed.layers.layer_community ?? '',
+      layer_relationship: composed.layers.layer_relationship ?? '',
+      layer_showrunner: composed.layers.layer_showrunner ?? '',
+      layer_overrides: composed.layers.layer4_overrides ?? '',
+      layer_memory: composed.layers.layer5_memory ?? '',
+      layer_privacy: composed.layers.layer6_privacy ?? '',
+    }
+    promptAudit = composed.audit
+    if (composed.persona) {
       persona = composed.persona
-      renderDecision = composed.runtimeEnvelope?.renderTierDecision ?? null
-      orchestratorApplied = true
-    } catch {
-      // Fall back to prompt layer service or base values.
     }
-  }
-
-  if (
-    config.features.layerStackV2 &&
-    !orchestratorApplied &&
-    context.deps.promptLayerService
-  ) {
-    try {
-      const member = await context.deps.roomRepo.getMember(roomId, agentId)
-      const composed = await context.deps.promptLayerService.composeLayersWithAudit(
-        {
-          agentId,
-          scene: 'chat_room',
-          conversationText: chatConversationText,
-          communityId: room.community_id,
-          topicHints: chatTopicHints,
-          roomMemberState: member
-            ? { joined_at: member.joined_at, last_spoke_at: member.last_spoke_at }
-            : undefined,
-        },
-        { suppressAuditLog: true },
-      )
-      layers = {
-        layer_traits: composed.layers.layer1_traits ?? '',
-        layer_style: composed.layers.layer2_style ?? '',
-        layer_instructions: composed.layers.layer3_instructions ?? '',
-        layer_community: composed.layers.layer_community ?? '',
-        layer_relationship: composed.layers.layer_relationship ?? '',
-        layer_showrunner: composed.layers.layer_showrunner ?? '',
-        layer_overrides: composed.layers.layer4_overrides ?? '',
-        layer_memory: composed.layers.layer5_memory ?? '',
-        layer_privacy: composed.layers.layer6_privacy ?? '',
-      }
-      promptAudit = composed.audit
-      if (composed.persona) {
-        persona = composed.persona
-      }
-      renderDecision = composed.runtimeEnvelope?.renderTierDecision ?? null
-    } catch {
-      // Fall back to base values if layer composition fails.
-    }
+    renderDecision = composed.runtimeEnvelope?.renderTierDecision ?? null
   }
 
   const variables: Record<string, string> = {
     persona_name: persona.name,
-    persona_style:
-      orchestratorApplied || config.features.layerStackV2
-        ? persona.style
-        : '友善而富有洞察力',
-    persona_interests:
-      orchestratorApplied || config.features.layerStackV2
-        ? persona.interests.join('、')
-        : '多元话题',
+    persona_style: persona.style,
+    persona_interests: persona.interests.join('、'),
     persona_language: persona.language,
     persona_seed_code: observationIdentity?.persona_seed_code ?? 'scholar',
     room_name: room.name,
@@ -209,9 +183,7 @@ export async function generateMessage(
     episode_id: runtimeChatContext?.promptVariables.episode_id ?? '',
     current_beat: runtimeChatContext?.promptVariables.current_beat ?? '',
     cue_type: runtimeChatContext?.promptVariables.cue_type ?? '',
-    director_goal: config.features.chatroomLocalIntentV1
-      ? ''
-      : runtimeChatContext?.promptVariables.director_goal ?? '',
+    director_goal: '',
     self_role: runtimeChatContext?.promptVariables.self_role ?? '',
     cast_snapshot: runtimeChatContext?.promptVariables.cast_snapshot ?? '',
     live_hook: runtimeChatContext?.promptVariables.live_hook ?? '',
@@ -236,9 +208,7 @@ export async function generateMessage(
     layer_privacy: layers.layer_privacy,
   }
 
-  const promptRef = config.features.chatroomLocalIntentV1
-    ? PROMPT_TEMPLATE_REFS.agentChatReplyScene
-    : PROMPT_TEMPLATE_REFS.agentChatReply
+  const promptRef = PROMPT_TEMPLATE_REFS.agentChatReplyScene
   const routing = context.deps.inferenceProfileService
     ? await context.deps.inferenceProfileService.resolveVisibleRoute({
         agentId,
@@ -271,7 +241,7 @@ export async function generateMessage(
     scene: 'chat_room',
     intent: 'chat_reply',
     visibility: 'visible',
-    coverageStatus: 'migrated_visible',
+    coverageStatus: 'visible_complete',
     personaSeedCode: observationIdentity?.persona_seed_code,
     homeVoiceLineId: observationIdentity?.home_voice_line_id,
     promptRef,

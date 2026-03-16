@@ -250,7 +250,7 @@ describe('PublicSceneSelectorService', () => {
     })
 
     expect(result).toEqual({
-      kind: 'fallback',
+      kind: 'skip',
       reason: 'no_pool_match',
     })
   })

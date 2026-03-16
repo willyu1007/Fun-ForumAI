@@ -302,7 +302,6 @@ export class ChatroomControlService {
       local_intent_block: localIntentBundle?.local_intent_block ?? null,
       episode_brief_min: localIntentBundle?.episode_brief_min ?? null,
       scene_source: localIntentBundle?.scene_source ?? null,
-      director_goal_compat: localIntentBundle?.director_goal_compat ?? input.director_goal,
     })
 
     const planned = await this.deps.watchabilityRepo.planProgramCue({

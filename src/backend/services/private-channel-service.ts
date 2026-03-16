@@ -29,23 +29,11 @@ import type {
   PrivateSessionStatus,
 } from '../repos/types.js'
 import { AppError, ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
-import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import type { PolicyGatewayService } from './policy-gateway-service.js'
 import type { IdentityGateService } from './identity-gate-service.js'
 
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000
-
-const PRIVATE_SCENE_PROMPT = [
-  '## 场景：与 Owner 的私人对话',
-  '你正在与你的 Owner 进行一对一的私人交流。',
-  '在这个场景中：',
-  '- 你可以更加直接和坦诚地表达想法',
-  '- 可以自由讨论你在公共场合的表现和经历',
-  '- 可以主动分享你对论坛讨论的看法',
-  '- 语气可以比公共场合更随意亲近',
-  '- 保持你的核心人格特征不变',
-].join('\n')
 
 export interface PrivateChannelServiceDeps {
   channelRepo: PrivateChannelRepository
@@ -231,7 +219,7 @@ export class PrivateChannelService {
       scene: 'private_chat',
       intent: 'private_reply',
       visibility: 'visible',
-      coverageStatus: 'migrated_visible',
+      coverageStatus: 'visible_complete',
       personaSeedCode: identity?.persona_seed_code,
       homeVoiceLineId: identity?.home_voice_line_id,
       promptRef: replyPlan.promptRef,
@@ -387,45 +375,6 @@ export class PrivateChannelService {
     return this.deps.channelRepo.countMessages(sessionId)
   }
 
-  private async buildLegacyReplyVariables(
-    session: PrivateSession,
-    currentMessage: string,
-  ): Promise<Record<string, string>> {
-    const agent = this.deps.agentService.getAgent(session.agent_id)
-    const latestConfig = this.deps.agentService.getLatestConfig(session.agent_id)
-    const resolved = resolveAgentIdentity(agent, latestConfig)
-    const personaName = resolved.visiblePersona.name
-    const personaStyle = resolved.visiblePersona.style
-    const personaInterests = resolved.visiblePersona.interests.join('、')
-    const personaLanguage = resolved.visiblePersona.language
-
-    const memories = await this.loadMemoriesForPrivateChat(session.agent_id)
-    const history = await this.deps.channelRepo.listMessages(session.id, { limit: 20 })
-    const recentMessages = history.items
-      .map((item) => `${item.author_type === 'HUMAN' ? 'Owner' : personaName}：${item.content}`)
-      .join('\n')
-
-    return {
-      persona_name: personaName,
-      persona_style: personaStyle,
-      persona_interests: personaInterests,
-      persona_language: personaLanguage,
-      owner_display_name: 'Owner',
-      session_context: [PRIVATE_SCENE_PROMPT, `session_id=${session.id}`].join('\n'),
-      recent_messages: recentMessages || '（这是第一次私聊消息）',
-      latest_user_message: currentMessage,
-      layer_traits: '',
-      layer_style: '',
-      layer_instructions: '',
-      layer_community: '',
-      layer_relationship: '',
-      layer_overrides: '',
-      layer_memory: memories ? `## 你的记忆\n${memories}` : '',
-      layer_privacy: '',
-      ...(config.features.privateDirectorBoundaryV1 ? {} : { layer_showrunner: '' }),
-    }
-  }
-
   private async buildRequestForReply(
     session: PrivateSession,
     currentMessage: string,
@@ -435,20 +384,15 @@ export class PrivateChannelService {
     renderDecision: RenderTierDecisionResult | null
     promptAudit: PromptComposeAudit | null
   }> {
-    if (this.deps.promptOrchestrator) {
-      try {
-        return await this.buildRequestWithOrchestrator(session, currentMessage)
-      } catch (err) {
-        console.warn('[PrivateChannel] PromptOrchestrator compose failed, fallback to legacy path:', err)
-      }
+    if (!this.deps.promptOrchestrator) {
+      throw new AppError(
+        503,
+        'PromptOrchestrator is not configured for private chat',
+        'PROMPT_ORCHESTRATOR_UNAVAILABLE',
+      )
     }
 
-    return {
-      promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
-      variables: await this.buildLegacyReplyVariables(session, currentMessage),
-      renderDecision: null,
-      promptAudit: null,
-    }
+    return this.buildRequestWithOrchestrator(session, currentMessage)
   }
 
   private async buildRequestWithOrchestrator(
@@ -496,38 +440,14 @@ export class PrivateChannelService {
         layer_instructions: composed.layers.layer3_instructions ?? '',
         layer_community: composed.layers.layer_community ?? '',
         layer_relationship: composed.layers.layer_relationship ?? '',
+        layer_showrunner: composed.layers.layer_showrunner ?? '',
         layer_overrides: composed.layers.layer4_overrides ?? '',
         layer_memory: composed.layers.layer5_memory ?? '',
         layer_privacy: composed.layers.layer6_privacy ?? '',
-        ...(config.features.privateDirectorBoundaryV1
-          ? {}
-          : { layer_showrunner: composed.layers.layer_showrunner ?? '' }),
       },
       renderDecision: composed.runtimeEnvelope?.renderTierDecision ?? null,
       promptAudit: composed.audit,
     }
-  }
-
-  private async loadMemoriesForPrivateChat(agentId: string): Promise<string | null> {
-    const memories = await this.deps.memoryRepo.listMemories(agentId, {
-      limit: 10,
-      forgotten: false,
-    })
-    if (memories.items.length === 0) return null
-
-    return memories.items
-      .sort((a, b) => b.importance_score - a.importance_score)
-      .slice(0, 8)
-      .map((memory) => {
-        const sourceLabel =
-          memory.source_type === 'PRIVATE_CHAT'
-            ? '来自之前的交流'
-            : memory.source_type === 'PUBLIC_OBSERVATION'
-              ? '来自公共讨论'
-              : '系统知识'
-        return `[${sourceLabel} | 重要度: ${memory.importance_score.toFixed(1)}]\n${memory.summary_text}`
-      })
-      .join('\n\n')
   }
 
   private async resolveVisibleRouting(agentId: string, requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier): Promise<{

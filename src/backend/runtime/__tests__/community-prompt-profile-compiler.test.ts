@@ -2,15 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { CommunityPromptProfileCompiler } from '../community-prompt-profile-compiler.js'
 
 describe('CommunityPromptProfileCompiler', () => {
-  it('falls back to legacy mode when prompt profile is missing', () => {
+  it('uses community description when structured profile inputs are missing', () => {
     const compiler = new CommunityPromptProfileCompiler()
     const compiled = compiler.compile({
       communityDescription: '偏理性讨论',
       rulesJson: {},
     })
 
-    expect(compiled.provenance.source).toBe('legacy')
-    expect(compiled.provenance.used_fallback).toBe(true)
+    expect(compiled.provenance.source).toBe('community_description')
     expect(compiled.soft_culture_text).toContain('偏理性讨论')
   })
 
@@ -57,7 +56,6 @@ describe('CommunityPromptProfileCompiler', () => {
     })
 
     expect(compiled.provenance.source).toBe('community_culture_digests')
-    expect(compiled.provenance.used_fallback).toBe(false)
     expect(compiled.culture_digest?.version).toBe(3)
     expect(compiled.soft_culture_text).toContain('文化演化摘要')
     expect(compiled.soft_culture_text).toContain('近期核心话题：写作、世界观')

@@ -1,10 +1,8 @@
 import { config } from '../../lib/config.js'
 import { personaObservability } from '../../runtime/persona-observability.js'
 import {
-  backfillLegacyPublicObservations,
   emptyTypedRetrievalState,
   loadTypedRetrievalState,
-  selectLegacyMemories,
 } from './retrieval.js'
 import type {
   GetMemoriesForContextOptions,
@@ -19,7 +17,6 @@ export async function getMemoriesForContext(
   agentId: string,
   opts: GetMemoriesForContextOptions,
 ): Promise<MemoryForContext> {
-  const allMemories = await deps.memoryRepo.findActiveMemories(agentId, {})
   let effectiveTopK = opts.topK
   let effectiveBudget = opts.tokenBudget
 
@@ -32,18 +29,7 @@ export async function getMemoriesForContext(
     effectiveBudget = knobs.memory.effective_budget
   }
 
-  let filtered = allMemories
-  if (opts.scene !== 'private_chat') {
-    filtered = allMemories.filter((memory) => memory.privacy_floor <= opts.disclosureLevel)
-  }
-
-  const selectedLegacy = selectLegacyMemories({
-    memories: filtered,
-    topicHints: opts.topicHints,
-    topK: effectiveTopK,
-    tokenBudget: effectiveBudget,
-  })
-  let typed = deps.contextMemory
+  const typed = deps.contextMemory
     ? await loadTypedRetrievalState({
         runtime: deps.contextMemory,
         agentId,
@@ -52,29 +38,12 @@ export async function getMemoriesForContext(
       })
     : emptyTypedRetrievalState()
 
-  if (deps.contextMemory && typed.publicEpisodicCards.length === 0) {
-    const backfilledCount = await backfillLegacyPublicObservations({
-      runtime: deps.contextMemory,
-      agentId,
-      memories: selectedLegacy,
-    })
-    if (backfilledCount > 0) {
-      typed = await loadTypedRetrievalState({
-        runtime: deps.contextMemory,
-        agentId,
-        topK: effectiveTopK,
-        scene: opts.scene,
-      })
-    }
-  }
-
   const memoryPack = state.retrievalPacker.pack({
     agentId,
     scene: opts.scene,
     topicHints: opts.topicHints,
     disclosureLevel: opts.disclosureLevel,
     tokenBudget: effectiveBudget,
-    legacyMemories: selectedLegacy,
     typed,
   })
   const formatted = state.memoryPackRenderer.render(memoryPack, effectiveBudget).text

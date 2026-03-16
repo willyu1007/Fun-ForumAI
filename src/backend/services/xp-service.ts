@@ -10,7 +10,7 @@ export type XpSource =
   | 'vote_received'
   | 'room_created'
   | 'private_chat_digest'
-  | 'legacy_migrated'
+  | 'bootstrap_grant'
 
 interface XpAwardOptions {
   dedup_key?: string
@@ -247,8 +247,8 @@ export class XpService {
         return '创建房间'
       case 'private_chat_digest':
         return '私聊记忆沉淀'
-      case 'legacy_migrated':
-        return '历史 XP 迁移'
+      case 'bootstrap_grant':
+        return '启动 XP 赠送'
     }
   }
 

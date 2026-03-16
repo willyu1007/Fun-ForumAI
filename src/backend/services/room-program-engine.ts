@@ -20,7 +20,6 @@ export interface PlannedProgramTurn {
   beat_id: string
   program_event_id: string
   local_intent_id: string | null
-  director_goal_compat: string
 }
 
 export interface RoomProgramEngineDeps {
@@ -163,7 +162,6 @@ export class RoomProgramEngine {
       local_intent_block: localIntentBundle?.local_intent_block ?? null,
       episode_brief_min: localIntentBundle?.episode_brief_min ?? null,
       scene_source: localIntentBundle?.scene_source ?? null,
-      director_goal_compat: localIntentBundle?.director_goal_compat ?? cue.director_goal,
       top_candidates: scoredCandidates.slice(0, 4).map((candidate) => ({
         agent_id: candidate.agent_id,
         final_score: candidate.final_score,
@@ -250,7 +248,6 @@ export class RoomProgramEngine {
       beat_id: plannedCue.beat.id,
       program_event_id: plannedCue.event.id,
       local_intent_id: localIntentBundle?.local_intent_id ?? null,
-      director_goal_compat: localIntentBundle?.director_goal_compat ?? cue.director_goal,
     }
   }
 
@@ -279,9 +276,9 @@ export class RoomProgramEngine {
     const localIntentId = typeof payload.local_intent_id === 'string'
       ? payload.local_intent_id
       : null
-    const directorGoalCompat = typeof payload.director_goal_compat === 'string'
-      ? payload.director_goal_compat
-      : pendingTurn.event.director_goal ?? pendingTurn.beat.director_goal
+    const directorGoal = pendingTurn.event.director_goal
+      ?? pendingTurn.beat.director_goal
+      ?? ''
 
     return {
       episode_id: state.episode.id,
@@ -289,11 +286,10 @@ export class RoomProgramEngine {
       speaker_role: state.cast.find((candidate) => candidate.agent_id === selectedAgentId)?.role ?? null,
       cue_type: pendingTurn.event.cue_type ?? pendingTurn.beat.cue_type,
       beat_type: pendingTurn.beat.beat_type,
-      director_goal: pendingTurn.event.director_goal ?? pendingTurn.beat.director_goal,
+      director_goal: directorGoal,
       beat_id: pendingTurn.beat.id,
       program_event_id: pendingTurn.event.id,
       local_intent_id: localIntentId,
-      director_goal_compat: directorGoalCompat,
     }
   }
 

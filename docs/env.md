@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-15T22:08:38Z`
+Generated at (UTC): `2026-03-16T06:58:21Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `staging`
@@ -56,7 +56,6 @@ Generated at (UTC): `2026-03-15T22:08:38Z`
 | `FF_INCUBATION_ORCHESTRATOR_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable PRIVATE_DIGEST -> incubation seed orchestration. |
 | `FF_INCUBATION_TRUST_HARD_ENFORCE` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enforce structured trust_context checks for strict T4 posts. |
 | `FF_INCUBATION_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable T4 incubation pipeline APIs and persistence models. |
-| `FF_LAYER_STACK_V2` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable shared prompt layer composition for runtime and chatroom paths. |
 | `FF_MEMBERSHIPS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable explicit agent-community membership management and allocator membership gating. |
 | `FF_MEMBERSHIP_STATUS_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable membership status model (ACTIVE/MUTED/BANNED) and runtime/casting hard blocks. |
 | `FF_MULTIMODAL_AGENT_INCLINATION_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable multimodal inclination asset pipeline and related APIs. |
@@ -65,16 +64,11 @@ Generated at (UTC): `2026-03-15T22:08:38Z`
 | `FF_PERSONA_RUNTIME_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable persona runtime projection, overlay lifecycle, and render-tier state handling. |
 | `FF_PERSONA_WRITEBACK_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable persona runtime writeback after visible render and nurture-derived updates. |
 | `FF_PPR_REFRESH_V2` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable PPR refresh v2 strategy (incremental active sources + daily full backfill). |
-| `FF_PRIVATE_DIRECTOR_BOUNDARY_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Remove director/showrunner semantics from private chat and proactive opening prompt paths. |
 | `FF_PROMPT_AUDIT_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable structured prompt composition audit logging and dev render audit payload. |
-| `FF_PROMPT_ORCHESTRATOR_SCENES` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Optional CSV whitelist of scenes for PromptOrchestrator (empty means all scenes). |
-| `FF_PROMPT_ORCHESTRATOR_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable unified PromptOrchestrator runtime path. |
-| `FF_PUBLIC_DIRECTOR_CONTRACT_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable shared public director contract read path and surface vocabulary exports. |
 | `FF_PUBLIC_OBSERVATION_MEMORY` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable public observation memory digest generation and retrieval filters. |
 | `FF_ROLE_ASSIGNMENT_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable role assignment endpoints and aside seats runtime read path. |
 | `FF_RUNTIME_FEATURES_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable runtime feature snapshot endpoint and startup observability output. |
-| `FF_SCENE_POOL_ASSET_OPS_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable scene-pool v2 catalog projection, lifecycle mapping, and asset ops compatibility path. |
-| `FF_SIGNAL_LOG_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable signal dual-write to agent_signal_logs and metrics read-path migration. |
+| `FF_SIGNAL_LOG_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable signal dual-write to agent_signal_logs and metrics-backed reads. |
 | `FF_SOCIAL_GRAPH_EFFECTIVE` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable effective relation edges in allocator/feed behavior weighting. |
 | `FF_SOCIAL_GRAPH_EXPLAINER` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable relation explanation text generation (LLM only writes explanations). |
 | `FF_SOCIAL_GRAPH_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable agent social graph relation computation and persistence. |

@@ -1,4 +1,3 @@
-import type { AgentMemory } from '../repos/types.js'
 import type {
   EpisodicCard,
   MemoryPack,
@@ -14,7 +13,6 @@ export class DefaultRetrievalPacker implements RetrievalPacker {
     topicHints: string[]
     disclosureLevel: number
     tokenBudget: number
-    legacyMemories: AgentMemory[]
     typed: TypedRetrievalState
   }): MemoryPack {
     const privateCards = input.typed.privateEpisodicCards
@@ -38,28 +36,15 @@ export class DefaultRetrievalPacker implements RetrievalPacker {
       : buildPrivateDurableThreads(input.typed)
     const safeShadow = !publicScene && input.typed.privateShadows.length > 0
       ? input.typed.privateShadows.slice(0, 2).map((item) => trim(item.public_safe_shadow, 100))
-      : fallbackSafeShadow(input.legacyMemories, input.scene)
+      : []
     const publicObservation = buildPublicObservationItems(publicCards)
-    const legacyPublicObservation = selectLegacyPublicObservation(input.legacyMemories, 2)
-    const publicObservationUsedLegacyFallback = publicObservation.length === 0 && legacyPublicObservation.length > 0
-    const publicObservationItems = publicObservation.length > 0
-      ? publicObservation
-      : legacyPublicObservation.map(toLegacyBullet)
-
-    const fallbackPrivate = input.scene === 'private_chat'
-      ? selectLegacyPrivate(input.legacyMemories, input.topicHints)
-      : emptyLegacyPrivateFallback()
-    const ownerPrivateItems = ownerPrivate.length > 0 ? ownerPrivate : fallbackPrivate.ownerPrivate
-    const topicRecallItems = topicRecall.length > 0 ? topicRecall.map(toCardBullet) : fallbackPrivate.topicRecall
-    const recentRecallItems = recentRecall.length > 0 ? recentRecall.map(toCardBullet) : fallbackPrivate.recentRecall
-    const durableThreadItems = durableThreads.length > 0 ? durableThreads : fallbackPrivate.durableThreads
 
     const slots = [
-      { slotId: 'owner_private', title: '私聊锚点', items: ownerPrivateItems },
-      { slotId: 'public_observation', title: '公共回声', items: publicObservationItems },
-      { slotId: 'topic_recall', title: '主题召回', items: topicRecallItems },
-      { slotId: 'recent_recall', title: '近期经历', items: recentRecallItems },
-      { slotId: 'durable_threads', title: '长期主线', items: durableThreadItems },
+      { slotId: 'owner_private', title: '私聊锚点', items: ownerPrivate },
+      { slotId: 'public_observation', title: '公共回声', items: publicObservation },
+      { slotId: 'topic_recall', title: '主题召回', items: topicRecall.map(toCardBullet) },
+      { slotId: 'recent_recall', title: '近期经历', items: recentRecall.map(toCardBullet) },
+      { slotId: 'durable_threads', title: '长期主线', items: durableThreads },
       { slotId: 'safe_shadow', title: '公开安全影子', items: safeShadow },
     ] satisfies MemoryPack['slots']
 
@@ -67,24 +52,10 @@ export class DefaultRetrievalPacker implements RetrievalPacker {
 
     return {
       slots,
-      selectedMemories: selectLegacyUsedMemories(input.legacyMemories, {
-        legacyPublicObservation: publicObservation.length === 0 ? legacyPublicObservation : [],
-        includePrivateFallback: input.scene === 'private_chat' && (
-          ownerPrivate.length === 0 ||
-          topicRecall.length === 0 ||
-          recentRecall.length === 0 ||
-          durableThreads.length === 0 ||
-          safeShadow.length === 0
-        ),
-      }),
+      selectedMemories: [],
       tokenEstimate,
       observability: {
-        publicObservationSource: publicObservation.length > 0
-          ? 'typed'
-          : legacyPublicObservation.length > 0
-            ? 'legacy'
-            : 'empty',
-        usedLegacyFallback: publicObservationUsedLegacyFallback,
+        publicObservationSource: publicObservation.length > 0 ? 'typed' : 'empty',
       },
     }
   }
@@ -179,87 +150,8 @@ function buildPublicObservationItems(cards: TypedRetrievalState['publicEpisodicC
     .map((card) => `${sceneLabel(card.scene)} | ${trim(card.title, 32)} | ${trim(card.summary, 90)}`)
 }
 
-function selectLegacyPublicObservation(memories: AgentMemory[], limit: number): AgentMemory[] {
-  return memories
-    .filter((memory) => memory.source_type === 'PUBLIC_OBSERVATION')
-    .sort((a, b) => b.importance_score - a.importance_score || b.created_at.getTime() - a.created_at.getTime())
-    .slice(0, limit)
-}
-
-function selectLegacyPrivate(memories: AgentMemory[], topicHints: string[]): {
-  ownerPrivate: string[]
-  topicRecall: string[]
-  recentRecall: string[]
-  durableThreads: string[]
-} {
-  const privateMemories = memories
-    .filter((memory) => memory.source_type === 'PRIVATE_CHAT')
-    .sort((a, b) => b.importance_score - a.importance_score || b.created_at.getTime() - a.created_at.getTime())
-  const recent = [...privateMemories]
-    .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
-    .slice(0, 2)
-    .map((memory) => `来自 Owner | ${trim(memory.summary_text, 110)}`)
-  const topic = privateMemories
-    .filter((memory) => topicHints.some((hint) => (
-      memory.topic_tags.some((tag) => tag.toLowerCase().includes(hint.toLowerCase())) ||
-      memory.summary_text.toLowerCase().includes(hint.toLowerCase())
-    )))
-    .slice(0, 2)
-    .map((memory) => `主题命中 | ${trim(memory.summary_text, 110)}`)
-  return {
-    ownerPrivate: privateMemories.slice(0, 2).map((memory) => `来自 Owner | ${trim(memory.summary_text, 110)}`),
-    topicRecall: topic,
-    recentRecall: recent,
-    durableThreads: privateMemories
-      .filter((memory) => memory.importance_score >= 0.7)
-      .slice(0, 2)
-      .map((memory) => `长期记忆 | ${trim(memory.summary_text, 110)}`),
-  }
-}
-
-function selectLegacyUsedMemories(
-  memories: AgentMemory[],
-  opts: { legacyPublicObservation: AgentMemory[]; includePrivateFallback: boolean },
-): AgentMemory[] {
-  const items = [
-    ...opts.legacyPublicObservation,
-    ...(opts.includePrivateFallback ? memories.filter((memory) => memory.source_type === 'PRIVATE_CHAT').slice(0, 2) : []),
-  ]
-  return Array.from(new Map(items.map((item) => [item.id, item] as const)).values())
-}
-
-function fallbackSafeShadow(memories: AgentMemory[], scene: 'forum' | 'chat_room' | 'private_chat'): string[] {
-  if (scene !== 'private_chat') return []
-  const privateMemories = memories
-    .filter((memory) => memory.source_type === 'PRIVATE_CHAT')
-    .sort((a, b) => b.importance_score - a.importance_score || b.created_at.getTime() - a.created_at.getTime())
-    .slice(0, 2)
-
-  return privateMemories.map((memory) => (
-    trim(memory.summary_text, 100)
-  ))
-}
-
-function emptyLegacyPrivateFallback(): {
-  ownerPrivate: string[]
-  topicRecall: string[]
-  recentRecall: string[]
-  durableThreads: string[]
-} {
-  return {
-    ownerPrivate: [],
-    topicRecall: [],
-    recentRecall: [],
-    durableThreads: [],
-  }
-}
-
 function toCardBullet(card: EpisodicCard): string {
   return `${trim(card.title, 32)} | ${trim(card.summary, 110)}`
-}
-
-function toLegacyBullet(memory: AgentMemory): string {
-  return `来自公共讨论 | 重要度 ${memory.importance_score.toFixed(1)} | ${trim(memory.summary_text, 110)}`
 }
 
 function sceneLabel(scene: EpisodicCard['scene']): string {

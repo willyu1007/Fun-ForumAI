@@ -305,7 +305,7 @@ export interface RuntimeSceneStateV1 {
   audit: {
     selection_id: string | null
     episode_plan_id: string | null
-    source: 'binding' | 'legacy_fallback'
+    source: 'binding'
     latest_local_intent_id: string | null
     latest_program_event_id: string | null
     state_version: number

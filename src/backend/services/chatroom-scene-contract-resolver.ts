@@ -1,94 +1,13 @@
 import type { RoomSceneType } from '../repos/types.js'
-import { DEFAULT_STAGE_SPEC_V1, type SceneBindingV1, type StageTemplateV2 } from '../stage/index.js'
+import { ValidationError } from '../lib/errors.js'
+import type { SceneBindingV1, StageTemplateV2 } from '../stage/index.js'
 import type { PublicSceneCatalogService } from './public-scene-catalog-service.js'
 
 export interface ResolvedChatroomSceneContract {
   template: StageTemplateV2
-  binding: SceneBindingV1 | null
-  source: 'binding' | 'legacy_fallback'
-  selection_mode: 'pool_guided' | 'pool_strict' | 'autonomous_anchored'
-}
-
-const CHATROOM_SCENE_PRESETS: Record<RoomSceneType, {
-  name: string
-  category: StageTemplateV2['category']
-  viewerGoal: string
-  growthGoal: string
-  mustHaveRoles: string[]
-  relationshipObjectives: string[]
-  tone: 'neutral' | 'witty' | 'serious' | 'warm' | 'sharp'
-  messageThreshold: number
-}> = {
-  FREE_CHAT: {
-    name: 'Legacy Chat Room Free Chat',
-    category: 'show',
-    viewerGoal: '让房间像自然 live 群聊一样继续往前推。',
-    growthGoal: '用轻量互动稳住角色存在感和互相接话习惯。',
-    mustHaveRoles: ['HOST'],
-    relationshipObjectives: ['bridge'],
-    tone: 'neutral',
-    messageThreshold: 10,
-  },
-  TALK_SHOW: {
-    name: 'Legacy Chat Room Talk Show',
-    category: 'show',
-    viewerGoal: '让房间更像带节奏的 talk show，而不是松散闲聊。',
-    growthGoal: '放大角色之间的台上化学反应和出场辨识度。',
-    mustHaveRoles: ['HOST', 'FOIL'],
-    relationshipObjectives: ['challenge', 'bridge'],
-    tone: 'witty',
-    messageThreshold: 12,
-  },
-  ROUND_TABLE: {
-    name: 'Legacy Chat Room Round Table',
-    category: 'theme',
-    viewerGoal: '让多位角色围绕同一议题形成有序接力。',
-    growthGoal: '鼓励角色在公开场里建立稳定的协作与分工。',
-    mustHaveRoles: ['HOST', 'EXPLAINER'],
-    relationshipObjectives: ['ally', 'bridge'],
-    tone: 'serious',
-    messageThreshold: 12,
-  },
-  ROAST: {
-    name: 'Legacy Chat Room Roast',
-    category: 'show',
-    viewerGoal: '让现场保留火花和梗感，但不失控。',
-    growthGoal: '放大角色之间的反打与回收能力。',
-    mustHaveRoles: ['HOST', 'FOIL', 'WILDCARD'],
-    relationshipObjectives: ['challenge'],
-    tone: 'sharp',
-    messageThreshold: 9,
-  },
-  DEBATE: {
-    name: 'Legacy Chat Room Debate',
-    category: 't4',
-    viewerGoal: '让争议被掰开讲清，而不是平铺附和。',
-    growthGoal: '训练角色在公开冲突中的立场稳定性与回应能力。',
-    mustHaveRoles: ['HOST', 'SKEPTIC'],
-    relationshipObjectives: ['challenge'],
-    tone: 'serious',
-    messageThreshold: 12,
-  },
-  SLICE_OF_LIFE: {
-    name: 'Legacy Chat Room Slice Of Life',
-    category: 'world',
-    viewerGoal: '让房间像群像日常一样自然流动。',
-    growthGoal: '积累轻量角色关系和连续性小梗。',
-    mustHaveRoles: ['HOST'],
-    relationshipObjectives: ['ally', 'bridge'],
-    tone: 'warm',
-    messageThreshold: 8,
-  },
-  STORY_LAB: {
-    name: 'Legacy Chat Room Story Lab',
-    category: 'world',
-    viewerGoal: '让房间像共同搭戏一样往前试探和加码。',
-    growthGoal: '鼓励角色在公共即兴里形成更鲜明的互补关系。',
-    mustHaveRoles: ['HOST', 'WILDCARD'],
-    relationshipObjectives: ['bridge', 'challenge'],
-    tone: 'witty',
-    messageThreshold: 11,
-  },
+  binding: SceneBindingV1
+  source: 'binding'
+  selection_mode: 'pool_guided' | 'pool_strict'
 }
 
 export class ChatroomSceneContractResolver {
@@ -103,86 +22,40 @@ export class ChatroomSceneContractResolver {
     sceneType: RoomSceneType
   }): ResolvedChatroomSceneContract {
     const catalog = this.deps.catalogService.getLaunchCatalog()
-    if (catalog) {
-      const binding = catalog.scene_bindings
-        .filter((item) => item.status === 'active')
-        .find((item) =>
-          item.target.surface === 'chat_room'
-          && item.target.room_id === input.roomId
-          && item.entry_surfaces.includes('chat_room'),
-        )
-      if (binding) {
-        const template = catalog.stage_templates.find((item) =>
-          item.template_id === binding.template_id && item.template_version === binding.template_version)
-        if (template) {
-          return {
-            template,
-            binding,
-            source: 'binding',
-            selection_mode: template.director.autonomy_policy.require_pool_match_before_create
-              ? 'pool_strict'
-              : 'pool_guided',
-          }
-        }
-      }
+    if (!catalog) {
+      throw new ValidationError(
+        `chat room ${input.roomId} is missing launch catalog; cannot resolve scene binding for ${input.sceneType}`,
+      )
     }
 
-    const preset = CHATROOM_SCENE_PRESETS[input.sceneType]
-    const templateId = `legacy-chat-room-${input.sceneType.toLowerCase()}`
+    const binding = catalog.scene_bindings
+      .filter((item) => item.status === 'active')
+      .find((item) =>
+        item.target.surface === 'chat_room'
+        && item.target.room_id === input.roomId
+        && item.entry_surfaces.includes('chat_room'),
+      )
+    if (!binding) {
+      throw new ValidationError(
+        `chat room ${input.roomId} has no active scene binding for ${input.sceneType}`,
+      )
+    }
+
+    const template = catalog.stage_templates.find((item) =>
+      item.template_id === binding.template_id && item.template_version === binding.template_version)
+    if (!template) {
+      throw new ValidationError(
+        `chat room ${input.roomId} binding ${binding.binding_id} references missing template ${binding.template_id}@${binding.template_version}`,
+      )
+    }
+
     return {
-      template: {
-        template_id: templateId,
-        template_version: 'v2',
-        name: preset.name,
-        category: preset.category,
-        lifecycle_status: 'core_active',
-        stage_spec: DEFAULT_STAGE_SPEC_V1,
-        director: {
-          applicable_surfaces: ['chat_room'],
-          scene_goal: {
-            viewer_goal: preset.viewerGoal,
-            growth_goal: preset.growthGoal,
-          },
-          casting_recipe: {
-            quota: 3,
-            ratio: {
-              core: 2,
-              contrast: 1,
-              wildcard: 1,
-            },
-            wildcard_cap: 1,
-            must_have_roles: preset.mustHaveRoles,
-            avoid_pairs: [],
-            relationship_objectives: preset.relationshipObjectives,
-          },
-          beat_plan: {
-            phases: ['opening', 'escalation', 'pivot', 'closure'],
-            optional_beats: [],
-          },
-          fatigue_policy: {
-            cooldown_hours: 1,
-            repeat_penalty: 0.6,
-            max_runs_per_day: 12,
-          },
-          closing_policy: {
-            ttl_hours: 4,
-            min_turns: 3,
-            message_threshold: preset.messageThreshold,
-            aftershow_mode: 'off',
-          },
-          hot_topic_policy: {
-            injection_mode: 'overlay_only',
-            sensitive_topic_mode: 'standard',
-          },
-          autonomy_policy: {
-            allow_autonomous_mutation: true,
-            require_pool_match_before_create: false,
-          },
-        },
-      },
-      binding: null,
-      source: 'legacy_fallback',
-      selection_mode: 'autonomous_anchored',
+      template,
+      binding,
+      source: 'binding',
+      selection_mode: template.director.autonomy_policy.require_pool_match_before_create
+        ? 'pool_strict'
+        : 'pool_guided',
     }
   }
 

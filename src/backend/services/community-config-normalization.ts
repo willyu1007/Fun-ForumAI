@@ -5,7 +5,7 @@ import type {
 } from '../repos/index.js'
 import { ValidationError } from '../lib/errors.js'
 
-export const LEGACY_STAGE_SPEC_KEYS = [
+export const REJECTED_TOP_LEVEL_STAGE_SPEC_KEYS = [
   'version',
   'min_tier_pool',
   'roles',
@@ -44,39 +44,23 @@ export function deepMerge(base: unknown, patch: unknown): unknown {
   return out
 }
 
-function toRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
-  return value as Record<string, unknown>
-}
-
 function normalizeCommunityConfigRecordInternal(
   record: Record<string, unknown>,
-  opts?: { rejectMixedStageSpecPatch?: boolean },
+  opts?: { rejectTopLevelStageSpecPatch?: boolean },
 ): Record<string, unknown> {
   const normalized: Record<string, unknown> = {}
-  const legacyStageSpec: Record<string, unknown> = {}
-  const rawStageSpecValue = hasOwn(record, 'stage_spec_v1') ? record.stage_spec_v1 : undefined
-  const rawStageSpecRecord = toRecord(rawStageSpecValue)
+  const rejectedTopLevelKeys: string[] = []
 
   for (const [key, value] of Object.entries(record)) {
-    if (key === 'stage_spec_v1') continue
-    if ((LEGACY_STAGE_SPEC_KEYS as readonly string[]).includes(key)) {
-      legacyStageSpec[key] = value
+    if ((REJECTED_TOP_LEVEL_STAGE_SPEC_KEYS as readonly string[]).includes(key)) {
+      rejectedTopLevelKeys.push(key)
       continue
     }
     normalized[key] = value
   }
 
-  if (opts?.rejectMixedStageSpecPatch && rawStageSpecValue !== undefined && Object.keys(legacyStageSpec).length > 0) {
-    throw new ValidationError('stage_spec_v1 cannot be combined with top-level stage spec fields in the same patch')
-  }
-
-  if (rawStageSpecRecord) {
-    normalized.stage_spec_v1 = deepMerge(legacyStageSpec, rawStageSpecRecord) as Record<string, unknown>
-  } else if (rawStageSpecValue !== undefined) {
-    normalized.stage_spec_v1 = rawStageSpecValue
-  } else if (Object.keys(legacyStageSpec).length > 0) {
-    normalized.stage_spec_v1 = legacyStageSpec
+  if (opts?.rejectTopLevelStageSpecPatch && rejectedTopLevelKeys.length > 0) {
+    throw new ValidationError('top-level stage spec fields are no longer accepted; nest them under stage_spec_v1')
   }
 
   return normalized
@@ -92,7 +76,7 @@ export function normalizeIncomingCommunityConfigPatch(
   patch: Record<string, unknown>,
 ): Record<string, unknown> {
   return normalizeCommunityConfigRecordInternal(patch, {
-    rejectMixedStageSpecPatch: true,
+    rejectTopLevelStageSpecPatch: true,
   })
 }
 

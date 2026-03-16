@@ -92,7 +92,6 @@ export class RoomProgramProjector {
       local_intent_block: sourcePayload.local_intent_block ?? null,
       episode_brief_min: sourcePayload.episode_brief_min ?? null,
       scene_source: sourcePayload.scene_source ?? null,
-      director_goal_compat: readPayloadString(sourcePayload, 'director_goal_compat'),
     })
 
     const rawEvent = await this.deps.watchabilityRepo.createProgramEvent({

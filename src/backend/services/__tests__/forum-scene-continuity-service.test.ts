@@ -75,7 +75,6 @@ function buildPayload(
     local_intent_block: '## Local Intent\n- episode_id: episode-1',
     selection_audit: { binding_id: overrides.scene_binding_id ?? 'binding-1' },
     planning_audit: { episode_id: overrides.episode_id ?? 'episode-1' },
-    fallback_reason: null,
   }
 }
 

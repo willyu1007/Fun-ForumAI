@@ -94,7 +94,7 @@
       "name": "persona_observation.coverage_status",
       "type": "string",
       "required": false,
-      "description": "migrated_visible, legacy_partial, or hidden_partial"
+      "description": "visible_complete, visible_partial, or hidden_partial"
     },
     {
       "name": "persona_observation.persona_seed_code",
