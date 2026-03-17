@@ -6,7 +6,13 @@ import type { MemoryForContext } from '../services/memory-service/types.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { PublicDisclosureCapService } from '../services/public-disclosure-cap-service.js'
 import type { StatsService } from '../services/stats-service.js'
-import type { AgentPersona, PromptLayers, PromptComposeAudit, PromptScene } from './types.js'
+import type {
+  AgentPersona,
+  PromptComposeAudit,
+  PromptLayers,
+  PromptMemoryRetrievalHint,
+  PromptScene,
+} from './types.js'
 import { config } from '../lib/config.js'
 import { getPromptSceneBudgetConfig } from './prompt-budget-config.js'
 import { computeControversyScore } from './controversy-score.js'
@@ -60,6 +66,7 @@ export interface ComposePromptLayersInput {
     joined_at?: Date | null
     last_spoke_at?: Date | null
   }
+  memoryRetrievalHint?: PromptMemoryRetrievalHint
   precomputedRuntimeEnvelope?: PersonaRuntimeEnvelope | null
 }
 
@@ -202,17 +209,36 @@ export class PromptLayerService {
           : this.deps.memoryService.resolveEffectiveDisclosureLevel(privacySettings)
         const memoryScene = this.mapMemoryScene(input.scene)
         const sceneBudgetConfig = getPromptSceneBudgetConfig(input.scene)
-        const runtimeMemoryTokenCeiling = Math.floor(
+        const sceneMemoryTokenCeiling = Math.floor(
           sceneBudgetConfig.request_budget.reference_input
             * (sceneBudgetConfig.buckets.memory.max / 100),
         )
+        const retrievalMemoryTokenCeiling = Math.max(
+          0,
+          Math.min(
+            sceneMemoryTokenCeiling,
+            input.memoryRetrievalHint?.token_ceiling ?? sceneMemoryTokenCeiling,
+          ),
+        )
+        const retrievalMemoryBucketTarget = input.memoryRetrievalHint
+          ? Math.max(
+              0,
+              Math.min(input.memoryRetrievalHint.bucket_target, retrievalMemoryTokenCeiling),
+            )
+          : undefined
+        const requestedMemoryTier =
+          input.memoryRetrievalHint?.requested_tier
+          ?? sceneBudgetConfig.compiler_policy.default_memory_tier
 
         const memoryCtx = await this.deps.memoryService.getMemoriesForContext(agentId, {
           scene: memoryScene,
           topicHints: input.topicHints ?? [],
           disclosureLevel: disclosure.effective_disclosure_level,
-          tokenCeiling: runtimeMemoryTokenCeiling,
-          memoryTier: sceneBudgetConfig.compiler_policy.default_memory_tier,
+          tokenCeiling: retrievalMemoryTokenCeiling,
+          ...(retrievalMemoryBucketTarget !== undefined
+            ? { bucketTarget: retrievalMemoryBucketTarget }
+            : {}),
+          memoryTier: requestedMemoryTier,
           topK: privacySettings.public_memory_top_k,
         })
         memoryContext = memoryCtx
@@ -234,6 +260,10 @@ export class PromptLayerService {
                 server_cap_sources: disclosure.server_cap_sources.map((item) => ({ ...item })),
               }
             : {}),
+          retrieval_memory_bucket_target: retrievalMemoryBucketTarget,
+          retrieval_memory_token_ceiling: retrievalMemoryTokenCeiling,
+          retrieval_memory_tier_requested: requestedMemoryTier,
+          retrieval_memory_tier_selected: memoryCtx.selected_tier,
           rewrite_cause:
             disclosure.requested_disclosure_level !== disclosure.effective_disclosure_level
               ? 'server_disclosure_cap_applied'
@@ -434,6 +464,9 @@ export class PromptLayerService {
       version: 'v1',
       scene,
       includedLayerIds,
+      legacyIncludedLayerIds: [...includedLayerIds],
+      compiledBlockIds: [],
+      promptContract: 'legacy_layers_v1',
       tokenEstimates,
       lintWarnings,
       trimReasons: [],

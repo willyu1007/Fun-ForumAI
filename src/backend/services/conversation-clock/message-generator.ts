@@ -1,5 +1,5 @@
 import { PROMPT_TEMPLATE_REFS } from '../../llm/prompt-template-refs.js'
-import type { PromptComposeAudit } from '../../runtime/types.js'
+import type { CurrentContextSource, PromptComposeAudit } from '../../runtime/types.js'
 import { buildPromptBudgetSummary } from '../../runtime/prompt-budget-summary.js'
 import { formatChatReplyForReadability, sanitizeChatOutput } from '../../runtime/chat-output-sanitizer.js'
 import {
@@ -121,7 +121,7 @@ export async function generateMessage(
       conversationText: chatConversationText,
       communityId: room.community_id,
       topicHints: chatTopicHints,
-      currentContextSources: [
+      currentContextSources: ([
         {
           kind: 'room_recent_turns',
           text: recentText || '（房间刚创建，还没有对话）',
@@ -151,7 +151,7 @@ export async function generateMessage(
           priority: 'medium',
           source_id: `${roomId}:continuity`,
         },
-      ].filter((source) => source.text.trim().length > 0),
+      ] satisfies CurrentContextSource[]).filter((source) => source.text.trim().length > 0),
       requestEnvelope: {
         static_system_tokens: 180,
         route_wrapper_tokens: 90,

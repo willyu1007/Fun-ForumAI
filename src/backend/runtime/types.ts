@@ -24,6 +24,10 @@ export type PromptMemoryTier =
   | 'minimal'
   | 'drop_low_value'
 
+export type PromptContract =
+  | 'legacy_layers_v1'
+  | 'compiled_blocks_v2'
+
 export type PromptOverflowReason =
   | 'budget_exceeded_after_control_trim'
   | 'budget_exceeded_due_to_memory'
@@ -76,6 +80,12 @@ export interface PromptRequestEnvelope {
   current_user_input_tokens: number
   output_reserve: number
   model_capability_ref?: string | null
+}
+
+export interface PromptMemoryRetrievalHint {
+  bucket_target: number
+  token_ceiling: number
+  requested_tier: PromptMemoryTier
 }
 
 export interface PromptLocalLayerEnvelope {
@@ -167,6 +177,9 @@ export interface PromptComposeAudit {
   version: 'v1' | 'v2'
   scene: PromptScene
   includedLayerIds: string[]
+  legacyIncludedLayerIds?: string[]
+  compiledBlockIds?: string[]
+  promptContract?: PromptContract
   tokenEstimates: Record<string, number>
   lintWarnings: string[]
   trimReasons: string[]
@@ -185,6 +198,10 @@ export interface PromptComposeAudit {
       cap_source: 'owner_setting' | 'server_cap'
       public_disclosure_cap: number | null
       owner_memory_budget_preference?: number
+      retrieval_memory_bucket_target?: number
+      retrieval_memory_token_ceiling?: number
+      retrieval_memory_tier_requested?: PromptMemoryTier
+      retrieval_memory_tier_selected?: PromptMemoryTier
       runtime_memory_bucket_target?: number
       runtime_memory_token_ceiling?: number
       runtime_memory_tier_applied?: PromptMemoryTier

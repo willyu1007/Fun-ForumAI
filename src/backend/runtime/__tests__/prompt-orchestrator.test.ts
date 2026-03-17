@@ -434,6 +434,62 @@ describe('PromptOrchestrator', () => {
     expect(result.audit.lintWarnings).toContain('scene_contract_error_current_context_floor')
   })
 
+  it('passes a coarse memory retrieval hint downstream and separates legacy vs compiled audit ids', async () => {
+    const composeLayersWithAudit = vi.fn(async () => ({
+      layers: {
+        layer1_traits: 'brief trait',
+        layer3_instructions: 'follow through',
+        layer6_privacy: 'do not leak private data',
+      },
+      audit: { ...BASE_AUDIT, scene: 'chat_room' as const },
+    }))
+
+    const orchestrator = new PromptOrchestrator({
+      promptLayerService: {
+        composeLayersWithAudit,
+        getPersona: vi.fn(() => ({
+          name: 'Hint Bot',
+          style: 'strict',
+          interests: ['budget'],
+          language: 'zh-CN',
+        })),
+      } as unknown as PromptLayerService,
+    } as PromptOrchestratorDeps)
+
+    const result = await orchestrator.compose({
+      agentId: 'agent-memory-hint',
+      scene: 'chat_room',
+      conversationText: '现场继续聊',
+      requestEnvelope: {
+        static_system_tokens: 4_900,
+        route_wrapper_tokens: 0,
+        tool_tokens: 0,
+        current_user_input_tokens: 0,
+      },
+    })
+
+    const firstComposeCall = composeLayersWithAudit.mock.calls[0] as unknown[] | undefined
+    const firstComposeInput = firstComposeCall?.[0] as Record<string, unknown> | undefined
+    expect(firstComposeInput).toMatchObject({
+      memoryRetrievalHint: {
+        bucket_target: 18,
+        token_ceiling: 658,
+        requested_tier: 'minimal',
+      },
+    })
+    expect(result.audit.promptContract).toBe('compiled_blocks_v2')
+    expect(result.audit.legacyIncludedLayerIds).toEqual(
+      expect.arrayContaining(['layer1_traits', 'layer3_instructions', 'layer6_privacy']),
+    )
+    expect(result.audit.compiledBlockIds).toEqual(
+      expect.arrayContaining([
+        'hard_control_block',
+        'compact_control_block',
+        'current_context_block',
+      ]),
+    )
+  })
+
   it('only downgrades memory tiers and never re-expands above the scene default tier', async () => {
     const composeLayersWithAudit = vi.fn(async () => ({
       layers: {

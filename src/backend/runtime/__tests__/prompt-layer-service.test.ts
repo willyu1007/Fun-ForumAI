@@ -303,7 +303,81 @@ describe('PromptLayerService', () => {
       memoryTier: 'minimal',
       topK: 4,
     }))
-    expect(getMemoriesForContext.mock.calls[0]?.[1]).not.toHaveProperty('bucketTarget')
+    const firstMemoryCall = getMemoriesForContext.mock.calls[0] as unknown[] | undefined
+    const firstMemoryOptions = firstMemoryCall?.[1] as Record<string, unknown> | undefined
+    expect(firstMemoryOptions).not.toHaveProperty('bucketTarget')
+  })
+
+  it('uses orchestrator retrieval hints to clamp memory retrieval and record provenance', async () => {
+    const getMemoriesForContext = vi.fn(async () => ({
+      memories: [],
+      formatted: 'memory-fragment',
+      pack: {
+        slots: [],
+        selectedMemories: [],
+        tokenEstimate: 0,
+        slotTokenEstimates: {},
+        observability: { publicObservationSource: 'empty' as const },
+      },
+      renders: {
+        full: { tier: 'full' as const, text: '', tokenEstimate: 0, slotCount: 0, itemCount: 0 },
+        compact: { tier: 'compact' as const, text: '', tokenEstimate: 0, slotCount: 0, itemCount: 0 },
+        sparse: { tier: 'sparse' as const, text: 'memory-fragment', tokenEstimate: 20, slotCount: 1, itemCount: 1 },
+        minimal: { tier: 'minimal' as const, text: '', tokenEstimate: 0, slotCount: 0, itemCount: 0 },
+        drop_low_value: { tier: 'drop_low_value' as const, text: '', tokenEstimate: 0, slotCount: 0, itemCount: 0 },
+      },
+      selected_tier: 'sparse' as const,
+    }))
+
+    const service = new PromptLayerService({
+      agentService: {
+        getAgent: vi.fn(() => ({ id: 'agent-memory-hinted', display_name: 'Hinted Memory Bot' })),
+        getLatestConfig: vi.fn(() => ({ config_json: {} })),
+      } as unknown as PromptLayerServiceDeps['agentService'],
+      memoryService: {
+        getPrivacySettings: vi.fn(async () => ({
+          agent_id: 'agent-memory-hinted',
+          disclosure_level: 2,
+          public_memory_budget: 100,
+          public_memory_top_k: 4,
+          public_disclosure_cap: null,
+          updated_at: new Date(),
+          updated_by: 'owner-1',
+        })),
+        resolveEffectiveDisclosureLevel: vi.fn(() => ({
+          requested_disclosure_level: 2,
+          effective_disclosure_level: 2,
+          cap_source: 'owner_setting',
+          public_disclosure_cap: null,
+          server_cap_sources: [],
+        })),
+        getMemoriesForContext,
+      } as unknown as PromptLayerServiceDeps['memoryService'],
+    })
+
+    const result = await service.composeLayersWithAudit({
+      agentId: 'agent-memory-hinted',
+      scene: 'chat_room',
+      conversationText: '继续聊',
+      memoryRetrievalHint: {
+        bucket_target: 30,
+        token_ceiling: 60,
+        requested_tier: 'sparse',
+      },
+    })
+
+    expect(getMemoriesForContext).toHaveBeenCalledWith('agent-memory-hinted', expect.objectContaining({
+      tokenCeiling: 60,
+      bucketTarget: 30,
+      memoryTier: 'sparse',
+      topK: 4,
+    }))
+    expect(result.audit.provenance?.private_memory).toMatchObject({
+      retrieval_memory_bucket_target: 30,
+      retrieval_memory_token_ceiling: 60,
+      retrieval_memory_tier_requested: 'sparse',
+      retrieval_memory_tier_selected: 'sparse',
+    })
   })
 
   it('computes first-in-room as false when member has spoken', async () => {

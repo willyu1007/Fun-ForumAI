@@ -11,6 +11,7 @@ import type {
   PromptBudgetDecision,
   PromptComposeAudit,
   PromptControlTier,
+  PromptMemoryRetrievalHint,
   PromptLayers,
   PromptLocalLayerEnvelope,
   PromptMemoryTier,
@@ -190,6 +191,7 @@ export class PromptOrchestrator {
     const base = await this.deps.promptLayerService.composeLayersWithAudit(
       {
         ...input,
+        memoryRetrievalHint: this.buildMemoryRetrievalHint(input),
         precomputedRuntimeEnvelope: runtimeEnvelope,
       },
       { suppressAuditLog: true },
@@ -522,17 +524,28 @@ export class PromptOrchestrator {
       soft_expression_block: this.orUndefined(softExpressionBlock),
     }
 
-    const includedLayerIds = Array.from(new Set([
-      ...this.collectLegacyIncludedLayerIds(baseLayers, layers, isPrivateBoundaryScene),
-      ...[
+    const legacyIncludedLayerIds: string[] = this.collectLegacyIncludedLayerIds(
+      baseLayers,
+      layers,
+      isPrivateBoundaryScene,
+    )
+    const compiledBlockIds = (
+      [
         ['hard_control_block', layers.hard_control_block],
         ['compact_control_block', layers.compact_control_block],
         ['current_context_block', layers.current_context_block],
         ['memory_block', layers.memory_block],
         ['soft_expression_block', layers.soft_expression_block],
-      ]
-        .filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
-        .map(([key]) => key),
+      ] as Array<[string, string | undefined]>
+    ).reduce<string[]>((acc, [key, value]) => {
+      if (typeof value === 'string' && value.trim().length > 0) {
+        acc.push(key)
+      }
+      return acc
+    }, [])
+    const includedLayerIds = Array.from(new Set([
+      ...legacyIncludedLayerIds,
+      ...compiledBlockIds,
     ]))
 
     const tokenEstimates: Record<string, number> = {
@@ -585,6 +598,9 @@ export class PromptOrchestrator {
         version: 'v2',
         scene: input.scene,
         includedLayerIds,
+        legacyIncludedLayerIds,
+        compiledBlockIds,
+        promptContract: 'compiled_blocks_v2',
         tokenEstimates,
         lintWarnings,
         trimReasons,
@@ -647,6 +663,25 @@ export class PromptOrchestrator {
       local_target: Math.max(0, requestTargetInput - nonLayerTokens),
       local_soft: Math.max(0, requestSoftCeiling - nonLayerTokens),
       local_hard: Math.max(0, requestHardCeiling - nonLayerTokens),
+    }
+  }
+
+  private buildMemoryRetrievalHint(
+    input: PromptOrchestratorInput,
+  ): PromptMemoryRetrievalHint {
+    const sceneConfig = getPromptSceneBudgetConfig(input.scene)
+    const requestEnvelope = this.resolveRequestEnvelope(input)
+    requestEnvelope.output_reserve = sceneConfig.request_budget.output_reserve
+    const localLayerEnvelope = this.buildLocalLayerEnvelope(sceneConfig, requestEnvelope)
+    const preferredBudgets = this.computeBucketBudgets(sceneConfig, localLayerEnvelope.local_target)
+    const maxBudgets = this.computeBucketBudgets(sceneConfig, localLayerEnvelope.local_hard, {
+      useMax: true,
+    })
+    const tokenCeiling = Math.max(0, maxBudgets.memory.max)
+    return {
+      bucket_target: Math.max(0, Math.min(preferredBudgets.memory.preferred, tokenCeiling)),
+      token_ceiling: tokenCeiling,
+      requested_tier: sceneConfig.compiler_policy.default_memory_tier,
     }
   }
 
