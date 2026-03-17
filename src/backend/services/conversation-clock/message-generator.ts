@@ -1,5 +1,5 @@
 import { PROMPT_TEMPLATE_REFS } from '../../llm/prompt-template-refs.js'
-import type { CurrentContextSource, PromptComposeAudit } from '../../runtime/types.js'
+import type { CurrentContextSource } from '../../runtime/types.js'
 import { buildPromptBudgetSummary } from '../../runtime/prompt-budget-summary.js'
 import { formatChatReplyForReadability, sanitizeChatOutput } from '../../runtime/chat-output-sanitizer.js'
 import {
@@ -93,17 +93,7 @@ export async function generateMessage(
     return { kind: 'normal', body: `[${agent.display_name}] 聊天测试消息` }
   }
 
-  let persona = resolvedIdentity.visiblePersona
   const observationIdentity = resolvedIdentity.observationIdentity
-  let promptAudit: PromptComposeAudit | null = null
-  let renderDecision: RenderTierDecisionResult | null = null
-  let blocks = {
-    hard_control_block: '',
-    compact_control_block: '',
-    current_context_block: '',
-    memory_block: '',
-    soft_expression_block: '',
-  }
   if (!context.deps.promptOrchestrator?.isSceneEnabled('chat_room')) {
     throw new Error('PromptOrchestrator unavailable for scene chat_room')
   }
@@ -167,16 +157,16 @@ export async function generateMessage(
       ? { joined_at: member.joined_at, last_spoke_at: member.last_spoke_at }
       : undefined,
   })
-  blocks = {
+  const blocks = {
     hard_control_block: composed.blocks.hard_control_block ?? '',
     compact_control_block: composed.blocks.compact_control_block ?? '',
     current_context_block: composed.blocks.current_context_block ?? '',
     memory_block: composed.blocks.memory_block ?? '',
     soft_expression_block: composed.blocks.soft_expression_block ?? '',
   }
-  promptAudit = composed.audit
-  persona = composed.persona
-  renderDecision = composed.runtimeEnvelope?.renderTierDecision ?? null
+  const promptAudit = composed.audit
+  const persona = composed.persona
+  const renderDecision = composed.runtimeEnvelope?.renderTierDecision ?? null
 
   const variables: Record<string, string> = {
     persona_name: persona.name,
