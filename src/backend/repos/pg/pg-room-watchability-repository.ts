@@ -46,6 +46,7 @@ import type {
   UpdateRoomProgramEventInput,
   UpdateRoomProgramInput,
 } from '../room-watchability-repository.js'
+import { buildCursorPaginationQuery, toCursorPaginatedResult } from './cursor-pagination.js'
 
 function toStringArray(value: Prisma.JsonValue): string[] {
   if (!Array.isArray(value)) return []
@@ -145,20 +146,6 @@ function toInputJson(value: Prisma.JsonValue | Record<string, unknown> | string[
 function toNullableInputJson(value: Prisma.JsonValue | Record<string, unknown> | null | undefined): Prisma.InputJsonValue | typeof Prisma.DbNull {
   if (value === null || value === undefined) return Prisma.DbNull
   return value as Prisma.InputJsonValue
-}
-
-function paginate<T extends { id: string }>(items: T[], opts: PaginationOpts): PaginatedResult<T> {
-  let start = 0
-  if (opts.cursor) {
-    const index = items.findIndex((item) => item.id === opts.cursor)
-    start = index >= 0 ? index + 1 : 0
-  }
-  const page = items.slice(start, start + opts.limit)
-  const next_cursor =
-    page.length === opts.limit && start + opts.limit < items.length
-      ? page[page.length - 1].id
-      : null
-  return { items: page, next_cursor }
 }
 
 function toProgramPatchData(patch: UpdateRoomProgramInput): Prisma.RoomProgramUpdateInput {
@@ -773,8 +760,9 @@ export class PgRoomWatchabilityRepository implements RoomWatchabilityRepository 
         ...(opts.episode_id ? { episodeId: opts.episode_id } : {}),
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...buildCursorPaginationQuery(opts),
     })
-    return paginate(rows.map((row) => this.toHighlight(row)), opts)
+    return toCursorPaginatedResult(rows, opts, (row) => this.toHighlight(row))
   }
 
   async saveLiveSnapshot(input: SaveRoomLiveSnapshotInput): Promise<RoomLiveSnapshot> {

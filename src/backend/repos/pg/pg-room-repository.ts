@@ -17,26 +17,10 @@ import type {
   RoomRepository,
   UpdateRoomMemberControlInput,
 } from '../room-repository.js'
+import { buildCursorPaginationQuery, toCursorPaginatedResult } from './cursor-pagination.js'
 
 const SYSTEM_MAX_AGENTS = 5
 const SYSTEM_TICK_BASE = 20_000
-
-function paginate<T extends { id: string }>(
-  items: T[],
-  opts: PaginationOpts,
-): PaginatedResult<T> {
-  let start = 0
-  if (opts.cursor) {
-    const idx = items.findIndex((item) => item.id === opts.cursor)
-    start = idx >= 0 ? idx + 1 : 0
-  }
-  const page = items.slice(start, start + opts.limit)
-  const next_cursor =
-    page.length === opts.limit && start + opts.limit < items.length
-      ? page[page.length - 1].id
-      : null
-  return { items: page, next_cursor }
-}
 
 export class PgRoomRepository implements RoomRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -77,9 +61,9 @@ export class PgRoomRepository implements RoomRepository {
     const rows = await this.prisma.room.findMany({
       where: opts.status ? { status: opts.status } : undefined,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...buildCursorPaginationQuery(opts),
     })
-    const items = rows.map((row) => this.roomToDomain(row))
-    return paginate(items, opts)
+    return toCursorPaginatedResult(rows, opts, (row) => this.roomToDomain(row))
   }
 
   async updateStatus(id: string, status: RoomStatus): Promise<Room | null> {

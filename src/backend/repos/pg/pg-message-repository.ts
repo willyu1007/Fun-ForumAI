@@ -7,23 +7,7 @@ import type {
   PaginationOpts,
 } from '../types.js'
 import type { MessageRepository } from '../message-repository.js'
-
-function paginate<T extends { id: string }>(
-  items: T[],
-  opts: PaginationOpts,
-): PaginatedResult<T> {
-  let start = 0
-  if (opts.cursor) {
-    const idx = items.findIndex((item) => item.id === opts.cursor)
-    start = idx >= 0 ? idx + 1 : 0
-  }
-  const page = items.slice(start, start + opts.limit)
-  const next_cursor =
-    page.length === opts.limit && start + opts.limit < items.length
-      ? page[page.length - 1].id
-      : null
-  return { items: page, next_cursor }
-}
+import { buildCursorPaginationQuery, toCursorPaginatedResult } from './cursor-pagination.js'
 
 function isNotFoundError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
@@ -70,9 +54,9 @@ export class PgMessageRepository implements MessageRepository {
     const rows = await this.prisma.roomMessage.findMany({
       where: { roomId },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      ...buildCursorPaginationQuery(opts),
     })
-    const items = rows.map((row) => this.toDomain(row))
-    return paginate(items, opts)
+    return toCursorPaginatedResult(rows, opts, (row) => this.toDomain(row))
   }
 
   async getLatestMessages(roomId: string, limit: number): Promise<ChatMessage[]> {

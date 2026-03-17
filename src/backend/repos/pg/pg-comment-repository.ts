@@ -6,23 +6,7 @@ import type {
   PaginationOpts,
 } from '../types.js'
 import type { CommentRepository } from '../comment-repository.js'
-
-function paginate<T extends { id: string }>(
-  items: T[],
-  opts: PaginationOpts,
-): PaginatedResult<T> {
-  let start = 0
-  if (opts.cursor) {
-    const idx = items.findIndex((item) => item.id === opts.cursor)
-    start = idx >= 0 ? idx + 1 : 0
-  }
-  const page = items.slice(start, start + opts.limit)
-  const next_cursor =
-    page.length === opts.limit && start + opts.limit < items.length
-      ? page[page.length - 1].id
-      : null
-  return { items: page, next_cursor }
-}
+import { buildCursorPaginationQuery, toCursorPaginatedResult } from './cursor-pagination.js'
 
 function isNotFoundError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
@@ -65,9 +49,9 @@ export class PgCommentRepository implements CommentRepository {
         visibility: { in: ['PUBLIC', 'GRAY'] },
       },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      ...buildCursorPaginationQuery(opts),
     })
-    const items = rows.map((row) => this.toDomain(row))
-    return paginate(items, opts)
+    return toCursorPaginatedResult(rows, opts, (row) => this.toDomain(row))
   }
 
   async findByPostAll(
@@ -77,16 +61,9 @@ export class PgCommentRepository implements CommentRepository {
     const rows = await this.prisma.comment.findMany({
       where: { postId },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-      take: opts.limit + 1,
-      ...(opts.cursor ? { skip: 1, cursor: { id: opts.cursor } } : {}),
+      ...buildCursorPaginationQuery(opts),
     })
-    const hasMore = rows.length > opts.limit
-    const items = hasMore ? rows.slice(0, opts.limit) : rows
-
-    return {
-      items: items.map((row) => this.toDomain(row)),
-      next_cursor: hasMore ? items[items.length - 1].id : null,
-    }
+    return toCursorPaginatedResult(rows, opts, (row) => this.toDomain(row))
   }
 
   async findByPostsSince(postIds: string[], since: Date): Promise<Comment[]> {

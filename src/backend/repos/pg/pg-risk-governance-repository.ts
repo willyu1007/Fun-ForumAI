@@ -52,23 +52,7 @@ import type {
   GovernanceAttachment,
 } from '../types.js'
 import type { RiskGovernanceRepository } from '../risk-governance-repository.js'
-
-function paginate<T extends { id: string }>(
-  items: T[],
-  opts: PaginationOpts,
-): PaginatedResult<T> {
-  let start = 0
-  if (opts.cursor) {
-    const idx = items.findIndex((item) => item.id === opts.cursor)
-    start = idx >= 0 ? idx + 1 : 0
-  }
-  const page = items.slice(start, start + opts.limit)
-  const next_cursor =
-    page.length === opts.limit && start + opts.limit < items.length
-      ? page[page.length - 1].id
-      : null
-  return { items: page, next_cursor }
-}
+import { buildCursorPaginationQuery, toCursorPaginatedResult } from './cursor-pagination.js'
 
 function toRecordOrNull(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
@@ -161,8 +145,9 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
     const rows = await this.prisma.userIdentityVerification.findMany({
       where: opts.status ? { status: opts.status as PrismaUserIdentityVerification['status'] } : undefined,
       orderBy: [{ submittedAt: 'desc' }, { id: 'desc' }],
+      ...buildCursorPaginationQuery(opts),
     })
-    return paginate(rows.map((row) => this.toIdentityVerification(row)), opts)
+    return toCursorPaginatedResult(rows, opts, (row) => this.toIdentityVerification(row))
   }
 
   async findPolicySnapshotByHash(input: {
@@ -269,8 +254,9 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
         ...(opts.user_id ? { userId: opts.user_id } : {}),
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...buildCursorPaginationQuery(opts),
     })
-    return paginate(rows.map((row) => this.toRiskEvent(row)), opts)
+    return toCursorPaginatedResult(rows, opts, (row) => this.toRiskEvent(row))
   }
 
   async createPublicDisclosureCapOverride(
@@ -333,8 +319,9 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
         ...(opts.status ? { status: opts.status } : {}),
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...buildCursorPaginationQuery(opts),
     })
-    return paginate(rows.map((row) => this.toPublicDisclosureCapOverride(row)), opts)
+    return toCursorPaginatedResult(rows, opts, (row) => this.toPublicDisclosureCapOverride(row))
   }
 
   async replaceActivePublicDisclosureCapOverride(
@@ -479,8 +466,9 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
         ...(opts.queue ? { queue: opts.queue as PrismaModerationCase['queue'] } : {}),
       },
       orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+      ...buildCursorPaginationQuery(opts),
     })
-    return paginate(rows.map((row) => this.toModerationCase(row)), opts)
+    return toCursorPaginatedResult(rows, opts, (row) => this.toModerationCase(row))
   }
 
   async addCaseTarget(input: CreateModerationCaseTargetInput): Promise<ModerationCaseTarget> {
@@ -683,8 +671,9 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
         ...(opts.reporter_user_id ? { reporterUserId: opts.reporter_user_id } : {}),
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...buildCursorPaginationQuery(opts),
     })
-    return paginate(rows.map((row) => this.toComplaintTicket(row)), opts)
+    return toCursorPaginatedResult(rows, opts, (row) => this.toComplaintTicket(row))
   }
 
   async createAppealRequest(input: CreateAppealRequestInput): Promise<AppealRequest> {
@@ -738,8 +727,9 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
         ...(opts.requester_user_id ? { requesterUserId: opts.requester_user_id } : {}),
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...buildCursorPaginationQuery(opts),
     })
-    return paginate(rows.map((row) => this.toAppealRequest(row)), opts)
+    return toCursorPaginatedResult(rows, opts, (row) => this.toAppealRequest(row))
   }
 
   private toIdentityVerification(row: PrismaUserIdentityVerification): UserIdentityVerification {

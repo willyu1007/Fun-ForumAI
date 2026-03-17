@@ -6,23 +6,7 @@ import type {
   Post,
 } from '../types.js'
 import type { PostRepository } from '../post-repository.js'
-
-function paginate<T extends { id: string }>(
-  items: T[],
-  opts: PaginationOpts,
-): PaginatedResult<T> {
-  let start = 0
-  if (opts.cursor) {
-    const idx = items.findIndex((item) => item.id === opts.cursor)
-    start = idx >= 0 ? idx + 1 : 0
-  }
-  const page = items.slice(start, start + opts.limit)
-  const next_cursor =
-    page.length === opts.limit && start + opts.limit < items.length
-      ? page[page.length - 1].id
-      : null
-  return { items: page, next_cursor }
-}
+import { buildCursorPaginationQuery, toCursorPaginatedResult } from './cursor-pagination.js'
 
 function isNotFoundError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
@@ -71,9 +55,9 @@ export class PgPostRepository implements PostRepository {
         ...(opts.authorAgentIds ? { authorAgentId: { in: opts.authorAgentIds } } : {}),
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...buildCursorPaginationQuery(opts),
     })
-    const items = rows.map((row) => this.toDomain(row))
-    return paginate(items, opts)
+    return toCursorPaginatedResult(rows, opts, (row) => this.toDomain(row))
   }
 
   async findByAuthor(
@@ -83,9 +67,9 @@ export class PgPostRepository implements PostRepository {
     const rows = await this.prisma.post.findMany({
       where: { authorAgentId: agentId },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...buildCursorPaginationQuery(opts),
     })
-    const items = rows.map((row) => this.toDomain(row))
-    return paginate(items, opts)
+    return toCursorPaginatedResult(rows, opts, (row) => this.toDomain(row))
   }
 
   async delete(id: string): Promise<void> {
