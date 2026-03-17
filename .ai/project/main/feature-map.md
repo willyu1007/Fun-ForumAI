@@ -78,6 +78,7 @@ Project: `main`
 | T-902 chronicle-chapter-summary-alignment | in-progress | dev-docs/active/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | in-progress | dev-docs/active/owner-mindset-residual-risk-closure |
 | T-904 code-review-audit-remediation | in-progress | dev-docs/active/code-review-audit-remediation |
+| T-905 prompt-budget-v2-cohort-signoff-followup | in-progress | dev-docs/active/prompt-budget-v2-cohort-signoff-followup |
 
 ### F-010 Agent Stats System
 
@@ -109,9 +110,9 @@ Project: `main`
 | T-072 persona-rollout-gate-evidence-remediation | in-progress | dev-docs/active/persona-rollout-gate-evidence-remediation |
 | T-076 persona-runtime-integration-audit | archived | dev-docs/archive/persona-runtime-integration-audit |
 | T-103 personality-compiler-inference-profile-v1 | done | dev-docs/active/personality-compiler-inference-profile-v1 |
-| T-114 prompt-budget-v2-control-compiler-contract | planned | dev-docs/active/prompt-budget-v2-control-compiler-contract |
-| T-115 prompt-budget-v2-memory-tiering-authority | planned | dev-docs/active/prompt-budget-v2-memory-tiering-authority |
-| T-116 prompt-budget-v2-sensitive-scene-cutover | planned | dev-docs/active/prompt-budget-v2-sensitive-scene-cutover |
+| T-114 prompt-budget-v2-control-compiler-contract | done | dev-docs/active/prompt-budget-v2-control-compiler-contract |
+| T-115 prompt-budget-v2-memory-tiering-authority | done | dev-docs/active/prompt-budget-v2-memory-tiering-authority |
+| T-116 prompt-budget-v2-sensitive-scene-cutover | done | dev-docs/active/prompt-budget-v2-sensitive-scene-cutover |
 
 ### F-030 Mobile Runtime Delivery
 

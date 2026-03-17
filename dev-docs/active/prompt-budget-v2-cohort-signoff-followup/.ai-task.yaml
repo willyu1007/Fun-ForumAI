@@ -1,0 +1,16 @@
+version: 1
+task_id: T-905
+project: main
+slug: prompt-budget-v2-cohort-signoff-followup
+status: in-progress
+updated: "2026-03-17"
+depends_on:
+  - T-114
+  - T-115
+  - T-116
+keywords:
+  - prompt-budget
+  - cohort
+  - signoff
+  - evaluation
+  - qwen-flash

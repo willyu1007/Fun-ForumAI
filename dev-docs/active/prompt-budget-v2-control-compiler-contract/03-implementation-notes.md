@@ -1,8 +1,8 @@
 # 03 Implementation Notes
 
 ## Current status
-- 状态：planned
-- 说明：任务包已冻结 public-scene authority、V2 template contract 和 passive window validation 的边界，尚未开始代码实现。
+- 状态：implemented
+- 说明：public-scene V2 authority、compiled-block contract 和 gateway passive window validation 已落地；2026-03-17 完成一轮 review/fix pass，修正 contract 与 trim 边界问题。
 
 ## Ready checklist
 - [x] scene budget config、bucket taxonomy 和 control-tier vocabulary 已锁定
@@ -14,14 +14,15 @@
 - [x] visible actor 不自动升厚 envelope 的决策已锁定
 - [x] Package 1 / 2 / 3 的职责边界已拆分完成
 
-## 2026-03-17 planning log
-- 新建 `T-114` task bundle，承接 Token Budget V2 的 public-scene contract 与 control compiler 基线。
-- 记录新类型、request/local envelope contract、raw-source contract、V2 template block contract 和 gateway passive validation 范围。
-- 冻结全部 scene 的默认 request budget 和 package-level bucket defaults，避免后续实现者自定默认值。
-- 将本包映射到 `R-021`，并以 `R-027` 作为 secondary dependency。
+## 2026-03-17 implementation + review log
+- public scenes (`forum_post` / `forum_comment` / `scheduled_post`) 已走 `currentContextSources[] -> PromptOrchestrator -> compiled blocks -> prompt template -> gateway` 的 V2 路径。
+- `PromptOrchestrator.buildLocalLayerEnvelope()` 现在会读取 `model_capability_ref` 并同时约束 `request_target_input`、`request_soft_ceiling`、`request_hard_ceiling`，避免出现 `target > soft/hard` 的病态 envelope。
+- V2 template registry 现在强制六个 visible scene 模板声明五个 compiled blocks；`PromptEngine` 与运行时合同对齐，允许显式空字符串的 `compact_control_block`、`memory_block`、`soft_expression_block` 通过校验。
+- 修复了 `budget_exceeded_due_to_privacy_and_memory_floor` 的误报条件，避免“无 memory 且 prompt 已 fit budget”时仍被标记为 overflow。
+- gateway 被动 window validation 已在真实 Qwen-Flash 调用上验证为 warning-only，不参与 route 选择，也不会单独阻断请求。
+- 剩余 public-scene cohort / experience evidence 已外提到 `T-905`，`T-114` 维持为已关闭的 public-scene contract 包。
 
 ## Handoff notes
-- 实现时先冻结类型、token-math 公式与 audit schema，再迁 public templates；不要反过来先改模板再补 authority。
-- gateway passive validation 必须保持 warning-only；任何 hard fail 都应留给后续独立任务讨论。
-- 在 Package 2 未落地前，允许 memory 通过兼容 adapter 进入 `memory_block`，但不得让 adapter 重新主导 budget authority。
-- 进入 Package 2 前，必须把 public-scene review gate 的 evidence 和结论写回本包 `04-verification.md` / `03-implementation-notes.md`。
+- 当前没有新的 public-scene contract blocker；后续改动必须继续保持 `request/local envelope` 与 V2 compiled-block contract 一致。
+- gateway passive validation 仍必须保持 warning-only；provider 参数错误和真实上游 4xx/5xx 不是本包 budget warning 机制的一部分。
+- public-scene 的更深行为评审仍建议继续收集 cohort evidence，但这不再阻塞已落地的 authority / contract 正确性。

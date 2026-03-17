@@ -2,7 +2,7 @@ version: 1
 task_id: T-115
 project: main
 slug: prompt-budget-v2-memory-tiering-authority
-status: planned
+status: done
 updated: "2026-03-17"
 keywords:
   - prompt-budget
@@ -10,4 +10,3 @@ keywords:
   - tiering
   - privacy
   - observability
-

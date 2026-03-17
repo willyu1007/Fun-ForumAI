@@ -2,8 +2,8 @@
 
 ## Status
 
-- State: planned
-- Next step: 在 Package 2 review gate 关闭后，按 `private_chat -> chat_room -> proactive_dm` 顺序迁移 sensitive scenes；每迁完一个 scene 先完成 review 收口，再进入下一 scene。
+- State: done
+- Next step: `T-905 prompt-budget-v2-cohort-signoff-followup` 承接 six-scene cohort evidence 与产品级体验签收。
 
 ## Goal
 
@@ -22,10 +22,10 @@
 
 ## Acceptance criteria (high level)
 
-- [ ] `private_chat`、`chat_room`、`proactive_dm` 全部迁到 V2 raw-source contract 与 V2 block 模板。
-- [ ] `chat_room` 明确保证 `current_context > memory` 的默认分配策略。
-- [ ] `proactive_dm` 明确保证 `hard_control` 最强、`soft_expression` 最弱。
-- [ ] `private_chat` 明确保证 owner 当前输入优先于 session history 与长期 memory。
-- [ ] 压测与回归中 `hard_control` 不会被 memory 挤没，且当前 trigger/context 始终可见。
-- [ ] 每个 sensitive scene 的 review gate 都在进入下一 scene 前关闭。
-- [ ] 最终整体 review 覆盖 route raw sources -> orchestrator blocks -> gateway passive validation -> audit/metrics 的全链路。
+- [x] `private_chat`、`chat_room`、`proactive_dm` 全部迁到 V2 raw-source contract 与 V2 block 模板。
+- [x] `chat_room` 明确保证 `current_context > memory` 的默认分配策略。
+- [x] `proactive_dm` 明确保证 `hard_control` 最强、`soft_expression` 最弱。
+- [x] `private_chat` 明确保证 owner 当前输入优先于 session history 与长期 memory。
+- [x] 压测与回归中 `hard_control` 不会被 memory 挤没，且当前 trigger/context 始终可见。
+- [x] 每个 sensitive scene 的 review gate 都在进入下一 scene 前关闭。
+- [x] 剩余 six-scene cohort / quality sign-off 已外提到 `T-905`；本包作为 sensitive-scene cutover implementation package 关闭。

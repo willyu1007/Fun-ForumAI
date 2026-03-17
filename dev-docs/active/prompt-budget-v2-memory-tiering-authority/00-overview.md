@@ -2,8 +2,8 @@
 
 ## Status
 
-- State: planned
-- Next step: 在 Package 1 review gate 关闭后，补齐结构化 memory pack/render 合同、runtime authority、overflow 诊断与 Package 2 review gate，再进入 sensitive-scene cutover。
+- State: done
+- Next step: `T-905 prompt-budget-v2-cohort-signoff-followup` 承接剩余 cohort saturation evidence 与体验签收。
 
 ## Goal
 
@@ -22,10 +22,10 @@
 
 ## Acceptance criteria (high level)
 
-- [ ] `PromptLayerService` 改为返回结构化 memory pack 与 disclosure metadata，不再输出最终 memory string。
-- [ ] memory renderer 支持 `full / compact / sparse / minimal / drop_low_value` 五档。
-- [ ] memory 降级顺序固定为：缩短文案 -> 减少 slot -> 减少 item -> summary 化 -> 删除低价值 section。
-- [ ] `MemoryContextRequest` 携带 `bucketTarget`，由 orchestrator 指示 memory renderer 的本轮目标空间。
-- [ ] `public_memory_budget` 不再参与 runtime allocation；audit/observability 能解释 owner 偏好与实际分配差异及原因码。
-- [ ] overflow reason 完整覆盖 `memory`、`current_context`、`control floor`、`privacy floor` 与 `hard ceiling` 压缩场景。
-- [ ] 进入 Package 3 前，low / medium / high-memory cohort 的 review 已完成，memory saturation 结论已收口。
+- [x] `PromptLayerService` 改为返回结构化 memory pack 与 disclosure metadata，不再输出最终 memory string。
+- [x] memory renderer 支持 `full / compact / sparse / minimal / drop_low_value` 五档。
+- [x] memory 降级顺序固定为：缩短文案 -> 减少 slot -> 减少 item -> summary 化 -> 删除低价值 section。
+- [x] `MemoryContextRequest` 携带 `bucketTarget`，由 orchestrator 指示 memory renderer 的本轮目标空间。
+- [x] `public_memory_budget` 不再参与 runtime allocation；audit/observability 能解释 owner 偏好与实际分配差异及原因码。
+- [x] overflow reason 完整覆盖 `memory`、`current_context`、`control floor`、`privacy floor` 与 `hard ceiling` 压缩场景。
+- [x] 剩余 low / medium / high-memory cohort review 已外提到 `T-905`，不再阻塞本包作为 memory-authority implementation package 关闭。

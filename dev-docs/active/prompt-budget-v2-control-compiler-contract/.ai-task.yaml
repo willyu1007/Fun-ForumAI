@@ -2,7 +2,7 @@ version: 1
 task_id: T-114
 project: main
 slug: prompt-budget-v2-control-compiler-contract
-status: planned
+status: done
 updated: "2026-03-17"
 keywords:
   - prompt-budget
@@ -10,4 +10,3 @@ keywords:
   - prompt-orchestrator
   - template-contract
   - gateway
-

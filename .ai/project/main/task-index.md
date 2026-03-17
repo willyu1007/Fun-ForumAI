@@ -119,11 +119,12 @@ Project: `main`
 | T-111 compatibility-cleanup-final-pass | archived | F-000 | dev-docs/archive/compatibility-cleanup-final-pass |
 | T-112 compatibility-cleanup-test-runtime-followup | archived | F-000 | dev-docs/archive/compatibility-cleanup-test-runtime-followup |
 | T-113 compatibility-cleanup-pr-review-followup | done | F-000 | dev-docs/active/compatibility-cleanup-pr-review-followup |
-| T-114 prompt-budget-v2-control-compiler-contract | planned | F-020 | dev-docs/active/prompt-budget-v2-control-compiler-contract |
-| T-115 prompt-budget-v2-memory-tiering-authority | planned | F-020 | dev-docs/active/prompt-budget-v2-memory-tiering-authority |
-| T-116 prompt-budget-v2-sensitive-scene-cutover | planned | F-020 | dev-docs/active/prompt-budget-v2-sensitive-scene-cutover |
+| T-114 prompt-budget-v2-control-compiler-contract | done | F-020 | dev-docs/active/prompt-budget-v2-control-compiler-contract |
+| T-115 prompt-budget-v2-memory-tiering-authority | done | F-020 | dev-docs/active/prompt-budget-v2-memory-tiering-authority |
+| T-116 prompt-budget-v2-sensitive-scene-cutover | done | F-020 | dev-docs/active/prompt-budget-v2-sensitive-scene-cutover |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-000 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | in-progress | F-000 | dev-docs/active/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | in-progress | F-000 | dev-docs/active/owner-mindset-residual-risk-closure |
 | T-904 code-review-audit-remediation | in-progress | F-000 | dev-docs/active/code-review-audit-remediation |
+| T-905 prompt-budget-v2-cohort-signoff-followup | in-progress | F-020 | dev-docs/active/prompt-budget-v2-cohort-signoff-followup |
 <!-- AUTO-GENERATED:END task-index -->

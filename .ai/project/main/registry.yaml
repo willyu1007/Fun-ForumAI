@@ -1056,7 +1056,7 @@ tasks:
     updated: 2026-03-16
   - id: T-114
     slug: prompt-budget-v2-control-compiler-contract
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
@@ -1066,7 +1066,7 @@ tasks:
     updated: 2026-03-17
   - id: T-115
     slug: prompt-budget-v2-memory-tiering-authority
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
@@ -1075,7 +1075,7 @@ tasks:
     updated: 2026-03-17
   - id: T-116
     slug: prompt-budget-v2-sensitive-scene-cutover
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
@@ -1110,3 +1110,13 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/code-review-audit-remediation
     updated: 2026-03-16
+  - id: T-905
+    slug: prompt-budget-v2-cohort-signoff-followup
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-021
+      - R-030
+    dev_docs_path: dev-docs/active/prompt-budget-v2-cohort-signoff-followup
+    updated: 2026-03-17
