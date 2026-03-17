@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 117 (planned: 1, in-progress: 25, blocked: 0, done: 10, archived: 81)
+- Tasks: 118 (planned: 1, in-progress: 24, blocked: 0, done: 10, archived: 83)
 
 ## Recent tasks
 
@@ -17,7 +17,8 @@ Project: `main`
 | T-114 prompt-budget-v2-control-compiler-contract | done | F-020 | dev-docs/active/prompt-budget-v2-control-compiler-contract |
 | T-115 prompt-budget-v2-memory-tiering-authority | done | F-020 | dev-docs/active/prompt-budget-v2-memory-tiering-authority |
 | T-116 prompt-budget-v2-sensitive-scene-cutover | done | F-020 | dev-docs/active/prompt-budget-v2-sensitive-scene-cutover |
-| T-905 prompt-budget-v2-cohort-signoff-followup | in-progress | F-020 | dev-docs/active/prompt-budget-v2-cohort-signoff-followup |
+| T-905 prompt-budget-v2-cohort-signoff-followup | archived | F-020 | dev-docs/archive/prompt-budget-v2-cohort-signoff-followup |
+| T-906 prompt-budget-v2-runtime-gap-remediation | archived | F-000 | dev-docs/archive/prompt-budget-v2-runtime-gap-remediation |
 | T-105 owner-nurture-life-overview-master | in-progress | F-070 | dev-docs/active/owner-nurture-life-overview-master |
 | T-106 owner-life-overview-surface | in-progress | F-070 | dev-docs/active/owner-life-overview-surface |
 | T-107 chronicle-story-beat-seal-and-suggestions | in-progress | F-070 | dev-docs/active/chronicle-story-beat-seal-and-suggestions |
@@ -33,5 +34,4 @@ Project: `main`
 | T-904 code-review-audit-remediation | in-progress | F-000 | dev-docs/active/code-review-audit-remediation |
 | T-094 public-director-boundary-and-scene-contract | archived | F-060 | dev-docs/archive/public-director-boundary-and-scene-contract |
 | T-095 scene-selector-scheduled-post-forum-entry | archived | F-060 | dev-docs/archive/scene-selector-scheduled-post-forum-entry |
-| T-103 personality-compiler-inference-profile-v1 | done | F-020 | dev-docs/active/personality-compiler-inference-profile-v1 |
 <!-- AUTO-GENERATED:END dashboard -->

@@ -78,7 +78,7 @@ Project: `main`
 | T-902 chronicle-chapter-summary-alignment | in-progress | dev-docs/active/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | in-progress | dev-docs/active/owner-mindset-residual-risk-closure |
 | T-904 code-review-audit-remediation | in-progress | dev-docs/active/code-review-audit-remediation |
-| T-905 prompt-budget-v2-cohort-signoff-followup | in-progress | dev-docs/active/prompt-budget-v2-cohort-signoff-followup |
+| T-906 prompt-budget-v2-runtime-gap-remediation | archived | dev-docs/archive/prompt-budget-v2-runtime-gap-remediation |
 
 ### F-010 Agent Stats System
 
@@ -113,6 +113,7 @@ Project: `main`
 | T-114 prompt-budget-v2-control-compiler-contract | done | dev-docs/active/prompt-budget-v2-control-compiler-contract |
 | T-115 prompt-budget-v2-memory-tiering-authority | done | dev-docs/active/prompt-budget-v2-memory-tiering-authority |
 | T-116 prompt-budget-v2-sensitive-scene-cutover | done | dev-docs/active/prompt-budget-v2-sensitive-scene-cutover |
+| T-905 prompt-budget-v2-cohort-signoff-followup | archived | dev-docs/archive/prompt-budget-v2-cohort-signoff-followup |
 
 ### F-030 Mobile Runtime Delivery
 

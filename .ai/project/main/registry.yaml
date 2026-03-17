@@ -1112,11 +1112,18 @@ tasks:
     updated: 2026-03-16
   - id: T-905
     slug: prompt-budget-v2-cohort-signoff-followup
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-021
       - R-030
-    dev_docs_path: dev-docs/active/prompt-budget-v2-cohort-signoff-followup
+    dev_docs_path: dev-docs/archive/prompt-budget-v2-cohort-signoff-followup
+    updated: 2026-03-17
+  - id: T-906
+    slug: prompt-budget-v2-runtime-gap-remediation
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/prompt-budget-v2-runtime-gap-remediation
     updated: 2026-03-17

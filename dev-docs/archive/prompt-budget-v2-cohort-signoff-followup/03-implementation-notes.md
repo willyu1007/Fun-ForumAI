@@ -1,0 +1,21 @@
+# 03 Implementation Notes
+
+- 2026-03-17: Created `T-905` to externalize the remaining six-scene cohort evidence/sign-off work from `T-114~T-116`.
+- 2026-03-17: Decision:
+  - `T-114` is closed as the control-compiler / contract implementation package.
+  - `T-115` is closed as the memory-authority implementation package.
+  - `T-116` is closed as the sensitive-scene cutover implementation package.
+  - Residual work is no longer a code/contract gap; it is an evidence/sign-off gap owned by `T-905`.
+- 2026-03-17: External gap report review found two real runtime defects that should not stay hidden inside sign-off:
+  - coarse memory retrieval still lacked local-envelope-aware hinting;
+  - prompt audit still mixed legacy compatibility layers and compiled-block semantics.
+  - These were externalized into `T-906 prompt-budget-v2-runtime-gap-remediation`.
+- 2026-03-17: Used a temporary evidence runner during this sign-off pass:
+  - it reused the real `PromptOrchestrator -> PromptEngine -> LLMGateway` visible flow;
+  - only the upstream LLM completion was replaced with a deterministic synthetic responder so artifacts stayed replayable and diffable;
+  - the runner itself was removed after artifacts were captured to avoid leaving task-specific tooling in the repo.
+- 2026-03-17: Generated six-scene / three-cohort temporary sign-off artifacts, then removed them during archive cleanup after the review verdict had been captured in task-local docs.
+- 2026-03-17: Review verdict:
+  - all six scenes remained block-first and boundary-stable across `low-memory` / `medium-memory` / `high-memory` cohorts;
+  - memory token usage and cost stayed monotonic with cohort richness;
+  - no new runtime/product follow-up is warranted from the sign-off pass.

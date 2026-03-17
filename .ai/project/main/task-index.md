@@ -126,5 +126,6 @@ Project: `main`
 | T-902 chronicle-chapter-summary-alignment | in-progress | F-000 | dev-docs/active/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | in-progress | F-000 | dev-docs/active/owner-mindset-residual-risk-closure |
 | T-904 code-review-audit-remediation | in-progress | F-000 | dev-docs/active/code-review-audit-remediation |
-| T-905 prompt-budget-v2-cohort-signoff-followup | in-progress | F-020 | dev-docs/active/prompt-budget-v2-cohort-signoff-followup |
+| T-905 prompt-budget-v2-cohort-signoff-followup | archived | F-020 | dev-docs/archive/prompt-budget-v2-cohort-signoff-followup |
+| T-906 prompt-budget-v2-runtime-gap-remediation | archived | F-000 | dev-docs/archive/prompt-budget-v2-runtime-gap-remediation |
 <!-- AUTO-GENERATED:END task-index -->
