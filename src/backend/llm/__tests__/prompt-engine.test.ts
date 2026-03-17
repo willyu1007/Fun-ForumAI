@@ -46,6 +46,11 @@ function buildVariables(overrides: Record<string, string> = {}): Record<string, 
     community_candidates: 'community-1 | general | General | 调试社区',
     inclination_injection: '',
     inclination_media_url: '',
+    hard_control_block: '## 边界与约束\n- 不要泄露私聊或隐藏 runtime\n- 先处理当前场景',
+    compact_control_block: '## 人格与执行\n- 保持判断力\n- 允许推进但不要跑题',
+    current_context_block: '## 当前上下文\n- 这间房的最近连贯记忆\n- 当前帖子和现场都与 prompt 契约有关',
+    memory_block: '## 你的记忆与经历\n- 你最近一直在拆 prompt budget 的旧病灶',
+    soft_expression_block: '## 风格表达\n- 更适合 talk show\n- 偶尔用反打句式',
     local_intent_block: '## Local Intent\n- episode_id: test-episode\n- initiative: reply',
     topic: '提示词治理',
     layer_traits: '',
@@ -82,21 +87,21 @@ describe('PromptEngine', () => {
     expect(template).toBeDefined()
     expect(template).toMatchObject({
       prompt_template_id: 'agent-chat-reply',
-      version: 4,
+      version: 6,
     })
     expect(template?.variables_schema.required).toContain('room_name')
   })
 
-  it('renders chatroom projection hints and live guardrails into the room-native template', () => {
+  it('renders chatroom templates through the compiled block contract', () => {
     const engine = new PromptEngine()
     const messages = engine.render(
       PROMPT_TEMPLATE_REFS.agentChatReply,
       buildVariables(),
     )
 
-    expect(String(messages[0].content)).toContain('公域投射')
+    expect(String(messages[0].content)).toContain('边界与约束')
     expect(String(messages[0].content)).toContain('更适合 talk show')
-    expect(String(messages[0].content)).toContain('禁止使用论坛/帖子引用格式')
+    expect(String(messages[0].content)).toContain('不要使用论坛/帖子引用格式')
     expect(String(messages[0].content)).toContain('第一行先给态度、判断或推进句')
     expect(String(messages[1].content)).toContain('这间房的最近连贯记忆')
   })
@@ -119,7 +124,7 @@ describe('PromptEngine', () => {
     }
   })
 
-  it('allows private boundary templates to omit layer_showrunner', () => {
+  it('allows private boundary templates to ignore legacy layer_showrunner', () => {
     const engine = new PromptEngine()
     const variables = buildVariables()
     delete variables.layer_showrunner
@@ -131,14 +136,14 @@ describe('PromptEngine', () => {
       )
 
     expect(messages[0]).toMatchObject({ role: 'system' })
-    expect(String(messages[0].content)).toContain('正在与 Owner')
+    expect(String(messages[0].content)).toContain('正在和 Owner 进行私聊')
     expect(String(messages[0].content)).not.toContain('{{layer_showrunner}}')
   })
 
-  it('keeps placeholder validation strict for non-private templates', () => {
+  it('keeps placeholder validation strict for non-private compiled block templates', () => {
     const engine = new PromptEngine()
     const variables = buildVariables()
-    delete variables.layer_showrunner
+    delete variables.hard_control_block
 
     expect(() =>
       engine.render(
@@ -148,10 +153,12 @@ describe('PromptEngine', () => {
     ).toThrowError(LLMGatewayContractError)
   })
 
-  it('renders scene-enabled forum templates with local_intent_block and without layer_showrunner', () => {
+  it('renders scene-enabled forum templates with V2 compiled blocks', () => {
     const engine = new PromptEngine()
     const variables = buildVariables({
-      local_intent_block: '[LOCAL_INTENT_BLOCK]',
+      hard_control_block: '[HARD_CONTROL_BLOCK]',
+      compact_control_block: '[COMPACT_CONTROL_BLOCK]',
+      current_context_block: '[CURRENT_CONTEXT_BLOCK]',
       layer_showrunner: '[LEGACY_SHOWRUNNER]',
     })
 
@@ -160,31 +167,34 @@ describe('PromptEngine', () => {
       variables,
     )
 
-    expect(String(messages[0].content)).toContain('[LOCAL_INTENT_BLOCK]')
+    expect(String(messages[0].content)).toContain('[HARD_CONTROL_BLOCK]')
+    expect(String(messages[0].content)).toContain('[COMPACT_CONTROL_BLOCK]')
     expect(String(messages[0].content)).not.toContain('[LEGACY_SHOWRUNNER]')
+    expect(String(messages[1].content)).toContain('[CURRENT_CONTEXT_BLOCK]')
   })
 
-  it('renders scene-enabled chatroom templates with local_intent_block as the primary carrier', () => {
+  it('renders scene-enabled chatroom templates with compiled block variables as the primary carrier', () => {
     const engine = new PromptEngine()
     const messages = engine.render(
       PROMPT_TEMPLATE_REFS.agentChatReplyScene,
       buildVariables({
-        local_intent_block: '[CHATROOM_LOCAL_INTENT]',
-        room_public_context_summary: '[ROOM_PUBLIC_CONTEXT_SUMMARY]',
+        hard_control_block: '[CHATROOM_HARD_CONTROL]',
+        compact_control_block: '[CHATROOM_COMPACT_CONTROL]',
+        current_context_block: '[ROOM_CURRENT_CONTEXT]',
         layer_showrunner: '[LEGACY_SHOWRUNNER]',
       }),
     )
 
-    expect(String(messages[0].content)).toContain('[CHATROOM_LOCAL_INTENT]')
+    expect(String(messages[0].content)).toContain('[CHATROOM_HARD_CONTROL]')
+    expect(String(messages[0].content)).toContain('[CHATROOM_COMPACT_CONTROL]')
     expect(String(messages[0].content)).not.toContain('[LEGACY_SHOWRUNNER]')
-    expect(String(messages[0].content)).not.toContain('兼容目标')
-    expect(String(messages[1].content)).toContain('[ROOM_PUBLIC_CONTEXT_SUMMARY]')
+    expect(String(messages[1].content)).toContain('[ROOM_CURRENT_CONTEXT]')
   })
 
-  it('requires local_intent_block for scene-enabled scheduled_post template', () => {
+  it('requires hard_control_block for scene-enabled scheduled_post template', () => {
     const engine = new PromptEngine()
     const variables = buildVariables()
-    delete variables.local_intent_block
+    delete variables.hard_control_block
 
     expect(() =>
       engine.render(
@@ -194,10 +204,10 @@ describe('PromptEngine', () => {
     ).toThrowError(LLMGatewayContractError)
   })
 
-  it('requires local_intent_block for scene-enabled chatroom template', () => {
+  it('requires current_context_block for scene-enabled chatroom template', () => {
     const engine = new PromptEngine()
     const variables = buildVariables()
-    delete variables.local_intent_block
+    delete variables.current_context_block
 
     expect(() =>
       engine.render(

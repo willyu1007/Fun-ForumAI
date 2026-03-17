@@ -113,9 +113,39 @@ describe('MemoryPack', () => {
       observability: {
         publicObservationSource: 'empty',
       },
-    }, 40)
+    }, {
+      tokenBudget: 40,
+      tier: 'compact',
+    })
 
     expect(output.text).toContain('### 私聊锚点')
     expect(output.tokenEstimate).toBeLessThanOrEqual(40)
+  })
+
+  it('never exceeds the remaining token budget even when the first section is oversized', () => {
+    const renderer = new DefaultMemoryPackRenderer()
+    const output = renderer.render({
+      slots: [
+        {
+          slotId: 'owner_private',
+          title: '超长标题'.repeat(10),
+          items: ['超长内容'.repeat(80)],
+        },
+      ],
+      selectedMemories: [],
+      tokenEstimate: 500,
+      slotTokenEstimates: {
+        owner_private: 500,
+      },
+      observability: {
+        publicObservationSource: 'empty',
+      },
+    }, {
+      tokenBudget: 20,
+      tier: 'compact',
+    })
+
+    expect(output.tokenEstimate).toBeLessThanOrEqual(20)
+    expect(output.text.length).toBeLessThan('超长内容'.repeat(80).length)
   })
 })

@@ -13,6 +13,120 @@ export type PromptScene =
   | 'proactive_dm'
   | 'scheduled_post'
 
+export type PromptPriority = 'critical' | 'high' | 'medium' | 'low'
+
+export type PromptControlTier = 'minimal' | 'compact' | 'expanded'
+
+export type PromptMemoryTier =
+  | 'full'
+  | 'compact'
+  | 'sparse'
+  | 'minimal'
+  | 'drop_low_value'
+
+export type PromptOverflowReason =
+  | 'budget_exceeded_after_control_trim'
+  | 'budget_exceeded_due_to_memory'
+  | 'budget_exceeded_due_to_privacy_and_memory_floor'
+  | 'control_floor_exceeds_target_budget'
+  | 'current_context_exceeds_target_budget'
+  | 'hard_ceiling_enforced_memory_compacted'
+  | 'soft_overflow_applied'
+
+export interface RatioBand {
+  guaranteed: number
+  preferred: number
+  max: number
+}
+
+export interface PromptSceneBudgetConfig {
+  scene: PromptScene
+  request_budget: {
+    reference_input: number
+    soft_total_ratio: number
+    hard_total_ratio: number
+    output_reserve: number
+  }
+  buckets: {
+    hard_control: RatioBand
+    compact_control: RatioBand
+    current_context: RatioBand
+    memory: RatioBand
+    soft_expression: RatioBand
+  }
+  compiler_policy: {
+    min_control_tier: PromptControlTier
+    max_control_tier: PromptControlTier
+    default_memory_tier: PromptMemoryTier
+    allow_soft_overflow: boolean
+  }
+}
+
+export interface CurrentContextSource {
+  kind: string
+  text: string
+  priority: PromptPriority
+  source_id?: string
+}
+
+export interface PromptRequestEnvelope {
+  static_system_tokens: number
+  route_wrapper_tokens: number
+  tool_tokens: number
+  current_user_input_tokens: number
+  output_reserve: number
+  model_capability_ref?: string | null
+}
+
+export interface PromptLocalLayerEnvelope {
+  request_target_input: number
+  request_soft_ceiling: number
+  request_hard_ceiling: number
+  non_layer_tokens: number
+  local_target: number
+  local_soft: number
+  local_hard: number
+}
+
+export interface PromptBudgetBucketTokens {
+  hard_control: number
+  compact_control: number
+  current_context: number
+  memory: number
+  soft_expression: number
+}
+
+export interface PromptBucketSurvivalRatio {
+  hard_control: number
+  compact_control: number
+  current_context: number
+  memory: number
+  soft_expression: number
+}
+
+export interface PromptBudgetDecision {
+  target_budget: number
+  soft_ceiling: number
+  hard_ceiling: number
+  actual_input_estimate: number
+  estimated_total_input: number
+  control_tier_applied: PromptControlTier
+  memory_tier_applied: PromptMemoryTier
+  bucket_tokens: PromptBudgetBucketTokens
+  bucket_survival_ratio: PromptBucketSurvivalRatio
+  overflow_reason: PromptOverflowReason | null
+  warnings: string[]
+}
+
+export interface PromptBudgetSummary {
+  scene: PromptScene | 'background_hidden' | 'dev_prompt_render'
+  prompt_template_id: string
+  prompt_version: number
+  request_envelope: PromptRequestEnvelope
+  local_layer_envelope: PromptLocalLayerEnvelope
+  decision: PromptBudgetDecision
+}
+
 export interface AgentPersona {
   name: string
   style: string
@@ -30,6 +144,11 @@ export interface PromptLayers {
   layer4_overrides?: string
   layer5_memory?: string
   layer6_privacy?: string
+  hard_control_block?: string
+  compact_control_block?: string
+  current_context_block?: string
+  memory_block?: string
+  soft_expression_block?: string
 }
 
 export interface PromptAuditServerCapSource {
@@ -45,12 +164,15 @@ export interface PromptAuditServerCapSource {
 }
 
 export interface PromptComposeAudit {
-  version: 'v1'
+  version: 'v1' | 'v2'
   scene: PromptScene
   includedLayerIds: string[]
   tokenEstimates: Record<string, number>
   lintWarnings: string[]
   trimReasons: string[]
+  requestEnvelope?: PromptRequestEnvelope
+  localLayerEnvelope?: PromptLocalLayerEnvelope
+  budgetDecision?: PromptBudgetDecision
   provenance?: {
     community_profile?: {
       source: string
@@ -62,6 +184,11 @@ export interface PromptComposeAudit {
       effective_disclosure_level: number
       cap_source: 'owner_setting' | 'server_cap'
       public_disclosure_cap: number | null
+      owner_memory_budget_preference?: number
+      runtime_memory_bucket_target?: number
+      runtime_memory_token_ceiling?: number
+      runtime_memory_tier_applied?: PromptMemoryTier
+      owner_budget_divergence_reason?: string | null
       server_cap_sources?: PromptAuditServerCapSource[]
       rewrite_cause?: string | null
     }

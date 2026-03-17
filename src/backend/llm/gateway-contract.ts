@@ -1,5 +1,5 @@
 import type { LlmMessage, LlmTokenUsage } from './types.js'
-import type { PromptScene } from '../runtime/types.js'
+import type { PromptBudgetSummary, PromptScene } from '../runtime/types.js'
 import type {
   RenderTier,
   VoiceLineId,
@@ -123,6 +123,8 @@ export interface UsageLedgerEntry {
   actual_cost_cny?: number
   platform_retry_count?: number
   error_code?: LLMGatewayErrorCode
+  gateway_warnings?: string[]
+  prompt_budget_summary?: PromptBudgetSummary
   latency_ms: number
   created_at: string
 }
@@ -173,6 +175,14 @@ export interface RenderDecision {
   promptVersion: number
 }
 
+export interface ModelCapabilityEntry {
+  provider_id: string
+  model_id: string
+  input_window_tokens: number
+  max_output_tokens: number
+  recommended_operating_input_tokens?: number
+}
+
 export interface LLMGatewayRequest {
   intent: LLMGenerationIntent
   visibility: LLMVisibility
@@ -192,6 +202,7 @@ export interface LLMGatewayRequest {
   stop?: string[]
   providerTags?: string[]
   promptMessages?: LlmMessage[]
+  promptBudgetSummary?: PromptBudgetSummary
 }
 
 export interface LLMGatewayResponse {
@@ -203,4 +214,5 @@ export interface LLMGatewayResponse {
   platformRetryCount: number
   renderDecision: RenderDecision
   promptRef: PromptTemplateRef
+  warnings?: string[]
 }

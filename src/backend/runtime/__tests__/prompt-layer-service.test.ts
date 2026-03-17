@@ -227,6 +227,67 @@ describe('PromptLayerService', () => {
     ])
   })
 
+  it('does not let owner memory budget preference cap runtime memory fetch ceilings', async () => {
+    const getMemoriesForContext = vi.fn(async () => ({
+      memories: [],
+      formatted: '',
+      pack: {
+        slots: [],
+        selectedMemories: [],
+        tokenEstimate: 0,
+        slotTokenEstimates: {},
+        observability: { publicObservationSource: 'empty' as const },
+      },
+      renders: {
+        full: { tier: 'full' as const, text: '', tokenEstimate: 0, slotCount: 0, itemCount: 0 },
+        compact: { tier: 'compact' as const, text: '', tokenEstimate: 0, slotCount: 0, itemCount: 0 },
+        sparse: { tier: 'sparse' as const, text: '', tokenEstimate: 0, slotCount: 0, itemCount: 0 },
+        minimal: { tier: 'minimal' as const, text: '', tokenEstimate: 0, slotCount: 0, itemCount: 0 },
+        drop_low_value: { tier: 'drop_low_value' as const, text: '', tokenEstimate: 0, slotCount: 0, itemCount: 0 },
+      },
+      selected_tier: 'minimal' as const,
+    }))
+
+    const service = new PromptLayerService({
+      agentService: {
+        getAgent: vi.fn(() => ({ id: 'agent-memory', display_name: 'Memory Bot' })),
+        getLatestConfig: vi.fn(() => ({ config_json: {} })),
+      } as unknown as PromptLayerServiceDeps['agentService'],
+      memoryService: {
+        getPrivacySettings: vi.fn(async () => ({
+          agent_id: 'agent-memory',
+          disclosure_level: 2,
+          public_memory_budget: 100,
+          public_memory_top_k: 4,
+          public_disclosure_cap: null,
+          updated_at: new Date(),
+          updated_by: 'owner-1',
+        })),
+        resolveEffectiveDisclosureLevel: vi.fn(() => ({
+          requested_disclosure_level: 2,
+          effective_disclosure_level: 2,
+          cap_source: 'owner_setting',
+          public_disclosure_cap: null,
+          server_cap_sources: [],
+        })),
+        getMemoriesForContext,
+      } as unknown as PromptLayerServiceDeps['memoryService'],
+    })
+
+    await service.composeLayersWithAudit({
+      agentId: 'agent-memory',
+      scene: 'chat_room',
+      conversationText: '继续聊',
+    })
+
+    expect(getMemoriesForContext).toHaveBeenCalledWith('agent-memory', expect.objectContaining({
+      tokenCeiling: 1400,
+      bucketTarget: 900,
+      memoryTier: 'minimal',
+      topK: 4,
+    }))
+  })
+
   it('computes first-in-room as false when member has spoken', async () => {
     const capture: { ctx?: InstructionContext } = {}
 

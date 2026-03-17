@@ -112,7 +112,7 @@ describe('POST /v1/dev/prompts/render', () => {
       home_voice_line_id: 'qwen-social-v1',
     })
     expect(res.body.data.audit).toMatchObject({
-      version: 'v1',
+      version: 'v2',
       scene: 'forum_post',
     })
     expect(Array.isArray(res.body.data.audit.includedLayerIds)).toBe(true)

@@ -235,6 +235,32 @@ function buildBundle(): LlmRegistryBundle {
       version: 1,
       pricing: [],
     },
+    modelCapabilities: {
+      version: 1,
+      capabilities: [
+        {
+          provider_id: 'dashscope-openai',
+          model_id: 'qwen-flash-character',
+          input_window_tokens: 32_768,
+          max_output_tokens: 8_192,
+          recommended_operating_input_tokens: 24_576,
+        },
+        {
+          provider_id: 'dashscope-openai',
+          model_id: 'qwen-plus-character',
+          input_window_tokens: 32_768,
+          max_output_tokens: 8_192,
+          recommended_operating_input_tokens: 24_576,
+        },
+        {
+          provider_id: 'dashscope-openai',
+          model_id: 'qwen-max',
+          input_window_tokens: 32_768,
+          max_output_tokens: 8_192,
+          recommended_operating_input_tokens: 24_576,
+        },
+      ],
+    },
   }
 }
 
@@ -706,5 +732,104 @@ describe('LLMGateway', () => {
     expect(usageLedger.list()).toHaveLength(2)
     expect(usageLedger.list()[0]?.success).toBe(false)
     expect(usageLedger.list()[1]?.success).toBe(true)
+  })
+
+  it('emits passive window warnings from prompt budget summary without blocking the request', async () => {
+    const bundle = buildBundle()
+    bundle.credentialPools.pools[0]!.allowed_model_ids = ['qwen-plus-character']
+
+    const usageLedger = new UsageLedgerWriter()
+    const llmClient = buildLlmClient()
+    vi.spyOn(llmClient, 'chat').mockResolvedValue({
+      content: 'ok',
+      usage: { prompt_tokens: 120, completion_tokens: 40, total_tokens: 160 },
+      model: 'qwen-plus-character',
+      finish_reason: 'stop',
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: { resolve: vi.fn(() => 'secret') } as never,
+      }),
+      usageLedger,
+      budgetGuard: new BudgetGuard(),
+    })
+
+    const response = await gateway.generateVisibleText({
+      intent: 'proactive_opening',
+      scene: 'proactive_dm',
+      agentId: 'agent-1',
+      homeVoiceLineId: 'qwen-social-v1',
+      promptRef: { id: 'agent-proactive-dm-opening', version: 2 },
+      variables: {},
+      promptMessages: [{ role: 'user', content: 'open' }],
+      budgetClass: 'visible_standard',
+      traceId: 'trace-budget-summary',
+      requestedTier: 'base',
+      allowFallbackWithinLine: true,
+      allowCrossFamily: false,
+      maxTokens: 9_000,
+      promptBudgetSummary: {
+        scene: 'proactive_dm',
+        prompt_template_id: 'agent-proactive-dm-opening',
+        prompt_version: 2,
+        request_envelope: {
+          static_system_tokens: 180,
+          route_wrapper_tokens: 40,
+          tool_tokens: 0,
+          current_user_input_tokens: 32,
+          output_reserve: 1_500,
+          model_capability_ref: null,
+        },
+        local_layer_envelope: {
+          request_target_input: 6_000,
+          request_soft_ceiling: 6_900,
+          request_hard_ceiling: 7_800,
+          non_layer_tokens: 252,
+          local_target: 5_748,
+          local_soft: 6_648,
+          local_hard: 7_548,
+        },
+        decision: {
+          target_budget: 5_748,
+          soft_ceiling: 6_648,
+          hard_ceiling: 7_548,
+          estimated_total_input: 32_000,
+          actual_input_estimate: 32_000,
+          control_tier_applied: 'compact',
+          memory_tier_applied: 'minimal',
+          bucket_tokens: {
+            hard_control: 600,
+            compact_control: 900,
+            current_context: 2_000,
+            memory: 700,
+            soft_expression: 200,
+          },
+          bucket_survival_ratio: {
+            hard_control: 1,
+            compact_control: 1,
+            current_context: 1,
+            memory: 0.4,
+            soft_expression: 0.3,
+          },
+          overflow_reason: 'soft_overflow_applied',
+          warnings: [],
+        },
+      },
+    })
+
+    expect(response.warnings).toEqual(expect.arrayContaining([
+      'prompt_budget_window_mismatch',
+      'prompt_budget_above_recommended_operating_input',
+      'requested_output_exceeds_model_capability',
+    ]))
+    expect(usageLedger.list()[0]?.gateway_warnings).toEqual(expect.arrayContaining([
+      'prompt_budget_window_mismatch',
+      'prompt_budget_above_recommended_operating_input',
+      'requested_output_exceeds_model_capability',
+    ]))
   })
 })

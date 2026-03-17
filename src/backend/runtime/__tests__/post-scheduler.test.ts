@@ -344,7 +344,7 @@ describe('PostScheduler', () => {
     await scheduler.createPost()
 
     expect((deps.llmGateway.generateVisibleText as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].promptRef)
-      .toEqual({ id: 'agent-create-post', version: 2 })
+      .toEqual({ id: 'agent-create-post', version: 3 })
     expect((deps.responseParser.parseAsScheduledPost as ReturnType<typeof vi.fn>).mock.calls[0]?.[0])
       .toEqual(expect.objectContaining({
         fallbackCommunityId: 'community-2',
@@ -386,7 +386,7 @@ describe('PostScheduler', () => {
       post_id: 'post-fallback-1',
     }))
     expect((deps.llmGateway.generateVisibleText as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].promptRef)
-      .toEqual({ id: 'agent-create-post', version: 1 })
+      .toEqual({ id: 'agent-create-post', version: 3 })
     expect((deps.responseParser.parseAsScheduledPost as ReturnType<typeof vi.fn>).mock.calls[0]?.[0])
       .toEqual(expect.objectContaining({
         fallbackCommunityId: 'community-1',
@@ -422,7 +422,7 @@ describe('PostScheduler', () => {
       post_id: 'post-1',
     }))
     expect((deps.llmGateway.generateVisibleText as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].promptRef)
-      .toEqual({ id: 'agent-create-post', version: 1 })
+      .toEqual({ id: 'agent-create-post', version: 3 })
     expect(write).toHaveBeenCalledTimes(1)
     const selectorFallbackInstruction = (write as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as Record<string, unknown> | undefined
     expect(selectorFallbackInstruction?.audit_metadata).toEqual(expect.objectContaining({

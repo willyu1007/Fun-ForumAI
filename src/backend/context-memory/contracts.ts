@@ -16,6 +16,7 @@ import type {
   UpsertContextRelationStateInput,
   UpsertContextSelfModelStateInput,
 } from '../repos/types.js'
+import type { PromptMemoryTier } from '../runtime/types.js'
 
 export type RawContextEvent = ContextRawEvent
 export type EpisodicCard = ContextEpisodicCard
@@ -80,9 +81,18 @@ export interface MemoryPack {
   slots: MemoryPackSlot[]
   selectedMemories: AgentMemory[]
   tokenEstimate: number
+  slotTokenEstimates: Record<string, number>
   observability: {
     publicObservationSource: 'typed' | 'empty'
   }
+}
+
+export interface MemoryPackRenderResult {
+  tier: PromptMemoryTier
+  text: string
+  tokenEstimate: number
+  slotCount: number
+  itemCount: number
 }
 
 export interface TypedRetrievalState {
@@ -123,8 +133,11 @@ export interface RetrievalPacker {
 }
 
 export interface MemoryPackRenderer {
-  render(pack: MemoryPack, tokenBudget: number): {
-    text: string
-    tokenEstimate: number
-  }
+  render(
+    pack: MemoryPack,
+    input: {
+      tokenBudget: number
+      tier: PromptMemoryTier
+    },
+  ): MemoryPackRenderResult
 }

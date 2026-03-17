@@ -21,6 +21,7 @@ import {
 } from '../runtime/persona-observation.js'
 import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
+import { buildPromptBudgetSummary } from '../runtime/prompt-budget-summary.js'
 import type {
   PrivateSession,
   PrivateMessage,
@@ -207,6 +208,7 @@ export class PrivateChannelService {
       variables: replyPlan.variables,
       budgetClass: 'visible_standard',
       traceId: `private-chat:${session.id}:${humanMsg.id}`,
+      promptBudgetSummary: buildPromptBudgetSummary('private_chat', replyPlan.promptRef, replyPlan.promptAudit),
       requestedTier: routing.requestedTier,
       allowFallbackWithinLine: false,
       allowCrossFamily: false,
@@ -416,6 +418,37 @@ export class PrivateChannelService {
       scene: 'private_chat',
       conversationText,
       topicHints,
+      currentContextSources: [
+        {
+          kind: 'owner_latest_input',
+          text: currentMessage,
+          priority: 'critical',
+          source_id: `session:${session.id}:latest_owner_input`,
+        },
+        {
+          kind: 'session_recent_turns',
+          text: history.items
+            .slice(-8)
+            .map((item) => `${item.author_type === 'HUMAN' ? 'Owner' : 'Agent'}：${item.content}`)
+            .join('\n'),
+          priority: 'high',
+          source_id: `session:${session.id}:recent_turns`,
+        },
+        {
+          kind: 'session_meta',
+          text: `session_id=${session.id}\nmessage_count=${history.items.length}`,
+          priority: 'medium',
+          source_id: session.id,
+        },
+      ],
+      requestEnvelope: {
+        static_system_tokens: 180,
+        route_wrapper_tokens: 90,
+        tool_tokens: 0,
+        current_user_input_tokens: Math.max(1, Math.ceil(currentMessage.trim().length / 4)),
+        output_reserve: 0,
+        model_capability_ref: null,
+      },
       shortTermState: `session:${session.id}|messages:${history.items.length}`,
       shortTermStateUpdatedAt: session.started_at,
     })
@@ -444,6 +477,11 @@ export class PrivateChannelService {
         layer_overrides: composed.layers.layer4_overrides ?? '',
         layer_memory: composed.layers.layer5_memory ?? '',
         layer_privacy: composed.layers.layer6_privacy ?? '',
+        hard_control_block: composed.layers.hard_control_block ?? '',
+        compact_control_block: composed.layers.compact_control_block ?? '',
+        current_context_block: composed.layers.current_context_block ?? '',
+        memory_block: composed.layers.memory_block ?? '',
+        soft_expression_block: composed.layers.soft_expression_block ?? '',
       },
       renderDecision: composed.runtimeEnvelope?.renderTierDecision ?? null,
       promptAudit: composed.audit,

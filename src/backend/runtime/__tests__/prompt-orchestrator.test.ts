@@ -349,4 +349,134 @@ describe('PromptOrchestrator', () => {
       version: 'v1',
     })
   })
+
+  it('marks a pathological scene when the minimal control floor exceeds the target budget', async () => {
+    const composeLayersWithAudit = vi.fn(async () => ({
+      layers: {
+        layer1_traits: 'trait '.repeat(220),
+        layer3_instructions: 'instruction '.repeat(220),
+        layer6_privacy: 'privacy boundary '.repeat(120),
+      },
+      audit: { ...BASE_AUDIT, scene: 'chat_room' as const },
+    }))
+
+    const orchestrator = new PromptOrchestrator({
+      promptLayerService: {
+        composeLayersWithAudit,
+        getPersona: vi.fn(() => ({
+          name: 'Budget Bot',
+          style: 'strict',
+          interests: ['budget'],
+          language: 'zh-CN',
+        })),
+      } as unknown as PromptLayerService,
+    } as PromptOrchestratorDeps)
+
+    const result = await orchestrator.compose({
+      agentId: 'agent-budget-control',
+      scene: 'chat_room',
+      conversationText: '',
+      requestEnvelope: {
+        static_system_tokens: 4_900,
+      },
+    })
+
+    expect(result.audit.budgetDecision?.overflow_reason).toBe('control_floor_exceeds_target_budget')
+    expect(result.audit.lintWarnings).toContain('scene_contract_error_control_floor')
+  })
+
+  it('marks a pathological scene when current context floor exceeds the target budget', async () => {
+    const composeLayersWithAudit = vi.fn(async () => ({
+      layers: {
+        layer1_traits: 'brief trait',
+        layer3_instructions: 'brief instruction',
+        layer6_privacy: 'do not leak private data',
+      },
+      audit: { ...BASE_AUDIT, scene: 'chat_room' as const },
+    }))
+
+    const orchestrator = new PromptOrchestrator({
+      promptLayerService: {
+        composeLayersWithAudit,
+        getPersona: vi.fn(() => ({
+          name: 'Budget Bot',
+          style: 'strict',
+          interests: ['budget'],
+          language: 'zh-CN',
+        })),
+      } as unknown as PromptLayerService,
+    } as PromptOrchestratorDeps)
+
+    const result = await orchestrator.compose({
+      agentId: 'agent-budget-context',
+      scene: 'chat_room',
+      conversationText: '',
+      currentContextSources: [
+        {
+          kind: 'room_recent_turns',
+          text: 'A'.repeat(400),
+          priority: 'critical',
+          source_id: 'ctx-1',
+        },
+        {
+          kind: 'thread_or_scene_continuity',
+          text: 'B'.repeat(400),
+          priority: 'critical',
+          source_id: 'ctx-2',
+        },
+      ],
+      requestEnvelope: {
+        static_system_tokens: 4_900,
+      },
+    })
+
+    expect(result.audit.budgetDecision?.overflow_reason).toBe('current_context_exceeds_target_budget')
+    expect(result.audit.lintWarnings).toContain('scene_contract_error_current_context_floor')
+  })
+
+  it('only downgrades memory tiers and never re-expands above the scene default tier', async () => {
+    const composeLayersWithAudit = vi.fn(async () => ({
+      layers: {
+        layer1_traits: 'brief trait',
+        layer3_instructions: 'brief instruction',
+        layer6_privacy: 'privacy boundary',
+      },
+      audit: { ...BASE_AUDIT, scene: 'private_chat' as const },
+      memoryContext: {
+        formatted: '',
+        renders: {
+          full: { text: 'F'.repeat(20), tokenEstimate: 5 },
+          compact: { text: 'C'.repeat(320), tokenEstimate: 80 },
+          sparse: { text: 'S'.repeat(60), tokenEstimate: 15 },
+          minimal: { text: 'M'.repeat(24), tokenEstimate: 6 },
+          drop_low_value: { text: 'D'.repeat(12), tokenEstimate: 3 },
+        },
+      },
+    }))
+
+    const orchestrator = new PromptOrchestrator({
+      promptLayerService: {
+        composeLayersWithAudit,
+        getPersona: vi.fn(() => ({
+          name: 'Memory Bot',
+          style: 'strict',
+          interests: ['memory'],
+          language: 'zh-CN',
+        })),
+      } as unknown as PromptLayerService,
+    } as PromptOrchestratorDeps)
+
+    const result = await orchestrator.compose({
+      agentId: 'agent-memory-downgrade',
+      scene: 'private_chat',
+      conversationText: 'owner asks something',
+      requestEnvelope: {
+        static_system_tokens: 9_700,
+      },
+    })
+
+    expect(result.audit.budgetDecision?.memory_tier_applied).toBe('sparse')
+    expect(result.layers.memory_block).toContain('S')
+    expect(result.layers.memory_block).not.toContain('F')
+  })
 })

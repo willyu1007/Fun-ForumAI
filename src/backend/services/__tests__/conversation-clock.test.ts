@@ -439,7 +439,7 @@ describe('ConversationClock', () => {
       await generateMessage(harness.context, 'room-1', 'agent-1')
 
       expect(generateVisibleText).toHaveBeenCalledWith(expect.objectContaining({
-        promptRef: { id: 'agent-chat-reply', version: 5 },
+        promptRef: { id: 'agent-chat-reply', version: 6 },
         variables: expect.objectContaining({
           local_intent_block: '[CHATROOM_LOCAL_INTENT]',
           room_public_context_summary: '[ROOM_PUBLIC_CONTEXT_SUMMARY]',
@@ -524,7 +524,7 @@ describe('ConversationClock', () => {
       await generateMessage(harness.context, 'room-1', 'agent-1')
 
       expect(generateVisibleText).toHaveBeenCalledWith(expect.objectContaining({
-        promptRef: { id: 'agent-chat-reply', version: 5 },
+        promptRef: { id: 'agent-chat-reply', version: 6 },
         variables: expect.objectContaining({
           director_goal: '',
           local_intent_block: expect.stringContaining('## Local Intent'),

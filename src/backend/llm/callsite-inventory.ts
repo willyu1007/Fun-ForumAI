@@ -59,7 +59,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     ],
     intent: 'forum_reply',
     visibility: 'visible',
-    prompt_ref: { id: 'agent-reply-to-post', version: 2 },
+    prompt_ref: { id: 'agent-reply-to-post', version: 4 },
     voice_line_authority: 'Forum post replies must resolve from the agent home voice line instead of bootstrap config.llm defaults.',
     tier_floor: 'base',
     expected_profile_refs: {
@@ -83,7 +83,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     ],
     intent: 'forum_reply',
     visibility: 'visible',
-    prompt_ref: { id: 'agent-reply-to-comment', version: 2 },
+    prompt_ref: { id: 'agent-reply-to-comment', version: 4 },
     voice_line_authority: 'Comment replies still resolve through forum_reply intent, but now on top of homeVoiceLineId authority.',
     tier_floor: 'base',
     expected_profile_refs: {
@@ -106,7 +106,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     ],
     intent: 'chat_reply',
     visibility: 'visible',
-    prompt_ref: { id: 'agent-chat-reply', version: 4 },
+    prompt_ref: { id: 'agent-chat-reply', version: 6 },
     voice_line_authority: 'Chat room replies must resolve from homeVoiceLineId and chat_room policy, not bootstrap config.llm.',
     tier_floor: 'lite',
     expected_profile_refs: {
@@ -129,7 +129,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     ],
     intent: 'scheduled_post',
     visibility: 'visible',
-    prompt_ref: { id: 'agent-create-post', version: 2 },
+    prompt_ref: { id: 'agent-create-post', version: 3 },
     voice_line_authority: 'Scheduled posting now resolves from homeVoiceLineId plus scheduled_post tier policy.',
     tier_floor: 'base',
     expected_profile_refs: {
@@ -152,7 +152,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     ],
     intent: 'private_reply',
     visibility: 'visible',
-    prompt_ref: { id: 'agent-private-chat-reply', version: 1 },
+    prompt_ref: { id: 'agent-private-chat-reply', version: 2 },
     voice_line_authority: 'Private replies still derive from homeVoiceLineId; agent.model can only bias same-profile candidate ordering after voice line resolution.',
     tier_floor: 'base',
     expected_profile_refs: {
@@ -175,7 +175,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     ],
     intent: 'proactive_opening',
     visibility: 'visible',
-    prompt_ref: { id: 'agent-proactive-dm-opening', version: 1 },
+    prompt_ref: { id: 'agent-proactive-dm-opening', version: 2 },
     voice_line_authority: 'Proactive openings resolve from homeVoiceLineId and proactive_dm policy with orchestrated private-boundary inputs.',
     tier_floor: 'base',
     expected_profile_refs: {

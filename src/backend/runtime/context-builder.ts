@@ -3,7 +3,12 @@ import type { AgentService } from '../services/agent-service.js'
 import type { PromptLayerService } from './prompt-layer-service.js'
 import type { PromptOrchestrator } from './prompt-orchestrator.js'
 import type { EventPayload, SelectedAgent } from '../allocator/types.js'
-import type { ExecutionContext, AgentPersona } from './types.js'
+import type {
+  AgentPersona,
+  CurrentContextSource,
+  ExecutionContext,
+  PromptRequestEnvelope,
+} from './types.js'
 import { config } from '../lib/config.js'
 import type { CommunityPromptProfileCompiler } from './community-prompt-profile-compiler.js'
 import type { CommunityCultureDigestService } from '../services/community-culture-digest-service.js'
@@ -96,6 +101,10 @@ export class ContextBuilder {
         conversationText,
         communityId: ctx.community.id,
         topicHints,
+        currentContextSources: this.buildCurrentContextSources(ctx, scene),
+        requestEnvelope: this.buildRequestEnvelope(scene, {
+          currentUserText: ctx.targetComment?.body,
+        }),
         communityHardRule,
         communitySoftCulture,
         ...(communityProfile
@@ -282,5 +291,77 @@ export class ContextBuilder {
     }
 
     return [...new Set(hints)].slice(0, 10)
+  }
+
+  private buildCurrentContextSources(
+    ctx: ExecutionContext,
+    scene: import('./types.js').PromptScene,
+  ): CurrentContextSource[] {
+    const sources: CurrentContextSource[] = []
+    if (ctx.post) {
+      sources.push({
+        kind: 'post_body',
+        text: [`标题：${ctx.post.title}`, `正文：${ctx.post.body}`].join('\n'),
+        priority: 'critical',
+        source_id: ctx.post.id,
+      })
+    }
+    if (ctx.comments?.length) {
+      sources.push({
+        kind: 'thread_excerpt',
+        text: ctx.comments
+          .slice(-6)
+          .map((comment) => `${comment.author_name}：${comment.body}`)
+          .join('\n'),
+        priority: scene === 'forum_comment' ? 'high' : 'medium',
+        source_id: ctx.post?.id,
+      })
+    }
+    if (ctx.targetComment) {
+      sources.push({
+        kind: 'target_comment',
+        text: `${ctx.targetComment.author_name}：${ctx.targetComment.body}`,
+        priority: 'critical',
+        source_id: ctx.targetComment.id,
+      })
+    }
+    if (ctx.community.description) {
+      sources.push({
+        kind: 'community_context',
+        text: ctx.community.description,
+        priority: 'low',
+        source_id: ctx.community.id,
+      })
+    }
+    if (ctx.public_scene?.local_intent_block) {
+      sources.push({
+        kind: 'local_intent',
+        text: ctx.public_scene.local_intent_block,
+        priority: 'high',
+        source_id:
+          ctx.public_scene.scene_metadata.local_intent_id
+          ?? ctx.public_scene.scene_metadata.selection_id,
+      })
+    }
+    return sources
+  }
+
+  private buildRequestEnvelope(
+    scene: import('./types.js').PromptScene,
+    input: {
+      currentUserText?: string
+    } = {},
+  ): PromptRequestEnvelope {
+    const currentUserInputTokens = input.currentUserText
+      ? Math.max(1, Math.ceil(input.currentUserText.trim().length / 4))
+      : 0
+    return {
+      static_system_tokens: 180,
+      route_wrapper_tokens: scene === 'forum_comment' ? 120 : 100,
+      tool_tokens: 0,
+      current_user_input_tokens: currentUserInputTokens,
+      output_reserve: 0,
+      model_capability_ref: null,
+    }
   }
 }

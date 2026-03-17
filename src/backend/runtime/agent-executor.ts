@@ -12,6 +12,7 @@ import type { AgentService } from '../services/agent-service.js'
 import type { InferenceProfileService } from '../services/inference-profile-service.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
+import { buildPromptBudgetSummary } from './prompt-budget-summary.js'
 import {
   attachPersonaObservation,
   buildPersonaObservation,
@@ -100,6 +101,7 @@ export class AgentExecutor {
         variables: this.buildVariables(ctx, identity?.persona_seed_code ?? 'scholar'),
         budgetClass: 'visible_standard',
         traceId: `runtime:${event.event_id}:${agent.agent_id}`,
+        promptBudgetSummary: buildPromptBudgetSummary(this.pickScene(event), templateId, ctx.prompt_audit),
         requestedTier: routing.requestedTier,
         allowFallbackWithinLine: false,
         allowCrossFamily: false,
@@ -263,6 +265,11 @@ export class AgentExecutor {
       layer_overrides: ctx.layers?.layer4_overrides ?? '',
       layer_memory: ctx.layers?.layer5_memory ?? '',
       layer_privacy: ctx.layers?.layer6_privacy ?? '',
+      hard_control_block: ctx.layers?.hard_control_block ?? '',
+      compact_control_block: ctx.layers?.compact_control_block ?? '',
+      current_context_block: ctx.layers?.current_context_block ?? '',
+      memory_block: ctx.layers?.memory_block ?? ctx.layers?.layer5_memory ?? '',
+      soft_expression_block: ctx.layers?.soft_expression_block ?? '',
     }
 
     if (ctx.post) {

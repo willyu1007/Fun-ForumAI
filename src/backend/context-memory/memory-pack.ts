@@ -1,10 +1,12 @@
 import type {
   EpisodicCard,
   MemoryPack,
+  MemoryPackRenderResult,
   MemoryPackRenderer,
   RetrievalPacker,
   TypedRetrievalState,
 } from './contracts.js'
+import type { PromptMemoryTier } from '../runtime/types.js'
 
 export class DefaultRetrievalPacker implements RetrievalPacker {
   pack(input: {
@@ -49,11 +51,18 @@ export class DefaultRetrievalPacker implements RetrievalPacker {
     ] satisfies MemoryPack['slots']
 
     const tokenEstimate = Math.min(Math.ceil(JSON.stringify(slots).length / 4), input.tokenBudget)
+    const slotTokenEstimates = Object.fromEntries(
+      slots.map((slot) => [
+        slot.slotId,
+        Math.ceil(JSON.stringify({ title: slot.title, items: slot.items }).length / 4),
+      ]),
+    )
 
     return {
       slots,
       selectedMemories: [],
       tokenEstimate,
+      slotTokenEstimates,
       observability: {
         publicObservationSource: publicObservation.length > 0 ? 'typed' : 'empty',
       },
@@ -62,23 +71,111 @@ export class DefaultRetrievalPacker implements RetrievalPacker {
 }
 
 export class DefaultMemoryPackRenderer implements MemoryPackRenderer {
-  render(pack: MemoryPack, tokenBudget: number): { text: string; tokenEstimate: number } {
+  render(
+    pack: MemoryPack,
+    input: {
+      tokenBudget: number
+      tier: PromptMemoryTier
+    },
+  ): MemoryPackRenderResult {
+    const plan = getTierPlan(input.tier)
     const sections: string[] = []
     let tokenEstimate = 0
+    let slotCount = 0
+    let itemCount = 0
 
-    for (const slot of pack.slots) {
-      if (slot.items.length === 0) continue
-      const section = [`### ${slot.title}`, ...slot.items.map((item) => `- ${item}`)].join('\n')
+    const candidateSlots = pack.slots
+      .filter((slot) => slot.items.length > 0)
+      .filter((slot) => !plan.allowedSlots || plan.allowedSlots.includes(slot.slotId))
+      .slice(0, plan.maxSlots)
+
+    for (const slot of candidateSlots) {
+      const title = trim(slot.title, plan.titleLimit)
+      const items = slot.items
+        .slice(0, plan.maxItemsPerSlot)
+        .map((item) => trim(item, plan.itemLimit))
+      if (items.length === 0) continue
+      const body =
+        plan.summaryMode
+          ? [`- ${items.join('；')}`]
+          : items.map((item) => `- ${item}`)
+      let section = [`### ${title}`, ...body].join('\n')
+      const remainingBudget = Math.max(0, input.tokenBudget - tokenEstimate)
+      if (remainingBudget <= 0) break
       const nextTokens = Math.ceil(section.length / 4)
-      if (sections.length > 0 && tokenEstimate + nextTokens > tokenBudget) break
+      if (nextTokens > remainingBudget) {
+        const trimmed = trim(section, remainingBudget * 4)
+        if (!trimmed) break
+        section = trimmed
+      }
+      const boundedTokens = Math.min(remainingBudget, Math.ceil(section.length / 4))
+      if (boundedTokens <= 0) break
       sections.push(section)
-      tokenEstimate += nextTokens
+      tokenEstimate += boundedTokens
+      slotCount += 1
+      itemCount += items.length
     }
 
     return {
+      tier: input.tier,
       text: sections.join('\n\n'),
       tokenEstimate,
+      slotCount,
+      itemCount,
     }
+  }
+}
+
+function getTierPlan(tier: PromptMemoryTier): {
+  titleLimit: number
+  itemLimit: number
+  maxSlots: number
+  maxItemsPerSlot: number
+  summaryMode: boolean
+  allowedSlots?: Array<MemoryPack['slots'][number]['slotId']>
+} {
+  switch (tier) {
+    case 'full':
+      return {
+        titleLimit: 32,
+        itemLimit: 120,
+        maxSlots: 6,
+        maxItemsPerSlot: 3,
+        summaryMode: false,
+      }
+    case 'compact':
+      return {
+        titleLimit: 28,
+        itemLimit: 100,
+        maxSlots: 5,
+        maxItemsPerSlot: 2,
+        summaryMode: false,
+      }
+    case 'sparse':
+      return {
+        titleLimit: 24,
+        itemLimit: 84,
+        maxSlots: 4,
+        maxItemsPerSlot: 1,
+        summaryMode: false,
+      }
+    case 'minimal':
+      return {
+        titleLimit: 20,
+        itemLimit: 64,
+        maxSlots: 3,
+        maxItemsPerSlot: 1,
+        summaryMode: true,
+      }
+    case 'drop_low_value':
+      return {
+        titleLimit: 18,
+        itemLimit: 52,
+        maxSlots: 3,
+        maxItemsPerSlot: 1,
+        summaryMode: true,
+        allowedSlots: ['owner_private', 'public_observation', 'topic_recall'],
+      }
   }
 }
 

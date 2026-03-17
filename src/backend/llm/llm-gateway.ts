@@ -13,7 +13,12 @@ import { BudgetGuard } from './budget-guard.js'
 import { LlmClient } from './llm-client.js'
 import { PromptEngine } from './prompt-engine.js'
 import type { LlmMessage, LlmTokenUsage } from './types.js'
-import type { LlmRegistryBundle, ModelPricingEntry, ModelProfileEntry } from './registry-loader.js'
+import type {
+  LlmRegistryBundle,
+  ModelCapabilityEntry,
+  ModelPricingEntry,
+  ModelProfileEntry,
+} from './registry-loader.js'
 import { filterVisibleProfileCandidates } from './provider-admission.js'
 import {
   resolveIdentityWriteProfileRef,
@@ -41,6 +46,7 @@ const DEFAULT_PRICING = { prompt: 0.02, completion: 0.05 }
 export class LLMGateway {
   private readonly profilesById: Map<string, ModelProfileEntry>
   private readonly pricingByModelId: Map<string, { prompt: number; completion: number }>
+  private readonly modelCapabilitiesByKey: Map<string, ModelCapabilityEntry>
 
   constructor(private readonly options: LlmGatewayOptions) {
     this.profilesById = new Map(
@@ -56,6 +62,12 @@ export class LLMGateway {
             { prompt: p.prompt_per_1k_cny, completion: p.completion_per_1k_cny },
           ] as const,
       ),
+    )
+    this.modelCapabilitiesByKey = new Map(
+      options.bundle.modelCapabilities.capabilities.map((entry) => [
+        `${entry.provider_id}/${entry.model_id}`,
+        entry,
+      ] as const),
     )
   }
 
@@ -114,6 +126,7 @@ export class LLMGateway {
           request.preferredModelId,
           candidate.model_id,
         )
+        const gatewayWarnings = this.validatePromptBudgetSummary(request, candidate.provider_id, candidate.model_id)
 
         await this.options.budgetGuard.assertAllowed({
           agentId: request.agentId,
@@ -188,6 +201,8 @@ export class LLMGateway {
             reserved_cost_cny: estimatedCost,
             actual_cost_cny: actualCost,
             platform_retry_count: platformRetryCount,
+            gateway_warnings: gatewayWarnings,
+            prompt_budget_summary: request.promptBudgetSummary,
             latency_ms: latencyMs,
             created_at: new Date().toISOString(),
           })
@@ -201,6 +216,7 @@ export class LLMGateway {
             platformRetryCount,
             renderDecision,
             promptRef: request.promptRef,
+            warnings: gatewayWarnings,
           }
         } catch (error) {
           const code = classifyGatewayError(error)
@@ -235,6 +251,8 @@ export class LLMGateway {
             reserved_cost_cny: estimatedCost,
             actual_cost_cny: 0,
             error_code: code,
+            gateway_warnings: gatewayWarnings,
+            prompt_budget_summary: request.promptBudgetSummary,
             latency_ms: Date.now() - startedAt,
             created_at: new Date().toISOString(),
           })
@@ -356,6 +374,34 @@ export class LLMGateway {
       )
     }
     return profileId
+  }
+
+  private validatePromptBudgetSummary(
+    request: LLMGatewayRequest,
+    providerId: string,
+    modelId: string,
+  ): string[] {
+    if (!request.promptBudgetSummary) return []
+    const capability = this.modelCapabilitiesByKey.get(`${providerId}/${modelId}`)
+    if (!capability) {
+      return ['model_capability_missing']
+    }
+    const warnings: string[] = []
+    const outputReserve = request.promptBudgetSummary.request_envelope.output_reserve
+    const estimatedTotal = request.promptBudgetSummary.decision.estimated_total_input
+    if (estimatedTotal + outputReserve > capability.input_window_tokens) {
+      warnings.push('prompt_budget_window_mismatch')
+    }
+    if (
+      capability.recommended_operating_input_tokens
+      && estimatedTotal > capability.recommended_operating_input_tokens
+    ) {
+      warnings.push('prompt_budget_above_recommended_operating_input')
+    }
+    if (request.maxTokens && request.maxTokens > capability.max_output_tokens) {
+      warnings.push('requested_output_exceeds_model_capability')
+    }
+    return warnings
   }
 
   private estimateCost(modelId: string, usage: LlmTokenUsage): number {

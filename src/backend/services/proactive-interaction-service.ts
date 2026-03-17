@@ -8,6 +8,7 @@ import type { EventRepository, AgentRunRepository } from '../repos/event-reposit
 import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
 import type { RenderTierDecisionResult } from '../runtime/persona-runtime-types.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
+import { buildPromptBudgetSummary } from '../runtime/prompt-budget-summary.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import type { PersonaStateService } from './persona-state-service.js'
 import type { InferenceProfileService } from './inference-profile-service.js'
@@ -301,6 +302,28 @@ export class ProactiveInteractionService {
       scene: 'proactive_dm',
       conversationText: `${trigger.trigger}\n${trigger.context}`,
       topicHints: [trigger.trigger],
+      currentContextSources: [
+        {
+          kind: 'boundary_control',
+          text: `trigger_type=${trigger.trigger}`,
+          priority: 'critical',
+          source_id: `${agentId}:proactive:boundary`,
+        },
+        {
+          kind: 'trigger_context',
+          text: trigger.context,
+          priority: 'critical',
+          source_id: `${agentId}:proactive:trigger`,
+        },
+      ],
+      requestEnvelope: {
+        static_system_tokens: 180,
+        route_wrapper_tokens: 80,
+        tool_tokens: 0,
+        current_user_input_tokens: 0,
+        output_reserve: 0,
+        model_capability_ref: null,
+      },
       shortTermState: trigger.context.slice(0, 200),
       shortTermStateUpdatedAt: new Date(),
     })
@@ -321,6 +344,11 @@ export class ProactiveInteractionService {
       layer_overrides: composed.layers.layer4_overrides ?? '',
       layer_memory: composed.layers.layer5_memory ?? '',
       layer_privacy: composed.layers.layer6_privacy ?? '',
+      hard_control_block: composed.layers.hard_control_block ?? '',
+      compact_control_block: composed.layers.compact_control_block ?? '',
+      current_context_block: composed.layers.current_context_block ?? '',
+      memory_block: composed.layers.memory_block ?? '',
+      soft_expression_block: composed.layers.soft_expression_block ?? '',
     }
 
     const routing = this.deps.inferenceProfileService
@@ -344,6 +372,7 @@ export class ProactiveInteractionService {
       variables,
       budgetClass: 'visible_standard',
       traceId: `proactive-dm:${agentId}:${Date.now()}`,
+      promptBudgetSummary: buildPromptBudgetSummary('proactive_dm', PROMPT_TEMPLATE_REFS.agentProactiveDmOpening, composed.audit),
       requestedTier: routing.requestedTier,
       allowFallbackWithinLine: true,
       allowCrossFamily: false,

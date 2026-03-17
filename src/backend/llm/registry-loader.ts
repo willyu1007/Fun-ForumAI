@@ -15,6 +15,7 @@ import {
 import type {
   CredentialPoolEntry,
   LLMVisibility,
+  ModelCapabilityEntry,
   ModelProfileCandidate,
   ModelProfileFallback,
   ProviderRegistryEntry,
@@ -110,6 +111,11 @@ export interface ModelPricingRegistryFile {
   pricing: ModelPricingEntry[]
 }
 
+export interface ModelCapabilitiesRegistryFile {
+  version: number
+  capabilities: ModelCapabilityEntry[]
+}
+
 export interface LlmRegistryBundle {
   providers: ProvidersRegistryFile
   modelProfiles: ModelProfilesRegistryFile
@@ -118,6 +124,7 @@ export interface LlmRegistryBundle {
   routingPolicies: RoutingPoliciesRegistryFile
   providerAdmission: ProviderAdmissionRegistryFile
   modelPricing: ModelPricingRegistryFile
+  modelCapabilities: ModelCapabilitiesRegistryFile
 }
 
 export interface LlmRegistryPaths {
@@ -128,6 +135,7 @@ export interface LlmRegistryPaths {
   routingPolicies?: string
   providerAdmission?: string
   modelPricing?: string
+  modelCapabilities?: string
 }
 
 const lLMVisibilityEnum = z.enum(['visible', 'hidden', 'identity_write', 'dev_only'])
@@ -400,10 +408,31 @@ const modelPricingSchema = z.object({
   ),
 })
 
+const modelCapabilitiesSchema = z.object({
+  version: z.number().int().positive(),
+  capabilities: z.array(
+    z
+      .object({
+        provider_id: z.string().min(1),
+        model_id: z.string().min(1),
+        input_window_tokens: z.number().int().positive(),
+        max_output_tokens: z.number().int().positive(),
+        recommended_operating_input_tokens: z.number().int().positive().optional(),
+      })
+      .strict(),
+  ),
+})
+
 export function loadModelPricingRegistry(
   registryPath = defaultRegistryPath('model_pricing.yaml'),
 ): ModelPricingRegistryFile {
   return parseYamlFile(registryPath, modelPricingSchema, 'model pricing registry')
+}
+
+export function loadModelCapabilitiesRegistry(
+  registryPath = defaultRegistryPath('model_capabilities.yaml'),
+): ModelCapabilitiesRegistryFile {
+  return parseYamlFile(registryPath, modelCapabilitiesSchema, 'model capabilities registry')
 }
 
 export function loadLlmRegistryBundle(paths: LlmRegistryPaths = {}): LlmRegistryBundle {
@@ -415,6 +444,7 @@ export function loadLlmRegistryBundle(paths: LlmRegistryPaths = {}): LlmRegistry
     routingPolicies: loadRoutingPoliciesRegistry(paths.routingPolicies),
     providerAdmission: loadProviderAdmissionRegistry(paths.providerAdmission),
     modelPricing: loadModelPricingRegistry(paths.modelPricing),
+    modelCapabilities: loadModelCapabilitiesRegistry(paths.modelCapabilities),
   }
 
   validateLlmRegistryBundle(bundle)
@@ -430,6 +460,9 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
   const credentialIds = bundle.credentialPools.pools.map((entry) => entry.credential_id)
   const policyProfileIds = bundle.routingPolicies.policies.map((entry) => entry.profile_id)
   const admissionPoolVoiceLines = bundle.providerAdmission.pools.map((entry) => entry.voice_line_id)
+  const modelCapabilityKeys = bundle.modelCapabilities.capabilities.map(
+    (entry) => `${entry.provider_id}/${entry.model_id}`,
+  )
 
   assertUnique(providerIds, 'provider_id')
   assertUnique(profileIds, 'profile_id')
@@ -437,6 +470,7 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
   assertUnique(credentialIds, 'credential_id')
   assertUnique(policyProfileIds, 'routing policy profile_id')
   assertUnique(admissionPoolVoiceLines, 'provider admission voice_line_id')
+  assertUnique(modelCapabilityKeys, 'model capability provider_id/model_id')
 
   const providersById = new Map(
     bundle.providers.providers.map((entry) => [entry.provider_id, entry] as const),
@@ -651,6 +685,30 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
           },
         )
       }
+    }
+  }
+
+  for (const capability of bundle.modelCapabilities.capabilities) {
+    if (!providersById.has(capability.provider_id)) {
+      throw registryError(
+        `Model capability references unknown provider ${capability.provider_id}`,
+        capability,
+      )
+    }
+    if (
+      capability.recommended_operating_input_tokens
+      && capability.recommended_operating_input_tokens > capability.input_window_tokens
+    ) {
+      throw registryError(
+        `Model capability recommended operating input exceeds input window for ${capability.provider_id}/${capability.model_id}`,
+        capability,
+      )
+    }
+    if (capability.max_output_tokens > capability.input_window_tokens) {
+      throw registryError(
+        `Model capability max output exceeds input window for ${capability.provider_id}/${capability.model_id}`,
+        capability,
+      )
     }
   }
 

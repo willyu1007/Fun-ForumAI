@@ -1,5 +1,6 @@
 import { PROMPT_TEMPLATE_REFS } from '../../llm/prompt-template-refs.js'
 import type { PromptComposeAudit } from '../../runtime/types.js'
+import { buildPromptBudgetSummary } from '../../runtime/prompt-budget-summary.js'
 import { formatChatReplyForReadability, sanitizeChatOutput } from '../../runtime/chat-output-sanitizer.js'
 import {
   attachPersonaObservation,
@@ -106,6 +107,11 @@ export async function generateMessage(
     layer_overrides: '',
     layer_memory: '',
     layer_privacy: '',
+    hard_control_block: '',
+    compact_control_block: '',
+    current_context_block: '',
+    memory_block: '',
+    soft_expression_block: '',
   }
   if (context.deps.promptOrchestrator?.isSceneEnabled('chat_room')) {
     const member = await context.deps.roomRepo.getMember(roomId, agentId)
@@ -115,6 +121,45 @@ export async function generateMessage(
       conversationText: chatConversationText,
       communityId: room.community_id,
       topicHints: chatTopicHints,
+      currentContextSources: [
+        {
+          kind: 'room_recent_turns',
+          text: recentText || '（房间刚创建，还没有对话）',
+          priority: 'critical',
+          source_id: `${roomId}:recent_turns`,
+        },
+        {
+          kind: 'local_role_or_cue',
+          text: thisOrEmpty(runtimeChatContext?.promptVariables.role_hint),
+          priority: 'high',
+          source_id: `${roomId}:role_hint`,
+        },
+        {
+          kind: 'room_program_context',
+          text: [
+            runtimeChatContext?.promptVariables.program_scene,
+            runtimeChatContext?.promptVariables.current_beat,
+            runtimeChatContext?.promptVariables.live_hook,
+            runtimeChatContext?.promptVariables.unresolved_question,
+          ].filter(Boolean).join('\n'),
+          priority: 'high',
+          source_id: `${roomId}:program_context`,
+        },
+        {
+          kind: 'thread_or_scene_continuity',
+          text: thisOrEmpty(runtimeChatContext?.promptVariables.room_public_context_summary),
+          priority: 'medium',
+          source_id: `${roomId}:continuity`,
+        },
+      ].filter((source) => source.text.trim().length > 0),
+      requestEnvelope: {
+        static_system_tokens: 180,
+        route_wrapper_tokens: 90,
+        tool_tokens: 0,
+        current_user_input_tokens: 0,
+        output_reserve: 0,
+        model_capability_ref: null,
+      },
       communitySoftCulture: room.description || '',
       sceneRule: chatSceneRule,
       shortTermState: chatShortTermState,
@@ -133,6 +178,11 @@ export async function generateMessage(
       layer_overrides: composed.layers.layer4_overrides ?? '',
       layer_memory: composed.layers.layer5_memory ?? '',
       layer_privacy: composed.layers.layer6_privacy ?? '',
+      hard_control_block: composed.layers.hard_control_block ?? '',
+      compact_control_block: composed.layers.compact_control_block ?? '',
+      current_context_block: composed.layers.current_context_block ?? '',
+      memory_block: composed.layers.memory_block ?? '',
+      soft_expression_block: composed.layers.soft_expression_block ?? '',
     }
     promptAudit = composed.audit
     persona = composed.persona
@@ -162,6 +212,11 @@ export async function generateMessage(
       layer_overrides: composed.layers.layer4_overrides ?? '',
       layer_memory: composed.layers.layer5_memory ?? '',
       layer_privacy: composed.layers.layer6_privacy ?? '',
+      hard_control_block: composed.layers.hard_control_block ?? '',
+      compact_control_block: composed.layers.compact_control_block ?? '',
+      current_context_block: composed.layers.current_context_block ?? '',
+      memory_block: composed.layers.memory_block ?? '',
+      soft_expression_block: composed.layers.soft_expression_block ?? '',
     }
     promptAudit = composed.audit
     if (composed.persona) {
@@ -206,6 +261,11 @@ export async function generateMessage(
     layer_overrides: layers.layer_overrides,
     layer_memory: layers.layer_memory,
     layer_privacy: layers.layer_privacy,
+    hard_control_block: layers.hard_control_block,
+    compact_control_block: layers.compact_control_block,
+    current_context_block: layers.current_context_block,
+    memory_block: layers.memory_block,
+    soft_expression_block: layers.soft_expression_block,
   }
 
   const promptRef = PROMPT_TEMPLATE_REFS.agentChatReplyScene
@@ -229,6 +289,7 @@ export async function generateMessage(
     variables,
     budgetClass: 'visible_standard',
     traceId: `chat-room:${roomId}:${agentId}:${Date.now()}`,
+    promptBudgetSummary: buildPromptBudgetSummary('chat_room', promptRef, promptAudit),
     requestedTier: routing.requestedTier,
     allowFallbackWithinLine: false,
     allowCrossFamily: false,
@@ -278,6 +339,10 @@ export async function generateMessage(
     observation,
     renderDecision,
   }
+}
+
+function thisOrEmpty(value: string | null | undefined): string {
+  return value?.trim() ?? ''
 }
 
 export async function postMessage(

@@ -1,0 +1,26 @@
+# Model capabilities registry
+#
+# This registry is used for passive prompt-window validation after routing has
+# already selected a concrete provider/model candidate. Missing entries do not
+# block requests; the gateway emits a warning instead.
+
+version: 1
+
+capabilities:
+  - provider_id: dashscope-openai
+    model_id: qwen-flash-character
+    input_window_tokens: 32768
+    max_output_tokens: 8192
+    recommended_operating_input_tokens: 24000
+
+  - provider_id: dashscope-openai
+    model_id: qwen-plus-character
+    input_window_tokens: 32768
+    max_output_tokens: 8192
+    recommended_operating_input_tokens: 24000
+
+  - provider_id: dashscope-openai
+    model_id: qwen-max
+    input_window_tokens: 32768
+    max_output_tokens: 8192
+    recommended_operating_input_tokens: 20000

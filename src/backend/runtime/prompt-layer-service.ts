@@ -2,11 +2,13 @@ import type { AgentService } from '../services/agent-service.js'
 import type { TraitEngine } from '../services/trait-engine.js'
 import type { InstructionEngine, InstructionContext } from '../services/instruction-engine.js'
 import type { MemoryService } from '../services/memory-service.js'
+import type { MemoryForContext } from '../services/memory-service/types.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { PublicDisclosureCapService } from '../services/public-disclosure-cap-service.js'
 import type { StatsService } from '../services/stats-service.js'
 import type { AgentPersona, PromptLayers, PromptComposeAudit, PromptScene } from './types.js'
 import { config } from '../lib/config.js'
+import { getPromptSceneBudgetConfig } from './prompt-budget-config.js'
 import { computeControversyScore } from './controversy-score.js'
 import {
   buildStyleInstructionText,
@@ -76,6 +78,7 @@ export interface PromptLayerComposeResult {
   audit: PromptComposeAudit
   persona?: AgentPersona
   runtimeEnvelope?: PersonaRuntimeEnvelope | null
+  memoryContext?: MemoryForContext | null
 }
 
 export class PromptLayerService {
@@ -108,6 +111,7 @@ export class PromptLayerService {
     let privateMemoryProvenance:
       | NonNullable<NonNullable<PromptComposeAudit['provenance']>['private_memory']>
       | undefined
+    let memoryContext: MemoryForContext | null = null
 
     if (
       !runtimeEnvelope &&
@@ -195,14 +199,26 @@ export class PromptLayerService {
             })
           : this.deps.memoryService.resolveEffectiveDisclosureLevel(privacySettings)
         const memoryScene = this.mapMemoryScene(input.scene)
+        const sceneBudgetConfig = getPromptSceneBudgetConfig(input.scene)
+        const runtimeMemoryTokenCeiling = Math.floor(
+          sceneBudgetConfig.request_budget.reference_input
+            * (sceneBudgetConfig.buckets.memory.max / 100),
+        )
+        const runtimeMemoryBucketTarget = Math.floor(
+          sceneBudgetConfig.request_budget.reference_input
+            * (sceneBudgetConfig.buckets.memory.preferred / 100),
+        )
 
         const memoryCtx = await this.deps.memoryService.getMemoriesForContext(agentId, {
           scene: memoryScene,
           topicHints: input.topicHints ?? [],
           disclosureLevel: disclosure.effective_disclosure_level,
-          tokenBudget: privacySettings.public_memory_budget,
+          tokenCeiling: runtimeMemoryTokenCeiling,
+          bucketTarget: runtimeMemoryBucketTarget,
+          memoryTier: sceneBudgetConfig.compiler_policy.default_memory_tier,
           topK: privacySettings.public_memory_top_k,
         })
+        memoryContext = memoryCtx
 
         if (memoryCtx.formatted) {
           layers.layer5_memory = '## 你的记忆与经历\n' + memoryCtx.formatted
@@ -215,6 +231,7 @@ export class PromptLayerService {
           effective_disclosure_level: disclosure.effective_disclosure_level,
           cap_source: disclosure.cap_source,
           public_disclosure_cap: disclosure.public_disclosure_cap,
+          owner_memory_budget_preference: privacySettings.public_memory_budget,
           ...(disclosure.server_cap_sources
             ? {
                 server_cap_sources: disclosure.server_cap_sources.map((item) => ({ ...item })),
@@ -241,7 +258,13 @@ export class PromptLayerService {
     if (!opts?.suppressAuditLog) {
       this.emitAuditLog(agentId, audit)
     }
-    return { layers, audit, persona: effectivePersona, runtimeEnvelope }
+    return {
+      layers,
+      audit,
+      persona: effectivePersona,
+      runtimeEnvelope,
+      memoryContext,
+    }
   }
 
   private buildStyleLayer(

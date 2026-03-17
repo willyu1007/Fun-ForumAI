@@ -18,6 +18,7 @@ import type { PromptComposeAudit } from './types.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
+import { buildPromptBudgetSummary } from './prompt-budget-summary.js'
 import {
   attachPersonaObservation,
   buildPersonaObservation,
@@ -153,7 +154,7 @@ export class PostScheduler {
       }
       const promptRef = scenePayload
         ? PROMPT_TEMPLATE_REFS.agentCreatePostScene
-        : buildPromptTemplateRef('agent-create-post', 1)
+        : buildPromptTemplateRef('agent-create-post', 3)
 
       const persona = this.loadPersona(selected.id)
       const recentPosts = await this.getRecentPostsSummary(targetCommunity.id)
@@ -170,6 +171,11 @@ export class PostScheduler {
         layer_overrides: string
         layer_memory: string
         layer_privacy: string
+        hard_control_block: string
+        compact_control_block: string
+        current_context_block: string
+        memory_block: string
+        soft_expression_block: string
       } = {
         layer_traits: '',
         layer_style: '',
@@ -180,6 +186,11 @@ export class PostScheduler {
         layer_overrides: '',
         layer_memory: '',
         layer_privacy: '',
+        hard_control_block: '',
+        compact_control_block: '',
+        current_context_block: '',
+        memory_block: '',
+        soft_expression_block: '',
       }
       let renderDecision: RenderTierDecisionResult | null = null
 
@@ -192,6 +203,38 @@ export class PostScheduler {
             : `${recentPosts}\n${communityCatalog}`.trim(),
           communityId: targetCommunity.id,
           topicHints: [targetCommunity.name, ...persona.interests].slice(0, 10),
+          currentContextSources: [
+            {
+              kind: 'scheduler_context',
+              text: recentPosts || '（暂无近期帖子）',
+              priority: 'high',
+              source_id: `scheduled:${selected.id}:recent_posts`,
+            },
+            {
+              kind: 'community_context',
+              text: communityCatalog,
+              priority: 'medium',
+              source_id: `scheduled:${selected.id}:community_catalog`,
+            },
+            ...(scenePayload?.local_intent_block
+              ? [{
+                  kind: 'local_intent' as const,
+                  text: scenePayload.local_intent_block,
+                  priority: 'high' as const,
+                  source_id:
+                    scenePayload.scene_metadata.local_intent_id
+                    ?? scenePayload.scene_metadata.selection_id,
+                }]
+              : []),
+          ],
+          requestEnvelope: {
+            static_system_tokens: 200,
+            route_wrapper_tokens: 110,
+            tool_tokens: 0,
+            current_user_input_tokens: 0,
+            output_reserve: 0,
+            model_capability_ref: null,
+          },
           communityHardRule: targetCommunity.rules,
           communitySoftCulture: targetCommunity.description,
           sceneRule: '你正在主动发起新的论坛帖子',
@@ -213,6 +256,11 @@ export class PostScheduler {
           layer_overrides: composed.layers.layer4_overrides ?? '',
           layer_memory: composed.layers.layer5_memory ?? '',
           layer_privacy: composed.layers.layer6_privacy ?? '',
+          hard_control_block: composed.layers.hard_control_block ?? '',
+          compact_control_block: composed.layers.compact_control_block ?? '',
+          current_context_block: composed.layers.current_context_block ?? '',
+          memory_block: composed.layers.memory_block ?? '',
+          soft_expression_block: composed.layers.soft_expression_block ?? '',
         }
         promptAudit = composed.audit
       }
@@ -240,6 +288,11 @@ export class PostScheduler {
         layer_overrides: composedLayers.layer_overrides,
         layer_memory: composedLayers.layer_memory,
         layer_privacy: composedLayers.layer_privacy,
+        hard_control_block: composedLayers.hard_control_block,
+        compact_control_block: composedLayers.compact_control_block,
+        current_context_block: composedLayers.current_context_block,
+        memory_block: composedLayers.memory_block,
+        soft_expression_block: composedLayers.soft_expression_block,
       }
 
       const triggerEvent = this.deps.eventRepo.create({
@@ -284,6 +337,7 @@ export class PostScheduler {
         variables,
         budgetClass: 'visible_standard',
         traceId: `scheduled-post:${selected.id}:${Date.now()}`,
+        promptBudgetSummary: buildPromptBudgetSummary('scheduled_post', promptRef, promptAudit),
         requestedTier: routing.requestedTier,
         allowFallbackWithinLine: true,
         allowCrossFamily: false,

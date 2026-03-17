@@ -1,5 +1,6 @@
 import type { LLMGateway } from '../../llm/llm-gateway.js'
 import type { DefaultMemoryPackRenderer, DefaultRetrievalPacker } from '../../context-memory/memory-pack.js'
+import type { MemoryPack, MemoryPackRenderResult } from '../../context-memory/contracts.js'
 import type { ChronicleRepository } from '../../repos/chronicle-repository.js'
 import type {
   ActiveTensionItemRepository,
@@ -20,6 +21,7 @@ import type {
   PaginatedResult,
   PaginationOpts,
 } from '../../repos/types.js'
+import type { PromptMemoryTier } from '../../runtime/types.js'
 import type { ContextJournalService, IdentityFinalizer, SummaryOrchestrator } from '../../context-memory/contracts.js'
 import type { AgentService } from '../agent-service.js'
 import type { NurtureOrchestrator } from '../nurture-orchestrator.js'
@@ -68,6 +70,9 @@ export interface MemoryServiceDeps {
 export interface MemoryForContext {
   memories: AgentMemory[]
   formatted: string
+  pack: MemoryPack
+  renders: Record<PromptMemoryTier, MemoryPackRenderResult>
+  selected_tier: PromptMemoryTier
 }
 
 export interface MemoryServiceState {
@@ -76,13 +81,18 @@ export interface MemoryServiceState {
   getDigestHooks(): DigestHook[]
 }
 
-export interface GetMemoriesForContextOptions {
+export interface MemoryContextRequest {
   scene: 'private_chat' | 'forum' | 'chat_room'
   topicHints: string[]
   disclosureLevel: number
-  tokenBudget: number
+  tokenCeiling?: number
+  tokenBudget?: number
+  bucketTarget?: number
+  memoryTier?: PromptMemoryTier
   topK: number
 }
+
+export type GetMemoriesForContextOptions = MemoryContextRequest
 
 export interface ListMemoriesOptions extends PaginationOpts {
   source_type?: MemorySource
