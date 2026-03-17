@@ -1,0 +1,13 @@
+version: 1
+task_id: T-116
+project: main
+slug: prompt-budget-v2-sensitive-scene-cutover
+status: planned
+updated: "2026-03-17"
+keywords:
+  - prompt-budget
+  - private-chat
+  - chat-room
+  - proactive-dm
+  - rollout
+

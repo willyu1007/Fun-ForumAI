@@ -78,7 +78,7 @@ requirements:
     feature_id: F-020
   - id: R-021
     title: "Cross-scene Prompt Orchestration Governance"
-    status: planned
+    status: in-progress
     feature_id: F-020
   - id: R-022
     title: "Achievement Chronicle Surface"
@@ -1054,6 +1054,34 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/compatibility-cleanup-pr-review-followup
     updated: 2026-03-16
+  - id: T-114
+    slug: prompt-budget-v2-control-compiler-contract
+    status: planned
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-021
+      - R-027
+    dev_docs_path: dev-docs/active/prompt-budget-v2-control-compiler-contract
+    updated: 2026-03-17
+  - id: T-115
+    slug: prompt-budget-v2-memory-tiering-authority
+    status: planned
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-030
+    dev_docs_path: dev-docs/active/prompt-budget-v2-memory-tiering-authority
+    updated: 2026-03-17
+  - id: T-116
+    slug: prompt-budget-v2-sensitive-scene-cutover
+    status: planned
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-021
+    dev_docs_path: dev-docs/active/prompt-budget-v2-sensitive-scene-cutover
+    updated: 2026-03-17
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: in-progress
