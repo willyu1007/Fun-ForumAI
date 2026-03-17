@@ -147,16 +147,16 @@ export interface AgentPersona {
   language: string
 }
 
-export interface PromptLayerFragments {
-  layer1_traits?: string
-  layer2_style?: string
-  layer3_instructions?: string
-  layer_community?: string
-  layer_relationship?: string
-  layer_showrunner?: string
-  layer4_overrides?: string
-  layer5_memory?: string
-  layer6_privacy?: string
+// Internal fragment bundle compiled by PromptLayerService.
+// These fragments are orchestration inputs only and must never be exposed as
+// final visible/private template variables.
+export interface PromptFragmentSet {
+  persona_core_fragment?: string
+  style_guidance_fragment?: string
+  instruction_fragment?: string
+  override_fragment?: string
+  memory_fragment?: string
+  privacy_fragment?: string
 }
 
 export interface PromptBlocks {
@@ -204,10 +204,10 @@ export interface PromptComposeProvenance {
   }
 }
 
-export interface PromptLayerComposeAudit {
+export interface PromptFragmentComposeAudit {
   version: 'v1'
   scene: PromptScene
-  includedLayerIds: string[]
+  includedFragmentKeys: string[]
   tokenEstimates: Record<string, number>
   lintWarnings: string[]
   trimReasons: string[]

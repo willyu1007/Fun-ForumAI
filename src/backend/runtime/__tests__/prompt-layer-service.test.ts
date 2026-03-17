@@ -5,7 +5,7 @@ import { PromptLayerService } from '../prompt-layer-service.js'
 import type { PromptLayerServiceDeps } from '../prompt-layer-service.js'
 
 describe('PromptLayerService', () => {
-  it('composes layer1~layer6 and computes instruction context signals', async () => {
+  it('composes internal fragments and computes instruction context signals', async () => {
     const capture: { ctx?: InstructionContext } = {}
 
     const service = new PromptLayerService({
@@ -85,7 +85,7 @@ describe('PromptLayerService', () => {
       } as unknown as PromptLayerServiceDeps['memoryService'],
     })
 
-    const layers = await service.composeLayers({
+    const fragments = await service.composeFragments({
       agentId: 'agent-1',
       scene: 'chat_room',
       conversationText: '我不同意这个结论！！you must rethink this',
@@ -99,16 +99,16 @@ describe('PromptLayerService', () => {
       roomMemberState: { last_spoke_at: null },
     })
 
-    expect(layers.layer1_traits).toBe('growth-fragment')
-    expect(layers.layer2_style).toContain('保留书面质感，但像现场接话一样短句')
-    expect(layers.layer2_style).toContain('先给判断，再补一层')
-    expect(layers.layer2_style).toContain('以批判性的思维')
-    expect(layers.layer2_style).toContain('善于提问')
-    expect(layers.layer2_style).toContain('默认不用“您/您的”敬语')
-    expect(layers.layer3_instructions).toContain('保持礼貌')
-    expect(layers.layer4_overrides).toBe('prefix\nscene override\nsuffix')
-    expect(layers.layer5_memory).toContain('memory-fragment')
-    expect(layers.layer6_privacy).toContain('你可以将私人交流中获得的知识')
+    expect(fragments.persona_core_fragment).toBe('growth-fragment')
+    expect(fragments.style_guidance_fragment).toContain('保留书面质感，但像现场接话一样短句')
+    expect(fragments.style_guidance_fragment).toContain('先给判断，再补一层')
+    expect(fragments.style_guidance_fragment).toContain('以批判性的思维')
+    expect(fragments.style_guidance_fragment).toContain('善于提问')
+    expect(fragments.style_guidance_fragment).toContain('默认不用“您/您的”敬语')
+    expect(fragments.instruction_fragment).toContain('保持礼貌')
+    expect(fragments.override_fragment).toBe('prefix\nscene override\nsuffix')
+    expect(fragments.memory_fragment).toContain('memory-fragment')
+    expect(fragments.privacy_fragment).toContain('你可以将私人交流中获得的知识')
 
     expect(capture.ctx).toBeDefined()
     const instructionCtx = capture.ctx!
@@ -157,7 +157,7 @@ describe('PromptLayerService', () => {
       } as unknown as PromptLayerServiceDeps['agentService'],
     })
 
-    const composed = await service.composeLayersWithAudit({
+    const composed = await service.composeFragmentsWithAudit({
       agentId: 'agent-chat-style',
       scene: 'chat_room',
       conversationText: '继续往下聊。',
@@ -168,7 +168,7 @@ describe('PromptLayerService', () => {
     expect(composed.persona?.style).toContain('默认不用“您/您的”敬语')
   })
 
-  it('defaults layer6_privacy even when memory service is unavailable', async () => {
+  it('defaults privacy_fragment even when memory service is unavailable', async () => {
     const service = new PromptLayerService({
       agentService: {
         getAgent: vi.fn(() => ({ id: 'agent-no-memory', display_name: 'No Memory Bot' })),
@@ -176,14 +176,14 @@ describe('PromptLayerService', () => {
       } as unknown as PromptLayerServiceDeps['agentService'],
     })
 
-    const composed = await service.composeLayersWithAudit({
+    const composed = await service.composeFragmentsWithAudit({
       agentId: 'agent-no-memory',
       scene: 'forum_post',
       conversationText: '测试公共场景的隐私边界默认值',
     })
 
-    expect(composed.layers.layer6_privacy).toContain('## 记忆使用规范')
-    expect(composed.layers.layer6_privacy).toContain('私人交流经历可以潜移默化地影响你的观点和判断')
+    expect(composed.fragments.privacy_fragment).toContain('## 记忆使用规范')
+    expect(composed.fragments.privacy_fragment).toContain('私人交流经历可以潜移默化地影响你的观点和判断')
   })
 
   it('records effective server-cap sources for public scenes', async () => {
@@ -228,7 +228,7 @@ describe('PromptLayerService', () => {
       } as unknown as PromptLayerServiceDeps['publicDisclosureCapService'],
     })
 
-    const result = await service.composeLayersWithAudit({
+    const result = await service.composeFragmentsWithAudit({
       agentId: 'agent-cap',
       scene: 'forum_post',
       communityId: 'community-1',
@@ -292,7 +292,7 @@ describe('PromptLayerService', () => {
       } as unknown as PromptLayerServiceDeps['memoryService'],
     })
 
-    await service.composeLayersWithAudit({
+    await service.composeFragmentsWithAudit({
       agentId: 'agent-memory',
       scene: 'chat_room',
       conversationText: '继续聊',
@@ -355,7 +355,7 @@ describe('PromptLayerService', () => {
       } as unknown as PromptLayerServiceDeps['memoryService'],
     })
 
-    const result = await service.composeLayersWithAudit({
+    const result = await service.composeFragmentsWithAudit({
       agentId: 'agent-memory-hinted',
       scene: 'chat_room',
       conversationText: '继续聊',
@@ -396,14 +396,14 @@ describe('PromptLayerService', () => {
       } as unknown as PromptLayerServiceDeps['instructionEngine'],
     })
 
-    const layers = await service.composeLayers({
+    const fragments = await service.composeFragments({
       agentId: 'agent-2',
       scene: 'chat_room',
       conversationText: '普通对话',
       roomMemberState: { last_spoke_at: new Date() },
     })
 
-    expect(layers.layer3_instructions).toBeUndefined()
+    expect(fragments.instruction_fragment).toBeUndefined()
     expect(capture.ctx).toBeDefined()
     const instructionCtx = capture.ctx!
     expect(instructionCtx.is_first_in_room).toBe(false)
@@ -442,13 +442,13 @@ describe('PromptLayerService', () => {
     expect(persona.style).toBe('中立客观，简洁明了')
 
     await expect(
-      service.composeLayers({
+      service.composeFragments({
         agentId: 'missing-agent',
         scene: 'forum_post',
         conversationText: 'hello world',
       }),
     ).resolves.toEqual({
-      layer6_privacy: expect.stringContaining('## 记忆使用规范'),
+      privacy_fragment: expect.stringContaining('## 记忆使用规范'),
     })
   })
 
@@ -466,7 +466,7 @@ describe('PromptLayerService', () => {
 
     try {
       featureFlags.promptAuditV1 = false
-      const off = await service.composeLayersWithAudit({
+      const off = await service.composeFragmentsWithAudit({
         agentId: 'agent-audit',
         scene: 'forum_post',
         conversationText: '普通内容',
@@ -475,7 +475,7 @@ describe('PromptLayerService', () => {
       expect(infoSpy).not.toHaveBeenCalled()
 
       featureFlags.promptAuditV1 = true
-      const on = await service.composeLayersWithAudit({
+      const on = await service.composeFragmentsWithAudit({
         agentId: 'agent-audit',
         scene: 'forum_post',
         conversationText: '普通内容',

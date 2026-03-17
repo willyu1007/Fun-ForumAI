@@ -127,6 +127,8 @@ describe('POST /v1/dev/prompts/render', () => {
     expect(res.body.data.audit).toHaveProperty('tokenEstimates')
     expect(res.body.data.audit).toHaveProperty('lintWarnings')
     expect(res.body.data.audit).toHaveProperty('trimReasons')
+    expect(res.body.data.layers).toBeUndefined()
+    expect(Object.keys(res.body.data.blocks as Record<string, unknown>).every((key) => !key.startsWith('layer_'))).toBe(true)
     expect(res.body.data.prompt_template).toMatchObject({
       id: 'agent-reply-to-post',
       version: 4,

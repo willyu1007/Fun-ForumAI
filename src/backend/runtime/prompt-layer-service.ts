@@ -8,8 +8,8 @@ import type { PublicDisclosureCapService } from '../services/public-disclosure-c
 import type { StatsService } from '../services/stats-service.js'
 import type {
   AgentPersona,
-  PromptLayerComposeAudit,
-  PromptLayerFragments,
+  PromptFragmentComposeAudit,
+  PromptFragmentSet,
   PromptMemoryRetrievalHint,
   PromptScene,
 } from './types.js'
@@ -46,7 +46,7 @@ const CHATROOM_PERSONA_REWRITES: Array<[pattern: RegExp, replacement: string]> =
 const CHATROOM_SCENE_STYLE_SUFFIX =
   '聊天室里先用短句接住当前一句，先给判断，再补一层；默认不用“您/您的”敬语，也不做客服式客套'
 
-export type PromptLayerScene = PromptScene
+export type PromptFragmentScene = PromptScene
 
 export interface LayerComment {
   id: string
@@ -54,9 +54,9 @@ export interface LayerComment {
   body: string
 }
 
-export interface ComposePromptLayersInput {
+export interface ComposePromptFragmentsInput {
   agentId: string
-  scene: PromptLayerScene
+  scene: PromptFragmentScene
   conversationText: string
   communityId?: string | null
   topicHints?: string[]
@@ -80,14 +80,16 @@ export interface PromptLayerServiceDeps {
   personaStateService?: PersonaStateService | null
 }
 
-export interface PromptLayerComposeResult {
-  layers: PromptLayerFragments
-  audit: PromptLayerComposeAudit
+export interface PromptFragmentComposeResult {
+  fragments: PromptFragmentSet
+  audit: PromptFragmentComposeAudit
   persona?: AgentPersona
   runtimeEnvelope?: PersonaRuntimeEnvelope | null
   memoryContext?: MemoryForContext | null
 }
 
+// This service only produces internal fragments. Final visible/private prompt
+// contracts must be compiled by PromptOrchestrator into v2 blocks.
 export class PromptLayerService {
   constructor(private readonly deps: PromptLayerServiceDeps) {}
 
@@ -101,22 +103,22 @@ export class PromptLayerService {
     }
   }
 
-  async composeLayers(input: ComposePromptLayersInput): Promise<PromptLayerFragments> {
-    const composed = await this.composeLayersWithAudit(input)
-    return composed.layers
+  async composeFragments(input: ComposePromptFragmentsInput): Promise<PromptFragmentSet> {
+    const composed = await this.composeFragmentsWithAudit(input)
+    return composed.fragments
   }
 
-  async composeLayersWithAudit(
-    input: ComposePromptLayersInput,
+  async composeFragmentsWithAudit(
+    input: ComposePromptFragmentsInput,
     opts?: { suppressAuditLog?: boolean },
-  ): Promise<PromptLayerComposeResult> {
-    const layers: PromptLayerFragments = {}
+  ): Promise<PromptFragmentComposeResult> {
+    const fragments: PromptFragmentSet = {}
     const lintWarnings: string[] = []
     const agentId = input.agentId
     let runtimeEnvelope = input.precomputedRuntimeEnvelope ?? null
     let persona: AgentPersona | undefined
     let privateMemoryProvenance:
-      | NonNullable<NonNullable<PromptLayerComposeAudit['provenance']>['private_memory']>
+      | NonNullable<NonNullable<PromptFragmentComposeAudit['provenance']>['private_memory']>
       | undefined
     let memoryContext: MemoryForContext | null = null
 
@@ -139,25 +141,25 @@ export class PromptLayerService {
 
     if (runtimeEnvelope) {
       persona = this.buildRuntimePersona(agentId, runtimeEnvelope)
-      layers.layer1_traits = this.joinSections([
+      fragments.persona_core_fragment = this.joinSections([
         '## 人格核心\n' + runtimeEnvelope.projection.coreSummary,
       ])
     }
 
     if (this.deps.traitEngine) {
       try {
-        const fragments = await this.deps.traitEngine.getTraitPromptFragments(agentId)
-        if (fragments) {
-          layers.layer1_traits = runtimeEnvelope
+        const traitFragments = await this.deps.traitEngine.getTraitPromptFragments(agentId)
+        if (traitFragments) {
+          fragments.persona_core_fragment = runtimeEnvelope
             ? this.joinSections([
-                layers.layer1_traits ?? '',
-                '## 已装备特质\n' + fragments,
+                fragments.persona_core_fragment ?? '',
+                '## 已装备特质\n' + traitFragments,
               ])
-            : fragments
+            : traitFragments
         }
       } catch (err) {
-        console.warn('[PromptLayerService] trait layer failed for agent', agentId, err)
-        lintWarnings.push('layer1_trait_failed')
+        console.warn('[PromptLayerService] trait fragment failed for agent', agentId, err)
+        lintWarnings.push('persona_fragment_failed')
       }
     }
 
@@ -165,7 +167,7 @@ export class PromptLayerService {
 
     const styleLayer = this.buildStyleLayer(agentId, runtimeEnvelope, input.scene)
     if (styleLayer) {
-      layers.layer2_style = styleLayer
+      fragments.style_guidance_fragment = styleLayer
     }
 
     if (this.deps.instructionEngine) {
@@ -180,20 +182,20 @@ export class PromptLayerService {
 
         const matched = await this.deps.instructionEngine.matchInstructions(agentId, instrCtx)
         if (matched.length > 0) {
-          layers.layer3_instructions = '## 特别指令\n' + matched.map((m) => `- ${m.body}`).join('\n')
+          fragments.instruction_fragment = '## 特别指令\n' + matched.map((m) => `- ${m.body}`).join('\n')
         }
       } catch (err) {
-        console.warn('[PromptLayerService] instruction layer failed for agent', agentId, err)
-        lintWarnings.push('layer3_instruction_failed')
+        console.warn('[PromptLayerService] instruction fragment failed for agent', agentId, err)
+        lintWarnings.push('instruction_fragment_failed')
       }
     }
 
     const overrideLayer = this.buildOverrideLayer(agentId, input.scene)
     if (overrideLayer) {
-      layers.layer4_overrides = overrideLayer
+      fragments.override_fragment = overrideLayer
     }
 
-    layers.layer6_privacy = this.buildPrivacyPrompt(1)
+    fragments.privacy_fragment = this.buildPrivacyPrompt(1)
 
     if (this.deps.memoryService) {
       try {
@@ -244,10 +246,10 @@ export class PromptLayerService {
         memoryContext = memoryCtx
 
         if (memoryCtx.formatted) {
-          layers.layer5_memory = '## 你的记忆与经历\n' + memoryCtx.formatted
+          fragments.memory_fragment = '## 你的记忆与经历\n' + memoryCtx.formatted
         }
 
-        layers.layer6_privacy = this.buildPrivacyPrompt(disclosure.effective_disclosure_level)
+        fragments.privacy_fragment = this.buildPrivacyPrompt(disclosure.effective_disclosure_level)
         privateMemoryProvenance = {
           used_memory_ids: memoryCtx.memories.map((memory) => memory.id),
           requested_disclosure_level: disclosure.requested_disclosure_level,
@@ -270,12 +272,12 @@ export class PromptLayerService {
               : null,
         }
       } catch (err) {
-        console.warn('[PromptLayerService] memory layer failed for agent', agentId, err)
-        lintWarnings.push('layer5_memory_or_layer6_privacy_failed')
+        console.warn('[PromptLayerService] memory/privacy fragment failed for agent', agentId, err)
+        lintWarnings.push('memory_or_privacy_fragment_failed')
       }
     }
 
-    const audit = this.buildAudit(input.scene, layers, lintWarnings)
+    const audit = this.buildAudit(input.scene, fragments, lintWarnings)
     if (privateMemoryProvenance) {
       audit.provenance = {
         ...(audit.provenance ?? {}),
@@ -286,7 +288,7 @@ export class PromptLayerService {
       this.emitAuditLog(agentId, audit)
     }
     return {
-      layers,
+      fragments,
       audit,
       persona: effectivePersona,
       runtimeEnvelope,
@@ -297,7 +299,7 @@ export class PromptLayerService {
   private buildStyleLayer(
     agentId: string,
     runtimeEnvelope: PersonaRuntimeEnvelope | null,
-    scene: PromptLayerScene,
+    scene: PromptFragmentScene,
   ): string {
     try {
       const parts: string[] = []
@@ -363,7 +365,7 @@ export class PromptLayerService {
     }
   }
 
-  private adaptPersonaForScene(persona: AgentPersona, scene: PromptLayerScene): AgentPersona {
+  private adaptPersonaForScene(persona: AgentPersona, scene: PromptFragmentScene): AgentPersona {
     if (scene !== 'chat_room') return persona
 
     let style = persona.style.trim()
@@ -374,7 +376,7 @@ export class PromptLayerService {
     return { ...persona, style }
   }
 
-  private adaptStyleLayerForScene(styleText: string, scene: PromptLayerScene): string {
+  private adaptStyleLayerForScene(styleText: string, scene: PromptFragmentScene): string {
     const trimmed = styleText.trim()
     if (!trimmed || scene !== 'chat_room') return trimmed
 
@@ -385,7 +387,7 @@ export class PromptLayerService {
     return appendSceneSuffix(adapted, CHATROOM_SCENE_STYLE_SUFFIX)
   }
 
-  private buildOverrideLayer(agentId: string, scene: PromptLayerScene): string {
+  private buildOverrideLayer(agentId: string, scene: PromptFragmentScene): string {
     try {
       const latestConfig = this.deps.agentService.getLatestConfig(agentId)
       const overrides = (latestConfig?.config_json?.prompt_overrides as Record<string, string>) ?? {}
@@ -412,7 +414,7 @@ export class PromptLayerService {
     return firstByAuthor?.id === target.id
   }
 
-  private computeIsFirstInRoom(input: ComposePromptLayersInput): boolean {
+  private computeIsFirstInRoom(input: ComposePromptFragmentsInput): boolean {
     if (input.scene !== 'chat_room' && input.scene !== 'private_chat' && input.scene !== 'proactive_dm') {
       return false
     }
@@ -420,57 +422,57 @@ export class PromptLayerService {
     return !lastSpokeAt
   }
 
-  private mapInstructionScene(scene: PromptLayerScene): InstructionContext['scene'] {
+  private mapInstructionScene(scene: PromptFragmentScene): InstructionContext['scene'] {
     if (scene === 'private_chat' || scene === 'proactive_dm') return 'chat_room'
     if (scene === 'scheduled_post') return 'forum_post'
     return scene
   }
 
-  private mapMemoryScene(scene: PromptLayerScene): 'forum' | 'chat_room' | 'private_chat' {
+  private mapMemoryScene(scene: PromptFragmentScene): 'forum' | 'chat_room' | 'private_chat' {
     if (scene === 'private_chat' || scene === 'proactive_dm') return 'private_chat'
     if (scene === 'chat_room') return 'chat_room'
     return 'forum'
   }
 
-  private isPublicScene(scene: PromptLayerScene): boolean {
+  private isPublicScene(scene: PromptFragmentScene): boolean {
     return scene === 'forum_post'
       || scene === 'forum_comment'
       || scene === 'chat_room'
       || scene === 'scheduled_post'
   }
 
-  private resolveOverrideSceneKey(scene: PromptLayerScene): string {
+  private resolveOverrideSceneKey(scene: PromptFragmentScene): string {
     if (scene === 'scheduled_post') return 'forum_post'
     if (scene === 'proactive_dm') return 'private_chat'
     return scene
   }
 
   private buildAudit(
-    scene: PromptLayerScene,
-    layers: PromptLayerFragments,
+    scene: PromptFragmentScene,
+    fragments: PromptFragmentSet,
     lintWarnings: string[],
-  ): PromptLayerComposeAudit {
-    const includedLayerIds = Object.entries(layers)
+  ): PromptFragmentComposeAudit {
+    const includedFragmentKeys = Object.entries(fragments)
       .filter(([, content]) => typeof content === 'string' && content.trim().length > 0)
-      .map(([layerId]) => layerId)
+      .map(([fragmentKey]) => fragmentKey)
 
     const tokenEstimates: Record<string, number> = {}
-    for (const layerId of includedLayerIds) {
-      const content = layers[layerId as keyof PromptLayerFragments] ?? ''
-      tokenEstimates[layerId] = this.estimateTokens(content)
+    for (const fragmentKey of includedFragmentKeys) {
+      const content = fragments[fragmentKey as keyof PromptFragmentSet] ?? ''
+      tokenEstimates[fragmentKey] = this.estimateTokens(content)
     }
 
     return {
       version: 'v1',
       scene,
-      includedLayerIds,
+      includedFragmentKeys,
       tokenEstimates,
       lintWarnings,
       trimReasons: [],
     }
   }
 
-  private emitAuditLog(agentId: string, audit: PromptLayerComposeAudit): void {
+  private emitAuditLog(agentId: string, audit: PromptFragmentComposeAudit): void {
     if (!config.features.promptAuditV1) return
     console.info('[PromptAudit]', JSON.stringify({
       agent_id: agentId,

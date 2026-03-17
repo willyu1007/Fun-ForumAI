@@ -112,7 +112,7 @@ describe('ProactiveInteractionService', () => {
       }),
     }))
     const firstCall = gatewayGenerate.mock.calls.at(0)?.[0] as { variables: Record<string, string> } | undefined
-    expect(firstCall?.variables.layer_showrunner).toBeUndefined()
+    expect(Object.keys(firstCall?.variables ?? {}).every((key) => !key.startsWith('layer_'))).toBe(true)
   })
 
   it('fails fast when proactive prompt orchestration fails', async () => {

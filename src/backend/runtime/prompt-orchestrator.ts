@@ -3,7 +3,7 @@ import { config } from '../lib/config.js'
 import type { ModelCapabilityEntry } from '../llm/gateway-contract.js'
 import { loadLlmRegistryBundle } from '../llm/registry-loader.js'
 import { getPromptSceneBudgetConfig } from './prompt-budget-config.js'
-import type { ComposePromptLayersInput, PromptLayerService } from './prompt-layer-service.js'
+import type { ComposePromptFragmentsInput, PromptLayerService } from './prompt-layer-service.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
 import type {
   AgentPersona,
@@ -12,8 +12,8 @@ import type {
   PromptBudgetDecision,
   PromptComposeAudit,
   PromptControlTier,
-  PromptLayerComposeAudit,
-  PromptLayerFragments,
+  PromptFragmentComposeAudit,
+  PromptFragmentSet,
   PromptMemoryRetrievalHint,
   PromptLocalLayerEnvelope,
   PromptMemoryTier,
@@ -102,7 +102,7 @@ interface SourcePartition {
   currentContextSources: CurrentContextSource[]
 }
 
-export interface PromptOrchestratorInput extends ComposePromptLayersInput {
+export interface PromptOrchestratorInput extends ComposePromptFragmentsInput {
   communityHardRule?: string
   communitySoftCulture?: string
   relationshipHint?: string
@@ -190,7 +190,7 @@ export class PromptOrchestrator {
       }
     }
 
-    const base = await this.deps.promptLayerService.composeLayersWithAudit(
+    const base = await this.deps.promptLayerService.composeFragmentsWithAudit(
       {
         ...input,
         memoryRetrievalHint: this.buildMemoryRetrievalHint(input),
@@ -203,7 +203,7 @@ export class PromptOrchestrator {
     const result = this.applyGovernance(
       input,
       persona,
-      base.layers,
+      base.fragments,
       base.audit,
       base.runtimeEnvelope ?? runtimeEnvelope,
       base.memoryContext ?? null,
@@ -221,11 +221,13 @@ export class PromptOrchestrator {
     return result
   }
 
+  // PromptLayerService produces internal fragments only. This method is the
+  // sole boundary that compiles those fragments into outward-facing v2 blocks.
   private applyGovernance(
     input: PromptOrchestratorInput,
     persona: AgentPersona,
-    baseLayers: PromptLayerFragments,
-    baseAudit: PromptLayerComposeAudit,
+    baseFragments: PromptFragmentSet,
+    baseAudit: PromptFragmentComposeAudit,
     runtimeEnvelope: PersonaRuntimeEnvelope | null,
     memoryContext: {
       formatted: string
@@ -234,16 +236,15 @@ export class PromptOrchestrator {
   ): PromptOrchestratorResult {
     const lintWarnings = [...baseAudit.lintWarnings]
     const trimReasons = [...baseAudit.trimReasons]
-    const isPrivateBoundaryScene = input.scene === 'private_chat' || input.scene === 'proactive_dm'
 
     const sceneConfig = getPromptSceneBudgetConfig(input.scene)
     const requestEnvelope = this.resolveRequestEnvelope(input)
     requestEnvelope.output_reserve = sceneConfig.request_budget.output_reserve
     const localLayerEnvelope = this.buildLocalLayerEnvelope(sceneConfig, requestEnvelope)
 
-    const privacyLayer = this.normalizeLayerText(baseLayers.layer6_privacy)
+    const privacyLayer = this.normalizeLayerText(baseFragments.privacy_fragment)
     if (!privacyLayer) {
-      this.pushLintWarning(lintWarnings, 'privacy_layer_missing')
+      this.pushLintWarning(lintWarnings, 'privacy_fragment_missing')
     }
 
     const mergedSceneRule = this.normalizeLayerText(
@@ -270,17 +271,6 @@ export class PromptOrchestrator {
     ) {
       this.pushLintWarning(lintWarnings, 'suspicious_injection_pattern')
     }
-    if (
-      isPrivateBoundaryScene
-      && (
-        this.normalizeLayerText(baseLayers.layer_showrunner)
-        || mergedSceneRule
-        || mergedShortTermState
-      )
-    ) {
-      this.pushLintWarning(lintWarnings, 'showrunner_suppressed_private_boundary')
-    }
-
     const partitionedSources = this.partitionSources(
       input.currentContextSources?.length
         ? input.currentContextSources
@@ -288,13 +278,13 @@ export class PromptOrchestrator {
     )
     const overridesConflictWithPrivacy = this.hasPrivacyOverrideConflict(
       privacyLayer,
-      baseLayers.layer4_overrides,
+      baseFragments.override_fragment,
     )
     const effectiveOverridesText = overridesConflictWithPrivacy
       ? undefined
-      : baseLayers.layer4_overrides
+      : baseFragments.override_fragment
     if (overridesConflictWithPrivacy) {
-      this.pushLintWarning(lintWarnings, 'layer_conflict_privacy_vs_override')
+      this.pushLintWarning(lintWarnings, 'privacy_override_fragment_conflict')
       trimReasons.push('trimmed_overrides_precedence_privacy')
     }
     const overrides = this.classifyOverrides(effectiveOverridesText)
@@ -310,12 +300,12 @@ export class PromptOrchestrator {
       { heading: '## 硬覆盖', body: overrides.hard },
     ]
     const compactSections = [
-      { heading: '## 人格核心', body: this.normalizeLayerText(baseLayers.layer1_traits) },
-      { heading: '## 表达与执行', body: this.normalizeLayerText(baseLayers.layer3_instructions) },
+      { heading: '## 人格核心', body: this.normalizeLayerText(baseFragments.persona_core_fragment) },
+      { heading: '## 表达与执行', body: this.normalizeLayerText(baseFragments.instruction_fragment) },
       {
         heading: '## 关系与连续性',
         body: this.joinSections([
-          this.normalizeLayerText(input.relationshipHint ?? baseLayers.layer_relationship),
+          this.normalizeLayerText(input.relationshipHint),
           mergedShortTermState ? `短期状态：${mergedShortTermState}` : '',
           this.renderSources(partitionedSources.compactControlSources, 'compact'),
         ]),
@@ -323,7 +313,7 @@ export class PromptOrchestrator {
       { heading: '## 紧凑覆盖', body: overrides.compact },
     ]
     const softSections = [
-      { heading: '## 风格表达', body: this.normalizeLayerText(baseLayers.layer2_style) },
+      { heading: '## 风格表达', body: this.normalizeLayerText(baseFragments.style_guidance_fragment) },
       { heading: '## 社区软文化', body: this.normalizeLayerText(input.communitySoftCulture) },
       { heading: '## 软覆盖', body: overrides.soft },
     ]

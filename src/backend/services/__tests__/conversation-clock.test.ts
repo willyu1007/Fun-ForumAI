@@ -336,6 +336,10 @@ describe('ConversationClock', () => {
         current_context_block: 'context',
       }),
     }))
+    const firstCall = (
+      generateVisibleText as ReturnType<typeof vi.fn>
+    ).mock.calls.at(0)?.[0] as { variables: Record<string, string> } | undefined
+    expect(Object.keys(firstCall?.variables ?? {}).every((key) => !key.startsWith('layer_'))).toBe(true)
   })
 
   it('uses the scene-enabled chatroom prompt variables for runtime chat replies', async () => {

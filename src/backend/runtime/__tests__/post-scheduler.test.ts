@@ -370,8 +370,13 @@ describe('PostScheduler', () => {
 
     await scheduler.createPost()
 
-    expect((deps.llmGateway.generateVisibleText as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].promptRef)
+    const firstGatewayCall = (
+      deps.llmGateway.generateVisibleText as ReturnType<typeof vi.fn>
+    ).mock.calls[0]?.[0] as { promptRef: { id: string; version: number }; variables: Record<string, string> } | undefined
+
+    expect(firstGatewayCall?.promptRef)
       .toEqual({ id: 'agent-create-post', version: 3 })
+    expect(Object.keys(firstGatewayCall?.variables ?? {}).every((key) => !key.startsWith('layer_'))).toBe(true)
     expect((deps.responseParser.parseAsScheduledPost as ReturnType<typeof vi.fn>).mock.calls[0]?.[0])
       .toEqual(expect.objectContaining({
         fallbackCommunityId: 'community-2',
