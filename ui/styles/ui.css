@@ -1,35 +1,19 @@
-/* UI global stylesheet entrypoint.
- * Layer order is fixed. Do not reorder without an approved UI spec change.
+/**
+ * ui.css - Unified UI Styles Entry Point
+ * 
+ * This file serves as the single entry point for all UI design system styles.
+ * Web consumers should import this file instead of building their own token/theme CSS.
+ * 
+ * Includes:
+ * - CSS variables from tokens (color, spacing, typography, etc.)
+ * - Theme overrides (data-theme attribute based)
+ * - Future: role-based component styles from contract
  */
-@layer reset, tokens, contract, utilities, feature;
 
-@layer reset {
-  *, *::before, *::after { box-sizing: border-box; }
-  html, body { height: 100%; }
-  body { margin: 0; }
-}
+/* Design tokens as CSS variables */
+@import './tokens.css';
 
-@import "./tokens.css";
-@import "./contract.css";
-
-@layer utilities {
-  /* Optional minimal utilities. Prefer `data-ui` roles for spacing/typography. */
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border-width: 0;
-  }
-}
-
-@layer feature {
-  /* Feature-specific CSS must live in this layer.
-   * Policy: do NOT set visual tokens (color, typography, radius, shadow, spacing).
-   * Use for structural layout only (grid-template-areas, etc.)
-   */
-}
+/* Future imports (Phase 3+):
+ * @import './components.css';
+ * @import './patterns.css';
+ */

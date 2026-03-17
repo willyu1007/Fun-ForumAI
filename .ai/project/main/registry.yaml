@@ -1127,3 +1127,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/prompt-budget-v2-runtime-gap-remediation
     updated: 2026-03-17
+  - id: T-907
+    slug: ui-preparation-foundation
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/ui-preparation-foundation
+    updated: 2026-03-17

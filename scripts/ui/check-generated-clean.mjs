@@ -1,0 +1,104 @@
+#!/usr/bin/env node
+/**
+ * check-generated-clean.mjs
+ * Verifies that generated files match what would be regenerated from sources.
+ * Single responsibility: drift detection for generated artifacts.
+ */
+
+import { readFileSync, existsSync } from 'node:fs'
+import { resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { execSync } from 'node:child_process'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const ROOT = resolve(__dirname, '../..')
+
+const GENERATED_FILES = [
+  'ui/styles/tokens.css',
+  'ui/codegen/contract-types.ts',
+  'ui/codegen/contract-manifest.json',
+  'ui/codegen/web-theme.ts',
+  'ui/codegen/mobile-theme.ts',
+]
+
+function check() {
+  const errors = []
+  const warnings = []
+
+  // Store current content
+  const originalContent = {}
+  for (const file of GENERATED_FILES) {
+    const path = resolve(ROOT, file)
+    if (existsSync(path)) {
+      originalContent[file] = readFileSync(path, 'utf-8')
+    } else {
+      warnings.push(`Generated file missing: ${file}`)
+    }
+  }
+
+  // Regenerate all
+  console.log('Regenerating artifacts to check for drift...')
+  try {
+    execSync('node scripts/ui/build-tokens-css.mjs', { cwd: ROOT, stdio: 'pipe' })
+    execSync('node scripts/ui/build-contract-types.mjs', { cwd: ROOT, stdio: 'pipe' })
+    execSync('node scripts/ui/build-contract-manifest.mjs', { cwd: ROOT, stdio: 'pipe' })
+    execSync('node scripts/ui/build-web-theme.mjs', { cwd: ROOT, stdio: 'pipe' })
+    execSync('node scripts/ui/build-mobile-theme.mjs', { cwd: ROOT, stdio: 'pipe' })
+  } catch (e) {
+    console.error(`[FAIL] Build failed: ${e.message}`)
+    process.exit(1)
+  }
+
+  // Compare
+  for (const file of GENERATED_FILES) {
+    const path = resolve(ROOT, file)
+    if (!existsSync(path)) {
+      continue
+    }
+
+    const newContent = readFileSync(path, 'utf-8')
+    const oldContent = originalContent[file]
+
+    if (!oldContent) {
+      warnings.push(`New generated file: ${file}`)
+      continue
+    }
+
+    // Normalize for comparison (ignore timestamp differences in manifests)
+    const normalizeForCompare = (content, filename) => {
+      if (filename.includes('manifest')) {
+        // Remove generatedAt field for comparison
+        return content.replace(/"generatedAt":\s*"[^"]+",?\n?/g, '')
+      }
+      return content
+    }
+
+    if (normalizeForCompare(newContent, file) !== normalizeForCompare(oldContent, file)) {
+      errors.push(`Drift detected in: ${file}`)
+    }
+  }
+
+  // Restore original content
+  for (const [file, content] of Object.entries(originalContent)) {
+    const path = resolve(ROOT, file)
+    const { writeFileSync } = await import('node:fs')
+    writeFileSync(path, content, 'utf-8')
+  }
+
+  if (warnings.length > 0) {
+    console.log('Warnings:')
+    warnings.forEach(w => console.log(`  - ${w}`))
+  }
+
+  if (errors.length > 0) {
+    console.error('[FAIL] Generated files have drifted from sources:')
+    errors.forEach(e => console.error(`  - ${e}`))
+    console.error('\nRun `pnpm ui:build` to regenerate.')
+    process.exit(1)
+  }
+
+  console.log('[PASS] All generated files are clean')
+  process.exit(0)
+}
+
+check()

@@ -1,0 +1,49 @@
+{
+  "name": "@fun-forum/ui-web",
+  "version": "0.1.0",
+  "description": "Web UI primitives and utilities for Fun-ForumAI",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./theme": {
+      "types": "./dist/theme.d.ts",
+      "import": "./dist/theme.js"
+    },
+    "./patterns": {
+      "types": "./dist/patterns/index.d.ts",
+      "import": "./dist/patterns/index.js"
+    },
+    "./shell": {
+      "types": "./dist/shell/index.d.ts",
+      "import": "./dist/shell/index.js"
+    },
+    "./styles": "./styles/index.css"
+  },
+  "files": [
+    "dist",
+    "styles"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fun-forum/design-tokens": "workspace:*",
+    "@fun-forum/ui-contract": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "typescript": "^5.4.0"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  }
+}

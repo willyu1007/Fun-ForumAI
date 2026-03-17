@@ -1,0 +1,33 @@
+{
+  "name": "@fun-forum/ui-contract",
+  "version": "0.1.0",
+  "description": "UI contract types and manifest for data-ui based rendering",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./contract.json": "./contract/contract.json",
+    "./manifest": {
+      "types": "./dist/manifest.d.ts",
+      "import": "./dist/manifest.js"
+    }
+  },
+  "files": [
+    "dist",
+    "contract"
+  ],
+  "scripts": {
+    "build": "node ../../scripts/ui/build-contract-types.mjs && tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  }
+}

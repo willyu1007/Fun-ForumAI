@@ -1,0 +1,40 @@
+{
+  "name": "@fun-forum/ui-mobile",
+  "version": "0.1.0",
+  "description": "Mobile UI primitives and theme for Fun-ForumAI React Native app",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./theme": {
+      "types": "./dist/theme.d.ts",
+      "import": "./dist/theme.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fun-forum/design-tokens": "workspace:*",
+    "@fun-forum/ui-contract": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-native": ">=0.70.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "typescript": "^5.4.0"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  }
+}

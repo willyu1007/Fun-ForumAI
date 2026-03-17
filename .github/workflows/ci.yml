@@ -36,6 +36,12 @@ jobs:
       - name: ESLint
         run: pnpm lint
 
+      - name: UI build (tokens, contract, theme)
+        run: pnpm ui:build
+
+      - name: UI check (contract-codegen drift, theme protocol)
+        run: pnpm ui:check
+
       - name: Unit tests
         run: pnpm test
 
