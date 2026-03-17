@@ -40,3 +40,17 @@
   - `scripts/t048-staging-evidence.mjs` now imports and calls `warmPersistenceState()` instead of the removed `hydrateRepositories()` symbol, restoring the published `pnpm evidence:t048:staging` workflow after the persistence warm-up rename
   - `POST /v1/admin/stage/season-rotate` now uses the production-like deployment guard (`!config.allowDevTools`) for non-`dry_run` execution, instead of checking only `NODE_ENV=production`
   - the governance control-plane e2e test was updated to assert the new production-like guard directly, so APP_ENV-driven non-dev deployments stay covered
+- 2026-03-17: Extended repo-level quality review found and fixed additional real issues beyond the original audit:
+  - `FFAI-08` was not actually gone; the repo still contained an unreferenced legacy write-through persistence implementation at `src/backend/persistence/sync.ts`, so the dead file was removed to stop advertising the wrong runtime topology
+  - the now-dead `hasAnyActiveMemberships()` guard method was removed from `agent-community-membership-service`, along with the stale test expectation around it
+  - unknown 500 responses are now sanitized consistently for production-like deployments via `src/backend/lib/public-error-message.ts`; the global error handler plus public/authenticated routes (`chat`, `notifications`, `private-channel`, `agent-dashboard`, `sse`) now avoid leaking raw internal exception messages outside dev
+  - DB-first hot-path Pg repositories no longer fetch entire result sets just to slice them in memory; a shared cursor pagination helper now drives posts, comments, room messages, rooms, room highlights, and risk-governance list queries
+- 2026-03-17: Deep verification also surfaced unrelated existing repo baseline issues:
+  - full `pnpm typecheck` is currently red in untouched files under `src/backend/context-memory` and `src/backend/llm`
+  - a full-suite `pnpm test` run hit a transient timeout in `src/backend/routes/__tests__/admin-moderation-api.test.ts`, but the isolated rerun passed immediately
+- 2026-03-17: The deep-review follow-up baseline issues were resolved in the same pass:
+  - `src/backend/context-memory/__tests__/memory-pack.test.ts` now supplies the required `slotTokenEstimates` fixture field
+  - `src/backend/llm/__tests__/credential-broker.test.ts` now includes `modelCapabilities` in its mock registry bundle
+  - `src/backend/llm/llm-gateway.ts` now imports `ModelCapabilityEntry` from its canonical contract source
+  - `src/backend/llm/registry-loader.ts` now spreads `ModelCapabilityEntry` objects before attaching them as registry error details, satisfying the error payload contract
+  - after those fixes, both `pnpm typecheck` and the full `pnpm test` suite returned to green

@@ -110,6 +110,14 @@ describe('MemoryPack', () => {
       ],
       selectedMemories: [],
       tokenEstimate: 100,
+      slotTokenEstimates: {
+        owner_private: 40,
+        public_observation: 20,
+        safe_shadow: 20,
+        topic_recall: 0,
+        recent_recall: 0,
+        durable_threads: 0,
+      },
       observability: {
         publicObservationSource: 'empty',
       },

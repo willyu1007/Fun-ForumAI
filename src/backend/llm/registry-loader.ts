@@ -692,7 +692,7 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
     if (!providersById.has(capability.provider_id)) {
       throw registryError(
         `Model capability references unknown provider ${capability.provider_id}`,
-        capability,
+        { ...capability },
       )
     }
     if (
@@ -701,13 +701,13 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
     ) {
       throw registryError(
         `Model capability recommended operating input exceeds input window for ${capability.provider_id}/${capability.model_id}`,
-        capability,
+        { ...capability },
       )
     }
     if (capability.max_output_tokens > capability.input_window_tokens) {
       throw registryError(
         `Model capability max output exceeds input window for ${capability.provider_id}/${capability.model_id}`,
-        capability,
+        { ...capability },
       )
     }
   }

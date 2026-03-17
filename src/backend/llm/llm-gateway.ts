@@ -4,6 +4,7 @@ import type {
   LLMGatewayRequest,
   LLMGatewayResponse,
   LLMVisibility,
+  ModelCapabilityEntry,
   RenderDecision,
   RoutingFallbackLevel,
 } from './gateway-contract.js'
@@ -15,7 +16,6 @@ import { PromptEngine } from './prompt-engine.js'
 import type { LlmMessage, LlmTokenUsage } from './types.js'
 import type {
   LlmRegistryBundle,
-  ModelCapabilityEntry,
   ModelPricingEntry,
   ModelProfileEntry,
 } from './registry-loader.js'

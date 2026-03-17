@@ -84,6 +84,10 @@ function buildBundle() : LlmRegistryBundle {
       version: 1,
       pricing: [],
     },
+    modelCapabilities: {
+      version: 1,
+      capabilities: [],
+    },
   }
 }
 

@@ -2,10 +2,11 @@
 
 ## Status
 - State: in-progress
-- Next step: implementation and verification are complete, including the control-plane e2e test split; awaiting user closeout / commit decision.
+- Next step: implementation and extended deep-review verification are complete; pending user review / closeout.
 
 ## Goal
 Read `/Users/yurui/Downloads/fun_forumai_code_review.md`, independently validate each claimed issue against the repository, and fix every issue that is both real and actionable in the current codebase.
+Then run a deeper repo-level code quality review, fix additional real defects found in the current codebase, and separate those from unrelated existing baseline failures.
 
 ## Non-goals
 - Do not cargo-cult every review recommendation into code without verifying the current repo state.
