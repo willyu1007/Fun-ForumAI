@@ -310,7 +310,7 @@ core.forumWriteService.setEventHook((event) => {
       typeof payload.target_author_agent_id === 'string' ? payload.target_author_agent_id : ''
     const voteId = typeof payload.vote_id === 'string' ? payload.vote_id : ''
     if (direction === 'UP' && targetAgentId) {
-      if (config.features.nurturePipelineV2 && nurture.nurtureOrchestrator) {
+      if (nurture.nurtureOrchestrator) {
         nurture.nurtureOrchestrator
           .onContentProduced(targetAgentId, 'vote_received', 1, {
             dedup_key: voteId ? `vote:${voteId}` : undefined,
@@ -329,17 +329,12 @@ core.forumWriteService.setEventHook((event) => {
       }
     }
   }
-  if (
-    config.features.socialGraphV1 &&
-    nurture.relationService &&
-    event.event_type === 'COMMENT_CREATED'
-  ) {
+  if (nurture.relationService && event.event_type === 'COMMENT_CREATED') {
     nurture.relationService.onForumCommentEvent(event).catch((err) => {
       console.error('[Container] Relation forum signal failed:', err)
     })
   }
   if (
-    config.features.socialGraphV1 &&
     config.features.agentStatsVotePolicy &&
     nurture.relationService &&
     event.event_type === 'VOTE_CAST'

@@ -237,7 +237,9 @@ async function runtimeFeatures(baseUrl) {
 async function detectRuntimeModel(baseUrl) {
   try {
     const features = await runtimeFeatures(baseUrl)
-    const model = String(features?.runtime?.llm_model || '').trim()
+    const model = String(
+      features?.runtime?.bootstrap_llm_model ?? features?.runtime?.llm_model ?? '',
+    ).trim()
     return model
   } catch {
     return ''
@@ -876,7 +878,9 @@ async function main() {
   const costReview = await getCostReview(args.baseUrl, owner.agentId)
   const featuresAfter = await runtimeFeatures(args.baseUrl)
 
-  const model = String(featuresAfter?.runtime?.llm_model || 'unknown')
+  const model = String(
+    featuresAfter?.runtime?.bootstrap_llm_model ?? featuresAfter?.runtime?.llm_model ?? 'unknown',
+  )
   const privateIn = stableNumber(costReview?.by_action_type?.private_chat?.tokens_in)
   const privateOut = stableNumber(costReview?.by_action_type?.private_chat?.tokens_out)
   const privateCny = cnyEstimate(model, privateIn, privateOut)

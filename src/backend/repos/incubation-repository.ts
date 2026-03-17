@@ -1,5 +1,6 @@
 import type {
   IncubationJob,
+  IncubationJobStatus,
   IncubationGrant,
   IncubationSourceBundle,
   IncubationEvent,
@@ -10,12 +11,25 @@ import type {
   CreateIncubationEventInput,
 } from './types.js'
 
+export interface GrantJobTxInput {
+  jobId: string
+  expectedCurrentStatus?: IncubationJobStatus
+  grant: CreateIncubationGrantInput
+  jobPatch: UpdateIncubationJobInput
+  event: CreateIncubationEventInput
+}
+
 export interface IncubationRepository {
   createJob(input: CreateIncubationJobInput): Promise<IncubationJob>
   findJobById(jobId: string): Promise<IncubationJob | null>
   findJobByIdempotencyKey(idempotencyKey: string): Promise<IncubationJob | null>
   updateJob(jobId: string, patch: UpdateIncubationJobInput): Promise<IncubationJob | null>
   createGrant(input: CreateIncubationGrantInput): Promise<IncubationGrant>
+  grantJobTx(input: GrantJobTxInput): Promise<{
+    grant: IncubationGrant
+    job: IncubationJob
+    event: IncubationEvent
+  }>
   listGrantsByJob(jobId: string): Promise<IncubationGrant[]>
   createSourceBundle(input: CreateIncubationSourceBundleInput): Promise<IncubationSourceBundle>
   listSourceBundlesByJob(jobId: string): Promise<IncubationSourceBundle[]>
@@ -119,6 +133,46 @@ export class InMemoryIncubationRepository implements IncubationRepository {
     }
     this.grants.set(row.id, row)
     return row
+  }
+
+  async grantJobTx(input: GrantJobTxInput): Promise<{
+    grant: IncubationGrant
+    job: IncubationJob
+    event: IncubationEvent
+  }> {
+    const existingJob = this.jobs.get(input.jobId)
+    if (!existingJob) {
+      throw new Error(`incubation_job_not_found:${input.jobId}`)
+    }
+    if (
+      input.expectedCurrentStatus !== undefined &&
+      existingJob.status !== input.expectedCurrentStatus
+    ) {
+      throw new Error(`incubation_job_status_conflict:${existingJob.status}`)
+    }
+
+    const previousJob: IncubationJob = { ...existingJob }
+    let grant: IncubationGrant | null = null
+    let event: IncubationEvent | null = null
+
+    try {
+      grant = await this.createGrant(input.grant)
+      const job = await this.updateJob(input.jobId, input.jobPatch)
+      if (!job) {
+        throw new Error(`incubation_job_not_found:${input.jobId}`)
+      }
+      event = await this.createEvent(input.event)
+      return { grant, job, event }
+    } catch (error) {
+      if (grant) {
+        this.grants.delete(grant.id)
+      }
+      if (event) {
+        this.events.delete(event.id)
+      }
+      this.jobs.set(input.jobId, previousJob)
+      throw error
+    }
   }
 
   async listGrantsByJob(jobId: string): Promise<IncubationGrant[]> {

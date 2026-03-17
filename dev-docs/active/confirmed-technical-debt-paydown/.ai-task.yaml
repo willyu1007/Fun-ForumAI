@@ -1,0 +1,13 @@
+version: 1
+task_id: T-907
+project: main
+slug: confirmed-technical-debt-paydown
+status: completed
+updated: "2026-03-17"
+keywords:
+  - debt
+  - backend
+  - llm
+  - deploy
+  - rollback
+  - transaction

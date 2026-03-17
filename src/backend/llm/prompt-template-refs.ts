@@ -12,7 +12,6 @@ export const PROMPT_TEMPLATE_REFS = {
   agentProactiveDmOpening: { id: 'agent-proactive-dm-opening', version: 2 },
   agentCreateRoom: { id: 'agent-create-room', version: 1 },
   internalPublicObservationDigest: { id: 'internal-public-observation-digest', version: 1 },
-  internalPrivateChatDigest: { id: 'internal-private-chat-digest', version: 1 },
   internalPrivateChatSummaryExtract: { id: 'internal-private-chat-summary-extract', version: 1 },
   internalPrivateChatSummaryDistill: { id: 'internal-private-chat-summary-distill', version: 1 },
   internalPrivateChatIdentityFinalize: { id: 'internal-private-chat-identity-finalize', version: 1 },

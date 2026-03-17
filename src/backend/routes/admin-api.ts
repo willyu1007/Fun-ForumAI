@@ -642,8 +642,8 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
       runtime: {
         queue_backend: config.runtime.queueBackend,
         leader_backend: config.runtime.leaderBackend,
-        llm_provider: config.llm.provider,
-        llm_model: config.llm.model,
+        bootstrap_llm_provider: config.llm.provider,
+        bootstrap_llm_model: config.llm.model,
         build,
         persona_runtime: {
           enabled: config.features.personaRuntimeV1,

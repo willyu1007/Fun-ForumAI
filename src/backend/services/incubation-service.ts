@@ -63,54 +63,57 @@ export class IncubationService {
 
     const now = new Date()
     const expiresAt = new Date(now.getTime() + input.ttl_hours * 60 * 60 * 1000)
-    const grant = await this.deps.incubationRepo.createGrant({
-      job_id: input.job_id,
-      reviewer_user_id: input.actor_user_id,
-      reason: input.reason.trim(),
-      ttl_hours: input.ttl_hours,
-      scope: input.scope,
-      anonymity_level: input.anonymity_level,
-      quote_policy: input.quote_policy,
-      no_go_topics: input.no_go_topics ?? [],
-      policy: {
-        scope: input.scope ?? 'ABSTRACT_ONLY',
-        anonymity_level: input.anonymity_level ?? 'strong',
-        quote_policy: input.quote_policy ?? 'PARAPHRASE_ONLY',
-        no_go_topics: input.no_go_topics ?? [],
-      },
-      expires_at: expiresAt,
-    })
-
-    // TODO: wrap in DB transaction when migrating to Postgres persistence
     try {
-      await this.deps.incubationRepo.updateJob(input.job_id, {
-        status: 'GRANTED',
-        phase: 'RESEARCHING',
-        expires_at: expiresAt,
+      const { grant } = await this.deps.incubationRepo.grantJobTx({
+        jobId: input.job_id,
+        expectedCurrentStatus: 'PENDING',
+        grant: {
+          job_id: input.job_id,
+          reviewer_user_id: input.actor_user_id,
+          reason: input.reason.trim(),
+          ttl_hours: input.ttl_hours,
+          scope: input.scope,
+          anonymity_level: input.anonymity_level,
+          quote_policy: input.quote_policy,
+          no_go_topics: input.no_go_topics ?? [],
+          policy: {
+            scope: input.scope ?? 'ABSTRACT_ONLY',
+            anonymity_level: input.anonymity_level ?? 'strong',
+            quote_policy: input.quote_policy ?? 'PARAPHRASE_ONLY',
+            no_go_topics: input.no_go_topics ?? [],
+          },
+          expires_at: expiresAt,
+        },
+        jobPatch: {
+          status: 'GRANTED',
+          phase: 'RESEARCHING',
+          expires_at: expiresAt,
+        },
+        event: {
+          job_id: input.job_id,
+          event_type: 'grant_created',
+          actor_user_id: input.actor_user_id,
+          payload: {
+            reason: input.reason.trim(),
+            ttl_hours: input.ttl_hours,
+            scope: input.scope ?? 'ABSTRACT_ONLY',
+            anonymity_level: input.anonymity_level ?? 'strong',
+            quote_policy: input.quote_policy ?? 'PARAPHRASE_ONLY',
+            no_go_topics: input.no_go_topics ?? [],
+          },
+        },
       })
+      return grant
     } catch (err) {
-      console.error('[IncubationService] grant created but job status update failed; data may be inconsistent', {
-        job_id: input.job_id, grant_id: grant.id,
-      })
+      if (err instanceof Error && err.message.startsWith('incubation_job_status_conflict:')) {
+        throw new AppError(
+          409,
+          `Incubation job ${input.job_id} changed state while granting; retry from latest state`,
+          'CONFLICT',
+        )
+      }
       throw err
     }
-
-    await this.deps.incubationRepo.createEvent({
-      job_id: input.job_id,
-      event_type: 'grant_created',
-      actor_user_id: input.actor_user_id,
-      payload: {
-        reason: input.reason.trim(),
-        ttl_hours: input.ttl_hours,
-        grant_id: grant.id,
-        scope: grant.scope,
-        anonymity_level: grant.anonymity_level,
-        quote_policy: grant.quote_policy,
-        no_go_topics: grant.no_go_topics,
-      },
-    })
-
-    return grant
   }
 
   async reviewJob(input: {

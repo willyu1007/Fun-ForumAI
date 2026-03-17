@@ -9,93 +9,21 @@
  *   node ops/deploy/scripts/deploy.mjs --env <env> [--dry-run] [--service <id>]
  */
 
-import { readFileSync, existsSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import {
+  parseArgs,
+  loadJSON,
+  validateEnvContract,
+  validatePackagingTarget,
+  resolveServices,
+  resolveK8sTarget,
+  buildImagePlan,
+  listMissingFields,
+  formatKubectlBaseArgs,
+  runCommand,
+  checkHealth,
+} from './_shared.mjs';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(__dirname, '../../..');
-
-function parseArgs(args) {
-  const result = {};
-  for (let i = 0; i < args.length; i++) {
-    const a = args[i];
-    if (a === '--dry-run') { result.dryRun = true; continue; }
-    if (a === '--env' && args[i + 1]) { result.env = args[++i]; continue; }
-    if (a === '--service' && args[i + 1]) { result.service = args[++i]; continue; }
-    if (a === '--help') { result.help = true; continue; }
-  }
-  return result;
-}
-
-function loadJSON(relPath) {
-  const p = resolve(ROOT, relPath);
-  if (!existsSync(p)) return null;
-  return JSON.parse(readFileSync(p, 'utf-8'));
-}
-
-function loadYAMLKeys(relPath) {
-  const p = resolve(ROOT, relPath);
-  if (!existsSync(p)) return null;
-  const text = readFileSync(p, 'utf-8');
-  const keys = [];
-  for (const line of text.split('\n')) {
-    const m = line.match(/^\s{2}(\w+):\s*$/);
-    if (m) keys.push(m[1]);
-  }
-  return keys;
-}
-
-function validateEnvContract(envId) {
-  const checks = [];
-
-  const contractKeys = loadYAMLKeys('env/contract.yaml');
-  checks.push({
-    name: 'env/contract.yaml exists',
-    ok: contractKeys !== null,
-    detail: contractKeys ? `${contractKeys.length} variables defined` : 'missing',
-  });
-
-  const valuesPath = `env/values/${envId}.yaml`;
-  const valuesExist = existsSync(resolve(ROOT, valuesPath));
-  checks.push({
-    name: `env/values/${envId}.yaml`,
-    ok: valuesExist,
-    detail: valuesExist ? 'present' : 'missing',
-  });
-
-  const secretsPath = `env/secrets/${envId}.ref.yaml`;
-  const secretsExist = existsSync(resolve(ROOT, secretsPath));
-  checks.push({
-    name: `env/secrets/${envId}.ref.yaml`,
-    ok: secretsExist,
-    detail: secretsExist ? 'present' : 'missing',
-  });
-
-  const envConfig = `ops/deploy/environments/${envId}.yaml`;
-  const envCfgExist = existsSync(resolve(ROOT, envConfig));
-  checks.push({
-    name: `ops/deploy/environments/${envId}.yaml`,
-    ok: envCfgExist,
-    detail: envCfgExist ? 'present' : 'missing',
-  });
-
-  return checks;
-}
-
-function validatePackagingTarget() {
-  const registry = loadJSON('docs/packaging/registry.json');
-  if (!registry || registry.targets.length === 0) {
-    return { ok: false, detail: 'No packaging targets registered' };
-  }
-  return {
-    ok: true,
-    detail: registry.targets.map(t => t.id).join(', '),
-    targets: registry.targets,
-  };
-}
-
-function printPlan(envId, envCfg, envChecks, pkgInfo, deployConfig) {
+function printPlan(envId, envCfg, envChecks, servicePlans, deployConfig, pkgInfo) {
   console.log('\n╔══════════════════════════════════════════╗');
   console.log('║        DEPLOYMENT DRY-RUN PLAN           ║');
   console.log('╚══════════════════════════════════════════╝\n');
@@ -105,24 +33,67 @@ function printPlan(envId, envCfg, envChecks, pkgInfo, deployConfig) {
   console.log(`Approval:     ${envCfg?.requiresApproval ? 'REQUIRED' : 'not required'}`);
 
   console.log('\nEnvironment contract checks:');
-  for (const c of envChecks) {
-    console.log(`  ${c.ok ? '✓' : '✗'} ${c.name} — ${c.detail}`);
+  for (const check of envChecks) {
+    console.log(`  ${check.ok ? '✓' : '✗'} ${check.name} — ${check.detail}`);
   }
 
   console.log(`\nPackaging targets: ${pkgInfo.ok ? pkgInfo.detail : pkgInfo.detail}`);
 
-  if (pkgInfo.ok) {
-    console.log('\nDeployment steps (would execute):');
-    for (const t of pkgInfo.targets) {
-      console.log(`  1. Pull image: ${t.id}:<version>`);
-      console.log(`  2. Apply k8s manifests for ${envId}`);
-      console.log(`  3. Wait for rollout: kubectl rollout status deployment/${t.id}`);
-      console.log(`  4. Health check: GET ${t.healthPath || '/health'}`);
+  console.log('\nDeployment steps (would execute):');
+  for (const { service, target, missingFields } of servicePlans) {
+    console.log(`\nService: ${service.id}`);
+    console.log(`  namespace:  ${target.namespace ?? '<missing>'}`);
+    console.log(`  deployment: ${target.deployment ?? '<missing>'}`);
+    console.log(`  container:  ${target.container ?? '<missing>'}`);
+    console.log(`  image:      ${buildImagePlan(target)}`);
+    console.log(`  health:     ${target.healthUrl ?? '[skipped] provide --health-url to execute health checks'}`);
+    console.log(`  1. kubectl ${formatKubectlBaseArgs(target).join(' ')} set image deployment/${target.deployment ?? '<deployment>'} ${target.container ?? '<container>'}=${buildImagePlan(target)}`);
+    console.log(`  2. kubectl ${formatKubectlBaseArgs(target).join(' ')} rollout status deployment/${target.deployment ?? '<deployment>'} --timeout=${target.timeoutSec}s`);
+    if (target.healthUrl) {
+      console.log(`  3. GET ${target.healthUrl}`);
+    }
+    if (missingFields.length > 0) {
+      console.log(`  missing:    ${missingFields.join(', ')}`);
     }
   }
 
-  const allOk = envChecks.every(c => c.ok) && pkgInfo.ok;
+  const allOk = envChecks.every((check) => check.ok) && servicePlans.every((plan) => plan.missingFields.length === 0);
   console.log(`\nReady to deploy: ${allOk ? 'YES' : 'NO (fix issues above)'}`);
+}
+
+async function deployService(service, target) {
+  const kubectlBaseArgs = formatKubectlBaseArgs(target);
+
+  console.log(`[exec] ${service.id}: set image -> ${target.imageRef}`);
+  runCommand('kubectl', [
+    ...kubectlBaseArgs,
+    'set',
+    'image',
+    `deployment/${target.deployment}`,
+    `${target.container}=${target.imageRef}`,
+  ]);
+
+  console.log(`[exec] ${service.id}: waiting for rollout`);
+  runCommand('kubectl', [
+    ...kubectlBaseArgs,
+    'rollout',
+    'status',
+    `deployment/${target.deployment}`,
+    `--timeout=${target.timeoutSec}s`,
+  ]);
+
+  if (!target.healthUrl) {
+    console.log(`[warn] ${service.id}: health check skipped (no --health-url / DEPLOY_HEALTH_URL)`);
+    return;
+  }
+
+  console.log(`[exec] ${service.id}: checking health -> ${target.healthUrl}`);
+  const health = await checkHealth(target.healthUrl, target.healthTimeoutMs);
+  if (!health.ok) {
+    throw new Error(
+      `${service.id} health check failed: ${health.error || `status ${health.status}`}`,
+    );
+  }
 }
 
 async function main() {
@@ -136,10 +107,20 @@ Usage:
   node ops/deploy/scripts/deploy.mjs --env <env> [options]
 
 Options:
-  --env <env>       Target environment (dev|staging|prod) (required)
-  --dry-run         Show deployment plan without executing
-  --service <id>    Deploy a specific service (default: all)
-  --help            Show this help
+  --env <env>             Target environment (dev|staging|prod) (required)
+  --dry-run               Show deployment plan without executing
+  --service <id>          Deploy a specific service (default: all)
+  --context <name>        Optional kubectl context override
+  --namespace <name>      Optional k8s namespace override
+  --deployment <name>     Optional deployment name override
+  --container <name>      Optional container name override
+  --image-ref <repo:tag>  Full image reference to deploy
+  --image-repo <repo>     Image repository (combine with --tag)
+  --tag <tag>             Image tag (combine with --image-repo or service k8s.imageRepo)
+  --health-url <url>      Optional health endpoint for post-rollout verification
+  --timeout-sec <sec>     Rollout timeout in seconds (default: 120)
+  --health-timeout-ms <ms> Health check timeout in milliseconds (default: 5000)
+  --help                  Show this help
 `);
     return 0;
   }
@@ -155,7 +136,12 @@ Options:
     return 1;
   }
 
-  const envCfg = deployConfig.environments.find(e => e.id === opts.env);
+  if (deployConfig.model !== 'k8s') {
+    console.error(`[error] Actual deployment is only implemented for model="k8s" (found "${deployConfig.model}")`);
+    return 1;
+  }
+
+  const envCfg = deployConfig.environments.find((env) => env.id === opts.env);
   if (!envCfg) {
     console.error(`[error] Environment "${opts.env}" not configured in ops/deploy/config.json`);
     return 1;
@@ -168,27 +154,63 @@ Options:
 
   const envChecks = validateEnvContract(opts.env);
   const pkgInfo = validatePackagingTarget();
+  const serviceInfo = resolveServices(deployConfig, pkgInfo, opts.service);
+  if (serviceInfo.error) {
+    console.error(`[error] ${serviceInfo.error}`);
+    return 1;
+  }
+  if (serviceInfo.missingPackagingTargets.length > 0) {
+    console.error(
+      `[error] Missing packaging target(s): ${serviceInfo.missingPackagingTargets.join(', ')}`,
+    );
+    return 1;
+  }
 
-  if (opts.dryRun) {
-    printPlan(opts.env, envCfg, envChecks, pkgInfo, deployConfig);
+  const servicePlans = serviceInfo.services.map((service) => {
+    const target = resolveK8sTarget(service, opts);
+    const missingFields = listMissingFields(target, [
+      'namespace',
+      'deployment',
+      'container',
+      'imageRef',
+    ]);
+    return { service, target, missingFields };
+  });
+
+  if (opts['dry-run']) {
+    printPlan(opts.env, envCfg, envChecks, servicePlans, deployConfig, pkgInfo);
     return 0;
   }
 
-  const allOk = envChecks.every(c => c.ok) && pkgInfo.ok;
-  if (!allOk) {
+  const allChecksPassed = envChecks.every((check) => check.ok);
+  if (!allChecksPassed) {
     console.error('[error] Pre-deployment checks failed. Run with --dry-run to see details.');
+    return 1;
+  }
+
+  const missingForExecution = servicePlans.filter((plan) => plan.missingFields.length > 0);
+  if (missingForExecution.length > 0) {
+    for (const plan of missingForExecution) {
+      console.error(
+        `[error] Service "${plan.service.id}" is missing execution inputs: ${plan.missingFields.join(', ')}`,
+      );
+    }
+    console.error('[error] Provide the missing CLI flags or set them in ops/deploy/config.json / environment variables.');
     return 1;
   }
 
   if (envCfg.requiresApproval) {
     console.log(`[info] Deployment to "${opts.env}" requires human approval.`);
-    console.log('[info] Run with --dry-run to preview, then request approval.');
+    console.log('[info] Run with --dry-run to preview, then request approval before executing.');
     return 0;
   }
 
-  console.log(`[todo] Actual deployment to "${opts.env}" not yet implemented.`);
-  console.log('[info] Use --dry-run to verify configuration readiness.');
+  for (const { service, target } of servicePlans) {
+    await deployService(service, target);
+  }
+
+  console.log(`[ok] Deployment to "${opts.env}" completed successfully.`);
   return 0;
 }
 
-main().then(code => process.exit(code));
+main().then((code) => process.exit(code));

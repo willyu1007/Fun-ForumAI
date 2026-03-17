@@ -6,58 +6,59 @@
  * or executes the rollback procedure.
  *
  * Usage:
- *   node ops/deploy/scripts/rollback.mjs --env <env> [--dry-run] [--to <version>]
+ *   node ops/deploy/scripts/rollback.mjs --env <env> [--dry-run] [--to <revision>]
  */
 
-import { readFileSync, existsSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import {
+  parseArgs,
+  loadJSON,
+  validatePackagingTarget,
+  resolveServices,
+  resolveK8sTarget,
+  listMissingFields,
+  formatKubectlBaseArgs,
+  runCommand,
+  checkHealth,
+} from './_shared.mjs';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(__dirname, '../../..');
-
-function parseArgs(args) {
-  const result = {};
-  for (let i = 0; i < args.length; i++) {
-    const a = args[i];
-    if (a === '--dry-run') { result.dryRun = true; continue; }
-    if (a === '--env' && args[i + 1]) { result.env = args[++i]; continue; }
-    if (a === '--to' && args[i + 1]) { result.to = args[++i]; continue; }
-    if (a === '--help') { result.help = true; continue; }
+function normalizeRevision(rawValue) {
+  if (typeof rawValue !== 'string') return null;
+  const trimmed = rawValue.trim();
+  if (!trimmed) return null;
+  const parsed = Number.parseInt(trimmed, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0 || String(parsed) !== trimmed) {
+    throw new Error('--to must be a positive rollout revision number.');
   }
-  return result;
+  return parsed;
 }
 
-function loadJSON(relPath) {
-  const p = resolve(ROOT, relPath);
-  if (!existsSync(p)) return null;
-  return JSON.parse(readFileSync(p, 'utf-8'));
-}
-
-function printPlan(envId, deployConfig, version) {
+function printPlan(envId, deployConfig, servicePlans, revision) {
   console.log('\n╔══════════════════════════════════════════╗');
   console.log('║         ROLLBACK DRY-RUN PLAN            ║');
   console.log('╚══════════════════════════════════════════╝\n');
 
   console.log(`Environment:   ${envId}`);
-  console.log(`Rollback to:   ${version || 'previous revision'}`);
+  console.log(`Rollback to:   ${revision ? `revision ${revision}` : 'previous revision'}`);
   console.log(`Model:         ${deployConfig.model}`);
 
-  const registry = loadJSON('docs/packaging/registry.json');
-  const targets = registry?.targets || [];
-
   console.log('\nRollback steps (would execute):');
-  if (targets.length === 0) {
-    console.log('  [warn] No packaging targets registered.');
-  }
-  for (const t of targets) {
-    if (version) {
-      console.log(`  1. kubectl set image deployment/${t.id} ${t.id}=${t.id}:${version}`);
+  for (const { service, target, missingFields } of servicePlans) {
+    console.log(`\nService: ${service.id}`);
+    console.log(`  namespace:  ${target.namespace ?? '<missing>'}`);
+    console.log(`  deployment: ${target.deployment ?? '<missing>'}`);
+    console.log(`  health:     ${target.healthUrl ?? '[skipped] provide --health-url to execute health checks'}`);
+    if (revision) {
+      console.log(`  1. kubectl ${formatKubectlBaseArgs(target).join(' ')} rollout undo deployment/${target.deployment ?? '<deployment>'} --to-revision=${revision}`);
     } else {
-      console.log(`  1. kubectl rollout undo deployment/${t.id}`);
+      console.log(`  1. kubectl ${formatKubectlBaseArgs(target).join(' ')} rollout undo deployment/${target.deployment ?? '<deployment>'}`);
     }
-    console.log(`  2. kubectl rollout status deployment/${t.id} --timeout=120s`);
-    console.log(`  3. Health check: GET ${t.healthPath || '/health'}`);
+    console.log(`  2. kubectl ${formatKubectlBaseArgs(target).join(' ')} rollout status deployment/${target.deployment ?? '<deployment>'} --timeout=${target.timeoutSec}s`);
+    if (target.healthUrl) {
+      console.log(`  3. GET ${target.healthUrl}`);
+    }
+    if (missingFields.length > 0) {
+      console.log(`  missing:    ${missingFields.join(', ')}`);
+    }
   }
 
   console.log('\nPre-rollback checklist:');
@@ -65,12 +66,48 @@ function printPlan(envId, deployConfig, version) {
   console.log('  ✓ Notify on-call / stakeholders');
   console.log('  ✓ Check DB migration compatibility (no destructive migrations since target)');
 
-  console.log('\nPost-rollback:');
-  console.log('  1. Verify health check passes');
-  console.log('  2. Run smoke tests');
-  console.log('  3. Update incident log');
+  const ready = servicePlans.every((plan) => plan.missingFields.length === 0);
+  console.log(`\nReady to rollback: ${ready ? 'YES' : 'NO (fix issues above)'}`);
+}
 
-  console.log('\nReady to rollback: YES (dry-run mode)');
+async function rollbackService(service, target, revision) {
+  const kubectlBaseArgs = formatKubectlBaseArgs(target);
+  const rollbackArgs = [
+    ...kubectlBaseArgs,
+    'rollout',
+    'undo',
+    `deployment/${target.deployment}`,
+  ];
+  if (revision) {
+    rollbackArgs.push(`--to-revision=${revision}`);
+  }
+
+  console.log(
+    `[exec] ${service.id}: rollback ${revision ? `to revision ${revision}` : 'to previous revision'}`,
+  );
+  runCommand('kubectl', rollbackArgs);
+
+  console.log(`[exec] ${service.id}: waiting for rollout`);
+  runCommand('kubectl', [
+    ...kubectlBaseArgs,
+    'rollout',
+    'status',
+    `deployment/${target.deployment}`,
+    `--timeout=${target.timeoutSec}s`,
+  ]);
+
+  if (!target.healthUrl) {
+    console.log(`[warn] ${service.id}: health check skipped (no --health-url / DEPLOY_HEALTH_URL)`);
+    return;
+  }
+
+  console.log(`[exec] ${service.id}: checking health -> ${target.healthUrl}`);
+  const health = await checkHealth(target.healthUrl, target.healthTimeoutMs);
+  if (!health.ok) {
+    throw new Error(
+      `${service.id} health check failed after rollback: ${health.error || `status ${health.status}`}`,
+    );
+  }
 }
 
 async function main() {
@@ -84,10 +121,17 @@ Usage:
   node ops/deploy/scripts/rollback.mjs --env <env> [options]
 
 Options:
-  --env <env>       Target environment (required)
-  --to <version>    Specific version to roll back to (default: previous revision)
-  --dry-run         Show rollback plan without executing
-  --help            Show this help
+  --env <env>              Target environment (required)
+  --to <revision>          Specific rollout revision to roll back to
+  --dry-run                Show rollback plan without executing
+  --service <id>           Roll back a specific service (default: all)
+  --context <name>         Optional kubectl context override
+  --namespace <name>       Optional k8s namespace override
+  --deployment <name>      Optional deployment name override
+  --health-url <url>       Optional health endpoint for post-rollback verification
+  --timeout-sec <sec>      Rollout timeout in seconds (default: 120)
+  --health-timeout-ms <ms> Health check timeout in milliseconds (default: 5000)
+  --help                   Show this help
 `);
     return 0;
   }
@@ -97,32 +141,72 @@ Options:
     return 1;
   }
 
+  let revision;
+  try {
+    revision = normalizeRevision(opts.to);
+  } catch (err) {
+    console.error(`[error] ${err instanceof Error ? err.message : String(err)}`);
+    return 1;
+  }
+
   const deployConfig = loadJSON('ops/deploy/config.json');
   if (!deployConfig) {
     console.error('[error] ops/deploy/config.json not found');
     return 1;
   }
 
-  const envCfg = deployConfig.environments.find(e => e.id === opts.env);
+  if (deployConfig.model !== 'k8s') {
+    console.error(`[error] Actual rollback is only implemented for model="k8s" (found "${deployConfig.model}")`);
+    return 1;
+  }
+
+  const envCfg = deployConfig.environments.find((env) => env.id === opts.env);
   if (!envCfg) {
     console.error(`[error] Environment "${opts.env}" not configured`);
     return 1;
   }
 
-  if (opts.dryRun) {
-    printPlan(opts.env, deployConfig, opts.to);
+  const pkgInfo = validatePackagingTarget();
+  const serviceInfo = resolveServices(deployConfig, pkgInfo, opts.service);
+  if (serviceInfo.error) {
+    console.error(`[error] ${serviceInfo.error}`);
+    return 1;
+  }
+
+  const servicePlans = serviceInfo.services.map((service) => {
+    const target = resolveK8sTarget(service, opts);
+    const missingFields = listMissingFields(target, ['namespace', 'deployment']);
+    return { service, target, missingFields };
+  });
+
+  if (opts['dry-run']) {
+    printPlan(opts.env, deployConfig, servicePlans, revision);
     return 0;
+  }
+
+  const missingForExecution = servicePlans.filter((plan) => plan.missingFields.length > 0);
+  if (missingForExecution.length > 0) {
+    for (const plan of missingForExecution) {
+      console.error(
+        `[error] Service "${plan.service.id}" is missing execution inputs: ${plan.missingFields.join(', ')}`,
+      );
+    }
+    console.error('[error] Provide the missing CLI flags or set them in ops/deploy/config.json / environment variables.');
+    return 1;
   }
 
   if (envCfg.requiresApproval) {
     console.log(`[info] Rollback on "${opts.env}" requires human approval.`);
-    console.log('[info] Run with --dry-run to preview the rollback plan.');
+    console.log('[info] Run with --dry-run to preview the rollback plan, then request approval before executing.');
     return 0;
   }
 
-  console.log(`[todo] Actual rollback on "${opts.env}" not yet implemented.`);
-  console.log('[info] Use --dry-run to verify the rollback plan.');
+  for (const { service, target } of servicePlans) {
+    await rollbackService(service, target, revision);
+  }
+
+  console.log(`[ok] Rollback on "${opts.env}" completed successfully.`);
   return 0;
 }
 
-main().then(code => process.exit(code));
+main().then((code) => process.exit(code));

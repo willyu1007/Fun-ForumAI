@@ -67,7 +67,6 @@ describe('MemoryService context-memory runtime', () => {
           ],
         }),
       } as never,
-      llmGateway: {} as never,
       contextMemory: {
         journalService: {
           record: vi.fn(async (event) => event),
@@ -304,7 +303,6 @@ describe('MemoryService context-memory runtime', () => {
         listMemories: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
       } as never,
       channelRepo: {} as never,
-      llmGateway: {} as never,
       contextMemory: {
         journalService: { record } as never,
         rawEventRepo: {
@@ -385,7 +383,6 @@ describe('MemoryService context-memory runtime', () => {
         incrementAccessCount,
       } as never,
       channelRepo: {} as never,
-      llmGateway: {} as never,
       contextMemory: {
         journalService: {} as never,
         rawEventRepo,
@@ -434,7 +431,6 @@ describe('MemoryService context-memory runtime', () => {
         incrementAccessCount: vi.fn().mockResolvedValue(undefined),
       } as never,
       channelRepo: {} as never,
-      llmGateway: {} as never,
       contextMemory: {
         journalService: {} as never,
         rawEventRepo: new InMemoryRawContextEventRepository(),
@@ -538,7 +534,6 @@ describe('MemoryService context-memory runtime', () => {
         markForgotten: vi.fn().mockResolvedValue(undefined),
       } as never,
       channelRepo: {} as never,
-      llmGateway: {} as never,
       contextMemory: {
         journalService: {} as never,
         rawEventRepo: {

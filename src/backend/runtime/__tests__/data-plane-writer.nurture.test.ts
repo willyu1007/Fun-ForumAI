@@ -1,14 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { WriteInstruction } from '../types.js'
 
-const ORIGINAL_FF_NURTURE_PIPELINE_V2 = process.env.FF_NURTURE_PIPELINE_V2
-
-async function importWriterWithFlag(flagOn: boolean) {
-  process.env.FF_NURTURE_PIPELINE_V2 = flagOn ? 'true' : 'false'
-  vi.resetModules()
-  return import('../data-plane-writer.js')
-}
-
 function makeUsage() {
   return {
     prompt_tokens: 10,
@@ -18,18 +10,12 @@ function makeUsage() {
 }
 
 afterEach(() => {
-  if (ORIGINAL_FF_NURTURE_PIPELINE_V2 === undefined) {
-    delete process.env.FF_NURTURE_PIPELINE_V2
-  } else {
-    process.env.FF_NURTURE_PIPELINE_V2 = ORIGINAL_FF_NURTURE_PIPELINE_V2
-  }
-  vi.resetModules()
   vi.clearAllMocks()
 })
 
 describe('DataPlaneWriter nurture routing', () => {
-  it('routes forum post XP to orchestrator when FF_NURTURE_PIPELINE_V2=true', async () => {
-    const { DataPlaneWriter } = await importWriterWithFlag(true)
+  it('routes forum post XP to orchestrator when available', async () => {
+    const { DataPlaneWriter } = await import('../data-plane-writer.js')
 
     const createPost = vi.fn().mockResolvedValue({ post: { id: 'post-1' } })
     const createComment = vi.fn()
@@ -61,8 +47,8 @@ describe('DataPlaneWriter nurture routing', () => {
     expect(awardXP).not.toHaveBeenCalled()
   })
 
-  it('falls back to growth engine when FF_NURTURE_PIPELINE_V2=false', async () => {
-    const { DataPlaneWriter } = await importWriterWithFlag(false)
+  it('falls back to growth engine when nurture orchestrator is unavailable', async () => {
+    const { DataPlaneWriter } = await import('../data-plane-writer.js')
 
     const createComment = vi.fn().mockResolvedValue({ comment: { id: 'comment-1' } })
     const onContentProduced = vi.fn().mockResolvedValue(undefined)
@@ -72,7 +58,6 @@ describe('DataPlaneWriter nurture routing', () => {
       forumWriteService: { createPost: vi.fn(), createComment } as never,
       agentRunRepo: { create: vi.fn() } as never,
       chatService: { sendMessage: vi.fn() } as never,
-      nurtureOrchestrator: { onContentProduced } as never,
       xpService: { awardXP } as never,
     })
 
@@ -92,7 +77,7 @@ describe('DataPlaneWriter nurture routing', () => {
   })
 
   it('does not issue extra XP in create_message path (chat service owns message XP)', async () => {
-    const { DataPlaneWriter } = await importWriterWithFlag(true)
+    const { DataPlaneWriter } = await import('../data-plane-writer.js')
 
     const sendMessage = vi.fn().mockResolvedValue({
       id: 'msg-1',
@@ -130,7 +115,7 @@ describe('DataPlaneWriter nurture routing', () => {
   })
 
   it('records a failed write AgentRun when visible content persistence fails', async () => {
-    const { DataPlaneWriter } = await importWriterWithFlag(true)
+    const { DataPlaneWriter } = await import('../data-plane-writer.js')
     const { buildPersonaObservation } = await import('../persona-observation.js')
 
     const agentRunCreate = vi.fn()

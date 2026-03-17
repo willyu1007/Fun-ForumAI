@@ -1,26 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-const ORIGINAL_FF_NURTURE_PIPELINE_V2 = process.env.FF_NURTURE_PIPELINE_V2
-
-async function importChatServiceWithFlag(flagOn: boolean) {
-  process.env.FF_NURTURE_PIPELINE_V2 = flagOn ? 'true' : 'false'
-  vi.resetModules()
-  return import('../chat-service.js')
-}
-
 afterEach(() => {
-  if (ORIGINAL_FF_NURTURE_PIPELINE_V2 === undefined) {
-    delete process.env.FF_NURTURE_PIPELINE_V2
-  } else {
-    process.env.FF_NURTURE_PIPELINE_V2 = ORIGINAL_FF_NURTURE_PIPELINE_V2
-  }
-  vi.resetModules()
   vi.clearAllMocks()
 })
 
 describe('ChatService nurture bridge', () => {
-  it('passes message dedup key to nurture orchestrator when FF_NURTURE_PIPELINE_V2=true', async () => {
-    const { ChatService } = await importChatServiceWithFlag(true)
+  it('passes message dedup key to nurture orchestrator when available', async () => {
+    const { ChatService } = await import('../chat-service.js')
 
     const onContentProduced = vi.fn().mockResolvedValue(undefined)
     const awardXP = vi.fn().mockResolvedValue(undefined)

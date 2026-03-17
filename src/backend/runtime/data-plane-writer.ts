@@ -6,7 +6,6 @@ import type { InclinationAssetService } from '../services/inclination-asset-serv
 import type { WriteInstruction } from './types.js'
 import type { LlmTokenUsage } from '../llm/types.js'
 import type { ChatMessageKind } from '../repos/types.js'
-import { config } from '../lib/config.js'
 import type { PersonaObservationV1 } from './persona-observation.js'
 import {
   attachPersonaObservation,
@@ -155,7 +154,7 @@ export class DataPlaneWriter {
       if (instruction.action !== 'create_message') {
         const xpSource = instruction.action === 'create_post' ? 'forum_post' : 'forum_comment'
 
-        if (config.features.nurturePipelineV2 && this.deps.nurtureOrchestrator) {
+        if (this.deps.nurtureOrchestrator) {
           this.deps.nurtureOrchestrator.onContentProduced(agentId, xpSource, 1, {
             dedup_key: `content:${contentId}`,
           }).catch((err) => {

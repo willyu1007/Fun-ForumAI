@@ -79,6 +79,7 @@ Project: `main`
 | T-903 owner-mindset-residual-risk-closure | archived | dev-docs/archive/owner-mindset-residual-risk-closure |
 | T-904 code-review-audit-remediation | archived | dev-docs/archive/code-review-audit-remediation |
 | T-906 prompt-budget-v2-runtime-gap-remediation | archived | dev-docs/archive/prompt-budget-v2-runtime-gap-remediation |
+| T-907 confirmed-technical-debt-paydown | completed | dev-docs/active/confirmed-technical-debt-paydown |
 
 ### F-010 Agent Stats System
 

@@ -193,10 +193,7 @@ export async function createNurtureEngines(deps: {
     memoryService = new MemoryService({
       memoryRepo,
       channelRepo,
-      llmGateway,
       agentService,
-      eventRepo: repos.eventRepo,
-      agentRunRepo: repos.agentRunRepo,
       xpService: xpEngine,
       nurtureOrchestrator,
       relationService,
@@ -306,14 +303,14 @@ export async function createNurtureEngines(deps: {
     chatService.setPublicObservationService(publicObservationDigestService)
     chatService.setRelationService(relationService)
 
-    if (config.features.nurturePipelineV2 && nurtureOrchestrator) {
+    if (nurtureOrchestrator) {
       nurtureScheduler = new NurtureScheduler({
         orchestrator: nurtureOrchestrator,
         leaderElector: deps.leaderElectors.nurture,
       })
     }
 
-    if (config.features.socialGraphV1 && relationService) {
+    if (relationService) {
       relationScheduler = new RelationScheduler({
         relationService,
         leaderElector: deps.leaderElectors.relation,

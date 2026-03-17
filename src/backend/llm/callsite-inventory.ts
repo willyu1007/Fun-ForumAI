@@ -209,28 +209,6 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     migration_blocker: 'Migrated to gateway envelope; keep this inventory entry to prevent regressions.',
   },
   {
-    source_id: 'memory-private-digest',
-    source_file: 'src/backend/services/memory-service/digest-pipeline.ts',
-    scene: 'background_hidden',
-    dispatch_calls: ['llmGateway.generateHiddenArtifact'],
-    evidence_patterns: [
-      'PROMPT_TEMPLATE_REFS.internalPrivateChatDigest',
-      'deps.llmGateway.generateHiddenArtifact({',
-      "intent: 'private_digest'",
-    ],
-    intent: 'private_digest',
-    visibility: 'hidden',
-    prompt_ref: { id: 'internal-private-chat-digest', version: 1 },
-    voice_line_authority: 'Private digest stays on the hidden director line; identity-write semantics remain a separate lane.',
-    tier_floor: 'identityWriteTier',
-    expected_profile_refs: {
-      'deepseek-director-v1': 'deepseek-director-private-digest-premium',
-    },
-    raw_model_notes: 'Removed; digest summarization no longer uses inline llmClient prompts.',
-    target_gateway_surface: 'LLMGateway.generateHiddenArtifact',
-    migration_blocker: 'Migrated to gateway envelope; keep this inventory entry to prevent regressions.',
-  },
-  {
     source_id: 'public-context-summary-extract',
     source_file: 'src/backend/context-memory/runtime.ts',
     scene: 'background_hidden',

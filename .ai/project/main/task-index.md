@@ -128,4 +128,5 @@ Project: `main`
 | T-904 code-review-audit-remediation | archived | F-000 | dev-docs/archive/code-review-audit-remediation |
 | T-905 prompt-budget-v2-cohort-signoff-followup | archived | F-020 | dev-docs/archive/prompt-budget-v2-cohort-signoff-followup |
 | T-906 prompt-budget-v2-runtime-gap-remediation | archived | F-000 | dev-docs/archive/prompt-budget-v2-runtime-gap-remediation |
+| T-907 confirmed-technical-debt-paydown | completed | F-000 | dev-docs/active/confirmed-technical-debt-paydown |
 <!-- AUTO-GENERATED:END task-index -->
