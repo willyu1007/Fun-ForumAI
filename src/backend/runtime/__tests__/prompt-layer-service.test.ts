@@ -168,6 +168,24 @@ describe('PromptLayerService', () => {
     expect(composed.persona?.style).toContain('默认不用“您/您的”敬语')
   })
 
+  it('defaults layer6_privacy even when memory service is unavailable', async () => {
+    const service = new PromptLayerService({
+      agentService: {
+        getAgent: vi.fn(() => ({ id: 'agent-no-memory', display_name: 'No Memory Bot' })),
+        getLatestConfig: vi.fn(() => ({ config_json: {} })),
+      } as unknown as PromptLayerServiceDeps['agentService'],
+    })
+
+    const composed = await service.composeLayersWithAudit({
+      agentId: 'agent-no-memory',
+      scene: 'forum_post',
+      conversationText: '测试公共场景的隐私边界默认值',
+    })
+
+    expect(composed.layers.layer6_privacy).toContain('## 记忆使用规范')
+    expect(composed.layers.layer6_privacy).toContain('私人交流经历可以潜移默化地影响你的观点和判断')
+  })
+
   it('records effective server-cap sources for public scenes', async () => {
     const service = new PromptLayerService({
       agentService: {
@@ -227,7 +245,7 @@ describe('PromptLayerService', () => {
     ])
   })
 
-  it('does not let owner memory budget preference cap runtime memory fetch ceilings', async () => {
+  it('does not let owner memory budget preference cap runtime memory fetch ceilings or own bucket targets', async () => {
     const getMemoriesForContext = vi.fn(async () => ({
       memories: [],
       formatted: '',
@@ -282,10 +300,10 @@ describe('PromptLayerService', () => {
 
     expect(getMemoriesForContext).toHaveBeenCalledWith('agent-memory', expect.objectContaining({
       tokenCeiling: 1400,
-      bucketTarget: 900,
       memoryTier: 'minimal',
       topK: 4,
     }))
+    expect(getMemoriesForContext.mock.calls[0]?.[1]).not.toHaveProperty('bucketTarget')
   })
 
   it('computes first-in-room as false when member has spoken', async () => {
@@ -355,7 +373,9 @@ describe('PromptLayerService', () => {
         scene: 'forum_post',
         conversationText: 'hello world',
       }),
-    ).resolves.toEqual({})
+    ).resolves.toEqual({
+      layer6_privacy: expect.stringContaining('## 记忆使用规范'),
+    })
   })
 
   it('emits structured PromptAudit logs only when FF_PROMPT_AUDIT_V1 is enabled', async () => {

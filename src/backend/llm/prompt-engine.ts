@@ -16,6 +16,12 @@ const PRIVATE_BOUNDARY_OPTIONAL_PLACEHOLDERS: Record<string, string[]> = {
   'agent-proactive-dm-opening@1': ['layer_showrunner'],
 }
 
+const EMPTY_OK_REQUIRED_VARIABLES = new Set([
+  'compact_control_block',
+  'memory_block',
+  'soft_expression_block',
+])
+
 /**
  * Loads prompt templates from the registry and renders them
  * with simple {{variable}} substitution.
@@ -108,7 +114,7 @@ function validatePromptVariables(
     )
   }
 
-  const missingRequired = schema.required.filter((key) => !hasNonEmptyString(variables[key]))
+  const missingRequired = schema.required.filter((key) => !hasRequiredPromptVariable(key, variables))
   if (missingRequired.length > 0) {
     throw new LLMGatewayContractError(
       'PromptValidationError',
@@ -175,4 +181,12 @@ function collectPlaceholders(template: string, output: Set<string>): void {
 
 function hasNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0
+}
+
+function hasRequiredPromptVariable(key: string, variables: Record<string, string>): boolean {
+  const value = variables[key]
+  if (EMPTY_OK_REQUIRED_VARIABLES.has(key)) {
+    return typeof value === 'string'
+  }
+  return hasNonEmptyString(value)
 }

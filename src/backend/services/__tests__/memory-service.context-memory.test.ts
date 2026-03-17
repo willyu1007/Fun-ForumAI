@@ -414,6 +414,65 @@ describe('MemoryService context-memory runtime', () => {
     expect(incrementAccessCount).not.toHaveBeenCalled()
   })
 
+  it('uses bucketTarget to downgrade the selected memory tier without re-running retrieval', async () => {
+    const episodicCardRepo = new InMemoryEpisodicCardRepository()
+    await episodicCardRepo.upsert({
+      id: 'card-tight-budget',
+      agent_id: 'agent-1',
+      event_id: 'evt-tight-budget',
+      scene: 'forum',
+      title: '播客节奏讨论',
+      summary: '论坛里围绕节目叙事节奏、停顿设计和讨论密度展开了一段很长的公共讨论。'.repeat(3),
+      topic_tags: ['播客', '节奏'],
+      evidence_refs: ['evt-tight-budget'],
+      salience: 0.92,
+      created_at: new Date('2026-03-19T09:00:00.000Z'),
+    })
+
+    const service = new MemoryService({
+      memoryRepo: {
+        incrementAccessCount: vi.fn().mockResolvedValue(undefined),
+      } as never,
+      channelRepo: {} as never,
+      llmGateway: {} as never,
+      contextMemory: {
+        journalService: {} as never,
+        rawEventRepo: new InMemoryRawContextEventRepository(),
+        summaryOrchestrator: {} as never,
+        identityFinalizer: {} as never,
+        episodicCardRepo,
+        relationStateRepo: new InMemoryContextRelationStateRepository(),
+        selfModelStateRepo: new InMemorySelfModelStateRepository(),
+        activeTensionRepo: new InMemoryActiveTensionItemRepository(),
+        privateShadowRepo: new InMemoryPrivateShadowMemoryRepository(),
+      } as never,
+    })
+
+    const loose = await service.getMemoriesForContext('agent-1', {
+      scene: 'forum',
+      topicHints: ['播客'],
+      disclosureLevel: 0,
+      tokenCeiling: 120,
+      memoryTier: 'full',
+      topK: 4,
+    })
+    const tight = await service.getMemoriesForContext('agent-1', {
+      scene: 'forum',
+      topicHints: ['播客'],
+      disclosureLevel: 0,
+      tokenCeiling: 120,
+      bucketTarget: 30,
+      memoryTier: 'full',
+      topK: 4,
+    })
+
+    expect(loose.selected_tier).toBe('full')
+    expect(loose.renders.full.tokenEstimate).toBeGreaterThan(30)
+    expect(tight.selected_tier).not.toBe('full')
+    expect(tight.renders[tight.selected_tier].tokenEstimate).toBeLessThan(loose.renders.full.tokenEstimate)
+    expect(tight.renders[tight.selected_tier].tokenEstimate).toBeLessThanOrEqual(120)
+  })
+
   it('runs typed nightly maintenance during decay and compacts older episodes into chronicle', async () => {
     const chronicleCreate = vi.fn().mockResolvedValue(undefined)
     const episodicUpsert = vi.fn().mockResolvedValue(undefined)

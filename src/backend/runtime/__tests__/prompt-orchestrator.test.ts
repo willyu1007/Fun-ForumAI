@@ -479,4 +479,185 @@ describe('PromptOrchestrator', () => {
     expect(result.layers.memory_block).toContain('S')
     expect(result.layers.memory_block).not.toContain('F')
   })
+
+  it('does not report privacy-memory overflow when privacy exists but the scene still fits without memory', async () => {
+    const composeLayersWithAudit = vi.fn(async () => ({
+      layers: {
+        layer1_traits: 'brief trait',
+        layer3_instructions: 'brief instruction',
+        layer6_privacy: 'do not leak private data',
+      },
+      audit: { ...BASE_AUDIT, scene: 'forum_post' as const },
+      memoryContext: {
+        formatted: '',
+        renders: {
+          full: { text: '', tokenEstimate: 0 },
+          compact: { text: '', tokenEstimate: 0 },
+          sparse: { text: '', tokenEstimate: 0 },
+          minimal: { text: '', tokenEstimate: 0 },
+          drop_low_value: { text: '', tokenEstimate: 0 },
+        },
+      },
+    }))
+
+    const orchestrator = new PromptOrchestrator({
+      promptLayerService: {
+        composeLayersWithAudit,
+        getPersona: vi.fn(() => ({
+          name: 'Overflow Bot',
+          style: 'strict',
+          interests: ['budget'],
+          language: 'zh-CN',
+        })),
+      } as unknown as PromptLayerService,
+    } as PromptOrchestratorDeps)
+
+    const result = await orchestrator.compose({
+      agentId: 'agent-overflow-fit',
+      scene: 'forum_post',
+      conversationText: 'trim logic should stay calm when memory is absent',
+      requestEnvelope: {
+        static_system_tokens: 180,
+        route_wrapper_tokens: 100,
+      },
+    })
+
+    expect(result.audit.budgetDecision?.overflow_reason).toBeNull()
+  })
+
+  it('clamps the local layer envelope when requestEnvelope references a tighter model capability', async () => {
+    vi.resetModules()
+    vi.doMock('../../llm/registry-loader.js', () => ({
+      loadLlmRegistryBundle: () => ({
+        modelCapabilities: {
+          capabilities: [
+            {
+              provider_id: 'test-provider',
+              model_id: 'test-model',
+              input_window_tokens: 5_000,
+              max_output_tokens: 1_024,
+              recommended_operating_input_tokens: 3_500,
+            },
+          ],
+        },
+      }),
+    }))
+
+    try {
+      const { PromptOrchestrator: PromptOrchestratorWithMockedRegistry } = await import('../prompt-orchestrator.js')
+      const composeLayersWithAudit = vi.fn(async () => ({
+        layers: {
+          layer1_traits: 'brief trait',
+          layer6_privacy: 'do not leak private data',
+        },
+        audit: { ...BASE_AUDIT, scene: 'forum_post' as const },
+      }))
+
+      const orchestrator = new PromptOrchestratorWithMockedRegistry({
+        promptLayerService: {
+          composeLayersWithAudit,
+          getPersona: vi.fn(() => ({
+            name: 'Capability Bot',
+            style: 'strict',
+            interests: ['budget'],
+            language: 'zh-CN',
+          })),
+        } as unknown as PromptLayerService,
+      } as PromptOrchestratorDeps)
+
+      const result = await orchestrator.compose({
+        agentId: 'agent-model-cap',
+        scene: 'forum_post',
+        conversationText: 'test',
+        requestEnvelope: {
+          static_system_tokens: 200,
+          route_wrapper_tokens: 100,
+          tool_tokens: 0,
+          current_user_input_tokens: 0,
+          model_capability_ref: 'test-provider/test-model',
+        },
+      })
+
+      expect(result.audit.localLayerEnvelope).toMatchObject({
+        request_target_input: 3_500,
+        request_soft_ceiling: 3_800,
+        request_hard_ceiling: 3_800,
+        non_layer_tokens: 300,
+        local_target: 3_200,
+        local_soft: 3_500,
+        local_hard: 3_500,
+      })
+    } finally {
+      vi.doUnmock('../../llm/registry-loader.js')
+      vi.resetModules()
+    }
+  })
+
+  it('never lets request_target_input exceed the clamped soft and hard ceilings', async () => {
+    vi.resetModules()
+    vi.doMock('../../llm/registry-loader.js', () => ({
+      loadLlmRegistryBundle: () => ({
+        modelCapabilities: {
+          capabilities: [
+            {
+              provider_id: 'test-provider',
+              model_id: 'tiny-window',
+              input_window_tokens: 2_600,
+              max_output_tokens: 1_024,
+              recommended_operating_input_tokens: 4_800,
+            },
+          ],
+        },
+      }),
+    }))
+
+    try {
+      const { PromptOrchestrator: PromptOrchestratorWithMockedRegistry } = await import('../prompt-orchestrator.js')
+      const composeLayersWithAudit = vi.fn(async () => ({
+        layers: {
+          layer1_traits: 'brief trait',
+          layer6_privacy: 'do not leak private data',
+        },
+        audit: { ...BASE_AUDIT, scene: 'forum_post' as const },
+      }))
+
+      const orchestrator = new PromptOrchestratorWithMockedRegistry({
+        promptLayerService: {
+          composeLayersWithAudit,
+          getPersona: vi.fn(() => ({
+            name: 'Tiny Window Bot',
+            style: 'strict',
+            interests: ['budget'],
+            language: 'zh-CN',
+          })),
+        } as unknown as PromptLayerService,
+      } as PromptOrchestratorDeps)
+
+      const result = await orchestrator.compose({
+        agentId: 'agent-tiny-window',
+        scene: 'forum_post',
+        conversationText: 'test',
+        requestEnvelope: {
+          static_system_tokens: 200,
+          route_wrapper_tokens: 100,
+          tool_tokens: 0,
+          current_user_input_tokens: 0,
+          model_capability_ref: 'test-provider/tiny-window',
+        },
+      })
+
+      expect(result.audit.localLayerEnvelope).toMatchObject({
+        request_target_input: 1_400,
+        request_soft_ceiling: 1_400,
+        request_hard_ceiling: 1_400,
+        non_layer_tokens: 300,
+        local_target: 1_100,
+        local_soft: 1_100,
+        local_hard: 1_100,
+      })
+    } finally {
+      vi.doUnmock('../../llm/registry-loader.js')
+      vi.resetModules()
+    }
+  })
 })

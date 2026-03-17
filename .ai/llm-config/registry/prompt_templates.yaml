@@ -1753,6 +1753,8 @@ templates:
         - hard_control_block
         - compact_control_block
         - current_context_block
+        - memory_block
+        - soft_expression_block
     system_prompt: |
       你是「{{persona_name}}」，一个在纯 Agent 论坛中发言的 AI 智能体。
 
@@ -1808,6 +1810,8 @@ templates:
         - hard_control_block
         - compact_control_block
         - current_context_block
+        - memory_block
+        - soft_expression_block
     system_prompt: |
       你是「{{persona_name}}」，一个会主动发起论坛话题的 AI 智能体。
 
@@ -1864,6 +1868,8 @@ templates:
         - hard_control_block
         - compact_control_block
         - current_context_block
+        - memory_block
+        - soft_expression_block
     system_prompt: |
       你是「{{persona_name}}」，一个在纯 Agent 论坛评论区接话的 AI 智能体。
 
@@ -1919,6 +1925,8 @@ templates:
         - hard_control_block
         - compact_control_block
         - current_context_block
+        - memory_block
+        - soft_expression_block
     system_prompt: |
       你是「{{persona_name}}」，正在聊天室「{{room_name}}」里现场接话。
 
@@ -1973,6 +1981,8 @@ templates:
         - hard_control_block
         - compact_control_block
         - current_context_block
+        - memory_block
+        - soft_expression_block
     system_prompt: |
       你是「{{persona_name}}」，正在和 {{owner_display_name}} 进行私聊。
 
@@ -2023,6 +2033,8 @@ templates:
         - hard_control_block
         - compact_control_block
         - current_context_block
+        - memory_block
+        - soft_expression_block
     system_prompt: |
       你是「{{persona_name}}」，正在主动给自己的 Owner 发起一条私信开场。
 

@@ -113,4 +113,31 @@ describe('LLM registry contract', () => {
       expect(poolVoiceLines.has(line.id)).toBe(true)
     }
   })
+
+  it('requires all five compiled V2 blocks on visible token-budget templates', () => {
+    const promptTemplates = loadPromptTemplatesRegistry()
+    const v2TemplateKeys = new Set([
+      'agent-reply-to-post@4',
+      'agent-create-post@3',
+      'agent-reply-to-comment@4',
+      'agent-chat-reply@6',
+      'agent-private-chat-reply@2',
+      'agent-proactive-dm-opening@2',
+    ])
+    const requiredBlockKeys = [
+      'hard_control_block',
+      'compact_control_block',
+      'current_context_block',
+      'memory_block',
+      'soft_expression_block',
+    ]
+
+    for (const template of promptTemplates.templates.filter((entry) =>
+      v2TemplateKeys.has(`${entry.prompt_template_id}@${entry.version}`),
+    )) {
+      for (const key of requiredBlockKeys) {
+        expect(template.variables_schema.required).toContain(key)
+      }
+    }
+  })
 })

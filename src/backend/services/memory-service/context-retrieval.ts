@@ -49,7 +49,12 @@ export async function getMemoriesForContext(
     typed,
   })
   const renders = buildTierRenders(state, memoryPack, effectiveBudget)
-  const selectedTier = pickSelectedTier(requestedMemoryTier, renders)
+  const selectedTier = pickSelectedTier(
+    requestedMemoryTier,
+    renders,
+    opts.bucketTarget ?? effectiveBudget,
+    effectiveBudget,
+  )
   const formatted = renders[selectedTier].text
 
   if (memoryPack.selectedMemories.length > 0) {
@@ -88,10 +93,9 @@ function buildTierRenders(
 function pickSelectedTier(
   requestedTier: PromptMemoryTier,
   renders: Record<PromptMemoryTier, import('../../context-memory/contracts.js').MemoryPackRenderResult>,
+  bucketTarget: number,
+  tokenCeiling: number,
 ): PromptMemoryTier {
-  if (renders[requestedTier].text.trim().length > 0) {
-    return requestedTier
-  }
   const fallbackOrder: PromptMemoryTier[] = [
     'full',
     'compact',
@@ -99,5 +103,25 @@ function pickSelectedTier(
     'minimal',
     'drop_low_value',
   ]
-  return fallbackOrder.find((tier) => renders[tier].text.trim().length > 0) ?? 'drop_low_value'
+  const requestedIndex = fallbackOrder.indexOf(requestedTier)
+  const ordered = requestedIndex >= 0 ? fallbackOrder.slice(requestedIndex) : fallbackOrder
+  const budgetBoundTier = ordered.find((tier) => {
+    const render = renders[tier]
+    return render.text.trim().length > 0
+      && render.tokenEstimate <= bucketTarget
+      && render.tokenEstimate <= tokenCeiling
+  })
+  if (budgetBoundTier) {
+    return budgetBoundTier
+  }
+
+  const ceilingBoundTier = [...ordered].reverse().find((tier) => {
+    const render = renders[tier]
+    return render.text.trim().length > 0 && render.tokenEstimate <= tokenCeiling
+  })
+  if (ceilingBoundTier) {
+    return ceilingBoundTier
+  }
+
+  return ordered.find((tier) => renders[tier].text.trim().length > 0) ?? 'drop_low_value'
 }

@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto'
 import { config } from '../lib/config.js'
+import type { ModelCapabilityEntry } from '../llm/gateway-contract.js'
+import { loadLlmRegistryBundle } from '../llm/registry-loader.js'
 import { getPromptSceneBudgetConfig } from './prompt-budget-config.js'
 import type { ComposePromptLayersInput, PromptLayerService } from './prompt-layer-service.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
@@ -22,6 +24,7 @@ import { SCENE_RULE_MAX_CHARS, SHORT_TERM_STATE_MAX_CHARS_BY_SCENE } from './per
 
 const DEFAULT_ORCHESTRATOR_CACHE_TTL_MS = 30_000
 const DEFAULT_ORCHESTRATOR_CACHE_MAX_ENTRIES = 500
+let cachedModelCapabilitiesByKey: Map<string, ModelCapabilityEntry> | null = null
 
 const CACHEABLE_SCENES = new Set<PromptScene>([
   'forum_post',
@@ -403,6 +406,7 @@ export class PromptOrchestrator {
       memoryTokens === 0
       && privacyLayer
       && guaranteedBudgets.memory.guaranteed > 0
+      && usedWithoutMemory + guaranteedBudgets.memory.guaranteed > localLayerEnvelope.local_target
       && overflowReason === null
     ) {
       overflowReason = 'budget_exceeded_due_to_privacy_and_memory_floor'
@@ -608,12 +612,28 @@ export class PromptOrchestrator {
     sceneConfig: ReturnType<typeof getPromptSceneBudgetConfig>,
     requestEnvelope: PromptRequestEnvelope,
   ): PromptLocalLayerEnvelope {
-    const requestTargetInput = sceneConfig.request_budget.reference_input
-    const requestSoftCeiling = Math.floor(
+    const modelCapability = resolveModelCapability(requestEnvelope.model_capability_ref)
+    const sceneReferenceInput = sceneConfig.request_budget.reference_input
+    const sceneSoftCeiling = Math.floor(
       sceneConfig.request_budget.reference_input * sceneConfig.request_budget.soft_total_ratio,
     )
-    const requestHardCeiling = Math.floor(
+    const sceneHardCeiling = Math.floor(
       sceneConfig.request_budget.reference_input * sceneConfig.request_budget.hard_total_ratio,
+    )
+    const availableWindow = modelCapability
+      ? Math.max(0, modelCapability.input_window_tokens - sceneConfig.request_budget.output_reserve)
+      : null
+    const requestSoftCeiling = availableWindow === null
+      ? sceneSoftCeiling
+      : Math.min(sceneSoftCeiling, availableWindow)
+    const requestHardCeiling = availableWindow === null
+      ? sceneHardCeiling
+      : Math.min(sceneHardCeiling, availableWindow)
+    const requestTargetInput = Math.min(
+      sceneReferenceInput,
+      modelCapability?.recommended_operating_input_tokens ?? sceneReferenceInput,
+      requestSoftCeiling,
+      requestHardCeiling,
     )
     const nonLayerTokens = requestEnvelope.static_system_tokens
       + requestEnvelope.route_wrapper_tokens
@@ -1039,6 +1059,49 @@ function trimCompact(value: string, limit: number): string {
     .trim()
   if (compact.length <= limit) return compact
   return `${compact.slice(0, Math.max(0, limit - 3)).trimEnd()}...`
+}
+
+function getModelCapabilitiesByKey(): Map<string, ModelCapabilityEntry> {
+  if (cachedModelCapabilitiesByKey) {
+    return cachedModelCapabilitiesByKey
+  }
+
+  try {
+    cachedModelCapabilitiesByKey = new Map(
+      loadLlmRegistryBundle().modelCapabilities.capabilities.map((entry) => [
+        `${entry.provider_id}/${entry.model_id}`,
+        entry,
+      ] as const),
+    )
+  } catch (error) {
+    cachedModelCapabilitiesByKey = new Map()
+    console.warn('[PromptOrchestrator] failed to load model capabilities registry:', error)
+  }
+
+  return cachedModelCapabilitiesByKey
+}
+
+function resolveModelCapability(
+  modelCapabilityRef: string | null | undefined,
+): ModelCapabilityEntry | null {
+  const normalized = modelCapabilityRef?.trim()
+  if (!normalized) {
+    return null
+  }
+
+  const capabilitiesByKey = getModelCapabilitiesByKey()
+  const exact = capabilitiesByKey.get(normalized)
+  if (exact) {
+    return exact
+  }
+  if (normalized.includes('/')) {
+    return null
+  }
+
+  const matches = Array.from(capabilitiesByKey.values()).filter(
+    (entry) => entry.model_id === normalized,
+  )
+  return matches.length === 1 ? matches[0] : null
 }
 
 function cloneValue<T>(value: T): T {

@@ -217,6 +217,21 @@ describe('PromptEngine', () => {
     ).toThrowError(LLMGatewayContractError)
   })
 
+  it('allows compiled compact, memory, and soft-expression blocks to be explicitly empty', () => {
+    const engine = new PromptEngine()
+    const messages = engine.render(
+      PROMPT_TEMPLATE_REFS.agentReplyToPost,
+      buildVariables({
+        compact_control_block: '',
+        memory_block: '',
+        soft_expression_block: '',
+      }),
+    )
+
+    expect(String(messages[0].content)).toContain('边界与约束')
+    expect(String(messages[1].content)).toContain('当前帖子和现场都与 prompt 契约有关')
+  })
+
   it('rejects unknown prompt refs instead of falling back by template id', () => {
     const engine = new PromptEngine()
 

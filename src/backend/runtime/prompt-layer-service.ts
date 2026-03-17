@@ -186,6 +186,8 @@ export class PromptLayerService {
       layers.layer4_overrides = overrideLayer
     }
 
+    layers.layer6_privacy = this.buildPrivacyPrompt(1)
+
     if (this.deps.memoryService) {
       try {
         const privacySettings = await this.deps.memoryService.getPrivacySettings(agentId)
@@ -204,17 +206,12 @@ export class PromptLayerService {
           sceneBudgetConfig.request_budget.reference_input
             * (sceneBudgetConfig.buckets.memory.max / 100),
         )
-        const runtimeMemoryBucketTarget = Math.floor(
-          sceneBudgetConfig.request_budget.reference_input
-            * (sceneBudgetConfig.buckets.memory.preferred / 100),
-        )
 
         const memoryCtx = await this.deps.memoryService.getMemoriesForContext(agentId, {
           scene: memoryScene,
           topicHints: input.topicHints ?? [],
           disclosureLevel: disclosure.effective_disclosure_level,
           tokenCeiling: runtimeMemoryTokenCeiling,
-          bucketTarget: runtimeMemoryBucketTarget,
           memoryTier: sceneBudgetConfig.compiler_policy.default_memory_tier,
           topK: privacySettings.public_memory_top_k,
         })
