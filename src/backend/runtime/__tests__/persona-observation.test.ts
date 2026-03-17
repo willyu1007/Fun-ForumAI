@@ -16,7 +16,7 @@ describe('persona-observation', () => {
       coverageStatus: 'visible_complete',
       personaSeedCode: 'scholar',
       homeVoiceLineId: 'qwen-social-v1',
-      promptRef: { id: 'agent-chat-reply', version: 4 },
+      promptRef: { id: 'agent-chat-reply', version: 6 },
       requestedTier: 'lite',
       resolvedTier: 'lite',
       renderDecision: {
@@ -29,23 +29,24 @@ describe('persona-observation', () => {
         fallbackLevel: 'none',
         reasons: ['test'],
         promptTemplateId: 'agent-chat-reply',
-        promptVersion: 4,
+        promptVersion: 6,
       },
       usage: { prompt_tokens: 10, completion_tokens: 6, total_tokens: 16 },
       latencyMs: 800,
       parseSuccess: true,
       promptAudit: {
-        version: 'v1',
+        version: 'v2',
         scene: 'chat_room',
-        includedLayerIds: ['layer1_traits'],
-        tokenEstimates: { layer1_traits: 8 },
+        includedBlockIds: ['hard_control_block'],
+        promptContract: 'compiled_blocks_v2',
+        tokenEstimates: { hard_control_block: 8 },
         lintWarnings: [],
         trimReasons: [],
       },
     })
 
     expect(isPersonaObservationComplete(observation)).toBe(true)
-    expect(observation.prompt_audit?.included_layer_ids).toEqual(['layer1_traits'])
+    expect(observation.prompt_audit?.included_block_ids).toEqual(['hard_control_block'])
   })
 
   it('allows partial hidden envelopes', () => {

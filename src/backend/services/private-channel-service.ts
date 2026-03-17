@@ -453,10 +453,6 @@ export class PrivateChannelService {
       shortTermStateUpdatedAt: session.started_at,
     })
 
-    const recentMessages = history.items
-      .map((item) => `${item.author_type === 'HUMAN' ? 'Owner' : composed.persona.name}：${item.content}`)
-      .join('\n')
-
     return {
       promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
       variables: {
@@ -465,23 +461,11 @@ export class PrivateChannelService {
         persona_interests: composed.persona.interests.join('、'),
         persona_language: composed.persona.language,
         owner_display_name: 'Owner',
-        session_context: `session_id=${session.id}`,
-        recent_messages: recentMessages || '（这是第一次私聊消息）',
-        latest_user_message: currentMessage,
-        layer_traits: composed.layers.layer1_traits ?? '',
-        layer_style: composed.layers.layer2_style ?? '',
-        layer_instructions: composed.layers.layer3_instructions ?? '',
-        layer_community: composed.layers.layer_community ?? '',
-        layer_relationship: composed.layers.layer_relationship ?? '',
-        layer_showrunner: composed.layers.layer_showrunner ?? '',
-        layer_overrides: composed.layers.layer4_overrides ?? '',
-        layer_memory: composed.layers.layer5_memory ?? '',
-        layer_privacy: composed.layers.layer6_privacy ?? '',
-        hard_control_block: composed.layers.hard_control_block ?? '',
-        compact_control_block: composed.layers.compact_control_block ?? '',
-        current_context_block: composed.layers.current_context_block ?? '',
-        memory_block: composed.layers.memory_block ?? '',
-        soft_expression_block: composed.layers.soft_expression_block ?? '',
+        hard_control_block: composed.blocks.hard_control_block ?? '',
+        compact_control_block: composed.blocks.compact_control_block ?? '',
+        current_context_block: composed.blocks.current_context_block ?? '',
+        memory_block: composed.blocks.memory_block ?? '',
+        soft_expression_block: composed.blocks.soft_expression_block ?? '',
       },
       renderDecision: composed.runtimeEnvelope?.renderTierDecision ?? null,
       promptAudit: composed.audit,

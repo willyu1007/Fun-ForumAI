@@ -126,15 +126,19 @@ describe('PrivateChannelService', () => {
           interests: ['ai'],
           language: 'zh-CN',
         },
-        layers: {
-          layer1_traits: 'growth',
-          layer6_privacy: 'privacy',
+        blocks: {
+          hard_control_block: 'hard',
+          compact_control_block: 'compact',
+          current_context_block: 'context',
+          memory_block: 'memory',
+          soft_expression_block: 'soft',
         },
         audit: {
-          version: 'v1',
+          version: 'v2',
           scene: 'private_chat',
-          includedLayerIds: ['layer1_traits', 'layer6_privacy'],
-          tokenEstimates: { layer1_traits: 10, layer6_privacy: 20 },
+          includedBlockIds: ['hard_control_block', 'current_context_block'],
+          promptContract: 'compiled_blocks_v2',
+          tokenEstimates: { hard_control_block: 10, current_context_block: 20 },
           lintWarnings: [],
           trimReasons: [],
         },
@@ -179,11 +183,12 @@ describe('PrivateChannelService', () => {
       promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
       variables: expect.objectContaining({
         persona_name: 'Agent One',
-        latest_user_message: '你好',
+        owner_display_name: 'Owner',
+        current_context_block: 'context',
       }),
     }))
     const firstCall = gatewayGenerate.mock.calls.at(0)?.[0] as { variables: Record<string, string> } | undefined
-    expect(firstCall?.variables.layer_showrunner).toBe('')
+    expect(firstCall?.variables.layer_showrunner).toBeUndefined()
   })
 
   it('fails fast when private prompt orchestration fails', async () => {

@@ -1,6 +1,5 @@
 import type { ForumReadService } from '../services/forum-read-service.js'
 import type { AgentService } from '../services/agent-service.js'
-import type { PromptLayerService } from './prompt-layer-service.js'
 import type { PromptOrchestrator } from './prompt-orchestrator.js'
 import type { EventPayload, SelectedAgent } from '../allocator/types.js'
 import type {
@@ -18,7 +17,6 @@ import { resolveAgentIdentity } from '../identity/agent-identity.js'
 export interface ContextBuilderDeps {
   forumReadService: ForumReadService
   agentService: AgentService
-  promptLayerService?: PromptLayerService | null
   promptOrchestrator?: PromptOrchestrator | null
   communityPromptProfileCompiler?: CommunityPromptProfileCompiler | null
   communityCultureDigestService?: CommunityCultureDigestService | null
@@ -88,81 +86,58 @@ export class ContextBuilder {
     const conversationText = this.composeConversationText(ctx)
     const topicHints = this.extractTopicHints(ctx)
 
-    if (this.deps.promptOrchestrator?.isSceneEnabled(scene)) {
-      const communityProfile = config.features.communityPromptProfileV1
-        ? ctx.community.prompt_profile
-        : undefined
-      const communityHardRule = communityProfile?.hard_rules_text || ctx.community.rules
-      const communitySoftCulture = communityProfile?.soft_culture_text || ctx.community.description
-
-      const composed = await this.deps.promptOrchestrator.compose({
-        agentId: ctx.agent.agent_id,
-        scene,
-        conversationText,
-        communityId: ctx.community.id,
-        topicHints,
-        currentContextSources: this.buildCurrentContextSources(ctx, scene),
-        requestEnvelope: this.buildRequestEnvelope(scene, {
-          currentUserText: ctx.targetComment?.body,
-        }),
-        communityHardRule,
-        communitySoftCulture,
-        ...(communityProfile
-          ? {
-              communityProfileProvenance: {
-                source: communityProfile.provenance.source,
-                version: 'v1',
-              },
-            }
-          : {}),
-        sceneRule: ctx.chatContext
-          ? `你正在聊天室「${ctx.chatContext.room_name}」中继续群聊`
-          : ctx.targetComment
-            ? '你正在论坛评论线程中回复具体观点'
-            : '你正在论坛帖子下参与公开讨论',
-        shortTermState: ctx.chatContext
-          ? `recent_messages=${ctx.chatContext.recent_messages.length}`
-          : ctx.comments
-            ? `thread_comments=${ctx.comments.length}`
-            : '',
-        threadComments: ctx.comments?.map((c) => ({
-          id: c.id,
-          author_agent_id: c.author_agent_id,
-          body: c.body,
-        })),
-        targetCommentId: ctx.targetComment?.id,
-      })
-      ctx.persona = composed.persona
-      ctx.layers = composed.layers
-      ctx.runtimeEnvelope = composed.runtimeEnvelope ?? null
-      ctx.prompt_audit = composed.audit
-      return ctx
+    if (!this.deps.promptOrchestrator?.isSceneEnabled(scene)) {
+      throw new Error(`PromptOrchestrator unavailable for scene ${scene}`)
     }
 
-    if (this.deps.promptLayerService) {
-      const composed = await this.deps.promptLayerService.composeLayersWithAudit({
-        agentId: ctx.agent.agent_id,
-        scene,
-        conversationText,
-        communityId: ctx.community.id,
-        topicHints,
-        threadComments: ctx.comments?.map((c) => ({
-          id: c.id,
-          author_agent_id: c.author_agent_id,
-          body: c.body,
-        })),
-        targetCommentId: ctx.targetComment?.id,
-      }, { suppressAuditLog: true })
-      if (composed.persona) {
-        ctx.persona = composed.persona
-      }
-      ctx.layers = composed.layers
-      ctx.runtimeEnvelope = composed.runtimeEnvelope ?? null
-      ctx.prompt_audit = composed.audit
-      return ctx
-    }
+    const communityProfile = config.features.communityPromptProfileV1
+      ? ctx.community.prompt_profile
+      : undefined
+    const communityHardRule = communityProfile?.hard_rules_text || ctx.community.rules
+    const communitySoftCulture = communityProfile?.soft_culture_text || ctx.community.description
 
-    throw new Error(`Prompt composition services unavailable for scene ${scene}`)
+    const composed = await this.deps.promptOrchestrator.compose({
+      agentId: ctx.agent.agent_id,
+      scene,
+      conversationText,
+      communityId: ctx.community.id,
+      topicHints,
+      currentContextSources: this.buildCurrentContextSources(ctx, scene),
+      requestEnvelope: this.buildRequestEnvelope(scene, {
+        currentUserText: ctx.targetComment?.body,
+      }),
+      communityHardRule,
+      communitySoftCulture,
+      ...(communityProfile
+        ? {
+            communityProfileProvenance: {
+              source: communityProfile.provenance.source,
+              version: 'v1',
+            },
+          }
+        : {}),
+      sceneRule: ctx.chatContext
+        ? `你正在聊天室「${ctx.chatContext.room_name}」中继续群聊`
+        : ctx.targetComment
+          ? '你正在论坛评论线程中回复具体观点'
+          : '你正在论坛帖子下参与公开讨论',
+      shortTermState: ctx.chatContext
+        ? `recent_messages=${ctx.chatContext.recent_messages.length}`
+        : ctx.comments
+          ? `thread_comments=${ctx.comments.length}`
+          : '',
+      threadComments: ctx.comments?.map((c) => ({
+        id: c.id,
+        author_agent_id: c.author_agent_id,
+        body: c.body,
+      })),
+      targetCommentId: ctx.targetComment?.id,
+    })
+    ctx.persona = composed.persona
+    ctx.blocks = composed.blocks
+    ctx.runtimeEnvelope = composed.runtimeEnvelope ?? null
+    ctx.prompt_audit = composed.audit
+    return ctx
   }
 
   private composeConversationText(ctx: ExecutionContext): string {

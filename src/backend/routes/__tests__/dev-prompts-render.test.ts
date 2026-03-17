@@ -59,7 +59,6 @@ describe('POST /v1/dev/prompts/render', () => {
       .send({
         agent_id: 'agent-does-not-exist',
         template_id: 'agent-chat-reply',
-        template_version: 2,
         scene: 'chat_room',
       })
 
@@ -67,19 +66,31 @@ describe('POST /v1/dev/prompts/render', () => {
     expect(res.body.error.code).toBe('NOT_FOUND')
   })
 
-  it('renders forum template with orchestrator layers injected', async () => {
+  it('rejects archived-version requests and resolves latest visible templates only', async () => {
+    const agentId = await createAgent(devApp, 'T034 Archived Version Bot')
+
+    const res = await request(devApp)
+      .post('/v1/dev/prompts/render')
+      .send({
+        agent_id: agentId,
+        template_id: 'agent-chat-reply',
+        template_version: 2,
+        scene: 'chat_room',
+      })
+
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('VALIDATION_ERROR')
+  })
+
+  it('renders forum template with compiled blocks injected', async () => {
     const agentId = await createAgent(devApp, 'T034 Forum Bot')
 
     const markers = {
-      layer_traits: '[L1_GROWTH]',
-      layer_style: '[L2_STYLE]',
-      layer_instructions: '[L3_INSTRUCTIONS]',
-      layer_community: '[L_COMMUNITY]',
-      layer_relationship: '[L_RELATIONSHIP]',
-      layer_showrunner: '[L_SHOWRUNNER]',
-      layer_overrides: '[L4_OVERRIDES]',
-      layer_memory: '[L5_MEMORY]',
-      layer_privacy: '[L6_PRIVACY]',
+      hard_control_block: '[HARD_CONTROL]',
+      compact_control_block: '[COMPACT_CONTROL]',
+      current_context_block: '[CURRENT_CONTEXT]',
+      memory_block: '[MEMORY_BLOCK]',
+      soft_expression_block: '[SOFT_EXPRESSION]',
     }
 
     const res = await request(devApp)
@@ -87,7 +98,6 @@ describe('POST /v1/dev/prompts/render', () => {
       .send({
         agent_id: agentId,
         template_id: 'agent-reply-to-post',
-        template_version: 1,
         scene: 'forum_post',
         conversation_text: '请对这个观点给出回应',
         variables: markers,
@@ -96,16 +106,14 @@ describe('POST /v1/dev/prompts/render', () => {
     expect(res.status).toBe(200)
     const systemMessage = (res.body.data.messages as Array<{ role: string; content: string }>)
       .find((m) => m.role === 'system')
+    const userMessage = (res.body.data.messages as Array<{ role: string; content: string }>)
+      .find((m) => m.role === 'user')
     expect(systemMessage).toBeDefined()
-    expect(systemMessage?.content).toContain(markers.layer_traits)
-    expect(systemMessage?.content).toContain(markers.layer_style)
-    expect(systemMessage?.content).toContain(markers.layer_instructions)
-    expect(systemMessage?.content).toContain(markers.layer_community)
-    expect(systemMessage?.content).toContain(markers.layer_relationship)
-    expect(systemMessage?.content).toContain(markers.layer_showrunner)
-    expect(systemMessage?.content).toContain(markers.layer_overrides)
-    expect(systemMessage?.content).toContain(markers.layer_memory)
-    expect(systemMessage?.content).toContain(markers.layer_privacy)
+    expect(systemMessage?.content).toContain(markers.hard_control_block)
+    expect(systemMessage?.content).toContain(markers.compact_control_block)
+    expect(systemMessage?.content).toContain(markers.memory_block)
+    expect(systemMessage?.content).toContain(markers.soft_expression_block)
+    expect(userMessage?.content).toContain(markers.current_context_block)
     expect(res.body.data.identity_contract).toMatchObject({
       source: 'contract_v1',
       persona_seed_code: 'scholar',
@@ -115,29 +123,25 @@ describe('POST /v1/dev/prompts/render', () => {
       version: 'v2',
       scene: 'forum_post',
     })
-    expect(Array.isArray(res.body.data.audit.includedLayerIds)).toBe(true)
+    expect(Array.isArray(res.body.data.audit.includedBlockIds)).toBe(true)
     expect(res.body.data.audit).toHaveProperty('tokenEstimates')
     expect(res.body.data.audit).toHaveProperty('lintWarnings')
     expect(res.body.data.audit).toHaveProperty('trimReasons')
     expect(res.body.data.prompt_template).toMatchObject({
       id: 'agent-reply-to-post',
-      version: 1,
+      version: 4,
     })
   })
 
-  it('renders chat template with orchestrator layers injected', async () => {
+  it('renders chat template with compiled blocks injected', async () => {
     const agentId = await createAgent(devApp, 'T034 Chat Bot')
 
     const markers = {
-      layer_traits: '{CHAT_L1}',
-      layer_style: '{CHAT_L2}',
-      layer_instructions: '{CHAT_L3}',
-      layer_community: '{CHAT_COMMUNITY}',
-      layer_relationship: '{CHAT_REL}',
-      layer_showrunner: '{CHAT_SHOW}',
-      layer_overrides: '{CHAT_L4}',
-      layer_memory: '{CHAT_L5}',
-      layer_privacy: '{CHAT_L6}',
+      hard_control_block: '{CHAT_HARD}',
+      compact_control_block: '{CHAT_COMPACT}',
+      current_context_block: '{CHAT_CONTEXT}',
+      memory_block: '{CHAT_MEMORY}',
+      soft_expression_block: '{CHAT_SOFT}',
     }
 
     const res = await request(devApp)
@@ -145,7 +149,6 @@ describe('POST /v1/dev/prompts/render', () => {
       .send({
         agent_id: agentId,
         template_id: 'agent-chat-reply',
-        template_version: 2,
         scene: 'chat_room',
         conversation_text: '最近聊聊模型评测吧',
         variables: markers,
@@ -154,43 +157,19 @@ describe('POST /v1/dev/prompts/render', () => {
     expect(res.status).toBe(200)
     const systemMessage = (res.body.data.messages as Array<{ role: string; content: string }>)
       .find((m) => m.role === 'system')
+    const userMessage = (res.body.data.messages as Array<{ role: string; content: string }>)
+      .find((m) => m.role === 'user')
     expect(systemMessage).toBeDefined()
-    expect(systemMessage?.content).toContain(markers.layer_traits)
-    expect(systemMessage?.content).toContain(markers.layer_style)
-    expect(systemMessage?.content).toContain(markers.layer_instructions)
-    expect(systemMessage?.content).toContain(markers.layer_community)
-    expect(systemMessage?.content).toContain(markers.layer_relationship)
-    expect(systemMessage?.content).toContain(markers.layer_showrunner)
-    expect(systemMessage?.content).toContain(markers.layer_overrides)
-    expect(systemMessage?.content).toContain(markers.layer_memory)
-    expect(systemMessage?.content).toContain(markers.layer_privacy)
+    expect(systemMessage?.content).toContain(markers.hard_control_block)
+    expect(systemMessage?.content).toContain(markers.compact_control_block)
+    expect(systemMessage?.content).toContain(markers.memory_block)
+    expect(systemMessage?.content).toContain(markers.soft_expression_block)
+    expect(userMessage?.content).toContain(markers.current_context_block)
     expect(res.body.data.identity_contract.source).toBe('contract_v1')
-  })
-
-  it('renders scene-enabled forum template with local_intent_block instead of layer_showrunner', async () => {
-    const agentId = await createAgent(devApp, 'T095 Scene Forum Bot')
-
-    const markers = {
-      local_intent_block: '[LOCAL_INTENT_BLOCK]',
-      layer_showrunner: '[LEGACY_SHOWRUNNER]',
-    }
-
-    const res = await request(devApp)
-      .post('/v1/dev/prompts/render')
-      .send({
-        agent_id: agentId,
-        template_id: 'agent-reply-to-post',
-        template_version: 3,
-        scene: 'forum_post',
-        conversation_text: '请继续推进这个线程',
-        variables: markers,
-      })
-
-    expect(res.status).toBe(200)
-    const systemMessage = (res.body.data.messages as Array<{ role: string; content: string }>)
-      .find((m) => m.role === 'system')
-    expect(systemMessage?.content).toContain(markers.local_intent_block)
-    expect(systemMessage?.content).not.toContain(markers.layer_showrunner)
+    expect(res.body.data.prompt_template).toMatchObject({
+      id: 'agent-chat-reply',
+      version: 6,
+    })
   })
 
   it('supports all six scenes and returns identity_contract', async () => {
@@ -198,31 +177,31 @@ describe('POST /v1/dev/prompts/render', () => {
     const cases: Array<{
       scene: 'forum_comment' | 'private_chat' | 'proactive_dm' | 'scheduled_post'
       template_id: string
-      template_version: number
+      expected_version: number
       conversation_text: string
     }> = [
       {
         scene: 'forum_comment',
         template_id: 'agent-reply-to-comment',
-        template_version: 1,
+        expected_version: 4,
         conversation_text: '请针对上一条评论继续回应。',
       },
       {
         scene: 'private_chat',
         template_id: 'agent-private-chat-reply',
-        template_version: 1,
+        expected_version: 2,
         conversation_text: '我今天有点纠结，想听你的建议。',
       },
       {
         scene: 'proactive_dm',
         template_id: 'agent-proactive-dm-opening',
-        template_version: 1,
+        expected_version: 2,
         conversation_text: '你的帖子刚被点赞了，想聊聊后续观点。',
       },
       {
         scene: 'scheduled_post',
         template_id: 'agent-create-post',
-        template_version: 1,
+        expected_version: 3,
         conversation_text: '最近社区都在讨论模型评测基准。',
       },
     ]
@@ -233,7 +212,6 @@ describe('POST /v1/dev/prompts/render', () => {
         .send({
           agent_id: agentId,
           template_id: item.template_id,
-          template_version: item.template_version,
           scene: item.scene,
           conversation_text: item.conversation_text,
         })
@@ -245,6 +223,10 @@ describe('POST /v1/dev/prompts/render', () => {
       expect(res.body.data.identity_contract).toMatchObject({
         source: 'contract_v1',
         persona_seed_code: 'scholar',
+      })
+      expect(res.body.data.prompt_template).toMatchObject({
+        id: item.template_id,
+        version: item.expected_version,
       })
     }
   })
@@ -261,7 +243,6 @@ describe('POST /v1/dev/prompts/render', () => {
       .send({
         agent_id: defaultContractAgent.id,
         template_id: 'agent-chat-reply',
-        template_version: 2,
         scene: 'chat_room',
         conversation_text: 'legacy prompt render',
       })
@@ -282,7 +263,6 @@ describe('POST /v1/dev/prompts/render', () => {
       .send({
         agent_id: 'any',
         template_id: 'agent-chat-reply',
-        template_version: 2,
         scene: 'chat_room',
       })
 

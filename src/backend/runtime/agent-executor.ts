@@ -244,58 +244,19 @@ export class AgentExecutor {
     ctx: ExecutionContext,
     personaSeedCode: import('../../shared/agent-persona-catalog.js').PersonaSeedCode,
   ): Record<string, string> {
-    const vars: Record<string, string> = {
+    return {
       persona_name: ctx.persona.name,
       persona_style: ctx.persona.style,
       persona_interests: ctx.persona.interests.join('、'),
       persona_language: ctx.persona.language,
       persona_seed_code: personaSeedCode,
       community_name: ctx.community.name,
-      community_description: ctx.community.description,
-      community_rules: ctx.community.rules
-        ? `## 社区规则\n${ctx.community.rules}`
-        : '',
-      local_intent_block: ctx.public_scene?.local_intent_block ?? '',
-      layer_traits: ctx.layers?.layer1_traits ?? '',
-      layer_style: ctx.layers?.layer2_style ?? '',
-      layer_instructions: ctx.layers?.layer3_instructions ?? '',
-      layer_community: ctx.layers?.layer_community ?? '',
-      layer_relationship: ctx.layers?.layer_relationship ?? '',
-      layer_showrunner: ctx.layers?.layer_showrunner ?? '',
-      layer_overrides: ctx.layers?.layer4_overrides ?? '',
-      layer_memory: ctx.layers?.layer5_memory ?? '',
-      layer_privacy: ctx.layers?.layer6_privacy ?? '',
-      hard_control_block: ctx.layers?.hard_control_block ?? '',
-      compact_control_block: ctx.layers?.compact_control_block ?? '',
-      current_context_block: ctx.layers?.current_context_block ?? '',
-      memory_block: ctx.layers?.memory_block ?? ctx.layers?.layer5_memory ?? '',
-      soft_expression_block: ctx.layers?.soft_expression_block ?? '',
+      hard_control_block: ctx.blocks?.hard_control_block ?? '',
+      compact_control_block: ctx.blocks?.compact_control_block ?? '',
+      current_context_block: ctx.blocks?.current_context_block ?? '',
+      memory_block: ctx.blocks?.memory_block ?? '',
+      soft_expression_block: ctx.blocks?.soft_expression_block ?? '',
     }
-
-    if (ctx.post) {
-      vars.post_title = ctx.post.title
-      vars.post_body = ctx.post.body
-      vars.post_author = ctx.post.author_name
-    }
-
-    if (ctx.comments?.length) {
-      vars.existing_comments = '## 已有评论\n' + ctx.comments
-        .map((c) => `**${c.author_name}**：${c.body}`)
-        .join('\n\n')
-      vars.thread_context = ctx.comments
-        .map((c) => `**${c.author_name}**：${c.body}`)
-        .join('\n\n')
-    } else {
-      vars.existing_comments = ''
-      vars.thread_context = ''
-    }
-
-    if (ctx.targetComment) {
-      vars.target_comment_author = ctx.targetComment.author_name
-      vars.target_comment_body = ctx.targetComment.body
-    }
-
-    return vars
   }
 
   private async resolveVisibleRouting(agentId: string, requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier): Promise<{

@@ -143,9 +143,9 @@ function createDeps(
           fallbackLevel: 'none',
           reasons: ['test'],
           promptTemplateId: 'agent-create-post',
-          promptVersion: 2,
+          promptVersion: 3,
         },
-        promptRef: { id: 'agent-create-post', version: 2 },
+        promptRef: { id: 'agent-create-post', version: 3 },
       })),
     } as unknown as PostSchedulerDeps['llmGateway'],
     forumReadService: {
@@ -190,6 +190,33 @@ function createDeps(
     membershipRepo: {
       listActiveCommunityIdsByAgent: vi.fn(() => options.activeCommunityIdsByAgent ?? communities.map((item) => item.id)),
     } as unknown as NonNullable<PostSchedulerDeps['membershipRepo']>,
+    promptOrchestrator: {
+      compose: vi.fn(async () => ({
+        persona: {
+          name: 'Agent One',
+          style: 'neutral',
+          interests: ['general'],
+          language: 'zh-CN',
+        },
+        blocks: {
+          hard_control_block: 'hard',
+          compact_control_block: 'compact',
+          current_context_block: 'context',
+          memory_block: 'memory',
+          soft_expression_block: 'soft',
+        },
+        audit: {
+          version: 'v2',
+          scene: 'scheduled_post',
+          includedBlockIds: ['hard_control_block', 'current_context_block'],
+          promptContract: 'compiled_blocks_v2',
+          tokenEstimates: { hard_control_block: 1, current_context_block: 1 },
+          lintWarnings: [],
+          trimReasons: [],
+        },
+        runtimeEnvelope: null,
+      })),
+    } as unknown as PostSchedulerDeps['promptOrchestrator'],
     publicSceneSelectorService: {
       selectScheduledPost: vi.fn(async () => defaultSceneSelection),
     } as unknown as NonNullable<PostSchedulerDeps['publicSceneSelectorService']>,

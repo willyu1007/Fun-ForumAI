@@ -4,7 +4,6 @@ import type { AgentRepository } from '../../repos/agent-repository.js'
 import type { AgentService } from '../agent-service.js'
 import type { ChatService } from '../chat-service.js'
 import type { LLMGateway } from '../../llm/llm-gateway.js'
-import type { PromptLayerService } from '../../runtime/prompt-layer-service.js'
 import type { PromptOrchestrator } from '../../runtime/prompt-orchestrator.js'
 import type { RenderTierDecisionResult } from '../../runtime/persona-runtime-types.js'
 import type { SseHub } from '../../sse/hub.js'
@@ -34,7 +33,6 @@ export interface ConversationClockDeps {
   sseHub: SseHub
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
-  promptLayerService?: PromptLayerService | null
   promptOrchestrator?: PromptOrchestrator | null
   personaStateService?: PersonaStateService | null
   inferenceProfileService?: InferenceProfileService | null

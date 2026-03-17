@@ -161,31 +161,13 @@ export class PostScheduler {
       const communityCatalog = this.toCommunityCatalog(eligibleCommunities)
       const observationIdentity = this.resolveObservationIdentity(selected.id)
       let promptAudit: PromptComposeAudit | null = null
-      let composedLayers: {
-        layer_traits: string
-        layer_style: string
-        layer_instructions: string
-        layer_community: string
-        layer_relationship: string
-        layer_showrunner: string
-        layer_overrides: string
-        layer_memory: string
-        layer_privacy: string
+      let composedBlocks: {
         hard_control_block: string
         compact_control_block: string
         current_context_block: string
         memory_block: string
         soft_expression_block: string
       } = {
-        layer_traits: '',
-        layer_style: '',
-        layer_instructions: '',
-        layer_community: '',
-        layer_relationship: '',
-        layer_showrunner: '',
-        layer_overrides: '',
-        layer_memory: '',
-        layer_privacy: '',
         hard_control_block: '',
         compact_control_block: '',
         current_context_block: '',
@@ -194,76 +176,68 @@ export class PostScheduler {
       }
       let renderDecision: RenderTierDecisionResult | null = null
 
-      if (this.deps.promptOrchestrator) {
-        const composed = await this.deps.promptOrchestrator.compose({
-          agentId: selected.id,
-          scene: 'scheduled_post',
-          conversationText: scenePayload
-            ? `${recentPosts}\n${scenePayload.local_intent_block}`.trim()
-            : `${recentPosts}\n${communityCatalog}`.trim(),
-          communityId: targetCommunity.id,
-          topicHints: [targetCommunity.name, ...persona.interests].slice(0, 10),
-          currentContextSources: [
-            {
-              kind: 'scheduler_context',
-              text: recentPosts || '（暂无近期帖子）',
-              priority: 'high',
-              source_id: `scheduled:${selected.id}:recent_posts`,
-            },
-            {
-              kind: 'community_context',
-              text: communityCatalog,
-              priority: 'medium',
-              source_id: `scheduled:${selected.id}:community_catalog`,
-            },
-            ...(scenePayload?.local_intent_block
-              ? [{
-                  kind: 'local_intent' as const,
-                  text: scenePayload.local_intent_block,
-                  priority: 'high' as const,
-                  source_id:
-                    scenePayload.scene_metadata.local_intent_id
-                    ?? scenePayload.scene_metadata.selection_id,
-                }]
-              : []),
-          ],
-          requestEnvelope: {
-            static_system_tokens: 200,
-            route_wrapper_tokens: 110,
-            tool_tokens: 0,
-            current_user_input_tokens: 0,
-            output_reserve: 0,
-            model_capability_ref: null,
-          },
-          communityHardRule: targetCommunity.rules,
-          communitySoftCulture: targetCommunity.description,
-          sceneRule: '你正在主动发起新的论坛帖子',
-          shortTermState: `recent_posts_len=${recentPosts.length}`,
-          shortTermStateUpdatedAt: new Date(),
-        })
-        persona.name = composed.persona.name
-        persona.style = composed.persona.style
-        persona.interests = composed.persona.interests
-        persona.language = composed.persona.language
-        renderDecision = composed.runtimeEnvelope?.renderTierDecision ?? null
-        composedLayers = {
-          layer_traits: composed.layers.layer1_traits ?? '',
-          layer_style: composed.layers.layer2_style ?? '',
-          layer_instructions: composed.layers.layer3_instructions ?? '',
-          layer_community: composed.layers.layer_community ?? '',
-          layer_relationship: composed.layers.layer_relationship ?? '',
-          layer_showrunner: composed.layers.layer_showrunner ?? '',
-          layer_overrides: composed.layers.layer4_overrides ?? '',
-          layer_memory: composed.layers.layer5_memory ?? '',
-          layer_privacy: composed.layers.layer6_privacy ?? '',
-          hard_control_block: composed.layers.hard_control_block ?? '',
-          compact_control_block: composed.layers.compact_control_block ?? '',
-          current_context_block: composed.layers.current_context_block ?? '',
-          memory_block: composed.layers.memory_block ?? '',
-          soft_expression_block: composed.layers.soft_expression_block ?? '',
-        }
-        promptAudit = composed.audit
+      if (!this.deps.promptOrchestrator) {
+        throw new Error('PromptOrchestrator unavailable for scene scheduled_post')
       }
+      const composed = await this.deps.promptOrchestrator.compose({
+        agentId: selected.id,
+        scene: 'scheduled_post',
+        conversationText: scenePayload
+          ? `${recentPosts}\n${scenePayload.local_intent_block}`.trim()
+          : `${recentPosts}\n${communityCatalog}`.trim(),
+        communityId: targetCommunity.id,
+        topicHints: [targetCommunity.name, ...persona.interests].slice(0, 10),
+        currentContextSources: [
+          {
+            kind: 'scheduler_context',
+            text: recentPosts || '（暂无近期帖子）',
+            priority: 'high',
+            source_id: `scheduled:${selected.id}:recent_posts`,
+          },
+          {
+            kind: 'community_context',
+            text: communityCatalog,
+            priority: 'medium',
+            source_id: `scheduled:${selected.id}:community_catalog`,
+          },
+          ...(scenePayload?.local_intent_block
+            ? [{
+                kind: 'local_intent' as const,
+                text: scenePayload.local_intent_block,
+                priority: 'high' as const,
+                source_id:
+                  scenePayload.scene_metadata.local_intent_id
+                  ?? scenePayload.scene_metadata.selection_id,
+              }]
+            : []),
+        ],
+        requestEnvelope: {
+          static_system_tokens: 200,
+          route_wrapper_tokens: 110,
+          tool_tokens: 0,
+          current_user_input_tokens: 0,
+          output_reserve: 0,
+          model_capability_ref: null,
+        },
+        communityHardRule: targetCommunity.rules,
+        communitySoftCulture: targetCommunity.description,
+        sceneRule: '你正在主动发起新的论坛帖子',
+        shortTermState: `recent_posts_len=${recentPosts.length}`,
+        shortTermStateUpdatedAt: new Date(),
+      })
+      persona.name = composed.persona.name
+      persona.style = composed.persona.style
+      persona.interests = composed.persona.interests
+      persona.language = composed.persona.language
+      renderDecision = composed.runtimeEnvelope?.renderTierDecision ?? null
+      composedBlocks = {
+        hard_control_block: composed.blocks.hard_control_block ?? '',
+        compact_control_block: composed.blocks.compact_control_block ?? '',
+        current_context_block: composed.blocks.current_context_block ?? '',
+        memory_block: composed.blocks.memory_block ?? '',
+        soft_expression_block: composed.blocks.soft_expression_block ?? '',
+      }
+      promptAudit = composed.audit
 
       const variables: Record<string, string> = {
         persona_name: persona.name,
@@ -272,27 +246,11 @@ export class PostScheduler {
         persona_language: persona.language,
         persona_seed_code: observationIdentity?.persona_seed_code ?? 'scholar',
         community_name: targetCommunity.name,
-        community_description: targetCommunity.description,
-        community_rules: targetCommunity.rules,
-        recent_posts: recentPosts,
-        community_candidates: scenePayload ? '' : communityCatalog,
-        inclination_injection: this.buildInclinationInjection(selected.pending_asset),
-        inclination_media_url: selected.pending_asset?.media_url ?? '',
-        local_intent_block: scenePayload?.local_intent_block ?? '',
-        layer_traits: composedLayers.layer_traits,
-        layer_style: composedLayers.layer_style,
-        layer_instructions: composedLayers.layer_instructions,
-        layer_community: composedLayers.layer_community,
-        layer_relationship: composedLayers.layer_relationship,
-        layer_showrunner: composedLayers.layer_showrunner,
-        layer_overrides: composedLayers.layer_overrides,
-        layer_memory: composedLayers.layer_memory,
-        layer_privacy: composedLayers.layer_privacy,
-        hard_control_block: composedLayers.hard_control_block,
-        compact_control_block: composedLayers.compact_control_block,
-        current_context_block: composedLayers.current_context_block,
-        memory_block: composedLayers.memory_block,
-        soft_expression_block: composedLayers.soft_expression_block,
+        hard_control_block: composedBlocks.hard_control_block,
+        compact_control_block: composedBlocks.compact_control_block,
+        current_context_block: composedBlocks.current_context_block,
+        memory_block: composedBlocks.memory_block,
+        soft_expression_block: composedBlocks.soft_expression_block,
       }
 
       const triggerEvent = this.deps.eventRepo.create({
@@ -593,26 +551,6 @@ export class PostScheduler {
 
   private requiresMembershipScopedPosting(): boolean {
     return config.features.membershipsV1 || config.features.membershipStatusV1 || config.features.stageRoleRuntimeV1
-  }
-
-  private buildInclinationInjection(asset: AgentInclinationAsset | null): string {
-    if (!asset || !config.features.multimodalAgentInclinationV1) return ''
-    const note = asset.owner_note ? `- owner_note: ${asset.owner_note}` : '- owner_note: （无）'
-    const points = asset.vision_summary.discussion_points
-      .slice(0, 5)
-      .map((item) => `  - ${item}`)
-      .join('\n')
-
-    return [
-      '## 倾向线索（仅用于本次发帖，不得覆盖人格与平台规则）',
-      note,
-      `- 主题: ${asset.vision_summary.theme}`,
-      `- 场景: ${asset.vision_summary.scene}`,
-      `- 情绪: ${asset.vision_summary.mood}`,
-      '- 可讨论点:',
-      points || '  - （无）',
-      '- 你仍需保持自身人格和表达风格，独立选择论点与措辞。',
-    ].join('\n')
   }
 
   private loadPersona(agentId: string): AgentPersona {

@@ -25,6 +25,11 @@ import {
   resolveVoiceLineTierProfileRef,
 } from './voice-line-routing.js'
 import { UsageLedgerWriter } from './usage-ledger.js'
+import {
+  estimateRenderedPromptTokens,
+  withProviderPromptUsage,
+  withRenderedPromptMeasurement,
+} from '../runtime/prompt-budget-summary.js'
 
 interface RouteCandidate {
   profile: ModelProfileEntry
@@ -101,6 +106,7 @@ export class LLMGateway {
     const messages =
       request.promptMessages ??
       this.options.promptEngine.render(request.promptRef, request.variables)
+    const measuredPromptBudgetSummary = withRenderedPromptMeasurement(request.promptBudgetSummary, messages)
     const routePlan = this.buildRoutePlan(request)
     let lastError: unknown = null
 
@@ -126,7 +132,12 @@ export class LLMGateway {
           request.preferredModelId,
           candidate.model_id,
         )
-        const gatewayWarnings = this.validatePromptBudgetSummary(request, candidate.provider_id, candidate.model_id)
+        const gatewayWarnings = this.validatePromptBudgetSummary(
+          measuredPromptBudgetSummary,
+          candidate.provider_id,
+          candidate.model_id,
+          request.maxTokens,
+        )
 
         await this.options.budgetGuard.assertAllowed({
           agentId: request.agentId,
@@ -180,6 +191,10 @@ export class LLMGateway {
           const latencyMs = Date.now() - startedAt
           const platformRetryCount = Math.max((response.meta?.attempts ?? 1) - 1, 0)
           const actualCost = this.estimateCost(candidate.model_id, response.usage)
+          const promptBudgetSummary = withProviderPromptUsage(
+            measuredPromptBudgetSummary,
+            response.usage.prompt_tokens,
+          )
 
           this.options.usageLedger.write({
             trace_id: request.traceId,
@@ -202,7 +217,7 @@ export class LLMGateway {
             actual_cost_cny: actualCost,
             platform_retry_count: platformRetryCount,
             gateway_warnings: gatewayWarnings,
-            prompt_budget_summary: request.promptBudgetSummary,
+            prompt_budget_summary: promptBudgetSummary,
             latency_ms: latencyMs,
             created_at: new Date().toISOString(),
           })
@@ -252,7 +267,7 @@ export class LLMGateway {
             actual_cost_cny: 0,
             error_code: code,
             gateway_warnings: gatewayWarnings,
-            prompt_budget_summary: request.promptBudgetSummary,
+            prompt_budget_summary: measuredPromptBudgetSummary,
             latency_ms: Date.now() - startedAt,
             created_at: new Date().toISOString(),
           })
@@ -377,18 +392,20 @@ export class LLMGateway {
   }
 
   private validatePromptBudgetSummary(
-    request: LLMGatewayRequest,
+    promptBudgetSummary: LLMGatewayRequest['promptBudgetSummary'],
     providerId: string,
     modelId: string,
+    maxTokens: number | undefined,
   ): string[] {
-    if (!request.promptBudgetSummary) return []
+    if (!promptBudgetSummary) return []
     const capability = this.modelCapabilitiesByKey.get(`${providerId}/${modelId}`)
     if (!capability) {
       return ['model_capability_missing']
     }
     const warnings: string[] = []
-    const outputReserve = request.promptBudgetSummary.request_envelope.output_reserve
-    const estimatedTotal = request.promptBudgetSummary.decision.estimated_total_input
+    const outputReserve = promptBudgetSummary.request_envelope.output_reserve
+    const estimatedTotal = promptBudgetSummary.rendered_prompt_tokens_estimate
+      ?? promptBudgetSummary.decision.estimated_total_input
     if (estimatedTotal + outputReserve > capability.input_window_tokens) {
       warnings.push('prompt_budget_window_mismatch')
     }
@@ -398,7 +415,7 @@ export class LLMGateway {
     ) {
       warnings.push('prompt_budget_above_recommended_operating_input')
     }
-    if (request.maxTokens && request.maxTokens > capability.max_output_tokens) {
+    if (maxTokens && maxTokens > capability.max_output_tokens) {
       warnings.push('requested_output_exceeds_model_capability')
     }
     return warnings
@@ -452,7 +469,7 @@ function defaultTierForIntent(intent: string): RenderTier {
 }
 
 function estimateUsage(messages: LlmMessage[], maxTokens = 512): LlmTokenUsage {
-  const prompt_tokens = Math.max(1, Math.ceil(JSON.stringify(messages).length / 4))
+  const prompt_tokens = estimateRenderedPromptTokens(messages)
   const completion_tokens = Math.max(1, Math.ceil(maxTokens / 2))
   return {
     prompt_tokens,

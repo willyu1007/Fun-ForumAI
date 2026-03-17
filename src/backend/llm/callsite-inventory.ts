@@ -392,8 +392,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     scene: 'dev_prompt_render',
     dispatch_calls: ['promptEngine.render'],
     evidence_patterns: [
-      'template_version',
-      'buildPromptTemplateRef(body.template_id, body.template_version)',
+      'resolveCurrentVisiblePromptRef(body.template_id)',
       'promptEngine.render(promptRef, variables)',
     ],
     intent: 'dev_prompt_render',

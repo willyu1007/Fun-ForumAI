@@ -50,7 +50,7 @@ describe('ProactiveInteractionService', () => {
         fallbackLevel: 'none',
         reasons: ['test'],
         promptTemplateId: 'agent-proactive-dm-opening',
-        promptVersion: 1,
+        promptVersion: 2,
       },
       promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
     }))
@@ -74,12 +74,19 @@ describe('ProactiveInteractionService', () => {
         isSceneEnabled: vi.fn(() => true),
         compose: vi.fn(async () => ({
           persona: { name: 'Main Agent', style: 'warm', interests: ['ai'], language: 'zh-CN' },
-          layers: { layer1_traits: 'growth', layer6_privacy: 'privacy' },
+          blocks: {
+            hard_control_block: 'hard',
+            compact_control_block: 'compact',
+            current_context_block: 'context',
+            memory_block: 'memory',
+            soft_expression_block: 'soft',
+          },
           audit: {
-            version: 'v1',
+            version: 'v2',
             scene: 'proactive_dm',
-            includedLayerIds: ['layer1_traits', 'layer6_privacy'],
-            tokenEstimates: { layer1_traits: 10, layer6_privacy: 10 },
+            includedBlockIds: ['hard_control_block', 'current_context_block'],
+            promptContract: 'compiled_blocks_v2',
+            tokenEstimates: { hard_control_block: 10, current_context_block: 10 },
             lintWarnings: [],
             trimReasons: [],
           },
@@ -101,10 +108,11 @@ describe('ProactiveInteractionService', () => {
       promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
       variables: expect.objectContaining({
         trigger_type: 'vote_received',
+        current_context_block: 'context',
       }),
     }))
     const firstCall = gatewayGenerate.mock.calls.at(0)?.[0] as { variables: Record<string, string> } | undefined
-    expect(firstCall?.variables.layer_showrunner).toBe('')
+    expect(firstCall?.variables.layer_showrunner).toBeUndefined()
   })
 
   it('fails fast when proactive prompt orchestration fails', async () => {
@@ -126,7 +134,7 @@ describe('ProactiveInteractionService', () => {
         fallbackLevel: 'none',
         reasons: ['test'],
         promptTemplateId: 'agent-proactive-dm-opening',
-        promptVersion: 1,
+        promptVersion: 2,
       },
       promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
     }))

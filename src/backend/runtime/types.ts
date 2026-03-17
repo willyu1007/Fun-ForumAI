@@ -24,9 +24,7 @@ export type PromptMemoryTier =
   | 'minimal'
   | 'drop_low_value'
 
-export type PromptContract =
-  | 'legacy_layers_v1'
-  | 'compiled_blocks_v2'
+export type PromptContract = 'compiled_blocks_v2'
 
 export type PromptOverflowReason =
   | 'budget_exceeded_after_control_trim'
@@ -135,6 +133,11 @@ export interface PromptBudgetSummary {
   request_envelope: PromptRequestEnvelope
   local_layer_envelope: PromptLocalLayerEnvelope
   decision: PromptBudgetDecision
+  measurement_method?: 'rendered_messages_json_v1'
+  rendered_prompt_tokens_estimate?: number
+  rendered_non_block_tokens_estimate?: number
+  provider_prompt_tokens_actual?: number
+  prompt_token_drift?: number
 }
 
 export interface AgentPersona {
@@ -144,7 +147,7 @@ export interface AgentPersona {
   language: string
 }
 
-export interface PromptLayers {
+export interface PromptLayerFragments {
   layer1_traits?: string
   layer2_style?: string
   layer3_instructions?: string
@@ -154,6 +157,9 @@ export interface PromptLayers {
   layer4_overrides?: string
   layer5_memory?: string
   layer6_privacy?: string
+}
+
+export interface PromptBlocks {
   hard_control_block?: string
   compact_control_block?: string
   current_context_block?: string
@@ -173,43 +179,53 @@ export interface PromptAuditServerCapSource {
   linked_risk_event_id?: string | null
 }
 
-export interface PromptComposeAudit {
-  version: 'v1' | 'v2'
+export interface PromptComposeProvenance {
+  community_profile?: {
+    source: string
+    version: string
+  }
+  private_memory?: {
+    used_memory_ids: string[]
+    requested_disclosure_level: number
+    effective_disclosure_level: number
+    cap_source: 'owner_setting' | 'server_cap'
+    public_disclosure_cap: number | null
+    owner_memory_budget_preference?: number
+    retrieval_memory_bucket_target?: number
+    retrieval_memory_token_ceiling?: number
+    retrieval_memory_tier_requested?: PromptMemoryTier
+    retrieval_memory_tier_selected?: PromptMemoryTier
+    runtime_memory_bucket_target?: number
+    runtime_memory_token_ceiling?: number
+    runtime_memory_tier_applied?: PromptMemoryTier
+    owner_budget_divergence_reason?: string | null
+    server_cap_sources?: PromptAuditServerCapSource[]
+    rewrite_cause?: string | null
+  }
+}
+
+export interface PromptLayerComposeAudit {
+  version: 'v1'
   scene: PromptScene
   includedLayerIds: string[]
-  legacyIncludedLayerIds?: string[]
-  compiledBlockIds?: string[]
-  promptContract?: PromptContract
+  tokenEstimates: Record<string, number>
+  lintWarnings: string[]
+  trimReasons: string[]
+  provenance?: PromptComposeProvenance
+}
+
+export interface PromptComposeAudit {
+  version: 'v2'
+  scene: PromptScene
+  includedBlockIds: string[]
+  promptContract: PromptContract
   tokenEstimates: Record<string, number>
   lintWarnings: string[]
   trimReasons: string[]
   requestEnvelope?: PromptRequestEnvelope
   localLayerEnvelope?: PromptLocalLayerEnvelope
   budgetDecision?: PromptBudgetDecision
-  provenance?: {
-    community_profile?: {
-      source: string
-      version: string
-    }
-    private_memory?: {
-      used_memory_ids: string[]
-      requested_disclosure_level: number
-      effective_disclosure_level: number
-      cap_source: 'owner_setting' | 'server_cap'
-      public_disclosure_cap: number | null
-      owner_memory_budget_preference?: number
-      retrieval_memory_bucket_target?: number
-      retrieval_memory_token_ceiling?: number
-      retrieval_memory_tier_requested?: PromptMemoryTier
-      retrieval_memory_tier_selected?: PromptMemoryTier
-      runtime_memory_bucket_target?: number
-      runtime_memory_token_ceiling?: number
-      runtime_memory_tier_applied?: PromptMemoryTier
-      owner_budget_divergence_reason?: string | null
-      server_cap_sources?: PromptAuditServerCapSource[]
-      rewrite_cause?: string | null
-    }
-  }
+  provenance?: PromptComposeProvenance
 }
 
 export interface ExecutionContext {
@@ -284,7 +300,7 @@ export interface ExecutionContext {
       projection_updated_at: string | null
     }
   }
-  layers?: PromptLayers
+  blocks?: PromptBlocks
   promptScene?: PromptScene
   runtimeEnvelope?: PersonaRuntimeEnvelope | null
   prompt_audit?: PromptComposeAudit

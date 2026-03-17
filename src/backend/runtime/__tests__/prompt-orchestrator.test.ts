@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { PromptOrchestrator } from '../prompt-orchestrator.js'
 import type { PromptOrchestratorDeps } from '../prompt-orchestrator.js'
 import type { PromptLayerService } from '../prompt-layer-service.js'
-import type { PromptComposeAudit } from '../types.js'
+import type { PromptLayerComposeAudit } from '../types.js'
 
-const BASE_AUDIT: PromptComposeAudit = {
+const BASE_AUDIT: PromptLayerComposeAudit = {
   version: 'v1',
   scene: 'forum_post',
   includedLayerIds: ['layer1_traits', 'layer6_privacy'],
@@ -43,8 +43,9 @@ describe('PromptOrchestrator', () => {
     })
 
     expect(composeLayersWithAudit).toHaveBeenCalledTimes(1)
-    expect(result.layers.layer1_traits).toBe('growth')
-    expect(result.layers.layer6_privacy).toBe('privacy')
+    const renderedBlocks = Object.values(result.blocks).join('\n')
+    expect(renderedBlocks).toContain('growth')
+    expect(renderedBlocks).toContain('privacy')
     expect(result.audit.scene).toBe('forum_post')
   })
 
@@ -83,11 +84,11 @@ describe('PromptOrchestrator', () => {
       shortTermStateUpdatedAt: new Date(Date.now() - 60_000),
     })
 
-    expect(result.layers.layer6_privacy).toBeTruthy()
+    expect(result.blocks.hard_control_block).toContain('绝不泄露私聊来源')
     expect(result.audit.lintWarnings).toContain('layer_conflict_privacy_vs_override')
     expect(result.audit.lintWarnings).toContain('budget_trim_applied')
     expect(result.audit.trimReasons.some((item) => item.startsWith('trimmed_'))).toBe(true)
-    expect(result.audit.includedLayerIds).toContain('layer6_privacy')
+    expect(result.audit.includedBlockIds).toContain('hard_control_block')
   })
 
   it('suppresses showrunner layer for private scenes', async () => {
@@ -120,9 +121,8 @@ describe('PromptOrchestrator', () => {
       shortTermStateUpdatedAt: new Date(),
     })
 
-    expect(result.layers.layer_showrunner).toBeUndefined()
-    expect(result.audit.lintWarnings).toContain('showrunner_suppressed_private_boundary')
-    expect(result.audit.includedLayerIds).not.toContain('layer_showrunner')
+    expect(result.blocks.current_context_block ?? '').not.toContain('showrunner')
+    expect(result.audit.includedBlockIds).not.toContain('layer_showrunner')
   })
 
   it('uses cache only for cacheable scenes', async () => {
@@ -260,8 +260,8 @@ describe('PromptOrchestrator', () => {
       conversationText: 'test',
     })
 
-    expect(result.layers.layer4_overrides).toBeUndefined()
-    expect(result.layers.layer6_privacy).toBeTruthy()
+    expect(result.blocks.hard_control_block ?? '').not.toContain('disclose private owner conversation details')
+    expect(result.blocks.hard_control_block ?? '').toContain('never reveal private chat content')
     expect(result.audit.lintWarnings).toContain('layer_conflict_privacy_vs_override')
     expect(result.audit.trimReasons).toContain('trimmed_overrides_precedence_privacy')
   })
@@ -478,10 +478,7 @@ describe('PromptOrchestrator', () => {
       },
     })
     expect(result.audit.promptContract).toBe('compiled_blocks_v2')
-    expect(result.audit.legacyIncludedLayerIds).toEqual(
-      expect.arrayContaining(['layer1_traits', 'layer3_instructions', 'layer6_privacy']),
-    )
-    expect(result.audit.compiledBlockIds).toEqual(
+    expect(result.audit.includedBlockIds).toEqual(
       expect.arrayContaining([
         'hard_control_block',
         'compact_control_block',
@@ -532,8 +529,8 @@ describe('PromptOrchestrator', () => {
     })
 
     expect(result.audit.budgetDecision?.memory_tier_applied).toBe('sparse')
-    expect(result.layers.memory_block).toContain('S')
-    expect(result.layers.memory_block).not.toContain('F')
+    expect(result.blocks.memory_block).toContain('S')
+    expect(result.blocks.memory_block).not.toContain('F')
   })
 
   it('does not report privacy-memory overflow when privacy exists but the scene still fits without memory', async () => {

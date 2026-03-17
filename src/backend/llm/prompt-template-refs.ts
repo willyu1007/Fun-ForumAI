@@ -22,6 +22,21 @@ export const PROMPT_TEMPLATE_REFS = {
   internalVisionSummary: { id: 'internal-vision-summary', version: 1 },
 } as const satisfies Record<string, PromptTemplateRef>
 
+const CURRENT_VISIBLE_PROMPT_REFS_BY_TEMPLATE_ID: Readonly<Record<string, PromptTemplateRef>> = {
+  'agent-reply-to-post': PROMPT_TEMPLATE_REFS.agentReplyToPostScene,
+  'agent-create-post': PROMPT_TEMPLATE_REFS.agentCreatePostScene,
+  'agent-reply-to-comment': PROMPT_TEMPLATE_REFS.agentReplyToCommentScene,
+  'agent-chat-reply': PROMPT_TEMPLATE_REFS.agentChatReplyScene,
+  'agent-private-chat-reply': PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
+  'agent-proactive-dm-opening': PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
+}
+
 export function buildPromptTemplateRef(id: string, version: number): PromptTemplateRef {
   return { id, version }
+}
+
+export function resolveCurrentVisiblePromptRef(templateId: string): PromptTemplateRef | null {
+  const promptRef = CURRENT_VISIBLE_PROMPT_REFS_BY_TEMPLATE_ID[templateId]
+  if (!promptRef) return null
+  return { ...promptRef }
 }

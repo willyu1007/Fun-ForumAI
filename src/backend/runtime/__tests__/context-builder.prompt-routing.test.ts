@@ -51,16 +51,19 @@ describe('ContextBuilder prompt routing', () => {
         interests: ['prompt'],
         language: 'zh-CN',
       },
-      layers: {
-        layer1_traits: 'l1',
-        layer2_style: 'l2',
-        layer6_privacy: 'l6',
+      blocks: {
+        hard_control_block: 'hard',
+        compact_control_block: 'compact',
+        current_context_block: 'context',
+        memory_block: 'memory',
+        soft_expression_block: 'soft',
       },
       audit: {
-        version: 'v1',
+        version: 'v2',
         scene: 'chat_room' as const,
-        includedLayerIds: ['layer1_traits', 'layer2_style', 'layer6_privacy'],
-        tokenEstimates: { layer1_traits: 1, layer2_style: 1, layer6_privacy: 1 },
+        includedBlockIds: ['hard_control_block', 'current_context_block'],
+        promptContract: 'compiled_blocks_v2',
+        tokenEstimates: { hard_control_block: 1, current_context_block: 1 },
         lintWarnings: [],
         trimReasons: [],
       },
@@ -92,75 +95,16 @@ describe('ContextBuilder prompt routing', () => {
 
     expect(compose).toHaveBeenCalledTimes(1)
     expect(result.persona.name).toBe('Orchestrated Bot')
-    expect(result.layers).toEqual({
-      layer1_traits: 'l1',
-      layer2_style: 'l2',
-      layer6_privacy: 'l6',
+    expect(result.blocks).toEqual({
+      hard_control_block: 'hard',
+      compact_control_block: 'compact',
+      current_context_block: 'context',
+      memory_block: 'memory',
+      soft_expression_block: 'soft',
     })
   })
 
-  it('uses PromptLayerService when orchestrator is unavailable', async () => {
-    const composeLayersWithAudit = vi.fn(async () => ({
-      layers: {
-        layer1_traits: 'l1',
-        layer2_style: 'l2',
-        layer3_instructions: 'l3',
-        layer4_overrides: 'l4',
-        layer5_memory: 'l5',
-        layer6_privacy: 'l6',
-      },
-      audit: {
-        version: 'v1',
-        scene: 'chat_room' as const,
-        includedLayerIds: ['layer1_traits', 'layer2_style', 'layer3_instructions', 'layer4_overrides', 'layer5_memory', 'layer6_privacy'],
-        tokenEstimates: {
-          layer1_traits: 1,
-          layer2_style: 1,
-          layer3_instructions: 1,
-          layer4_overrides: 1,
-          layer5_memory: 1,
-          layer6_privacy: 1,
-        },
-        lintWarnings: [],
-        trimReasons: [],
-      },
-      runtimeEnvelope: null,
-    }))
-
-    const builder = new ContextBuilder({
-      forumReadService: {} as unknown as ContextBuilderDeps['forumReadService'],
-      agentService: {} as unknown as ContextBuilderDeps['agentService'],
-      promptLayerService: {
-        composeLayersWithAudit,
-      } as unknown as ContextBuilderDeps['promptLayerService'],
-    })
-
-    const ctx = buildBaseContext({
-      chatContext: {
-        room_name: '测试房间',
-        room_description: '',
-        recent_messages: [
-          { author_name: 'A', body: '你好', is_self: false, message_kind: 'normal' },
-          { author_name: 'B', body: '我不同意！！', is_self: false, message_kind: 'normal' },
-        ],
-      },
-      post: undefined,
-    })
-
-    const result = await builder.enrichWithLayers(ctx)
-
-    expect(composeLayersWithAudit).toHaveBeenCalledTimes(1)
-    expect(result.layers).toEqual({
-      layer1_traits: 'l1',
-      layer2_style: 'l2',
-      layer3_instructions: 'l3',
-      layer4_overrides: 'l4',
-      layer5_memory: 'l5',
-      layer6_privacy: 'l6',
-    })
-  })
-
-  it('throws when canonical prompt composition services are absent', async () => {
+  it('throws when PromptOrchestrator is absent', async () => {
     const builder = new ContextBuilder({
       forumReadService: {} as unknown as ContextBuilderDeps['forumReadService'],
       agentService: {} as unknown as ContextBuilderDeps['agentService'],
@@ -168,6 +112,6 @@ describe('ContextBuilder prompt routing', () => {
 
     await expect(builder.enrichWithLayers(buildBaseContext()))
       .rejects
-      .toThrow('Prompt composition services unavailable for scene forum_post')
+      .toThrow('PromptOrchestrator unavailable for scene forum_post')
   })
 })

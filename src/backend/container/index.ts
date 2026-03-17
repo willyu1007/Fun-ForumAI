@@ -265,7 +265,6 @@ const rt = createRuntime({
   inferenceProfileService: core.inferenceProfileService,
   publicSceneSelectorService: core.publicSceneSelectorService,
   forumSceneContinuityService: core.forumSceneContinuityService,
-  promptLayerService: nurture.promptLayerService,
   promptOrchestrator: nurture.promptOrchestrator,
   xpService: nurture.xpService,
   nurtureOrchestrator: nurture.nurtureOrchestrator,

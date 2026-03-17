@@ -8,11 +8,13 @@ import type { PersonaStateService } from '../services/persona-state-service.js'
 import type {
   AgentPersona,
   CurrentContextSource,
+  PromptBlocks,
   PromptBudgetDecision,
   PromptComposeAudit,
   PromptControlTier,
+  PromptLayerComposeAudit,
+  PromptLayerFragments,
   PromptMemoryRetrievalHint,
-  PromptLayers,
   PromptLocalLayerEnvelope,
   PromptMemoryTier,
   PromptRequestEnvelope,
@@ -119,7 +121,7 @@ export type PromptOrchestratorV2Input = PromptOrchestratorInput
 
 export interface PromptOrchestratorResult {
   persona: AgentPersona
-  layers: PromptLayers
+  blocks: PromptBlocks
   audit: PromptComposeAudit
   runtimeEnvelope?: PersonaRuntimeEnvelope | null
 }
@@ -222,8 +224,8 @@ export class PromptOrchestrator {
   private applyGovernance(
     input: PromptOrchestratorInput,
     persona: AgentPersona,
-    baseLayers: PromptLayers,
-    baseAudit: PromptComposeAudit,
+    baseLayers: PromptLayerFragments,
+    baseAudit: PromptLayerComposeAudit,
     runtimeEnvelope: PersonaRuntimeEnvelope | null,
     memoryContext: {
       formatted: string
@@ -512,11 +514,7 @@ export class PromptOrchestrator {
       warnings: [...lintWarnings],
     }
 
-    const layers: PromptLayers = {
-      ...baseLayers,
-      layer4_overrides: this.orUndefined(effectiveOverridesText ?? ''),
-      layer_showrunner: isPrivateBoundaryScene ? undefined : baseLayers.layer_showrunner,
-      layer5_memory: memoryBlock || undefined,
+    const blocks: PromptBlocks = {
       hard_control_block: this.orUndefined(hardControlBlock),
       compact_control_block: this.orUndefined(compactControlBlock),
       current_context_block: this.orUndefined(currentContextBlock),
@@ -524,18 +522,13 @@ export class PromptOrchestrator {
       soft_expression_block: this.orUndefined(softExpressionBlock),
     }
 
-    const legacyIncludedLayerIds: string[] = this.collectLegacyIncludedLayerIds(
-      baseLayers,
-      layers,
-      isPrivateBoundaryScene,
-    )
-    const compiledBlockIds = (
+    const includedBlockIds = (
       [
-        ['hard_control_block', layers.hard_control_block],
-        ['compact_control_block', layers.compact_control_block],
-        ['current_context_block', layers.current_context_block],
-        ['memory_block', layers.memory_block],
-        ['soft_expression_block', layers.soft_expression_block],
+        ['hard_control_block', blocks.hard_control_block],
+        ['compact_control_block', blocks.compact_control_block],
+        ['current_context_block', blocks.current_context_block],
+        ['memory_block', blocks.memory_block],
+        ['soft_expression_block', blocks.soft_expression_block],
       ] as Array<[string, string | undefined]>
     ).reduce<string[]>((acc, [key, value]) => {
       if (typeof value === 'string' && value.trim().length > 0) {
@@ -543,10 +536,6 @@ export class PromptOrchestrator {
       }
       return acc
     }, [])
-    const includedLayerIds = Array.from(new Set([
-      ...legacyIncludedLayerIds,
-      ...compiledBlockIds,
-    ]))
 
     const tokenEstimates: Record<string, number> = {
       hard_control_block: hardControlTokens,
@@ -593,13 +582,11 @@ export class PromptOrchestrator {
 
     return {
       persona,
-      layers,
+      blocks,
       audit: {
         version: 'v2',
         scene: input.scene,
-        includedLayerIds,
-        legacyIncludedLayerIds,
-        compiledBlockIds,
+        includedBlockIds,
         promptContract: 'compiled_blocks_v2',
         tokenEstimates,
         lintWarnings,
@@ -947,27 +934,6 @@ export class PromptOrchestrator {
     const normalized = text.trim()
     if (!normalized) return 0
     return Math.max(1, Math.ceil(normalized.length / 4))
-  }
-
-  private collectLegacyIncludedLayerIds(
-    baseLayers: PromptLayers,
-    finalLayers: PromptLayers,
-    suppressShowrunner: boolean,
-  ): string[] {
-    const layerEntries: Array<[keyof PromptLayers, string | undefined]> = [
-      ['layer1_traits', baseLayers.layer1_traits],
-      ['layer2_style', baseLayers.layer2_style],
-      ['layer3_instructions', baseLayers.layer3_instructions],
-      ['layer4_overrides', finalLayers.layer4_overrides],
-      ['layer5_memory', finalLayers.layer5_memory],
-      ['layer6_privacy', baseLayers.layer6_privacy],
-    ]
-    if (!suppressShowrunner) {
-      layerEntries.push(['layer_showrunner', baseLayers.layer_showrunner])
-    }
-    return layerEntries
-      .filter(([, value]) => this.normalizeLayerText(value).length > 0)
-      .map(([key]) => key)
   }
 
   private hasPrivacyOverrideConflict(

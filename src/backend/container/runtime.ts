@@ -10,7 +10,6 @@ import type { RuntimeEventQueue } from '../runtime/event-queue.js'
 import type { LeaderElector } from '../runtime/leader-elector.js'
 import type { EventAllocator, DefaultDegradationMonitor, DefaultQuotaCalculator } from '../allocator/index.js'
 import type { LLMGateway } from '../llm/llm-gateway.js'
-import type { PromptLayerService } from '../runtime/prompt-layer-service.js'
 import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
 import type { ForumReadService } from '../services/forum-read-service.js'
 import type { ForumWriteService } from '../services/forum-write-service.js'
@@ -43,7 +42,6 @@ export function createRuntime(deps: {
   inferenceProfileService: InferenceProfileService
   publicSceneSelectorService?: PublicSceneSelectorService | null
   forumSceneContinuityService?: ForumSceneContinuityService | null
-  promptLayerService: PromptLayerService | null
   promptOrchestrator: PromptOrchestrator | null
   xpService: XpService | null
   nurtureOrchestrator: NurtureOrchestrator | null
@@ -65,7 +63,6 @@ export function createRuntime(deps: {
   const contextBuilder = new ContextBuilder({
     forumReadService: deps.forumReadService,
     agentService: deps.agentService,
-    promptLayerService: deps.promptLayerService,
     promptOrchestrator: deps.promptOrchestrator,
     communityPromptProfileCompiler,
     communityCultureDigestService: deps.communityCultureDigestService,

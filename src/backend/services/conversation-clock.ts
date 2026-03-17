@@ -1,4 +1,3 @@
-import type { PromptLayerService } from '../runtime/prompt-layer-service.js'
 import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
 import type { ChatroomRuntimeContextBuilder } from './chatroom-runtime-context-builder.js'
 import type { RoomEcologyService } from './room-ecology-service.js'
@@ -41,11 +40,6 @@ export class ConversationClock {
     this.deps.sseHub.onRoomEvent?.((roomId, event) => {
       handleRoomBroadcastImpl(this.context, roomId, event)
     })
-  }
-
-  setPromptLayerService(service: PromptLayerService | null): void {
-    ;(this.deps as { promptLayerService?: PromptLayerService | null }).promptLayerService =
-      service
   }
 
   setPromptOrchestrator(orchestrator: PromptOrchestrator | null): void {

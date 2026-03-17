@@ -97,133 +97,86 @@ export async function generateMessage(
   const observationIdentity = resolvedIdentity.observationIdentity
   let promptAudit: PromptComposeAudit | null = null
   let renderDecision: RenderTierDecisionResult | null = null
-  let layers = {
-    layer_traits: '',
-    layer_style: '',
-    layer_instructions: '',
-    layer_community: '',
-    layer_relationship: '',
-    layer_showrunner: '',
-    layer_overrides: '',
-    layer_memory: '',
-    layer_privacy: '',
+  let blocks = {
     hard_control_block: '',
     compact_control_block: '',
     current_context_block: '',
     memory_block: '',
     soft_expression_block: '',
   }
-  if (context.deps.promptOrchestrator?.isSceneEnabled('chat_room')) {
-    const member = await context.deps.roomRepo.getMember(roomId, agentId)
-    const composed = await context.deps.promptOrchestrator.compose({
-      agentId,
-      scene: 'chat_room',
-      conversationText: chatConversationText,
-      communityId: room.community_id,
-      topicHints: chatTopicHints,
-      currentContextSources: ([
-        {
-          kind: 'room_recent_turns',
-          text: recentText || '（房间刚创建，还没有对话）',
-          priority: 'critical',
-          source_id: `${roomId}:recent_turns`,
-        },
-        {
-          kind: 'local_role_or_cue',
-          text: thisOrEmpty(runtimeChatContext?.promptVariables.role_hint),
-          priority: 'high',
-          source_id: `${roomId}:role_hint`,
-        },
-        {
-          kind: 'room_program_context',
-          text: [
-            runtimeChatContext?.promptVariables.program_scene,
-            runtimeChatContext?.promptVariables.current_beat,
-            runtimeChatContext?.promptVariables.live_hook,
-            runtimeChatContext?.promptVariables.unresolved_question,
-          ].filter(Boolean).join('\n'),
-          priority: 'high',
-          source_id: `${roomId}:program_context`,
-        },
-        {
-          kind: 'thread_or_scene_continuity',
-          text: thisOrEmpty(runtimeChatContext?.promptVariables.room_public_context_summary),
-          priority: 'medium',
-          source_id: `${roomId}:continuity`,
-        },
-      ] satisfies CurrentContextSource[]).filter((source) => source.text.trim().length > 0),
-      requestEnvelope: {
-        static_system_tokens: 180,
-        route_wrapper_tokens: 90,
-        tool_tokens: 0,
-        current_user_input_tokens: 0,
-        output_reserve: 0,
-        model_capability_ref: null,
-      },
-      communitySoftCulture: room.description || '',
-      sceneRule: chatSceneRule,
-      shortTermState: chatShortTermState,
-      shortTermStateUpdatedAt: recentMsgs[recentMsgs.length - 1]?.created_at ?? null,
-      roomMemberState: member
-        ? { joined_at: member.joined_at, last_spoke_at: member.last_spoke_at }
-        : undefined,
-    })
-    layers = {
-      layer_traits: composed.layers.layer1_traits ?? '',
-      layer_style: composed.layers.layer2_style ?? '',
-      layer_instructions: composed.layers.layer3_instructions ?? '',
-      layer_community: composed.layers.layer_community ?? '',
-      layer_relationship: composed.layers.layer_relationship ?? '',
-      layer_showrunner: composed.layers.layer_showrunner ?? '',
-      layer_overrides: composed.layers.layer4_overrides ?? '',
-      layer_memory: composed.layers.layer5_memory ?? '',
-      layer_privacy: composed.layers.layer6_privacy ?? '',
-      hard_control_block: composed.layers.hard_control_block ?? '',
-      compact_control_block: composed.layers.compact_control_block ?? '',
-      current_context_block: composed.layers.current_context_block ?? '',
-      memory_block: composed.layers.memory_block ?? '',
-      soft_expression_block: composed.layers.soft_expression_block ?? '',
-    }
-    promptAudit = composed.audit
-    persona = composed.persona
-    renderDecision = composed.runtimeEnvelope?.renderTierDecision ?? null
-  } else if (context.deps.promptLayerService) {
-    const member = await context.deps.roomRepo.getMember(roomId, agentId)
-    const composed = await context.deps.promptLayerService.composeLayersWithAudit(
-      {
-        agentId,
-        scene: 'chat_room',
-        conversationText: chatConversationText,
-        communityId: room.community_id,
-        topicHints: chatTopicHints,
-        roomMemberState: member
-          ? { joined_at: member.joined_at, last_spoke_at: member.last_spoke_at }
-          : undefined,
-      },
-      { suppressAuditLog: true },
-    )
-    layers = {
-      layer_traits: composed.layers.layer1_traits ?? '',
-      layer_style: composed.layers.layer2_style ?? '',
-      layer_instructions: composed.layers.layer3_instructions ?? '',
-      layer_community: composed.layers.layer_community ?? '',
-      layer_relationship: composed.layers.layer_relationship ?? '',
-      layer_showrunner: composed.layers.layer_showrunner ?? '',
-      layer_overrides: composed.layers.layer4_overrides ?? '',
-      layer_memory: composed.layers.layer5_memory ?? '',
-      layer_privacy: composed.layers.layer6_privacy ?? '',
-      hard_control_block: composed.layers.hard_control_block ?? '',
-      compact_control_block: composed.layers.compact_control_block ?? '',
-      current_context_block: composed.layers.current_context_block ?? '',
-      memory_block: composed.layers.memory_block ?? '',
-      soft_expression_block: composed.layers.soft_expression_block ?? '',
-    }
-    promptAudit = composed.audit
-    if (composed.persona) {
-      persona = composed.persona
-    }
-    renderDecision = composed.runtimeEnvelope?.renderTierDecision ?? null
+  if (!context.deps.promptOrchestrator?.isSceneEnabled('chat_room')) {
+    throw new Error('PromptOrchestrator unavailable for scene chat_room')
   }
+  const member = await context.deps.roomRepo.getMember(roomId, agentId)
+  const composed = await context.deps.promptOrchestrator.compose({
+    agentId,
+    scene: 'chat_room',
+    conversationText: chatConversationText,
+    communityId: room.community_id,
+    topicHints: chatTopicHints,
+    currentContextSources: ([
+      {
+        kind: 'room_recent_turns',
+        text: recentText || '（房间刚创建，还没有对话）',
+        priority: 'critical',
+        source_id: `${roomId}:recent_turns`,
+      },
+      {
+        kind: 'local_role_or_cue',
+        text: thisOrEmpty(runtimeChatContext?.promptVariables.role_hint),
+        priority: 'high',
+        source_id: `${roomId}:role_hint`,
+      },
+      {
+        kind: 'room_program_context',
+        text: [
+          runtimeChatContext?.promptVariables.program_scene,
+          runtimeChatContext?.promptVariables.current_beat,
+          runtimeChatContext?.promptVariables.live_hook,
+          runtimeChatContext?.promptVariables.unresolved_question,
+        ].filter(Boolean).join('\n'),
+        priority: 'high',
+        source_id: `${roomId}:program_context`,
+      },
+      {
+        kind: 'thread_or_scene_continuity',
+        text: thisOrEmpty(runtimeChatContext?.promptVariables.room_public_context_summary),
+        priority: 'medium',
+        source_id: `${roomId}:continuity`,
+      },
+      {
+        kind: 'local_intent',
+        text: localIntentBlock,
+        priority: 'high',
+        source_id: `${roomId}:local_intent`,
+      },
+    ] satisfies CurrentContextSource[]).filter((source) => source.text.trim().length > 0),
+    requestEnvelope: {
+      static_system_tokens: 180,
+      route_wrapper_tokens: 90,
+      tool_tokens: 0,
+      current_user_input_tokens: 0,
+      output_reserve: 0,
+      model_capability_ref: null,
+    },
+    communitySoftCulture: room.description || '',
+    sceneRule: chatSceneRule,
+    shortTermState: chatShortTermState,
+    shortTermStateUpdatedAt: recentMsgs[recentMsgs.length - 1]?.created_at ?? null,
+    roomMemberState: member
+      ? { joined_at: member.joined_at, last_spoke_at: member.last_spoke_at }
+      : undefined,
+  })
+  blocks = {
+    hard_control_block: composed.blocks.hard_control_block ?? '',
+    compact_control_block: composed.blocks.compact_control_block ?? '',
+    current_context_block: composed.blocks.current_context_block ?? '',
+    memory_block: composed.blocks.memory_block ?? '',
+    soft_expression_block: composed.blocks.soft_expression_block ?? '',
+  }
+  promptAudit = composed.audit
+  persona = composed.persona
+  renderDecision = composed.runtimeEnvelope?.renderTierDecision ?? null
 
   const variables: Record<string, string> = {
     persona_name: persona.name,
@@ -232,40 +185,11 @@ export async function generateMessage(
     persona_language: persona.language,
     persona_seed_code: observationIdentity?.persona_seed_code ?? 'scholar',
     room_name: room.name,
-    room_description: room.description || '',
-    recent_messages: recentText || '（房间刚刚创建，还没有对话）',
-    program_scene: runtimeChatContext?.promptVariables.program_scene ?? '',
-    episode_id: runtimeChatContext?.promptVariables.episode_id ?? '',
-    current_beat: runtimeChatContext?.promptVariables.current_beat ?? '',
-    cue_type: runtimeChatContext?.promptVariables.cue_type ?? '',
-    director_goal: '',
-    self_role: runtimeChatContext?.promptVariables.self_role ?? '',
-    cast_snapshot: runtimeChatContext?.promptVariables.cast_snapshot ?? '',
-    live_hook: runtimeChatContext?.promptVariables.live_hook ?? '',
-    unresolved_question: runtimeChatContext?.promptVariables.unresolved_question ?? '',
-    last_highlight: runtimeChatContext?.promptVariables.last_highlight ?? '',
-    local_intent_block: localIntentBlock,
-    room_public_context_summary:
-      runtimeChatContext?.promptVariables.room_public_context_summary ?? '',
-    public_projection_hint: runtimeChatContext?.promptVariables.public_projection_hint ?? '',
-    signature_moves: runtimeChatContext?.promptVariables.signature_moves ?? '',
-    shared_memory_summary: runtimeChatContext?.promptVariables.shared_memory_summary ?? '',
-    role_hint: runtimeChatContext?.promptVariables.role_hint ?? '',
-    projection_updated_at: runtimeChatContext?.promptVariables.projection_updated_at ?? '',
-    layer_traits: layers.layer_traits,
-    layer_style: layers.layer_style,
-    layer_instructions: layers.layer_instructions,
-    layer_community: layers.layer_community,
-    layer_relationship: layers.layer_relationship,
-    layer_showrunner: layers.layer_showrunner,
-    layer_overrides: layers.layer_overrides,
-    layer_memory: layers.layer_memory,
-    layer_privacy: layers.layer_privacy,
-    hard_control_block: layers.hard_control_block,
-    compact_control_block: layers.compact_control_block,
-    current_context_block: layers.current_context_block,
-    memory_block: layers.memory_block,
-    soft_expression_block: layers.soft_expression_block,
+    hard_control_block: blocks.hard_control_block,
+    compact_control_block: blocks.compact_control_block,
+    current_context_block: blocks.current_context_block,
+    memory_block: blocks.memory_block,
+    soft_expression_block: blocks.soft_expression_block,
   }
 
   const promptRef = PROMPT_TEMPLATE_REFS.agentChatReplyScene

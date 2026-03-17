@@ -34,9 +34,7 @@ export type PersonaObservationCoverageStatus =
   | 'hidden_partial'
 
 export interface PersonaObservationPromptAuditSummary {
-  included_layer_ids: string[]
-  legacy_included_layer_ids?: string[]
-  compiled_block_ids?: string[]
+  included_block_ids: string[]
   prompt_contract?: PromptComposeAudit['promptContract']
   token_estimates: Record<string, number>
   lint_warnings: string[]
@@ -606,13 +604,7 @@ export function readLatestPersonaGateSnapshot(): PersonaGateSnapshotV1 {
 
 function summarizePromptAudit(audit: PromptComposeAudit): PersonaObservationPromptAuditSummary {
   return {
-    included_layer_ids: [...audit.includedLayerIds],
-    ...(audit.legacyIncludedLayerIds
-      ? { legacy_included_layer_ids: [...audit.legacyIncludedLayerIds] }
-      : {}),
-    ...(audit.compiledBlockIds
-      ? { compiled_block_ids: [...audit.compiledBlockIds] }
-      : {}),
+    included_block_ids: [...audit.includedBlockIds],
     ...(audit.promptContract ? { prompt_contract: audit.promptContract } : {}),
     token_estimates: { ...audit.tokenEstimates },
     lint_warnings: [...audit.lintWarnings],
@@ -657,17 +649,15 @@ function normalizePromptAuditSummary(raw: Record<string, unknown>): PersonaObser
     : null
 
   return {
-    included_layer_ids: Array.isArray(raw.included_layer_ids)
-      ? raw.included_layer_ids.filter((item): item is string => typeof item === 'string')
-      : [],
-    legacy_included_layer_ids: Array.isArray(raw.legacy_included_layer_ids)
-      ? raw.legacy_included_layer_ids.filter((item): item is string => typeof item === 'string')
-      : undefined,
-    compiled_block_ids: Array.isArray(raw.compiled_block_ids)
-      ? raw.compiled_block_ids.filter((item): item is string => typeof item === 'string')
-      : undefined,
+    included_block_ids: Array.isArray(raw.included_block_ids)
+      ? raw.included_block_ids.filter((item): item is string => typeof item === 'string')
+      : Array.isArray(raw.compiled_block_ids)
+        ? raw.compiled_block_ids.filter((item): item is string => typeof item === 'string')
+        : Array.isArray(raw.included_layer_ids)
+          ? raw.included_layer_ids.filter((item): item is string => typeof item === 'string')
+          : [],
     prompt_contract:
-      raw.prompt_contract === 'legacy_layers_v1' || raw.prompt_contract === 'compiled_blocks_v2'
+      raw.prompt_contract === 'compiled_blocks_v2'
         ? raw.prompt_contract
         : undefined,
     token_estimates: isRecord(raw.token_estimates)

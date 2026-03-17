@@ -8,8 +8,8 @@ import type { PublicDisclosureCapService } from '../services/public-disclosure-c
 import type { StatsService } from '../services/stats-service.js'
 import type {
   AgentPersona,
-  PromptComposeAudit,
-  PromptLayers,
+  PromptLayerComposeAudit,
+  PromptLayerFragments,
   PromptMemoryRetrievalHint,
   PromptScene,
 } from './types.js'
@@ -81,8 +81,8 @@ export interface PromptLayerServiceDeps {
 }
 
 export interface PromptLayerComposeResult {
-  layers: PromptLayers
-  audit: PromptComposeAudit
+  layers: PromptLayerFragments
+  audit: PromptLayerComposeAudit
   persona?: AgentPersona
   runtimeEnvelope?: PersonaRuntimeEnvelope | null
   memoryContext?: MemoryForContext | null
@@ -101,7 +101,7 @@ export class PromptLayerService {
     }
   }
 
-  async composeLayers(input: ComposePromptLayersInput): Promise<PromptLayers> {
+  async composeLayers(input: ComposePromptLayersInput): Promise<PromptLayerFragments> {
     const composed = await this.composeLayersWithAudit(input)
     return composed.layers
   }
@@ -110,13 +110,13 @@ export class PromptLayerService {
     input: ComposePromptLayersInput,
     opts?: { suppressAuditLog?: boolean },
   ): Promise<PromptLayerComposeResult> {
-    const layers: PromptLayers = {}
+    const layers: PromptLayerFragments = {}
     const lintWarnings: string[] = []
     const agentId = input.agentId
     let runtimeEnvelope = input.precomputedRuntimeEnvelope ?? null
     let persona: AgentPersona | undefined
     let privateMemoryProvenance:
-      | NonNullable<NonNullable<PromptComposeAudit['provenance']>['private_memory']>
+      | NonNullable<NonNullable<PromptLayerComposeAudit['provenance']>['private_memory']>
       | undefined
     let memoryContext: MemoryForContext | null = null
 
@@ -447,16 +447,16 @@ export class PromptLayerService {
 
   private buildAudit(
     scene: PromptLayerScene,
-    layers: PromptLayers,
+    layers: PromptLayerFragments,
     lintWarnings: string[],
-  ): PromptComposeAudit {
+  ): PromptLayerComposeAudit {
     const includedLayerIds = Object.entries(layers)
       .filter(([, content]) => typeof content === 'string' && content.trim().length > 0)
       .map(([layerId]) => layerId)
 
     const tokenEstimates: Record<string, number> = {}
     for (const layerId of includedLayerIds) {
-      const content = layers[layerId as keyof PromptLayers] ?? ''
+      const content = layers[layerId as keyof PromptLayerFragments] ?? ''
       tokenEstimates[layerId] = this.estimateTokens(content)
     }
 
@@ -464,16 +464,13 @@ export class PromptLayerService {
       version: 'v1',
       scene,
       includedLayerIds,
-      legacyIncludedLayerIds: [...includedLayerIds],
-      compiledBlockIds: [],
-      promptContract: 'legacy_layers_v1',
       tokenEstimates,
       lintWarnings,
       trimReasons: [],
     }
   }
 
-  private emitAuditLog(agentId: string, audit: PromptComposeAudit): void {
+  private emitAuditLog(agentId: string, audit: PromptLayerComposeAudit): void {
     if (!config.features.promptAuditV1) return
     console.info('[PromptAudit]', JSON.stringify({
       agent_id: agentId,

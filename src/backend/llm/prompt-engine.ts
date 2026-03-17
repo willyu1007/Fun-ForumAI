@@ -11,11 +11,6 @@ import {
 
 export type PromptTemplate = PromptTemplateRegistryEntry
 
-const PRIVATE_BOUNDARY_OPTIONAL_PLACEHOLDERS: Record<string, string[]> = {
-  'agent-private-chat-reply@1': ['layer_showrunner'],
-  'agent-proactive-dm-opening@1': ['layer_showrunner'],
-}
-
 const EMPTY_OK_REQUIRED_VARIABLES = new Set([
   'compact_control_block',
   'memory_block',
@@ -154,7 +149,6 @@ function validateTemplatePlaceholders(
 
   const missingPlaceholders = Array.from(placeholders)
     .filter((key) => !(key in variables))
-    .filter((key) => !canOmitPlaceholder(promptRef, key))
 
   if (missingPlaceholders.length > 0) {
     throw new LLMGatewayContractError(
@@ -166,11 +160,6 @@ function validateTemplatePlaceholders(
       },
     )
   }
-}
-
-function canOmitPlaceholder(promptRef: PromptTemplateRef, key: string): boolean {
-  const allowlist = PRIVATE_BOUNDARY_OPTIONAL_PLACEHOLDERS[getPromptTemplateKey(promptRef)] ?? []
-  return allowlist.includes(key)
 }
 
 function collectPlaceholders(template: string, output: Set<string>): void {

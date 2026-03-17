@@ -9,7 +9,7 @@ import { healthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { devSeedRouter } from './routes/dev-seed.js'
-import { runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, warmPersistenceState, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, roleAssignmentExpiryScheduler, directorHistoryMaintenanceScheduler, guidanceRecallScheduler, promptLayerService, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService } from './container.js'
+import { runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, warmPersistenceState, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, roleAssignmentExpiryScheduler, directorHistoryMaintenanceScheduler, guidanceRecallScheduler, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
 import { agentNurtureRouter } from './routes/agent-growth-api.js'
@@ -19,10 +19,10 @@ import { createDevToken, requireHumanAuth, registerDevTokenSync, type Authentica
 import { privateChannelRouter } from './routes/private-channel-api.js'
 import { notificationRouter } from './routes/notification-api.js'
 import { agentStatsRouter } from './routes/agent-stats-api.js'
-import type { PromptLayers } from './runtime/types.js'
+import type { PromptBlocks } from './runtime/types.js'
 import { resolveAgentIdentity } from './identity/agent-identity.js'
 import { LLMGatewayContractError } from './llm/gateway-contract.js'
-import { buildPromptTemplateRef } from './llm/prompt-template-refs.js'
+import { resolveCurrentVisiblePromptRef } from './llm/prompt-template-refs.js'
 import type { OwnerStylePins } from './identity/agent-identity.js'
 
 const app: Express = express()
@@ -76,6 +76,46 @@ function shouldCompress(req: express.Request, res: express.Response): boolean {
     return false
   }
   return compression.filter(req, res)
+}
+
+function buildDevPromptRenderDefaults(input: {
+  templateId: string
+  persona: {
+    name: string
+    style: string
+    interests: string[]
+    language: string
+  }
+  personaSeedCode: string
+  blocks: PromptBlocks
+}): Record<string, string> {
+  const baseDefaults: Record<string, string> = {
+    persona_name: input.persona.name,
+    persona_style: input.persona.style,
+    persona_interests: input.persona.interests.join('、'),
+    persona_language: input.persona.language,
+    persona_seed_code: input.personaSeedCode,
+    hard_control_block: input.blocks.hard_control_block ?? '',
+    compact_control_block: input.blocks.compact_control_block ?? '',
+    current_context_block: input.blocks.current_context_block ?? '',
+    memory_block: input.blocks.memory_block ?? '',
+    soft_expression_block: input.blocks.soft_expression_block ?? '',
+  }
+
+  switch (input.templateId) {
+    case 'agent-reply-to-post':
+    case 'agent-create-post':
+    case 'agent-reply-to-comment':
+      return { ...baseDefaults, community_name: '调试社区' }
+    case 'agent-chat-reply':
+      return { ...baseDefaults, room_name: '调试房间' }
+    case 'agent-private-chat-reply':
+      return { ...baseDefaults, owner_display_name: 'Owner' }
+    case 'agent-proactive-dm-opening':
+      return { ...baseDefaults, trigger_type: 'manual' }
+    default:
+      return baseDefaults
+  }
 }
 
 app.use(helmet())
@@ -243,32 +283,52 @@ if (config.allowDevTools) {
       const body = req.body as {
         agent_id?: string
         template_id?: string
-        template_version?: number
         scene?: 'forum_post' | 'forum_comment' | 'chat_room' | 'private_chat' | 'proactive_dm' | 'scheduled_post'
         conversation_text?: string
         topic_hints?: string[]
         room_member_last_spoke_at?: string | null
         variables?: Record<string, string>
+        template_version?: number
       }
 
-      if (!body.agent_id || !body.template_id || !body.template_version || !body.scene) {
+      if (body.template_version !== undefined) {
         res.status(400).json({
           error: {
             code: 'VALIDATION_ERROR',
-            message: 'agent_id, template_id, template_version and scene are required',
+            message: 'template_version is no longer accepted; dev prompt render resolves the current visible template automatically',
           },
         })
         return
       }
 
-      if (!promptLayerService && !promptOrchestrator) {
-        res.status(503).json({
-          error: { code: 'SERVICE_UNAVAILABLE', message: 'Prompt composer service not initialized' },
+      if (!body.agent_id || !body.template_id || !body.scene) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'agent_id, template_id and scene are required',
+          },
         })
         return
       }
 
-      let agentDisplayName: string
+      const promptRef = resolveCurrentVisiblePromptRef(body.template_id)
+      if (!promptRef) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: `Unknown or archived visible template_id: ${body.template_id}`,
+          },
+        })
+        return
+      }
+
+      if (!promptOrchestrator) {
+        res.status(503).json({
+          error: { code: 'SERVICE_UNAVAILABLE', message: 'PromptOrchestrator not initialized' },
+        })
+        return
+      }
+
       let identityContract: {
         source: string
         persona_seed_code: string
@@ -282,7 +342,6 @@ if (config.allowDevTools) {
         const agent = agentService.getAgent(body.agent_id)
         const latestConfig = agentService.getLatestConfig(body.agent_id)
         const identity = resolveAgentIdentity(agent, latestConfig)
-        agentDisplayName = agent.display_name
         identityContract = {
           source: identity.source,
           persona_seed_code: identity.summary.persona_seed_code,
@@ -309,86 +368,23 @@ if (config.allowDevTools) {
           : undefined,
       } as const
 
-      let persona: { name: string; style: string; interests: string[]; language: string }
-      let layers: PromptLayers
-      let audit: unknown
-
-      if (promptOrchestrator) {
-        const composed = await promptOrchestrator.compose(composeInput)
-        persona = composed.persona
-        layers = composed.layers
-        audit = composed.audit
-      } else {
-        const composed = await promptLayerService!.composeLayersWithAudit(composeInput)
-        persona = promptLayerService!.getPersona(body.agent_id)
-        layers = composed.layers
-        audit = composed.audit
-      }
-
-      const defaults: Record<string, string> = {
-        persona_name: persona.name,
-        persona_style: persona.style,
-        persona_interests: persona.interests.join('、'),
-        persona_language: persona.language,
-        persona_seed_code: identityContract.persona_seed_code,
-        community_name: '调试社区',
-        community_description: '',
-        community_rules: '',
-        post_title: '调试标题',
-        post_body: body.conversation_text ?? '调试内容',
-        post_author: agentDisplayName,
-        existing_comments: '',
-        thread_context: '',
-        target_comment_author: '调试对象',
-        target_comment_body: body.conversation_text ?? '调试评论',
-        room_name: '调试房间',
-        room_description: '',
-        recent_messages: body.conversation_text ?? '（无）',
-        program_scene: '',
-        episode_id: '',
-        current_beat: '',
-        cue_type: '',
-        director_goal: '',
-        self_role: '',
-        cast_snapshot: '',
-        live_hook: '',
-        unresolved_question: '',
-        last_highlight: '',
-        public_projection_hint: '',
-        signature_moves: '',
-        shared_memory_summary: '',
-        role_hint: '',
-        projection_updated_at: '',
-        recent_posts: '',
-        community_candidates: '',
-        inclination_injection: '',
-        inclination_media_url: '',
-        local_intent_block: '## Local Intent\n- episode_id: debug\n- initiative: reply\n- tone_hint: neutral',
-        owner_display_name: 'Owner',
-        session_context: '',
-        latest_user_message: body.conversation_text ?? '调试私聊内容',
-        trigger_type: 'manual',
-        trigger_context: body.conversation_text ?? '调试主动触发上下文',
-        topic: body.conversation_text ?? '调试主题',
-        layer_traits: layers.layer1_traits ?? '',
-        layer_style: layers.layer2_style ?? '',
-        layer_instructions: layers.layer3_instructions ?? '',
-        layer_community: layers.layer_community ?? '',
-        layer_relationship: layers.layer_relationship ?? '',
-        layer_showrunner: layers.layer_showrunner ?? '',
-        layer_overrides: layers.layer4_overrides ?? '',
-        layer_memory: layers.layer5_memory ?? '',
-        layer_privacy: layers.layer6_privacy ?? '',
-      }
-
+      const composed = await promptOrchestrator.compose(composeInput)
+      const persona = composed.persona
+      const blocks = composed.blocks
+      const audit = composed.audit
+      const defaults = buildDevPromptRenderDefaults({
+        templateId: promptRef.id,
+        persona,
+        personaSeedCode: identityContract.persona_seed_code,
+        blocks,
+      })
       const variables = { ...defaults, ...(body.variables ?? {}) }
-      const promptRef = buildPromptTemplateRef(body.template_id, body.template_version)
       const promptTemplate = promptEngine.getTemplate(promptRef)
       const messages = promptEngine.render(promptRef, variables)
 
       res.json({
         data: {
-          layers,
+          blocks,
           audit,
           messages,
           prompt_template: promptTemplate

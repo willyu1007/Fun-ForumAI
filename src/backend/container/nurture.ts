@@ -334,7 +334,6 @@ export async function createNurtureEngines(deps: {
       promptLayerService: promptLayerSvc,
       personaStateService,
     })
-    conversationClock.setPromptLayerService(promptLayerSvc)
     conversationClock.setPromptOrchestrator(promptOrch)
 
     if (privateChannelServices) {
@@ -425,7 +424,6 @@ export async function createNurtureEngines(deps: {
     promptLayerService,
     personaStateService,
   })
-  conversationClock.setPromptLayerService(promptLayerService)
   conversationClock.setPromptOrchestrator(promptOrchestrator)
 
   return {

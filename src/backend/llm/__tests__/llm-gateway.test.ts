@@ -337,7 +337,7 @@ describe('LLMGateway', () => {
       scene: 'proactive_dm',
       agentId: 'agent-1',
       homeVoiceLineId: 'qwen-social-v1',
-      promptRef: { id: 'agent-proactive-dm-opening', version: 1 },
+      promptRef: { id: 'agent-proactive-dm-opening', version: 2 },
       variables: {},
       promptMessages: [{ role: 'user', content: 'open' }],
       budgetClass: 'visible_standard',
@@ -380,7 +380,7 @@ describe('LLMGateway', () => {
         scene: 'proactive_dm',
         agentId: 'agent-1',
         homeVoiceLineId: 'qwen-social-v1',
-        promptRef: { id: 'agent-proactive-dm-opening', version: 1 },
+        promptRef: { id: 'agent-proactive-dm-opening', version: 2 },
         variables: {},
         promptMessages: [{ role: 'user', content: 'open' }],
         budgetClass: 'visible_standard',
@@ -424,7 +424,7 @@ describe('LLMGateway', () => {
       scene: 'proactive_dm',
       agentId: 'agent-1',
       homeVoiceLineId: 'qwen-social-v1',
-      promptRef: { id: 'agent-proactive-dm-opening', version: 1 },
+      promptRef: { id: 'agent-proactive-dm-opening', version: 2 },
       variables: {},
       promptMessages: [{ role: 'user', content: 'open' }],
       budgetClass: 'visible_standard',
@@ -471,7 +471,7 @@ describe('LLMGateway', () => {
       agentId: 'agent-1',
       homeVoiceLineId: 'qwen-social-v1',
       preferredModelId: 'qwen-flash-character',
-      promptRef: { id: 'agent-proactive-dm-opening', version: 1 },
+      promptRef: { id: 'agent-proactive-dm-opening', version: 2 },
       variables: {},
       promptMessages: [{ role: 'user', content: 'open' }],
       budgetClass: 'visible_standard',
@@ -591,7 +591,7 @@ describe('LLMGateway', () => {
       agentId: 'agent-1',
       homeVoiceLineId: 'qwen-social-v1',
       preferredModelId: 'qwen-flash-character',
-      promptRef: { id: 'agent-proactive-dm-opening', version: 1 },
+      promptRef: { id: 'agent-proactive-dm-opening', version: 2 },
       variables: {},
       promptMessages: [{ role: 'user', content: 'open' }],
       budgetClass: 'visible_standard',
@@ -821,15 +821,14 @@ describe('LLMGateway', () => {
       },
     })
 
-    expect(response.warnings).toEqual(expect.arrayContaining([
-      'prompt_budget_window_mismatch',
-      'prompt_budget_above_recommended_operating_input',
-      'requested_output_exceeds_model_capability',
-    ]))
-    expect(usageLedger.list()[0]?.gateway_warnings).toEqual(expect.arrayContaining([
-      'prompt_budget_window_mismatch',
-      'prompt_budget_above_recommended_operating_input',
-      'requested_output_exceeds_model_capability',
-    ]))
+    expect(response.warnings).toEqual(['requested_output_exceeds_model_capability'])
+    expect(usageLedger.list()[0]?.gateway_warnings).toEqual(['requested_output_exceeds_model_capability'])
+    expect(usageLedger.list()[0]?.prompt_budget_summary).toMatchObject({
+      measurement_method: 'rendered_messages_json_v1',
+      rendered_prompt_tokens_estimate: 9,
+      rendered_non_block_tokens_estimate: 0,
+      provider_prompt_tokens_actual: 120,
+      prompt_token_drift: 111,
+    })
   })
 })

@@ -135,7 +135,7 @@ function buildLedgerEntry(input: {
   const promptRef =
     intent === 'identity_write'
       ? { id: 'agent-identity-write', version: 1 as const }
-      : { id: 'agent-proactive-dm-opening', version: 1 as const }
+      : { id: 'agent-proactive-dm-opening', version: 2 as const }
   const renderDecision =
     intent === 'identity_write'
       ? {
@@ -162,7 +162,7 @@ function buildLedgerEntry(input: {
           fallbackLevel: 'none' as const,
           reasons: ['initial_profile_resolution'],
           promptTemplateId: 'agent-proactive-dm-opening',
-          promptVersion: 1,
+          promptVersion: 2,
         }
 
   return {
@@ -252,7 +252,7 @@ describe('InferenceProfileService', () => {
       intent: 'proactive_opening',
       visibility: 'visible',
       scene: 'proactive_dm',
-      prompt_ref: { id: 'agent-proactive-dm-opening', version: 1 },
+      prompt_ref: { id: 'agent-proactive-dm-opening', version: 2 },
       render_decision: {
         voiceLineId: 'qwen-social-v1',
         tier: 'base',
@@ -264,7 +264,7 @@ describe('InferenceProfileService', () => {
         fallbackLevel: 'none',
         reasons: ['initial_profile_resolution'],
         promptTemplateId: 'agent-proactive-dm-opening',
-        promptVersion: 1,
+        promptVersion: 2,
       },
       usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 },
       success: true,
@@ -285,7 +285,7 @@ describe('InferenceProfileService', () => {
       intent: 'proactive_opening',
       visibility: 'visible',
       scene: 'proactive_dm',
-      prompt_ref: { id: 'agent-proactive-dm-opening', version: 1 },
+      prompt_ref: { id: 'agent-proactive-dm-opening', version: 2 },
       render_decision: {
         voiceLineId: 'qwen-social-v1',
         tier: 'base',
@@ -297,7 +297,7 @@ describe('InferenceProfileService', () => {
         fallbackLevel: 'none',
         reasons: ['initial_profile_resolution'],
         promptTemplateId: 'agent-proactive-dm-opening',
-        promptVersion: 1,
+        promptVersion: 2,
       },
       usage: { prompt_tokens: 22, completion_tokens: 12, total_tokens: 34 },
       success: true,
@@ -318,7 +318,7 @@ describe('InferenceProfileService', () => {
       intent: 'proactive_opening',
       visibility: 'visible',
       scene: 'proactive_dm',
-      prompt_ref: { id: 'agent-proactive-dm-opening', version: 1 },
+      prompt_ref: { id: 'agent-proactive-dm-opening', version: 2 },
       render_decision: {
         voiceLineId: 'qwen-social-v1',
         tier: 'base',
@@ -330,7 +330,7 @@ describe('InferenceProfileService', () => {
         fallbackLevel: 'none',
         reasons: ['initial_profile_resolution'],
         promptTemplateId: 'agent-proactive-dm-opening',
-        promptVersion: 1,
+        promptVersion: 2,
       },
       usage: { prompt_tokens: 18, completion_tokens: 10, total_tokens: 28 },
       success: true,
@@ -476,7 +476,7 @@ describe('InferenceProfileService', () => {
         intent: 'proactive_opening',
         visibility: 'visible',
         scene: 'proactive_dm',
-        prompt_ref: { id: 'agent-proactive-dm-opening', version: 1 },
+        prompt_ref: { id: 'agent-proactive-dm-opening', version: 2 },
         render_decision: {
           voiceLineId: 'qwen-social-v1',
           tier: 'base',
@@ -488,7 +488,7 @@ describe('InferenceProfileService', () => {
           fallbackLevel: 'none',
           reasons: ['initial_profile_resolution'],
           promptTemplateId: 'agent-proactive-dm-opening',
-          promptVersion: 1,
+          promptVersion: 2,
         },
         usage: { prompt_tokens: 18, completion_tokens: 10, total_tokens: 28 },
         success: true,

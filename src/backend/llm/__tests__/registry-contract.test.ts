@@ -140,4 +140,32 @@ describe('LLM registry contract', () => {
       }
     }
   })
+
+  it('removes historical visible template versions from the live registry', () => {
+    const promptTemplates = loadPromptTemplatesRegistry()
+    const versionsById = new Map<string, number[]>()
+    const visibleTemplateIds = [
+      'agent-reply-to-post',
+      'agent-create-post',
+      'agent-reply-to-comment',
+      'agent-chat-reply',
+      'agent-private-chat-reply',
+      'agent-proactive-dm-opening',
+    ]
+
+    for (const template of promptTemplates.templates.filter((entry) =>
+      visibleTemplateIds.includes(entry.prompt_template_id),
+    )) {
+      const current = versionsById.get(template.prompt_template_id) ?? []
+      current.push(template.version)
+      versionsById.set(template.prompt_template_id, current)
+    }
+
+    expect(versionsById.get('agent-reply-to-post')).toEqual([4])
+    expect(versionsById.get('agent-create-post')).toEqual([3])
+    expect(versionsById.get('agent-reply-to-comment')).toEqual([4])
+    expect(versionsById.get('agent-chat-reply')).toEqual([6])
+    expect(versionsById.get('agent-private-chat-reply')).toEqual([2])
+    expect(versionsById.get('agent-proactive-dm-opening')).toEqual([2])
+  })
 })

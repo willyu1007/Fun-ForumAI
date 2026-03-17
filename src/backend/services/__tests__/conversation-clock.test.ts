@@ -108,9 +108,9 @@ describe('ConversationClock', () => {
             fallbackLevel: 'none',
             reasons: ['runtime_floor'],
             promptTemplateId: 'agent-chat-reply',
-            promptVersion: 4,
+            promptVersion: 6,
           },
-          promptRef: { id: 'agent-chat-reply', version: 4 },
+          promptRef: { id: 'agent-chat-reply', version: 6 },
         })),
       } as never,
       sseHub: {
@@ -131,11 +131,18 @@ describe('ConversationClock', () => {
             interests: ['runtime'],
             language: 'zh-CN',
           },
-          layers: {},
+          blocks: {
+            hard_control_block: 'hard',
+            compact_control_block: 'compact',
+            current_context_block: 'context',
+            memory_block: '',
+            soft_expression_block: '',
+          },
           audit: {
-            version: 'v1',
+            version: 'v2',
             scene: 'chat_room',
-            includedLayerIds: [],
+            includedBlockIds: [],
+            promptContract: 'compiled_blocks_v2',
             tokenEstimates: {},
             lintWarnings: [],
             trimReasons: [],
@@ -184,14 +191,14 @@ describe('ConversationClock', () => {
         providerId: 'dashscope-openai',
         modelId: 'qwen-plus',
         region: 'cn',
-        endpointId: 'default',
-        credentialId: 'cred-1',
-        fallbackLevel: 'none',
-        reasons: ['runtime_floor'],
-        promptTemplateId: 'agent-chat-reply',
-        promptVersion: 4,
-      },
-      promptRef: { id: 'agent-chat-reply', version: 4 },
+            endpointId: 'default',
+            credentialId: 'cred-1',
+            fallbackLevel: 'none',
+            reasons: ['runtime_floor'],
+            promptTemplateId: 'agent-chat-reply',
+            promptVersion: 6,
+          },
+      promptRef: { id: 'agent-chat-reply', version: 6 },
     }))
     const compose = vi.fn(async () => ({
       persona: {
@@ -200,11 +207,18 @@ describe('ConversationClock', () => {
         interests: ['runtime'],
         language: 'zh-CN',
       },
-      layers: {},
+      blocks: {
+        hard_control_block: 'hard',
+        compact_control_block: 'compact',
+        current_context_block: 'context',
+        memory_block: '',
+        soft_expression_block: '',
+      },
       audit: {
-        version: 'v1',
+        version: 'v2',
         scene: 'chat_room',
-        includedLayerIds: [],
+        includedBlockIds: [],
+        promptContract: 'compiled_blocks_v2',
         tokenEstimates: {},
         lintWarnings: [],
         trimReasons: [],
@@ -318,11 +332,8 @@ describe('ConversationClock', () => {
     }))
     expect(generateVisibleText).toHaveBeenCalledWith(expect.objectContaining({
       variables: expect.objectContaining({
-        public_projection_hint: '更适合 debate · 更偏即时反应',
-        signature_moves: '追问、反打',
-        shared_memory_summary: '最近一直在拆概念边界。',
-        role_hint: 'FOIL',
-        projection_updated_at: '2026-03-10T10:00:00.000Z',
+        room_name: 'General',
+        current_context_block: 'context',
       }),
     }))
   })
@@ -346,9 +357,9 @@ describe('ConversationClock', () => {
           fallbackLevel: 'none',
           reasons: ['runtime_floor'],
           promptTemplateId: 'agent-chat-reply',
-          promptVersion: 5,
+          promptVersion: 6,
         },
-        promptRef: { id: 'agent-chat-reply', version: 5 },
+        promptRef: { id: 'agent-chat-reply', version: 6 },
       }))
       const harness = createClockHarness({
         roomRepo: {
@@ -389,6 +400,34 @@ describe('ConversationClock', () => {
         } as never,
         agentRunRepo: {
           create: vi.fn(),
+        } as never,
+        promptOrchestrator: {
+          isSceneEnabled: vi.fn(() => true),
+          compose: vi.fn(async () => ({
+            persona: {
+              name: 'Agent One',
+              style: 'runtime-style',
+              interests: ['runtime'],
+              language: 'zh-CN',
+            },
+            blocks: {
+              hard_control_block: 'hard',
+              compact_control_block: 'compact',
+              current_context_block: 'context',
+              memory_block: '',
+              soft_expression_block: '',
+            },
+            audit: {
+              version: 'v2',
+              scene: 'chat_room',
+              includedBlockIds: [],
+              promptContract: 'compiled_blocks_v2',
+              tokenEstimates: {},
+              lintWarnings: [],
+              trimReasons: [],
+            },
+            runtimeEnvelope: null,
+          })),
         } as never,
         chatroomRuntimeContextBuilder: {
           build: vi.fn(async () => ({
@@ -441,9 +480,7 @@ describe('ConversationClock', () => {
       expect(generateVisibleText).toHaveBeenCalledWith(expect.objectContaining({
         promptRef: { id: 'agent-chat-reply', version: 6 },
         variables: expect.objectContaining({
-          local_intent_block: '[CHATROOM_LOCAL_INTENT]',
-          room_public_context_summary: '[ROOM_PUBLIC_CONTEXT_SUMMARY]',
-          director_goal: '',
+          room_name: 'General',
         }),
       }))
   })
@@ -470,9 +507,9 @@ describe('ConversationClock', () => {
           fallbackLevel: 'none',
           reasons: ['runtime_floor'],
           promptTemplateId: 'agent-chat-reply',
-          promptVersion: 5,
+          promptVersion: 6,
         },
-        promptRef: { id: 'agent-chat-reply', version: 5 },
+        promptRef: { id: 'agent-chat-reply', version: 6 },
       }))
       const harness = createClockHarness({
         roomRepo: {
@@ -514,6 +551,34 @@ describe('ConversationClock', () => {
         agentRunRepo: {
           create: vi.fn(),
         } as never,
+        promptOrchestrator: {
+          isSceneEnabled: vi.fn(() => true),
+          compose: vi.fn(async () => ({
+            persona: {
+              name: 'Agent One',
+              style: 'runtime-style',
+              interests: ['runtime'],
+              language: 'zh-CN',
+            },
+            blocks: {
+              hard_control_block: 'hard',
+              compact_control_block: 'compact',
+              current_context_block: 'context',
+              memory_block: '',
+              soft_expression_block: '',
+            },
+            audit: {
+              version: 'v2',
+              scene: 'chat_room',
+              includedBlockIds: [],
+              promptContract: 'compiled_blocks_v2',
+              tokenEstimates: {},
+              lintWarnings: [],
+              trimReasons: [],
+            },
+            runtimeEnvelope: null,
+          })),
+        } as never,
         chatroomRuntimeContextBuilder: {
           build: vi.fn(async () => {
             throw new Error('runtime row missing fields')
@@ -526,8 +591,7 @@ describe('ConversationClock', () => {
       expect(generateVisibleText).toHaveBeenCalledWith(expect.objectContaining({
         promptRef: { id: 'agent-chat-reply', version: 6 },
         variables: expect.objectContaining({
-          director_goal: '',
-          local_intent_block: expect.stringContaining('## Local Intent'),
+          room_name: 'General',
         }),
       }))
       expect(warnSpy).toHaveBeenCalled()
