@@ -1,0 +1,12 @@
+version: 1
+task_id: T-078
+project: main
+slug: guidance-platform-foundation
+status: archived
+updated: "2026-03-17"
+keywords:
+  - guidance
+  - backend
+  - foundation
+  - state
+  - api

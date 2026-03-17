@@ -1,0 +1,13 @@
+version: 1
+task_id: T-072
+project: main
+slug: persona-rollout-gate-evidence-remediation
+status: archived
+updated: "2026-03-17"
+keywords:
+  - persona
+  - rollout
+  - gate
+  - evidence
+  - blind-review
+  - guardrail

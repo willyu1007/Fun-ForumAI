@@ -31,3 +31,4 @@
 - `glm/kimi/minimax/tencent/ark` 使用官方 upstream `model_id` 收口到现有 voice line/profile。
 - visible profiles 的 admitted candidate 与 credential pools、provider admission metadata 完整对齐。
 - shadow review evidence 只聚合目标 agent 的 observability / identity write / fallback 数据。
+- **live provider connectivity**：在 keys 配齐后执行各 provider 真实连通性与主备回退验收（04 Pending 所列 model 列表）。

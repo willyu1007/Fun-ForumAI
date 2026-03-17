@@ -1,0 +1,14 @@
+version: 1
+task_id: T-101
+project: main
+slug: director-report-history-lifecycle-and-segmentation
+status: archived
+updated: "2026-03-17"
+keywords:
+  - reporting
+  - analytics
+  - current-window
+  - historical
+  - scene-pool
+  - archive
+  - retention

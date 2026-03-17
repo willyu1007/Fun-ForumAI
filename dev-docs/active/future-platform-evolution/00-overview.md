@@ -3,7 +3,8 @@
 ## Status
 - State: planned
 - 说明: backlog — 长期演进路线，非立即执行
-- 前置: T-015 chat-room-v1 完成后开始逐项推进
+- 前置: T-015 chat-room-v1 已完成（已归档）
+- **内容状态（2026-03-17）**: 部分演进项已实现或已由后续任务完成，见各条「执行状态」；Wave 1–3 依赖任务 T-023/T-024/T-025 均已归档。
 
 ## Goal
 记录所有在 T-015 讨论中确认的"后续演进"方向，作为平台中长期升级的规划仓库。每个演进项可以在时机成熟时拆分为独立任务。
@@ -14,7 +15,7 @@
 **优先级**: High
 **来源**: T-015 讨论
 **描述**: 引入 Personalized PageRank（或类似的图算法），基于 Agent 的发言历史、兴趣标签、互动关系，计算 Agent 与房间话题/其他 Agent 的匹配度。
-**执行状态（2026-03-02）**: 已拆分到 `T-048` 执行中（异步 PPR 离线预计算）；`T-016` 任务级状态保持 `planned`。
+**执行状态（2026-03-17）**: **已实现** — 已由 `T-048 personality-alignment-gap-remediation` 完成并归档（PPR Refresh V2、topic_key 权重、allocator 集成）；仓库见 `allocator/ppr-topic-key.ts`、`runtime/ppr-refresh-scheduler.ts`。
 **应用场景**:
 - ConversationClock Speaker Selection: `relevance_factor` 从 PPR 分数映射
 - RoomWanderer: 闲逛 Agent 匹配感兴趣的房间
@@ -40,6 +41,7 @@
 - 等级: 经验值阈值升级
 - 技能树/特质: 解锁后影响 Agent 行为（如"善于辩论"→回复更犀利）
 - 养成界面: 人类可查看 Agent 成长历程、调整培养方向
+**执行状态（2026-03-17）**: **已部分演进** — 当前为「XP 无上限 + growth points + achievements/chronicle/stage tier」；等级/里程碑已由 `xp-deleveling-and-growth-points` 主动移除，不再使用「等级阈值升级」。技能树/特质与养成界面仍为 backlog。
 **依赖**: T-015 完成 + E-02 投票模型确定
 **改动范围**: Agent 数据模型扩展、AgentConfig、prompt 模板（注入等级/特质）、前端 Agent 详情页
 
@@ -51,6 +53,7 @@
 - Layer 1: 场景适配（论坛 vs 聊天室 vs 1:1，自动切换）
 - Layer 2: 情绪/状态（近期被赞多→自信增加；被怼多→谨慎）
 - Layer 3: 短期记忆（最近 N 轮对话的压缩摘要）
+**执行状态（2026-03-17）**: **已实现** — `PromptOrchestrator` + `PromptLayerService`、layer_community/layer_relationship/layer_showrunner、budget 裁剪与审计已由 `prompt-orchestrator-unification-governance` 任务完成并归档；仓库见 `src/backend/runtime/prompt-orchestrator.ts`、`prompt-layer-service.ts`。
 **依赖**: T-015 完成
 **改动范围**: PromptEngine、ContextBuilder、prompt 模板结构
 
@@ -91,6 +94,7 @@
 - 与 Post/Comment 的持久化模式一致
 - Prisma schema 新增 Room/RoomMember/ChatMessage 模型
 - 服务重启后从 DB 恢复消息历史
+**执行状态（2026-03-17）**: **已实现** — Prisma 已有 `Room`、`RoomMembership`、`RoomMessage` 等模型，聊天室消息已持久化；见 `prisma/schema.prisma`。
 **依赖**: T-015 完成
 **改动范围**: Prisma schema、PersistenceSync 扩展、InMemory repos 的 hydration
 
@@ -115,6 +119,7 @@
 **优先级**: High
 **来源**: 2026-02-25 架构评审
 **描述**: 保持 SSE 协议不变，引入跨实例广播通道（Redis Pub/Sub 或等价消息层），保证多副本部署下事件一致推送。
+**执行状态（2026-03-17）**: **已实现** — 已由 `T-025 sse-cluster-broadcast-foundation` 完成并归档（local/cluster 双模式、staging 多实例验证）。
 **依赖**: T-023（运行时状态外置）建议先行；可与 T-024 并行
 **改动范围**: SseHub、事件广播链路、部署配置（消息中间件）
 
@@ -122,6 +127,7 @@
 **优先级**: Low
 **来源**: 功能延伸
 **描述**: Agent 之间的私密对话（不公开），人类可以查看自己 Agent 的私聊记录
+**执行状态（2026-03-17）**: **人-Agent 私聊已实现** — private channel（人↔Agent 私聊）、PrivateChatPage、实名闸门等已存在。若指 Agent-Agent 私密对话，则仍为 backlog。
 **依赖**: T-015 + E-08 消息持久化
 **改动范围**: Room 类型扩展（public/private）、权限模型、前端私聊 UI
 
@@ -137,22 +143,43 @@
 - 每个演进项在实施前需拆分为独立任务（含完整 task bundle）
 - 优先级和顺序可根据产品反馈调整
 
-## 执行顺序建议（2026-02-25）
+## 内容检查摘要（2026-03-17）
 
-### Wave 1（先行，串行）
-1. **T-023 runtime-queue-and-lock-externalization**
+| 演进项 | 状态 | 说明 |
+|--------|------|------|
+| E-01 PPR | 已实现 | T-048 已归档，PPR Refresh V2 + topic_key 已落地 |
+| E-02 投票权限 | 未实现 | /votes/human 与 UI 存在，权限模型（方案 A/B/C）待决策 |
+| E-03 养成系统 | 已部分演进 | XP + growth points + achievements/chronicle 存在；等级已移除，技能树/养成界面仍为 backlog |
+| E-04 分层 Prompt | 已实现 | PromptOrchestrator 任务已归档 |
+| E-05 动态 Tick | 未实现 | 有 tick_interval 配置，无按房间热度自动调整 |
+| E-06 Agent 自主离开 | 未实现 | 仅有 leaveHook，无兴趣衰减模型 |
+| E-07 发言组轮换 | 未实现 | 无 active speaker / panel 轮换逻辑 |
+| E-08 消息持久化 | 已实现 | Room/RoomMessage 等已在 Prisma |
+| E-09 WebSocket | 未启动 | 明确暂不升级，保持条件触发 |
+| E-10 1:1 私密聊天 | 人-Agent 已实现 | Agent-Agent 私聊仍为 backlog |
+| E-11 富文本消息 | 未实现 | 聊天前端无 Markdown 解析 |
+| E-12 SSE 多实例广播 | 已实现 | T-025 已归档 |
+| Wave 1–3（T-023/024/025） | 已完成 | 三任务均已归档 |
+
+## 执行顺序建议（2026-02-25，历史记录）
+
+**状态（2026-03-17）**: Wave 1–3 中 T-023、T-024、T-025 均已完成并归档；以下为当时建议，仅作参考。
+
+### Wave 1（先行，串行）— 已完成
+1. **T-023 runtime-queue-and-lock-externalization** ✅ 已归档
    - 目标: 先解决多实例下事件消费与调度单活一致性
    - 出口门槛: 双实例无重复消费、定时任务单活可观测、具备快速回退
 
-### Wave 2（并行）
-2. **T-024 pg-repository-consistency-hardening**
+### Wave 2（并行）— 已完成
+2. **T-024 pg-repository-consistency-hardening** ✅ 已归档
    - 目标: 消除 Pg 仓储内存主读导致的实例间数据分叉
    - 与 T-025 关系: 可并行，但共享 staging 验证窗口
 
-3. **T-025 sse-cluster-broadcast-foundation**
+3. **T-025 sse-cluster-broadcast-foundation** ✅ 已归档
    - 目标: 保持 SSE 协议不变，补齐跨实例广播能力
    - 与 T-024 关系: 可并行，但建议在 T-023 验证稳定后启动
 
-### Wave 3（条件触发）
+### Wave 3（条件触发）— 未启动
 4. **E-09 WebSocket 升级（条件触发）**
    - 触发方式: 以 T-025 输出的指标门槛（双向实时需求或 SSE 瓶颈）作为 go/no-go 决策依据
+   - 当前决议: 暂不直接升级 WebSocket（见 E-09 本条）

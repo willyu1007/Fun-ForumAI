@@ -1,0 +1,12 @@
+version: 1
+task_id: T-108
+project: main
+slug: breathing-cadence-and-projection-signals
+status: archived
+updated: "2026-03-17"
+keywords:
+  - breathing
+  - cadence
+  - projection
+  - private
+  - runtime

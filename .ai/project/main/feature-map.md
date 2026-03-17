@@ -33,11 +33,11 @@ Project: `main`
 | T-021 forum-card-layout-hot-v2 | archived | dev-docs/archive/forum-card-layout-hot-v2 |
 | T-022 human-agent-private-channel | archived | dev-docs/archive/human-agent-private-channel |
 | T-023 runtime-queue-and-lock-externalization | archived | dev-docs/archive/runtime-queue-and-lock-externalization |
-| T-024 pg-repository-consistency-hardening | in-progress | dev-docs/active/pg-repository-consistency-hardening |
+| T-024 pg-repository-consistency-hardening | archived | dev-docs/archive/pg-repository-consistency-hardening |
 | T-025 sse-cluster-broadcast-foundation | archived | dev-docs/archive/sse-cluster-broadcast-foundation |
-| T-026 k8s-local-cloud-overlays-bootstrap | in-progress | dev-docs/active/k8s-local-cloud-overlays-bootstrap |
+| T-026 k8s-local-cloud-overlays-bootstrap | archived | dev-docs/archive/k8s-local-cloud-overlays-bootstrap |
 | T-027 typecheck-remediation-baseline | archived | dev-docs/archive/typecheck-remediation-baseline |
-| T-028 app-adaptation-discussion | in-progress | dev-docs/active/app-adaptation-discussion |
+| T-028 app-adaptation-discussion | archived | dev-docs/archive/app-adaptation-discussion |
 | T-029 mobile-ux-hardening | archived | dev-docs/archive/mobile-ux-hardening |
 | T-030 mobile-navigation-and-routing | archived | dev-docs/archive/mobile-navigation-and-routing |
 | T-031 mobile-test-automation | archived | dev-docs/archive/mobile-test-automation |
@@ -66,18 +66,18 @@ Project: `main`
 | T-075 chatroom-persona-projection-and-ecosystem | archived | dev-docs/archive/chatroom-persona-projection-and-ecosystem |
 | T-081 chatroom-ux-audit-remediation | archived | dev-docs/archive/chatroom-ux-audit-remediation |
 | T-082 chatroom-live-experience-optimization | archived | dev-docs/archive/chatroom-live-experience-optimization |
-| T-084 public-web-chinese-first-content-presentation | in-progress | dev-docs/active/public-web-chinese-first-content-presentation |
-| T-086 repo-baseline-governance-and-ui-remediation | in-progress | dev-docs/active/repo-baseline-governance-and-ui-remediation |
-| T-104 architecture-decomposition-eight-priority-files | in-progress | dev-docs/active/architecture-decomposition-eight-priority-files |
+| T-084 public-web-chinese-first-content-presentation | archived | dev-docs/archive/public-web-chinese-first-content-presentation |
+| T-086 repo-baseline-governance-and-ui-remediation | archived | dev-docs/archive/repo-baseline-governance-and-ui-remediation |
+| T-104 architecture-decomposition-eight-priority-files | archived | dev-docs/archive/architecture-decomposition-eight-priority-files |
 | T-109 compatibility-cleanup-wave1-wave2 | archived | dev-docs/archive/compatibility-cleanup-wave1-wave2 |
 | T-110 compatibility-cleanup-wave3-runtime-fallbacks | archived | dev-docs/archive/compatibility-cleanup-wave3-runtime-fallbacks |
 | T-111 compatibility-cleanup-final-pass | archived | dev-docs/archive/compatibility-cleanup-final-pass |
 | T-112 compatibility-cleanup-test-runtime-followup | archived | dev-docs/archive/compatibility-cleanup-test-runtime-followup |
-| T-113 compatibility-cleanup-pr-review-followup | done | dev-docs/active/compatibility-cleanup-pr-review-followup |
+| T-113 compatibility-cleanup-pr-review-followup | archived | dev-docs/archive/compatibility-cleanup-pr-review-followup |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
-| T-902 chronicle-chapter-summary-alignment | in-progress | dev-docs/active/chronicle-chapter-summary-alignment |
-| T-903 owner-mindset-residual-risk-closure | in-progress | dev-docs/active/owner-mindset-residual-risk-closure |
-| T-904 code-review-audit-remediation | in-progress | dev-docs/active/code-review-audit-remediation |
+| T-902 chronicle-chapter-summary-alignment | archived | dev-docs/archive/chronicle-chapter-summary-alignment |
+| T-903 owner-mindset-residual-risk-closure | archived | dev-docs/archive/owner-mindset-residual-risk-closure |
+| T-904 code-review-audit-remediation | archived | dev-docs/archive/code-review-audit-remediation |
 | T-906 prompt-budget-v2-runtime-gap-remediation | archived | dev-docs/archive/prompt-budget-v2-runtime-gap-remediation |
 
 ### F-010 Agent Stats System
@@ -92,27 +92,27 @@ Project: `main`
 
 | Task | Status | Dev Docs |
 | --- | --- | --- |
-| T-045 personality-foundation-input-identity-audit | in-progress | dev-docs/active/personality-foundation-input-identity-audit |
-| T-046 prompt-orchestrator-unification-governance | in-progress | dev-docs/active/prompt-orchestrator-unification-governance |
+| T-045 personality-foundation-input-identity-audit | archived | dev-docs/archive/personality-foundation-input-identity-audit |
+| T-046 prompt-orchestrator-unification-governance | archived | dev-docs/archive/prompt-orchestrator-unification-governance |
 | T-047 achievement-chronicle-experience-v1 | archived | dev-docs/archive/achievement-chronicle-experience-v1 |
-| T-048 personality-alignment-gap-remediation | in-progress | dev-docs/active/personality-alignment-gap-remediation |
-| T-059 xp-deleveling-and-growth-points | in-progress | dev-docs/active/xp-deleveling-and-growth-points |
+| T-048 personality-alignment-gap-remediation | archived | dev-docs/archive/personality-alignment-gap-remediation |
+| T-059 xp-deleveling-and-growth-points | archived | dev-docs/archive/xp-deleveling-and-growth-points |
 | T-062 persona-provider-alignment-program | archived | dev-docs/archive/persona-provider-alignment-program |
 | T-063 persona-seed-voice-contract-v1 | archived | dev-docs/archive/persona-seed-voice-contract-v1 |
 | T-064 llm-gateway-routing-profiles-v1 | archived | dev-docs/archive/llm-gateway-routing-profiles-v1 |
 | T-065 persona-projection-overlay-runtime-v1 | archived | dev-docs/archive/persona-projection-overlay-runtime-v1 |
 | T-066 persona-observability-eval-v1 | archived | dev-docs/archive/persona-observability-eval-v1 |
 | T-067 control-context-plane-alignment-program | archived | dev-docs/archive/control-context-plane-alignment-program |
-| T-068 llm-control-plane-runtime-v1 | in-progress | dev-docs/active/llm-control-plane-runtime-v1 |
+| T-068 llm-control-plane-runtime-v1 | archived | dev-docs/archive/llm-control-plane-runtime-v1 |
 | T-069 context-memory-plane-runtime-v1 | archived | dev-docs/archive/context-memory-plane-runtime-v1 |
 | T-070 persona-rollout-shadow-review | archived | dev-docs/archive/persona-rollout-shadow-review |
 | T-071 local-kind-runtime-consistency-remediation | archived | dev-docs/archive/local-kind-runtime-consistency-remediation |
-| T-072 persona-rollout-gate-evidence-remediation | in-progress | dev-docs/active/persona-rollout-gate-evidence-remediation |
+| T-072 persona-rollout-gate-evidence-remediation | archived | dev-docs/archive/persona-rollout-gate-evidence-remediation |
 | T-076 persona-runtime-integration-audit | archived | dev-docs/archive/persona-runtime-integration-audit |
-| T-103 personality-compiler-inference-profile-v1 | done | dev-docs/active/personality-compiler-inference-profile-v1 |
-| T-114 prompt-budget-v2-control-compiler-contract | done | dev-docs/active/prompt-budget-v2-control-compiler-contract |
-| T-115 prompt-budget-v2-memory-tiering-authority | done | dev-docs/active/prompt-budget-v2-memory-tiering-authority |
-| T-116 prompt-budget-v2-sensitive-scene-cutover | done | dev-docs/active/prompt-budget-v2-sensitive-scene-cutover |
+| T-103 personality-compiler-inference-profile-v1 | archived | dev-docs/archive/personality-compiler-inference-profile-v1 |
+| T-114 prompt-budget-v2-control-compiler-contract | archived | dev-docs/archive/prompt-budget-v2-control-compiler-contract |
+| T-115 prompt-budget-v2-memory-tiering-authority | archived | dev-docs/archive/prompt-budget-v2-memory-tiering-authority |
+| T-116 prompt-budget-v2-sensitive-scene-cutover | archived | dev-docs/archive/prompt-budget-v2-sensitive-scene-cutover |
 | T-905 prompt-budget-v2-cohort-signoff-followup | archived | dev-docs/archive/prompt-budget-v2-cohort-signoff-followup |
 
 ### F-030 Mobile Runtime Delivery
@@ -126,9 +126,9 @@ Project: `main`
 
 | Task | Status | Dev Docs |
 | --- | --- | --- |
-| T-077 guidance-onboarding-v1-master | in-progress | dev-docs/active/guidance-onboarding-v1-master |
-| T-078 guidance-platform-foundation | in-progress | dev-docs/active/guidance-platform-foundation |
-| T-079 guidance-web-core-experience | in-progress | dev-docs/active/guidance-web-core-experience |
+| T-077 guidance-onboarding-v1-master | archived | dev-docs/archive/guidance-onboarding-v1-master |
+| T-078 guidance-platform-foundation | archived | dev-docs/archive/guidance-platform-foundation |
+| T-079 guidance-web-core-experience | archived | dev-docs/archive/guidance-web-core-experience |
 | T-080 guidance-recall-and-observability | archived | dev-docs/archive/guidance-recall-and-observability |
 
 ### F-050 Risk Control & Review Launch Track
@@ -142,7 +142,7 @@ Project: `main`
 | T-091 hot-topic-policy-and-user-transparency | archived | dev-docs/archive/hot-topic-policy-and-user-transparency |
 | T-092 public-policy-and-help-center-surfaces | archived | dev-docs/archive/public-policy-and-help-center-surfaces |
 | T-093 hot-topic-ops-dashboard-and-alerting | archived | dev-docs/archive/hot-topic-ops-dashboard-and-alerting |
-| T-097 mainland-launch-compliance-audit-followup | in-progress | dev-docs/active/mainland-launch-compliance-audit-followup |
+| T-097 mainland-launch-compliance-audit-followup | archived | dev-docs/archive/mainland-launch-compliance-audit-followup |
 
 ### F-060 Public Scene Pool & Director Orchestration
 
@@ -150,19 +150,19 @@ Project: `main`
 | --- | --- | --- |
 | T-094 public-director-boundary-and-scene-contract | archived | dev-docs/archive/public-director-boundary-and-scene-contract |
 | T-095 scene-selector-scheduled-post-forum-entry | archived | dev-docs/archive/scene-selector-scheduled-post-forum-entry |
-| T-096 director-runtime-state-and-chatroom-unification | done | dev-docs/active/director-runtime-state-and-chatroom-unification |
-| T-098 director-orchestration-closure-audit-remediation | done | dev-docs/active/director-orchestration-closure-audit-remediation |
-| T-099 scene-pool-authoring-schema-v2-migration | done | dev-docs/active/scene-pool-authoring-schema-v2-migration |
-| T-100 scene-pool-authoring-v2-hardening-and-e2e-followup | done | dev-docs/active/scene-pool-authoring-v2-hardening-and-e2e-followup |
-| T-101 director-report-history-lifecycle-and-segmentation | done | dev-docs/active/director-report-history-lifecycle-and-segmentation |
+| T-096 director-runtime-state-and-chatroom-unification | archived | dev-docs/archive/director-runtime-state-and-chatroom-unification |
+| T-098 director-orchestration-closure-audit-remediation | archived | dev-docs/archive/director-orchestration-closure-audit-remediation |
+| T-099 scene-pool-authoring-schema-v2-migration | archived | dev-docs/archive/scene-pool-authoring-schema-v2-migration |
+| T-100 scene-pool-authoring-v2-hardening-and-e2e-followup | archived | dev-docs/archive/scene-pool-authoring-v2-hardening-and-e2e-followup |
+| T-101 director-report-history-lifecycle-and-segmentation | archived | dev-docs/archive/director-report-history-lifecycle-and-segmentation |
 | T-102 pr-13-merge-readiness-remediation | archived | dev-docs/archive/pr-13-merge-readiness-remediation |
 
 ### F-070 Owner Nurture & Life Overview
 
 | Task | Status | Dev Docs |
 | --- | --- | --- |
-| T-105 owner-nurture-life-overview-master | in-progress | dev-docs/active/owner-nurture-life-overview-master |
-| T-106 owner-life-overview-surface | in-progress | dev-docs/active/owner-life-overview-surface |
-| T-107 chronicle-story-beat-seal-and-suggestions | in-progress | dev-docs/active/chronicle-story-beat-seal-and-suggestions |
-| T-108 breathing-cadence-and-projection-signals | in-progress | dev-docs/active/breathing-cadence-and-projection-signals |
+| T-105 owner-nurture-life-overview-master | archived | dev-docs/archive/owner-nurture-life-overview-master |
+| T-106 owner-life-overview-surface | archived | dev-docs/archive/owner-life-overview-surface |
+| T-107 chronicle-story-beat-seal-and-suggestions | archived | dev-docs/archive/chronicle-story-beat-seal-and-suggestions |
+| T-108 breathing-cadence-and-projection-signals | archived | dev-docs/archive/breathing-cadence-and-projection-signals |
 <!-- AUTO-GENERATED:END feature-map -->

@@ -8,30 +8,30 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 118 (planned: 1, in-progress: 24, blocked: 0, done: 10, archived: 83)
+- Tasks: 118 (planned: 1, in-progress: 1, blocked: 0, done: 0, archived: 116)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
-| T-114 prompt-budget-v2-control-compiler-contract | done | F-020 | dev-docs/active/prompt-budget-v2-control-compiler-contract |
-| T-115 prompt-budget-v2-memory-tiering-authority | done | F-020 | dev-docs/active/prompt-budget-v2-memory-tiering-authority |
-| T-116 prompt-budget-v2-sensitive-scene-cutover | done | F-020 | dev-docs/active/prompt-budget-v2-sensitive-scene-cutover |
-| T-905 prompt-budget-v2-cohort-signoff-followup | archived | F-020 | dev-docs/archive/prompt-budget-v2-cohort-signoff-followup |
-| T-906 prompt-budget-v2-runtime-gap-remediation | archived | F-000 | dev-docs/archive/prompt-budget-v2-runtime-gap-remediation |
-| T-105 owner-nurture-life-overview-master | in-progress | F-070 | dev-docs/active/owner-nurture-life-overview-master |
-| T-106 owner-life-overview-surface | in-progress | F-070 | dev-docs/active/owner-life-overview-surface |
-| T-107 chronicle-story-beat-seal-and-suggestions | in-progress | F-070 | dev-docs/active/chronicle-story-beat-seal-and-suggestions |
-| T-108 breathing-cadence-and-projection-signals | in-progress | F-070 | dev-docs/active/breathing-cadence-and-projection-signals |
-| T-109 compatibility-cleanup-wave1-wave2 | archived | F-000 | dev-docs/archive/compatibility-cleanup-wave1-wave2 |
-| T-110 compatibility-cleanup-wave3-runtime-fallbacks | archived | F-000 | dev-docs/archive/compatibility-cleanup-wave3-runtime-fallbacks |
-| T-111 compatibility-cleanup-final-pass | archived | F-000 | dev-docs/archive/compatibility-cleanup-final-pass |
-| T-112 compatibility-cleanup-test-runtime-followup | archived | F-000 | dev-docs/archive/compatibility-cleanup-test-runtime-followup |
-| T-113 compatibility-cleanup-pr-review-followup | done | F-000 | dev-docs/active/compatibility-cleanup-pr-review-followup |
-| T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-000 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
-| T-902 chronicle-chapter-summary-alignment | in-progress | F-000 | dev-docs/active/chronicle-chapter-summary-alignment |
-| T-903 owner-mindset-residual-risk-closure | in-progress | F-000 | dev-docs/active/owner-mindset-residual-risk-closure |
-| T-904 code-review-audit-remediation | in-progress | F-000 | dev-docs/active/code-review-audit-remediation |
-| T-094 public-director-boundary-and-scene-contract | archived | F-060 | dev-docs/archive/public-director-boundary-and-scene-contract |
-| T-095 scene-selector-scheduled-post-forum-entry | archived | F-060 | dev-docs/archive/scene-selector-scheduled-post-forum-entry |
+| T-024 pg-repository-consistency-hardening | archived | F-000 | dev-docs/archive/pg-repository-consistency-hardening |
+| T-026 k8s-local-cloud-overlays-bootstrap | archived | F-000 | dev-docs/archive/k8s-local-cloud-overlays-bootstrap |
+| T-028 app-adaptation-discussion | archived | F-000 | dev-docs/archive/app-adaptation-discussion |
+| T-045 personality-foundation-input-identity-audit | archived | F-020 | dev-docs/archive/personality-foundation-input-identity-audit |
+| T-046 prompt-orchestrator-unification-governance | archived | F-020 | dev-docs/archive/prompt-orchestrator-unification-governance |
+| T-048 personality-alignment-gap-remediation | archived | F-020 | dev-docs/archive/personality-alignment-gap-remediation |
+| T-059 xp-deleveling-and-growth-points | archived | F-020 | dev-docs/archive/xp-deleveling-and-growth-points |
+| T-068 llm-control-plane-runtime-v1 | archived | F-020 | dev-docs/archive/llm-control-plane-runtime-v1 |
+| T-072 persona-rollout-gate-evidence-remediation | archived | F-020 | dev-docs/archive/persona-rollout-gate-evidence-remediation |
+| T-077 guidance-onboarding-v1-master | archived | F-040 | dev-docs/archive/guidance-onboarding-v1-master |
+| T-078 guidance-platform-foundation | archived | F-040 | dev-docs/archive/guidance-platform-foundation |
+| T-079 guidance-web-core-experience | archived | F-040 | dev-docs/archive/guidance-web-core-experience |
+| T-084 public-web-chinese-first-content-presentation | archived | F-000 | dev-docs/archive/public-web-chinese-first-content-presentation |
+| T-086 repo-baseline-governance-and-ui-remediation | archived | F-000 | dev-docs/archive/repo-baseline-governance-and-ui-remediation |
+| T-096 director-runtime-state-and-chatroom-unification | archived | F-060 | dev-docs/archive/director-runtime-state-and-chatroom-unification |
+| T-097 mainland-launch-compliance-audit-followup | archived | F-050 | dev-docs/archive/mainland-launch-compliance-audit-followup |
+| T-098 director-orchestration-closure-audit-remediation | archived | F-060 | dev-docs/archive/director-orchestration-closure-audit-remediation |
+| T-099 scene-pool-authoring-schema-v2-migration | archived | F-060 | dev-docs/archive/scene-pool-authoring-schema-v2-migration |
+| T-100 scene-pool-authoring-v2-hardening-and-e2e-followup | archived | F-060 | dev-docs/archive/scene-pool-authoring-v2-hardening-and-e2e-followup |
+| T-101 director-report-history-lifecycle-and-segmentation | archived | F-060 | dev-docs/archive/director-report-history-lifecycle-and-segmentation |
 <!-- AUTO-GENERATED:END dashboard -->

@@ -335,11 +335,11 @@ tasks:
     updated: 2026-02-26
   - id: T-024
     slug: pg-repository-consistency-hardening
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/pg-repository-consistency-hardening
-    updated: 2026-02-27
+    dev_docs_path: dev-docs/archive/pg-repository-consistency-hardening
+    updated: 2026-03-17
   - id: T-025
     slug: sse-cluster-broadcast-foundation
     status: archived
@@ -349,11 +349,11 @@ tasks:
     updated: 2026-02-27
   - id: T-026
     slug: k8s-local-cloud-overlays-bootstrap
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/k8s-local-cloud-overlays-bootstrap
-    updated: 2026-02-26
+    dev_docs_path: dev-docs/archive/k8s-local-cloud-overlays-bootstrap
+    updated: 2026-03-17
   - id: T-027
     slug: typecheck-remediation-baseline
     status: archived
@@ -363,11 +363,11 @@ tasks:
     updated: 2026-02-26
   - id: T-028
     slug: app-adaptation-discussion
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/app-adaptation-discussion
-    updated: 2026-02-26
+    dev_docs_path: dev-docs/archive/app-adaptation-discussion
+    updated: 2026-03-17
   - id: T-029
     slug: mobile-ux-hardening
     status: archived
@@ -488,22 +488,22 @@ tasks:
     updated: 2026-03-12
   - id: T-045
     slug: personality-foundation-input-identity-audit
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-020
-    dev_docs_path: dev-docs/active/personality-foundation-input-identity-audit
-    updated: 2026-02-28
+    dev_docs_path: dev-docs/archive/personality-foundation-input-identity-audit
+    updated: 2026-03-17
   - id: T-046
     slug: prompt-orchestrator-unification-governance
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-021
-    dev_docs_path: dev-docs/active/prompt-orchestrator-unification-governance
-    updated: 2026-03-01
+    dev_docs_path: dev-docs/archive/prompt-orchestrator-unification-governance
+    updated: 2026-03-17
   - id: T-047
     slug: achievement-chronicle-experience-v1
     status: archived
@@ -515,11 +515,11 @@ tasks:
     updated: 2026-03-12
   - id: T-048
     slug: personality-alignment-gap-remediation
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-020
-    dev_docs_path: dev-docs/active/personality-alignment-gap-remediation
-    updated: 2026-03-02
+    dev_docs_path: dev-docs/archive/personality-alignment-gap-remediation
+    updated: 2026-03-17
   - id: T-049
     slug: rich-communities-delivery-program
     status: archived
@@ -592,13 +592,13 @@ tasks:
     updated: 2026-03-12
   - id: T-059
     slug: xp-deleveling-and-growth-points
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-023
-    dev_docs_path: dev-docs/active/xp-deleveling-and-growth-points
-    updated: 2026-03-06
+    dev_docs_path: dev-docs/archive/xp-deleveling-and-growth-points
+    updated: 2026-03-17
   - id: T-060
     slug: expo-development-build-foundation
     status: archived
@@ -677,13 +677,13 @@ tasks:
     updated: 2026-03-12
   - id: T-068
     slug: llm-control-plane-runtime-v1
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-027
-    dev_docs_path: dev-docs/active/llm-control-plane-runtime-v1
-    updated: 2026-03-09
+    dev_docs_path: dev-docs/archive/llm-control-plane-runtime-v1
+    updated: 2026-03-17
   - id: T-069
     slug: context-memory-plane-runtime-v1
     status: archived
@@ -713,13 +713,13 @@ tasks:
     updated: 2026-03-12
   - id: T-072
     slug: persona-rollout-gate-evidence-remediation
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-029
-    dev_docs_path: dev-docs/active/persona-rollout-gate-evidence-remediation
-    updated: 2026-03-09
+    dev_docs_path: dev-docs/archive/persona-rollout-gate-evidence-remediation
+    updated: 2026-03-17
   - id: T-073
     slug: chatroom-watchability-foundation
     status: archived
@@ -754,31 +754,31 @@ tasks:
     updated: 2026-03-10
   - id: T-077
     slug: guidance-onboarding-v1-master
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-040
     requirement_ids:
       - R-040
-    dev_docs_path: dev-docs/active/guidance-onboarding-v1-master
-    updated: 2026-03-10
+    dev_docs_path: dev-docs/archive/guidance-onboarding-v1-master
+    updated: 2026-03-17
   - id: T-078
     slug: guidance-platform-foundation
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-040
     requirement_ids:
       - R-041
-    dev_docs_path: dev-docs/active/guidance-platform-foundation
-    updated: 2026-03-10
+    dev_docs_path: dev-docs/archive/guidance-platform-foundation
+    updated: 2026-03-17
   - id: T-079
     slug: guidance-web-core-experience
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-040
     requirement_ids:
       - R-042
-    dev_docs_path: dev-docs/active/guidance-web-core-experience
-    updated: 2026-03-10
+    dev_docs_path: dev-docs/archive/guidance-web-core-experience
+    updated: 2026-03-17
   - id: T-080
     slug: guidance-recall-and-observability
     status: archived
@@ -804,18 +804,18 @@ tasks:
     updated: 2026-03-12
   - id: T-084
     slug: public-web-chinese-first-content-presentation
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/public-web-chinese-first-content-presentation
-    updated: 2026-03-12
+    dev_docs_path: dev-docs/archive/public-web-chinese-first-content-presentation
+    updated: 2026-03-17
   - id: T-086
     slug: repo-baseline-governance-and-ui-remediation
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/repo-baseline-governance-and-ui-remediation
-    updated: 2026-03-12
+    dev_docs_path: dev-docs/archive/repo-baseline-governance-and-ui-remediation
+    updated: 2026-03-17
   - id: T-087
     slug: mainland-launch-safety-master
     status: archived
@@ -897,16 +897,16 @@ tasks:
     updated: 2026-03-15
   - id: T-096
     slug: director-runtime-state-and-chatroom-unification
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-060
     requirement_ids:
       - R-062
-    dev_docs_path: dev-docs/active/director-runtime-state-and-chatroom-unification
-    updated: 2026-03-14
+    dev_docs_path: dev-docs/archive/director-runtime-state-and-chatroom-unification
+    updated: 2026-03-17
   - id: T-097
     slug: mainland-launch-compliance-audit-followup
-    status: in-progress
+    status: archived
     milestone_id: M-010
     feature_id: F-050
     requirement_ids:
@@ -914,46 +914,46 @@ tasks:
       - R-051
       - R-052
       - R-053
-    dev_docs_path: dev-docs/active/mainland-launch-compliance-audit-followup
-    updated: 2026-03-13
+    dev_docs_path: dev-docs/archive/mainland-launch-compliance-audit-followup
+    updated: 2026-03-17
   - id: T-098
     slug: director-orchestration-closure-audit-remediation
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-060
     requirement_ids:
       - R-060
       - R-061
       - R-062
-    dev_docs_path: dev-docs/active/director-orchestration-closure-audit-remediation
-    updated: 2026-03-14
+    dev_docs_path: dev-docs/archive/director-orchestration-closure-audit-remediation
+    updated: 2026-03-17
   - id: T-099
     slug: scene-pool-authoring-schema-v2-migration
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-060
     requirement_ids:
       - R-063
-    dev_docs_path: dev-docs/active/scene-pool-authoring-schema-v2-migration
-    updated: 2026-03-14
+    dev_docs_path: dev-docs/archive/scene-pool-authoring-schema-v2-migration
+    updated: 2026-03-17
   - id: T-100
     slug: scene-pool-authoring-v2-hardening-and-e2e-followup
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-060
     requirement_ids:
       - R-063
-    dev_docs_path: dev-docs/active/scene-pool-authoring-v2-hardening-and-e2e-followup
-    updated: 2026-03-14
+    dev_docs_path: dev-docs/archive/scene-pool-authoring-v2-hardening-and-e2e-followup
+    updated: 2026-03-17
   - id: T-101
     slug: director-report-history-lifecycle-and-segmentation
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-060
     requirement_ids:
       - R-064
-    dev_docs_path: dev-docs/active/director-report-history-lifecycle-and-segmentation
-    updated: 2026-03-14
+    dev_docs_path: dev-docs/archive/director-report-history-lifecycle-and-segmentation
+    updated: 2026-03-17
   - id: T-102
     slug: pr-13-merge-readiness-remediation
     status: archived
@@ -965,60 +965,60 @@ tasks:
     updated: 2026-03-14
   - id: T-103
     slug: personality-compiler-inference-profile-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-031
       - R-027
       - R-029
-    dev_docs_path: dev-docs/active/personality-compiler-inference-profile-v1
-    updated: 2026-03-15
+    dev_docs_path: dev-docs/archive/personality-compiler-inference-profile-v1
+    updated: 2026-03-17
   - id: T-104
     slug: architecture-decomposition-eight-priority-files
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/architecture-decomposition-eight-priority-files
-    updated: 2026-03-15
+    dev_docs_path: dev-docs/archive/architecture-decomposition-eight-priority-files
+    updated: 2026-03-17
   - id: T-105
     slug: owner-nurture-life-overview-master
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-070
     requirement_ids:
       - R-070
       - R-071
       - R-072
-    dev_docs_path: dev-docs/active/owner-nurture-life-overview-master
-    updated: 2026-03-16
+    dev_docs_path: dev-docs/archive/owner-nurture-life-overview-master
+    updated: 2026-03-17
   - id: T-106
     slug: owner-life-overview-surface
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-070
     requirement_ids:
       - R-070
-    dev_docs_path: dev-docs/active/owner-life-overview-surface
-    updated: 2026-03-16
+    dev_docs_path: dev-docs/archive/owner-life-overview-surface
+    updated: 2026-03-17
   - id: T-107
     slug: chronicle-story-beat-seal-and-suggestions
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-070
     requirement_ids:
       - R-071
-    dev_docs_path: dev-docs/active/chronicle-story-beat-seal-and-suggestions
-    updated: 2026-03-16
+    dev_docs_path: dev-docs/archive/chronicle-story-beat-seal-and-suggestions
+    updated: 2026-03-17
   - id: T-108
     slug: breathing-cadence-and-projection-signals
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-070
     requirement_ids:
       - R-072
-    dev_docs_path: dev-docs/active/breathing-cadence-and-projection-signals
-    updated: 2026-03-16
+    dev_docs_path: dev-docs/archive/breathing-cadence-and-projection-signals
+    updated: 2026-03-17
   - id: T-109
     slug: compatibility-cleanup-wave1-wave2
     status: archived
@@ -1049,38 +1049,38 @@ tasks:
     updated: 2026-03-16
   - id: T-113
     slug: compatibility-cleanup-pr-review-followup
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/compatibility-cleanup-pr-review-followup
-    updated: 2026-03-16
+    dev_docs_path: dev-docs/archive/compatibility-cleanup-pr-review-followup
+    updated: 2026-03-17
   - id: T-114
     slug: prompt-budget-v2-control-compiler-contract
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-021
       - R-027
-    dev_docs_path: dev-docs/active/prompt-budget-v2-control-compiler-contract
+    dev_docs_path: dev-docs/archive/prompt-budget-v2-control-compiler-contract
     updated: 2026-03-17
   - id: T-115
     slug: prompt-budget-v2-memory-tiering-authority
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-030
-    dev_docs_path: dev-docs/active/prompt-budget-v2-memory-tiering-authority
+    dev_docs_path: dev-docs/archive/prompt-budget-v2-memory-tiering-authority
     updated: 2026-03-17
   - id: T-116
     slug: prompt-budget-v2-sensitive-scene-cutover
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-021
-    dev_docs_path: dev-docs/active/prompt-budget-v2-sensitive-scene-cutover
+    dev_docs_path: dev-docs/archive/prompt-budget-v2-sensitive-scene-cutover
     updated: 2026-03-17
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
@@ -1088,28 +1088,28 @@ tasks:
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/provider-runtime-alignment-and-model-activation-v1
-    updated: 2026-03-16
+    updated: 2026-03-17
   - id: T-902
     slug: chronicle-chapter-summary-alignment
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/chronicle-chapter-summary-alignment
-    updated: 2026-03-16
+    dev_docs_path: dev-docs/archive/chronicle-chapter-summary-alignment
+    updated: 2026-03-17
   - id: T-903
     slug: owner-mindset-residual-risk-closure
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/owner-mindset-residual-risk-closure
-    updated: 2026-03-16
+    dev_docs_path: dev-docs/archive/owner-mindset-residual-risk-closure
+    updated: 2026-03-17
   - id: T-904
     slug: code-review-audit-remediation
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/code-review-audit-remediation
-    updated: 2026-03-16
+    dev_docs_path: dev-docs/archive/code-review-audit-remediation
+    updated: 2026-03-17
   - id: T-905
     slug: prompt-budget-v2-cohort-signoff-followup
     status: archived

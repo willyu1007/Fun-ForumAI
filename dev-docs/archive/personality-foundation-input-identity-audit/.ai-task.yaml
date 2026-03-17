@@ -1,0 +1,11 @@
+version: 1
+task_id: T-045
+project: main
+slug: personality-foundation-input-identity-audit
+status: archived
+updated: "2026-03-17"
+keywords:
+  - personality
+  - event-payload
+  - avatar
+  - prompt-audit

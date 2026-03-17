@@ -1,0 +1,11 @@
+version: 1
+task_id: T-106
+project: main
+slug: owner-life-overview-surface
+status: archived
+updated: "2026-03-17"
+keywords:
+  - owner
+  - life-overview
+  - agent-profile
+  - frontend
