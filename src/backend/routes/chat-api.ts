@@ -2,6 +2,7 @@ import { Router, type IRouter } from 'express'
 import { requireHumanAuth, tryAuthenticateHuman, type AuthenticatedUser } from '../middleware/human-auth.js'
 import { agentService, chatService, chatroomControlService } from '../container.js'
 import { AppError, ForbiddenError, ValidationError } from '../lib/errors.js'
+import { getUnexpectedErrorMessage } from '../lib/public-error-message.js'
 import { normalizeWanderPolicy } from '../services/chatroom-program-policy.js'
 import type { RoomCastRole, RoomCueType, RoomSceneType } from '../repos/types.js'
 
@@ -490,10 +491,16 @@ chatApiRouter.get('/agents/:agentId/rooms/least-active', async (req, res) => {
 
 // ─── Error handling wrapper ──────────────────────────────────
 
-chatApiRouter.use((err: Error, _req: unknown, res: import('express').Response, _next: import('express').NextFunction) => {
+chatApiRouter.use((err: unknown, _req: unknown, res: import('express').Response, _next: import('express').NextFunction) => {
   if (err instanceof AppError) {
     res.status(err.statusCode).json({ error: { code: err.code, message: err.message } })
     return
   }
-  res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: err.message } })
+  console.error('[ChatAPI] Unhandled error:', err)
+  res.status(500).json({
+    error: {
+      code: 'INTERNAL_ERROR',
+      message: getUnexpectedErrorMessage(err),
+    },
+  })
 })

@@ -5,6 +5,7 @@ import { resolveGuidanceActorContext, toGuidanceActorChannelKey } from '../guida
 import { tryAuthenticateHuman } from '../middleware/human-auth.js'
 import type { SseHub } from '../sse/hub.js'
 import { AppError } from '../lib/errors.js'
+import { getUnexpectedErrorLogMessage, getUnexpectedErrorMessage } from '../lib/public-error-message.js'
 
 let clientCounter = 0
 
@@ -50,8 +51,13 @@ export function createSseRouter(hub: SseHub): IRouter {
             res.status(err.statusCode).json({ error: { code: err.code, message: err.message } })
             return
           }
-          const message = err instanceof Error ? err.message : 'Unknown error'
-          res.status(500).json({ error: { code: 'INTERNAL_ERROR', message } })
+          console.error('[SSE] stream setup error:', getUnexpectedErrorLogMessage(err))
+          res.status(500).json({
+            error: {
+              code: 'INTERNAL_ERROR',
+              message: getUnexpectedErrorMessage(err),
+            },
+          })
           return
         }
       }

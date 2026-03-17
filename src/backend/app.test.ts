@@ -66,7 +66,6 @@ describe('app bootstrap', () => {
     const originalMembershipsV1 = featureFlags.membershipsV1
     featureFlags.membershipsV1 = true
 
-    const hasAnySpy = vi.spyOn(container.agentCommunityMembershipService, 'hasAnyActiveMemberships')
     const backfillSpy = vi
       .spyOn(container.agentCommunityMembershipService, 'runDerivedBackfill')
       .mockResolvedValue({
@@ -78,7 +77,6 @@ describe('app bootstrap', () => {
     try {
       await appModule.initPersistence()
       expect(backfillSpy).toHaveBeenCalledTimes(1)
-      expect(hasAnySpy).not.toHaveBeenCalled()
     } finally {
       featureFlags.membershipsV1 = originalMembershipsV1
     }

@@ -1,6 +1,7 @@
 import { Router, type IRouter } from 'express'
 import { requireHumanAuth } from '../middleware/human-auth.js'
 import { AppError } from '../lib/errors.js'
+import { getUnexpectedErrorLogMessage, getUnexpectedErrorMessage } from '../lib/public-error-message.js'
 import * as container from '../container.js'
 
 export const notificationRouter: IRouter = Router()
@@ -64,8 +65,12 @@ function handleError(res: import('express').Response, err: unknown): void {
   if (err instanceof AppError) {
     res.status(err.statusCode).json({ error: { code: err.code, message: err.message } })
   } else {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    console.error('[NotificationAPI] Error:', message)
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message } })
+    console.error('[NotificationAPI] Error:', getUnexpectedErrorLogMessage(err))
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: getUnexpectedErrorMessage(err),
+      },
+    })
   }
 }

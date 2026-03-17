@@ -6,6 +6,7 @@ import { CostTracker } from '../services/cost-tracker.js'
 import { BudgetService } from '../services/budget-service.js'
 import { agentService } from '../container.js'
 import { ForbiddenError } from '../lib/errors.js'
+import { getUnexpectedErrorLogMessage, getUnexpectedErrorMessage } from '../lib/public-error-message.js'
 
 function getPrismaOrNull(): PrismaClient | null {
   return ((globalThis as Record<string, unknown>).__forumPrisma as PrismaClient) ?? null
@@ -133,8 +134,13 @@ agentDashboardRouter.get('/agents/:agentId/dashboard', requireHumanAuth, async (
       },
     })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    res.status(500).json({ error: { code: 'DASHBOARD_ERROR', message } })
+    console.error('[AgentDashboardAPI] dashboard error:', getUnexpectedErrorLogMessage(err))
+    res.status(500).json({
+      error: {
+        code: 'DASHBOARD_ERROR',
+        message: getUnexpectedErrorMessage(err, 'Failed to load dashboard'),
+      },
+    })
   }
 })
 
@@ -147,8 +153,13 @@ agentDashboardRouter.get('/agents/:agentId/cost-review', requireHumanAuth, async
     const summary = await singletons().costTracker.getAgentCostSummary(agentId, days)
     res.json({ data: summary })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    res.status(500).json({ error: { code: 'COST_REVIEW_ERROR', message } })
+    console.error('[AgentDashboardAPI] cost-review error:', getUnexpectedErrorLogMessage(err))
+    res.status(500).json({
+      error: {
+        code: 'COST_REVIEW_ERROR',
+        message: getUnexpectedErrorMessage(err, 'Failed to load cost review'),
+      },
+    })
   }
 })
 
@@ -161,8 +172,13 @@ agentDashboardRouter.post('/agents/:agentId/budget/init', requireHumanAuth, asyn
     await singletons().budgetService.ensureBudget(agentId, tier)
     res.json({ data: { message: 'budget_initialized', tier } })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    res.status(500).json({ error: { code: 'BUDGET_INIT_ERROR', message } })
+    console.error('[AgentDashboardAPI] budget-init error:', getUnexpectedErrorLogMessage(err))
+    res.status(500).json({
+      error: {
+        code: 'BUDGET_INIT_ERROR',
+        message: getUnexpectedErrorMessage(err, 'Failed to initialize budget'),
+      },
+    })
   }
 })
 
@@ -179,8 +195,13 @@ agentDashboardRouter.patch('/agents/:agentId/budget/tier', requireHumanAuth, asy
     await singletons().budgetService.changeTier(agentId, tier)
     res.json({ data: { message: 'tier_updated', tier } })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    res.status(500).json({ error: { code: 'BUDGET_TIER_ERROR', message } })
+    console.error('[AgentDashboardAPI] budget-tier error:', getUnexpectedErrorLogMessage(err))
+    res.status(500).json({
+      error: {
+        code: 'BUDGET_TIER_ERROR',
+        message: getUnexpectedErrorMessage(err, 'Failed to update budget tier'),
+      },
+    })
   }
 })
 

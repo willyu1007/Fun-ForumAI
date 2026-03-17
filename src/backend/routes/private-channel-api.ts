@@ -3,6 +3,7 @@ import { requireHumanAuth } from '../middleware/human-auth.js'
 import * as container from '../container.js'
 import { AppError, ValidationError } from '../lib/errors.js'
 import { ensureDevAuthUserPersisted } from '../lib/dev-auth-user.js'
+import { getUnexpectedErrorLogMessage, getUnexpectedErrorMessage } from '../lib/public-error-message.js'
 import { buildAgentReadPayload } from '../identity/agent-identity.js'
 import { trackGuidanceEventFromRequest } from '../guidance/http.js'
 import type { SourceDimension } from '../../shared/owner-life-overview.js'
@@ -542,8 +543,12 @@ function handleError(res: import('express').Response, err: unknown): void {
   if (err instanceof AppError) {
     res.status(err.statusCode).json({ error: { code: err.code, message: err.message } })
   } else {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    console.error('[PrivateChannelAPI] Error:', message)
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message } })
+    console.error('[PrivateChannelAPI] Error:', getUnexpectedErrorLogMessage(err))
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: getUnexpectedErrorMessage(err),
+      },
+    })
   }
 }

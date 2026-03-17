@@ -217,10 +217,6 @@ export class AgentCommunityMembershipService {
     return updated
   }
 
-  hasAnyActiveMemberships(): boolean {
-    return this.deps.membershipRepo.countActiveTotal() > 0
-  }
-
   async runDerivedBackfill(input?: {
     days?: number
     min_posts?: number
