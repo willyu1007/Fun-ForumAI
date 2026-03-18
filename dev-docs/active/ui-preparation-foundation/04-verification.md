@@ -56,4 +56,5 @@
 | warning 清理收口 | `pnpm lint` | pass | 2026-03-18；0 error / 0 warning，legacy `uix` / `uix-shell` / `uix-primitives` warning 全部清零 |
 | warning 清理收口 | `pnpm typecheck` | pass | 2026-03-18；删除 `src/frontend/shared/utils/uix*.ts` 后，`pnpm typecheck` 仍通过，说明 legacy helper 已无消费者 |
 | warning 清理收口 | `pnpm build` | pass | 2026-03-18；串行执行通过。注意不要与 `pnpm typecheck` 并行跑，因为两者都会触发 `ui:build`，会争用 package dist 构建链路 |
+| 产物清理 | `find . -maxdepth 4 \\( -type d \\( -name dist -o -name coverage -o -name .vitest -o -name __snapshots__ -o -name playwright-report -o -name test-results -o -name .pytest_cache -o -name htmlcov -o -name .nyc_output \\) -o -type f \\( -name '*.log' -o -name '*.lcov' -o -name 'junit*.xml' -o -name 'coverage-final.json' -o -name '.DS_Store' \\) \\)` | pass | 2026-03-18；清理前仅发现 root 与 4 个 UI packages 的 `dist/` 目录，清理后上述扫描为空 |
 | — | `node .ai/tests/run.mjs --suite ui`（含 ui-governance-gate） | 未在本轮执行 | 依赖 Python；可选本地/CI 补充 |

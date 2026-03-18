@@ -300,6 +300,19 @@ ui-web package.json 添加：
   - `src/frontend/shared/utils/uix-primitives.ts`
 - 当前 lint warning 基线已收口到 `0 error / 0 warning`。
 
+### H. 产物清理与后续需求文档落地（2026-03-18）
+
+- 清理了当前仓库中的构建/测试产物目录：
+  - root `dist/`
+  - `packages/design-tokens/dist`
+  - `packages/ui-contract/dist`
+  - `packages/ui-mobile/dist`
+  - `packages/ui-web/dist`
+- 在根目录新增两份后续需求文档，作为下一阶段工作的入口：
+  - `bundle-budget-requirements.md`
+  - `page-visual-regression-requirements.md`
+- 两份文档都按“背景 / 目标 / 范围 / MUST/SHOULD / 验收 / 验证”组织，避免后续执行时重新口头对齐。
+
 ### Remaining Risks
 
 - 页面级 pilot 迁移虽然完成了 legacy helper 移除，但还没有进行视觉回归验证；后续仍需补 UI regression。
