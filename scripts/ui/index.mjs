@@ -32,6 +32,7 @@ const SCRIPTS = {
   ],
   check: [
     'check-contract-codegen-drift.mjs',
+    'check-generated-clean.mjs',
     'check-theme-protocol.mjs',
   ],
 }

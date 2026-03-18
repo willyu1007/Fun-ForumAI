@@ -25,7 +25,6 @@ function build() {
   const roles = contract.roles || {}
 
   const manifest = {
-    generatedAt: new Date().toISOString(),
     source: 'ui/contract/contract.json',
     meta: contract.meta,
     roleCount: Object.keys(roles).length,

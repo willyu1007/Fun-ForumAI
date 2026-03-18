@@ -5,7 +5,7 @@
  * Single responsibility: drift detection for generated artifacts.
  */
 
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execSync } from 'node:child_process'
@@ -64,16 +64,9 @@ function check() {
       continue
     }
 
-    // Normalize for comparison (ignore timestamp differences in manifests)
-    const normalizeForCompare = (content, filename) => {
-      if (filename.includes('manifest')) {
-        // Remove generatedAt field for comparison
-        return content.replace(/"generatedAt":\s*"[^"]+",?\n?/g, '')
-      }
-      return content
-    }
+    const normalizeForCompare = (content) => content
 
-    if (normalizeForCompare(newContent, file) !== normalizeForCompare(oldContent, file)) {
+    if (normalizeForCompare(newContent) !== normalizeForCompare(oldContent)) {
       errors.push(`Drift detected in: ${file}`)
     }
   }
@@ -81,7 +74,6 @@ function check() {
   // Restore original content
   for (const [file, content] of Object.entries(originalContent)) {
     const path = resolve(ROOT, file)
-    const { writeFileSync } = await import('node:fs')
     writeFileSync(path, content, 'utf-8')
   }
 
