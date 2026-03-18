@@ -1,6 +1,5 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
-import { uix } from '@/shared/utils/uix'
 function Card({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
@@ -8,20 +7,26 @@ function Card({ className, ...props }: React.ComponentProps<'div'>) {
       data-slot="card"
       data-variant="default"
       data-elevation="none"
-      className={cn(uix('uix-12f0fa7fc7'), className)}
+      className={cn('bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm', className)}
       {...props}
     />
   )
 }
 function CardHeader({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div data-slot="card-header" className={cn(uix('uix-dc6512f118'), className)} {...props} />
+  return (
+    <div
+      data-slot="card-header"
+      className={cn('@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6', className)}
+      {...props}
+    />
+  )
 }
 function CardTitle({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div data-slot="card-title" className={cn(uix('uix-a446c31cc7'), className)} {...props} />
+  return <div data-slot="card-title" className={cn('leading-none font-semibold', className)} {...props} />
 }
 function CardDescription({ className, ...props }: React.ComponentProps<'div'>) {
   return (
-    <div data-slot="card-description" className={cn(uix('uix-fcceb93b0e'), className)} {...props} />
+    <div data-slot="card-description" className={cn('text-muted-foreground text-sm', className)} {...props} />
   )
 }
 function CardAction({ className, ...props }: React.ComponentProps<'div'>) {
@@ -35,10 +40,10 @@ function CardAction({ className, ...props }: React.ComponentProps<'div'>) {
 }
 function CardContent({ className, ...props }: React.ComponentProps<'div'>) {
   return (
-    <div data-slot="card-content" className={cn(uix('uix-f92d02360b'), className)} {...props} />
+    <div data-slot="card-content" className={cn('px-6', className)} {...props} />
   )
 }
 function CardFooter({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div data-slot="card-footer" className={cn(uix('uix-9c2be7fadb'), className)} {...props} />
+  return <div data-slot="card-footer" className={cn('flex items-center px-6 [.border-t]:pt-6', className)} {...props} />
 }
 export { Card, CardHeader, CardFooter, CardTitle, CardAction, CardDescription, CardContent }

@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { readAuthRedirectState, resolveAuthRedirectTarget } from '@/shared/utils/auth-redirect'
-import { uix } from '@/shared/utils/uix'
 export function EmailLoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -31,7 +30,7 @@ export function EmailLoginForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <label htmlFor="login-email" className={uix('uix-aaa307c4ab')}>
+        <label htmlFor="login-email" className="text-sm font-medium">
           邮箱地址
         </label>
         <Input
@@ -46,7 +45,7 @@ export function EmailLoginForm() {
       </div>
 
       <div className="space-y-2">
-        <label htmlFor="login-password" className={uix('uix-aaa307c4ab')}>
+        <label htmlFor="login-password" className="text-sm font-medium">
           密码
         </label>
         <div className="relative">
@@ -60,7 +59,7 @@ export function EmailLoginForm() {
           />
           <button
             type="button"
-            className={uix('uix-508ecc99bf')}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
             onClick={() => setShowPwd(!showPwd)}
             tabIndex={-1}
           >
@@ -69,15 +68,15 @@ export function EmailLoginForm() {
         </div>
       </div>
 
-      {error && <p className={uix('uix-c889115c43')}>{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       <Button type="submit" className="w-full" disabled={isLoginPending}>
         {isLoginPending ? '登录中…' : '登 录'}
       </Button>
 
-      <p className={uix('uix-fe83c5c8c0')}>
+      <p className="text-center text-sm text-muted-foreground">
         还没有账号？{' '}
-        <Link to="/register" state={redirectState} className={uix('uix-362afdf52f')}>
+        <Link to="/register" state={redirectState} className="text-primary hover:underline">
           立即注册
         </Link>
       </p>

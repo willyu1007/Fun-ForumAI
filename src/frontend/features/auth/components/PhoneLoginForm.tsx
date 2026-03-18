@@ -1,23 +1,22 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { uix } from '@/shared/utils/uix'
 export function PhoneLoginForm() {
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
   return (
     <div className="relative">
       {/* "Coming soon" overlay */}
-      <div className={uix('uix-2780c4e731')}>
-        <div className={uix('uix-5fe22be460')}>
-          <p className={uix('uix-aaa307c4ab')}>即将开放</p>
-          <p className={uix('uix-dacb762e7b')}>手机验证码登录功能开发中</p>
+      <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/80 backdrop-blur-[2px]">
+        <div className="rounded-lg border bg-background px-4 py-3 text-center shadow-sm">
+          <p className="text-sm font-medium">即将开放</p>
+          <p className="mt-1 text-xs text-muted-foreground">手机验证码登录功能开发中</p>
         </div>
       </div>
 
       <fieldset disabled className="space-y-4 opacity-50">
         <div className="space-y-2">
-          <label className={uix('uix-aaa307c4ab')}>手机号</label>
+          <label className="text-sm font-medium">手机号</label>
           <div className="flex gap-2">
             <Input
               type="tel"
@@ -33,7 +32,7 @@ export function PhoneLoginForm() {
         </div>
 
         <div className="space-y-2">
-          <label className={uix('uix-aaa307c4ab')}>验证码</label>
+          <label className="text-sm font-medium">验证码</label>
           <Input
             type="text"
             inputMode="numeric"

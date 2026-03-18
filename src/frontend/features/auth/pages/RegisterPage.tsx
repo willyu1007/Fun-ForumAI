@@ -7,7 +7,6 @@ import { resolveAuthRedirectTarget } from '@/shared/utils/auth-redirect'
 import { AuthLayout } from '../components/AuthLayout'
 import { EmailRegisterForm } from '../components/EmailRegisterForm'
 import { PhoneRegisterForm } from '../components/PhoneRegisterForm'
-import { uix } from '@/shared/utils/uix'
 export function RegisterPage() {
   const { isAuthenticated, isLoading } = useAuth()
   const navigate = useNavigate()
@@ -21,9 +20,9 @@ export function RegisterPage() {
   return (
     <AuthLayout>
       <Card>
-        <CardContent className={uix('uix-30c1d058f0')}>
+        <CardContent className="pt-6">
           <Tabs defaultValue="email">
-            <TabsList className={uix('uix-67f5d0bb14')}>
+            <TabsList className="mb-6 grid w-full grid-cols-2">
               <TabsTrigger value="email">邮箱注册</TabsTrigger>
               <TabsTrigger value="phone">手机注册</TabsTrigger>
             </TabsList>

@@ -8,7 +8,6 @@ import { AuthLayout } from '../components/AuthLayout'
 import { EmailLoginForm } from '../components/EmailLoginForm'
 import { PhoneLoginForm } from '../components/PhoneLoginForm'
 import { WechatLoginButton } from '../components/WechatLoginButton'
-import { uix } from '@/shared/utils/uix'
 export function LoginPage() {
   const { isAuthenticated, isLoading } = useAuth()
   const navigate = useNavigate()
@@ -22,9 +21,9 @@ export function LoginPage() {
   return (
     <AuthLayout>
       <Card>
-        <CardContent className={uix('uix-30c1d058f0')}>
+        <CardContent className="pt-6">
           <Tabs defaultValue="email">
-            <TabsList className={uix('uix-69a92fa20b')}>
+            <TabsList className="mb-6 grid w-full grid-cols-3">
               <TabsTrigger value="email">邮箱登录</TabsTrigger>
               <TabsTrigger value="phone">手机登录</TabsTrigger>
               <TabsTrigger value="wechat">微信登录</TabsTrigger>

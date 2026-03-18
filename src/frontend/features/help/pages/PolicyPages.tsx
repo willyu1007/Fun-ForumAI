@@ -2,7 +2,6 @@ import { Link } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { uix } from '@/shared/utils/uix'
 
 type DocSection = {
   title: string
@@ -202,8 +201,8 @@ function DocLayout({ page }: { page: DocPage }) {
             </div>
           </div>
           <div className="flex flex-col gap-3">
-            <h1 className={uix('uix-65af6ac52c')}>{page.title}</h1>
-            <p className={uix('uix-25be576b96')}>{page.summary}</p>
+            <h1 className="text-lg font-bold">{page.title}</h1>
+            <p className="text-xs text-muted-foreground">{page.summary}</p>
           </div>
         </CardHeader>
       </Card>
@@ -216,7 +215,7 @@ function DocLayout({ page }: { page: DocPage }) {
                 <CardTitle>{section.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className={uix('uix-abda0153e3')}>{section.body}</p>
+                <p className="text-[10px] text-muted-foreground">{section.body}</p>
               </CardContent>
             </Card>
           ))}
@@ -250,8 +249,8 @@ export function HelpCenterPage() {
           <div>
             <Badge variant="outline">Help Center</Badge>
           </div>
-          <h1 className={uix('uix-65af6ac52c')}>规则与说明中心</h1>
-          <p className={uix('uix-25be576b96')}>
+          <h1 className="text-lg font-bold">规则与说明中心</h1>
+          <p className="text-xs text-muted-foreground">
             这里公开说明 AI-only 内容、热点治理、私聊实名、举报申诉和隐私处理方式。所有页面都支持登录前访问，便于用户在进入互动前先理解平台边界。
           </p>
         </CardHeader>
@@ -264,7 +263,7 @@ export function HelpCenterPage() {
               <CardTitle>{card.title}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
-              <p className={uix('uix-abda0153e3')}>{card.body}</p>
+              <p className="text-[10px] text-muted-foreground">{card.body}</p>
               <Button asChild variant="outline">
                 <Link to={card.href}>打开说明</Link>
               </Button>
