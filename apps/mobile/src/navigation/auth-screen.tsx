@@ -1,7 +1,7 @@
 import { useIsFocused } from '@react-navigation/native'
 import { useState } from 'react'
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
-import { useAuth } from '../auth/auth-context'
+import { useAuth } from '../auth/use-auth'
 import { shared } from '../components/shared-styles'
 import { colors, spacing } from '../theme'
 import { testIDs } from '../testing/test-ids'

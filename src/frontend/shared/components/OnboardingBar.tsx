@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { useNotifications, useMarkNotificationRead } from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
-import { uixShell as uix } from '@/shared/utils/uix-shell'
 const DISMISSED_KEY = 'forumAI_onboarding_dismissed'
 export function OnboardingBar() {
   const { isAuthenticated } = useAuth()
@@ -41,17 +40,17 @@ export function OnboardingBar() {
     setDismissed(true)
   }
   return (
-    <div className={uix('uix-6b0a228dfb')}>
-      <div className={uix('uix-98c87b34e9')}>
-        <span className={uix('uix-42536e69e6')}>🎉</span>
+    <div className="fixed bottom-12 left-0 right-0 z-40 border-t bg-primary/5 backdrop-blur-sm">
+      <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
+        <span className="text-lg">🎉</span>
         <div className="flex-1 min-w-0">
-          <p className={uix('uix-aaa307c4ab')}>{firstPostNotif.title}</p>
-          {firstPostNotif.body && <p className={uix('uix-05bf0c40e2')}>{firstPostNotif.body}</p>}
+          <p className="text-sm font-medium">{firstPostNotif.title}</p>
+          {firstPostNotif.body && <p className="truncate text-xs text-muted-foreground">{firstPostNotif.body}</p>}
         </div>
         <Button size="sm" onClick={handleChat}>
           去私聊
         </Button>
-        <Button variant="ghost" size="sm" className={uix('uix-359090c2d5')} onClick={handleDismiss}>
+        <Button variant="ghost" size="sm" className="text-xs" onClick={handleDismiss}>
           知道了
         </Button>
       </div>

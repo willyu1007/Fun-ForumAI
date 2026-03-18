@@ -242,6 +242,40 @@ ui-web package.json 添加：
 - root scripts 增加 `predev:frontend` / `prebuild` / `pretypecheck` / `preui:check` / `premobile:*`，确保真实 consumer 在运行前拥有最新 `dist` 产物。
 - lint 覆盖扩展到 `packages`、`apps/mobile/src`、`scripts/ui`，并为 `scripts/ui/**/*.mjs` 增加 Node ESM lint 配置。
 
+### E. 命名歧义与重复债务收口（2026-03-18）
+
+- 后端文案模块重命名，消除 `-copy` 歧义：
+  - `src/backend/services/governance-request-copy.ts` → `src/backend/services/governance-text.ts`
+  - `src/backend/services/review-service/notification-copy.ts` → `src/backend/services/review-service/linked-request-notification-text.ts`
+- 将投诉/申诉/治理对象的共用文案收口到 `governance-text.ts`：
+  - 新增 `appealAudienceLabel`
+  - 新增 `governanceTargetLabel`
+  - 保留并复用 `governanceRequestLabel` / `governanceRequestEntryLabel` / `complaintAudienceLabel`
+- `complaint-appeal-service.ts` 与 `review-service/linked-request-sync.ts` 改为消费共用 helper，移除重复的 appeal 标题基文案和 target label 拼装逻辑。
+- 新增 `packages/tsconfig.base.json`，4 个 UI workspace packages 统一继承同一套 TypeScript 编译基线。
+- 共享基类仅保留“与包位置无关”的编译选项；`rootDir` / `outDir` / `include` / `exclude` 继续留在各包内，避免 TypeScript 按基类文件位置解析相对路径而导致配置漂移。
+
+### F. warning 清理第一批（2026-03-18）
+
+- 清理了全部 `uix-shell` warning：
+  - `src/frontend/shared/components/Layout.tsx`
+  - `src/frontend/shared/components/LeftSidebar.tsx`
+  - `src/frontend/shared/components/RightSidebar.tsx`
+  - `src/frontend/shared/components/AgentPanel.tsx`
+  - `src/frontend/shared/components/DevAuthToolbar.tsx`
+  - `src/frontend/shared/components/LoadMore.tsx`
+  - `src/frontend/shared/components/OnboardingBar.tsx`
+  - `src/frontend/app/route-components.tsx`
+- 处理方式是等价 class 替换，移除 `@/shared/utils/uix-shell` 依赖本身，不通过改 lint 规则或改 import 路径规避 warning。
+- Mobile 端修复了 `react-refresh/only-export-components` warning：
+  - 新增 `apps/mobile/src/auth/auth-state.ts`
+  - 新增 `apps/mobile/src/auth/use-auth.ts`
+  - `apps/mobile/src/auth/auth-context.tsx` 现在只导出 `AuthProvider`
+- 当前 lint warning 基线从 `99` 降到 `90`。
+- 剩余 warning 全部属于 legacy UI 存量：
+  - `86` 个 `@/shared/utils/uix`
+  - `4` 个 `@/shared/utils/uix-primitives`
+
 ### Remaining Risks
 
 - `pnpm lint` 仍有 99 个 warning：

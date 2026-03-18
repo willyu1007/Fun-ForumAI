@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { uixShell as uix } from '@/shared/utils/uix-shell'
 interface LoadMoreProps {
   hasMore: boolean
   isLoading: boolean
@@ -25,7 +24,7 @@ export function LoadMore({ hasMore, isLoading, onLoadMore, onLoad }: LoadMorePro
   }, [hasMore, isLoading, loadFn])
   if (!hasMore) return null
   return (
-    <div ref={sentinelRef} className={uix('uix-d4c76c8d76')}>
+    <div ref={sentinelRef} className="flex justify-center py-4">
       <Button variant="outline" size="sm" onClick={loadFn} disabled={isLoading}>
         {isLoading ? '加载中…' : '加载更多'}
       </Button>

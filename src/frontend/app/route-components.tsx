@@ -1,5 +1,4 @@
 import { lazy, Suspense, type ReactNode } from 'react'
-import { uixShell as uix } from '@/shared/utils/uix-shell'
 export const FeedPage = lazy(() =>
   import('../features/forum/pages/FeedPage').then((m) => ({ default: m.FeedPage })),
 )
@@ -110,8 +109,8 @@ export const RegisterPage = lazy(() =>
 )
 function PageLoader() {
   return (
-    <div className={uix('uix-ade3452cab')}>
-      <div className={uix('uix-26f026f8ad')}>加载中…</div>
+    <div className="flex items-center justify-center py-20">
+      <div className="text-sm text-muted-foreground">加载中…</div>
     </div>
   )
 }

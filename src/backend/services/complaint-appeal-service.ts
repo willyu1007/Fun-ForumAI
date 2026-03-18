@@ -15,10 +15,12 @@ import type { PrivateSession } from '../repos/types/private-channel.js'
 import type { ReviewService } from './review-service.js'
 import type { NotificationService } from './notification-service.js'
 import {
+  appealAudienceLabel,
   complaintAudienceLabel,
   governanceRequestEntryLabel,
   governanceRequestLabel,
-} from './governance-request-copy.js'
+  governanceTargetLabel,
+} from './governance-text.js'
 
 const REPORTABLE_TARGET_TYPES = new Set([
   'post',
@@ -214,21 +216,6 @@ export class ComplaintAppealService {
     return `${complaintAudienceLabel(complaintType, reasonCode)}已进入审核`
   }
 
-  private targetLabel(targetType: ReportableTargetType, targetId: string): string {
-    const base = targetType === 'post'
-      ? '论坛帖子'
-      : targetType === 'comment'
-        ? '评论区回复'
-        : targetType === 'message'
-          ? '聊天室发言'
-          : targetType === 'private_session'
-            ? '私聊会话'
-            : targetType === 'agent'
-              ? '智能体主页'
-              : '配置修订'
-    return `${base} · ${targetId}`
-  }
-
   private complaintSurfaceLabel(targetType: ReportableTargetType, reasonCode: string): string {
     const governanceEntryLabel = governanceRequestEntryLabel(reasonCode)
     if (governanceEntryLabel) return governanceEntryLabel
@@ -284,21 +271,11 @@ export class ComplaintAppealService {
         : governanceRequestLabel(input.reasonCode)
           ? '治理队列'
           : '投诉队列'
-    return `提交入口 ${this.complaintSurfaceLabel(input.targetType, input.reasonCode)} · 目标对象 ${this.targetLabel(input.targetType, input.targetId)} · case ${input.linkedCaseId} · 已进入${queueLabel}`
+    return `提交入口 ${this.complaintSurfaceLabel(input.targetType, input.reasonCode)} · 目标对象 ${governanceTargetLabel(input.targetType, input.targetId)} · case ${input.linkedCaseId} · 已进入${queueLabel}`
   }
 
   private appealNotificationTitle(appealType: AppealType): string {
-    switch (appealType) {
-      case 'ACCOUNT_LIMIT_APPEAL':
-        return '你的账号限制申诉已进入复核'
-      case 'AGENT_RESTRICTION_APPEAL':
-        return '你的智能体限制申诉已进入复核'
-      case 'OTHER':
-        return '你的申诉已进入复核'
-      case 'CONTENT_APPEAL':
-      default:
-        return '你的内容申诉已进入复核'
-    }
+    return `${appealAudienceLabel(appealType)}已进入复核`
   }
 
   private appealNotificationBody(input: {
@@ -307,7 +284,7 @@ export class ComplaintAppealService {
     targetType: ReportableTargetType
     targetId: string
   }): string {
-    return `复核入口 ${this.appealSurfaceLabel(input.targetType)} · 目标对象 ${this.targetLabel(input.targetType, input.targetId)} · case ${input.linkedCaseId} · 已进入申诉复核队列`
+    return `复核入口 ${this.appealSurfaceLabel(input.targetType)} · 目标对象 ${governanceTargetLabel(input.targetType, input.targetId)} · case ${input.linkedCaseId} · 已进入申诉复核队列`
   }
 
   private async assertTargetExists(targetType: ReportableTargetType, targetId: string, actorUserId?: string): Promise<void> {

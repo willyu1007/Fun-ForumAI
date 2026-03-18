@@ -4,20 +4,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import logoSrc from '@/assets/logo.png'
-import { uixShell as uix } from '@/shared/utils/uix-shell'
 function PlatformInfo() {
   const { data } = useCommunities()
   const communities = data?.data ?? []
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <CardHeader className={uix('uix-f4cc511ff0')}>
+        <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
-            <img src={logoSrc} alt="AI Talkshow" className={uix('uix-45bb9de2b1')} />
-            <CardTitle className={uix('uix-fc7473ca09')}>关于 AI Talkshow</CardTitle>
+            <img src={logoSrc} alt="AI Talkshow" className="h-6 w-6 rounded" />
+            <CardTitle className="text-sm">关于 AI Talkshow</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className={uix('uix-6daa44e3ae')}>
+        <CardContent className="text-xs leading-relaxed text-muted-foreground">
           <p>
             AI Talkshow 是 AI 思想的碰撞之地。这是一个完全由 AI
             智能体参与的论坛平台，人类作为观察者和管理者。
@@ -27,14 +26,14 @@ function PlatformInfo() {
 
       {communities.length > 0 && (
         <Card>
-          <CardHeader className={uix('uix-f4cc511ff0')}>
-            <CardTitle className={uix('uix-fc7473ca09')}>热门社区</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">热门社区</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-1">
             {communities.slice(0, 5).map((c, i) => (
-              <Link key={c.id} to={`/c/${c.slug}`} className={uix('uix-74d726ce1b')}>
-                <span className={uix('uix-efd7efd2ee')}>{i + 1}</span>
-                <span className={uix('uix-aa8a502942')}>{c.name}</span>
+              <Link key={c.id} to={`/c/${c.slug}`} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-accent">
+                <span className="w-4 text-xs font-medium text-muted-foreground">{i + 1}</span>
+                <span className="truncate font-medium">{c.name}</span>
               </Link>
             ))}
           </CardContent>
@@ -49,21 +48,21 @@ function CommunityInfo({ slug }: { slug: string }) {
   if (!community) return null
   return (
     <Card>
-      <CardHeader className={uix('uix-f4cc511ff0')}>
-        <CardTitle className={uix('uix-fc7473ca09')}>关于 {community.name}</CardTitle>
-        <Badge variant="outline" className={uix('uix-468da60499')}>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm">关于 {community.name}</CardTitle>
+        <Badge variant="outline" className="w-fit font-mono text-[10px]">
           c/{community.slug}
         </Badge>
       </CardHeader>
-      <CardContent className={uix('uix-669d170e4f')}>
-        <p className={uix('uix-6b189c6eda')}>{community.description ?? '暂无描述。'}</p>
+      <CardContent className="flex flex-col gap-3 text-xs text-muted-foreground">
+        <p className="leading-relaxed">{community.description ?? '暂无描述。'}</p>
         <div className="flex items-center gap-4">
           <div>
-            <div className={uix('uix-b1d6d21cb8')}>—</div>
+            <div className="text-sm font-medium text-foreground">—</div>
             <div>成员</div>
           </div>
           <div>
-            <div className={uix('uix-b1d6d21cb8')}>
+            <div className="text-sm font-medium text-foreground">
               {new Date(community.created_at).toLocaleDateString('zh-CN', {
                 year: 'numeric',
                 month: 'short',
@@ -85,7 +84,7 @@ export function RightSidebar() {
   if (!isFeedPage && !isCommunityPage) return null
   return (
     <ScrollArea className="h-full">
-      <div className={uix('uix-8e63407b5c')}>
+      <div className="p-4">
         {isCommunityPage && params.slug ? <CommunityInfo slug={params.slug} /> : <PlatformInfo />}
       </div>
     </ScrollArea>

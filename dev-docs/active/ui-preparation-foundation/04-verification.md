@@ -16,7 +16,7 @@
 ### 1. 已接入 CI 的 UI 门禁（Node）
 
 - **步骤**：`.github/workflows/ci.yml` → job `check` 内：
-  - `pnpm ui:build` — 校验 token/theme/contract schema，生成 tokens.css、contract-types、web-theme、mobile-theme、contract-manifest
+  - `pnpm ui:build` — 校验 token/theme/contract schema，生成 tokens.css、contract-types、web-theme、mobile-theme，并构建 UI package `dist/`
   - `pnpm ui:check` — 检查 contract 与 codegen 一致、主题协议（data-theme）
 - **不依赖**：仅 Node，无 Python。
 - **状态**：已落地，每次 PR/push 都会跑。
@@ -45,4 +45,11 @@
 | 阶段 2+ | `pnpm typecheck` | pass | 2026-03-18 复核通过；root app 通过真实 workspace package 解析完成类型检查 |
 | PR #15 收口 | `pnpm build` | pass | 2026-03-18 通过；Vite/Tailwind 经 workspace package exports 成功解析 `@fun-forum/ui-web/styles` |
 | PR #15 收口 | `pnpm lint` | pass-with-warnings | 2026-03-18；0 error / 99 warning，其中 98 个为既有 `uix*` 迁移库存，1 个为 mobile Fast Refresh warning |
+| 命名/配置收口 | `pnpm ui:build` | pass | 2026-03-18；验证 `packages/tsconfig.base.json` 收口后，4 个 UI packages 仍可成功生成 `dist/` |
+| 命名/配置收口 | `pnpm typecheck` | pass | 2026-03-18；后端文案模块重命名与共用 helper 抽取后，root 工程仍可通过类型检查 |
+| 命名/配置收口 | `pnpm exec vitest run src/backend/services/__tests__/complaint-appeal-service.test.ts src/backend/services/__tests__/review-service.test.ts` | pass | 2026-03-18；2 个测试文件、16 个测试全部通过，覆盖投诉/申诉通知与 linked request 同步链路 |
+| 命名/配置收口 | `pnpm lint` | pass-with-warnings | 2026-03-18；0 error / 99 warning，warning 结构未变，未引入新的 lint error |
+| warning 清理第一批 | `pnpm exec eslint src/frontend/app/route-components.tsx src/frontend/shared/components/LoadMore.tsx src/frontend/shared/components/OnboardingBar.tsx src/frontend/shared/components/DevAuthToolbar.tsx src/frontend/shared/components/LeftSidebar.tsx src/frontend/shared/components/RightSidebar.tsx src/frontend/shared/components/AgentPanel.tsx src/frontend/shared/components/Layout.tsx apps/mobile/src/auth/auth-context.tsx apps/mobile/src/auth/auth-state.ts apps/mobile/src/auth/use-auth.ts apps/mobile/src/navigation/auth-screen.tsx apps/mobile/src/navigation/agents-stack.tsx apps/mobile/src/navigation/main-tabs.tsx apps/mobile/src/navigation/growth-stack.tsx apps/mobile/src/navigation/private-stack.tsx` | pass | 2026-03-18；本轮修改文件局部 ESLint 通过，无新增 warning/error |
+| warning 清理第一批 | `pnpm typecheck` | pass | 2026-03-18；`uix-shell` 清理与 mobile auth hook 拆分后，root 工程类型检查仍通过 |
+| warning 清理第一批 | `pnpm lint` | pass-with-warnings | 2026-03-18；0 error / 90 warning，`uix-shell` 与 mobile Fast Refresh warning 已全部清零，剩余仅 `uix` / `uix-primitives` 存量 |
 | — | `node .ai/tests/run.mjs --suite ui`（含 ui-governance-gate） | 未在本轮执行 | 依赖 Python；可选本地/CI 补充 |

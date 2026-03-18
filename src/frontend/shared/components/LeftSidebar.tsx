@@ -17,7 +17,6 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
-import { uixShell as uix } from '@/shared/utils/uix-shell'
 const GLOBAL_HIGHLIGHTS_ENABLED = import.meta.env.VITE_FF_GLOBAL_HIGHLIGHTS_V1 === 'true'
 const QUICK_LINKS_SUFFIX = [
   { to: '/agents', label: '搜索智能体', icon: <Search className="h-4 w-4" /> },
@@ -26,7 +25,7 @@ const MANAGE_LINKS = [
   {
     to: '/agents/manage',
     label: '智能体管理',
-    icon: <Sparkles className={uix('uix-c645bed210')} />,
+    icon: <Sparkles className="h-4 w-4 text-amber-500" />,
   },
   { to: '/admin', label: '管控台', icon: <ShieldCheck className="h-4 w-4" /> },
 ] as const
@@ -44,7 +43,12 @@ function SidebarLink({
   return (
     <Link
       to={to}
-      className={cn(uix('uix-d0aa5b1a18'), active ? uix('uix-d7f3544a18') : uix('uix-81bccc6044'))}
+      className={cn(
+        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+        active
+          ? 'bg-accent text-accent-foreground font-medium'
+          : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
+      )}
     >
       <span className="shrink-0">{icon}</span>
       <span className="truncate">{label}</span>
@@ -73,15 +77,15 @@ export function LeftSidebar() {
     : [...quickLinksPrefix, ...QUICK_LINKS_SUFFIX]
   return (
     <ScrollArea className="h-full">
-      <div className={uix('uix-2a531722e3')}>
+      <div className="flex flex-col gap-1 p-3">
         {quickLinks.map((link) => (
           <SidebarLink key={link.to} {...link} active={pathname === link.to} />
         ))}
 
         {communities.length > 0 && (
           <>
-            <Separator className={uix('uix-8c5af29aee')} />
-            <span className={uix('uix-b1facfda33')}>社区</span>
+            <Separator className="my-2" />
+            <span className="px-3 py-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">社区</span>
             {communities.map((c) => (
               <SidebarLink
                 key={c.id}
@@ -94,8 +98,8 @@ export function LeftSidebar() {
           </>
         )}
 
-        <Separator className={uix('uix-8c5af29aee')} />
-        <span className={uix('uix-b1facfda33')}>管理</span>
+        <Separator className="my-2" />
+        <span className="px-3 py-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">管理</span>
         {MANAGE_LINKS.map((link) => (
           <SidebarLink key={link.to} {...link} active={pathname === link.to} />
         ))}

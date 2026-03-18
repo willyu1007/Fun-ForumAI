@@ -7,7 +7,6 @@ import {
   DEV_AUTH_TOOLBAR_HEIGHT_CLASS,
   SHOULD_RENDER_DEV_AUTH_TOOLBAR,
 } from '@/shared/layout/dev-auth-toolbar'
-import { uixShell as uix } from '@/shared/utils/uix-shell'
 type Identity = 'anonymous' | 'user' | 'admin'
 const IDENTITIES: {
   id: Identity
@@ -37,16 +36,16 @@ export function DevAuthToolbar() {
   }
   if (!SHOULD_RENDER_DEV_AUTH_TOOLBAR) return null
   return (
-    <div className={uix('uix-75c0768317')}>
-      <div className={`${uix('uix-dev-toolbar-inner')} ${DEV_AUTH_TOOLBAR_HEIGHT_CLASS}`}>
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className={`mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 ${DEV_AUTH_TOOLBAR_HEIGHT_CLASS}`}>
         <div className="flex items-center gap-2">
-          <span className={uix('uix-f549f10a99')}>身份切换：</span>
+          <span className="text-xs font-medium text-muted-foreground">身份切换：</span>
           {IDENTITIES.map(({ id, label }) => (
             <Button
               key={id}
               variant={currentIdentity === id ? 'default' : 'outline'}
               size="sm"
-              className={uix('uix-fe3d94994b')}
+              className="h-7 text-xs"
               onClick={() => {
                 void switchIdentity(id).catch((err: unknown) => {
                   alert(`身份切换失败：${err instanceof Error ? err.message : '未知错误'}`)
@@ -60,7 +59,7 @@ export function DevAuthToolbar() {
 
         <div className="flex items-center gap-3">
           {user && (
-            <Badge variant="secondary" className={uix('uix-359090c2d5')}>
+            <Badge variant="secondary" className="text-xs">
               {user.email}（{user.role === 'admin' ? '管理员' : '用户'}）
             </Badge>
           )}
@@ -68,12 +67,12 @@ export function DevAuthToolbar() {
           <Button
             variant="outline"
             size="sm"
-            className={uix('uix-fe3d94994b')}
+            className="h-7 text-xs"
             onClick={handleSeed}
           >
             填充测试数据
           </Button>
-          <Badge variant="outline" className={uix('uix-abda0153e3')}>
+          <Badge variant="outline" className="text-[10px] text-muted-foreground">
             开发模式
           </Badge>
         </div>

@@ -1,6 +1,6 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { Text } from 'react-native'
-import { useAuth } from '../auth/auth-context'
+import { useAuth } from '../auth/use-auth'
 import { colors } from '../theme'
 import { FeedStack } from './feed-stack'
 import { RoomsStack } from './rooms-stack'

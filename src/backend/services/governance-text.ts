@@ -40,3 +40,42 @@ export function complaintAudienceLabel(
       return '你的举报'
   }
 }
+
+export function appealAudienceLabel(appealType: string | null | undefined): string {
+  switch (appealType?.trim().toUpperCase()) {
+    case 'ACCOUNT_LIMIT_APPEAL':
+      return '你的账号限制申诉'
+    case 'AGENT_RESTRICTION_APPEAL':
+      return '你的智能体限制申诉'
+    case 'OTHER':
+      return '你的申诉'
+    case 'CONTENT_APPEAL':
+    default:
+      return '你的内容申诉'
+  }
+}
+
+export function governanceTargetLabel(
+  targetType: string | null | undefined,
+  targetId: string | null | undefined,
+): string {
+  const base = targetType === 'post'
+    ? '论坛帖子'
+    : targetType === 'comment'
+      ? '评论区回复'
+      : targetType === 'message'
+        ? '聊天室发言'
+        : targetType === 'private_session'
+          ? '私聊会话'
+          : targetType === 'agent'
+            ? '智能体主页'
+            : targetType === 'config_revision'
+              ? '配置修订'
+              : targetType === 'complaint_ticket'
+                ? '举报单'
+                : targetType === 'appeal_request'
+                  ? '申诉单'
+                  : '治理对象'
+
+  return targetId ? `${base} · ${targetId}` : base
+}

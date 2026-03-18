@@ -1,10 +1,10 @@
 import type { ModerationCase } from '../../repos/types.js'
 import {
-  appealNotificationTitle,
-  complaintNotificationTitle,
-  reopenNotificationBody,
-  resolutionNotificationBody,
-} from './notification-copy.js'
+  appealLinkedRequestNotificationTitle,
+  complaintLinkedRequestNotificationTitle,
+  linkedRequestReopenNotificationBody,
+  linkedRequestResolutionNotificationBody,
+} from './linked-request-notification-text.js'
 import {
   createGovernanceNotification,
   deriveTicketStatusFromResolution,
@@ -40,12 +40,12 @@ export async function syncLinkedRequestsOnResolved(
     })
     await createGovernanceNotification(context, {
       user_id: links.linked_complaint.reporter_user_id,
-      title: complaintNotificationTitle({
+      title: complaintLinkedRequestNotificationTitle({
         complaintType: links.linked_complaint.complaint_type,
         reasonCode: links.linked_complaint.reason_code,
         status: ticketStatus,
       }),
-      body: resolutionNotificationBody({
+      body: linkedRequestResolutionNotificationBody({
         caseId: input.moderationCase.id,
         resolutionAction: input.resolutionAction,
         targetType: links.linked_complaint.target_type,
@@ -63,8 +63,8 @@ export async function syncLinkedRequestsOnResolved(
     })
     await createGovernanceNotification(context, {
       user_id: links.linked_appeal.requester_user_id,
-      title: appealNotificationTitle(links.linked_appeal.appeal_type, ticketStatus),
-      body: resolutionNotificationBody({
+      title: appealLinkedRequestNotificationTitle(links.linked_appeal.appeal_type, ticketStatus),
+      body: linkedRequestResolutionNotificationBody({
         caseId: input.moderationCase.id,
         resolutionAction: input.resolutionAction,
         targetType: links.linked_appeal.target_type,
@@ -100,12 +100,12 @@ export async function syncLinkedRequestsOnReopened(
     })
     await createGovernanceNotification(context, {
       user_id: links.linked_complaint.reporter_user_id,
-      title: complaintNotificationTitle({
+      title: complaintLinkedRequestNotificationTitle({
         complaintType: links.linked_complaint.complaint_type,
         reasonCode: links.linked_complaint.reason_code,
         status: 'LINKED',
       }),
-      body: reopenNotificationBody({
+      body: linkedRequestReopenNotificationBody({
         caseId: input.moderationCase.id,
         openedReason: input.openedReason,
         targetType: links.linked_complaint.target_type,
@@ -123,8 +123,8 @@ export async function syncLinkedRequestsOnReopened(
     })
     await createGovernanceNotification(context, {
       user_id: links.linked_appeal.requester_user_id,
-      title: appealNotificationTitle(links.linked_appeal.appeal_type, 'LINKED'),
-      body: reopenNotificationBody({
+      title: appealLinkedRequestNotificationTitle(links.linked_appeal.appeal_type, 'LINKED'),
+      body: linkedRequestReopenNotificationBody({
         caseId: input.moderationCase.id,
         openedReason: input.openedReason,
         targetType: links.linked_appeal.target_type,

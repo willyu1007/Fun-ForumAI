@@ -36,7 +36,6 @@ import { relativeTime } from '@/shared/utils/relative-time'
 import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redirect'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
 import logoSrc from '@/assets/logo.png'
-import { uixShell as uix } from '@/shared/utils/uix-shell'
 function TopBar() {
   const guidanceEnabled = isGuidanceEnabled()
   const { toggleLeft, leftOpen } = useSidebarStore()
@@ -46,40 +45,40 @@ function TopBar() {
   const { data: guidanceInbox } = useGuidanceInbox()
   const guidanceUnread = guidanceEnabled ? (guidanceInbox?.data?.unread_count ?? 0) : 0
   return (
-    <div className={uix('uix-c3b11f7de5')}>
-      <div className={uix('uix-2ea93255e9')}>
+    <div className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-12 items-center gap-2 px-4">
         {/* Left: hamburger + logo */}
         <Button
           variant="ghost"
           size="sm"
-          className={uix('uix-115693110b')}
+          className="hidden h-8 w-8 p-0 md:flex"
           onClick={toggleLeft}
           aria-label={leftOpen ? '收起侧栏' : '展开侧栏'}
         >
-          <span className={uix('uix-42536e69e6')}>☰</span>
+          <span className="text-lg">☰</span>
         </Button>
 
         {/* Mobile sidebar trigger */}
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="sm" className={uix('uix-3ec85408bc')}>
-              <span className={uix('uix-42536e69e6')}>☰</span>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 md:hidden">
+              <span className="text-lg">☰</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className={uix('uix-bfd77e1693')}>
-            <div className={uix('uix-722cc0d1c5')}>
-              <img src={logoSrc} alt="AI Talkshow" className={uix('uix-322102772d')} />
-              <span className={uix('uix-69450ef148')}>AI Talkshow</span>
+          <SheetContent side="left" className="w-64 p-0">
+            <div className="flex h-12 items-center gap-2 border-b px-3">
+              <img src={logoSrc} alt="AI Talkshow" className="h-7 w-7 rounded-lg" />
+              <span className="font-bold">AI Talkshow</span>
             </div>
             <LeftSidebar />
           </SheetContent>
         </Sheet>
 
         <Link to="/" className="flex items-center gap-1.5">
-          <img src={logoSrc} alt="AI Talkshow" className={uix('uix-322102772d')} />
+          <img src={logoSrc} alt="AI Talkshow" className="h-7 w-7 rounded-lg" />
         </Link>
 
-        <Separator orientation="vertical" className={uix('uix-4cc2ea4d4b')} />
+        <Separator orientation="vertical" className="mx-1 h-5" />
 
         {/* Center: spacer */}
         <div className="flex-1" />
@@ -101,7 +100,7 @@ function TopBar() {
                     <Inbox className="h-4 w-4" />
                     <span>{formatGlossaryLabel('inbox')}</span>
                     {guidanceUnread > 0 && (
-                      <Badge className={uix('uix-56f77f1fbb')}>
+                      <Badge className="ml-1 h-4 min-w-4 rounded-full px-1 text-[10px]">
                         {guidanceUnread > 9 ? '9+' : guidanceUnread}
                       </Badge>
                     )}
@@ -113,20 +112,20 @@ function TopBar() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className={uix('uix-d94a0c9925')}>
-                    <span className={uix('uix-1e00be7680')}>
+                  <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
                       {user?.displayName?.charAt(0) ?? user?.email?.charAt(0) ?? '用'}
                     </span>
-                    <span className={uix('uix-7dba21d940')}>
+                    <span className="hidden max-w-24 truncate text-xs sm:block">
                       {user?.displayName ?? user?.email}
                     </span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuLabel className={uix('uix-359090c2d5')}>
+                  <DropdownMenuLabel className="text-xs">
                     {user?.displayName ?? user?.email}
                   </DropdownMenuLabel>
-                  <DropdownMenuLabel className={uix('uix-fef99531ad')}>
+                  <DropdownMenuLabel className="pt-0 text-[10px] font-normal text-muted-foreground">
                     {user?.role === 'admin' ? '管理员' : '用户'}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -146,7 +145,7 @@ function TopBar() {
                     <Link to="/admin">管控台</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => logout()} className={uix('uix-6f30038281')}>
+                  <DropdownMenuItem onClick={() => logout()} className="text-destructive focus:text-destructive">
                     退出登录
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -177,12 +176,12 @@ function TopBar() {
   )
 }
 const NOTIF_ICON: Record<string, React.ReactNode> = {
-  AGENT_PROACTIVE: <MessageCircle className={uix('uix-ae92cea82d')} />,
-  GROWTH_MILESTONE: <Trophy className={uix('uix-c645bed210')} />,
-  AGENT_FIRST_POST: <Trophy className={uix('uix-f2e79975c0')} />,
-  AFTERSHOW_CALLOUT: <MessageCircle className={uix('uix-0da45f160d')} />,
-  GOVERNANCE: <Info className={uix('uix-bbbc785fc1')} />,
-  SYSTEM: <Info className={uix('uix-bbbc785fc1')} />,
+  AGENT_PROACTIVE: <MessageCircle className="h-4 w-4 text-primary" />,
+  GROWTH_MILESTONE: <Trophy className="h-4 w-4 text-amber-500" />,
+  AGENT_FIRST_POST: <Trophy className="h-4 w-4 text-emerald-500" />,
+  AFTERSHOW_CALLOUT: <MessageCircle className="h-4 w-4 text-emerald-600" />,
+  GOVERNANCE: <Info className="h-4 w-4 text-muted-foreground" />,
+  SYSTEM: <Info className="h-4 w-4 text-muted-foreground" />,
 }
 function notifTargetUrl(n: {
   type: string
@@ -292,52 +291,52 @@ function NotificationBell() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className={uix('uix-81b89d6594')} aria-label="通知中心">
+        <Button variant="ghost" size="sm" className="relative h-8 w-8 p-0" aria-label="通知中心">
           <Bell className="h-4 w-4" />
           {unread > 0 && (
-            <Badge className={uix('uix-8b8d5152af')}>{unread > 9 ? '9+' : unread}</Badge>
+            <Badge className="absolute -right-1 -top-1 h-4 min-w-4 rounded-full px-1 text-[10px]">{unread > 9 ? '9+' : unread}</Badge>
           )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 max-h-80 overflow-y-auto">
         {hasGuidanceItems && (
           <>
-            <div className={uix('uix-d71303b033')}>
-              <DropdownMenuLabel className={uix('uix-e47f58f7c3')}>
+            <div className="px-2 py-1.5">
+              <DropdownMenuLabel className="p-0 text-xs">
                 {formatGlossaryLabel('inbox')}
               </DropdownMenuLabel>
             </div>
             {guidanceItems.slice(0, 3).map((item) => (
               <DropdownMenuItem
                 key={item.id}
-                className={cn(uix('uix-f730f24a58'), item.unread && uix('uix-989c466fdb'))}
+                className={cn('flex cursor-pointer items-start gap-2 py-2', item.unread && 'bg-primary/5')}
                 onClick={() => handleGuidanceClick(item)}
               >
-                <span className={uix('uix-99bfd280cd')}>
+                <span className="mt-0.5 shrink-0">
                   {item.module_type === 'RECEIPT' ? (
-                    <MessageCircle className={uix('uix-0da45f160d')} />
+                    <MessageCircle className="h-4 w-4 text-emerald-600" />
                   ) : (
-                    <Inbox className={uix('uix-ae92cea82d')} />
+                    <Inbox className="h-4 w-4 text-primary" />
                   )}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <span className={uix('uix-ffe787b841')}>{item.title}</span>
-                  <span className={uix('uix-77c57029c7')}>{item.body}</span>
-                  <span className={uix('uix-0e72078f5f')}>{relativeTime(item.created_at)}</span>
+                  <span className="block text-xs font-medium">{item.title}</span>
+                  <span className="block line-clamp-2 text-[11px] text-muted-foreground">{item.body}</span>
+                  <span className="mt-0.5 block text-[10px] text-muted-foreground">{relativeTime(item.created_at)}</span>
                 </div>
-                {item.unread && <span className={uix('uix-1c3414d0e3')} />}
+                {item.unread && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />}
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
           </>
         )}
-        <div className={uix('uix-cd433abca9')}>
-          <DropdownMenuLabel className={uix('uix-d4af97ed7e')}>通知</DropdownMenuLabel>
+        <div className="flex items-center justify-between px-2 py-1.5">
+          <DropdownMenuLabel className="p-0 text-xs">通知</DropdownMenuLabel>
           {notificationUnread > 0 && (
             <Button
               variant="ghost"
               size="sm"
-              className={uix('uix-678cacb524')}
+              className="h-auto px-1 py-0.5 text-[10px]"
               onClick={() => markAll.mutate()}
             >
               全部已读
@@ -346,29 +345,29 @@ function NotificationBell() {
         </div>
         <DropdownMenuSeparator />
         {!hasGuidanceItems && !hasNotifications ? (
-          <div className={uix('uix-46a483a1f1')}>暂无通知</div>
+          <div className="px-2 py-4 text-center text-xs text-muted-foreground">暂无通知</div>
         ) : !hasNotifications ? (
-          <div className={uix('uix-46a483a1f1')}>暂无通知</div>
+          <div className="px-2 py-4 text-center text-xs text-muted-foreground">暂无通知</div>
         ) : (
           items.slice(0, 10).map((n) => (
             <DropdownMenuItem
               key={n.id}
-              className={cn(uix('uix-f730f24a58'), !n.read && uix('uix-989c466fdb'))}
+              className={cn('flex cursor-pointer items-start gap-2 py-2', !n.read && 'bg-primary/5')}
               onClick={() => handleClick(n)}
             >
-              <span className={uix('uix-99bfd280cd')}>
-                {NOTIF_ICON[n.type] ?? <Info className={uix('uix-bbbc785fc1')} />}
+              <span className="mt-0.5 shrink-0">
+                {NOTIF_ICON[n.type] ?? <Info className="h-4 w-4 text-muted-foreground" />}
               </span>
-              <div className={uix('uix-ae12a6d11e')}>
-                <span className={uix('uix-ffe787b841')}>{n.title}</span>
-                {n.body && <span className={uix('uix-77c57029c7')}>{n.body}</span>}
-                <span className={uix('uix-0e72078f5f')}>{relativeTime(n.created_at)}</span>
+              <div className="min-w-0 flex-1">
+                <span className="block text-xs font-medium">{n.title}</span>
+                {n.body && <span className="block line-clamp-2 text-[11px] text-muted-foreground">{n.body}</span>}
+                <span className="mt-0.5 block text-[10px] text-muted-foreground">{relativeTime(n.created_at)}</span>
                 {n.type === 'AGENT_PROACTIVE' && n.target_id && (
-                  <div className={uix('uix-f28ab3f4c5')}>
+                  <div className="mt-1 flex items-center gap-2">
                     <Button
                       size="sm"
                       variant="outline"
-                      className={uix('uix-0d642c87be')}
+                      className="h-7 shrink-0 px-2 text-xs"
                       disabled={createReport.isPending}
                       onClick={(event) => {
                         event.stopPropagation()
@@ -378,14 +377,17 @@ function NotificationBell() {
                       {createReport.isPending ? '提交中…' : '发起主动私信治理'}
                     </Button>
                     {proactiveReportState[n.id] && (
-                      <span className={proactiveReportState[n.id] === '已提交治理' ? uix('uix-0e72078f5f') : uix('uix-551c237449')}>
+                      <span className={proactiveReportState[n.id] === '已提交治理'
+                        ? 'mt-0.5 block text-[10px] text-muted-foreground'
+                        : 'text-xs text-destructive'}
+                      >
                         {proactiveReportState[n.id]}
                       </span>
                     )}
                   </div>
                 )}
               </div>
-              {!n.read && <span className={uix('uix-1c3414d0e3')} />}
+              {!n.read && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />}
             </DropdownMenuItem>
           ))
         )}
@@ -399,16 +401,25 @@ export function Layout() {
   const showRight = pathname === '/' || pathname.startsWith('/c/')
   return (
     <AppShell
-      className={uix('uix-a4be9f854c')}
+      className="min-h-screen bg-background"
       topBar={<TopBar />}
-      leftRail={<div className={cn(uix('uix-1cef0c46f0'), leftOpen ? 'w-60' : uix('uix-65fd9b46e2'))}><LeftSidebar /></div>}
-      rightRail={showRight ? <div className={uix('uix-59c93857e1')}><RightSidebar /></div> : undefined}
+      leftRail={(
+        <div
+          className={cn(
+            'sticky top-12 hidden h-[calc(100vh-3rem)] shrink-0 border-r bg-background transition-all duration-200 md:block',
+            leftOpen ? 'w-60' : 'w-0 overflow-hidden border-r-0',
+          )}
+        >
+          <LeftSidebar />
+        </div>
+      )}
+      rightRail={showRight ? <div className="sticky top-12 hidden h-[calc(100vh-3rem)] w-72 shrink-0 border-l bg-background lg:block"><RightSidebar /></div> : undefined}
       leftRailOpen={leftOpen}
       showRightRail={showRight}
       footer={<DevAuthToolbar />}
     >
-      <div className={uix('uix-16b4d5e910')}>
-        <div className={uix('uix-174c4384a4')}>
+      <div className="min-w-0 flex-1 pb-16">
+        <div className="mx-auto max-w-3xl px-4 py-4">
           <Outlet />
         </div>
       </div>
