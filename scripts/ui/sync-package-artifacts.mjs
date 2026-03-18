@@ -17,7 +17,6 @@ const SYNC_TARGETS = [
   ['ui/codegen/mobile-theme.ts', 'packages/design-tokens/src/generated/mobile-theme.ts'],
   ['ui/styles/tokens.css', 'packages/design-tokens/styles/tokens.css'],
   ['ui/codegen/contract-types.ts', 'packages/ui-contract/src/generated/contract-types.ts'],
-  ['ui/codegen/contract-manifest.json', 'packages/ui-contract/contract/contract-manifest.json'],
   ['ui/contract/contract.json', 'packages/ui-contract/contract/contract.json'],
   ['ui/styles/contract.css', 'packages/ui-web/styles/contract.css'],
 ]

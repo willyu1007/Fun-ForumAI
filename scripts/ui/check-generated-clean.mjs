@@ -18,8 +18,6 @@ const GENERATED_FILES = [
   'packages/design-tokens/styles/tokens.css',
   'ui/codegen/contract-types.ts',
   'packages/ui-contract/src/generated/contract-types.ts',
-  'ui/codegen/contract-manifest.json',
-  'packages/ui-contract/contract/contract-manifest.json',
   'packages/ui-contract/contract/contract.json',
   'ui/codegen/web-theme.ts',
   'packages/design-tokens/src/generated/web-theme.ts',

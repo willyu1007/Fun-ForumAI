@@ -28,7 +28,6 @@ const SCRIPTS = {
     'build-web-theme.mjs',
     'build-mobile-theme.mjs',
     'build-contract-types.mjs',
-    'build-contract-manifest.mjs',
     'sync-package-artifacts.mjs',
   ],
   buildPackages: [

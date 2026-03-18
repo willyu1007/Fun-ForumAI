@@ -49,7 +49,6 @@
 | `build-web-theme.mjs` | 生成 ui/codegen/web-theme.ts |
 | `build-mobile-theme.mjs` | 生成 ui/codegen/mobile-theme.ts |
 | `build-contract-types.mjs` | 生成 ui/codegen/contract-types.ts（全部 37 roles） |
-| `build-contract-manifest.mjs` | 生成 ui/codegen/contract-manifest.json |
 | `check-contract-codegen-drift.mjs` | 检测 contract/codegen 一致性 |
 | `check-theme-protocol.mjs` | 检测主题协议一致性 |
 | `check-generated-clean.mjs` | 检测生成产物是否与源同步 |
@@ -210,6 +209,8 @@ ui-web package.json 添加：
   - `files` 从源码目录收敛到 `dist` + 必要的 styles/contract/tokens 资产
 - 包源码切到 NodeNext ESM 相对导入（`.js` 后缀），解决 `dist/*.js` 无法被 Node 直接加载的问题。
 - `ui-contract/manifest` 不再运行时导入 JSON，而是消费生成的 TypeScript 常量，移除 ESM JSON 依赖。
+- 删除已无消费者的 `build-contract-manifest.mjs` 与 `contract-manifest.json` 生成链路，避免保留无效脚本和冗余产物。
+- 删除 `@fun-forum/design-tokens` 中指向不存在 `tokens/` 目录的无效导出声明。
 
 ### B. Web 与 Mobile 运行时真正接入统一 UI SSOT
 

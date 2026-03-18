@@ -14,14 +14,11 @@
       "types": "./dist/mobile-theme.d.ts",
       "import": "./dist/mobile-theme.js"
     },
-    "./tokens.css": "./styles/tokens.css",
-    "./base.json": "./tokens/base.json",
-    "./themes/*": "./tokens/themes/*"
+    "./tokens.css": "./styles/tokens.css"
   },
   "files": [
     "dist",
-    "styles",
-    "tokens"
+    "styles"
   ],
   "scripts": {
     "build": "pnpm --workspace-root ui:build",

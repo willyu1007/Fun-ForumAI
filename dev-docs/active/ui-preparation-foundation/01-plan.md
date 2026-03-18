@@ -50,7 +50,7 @@
 
 - **1.1** 以 ui/tokens/base.json 与 ui/tokens/themes/default.light.json、default.dark.json 为 canonical source；将生成产物与 Web/Mobile 视觉统一为 navy+orange（修改 token 或生成逻辑，二选一收口）。
 - **1.2** 主题切换统一为 document.documentElement.dataset.theme = 'default.light' | 'default.dark'；如需短期兼容 .dark，仅在 applyTheme 内同时 set classList，不长期双协议。
-- **1.3** 在仓库根创建 scripts/ui/，实现独立 ESM 脚本：validate-token-schema.mjs、validate-theme-schema.mjs、validate-contract-schema.mjs、build-tokens-css.mjs、build-web-theme.mjs、build-mobile-theme.mjs、build-contract-types.mjs、build-contract-manifest.mjs、check-generated-clean.mjs、check-contract-codegen-drift.mjs、check-theme-protocol.mjs；index.mjs 仅接收 build/check 等命令并调用上述脚本。每个脚本单一职责、可单独运行、可断言成功/失败。
+- **1.3** 在仓库根创建 scripts/ui/，实现独立 ESM 脚本：validate-token-schema.mjs、validate-theme-schema.mjs、validate-contract-schema.mjs、build-tokens-css.mjs、build-web-theme.mjs、build-mobile-theme.mjs、build-contract-types.mjs、check-generated-clean.mjs、check-contract-codegen-drift.mjs、check-theme-protocol.mjs；index.mjs 仅接收 build/check 等命令并调用上述脚本。每个脚本单一职责、可单独运行、可断言成功/失败。
 - **1.4** 在 package.json 增加：ui:build、ui:check、ui:tokens:build、ui:theme:web、ui:theme:mobile、ui:contract:build、ui:contract:check、ui:drift:check（对应文档附录 12.2）。
 - **1.5** Web 入口与 Mobile 入口改为从统一生成产物读取主题（或占位注入）；CI 增加步骤：pnpm ui:build、pnpm ui:check；drift 失败即 CI 失败。
 
