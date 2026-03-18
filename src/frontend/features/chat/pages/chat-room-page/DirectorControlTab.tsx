@@ -12,7 +12,6 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Textarea } from '@/components/ui/textarea'
 import type { RoomCastRole } from '@/api/types'
 import { HOT_TOPIC_MODE_LABELS } from '@/shared/utils/hot-topic-policy'
-import { uix } from '@/shared/utils/uix'
 import { CUE_LABEL, ROLE_LABEL, SCENE_LABEL } from './constants'
 import type { DirectorPanelController } from './use-director-panel-controller'
 
@@ -30,12 +29,12 @@ export function DirectorControlTab({
 }: ControlTabProps) {
   return (
     <ScrollArea className="h-full">
-      <div className={compact ? `${uix('uix-06ae061dcf')} ${uix('uix-e10354c6b8')}` : uix('uix-06ae061dcf')}>
-        <section className={uix('uix-dab4332e94')}>
+      <div className={compact ? `${"space-y-4 p-4"} ${"pb-8"}` : "space-y-4 p-4"}>
+        <section className={"space-y-3 rounded-xl border bg-background/70 p-3"}>
           <div className="flex items-center justify-between gap-2">
             <div>
-              <p className={uix('uix-aaa307c4ab')}>节目控制</p>
-              <p className={uix('uix-25be576b96')}>高层策略，不允许直接写台词。</p>
+              <p className={"text-sm font-medium"}>节目控制</p>
+              <p className={"text-xs text-muted-foreground"}>高层策略，不允许直接写台词。</p>
             </div>
             <div className="flex gap-2">
               <Button
@@ -68,7 +67,7 @@ export function DirectorControlTab({
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
-              <p className={uix('uix-25be576b96')}>节目形态</p>
+              <p className={"text-xs text-muted-foreground"}>节目形态</p>
               <Select
                 value={programForm.sceneType}
                 onValueChange={(value) => programForm.setSceneType(value as never)}
@@ -86,14 +85,14 @@ export function DirectorControlTab({
               </Select>
             </div>
             <div className="space-y-1">
-              <p className={uix('uix-25be576b96')}>一句钩子</p>
+              <p className={"text-xs text-muted-foreground"}>一句钩子</p>
               <Input
                 value={programForm.shortHook}
                 onChange={(event) => programForm.setShortHook(event.target.value)}
               />
             </div>
             <div className="space-y-1">
-              <p className={uix('uix-25be576b96')}>热点模式</p>
+              <p className={"text-xs text-muted-foreground"}>热点模式</p>
               <Select
                 value={programForm.hotTopicMode}
                 onValueChange={(value) => programForm.setHotTopicMode(value as never)}
@@ -111,7 +110,7 @@ export function DirectorControlTab({
               </Select>
             </div>
             <div className="space-y-1">
-              <p className={uix('uix-25be576b96')}>推荐流</p>
+              <p className={"text-xs text-muted-foreground"}>推荐流</p>
               <Button
                 type="button"
                 variant={programForm.noRecommend ? 'secondary' : 'outline'}
@@ -144,10 +143,10 @@ export function DirectorControlTab({
           </Button>
         </section>
 
-        <section className={uix('uix-dab4332e94')}>
+        <section className={"space-y-3 rounded-xl border bg-background/70 p-3"}>
           <div>
-            <p className={uix('uix-aaa307c4ab')}>手动 Cue</p>
-            <p className={uix('uix-25be576b96')}>只接受高层目标和目标角色。</p>
+            <p className={"text-sm font-medium"}>手动 Cue</p>
+            <p className={"text-xs text-muted-foreground"}>只接受高层目标和目标角色。</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <Select value={cueForm.cueType} onValueChange={(value) => cueForm.setCueType(value as never)}>
@@ -204,10 +203,10 @@ export function DirectorControlTab({
           </Button>
         </section>
 
-        <section className={uix('uix-dab4332e94')}>
+        <section className={"space-y-3 rounded-xl border bg-background/70 p-3"}>
           <div>
-            <p className={uix('uix-aaa307c4ab')}>成员控制</p>
-            <p className={uix('uix-25be576b96')}>角色提示、聚光权重、游走资格与压制窗口。</p>
+            <p className={"text-sm font-medium"}>成员控制</p>
+            <p className={"text-xs text-muted-foreground"}>角色提示、聚光权重、游走资格与压制窗口。</p>
           </div>
           <div className="space-y-3">
             {memberControl.members.map((member) => {
@@ -216,23 +215,23 @@ export function DirectorControlTab({
                   new Date(member.suppressed_until).getTime() > Date.now(),
               )
               return (
-                <div key={member.member_id} className={uix('uix-227f0f6a9e')}>
+                <div key={member.member_id} className={"rounded-lg border bg-muted/20 p-3"}>
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className={uix('uix-aaa307c4ab')}>{member.name}</p>
+                      <p className={"text-sm font-medium"}>{member.name}</p>
                       {member.projection?.public_projection_hint && (
-                        <p className={uix('uix-dacb762e7b')}>
+                        <p className={"mt-1 text-xs text-muted-foreground"}>
                           {member.projection.public_projection_hint}
                         </p>
                       )}
                     </div>
-                    <Badge variant="outline" className={uix('uix-1dc571a360')}>
+                    <Badge variant="outline" className={"text-[10px]"}>
                       {member.join_source}
                     </Badge>
                   </div>
-                  <div className={uix('uix-06717fca08')}>
+                  <div className={"mt-3 grid gap-3 sm:grid-cols-2"}>
                     <div className="space-y-1">
-                      <p className={uix('uix-25be576b96')}>角色提示</p>
+                      <p className={"text-xs text-muted-foreground"}>角色提示</p>
                       <Select
                         value={member.role_hint ?? 'AUTO'}
                         onValueChange={(value) =>
@@ -256,7 +255,7 @@ export function DirectorControlTab({
                       </Select>
                     </div>
                     <div className="space-y-1">
-                      <p className={uix('uix-25be576b96')}>聚光权重</p>
+                      <p className={"text-xs text-muted-foreground"}>聚光权重</p>
                       <Input
                         defaultValue={String(member.spotlight_weight ?? 1)}
                         onBlur={(event) => {
@@ -275,7 +274,7 @@ export function DirectorControlTab({
                       />
                     </div>
                   </div>
-                  <div className={uix('uix-0f78ac7359')}>
+                  <div className={"mt-3 flex flex-wrap gap-2"}>
                     <Button
                       size="sm"
                       variant="outline"
@@ -306,7 +305,7 @@ export function DirectorControlTab({
                     </Button>
                   </div>
                   {member.projection?.signature_moves_json?.length ? (
-                    <p className={uix('uix-f87e38a14b')}>
+                    <p className={"mt-2 text-xs text-muted-foreground"}>
                       招牌动作：{member.projection.signature_moves_json.join('、')}
                     </p>
                   ) : null}

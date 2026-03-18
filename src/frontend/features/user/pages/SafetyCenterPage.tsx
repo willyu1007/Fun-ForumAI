@@ -12,7 +12,6 @@ import {
 import { useAuth } from '@/shared/hooks/use-auth'
 import type { AppealRequest, ComplaintTicket, Notification } from '@/api/types'
 import { relativeTime } from '@/shared/utils/relative-time'
-import { uix } from '@/shared/utils/uix'
 
 const STATUS_LABELS: Record<string, string> = {
   OPEN: '已提交',
@@ -417,27 +416,27 @@ function TicketRow({
   href: string | null
 }) {
   return (
-    <div className={uix('uix-d9ec640fb0')}>
+    <div className={"flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"}>
       <div className="min-w-0 space-y-1">
-        <p className={uix('uix-da8bf29040')}>{title}</p>
-        <p className={uix('uix-abda0153e3')}>{contextLine}</p>
-        {detail ? <p className={uix('uix-abda0153e3')}>{detail}</p> : null}
-        <p className={uix('uix-cb59187521')}>{relativeTime(createdAt)}</p>
+        <p className={"text-xs font-medium"}>{title}</p>
+        <p className={"text-[10px] text-muted-foreground"}>{contextLine}</p>
+        {detail ? <p className={"text-[10px] text-muted-foreground"}>{detail}</p> : null}
+        <p className={"text-[10px] mt-1 block"}>{relativeTime(createdAt)}</p>
       </div>
       <div className="flex items-center gap-2">
         <Badge
           variant="outline"
           className={
             status === 'OPEN' || status === 'READ'
-              ? uix('uix-acde912ea7')
+              ? "bg-slate-100 text-slate-700"
               : status === 'LINKED'
-                ? uix('uix-6b1dc864d8')
+                ? "bg-blue-50 text-blue-700"
                 : status === 'RESOLVED'
-                  ? uix('uix-6196a83432')
+                  ? "bg-emerald-50 text-emerald-700"
                   : status === 'REJECTED'
-                    ? uix('uix-34778b4db1')
+                    ? "bg-red-50 text-red-700"
                     : status === 'UNREAD'
-                      ? uix('uix-acde22e5d7')
+                      ? "bg-cyan-50 text-cyan-700"
                       : ''
           }
         >
@@ -471,13 +470,13 @@ function TimelineCard({
       <CardHeader className="gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1">
-            <CardTitle className={uix('uix-fc7473ca09')}>状态时间线</CardTitle>
-            <p className={uix('uix-abda0153e3')}>
+            <CardTitle className={"text-sm"}>状态时间线</CardTitle>
+            <p className={"text-[10px] text-muted-foreground"}>
               Safety Center 会把“从哪儿发起、挂到哪个 case、现在卡在哪一步”连成一条可读的治理时间线。
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className={unreadCount > 0 ? uix('uix-acde22e5d7') : ''}>
+            <Badge variant="outline" className={unreadCount > 0 ? "bg-cyan-50 text-cyan-700" : ''}>
               {unreadCount > 0 ? `${unreadCount} 条未读治理更新` : '治理更新已读完'}
             </Badge>
             <Button
@@ -499,25 +498,25 @@ function TimelineCard({
           </>
         )}
         {!loading && entries.length === 0 && (
-          <p className={uix('uix-abda0153e3')}>还没有治理记录，后续举报、申诉和审核通知会汇总在这里。</p>
+          <p className={"text-[10px] text-muted-foreground"}>还没有治理记录，后续举报、申诉和审核通知会汇总在这里。</p>
         )}
         {entries.map((entry) => (
           <div
             key={entry.id}
-            className={uix('uix-dc5f8042a1')}
+            className={"rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm shadow-slate-100"}
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className={uix('uix-da8bf29040')}>{entry.title}</p>
+                  <p className={"text-xs font-medium"}>{entry.title}</p>
                   <Badge
                     variant="outline"
                     className={
                       entry.source === 'REPORT'
-                        ? uix('uix-1e4ba8b8b0')
+                        ? "bg-amber-50 text-amber-700"
                         : entry.source === 'APPEAL'
-                          ? uix('uix-650421c537')
-                        : uix('uix-acde22e5d7')
+                          ? "bg-violet-50 text-violet-700"
+                        : "bg-cyan-50 text-cyan-700"
                     }
                   >
                     {entry.source_label}
@@ -526,16 +525,16 @@ function TimelineCard({
                     variant="outline"
                     className={
                       entry.phase === 'SUBMITTED'
-                        ? uix('uix-acde912ea7')
+                        ? "bg-slate-100 text-slate-700"
                         : entry.phase === 'QUEUED'
-                          ? uix('uix-6b1dc864d8')
+                          ? "bg-blue-50 text-blue-700"
                           : entry.phase === 'REOPENED'
-                            ? uix('uix-1e4ba8b8b0')
+                            ? "bg-amber-50 text-amber-700"
                             : entry.phase === 'RESOLVED'
-                              ? uix('uix-6196a83432')
+                              ? "bg-emerald-50 text-emerald-700"
                               : entry.phase === 'CLOSED'
-                                ? uix('uix-34778b4db1')
-                                : uix('uix-acde22e5d7')
+                                ? "bg-red-50 text-red-700"
+                                : "bg-cyan-50 text-cyan-700"
                     }
                   >
                     {TIMELINE_PHASE_LABELS[entry.phase]}
@@ -544,31 +543,31 @@ function TimelineCard({
                     variant="outline"
                     className={
                       entry.status === 'OPEN' || entry.status === 'READ'
-                        ? uix('uix-acde912ea7')
+                        ? "bg-slate-100 text-slate-700"
                         : entry.status === 'LINKED'
-                          ? uix('uix-6b1dc864d8')
+                          ? "bg-blue-50 text-blue-700"
                           : entry.status === 'RESOLVED'
-                            ? uix('uix-6196a83432')
+                            ? "bg-emerald-50 text-emerald-700"
                             : entry.status === 'REJECTED'
-                              ? uix('uix-34778b4db1')
+                              ? "bg-red-50 text-red-700"
                               : entry.status === 'UNREAD'
-                                ? uix('uix-acde22e5d7')
+                                ? "bg-cyan-50 text-cyan-700"
                                 : ''
                     }
                   >
                     {STATUS_LABELS[entry.status] ?? entry.status}
                   </Badge>
                   {entry.unread && (
-                    <Badge variant="outline" className={uix('uix-acde22e5d7')}>
+                    <Badge variant="outline" className={"bg-cyan-50 text-cyan-700"}>
                       未读
                     </Badge>
                   )}
                 </div>
-                <p className={uix('uix-abda0153e3')}>{entry.phase_copy}</p>
-                <p className={uix('uix-abda0153e3')}>提交入口 · {entry.surface_label}</p>
-                <p className={uix('uix-abda0153e3')}>目标对象 · {entry.target_label}</p>
-                <p className={uix('uix-abda0153e3')}>{entry.body}</p>
-                <p className={uix('uix-cb59187521')}>{relativeTime(entry.created_at)}</p>
+                <p className={"text-[10px] text-muted-foreground"}>{entry.phase_copy}</p>
+                <p className={"text-[10px] text-muted-foreground"}>提交入口 · {entry.surface_label}</p>
+                <p className={"text-[10px] text-muted-foreground"}>目标对象 · {entry.target_label}</p>
+                <p className={"text-[10px] text-muted-foreground"}>{entry.body}</p>
+                <p className={"text-[10px] mt-1 block"}>{relativeTime(entry.created_at)}</p>
               </div>
               {entry.href && (
                 <Button size="sm" variant="outline" asChild>
@@ -624,10 +623,10 @@ export function SafetyCenterPage() {
   if (!isAuthenticated) {
     return (
       <div className="space-y-4">
-        <h1 className={uix('uix-65af6ac52c')}>举报与申诉</h1>
+        <h1 className={"text-lg font-bold"}>举报与申诉</h1>
         <Card>
-          <CardContent className={uix('uix-9ad47e61f2')}>
-            <p className={uix('uix-fc7473ca09')}>登录后可以查看自己的举报和申诉处理状态。</p>
+          <CardContent className={"space-y-3 pt-6"}>
+            <p className={"text-sm"}>登录后可以查看自己的举报和申诉处理状态。</p>
             <Button asChild>
               <Link to="/login">去登录</Link>
             </Button>
@@ -648,13 +647,13 @@ export function SafetyCenterPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className={uix('uix-65af6ac52c')}>举报与申诉</h1>
-        <p className={uix('uix-25be576b96')}>
+        <h1 className={"text-lg font-bold"}>举报与申诉</h1>
+        <p className={"text-xs text-muted-foreground"}>
           查看你提交过的举报、申诉和私聊治理申请。被风控拦截、折叠或需要人工复核的内容，会在这里留下状态轨迹。
         </p>
       </div>
 
-      <div className={uix('uix-a10c4b5d31')}>
+      <div className={"rounded-2xl border border-sky-200 bg-sky-50/70 px-4 py-3 text-sm text-sky-950"}>
         当前受理入口已覆盖帖子、评论、聊天室发言，以及 Owner 私聊会话、主动私信的治理申请。
         流程会按“已提交 → 建 case → 进入审核/复核 → 重开或结案”逐步回写到这里。
         私聊与主动私信仍默认受实名门槛约束。
@@ -664,7 +663,7 @@ export function SafetyCenterPage() {
         </Link>
       </div>
 
-      <div className={uix('uix-7df92ecb84')}>
+      <div className={"rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-950"}>
         热点内容如果发生话题漂移，可能被改成“可直达，不参与推荐”，也可能重新进入 HOT_TOPIC 队列复核。
         这类限制传播和恢复放行的回执，同样会出现在时间线里。
         {' '}
@@ -684,7 +683,7 @@ export function SafetyCenterPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className={uix('uix-fc7473ca09')}>我的举报</CardTitle>
+            <CardTitle className={"text-sm"}>我的举报</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {loading && (
@@ -694,7 +693,7 @@ export function SafetyCenterPage() {
               </>
             )}
             {!loading && reportsData.length === 0 && (
-              <p className={uix('uix-abda0153e3')}>还没有提交过举报。</p>
+              <p className={"text-[10px] text-muted-foreground"}>还没有提交过举报。</p>
             )}
             {reportsData.map(renderComplaintRow)}
           </CardContent>
@@ -702,7 +701,7 @@ export function SafetyCenterPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className={uix('uix-fc7473ca09')}>我的申诉</CardTitle>
+            <CardTitle className={"text-sm"}>我的申诉</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {loading && (
@@ -712,7 +711,7 @@ export function SafetyCenterPage() {
               </>
             )}
             {!loading && appealsData.length === 0 && (
-              <p className={uix('uix-abda0153e3')}>还没有提交过申诉。</p>
+              <p className={"text-[10px] text-muted-foreground"}>还没有提交过申诉。</p>
             )}
             {appealsData.map(renderAppealRow)}
           </CardContent>

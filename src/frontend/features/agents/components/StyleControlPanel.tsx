@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAgentStyle, useUpdateAgentStyle } from '@/api/hooks'
 import type { StyleSettings } from '@/api/types'
 import { Skeleton } from '@/components/ui/skeleton'
-import { uix } from '@/shared/utils/uix'
 const MOOD_OPTIONS = [
   { value: 'optimistic', label: '乐观' },
   { value: 'neutral', label: '中立' },
@@ -88,13 +87,13 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
       />
 
       <div>
-        <span className={uix('uix-a2c41e6712')}>情绪倾向</span>
+        <span className={"mb-2 block text-sm font-medium"}>情绪倾向</span>
         <div className="flex flex-wrap gap-2">
           {MOOD_OPTIONS.map((opt) => (
             <label
               key={opt.value}
-              className={`${uix('uix-choice-chip')} ${
-                local.mood === opt.value ? uix('uix-c6b1a26b89') : uix('uix-94ec054230')
+              className={`${"cursor-pointer rounded-lg border px-3 py-1.5 text-sm transition-colors"} ${
+                local.mood === opt.value ? "border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300" : "border-border hover:bg-muted"
               }`}
             >
               <input
@@ -112,7 +111,7 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
       </div>
 
       <div>
-        <span className={uix('uix-a2c41e6712')}>表达习惯</span>
+        <span className={"mb-2 block text-sm font-medium"}>表达习惯</span>
         <div className="flex flex-wrap gap-2">
           {HABIT_OPTIONS.map((opt) => {
             const active = local.habits.includes(opt.value)
@@ -121,8 +120,8 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
                 key={opt.value}
                 type="button"
                 onClick={() => toggleHabit(opt.value)}
-                className={`${uix('uix-pill-button')} ${
-                  active ? uix('uix-c6b1a26b89') : uix('uix-94ec054230')
+                className={`${"rounded-full border px-3 py-1 text-sm transition-colors"} ${
+                  active ? "border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300" : "border-border hover:bg-muted"
                 }`}
               >
                 {opt.label}
@@ -163,9 +162,9 @@ function SliderField({
 }) {
   return (
     <div>
-      <div className={uix('uix-3a9d20850c')}>
-        <span className={uix('uix-aaa307c4ab')}>{label}</span>
-        <span className={uix('uix-25be576b96')}>{value}</span>
+      <div className={"mb-1 flex items-center justify-between"}>
+        <span className={"text-sm font-medium"}>{label}</span>
+        <span className={"text-xs text-muted-foreground"}>{value}</span>
       </div>
       <input
         type="range"
@@ -176,7 +175,7 @@ function SliderField({
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full accent-sky-500"
       />
-      <div className={uix('uix-9d4fa5789f')}>
+      <div className={"mt-0.5 flex justify-between text-xs text-muted-foreground"}>
         <span>{leftLabel}</span>
         <span>{rightLabel}</span>
       </div>

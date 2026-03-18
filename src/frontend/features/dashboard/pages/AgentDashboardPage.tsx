@@ -1,45 +1,44 @@
 import { useParams } from 'react-router'
 import { useAgentProfile, useAgentDashboard } from '@/api/hooks'
 import { CostReviewPanel } from '../components/CostReviewPanel'
-import { uix } from '@/shared/utils/uix'
 export function AgentDashboardPage() {
   const { agentId } = useParams<{
     agentId: string
   }>()
   const { data: profileRes, error: profileError } = useAgentProfile(agentId!)
   const { data: dashRes, isLoading, error: dashError } = useAgentDashboard(agentId!)
-  if (isLoading) return <div className={uix('uix-1afad0fb6b')}>加载中…</div>
+  if (isLoading) return <div className={"flex justify-center py-20 text-muted-foreground"}>加载中…</div>
   if (profileError || dashError)
     return (
-      <div className={uix('uix-fc3b14a8b3')}>
+      <div className={"py-10 text-center text-red-500"}>
         加载失败: {(profileError ?? dashError)?.message ?? '未知错误'}
       </div>
     )
   const agent = profileRes?.data
   const dash = dashRes?.data
-  if (!dash) return <div className={uix('uix-634db381a1')}>无数据</div>
+  if (!dash) return <div className={"py-10 text-center text-muted-foreground"}>无数据</div>
   return (
-    <div className={uix('uix-8c7733797a')}>
+    <div className={"mx-auto max-w-4xl space-y-6 px-4 py-6"}>
       {/* Header */}
       <div className="flex items-center gap-4">
-        <div className={uix('uix-cebdcca3eb')}>XP</div>
+        <div className={"flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xl font-bold text-white"}>XP</div>
         <div>
-          <h1 className={uix('uix-b92aee1b28')}>{agent?.display_name ?? 'Agent'}</h1>
-          <p className={uix('uix-26f026f8ad')}>XP 资源线与运行状态</p>
+          <h1 className={"text-2xl font-bold"}>{agent?.display_name ?? 'Agent'}</h1>
+          <p className={"text-sm text-muted-foreground"}>XP 资源线与运行状态</p>
         </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* XP Card */}
-        <div className={uix('uix-a1316bf8fb')}>
-          <div className={uix('uix-1b0b34f03e')}>
-            <span className={uix('uix-2689f39580')}>XP 与成长点</span>
-            <span className={uix('uix-bfa6031907')}>{dash.xp.xp} XP</span>
+        <div className={"rounded-xl border bg-card p-5"}>
+          <div className={"mb-2 flex items-center justify-between text-sm"}>
+            <span className={"font-medium"}>XP 与成长点</span>
+            <span className={"text-muted-foreground"}>{dash.xp.xp} XP</span>
           </div>
-          <p className={uix('uix-25be576b96')}>
+          <p className={"text-xs text-muted-foreground"}>
             XP 只用于累计成长点，不承担成就判定、身份判定或功能门槛。
           </p>
-          <div className={uix('uix-6aaba3fcef')}>
+          <div className={"mt-3 grid gap-2 text-xs text-muted-foreground"}>
             <span>每 1 点成长点所需 XP: {dash.xp.xp_per_growth_point} XP</span>
             <span>累计成长点: {dash.xp.growth_points_total}</span>
             <span>已分配成长点: {dash.xp.growth_points_spent}</span>
@@ -48,39 +47,39 @@ export function AgentDashboardPage() {
         </div>
 
         {/* Credit Card */}
-        <div className={uix('uix-a1316bf8fb')}>
-          <div className={uix('uix-1e888dfc82')}>信用评分</div>
+        <div className={"rounded-xl border bg-card p-5"}>
+          <div className={"mb-2 text-sm font-medium"}>信用评分</div>
           <div className="flex items-center gap-3">
             <div
-              className={`${uix('uix-score-xl')} ${dash.credit.credit_score > 70 ? uix('uix-ab3983747d') : dash.credit.credit_score > 40 ? uix('uix-1dd4876166') : uix('uix-e3f51cc694')}`}
+              className={`${"text-3xl font-bold"} ${dash.credit.credit_score > 70 ? "text-emerald-500" : dash.credit.credit_score > 40 ? "text-amber-500" : "text-red-500"}`}
             >
               {dash.credit.credit_score}
             </div>
-            <div className={uix('uix-fc7473ca09')}>
+            <div className={"text-sm"}>
               <div
-                className={`${uix('uix-pill-status')} ${dash.credit.risk_level === 'green' ? uix('uix-7901c6f305') : dash.credit.risk_level === 'yellow' ? uix('uix-7bf5bfe389') : uix('uix-c38d385fe4')}`}
+                className={`${"rounded-full px-2 py-0.5 text-xs font-medium"} ${dash.credit.risk_level === 'green' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : dash.credit.risk_level === 'yellow' ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}`}
               >
                 {dash.credit.risk_level}
               </div>
-              <div className={uix('uix-dacb762e7b')}>违规次数: {dash.credit.violations}</div>
+              <div className={"mt-1 text-xs text-muted-foreground"}>违规次数: {dash.credit.violations}</div>
             </div>
           </div>
         </div>
 
         {/* Budget Card */}
-        <div className={uix('uix-a1316bf8fb')}>
-          <div className={uix('uix-42efb498d3')}>预算使用</div>
+        <div className={"rounded-xl border bg-card p-5"}>
+          <div className={"mb-3 text-sm font-medium"}>预算使用</div>
           {dash.budget ? (
             <div className="space-y-3">
               <div>
-                <div className={uix('uix-f069df992a')}>
+                <div className={"mb-1 flex justify-between text-xs text-muted-foreground"}>
                   <span>日额度 ({dash.budget.tier})</span>
                   <span>
                     {dash.budget.daily_actions_used} / {dash.budget.daily_action_limit}
                   </span>
                 </div>
                 <progress
-                  className={uix('uix-progress-bar')}
+                  className={"h-2 w-full overflow-hidden rounded-full accent-sky-500"}
                   value={
                     dash.budget.daily_action_limit > 0
                       ? (dash.budget.daily_actions_used / dash.budget.daily_action_limit) * 100
@@ -90,14 +89,14 @@ export function AgentDashboardPage() {
                 />
               </div>
               <div>
-                <div className={uix('uix-f069df992a')}>
+                <div className={"mb-1 flex justify-between text-xs text-muted-foreground"}>
                   <span>月额度</span>
                   <span>
                     {dash.budget.monthly_actions_used} / {dash.budget.monthly_action_limit}
                   </span>
                 </div>
                 <progress
-                  className={uix('uix-progress-bar')}
+                  className={"h-2 w-full overflow-hidden rounded-full accent-sky-500"}
                   value={
                     dash.budget.monthly_action_limit > 0
                       ? (dash.budget.monthly_actions_used / dash.budget.monthly_action_limit) * 100
@@ -108,27 +107,27 @@ export function AgentDashboardPage() {
               </div>
             </div>
           ) : (
-            <p className={uix('uix-26f026f8ad')}>未配置预算</p>
+            <p className={"text-sm text-muted-foreground"}>未配置预算</p>
           )}
         </div>
 
         {/* Traits Card */}
-        <div className={uix('uix-a1316bf8fb')}>
-          <div className={uix('uix-42efb498d3')}>特质</div>
+        <div className={"rounded-xl border bg-card p-5"}>
+          <div className={"mb-3 text-sm font-medium"}>特质</div>
           {dash.traits.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {dash.traits.map((t) => (
                 <span
                   key={t.id}
-                  className={`${uix('uix-pill-score')} ${t.status === 'equipped' ? uix('uix-9a753e3080') : uix('uix-26479c7266')}`}
+                  className={`${"rounded-lg px-2.5 py-1 text-xs font-medium"} ${t.status === 'equipped' ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400" : "bg-muted text-muted-foreground"}`}
                 >
                   {t.trait_code}
-                  {t.category === 'system' && <span className={uix('uix-75621c5eeb')}>⚙</span>}
+                  {t.category === 'system' && <span className={"ml-1 opacity-50"}>⚙</span>}
                 </span>
               ))}
             </div>
           ) : (
-            <p className={uix('uix-26f026f8ad')}>暂无特质</p>
+            <p className={"text-sm text-muted-foreground"}>暂无特质</p>
           )}
         </div>
       </div>
@@ -137,34 +136,34 @@ export function AgentDashboardPage() {
       <CostReviewPanel agentId={agentId!} budget={dash.budget} />
 
       {/* XP Timeline */}
-      <div className={uix('uix-a1316bf8fb')}>
-        <div className={uix('uix-352e8253b3')}>XP 记录</div>
-        <p className={uix('uix-49de24eece')}>
+      <div className={"rounded-xl border bg-card p-5"}>
+        <div className={"mb-1 text-sm font-medium"}>XP 记录</div>
+        <p className={"mb-4 text-xs text-muted-foreground"}>
           这里只记录 XP 的来源与收支，不展示成就、编年史或身份事件。
         </p>
         {dash.recent_events.length > 0 ? (
           <div className="space-y-4">
             {dash.recent_events.map((e) => (
               <div key={e.id} className="flex gap-3">
-                <div className={uix('uix-aa5006c35a')}>
-                  <div className={uix('uix-340a365341')} />
-                  <div className={uix('uix-6fcc0c811c')} />
+                <div className={"mt-1.5 flex flex-col items-center"}>
+                  <div className={"h-2.5 w-2.5 rounded-full bg-blue-500"} />
+                  <div className={"w-px flex-1 bg-border"} />
                 </div>
-                <div className={uix('uix-d6cc73bd24')}>
+                <div className={"flex-1 pb-4"}>
                   <div className="flex items-center gap-2">
-                    <span className={uix('uix-aaa307c4ab')}>{e.title}</span>
+                    <span className={"text-sm font-medium"}>{e.title}</span>
                     {e.xp_delta !== 0 && (
                       <span
-                        className={`${uix('uix-text-xs-strong')} ${e.xp_delta > 0 ? uix('uix-ab3983747d') : uix('uix-e3f51cc694')}`}
+                        className={`${"text-xs font-medium"} ${e.xp_delta > 0 ? "text-emerald-500" : "text-red-500"}`}
                       >
                         {e.xp_delta > 0 ? '+' : ''}
                         {e.xp_delta} XP
                       </span>
                     )}
                   </div>
-                  <p className={uix('uix-bf14d583d6')}>{e.description}</p>
-                  <p className={uix('uix-a50733523f')}>来源: {e.source}</p>
-                  <time className={uix('uix-b8aeabac3f')}>
+                  <p className={"mt-0.5 text-xs text-muted-foreground"}>{e.description}</p>
+                  <p className={"mt-0.5 text-xs text-muted-foreground/70"}>来源: {e.source}</p>
+                  <time className={"mt-1 text-xs text-muted-foreground/60"}>
                     {new Date(e.created_at).toLocaleString('zh-CN')}
                   </time>
                 </div>
@@ -172,7 +171,7 @@ export function AgentDashboardPage() {
             ))}
           </div>
         ) : (
-          <p className={uix('uix-26f026f8ad')}>暂无 XP 记录</p>
+          <p className={"text-sm text-muted-foreground"}>暂无 XP 记录</p>
         )}
       </div>
     </div>

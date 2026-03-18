@@ -1,6 +1,5 @@
 import { useAgentCredit, useAgentCreditEvents } from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
-import { uix } from '@/shared/utils/uix'
 interface CreditBadgeProps {
   agentId: string
 }
@@ -30,17 +29,17 @@ export default function CreditBadge({ agentId }: CreditBadgeProps) {
     enabled: isAuthenticated,
   })
   if (creditLoading) {
-    return <div className={uix('uix-839cdd2e7e')}>加载信用数据…</div>
+    return <div className={"animate-pulse text-sm text-muted-foreground"}>加载信用数据…</div>
   }
   const credit = creditRes?.data
   if (!credit) return null
   const events = eventsRes?.data ?? []
   const riskCls = riskColors[credit.risk_level] ?? riskColors.medium
   return (
-    <div className={uix('uix-63142bb52e')}>
+    <div className={"rounded-xl border bg-card p-5 space-y-4"}>
       <div className="flex items-center justify-between">
-        <h3 className={uix('uix-e83a7042bc')}>信用评分</h3>
-        <span className={`${uix('uix-pill-status')} ${riskCls}`}>
+        <h3 className={"font-semibold"}>信用评分</h3>
+        <span className={`${"rounded-full px-2 py-0.5 text-xs font-medium"} ${riskCls}`}>
           {credit.risk_level === 'low' && '低风险'}
           {credit.risk_level === 'medium' && '中风险'}
           {credit.risk_level === 'high' && '高风险'}
@@ -48,14 +47,14 @@ export default function CreditBadge({ agentId }: CreditBadgeProps) {
       </div>
 
       <div className="flex items-baseline gap-2">
-        <span className={`${uix('uix-score-xl')} tabular-nums ${scoreColor(credit.credit_score)}`}>
+        <span className={`${"text-3xl font-bold"} tabular-nums ${scoreColor(credit.credit_score)}`}>
           {credit.credit_score}
         </span>
-        <span className={uix('uix-25be576b96')}>/ 100</span>
+        <span className={"text-xs text-muted-foreground"}>/ 100</span>
       </div>
 
       {credit.violations > 0 && (
-        <p className={uix('uix-25be576b96')}>
+        <p className={"text-xs text-muted-foreground"}>
           违规次数: {credit.violations}
           {credit.last_violation_at && ` · 最近: ${relativeTime(credit.last_violation_at)}`}
         </p>
@@ -63,17 +62,17 @@ export default function CreditBadge({ agentId }: CreditBadgeProps) {
 
       {!eventsLoading && events.length > 0 && (
         <div>
-          <p className={uix('uix-c814f31939')}>近期变动</p>
+          <p className={"mb-2 text-xs font-medium text-muted-foreground"}>近期变动</p>
           <ul className="space-y-1.5">
             {events.map((ev) => (
-              <li key={ev.id} className={uix('uix-7c3cd25611')}>
-                <span className={uix('uix-83d681b46f')}>{ev.reason}</span>
-                <span className={uix('uix-96acd79200')}>
-                  <span className={ev.delta > 0 ? uix('uix-88509a11b7') : uix('uix-2a4ba0866f')}>
+              <li key={ev.id} className={"flex items-center justify-between text-xs"}>
+                <span className={"truncate text-foreground"}>{ev.reason}</span>
+                <span className={"ml-2 flex shrink-0 items-center gap-1.5"}>
+                  <span className={ev.delta > 0 ? "font-medium text-green-600 dark:text-green-400" : "font-medium text-red-600 dark:text-red-400"}>
                     {ev.delta > 0 ? '+' : ''}
                     {ev.delta}
                   </span>
-                  <span className={uix('uix-bfa6031907')}>{relativeTime(ev.created_at)}</span>
+                  <span className={"text-muted-foreground"}>{relativeTime(ev.created_at)}</span>
                 </span>
               </li>
             ))}

@@ -11,7 +11,6 @@ import {
   HOT_TOPIC_DISTRIBUTION_LABELS,
   readTopicSignals,
 } from '@/shared/utils/hot-topic-policy'
-import { uix } from '@/shared/utils/uix'
 import { CUE_LABEL, ROLE_LABEL, toRecord } from './constants'
 
 export function MessageBubble({
@@ -52,7 +51,7 @@ export function MessageBubble({
 
   if (isAmbient) {
     return (
-      <div className={uix('uix-28704040a4')}>
+      <div className={"py-1 text-center text-xs text-muted-foreground"}>
         <RichTextLite text={message.body} mode="chat" className="space-y-1" />
       </div>
     )
@@ -61,51 +60,51 @@ export function MessageBubble({
   return (
     <div
       className={cn(
-        uix('uix-a7e4d5f5da'),
+        "flex gap-3 rounded-xl px-2 py-2 transition-colors",
         isSkip && 'opacity-60',
-        highlighted && uix('uix-a2df0c7de4'),
+        highlighted && "bg-amber-50 ring-1 ring-amber-200",
       )}
     >
-      <Avatar className={uix('uix-fcb8352ee0')}>
-        <AvatarFallback className={uix('uix-091d6a3521')}>
+      <Avatar className={"mt-0.5 h-8 w-8 shrink-0"}>
+        <AvatarFallback className={"bg-primary/10 text-xs"}>
           {displayName.slice(0, 2)}
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className={uix('uix-e43bc2769b')}>{displayName}</span>
+          <span className={"truncate text-sm font-medium"}>{displayName}</span>
           {isGreeting && (
-            <Badge variant="outline" className={uix('uix-e8ed768905')}>
+            <Badge variant="outline" className={"px-1 py-0 text-[10px]"}>
               入场
             </Badge>
           )}
           {isSkip && (
-            <Badge variant="secondary" className={uix('uix-e8ed768905')}>
+            <Badge variant="secondary" className={"px-1 py-0 text-[10px]"}>
               反馈
             </Badge>
           )}
           {message.speaker_role && (
-            <Badge variant="outline" className={uix('uix-e8ed768905')}>
+            <Badge variant="outline" className={"px-1 py-0 text-[10px]"}>
               {ROLE_LABEL[message.speaker_role]}
             </Badge>
           )}
           {message.cue_type && (
-            <Badge variant="secondary" className={uix('uix-e8ed768905')}>
+            <Badge variant="secondary" className={"px-1 py-0 text-[10px]"}>
               {CUE_LABEL[message.cue_type]}
             </Badge>
           )}
-          {highlighted && <Badge className={uix('uix-e8ed768905')}>高光</Badge>}
+          {highlighted && <Badge className={"px-1 py-0 text-[10px]"}>高光</Badge>}
           {isGray && (
-            <Badge variant="secondary" className={uix('uix-e8ed768905')}>
+            <Badge variant="secondary" className={"px-1 py-0 text-[10px]"}>
               灰度折叠
             </Badge>
           )}
           {isPending && (
-            <Badge variant="outline" className={uix('uix-e8ed768905')}>
+            <Badge variant="outline" className={"px-1 py-0 text-[10px]"}>
               待复核
             </Badge>
           )}
-          <span className={uix('uix-25be576b96')}>{relativeTime(message.created_at)}</span>
+          <span className={"text-xs text-muted-foreground"}>{relativeTime(message.created_at)}</span>
           {canReport && !isAmbient && (
             <Button
               size="sm"
@@ -120,12 +119,12 @@ export function MessageBubble({
           )}
         </div>
         {(isGray || isPending) && (
-          <div className={uix('uix-d7e2c0fd1c')}>
+          <div className={"rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"}>
             <p>这条发言因热点或审核策略默认折叠，展开后仍可直达查看原文。</p>
             <Button
               size="sm"
               variant="ghost"
-              className={uix('uix-4d2deea2bf')}
+              className={"mt-2"}
               onClick={() => setExpanded((current) => !current)}
             >
               {expanded ? '收起原文' : '展开原文'}
@@ -136,13 +135,13 @@ export function MessageBubble({
           <RichTextLite
             text={message.body}
             mode="chat"
-            className={cn(uix('uix-dbcbe995b4'), isSkip && uix('uix-80518375ad'))}
+            className={cn("mt-0.5 text-sm", isSkip && "italic text-muted-foreground")}
           />
         )}
         {topicCopy && (
-          <div className={cn(uix('uix-d7e2c0fd1c'), uix('uix-4d2deea2bf'))}>
+          <div className={cn("rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900", "mt-2")}>
             <p>{topicCopy}</p>
-            <p className={uix('uix-276aec863c')}>
+            <p className={"mt-1 text-[11px] text-amber-700"}>
               房间分发状态：{HOT_TOPIC_DISTRIBUTION_LABELS[distributionState] ?? distributionState}
             </p>
           </div>
@@ -151,8 +150,8 @@ export function MessageBubble({
           <p
             className={
               reportState.includes('失败')
-                ? uix('uix-17ad2d4d55')
-                : cn(uix('uix-abda0153e3'), uix('uix-4d2deea2bf'))
+                ? "mt-2 text-sm text-red-600"
+                : cn("text-[10px] text-muted-foreground", "mt-2")
             }
           >
             {reportState}

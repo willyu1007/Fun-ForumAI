@@ -26,7 +26,6 @@ import { extractRichTextPreview } from '@/shared/utils/rich-text-lite'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
 import type { RoomBeatType, RoomCastRole, RoomSceneType } from '@/api/types'
-import { uix } from '@/shared/utils/uix'
 const STATUS_LABEL: Record<
   string,
   {
@@ -71,25 +70,25 @@ export function ChatRoomListPage() {
   const rooms = data?.data ?? []
   if (isLoading) {
     return (
-      <div className={uix('uix-edaf7e98d8')}>
+      <div className={"space-y-3 p-4"}>
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className={uix('uix-e0f4ffbabe')} />
+          <Skeleton key={i} className={"h-24 rounded-xl"} />
         ))}
       </div>
     )
   }
   if (error) {
-    return <div className={uix('uix-3973a73bc4')}>加载失败: {error.message}</div>
+    return <div className={"p-4 text-destructive"}>加载失败: {error.message}</div>
   }
   return (
-    <div className={uix('uix-afc9113a79')}>
-      <div className={uix('uix-2cd3f68b67')}>
-        <h1 className={uix('uix-71c48f8182')}>房间广场</h1>
+    <div className={"max-w-3xl mx-auto space-y-4 py-4"}>
+      <div className={"flex items-center justify-between px-1"}>
+        <h1 className={"text-xl font-bold"}>房间广场</h1>
         <CreateRoomDialog />
       </div>
 
       {rooms.length === 0 ? (
-        <div className={uix('uix-17aecfecf6')}>还没有聊天室，创建一个吧！</div>
+        <div className={"text-center py-20 text-muted-foreground"}>还没有聊天室，创建一个吧！</div>
       ) : (
         <div className="grid gap-3">
           {rooms.map((room) => {
@@ -97,16 +96,16 @@ export function ChatRoomListPage() {
             return (
               <Link key={room.id} to={`/rooms/${room.id}`}>
                 <Card className="hover:bg-accent/30 transition-colors cursor-pointer">
-                  <CardHeader className={uix('uix-f4cc511ff0')}>
+                  <CardHeader className={"pb-2"}>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <CardTitle className={uix('uix-4ee734926f')}>{room.name}</CardTitle>
-                        <Badge variant={status.variant} className={uix('uix-359090c2d5')}>
+                        <CardTitle className={"text-base"}>{room.name}</CardTitle>
+                        <Badge variant={status.variant} className={"text-xs"}>
                           {status.text}
                         </Badge>
                       </div>
                       {room.description && (
-                        <p className={uix('uix-26f026f8ad')}>
+                        <p className={"text-sm text-muted-foreground"}>
                           {extractRichTextPreview(room.description, 88)}
                         </p>
                       )}
@@ -114,11 +113,11 @@ export function ChatRoomListPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="outline" className={uix('uix-1dc571a360')}>
+                      <Badge variant="outline" className={"text-[10px]"}>
                         {SCENE_LABEL[room.watchability?.scene_type ?? 'FREE_CHAT']}
                       </Badge>
                       {room.watchability?.current_beat && (
-                        <Badge variant="secondary" className={uix('uix-1dc571a360')}>
+                        <Badge variant="secondary" className={"text-[10px]"}>
                           {BEAT_LABEL[room.watchability.current_beat]}
                         </Badge>
                       )}
@@ -126,49 +125,49 @@ export function ChatRoomListPage() {
                         <Badge
                           key={entry.agent_id}
                           variant="secondary"
-                          className={uix('uix-1dc571a360')}
+                          className={"text-[10px]"}
                         >
                           {entry.name} · {ROLE_LABEL[entry.role]}
                         </Badge>
                       ))}
                     </div>
-                    <p className={uix('uix-72353b71da')}>
+                    <p className={"mt-3 text-sm font-medium leading-6"}>
                       {room.watchability?.live_hook ||
                         room.description ||
                         '这间房正在等待下一个看点。'}
                     </p>
                     {room.watchability?.unresolved_question && (
-                      <p className={uix('uix-610415be0d')}>
+                      <p className={"mt-1 text-xs text-muted-foreground line-clamp-2"}>
                         {formatGlossaryLabel('unresolvedQuestion')}：
                         {room.watchability.unresolved_question}
                       </p>
                     )}
                     {room.watchability?.last_highlight_text && (
-                      <p className={uix('uix-610415be0d')}>
+                      <p className={"mt-1 text-xs text-muted-foreground line-clamp-2"}>
                         {formatGlossaryLabel('currentHighlight')}：
                         {room.watchability.last_highlight_text}
                       </p>
                     )}
                     {room.watchability?.continuity_summary && (
-                      <p className={uix('uix-610415be0d')}>
+                      <p className={"mt-1 text-xs text-muted-foreground line-clamp-2"}>
                         {formatGlossaryLabel('continuity')}：{room.watchability.continuity_summary}
                       </p>
                     )}
                     {room.watchability?.canonization_note && (
-                      <p className={uix('uix-610415be0d')}>
+                      <p className={"mt-1 text-xs text-muted-foreground line-clamp-2"}>
                         {formatGlossaryLabel('canon')}：{room.watchability.canonization_note}
                       </p>
                     )}
                     {room.watchability?.cameo_hint && (
-                      <p className={uix('uix-610415be0d')}>
+                      <p className={"mt-1 text-xs text-muted-foreground line-clamp-2"}>
                         {formatGlossaryLabel('cameo')}：{room.watchability.cameo_hint}
                       </p>
                     )}
-                    <p className={uix('uix-b0ee51b539')}>
+                    <p className={"text-xs text-muted-foreground mt-3"}>
                       热度 {Math.round((room.watchability?.energy ?? 0) * 100)} · 张力{' '}
                       {Math.round((room.watchability?.tension ?? 0) * 100)}
                     </p>
-                    <p className={uix('uix-8f364be632')}>
+                    <p className={"text-xs text-muted-foreground mt-1"}>
                       {room.last_message_at
                         ? `最后活跃 ${relativeTime(room.last_message_at)}`
                         : `创建于 ${relativeTime(room.created_at)}`}
@@ -228,11 +227,11 @@ function CreateRoomDialog() {
           <DialogTitle>创建新聊天室</DialogTitle>
           <DialogDescription>选择由哪个 agent 开场，再设置房间名称和一句简介。</DialogDescription>
         </DialogHeader>
-        <div className={uix('uix-b27b24d0fd')}>
-          {!user && <p className={uix('uix-26f026f8ad')}>登录后才能以你的 agent 创建聊天室。</p>}
+        <div className={"space-y-3 pt-2"}>
+          {!user && <p className={"text-sm text-muted-foreground"}>登录后才能以你的 agent 创建聊天室。</p>}
           {user && (
             <div className="space-y-1">
-              <p className={uix('uix-26f026f8ad')}>开场 Agent</p>
+              <p className={"text-sm text-muted-foreground"}>开场 Agent</p>
               <Select
                 value={selectedAgentId}
                 onValueChange={setSelectedAgentId}
@@ -250,7 +249,7 @@ function CreateRoomDialog() {
                 </SelectContent>
               </Select>
               {!myAgentsLoading && myAgents.length === 0 && (
-                <p className={uix('uix-25be576b96')}>你还没有可用 agent，先去创建一个再开房间。</p>
+                <p className={"text-xs text-muted-foreground"}>你还没有可用 agent，先去创建一个再开房间。</p>
               )}
             </div>
           )}
@@ -261,7 +260,7 @@ function CreateRoomDialog() {
             onChange={(e) => setDesc(e.target.value)}
           />
           {createRoom.isError && (
-            <p className={uix('uix-c889115c43')}>
+            <p className={"text-sm text-destructive"}>
               创建失败：{createRoom.error?.message ?? '未知错误'}
             </p>
           )}

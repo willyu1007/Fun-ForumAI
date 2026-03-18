@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { uix } from '@/shared/utils/uix'
 import {
   buildQueuePlaybook,
   downloadJson,
@@ -25,14 +24,14 @@ export function ReviewQueueCard({ auth, review }: { auth: AuthSlice; review: Rev
   const caseIsOpen = currentCase?.status === 'OPEN' || currentCase?.status === 'IN_REVIEW'
 
   return (
-    <div className={uix('uix-4933602967')}>
+    <div className={"grid gap-4 lg:grid-cols-[1.1fr_0.9fr]"}>
       <Card>
-        <CardHeader className={uix('uix-f4cc511ff0')}>
-          <CardTitle className={uix('uix-fc7473ca09')}>审核队列</CardTitle>
+        <CardHeader className={"pb-2"}>
+          <CardTitle className={"text-sm"}>审核队列</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {(review.queueData?.data ?? []).length === 0 && (
-            <p className={uix('uix-abda0153e3')}>当前没有待处理 case。</p>
+            <p className={"text-[10px] text-muted-foreground"}>当前没有待处理 case。</p>
           )}
           {(review.queueData?.data ?? []).map((item) => (
             <button
@@ -44,13 +43,13 @@ export function ReviewQueueCard({ auth, review }: { auth: AuthSlice; review: Rev
                 review.setTransferNote('')
                 review.setEvidenceExportRedaction('operator')
               }}
-              className={uix('uix-81af913189')}
+              className={"flex items-center justify-between rounded-md border bg-card px-3 py-2"}
             >
-              <div className={uix('uix-938390cb99')}>
-                <p className={uix('uix-da8bf29040')}>
+              <div className={"text-left"}>
+                <p className={"text-xs font-medium"}>
                   {item.case_type} · {item.summary_text ?? item.id}
                 </p>
-                <p className={uix('uix-abda0153e3')}>
+                <p className={"text-[10px] text-muted-foreground"}>
                   {QUEUE_LABELS[item.queue] ?? item.queue} · {item.status} · priority{' '}
                   {item.priority}
                   {item.assigned_to_user_id ? ` · assignee ${item.assigned_to_user_id}` : ''}
@@ -63,18 +62,18 @@ export function ReviewQueueCard({ auth, review }: { auth: AuthSlice; review: Rev
       </Card>
 
       <Card>
-        <CardHeader className={uix('uix-f4cc511ff0')}>
-          <CardTitle className={uix('uix-fc7473ca09')}>Case 详情</CardTitle>
+        <CardHeader className={"pb-2"}>
+          <CardTitle className={"text-sm"}>Case 详情</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {!detail && <p className={uix('uix-abda0153e3')}>从左侧选择一个 case 查看详情。</p>}
+          {!detail && <p className={"text-[10px] text-muted-foreground"}>从左侧选择一个 case 查看详情。</p>}
           {detail && currentCase && (
             <>
               <div>
-                <p className={uix('uix-da8bf29040')}>
+                <p className={"text-xs font-medium"}>
                   {currentCase.case_type} · {currentCase.status}
                 </p>
-                <p className={uix('uix-abda0153e3')}>
+                <p className={"text-[10px] text-muted-foreground"}>
                   {QUEUE_LABELS[currentCase.queue] ?? currentCase.queue} ·{' '}
                   {currentCase.summary_text ?? '无摘要'}
                 </p>
@@ -149,7 +148,7 @@ export function ReviewQueueCard({ auth, review }: { auth: AuthSlice; review: Rev
                     释放回队列
                   </Button>
                 </div>
-                <div className={uix('uix-ce55a4e3e0')}>
+                <div className={"grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"}>
                   <Input
                     placeholder="转派给用户 ID"
                     value={review.transferUserId}
@@ -209,10 +208,10 @@ export function ReviewQueueCard({ auth, review }: { auth: AuthSlice; review: Rev
 
                 <TabsContent value="overview" className="space-y-3">
                   <div>
-                    <p className={uix('uix-b3691fbf2a')}>Targets</p>
+                    <p className={"mb-1 block text-[10px] font-medium text-muted-foreground"}>Targets</p>
                     <div className="space-y-1">
                       {detail.targets.map((target) => (
-                        <div key={target.id} className={uix('uix-abda0153e3')}>
+                        <div key={target.id} className={"text-[10px] text-muted-foreground"}>
                           {target.relation_type} · {target.channel} · {target.target_type}:
                           {target.target_id}
                         </div>
@@ -220,19 +219,19 @@ export function ReviewQueueCard({ auth, review }: { auth: AuthSlice; review: Rev
                     </div>
                   </div>
                   <div>
-                    <p className={uix('uix-b3691fbf2a')}>Risk Summary</p>
-                    <pre className={uix('uix-0f17a55f63')}>
+                    <p className={"mb-1 block text-[10px] font-medium text-muted-foreground"}>Risk Summary</p>
+                    <pre className={"mt-1 whitespace-pre-wrap break-all rounded-md bg-slate-50 p-2 text-xs text-slate-600"}>
                       {formatJsonPreview(currentCase.risk_summary ?? { summary: null }) ?? '{}'}
                     </pre>
                   </div>
                   <div>
-                    <p className={uix('uix-b3691fbf2a')}>Queue Playbook</p>
-                    <p className={uix('uix-abda0153e3')}>
+                    <p className={"mb-1 block text-[10px] font-medium text-muted-foreground"}>Queue Playbook</p>
+                    <p className={"text-[10px] text-muted-foreground"}>
                       {buildQueuePlaybook(currentCase.queue).summary}
                     </p>
                     <div className="space-y-1">
                       {buildQueuePlaybook(currentCase.queue).checklist.map((line) => (
-                        <p key={line} className={uix('uix-abda0153e3')}>
+                        <p key={line} className={"text-[10px] text-muted-foreground"}>
                           {line}
                         </p>
                       ))}
@@ -244,7 +243,7 @@ export function ReviewQueueCard({ auth, review }: { auth: AuthSlice; review: Rev
                   <ComplaintPanel item={detail.linked_complaint} />
                   <AppealPanel item={detail.linked_appeal} />
                   {!detail.linked_complaint && !detail.linked_appeal && (
-                    <p className={uix('uix-abda0153e3')}>
+                    <p className={"text-[10px] text-muted-foreground"}>
                       当前 case 还没有关联 complaint/appeal 对象。
                     </p>
                   )}
@@ -252,41 +251,41 @@ export function ReviewQueueCard({ auth, review }: { auth: AuthSlice; review: Rev
 
                 <TabsContent value="evidence" className="space-y-2">
                   {detail.evidence.map((evidence) => (
-                    <div key={evidence.id} className={uix('uix-aa56c9aa01')}>
+                    <div key={evidence.id} className={"rounded-md border p-2 text-left"}>
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className={uix('uix-da8bf29040')}>{evidence.snapshot_type}</p>
+                        <p className={"text-xs font-medium"}>{evidence.snapshot_type}</p>
                         {getEvidenceSections(evidence).map((section) => (
                           <Badge key={`${evidence.id}-${section.key}`} variant="outline">
                             {section.label}
                           </Badge>
                         ))}
                       </div>
-                      <div className={uix('uix-f4f6a4f40e')}>
+                      <div className={"mt-2 space-y-2"}>
                         {getEvidenceSections(evidence).map((section) => (
                           <div
                             key={`${evidence.id}-${section.key}-preview`}
-                            className={uix('uix-f2389d4df1')}
+                            className={"rounded-md bg-slate-50 p-2"}
                           >
-                            <p className={uix('uix-b3691fbf2a')}>{section.label}</p>
-                            <pre className={uix('uix-4fdc9d7d12')}>{section.preview}</pre>
+                            <p className={"mb-1 block text-[10px] font-medium text-muted-foreground"}>{section.label}</p>
+                            <pre className={"mt-1 whitespace-pre-wrap break-all text-xs text-slate-600"}>{section.preview}</pre>
                           </div>
                         ))}
                       </div>
                     </div>
                   ))}
                   {detail.evidence.length === 0 && (
-                    <p className={uix('uix-abda0153e3')}>当前没有 evidence snapshot。</p>
+                    <p className={"text-[10px] text-muted-foreground"}>当前没有 evidence snapshot。</p>
                   )}
                 </TabsContent>
 
                 <TabsContent value="tasks" className="space-y-2">
                   {detail.tasks.map((task) => (
-                    <div key={task.id} className={uix('uix-81af913189')}>
-                      <div className={uix('uix-938390cb99')}>
-                        <p className={uix('uix-da8bf29040')}>
+                    <div key={task.id} className={"flex items-center justify-between rounded-md border bg-card px-3 py-2"}>
+                      <div className={"text-left"}>
+                        <p className={"text-xs font-medium"}>
                           {task.task_type} · {task.status}
                         </p>
-                        <p className={uix('uix-abda0153e3')}>
+                        <p className={"text-[10px] text-muted-foreground"}>
                           {QUEUE_LABELS[task.queue] ?? task.queue}
                           {task.assigned_role ? ` · ${task.assigned_role}` : ''}
                           {task.assignee_user_id ? ` · assignee ${task.assignee_user_id}` : ''}
@@ -330,7 +329,7 @@ export function ReviewQueueCard({ auth, review }: { auth: AuthSlice; review: Rev
                     </div>
                   ))}
                   {detail.tasks.length === 0 && (
-                    <p className={uix('uix-abda0153e3')}>当前没有 review task。</p>
+                    <p className={"text-[10px] text-muted-foreground"}>当前没有 review task。</p>
                   )}
                 </TabsContent>
 
@@ -343,7 +342,7 @@ export function ReviewQueueCard({ auth, review }: { auth: AuthSlice; review: Rev
                           event.target.value as 'operator' | 'share',
                         )
                       }
-                      className={uix('uix-34e5554f24')}
+                      className={"h-8 w-full rounded-md border bg-background px-2 text-xs"}
                     >
                       <option value="operator">内部导出</option>
                       <option value="share">分享导出</option>
@@ -370,13 +369,13 @@ export function ReviewQueueCard({ auth, review }: { auth: AuthSlice; review: Rev
                   {(review.evidenceExport?.data?.redaction_notes.length ?? 0) > 0 && (
                     <div className="space-y-1">
                       {review.evidenceExport?.data?.redaction_notes.map((note) => (
-                        <p key={note} className={uix('uix-abda0153e3')}>
+                        <p key={note} className={"text-[10px] text-muted-foreground"}>
                           {note}
                         </p>
                       ))}
                     </div>
                   )}
-                  <pre className={uix('uix-6e2e4af21f')}>
+                  <pre className={"max-h-80 overflow-auto whitespace-pre-wrap break-all rounded-md bg-slate-50 p-2 text-xs text-slate-600"}>
                     {formatJsonPreview(review.evidenceExport?.data ?? { pending: true }, 2_400) ??
                       '{}'}
                   </pre>

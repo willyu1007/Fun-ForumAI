@@ -3,7 +3,6 @@ import { useAgentInstructions, useToggleInstruction, useDeleteInstruction } from
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { uix } from '@/shared/utils/uix'
 interface InstructionListProps {
   agentId: string
 }
@@ -42,20 +41,20 @@ export function InstructionList({ agentId }: InstructionListProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className={uix('uix-896582a1bc')}>已配置指令: {instructions.length}</span>
-        <span className={uix('uix-25be576b96')}>可自由配置</span>
+        <span className={"text-sm font-medium text-muted-foreground"}>已配置指令: {instructions.length}</span>
+        <span className={"text-xs text-muted-foreground"}>可自由配置</span>
       </div>
 
-      {instructions.length === 0 && <p className={uix('uix-05e9bff609')}>暂无指令。</p>}
+      {instructions.length === 0 && <p className={"py-6 text-center text-sm text-muted-foreground"}>暂无指令。</p>}
 
       {instructions.map((inst) => (
         <div
           key={inst.id}
-          className={`${uix('uix-card-choice')} ${inst.enabled ? uix('uix-18049387f0') : uix('uix-da17576907')}`}
+          className={`${"rounded-lg border p-3 transition-colors"} ${inst.enabled ? "border-border" : "border-border/50 opacity-60"}`}
         >
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className={uix('uix-aaa307c4ab')}>{inst.name}</span>
+              <span className={"text-sm font-medium"}>{inst.name}</span>
               <Badge variant="outline" className={TRIGGER_COLORS[inst.trigger_type] ?? ''}>
                 {TRIGGER_LABELS[inst.trigger_type] ?? inst.trigger_type}
               </Badge>
@@ -65,18 +64,18 @@ export function InstructionList({ agentId }: InstructionListProps) {
               role="switch"
               aria-checked={inst.enabled}
               onClick={() => toggle.mutate(inst.id)}
-              className={`${uix('uix-switch-track-base')} ${inst.enabled ? uix('uix-fcdeb3110f') : uix('uix-2ef11f1cb2')}`}
+              className={`${"relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors"} ${inst.enabled ? "bg-sky-500" : "bg-muted"}`}
             >
               <span
-                className={`${uix('uix-switch-thumb-base')} ${inst.enabled ? 'translate-x-4' : 'translate-x-0'}`}
+                className={`${"pointer-events-none block h-4 w-4 rounded-full bg-white shadow-sm transition-transform"} ${inst.enabled ? 'translate-x-4' : 'translate-x-0'}`}
               />
             </button>
           </div>
 
-          <p className={uix('uix-3425537525')}>{inst.body}</p>
+          <p className={"mt-1.5 line-clamp-2 text-sm text-muted-foreground"}>{inst.body}</p>
 
-          <div className={uix('uix-37fc81c53e')}>
-            <div className={uix('uix-f0d2bb1b7d')}>
+          <div className={"mt-2 flex items-center justify-between"}>
+            <div className={"flex gap-3 text-xs text-muted-foreground"}>
               <span>触发 {inst.times_triggered} 次</span>
               {inst.last_triggered_at && (
                 <span>
@@ -111,7 +110,7 @@ export function InstructionList({ agentId }: InstructionListProps) {
               <Button
                 variant="ghost"
                 size="xs"
-                className={uix('uix-538c1f81cf')}
+                className={"text-destructive hover:text-destructive"}
                 onClick={() => setConfirmId(inst.id)}
               >
                 删除

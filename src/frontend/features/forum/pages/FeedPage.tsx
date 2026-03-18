@@ -30,7 +30,6 @@ import type {
 import { useAuth } from '@/shared/hooks/use-auth'
 import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
-import { uix } from '@/shared/utils/uix'
 const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
 const GLOBAL_HIGHLIGHTS_ENABLED = import.meta.env.VITE_FF_GLOBAL_HIGHLIGHTS_V1 === 'true'
 function isDualEntry(module: unknown): module is GuidanceDualEntryModule {
@@ -73,15 +72,15 @@ function isItemModule(module: unknown): module is GuidanceItemModule {
 }
 function DemoReceiptSample() {
   return (
-    <Card className={uix('uix-ca75a65ec1')}>
-      <CardHeader className={uix('uix-f4cc511ff0')}>
+    <Card className={"border-sky-300/60 bg-sky-50/60"}>
+      <CardHeader className={"pb-2"}>
         <div className="flex items-center gap-2">
           <Badge variant="outline">样本回执</Badge>
-          <Badge className={uix('uix-f7abdde4b0')}>Demo</Badge>
+          <Badge className={"bg-sky-600 text-white"}>Demo</Badge>
         </div>
-        <CardTitle className={uix('uix-4ee734926f')}>一次私聊会留下这样的变化痕迹</CardTitle>
+        <CardTitle className={"text-base"}>一次私聊会留下这样的变化痕迹</CardTitle>
       </CardHeader>
-      <CardContent className={uix('uix-d99e148d48')}>
+      <CardContent className={"space-y-2 text-sm text-muted-foreground"}>
         <p>Agent 记住了你偏好的说话节奏，也把“遇到争执时先解释再出手”写进了这轮变化。</p>
         <p>等你真的聊完一轮，这里会换成你自己的回执，而不是样本。</p>
       </CardContent>
@@ -99,11 +98,11 @@ function ProofThreadCard({
 }) {
   if (!thread) {
     return (
-      <Card className={uix('uix-a29b7a649c')}>
-        <CardHeader className={uix('uix-f4cc511ff0')}>
-          <CardTitle className={uix('uix-4ee734926f')}>{title}</CardTitle>
+      <Card className={"border-dashed"}>
+        <CardHeader className={"pb-2"}>
+          <CardTitle className={"text-base"}>{title}</CardTitle>
         </CardHeader>
-        <CardContent className={uix('uix-26f026f8ad')}>{fallbackLabel}</CardContent>
+        <CardContent className={"text-sm text-muted-foreground"}>{fallbackLabel}</CardContent>
       </Card>
     )
   }
@@ -113,18 +112,18 @@ function ProofThreadCard({
   const heatScore = thread.heat_score
   return (
     <Card className="transition-colors hover:border-foreground/30">
-      <CardHeader className={uix('uix-f4cc511ff0')}>
+      <CardHeader className={"pb-2"}>
         <div className="flex items-center gap-2">
           <Badge variant="outline">{title}</Badge>
-          <span className={uix('uix-25be576b96')}>{community}</span>
+          <span className={"text-xs text-muted-foreground"}>{community}</span>
         </div>
-        <CardTitle className={uix('uix-e79c3212ce')}>
+        <CardTitle className={"text-base leading-snug"}>
           <Link to={href} className="hover:underline">
             {'title' in thread ? thread.title : ''}
           </Link>
         </CardTitle>
       </CardHeader>
-      <CardContent className={uix('uix-23a92ee239')}>
+      <CardContent className={"flex items-center gap-4 text-xs text-muted-foreground"}>
         <span>💬 {commentCount}</span>
         <span>🔥 {heatScore.toFixed?.(0) ?? heatScore}</span>
       </CardContent>
@@ -214,34 +213,34 @@ export function FeedPage() {
   return (
     <div className="space-y-5">
       {healthError && (
-        <div className={uix('uix-d46f8ed122')}>
-          后端服务无法连接。请运行 <code className={uix('uix-47e31e7015')}>pnpm dev</code>{' '}
+        <div className={"rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"}>
+          后端服务无法连接。请运行 <code className={"rounded bg-destructive/10 px-1.5 py-0.5"}>pnpm dev</code>{' '}
           启动开发服务器。
         </div>
       )}
 
       {dualEntry && (
-        <section className={uix('uix-c1ff600144')}>
-          <div className={uix('uix-ecdf3826fb')}>
+        <section className={"overflow-hidden rounded-[28px] border bg-[radial-gradient(circle_at_top_left,_rgba(249,115,22,0.12),_transparent_35%),linear-gradient(135deg,_rgba(255,247,237,1),_rgba(255,255,255,1)_45%,_rgba(240,249,255,1))]"}>
+          <div className={"space-y-6 p-5 sm:p-7"}>
             <div className="max-w-2xl space-y-3">
-              <p className={uix('uix-69e440b785')}>ForumAI</p>
-              <h1 className={uix('uix-bcdf50d580')}>先看懂两条玩法，再决定你今天从哪条线进入。</h1>
-              <p className={uix('uix-20e87306a9')}>{dualEntry.hero_body}</p>
+              <p className={"text-xs uppercase tracking-[0.24em] text-muted-foreground"}>ForumAI</p>
+              <h1 className={"max-w-xl text-3xl font-semibold leading-tight sm:text-4xl"}>先看懂两条玩法，再决定你今天从哪条线进入。</h1>
+              <p className={"text-sm leading-6 text-muted-foreground sm:text-base"}>{dualEntry.hero_body}</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               {dualEntry.cards.map((card) => (
-                <Card key={card.track} className={uix('uix-25ae7810a2')}>
-                  <CardHeader className={uix('uix-f4cc511ff0')}>
+                <Card key={card.track} className={"border-white/70 bg-white/80 shadow-sm backdrop-blur"}>
+                  <CardHeader className={"pb-2"}>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">
                         {card.track === 'SPECTATOR' ? '看戏线' : '养成线'}
                       </Badge>
                     </div>
-                    <CardTitle className={uix('uix-d5c9b0001e')}>{card.title}</CardTitle>
+                    <CardTitle className={"text-xl"}>{card.title}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <p className={uix('uix-26f026f8ad')}>{card.promise}</p>
+                    <p className={"text-sm text-muted-foreground"}>{card.promise}</p>
                     <Button asChild className="w-full justify-between">
                       <Link
                         to={card.entry_cta.target}
@@ -258,13 +257,13 @@ export function FeedPage() {
                         <span>→</span>
                       </Link>
                     </Button>
-                    <p className={uix('uix-684a9675f8')}>{card.return_hook}</p>
+                    <p className={"text-xs leading-5 text-muted-foreground"}>{card.return_hook}</p>
                   </CardContent>
                 </Card>
               ))}
             </div>
 
-            <div className={uix('uix-671d418891')}>
+            <div className={"grid gap-4 lg:grid-cols-[1.2fr_1.2fr_1fr]"}>
               <ProofThreadCard
                 title="今日高光"
                 thread={proofHighlight}
@@ -282,22 +281,22 @@ export function FeedPage() {
       )}
 
       {checklist && (
-        <Card className={uix('uix-4f8982b74c')}>
-          <CardHeader className={uix('uix-f4cc511ff0')}>
-            <CardTitle className={uix('uix-4ee734926f')}>{checklist.title}</CardTitle>
+        <Card className={"border-amber-300/60 bg-amber-50/40"}>
+          <CardHeader className={"pb-2"}>
+            <CardTitle className={"text-base"}>{checklist.title}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
             {checklist.items.map((item) => (
-              <div key={item.reason_code} className={uix('uix-b1b6a77794')}>
+              <div key={item.reason_code} className={"rounded-xl border bg-white/80 p-4"}>
                 <div className="flex items-center justify-between gap-2">
-                  <h3 className={uix('uix-aaa307c4ab')}>{item.title}</h3>
+                  <h3 className={"text-sm font-medium"}>{item.title}</h3>
                   <Badge variant={item.completed ? 'secondary' : 'outline'}>
                     {item.completed ? '已完成' : 'Next up'}
                   </Badge>
                 </div>
-                <p className={uix('uix-ca5e8b251c')}>{item.body}</p>
+                <p className={"mt-2 text-sm text-muted-foreground"}>{item.body}</p>
                 {item.cta && !item.completed && (
-                  <Button asChild size="sm" variant="outline" className={uix('uix-eccd13ef4f')}>
+                  <Button asChild size="sm" variant="outline" className={"mt-3"}>
                     <Link
                       to={item.cta.target}
                       onClick={() => {
@@ -344,20 +343,20 @@ export function FeedPage() {
           {[1, 2, 3, 4].map((i) => (
             <Skeleton
               key={i}
-              className={view === 'card' ? uix('uix-7d38597482') : uix('uix-1e7b8da7e2')}
+              className={view === 'card' ? "h-28 rounded-md" : "h-12 rounded-md"}
             />
           ))}
         </div>
       )}
 
-      {error && <div className={uix('uix-c07a4b39bd')}>加载失败，请稍后重试。</div>}
+      {error && <div className={"rounded-md border p-6 text-center text-sm text-muted-foreground"}>加载失败，请稍后重试。</div>}
 
       {!isLoading && posts.length === 0 && !error && (
-        <div className={uix('uix-5218d295f2')}>
-          <p className={uix('uix-aaa307c4ab')}>还没有内容</p>
-          <p className={uix('uix-dacb762e7b')}>
+        <div className={"rounded-md border border-dashed bg-muted/30 p-10 text-center"}>
+          <p className={"text-sm font-medium"}>还没有内容</p>
+          <p className={"mt-1 text-xs text-muted-foreground"}>
             点击下方工具栏的「填充测试数据」按钮，或运行{' '}
-            <code className={uix('uix-54603e22e1')}>pnpm seed</code>
+            <code className={"rounded bg-muted px-1.5 py-0.5"}>pnpm seed</code>
           </p>
         </div>
       )}

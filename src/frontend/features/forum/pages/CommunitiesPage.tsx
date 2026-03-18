@@ -4,32 +4,31 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { COMMUNITY_VISIBILITY_LABELS } from '@/shared/utils/public-ui-glossary'
-import { uix } from '@/shared/utils/uix'
 export function CommunitiesPage() {
   const { data, isLoading, error } = useCommunities()
   const communities = data?.data ?? []
   return (
     <div className="space-y-4">
       <div>
-        <h1 className={uix('uix-a6c8df960c')}>社区广场</h1>
-        <p className={uix('uix-25be576b96')}>先看中文社区名，再看一句简介和 `c/slug`。</p>
+        <h1 className={"text-lg font-bold tracking-tight"}>社区广场</h1>
+        <p className={"text-xs text-muted-foreground"}>先看中文社区名，再看一句简介和 `c/slug`。</p>
       </div>
 
       {isLoading && (
         <div className="grid gap-3 sm:grid-cols-2">
           {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className={uix('uix-7d38597482')} />
+            <Skeleton key={i} className={"h-28 rounded-md"} />
           ))}
         </div>
       )}
 
-      {error && <div className={uix('uix-c07a4b39bd')}>加载失败，请稍后重试。</div>}
+      {error && <div className={"rounded-md border p-6 text-center text-sm text-muted-foreground"}>加载失败，请稍后重试。</div>}
 
       {!isLoading && communities.length === 0 && !error && (
-        <div className={uix('uix-5218d295f2')}>
-          <p className={uix('uix-aaa307c4ab')}>还没有社区</p>
-          <p className={uix('uix-dacb762e7b')}>
-            运行 <code className={uix('uix-54603e22e1')}>pnpm seed</code> 创建测试社区
+        <div className={"rounded-md border border-dashed bg-muted/30 p-10 text-center"}>
+          <p className={"text-sm font-medium"}>还没有社区</p>
+          <p className={"mt-1 text-xs text-muted-foreground"}>
+            运行 <code className={"rounded bg-muted px-1.5 py-0.5"}>pnpm seed</code> 创建测试社区
           </p>
         </div>
       )}
@@ -38,17 +37,17 @@ export function CommunitiesPage() {
         {communities.map((community) => (
           <Link key={community.id} to={`/c/${community.slug}`}>
             <Card className="h-full transition-all hover:border-primary/30 hover:shadow-sm">
-              <CardHeader className={uix('uix-f4cc511ff0')}>
+              <CardHeader className={"pb-2"}>
                 <div className="flex items-center justify-between">
-                  <CardTitle className={uix('uix-fc7473ca09')}>{community.name}</CardTitle>
-                  <Badge variant="outline" className={uix('uix-5205acef89')}>
+                  <CardTitle className={"text-sm"}>{community.name}</CardTitle>
+                  <Badge variant="outline" className={"text-[10px] font-mono"}>
                     c/{community.slug}
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className={uix('uix-9335c39f6e')}>
-                <p className={uix('uix-f066b913b1')}>{community.description ?? '暂无描述。'}</p>
-                <p className={uix('uix-1f2ceca95a')}>
+              <CardContent className={"pt-0"}>
+                <p className={"line-clamp-2 text-xs text-muted-foreground leading-relaxed"}>{community.description ?? '暂无描述。'}</p>
+                <p className={"mt-2 text-[10px] text-muted-foreground"}>
                   默认可见性：
                   {COMMUNITY_VISIBILITY_LABELS[community.visibility_default.toLowerCase()] ??
                     community.visibility_default}

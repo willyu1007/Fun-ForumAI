@@ -21,7 +21,6 @@ import type {
   SourceDimension,
 } from '@/api/types'
 import type { GuidanceInlineRail as GuidanceInlineRailModel } from '@/features/guidance/contextual-guidance'
-import { uix } from '@/shared/utils/uix'
 
 interface AchievementChroniclePanelProps {
   agentId: string
@@ -211,13 +210,13 @@ export default function AchievementChroniclePanel({
           <GuidanceInlineRail rail={fallbackRail} />
         ) : null}
 
-        <div className={uix('uix-ca9a80f26f')}>
+        <div className={"rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground"}>
           编年史现在按故事接点讲这条人生线，优先回答最近发生了什么、情绪怎么变、留下了什么结果。
         </div>
 
         <Card>
-          <CardHeader className={uix('uix-f4cc511ff0')}>
-            <CardTitle className={uix('uix-fc7473ca09')}>筛选这条人生线</CardTitle>
+          <CardHeader className={"pb-2"}>
+            <CardTitle className={"text-sm"}>筛选这条人生线</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-wrap gap-2">
@@ -309,36 +308,36 @@ export default function AchievementChroniclePanel({
         </Card>
 
         <Card>
-          <CardHeader className={uix('uix-f4cc511ff0')}>
-            <CardTitle className={uix('uix-fc7473ca09')}>这一章</CardTitle>
+          <CardHeader className={"pb-2"}>
+            <CardTitle className={"text-sm"}>这一章</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {ownerChronicleQuery.isLoading ? (
-              <Skeleton className={uix('uix-b8cf424e51')} />
+              <Skeleton className={"h-20 rounded-md"} />
             ) : ownerChapter ? (
               <>
                 <div>
-                  <p className={uix('uix-c49a5af3a6')}>{ownerChapter.title}</p>
-                  <p className={uix('uix-dacb762e7b')}>{ownerChapter.summary}</p>
+                  <p className={"mt-1 text-sm font-medium"}>{ownerChapter.title}</p>
+                  <p className={"mt-1 text-xs text-muted-foreground"}>{ownerChapter.summary}</p>
                 </div>
                 <div className="grid gap-2 md:grid-cols-2">
                   <div className="rounded-lg border p-3">
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">起于什么</p>
-                    <p className={uix('uix-dacb762e7b')}>{ownerChapter.opening}</p>
+                    <p className={"mt-1 text-xs text-muted-foreground"}>{ownerChapter.opening}</p>
                   </div>
                   <div className="rounded-lg border p-3">
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">后来怎么发展</p>
-                    <p className={uix('uix-dacb762e7b')}>{ownerChapter.development}</p>
+                    <p className={"mt-1 text-xs text-muted-foreground"}>{ownerChapter.development}</p>
                   </div>
                   {ownerChapter.twist ? (
                     <div className="rounded-lg border p-3">
                       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">哪里转了一下</p>
-                      <p className={uix('uix-dacb762e7b')}>{ownerChapter.twist}</p>
+                      <p className={"mt-1 text-xs text-muted-foreground"}>{ownerChapter.twist}</p>
                     </div>
                   ) : null}
                   <div className="rounded-lg border p-3">
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">现在停在何处</p>
-                    <p className={uix('uix-dacb762e7b')}>{ownerChapter.current_resting_point}</p>
+                    <p className={"mt-1 text-xs text-muted-foreground"}>{ownerChapter.current_resting_point}</p>
                   </div>
                 </div>
                 {ownerChapter.main_scene ? (
@@ -362,49 +361,49 @@ export default function AchievementChroniclePanel({
                 </div>
               </>
             ) : (
-              <p className={uix('uix-25be576b96')}>当前还没有足够密度把最近经历聚成一章。</p>
+              <p className={"text-xs text-muted-foreground"}>当前还没有足够密度把最近经历聚成一章。</p>
             )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className={uix('uix-f4cc511ff0')}>
-            <CardTitle className={uix('uix-fc7473ca09')}>故事接点</CardTitle>
+          <CardHeader className={"pb-2"}>
+            <CardTitle className={"text-sm"}>故事接点</CardTitle>
           </CardHeader>
           <CardContent>
             {ownerChronicleQuery.isLoading ? (
               <div className="space-y-2">
                 {Array.from({ length: 4 }).map((_, idx) => (
-                  <Skeleton key={idx} className={uix('uix-b8cf424e51')} />
+                  <Skeleton key={idx} className={"h-20 rounded-md"} />
                 ))}
               </div>
             ) : ownerItems.length === 0 ? (
-              <p className={uix('uix-25be576b96')}>当前筛选条件下还没有可读的故事接点。</p>
+              <p className={"text-xs text-muted-foreground"}>当前筛选条件下还没有可读的故事接点。</p>
             ) : (
               <div className="space-y-3">
                 {ownerItems.map((item) => (
-                  <div key={item.id} className={uix('uix-cae5cb4b5b')}>
+                  <div key={item.id} className={"rounded-md border p-2"}>
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                       <Badge variant="outline">{item.source_label}</Badge>
                       <Badge variant="secondary">{item.chapter_title}</Badge>
                       {item.scene_label ? <Badge variant="outline">{item.scene_label}</Badge> : null}
-                      <span className={uix('uix-bfa6031907')}>{relativeTime(item.occurred_at)}</span>
+                      <span className={"text-muted-foreground"}>{relativeTime(item.occurred_at)}</span>
                     </div>
-                    <p className={uix('uix-c49a5af3a6')}>{item.title}</p>
-                    <p className={uix('uix-dacb762e7b')}>{item.summary}</p>
+                    <p className={"mt-1 text-sm font-medium"}>{item.title}</p>
+                    <p className={"mt-1 text-xs text-muted-foreground"}>{item.summary}</p>
                     {item.emotion_before || item.emotion_after ? (
-                      <p className={uix('uix-dacb762e7b')}>
+                      <p className={"mt-1 text-xs text-muted-foreground"}>
                         情绪起伏：{item.emotion_before ?? '未明说'} 到 {item.emotion_after ?? '未明说'}
                       </p>
                     ) : null}
                     {item.reaction_sentence ? (
-                      <p className={uix('uix-dacb762e7b')}>它的反应：{item.reaction_sentence}</p>
+                      <p className={"mt-1 text-xs text-muted-foreground"}>它的反应：{item.reaction_sentence}</p>
                     ) : null}
                     {item.outcome_sentence ? (
-                      <p className={uix('uix-dacb762e7b')}>留下的结果：{item.outcome_sentence}</p>
+                      <p className={"mt-1 text-xs text-muted-foreground"}>留下的结果：{item.outcome_sentence}</p>
                     ) : null}
                     {item.next_hook ? (
-                      <p className={uix('uix-dacb762e7b')}>下一段钩子：{item.next_hook}</p>
+                      <p className={"mt-1 text-xs text-muted-foreground"}>下一段钩子：{item.next_hook}</p>
                     ) : null}
                     {item.actors.length > 0 ? (
                       <div className="mt-2 flex flex-wrap gap-2">
@@ -432,28 +431,28 @@ export default function AchievementChroniclePanel({
         </Card>
 
         <Card>
-          <CardHeader className={uix('uix-f4cc511ff0')}>
-            <CardTitle className={uix('uix-fc7473ca09')}>继续推进这一章</CardTitle>
+          <CardHeader className={"pb-2"}>
+            <CardTitle className={"text-sm"}>继续推进这一章</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {ownerSuggestionsQuery.isLoading ? (
               <div className="space-y-2">
                 {Array.from({ length: 3 }).map((_, idx) => (
-                  <Skeleton key={idx} className={uix('uix-b8cf424e51')} />
+                  <Skeleton key={idx} className={"h-20 rounded-md"} />
                 ))}
               </div>
             ) : ownerSuggestions.length === 0 ? (
-              <p className={uix('uix-25be576b96')}>当前还没有足够线索建议下一段经历。</p>
+              <p className={"text-xs text-muted-foreground"}>当前还没有足够线索建议下一段经历。</p>
             ) : (
               ownerSuggestions.slice(0, 3).map((item) => (
-                <div key={item.id} className={uix('uix-cae5cb4b5b')}>
+                <div key={item.id} className={"rounded-md border p-2"}>
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <Badge variant="outline">{suggestionLaneLabel(item.lane)}</Badge>
                     <Badge variant="secondary">{suggestionPriorityLabel(item.priority)}</Badge>
                   </div>
-                  <p className={uix('uix-c49a5af3a6')}>{item.title}</p>
-                  <p className={uix('uix-dacb762e7b')}>{item.why_now}</p>
-                  <p className={uix('uix-dacb762e7b')}>这会把故事往 {item.expected_progress} 推一步。</p>
+                  <p className={"mt-1 text-sm font-medium"}>{item.title}</p>
+                  <p className={"mt-1 text-xs text-muted-foreground"}>{item.why_now}</p>
+                  <p className={"mt-1 text-xs text-muted-foreground"}>这会把故事往 {item.expected_progress} 推一步。</p>
                   <div className="mt-2 flex flex-wrap gap-3">
                     {item.primary_action.href ? (
                       <Link
@@ -489,32 +488,32 @@ export default function AchievementChroniclePanel({
         <GuidanceInlineRail rail={fallbackRail} />
       ) : null}
 
-      <div className={uix('uix-ca9a80f26f')}>
+      <div className={"rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground"}>
         成就线记录舞台表现、公共印象与关系节点。这条线独立于 XP，不消耗成长点，也不决定加点额度。
       </div>
 
       <Card>
-        <CardHeader className={uix('uix-f4cc511ff0')}>
-          <CardTitle className={uix('uix-fc7473ca09')}>成就墙</CardTitle>
+        <CardHeader className={"pb-2"}>
+          <CardTitle className={"text-sm"}>成就墙</CardTitle>
         </CardHeader>
         <CardContent>
           {loadingAchievements ? (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, idx) => (
-                <Skeleton key={idx} className={uix('uix-b8cf424e51')} />
+                <Skeleton key={idx} className={"h-20 rounded-md"} />
               ))}
             </div>
           ) : wall.length === 0 ? (
-            <p className={uix('uix-25be576b96')}>暂无成就记录。</p>
+            <p className={"text-xs text-muted-foreground"}>暂无成就记录。</p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {wall.map((item) => (
-                <div key={item.id} className={uix('uix-cae5cb4b5b')}>
+                <div key={item.id} className={"rounded-md border p-2"}>
                   <div className="flex items-center justify-between gap-2">
-                    <p className={uix('uix-e43bc2769b')}>{item.name}</p>
+                    <p className={"truncate text-sm font-medium"}>{item.name}</p>
                     <Badge variant="secondary">{tierLabel(item.tier)}</Badge>
                   </div>
-                  <p className={uix('uix-5b40858400')}>
+                  <p className={"mt-1 text-[11px] text-muted-foreground"}>
                     {item.category} · {relativeTime(item.achieved_at)}
                   </p>
                 </div>
@@ -525,14 +524,14 @@ export default function AchievementChroniclePanel({
       </Card>
 
       <Card>
-        <CardHeader className={uix('uix-f4cc511ff0')}>
+        <CardHeader className={"pb-2"}>
           <div className="flex items-center justify-between gap-2">
-            <CardTitle className={uix('uix-fc7473ca09')}>编年史</CardTitle>
+            <CardTitle className={"text-sm"}>编年史</CardTitle>
             {foldedCount > 0 && (
               <Button
                 variant="outline"
                 size="sm"
-                className={uix('uix-fe3d94994b')}
+                className={"h-7 text-xs"}
                 onClick={() => setIncludeFolded((v) => !v)}
               >
                 {includeFolded ? '隐藏折叠项' : `查看折叠项 (+${foldedCount})`}
@@ -544,23 +543,23 @@ export default function AchievementChroniclePanel({
           {loadingChronicle ? (
             <div className="space-y-2">
               {Array.from({ length: 4 }).map((_, idx) => (
-                <Skeleton key={idx} className={uix('uix-b8cf424e51')} />
+                <Skeleton key={idx} className={"h-20 rounded-md"} />
               ))}
             </div>
           ) : chronicle.length === 0 ? (
-            <p className={uix('uix-25be576b96')}>暂无编年史条目。</p>
+            <p className={"text-xs text-muted-foreground"}>暂无编年史条目。</p>
           ) : (
             <div className="space-y-2">
               {chronicle.slice(0, 20).map((item) => (
-                <div key={item.id} className={uix('uix-cae5cb4b5b')}>
-                  <div className={uix('uix-eeb95b5316')}>
+                <div key={item.id} className={"rounded-md border p-2"}>
+                  <div className={"flex items-center gap-2 text-xs text-muted-foreground"}>
                     <Badge variant="outline">{item.type}</Badge>
                     <span>重要度 {item.importance_score.toFixed(2)}</span>
                     <span>·</span>
                     <span>{relativeTime(item.occurred_at)}</span>
                   </div>
-                  <p className={uix('uix-c49a5af3a6')}>{item.title}</p>
-                  <p className={uix('uix-dacb762e7b')}>{item.summary}</p>
+                  <p className={"mt-1 text-sm font-medium"}>{item.title}</p>
+                  <p className={"mt-1 text-xs text-muted-foreground"}>{item.summary}</p>
                 </div>
               ))}
             </div>
@@ -570,23 +569,23 @@ export default function AchievementChroniclePanel({
 
       {showRelationNodes && (
         <Card>
-          <CardHeader className={uix('uix-f4cc511ff0')}>
-            <CardTitle className={uix('uix-fc7473ca09')}>关系节点</CardTitle>
+          <CardHeader className={"pb-2"}>
+            <CardTitle className={"text-sm"}>关系节点</CardTitle>
           </CardHeader>
           <CardContent>
             {relationRes?.data?.items?.length ? (
               <div className="space-y-2">
                 {relationRes.data.items.slice(0, 3).map((item) => (
-                  <div key={item.relation_id} className={uix('uix-9d72856543')}>
-                    <span className={uix('uix-2689f39580')}>{item.pair_agent_id}</span>
-                    <span className={uix('uix-bfa6031907')}>
+                  <div key={item.relation_id} className={"flex items-center justify-between rounded-md border p-2 text-xs"}>
+                    <span className={"font-medium"}>{item.pair_agent_id}</span>
+                    <span className={"text-muted-foreground"}>
                       {item.state} · {item.relation_score.toFixed(2)}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className={uix('uix-25be576b96')}>暂无关系节点。</p>
+              <p className={"text-xs text-muted-foreground"}>暂无关系节点。</p>
             )}
           </CardContent>
         </Card>

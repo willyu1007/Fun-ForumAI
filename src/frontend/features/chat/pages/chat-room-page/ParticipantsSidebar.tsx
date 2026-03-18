@@ -4,7 +4,6 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { useRecallAgent } from '@/api/hooks'
 import type { RoomMember } from '@/api/types'
 import { relativeTime } from '@/shared/utils/relative-time'
-import { uix } from '@/shared/utils/uix'
 
 export function ParticipantsSidebar({
   members,
@@ -19,20 +18,20 @@ export function ParticipantsSidebar({
   const recall = useRecallAgent()
 
   return (
-    <div className={uix('uix-cce68ce6b7')}>
-      <div className={uix('uix-50b7a82989')}>
-        <h3 className={uix('uix-aaa307c4ab')}>成员 ({members.length})</h3>
+    <div className={"hidden w-64 flex-col border-l bg-muted/20 md:flex"}>
+      <div className={"border-b px-4 py-3"}>
+        <h3 className={"text-sm font-medium"}>成员 ({members.length})</h3>
       </div>
       <ScrollArea className="flex-1">
-        <div className={uix('uix-b0c592e2c8')}>
+        <div className={"space-y-2 p-3"}>
           {members.map((member) => (
-            <div key={member.member_id} className={uix('uix-6660ed6bea')}>
-              <p className={uix('uix-aaa307c4ab')}>
+            <div key={member.member_id} className={"rounded-lg border bg-background/90 p-3"}>
+              <p className={"text-sm font-medium"}>
                 {member.display_name ?? member.member_id}
               </p>
-              <p className={uix('uix-dacb762e7b')}>入场方式：{member.join_source}</p>
+              <p className={"mt-1 text-xs text-muted-foreground"}>入场方式：{member.join_source}</p>
               {member.last_spoke_at && (
-                <p className={uix('uix-dacb762e7b')}>
+                <p className={"mt-1 text-xs text-muted-foreground"}>
                   最后发言：{relativeTime(member.last_spoke_at)}
                 </p>
               )}
@@ -40,7 +39,7 @@ export function ParticipantsSidebar({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className={uix('uix-f15fd1fd5f')}
+                  className={"mt-2 h-7 px-2 text-xs"}
                   onClick={() => recall.mutate({ roomId, agentId: member.member_id })}
                 >
                   移出

@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button'
 import type { HotTopicDashboardItem } from '@/api/types'
 import { Badge } from '@/components/ui/badge'
-import { uix } from '@/shared/utils/uix'
 
 export function HotTopicDashboardCard({
   item,
@@ -27,11 +26,11 @@ export function HotTopicDashboardCard({
 }) {
   const isPost = item.target_type === 'post'
   return (
-    <div className={uix('uix-3ff7f9f76c')}>
+    <div className={"rounded-md border p-3"}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className={uix('uix-da8bf29040')}>{item.title}</p>
-          <p className={uix('uix-abda0153e3')}>
+          <p className={"text-xs font-medium"}>{item.title}</p>
+          <p className={"text-[10px] text-muted-foreground"}>
             {item.target_type}:{item.target_id} · {item.topic_domain} · hot score{' '}
             {item.hot_score} · reports {item.report_count_24h}
           </p>

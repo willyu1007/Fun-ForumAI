@@ -4,7 +4,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { DEV_AUTH_TOOLBAR_SAFE_AREA_CLASS } from '@/shared/layout/dev-auth-toolbar'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
-import { uix } from '@/shared/utils/uix'
 import { ChatHeader } from './chat-room-page/ChatHeader'
 import { DirectorPanel } from './chat-room-page/DirectorPanel'
 import { HighlightStrip } from './chat-room-page/HighlightStrip'
@@ -24,19 +23,19 @@ export function ChatRoomPage() {
 
   if (room.roomLoading) {
     return (
-      <div className={uix('uix-edaf7e98d8')}>
+      <div className={"space-y-3 p-4"}>
         <Skeleton className="h-8 w-48" />
-        <Skeleton className={uix('uix-f0e0e07ba9')} />
+        <Skeleton className={"h-[60vh]"} />
       </div>
     )
   }
 
   if (!room.room) {
-    return <div className={uix('uix-3973a73bc4')}>聊天室不存在</div>
+    return <div className={"p-4 text-destructive"}>聊天室不存在</div>
   }
 
   return (
-    <div className={cn(uix('uix-6489629c6b'), DEV_AUTH_TOOLBAR_SAFE_AREA_CLASS)}>
+    <div className={cn("mx-auto flex h-[calc(100vh-4rem)] max-w-7xl", DEV_AUTH_TOOLBAR_SAFE_AREA_CLASS)}>
       <div className="flex min-w-0 flex-1 flex-col">
         <ChatHeader
           name={room.room.name}
@@ -78,7 +77,7 @@ export function ChatRoomPage() {
           }
         />
 
-        <ScrollArea className={uix('uix-83d918e44e')}>
+        <ScrollArea className={"flex-1 px-4 py-2"}>
           <div className="space-y-3">
             {(presentation.publicContinuity ||
               presentation.publicCanon ||
@@ -93,7 +92,7 @@ export function ChatRoomPage() {
               <HighlightStrip highlights={room.highlights} />
             )}
             {room.messages.length === 0 && (
-              <div className={uix('uix-634db381a1')}>
+              <div className={"py-10 text-center text-muted-foreground"}>
                 暂时没有消息，等待 Agent 们开始对话...
               </div>
             )}
@@ -110,7 +109,7 @@ export function ChatRoomPage() {
               />
             ))}
             {presentation.typingAgents.size > 0 && (
-              <div className={uix('uix-29a3467e30')}>
+              <div className={"animate-pulse pl-2 text-sm text-muted-foreground"}>
                 {Array.from(presentation.typingAgents)
                   .map((id) => presentation.agentNameMap.get(id) ?? id.slice(0, 8))
                   .join(', ')}{' '}
@@ -121,7 +120,7 @@ export function ChatRoomPage() {
           </div>
         </ScrollArea>
 
-        <div className={uix('uix-d148b4faaa')}>
+        <div className={"border-t bg-muted/30 px-4 py-3 text-center text-sm text-muted-foreground"}>
           这里是智能体之间的 live 对话空间。公域页面只展示
           {formatGlossaryLabel('continuity')}、{formatGlossaryLabel('cameo')}和
           {formatGlossaryLabel('canon')}。
@@ -138,15 +137,15 @@ export function ChatRoomPage() {
 
       {director.controlState && (
         <>
-          <aside className={uix('uix-0ee0f941cf')}>
+          <aside className={"hidden w-[24rem] border-l bg-muted/10 lg:flex"}>
             <DirectorPanel roomId={room.room.id} controlState={director.controlState} />
           </aside>
           <Sheet
             open={director.showDirectorSheet}
             onOpenChange={director.setShowDirectorSheet}
           >
-            <SheetContent side="right" className={uix('uix-bfe1b1b1b7')}>
-              <SheetHeader className={uix('uix-65fdbade20')}>
+            <SheetContent side="right" className={"w-full p-0 sm:max-w-lg"}>
+              <SheetHeader className={"border-b"}>
                 <SheetTitle>导演面板</SheetTitle>
                 <SheetDescription>仅 creator owner 可见的房间控制面。</SheetDescription>
               </SheetHeader>

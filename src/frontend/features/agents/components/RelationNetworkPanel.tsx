@@ -17,7 +17,6 @@ import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCar
 import { GuidanceInlineRail } from '@/features/guidance/components/GuidanceInlineRail'
 import type { GuidanceItemCard as GuidanceItemCardView } from '@/api/types'
 import type { GuidanceInlineRail as GuidanceInlineRailModel } from '@/features/guidance/contextual-guidance'
-import { uix } from '@/shared/utils/uix'
 const VIEW_OPTIONS: Array<{
   id: AgentRelationView
   label: string
@@ -37,10 +36,10 @@ const STATE_OPTIONS: Array<{
   { id: 'blocked', label: 'Blocked' },
 ]
 const STATE_BADGE: Record<AgentRelationState, string> = {
-  shadow: uix('uix-26479c7266'),
-  effective: uix('uix-6196a83432'),
-  inactive: uix('uix-26479c7266'),
-  blocked: uix('uix-c38d385fe4'),
+  shadow: "bg-muted text-muted-foreground",
+  effective: "bg-emerald-50 text-emerald-700",
+  inactive: "bg-muted text-muted-foreground",
+  blocked: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 }
 export function RelationNetworkPanel({
   agentId,
@@ -75,11 +74,11 @@ export function RelationNetworkPanel({
 
       {!queriesEnabled && (
         <Card>
-          <CardHeader className={uix('uix-f4cc511ff0')}>
-            <CardTitle className={uix('uix-fc7473ca09')}>关系网详情仅对所有者开放</CardTitle>
+          <CardHeader className={"pb-2"}>
+            <CardTitle className={"text-sm"}>关系网详情仅对所有者开放</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className={uix('uix-25be576b96')}>
+            <p className={"text-xs text-muted-foreground"}>
               这里的详细关系数据需要你拥有这个 Agent 后才会展开；当前只保留站内闭环说明，不再请求
               owner-only 接口。
             </p>
@@ -89,14 +88,14 @@ export function RelationNetworkPanel({
 
       {queriesEnabled && (
         <Card>
-          <CardHeader className={uix('uix-f4cc511ff0')}>
-            <CardTitle className={uix('uix-fc7473ca09')}>关系概览</CardTitle>
+          <CardHeader className={"pb-2"}>
+            <CardTitle className={"text-sm"}>关系概览</CardTitle>
           </CardHeader>
           <CardContent>
             {summaryQuery.isLoading ? (
               <Skeleton className="h-16" />
             ) : (
-              <div className={uix('uix-451d607bbd')}>
+              <div className={"grid grid-cols-2 gap-3 text-xs sm:grid-cols-3"}>
                 <MetricBlock
                   label="我关注"
                   value={`${summaryQuery.data?.data.following.effective ?? 0} / ${summaryQuery.data?.data.following.shadow ?? 0}`}
@@ -120,12 +119,12 @@ export function RelationNetworkPanel({
 
       {queriesEnabled && (
         <Card>
-          <CardHeader className={uix('uix-f4cc511ff0')}>
+          <CardHeader className={"pb-2"}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle className={uix('uix-fc7473ca09')}>关系列表</CardTitle>
+              <CardTitle className={"text-sm"}>关系列表</CardTitle>
               <div className="flex gap-2">
                 <Select value={view} onValueChange={(value) => setView(value as AgentRelationView)}>
-                  <SelectTrigger className={uix('uix-56bcb9f6da')}>
+                  <SelectTrigger className={"h-8 w-[130px]"}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -140,7 +139,7 @@ export function RelationNetworkPanel({
                   value={stateFilter}
                   onValueChange={(value) => setStateFilter(value as AgentRelationState | 'all')}
                 >
-                  <SelectTrigger className={uix('uix-56bcb9f6da')}>
+                  <SelectTrigger className={"h-8 w-[130px]"}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -164,28 +163,28 @@ export function RelationNetworkPanel({
             )}
 
             {!listQuery.isLoading && (listQuery.data?.data.items?.length ?? 0) === 0 && (
-              <div className={uix('uix-2d6f9aa715')}>当前视图无关系数据</div>
+              <div className={"rounded-md border border-dashed p-5 text-center text-xs text-muted-foreground"}>当前视图无关系数据</div>
             )}
 
             {!listQuery.isLoading && (listQuery.data?.data.items?.length ?? 0) > 0 && (
               <div className="space-y-2">
                 {listQuery.data?.data.items.map((item) => (
-                  <div key={item.relation_id} className={uix('uix-3090147b98')}>
+                  <div key={item.relation_id} className={"rounded-md border bg-card px-3 py-2"}>
                     <div className="flex items-center justify-between gap-2">
                       <div>
-                        <p className={uix('uix-f05d22089a')}>{item.pair_agent_id}</p>
-                        <p className={uix('uix-abda0153e3')}>
+                        <p className={"font-mono text-xs"}>{item.pair_agent_id}</p>
+                        <p className={"text-[10px] text-muted-foreground"}>
                           {item.direction} · 更新于 {relativeTime(item.updated_at)}
                         </p>
                       </div>
                       <Badge
                         variant="outline"
-                        className={cn(uix('uix-pill-status'), STATE_BADGE[item.state])}
+                        className={cn("rounded-full px-2 py-0.5 text-xs font-medium", STATE_BADGE[item.state])}
                       >
                         {item.state}
                       </Badge>
                     </div>
-                    <div className={uix('uix-377b98112c')}>
+                    <div className={"mt-2 grid grid-cols-3 gap-2 text-[10px] text-muted-foreground"}>
                       <span>R {item.relation_score.toFixed(2)}</span>
                       <span>I {item.interaction_score.toFixed(2)}</span>
                       <span>P {item.persona_score.toFixed(2)}</span>
@@ -202,10 +201,10 @@ export function RelationNetworkPanel({
 }
 function MetricBlock({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <div className={uix('uix-3090147b98')}>
-      <p className={uix('uix-bfa6031907')}>{label}</p>
-      <p className={uix('uix-9f9576a7da')}>{value}</p>
-      <p className={uix('uix-abda0153e3')}>{hint}</p>
+    <div className={"rounded-md border bg-card px-3 py-2"}>
+      <p className={"text-muted-foreground"}>{label}</p>
+      <p className={"text-sm font-semibold"}>{value}</p>
+      <p className={"text-[10px] text-muted-foreground"}>{hint}</p>
     </div>
   )
 }

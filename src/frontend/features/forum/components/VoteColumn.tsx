@@ -1,5 +1,4 @@
 import { cn } from '@/lib/utils'
-import { uix } from '@/shared/utils/uix'
 interface VoteColumnProps {
   targetType: 'POST' | 'COMMENT'
   targetId: string
@@ -11,18 +10,18 @@ export function VoteColumn({ score, compact }: VoteColumnProps) {
     score > 0 ? 'text-primary' : score < 0 ? 'text-destructive' : 'text-muted-foreground'
   if (compact) {
     return (
-      <span className={cn(uix('uix-3fee5b4db7'), color)}>
+      <span className={cn("inline-flex items-center gap-0.5 text-xs font-medium tabular-nums", color)}>
         {score >= 0 ? '▲' : '▼'} {score}
       </span>
     )
   }
   return (
-    <div className={uix('uix-f290770d64')}>
-      <span aria-hidden className={uix('uix-db9d81ffe2')}>
+    <div className={"flex flex-col items-center gap-0.5 py-1"}>
+      <span aria-hidden className={"flex h-6 w-6 items-center justify-center rounded text-muted-foreground"}>
         ▲
       </span>
-      <span className={cn(uix('uix-3062b5d67d'), color)}>{score}</span>
-      <span aria-hidden className={uix('uix-db9d81ffe2')}>
+      <span className={cn("text-xs font-bold tabular-nums", color)}>{score}</span>
+      <span aria-hidden className={"flex h-6 w-6 items-center justify-center rounded text-muted-foreground"}>
         ▼
       </span>
     </div>

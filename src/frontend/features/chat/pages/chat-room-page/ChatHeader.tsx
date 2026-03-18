@@ -5,7 +5,6 @@ import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
 import type { RoomBeatType, RoomCastRole, RoomHighlight, RoomSceneType } from '@/api/types'
-import { uix } from '@/shared/utils/uix'
 import { BEAT_LABEL, ROLE_LABEL, SCENE_LABEL } from './constants'
 
 export function ChatHeader({
@@ -50,25 +49,25 @@ export function ChatHeader({
   const statusColor =
     status === 'active' ? 'bg-green-500' : status === 'cooling' ? 'bg-yellow-500' : 'bg-gray-400'
   return (
-    <div className={uix('uix-9d38034ba4')}>
+    <div className={"space-y-3 border-b px-4 py-3"}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <Link to="/rooms" className={uix('uix-50cb4da7bc')}>
+          <Link to="/rooms" className={"text-sm text-muted-foreground hover:text-foreground"}>
             ← 返回
           </Link>
           <Separator orientation="vertical" className="h-5" />
-          <h2 className={uix('uix-ce097918c3')}>{name}</h2>
-          <span className={cn(uix('uix-7efd8137bf'), statusColor)} />
-          <Badge variant="outline" className={uix('uix-1dc571a360')}>
+          <h2 className={"text-base font-semibold"}>{name}</h2>
+          <span className={cn("h-2 w-2 rounded-full", statusColor)} />
+          <Badge variant="outline" className={"text-[10px]"}>
             {SCENE_LABEL[sceneType]}
           </Badge>
           {programEnabled && (
-            <Badge variant="secondary" className={uix('uix-1dc571a360')}>
+            <Badge variant="secondary" className={"text-[10px]"}>
               {formatGlossaryLabel('programOn')}
             </Badge>
           )}
           {currentBeat && (
-            <Badge variant="outline" className={uix('uix-1dc571a360')}>
+            <Badge variant="outline" className={"text-[10px]"}>
               当前节奏 · {BEAT_LABEL[currentBeat]}
             </Badge>
           )}
@@ -86,28 +85,28 @@ export function ChatHeader({
       </div>
 
       <div className="space-y-2">
-        <p className={uix('uix-78f2e89eed')}>
+        <p className={"text-sm font-medium leading-6"}>
           {liveHook || '这间房正在慢慢升温，下一句可能就会有戏。'}
         </p>
         {unresolvedQuestion && (
-          <p className={uix('uix-25be576b96')}>
+          <p className={"text-xs text-muted-foreground"}>
             {formatGlossaryLabel('unresolvedQuestion')}：{unresolvedQuestion}
           </p>
         )}
-        {recapShort && <p className={uix('uix-25be576b96')}>入场扶手：{recapShort}</p>}
+        {recapShort && <p className={"text-xs text-muted-foreground"}>入场扶手：{recapShort}</p>}
         {lastHighlight && (
-          <p className={uix('uix-25be576b96')}>
+          <p className={"text-xs text-muted-foreground"}>
             {formatGlossaryLabel('currentHighlight')}：{lastHighlight.text}
           </p>
         )}
         <div className="flex flex-wrap items-center gap-2">
           {cast.slice(0, 4).map((entry) => (
-            <Badge key={entry.agent_id} variant="secondary" className={uix('uix-1dc571a360')}>
+            <Badge key={entry.agent_id} variant="secondary" className={"text-[10px]"}>
               {entry.name} · {ROLE_LABEL[entry.role]}
             </Badge>
           ))}
         </div>
-        <p className={uix('uix-f7fc5c060a')}>
+        <p className={"text-[11px] text-muted-foreground"}>
           热度 {Math.round(energy * 100)} · 张力 {Math.round(tension * 100)}
         </p>
       </div>

@@ -4,7 +4,6 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { relativeTime } from '@/shared/utils/relative-time'
 import type { PrivateSession } from '@/api/types'
-import { uix } from '@/shared/utils/uix'
 interface SessionSidebarProps {
   sessions: PrivateSession[]
   activeSessionId: string | null
@@ -23,41 +22,41 @@ export function SessionSidebar({
 }: SessionSidebarProps) {
   return (
     <div className="flex flex-col h-full">
-      <div className={uix('uix-0e55101bf6')}>
-        <h3 className={uix('uix-0027fd69cb')}>与 {agentName} 的对话</h3>
+      <div className={"p-3 border-b"}>
+        <h3 className={"font-medium text-sm mb-2"}>与 {agentName} 的对话</h3>
         <Button onClick={onNewSession} disabled={isCreating} size="sm" className="w-full">
           {isCreating ? '创建中...' : '+ 新对话'}
         </Button>
       </div>
 
       <ScrollArea className="flex-1">
-        <div className={uix('uix-f146ab9986')}>
-          {sessions.length === 0 && <p className={uix('uix-063fa84ff7')}>暂无对话记录</p>}
+        <div className={"p-2 space-y-1"}>
+          {sessions.length === 0 && <p className={"text-xs text-muted-foreground p-2"}>暂无对话记录</p>}
 
           {sessions.map((session) => (
             <button
               key={session.id}
               onClick={() => onSelectSession(session.id)}
               className={cn(
-                uix('uix-877a153952'),
+                "w-full text-left p-2 rounded-md text-sm transition-colors",
                 'hover:bg-accent',
-                session.id === activeSessionId && uix('uix-f1669c2d74'),
+                session.id === activeSessionId && "bg-accent",
               )}
             >
               <div className="flex items-center gap-2">
                 <Badge
                   variant={session.status === 'ACTIVE' ? 'default' : 'secondary'}
-                  className={uix('uix-5e296dba5b')}
+                  className={"text-[10px] px-1 py-0"}
                 >
                   {session.status === 'ACTIVE' ? '进行中' : '已结束'}
                 </Badge>
                 {session.initiator === 'AGENT' && (
-                  <Badge variant="outline" className={uix('uix-5e296dba5b')}>
+                  <Badge variant="outline" className={"text-[10px] px-1 py-0"}>
                     主动
                   </Badge>
                 )}
               </div>
-              <p className={uix('uix-8f364be632')}>{relativeTime(session.started_at)}</p>
+              <p className={"text-xs text-muted-foreground mt-1"}>{relativeTime(session.started_at)}</p>
             </button>
           ))}
         </div>

@@ -2,7 +2,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { uix } from '@/shared/utils/uix'
 import type { AdminPanelController } from './use-admin-panel-controller'
 
 type GovernanceSlice = AdminPanelController['governance']
@@ -17,8 +16,8 @@ export function AgentRiskProfileCard({
 }) {
   return (
     <Card>
-      <CardHeader className={uix('uix-f4cc511ff0')}>
-        <CardTitle className={uix('uix-fc7473ca09')}>Agent 风险画像</CardTitle>
+      <CardHeader className={"pb-2"}>
+        <CardTitle className={"text-sm"}>Agent 风险画像</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex gap-2">
@@ -29,7 +28,7 @@ export function AgentRiskProfileCard({
           />
         </div>
         {!riskProfile.data?.data && (
-          <p className={uix('uix-abda0153e3')}>
+          <p className={"text-[10px] text-muted-foreground"}>
             输入 Agent ID 后查看 spillover、provenance 与 cap 历史。
           </p>
         )}
@@ -88,15 +87,15 @@ export function AgentRiskProfileCard({
               </Button>
             </div>
             <div className="space-y-2">
-              <p className={uix('uix-da8bf29040')}>Recent Provenance</p>
+              <p className={"text-xs font-medium"}>Recent Provenance</p>
               {riskProfile.data.data.recent_private_provenance.slice(0, 3).map((item) => (
-                <div key={item.run_id} className={uix('uix-3ff7f9f76c')}>
-                  <p className={uix('uix-da8bf29040')}>{item.run_id}</p>
-                  <p className={uix('uix-abda0153e3')}>
+                <div key={item.run_id} className={"rounded-md border p-3"}>
+                  <p className={"text-xs font-medium"}>{item.run_id}</p>
+                  <p className={"text-[10px] text-muted-foreground"}>
                     requested {item.requested_disclosure_level} → effective{' '}
                     {item.effective_disclosure_level} · {item.cap_source}
                   </p>
-                  <p className={uix('uix-abda0153e3')}>
+                  <p className={"text-[10px] text-muted-foreground"}>
                     server caps:{' '}
                     {item.server_cap_sources
                       .map((source) => `${source.source_type}:${source.cap_level}`)
@@ -106,13 +105,13 @@ export function AgentRiskProfileCard({
               ))}
             </div>
             <div className="space-y-2">
-              <p className={uix('uix-da8bf29040')}>Recent Spillover Events</p>
+              <p className={"text-xs font-medium"}>Recent Spillover Events</p>
               {riskProfile.data.data.spillover_events.slice(0, 3).map((event) => (
-                <div key={event.id} className={uix('uix-3ff7f9f76c')}>
-                  <p className={uix('uix-da8bf29040')}>
+                <div key={event.id} className={"rounded-md border p-3"}>
+                  <p className={"text-xs font-medium"}>
                     {event.detail_text ?? event.event_type}
                   </p>
-                  <p className={uix('uix-abda0153e3')}>
+                  <p className={"text-[10px] text-muted-foreground"}>
                     {event.action} · {event.risk_level ?? 'n/a'} ·{' '}
                     {event.risk_categories.join(', ') || 'none'}
                   </p>
@@ -120,11 +119,11 @@ export function AgentRiskProfileCard({
               ))}
             </div>
             <div className="space-y-2">
-              <p className={uix('uix-da8bf29040')}>Recent Config Actions</p>
+              <p className={"text-xs font-medium"}>Recent Config Actions</p>
               {riskProfile.data.data.recent_config_actions.slice(0, 3).map((item) => (
-                <div key={item.id} className={uix('uix-3ff7f9f76c')}>
-                  <p className={uix('uix-da8bf29040')}>{item.action}</p>
-                  <p className={uix('uix-abda0153e3')}>{item.reason ?? '无备注'}</p>
+                <div key={item.id} className={"rounded-md border p-3"}>
+                  <p className={"text-xs font-medium"}>{item.action}</p>
+                  <p className={"text-[10px] text-muted-foreground"}>{item.reason ?? '无备注'}</p>
                 </div>
               ))}
             </div>

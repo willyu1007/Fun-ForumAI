@@ -9,7 +9,6 @@ import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCar
 import { GuidanceInlineRail } from '@/features/guidance/components/GuidanceInlineRail'
 import type { GuidanceItemCard as GuidanceItemCardView } from '@/api/types'
 import type { GuidanceInlineRail as GuidanceInlineRailModel } from '@/features/guidance/contextual-guidance'
-import { uix } from '@/shared/utils/uix'
 const DISCLOSURE_LEVELS = [
   { value: 0, label: '完全隔离', desc: '私聊记忆不影响公共发言' },
   { value: 1, label: '知识融合', desc: '潜移默化影响观点，不暴露来源' },
@@ -65,30 +64,30 @@ export function PrivacySettingsPanel({
 
       <Card>
         <CardHeader>
-          <CardTitle className={uix('uix-fc7473ca09')}>隐私披露级别</CardTitle>
+          <CardTitle className={"text-sm"}>隐私披露级别</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className={uix('uix-25be576b96')}>控制 Agent 在公共讨论中如何使用来自私聊的知识。</p>
+          <p className={"text-xs text-muted-foreground"}>控制 Agent 在公共讨论中如何使用来自私聊的知识。</p>
 
           <div className="grid gap-2">
             {DISCLOSURE_LEVELS.map((level) => (
               <button
                 key={level.value}
                 onClick={() => setLocalLevel(level.value)}
-                className={`${uix('uix-card-choice-left')} ${
-                  currentLevel === level.value ? uix('uix-c0125d42f8') : uix('uix-05677e8c3a')
+                className={`${"rounded-lg border p-3 text-left transition-colors"} ${
+                  currentLevel === level.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <Badge
                     variant={currentLevel === level.value ? 'default' : 'outline'}
-                    className={uix('uix-359090c2d5')}
+                    className={"text-xs"}
                   >
                     L{level.value}
                   </Badge>
-                  <span className={uix('uix-acadca0592')}>{level.label}</span>
+                  <span className={"font-medium text-sm"}>{level.label}</span>
                 </div>
-                <p className={uix('uix-8f364be632')}>{level.desc}</p>
+                <p className={"text-xs text-muted-foreground mt-1"}>{level.desc}</p>
               </button>
             ))}
           </div>
@@ -97,12 +96,12 @@ export function PrivacySettingsPanel({
 
       <Card>
         <CardHeader>
-          <CardTitle className={uix('uix-fc7473ca09')}>公共记忆预算</CardTitle>
+          <CardTitle className={"text-sm"}>公共记忆预算</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className={uix('uix-25be576b96')}>Token 预算</label>
-            <div className={uix('uix-184bfeedb3')}>
+            <label className={"text-xs text-muted-foreground"}>Token 预算</label>
+            <div className={"flex items-center gap-3 mt-1"}>
               <input
                 type="range"
                 min={200}
@@ -112,13 +111,13 @@ export function PrivacySettingsPanel({
                 onChange={(e) => setLocalBudget(Number(e.target.value))}
                 className="flex-1"
               />
-              <span className={uix('uix-48a74c8dd5')}>{currentBudget}</span>
+              <span className={"text-sm font-mono w-16 text-right"}>{currentBudget}</span>
             </div>
           </div>
 
           <div>
-            <label className={uix('uix-25be576b96')}>最多注入记忆条数</label>
-            <div className={uix('uix-184bfeedb3')}>
+            <label className={"text-xs text-muted-foreground"}>最多注入记忆条数</label>
+            <div className={"flex items-center gap-3 mt-1"}>
               <input
                 type="range"
                 min={1}
@@ -128,7 +127,7 @@ export function PrivacySettingsPanel({
                 onChange={(e) => setLocalTopK(Number(e.target.value))}
                 className="flex-1"
               />
-              <span className={uix('uix-48a74c8dd5')}>{currentTopK}</span>
+              <span className={"text-sm font-mono w-16 text-right"}>{currentTopK}</span>
             </div>
           </div>
 
@@ -142,10 +141,10 @@ export function PrivacySettingsPanel({
 
       <Card>
         <CardHeader>
-          <CardTitle className={uix('uix-fc7473ca09')}>
+          <CardTitle className={"text-sm"}>
             记忆列表 ({memories.length})
             {sourceSessionId && (
-              <Badge variant="secondary" className={uix('uix-0de9efd480')}>
+              <Badge variant="secondary" className={"ml-2 text-[10px]"}>
                 已按本次私聊过滤
               </Badge>
             )}
@@ -153,34 +152,34 @@ export function PrivacySettingsPanel({
         </CardHeader>
         <CardContent>
           {memories.length === 0 ? (
-            <p className={uix('uix-25be576b96')}>还没有记忆，和 Agent 私聊后会自动生成。</p>
+            <p className={"text-xs text-muted-foreground"}>还没有记忆，和 Agent 私聊后会自动生成。</p>
           ) : (
             <div className="space-y-2">
               {memories.map((m) => (
-                <div key={m.id} className={uix('uix-8dfdd23a70')}>
-                  <div className={uix('uix-129dab57ed')}>
-                    <Badge variant="outline" className={uix('uix-1dc571a360')}>
+                <div key={m.id} className={"rounded border p-2 text-xs"}>
+                  <div className={"flex items-center gap-2 mb-1"}>
+                    <Badge variant="outline" className={"text-[10px]"}>
                       {m.source_type === 'PRIVATE_CHAT'
                         ? '私聊'
                         : m.source_type === 'PUBLIC_OBSERVATION'
                           ? '公共'
                           : '系统'}
                     </Badge>
-                    <span className={uix('uix-bfa6031907')}>
+                    <span className={"text-muted-foreground"}>
                       重要度 {m.importance_score.toFixed(2)}
                     </span>
                     {m.forgotten && (
-                      <Badge variant="secondary" className={uix('uix-1dc571a360')}>
+                      <Badge variant="secondary" className={"text-[10px]"}>
                         已遗忘
                       </Badge>
                     )}
-                    <span className={uix('uix-066cc0bf5d')}>{relativeTime(m.created_at)}</span>
+                    <span className={"ml-auto text-muted-foreground"}>{relativeTime(m.created_at)}</span>
                   </div>
-                  <p className={uix('uix-d4108abe63')}>{m.summary_text}</p>
+                  <p className={"text-foreground"}>{m.summary_text}</p>
                   {m.topic_tags.length > 0 && (
-                    <div className={uix('uix-95654631ca')}>
+                    <div className={"flex flex-wrap gap-1 mt-1"}>
                       {m.topic_tags.map((tag) => (
-                        <Badge key={tag} variant="secondary" className={uix('uix-1dc571a360')}>
+                        <Badge key={tag} variant="secondary" className={"text-[10px]"}>
                           {tag}
                         </Badge>
                       ))}

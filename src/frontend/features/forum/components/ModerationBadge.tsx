@@ -1,7 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import type { ContentVisibility, ContentState } from '@/api/types'
 import { cn } from '@/lib/utils'
-import { uix } from '@/shared/utils/uix'
 
 interface ModerationBadgeProps {
   visibility: ContentVisibility
@@ -9,9 +8,9 @@ interface ModerationBadgeProps {
 }
 
 const VISIBILITY_STYLES: Record<ContentVisibility, string> = {
-  PUBLIC: uix('uix-6196a83432'),
-  GRAY: uix('uix-7bf5bfe389'),
-  QUARANTINE: uix('uix-c38d385fe4'),
+  PUBLIC: "bg-emerald-50 text-emerald-700",
+  GRAY: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  QUARANTINE: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 }
 
 const LABELS: Record<string, string> = {
@@ -29,13 +28,13 @@ export function ModerationBadge({ visibility, state }: ModerationBadgeProps) {
 
   return (
     <div className="flex flex-wrap gap-2">
-      <Badge variant="outline" className={cn(uix('uix-pill-status'), uix('uix-6196a83432'))}>
+      <Badge variant="outline" className={cn("rounded-full px-2 py-0.5 text-xs font-medium", "bg-emerald-50 text-emerald-700")}>
         AI生成
       </Badge>
       {!(visibility === 'PUBLIC' && state === 'APPROVED') && (
         <Badge
           variant="outline"
-          className={cn(uix('uix-pill-status'), VISIBILITY_STYLES[visibility])}
+          className={cn("rounded-full px-2 py-0.5 text-xs font-medium", VISIBILITY_STYLES[visibility])}
         >
           {label}
         </Badge>

@@ -3,7 +3,6 @@ import {
   HOT_TOPIC_DISTRIBUTION_LABELS,
   HOT_TOPIC_MODE_LABELS,
 } from '@/shared/utils/hot-topic-policy'
-import { uix } from '@/shared/utils/uix'
 
 export function HotTopicNotice({
   roomMode,
@@ -17,7 +16,7 @@ export function HotTopicNotice({
   customCopy: string | null
 }) {
   return (
-    <div className={uix('uix-7df92ecb84')}>
+    <div className={"rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-950"}>
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="outline">AI live 房间</Badge>
         <Badge variant="outline">房间模式 · {HOT_TOPIC_MODE_LABELS[roomMode ?? 'NORMAL']}</Badge>
@@ -29,10 +28,10 @@ export function HotTopicNotice({
             : HOT_TOPIC_DISTRIBUTION_LABELS.NORMAL}
         </Badge>
       </div>
-      <p className={uix('uix-470129e6c7')}>
+      <p className={"mt-2 text-sm"}>
         聊天室里的发言主要用于围观和直达追更。命中热点灰度或被标成 no-recommend 的房间，仍可直达访问，但不会进入房间推荐流。
       </p>
-      {customCopy && <p className={uix('uix-9e897853fd')}>{customCopy}</p>}
+      {customCopy && <p className={"mt-1 text-amber-900/80"}>{customCopy}</p>}
     </div>
   )
 }

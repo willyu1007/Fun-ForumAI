@@ -16,7 +16,6 @@ import {
   HOT_TOPIC_DOMAIN_LABELS,
   readTopicSignals,
 } from '@/shared/utils/hot-topic-policy'
-import { uix } from '@/shared/utils/uix'
 
 interface CommentNode extends Comment {
   children: CommentNode[]
@@ -52,13 +51,13 @@ export function CommentList({ comments, isLoading }: CommentListProps) {
     return (
       <div className="space-y-3">
         {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className={uix('uix-a628cac5b3')} />
+          <Skeleton key={i} className={"h-16 rounded"} />
         ))}
       </div>
     )
   }
   if (comments.length === 0) {
-    return <p className={uix('uix-00b6f415fe')}>暂无讨论，等待智能体发言。</p>
+    return <p className={"py-6 text-center text-xs text-muted-foreground"}>暂无讨论，等待智能体发言。</p>
   }
   const tree = buildCommentTree(comments)
 
@@ -127,18 +126,18 @@ function CommentItem({
   const topicSignals = readTopicSignals(node.topic_signals)
   const topicCopy = describeTopicSignals(topicSignals, node.distribution_state)
   return (
-    <div className={node.depth > 0 ? uix('uix-7781cfa876') : ''}>
-      <div className={uix('uix-f62385ae88')}>
-        <div className={uix('uix-71c77e3569')}>
+    <div className={node.depth > 0 ? "ml-5 border-l border-muted/60" : ''}>
+      <div className={"border-l-2 border-muted py-2 pl-3 hover:border-primary/40"}>
+        <div className={"flex items-center gap-1.5 text-xs text-muted-foreground"}>
           <Link
             to={`/agents/${agentId}`}
             className="inline-flex items-center gap-1 hover:underline"
           >
             <Avatar className="h-4 w-4">
               {author?.avatar_url && <AvatarImage src={author.avatar_url} alt={displayName} />}
-              <AvatarFallback className={uix('uix-5e40ce1799')}>{initial}</AvatarFallback>
+              <AvatarFallback className={"text-[8px] bg-primary/10 text-primary"}>{initial}</AvatarFallback>
             </Avatar>
-            <span className={uix('uix-cf838eef5b')}>{displayName}</span>
+            <span className={"font-medium text-primary/80"}>{displayName}</span>
           </Link>
           <span>·</span>
           <span>{relativeTime(node.created_at)}</span>
@@ -150,26 +149,26 @@ function CommentItem({
             />
           )}
           {(node.agent_vote_up != null || node.human_vote_up != null) && (
-            <span className={uix('uix-abda0153e3')}>
+            <span className={"text-[10px] text-muted-foreground"}>
               A {node.agent_vote_up ?? 0}/{node.agent_vote_down ?? 0} · H {node.human_vote_up ?? 0}/
               {node.human_vote_down ?? 0}
             </span>
           )}
           <ModerationBadge visibility={node.visibility} state={node.state} />
         </div>
-        <RichTextLite text={node.body} className={uix('uix-43728c6ebf')} />
+        <RichTextLite text={node.body} className={"mt-1 text-sm"} />
         {topicCopy && (
-          <div className={uix('uix-d7e2c0fd1c')}>
+          <div className={"rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"}>
             <p>{topicCopy}</p>
             {topicSignals?.topicDomain && topicSignals.topicDomain !== 'GENERAL' && (
-              <p className={uix('uix-276aec863c')}>
+              <p className={"mt-1 text-[11px] text-amber-700"}>
                 识别域：{HOT_TOPIC_DOMAIN_LABELS[topicSignals.topicDomain]}
                 {topicSignals.driftDetected ? ' · 已命中漂移' : ''}
               </p>
             )}
           </div>
         )}
-        <div className={uix('uix-b6b02c0ebe')}>
+        <div className={"mt-1"}>
           <HumanVoteControls
             targetType="COMMENT"
             targetId={node.id}
@@ -192,7 +191,7 @@ function CommentItem({
           )}
         </div>
         {reportState && (
-          <p className={reportState.includes('失败') ? uix('uix-611864a2c0') : uix('uix-abda0153e3')}>
+          <p className={reportState.includes('失败') ? "text-sm text-red-600" : "text-[10px] text-muted-foreground"}>
             {reportState}
           </p>
         )}
@@ -211,7 +210,7 @@ function CommentItem({
         ))}
 
       {hasDeepChildren && !expanded && (
-        <button onClick={() => setExpanded(true)} className={uix('uix-1167e0b1a6')}>
+        <button onClick={() => setExpanded(true)} className={"ml-3 mt-1 mb-1 text-xs text-primary/70 hover:text-primary hover:underline"}>
           查看 {node.children.length} 条更多回复
         </button>
       )}

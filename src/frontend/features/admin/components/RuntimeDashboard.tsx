@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { uix } from '@/shared/utils/uix'
 interface RuntimeStats {
   runtime: {
     running: boolean
@@ -206,8 +205,8 @@ export function RuntimeDashboard() {
       </div>
 
       <Card>
-        <CardHeader className={uix('uix-f4cc511ff0')}>
-          <CardTitle className={uix('uix-fc7473ca09')}>Runtime 控制</CardTitle>
+        <CardHeader className={"pb-2"}>
+          <CardTitle className={"text-sm"}>Runtime 控制</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
@@ -247,18 +246,18 @@ export function RuntimeDashboard() {
             </Button>
           </div>
 
-          <div className={uix('uix-eeb4b43685')}>
-            <p className={uix('uix-da8bf29040')}>Season Rotation（Stage Template）</p>
-            <p className={uix('uix-5b40858400')}>每次开放 3-5 个 hidden 模板并更新 launch 绑定。</p>
+          <div className={"rounded border bg-muted/20 px-3 py-2"}>
+            <p className={"text-xs font-medium"}>Season Rotation（Stage Template）</p>
+            <p className={"mt-1 text-[11px] text-muted-foreground"}>每次开放 3-5 个 hidden 模板并更新 launch 绑定。</p>
             {isProdNodeEnv && (
-              <p className={uix('uix-276aec863c')}>
+              <p className={"mt-1 text-[11px] text-amber-700"}>
                 生产环境仅支持 dry-run。真实轮换请执行：{' '}
                 <code>pnpm stage:season:rotate --open-count={rotationOpenCount}</code>
               </p>
             )}
-            <div className={uix('uix-304911ade7')}>
+            <div className={"mt-2 flex flex-wrap items-center gap-2"}>
               <select
-                className={uix('uix-7ef6b049b8')}
+                className={"h-8 rounded-md border bg-background px-2 text-xs"}
                 value={String(rotationOpenCount)}
                 onChange={(event) => {
                   const next = Number.parseInt(event.target.value, 10)
@@ -288,21 +287,21 @@ export function RuntimeDashboard() {
               </Button>
             </div>
             {rotateStageMutation.isError && (
-              <p className={uix('uix-24449fdcf8')}>{rotateStageMutation.error.message}</p>
+              <p className={"mt-2 text-xs text-destructive"}>{rotateStageMutation.error.message}</p>
             )}
           </div>
 
           {!status?.llm_configured && (
-            <p className={uix('uix-18073eaa8e')}>
+            <p className={"text-xs text-amber-600"}>
               LLM 未配置 — 设置 credential pool 对应的 provider API key 环境变量以启用 Runtime
             </p>
           )}
 
           {startMutation.isError && (
-            <p className={uix('uix-551c237449')}>{startMutation.error.message}</p>
+            <p className={"text-xs text-destructive"}>{startMutation.error.message}</p>
           )}
 
-          <div className={uix('uix-856848d8a0')}>
+          <div className={"rounded border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground"}>
             <p>
               SSE backend: {stats?.sse.broadcast_backend ?? '-'} · rooms:{' '}
               {stats?.sse.subscribed_rooms ?? 0} · sessions: {stats?.sse.subscribed_sessions ?? 0} ·
@@ -317,7 +316,7 @@ export function RuntimeDashboard() {
               {sseStatus.nextRetryInMs ? `${sseStatus.nextRetryInMs}ms` : '-'}
             </p>
             {(sseStatus.lastError || stats?.sse.broadcast_last_error) && (
-              <p className={uix('uix-85d79ebf0d')}>
+              <p className={"text-amber-700"}>
                 errors: {sseStatus.lastError ?? '-'} / broker:{' '}
                 {stats?.sse.broadcast_last_error ?? '-'}
               </p>
@@ -353,8 +352,8 @@ function PersonalityCompilerCard({
 }) {
   return (
     <Card>
-      <CardHeader className={uix('uix-f4cc511ff0')}>
-        <CardTitle className={uix('uix-fc7473ca09')}>Personality Compiler</CardTitle>
+      <CardHeader className={"pb-2"}>
+        <CardTitle className={"text-sm"}>Personality Compiler</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -389,7 +388,7 @@ function PersonalityCompilerCard({
             detail="approved rare reanchors"
           />
         </div>
-        <p className={uix('uix-25be576b96')}>编译层只服务治理和路由，不直接进入 prompt 主文本。</p>
+        <p className={"text-xs text-muted-foreground"}>编译层只服务治理和路由，不直接进入 prompt 主文本。</p>
       </CardContent>
     </Card>
   )
@@ -415,8 +414,8 @@ function ProviderAdmissionCard({
 }) {
   return (
     <Card>
-      <CardHeader className={uix('uix-f4cc511ff0')}>
-        <CardTitle className={uix('uix-fc7473ca09')}>Provider Admission</CardTitle>
+      <CardHeader className={"pb-2"}>
+        <CardTitle className={"text-sm"}>Provider Admission</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-3">
@@ -442,8 +441,8 @@ function ProviderAdmissionCard({
 
         <div className="space-y-2">
           {(summary?.by_voice_line ?? []).map((entry) => (
-            <div key={entry.voice_line_id} className={uix('uix-86752f1d4a')}>
-              <span className={uix('uix-aa8a502942')}>
+            <div key={entry.voice_line_id} className={"grid grid-cols-[minmax(0,1fr)_repeat(4,auto)] items-center gap-2 rounded border px-3 py-2 text-[11px]"}>
+              <span className={"truncate font-medium"}>
                 {entry.voice_line_id} · {entry.core_family}
               </span>
               <Badge variant="outline">admitted {entry.admitted}</Badge>
@@ -460,8 +459,8 @@ export function GuidanceRuntimeCard({ guidance }: { guidance?: GuidanceRuntimeDa
   const reasonEntries = Object.entries(guidance?.per_reason ?? {})
   return (
     <Card>
-      <CardHeader className={uix('uix-f4cc511ff0')}>
-        <CardTitle className={uix('uix-fc7473ca09')}>Guidance Runtime</CardTitle>
+      <CardHeader className={"pb-2"}>
+        <CardTitle className={"text-sm"}>Guidance Runtime</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -494,7 +493,7 @@ export function GuidanceRuntimeCard({ guidance }: { guidance?: GuidanceRuntimeDa
           />
         </div>
 
-        <div className={uix('uix-49f8a517a5')}>
+        <div className={"rounded border bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground"}>
           <p>teaching-first violations: {guidance?.teaching_first_violation_count ?? 0}</p>
           <p>
             delivered/opened/dismissed/completed metrics are aggregated from canonical guidance
@@ -504,11 +503,11 @@ export function GuidanceRuntimeCard({ guidance }: { guidance?: GuidanceRuntimeDa
 
         <div className="space-y-2">
           {reasonEntries.length === 0 ? (
-            <p className={uix('uix-25be576b96')}>暂无 Guidance Runtime 指标。</p>
+            <p className={"text-xs text-muted-foreground"}>暂无 Guidance Runtime 指标。</p>
           ) : (
             reasonEntries.map(([reasonCode, metric]) => (
-              <div key={reasonCode} className={uix('uix-86752f1d4a')}>
-                <span className={uix('uix-aa8a502942')}>{reasonCode}</span>
+              <div key={reasonCode} className={"grid grid-cols-[minmax(0,1fr)_repeat(4,auto)] items-center gap-2 rounded border px-3 py-2 text-[11px]"}>
+                <span className={"truncate font-medium"}>{reasonCode}</span>
                 <Badge variant="outline">delivered {metric.delivered}</Badge>
                 <Badge variant="outline">opened {metric.opened}</Badge>
                 <Badge variant="outline">dismissed {metric.dismissed}</Badge>
@@ -539,14 +538,14 @@ function StatCard({
   }[variant]
   return (
     <Card>
-      <CardContent className={uix('uix-2384a01162')}>
-        <p className={uix('uix-3f011da125')}>{title}</p>
-        <div className={uix('uix-b7642927f7')}>
-          <Badge variant="outline" className={cn(uix('uix-runtime-badge-base'), badgeClass)}>
+      <CardContent className={"pt-4 pb-3"}>
+        <p className={"text-[10px] font-medium text-muted-foreground uppercase tracking-wider"}>{title}</p>
+        <div className={"mt-1 flex items-baseline gap-2"}>
+          <Badge variant="outline" className={cn("text-xs", badgeClass)}>
             {value}
           </Badge>
         </div>
-        <p className={uix('uix-81f2eca213')}>{detail}</p>
+        <p className={"mt-1 text-[10px] text-muted-foreground"}>{detail}</p>
       </CardContent>
     </Card>
   )
@@ -560,20 +559,20 @@ function formatDurationMs(value: number | null): string {
 function TickResultCard({ result }: { result: TickResult }) {
   return (
     <Card>
-      <CardHeader className={uix('uix-f4cc511ff0')}>
-        <CardTitle className={uix('uix-fc7473ca09')}>Tick 结果</CardTitle>
+      <CardHeader className={"pb-2"}>
+        <CardTitle className={"text-sm"}>Tick 结果</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        <div className={uix('uix-ef292dc8c8')}>
+        <div className={"flex gap-3 text-xs"}>
           <span>事件: {result.processed_events}</span>
           <span>分配: {result.batch_stats.allocated_agents}</span>
-          <span className={uix('uix-22f3f0194d')}>成功: {result.batch_stats.successful}</span>
-          <span className={uix('uix-421d458123')}>失败: {result.batch_stats.failed}</span>
+          <span className={"text-emerald-600"}>成功: {result.batch_stats.successful}</span>
+          <span className={"text-red-600"}>失败: {result.batch_stats.failed}</span>
         </div>
         {result.scheduled_post?.triggered && (
-          <div className={uix('uix-e746f13c5a')}>
-            <p className={uix('uix-2689f39580')}>自主发帖</p>
-            <p className={uix('uix-bfa6031907')}>
+          <div className={"rounded border bg-blue-50/50 px-3 py-2 text-xs"}>
+            <p className={"font-medium"}>自主发帖</p>
+            <p className={"text-muted-foreground"}>
               {result.scheduled_post.post_id
                 ? `新帖 ${result.scheduled_post.post_id} (${result.scheduled_post.latency_ms}ms)`
                 : `失败: ${result.scheduled_post.error}`}
@@ -583,16 +582,16 @@ function TickResultCard({ result }: { result: TickResult }) {
         {result.executions.length > 0 && (
           <div className="space-y-1">
             {result.executions.map((exec, i) => (
-              <div key={i} className={uix('uix-9af999722d')}>
+              <div key={i} className={"flex items-center justify-between rounded border px-2 py-1 text-[11px]"}>
                 <span className="truncate">{exec.agent_id}</span>
                 <div className="flex items-center gap-2">
                   {exec.usage && (
-                    <span className={uix('uix-bfa6031907')}>{exec.usage.total_tokens}tok</span>
+                    <span className={"text-muted-foreground"}>{exec.usage.total_tokens}tok</span>
                   )}
-                  <span className={uix('uix-bfa6031907')}>{exec.latency_ms}ms</span>
+                  <span className={"text-muted-foreground"}>{exec.latency_ms}ms</span>
                   <Badge
                     variant="outline"
-                    className={exec.success ? uix('uix-6196a83432') : uix('uix-a47175a4cf')}
+                    className={exec.success ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}
                   >
                     {exec.success ? '✓' : '✗'}
                   </Badge>
@@ -608,35 +607,35 @@ function TickResultCard({ result }: { result: TickResult }) {
 function PostResultCard({ result }: { result: PostResult }) {
   return (
     <Card>
-      <CardHeader className={uix('uix-f4cc511ff0')}>
-        <CardTitle className={uix('uix-fc7473ca09')}>发帖结果</CardTitle>
+      <CardHeader className={"pb-2"}>
+        <CardTitle className={"text-sm"}>发帖结果</CardTitle>
       </CardHeader>
-      <CardContent className={uix('uix-93c84cee36')}>
+      <CardContent className={"text-xs space-y-1"}>
         {result.post_id ? (
           <>
             <p>
-              <span className={uix('uix-bfa6031907')}>帖子 ID:</span> {result.post_id}
+              <span className={"text-muted-foreground"}>帖子 ID:</span> {result.post_id}
             </p>
             <p>
-              <span className={uix('uix-bfa6031907')}>Agent:</span> {result.agent_id}
+              <span className={"text-muted-foreground"}>Agent:</span> {result.agent_id}
             </p>
             <p>
-              <span className={uix('uix-bfa6031907')}>社区:</span> {result.community_id}
+              <span className={"text-muted-foreground"}>社区:</span> {result.community_id}
             </p>
             {result.usage && (
               <p>
-                <span className={uix('uix-bfa6031907')}>Tokens:</span> {result.usage.total_tokens} (
+                <span className={"text-muted-foreground"}>Tokens:</span> {result.usage.total_tokens} (
                 {result.usage.prompt_tokens}p + {result.usage.completion_tokens}c)
               </p>
             )}
             {result.latency_ms && (
               <p>
-                <span className={uix('uix-bfa6031907')}>延迟:</span> {result.latency_ms}ms
+                <span className={"text-muted-foreground"}>延迟:</span> {result.latency_ms}ms
               </p>
             )}
           </>
         ) : (
-          <p className={uix('uix-47d65ecb05')}>{result.error ?? '未触发'}</p>
+          <p className={"text-amber-600"}>{result.error ?? '未触发'}</p>
         )}
       </CardContent>
     </Card>
@@ -645,22 +644,22 @@ function PostResultCard({ result }: { result: PostResult }) {
 function StageRotationResultCard({ result }: { result: StageSeasonRotationResult }) {
   return (
     <Card>
-      <CardHeader className={uix('uix-f4cc511ff0')}>
-        <CardTitle className={uix('uix-fc7473ca09')}>Season Rotation 结果</CardTitle>
+      <CardHeader className={"pb-2"}>
+        <CardTitle className={"text-sm"}>Season Rotation 结果</CardTitle>
       </CardHeader>
-      <CardContent className={uix('uix-62c5186701')}>
+      <CardContent className={"space-y-2 text-xs"}>
         <p>
           开放数量: {result.open_count} · activated: {result.activated.length} · replaced:{' '}
           {result.replaced.length}
         </p>
-        <p className={uix('uix-bfa6031907')}>
+        <p className={"text-muted-foreground"}>
           dist 导出: {result.exported_templates} templates / {result.launch_templates} launch
         </p>
         {result.activated.length > 0 && (
-          <div className={uix('uix-7082b8e8c3')}>
-            <p className={uix('uix-2689f39580')}>新启用</p>
+          <div className={"rounded border bg-muted/20 px-2 py-1"}>
+            <p className={"font-medium"}>新启用</p>
             {result.activated.map((item) => (
-              <p key={`${item.slot}-${item.template_id}`} className={uix('uix-f7fc5c060a')}>
+              <p key={`${item.slot}-${item.template_id}`} className={"text-[11px] text-muted-foreground"}>
                 {item.slot}: {item.template_id}
               </p>
             ))}

@@ -43,7 +43,6 @@ import {
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import type { GuidanceItemModule } from '@/api/types'
 import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redirect'
-import { uix } from '@/shared/utils/uix'
 const STATUS_STYLES: Record<string, string> = {
   ACTIVE: 'bg-emerald-50 text-emerald-700',
   LIMITED: 'bg-amber-50 text-amber-700',
@@ -224,17 +223,17 @@ export function AgentProfilePage() {
     return (
       <div className="space-y-3">
         <Skeleton className="h-6 w-40" />
-        <Skeleton className={uix('uix-869404d7e2')} />
+        <Skeleton className={"h-32 rounded-md"} />
       </div>
     )
   }
   if (error || !data?.data) {
     return (
       <div className="space-y-3">
-        <Button variant="ghost" size="sm" asChild className={uix('uix-fe3d94994b')}>
+        <Button variant="ghost" size="sm" asChild className={"h-7 text-xs"}>
           <Link to="/">← 返回</Link>
         </Button>
-        <div className={uix('uix-f1637dcd62')}>未找到该智能体。</div>
+        <div className={"rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground"}>未找到该智能体。</div>
       </div>
     )
   }
@@ -259,19 +258,19 @@ export function AgentProfilePage() {
   ]
   return (
     <div className="space-y-4">
-      <Button variant="ghost" size="sm" asChild className={uix('uix-fe3d94994b')}>
+      <Button variant="ghost" size="sm" asChild className={"h-7 text-xs"}>
         <Link to="/">← 返回</Link>
       </Button>
 
       <Card>
-        <CardHeader className={uix('uix-7fcf9124b5')}>
+        <CardHeader className={"pb-3"}>
           <div className="flex items-center gap-3">
-            <Avatar className={uix('uix-e857e8ce14')}>
-              <AvatarFallback className={uix('uix-41f4d38f9c')}>{initials}</AvatarFallback>
+            <Avatar className={"h-12 w-12 border-2 border-primary/20"}>
+              <AvatarFallback className={"bg-primary/10 text-primary font-semibold"}>{initials}</AvatarFallback>
             </Avatar>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <CardTitle className={uix('uix-4ee734926f')}>{safeAgent.display_name}</CardTitle>
+                <CardTitle className={"text-base"}>{safeAgent.display_name}</CardTitle>
                 <Badge variant="outline" className={STATUS_STYLES[safeAgent.status] ?? ''}>
                   {STATUS_LABELS[safeAgent.status] ?? safeAgent.status}
                 </Badge>
@@ -307,15 +306,15 @@ export function AgentProfilePage() {
         {(safeAgent.identity_contract || isOwner || isAdmin) && (
           <CardContent className="space-y-4">
             {safeAgent.identity_contract && (
-              <div className={uix('uix-b1ccf96a11')}>
-                <p className={uix('uix-da8bf29040')}>角色底色</p>
-                <p className={uix('uix-61e4acf961')}>
+              <div className={"mb-4 rounded-md border bg-muted/30 p-3"}>
+                <p className={"text-xs font-medium"}>角色底色</p>
+                <p className={"mt-1 text-sm text-muted-foreground"}>
                   {safeAgent.identity_contract.visible_persona.style}
                 </p>
                 {safeAgent.identity_contract.owner_style_pins.interests?.length ? (
-                  <div className={uix('uix-6c52481496')}>
+                  <div className={"mt-2 flex flex-wrap gap-1"}>
                     {safeAgent.identity_contract.owner_style_pins.interests.map((interest) => (
-                      <Badge key={interest} variant="outline" className={uix('uix-1dc571a360')}>
+                      <Badge key={interest} variant="outline" className={"text-[10px]"}>
                         {interest}
                       </Badge>
                     ))}
@@ -336,11 +335,11 @@ export function AgentProfilePage() {
                   {showManagementDetails ? '收起管理信息' : '管理信息'}
                 </Button>
                 {showManagementDetails ? (
-                  <div className={uix('uix-451d607bbd')}>
+                  <div className={"grid grid-cols-2 gap-3 text-xs sm:grid-cols-3"}>
                     {managementMeta.map((item) => (
                       <div key={item.label}>
-                        <span className={uix('uix-bfa6031907')}>{item.label}</span>
-                        <p className={item.monospace ? uix('uix-dbaa1c490e') : uix('uix-2689f39580')}>
+                        <span className={"text-muted-foreground"}>{item.label}</span>
+                        <p className={item.monospace ? "font-mono text-[10px]" : "font-medium"}>
                           {item.value}
                         </p>
                       </div>
@@ -357,22 +356,22 @@ export function AgentProfilePage() {
 
       {safeAgent.personality_narrative && (
         <Card>
-          <CardHeader className={uix('uix-f4cc511ff0')}>
-            <CardTitle className={uix('uix-4ee734926f')}>最近的人格变化</CardTitle>
+          <CardHeader className={"pb-2"}>
+            <CardTitle className={"text-base"}>最近的人格变化</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <p className={uix('uix-61e4acf961')}>{safeAgent.personality_narrative.summary}</p>
+            <p className={"mt-1 text-sm text-muted-foreground"}>{safeAgent.personality_narrative.summary}</p>
             {safeAgent.personality_narrative.bullets.map((bullet) => (
-              <p key={bullet} className={uix('uix-25be576b96')}>
+              <p key={bullet} className={"text-xs text-muted-foreground"}>
                 {bullet}
               </p>
             ))}
-            <p className={uix('uix-25be576b96')}>{safeAgent.personality_narrative.growthNote}</p>
+            <p className={"text-xs text-muted-foreground"}>{safeAgent.personality_narrative.growthNote}</p>
             {safeAgent.personality_narrative.stageNote && (
-              <p className={uix('uix-25be576b96')}>{safeAgent.personality_narrative.stageNote}</p>
+              <p className={"text-xs text-muted-foreground"}>{safeAgent.personality_narrative.stageNote}</p>
             )}
             {safeAgent.personality_narrative.migrationNote && (
-              <p className={uix('uix-25be576b96')}>
+              <p className={"text-xs text-muted-foreground"}>
                 {safeAgent.personality_narrative.migrationNote}
               </p>
             )}
@@ -382,40 +381,40 @@ export function AgentProfilePage() {
 
       {isAdmin && safeAgent.inference_profile_debug && (
         <Card>
-          <CardHeader className={uix('uix-f4cc511ff0')}>
-            <CardTitle className={uix('uix-4ee734926f')}>人格编译诊断</CardTitle>
+          <CardHeader className={"pb-2"}>
+            <CardTitle className={"text-base"}>人格编译诊断</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid gap-3 md:grid-cols-2">
-              <div className={uix('uix-276834a8d7')}>
-                <p className={uix('uix-aaa307c4ab')}>
+              <div className={"rounded-md border bg-background/80 p-3"}>
+                <p className={"text-sm font-medium"}>
                   {safeAgent.inference_profile_debug.profile.incumbentFamily}
                   {' -> '}
                   {safeAgent.inference_profile_debug.profile.challengerFamily ?? 'none'}
                 </p>
-                <p className={uix('uix-dacb762e7b')}>
+                <p className={"mt-1 text-xs text-muted-foreground"}>
                   migration={safeAgent.inference_profile_debug.profile.migrationState}
                   {' · '}lead={safeAgent.inference_profile_debug.profile.consecutiveLeadWindows}
                   {' · '}delta={safeAgent.inference_profile_debug.profile.challengerScoreDelta ?? 0}
                 </p>
-                <p className={uix('uix-dacb762e7b')}>
+                <p className={"mt-1 text-xs text-muted-foreground"}>
                   tier floor=
                   {safeAgent.inference_profile_debug.snapshot.requestedTierFloor ?? 'none'}
                   {' · '}stage eligible=
                   {safeAgent.inference_profile_debug.snapshot.stageEligible ? 'yes' : 'no'}
                 </p>
               </div>
-              <div className={uix('uix-276834a8d7')}>
-                <p className={uix('uix-aaa307c4ab')}>
+              <div className={"rounded-md border bg-background/80 p-3"}>
+                <p className={"text-sm font-medium"}>
                   risk={safeAgent.inference_profile_debug.snapshot.signals.risk}
                   {' · '}initiative={safeAgent.inference_profile_debug.snapshot.signals.initiative}
                 </p>
-                <p className={uix('uix-dacb762e7b')}>
+                <p className={"mt-1 text-xs text-muted-foreground"}>
                   blocked={safeAgent.inference_profile_debug.profile.blockedReason ?? 'none'}
                   {' · '}lock=
                   {safeAgent.inference_profile_debug.profile.manualVoiceLineLock ? 'on' : 'off'}
                 </p>
-                <p className={uix('uix-dacb762e7b')}>
+                <p className={"mt-1 text-xs text-muted-foreground"}>
                   line=
                   {safeAgent.inference_profile_debug.profile.challengerVoiceLineId ??
                     safeAgent.home_voice_line_id ??
@@ -453,13 +452,13 @@ export function AgentProfilePage() {
               )}
             </div>
             {safeAgent.inference_profile_debug.shadowReview && (
-              <div className={uix('uix-276834a8d7')}>
-                <p className={uix('uix-aaa307c4ab')}>
+              <div className={"rounded-md border bg-background/80 p-3"}>
+                <p className={"text-sm font-medium"}>
                   shadow review={safeAgent.inference_profile_debug.shadowReview.status}
                   {' · '}recommendation=
                   {safeAgent.inference_profile_debug.shadowReview.summary.recommendation}
                 </p>
-                <p className={uix('uix-dacb762e7b')}>
+                <p className={"mt-1 text-xs text-muted-foreground"}>
                   incumbent={safeAgent.inference_profile_debug.shadowReview.incumbentVoiceLineId}
                   {' -> '}
                   {safeAgent.inference_profile_debug.shadowReview.challengerVoiceLineId}
@@ -537,7 +536,7 @@ export function AgentProfilePage() {
                 {debugProfile?.manualVoiceLineLock ? '解除声线锁' : '锁定当前声线'}
               </Button>
             </div>
-            {adminShadowError && <p className={uix('uix-dacb762e7b')}>{adminShadowError}</p>}
+            {adminShadowError && <p className={"mt-1 text-xs text-muted-foreground"}>{adminShadowError}</p>}
           </CardContent>
         </Card>
       )}
@@ -547,13 +546,13 @@ export function AgentProfilePage() {
         (activeGuidanceItem ? (
           <GuidanceItemCard item={activeGuidanceItem} />
         ) : (
-          <Card className={uix('uix-4f8982b74c')}>
-            <CardHeader className={uix('uix-f4cc511ff0')}>
-              <CardTitle className={uix('uix-4ee734926f')}>
+          <Card className={"border-amber-300/60 bg-amber-50/40"}>
+            <CardHeader className={"pb-2"}>
+              <CardTitle className={"text-base"}>
                 先完成第一轮闭环，再解锁更重的 Owner 控制面
               </CardTitle>
             </CardHeader>
-            <CardContent className={uix('uix-26f026f8ad')}>
+            <CardContent className={"text-sm text-muted-foreground"}>
               风格、指令和高阶控制会在你完成私聊回执、看到公开效果后逐步出现，避免 Day 0
               就被复杂面板淹没。
             </CardContent>
@@ -579,9 +578,9 @@ export function AgentProfilePage() {
         ) : null)}
 
       {!isOwner && shouldShowPublicProof && publicHighlights && (
-        <Card className={uix('uix-dcf5ada3f4')}>
-          <CardHeader className={uix('uix-f4cc511ff0')}>
-            <CardTitle className={uix('uix-4ee734926f')}>这个角色为什么值得追</CardTitle>
+        <Card className={"border-sky-300/50 bg-sky-50/40"}>
+          <CardHeader className={"pb-2"}>
+            <CardTitle className={"text-base"}>这个角色为什么值得追</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {publicHighlights.badges.length > 0 && (
@@ -594,12 +593,12 @@ export function AgentProfilePage() {
               </div>
             )}
             {publicHighlights.tagline && (
-              <p className={uix('uix-26f026f8ad')}>{publicHighlights.tagline}</p>
+              <p className={"text-sm text-muted-foreground"}>{publicHighlights.tagline}</p>
             )}
             {publicHighlights.top_chronicle[0] && (
-              <div className={uix('uix-276834a8d7')}>
-                <p className={uix('uix-aaa307c4ab')}>{publicHighlights.top_chronicle[0].title}</p>
-                <p className={uix('uix-dacb762e7b')}>{publicHighlights.top_chronicle[0].summary}</p>
+              <div className={"rounded-md border bg-background/80 p-3"}>
+                <p className={"text-sm font-medium"}>{publicHighlights.top_chronicle[0].title}</p>
+                <p className={"mt-1 text-xs text-muted-foreground"}>{publicHighlights.top_chronicle[0].summary}</p>
               </div>
             )}
           </CardContent>
@@ -607,7 +606,7 @@ export function AgentProfilePage() {
       )}
 
       {/* Tab bar */}
-      <div className={uix('uix-f16ae63ef3')}>
+      <div className={"flex gap-1 overflow-x-auto border-b"}>
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -617,8 +616,8 @@ export function AgentProfilePage() {
               next.set('tab', t.id)
               setSearchParams(next, { replace: true })
             }}
-            className={`${uix('uix-tab-trigger-base')} ${
-              tab === t.id ? uix('uix-966b8da93a') : uix('uix-e9223c9205')
+            className={`${"whitespace-nowrap px-3 py-2 text-sm transition-colors"} ${
+              tab === t.id ? "border-b-2 border-primary font-medium text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {t.label}
@@ -633,9 +632,9 @@ export function AgentProfilePage() {
         ) : (
           <div className="space-y-4">
             {xpLoading ? (
-              <Skeleton className={uix('uix-37dad925e6')} />
+              <Skeleton className={"h-12 w-48 rounded-full"} />
             ) : xpError ? (
-              <div className={uix('uix-25be576b96')}>XP 加载失败</div>
+              <div className={"text-xs text-muted-foreground"}>XP 加载失败</div>
             ) : xpRes?.data ? (
               <XpBadge
                 xp={xpRes.data.xp}

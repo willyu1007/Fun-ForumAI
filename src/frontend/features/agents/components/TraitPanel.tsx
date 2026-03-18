@@ -1,6 +1,5 @@
 import { useAgentTraits, useTraitDefinitions, useEquipTrait, useUnequipTrait } from '@/api/hooks'
 import type { AgentTraitInfo, TraitDefinition } from '@/api/types'
-import { uix } from '@/shared/utils/uix'
 interface TraitPanelProps {
   agentId: string
   isOwner?: boolean
@@ -11,7 +10,7 @@ export default function TraitPanel({ agentId, isOwner = false }: TraitPanelProps
   const equip = useEquipTrait(agentId)
   const unequip = useUnequipTrait(agentId)
   if (traitsLoading || defsLoading) {
-    return <div className={uix('uix-839cdd2e7e')}>加载特质中…</div>
+    return <div className={"animate-pulse text-sm text-muted-foreground"}>加载特质中…</div>
   }
   const traits: AgentTraitInfo[] = traitsRes?.data ?? []
   const defs: TraitDefinition[] = defsRes?.data ?? []
@@ -23,10 +22,10 @@ export default function TraitPanel({ agentId, isOwner = false }: TraitPanelProps
   )
   const candidates = defs.filter((d) => d.category === 'adjustable' && !equippedCodes.has(d.code))
   return (
-    <div className={uix('uix-63142bb52e')}>
+    <div className={"rounded-xl border bg-card p-5 space-y-4"}>
       <div className="flex items-center justify-between">
-        <h3 className={uix('uix-e83a7042bc')}>特质管理</h3>
-        <span className={uix('uix-25be576b96')}>按行为条件解锁与装备</span>
+        <h3 className={"font-semibold"}>特质管理</h3>
+        <span className={"text-xs text-muted-foreground"}>按行为条件解锁与装备</span>
       </div>
 
       {system.length > 0 && (
@@ -35,7 +34,7 @@ export default function TraitPanel({ agentId, isOwner = false }: TraitPanelProps
             const def = defMap.get(t.trait_code)
             return (
               <Badge key={t.id} variant="system">
-                <span className={uix('uix-618162408e')}>⚙️</span>
+                <span className={"mr-1"}>⚙️</span>
                 {def?.emoji} {def?.name ?? t.trait_code}
               </Badge>
             )
@@ -44,7 +43,7 @@ export default function TraitPanel({ agentId, isOwner = false }: TraitPanelProps
       )}
 
       <Section title="已装备">
-        {equipped.length === 0 && <span className={uix('uix-25be576b96')}>暂无已装备特质</span>}
+        {equipped.length === 0 && <span className={"text-xs text-muted-foreground"}>暂无已装备特质</span>}
         {equipped.map((t) => {
           const def = defMap.get(t.trait_code)
           return (
@@ -52,7 +51,7 @@ export default function TraitPanel({ agentId, isOwner = false }: TraitPanelProps
               {def?.emoji} {def?.name ?? t.trait_code}
               {isOwner && (
                 <button
-                  className={uix('uix-57d22d46ef')}
+                  className={"ml-1.5 rounded px-1 text-xs hover:bg-violet-200 dark:hover:bg-violet-800 disabled:opacity-50"}
                   disabled={unequip.isPending}
                   onClick={() => unequip.mutate(t.trait_code)}
                 >
@@ -66,12 +65,12 @@ export default function TraitPanel({ agentId, isOwner = false }: TraitPanelProps
 
       {isOwner && (
         <Section title="候选">
-          {candidates.length === 0 && <span className={uix('uix-25be576b96')}>无可用候选特质</span>}
+          {candidates.length === 0 && <span className={"text-xs text-muted-foreground"}>无可用候选特质</span>}
           {candidates.map((d) => (
             <Badge key={d.code} variant="candidate">
               {d.emoji} {d.name}
               <button
-                className={uix('uix-0d42dcaf77')}
+                className={"ml-1.5 rounded px-1 text-xs hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50"}
                 disabled={equip.isPending}
                 onClick={() => equip.mutate(d.code)}
               >
@@ -87,7 +86,7 @@ export default function TraitPanel({ agentId, isOwner = false }: TraitPanelProps
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className={uix('uix-6a8eda6259')}>{title}</p>
+      <p className={"mb-1.5 text-xs font-medium text-muted-foreground"}>{title}</p>
       <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   )
@@ -105,6 +104,6 @@ function Badge({
   children: React.ReactNode
 }) {
   return (
-    <span className={`${uix('uix-pill-badge-base')} ${variantClasses[variant]}`}>{children}</span>
+    <span className={`${"inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"} ${variantClasses[variant]}`}>{children}</span>
   )
 }

@@ -43,7 +43,6 @@ import {
   HOT_TOPIC_DOMAIN_LABELS,
   readTopicSignals,
 } from '@/shared/utils/hot-topic-policy'
-import { uix } from '@/shared/utils/uix'
 interface AftershowContentHighlightV1 {
   audience_message_id: string
   user_id: string
@@ -210,7 +209,7 @@ export function PostDetailPage() {
     return (
       <div className="space-y-3">
         <Skeleton className="h-6 w-40" />
-        <Skeleton className={uix('uix-c3f01542ea')} />
+        <Skeleton className={"h-48 rounded-md"} />
       </div>
     )
   }
@@ -220,7 +219,7 @@ export function PostDetailPage() {
         <Button variant="ghost" size="sm" asChild>
           <Link to="/">← 返回广场</Link>
         </Button>
-        <div className={uix('uix-f1637dcd62')}>未找到该帖子。</div>
+        <div className={"rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground"}>未找到该帖子。</div>
       </div>
     )
   }
@@ -295,12 +294,12 @@ export function PostDetailPage() {
   }
   return (
     <div className="space-y-3">
-      <Button variant="ghost" size="sm" asChild className={uix('uix-fe3d94994b')}>
+      <Button variant="ghost" size="sm" asChild className={"h-7 text-xs"}>
         <Link to="/">← 返回广场</Link>
       </Button>
 
-      <div className={uix('uix-00d41dad4f')}>
-        <div className={uix('uix-07041d1b44')}>
+      <div className={"flex rounded-md border bg-card"}>
+        <div className={"flex w-10 shrink-0 items-start justify-center rounded-l-md bg-muted/40 pt-3"}>
           <div className="flex flex-col items-center gap-1">
             <VoteColumn targetType="POST" targetId={post.id} score={post.vote_score} />
             <HumanVoteControls
@@ -314,11 +313,11 @@ export function PostDetailPage() {
           </div>
         </div>
 
-        <div className={uix('uix-f96a1e91b5')}>
+        <div className={"min-w-0 flex-1 p-4"}>
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0 space-y-1">
               {post.community_id && (
-                <Link to={`/c/${communityPath}`} className={uix('uix-b1e8336281')}>
+                <Link to={`/c/${communityPath}`} className={"inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground hover:bg-accent"}>
                   c/{communityPath}
                 </Link>
               )}
@@ -330,34 +329,34 @@ export function PostDetailPage() {
                   {author.avatar_url && (
                     <AvatarImage src={author.avatar_url} alt={author.display_name} />
                   )}
-                  <AvatarFallback className={uix('uix-c9c4000725')}>
+                  <AvatarFallback className={"text-[9px] bg-primary/10 text-primary"}>
                     {author.display_name.slice(0, 1).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className={uix('uix-15efed281d')}>{author.display_name}</span>
+                <span className={"truncate text-xs font-medium text-foreground"}>{author.display_name}</span>
               </Link>
             </div>
-            <div className={uix('uix-1e02cc4e42')}>
+            <div className={"flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground"}>
               <span>{relativeTime(post.created_at)}</span>
               <ModerationBadge visibility={post.visibility} state={post.state} />
             </div>
           </div>
 
-          <h1 className={uix('uix-2dac82659b')}>{post.title}</h1>
+          <h1 className={"mt-2 text-lg font-bold leading-snug"}>{post.title}</h1>
 
           {post.tags.length > 0 && (
-            <div className={uix('uix-6c52481496')}>
+            <div className={"mt-2 flex flex-wrap gap-1"}>
               {post.tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className={uix('uix-9e8fecbb7f')}>
+                <Badge key={tag} variant="secondary" className={"px-1.5 py-0 text-[10px]"}>
                   {tag}
                 </Badge>
               ))}
             </div>
           )}
 
-          <RichTextLite text={post.body} className={uix('uix-2a398e7214')} />
+          <RichTextLite text={post.body} className={"mt-3 text-sm"} />
 
-          <div className={uix('uix-6b2a962de1')}>
+          <div className={"space-y-2 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-950"}>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">AI 公域讨论</Badge>
               <Badge variant="outline">
@@ -373,19 +372,19 @@ export function PostDetailPage() {
             <p>公域帖子由 Agent 发布。命中热点时，系统会结合社区允许域、漂移风险和复核模式决定是否仅保留直达访问。</p>
             {topicTransparencyCopy && <p>{topicTransparencyCopy}</p>}
             {topicSignals?.topicConfidence != null && topicSignals.hotTopicFlag && (
-              <p className={uix('uix-9e897853fd')}>
+              <p className={"mt-1 text-amber-900/80"}>
                 当前热点识别置信度 {Math.round(topicSignals.topicConfidence * 100)}%。
               </p>
             )}
-            <p className={uix('uix-9e897853fd')}>
+            <p className={"mt-1 text-amber-900/80"}>
               <Link to="/help/hot-topic-rules" className="underline underline-offset-4">
                 查看热点治理与推荐规则
               </Link>
             </p>
           </div>
 
-          <div className={uix('uix-5f1c6e8a42')}>
-            <span className={uix('uix-25be576b96')}>审核与风控</span>
+          <div className={"flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"}>
+            <span className={"text-xs text-muted-foreground"}>审核与风控</span>
             {isAuthenticated ? (
               <>
                 <Button
@@ -424,26 +423,26 @@ export function PostDetailPage() {
             )}
           </div>
           {safetyActionMessage && (
-            <p className={createReport.isError || createAppeal.isError ? uix('uix-551c237449') : uix('uix-abda0153e3')}>
+            <p className={createReport.isError || createAppeal.isError ? "text-xs text-destructive" : "text-[10px] text-muted-foreground"}>
               {safetyActionMessage}
             </p>
           )}
 
           {post.media.length > 0 && (
-            <div className={uix('uix-a7cd7a5d10')}>
-              <p className={uix('uix-25be576b96')}>附带图片</p>
+            <div className={"mt-3 space-y-2"}>
+              <p className={"text-xs text-muted-foreground"}>附带图片</p>
               <div className="flex flex-wrap gap-2">
                 {post.media.map((item) => (
                   <a key={item.asset_id} href={item.media_url} target="_blank" rel="noreferrer">
-                    <img src={item.media_url} alt="post media" className={uix('uix-5cf23b6415')} />
+                    <img src={item.media_url} alt="post media" className={"h-28 w-40 rounded-md border object-cover"} />
                   </a>
                 ))}
               </div>
             </div>
           )}
 
-          <div className={uix('uix-0fc8796731')}>
-            <span className={uix('uix-2689f39580')}>💬 {commentCount} 条讨论</span>
+          <div className={"mt-4 flex items-center gap-4 border-t pt-3 text-xs text-muted-foreground"}>
+            <span className={"font-medium"}>💬 {commentCount} 条讨论</span>
             <span>
               Agent 👍 {post.agent_vote_up} / 👎 {post.agent_vote_down}
             </span>
@@ -472,12 +471,12 @@ export function PostDetailPage() {
               actionPending={followAuthor.isPending}
             />
             {followError && spectatorRail.cta.kind === 'button' && (
-              <p className={uix('uix-c889115c43')}>{followError}</p>
+              <p className={"text-sm text-destructive"}>{followError}</p>
             )}
           </div>
         ) : null)}
 
-      <div className={uix('uix-dc51efa437')}>
+      <div className={"rounded-md border bg-card p-4"}>
         <NewContentBanner
           count={newCommentCount}
           label="条新回复"
@@ -491,44 +490,44 @@ export function PostDetailPage() {
 
       {isAudienceAftershowEnabled && aftershow && (
         <>
-          <div className={uix('uix-d4e7e4bb07')}>
+          <div className={"rounded-md border bg-card p-4 space-y-3"}>
             <div className="flex items-center justify-between gap-2">
-              <h2 className={uix('uix-9f9576a7da')}>{formatGlossaryLabel('audienceZone')}</h2>
-              <span className={uix('uix-25be576b96')}>{audienceMessages.length} 条留言</span>
+              <h2 className={"text-sm font-semibold"}>{formatGlossaryLabel('audienceZone')}</h2>
+              <span className={"text-xs text-muted-foreground"}>{audienceMessages.length} 条留言</span>
             </div>
 
             {asideSeats.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {asideSeats.map((seat) => (
-                  <Badge key={seat.id} variant="outline" className={uix('uix-1dc571a360')}>
+                  <Badge key={seat.id} variant="outline" className={"text-[10px]"}>
                     {seat.role} · {seat.agent_id.slice(0, 8)}
                   </Badge>
                 ))}
               </div>
             )}
 
-            <div className={uix('uix-6bdac1a18e')}>
+            <div className={"max-h-56 space-y-2 overflow-y-auto rounded-md border bg-muted/20 p-2"}>
               {audienceMessages.length === 0 ? (
-                <div className={uix('uix-5b0a9eed34')}>还没有观众留言</div>
+                <div className={"py-5 text-center text-xs text-muted-foreground"}>还没有观众留言</div>
               ) : (
                 renderedAudienceMessages.map((message) => (
                   <div
                     key={message.id}
                     id={`audience-message-${message.id}`}
                     className={cn(
-                      uix('uix-a1670fa70c'),
-                      highlightedAudienceMessageId === message.id && uix('uix-a3dca92e1e'),
+                      "rounded border bg-background p-2 transition-colors",
+                      highlightedAudienceMessageId === message.id && "border-emerald-500 bg-emerald-50/60",
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className={uix('uix-e990e4304b')}>
+                      <span className={"text-[11px] font-medium text-foreground"}>
                         用户 {message.author_user_id.slice(0, 8)}
                       </span>
-                      <span className={uix('uix-abda0153e3')}>
+                      <span className={"text-[10px] text-muted-foreground"}>
                         {relativeTime(message.created_at)}
                       </span>
                     </div>
-                    <RichTextLite text={message.body} className={uix('uix-14d734a71b')} />
+                    <RichTextLite text={message.body} className={"mt-1 text-xs"} />
                   </div>
                 ))
               )}
@@ -547,10 +546,10 @@ export function PostDetailPage() {
                   !isAuthenticated || !isAudienceAftershowEnabled || createAudienceMessage.isPending
                 }
                 placeholder={isAuthenticated ? '留下你的观众留言…' : '登录后可参与观众区'}
-                className={uix('uix-84b25cd81f')}
+                className={"min-h-20 text-sm"}
               />
               {audienceDraftError && (
-                <div className={uix('uix-551c237449')}>{audienceDraftError}</div>
+                <div className={"text-xs text-destructive"}>{audienceDraftError}</div>
               )}
               <div className="flex justify-end">
                 <Button
@@ -571,51 +570,51 @@ export function PostDetailPage() {
             </div>
           </div>
 
-          <div className={uix('uix-d4e7e4bb07')}>
+          <div className={"rounded-md border bg-card p-4 space-y-3"}>
             <div className="flex items-center justify-between gap-2">
-              <h2 className={uix('uix-9f9576a7da')}>{formatGlossaryLabel('aftershowBlock')}</h2>
+              <h2 className={"text-sm font-semibold"}>{formatGlossaryLabel('aftershowBlock')}</h2>
               {aftershow.aftershow_summary?.published_at && (
-                <span className={uix('uix-25be576b96')}>
+                <span className={"text-xs text-muted-foreground"}>
                   发布于 {relativeTime(aftershow.aftershow_summary.published_at)}
                 </span>
               )}
             </div>
 
             {!aftershow.aftershow_summary ? (
-              <div className={uix('uix-8a085b9853')}>暂无 Aftershow，总结尚未发布。</div>
+              <div className={"rounded-md border border-dashed p-4 text-xs text-muted-foreground"}>暂无 Aftershow，总结尚未发布。</div>
             ) : (
               <div className="space-y-3">
                 {aftershowContent?.title && (
-                  <p className={uix('uix-5af1ba0eb8')}>{aftershowContent.title}</p>
+                  <p className={"text-sm font-medium text-foreground"}>{aftershowContent.title}</p>
                 )}
 
-                <div className={uix('uix-e78ccbb8c7')}>
-                  <p className={uix('uix-f549f10a99')}>{formatGlossaryLabel('summary')}</p>
+                <div className={"rounded-md border bg-muted/20 p-3"}>
+                  <p className={"text-xs font-medium text-muted-foreground"}>{formatGlossaryLabel('summary')}</p>
                   <RichTextLite
                     text={aftershowContent?.summary ?? aftershow.aftershow_summary.summary_text}
-                    className={uix('uix-470129e6c7')}
+                    className={"mt-2 text-sm"}
                   />
                 </div>
 
                 {aftershowContent?.highlights.length ? (
-                  <div className={uix('uix-e78ccbb8c7')}>
-                    <p className={uix('uix-f549f10a99')}>
+                  <div className={"rounded-md border bg-muted/20 p-3"}>
+                    <p className={"text-xs font-medium text-muted-foreground"}>
                       {formatGlossaryLabel('audienceHighlights')}
                     </p>
-                    <div className={uix('uix-813892bc68')}>
+                    <div className={"mt-2 space-y-2"}>
                       {aftershowContent.highlights.map((highlight) => (
-                        <div key={highlight.audience_message_id} className={uix('uix-b612da518f')}>
+                        <div key={highlight.audience_message_id} className={"rounded-md border bg-background p-2"}>
                           <div className="flex items-center justify-between gap-2">
-                            <span className={uix('uix-e990e4304b')}>
+                            <span className={"text-[11px] font-medium text-foreground"}>
                               用户 {highlight.user_id.slice(0, 8)}
                             </span>
-                            <Badge variant="outline" className={uix('uix-1dc571a360')}>
+                            <Badge variant="outline" className={"text-[10px]"}>
                               观众留言
                             </Badge>
                           </div>
                           <RichTextLite
                             text={highlight.excerpt}
-                            className={uix('uix-14d734a71b')}
+                            className={"mt-1 text-xs"}
                           />
                         </div>
                       ))}
@@ -626,9 +625,9 @@ export function PostDetailPage() {
             )}
 
             <div className="space-y-1.5">
-              <p className={uix('uix-f549f10a99')}>{formatGlossaryLabel('callouts')}</p>
+              <p className={"text-xs font-medium text-muted-foreground"}>{formatGlossaryLabel('callouts')}</p>
               {aftershow.aftershow_callouts.length === 0 ? (
-                <div className={uix('uix-25be576b96')}>暂无被回应的观众点</div>
+                <div className={"text-xs text-muted-foreground"}>暂无被回应的观众点</div>
               ) : (
                 aftershow.aftershow_callouts.map((callout, index) => {
                   const highlighted = focusedAftershowId
@@ -638,17 +637,17 @@ export function PostDetailPage() {
                     <div
                       key={callout.id}
                       className={cn(
-                        uix('uix-a8bb6e0a63'),
-                        highlighted ? uix('uix-a3dca92e1e') : uix('uix-e6f9e383a7'),
+                        "rounded-md border p-2 text-xs",
+                        highlighted ? "border-emerald-500 bg-emerald-50/60" : "bg-background",
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className={uix('uix-2689f39580')}>
+                        <span className={"font-medium"}>
                           #{index + 1} · 用户 {callout.user_id.slice(0, 8)}
                         </span>
-                        {highlighted && <Badge className={uix('uix-1dc571a360')}>已定位</Badge>}
+                        {highlighted && <Badge className={"text-[10px]"}>已定位</Badge>}
                       </div>
-                      <RichTextLite text={callout.reason} className={uix('uix-d05147b388')} />
+                      <RichTextLite text={callout.reason} className={"mt-1 text-muted-foreground"} />
                     </div>
                   )
                 })

@@ -3,7 +3,6 @@ import { useAgentPromptOverrides, useUpdatePromptOverrides } from '@/api/hooks'
 import type { PromptOverrides } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { uix } from '@/shared/utils/uix'
 interface PromptOverrideEditorProps {
   agentId: string
 }
@@ -47,10 +46,10 @@ export function PromptOverrideEditor({ agentId }: PromptOverrideEditorProps) {
         const val = local[key] ?? ''
         return (
           <div key={key}>
-            <div className={uix('uix-3a9d20850c')}>
-              <label className={uix('uix-aaa307c4ab')}>{label}</label>
+            <div className={"mb-1 flex items-center justify-between"}>
+              <label className={"text-sm font-medium"}>{label}</label>
               <span
-                className={`${uix('uix-text-xs')} ${val.length > CHAR_MAX ? uix('uix-811148b13d') : uix('uix-bfa6031907')}`}
+                className={`${"text-xs"} ${val.length > CHAR_MAX ? "text-destructive" : "text-muted-foreground"}`}
               >
                 {val.length}/{CHAR_MAX}
               </span>
@@ -60,13 +59,13 @@ export function PromptOverrideEditor({ agentId }: PromptOverrideEditorProps) {
               onChange={(e) => handleChange(key, e.target.value)}
               rows={3}
               placeholder={`输入${label}内容…`}
-              className={uix('uix-6761e68629')}
+              className={"w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"}
             />
           </div>
         )
       })}
 
-      <div className={uix('uix-f6c7967da3')}>
+      <div className={"flex justify-end pt-2"}>
         <Button size="sm" onClick={handleSave} disabled={update.isPending}>
           {update.isPending ? '保存中…' : '保存'}
         </Button>

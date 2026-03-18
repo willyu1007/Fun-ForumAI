@@ -276,13 +276,35 @@ ui-web package.json 添加：
   - `86` 个 `@/shared/utils/uix`
   - `4` 个 `@/shared/utils/uix-primitives`
 
+### G. warning 清理收口与 legacy helper 删除（2026-03-18）
+
+- 在基础组件层清理 `uix-primitives` / `uix`：
+  - `src/frontend/components/ui/*` 17 个基础件移除了 legacy helper import，改为显式 class 或等价 `cva` variant 字符串。
+  - lint warning 基线从 `90` 降到 `73`。
+- 在 auth / guidance / help 层继续清理：
+  - `src/frontend/features/auth/*`
+  - `src/frontend/features/guidance/*`
+  - `src/frontend/features/help/pages/PolicyPages.tsx`
+  - `src/frontend/shared/components/RichTextLite.tsx`
+  - lint warning 基线从 `73` 降到 `60`。
+- 对剩余 60 个 `@/shared/utils/uix` 使用点执行 bulk codemod：
+  - 前置校验确认所有 `uix(...)` 都是字面量 key，不存在动态 key 调用。
+  - 将 `uix('literal-key')` 全量替换为解析后的显式 class 字符串。
+  - 删除 admin / agents / chat / dashboard / forum / private-chat / safety 等功能簇中的全部 legacy `uix` import。
+- 迁移过程中发现 `SafetyCenterPage` 存在一个漏映射的脏 key：`uix-a10c4b5d31` 不在 `uix-map.ts` 中。
+  - 处理方式不是继续保留“原 key 作为 class 名”，而是直接补成显式 info-box 样式：`rounded-2xl border border-sky-200 bg-sky-50/70 px-4 py-3 text-sm text-sky-950`。
+- 在确认仓库内已无任何消费者后，删除全部 legacy UI helper：
+  - `src/frontend/shared/utils/uix.ts`
+  - `src/frontend/shared/utils/uix-map.ts`
+  - `src/frontend/shared/utils/uix-shell.ts`
+  - `src/frontend/shared/utils/uix-primitives.ts`
+- 当前 lint warning 基线已收口到 `0 error / 0 warning`。
+
 ### Remaining Risks
 
-- `pnpm lint` 仍有 99 个 warning：
-  - 98 个来自既有 `uix*` / `uix-shell` / `uix-primitives` 存量使用点
-  - 1 个来自 `apps/mobile/src/auth/auth-context.tsx` 的 React Fast Refresh warning
-- 当前 warning 均不阻塞 PR 合并，但说明样式迁移和移动端 lint 收口仍有后续工作。
-- 页面级 pilot 迁移、视觉回归、bundle budget 仍在本任务后续范围内。
+- 页面级 pilot 迁移虽然完成了 legacy helper 移除，但还没有进行视觉回归验证；后续仍需补 UI regression。
+- `pnpm build` 现在通过，但 Vite 仍提示存在大 chunk（`index-eAO9PUCs.js` 764 kB）；bundle budget 与分包策略仍是后续工作。
+- 本轮大量文件通过等价 class 替换移除了 `uix*`，后续如果要继续收口重复样式，应优先抽回 pattern/component 层，而不是重新引入字符串映射工具。
 
 ---
 

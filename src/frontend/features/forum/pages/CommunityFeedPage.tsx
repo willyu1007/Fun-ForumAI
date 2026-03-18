@@ -20,7 +20,6 @@ import {
   HOT_TOPIC_MODE_LABELS,
   readCommunityHotTopicPolicy,
 } from '@/shared/utils/hot-topic-policy'
-import { uix } from '@/shared/utils/uix'
 
 const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
 
@@ -73,23 +72,23 @@ export function CommunityFeedPage() {
   return (
     <div className="space-y-3">
       {community && (
-        <div className={uix('uix-1819b9b32e')}>
+        <div className={"rounded-md border bg-gradient-to-r from-primary/5 to-primary/10 p-4"}>
           <div className="flex items-center gap-3">
-            <div className={uix('uix-7d0cdab1f8')}>💬</div>
+            <div className={"flex h-12 w-12 items-center justify-center rounded-full bg-primary/20 text-xl"}>💬</div>
             <div>
-              <h1 className={uix('uix-65af6ac52c')}>{community.name}</h1>
-              <p className={uix('uix-25be576b96')}>c/{community.slug}</p>
+              <h1 className={"text-lg font-bold"}>{community.name}</h1>
+              <p className={"text-xs text-muted-foreground"}>c/{community.slug}</p>
             </div>
-            <Badge variant="outline" className={uix('uix-757cbc0226')}>
+            <Badge variant="outline" className={"ml-auto text-xs"}>
               {COMMUNITY_VISIBILITY_LABELS[community.visibility_default.toLowerCase()] ??
                 community.visibility_default}
             </Badge>
           </div>
           {community.description && (
-            <p className={uix('uix-ca5e8b251c')}>{community.description}</p>
+            <p className={"mt-2 text-sm text-muted-foreground"}>{community.description}</p>
           )}
           {hotTopicPolicy && (
-            <div className={uix('uix-7df92ecb84')}>
+            <div className={"rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-950"}>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">热点模式 · {HOT_TOPIC_MODE_LABELS[hotTopicPolicy.mode]}</Badge>
                 {hotTopicPolicy.allowedDomains.map((domain) => (
@@ -98,18 +97,18 @@ export function CommunityFeedPage() {
                   </Badge>
                 ))}
               </div>
-              <p className={uix('uix-470129e6c7')}>
+              <p className={"mt-2 text-sm"}>
                 本社区允许围观的热点域：{hotTopicPolicy.allowedDomains.map((domain) => HOT_TOPIC_DOMAIN_LABELS[domain]).join('、')}。
                 {hotTopicPolicy.blockedDomains.length > 0 && (
                   <>不进入推荐的域：{hotTopicPolicy.blockedDomains.map((domain) => HOT_TOPIC_DOMAIN_LABELS[domain]).join('、')}。</>
                 )}
               </p>
               {(hotTopicPolicy.userCopy.community_banner ?? hotTopicPolicy.userCopy.summary) && (
-                <p className={uix('uix-9e897853fd')}>
+                <p className={"mt-1 text-amber-900/80"}>
                   {hotTopicPolicy.userCopy.community_banner ?? hotTopicPolicy.userCopy.summary}
                 </p>
               )}
-              <p className={uix('uix-9e897853fd')}>
+              <p className={"mt-1 text-amber-900/80"}>
                 <Link to="/help/hot-topic-rules" className="underline underline-offset-4">
                   查看热点治理规则与推荐说明
                 </Link>
@@ -119,12 +118,12 @@ export function CommunityFeedPage() {
         </div>
       )}
 
-      {communityLoading && <Skeleton className={uix('uix-a3cb5e8f60')} />}
+      {communityLoading && <Skeleton className={"h-24 rounded-md"} />}
 
       {!communityLoading && !community && (
-        <div className={uix('uix-9ea27bf804')}>
-          <p className={uix('uix-aaa307c4ab')}>未找到该社区</p>
-          <p className={uix('uix-dacb762e7b')}>社区 c/{slug} 不存在。</p>
+        <div className={"rounded-md border p-10 text-center"}>
+          <p className={"text-sm font-medium"}>未找到该社区</p>
+          <p className={"mt-1 text-xs text-muted-foreground"}>社区 c/{slug} 不存在。</p>
         </div>
       )}
 
@@ -150,18 +149,18 @@ export function CommunityFeedPage() {
               {[1, 2, 3].map((i) => (
                 <Skeleton
                   key={i}
-                  className={view === 'card' ? uix('uix-7d38597482') : uix('uix-1e7b8da7e2')}
+                  className={view === 'card' ? "h-28 rounded-md" : "h-12 rounded-md"}
                 />
               ))}
             </div>
           )}
 
-          {error && <div className={uix('uix-c07a4b39bd')}>加载失败，请稍后重试。</div>}
+          {error && <div className={"rounded-md border p-6 text-center text-sm text-muted-foreground"}>加载失败，请稍后重试。</div>}
 
           {!isLoading && posts.length === 0 && !error && (
-            <div className={uix('uix-5218d295f2')}>
-              <p className={uix('uix-aaa307c4ab')}>暂无帖子</p>
-              <p className={uix('uix-dacb762e7b')}>该社区还没有内容。</p>
+            <div className={"rounded-md border border-dashed bg-muted/30 p-10 text-center"}>
+              <p className={"text-sm font-medium"}>暂无帖子</p>
+              <p className={"mt-1 text-xs text-muted-foreground"}>该社区还没有内容。</p>
             </div>
           )}
 

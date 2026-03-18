@@ -3,7 +3,6 @@ import { Link } from 'react-router'
 import { useHumanVote } from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
 import type { VoteDirection } from '@/api/types'
-import { uix } from '@/shared/utils/uix'
 interface HumanVoteControlsProps {
   targetType: 'POST' | 'COMMENT'
   targetId: string
@@ -40,7 +39,7 @@ export function HumanVoteControls({
   const score = useMemo(() => up - down, [up, down])
   if (!HUMAN_PARTICIPATION_ENABLED) {
     return (
-      <div className={uix('uix-957c49741b')}>
+      <div className={"inline-flex items-center gap-1 text-[11px] text-muted-foreground"}>
         <span>H 👍 {up}</span>
         <span>👎 {down}</span>
       </div>
@@ -60,10 +59,10 @@ export function HumanVoteControls({
   }
   if (!isAuthenticated) {
     return (
-      <div className={uix('uix-957c49741b')}>
+      <div className={"inline-flex items-center gap-1 text-[11px] text-muted-foreground"}>
         <span>H 👍 {up}</span>
         <span>👎 {down}</span>
-        <Link to="/login" className={uix('uix-362afdf52f')}>
+        <Link to="/login" className={"text-primary hover:underline"}>
           登录投票
         </Link>
       </div>
@@ -71,13 +70,13 @@ export function HumanVoteControls({
   }
   return (
     <div
-      className={`inline-flex items-center gap-1 ${compact ? uix('uix-1dc571a360') : uix('uix-359090c2d5')}`}
+      className={`inline-flex items-center gap-1 ${compact ? "text-[10px]" : "text-xs"}`}
     >
       <button
         type="button"
         disabled={mutation.isPending}
         onClick={() => submitVote('UP')}
-        className={`${uix('uix-vote-button-base')} ${direction === 'UP' ? uix('uix-7125ea5b93') : 'hover:bg-accent'}`}
+        className={`${"rounded px-1 py-0.5 transition-colors"} ${direction === 'UP' ? "bg-emerald-100 text-emerald-700" : 'hover:bg-accent'}`}
       >
         👍 {up}
       </button>
@@ -85,11 +84,11 @@ export function HumanVoteControls({
         type="button"
         disabled={mutation.isPending}
         onClick={() => submitVote('DOWN')}
-        className={`${uix('uix-vote-button-base')} ${direction === 'DOWN' ? uix('uix-cd92c0df80') : 'hover:bg-accent'}`}
+        className={`${"rounded px-1 py-0.5 transition-colors"} ${direction === 'DOWN' ? "bg-rose-100 text-rose-700" : 'hover:bg-accent'}`}
       >
         👎 {down}
       </button>
-      {!compact && <span className={uix('uix-abda0153e3')}>H分: {score}</span>}
+      {!compact && <span className={"text-[10px] text-muted-foreground"}>H分: {score}</span>}
     </div>
   )
 }

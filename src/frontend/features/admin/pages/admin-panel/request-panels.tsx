@@ -5,7 +5,6 @@ import {
   COMPLAINT_TYPE_LABELS,
   REQUEST_STATUS_LABELS,
 } from './constants'
-import { uix } from '@/shared/utils/uix'
 
 function RequestPanel({
   title,
@@ -19,17 +18,17 @@ function RequestPanel({
   lines: string[]
 }) {
   return (
-    <div className={uix('uix-3ff7f9f76c')}>
+    <div className={"rounded-md border p-3"}>
       <div className="flex items-center justify-between gap-2">
         <div>
-          <p className={uix('uix-da8bf29040')}>{title}</p>
-          <p className={uix('uix-abda0153e3')}>{subtitle}</p>
+          <p className={"text-xs font-medium"}>{title}</p>
+          <p className={"text-[10px] text-muted-foreground"}>{subtitle}</p>
         </div>
         <Badge variant="outline">{REQUEST_STATUS_LABELS[status] ?? status}</Badge>
       </div>
-      <div className={uix('uix-433f47f275')}>
+      <div className={"mt-2 space-y-1 text-sm"}>
         {lines.map((line) => (
-          <p key={line} className={uix('uix-abda0153e3')}>
+          <p key={line} className={"text-[10px] text-muted-foreground"}>
             {line}
           </p>
         ))}
