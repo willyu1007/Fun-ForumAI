@@ -1,53 +1,66 @@
+import {
+  MOBILE_THEMES,
+  colors as tokenColors,
+  radius as tokenRadius,
+  spacing as tokenSpacing,
+  typography,
+  type MobileTheme,
+  type MobileThemeName,
+} from '@fun-forum/design-tokens/mobile-theme'
+
+export { MOBILE_THEMES }
+export type { MobileTheme, MobileThemeName }
+
 export const colors = {
-  background: '#f5f7fa',
-  surface: '#ffffff',
-  surfaceBorder: '#e5e7eb',
+  background: tokenColors.bg,
+  surface: tokenColors.surface,
+  surfaceBorder: tokenColors.border,
 
-  headerBg: '#111827',
-  headerText: '#ffffff',
-  headerSubtext: '#d1d5db',
-  headerBusy: '#c7d2fe',
-  headerError: '#fecaca',
+  headerBg: tokenColors.primary,
+  headerText: tokenColors.onPrimary ?? '#ffffff',
+  headerSubtext: tokenColors.textSecondary,
+  headerBusy: tokenColors.focusRing,
+  headerError: tokenColors.danger,
 
-  tabBg: '#1f2937',
-  tabDefault: '#374151',
-  tabActive: '#2563eb',
-  tabText: '#f9fafb',
+  tabBg: tokenColors.surface,
+  tabDefault: tokenColors.textSecondary,
+  tabActive: tokenColors.primary,
+  tabText: tokenColors.textPrimary,
 
-  primary: '#2563eb',
-  primaryText: '#ffffff',
-  secondaryBg: '#f3f4f6',
-  selectedBg: '#eff6ff',
-  selectedBorder: '#2563eb',
+  primary: tokenColors.primary,
+  primaryText: tokenColors.onPrimary ?? '#ffffff',
+  secondaryBg: tokenColors.surfaceElevated,
+  selectedBg: tokenColors.surfaceElevated,
+  selectedBorder: tokenColors.primary,
 
-  text: '#111827',
-  textSecondary: '#6b7280',
-  textMuted: '#9ca3af',
-  textOnDark: '#ffffff',
+  text: tokenColors.textPrimary,
+  textSecondary: tokenColors.textSecondary,
+  textMuted: tokenColors.textMuted,
+  textOnDark: tokenColors.onPrimary ?? '#ffffff',
 
-  inputBorder: '#d1d5db',
-  divider: '#f3f4f6',
-  error: '#dc2626',
+  inputBorder: tokenColors.border,
+  divider: tokenColors.borderSubtle,
+  error: tokenColors.danger,
 
   disabled: 0.5,
 } as const
 
 export const spacing = {
-  xs: 2,
-  sm: 4,
-  md: 8,
-  lg: 12,
-  xl: 16,
+  xs: tokenSpacing[1] / 2,
+  sm: tokenSpacing[1],
+  md: tokenSpacing[2],
+  lg: tokenSpacing[3],
+  xl: tokenSpacing[4],
 } as const
 
 export const fontSize = {
-  xs: 12,
-  sm: 13,
-  md: 15,
-  lg: 16,
+  xs: typography.size.caption,
+  sm: typography.size.body,
+  md: typography.size.bodyLg,
+  lg: typography.size.h3,
 } as const
 
 export const radius = {
-  sm: 6,
-  md: 10,
+  sm: tokenRadius.sm,
+  md: tokenRadius.md,
 } as const

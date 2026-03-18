@@ -42,7 +42,9 @@ function DialogContent({
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
       <DialogPrimitive.Content
+        data-ui="modal"
         data-slot="dialog-content"
+        data-size="md"
         className={cn(uix('uix-d3cee842b4'), className)}
         {...props}
       >

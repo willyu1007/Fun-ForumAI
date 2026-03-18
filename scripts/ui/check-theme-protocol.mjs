@@ -39,12 +39,11 @@ function check() {
     const indexCss = readFileSync(INDEX_CSS, 'utf-8')
 
     if (indexCss.includes('.dark {') || indexCss.includes('.dark{')) {
-      warnings.push('index.css uses .dark class - this is allowed as bridge but should eventually migrate to data-theme')
+      errors.push('index.css still defines a .dark theme block instead of consuming the generated data-theme tokens')
     }
 
-    // Check if it imports tokens.css or ui.css (should eventually)
-    if (!indexCss.includes('ui/styles')) {
-      warnings.push('index.css does not import from ui/styles - should import ui/styles/ui.css as primary style source')
+    if (!indexCss.includes('@fun-forum/ui-web/styles')) {
+      errors.push('index.css does not import @fun-forum/ui-web/styles as the primary UI style entrypoint')
     }
   }
 

@@ -76,7 +76,8 @@
     "ui:theme:mobile": "node scripts/ui/build-mobile-theme.mjs",
     "ui:contract:build": "node scripts/ui/build-contract-types.mjs",
     "ui:contract:check": "node scripts/ui/check-contract-codegen-drift.mjs",
-    "ui:drift:check": "node scripts/ui/check-generated-clean.mjs"
+    "ui:drift:check": "node scripts/ui/check-generated-clean.mjs",
+    "ui:packages:check": "node scripts/ui/check-package-typecheck.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -120,6 +121,7 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
+    "@fun-forum/ui-web": "workspace:*",
     "@aws-sdk/client-s3": "^3.1000.0",
     "@prisma/adapter-pg": "^7.4.1",
     "@prisma/client": "^7.4.1",

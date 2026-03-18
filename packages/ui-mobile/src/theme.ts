@@ -11,6 +11,6 @@ export {
   spacing,
   radius,
   typography,
-} from '../../../ui/codegen/mobile-theme'
+} from '@fun-forum/design-tokens/mobile-theme'
 
-export type { MobileTheme, MobileThemeName } from '../../../ui/codegen/mobile-theme'
+export type { MobileTheme, MobileThemeName } from '@fun-forum/design-tokens/mobile-theme'

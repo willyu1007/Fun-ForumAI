@@ -29,10 +29,12 @@ const SCRIPTS = {
     'build-mobile-theme.mjs',
     'build-contract-types.mjs',
     'build-contract-manifest.mjs',
+    'sync-package-artifacts.mjs',
   ],
   check: [
     'check-contract-codegen-drift.mjs',
     'check-generated-clean.mjs',
+    'check-package-typecheck.mjs',
     'check-theme-protocol.mjs',
   ],
 }

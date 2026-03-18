@@ -12,7 +12,10 @@ function Separator({
 }: React.ComponentProps<typeof SeparatorPrimitive.Root>) {
   return (
     <SeparatorPrimitive.Root
+      data-ui="divider"
       data-slot="separator"
+      data-orientation={orientation}
+      data-tone="default"
       decorative={decorative}
       orientation={orientation}
       className={cn(uix('uix-5ae5e22405'), className)}

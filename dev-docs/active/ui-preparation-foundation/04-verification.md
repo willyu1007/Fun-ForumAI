@@ -41,6 +41,8 @@
 | 阶段 | 命令 / 检查项 | 结果 | 备注 |
 |------|----------------|------|------|
 | 阶段 1+ | `pnpm ui:build` | pass | 产物：tokens.css, contract-types, web-theme, mobile-theme, manifest |
-| 阶段 1+ | `pnpm ui:check` | pass | contract-codegen 同步、theme 协议检查 |
-| 阶段 2+ | `pnpm typecheck` | pass | 含 packages 与 frontend |
+| 阶段 1+ | `pnpm ui:check` | pass | 2026-03-18 复核通过；现包含 package-local artifacts 与 package/mobile typecheck |
+| 阶段 2+ | `pnpm typecheck` | pass | 2026-03-18 复核通过；含 packages 与 frontend，`TS6307` 已消除 |
+| PR #15 收口 | `pnpm build` | pass | 2026-03-18 通过；Vite/Tailwind 可解析 `@fun-forum/ui-web/styles` |
+| PR #15 收口 | `pnpm lint` | pass-with-warnings | 2026-03-18；0 error / 98 warning，均为既有 `uix*` 迁移库存 |
 | — | `node .ai/tests/run.mjs --suite ui`（含 ui-governance-gate） | 未在本轮执行 | 依赖 Python；可选本地/CI 补充 |

@@ -20,10 +20,13 @@ function SelectTrigger({
 }: React.ComponentProps<typeof SelectPrimitive.Trigger> & {
   size?: 'sm' | 'default'
 }) {
+  const uiState = props.disabled ? 'disabled' : props['aria-invalid'] ? 'error' : 'default'
   return (
     <SelectPrimitive.Trigger
+      data-ui="select"
       data-slot="select-trigger"
-      data-size={size}
+      data-size={size === 'sm' ? 'sm' : 'md'}
+      data-state={uiState}
       className={cn(uix('uix-78e617c3fe'), className)}
       {...props}
     >

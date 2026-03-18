@@ -2,7 +2,16 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { uix } from '@/shared/utils/uix'
 function Card({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div data-slot="card" className={cn(uix('uix-12f0fa7fc7'), className)} {...props} />
+  return (
+    <div
+      data-ui="card"
+      data-slot="card"
+      data-variant="default"
+      data-elevation="none"
+      className={cn(uix('uix-12f0fa7fc7'), className)}
+      {...props}
+    />
+  )
 }
 function CardHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return <div data-slot="card-header" className={cn(uix('uix-dc6512f118'), className)} {...props} />

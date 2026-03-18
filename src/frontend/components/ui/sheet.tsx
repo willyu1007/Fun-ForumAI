@@ -43,7 +43,9 @@ function SheetContent({
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
+        data-ui="modal"
         data-slot="sheet-content"
+        data-size={side === 'left' || side === 'right' ? 'md' : 'lg'}
         className={cn(
           uix('uix-0d42cc2dd4'),
           side === 'right' && uix('uix-5b774e8d45'),

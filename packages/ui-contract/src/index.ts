@@ -13,6 +13,6 @@ export type {
   UiAttrsForRole,
   UiRoleSlotsMap,
   UiSlotsForRole,
-} from '../../../ui/codegen/contract-types'
+} from './generated/contract-types'
 
-export { UI_ROLE_MANIFEST } from '../../../ui/codegen/contract-types'
+export { UI_ROLE_MANIFEST } from './generated/contract-types'

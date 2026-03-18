@@ -1,0 +1,808 @@
+{
+  "source": "ui/contract/contract.json",
+  "meta": {
+    "contract_version": "1.0.0",
+    "description": "UI style contract for data-ui based rendering. Roles and enumerations are intentionally small and stable. Expand only via approved RFC.",
+    "tailwind_policy": "B1-layout-only",
+    "theme_policy": "token-only"
+  },
+  "roleCount": 37,
+  "roles": [
+    "alert",
+    "avatar",
+    "badge",
+    "breadcrumb",
+    "button",
+    "card",
+    "checkbox",
+    "divider",
+    "dropdown-menu",
+    "empty-state",
+    "field",
+    "form",
+    "grid",
+    "icon-button",
+    "input",
+    "link",
+    "list",
+    "modal",
+    "nav",
+    "page",
+    "radio",
+    "scroll-area",
+    "section",
+    "select",
+    "skeleton",
+    "stack",
+    "switch",
+    "tab",
+    "table",
+    "tabs",
+    "text",
+    "textarea",
+    "toast",
+    "toggle",
+    "toggle-group",
+    "toolbar",
+    "tooltip"
+  ],
+  "roleDetails": {
+    "page": {
+      "attrs": [
+        "layout",
+        "density"
+      ],
+      "slots": [
+        "header",
+        "content",
+        "footer",
+        "aside"
+      ],
+      "attrValues": {
+        "layout": [
+          "app",
+          "auth",
+          "settings"
+        ],
+        "density": [
+          "comfortable",
+          "compact"
+        ]
+      }
+    },
+    "section": {
+      "attrs": [
+        "variant",
+        "padding"
+      ],
+      "slots": [
+        "header",
+        "content",
+        "footer"
+      ],
+      "attrValues": {
+        "variant": [
+          "default",
+          "subtle"
+        ],
+        "padding": [
+          "none",
+          "sm",
+          "md",
+          "lg"
+        ]
+      }
+    },
+    "toolbar": {
+      "attrs": [
+        "align",
+        "wrap"
+      ],
+      "slots": [
+        "start",
+        "center",
+        "end"
+      ],
+      "attrValues": {
+        "align": [
+          "start",
+          "between",
+          "end"
+        ],
+        "wrap": [
+          "wrap",
+          "nowrap"
+        ]
+      }
+    },
+    "stack": {
+      "attrs": [
+        "direction",
+        "gap",
+        "align",
+        "justify",
+        "wrap"
+      ],
+      "slots": [],
+      "attrValues": {
+        "direction": [
+          "row",
+          "col"
+        ],
+        "gap": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+        ],
+        "align": [
+          "start",
+          "center",
+          "end",
+          "stretch"
+        ],
+        "justify": [
+          "start",
+          "center",
+          "between",
+          "end"
+        ],
+        "wrap": [
+          "wrap",
+          "nowrap"
+        ]
+      }
+    },
+    "grid": {
+      "attrs": [
+        "cols",
+        "gap"
+      ],
+      "slots": [],
+      "attrValues": {
+        "cols": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "6",
+          "12"
+        ],
+        "gap": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+        ]
+      }
+    },
+    "card": {
+      "attrs": [
+        "variant",
+        "padding",
+        "elevation"
+      ],
+      "slots": [
+        "header",
+        "body",
+        "footer",
+        "card",
+        "card-header",
+        "card-title",
+        "card-description",
+        "card-action",
+        "card-content",
+        "card-footer"
+      ],
+      "attrValues": {
+        "variant": [
+          "default",
+          "outlined"
+        ],
+        "padding": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "elevation": [
+          "none",
+          "sm",
+          "md"
+        ]
+      }
+    },
+    "divider": {
+      "attrs": [
+        "orientation",
+        "tone"
+      ],
+      "slots": [
+        "separator"
+      ],
+      "attrValues": {
+        "orientation": [
+          "horizontal",
+          "vertical"
+        ],
+        "tone": [
+          "default",
+          "subtle"
+        ]
+      }
+    },
+    "text": {
+      "attrs": [
+        "variant",
+        "tone"
+      ],
+      "slots": [],
+      "attrValues": {
+        "variant": [
+          "body",
+          "caption",
+          "label",
+          "h3",
+          "h2",
+          "h1"
+        ],
+        "tone": [
+          "primary",
+          "secondary",
+          "muted",
+          "danger"
+        ]
+      }
+    },
+    "link": {
+      "attrs": [
+        "variant",
+        "tone"
+      ],
+      "slots": [],
+      "attrValues": {
+        "variant": [
+          "default",
+          "subtle"
+        ],
+        "tone": [
+          "primary",
+          "neutral"
+        ]
+      }
+    },
+    "button": {
+      "attrs": [
+        "variant",
+        "size",
+        "state"
+      ],
+      "slots": [
+        "button"
+      ],
+      "attrValues": {
+        "variant": [
+          "primary",
+          "secondary",
+          "ghost",
+          "danger"
+        ],
+        "size": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "state": [
+          "default",
+          "loading",
+          "disabled"
+        ]
+      }
+    },
+    "icon-button": {
+      "attrs": [
+        "variant",
+        "size",
+        "state"
+      ],
+      "slots": [],
+      "attrValues": {
+        "variant": [
+          "ghost",
+          "secondary"
+        ],
+        "size": [
+          "sm",
+          "md"
+        ],
+        "state": [
+          "default",
+          "disabled"
+        ]
+      }
+    },
+    "input": {
+      "attrs": [
+        "size",
+        "state"
+      ],
+      "slots": [
+        "input"
+      ],
+      "attrValues": {
+        "size": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "state": [
+          "default",
+          "error",
+          "disabled"
+        ]
+      }
+    },
+    "textarea": {
+      "attrs": [
+        "size",
+        "state"
+      ],
+      "slots": [
+        "textarea"
+      ],
+      "attrValues": {
+        "size": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "state": [
+          "default",
+          "error",
+          "disabled"
+        ]
+      }
+    },
+    "select": {
+      "attrs": [
+        "size",
+        "state"
+      ],
+      "slots": [
+        "select",
+        "select-group",
+        "select-value",
+        "select-trigger",
+        "select-content",
+        "select-label",
+        "select-item",
+        "select-item-indicator",
+        "select-separator",
+        "select-scroll-up-button",
+        "select-scroll-down-button"
+      ],
+      "attrValues": {
+        "size": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "state": [
+          "default",
+          "error",
+          "disabled"
+        ]
+      }
+    },
+    "checkbox": {
+      "attrs": [
+        "size",
+        "state"
+      ],
+      "slots": [],
+      "attrValues": {
+        "size": [
+          "sm",
+          "md"
+        ],
+        "state": [
+          "default",
+          "disabled"
+        ]
+      }
+    },
+    "radio": {
+      "attrs": [
+        "size",
+        "state"
+      ],
+      "slots": [],
+      "attrValues": {
+        "size": [
+          "sm",
+          "md"
+        ],
+        "state": [
+          "default",
+          "disabled"
+        ]
+      }
+    },
+    "switch": {
+      "attrs": [
+        "size",
+        "state"
+      ],
+      "slots": [],
+      "attrValues": {
+        "size": [
+          "sm",
+          "md"
+        ],
+        "state": [
+          "default",
+          "disabled"
+        ]
+      }
+    },
+    "form": {
+      "attrs": [
+        "layout",
+        "density"
+      ],
+      "slots": [
+        "actions"
+      ],
+      "attrValues": {
+        "layout": [
+          "vertical",
+          "horizontal"
+        ],
+        "density": [
+          "comfortable",
+          "compact"
+        ]
+      }
+    },
+    "field": {
+      "attrs": [
+        "state"
+      ],
+      "slots": [
+        "label",
+        "control",
+        "help",
+        "error"
+      ],
+      "attrValues": {
+        "state": [
+          "default",
+          "error",
+          "disabled"
+        ]
+      }
+    },
+    "table": {
+      "attrs": [
+        "density",
+        "variant"
+      ],
+      "slots": [],
+      "attrValues": {
+        "density": [
+          "comfortable",
+          "compact"
+        ],
+        "variant": [
+          "default",
+          "striped"
+        ]
+      }
+    },
+    "list": {
+      "attrs": [
+        "density",
+        "variant"
+      ],
+      "slots": [],
+      "attrValues": {
+        "density": [
+          "comfortable",
+          "compact"
+        ],
+        "variant": [
+          "plain",
+          "rows",
+          "cards"
+        ]
+      }
+    },
+    "badge": {
+      "attrs": [
+        "tone",
+        "variant"
+      ],
+      "slots": [
+        "badge"
+      ],
+      "attrValues": {
+        "tone": [
+          "neutral",
+          "success",
+          "warning",
+          "danger",
+          "info"
+        ],
+        "variant": [
+          "solid",
+          "subtle"
+        ]
+      }
+    },
+    "alert": {
+      "attrs": [
+        "tone",
+        "variant"
+      ],
+      "slots": [
+        "title",
+        "body",
+        "actions"
+      ],
+      "attrValues": {
+        "tone": [
+          "info",
+          "success",
+          "warning",
+          "danger"
+        ],
+        "variant": [
+          "subtle",
+          "solid"
+        ]
+      }
+    },
+    "toast": {
+      "attrs": [
+        "tone",
+        "variant"
+      ],
+      "slots": [
+        "title",
+        "body",
+        "actions"
+      ],
+      "attrValues": {
+        "tone": [
+          "info",
+          "success",
+          "warning",
+          "danger"
+        ],
+        "variant": [
+          "subtle",
+          "solid"
+        ]
+      }
+    },
+    "modal": {
+      "attrs": [
+        "size",
+        "state"
+      ],
+      "slots": [
+        "header",
+        "body",
+        "footer",
+        "dialog",
+        "dialog-trigger",
+        "dialog-portal",
+        "dialog-close",
+        "dialog-overlay",
+        "dialog-content",
+        "dialog-header",
+        "dialog-footer",
+        "dialog-title",
+        "dialog-description",
+        "sheet",
+        "sheet-trigger",
+        "sheet-close",
+        "sheet-portal",
+        "sheet-overlay",
+        "sheet-content",
+        "sheet-header",
+        "sheet-footer",
+        "sheet-title",
+        "sheet-description"
+      ],
+      "attrValues": {
+        "size": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "state": [
+          "open",
+          "closed"
+        ]
+      }
+    },
+    "tabs": {
+      "attrs": [
+        "variant",
+        "size"
+      ],
+      "slots": [
+        "tabs",
+        "tabs-list",
+        "tabs-trigger",
+        "tabs-content"
+      ],
+      "attrValues": {
+        "variant": [
+          "line",
+          "pill"
+        ],
+        "size": [
+          "sm",
+          "md"
+        ]
+      }
+    },
+    "tab": {
+      "attrs": [
+        "state"
+      ],
+      "slots": [],
+      "attrValues": {
+        "state": [
+          "active",
+          "inactive",
+          "disabled"
+        ]
+      }
+    },
+    "nav": {
+      "attrs": [
+        "variant",
+        "state"
+      ],
+      "slots": [],
+      "attrValues": {
+        "variant": [
+          "sidebar",
+          "top"
+        ],
+        "state": [
+          "default",
+          "collapsed"
+        ]
+      }
+    },
+    "breadcrumb": {
+      "attrs": [
+        "size"
+      ],
+      "slots": [],
+      "attrValues": {
+        "size": [
+          "sm",
+          "md"
+        ]
+      }
+    },
+    "empty-state": {
+      "attrs": [
+        "variant",
+        "tone"
+      ],
+      "slots": [
+        "icon",
+        "title",
+        "body",
+        "actions"
+      ],
+      "attrValues": {
+        "variant": [
+          "default",
+          "compact"
+        ],
+        "tone": [
+          "neutral",
+          "info"
+        ]
+      }
+    },
+    "avatar": {
+      "attrs": [
+        "size",
+        "shape"
+      ],
+      "slots": [
+        "avatar",
+        "avatar-image",
+        "avatar-fallback",
+        "avatar-badge",
+        "avatar-group",
+        "avatar-group-count"
+      ],
+      "attrValues": {
+        "size": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "shape": [
+          "circle",
+          "rounded"
+        ]
+      }
+    },
+    "dropdown-menu": {
+      "attrs": [],
+      "slots": [
+        "dropdown-menu",
+        "dropdown-menu-portal",
+        "dropdown-menu-trigger",
+        "dropdown-menu-content",
+        "dropdown-menu-group",
+        "dropdown-menu-item",
+        "dropdown-menu-checkbox-item",
+        "dropdown-menu-radio-group",
+        "dropdown-menu-radio-item",
+        "dropdown-menu-label",
+        "dropdown-menu-separator",
+        "dropdown-menu-shortcut",
+        "dropdown-menu-sub",
+        "dropdown-menu-sub-trigger",
+        "dropdown-menu-sub-content"
+      ],
+      "attrValues": {}
+    },
+    "scroll-area": {
+      "attrs": [],
+      "slots": [
+        "scroll-area",
+        "scroll-area-viewport",
+        "scroll-area-scrollbar",
+        "scroll-area-thumb"
+      ],
+      "attrValues": {}
+    },
+    "toggle": {
+      "attrs": [],
+      "slots": [
+        "toggle"
+      ],
+      "attrValues": {}
+    },
+    "toggle-group": {
+      "attrs": [],
+      "slots": [
+        "toggle-group",
+        "toggle-group-item"
+      ],
+      "attrValues": {}
+    },
+    "tooltip": {
+      "attrs": [],
+      "slots": [
+        "tooltip-provider",
+        "tooltip",
+        "tooltip-trigger",
+        "tooltip-content"
+      ],
+      "attrValues": {}
+    },
+    "skeleton": {
+      "attrs": [],
+      "slots": [
+        "skeleton"
+      ],
+      "attrValues": {}
+    }
+  }
+}

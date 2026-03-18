@@ -5,6 +5,7 @@
 - State: in-progress
 - 依据: [fun_forumai_ui_preparation.md](../../../fun_forumai_ui_preparation.md) 与已对齐决策（见 roadmap / 01-plan）。
 - 阶段 0–5 基础设施已交付（foundation-complete）；待执行：pilot 迁移、视觉回归、uix* 移除、bundle budget。
+- 2026-03-18：PR #15 的 merge blockers 已收口，当前基础设施处于“可合并、待后续页面迁移”状态。
 
 ### 已完成阶段
 
@@ -23,6 +24,7 @@
 - 视觉回归测试
 - uix* 全量迁移后移除
 - bundle budget 基线建立
+- 将现有 `no-restricted-imports` warning 逐步清零并升级为 error
 
 ## Goal
 

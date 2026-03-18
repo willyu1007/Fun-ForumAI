@@ -15,10 +15,17 @@ const ROOT = resolve(__dirname, '../..')
 
 const GENERATED_FILES = [
   'ui/styles/tokens.css',
+  'packages/design-tokens/styles/tokens.css',
   'ui/codegen/contract-types.ts',
+  'packages/ui-contract/src/generated/contract-types.ts',
   'ui/codegen/contract-manifest.json',
+  'packages/ui-contract/contract/contract-manifest.json',
+  'packages/ui-contract/contract/contract.json',
   'ui/codegen/web-theme.ts',
+  'packages/design-tokens/src/generated/web-theme.ts',
   'ui/codegen/mobile-theme.ts',
+  'packages/design-tokens/src/generated/mobile-theme.ts',
+  'packages/ui-web/styles/contract.css',
 ]
 
 function check() {
@@ -44,6 +51,7 @@ function check() {
     execSync('node scripts/ui/build-contract-manifest.mjs', { cwd: ROOT, stdio: 'pipe' })
     execSync('node scripts/ui/build-web-theme.mjs', { cwd: ROOT, stdio: 'pipe' })
     execSync('node scripts/ui/build-mobile-theme.mjs', { cwd: ROOT, stdio: 'pipe' })
+    execSync('node scripts/ui/sync-package-artifacts.mjs', { cwd: ROOT, stdio: 'pipe' })
   } catch (e) {
     console.error(`[FAIL] Build failed: ${e.message}`)
     process.exit(1)

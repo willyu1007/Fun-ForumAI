@@ -10,6 +10,7 @@ function Tabs({
 }: React.ComponentProps<typeof TabsPrimitive.Root>) {
   return (
     <TabsPrimitive.Root
+      data-ui="tabs"
       data-slot="tabs"
       data-orientation={orientation}
       orientation={orientation}
@@ -49,6 +50,7 @@ function TabsList({
 function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
   return (
     <TabsPrimitive.Trigger
+      data-ui="tab"
       data-slot="tabs-trigger"
       className={cn(
         uix('tabsTriggerBase'),
@@ -64,7 +66,9 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPr
 function TabsContent({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.Content>) {
   return (
     <TabsPrimitive.Content
+      data-ui="section"
       data-slot="tabs-content"
+      data-padding="none"
       className={cn(uix('tabsContent'), className)}
       {...props}
     />

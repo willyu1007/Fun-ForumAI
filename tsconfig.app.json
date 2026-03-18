@@ -19,9 +19,24 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/frontend/*"]
+      "@/*": ["./src/frontend/*"],
+      "@fun-forum/design-tokens": ["./packages/design-tokens/src/index.ts"],
+      "@fun-forum/design-tokens/mobile-theme": ["./packages/design-tokens/src/mobile-theme.ts"],
+      "@fun-forum/ui-contract": ["./packages/ui-contract/src/index.ts"],
+      "@fun-forum/ui-contract/manifest": ["./packages/ui-contract/src/manifest.ts"],
+      "@fun-forum/ui-web": ["./packages/ui-web/src/index.ts"],
+      "@fun-forum/ui-web/theme": ["./packages/ui-web/src/theme.ts"],
+      "@fun-forum/ui-web/patterns": ["./packages/ui-web/src/patterns/index.ts"],
+      "@fun-forum/ui-web/shell": ["./packages/ui-web/src/shell/index.ts"]
     },
     "types": ["vite/client"]
   },
-  "include": ["src/frontend", "src/shared"]
+  "include": [
+    "src/frontend",
+    "src/shared",
+    "packages/design-tokens/src",
+    "packages/ui-contract/src",
+    "packages/ui-contract/contract/**/*.json",
+    "packages/ui-web/src"
+  ]
 }

@@ -1,6 +1,2 @@
-/**
- * Web UI styles entry point.
- * Imports the unified UI styles from the design system.
- */
-
-@import '../../../ui/styles/ui.css';
+@import '@fun-forum/design-tokens/tokens.css';
+@import './contract.css';

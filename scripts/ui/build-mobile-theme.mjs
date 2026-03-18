@@ -34,8 +34,10 @@ function buildMobileTheme(tokens) {
       border: tokens.color.border,
       borderSubtle: tokens.color.border_subtle,
       primary: tokens.color.primary,
+      onPrimary: tokens.color.on_primary,
       primaryHover: tokens.color.primary_hover,
       accent: tokens.color.accent,
+      onAccent: tokens.color.on_accent,
       textPrimary: tokens.color.text_primary,
       textSecondary: tokens.color.text_secondary,
       textMuted: tokens.color.text_muted,
@@ -120,8 +122,10 @@ export interface MobileTheme {
     border: string
     borderSubtle: string
     primary: string
+    onPrimary: string
     primaryHover: string
     accent: string
+    onAccent: string
     textPrimary: string
     textSecondary: string
     textMuted: string

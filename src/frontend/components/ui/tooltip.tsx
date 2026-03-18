@@ -31,6 +31,7 @@ function TooltipContent({
   return (
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Content
+        data-ui="tooltip"
         data-slot="tooltip-content"
         sideOffset={sideOffset}
         className={cn(uix('uix-c19bb354d5'), className)}

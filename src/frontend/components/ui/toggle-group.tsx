@@ -26,6 +26,7 @@ function ToggleGroup({
   }) {
   return (
     <ToggleGroupPrimitive.Root
+      data-ui="toggle-group"
       data-slot="toggle-group"
       data-variant={variant}
       data-size={size}
@@ -49,6 +50,7 @@ function ToggleGroupItem({
   const context = React.useContext(ToggleGroupContext)
   return (
     <ToggleGroupPrimitive.Item
+      data-ui="toggle"
       data-slot="toggle-group-item"
       data-variant={context.variant || variant}
       data-size={context.size || size}

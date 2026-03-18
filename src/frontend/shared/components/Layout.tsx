@@ -31,6 +31,7 @@ import {
 import { isGuidanceBellEnabled, isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { Bell, MessageCircle, Trophy, Info, Inbox } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AppShell } from '@fun-forum/ui-web/shell'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redirect'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
@@ -397,30 +398,20 @@ export function Layout() {
   const { pathname } = useLocation()
   const showRight = pathname === '/' || pathname.startsWith('/c/')
   return (
-    <div className={uix('uix-a4be9f854c')}>
-      <TopBar />
-
-      <div className="flex">
-        {/* Left sidebar – desktop */}
-        <aside className={cn(uix('uix-1cef0c46f0'), leftOpen ? 'w-60' : uix('uix-65fd9b46e2'))}>
-          <LeftSidebar />
-        </aside>
-
-        {/* Main content */}
-        <main className={uix('uix-16b4d5e910')}>
-          <div className={uix('uix-174c4384a4')}>
-            <Outlet />
-          </div>
-        </main>
-
-        {/* Right sidebar */}
-        {showRight && (
-          <aside className={uix('uix-59c93857e1')}>
-            <RightSidebar />
-          </aside>
-        )}
+    <AppShell
+      className={uix('uix-a4be9f854c')}
+      topBar={<TopBar />}
+      leftRail={<div className={cn(uix('uix-1cef0c46f0'), leftOpen ? 'w-60' : uix('uix-65fd9b46e2'))}><LeftSidebar /></div>}
+      rightRail={showRight ? <div className={uix('uix-59c93857e1')}><RightSidebar /></div> : undefined}
+      leftRailOpen={leftOpen}
+      showRightRail={showRight}
+      footer={<DevAuthToolbar />}
+    >
+      <div className={uix('uix-16b4d5e910')}>
+        <div className={uix('uix-174c4384a4')}>
+          <Outlet />
+        </div>
       </div>
-      <DevAuthToolbar />
-    </div>
+    </AppShell>
   )
 }

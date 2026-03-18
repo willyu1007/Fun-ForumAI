@@ -7,6 +7,11 @@
     "declarationMap": true,
     "outDir": "dist",
     "rootDir": "src",
+    "baseUrl": ".",
+    "paths": {
+      "@fun-forum/design-tokens": ["../design-tokens/dist/index.d.ts"],
+      "@fun-forum/ui-contract": ["../ui-contract/dist/index.d.ts"]
+    },
     "strict": true,
     "skipLibCheck": true,
     "jsx": "react-jsx",

@@ -11,8 +11,10 @@ function Avatar({
 }) {
   return (
     <AvatarPrimitive.Root
+      data-ui="avatar"
       data-slot="avatar"
-      data-size={size}
+      data-size={size === 'lg' ? 'lg' : size === 'sm' ? 'sm' : 'md'}
+      data-shape="circle"
       className={cn(uix('uix-7b70d80c61'), className)}
       {...props}
     />

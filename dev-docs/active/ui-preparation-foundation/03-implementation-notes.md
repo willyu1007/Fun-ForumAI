@@ -113,7 +113,7 @@
 ### Open Points
 
 - 包尚未发布（仅 workspace 内使用）
-- Mobile 需切换到 @fun-forum/ui-mobile 导入（阶段 4 pilot 或之后）
+- Mobile 需切换到生成主题消费（已于 2026-03-18 完成桥接）
 
 ---
 
@@ -155,9 +155,9 @@ ui-web package.json 添加：
 
 ### Open Points
 
-- 现有 Layout.tsx 未重构（保持稳定，pilot 迁移后再统一）
+- 现有 Layout.tsx 未重构（该项已于 2026-03-18 切换为 AppShell 组合）
 - widgets 定义为接口，实际组件在 features 中实现
-- ui/styles/ui.css 已创建但 index.css 尚未引入（需 pilot 验证后再切换）
+- ui/styles/ui.css 已创建但 index.css 尚未引入（该项已于 2026-03-18 切换）
 
 ---
 
@@ -185,6 +185,54 @@ ui-web package.json 添加：
 
 - 实际页面迁移待执行（需业务稳定窗口）
 - 视觉回归测试待实际迁移后执行
+
+---
+
+## PR #15 收口与可合并修复 (2026-03-18)
+
+### A. 包边界从“目录占位”收口为可消费模块
+
+- 新增 `scripts/ui/sync-package-artifacts.mjs`，将 UI SSOT 生成物同步到包内可消费路径：
+  - `packages/design-tokens/src/generated/*`
+  - `packages/design-tokens/styles/tokens.css`
+  - `packages/ui-contract/src/generated/*`
+  - `packages/ui-contract/contract/*`
+  - `packages/ui-web/styles/contract.css`
+- 新增 `scripts/ui/check-package-typecheck.mjs`，把 design-tokens / ui-contract / ui-web / ui-mobile / mobile app 的类型检查纳入 `ui:check`。
+- `check-generated-clean.mjs` 扩展到 package-local artifacts，避免只检查 `ui/` 而遗漏工作区包消费层。
+- 各包 `package.json` 导出切到真实存在的 source/style/contract 路径，避免导出指向不存在的 `dist/*.css` 或 `contract/*.json`。
+
+### B. Web 与 Mobile 运行时真正接入统一 UI SSOT
+
+- Web:
+  - `src/frontend/index.css` 改为统一引入 `@fun-forum/ui-web/styles`
+  - 删除旧的手写 `:root` / `.dark` theme 变量块，仅保留 Tailwind bridge
+  - `src/frontend/main.tsx` 启动时默认应用 `default.light`
+- Mobile:
+  - `packages/ui-mobile/src/theme.ts` 改为消费 `@fun-forum/design-tokens/mobile-theme`
+  - `apps/mobile/src/theme.ts` 改为对生成主题的兼容包装，保留旧调用方 API
+  - `build-mobile-theme.mjs` 增补 `onPrimary` / `onAccent`，补齐移动端语义色
+
+### C. Contract -> style -> primitive 闭环打通
+
+- `ui/styles/ui.css` 重新接入 `contract.css`
+- `ui/styles/contract.css` 批量从旧下划线 token 名切到与 `tokens.css` 一致的 kebab-case token 名
+- Web primitives 补充 `data-ui` / `data-variant` / `data-size` / `data-state`，覆盖 button、input、textarea、select、card、dialog、sheet、tabs、avatar、toggle、tooltip 等基础件
+- `src/frontend/shared/components/Layout.tsx` 改为组合 `@fun-forum/ui-web/shell` 的 `AppShell`
+
+### D. 构建/校验门禁强化
+
+- `check-theme-protocol.mjs` 将以下情况升级为 hard fail：
+  - `src/frontend/index.css` 未引入 `@fun-forum/ui-web/styles`
+  - 仍存在 legacy `.dark { ... }` theme block
+- `build-tokens-css.mjs` 生成 `:root[data-theme="default.light"]`，让 light theme 也通过同一协议输出
+- `tsconfig.app.json` 扩展 include 到实际导入的 package sources，解决根项目 `tsc -b` 的 `TS6307`
+- `vite.config.ts` 改为有序 alias，解决 `@fun-forum/ui-web/styles` 被 bare alias 截断导致的 `ENOTDIR`
+
+### Remaining Risks
+
+- `pnpm lint` 仍有 98 个 warning，全部来自既有 `uix*` / `uix-shell` / `uix-primitives` 存量使用点；当前为迁移库存，不阻塞 PR 合并。
+- 页面级 pilot 迁移、视觉回归、bundle budget 仍在本任务后续范围内。
 
 ---
 

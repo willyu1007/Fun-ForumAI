@@ -104,10 +104,6 @@ ${baseVars}
       const themeTokens = JSON.parse(readFileSync(themePath, 'utf-8'))
       const themeName = themeTokens.meta?.theme || file.replace('.json', '')
 
-      if (themeName === 'default.light') {
-        continue
-      }
-
       const overrides = generateThemeOverrides(baseTokens, themeTokens, themeName)
       if (overrides) {
         css += `

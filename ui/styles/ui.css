@@ -13,7 +13,5 @@
 /* Design tokens as CSS variables */
 @import './tokens.css';
 
-/* Future imports (Phase 3+):
- * @import './components.css';
- * @import './patterns.css';
- */
+/* Contract-driven component and pattern styling */
+@import './contract.css';

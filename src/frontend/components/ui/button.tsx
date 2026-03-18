@@ -46,13 +46,27 @@ function Button({
     asChild?: boolean
   }) {
   const Comp = asChild ? Slot.Root : 'button'
+  const normalizedSize = size ?? 'default'
+  const uiRole = normalizedSize.startsWith('icon') ? 'icon-button' : 'button'
+  const uiVariant =
+    variant === 'default'
+      ? 'primary'
+      : variant === 'destructive'
+        ? 'danger'
+        : variant === 'outline' || variant === 'secondary'
+          ? 'secondary'
+          : 'ghost'
+  const uiSize = normalizedSize === 'lg' ? 'lg' : normalizedSize === 'default' ? 'md' : 'sm'
+  const uiState = props.disabled ? 'disabled' : 'default'
 
   return (
     <Comp
+      data-ui={uiRole}
       data-slot="button"
-      data-variant={variant}
-      data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
+      data-variant={uiVariant}
+      data-size={uiSize}
+      data-state={uiState}
+      className={cn(buttonVariants({ variant, size: normalizedSize, className }))}
       {...props}
     />
   )
