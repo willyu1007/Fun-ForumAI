@@ -1,1 +1,1 @@
-export * from './generated/mobile-theme'
+export * from './generated/mobile-theme.js'

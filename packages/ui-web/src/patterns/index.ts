@@ -5,14 +5,14 @@
  * New pages should prefer these patterns over ad-hoc layouts.
  */
 
-export { PageScaffold, type PageScaffoldProps } from './PageScaffold'
-export { PageHeader, type PageHeaderProps } from './PageHeader'
-export { FilterToolbar, type FilterToolbarProps } from './FilterToolbar'
-export { ListPageLayout, type ListPageLayoutProps } from './ListPageLayout'
-export { DetailPageLayout, type DetailPageLayoutProps } from './DetailPageLayout'
-export { FormPageLayout, type FormPageLayoutProps } from './FormPageLayout'
-export { FormField, type FormFieldProps } from './FormField'
-export { EmptyState, type EmptyStateProps } from './EmptyState'
+export { PageScaffold, type PageScaffoldProps } from './PageScaffold.js'
+export { PageHeader, type PageHeaderProps } from './PageHeader.js'
+export { FilterToolbar, type FilterToolbarProps } from './FilterToolbar.js'
+export { ListPageLayout, type ListPageLayoutProps } from './ListPageLayout.js'
+export { DetailPageLayout, type DetailPageLayoutProps } from './DetailPageLayout.js'
+export { FormPageLayout, type FormPageLayoutProps } from './FormPageLayout.js'
+export { FormField, type FormFieldProps } from './FormField.js'
+export { EmptyState, type EmptyStateProps } from './EmptyState.js'
 export {
   StatusBadge,
   SuccessBadge,
@@ -21,5 +21,5 @@ export {
   InfoBadge,
   type StatusBadgeProps,
   type StatusTone,
-} from './StatusBadge'
-export { InlineAlert, type InlineAlertProps, type AlertTone } from './InlineAlert'
+} from './StatusBadge.js'
+export { InlineAlert, type InlineAlertProps, type AlertTone } from './InlineAlert.js'

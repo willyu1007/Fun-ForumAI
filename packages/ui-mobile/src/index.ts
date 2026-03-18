@@ -12,9 +12,9 @@ export {
   spacing,
   radius,
   typography,
-} from './theme'
+} from './theme.js'
 
-export type { MobileTheme, MobileThemeName } from './theme'
+export type { MobileTheme, MobileThemeName } from './theme.js'
 
 // Re-export contract types
 export type {

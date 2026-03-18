@@ -6,7 +6,7 @@ import {
   typography,
   type MobileTheme,
   type MobileThemeName,
-} from '@fun-forum/design-tokens/mobile-theme'
+} from '@fun-forum/ui-mobile/theme'
 
 export { MOBILE_THEMES }
 export type { MobileTheme, MobileThemeName }

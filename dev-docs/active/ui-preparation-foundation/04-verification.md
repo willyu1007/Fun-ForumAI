@@ -40,9 +40,9 @@
 
 | 阶段 | 命令 / 检查项 | 结果 | 备注 |
 |------|----------------|------|------|
-| 阶段 1+ | `pnpm ui:build` | pass | 产物：tokens.css, contract-types, web-theme, mobile-theme, manifest |
-| 阶段 1+ | `pnpm ui:check` | pass | 2026-03-18 复核通过；现包含 package-local artifacts 与 package/mobile typecheck |
-| 阶段 2+ | `pnpm typecheck` | pass | 2026-03-18 复核通过；含 packages 与 frontend，`TS6307` 已消除 |
-| PR #15 收口 | `pnpm build` | pass | 2026-03-18 通过；Vite/Tailwind 可解析 `@fun-forum/ui-web/styles` |
-| PR #15 收口 | `pnpm lint` | pass-with-warnings | 2026-03-18；0 error / 98 warning，均为既有 `uix*` 迁移库存 |
+| 阶段 1+ | `pnpm ui:build` | pass | 2026-03-18 复核通过；现同时生成并编译 UI package `dist/` |
+| 阶段 1+ | `pnpm ui:check` | pass | 2026-03-18 复核通过；现包含 package-local artifacts、package/mobile typecheck、runtime import consumption 校验 |
+| 阶段 2+ | `pnpm typecheck` | pass | 2026-03-18 复核通过；root app 通过真实 workspace package 解析完成类型检查 |
+| PR #15 收口 | `pnpm build` | pass | 2026-03-18 通过；Vite/Tailwind 经 workspace package exports 成功解析 `@fun-forum/ui-web/styles` |
+| PR #15 收口 | `pnpm lint` | pass-with-warnings | 2026-03-18；0 error / 99 warning，其中 98 个为既有 `uix*` 迁移库存，1 个为 mobile Fast Refresh warning |
 | — | `node .ai/tests/run.mjs --suite ui`（含 ui-governance-gate） | 未在本轮执行 | 依赖 Python；可选本地/CI 补充 |

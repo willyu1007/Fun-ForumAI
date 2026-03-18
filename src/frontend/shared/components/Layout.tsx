@@ -46,7 +46,7 @@ function TopBar() {
   const { data: guidanceInbox } = useGuidanceInbox()
   const guidanceUnread = guidanceEnabled ? (guidanceInbox?.data?.unread_count ?? 0) : 0
   return (
-    <header className={uix('uix-c3b11f7de5')}>
+    <div className={uix('uix-c3b11f7de5')}>
       <div className={uix('uix-2ea93255e9')}>
         {/* Left: hamburger + logo */}
         <Button
@@ -173,7 +173,7 @@ function TopBar() {
           )}
         </div>
       </div>
-    </header>
+    </div>
   )
 }
 const NOTIF_ICON: Record<string, React.ReactNode> = {

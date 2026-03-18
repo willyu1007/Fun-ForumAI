@@ -199,8 +199,17 @@ ui-web package.json 添加：
   - `packages/ui-contract/contract/*`
   - `packages/ui-web/styles/contract.css`
 - 新增 `scripts/ui/check-package-typecheck.mjs`，把 design-tokens / ui-contract / ui-web / ui-mobile / mobile app 的类型检查纳入 `ui:check`。
+- 新增 `scripts/ui/build-package-dists.mjs`，按依赖顺序编译 4 个 UI workspace packages 的 `dist/` 产物。
+- 新增 `scripts/ui/check-package-runtime-consumption.mjs`，直接验证：
+  - `packages/*/dist/*.js` 可被 Node 加载
+  - root app 可导入 `@fun-forum/ui-web` / `@fun-forum/ui-web/theme`
+  - mobile app 可导入 `@fun-forum/ui-mobile/theme`
 - `check-generated-clean.mjs` 扩展到 package-local artifacts，避免只检查 `ui/` 而遗漏工作区包消费层。
-- 各包 `package.json` 导出切到真实存在的 source/style/contract 路径，避免导出指向不存在的 `dist/*.css` 或 `contract/*.json`。
+- 4 个包的 `package.json` 导出改为真正的 `dist` 消费：
+  - `main` / `types` / `exports` 指向 `dist/*.js` / `dist/*.d.ts`
+  - `files` 从源码目录收敛到 `dist` + 必要的 styles/contract/tokens 资产
+- 包源码切到 NodeNext ESM 相对导入（`.js` 后缀），解决 `dist/*.js` 无法被 Node 直接加载的问题。
+- `ui-contract/manifest` 不再运行时导入 JSON，而是消费生成的 TypeScript 常量，移除 ESM JSON 依赖。
 
 ### B. Web 与 Mobile 运行时真正接入统一 UI SSOT
 
@@ -226,12 +235,18 @@ ui-web package.json 添加：
   - `src/frontend/index.css` 未引入 `@fun-forum/ui-web/styles`
   - 仍存在 legacy `.dark { ... }` theme block
 - `build-tokens-css.mjs` 生成 `:root[data-theme="default.light"]`，让 light theme 也通过同一协议输出
-- `tsconfig.app.json` 扩展 include 到实际导入的 package sources，解决根项目 `tsc -b` 的 `TS6307`
-- `vite.config.ts` 改为有序 alias，解决 `@fun-forum/ui-web/styles` 被 bare alias 截断导致的 `ENOTDIR`
+- root app 改回通过 workspace package 正常解析，不再依赖 package source alias：
+  - `tsconfig.app.json` 移除 `@fun-forum/*` 源码 paths
+  - `vite.config.ts` 移除 UI 包源码 alias，仅保留前端 `@` alias
+- root scripts 增加 `predev:frontend` / `prebuild` / `pretypecheck` / `preui:check` / `premobile:*`，确保真实 consumer 在运行前拥有最新 `dist` 产物。
+- lint 覆盖扩展到 `packages`、`apps/mobile/src`、`scripts/ui`，并为 `scripts/ui/**/*.mjs` 增加 Node ESM lint 配置。
 
 ### Remaining Risks
 
-- `pnpm lint` 仍有 98 个 warning，全部来自既有 `uix*` / `uix-shell` / `uix-primitives` 存量使用点；当前为迁移库存，不阻塞 PR 合并。
+- `pnpm lint` 仍有 99 个 warning：
+  - 98 个来自既有 `uix*` / `uix-shell` / `uix-primitives` 存量使用点
+  - 1 个来自 `apps/mobile/src/auth/auth-context.tsx` 的 React Fast Refresh warning
+- 当前 warning 均不阻塞 PR 合并，但说明样式迁移和移动端 lint 收口仍有后续工作。
 - 页面级 pilot 迁移、视觉回归、bundle budget 仍在本任务后续范围内。
 
 ---

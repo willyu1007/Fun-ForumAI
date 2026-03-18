@@ -24,6 +24,7 @@ function build() {
   }
 
   const contract = JSON.parse(readFileSync(CONTRACT_PATH, 'utf-8'))
+  const contractMeta = contract.meta || {}
   const roles = contract.roles || {}
 
   const roleNames = Object.keys(roles).sort()
@@ -79,6 +80,10 @@ export type UiSlotsForRole<R extends UiRole> = UiRoleSlotsMap[R];
 
 // Manifest for runtime validation
 export const UI_ROLE_MANIFEST = ${JSON.stringify(roles, null, 2)} as const;
+
+export const CONTRACT_META = ${JSON.stringify(contractMeta, null, 2)} as const;
+
+export const CONTRACT_ROLES = UI_ROLE_MANIFEST;
 `
 
   if (!existsSync(OUTPUT_DIR)) {

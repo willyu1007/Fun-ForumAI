@@ -6,7 +6,7 @@
  */
 
 import * as React from 'react'
-import { dataUi, dataSlot } from '../data-ui'
+import { dataUi, dataSlot } from '../data-ui.js'
 
 export interface PageHeaderProps {
   title: React.ReactNode

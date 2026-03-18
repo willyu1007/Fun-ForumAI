@@ -7,11 +7,7 @@
     "moduleResolution": "bundler",
     "target": "es2020",
     "jsx": "react-jsx",
-    "types": ["react"],
-    "baseUrl": ".",
-    "paths": {
-      "@fun-forum/design-tokens/mobile-theme": ["../../packages/design-tokens/src/mobile-theme.ts"]
-    }
+    "types": ["react"]
   },
   "include": ["App.tsx", "src"],
   "exclude": ["**/__tests__/**"]

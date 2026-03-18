@@ -23,7 +23,7 @@ const SCRIPTS = {
     'validate-theme-schema.mjs',
     'validate-contract-schema.mjs',
   ],
-  build: [
+  buildGenerated: [
     'build-tokens-css.mjs',
     'build-web-theme.mjs',
     'build-mobile-theme.mjs',
@@ -31,10 +31,14 @@ const SCRIPTS = {
     'build-contract-manifest.mjs',
     'sync-package-artifacts.mjs',
   ],
+  buildPackages: [
+    'build-package-dists.mjs',
+  ],
   check: [
     'check-contract-codegen-drift.mjs',
     'check-generated-clean.mjs',
     'check-package-typecheck.mjs',
+    'check-package-runtime-consumption.mjs',
     'check-theme-protocol.mjs',
   ],
 }
@@ -48,7 +52,7 @@ function run(scripts) {
 
     try {
       execSync(`node ${scriptPath}`, { cwd: ROOT, stdio: 'inherit' })
-    } catch (e) {
+    } catch {
       failed = true
       console.error(`[FAIL] ${script} failed`)
     }
@@ -62,7 +66,7 @@ function main() {
 
   if (!command) {
     console.log('Usage: node scripts/ui/index.mjs <command>')
-    console.log('Commands: build, check, validate, all')
+    console.log('Commands: build, build-generated, check, validate, all')
     process.exit(1)
   }
 
@@ -76,7 +80,17 @@ function main() {
     case 'build':
       failed = run(SCRIPTS.validate)
       if (!failed) {
-        failed = run(SCRIPTS.build)
+        failed = run(SCRIPTS.buildGenerated)
+      }
+      if (!failed) {
+        failed = run(SCRIPTS.buildPackages)
+      }
+      break
+
+    case 'build-generated':
+      failed = run(SCRIPTS.validate)
+      if (!failed) {
+        failed = run(SCRIPTS.buildGenerated)
       }
       break
 
@@ -87,7 +101,10 @@ function main() {
     case 'all':
       failed = run(SCRIPTS.validate)
       if (!failed) {
-        failed = run(SCRIPTS.build)
+        failed = run(SCRIPTS.buildGenerated)
+      }
+      if (!failed) {
+        failed = run(SCRIPTS.buildPackages)
       }
       if (!failed) {
         failed = run(SCRIPTS.check)
@@ -96,7 +113,7 @@ function main() {
 
     default:
       console.error(`Unknown command: ${command}`)
-      console.log('Commands: build, check, validate, all')
+      console.log('Commands: build, build-generated, check, validate, all')
       process.exit(1)
   }
 

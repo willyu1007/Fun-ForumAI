@@ -5,7 +5,7 @@
  */
 
 import * as React from 'react'
-import { dataUi, dataSlot } from '../data-ui'
+import { dataUi, dataSlot } from '../data-ui.js'
 
 export interface EmptyStateProps {
   icon?: React.ReactNode

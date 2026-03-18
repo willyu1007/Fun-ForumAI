@@ -46,12 +46,7 @@ function check() {
   // Regenerate all
   console.log('Regenerating artifacts to check for drift...')
   try {
-    execSync('node scripts/ui/build-tokens-css.mjs', { cwd: ROOT, stdio: 'pipe' })
-    execSync('node scripts/ui/build-contract-types.mjs', { cwd: ROOT, stdio: 'pipe' })
-    execSync('node scripts/ui/build-contract-manifest.mjs', { cwd: ROOT, stdio: 'pipe' })
-    execSync('node scripts/ui/build-web-theme.mjs', { cwd: ROOT, stdio: 'pipe' })
-    execSync('node scripts/ui/build-mobile-theme.mjs', { cwd: ROOT, stdio: 'pipe' })
-    execSync('node scripts/ui/sync-package-artifacts.mjs', { cwd: ROOT, stdio: 'pipe' })
+    execSync('node scripts/ui/index.mjs build-generated', { cwd: ROOT, stdio: 'pipe' })
   } catch (e) {
     console.error(`[FAIL] Build failed: ${e.message}`)
     process.exit(1)

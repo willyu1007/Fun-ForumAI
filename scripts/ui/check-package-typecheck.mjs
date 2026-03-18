@@ -13,11 +13,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '../..')
 
 const CHECKS = [
-  'pnpm exec tsc -p packages/design-tokens/tsconfig.json',
-  'pnpm exec tsc -p packages/ui-contract/tsconfig.json',
-  'pnpm exec tsc -p packages/ui-web/tsconfig.json',
-  'pnpm exec tsc -p packages/ui-mobile/tsconfig.json',
-  'pnpm exec tsc -p apps/mobile/tsconfig.json',
+  'pnpm exec tsc --noEmit -p packages/design-tokens/tsconfig.json',
+  'pnpm exec tsc --noEmit -p packages/ui-contract/tsconfig.json',
+  'pnpm exec tsc --noEmit -p packages/ui-web/tsconfig.json',
+  'pnpm exec tsc --noEmit -p packages/ui-mobile/tsconfig.json',
+  'pnpm exec tsc --noEmit -p apps/mobile/tsconfig.json',
 ]
 
 function check() {
@@ -26,7 +26,7 @@ function check() {
       console.log(`[CHECK] ${command}`)
       execSync(command, { cwd: ROOT, stdio: 'inherit' })
     }
-  } catch (error) {
+  } catch {
     console.error('[FAIL] UI package typecheck failed')
     process.exit(1)
   }

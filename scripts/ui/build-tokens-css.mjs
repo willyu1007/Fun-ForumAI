@@ -56,7 +56,7 @@ function generateCssVariables(tokens) {
   return lines.join('\n')
 }
 
-function generateThemeOverrides(baseTokens, themeTokens, themeName) {
+function generateThemeOverrides(baseTokens, themeTokens) {
   const baseFlat = flattenTokens(baseTokens)
   const themeFlat = flattenTokens(themeTokens)
   const lines = []
@@ -104,7 +104,7 @@ ${baseVars}
       const themeTokens = JSON.parse(readFileSync(themePath, 'utf-8'))
       const themeName = themeTokens.meta?.theme || file.replace('.json', '')
 
-      const overrides = generateThemeOverrides(baseTokens, themeTokens, themeName)
+      const overrides = generateThemeOverrides(baseTokens, themeTokens)
       if (overrides) {
         css += `
   :root[data-theme="${themeName}"] {

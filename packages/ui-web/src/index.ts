@@ -17,10 +17,10 @@ export type {
 } from '@fun-forum/ui-contract'
 
 // Data-ui attribute helpers
-export { dataUi, dataSlot } from './data-ui'
+export { dataUi, dataSlot } from './data-ui.js'
 
 // Pattern components
-export * from './patterns'
+export * from './patterns/index.js'
 
 // App shell components
-export * from './shell'
+export * from './shell/index.js'

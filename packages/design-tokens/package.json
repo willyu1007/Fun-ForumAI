@@ -3,16 +3,16 @@
   "version": "0.1.0",
   "description": "Design tokens (colors, spacing, typography, etc.) for Fun-ForumAI",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "import": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./mobile-theme": {
-      "types": "./src/mobile-theme.ts",
-      "import": "./src/mobile-theme.ts"
+      "types": "./dist/mobile-theme.d.ts",
+      "import": "./dist/mobile-theme.js"
     },
     "./tokens.css": "./styles/tokens.css",
     "./base.json": "./tokens/base.json",
@@ -20,12 +20,11 @@
   },
   "files": [
     "dist",
-    "src",
     "styles",
     "tokens"
   ],
   "scripts": {
-    "build": "node ../../scripts/ui/index.mjs build && tsc",
+    "build": "pnpm --workspace-root ui:build",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

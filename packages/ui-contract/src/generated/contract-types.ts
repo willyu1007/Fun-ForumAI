@@ -812,3 +812,12 @@ export const UI_ROLE_MANIFEST = {
     ]
   }
 } as const;
+
+export const CONTRACT_META = {
+  "contract_version": "1.0.0",
+  "description": "UI style contract for data-ui based rendering. Roles and enumerations are intentionally small and stable. Expand only via approved RFC.",
+  "tailwind_policy": "B1-layout-only",
+  "theme_policy": "token-only"
+} as const;
+
+export const CONTRACT_ROLES = UI_ROLE_MANIFEST;

@@ -1,1 +1,1 @@
-export * from './generated/web-theme'
+export * from './generated/web-theme.js'

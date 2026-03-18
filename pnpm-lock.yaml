@@ -168,6 +168,9 @@ importers:
       eslint-plugin-react-refresh:
         specifier: ^0.5.0
         version: 0.5.0(eslint@10.0.1(jiti@2.6.1))
+      globals:
+        specifier: ^16.4.0
+        version: 16.5.0
       jsdom:
         specifier: ^28.1.0
         version: 28.1.0(@noble/hashes@1.8.0)
@@ -213,9 +216,9 @@ importers:
 
   apps/mobile:
     dependencies:
-      '@fun-forum/design-tokens':
+      '@fun-forum/ui-mobile':
         specifier: workspace:*
-        version: link:../../packages/design-tokens
+        version: link:../../packages/ui-mobile
       '@react-navigation/bottom-tabs':
         specifier: ^7.15.2
         version: 7.15.2(@react-navigation/native@7.1.31(react-native@0.79.6(@babel/core@7.29.0)(@react-native-community/cli@20.1.2(typescript@5.8.3))(@types/react@19.2.14)(react@19.0.0))(react@19.0.0))(react-native-safe-area-context@5.4.0(react-native@0.79.6(@babel/core@7.29.0)(@react-native-community/cli@20.1.2(typescript@5.8.3))(@types/react@19.2.14)(react@19.0.0))(react@19.0.0))(react-native-screens@4.11.1(react-native@0.79.6(@babel/core@7.29.0)(@react-native-community/cli@20.1.2(typescript@5.8.3))(@types/react@19.2.14)(react@19.0.0))(react@19.0.0))(react-native@0.79.6(@babel/core@7.29.0)(@react-native-community/cli@20.1.2(typescript@5.8.3))(@types/react@19.2.14)(react@19.0.0))(react@19.0.0)
@@ -5082,6 +5085,10 @@ packages:
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
     deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+
+  globals@16.5.0:
+    resolution: {integrity: sha512-c/c15i26VrJ4IRt5Z89DnIzCGDn9EcebibhAOjw5ibqEHsE1wLUgkPn9RDmNcUKyU87GeaL633nyJ+pplFR2ZQ==}
+    engines: {node: '>=18'}
 
   globby@11.1.0:
     resolution: {integrity: sha512-jhIXaOzy1sb8IyocaruWSn1TjmnBVs8Ayhcy83rmxNJ8q2uWKCAj3CnJY+KpGSXCueAPc0i05kVvVKtP1t9S3g==}
@@ -14406,6 +14413,8 @@ snapshots:
       minimatch: 3.1.5
       once: 1.4.0
       path-is-absolute: 1.0.1
+
+  globals@16.5.0: {}
 
   globby@11.1.0:
     dependencies:
