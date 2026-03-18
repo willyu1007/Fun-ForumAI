@@ -15,6 +15,7 @@ CLAUDE.md
 # Temporary files
 .ai/.tmp/
 var/
+artifacts/playwright/
 
 # Init runtime artifacts (generated)
 init/START-HERE.md

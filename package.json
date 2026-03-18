@@ -42,6 +42,8 @@
     "pretest": "pnpm ui:build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e:playwright": "playwright test --config=playwright.config.mjs",
+    "test:e2e:playwright:update": "playwright test --config=playwright.config.mjs --update-snapshots",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",
@@ -91,6 +93,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/vite": "^4.2.0",
     "@testing-library/react": "^16.3.2",
     "@types/bcryptjs": "^3.0.0",

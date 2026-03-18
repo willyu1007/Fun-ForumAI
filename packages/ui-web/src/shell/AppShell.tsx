@@ -33,6 +33,7 @@ export function AppShell({
     <div
       {...dataUi('page', { layout: 'app' })}
       className={className}
+      data-testid="app-shell"
       data-left-rail-open={leftRailOpen || undefined}
     >
       {/* Top Bar */}
@@ -56,7 +57,11 @@ export function AppShell({
         )}
 
         {/* Content Region */}
-        <main {...dataSlot('content')} className="flex-1 min-w-0 overflow-auto">
+        <main
+          {...dataSlot('content')}
+          className="flex-1 min-w-0 overflow-auto"
+          data-testid="app-shell-content"
+        >
           {children}
         </main>
 

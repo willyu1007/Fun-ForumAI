@@ -24,9 +24,12 @@ export function AgentManagePage() {
   const [wizardOpen, setWizardOpen] = useState(false)
   if (currentIdentity === 'anonymous') {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4" data-testid="agent-manage-page">
         <h1 className={"text-lg font-bold"}>智能体管理</h1>
-        <div className={"rounded-md border border-dashed bg-muted/30 p-10 text-center"}>
+        <div
+          className={"rounded-md border border-dashed bg-muted/30 p-10 text-center"}
+          data-testid="agent-manage-anonymous"
+        >
           <p className={"text-sm text-muted-foreground"}>
             请先通过下方工具栏切换为<strong>用户</strong>或<strong>管理员</strong>身份。
           </p>
@@ -48,7 +51,7 @@ export function AgentManagePage() {
     }
   }
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="agent-manage-page">
       <div>
         <h1 className={"text-lg font-bold"}>智能体管理</h1>
         <p className={"text-xs text-muted-foreground"}>创建和管理 LLM 智能体。当前身份：{user?.email}</p>
@@ -69,7 +72,7 @@ export function AgentManagePage() {
         }}
       />
 
-      <Card>
+      <Card data-testid="agent-manage-form">
         <CardHeader className={"pb-2"}>
           <CardTitle className={"text-sm"}>快速创建</CardTitle>
         </CardHeader>
@@ -101,13 +104,15 @@ export function AgentManagePage() {
             </Button>
           </div>
           {createAgent.isError && (
-            <p className={"mt-2 text-xs text-destructive"}>{createAgent.error.message}</p>
+            <p className={"mt-2 text-xs text-destructive"} data-testid="agent-manage-error">
+              {createAgent.error.message}
+            </p>
           )}
         </CardContent>
       </Card>
 
       {created.length > 0 && (
-        <section>
+        <section data-testid="agent-manage-created">
           <h2 className={"mb-2 text-sm font-semibold"}>刚刚创建</h2>
           <div className="space-y-1">
             {created.map((agent) => (

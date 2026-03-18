@@ -57,4 +57,13 @@
 | warning 清理收口 | `pnpm typecheck` | pass | 2026-03-18；删除 `src/frontend/shared/utils/uix*.ts` 后，`pnpm typecheck` 仍通过，说明 legacy helper 已无消费者 |
 | warning 清理收口 | `pnpm build` | pass | 2026-03-18；串行执行通过。注意不要与 `pnpm typecheck` 并行跑，因为两者都会触发 `ui:build`，会争用 package dist 构建链路 |
 | 产物清理 | `find . -maxdepth 4 \\( -type d \\( -name dist -o -name coverage -o -name .vitest -o -name __snapshots__ -o -name playwright-report -o -name test-results -o -name .pytest_cache -o -name htmlcov -o -name .nyc_output \\) -o -type f \\( -name '*.log' -o -name '*.lcov' -o -name 'junit*.xml' -o -name 'coverage-final.json' -o -name '.DS_Store' \\) \\)` | pass | 2026-03-18；清理前仅发现 root 与 4 个 UI packages 的 `dist/` 目录，清理后上述扫描为空 |
+| 首期视觉回归 | `pnpm install --no-frozen-lockfile --force` | pass | 2026-03-18；为解决本机 pnpm store 与历史 `node_modules` 链接不一致，执行强制重装并写入 Playwright 依赖 |
+| 首期视觉回归 | `pnpm build` | pass | 2026-03-18；验证 `workspace-package-aliases.ts` 后，fresh install 场景下 root app 可再次解析 `@fun-forum/ui-web/theme` |
+| 首期视觉回归 | `pnpm exec playwright test --config=playwright.config.mjs --list` | pass | 2026-03-18；识别到 3 个 spec、45 个 visual tests |
+| 首期视觉回归 | `pnpm exec playwright install chromium` | pass | 2026-03-18；本地 Chromium browser 安装完成 |
+| 首期视觉回归 | `pnpm test:e2e:playwright:update` | pass | 2026-03-18；生成 45 张 baseline PNG，输出 `artifacts/playwright/report` 与 `artifacts/playwright/results.json` |
+| 首期视觉回归 | `pnpm test:e2e:playwright` | pass | 2026-03-18；45/45 tests 通过，截图基线稳定 |
+| 代码质量复核 | `pnpm build` | pass | 2026-03-18；在 `workspace-package-aliases.ts` 切到 `import.meta.url` 解析后，fresh install / preview 构建链路仍可通过 |
+| 代码质量复核 | `pnpm test:e2e:playwright` | pass | 2026-03-18；typed fixture、冻结时钟与稳定样式注入调整后，45/45 tests 再次通过 |
+| 代码质量复核 | `pnpm exec eslint --no-ignore playwright.config.mjs workspace-package-aliases.ts tests/web/playwright --ext .ts,.tsx,.mjs` | pass | 2026-03-18；针对本轮新增视觉回归文件与配置文件做定向 ESLint，未发现 error/warning |
 | — | `node .ai/tests/run.mjs --suite ui`（含 ui-governance-gate） | 未在本轮执行 | 依赖 Python；可选本地/CI 补充 |

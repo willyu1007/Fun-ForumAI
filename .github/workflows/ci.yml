@@ -51,6 +51,37 @@ jobs:
       - name: Prisma schema validate
         run: pnpm db:validate
 
+  web-playwright:
+    name: Web Playwright Visual Regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Playwright visual regression suite
+        run: node .ai/skills/features/ci/scripts/ci-verify.mjs --suite web-playwright
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-visual-regression
+          path: artifacts/playwright
+          if-no-files-found: warn
+
   governance:
     name: Governance Lint
     runs-on: ubuntu-latest

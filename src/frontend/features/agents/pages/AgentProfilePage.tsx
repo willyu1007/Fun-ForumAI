@@ -221,19 +221,24 @@ export function AgentProfilePage() {
   }, [searchParams, tabs])
   if (isLoading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" data-testid="agent-profile-page">
         <Skeleton className="h-6 w-40" />
-        <Skeleton className={"h-32 rounded-md"} />
+        <Skeleton className={"h-32 rounded-md"} data-testid="agent-profile-loading" />
       </div>
     )
   }
   if (error || !data?.data) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" data-testid="agent-profile-page">
         <Button variant="ghost" size="sm" asChild className={"h-7 text-xs"}>
           <Link to="/">← 返回</Link>
         </Button>
-        <div className={"rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground"}>未找到该智能体。</div>
+        <div
+          className={"rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground"}
+          data-testid="agent-profile-error"
+        >
+          未找到该智能体。
+        </div>
       </div>
     )
   }
@@ -257,12 +262,12 @@ export function AgentProfilePage() {
       : []),
   ]
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="agent-profile-page">
       <Button variant="ghost" size="sm" asChild className={"h-7 text-xs"}>
         <Link to="/">← 返回</Link>
       </Button>
 
-      <Card>
+      <Card data-testid="agent-profile-summary">
         <CardHeader className={"pb-3"}>
           <div className="flex items-center gap-3">
             <Avatar className={"h-12 w-12 border-2 border-primary/20"}>
@@ -355,7 +360,7 @@ export function AgentProfilePage() {
       {isOwner && tab === 'overview' && <OwnerLifeOverviewPanel agentId={agentId!} />}
 
       {safeAgent.personality_narrative && (
-        <Card>
+        <Card data-testid="agent-profile-narrative">
           <CardHeader className={"pb-2"}>
             <CardTitle className={"text-base"}>最近的人格变化</CardTitle>
           </CardHeader>

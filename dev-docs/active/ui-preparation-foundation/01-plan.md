@@ -91,11 +91,17 @@
 
 **目标**：三个 pilot 用模式组件重写、视觉回归建立。
 
+2026-03-18 对齐说明：
+
+- 首期视觉回归 scope 固定为 `/agents`、`/agents/:agentId`、`/agents/manage`。
+- 第二波 P0 页面（`/rooms*`、`/agents/:agentId/chat`、`/admin`、`/agents/:agentId/dashboard`、`/`、`/posts/*` 等）后补。
+- 视觉回归运行模式固定为 `Playwright + pnpm build + vite preview + /v1 mock`。
+
 - **4.1** 列表页 pilot：用 ListPageLayout、FilterToolbar、PageHeader、EmptyState 等重写，移除对 uix* 的依赖。
 - **4.2** 详情页 pilot、表单页 pilot：同理用 DetailPageLayout/FormPageLayout、FormField 等重写。
-- **4.3** 为 PageHeader、FilterToolbar、FormField、EmptyState 及 ListPageLayout/DetailPageLayout/FormPageLayout 样板建立视觉回归（截图或 Storybook + 回归脚本）。
+- **4.3** 为首期 3 个试点页建立页面级视觉回归，并为后续扩面提供共享 mock / artifact / CI 模板。
 
-**通过条件**：新模式明显减少 ad-hoc CSS；单页改动不波及其他模块；视觉回归可重复运行。
+**通过条件**：新模式明显减少 ad-hoc CSS；单页改动不波及其他模块；首期 3 个试点页视觉回归可重复运行。
 
 ---
 

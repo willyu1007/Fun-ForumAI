@@ -4,8 +4,9 @@
 
 - State: in-progress
 - 依据: [fun_forumai_ui_preparation.md](../../../fun_forumai_ui_preparation.md) 与已对齐决策（见 roadmap / 01-plan）。
-- 阶段 0–5 基础设施已交付（foundation-complete）；待执行：pilot 迁移、视觉回归、uix* 移除、bundle budget。
-- 2026-03-18：PR #15 的 merge blockers 已收口，当前基础设施处于“可合并、待后续页面迁移”状态。
+- 阶段 0–5 基础设施已交付（foundation-complete）；首期页面视觉回归已落地 3 个试点页，剩余第二波 P0 待补。
+- 2026-03-18：PR #15 的 merge blockers 已收口；同日补齐 Playwright 视觉回归基座、45 张 pilot baseline、PR 阻断式 CI job。
+- 2026-03-18：对首期视觉回归实现完成代码质量复核，已补齐 ESM 路径解析、typed mock fixture、冻结时钟与稳定样式注入等收口项。
 
 ### 已完成阶段
 
@@ -16,15 +17,15 @@
 | 2 拆出 4 包 | ✅ | `packages/design-tokens|ui-contract|ui-web|ui-mobile`、import boundary lint |
 | 3 模式组件与 AppShell | ✅ | 10 个 pattern 组件、AppShell/TopBar、`@fun-forum/ui-web` 导出 |
 | 4 试点迁移准备 | ✅ | `artifacts/phase-4-pilot-migration-example.md`、typecheck 通过 |
+| 4 首期视觉回归 | ✅ | `playwright.config.mjs`、`tests/web/playwright/`、3 个试点页 45 张 baseline、`web-playwright` CI job |
 | 5 治理强化 | ✅ | CI 门禁（ui:build/check）、uix* 迁移 lint 规则 |
 
 ### 待执行事项
 
-- Pilot 页面实际迁移（AgentDirectoryPage/AgentProfilePage/AgentManagePage）
-- 视觉回归测试
-- uix* 全量迁移后移除
+- 第二波 P0 页面视觉回归（`/rooms*`、`/agents/:agentId/chat`、`/admin`、`/agents/:agentId/dashboard`、`/`、`/posts/*` 等）
+- `default.dark` 主题补充基线
 - bundle budget 基线建立
-- 将现有 `no-restricted-imports` warning 逐步清零并升级为 error
+- Playwright baseline 的 Linux CI 字体一致性长期复核
 
 ## Goal
 
@@ -32,6 +33,10 @@
 
 1. **统一 UI 语言**：`ui/` 为唯一规范源（token + contract + pattern）；Web/Mobile 只消费生成产物；主题协议统一为 `data-theme`；品牌统一为 navy + orange。
 2. **可维护与解耦**：设计系统拆成 4 个包（design-tokens、ui-contract、ui-web、ui-mobile），脚本按职责拆分、单向依赖、AppShell 与业务挂件分离；uix* 不保留 legacy，全部迁移并移除。
+
+补充说明：
+
+- `AgentDirectoryPage`、`AgentProfilePage`、`AgentManagePage` 当前实现已不再直接依赖 `uix*`，首期工作重点已转为“稳定截图基线 + 作为后续页面模板”。
 
 完成定义以文档十一 11.1–11.6 验收标准为准。
 

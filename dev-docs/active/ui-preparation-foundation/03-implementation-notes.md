@@ -313,10 +313,69 @@ ui-web package.json 添加：
   - `page-visual-regression-requirements.md`
 - 两份文档都按“背景 / 目标 / 范围 / MUST/SHOULD / 验收 / 验证”组织，避免后续执行时重新口头对齐。
 
+---
+
+## 首期页面视觉回归落地（2026-03-18）
+
+### A. 构建 / 运行前置修复
+
+- 新增 `workspace-package-aliases.ts`，为 `vite.config.ts` / `vitest.config.ts` 提供显式 workspace alias，修复 fresh install 后 `@fun-forum/ui-web/theme` 无法在 root app 被解析的问题。
+- `src/frontend/api/use-sse.ts` 新增 `VITE_FF_DISABLE_SSE` 开关；视觉模式下可直接禁用 `/v1/events/stream` 自动连接，避免 mocked `/v1` 环境持续重连污染截图。
+
+### B. 稳定视觉定位 contract
+
+- `packages/ui-web/src/shell/AppShell.tsx` 增加：
+  - `data-testid="app-shell"`
+  - `data-testid="app-shell-content"`
+- 3 个试点页补齐根节点与关键状态标记：
+  - `AgentDirectoryPage`: root / loading / error / empty / results
+  - `AgentProfilePage`: root / loading / error / summary / narrative
+  - `AgentManagePage`: root / anonymous / form / error / created
+- `AgentCreateWizard` 补 `data-testid="agent-create-wizard"`，用于 overlay 场景截图。
+
+### C. Playwright 基座与共享 mock 层
+
+- 新增根级 `playwright.config.mjs`：
+  - 浏览器固定 Chromium
+  - 3 个 viewport：`1440x900` / `768x1024` / `390x844`
+  - 运行上下文固定 `default.light`、`zh-CN`、`Asia/Shanghai`
+  - `snapshotPathTemplate` 去掉平台后缀，避免本地 `darwin` 与 CI `linux` 各自产生一套 baseline
+  - `trace` / `video` / `screenshot` 失败保留
+  - report 输出到 `artifacts/playwright/`
+  - web server 固定为 `pnpm build && vite preview`
+- 新增 npm scripts：
+  - `pnpm test:e2e:playwright`
+  - `pnpm test:e2e:playwright:update`
+- 新增 `tests/web/playwright/support/`：
+  - 冻结时间、禁用动画、固定随机数
+  - 通用 AppShell `/v1` mock
+  - pilot 页面 mock data factory
+  - unhandled API request hard fail
+
+### D. 首期页面矩阵与基线
+
+- 新增 3 个 spec：
+  - `tests/web/playwright/agents-directory.visual.spec.ts`
+  - `tests/web/playwright/agent-profile.visual.spec.ts`
+  - `tests/web/playwright/agent-manage.visual.spec.ts`
+- 覆盖的 15 个场景：
+  - `/agents`: loading / error / empty / happy / filtered + long-content
+  - `/agents/:agentId`: loading / error / spectator happy / owner happy / long-content + multi-tag
+  - `/agents/manage`: anonymous / empty form / mutation error / create success / wizard overlay
+- baseline 落在 `tests/web/playwright/*-snapshots/`，共 `45` 张 PNG。
+
+### E. CI / PR gate
+
+- `.github/workflows/ci.yml` 新增独立 `web-playwright` job。
+- job 通过 `node .ai/skills/features/ci/scripts/ci-verify.mjs --suite web-playwright` 执行：
+  - browser install
+  - Playwright visual regression
+- 无论成败都上传 `artifacts/playwright/`。
+
 ### Remaining Risks
 
-- 页面级 pilot 迁移虽然完成了 legacy helper 移除，但还没有进行视觉回归验证；后续仍需补 UI regression。
-- `pnpm build` 现在通过，但 Vite 仍提示存在大 chunk（`index-eAO9PUCs.js` 764 kB）；bundle budget 与分包策略仍是后续工作。
+- 首期 3 个试点页已完成视觉回归，但第二波 P0 页面（`/rooms*`、`/agents/:agentId/chat`、`/admin`、`/agents/:agentId/dashboard`、`/`、`/posts/*` 等）仍待补齐。
+- `pnpm build` 现在通过，但 Vite 仍提示存在大 chunk（当前主 bundle 仍超过 `500 kB` warning 阈值）；bundle budget 与分包策略仍是后续工作。
 - 本轮大量文件通过等价 class 替换移除了 `uix*`，后续如果要继续收口重复样式，应优先抽回 pattern/component 层，而不是重新引入字符串映射工具。
 
 ---
@@ -350,3 +409,38 @@ bundle budget 配置建议（待后续实施）：
 - uix* 全量迁移待阶段 4 pilot 验证后执行
 - bundle budget 具体数值待基线建立后设定
 - 视觉回归工具待选型（Playwright/Chromatic/Percy）
+
+---
+
+## 首期视觉回归代码质量复核 (2026-03-18)
+
+### A. workspace alias 与 ESM 运行时修正
+
+- `workspace-package-aliases.ts` 不再依赖 `__dirname`，改为通过 `import.meta.url + fileURLToPath()` 解析仓库根路径。
+- 这样可避免后续在 ESM 配置上下文里出现“本地能跑、fresh install / preview / CI 失效”的路径解析漂移。
+
+### B. Playwright mock fixture 类型收口
+
+- `tests/web/playwright/support/mock-data.ts` 改为直接复用前端 API 类型：
+  - `UserProfile`
+  - `Agent` / `AgentSearchItem`
+  - `Community`
+  - `Notification`
+  - `OwnerLifeOverview`
+  - 以及 profile / credit / trait / run 相关 DTO
+- `tests/web/playwright/support/helpers.ts` 的 `CommonAppMocks` 也从宽泛 `Record<string, unknown>` 收口为真实业务类型，避免 mock shape 与运行时代码脱节。
+
+### C. 测试稳定性加固
+
+- `prepareVisualPage()` 中的冻结时间从覆盖 `window.Date` 改为覆盖 `globalThis.Date`，让页面脚本与模块脚本都使用同一套冻结时钟。
+- `expectPageSnapshot()` 改为复用单个 `#visual-regression-stabilizer` style 节点，不再每次截图都追加新的 style tag。
+- `buildOwnerLifeOverview()` 改为接受 `agentId` 参数，避免 owner profile 场景在深链和 CTA 上错误指向固定的 `agent-1`。
+
+### D. 复核结论
+
+- 本轮未发现新的 blocker，但发现并修复了 4 类容易在后续扩面时放大的实现缺陷：
+  - ESM 路径解析假设
+  - fixture 与 API 类型漂移
+  - 冻结时钟作用域不完整
+  - repeated style injection 与假数据硬编码
+- 修复后重新执行 build、Playwright 全量用例、针对新增文件的 ESLint，结果均通过。

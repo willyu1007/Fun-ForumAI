@@ -7,6 +7,11 @@
 - 2026-03-18：共享 `tsconfig` 基类时，不要把 `rootDir` / `outDir` / `include` / `exclude` 这类相对路径配置上提到基类文件；TypeScript 会按定义它们的配置文件位置解析，容易触发 `TS18003`。
 - 2026-03-18：不要假设所有 `uix-*` key 都存在于 `uix-map.ts`；在做 bulk migration 之前必须先校验映射完整性。
 - 2026-03-18：不要并行执行 `pnpm typecheck` 和 `pnpm build`；两者都会触发 `ui:build`，会争用 package `dist/` 生成链路。
+- 2026-03-18：Playwright 里不要用模糊文案去点按钮；`创建` 会匹配到 `引导式创建`，必须加 `exact: true` 并 scope 到表单容器。
+- 2026-03-18：pnpm root workspace 加依赖时，如果当前 `node_modules` 来自旧 store，`pnpm add` 可能直接报 `ERR_PNPM_UNEXPECTED_STORE`；先改 `package.json`，再用 `pnpm install --force` 重建链接。
+- 2026-03-18：Playwright 默认截图名会带平台后缀；如果 baseline 要在 macOS 本地和 Linux CI 共享，必须显式覆盖 `snapshotPathTemplate`，否则会同时生成 `-darwin` / `-linux` 两套文件。
+- 2026-03-18：仓库级 alias/helper 文件如果会被 ESM 配置直接加载，不要写 `__dirname`；统一改用 `import.meta.url + fileURLToPath()`。
+- 2026-03-18：Playwright mock data 不要自己手搓宽泛对象类型；直接引用前端 API DTO，避免 fixture shape 慢慢漂离真实页面契约。
 
 ## 2026-03-18 — package tsconfig 基类相对路径陷阱
 
@@ -31,3 +36,43 @@
 - what was tried: 初看像是 workspace package 导出回归，但复跑单独的 `pnpm typecheck` 已通过；将 `pnpm build` 改为串行重跑后也通过，确认问题来自并发执行而不是代码修改。
 - fix/workaround: 对会触发 `ui:build` 的命令采用串行执行，至少在本地验证和 agent 自动化里不要并行跑。
 - prevention note: 后续如果需要并发门禁，要么拆掉 `pretypecheck` / `prebuild` 对共享构建链路的重复触发，要么给 `ui:build` 增加锁/缓存机制，避免多个进程同时重建 `packages/*/dist`。
+
+## 2026-03-18 — Playwright 文案选择器容易误点同前缀按钮
+
+- symptom: `AgentManagePage` 的视觉用例里，`getByRole('button', { name: '创建' })` 在三端都报 strict mode violation，因为页面同时存在 `引导式创建` 和 `创建`。
+- root cause: Playwright 的 accessible name 匹配默认不是“整词按钮语义”，而是按 name 命中多个符合条件的元素；中文前缀重合时尤为容易踩中。
+- what was tried: 先直接用全局 role + name 选按钮，导致 mutation error / create success 两个用例都在点击前失败。
+- fix/workaround: 改为 `page.getByTestId('agent-manage-form').getByRole('button', { name: '创建', exact: true })`，同时做容器 scope 和 exact match。
+- prevention note: 后续写 Playwright 用例时，凡是按钮文案存在前后缀重叠，都优先用 test id 范围缩小后再做 exact 文案匹配。
+
+## 2026-03-18 — pnpm store 漂移会阻断 root workspace 加依赖
+
+- symptom: 执行 `pnpm add -Dw @playwright/test` 时，pnpm 报 `ERR_PNPM_UNEXPECTED_STORE`，提示现有 `node_modules` 仍链接到旧用户目录下的 store。
+- root cause: 本地工作区曾由另一套 pnpm store 链接生成；在 root workspace 追加依赖时，pnpm 会先校验 store 一致性，发现不一致就拒绝继续修改 lock / node_modules。
+- what was tried: 先用 `pnpm add -Dw` 直接安装，随后检查旧 store 路径是否存在，确认并不是依赖本身的问题，而是现有 `node_modules` 的链接来源已漂移。
+- fix/workaround: 手动更新 `package.json` 后执行 `pnpm install --no-frozen-lockfile --force`，重建整棵 workspace 的链接并同步 lockfile。
+- prevention note: 以后在本地接入新依赖前，如果 repo 来自其它机器/用户的现成 `node_modules`，优先先做一次 `pnpm install --force`，不要直接在脏链接状态下跑 `pnpm add`。
+
+## 2026-03-18 — 默认 snapshot 命名会把本地和 CI baseline 拆成两套
+
+- symptom: 首轮 Playwright baseline 在本机生成后，快照文件名全部带 `-darwin`；如果直接把这套提交到仓库，GitHub Actions 上的 Linux runner 会寻找 `-linux` 文件并报“快照不存在”。
+- root cause: Playwright 默认 snapshot 命名会把平台信息拼进文件名，适合多平台分别维护快照，但不适合“同一套 Chromium baseline 同时服务本地与 Ubuntu CI”的策略。
+- what was tried: 先按默认配置生成 baseline，随后检查快照目录，确认所有文件都带 `-darwin`，说明 CI 无法直接复用。
+- fix/workaround: 在 `playwright.config.mjs` 中显式设置 `snapshotPathTemplate`，只保留 `{arg}-{projectName}{ext}`，去掉平台后缀；重新生成 baseline 后，再删除旧的 `*-darwin.png`。
+- prevention note: 以后接入新的视觉回归仓库时，先决定“是否允许平台分叉 baseline”；如果答案是否定的，就在第一次生成快照前先把命名模板定死。
+
+## 2026-03-18 — ESM 配置上下文里不要继续假设 `__dirname`
+
+- symptom: `workspace-package-aliases.ts` 在配置/工具链上下文里需要直接解析仓库绝对路径；如果沿用 CommonJS 风格的 `__dirname`，ESM 加载链路会在 fresh install、preview 或 CI 环境里变得不稳定。
+- root cause: 这类 helper 虽然是 TypeScript 文件，但它服务的是 Vite/Vitest 一类 ESM 配置执行环境；`__dirname` 不是可靠前提。
+- what was tried: 先沿用常规 Node 路径拼接写法，随后在代码质量复核里重新检查“哪些文件会被配置层直接 import”，确认该文件属于 ESM 运行时敏感区。
+- fix/workaround: 统一改成 `const ROOT = path.dirname(fileURLToPath(import.meta.url))`，再从 `ROOT` 做 `path.resolve(...)`。
+- prevention note: 以后凡是给 Vite、Vitest、Playwright、脚本入口复用的路径 helper，一律优先按 ESM 写法处理，不要等到 CI 才发现运行时差异。
+
+## 2026-03-18 — Playwright fixture 必须直接绑定真实 API DTO
+
+- symptom: 首版视觉回归 mock data factory 大量使用宽泛对象和 `Record<string, unknown>` 容器，短期可跑，但一旦页面消费字段变化，测试会更容易出现“看起来通过、实际契约已漂移”的假稳定。
+- root cause: fixture 层没有复用前端 `src/frontend/api/*` 的现成类型，导致 mock shape 与页面真实数据契约之间缺少编译期约束。
+- what was tried: 先用手写对象把 pilot 页面跑通；在代码质量复核时回看 helper 和 builder，确认这里是后续扩面时最容易积累隐性漂移的位置。
+- fix/workaround: `mock-data.ts` 与 `helpers.ts` 直接 import `UserProfile`、`Agent`、`Community`、`Notification`、`OwnerLifeOverview` 等 DTO，让 builder 和 common mocks 都受真实类型约束。
+- prevention note: 后续新增视觉页时，mock 层默认先找现成 API 类型；只有在仓库中没有稳定 DTO 时，才允许局部自定义测试类型。

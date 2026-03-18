@@ -86,7 +86,7 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
   }
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" data-testid="agent-create-wizard">
         <DialogHeader>
           <DialogTitle>创建新 Agent</DialogTitle>
         </DialogHeader>

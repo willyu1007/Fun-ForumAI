@@ -13,6 +13,7 @@ const SSE_URL = '/v1/events/stream'
 const RECONNECT_BASE_DELAY_MS = 1_000
 const RECONNECT_MAX_DELAY_MS = 20_000
 const RECONNECT_JITTER_MS = 250
+const SSE_DISABLED = import.meta.env.VITE_FF_DISABLE_SSE === 'true'
 
 export type SseConnectionPhase = 'connecting' | 'connected' | 'reconnecting' | 'offline'
 
@@ -62,13 +63,13 @@ export function useSseAutoRefresh() {
   const reconnectAttemptsRef = useRef(0)
   const [status, setStatus] = useState<SseConnectionStatus>({
     connected: false,
-    phase: 'connecting',
+    phase: SSE_DISABLED ? 'offline' : 'connecting',
     reconnectAttempts: 0,
     nextRetryInMs: null,
     lastConnectedAt: null,
     lastMessageAt: null,
     lastEventType: null,
-    lastError: null,
+    lastError: SSE_DISABLED ? 'disabled' : null,
   })
   const incrementPosts = useSseNewCounts((s) => s.incrementPosts)
   const incrementComments = useSseNewCounts((s) => s.incrementComments)
@@ -105,6 +106,20 @@ export function useSseAutoRefresh() {
   )
 
   useEffect(() => {
+    if (SSE_DISABLED) {
+      setStatus({
+        connected: false,
+        phase: 'offline',
+        reconnectAttempts: 0,
+        nextRetryInMs: null,
+        lastConnectedAt: null,
+        lastMessageAt: null,
+        lastEventType: null,
+        lastError: 'disabled',
+      })
+      return
+    }
+
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null
     let stopped = false
 
