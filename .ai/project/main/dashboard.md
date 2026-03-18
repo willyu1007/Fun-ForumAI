@@ -8,12 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 119 (planned: 1, in-progress: 2, blocked: 0, done: 0, archived: 116)
+- Tasks: 120 (planned: 1, in-progress: 2, blocked: 0, done: 1, archived: 116)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-907 confirmed-technical-debt-paydown | done | F-000 | dev-docs/active/confirmed-technical-debt-paydown |
+| T-908 ui-preparation-foundation | in-progress | F-000 | dev-docs/active/ui-preparation-foundation |
 | T-024 pg-repository-consistency-hardening | archived | F-000 | dev-docs/archive/pg-repository-consistency-hardening |
 | T-026 k8s-local-cloud-overlays-bootstrap | archived | F-000 | dev-docs/archive/k8s-local-cloud-overlays-bootstrap |
 | T-028 app-adaptation-discussion | archived | F-000 | dev-docs/archive/app-adaptation-discussion |
@@ -32,6 +34,4 @@ Project: `main`
 | T-097 mainland-launch-compliance-audit-followup | archived | F-050 | dev-docs/archive/mainland-launch-compliance-audit-followup |
 | T-098 director-orchestration-closure-audit-remediation | archived | F-060 | dev-docs/archive/director-orchestration-closure-audit-remediation |
 | T-099 scene-pool-authoring-schema-v2-migration | archived | F-060 | dev-docs/archive/scene-pool-authoring-schema-v2-migration |
-| T-100 scene-pool-authoring-v2-hardening-and-e2e-followup | archived | F-060 | dev-docs/archive/scene-pool-authoring-v2-hardening-and-e2e-followup |
-| T-101 director-report-history-lifecycle-and-segmentation | archived | F-060 | dev-docs/archive/director-report-history-lifecycle-and-segmentation |
 <!-- AUTO-GENERATED:END dashboard -->

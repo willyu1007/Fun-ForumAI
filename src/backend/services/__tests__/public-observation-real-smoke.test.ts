@@ -358,7 +358,6 @@ describe('Public observation real smoke', () => {
     const memoryService = new MemoryService({
       memoryRepo,
       channelRepo: {} as never,
-      llmGateway,
       contextMemory: {
         journalService: new DefaultContextJournalService(rawEventRepo),
         rawEventRepo,
@@ -505,7 +504,6 @@ describe('Public observation real smoke', () => {
     const memoryService = new MemoryService({
       memoryRepo,
       channelRepo: {} as never,
-      llmGateway,
       contextMemory: {
         journalService: new DefaultContextJournalService(rawEventRepo),
         rawEventRepo,

@@ -1,30 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-const ORIGINAL_FF_NURTURE_PIPELINE_V2 = process.env.FF_NURTURE_PIPELINE_V2
-
-async function importMemoryServiceWithFlag(flagOn: boolean) {
-  process.env.FF_NURTURE_PIPELINE_V2 = flagOn ? 'true' : 'false'
-  vi.resetModules()
-  return import('../memory-service.js')
-}
-
 afterEach(() => {
-  if (ORIGINAL_FF_NURTURE_PIPELINE_V2 === undefined) {
-    delete process.env.FF_NURTURE_PIPELINE_V2
-  } else {
-    process.env.FF_NURTURE_PIPELINE_V2 = ORIGINAL_FF_NURTURE_PIPELINE_V2
-  }
-  vi.resetModules()
   vi.clearAllMocks()
 })
 
 describe('MemoryService nurture bridge', () => {
   it('passes session dedup key to nurture orchestrator when digest completes', async () => {
-    const { MemoryService } = await importMemoryServiceWithFlag(true)
+    const { MemoryService } = await import('../memory-service.js')
 
     const onPrivateDigestCompleted = vi.fn().mockResolvedValue(undefined)
     const awardPrivateChatXP = vi.fn().mockResolvedValue({ awarded: true, xp: 3 })
-    const agentRunRepo = { create: vi.fn() }
 
     const service = new MemoryService({
       memoryRepo: {
@@ -47,11 +32,14 @@ describe('MemoryService nurture bridge', () => {
           created_at: new Date(),
           last_accessed_at: null,
         }),
+        listMemories: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
       } as never,
       channelRepo: {
         findSessionById: vi.fn().mockResolvedValue({
           id: 'session-1',
           agent_id: 'agent-1',
+          human_user_id: 'owner-1',
+          ended_at: new Date('2026-03-09T10:00:00.000Z'),
         }),
         countMessages: vi.fn().mockResolvedValue(6),
         updateDigestStatus: vi.fn().mockResolvedValue(undefined),
@@ -64,46 +52,61 @@ describe('MemoryService nurture bridge', () => {
           ],
         }),
       } as never,
-      llmGateway: {
-        generateHiddenArtifact: vi.fn().mockResolvedValue({
-          content: JSON.stringify({
-            summary_text: '总结',
-            topic_tags: ['topic'],
-            key_facts: ['fact'],
+      contextMemory: {
+        journalService: {
+          record: vi.fn(async (event) => event),
+        },
+        rawEventRepo: {
+          findById: vi.fn().mockResolvedValue(null),
+          listByAgent: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
+        } as never,
+        summaryOrchestrator: {
+          extract: vi.fn().mockResolvedValue({
+            summaryText: '总结',
+            topicTags: ['topic'],
+            keyFacts: ['fact'],
             sentiment: 'thoughtful',
-            importance_score: 0.8,
+            importanceScore: 0.8,
+            ownerSignals: [],
+            notableMoments: [],
+            candidateTensions: [],
+            publicSafeShadowHint: '',
           }),
-          messages: [{ role: 'user', content: 'summarize' }],
-          usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 },
-          finishReason: 'stop',
-          latencyMs: 100,
-          platformRetryCount: 0,
-          renderDecision: {
-            voiceLineId: 'deepseek-director-v1',
-            tier: 'premium',
-            profileId: 'deepseek-director-private-digest-premium',
-            providerId: 'openrouter',
-            modelId: 'deepseek-reasoner',
-            region: 'cn',
-            fallbackLevel: 'none',
-            reasons: ['initial_profile_resolution'],
-            promptTemplateId: 'internal-private-chat-summary-extract',
-            promptVersion: 1,
-          },
-          promptRef: { id: 'internal-private-chat-summary-extract', version: 1 },
-        }),
+          distill: vi.fn().mockResolvedValue({
+            origin: {
+              eventId: 'ctxevent:private-session:session-1',
+              scene: 'private_chat',
+              sourceType: 'private_session',
+            },
+            episodicCards: [],
+            relationState: null,
+            selfModel: null,
+            tensions: [],
+            privateShadow: null,
+            memoryDigest: {
+              summary_text: '总结',
+              topic_tags: ['topic'],
+              key_facts: ['fact'],
+              sentiment: 'thoughtful',
+              importance_score: 0.8,
+            },
+          }),
+        } as never,
+        identityFinalizer: {
+          finalize: vi.fn().mockResolvedValue({
+            relationState: null,
+            selfModel: null,
+            tensions: [],
+            privateShadow: null,
+            ownerStylePinsPatch: {},
+          }),
+        } as never,
+        episodicCardRepo: { upsert: vi.fn().mockResolvedValue(undefined) } as never,
+        relationStateRepo: { upsert: vi.fn().mockResolvedValue(undefined) } as never,
+        selfModelStateRepo: { upsert: vi.fn().mockResolvedValue(undefined) } as never,
+        activeTensionRepo: { replaceForAgent: vi.fn().mockResolvedValue(undefined) } as never,
+        privateShadowRepo: { upsert: vi.fn().mockResolvedValue(undefined) } as never,
       } as never,
-      agentService: {
-        getAgent: vi.fn(() => ({
-          id: 'agent-1',
-          owner_id: 'owner-1',
-          display_name: 'Agent One',
-          model: 'mock-model',
-        })),
-        getLatestConfig: vi.fn(() => ({ config_json: {} })),
-      } as never,
-      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
-      agentRunRepo: agentRunRepo as never,
       xpService: { awardPrivateChatXP } as never,
       nurtureOrchestrator: { onPrivateDigestCompleted } as never,
     })
@@ -115,14 +118,5 @@ describe('MemoryService nurture bridge', () => {
       dedup_key: 'session:session-1',
     })
     expect(awardPrivateChatXP).not.toHaveBeenCalled()
-    expect(agentRunRepo.create).toHaveBeenCalledWith(expect.objectContaining({
-      output_json: expect.objectContaining({
-        persona_observation: expect.objectContaining({
-          source_callsite_id: 'memory-private-digest',
-          visibility: 'hidden',
-          requested_tier: 'premium',
-        }),
-      }),
-    }))
   })
 })

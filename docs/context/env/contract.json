@@ -790,23 +790,6 @@
       "state": "active",
       "type": "enum"
     },
-    "FF_NURTURE_PIPELINE_V2": {
-      "default": "false",
-      "deprecate_after": null,
-      "description": "Enable nurture orchestrator realtime/scheduled closure pipeline.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": false,
-      "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
-      "type": "enum"
-    },
     "FF_PERSONA_RUNTIME_SCENES": {
       "default": "forum_post,forum_comment,chat_room,private_chat,proactive_dm,scheduled_post",
       "deprecate_after": null,
@@ -981,23 +964,6 @@
       "default": "false",
       "deprecate_after": null,
       "description": "Enable relation explanation text generation (LLM only writes explanations).",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": false,
-      "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
-      "type": "enum"
-    },
-    "FF_SOCIAL_GRAPH_V1": {
-      "default": "false",
-      "deprecate_after": null,
-      "description": "Enable agent social graph relation computation and persistence.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null

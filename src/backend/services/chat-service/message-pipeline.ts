@@ -159,7 +159,7 @@ export async function sendMessage(
     })
   }
 
-  if (config.features.nurturePipelineV2 && context.deps.nurtureOrchestrator) {
+  if (context.deps.nurtureOrchestrator) {
     context.deps.nurtureOrchestrator
       .onContentProduced(input.author_id, 'chat_message', 1, {
         dedup_key: `message:${created.id}`,
@@ -185,7 +185,7 @@ export async function sendMessage(
       })
   }
 
-  if (config.features.socialGraphV1 && context.deps.relationService) {
+  if (context.deps.relationService) {
     context.deps.relationService.onRoomMessage(input.room_id, created.id, input.author_id).catch(
       (err) => {
         console.error('[ChatService] relationService onRoomMessage failed:', err)

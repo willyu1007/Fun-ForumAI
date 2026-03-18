@@ -1,4 +1,3 @@
-import type { LLMGateway } from '../../llm/llm-gateway.js'
 import type { DefaultMemoryPackRenderer, DefaultRetrievalPacker } from '../../context-memory/memory-pack.js'
 import type { MemoryPack, MemoryPackRenderResult } from '../../context-memory/contracts.js'
 import type { ChronicleRepository } from '../../repos/chronicle-repository.js'
@@ -10,7 +9,6 @@ import type {
   RawContextEventRepository,
   SelfModelStateRepository,
 } from '../../repos/context-memory-repository.js'
-import type { EventRepository, AgentRunRepository } from '../../repos/event-repository.js'
 import type { MemoryRepository } from '../../repos/memory-repository.js'
 import type { PrivateChannelRepository } from '../../repos/private-channel-repository.js'
 import type {
@@ -55,10 +53,7 @@ export type DigestHook = (input: DigestHookInput) => Promise<void> | void
 export interface MemoryServiceDeps {
   memoryRepo: MemoryRepository
   channelRepo: PrivateChannelRepository
-  llmGateway: LLMGateway
   agentService?: AgentService | null
-  eventRepo?: EventRepository | null
-  agentRunRepo?: AgentRunRepository | null
   xpService?: XpService | null
   nurtureOrchestrator?: NurtureOrchestrator | null
   relationService?: RelationService | null

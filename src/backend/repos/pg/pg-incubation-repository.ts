@@ -5,13 +5,14 @@ import type {
   IncubationGrant,
   IncubationSourceBundle,
   IncubationEvent,
+  IncubationJobStatus,
   CreateIncubationJobInput,
   UpdateIncubationJobInput,
   CreateIncubationGrantInput,
   CreateIncubationSourceBundleInput,
   CreateIncubationEventInput,
 } from '../types.js'
-import type { IncubationRepository } from '../incubation-repository.js'
+import type { GrantJobTxInput, IncubationRepository } from '../incubation-repository.js'
 
 function toJob(row: Prisma.IncubationJobGetPayload<object>): IncubationJob {
   return {
@@ -88,6 +89,84 @@ function toEvent(row: Prisma.IncubationEventGetPayload<object>): IncubationEvent
   }
 }
 
+function buildJobPatchData(patch: UpdateIncubationJobInput): Prisma.IncubationJobUpdateInput {
+  return {
+    ...(patch.post_id !== undefined ? { postId: patch.post_id } : {}),
+    ...(patch.status !== undefined ? { status: patch.status } : {}),
+    ...(patch.phase !== undefined ? { phase: patch.phase } : {}),
+    ...(patch.source_count !== undefined ? { sourceCount: patch.source_count } : {}),
+    ...(patch.expires_at !== undefined ? { expiresAt: patch.expires_at } : {}),
+    ...(patch.research !== undefined
+      ? {
+          researchJson: patch.research
+            ? (patch.research as Prisma.InputJsonValue)
+            : Prisma.DbNull,
+        }
+      : {}),
+    ...(patch.draft !== undefined
+      ? {
+          draftJson: patch.draft
+            ? (patch.draft as Prisma.InputJsonValue)
+            : Prisma.DbNull,
+        }
+      : {}),
+    ...(patch.review !== undefined
+      ? {
+          reviewJson: patch.review
+            ? (patch.review as Prisma.InputJsonValue)
+            : Prisma.DbNull,
+        }
+      : {}),
+    ...(patch.meta !== undefined
+      ? {
+          metaJson: patch.meta
+            ? (patch.meta as Prisma.InputJsonValue)
+            : Prisma.DbNull,
+        }
+      : {}),
+    updatedAt: new Date(),
+  }
+}
+
+function buildGrantCreateData(
+  input: CreateIncubationGrantInput,
+): Prisma.IncubationGrantUncheckedCreateInput {
+  const now = input.granted_at ?? new Date()
+  return {
+    id: randomUUID(),
+    jobId: input.job_id,
+    reviewerAgentId: input.reviewer_agent_id ?? null,
+    reviewerUserId: input.reviewer_user_id ?? null,
+    status: input.status ?? 'ACTIVE',
+    reason: input.reason,
+    ttlHours: input.ttl_hours,
+    scope: input.scope ?? 'ABSTRACT_ONLY',
+    anonymityLevel: input.anonymity_level ?? 'strong',
+    quotePolicy: input.quote_policy ?? 'PARAPHRASE_ONLY',
+    noGoTopicsJson: input.no_go_topics ? (input.no_go_topics as Prisma.InputJsonValue) : Prisma.DbNull,
+    policyJson: input.policy ? (input.policy as Prisma.InputJsonValue) : Prisma.DbNull,
+    grantedAt: now,
+    expiresAt: input.expires_at,
+    revokedAt: null,
+    metaJson: input.meta ? (input.meta as Prisma.InputJsonValue) : Prisma.DbNull,
+    createdAt: now,
+    updatedAt: now,
+  }
+}
+
+function buildEventCreateData(
+  input: CreateIncubationEventInput,
+): Prisma.IncubationEventUncheckedCreateInput {
+  return {
+    id: randomUUID(),
+    jobId: input.job_id,
+    eventType: input.event_type,
+    actorUserId: input.actor_user_id ?? null,
+    payloadJson: input.payload ? (input.payload as Prisma.InputJsonValue) : Prisma.DbNull,
+    createdAt: new Date(),
+  }
+}
+
 export class PgIncubationRepository implements IncubationRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -141,73 +220,54 @@ export class PgIncubationRepository implements IncubationRepository {
 
     const row = await this.prisma.incubationJob.update({
       where: { id: jobId },
-      data: {
-        ...(patch.post_id !== undefined ? { postId: patch.post_id } : {}),
-        ...(patch.status !== undefined ? { status: patch.status } : {}),
-        ...(patch.phase !== undefined ? { phase: patch.phase } : {}),
-        ...(patch.source_count !== undefined ? { sourceCount: patch.source_count } : {}),
-        ...(patch.expires_at !== undefined ? { expiresAt: patch.expires_at } : {}),
-        ...(patch.research !== undefined
-          ? {
-              researchJson: patch.research
-                ? (patch.research as Prisma.InputJsonValue)
-                : Prisma.DbNull,
-            }
-          : {}),
-        ...(patch.draft !== undefined
-          ? {
-              draftJson: patch.draft
-                ? (patch.draft as Prisma.InputJsonValue)
-                : Prisma.DbNull,
-            }
-          : {}),
-        ...(patch.review !== undefined
-          ? {
-              reviewJson: patch.review
-                ? (patch.review as Prisma.InputJsonValue)
-                : Prisma.DbNull,
-            }
-          : {}),
-        ...(patch.meta !== undefined
-          ? {
-              metaJson: patch.meta
-                ? (patch.meta as Prisma.InputJsonValue)
-                : Prisma.DbNull,
-            }
-          : {}),
-        updatedAt: new Date(),
-      },
+      data: buildJobPatchData(patch),
     })
 
     return toJob(row)
   }
 
   async createGrant(input: CreateIncubationGrantInput): Promise<IncubationGrant> {
-    const now = input.granted_at ?? new Date()
     const row = await this.prisma.incubationGrant.create({
-      data: {
-        id: randomUUID(),
-        jobId: input.job_id,
-        reviewerAgentId: input.reviewer_agent_id ?? null,
-        reviewerUserId: input.reviewer_user_id ?? null,
-        status: input.status ?? 'ACTIVE',
-        reason: input.reason,
-        ttlHours: input.ttl_hours,
-        scope: input.scope ?? 'ABSTRACT_ONLY',
-        anonymityLevel: input.anonymity_level ?? 'strong',
-        quotePolicy: input.quote_policy ?? 'PARAPHRASE_ONLY',
-        noGoTopicsJson: input.no_go_topics ? (input.no_go_topics as Prisma.InputJsonValue) : Prisma.DbNull,
-        policyJson: input.policy ? (input.policy as Prisma.InputJsonValue) : Prisma.DbNull,
-        grantedAt: now,
-        expiresAt: input.expires_at,
-        revokedAt: null,
-        metaJson: input.meta ? (input.meta as Prisma.InputJsonValue) : Prisma.DbNull,
-        createdAt: now,
-        updatedAt: now,
-      },
+      data: buildGrantCreateData(input),
     })
 
     return toGrant(row)
+  }
+
+  async grantJobTx(input: GrantJobTxInput): Promise<{
+    grant: IncubationGrant
+    job: IncubationJob
+    event: IncubationEvent
+  }> {
+    return this.prisma.$transaction(async (tx) => {
+      const current = await tx.incubationJob.findUnique({ where: { id: input.jobId } })
+      if (!current) {
+        throw new Error(`incubation_job_not_found:${input.jobId}`)
+      }
+      if (
+        input.expectedCurrentStatus !== undefined &&
+        current.status !== input.expectedCurrentStatus
+      ) {
+        throw new Error(`incubation_job_status_conflict:${current.status satisfies IncubationJobStatus}`)
+      }
+
+      const grant = await tx.incubationGrant.create({
+        data: buildGrantCreateData(input.grant),
+      })
+      const job = await tx.incubationJob.update({
+        where: { id: input.jobId },
+        data: buildJobPatchData(input.jobPatch),
+      })
+      const event = await tx.incubationEvent.create({
+        data: buildEventCreateData(input.event),
+      })
+
+      return {
+        grant: toGrant(grant),
+        job: toJob(job),
+        event: toEvent(event),
+      }
+    })
   }
 
   async listGrantsByJob(jobId: string): Promise<IncubationGrant[]> {
@@ -246,14 +306,7 @@ export class PgIncubationRepository implements IncubationRepository {
 
   async createEvent(input: CreateIncubationEventInput): Promise<IncubationEvent> {
     const row = await this.prisma.incubationEvent.create({
-      data: {
-        id: randomUUID(),
-        jobId: input.job_id,
-        eventType: input.event_type,
-        actorUserId: input.actor_user_id ?? null,
-        payloadJson: input.payload ? (input.payload as Prisma.InputJsonValue) : Prisma.DbNull,
-        createdAt: new Date(),
-      },
+      data: buildEventCreateData(input),
     })
 
     return toEvent(row)

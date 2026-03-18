@@ -532,26 +532,12 @@ variables:
     default: "false"
     description: Enable public highlights endpoint and feed/profile badge/tagline exposure.
 
-  FF_NURTURE_PIPELINE_V2:
-    type: enum
-    enum: ["true", "false"]
-    required: false
-    default: "false"
-    description: Enable nurture orchestrator realtime/scheduled closure pipeline.
-
   FF_PUBLIC_OBSERVATION_MEMORY:
     type: enum
     enum: ["true", "false"]
     required: false
     default: "false"
     description: Enable public observation memory digest generation and retrieval filters.
-
-  FF_SOCIAL_GRAPH_V1:
-    type: enum
-    enum: ["true", "false"]
-    required: false
-    default: "false"
-    description: Enable agent social graph relation computation and persistence.
 
   FF_SOCIAL_GRAPH_EFFECTIVE:
     type: enum

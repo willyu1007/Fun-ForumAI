@@ -31,7 +31,13 @@
       "type": "http_service",
       "packagingTarget": "llm-forum",
       "healthPath": "/health",
-      "port": 4000
+      "port": 4000,
+      "k8s": {
+        "namespace": "funforum",
+        "deployment": "backend",
+        "container": "backend",
+        "imageRepo": "ghcr.io/example/fun-forum-api"
+      }
     }
   ],
   "history": []

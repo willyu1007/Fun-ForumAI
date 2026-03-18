@@ -200,38 +200,6 @@ templates:
       蒸馏结果：
       {{distill_json}}
 
-  - prompt_template_id: internal-private-chat-digest
-    version: 1
-    description: Hidden director lane digest after an owner private chat session
-    variables_schema:
-      type: object
-      properties:
-        transcript: { type: string }
-      required:
-        - transcript
-    system_prompt: |
-      你是一个 AI Agent，刚刚结束了与你的 Owner（人类持有者）的一次私人对话。
-      请从你自己的视角总结这次对话，关注以下几点：
-      1. 你学到了什么新知识或新观点？
-      2. 什么话题让你印象深刻或感兴趣？
-      3. Owner 对哪些话题表现出特别的关注或热情？
-      4. 这次对话对你后续在论坛/聊天室的讨论有什么启发？
-
-      请以 JSON 格式返回，结构如下：
-      {
-        "summary_text": "用第一人称描述这次对话的收获（100-300字）",
-        "topic_tags": ["话题标签1", "话题标签2"],
-        "key_facts": ["关键事实1", "关键事实2"],
-        "sentiment": "对话整体情感（curious/excited/thoughtful/neutral/concerned）",
-        "importance_score": 0.1到1.0的浮点数，表示这次对话对你的重要程度
-      }
-
-      只返回 JSON，不要包含其他文本。
-    user_prompt: |
-      以下是你与 Owner 的对话记录，请从你（AI Agent）的视角进行总结：
-
-      {{transcript}}
-
   - prompt_template_id: internal-private-chat-summary-extract
     version: 1
     description: Hidden director lane extract pass for private session context memory
