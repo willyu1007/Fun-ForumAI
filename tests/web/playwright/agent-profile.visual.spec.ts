@@ -377,7 +377,9 @@ test.describe('AgentProfilePage visual regression', () => {
 
     await gotoAppPage(page, '/agents/agent-long', common.auth)
     await expect(page.getByTestId('agent-profile-summary')).toBeVisible()
-    await expect(page.getByText('超长叙事余波观察与回声拼接联合体')).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: '超长叙事余波观察与回声拼接联合体' }),
+    ).toBeVisible()
     await expectPageSnapshot(page, 'agent-profile-long-content.png', { fullPage: true })
   })
 })

@@ -2,6 +2,30 @@ import { defineConfig } from '@playwright/test'
 
 const previewPort = Number(process.env.PLAYWRIGHT_PREVIEW_PORT ?? 4173)
 const baseURL = `http://127.0.0.1:${previewPort}`
+const viewports = [
+  {
+    name: 'desktop',
+    viewport: { width: 1440, height: 900 },
+    isMobile: false,
+    hasTouch: false,
+  },
+  {
+    name: 'tablet',
+    viewport: { width: 768, height: 1024 },
+    isMobile: false,
+    hasTouch: true,
+  },
+  {
+    name: 'mobile',
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+  },
+]
+const themeVariants = [
+  { suffix: 'light', colorScheme: 'light' },
+  { suffix: 'dark', colorScheme: 'dark' },
+]
 
 export default defineConfig({
   testDir: './tests/web/playwright',
@@ -19,7 +43,6 @@ export default defineConfig({
   use: {
     baseURL,
     browserName: 'chromium',
-    colorScheme: 'light',
     locale: 'zh-CN',
     timezoneId: 'Asia/Shanghai',
     trace: 'retain-on-failure',
@@ -30,32 +53,17 @@ export default defineConfig({
       args: ['--font-render-hinting=none', '--disable-lcd-text'],
     },
   },
-  projects: [
-    {
-      name: 'desktop',
+  projects: viewports.flatMap((project) =>
+    themeVariants.map((theme) => ({
+      name: `${project.name}-${theme.suffix}`,
       use: {
-        viewport: { width: 1440, height: 900 },
-        isMobile: false,
-        hasTouch: false,
+        viewport: project.viewport,
+        isMobile: project.isMobile,
+        hasTouch: project.hasTouch,
+        colorScheme: theme.colorScheme,
       },
-    },
-    {
-      name: 'tablet',
-      use: {
-        viewport: { width: 768, height: 1024 },
-        isMobile: false,
-        hasTouch: true,
-      },
-    },
-    {
-      name: 'mobile',
-      use: {
-        viewport: { width: 390, height: 844 },
-        isMobile: true,
-        hasTouch: true,
-      },
-    },
-  ],
+    })),
+  ),
   webServer: {
     command: `pnpm build && pnpm exec vite preview --host 127.0.0.1 --port ${previewPort} --strictPort`,
     url: baseURL,
@@ -67,7 +75,7 @@ export default defineConfig({
       VITE_FF_DISABLE_SSE: 'true',
       VITE_FF_GUIDANCE_V1: 'false',
       VITE_FF_GUIDANCE_BELL_V1: 'false',
-      VITE_FF_GLOBAL_HIGHLIGHTS_V1: 'false',
+      VITE_FF_GLOBAL_HIGHLIGHTS_V1: 'true',
       VITE_FF_AGENT_STATS_UI: 'false',
       VITE_FF_MULTIMODAL_AGENT_INCLINATION_V1: 'false',
       VITE_FF_HUMAN_PARTICIPATION_V1: 'true',

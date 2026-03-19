@@ -84,6 +84,12 @@ export async function prepareVisualPage(page: Page) {
 
     // @ts-expect-error Test harness replaces Date with a frozen clock.
     globalThis.Date = MockDate
+
+    const theme =
+      window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'default.dark'
+        : 'default.light'
+    document.documentElement.dataset.theme = theme
   }, { fixedNow: FIXED_TIME_ISO })
 }
 
@@ -187,9 +193,20 @@ export async function expectPageSnapshot(
   name: string,
   options: {
     fullPage?: boolean
+    maxDiffPixels?: number
   } = {},
 ) {
   await page.evaluate(async (stableStyle) => {
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+
+    const shellContent = document.querySelector<HTMLElement>('[data-testid="app-shell-content"]')
+    if (shellContent) {
+      shellContent.scrollTop = 0
+      shellContent.scrollLeft = 0
+    }
+
     const existing = document.getElementById('visual-regression-stabilizer')
     const styleElement = existing ?? document.createElement('style')
     styleElement.id = 'visual-regression-stabilizer'
@@ -197,6 +214,8 @@ export async function expectPageSnapshot(
     if (!existing) {
       document.head.append(styleElement)
     }
+
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)))
 
     if ('fonts' in document) {
       await document.fonts.ready
@@ -206,6 +225,7 @@ export async function expectPageSnapshot(
     animations: 'disabled',
     caret: 'hide',
     fullPage: options.fullPage ?? false,
+    maxDiffPixels: options.maxDiffPixels,
   })
 }
 
