@@ -2,8 +2,8 @@ version: 1
 task_id: T-907
 project: main
 slug: confirmed-technical-debt-paydown
-status: done
-updated: "2026-03-17"
+status: archived
+updated: "2026-03-19"
 keywords:
   - debt
   - backend

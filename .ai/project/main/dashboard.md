@@ -8,14 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 120 (planned: 1, in-progress: 2, blocked: 0, done: 1, archived: 116)
+- Tasks: 120 (planned: 1, in-progress: 1, blocked: 0, done: 0, archived: 118)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
-| T-907 confirmed-technical-debt-paydown | done | F-000 | dev-docs/active/confirmed-technical-debt-paydown |
-| T-908 ui-preparation-foundation | in-progress | F-000 | dev-docs/active/ui-preparation-foundation |
+| T-907 confirmed-technical-debt-paydown | archived | F-000 | dev-docs/archive/confirmed-technical-debt-paydown |
+| T-908 ui-preparation-foundation | archived | F-000 | dev-docs/archive/ui-preparation-foundation |
 | T-024 pg-repository-consistency-hardening | archived | F-000 | dev-docs/archive/pg-repository-consistency-hardening |
 | T-026 k8s-local-cloud-overlays-bootstrap | archived | F-000 | dev-docs/archive/k8s-local-cloud-overlays-bootstrap |
 | T-028 app-adaptation-discussion | archived | F-000 | dev-docs/archive/app-adaptation-discussion |

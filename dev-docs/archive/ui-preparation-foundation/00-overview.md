@@ -2,7 +2,8 @@
 
 ## Status
 
-- State: completed
+- State: done
+- Next step: 无；任务已完成，可归档。
 - 依据: [fun_forumai_ui_preparation.md](../../../fun_forumai_ui_preparation.md) 与已对齐决策（见 roadmap / 01-plan）。
 - 阶段 0–5 基础设施已交付（foundation-complete）；2026-03-19 已完成“真实缺口”收口，首期试点页和第二波 P0 页面都已进入同一套视觉回归与主题/边界护栏。
 - 2026-03-18：PR #15 的 merge blockers 已收口；同日补齐 Playwright 视觉回归基座、45 张 pilot baseline、PR 阻断式 CI job。

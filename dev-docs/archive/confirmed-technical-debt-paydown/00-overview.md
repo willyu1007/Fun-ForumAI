@@ -4,7 +4,7 @@
 
 - State: done
 - Depends on: none
-- Next step: 清理提交并推送到 `main`。
+- Next step: 无；任务已完成，可归档。
 
 ## Goal
 
