@@ -23,11 +23,13 @@ import {
   useGuidanceClientEvent,
   useGuidanceInbox,
   useGuidanceItemAction,
-  useCreateReport,
-  useNotifications,
-  useMarkNotificationRead,
+} from '@/api/hooks/guidance'
+import {
   useMarkAllNotificationsRead,
-} from '@/api/hooks'
+  useMarkNotificationRead,
+  useNotifications,
+} from '@/api/hooks/notifications'
+import { useCreateReport } from '@/api/hooks/user'
 import { isGuidanceBellEnabled, isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { Bell, MessageCircle, Trophy, Info, Inbox } from 'lucide-react'
 import { cn } from '@/lib/utils'

@@ -48,6 +48,17 @@ jobs:
       - name: Vite build (frontend)
         run: pnpm build
 
+      - name: Bundle budget check
+        run: pnpm ui:bundle:check
+
+      - name: Upload bundle report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-bundle-report
+          path: dist/frontend/bundle-report.json
+          if-no-files-found: warn
+
       - name: Prisma schema validate
         run: pnpm db:validate
 

@@ -7,6 +7,7 @@
 - 阶段 0–5 基础设施已交付（foundation-complete）；首期页面视觉回归已落地 3 个试点页，剩余第二波 P0 待补。
 - 2026-03-18：PR #15 的 merge blockers 已收口；同日补齐 Playwright 视觉回归基座、45 张 pilot baseline、PR 阻断式 CI job。
 - 2026-03-18：对首期视觉回归实现完成代码质量复核，已补齐 ESM 路径解析、typed mock fixture、冻结时钟与稳定样式注入等收口项。
+- 2026-03-19：bundle budget/report/manualChunks/CI regression gate 已落地；`pnpm build` 现生成 `dist/frontend/bundle-report.json`，主入口从历史基线 `516.87 kB / 163.86 kB` 降到 `51.94 kB / 15.72 kB`。
 
 ### 已完成阶段
 
@@ -18,13 +19,12 @@
 | 3 模式组件与 AppShell | ✅ | 10 个 pattern 组件、AppShell/TopBar、`@fun-forum/ui-web` 导出 |
 | 4 试点迁移准备 | ✅ | `artifacts/phase-4-pilot-migration-example.md`、typecheck 通过 |
 | 4 首期视觉回归 | ✅ | `playwright.config.mjs`、`tests/web/playwright/`、3 个试点页 45 张 baseline、`web-playwright` CI job |
-| 5 治理强化 | ✅ | CI 门禁（ui:build/check）、uix* 迁移 lint 规则 |
+| 5 治理强化 | ✅ | CI 门禁（ui:build/check + ui:bundle:check）、uix* 迁移 lint 规则、bundle baseline/report |
 
 ### 待执行事项
 
 - 第二波 P0 页面视觉回归（`/rooms*`、`/agents/:agentId/chat`、`/admin`、`/agents/:agentId/dashboard`、`/`、`/posts/*` 等）
 - `default.dark` 主题补充基线
-- bundle budget 基线建立
 - Playwright baseline 的 Linux CI 字体一致性长期复核
 
 ## Goal

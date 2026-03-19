@@ -66,4 +66,20 @@
 | 代码质量复核 | `pnpm build` | pass | 2026-03-18；在 `workspace-package-aliases.ts` 切到 `import.meta.url` 解析后，fresh install / preview 构建链路仍可通过 |
 | 代码质量复核 | `pnpm test:e2e:playwright` | pass | 2026-03-18；typed fixture、冻结时钟与稳定样式注入调整后，45/45 tests 再次通过 |
 | 代码质量复核 | `pnpm exec eslint --no-ignore playwright.config.mjs workspace-package-aliases.ts tests/web/playwright --ext .ts,.tsx,.mjs` | pass | 2026-03-18；针对本轮新增视觉回归文件与配置文件做定向 ESLint，未发现 error/warning |
+| bundle budget | `pnpm build` | pass | 2026-03-19；生成 `dist/frontend/bundle-report.json`，`index-*.js` 降到 `51.94 kB raw / 15.72 kB gzip`，不再触发 `>500 kB` warning |
+| bundle budget | `pnpm ui:bundle:accept` | pass | 2026-03-19；将当前 top 10 JS chunks 固化到 `ui/config/bundle-baseline.json`，最大 JS chunk 为 `framework = 192.93 kB raw / 60.47 kB gzip` |
+| bundle budget | `pnpm ui:bundle:report` | pass | 2026-03-19；可打印 top JS chunks、baseline 值与 delta，对应 `dist/frontend/bundle-report.json` |
+| bundle budget | `pnpm ui:bundle:check` | pass | 2026-03-19；验证 root entry hard budget、最大 JS chunk 不回归、6 个重路由仍保有异步边界 |
+| bundle budget | `pnpm ui:bundle:check -- --budget-file /tmp/fun-forum-bundle-budget-strict.json` | fail-as-expected | 2026-03-19；将 root entry raw budget 临时收紧到 `1 kB` 后，命令以非零退出并报出 `assets/index-*.js above hard limit`，证明阻断逻辑生效 |
+| bundle budget | `pnpm vitest run src/frontend/shared/components/__tests__/Layout.test.tsx` | pass | 2026-03-19；根壳层改为 direct hook imports 后，相关 layout tests 仍全部通过（3/3） |
+| bundle budget | `pnpm lint` | pass | 2026-03-19；新增 Vite/plugin/scripts 与 root-shell import 收口未引入新的 lint error/warning |
+| bundle budget | `pnpm exec eslint --no-ignore vite.config.ts scripts/ui/*.mjs src/frontend/shared/components/AgentPanel.tsx src/frontend/shared/components/Layout.tsx src/frontend/shared/components/LeftSidebar.tsx src/frontend/shared/components/RightSidebar.tsx src/frontend/shared/components/__tests__/Layout.test.tsx --ext .ts,.tsx,.mjs` | pass | 2026-03-19；覆盖 Vite 配置与新加 bundle 脚本的定向 ESLint 通过 |
+| bundle budget | `pnpm vitest run src/frontend/shared/components/__tests__/Layout.test.tsx` | pass | 2026-03-19；移除测试中多余 mock export 后再次回归，仍为 3/3 通过 |
+| bundle budget follow-up | `pnpm build` | pass | 2026-03-19；review follow-up 后重新生成 `dist/frontend/bundle-report.json`，确认路径 SSOT 收口未影响实际构建产物，root entry 仍为 `51.94 kB raw / 15.72 kB gzip` |
+| bundle budget follow-up | `pnpm ui:bundle:report` | pass | 2026-03-19；review follow-up 后默认链路仍可正确读取 `ui/config/bundle-budget.json` 与 `ui/config/bundle-baseline.json` |
+| bundle budget follow-up | `pnpm ui:bundle:check` | pass | 2026-03-19；review follow-up 后 hard gate 与 async route 边界检查仍通过 |
+| bundle budget follow-up | `pnpm ui:bundle:accept -- --budget-file /tmp/fun-forum-bundle-budget-alt.json` | pass | 2026-03-19；临时 budget 将 `baselinePath` 指向 `/tmp/fun-forum-bundle-baseline-alt.json`，命令实际写入该路径，证明基线路径默认值已从配置读取 |
+| bundle budget follow-up | `pnpm ui:bundle:report -- --budget-file /tmp/fun-forum-bundle-budget-alt.json` | pass | 2026-03-19；输出显示 `Bundle report: /tmp/fun-forum-bundle-report-alt.json` 与 `Accepted baseline: /tmp/fun-forum-bundle-baseline-alt.json`，证明 report/baseline 路径都跟随配置而不是硬编码默认值 |
+| bundle budget follow-up | `pnpm ui:bundle:check -- --budget-file /tmp/fun-forum-bundle-budget-alt.json` | pass | 2026-03-19；自定义 budget 场景下校验命令仍可通过，证明 CLI 默认链路已完全尊重配置文件中的路径字段 |
+| bundle budget follow-up | `pnpm ui:bundle:check -- --budget-file /tmp/fun-forum-bundle-budget-no-root.json` | fail-as-expected | 2026-03-19；临时伪造无 root entry 的 report 后，错误信息明确指向 `/tmp/fun-forum-bundle-report-no-root.json`，证明失败文案也使用实际 report 路径而不是旧默认值 |
 | — | `node .ai/tests/run.mjs --suite ui`（含 ui-governance-gate） | 未在本轮执行 | 依赖 Python；可选本地/CI 补充 |

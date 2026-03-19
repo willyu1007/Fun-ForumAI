@@ -3,15 +3,17 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  useCreateReport,
   useGuidanceBell,
   useGuidanceClientEvent,
   useGuidanceInbox,
   useGuidanceItemAction,
-  useNotifications,
+} from '@/api/hooks/guidance'
+import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
-} from '@/api/hooks'
+  useNotifications,
+} from '@/api/hooks/notifications'
+import { useCreateReport } from '@/api/hooks/user'
 import { isGuidanceBellEnabled, isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useSidebarStore } from '@/shared/stores/sidebar-store'
@@ -27,15 +29,21 @@ vi.mock('react-router', async () => {
   }
 })
 
-vi.mock('@/api/hooks', () => ({
-  useCreateReport: vi.fn(),
+vi.mock('@/api/hooks/guidance', () => ({
   useGuidanceBell: vi.fn(),
   useGuidanceClientEvent: vi.fn(),
   useGuidanceInbox: vi.fn(),
   useGuidanceItemAction: vi.fn(),
+}))
+
+vi.mock('@/api/hooks/notifications', () => ({
   useNotifications: vi.fn(),
   useMarkNotificationRead: vi.fn(),
   useMarkAllNotificationsRead: vi.fn(),
+}))
+
+vi.mock('@/api/hooks/user', () => ({
+  useCreateReport: vi.fn(),
 }))
 
 vi.mock('@/features/guidance/feature-flags', () => ({

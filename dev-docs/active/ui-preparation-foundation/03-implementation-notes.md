@@ -397,9 +397,9 @@ ui-web package.json 添加：
 
 迁移完成后将升级为 error 级别。
 
-### 5.3 bundle budget
+### 5.3 bundle budget（历史建议，已于 2026-03-19 实施）
 
-bundle budget 配置建议（待后续实施）：
+bundle budget 配置建议（当时记录，现已落地）：
 - 在 vite.config.ts 中配置 manualChunks 分离 vendor/ui
 - 设置 build.chunkSizeWarningLimit
 - 后续可接入 bundlesize 或 lighthouse CI
@@ -407,8 +407,72 @@ bundle budget 配置建议（待后续实施）：
 ### Open Points
 
 - uix* 全量迁移待阶段 4 pilot 验证后执行
-- bundle budget 具体数值待基线建立后设定
 - 视觉回归工具待选型（Playwright/Chromatic/Percy）
+
+---
+
+## 阶段 5.2 收口：bundle budget / report / regression gate (2026-03-19)
+
+### A. bundle budget SSOT 与脚本
+
+- 新增 `ui/config/bundle-budget.json` 作为 bundle budget SSOT，定义：
+  - root entry hard budget（`500000 raw / 150000 gzip`）
+  - route advisory budget（普通路由 `150000 raw`、重路由 `200000 raw`）
+  - 6 个必须维持异步边界的重路由 module id
+  - `manualChunks` group 规则（framework / router / data-runtime / ui-radix / icons）
+- 新增 `ui/config/bundle-baseline.json`，通过 `pnpm ui:bundle:accept` 从最新 build report 刷新 accepted baseline。
+- 新增脚本：
+  - `scripts/ui/bundle-budget-lib.mjs`
+  - `scripts/ui/report-bundle-budget.mjs`
+  - `scripts/ui/check-bundle-budget.mjs`
+  - `scripts/ui/accept-bundle-baseline.mjs`
+- `package.json` 补充：
+  - `ui:bundle:report`
+  - `ui:bundle:check`
+  - `ui:bundle:accept`
+
+### B. Vite 分包与机器可读报告
+
+- `vite.config.ts` 现在显式读取 `ui/config/bundle-budget.json`，不再把 chunk 拆分规则散落在配置代码里。
+- 新增 build-time bundle report plugin，在 `vite build` 时自动写出 `dist/frontend/bundle-report.json`。
+- `manualChunks` 现按 vendor/runtime 职责显式拆分：
+  - `framework`
+  - `router`
+  - `data-runtime`
+  - `ui-radix`
+  - `icons`
+  - 其余 `node_modules` 进入 `vendor`
+- 本轮实测结果：
+  - 历史启动基线（2026-03-19 需求启动前）：`index-*.js = 516.87 kB raw / 163.86 kB gzip`
+  - 落地后接受基线：`index-*.js = 51.94 kB raw / 15.72 kB gzip`
+  - `framework` 现为最大 JS chunk（`192.93 kB raw / 60.47 kB gzip`），已低于 route advisory 上限之外的 hard gate，且被 `ui/config/bundle-baseline.json` 固化为当前 accepted baseline。
+
+### C. 根壳层依赖边界收口
+
+- `Layout`、`AgentPanel`、`LeftSidebar`、`RightSidebar` 不再从 `@/api/hooks` 聚合入口取 hook。
+- 改为直接指向具体模块：
+  - `@/api/hooks/forum`
+  - `@/api/hooks/guidance`
+  - `@/api/hooks/notifications`
+  - `@/api/hooks/user`
+- 目的不是依赖今天的 tree-shaking 结果，而是避免后续有人向 barrel 增加 export 时把 root entry 无意拉大。
+
+### D. CI 门禁接入
+
+- `.github/workflows/ci.yml` 的 `check` job 在 `pnpm build` 后新增 `pnpm ui:bundle:check`。
+- 同 job 现会上传 `dist/frontend/bundle-report.json` 为 `frontend-bundle-report` artifact。
+- 这使 bundle regression 从“本地或终端观察”升级为 PR 阻断式门禁。
+
+### E. Review follow-up：路径配置 SSOT 收口
+
+- `scripts/ui/bundle-budget-lib.mjs` 不再保留一套与配置文件平行的默认 report/baseline 路径决策；`ui:bundle:accept` / `report` / `check` 现在都会先读取 `bundle-budget.json`，再从其中解析 `reportPath` / `baselinePath`。
+- `vite.config.ts` 的 bundle report plugin 现在直接按 `ui/config/bundle-budget.json.reportPath` 写盘，不再把配置路径降级成 `basename(...)` 后强行塞回 `dist/frontend/`。
+- `evaluateBundle()` 的错误输出改为引用实际读取的 report 路径，避免自定义路径场景下“检查读的是 A、报错却说 B”。
+
+### Open Points
+
+- 第二波 P0 页面的视觉回归仍需补齐，但已不再阻塞 bundle budget 机制本身。
+- 若后续需要继续压缩最大 vendor chunk，可优先检查 `framework` / `ui-radix` / `router` 的实际复用情况，再决定是否继续细分，不要为追求数字过度切碎 chunk。
 
 ---
 

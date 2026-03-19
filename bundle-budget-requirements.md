@@ -10,18 +10,39 @@
 - 后续优化必须达到什么目标
 - 需要怎样验证和阻断回归
 
-## Current Baseline
+## Historical Baseline
 
-基线来自 2026-03-18 最近一次 `pnpm build`：
+本需求启动前的最近一次实测基线来自 **2026-03-19** 的 `pnpm build`：
 
 | Chunk | Raw Size | Gzip Size | Note |
 |------|----------|-----------|------|
-| `dist/frontend/assets/index-*.js` | `764.37 kB` | `226.20 kB` | 当前最大问题，超过 Vite 默认告警阈值 |
-| `AgentProfilePage-*.js` | `185.89 kB` | `25.30 kB` | 详情页偏重 |
-| `AdminPanel-*.js` | `124.37 kB` | `18.11 kB` | 管理后台较重 |
-| `ChatRoomPage-*.js` | `72.75 kB` | `11.30 kB` | 聊天室页有继续膨胀风险 |
+| `dist/frontend/assets/index-*.js` | `516.87 kB` | `163.86 kB` | 仍高于目标；当时距离 hard target 还差 `16.87 kB raw / 13.86 kB gzip` |
+| `AgentProfilePage-*.js` | `73.15 kB` | `18.91 kB` | 路由级懒加载已生效 |
+| `AdminPanel-*.js` | `55.90 kB` | `14.26 kB` | 管理后台为重页面但仍在可控范围 |
+| `ChatRoomPage-*.js` | `31.86 kB` | `9.13 kB` | 主要风险已从页面级转到入口共享依赖 |
 
-结论：真正需要优先处理的不是“所有页面都大”，而是 `index-*.js` 过重，说明根入口吸入了过多非首屏逻辑。
+结论：此时真正需要优先处理的已经不是“重页面没有拆开”，而是 **根壳层共享依赖和默认 vendor 合包** 让 `index-*.js` 仍然过重。
+
+## Landed Mechanism
+
+本需求现已落地为以下 repo 内机制：
+
+- `vite.config.ts`
+  - 显式定义 `manualChunks`
+  - 构建时生成 `dist/frontend/bundle-report.json`
+- `ui/config/bundle-budget.json`
+  - 存放 hard budget、warn budget、异步重路由约束、chunk group 规则，以及 `reportPath` / `baselinePath` 这类默认读写路径
+- `ui/config/bundle-baseline.json`
+  - 存放当前接受的 top chunks 基线
+- `scripts/ui/report-bundle-budget.mjs`
+  - 打印 top chunks、baseline、delta
+- `scripts/ui/check-bundle-budget.mjs`
+  - 阻断 hard regression
+- `scripts/ui/accept-bundle-baseline.mjs`
+  - 从最新 build report 刷新机器基线
+
+当前接受的机器基线以 `ui/config/bundle-baseline.json` 为准，而不是手工抄写在本文档里的 hash 文件名。
+`pnpm ui:bundle:accept` / `report` / `check` 默认都会先读取 `ui/config/bundle-budget.json`，再按其中的路径字段定位 report 与 baseline；只有显式传入 `--report-file` / `--baseline-file` 时才覆盖。
 
 ## Goals
 
@@ -60,7 +81,15 @@
   - `<= 500 kB` raw
   - `<= 150 kB` gzip
 - MUST 设定“未达最终目标前不得继续恶化”的约束：
-  - 在 budget 机制落地前，PR 不得让当前最大 chunk 比最新基线更大。
+  - PR 不得让当前最大 JS chunk 比 `ui/config/bundle-baseline.json` 中接受的基线更大。
+- MUST 在 CI 中把 budget check 作为阻断式门禁，而不是仅靠 Vite 的 500 kB warning。
+- MUST 校验以下 6 个重路由继续保有异步边界：
+  - `AgentProfilePage`
+  - `AgentManagePage`
+  - `AdminPanel`
+  - `ChatRoomPage`
+  - `PostDetailPage`
+  - `PrivateChatPage`
 
 ### SHOULD
 
@@ -87,6 +116,7 @@
 - 常规用户路由 chunk SHOULD 控制在 `<= 150 kB raw`。
 - 管理后台或高度复杂页面 MAY 放宽，但 SHOULD 控制在 `<= 200 kB raw`。
 - PR 中能明确看到当前 top chunks 与上一次基线的对比。
+- `pnpm ui:bundle:check` 在 hard regression 时返回非零退出码。
 
 ## Implementation Guidance
 
@@ -94,22 +124,32 @@
 - 先做路由边界拆分，再做 `manualChunks`，不要反过来。
 - 对重页面里的大对象常量、配置表、次级面板，优先考虑“页面内延迟加载”而不是继续挂在主入口。
 - 不要为了缩包重新引入新的“全局单文件样式/脚本汇总层”。
+- 根壳层路径（如 `Layout`、`LeftSidebar`、`RightSidebar`、`AgentPanel`）不要依赖 `@/api/hooks` 这种 barrel import，避免后续 export 面膨胀时无意拉大 root entry。
 
 ## Verification
 
-当前可执行检查：
+当前标准检查链路：
 
 ```bash
 pnpm build
+pnpm ui:bundle:report
+pnpm ui:bundle:check
 ```
 
 检查要点：
 
-- 记录 `dist/frontend/assets/index-*.js` 的 raw/gzip 体积
-- 记录 top 5 route chunks
-- 确认是否仍出现 Vite 的 `Some chunks are larger than 500 kB` 告警
+- `dist/frontend/bundle-report.json` 已生成
+- `pnpm ui:bundle:report` 能输出当前 top JS chunks、基线值、delta
+- `pnpm ui:bundle:check` 在 hard regression 时阻断
+- CI `check` job 会上传 `frontend-bundle-report` artifact
 
-后续 SHOULD 增加：
+刷新基线：
 
-- 一个可脚本化的 bundle report 命令
-- 一个可在 CI 中阻断回归的 budget check
+```bash
+pnpm ui:bundle:accept
+```
+
+说明：
+
+- `pnpm ui:bundle:accept` 只应在确认新的 chunk 结果是“可接受的新基线”后执行。
+- 若只想验证失败路径，可传自定义 budget 文件给 `pnpm ui:bundle:check -- --budget-file <path>`。

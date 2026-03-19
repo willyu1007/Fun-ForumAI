@@ -11,7 +11,7 @@ import {
   Trophy,
   Inbox,
 } from 'lucide-react'
-import { useCommunities } from '@/api/hooks'
+import { useCommunities } from '@/api/hooks/forum'
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'

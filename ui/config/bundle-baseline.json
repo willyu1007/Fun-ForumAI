@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "acceptedAt": "2026-03-18T23:41:26.607Z",
+  "sourceReport": "dist/frontend/bundle-report.json",
+  "rootEntryChunk": {
+    "name": "index",
+    "fileName": "assets/index-BsJhydfG.js",
+    "rawBytes": 51944,
+    "gzipBytes": 15721,
+    "isEntry": true,
+    "isDynamicEntry": false,
+    "facadeModuleId": "index.html"
+  },
+  "largestJsChunk": {
+    "name": "framework",
+    "fileName": "assets/framework-gnV2YwS9.js",
+    "rawBytes": 192930,
+    "gzipBytes": 60472,
+    "isEntry": false,
+    "isDynamicEntry": false,
+    "facadeModuleId": null
+  },
+  "topJsChunks": [
+    {
+      "name": "framework",
+      "fileName": "assets/framework-gnV2YwS9.js",
+      "rawBytes": 192930,
+      "gzipBytes": 60472,
+      "isEntry": false,
+      "isDynamicEntry": false,
+      "facadeModuleId": null
+    },
+    {
+      "name": "ui-radix",
+      "fileName": "assets/ui-radix-CpPJMfDZ.js",
+      "rawBytes": 101398,
+      "gzipBytes": 31089,
+      "isEntry": false,
+      "isDynamicEntry": false,
+      "facadeModuleId": null
+    },
+    {
+      "name": "router",
+      "fileName": "assets/router-GzdVsKkh.js",
+      "rawBytes": 85920,
+      "gzipBytes": 29187,
+      "isEntry": false,
+      "isDynamicEntry": false,
+      "facadeModuleId": null
+    },
+    {
+      "name": "AgentProfilePage",
+      "fileName": "assets/AgentProfilePage-ZcaXtcQo.js",
+      "rawBytes": 73332,
+      "gzipBytes": 19002,
+      "isEntry": false,
+      "isDynamicEntry": true,
+      "facadeModuleId": "src/frontend/features/agents/pages/AgentProfilePage.tsx"
+    },
+    {
+      "name": "AdminPanel",
+      "fileName": "assets/AdminPanel-CelRxeXn.js",
+      "rawBytes": 56092,
+      "gzipBytes": 14353,
+      "isEntry": false,
+      "isDynamicEntry": true,
+      "facadeModuleId": "src/frontend/features/admin/pages/AdminPanel.tsx"
+    },
+    {
+      "name": "index",
+      "fileName": "assets/index-BsJhydfG.js",
+      "rawBytes": 51944,
+      "gzipBytes": 15721,
+      "isEntry": true,
+      "isDynamicEntry": false,
+      "facadeModuleId": "index.html"
+    },
+    {
+      "name": "vendor",
+      "fileName": "assets/vendor-_xKiYfxK.js",
+      "rawBytes": 51825,
+      "gzipBytes": 17855,
+      "isEntry": false,
+      "isDynamicEntry": false,
+      "facadeModuleId": null
+    },
+    {
+      "name": "data-runtime",
+      "fileName": "assets/data-runtime-Bd4F9jQf.js",
+      "rawBytes": 51155,
+      "gzipBytes": 15685,
+      "isEntry": false,
+      "isDynamicEntry": false,
+      "facadeModuleId": null
+    },
+    {
+      "name": "ChatRoomPage",
+      "fileName": "assets/ChatRoomPage-CHMmaUIz.js",
+      "rawBytes": 32048,
+      "gzipBytes": 9227,
+      "isEntry": false,
+      "isDynamicEntry": true,
+      "facadeModuleId": "src/frontend/features/chat/pages/ChatRoomPage.tsx"
+    },
+    {
+      "name": "PostDetailPage",
+      "fileName": "assets/PostDetailPage-BzLGOnJn.js",
+      "rawBytes": 19042,
+      "gzipBytes": 6072,
+      "isEntry": false,
+      "isDynamicEntry": true,
+      "facadeModuleId": "src/frontend/features/forum/pages/PostDetailPage.tsx"
+    }
+  ]
+}

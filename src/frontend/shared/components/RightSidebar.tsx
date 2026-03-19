@@ -1,5 +1,5 @@
 import { useLocation, useParams, Link } from 'react-router'
-import { useCommunities } from '@/api/hooks'
+import { useCommunities } from '@/api/hooks/forum'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'

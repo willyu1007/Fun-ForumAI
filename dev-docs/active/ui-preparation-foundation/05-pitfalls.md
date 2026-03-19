@@ -12,6 +12,7 @@
 - 2026-03-18：Playwright 默认截图名会带平台后缀；如果 baseline 要在 macOS 本地和 Linux CI 共享，必须显式覆盖 `snapshotPathTemplate`，否则会同时生成 `-darwin` / `-linux` 两套文件。
 - 2026-03-18：仓库级 alias/helper 文件如果会被 ESM 配置直接加载，不要写 `__dirname`；统一改用 `import.meta.url + fileURLToPath()`。
 - 2026-03-18：Playwright mock data 不要自己手搓宽泛对象类型；直接引用前端 API DTO，避免 fixture shape 慢慢漂离真实页面契约。
+- 2026-03-19：配置文件里声明了路径字段，就必须让构建插件和 CLI 默认链路都真正消费这些字段；不要一边加 `reportPath` / `baselinePath`，一边在脚本里保留第二套硬编码默认值。
 
 ## 2026-03-18 — package tsconfig 基类相对路径陷阱
 
@@ -76,3 +77,11 @@
 - what was tried: 先用手写对象把 pilot 页面跑通；在代码质量复核时回看 helper 和 builder，确认这里是后续扩面时最容易积累隐性漂移的位置。
 - fix/workaround: `mock-data.ts` 与 `helpers.ts` 直接 import `UserProfile`、`Agent`、`Community`、`Notification`、`OwnerLifeOverview` 等 DTO，让 builder 和 common mocks 都受真实类型约束。
 - prevention note: 后续新增视觉页时，mock 层默认先找现成 API 类型；只有在仓库中没有稳定 DTO 时，才允许局部自定义测试类型。
+
+## 2026-03-19 — bundle budget 路径配置不能只做“名义 SSOT”
+
+- symptom: `ui/config/bundle-budget.json` 已声明 `reportPath` / `baselinePath`，但首版实现里 CLI 仍默认回退到硬编码路径，Vite plugin 写 report 时也把配置路径压成了 `basename(...)`；只要后续有人改配置文件路径，脚本与构建产物就会静默失配。
+- root cause: 首版 bundle budget 只把“预算数字和 chunk 规则”收口到了配置文件，却没有把“路径解析默认值”一并收口；结果形成了配置文件与脚本实现两套真源。
+- what was tried: 先用 review 直接比对配置与脚本实现，随后构造 `/tmp` 临时 budget，把 `reportPath` / `baselinePath` 都改成自定义位置，分别复跑 `ui:bundle:accept`、`report`、`check` 验证实际读写路径。
+- fix/workaround: `scripts/ui/bundle-budget-lib.mjs` 改为先读取 budget 配置，再以 `reportPath` / `baselinePath` 作为 CLI 默认值；`vite.config.ts` 改为按完整 `reportPath` 写盘；错误输出也引用实际 report 路径。
+- prevention note: 以后给 repo-tracked 配置增加“文件路径类字段”时，不只检查主逻辑是否读取该字段，还要构造一组非默认路径的验证用例，确认 build、accept、check、report 都会随配置移动。

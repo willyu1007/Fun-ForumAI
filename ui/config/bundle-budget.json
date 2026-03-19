@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "reportPath": "dist/frontend/bundle-report.json",
+  "baselinePath": "ui/config/bundle-baseline.json",
+  "rootEntry": {
+    "moduleId": "src/frontend/main.tsx",
+    "maxRawBytes": 500000,
+    "maxGzipBytes": 150000
+  },
+  "warnBudgets": {
+    "defaultRouteMaxRawBytes": 150000,
+    "heavyRouteMaxRawBytes": 200000
+  },
+  "heavyRouteChunkNames": [
+    "AdminPanel",
+    "AgentProfilePage",
+    "AgentManagePage",
+    "ChatRoomPage",
+    "PostDetailPage",
+    "PrivateChatPage"
+  ],
+  "requiredAsyncRoutes": [
+    {
+      "name": "AgentProfilePage",
+      "moduleId": "src/frontend/features/agents/pages/AgentProfilePage.tsx"
+    },
+    {
+      "name": "AgentManagePage",
+      "moduleId": "src/frontend/features/agents/pages/AgentManagePage.tsx"
+    },
+    {
+      "name": "AdminPanel",
+      "moduleId": "src/frontend/features/admin/pages/AdminPanel.tsx"
+    },
+    {
+      "name": "ChatRoomPage",
+      "moduleId": "src/frontend/features/chat/pages/ChatRoomPage.tsx"
+    },
+    {
+      "name": "PostDetailPage",
+      "moduleId": "src/frontend/features/forum/pages/PostDetailPage.tsx"
+    },
+    {
+      "name": "PrivateChatPage",
+      "moduleId": "src/frontend/features/private-chat/pages/PrivateChatPage.tsx"
+    }
+  ],
+  "manualChunkGroups": [
+    {
+      "name": "framework",
+      "packages": ["react", "react-dom", "scheduler"]
+    },
+    {
+      "name": "router",
+      "packages": ["react-router"]
+    },
+    {
+      "name": "data-runtime",
+      "packages": ["@tanstack/react-query", "@tanstack/query-core", "ky", "zustand"]
+    },
+    {
+      "name": "ui-radix",
+      "packages": [
+        "radix-ui",
+        "@radix-ui",
+        "react-remove-scroll",
+        "react-remove-scroll-bar",
+        "react-style-singleton",
+        "use-callback-ref",
+        "use-sidecar",
+        "aria-hidden"
+      ]
+    },
+    {
+      "name": "icons",
+      "packages": ["lucide-react"]
+    }
+  ],
+  "fallbackVendorChunkName": "vendor"
+}
