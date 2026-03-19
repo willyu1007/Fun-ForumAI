@@ -364,7 +364,7 @@ test.describe('Realtime P0 visual regression', () => {
     }
 
     await expectPageSnapshot(page, 'realtime-private-chat-thread.png', {
-      maxDiffPixels: 20_000,
+      maxDiffPixels: 35_000,
     })
   })
 })

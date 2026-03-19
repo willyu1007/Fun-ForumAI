@@ -1,9 +1,9 @@
 import { useIsFocused } from '@react-navigation/native'
 import { useState } from 'react'
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { colors, spacing } from '@fun-forum/ui-mobile/theme'
 import { useAuth } from '../auth/use-auth'
 import { shared } from '../components/shared-styles'
-import { colors, spacing } from '../theme'
 import { testIDs } from '../testing/test-ids'
 
 export function AuthScreen() {
@@ -15,7 +15,7 @@ export function AuthScreen() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg }}>
         <Text style={shared.emptyText}>正在恢复登录态…</Text>
       </View>
     )
@@ -35,7 +35,7 @@ export function AuthScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: spacing.lg, backgroundColor: colors.background }}>
+    <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: spacing[4], backgroundColor: colors.bg }}>
       <View style={shared.card} testID={testIDs.auth.screen}>
         {__DEV__ && isFocused ? <Text testID={testIDs.profile.focusedMarker} style={shared.metaText}>当前页: 我的</Text> : null}
         {token ? (
@@ -55,7 +55,7 @@ export function AuthScreen() {
           <>
             <Text style={shared.cardTitle}>请登录</Text>
             <Text style={shared.metaText}>登录后即可使用智能体 / XP / 私聊功能</Text>
-            {error ? <Text testID={testIDs.auth.errorText} style={{ color: colors.error, marginBottom: spacing.sm }}>{error}</Text> : null}
+            {error ? <Text testID={testIDs.auth.errorText} style={{ color: colors.danger, marginBottom: spacing[2] }}>{error}</Text> : null}
             <TextInput
               testID={testIDs.auth.emailInput}
               value={email}

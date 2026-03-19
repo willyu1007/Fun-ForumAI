@@ -11,6 +11,7 @@
 - 2026-03-19：完成 `AppShellContainer + widgets` 容器化、修复 `shared -> features` 失效 lint、3 个 pilot 页面真实采用 `@fun-forum/ui-web/patterns`、`.dark` bridge 全量移除、mobile 兼容层冻结、shadcn/PR 治理规约落库。
 - 2026-03-19：Playwright 扩面到全部 P0 页面与 `default.light/default.dark` 双主题，共 6 个 spec、168 个 visual tests；历史 3-project baseline 已清理，当前仓库仅保留 6-project 快照。
 - 2026-03-19：离线 UI 审计已收口。`ui-governance-gate` 已切到与现状一致的 `semantic-token-guarded` 策略，最新 full run `.ai/.tmp/ui/20260319T050955Z-48487/` 为 `errors=0 / spec_status=OK / exception_status=OK / playwright=PASS`；对应 approvals 为 `ui/approvals/20260319T050855Z-exception-98bcd766.json` 与 `ui/approvals/20260319T050950Z-spec_change-f3d1d0f0.json`。
+- 2026-03-19：继续收紧壳层与低优先漂移：`ShellTopBar` 改成纯 presenter、top-bar 业务装配迁到 container、`DevAuthToolbar` 移出 `shared`、无运行时消费者的 `OnboardingBar` 直接删除、`components.json` 调整为 `default + slate`、mobile 仓库内真实 caller 全部改为 `@fun-forum/ui-mobile/theme` 并加导入护栏。
 
 ### 已完成阶段
 
@@ -28,6 +29,7 @@
 ### 长期观察
 
 - 当前任务范围内已无阻塞待执行项。
+- `src/frontend/shared/components/` 现只保留纯共享组件；不要把 auth/guidance/notification/dev widget 再放回 `shared`。
 - Linux CI 字体渲染一致性继续作为长期观察项；若后续升级 Chromium 或 runner 字体包，需优先复核 `tests/web/playwright/` baseline。
 - Python `ui-governance-gate` 现已通过离线 repo-baseline 审计，但它仍未接入 CI，因此现在的定位是“已通过的离线审计与 approval/evidence gate”，不是当前 workflow 里的 active merge gate。当前真正在线上阻断 PR 的仍是 `pnpm lint`、`pnpm ui:check`、`pnpm ui:bundle:check` 与 `pnpm test:e2e:playwright`。
 

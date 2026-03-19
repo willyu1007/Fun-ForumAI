@@ -1,7 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { Text } from 'react-native'
+import { colors } from '@fun-forum/ui-mobile/theme'
 import { useAuth } from '../auth/use-auth'
-import { colors } from '../theme'
 import { FeedStack } from './feed-stack'
 import { RoomsStack } from './rooms-stack'
 import { AgentsStack } from './agents-stack'
@@ -27,7 +27,7 @@ export function MainTabs() {
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
-        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.surfaceBorder },
+        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
       }}
     >
       <Tab.Screen

@@ -34,6 +34,16 @@ const DARK_CLASS_TOGGLE = /classList\.(?:toggle|add|remove)\(\s*['"]dark['"]/
 const DARK_SELECTOR = /(^|[^A-Za-z0-9_-])\.dark(?:[\s:{[(]|$)/m
 const DARK_UTILITY = /\bdark:[^\s"'`]+/
 
+function shouldSkipDirectory(name) {
+  return (
+    name === 'dist' ||
+    name === 'node_modules' ||
+    name === 'generated' ||
+    name.startsWith('dist-') ||
+    name.startsWith('.dist')
+  )
+}
+
 function collectFiles(dir) {
   const files = []
 
@@ -44,7 +54,7 @@ function collectFiles(dir) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const fullPath = resolve(dir, entry.name)
     if (entry.isDirectory()) {
-      if (entry.name === 'dist' || entry.name === 'node_modules' || entry.name === 'generated') {
+      if (shouldSkipDirectory(entry.name)) {
         continue
       }
       files.push(...collectFiles(fullPath))

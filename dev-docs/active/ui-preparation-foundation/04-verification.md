@@ -117,3 +117,25 @@
 | offline audit closure | `python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py approval-approve --request .ai/.tmp/ui/20260319T050904Z-45405/approval.request.json --approved-by codex` | pass | 2026-03-19；生成 `ui/approvals/20260319T050950Z-spec_change-f3d1d0f0.json`，收口最新 spec fingerprint |
 | offline audit closure | `python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py approval-status` | pass | 2026-03-19；latest spec/exception fingerprints 与 approvals 完全一致 |
 | offline audit closure | `python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py run --mode full` | pass | 2026-03-19；evidence `.ai/.tmp/ui/20260319T050955Z-48487/` 中 `errors=0 / warnings=0 / spec_status=OK / exception_status=OK / playwright=PASS`，离线 UI 审计正式收口 |
+| shell boundary follow-up | `pnpm exec eslint src/frontend/app/shell/AppShellContainer.tsx src/frontend/widgets/shell/ShellTopBar.tsx src/frontend/widgets/shell/ShellTopBarContainer.tsx src/frontend/widgets/dev/DevAuthToolbar.tsx src/frontend/app/shell/__tests__/AppShellContainer.test.tsx src/frontend/widgets/shell/__tests__/ShellTopBar.test.tsx src/frontend/widgets/shell/__tests__/ShellTopBarContainer.test.tsx` | pass | 2026-03-19；壳层 presenter/container 拆分、shared 业务组件收口与对应测试文件的定向 ESLint 全部通过 |
+| shell boundary follow-up | `pnpm exec vitest run src/frontend/app/shell/__tests__/AppShellContainer.test.tsx src/frontend/widgets/shell/__tests__/ShellTopBar.test.tsx src/frontend/widgets/shell/__tests__/ShellTopBarContainer.test.tsx` | pass | 2026-03-19；3 个测试文件、7 个测试通过，覆盖 `AppShellContainer` 装配边界与 `ShellTopBar` presenter/container 职责分离 |
+| shell boundary follow-up | `pnpm lint` | pass | 2026-03-19；壳层 presenter 化、shared 业务组件迁移、mobile 导入护栏与 docs 更新后，repo 级 ESLint 继续通过 |
+| shell boundary follow-up | `pnpm typecheck` | pass | 2026-03-19；清理 stale `packages/*/dist` 干扰后，root `tsc -b` 重新稳定通过，说明 shell/mobile 收口未引入类型回归 |
+| shell boundary follow-up | `pnpm ui:check` | pass | 2026-03-19；theme protocol、package runtime/typecheck、generated drift 与新增 mobile theme 导入护栏一并通过 |
+| shell boundary follow-up | `pnpm build` | pass | 2026-03-19；当前 `assets/index-*.js = 51.45 kB raw / 15.38 kB gzip`，壳层拆分未造成入口回退 |
+| shell boundary follow-up | `pnpm ui:bundle:check` | pass | 2026-03-19；bundle budget gate 继续通过，`framework` 仍是最大 JS chunk，root entry 未回归 |
+| shell boundary follow-up | `pnpm mobile:typecheck` | pass | 2026-03-19；mobile 三个真实 caller 全部改用 `@fun-forum/ui-mobile/theme` 后，app 仍可通过 `tsc --noEmit` |
+| shell boundary follow-up | `pnpm --filter @fun-forum/mobile test -- --runInBand src/__tests__/theme.test.ts` | pass | 2026-03-19；legacy adapter 仍保留冻结 surface，但仓库内正常业务调用已清空 |
+| shell boundary follow-up | `printf "import { isGuidanceEnabled } from '@/features/guidance/feature-flags'..." \| pnpm exec eslint --stdin --stdin-filename src/frontend/shared/__lint-boundary-check.tsx` | fail-as-expected | 2026-03-19；临时构造 `shared -> features` 违规导入后，ESLint 直接报 `shared should not depend on features`，说明边界护栏仍有效 |
+| shell boundary follow-up | `printf "import { colors } from '../theme'..." \| pnpm exec eslint --stdin --stdin-filename apps/mobile/src/navigation/__lint-theme-import-check.tsx` | fail-as-expected | 2026-03-19；临时构造 mobile 对 `../theme` 的新导入后，ESLint 明确要求改用 `@fun-forum/ui-mobile/theme` |
+| shell boundary follow-up | `pnpm test:e2e:playwright:update` | pass | 2026-03-19；刷新 6 个 spec、168 个 visual baselines；本轮实际变化集中在 `realtime-private-chat-thread` 的 dark baseline |
+| shell boundary follow-up | `pnpm test:e2e:playwright` | pass | 2026-03-19；将 `realtime-private-chat-thread` 单图 bounded tolerance 收口到 `35_000` 后，168/168 tests 全部通过 |
+| final review & cleanup | `pnpm lint` | pass | 2026-03-19；删除无消费者的 `OnboardingBar` 后重新复核，repo 级 ESLint 继续通过 |
+| final review & cleanup | `pnpm exec vitest run src/frontend/app/shell/__tests__/AppShellContainer.test.tsx src/frontend/widgets/shell/__tests__/ShellTopBar.test.tsx src/frontend/widgets/shell/__tests__/ShellTopBarContainer.test.tsx` | pass | 2026-03-19；3 个测试文件、7 个测试继续通过，说明删掉 stale widget 没有影响壳层行为 |
+| final review & cleanup | `pnpm typecheck` | pass | 2026-03-19；当前 worktree 下 `tsc -b` 继续通过，未因删除陈旧组件引入类型断链 |
+| final review & cleanup | `pnpm mobile:typecheck` | pass | 2026-03-19；mobile app 仍通过 `tsc --noEmit`，legacy theme adapter 冻结保持有效 |
+| final review & cleanup | `pnpm --filter @fun-forum/mobile test -- --runInBand src/__tests__/theme.test.ts` | pass | 2026-03-19；legacy alias surface 未漂移，仍与冻结 key 集合完全一致 |
+| final review & cleanup | `pnpm ui:check` | pass | 2026-03-19；theme protocol、package runtime/typecheck 与 generated drift 再次通过 |
+| final review & cleanup | `pnpm build` | pass | 2026-03-19；当前 `assets/index-*.js = 52.67 kB raw / 15.87 kB gzip`，仍显著低于 hard budget |
+| final review & cleanup | `pnpm ui:bundle:check` | pass | 2026-03-19；bundle gate 继续通过，`framework` / `ui-radix` / `router` 三个核心 vendor chunk 维持基线内 |
+| final review & cleanup | `pnpm test:e2e:playwright` | pass | 2026-03-19；全量 168 个 visual tests 再次通过，说明本轮最终状态与当前 baseline 一致 |

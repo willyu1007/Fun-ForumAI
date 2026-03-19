@@ -17,6 +17,8 @@
 - 2026-03-19：Playwright 截图前必须主动把 document 和 `app-shell-content` 的 scroll 归零；不要假设单跑通过就代表全量 suite 不会带着滚动位置截图。
 - 2026-03-19：对高文本密度 split-pane 页面，优先使用“单页局部、有限度”的 screenshot tolerance；不要因为一张图有栅格噪声就放宽全局 visual threshold。
 - 2026-03-19：不要再按历史 `Tailwind B1-layout-only` 理解当前仓库治理策略；repo 现行策略是 `semantic-token-guarded`。任何策略调整都必须同步 `ui/config/governance.json`、`docs/context/ui/ui-spec.json`、`ui-governance-gate` skill 文档和 approval 指纹。
+- 2026-03-19：不要把 auth / guidance / notification / dev-only widget 再放回 `src/frontend/shared/components/`。当前约束是：`shared` 只留纯共享 UI，壳层业务装配在 `src/frontend/widgets/shell/*` 和 `src/frontend/app/shell/*`。
+- 2026-03-19：不要在 mobile 新代码里继续导入 `apps/mobile/src/theme.ts`。仓库内正常业务调用已经全部迁到 `@fun-forum/ui-mobile/theme`；legacy adapter 只为兼容层和冻结测试保留。
 - 2026-03-19：不要把“Python gate 已通过离线审计”误写成“它已经是 active CI merge gate”；当前 CI 仍只跑 `lint + ui:check + ui:bundle:check + Playwright`，Python gate 还没接线。
 
 ## 2026-03-18 — package tsconfig 基类相对路径陷阱
@@ -125,3 +127,11 @@
 - what was tried: 先重新接受整组 `realtime` baseline，再单独与全量交叉复跑；确认问题只集中在 `realtime-private-chat-thread`，且 diff 一直低于 20k pixels，说明不是布局或数据层回归。
 - fix/workaround: `expectPageSnapshot()` 增加可选 `maxDiffPixels` 参数，并仅在 `realtime-private-chat-thread` 这一张图上设置 `20_000` 的 bounded 容差；其它页面继续保持默认严格阈值。
 - prevention note: 后续如果又遇到类似“单页有稳定噪声、全局其余页面稳定”的情况，优先做单图局部容差或进一步拆分截图范围；不要因为一页抖动就放宽整个 suite 的门槛。
+
+## 2026-03-19 — stale dist 产物会同时拖慢 `typecheck` 和 `ui:check`
+
+- symptom: `pnpm typecheck` 与 `pnpm ui:check` 一度表现为“长时间无输出”，看起来像 shell/mobile 重构引入了新的脚本死循环，但单文件 lint 和 vitest 都正常。
+- root cause: 若 `packages/*/dist` 下残留异常命名的旧构建目录或手工搬运出的备份目录，`build-package-dists.mjs` 与 `check-theme-protocol.mjs` 会把它们一起扫描，导致配置链路和 theme protocol 巡检都被历史垃圾产物拖慢甚至卡住。
+- what was tried: 先分别单跑 `pnpm exec vitest`、定向 ESLint 与 `pnpm typecheck`，确认问题不在本轮业务代码；随后检查 `packages/*/dist*`，发现存在多个 stale 目录与异常文件名产物。
+- fix/workaround: 清理或移走异常 `dist*` 目录，并让 `scripts/ui/check-theme-protocol.mjs` 显式跳过 `dist`、`dist-*`、`.dist*`、`node_modules`、`generated` 这类产物目录；之后 `pnpm typecheck` 与 `pnpm ui:check` 重新恢复稳定。
+- prevention note: 后续如果需要临时备份 package 产物，不要在包目录下命名成 `dist-*` 或 `.dist-*`；优先放到 `.ai/.tmp/` 或仓库外临时目录，避免被构建/巡检脚本误扫。

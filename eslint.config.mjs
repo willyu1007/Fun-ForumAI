@@ -110,4 +110,26 @@ export default tseslint.config(
       }],
     },
   },
+  // Mobile app should consume the generated package theme directly, not the legacy adapter.
+  {
+    files: ['apps/mobile/src/**/*.{ts,tsx}'],
+    ignores: ['apps/mobile/src/theme.ts', 'apps/mobile/src/__tests__/theme.test.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          {
+            group: [
+              '../theme',
+              '../theme.ts',
+              './theme',
+              './theme.ts',
+              '../../theme',
+              '../../theme.ts',
+            ],
+            message: 'Use @fun-forum/ui-mobile/theme instead of the legacy apps/mobile theme adapter',
+          },
+        ],
+      }],
+    },
+  },
 )

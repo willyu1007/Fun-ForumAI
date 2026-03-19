@@ -3,7 +3,7 @@
 ## Shadcn Scope
 
 - `components.json` exists only to scaffold low-level primitives.
-- `style: "new-york"` and `baseColor: "neutral"` are generator defaults, not the product visual source of truth.
+- `components.json` is intentionally neutralized to `style: "default"` and `baseColor: "slate"` so future scaffolding does not reintroduce the repo's old shadcn defaults.
 - Any generated shadcn output MUST be adapted to the repo's tokens, semantic classes, pattern layouts, and theme protocol before merge.
 
 ## Visual Source Of Truth

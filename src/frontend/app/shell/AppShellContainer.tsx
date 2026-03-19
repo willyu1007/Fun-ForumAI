@@ -2,20 +2,20 @@ import { Outlet, useLocation } from 'react-router'
 import { AppShell } from '@fun-forum/ui-web/shell'
 import { useSidebarStore } from '@/shared/stores/sidebar-store'
 import { cn } from '@/lib/utils'
-import { DevAuthToolbar } from '@/shared/components/DevAuthToolbar'
+import { DevAuthToolbar } from '@/widgets/dev/DevAuthToolbar'
 import { ShellLeftRail } from '@/widgets/shell/ShellLeftRail'
 import { ShellRightRail } from '@/widgets/shell/ShellRightRail'
-import { ShellTopBar } from '@/widgets/shell/ShellTopBar'
+import { ShellTopBarContainer } from '@/widgets/shell/ShellTopBarContainer'
 
 export function AppShellContainer() {
-  const { leftOpen } = useSidebarStore()
+  const { leftOpen, toggleLeft } = useSidebarStore()
   const { pathname } = useLocation()
   const showRightRail = pathname === '/' || pathname.startsWith('/c/')
 
   return (
     <AppShell
       className="min-h-screen bg-background"
-      topBar={<ShellTopBar />}
+      topBar={<ShellTopBarContainer leftOpen={leftOpen} onToggleLeft={toggleLeft} />}
       leftRail={
         <div
           className={cn(

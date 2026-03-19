@@ -625,7 +625,7 @@ bundle budget 配置建议（当时记录，现已落地）：
 ## 阶段 6 follow-up: 离线审计收口 (2026-03-19)
 
 - 将 UI 治理策略从历史 `B1-layout-only` 收口到当前仓库真实执行标准 `semantic-token-guarded`：
-  - `ui/config/governance.json`
+- `ui/config/governance.json`
   - `docs/context/ui/ui-spec.json`
   - `.ai/skills/features/ui/ui-governance-gate/*`
 - 同步收掉 Python gate 暴露出的剩余真实问题：
@@ -645,3 +645,26 @@ bundle budget 配置建议（当时记录，现已落地）：
   - `exception_status = OK`
   - `playwright = PASS`
   - 说明当前仓库已经完成离线审计收口，后续若要把 Python gate 接进 CI，不再需要先处理“历史 B1 backlog”这类假阻断。
+
+## 阶段 6 follow-up: 壳层边界与低优先漂移再收口 (2026-03-19)
+
+- `src/frontend/widgets/shell/ShellTopBar.tsx` 改成纯 presenter：
+  - 不再直接持有 `useAuth()`、`useGuidanceInbox()`、`isGuidanceEnabled()`、redirect state、logout 等业务逻辑
+  - 仅保留品牌区、sidebar toggle、`mobileMenuTrigger`、`primaryActions`、`accountArea` 这些结构 slot
+- 新增 `src/frontend/widgets/shell/ShellTopBarContainer.tsx`，承接 top bar 的业务装配：
+  - auth CTA / user menu
+  - guidance inbox 入口
+  - `AgentPanelWidget`
+  - `ShellNotificationBell`
+- `src/frontend/app/shell/AppShellContainer.tsx` 进一步收口为壳布局容器：
+  - 自己持有 `useSidebarStore()`
+  - 仅把 `leftOpen` / `toggleLeft` 传给 `ShellTopBarContainer`
+  - 不再直接知道 top bar 内部业务 hook
+- `src/frontend/shared/components/DevAuthToolbar.tsx` → `src/frontend/widgets/dev/DevAuthToolbar.tsx`
+- `src/frontend/shared/components/OnboardingBar.tsx` 没有任何运行时消费者，未继续保留为“迁移后的空壳组件”，而是直接删除
+- `shared/components` 收口后只剩 `LoadMore`、`RichTextLite` 这类纯共享 UI
+- `components.json` 从历史 `new-york + neutral` 调整到 `default + slate`，将 shadcn generator 默认值收回中性 preset。
+- mobile 仓库内仅剩的 3 个 caller (`shared-styles.ts`、`auth-screen.tsx`、`main-tabs.tsx`) 全部改为直接消费 `@fun-forum/ui-mobile/theme`。
+- ESLint 新增 `apps/mobile/src/**/*` 导入护栏：
+  - 正常业务代码禁止再导入 `../theme` / `./theme`
+  - 仅保留 `apps/mobile/src/theme.ts` 及其兼容性测试作为 legacy adapter 入口
