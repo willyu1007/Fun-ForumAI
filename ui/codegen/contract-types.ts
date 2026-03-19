@@ -56,8 +56,8 @@ export interface UiRoleAttributesMap {
     gap?: "0" | "1" | "2" | "3" | "4" | "5";
   };
   "icon-button": {
-    variant?: "ghost" | "secondary";
-    size?: "sm" | "md";
+    variant?: "primary" | "ghost" | "secondary" | "danger";
+    size?: "sm" | "md" | "lg";
     state?: "default" | "disabled";
   };
   "input": {
@@ -117,6 +117,7 @@ export interface UiRoleAttributesMap {
     variant?: "default" | "striped";
   };
   "tabs": {
+    orientation?: "horizontal" | "vertical";
     variant?: "line" | "pill";
     size?: "sm" | "md";
   };
@@ -132,8 +133,16 @@ export interface UiRoleAttributesMap {
     tone?: "info" | "success" | "warning" | "danger";
     variant?: "subtle" | "solid";
   };
-  "toggle": Record<string, never>;
-  "toggle-group": Record<string, never>;
+  "toggle": {
+    variant?: "default" | "outline";
+    size?: "default" | "sm" | "lg";
+    spacing?: "0" | "1" | "2";
+  };
+  "toggle-group": {
+    variant?: "default" | "outline";
+    size?: "default" | "sm" | "lg";
+    spacing?: "0" | "1" | "2";
+  };
   "toolbar": {
     align?: "start" | "between" | "end";
     wrap?: "wrap" | "nowrap";
@@ -400,12 +409,15 @@ export const UI_ROLE_MANIFEST = {
   "icon-button": {
     "attrs": {
       "variant": [
+        "primary",
         "ghost",
-        "secondary"
+        "secondary",
+        "danger"
       ],
       "size": [
         "sm",
-        "md"
+        "md",
+        "lg"
       ],
       "state": [
         "default",
@@ -667,6 +679,10 @@ export const UI_ROLE_MANIFEST = {
   },
   "tabs": {
     "attrs": {
+      "orientation": [
+        "horizontal",
+        "vertical"
+      ],
       "variant": [
         "line",
         "pill"
@@ -784,13 +800,43 @@ export const UI_ROLE_MANIFEST = {
     ]
   },
   "toggle": {
-    "attrs": {},
+    "attrs": {
+      "variant": [
+        "default",
+        "outline"
+      ],
+      "size": [
+        "default",
+        "sm",
+        "lg"
+      ],
+      "spacing": [
+        "0",
+        "1",
+        "2"
+      ]
+    },
     "slots": [
       "toggle"
     ]
   },
   "toggle-group": {
-    "attrs": {},
+    "attrs": {
+      "variant": [
+        "default",
+        "outline"
+      ],
+      "size": [
+        "default",
+        "sm",
+        "lg"
+      ],
+      "spacing": [
+        "0",
+        "1",
+        "2"
+      ]
+    },
     "slots": [
       "toggle-group",
       "toggle-group-item"
@@ -816,7 +862,7 @@ export const UI_ROLE_MANIFEST = {
 export const CONTRACT_META = {
   "contract_version": "1.0.0",
   "description": "UI style contract for data-ui based rendering. Roles and enumerations are intentionally small and stable. Expand only via approved RFC.",
-  "tailwind_policy": "B1-layout-only",
+  "tailwind_policy": "semantic-token-guarded",
   "theme_policy": "token-only"
 } as const;
 

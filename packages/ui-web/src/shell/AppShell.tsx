@@ -32,25 +32,25 @@ export function AppShell({
   return (
     <div
       {...dataUi('page', { layout: 'app' })}
-      className={className}
+      className={className ? `flex min-h-screen flex-col ${className}` : 'flex min-h-screen flex-col'}
       data-testid="app-shell"
       data-left-rail-open={leftRailOpen || undefined}
     >
       {/* Top Bar */}
       {topBar && (
-        <header {...dataSlot('header')} className="h-14 border-b shrink-0">
+        <header {...dataSlot('header')} className="shrink-0">
           {topBar}
         </header>
       )}
 
       {/* Main area with sidebars */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex min-h-0 flex-1">
         {/* Left Rail */}
         {leftRail && (
           <aside
             {...dataSlot('aside')}
             data-rail="left"
-            className={`hidden md:block border-r shrink-0 transition-[width] ${leftRailOpen ? 'w-60' : 'w-0 overflow-hidden'}`}
+            className="hidden shrink-0 md:block"
           >
             {leftRail}
           </aside>
@@ -70,7 +70,7 @@ export function AppShell({
           <aside
             {...dataSlot('aside')}
             data-rail="right"
-            className="hidden lg:block w-80 border-l shrink-0"
+            className="hidden shrink-0 lg:block"
           >
             {rightRail}
           </aside>
@@ -79,7 +79,7 @@ export function AppShell({
 
       {/* Footer */}
       {footer && (
-        <footer {...dataSlot('footer')} className="border-t shrink-0">
+        <footer {...dataSlot('footer')} className="shrink-0">
           {footer}
         </footer>
       )}

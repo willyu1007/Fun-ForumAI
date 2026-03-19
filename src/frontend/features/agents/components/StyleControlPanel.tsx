@@ -93,7 +93,9 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
             <label
               key={opt.value}
               className={`${"cursor-pointer rounded-lg border px-3 py-1.5 text-sm transition-colors"} ${
-                local.mood === opt.value ? "border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300" : "border-border hover:bg-muted"
+                local.mood === opt.value
+                  ? 'border-primary/30 bg-primary/10 text-primary'
+                  : 'border-border hover:bg-muted'
               }`}
             >
               <input
@@ -121,7 +123,7 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
                 type="button"
                 onClick={() => toggleHabit(opt.value)}
                 className={`${"rounded-full border px-3 py-1 text-sm transition-colors"} ${
-                  active ? "border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300" : "border-border hover:bg-muted"
+                  active ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border hover:bg-muted'
                 }`}
               >
                 {opt.label}
@@ -173,7 +175,7 @@ function SliderField({
         step={1}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-sky-500"
+        className="w-full accent-primary"
       />
       <div className={"mt-0.5 flex justify-between text-xs text-muted-foreground"}>
         <span>{leftLabel}</span>

@@ -10,6 +10,7 @@ interface SseEvent {
 
 const RECONNECT_DELAY_MS = 3_000
 const MAX_RECONNECT_ATTEMPTS = 10
+const SSE_DISABLED = import.meta.env.VITE_FF_DISABLE_SSE === 'true'
 
 type PrivateSseEventType = 'PRIVATE_MESSAGE_CREATED' | 'PRIVATE_SESSION_ENDED'
 
@@ -49,6 +50,10 @@ export function usePrivateSessionSse(sessionId: string, agentId: string) {
 
   useEffect(() => {
     if (!sessionId) return
+    if (SSE_DISABLED) {
+      setStatus({ phase: 'offline', reconnectAttempts: 0 })
+      return
+    }
 
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null
     let aborted = false

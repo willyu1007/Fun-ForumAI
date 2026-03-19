@@ -99,6 +99,7 @@ export default tseslint.config(
   // Discourage uix* usage in new code (warning for now, will become error after migration)
   {
     files: ['src/frontend/**/*.{ts,tsx}'],
+    ignores: ['src/frontend/shared/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': ['warn', {
         paths: [

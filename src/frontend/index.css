@@ -3,8 +3,6 @@
 @import "shadcn/tailwind.css";
 @import "@fun-forum/ui-web/styles";
 
-@custom-variant dark (&:is(.dark *));
-
 @theme inline {
   --radius-sm: var(--ui-radius-sm);
   --radius-md: var(--ui-radius-md);
@@ -28,6 +26,11 @@
   --color-accent: var(--ui-color-accent);
   --color-accent-foreground: var(--ui-color-on-accent);
   --color-destructive: var(--ui-color-danger);
+  --color-destructive-foreground: var(--ui-color-on-danger);
+  --color-success: var(--ui-color-success);
+  --color-success-foreground: var(--ui-color-on-success);
+  --color-warning: var(--ui-color-warning);
+  --color-warning-foreground: var(--ui-color-on-warning);
   --color-border: var(--ui-color-border);
   --color-input: var(--ui-color-border);
   --color-ring: var(--ui-color-focus-ring);

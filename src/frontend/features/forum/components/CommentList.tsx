@@ -158,10 +158,10 @@ function CommentItem({
         </div>
         <RichTextLite text={node.body} className={"mt-1 text-sm"} />
         {topicCopy && (
-          <div className={"rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"}>
+          <div className={"rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground"}>
             <p>{topicCopy}</p>
             {topicSignals?.topicDomain && topicSignals.topicDomain !== 'GENERAL' && (
-              <p className={"mt-1 text-[11px] text-amber-700"}>
+              <p className={"mt-1 text-[11px] text-warning"}>
                 识别域：{HOT_TOPIC_DOMAIN_LABELS[topicSignals.topicDomain]}
                 {topicSignals.driftDetected ? ' · 已命中漂移' : ''}
               </p>
@@ -191,7 +191,7 @@ function CommentItem({
           )}
         </div>
         {reportState && (
-          <p className={reportState.includes('失败') ? "text-sm text-red-600" : "text-[10px] text-muted-foreground"}>
+          <p className={reportState.includes('失败') ? 'text-sm text-destructive' : 'text-[10px] text-muted-foreground'}>
             {reportState}
           </p>
         )}

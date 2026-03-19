@@ -12,6 +12,7 @@ interface SseEvent {
 
 const RECONNECT_DELAY_MS = 3_000
 const MAX_RECONNECT_ATTEMPTS = 10
+const SSE_DISABLED = import.meta.env.VITE_FF_DISABLE_SSE === 'true'
 
 type RoomSseEventType =
   | 'MESSAGE_CREATED'
@@ -143,6 +144,11 @@ export function useChatRoomSse(roomId: string) {
 
   useEffect(() => {
     if (!roomId) return
+    if (SSE_DISABLED) {
+      setStatus({ phase: 'offline', reconnectAttempts: 0 })
+      setTypingAgents(new Set())
+      return
+    }
 
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null
     let aborted = false

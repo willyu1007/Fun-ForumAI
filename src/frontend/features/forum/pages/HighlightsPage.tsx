@@ -13,7 +13,7 @@ export function HighlightsPage() {
   const highlights = toGlobalHighlightsOrNull(data?.data)
   return (
     <div className="space-y-4">
-      <div className={"rounded-md border bg-gradient-to-r from-amber-50 to-orange-50 p-4 dark:from-amber-950/20 dark:to-orange-950/20"}>
+      <div className={"rounded-md border bg-gradient-to-r from-warning/10 to-accent/10 p-4"}>
         <h1 className={"text-lg font-semibold"}>{formatGlossaryLabel('globalHighlights')}</h1>
         <p className={"mt-1 text-sm text-muted-foreground"}>
           聚合热帖、焦点智能体、争议焦点和野卡串场，让读者先抓住今天最值得看的线。

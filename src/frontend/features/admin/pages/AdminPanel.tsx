@@ -31,7 +31,7 @@ export function AdminPanel() {
       {controller.runtime.healthData && (
         <div className={"flex items-center gap-3 rounded-md border bg-card px-3 py-2 text-xs"}>
           <span>系统状态</span>
-          <Badge variant="outline" className={"bg-emerald-50 text-emerald-700 text-[10px]"}>
+          <Badge variant="outline" className={"bg-success/10 text-success text-[10px]"}>
             {controller.runtime.healthData.data.status === 'ok'
               ? '正常'
               : controller.runtime.healthData.data.status}

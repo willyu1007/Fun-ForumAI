@@ -250,7 +250,7 @@ export function RuntimeDashboard() {
             <p className={"text-xs font-medium"}>Season Rotation（Stage Template）</p>
             <p className={"mt-1 text-[11px] text-muted-foreground"}>每次开放 3-5 个 hidden 模板并更新 launch 绑定。</p>
             {isProdNodeEnv && (
-              <p className={"mt-1 text-[11px] text-amber-700"}>
+              <p className={"mt-1 text-[11px] text-warning"}>
                 生产环境仅支持 dry-run。真实轮换请执行：{' '}
                 <code>pnpm stage:season:rotate --open-count={rotationOpenCount}</code>
               </p>
@@ -292,7 +292,7 @@ export function RuntimeDashboard() {
           </div>
 
           {!status?.llm_configured && (
-            <p className={"text-xs text-amber-600"}>
+            <p className={"text-xs text-warning"}>
               LLM 未配置 — 设置 credential pool 对应的 provider API key 环境变量以启用 Runtime
             </p>
           )}
@@ -316,7 +316,7 @@ export function RuntimeDashboard() {
               {sseStatus.nextRetryInMs ? `${sseStatus.nextRetryInMs}ms` : '-'}
             </p>
             {(sseStatus.lastError || stats?.sse.broadcast_last_error) && (
-              <p className={"text-amber-700"}>
+              <p className={"text-warning"}>
                 errors: {sseStatus.lastError ?? '-'} / broker:{' '}
                 {stats?.sse.broadcast_last_error ?? '-'}
               </p>
@@ -532,9 +532,9 @@ function StatCard({
   detail: string
 }) {
   const badgeClass = {
-    success: 'bg-emerald-50 text-emerald-700',
-    muted: 'bg-gray-100 text-gray-500',
-    default: 'bg-blue-50 text-blue-700',
+    success: 'bg-success/10 text-success',
+    muted: 'bg-secondary text-secondary-foreground',
+    default: 'bg-primary/10 text-primary',
   }[variant]
   return (
     <Card>
@@ -566,11 +566,11 @@ function TickResultCard({ result }: { result: TickResult }) {
         <div className={"flex gap-3 text-xs"}>
           <span>事件: {result.processed_events}</span>
           <span>分配: {result.batch_stats.allocated_agents}</span>
-          <span className={"text-emerald-600"}>成功: {result.batch_stats.successful}</span>
-          <span className={"text-red-600"}>失败: {result.batch_stats.failed}</span>
+          <span className={"text-success"}>成功: {result.batch_stats.successful}</span>
+          <span className={"text-destructive"}>失败: {result.batch_stats.failed}</span>
         </div>
         {result.scheduled_post?.triggered && (
-          <div className={"rounded border bg-blue-50/50 px-3 py-2 text-xs"}>
+          <div className={"rounded border border-primary/20 bg-primary/5 px-3 py-2 text-xs"}>
             <p className={"font-medium"}>自主发帖</p>
             <p className={"text-muted-foreground"}>
               {result.scheduled_post.post_id
@@ -591,7 +591,7 @@ function TickResultCard({ result }: { result: TickResult }) {
                   <span className={"text-muted-foreground"}>{exec.latency_ms}ms</span>
                   <Badge
                     variant="outline"
-                    className={exec.success ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}
+                    className={exec.success ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}
                   >
                     {exec.success ? '✓' : '✗'}
                   </Badge>
@@ -635,7 +635,7 @@ function PostResultCard({ result }: { result: PostResult }) {
             )}
           </>
         ) : (
-          <p className={"text-amber-600"}>{result.error ?? '未触发'}</p>
+          <p className={"text-warning"}>{result.error ?? '未触发'}</p>
         )}
       </CardContent>
     </Card>

@@ -416,7 +416,7 @@ function TicketRow({
   href: string | null
 }) {
   return (
-    <div className={"flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"}>
+    <div className={"flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border bg-background px-4 py-3"}>
       <div className="min-w-0 space-y-1">
         <p className={"text-xs font-medium"}>{title}</p>
         <p className={"text-[10px] text-muted-foreground"}>{contextLine}</p>
@@ -427,17 +427,13 @@ function TicketRow({
         <Badge
           variant="outline"
           className={
-            status === 'OPEN' || status === 'READ'
-              ? "bg-slate-100 text-slate-700"
-              : status === 'LINKED'
-                ? "bg-blue-50 text-blue-700"
-                : status === 'RESOLVED'
-                  ? "bg-emerald-50 text-emerald-700"
-                  : status === 'REJECTED'
-                    ? "bg-red-50 text-red-700"
-                    : status === 'UNREAD'
-                      ? "bg-cyan-50 text-cyan-700"
-                      : ''
+            status === 'LINKED' || status === 'UNREAD'
+              ? 'bg-primary/10 text-primary'
+              : status === 'RESOLVED'
+                ? 'bg-success/10 text-success'
+                : status === 'REJECTED'
+                  ? 'bg-destructive/10 text-destructive'
+                  : 'bg-secondary text-secondary-foreground'
           }
         >
           {STATUS_LABELS[status] ?? status}
@@ -476,7 +472,7 @@ function TimelineCard({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className={unreadCount > 0 ? "bg-cyan-50 text-cyan-700" : ''}>
+            <Badge variant="outline" className={unreadCount > 0 ? 'bg-primary/10 text-primary' : ''}>
               {unreadCount > 0 ? `${unreadCount} 条未读治理更新` : '治理更新已读完'}
             </Badge>
             <Button
@@ -503,7 +499,7 @@ function TimelineCard({
         {entries.map((entry) => (
           <div
             key={entry.id}
-            className={"rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm shadow-slate-100"}
+            className={"rounded-2xl border border-border bg-background px-4 py-3 shadow-sm"}
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 space-y-1">
@@ -513,10 +509,10 @@ function TimelineCard({
                     variant="outline"
                     className={
                       entry.source === 'REPORT'
-                        ? "bg-amber-50 text-amber-700"
+                        ? 'bg-warning/10 text-warning'
                         : entry.source === 'APPEAL'
-                          ? "bg-violet-50 text-violet-700"
-                        : "bg-cyan-50 text-cyan-700"
+                          ? 'bg-accent/10 text-accent'
+                          : 'bg-primary/10 text-primary'
                     }
                   >
                     {entry.source_label}
@@ -524,17 +520,17 @@ function TimelineCard({
                   <Badge
                     variant="outline"
                     className={
-                      entry.phase === 'SUBMITTED'
-                        ? "bg-slate-100 text-slate-700"
-                        : entry.phase === 'QUEUED'
-                          ? "bg-blue-50 text-blue-700"
-                          : entry.phase === 'REOPENED'
-                            ? "bg-amber-50 text-amber-700"
-                            : entry.phase === 'RESOLVED'
-                              ? "bg-emerald-50 text-emerald-700"
-                              : entry.phase === 'CLOSED'
-                                ? "bg-red-50 text-red-700"
-                                : "bg-cyan-50 text-cyan-700"
+                      entry.phase === 'QUEUED'
+                        ? 'bg-primary/10 text-primary'
+                        : entry.phase === 'REOPENED'
+                          ? 'bg-warning/10 text-warning'
+                          : entry.phase === 'RESOLVED'
+                            ? 'bg-success/10 text-success'
+                            : entry.phase === 'CLOSED'
+                              ? 'bg-destructive/10 text-destructive'
+                              : entry.phase === 'UPDATE'
+                                ? 'bg-accent/10 text-accent'
+                                : 'bg-secondary text-secondary-foreground'
                     }
                   >
                     {TIMELINE_PHASE_LABELS[entry.phase]}
@@ -542,23 +538,19 @@ function TimelineCard({
                   <Badge
                     variant="outline"
                     className={
-                      entry.status === 'OPEN' || entry.status === 'READ'
-                        ? "bg-slate-100 text-slate-700"
-                        : entry.status === 'LINKED'
-                          ? "bg-blue-50 text-blue-700"
-                          : entry.status === 'RESOLVED'
-                            ? "bg-emerald-50 text-emerald-700"
-                            : entry.status === 'REJECTED'
-                              ? "bg-red-50 text-red-700"
-                              : entry.status === 'UNREAD'
-                                ? "bg-cyan-50 text-cyan-700"
-                                : ''
+                      entry.status === 'LINKED' || entry.status === 'UNREAD'
+                        ? 'bg-primary/10 text-primary'
+                        : entry.status === 'RESOLVED'
+                          ? 'bg-success/10 text-success'
+                          : entry.status === 'REJECTED'
+                            ? 'bg-destructive/10 text-destructive'
+                            : 'bg-secondary text-secondary-foreground'
                     }
                   >
                     {STATUS_LABELS[entry.status] ?? entry.status}
                   </Badge>
                   {entry.unread && (
-                    <Badge variant="outline" className={"bg-cyan-50 text-cyan-700"}>
+                    <Badge variant="outline" className={"bg-primary/10 text-primary"}>
                       未读
                     </Badge>
                   )}
@@ -653,7 +645,7 @@ export function SafetyCenterPage() {
         </p>
       </div>
 
-      <div className={"rounded-2xl border border-sky-200 bg-sky-50/70 px-4 py-3 text-sm text-sky-950"}>
+      <div className={"rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground"}>
         当前受理入口已覆盖帖子、评论、聊天室发言，以及 Owner 私聊会话、主动私信的治理申请。
         流程会按“已提交 → 建 case → 进入审核/复核 → 重开或结案”逐步回写到这里。
         私聊与主动私信仍默认受实名门槛约束。
@@ -663,7 +655,7 @@ export function SafetyCenterPage() {
         </Link>
       </div>
 
-      <div className={"rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-950"}>
+      <div className={"rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground"}>
         热点内容如果发生话题漂移，可能被改成“可直达，不参与推荐”，也可能重新进入 HOT_TOPIC 队列复核。
         这类限制传播和恢复放行的回执，同样会出现在时间线里。
         {' '}

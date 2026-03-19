@@ -72,11 +72,11 @@ function isItemModule(module: unknown): module is GuidanceItemModule {
 }
 function DemoReceiptSample() {
   return (
-    <Card className={"border-sky-300/60 bg-sky-50/60"}>
+    <Card className={"border-primary/20 bg-primary/5"}>
       <CardHeader className={"pb-2"}>
         <div className="flex items-center gap-2">
           <Badge variant="outline">样本回执</Badge>
-          <Badge className={"bg-sky-600 text-white"}>Demo</Badge>
+          <Badge className={"bg-primary text-primary-foreground"}>Demo</Badge>
         </div>
         <CardTitle className={"text-base"}>一次私聊会留下这样的变化痕迹</CardTitle>
       </CardHeader>
@@ -230,7 +230,7 @@ export function FeedPage() {
 
             <div className="grid gap-4 md:grid-cols-2">
               {dualEntry.cards.map((card) => (
-                <Card key={card.track} className={"border-white/70 bg-white/80 shadow-sm backdrop-blur"}>
+                <Card key={card.track} className={"border-border bg-background/80 shadow-sm backdrop-blur"}>
                   <CardHeader className={"pb-2"}>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">
@@ -281,13 +281,13 @@ export function FeedPage() {
       )}
 
       {checklist && (
-        <Card className={"border-amber-300/60 bg-amber-50/40"}>
+        <Card className={"border-warning/30 bg-warning/10"}>
           <CardHeader className={"pb-2"}>
             <CardTitle className={"text-base"}>{checklist.title}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
             {checklist.items.map((item) => (
-              <div key={item.reason_code} className={"rounded-xl border bg-white/80 p-4"}>
+              <div key={item.reason_code} className={"rounded-xl border border-border bg-background/80 p-4"}>
                 <div className="flex items-center justify-between gap-2">
                   <h3 className={"text-sm font-medium"}>{item.title}</h3>
                   <Badge variant={item.completed ? 'secondary' : 'outline'}>

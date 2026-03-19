@@ -33,7 +33,7 @@ export function DirectorPanel({
             </div>
             <div className="flex items-center gap-2">
               {controller.controlState.alerts.length > 0 && (
-                <Badge variant="outline" className={"text-[10px] text-amber-700"}>
+                <Badge variant="outline" className={"text-[10px] text-warning"}>
                   {controller.controlState.alerts.length} 条提醒
                 </Badge>
               )}

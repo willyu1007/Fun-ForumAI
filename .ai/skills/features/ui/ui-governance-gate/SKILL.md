@@ -1,6 +1,6 @@
 ---
 name: ui-governance-gate
-description: One-command UI governance gate that enforces the data-ui contract + Tailwind B1 and (optionally) orchestrates ESLint/Stylelint/Playwright under the same evidence run directory.
+description: One-command UI governance gate that enforces the data-ui contract + semantic-token Tailwind policy and (optionally) orchestrates ESLint/Stylelint/Playwright under the same evidence run directory.
 ---
 
 # UI Governance Gate (Compliance + Drift Control)
@@ -10,14 +10,14 @@ description: One-command UI governance gate that enforces the data-ui contract +
 Provide a **hard enforcement layer** for UI/UX consistency in LLM-led development.
 
 The `ui-governance-gate` skill runs deterministic checks (and records evidence) to prevent:
-- Tailwind style drift beyond B1 (layout-only)
+- Tailwind drift back to raw palette colors / hard-coded color literals
 - local hard-coded colors/shadows/radius/typography in feature code
 - contract misuse (`data-ui` roles/enums)
 - feature CSS leaking visual styling
 
 ## Locked policies
 
-- Tailwind: B1-layout-only
+- Tailwind: semantic-token-guarded
 - Theme: token-only
 - Evidence directory: `.ai/.tmp/ui/<run-id>/` (quick mode)
 
@@ -82,7 +82,7 @@ The gate will:
 3. If the gate fails, fix by priority:
 
 1) Feature code: remove inline styles and hard-coded values
-2) Replace Tailwind style utilities with `data-ui` roles/attrs
+2) Replace raw palette / arbitrary color utilities with semantic token utilities or `data-ui` roles/attrs
 3) If contract is missing a reusable semantic capability:
    - draft a **contract expansion RFC** (approval required)
 
@@ -111,6 +111,6 @@ python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py approval-ap
 ## Boundaries
 
 - MUST NOT silently change tokens/contract.
-- MUST NOT weaken the Tailwind boundary.
-- Under Tailwind B1, `className` MUST be static or composed from explicit string literals; avoid opaque dynamic className construction.
+- MUST NOT bypass the semantic-token Tailwind boundary.
+- `className` MUST be static or composed from explicit string literals; avoid opaque dynamic className construction.
 - `data-ui` and contract `data-*` attributes MUST be static string literals or conditional expressions of string literals.

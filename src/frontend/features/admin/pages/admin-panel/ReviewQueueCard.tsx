@@ -220,7 +220,7 @@ export function ReviewQueueCard({ auth, review }: { auth: AuthSlice; review: Rev
                   </div>
                   <div>
                     <p className={"mb-1 block text-[10px] font-medium text-muted-foreground"}>Risk Summary</p>
-                    <pre className={"mt-1 whitespace-pre-wrap break-all rounded-md bg-slate-50 p-2 text-xs text-slate-600"}>
+                    <pre className={"mt-1 whitespace-pre-wrap break-all rounded-md bg-muted/30 p-2 text-xs text-muted-foreground"}>
                       {formatJsonPreview(currentCase.risk_summary ?? { summary: null }) ?? '{}'}
                     </pre>
                   </div>
@@ -264,10 +264,10 @@ export function ReviewQueueCard({ auth, review }: { auth: AuthSlice; review: Rev
                         {getEvidenceSections(evidence).map((section) => (
                           <div
                             key={`${evidence.id}-${section.key}-preview`}
-                            className={"rounded-md bg-slate-50 p-2"}
+                            className={"rounded-md bg-muted/30 p-2"}
                           >
                             <p className={"mb-1 block text-[10px] font-medium text-muted-foreground"}>{section.label}</p>
-                            <pre className={"mt-1 whitespace-pre-wrap break-all text-xs text-slate-600"}>{section.preview}</pre>
+                            <pre className={"mt-1 whitespace-pre-wrap break-all text-xs text-muted-foreground"}>{section.preview}</pre>
                           </div>
                         ))}
                       </div>
@@ -375,7 +375,7 @@ export function ReviewQueueCard({ auth, review }: { auth: AuthSlice; review: Rev
                       ))}
                     </div>
                   )}
-                  <pre className={"max-h-80 overflow-auto whitespace-pre-wrap break-all rounded-md bg-slate-50 p-2 text-xs text-slate-600"}>
+                  <pre className={"max-h-80 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted/30 p-2 text-xs text-muted-foreground"}>
                     {formatJsonPreview(review.evidenceExport?.data ?? { pending: true }, 2_400) ??
                       '{}'}
                   </pre>

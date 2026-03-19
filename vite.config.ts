@@ -1,11 +1,11 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import type { OutputAsset, OutputBundle, OutputChunk } from 'rollup'
-import { workspacePackageAliases } from './workspace-package-aliases'
+import { workspacePackageAliases } from './workspace-package-aliases.js'
 
 type BundleChunkGroup = {
   name: string
@@ -18,7 +18,26 @@ type BundleBudgetConfig = {
   manualChunkGroups: BundleChunkGroup[]
 }
 
-const ROOT_DIR = __dirname
+type BundleAsset = {
+  type: 'asset'
+  fileName: string
+}
+
+type BundleChunk = {
+  type: 'chunk'
+  name: string
+  fileName: string
+  isEntry: boolean
+  isDynamicEntry: boolean
+  facadeModuleId: string | null
+  imports: string[]
+  dynamicImports: string[]
+  modules: Record<string, unknown>
+}
+
+type BundleOutput = BundleAsset | BundleChunk
+
+const ROOT_DIR = path.dirname(fileURLToPath(import.meta.url))
 const bundleBudgetConfig = JSON.parse(
   readFileSync(path.resolve(ROOT_DIR, 'ui/config/bundle-budget.json'), 'utf8'),
 ) as BundleBudgetConfig
@@ -90,9 +109,11 @@ function createBundleReportPlugin(): Plugin {
     configResolved(config) {
       buildOutDir = path.resolve(ROOT_DIR, config.build.outDir)
     },
-    writeBundle(_options, bundle: OutputBundle) {
-      const jsChunks = Object.values(bundle)
-        .filter((item): item is OutputChunk => item.type === 'chunk')
+    writeBundle(_options, bundle) {
+      const bundleEntries = Object.values(bundle as Record<string, BundleOutput>)
+
+      const jsChunks = bundleEntries
+        .filter((item): item is BundleChunk => item.type === 'chunk')
         .map((chunk) => {
           const outputBuffer = readFileSync(path.resolve(buildOutDir, chunk.fileName))
           return {
@@ -113,8 +134,8 @@ function createBundleReportPlugin(): Plugin {
         })
         .sort((left, right) => right.rawBytes - left.rawBytes)
 
-      const assets = Object.values(bundle)
-        .filter((item): item is OutputAsset => item.type === 'asset')
+      const assets = bundleEntries
+        .filter((item): item is BundleAsset => item.type === 'asset')
         .map((asset) => {
           const outputBuffer = readFileSync(path.resolve(buildOutDir, asset.fileName))
           const rawBytes = outputBuffer.byteLength
@@ -147,7 +168,7 @@ export default defineConfig({
       ...workspacePackageAliases,
       {
         find: '@',
-        replacement: path.resolve(__dirname, './src/frontend'),
+        replacement: path.resolve(ROOT_DIR, './src/frontend'),
       },
     ],
   },

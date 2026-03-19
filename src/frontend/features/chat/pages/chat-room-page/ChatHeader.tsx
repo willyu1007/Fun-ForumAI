@@ -47,7 +47,7 @@ export function ChatHeader({
   showDirectorButton: boolean
 }) {
   const statusColor =
-    status === 'active' ? 'bg-green-500' : status === 'cooling' ? 'bg-yellow-500' : 'bg-gray-400'
+    status === 'active' ? 'bg-success' : status === 'cooling' ? 'bg-warning' : 'bg-secondary'
   return (
     <div className={"space-y-3 border-b px-4 py-3"}>
       <div className="flex items-center justify-between gap-3">

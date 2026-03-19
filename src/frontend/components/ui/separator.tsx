@@ -13,7 +13,7 @@ function Separator({
     <SeparatorPrimitive.Root
       data-ui="divider"
       data-slot="separator"
-      data-orientation={orientation}
+      data-orientation={orientation === 'vertical' ? 'vertical' : 'horizontal'}
       data-tone="default"
       decorative={decorative}
       orientation={orientation}

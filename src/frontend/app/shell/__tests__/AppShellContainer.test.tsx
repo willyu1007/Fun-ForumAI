@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -17,7 +17,7 @@ import { useCreateReport } from '@/api/hooks/user'
 import { isGuidanceBellEnabled, isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useSidebarStore } from '@/shared/stores/sidebar-store'
-import { Layout } from '../Layout'
+import { AppShellContainer } from '../AppShellContainer'
 
 const navigateMock = vi.hoisted(() => vi.fn())
 
@@ -44,6 +44,7 @@ vi.mock('@/api/hooks/notifications', () => ({
 
 vi.mock('@/api/hooks/user', () => ({
   useCreateReport: vi.fn(),
+  useMyAgents: vi.fn(() => ({ data: { data: [] } })),
 }))
 
 vi.mock('@/features/guidance/feature-flags', () => ({
@@ -57,6 +58,18 @@ vi.mock('@/shared/hooks/use-auth', () => ({
 
 vi.mock('@/shared/stores/sidebar-store', () => ({
   useSidebarStore: vi.fn(),
+}))
+
+vi.mock('@/shared/components/DevAuthToolbar', () => ({
+  DevAuthToolbar: () => null,
+}))
+
+vi.mock('@/widgets/shell/ShellLeftRail', () => ({
+  ShellLeftRail: () => <div data-testid="left-rail" />,
+}))
+
+vi.mock('@/widgets/shell/ShellRightRail', () => ({
+  ShellRightRail: () => <div data-testid="right-rail" />,
 }))
 
 vi.mock('@/components/ui/dropdown-menu', () => ({
@@ -86,22 +99,6 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
   DropdownMenuSeparator: () => <div />,
 }))
 
-vi.mock('../AgentPanel', () => ({
-  AgentPanel: () => <div data-testid="agent-panel" />,
-}))
-
-vi.mock('../DevAuthToolbar', () => ({
-  DevAuthToolbar: () => null,
-}))
-
-vi.mock('../LeftSidebar', () => ({
-  LeftSidebar: () => <div data-testid="left-sidebar" />,
-}))
-
-vi.mock('../RightSidebar', () => ({
-  RightSidebar: () => <div data-testid="right-sidebar" />,
-}))
-
 const useGuidanceBellMock = vi.mocked(useGuidanceBell)
 const useGuidanceClientEventMock = vi.mocked(useGuidanceClientEvent)
 const useGuidanceInboxMock = vi.mocked(useGuidanceInbox)
@@ -115,7 +112,7 @@ const isGuidanceEnabledMock = vi.mocked(isGuidanceEnabled)
 const useAuthMock = vi.mocked(useAuth)
 const useSidebarStoreMock = vi.mocked(useSidebarStore)
 
-describe('Layout', () => {
+describe('AppShellContainer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     navigateMock.mockReset()
@@ -159,7 +156,7 @@ describe('Layout', () => {
     render(
       <MemoryRouter initialEntries={['/']}>
         <Routes>
-          <Route element={<Layout />}>
+          <Route element={<AppShellContainer />}>
             <Route index element={<div>home</div>} />
           </Route>
         </Routes>
@@ -224,7 +221,7 @@ describe('Layout', () => {
     render(
       <MemoryRouter initialEntries={['/']}>
         <Routes>
-          <Route element={<Layout />}>
+          <Route element={<AppShellContainer />}>
             <Route index element={<div>home</div>} />
           </Route>
         </Routes>
@@ -265,15 +262,14 @@ describe('Layout', () => {
           unread_count: 1,
           items: [
             {
-              id: 'notif-proactive-1',
-              user_id: 'user-1',
+              id: 'notif-1',
               type: 'AGENT_PROACTIVE',
-              title: 'Moon Agent 想和你聊聊',
-              body: '一条主动私信提醒',
-              target_type: 'private_session',
-              target_id: 'session-1',
+              title: '主动私信',
+              body: 'Agent 想和你说点什么。',
+              target_type: 'agent',
+              target_id: 'agent-77',
               read: false,
-              created_at: '2026-03-12T08:00:00.000Z',
+              created_at: '2026-03-11T00:00:00.000Z',
             },
           ],
         },
@@ -283,22 +279,24 @@ describe('Layout', () => {
     render(
       <MemoryRouter initialEntries={['/']}>
         <Routes>
-          <Route element={<Layout />}>
+          <Route element={<AppShellContainer />}>
             <Route index element={<div>home</div>} />
           </Route>
         </Routes>
       </MemoryRouter>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: '发起主动私信治理' }))
+    fireEvent.click(screen.getByLabelText('通知中心'))
+    fireEvent.click(await screen.findByText('发起主动私信治理'))
 
-    expect(await screen.findByText('已提交治理')).toBeTruthy()
-    expect(mutateAsync).toHaveBeenCalledWith({
-      target_type: 'private_session',
-      target_id: 'session-1',
-      complaint_type: 'HARASSMENT_REPORT',
-      reason_code: 'proactive_outreach_report',
-      detail_text: 'Reported from AGENT_PROACTIVE notification: notif-proactive-1',
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({
+        target_type: 'agent',
+        target_id: 'agent-77',
+        complaint_type: 'HARASSMENT_REPORT',
+        reason_code: 'proactive_outreach_report',
+        detail_text: 'Reported from AGENT_PROACTIVE notification: notif-1',
+      })
     })
     expect(navigateMock).not.toHaveBeenCalled()
   })

@@ -109,7 +109,7 @@ export function PrivateChatPage() {
         ) : (
           <div className={"flex-1 flex items-center justify-center text-muted-foreground"}>
             <div className={"text-center space-y-3"}>
-              <div className={"mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm text-amber-900"}>
+              <div className={"mb-4 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-left text-sm text-foreground"}>
                 大陆首发风控已生效：新建私聊、发送私聊和接收主动私信前，需要先通过实名审核。
               </div>
               <Button variant="outline" size="sm" asChild>
@@ -118,7 +118,7 @@ export function PrivateChatPage() {
               <p className={"text-lg"}>还没有对话</p>
               <p className={"text-sm"}>点击"新对话"开始与 {agent.display_name} 交流</p>
               {createSession.isError && (
-                <p className={"mb-3 text-sm text-red-600"}>{createSession.error.message}</p>
+                <p className={"mb-3 text-sm text-destructive"}>{createSession.error.message}</p>
               )}
               <Button onClick={handleNewSession} disabled={createSession.isPending}>
                 开始新对话
@@ -131,7 +131,7 @@ export function PrivateChatPage() {
       {/* Mobile sidebar overlay */}
       {showSidebar && (
         <div className="fixed inset-0 z-50 md:hidden">
-          <div className={"absolute inset-0 bg-black/50"} onClick={() => setShowSidebar(false)} />
+          <div className={"absolute inset-0 bg-foreground/50"} onClick={() => setShowSidebar(false)} />
           <div className={"absolute left-0 top-0 bottom-0 w-72 bg-background border-r"}>
             <SessionSidebar
               sessions={sessions}
@@ -275,7 +275,7 @@ function ChatThread({
   }
   return (
     <>
-      <div className={"border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"}>
+      <div className={"border-b border-border bg-secondary px-4 py-3 text-sm text-secondary-foreground"}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span>
             私聊默认只允许更克制、非敏感的内容流转；触发规则的消息会被降温、拒送或拦截，并进入审查记录。
@@ -296,7 +296,7 @@ function ChatThread({
           </Button>
         </div>
         {sessionGovernanceMessage && (
-          <p className={sessionGovernanceMessage.includes('失败') ? "mt-2 text-sm text-red-600" : "mt-2 text-sm text-slate-600"}>
+          <p className={sessionGovernanceMessage.includes('失败') ? "mt-2 text-sm text-destructive" : "mt-2 text-sm text-muted-foreground"}>
             {sessionGovernanceMessage}
           </p>
         )}
@@ -340,7 +340,7 @@ function ChatThread({
       />
 
       {(sendMessage.isError || endSession.isError) && (
-        <div className={"border-t border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700"}>
+        <div className={"border-t border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"}>
           {sendMessage.isError ? sendMessage.error.message : endSession.error?.message}
         </div>
       )}
@@ -353,7 +353,7 @@ function ChatThread({
             <div
               className={cn(
                 "rounded-xl px-4 py-3 text-sm",
-                fallbackNotice.tone === 'warning' && "border border-amber-300/70 bg-amber-50 text-amber-950",
+                fallbackNotice.tone === 'warning' && "border border-warning/30 bg-warning/10 text-foreground",
                 fallbackNotice.tone === 'danger' && "border border-destructive/40 bg-destructive/5 text-destructive",
                 fallbackNotice.tone === 'muted' && "border border-dashed bg-background text-muted-foreground",
               )}
@@ -376,7 +376,7 @@ function MessageBubble({ message, agentName }: { message: PrivateMessage; agentN
         <AvatarFallback
           className={cn(
             "text-xs",
-            isHuman ? "bg-blue-100" : "bg-primary/10",
+            isHuman ? "bg-accent/10 text-accent" : "bg-primary/10",
           )}
         >
           {isHuman ? '我' : agentName[0]}

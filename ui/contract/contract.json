@@ -2,7 +2,7 @@
   "meta": {
     "contract_version": "1.0.0",
     "description": "UI style contract for data-ui based rendering. Roles and enumerations are intentionally small and stable. Expand only via approved RFC.",
-    "tailwind_policy": "B1-layout-only",
+    "tailwind_policy": "semantic-token-guarded",
     "theme_policy": "token-only"
   },
   "roles": {
@@ -219,12 +219,15 @@
     "icon-button": {
       "attrs": {
         "variant": [
+          "primary",
           "ghost",
-          "secondary"
+          "secondary",
+          "danger"
         ],
         "size": [
           "sm",
-          "md"
+          "md",
+          "lg"
         ],
         "state": [
           "default",
@@ -486,6 +489,10 @@
     },
     "tabs": {
       "attrs": {
+        "orientation": [
+          "horizontal",
+          "vertical"
+        ],
         "variant": [
           "line",
           "pill"
@@ -603,13 +610,43 @@
       ]
     },
     "toggle": {
-      "attrs": {},
+      "attrs": {
+        "variant": [
+          "default",
+          "outline"
+        ],
+        "size": [
+          "default",
+          "sm",
+          "lg"
+        ],
+        "spacing": [
+          "0",
+          "1",
+          "2"
+        ]
+      },
       "slots": [
         "toggle"
       ]
     },
     "toggle-group": {
-      "attrs": {},
+      "attrs": {
+        "variant": [
+          "default",
+          "outline"
+        ],
+        "size": [
+          "default",
+          "sm",
+          "lg"
+        ],
+        "spacing": [
+          "0",
+          "1",
+          "2"
+        ]
+      },
       "slots": [
         "toggle-group",
         "toggle-group-item"

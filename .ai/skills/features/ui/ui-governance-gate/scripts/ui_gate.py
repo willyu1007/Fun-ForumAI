@@ -14,6 +14,8 @@ Goals:
 Evidence (quick mode): .ai/.tmp/ui/<run-id>/
 
 This script is repo-scoped and is intended to be called by the ui-governance-gate skill.
+The current repo baseline enforces semantic token usage rather than the historical
+"Tailwind B1 layout-only" restriction.
 """
 
 from __future__ import annotations
@@ -139,9 +141,9 @@ def load_governance_config(repo_root: Path) -> Dict[str, object]:
         except Exception:
             pass
 
-    # Defaults aligned with ui-system-bootstrap template.
+    # Defaults aligned with the current repo baseline.
     return {
-        "tailwind_policy": "B1-layout-only",
+        "tailwind_policy": "semantic-token-guarded",
         "theme_policy": "token-only",
         "scan": {
             "include_roots": ["src", "app", "pages", "components"],
@@ -163,38 +165,49 @@ def load_governance_config(repo_root: Path) -> Dict[str, object]:
                 "break-all",
                 "whitespace-nowrap",
             ],
-            "disallowed_prefixes": [
-                "bg-",
-                "text-",
-                "from-",
-                "via-",
-                "to-",
-                "decoration-",
-                "font-",
-                "leading-",
-                "tracking-",
-                "shadow",
-                "rounded",
-                "ring-",
-                "outline-",
+            "disallowed_palette_prefixes": [
+                "bg",
+                "text",
                 "border",
-                "divide-",
-                "p-",
-                "px-",
-                "py-",
-                "pt-",
-                "pr-",
-                "pb-",
-                "pl-",
-                "m-",
-                "mx-",
-                "my-",
-                "mt-",
-                "mr-",
-                "mb-",
-                "ml-",
+                "ring",
+                "accent",
+                "fill",
+                "stroke",
+                "decoration",
+                "from",
+                "via",
+                "to",
+                "shadow",
             ],
-            "disallowed_substrings": ["[", "]", "#", "("],
+            "disallowed_palette_families": [
+                "slate",
+                "gray",
+                "zinc",
+                "neutral",
+                "stone",
+                "red",
+                "orange",
+                "amber",
+                "yellow",
+                "lime",
+                "green",
+                "emerald",
+                "teal",
+                "cyan",
+                "sky",
+                "blue",
+                "indigo",
+                "violet",
+                "purple",
+                "fuchsia",
+                "pink",
+                "rose",
+                "black",
+                "white",
+            ],
+            "disallowed_color_literal_substrings": ["#", "rgb(", "hsl("],
+            "disallowed_prefixes": [],
+            "disallowed_substrings": [],
         },
         "code_rules": {
             "disallow_inline_style": True,
@@ -344,6 +357,53 @@ def scan_file_text(path: Path) -> str:
 
 def compute_line_number(text: str, idx: int) -> int:
     return text.count("\n", 0, idx) + 1
+
+
+def _build_palette_token_re(
+    prefixes: List[str], families: List[str]
+) -> Optional[re.Pattern[str]]:
+    if not prefixes or not families:
+        return None
+    prefix_part = "|".join(re.escape(p) for p in prefixes)
+    family_part = "|".join(re.escape(f) for f in families)
+    return re.compile(rf"(?:^|:)(?:{prefix_part})-(?:{family_part})(?:[-/]|$)")
+
+
+def _classify_tailwind_token(
+    *,
+    token: str,
+    policy: str,
+    allow_whitelist: Set[str],
+    disallowed_prefixes: List[str],
+    disallowed_substrings: List[str],
+    palette_re: Optional[re.Pattern[str]],
+    disallowed_color_literal_substrings: List[str],
+) -> Optional[Tuple[str, str]]:
+    if token in allow_whitelist:
+        return None
+
+    if policy == "B1-layout-only":
+        if any(sub in token for sub in disallowed_substrings):
+            return ("tailwind-b1", f"Disallowed Tailwind token (substring): {token}")
+        if any(token.startswith(pref) for pref in disallowed_prefixes):
+            return ("tailwind-b1", f"Disallowed Tailwind token (prefix): {token}")
+        return None
+
+    if policy == "semantic-token-guarded":
+        if any(sub in token for sub in disallowed_color_literal_substrings):
+            return (
+                "tailwind-policy",
+                f"Disallowed Tailwind token (raw color literal): {token}",
+            )
+        if palette_re and palette_re.search(token):
+            return (
+                "tailwind-policy",
+                f"Disallowed Tailwind token (raw palette color): {token}",
+            )
+        return None
+
+    # Unknown policy: fail closed on the config, but do not emit per-token noise.
+    return None
 
 
 def _is_ident_char(ch: str) -> bool:
@@ -858,6 +918,7 @@ def scan_code_and_css(
     tailwind_cfg = (
         cfg.get("tailwind", {}) if isinstance(cfg.get("tailwind"), dict) else {}
     )
+    tailwind_policy = str(cfg.get("tailwind_policy", "semantic-token-guarded"))
     disallowed_prefixes = [
         p for p in tailwind_cfg.get("disallowed_prefixes", []) if isinstance(p, str)
     ]
@@ -870,6 +931,24 @@ def scan_code_and_css(
             for s in tailwind_cfg.get("allowed_utility_whitelist", [])
             if isinstance(s, str)
         ]
+    )
+    disallowed_palette_prefixes = [
+        p
+        for p in tailwind_cfg.get("disallowed_palette_prefixes", [])
+        if isinstance(p, str)
+    ]
+    disallowed_palette_families = [
+        f
+        for f in tailwind_cfg.get("disallowed_palette_families", [])
+        if isinstance(f, str)
+    ]
+    disallowed_color_literal_substrings = [
+        s
+        for s in tailwind_cfg.get("disallowed_color_literal_substrings", [])
+        if isinstance(s, str)
+    ]
+    palette_re = _build_palette_token_re(
+        disallowed_palette_prefixes, disallowed_palette_families
     )
 
     feature_css_cfg = (
@@ -939,7 +1018,7 @@ def scan_code_and_css(
                     )
                 )
 
-        # Tailwind B1 checks (robust): parse className attribute values and inspect string literals.
+        # Tailwind policy checks (robust): parse className attribute values and inspect string literals.
         # This closes common bypasses (clsx/template literals) while keeping the scanner dependency-light.
         if path.suffix in {".ts", ".tsx", ".js", ".jsx"}:
             for attr_idx, kind, raw, lits in _iter_jsx_attr_values(text, "className"):
@@ -950,38 +1029,35 @@ def scan_code_and_css(
                     issues.append(
                         Issue(
                             "ERROR",
-                            "tailwind-b1-unparseable",
+                            "tailwind-policy-unparseable",
                             rel,
                             compute_line_number(text, attr_idx),
                             "className is dynamic and contains no analyzable string literals. "
-                            "Under Tailwind B1 (layout-only), className must be composed from explicit string literals.",
+                            "Tailwind policy checks require className to be composed from explicit string literals.",
                         )
                     )
                     continue
 
                 for lit in [s for s in lits if isinstance(s, str) and s.strip()]:
                     for token in lit.split():
-                        if token in allow_whitelist:
-                            continue
-                        if any(sub in token for sub in disallowed_substrings):
+                        violation = _classify_tailwind_token(
+                            token=token,
+                            policy=tailwind_policy,
+                            allow_whitelist=allow_whitelist,
+                            disallowed_prefixes=disallowed_prefixes,
+                            disallowed_substrings=disallowed_substrings,
+                            palette_re=palette_re,
+                            disallowed_color_literal_substrings=disallowed_color_literal_substrings,
+                        )
+                        if violation:
+                            rule, message = violation
                             issues.append(
                                 Issue(
                                     "ERROR",
-                                    "tailwind-b1",
+                                    rule,
                                     rel,
                                     compute_line_number(text, attr_idx),
-                                    f"Disallowed Tailwind token (substring): {token}",
-                                )
-                            )
-                            continue
-                        if any(token.startswith(pref) for pref in disallowed_prefixes):
-                            issues.append(
-                                Issue(
-                                    "ERROR",
-                                    "tailwind-b1",
-                                    rel,
-                                    compute_line_number(text, attr_idx),
-                                    f"Disallowed Tailwind token (prefix): {token}",
+                                    message,
                                 )
                             )
 
@@ -989,27 +1065,24 @@ def scan_code_and_css(
             for attr_idx, _raw, lits in _iter_function_call_literals(text, "cva"):
                 for lit in [s for s in lits if isinstance(s, str) and s.strip()]:
                     for token in lit.split():
-                        if token in allow_whitelist:
-                            continue
-                        if any(sub in token for sub in disallowed_substrings):
+                        violation = _classify_tailwind_token(
+                            token=token,
+                            policy=tailwind_policy,
+                            allow_whitelist=allow_whitelist,
+                            disallowed_prefixes=disallowed_prefixes,
+                            disallowed_substrings=disallowed_substrings,
+                            palette_re=palette_re,
+                            disallowed_color_literal_substrings=disallowed_color_literal_substrings,
+                        )
+                        if violation:
+                            rule, message = violation
                             issues.append(
                                 Issue(
                                     "ERROR",
-                                    "tailwind-b1",
+                                    rule,
                                     rel,
                                     compute_line_number(text, attr_idx),
-                                    f"Disallowed Tailwind token (substring): {token}",
-                                )
-                            )
-                            continue
-                        if any(token.startswith(pref) for pref in disallowed_prefixes):
-                            issues.append(
-                                Issue(
-                                    "ERROR",
-                                    "tailwind-b1",
-                                    rel,
-                                    compute_line_number(text, attr_idx),
-                                    f"Disallowed Tailwind token (prefix): {token}",
+                                    message,
                                 )
                             )
 

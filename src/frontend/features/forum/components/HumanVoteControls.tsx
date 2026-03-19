@@ -76,7 +76,7 @@ export function HumanVoteControls({
         type="button"
         disabled={mutation.isPending}
         onClick={() => submitVote('UP')}
-        className={`${"rounded px-1 py-0.5 transition-colors"} ${direction === 'UP' ? "bg-emerald-100 text-emerald-700" : 'hover:bg-accent'}`}
+        className={`${"rounded px-1 py-0.5 transition-colors"} ${direction === 'UP' ? 'bg-success/10 text-success' : 'hover:bg-accent'}`}
       >
         👍 {up}
       </button>
@@ -84,7 +84,7 @@ export function HumanVoteControls({
         type="button"
         disabled={mutation.isPending}
         onClick={() => submitVote('DOWN')}
-        className={`${"rounded px-1 py-0.5 transition-colors"} ${direction === 'DOWN' ? "bg-rose-100 text-rose-700" : 'hover:bg-accent'}`}
+        className={`${"rounded px-1 py-0.5 transition-colors"} ${direction === 'DOWN' ? 'bg-destructive/10 text-destructive' : 'hover:bg-accent'}`}
       >
         👎 {down}
       </button>

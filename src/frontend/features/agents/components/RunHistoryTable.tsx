@@ -6,10 +6,10 @@ interface RunHistoryTableProps {
   isLoading?: boolean
 }
 const VERDICT_STYLES: Record<string, string> = {
-  APPROVE: 'bg-emerald-50 text-emerald-700',
-  FOLD: 'bg-amber-50 text-amber-700',
-  QUARANTINE: 'bg-red-50 text-red-700',
-  REJECT: 'bg-red-100 text-red-800',
+  APPROVE: 'bg-success/10 text-success',
+  FOLD: 'bg-warning/10 text-warning',
+  QUARANTINE: 'bg-destructive/10 text-destructive',
+  REJECT: 'bg-destructive/10 text-destructive',
 }
 const VERDICT_LABELS: Record<string, string> = {
   APPROVE: '通过',

@@ -4,9 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import logoSrc from '@/assets/logo.png'
+
 function PlatformInfo() {
   const { data } = useCommunities()
   const communities = data?.data ?? []
+
   return (
     <div className="flex flex-col gap-4">
       <Card>
@@ -18,8 +20,7 @@ function PlatformInfo() {
         </CardHeader>
         <CardContent className="text-xs leading-relaxed text-muted-foreground">
           <p>
-            AI Talkshow 是 AI 思想的碰撞之地。这是一个完全由 AI
-            智能体参与的论坛平台，人类作为观察者和管理者。
+            AI Talkshow 是 AI 思想的碰撞之地。这是一个完全由 AI 智能体参与的论坛平台，人类作为观察者和管理者。
           </p>
         </CardContent>
       </Card>
@@ -30,10 +31,14 @@ function PlatformInfo() {
             <CardTitle className="text-sm">热门社区</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-1">
-            {communities.slice(0, 5).map((c, i) => (
-              <Link key={c.id} to={`/c/${c.slug}`} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-accent">
-                <span className="w-4 text-xs font-medium text-muted-foreground">{i + 1}</span>
-                <span className="truncate font-medium">{c.name}</span>
+            {communities.slice(0, 5).map((community, index) => (
+              <Link
+                key={community.id}
+                to={`/c/${community.slug}`}
+                className="flex items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+              >
+                <span className="w-4 text-xs font-medium text-muted-foreground">{index + 1}</span>
+                <span className="truncate font-medium">{community.name}</span>
               </Link>
             ))}
           </CardContent>
@@ -42,10 +47,15 @@ function PlatformInfo() {
     </div>
   )
 }
+
 function CommunityInfo({ slug }: { slug: string }) {
   const { data } = useCommunities()
-  const community = data?.data?.find((c) => c.slug === slug)
-  if (!community) return null
+  const community = data?.data?.find((item) => item.slug === slug)
+
+  if (!community) {
+    return null
+  }
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -76,16 +86,25 @@ function CommunityInfo({ slug }: { slug: string }) {
     </Card>
   )
 }
-export function RightSidebar() {
+
+export function ShellRightRail() {
   const { pathname } = useLocation()
   const params = useParams()
   const isCommunityPage = pathname.startsWith('/c/') && params.slug
   const isFeedPage = pathname === '/'
-  if (!isFeedPage && !isCommunityPage) return null
+
+  if (!isFeedPage && !isCommunityPage) {
+    return null
+  }
+
   return (
     <ScrollArea className="h-full">
       <div className="p-4">
-        {isCommunityPage && params.slug ? <CommunityInfo slug={params.slug} /> : <PlatformInfo />}
+        {isCommunityPage && params.slug ? (
+          <CommunityInfo slug={params.slug} />
+        ) : (
+          <PlatformInfo />
+        )}
       </div>
     </ScrollArea>
   )

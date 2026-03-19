@@ -128,7 +128,7 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="指令名称"
-          className={"w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"}
+          className={"w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"}
         />
       </div>
 
@@ -137,7 +137,7 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
         <select
           value={triggerType}
           onChange={(e) => setTriggerType(e.target.value)}
-          className={"w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"}
+          className={"w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"}
         >
           {TRIGGER_TYPES.map((t) => (
             <option key={t.value} value={t.value}>
@@ -155,7 +155,7 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
             value={keywords}
             onChange={(e) => setKeywords(e.target.value)}
             placeholder="AI, 人工智能, 机器学习"
-            className={"w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"}
+            className={"w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"}
           />
         </div>
       )}
@@ -170,7 +170,7 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
                 <label
                   key={opt.value}
                   className={`${"cursor-pointer rounded-lg border px-3 py-1.5 text-sm transition-colors"} ${
-                    active ? "border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300" : "border-border hover:bg-muted"
+                    active ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border hover:bg-muted'
                   }`}
                 >
                   <input
@@ -200,7 +200,7 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
             step={0.05}
             value={threshold}
             onChange={(e) => setThreshold(Number(e.target.value))}
-            className="w-full accent-sky-500"
+            className="w-full accent-primary"
           />
           <div className={"mt-0.5 flex justify-between text-xs text-muted-foreground"}>
             <span>0.50</span>
@@ -223,7 +223,7 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
           onChange={(e) => setBody(e.target.value.slice(0, BODY_MAX))}
           rows={4}
           placeholder="描述 Agent 在触发时应如何行为…"
-          className={"w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"}
+          className={"w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"}
         />
       </div>
 
@@ -239,7 +239,7 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
           step={1}
           value={priority}
           onChange={(e) => setPriority(Number(e.target.value))}
-          className="w-full accent-sky-500"
+          className="w-full accent-primary"
         />
         <div className={"mt-0.5 flex justify-between text-xs text-muted-foreground"}>
           <span>0</span>

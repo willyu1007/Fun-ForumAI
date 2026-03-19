@@ -11,7 +11,7 @@
 | 门禁 | 实现 | 当前 CI | 作用 |
 |------|------|---------|------|
 | **UI 构建与一致性** | Node：`pnpm ui:build` + `pnpm ui:check` | ✅ 已接入 | token/theme 生成、contract↔codegen 漂移、主题协议 |
-| **UI Governance Gate** | Python：`ui_gate.py run --mode full` | ❌ 未接入 | data-ui contract 合规、Tailwind B1、inline style/硬编码颜色、evidence 产出 |
+| **UI Governance Gate** | Python：`ui_gate.py run --mode full` | ❌ 未接入 | data-ui contract 合规、semantic token Tailwind 策略、inline style/硬编码颜色、approval/evidence 产出 |
 
 ### 1. 已接入 CI 的 UI 门禁（Node）
 
@@ -24,15 +24,15 @@
 ### 2. UI Governance Gate（Python，未入 CI）
 
 - **命令**：`python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py run --mode full`
-- **策略**：Tailwind B1-layout-only、theme token-only、data-ui 合规；可编排 ESLint/Stylelint/Playwright。
+- **策略**：Tailwind `semantic-token-guarded`、theme token-only、data-ui 合规；可编排 ESLint/Stylelint/Playwright。
 - **产出**：`.ai/.tmp/ui/<run-id>/` 下 `ui-gate-report.md`、`ui-gate-report.json` 等。
 - **集中测试**：`node .ai/tests/run.mjs --suite ui` 会跑 ui-governance-gate（依赖 Python 3.9+）。
-- **当前**：CI 未执行该 Python 脚本；需在 runner 上安装 Python 方可接入。
+- **当前**：CI 未执行该 Python 脚本；需在 runner 上安装 Python 方可接入。最新本地 full run `.ai/.tmp/ui/20260319T050955Z-48487/` 已为 `errors=0 / spec_status=OK / exception_status=OK / playwright=PASS`。
 
 ### 3. 建议
 
 - **短期**：本地或 MR 前手动跑 `python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py run --mode full`，或 `node .ai/tests/run.mjs --suite ui`，将结果记入本文件下表。
-- **中期**：若需在 CI 中强制 B1 + data-ui 合规，可在 `ci.yml` 增加一步（Setup Python + 上述命令）；注意 repo 历史上有大量既有违规，可先用 `--fail-on errors` 或仅产出报告不阻塞。
+- **中期**：若需在 CI 中强制 Python gate，可在 `ci.yml` 增加一步（Setup Python + 上述命令）；当前离线基线已收口，不再需要先处理历史 Tailwind B1 backlog。
 
 ---
 
@@ -82,4 +82,38 @@
 | bundle budget follow-up | `pnpm ui:bundle:report -- --budget-file /tmp/fun-forum-bundle-budget-alt.json` | pass | 2026-03-19；输出显示 `Bundle report: /tmp/fun-forum-bundle-report-alt.json` 与 `Accepted baseline: /tmp/fun-forum-bundle-baseline-alt.json`，证明 report/baseline 路径都跟随配置而不是硬编码默认值 |
 | bundle budget follow-up | `pnpm ui:bundle:check -- --budget-file /tmp/fun-forum-bundle-budget-alt.json` | pass | 2026-03-19；自定义 budget 场景下校验命令仍可通过，证明 CLI 默认链路已完全尊重配置文件中的路径字段 |
 | bundle budget follow-up | `pnpm ui:bundle:check -- --budget-file /tmp/fun-forum-bundle-budget-no-root.json` | fail-as-expected | 2026-03-19；临时伪造无 root entry 的 report 后，错误信息明确指向 `/tmp/fun-forum-bundle-report-no-root.json`，证明失败文案也使用实际 report 路径而不是旧默认值 |
+| UI gap closure | `pnpm lint` | pass | 2026-03-19；shell/widgets、pattern adopt、theme protocol 与 Playwright 扩面后的整仓 ESLint 通过 |
+| UI gap closure | `pnpm typecheck` | pass | 2026-03-19；修复 `vite.config.ts` / `vitest.config.ts` 的 ESM import 与 `tsconfig.node.json` include 后，`tsc -b` 重新通过 |
+| UI gap closure | `pnpm ui:build` | pass | 2026-03-19；验证 shell refactor、theme 单协议与 mobile alias freeze 不影响 UI codegen 与 package dist 生成 |
+| UI gap closure | `pnpm ui:check` | pass | 2026-03-19；theme protocol、package typecheck、runtime consumption 与 generated drift 全部通过 |
+| UI gap closure | `pnpm build` | pass | 2026-03-19；当前 `assets/index-*.js = 52.03 kB raw / 15.79 kB gzip`，继续满足 hard budget |
+| UI gap closure | `pnpm ui:bundle:check` | pass | 2026-03-19；root entry budget、最大 chunk baseline、异步重路由边界继续通过 |
+| UI gap closure | `pnpm exec vitest run src/frontend/app/shell/__tests__/AppShellContainer.test.tsx src/frontend/features/agents/pages/__tests__/AgentProfilePage.test.tsx` | pass | 2026-03-19；壳容器与受影响 agent profile 页面共 10 个测试全部通过 |
+| UI gap closure | `pnpm mobile:typecheck` | pass | 2026-03-19；mobile app 在兼容层冻结后继续可通过 `tsc --noEmit` |
+| UI gap closure | `pnpm --filter @fun-forum/mobile test -- --runInBand src/__tests__/theme.test.ts` | pass | 2026-03-19；验证 legacy alias surface 被固定，不允许继续增长 |
+| UI gap closure | `printf "import { useAgentDetail } from '@/features/agents/hooks/use-agent-detail'..." \| pnpm exec eslint --stdin --stdin-filename src/frontend/shared/__lint-boundary-check.tsx` | fail-as-expected | 2026-03-19；`shared -> features` 现会被 `no-restricted-imports` 直接阻断，证明边界护栏已真实生效 |
+| UI gap closure | `pnpm ui:check`（临时加入 `src/frontend/__theme-protocol-negative.ts = 'dark:bg-slate-900'`） | fail-as-expected | 2026-03-19；`check-theme-protocol.mjs` 明确报出 `contains a dark: utility`，证明 `.dark` / `dark:` 已成为阻断项 |
+| UI gap closure | `pnpm exec playwright test --config=playwright.config.mjs tests/web/playwright/realtime-p0.visual.spec.ts --update-snapshots` | pass | 2026-03-19；在新增 scroll reset 与 bounded tolerance 后，`realtime` 基线重新稳定 |
+| UI gap closure | `pnpm test:e2e:playwright:update` | pass | 2026-03-19；6 个 spec、168 个 visual tests 的双主题 baseline 已全部刷新，旧 3-project baseline 也已清理 |
+| UI gap closure | `pnpm test:e2e:playwright` | pass | 2026-03-19；168/168 tests 通过，说明当前 Playwright 基线与稳定化策略已闭环 |
 | — | `node .ai/tests/run.mjs --suite ui`（含 ui-governance-gate） | 未在本轮执行 | 依赖 Python；可选本地/CI 补充 |
+| code review follow-up | `pnpm exec vitest run src/frontend/app/shell/__tests__/AppShell.test.tsx src/frontend/app/shell/__tests__/AppShellContainer.test.tsx` | pass | 2026-03-19；验证 `AppShell` 仅保留结构职责，不再与 `AppShellContainer` 重复声明 header/rail/footer 尺寸与边框 |
+| code review follow-up | `pnpm lint` | pass | 2026-03-19；壳层结构收口与新增 `AppShell` 测试未引入 lint error |
+| code review follow-up | `pnpm typecheck` | pass | 2026-03-19；`AppShell` 结构调整后，root 工程与 workspace packages 继续通过 `tsc -b` |
+| code review follow-up | `pnpm ui:check` | pass | 2026-03-19；theme protocol、generated drift、package runtime/typecheck 在 follow-up 后继续通过 |
+| code review follow-up | `pnpm ui:bundle:check` | pass | 2026-03-19；当前 top chunk 仍满足 baseline，对应 `AgentProfilePage` 仅有 `+0.47 kB raw / +0.36 kB gzip` 的非阻断波动 |
+| code review follow-up | `pnpm test:e2e:playwright:update` | pass | 2026-03-19；`AppShell` 结构修正后，6 个 spec、168 张 baseline 已按预期整体刷新 |
+| code review follow-up | `pnpm test:e2e:playwright` | pass | 2026-03-19；follow-up baseline 刷新后 168/168 tests 再次通过 |
+| governance reassessment | `python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py approval-approve --request .ai/.tmp/ui/20260319T035020Z-54614/approval.request.json --approved-by codex` | pass | 2026-03-19；为本轮 UI spec 变更补齐 `ui/approvals/20260319T035557Z-spec_change-c3d5d09b.json` |
+| governance reassessment | `python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py run --mode full` | fail-known-existing | 2026-03-19；最新 run `.ai/.tmp/ui/20260319T035737Z-64755/` 中 `spec_status=OK`、`playwright=PASS`、`eslint=PASS`，剩余 `3896 errors` 全部来自 repo 现存 Tailwind B1 baseline，说明 Python gate 目前仍是离线审计工具而非可阻断 merge gate |
+| offline audit closure | `pnpm lint` | pass | 2026-03-19；语义色板收口、primitive contract 调整与 shell/widget 清理后，repo 级 ESLint 继续通过 |
+| offline audit closure | `pnpm typecheck` | pass | 2026-03-19；串行重跑后 root `tsc -b` 通过，说明 UI contract/package 变更未引入类型回归 |
+| offline audit closure | `pnpm ui:check` | pass | 2026-03-19；以串行方式重跑后通过，证明 UI package runtime/typecheck/theme protocol 均正常 |
+| offline audit closure | `pnpm ui:bundle:check` | pass | 2026-03-19；最新 build 继续满足 bundle budget gate，`AgentProfilePage` 的非阻断波动仍在接受基线内 |
+| offline audit closure | `pnpm mobile:typecheck` | pass | 2026-03-19；mobile app 继续通过 `tsc --noEmit`，alias freeze 未引入回归 |
+| offline audit closure | `pnpm test:e2e:playwright:update` | pass | 2026-03-19；刷新 `AgentManagePage` wizard overlay、`AgentProfilePage` spectator/long-content、`realtime` dashboard 等受影响 visual baseline |
+| offline audit closure | `pnpm test:e2e:playwright` | pass | 2026-03-19；直接命令复跑 168/168 tests 通过，说明刷新后的 baseline 与当前样式完全一致 |
+| offline audit closure | `python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py approval-approve --request .ai/.tmp/ui/20260319T050638Z-35142/approval.request.json --approved-by codex` | pass | 2026-03-19；生成 `ui/approvals/20260319T050855Z-exception-98bcd766.json`，收口 governance fingerprint |
+| offline audit closure | `python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py approval-approve --request .ai/.tmp/ui/20260319T050904Z-45405/approval.request.json --approved-by codex` | pass | 2026-03-19；生成 `ui/approvals/20260319T050950Z-spec_change-f3d1d0f0.json`，收口最新 spec fingerprint |
+| offline audit closure | `python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py approval-status` | pass | 2026-03-19；latest spec/exception fingerprints 与 approvals 完全一致 |
+| offline audit closure | `python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py run --mode full` | pass | 2026-03-19；evidence `.ai/.tmp/ui/20260319T050955Z-48487/` 中 `errors=0 / warnings=0 / spec_status=OK / exception_status=OK / playwright=PASS`，离线 UI 审计正式收口 |

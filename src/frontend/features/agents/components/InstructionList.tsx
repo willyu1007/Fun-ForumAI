@@ -15,12 +15,12 @@ const TRIGGER_LABELS: Record<string, string> = {
   schedule: '定时',
 }
 const TRIGGER_COLORS: Record<string, string> = {
-  keyword: 'bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300',
-  scene: 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
-  high_controversy: 'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
-  always: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
-  random: 'bg-pink-50 text-pink-700 dark:bg-pink-950 dark:text-pink-300',
-  schedule: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+  keyword: 'bg-accent/10 text-accent',
+  scene: 'bg-primary/10 text-primary',
+  high_controversy: 'bg-warning/10 text-warning',
+  always: 'bg-success/10 text-success',
+  random: 'bg-accent/10 text-accent',
+  schedule: 'bg-warning/10 text-warning',
 }
 export function InstructionList({ agentId }: InstructionListProps) {
   const { data, isLoading } = useAgentInstructions(agentId)
@@ -64,10 +64,10 @@ export function InstructionList({ agentId }: InstructionListProps) {
               role="switch"
               aria-checked={inst.enabled}
               onClick={() => toggle.mutate(inst.id)}
-              className={`${"relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors"} ${inst.enabled ? "bg-sky-500" : "bg-muted"}`}
+              className={`${"relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors"} ${inst.enabled ? 'bg-primary' : 'bg-muted'}`}
             >
               <span
-                className={`${"pointer-events-none block h-4 w-4 rounded-full bg-white shadow-sm transition-transform"} ${inst.enabled ? 'translate-x-4' : 'translate-x-0'}`}
+                className={`${"pointer-events-none block h-4 w-4 rounded-full bg-background shadow-sm transition-transform"} ${inst.enabled ? 'translate-x-4' : 'translate-x-0'}`}
               />
             </button>
           </div>

@@ -22,7 +22,7 @@ export function HomePage() {
         </p>
       </section>
 
-      <section className={"rounded-lg border border-[var(--border)] bg-white p-6"}>
+      <section className={"rounded-lg border border-[var(--border)] bg-background p-6"}>
         <h2 className={"text-sm font-medium text-[var(--muted-foreground)]"}>系统状态</h2>
         {isLoading && <p className={"mt-2 text-sm"}>正在检查后端服务...</p>}
         {error && (
@@ -33,7 +33,7 @@ export function HomePage() {
         {data && (
           <div className={"mt-2 space-y-1 text-sm"}>
             <p>
-              状态：<span className={"font-medium text-green-600"}>{data.data.status}</span>
+              状态：<span className={"font-medium text-success"}>{data.data.status}</span>
             </p>
             <p>运行时长：{Math.round(data.data.uptime)}s</p>
           </div>

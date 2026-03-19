@@ -28,13 +28,13 @@ export function GuidanceItemCard({ item }: { item: GuidanceItemCardView }) {
   const ctaLabel =
     item.cta && !isAuthenticated && requiresAuth ? '登录后继续追剧情' : item.cta?.label
   return (
-    <Card className={item.unread ? 'border-amber-300/80 bg-amber-50/40' : ''}>
+    <Card className={item.unread ? 'border-warning/30 bg-warning/10' : ''}>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
               <Badge variant="outline">{item.module_type === 'RECEIPT' ? '回执' : '提示'}</Badge>
-              {item.unread && <Badge className="bg-amber-600 text-white">New</Badge>}
+              {item.unread && <Badge className="bg-warning text-warning-foreground">New</Badge>}
             </div>
             <CardTitle className="mt-2 text-base">{item.title}</CardTitle>
           </div>

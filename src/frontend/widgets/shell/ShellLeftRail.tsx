@@ -17,18 +17,22 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
+
 const GLOBAL_HIGHLIGHTS_ENABLED = import.meta.env.VITE_FF_GLOBAL_HIGHLIGHTS_V1 === 'true'
+
 const QUICK_LINKS_SUFFIX = [
   { to: '/agents', label: '搜索智能体', icon: <Search className="h-4 w-4" /> },
 ] as const
+
 const MANAGE_LINKS = [
   {
     to: '/agents/manage',
     label: '智能体管理',
-    icon: <Sparkles className="h-4 w-4 text-amber-500" />,
+    icon: <Sparkles className="h-4 w-4 text-warning" />,
   },
   { to: '/admin', label: '管控台', icon: <ShieldCheck className="h-4 w-4" /> },
 ] as const
+
 function SidebarLink({
   to,
   label,
@@ -46,7 +50,7 @@ function SidebarLink({
       className={cn(
         'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
         active
-          ? 'bg-accent text-accent-foreground font-medium'
+          ? 'bg-accent font-medium text-accent-foreground'
           : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
       )}
     >
@@ -55,7 +59,8 @@ function SidebarLink({
     </Link>
   )
 }
-export function LeftSidebar() {
+
+export function ShellLeftRail() {
   const guidanceEnabled = isGuidanceEnabled()
   const { pathname } = useLocation()
   const { data } = useCommunities()
@@ -63,7 +68,13 @@ export function LeftSidebar() {
   const quickLinksPrefix = [
     { to: '/', label: '广场', icon: <Home className="h-4 w-4" /> },
     ...(guidanceEnabled
-      ? [{ to: '/inbox', label: formatGlossaryLabel('inbox'), icon: <Inbox className="h-4 w-4" /> }]
+      ? [
+          {
+            to: '/inbox',
+            label: formatGlossaryLabel('inbox'),
+            icon: <Inbox className="h-4 w-4" />,
+          },
+        ]
       : []),
     { to: '/rooms', label: '聊天室', icon: <MessageSquare className="h-4 w-4" /> },
     { to: '/communities', label: '发现社区', icon: <Compass className="h-4 w-4" /> },
@@ -75,6 +86,7 @@ export function LeftSidebar() {
         ...QUICK_LINKS_SUFFIX,
       ]
     : [...quickLinksPrefix, ...QUICK_LINKS_SUFFIX]
+
   return (
     <ScrollArea className="h-full">
       <div className="flex flex-col gap-1 p-3">
@@ -85,21 +97,25 @@ export function LeftSidebar() {
         {communities.length > 0 && (
           <>
             <Separator className="my-2" />
-            <span className="px-3 py-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">社区</span>
-            {communities.map((c) => (
+            <span className="px-3 py-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              社区
+            </span>
+            {communities.map((community) => (
               <SidebarLink
-                key={c.id}
-                to={`/c/${c.slug}`}
-                label={c.name}
+                key={community.id}
+                to={`/c/${community.slug}`}
+                label={community.name}
                 icon={<Hash className="h-4 w-4" />}
-                active={pathname === `/c/${c.slug}`}
+                active={pathname === `/c/${community.slug}`}
               />
             ))}
           </>
         )}
 
         <Separator className="my-2" />
-        <span className="px-3 py-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">管理</span>
+        <span className="px-3 py-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          管理
+        </span>
         {MANAGE_LINKS.map((link) => (
           <SidebarLink key={link.to} {...link} active={pathname === link.to} />
         ))}

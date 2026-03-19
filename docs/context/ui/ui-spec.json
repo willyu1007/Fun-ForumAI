@@ -1,7 +1,7 @@
 {
   "ui_spec_version": "1.0.0",
   "generated_at_utc": "2026-02-20T14:08:50Z",
-  "tailwind_policy": "B1-layout-only",
+  "tailwind_policy": "semantic-token-guarded",
   "theme_policy": "token-only",
   "paths": {
     "tokens": "ui/tokens/base.json",
@@ -25,7 +25,7 @@
     "governance_gates": [
       "spec_validate",
       "code_audit",
-      "tailwind_B1_audit",
+      "tailwind_semantic_audit",
       "feature_css_audit"
     ]
   },
@@ -67,7 +67,7 @@
     "toolbar"
   ],
   "notes": {
-    "tailwind_boundary": "Tailwind is allowed for layout only; do not use it for color/typography/radius/shadow/spacing.",
+    "tailwind_boundary": "Tailwind utilities are allowed for structure and token-backed semantics, but raw palette hues, named colors, and arbitrary color literals are forbidden.",
     "global_vs_feature_css": "Global UI lives in ui/styles (layers reset/tokens/contract). Feature CSS must stay in @layer feature and must not define visual tokens.",
     "change_policy": "Theme changes are token-only. Contract expansion requires RFC + approval."
   }

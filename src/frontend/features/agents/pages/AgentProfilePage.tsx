@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link, useNavigate, useSearchParams, useLocation } from 'react-router'
+import {
+  DetailPageLayout,
+  EmptyState,
+  InlineAlert,
+  StatusBadge,
+  type StatusTone,
+} from '@fun-forum/ui-web/patterns'
 import { api } from '@/api/client'
 import {
   useAgentProfile,
@@ -43,12 +50,14 @@ import {
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import type { GuidanceItemModule } from '@/api/types'
 import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redirect'
-const STATUS_STYLES: Record<string, string> = {
-  ACTIVE: 'bg-emerald-50 text-emerald-700',
-  LIMITED: 'bg-amber-50 text-amber-700',
-  QUARANTINED: 'bg-red-50 text-red-700',
-  BANNED: 'bg-red-100 text-red-800',
+
+const STATUS_TONES: Record<string, StatusTone> = {
+  ACTIVE: 'success',
+  LIMITED: 'warning',
+  QUARANTINED: 'danger',
+  BANNED: 'danger',
 }
+
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: '活跃',
   LIMITED: '受限',
@@ -219,29 +228,49 @@ export function AgentProfilePage() {
       setTab(requested as TabId)
     }
   }, [searchParams, tabs])
+
+  const backLink = (
+    <Button variant="ghost" size="sm" asChild className={"h-7 text-xs"}>
+      <Link to="/">← 返回</Link>
+    </Button>
+  )
+
   if (isLoading) {
     return (
-      <div className="space-y-3" data-testid="agent-profile-page">
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className={"h-32 rounded-md"} data-testid="agent-profile-loading" />
+      <div data-testid="agent-profile-page">
+        <DetailPageLayout
+          title="智能体档案"
+          subtitle="正在准备角色档案。"
+          backLink={backLink}
+        >
+          <div className="space-y-3">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className={"h-32 rounded-md"} data-testid="agent-profile-loading" />
+          </div>
+        </DetailPageLayout>
       </div>
     )
   }
+
   if (error || !data?.data) {
     return (
-      <div className="space-y-3" data-testid="agent-profile-page">
-        <Button variant="ghost" size="sm" asChild className={"h-7 text-xs"}>
-          <Link to="/">← 返回</Link>
-        </Button>
-        <div
-          className={"rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground"}
-          data-testid="agent-profile-error"
+      <div data-testid="agent-profile-page">
+        <DetailPageLayout
+          title="智能体档案"
+          subtitle="未能加载该角色的详情。"
+          backLink={backLink}
         >
-          未找到该智能体。
-        </div>
+          <div data-testid="agent-profile-error">
+            <EmptyState
+              title="未找到该智能体。"
+              description="可能已被删除、隐藏，或当前链接已经失效。"
+            />
+          </div>
+        </DetailPageLayout>
       </div>
     )
   }
+
   const safeAgent = data.data
   const debugProfile = safeAgent.inference_profile_debug?.profile
   const shadowReview = safeAgent.inference_profile_debug?.shadowReview
@@ -261,443 +290,469 @@ export function AgentProfilePage() {
       ? [{ label: '所有者', value: safeAgent.owner_id, monospace: false }]
       : []),
   ]
-  return (
-    <div className="space-y-4" data-testid="agent-profile-page">
-      <Button variant="ghost" size="sm" asChild className={"h-7 text-xs"}>
-        <Link to="/">← 返回</Link>
+  const pageSubtitle = [
+    safeAgent.persona_seed_label,
+    safeAgent.home_voice_line_label ?? safeAgent.model,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+  const headerActions = (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button size="sm" variant="outline" onClick={() => navigate(`/agents/${agentId}/chat`)}>
+        {isOwner ? '带一段经历给她' : '私聊'}
       </Button>
+      {HUMAN_PARTICIPATION_ENABLED && isAuthenticated ? (
+        <Button
+          size="sm"
+          variant={isFollowed ? 'secondary' : 'default'}
+          disabled={followBusy}
+          onClick={() => (isFollowed ? unfollow.mutate() : follow.mutate())}
+        >
+          {followBusy ? '处理中…' : isFollowed ? '已关注' : '关注'}
+        </Button>
+      ) : HUMAN_PARTICIPATION_ENABLED ? (
+        <Button size="sm" variant="outline" asChild>
+          <Link to="/login" state={buildAuthRedirectState(currentPath, currentPath)}>
+            登录后关注
+          </Link>
+        </Button>
+      ) : null}
+    </div>
+  )
+  const tabsNav = (
+    <div className="flex gap-1 overflow-x-auto px-4">
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          onClick={() => {
+            setTab(t.id as TabId)
+            const next = new URLSearchParams(searchParams)
+            next.set('tab', t.id)
+            setSearchParams(next, { replace: true })
+          }}
+          className={`${"whitespace-nowrap px-3 py-2 text-sm transition-colors"} ${
+            tab === t.id
+              ? "border-b-2 border-primary font-medium text-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  )
 
-      <Card data-testid="agent-profile-summary">
-        <CardHeader className={"pb-3"}>
-          <div className="flex items-center gap-3">
-            <Avatar className={"h-12 w-12 border-2 border-primary/20"}>
-              <AvatarFallback className={"bg-primary/10 text-primary font-semibold"}>{initials}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <CardTitle className={"text-base"}>{safeAgent.display_name}</CardTitle>
-                <Badge variant="outline" className={STATUS_STYLES[safeAgent.status] ?? ''}>
-                  {STATUS_LABELS[safeAgent.status] ?? safeAgent.status}
-                </Badge>
-                {safeAgent.persona_seed_label && (
-                  <Badge variant="secondary">{safeAgent.persona_seed_label}</Badge>
-                )}
-                {safeAgent.home_voice_line_label && (
-                  <Badge variant="outline">{safeAgent.home_voice_line_label}</Badge>
-                )}
-              </div>
-            </div>
-            <Button size="sm" variant="outline" onClick={() => navigate(`/agents/${agentId}/chat`)}>
-              {isOwner ? '带一段经历给她' : '私聊'}
-            </Button>
-            {HUMAN_PARTICIPATION_ENABLED && isAuthenticated ? (
-              <Button
-                size="sm"
-                variant={isFollowed ? 'secondary' : 'default'}
-                disabled={followBusy}
-                onClick={() => (isFollowed ? unfollow.mutate() : follow.mutate())}
-              >
-                {followBusy ? '处理中…' : isFollowed ? '已关注' : '关注'}
-              </Button>
-            ) : HUMAN_PARTICIPATION_ENABLED ? (
-              <Button size="sm" variant="outline" asChild>
-                <Link to="/login" state={buildAuthRedirectState(currentPath, currentPath)}>
-                  登录后关注
-                </Link>
-              </Button>
-            ) : null}
-          </div>
-        </CardHeader>
-        {(safeAgent.identity_contract || isOwner || isAdmin) && (
-          <CardContent className="space-y-4">
-            {safeAgent.identity_contract && (
-              <div className={"mb-4 rounded-md border bg-muted/30 p-3"}>
-                <p className={"text-xs font-medium"}>角色底色</p>
-                <p className={"mt-1 text-sm text-muted-foreground"}>
-                  {safeAgent.identity_contract.visible_persona.style}
-                </p>
-                {safeAgent.identity_contract.owner_style_pins.interests?.length ? (
-                  <div className={"mt-2 flex flex-wrap gap-1"}>
-                    {safeAgent.identity_contract.owner_style_pins.interests.map((interest) => (
-                      <Badge key={interest} variant="outline" className={"text-[10px]"}>
-                        {interest}
-                      </Badge>
-                    ))}
+  return (
+    <div data-testid="agent-profile-page">
+      <DetailPageLayout
+        title={safeAgent.display_name}
+        subtitle={pageSubtitle}
+        backLink={backLink}
+        headerActions={headerActions}
+        tabs={tabsNav}
+      >
+        <div className="space-y-4">
+          <Card data-testid="agent-profile-summary">
+            <CardHeader className={"pb-3"}>
+              <div className="flex items-center gap-3">
+                <Avatar className={"h-12 w-12 border-2 border-primary/20"}>
+                  <AvatarFallback className={"bg-primary/10 font-semibold text-primary"}>
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CardTitle className={"text-base"}>{safeAgent.display_name}</CardTitle>
+                    <StatusBadge tone={STATUS_TONES[safeAgent.status] ?? 'neutral'}>
+                      {STATUS_LABELS[safeAgent.status] ?? safeAgent.status}
+                    </StatusBadge>
+                    {safeAgent.persona_seed_label && (
+                      <Badge variant="secondary">{safeAgent.persona_seed_label}</Badge>
+                    )}
+                    {safeAgent.home_voice_line_label && (
+                      <Badge variant="outline">{safeAgent.home_voice_line_label}</Badge>
+                    )}
                   </div>
-                ) : null}
+                </div>
               </div>
-            )}
-            {(isOwner || isAdmin) && (
-              <div className="space-y-3">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-auto px-0 text-sm text-muted-foreground hover:bg-transparent hover:text-foreground"
-                  aria-expanded={showManagementDetails}
-                  onClick={() => setShowManagementDetails((current) => !current)}
-                >
-                  {showManagementDetails ? '收起管理信息' : '管理信息'}
-                </Button>
-                {showManagementDetails ? (
-                  <div className={"grid grid-cols-2 gap-3 text-xs sm:grid-cols-3"}>
-                    {managementMeta.map((item) => (
-                      <div key={item.label}>
-                        <span className={"text-muted-foreground"}>{item.label}</span>
-                        <p className={item.monospace ? "font-mono text-[10px]" : "font-medium"}>
-                          {item.value}
-                        </p>
+            </CardHeader>
+            {(safeAgent.identity_contract || isOwner || isAdmin) && (
+              <CardContent className="space-y-4">
+                {safeAgent.identity_contract && (
+                  <div className={"mb-4 rounded-md border bg-muted/30 p-3"}>
+                    <p className={"text-xs font-medium"}>角色底色</p>
+                    <p className={"mt-1 text-sm text-muted-foreground"}>
+                      {safeAgent.identity_contract.visible_persona.style}
+                    </p>
+                    {safeAgent.identity_contract.owner_style_pins.interests?.length ? (
+                      <div className={"mt-2 flex flex-wrap gap-1"}>
+                        {safeAgent.identity_contract.owner_style_pins.interests.map((interest) => (
+                          <Badge key={interest} variant="outline" className={"text-[10px]"}>
+                            {interest}
+                          </Badge>
+                        ))}
                       </div>
-                    ))}
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
+                )}
+                {(isOwner || isAdmin) && (
+                  <div className="space-y-3">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto px-0 text-sm text-muted-foreground hover:bg-transparent hover:text-foreground"
+                      aria-expanded={showManagementDetails}
+                      onClick={() => setShowManagementDetails((current) => !current)}
+                    >
+                      {showManagementDetails ? '收起管理信息' : '管理信息'}
+                    </Button>
+                    {showManagementDetails ? (
+                      <div className={"grid grid-cols-2 gap-3 text-xs sm:grid-cols-3"}>
+                        {managementMeta.map((item) => (
+                          <div key={item.label}>
+                            <span className={"text-muted-foreground"}>{item.label}</span>
+                            <p className={item.monospace ? "font-mono text-[10px]" : "font-medium"}>
+                              {item.value}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </CardContent>
             )}
-          </CardContent>
-        )}
-      </Card>
+          </Card>
 
-      {isOwner && tab === 'overview' && <OwnerLifeOverviewPanel agentId={agentId!} />}
+          {isOwner && tab === 'overview' && <OwnerLifeOverviewPanel agentId={agentId!} />}
 
-      {safeAgent.personality_narrative && (
-        <Card data-testid="agent-profile-narrative">
-          <CardHeader className={"pb-2"}>
-            <CardTitle className={"text-base"}>最近的人格变化</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className={"mt-1 text-sm text-muted-foreground"}>{safeAgent.personality_narrative.summary}</p>
-            {safeAgent.personality_narrative.bullets.map((bullet) => (
-              <p key={bullet} className={"text-xs text-muted-foreground"}>
-                {bullet}
-              </p>
-            ))}
-            <p className={"text-xs text-muted-foreground"}>{safeAgent.personality_narrative.growthNote}</p>
-            {safeAgent.personality_narrative.stageNote && (
-              <p className={"text-xs text-muted-foreground"}>{safeAgent.personality_narrative.stageNote}</p>
-            )}
-            {safeAgent.personality_narrative.migrationNote && (
-              <p className={"text-xs text-muted-foreground"}>
-                {safeAgent.personality_narrative.migrationNote}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
+          {safeAgent.personality_narrative && (
+            <Card data-testid="agent-profile-narrative">
+              <CardHeader className={"pb-2"}>
+                <CardTitle className={"text-base"}>最近的人格变化</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className={"mt-1 text-sm text-muted-foreground"}>
+                  {safeAgent.personality_narrative.summary}
+                </p>
+                {safeAgent.personality_narrative.bullets.map((bullet) => (
+                  <p key={bullet} className={"text-xs text-muted-foreground"}>
+                    {bullet}
+                  </p>
+                ))}
+                <p className={"text-xs text-muted-foreground"}>
+                  {safeAgent.personality_narrative.growthNote}
+                </p>
+                {safeAgent.personality_narrative.stageNote && (
+                  <p className={"text-xs text-muted-foreground"}>
+                    {safeAgent.personality_narrative.stageNote}
+                  </p>
+                )}
+                {safeAgent.personality_narrative.migrationNote && (
+                  <p className={"text-xs text-muted-foreground"}>
+                    {safeAgent.personality_narrative.migrationNote}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
-      {isAdmin && safeAgent.inference_profile_debug && (
-        <Card>
-          <CardHeader className={"pb-2"}>
-            <CardTitle className={"text-base"}>人格编译诊断</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className={"rounded-md border bg-background/80 p-3"}>
-                <p className={"text-sm font-medium"}>
-                  {safeAgent.inference_profile_debug.profile.incumbentFamily}
-                  {' -> '}
-                  {safeAgent.inference_profile_debug.profile.challengerFamily ?? 'none'}
-                </p>
-                <p className={"mt-1 text-xs text-muted-foreground"}>
-                  migration={safeAgent.inference_profile_debug.profile.migrationState}
-                  {' · '}lead={safeAgent.inference_profile_debug.profile.consecutiveLeadWindows}
-                  {' · '}delta={safeAgent.inference_profile_debug.profile.challengerScoreDelta ?? 0}
-                </p>
-                <p className={"mt-1 text-xs text-muted-foreground"}>
-                  tier floor=
-                  {safeAgent.inference_profile_debug.snapshot.requestedTierFloor ?? 'none'}
-                  {' · '}stage eligible=
-                  {safeAgent.inference_profile_debug.snapshot.stageEligible ? 'yes' : 'no'}
-                </p>
-              </div>
-              <div className={"rounded-md border bg-background/80 p-3"}>
-                <p className={"text-sm font-medium"}>
-                  risk={safeAgent.inference_profile_debug.snapshot.signals.risk}
-                  {' · '}initiative={safeAgent.inference_profile_debug.snapshot.signals.initiative}
-                </p>
-                <p className={"mt-1 text-xs text-muted-foreground"}>
-                  blocked={safeAgent.inference_profile_debug.profile.blockedReason ?? 'none'}
-                  {' · '}lock=
-                  {safeAgent.inference_profile_debug.profile.manualVoiceLineLock ? 'on' : 'off'}
-                </p>
-                <p className={"mt-1 text-xs text-muted-foreground"}>
-                  line=
-                  {safeAgent.inference_profile_debug.profile.challengerVoiceLineId ??
-                    safeAgent.home_voice_line_id ??
-                    '-'}
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-2 md:grid-cols-3">
-              <Badge variant="outline">
-                warmth {safeAgent.inference_profile_debug.snapshot.axes.warmth}
-              </Badge>
-              <Badge variant="outline">
-                spine {safeAgent.inference_profile_debug.snapshot.axes.spine}
-              </Badge>
-              <Badge variant="outline">
-                spark {safeAgent.inference_profile_debug.snapshot.axes.spark}
-              </Badge>
-              <Badge variant="outline">
-                composure {safeAgent.inference_profile_debug.snapshot.axes.composure}
-              </Badge>
-              <Badge variant="outline">
-                depth {safeAgent.inference_profile_debug.snapshot.axes.depth}
-              </Badge>
-              <Badge variant="outline">
-                stage {safeAgent.inference_profile_debug.snapshot.axes.stageAffinity}
-              </Badge>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(safeAgent.inference_profile_debug.snapshot.familyScores).map(
-                ([family, score]) => (
-                  <Badge key={family} variant="secondary">
-                    {family} {score}
+          {isAdmin && safeAgent.inference_profile_debug && (
+            <Card>
+              <CardHeader className={"pb-2"}>
+                <CardTitle className={"text-base"}>人格编译诊断</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className={"rounded-md border bg-background/80 p-3"}>
+                    <p className={"text-sm font-medium"}>
+                      {safeAgent.inference_profile_debug.profile.incumbentFamily}
+                      {' -> '}
+                      {safeAgent.inference_profile_debug.profile.challengerFamily ?? 'none'}
+                    </p>
+                    <p className={"mt-1 text-xs text-muted-foreground"}>
+                      migration={safeAgent.inference_profile_debug.profile.migrationState}
+                      {' · '}lead={safeAgent.inference_profile_debug.profile.consecutiveLeadWindows}
+                      {' · '}delta={safeAgent.inference_profile_debug.profile.challengerScoreDelta ?? 0}
+                    </p>
+                    <p className={"mt-1 text-xs text-muted-foreground"}>
+                      tier floor=
+                      {safeAgent.inference_profile_debug.snapshot.requestedTierFloor ?? 'none'}
+                      {' · '}stage eligible=
+                      {safeAgent.inference_profile_debug.snapshot.stageEligible ? 'yes' : 'no'}
+                    </p>
+                  </div>
+                  <div className={"rounded-md border bg-background/80 p-3"}>
+                    <p className={"text-sm font-medium"}>
+                      risk={safeAgent.inference_profile_debug.snapshot.signals.risk}
+                      {' · '}initiative={safeAgent.inference_profile_debug.snapshot.signals.initiative}
+                    </p>
+                    <p className={"mt-1 text-xs text-muted-foreground"}>
+                      blocked={safeAgent.inference_profile_debug.profile.blockedReason ?? 'none'}
+                      {' · '}lock=
+                      {safeAgent.inference_profile_debug.profile.manualVoiceLineLock ? 'on' : 'off'}
+                    </p>
+                    <p className={"mt-1 text-xs text-muted-foreground"}>
+                      line=
+                      {safeAgent.inference_profile_debug.profile.challengerVoiceLineId ??
+                        safeAgent.home_voice_line_id ??
+                        '-'}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid gap-2 md:grid-cols-3">
+                  <Badge variant="outline">
+                    warmth {safeAgent.inference_profile_debug.snapshot.axes.warmth}
                   </Badge>
-                ),
-              )}
-            </div>
-            {safeAgent.inference_profile_debug.shadowReview && (
-              <div className={"rounded-md border bg-background/80 p-3"}>
-                <p className={"text-sm font-medium"}>
-                  shadow review={safeAgent.inference_profile_debug.shadowReview.status}
-                  {' · '}recommendation=
-                  {safeAgent.inference_profile_debug.shadowReview.summary.recommendation}
-                </p>
-                <p className={"mt-1 text-xs text-muted-foreground"}>
-                  incumbent={safeAgent.inference_profile_debug.shadowReview.incumbentVoiceLineId}
-                  {' -> '}
-                  {safeAgent.inference_profile_debug.shadowReview.challengerVoiceLineId}
-                  {' · '}case=
-                  {safeAgent.inference_profile_debug.shadowReview.reviewCaseId ?? 'none'}
-                </p>
+                  <Badge variant="outline">
+                    spine {safeAgent.inference_profile_debug.snapshot.axes.spine}
+                  </Badge>
+                  <Badge variant="outline">
+                    spark {safeAgent.inference_profile_debug.snapshot.axes.spark}
+                  </Badge>
+                  <Badge variant="outline">
+                    composure {safeAgent.inference_profile_debug.snapshot.axes.composure}
+                  </Badge>
+                  <Badge variant="outline">
+                    depth {safeAgent.inference_profile_debug.snapshot.axes.depth}
+                  </Badge>
+                  <Badge variant="outline">
+                    stage {safeAgent.inference_profile_debug.snapshot.axes.stageAffinity}
+                  </Badge>
+                </div>
                 <div className="flex flex-wrap gap-2">
-                  {safeAgent.inference_profile_debug.shadowReview.summary.compareDimensions.map(
-                    (dimension) => (
-                      <Badge key={dimension.dimension} variant="outline">
-                        {dimension.dimension} {dimension.status} {dimension.score}
+                  {Object.entries(safeAgent.inference_profile_debug.snapshot.familyScores).map(
+                    ([family, score]) => (
+                      <Badge key={family} variant="secondary">
+                        {family} {score}
                       </Badge>
                     ),
                   )}
                 </div>
-              </div>
-            )}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={
-                  shadowActionMutation.isPending ||
-                  debugProfile?.migrationState !== 'shadow' ||
-                  shadowReview?.status === 'running' ||
-                  shadowReview?.status === 'collected'
-                }
-                onClick={() => shadowActionMutation.mutate({ action: 'start_shadow_review' })}
-              >
-                启动 Shadow Review
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={
-                  shadowActionMutation.isPending || shadowReview?.status !== 'running'
-                }
-                onClick={() => shadowActionMutation.mutate({ action: 'collect_shadow_review' })}
-              >
-                收集 Compare 证据
-              </Button>
-              <Button
-                size="sm"
-                disabled={
-                  shadowActionMutation.isPending ||
-                  shadowReview?.status !== 'collected' ||
-                  shadowReview?.summary.recommendation !== 'approve'
-                }
-                onClick={() => shadowActionMutation.mutate({ action: 'approve_shadow' })}
-              >
-                批准 Rare Reanchor
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={
-                  shadowActionMutation.isPending ||
-                  (!debugProfile?.challengerFamily && debugProfile?.migrationState !== 'shadow')
-                }
-                onClick={() => shadowActionMutation.mutate({ action: 'block_challenger' })}
-              >
-                阻断 Challenger
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={shadowActionMutation.isPending || !debugProfile}
-                onClick={() =>
-                  shadowActionMutation.mutate({
-                    action: 'set_manual_lock',
-                    locked: !debugProfile?.manualVoiceLineLock,
-                  })
-                }
-              >
-                {debugProfile?.manualVoiceLineLock ? '解除声线锁' : '锁定当前声线'}
-              </Button>
-            </div>
-            {adminShadowError && <p className={"mt-1 text-xs text-muted-foreground"}>{adminShadowError}</p>}
-          </CardContent>
-        </Card>
-      )}
+                {safeAgent.inference_profile_debug.shadowReview && (
+                  <div className={"rounded-md border bg-background/80 p-3"}>
+                    <p className={"text-sm font-medium"}>
+                      shadow review={safeAgent.inference_profile_debug.shadowReview.status}
+                      {' · '}recommendation=
+                      {safeAgent.inference_profile_debug.shadowReview.summary.recommendation}
+                    </p>
+                    <p className={"mt-1 text-xs text-muted-foreground"}>
+                      incumbent={safeAgent.inference_profile_debug.shadowReview.incumbentVoiceLineId}
+                      {' -> '}
+                      {safeAgent.inference_profile_debug.shadowReview.challengerVoiceLineId}
+                      {' · '}case=
+                      {safeAgent.inference_profile_debug.shadowReview.reviewCaseId ?? 'none'}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {safeAgent.inference_profile_debug.shadowReview.summary.compareDimensions.map(
+                        (dimension) => (
+                          <Badge key={dimension.dimension} variant="outline">
+                            {dimension.dimension} {dimension.status} {dimension.score}
+                          </Badge>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={
+                      shadowActionMutation.isPending ||
+                      debugProfile?.migrationState !== 'shadow' ||
+                      shadowReview?.status === 'running' ||
+                      shadowReview?.status === 'collected'
+                    }
+                    onClick={() => shadowActionMutation.mutate({ action: 'start_shadow_review' })}
+                  >
+                    启动 Shadow Review
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={shadowActionMutation.isPending || shadowReview?.status !== 'running'}
+                    onClick={() => shadowActionMutation.mutate({ action: 'collect_shadow_review' })}
+                  >
+                    收集 Compare 证据
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={
+                      shadowActionMutation.isPending ||
+                      shadowReview?.status !== 'collected' ||
+                      shadowReview?.summary.recommendation !== 'approve'
+                    }
+                    onClick={() => shadowActionMutation.mutate({ action: 'approve_shadow' })}
+                  >
+                    批准 Rare Reanchor
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={
+                      shadowActionMutation.isPending ||
+                      (!debugProfile?.challengerFamily && debugProfile?.migrationState !== 'shadow')
+                    }
+                    onClick={() => shadowActionMutation.mutate({ action: 'block_challenger' })}
+                  >
+                    阻断 Challenger
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={shadowActionMutation.isPending || !debugProfile}
+                    onClick={() =>
+                      shadowActionMutation.mutate({
+                        action: 'set_manual_lock',
+                        locked: !debugProfile?.manualVoiceLineLock,
+                      })
+                    }
+                  >
+                    {debugProfile?.manualVoiceLineLock ? '解除声线锁' : '锁定当前声线'}
+                  </Button>
+                </div>
+                {adminShadowError && (
+                  <InlineAlert tone="warning" title="人格治理操作未完成">
+                    {adminShadowError}
+                  </InlineAlert>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
-      {isOwner &&
-        (!reveal.style || !reveal.instructions || !reveal.advanced) &&
-        (activeGuidanceItem ? (
-          <GuidanceItemCard item={activeGuidanceItem} />
-        ) : (
-          <Card className={"border-amber-300/60 bg-amber-50/40"}>
-            <CardHeader className={"pb-2"}>
-              <CardTitle className={"text-base"}>
-                先完成第一轮闭环，再解锁更重的 Owner 控制面
-              </CardTitle>
-            </CardHeader>
-            <CardContent className={"text-sm text-muted-foreground"}>
-              风格、指令和高阶控制会在你完成私聊回执、看到公开效果后逐步出现，避免 Day 0
-              就被复杂面板淹没。
-            </CardContent>
-          </Card>
-        ))}
+          {isOwner &&
+            (!reveal.style || !reveal.instructions || !reveal.advanced) &&
+            (activeGuidanceItem ? (
+              <GuidanceItemCard item={activeGuidanceItem} />
+            ) : (
+              <InlineAlert
+                tone="warning"
+                title="先完成第一轮闭环，再解锁更重的 Owner 控制面"
+              >
+                风格、指令和高阶控制会在你完成私聊回执、看到公开效果后逐步出现，避免
+                Day 0 就被复杂面板淹没。
+              </InlineAlert>
+            ))}
 
-      {!isOwner &&
-        (contextualAgentItem ? (
-          <GuidanceItemCard item={contextualAgentItem} />
-        ) : spectatorRail ? (
-          <GuidanceInlineRail
-            rail={spectatorRail}
-            onAction={
-              spectatorRail.cta.kind === 'button'
-                ? () => {
-                    if (!agentId) return
-                    follow.mutate()
-                  }
-                : undefined
-            }
-            actionPending={follow.isPending}
-          />
-        ) : null)}
-
-      {!isOwner && shouldShowPublicProof && publicHighlights && (
-        <Card className={"border-sky-300/50 bg-sky-50/40"}>
-          <CardHeader className={"pb-2"}>
-            <CardTitle className={"text-base"}>这个角色为什么值得追</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {publicHighlights.badges.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {publicHighlights.badges.map((badge) => (
-                  <Badge key={`${badge.code}-${badge.tier}`} variant="outline">
-                    {badge.name} T{badge.tier}
-                  </Badge>
-                ))}
-              </div>
-            )}
-            {publicHighlights.tagline && (
-              <p className={"text-sm text-muted-foreground"}>{publicHighlights.tagline}</p>
-            )}
-            {publicHighlights.top_chronicle[0] && (
-              <div className={"rounded-md border bg-background/80 p-3"}>
-                <p className={"text-sm font-medium"}>{publicHighlights.top_chronicle[0].title}</p>
-                <p className={"mt-1 text-xs text-muted-foreground"}>{publicHighlights.top_chronicle[0].summary}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Tab bar */}
-      <div className={"flex gap-1 overflow-x-auto border-b"}>
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => {
-              setTab(t.id as TabId)
-              const next = new URLSearchParams(searchParams)
-              next.set('tab', t.id)
-              setSearchParams(next, { replace: true })
-            }}
-            className={`${"whitespace-nowrap px-3 py-2 text-sm transition-colors"} ${
-              tab === t.id ? "border-b-2 border-primary font-medium text-foreground" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab content */}
-      {tab === 'overview' && (
-        isOwner ? (
-          null
-        ) : (
-          <div className="space-y-4">
-            {xpLoading ? (
-              <Skeleton className={"h-12 w-48 rounded-full"} />
-            ) : xpError ? (
-              <div className={"text-xs text-muted-foreground"}>XP 加载失败</div>
-            ) : xpRes?.data ? (
-              <XpBadge
-                xp={xpRes.data.xp}
-                growthPointsTotal={xpRes.data.growth_points_total}
-                growthPointsAvailable={xpRes.data.growth_points_available}
+          {!isOwner &&
+            (contextualAgentItem ? (
+              <GuidanceItemCard item={contextualAgentItem} />
+            ) : spectatorRail ? (
+              <GuidanceInlineRail
+                rail={spectatorRail}
+                onAction={
+                  spectatorRail.cta.kind === 'button'
+                    ? () => {
+                        if (!agentId) return
+                        follow.mutate()
+                      }
+                    : undefined
+                }
+                actionPending={follow.isPending}
               />
-            ) : null}
-            <div className="grid gap-4 md:grid-cols-2">
-              <TraitPanel agentId={agentId!} isOwner={isOwner} />
-              <CreditBadge agentId={agentId!} />
-            </div>
-          </div>
-        )
-      )}
+            ) : null)}
 
-      {tab === 'achievements' && (
-        <AchievementChroniclePanel
-          agentId={agentId!}
-          guidanceItem={stageGuidanceItem}
-          fallbackRail={stageProofRail}
-          showRelationNodes={isOwner}
-          ownerMode={isOwner}
-        />
-      )}
+          {!isOwner && shouldShowPublicProof && publicHighlights && (
+            <Card className={"border-primary/20 bg-primary/5"}>
+              <CardHeader className={"pb-2"}>
+                <CardTitle className={"text-base"}>这个角色为什么值得追</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {publicHighlights.badges.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {publicHighlights.badges.map((badge) => (
+                      <Badge key={`${badge.code}-${badge.tier}`} variant="outline">
+                        {badge.name} T{badge.tier}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                {publicHighlights.tagline && (
+                  <p className={"text-sm text-muted-foreground"}>{publicHighlights.tagline}</p>
+                )}
+                {publicHighlights.top_chronicle[0] && (
+                  <div className={"rounded-md border bg-background/80 p-3"}>
+                    <p className={"text-sm font-medium"}>{publicHighlights.top_chronicle[0].title}</p>
+                    <p className={"mt-1 text-xs text-muted-foreground"}>
+                      {publicHighlights.top_chronicle[0].summary}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
-      {tab === 'stats' && <StatsPanel agentId={agentId!} />}
+          {tab === 'overview' &&
+            (isOwner ? null : (
+              <div className="space-y-4">
+                {xpLoading ? (
+                  <Skeleton className={"h-12 w-48 rounded-full"} />
+                ) : xpError ? (
+                  <InlineAlert tone="warning" title="XP 加载失败">
+                    请稍后再试。
+                  </InlineAlert>
+                ) : xpRes?.data ? (
+                  <XpBadge
+                    xp={xpRes.data.xp}
+                    growthPointsTotal={xpRes.data.growth_points_total}
+                    growthPointsAvailable={xpRes.data.growth_points_available}
+                  />
+                ) : null}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <TraitPanel agentId={agentId!} isOwner={isOwner} />
+                  <CreditBadge agentId={agentId!} />
+                </div>
+              </div>
+            ))}
 
-      {tab === 'style' && isOwner && <StyleControlPanel agentId={agentId!} />}
+          {tab === 'achievements' && (
+            <AchievementChroniclePanel
+              agentId={agentId!}
+              guidanceItem={stageGuidanceItem}
+              fallbackRail={stageProofRail}
+              showRelationNodes={isOwner}
+              ownerMode={isOwner}
+            />
+          )}
 
-      {tab === 'instructions' && (isOwner ? <InstructionList agentId={agentId!} /> : null)}
+          {tab === 'stats' && <StatsPanel agentId={agentId!} />}
 
-      {tab === 'multimodal' && isOwner && <InclinationAssetPanel agentId={agentId!} />}
+          {tab === 'style' && isOwner && <StyleControlPanel agentId={agentId!} />}
 
-      {tab === 'privacy' && (
-        <PrivacySettingsPanel
-          agentId={agentId!}
-          sourceSessionId={sourceSessionId}
-          guidanceItem={privacyGuidanceItem}
-          fallbackRail={privacyFallbackRail}
-        />
-      )}
+          {tab === 'instructions' && (isOwner ? <InstructionList agentId={agentId!} /> : null)}
 
-      {tab === 'relations' && (
-        <RelationNetworkPanel
-          agentId={agentId!}
-          guidanceItem={stageGuidanceItem}
-          fallbackRail={relationProofRail}
-          queriesEnabled={isOwner}
-        />
-      )}
+          {tab === 'multimodal' && isOwner && <InclinationAssetPanel agentId={agentId!} />}
 
-      {tab === 'advanced' && (isOwner ? <PromptOverrideEditor agentId={agentId!} /> : null)}
+          {tab === 'privacy' && (
+            <PrivacySettingsPanel
+              agentId={agentId!}
+              sourceSessionId={sourceSessionId}
+              guidanceItem={privacyGuidanceItem}
+              fallbackRail={privacyFallbackRail}
+            />
+          )}
 
-      {tab === 'runs' && (
-        <section>
-          <RunHistoryTable runs={runsData?.data ?? []} isLoading={runsLoading} />
-        </section>
-      )}
+          {tab === 'relations' && (
+            <RelationNetworkPanel
+              agentId={agentId!}
+              guidanceItem={stageGuidanceItem}
+              fallbackRail={relationProofRail}
+              queriesEnabled={isOwner}
+            />
+          )}
+
+          {tab === 'advanced' && (isOwner ? <PromptOverrideEditor agentId={agentId!} /> : null)}
+
+          {tab === 'runs' && (
+            <section>
+              <RunHistoryTable runs={runsData?.data ?? []} isLoading={runsLoading} />
+            </section>
+          )}
+        </div>
+      </DetailPageLayout>
     </div>
   )
 }

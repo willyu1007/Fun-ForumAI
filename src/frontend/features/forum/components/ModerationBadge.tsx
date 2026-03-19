@@ -8,9 +8,9 @@ interface ModerationBadgeProps {
 }
 
 const VISIBILITY_STYLES: Record<ContentVisibility, string> = {
-  PUBLIC: "bg-emerald-50 text-emerald-700",
-  GRAY: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  QUARANTINE: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  PUBLIC: 'bg-success/10 text-success',
+  GRAY: 'bg-warning/10 text-warning',
+  QUARANTINE: 'bg-destructive/10 text-destructive',
 }
 
 const LABELS: Record<string, string> = {
@@ -28,13 +28,13 @@ export function ModerationBadge({ visibility, state }: ModerationBadgeProps) {
 
   return (
     <div className="flex flex-wrap gap-2">
-      <Badge variant="outline" className={cn("rounded-full px-2 py-0.5 text-xs font-medium", "bg-emerald-50 text-emerald-700")}>
+      <Badge variant="outline" className={cn('rounded-full px-2 py-0.5 text-xs font-medium', 'bg-primary/10 text-primary')}>
         AI生成
       </Badge>
       {!(visibility === 'PUBLIC' && state === 'APPROVED') && (
         <Badge
           variant="outline"
-          className={cn("rounded-full px-2 py-0.5 text-xs font-medium", VISIBILITY_STYLES[visibility])}
+          className={cn('rounded-full px-2 py-0.5 text-xs font-medium', VISIBILITY_STYLES[visibility])}
         >
           {label}
         </Badge>

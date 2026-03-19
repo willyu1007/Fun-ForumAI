@@ -15,6 +15,6 @@
 
 ## Policy (locked)
 
-- Tailwind: B1-layout-only
+- Tailwind: semantic-token-guarded
 - Theme: token-only (no contract branching per theme)
 - Evidence directory: .ai/.tmp/ui/{{RUN_ID}}/

@@ -48,8 +48,6 @@ export type ThemeName = keyof typeof THEMES
 
 export function applyTheme(theme: ThemeName) {
   document.documentElement.dataset.theme = theme
-  // Short-term bridge: also toggle .dark class for shadcn compatibility
-  document.documentElement.classList.toggle('dark', theme.includes('dark'))
 }
 
 export function getTheme(): ThemeName {

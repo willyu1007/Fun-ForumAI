@@ -115,7 +115,7 @@ export function GovernanceTab({
                 <Badge
                   variant="outline"
                   className={
-                    result.success ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+                    result.success ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
                   }
                 >
                   {result.success ? '成功' : '失败'}

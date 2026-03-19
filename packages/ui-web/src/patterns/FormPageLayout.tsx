@@ -11,6 +11,7 @@ export interface FormPageLayoutProps {
   title: React.ReactNode
   description?: React.ReactNode
   backLink?: React.ReactNode
+  headerActions?: React.ReactNode
   children: React.ReactNode
   actions?: React.ReactNode
   secondaryActions?: React.ReactNode
@@ -22,6 +23,7 @@ export function FormPageLayout({
   title,
   description,
   backLink,
+  headerActions,
   children,
   actions,
   secondaryActions,
@@ -33,12 +35,21 @@ export function FormPageLayout({
       {/* Header */}
       <header {...dataUi('section', { padding: 'md' })}>
         {backLink && <div className="mb-2">{backLink}</div>}
-        <h1 {...dataUi('text', { variant: 'h1' })}>{title}</h1>
-        {description && (
-          <p {...dataUi('text', { variant: 'body', tone: 'secondary' })} className="mt-1">
-            {description}
-          </p>
-        )}
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <h1 {...dataUi('text', { variant: 'h1' })}>{title}</h1>
+            {description && (
+              <p {...dataUi('text', { variant: 'body', tone: 'secondary' })} className="mt-1">
+                {description}
+              </p>
+            )}
+          </div>
+          {headerActions && (
+            <div {...dataUi('toolbar', { align: 'end' })}>
+              {headerActions}
+            </div>
+          )}
+        </div>
       </header>
 
       {/* Form Content */}

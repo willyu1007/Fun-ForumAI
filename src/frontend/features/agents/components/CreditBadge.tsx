@@ -4,14 +4,14 @@ interface CreditBadgeProps {
   agentId: string
 }
 const riskColors: Record<string, string> = {
-  low: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
-  medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
-  high: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+  low: 'bg-success/10 text-success',
+  medium: 'bg-warning/10 text-warning',
+  high: 'bg-destructive/10 text-destructive',
 }
 function scoreColor(score: number) {
-  if (score > 70) return 'text-green-600 dark:text-green-400'
-  if (score >= 40) return 'text-amber-600 dark:text-amber-400'
-  return 'text-red-600 dark:text-red-400'
+  if (score > 70) return 'text-success'
+  if (score >= 40) return 'text-warning'
+  return 'text-destructive'
 }
 function relativeTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
@@ -68,7 +68,7 @@ export default function CreditBadge({ agentId }: CreditBadgeProps) {
               <li key={ev.id} className={"flex items-center justify-between text-xs"}>
                 <span className={"truncate text-foreground"}>{ev.reason}</span>
                 <span className={"ml-2 flex shrink-0 items-center gap-1.5"}>
-                  <span className={ev.delta > 0 ? "font-medium text-green-600 dark:text-green-400" : "font-medium text-red-600 dark:text-red-400"}>
+                  <span className={ev.delta > 0 ? 'font-medium text-success' : 'font-medium text-destructive'}>
                     {ev.delta > 0 ? '+' : ''}
                     {ev.delta}
                   </span>

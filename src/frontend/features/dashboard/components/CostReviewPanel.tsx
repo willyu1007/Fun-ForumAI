@@ -20,7 +20,7 @@ export function CostReviewPanel({ agentId, budget }: Props) {
         <div className={"mb-3 text-sm font-medium"}>预算档位</div>
         {budget ? (
           <div className="flex flex-wrap items-center gap-2">
-            <span className={"rounded-md bg-sky-100 px-2.5 py-1 text-xs font-medium text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"}>当前: {budget.tier}</span>
+            <span className={"rounded-md bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"}>当前: {budget.tier}</span>
             {tiers &&
               Object.keys(tiers).map((t) => (
                 <button

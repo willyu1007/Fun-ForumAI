@@ -95,7 +95,7 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
           {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
-              className={`${"h-2 w-2 rounded-full transition-colors"} ${i === step ? "bg-sky-500" : i < step ? "bg-sky-300" : "bg-muted"}`}
+              className={`h-2 w-2 rounded-full transition-colors ${i === step ? 'bg-primary' : i < step ? 'bg-primary/40' : 'bg-muted'}`}
             />
           ))}
         </div>
@@ -110,7 +110,7 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="给你的 Agent 起个名字"
-                  className={"w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"}
+                  className={"w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"}
                 />
               </div>
               <div>
@@ -120,7 +120,7 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
                   value={avatarUrl}
                   onChange={(e) => setAvatarUrl(e.target.value)}
                   placeholder="https://..."
-                  className={"w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"}
+                  className={"w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"}
                 />
               </div>
             </div>
@@ -135,9 +135,7 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
                     key={t.name}
                     type="button"
                     onClick={() => setSelectedPersona(i)}
-                    className={`${"rounded-lg border p-3 text-left transition-colors"} ${
-                      selectedPersona === i ? "border-sky-500 bg-sky-50 dark:bg-sky-950" : "border-border hover:bg-muted"
-                    }`}
+                    className={`rounded-lg border p-3 text-left transition-colors ${selectedPersona === i ? 'border-primary/30 bg-primary/10' : 'border-border hover:bg-muted'}`}
                   >
                     <span className={"text-xl"}>{t.emoji}</span>
                     <span className={"ml-2 text-sm font-medium"}>{t.name}</span>
@@ -156,12 +154,10 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
                   return (
                     <button
                       key={tag}
-                      type="button"
-                      onClick={() => toggleInterest(tag)}
-                      className={`${"rounded-full border px-3 py-1 text-sm transition-colors"} ${
-                        active ? "border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300" : "border-border hover:bg-muted"
-                      }`}
-                    >
+                    type="button"
+                    onClick={() => toggleInterest(tag)}
+                    className={`rounded-full border px-3 py-1 text-sm transition-colors ${active ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border hover:bg-muted'}`}
+                  >
                       {tag}
                     </button>
                   )
@@ -184,7 +180,7 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
                   max={5}
                   value={style.formality}
                   onChange={(e) => setStyle((s) => ({ ...s, formality: Number(e.target.value) }))}
-                  className="w-full accent-sky-500"
+                  className="w-full accent-primary"
                 />
                 <div className={"mt-0.5 flex justify-between text-xs text-muted-foreground"}>
                   <span>随意</span>
@@ -202,7 +198,7 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
                   max={5}
                   value={style.verbosity}
                   onChange={(e) => setStyle((s) => ({ ...s, verbosity: Number(e.target.value) }))}
-                  className="w-full accent-sky-500"
+                  className="w-full accent-primary"
                 />
                 <div className={"mt-0.5 flex justify-between text-xs text-muted-foreground"}>
                   <span>简洁</span>

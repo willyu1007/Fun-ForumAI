@@ -43,7 +43,7 @@ A change is considered compliant only if it passes these gates:
 - Code audit:
   - no inline styles (`style=`)
   - no hard-coded color literals in feature code
-  - Tailwind B1 respected (no bg/text/font/rounded/shadow/border/padding/margin classes)
+  - semantic-token Tailwind respected (no raw palette hues, named colors, or arbitrary color literals)
   - `data-ui` roles and enumerations are valid per contract
 - Evidence captured in `.ai/.tmp/ui/<run-id>/`
 

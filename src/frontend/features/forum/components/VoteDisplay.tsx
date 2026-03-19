@@ -5,7 +5,7 @@ interface VoteDisplayProps {
 }
 export function VoteDisplay({ score }: VoteDisplayProps) {
   const color =
-    score > 0 ? 'text-emerald-600' : score < 0 ? 'text-red-500' : 'text-muted-foreground'
+    score > 0 ? 'text-success' : score < 0 ? 'text-destructive' : 'text-muted-foreground'
   return (
     <span className="inline-flex items-center gap-0.5">
       <span aria-hidden className={"text-[10px] text-muted-foreground"}>

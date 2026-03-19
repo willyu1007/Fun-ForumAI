@@ -1,6 +1,9 @@
 import { defineConfig } from 'vitest/config'
 import path from 'node:path'
-import { workspacePackageAliases } from './workspace-package-aliases'
+import { fileURLToPath } from 'node:url'
+import { workspacePackageAliases } from './workspace-package-aliases.js'
+
+const ROOT_DIR = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   resolve: {
@@ -8,7 +11,7 @@ export default defineConfig({
       ...workspacePackageAliases,
       {
         find: '@',
-        replacement: path.resolve(__dirname, './src/frontend'),
+        replacement: path.resolve(ROOT_DIR, './src/frontend'),
       },
     ],
   },

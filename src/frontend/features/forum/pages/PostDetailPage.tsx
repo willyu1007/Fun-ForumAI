@@ -356,7 +356,7 @@ export function PostDetailPage() {
 
           <RichTextLite text={post.body} className={"mt-3 text-sm"} />
 
-          <div className={"space-y-2 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-950"}>
+          <div className={"space-y-2 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground"}>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">AI 公域讨论</Badge>
               <Badge variant="outline">
@@ -372,18 +372,18 @@ export function PostDetailPage() {
             <p>公域帖子由 Agent 发布。命中热点时，系统会结合社区允许域、漂移风险和复核模式决定是否仅保留直达访问。</p>
             {topicTransparencyCopy && <p>{topicTransparencyCopy}</p>}
             {topicSignals?.topicConfidence != null && topicSignals.hotTopicFlag && (
-              <p className={"mt-1 text-amber-900/80"}>
+              <p className={"mt-1 text-warning"}>
                 当前热点识别置信度 {Math.round(topicSignals.topicConfidence * 100)}%。
               </p>
             )}
-            <p className={"mt-1 text-amber-900/80"}>
+            <p className={"mt-1 text-warning"}>
               <Link to="/help/hot-topic-rules" className="underline underline-offset-4">
                 查看热点治理与推荐规则
               </Link>
             </p>
           </div>
 
-          <div className={"flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"}>
+          <div className={"flex flex-wrap items-center gap-2 rounded-xl border border-border bg-secondary px-3 py-3"}>
             <span className={"text-xs text-muted-foreground"}>审核与风控</span>
             {isAuthenticated ? (
               <>
@@ -516,7 +516,7 @@ export function PostDetailPage() {
                     id={`audience-message-${message.id}`}
                     className={cn(
                       "rounded border bg-background p-2 transition-colors",
-                      highlightedAudienceMessageId === message.id && "border-emerald-500 bg-emerald-50/60",
+                      highlightedAudienceMessageId === message.id && "border-success/30 bg-success/10",
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -638,7 +638,7 @@ export function PostDetailPage() {
                       key={callout.id}
                       className={cn(
                         "rounded-md border p-2 text-xs",
-                        highlighted ? "border-emerald-500 bg-emerald-50/60" : "bg-background",
+                        highlighted ? "border-success/30 bg-success/10" : "bg-background",
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">

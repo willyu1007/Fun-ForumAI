@@ -1,5 +1,5 @@
 import { createBrowserRouter } from 'react-router'
-import { Layout } from '../shared/components/Layout'
+import { AppShellContainer } from './shell/AppShellContainer'
 import {
   AdminPanel,
   AiContentHelpPage,
@@ -39,7 +39,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/',
-    element: <Layout />,
+    element: <AppShellContainer />,
     children: [
       { index: true, element: <SuspenseWrap><FeedPage /></SuspenseWrap> },
       { path: 'posts/:postId', element: <SuspenseWrap><PostDetailPage /></SuspenseWrap> },

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { toggleVariants } from '@/components/ui/toggle-variants'
 const ToggleGroupContext = React.createContext<
   VariantProps<typeof toggleVariants> & {
-    spacing?: number
+    spacing?: 0 | 1 | 2
   }
 >({
   size: 'default',
@@ -21,15 +21,15 @@ function ToggleGroup({
   ...props
 }: React.ComponentProps<typeof ToggleGroupPrimitive.Root> &
   VariantProps<typeof toggleVariants> & {
-    spacing?: number
+    spacing?: 0 | 1 | 2
   }) {
   return (
     <ToggleGroupPrimitive.Root
       data-ui="toggle-group"
       data-slot="toggle-group"
-      data-variant={variant}
-      data-size={size}
-      data-spacing={spacing}
+      data-variant={variant === 'outline' ? 'outline' : 'default'}
+      data-size={size === 'sm' ? 'sm' : size === 'lg' ? 'lg' : 'default'}
+      data-spacing={spacing === 1 ? '1' : spacing === 2 ? '2' : '0'}
       className={cn(
         'group/toggle-group flex w-fit items-center gap-[--spacing(var(--gap))] rounded-md data-[spacing=default]:data-[variant=outline]:shadow-xs',
         className,
@@ -54,9 +54,15 @@ function ToggleGroupItem({
     <ToggleGroupPrimitive.Item
       data-ui="toggle"
       data-slot="toggle-group-item"
-      data-variant={context.variant || variant}
-      data-size={context.size || size}
-      data-spacing={context.spacing}
+      data-variant={context.variant === 'outline' || variant === 'outline' ? 'outline' : 'default'}
+      data-size={
+        context.size === 'sm' || size === 'sm'
+          ? 'sm'
+          : context.size === 'lg' || size === 'lg'
+            ? 'lg'
+            : 'default'
+      }
+      data-spacing={context.spacing === 1 ? '1' : context.spacing === 2 ? '2' : '0'}
       className={cn(
         toggleVariants({
           variant: context.variant || variant,

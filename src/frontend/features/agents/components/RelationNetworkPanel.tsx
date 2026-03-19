@@ -36,10 +36,10 @@ const STATE_OPTIONS: Array<{
   { id: 'blocked', label: 'Blocked' },
 ]
 const STATE_BADGE: Record<AgentRelationState, string> = {
-  shadow: "bg-muted text-muted-foreground",
-  effective: "bg-emerald-50 text-emerald-700",
-  inactive: "bg-muted text-muted-foreground",
-  blocked: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  shadow: 'bg-muted text-muted-foreground',
+  effective: 'bg-success/10 text-success',
+  inactive: 'bg-muted text-muted-foreground',
+  blocked: 'bg-destructive/10 text-destructive',
 }
 export function RelationNetworkPanel({
   agentId,

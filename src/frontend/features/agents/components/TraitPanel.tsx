@@ -51,7 +51,7 @@ export default function TraitPanel({ agentId, isOwner = false }: TraitPanelProps
               {def?.emoji} {def?.name ?? t.trait_code}
               {isOwner && (
                 <button
-                  className={"ml-1.5 rounded px-1 text-xs hover:bg-violet-200 dark:hover:bg-violet-800 disabled:opacity-50"}
+                  className={"ml-1.5 rounded px-1 text-xs hover:bg-accent/20 disabled:opacity-50"}
                   disabled={unequip.isPending}
                   onClick={() => unequip.mutate(t.trait_code)}
                 >
@@ -70,7 +70,7 @@ export default function TraitPanel({ agentId, isOwner = false }: TraitPanelProps
             <Badge key={d.code} variant="candidate">
               {d.emoji} {d.name}
               <button
-                className={"ml-1.5 rounded px-1 text-xs hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50"}
+                className={"ml-1.5 rounded px-1 text-xs hover:bg-secondary/80 disabled:opacity-50"}
                 disabled={equip.isPending}
                 onClick={() => equip.mutate(d.code)}
               >
@@ -92,9 +92,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 const variantClasses = {
-  system: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
-  equipped: 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300',
-  candidate: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+  system: 'bg-success/10 text-success',
+  equipped: 'bg-accent/10 text-accent',
+  candidate: 'bg-secondary text-secondary-foreground',
 } as const
 function Badge({
   variant,

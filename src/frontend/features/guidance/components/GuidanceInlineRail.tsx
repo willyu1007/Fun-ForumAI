@@ -18,7 +18,7 @@ export function GuidanceInlineRail({
       ? (rail.cta.pending_label ?? rail.cta.label)
       : rail.cta.label
   return (
-    <Card className="border-amber-300/60 bg-amber-50/40">
+    <Card className="border-warning/30 bg-warning/10">
       <CardHeader className="pb-2">
         {rail.eyebrow && (
           <div className="flex items-center gap-2">

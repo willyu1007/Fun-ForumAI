@@ -1,6 +1,22 @@
 import { useParams } from 'react-router'
 import { useAgentProfile, useAgentDashboard } from '@/api/hooks'
 import { CostReviewPanel } from '../components/CostReviewPanel'
+
+function creditScoreClass(score: number): string {
+  if (score > 70) return 'text-success'
+  if (score > 40) return 'text-warning'
+  return 'text-destructive'
+}
+
+function riskLevelClass(level: string): string {
+  if (level === 'green') return 'bg-success/10 text-success'
+  if (level === 'yellow') return 'bg-warning/10 text-warning'
+  return 'bg-destructive/10 text-destructive'
+}
+
+function xpDeltaClass(delta: number): string {
+  return delta > 0 ? 'text-success' : 'text-destructive'
+}
 export function AgentDashboardPage() {
   const { agentId } = useParams<{
     agentId: string
@@ -10,7 +26,7 @@ export function AgentDashboardPage() {
   if (isLoading) return <div className={"flex justify-center py-20 text-muted-foreground"}>加载中…</div>
   if (profileError || dashError)
     return (
-      <div className={"py-10 text-center text-red-500"}>
+      <div className={"py-10 text-center text-destructive"}>
         加载失败: {(profileError ?? dashError)?.message ?? '未知错误'}
       </div>
     )
@@ -21,7 +37,7 @@ export function AgentDashboardPage() {
     <div className={"mx-auto max-w-4xl space-y-6 px-4 py-6"}>
       {/* Header */}
       <div className="flex items-center gap-4">
-        <div className={"flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xl font-bold text-white"}>XP</div>
+        <div className={"flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-xl font-bold text-primary-foreground"}>XP</div>
         <div>
           <h1 className={"text-2xl font-bold"}>{agent?.display_name ?? 'Agent'}</h1>
           <p className={"text-sm text-muted-foreground"}>XP 资源线与运行状态</p>
@@ -50,15 +66,11 @@ export function AgentDashboardPage() {
         <div className={"rounded-xl border bg-card p-5"}>
           <div className={"mb-2 text-sm font-medium"}>信用评分</div>
           <div className="flex items-center gap-3">
-            <div
-              className={`${"text-3xl font-bold"} ${dash.credit.credit_score > 70 ? "text-emerald-500" : dash.credit.credit_score > 40 ? "text-amber-500" : "text-red-500"}`}
-            >
+            <div className={`text-3xl font-bold ${creditScoreClass(dash.credit.credit_score)}`}>
               {dash.credit.credit_score}
             </div>
             <div className={"text-sm"}>
-              <div
-                className={`${"rounded-full px-2 py-0.5 text-xs font-medium"} ${dash.credit.risk_level === 'green' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : dash.credit.risk_level === 'yellow' ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}`}
-              >
+              <div className={`rounded-full px-2 py-0.5 text-xs font-medium ${riskLevelClass(dash.credit.risk_level)}`}>
                 {dash.credit.risk_level}
               </div>
               <div className={"mt-1 text-xs text-muted-foreground"}>违规次数: {dash.credit.violations}</div>
@@ -79,7 +91,7 @@ export function AgentDashboardPage() {
                   </span>
                 </div>
                 <progress
-                  className={"h-2 w-full overflow-hidden rounded-full accent-sky-500"}
+                  className={"h-2 w-full overflow-hidden rounded-full accent-primary"}
                   value={
                     dash.budget.daily_action_limit > 0
                       ? (dash.budget.daily_actions_used / dash.budget.daily_action_limit) * 100
@@ -96,7 +108,7 @@ export function AgentDashboardPage() {
                   </span>
                 </div>
                 <progress
-                  className={"h-2 w-full overflow-hidden rounded-full accent-sky-500"}
+                  className={"h-2 w-full overflow-hidden rounded-full accent-primary"}
                   value={
                     dash.budget.monthly_action_limit > 0
                       ? (dash.budget.monthly_actions_used / dash.budget.monthly_action_limit) * 100
@@ -119,7 +131,7 @@ export function AgentDashboardPage() {
               {dash.traits.map((t) => (
                 <span
                   key={t.id}
-                  className={`${"rounded-lg px-2.5 py-1 text-xs font-medium"} ${t.status === 'equipped' ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400" : "bg-muted text-muted-foreground"}`}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-medium ${t.status === 'equipped' ? 'bg-accent/10 text-accent' : 'bg-muted text-muted-foreground'}`}
                 >
                   {t.trait_code}
                   {t.category === 'system' && <span className={"ml-1 opacity-50"}>⚙</span>}
@@ -146,16 +158,14 @@ export function AgentDashboardPage() {
             {dash.recent_events.map((e) => (
               <div key={e.id} className="flex gap-3">
                 <div className={"mt-1.5 flex flex-col items-center"}>
-                  <div className={"h-2.5 w-2.5 rounded-full bg-blue-500"} />
+                  <div className={"h-2.5 w-2.5 rounded-full bg-primary"} />
                   <div className={"w-px flex-1 bg-border"} />
                 </div>
                 <div className={"flex-1 pb-4"}>
                   <div className="flex items-center gap-2">
                     <span className={"text-sm font-medium"}>{e.title}</span>
                     {e.xp_delta !== 0 && (
-                      <span
-                        className={`${"text-xs font-medium"} ${e.xp_delta > 0 ? "text-emerald-500" : "text-red-500"}`}
-                      >
+                      <span className={`text-xs font-medium ${xpDeltaClass(e.xp_delta)}`}>
                         {e.xp_delta > 0 ? '+' : ''}
                         {e.xp_delta} XP
                       </span>

@@ -88,7 +88,7 @@ export function CommunityFeedPage() {
             <p className={"mt-2 text-sm text-muted-foreground"}>{community.description}</p>
           )}
           {hotTopicPolicy && (
-            <div className={"rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-950"}>
+            <div className={"rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground"}>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">热点模式 · {HOT_TOPIC_MODE_LABELS[hotTopicPolicy.mode]}</Badge>
                 {hotTopicPolicy.allowedDomains.map((domain) => (
@@ -104,11 +104,11 @@ export function CommunityFeedPage() {
                 )}
               </p>
               {(hotTopicPolicy.userCopy.community_banner ?? hotTopicPolicy.userCopy.summary) && (
-                <p className={"mt-1 text-amber-900/80"}>
+                <p className={"mt-1 text-warning"}>
                   {hotTopicPolicy.userCopy.community_banner ?? hotTopicPolicy.userCopy.summary}
                 </p>
               )}
-              <p className={"mt-1 text-amber-900/80"}>
+              <p className={"mt-1 text-warning"}>
                 <Link to="/help/hot-topic-rules" className="underline underline-offset-4">
                   查看热点治理规则与推荐说明
                 </Link>

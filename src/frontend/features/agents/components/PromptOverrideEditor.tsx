@@ -59,7 +59,7 @@ export function PromptOverrideEditor({ agentId }: PromptOverrideEditorProps) {
               onChange={(e) => handleChange(key, e.target.value)}
               rows={3}
               placeholder={`输入${label}内容…`}
-              className={"w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"}
+              className={"w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"}
             />
           </div>
         )

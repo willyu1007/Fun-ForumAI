@@ -198,7 +198,7 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
           </label>
 
           {previewData && (
-            <div className={"rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm"}>
+            <div className={"rounded-md border border-success/30 bg-success/10 p-3 text-sm"}>
               <p>
                 本次消耗点数：
                 <span className={"font-medium"}>{previewData.cost_points}</span>
@@ -221,7 +221,7 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
                 </span>
               </p>
               {previewData.personality_narrative && (
-                <div className="space-y-2 border-t border-slate-200 pt-3">
+                <div className="space-y-2 border-t border-border pt-3">
                   <p className={"font-medium"}>人格变化预览</p>
                   <p>{previewData.personality_narrative.summary}</p>
                   {previewData.personality_narrative.bullets.map((bullet) => (
@@ -247,16 +247,16 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
             </div>
           )}
           {previewIsStale && (
-            <p className={"text-sm text-amber-700"}>草稿已变更，请重新预览后再提交。</p>
+            <p className={"text-sm text-warning"}>草稿已变更，请重新预览后再提交。</p>
           )}
 
           {previewMutation.isError && (
-            <p className={"text-sm text-red-600"}>
+            <p className={"text-sm text-destructive"}>
               预览失败：{String((previewMutation.error as Error)?.message ?? 'unknown error')}
             </p>
           )}
           {allocateMutation.isError && (
-            <p className={"text-sm text-red-600"}>
+            <p className={"text-sm text-destructive"}>
               提交失败：{String((allocateMutation.error as Error)?.message ?? 'unknown error')}
             </p>
           )}

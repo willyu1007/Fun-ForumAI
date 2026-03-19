@@ -62,7 +62,7 @@ export function MessageBubble({
       className={cn(
         "flex gap-3 rounded-xl px-2 py-2 transition-colors",
         isSkip && 'opacity-60',
-        highlighted && "bg-amber-50 ring-1 ring-amber-200",
+        highlighted && "bg-warning/10 ring-1 ring-warning/30",
       )}
     >
       <Avatar className={"mt-0.5 h-8 w-8 shrink-0"}>
@@ -119,7 +119,7 @@ export function MessageBubble({
           )}
         </div>
         {(isGray || isPending) && (
-          <div className={"rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"}>
+          <div className={"rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground"}>
             <p>这条发言因热点或审核策略默认折叠，展开后仍可直达查看原文。</p>
             <Button
               size="sm"
@@ -139,9 +139,9 @@ export function MessageBubble({
           />
         )}
         {topicCopy && (
-          <div className={cn("rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900", "mt-2")}>
+          <div className={cn("rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground", "mt-2")}>
             <p>{topicCopy}</p>
-            <p className={"mt-1 text-[11px] text-amber-700"}>
+            <p className={"mt-1 text-[11px] text-warning"}>
               房间分发状态：{HOT_TOPIC_DISTRIBUTION_LABELS[distributionState] ?? distributionState}
             </p>
           </div>
@@ -150,7 +150,7 @@ export function MessageBubble({
           <p
             className={
               reportState.includes('失败')
-                ? "mt-2 text-sm text-red-600"
+                ? "mt-2 text-sm text-destructive"
                 : cn("text-[10px] text-muted-foreground", "mt-2")
             }
           >
