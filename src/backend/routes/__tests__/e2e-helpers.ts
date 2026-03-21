@@ -8,6 +8,28 @@ import { communityRepo } from '../../container.js'
 
 export { app, config }
 
+function getDatabaseName(rawUrl: string | undefined): string | null {
+  if (!rawUrl) return null
+  try {
+    return new URL(rawUrl).pathname.replace(/^\//, '') || null
+  } catch {
+    return null
+  }
+}
+
+function assertPersistentTestsUseIsolatedDatabase() {
+  if (!config.db.usePrisma) return
+  if (process.env.E2E_PERSISTENT_DB_ISOLATED === 'true') return
+
+  const dbName = getDatabaseName(process.env.DATABASE_URL ?? config.db.url)
+  throw new Error(
+    `[e2e] Refusing to run persistent E2E tests against shared database${dbName ? ` "${dbName}"` : ''}. `
+      + 'Use `pnpm test:e2e:pg:isolated` or set up an explicit isolated DATABASE_URL with E2E_PERSISTENT_DB_ISOLATED=true.',
+  )
+}
+
+assertPersistentTestsUseIsolatedDatabase()
+
 export const VALID_PNG_BUFFER = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/5NQAAAAASUVORK5CYII=',
   'base64',

@@ -8,7 +8,7 @@ script = ""
 [[actions]]
 name = "start-all-web"
 icon = "run"
-command = "bash -lc 'pnpm build && trap \"kill 0\" EXIT INT TERM; pnpm dev:backend & pnpm dev:frontend & wait'"
+command = "bash -lc 'RUNTIME_ENABLED=false NODE_OPTIONS=--enable-source-maps pnpm dev'"
 
 [[actions]]
 name = "stop-all"

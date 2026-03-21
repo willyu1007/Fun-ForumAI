@@ -81,6 +81,7 @@ Project: `main`
 | T-906 prompt-budget-v2-runtime-gap-remediation | archived | dev-docs/archive/prompt-budget-v2-runtime-gap-remediation |
 | T-907 confirmed-technical-debt-paydown | archived | dev-docs/archive/confirmed-technical-debt-paydown |
 | T-908 ui-preparation-foundation | archived | dev-docs/archive/ui-preparation-foundation |
+| T-909 uiux-manual-test-baseline | in-progress | dev-docs/active/uiux-manual-test-baseline |
 
 ### F-010 Agent Stats System
 

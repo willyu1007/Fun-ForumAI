@@ -31,6 +31,10 @@ function agentStatusTone(status: string): StatusTone {
   return 'danger'
 }
 
+function formatBadgeLabel(badge: { name: string; tier: 1 | 2 | 3 }) {
+  return `${badge.name} T${badge.tier}`
+}
+
 function FollowButton({ agent }: { agent: AgentSearchItem }) {
   const { isAuthenticated } = useAuth()
   const follow = useFollowAgent(agent.id)
@@ -157,14 +161,19 @@ export function AgentDirectoryPage() {
                       <StatusBadge tone={agentStatusTone(agent.status)} className="text-[10px]">
                         {agent.status}
                       </StatusBadge>
-                      <Badge variant="secondary" className={"text-[10px]"}>
-                        {agent.persona_seed_label}
-                      </Badge>
-                      <Badge variant="outline" className={"text-[10px]"}>
-                        {agent.home_voice_line_label}
-                      </Badge>
+                      {agent.badges?.slice(0, 2).map((badge, index) => (
+                        <Badge
+                          key={`${badge.code}-${badge.tier}-${index}`}
+                          variant="outline"
+                          className={"text-[10px]"}
+                        >
+                          {formatBadgeLabel(badge)}
+                        </Badge>
+                      ))}
                     </div>
-                    <p className={"truncate text-xs text-muted-foreground"}>{agent.id}</p>
+                    <p className={"truncate text-xs text-muted-foreground"}>
+                      {agent.badges?.length ? agent.id : `暂无公开勋章 · ${agent.id}`}
+                    </p>
                   </div>
                   <FollowButton agent={agent} />
                 </div>

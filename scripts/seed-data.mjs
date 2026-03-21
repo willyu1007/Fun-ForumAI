@@ -27,6 +27,10 @@ async function main() {
   console.log(`  Posts:        ${data.counts.posts}`)
   console.log(`  Comments:     ${data.counts.comments}`)
   console.log(`  Rooms:        ${data.counts.rooms ?? 0}`)
+  console.log(`  Follows:      ${data.counts.follow_links ?? 0}`)
+  console.log(`  Guidance inbox:${data.counts.guidance_inbox_items ?? 0}`)
+  console.log(`  Guidance bell: ${data.counts.guidance_bell_items ?? 0}`)
+  console.log(`  Private chats: ${data.counts.private_sessions ?? 0}`)
 }
 
 main().catch((err) => {

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useFeedViewStore } from '@/shared/stores/feed-view-store'
 import { useSidebarStore } from '@/shared/stores/sidebar-store'
 import { AppShellContainer } from '../AppShellContainer'
 
@@ -8,6 +9,10 @@ const topBarContainerSpy = vi.hoisted(() => vi.fn())
 
 vi.mock('@/shared/stores/sidebar-store', () => ({
   useSidebarStore: vi.fn(),
+}))
+
+vi.mock('@/shared/stores/feed-view-store', () => ({
+  useFeedViewStore: vi.fn(),
 }))
 
 vi.mock('@/widgets/shell/ShellTopBarContainer', () => ({
@@ -25,15 +30,16 @@ vi.mock('@/widgets/shell/ShellLeftRail', () => ({
   ShellLeftRail: () => <div data-testid="left-rail" />,
 }))
 
-vi.mock('@/widgets/shell/ShellRightRail', () => ({
-  ShellRightRail: () => <div data-testid="right-rail" />,
-}))
-
 const useSidebarStoreMock = vi.mocked(useSidebarStore)
+const useFeedViewStoreMock = vi.mocked(useFeedViewStore)
 
 describe('AppShellContainer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    useFeedViewStoreMock.mockReturnValue({
+      view: 'card',
+      setView: vi.fn(),
+    } as never)
     useSidebarStoreMock.mockReturnValue({
       leftOpen: true,
       toggleLeft: vi.fn(),
@@ -59,16 +65,17 @@ describe('AppShellContainer', () => {
 
     expect(screen.getByTestId('shell-top-bar')).toBeTruthy()
     expect(screen.getByTestId('left-rail')).toBeTruthy()
-    expect(screen.getByTestId('right-rail')).toBeTruthy()
+    expect(screen.queryByTestId('right-rail')).toBeNull()
     expect(screen.getByTestId('dev-auth-toolbar')).toBeTruthy()
     expect(screen.getByText('home')).toBeTruthy()
+    expect(screen.getByTestId('shell-page-frame').className).toContain('max-w-6xl')
     expect(topBarContainerSpy).toHaveBeenCalledWith({
       leftOpen: true,
       onToggleLeft: toggleLeft,
     })
   })
 
-  it('hides the right rail on non-feed, non-community routes', () => {
+  it('keeps a narrower page frame on non-feed, non-community routes', () => {
     render(
       <MemoryRouter initialEntries={['/agents']}>
         <Routes>
@@ -79,7 +86,7 @@ describe('AppShellContainer', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.queryByTestId('right-rail')).toBeNull()
+    expect(screen.getByTestId('shell-page-frame').className).toContain('max-w-3xl')
   })
 
   it('collapses the left-rail wrapper when the sidebar store is closed', () => {
@@ -105,5 +112,28 @@ describe('AppShellContainer', () => {
     expect(topBarContainerSpy).toHaveBeenCalledWith(
       expect.objectContaining({ leftOpen: false }),
     )
+  })
+
+  it('stretches the page frame in compact mode when the left rail is collapsed on feed layouts', () => {
+    useSidebarStoreMock.mockReturnValue({
+      leftOpen: false,
+      toggleLeft: vi.fn(),
+    } as never)
+    useFeedViewStoreMock.mockReturnValue({
+      view: 'compact',
+      setView: vi.fn(),
+    } as never)
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route element={<AppShellContainer />}>
+            <Route index element={<div>home</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByTestId('shell-page-frame').className).toContain('max-w-[88.5rem]')
   })
 })

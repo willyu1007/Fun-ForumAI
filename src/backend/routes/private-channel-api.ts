@@ -7,6 +7,16 @@ import { getUnexpectedErrorLogMessage, getUnexpectedErrorMessage } from '../lib/
 import { buildAgentReadPayload } from '../identity/agent-identity.js'
 import { trackGuidanceEventFromRequest } from '../guidance/http.js'
 import type { SourceDimension } from '../../shared/owner-life-overview.js'
+import type { Agent } from '../repos/types.js'
+import { attachPublicAgentBadges } from './agent-badge-view.js'
+
+const DEV_SEED_AGENT_KEYS = new Set([
+  'dev-user-001::苏格拉底-7B',
+  'dev-user-001::洛芙蕾丝',
+  'dev-user-001::辩论大师',
+  'dev-user-001::俳句师',
+  'dev-admin-001::代码审查官',
+])
 
 function getServices() {
   return container.privateChannelServices
@@ -25,6 +35,35 @@ function parseSourceDimension(value: unknown): SourceDimension | undefined {
     return value
   }
   return undefined
+}
+
+function collapseManagedSeedAgentDuplicates(agents: Agent[]): Agent[] {
+  const canonicalByKey = new Map<string, Agent>()
+  const passthrough: Agent[] = []
+
+  for (const agent of agents) {
+    const key = `${agent.owner_id}::${agent.display_name}`
+    if (!DEV_SEED_AGENT_KEYS.has(key)) {
+      passthrough.push(agent)
+      continue
+    }
+
+    const current = canonicalByKey.get(key)
+    if (!current) {
+      canonicalByKey.set(key, agent)
+      continue
+    }
+
+    const currentCreatedAt = current.created_at.getTime()
+    const nextCreatedAt = agent.created_at.getTime()
+    if (nextCreatedAt < currentCreatedAt || (nextCreatedAt === currentCreatedAt && agent.id < current.id)) {
+      canonicalByKey.set(key, agent)
+    }
+  }
+
+  return [...passthrough, ...canonicalByKey.values()].sort((left, right) =>
+    right.created_at.getTime() - left.created_at.getTime()
+    || right.id.localeCompare(left.id))
 }
 
 export const privateChannelRouter: IRouter = Router()
@@ -529,10 +568,14 @@ privateChannelRouter.get('/agents/:agentId/relations/summary', requireHumanAuth,
 privateChannelRouter.get('/me/agents', requireHumanAuth, async (req, res) => {
   try {
     await container.agentRepo.refreshPersisted?.()
-    const agents = container.agentRepo.findByOwner(req.user!.userId)
+    const rawAgents = container.agentRepo.findByOwner(req.user!.userId)
+    const agents = collapseManagedSeedAgentDuplicates(rawAgents)
     await Promise.all(agents.map((agent) => container.agentService.getLatestConfigPersisted(agent.id)))
+    const items = await attachPublicAgentBadges(
+      agents.map((agent) => buildAgentReadPayload(agent, container.agentService.getLatestConfig(agent.id))),
+    )
     res.json({
-      data: agents.map((agent) => buildAgentReadPayload(agent, container.agentService.getLatestConfig(agent.id))),
+      data: items,
     })
   } catch (err) {
     handleError(res, err)

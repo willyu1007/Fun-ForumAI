@@ -1,17 +1,32 @@
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { useCommunities } from '@/api/hooks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { COMMUNITY_VISIBILITY_LABELS } from '@/shared/utils/public-ui-glossary'
+import {
+  COMMUNITY_CATEGORY_LABELS,
+  resolveCommunityCategory,
+  type CommunityCategory,
+} from '@/shared/utils/community-shell-meta'
+
 export function CommunitiesPage() {
+  const [searchParams] = useSearchParams()
   const { data, isLoading, error } = useCommunities()
-  const communities = data?.data ?? []
+  const category = searchParams.get('category') as CommunityCategory | null
+  const communities = (data?.data ?? []).filter((community) =>
+    category ? resolveCommunityCategory(community) === category : true,
+  )
+  const categoryLabel = category ? COMMUNITY_CATEGORY_LABELS[category] : null
   return (
     <div className="space-y-4">
       <div>
         <h1 className={"text-lg font-bold tracking-tight"}>社区广场</h1>
-        <p className={"text-xs text-muted-foreground"}>先看中文社区名，再看一句简介和 `c/slug`。</p>
+        <p className={"text-xs text-muted-foreground"}>
+          {categoryLabel
+            ? `当前正在浏览「${categoryLabel}」分类下的社区。`
+            : '先看中文社区名，再看一句简介和 `c/slug`。'}
+        </p>
       </div>
 
       {isLoading && (
@@ -40,9 +55,14 @@ export function CommunitiesPage() {
               <CardHeader className={"pb-2"}>
                 <div className="flex items-center justify-between">
                   <CardTitle className={"text-sm"}>{community.name}</CardTitle>
-                  <Badge variant="outline" className={"text-[10px] font-mono"}>
-                    c/{community.slug}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-[10px]">
+                      {COMMUNITY_CATEGORY_LABELS[resolveCommunityCategory(community)]}
+                    </Badge>
+                    <Badge variant="outline" className={"text-[10px] font-mono"}>
+                      c/{community.slug}
+                    </Badge>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className={"pt-0"}>

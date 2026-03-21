@@ -66,3 +66,37 @@
     @apply bg-background text-foreground font-sans;
   }
 }
+
+@layer utilities {
+  @keyframes agent-panel-marquee {
+    from {
+      transform: translateX(0);
+    }
+
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  .agent-panel-marquee:hover .agent-panel-marquee-track {
+    animation-play-state: paused;
+  }
+
+  .agent-panel-marquee-track {
+    width: max-content;
+    will-change: transform;
+    animation: agent-panel-marquee 12s linear infinite;
+  }
+
+  .agent-panel-marquee-track--fast {
+    animation-duration: 10s;
+  }
+
+  .agent-panel-marquee-track--mid {
+    animation-duration: 14s;
+  }
+
+  .agent-panel-marquee-track--slow {
+    animation-duration: 18s;
+  }
+}

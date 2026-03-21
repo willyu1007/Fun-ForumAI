@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { readAuthRedirectState, resolveAuthRedirectTarget } from '@/shared/utils/auth-redirect'
+
 export function EmailLoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -29,8 +30,8 @@ export function EmailLoginForm() {
   }
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <label htmlFor="login-email" className="text-sm font-medium">
+      <div className="space-y-3">
+        <label htmlFor="login-email" className="block text-sm font-medium leading-none">
           邮箱地址
         </label>
         <Input
@@ -41,11 +42,12 @@ export function EmailLoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
           autoFocus
+          className="placeholder:text-xs placeholder:text-muted-foreground/50 focus-visible:ring-2"
         />
       </div>
 
-      <div className="space-y-2">
-        <label htmlFor="login-password" className="text-sm font-medium">
+      <div className="space-y-3">
+        <label htmlFor="login-password" className="block text-sm font-medium leading-none">
           密码
         </label>
         <div className="relative">
@@ -56,6 +58,7 @@ export function EmailLoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
+            className="placeholder:text-xs placeholder:text-muted-foreground/50 focus-visible:ring-2"
           />
           <button
             type="button"

@@ -57,6 +57,8 @@
     "db:local:logs": "node scripts/db-local.mjs logs",
     "db:local:down": "node scripts/db-local.mjs down",
     "db:local:migrate": "pnpm db:local:up && pnpm db:local:wait && pnpm db:migrate:dev",
+    "db:cleanup:dev-e2e-artifacts": "node scripts/cleanup-dev-e2e-artifacts.mjs",
+    "db:cleanup:dev-seed-duplicates": "node scripts/cleanup-dev-seed-duplicates.mjs",
     "package:dry-run": "node ops/packaging/scripts/build.mjs --dry-run",
     "package:build": "node ops/packaging/scripts/build.mjs",
     "deploy:dry-run": "node ops/deploy/scripts/deploy.mjs --dry-run",

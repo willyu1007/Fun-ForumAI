@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { readAuthRedirectState, resolveAuthRedirectTarget } from '@/shared/utils/auth-redirect'
+
 export function EmailRegisterForm() {
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
@@ -47,8 +48,8 @@ export function EmailRegisterForm() {
   }
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <label htmlFor="reg-name" className="text-sm font-medium">
+      <div className="space-y-3">
+        <label htmlFor="reg-name" className="block text-sm font-medium leading-none">
           昵称
         </label>
         <Input
@@ -59,11 +60,12 @@ export function EmailRegisterForm() {
           onChange={(e) => setDisplayName(e.target.value)}
           autoFocus
           maxLength={50}
+          className="placeholder:text-xs placeholder:text-muted-foreground/50 focus-visible:ring-2"
         />
       </div>
 
-      <div className="space-y-2">
-        <label htmlFor="reg-email" className="text-sm font-medium">
+      <div className="space-y-3">
+        <label htmlFor="reg-email" className="block text-sm font-medium leading-none">
           邮箱地址
         </label>
         <Input
@@ -73,11 +75,12 @@ export function EmailRegisterForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
+          className="placeholder:text-xs placeholder:text-muted-foreground/50 focus-visible:ring-2"
         />
       </div>
 
-      <div className="space-y-2">
-        <label htmlFor="reg-password" className="text-sm font-medium">
+      <div className="space-y-3">
+        <label htmlFor="reg-password" className="block text-sm font-medium leading-none">
           密码
         </label>
         <div className="relative">
@@ -88,6 +91,7 @@ export function EmailRegisterForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"
+            className="placeholder:text-xs placeholder:text-muted-foreground/50 focus-visible:ring-2"
           />
           <button
             type="button"
@@ -100,8 +104,8 @@ export function EmailRegisterForm() {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <label htmlFor="reg-confirm" className="text-sm font-medium">
+      <div className="space-y-3">
+        <label htmlFor="reg-confirm" className="block text-sm font-medium leading-none">
           确认密码
         </label>
         <Input
@@ -111,6 +115,7 @@ export function EmailRegisterForm() {
           value={confirmPwd}
           onChange={(e) => setConfirmPwd(e.target.value)}
           autoComplete="new-password"
+          className="placeholder:text-xs placeholder:text-muted-foreground/50 focus-visible:ring-2"
         />
       </div>
 

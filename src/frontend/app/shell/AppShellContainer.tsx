@@ -1,16 +1,19 @@
 import { Outlet, useLocation } from 'react-router'
 import { AppShell } from '@fun-forum/ui-web/shell'
 import { useSidebarStore } from '@/shared/stores/sidebar-store'
+import { useFeedViewStore } from '@/shared/stores/feed-view-store'
+import { SHOULD_RENDER_DEV_AUTH_TOOLBAR } from '@/shared/layout/dev-auth-toolbar'
 import { cn } from '@/lib/utils'
 import { DevAuthToolbar } from '@/widgets/dev/DevAuthToolbar'
 import { ShellLeftRail } from '@/widgets/shell/ShellLeftRail'
-import { ShellRightRail } from '@/widgets/shell/ShellRightRail'
 import { ShellTopBarContainer } from '@/widgets/shell/ShellTopBarContainer'
 
 export function AppShellContainer() {
   const { leftOpen, toggleLeft } = useSidebarStore()
+  const { view } = useFeedViewStore()
   const { pathname } = useLocation()
-  const showRightRail = pathname === '/' || pathname.startsWith('/c/')
+  const usePageSidebarLayout = pathname === '/' || pathname.startsWith('/c/')
+  const stretchCompactFeedLayout = usePageSidebarLayout && view === 'compact' && !leftOpen
 
   return (
     <AppShell
@@ -19,26 +22,29 @@ export function AppShellContainer() {
       leftRail={
         <div
           className={cn(
-            'sticky top-12 h-[calc(100vh-3rem)] border-r bg-background transition-all duration-200',
-            leftOpen ? 'w-60' : 'w-0 overflow-hidden border-r-0',
+            'sticky top-[68px] border-r bg-background transition-all duration-200',
+            SHOULD_RENDER_DEV_AUTH_TOOLBAR ? 'h-[calc(100vh-68px-4rem)]' : 'h-[calc(100vh-68px)]',
+            leftOpen ? 'w-[16.5rem]' : 'w-0 overflow-hidden border-r-0',
           )}
         >
           <ShellLeftRail />
         </div>
       }
-      rightRail={
-        showRightRail ? (
-          <div className="sticky top-12 h-[calc(100vh-3rem)] w-72 border-l bg-background">
-            <ShellRightRail />
-          </div>
-        ) : undefined
-      }
       leftRailOpen={leftOpen}
-      showRightRail={showRightRail}
       footer={<DevAuthToolbar />}
     >
       <div className="min-w-0 flex-1 pb-16">
-        <div className="mx-auto max-w-3xl px-4 py-4">
+        <div
+          data-testid="shell-page-frame"
+          className={cn(
+            'mx-auto px-4 py-4 transition-[max-width] duration-200',
+            usePageSidebarLayout
+              ? stretchCompactFeedLayout
+                ? 'max-w-[88.5rem]'
+                : 'max-w-6xl'
+              : 'max-w-3xl',
+          )}
+        >
           <Outlet />
         </div>
       </div>

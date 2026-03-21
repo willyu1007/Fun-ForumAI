@@ -13,6 +13,7 @@ describe('ShellTopBar', () => {
           leftOpen
           onToggleLeft={onToggleLeft}
           mobileMenuTrigger={<div>mobile-menu</div>}
+          navigation={<div>search-entry</div>}
           primaryActions={<div>help-action</div>}
           accountArea={<div>account-area</div>}
         />
@@ -20,9 +21,10 @@ describe('ShellTopBar', () => {
     )
 
     expect(screen.getByText('mobile-menu')).toBeTruthy()
+    expect(screen.getByText('AI TALKSHOW')).toBeTruthy()
+    expect(screen.getByText('search-entry')).toBeTruthy()
     expect(screen.getByText('help-action')).toBeTruthy()
     expect(screen.getByText('account-area')).toBeTruthy()
-    expect(screen.getByAltText('AI Talkshow')).toBeTruthy()
 
     fireEvent.click(screen.getByLabelText('收起侧栏'))
     expect(onToggleLeft).toHaveBeenCalledTimes(1)
@@ -33,6 +35,7 @@ describe('ShellTopBar', () => {
           leftOpen={false}
           onToggleLeft={onToggleLeft}
           mobileMenuTrigger={<div>mobile-menu</div>}
+          navigation={<div>search-entry</div>}
         />
       </MemoryRouter>,
     )

@@ -1141,3 +1141,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/ui-preparation-foundation
     updated: 2026-03-19
+  - id: T-909
+    slug: uiux-manual-test-baseline
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/uiux-manual-test-baseline
+    updated: 2026-03-20

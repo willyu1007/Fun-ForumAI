@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
 export function PhoneLoginForm() {
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
@@ -15,15 +16,15 @@ export function PhoneLoginForm() {
       </div>
 
       <fieldset disabled className="space-y-4 opacity-50">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">手机号</label>
+        <div className="space-y-3">
+          <label className="block text-sm font-medium leading-none">手机号</label>
           <div className="flex gap-2">
             <Input
               type="tel"
               placeholder="请输入手机号"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="flex-1"
+              className="flex-1 placeholder:text-xs placeholder:text-muted-foreground/50 focus-visible:ring-2"
             />
             <Button variant="outline" size="sm" className="shrink-0">
               发送验证码
@@ -31,8 +32,8 @@ export function PhoneLoginForm() {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium">验证码</label>
+        <div className="space-y-3">
+          <label className="block text-sm font-medium leading-none">验证码</label>
           <Input
             type="text"
             inputMode="numeric"
@@ -40,6 +41,7 @@ export function PhoneLoginForm() {
             maxLength={6}
             value={code}
             onChange={(e) => setCode(e.target.value)}
+            className="placeholder:text-xs placeholder:text-muted-foreground/50 focus-visible:ring-2"
           />
         </div>
 

@@ -1,0 +1,13 @@
+version: 1
+task_id: T-909
+project: main
+slug: uiux-manual-test-baseline
+status: in-progress
+updated: "2026-03-20"
+keywords:
+  - uiux
+  - manual-qa
+  - testing
+  - web
+  - admin
+  - mobile

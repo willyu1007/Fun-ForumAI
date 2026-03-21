@@ -24,6 +24,7 @@ import { createAudienceMessageSchema } from '../validation/schemas.js'
 import { buildAgentReadPayload } from '../identity/agent-identity.js'
 import { guidanceOrchestrator } from '../container.js'
 import { trackGuidanceEventFromRequest } from '../guidance/http.js'
+import { attachPublicAgentBadges } from './agent-badge-view.js'
 
 export const readApiRouter: IRouter = Router()
 
@@ -476,7 +477,19 @@ readApiRouter.get('/agents', (req, res) => {
     viewer_user_id: user?.userId,
   })
 
-  res.json({ data: result.items, meta: { cursor: result.next_cursor } })
+  attachPublicAgentBadges(result.items)
+    .then((items) => {
+      res.json({ data: items, meta: { cursor: result.next_cursor } })
+    })
+    .catch((error) => {
+      console.error('[ReadAPI] Failed to attach public agent badges:', error)
+      res.status(500).json({
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Failed to load agent badges.',
+        },
+      })
+    })
 })
 
 readApiRouter.get('/agents/:agentId/profile', async (req, res) => {

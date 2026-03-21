@@ -1,14 +1,12 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FeedPage } from '../FeedPage'
-import { useGlobalHighlights, useGuidanceClientEvent, useGuidanceSummary, useHealth } from '@/api/hooks'
+import { useHealth } from '@/api/hooks'
 import { useSseNewCounts } from '@/api/use-sse'
-import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
-import type { GuidanceSummaryData } from '@/api/types'
 
 vi.mock('@tanstack/react-query', async () => {
   const actual = await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
@@ -19,9 +17,6 @@ vi.mock('@tanstack/react-query', async () => {
 })
 
 vi.mock('@/api/hooks', () => ({
-  useGlobalHighlights: vi.fn(),
-  useGuidanceClientEvent: vi.fn(),
-  useGuidanceSummary: vi.fn(),
   useHealth: vi.fn(),
 }))
 
@@ -33,12 +28,12 @@ vi.mock('@/shared/hooks/use-auth', () => ({
   useAuth: vi.fn(),
 }))
 
-vi.mock('@/features/guidance/feature-flags', () => ({
-  isGuidanceEnabled: vi.fn(),
-}))
-
 vi.mock('@/shared/stores/feed-view-store', () => ({
   useFeedViewStore: vi.fn(),
+}))
+
+vi.mock('@/widgets/shell/ShellRightRail', () => ({
+  ShellRightRail: () => <div data-testid="page-right-rail" />,
 }))
 
 vi.mock('../../components/PostCard', () => ({
@@ -50,8 +45,25 @@ vi.mock('../../components/PostCompact', () => ({
 }))
 
 vi.mock('../../components/FeedToolbar', () => ({
-  FeedToolbar: ({ followingOnly }: { followingOnly?: boolean }) => (
-    <div data-testid="feed-toolbar">{followingOnly ? 'following' : 'all'}</div>
+  FeedToolbar: ({
+    followingOnly,
+    showSortControls,
+    showViewControls,
+    className,
+  }: {
+    followingOnly?: boolean
+    showSortControls?: boolean
+    showViewControls?: boolean
+    className?: string
+  }) => (
+    <div
+      data-testid="feed-toolbar"
+      data-sort-controls={showSortControls ? 'true' : 'false'}
+      data-view-controls={showViewControls ? 'true' : 'false'}
+      data-class-name={className ?? ''}
+    >
+      {followingOnly ? 'following' : 'all'}
+    </div>
   ),
 }))
 
@@ -63,75 +75,11 @@ vi.mock('@/shared/components/LoadMore', () => ({
   LoadMore: () => <div data-testid="load-more" />,
 }))
 
-vi.mock('@/features/guidance/components/GuidanceItemCard', () => ({
-  GuidanceItemCard: () => <div data-testid="guidance-item-card" />,
-}))
-
 const useInfiniteQueryMock = vi.mocked(useInfiniteQuery)
-const useGlobalHighlightsMock = vi.mocked(useGlobalHighlights)
-const useGuidanceClientEventMock = vi.mocked(useGuidanceClientEvent)
-const useGuidanceSummaryMock = vi.mocked(useGuidanceSummary)
 const useHealthMock = vi.mocked(useHealth)
 const useSseNewCountsMock = vi.mocked(useSseNewCounts)
-const isGuidanceEnabledMock = vi.mocked(isGuidanceEnabled)
 const useAuthMock = vi.mocked(useAuth)
 const useFeedViewStoreMock = vi.mocked(useFeedViewStore)
-
-function buildSummary(): { data: { data: GuidanceSummaryData } } {
-  return {
-    data: {
-      data: {
-        actor: {
-          actor_type: 'VISITOR',
-          actor_id: 'visitor-1',
-          current_track: 'UNDECIDED',
-          stage: 'NEW_VISITOR',
-          explained: { two_tracks: false },
-          completed: {
-            followed_first_agent: false,
-            used_following_feed: false,
-            created_agent: false,
-            started_private_chat: false,
-            nurture_receipt_ready: false,
-            watch_public_effect: false,
-          },
-          first_success: {
-            achieved: false,
-            at: null,
-          },
-          reveal: {
-            style: false,
-            instructions: false,
-            advanced: false,
-          },
-          latest_owner_agent_id: null,
-          latest_receipt_session_id: null,
-        },
-        modules: [
-          {
-            type: 'DUAL_ENTRY',
-            reason_code: 'HOME_DUAL_ENTRY',
-            hero_body: 'hero body',
-            cards: [
-              {
-                track: 'SPECTATOR',
-                title: '看剧情',
-                promise: 'promise',
-                entry_cta: {
-                  label: '看今日高光',
-                  target: '/highlights',
-                  event_name: 'DUAL_ENTRY_CTA_CLICKED',
-                  payload: { track: 'SPECTATOR' },
-                },
-                return_hook: 'return hook',
-              },
-            ],
-          },
-        ],
-      },
-    },
-  }
-}
 
 function renderPage(path: string) {
   return render(
@@ -144,7 +92,6 @@ function renderPage(path: string) {
 describe('FeedPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    isGuidanceEnabledMock.mockReturnValue(true)
 
     useInfiniteQueryMock.mockReturnValue({
       data: {
@@ -162,17 +109,6 @@ describe('FeedPage', () => {
       isFetchingNextPage: false,
     } as never)
 
-    useGlobalHighlightsMock.mockReturnValue({
-      data: {
-        data: {
-          hot_threads: [],
-          meta: {
-            generated_at: '2026-03-10T00:00:00.000Z',
-          },
-        },
-      },
-    } as never)
-
     useHealthMock.mockReturnValue({ error: null } as never)
     useSseNewCountsMock.mockReturnValue({
       newPostCount: 0,
@@ -183,45 +119,17 @@ describe('FeedPage', () => {
   })
 
   it('reads following_only from the URL when rendering the home feed', () => {
-    useGuidanceSummaryMock.mockImplementation(() => buildSummary() as never)
-    useGuidanceClientEventMock.mockReturnValue({ mutate: vi.fn() } as never)
-
     renderPage('/?following_only=true')
 
-    expect(screen.getByTestId('feed-toolbar').textContent).toBe('following')
+    expect(screen.getAllByTestId('feed-toolbar').some((toolbar) => toolbar.textContent === 'following')).toBe(true)
   })
 
-  it('tracks the dual-entry module only once per actor even when summary objects are refreshed', async () => {
-    const mutate = vi.fn()
-    useGuidanceSummaryMock.mockImplementation(() => buildSummary() as never)
-    useGuidanceClientEventMock.mockReturnValue({ mutate } as never)
-
-    const view = renderPage('/')
-
-    await waitFor(() => {
-      expect(mutate).toHaveBeenCalledTimes(1)
-    })
-
-    view.rerender(
-      <MemoryRouter initialEntries={['/']}>
-        <FeedPage />
-      </MemoryRouter>,
-    )
-
-    await waitFor(() => {
-      expect(mutate).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  it('hides guidance modules completely when the feature flag is off', () => {
-    isGuidanceEnabledMock.mockReturnValue(false)
-    const mutate = vi.fn()
-    useGuidanceSummaryMock.mockImplementation(() => buildSummary() as never)
-    useGuidanceClientEventMock.mockReturnValue({ mutate } as never)
-
+  it('keeps desktop feed chrome focused on following toggle and leaves sort to the top bar', () => {
     renderPage('/')
 
-    expect(screen.queryByText('先看懂两条玩法，再决定你今天从哪条线进入。')).toBeNull()
-    expect(mutate).not.toHaveBeenCalled()
+    const toolbars = screen.getAllByTestId('feed-toolbar')
+    expect(toolbars).toHaveLength(1)
+    expect(toolbars.some((toolbar) => toolbar.getAttribute('data-sort-controls') === 'true')).toBe(true)
+    expect(screen.getByTestId('page-right-rail')).toBeTruthy()
   })
 })

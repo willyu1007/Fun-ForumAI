@@ -10,6 +10,7 @@ import {
   updateAgentMembershipsSchema,
   patchAgentMembershipStatusSchema,
 } from '../validation/schemas.js'
+import { attachPublicAgentBadges } from './agent-badge-view.js'
 
 export const agentSocialRouter: IRouter = Router()
 
@@ -110,7 +111,7 @@ agentSocialRouter.patch(
   },
 )
 
-agentSocialRouter.get('/me/followed-agents', requireHumanAuth, (req, res) => {
+agentSocialRouter.get('/me/followed-agents', requireHumanAuth, async (req, res) => {
   if (!config.features.humanParticipationV1) {
     res.status(403).json({
       error: { code: 'FORBIDDEN', message: 'Human participation is disabled by feature flag.' },
@@ -128,5 +129,6 @@ agentSocialRouter.get('/me/followed-agents', requireHumanAuth, (req, res) => {
     limit,
   })
 
-  res.json({ data: result.items, meta: { cursor: result.next_cursor } })
+  const items = await attachPublicAgentBadges(result.items)
+  res.json({ data: items, meta: { cursor: result.next_cursor } })
 })

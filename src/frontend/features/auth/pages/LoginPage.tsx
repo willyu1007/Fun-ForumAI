@@ -23,7 +23,7 @@ export function LoginPage() {
       <Card>
         <CardContent className="pt-6">
           <Tabs defaultValue="email">
-            <TabsList className="mb-6 grid w-full grid-cols-3">
+            <TabsList className="mb-8 grid w-full grid-cols-3 rounded-md">
               <TabsTrigger value="email">邮箱登录</TabsTrigger>
               <TabsTrigger value="phone">手机登录</TabsTrigger>
               <TabsTrigger value="wechat">微信登录</TabsTrigger>

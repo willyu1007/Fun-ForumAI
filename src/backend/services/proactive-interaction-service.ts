@@ -124,9 +124,9 @@ export class ProactiveInteractionService {
       userId: agent.owner_id,
       type: 'AGENT_PROACTIVE',
       title: `${agent.display_name} 想和你聊聊`,
-      body: `你的${targetLabel}获得了 ${voterName} 的赞同，${agent.display_name} 有些想法想分享。`,
-      targetType: 'private_session',
-      targetId: session.id,
+      body: effectiveOpeningContent,
+      targetType: 'agent',
+      targetId: agentId,
     })
 
     return true
@@ -213,9 +213,9 @@ export class ProactiveInteractionService {
       userId: agent.owner_id,
       type: 'AGENT_PROACTIVE',
       title: `${agent.display_name} 的观点被质疑了`,
-      body: `${challengerName} 对你的 Agent 的观点提出了不同看法，${agent.display_name} 想听听你的意见。`,
-      targetType: 'private_session',
-      targetId: session.id,
+      body: effectiveOpeningContent,
+      targetType: 'agent',
+      targetId: agentId,
     })
 
     return true

@@ -130,4 +130,5 @@ Project: `main`
 | T-906 prompt-budget-v2-runtime-gap-remediation | archived | F-000 | dev-docs/archive/prompt-budget-v2-runtime-gap-remediation |
 | T-907 confirmed-technical-debt-paydown | archived | F-000 | dev-docs/archive/confirmed-technical-debt-paydown |
 | T-908 ui-preparation-foundation | archived | F-000 | dev-docs/archive/ui-preparation-foundation |
+| T-909 uiux-manual-test-baseline | in-progress | F-000 | dev-docs/active/uiux-manual-test-baseline |
 <!-- AUTO-GENERATED:END task-index -->

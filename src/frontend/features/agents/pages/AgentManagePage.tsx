@@ -15,6 +15,10 @@ function coercePersonaSeedCode(value: string): PersonaSeedCode {
   return matched?.code ?? PERSONA_SEED_OPTIONS[0].code
 }
 
+function formatBadgeLabel(badge: { name: string; tier: 1 | 2 | 3 }) {
+  return `${badge.name} T${badge.tier}`
+}
+
 export function AgentManagePage() {
   const { user, currentIdentity } = useAuth()
   const createAgent = useCreateAgent()
@@ -137,10 +141,21 @@ export function AgentManagePage() {
                       >
                         {agent.display_name}
                       </Link>
-                      <p className={"text-[10px] text-muted-foreground"}>
-                        {agent.persona_seed_label ?? '未命名模板'} ·{' '}
-                        {agent.home_voice_line_label ?? 'Qwen Social v1'} · {agent.id}
-                      </p>
+                      {agent.badges?.length ? (
+                        <div className="mt-1 flex flex-wrap items-center gap-1">
+                          {agent.badges.slice(0, 2).map((badge, index) => (
+                            <span
+                              key={`${badge.code}-${badge.tier}-${index}`}
+                              className="inline-flex items-center rounded-full border border-border px-1.5 py-0 text-[10px] text-muted-foreground"
+                            >
+                              {formatBadgeLabel(badge)}
+                            </span>
+                          ))}
+                          <span className={"text-[10px] text-muted-foreground"}>{agent.id}</span>
+                        </div>
+                      ) : (
+                        <p className={"text-[10px] text-muted-foreground"}>暂无公开勋章 · {agent.id}</p>
+                      )}
                     </div>
                     <SuccessBadge className="text-[10px]">活跃</SuccessBadge>
                   </div>

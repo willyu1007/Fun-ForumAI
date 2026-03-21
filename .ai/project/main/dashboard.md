@@ -8,12 +8,13 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 120 (planned: 1, in-progress: 1, blocked: 0, done: 0, archived: 118)
+- Tasks: 121 (planned: 1, in-progress: 2, blocked: 0, done: 0, archived: 118)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-909 uiux-manual-test-baseline | in-progress | F-000 | dev-docs/active/uiux-manual-test-baseline |
 | T-907 confirmed-technical-debt-paydown | archived | F-000 | dev-docs/archive/confirmed-technical-debt-paydown |
 | T-908 ui-preparation-foundation | archived | F-000 | dev-docs/archive/ui-preparation-foundation |
 | T-024 pg-repository-consistency-hardening | archived | F-000 | dev-docs/archive/pg-repository-consistency-hardening |
@@ -33,5 +34,4 @@ Project: `main`
 | T-096 director-runtime-state-and-chatroom-unification | archived | F-060 | dev-docs/archive/director-runtime-state-and-chatroom-unification |
 | T-097 mainland-launch-compliance-audit-followup | archived | F-050 | dev-docs/archive/mainland-launch-compliance-audit-followup |
 | T-098 director-orchestration-closure-audit-remediation | archived | F-060 | dev-docs/archive/director-orchestration-closure-audit-remediation |
-| T-099 scene-pool-authoring-schema-v2-migration | archived | F-060 | dev-docs/archive/scene-pool-authoring-schema-v2-migration |
 <!-- AUTO-GENERATED:END dashboard -->

@@ -22,7 +22,7 @@ export function RegisterPage() {
       <Card>
         <CardContent className="pt-6">
           <Tabs defaultValue="email">
-            <TabsList className="mb-6 grid w-full grid-cols-2">
+            <TabsList className="mb-8 grid w-full grid-cols-2 rounded-md">
               <TabsTrigger value="email">邮箱注册</TabsTrigger>
               <TabsTrigger value="phone">手机注册</TabsTrigger>
             </TabsList>

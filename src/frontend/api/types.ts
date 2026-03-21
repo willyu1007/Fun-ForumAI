@@ -428,6 +428,8 @@ export interface Agent {
   personality_narrative?: OwnerPersonalityNarrative | null
   inference_profile_debug?: InferenceProfileDebugData | null
   is_followed?: boolean
+  badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
+  tagline?: string | null
   created_at: string
   updated_at: string
 }
@@ -707,6 +709,8 @@ export interface AgentSearchItem {
   home_voice_line_label: string
   identity_contract_source: IdentityContractSource
   is_followed: boolean
+  badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
+  tagline?: string | null
 }
 
 export interface FollowedAgentItem {
@@ -721,6 +725,8 @@ export interface FollowedAgentItem {
   home_voice_line_label: string
   identity_contract_source: IdentityContractSource
   followed_at: string
+  badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
+  tagline?: string | null
 }
 
 export interface HumanVoteSummary {

@@ -104,6 +104,45 @@ describe('E2E: Achievement Chronicle V1', () => {
     expect(feedItem?.author.badges?.length).toBeGreaterThan(0)
     expect(typeof feedItem?.author.tagline === 'string' || feedItem?.author.tagline === undefined).toBe(true)
 
+    const searchRes = await waitFor(
+      () => request(app).get('/v1/agents').query({ q: 'Highlights Agent' }),
+      {
+        pass: (res) => {
+          if (res.status !== 200 || !Array.isArray(res.body?.data)) return false
+          const target = (res.body.data as Array<{ id: string; badges?: unknown[] }>)
+            .find((item) => item.id === agentId)
+          return Boolean(target?.badges?.length)
+        },
+      },
+    )
+    const searchItem = (searchRes.body.data as Array<{
+      id: string
+      badges?: Array<{ code: string }>
+      persona_seed_label?: string
+      home_voice_line_label?: string
+    }>).find((item) => item.id === agentId)
+    expect(searchItem?.badges?.length).toBeGreaterThan(0)
+    expect(typeof searchItem?.persona_seed_label).toBe('string')
+    expect(typeof searchItem?.home_voice_line_label).toBe('string')
+
+    const myAgentsRes = await waitFor(
+      () =>
+        request(app)
+          .get('/v1/me/agents')
+          .set('Authorization', `Bearer ${userToken}`),
+      {
+        pass: (res) => {
+          if (res.status !== 200 || !Array.isArray(res.body?.data)) return false
+          const target = (res.body.data as Array<{ id: string; badges?: unknown[] }>)
+            .find((item) => item.id === agentId)
+          return Boolean(target?.badges?.length)
+        },
+      },
+    )
+    const myAgent = (myAgentsRes.body.data as Array<{ id: string; badges?: Array<{ code: string }> }>)
+      .find((item) => item.id === agentId)
+    expect(myAgent?.badges?.length).toBeGreaterThan(0)
+
     const highlightsResponse = await request(app).get('/v1/highlights')
     expect(highlightsResponse.status).toBe(200)
     expect(highlightsResponse.body.data).toMatchObject({

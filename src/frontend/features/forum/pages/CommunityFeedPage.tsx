@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Link, useLocation, useParams, useSearchParams } from 'react-router'
 import { useInfiniteQuery } from '@tanstack/react-query'
+import { MoreHorizontal } from 'lucide-react'
 import { useCommunityBySlug } from '@/api/hooks'
+import { useMyAgents } from '@/api/hooks/user'
 import { api } from '@/api/client'
 import { PostCard } from '../components/PostCard'
 import { PostCompact } from '../components/PostCompact'
@@ -12,29 +14,264 @@ import { useFeedViewStore } from '@/shared/stores/feed-view-store'
 import { useSseNewCounts } from '@/api/use-sse'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
-import type { PostWithMeta, ApiResponse } from '@/api/types'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import type { ApiResponse, Community, PostWithMeta } from '@/api/types'
 import { useAuth } from '@/shared/hooks/use-auth'
-import { COMMUNITY_VISIBILITY_LABELS } from '@/shared/utils/public-ui-glossary'
+import { SHOULD_RENDER_DEV_AUTH_TOOLBAR } from '@/shared/layout/dev-auth-toolbar'
+import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redirect'
+import { cn } from '@/lib/utils'
+import { readFeedSortMode } from '@/shared/utils/feed-sort'
+import {
+  getCommunityAvatarToneClassName,
+  getCommunityBannerClassName,
+  getCommunityCategoryGlyph,
+  resolveCommunityCategory,
+} from '@/shared/utils/community-shell-meta'
+import { ShellRightRail } from '@/widgets/shell/ShellRightRail'
 import {
   HOT_TOPIC_DOMAIN_LABELS,
   HOT_TOPIC_MODE_LABELS,
   readCommunityHotTopicPolicy,
 } from '@/shared/utils/hot-topic-policy'
 
-const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
+const COMMUNITY_FOLLOW_STATE_KEY = 'community-follow-state'
+
+function readCommunityFollowState() {
+  if (typeof localStorage === 'undefined') {
+    return {} as Record<string, boolean>
+  }
+
+  try {
+    const raw = localStorage.getItem(COMMUNITY_FOLLOW_STATE_KEY)
+    if (!raw) {
+      return {} as Record<string, boolean>
+    }
+    const parsed = JSON.parse(raw)
+    return typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, boolean>) : {}
+  } catch {
+    return {} as Record<string, boolean>
+  }
+}
+
+function writeCommunityFollowState(next: Record<string, boolean>) {
+  if (typeof localStorage === 'undefined') {
+    return
+  }
+  localStorage.setItem(COMMUNITY_FOLLOW_STATE_KEY, JSON.stringify(next))
+}
+
+function communityHeaderActionClassName(tone: 'primary' | 'accent' | 'neutral') {
+  return cn(
+    'inline-flex h-9 items-center justify-center rounded-full border text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+    tone === 'primary' &&
+      'border-primary bg-primary px-4 text-primary-foreground hover:border-primary/90 hover:bg-primary/90 hover:text-primary-foreground',
+    tone === 'accent' &&
+      'border-accent bg-accent px-4 text-accent-foreground hover:border-accent/90 hover:bg-accent/90 hover:text-accent-foreground',
+    tone === 'neutral' && 'w-9 border-primary/15 bg-transparent text-muted-foreground hover:bg-muted/35 hover:text-foreground',
+  )
+}
+
+function CommunityHeaderActionTooltip({
+  label,
+  children,
+}: {
+  label: string
+  children: ReactNode
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side="bottom" sideOffset={8}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+function InviteAgentAction({ community }: { community: Community }) {
+  const { isAuthenticated } = useAuth()
+  const { data: myAgentsData } = useMyAgents(isAuthenticated)
+  const location = useLocation()
+  const currentPath = locationToPath(location)
+  const agents = myAgentsData?.data ?? []
+
+  if (!isAuthenticated) {
+    return (
+      <CommunityHeaderActionTooltip label="让我的智能体加入社区">
+        <Link
+          className={communityHeaderActionClassName('primary')}
+          aria-label="邀请智能体，让我的智能体加入社区"
+          to="/login"
+          state={buildAuthRedirectState(currentPath)}
+        >
+          邀请智能体
+        </Link>
+      </CommunityHeaderActionTooltip>
+    )
+  }
+
+  return (
+    <DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex">
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className={communityHeaderActionClassName('primary')}
+                aria-label="邀请智能体，让我的智能体加入社区"
+              >
+                邀请智能体
+              </button>
+            </DropdownMenuTrigger>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={8}>
+          让我的智能体加入社区
+        </TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuLabel>选择一个智能体，建议其加入该社区</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {agents.length > 0 ? (
+          agents.slice(0, 8).map((agent) => (
+            <DropdownMenuItem key={agent.id} asChild>
+              <Link to={`/agents/${agent.id}/chat?invite_to_community=${community.slug}`}>
+                {agent.display_name}
+              </Link>
+            </DropdownMenuItem>
+          ))
+        ) : (
+          <DropdownMenuItem asChild>
+            <Link to="/agents/manage">先创建一个智能体</Link>
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function CommunityHeroBanner({ community }: { community: Community }) {
+  const category = resolveCommunityCategory(community)
+  const [isFollowed, setIsFollowed] = useState(() => Boolean(readCommunityFollowState()[community.slug]))
+  const { isAuthenticated } = useAuth()
+  const location = useLocation()
+  const currentPath = locationToPath(location)
+  const followTooltipLabel = isFollowed ? '取消关注该社区' : '关注该社区，接受最新消息'
+
+  const handleToggleFollow = () => {
+    setIsFollowed((current) => {
+      const next = !current
+      const stored = readCommunityFollowState()
+      stored[community.slug] = next
+      writeCommunityFollowState(stored)
+      return next
+    })
+  }
+
+  return (
+    <section className="-mt-6 space-y-0" data-testid="community-hero-banner">
+      <div
+        className={`relative h-28 overflow-hidden rounded-[1.15rem] bg-gradient-to-r ${getCommunityBannerClassName(category)}`}
+      >
+        <div className="absolute inset-y-0 left-0 w-[44%] bg-gradient-to-r from-background/12 via-background/4 to-transparent" />
+        <div className="absolute inset-y-0 right-0 w-[48%] bg-gradient-to-l from-background/10 via-background/2 to-transparent" />
+        <div className="absolute left-8 top-5 h-14 w-28 rounded-full bg-background/20 blur-2xl" />
+        <div className="absolute bottom-[-2.35rem] left-8 size-[4.95rem] rounded-full bg-background" />
+      </div>
+
+      <div className="relative -mt-5 px-6 pb-1">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex items-start gap-4">
+            <Avatar className="ml-4 -mt-6 size-[4.1rem] rounded-full border-[3px] border-background bg-background shadow-sm">
+              <AvatarFallback className={cn('text-2xl font-semibold', getCommunityAvatarToneClassName(category))}>
+                {getCommunityCategoryGlyph(category)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 pt-7">
+              <h1 className="break-words text-[1.48rem] font-semibold leading-[1] tracking-tight text-foreground sm:text-[1.72rem]">
+                {community.name}
+              </h1>
+            </div>
+          </div>
+
+          <TooltipProvider delayDuration={80}>
+            <div className="flex items-center gap-2 pl-[5.55rem] pt-7 lg:pl-0">
+            {isAuthenticated ? (
+              <CommunityHeaderActionTooltip label={followTooltipLabel}>
+                <button
+                  type="button"
+                  className={communityHeaderActionClassName(isFollowed ? 'accent' : 'primary')}
+                  aria-label={`${isFollowed ? '已关注' : '关注'}，${followTooltipLabel}`}
+                  onClick={handleToggleFollow}
+                >
+                  {isFollowed ? '已关注' : '关注'}
+                </button>
+              </CommunityHeaderActionTooltip>
+            ) : (
+              <CommunityHeaderActionTooltip label={followTooltipLabel}>
+                <Link
+                  className={communityHeaderActionClassName('primary')}
+                  aria-label={`关注，${followTooltipLabel}`}
+                  to="/login"
+                  state={buildAuthRedirectState(currentPath)}
+                >
+                  关注
+                </Link>
+              </CommunityHeaderActionTooltip>
+            )}
+            <InviteAgentAction community={community} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className={communityHeaderActionClassName('neutral')}
+                  aria-label="社区更多操作"
+                >
+                  <MoreHorizontal className="size-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuLabel>更多操作</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled>更多动作即将开放</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            </div>
+          </TooltipProvider>
+        </div>
+      </div>
+    </section>
+  )
+}
 
 export function CommunityFeedPage() {
   const { slug } = useParams()
-  const [sort, setSort] = useState<SortMode>('hot')
-  const [followingOnly, setFollowingOnly] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const sort = readFeedSortMode(searchParams.get('sort'))
   const { isAuthenticated } = useAuth()
   const { view } = useFeedViewStore()
   const { newPostCount, clearNewPosts } = useSseNewCounts()
   useEffect(() => {
-    if (!isAuthenticated && followingOnly) {
-      setFollowingOnly(false)
+    const next = new URLSearchParams(searchParams)
+    let shouldUpdateSearch = false
+    if (!isAuthenticated && next.has('sort')) {
+      next.delete('sort')
+      shouldUpdateSearch = true
     }
-  }, [isAuthenticated, followingOnly])
+    if (shouldUpdateSearch && next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true })
+    }
+  }, [isAuthenticated, searchParams, setSearchParams])
   const { data: community, isLoading: communityLoading } = useCommunityBySlug(slug ?? '')
   const {
     data: feedData,
@@ -44,13 +281,12 @@ export function CommunityFeedPage() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['feed', { sort, community_id: community?.id, following_only: followingOnly }],
+    queryKey: ['feed', { sort, community_id: community?.id }],
     queryFn: ({ pageParam }) => {
       const sp = new URLSearchParams()
       sp.set('sort', sort)
       sp.set('limit', '20')
       if (community?.id) sp.set('community_id', community.id)
-      if (followingOnly) sp.set('following_only', 'true')
       if (pageParam) sp.set('cursor', pageParam)
       return api.get(`feed?${sp.toString()}`).json<
         ApiResponse<PostWithMeta[]> & {
@@ -68,26 +304,25 @@ export function CommunityFeedPage() {
   const isLoading = communityLoading || feedLoading
   const hotTopicPolicy = community ? readCommunityHotTopicPolicy(community.rules_json) : null
 
+  const handleSortChange = (nextSort: SortMode) => {
+    const next = new URLSearchParams(searchParams)
+    if (nextSort === 'hot') {
+      next.delete('sort')
+    } else {
+      next.set('sort', nextSort)
+    }
+    setSearchParams(next, { replace: true })
+  }
+
   if (!slug) return null
   return (
-    <div className="space-y-3">
-      {community && (
-        <div className={"rounded-md border bg-gradient-to-r from-primary/5 to-primary/10 p-4"}>
-          <div className="flex items-center gap-3">
-            <div className={"flex h-12 w-12 items-center justify-center rounded-full bg-primary/20 text-xl"}>💬</div>
-            <div>
-              <h1 className={"text-lg font-bold"}>{community.name}</h1>
-              <p className={"text-xs text-muted-foreground"}>c/{community.slug}</p>
-            </div>
-            <Badge variant="outline" className={"ml-auto text-xs"}>
-              {COMMUNITY_VISIBILITY_LABELS[community.visibility_default.toLowerCase()] ??
-                community.visibility_default}
-            </Badge>
-          </div>
-          {community.description && (
-            <p className={"mt-2 text-sm text-muted-foreground"}>{community.description}</p>
-          )}
-          {hotTopicPolicy && (
+    <div className="space-y-8">
+      {community && <CommunityHeroBanner community={community} />}
+      {communityLoading && <Skeleton className={"h-56 rounded-[1.75rem]"} />}
+
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
+        <div className="min-w-0 space-y-4">
+          {community && hotTopicPolicy && (
             <div className={"rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground"}>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">热点模式 · {HOT_TOPIC_MODE_LABELS[hotTopicPolicy.mode]}</Badge>
@@ -115,72 +350,82 @@ export function CommunityFeedPage() {
               </p>
             </div>
           )}
-        </div>
-      )}
 
-      {communityLoading && <Skeleton className={"h-24 rounded-md"} />}
-
-      {!communityLoading && !community && (
-        <div className={"rounded-md border p-10 text-center"}>
-          <p className={"text-sm font-medium"}>未找到该社区</p>
-          <p className={"mt-1 text-xs text-muted-foreground"}>社区 c/{slug} 不存在。</p>
-        </div>
-      )}
-
-      {community && (
-        <>
-          <FeedToolbar
-            sort={sort}
-            onSortChange={setSort}
-            followingOnly={followingOnly}
-            onFollowingOnlyChange={setFollowingOnly}
-            showFollowingOnlyToggle={HUMAN_PARTICIPATION_ENABLED && isAuthenticated}
-          />
-
-          <NewContentBanner
-            count={newPostCount}
-            label="条新帖"
-            onRefresh={clearNewPosts}
-            queryKey={['feed']}
-          />
-
-          {isLoading && (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <Skeleton
-                  key={i}
-                  className={view === 'card' ? "h-28 rounded-md" : "h-12 rounded-md"}
-                />
-              ))}
+          {!communityLoading && !community && (
+            <div className={"rounded-md border p-10 text-center"}>
+              <p className={"text-sm font-medium"}>未找到该社区</p>
+              <p className={"mt-1 text-xs text-muted-foreground"}>社区 c/{slug} 不存在。</p>
             </div>
           )}
 
-          {error && <div className={"rounded-md border p-6 text-center text-sm text-muted-foreground"}>加载失败，请稍后重试。</div>}
+          {community && (
+            <>
+              <FeedToolbar
+                className="md:hidden"
+                sort={sort}
+                onSortChange={handleSortChange}
+                showSortControls={isAuthenticated}
+                showViewControls
+              />
 
-          {!isLoading && posts.length === 0 && !error && (
-            <div className={"rounded-md border border-dashed bg-muted/30 p-10 text-center"}>
-              <p className={"text-sm font-medium"}>暂无帖子</p>
-              <p className={"mt-1 text-xs text-muted-foreground"}>该社区还没有内容。</p>
-            </div>
+              <NewContentBanner
+                count={newPostCount}
+                label="条新帖"
+                onRefresh={clearNewPosts}
+                queryKey={['feed']}
+              />
+
+              {isLoading && (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton
+                      key={i}
+                      className={view === 'card' ? "h-28 rounded-md" : "h-12 rounded-md"}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {error && <div className={"rounded-md border p-6 text-center text-sm text-muted-foreground"}>加载失败，请稍后重试。</div>}
+
+              {!isLoading && posts.length === 0 && !error && (
+                <div className={"rounded-md border border-dashed bg-muted/30 p-10 text-center"}>
+                  <p className={"text-sm font-medium"}>暂无帖子</p>
+                  <p className={"mt-1 text-xs text-muted-foreground"}>该社区还没有内容。</p>
+                </div>
+              )}
+
+              <div className={view === 'card' ? 'space-y-2' : 'space-y-1'}>
+                {posts.map((post) =>
+                  view === 'card' ? (
+                    <PostCard key={post.id} post={post} />
+                  ) : (
+                    <PostCompact key={post.id} post={post} />
+                  ),
+                )}
+              </div>
+
+              <LoadMore
+                hasMore={!!hasNextPage}
+                isLoading={isFetchingNextPage}
+                onLoadMore={() => fetchNextPage()}
+              />
+            </>
           )}
+        </div>
 
-          <div className={view === 'card' ? 'space-y-2' : 'space-y-1'}>
-            {posts.map((post) =>
-              view === 'card' ? (
-                <PostCard key={post.id} post={post} />
-              ) : (
-                <PostCompact key={post.id} post={post} />
-              ),
-            )}
+        <aside className="hidden min-h-0 lg:block lg:self-stretch">
+          <div
+          className={
+            SHOULD_RENDER_DEV_AUTH_TOOLBAR
+                ? 'sticky top-[68px] h-[calc(100vh-68px-4rem)] pr-1'
+                : 'sticky top-[68px] h-[calc(100vh-68px)] pr-1'
+            }
+          >
+            <ShellRightRail />
           </div>
-
-          <LoadMore
-            hasMore={!!hasNextPage}
-            isLoading={isFetchingNextPage}
-            onLoadMore={() => fetchNextPage()}
-          />
-        </>
-      )}
+        </aside>
+      </div>
     </div>
   )
 }

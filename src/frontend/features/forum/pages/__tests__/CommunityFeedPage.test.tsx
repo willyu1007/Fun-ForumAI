@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CommunityFeedPage } from '../CommunityFeedPage'
 import { useCommunityBySlug } from '@/api/hooks'
+import { useMyAgents } from '@/api/hooks/user'
 import { useSseNewCounts } from '@/api/use-sse'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
@@ -14,6 +15,10 @@ vi.mock('@tanstack/react-query', () => ({
 
 vi.mock('@/api/hooks', () => ({
   useCommunityBySlug: vi.fn(),
+}))
+
+vi.mock('@/api/hooks/user', () => ({
+  useMyAgents: vi.fn(),
 }))
 
 vi.mock('@/api/use-sse', () => ({
@@ -28,6 +33,10 @@ vi.mock('@/shared/stores/feed-view-store', () => ({
   useFeedViewStore: vi.fn(),
 }))
 
+vi.mock('@/widgets/shell/ShellRightRail', () => ({
+  ShellRightRail: () => <div data-testid="page-right-rail" />,
+}))
+
 vi.mock('../../components/PostCard', () => ({
   PostCard: () => <div data-testid="post-card" />,
 }))
@@ -37,7 +46,19 @@ vi.mock('../../components/PostCompact', () => ({
 }))
 
 vi.mock('../../components/FeedToolbar', () => ({
-  FeedToolbar: () => <div data-testid="feed-toolbar" />,
+  FeedToolbar: ({
+    showSortControls,
+    showViewControls,
+  }: {
+    showSortControls?: boolean
+    showViewControls?: boolean
+  }) => (
+    <div
+      data-testid="feed-toolbar"
+      data-sort-controls={showSortControls ? 'true' : 'false'}
+      data-view-controls={showViewControls ? 'true' : 'false'}
+    />
+  ),
 }))
 
 vi.mock('../../components/NewContentBanner', () => ({
@@ -50,6 +71,7 @@ vi.mock('@/shared/components/LoadMore', () => ({
 
 const useInfiniteQueryMock = vi.mocked(useInfiniteQuery)
 const useCommunityBySlugMock = vi.mocked(useCommunityBySlug)
+const useMyAgentsMock = vi.mocked(useMyAgents)
 const useSseNewCountsMock = vi.mocked(useSseNewCounts)
 const useAuthMock = vi.mocked(useAuth)
 const useFeedViewStoreMock = vi.mocked(useFeedViewStore)
@@ -67,7 +89,9 @@ function renderPage() {
 describe('CommunityFeedPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
     useAuthMock.mockReturnValue({ isAuthenticated: true } as never)
+    useMyAgentsMock.mockReturnValue({ data: { data: [] } } as never)
     useFeedViewStoreMock.mockReturnValue({ view: 'card' } as never)
     useSseNewCountsMock.mockReturnValue({
       newPostCount: 0,
@@ -111,11 +135,46 @@ describe('CommunityFeedPage', () => {
 
     renderPage()
 
+    expect(screen.getByTestId('community-hero-banner')).toBeTruthy()
+    expect(screen.getAllByText('Night Show').length).toBeGreaterThan(0)
+    const followButton = screen.getByRole('button', { name: '关注，关注该社区，接受最新消息' })
+    const inviteButton = screen.getByRole('button', { name: '邀请智能体，让我的智能体加入社区' })
+    expect(followButton).toBeTruthy()
+    expect(inviteButton).toBeTruthy()
+    expect(screen.getByRole('button', { name: '社区更多操作' })).toBeTruthy()
+    expect(screen.queryByText('c/night-show')).toBeNull()
+    expect(screen.queryByText('Agent talk show')).toBeNull()
+    expect(screen.queryByText('公开')).toBeNull()
     expect(screen.getByText('热点模式 · 灰度复核')).toBeTruthy()
     expect(screen.getByText('允许 · 娱乐')).toBeTruthy()
     expect(screen.getByText('允许 · 体育')).toBeTruthy()
     expect(screen.getByText(/本社区允许围观的热点域：娱乐、体育/)).toBeTruthy()
     expect(screen.getByText('热点内容会先做灰度复核。')).toBeTruthy()
     expect(screen.getByRole('link', { name: '查看热点治理规则与推荐说明' }).getAttribute('href')).toBe('/help/hot-topic-rules')
+  })
+
+  it('renders only the mobile feed toolbar for authenticated users', () => {
+    useCommunityBySlugMock.mockReturnValue({
+      data: {
+        id: 'community-1',
+        name: 'Night Show',
+        slug: 'night-show',
+        description: 'Agent talk show',
+        rules_json: null,
+        visibility_default: 'PUBLIC',
+        created_at: '2026-03-10T10:00:00.000Z',
+        updated_at: '2026-03-10T10:00:00.000Z',
+      },
+      isLoading: false,
+    } as never)
+
+    renderPage()
+
+    expect(screen.getByTestId('community-hero-banner')).toBeTruthy()
+    const toolbars = screen.getAllByTestId('feed-toolbar')
+    expect(toolbars).toHaveLength(1)
+    expect(toolbars[0]?.getAttribute('data-sort-controls')).toBe('true')
+    expect(toolbars[0]?.getAttribute('data-view-controls')).toBe('true')
+    expect(screen.getByTestId('page-right-rail')).toBeTruthy()
   })
 })

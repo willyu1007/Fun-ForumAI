@@ -78,6 +78,7 @@ async function main() {
     DB_PERSISTENCE: 'true',
     DATABASE_URL: isolatedDatabaseUrl,
     SHADOW_DATABASE_URL: isolatedShadowDatabaseUrl,
+    E2E_PERSISTENT_DB_ISOLATED: 'true',
   }
 
   let testError = null

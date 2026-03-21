@@ -1,7 +1,6 @@
 import type { UserProfile } from '@/api/auth'
-import { useGuidanceInbox } from '@/api/hooks/guidance'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,20 +10,33 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
+import { cn } from '@/lib/utils'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redirect'
-import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
-import logoSrc from '@/assets/logo.png'
 import { Link, useLocation } from 'react-router'
+import { Search } from 'lucide-react'
 import { AgentPanelWidget } from './AgentPanelWidget'
+import { ActivityPanelWidget } from './ActivityPanelWidget'
+import { ShellFeedChromeControls } from './ShellFeedChromeControls'
+import { ShellIconHint } from './ShellIconHint'
 import { ShellLeftRail } from './ShellLeftRail'
 import { ShellNotificationBell } from './ShellNotificationBell'
 import { ShellTopBar } from './ShellTopBar'
+import { topBarIconTriggerClassName } from './top-bar-icon-trigger'
+import { getInitials } from '@/shared/utils/get-initials'
 
 interface ShellTopBarContainerProps {
   leftOpen: boolean
   onToggleLeft: () => void
+}
+
+function getUserAvatarFallback(user: UserProfile) {
+  const source = user.displayName?.trim() || user.email.split('@')[0] || 'U'
+  const parts = source.split(/[\s_-]+/).filter(Boolean)
+  if (parts.length >= 2) {
+    return getInitials(parts.slice(0, 2).join(' '))
+  }
+  return (Array.from(source)[0] ?? 'U').toUpperCase()
 }
 
 function ShellMobileMenu() {
@@ -36,9 +48,10 @@ function ShellMobileMenu() {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-64 p-0">
-        <div className="flex h-12 items-center gap-2 border-b px-3">
-          <img src={logoSrc} alt="AI Talkshow" className="h-7 w-7 rounded-lg" />
-          <span className="font-bold">AI Talkshow</span>
+        <div className="flex h-[52px] items-center border-b px-3">
+          <span className="text-sm font-semibold uppercase tracking-[0.28em] text-foreground">
+            AI TALKSHOW
+          </span>
         </div>
         <ShellLeftRail />
       </SheetContent>
@@ -46,18 +59,19 @@ function ShellMobileMenu() {
   )
 }
 
-function GuidanceInboxAction({ unreadCount }: { unreadCount: number }) {
+function TopBarSearchEntry() {
   return (
-    <Button variant="ghost" size="sm" asChild className="relative hidden sm:flex">
-      <Link to="/inbox">
-        <span>{formatGlossaryLabel('inbox')}</span>
-        {unreadCount > 0 && (
-          <Badge className="ml-1 h-4 min-w-4 rounded-full px-1 text-[10px]">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </Badge>
-        )}
+    <div className="mx-auto flex w-full items-center justify-center gap-3.5">
+      <Link
+        to="/agents"
+        aria-label="搜索入口"
+        className="flex h-9 w-full max-w-[23rem] min-w-0 items-center gap-2 rounded-full border border-border/75 bg-muted/55 px-4 text-sm text-muted-foreground/75 transition-colors hover:bg-muted/70 hover:text-foreground lg:max-w-[25rem] xl:max-w-[27rem]"
+      >
+        <Search className="h-4 w-4 shrink-0" />
+        <span className="truncate">搜索智能体、社区、话题</span>
       </Link>
-    </Button>
+      <ShellFeedChromeControls />
+    </div>
   )
 }
 
@@ -68,18 +82,29 @@ function UserMenu({
   user: UserProfile
   onLogout: () => void
 }) {
+  const avatarFallback = getUserAvatarFallback(user)
+
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
-            {user.displayName?.charAt(0) ?? user.email.charAt(0) ?? '用'}
-          </span>
-          <span className="hidden max-w-24 truncate text-xs sm:block">
-            {user.displayName ?? user.email}
-          </span>
-        </Button>
-      </DropdownMenuTrigger>
+      <ShellIconHint label="账户菜单">
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className={cn(topBarIconTriggerClassName, 'group size-10')}
+            aria-label="账户菜单"
+            title="账户菜单"
+          >
+            <Avatar className="size-9 border border-border/65 bg-muted/60 shadow-xs transition-colors group-hover:bg-muted/72 data-[state=open]:bg-muted/72">
+              {user.avatarUrl ? (
+                <AvatarImage src={user.avatarUrl} alt={user.displayName ?? user.email} className="object-cover" />
+              ) : null}
+              <AvatarFallback className="bg-muted/70 text-[11px] font-semibold text-foreground">
+                {avatarFallback}
+              </AvatarFallback>
+            </Avatar>
+          </button>
+        </DropdownMenuTrigger>
+      </ShellIconHint>
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuLabel className="text-xs">
           {user.displayName ?? user.email}
@@ -136,33 +161,22 @@ export function ShellTopBarContainer({
   leftOpen,
   onToggleLeft,
 }: ShellTopBarContainerProps) {
-  const guidanceEnabled = isGuidanceEnabled()
   const { user, isAuthenticated, logout } = useAuth()
   const location = useLocation()
   const currentPath = locationToPath(location)
-  const { data: guidanceInbox } = useGuidanceInbox()
-  const guidanceUnread = guidanceEnabled ? (guidanceInbox?.data?.unread_count ?? 0) : 0
 
-  const primaryActions = (
-    <>
-      <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
-        <Link to="/help">帮助</Link>
-      </Button>
-      {isAuthenticated && (
-        <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
-          <Link to="/agents/manage">+ 创建</Link>
-        </Button>
-      )}
-      {guidanceEnabled && <GuidanceInboxAction unreadCount={guidanceUnread} />}
-    </>
-  )
-
-  const accountArea = isAuthenticated && user ? (
-    <>
+  const primaryActions = isAuthenticated && user ? (
+    <div className="flex items-center gap-3 md:gap-3.5">
+      <ActivityPanelWidget />
       <AgentPanelWidget />
       <ShellNotificationBell />
+    </div>
+  ) : null
+
+  const accountArea = isAuthenticated && user ? (
+    <div className="pl-1 md:pl-1.5">
       <UserMenu user={user} onLogout={() => void logout()} />
-    </>
+    </div>
   ) : (
     <GuestAuthActions currentPath={currentPath} />
   )
@@ -172,6 +186,7 @@ export function ShellTopBarContainer({
       leftOpen={leftOpen}
       onToggleLeft={onToggleLeft}
       mobileMenuTrigger={<ShellMobileMenu />}
+      navigation={<TopBarSearchEntry />}
       primaryActions={primaryActions}
       accountArea={accountArea}
     />

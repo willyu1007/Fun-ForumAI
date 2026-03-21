@@ -59,7 +59,7 @@ export function AppShell({
         {/* Content Region */}
         <main
           {...dataSlot('content')}
-          className="flex-1 min-w-0 overflow-auto"
+          className="flex-1 min-w-0"
           data-testid="app-shell-content"
         >
           {children}
