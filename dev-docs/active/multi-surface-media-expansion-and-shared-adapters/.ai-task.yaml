@@ -2,7 +2,7 @@ version: 1
 task_id: T-123
 project: main
 slug: multi-surface-media-expansion-and-shared-adapters
-status: planned
+status: done
 updated: "2026-03-22"
 keywords:
   - multi-surface

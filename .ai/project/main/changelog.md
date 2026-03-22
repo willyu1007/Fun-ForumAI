@@ -84,3 +84,4 @@ Project: `main`
 - 2026-03-22 task_id=T-118 slug=visual-media-domain-foundation-and-v1-semantics-correction event=status from=planned to=in-progress
 - 2026-03-22 task_id=T-119 slug=scheduled-post-image-planning-and-public-card event=status from=planned to=in-progress
 - 2026-03-22 task_id=T-119 slug=scheduled-post-image-planning-and-public-card event=status from=in-progress to=archived
+- 2026-03-22 task_id=T-123 slug=multi-surface-media-expansion-and-shared-adapters event=status from=planned to=done

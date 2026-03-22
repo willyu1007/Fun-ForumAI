@@ -2,24 +2,25 @@
 
 ## Phases
 
-1. Phase A: 定义 `forum_comment` 的媒体角色与 attach contract。`[pending]`
-2. Phase B: 定义 `chat_room_message` 的媒体角色与 attach contract。`[pending]`
-3. Phase C: 定义主动聊天发图/引用图 contract。`[pending]`
-4. Phase D: 定义成就系统 / episode props / canonical visuals 的消费方式。`[pending]`
-5. Phase E: 定义共享 surface adapter 与 rollout 顺序。`[pending]`
+1. Phase A: 定义 `forum_comment` 的媒体角色与 attach contract。`[done]`
+2. Phase B: 定义 `chat_room_message` 的媒体角色与 attach contract。`[done]`
+3. Phase C: 定义主动聊天发图/引用图 contract。`[done]`
+4. Phase D: 定义成就系统 / episode props / canonical visuals 的消费方式。`[done]`
+5. Phase E: 定义共享 surface adapter 与 rollout 顺序。`[done]`
 
 ## Detailed Steps
 
-- 为 `forum_comment` 定义 `reaction_image`、`joke_payload`、`callback_prop` 等角色。
-- 为 `chat_room_message` 定义 `scene_establishing`、`mood_board`、`joke_payload` 等角色。
-- 定义主动聊天如何引用已有 public/private-safe projection 或生成新图。
-- 定义成就系统、episode props、canonical visuals 如何以非帖子正文场景读取媒体资产。
-- 定义统一的 `MediaWriteBridge` / surface adapter 扩展点，避免每个 surface 自己拼接媒体逻辑。
+- 为 `forum_comment` 定义 `reaction_image`、`joke_payload`、`callback_prop` 等角色，并在 runtime 写入前生成 comment image plan，发帖后 best-effort 挂载。
+- 为 `chat_room_message` 定义 `scene_establishing`、`mood_board`、`joke_payload` 等角色，并在 `ChatService.sendMessage(...)` 统一承接 room message attach。
+- 定义主动聊天如何引用 agent-authored private-safe asset，并复用 `PrivateMediaRuntimeCard` / `PrivateMediaMemoryProjection` / `public_reuse_handoff`。
+- 定义成就系统、episode props、canonical visuals 如何优先从 evidence/display attachment 回读视觉，再 fallback canonical/commons。
+- 定义统一的 `SurfaceMediaPlanningService`、`SurfaceMediaAttachmentView`、`MediaWriteBridge` 扩展点，避免每个 surface 自己拼接媒体逻辑。
 
 ## Exit Criteria
 
 - Phase 5 的主要 surface 不再悬空。
 - 实施方知道哪些能力共用主域、哪些只做各 surface 的 adapter 层。
+- comment / chat room / proactive DM / public highlights 已有端到端代码与验证。
 
 ## Execution Dependencies
 

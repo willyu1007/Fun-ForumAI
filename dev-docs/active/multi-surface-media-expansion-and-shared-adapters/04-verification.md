@@ -2,6 +2,28 @@
 
 - 2026-03-22
   - Pass: `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
-  - Result: `T-123` 已注册到 `F-080 / R-085`，状态为 `planned`
+  - Result: `T-123` 已注册到 `F-080 / R-085`，状态为 `done`
   - Pass: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
   - Result: lint passed
+  - Pass: `pnpm exec tsc --noEmit`
+  - Result: typecheck passed after shared adapter、chat service、frontend DTO changes
+  - Pass: `pnpm exec vitest run src/frontend/features/forum/components/__tests__/CommentList.test.tsx src/frontend/features/agents/pages/__tests__/AgentProfilePage.test.tsx src/frontend/features/chat/pages/__tests__/ChatRoomPages.test.tsx`
+  - Result: comment supporting visual、room message attachment/highlight visual、Agent public proof visual 全部通过
+  - Pass: `pnpm exec vitest run src/backend/media/__tests__/media-write-bridge.test.ts src/backend/services/__tests__/forum-read-service.test.ts src/backend/services/__tests__/achievement-chronicle-service.test.ts src/backend/services/__tests__/proactive-interaction-service.test.ts src/backend/runtime/__tests__/data-plane-writer.nurture.test.ts src/backend/routes/__tests__/e2e-achievement.test.ts`
+  - Result: public attach bridge、forum read hydration、chronicle visual fallback、proactive private attach、data-plane best-effort、achievement API 回归通过
+  - Pass: `pnpm exec vitest run src/backend/services/__tests__/chat-service.watchability.test.ts src/backend/services/__tests__/chat-service.room-moves.test.ts src/backend/routes/__tests__/chat-watchability-api.test.ts src/backend/services/__tests__/conversation-clock.test.ts`
+  - Result: chat service attach hydration、room history、watchability API、conversation-clock message generation 回归通过
+  - Pass: `pnpm exec vitest run src/backend/media/__tests__/media-asset-service.test.ts src/backend/media/__tests__/media-write-bridge.test.ts src/backend/runtime/__tests__/context-builder.prompt-routing.test.ts src/backend/runtime/__tests__/agent-executor.test.ts src/backend/services/__tests__/proactive-interaction-service.test.ts`
+  - Result: proactive candidate selection 不再误用 canonical fallback、generated derivative binding 语义正确、chat room AgentExecutor prompt/media 链路补齐
+  - Pass: `pnpm exec vitest run src/frontend/features/forum/components/__tests__/CommentList.test.tsx src/frontend/features/agents/pages/__tests__/AgentProfilePage.test.tsx src/frontend/features/chat/pages/__tests__/ChatRoomPages.test.tsx src/backend/media/__tests__/media-asset-service.test.ts src/backend/media/__tests__/media-write-bridge.test.ts src/backend/services/__tests__/forum-read-service.test.ts src/backend/services/__tests__/achievement-chronicle-service.test.ts src/backend/services/__tests__/proactive-interaction-service.test.ts src/backend/runtime/__tests__/data-plane-writer.nurture.test.ts src/backend/runtime/__tests__/context-builder.prompt-routing.test.ts src/backend/runtime/__tests__/agent-executor.test.ts src/backend/services/__tests__/chat-service.watchability.test.ts src/backend/services/__tests__/chat-service.room-moves.test.ts src/backend/routes/__tests__/chat-watchability-api.test.ts src/backend/services/__tests__/conversation-clock.test.ts src/backend/routes/__tests__/e2e-achievement.test.ts`
+  - Result: T-123 相关前后端回归 77 tests passed
+  - Pass: `pnpm exec vitest run src/frontend/features/agents/pages/__tests__/AgentHighlightsPage.test.tsx src/frontend/features/agents/pages/__tests__/AgentProfilePage.test.tsx`
+  - Result: `/agents/:agentId/highlights` public highlights 页面与 profile 跳转入口通过，chronicle visual 与 empty state 都被覆盖
+  - Pass: `pnpm exec tsc --noEmit`
+  - Result: 新增 public highlights 页面、路由和测试后 typecheck 继续通过
+  - Pass: `pnpm exec eslint src/frontend/features/agents/pages/AgentHighlightsPage.tsx src/frontend/features/agents/pages/__tests__/AgentHighlightsPage.test.tsx src/frontend/app/router.tsx src/frontend/app/route-components.tsx src/frontend/features/agents/pages/AgentProfilePage.tsx`
+  - Result: 新增/修改的 public highlights 前端文件 lint passed
+  - Pass: `pnpm exec vitest run src/frontend/features/agents/pages/__tests__/AgentHighlightsPage.test.tsx src/frontend/features/forum/components/__tests__/CommentList.test.tsx src/frontend/features/chat/pages/__tests__/ChatRoomPages.test.tsx src/frontend/features/agents/pages/__tests__/AgentProfilePage.test.tsx src/backend/media/__tests__/media-asset-service.test.ts src/backend/media/__tests__/media-write-bridge.test.ts src/backend/services/__tests__/forum-read-service.test.ts src/backend/services/__tests__/achievement-chronicle-service.test.ts src/backend/services/__tests__/proactive-interaction-service.test.ts src/backend/runtime/__tests__/data-plane-writer.nurture.test.ts src/backend/runtime/__tests__/context-builder.prompt-routing.test.ts src/backend/runtime/__tests__/agent-executor.test.ts src/backend/services/__tests__/chat-service.watchability.test.ts src/backend/services/__tests__/chat-service.room-moves.test.ts src/backend/routes/__tests__/chat-watchability-api.test.ts src/backend/services/__tests__/conversation-clock.test.ts src/backend/routes/__tests__/e2e-achievement.test.ts src/backend/routes/__tests__/e2e-multimodal.test.ts`
+  - Result: 引入 `/agents/:agentId/highlights` 页面后，T-123 相关前后端与 e2e 回归 84 tests passed
+  - Pass: 本地浏览器打开 `http://localhost:3000/agents/agent_1774178687017_1/highlights`（开发环境 + `POST /v1/dev/seed`）
+  - Result: 页面正常加载、无路由 404、可读到 public highlights contract；Chrome DevTools 仅见非阻断的登录态 401 噪音，无运行时崩溃

@@ -179,6 +179,6 @@ Project: `main`
 | T-120 private-chat-image-attachments-and-private-projection | in-progress | dev-docs/active/private-chat-image-attachments-and-private-projection |
 | T-121 public-media-reuse-and-revocation-policy | done | dev-docs/active/public-media-reuse-and-revocation-policy |
 | T-122 media-generation-broker-and-derivative-display | done | dev-docs/active/media-generation-broker-and-derivative-display |
-| T-123 multi-surface-media-expansion-and-shared-adapters | planned | dev-docs/active/multi-surface-media-expansion-and-shared-adapters |
+| T-123 multi-surface-media-expansion-and-shared-adapters | done | dev-docs/active/multi-surface-media-expansion-and-shared-adapters |
 | T-124 media-observability-lifecycle-and-rollout-control | planned | dev-docs/active/media-observability-lifecycle-and-rollout-control |
 <!-- AUTO-GENERATED:END feature-map -->

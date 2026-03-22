@@ -1169,7 +1169,7 @@ tasks:
     updated: 2026-03-22
   - id: T-123
     slug: multi-surface-media-expansion-and-shared-adapters
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-080
     requirement_ids:
