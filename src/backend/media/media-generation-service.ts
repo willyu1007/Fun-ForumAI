@@ -199,6 +199,9 @@ export class MediaGenerationService {
     }
 
     try {
+      const primaryPlan = job.plan_id
+        ? await this.deps.imagePlanRepo.findById(job.plan_id)
+        : null
       const result = await this.deps.gateway.generate({
         prompt_brief: job.prompt_brief,
         style_hint: job.style_hint,
@@ -218,11 +221,18 @@ export class MediaGenerationService {
       })
 
       if (!shouldBlock) {
-        const registered = await this.deps.mediaReuseGovernanceService.registerGeneratedPublicAsset({
-          asset_id: generated.asset.id,
-          agent_id: job.agent_id,
-          actor_user_id: 'media-generation-service',
-        })
+        const outputSourceKind = resolveGeneratedOutputSourceKind(primaryPlan)
+        const registered = outputSourceKind === 'private_derived_public'
+          ? await this.deps.mediaReuseGovernanceService.registerPrivateDerivedPublicAsset({
+              asset_id: generated.asset.id,
+              agent_id: job.agent_id,
+              actor_user_id: 'media-generation-service',
+            })
+          : await this.deps.mediaReuseGovernanceService.registerGeneratedPublicAsset({
+              asset_id: generated.asset.id,
+              agent_id: job.agent_id,
+              actor_user_id: 'media-generation-service',
+            })
         await this.deps.mediaProjectionService.createDisplayAttachmentProjection({
           binding: registered.binding,
           asset: generated.asset,
@@ -235,14 +245,14 @@ export class MediaGenerationService {
           binding: registered.binding,
           asset: generated.asset,
           snapshot: generated.snapshot,
-          source_kind: 'generated_public',
-          derived_from_private: false,
+          source_kind: outputSourceKind,
+          derived_from_private: outputSourceKind === 'private_derived_public',
           visual_role: 'illustration',
           prompt_weight: 'secondary',
           mention_policy: 'allude',
           why_now: '由生成链路回流到公共媒体池，供后续 surface 复用。',
           public_scope: 'global_public',
-          disclose_origin_policy: 'public_only',
+          disclose_origin_policy: outputSourceKind === 'private_derived_public' ? 'never' : 'public_only',
           cross_agent_quote_allowed: false,
           original_display_allowed: true,
           derivative_display_allowed: true,
@@ -432,6 +442,19 @@ export class MediaGenerationService {
       clearTimeout(timer)
     }
   }
+}
+
+function resolveGeneratedOutputSourceKind(
+  plan: PersistedImagePlan | null,
+): 'generated_public' | 'private_derived_public' {
+  const runtimeSourceKinds = plan?.runtime.cards.map((card) => card.source.kind) ?? []
+  const selectedSourceKinds = plan?.selected_sources.map((source) => source.source_kind) ?? []
+  const hasPrivateOrigin = [...runtimeSourceKinds, ...selectedSourceKinds].some((sourceKind) =>
+    sourceKind === 'owner_private_pool'
+    || sourceKind === 'private_runtime_projection'
+    || sourceKind === 'private_derived_public',
+  )
+  return hasPrivateOrigin ? 'private_derived_public' : 'generated_public'
 }
 
 function uniquePlans(plans: PersistedImagePlan[]): PersistedImagePlan[] {

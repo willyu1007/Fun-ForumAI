@@ -33,8 +33,8 @@ describe('MemoryService private media pipeline', () => {
     const distillResult: SummaryDistillResult = {
       origin: {
         eventId: 'ctxevent:private-media:message-1:asset-1',
-        scene: 'private_chat',
-        sourceType: 'private_session',
+        scene: 'private_chat' as const,
+        sourceType: 'private_session' as const,
       },
       episodicCards: [{
         id: 'ctxepisode:ctxevent:private-media:message-1:asset-1:1',

@@ -87,6 +87,7 @@ describe('VisualDirectiveService', () => {
     expect(directive.sourcing_policy.prefer_order).toEqual([
       'self_public_archive',
       'same_episode_public',
+      'private_derived_public',
       'generated_public',
       'same_thread_public',
       'owner_private_pool',

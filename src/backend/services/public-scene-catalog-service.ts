@@ -1,11 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import type { ScenePoolCatalog } from '../stage/index.js'
+import { parseStageTemplateAuthoringManifest, type ScenePoolCatalog } from '../stage/index.js'
 import {
   buildStageTemplateDistPayload,
   readYamlFile,
 } from '../stage/stage-template-ops.js'
-import type { StageTemplateManifest } from '../stage/stage-template-ops.js'
 
 const DEFAULT_DIST_DIR = path.resolve(process.cwd(), 'docs/stage-templates/dist')
 const DEFAULT_LAUNCH_PATH = path.resolve(process.cwd(), 'docs/stage-templates/dist/launch.json')
@@ -74,7 +73,7 @@ export class PublicSceneCatalogService {
         return false
       }
 
-      const manifest = readYamlFile<StageTemplateManifest>(this.manifestPath)
+      const manifest = parseStageTemplateAuthoringManifest(readYamlFile(this.manifestPath))
       const distPayload = buildStageTemplateDistPayload(
         this.sourceBaseDir,
         manifest,

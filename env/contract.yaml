@@ -241,7 +241,7 @@ variables:
   MEDIA_GENERATION_TIMEOUT_MS:
     type: int
     required: false
-    default: 30000
+    default: 120000
     description: Timeout per image generation request in milliseconds.
 
   MEDIA_GENERATION_DOWNLOAD_TIMEOUT_MS:

@@ -15,6 +15,7 @@ import type { ProgramMessageMetadata } from '../services/conversation-clock/type
 const SCHEDULED_POST_ALLOW_SOURCES: VisualSourceKind[] = [
   'self_public_archive',
   'same_episode_public',
+  'private_derived_public',
   'generated_public',
   'same_thread_public',
   'owner_private_pool',
@@ -26,6 +27,7 @@ const SCHEDULED_POST_ALLOW_SOURCES: VisualSourceKind[] = [
 const SCHEDULED_POST_PREFER_ORDER: VisualSourceKind[] = [
   'self_public_archive',
   'same_episode_public',
+  'private_derived_public',
   'generated_public',
   'same_thread_public',
   'owner_private_pool',

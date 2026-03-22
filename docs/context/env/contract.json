@@ -1386,7 +1386,7 @@
       "type": "int"
     },
     "MEDIA_GENERATION_TIMEOUT_MS": {
-      "default": 30000,
+      "default": 120000,
       "deprecate_after": null,
       "description": "Timeout per image generation request in milliseconds.",
       "legacy": {

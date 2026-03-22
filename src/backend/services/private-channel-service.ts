@@ -11,6 +11,7 @@ import type { SseHub } from '../sse/hub.js'
 import type { PromptOrchestrator } from '../runtime/prompt-orchestrator.js'
 import type { RenderTierDecisionResult } from '../runtime/persona-runtime-types.js'
 import type { PromptComposeAudit } from '../runtime/types.js'
+import type { CurrentContextSource } from '../runtime/types.js'
 import type { PersonaStateService } from './persona-state-service.js'
 import type { InferenceProfileService } from './inference-profile-service.js'
 import type { MediaAssetService } from '../media/media-asset-service.js'
@@ -622,40 +623,44 @@ export class PrivateChannelService {
     ]).slice(0, 10)
     const currentInputText = currentMessage.trim()
 
+    const currentMediaContextSources: CurrentContextSource[] = currentMediaCards.map((item, index) => ({
+      kind: 'private_media_card',
+      text: item.text,
+      priority: 'high' as const,
+      source_id: item.source_id || `session:${session.id}:private_media_card:${index + 1}`,
+    }))
+
+    const currentContextSources: CurrentContextSource[] = [
+      {
+        kind: 'owner_latest_input',
+        text: currentMessage,
+        priority: 'critical' as const,
+        source_id: `session:${session.id}:latest_owner_input`,
+      },
+      ...currentMediaContextSources,
+      {
+        kind: 'session_recent_turns',
+        text: history.items
+          .slice(-8)
+          .map((item) => `${item.author_type === 'HUMAN' ? 'Owner' : 'Agent'}：${item.content}`)
+          .join('\n'),
+        priority: 'high' as const,
+        source_id: `session:${session.id}:recent_turns`,
+      },
+      {
+        kind: 'session_meta',
+        text: `session_id=${session.id}\nmessage_count=${history.items.length}`,
+        priority: 'medium' as const,
+        source_id: session.id,
+      },
+    ].filter((source) => source.text.trim().length > 0)
+
     const composed = await this.deps.promptOrchestrator!.compose({
       agentId: session.agent_id,
       scene: 'private_chat',
       conversationText,
       topicHints,
-      currentContextSources: [
-        {
-          kind: 'owner_latest_input',
-          text: currentMessage,
-          priority: 'critical' as const,
-          source_id: `session:${session.id}:latest_owner_input`,
-        },
-        ...currentMediaCards.map((item, index) => ({
-          kind: 'private_media_card',
-          text: item.text,
-          priority: 'high' as const,
-          source_id: item.source_id || `session:${session.id}:private_media_card:${index + 1}`,
-        })),
-        {
-          kind: 'session_recent_turns',
-          text: history.items
-            .slice(-8)
-            .map((item) => `${item.author_type === 'HUMAN' ? 'Owner' : 'Agent'}：${item.content}`)
-            .join('\n'),
-          priority: 'high' as const,
-          source_id: `session:${session.id}:recent_turns`,
-        },
-        {
-          kind: 'session_meta',
-          text: `session_id=${session.id}\nmessage_count=${history.items.length}`,
-          priority: 'medium' as const,
-          source_id: session.id,
-        },
-      ].filter((source) => source.text.trim().length > 0),
+      currentContextSources,
       requestEnvelope: {
         static_system_tokens: 180,
         route_wrapper_tokens: 90,

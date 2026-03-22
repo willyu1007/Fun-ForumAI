@@ -24,7 +24,12 @@ import type {
   SceneMediaBinding,
   VisualSourceKind,
 } from '../repos/types.js'
-import { buildCommunityCommonsPoolSceneId, buildPlatformCanonicalPoolSceneId, buildGeneratedPublicPoolSceneId } from './media-reuse-governance-service.js'
+import {
+  buildCommunityCommonsPoolSceneId,
+  buildPlatformCanonicalPoolSceneId,
+  buildGeneratedPublicPoolSceneId,
+  buildPrivateDerivedPublicPoolSceneId,
+} from './media-reuse-governance-service.js'
 import { buildOwnerPrivatePoolSceneId } from './media-binding-service.js'
 
 interface CandidateSummary {
@@ -617,7 +622,7 @@ export class ImagePlannerService {
         case 'same_thread_public':
           break
         case 'private_derived_public':
-          await addPoolCandidates([buildGeneratedPublicPoolSceneId(agentId)], 'private_derived_public')
+          await addPoolCandidates([buildPrivateDerivedPublicPoolSceneId(agentId)], 'private_derived_public')
           break
       }
     }
@@ -707,7 +712,8 @@ export class ImagePlannerService {
       asset,
       snapshot,
       source_kind: input.candidate.source_kind,
-      derived_from_private: input.candidate.source_kind === 'owner_private_pool',
+      derived_from_private: input.candidate.source_kind === 'owner_private_pool'
+        || input.candidate.source_kind === 'private_derived_public',
       continuity_ref: input.candidate.continuity_ref,
       visual_role: input.directive.goal.visual_role,
       prompt_weight: promptWeight,
@@ -895,6 +901,8 @@ function buildWhyNow(
         : `${phaseReason}，但只提炼 public-safe 视觉线索，不解释素材来源。`
     case 'private_runtime_projection':
       return `${phaseReason}，只消费 public-safe handoff，不暴露私聊原图。`
+    case 'private_derived_public':
+      return `${phaseReason}，优先复用已公开的私域衍生视觉，不回指原始私聊素材。`
     default:
       return phaseReason
   }
@@ -904,6 +912,7 @@ function defaultDisclosePolicy(sourceKind: VisualSourceKind): PublicMediaContext
   switch (sourceKind) {
     case 'owner_private_pool':
     case 'private_runtime_projection':
+    case 'private_derived_public':
       return 'never'
     case 'same_episode_public':
       return 'episode_only'
@@ -920,6 +929,7 @@ function resolvePublicScope(sourceKind: VisualSourceKind): PublicScope {
       return 'episode_only'
     case 'owner_private_pool':
     case 'private_runtime_projection':
+    case 'private_derived_public':
       return 'community_public'
     default:
       return 'global_public'

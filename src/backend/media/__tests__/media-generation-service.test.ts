@@ -271,7 +271,7 @@ describe('MediaGenerationService', () => {
     const generatedBinding: SceneMediaBinding = {
       id: 'binding-generated-1',
       scene_type: 'media_pool',
-      scene_id: 'generated_public:agent-1',
+      scene_id: 'private_derived_public:agent-1',
       asset_id: generatedAsset.id,
       semantic_snapshot_id: generatedSnapshot.id,
       source_scene_type: null,
@@ -305,18 +305,18 @@ describe('MediaGenerationService', () => {
       snapshot: generatedSnapshot,
       media_url: '/media/generated/asset-generated-1.png',
     }))
-    const registerGeneratedPublicAsset = vi.fn(async () => ({
+    const registerPrivateDerivedPublicAsset = vi.fn(async () => ({
       binding: generatedBinding,
       policy: {
         id: 'policy-generated-1',
         subject_type: 'asset' as const,
         subject_id: generatedAsset.id,
-        source_kind: 'generated_public' as const,
+        source_kind: 'private_derived_public' as const,
         community_id: null,
         steward_agent_id: 'agent-1',
         allowed_reuse_modes: ['quote_original', 'derive_new', 'reference_only'] as const,
         cross_agent_quote_allowed: false,
-        disclose_origin_policy: 'public_only' as const,
+        disclose_origin_policy: 'never' as const,
         copyright_state: 'generated_owned' as const,
         status: 'active' as const,
         revoked_at: null,
@@ -341,8 +341,8 @@ describe('MediaGenerationService', () => {
           semantic_snapshot_id: generatedSnapshot.id,
         },
         source: {
-          kind: 'generated_public' as const,
-          derived_from_private: false,
+          kind: 'private_derived_public' as const,
+          derived_from_private: true,
         },
       },
     }))
@@ -365,7 +365,8 @@ describe('MediaGenerationService', () => {
         getAssetById: vi.fn(async () => generatedAsset),
       } as never,
       mediaReuseGovernanceService: {
-        registerGeneratedPublicAsset,
+        registerGeneratedPublicAsset: vi.fn(),
+        registerPrivateDerivedPublicAsset,
       } as never,
       mediaProjectionService: {
         createDisplayAttachmentProjection,
@@ -388,7 +389,7 @@ describe('MediaGenerationService', () => {
     expect(job?.status).toBe('succeeded')
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(ingestGeneratedDerivative).toHaveBeenCalledTimes(1)
-    expect(registerGeneratedPublicAsset).toHaveBeenCalledTimes(1)
+    expect(registerPrivateDerivedPublicAsset).toHaveBeenCalledTimes(1)
     expect(createDisplayAttachmentProjection).toHaveBeenCalledTimes(1)
     expect(ensurePublicMediaCard).toHaveBeenCalledTimes(1)
     expect(updatedPlan?.status).toBe('ready')
@@ -553,6 +554,29 @@ describe('MediaGenerationService', () => {
         getAssetById: vi.fn(async () => generatedAsset),
       } as never,
       mediaReuseGovernanceService: {
+        registerPrivateDerivedPublicAsset: vi.fn(async () => ({
+          binding: {
+            ...generatedBinding,
+            scene_id: 'private_derived_public:agent-1',
+          },
+          policy: {
+            id: 'policy-private-derived-dedup-1',
+            subject_type: 'asset' as const,
+            subject_id: generatedAsset.id,
+            source_kind: 'private_derived_public' as const,
+            community_id: null,
+            steward_agent_id: 'agent-1',
+            allowed_reuse_modes: ['quote_original', 'derive_new', 'reference_only'] as const,
+            cross_agent_quote_allowed: false,
+            disclose_origin_policy: 'never' as const,
+            copyright_state: 'generated_owned' as const,
+            status: 'active' as const,
+            revoked_at: null,
+            revoked_reason: null,
+            created_at: new Date(),
+            updated_at: new Date(),
+          },
+        })),
         registerGeneratedPublicAsset: vi.fn(async () => ({
           binding: generatedBinding,
           policy: {

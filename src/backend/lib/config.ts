@@ -104,7 +104,7 @@ export const config = {
     provider: env.MEDIA_GENERATION_PROVIDER || 'ark-seedream',
     model: env.MEDIA_GENERATION_MODEL || 'doubao-seedream-5-0-lite-260128',
     baseUrl: env.MEDIA_GENERATION_BASE_URL || 'https://ark.cn-beijing.volces.com',
-    timeoutMs: safeInt(env.MEDIA_GENERATION_TIMEOUT_MS, 30000),
+    timeoutMs: safeInt(env.MEDIA_GENERATION_TIMEOUT_MS, 120000),
     downloadTimeoutMs: safeInt(env.MEDIA_GENERATION_DOWNLOAD_TIMEOUT_MS, 30000),
     pollIntervalMs: safeInt(env.MEDIA_GENERATION_POLL_INTERVAL_MS, 150),
     workerIntervalMs: safeInt(env.MEDIA_GENERATION_WORKER_INTERVAL_MS, 5000),

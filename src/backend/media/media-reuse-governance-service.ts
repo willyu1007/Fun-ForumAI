@@ -51,6 +51,10 @@ export function buildGeneratedPublicPoolSceneId(agentId: string): string {
   return `generated_public:${agentId}`
 }
 
+export function buildPrivateDerivedPublicPoolSceneId(agentId: string): string {
+  return `private_derived_public:${agentId}`
+}
+
 function uniqueById<T extends { id: string }>(items: T[]): T[] {
   return Array.from(new Map(items.map((item) => [item.id, item])).values())
 }
@@ -79,7 +83,11 @@ function defaultCopyrightStateForAsset(asset: MediaAsset): MediaCopyrightState {
 }
 
 function defaultDiscloseOriginPolicy(sourceKind: VisualSourceKind): MediaReusePolicy['disclose_origin_policy'] {
-  if (sourceKind === 'owner_private_pool' || sourceKind === 'private_runtime_projection') {
+  if (
+    sourceKind === 'owner_private_pool'
+    || sourceKind === 'private_runtime_projection'
+    || sourceKind === 'private_derived_public'
+  ) {
     return 'never'
   }
   if (sourceKind === 'same_episode_public') {
@@ -405,6 +413,19 @@ export class MediaReuseGovernanceService {
     })
   }
 
+  async registerPrivateDerivedPublicAsset(input: {
+    asset_id: string
+    agent_id: string
+    actor_user_id: string
+  }): Promise<{ binding: SceneMediaBinding; policy: MediaReusePolicy }> {
+    return this.registerPoolAsset({
+      asset_id: input.asset_id,
+      pool_id: buildPrivateDerivedPublicPoolSceneId(input.agent_id),
+      source_kind: 'private_derived_public',
+      actor_user_id: input.actor_user_id,
+    })
+  }
+
   async updatePolicy(
     policyId: string,
     patch: UpdateMediaReusePolicyPatch,
@@ -494,7 +515,7 @@ export class MediaReuseGovernanceService {
       poolId: input.pool_id,
       sourceBinding,
       createdById: input.actor_user_id,
-      relationToScene: input.source_kind === 'generated_public'
+      relationToScene: input.source_kind === 'generated_public' || input.source_kind === 'private_derived_public'
         ? 'generated_for_scene'
         : 'quoted_public',
       displayPolicy: asset.visibility_policy === 'public_derivative_only'
