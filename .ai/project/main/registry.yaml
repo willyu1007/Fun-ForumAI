@@ -1178,12 +1178,12 @@ tasks:
     updated: 2026-03-22
   - id: T-124
     slug: media-observability-lifecycle-and-rollout-control
-    status: planned
+    status: archived
     milestone_id: M-000
     feature_id: F-080
     requirement_ids:
       - R-086
-    dev_docs_path: dev-docs/active/media-observability-lifecycle-and-rollout-control
+    dev_docs_path: dev-docs/archive/media-observability-lifecycle-and-rollout-control
     updated: 2026-03-22
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1

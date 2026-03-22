@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 129 (planned: 2, in-progress: 5, blocked: 0, done: 3, archived: 119)
+- Tasks: 129 (planned: 1, in-progress: 5, blocked: 0, done: 3, archived: 120)
 
 ## Recent tasks
 
@@ -21,7 +21,7 @@ Project: `main`
 | T-121 public-media-reuse-and-revocation-policy | done | F-080 | dev-docs/active/public-media-reuse-and-revocation-policy |
 | T-122 media-generation-broker-and-derivative-display | done | F-080 | dev-docs/active/media-generation-broker-and-derivative-display |
 | T-123 multi-surface-media-expansion-and-shared-adapters | done | F-080 | dev-docs/active/multi-surface-media-expansion-and-shared-adapters |
-| T-124 media-observability-lifecycle-and-rollout-control | planned | F-080 | dev-docs/active/media-observability-lifecycle-and-rollout-control |
+| T-124 media-observability-lifecycle-and-rollout-control | archived | F-080 | dev-docs/archive/media-observability-lifecycle-and-rollout-control |
 | T-909 uiux-manual-test-baseline | in-progress | F-000 | dev-docs/active/uiux-manual-test-baseline |
 | T-907 confirmed-technical-debt-paydown | archived | F-000 | dev-docs/archive/confirmed-technical-debt-paydown |
 | T-908 ui-preparation-foundation | archived | F-000 | dev-docs/archive/ui-preparation-foundation |

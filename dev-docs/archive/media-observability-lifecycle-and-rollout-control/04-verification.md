@@ -1,0 +1,79 @@
+# 04 Verification
+
+- 2026-03-22
+  - Pass: `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
+  - Result: `T-124` 已注册到 `F-080 / R-086`，状态为 `planned`
+  - Pass: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: lint passed
+- 2026-03-22
+  - Pending: implementation in progress
+  - Result: 待本轮 schema / service / API / UI / tests 落地后补录验证命令与结果
+- 2026-03-22
+  - Pass: `pnpm db:validate`
+  - Result: Prisma schema valid
+- 2026-03-22
+  - Pass: `pnpm db:generate`
+  - Result: Prisma Client generated successfully after T-124 schema update
+- 2026-03-22
+  - Pass: `pnpm typecheck`
+  - Result: typecheck passed after补齐 media ops service/repo wiring 与若干测试夹具接口漂移
+- 2026-03-22
+  - Pass: `pnpm vitest run src/backend/media/__tests__ src/backend/routes/__tests__/admin-media-api.test.ts src/frontend/features/admin/components/__tests__/RuntimeDashboard.test.tsx`
+  - Result: 14 files / 39 tests passed，覆盖 media observability、rollout controller、lifecycle、admin API、dashboard
+- 2026-03-22
+  - Pass: `pnpm vitest run src/backend/services/__tests__/chat-service.nurture.test.ts src/backend/services/__tests__/chat-service.policy-gateway.test.ts`
+  - Result: 修复 chat-service 测试夹具后，3 tests passed
+- 2026-03-22
+  - Pass: `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
+  - Result: registry / dashboard / task-index / changelog regenerated
+- 2026-03-22
+  - Pass: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: lint passed
+- 2026-03-22
+  - Pass: `pnpm vitest run src/backend/media/__tests__/media-lifecycle-service.test.ts src/backend/media/__tests__/media-asset-service.test.ts`
+  - Result: 2 files / 3 tests passed，覆盖 orphan-vs-backfill、generation output asset 豁免、snapshot refresh 的 binding/projection 重编译与 public display 保守策略
+- 2026-03-22
+  - Pass: `pnpm typecheck`
+  - Result: 在新增 lifecycle/snapshot/projection repository contract 后再次通过
+- 2026-03-22
+  - Pass: `pnpm vitest run src/backend/media/__tests__ src/backend/routes/__tests__/admin-media-api.test.ts`
+  - Result: 13 files / 38 tests passed，T-124 主域与 admin media control plane 回归通过
+- 2026-03-22
+  - Pass: `pnpm vitest run src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/routes/__tests__/dev-prompts-render.test.ts src/frontend/widgets/shell/__tests__/ShellLeftRail.test.tsx`
+  - Result: 修复 3 个仓库既有测试期望漂移后全部通过
+- 2026-03-22
+  - Pass: `pnpm test`
+  - Result: 230 files / 1126 tests 全部通过
+- 2026-03-22
+  - Pass: `pnpm vitest run src/backend/media/__tests__/media-observability-service.test.ts src/backend/media/__tests__/media-lifecycle-service.test.ts src/backend/media/__tests__/media-rollout-controller-service.test.ts`
+  - Result: 3 files / 8 tests passed，新增覆盖 observability pagination、lifecycle full-sweep pagination、AUTO target band 继承与 manual force-safe-mode 生效语义
+- 2026-03-22
+  - Pass: `pnpm typecheck`
+  - Result: deep review 修复后再次通过；同时清理了阻断编译的陈旧 `pg-inclination-asset-repository.ts`
+- 2026-03-22
+  - Pass: `pnpm vitest run src/backend/routes/__tests__/admin-media-api.test.ts src/frontend/features/admin/components/__tests__/RuntimeDashboard.test.tsx`
+  - Result: 2 files / 4 tests passed，验证 admin media control plane 与 runtime dashboard 仍与修复后的 backend 契约保持一致
+- 2026-03-22
+  - Pass: `pnpm db:validate`
+  - Result: Prisma schema valid
+- 2026-03-22
+  - Pass: `pnpm test`
+  - Result: 230 files / 1130 tests 全部通过（新增 4 条 deep review 回归用例）
+- 2026-03-22
+  - Pass: `rg --files -g 'coverage/**' -g '.vitest/**' -g '.vitest-cache/**' -g 'test-results/**' -g 'playwright-report/**' -g '**/*.log' -g '**/*.tmp' -g '**/*.trace' -g '**/*.json.gz' -g '.ai/.tmp/**'`
+  - Result: 未发现需要纳入提交清理的测试产物或 trace/coverage 残留
+- 2026-03-22
+  - Pass: `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
+  - Result: T-124 归档后 registry / dashboard / task-index / changelog regenerated
+- 2026-03-22
+  - Fail: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: 与 `sync --apply` 并行执行时读到了同步前的 registry 快照，误报 T-124 仍指向 `active` 且状态为 `in-progress`
+- 2026-03-22
+  - Pass: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: 改为串行执行后，归档后的 project governance lint passed
+- 2026-03-22
+  - Pass: `git diff --check`
+  - Result: 无 patch 格式或尾随空白问题
+- 2026-03-22
+  - Pass: `pnpm typecheck`
+  - Result: 归档与清理后再次通过；pretypecheck 触发的 Prisma/UI codegen 也全部成功
