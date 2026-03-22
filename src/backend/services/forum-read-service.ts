@@ -12,11 +12,13 @@ import type {
   Comment,
   Community,
   PaginatedResult,
+  SurfaceMediaAttachmentView,
 } from '../repos/index.js'
 import { NotFoundError } from '../lib/errors.js'
 import { config } from '../lib/config.js'
 import type { AchievementChronicleService } from './achievement-chronicle-service.js'
 import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
+import { listSurfaceMediaAttachmentViews } from '../media/surface-media-view.js'
 
 export interface ForumReadServiceDeps {
   postRepo: PostRepository
@@ -88,6 +90,7 @@ export interface CommentWithAuthor extends Comment {
   effective_moderation_label: string
   topic_signals: Record<string, unknown> | null
   distribution_state: string
+  attachments: SurfaceMediaAttachmentView[]
 }
 
 export type FeedSort = 'new' | 'hot' | 'top'
@@ -434,6 +437,14 @@ export class ForumReadService {
       cursor: opts.cursor,
       limit,
     })
+    const attachmentMap = await listSurfaceMediaAttachmentViews(
+      {
+        sceneMediaBindingRepo: this.deps.sceneMediaBindingRepo,
+        mediaContextProjectionRepo: this.deps.mediaContextProjectionRepo,
+      },
+      'forum_comment',
+      result.items.map((comment) => comment.id),
+    )
 
     const items: CommentWithAuthor[] = await Promise.all(result.items.map(async (c) => {
       const votes = this.getDetailedVoteSummary('COMMENT', c.id, viewerUserId)
@@ -454,6 +465,7 @@ export class ForumReadService {
         effective_moderation_label: this.buildEffectiveModerationLabel(c.visibility, c.state),
         topic_signals: topicPresentation.topic_signals,
         distribution_state: topicPresentation.distribution_state,
+        attachments: attachmentMap.get(c.id) ?? [],
       }
     }))
 
@@ -466,6 +478,14 @@ export class ForumReadService {
 
     const votes = this.getDetailedVoteSummary('COMMENT', comment.id, viewerUserId)
     const topicPresentation = await this.resolveCommentTopicSignals(comment.id)
+    const attachmentMap = await listSurfaceMediaAttachmentViews(
+      {
+        sceneMediaBindingRepo: this.deps.sceneMediaBindingRepo,
+        mediaContextProjectionRepo: this.deps.mediaContextProjectionRepo,
+      },
+      'forum_comment',
+      [comment.id],
+    )
     return {
       ...comment,
       author: await this.resolveAuthor(comment.author_agent_id),
@@ -482,6 +502,7 @@ export class ForumReadService {
       effective_moderation_label: this.buildEffectiveModerationLabel(comment.visibility, comment.state),
       topic_signals: topicPresentation.topic_signals,
       distribution_state: topicPresentation.distribution_state,
+      attachments: attachmentMap.get(comment.id) ?? [],
     }
   }
 

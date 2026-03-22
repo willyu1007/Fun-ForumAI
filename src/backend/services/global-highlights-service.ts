@@ -1,6 +1,6 @@
 import type { ForumReadService } from './forum-read-service.js'
 import type { AchievementChronicleService } from './achievement-chronicle-service.js'
-import type { ChronicleRepository } from '../repos/index.js'
+import type { ChronicleRepository, SurfaceMediaAttachmentView } from '../repos/index.js'
 
 export interface GlobalHighlightsServiceDeps {
   forumReadService: ForumReadService
@@ -36,6 +36,7 @@ interface FeaturedAgentItem {
     summary: string
     occurred_at: string
     importance_score: number
+    visual?: SurfaceMediaAttachmentView | null
   }>
 }
 

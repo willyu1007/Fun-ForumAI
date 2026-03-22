@@ -107,6 +107,8 @@ export class MediaProjectionService {
     mediaUrl: string
     altText?: string
     publicCaption?: string
+    slot?: number
+    displayVariant?: 'original' | 'generated_derivative'
   }): Promise<MediaContextProjection> {
     const altText = input.altText ?? input.snapshot.summary.public_safe_summary
     return this.deps.mediaContextProjectionRepo.create({
@@ -122,6 +124,8 @@ export class MediaProjectionService {
         height: input.asset.height,
         alt_text: altText,
         public_caption: input.publicCaption ?? input.snapshot.summary.public_safe_summary,
+        slot: input.slot ?? 0,
+        display_variant: input.displayVariant ?? 'original',
       },
       token_estimate: estimateTokens(altText),
       preferred_display_variant: 'original',

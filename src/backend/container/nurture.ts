@@ -260,6 +260,7 @@ export async function createNurtureEngines(deps: {
       notificationService,
       policyGatewayService,
       identityGateService,
+      mediaAssetService: deps.mediaAssetService,
     })
 
     proactiveEventHandler = new ProactiveEventHandler({

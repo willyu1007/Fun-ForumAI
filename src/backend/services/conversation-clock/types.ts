@@ -22,6 +22,7 @@ import type { PersonaObservationV1 } from '../../runtime/persona-observation.js'
 import type { RoomProgramEngine } from '../room-program-engine.js'
 import type { RoomEcologyService } from '../room-ecology-service.js'
 import type { RuntimeSceneStateManager } from '../runtime-scene-state-manager.js'
+import type { SurfaceMediaPlanningService } from '../../media/surface-media-planning-service.js'
 
 export interface ConversationClockDeps {
   roomRepo: RoomRepository
@@ -41,6 +42,7 @@ export interface ConversationClockDeps {
   roomProgramEngine?: RoomProgramEngine | null
   roomEcologyService?: RoomEcologyService | null
   runtimeSceneStateManager?: RuntimeSceneStateManager | null
+  surfaceMediaPlanningService?: SurfaceMediaPlanningService | null
   leaderElector?: LeaderElector
 }
 

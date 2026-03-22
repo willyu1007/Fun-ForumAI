@@ -1,4 +1,5 @@
 import { PROMPT_TEMPLATE_REFS } from '../../llm/prompt-template-refs.js'
+import { config } from '../../lib/config.js'
 import type { CurrentContextSource } from '../../runtime/types.js'
 import { buildPromptBudgetSummary } from '../../runtime/prompt-budget-summary.js'
 import { formatChatReplyForReadability, sanitizeChatOutput } from '../../runtime/chat-output-sanitizer.js'
@@ -269,6 +270,38 @@ export async function postMessage(
   metadata?: ProgramMessageMetadata,
 ): Promise<void> {
   try {
+    let mediaPlan: {
+      image_plan_id: string
+      display_attachment_refs: Array<{
+        asset_id: string
+        slot: number
+        display_variant: 'original' | 'generated_derivative'
+      }>
+    } | null = null
+    if (config.features.mediaChatRoomSurfaceV1 && context.deps.surfaceMediaPlanningService) {
+      const room = await context.deps.roomRepo.findById(roomId)
+      if (room) {
+        const snapshot = await context.deps.roomWatchabilityRepo?.getLiveSnapshot(roomId) ?? null
+        const plan = await context.deps.surfaceMediaPlanningService.prepareChatRoomMessagePlan({
+          agent_id: agentId,
+          room_id: roomId,
+          room_name: room.name,
+          room_description: room.description || '',
+          community_id: room.community_id,
+          semantic_hint: body,
+          message_kind: kind,
+          live_hook: snapshot?.live_hook ?? null,
+          unresolved_question: snapshot?.unresolved_question ?? null,
+          metadata,
+        })
+        if (plan) {
+          mediaPlan = {
+            image_plan_id: plan.image_plan_id,
+            display_attachment_refs: plan.display_attachment_refs,
+          }
+        }
+      }
+    }
     await context.deps.chatService.sendMessage({
       room_id: roomId,
       author_id: agentId,
@@ -279,6 +312,12 @@ export async function postMessage(
       cue_type: metadata?.cue_type ?? null,
       body,
       message_kind: kind,
+      ...(mediaPlan
+        ? {
+            image_plan_id: mediaPlan.image_plan_id,
+            display_attachment_refs: mediaPlan.display_attachment_refs,
+          }
+        : {}),
     })
     if (renderDecision && context.deps.personaStateService) {
       await context.deps.personaStateService

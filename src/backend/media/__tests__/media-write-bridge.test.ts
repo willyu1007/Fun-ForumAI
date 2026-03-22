@@ -352,4 +352,143 @@ describe('MediaWriteBridge', () => {
     expect(postMediaRepo.findByPostId('post-generated-private').map((item) => item.asset_id)).toEqual([generatedAsset.id])
     expect(postBindings.some((binding) => binding.asset_id === privateAsset.id)).toBe(false)
   })
+
+  it('keeps generated derivative bindings marked as derivative_only even when the generated asset is already a selected source', async () => {
+    const imagePlanRepo = new InMemoryImagePlanRepository()
+    const mediaAssetRepo = new InMemoryMediaAssetRepository()
+    const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
+    const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const postMediaRepo = new InMemoryPostMediaRepository()
+    const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const mediaBindingService = new MediaBindingService({ sceneMediaBindingRepo })
+    const mediaProjectionService = new MediaProjectionService({ mediaContextProjectionRepo })
+    const bridge = new MediaWriteBridge({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      postMediaRepo,
+      imagePlanRepo,
+      forumSceneMetadataRepo,
+      storage: createStorageStub(),
+      mediaBindingService,
+      mediaProjectionService,
+    })
+
+    const generatedAsset = await mediaAssetRepo.create({
+      id: 'asset-generated-selected',
+      steward_agent_id: 'agent-1',
+      owner_user_id: null,
+      source_kind: 'generated',
+      visibility_policy: 'public_original_allowed',
+      lifecycle_status: 'active',
+      storage_key: 'generated/selected.png',
+      mime_type: 'image/png',
+      file_size_bytes: 1024,
+      sha256: 'sha-generated-selected',
+    })
+    const generatedSnapshot = await mediaSemanticSnapshotRepo.create({
+      asset_id: generatedAsset.id,
+      snapshot_kind: 'visual_core',
+      schema_version: 'visual_core.v1',
+      model_provider: 'test',
+      model_name: 'test',
+      model_version: '1',
+      summary: buildSummary('selected generated derivative'),
+      extraction_status: 'completed',
+      quality_grade: 'rich',
+      is_current: true,
+    })
+
+    const plan = await imagePlanRepo.create({
+      id: 'plan-generated-selected',
+      directive_id: 'directive-3',
+      scene_ref: {
+        request_id: 'request-3',
+        director_surface: 'chat_room',
+        actor_surface: 'chat_room',
+        community_id: 'community-1',
+        episode_id: 'episode-3',
+        selection_id: 'selection-3',
+        episode_plan_id: 'episode-plan-3',
+        local_intent_id: 'intent-3',
+        phase: 'opening',
+        selection_mode: 'pool_guided',
+      },
+      status: 'ready',
+      decision: 'reuse_generated_derivative',
+      reason: 'generated source already selected',
+      runtime: {
+        enabled: true,
+        influence_level: 'medium',
+        cards: [],
+      },
+      display: {
+        enabled: true,
+        attachments: [
+          {
+            slot: 0,
+            binding_role: 'supporting',
+            asset_id: generatedAsset.id,
+            mime_type: generatedAsset.mime_type,
+            display_variant: 'generated_derivative',
+            derived_from_asset_id: null,
+            aspect_ratio_hint: '4:5',
+            public_caption: generatedSnapshot.summary.public_safe_summary,
+            alt_text: generatedSnapshot.summary.public_safe_summary,
+            attach_after_persist: true,
+          },
+        ],
+      },
+      generation: {
+        mode: 'sync',
+        status: 'succeeded',
+        job_id: 'job-3',
+        provider: 'ark-seedream',
+        model_ref: 'doubao-seedream-5-0-lite-260128',
+        output_asset_id: generatedAsset.id,
+        attempt_count: 1,
+      },
+      selected_sources: [
+        {
+          source_kind: 'generated_public',
+          asset_id: generatedAsset.id,
+          selection_score: 4.2,
+          reuse_mode: 'display_direct',
+          rejection_reason: null,
+        },
+      ],
+      planner_audit: {
+        evaluated_candidates: 1,
+        score_breakdown: {
+          relevance: 0.9,
+          continuity: 0.8,
+          novelty: 0.9,
+          privacy_safety: 1,
+          display_fitness: 0.85,
+          cost_fitness: 0.9,
+          fatigue_penalty: 0,
+          repeat_penalty: 0,
+          risk_penalty: 0,
+          total: 4.35,
+        },
+        fallback_action: null,
+      },
+    })
+
+    const result = await bridge.applyImagePlanAfterPersist({
+      image_plan_id: plan.id,
+      scene_type: 'forum_comment',
+      scene_id: 'comment-generated-selected',
+      created_by_id: 'agent-1',
+    })
+
+    expect(result.linked).toBe(true)
+    const bindings = await sceneMediaBindingRepo.findByScene('forum_comment', 'comment-generated-selected')
+    expect(bindings).toHaveLength(1)
+    expect(bindings[0]?.asset_id).toBe(generatedAsset.id)
+    expect(bindings[0]?.display_policy).toBe('derivative_only')
+    expect(bindings[0]?.relation_to_scene).toBe('generated_for_scene')
+  })
 })

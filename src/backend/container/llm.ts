@@ -19,6 +19,7 @@ import {
   MediaReuseGovernanceService,
   MediaSemanticService,
   MediaWriteBridge,
+  SurfaceMediaPlanningService,
   VisualDirectiveService,
 } from '../media/index.js'
 import {
@@ -180,6 +181,11 @@ export function createLlmServices(deps: {
     mediaProjectionService,
     gateway: mediaGenerationGateway,
   })
+  const surfaceMediaPlanningService = new SurfaceMediaPlanningService({
+    visualDirectiveService,
+    imagePlannerService,
+    mediaProjectionService,
+  })
   const inclinationAssetService = new InclinationAssetService({
     agentRepo: deps.agentRepo,
     mediaAssetService,
@@ -203,6 +209,7 @@ export function createLlmServices(deps: {
     mediaReuseGovernanceService,
     mediaGenerationGateway,
     mediaGenerationService,
+    surfaceMediaPlanningService,
     mediaAssetService,
     inclinationAssetService,
   }

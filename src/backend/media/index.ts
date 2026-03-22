@@ -14,4 +14,10 @@ export {
 export { type MediaGenerationGateway } from './media-generation-gateway.js'
 export { ArkSeedreamGateway } from './ark-seedream-gateway.js'
 export { MediaGenerationService } from './media-generation-service.js'
+export { SurfaceMediaPlanningService } from './surface-media-planning-service.js'
+export {
+  listSurfaceMediaAttachmentViews,
+  resolveSurfaceMediaAttachmentFromEvidence,
+  toSurfaceMediaAttachmentView,
+} from './surface-media-view.js'
 export { resolveMediaAssetUrl, pickModelReachableMediaUrl } from './media-url.js'

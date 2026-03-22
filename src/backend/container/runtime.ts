@@ -21,6 +21,7 @@ import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { InferenceProfileService } from '../services/inference-profile-service.js'
 import type { PublicSceneSelectorService } from '../services/public-scene-selector-service.js'
 import type { ForumSceneContinuityService } from '../services/forum-scene-continuity-service.js'
+import type { ChatroomRuntimeContextBuilder } from '../services/chatroom-runtime-context-builder.js'
 import type { XpService } from '../services/xp-service.js'
 import type { NurtureOrchestrator } from '../services/nurture-orchestrator.js'
 import type { MediaProjectionService } from '../media/media-projection-service.js'
@@ -28,6 +29,7 @@ import type { MediaWriteBridge } from '../media/media-write-bridge.js'
 import type { VisualDirectiveService } from '../media/visual-directive-service.js'
 import type { ImagePlannerService } from '../media/image-planner-service.js'
 import type { MediaGenerationService } from '../media/media-generation-service.js'
+import type { SurfaceMediaPlanningService } from '../media/surface-media-planning-service.js'
 import type { AgentRunRepository } from '../repos/event-repository.js'
 import type { EventRepository } from '../repos/event-repository.js'
 import type { PostRepository } from '../repos/post-repository.js'
@@ -47,12 +49,14 @@ export function createRuntime(deps: {
   inferenceProfileService: InferenceProfileService
   publicSceneSelectorService?: PublicSceneSelectorService | null
   forumSceneContinuityService?: ForumSceneContinuityService | null
+  chatroomRuntimeContextBuilder?: ChatroomRuntimeContextBuilder | null
   promptOrchestrator: PromptOrchestrator | null
   mediaProjectionService: MediaProjectionService
   mediaWriteBridge: MediaWriteBridge
   visualDirectiveService: VisualDirectiveService
   imagePlannerService: ImagePlannerService
   mediaGenerationService: MediaGenerationService
+  surfaceMediaPlanningService: SurfaceMediaPlanningService
   xpService: XpService | null
   nurtureOrchestrator: NurtureOrchestrator | null
   eventRepo: EventRepository
@@ -73,10 +77,12 @@ export function createRuntime(deps: {
   const contextBuilder = new ContextBuilder({
     forumReadService: deps.forumReadService,
     agentService: deps.agentService,
+    chatService: deps.chatService,
     promptOrchestrator: deps.promptOrchestrator,
     communityPromptProfileCompiler,
     communityCultureDigestService: deps.communityCultureDigestService,
     forumSceneContinuityService: deps.forumSceneContinuityService,
+    chatroomRuntimeContextBuilder: deps.chatroomRuntimeContextBuilder,
   })
 
   const responseParser = new ResponseParser()
@@ -97,6 +103,7 @@ export function createRuntime(deps: {
     dataplaneWriter,
     agentRunRepo: deps.agentRunRepo,
     agentService: deps.agentService,
+    surfaceMediaPlanningService: deps.surfaceMediaPlanningService,
     personaStateService: deps.personaStateService,
     inferenceProfileService: deps.inferenceProfileService,
   })

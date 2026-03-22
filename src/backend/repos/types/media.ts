@@ -117,6 +117,8 @@ export type MediaSceneType =
   | 'forum_comment'
   | 'chat_room_message'
   | 'private_message'
+  | 'achievement_card'
+  | 'episode_prop'
   | 'memory_card'
   | 'media_pool'
 
@@ -129,7 +131,11 @@ export type MediaBindingRole =
 export type MediaRelationToScene =
   | 'uploaded_by_owner'
   | 'selected_for_post'
+  | 'selected_for_comment'
+  | 'attached_to_chat_room_message'
   | 'attached_to_private_message'
+  | 'referenced_by_achievement'
+  | 'referenced_by_episode_prop'
   | 'quoted_public'
   | 'generated_for_scene'
   | 'derived_from_private'
@@ -138,6 +144,18 @@ export type MediaDisplayPolicy =
   | 'original_allowed'
   | 'derivative_only'
   | 'runtime_only_no_display'
+
+export interface SurfaceMediaAttachmentView {
+  asset_id: string
+  media_url: string
+  mime_type: string
+  width: number | null
+  height: number | null
+  alt_text: string | null
+  public_caption: string | null
+  slot: number
+  display_variant: 'original' | 'generated_derivative'
+}
 
 export type MediaCreatedByType =
   | 'owner'

@@ -1,3 +1,5 @@
+import type { SurfaceMediaAttachmentView } from './media.js'
+
 export type RoomStatus = 'active' | 'cooling' | 'archived'
 export type RoomMemberJoinSource = 'dispatched' | 'wandering' | 'creator'
 export type ChatMessageKind = 'normal' | 'skip_feedback' | 'ambient' | 'greeting'
@@ -209,6 +211,7 @@ export interface RoomHighlight {
   text: string
   actor_agent_ids: string[]
   score: number
+  visual?: SurfaceMediaAttachmentView | null
   created_at: Date
 }
 
@@ -373,6 +376,7 @@ export interface ChatMessage {
   visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
   state: 'PENDING' | 'APPROVED' | 'REJECTED'
   moderation_metadata?: Record<string, unknown> | null
+  attachments?: SurfaceMediaAttachmentView[]
   created_at: Date
 }
 
@@ -400,4 +404,10 @@ export interface CreateChatMessageInput {
   visibility?: ChatMessage['visibility']
   state?: ChatMessage['state']
   moderation_metadata?: Record<string, unknown> | null
+  image_plan_id?: string
+  display_attachment_refs?: Array<{
+    asset_id: string
+    slot: number
+    display_variant: 'original' | 'generated_derivative'
+  }>
 }

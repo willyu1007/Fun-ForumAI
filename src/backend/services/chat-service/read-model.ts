@@ -19,7 +19,8 @@ import {
   enrichSnapshot,
   projectRoom,
 } from './projection-broadcast.js'
-import { enrichMessage } from './message-pipeline.js'
+import { enrichMessage, hydrateMessageAttachments } from './message-pipeline.js'
+import { listSurfaceMediaAttachmentViews } from '../../media/surface-media-view.js'
 import {
   getAgentPersisted,
   sanitizeVisibleText,
@@ -283,6 +284,14 @@ export async function getRoomHighlights(
     return { items: [], next_cursor: null }
   }
   const result = await context.deps.roomWatchabilityRepo.listHighlights(roomId, opts)
+  const visualMap = await listSurfaceMediaAttachmentViews(
+    {
+      sceneMediaBindingRepo: context.deps.sceneMediaBindingRepo,
+      mediaContextProjectionRepo: context.deps.mediaContextProjectionRepo,
+    },
+    'chat_room_message',
+    result.items.map((item) => item.source_message_id),
+  )
   return {
     ...result,
     items: result.items.flatMap((item) => {
@@ -292,6 +301,7 @@ export async function getRoomHighlights(
             {
               ...item,
               text,
+              visual: visualMap.get(item.source_message_id)?.[0] ?? null,
             },
           ]
         : []
@@ -307,9 +317,10 @@ export async function getMessages(
   const room = await context.deps.roomRepo.findById(roomId)
   if (!room) throw new NotFoundError('Room', roomId)
   const result = await context.deps.messageRepo.findByRoom(roomId, opts)
+  const hydrated = await hydrateMessageAttachments(context, result.items)
   return {
     ...result,
-    items: result.items.flatMap((message) => {
+    items: hydrated.flatMap((message) => {
       const enriched = enrichMessage(context, message)
       return enriched ? [enriched] : []
     }),

@@ -5,6 +5,7 @@ import type {
 } from '../../repos/types.js'
 import { NotFoundError, ValidationError } from '../../lib/errors.js'
 import { config } from '../../lib/config.js'
+import { listSurfaceMediaAttachmentViews } from '../../media/surface-media-view.js'
 import {
   projectRoomAfterMessage,
 } from './projection-broadcast.js'
@@ -54,6 +55,31 @@ export function enrichMessage(
     body: body ?? message.body,
     author_display_name: displayName,
   }
+}
+
+export async function hydrateMessageAttachments(
+  context: ChatServiceContext,
+  messages: ChatMessage[],
+): Promise<ChatMessage[]> {
+  if (messages.length === 0) return messages
+  if (!context.deps.sceneMediaBindingRepo || !context.deps.mediaContextProjectionRepo) {
+    return messages.map((message) => ({
+      ...message,
+      attachments: message.attachments ?? [],
+    }))
+  }
+  const attachmentMap = await listSurfaceMediaAttachmentViews(
+    {
+      sceneMediaBindingRepo: context.deps.sceneMediaBindingRepo,
+      mediaContextProjectionRepo: context.deps.mediaContextProjectionRepo,
+    },
+    'chat_room_message',
+    messages.map((message) => message.id),
+  )
+  return messages.map((message) => ({
+    ...message,
+    attachments: attachmentMap.get(message.id) ?? message.attachments ?? [],
+  }))
 }
 
 export async function sendMessage(
@@ -110,7 +136,28 @@ export async function sendMessage(
       'APPROVED',
     moderation_metadata: policyDecision?.metadata ?? input.moderation_metadata ?? null,
   })
-  const enriched = enrichMessage(context, created, { fallbackToRawBody: true })
+  let imagePlanApplyError: string | null = null
+  if (input.image_plan_id) {
+    if (!context.deps.mediaWriteBridge) {
+      imagePlanApplyError = 'MediaWriteBridge not configured'
+    } else {
+      try {
+        await context.deps.mediaWriteBridge.applyImagePlanAfterPersist({
+          image_plan_id: input.image_plan_id,
+          scene_type: 'chat_room_message',
+          scene_id: created.id,
+          created_by_id: input.author_id,
+        })
+      } catch (error) {
+        imagePlanApplyError = error instanceof Error ? error.message : 'apply_image_plan_failed'
+        console.error(
+          `[ChatService] applyImagePlanAfterPersist failed for room message ${created.id}: ${imagePlanApplyError}`,
+        )
+      }
+    }
+  }
+  const hydratedCreated = (await hydrateMessageAttachments(context, [created]))[0] ?? created
+  const enriched = enrichMessage(context, hydratedCreated, { fallbackToRawBody: true })
 
   if (policyDecision) {
     await context.deps.policyGatewayService?.finalizeRecordedOutcomeTarget(policyDecision, {
@@ -118,6 +165,9 @@ export async function sendMessage(
       room_id: input.room_id,
       message_id: created.id,
     })
+  }
+  if (imagePlanApplyError) {
+    console.warn(`[ChatService] room message ${created.id} persisted without media: ${imagePlanApplyError}`)
   }
 
   await context.deps.roomRepo.updateLastMessageAt(input.room_id, created.created_at)

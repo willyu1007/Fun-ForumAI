@@ -67,6 +67,12 @@ export class DataPlaneWriter {
           author_id: agentId,
           body: instruction.body,
           message_kind: (instruction.message_kind as ChatMessageKind) ?? 'normal',
+          ...(instruction.image_plan_id
+            ? {
+                image_plan_id: instruction.image_plan_id,
+                display_attachment_refs: instruction.display_attachment_refs ?? [],
+              }
+            : {}),
         })
         contentId = msg.id
       } else if (instruction.action === 'create_post') {
@@ -113,6 +119,25 @@ export class DataPlaneWriter {
           scene: instruction.public_scene,
         })
         contentId = result.comment.id
+        if (instruction.image_plan_id) {
+          if (!this.deps.mediaWriteBridge) {
+            imagePlanApplyError = 'MediaWriteBridge not configured'
+          } else {
+            try {
+              await this.deps.mediaWriteBridge.applyImagePlanAfterPersist({
+                image_plan_id: instruction.image_plan_id,
+                scene_type: 'forum_comment',
+                scene_id: contentId,
+                created_by_id: agentId,
+              })
+            } catch (err) {
+              imagePlanApplyError = err instanceof Error ? err.message : 'apply_image_plan_failed'
+              console.error(
+                `[DataPlaneWriter] applyImagePlanAfterPersist failed for comment ${contentId}: ${imagePlanApplyError}`,
+              )
+            }
+          }
+        }
       }
 
       this.deps.agentRunRepo.create({

@@ -52,6 +52,8 @@ import { ComplaintAppealService } from '../services/complaint-appeal-service.js'
 import { NotificationService } from '../services/notification-service.js'
 import { HotTopicOpsService } from '../services/hot-topic-ops-service.js'
 import { ForumSceneContinuityService } from '../services/forum-scene-continuity-service.js'
+import type { MediaWriteBridge } from '../media/media-write-bridge.js'
+import type { SurfaceMediaPlanningService } from '../media/surface-media-planning-service.js'
 import type { ModerationService } from '../moderation/moderation-service.js'
 import type { SseHub } from '../sse/hub.js'
 import type { LLMGateway } from '../llm/llm-gateway.js'
@@ -64,6 +66,8 @@ export function createCoreServices(deps: {
   sseHub: SseHub
   moderator: ModerationService
   llmGateway: LLMGateway
+  mediaWriteBridge: MediaWriteBridge
+  surfaceMediaPlanningService: SurfaceMediaPlanningService
   usageLedgerRepo?: UsageLedgerRepository | null
   roomLifecycleLeaderElector: LeaderElector
   conversationClockLeaderElector: LeaderElector
@@ -74,6 +78,8 @@ export function createCoreServices(deps: {
     achievementRepo: repos.achievementRepo,
     chronicleRepo: repos.chronicleRepo,
     agentRepo: repos.agentRepo,
+    sceneMediaBindingRepo: repos.sceneMediaBindingRepo,
+    mediaContextProjectionRepo: repos.mediaContextProjectionRepo,
   })
 
   const safeReplyService = new SafeReplyService()
@@ -272,6 +278,9 @@ export function createCoreServices(deps: {
     statsService,
     eventRepo: repos.eventRepo,
     policyGatewayService,
+    sceneMediaBindingRepo: repos.sceneMediaBindingRepo,
+    mediaContextProjectionRepo: repos.mediaContextProjectionRepo,
+    mediaWriteBridge: deps.mediaWriteBridge,
   })
 
   const sceneResolver = new ChatroomSceneContractResolver({
@@ -433,6 +442,7 @@ export function createCoreServices(deps: {
     roomProgramEngine,
     roomEcologyService,
     runtimeSceneStateManager,
+    surfaceMediaPlanningService: deps.surfaceMediaPlanningService,
     leaderElector: deps.conversationClockLeaderElector,
   })
 

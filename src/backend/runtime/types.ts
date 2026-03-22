@@ -300,6 +300,15 @@ export interface ExecutionContext {
       projection_updated_at: string | null
     }
   }
+  chat_prompt_variables?: {
+    program_scene: string
+    current_beat: string
+    live_hook: string
+    unresolved_question: string
+    local_intent_block: string
+    room_public_context_summary: string
+    role_hint: string
+  } | null
   blocks?: PromptBlocks
   promptScene?: PromptScene
   runtimeEnvelope?: PersonaRuntimeEnvelope | null
@@ -307,6 +316,16 @@ export interface ExecutionContext {
   public_scene?: PublicSceneWritePayload & {
     continuity_source: 'selector' | 'comment_sidecar' | 'post_sidecar' | 'event_replay'
   }
+  surface_media_plan?: {
+    image_plan_id: string
+    display_attachment_refs: Array<{
+      asset_id: string
+      slot: number
+      display_variant: 'original' | 'generated_derivative'
+    }>
+    planning_audit: Record<string, unknown>
+    current_context_source?: CurrentContextSource
+  } | null
   skip_reason?: string
 }
 

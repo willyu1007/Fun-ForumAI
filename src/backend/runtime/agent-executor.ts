@@ -10,6 +10,8 @@ import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { AgentRunRepository } from '../repos/event-repository.js'
 import type { AgentService } from '../services/agent-service.js'
 import type { InferenceProfileService } from '../services/inference-profile-service.js'
+import type { SurfaceMediaPlanningService } from '../media/surface-media-planning-service.js'
+import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
 import { buildPromptBudgetSummary } from './prompt-budget-summary.js'
@@ -26,6 +28,7 @@ export interface AgentExecutorDeps {
   dataplaneWriter: DataPlaneWriter
   agentRunRepo: AgentRunRepository
   agentService: AgentService
+  surfaceMediaPlanningService?: SurfaceMediaPlanningService | null
   personaStateService?: PersonaStateService | null
   inferenceProfileService?: InferenceProfileService | null
 }
@@ -55,6 +58,73 @@ export class AgentExecutor {
 
     try {
       let ctx = await this.deps.contextBuilder.build(event, agent)
+      if (
+        config.features.mediaForumCommentSurfaceV1
+        && event.event_type === 'NewCommentCreated'
+        && ctx.public_scene
+        && this.deps.surfaceMediaPlanningService
+      ) {
+        try {
+          const plan = await this.deps.surfaceMediaPlanningService.prepareForumCommentPlan({
+            agent_id: agent.agent_id,
+            community_id: ctx.community.id,
+            focus_hint: ctx.targetComment?.body ?? ctx.public_scene.local_intent_block,
+            payload: ctx.public_scene,
+          })
+          if (plan) {
+            ctx.surface_media_plan = {
+              image_plan_id: plan.image_plan_id,
+              display_attachment_refs: plan.display_attachment_refs,
+              planning_audit: plan.planning_audit,
+              current_context_source: plan.current_context_source,
+            }
+          }
+        } catch (error) {
+          console.error(
+            `[AgentExecutor] forum comment media planning failed for agent ${agent.agent_id}:`,
+            error,
+          )
+        }
+      }
+      if (
+        config.features.mediaChatRoomSurfaceV1
+        && event.event_type === 'NewMessageCreated'
+        && ctx.chatContext
+        && this.deps.surfaceMediaPlanningService
+      ) {
+        try {
+          const semanticHint = ctx.chat_prompt_variables?.local_intent_block
+            || ctx.chat_prompt_variables?.room_public_context_summary
+            || ctx.chatContext.recent_messages.at(-1)?.body
+            || ctx.chatContext.room_description
+            || ctx.chatContext.room_name
+          const plan = await this.deps.surfaceMediaPlanningService.prepareChatRoomMessagePlan({
+            agent_id: agent.agent_id,
+            room_id: event.room_id ?? '',
+            room_name: ctx.chatContext.room_name,
+            room_description: ctx.chatContext.room_description ?? '',
+            community_id: ctx.community.id,
+            semantic_hint: semanticHint,
+            message_kind: 'normal',
+            live_hook: ctx.chat_prompt_variables?.live_hook || ctx.chatContext.program?.live_hook,
+            unresolved_question:
+              ctx.chat_prompt_variables?.unresolved_question || ctx.chatContext.program?.unresolved_question,
+          })
+          if (plan) {
+            ctx.surface_media_plan = {
+              image_plan_id: plan.image_plan_id,
+              display_attachment_refs: plan.display_attachment_refs,
+              planning_audit: plan.planning_audit,
+              current_context_source: plan.current_context_source,
+            }
+          }
+        } catch (error) {
+          console.error(
+            `[AgentExecutor] chat room media planning failed for agent ${agent.agent_id}:`,
+            error,
+          )
+        }
+      }
       ctx = await this.deps.contextBuilder.enrichWithLayers(ctx)
 
       if (ctx.skip_reason) {
@@ -88,31 +158,35 @@ export class AgentExecutor {
         }
       }
 
+      const promptScene = this.pickScene(event, ctx)
+      const promptIntent = promptScene === 'chat_room' ? 'chat_reply' : 'forum_reply'
       const templateId = this.pickTemplate(event, ctx)
       const routing = await this.resolveVisibleRouting(agent.agent_id, 'base')
       const identity = this.resolveObservationIdentity(agent.agent_id)
       const llmResponse = await this.deps.llmGateway.generateVisibleText({
-        intent: 'forum_reply',
-        scene: this.pickScene(event),
+        intent: promptIntent,
+        scene: promptScene,
         agentId: agent.agent_id,
         homeVoiceLineId: routing.homeVoiceLineId,
         preferredModelId: routing.preferredModelId,
         promptRef: templateId,
-        variables: this.buildVariables(ctx, identity?.persona_seed_code ?? 'scholar'),
+        variables: this.buildVariables(ctx, identity?.persona_seed_code ?? 'scholar', promptScene),
         budgetClass: 'visible_standard',
         traceId: `runtime:${event.event_id}:${agent.agent_id}`,
-        promptBudgetSummary: buildPromptBudgetSummary(this.pickScene(event), templateId, ctx.prompt_audit),
+        promptBudgetSummary: buildPromptBudgetSummary(promptScene, templateId, ctx.prompt_audit),
         requestedTier: routing.requestedTier,
         allowFallbackWithinLine: false,
         allowCrossFamily: false,
       })
       const latencyMs = Date.now() - start
       const observation = buildPersonaObservation({
-        sourceCallsiteId: event.event_type === 'NewCommentCreated'
-          ? 'agent-executor-forum-comment'
-          : 'agent-executor-forum-post',
-        scene: event.event_type === 'NewCommentCreated' ? 'forum_comment' : 'forum_post',
-        intent: 'forum_reply',
+        sourceCallsiteId: promptScene === 'chat_room'
+          ? 'agent-executor-chat-room'
+          : event.event_type === 'NewCommentCreated'
+            ? 'agent-executor-forum-comment'
+            : 'agent-executor-forum-post',
+        scene: promptScene,
+        intent: promptIntent,
         visibility: 'visible',
         coverageStatus: 'visible_complete',
         personaSeedCode: identity?.persona_seed_code,
@@ -167,6 +241,16 @@ export class AgentExecutor {
       if (ctx.public_scene) {
         instruction.public_scene = ctx.public_scene
       }
+      if (ctx.surface_media_plan) {
+        instruction.audit_metadata = {
+          ...(instruction.audit_metadata ?? {}),
+          surface_media: ctx.surface_media_plan.planning_audit,
+        }
+        if (!(instruction.action === 'create_message' && instruction.message_kind === 'skip_feedback')) {
+          instruction.image_plan_id = ctx.surface_media_plan.image_plan_id
+          instruction.display_attachment_refs = ctx.surface_media_plan.display_attachment_refs
+        }
+      }
 
       const writeResult = await this.deps.dataplaneWriter.write(
         instruction,
@@ -220,6 +304,9 @@ export class AgentExecutor {
   }
 
   private pickTemplate(event: EventPayload, ctx: ExecutionContext): PromptTemplateRef {
+    if (event.event_type === 'NewMessageCreated' || ctx.chatContext) {
+      return PROMPT_TEMPLATE_REFS.agentChatReplyScene
+    }
     if (ctx.public_scene) {
       return event.event_type === 'NewCommentCreated'
         ? PROMPT_TEMPLATE_REFS.agentReplyToCommentScene
@@ -236,13 +323,20 @@ export class AgentExecutor {
     }
   }
 
-  private pickScene(event: EventPayload): 'forum_post' | 'forum_comment' {
+  private pickScene(
+    event: EventPayload,
+    ctx: ExecutionContext,
+  ): 'forum_post' | 'forum_comment' | 'chat_room' {
+    if (event.event_type === 'NewMessageCreated' || ctx.chatContext) {
+      return 'chat_room'
+    }
     return event.event_type === 'NewCommentCreated' ? 'forum_comment' : 'forum_post'
   }
 
   private buildVariables(
     ctx: ExecutionContext,
     personaSeedCode: import('../../shared/agent-persona-catalog.js').PersonaSeedCode,
+    scene: 'forum_post' | 'forum_comment' | 'chat_room',
   ): Record<string, string> {
     return {
       persona_name: ctx.persona.name,
@@ -251,6 +345,7 @@ export class AgentExecutor {
       persona_language: ctx.persona.language,
       persona_seed_code: personaSeedCode,
       community_name: ctx.community.name,
+      room_name: scene === 'chat_room' ? (ctx.chatContext?.room_name ?? '聊天室') : '',
       hard_control_block: ctx.blocks?.hard_control_block ?? '',
       compact_control_block: ctx.blocks?.compact_control_block ?? '',
       current_context_block: ctx.blocks?.current_context_block ?? '',

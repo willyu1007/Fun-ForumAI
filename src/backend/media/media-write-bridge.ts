@@ -98,12 +98,12 @@ export class MediaWriteBridge {
 
   async applyImagePlanAfterPersist(input: {
     image_plan_id: string
-    scene_type: 'forum_post'
+    scene_type: 'forum_post' | 'forum_comment' | 'chat_room_message'
     scene_id: string
     created_by_id?: string
   }): Promise<{ linked: boolean }> {
     const plan = await this.deps.imagePlanRepo.findById(input.image_plan_id)
-    if (!plan || input.scene_type !== 'forum_post') {
+    if (!plan) {
       return { linked: false }
     }
 
@@ -126,16 +126,18 @@ export class MediaWriteBridge {
       if (!snapshot) continue
 
       const sourceBinding = await this.resolveSourceBinding(asset.id, selectedSource.source_kind, plan.scene_ref.episode_id)
-      const existingBinding = (await this.deps.sceneMediaBindingRepo.findByScene('forum_post', input.scene_id))
+      const existingBinding = (await this.deps.sceneMediaBindingRepo.findByScene(input.scene_type, input.scene_id))
         .find((item) => item.asset_id === asset.id) ?? null
-      const binding = existingBinding ?? await this.deps.mediaBindingService.createForumPostBinding({
+      const bindingContract = this.resolveAttachmentBindingContract(input.scene_type, attachment.display_variant)
+      const binding = existingBinding ?? await this.createSceneBinding({
+        scene_type: input.scene_type,
+        scene_id: input.scene_id,
         asset,
         snapshot,
-        postId: input.scene_id,
         sourceBinding,
-        createdById: input.created_by_id,
-        displayPolicy: 'original_allowed',
-        relationToScene: 'selected_for_post',
+        created_by_id: input.created_by_id,
+        display_policy: bindingContract.display_policy,
+        relation_to_scene: bindingContract.relation_to_scene,
       })
 
       const mediaUrl = resolveMediaAssetUrl(asset, this.deps.storage)
@@ -152,21 +154,14 @@ export class MediaWriteBridge {
           asset,
           snapshot,
           mediaUrl,
+          slot: attachment.slot,
+          displayVariant: attachment.display_variant,
           altText: attachment.alt_text,
           publicCaption: attachment.public_caption,
         })
       }
 
-      const hasPostMedia = this.deps.postMediaRepo.findByAssetId(asset.id)
-        .some((item) => item.post_id === input.scene_id)
-      if (!hasPostMedia) {
-        this.deps.postMediaRepo.create({
-          post_id: input.scene_id,
-          asset_id: asset.id,
-          media_url: mediaUrl,
-          mime_type: asset.mime_type,
-        })
-      }
+      this.ensurePostMediaLink(input.scene_type, input.scene_id, asset.id, mediaUrl, asset.mime_type)
 
       if (asset.visibility_policy === 'private_only' && attachment.display_variant === 'original') {
         await this.deps.mediaAssetRepo.update(asset.id, {
@@ -189,18 +184,18 @@ export class MediaWriteBridge {
         attachment.display_variant === 'generated_derivative' ? 'generated_public' : 'self_public_archive',
         plan.scene_ref.episode_id,
       )
-      const existingBinding = (await this.deps.sceneMediaBindingRepo.findByScene('forum_post', input.scene_id))
+      const existingBinding = (await this.deps.sceneMediaBindingRepo.findByScene(input.scene_type, input.scene_id))
         .find((item) => item.asset_id === asset.id) ?? null
-      const binding = existingBinding ?? await this.deps.mediaBindingService.createForumPostBinding({
+      const bindingContract = this.resolveAttachmentBindingContract(input.scene_type, attachment.display_variant)
+      const binding = existingBinding ?? await this.createSceneBinding({
+        scene_type: input.scene_type,
+        scene_id: input.scene_id,
         asset,
         snapshot,
-        postId: input.scene_id,
         sourceBinding,
-        createdById: input.created_by_id,
-        displayPolicy: attachment.display_variant === 'generated_derivative' ? 'derivative_only' : 'original_allowed',
-        relationToScene: attachment.display_variant === 'generated_derivative'
-          ? 'generated_for_scene'
-          : 'selected_for_post',
+        created_by_id: input.created_by_id,
+        display_policy: bindingContract.display_policy,
+        relation_to_scene: bindingContract.relation_to_scene,
       })
       const mediaUrl = resolveMediaAssetUrl(asset, this.deps.storage)
       if (!mediaUrl) continue
@@ -216,20 +211,13 @@ export class MediaWriteBridge {
           asset,
           snapshot,
           mediaUrl,
+          slot: attachment.slot,
+          displayVariant: attachment.display_variant,
           altText: attachment.alt_text,
           publicCaption: attachment.public_caption,
         })
       }
-      const hasPostMedia = this.deps.postMediaRepo.findByAssetId(asset.id)
-        .some((item) => item.post_id === input.scene_id)
-      if (!hasPostMedia) {
-        this.deps.postMediaRepo.create({
-          post_id: input.scene_id,
-          asset_id: asset.id,
-          media_url: mediaUrl,
-          mime_type: asset.mime_type,
-        })
-      }
+      this.ensurePostMediaLink(input.scene_type, input.scene_id, asset.id, mediaUrl, asset.mime_type)
       linkedAssetIds.add(asset.id)
       linked = true
     }
@@ -246,6 +234,99 @@ export class MediaWriteBridge {
     return bindings.find(
       (binding) => binding.scene_type === 'memory_card' && binding.scene_id === ownerSceneId,
     ) ?? null
+  }
+
+  private async createSceneBinding(input: {
+    scene_type: 'forum_post' | 'forum_comment' | 'chat_room_message'
+    scene_id: string
+    asset: Parameters<MediaBindingService['createForumPostBinding']>[0]['asset']
+    snapshot: Parameters<MediaBindingService['createForumPostBinding']>[0]['snapshot']
+    sourceBinding?: SceneMediaBinding | null
+    created_by_id?: string
+    display_policy: Parameters<MediaBindingService['createForumPostBinding']>[0]['displayPolicy']
+    relation_to_scene: Parameters<MediaBindingService['createForumPostBinding']>[0]['relationToScene']
+  }): Promise<SceneMediaBinding> {
+    if (input.scene_type === 'forum_post') {
+      return this.deps.mediaBindingService.createForumPostBinding({
+        asset: input.asset,
+        snapshot: input.snapshot,
+        postId: input.scene_id,
+        sourceBinding: input.sourceBinding,
+        createdById: input.created_by_id,
+        displayPolicy: input.display_policy,
+        relationToScene: input.relation_to_scene,
+      })
+    }
+    if (input.scene_type === 'forum_comment') {
+      return this.deps.mediaBindingService.createForumCommentBinding({
+        asset: input.asset,
+        snapshot: input.snapshot,
+        commentId: input.scene_id,
+        sourceBinding: input.sourceBinding,
+        createdById: input.created_by_id,
+        displayPolicy: input.display_policy,
+        relationToScene: input.relation_to_scene,
+      })
+    }
+    return this.deps.mediaBindingService.createChatRoomMessageBinding({
+      asset: input.asset,
+      snapshot: input.snapshot,
+      messageId: input.scene_id,
+      sourceBinding: input.sourceBinding,
+      createdById: input.created_by_id,
+      displayPolicy: input.display_policy,
+      relationToScene: input.relation_to_scene,
+    })
+  }
+
+  private ensurePostMediaLink(
+    sceneType: 'forum_post' | 'forum_comment' | 'chat_room_message',
+    sceneId: string,
+    assetId: string,
+    mediaUrl: string,
+    mimeType: string,
+  ): void {
+    if (sceneType !== 'forum_post') return
+    const hasPostMedia = this.deps.postMediaRepo.findByAssetId(assetId)
+      .some((item) => item.post_id === sceneId)
+    if (hasPostMedia) return
+    this.deps.postMediaRepo.create({
+      post_id: sceneId,
+      asset_id: assetId,
+      media_url: mediaUrl,
+      mime_type: mimeType,
+    })
+  }
+
+  private resolveAttachmentBindingContract(
+    sceneType: 'forum_post' | 'forum_comment' | 'chat_room_message',
+    displayVariant: 'original' | 'generated_derivative',
+  ): {
+    display_policy: 'original_allowed' | 'derivative_only'
+    relation_to_scene: 'selected_for_post' | 'selected_for_comment' | 'attached_to_chat_room_message' | 'generated_for_scene'
+  } {
+    if (displayVariant === 'generated_derivative') {
+      return {
+        display_policy: 'derivative_only',
+        relation_to_scene: 'generated_for_scene',
+      }
+    }
+    if (sceneType === 'forum_post') {
+      return {
+        display_policy: 'original_allowed',
+        relation_to_scene: 'selected_for_post',
+      }
+    }
+    if (sceneType === 'forum_comment') {
+      return {
+        display_policy: 'original_allowed',
+        relation_to_scene: 'selected_for_comment',
+      }
+    }
+    return {
+      display_policy: 'original_allowed',
+      relation_to_scene: 'attached_to_chat_room_message',
+    }
   }
 
   private async resolveSourceBinding(

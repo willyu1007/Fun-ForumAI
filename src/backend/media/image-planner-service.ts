@@ -79,6 +79,13 @@ export interface ImagePlannerServiceDeps {
 export class ImagePlannerService {
   constructor(private readonly deps: ImagePlannerServiceDeps) {}
 
+  planWithDirective(input: {
+    agent_id: string
+    directive: PersistedVisualDirective
+  }): Promise<PersistedImagePlan> {
+    return this.planScheduledPost(input)
+  }
+
   async listAgentIdsWithOwnerPrivatePoolCandidates(limit = 100): Promise<string[]> {
     const stewardAgentIds = await this.deps.mediaAssetRepo.listStewardAgentIdsWithAssets({
       lifecycle_statuses: ['active'],
@@ -157,19 +164,20 @@ export class ImagePlannerService {
         if (byScore !== 0) return byScore
         return sourcePriority(input.directive, left.candidate.source_kind) - sourcePriority(input.directive, right.candidate.source_kind)
       })
+    const thresholds = resolveSelectionThresholds(input.directive)
 
     const quoteCandidate = ranked.find((item) =>
       !item.rejection_reason
       && item.allowed_reuse_modes.includes('quote_original')
-      && item.score.total >= 2.6) ?? null
+      && item.score.total >= thresholds.quote_original) ?? null
     const deriveCandidate = ranked.find((item) =>
       !item.rejection_reason
       && item.allowed_reuse_modes.includes('derive_new')
-      && item.score.total >= 2.25) ?? null
+      && item.score.total >= thresholds.derive_new) ?? null
     const referenceCandidate = ranked.find((item) =>
       !item.rejection_reason
       && item.allowed_reuse_modes.includes('reference_only')
-      && item.score.total >= 2.1) ?? null
+      && item.score.total >= thresholds.reference_only) ?? null
 
     if (quoteCandidate) {
       const cardResult = await this.buildRuntimeCard({
@@ -719,6 +727,36 @@ export class ImagePlannerService {
       confidence: clamp(input.score.total / 6, 0, 1),
       relevance_score: clamp(input.score.relevance, 0, 1),
     })
+  }
+}
+
+function resolveSelectionThresholds(
+  directive: PersistedVisualDirective,
+): {
+  quote_original: number
+  derive_new: number
+  reference_only: number
+} {
+  if (directive.goal.need_image === 'avoid') {
+    return {
+      quote_original: 2.95,
+      derive_new: 2.7,
+      reference_only: 2.55,
+    }
+  }
+
+  if (directive.goal.need_image === 'required') {
+    return {
+      quote_original: 2.45,
+      derive_new: 2.1,
+      reference_only: 1.95,
+    }
+  }
+
+  return {
+    quote_original: 2.6,
+    derive_new: 2.25,
+    reference_only: 2.1,
   }
 }
 

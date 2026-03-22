@@ -7,13 +7,19 @@ import type {
   AgentAchievement,
   ChronicleEntry,
   EvidenceRef,
+  SurfaceMediaAttachmentView,
 } from '../repos/index.js'
 import { buildChronicleStoryMetaV1, withChronicleStoryMeta } from './chronicle-story-meta.js'
+import type { SceneMediaBindingRepository } from '../repos/scene-media-binding-repository.js'
+import type { MediaContextProjectionRepository } from '../repos/media-context-projection-repository.js'
+import { resolveSurfaceMediaAttachmentFromEvidence } from '../media/surface-media-view.js'
 
 export interface AchievementChronicleServiceDeps {
   achievementRepo: AchievementRepository
   chronicleRepo: ChronicleRepository
   agentRepo: AgentRepository
+  sceneMediaBindingRepo?: SceneMediaBindingRepository | null
+  mediaContextProjectionRepo?: MediaContextProjectionRepository | null
   onRecord?: (input: {
     agent_id: string
     type: ChronicleEntry['type']
@@ -42,6 +48,7 @@ export interface PublicHighlights {
     summary: string
     occurred_at: Date
     importance_score: number
+    visual?: SurfaceMediaAttachmentView | null
   }>
 }
 
@@ -244,19 +251,35 @@ export class AchievementChronicleService {
     const publicDensity = applyDensity(chronicle.items, 3)
     const candidateEntries = compressSignalEntries(publicDensity.items)
 
-    const topChronicle = candidateEntries
+    const topChronicle = await Promise.all(candidateEntries
       .filter((entry) => (config.features.signalLogV1 ? !isSignalEntry(entry) : true))
       .filter((entry) => isHighQualityPublicEntry(entry))
       .slice()
       .sort((a, b) => b.importance_score - a.importance_score || b.occurred_at.getTime() - a.occurred_at.getTime())
       .slice(0, 3)
-      .map((entry) => ({
+      .map(async (entry) => ({
         id: entry.id,
         title: entry.title,
         summary: entry.summary,
         occurred_at: entry.occurred_at,
         importance_score: entry.importance_score,
-      }))
+        visual: config.features.mediaHighlightsSurfaceV1
+          && this.deps.sceneMediaBindingRepo
+          && this.deps.mediaContextProjectionRepo
+          ? await resolveSurfaceMediaAttachmentFromEvidence(
+              {
+                sceneMediaBindingRepo: this.deps.sceneMediaBindingRepo,
+                mediaContextProjectionRepo: this.deps.mediaContextProjectionRepo,
+              },
+              {
+                evidence: entry.evidence,
+                fallbackCommunityId: typeof entry.meta?.community_id === 'string'
+                  ? entry.meta.community_id
+                  : null,
+              },
+            )
+          : null,
+      })))
 
     const tagline = topChronicle[0]?.summary ?? null
 

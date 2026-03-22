@@ -5,6 +5,7 @@ import type { LookupAddress } from 'node:dns'
 import type {
   MediaAsset,
   MediaContextProjection,
+  MediaSceneType,
   MediaSemanticSnapshot,
   MediaSemanticSummary,
   PrivateMediaMemoryProjection,
@@ -12,6 +13,7 @@ import type {
   PrivateMessageAttachment,
   PublicReuseHandoffCard,
   SceneMediaBinding,
+  SurfaceMediaAttachmentView,
 } from '../repos/types.js'
 import type { MediaAssetRepository } from '../repos/media-asset-repository.js'
 import type { MediaSemanticSnapshotRepository } from '../repos/media-semantic-snapshot-repository.js'
@@ -23,6 +25,7 @@ import { MediaSemanticService, buildFallbackMediaSemanticSummary } from './media
 import { MediaBindingService, buildOwnerPrivatePoolSceneId } from './media-binding-service.js'
 import { MediaProjectionService } from './media-projection-service.js'
 import { MediaWriteBridge } from './media-write-bridge.js'
+import { listSurfaceMediaAttachmentViews } from './surface-media-view.js'
 import { pickModelReachableMediaUrl, resolveMediaAssetUrl } from './media-url.js'
 
 const ALLOWED_MIME_TYPES = new Set([
@@ -247,111 +250,38 @@ export class MediaAssetService {
     memory_projection: MediaContextProjection
     memory_payload: PrivateMediaMemoryProjection
   }> {
-    const asset = await this.deps.mediaAssetRepo.findById(input.asset_id)
-    if (!asset) {
-      throw new ValidationError('attachment_asset_ids contains an unknown asset')
-    }
-    this.assertPrivateMessageAssetEligibility(asset, input)
-
-    const snapshot = await this.deps.mediaSemanticSnapshotRepo.findCurrentByAssetId(asset.id)
-    if (!snapshot) {
-      throw new ValidationError('attachment semantic snapshot is not ready')
-    }
-
-    const existingBinding = (await this.deps.sceneMediaBindingRepo.findByScene('private_message', input.message_id))
-      .find((binding) => binding.asset_id === asset.id) ?? null
-    const binding = existingBinding ?? await this.deps.mediaBindingService.createPrivateMessageBinding({
-      asset,
-      snapshot,
-      messageId: input.message_id,
-      createdById: input.owner_user_id,
+    return this.attachAssetToPrivateMessageInternal({
+      ...input,
+      created_by_id: input.owner_user_id,
+      created_by_type: 'owner',
+      eligibility: 'owner_staged',
     })
+  }
 
-    const projections = await this.deps.mediaContextProjectionRepo.findByBindingId(binding.id)
-    const existingRuntimeProjection = projections.find(
-      (projection) =>
-        projection.projection_surface === 'private_runtime'
-        && projection.projection_kind === 'private_media_runtime_card'
-        && projection.schema_version === 'private-media-runtime-card.v1',
-    ) ?? null
-    const runtimeResult = existingRuntimeProjection
-      ? {
-          projection: existingRuntimeProjection,
-          card: existingRuntimeProjection.payload_json as unknown as PrivateMediaRuntimeCard,
-          serialized_text: this.deps.mediaProjectionService.serializePrivateRuntimeCardForPrompt({
-            card: existingRuntimeProjection.payload_json as unknown as PrivateMediaRuntimeCard,
-            max_chars: 900,
-          }).text,
-        }
-      : await this.deps.mediaProjectionService.createPrivateRuntimeProjection({
-          binding,
-          asset,
-          snapshot,
-          source_kind: asset.source_kind,
-          why_relevant_hint: input.why_relevant_hint,
-        }).then((result) => ({
-          projection: result.projection,
-          card: result.card,
-          serialized_text: result.serialized.text,
-        }))
-
-    const existingMemoryProjection = projections.find(
-      (projection) =>
-        projection.projection_surface === 'memory'
-        && projection.projection_kind === 'private_media_memory_projection'
-        && projection.schema_version === 'private-media-memory-projection.v1',
-    ) ?? null
-    const memoryResult = existingMemoryProjection
-      ? {
-          projection: existingMemoryProjection,
-          payload: existingMemoryProjection.payload_json as unknown as PrivateMediaMemoryProjection,
-        }
-      : await this.deps.mediaProjectionService.createPrivateMemoryProjection({
-          binding,
-          asset,
-          snapshot,
-          agent_id: input.agent_id,
-          owner_user_id: input.owner_user_id,
-          session_id: input.session_id,
-          why_relevant_hint: input.why_relevant_hint,
-        })
-
-    const existingPublicReuseHandoff = projections.find(
-      (projection) =>
-        projection.projection_surface === 'planner'
-        && projection.projection_kind === 'public_reuse_handoff'
-        && projection.schema_version === 'public-reuse-handoff.v1',
-    ) ?? null
-    const publicReuseHandoff = existingPublicReuseHandoff
-      ? {
-          projection: existingPublicReuseHandoff,
-          handoff: existingPublicReuseHandoff.payload_json as unknown as PublicReuseHandoffCard,
-        }
-      : await this.deps.mediaProjectionService.createPublicReuseHandoffProjection({
-          binding,
-          asset,
-          snapshot,
-          source_kind: asset.source_kind,
-          why_relevant_hint: input.why_relevant_hint,
-          allowed_reuse_modes: ['derive_new', 'reference_only'],
-          disclose_origin_policy: 'never',
-        })
-
-    return {
-      attachment: this.buildPrivateAttachmentView({
-        asset,
-        snapshot,
-        runtimeCard: runtimeResult.card,
-      }),
-      binding,
-      runtime_projection: runtimeResult.projection,
-      runtime_card: runtimeResult.card,
-      runtime_serialized_text: runtimeResult.serialized_text,
-      public_reuse_handoff_projection: publicReuseHandoff.projection,
-      public_reuse_handoff: publicReuseHandoff.handoff,
-      memory_projection: memoryResult.projection,
-      memory_payload: memoryResult.payload,
-    }
+  async attachAgentAuthoredAssetToPrivateMessage(input: {
+    asset_id: string
+    agent_id: string
+    owner_user_id: string
+    session_id: string
+    message_id: string
+    why_relevant_hint: string
+  }): Promise<{
+    attachment: PrivateMessageAttachment
+    binding: SceneMediaBinding
+    runtime_projection: MediaContextProjection
+    runtime_card: PrivateMediaRuntimeCard
+    runtime_serialized_text: string
+    public_reuse_handoff_projection: MediaContextProjection
+    public_reuse_handoff: PublicReuseHandoffCard
+    memory_projection: MediaContextProjection
+    memory_payload: PrivateMediaMemoryProjection
+  }> {
+    return this.attachAssetToPrivateMessageInternal({
+      ...input,
+      created_by_id: input.agent_id,
+      created_by_type: 'agent',
+      eligibility: 'agent_authored',
+    })
   }
 
   async getPrivateAttachmentView(assetId: string): Promise<PrivateMessageAttachment | null> {
@@ -450,6 +380,29 @@ export class MediaAssetService {
     }
 
     return result
+  }
+
+  async listSurfaceAttachmentViews(
+    sceneType: Extract<MediaSceneType, 'forum_comment' | 'chat_room_message' | 'achievement_card' | 'episode_prop' | 'forum_post'>,
+    sceneIds: string[],
+  ): Promise<Map<string, SurfaceMediaAttachmentView[]>> {
+    return listSurfaceMediaAttachmentViews(
+      {
+        sceneMediaBindingRepo: this.deps.sceneMediaBindingRepo,
+        mediaContextProjectionRepo: this.deps.mediaContextProjectionRepo,
+      },
+      sceneType,
+      sceneIds,
+    )
+  }
+
+  async findLatestAgentAuthoredPrivateAttachmentCandidate(agentId: string): Promise<MediaAsset | null> {
+    const ownAssets = await this.deps.mediaAssetRepo.listByStewardAgentId(agentId, {
+      lifecycle_statuses: ['active'],
+    })
+    return ownAssets.find((asset) =>
+      asset.visibility_policy !== 'blocked' && asset.source_kind !== 'private_message_upload'
+    ) ?? null
   }
 
   async rollbackPrivateMessageAttachmentArtifacts(messageId: string): Promise<void> {
@@ -760,6 +713,139 @@ export class MediaAssetService {
     return typeof mediaUrl === 'string' && mediaUrl.trim() ? mediaUrl : null
   }
 
+  private async attachAssetToPrivateMessageInternal(input: {
+    asset_id: string
+    agent_id: string
+    owner_user_id: string
+    session_id: string
+    message_id: string
+    why_relevant_hint: string
+    created_by_id: string
+    created_by_type: 'owner' | 'agent'
+    eligibility: 'owner_staged' | 'agent_authored'
+  }): Promise<{
+    attachment: PrivateMessageAttachment
+    binding: SceneMediaBinding
+    runtime_projection: MediaContextProjection
+    runtime_card: PrivateMediaRuntimeCard
+    runtime_serialized_text: string
+    public_reuse_handoff_projection: MediaContextProjection
+    public_reuse_handoff: PublicReuseHandoffCard
+    memory_projection: MediaContextProjection
+    memory_payload: PrivateMediaMemoryProjection
+  }> {
+    const asset = await this.deps.mediaAssetRepo.findById(input.asset_id)
+    if (!asset) {
+      throw new ValidationError('attachment_asset_ids contains an unknown asset')
+    }
+    if (input.eligibility === 'owner_staged') {
+      this.assertPrivateMessageAssetEligibility(asset, input)
+    } else {
+      this.assertAgentAuthoredPrivateMessageAssetEligibility(asset, input)
+    }
+
+    const snapshot = await this.deps.mediaSemanticSnapshotRepo.findCurrentByAssetId(asset.id)
+    if (!snapshot) {
+      throw new ValidationError('attachment semantic snapshot is not ready')
+    }
+
+    const existingBinding = (await this.deps.sceneMediaBindingRepo.findByScene('private_message', input.message_id))
+      .find((binding) => binding.asset_id === asset.id) ?? null
+    const binding = existingBinding ?? await this.deps.mediaBindingService.createPrivateMessageBinding({
+      asset,
+      snapshot,
+      messageId: input.message_id,
+      createdById: input.created_by_id,
+      createdByType: input.created_by_type,
+    })
+
+    const projections = await this.deps.mediaContextProjectionRepo.findByBindingId(binding.id)
+    const existingRuntimeProjection = projections.find(
+      (projection) =>
+        projection.projection_surface === 'private_runtime'
+        && projection.projection_kind === 'private_media_runtime_card'
+        && projection.schema_version === 'private-media-runtime-card.v1',
+    ) ?? null
+    const runtimeResult = existingRuntimeProjection
+      ? {
+          projection: existingRuntimeProjection,
+          card: existingRuntimeProjection.payload_json as unknown as PrivateMediaRuntimeCard,
+          serialized_text: this.deps.mediaProjectionService.serializePrivateRuntimeCardForPrompt({
+            card: existingRuntimeProjection.payload_json as unknown as PrivateMediaRuntimeCard,
+            max_chars: 900,
+          }).text,
+        }
+      : await this.deps.mediaProjectionService.createPrivateRuntimeProjection({
+          binding,
+          asset,
+          snapshot,
+          source_kind: asset.source_kind,
+          why_relevant_hint: input.why_relevant_hint,
+        }).then((result) => ({
+          projection: result.projection,
+          card: result.card,
+          serialized_text: result.serialized.text,
+        }))
+
+    const existingMemoryProjection = projections.find(
+      (projection) =>
+        projection.projection_surface === 'memory'
+        && projection.projection_kind === 'private_media_memory_projection'
+        && projection.schema_version === 'private-media-memory-projection.v1',
+    ) ?? null
+    const memoryResult = existingMemoryProjection
+      ? {
+          projection: existingMemoryProjection,
+          payload: existingMemoryProjection.payload_json as unknown as PrivateMediaMemoryProjection,
+        }
+      : await this.deps.mediaProjectionService.createPrivateMemoryProjection({
+          binding,
+          asset,
+          snapshot,
+          agent_id: input.agent_id,
+          owner_user_id: input.owner_user_id,
+          session_id: input.session_id,
+          why_relevant_hint: input.why_relevant_hint,
+        })
+
+    const existingPublicReuseHandoff = projections.find(
+      (projection) =>
+        projection.projection_surface === 'planner'
+        && projection.projection_kind === 'public_reuse_handoff'
+        && projection.schema_version === 'public-reuse-handoff.v1',
+    ) ?? null
+    const publicReuseHandoff = existingPublicReuseHandoff
+      ? {
+          projection: existingPublicReuseHandoff,
+          handoff: existingPublicReuseHandoff.payload_json as unknown as PublicReuseHandoffCard,
+        }
+      : await this.deps.mediaProjectionService.createPublicReuseHandoffProjection({
+          binding,
+          asset,
+          snapshot,
+          source_kind: asset.source_kind,
+          why_relevant_hint: input.why_relevant_hint,
+          allowed_reuse_modes: ['derive_new', 'reference_only'],
+          disclose_origin_policy: 'never',
+        })
+
+    return {
+      attachment: this.buildPrivateAttachmentView({
+        asset,
+        snapshot,
+        runtimeCard: runtimeResult.card,
+      }),
+      binding,
+      runtime_projection: runtimeResult.projection,
+      runtime_card: runtimeResult.card,
+      runtime_serialized_text: runtimeResult.serialized_text,
+      public_reuse_handoff_projection: publicReuseHandoff.projection,
+      public_reuse_handoff: publicReuseHandoff.handoff,
+      memory_projection: memoryResult.projection,
+      memory_payload: memoryResult.payload,
+    }
+  }
+
   private assertPrivateMessageAssetEligibility(
     asset: MediaAsset,
     input: {
@@ -785,6 +871,29 @@ export class MediaAssetService {
     }
     if (asset.visibility_policy !== 'private_only') {
       throw new ValidationError('attachment asset is not private-only')
+    }
+  }
+
+  private assertAgentAuthoredPrivateMessageAssetEligibility(
+    asset: MediaAsset,
+    input: {
+      agent_id: string
+      session_id: string
+    },
+  ): void {
+    const sameAgent = asset.steward_agent_id === input.agent_id
+    const sharedCommons = asset.source_kind === 'platform_canonical' || asset.source_kind === 'community_commons'
+    if (!sameAgent && !sharedCommons) {
+      throw new ValidationError('agent-authored attachment asset is not available to this private chat')
+    }
+    if (asset.source_kind === 'private_message_upload' && asset.source_scene_id !== input.session_id) {
+      throw new ValidationError('private upload asset is staged for a different private session')
+    }
+    if (asset.lifecycle_status !== 'active') {
+      throw new ValidationError('attachment asset is no longer active')
+    }
+    if (asset.visibility_policy === 'blocked') {
+      throw new ValidationError('attachment asset is blocked')
     }
   }
 

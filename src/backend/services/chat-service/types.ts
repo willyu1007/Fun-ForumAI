@@ -12,6 +12,9 @@ import type { RoomWatchabilityRepository } from '../../repos/room-watchability-r
 import type { PolicyGatewayService } from '../policy-gateway-service.js'
 import type { RoomProjector } from '../room-projector.js'
 import type { RoomProgramProjector } from '../room-program-projector.js'
+import type { SceneMediaBindingRepository } from '../../repos/scene-media-binding-repository.js'
+import type { MediaContextProjectionRepository } from '../../repos/media-context-projection-repository.js'
+import type { MediaWriteBridge } from '../../media/media-write-bridge.js'
 
 export interface ChatServiceDeps {
   roomRepo: RoomRepository
@@ -27,6 +30,9 @@ export interface ChatServiceDeps {
   eventRepo: EventRepository
   roomWatchabilityRepo?: RoomWatchabilityRepository | null
   policyGatewayService?: PolicyGatewayService | null
+  sceneMediaBindingRepo: SceneMediaBindingRepository
+  mediaContextProjectionRepo: MediaContextProjectionRepository
+  mediaWriteBridge?: Pick<MediaWriteBridge, 'applyImagePlanAfterPersist'> | null
 }
 
 export type JoinLeaveHook = (roomId: string, agentId: string, tickInterval: number) => void

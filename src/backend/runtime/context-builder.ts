@@ -12,6 +12,8 @@ import { config } from '../lib/config.js'
 import type { CommunityPromptProfileCompiler } from './community-prompt-profile-compiler.js'
 import type { CommunityCultureDigestService } from '../services/community-culture-digest-service.js'
 import type { ForumSceneContinuityService } from '../services/forum-scene-continuity-service.js'
+import type { ChatService } from '../services/chat-service.js'
+import type { ChatroomRuntimeContextBuilder } from '../services/chatroom-runtime-context-builder.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 
 export interface ContextBuilderDeps {
@@ -21,6 +23,8 @@ export interface ContextBuilderDeps {
   communityPromptProfileCompiler?: CommunityPromptProfileCompiler | null
   communityCultureDigestService?: CommunityCultureDigestService | null
   forumSceneContinuityService?: ForumSceneContinuityService | null
+  chatService?: ChatService | null
+  chatroomRuntimeContextBuilder?: ChatroomRuntimeContextBuilder | null
 }
 
 const DEFAULT_PERSONA: AgentPersona = {
@@ -73,11 +77,45 @@ export class ContextBuilder {
       }
     }
 
+    if (
+      event.event_type === 'NewMessageCreated'
+      && event.room_id
+      && this.deps.chatService
+      && this.deps.chatroomRuntimeContextBuilder
+    ) {
+      try {
+        const room = await this.deps.chatService.getRoom(event.room_id)
+        const recentMessages = await this.deps.chatService.getMessages(event.room_id, { limit: 10 })
+        const runtimeChat = await this.deps.chatroomRuntimeContextBuilder.build({
+          room,
+          agentId: agent.agent_id,
+          recentMessages: recentMessages.items,
+        })
+        ctx.chatContext = runtimeChat.chatContext
+        ctx.chat_prompt_variables = {
+          program_scene: runtimeChat.promptVariables.program_scene,
+          current_beat: runtimeChat.promptVariables.current_beat,
+          live_hook: runtimeChat.promptVariables.live_hook,
+          unresolved_question: runtimeChat.promptVariables.unresolved_question,
+          local_intent_block: runtimeChat.promptVariables.local_intent_block,
+          room_public_context_summary: runtimeChat.promptVariables.room_public_context_summary,
+          role_hint: runtimeChat.promptVariables.role_hint,
+        }
+      } catch (error) {
+        console.error(
+          `[ContextBuilder] chat room runtime context build failed for room=${event.room_id} agent=${agent.agent_id}:`,
+          error,
+        )
+      }
+    }
+
     return ctx
   }
 
   async enrichWithLayers(ctx: ExecutionContext): Promise<ExecutionContext> {
-    const scene: import('./types.js').PromptScene = ctx.chatContext
+    const scene: import('./types.js').PromptScene = ctx.event.event_type === 'NewMessageCreated'
+      ? 'chat_room'
+      : ctx.chatContext
       ? 'chat_room'
       : ctx.targetComment
         ? 'forum_comment'
@@ -118,11 +156,15 @@ export class ContextBuilder {
         : {}),
       sceneRule: ctx.chatContext
         ? `你正在聊天室「${ctx.chatContext.room_name}」中继续群聊`
+        : ctx.event.event_type === 'NewMessageCreated'
+          ? '你正在聊天室中继续群聊'
         : ctx.targetComment
           ? '你正在论坛评论线程中回复具体观点'
           : '你正在论坛帖子下参与公开讨论',
       shortTermState: ctx.chatContext
         ? `recent_messages=${ctx.chatContext.recent_messages.length}`
+        : ctx.event.event_type === 'NewMessageCreated'
+          ? 'recent_messages=0'
         : ctx.comments
           ? `thread_comments=${ctx.comments.length}`
           : '',
@@ -317,6 +359,53 @@ export class ContextBuilder {
           ctx.public_scene.scene_metadata.local_intent_id
           ?? ctx.public_scene.scene_metadata.selection_id,
       })
+    }
+    if (ctx.chatContext?.recent_messages.length) {
+      sources.push({
+        kind: 'room_recent_turns',
+        text: ctx.chatContext.recent_messages
+          .slice(-8)
+          .map((message) => `${message.author_name}：${message.body}`)
+          .join('\n'),
+        priority: 'critical',
+        source_id: `${ctx.event.room_id ?? ctx.community.id}:recent_turns`,
+      })
+    }
+    if (ctx.chat_prompt_variables?.room_public_context_summary) {
+      sources.push({
+        kind: 'thread_or_scene_continuity',
+        text: ctx.chat_prompt_variables.room_public_context_summary,
+        priority: 'high',
+        source_id: `${ctx.event.room_id ?? ctx.community.id}:public_context`,
+      })
+    }
+    if (ctx.chat_prompt_variables?.local_intent_block) {
+      sources.push({
+        kind: 'local_intent',
+        text: ctx.chat_prompt_variables.local_intent_block,
+        priority: 'high',
+        source_id: `${ctx.event.room_id ?? ctx.community.id}:local_intent`,
+      })
+    }
+    const roomProgramContext = [
+      ctx.chat_prompt_variables?.program_scene,
+      ctx.chat_prompt_variables?.current_beat,
+      ctx.chat_prompt_variables?.live_hook,
+      ctx.chat_prompt_variables?.unresolved_question,
+      ctx.chat_prompt_variables?.role_hint,
+    ]
+      .filter(Boolean)
+      .join('\n')
+    if (roomProgramContext) {
+      sources.push({
+        kind: 'room_program_context',
+        text: roomProgramContext,
+        priority: 'high',
+        source_id: `${ctx.event.room_id ?? ctx.community.id}:program_context`,
+      })
+    }
+    if (ctx.surface_media_plan?.current_context_source) {
+      sources.push(ctx.surface_media_plan.current_context_source)
     }
     return sources
   }

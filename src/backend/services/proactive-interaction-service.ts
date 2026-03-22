@@ -23,6 +23,8 @@ import {
 } from '../runtime/persona-observation.js'
 import type { PolicyGatewayService } from './policy-gateway-service.js'
 import type { IdentityGateService } from './identity-gate-service.js'
+import type { MediaAssetService } from '../media/media-asset-service.js'
+import { config } from '../lib/config.js'
 
 const MAX_PROACTIVE_PER_DAY = 2
 const PROACTIVE_COOLDOWN_MS = 4 * 60 * 60 * 1000
@@ -39,6 +41,7 @@ export interface ProactiveInteractionDeps {
   notificationService: NotificationService
   policyGatewayService?: PolicyGatewayService | null
   identityGateService?: IdentityGateService | null
+  mediaAssetService?: MediaAssetService | null
 }
 
 export class ProactiveInteractionService {
@@ -93,12 +96,19 @@ export class ProactiveInteractionService {
       trigger_ref: vote.target_id,
     })
 
-    await this.deps.channelRepo.createMessage({
+    const openingRecord = await this.deps.channelRepo.createMessage({
       session_id: session.id,
       author_type: 'AGENT',
       content: effectiveOpeningContent,
       delivery_status: policyDecision?.delivery_status ?? 'DELIVERED',
       moderation_metadata: policyDecision?.metadata ?? null,
+    })
+    await this.maybeAttachOpeningMedia({
+      agentId,
+      ownerUserId: agent.owner_id,
+      sessionId: session.id,
+      messageId: openingRecord.id,
+      why_relevant_hint: '作为这次主动私聊开场的视觉锚点，帮助 owner 在进入会话时快速识别当前触发语境。',
     })
 
     this.recordOpeningRun({
@@ -182,12 +192,19 @@ export class ProactiveInteractionService {
       trigger_ref: challenge.comment_id ?? challenge.post_id,
     })
 
-    await this.deps.channelRepo.createMessage({
+    const openingRecord = await this.deps.channelRepo.createMessage({
       session_id: session.id,
       author_type: 'AGENT',
       content: effectiveOpeningContent,
       delivery_status: policyDecision?.delivery_status ?? 'DELIVERED',
       moderation_metadata: policyDecision?.metadata ?? null,
+    })
+    await this.maybeAttachOpeningMedia({
+      agentId,
+      ownerUserId: agent.owner_id,
+      sessionId: session.id,
+      messageId: openingRecord.id,
+      why_relevant_hint: '作为这次主动私聊开场的视觉锚点，帮助 owner 在进入会话时快速识别当前争议或回访的上下文。',
     })
 
     this.recordOpeningRun({
@@ -271,6 +288,38 @@ export class ProactiveInteractionService {
     }
 
     return true
+  }
+
+  private async maybeAttachOpeningMedia(input: {
+    agentId: string
+    ownerUserId: string
+    sessionId: string
+    messageId: string
+    why_relevant_hint: string
+  }): Promise<void> {
+    if (!config.features.mediaProactivePrivateSurfaceV1 || !this.deps.mediaAssetService) {
+      return
+    }
+    const candidate = await this.deps.mediaAssetService.findLatestAgentAuthoredPrivateAttachmentCandidate(
+      input.agentId,
+    )
+    if (!candidate) return
+
+    try {
+      await this.deps.mediaAssetService.attachAgentAuthoredAssetToPrivateMessage({
+        asset_id: candidate.id,
+        agent_id: input.agentId,
+        owner_user_id: input.ownerUserId,
+        session_id: input.sessionId,
+        message_id: input.messageId,
+        why_relevant_hint: input.why_relevant_hint,
+      })
+    } catch (error) {
+      await this.deps.mediaAssetService.rollbackPrivateMessageAttachmentArtifacts(input.messageId).catch((rollbackErr) => {
+        console.error('[ProactiveInteraction] proactive media rollback failed:', rollbackErr)
+      })
+      console.error('[ProactiveInteraction] proactive opening media attach failed:', error)
+    }
   }
 
   private async generateOpeningMessage(
