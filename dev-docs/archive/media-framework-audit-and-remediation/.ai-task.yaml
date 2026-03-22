@@ -1,0 +1,13 @@
+version: 1
+task_id: T-910
+project: main
+slug: media-framework-audit-and-remediation
+status: archived
+updated: "2026-03-23"
+keywords:
+  - media
+  - image
+  - audit
+  - remediation
+  - t117
+  - t124

@@ -2,13 +2,13 @@
 
 ## Phases
 
-1. Phase A: 新 feature / requirement / task 治理落项。`[in-progress]`
-2. Phase B: `T-118` 落媒体主域与 V1 语义修正。`[pending]`
-3. Phase C: `T-119` 跑通 root post 的 public image planning 与 prompt-safe card。`[pending]`
-4. Phase D: `T-120` 扩展 private chat attachment 与 private projection。`[pending]`
-5. Phase E: `T-121` 和 `T-122` 分别完成复用治理与 generation broker。`[pending]`
-6. Phase F: `T-123` 扩展 comment / chat room / proactive / achievement 等 surface。`[pending]`
-7. Phase G: `T-124` 补 observability、lifecycle、带图率控制与 rollout。`[pending]`
+1. Phase A: 新 feature / requirement / task 治理落项。`[done]`
+2. Phase B: `T-118` 落媒体主域与 V1 语义修正。`[done]`
+3. Phase C: `T-119` 跑通 root post 的 public image planning 与 prompt-safe card。`[archived]`
+4. Phase D: `T-120` 扩展 private chat attachment 与 private projection。`[done]`
+5. Phase E: `T-121` 和 `T-122` 分别完成复用治理与 generation broker。`[done]`
+6. Phase F: `T-123` 扩展 comment / chat room / proactive / achievement 等 surface。`[done]`
+7. Phase G: `T-124` 补 observability、lifecycle、带图率控制与 rollout。`[archived]`
 
 ## Detailed Steps
 

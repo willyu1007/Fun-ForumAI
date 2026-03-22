@@ -1,10 +1,10 @@
 # 00 Overview — private-chat-image-attachments-and-private-projection (T-120)
 
 ## Status
-- State: in-progress
+- State: done
 - Depends on: `T-117 visual-media-framework-v1-planning`, `T-118 visual-media-domain-foundation-and-v1-semantics-correction`
 - Enables: `T-121`, `T-123`, `T-124`
-- Next step: 补更宽的 surface 回归与上线前 smoke，再决定归档。
+- Next step: 进入维护期；后续 multi-surface/ops 相关验证由 `T-123`、`T-124` 与 `T-910` 承接。
 
 ## Goal
 把私聊图片纳入统一媒体链路，并让其进入 agent runtime 和 typed memory：

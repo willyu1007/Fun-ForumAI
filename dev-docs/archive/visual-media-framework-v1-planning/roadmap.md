@@ -6,13 +6,13 @@
 
 ## Milestones
 
-1. 治理落项与任务建包。`[in-progress]`
-2. `T-118` 媒体主域与语义纠偏。`[pending]`
-3. `T-119` public root post 双路径补图。`[pending]`
-4. `T-120` private chat 图片认知链路。`[pending]`
-5. `T-121` / `T-122` 公共复用治理与 generation broker。`[pending]`
-6. `T-123` 多 surface 适配与扩展。`[pending]`
-7. `T-124` 观测、生命周期与带图率控制。`[pending]`
+1. 治理落项与任务建包。`[done]`
+2. `T-118` 媒体主域与语义纠偏。`[done]`
+3. `T-119` public root post 双路径补图。`[archived]`
+4. `T-120` private chat 图片认知链路。`[done]`
+5. `T-121` / `T-122` 公共复用治理与 generation broker。`[done]`
+6. `T-123` 多 surface 适配与扩展。`[done]`
+7. `T-124` 观测、生命周期与带图率控制。`[archived]`
 
 ## Risks
 

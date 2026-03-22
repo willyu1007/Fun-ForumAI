@@ -1,10 +1,10 @@
 # 00 Overview — visual-media-domain-foundation-and-v1-semantics-correction (T-118)
 
 ## Status
-- State: in-progress
+- State: done
 - Depends on: `T-117 visual-media-framework-v1-planning`
 - Blocks: `T-119`, `T-120`, `T-122`
-- Next step: 在目标环境执行 migration/backfill，并由 `T-119` 删除 root-post 过渡 adapter 与旧 `WriteInstruction` 媒体字段路径。
+- Next step: 进入维护期；目标环境 rollout/backfill 与整站 smoke 由 `T-124` 运维面板和 `T-910` 审计包承接。
 
 ## Goal
 建立统一的媒体主域，并修正当前 V1 语义：

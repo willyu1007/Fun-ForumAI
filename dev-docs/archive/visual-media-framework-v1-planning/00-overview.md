@@ -1,9 +1,9 @@
 # 00 Overview — visual-media-framework-v1-planning (T-117)
 
 ## Status
-- State: in-progress
+- State: done
 - Related prior work: `T-044 multimodal-agent-inclination-v1`, `T-069 context-memory-plane-runtime-v1`, `T-095 scene-selector-scheduled-post-forum-entry`
-- Next step: 以 `T-118` 和 `T-119` 作为第一波执行入口，先落媒体主域与 root post 双路径补图链路。
+- Next step: 进入维护期；后续实现、运营与审计分别由 `T-118` ~ `T-124` 和 `T-910` 承接。
 
 ## Goal
 冻结图像处理框架 V1 的整体治理与任务拆包：

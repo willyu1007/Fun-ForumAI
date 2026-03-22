@@ -1,0 +1,40 @@
+# 04 Verification
+
+- 2026-03-22
+  - Pass: `pnpm exec vitest run src/backend/media/__tests__/media-semantic-service.test.ts src/backend/media/__tests__/media-projection-service.test.ts src/backend/media/__tests__/visual-directive-service.test.ts src/backend/media/__tests__/image-planner-service.test.ts src/backend/media/__tests__/media-reuse-governance-service.test.ts src/backend/media/__tests__/media-generation-service.test.ts src/backend/media/__tests__/media-write-bridge.test.ts src/backend/runtime/__tests__/post-scheduler.test.ts src/backend/services/__tests__/private-channel-service.test.ts src/backend/services/__tests__/memory-service.private-media.test.ts src/backend/routes/__tests__/private-channel-message-auth.test.ts`
+  - Result: 11 个测试文件、48 个测试通过；`T-118` ~ `T-122` 的定向媒体主链未出现直接单测回归。
+- 2026-03-22
+  - Fail: `pnpm typecheck`
+  - Result: 全仓类型检查失败；当前已确认的问题包括 `ForumSceneMetadataRepository` / `MemoryRepository` 测试桩接口漂移、`post-scheduler` 测试中的 tuple 推断错误、`private-channel-service` 当前上下文 source 数组的字面量类型退化、以及 `public-scene-catalog-service` 的 manifest 类型断言不完整。
+- 2026-03-22
+  - Pass: `pnpm typecheck`
+  - Result: 拉取 `T-123/T-124` 最新代码并合并本地修复后，全仓类型检查恢复通过。
+- 2026-03-22
+  - Pass: `pnpm exec vitest run src/backend/media/__tests__/media-reuse-governance-service.test.ts src/backend/media/__tests__/media-semantic-service.test.ts src/backend/media/__tests__/media-observability-service.test.ts src/backend/media/__tests__/media-write-bridge.test.ts src/backend/media/__tests__/media-projection-service.test.ts src/backend/media/__tests__/media-generation-service.test.ts src/backend/media/__tests__/media-rollout-controller-service.test.ts src/backend/media/__tests__/media-lifecycle-service.test.ts src/backend/media/__tests__/image-planner-service.test.ts src/backend/media/__tests__/media-asset-service.test.ts src/backend/media/__tests__/visual-directive-service.test.ts src/backend/services/__tests__/public-observation-digest-service.test.ts src/backend/services/__tests__/public-observation-real-smoke.test.ts src/backend/services/__tests__/private-channel-service.test.ts src/backend/services/__tests__/memory-service.private-media.test.ts src/backend/services/__tests__/forum-read-service.test.ts src/backend/routes/__tests__/admin-media-api.test.ts src/backend/routes/__tests__/private-channel-message-auth.test.ts src/backend/routes/__tests__/private-channel-memory-auth.test.ts src/backend/runtime/__tests__/private-channel-scheduler.test.ts src/backend/runtime/__tests__/post-scheduler.test.ts`
+  - Result: 21 个测试文件、97 个测试通过，覆盖 `T-118` ~ `T-124` 的媒体主域、root post、private chat、多 surface、admin control plane 与 lifecycle 主链。
+- 2026-03-22
+  - Pass: 真实语义提取 smoke
+  - Command: `DASHSCOPE_API_KEY=... pnpm exec tsx ... MediaSemanticService.extract(...)`
+  - Result: `qwen-vl-plus` 在约 `2167ms` 内返回 `completed/rich` 的语义摘要，验证 `vision_summary -> media_semantic_snapshots` 主干在真实模型上可用。
+- 2026-03-22
+  - Fail then Pass: 真实文生图 smoke
+  - Command: `FF_MEDIA_GENERATION_V1=true MEDIA_GENERATION_API_KEY=... pnpm exec tsx ... ArkSeedreamGateway.generate(...)`
+  - Result: 默认 `MEDIA_GENERATION_TIMEOUT_MS=30000` 下报 `seedream_generation_timeout`；将超时放宽到 `120000` 后，同一请求在约 `33915ms` 成功返回图片 URL，确认问题是默认超时过紧而非 provider 鉴权或路由失效。
+- 2026-03-22
+  - Pass: `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+  - Result: `T-117`、`T-118`、`T-120` bundle 状态与 project hub 已重新对齐，`dashboard.md` / `feature-map.md` / `task-index.md` 反映最新闭环结果。
+  - Pass: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: project governance lint passed
+- 2026-03-22
+  - Pass: Chrome DevTools 站点级 E2E
+  - Coverage:
+    - `http://localhost:3001/posts/cmn18czbt001el7nokuka300v`
+    - `http://localhost:3001/agents/ffc5c771-53bd-424f-aa9e-aa7c531eee94/chat`
+    - `http://localhost:3001/agents/ffc5c771-53bd-424f-aa9e-aa7c531eee94/highlights`
+  - Result: public post 详情页成功展示主图，浏览器读取到 `naturalWidth=32 / naturalHeight=32`；private chat 会话成功展示 owner 上传图片附件与 agent 回复，浏览器读取到 `naturalWidth=192 / naturalHeight=192`；agent highlights 公共路径成功打开并稳定落到 public-safe empty state，没有前端异常。
+- 2026-03-22
+  - Pass: 浏览器 console / network 复核
+  - Result: 重新加载私聊页后，console 无报错；站点关键数据请求与媒体文件请求均返回 `200`，仅保留一个开发期 `vite` 连接日志。
+- 2026-03-22
+  - Pass: `pnpm typecheck`
+  - Result: 在为私聊输入区补齐 `id` / `name` 后，全仓类型检查再次通过。

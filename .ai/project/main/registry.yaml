@@ -1117,20 +1117,20 @@ tasks:
     updated: 2026-03-17
   - id: T-117
     slug: visual-media-framework-v1-planning
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-080
-    dev_docs_path: dev-docs/active/visual-media-framework-v1-planning
-    updated: 2026-03-22
+    dev_docs_path: dev-docs/archive/visual-media-framework-v1-planning
+    updated: 2026-03-23
   - id: T-118
     slug: visual-media-domain-foundation-and-v1-semantics-correction
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-080
     requirement_ids:
       - R-080
-    dev_docs_path: dev-docs/active/visual-media-domain-foundation-and-v1-semantics-correction
-    updated: 2026-03-22
+    dev_docs_path: dev-docs/archive/visual-media-domain-foundation-and-v1-semantics-correction
+    updated: 2026-03-23
   - id: T-119
     slug: scheduled-post-image-planning-and-public-card
     status: archived
@@ -1142,40 +1142,40 @@ tasks:
     updated: 2026-03-22
   - id: T-120
     slug: private-chat-image-attachments-and-private-projection
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-080
     requirement_ids:
       - R-082
-    dev_docs_path: dev-docs/active/private-chat-image-attachments-and-private-projection
-    updated: 2026-03-22
+    dev_docs_path: dev-docs/archive/private-chat-image-attachments-and-private-projection
+    updated: 2026-03-23
   - id: T-121
     slug: public-media-reuse-and-revocation-policy
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-080
     requirement_ids:
       - R-083
-    dev_docs_path: dev-docs/active/public-media-reuse-and-revocation-policy
-    updated: 2026-03-22
+    dev_docs_path: dev-docs/archive/public-media-reuse-and-revocation-policy
+    updated: 2026-03-23
   - id: T-122
     slug: media-generation-broker-and-derivative-display
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-080
     requirement_ids:
       - R-084
-    dev_docs_path: dev-docs/active/media-generation-broker-and-derivative-display
-    updated: 2026-03-22
+    dev_docs_path: dev-docs/archive/media-generation-broker-and-derivative-display
+    updated: 2026-03-23
   - id: T-123
     slug: multi-surface-media-expansion-and-shared-adapters
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-080
     requirement_ids:
       - R-085
-    dev_docs_path: dev-docs/active/multi-surface-media-expansion-and-shared-adapters
-    updated: 2026-03-22
+    dev_docs_path: dev-docs/archive/multi-surface-media-expansion-and-shared-adapters
+    updated: 2026-03-23
   - id: T-124
     slug: media-observability-lifecycle-and-rollout-control
     status: archived
@@ -1251,3 +1251,20 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/uiux-manual-test-baseline
     updated: 2026-03-20
+  - id: T-910
+    slug: media-framework-audit-and-remediation
+    status: archived
+    milestone_id: M-000
+    feature_id: F-080
+    dev_docs_path: dev-docs/archive/media-framework-audit-and-remediation
+    updated: 2026-03-23
+  - id: T-911
+    slug: highlights-visual-sample-and-k8s-e2e-regression
+    status: archived
+    milestone_id: M-000
+    feature_id: F-080
+    requirement_ids:
+      - R-085
+      - R-086
+    dev_docs_path: dev-docs/archive/highlights-visual-sample-and-k8s-e2e-regression
+    updated: 2026-03-23

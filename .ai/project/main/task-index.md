@@ -122,13 +122,13 @@ Project: `main`
 | T-114 prompt-budget-v2-control-compiler-contract | archived | F-020 | dev-docs/archive/prompt-budget-v2-control-compiler-contract |
 | T-115 prompt-budget-v2-memory-tiering-authority | archived | F-020 | dev-docs/archive/prompt-budget-v2-memory-tiering-authority |
 | T-116 prompt-budget-v2-sensitive-scene-cutover | archived | F-020 | dev-docs/archive/prompt-budget-v2-sensitive-scene-cutover |
-| T-117 visual-media-framework-v1-planning | in-progress | F-080 | dev-docs/active/visual-media-framework-v1-planning |
-| T-118 visual-media-domain-foundation-and-v1-semantics-correction | in-progress | F-080 | dev-docs/active/visual-media-domain-foundation-and-v1-semantics-correction |
+| T-117 visual-media-framework-v1-planning | archived | F-080 | dev-docs/archive/visual-media-framework-v1-planning |
+| T-118 visual-media-domain-foundation-and-v1-semantics-correction | archived | F-080 | dev-docs/archive/visual-media-domain-foundation-and-v1-semantics-correction |
 | T-119 scheduled-post-image-planning-and-public-card | archived | F-080 | dev-docs/archive/scheduled-post-image-planning-and-public-card |
-| T-120 private-chat-image-attachments-and-private-projection | in-progress | F-080 | dev-docs/active/private-chat-image-attachments-and-private-projection |
-| T-121 public-media-reuse-and-revocation-policy | done | F-080 | dev-docs/active/public-media-reuse-and-revocation-policy |
-| T-122 media-generation-broker-and-derivative-display | done | F-080 | dev-docs/active/media-generation-broker-and-derivative-display |
-| T-123 multi-surface-media-expansion-and-shared-adapters | done | F-080 | dev-docs/active/multi-surface-media-expansion-and-shared-adapters |
+| T-120 private-chat-image-attachments-and-private-projection | archived | F-080 | dev-docs/archive/private-chat-image-attachments-and-private-projection |
+| T-121 public-media-reuse-and-revocation-policy | archived | F-080 | dev-docs/archive/public-media-reuse-and-revocation-policy |
+| T-122 media-generation-broker-and-derivative-display | archived | F-080 | dev-docs/archive/media-generation-broker-and-derivative-display |
+| T-123 multi-surface-media-expansion-and-shared-adapters | archived | F-080 | dev-docs/archive/multi-surface-media-expansion-and-shared-adapters |
 | T-124 media-observability-lifecycle-and-rollout-control | archived | F-080 | dev-docs/archive/media-observability-lifecycle-and-rollout-control |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-000 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | archived | F-000 | dev-docs/archive/chronicle-chapter-summary-alignment |
@@ -139,4 +139,6 @@ Project: `main`
 | T-907 confirmed-technical-debt-paydown | archived | F-000 | dev-docs/archive/confirmed-technical-debt-paydown |
 | T-908 ui-preparation-foundation | archived | F-000 | dev-docs/archive/ui-preparation-foundation |
 | T-909 uiux-manual-test-baseline | in-progress | F-000 | dev-docs/active/uiux-manual-test-baseline |
+| T-910 media-framework-audit-and-remediation | archived | F-080 | dev-docs/archive/media-framework-audit-and-remediation |
+| T-911 highlights-visual-sample-and-k8s-e2e-regression | archived | F-080 | dev-docs/archive/highlights-visual-sample-and-k8s-e2e-regression |
 <!-- AUTO-GENERATED:END task-index -->

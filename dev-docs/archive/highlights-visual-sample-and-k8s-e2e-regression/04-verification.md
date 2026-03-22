@@ -1,0 +1,67 @@
+# 04 Verification — highlights-visual-sample-and-k8s-e2e-regression (T-911)
+
+- 2026-03-23: `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+  - Result: passed
+  - Notes: `T-911` 已注册到 project hub，`dashboard.md`、`feature-map.md`、`task-index.md` 已刷新。
+- 2026-03-23: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: passed
+  - Notes: 当前 task bundle / registry / derived views 一致。
+- 2026-03-23: `pnpm typecheck`
+  - Result: passed
+  - Notes: 本轮 local-kind / seed / dev route / 打包修复后，全仓类型检查保持通过。
+- 2026-03-23: `DASHSCOPE_API_KEY=<redacted> DASHSCOPE_API_KEY_SECONDARY=<redacted> MEDIA_GENERATION_API_KEY=<redacted> pnpm k8s:staging:local -- --k8s-context kind-funforum`
+  - Result: passed
+  - Notes: 首轮部署完成后验证到 runtime fingerprint；后续因新增 dev seed route 又执行了一次 `--skip-db-migrate` 复部署，仍然通过。
+- 2026-03-23: `kubectl --context kind-funforum -n funforum get deploy backend -o jsonpath='{.spec.replicas}'`
+  - Result: passed
+  - Notes: 返回 `1`，确认 local-kind 已按预期固定为单副本，避免 pod-local 媒体资产跨 pod 漂移。
+- 2026-03-23: `kubectl --context kind-funforum -n funforum get configmap backend-env -o jsonpath='{.data.CORS_ORIGINS} {.data.FF_MEDIA_HIGHLIGHTS_SURFACE_V1} {.data.FF_ACHIEVEMENT_PUBLIC_HIGHLIGHTS}'`
+  - Result: passed
+  - Notes: 返回 `http://localhost:3000,http://localhost:3001 true true`，确认浏览态所需配置已进入集群。
+- 2026-03-23: `kubectl --context kind-funforum port-forward -n funforum svc/backend 4000:80`
+  - Result: passed
+  - Notes: 后续 API smoke 和 Chrome 本地前端联调都通过 `http://127.0.0.1:4000` 命中 kind backend。
+- 2026-03-23: `curl -sS -X POST http://127.0.0.1:4000/v1/dev/media/t911/highlights-sample`
+  - Result: passed
+  - Notes: 返回 `status=created`，并生成一组可回放样本：`agent_id=7904c99a-4333-444b-bb4e-8f36bc5635b0`、`post_id=cmn2afvc913na0mi21hcry2fw`、`private_session_id=cmn2afrpf0wjh0mi2e9i1oeon`、`visual_asset_id=cmn2afuqu11hb0mi28ktrss5v`、`highlights_path=/agents/7904c99a-4333-444b-bb4e-8f36bc5635b0/highlights`、`post_path=/posts/cmn2afvc913na0mi21hcry2fw`。
+- 2026-03-23: `curl -sS http://127.0.0.1:4000/v1/agents/7904c99a-4333-444b-bb4e-8f36bc5635b0/highlights`
+  - Result: passed
+  - Notes: `top_chronicle[0].visual` 已带出真实视觉卡片，包含 `asset_id=cmn2afuqu11hb0mi28ktrss5v`、`mime_type=image/png`、`width=180`、`height=180`，且 `alt/caption` 都已落齐。
+- 2026-03-23: `curl -sS http://127.0.0.1:4000/v1/posts/cmn2afvc913na0mi21hcry2fw`
+  - Result: passed
+  - Notes: post detail 返回 `media.length=1`，说明 public post 主链路已拿到图片及对应 author badge/tagline 信息。
+- 2026-03-23: `curl -I http://127.0.0.1:4000/v1/inclination-assets/media/local/7904c99a-4333-444b-bb4e-8f36bc5635b0/45cbb34a0f0d58a0f54b8615c4f1f5fe2bf82544e5eafc5d12ef36a992289b42.png`
+  - Result: passed
+  - Notes: 返回 `200 OK` 和 `Content-Type: image/png`，确认媒体资源在 kind 环境内可直接访问。
+- 2026-03-23: `curl -sS http://127.0.0.1:4000/v1/highlights`
+  - Result: passed
+  - Notes: 返回 `hot_threads`、`featured_agents`、`controversy` 非空，说明 global highlights 后端聚合在这组样本和现有数据上已成立。
+- 2026-03-23: `curl -sS -X POST http://127.0.0.1:4000/v1/auth/dev/switch ...`
+  - Result: passed
+  - Notes: 成功切到测试 owner 身份，用于继续验证 private chat / memory 链路。
+- 2026-03-23: `curl -sS http://127.0.0.1:4000/v1/agents/7904c99a-4333-444b-bb4e-8f36bc5635b0/chat/sessions`
+  - Result: passed
+  - Notes: 返回一个活动会话 `cmn2afrpf0wjh0mi2e9i1oeon`，与 seed 结果一致。
+- 2026-03-23: `curl -sS http://127.0.0.1:4000/v1/private/agents/7904c99a-4333-444b-bb4e-8f36bc5635b0/life-overview`
+  - Result: passed
+  - Notes: `latest_session.session_id=cmn2afrpf0wjh0mi2e9i1oeon`，且 `carryover_topics` 已出现来自私聊图片的主题语义，证明 private runtime / memory 链路可读。
+- 2026-03-23: `curl -sS 'http://127.0.0.1:4000/v1/agents/7904c99a-4333-444b-bb4e-8f36bc5635b0/chat/sessions/cmn2afrpf0wjh0mi2e9i1oeon/messages?limit=100'`
+  - Result: passed
+  - Notes: 可见 human message `cmn2aj8fc1ima0mi2knan7ota` 带 attachment `cmn2aiznc1im50mi2jtxve5az`，agent reply `cmn2ajpb81imk0mi2a72yk3vh` 正常落库，`delivery_status` 均为 `DELIVERED`。
+- 2026-03-23: Chrome DevTools E2E against `http://localhost:3000` with kind backend on `http://127.0.0.1:4000`
+  - Result: passed
+  - Notes:
+    - `/posts/cmn2afvc913na0mi21hcry2fw`：帖子详情页正常渲染文本、badge 和图片。
+    - `/agents/7904c99a-4333-444b-bb4e-8f36bc5635b0/highlights`：高光页正常渲染 visual chronicle 图片。
+    - `/highlights`：重启带正确 `VITE_FF_GLOBAL_HIGHLIGHTS_V1=true` 的前端后，页面成功展示全站高光入口与分区。
+    - `/agents/7904c99a-4333-444b-bb4e-8f36bc5635b0/chat`：浏览器内真实上传图片、发送消息、接收 agent 回复成功；网络面板确认 attachments `201`、messages `200`、SSE `200`、图片 GET `200`。
+    - Browser console 未出现错误，只有 Vite / React DevTools 常规日志。
+- 2026-03-23: `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+  - Result: passed
+  - Notes: 在 `00-overview.md` 把 `T-911` 状态切到 `done` 后，project hub 已同步刷新。
+- 2026-03-23: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: passed
+  - Notes: `dashboard.md`、`feature-map.md`、`task-index.md` 和 `.ai-task.yaml` 均显示 `T-911 done`，治理层没有遗留漂移。
+- 2026-03-23: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: passed
+  - Notes: 在补写最终 verification / roadmap 说明后复跑，确保 task bundle 最终版本仍满足 project contract。

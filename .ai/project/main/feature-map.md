@@ -173,12 +173,14 @@ Project: `main`
 
 | Task | Status | Dev Docs |
 | --- | --- | --- |
-| T-117 visual-media-framework-v1-planning | in-progress | dev-docs/active/visual-media-framework-v1-planning |
-| T-118 visual-media-domain-foundation-and-v1-semantics-correction | in-progress | dev-docs/active/visual-media-domain-foundation-and-v1-semantics-correction |
+| T-117 visual-media-framework-v1-planning | archived | dev-docs/archive/visual-media-framework-v1-planning |
+| T-118 visual-media-domain-foundation-and-v1-semantics-correction | archived | dev-docs/archive/visual-media-domain-foundation-and-v1-semantics-correction |
 | T-119 scheduled-post-image-planning-and-public-card | archived | dev-docs/archive/scheduled-post-image-planning-and-public-card |
-| T-120 private-chat-image-attachments-and-private-projection | in-progress | dev-docs/active/private-chat-image-attachments-and-private-projection |
-| T-121 public-media-reuse-and-revocation-policy | done | dev-docs/active/public-media-reuse-and-revocation-policy |
-| T-122 media-generation-broker-and-derivative-display | done | dev-docs/active/media-generation-broker-and-derivative-display |
-| T-123 multi-surface-media-expansion-and-shared-adapters | done | dev-docs/active/multi-surface-media-expansion-and-shared-adapters |
+| T-120 private-chat-image-attachments-and-private-projection | archived | dev-docs/archive/private-chat-image-attachments-and-private-projection |
+| T-121 public-media-reuse-and-revocation-policy | archived | dev-docs/archive/public-media-reuse-and-revocation-policy |
+| T-122 media-generation-broker-and-derivative-display | archived | dev-docs/archive/media-generation-broker-and-derivative-display |
+| T-123 multi-surface-media-expansion-and-shared-adapters | archived | dev-docs/archive/multi-surface-media-expansion-and-shared-adapters |
 | T-124 media-observability-lifecycle-and-rollout-control | archived | dev-docs/archive/media-observability-lifecycle-and-rollout-control |
+| T-910 media-framework-audit-and-remediation | archived | dev-docs/archive/media-framework-audit-and-remediation |
+| T-911 highlights-visual-sample-and-k8s-e2e-regression | archived | dev-docs/archive/highlights-visual-sample-and-k8s-e2e-regression |
 <!-- AUTO-GENERATED:END feature-map -->
