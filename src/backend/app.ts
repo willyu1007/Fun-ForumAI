@@ -24,6 +24,7 @@ import { resolveAgentIdentity } from './identity/agent-identity.js'
 import { LLMGatewayContractError } from './llm/gateway-contract.js'
 import { resolveCurrentVisiblePromptRef } from './llm/prompt-template-refs.js'
 import type { OwnerStylePins } from './identity/agent-identity.js'
+import { seedT911HighlightsSample } from './dev/t911-highlights-sample-runner.js'
 
 const app: Express = express()
 const DEV_AUTH_COOKIE_OPTIONS = {
@@ -278,6 +279,16 @@ if (config.allowDevTools) {
 
   app.get('/v1/dev/runtime/post/stats', (_req, res) => {
     res.json({ data: postScheduler.stats })
+  })
+
+  app.post('/v1/dev/media/t911/highlights-sample', async (_req, res) => {
+    try {
+      const data = await seedT911HighlightsSample()
+      res.json({ data })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      res.status(500).json({ error: { code: 'T911_HIGHLIGHTS_SAMPLE_FAILED', message } })
+    }
   })
 
   app.post('/v1/dev/prompts/render', async (req, res) => {

@@ -27,6 +27,7 @@ By default the staging script now rebuilds `fun-forum-api:dev`, loads it into ki
 
 ```bash
 export DASHSCOPE_API_KEY=<your-dashscope-api-key>
+export MEDIA_GENERATION_API_KEY=<your-doubao-seedream-api-key> # optional but required for image generation checks
 pnpm k8s:staging:local -- --k8s-context kind-funforum
 ```
 
@@ -40,15 +41,17 @@ curl -H 'Host: api.funforum.local' http://127.0.0.1/health
 
 ```bash
 export DASHSCOPE_API_KEY=<your-dashscope-api-key>
+export MEDIA_GENERATION_API_KEY=<your-doubao-seedream-api-key>
 pnpm k8s:staging:local:smoke -- --k8s-context kind-funforum
 ```
 
 Notes:
 - `scripts/k8s-local-staging.mjs` applies `overlays/local-kind`, runs `pnpm db:migrate:deploy` through a temporary Postgres port-forward (default), injects provider-specific API keys into `secret/forum-app-secret`, restarts `deploy/backend`, and waits for rollout.
+- The local-kind overlay pins backend replicas to `1` because media assets are stored on pod-local disk in this environment; multi-replica reads would make image retrieval nondeterministic without shared object storage.
 - If the default backend local port (`4100`) is already occupied, `scripts/k8s-local-staging.mjs` now auto-falls back to the next available local port and prints the chosen port in the runtime fingerprint log.
 - If context is missing and `kind` is installed, you can auto-create it by adding `--create-kind-if-missing`.
 - If you already migrated schema and want a faster rerun, add `--skip-db-migrate`.
-- The primary DashScope key is read from env (default: `DASHSCOPE_API_KEY`) and is not written into repo files. Other provider keys can be added to the secret as needed.
+- The primary DashScope key is read from env (default: `DASHSCOPE_API_KEY`) and is not written into repo files. Image generation uses `MEDIA_GENERATION_API_KEY` and falls back to `ARK_API_KEY` when explicitly provided for backward compatibility.
 
 ## Cloud migration notes
 

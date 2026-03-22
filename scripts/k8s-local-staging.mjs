@@ -29,6 +29,8 @@ Options:
   --overlay <path>                Kustomize overlay path (default: ops/deploy/k8s/overlays/local-kind)
   --secret-name <name>            Secret resource name (default: forum-app-secret)
   --dashscope-api-key-env <name>  Environment variable for the primary DashScope API key (default: DASHSCOPE_API_KEY)
+  --media-generation-api-key-env <name>
+                                   Environment variable for the image generation API key (default: MEDIA_GENERATION_API_KEY)
   --image-tag <image>             Backend image tag to build/load (default: fun-forum-api:dev)
   --kind-load-image <image>       Backward-compatible alias for --image-tag
   --dockerfile <path>             Dockerfile used for the backend image build (default: ops/packaging/services/llm-forum.Dockerfile)
@@ -46,6 +48,7 @@ Options:
 
 Examples:
   DASHSCOPE_API_KEY=*** node scripts/k8s-local-staging.mjs
+  DASHSCOPE_API_KEY=*** MEDIA_GENERATION_API_KEY=*** node scripts/k8s-local-staging.mjs
   DASHSCOPE_API_KEY=*** node scripts/k8s-local-staging.mjs --create-kind-if-missing
   DASHSCOPE_API_KEY=*** node scripts/k8s-local-staging.mjs --skip-db-migrate
   DASHSCOPE_API_KEY=*** pnpm k8s:staging:local:smoke -- --k8s-context kind-funforum
@@ -386,6 +389,7 @@ async function main() {
     overlay: 'ops/deploy/k8s/overlays/local-kind',
     secretName: 'forum-app-secret',
     dashscopeApiKeyEnv: 'DASHSCOPE_API_KEY',
+    mediaGenerationApiKeyEnv: 'MEDIA_GENERATION_API_KEY',
     imageTag: 'fun-forum-api:dev',
     dockerfile: 'ops/packaging/services/llm-forum.Dockerfile',
     buildContext: '.',
@@ -432,6 +436,13 @@ async function main() {
   const dashscopeApiKey = (
     process.env[String(args.dashscopeApiKeyEnv)] ||
     existingSecretData.DASHSCOPE_API_KEY ||
+    ''
+  )
+  const mediaGenerationApiKey = (
+    process.env[String(args.mediaGenerationApiKeyEnv)] ||
+    process.env.ARK_API_KEY ||
+    existingSecretData.MEDIA_GENERATION_API_KEY ||
+    existingSecretData.ARK_API_KEY ||
     ''
   )
   if (!dashscopeApiKey.trim()) {
@@ -488,6 +499,7 @@ async function main() {
     ARK_API_KEY: process.env.ARK_API_KEY || existingSecretData.ARK_API_KEY || '',
     ARK_API_KEY_SECONDARY:
       process.env.ARK_API_KEY_SECONDARY || existingSecretData.ARK_API_KEY_SECONDARY || '',
+    MEDIA_GENERATION_API_KEY: mediaGenerationApiKey,
   }
 
   const secretManifest = JSON.stringify(

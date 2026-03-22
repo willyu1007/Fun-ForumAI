@@ -61,6 +61,7 @@
     "db:cleanup:dev-seed-duplicates": "node scripts/cleanup-dev-seed-duplicates.mjs",
     "media:t118:backfill": "tsx scripts/t118-media-domain-backfill.ts",
     "media:t121:backfill": "tsx scripts/t121-media-governance-backfill.ts",
+    "t911:seed:highlights": "tsx src/backend/dev/t911-highlights-sample.ts",
     "package:dry-run": "node ops/packaging/scripts/build.mjs --dry-run",
     "package:build": "node ops/packaging/scripts/build.mjs",
     "deploy:dry-run": "node ops/deploy/scripts/deploy.mjs --dry-run",

@@ -29,6 +29,8 @@ export function MessageInput({
   sessionEnded,
   messageCount = 0,
 }: MessageInputProps) {
+  const messageInputId = 'private-chat-message-input'
+  const fileInputId = 'private-chat-attachment-input'
   const [text, setText] = useState('')
   const [ending, setEnding] = useState(false)
   const [attachment, setAttachment] = useState<ComposerAttachmentState | null>(null)
@@ -137,6 +139,8 @@ export function MessageInput({
     <div className={"border-t bg-background px-4 py-3"}>
       <div className={"mx-auto max-w-2xl"}>
         <input
+          id={fileInputId}
+          name="private_chat_attachment"
           ref={fileInputRef}
           type="file"
           accept="image/*"
@@ -181,6 +185,8 @@ export function MessageInput({
         <div className="flex gap-2">
           <div className="flex-1 space-y-2">
             <Textarea
+              id={messageInputId}
+              name="private_chat_message"
               ref={textareaRef}
               value={text}
               onChange={(e) => setText(e.target.value)}

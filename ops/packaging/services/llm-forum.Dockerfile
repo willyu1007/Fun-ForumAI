@@ -14,6 +14,7 @@ COPY prisma ./prisma
 RUN pnpm db:generate
 
 COPY . .
+RUN pnpm stage:templates:export
 RUN pnpm build
 
 # ── production ──
@@ -36,7 +37,7 @@ COPY .ai/llm-config ./.ai/llm-config
 COPY env/secrets ./env/secrets
 COPY docs/project/policy.yaml ./docs/project/policy.yaml
 COPY docs/stage-templates/source ./docs/stage-templates/source
-COPY docs/stage-templates/dist ./docs/stage-templates/dist
+COPY --from=builder /app/docs/stage-templates/dist ./docs/stage-templates/dist
 
 USER node
 EXPOSE 4000
