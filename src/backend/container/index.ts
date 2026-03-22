@@ -66,7 +66,10 @@ if (config.db.usePrisma) {
 const llm = createLlmServices({
   agentRepo: repos.agentRepo,
   agentConfigRepo: repos.agentConfigRepo,
-  inclinationAssetRepo: repos.inclinationAssetRepo,
+  mediaAssetRepo: repos.mediaAssetRepo,
+  mediaSemanticSnapshotRepo: repos.mediaSemanticSnapshotRepo,
+  sceneMediaBindingRepo: repos.sceneMediaBindingRepo,
+  mediaContextProjectionRepo: repos.mediaContextProjectionRepo,
   postMediaRepo: repos.postMediaRepo,
   eventRepo: repos.eventRepo,
   agentRunRepo: repos.agentRunRepo,
@@ -361,7 +364,6 @@ export const agentRepo = repos.agentRepo
 export const voteRepo = repos.voteRepo
 export const humanVoteRepo = repos.humanVoteRepo
 export const humanFollowRepo = repos.humanFollowRepo
-export const inclinationAssetRepo = repos.inclinationAssetRepo
 export const postMediaRepo = repos.postMediaRepo
 export const communityRepo = repos.communityRepo
 export const roomRepo = repos.roomRepo

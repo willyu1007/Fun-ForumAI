@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { PostScheduler } from '../post-scheduler.js'
 import type { PostSchedulerDeps } from '../post-scheduler.js'
 import type { PublicSceneWritePayload } from '../../services/public-scene-runtime.js'
+import type { ScheduledMediaCandidate } from '../../services/inclination-asset-service.js'
+import { config } from '../../lib/config.js'
 
 function buildScenePayload(): PublicSceneWritePayload {
   return {
@@ -98,6 +100,12 @@ function createDeps(
       kind: 'skip'
       reason: string
     }
+    activeAgents?: Array<{
+      id: string
+      display_name: string
+    }>
+    pendingAgentIds?: string[]
+    pendingAssetsByAgentId?: Record<string, ScheduledMediaCandidate | null>
   } = {},
 ): PostSchedulerDeps {
   const communities = options.communities ?? [
@@ -122,6 +130,13 @@ function createDeps(
     },
     payload: buildScenePayload(),
   }
+  const activeAgents = options.activeAgents ?? [
+    {
+      id: 'agent-1',
+      display_name: 'Agent One',
+    },
+  ]
+  const pendingAssetsByAgentId = options.pendingAssetsByAgentId ?? {}
 
   return {
     llmGateway: {
@@ -156,16 +171,11 @@ function createDeps(
     } as unknown as PostSchedulerDeps['forumReadService'],
     agentService: {
       listActiveAgents: vi.fn(() => ({
-        items: [
-          {
-            id: 'agent-1',
-            display_name: 'Agent One',
-          },
-        ],
+        items: activeAgents,
       })),
-      getAgent: vi.fn(() => ({
-        id: 'agent-1',
-        display_name: 'Agent One',
+      getAgent: vi.fn((agentId: string) => ({
+        id: agentId,
+        display_name: activeAgents.find((item) => item.id === agentId)?.display_name ?? 'Agent',
         model: 'mock-model',
       })),
       getLatestConfig: vi.fn(() => null),
@@ -220,6 +230,10 @@ function createDeps(
     publicSceneSelectorService: {
       selectScheduledPost: vi.fn(async () => defaultSceneSelection),
     } as unknown as NonNullable<PostSchedulerDeps['publicSceneSelectorService']>,
+    inclinationAssetService: {
+      listPendingAgentIds: vi.fn(async () => options.pendingAgentIds ?? []),
+      getPendingForAgent: vi.fn(async (agentId: string) => pendingAssetsByAgentId[agentId] ?? null),
+    } as unknown as NonNullable<PostSchedulerDeps['inclinationAssetService']>,
   }
 }
 
@@ -461,5 +475,56 @@ describe('PostScheduler', () => {
       scheduled_post_scene_selection: 'fallback',
       scheduled_post_scene_reason: 'scene_selector_unavailable',
     }))
+  })
+
+  it('skips stale prioritized agents whose pending asset disappears before selection completes', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalMultimodal = featureFlags.multimodalAgentInclinationV1
+    featureFlags.multimodalAgentInclinationV1 = true
+    const write = vi.fn(async () => ({ success: true, content_id: 'post-media-1' }))
+    const deps = createDeps(write, {
+      activeAgents: [
+        { id: 'agent-1', display_name: 'Agent One' },
+        { id: 'agent-2', display_name: 'Agent Two' },
+      ],
+      pendingAgentIds: ['agent-1', 'agent-2'],
+      pendingAssetsByAgentId: {
+        'agent-1': null,
+        'agent-2': {
+          id: 'asset-2',
+          media_url: '/media/asset-2.png',
+          mime_type: 'image/png',
+        },
+      },
+    })
+    const scheduler = new PostScheduler(deps, {
+      postIntervalMs: 60_000,
+      postMaxPerDay: 2,
+    })
+    try {
+      const result = await scheduler.createPost()
+
+      expect(result).toEqual(expect.objectContaining({
+        triggered: true,
+        agent_id: 'agent-2',
+        post_id: 'post-media-1',
+      }))
+      expect(write).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'create_post',
+          media_asset_id: 'asset-2',
+          media_url: '/media/asset-2.png',
+          media_mime_type: 'image/png',
+        }),
+        'agent-2',
+        'evt-1',
+        expect.anything(),
+        expect.any(Number),
+        0,
+        expect.anything(),
+      )
+    } finally {
+      featureFlags.multimodalAgentInclinationV1 = originalMultimodal
+    }
   })
 })

@@ -103,6 +103,25 @@ describe('LLM registry contract', () => {
     }
   })
 
+  it('keeps vision summary hidden profiles usable with dashscope multimodal credentials', () => {
+    const bundle = loadLlmRegistryBundle()
+    const profilesById = new Map(
+      bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
+    )
+    const visionProfile = profilesById.get('deepseek-director-vision-summary-base')
+    const dashscopePrimary = bundle.credentialPools.pools.find((entry) => entry.credential_id === 'dashscope-primary')
+
+    expect(
+      visionProfile?.candidates.some((candidate) =>
+        candidate.provider_id === 'dashscope-openai' && candidate.model_id === 'qwen-vl-plus'),
+    ).toBe(true)
+    expect(
+      visionProfile?.candidates.some((candidate) =>
+        candidate.provider_id === 'dashscope-openai' && candidate.model_id === 'qwen-vl-max'),
+    ).toBe(true)
+    expect(dashscopePrimary?.scope_tags).toContain('hidden_multimodal')
+  })
+
   it('keeps every visible voice line behind an explicit provider admission pool', () => {
     const bundle = loadLlmRegistryBundle()
     const poolVoiceLines = new Set(

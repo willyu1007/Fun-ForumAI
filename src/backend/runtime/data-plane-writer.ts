@@ -84,7 +84,7 @@ export class DataPlaneWriter {
 
         if (instruction.media_asset_id && this.deps.inclinationAssetService) {
           try {
-            this.deps.inclinationAssetService.attachPostMediaAndConsume({
+            await this.deps.inclinationAssetService.attachPostMediaAndConsume({
               asset_id: instruction.media_asset_id,
               post_id: contentId,
             })

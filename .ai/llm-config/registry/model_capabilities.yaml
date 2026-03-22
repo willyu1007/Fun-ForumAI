@@ -24,3 +24,15 @@ capabilities:
     input_window_tokens: 32768
     max_output_tokens: 8192
     recommended_operating_input_tokens: 20000
+
+  - provider_id: dashscope-openai
+    model_id: qwen-vl-plus
+    input_window_tokens: 32768
+    max_output_tokens: 8192
+    recommended_operating_input_tokens: 20000
+
+  - provider_id: dashscope-openai
+    model_id: qwen-vl-max
+    input_window_tokens: 32768
+    max_output_tokens: 8192
+    recommended_operating_input_tokens: 20000

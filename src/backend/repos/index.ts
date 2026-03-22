@@ -4,11 +4,25 @@ export type {
   Vote,
   HumanVote,
   HumanAgentFollow,
-  AgentInclinationAsset,
-  AgentInclinationVisionSummary,
   PostMedia,
-  InclinationSourceType,
-  InclinationAssetStatus,
+  MediaAsset,
+  MediaSemanticSummary,
+  MediaSemanticSnapshot,
+  SceneMediaBinding,
+  MediaContextProjection,
+  MediaSourceKind,
+  MediaVisibilityPolicy,
+  MediaLifecycleStatus,
+  MediaSnapshotKind,
+  MediaExtractionStatus,
+  MediaQualityGrade,
+  MediaSceneType,
+  MediaBindingRole,
+  MediaRelationToScene,
+  MediaDisplayPolicy,
+  MediaCreatedByType,
+  MediaProjectionSurface,
+  MediaProjectionKind,
   Agent,
   AgentConfig,
   Community,
@@ -72,8 +86,11 @@ export type {
   UpsertVoteInput,
   UpsertHumanVoteInput,
   FollowAgentInput,
-  CreateAgentInclinationAssetInput,
   CreatePostMediaInput,
+  CreateMediaAssetInput,
+  CreateMediaSemanticSnapshotInput,
+  CreateSceneMediaBindingInput,
+  CreateMediaContextProjectionInput,
   ForumSceneMetadata,
   ForumSceneMetadataTargetType,
   CreateForumSceneMetadataInput,
@@ -240,9 +257,21 @@ export {
   InMemoryHumanFollowRepository,
 } from './human-follow-repository.js'
 export {
-  type InclinationAssetRepository,
-  InMemoryInclinationAssetRepository,
-} from './inclination-asset-repository.js'
+  type MediaAssetRepository,
+  InMemoryMediaAssetRepository,
+} from './media-asset-repository.js'
+export {
+  type MediaSemanticSnapshotRepository,
+  InMemoryMediaSemanticSnapshotRepository,
+} from './media-semantic-snapshot-repository.js'
+export {
+  type SceneMediaBindingRepository,
+  InMemorySceneMediaBindingRepository,
+} from './scene-media-binding-repository.js'
+export {
+  type MediaContextProjectionRepository,
+  InMemoryMediaContextProjectionRepository,
+} from './media-context-projection-repository.js'
 export { type PostMediaRepository, InMemoryPostMediaRepository } from './post-media-repository.js'
 export {
   type AgentRepository,
@@ -358,7 +387,10 @@ export { PgVoteRepository } from './pg/pg-vote-repository.js'
 export { PgHumanVoteRepository } from './pg/pg-human-vote-repository.js'
 export { PgAgentPublicProjectionRepository } from './pg/pg-agent-public-projection-repository.js'
 export { PgHumanFollowRepository } from './pg/pg-human-follow-repository.js'
-export { PgInclinationAssetRepository } from './pg/pg-inclination-asset-repository.js'
+export { PgMediaAssetRepository } from './pg/pg-media-asset-repository.js'
+export { PgMediaSemanticSnapshotRepository } from './pg/pg-media-semantic-snapshot-repository.js'
+export { PgSceneMediaBindingRepository } from './pg/pg-scene-media-binding-repository.js'
+export { PgMediaContextProjectionRepository } from './pg/pg-media-context-projection-repository.js'
 export { PgPostMediaRepository } from './pg/pg-post-media-repository.js'
 export { PgAgentRepository, PgAgentConfigRepository } from './pg/pg-agent-repository.js'
 export { PgCommunityRepository } from './pg/pg-community-repository.js'

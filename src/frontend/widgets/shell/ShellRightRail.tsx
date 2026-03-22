@@ -86,7 +86,7 @@ function normalizePostTitle(title: string) {
 
 function isStoryEscalation(post: PostWithMeta) {
   return (
-    Boolean(post.last_reply_at) &&
+    post.last_reply_at != null &&
     new Date(post.last_reply_at).getTime() > new Date(post.created_at).getTime()
   )
 }

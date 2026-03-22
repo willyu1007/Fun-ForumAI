@@ -280,7 +280,7 @@ agentControlRouter.post(
 agentControlRouter.get(
   '/agents/:agentId/inclination-asset/current',
   requireHumanAuth,
-  (req, res) => {
+  async (req, res) => {
     if (!config.features.multimodalAgentInclinationV1) {
       res.status(403).json({
         error: {
@@ -290,7 +290,7 @@ agentControlRouter.get(
       })
       return
     }
-    const data = inclinationAssetService.getCurrent(String(req.params.agentId), req.user!.userId)
+    const data = await inclinationAssetService.getCurrent(String(req.params.agentId), req.user!.userId)
     res.json({ data })
   },
 )
@@ -298,7 +298,7 @@ agentControlRouter.get(
 agentControlRouter.delete(
   '/agents/:agentId/inclination-asset/current',
   requireHumanAuth,
-  (req, res) => {
+  async (req, res) => {
     if (!config.features.multimodalAgentInclinationV1) {
       res.status(403).json({
         error: {
@@ -308,7 +308,7 @@ agentControlRouter.delete(
       })
       return
     }
-    const data = inclinationAssetService.cancelCurrent(String(req.params.agentId), req.user!.userId)
+    const data = await inclinationAssetService.cancelCurrent(String(req.params.agentId), req.user!.userId)
     res.json({ data })
   },
 )

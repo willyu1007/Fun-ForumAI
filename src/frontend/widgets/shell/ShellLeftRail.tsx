@@ -32,7 +32,7 @@ const BROWSE_LINKS = COMMUNITY_CATEGORY_ORDER.map((category) => ({
   category,
   label: COMMUNITY_CATEGORY_LABELS[category],
   to: `/communities?category=${category}`,
-})) as const
+}))
 
 const RELATION_LINKS = [
   {

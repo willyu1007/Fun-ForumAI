@@ -572,7 +572,10 @@ privateChannelRouter.get('/me/agents', requireHumanAuth, async (req, res) => {
     const agents = collapseManagedSeedAgentDuplicates(rawAgents)
     await Promise.all(agents.map((agent) => container.agentService.getLatestConfigPersisted(agent.id)))
     const items = await attachPublicAgentBadges(
-      agents.map((agent) => buildAgentReadPayload(agent, container.agentService.getLatestConfig(agent.id))),
+      agents.map((agent) => ({
+        id: agent.id,
+        ...buildAgentReadPayload(agent, container.agentService.getLatestConfig(agent.id)),
+      })),
     )
     res.json({
       data: items,

@@ -114,7 +114,8 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
         contentType: 'image/png',
       })
     expect(uploadRes.status).toBe(201)
-    expect(uploadRes.body.data.status).toBe('PENDING')
+    expect(uploadRes.body.data.lifecycle_status).toBe('active')
+    expect(uploadRes.body.data.visibility_policy).toBe('private_only')
     expect(typeof uploadRes.body.data.media_url).toBe('string')
 
     const mediaRes = await request(app).get(uploadRes.body.data.media_url)
@@ -125,7 +126,7 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
       .get(`/v1/agents/${agentId}/inclination-asset/current`)
       .set('Authorization', `Bearer ${userToken}`)
     expect(currentRes.status).toBe(200)
-    expect(currentRes.body.data.pending).toBeTruthy()
+    expect(currentRes.body.data.pool.latest_asset).toBeTruthy()
 
     const deleteRes = await request(app)
       .delete(`/v1/agents/${agentId}/inclination-asset/current`)
@@ -195,7 +196,8 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
     expect(promptOverridesRes.status).toBe(403)
   })
 
-  it('consumes pending inclination asset on next scheduled post and writes post media', async () => {
+  it('bridges the latest eligible owner-pool asset onto the next scheduled post and writes post media', async () => {
+    featureFlags.membershipsV1 = true
     const originalChat = llmClient.chat.bind(llmClient)
     const originalIsConfigured = Object.getOwnPropertyDescriptor(llmClient, 'isConfigured')
     const originalGatewayIsConfigured = Object.getOwnPropertyDescriptor(
@@ -246,7 +248,7 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
       content: JSON.stringify({
         community_id_or_slug: 'general',
         title: '多模态调度测试帖',
-        body: '这是一条用于验证 pending 资源消费链路的测试正文。',
+        body: '这是一条用于验证 owner pool 过渡挂图链路的测试正文。',
       }),
       messages: [],
       usage: { prompt_tokens: 12, completion_tokens: 24, total_tokens: 36 },
@@ -258,7 +260,17 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
     }
 
     const mockVisionResponse = {
-      content: '表情包展示了一种典型的"精疲力竭却又享受生活"的情绪。',
+      content: JSON.stringify({
+        theme: 'meme emotion',
+        scene: 'reaction image',
+        mood: 'tired but amused',
+        discussion_points: ['讨论情绪张力', '讨论幽默感来源', '讨论社区共鸣点'],
+        salient_entities: ['person'],
+        ocr_snippets: [],
+        safety_labels: [],
+        public_safe_summary: 'A reaction-style image that can support light public discussion.',
+        internal_full_summary: 'A reaction-style image with tired but amused emotion.',
+      }),
       messages: [],
       usage: { prompt_tokens: 50, completion_tokens: 30, total_tokens: 80 },
       finishReason: 'stop',
@@ -297,6 +309,24 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
         .send({ display_name: 'Multimodal Scheduler Agent' })
       const agentId = createAgentRes.body.data.id
 
+      const communitiesRes = await request(app).get('/v1/communities?limit=20')
+      expect(communitiesRes.status).toBe(200)
+      const generalCommunity = communitiesRes.body.data.find((item: ScheduledPostEligibleCommunity) => item.slug === 'general')
+      expect(generalCommunity).toBeTruthy()
+      if (!generalCommunity) {
+        throw new Error('general community unavailable in e2e seed')
+      }
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          add: [generalCommunity.id],
+          remove: [],
+          role: 'resident',
+        })
+      expect(membershipRes.status).toBe(200)
+
       const uploadRes = await request(app)
         .post(`/v1/agents/${agentId}/inclination-asset/upload`)
         .set('Authorization', `Bearer ${userToken}`)
@@ -325,9 +355,8 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
         .get(`/v1/agents/${agentId}/inclination-asset/current`)
         .set('Authorization', `Bearer ${userToken}`)
       expect(currentRes.status).toBe(200)
-      expect(currentRes.body.data.pending).toBeNull()
-      expect(currentRes.body.data.last_consumed.status).toBe('CONSUMED')
-      expect(currentRes.body.data.last_consumed.asset_id).toBe(assetId)
+      expect(currentRes.body.data.pool.latest_asset.asset_id).toBe(assetId)
+      expect(currentRes.body.data.latest_public_attachment.asset_id).toBe(assetId)
     } finally {
       llmClient.chat = originalChat
       llmGateway.generateVisibleText = originalGatewayGenerateVisibleText

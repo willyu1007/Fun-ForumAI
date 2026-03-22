@@ -10,22 +10,35 @@ import { createDefaultBudgetChecker } from '../llm/default-budget-checker.js'
 import { BudgetGuard } from '../llm/budget-guard.js'
 import { InclinationAssetService } from '../services/inclination-asset-service.js'
 import {
+  MediaAssetService,
+  MediaBindingService,
+  MediaProjectionService,
+  MediaSemanticService,
+  MediaWriteBridge,
+} from '../media/index.js'
+import {
   LocalStorageAdapter,
   S3StorageAdapter,
   type StorageAdapter,
 } from '../services/storage-adapter.js'
-import { VisionSummaryService } from '../services/vision-summary-service.js'
 import { config } from '../lib/config.js'
+import { resolvePreferredMultimodalModelId } from '../llm/model-preference.js'
 import type { AgentRepository } from '../repos/agent-repository.js'
 import type { AgentConfigRepository } from '../repos/agent-repository.js'
-import type { InclinationAssetRepository } from '../repos/inclination-asset-repository.js'
+import type { MediaAssetRepository } from '../repos/media-asset-repository.js'
+import type { MediaSemanticSnapshotRepository } from '../repos/media-semantic-snapshot-repository.js'
+import type { SceneMediaBindingRepository } from '../repos/scene-media-binding-repository.js'
+import type { MediaContextProjectionRepository } from '../repos/media-context-projection-repository.js'
 import type { PostMediaRepository } from '../repos/post-media-repository.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 
 export function createLlmServices(deps: {
   agentRepo: AgentRepository
   agentConfigRepo: AgentConfigRepository
-  inclinationAssetRepo: InclinationAssetRepository
+  mediaAssetRepo: MediaAssetRepository
+  mediaSemanticSnapshotRepo: MediaSemanticSnapshotRepository
+  sceneMediaBindingRepo: SceneMediaBindingRepository
+  mediaContextProjectionRepo: MediaContextProjectionRepository
   postMediaRepo: PostMediaRepository
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
@@ -82,19 +95,44 @@ export function createLlmServices(deps: {
           baseDir: config.inclinationAssets.localDir,
         })
 
-  const visionSummaryService = new VisionSummaryService({
+  const mediaSemanticService = new MediaSemanticService({
     llmGateway,
     agentRepo: deps.agentRepo,
     agentConfigRepo: deps.agentConfigRepo,
     eventRepo: deps.eventRepo,
     agentRunRepo: deps.agentRunRepo,
+    preferredModelId: resolvePreferredMultimodalModelId(config.llm.model),
+  })
+  const mediaBindingService = new MediaBindingService({
+    sceneMediaBindingRepo: deps.sceneMediaBindingRepo,
+  })
+  const mediaProjectionService = new MediaProjectionService({
+    mediaContextProjectionRepo: deps.mediaContextProjectionRepo,
+  })
+  const mediaWriteBridge = new MediaWriteBridge({
+    mediaAssetRepo: deps.mediaAssetRepo,
+    mediaSemanticSnapshotRepo: deps.mediaSemanticSnapshotRepo,
+    sceneMediaBindingRepo: deps.sceneMediaBindingRepo,
+    mediaContextProjectionRepo: deps.mediaContextProjectionRepo,
+    postMediaRepo: deps.postMediaRepo,
+    storage: inclinationAssetStorage,
+    mediaBindingService,
+    mediaProjectionService,
+  })
+  const mediaAssetService = new MediaAssetService({
+    mediaAssetRepo: deps.mediaAssetRepo,
+    mediaSemanticSnapshotRepo: deps.mediaSemanticSnapshotRepo,
+    sceneMediaBindingRepo: deps.sceneMediaBindingRepo,
+    mediaContextProjectionRepo: deps.mediaContextProjectionRepo,
+    storage: inclinationAssetStorage,
+    mediaSemanticService,
+    mediaBindingService,
+    mediaProjectionService,
+    mediaWriteBridge,
   })
   const inclinationAssetService = new InclinationAssetService({
     agentRepo: deps.agentRepo,
-    inclinationRepo: deps.inclinationAssetRepo,
-    postMediaRepo: deps.postMediaRepo,
-    storage: inclinationAssetStorage,
-    visionSummaryService,
+    mediaAssetService,
   })
 
   return {
@@ -107,6 +145,8 @@ export function createLlmServices(deps: {
     usageLedger,
     usageLedgerRepo: ledgerRepo,
     budgetGuard,
+    mediaSemanticService,
+    mediaAssetService,
     inclinationAssetService,
   }
 }

@@ -5,8 +5,10 @@ import type { AgentService } from '../services/agent-service.js'
 import type { ResponseParser } from './response-parser.js'
 import type { DataPlaneWriter } from './data-plane-writer.js'
 import type { AgentPersona } from './types.js'
-import type { AgentInclinationAsset } from '../repos/types.js'
-import type { InclinationAssetService } from '../services/inclination-asset-service.js'
+import type {
+  InclinationAssetService,
+  ScheduledMediaCandidate,
+} from '../services/inclination-asset-service.js'
 import type { PromptOrchestrator } from './prompt-orchestrator.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { InferenceProfileService } from '../services/inference-profile-service.js'
@@ -74,7 +76,7 @@ interface CommunityCandidate {
 interface SelectedAgent {
   id: string
   display_name: string
-  pending_asset: AgentInclinationAsset | null
+  pending_asset: ScheduledMediaCandidate | null
 }
 
 /**
@@ -116,7 +118,7 @@ export class PostScheduler {
     const start = Date.now()
 
     try {
-      const selected = this.pickAgent()
+      const selected = await this.pickAgent()
       if (!selected) return { triggered: false, error: 'No active agents' }
       const routing = await this.resolveVisibleRouting(selected.id, 'base')
 
@@ -471,23 +473,24 @@ export class PostScheduler {
     }
   }
 
-  private pickAgent(): SelectedAgent | null {
+  private async pickAgent(): Promise<SelectedAgent | null> {
     const activeAgents = this.listEligibleAgents()
     if (activeAgents.length === 0) return null
 
     if (config.features.multimodalAgentInclinationV1 && this.deps.inclinationAssetService) {
-      const pendingAgentIds = this.deps.inclinationAssetService.listPendingAgentIds(100)
+      const pendingAgentIds = await this.deps.inclinationAssetService.listPendingAgentIds(100)
       const activeById = new Map(activeAgents.map((agent) => [agent.id, agent]))
       const prioritized = pendingAgentIds
         .map((id) => activeById.get(id))
         .filter((item): item is NonNullable<typeof item> => item != null)
 
-      if (prioritized.length > 0) {
-        const selected = prioritized[Math.floor(Math.random() * prioritized.length)]!
+      for (const selected of prioritized) {
+        const pendingAsset = await this.deps.inclinationAssetService.getPendingForAgent(selected.id)
+        if (!pendingAsset) continue
         return {
           id: selected.id,
           display_name: selected.display_name,
-          pending_asset: this.deps.inclinationAssetService.getPendingForAgent(selected.id),
+          pending_asset: pendingAsset,
         }
       }
     }

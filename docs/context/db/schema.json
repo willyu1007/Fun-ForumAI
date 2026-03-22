@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-16T06:58:21.559Z",
+  "updatedAt": "2026-03-22T03:11:50.774Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -2075,6 +2075,15 @@
           "references": []
         },
         {
+          "field": "stewardedMediaAssets",
+          "to": "MediaAsset",
+          "optional": false,
+          "list": true,
+          "relationName": "MediaAssetSteward",
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "traits",
           "to": "AgentTrait",
           "optional": false,
@@ -3311,15 +3320,6 @@
           "references": [
             "id"
           ]
-        },
-        {
-          "field": "postMedia",
-          "to": "PostMedia",
-          "optional": false,
-          "list": true,
-          "relationName": null,
-          "fields": [],
-          "references": []
         }
       ],
       "indexes": [
@@ -11357,6 +11357,15 @@
           "references": []
         },
         {
+          "field": "ownedMediaAssets",
+          "to": "MediaAsset",
+          "optional": false,
+          "list": true,
+          "relationName": "MediaAssetOwner",
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "privacyUpdates",
           "to": "AgentPrivacySettings",
           "optional": false,
@@ -12810,6 +12819,654 @@
           "type": "index",
           "fields": [
             "traceId"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "MediaAsset",
+      "dbName": "media_assets",
+      "schema": null,
+      "columns": [
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "fileSizeBytes",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "file_size_bytes",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "height",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "lifecycleStatus",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "lifecycle_status",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "mimeType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "mime_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "originUrl",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "origin_url",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "ownerUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "owner_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "phash",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sha256",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceKind",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceSceneId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_scene_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceSceneType",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_scene_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "stewardAgentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "steward_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "storageKey",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "storage_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "visibilityPolicy",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "visibility_policy",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "width",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "owner",
+          "to": "HumanUser",
+          "optional": true,
+          "list": false,
+          "relationName": "MediaAssetOwner",
+          "fields": [
+            "ownerUserId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "postMedia",
+          "to": "PostMedia",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "sceneBindings",
+          "to": "SceneMediaBinding",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "semanticSnapshots",
+          "to": "MediaSemanticSnapshot",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "stewardAgent",
+          "to": "Agent",
+          "optional": true,
+          "list": false,
+          "relationName": "MediaAssetSteward",
+          "fields": [
+            "stewardAgentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "ownerUserId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "sha256"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "sourceKind",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "stewardAgentId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "visibilityPolicy",
+            "lifecycleStatus",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "MediaContextProjection",
+      "dbName": "media_context_projections",
+      "schema": null,
+      "columns": [
+        {
+          "name": "bindingId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "binding_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "expiresAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "expires_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "mentionPolicy",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "mention_policy",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "payloadJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "payload_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "preferredDisplayVariant",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "preferred_display_variant",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "projectionKind",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "projection_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "projectionSurface",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "projection_surface",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "promptWeight",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "prompt_weight",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "schemaVersion",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "schema_version",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "tokenEstimate",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "token_estimate",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "binding",
+          "to": "SceneMediaBinding",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "bindingId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "bindingId",
+            "projectionSurface",
+            "projectionKind"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "MediaSemanticSnapshot",
+      "dbName": "media_semantic_snapshots",
+      "schema": null,
+      "columns": [
+        {
+          "name": "assetId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "asset_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "extractionStatus",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "extraction_status",
+          "dbType": null,
+          "default": "\"completed\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "isCurrent",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "is_current",
+          "dbType": null,
+          "default": "true",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "modelName",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "model_name",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "modelProvider",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "model_provider",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "modelVersion",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "model_version",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "qualityGrade",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "quality_grade",
+          "dbType": null,
+          "default": "\"rich\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "schemaVersion",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "schema_version",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "snapshotKind",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "snapshot_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "summaryJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "summary_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "asset",
+          "to": "MediaAsset",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "assetId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "sceneBindings",
+          "to": "SceneMediaBinding",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "assetId",
+            "isCurrent",
+            "createdAt"
           ],
           "name": null,
           "map": null
@@ -14435,7 +15092,7 @@
       "relations": [
         {
           "field": "asset",
-          "to": "AgentInclinationAsset",
+          "to": "MediaAsset",
           "optional": false,
           "list": false,
           "relationName": null,
@@ -19708,6 +20365,235 @@
           "fields": [
             "roomId",
             "status"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "SceneMediaBinding",
+      "dbName": "scene_media_bindings",
+      "schema": null,
+      "columns": [
+        {
+          "name": "assetId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "asset_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "bindingNoteText",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "binding_note_text",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "bindingRole",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "binding_role",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdById",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_by_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdByType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_by_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "displayPolicy",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "display_policy",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "relationToScene",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "relation_to_scene",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scene_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scene_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "semanticSnapshotId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "semantic_snapshot_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceSceneId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_scene_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceSceneType",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_scene_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "asset",
+          "to": "MediaAsset",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "assetId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "contextProjections",
+          "to": "MediaContextProjection",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "semanticSnapshot",
+          "to": "MediaSemanticSnapshot",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "semanticSnapshotId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "assetId",
+            "sceneType",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "sceneType",
+            "sceneId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "semanticSnapshotId",
+            "createdAt"
           ],
           "name": null,
           "map": null

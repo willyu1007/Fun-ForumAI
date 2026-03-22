@@ -749,30 +749,40 @@ export interface HumanVoteResult {
   summary: HumanVoteSummary
 }
 
-export type InclinationAssetSourceType = 'URL' | 'UPLOAD'
-export type InclinationAssetStatus = 'PENDING' | 'CONSUMED' | 'CANCELLED' | 'REPLACED' | 'FAILED'
-
 export interface InclinationVisionSummary {
   theme: string
   scene: string
   mood: string
   discussion_points: string[]
+  salient_entities: string[]
+  ocr_snippets: string[]
+  safety_labels: string[]
+  public_safe_summary: string
+  internal_full_summary: string
 }
 
 export interface InclinationAsset {
   asset_id: string
-  status: InclinationAssetStatus
+  visibility_policy: 'private_only' | 'public_original_allowed' | 'public_derivative_only' | 'blocked'
+  lifecycle_status: 'active' | 'archived' | 'blocked'
   media_url: string
   mime_type: string
   file_size_bytes: number
+  width: number | null
+  height: number | null
   owner_note: string | null
-  vision_summary: InclinationVisionSummary
+  semantic_summary: InclinationVisionSummary
   created_at: string
+  latest_post_id: string | null
 }
 
 export interface InclinationAssetCurrentState {
-  pending: InclinationAsset | null
-  last_consumed: InclinationAsset | null
+  pool: {
+    anchor_scene_id: string
+    active_count: number
+    latest_asset: InclinationAsset | null
+  }
+  latest_public_attachment: InclinationAsset | null
 }
 
 export interface AgentConfig {

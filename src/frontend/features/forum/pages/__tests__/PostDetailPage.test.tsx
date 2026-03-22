@@ -425,7 +425,7 @@ describe('PostDetailPage', () => {
     })
 
     await waitFor(() => {
-      expect(focusedCard?.className).toContain('border-emerald-500')
+      expect(focusedCard?.className).toContain('border-success/30')
     })
   })
 

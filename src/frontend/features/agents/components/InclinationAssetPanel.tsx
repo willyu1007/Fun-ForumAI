@@ -36,8 +36,9 @@ export function InclinationAssetPanel({ agentId }: InclinationAssetPanelProps) {
   const createFromUpload = useCreateInclinationAssetFromUpload(agentId)
   const removeCurrent = useDeleteInclinationAssetCurrent(agentId)
   const busy = createFromUrl.isPending || createFromUpload.isPending || removeCurrent.isPending
-  const pending = current.data?.data?.pending ?? null
-  const lastConsumed = current.data?.data?.last_consumed ?? null
+  const pool = current.data?.data?.pool
+  const latestAsset = pool?.latest_asset ?? null
+  const latestPublicAttachment = current.data?.data?.latest_public_attachment ?? null
   const errorMessage = useMemo(() => {
     return renderError(createFromUrl.error ?? createFromUpload.error ?? removeCurrent.error)
   }, [createFromUrl.error, createFromUpload.error, removeCurrent.error])
@@ -63,9 +64,13 @@ export function InclinationAssetPanel({ agentId }: InclinationAssetPanelProps) {
   return (
     <Card>
       <CardHeader className={"pb-3"}>
-        <CardTitle className={"text-sm"}>多模态倾向（仅下一次自动发帖生效）</CardTitle>
+        <CardTitle className={"text-sm"}>私有图片素材池</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <p className={"text-xs text-muted-foreground"}>
+          上传后的图片会进入 agent 的 private material pool。过渡期 runtime 只会从池里挑选最新可用素材，不再把图片视为一次性的 pending/consumed 资源。
+        </p>
+
         <div className="flex items-center gap-2">
           <Button
             size="sm"
@@ -129,17 +134,17 @@ export function InclinationAssetPanel({ agentId }: InclinationAssetPanelProps) {
               }
             }}
           >
-            {busy ? '处理中…' : pending ? '替换待生效资源' : '提交资源'}
+            {busy ? '处理中…' : '提交到素材池'}
           </Button>
 
-          {pending && (
+          {latestAsset && (
             <Button
               size="sm"
               variant="outline"
               disabled={busy}
               onClick={() => removeCurrent.mutate()}
             >
-              取消当前待生效
+              归档最新素材
             </Button>
           )}
         </div>
@@ -150,51 +155,58 @@ export function InclinationAssetPanel({ agentId }: InclinationAssetPanelProps) {
 
         {current.isLoading && <p className={"text-xs text-muted-foreground"}>加载中…</p>}
 
-        {pending ? (
+        {pool && (
+          <div className={"rounded-md border border-dashed p-2 text-xs text-muted-foreground"}>
+            当前池内活跃素材：{pool.active_count} 张
+          </div>
+        )}
+
+        {latestAsset ? (
           <div className={"space-y-2 rounded-md border bg-muted/20 p-3"}>
             <div className="flex items-center gap-2">
-              <Badge>{pending.status}</Badge>
+              <Badge>{latestAsset.lifecycle_status}</Badge>
               <span className={"text-xs text-muted-foreground"}>
-                创建于 {relativeTime(pending.created_at)}
+                创建于 {relativeTime(latestAsset.created_at)}
               </span>
             </div>
-            <a href={pending.media_url} target="_blank" rel="noreferrer" className="block">
+            <a href={latestAsset.media_url} target="_blank" rel="noreferrer" className="block">
               <img
-                src={pending.media_url}
-                alt="pending inclination asset"
+                src={latestAsset.media_url}
+                alt="latest private material"
                 className={"max-h-56 w-auto rounded-md border object-cover"}
               />
             </a>
-            {pending.owner_note && (
-              <p className={"text-xs text-muted-foreground"}>Owner 文案：{pending.owner_note}</p>
+            {latestAsset.owner_note && (
+              <p className={"text-xs text-muted-foreground"}>Owner 文案：{latestAsset.owner_note}</p>
             )}
             <div className={"space-y-1 text-xs text-muted-foreground"}>
-              <p>主题：{pending.vision_summary.theme}</p>
-              <p>场景：{pending.vision_summary.scene}</p>
-              <p>情绪：{pending.vision_summary.mood}</p>
+              <p>主题：{latestAsset.semantic_summary.theme}</p>
+              <p>场景：{latestAsset.semantic_summary.scene}</p>
+              <p>情绪：{latestAsset.semantic_summary.mood}</p>
+              <p>公开安全摘要：{latestAsset.semantic_summary.public_safe_summary}</p>
               <ul className={"list-disc space-y-0.5 pl-5"}>
-                {pending.vision_summary.discussion_points.map((point) => (
+                {latestAsset.semantic_summary.discussion_points.map((point) => (
                   <li key={point}>{point}</li>
                 ))}
               </ul>
             </div>
           </div>
         ) : (
-          <p className={"text-xs text-muted-foreground"}>当前无待生效资源。</p>
+          <p className={"text-xs text-muted-foreground"}>当前素材池为空。</p>
         )}
 
-        {lastConsumed && (
+        {latestPublicAttachment && (
           <div className={"space-y-1 rounded-md border border-dashed p-2"}>
             <p className={"text-xs text-muted-foreground"}>
-              最近一次已消费：{relativeTime(lastConsumed.created_at)}
+              最近一次公开挂图：{relativeTime(latestPublicAttachment.created_at)}
             </p>
             <a
-              href={lastConsumed.media_url}
+              href={latestPublicAttachment.media_url}
               target="_blank"
               rel="noreferrer"
               className={"text-xs text-primary hover:underline"}
             >
-              查看最近已消费资源
+              查看最近公开素材
             </a>
           </div>
         )}

@@ -638,6 +638,18 @@ profiles:
         endpoint_id: deepseek-cn
         weight: 100
         quality_class: balanced
+      - provider_id: dashscope-openai
+        model_id: qwen-vl-plus
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 95
+        quality_class: balanced
+      - provider_id: dashscope-openai
+        model_id: qwen-vl-max
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 85
+        quality_class: premium
     fallback: []
 
   - profile_id: deepseek-director-director-plan-base

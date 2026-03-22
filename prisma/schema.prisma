@@ -34,6 +34,7 @@ model HumanUser {
   humanVotes             HumanVote[]
   follows                HumanAgentFollow[]
   inclinationAssets      AgentInclinationAsset[]   @relation("InclinationAssetOwner")
+  ownedMediaAssets       MediaAsset[]              @relation("MediaAssetOwner")
   audienceMessages       AudienceMessage[]         @relation("AudienceMessageAuthor")
   aftershowCallouts      AftershowCallout[]        @relation("AftershowCalloutUser")
   incubationGrants       IncubationGrant[]         @relation("IncubationReviewerUser")
@@ -122,6 +123,7 @@ model Agent {
   communityMemberships      AgentCommunityMembership[]
   roleAssignments           RoleAssignment[]
   signalLogs                AgentSignalLog[]
+  stewardedMediaAssets      MediaAsset[]                 @relation("MediaAssetSteward")
   stageTierSnapshot         AgentStageTierSnapshot?
   incubationJobs            IncubationJob[]              @relation("IncubationProposerAgent")
   incubationGrants          IncubationGrant[]            @relation("IncubationReviewerAgent")
@@ -410,12 +412,112 @@ model AgentInclinationAsset {
   agent        Agent       @relation(fields: [agentId], references: [id])
   owner        HumanUser   @relation("InclinationAssetOwner", fields: [ownerUserId], references: [id])
   consumedPost Post?       @relation("InclinationConsumedPost", fields: [consumedPostId], references: [id])
-  postMedia    PostMedia[]
 
   @@index([agentId, status, createdAt])
   @@index([ownerUserId, createdAt])
   @@index([consumedPostId])
   @@map("agent_inclination_assets")
+}
+
+model MediaAsset {
+  id               String    @id @default(cuid())
+  stewardAgentId   String?   @map("steward_agent_id")
+  ownerUserId      String?   @map("owner_user_id")
+  sourceKind       String    @map("source_kind")
+  sourceSceneType  String?   @map("source_scene_type")
+  sourceSceneId    String?   @map("source_scene_id")
+  visibilityPolicy String    @map("visibility_policy")
+  lifecycleStatus  String    @map("lifecycle_status")
+  storageKey       String?   @map("storage_key")
+  originUrl        String?   @map("origin_url")
+  mimeType         String    @map("mime_type")
+  fileSizeBytes    Int       @map("file_size_bytes")
+  width            Int?
+  height           Int?
+  sha256           String
+  phash            String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  stewardAgent      Agent?                  @relation("MediaAssetSteward", fields: [stewardAgentId], references: [id])
+  owner             HumanUser?              @relation("MediaAssetOwner", fields: [ownerUserId], references: [id])
+  semanticSnapshots MediaSemanticSnapshot[]
+  sceneBindings     SceneMediaBinding[]
+  postMedia         PostMedia[]
+
+  @@index([stewardAgentId, createdAt])
+  @@index([ownerUserId, createdAt])
+  @@index([sourceKind, createdAt])
+  @@index([visibilityPolicy, lifecycleStatus, createdAt])
+  @@index([sha256])
+  @@map("media_assets")
+}
+
+model MediaSemanticSnapshot {
+  id               String   @id @default(cuid())
+  assetId          String   @map("asset_id")
+  snapshotKind     String   @map("snapshot_kind")
+  schemaVersion    String   @map("schema_version")
+  modelProvider    String   @map("model_provider")
+  modelName        String   @map("model_name")
+  modelVersion     String   @map("model_version")
+  summaryJson      Json     @map("summary_json")
+  extractionStatus String   @default("completed") @map("extraction_status")
+  qualityGrade     String   @default("rich") @map("quality_grade")
+  isCurrent        Boolean  @default(true) @map("is_current")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  asset         MediaAsset         @relation(fields: [assetId], references: [id])
+  sceneBindings SceneMediaBinding[]
+
+  @@index([assetId, isCurrent, createdAt])
+  @@map("media_semantic_snapshots")
+}
+
+model SceneMediaBinding {
+  id                 String   @id @default(cuid())
+  sceneType          String   @map("scene_type")
+  sceneId            String   @map("scene_id")
+  assetId            String   @map("asset_id")
+  semanticSnapshotId String   @map("semantic_snapshot_id")
+  sourceSceneType    String?  @map("source_scene_type")
+  sourceSceneId      String?  @map("source_scene_id")
+  bindingRole        String   @map("binding_role")
+  relationToScene    String   @map("relation_to_scene")
+  bindingNoteText    String?  @map("binding_note_text")
+  displayPolicy      String   @map("display_policy")
+  createdByType      String   @map("created_by_type")
+  createdById        String   @map("created_by_id")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  asset              MediaAsset             @relation(fields: [assetId], references: [id])
+  semanticSnapshot   MediaSemanticSnapshot  @relation(fields: [semanticSnapshotId], references: [id])
+  contextProjections MediaContextProjection[]
+
+  @@index([sceneType, sceneId, createdAt])
+  @@index([assetId, sceneType, createdAt])
+  @@index([semanticSnapshotId, createdAt])
+  @@map("scene_media_bindings")
+}
+
+model MediaContextProjection {
+  id                      String   @id @default(cuid())
+  bindingId               String   @map("binding_id")
+  projectionSurface       String   @map("projection_surface")
+  projectionKind          String   @map("projection_kind")
+  schemaVersion           String   @map("schema_version")
+  payloadJson             Json     @map("payload_json")
+  tokenEstimate           Int?     @map("token_estimate")
+  promptWeight            String?  @map("prompt_weight")
+  mentionPolicy           String?  @map("mention_policy")
+  preferredDisplayVariant String?  @map("preferred_display_variant")
+  expiresAt               DateTime? @map("expires_at")
+  createdAt               DateTime @default(now()) @map("created_at")
+
+  binding SceneMediaBinding @relation(fields: [bindingId], references: [id])
+
+  @@index([bindingId, projectionSurface, projectionKind])
+  @@map("media_context_projections")
 }
 
 model PostMedia {
@@ -427,7 +529,7 @@ model PostMedia {
   createdAt DateTime @default(now()) @map("created_at")
 
   post  Post                  @relation(fields: [postId], references: [id])
-  asset AgentInclinationAsset @relation(fields: [assetId], references: [id])
+  asset MediaAsset            @relation(fields: [assetId], references: [id])
 
   @@index([postId, createdAt])
   @@index([assetId])

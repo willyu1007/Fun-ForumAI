@@ -3,7 +3,10 @@ import { InMemoryCommentRepository } from '../repos/comment-repository.js'
 import { InMemoryVoteRepository } from '../repos/vote-repository.js'
 import { InMemoryHumanVoteRepository } from '../repos/human-vote-repository.js'
 import { InMemoryHumanFollowRepository } from '../repos/human-follow-repository.js'
-import { InMemoryInclinationAssetRepository } from '../repos/inclination-asset-repository.js'
+import { InMemoryMediaAssetRepository } from '../repos/media-asset-repository.js'
+import { InMemoryMediaSemanticSnapshotRepository } from '../repos/media-semantic-snapshot-repository.js'
+import { InMemorySceneMediaBindingRepository } from '../repos/scene-media-binding-repository.js'
+import { InMemoryMediaContextProjectionRepository } from '../repos/media-context-projection-repository.js'
 import { InMemoryPostMediaRepository } from '../repos/post-media-repository.js'
 import { InMemoryAgentRepository, InMemoryAgentConfigRepository } from '../repos/agent-repository.js'
 import { InMemoryAgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
@@ -42,7 +45,10 @@ import type { CommentRepository } from '../repos/comment-repository.js'
 import type { VoteRepository } from '../repos/vote-repository.js'
 import type { HumanVoteRepository } from '../repos/human-vote-repository.js'
 import type { HumanFollowRepository } from '../repos/human-follow-repository.js'
-import type { InclinationAssetRepository } from '../repos/inclination-asset-repository.js'
+import type { MediaAssetRepository } from '../repos/media-asset-repository.js'
+import type { MediaSemanticSnapshotRepository } from '../repos/media-semantic-snapshot-repository.js'
+import type { SceneMediaBindingRepository } from '../repos/scene-media-binding-repository.js'
+import type { MediaContextProjectionRepository } from '../repos/media-context-projection-repository.js'
 import type { PostMediaRepository } from '../repos/post-media-repository.js'
 import type { AgentRepository, AgentConfigRepository } from '../repos/agent-repository.js'
 import type { AgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
@@ -83,7 +89,10 @@ export interface Repositories {
   voteRepo: VoteRepository
   humanVoteRepo: HumanVoteRepository
   humanFollowRepo: HumanFollowRepository
-  inclinationAssetRepo: InclinationAssetRepository
+  mediaAssetRepo: MediaAssetRepository
+  mediaSemanticSnapshotRepo: MediaSemanticSnapshotRepository
+  sceneMediaBindingRepo: SceneMediaBindingRepository
+  mediaContextProjectionRepo: MediaContextProjectionRepository
   postMediaRepo: PostMediaRepository
   agentRepo: AgentRepository
   agentConfigRepo: AgentConfigRepository
@@ -138,7 +147,10 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgVoteRepository } = await import('../repos/pg/pg-vote-repository.js')
     const { PgHumanVoteRepository } = await import('../repos/pg/pg-human-vote-repository.js')
     const { PgHumanFollowRepository } = await import('../repos/pg/pg-human-follow-repository.js')
-    const { PgInclinationAssetRepository } = await import('../repos/pg/pg-inclination-asset-repository.js')
+    const { PgMediaAssetRepository } = await import('../repos/pg/pg-media-asset-repository.js')
+    const { PgMediaSemanticSnapshotRepository } = await import('../repos/pg/pg-media-semantic-snapshot-repository.js')
+    const { PgSceneMediaBindingRepository } = await import('../repos/pg/pg-scene-media-binding-repository.js')
+    const { PgMediaContextProjectionRepository } = await import('../repos/pg/pg-media-context-projection-repository.js')
     const { PgPostMediaRepository } = await import('../repos/pg/pg-post-media-repository.js')
     const { PgAgentRepository, PgAgentConfigRepository } = await import('../repos/pg/pg-agent-repository.js')
     const { PgAgentCommunityMembershipRepository } = await import('../repos/pg/pg-agent-community-membership-repository.js')
@@ -178,7 +190,10 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const vr = new PgVoteRepository(prisma)
     const hvr = new PgHumanVoteRepository(prisma)
     const hfr = new PgHumanFollowRepository(prisma)
-    const iar = new PgInclinationAssetRepository(prisma)
+    const mar = new PgMediaAssetRepository(prisma)
+    const msr = new PgMediaSemanticSnapshotRepository(prisma)
+    const sbr = new PgSceneMediaBindingRepository(prisma)
+    const mpr = new PgMediaContextProjectionRepository(prisma)
     const pmr = new PgPostMediaRepository(prisma)
     const ar = new PgAgentRepository(prisma)
     const acr = new PgAgentConfigRepository(prisma)
@@ -219,14 +234,16 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     })
 
     hydratables.push(
-      pr, cr, vr, hvr, hfr, iar, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, forumSceneMetadataRepo, runtimeSceneStateRepo, rr, rwr, appr, mr,
+      pr, cr, vr, hvr, hfr, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, forumSceneMetadataRepo, runtimeSceneStateRepo, rr, rwr, appr, mr,
       sr, achar, chr, ppr, stageTier, roleAssignmentRepo, psr,
     )
 
     return {
       repos: {
         postRepo: pr, commentRepo: cr, voteRepo: vr, humanVoteRepo: hvr,
-        humanFollowRepo: hfr, inclinationAssetRepo: iar, postMediaRepo: pmr,
+        humanFollowRepo: hfr, mediaAssetRepo: mar,
+        mediaSemanticSnapshotRepo: msr, sceneMediaBindingRepo: sbr,
+        mediaContextProjectionRepo: mpr, postMediaRepo: pmr,
         agentRepo: ar, agentConfigRepo: acr, agentCommunityMembershipRepo: amr,
         agentSignalLogRepo: aslr, communityRepo: cmr, communityCultureDigestRepo: cdr,
         eventRepo: er, agentRunRepo: arr, forumSceneMetadataRepo, runtimeSceneStateRepo, publicSceneWriteRepo,
@@ -260,7 +277,10 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       voteRepo: new InMemoryVoteRepository(),
       humanVoteRepo: new InMemoryHumanVoteRepository(),
       humanFollowRepo: new InMemoryHumanFollowRepository(),
-      inclinationAssetRepo: new InMemoryInclinationAssetRepository(),
+      mediaAssetRepo: new InMemoryMediaAssetRepository(),
+      mediaSemanticSnapshotRepo: new InMemoryMediaSemanticSnapshotRepository(),
+      sceneMediaBindingRepo: new InMemorySceneMediaBindingRepository(),
+      mediaContextProjectionRepo: new InMemoryMediaContextProjectionRepository(),
       postMediaRepo: new InMemoryPostMediaRepository(),
       agentRepo: new InMemoryAgentRepository(),
       agentConfigRepo: new InMemoryAgentConfigRepository(),
