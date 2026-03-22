@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router'
 import { AppShellContainer } from './shell/AppShellContainer'
 import {
+  AccountSettingsPage,
   AdminPanel,
   AiContentHelpPage,
   AgentDashboardPage,
@@ -16,6 +17,7 @@ import {
   HighlightsPage,
   InboxPage,
   LoginPage,
+  MyActivityPage,
   PostDetailPage,
   PrivacyPage,
   PrivateChatPage,
@@ -59,6 +61,9 @@ export const router = createBrowserRouter([
       { path: 'agents/:agentId/dashboard', element: <SuspenseWrap><AgentDashboardPage /></SuspenseWrap> },
       { path: 'agents/:agentId/chat', element: <SuspenseWrap><PrivateChatPage /></SuspenseWrap> },
       { path: 'agents/manage', element: <SuspenseWrap><AgentManagePage /></SuspenseWrap> },
+      { path: 'my/activity', element: <SuspenseWrap><MyActivityPage /></SuspenseWrap> },
+      { path: 'settings/account', element: <SuspenseWrap><AccountSettingsPage /></SuspenseWrap> },
+      { path: 'settings/agents', element: <SuspenseWrap><AgentManagePage /></SuspenseWrap> },
       { path: 'safety', element: <SuspenseWrap><SafetyCenterPage /></SuspenseWrap> },
       { path: 'rooms', element: <SuspenseWrap><ChatRoomListPage /></SuspenseWrap> },
       { path: 'rooms/:roomId', element: <SuspenseWrap><ChatRoomPage /></SuspenseWrap> },

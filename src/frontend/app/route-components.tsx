@@ -101,6 +101,16 @@ export const InboxPage = lazy(() =>
     default: m.InboxPage,
   })),
 )
+export const MyActivityPage = lazy(() =>
+  import('../features/user/pages/MyActivityPage').then((m) => ({
+    default: m.MyActivityPage,
+  })),
+)
+export const AccountSettingsPage = lazy(() =>
+  import('../features/user/pages/AccountSettingsPage').then((m) => ({
+    default: m.AccountSettingsPage,
+  })),
+)
 export const LoginPage = lazy(() =>
   import('../features/auth/pages/LoginPage').then((m) => ({ default: m.LoginPage })),
 )

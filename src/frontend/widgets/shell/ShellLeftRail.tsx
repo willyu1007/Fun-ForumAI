@@ -10,38 +10,17 @@ import {
   Clock3,
   BookOpen,
   Trophy,
+  Settings,
 } from 'lucide-react'
 import { useCommunities } from '@/api/hooks/forum'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
-import {
-  COMMUNITY_CATEGORY_LABELS,
-  COMMUNITY_CATEGORY_ORDER,
-  resolveCommunityCategory,
-  type CommunityCategory,
-} from '@/shared/utils/community-shell-meta'
 import type { Community } from '@/api/types'
 
 const GLOBAL_HIGHLIGHTS_ENABLED = import.meta.env.VITE_FF_GLOBAL_HIGHLIGHTS_V1 === 'true'
 const LEFT_RAIL_SECTION_STATE_KEY = 'shell-left-rail-sections'
 const LEFT_RAIL_RECENT_VISITS_KEY = 'shell-left-rail-recent-visits'
 const RECENT_VISIT_LIMIT = 6
-
-const BROWSE_LINKS = COMMUNITY_CATEGORY_ORDER.map((category) => ({
-  category,
-  label: COMMUNITY_CATEGORY_LABELS[category],
-  to: `/communities?category=${category}`,
-}))
-
-const RELATION_LINKS = [
-  {
-    to: '/agents/manage',
-    label: '智能体轨迹',
-  },
-  { to: '/communities', label: '所属社区' },
-  { to: '/highlights', label: '公开动向' },
-] as const
 
 const HIGHLIGHT_LINKS = [
   { to: '/highlights', label: '全站高光' },
@@ -56,32 +35,46 @@ const RESOURCE_LINKS = [
   { to: '/terms', label: '用户协议' },
 ] as const
 
+const SETTINGS_LINKS = [
+  { to: '/settings/agents', label: '智能体管理' },
+  { to: '/settings/account', label: '账户设置' },
+] as const
+
 const EMPTY_COMMUNITIES: Community[] = []
 
 type LeftRailSectionState = {
   recent: boolean
   highlights: boolean
   resources: boolean
+  settings: boolean
+}
+
+const DEFAULT_SECTION_STATE: LeftRailSectionState = {
+  recent: true,
+  highlights: true,
+  resources: true,
+  settings: true,
 }
 
 function readSectionState(): LeftRailSectionState {
   if (typeof localStorage === 'undefined') {
-    return { recent: true, highlights: true, resources: true }
+    return DEFAULT_SECTION_STATE
   }
 
   try {
     const raw = localStorage.getItem(LEFT_RAIL_SECTION_STATE_KEY)
     if (!raw) {
-      return { recent: true, highlights: true, resources: true }
+      return DEFAULT_SECTION_STATE
     }
     const parsed = JSON.parse(raw) as Partial<LeftRailSectionState>
     return {
       recent: parsed.recent ?? true,
       highlights: parsed.highlights ?? true,
       resources: parsed.resources ?? true,
+      settings: parsed.settings ?? true,
     }
   } catch {
-    return { recent: true, highlights: true, resources: true }
+    return DEFAULT_SECTION_STATE
   }
 }
 
@@ -181,11 +174,13 @@ function SidebarLink({
     >
       <span
         className={cn(
-          'flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-colors',
-          nested ? 'px-3 py-2.5 text-[13px]' : '',
+          'flex w-full items-center gap-3 rounded-lg transition-colors',
+          nested ? 'px-3 py-2.5 text-[13px]' : 'px-4 py-3',
           active
             ? 'bg-primary/12 font-medium text-foreground'
-            : 'text-primary/70 group-hover:bg-primary/6 group-hover:text-primary',
+            : nested
+              ? 'text-primary/70 group-hover:bg-primary/6 group-hover:text-primary'
+              : 'text-foreground/80 group-hover:bg-primary/6 group-hover:text-foreground',
         )}
       >
         <span className="shrink-0">{icon}</span>
@@ -217,6 +212,10 @@ function SidebarSectionHeader({
   )
 }
 
+function SectionDivider() {
+  return <div className="mx-4 my-2 border-t border-primary/8" />
+}
+
 export function ShellLeftRail() {
   const { pathname, search } = useLocation()
   const { data } = useCommunities()
@@ -243,17 +242,6 @@ export function ShellLeftRail() {
   }, [pathname, search])
 
   const highlightLinks = GLOBAL_HIGHLIGHTS_ENABLED ? HIGHLIGHT_LINKS : HIGHLIGHT_LINKS.slice(1)
-  const groupedCommunities = useMemo(() => {
-    const grouped = new Map<CommunityCategory, typeof communities>()
-    for (const category of COMMUNITY_CATEGORY_ORDER) {
-      grouped.set(category, [])
-    }
-    for (const community of communities) {
-      const category = resolveCommunityCategory(community)
-      grouped.get(category)?.push(community)
-    }
-    return grouped
-  }, [communities])
 
   const toggleSection = (section: keyof LeftRailSectionState) => {
     setSectionState((current) => {
@@ -266,68 +254,31 @@ export function ShellLeftRail() {
   return (
     <ScrollArea className="h-full">
       <div className="flex flex-col gap-1 px-3 py-3">
+        {/* Top-level navigation */}
         <SidebarLink to="/" label="主页" icon={<Home className="h-4 w-4" />} active={pathname === '/'} />
-
-        <div className="space-y-1">
-          <SidebarLink
-            to="/communities"
-            label="浏览"
-            icon={<Compass className="h-4 w-4" />}
-            active={pathname === '/communities' || pathname.startsWith('/c/')}
-            trailing={<ChevronDown className="h-3.5 w-3.5" />}
-          />
-          <div className="ml-5 space-y-0.5 border-l border-primary/10 pl-3">
-            {BROWSE_LINKS.map((link) => (
-              <SidebarLink
-                key={link.to}
-                to={link.to}
-                label={`${link.label} · ${groupedCommunities.get(link.category)?.length ?? 0}`}
-                icon={<span className="h-1.5 w-1.5 rounded-full bg-primary/35" />}
-                nested
-                active={isLinkActive(link.to, pathname, search)}
-              />
-            ))}
-            <SidebarLink
-              to="/communities"
-              label="全部社区"
-              icon={<span className="h-1.5 w-1.5 rounded-full bg-primary/35" />}
-              nested
-              active={pathname === '/communities' && !new URLSearchParams(search).get('category')}
-            />
-          </div>
-        </div>
-
+        <SidebarLink
+          to="/communities"
+          label="浏览"
+          icon={<Compass className="h-4 w-4" />}
+          active={pathname === '/communities' || pathname.startsWith('/c/')}
+        />
         <SidebarLink
           to="/rooms"
           label="聊天室"
           icon={<MessageSquare className="h-4 w-4" />}
           active={pathname.startsWith('/rooms')}
         />
+        <SidebarLink
+          to="/my/activity"
+          label="我的关联"
+          icon={<Sparkles className="h-4 w-4" />}
+          active={pathname.startsWith('/my/activity')}
+        />
 
-        <div className="space-y-1">
-          <SidebarLink
-            to="/agents/manage"
-            label="我的关联"
-            icon={<Sparkles className="h-4 w-4" />}
-            active={pathname.startsWith('/agents') || pathname === '/highlights'}
-            trailing={<ChevronDown className="h-3.5 w-3.5" />}
-          />
-          <div className="ml-5 space-y-0.5 border-l border-primary/10 pl-3">
-            {RELATION_LINKS.map((link) => (
-              <SidebarLink
-                key={link.label}
-                to={link.to}
-                label={link.label}
-                icon={<span className="h-1.5 w-1.5 rounded-full bg-primary/35" />}
-                nested
-                active={isLinkActive(link.to, pathname, search)}
-              />
-            ))}
-          </div>
-        </div>
+        {/* Divider: top nav → collapsible sections */}
+        <div className="mx-4 my-2.5 border-t border-primary/12" />
 
-        <Separator className="my-2" />
-
+        {/* Recent visits */}
         <div>
           <SidebarSectionHeader
             label="最近访问"
@@ -354,6 +305,9 @@ export function ShellLeftRail() {
           ) : null}
         </div>
 
+        <SectionDivider />
+
+        {/* Highlights */}
         <div>
           <SidebarSectionHeader
             label="高光时刻"
@@ -376,9 +330,12 @@ export function ShellLeftRail() {
           ) : null}
         </div>
 
+        <SectionDivider />
+
+        {/* Resources */}
         <div>
           <SidebarSectionHeader
-            label="资源与设置"
+            label="资源"
             open={sectionState.resources}
             onToggle={() => toggleSection('resources')}
           />
@@ -390,6 +347,31 @@ export function ShellLeftRail() {
                   to={link.to}
                   label={link.label}
                   icon={<BookOpen className="h-3.5 w-3.5" />}
+                  nested
+                  active={isLinkActive(link.to, pathname, search)}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <SectionDivider />
+
+        {/* Settings */}
+        <div>
+          <SidebarSectionHeader
+            label="设置"
+            open={sectionState.settings}
+            onToggle={() => toggleSection('settings')}
+          />
+          {sectionState.settings ? (
+            <div className="space-y-0.5">
+              {SETTINGS_LINKS.map((link) => (
+                <SidebarLink
+                  key={link.label}
+                  to={link.to}
+                  label={link.label}
+                  icon={<Settings className="h-3.5 w-3.5" />}
                   nested
                   active={isLinkActive(link.to, pathname, search)}
                 />
