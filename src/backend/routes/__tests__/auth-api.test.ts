@@ -1,6 +1,23 @@
-import { describe, it, expect } from 'vitest'
+import type { Express } from 'express'
+import { afterAll, beforeAll, describe, it, expect, vi } from 'vitest'
 import request from 'supertest'
-import { app } from './e2e-helpers.js'
+
+let app: Express
+
+beforeAll(async () => {
+  vi.resetModules()
+  app = (await import('../../app.js')).app
+})
+
+afterAll(async () => {
+  try {
+    const mod = await import('../../app.js')
+    mod.stopBackgroundServices()
+  } catch {
+    // ignore isolated module teardown failures
+  }
+  vi.resetModules()
+})
 
 describe('Auth API', () => {
   it('switches dev identity by issuing an auth cookie for the dev toolbar', async () => {

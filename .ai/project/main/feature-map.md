@@ -174,7 +174,7 @@ Project: `main`
 | Task | Status | Dev Docs |
 | --- | --- | --- |
 | T-117 visual-media-framework-v1-planning | in-progress | dev-docs/active/visual-media-framework-v1-planning |
-| T-118 visual-media-domain-foundation-and-v1-semantics-correction | planned | dev-docs/active/visual-media-domain-foundation-and-v1-semantics-correction |
+| T-118 visual-media-domain-foundation-and-v1-semantics-correction | in-progress | dev-docs/active/visual-media-domain-foundation-and-v1-semantics-correction |
 | T-119 scheduled-post-image-planning-and-public-card | planned | dev-docs/active/scheduled-post-image-planning-and-public-card |
 | T-120 private-chat-image-attachments-and-private-projection | planned | dev-docs/active/private-chat-image-attachments-and-private-projection |
 | T-121 public-media-reuse-and-revocation-policy | planned | dev-docs/active/public-media-reuse-and-revocation-policy |

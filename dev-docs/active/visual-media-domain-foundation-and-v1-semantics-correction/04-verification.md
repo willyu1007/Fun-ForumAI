@@ -5,3 +5,42 @@
   - Result: `T-118` 已注册到 `F-080 / R-080`，bundle 路径与状态一致
   - Pass: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
   - Result: lint passed
+- 2026-03-22
+  - Pass: `pnpm db:validate`
+  - Result: Prisma schema 校验通过，新增媒体主域模型与 `post_media -> media_assets` 关联合法
+  - Pass: `pnpm db:generate`
+  - Result: Prisma client 已按新 SSOT 重新生成
+  - Pass: `pnpm typecheck`
+  - Result: 后端服务、runtime、route、前端 DTO/UI 更新后类型检查通过
+- 2026-03-22
+  - Pass: `pnpm test -- src/backend/services/__tests__/inclination-asset-service.test.ts src/backend/routes/__tests__/e2e-multimodal.test.ts`
+  - Result: owner-private-pool 语义、scheduler 过渡链路与 post attach bridge 的目标回归通过；补充覆盖了 owner-pool 大量资产计数、老资产可选候选、public attachment 时间戳与 blocked attach 防护
+  - Pass: `pnpm test`
+  - Result: 全量测试通过，`212` 个测试文件、`1064` 个测试全部通过
+- 2026-03-22
+  - Pass: `node .ai/scripts/ctl-db-ssot.mjs sync-to-context`
+  - Result: `docs/context/db/schema.json` 已刷新到新的 Prisma SSOT checksum
+  - Pass: `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
+  - Result: `T-118` bundle 派生字段与 project hub 视图已按最新实现状态刷新
+  - Pass: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: lint passed
+- 2026-03-22
+  - Pass: `pnpm exec tsc -b`
+  - Result: 新增的多模态模型偏好映射、scheduler stale candidate 防护、backfill retrieval helper 复用后编译通过
+  - Pass: `pnpm exec vitest run src/backend/media/__tests__/media-projection-service.test.ts src/backend/media/__tests__/media-semantic-service.test.ts src/backend/runtime/__tests__/post-scheduler.test.ts src/backend/runtime/__tests__/prompt-budget-summary.test.ts src/backend/llm/__tests__/registry-contract.test.ts src/backend/services/__tests__/inclination-asset-service.test.ts src/backend/routes/__tests__/e2e-multimodal.test.ts`
+  - Result: `37` 个定向测试全部通过，覆盖多模态模型选择、稀疏 JSON 解析、预算估算、scheduler stale candidate、owner-pool route/e2e 挂图桥
+- 2026-03-22
+  - Pass: 本地真实 API/DB 链路复测
+  - Result: owner upload 写入 `media_assets + current rich snapshot + owner_private_pool binding + retrieval projection`，`media_semantic_snapshots` 当前记录为 `completed/rich`，模型路由为 `dashscope-openai / qwen-vl-plus`
+  - Pass: 本地真实 `POST /v1/dev/runtime/post` 复测（为测试 agent 显式补 membership）
+  - Result: scheduler 选中带 owner-pool 候选的 agent 后，成功写入 `forum_post` binding、`public_display/display_attachment` projection 与 `post_media`，资产可见性从 `private_only` 升级为 `public_original_allowed`
+- 2026-03-22
+  - Pass: `pnpm test`
+  - Result: 全量回归通过，`215` 个测试文件、`1071` 个测试全部通过；包含本轮新增的 media projection helper、scheduler stale candidate 和 membership-aware multimodal e2e 覆盖
+- 2026-03-22
+  - Pass: `pnpm exec tsc -b`
+  - Result: 删除旧 inclination repo / vision summary 运行时实现后，容器装配、barrel 导出和 callsite inventory 仍可完整编译
+  - Pass: `pnpm test -- src/backend/routes/__tests__/auth-api.test.ts`
+  - Result: 隔离 app 实例后，`/v1/auth/login` 错密码用例稳定返回 `401/UNAUTHORIZED`
+  - Pass: `pnpm test`
+  - Result: 深度清理和 auth 测试隔离修复后，全量回归再次通过，`215` 个测试文件、`1071` 个测试全部通过

@@ -81,3 +81,4 @@ Project: `main`
 - 2026-03-16 task_id=T-112 slug=compatibility-cleanup-test-runtime-followup event=status from=in-progress to=done
 - 2026-03-16 task_id=T-109 slug=compatibility-cleanup-wave1-wave2 event=status from=in-progress to=archived
 - 2026-03-16 task_id=T-112 slug=compatibility-cleanup-test-runtime-followup event=status from=done to=archived
+- 2026-03-22 task_id=T-118 slug=visual-media-domain-foundation-and-v1-semantics-correction event=status from=planned to=in-progress

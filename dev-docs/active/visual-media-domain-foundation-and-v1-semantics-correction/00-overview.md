@@ -1,10 +1,10 @@
 # 00 Overview — visual-media-domain-foundation-and-v1-semantics-correction (T-118)
 
 ## Status
-- State: planned
+- State: in-progress
 - Depends on: `T-117 visual-media-framework-v1-planning`
 - Blocks: `T-119`, `T-120`, `T-122`
-- Next step: 建立新媒体主域 contract，并把现有 owner 上传/导入链路改写为 `owner_private_pool` 语义。
+- Next step: 在目标环境执行 migration/backfill，并由 `T-119` 删除 root-post 过渡 adapter 与旧 `WriteInstruction` 媒体字段路径。
 
 ## Goal
 建立统一的媒体主域，并修正当前 V1 语义：
@@ -19,13 +19,13 @@
 
 ## Context
 - 当前 `T-044` 落地的是 owner-only 轻度操控链路，核心语义为 `PENDING -> CONSUMED -> consumed_post_id`。
-- 当前 `VisionSummaryService` 已能通过 `hidden_multimodal` 调用多模态模型，但结果仍附着在旧资产模型上。
+- 当前运行时已由 `MediaSemanticService` 接管 `hidden_multimodal` 图片语义提取；旧 `VisionSummaryService` 与旧 inclination repo 栈只保留在历史任务记录中，不再参与运行时路径。
 - 后续 public/private/generation 都需要共享同一份 asset 与 semantic snapshot。
 
 ## Acceptance criteria (high level)
-- [ ] 新媒体主域对象、repo/service contract 与 bridge 方案被定义清楚。
-- [ ] 现有 upload/import 入口语义改为写入 `owner_private_pool`，而不是预占下一条 public post。
-- [ ] `MediaSemanticService` 被定义为新的业务语义入口，底层继续复用 `LLMGateway`。
-- [ ] `post_media` 被明确降级为 compatibility projection，而非主 SoT。
-- [ ] 系统不再把 `PENDING -> CONSUMED -> consumed_post_id` 视为权威媒体流程。
-- [ ] 旧 `inclination asset` 到新媒体主域的迁移、回填、兼容读取和状态映射策略被定义清楚。
+- [x] 新媒体主域对象、repo/service contract 与 bridge 方案被定义清楚。
+- [x] 现有 upload/import 入口语义改为写入 `owner_private_pool`，而不是预占下一条 public post。
+- [x] `MediaSemanticService` 被定义为新的业务语义入口，底层继续复用 `LLMGateway`。
+- [x] `post_media` 被明确降级为 compatibility projection，而非主 SoT。
+- [x] 系统不再把 `PENDING -> CONSUMED -> consumed_post_id` 视为权威媒体流程。
+- [x] 旧 `inclination asset` 到新媒体主域的迁移、回填、兼容读取和状态映射策略被定义清楚。

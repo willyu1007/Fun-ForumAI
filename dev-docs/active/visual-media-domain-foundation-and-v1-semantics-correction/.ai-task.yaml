@@ -2,7 +2,7 @@ version: 1
 task_id: T-118
 project: main
 slug: visual-media-domain-foundation-and-v1-semantics-correction
-status: planned
+status: in-progress
 updated: "2026-03-22"
 keywords:
   - media-domain

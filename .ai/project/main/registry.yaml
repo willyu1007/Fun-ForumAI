@@ -1124,7 +1124,7 @@ tasks:
     updated: 2026-03-22
   - id: T-118
     slug: visual-media-domain-foundation-and-v1-semantics-correction
-    status: planned
+    status: in-progress
     milestone_id: M-000
     feature_id: F-080
     requirement_ids:

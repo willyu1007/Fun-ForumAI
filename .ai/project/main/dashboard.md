@@ -8,14 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 129 (planned: 8, in-progress: 3, blocked: 0, done: 0, archived: 118)
+- Tasks: 129 (planned: 7, in-progress: 4, blocked: 0, done: 0, archived: 118)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
 | T-117 visual-media-framework-v1-planning | in-progress | F-080 | dev-docs/active/visual-media-framework-v1-planning |
-| T-118 visual-media-domain-foundation-and-v1-semantics-correction | planned | F-080 | dev-docs/active/visual-media-domain-foundation-and-v1-semantics-correction |
+| T-118 visual-media-domain-foundation-and-v1-semantics-correction | in-progress | F-080 | dev-docs/active/visual-media-domain-foundation-and-v1-semantics-correction |
 | T-119 scheduled-post-image-planning-and-public-card | planned | F-080 | dev-docs/active/scheduled-post-image-planning-and-public-card |
 | T-120 private-chat-image-attachments-and-private-projection | planned | F-080 | dev-docs/active/private-chat-image-attachments-and-private-projection |
 | T-121 public-media-reuse-and-revocation-policy | planned | F-080 | dev-docs/active/public-media-reuse-and-revocation-policy |

@@ -344,12 +344,13 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
   },
   {
     source_id: 'vision-summary',
-    source_file: 'src/backend/services/vision-summary-service.ts',
+    source_file: 'src/backend/media/media-semantic-service.ts',
     scene: 'background_hidden',
     dispatch_calls: ['llmGateway.generateHiddenArtifact'],
     evidence_patterns: [
       'PROMPT_TEMPLATE_REFS.internalVisionSummary',
       'type: \'image_url\'',
+      'agentId: input.agentId ?? \'media-semantic\'',
       'this.deps.llmGateway.generateHiddenArtifact({',
     ],
     intent: 'vision_summary',
