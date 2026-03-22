@@ -13,6 +13,7 @@ import {
   InMemoryCommentRepository,
   InMemoryCommunityRepository,
   InMemoryEpisodicCardRepository,
+  InMemoryMediaContextProjectionRepository,
   InMemoryHumanVoteRepository,
   InMemoryMessageRepository,
   InMemoryPostMediaRepository,
@@ -20,6 +21,7 @@ import {
   InMemoryPrivateShadowMemoryRepository,
   InMemoryRawContextEventRepository,
   InMemoryRoomRepository,
+  InMemorySceneMediaBindingRepository,
   InMemorySelfModelStateRepository,
   InMemoryVoteRepository,
   InMemoryContextRelationStateRepository,
@@ -92,6 +94,20 @@ class InMemoryMemoryRepository implements MemoryRepository {
       .filter((item) => (opts.source_event_id ? item.source_event_id === opts.source_event_id : true))
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime() || b.id.localeCompare(a.id))
     return paginate(items, opts)
+  }
+
+  async deleteBySourceEventIds(agentId: string, sourceEventIds: string[]): Promise<number> {
+    if (sourceEventIds.length === 0) return 0
+    const lookup = new Set(sourceEventIds)
+    let deleted = 0
+    for (const [id, item] of this.store.entries()) {
+      if (item.agent_id !== agentId || !item.source_event_id || !lookup.has(item.source_event_id)) {
+        continue
+      }
+      this.store.delete(id)
+      deleted += 1
+    }
+    return deleted
   }
 
   async findActiveMemories(agentId: string): Promise<AgentMemory[]> {
@@ -239,6 +255,8 @@ describe('Public observation real smoke', () => {
     const voteRepo = new InMemoryVoteRepository()
     const humanVoteRepo = new InMemoryHumanVoteRepository()
     const postMediaRepo = new InMemoryPostMediaRepository()
+    const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
     const achievementRepo = new InMemoryAchievementRepository()
     const chronicleRepo = new InMemoryChronicleRepository()
     const forumReadService = new ForumReadService({
@@ -247,6 +265,8 @@ describe('Public observation real smoke', () => {
       voteRepo,
       humanVoteRepo,
       postMediaRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
       communityRepo,
       agentRepo,
       achievementChronicleService: new AchievementChronicleService({

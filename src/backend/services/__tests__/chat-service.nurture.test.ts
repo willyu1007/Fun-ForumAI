@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { InMemoryMediaContextProjectionRepository } from '../../repos/media-context-projection-repository.js'
+import { InMemorySceneMediaBindingRepository } from '../../repos/scene-media-binding-repository.js'
 
 afterEach(() => {
   vi.clearAllMocks()
@@ -36,6 +38,8 @@ describe('ChatService nurture bridge', () => {
       xpService: { awardXP } as never,
       nurtureOrchestrator: { onContentProduced } as never,
       eventRepo: { create: createEvent } as never,
+      sceneMediaBindingRepo: new InMemorySceneMediaBindingRepository(),
+      mediaContextProjectionRepo: new InMemoryMediaContextProjectionRepository(),
     })
 
     await svc.sendMessage({

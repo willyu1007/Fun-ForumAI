@@ -84,4 +84,71 @@ describe('Admin media API', () => {
     expect(revokeRes.body.data.policy.status).toBe('revoked')
     expect(revokeRes.body.data.policy.revoked_reason).toBe('manual revoke for governance review')
   })
+
+  it('exposes media observability, rollout control, and lifecycle operations', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    featureFlags.mediaObservabilityV1 = true
+    featureFlags.mediaRolloutControllerV1 = true
+    featureFlags.mediaLifecycleV1 = true
+
+    const initialControllerRes = await request(app)
+      .get('/v1/admin/media/rollout-controller')
+      .set('Authorization', `Bearer ${adminToken}`)
+    expect(initialControllerRes.status).toBe(200)
+    expect(initialControllerRes.body.data.effective_profile.mode).toBe('AUTO')
+
+    const patchRes = await request(app)
+      .patch('/v1/admin/media/rollout-controller')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        mode: 'MANUAL',
+        threshold_delta: 0.15,
+        allow_generation: false,
+        generation_tier: 'none',
+        sync_generation_ms_budget: 0,
+        allow_private_runtime_projection: false,
+        allow_private_inspired_generation: false,
+        force_safe_mode: true,
+        reason: 'admin test override',
+      })
+    expect(patchRes.status).toBe(200)
+    expect(patchRes.body.data.mode).toBe('MANUAL')
+
+    const controllerRes = await request(app)
+      .get('/v1/admin/media/rollout-controller')
+      .set('Authorization', `Bearer ${adminToken}`)
+    expect(controllerRes.status).toBe(200)
+    expect(controllerRes.body.data.active_override.id).toBeTruthy()
+    expect(controllerRes.body.data.effective_profile.profile).toBe('manual')
+
+    const observabilityRes = await request(app)
+      .get('/v1/admin/media/observability')
+      .set('Authorization', `Bearer ${adminToken}`)
+    expect(observabilityRes.status).toBe(200)
+    expect(observabilityRes.body.data.metrics.root_post.attempted_7d).toBeTypeOf('number')
+    expect(Array.isArray(observabilityRes.body.data.gates)).toBe(true)
+    expect(observabilityRes.body.data.lifecycle_candidates).toEqual(expect.objectContaining({
+      orphan_assets: expect.any(Number),
+      expired_projections: expect.any(Number),
+      snapshot_backfill_assets: expect.any(Number),
+    }))
+
+    const lifecycleRes = await request(app)
+      .post('/v1/admin/media/lifecycle/run')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+    expect(lifecycleRes.status).toBe(200)
+    expect(lifecycleRes.body.data).toEqual(expect.objectContaining({
+      archived_assets: expect.any(Number),
+      deleted_projections: expect.any(Number),
+      snapshot_backfill_attempted: expect.any(Number),
+    }))
+
+    const releaseRes = await request(app)
+      .post(`/v1/admin/media/rollout-controller/${controllerRes.body.data.active_override.id}/release`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ reason: 'admin test release' })
+    expect(releaseRes.status).toBe(200)
+    expect(releaseRes.body.data.status).toBe('released')
+  })
 })

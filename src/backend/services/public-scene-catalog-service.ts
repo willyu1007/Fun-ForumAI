@@ -5,6 +5,7 @@ import {
   buildStageTemplateDistPayload,
   readYamlFile,
 } from '../stage/stage-template-ops.js'
+import type { StageTemplateManifest } from '../stage/stage-template-ops.js'
 
 const DEFAULT_DIST_DIR = path.resolve(process.cwd(), 'docs/stage-templates/dist')
 const DEFAULT_LAUNCH_PATH = path.resolve(process.cwd(), 'docs/stage-templates/dist/launch.json')
@@ -73,7 +74,7 @@ export class PublicSceneCatalogService {
         return false
       }
 
-      const manifest = readYamlFile(this.manifestPath)
+      const manifest = readYamlFile<StageTemplateManifest>(this.manifestPath)
       const distPayload = buildStageTemplateDistPayload(
         this.sourceBaseDir,
         manifest,

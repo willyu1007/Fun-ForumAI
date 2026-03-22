@@ -18,6 +18,8 @@ import type { MediaProjectionService } from '../media/media-projection-service.j
 import type { VisualDirectiveService } from '../media/visual-directive-service.js'
 import type { ImagePlannerService } from '../media/image-planner-service.js'
 import type { MediaGenerationService } from '../media/media-generation-service.js'
+import type { MediaRolloutControllerService } from '../media/media-rollout-controller-service.js'
+import type { MediaObservabilityService } from '../media/media-observability-service.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
@@ -47,6 +49,8 @@ export interface PostSchedulerDeps {
   visualDirectiveService?: VisualDirectiveService | null
   imagePlannerService?: ImagePlannerService | null
   mediaGenerationService?: MediaGenerationService | null
+  mediaRolloutControllerService?: MediaRolloutControllerService | null
+  mediaObservabilityService?: Pick<MediaObservabilityService, 'record' | 'recordCriticalPrivateLeak'> | null
   personaStateService?: PersonaStateService | null
   inferenceProfileService?: InferenceProfileService | null
   publicSceneSelectorService?: PublicSceneSelectorService | null
@@ -688,15 +692,31 @@ export class PostScheduler {
       community_id: input.community_id,
       payload: input.scenePayload,
     })
+    const rolloutAdjusted = this.deps.mediaRolloutControllerService
+      ? await this.deps.mediaRolloutControllerService.applyToScheduledPostDirective(directive)
+      : null
+    const effectiveDirective = rolloutAdjusted?.directive ?? directive
+    const controllerProfile = rolloutAdjusted?.profile ?? null
+    await this.deps.mediaObservabilityService?.record({
+      event_type: 'root_post_visual_attempted',
+      surface: 'root_post',
+      agent_id: input.agent_id,
+      community_id: input.community_id,
+      payload_json: {
+        visual_directive_id: directive.id,
+        controller_profile: controllerProfile?.profile ?? null,
+        controller_mode: controllerProfile?.mode ?? null,
+      },
+    })
     const initialPlan = await this.deps.imagePlannerService.planScheduledPost({
       agent_id: input.agent_id,
-      directive,
+      directive: effectiveDirective,
     })
     const plan = initialPlan.status === 'pending_generation' && this.deps.mediaGenerationService
       ? await this.deps.mediaGenerationService.ensurePlanReadyWithinBudget({
           agent_id: input.agent_id,
           plan: initialPlan,
-          wait_budget_ms: directive.budget.sync_generation_ms_budget,
+          wait_budget_ms: effectiveDirective.budget.sync_generation_ms_budget,
         })
       : initialPlan
     const firstCard = plan.runtime.cards[0] ?? null
@@ -713,6 +733,89 @@ export class PostScheduler {
         && !serialized.audit.contains_owner_note
         && !serialized.audit.contains_private_text
       : false
+    const selectedSource = plan.selected_sources.find((item) => !item.rejection_reason)
+    if (selectedSource?.source_kind) {
+      await this.deps.mediaObservabilityService?.record({
+        event_type: `source_selected:${selectedSource.source_kind}`,
+        surface: 'root_post',
+        agent_id: input.agent_id,
+        community_id: input.community_id,
+        image_plan_id: plan.id,
+        asset_id: selectedSource.asset_id ?? null,
+        source_kind: selectedSource.source_kind,
+      })
+    }
+    if (firstCard && promptSafe) {
+      await this.deps.mediaObservabilityService?.record({
+        event_type: 'root_post_runtime_injected',
+        surface: 'root_post',
+        agent_id: input.agent_id,
+        community_id: input.community_id,
+        image_plan_id: plan.id,
+        asset_id: firstCard.asset_ref.asset_id,
+        source_kind: firstCard.source.kind,
+      })
+    }
+    if (firstCard && !promptSafe) {
+      const blockedFields = [
+        serialized?.audit.contains_owner_note ? 'owner_note' : null,
+        serialized?.audit.contains_private_text ? 'private_text' : null,
+        serialized?.audit.contains_url ? 'url' : null,
+        serialized?.audit.contains_asset_id ? 'asset_id' : null,
+      ].filter((item): item is string => Boolean(item))
+      await this.deps.mediaObservabilityService?.record({
+        event_type: 'public_prompt_audit_blocked',
+        surface: 'root_post',
+        severity: 'warn',
+        agent_id: input.agent_id,
+        community_id: input.community_id,
+        image_plan_id: plan.id,
+        asset_id: firstCard.asset_ref.asset_id,
+        source_kind: firstCard.source.kind,
+        payload_json: {
+          blocked_fields: blockedFields,
+          derived_from_private: firstCard.source.derived_from_private,
+        },
+      })
+      if (firstCard.source.derived_from_private && blockedFields.length > 0) {
+        await this.deps.mediaObservabilityService?.recordCriticalPrivateLeak({
+          surface: 'root_post',
+          agent_id: input.agent_id,
+          community_id: input.community_id,
+          image_plan_id: plan.id,
+          asset_id: firstCard.asset_ref.asset_id,
+          source_kind: firstCard.source.kind,
+          blocked_fields: blockedFields,
+          reason: 'root_post_prompt_audit_blocked',
+        })
+      }
+    }
+    if (plan.runtime.cards.length > 0 && plan.display.attachments.length === 0) {
+      await this.deps.mediaObservabilityService?.record({
+        event_type: 'root_post_runtime_only',
+        surface: 'root_post',
+        agent_id: input.agent_id,
+        community_id: input.community_id,
+        image_plan_id: plan.id,
+        payload_json: {
+          planner_status: plan.status,
+          planner_decision: plan.decision,
+        },
+      })
+    }
+    if (plan.runtime.cards.length === 0 && plan.display.attachments.length === 0) {
+      await this.deps.mediaObservabilityService?.record({
+        event_type: 'root_post_text_only',
+        surface: 'root_post',
+        agent_id: input.agent_id,
+        community_id: input.community_id,
+        image_plan_id: plan.id,
+        payload_json: {
+          planner_status: plan.status,
+          planner_decision: plan.decision,
+        },
+      })
+    }
 
     return {
       directive_id: directive.id,
@@ -739,6 +842,8 @@ export class PostScheduler {
         planner_status: plan.status,
         planner_decision: plan.decision,
         planner_reason: plan.reason,
+        rollout_controller_profile: controllerProfile?.profile ?? null,
+        rollout_controller_mode: controllerProfile?.mode ?? null,
         generation_status: plan.generation.status,
         generation_job_id: plan.generation.job_id ?? null,
         runtime_card_ids: plan.runtime.cards.map((card) => card.card_id),

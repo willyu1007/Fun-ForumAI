@@ -1,8 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import { useRuntimeFeatures } from '@/api/hooks'
-import type { GuidanceRuntimeData } from '@/api/types'
+import {
+  useAdminMediaObservability,
+  useAdminMediaRolloutController,
+  usePatchAdminMediaRolloutController,
+  useReleaseAdminMediaRolloutController,
+  useRunMediaLifecycle,
+} from '@/api/hooks/admin'
+import type {
+  AdminMediaObservabilityData,
+  GuidanceRuntimeData,
+  MediaRolloutControllerProfileData,
+} from '@/api/types'
 import { useSseStatus } from '@/app/sse-context'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -124,9 +135,24 @@ export function RuntimeDashboard() {
   const sseStatus = useSseStatus()
   const sseConnected = sseStatus.connected
   const [rotationOpenCount, setRotationOpenCount] = useState(3)
+  const [overrideMode, setOverrideMode] = useState<'AUTO' | 'MANUAL' | 'OFF'>('AUTO')
+  const [thresholdDelta, setThresholdDelta] = useState('0')
+  const [targetMinRate, setTargetMinRate] = useState('0.35')
+  const [targetMaxRate, setTargetMaxRate] = useState('0.45')
+  const [generationTier, setGenerationTier] = useState<'none' | 'low' | 'medium' | 'high'>('medium')
+  const [syncBudgetMs, setSyncBudgetMs] = useState('2200')
+  const [allowGeneration, setAllowGeneration] = useState(true)
+  const [allowPrivateRuntime, setAllowPrivateRuntime] = useState(true)
+  const [allowPrivateInspired, setAllowPrivateInspired] = useState(true)
+  const [forceSafeMode, setForceSafeMode] = useState(false)
   const { data: adminStats } = useRuntimeStats()
   const { data: devStatus } = useDevRuntimeStatus()
   const { data: runtimeFeatures } = useRuntimeFeatures()
+  const { data: mediaObservability } = useAdminMediaObservability()
+  const { data: mediaRolloutController } = useAdminMediaRolloutController()
+  const patchMediaRolloutController = usePatchAdminMediaRolloutController()
+  const releaseMediaRolloutController = useReleaseAdminMediaRolloutController()
+  const runMediaLifecycle = useRunMediaLifecycle()
   const tickMutation = useMutation({
     mutationFn: () =>
       api.post('dev/runtime/tick').json<{
@@ -171,6 +197,33 @@ export function RuntimeDashboard() {
   const stats = adminStats?.data
   const status = devStatus?.data
   const isProdNodeEnv = stats?.runtime.node_env === 'production'
+
+  useEffect(() => {
+    const data = mediaRolloutController?.data
+    if (!data) return
+    const override = data.active_override
+    const effective = data.effective_profile.effective
+    setOverrideMode(override?.mode ?? (data.effective_profile.mode === 'OFF' ? 'OFF' : 'AUTO'))
+    setThresholdDelta(String(override?.threshold_delta ?? effective.threshold_delta))
+    setTargetMinRate(String(override?.target_min_rate ?? effective.target_min_rate))
+    setTargetMaxRate(String(override?.target_max_rate ?? effective.target_max_rate))
+    setGenerationTier(override?.generation_tier ?? effective.generation_tier)
+    setSyncBudgetMs(String(override?.sync_generation_ms_budget ?? effective.sync_generation_ms_budget))
+    setAllowGeneration(override?.allow_generation ?? effective.allow_generation)
+    setAllowPrivateRuntime(
+      override?.allow_private_runtime_projection ?? effective.allow_private_runtime_projection,
+    )
+    setAllowPrivateInspired(
+      override?.allow_private_inspired_generation ?? effective.allow_private_inspired_generation,
+    )
+    setForceSafeMode(override?.force_safe_mode ?? effective.force_safe_mode)
+  }, [
+    mediaRolloutController?.data?.active_override?.id,
+    mediaRolloutController?.data?.active_override?.updated_at,
+    mediaRolloutController?.data?.effective_profile.mode,
+    mediaRolloutController?.data?.effective_profile.reason,
+  ])
+
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -326,6 +379,60 @@ export function RuntimeDashboard() {
       </Card>
 
       <PersonalityCompilerCard counters={runtimeFeatures?.data?.counters?.inference_profile} />
+      <MediaOpsCard
+        observability={mediaObservability?.data}
+        controllerProfile={mediaRolloutController?.data?.effective_profile}
+        overrideId={mediaRolloutController?.data?.active_override?.id ?? null}
+        overrideMode={overrideMode}
+        onOverrideModeChange={setOverrideMode}
+        thresholdDelta={thresholdDelta}
+        onThresholdDeltaChange={setThresholdDelta}
+        targetMinRate={targetMinRate}
+        onTargetMinRateChange={setTargetMinRate}
+        targetMaxRate={targetMaxRate}
+        onTargetMaxRateChange={setTargetMaxRate}
+        generationTier={generationTier}
+        onGenerationTierChange={setGenerationTier}
+        syncBudgetMs={syncBudgetMs}
+        onSyncBudgetMsChange={setSyncBudgetMs}
+        allowGeneration={allowGeneration}
+        onAllowGenerationChange={setAllowGeneration}
+        allowPrivateRuntime={allowPrivateRuntime}
+        onAllowPrivateRuntimeChange={setAllowPrivateRuntime}
+        allowPrivateInspired={allowPrivateInspired}
+        onAllowPrivateInspiredChange={setAllowPrivateInspired}
+        forceSafeMode={forceSafeMode}
+        onForceSafeModeChange={setForceSafeMode}
+        applyPending={patchMediaRolloutController.isPending}
+        releasePending={releaseMediaRolloutController.isPending}
+        lifecyclePending={runMediaLifecycle.isPending}
+        applyError={patchMediaRolloutController.isError ? patchMediaRolloutController.error.message : null}
+        releaseError={releaseMediaRolloutController.isError ? releaseMediaRolloutController.error.message : null}
+        lifecycleError={runMediaLifecycle.isError ? runMediaLifecycle.error.message : null}
+        lifecycleResult={runMediaLifecycle.data?.data ?? null}
+        onApply={() => patchMediaRolloutController.mutate({
+          mode: overrideMode,
+          target_min_rate: parseOptionalNumber(targetMinRate),
+          target_max_rate: parseOptionalNumber(targetMaxRate),
+          threshold_delta: parseOptionalNumber(thresholdDelta),
+          allow_generation: overrideMode === 'MANUAL' ? allowGeneration : null,
+          generation_tier: overrideMode === 'MANUAL' ? generationTier : null,
+          sync_generation_ms_budget: overrideMode === 'MANUAL' ? parseOptionalInteger(syncBudgetMs) : null,
+          allow_private_runtime_projection: overrideMode === 'MANUAL' ? allowPrivateRuntime : null,
+          allow_private_inspired_generation: overrideMode === 'MANUAL' ? allowPrivateInspired : null,
+          force_safe_mode: overrideMode === 'MANUAL' ? forceSafeMode : false,
+          reason: `runtime_dashboard_${overrideMode.toLowerCase()}`,
+        })}
+        onRelease={() => {
+          const overrideId = mediaRolloutController?.data?.active_override?.id
+          if (!overrideId) return
+          releaseMediaRolloutController.mutate({
+            override_id: overrideId,
+            reason: 'runtime_dashboard_release',
+          })
+        }}
+        onRunLifecycle={() => runMediaLifecycle.mutate()}
+      />
       <ProviderAdmissionCard summary={runtimeFeatures?.data?.provider_admission} />
       <GuidanceRuntimeCard guidance={runtimeFeatures?.data?.guidance} />
 
@@ -520,6 +627,253 @@ export function GuidanceRuntimeCard({ guidance }: { guidance?: GuidanceRuntimeDa
     </Card>
   )
 }
+export function MediaOpsCard({
+  observability,
+  controllerProfile,
+  overrideId,
+  overrideMode,
+  onOverrideModeChange,
+  thresholdDelta,
+  onThresholdDeltaChange,
+  targetMinRate,
+  onTargetMinRateChange,
+  targetMaxRate,
+  onTargetMaxRateChange,
+  generationTier,
+  onGenerationTierChange,
+  syncBudgetMs,
+  onSyncBudgetMsChange,
+  allowGeneration,
+  onAllowGenerationChange,
+  allowPrivateRuntime,
+  onAllowPrivateRuntimeChange,
+  allowPrivateInspired,
+  onAllowPrivateInspiredChange,
+  forceSafeMode,
+  onForceSafeModeChange,
+  applyPending,
+  releasePending,
+  lifecyclePending,
+  applyError,
+  releaseError,
+  lifecycleError,
+  lifecycleResult,
+  onApply,
+  onRelease,
+  onRunLifecycle,
+}: {
+  observability?: AdminMediaObservabilityData | null
+  controllerProfile?: MediaRolloutControllerProfileData | null
+  overrideId: string | null
+  overrideMode: 'AUTO' | 'MANUAL' | 'OFF'
+  onOverrideModeChange: (value: 'AUTO' | 'MANUAL' | 'OFF') => void
+  thresholdDelta: string
+  onThresholdDeltaChange: (value: string) => void
+  targetMinRate: string
+  onTargetMinRateChange: (value: string) => void
+  targetMaxRate: string
+  onTargetMaxRateChange: (value: string) => void
+  generationTier: 'none' | 'low' | 'medium' | 'high'
+  onGenerationTierChange: (value: 'none' | 'low' | 'medium' | 'high') => void
+  syncBudgetMs: string
+  onSyncBudgetMsChange: (value: string) => void
+  allowGeneration: boolean
+  onAllowGenerationChange: (value: boolean) => void
+  allowPrivateRuntime: boolean
+  onAllowPrivateRuntimeChange: (value: boolean) => void
+  allowPrivateInspired: boolean
+  onAllowPrivateInspiredChange: (value: boolean) => void
+  forceSafeMode: boolean
+  onForceSafeModeChange: (value: boolean) => void
+  applyPending: boolean
+  releasePending: boolean
+  lifecyclePending: boolean
+  applyError: string | null
+  releaseError: string | null
+  lifecycleError: string | null
+  lifecycleResult?: {
+    run_at: string
+    archived_assets: number
+    deleted_projections: number
+    snapshot_backfill_attempted: number
+    snapshot_backfill_succeeded: number
+    snapshot_backfill_failed: number
+  } | null
+  onApply: () => void
+  onRelease: () => void
+  onRunLifecycle: () => void
+}) {
+  const metrics = observability?.metrics
+  return (
+    <Card>
+      <CardHeader className={"pb-2"}>
+        <CardTitle className={"text-sm"}>Media Ops</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="Root Post 带图率"
+            value={formatPercent(metrics?.root_post.attach_rate_7d)}
+            variant={variantFromGate(observability?.gates, 'root_post_band')}
+            detail={`7d attempted ${metrics?.root_post.attempted_7d ?? 0}`}
+          />
+          <StatCard
+            title="挂图失败"
+            value={formatPercent(metrics?.root_post.attach_failure_rate_24h)}
+            variant={variantFromGate(observability?.gates, 'attach_stability')}
+            detail={`24h failed ${metrics?.root_post.attach_failed_24h ?? 0}`}
+          />
+          <StatCard
+            title="Generation 成功率"
+            value={formatPercent(metrics?.generation_24h.success_rate)}
+            variant={variantFromGate(observability?.gates, 'generation_health')}
+            detail={`24h req ${metrics?.generation_24h.requested ?? 0}`}
+          />
+          <StatCard
+            title="Private Leak"
+            value={String(metrics?.root_post.critical_private_leaks_24h ?? 0)}
+            variant={variantFromGate(observability?.gates, 'privacy_safety')}
+            detail="24h critical blocks"
+          />
+        </div>
+
+        <div className={"grid gap-4 lg:grid-cols-[1.3fr_1fr]"}>
+          <div className={"space-y-3 rounded border bg-muted/20 p-3"}>
+            <div className={"flex flex-wrap items-center gap-2 text-xs"}>
+              <Badge variant="outline">mode {controllerProfile?.mode ?? '-'}</Badge>
+              <Badge variant="outline">profile {controllerProfile?.profile ?? '-'}</Badge>
+              <Badge variant="outline">reason {controllerProfile?.reason ?? '-'}</Badge>
+              {overrideId && <Badge variant="outline">override active</Badge>}
+            </div>
+            <div className={"grid gap-2 sm:grid-cols-2 text-[11px] text-muted-foreground"}>
+              <p>target band: {formatPercent(controllerProfile?.effective.target_min_rate ?? null)} - {formatPercent(controllerProfile?.effective.target_max_rate ?? null)}</p>
+              <p>threshold delta: {controllerProfile?.effective.threshold_delta ?? 0}</p>
+              <p>generation: {String(controllerProfile?.effective.allow_generation ?? false)} · {controllerProfile?.effective.generation_tier ?? '-'}</p>
+              <p>sync budget: {controllerProfile?.effective.sync_generation_ms_budget ?? 0}ms</p>
+              <p>private runtime: {String(controllerProfile?.effective.allow_private_runtime_projection ?? false)}</p>
+              <p>private inspired gen: {String(controllerProfile?.effective.allow_private_inspired_generation ?? false)}</p>
+            </div>
+
+            <div className={"flex flex-wrap gap-2 text-[11px]"}>
+              {(observability?.gates ?? []).map((gate) => (
+                <Badge key={gate.id} variant="outline" className={gateBadgeClass(gate.status)}>
+                  {gate.id}: {gate.status}
+                </Badge>
+              ))}
+            </div>
+
+            <div className={"grid gap-2 sm:grid-cols-2 lg:grid-cols-3"}>
+              <label className={"text-xs"}>
+                <span className={"mb-1 block text-muted-foreground"}>Mode</span>
+                <select className={"h-8 w-full rounded-md border bg-background px-2"} value={overrideMode} onChange={(event) => onOverrideModeChange(event.target.value as 'AUTO' | 'MANUAL' | 'OFF')}>
+                  <option value="AUTO">AUTO</option>
+                  <option value="MANUAL">MANUAL</option>
+                  <option value="OFF">OFF</option>
+                </select>
+              </label>
+              <label className={"text-xs"}>
+                <span className={"mb-1 block text-muted-foreground"}>Target Min</span>
+                <input className={"h-8 w-full rounded-md border bg-background px-2"} value={targetMinRate} onChange={(event) => onTargetMinRateChange(event.target.value)} />
+              </label>
+              <label className={"text-xs"}>
+                <span className={"mb-1 block text-muted-foreground"}>Target Max</span>
+                <input className={"h-8 w-full rounded-md border bg-background px-2"} value={targetMaxRate} onChange={(event) => onTargetMaxRateChange(event.target.value)} />
+              </label>
+              <label className={"text-xs"}>
+                <span className={"mb-1 block text-muted-foreground"}>Threshold Delta</span>
+                <input className={"h-8 w-full rounded-md border bg-background px-2"} value={thresholdDelta} onChange={(event) => onThresholdDeltaChange(event.target.value)} />
+              </label>
+              <label className={"text-xs"}>
+                <span className={"mb-1 block text-muted-foreground"}>Generation Tier</span>
+                <select className={"h-8 w-full rounded-md border bg-background px-2"} value={generationTier} onChange={(event) => onGenerationTierChange(event.target.value as 'none' | 'low' | 'medium' | 'high')}>
+                  <option value="none">none</option>
+                  <option value="low">low</option>
+                  <option value="medium">medium</option>
+                  <option value="high">high</option>
+                </select>
+              </label>
+              <label className={"text-xs"}>
+                <span className={"mb-1 block text-muted-foreground"}>Sync Budget Ms</span>
+                <input className={"h-8 w-full rounded-md border bg-background px-2"} value={syncBudgetMs} onChange={(event) => onSyncBudgetMsChange(event.target.value)} />
+              </label>
+            </div>
+
+            <div className={"flex flex-wrap gap-3 text-xs"}>
+              <label className={"flex items-center gap-2"}>
+                <input type="checkbox" checked={allowGeneration} onChange={(event) => onAllowGenerationChange(event.target.checked)} />
+                allow generation
+              </label>
+              <label className={"flex items-center gap-2"}>
+                <input type="checkbox" checked={allowPrivateRuntime} onChange={(event) => onAllowPrivateRuntimeChange(event.target.checked)} />
+                allow private runtime
+              </label>
+              <label className={"flex items-center gap-2"}>
+                <input type="checkbox" checked={allowPrivateInspired} onChange={(event) => onAllowPrivateInspiredChange(event.target.checked)} />
+                allow private inspired gen
+              </label>
+              <label className={"flex items-center gap-2"}>
+                <input type="checkbox" checked={forceSafeMode} onChange={(event) => onForceSafeModeChange(event.target.checked)} />
+                force safe mode
+              </label>
+            </div>
+
+            <div className={"flex flex-wrap gap-2"}>
+              <Button size="sm" variant="outline" onClick={onApply} disabled={applyPending}>
+                {applyPending ? '保存中…' : '保存 Override'}
+              </Button>
+              <Button size="sm" variant="outline" onClick={onRelease} disabled={releasePending || !overrideId}>
+                {releasePending ? '释放中…' : '释放 Active Override'}
+              </Button>
+              <Button size="sm" variant="outline" onClick={onRunLifecycle} disabled={lifecyclePending}>
+                {lifecyclePending ? '执行中…' : '运行 Lifecycle Sweep'}
+              </Button>
+            </div>
+            {applyError && <p className={"text-xs text-destructive"}>{applyError}</p>}
+            {releaseError && <p className={"text-xs text-destructive"}>{releaseError}</p>}
+            {lifecycleError && <p className={"text-xs text-destructive"}>{lifecycleError}</p>}
+            {lifecycleResult && (
+              <div className={"rounded border bg-background/80 px-3 py-2 text-[11px] text-muted-foreground"}>
+                <p>last lifecycle run: {formatIsoTime(lifecycleResult.run_at)}</p>
+                <p>
+                  archived {lifecycleResult.archived_assets} · deleted projections{' '}
+                  {lifecycleResult.deleted_projections}
+                </p>
+                <p>
+                  snapshot backfill {lifecycleResult.snapshot_backfill_succeeded}/
+                  {lifecycleResult.snapshot_backfill_attempted} · failed{' '}
+                  {lifecycleResult.snapshot_backfill_failed}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className={"space-y-3 rounded border bg-muted/20 p-3"}>
+            <p className={"text-xs font-medium"}>Lifecycle & Alerts</p>
+            <p className={"text-[11px] text-muted-foreground"}>
+              orphan {observability?.lifecycle_candidates.orphan_assets ?? 0} · expired projections {observability?.lifecycle_candidates.expired_projections ?? 0} · snapshot backfill {observability?.lifecycle_candidates.snapshot_backfill_assets ?? 0}
+            </p>
+            <div className={"space-y-2"}>
+              {(observability?.recent_alerts ?? []).slice(0, 5).map((alert) => (
+                <div key={alert.id} className={"rounded border bg-background/80 px-3 py-2 text-[11px]"}>
+                  <div className={"flex flex-wrap items-center gap-2"}>
+                    <Badge variant="outline">{alert.severity}</Badge>
+                    <span className={"font-medium"}>{alert.event_type}</span>
+                  </div>
+                  <p className={"mt-1 text-muted-foreground"}>
+                    {alert.surface} · {formatIsoTime(alert.created_at)}
+                  </p>
+                </div>
+              ))}
+              {(observability?.recent_alerts ?? []).length === 0 && (
+                <p className={"text-[11px] text-muted-foreground"}>暂无 media alert。</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 function StatCard({
   title,
   value,
@@ -556,6 +910,42 @@ function formatDurationMs(value: number | null): string {
   if (value >= 1000) return `${Math.round(value / 1000)}s`
   return `${value}ms`
 }
+function formatPercent(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '-'
+  return `${Math.round(value * 100)}%`
+}
+function formatIsoTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString('zh-CN', { hour12: false })
+}
+function parseOptionalNumber(value: string): number | null {
+  const parsed = Number.parseFloat(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+function parseOptionalInteger(value: string): number | null {
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) ? parsed : null
+}
+function variantFromGate(
+  gates: AdminMediaObservabilityData['gates'] | undefined,
+  gateId: MediaObservabilityGateId,
+): 'success' | 'muted' | 'default' {
+  const status = gates?.find((gate) => gate.id === gateId)?.status
+  if (status === 'pass') return 'success'
+  if (status === 'block') return 'muted'
+  return 'default'
+}
+function gateBadgeClass(status: 'pass' | 'warn' | 'block'): string {
+  if (status === 'pass') return 'bg-success/10 text-success'
+  if (status === 'block') return 'bg-destructive/10 text-destructive'
+  return 'bg-warning/10 text-warning'
+}
+type MediaObservabilityGateId =
+  | 'root_post_band'
+  | 'attach_stability'
+  | 'generation_health'
+  | 'privacy_safety'
 function TickResultCard({ result }: { result: TickResult }) {
   return (
     <Card>

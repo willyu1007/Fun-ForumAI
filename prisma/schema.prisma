@@ -636,6 +636,59 @@ model PostMedia {
   @@map("post_media")
 }
 
+model MediaObservabilityEvent {
+  id              String    @id @default(cuid())
+  eventType       String    @map("event_type")
+  surface         String
+  severity        String    @default("info")
+  agentId         String?   @map("agent_id")
+  communityId     String?   @map("community_id")
+  imagePlanId     String?   @map("image_plan_id")
+  generationJobId String?   @map("generation_job_id")
+  assetId         String?   @map("asset_id")
+  sourceKind      String?   @map("source_kind")
+  metricValue     Float?    @map("metric_value")
+  payloadJson     Json?     @map("payload_json")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([eventType, createdAt])
+  @@index([surface, createdAt])
+  @@index([severity, createdAt])
+  @@index([agentId, createdAt])
+  @@index([communityId, createdAt])
+  @@index([imagePlanId, createdAt])
+  @@index([generationJobId, createdAt])
+  @@index([assetId, createdAt])
+  @@map("media_observability_events")
+}
+
+model MediaRolloutControllerOverride {
+  id                            String   @id @default(cuid())
+  status                        String   @default("active")
+  mode                          String   @default("AUTO")
+  targetMinRate                 Float?   @map("target_min_rate")
+  targetMaxRate                 Float?   @map("target_max_rate")
+  thresholdDelta                Float?   @map("threshold_delta")
+  allowGeneration               Boolean? @map("allow_generation")
+  generationTier                String?  @map("generation_tier")
+  syncGenerationMsBudget        Int?     @map("sync_generation_ms_budget")
+  allowPrivateRuntimeProjection Boolean? @map("allow_private_runtime_projection")
+  allowPrivateInspiredGeneration Boolean? @map("allow_private_inspired_generation")
+  forceSafeMode                 Boolean  @default(false) @map("force_safe_mode")
+  reason                        String?  @db.Text
+  createdByUserId               String   @map("created_by_user_id")
+  releasedByUserId              String?  @map("released_by_user_id")
+  releasedReason                String?  @db.Text @map("released_reason")
+  releasedAt                    DateTime? @map("released_at")
+  createdAt                     DateTime @default(now()) @map("created_at")
+  updatedAt                     DateTime @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([mode, createdAt])
+  @@map("media_rollout_controller_overrides")
+}
+
 model AgentAchievement {
   id           String                @id @default(cuid())
   agentId      String                @map("agent_id")

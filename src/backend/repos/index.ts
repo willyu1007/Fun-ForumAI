@@ -10,6 +10,7 @@ export type {
   MediaSemanticSnapshot,
   SceneMediaBinding,
   MediaContextProjection,
+  SurfaceMediaAttachmentView,
   MediaSourceKind,
   MediaVisibilityPolicy,
   MediaLifecycleStatus,

@@ -6,6 +6,7 @@ import type {
 export interface MediaSemanticSnapshotRepository {
   create(input: CreateMediaSemanticSnapshotInput): Promise<MediaSemanticSnapshot>
   clearCurrentByAssetId(assetId: string): Promise<void>
+  replaceCurrent(input: CreateMediaSemanticSnapshotInput): Promise<MediaSemanticSnapshot>
   findCurrentByAssetId(assetId: string): Promise<MediaSemanticSnapshot | null>
   listByAssetId(assetId: string): Promise<MediaSemanticSnapshot[]>
 }
@@ -18,8 +19,8 @@ function cuid(): string {
 export class InMemoryMediaSemanticSnapshotRepository implements MediaSemanticSnapshotRepository {
   private store = new Map<string, MediaSemanticSnapshot>()
 
-  async create(input: CreateMediaSemanticSnapshotInput): Promise<MediaSemanticSnapshot> {
-    const snapshot: MediaSemanticSnapshot = {
+  private buildSnapshot(input: CreateMediaSemanticSnapshotInput): MediaSemanticSnapshot {
+    return {
       id: input.id ?? cuid(),
       asset_id: input.asset_id,
       snapshot_kind: input.snapshot_kind,
@@ -33,6 +34,10 @@ export class InMemoryMediaSemanticSnapshotRepository implements MediaSemanticSna
       is_current: input.is_current ?? true,
       created_at: new Date(),
     }
+  }
+
+  async create(input: CreateMediaSemanticSnapshotInput): Promise<MediaSemanticSnapshot> {
+    const snapshot = this.buildSnapshot(input)
     this.store.set(snapshot.id, snapshot)
     return snapshot
   }
@@ -42,6 +47,19 @@ export class InMemoryMediaSemanticSnapshotRepository implements MediaSemanticSna
       if (snapshot.asset_id !== assetId) continue
       snapshot.is_current = false
     }
+  }
+
+  async replaceCurrent(input: CreateMediaSemanticSnapshotInput): Promise<MediaSemanticSnapshot> {
+    const snapshot = this.buildSnapshot({
+      ...input,
+      is_current: true,
+    })
+    for (const current of this.store.values()) {
+      if (current.asset_id !== input.asset_id) continue
+      current.is_current = false
+    }
+    this.store.set(snapshot.id, snapshot)
+    return snapshot
   }
 
   async findCurrentByAssetId(assetId: string): Promise<MediaSemanticSnapshot | null> {

@@ -18,6 +18,7 @@ import type {
 } from '../repos/types.js'
 import { NotFoundError, ValidationError } from '../lib/errors.js'
 import { MediaBindingService } from './media-binding-service.js'
+import type { MediaObservabilityService } from './media-observability-service.js'
 
 export interface MediaReuseGovernanceServiceDeps {
   mediaAssetRepo: MediaAssetRepository
@@ -28,6 +29,7 @@ export interface MediaReuseGovernanceServiceDeps {
   mediaGenerationJobRepo: MediaGenerationJobRepository
   imagePlanRepo: ImagePlanRepository
   mediaBindingService: MediaBindingService
+  mediaObservabilityService?: Pick<MediaObservabilityService, 'record'> | null
 }
 
 export interface MediaReuseEvaluation {
@@ -223,6 +225,20 @@ export class MediaReuseGovernanceService {
         })
 
     if (policy.status !== 'active') {
+      await this.deps.mediaObservabilityService?.record({
+        event_type: 'policy_candidate_blocked',
+        surface: 'governance',
+        severity: 'warn',
+        agent_id: input.agent_id,
+        asset_id: input.asset?.id ?? null,
+        source_kind: input.source_kind,
+        payload_json: {
+          subject_type,
+          subject_id,
+          policy_id: policy.id,
+          reason: `policy_${policy.status}`,
+        },
+      })
       return {
         policy,
         allowed_reuse_modes: [],
@@ -231,6 +247,20 @@ export class MediaReuseGovernanceService {
       }
     }
     if (input.projection && !isProjectionActive(input.projection)) {
+      await this.deps.mediaObservabilityService?.record({
+        event_type: 'policy_candidate_blocked',
+        surface: 'governance',
+        severity: 'warn',
+        agent_id: input.agent_id,
+        asset_id: input.asset?.id ?? null,
+        source_kind: input.source_kind,
+        payload_json: {
+          subject_type,
+          subject_id,
+          policy_id: policy.id,
+          reason: 'projection_expired',
+        },
+      })
       return {
         policy,
         allowed_reuse_modes: [],
@@ -249,6 +279,20 @@ export class MediaReuseGovernanceService {
     }
     if (asset) {
       if (asset.lifecycle_status !== 'active' || asset.visibility_policy === 'blocked') {
+        await this.deps.mediaObservabilityService?.record({
+          event_type: 'policy_candidate_blocked',
+          surface: 'governance',
+          severity: 'warn',
+          agent_id: input.agent_id,
+          asset_id: asset.id,
+          source_kind: input.source_kind,
+          payload_json: {
+            subject_type,
+            subject_id,
+            policy_id: policy.id,
+            reason: 'asset_blocked',
+          },
+        })
         return {
           policy,
           allowed_reuse_modes: [],
@@ -289,6 +333,20 @@ export class MediaReuseGovernanceService {
 
     allowedModes = dedupeModes(allowedModes)
     if (allowedModes.length === 0) {
+      await this.deps.mediaObservabilityService?.record({
+        event_type: 'policy_candidate_blocked',
+        surface: 'governance',
+        severity: 'warn',
+        agent_id: input.agent_id,
+        asset_id: input.asset?.id ?? null,
+        source_kind: input.source_kind,
+        payload_json: {
+          subject_type,
+          subject_id,
+          policy_id: policy.id,
+          reason: 'policy_blocked_all_modes',
+        },
+      })
       return {
         policy,
         allowed_reuse_modes: [],
@@ -383,6 +441,21 @@ export class MediaReuseGovernanceService {
     for (const job of cancelledJobs) {
       await this.syncPlansWithCancelledJob(job)
     }
+
+    await this.deps.mediaObservabilityService?.record({
+      event_type: 'policy_revoked',
+      surface: 'governance',
+      severity: 'warn',
+      asset_id: policy.subject_type === 'asset' ? policy.subject_id : null,
+      payload_json: {
+        policy_id: policy.id,
+        subject_type: policy.subject_type,
+        subject_id: policy.subject_id,
+        cancelled_jobs: cancelledJobs.length,
+        expired_projection_ids: projectionIds,
+        reason: input.reason,
+      },
+    })
 
     return {
       policy,

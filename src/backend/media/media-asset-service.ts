@@ -5,6 +5,7 @@ import type { LookupAddress } from 'node:dns'
 import type {
   MediaAsset,
   MediaContextProjection,
+  PublicMediaContextCard,
   MediaSceneType,
   MediaSemanticSnapshot,
   MediaSemanticSummary,
@@ -23,8 +24,13 @@ import type { StorageAdapter } from '../services/storage-adapter.js'
 import { ValidationError } from '../lib/errors.js'
 import { MediaSemanticService, buildFallbackMediaSemanticSummary } from './media-semantic-service.js'
 import { MediaBindingService, buildOwnerPrivatePoolSceneId } from './media-binding-service.js'
-import { MediaProjectionService } from './media-projection-service.js'
+import {
+  MediaProjectionService,
+  buildPrivateMediaMemoryProjection,
+  buildRetrievalCaptionText,
+} from './media-projection-service.js'
 import { MediaWriteBridge } from './media-write-bridge.js'
+import type { MediaObservabilityService } from './media-observability-service.js'
 import { listSurfaceMediaAttachmentViews } from './surface-media-view.js'
 import { pickModelReachableMediaUrl, resolveMediaAssetUrl } from './media-url.js'
 
@@ -85,6 +91,7 @@ export interface MediaAssetServiceDeps {
   mediaBindingService: MediaBindingService
   mediaProjectionService: MediaProjectionService
   mediaWriteBridge: MediaWriteBridge
+  mediaObservabilityService?: Pick<MediaObservabilityService, 'record'> | null
 }
 
 interface DownloadedRemoteMedia {
@@ -221,7 +228,11 @@ export class MediaAssetService {
       sha256: createHash('sha256').update(input.bytes).digest('hex'),
       phash: null,
     })
-    const snapshot = await this.createCurrentSnapshot(asset.id, semantic)
+    const snapshot = await this.createCurrentSnapshot({
+      asset,
+      semantic,
+      surface: 'private_message',
+    })
     return {
       asset,
       snapshot,
@@ -333,12 +344,459 @@ export class MediaAssetService {
       sha256: createHash('sha256').update(input.bytes).digest('hex'),
       phash: null,
     })
-    const snapshot = await this.createCurrentSnapshot(asset.id, semantic)
+    const snapshot = await this.createCurrentSnapshot({
+      asset,
+      semantic,
+      surface: 'generation',
+    })
     return {
       asset,
       snapshot,
       media_url: stored.url,
     }
+  }
+
+  async refreshSemanticSnapshot(assetId: string): Promise<{
+    asset: MediaAsset
+    snapshot: MediaSemanticSnapshot | null
+  } | null> {
+    const asset = await this.deps.mediaAssetRepo.findById(assetId)
+    if (!asset) return null
+    const mediaFile = await this.getAssetMediaFile(assetId)
+    if (!mediaFile) {
+      await this.deps.mediaObservabilityService?.record({
+        event_type: 'semantic_snapshot_failed',
+        surface: 'lifecycle',
+        severity: 'warn',
+        asset_id: asset.id,
+        payload_json: {
+          reason: 'asset_file_missing',
+          mime_type: asset.mime_type,
+        },
+      })
+      return {
+        asset,
+        snapshot: null,
+      }
+    }
+
+    try {
+      const semantic = await this.deps.mediaSemanticService.extract({
+        agentId: asset.steward_agent_id ?? undefined,
+        mimeType: asset.mime_type,
+        sourceUrl: pickModelReachableMediaUrl(resolveMediaAssetUrl(asset, this.deps.storage)),
+        uploadBuffer: mediaFile.data,
+      })
+      const snapshot = await this.createCurrentSnapshot({
+        asset,
+        semantic,
+        surface: 'lifecycle',
+      })
+      const recompiled = await this.recompileFutureUseProjections({ asset, snapshot })
+      if (recompiled.projection_count > 0) {
+        await this.deps.mediaObservabilityService?.record({
+          event_type: 'projection_recompiled',
+          surface: 'lifecycle',
+          asset_id: asset.id,
+          payload_json: {
+            binding_count: recompiled.binding_count,
+            projection_count: recompiled.projection_count,
+            snapshot_id: snapshot.id,
+          },
+        })
+      }
+      return {
+        asset,
+        snapshot,
+      }
+    } catch (error) {
+      await this.deps.mediaObservabilityService?.record({
+        event_type: 'semantic_snapshot_failed',
+        surface: 'lifecycle',
+        severity: 'warn',
+        asset_id: asset.id,
+        payload_json: {
+          reason: error instanceof Error ? error.message : 'semantic_refresh_failed',
+          mime_type: asset.mime_type,
+        },
+      })
+      return {
+        asset,
+        snapshot: null,
+      }
+    }
+  }
+
+  private async recompileFutureUseProjections(input: {
+    asset: MediaAsset
+    snapshot: MediaSemanticSnapshot
+  }): Promise<{
+    binding_count: number
+    projection_count: number
+  }> {
+    const bindings = await this.deps.sceneMediaBindingRepo.findByAssetId(input.asset.id)
+    if (bindings.length === 0) {
+      return {
+        binding_count: 0,
+        projection_count: 0,
+      }
+    }
+
+    const mediaUrl = resolveMediaAssetUrl(input.asset, this.deps.storage)
+    let projectionCount = 0
+
+    for (const binding of bindings) {
+      if (binding.semantic_snapshot_id !== input.snapshot.id) {
+        const updated = await this.deps.sceneMediaBindingRepo.updateSemanticSnapshotId(
+          binding.id,
+          input.snapshot.id,
+        )
+        binding.semantic_snapshot_id = updated?.semantic_snapshot_id ?? input.snapshot.id
+      }
+      const projections = await this.deps.mediaContextProjectionRepo.findByBindingId(binding.id)
+      projectionCount += await this.refreshRetrievalProjection({
+        binding,
+        projections,
+        asset: input.asset,
+        snapshot: input.snapshot,
+        mediaUrl,
+      })
+      projectionCount += await this.refreshPublicRuntimeProjection({
+        projections,
+        asset: input.asset,
+        snapshot: input.snapshot,
+      })
+      projectionCount += await this.refreshPrivateRuntimeProjection({
+        binding,
+        projections,
+        asset: input.asset,
+        snapshot: input.snapshot,
+      })
+      projectionCount += await this.refreshPrivateMemoryProjection({
+        binding,
+        projections,
+        asset: input.asset,
+        snapshot: input.snapshot,
+      })
+      projectionCount += await this.refreshPublicReuseHandoffProjection({
+        binding,
+        projections,
+        asset: input.asset,
+        snapshot: input.snapshot,
+      })
+    }
+
+    return {
+      binding_count: bindings.length,
+      projection_count: projectionCount,
+    }
+  }
+
+  private async refreshRetrievalProjection(input: {
+    binding: SceneMediaBinding
+    projections: MediaContextProjection[]
+    asset: MediaAsset
+    snapshot: MediaSemanticSnapshot
+    mediaUrl: string | null
+  }): Promise<number> {
+    const existing = input.projections.find(
+      (projection) =>
+        projection.projection_surface === 'retrieval'
+        && projection.projection_kind === 'retrieval_caption'
+        && projection.schema_version === 'retrieval_caption.v1',
+    ) ?? null
+    if (!input.mediaUrl) return 0
+
+    const ownerNote = input.binding.binding_note_text ?? readStringField(
+      existing?.payload_json,
+      'owner_note',
+    )
+    const captionText = buildRetrievalCaptionText({
+      summary: input.snapshot.summary,
+      ownerNote,
+    })
+    const payload = {
+      asset_id: input.asset.id,
+      media_url: input.mediaUrl,
+      mime_type: input.asset.mime_type,
+      caption_text: captionText,
+      summary: input.snapshot.summary,
+      owner_note: ownerNote,
+    }
+
+    if (existing) {
+      await this.deps.mediaContextProjectionRepo.update(existing.id, {
+        schema_version: 'retrieval_caption.v1',
+        payload_json: payload,
+        token_estimate: estimateTokens(captionText),
+        prompt_weight: existing.prompt_weight,
+        mention_policy: existing.mention_policy,
+        preferred_display_variant: existing.preferred_display_variant,
+      })
+      return 1
+    }
+
+    if (input.binding.scene_type !== 'memory_card') return 0
+    await this.deps.mediaProjectionService.createRetrievalCaptionProjection({
+      binding: input.binding,
+      asset: input.asset,
+      snapshot: input.snapshot,
+      mediaUrl: input.mediaUrl,
+      ownerNote,
+    })
+    return 1
+  }
+
+  private async refreshPublicRuntimeProjection(input: {
+    projections: MediaContextProjection[]
+    asset: MediaAsset
+    snapshot: MediaSemanticSnapshot
+  }): Promise<number> {
+    const publicCards = input.projections.filter(
+      (projection) =>
+        projection.projection_surface === 'public_runtime'
+        && projection.projection_kind === 'public_media_context_card'
+        && projection.schema_version === 'public-media-context-card.v1',
+    )
+    let updated = 0
+    for (const projection of publicCards) {
+      const existingCard = projection.payload_json as unknown as PublicMediaContextCard
+      const refreshedCard: PublicMediaContextCard = {
+        ...existingCard,
+        asset_ref: {
+          ...existingCard.asset_ref,
+          asset_id: input.asset.id,
+          semantic_snapshot_id: input.snapshot.id,
+          projection_id: projection.id,
+        },
+        public_summary: buildPublicSummary(input.snapshot.summary),
+        governance: {
+          ...existingCard.governance,
+          expires_at: projection.expires_at?.toISOString() ?? existingCard.governance.expires_at ?? null,
+        },
+      }
+      const serialized = this.deps.mediaProjectionService.serializePublicCardForPrompt({
+        card: refreshedCard,
+        max_chars: 1_200,
+      })
+      await this.deps.mediaContextProjectionRepo.update(projection.id, {
+        schema_version: refreshedCard.schema_version,
+        payload_json: refreshedCard as unknown as Record<string, unknown>,
+        token_estimate: serialized.token_estimate,
+        prompt_weight: refreshedCard.relation.prompt_weight,
+        mention_policy: refreshedCard.relation.mention_policy,
+        preferred_display_variant: refreshedCard.display.preferred_variant,
+      })
+      updated += 1
+    }
+    return updated
+  }
+
+  private async refreshPrivateRuntimeProjection(input: {
+    binding: SceneMediaBinding
+    projections: MediaContextProjection[]
+    asset: MediaAsset
+    snapshot: MediaSemanticSnapshot
+  }): Promise<number> {
+    const runtimeCards = input.projections.filter(
+      (projection) =>
+        projection.projection_surface === 'private_runtime'
+        && projection.projection_kind === 'private_media_runtime_card'
+        && projection.schema_version === 'private-media-runtime-card.v1',
+    )
+    if (runtimeCards.length === 0) {
+      if (input.binding.scene_type !== 'private_message') return 0
+      await this.deps.mediaProjectionService.createPrivateRuntimeProjection({
+        binding: input.binding,
+        asset: input.asset,
+        snapshot: input.snapshot,
+        source_kind: input.asset.source_kind,
+        why_relevant_hint: this.readWhyRelevantHint(input.projections),
+      })
+      return 1
+    }
+
+    let updated = 0
+    for (const projection of runtimeCards) {
+      const existingCard = projection.payload_json as unknown as PrivateMediaRuntimeCard
+      const refreshedCard: PrivateMediaRuntimeCard = {
+        ...existingCard,
+        asset_ref: {
+          ...existingCard.asset_ref,
+          asset_id: input.asset.id,
+          semantic_snapshot_id: input.snapshot.id,
+          projection_id: projection.id,
+        },
+        private_summary: buildPrivateSummary(input.snapshot.summary),
+        memory_policy: {
+          ...existingCard.memory_policy,
+          public_safe_shadow_hint: trimCompact(input.snapshot.summary.public_safe_summary, 180),
+          why_relevant_hint: trimCompact(existingCard.memory_policy.why_relevant_hint, 180),
+        },
+      }
+      const serialized = this.deps.mediaProjectionService.serializePrivateRuntimeCardForPrompt({
+        card: refreshedCard,
+        max_chars: 900,
+      })
+      await this.deps.mediaContextProjectionRepo.update(projection.id, {
+        schema_version: refreshedCard.schema_version,
+        payload_json: refreshedCard as unknown as Record<string, unknown>,
+        token_estimate: serialized.token_estimate,
+        prompt_weight: 'primary',
+        mention_policy: 'silent_influence',
+        preferred_display_variant: 'original',
+      })
+      updated += 1
+    }
+    return updated
+  }
+
+  private async refreshPrivateMemoryProjection(input: {
+    binding: SceneMediaBinding
+    projections: MediaContextProjection[]
+    asset: MediaAsset
+    snapshot: MediaSemanticSnapshot
+  }): Promise<number> {
+    const memoryProjections = input.projections.filter(
+      (projection) =>
+        projection.projection_surface === 'memory'
+        && projection.projection_kind === 'private_media_memory_projection'
+        && projection.schema_version === 'private-media-memory-projection.v1',
+    )
+    if (memoryProjections.length === 0) {
+      if (input.binding.scene_type !== 'private_message') return 0
+      if (
+        !input.asset.steward_agent_id
+        || !input.asset.owner_user_id
+        || input.asset.source_scene_type !== 'private_session'
+        || !input.asset.source_scene_id
+      ) {
+        return 0
+      }
+      await this.deps.mediaProjectionService.createPrivateMemoryProjection({
+        binding: input.binding,
+        asset: input.asset,
+        snapshot: input.snapshot,
+        agent_id: input.asset.steward_agent_id,
+        owner_user_id: input.asset.owner_user_id,
+        session_id: input.asset.source_scene_id,
+        why_relevant_hint: this.readWhyRelevantHint(input.projections),
+      })
+      return 1
+    }
+
+    let updated = 0
+    for (const projection of memoryProjections) {
+      const existingPayload = projection.payload_json as unknown as PrivateMediaMemoryProjection
+      const refreshedPayload = buildPrivateMediaMemoryProjection({
+        asset: input.asset,
+        snapshot: input.snapshot,
+        agent_id: existingPayload.source_ref.agent_id,
+        owner_user_id: existingPayload.source_ref.owner_user_id,
+        session_id: existingPayload.source_ref.session_id,
+        message_id: existingPayload.source_ref.scene_id,
+        why_relevant_hint: existingPayload.handoff.why_relevant_hint,
+      })
+      await this.deps.mediaContextProjectionRepo.update(projection.id, {
+        schema_version: refreshedPayload.schema_version,
+        payload_json: refreshedPayload as unknown as Record<string, unknown>,
+        token_estimate: estimateTokens(refreshedPayload.memory_summary.summary_text),
+        prompt_weight: 'secondary',
+        mention_policy: 'silent_influence',
+        preferred_display_variant: 'none',
+      })
+      updated += 1
+    }
+    return updated
+  }
+
+  private async refreshPublicReuseHandoffProjection(input: {
+    binding: SceneMediaBinding
+    projections: MediaContextProjection[]
+    asset: MediaAsset
+    snapshot: MediaSemanticSnapshot
+  }): Promise<number> {
+    const handoffProjections = input.projections.filter(
+      (projection) =>
+        projection.projection_surface === 'planner'
+        && projection.projection_kind === 'public_reuse_handoff'
+        && projection.schema_version === 'public-reuse-handoff.v1',
+    )
+    if (handoffProjections.length === 0) {
+      if (input.binding.scene_type !== 'private_message') return 0
+      await this.deps.mediaProjectionService.createPublicReuseHandoffProjection({
+        binding: input.binding,
+        asset: input.asset,
+        snapshot: input.snapshot,
+        source_kind: input.asset.source_kind,
+        why_relevant_hint: this.readWhyRelevantHint(input.projections),
+        allowed_reuse_modes: ['derive_new', 'reference_only'],
+        disclose_origin_policy: 'never',
+      })
+      return 1
+    }
+
+    let updated = 0
+    for (const projection of handoffProjections) {
+      const existingHandoff = projection.payload_json as unknown as PublicReuseHandoffCard
+      const refreshedHandoff: PublicReuseHandoffCard = {
+        ...existingHandoff,
+        asset_ref: {
+          ...existingHandoff.asset_ref,
+          asset_id: input.asset.id,
+          semantic_snapshot_id: input.snapshot.id,
+          projection_id: projection.id,
+        },
+        relation: {
+          ...existingHandoff.relation,
+          why_relevant_hint: trimCompact(existingHandoff.relation.why_relevant_hint, 180),
+        },
+        public_summary: buildPublicSummary(input.snapshot.summary),
+      }
+      await this.deps.mediaContextProjectionRepo.update(projection.id, {
+        schema_version: refreshedHandoff.schema_version,
+        payload_json: refreshedHandoff as unknown as Record<string, unknown>,
+        token_estimate: estimateTokens(refreshedHandoff.public_summary.public_safe_caption),
+        prompt_weight: refreshedHandoff.relation.prompt_weight,
+        mention_policy: 'allude',
+        preferred_display_variant: 'none',
+      })
+      updated += 1
+    }
+    return updated
+  }
+
+  private readWhyRelevantHint(projections: MediaContextProjection[]): string {
+    for (const projection of projections) {
+      if (
+        projection.projection_surface === 'private_runtime'
+        && projection.projection_kind === 'private_media_runtime_card'
+      ) {
+        const card = projection.payload_json as unknown as PrivateMediaRuntimeCard
+        if (card.memory_policy.why_relevant_hint.trim().length > 0) {
+          return card.memory_policy.why_relevant_hint
+        }
+      }
+      if (
+        projection.projection_surface === 'memory'
+        && projection.projection_kind === 'private_media_memory_projection'
+      ) {
+        const payload = projection.payload_json as unknown as PrivateMediaMemoryProjection
+        if (payload.handoff.why_relevant_hint.trim().length > 0) {
+          return payload.handoff.why_relevant_hint
+        }
+      }
+      if (
+        projection.projection_surface === 'planner'
+        && projection.projection_kind === 'public_reuse_handoff'
+      ) {
+        const handoff = projection.payload_json as unknown as PublicReuseHandoffCard
+        if (handoff.relation.why_relevant_hint.trim().length > 0) {
+          return handoff.relation.why_relevant_hint
+        }
+      }
+    }
+    return '该图片继续作为后续上下文的视觉线索使用。'
   }
 
   async listPrivateMessageAttachmentViews(messageIds: string[]): Promise<Map<string, PrivateMessageAttachment[]>> {
@@ -593,7 +1051,11 @@ export class MediaAssetService {
       sha256: input.sha256,
       phash: input.phash,
     })
-    const snapshot = await this.createCurrentSnapshot(asset.id, input.semantic)
+    const snapshot = await this.createCurrentSnapshot({
+      asset,
+      semantic: input.semantic,
+      surface: 'planner',
+    })
     const ownerPoolBinding = await this.deps.mediaBindingService.createOwnerPoolAnchor({
       asset,
       snapshot,
@@ -617,23 +1079,39 @@ export class MediaAssetService {
     }
   }
 
-  private async createCurrentSnapshot(
-    assetId: string,
-    semantic: Awaited<ReturnType<MediaSemanticService['extract']>>,
+  private async createCurrentSnapshot(input: {
+    asset: MediaAsset
+    semantic: Awaited<ReturnType<MediaSemanticService['extract']>>
+    surface: 'planner' | 'private_message' | 'generation' | 'lifecycle'
+  },
   ): Promise<MediaSemanticSnapshot> {
-    await this.deps.mediaSemanticSnapshotRepo.clearCurrentByAssetId(assetId)
-    return this.deps.mediaSemanticSnapshotRepo.create({
-      asset_id: assetId,
+    const snapshot = await this.deps.mediaSemanticSnapshotRepo.replaceCurrent({
+      asset_id: input.asset.id,
       snapshot_kind: 'visual_core',
-      schema_version: semantic.schema_version,
-      model_provider: semantic.model_provider,
-      model_name: semantic.model_name,
-      model_version: semantic.model_version,
-      summary: semantic.summary,
-      extraction_status: semantic.extraction_status,
-      quality_grade: semantic.quality_grade,
+      schema_version: input.semantic.schema_version,
+      model_provider: input.semantic.model_provider,
+      model_name: input.semantic.model_name,
+      model_version: input.semantic.model_version,
+      summary: input.semantic.summary,
+      extraction_status: input.semantic.extraction_status,
+      quality_grade: input.semantic.quality_grade,
       is_current: true,
     })
+    await this.deps.mediaObservabilityService?.record({
+      event_type: input.semantic.extraction_status === 'completed'
+        ? 'semantic_snapshot_created'
+        : 'semantic_snapshot_fallback',
+      surface: input.surface,
+      severity: input.semantic.extraction_status === 'completed' ? 'info' : 'warn',
+      asset_id: input.asset.id,
+      payload_json: {
+        snapshot_id: snapshot.id,
+        schema_version: snapshot.schema_version,
+        model_version: snapshot.model_version,
+        extraction_status: snapshot.extraction_status,
+      },
+    })
+    return snapshot
   }
 
   private async buildRecord(
@@ -828,6 +1306,21 @@ export class MediaAssetService {
           allowed_reuse_modes: ['derive_new', 'reference_only'],
           disclose_origin_policy: 'never',
         })
+
+    await this.deps.mediaObservabilityService?.record({
+      event_type: 'private_origin_projection_used',
+      surface: 'private_message',
+      asset_id: asset.id,
+      agent_id: input.agent_id,
+      payload_json: {
+        message_id: input.message_id,
+        session_id: input.session_id,
+        source_kind: asset.source_kind,
+        runtime_projection_id: runtimeResult.projection.id,
+        memory_projection_id: memoryResult.projection.id,
+        handoff_projection_id: publicReuseHandoff.projection.id,
+      },
+    })
 
     return {
       attachment: this.buildPrivateAttachmentView({
@@ -1211,4 +1704,59 @@ export class MediaAssetService {
 function trimCompact(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text
   return `${text.slice(0, Math.max(0, maxChars - 3)).trimEnd()}...`
+}
+
+function estimateTokens(text: string): number {
+  return Math.max(1, Math.ceil(text.length / 4))
+}
+
+function readStringField(
+  payload: Record<string, unknown> | undefined,
+  field: string,
+): string | null {
+  const value = payload?.[field]
+  return typeof value === 'string' && value.trim().length > 0 ? value : null
+}
+
+function buildPublicAltText(summary: MediaSemanticSummary): string {
+  const base = summary.public_safe_summary.trim().length > 0
+    ? summary.public_safe_summary.trim()
+    : [summary.theme, summary.scene, summary.mood].filter(Boolean).join(', ')
+  return trimCompact(base, 180)
+}
+
+function buildPrivateSafeCaption(summary: MediaSemanticSummary): string {
+  const internal = summary.internal_full_summary.trim()
+  return trimCompact(internal.length > 0 ? internal : summary.public_safe_summary.trim(), 260)
+}
+
+function buildPublicSummary(
+  summary: MediaSemanticSummary,
+): PublicMediaContextCard['public_summary'] | PublicReuseHandoffCard['public_summary'] {
+  return {
+    theme: summary.theme,
+    scene: summary.scene,
+    mood: summary.mood,
+    salient_entities: summary.salient_entities.slice(0, 5),
+    discussion_points: summary.discussion_points.slice(0, 5),
+    public_safe_caption: trimCompact(summary.public_safe_summary, 220),
+    alt_text: buildPublicAltText(summary),
+    ...(summary.ocr_snippets.length > 0
+      ? { ocr_snippets: summary.ocr_snippets.slice(0, 3) }
+      : {}),
+  }
+}
+
+function buildPrivateSummary(summary: MediaSemanticSummary): PrivateMediaRuntimeCard['private_summary'] {
+  return {
+    theme: summary.theme,
+    scene: summary.scene,
+    mood: summary.mood,
+    salient_entities: summary.salient_entities.slice(0, 5),
+    discussion_points: summary.discussion_points.slice(0, 5),
+    private_safe_caption: buildPrivateSafeCaption(summary),
+    ...(summary.ocr_snippets.length > 0
+      ? { ocr_snippets: summary.ocr_snippets.slice(0, 3) }
+      : {}),
+  }
 }

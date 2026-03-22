@@ -16,6 +16,13 @@ export { ArkSeedreamGateway } from './ark-seedream-gateway.js'
 export { MediaGenerationService } from './media-generation-service.js'
 export { SurfaceMediaPlanningService } from './surface-media-planning-service.js'
 export {
+  MediaObservabilityService,
+  deriveTargetBandFromOverride,
+  resolveMediaObservabilitySurface,
+} from './media-observability-service.js'
+export { MediaRolloutControllerService } from './media-rollout-controller-service.js'
+export { MediaLifecycleService } from './media-lifecycle-service.js'
+export {
   listSurfaceMediaAttachmentViews,
   resolveSurfaceMediaAttachmentFromEvidence,
   toSurfaceMediaAttachmentView,

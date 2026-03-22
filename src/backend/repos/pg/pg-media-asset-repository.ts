@@ -49,6 +49,39 @@ export class PgMediaAssetRepository implements MediaAssetRepository {
     return rows.map((row) => this.toDomain(row))
   }
 
+  async listRecent(
+    opts: {
+      limit?: number
+      lifecycle_statuses?: Array<MediaAsset['lifecycle_status']>
+      before?: {
+        created_at: Date
+        id: string
+      }
+    } = {},
+  ): Promise<MediaAsset[]> {
+    const rows = await this.prisma.mediaAsset.findMany({
+      where: {
+        ...(opts.lifecycle_statuses?.length
+          ? { lifecycleStatus: { in: opts.lifecycle_statuses } }
+          : {}),
+        ...(opts.before
+          ? {
+              OR: [
+                { createdAt: { lt: opts.before.created_at } },
+                {
+                  createdAt: opts.before.created_at,
+                  id: { lt: opts.before.id },
+                },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...(opts.limit ? { take: opts.limit } : {}),
+    })
+    return rows.map((row) => this.toDomain(row))
+  }
+
   async listStewardAgentIdsWithAssets(
     opts: {
       limit?: number

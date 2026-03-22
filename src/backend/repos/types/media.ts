@@ -405,6 +405,131 @@ export interface CreateMediaGenerationJobInput {
   finished_at?: Date | null
 }
 
+export type MediaObservabilitySeverity =
+  | 'info'
+  | 'warn'
+  | 'critical'
+
+export type MediaObservabilitySurface =
+  | 'root_post'
+  | 'forum_comment'
+  | 'chat_room_message'
+  | 'private_message'
+  | 'highlights'
+  | 'planner'
+  | 'generation'
+  | 'lifecycle'
+  | 'governance'
+
+export type MediaObservabilityEventType =
+  | 'root_post_visual_attempted'
+  | 'root_post_display_linked'
+  | 'root_post_runtime_injected'
+  | 'root_post_text_only'
+  | 'root_post_runtime_only'
+  | `source_selected:${VisualSourceKind}`
+  | 'semantic_snapshot_created'
+  | 'semantic_snapshot_reused'
+  | 'semantic_snapshot_fallback'
+  | 'semantic_snapshot_failed'
+  | 'generation_requested'
+  | 'generation_succeeded'
+  | 'generation_failed'
+  | 'generation_timed_out'
+  | 'generation_cancelled'
+  | 'generation_sync_degraded'
+  | 'display_attach_failed'
+  | 'projection_recompiled'
+  | 'public_prompt_audit_blocked'
+  | 'policy_candidate_blocked'
+  | 'policy_revoked'
+  | 'private_origin_projection_used'
+  | 'private_leak_blocked'
+  | 'runtime_only_downgraded'
+
+export interface MediaObservabilityEvent {
+  id: string
+  event_type: MediaObservabilityEventType
+  surface: MediaObservabilitySurface
+  severity: MediaObservabilitySeverity
+  agent_id: string | null
+  community_id: string | null
+  image_plan_id: string | null
+  generation_job_id: string | null
+  asset_id: string | null
+  source_kind: VisualSourceKind | null
+  metric_value: number | null
+  payload_json: Record<string, unknown> | null
+  created_at: Date
+}
+
+export interface CreateMediaObservabilityEventInput {
+  id?: string
+  event_type: MediaObservabilityEventType
+  surface: MediaObservabilitySurface
+  severity?: MediaObservabilitySeverity
+  agent_id?: string | null
+  community_id?: string | null
+  image_plan_id?: string | null
+  generation_job_id?: string | null
+  asset_id?: string | null
+  source_kind?: VisualSourceKind | null
+  metric_value?: number | null
+  payload_json?: Record<string, unknown> | null
+  created_at?: Date
+}
+
+export type MediaRolloutControllerOverrideStatus =
+  | 'active'
+  | 'released'
+
+export type MediaRolloutControllerMode =
+  | 'AUTO'
+  | 'MANUAL'
+  | 'OFF'
+
+export interface MediaRolloutControllerOverride {
+  id: string
+  status: MediaRolloutControllerOverrideStatus
+  mode: MediaRolloutControllerMode
+  target_min_rate: number | null
+  target_max_rate: number | null
+  threshold_delta: number | null
+  allow_generation: boolean | null
+  generation_tier: GenerationTier | null
+  sync_generation_ms_budget: number | null
+  allow_private_runtime_projection: boolean | null
+  allow_private_inspired_generation: boolean | null
+  force_safe_mode: boolean
+  reason: string | null
+  created_by_user_id: string
+  released_by_user_id: string | null
+  released_reason: string | null
+  released_at: Date | null
+  created_at: Date
+  updated_at: Date
+}
+
+export interface CreateMediaRolloutControllerOverrideInput {
+  id?: string
+  status?: MediaRolloutControllerOverrideStatus
+  mode: MediaRolloutControllerMode
+  target_min_rate?: number | null
+  target_max_rate?: number | null
+  threshold_delta?: number | null
+  allow_generation?: boolean | null
+  generation_tier?: GenerationTier | null
+  sync_generation_ms_budget?: number | null
+  allow_private_runtime_projection?: boolean | null
+  allow_private_inspired_generation?: boolean | null
+  force_safe_mode?: boolean
+  reason?: string | null
+  created_by_user_id: string
+  released_by_user_id?: string | null
+  released_reason?: string | null
+  released_at?: Date | null
+}
+
 export interface SceneRef {
   request_id: string
   director_surface: DirectorSurface
@@ -478,6 +603,7 @@ export interface VisualDirective {
     sync_generation_ms_budget: number
     async_generation_allowed: boolean
     max_generation_attempts: number
+    selection_threshold_delta?: number
   }
   audit: {
     director_reason: string

@@ -33,6 +33,10 @@ class FailingSceneMetadataRepository implements ForumSceneMetadataRepository {
     return []
   }
 
+  async listByEpisodeId(): Promise<[]> {
+    return []
+  }
+
   async deleteByTarget(): Promise<void> {}
 }
 

@@ -8,21 +8,27 @@ import type { MediaSemanticSnapshotRepository } from '../media-semantic-snapshot
 export class PgMediaSemanticSnapshotRepository implements MediaSemanticSnapshotRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
+  private buildCreateData(input: CreateMediaSemanticSnapshotInput): Prisma.MediaSemanticSnapshotCreateInput {
+    return {
+      ...(input.id ? { id: input.id } : {}),
+      asset: {
+        connect: { id: input.asset_id },
+      },
+      snapshotKind: input.snapshot_kind,
+      schemaVersion: input.schema_version,
+      modelProvider: input.model_provider,
+      modelName: input.model_name,
+      modelVersion: input.model_version,
+      summaryJson: input.summary as unknown as Prisma.InputJsonValue,
+      extractionStatus: input.extraction_status,
+      qualityGrade: input.quality_grade,
+      isCurrent: input.is_current ?? true,
+    }
+  }
+
   async create(input: CreateMediaSemanticSnapshotInput): Promise<MediaSemanticSnapshot> {
     const row = await this.prisma.mediaSemanticSnapshot.create({
-      data: {
-        ...(input.id ? { id: input.id } : {}),
-        assetId: input.asset_id,
-        snapshotKind: input.snapshot_kind,
-        schemaVersion: input.schema_version,
-        modelProvider: input.model_provider,
-        modelName: input.model_name,
-        modelVersion: input.model_version,
-        summaryJson: input.summary as unknown as Prisma.InputJsonValue,
-        extractionStatus: input.extraction_status,
-        qualityGrade: input.quality_grade,
-        isCurrent: input.is_current ?? true,
-      },
+      data: this.buildCreateData(input),
     })
     return this.toDomain(row)
   }
@@ -31,6 +37,26 @@ export class PgMediaSemanticSnapshotRepository implements MediaSemanticSnapshotR
     await this.prisma.mediaSemanticSnapshot.updateMany({
       where: { assetId, isCurrent: true },
       data: { isCurrent: false },
+    })
+  }
+
+  async replaceCurrent(input: CreateMediaSemanticSnapshotInput): Promise<MediaSemanticSnapshot> {
+    return this.prisma.$transaction(async (tx) => {
+      const row = await tx.mediaSemanticSnapshot.create({
+        data: this.buildCreateData({
+          ...input,
+          is_current: true,
+        }),
+      })
+      await tx.mediaSemanticSnapshot.updateMany({
+        where: {
+          assetId: input.asset_id,
+          isCurrent: true,
+          id: { not: row.id },
+        },
+        data: { isCurrent: false },
+      })
+      return this.toDomain(row)
     })
   }
 

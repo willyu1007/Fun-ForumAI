@@ -3,6 +3,8 @@ import { api } from '../client'
 import { queryKeys } from '../query-keys'
 import type {
   ApiResponse,
+  AdminMediaObservabilityData,
+  AdminMediaRolloutControllerData,
   AgentRiskProfile,
   ClaimedReviewTask,
   CommunityConfigApplyResult,
@@ -20,6 +22,7 @@ import type {
   ReviewCaseDetail,
   ReviewEvidenceExport,
   RuntimeFeaturesData,
+  MediaLifecycleRunResult,
   TransferredReviewCase,
 } from '../types'
 
@@ -79,6 +82,75 @@ export function useRuntimeFeatures() {
     },
     refetchInterval: (query) => query.state.data?.meta?.disabled === true ? false : 15_000,
     retry: false,
+  })
+}
+
+export function useAdminMediaObservability() {
+  return useQuery({
+    queryKey: queryKeys.adminMediaObservability,
+    queryFn: () => api.get('admin/media/observability').json<ApiResponse<AdminMediaObservabilityData>>(),
+    refetchInterval: 15_000,
+  })
+}
+
+export function useAdminMediaRolloutController() {
+  return useQuery({
+    queryKey: queryKeys.adminMediaRolloutController,
+    queryFn: () =>
+      api.get('admin/media/rollout-controller').json<ApiResponse<AdminMediaRolloutControllerData>>(),
+    refetchInterval: 15_000,
+  })
+}
+
+export function usePatchAdminMediaRolloutController() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: {
+      mode: 'AUTO' | 'MANUAL' | 'OFF'
+      target_min_rate?: number | null
+      target_max_rate?: number | null
+      threshold_delta?: number | null
+      allow_generation?: boolean | null
+      generation_tier?: 'none' | 'low' | 'medium' | 'high' | null
+      sync_generation_ms_budget?: number | null
+      allow_private_runtime_projection?: boolean | null
+      allow_private_inspired_generation?: boolean | null
+      force_safe_mode?: boolean
+      reason?: string | null
+    }) =>
+      api.patch('admin/media/rollout-controller', {
+        json: body,
+      }).json<ApiResponse<AdminMediaRolloutControllerData['active_override']>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminMediaObservability })
+      qc.invalidateQueries({ queryKey: queryKeys.adminMediaRolloutController })
+    },
+  })
+}
+
+export function useReleaseAdminMediaRolloutController() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { override_id: string; reason?: string | null }) =>
+      api.post(`admin/media/rollout-controller/${body.override_id}/release`, {
+        json: { reason: body.reason ?? null },
+      }).json<ApiResponse<AdminMediaRolloutControllerData['active_override']>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminMediaObservability })
+      qc.invalidateQueries({ queryKey: queryKeys.adminMediaRolloutController })
+    },
+  })
+}
+
+export function useRunMediaLifecycle() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      api.post('admin/media/lifecycle/run').json<ApiResponse<MediaLifecycleRunResult>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminMediaObservability })
+      qc.invalidateQueries({ queryKey: queryKeys.adminMediaRolloutController })
+    },
   })
 }
 

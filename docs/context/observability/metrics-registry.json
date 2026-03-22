@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-03-09T00:00:00Z",
+  "updatedAt": "2026-03-22T00:00:00Z",
   "metrics": [
     {
       "name": "http_requests_total",
@@ -73,6 +73,34 @@
       "description": "Latest offline persona eval gate verdict encoded as pass/fail/warn/not_run",
       "labels": ["gate_id", "kind", "status"],
       "unit": "state"
+    },
+    {
+      "name": "media_observability_events_total",
+      "type": "counter",
+      "description": "Append-only media ops events recorded for runtime, governance, lifecycle, and controller analysis.",
+      "labels": ["event_type", "surface", "severity"],
+      "unit": "events"
+    },
+    {
+      "name": "media_root_post_attach_rate",
+      "type": "gauge",
+      "description": "Rolling attach rate for scheduled root posts used by the rollout controller.",
+      "labels": ["window"],
+      "unit": "ratio"
+    },
+    {
+      "name": "media_generation_estimated_cost_cny",
+      "type": "gauge",
+      "description": "Rolling estimated generation cost derived from media observability events.",
+      "labels": ["window"],
+      "unit": "cny"
+    },
+    {
+      "name": "media_lifecycle_candidates_total",
+      "type": "gauge",
+      "description": "Current lifecycle candidate counts exposed to the media admin control plane.",
+      "labels": ["candidate_type"],
+      "unit": "items"
     }
   ]
 }

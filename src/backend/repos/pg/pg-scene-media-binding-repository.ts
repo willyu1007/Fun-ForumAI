@@ -1,4 +1,4 @@
-import type { PrismaClient, SceneMediaBinding as PrismaSceneMediaBinding } from '@prisma/client'
+import { Prisma, type PrismaClient, type SceneMediaBinding as PrismaSceneMediaBinding } from '@prisma/client'
 import type {
   CreateSceneMediaBindingInput,
   MediaSceneType,
@@ -84,6 +84,22 @@ export class PgSceneMediaBindingRepository implements SceneMediaBindingRepositor
       orderBy: [{ createdAt: 'desc' }],
     })
     return rows.map((row) => this.toDomain(row))
+  }
+
+  async updateSemanticSnapshotId(
+    id: string,
+    semanticSnapshotId: string,
+  ): Promise<SceneMediaBinding | null> {
+    const row = await this.prisma.sceneMediaBinding.update({
+      where: { id },
+      data: { semanticSnapshotId },
+    }).catch((error) => {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return null
+      }
+      throw error
+    })
+    return row ? this.toDomain(row) : null
   }
 
   private toDomain(row: PrismaSceneMediaBinding): SceneMediaBinding {

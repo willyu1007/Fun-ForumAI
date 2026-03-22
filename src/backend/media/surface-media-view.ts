@@ -6,7 +6,6 @@ import type {
   SceneMediaBindingRepository,
 } from '../repos/scene-media-binding-repository.js'
 import type {
-  MediaSceneType,
   SceneMediaBinding,
   SurfaceMediaAttachmentView,
 } from '../repos/types.js'

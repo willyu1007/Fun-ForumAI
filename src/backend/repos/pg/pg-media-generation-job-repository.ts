@@ -57,6 +57,14 @@ export class PgMediaGenerationJobRepository implements MediaGenerationJobReposit
     return row ? this.toDomain(row) : null
   }
 
+  async findByOutputAssetId(assetId: string): Promise<MediaGenerationJob[]> {
+    const rows = await this.prisma.mediaGenerationJobRecord.findMany({
+      where: { outputAssetId: assetId },
+      orderBy: [{ createdAt: 'desc' }],
+    })
+    return rows.map((row) => this.toDomain(row))
+  }
+
   async markTimedOutRunningJobs(now: Date, timeoutMs: number): Promise<MediaGenerationJob[]> {
     const timeoutThreshold = new Date(now.getTime() - timeoutMs)
     return this.prisma.$transaction(async (tx) => {

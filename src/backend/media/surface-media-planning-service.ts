@@ -1,7 +1,6 @@
 import type { ChatMessageKind } from '../repos/types.js'
 import type {
   PersistedVisualDirective,
-  VisualRole,
 } from '../repos/types.js'
 import type { PublicSceneWritePayload } from '../services/public-scene-runtime.js'
 import type { CurrentContextSource } from '../runtime/types.js'
@@ -9,6 +8,8 @@ import type { ProgramMessageMetadata } from '../services/conversation-clock/type
 import type { MediaProjectionService } from './media-projection-service.js'
 import type { ImagePlannerService } from './image-planner-service.js'
 import type { VisualDirectiveService } from './visual-directive-service.js'
+import type { MediaObservabilityService } from './media-observability-service.js'
+import { resolveMediaObservabilitySurface } from './media-observability-service.js'
 
 export interface PreparedSurfaceVisualPlan {
   directive_id: string
@@ -27,6 +28,7 @@ export interface SurfaceMediaPlanningServiceDeps {
   visualDirectiveService: VisualDirectiveService
   imagePlannerService: ImagePlannerService
   mediaProjectionService: MediaProjectionService
+  mediaObservabilityService?: Pick<MediaObservabilityService, 'record' | 'recordCriticalPrivateLeak'> | null
 }
 
 export class SurfaceMediaPlanningService {
@@ -86,6 +88,10 @@ export class SurfaceMediaPlanningService {
       agent_id: input.agent_id,
       directive: input.directive,
     })
+    const surface = resolveMediaObservabilitySurface({
+      actor_surface: input.directive.scene_ref.actor_surface,
+      director_surface: input.directive.scene_ref.director_surface,
+    })
     const firstCard = plan.runtime.cards[0] ?? null
     const serialized = firstCard
       ? this.deps.mediaProjectionService.serializePublicCardForPrompt({
@@ -100,6 +106,62 @@ export class SurfaceMediaPlanningService {
         && !serialized.audit.contains_owner_note
         && !serialized.audit.contains_private_text
       : false
+    const selectedSource = plan.selected_sources.find((item) => !item.rejection_reason)
+    if (selectedSource?.source_kind) {
+      await this.deps.mediaObservabilityService?.record({
+        event_type: `source_selected:${selectedSource.source_kind}`,
+        surface,
+        agent_id: input.agent_id,
+        image_plan_id: plan.id,
+        asset_id: selectedSource.asset_id ?? null,
+        source_kind: selectedSource.source_kind,
+      })
+    }
+    if (plan.runtime.cards.length > 0 && plan.display.attachments.length === 0) {
+      await this.deps.mediaObservabilityService?.record({
+        event_type: 'runtime_only_downgraded',
+        surface,
+        agent_id: input.agent_id,
+        image_plan_id: plan.id,
+        payload_json: {
+          planner_status: plan.status,
+          planner_decision: plan.decision,
+        },
+      })
+    }
+    if (firstCard && !promptSafe) {
+      const blockedFields = [
+        serialized?.audit.contains_owner_note ? 'owner_note' : null,
+        serialized?.audit.contains_private_text ? 'private_text' : null,
+        serialized?.audit.contains_url ? 'url' : null,
+        serialized?.audit.contains_asset_id ? 'asset_id' : null,
+      ].filter((item): item is string => Boolean(item))
+      await this.deps.mediaObservabilityService?.record({
+        event_type: 'public_prompt_audit_blocked',
+        surface,
+        severity: 'warn',
+        agent_id: input.agent_id,
+        image_plan_id: plan.id,
+        asset_id: firstCard.asset_ref.asset_id,
+        source_kind: firstCard.source.kind,
+        payload_json: {
+          blocked_fields: blockedFields,
+          derived_from_private: firstCard.source.derived_from_private,
+        },
+      })
+      if (firstCard.source.derived_from_private && blockedFields.length > 0) {
+        await this.deps.mediaObservabilityService?.recordCriticalPrivateLeak({
+          surface,
+          agent_id: input.agent_id,
+          community_id: input.directive.scene_ref.community_id ?? null,
+          image_plan_id: plan.id,
+          asset_id: firstCard.asset_ref.asset_id,
+          source_kind: firstCard.source.kind,
+          blocked_fields: blockedFields,
+          reason: 'surface_prompt_audit_blocked',
+        })
+      }
+    }
 
     if (plan.runtime.cards.length === 0 && plan.display.attachments.length === 0) {
       return null

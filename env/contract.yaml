@@ -786,3 +786,89 @@ variables:
     required: false
     default: "false"
     description: Enable stage template rotation scripts/control-plane integrations.
+  FF_MEDIA_OBSERVABILITY_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enables media observability events, admin dashboards, and alert surfacing.
+
+  FF_MEDIA_ROLLOUT_CONTROLLER_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enables the root-post media rollout controller and persisted override plane.
+
+  FF_MEDIA_LIFECYCLE_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enables media lifecycle sweep, orphan archive, projection cleanup, and snapshot backfill worker.
+
+  MEDIA_ROOT_POST_TARGET_MIN_RATE:
+    type: float
+    required: false
+    default: 0.35
+    description: Lower bound of the desired 7d root-post display attach rate.
+
+  MEDIA_ROOT_POST_TARGET_MAX_RATE:
+    type: float
+    required: false
+    default: 0.45
+    description: Upper bound of the desired 7d root-post display attach rate.
+
+  MEDIA_GENERATION_ESTIMATED_COST_CNY_PER_IMAGE:
+    type: float
+    required: false
+    default: 0
+    description: Estimated cost in CNY charged to each media generation request when provider billing details are unavailable.
+
+  MEDIA_GENERATION_ESTIMATED_DAILY_BUDGET_CNY:
+    type: float
+    required: false
+    default: 0
+    description: Daily estimated generation budget used by the media rollout controller. Zero disables cost gating.
+
+  MEDIA_SNAPSHOT_TARGET_SCHEMA_VERSION:
+    type: string
+    required: false
+    default: media_semantic_summary.v1
+    description: Target semantic snapshot schema version for lifecycle backfill.
+
+  MEDIA_SNAPSHOT_TARGET_MODEL_VERSION:
+    type: string
+    required: false
+    default: ""
+    description: Target semantic snapshot model version for lifecycle backfill. Empty string disables model-version drift gating.
+
+  MEDIA_SNAPSHOT_BACKFILL_BATCH_SIZE:
+    type: int
+    required: false
+    default: 20
+    description: Max active assets to re-extract in one lifecycle sweep.
+
+  MEDIA_LIFECYCLE_WORKER_INTERVAL_MS:
+    type: int
+    required: false
+    default: 60000
+    description: Interval for the media lifecycle worker.
+
+  MEDIA_LIFECYCLE_WORKER_STARTUP_DELAY_MS:
+    type: int
+    required: false
+    default: 5000
+    description: Startup delay for the media lifecycle worker.
+
+  MEDIA_LIFECYCLE_ORPHAN_GRACE_HOURS:
+    type: int
+    required: false
+    default: 72
+    description: Minimum asset age before an unreferenced media asset can be archived as orphaned.
+
+  MEDIA_LIFECYCLE_EXPIRED_PROJECTION_RETENTION_HOURS:
+    type: int
+    required: false
+    default: 24
+    description: How long expired non-display projections are retained before lifecycle cleanup.

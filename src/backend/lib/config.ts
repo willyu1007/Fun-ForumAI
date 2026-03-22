@@ -113,6 +113,22 @@ export const config = {
     globalConcurrency: safeInt(env.MEDIA_GENERATION_GLOBAL_CONCURRENCY, 1),
     providerConcurrency: safeInt(env.MEDIA_GENERATION_PROVIDER_CONCURRENCY, 1),
   },
+  mediaController: {
+    rootPostTargetMinRate: safeFloat(env.MEDIA_ROOT_POST_TARGET_MIN_RATE, 0.35),
+    rootPostTargetMaxRate: safeFloat(env.MEDIA_ROOT_POST_TARGET_MAX_RATE, 0.45),
+    estimatedGenerationCostCnyPerImage: safeFloat(env.MEDIA_GENERATION_ESTIMATED_COST_CNY_PER_IMAGE, 0),
+    estimatedGenerationDailyBudgetCny: safeFloat(env.MEDIA_GENERATION_ESTIMATED_DAILY_BUDGET_CNY, 0),
+  },
+  mediaLifecycle: {
+    workerIntervalMs: safeInt(env.MEDIA_LIFECYCLE_WORKER_INTERVAL_MS, 60_000),
+    workerStartupDelayMs: safeInt(env.MEDIA_LIFECYCLE_WORKER_STARTUP_DELAY_MS, 5_000),
+    orphanGraceHours: safeInt(env.MEDIA_LIFECYCLE_ORPHAN_GRACE_HOURS, 72),
+    expiredProjectionRetentionHours: safeInt(env.MEDIA_LIFECYCLE_EXPIRED_PROJECTION_RETENTION_HOURS, 24),
+    snapshotTargetSchemaVersion:
+      env.MEDIA_SNAPSHOT_TARGET_SCHEMA_VERSION || 'media_semantic_summary.v1',
+    snapshotTargetModelVersion: env.MEDIA_SNAPSHOT_TARGET_MODEL_VERSION || '',
+    snapshotBackfillBatchSize: safeInt(env.MEDIA_SNAPSHOT_BACKFILL_BATCH_SIZE, 20),
+  },
   inclinationAssets: {
     storageBackend: env.INCLINATION_ASSET_STORAGE_BACKEND === 's3' ? 's3' : 'local',
     localDir: env.INCLINATION_ASSET_LOCAL_DIR || 'var/inclination-assets',
@@ -205,6 +221,9 @@ export const config = {
     humanParticipationV1: env.FF_HUMAN_PARTICIPATION_V1 !== 'false',
     multimodalAgentInclinationV1: env.FF_MULTIMODAL_AGENT_INCLINATION_V1 === 'true',
     mediaGenerationV1: env.FF_MEDIA_GENERATION_V1 === 'true',
+    mediaObservabilityV1: env.FF_MEDIA_OBSERVABILITY_V1 === 'true',
+    mediaRolloutControllerV1: env.FF_MEDIA_ROLLOUT_CONTROLLER_V1 === 'true',
+    mediaLifecycleV1: env.FF_MEDIA_LIFECYCLE_V1 === 'true',
     mediaForumCommentSurfaceV1: env.FF_MEDIA_FORUM_COMMENT_SURFACE_V1 !== 'false',
     mediaChatRoomSurfaceV1: env.FF_MEDIA_CHAT_ROOM_SURFACE_V1 !== 'false',
     mediaProactivePrivateSurfaceV1: env.FF_MEDIA_PROACTIVE_PRIVATE_SURFACE_V1 !== 'false',

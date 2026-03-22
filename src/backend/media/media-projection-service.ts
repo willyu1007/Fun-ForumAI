@@ -590,7 +590,7 @@ function buildPrivateCaption(summary: MediaSemanticSummary): string {
   return summary.public_safe_summary.trim()
 }
 
-function buildPrivateMediaMemoryProjection(input: {
+export function buildPrivateMediaMemoryProjection(input: {
   asset: MediaAsset
   snapshot: MediaSemanticSnapshot
   agent_id: string

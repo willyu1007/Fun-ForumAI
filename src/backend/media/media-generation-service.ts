@@ -10,6 +10,8 @@ import type {
   PersistedImagePlan,
 } from '../repos/types.js'
 import type { MediaGenerationGateway } from './media-generation-gateway.js'
+import type { MediaObservabilityService } from './media-observability-service.js'
+import { resolveMediaObservabilitySurface } from './media-observability-service.js'
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -44,6 +46,7 @@ export interface MediaGenerationServiceDeps {
   mediaReuseGovernanceService: MediaReuseGovernanceService
   mediaProjectionService: MediaProjectionService
   gateway: MediaGenerationGateway
+  mediaObservabilityService?: Pick<MediaObservabilityService, 'record' | 'getEstimatedGenerationCostCny'> | null
 }
 
 export class MediaGenerationService {
@@ -72,7 +75,21 @@ export class MediaGenerationService {
       }
       await delay(Math.min(config.mediaGeneration.pollIntervalMs, Math.max(25, deadline - Date.now())))
     }
-    return (await this.deps.imagePlanRepo.findById(scheduled.plan.id)) ?? scheduled.plan
+    const finalPlan = (await this.deps.imagePlanRepo.findById(scheduled.plan.id)) ?? scheduled.plan
+    if (!terminalGenerationStatus(finalPlan.generation.status)) {
+      await this.deps.mediaObservabilityService?.record({
+        event_type: 'generation_sync_degraded',
+        surface: resolveMediaObservabilitySurface(finalPlan.scene_ref),
+        agent_id: input.agent_id,
+        image_plan_id: finalPlan.id,
+        generation_job_id: scheduled.job.id,
+        payload_json: {
+          wait_budget_ms: input.wait_budget_ms,
+          generation_status: finalPlan.generation.status,
+        },
+      })
+    }
+    return finalPlan
   }
 
   async ensureJobForPlan(input: {
@@ -121,6 +138,22 @@ export class MediaGenerationService {
     } else {
       await this.syncLinkedPlansWithJob(job)
     }
+    if (!existing) {
+      await this.deps.mediaObservabilityService?.record({
+        event_type: 'generation_requested',
+        surface: resolveMediaObservabilitySurface(input.plan.scene_ref),
+        agent_id: input.agent_id,
+        image_plan_id: input.plan.id,
+        generation_job_id: job.id,
+        source_kind: input.plan.selected_sources.find((item) => !item.rejection_reason)?.source_kind ?? null,
+        metric_value: this.deps.mediaObservabilityService?.getEstimatedGenerationCostCny() ?? null,
+        payload_json: {
+          provider: job.provider,
+          model_name: job.model_name,
+          mode: input.plan.generation.mode,
+        },
+      })
+    }
     return {
       plan: updated ?? input.plan,
       job,
@@ -138,6 +171,7 @@ export class MediaGenerationService {
     )
     for (const timedOutJob of timedOutJobs) {
       await this.syncLinkedPlansWithJob(timedOutJob)
+      await this.recordJobEvent(timedOutJob, 'generation_timed_out')
     }
 
     const job = await this.deps.mediaGenerationJobRepo.claimNextQueued({
@@ -160,6 +194,7 @@ export class MediaGenerationService {
         finished_at: new Date(),
       })
       await this.syncLinkedPlansWithJob(cancelled ?? job)
+      await this.recordJobEvent(cancelled ?? job, 'generation_cancelled')
       return cancelled ?? job
     }
 
@@ -226,6 +261,10 @@ export class MediaGenerationService {
         finished_at: new Date(),
       })
       await this.syncLinkedPlansWithJob(finished ?? job)
+      await this.recordJobEvent(
+        finished ?? job,
+        shouldBlock ? 'generation_cancelled' : 'generation_succeeded',
+      )
       return finished ?? job
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'media_generation_failed'
@@ -238,6 +277,9 @@ export class MediaGenerationService {
       })
       if (updated) {
         await this.syncLinkedPlansWithJob(updated)
+        if (nextStatus === 'failed') {
+          await this.recordJobEvent(updated, 'generation_failed')
+        }
       }
       return updated ?? job
     }
@@ -266,6 +308,30 @@ export class MediaGenerationService {
     for (const plan of plans) {
       await this.syncPlanWithJob(plan, job)
     }
+  }
+
+  private async recordJobEvent(
+    job: MediaGenerationJob,
+    eventType:
+      | 'generation_succeeded'
+      | 'generation_failed'
+      | 'generation_timed_out'
+      | 'generation_cancelled',
+  ): Promise<void> {
+    const plan = job.plan_id ? await this.deps.imagePlanRepo.findById(job.plan_id) : null
+    await this.deps.mediaObservabilityService?.record({
+      event_type: eventType,
+      surface: plan ? resolveMediaObservabilitySurface(plan.scene_ref) : 'generation',
+      agent_id: job.agent_id,
+      image_plan_id: plan?.id ?? null,
+      generation_job_id: job.id,
+      asset_id: job.output_asset_id ?? null,
+      payload_json: {
+        provider: job.provider,
+        model_name: job.model_name,
+        error_code: job.error_code,
+      },
+    })
   }
 
   private async syncPlanWithJob(plan: PersistedImagePlan, job: MediaGenerationJob): Promise<void> {

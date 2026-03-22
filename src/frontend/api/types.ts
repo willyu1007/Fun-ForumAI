@@ -212,6 +212,151 @@ export interface RuntimeFeaturesData {
   observability: Record<string, unknown>
 }
 
+export interface MediaObservabilityGate {
+  id: 'root_post_band' | 'attach_stability' | 'generation_health' | 'privacy_safety'
+  status: 'pass' | 'warn' | 'block'
+  value: number | null
+  unit: 'ratio' | 'count'
+  threshold: {
+    pass: string
+    warn?: string
+    block: string
+  }
+}
+
+export interface MediaObservabilityEvent {
+  id: string
+  event_type: string
+  surface: string
+  severity: 'info' | 'warn' | 'critical'
+  agent_id: string | null
+  community_id: string | null
+  image_plan_id: string | null
+  generation_job_id: string | null
+  asset_id: string | null
+  source_kind: string | null
+  metric_value: number | null
+  payload_json: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface MediaObservabilitySnapshotData {
+  windows: {
+    root_post_7d_start: string
+    ops_24h_start: string
+  }
+  root_post: {
+    attempted_7d: number
+    display_linked_7d: number
+    runtime_injected_7d: number
+    text_only_7d: number
+    runtime_only_7d: number
+    attach_rate_7d: number | null
+    runtime_injected_rate_7d: number | null
+    source_mix_7d: Array<{
+      source_kind: string
+      count: number
+      share: number
+    }>
+    attach_success_24h: number
+    attach_failed_24h: number
+    attach_failure_rate_24h: number | null
+    prompt_audit_blocked_24h: number
+    prompt_audit_block_rate_24h: number | null
+    critical_private_leaks_24h: number
+  }
+  generation_24h: {
+    requested: number
+    succeeded: number
+    failed: number
+    timed_out: number
+    cancelled: number
+    sync_degraded: number
+    success_rate: number | null
+    timeout_or_cancel_rate: number | null
+    estimated_cost_cny: number | null
+    cost_gate_active: boolean
+  }
+  governance_24h: {
+    policy_candidate_blocked: number
+    policy_revoked: number
+    runtime_only_downgraded: number
+  }
+}
+
+export interface MediaRolloutControllerOverrideData {
+  id: string
+  status: 'active' | 'released'
+  mode: 'AUTO' | 'MANUAL' | 'OFF'
+  target_min_rate: number | null
+  target_max_rate: number | null
+  threshold_delta: number | null
+  allow_generation: boolean | null
+  generation_tier: 'none' | 'low' | 'medium' | 'high' | null
+  sync_generation_ms_budget: number | null
+  allow_private_runtime_projection: boolean | null
+  allow_private_inspired_generation: boolean | null
+  force_safe_mode: boolean
+  reason: string | null
+  created_by_user_id: string
+  released_by_user_id: string | null
+  released_reason: string | null
+  released_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface MediaRolloutControllerProfileData {
+  mode: 'AUTO' | 'MANUAL' | 'OFF'
+  active_override: MediaRolloutControllerOverrideData | null
+  profile: 'steady' | 'boost' | 'conserve' | 'safe_mode' | 'manual' | 'off'
+  metrics: MediaObservabilitySnapshotData
+  gates: MediaObservabilityGate[]
+  effective: {
+    target_min_rate: number
+    target_max_rate: number
+    threshold_delta: number
+    allow_generation: boolean
+    generation_tier: 'none' | 'low' | 'medium' | 'high'
+    sync_generation_ms_budget: number
+    allow_private_runtime_projection: boolean
+    allow_private_inspired_generation: boolean
+    force_safe_mode: boolean
+  }
+  reason: string
+}
+
+export interface AdminMediaObservabilityData {
+  metrics: MediaObservabilitySnapshotData
+  gates: MediaObservabilityGate[]
+  recent_alerts: MediaObservabilityEvent[]
+  lifecycle_candidates: {
+    orphan_assets: number
+    expired_projections: number
+    snapshot_backfill_assets: number
+  }
+  effective_controller_profile: MediaRolloutControllerProfileData
+}
+
+export interface AdminMediaRolloutControllerData {
+  active_override: MediaRolloutControllerOverrideData | null
+  effective_profile: MediaRolloutControllerProfileData
+}
+
+export interface MediaLifecycleRunResult {
+  run_at: string
+  candidates: {
+    orphan_assets: number
+    expired_projections: number
+    snapshot_backfill_assets: number
+  }
+  archived_assets: number
+  deleted_projections: number
+  snapshot_backfill_attempted: number
+  snapshot_backfill_succeeded: number
+  snapshot_backfill_failed: number
+}
+
 export type ContentVisibility = 'PUBLIC' | 'GRAY' | 'QUARANTINE'
 export type ContentState = 'PENDING' | 'APPROVED' | 'REJECTED'
 export type ModerationVerdict = 'APPROVE' | 'FOLD' | 'QUARANTINE' | 'REJECT'

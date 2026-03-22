@@ -571,18 +571,27 @@ describe('PostScheduler', () => {
     await scheduler.createPost()
 
     const firstGatewayCall = (
-      deps.llmGateway.generateVisibleText as ReturnType<typeof vi.fn>
-    ).mock.calls[0]?.[0] as { promptRef: { id: string; version: number }; variables: Record<string, string> } | undefined
+      deps.llmGateway.generateVisibleText as unknown as {
+        mock: {
+          calls: Array<[{
+            promptRef: { id: string; version: number }
+            variables: Record<string, string>
+          }]>
+        }
+      }
+    ).mock.calls[0]?.[0]
 
     expect(firstGatewayCall?.promptRef)
       .toEqual({ id: 'agent-create-post', version: 4 })
     expect(Object.keys(firstGatewayCall?.variables ?? {}).every((key) => !key.startsWith('layer_'))).toBe(true)
-    expect((deps.responseParser.parseAsScheduledPost as ReturnType<typeof vi.fn>).mock.calls[0]?.[0])
+    expect((deps.responseParser.parseAsScheduledPost as unknown as {
+      mock: { calls: Array<[Record<string, unknown>]> }
+    }).mock.calls[0]?.[0])
       .toEqual(expect.objectContaining({
         fallbackCommunityId: 'community-2',
         lockedCommunityId: 'community-2',
       }))
-    const writeCall = write.mock.calls[0]
+    const writeCall = (write.mock.calls as unknown as Array<[Record<string, unknown>, string, string]>)[0]
     expect(writeCall?.[0]).toEqual(expect.objectContaining({
       community_id: 'community-2',
       image_plan_id: 'image-plan-1',
@@ -624,9 +633,15 @@ describe('PostScheduler', () => {
       community_id: 'community-1',
       post_id: 'post-fallback-1',
     }))
-    expect((deps.llmGateway.generateVisibleText as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].promptRef)
+    expect((deps.llmGateway.generateVisibleText as unknown as {
+      mock: { calls: Array<[{
+        promptRef: { id: string; version: number }
+      }]> }
+    }).mock.calls[0]?.[0].promptRef)
       .toEqual({ id: 'agent-create-post', version: 4 })
-    expect((deps.responseParser.parseAsScheduledPost as ReturnType<typeof vi.fn>).mock.calls[0]?.[0])
+    expect((deps.responseParser.parseAsScheduledPost as unknown as {
+      mock: { calls: Array<[Record<string, unknown>]> }
+    }).mock.calls[0]?.[0])
       .toEqual(expect.objectContaining({
         fallbackCommunityId: 'community-1',
         lockedCommunityId: undefined,
@@ -660,7 +675,11 @@ describe('PostScheduler', () => {
       community_id: 'community-1',
       post_id: 'post-1',
     }))
-    expect((deps.llmGateway.generateVisibleText as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].promptRef)
+    expect((deps.llmGateway.generateVisibleText as unknown as {
+      mock: { calls: Array<[{
+        promptRef: { id: string; version: number }
+      }]> }
+    }).mock.calls[0]?.[0].promptRef)
       .toEqual({ id: 'agent-create-post', version: 4 })
     expect(write).toHaveBeenCalledTimes(1)
     const selectorFallbackInstruction = (write as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as Record<string, unknown> | undefined
@@ -685,7 +704,11 @@ describe('PostScheduler', () => {
       agent_id: 'agent-1',
       post_id: 'post-media-1',
     }))
-    expect((deps.promptOrchestrator?.compose as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.currentContextSources)
+    expect((deps.promptOrchestrator?.compose as unknown as {
+      mock: { calls: Array<[{
+        currentContextSources?: Array<{ kind: string; source_id?: string }>
+      }]> }
+    }).mock.calls[0]?.[0]?.currentContextSources)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           kind: 'public_media_card',
@@ -740,11 +763,15 @@ describe('PostScheduler', () => {
 
     await scheduler.createPost()
 
-    const rawComposeCall = (deps.promptOrchestrator?.compose as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]
+    const rawComposeCall = (deps.promptOrchestrator?.compose as unknown as {
+      mock: { calls: Array<[unknown]> }
+    }).mock.calls[0]?.[0]
     const composeCall = rawComposeCall as { currentContextSources?: Array<{ kind: string }> } | undefined
     expect(composeCall?.currentContextSources?.some((item) => item.kind === 'public_media_card')).toBe(false)
 
-    const writeInstruction = write.mock.calls[0]?.[0] as { public_scene?: { planning_audit?: Record<string, unknown> } } | undefined
+    const writeInstruction = (write.mock.calls as unknown as Array<[{
+      public_scene?: { planning_audit?: Record<string, unknown> }
+    }]>)[0]?.[0]
     expect(writeInstruction?.public_scene?.planning_audit).toEqual(expect.objectContaining({
       public_media_prompt_injection_status: 'blocked_by_audit',
     }))

@@ -12,6 +12,7 @@ export interface SceneMediaBindingRepository {
   findLatestByAssetAndSceneType(assetId: string, sceneType: MediaSceneType): Promise<SceneMediaBinding | null>
   findByScene(sceneType: MediaSceneType, sceneId: string): Promise<SceneMediaBinding[]>
   findByScenes(sceneType: MediaSceneType, sceneIds: string[]): Promise<SceneMediaBinding[]>
+  updateSemanticSnapshotId(id: string, semanticSnapshotId: string): Promise<SceneMediaBinding | null>
 }
 
 let counter = 0
@@ -89,5 +90,15 @@ export class InMemorySceneMediaBindingRepository implements SceneMediaBindingRep
     return Array.from(this.store.values())
       .filter((item) => item.scene_type === sceneType && lookup.has(item.scene_id))
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+  }
+
+  async updateSemanticSnapshotId(
+    id: string,
+    semanticSnapshotId: string,
+  ): Promise<SceneMediaBinding | null> {
+    const binding = this.store.get(id)
+    if (!binding) return null
+    binding.semantic_snapshot_id = semanticSnapshotId
+    return binding
   }
 }

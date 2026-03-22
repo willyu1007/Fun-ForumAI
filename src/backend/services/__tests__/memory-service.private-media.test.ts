@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { SummaryDistillResult } from '../../context-memory/contracts.js'
 import { MemoryService } from '../memory-service.js'
 
 describe('MemoryService private media pipeline', () => {
@@ -29,6 +30,63 @@ describe('MemoryService private media pipeline', () => {
     const tensionReplace = vi.fn()
     const episodicUpsert = vi.fn(async () => undefined)
     const shadowUpsert = vi.fn(async () => undefined)
+    const distillResult: SummaryDistillResult = {
+      origin: {
+        eventId: 'ctxevent:private-media:message-1:asset-1',
+        scene: 'private_chat',
+        sourceType: 'private_session',
+      },
+      episodicCards: [{
+        id: 'ctxepisode:ctxevent:private-media:message-1:asset-1:1',
+        agent_id: 'agent-1',
+        event_id: 'ctxevent:private-media:message-1:asset-1',
+        scene: 'private_chat',
+        title: 'Owner 分享了一张 logo 图',
+        summary: '蓝橙交织的简洁现代 logo',
+        topic_tags: ['logo'],
+        evidence_refs: ['ctxevent:private-media:message-1:asset-1'],
+        salience: 0.7,
+      }],
+      relationState: {
+        id: 'rel-1',
+        agent_id: 'agent-1',
+        counterpart_id: 'owner-1',
+        channel: 'owner',
+        stance: 'unexpected drift',
+        confidence: 0.9,
+        evidence_refs: ['ctxevent:private-media:message-1:asset-1'],
+      },
+      selfModel: {
+        id: 'self-1',
+        agent_id: 'agent-1',
+        summary: 'unexpected drift',
+        tensions: ['taste vs rigor'],
+        evidence_refs: ['ctxevent:private-media:message-1:asset-1'],
+      },
+      tensions: [{
+        id: 'ten-1',
+        agent_id: 'agent-1',
+        label: 'taste vs rigor',
+        description: 'unexpected drift',
+        intensity: 0.7,
+        evidence_refs: ['ctxevent:private-media:message-1:asset-1'],
+      }],
+      privateShadow: {
+        id: 'ctxshadow:ctxevent:private-media:message-1:asset-1',
+        agent_id: 'agent-1',
+        event_id: 'ctxevent:private-media:message-1:asset-1',
+        summary: 'private shadow',
+        public_safe_shadow: '蓝橙交织 logo',
+        evidence_refs: ['ctxevent:private-media:message-1:asset-1'],
+      },
+      memoryDigest: {
+        summary_text: '兼容摘要',
+        topic_tags: ['logo'],
+        key_facts: ['blue orange logo'],
+        sentiment: 'neutral',
+        importance_score: 0.7,
+      },
+    }
 
     const service = new MemoryService({
       memoryRepo: {
@@ -58,63 +116,7 @@ describe('MemoryService private media pipeline', () => {
             candidateTensions: ['taste vs rigor'],
             publicSafeShadowHint: '蓝橙交织 logo',
           })),
-          distill: vi.fn(async () => ({
-            origin: {
-              eventId: 'ctxevent:private-media:message-1:asset-1',
-              scene: 'private_chat',
-              sourceType: 'private_session',
-            },
-            episodicCards: [{
-              id: 'ctxepisode:ctxevent:private-media:message-1:asset-1:1',
-              agent_id: 'agent-1',
-              event_id: 'ctxevent:private-media:message-1:asset-1',
-              scene: 'private_chat',
-              title: 'Owner 分享了一张 logo 图',
-              summary: '蓝橙交织的简洁现代 logo',
-              topic_tags: ['logo'],
-              evidence_refs: ['ctxevent:private-media:message-1:asset-1'],
-              salience: 0.7,
-            }],
-            relationState: {
-              id: 'rel-1',
-              agent_id: 'agent-1',
-              counterpart_id: 'owner-1',
-              channel: 'owner',
-              stance: 'unexpected drift',
-              confidence: 0.9,
-              evidence_refs: ['ctxevent:private-media:message-1:asset-1'],
-            },
-            selfModel: {
-              id: 'self-1',
-              agent_id: 'agent-1',
-              summary: 'unexpected drift',
-              tensions: ['taste vs rigor'],
-              evidence_refs: ['ctxevent:private-media:message-1:asset-1'],
-            },
-            tensions: [{
-              id: 'ten-1',
-              agent_id: 'agent-1',
-              label: 'taste vs rigor',
-              description: 'unexpected drift',
-              intensity: 0.7,
-              evidence_refs: ['ctxevent:private-media:message-1:asset-1'],
-            }],
-            privateShadow: {
-              id: 'ctxshadow:ctxevent:private-media:message-1:asset-1',
-              agent_id: 'agent-1',
-              event_id: 'ctxevent:private-media:message-1:asset-1',
-              summary: 'private shadow',
-              public_safe_shadow: '蓝橙交织 logo',
-              evidence_refs: ['ctxevent:private-media:message-1:asset-1'],
-            },
-            memoryDigest: {
-              summary_text: '兼容摘要',
-              topic_tags: ['logo'],
-              key_facts: ['blue orange logo'],
-              sentiment: 'neutral',
-              importance_score: 0.7,
-            },
-          })),
+          distill: vi.fn(async () => distillResult),
         },
         identityFinalizer: {
           finalize: identityFinalize,

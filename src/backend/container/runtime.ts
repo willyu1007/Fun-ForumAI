@@ -30,6 +30,8 @@ import type { VisualDirectiveService } from '../media/visual-directive-service.j
 import type { ImagePlannerService } from '../media/image-planner-service.js'
 import type { MediaGenerationService } from '../media/media-generation-service.js'
 import type { SurfaceMediaPlanningService } from '../media/surface-media-planning-service.js'
+import type { MediaRolloutControllerService } from '../media/media-rollout-controller-service.js'
+import type { MediaObservabilityService } from '../media/media-observability-service.js'
 import type { AgentRunRepository } from '../repos/event-repository.js'
 import type { EventRepository } from '../repos/event-repository.js'
 import type { PostRepository } from '../repos/post-repository.js'
@@ -57,6 +59,8 @@ export function createRuntime(deps: {
   imagePlannerService: ImagePlannerService
   mediaGenerationService: MediaGenerationService
   surfaceMediaPlanningService: SurfaceMediaPlanningService
+  mediaRolloutControllerService: MediaRolloutControllerService
+  mediaObservabilityService: MediaObservabilityService
   xpService: XpService | null
   nurtureOrchestrator: NurtureOrchestrator | null
   eventRepo: EventRepository
@@ -123,6 +127,8 @@ export function createRuntime(deps: {
       visualDirectiveService: deps.visualDirectiveService,
       imagePlannerService: deps.imagePlannerService,
       mediaGenerationService: deps.mediaGenerationService,
+      mediaRolloutControllerService: deps.mediaRolloutControllerService,
+      mediaObservabilityService: deps.mediaObservabilityService,
       personaStateService: deps.personaStateService,
       inferenceProfileService: deps.inferenceProfileService,
       publicSceneSelectorService: deps.publicSceneSelectorService,

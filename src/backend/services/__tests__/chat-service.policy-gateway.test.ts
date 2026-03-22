@@ -3,9 +3,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { ModerationResult } from '../../moderation/types.js'
 import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryEventRepository } from '../../repos/event-repository.js'
+import { InMemoryMediaContextProjectionRepository } from '../../repos/media-context-projection-repository.js'
 import { InMemoryMessageRepository } from '../../repos/message-repository.js'
 import { InMemoryRiskGovernanceRepository } from '../../repos/risk-governance-repository.js'
 import { InMemoryRoomRepository } from '../../repos/room-repository.js'
+import { InMemorySceneMediaBindingRepository } from '../../repos/scene-media-binding-repository.js'
 import { InMemoryRoomWatchabilityRepository } from '../../repos/room-watchability-repository.js'
 import { config } from '../../lib/config.js'
 import { ChatService } from '../chat-service.js'
@@ -90,6 +92,8 @@ function setup(options: {
     eventRepo,
     policyGatewayService,
     roomWatchabilityRepo,
+    sceneMediaBindingRepo: new InMemorySceneMediaBindingRepository(),
+    mediaContextProjectionRepo: new InMemoryMediaContextProjectionRepository(),
   })
 
   return { service, roomRepo, messageRepo, riskRepo, roomWatchabilityRepo, authorId: author.id }

@@ -20,6 +20,14 @@ export interface MediaAssetRepository {
   create(input: CreateMediaAssetInput): Promise<MediaAsset>
   findById(id: string): Promise<MediaAsset | null>
   findByIds(ids: string[]): Promise<MediaAsset[]>
+  listRecent(opts?: {
+    limit?: number
+    lifecycle_statuses?: MediaLifecycleStatus[]
+    before?: {
+      created_at: Date
+      id: string
+    }
+  }): Promise<MediaAsset[]>
   listStewardAgentIdsWithAssets(opts?: {
     limit?: number
     lifecycle_statuses?: MediaLifecycleStatus[]
@@ -33,7 +41,7 @@ export interface MediaAssetRepository {
 
 let counter = 0
 function cuid(): string {
-  return `media_asset_${Date.now()}_${++counter}`
+  return `media_asset_${Date.now()}_${String(++counter).padStart(8, '0')}`
 }
 
 function compareRecent(a: MediaAsset, b: MediaAsset): number {
@@ -78,6 +86,29 @@ export class InMemoryMediaAssetRepository implements MediaAssetRepository {
     return Array.from(this.store.values())
       .filter((item) => lookup.has(item.id))
       .sort(compareRecent)
+  }
+
+  async listRecent(
+    opts: {
+      limit?: number
+      lifecycle_statuses?: MediaLifecycleStatus[]
+      before?: {
+        created_at: Date
+        id: string
+      }
+    } = {},
+  ): Promise<MediaAsset[]> {
+    const allowed = opts.lifecycle_statuses ? new Set(opts.lifecycle_statuses) : null
+    const items = Array.from(this.store.values())
+      .filter((item) => (allowed ? allowed.has(item.lifecycle_status) : true))
+      .filter((item) => {
+        if (!opts.before) return true
+        const itemTime = item.created_at.getTime()
+        const beforeTime = opts.before.created_at.getTime()
+        return itemTime < beforeTime || (itemTime === beforeTime && item.id < opts.before.id)
+      })
+      .sort(compareRecent)
+    return items.slice(0, opts.limit ?? items.length)
   }
 
   async listStewardAgentIdsWithAssets(

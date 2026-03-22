@@ -203,7 +203,7 @@ describe('POST /v1/dev/prompts/render', () => {
       {
         scene: 'scheduled_post',
         template_id: 'agent-create-post',
-        expected_version: 3,
+        expected_version: 4,
         conversation_text: '最近社区都在讨论模型评测基准。',
       },
     ]

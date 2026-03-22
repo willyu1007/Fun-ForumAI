@@ -27,6 +27,7 @@ export interface MediaGenerationJobRepository {
   create(input: CreateMediaGenerationJobInput): Promise<MediaGenerationJob>
   findById(id: string): Promise<MediaGenerationJob | null>
   findByFingerprint(requestFingerprint: string): Promise<MediaGenerationJob | null>
+  findByOutputAssetId(assetId: string): Promise<MediaGenerationJob[]>
   markTimedOutRunningJobs(now: Date, timeoutMs: number): Promise<MediaGenerationJob[]>
   update(id: string, patch: UpdateMediaGenerationJobPatch): Promise<MediaGenerationJob | null>
   claimNextQueued(input: ClaimMediaGenerationJobInput): Promise<MediaGenerationJob | null>
@@ -84,6 +85,12 @@ export class InMemoryMediaGenerationJobRepository implements MediaGenerationJobR
   async findByFingerprint(requestFingerprint: string): Promise<MediaGenerationJob | null> {
     return Array.from(this.store.values())
       .find((job) => job.request_fingerprint === requestFingerprint) ?? null
+  }
+
+  async findByOutputAssetId(assetId: string): Promise<MediaGenerationJob[]> {
+    return Array.from(this.store.values())
+      .filter((job) => job.output_asset_id === assetId)
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
   }
 
   async markTimedOutRunningJobs(now: Date, timeoutMs: number): Promise<MediaGenerationJob[]> {

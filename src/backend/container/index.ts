@@ -9,6 +9,7 @@ import { createRuntime } from './runtime.js'
 import { CommunityConfigScheduler } from '../runtime/community-config-scheduler.js'
 import { DirectorHistoryMaintenanceScheduler } from '../runtime/director-history-maintenance-scheduler.js'
 import { MediaGenerationWorker } from '../runtime/media-generation-worker.js'
+import { MediaLifecycleWorker } from '../runtime/media-lifecycle-worker.js'
 import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry-scheduler.js'
 import { getRuntimeBuildInfo } from '../lib/runtime-build-info.js'
 import { personaObservability } from '../runtime/persona-observability.js'
@@ -76,6 +77,8 @@ const llm = createLlmServices({
   imagePlanRepo: repos.imagePlanRepo,
   mediaReusePolicyRepo: repos.mediaReusePolicyRepo,
   mediaGenerationJobRepo: repos.mediaGenerationJobRepo,
+  mediaObservabilityEventRepo: repos.mediaObservabilityEventRepo,
+  mediaRolloutControllerOverrideRepo: repos.mediaRolloutControllerOverrideRepo,
   forumSceneMetadataRepo: repos.forumSceneMetadataRepo,
   eventRepo: repos.eventRepo,
   agentRunRepo: repos.agentRunRepo,
@@ -93,6 +96,11 @@ const core = createCoreServices({
   usageLedgerRepo: llm.usageLedgerRepo,
   roomLifecycleLeaderElector: infra.leaderElectors.roomLifecycle,
   conversationClockLeaderElector: infra.leaderElectors.conversationClock,
+})
+
+llm.mediaObservabilityService.attachGovernanceDeps({
+  riskGovernanceRepo: repos.riskGovernanceRepo,
+  publicDisclosureCapService: core.publicDisclosureCapService,
 })
 
 core.achievementChronicleService.setRecordHook((input) => {
@@ -154,6 +162,17 @@ const mediaGenerationWorker = new MediaGenerationWorker(
   {
     intervalMs: config.mediaGeneration.workerIntervalMs,
     startupDelayMs: config.mediaGeneration.workerStartupDelayMs,
+  },
+)
+
+const mediaLifecycleWorker = new MediaLifecycleWorker(
+  {
+    service: llm.mediaLifecycleService,
+    leaderElector: infra.leaderElectors.mediaLifecycleWorker,
+  },
+  {
+    intervalMs: config.mediaLifecycle.workerIntervalMs,
+    startupDelayMs: config.mediaLifecycle.workerStartupDelayMs,
   },
 )
 
@@ -296,6 +315,8 @@ const rt = createRuntime({
   imagePlannerService: llm.imagePlannerService,
   mediaGenerationService: llm.mediaGenerationService,
   surfaceMediaPlanningService: llm.surfaceMediaPlanningService,
+  mediaRolloutControllerService: llm.mediaRolloutControllerService,
+  mediaObservabilityService: llm.mediaObservabilityService,
   xpService: nurture.xpService,
   nurtureOrchestrator: nurture.nurtureOrchestrator,
   eventRepo: repos.eventRepo,
@@ -415,6 +436,9 @@ export const imagePlannerService = llm.imagePlannerService
 export const mediaReuseGovernanceService = llm.mediaReuseGovernanceService
 export const mediaGenerationGateway = llm.mediaGenerationGateway
 export const mediaGenerationService = llm.mediaGenerationService
+export const mediaObservabilityService = llm.mediaObservabilityService
+export const mediaRolloutControllerService = llm.mediaRolloutControllerService
+export const mediaLifecycleService = llm.mediaLifecycleService
 
 export const achievementChronicleService = core.achievementChronicleService
 export const forumReadService = core.forumReadService
@@ -476,6 +500,7 @@ export {
   roleAssignmentExpiryScheduler,
   directorHistoryMaintenanceScheduler,
   mediaGenerationWorker,
+  mediaLifecycleWorker,
 }
 export {
   guidanceBellService,

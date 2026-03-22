@@ -19,6 +19,9 @@ import {
   hotTopicOpsService,
   llmRegistryBundle,
   mediaReuseGovernanceService,
+  mediaObservabilityService,
+  mediaRolloutControllerService,
+  mediaLifecycleService,
 } from '../container.js'
 import { config } from '../lib/config.js'
 import { AppError } from '../lib/errors.js'
@@ -43,7 +46,9 @@ import {
   createDisclosureCapOverrideSchema,
   createPlatformCanonicalAssetSchema,
   governanceActionSchema,
+  patchMediaRolloutControllerSchema,
   patchMediaReusePolicySchema,
+  releaseMediaRolloutControllerOverrideSchema,
   releaseDisclosureCapOverrideSchema,
   revokeMediaReusePolicySchema,
 } from '../validation/schemas.js'
@@ -522,6 +527,144 @@ adminApiRouter.post(
       if (tryHandleAppError(res, err)) return
       next(err)
     }
+  },
+)
+
+adminApiRouter.get(
+  '/admin/media/observability',
+  requireHumanAuth,
+  requireAdmin,
+  async (_req, res) => {
+    if (!config.features.mediaObservabilityV1) {
+      res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Media observability is disabled by feature flag.',
+        },
+      })
+      return
+    }
+    const controllerProfile = await mediaRolloutControllerService.getEffectiveProfile()
+    const summary = await mediaObservabilityService.getAdminSummary({
+      target_min_rate: controllerProfile.effective.target_min_rate,
+      target_max_rate: controllerProfile.effective.target_max_rate,
+    })
+    const lifecycleCandidates = config.features.mediaLifecycleV1
+      ? await mediaLifecycleService.previewCandidates()
+      : {
+          orphan_asset_ids: [],
+          expired_projection_ids: [],
+          snapshot_backfill_asset_ids: [],
+        }
+    res.json({
+      data: {
+        metrics: summary.metrics,
+        gates: summary.gates,
+        recent_alerts: summary.recent_alerts,
+        lifecycle_candidates: {
+          orphan_assets: lifecycleCandidates.orphan_asset_ids.length,
+          expired_projections: lifecycleCandidates.expired_projection_ids.length,
+          snapshot_backfill_assets: lifecycleCandidates.snapshot_backfill_asset_ids.length,
+        },
+        effective_controller_profile: controllerProfile,
+      },
+    })
+  },
+)
+
+adminApiRouter.get(
+  '/admin/media/rollout-controller',
+  requireHumanAuth,
+  requireAdmin,
+  async (_req, res) => {
+    if (!config.features.mediaRolloutControllerV1) {
+      res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Media rollout controller is disabled by feature flag.',
+        },
+      })
+      return
+    }
+    const profile = await mediaRolloutControllerService.getEffectiveProfile()
+    res.json({
+      data: {
+        active_override: profile.active_override,
+        effective_profile: profile,
+      },
+    })
+  },
+)
+
+adminApiRouter.patch(
+  '/admin/media/rollout-controller',
+  requireHumanAuth,
+  requireAdmin,
+  validate(patchMediaRolloutControllerSchema),
+  async (req, res, next) => {
+    try {
+      const override = await mediaRolloutControllerService.createOrReplaceOverride({
+        mode: req.body.mode,
+        target_min_rate: req.body.target_min_rate ?? null,
+        target_max_rate: req.body.target_max_rate ?? null,
+        threshold_delta: req.body.threshold_delta ?? null,
+        allow_generation: req.body.allow_generation ?? null,
+        generation_tier: req.body.generation_tier ?? null,
+        sync_generation_ms_budget: req.body.sync_generation_ms_budget ?? null,
+        allow_private_runtime_projection: req.body.allow_private_runtime_projection ?? null,
+        allow_private_inspired_generation: req.body.allow_private_inspired_generation ?? null,
+        force_safe_mode: req.body.force_safe_mode ?? false,
+        reason: req.body.reason ?? null,
+        created_by_user_id: req.user!.userId,
+      })
+      res.json({ data: override })
+    } catch (err) {
+      if (tryHandleAppError(res, err)) return
+      next(err)
+    }
+  },
+)
+
+adminApiRouter.post(
+  '/admin/media/rollout-controller/:overrideId/release',
+  requireHumanAuth,
+  requireAdmin,
+  validate(releaseMediaRolloutControllerOverrideSchema),
+  async (req, res, next) => {
+    try {
+      const released = await mediaRolloutControllerService.releaseOverride({
+        override_id: String(req.params.overrideId),
+        released_by_user_id: req.user!.userId,
+        released_reason: req.body.reason ?? null,
+      })
+      if (!released) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Override not found' } })
+        return
+      }
+      res.json({ data: released })
+    } catch (err) {
+      if (tryHandleAppError(res, err)) return
+      next(err)
+    }
+  },
+)
+
+adminApiRouter.post(
+  '/admin/media/lifecycle/run',
+  requireHumanAuth,
+  requireAdmin,
+  async (_req, res) => {
+    if (!config.features.mediaLifecycleV1) {
+      res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Media lifecycle is disabled by feature flag.',
+        },
+      })
+      return
+    }
+    const result = await mediaLifecycleService.runSweep()
+    res.json({ data: result })
   },
 )
 

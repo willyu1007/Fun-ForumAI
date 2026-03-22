@@ -38,6 +38,14 @@ export class PgMediaContextProjectionRepository implements MediaContextProjectio
     return result.count
   }
 
+  async deleteByIds(ids: string[]): Promise<number> {
+    if (ids.length === 0) return 0
+    const result = await this.prisma.mediaContextProjection.deleteMany({
+      where: { id: { in: ids } },
+    })
+    return result.count
+  }
+
   async findById(id: string): Promise<MediaContextProjection | null> {
     const row = await this.prisma.mediaContextProjection.findUnique({ where: { id } })
     return row ? this.toDomain(row) : null
@@ -69,14 +77,25 @@ export class PgMediaContextProjectionRepository implements MediaContextProjectio
     return rows.map((row) => this.toDomain(row))
   }
 
+  async listAll(): Promise<MediaContextProjection[]> {
+    const rows = await this.prisma.mediaContextProjection.findMany({
+      orderBy: [{ createdAt: 'desc' }],
+    })
+    return rows.map((row) => this.toDomain(row))
+  }
+
   async update(id: string, patch: UpdateMediaContextProjectionPatch): Promise<MediaContextProjection | null> {
     const row = await this.prisma.mediaContextProjection.update({
       where: { id },
       data: {
+        ...(patch.schema_version !== undefined ? { schemaVersion: patch.schema_version } : {}),
         ...(patch.expires_at !== undefined ? { expiresAt: patch.expires_at } : {}),
         ...(patch.payload_json !== undefined
           ? { payloadJson: patch.payload_json as unknown as Prisma.InputJsonValue }
           : {}),
+        ...(patch.token_estimate !== undefined ? { tokenEstimate: patch.token_estimate } : {}),
+        ...(patch.prompt_weight !== undefined ? { promptWeight: patch.prompt_weight } : {}),
+        ...(patch.mention_policy !== undefined ? { mentionPolicy: patch.mention_policy } : {}),
         ...(patch.preferred_display_variant !== undefined
           ? { preferredDisplayVariant: patch.preferred_display_variant }
           : {}),

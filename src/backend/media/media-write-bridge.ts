@@ -9,6 +9,7 @@ import type { StorageAdapter } from '../services/storage-adapter.js'
 import type { SceneMediaBinding } from '../repos/types.js'
 import { MediaBindingService, buildOwnerPrivatePoolSceneId } from './media-binding-service.js'
 import { MediaProjectionService } from './media-projection-service.js'
+import type { MediaObservabilityService } from './media-observability-service.js'
 import { resolveMediaAssetUrl } from './media-url.js'
 
 export interface MediaWriteBridgeDeps {
@@ -22,6 +23,7 @@ export interface MediaWriteBridgeDeps {
   storage: StorageAdapter
   mediaBindingService: MediaBindingService
   mediaProjectionService: MediaProjectionService
+  mediaObservabilityService?: Pick<MediaObservabilityService, 'record'> | null
 }
 
 export class MediaWriteBridge {
@@ -220,6 +222,37 @@ export class MediaWriteBridge {
       this.ensurePostMediaLink(input.scene_type, input.scene_id, asset.id, mediaUrl, asset.mime_type)
       linkedAssetIds.add(asset.id)
       linked = true
+    }
+
+    const surface = input.scene_type === 'forum_post'
+      ? 'root_post'
+      : input.scene_type === 'forum_comment'
+        ? 'forum_comment'
+        : 'chat_room_message'
+    if (linked) {
+      await this.deps.mediaObservabilityService?.record({
+        event_type: input.scene_type === 'forum_post'
+          ? 'root_post_display_linked'
+          : 'projection_recompiled',
+        surface,
+        image_plan_id: input.image_plan_id,
+        payload_json: {
+          scene_id: input.scene_id,
+          linked_asset_ids: Array.from(linkedAssetIds),
+          linked_count: linkedAssetIds.size,
+        },
+      })
+    } else if (plan.display.attachments.length > 0) {
+      await this.deps.mediaObservabilityService?.record({
+        event_type: 'display_attach_failed',
+        surface,
+        severity: 'warn',
+        image_plan_id: input.image_plan_id,
+        payload_json: {
+          scene_id: input.scene_id,
+          attempted_attachment_count: plan.display.attachments.length,
+        },
+      })
     }
 
     return { linked }

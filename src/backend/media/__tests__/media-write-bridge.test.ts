@@ -407,7 +407,7 @@ describe('MediaWriteBridge', () => {
       scene_ref: {
         request_id: 'request-3',
         director_surface: 'chat_room',
-        actor_surface: 'chat_room',
+        actor_surface: 'chat_room_message',
         community_id: 'community-1',
         episode_id: 'episode-3',
         selection_id: 'selection-3',
@@ -417,7 +417,7 @@ describe('MediaWriteBridge', () => {
         selection_mode: 'pool_guided',
       },
       status: 'ready',
-      decision: 'reuse_generated_derivative',
+      decision: 'reuse_public_original',
       reason: 'generated source already selected',
       runtime: {
         enabled: true,
@@ -429,7 +429,7 @@ describe('MediaWriteBridge', () => {
         attachments: [
           {
             slot: 0,
-            binding_role: 'supporting',
+            binding_role: 'inline',
             asset_id: generatedAsset.id,
             mime_type: generatedAsset.mime_type,
             display_variant: 'generated_derivative',
@@ -455,7 +455,7 @@ describe('MediaWriteBridge', () => {
           source_kind: 'generated_public',
           asset_id: generatedAsset.id,
           selection_score: 4.2,
-          reuse_mode: 'display_direct',
+          reuse_mode: 'quote_original',
           rejection_reason: null,
         },
       ],

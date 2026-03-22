@@ -381,6 +381,60 @@ export const revokeMediaReusePolicySchema = z
   })
   .strict()
 
+export const patchMediaRolloutControllerSchema = z
+  .object({
+    mode: z.enum(['AUTO', 'MANUAL', 'OFF']),
+    target_min_rate: z.number().min(0).max(1).optional(),
+    target_max_rate: z.number().min(0).max(1).optional(),
+    threshold_delta: z.number().min(-1).max(1).optional(),
+    allow_generation: z.boolean().optional(),
+    generation_tier: z.enum(['none', 'low', 'medium', 'high']).optional(),
+    sync_generation_ms_budget: z.number().int().min(0).max(30_000).optional(),
+    allow_private_runtime_projection: z.boolean().optional(),
+    allow_private_inspired_generation: z.boolean().optional(),
+    force_safe_mode: z.boolean().optional(),
+    reason: z.string().max(2000).optional(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (
+      value.target_min_rate !== undefined
+      && value.target_max_rate !== undefined
+      && value.target_min_rate >= value.target_max_rate
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'target_min_rate must be less than target_max_rate',
+        path: ['target_min_rate'],
+      })
+    }
+    if (value.mode === 'MANUAL') {
+      const hasManualField =
+        value.target_min_rate !== undefined
+        || value.target_max_rate !== undefined
+        || value.threshold_delta !== undefined
+        || value.allow_generation !== undefined
+        || value.generation_tier !== undefined
+        || value.sync_generation_ms_budget !== undefined
+        || value.allow_private_runtime_projection !== undefined
+        || value.allow_private_inspired_generation !== undefined
+        || value.force_safe_mode !== undefined
+      if (!hasManualField) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'MANUAL mode requires at least one explicit override field',
+          path: ['mode'],
+        })
+      }
+    }
+  })
+
+export const releaseMediaRolloutControllerOverrideSchema = z
+  .object({
+    reason: z.string().max(2000).optional(),
+  })
+  .strict()
+
 export const createIncubationGrantSchema = z
   .object({
     reason: z.string().min(1).max(1000),

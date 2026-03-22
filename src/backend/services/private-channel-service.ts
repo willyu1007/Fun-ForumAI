@@ -631,7 +631,7 @@ export class PrivateChannelService {
         {
           kind: 'owner_latest_input',
           text: currentMessage,
-          priority: 'critical',
+          priority: 'critical' as const,
           source_id: `session:${session.id}:latest_owner_input`,
         },
         ...currentMediaCards.map((item, index) => ({
@@ -646,13 +646,13 @@ export class PrivateChannelService {
             .slice(-8)
             .map((item) => `${item.author_type === 'HUMAN' ? 'Owner' : 'Agent'}：${item.content}`)
             .join('\n'),
-          priority: 'high',
+          priority: 'high' as const,
           source_id: `session:${session.id}:recent_turns`,
         },
         {
           kind: 'session_meta',
           text: `session_id=${session.id}\nmessage_count=${history.items.length}`,
-          priority: 'medium',
+          priority: 'medium' as const,
           source_id: session.id,
         },
       ].filter((source) => source.text.trim().length > 0),
