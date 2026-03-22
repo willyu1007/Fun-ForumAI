@@ -60,6 +60,7 @@
     "db:cleanup:dev-e2e-artifacts": "node scripts/cleanup-dev-e2e-artifacts.mjs",
     "db:cleanup:dev-seed-duplicates": "node scripts/cleanup-dev-seed-duplicates.mjs",
     "media:t118:backfill": "tsx scripts/t118-media-domain-backfill.ts",
+    "media:t121:backfill": "tsx scripts/t121-media-governance-backfill.ts",
     "package:dry-run": "node ops/packaging/scripts/build.mjs --dry-run",
     "package:build": "node ops/packaging/scripts/build.mjs",
     "deploy:dry-run": "node ops/deploy/scripts/deploy.mjs --dry-run",

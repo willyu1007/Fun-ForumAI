@@ -444,6 +444,7 @@ model MediaAsset {
   semanticSnapshots MediaSemanticSnapshot[]
   sceneBindings     SceneMediaBinding[]
   postMedia         PostMedia[]
+  generatedOutputJobs MediaGenerationJobRecord[] @relation("GeneratedJobOutputAsset")
 
   @@index([stewardAgentId, createdAt])
   @@index([ownerUserId, createdAt])
@@ -556,10 +557,67 @@ model ImagePlanRecord {
   updatedAt       DateTime              @updatedAt @map("updated_at")
 
   directive       VisualDirectiveRecord @relation(fields: [directiveId], references: [id])
+  generationJobs  MediaGenerationJobRecord[]
 
   @@index([directiveId, createdAt])
   @@index([status, createdAt])
   @@map("image_plans")
+}
+
+model MediaReusePolicyRecord {
+  id                     String   @id @default(cuid())
+  subjectType            String   @map("subject_type")
+  subjectId              String   @map("subject_id")
+  sourceKind             String   @map("source_kind")
+  communityId            String?  @map("community_id")
+  stewardAgentId         String?  @map("steward_agent_id")
+  allowedReuseModes      Json     @map("allowed_reuse_modes")
+  crossAgentQuoteAllowed Boolean  @default(false) @map("cross_agent_quote_allowed")
+  discloseOriginPolicy   String   @map("disclose_origin_policy")
+  copyrightState         String   @map("copyright_state")
+  status                 String   @default("active")
+  revokedAt              DateTime? @map("revoked_at")
+  revokedReason          String?  @db.Text @map("revoked_reason")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  @@unique([subjectType, subjectId, sourceKind])
+  @@index([sourceKind, status, createdAt])
+  @@index([communityId, sourceKind, status, createdAt])
+  @@index([stewardAgentId, sourceKind, status, createdAt])
+  @@map("media_reuse_policies")
+}
+
+model MediaGenerationJobRecord {
+  id                  String    @id @default(cuid())
+  agentId             String    @map("agent_id")
+  planId              String?   @map("plan_id")
+  status              String    @default("queued")
+  provider            String
+  modelName           String    @map("model_name")
+  requestFingerprint  String    @unique @map("request_fingerprint")
+  promptBrief         String    @db.Text @map("prompt_brief")
+  styleHint           String?   @map("style_hint")
+  aspectRatioHint     String?   @map("aspect_ratio_hint")
+  basedOnProjectionIds Json     @map("based_on_projection_ids")
+  attemptCount        Int       @default(0) @map("attempt_count")
+  outputAssetId       String?   @map("output_asset_id")
+  errorCode           String?   @map("error_code")
+  errorMessage        String?   @db.Text @map("error_message")
+  startedAt           DateTime? @map("started_at")
+  finishedAt          DateTime? @map("finished_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  plan        ImagePlanRecord? @relation(fields: [planId], references: [id])
+  outputAsset MediaAsset?      @relation("GeneratedJobOutputAsset", fields: [outputAssetId], references: [id])
+
+  @@index([agentId, createdAt])
+  @@index([planId, createdAt])
+  @@index([status, createdAt])
+  @@index([provider, status, createdAt])
+  @@index([startedAt])
+  @@map("media_generation_jobs")
 }
 
 model PostMedia {

@@ -118,6 +118,7 @@ export type MediaSceneType =
   | 'chat_room_message'
   | 'private_message'
   | 'memory_card'
+  | 'media_pool'
 
 export type MediaBindingRole =
   | 'primary'
@@ -182,6 +183,7 @@ export type MediaProjectionSurface =
   | 'private_runtime'
   | 'memory'
   | 'retrieval'
+  | 'planner'
 
 export type MediaProjectionKind =
   | 'display_attachment'
@@ -189,6 +191,7 @@ export type MediaProjectionKind =
   | 'private_media_runtime_card'
   | 'private_media_memory_projection'
   | 'retrieval_caption'
+  | 'public_reuse_handoff'
 
 export type DirectorSurface =
   | 'scheduled_post'
@@ -274,6 +277,115 @@ export type PublicScope =
   | 'global_public'
 
 export type GenerationTier = 'none' | 'low' | 'medium' | 'high'
+
+export type MediaReuseMode =
+  | 'quote_original'
+  | 'derive_new'
+  | 'reference_only'
+
+export type MediaReusePolicySubjectType = 'asset' | 'projection'
+
+export type MediaReuseDiscloseOriginPolicy =
+  | 'never'
+  | 'episode_only'
+  | 'public_only'
+
+export type MediaReusePolicyStatus =
+  | 'active'
+  | 'revoked'
+  | 'blocked'
+
+export type MediaCopyrightState =
+  | 'internal_owned'
+  | 'platform_owned'
+  | 'community_licensed'
+  | 'generated_owned'
+  | 'external_unknown'
+  | 'external_restricted'
+
+export interface MediaReusePolicy {
+  id: string
+  subject_type: MediaReusePolicySubjectType
+  subject_id: string
+  source_kind: VisualSourceKind
+  community_id: string | null
+  steward_agent_id: string | null
+  allowed_reuse_modes: MediaReuseMode[]
+  cross_agent_quote_allowed: boolean
+  disclose_origin_policy: MediaReuseDiscloseOriginPolicy
+  copyright_state: MediaCopyrightState
+  status: MediaReusePolicyStatus
+  revoked_at: Date | null
+  revoked_reason: string | null
+  created_at: Date
+  updated_at: Date
+}
+
+export interface CreateMediaReusePolicyInput {
+  id?: string
+  subject_type: MediaReusePolicySubjectType
+  subject_id: string
+  source_kind: VisualSourceKind
+  community_id?: string | null
+  steward_agent_id?: string | null
+  allowed_reuse_modes: MediaReuseMode[]
+  cross_agent_quote_allowed?: boolean
+  disclose_origin_policy: MediaReuseDiscloseOriginPolicy
+  copyright_state: MediaCopyrightState
+  status?: MediaReusePolicyStatus
+  revoked_at?: Date | null
+  revoked_reason?: string | null
+}
+
+export type MediaGenerationJobStatus =
+  | 'queued'
+  | 'running'
+  | 'succeeded'
+  | 'failed'
+  | 'timed_out'
+  | 'cancelled'
+
+export interface MediaGenerationJob {
+  id: string
+  agent_id: string
+  plan_id: string | null
+  status: MediaGenerationJobStatus
+  provider: string
+  model_name: string
+  request_fingerprint: string
+  prompt_brief: string
+  style_hint: string | null
+  aspect_ratio_hint: AspectRatioHint | null
+  based_on_projection_ids: string[]
+  attempt_count: number
+  output_asset_id: string | null
+  error_code: string | null
+  error_message: string | null
+  started_at: Date | null
+  finished_at: Date | null
+  created_at: Date
+  updated_at: Date
+}
+
+export interface CreateMediaGenerationJobInput {
+  id?: string
+  agent_id: string
+  plan_id?: string | null
+  status?: MediaGenerationJobStatus
+  provider: string
+  model_name: string
+  request_fingerprint: string
+  prompt_brief: string
+  style_hint?: string | null
+  aspect_ratio_hint?: AspectRatioHint | null
+  based_on_projection_ids: string[]
+  attempt_count?: number
+  output_asset_id?: string | null
+  error_code?: string | null
+  error_message?: string | null
+  started_at?: Date | null
+  finished_at?: Date | null
+}
 
 export interface SceneRef {
   request_id: string
@@ -437,7 +549,7 @@ export interface PublicMediaContextCard {
   }
   governance: {
     public_scope: PublicScope
-    disclose_origin_policy: 'never' | 'episode_only' | 'public_only'
+    disclose_origin_policy: MediaReuseDiscloseOriginPolicy
     cross_agent_quote_allowed: boolean
     prohibited_reference_types: Array<
       | 'owner_private_speech'
@@ -534,12 +646,73 @@ export interface PlannedDisplayAttachment {
   attach_after_persist: boolean
 }
 
+export interface PublicReuseHandoffCard {
+  schema_version: 'public-reuse-handoff.v1'
+  handoff_id: string
+  asset_ref: {
+    asset_id: string
+    semantic_snapshot_id: string
+    projection_id: string
+  }
+  source: {
+    kind: 'private_runtime_projection'
+    originating_source_kind: MediaSourceKind
+    derived_from_private: true
+  }
+  relation: {
+    why_relevant_hint: string
+    prompt_weight: PromptWeight
+  }
+  public_summary: {
+    theme: string
+    scene: string
+    mood: string
+    salient_entities: string[]
+    discussion_points: string[]
+    public_safe_caption: string
+    alt_text: string
+    ocr_snippets?: string[]
+  }
+  governance: {
+    allowed_reuse_modes: MediaReuseMode[]
+    original_display_allowed: false
+    disclose_origin_policy: MediaReuseDiscloseOriginPolicy
+  }
+  audit: {
+    confidence: number
+    relevance_score: number
+    model_version: string
+  }
+}
+
+export interface PlannerScoreBreakdown {
+  relevance: number
+  continuity: number
+  novelty: number
+  privacy_safety: number
+  display_fitness: number
+  cost_fitness: number
+  fatigue_penalty: number
+  repeat_penalty: number
+  risk_penalty: number
+  total: number
+}
+
 export interface ImagePlanSource {
   source_kind: VisualSourceKind
   asset_id?: string
   semantic_snapshot_id?: string
   projection_id?: string
   card_id?: string
+  reuse_mode?: MediaReuseMode | null
+  policy_ref?: {
+    policy_id: string
+    subject_type: MediaReusePolicySubjectType
+    subject_id: string
+    status: MediaReusePolicyStatus
+  } | null
+  policy_reason?: string | null
+  score_breakdown?: PlannerScoreBreakdown
   selection_score: number
   rejection_reason?: string | null
 }
@@ -563,25 +736,28 @@ export interface ImagePlan {
   }
   generation?: {
     mode: 'none' | 'sync' | 'async'
-    status: 'not_requested' | 'queued' | 'succeeded' | 'failed'
-    recipe_id?: string
+    status:
+      | 'not_requested'
+      | 'queued'
+      | 'running'
+      | 'succeeded'
+      | 'failed'
+      | 'timed_out'
+      | 'cancelled'
     job_id?: string
+    provider?: string
     model_ref?: string
-    based_on_card_ids?: string[]
+    request_fingerprint?: string
+    based_on_projection_ids?: string[]
     prompt_brief?: string
+    attempt_count?: number
+    output_asset_id?: string
+    error_code?: string | null
   }
   selected_sources: ImagePlanSource[]
   planner_audit: {
     evaluated_candidates: number
-    score_breakdown: {
-      relevance: number
-      continuity: number
-      novelty: number
-      privacy_safety: number
-      display_fitness: number
-      cost_fitness: number
-      total: number
-    }
+    score_breakdown: PlannerScoreBreakdown
     fallback_action: 'text_only' | 'runtime_only_no_display' | 'skip_scene' | null
   }
 }

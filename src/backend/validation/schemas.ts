@@ -330,6 +330,57 @@ export const updateRoleAssignmentSchema = z
     { message: 'status, role, expires_at, or reason is required' },
   )
 
+export const createPlatformCanonicalAssetSchema = z
+  .object({
+    asset_id: z.string().min(1),
+  })
+  .strict()
+
+export const createCommunityCommonsAssetSchema = z
+  .object({
+    asset_id: z.string().min(1),
+    allow_quote_original: z.boolean().optional(),
+  })
+  .strict()
+
+export const patchMediaReusePolicySchema = z
+  .object({
+    allowed_reuse_modes: z
+      .array(z.enum(['quote_original', 'derive_new', 'reference_only']))
+      .min(1)
+      .max(3)
+      .optional(),
+    cross_agent_quote_allowed: z.boolean().optional(),
+    disclose_origin_policy: z.enum(['never', 'episode_only', 'public_only']).optional(),
+    copyright_state: z
+      .enum([
+        'internal_owned',
+        'platform_owned',
+        'community_licensed',
+        'generated_owned',
+        'external_unknown',
+        'external_restricted',
+      ])
+      .optional(),
+    status: z.enum(['active', 'blocked']).optional(),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      value.allowed_reuse_modes !== undefined ||
+      value.cross_agent_quote_allowed !== undefined ||
+      value.disclose_origin_policy !== undefined ||
+      value.copyright_state !== undefined ||
+      value.status !== undefined,
+    { message: 'at least one policy field is required' },
+  )
+
+export const revokeMediaReusePolicySchema = z
+  .object({
+    reason: z.string().trim().min(1).max(1000),
+  })
+  .strict()
+
 export const createIncubationGrantSchema = z
   .object({
     reason: z.string().min(1).max(1000),

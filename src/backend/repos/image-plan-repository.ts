@@ -3,9 +3,22 @@ import type {
   PersistedImagePlan,
 } from './types.js'
 
+export interface UpdateImagePlanPatch {
+  status?: PersistedImagePlan['status']
+  decision?: PersistedImagePlan['decision']
+  reason?: string
+  runtime?: PersistedImagePlan['runtime']
+  display?: PersistedImagePlan['display']
+  generation?: PersistedImagePlan['generation']
+  selected_sources?: PersistedImagePlan['selected_sources']
+  planner_audit?: PersistedImagePlan['planner_audit']
+}
+
 export interface ImagePlanRepository {
   create(input: CreateImagePlanInput): Promise<PersistedImagePlan>
   findById(id: string): Promise<PersistedImagePlan | null>
+  listByGenerationJobId(jobId: string): Promise<PersistedImagePlan[]>
+  update(id: string, patch: UpdateImagePlanPatch): Promise<PersistedImagePlan | null>
 }
 
 let counter = 0
@@ -47,5 +60,26 @@ export class InMemoryImagePlanRepository implements ImagePlanRepository {
 
   async findById(id: string): Promise<PersistedImagePlan | null> {
     return this.store.get(id) ?? null
+  }
+
+  async listByGenerationJobId(jobId: string): Promise<PersistedImagePlan[]> {
+    return Array.from(this.store.values())
+      .filter((plan) => plan.generation.job_id === jobId)
+      .sort((left, right) => right.created_at.getTime() - left.created_at.getTime())
+  }
+
+  async update(id: string, patch: UpdateImagePlanPatch): Promise<PersistedImagePlan | null> {
+    const current = this.store.get(id)
+    if (!current) return null
+    if (patch.status !== undefined) current.status = patch.status
+    if (patch.decision !== undefined) current.decision = patch.decision
+    if (patch.reason !== undefined) current.reason = patch.reason
+    if (patch.runtime !== undefined) current.runtime = patch.runtime
+    if (patch.display !== undefined) current.display = patch.display
+    if (patch.generation !== undefined) current.generation = patch.generation
+    if (patch.selected_sources !== undefined) current.selected_sources = patch.selected_sources
+    if (patch.planner_audit !== undefined) current.planner_audit = patch.planner_audit
+    current.updated_at = new Date()
+    return current
   }
 }

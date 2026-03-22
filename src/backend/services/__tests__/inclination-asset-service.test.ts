@@ -7,6 +7,8 @@ import { InMemoryMediaSemanticSnapshotRepository } from '../../repos/media-seman
 import { InMemorySceneMediaBindingRepository } from '../../repos/scene-media-binding-repository.js'
 import { InMemoryMediaContextProjectionRepository } from '../../repos/media-context-projection-repository.js'
 import { InMemoryPostMediaRepository } from '../../repos/post-media-repository.js'
+import { InMemoryImagePlanRepository } from '../../repos/image-plan-repository.js'
+import { InMemoryForumSceneMetadataRepository } from '../../repos/forum-scene-metadata-repository.js'
 import { MediaAssetService } from '../../media/media-asset-service.js'
 import { MediaBindingService } from '../../media/media-binding-service.js'
 import { MediaProjectionService } from '../../media/media-projection-service.js'
@@ -31,6 +33,8 @@ function createService() {
   const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
   const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
   const postMediaRepo = new InMemoryPostMediaRepository()
+  const imagePlanRepo = new InMemoryImagePlanRepository()
+  const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
 
   const ownerUserId = 'owner-1'
   const agent = agentRepo.create({
@@ -85,6 +89,8 @@ function createService() {
     sceneMediaBindingRepo,
     mediaContextProjectionRepo,
     postMediaRepo,
+    imagePlanRepo,
+    forumSceneMetadataRepo,
     storage,
     mediaBindingService,
     mediaProjectionService,

@@ -10,10 +10,13 @@ import { createDefaultBudgetChecker } from '../llm/default-budget-checker.js'
 import { BudgetGuard } from '../llm/budget-guard.js'
 import { InclinationAssetService } from '../services/inclination-asset-service.js'
 import {
+  ArkSeedreamGateway,
   MediaAssetService,
   MediaBindingService,
+  MediaGenerationService,
   ImagePlannerService,
   MediaProjectionService,
+  MediaReuseGovernanceService,
   MediaSemanticService,
   MediaWriteBridge,
   VisualDirectiveService,
@@ -34,6 +37,8 @@ import type { MediaContextProjectionRepository } from '../repos/media-context-pr
 import type { PostMediaRepository } from '../repos/post-media-repository.js'
 import type { VisualDirectiveRepository } from '../repos/visual-directive-repository.js'
 import type { ImagePlanRepository } from '../repos/image-plan-repository.js'
+import type { MediaReusePolicyRepository } from '../repos/media-reuse-policy-repository.js'
+import type { MediaGenerationJobRepository } from '../repos/media-generation-job-repository.js'
 import type { ForumSceneMetadataRepository } from '../repos/forum-scene-metadata-repository.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 
@@ -47,6 +52,8 @@ export function createLlmServices(deps: {
   postMediaRepo: PostMediaRepository
   visualDirectiveRepo: VisualDirectiveRepository
   imagePlanRepo: ImagePlanRepository
+  mediaReusePolicyRepo: MediaReusePolicyRepository
+  mediaGenerationJobRepo: MediaGenerationJobRepository
   forumSceneMetadataRepo: ForumSceneMetadataRepository
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
@@ -120,13 +127,25 @@ export function createLlmServices(deps: {
   const visualDirectiveService = new VisualDirectiveService({
     visualDirectiveRepo: deps.visualDirectiveRepo,
   })
+  const mediaReuseGovernanceService = new MediaReuseGovernanceService({
+    mediaAssetRepo: deps.mediaAssetRepo,
+    mediaSemanticSnapshotRepo: deps.mediaSemanticSnapshotRepo,
+    sceneMediaBindingRepo: deps.sceneMediaBindingRepo,
+    mediaContextProjectionRepo: deps.mediaContextProjectionRepo,
+    mediaReusePolicyRepo: deps.mediaReusePolicyRepo,
+    mediaGenerationJobRepo: deps.mediaGenerationJobRepo,
+    imagePlanRepo: deps.imagePlanRepo,
+    mediaBindingService,
+  })
   const imagePlannerService = new ImagePlannerService({
     imagePlanRepo: deps.imagePlanRepo,
     mediaAssetRepo: deps.mediaAssetRepo,
     mediaSemanticSnapshotRepo: deps.mediaSemanticSnapshotRepo,
     sceneMediaBindingRepo: deps.sceneMediaBindingRepo,
+    mediaContextProjectionRepo: deps.mediaContextProjectionRepo,
     forumSceneMetadataRepo: deps.forumSceneMetadataRepo,
     mediaProjectionService,
+    mediaReuseGovernanceService,
   })
   const mediaWriteBridge = new MediaWriteBridge({
     mediaAssetRepo: deps.mediaAssetRepo,
@@ -151,6 +170,16 @@ export function createLlmServices(deps: {
     mediaProjectionService,
     mediaWriteBridge,
   })
+  const mediaGenerationGateway = new ArkSeedreamGateway()
+  const mediaGenerationService = new MediaGenerationService({
+    imagePlanRepo: deps.imagePlanRepo,
+    mediaGenerationJobRepo: deps.mediaGenerationJobRepo,
+    mediaContextProjectionRepo: deps.mediaContextProjectionRepo,
+    mediaAssetService,
+    mediaReuseGovernanceService,
+    mediaProjectionService,
+    gateway: mediaGenerationGateway,
+  })
   const inclinationAssetService = new InclinationAssetService({
     agentRepo: deps.agentRepo,
     mediaAssetService,
@@ -171,6 +200,9 @@ export function createLlmServices(deps: {
     mediaWriteBridge,
     visualDirectiveService,
     imagePlannerService,
+    mediaReuseGovernanceService,
+    mediaGenerationGateway,
+    mediaGenerationService,
     mediaAssetService,
     inclinationAssetService,
   }

@@ -39,6 +39,7 @@ export interface InfraResult {
     roleAssignmentExpiryScheduler: LeaderElector
     directorHistoryMaintenanceScheduler: LeaderElector
     guidanceRecallScheduler: LeaderElector
+    mediaGenerationWorker: LeaderElector
   }
 }
 
@@ -167,6 +168,7 @@ export async function createInfrastructure(): Promise<InfraResult> {
       roleAssignmentExpiryScheduler: createLeaderElector('role-assignment-expiry-scheduler'),
       directorHistoryMaintenanceScheduler: createLeaderElector('director-history-maintenance-scheduler'),
       guidanceRecallScheduler: createLeaderElector('guidance-recall-scheduler'),
+      mediaGenerationWorker: createLeaderElector('media-generation-worker'),
     },
   }
 }

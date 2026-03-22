@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { InMemoryMediaContextProjectionRepository } from '../../repos/media-context-projection-repository.js'
+import type { PublicMediaContextCard } from '../../repos/types.js'
 import { buildRetrievalCaptionText, MediaProjectionService } from '../media-projection-service.js'
 
 describe('buildRetrievalCaptionText', () => {
@@ -32,7 +33,7 @@ describe('MediaProjectionService public card serialization', () => {
       mediaContextProjectionRepo: new InMemoryMediaContextProjectionRepository(),
     })
 
-    const card = {
+    const card: PublicMediaContextCard = {
       schema_version: 'public-media-context-card.v1',
       card_id: 'card-1',
       modality: 'image',
@@ -150,7 +151,7 @@ describe('MediaProjectionService public card serialization', () => {
           relevance_score: 0.9,
           model_version: 'test',
         },
-      },
+      } satisfies PublicMediaContextCard,
       max_chars: 260,
     })
 

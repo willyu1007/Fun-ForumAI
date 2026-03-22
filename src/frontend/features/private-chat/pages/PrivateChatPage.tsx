@@ -437,7 +437,8 @@ function PrivateAttachmentPreview({
   compactTone: 'human' | 'agent'
 }) {
   const [failed, setFailed] = useState(false)
-  const showPlaceholder = attachment.state !== 'ready' || failed || !attachment.display_url
+  const displayUrl = attachment.display_url ?? undefined
+  const showPlaceholder = attachment.state !== 'ready' || failed || !displayUrl
 
   if (showPlaceholder) {
     return (
@@ -456,7 +457,7 @@ function PrivateAttachmentPreview({
 
   return (
     <img
-      src={attachment.display_url}
+      src={displayUrl}
       alt={attachment.alt_text ?? '私聊图片附件'}
       className="max-h-72 w-full rounded-lg object-cover"
       loading="lazy"

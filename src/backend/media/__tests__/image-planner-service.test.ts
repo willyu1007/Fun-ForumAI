@@ -5,9 +5,12 @@ import { InMemoryMediaSemanticSnapshotRepository } from '../../repos/media-seman
 import { InMemorySceneMediaBindingRepository } from '../../repos/scene-media-binding-repository.js'
 import { InMemoryForumSceneMetadataRepository } from '../../repos/forum-scene-metadata-repository.js'
 import { InMemoryMediaContextProjectionRepository } from '../../repos/media-context-projection-repository.js'
+import { InMemoryMediaGenerationJobRepository } from '../../repos/media-generation-job-repository.js'
+import { InMemoryMediaReusePolicyRepository } from '../../repos/media-reuse-policy-repository.js'
 import { MediaProjectionService } from '../media-projection-service.js'
 import { ImagePlannerService } from '../image-planner-service.js'
-import { buildOwnerPrivatePoolSceneId } from '../media-binding-service.js'
+import { MediaBindingService, buildOwnerPrivatePoolSceneId } from '../media-binding-service.js'
+import { MediaReuseGovernanceService } from '../media-reuse-governance-service.js'
 import type { PersistedVisualDirective } from '../../repos/types.js'
 
 function buildDirective(): PersistedVisualDirective {
@@ -77,6 +80,69 @@ function buildDirective(): PersistedVisualDirective {
   }
 }
 
+async function seedPrivateRuntimeProjectionCandidate(input: {
+  mediaAssetRepo: InMemoryMediaAssetRepository
+  mediaSemanticSnapshotRepo: InMemoryMediaSemanticSnapshotRepository
+  sceneMediaBindingRepo: InMemorySceneMediaBindingRepository
+  mediaProjectionService: MediaProjectionService
+}) {
+  const asset = await input.mediaAssetRepo.create({
+    id: 'asset-private-runtime',
+    steward_agent_id: 'agent-1',
+    owner_user_id: 'owner-1',
+    source_kind: 'private_message_upload',
+    source_scene_type: 'private_message',
+    source_scene_id: 'message-private-1',
+    visibility_policy: 'private_only',
+    lifecycle_status: 'active',
+    mime_type: 'image/png',
+    file_size_bytes: 1024,
+    sha256: 'sha-private-runtime',
+  })
+  const snapshot = await input.mediaSemanticSnapshotRepo.create({
+    asset_id: asset.id,
+    snapshot_kind: 'visual_core',
+    schema_version: 'visual_core.v1',
+    model_provider: 'test',
+    model_name: 'test',
+    model_version: '1',
+    summary: {
+      theme: 'coffee',
+      scene: 'tabletop',
+      mood: 'warm',
+      discussion_points: ['桌面暖光'],
+      salient_entities: ['coffee cup'],
+      ocr_snippets: [],
+      safety_labels: [],
+      public_safe_summary: 'A warm tabletop coffee scene.',
+      internal_full_summary: 'private-photo-detail',
+    },
+    extraction_status: 'completed',
+    quality_grade: 'rich',
+    is_current: true,
+  })
+  const binding = await input.sceneMediaBindingRepo.create({
+    scene_type: 'private_message',
+    scene_id: 'message-private-1',
+    asset_id: asset.id,
+    semantic_snapshot_id: snapshot.id,
+    binding_role: 'inline',
+    relation_to_scene: 'attached_to_private_message',
+    display_policy: 'original_allowed',
+    created_by_type: 'owner',
+    created_by_id: 'owner-1',
+  })
+  await input.mediaProjectionService.createPublicReuseHandoffProjection({
+    binding,
+    asset,
+    snapshot,
+    source_kind: 'private_message_upload',
+    why_relevant_hint: '最近私聊里分享过这张图。',
+    allowed_reuse_modes: ['derive_new', 'reference_only'],
+    disclose_origin_policy: 'never',
+  })
+}
+
 describe('ImagePlannerService', () => {
   it('selects owner_private_pool and keeps owner note out of runtime cards', async () => {
     const imagePlanRepo = new InMemoryImagePlanRepository()
@@ -84,16 +150,31 @@ describe('ImagePlannerService', () => {
     const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
     const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
     const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
     const mediaProjectionService = new MediaProjectionService({
-      mediaContextProjectionRepo: new InMemoryMediaContextProjectionRepository(),
+      mediaContextProjectionRepo,
+    })
+    const mediaReuseGovernanceService = new MediaReuseGovernanceService({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      mediaReusePolicyRepo: new InMemoryMediaReusePolicyRepository(),
+      mediaGenerationJobRepo: new InMemoryMediaGenerationJobRepository(),
+      imagePlanRepo,
+      mediaBindingService: new MediaBindingService({
+        sceneMediaBindingRepo,
+      }),
     })
     const service = new ImagePlannerService({
       imagePlanRepo,
       mediaAssetRepo,
       mediaSemanticSnapshotRepo,
       sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
       forumSceneMetadataRepo,
       mediaProjectionService,
+      mediaReuseGovernanceService,
     })
 
     const asset = await mediaAssetRepo.create({
@@ -147,8 +228,10 @@ describe('ImagePlannerService', () => {
       directive: buildDirective(),
     })
 
+    expect(plan.status).toBe('ready')
     expect(plan.decision).toBe('reuse_public_original')
     expect(plan.display.attachments).toHaveLength(1)
+    expect(plan.display.attachments[0]?.display_variant).toBe('original')
     expect(plan.runtime.cards).toHaveLength(1)
     expect(plan.runtime.cards[0]?.source.kind).toBe('owner_private_pool')
     expect(JSON.stringify(plan.runtime.cards[0])).not.toContain('owner-note-secret')
@@ -160,16 +243,31 @@ describe('ImagePlannerService', () => {
     const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
     const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
     const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
     const mediaProjectionService = new MediaProjectionService({
-      mediaContextProjectionRepo: new InMemoryMediaContextProjectionRepository(),
+      mediaContextProjectionRepo,
+    })
+    const mediaReuseGovernanceService = new MediaReuseGovernanceService({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      mediaReusePolicyRepo: new InMemoryMediaReusePolicyRepository(),
+      mediaGenerationJobRepo: new InMemoryMediaGenerationJobRepository(),
+      imagePlanRepo,
+      mediaBindingService: new MediaBindingService({
+        sceneMediaBindingRepo,
+      }),
     })
     const service = new ImagePlannerService({
       imagePlanRepo,
       mediaAssetRepo,
       mediaSemanticSnapshotRepo,
       sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
       forumSceneMetadataRepo,
       mediaProjectionService,
+      mediaReuseGovernanceService,
     })
 
     const foreignAsset = await mediaAssetRepo.create({
@@ -254,16 +352,31 @@ describe('ImagePlannerService', () => {
     const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
     const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
     const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
     const mediaProjectionService = new MediaProjectionService({
-      mediaContextProjectionRepo: new InMemoryMediaContextProjectionRepository(),
+      mediaContextProjectionRepo,
+    })
+    const mediaReuseGovernanceService = new MediaReuseGovernanceService({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      mediaReusePolicyRepo: new InMemoryMediaReusePolicyRepository(),
+      mediaGenerationJobRepo: new InMemoryMediaGenerationJobRepository(),
+      imagePlanRepo,
+      mediaBindingService: new MediaBindingService({
+        sceneMediaBindingRepo,
+      }),
     })
     const service = new ImagePlannerService({
       imagePlanRepo,
       mediaAssetRepo,
       mediaSemanticSnapshotRepo,
       sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
       forumSceneMetadataRepo,
       mediaProjectionService,
+      mediaReuseGovernanceService,
     })
 
     const asset = await mediaAssetRepo.create({
@@ -319,5 +432,129 @@ describe('ImagePlannerService', () => {
     expect(plan.status).toBe('degraded')
     expect(plan.decision).toBe('none')
     expect(plan.selected_sources).toHaveLength(0)
+  })
+
+  it('falls back to runtime-only when async generation is disabled and no sync budget is available', async () => {
+    const imagePlanRepo = new InMemoryImagePlanRepository()
+    const mediaAssetRepo = new InMemoryMediaAssetRepository()
+    const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
+    const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
+    const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const mediaProjectionService = new MediaProjectionService({
+      mediaContextProjectionRepo,
+    })
+    const mediaReuseGovernanceService = new MediaReuseGovernanceService({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      mediaReusePolicyRepo: new InMemoryMediaReusePolicyRepository(),
+      mediaGenerationJobRepo: new InMemoryMediaGenerationJobRepository(),
+      imagePlanRepo,
+      mediaBindingService: new MediaBindingService({
+        sceneMediaBindingRepo,
+      }),
+    })
+    const service = new ImagePlannerService({
+      imagePlanRepo,
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      forumSceneMetadataRepo,
+      mediaProjectionService,
+      mediaReuseGovernanceService,
+    })
+
+    await seedPrivateRuntimeProjectionCandidate({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaProjectionService,
+    })
+
+    const directive = buildDirective()
+    directive.sourcing_policy.allow_sources = ['private_runtime_projection']
+    directive.sourcing_policy.prefer_order = ['private_runtime_projection']
+    directive.sourcing_policy.allow_generation = true
+    directive.sourcing_policy.allow_private_runtime_projection = true
+    directive.sourcing_policy.allow_private_inspired_generation = true
+    directive.budget.generation_tier = 'medium'
+    directive.budget.max_generation_attempts = 2
+    directive.budget.sync_generation_ms_budget = 0
+    directive.budget.async_generation_allowed = false
+
+    const plan = await service.planScheduledPost({
+      agent_id: 'agent-1',
+      directive,
+    })
+
+    expect(plan.status).toBe('degraded')
+    expect(plan.decision).toBe('reuse_private_projection_runtime_only')
+    expect(plan.generation.mode).toBe('none')
+    expect(plan.display.attachments).toEqual([])
+  })
+
+  it('falls back to runtime-only when private inspired generation is disabled', async () => {
+    const imagePlanRepo = new InMemoryImagePlanRepository()
+    const mediaAssetRepo = new InMemoryMediaAssetRepository()
+    const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
+    const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
+    const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const mediaProjectionService = new MediaProjectionService({
+      mediaContextProjectionRepo,
+    })
+    const mediaReuseGovernanceService = new MediaReuseGovernanceService({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      mediaReusePolicyRepo: new InMemoryMediaReusePolicyRepository(),
+      mediaGenerationJobRepo: new InMemoryMediaGenerationJobRepository(),
+      imagePlanRepo,
+      mediaBindingService: new MediaBindingService({
+        sceneMediaBindingRepo,
+      }),
+    })
+    const service = new ImagePlannerService({
+      imagePlanRepo,
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      forumSceneMetadataRepo,
+      mediaProjectionService,
+      mediaReuseGovernanceService,
+    })
+
+    await seedPrivateRuntimeProjectionCandidate({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaProjectionService,
+    })
+
+    const directive = buildDirective()
+    directive.sourcing_policy.allow_sources = ['private_runtime_projection']
+    directive.sourcing_policy.prefer_order = ['private_runtime_projection']
+    directive.sourcing_policy.allow_generation = true
+    directive.sourcing_policy.allow_private_runtime_projection = true
+    directive.sourcing_policy.allow_private_inspired_generation = false
+    directive.budget.generation_tier = 'medium'
+    directive.budget.max_generation_attempts = 2
+    directive.budget.sync_generation_ms_budget = 2200
+    directive.budget.async_generation_allowed = true
+
+    const plan = await service.planScheduledPost({
+      agent_id: 'agent-1',
+      directive,
+    })
+
+    expect(plan.status).toBe('degraded')
+    expect(plan.decision).toBe('reuse_private_projection_runtime_only')
+    expect(plan.generation.mode).toBe('none')
+    expect(plan.display.attachments).toEqual([])
   })
 })

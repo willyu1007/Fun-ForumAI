@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-22T05:01:07.642Z",
+  "updatedAt": "2026-03-22T08:49:43.727Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -11668,6 +11668,15 @@
           "references": [
             "id"
           ]
+        },
+        {
+          "field": "generationJobs",
+          "to": "MediaGenerationJobRecord",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
         }
       ],
       "indexes": [
@@ -13227,6 +13236,15 @@
       ],
       "relations": [
         {
+          "field": "generatedOutputJobs",
+          "to": "MediaGenerationJobRecord",
+          "optional": false,
+          "list": true,
+          "relationName": "GeneratedJobOutputAsset",
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "owner",
           "to": "HumanUser",
           "optional": true,
@@ -13488,6 +13506,514 @@
             "bindingId",
             "projectionSurface",
             "projectionKind"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "MediaGenerationJobRecord",
+      "dbName": "media_generation_jobs",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "aspectRatioHint",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "aspect_ratio_hint",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "attemptCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "attempt_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "basedOnProjectionIds",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "based_on_projection_ids",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "errorCode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "error_code",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "errorMessage",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "error_message",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "finishedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "finished_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "modelName",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "model_name",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "outputAssetId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "output_asset_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "planId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "plan_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "promptBrief",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "prompt_brief",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "provider",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "requestFingerprint",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "request_fingerprint",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "startedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "started_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "\"queued\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "styleHint",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "style_hint",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "outputAsset",
+          "to": "MediaAsset",
+          "optional": true,
+          "list": false,
+          "relationName": "GeneratedJobOutputAsset",
+          "fields": [
+            "outputAssetId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "plan",
+          "to": "ImagePlanRecord",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "planId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "planId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "provider",
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "startedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "MediaReusePolicyRecord",
+      "dbName": "media_reuse_policies",
+      "schema": null,
+      "columns": [
+        {
+          "name": "allowedReuseModes",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "allowed_reuse_modes",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "copyrightState",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "copyright_state",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "crossAgentQuoteAllowed",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "cross_agent_quote_allowed",
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "discloseOriginPolicy",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "disclose_origin_policy",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "revokedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "revoked_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "revokedReason",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "revoked_reason",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceKind",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "\"active\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "stewardAgentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "steward_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "subjectId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "subject_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "subjectType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "subject_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "communityId",
+            "sourceKind",
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "sourceKind",
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "stewardAgentId",
+            "sourceKind",
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "subjectType",
+            "subjectId",
+            "sourceKind"
           ],
           "name": null,
           "map": null

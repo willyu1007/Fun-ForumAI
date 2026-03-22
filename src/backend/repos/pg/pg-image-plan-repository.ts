@@ -3,7 +3,7 @@ import type {
   CreateImagePlanInput,
   PersistedImagePlan,
 } from '../types.js'
-import type { ImagePlanRepository } from '../image-plan-repository.js'
+import type { ImagePlanRepository, UpdateImagePlanPatch } from '../image-plan-repository.js'
 
 function defaultGeneration(): PersistedImagePlan['generation'] {
   return {
@@ -21,15 +21,15 @@ export class PgImagePlanRepository implements ImagePlanRepository {
         ...(input.id ? { id: input.id } : {}),
         directiveId: input.directive_id,
         schemaVersion: input.schema_version ?? 'image-plan.v1',
-        sceneRef: input.scene_ref as Prisma.InputJsonValue,
+        sceneRef: input.scene_ref as unknown as Prisma.InputJsonValue,
         status: input.status,
         decision: input.decision,
         reason: input.reason,
-        runtime: input.runtime as Prisma.InputJsonValue,
-        display: input.display as Prisma.InputJsonValue,
-        generation: (input.generation ?? defaultGeneration()) as Prisma.InputJsonValue,
-        selectedSources: input.selected_sources as Prisma.InputJsonValue,
-        plannerAudit: input.planner_audit as Prisma.InputJsonValue,
+        runtime: input.runtime as unknown as Prisma.InputJsonValue,
+        display: input.display as unknown as Prisma.InputJsonValue,
+        generation: (input.generation ?? defaultGeneration()) as unknown as Prisma.InputJsonValue,
+        selectedSources: input.selected_sources as unknown as Prisma.InputJsonValue,
+        plannerAudit: input.planner_audit as unknown as Prisma.InputJsonValue,
       },
     })
     return this.toDomain(row)
@@ -40,20 +40,59 @@ export class PgImagePlanRepository implements ImagePlanRepository {
     return row ? this.toDomain(row) : null
   }
 
+  async listByGenerationJobId(jobId: string): Promise<PersistedImagePlan[]> {
+    const ids = await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT id
+      FROM image_plans
+      WHERE generation ->> 'job_id' = ${jobId}
+      ORDER BY created_at DESC
+    `)
+    if (ids.length === 0) return []
+    const rows = await this.prisma.imagePlanRecord.findMany({
+      where: {
+        id: { in: ids.map((row) => row.id) },
+      },
+      orderBy: [{ createdAt: 'desc' }],
+    })
+    return rows.map((row) => this.toDomain(row))
+  }
+
+  async update(id: string, patch: UpdateImagePlanPatch): Promise<PersistedImagePlan | null> {
+    const row = await this.prisma.imagePlanRecord.update({
+      where: { id },
+      data: {
+        ...(patch.status !== undefined ? { status: patch.status } : {}),
+        ...(patch.decision !== undefined ? { decision: patch.decision } : {}),
+        ...(patch.reason !== undefined ? { reason: patch.reason } : {}),
+        ...(patch.runtime !== undefined ? { runtime: patch.runtime as unknown as Prisma.InputJsonValue } : {}),
+        ...(patch.display !== undefined ? { display: patch.display as unknown as Prisma.InputJsonValue } : {}),
+        ...(patch.generation !== undefined ? { generation: patch.generation as unknown as Prisma.InputJsonValue } : {}),
+        ...(patch.selected_sources !== undefined ? { selectedSources: patch.selected_sources as unknown as Prisma.InputJsonValue } : {}),
+        ...(patch.planner_audit !== undefined ? { plannerAudit: patch.planner_audit as unknown as Prisma.InputJsonValue } : {}),
+      },
+    }).catch((err) => {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
+        return null
+      }
+      throw err
+    })
+    return row ? this.toDomain(row) : null
+  }
+
   private toDomain(row: PrismaImagePlanRecord): PersistedImagePlan {
     return {
       id: row.id,
       directive_id: row.directiveId,
       schema_version: row.schemaVersion as PersistedImagePlan['schema_version'],
-      scene_ref: row.sceneRef as PersistedImagePlan['scene_ref'],
+      scene_ref: row.sceneRef as unknown as PersistedImagePlan['scene_ref'],
       status: row.status as PersistedImagePlan['status'],
       decision: row.decision as PersistedImagePlan['decision'],
       reason: row.reason,
-      runtime: row.runtime as PersistedImagePlan['runtime'],
-      display: row.display as PersistedImagePlan['display'],
-      generation: row.generation as PersistedImagePlan['generation'],
-      selected_sources: row.selectedSources as PersistedImagePlan['selected_sources'],
-      planner_audit: row.plannerAudit as PersistedImagePlan['planner_audit'],
+      runtime: row.runtime as unknown as PersistedImagePlan['runtime'],
+      display: row.display as unknown as PersistedImagePlan['display'],
+      generation: row.generation as unknown as PersistedImagePlan['generation'],
+      selected_sources: row.selectedSources as unknown as PersistedImagePlan['selected_sources'],
+      planner_audit: row.plannerAudit as unknown as PersistedImagePlan['planner_audit'],
       created_at: row.createdAt,
       updated_at: row.updatedAt,
     }

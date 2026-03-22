@@ -10,6 +10,7 @@ import type {
   PrivateMediaMemoryProjection,
   PrivateMediaRuntimeCard,
   PrivateMessageAttachment,
+  PublicReuseHandoffCard,
   SceneMediaBinding,
 } from '../repos/types.js'
 import type { MediaAssetRepository } from '../repos/media-asset-repository.js'
@@ -63,6 +64,12 @@ export interface ScheduledMediaCandidate {
   id: string
   media_url: string
   mime_type: string
+}
+
+export interface GeneratedMediaRecord {
+  asset: MediaAsset
+  snapshot: MediaSemanticSnapshot
+  media_url: string
 }
 
 export interface MediaAssetServiceDeps {
@@ -235,6 +242,8 @@ export class MediaAssetService {
     runtime_projection: MediaContextProjection
     runtime_card: PrivateMediaRuntimeCard
     runtime_serialized_text: string
+    public_reuse_handoff_projection: MediaContextProjection
+    public_reuse_handoff: PublicReuseHandoffCard
     memory_projection: MediaContextProjection
     memory_payload: PrivateMediaMemoryProjection
   }> {
@@ -307,6 +316,27 @@ export class MediaAssetService {
           why_relevant_hint: input.why_relevant_hint,
         })
 
+    const existingPublicReuseHandoff = projections.find(
+      (projection) =>
+        projection.projection_surface === 'planner'
+        && projection.projection_kind === 'public_reuse_handoff'
+        && projection.schema_version === 'public-reuse-handoff.v1',
+    ) ?? null
+    const publicReuseHandoff = existingPublicReuseHandoff
+      ? {
+          projection: existingPublicReuseHandoff,
+          handoff: existingPublicReuseHandoff.payload_json as unknown as PublicReuseHandoffCard,
+        }
+      : await this.deps.mediaProjectionService.createPublicReuseHandoffProjection({
+          binding,
+          asset,
+          snapshot,
+          source_kind: asset.source_kind,
+          why_relevant_hint: input.why_relevant_hint,
+          allowed_reuse_modes: ['derive_new', 'reference_only'],
+          disclose_origin_policy: 'never',
+        })
+
     return {
       attachment: this.buildPrivateAttachmentView({
         asset,
@@ -317,6 +347,8 @@ export class MediaAssetService {
       runtime_projection: runtimeResult.projection,
       runtime_card: runtimeResult.card,
       runtime_serialized_text: runtimeResult.serialized_text,
+      public_reuse_handoff_projection: publicReuseHandoff.projection,
+      public_reuse_handoff: publicReuseHandoff.handoff,
       memory_projection: memoryResult.projection,
       memory_payload: memoryResult.payload,
     }
@@ -327,6 +359,56 @@ export class MediaAssetService {
     if (!asset) return null
     const snapshot = await this.deps.mediaSemanticSnapshotRepo.findCurrentByAssetId(asset.id)
     return this.buildPrivateAttachmentView({ asset, snapshot })
+  }
+
+  async ingestGeneratedDerivative(input: {
+    agent_id: string
+    plan_id?: string | null
+    mime_type: string
+    bytes: Buffer
+    visibility_policy?: MediaAsset['visibility_policy']
+    lifecycle_status?: MediaAsset['lifecycle_status']
+  }): Promise<GeneratedMediaRecord> {
+    const normalizedMimeType = input.mime_type.toLowerCase()
+    this.assertMimeType(normalizedMimeType)
+    this.assertSize(input.bytes.byteLength)
+    this.assertImageSignature(normalizedMimeType, input.bytes)
+
+    const dimensions = this.readImageDimensions(normalizedMimeType, input.bytes)
+    const stored = await this.storeBytes({
+      agent_id: input.agent_id,
+      mime_type: normalizedMimeType,
+      bytes: input.bytes,
+    })
+    const semantic = await this.deps.mediaSemanticService.extract({
+      agentId: input.agent_id,
+      mimeType: normalizedMimeType,
+      sourceUrl: pickModelReachableMediaUrl(stored.url),
+      uploadBuffer: input.bytes,
+    })
+    const asset = await this.deps.mediaAssetRepo.create({
+      steward_agent_id: input.agent_id,
+      owner_user_id: null,
+      source_kind: 'generated',
+      source_scene_type: input.plan_id ? 'image_plan' : null,
+      source_scene_id: input.plan_id ?? null,
+      visibility_policy: input.visibility_policy ?? 'public_original_allowed',
+      lifecycle_status: input.lifecycle_status ?? 'active',
+      storage_key: stored.key,
+      origin_url: null,
+      mime_type: normalizedMimeType,
+      file_size_bytes: input.bytes.byteLength,
+      width: dimensions.width,
+      height: dimensions.height,
+      sha256: createHash('sha256').update(input.bytes).digest('hex'),
+      phash: null,
+    })
+    const snapshot = await this.createCurrentSnapshot(asset.id, semantic)
+    return {
+      asset,
+      snapshot,
+      media_url: stored.url,
+    }
   }
 
   async listPrivateMessageAttachmentViews(messageIds: string[]): Promise<Map<string, PrivateMessageAttachment[]>> {

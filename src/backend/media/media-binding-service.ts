@@ -91,4 +91,35 @@ export class MediaBindingService {
     }
     return this.deps.sceneMediaBindingRepo.create(payload)
   }
+
+  createMediaPoolBinding(input: {
+    asset: MediaAsset
+    snapshot: MediaSemanticSnapshot
+    poolId: string
+    sourceBinding?: SceneMediaBinding | null
+    displayPolicy?: MediaDisplayPolicy
+    relationToScene?: MediaRelationToScene
+    createdById: string
+    createdByType?: CreateSceneMediaBindingInput['created_by_type']
+    bindingRole?: CreateSceneMediaBindingInput['binding_role']
+  }): Promise<SceneMediaBinding> {
+    const payload: CreateSceneMediaBindingInput = {
+      scene_type: 'media_pool',
+      scene_id: input.poolId,
+      asset_id: input.asset.id,
+      semantic_snapshot_id: input.snapshot.id,
+      binding_role: input.bindingRole ?? 'reference',
+      relation_to_scene: input.relationToScene ?? 'quoted_public',
+      display_policy: input.displayPolicy ?? 'original_allowed',
+      created_by_type: input.createdByType ?? 'system',
+      created_by_id: input.createdById,
+      ...(input.sourceBinding
+        ? {
+            source_scene_type: input.sourceBinding.scene_type,
+            source_scene_id: input.sourceBinding.scene_id,
+          }
+        : {}),
+    }
+    return this.deps.sceneMediaBindingRepo.create(payload)
+  }
 }

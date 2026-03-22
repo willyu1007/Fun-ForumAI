@@ -10,6 +10,8 @@ import { InMemoryMediaContextProjectionRepository } from '../repos/media-context
 import { InMemoryPostMediaRepository } from '../repos/post-media-repository.js'
 import { InMemoryVisualDirectiveRepository } from '../repos/visual-directive-repository.js'
 import { InMemoryImagePlanRepository } from '../repos/image-plan-repository.js'
+import { InMemoryMediaReusePolicyRepository } from '../repos/media-reuse-policy-repository.js'
+import { InMemoryMediaGenerationJobRepository } from '../repos/media-generation-job-repository.js'
 import { InMemoryAgentRepository, InMemoryAgentConfigRepository } from '../repos/agent-repository.js'
 import { InMemoryAgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
 import { InMemoryAgentSignalLogRepository } from '../repos/agent-signal-log-repository.js'
@@ -54,6 +56,8 @@ import type { MediaContextProjectionRepository } from '../repos/media-context-pr
 import type { PostMediaRepository } from '../repos/post-media-repository.js'
 import type { VisualDirectiveRepository } from '../repos/visual-directive-repository.js'
 import type { ImagePlanRepository } from '../repos/image-plan-repository.js'
+import type { MediaReusePolicyRepository } from '../repos/media-reuse-policy-repository.js'
+import type { MediaGenerationJobRepository } from '../repos/media-generation-job-repository.js'
 import type { AgentRepository, AgentConfigRepository } from '../repos/agent-repository.js'
 import type { AgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
 import type { AgentSignalLogRepository } from '../repos/agent-signal-log-repository.js'
@@ -100,6 +104,8 @@ export interface Repositories {
   postMediaRepo: PostMediaRepository
   visualDirectiveRepo: VisualDirectiveRepository
   imagePlanRepo: ImagePlanRepository
+  mediaReusePolicyRepo: MediaReusePolicyRepository
+  mediaGenerationJobRepo: MediaGenerationJobRepository
   agentRepo: AgentRepository
   agentConfigRepo: AgentConfigRepository
   agentCommunityMembershipRepo: AgentCommunityMembershipRepository
@@ -160,6 +166,8 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgPostMediaRepository } = await import('../repos/pg/pg-post-media-repository.js')
     const { PgVisualDirectiveRepository } = await import('../repos/pg/pg-visual-directive-repository.js')
     const { PgImagePlanRepository } = await import('../repos/pg/pg-image-plan-repository.js')
+    const { PgMediaReusePolicyRepository } = await import('../repos/pg/pg-media-reuse-policy-repository.js')
+    const { PgMediaGenerationJobRepository } = await import('../repos/pg/pg-media-generation-job-repository.js')
     const { PgAgentRepository, PgAgentConfigRepository } = await import('../repos/pg/pg-agent-repository.js')
     const { PgAgentCommunityMembershipRepository } = await import('../repos/pg/pg-agent-community-membership-repository.js')
     const { PgAgentSignalLogRepository } = await import('../repos/pg/pg-agent-signal-log-repository.js')
@@ -205,6 +213,8 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const pmr = new PgPostMediaRepository(prisma)
     const vdr = new PgVisualDirectiveRepository(prisma)
     const ipr = new PgImagePlanRepository(prisma)
+    const mrpr = new PgMediaReusePolicyRepository(prisma)
+    const mgjr = new PgMediaGenerationJobRepository(prisma)
     const ar = new PgAgentRepository(prisma)
     const acr = new PgAgentConfigRepository(prisma)
     const amr = new PgAgentCommunityMembershipRepository(prisma)
@@ -255,6 +265,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
         mediaSemanticSnapshotRepo: msr, sceneMediaBindingRepo: sbr,
         mediaContextProjectionRepo: mpr, postMediaRepo: pmr,
         visualDirectiveRepo: vdr, imagePlanRepo: ipr,
+        mediaReusePolicyRepo: mrpr, mediaGenerationJobRepo: mgjr,
         agentRepo: ar, agentConfigRepo: acr, agentCommunityMembershipRepo: amr,
         agentSignalLogRepo: aslr, communityRepo: cmr, communityCultureDigestRepo: cdr,
         eventRepo: er, agentRunRepo: arr, forumSceneMetadataRepo, runtimeSceneStateRepo, publicSceneWriteRepo,
@@ -295,6 +306,8 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       postMediaRepo: new InMemoryPostMediaRepository(),
       visualDirectiveRepo: new InMemoryVisualDirectiveRepository(),
       imagePlanRepo: new InMemoryImagePlanRepository(),
+      mediaReusePolicyRepo: new InMemoryMediaReusePolicyRepository(),
+      mediaGenerationJobRepo: new InMemoryMediaGenerationJobRepository(),
       agentRepo: new InMemoryAgentRepository(),
       agentConfigRepo: new InMemoryAgentConfigRepository(),
       agentCommunityMembershipRepo: new InMemoryAgentCommunityMembershipRepository(),

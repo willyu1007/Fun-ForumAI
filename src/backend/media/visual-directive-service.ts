@@ -12,8 +12,10 @@ import type { PublicSceneWritePayload } from '../services/public-scene-runtime.j
 const SCHEDULED_POST_ALLOW_SOURCES: VisualSourceKind[] = [
   'self_public_archive',
   'same_episode_public',
+  'generated_public',
   'same_thread_public',
   'owner_private_pool',
+  'private_runtime_projection',
   'community_commons',
   'platform_canonical',
 ]
@@ -21,8 +23,10 @@ const SCHEDULED_POST_ALLOW_SOURCES: VisualSourceKind[] = [
 const SCHEDULED_POST_PREFER_ORDER: VisualSourceKind[] = [
   'self_public_archive',
   'same_episode_public',
+  'generated_public',
   'same_thread_public',
   'owner_private_pool',
+  'private_runtime_projection',
   'community_commons',
   'platform_canonical',
 ]
@@ -45,7 +49,7 @@ export class VisualDirectiveService {
     const sceneRef: SceneRef = {
       request_id: payload.scene_metadata.selection_id,
       director_surface: payload.scene_metadata.director_surface,
-      actor_surface: payload.scene_metadata.actor_surface,
+      actor_surface: 'forum_post',
       community_id: input.community_id,
       episode_id: payload.scene_metadata.episode_id,
       selection_id: payload.scene_metadata.selection_id,
@@ -87,9 +91,9 @@ export class VisualDirectiveService {
         allow_sources: [...SCHEDULED_POST_ALLOW_SOURCES],
         prefer_order: [...SCHEDULED_POST_PREFER_ORDER],
         allow_private_runtime_projection: true,
-        allow_private_inspired_generation: false,
+        allow_private_inspired_generation: true,
         allow_cross_agent_public: false,
-        allow_generation: false,
+        allow_generation: true,
         max_display_assets: 1,
       },
       guardrails: {
@@ -101,10 +105,10 @@ export class VisualDirectiveService {
         text_in_image: 'avoid',
       },
       budget: {
-        generation_tier: 'none',
-        sync_generation_ms_budget: 0,
-        async_generation_allowed: false,
-        max_generation_attempts: 0,
+        generation_tier: 'medium',
+        sync_generation_ms_budget: 2200,
+        async_generation_allowed: true,
+        max_generation_attempts: 2,
       },
       audit: {
         director_reason: [

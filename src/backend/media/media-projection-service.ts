@@ -8,6 +8,7 @@ import type {
   PrivateMediaMemoryProjection,
   PrivateMediaRuntimeCard,
   PublicMediaContextCard,
+  PublicReuseHandoffCard,
   PublicScope,
   SceneMediaBinding,
   VisualRole,
@@ -291,6 +292,77 @@ export class MediaProjectionService {
       preferred_display_variant: 'original',
     })
     return { projection, card, serialized }
+  }
+
+  async createPublicReuseHandoffProjection(input: {
+    binding: SceneMediaBinding
+    asset: MediaAsset
+    snapshot: MediaSemanticSnapshot
+    source_kind: MediaSourceKind
+    why_relevant_hint: string
+    allowed_reuse_modes: Array<'derive_new' | 'reference_only'>
+    disclose_origin_policy: PublicReuseHandoffCard['governance']['disclose_origin_policy']
+    confidence?: number
+    relevance_score?: number
+  }): Promise<{
+    projection: MediaContextProjection
+    handoff: PublicReuseHandoffCard
+  }> {
+    const projectionId = `media_projection_${randomUUID()}`
+    const handoffId = `public_reuse_handoff_${randomUUID()}`
+    const handoff: PublicReuseHandoffCard = {
+      schema_version: 'public-reuse-handoff.v1',
+      handoff_id: handoffId,
+      asset_ref: {
+        asset_id: input.asset.id,
+        semantic_snapshot_id: input.snapshot.id,
+        projection_id: projectionId,
+      },
+      source: {
+        kind: 'private_runtime_projection',
+        originating_source_kind: input.source_kind,
+        derived_from_private: true,
+      },
+      relation: {
+        why_relevant_hint: trimCompact(input.why_relevant_hint, 180),
+        prompt_weight: 'secondary',
+      },
+      public_summary: {
+        theme: input.snapshot.summary.theme,
+        scene: input.snapshot.summary.scene,
+        mood: input.snapshot.summary.mood,
+        salient_entities: input.snapshot.summary.salient_entities.slice(0, 5),
+        discussion_points: input.snapshot.summary.discussion_points.slice(0, 5),
+        public_safe_caption: trimCompact(input.snapshot.summary.public_safe_summary, 220),
+        alt_text: trimCompact(buildAltText(input.snapshot.summary), 180),
+        ...(input.snapshot.summary.ocr_snippets.length > 0
+          ? { ocr_snippets: input.snapshot.summary.ocr_snippets.slice(0, 3) }
+          : {}),
+      },
+      governance: {
+        allowed_reuse_modes: [...input.allowed_reuse_modes],
+        original_display_allowed: false,
+        disclose_origin_policy: input.disclose_origin_policy,
+      },
+      audit: {
+        confidence: clamp(input.confidence ?? 0.8, 0, 1),
+        relevance_score: clamp(input.relevance_score ?? 0.8, 0, 1),
+        model_version: 't121-public-reuse-handoff.v1',
+      },
+    }
+    const projection = await this.deps.mediaContextProjectionRepo.create({
+      id: projectionId,
+      binding_id: input.binding.id,
+      projection_surface: 'planner',
+      projection_kind: 'public_reuse_handoff',
+      schema_version: handoff.schema_version,
+      payload_json: handoff as unknown as Record<string, unknown>,
+      token_estimate: estimateTokens(handoff.public_summary.public_safe_caption),
+      prompt_weight: 'secondary',
+      mention_policy: 'allude',
+      preferred_display_variant: 'none',
+    })
+    return { projection, handoff }
   }
 
   async createPrivateMemoryProjection(input: {

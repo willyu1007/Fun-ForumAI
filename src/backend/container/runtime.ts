@@ -27,6 +27,7 @@ import type { MediaProjectionService } from '../media/media-projection-service.j
 import type { MediaWriteBridge } from '../media/media-write-bridge.js'
 import type { VisualDirectiveService } from '../media/visual-directive-service.js'
 import type { ImagePlannerService } from '../media/image-planner-service.js'
+import type { MediaGenerationService } from '../media/media-generation-service.js'
 import type { AgentRunRepository } from '../repos/event-repository.js'
 import type { EventRepository } from '../repos/event-repository.js'
 import type { PostRepository } from '../repos/post-repository.js'
@@ -51,6 +52,7 @@ export function createRuntime(deps: {
   mediaWriteBridge: MediaWriteBridge
   visualDirectiveService: VisualDirectiveService
   imagePlannerService: ImagePlannerService
+  mediaGenerationService: MediaGenerationService
   xpService: XpService | null
   nurtureOrchestrator: NurtureOrchestrator | null
   eventRepo: EventRepository
@@ -113,6 +115,7 @@ export function createRuntime(deps: {
       mediaProjectionService: deps.mediaProjectionService,
       visualDirectiveService: deps.visualDirectiveService,
       imagePlannerService: deps.imagePlannerService,
+      mediaGenerationService: deps.mediaGenerationService,
       personaStateService: deps.personaStateService,
       inferenceProfileService: deps.inferenceProfileService,
       publicSceneSelectorService: deps.publicSceneSelectorService,

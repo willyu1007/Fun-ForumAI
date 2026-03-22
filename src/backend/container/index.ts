@@ -8,6 +8,7 @@ import { createNurtureEngines } from './nurture.js'
 import { createRuntime } from './runtime.js'
 import { CommunityConfigScheduler } from '../runtime/community-config-scheduler.js'
 import { DirectorHistoryMaintenanceScheduler } from '../runtime/director-history-maintenance-scheduler.js'
+import { MediaGenerationWorker } from '../runtime/media-generation-worker.js'
 import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry-scheduler.js'
 import { getRuntimeBuildInfo } from '../lib/runtime-build-info.js'
 import { personaObservability } from '../runtime/persona-observability.js'
@@ -73,6 +74,8 @@ const llm = createLlmServices({
   postMediaRepo: repos.postMediaRepo,
   visualDirectiveRepo: repos.visualDirectiveRepo,
   imagePlanRepo: repos.imagePlanRepo,
+  mediaReusePolicyRepo: repos.mediaReusePolicyRepo,
+  mediaGenerationJobRepo: repos.mediaGenerationJobRepo,
   forumSceneMetadataRepo: repos.forumSceneMetadataRepo,
   eventRepo: repos.eventRepo,
   agentRunRepo: repos.agentRunRepo,
@@ -140,6 +143,17 @@ const directorHistoryMaintenanceScheduler = config.db.usePrisma
       leaderElector: infra.leaderElectors.directorHistoryMaintenanceScheduler,
     })
   : null
+
+const mediaGenerationWorker = new MediaGenerationWorker(
+  {
+    service: llm.mediaGenerationService,
+    leaderElector: infra.leaderElectors.mediaGenerationWorker,
+  },
+  {
+    intervalMs: config.mediaGeneration.workerIntervalMs,
+    startupDelayMs: config.mediaGeneration.workerStartupDelayMs,
+  },
+)
 
 // ─── 5. Nurture Engines (Prisma-only heavy path) ────────────
 const nurture = await createNurtureEngines({
@@ -277,6 +291,7 @@ const rt = createRuntime({
   mediaWriteBridge: llm.mediaWriteBridge,
   visualDirectiveService: llm.visualDirectiveService,
   imagePlannerService: llm.imagePlannerService,
+  mediaGenerationService: llm.mediaGenerationService,
   xpService: nurture.xpService,
   nurtureOrchestrator: nurture.nurtureOrchestrator,
   eventRepo: repos.eventRepo,
@@ -393,6 +408,9 @@ export const mediaProjectionService = llm.mediaProjectionService
 export const mediaWriteBridge = llm.mediaWriteBridge
 export const visualDirectiveService = llm.visualDirectiveService
 export const imagePlannerService = llm.imagePlannerService
+export const mediaReuseGovernanceService = llm.mediaReuseGovernanceService
+export const mediaGenerationGateway = llm.mediaGenerationGateway
+export const mediaGenerationService = llm.mediaGenerationService
 
 export const achievementChronicleService = core.achievementChronicleService
 export const forumReadService = core.forumReadService
@@ -449,10 +467,11 @@ export const achievementsScheduler = nurture.achievementsScheduler
 export const cultureDigestScheduler = nurture.cultureDigestScheduler
 export const privateChannelServices = nurture.privateChannelServices
 export const privateChannelScheduler = nurture.privateChannelScheduler
-export {
+export { 
   communityConfigScheduler,
   roleAssignmentExpiryScheduler,
   directorHistoryMaintenanceScheduler,
+  mediaGenerationWorker,
 }
 export {
   guidanceBellService,

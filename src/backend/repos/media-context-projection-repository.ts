@@ -3,11 +3,21 @@ import type {
   MediaContextProjection,
 } from './types.js'
 
+export interface UpdateMediaContextProjectionPatch {
+  expires_at?: Date | null
+  payload_json?: Record<string, unknown>
+  preferred_display_variant?: string | null
+}
+
 export interface MediaContextProjectionRepository {
   create(input: CreateMediaContextProjectionInput): Promise<MediaContextProjection>
   deleteByBindingIds(bindingIds: string[]): Promise<number>
+  findById(id: string): Promise<MediaContextProjection | null>
+  findByIds(ids: string[]): Promise<MediaContextProjection[]>
   findByBindingId(bindingId: string): Promise<MediaContextProjection[]>
   findByBindingIds(bindingIds: string[]): Promise<MediaContextProjection[]>
+  update(id: string, patch: UpdateMediaContextProjectionPatch): Promise<MediaContextProjection | null>
+  expireByIds(ids: string[], expiresAt: Date): Promise<number>
 }
 
 let counter = 0
@@ -49,6 +59,17 @@ export class InMemoryMediaContextProjectionRepository implements MediaContextPro
     return deleted
   }
 
+  async findById(id: string): Promise<MediaContextProjection | null> {
+    return this.store.get(id) ?? null
+  }
+
+  async findByIds(ids: string[]): Promise<MediaContextProjection[]> {
+    const lookup = new Set(ids)
+    return Array.from(this.store.values())
+      .filter((item) => lookup.has(item.id))
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+  }
+
   async findByBindingId(bindingId: string): Promise<MediaContextProjection[]> {
     return Array.from(this.store.values())
       .filter((item) => item.binding_id === bindingId)
@@ -60,5 +81,28 @@ export class InMemoryMediaContextProjectionRepository implements MediaContextPro
     return Array.from(this.store.values())
       .filter((item) => lookup.has(item.binding_id))
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+  }
+
+  async update(id: string, patch: UpdateMediaContextProjectionPatch): Promise<MediaContextProjection | null> {
+    const current = this.store.get(id)
+    if (!current) return null
+    if (patch.expires_at !== undefined) current.expires_at = patch.expires_at
+    if (patch.payload_json !== undefined) current.payload_json = patch.payload_json
+    if (patch.preferred_display_variant !== undefined) {
+      current.preferred_display_variant = patch.preferred_display_variant
+    }
+    return current
+  }
+
+  async expireByIds(ids: string[], expiresAt: Date): Promise<number> {
+    const lookup = new Set(ids)
+    if (lookup.size === 0) return 0
+    let updated = 0
+    for (const projection of this.store.values()) {
+      if (!lookup.has(projection.id)) continue
+      projection.expires_at = expiresAt
+      updated += 1
+    }
+    return updated
   }
 }

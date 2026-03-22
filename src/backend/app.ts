@@ -9,7 +9,7 @@ import { healthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { devSeedRouter } from './routes/dev-seed.js'
-import { runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, warmPersistenceState, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, roleAssignmentExpiryScheduler, directorHistoryMaintenanceScheduler, guidanceRecallScheduler, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService } from './container.js'
+import { runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, warmPersistenceState, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, roleAssignmentExpiryScheduler, directorHistoryMaintenanceScheduler, guidanceRecallScheduler, mediaGenerationWorker, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
 import { agentNurtureRouter } from './routes/agent-growth-api.js'
@@ -233,6 +233,7 @@ if (config.allowDevTools) {
         community_config_scheduler_running: communityConfigScheduler?.isRunning ?? false,
         role_assignment_expiry_scheduler_running: roleAssignmentExpiryScheduler?.isRunning ?? false,
         director_history_maintenance_scheduler_running: directorHistoryMaintenanceScheduler?.isRunning ?? false,
+        media_generation_worker_running: mediaGenerationWorker?.isRunning ?? false,
       },
     })
   })
@@ -490,6 +491,10 @@ export function startBackgroundServices(): void {
   if (config.features.guidanceV1 && config.features.guidanceRecallV1 && guidanceRecallScheduler) {
     guidanceRecallScheduler.start()
   }
+
+  if (config.features.mediaGenerationV1) {
+    mediaGenerationWorker.start()
+  }
 }
 
 export function stopBackgroundServices(): void {
@@ -506,6 +511,7 @@ export function stopBackgroundServices(): void {
   roleAssignmentExpiryScheduler?.stop()
   directorHistoryMaintenanceScheduler?.stop()
   guidanceRecallScheduler?.stop()
+  mediaGenerationWorker?.stop()
 }
 
 // ─── Persistence initialization ─────────────────────────────

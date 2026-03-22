@@ -3,7 +3,10 @@ import type {
   CreateMediaContextProjectionInput,
   MediaContextProjection,
 } from '../types.js'
-import type { MediaContextProjectionRepository } from '../media-context-projection-repository.js'
+import type {
+  MediaContextProjectionRepository,
+  UpdateMediaContextProjectionPatch,
+} from '../media-context-projection-repository.js'
 
 export class PgMediaContextProjectionRepository implements MediaContextProjectionRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -35,6 +38,20 @@ export class PgMediaContextProjectionRepository implements MediaContextProjectio
     return result.count
   }
 
+  async findById(id: string): Promise<MediaContextProjection | null> {
+    const row = await this.prisma.mediaContextProjection.findUnique({ where: { id } })
+    return row ? this.toDomain(row) : null
+  }
+
+  async findByIds(ids: string[]): Promise<MediaContextProjection[]> {
+    if (ids.length === 0) return []
+    const rows = await this.prisma.mediaContextProjection.findMany({
+      where: { id: { in: ids } },
+      orderBy: [{ createdAt: 'desc' }],
+    })
+    return rows.map((row) => this.toDomain(row))
+  }
+
   async findByBindingId(bindingId: string): Promise<MediaContextProjection[]> {
     const rows = await this.prisma.mediaContextProjection.findMany({
       where: { bindingId },
@@ -50,6 +67,36 @@ export class PgMediaContextProjectionRepository implements MediaContextProjectio
       orderBy: [{ createdAt: 'desc' }],
     })
     return rows.map((row) => this.toDomain(row))
+  }
+
+  async update(id: string, patch: UpdateMediaContextProjectionPatch): Promise<MediaContextProjection | null> {
+    const row = await this.prisma.mediaContextProjection.update({
+      where: { id },
+      data: {
+        ...(patch.expires_at !== undefined ? { expiresAt: patch.expires_at } : {}),
+        ...(patch.payload_json !== undefined
+          ? { payloadJson: patch.payload_json as unknown as Prisma.InputJsonValue }
+          : {}),
+        ...(patch.preferred_display_variant !== undefined
+          ? { preferredDisplayVariant: patch.preferred_display_variant }
+          : {}),
+      },
+    }).catch((err) => {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
+        return null
+      }
+      throw err
+    })
+    return row ? this.toDomain(row) : null
+  }
+
+  async expireByIds(ids: string[], expiresAt: Date): Promise<number> {
+    if (ids.length === 0) return 0
+    const result = await this.prisma.mediaContextProjection.updateMany({
+      where: { id: { in: ids } },
+      data: { expiresAt },
+    })
+    return result.count
   }
 
   private toDomain(row: PrismaMediaContextProjection): MediaContextProjection {

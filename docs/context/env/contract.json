@@ -5,7 +5,7 @@
     "prod",
     "staging"
   ],
-  "generated_at_utc": "2026-03-16T21:28:50Z",
+  "generated_at_utc": "2026-03-22T09:06:31Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "APP_ENV": {
@@ -739,6 +739,23 @@
       "state": "active",
       "type": "enum"
     },
+    "FF_MEDIA_GENERATION_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable the dedicated media generation broker, worker, and derivative display flow.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
     "FF_MEMBERSHIPS_V1": {
       "default": "true",
       "deprecate_after": null,
@@ -1202,6 +1219,210 @@
       "default": 30000,
       "deprecate_after": null,
       "description": "Timeout per LLM API call in milliseconds.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "MEDIA_GENERATION_API_KEY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "API key for the dedicated image generation gateway.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "media_generation_api_key",
+      "state": "active",
+      "type": "string"
+    },
+    "MEDIA_GENERATION_BASE_URL": {
+      "default": "https://ark.cn-beijing.volces.com",
+      "deprecate_after": null,
+      "description": "Base URL for the dedicated image generation API.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "MEDIA_GENERATION_DOWNLOAD_TIMEOUT_MS": {
+      "default": 30000,
+      "deprecate_after": null,
+      "description": "Timeout for downloading provider-hosted generated image bytes.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "MEDIA_GENERATION_GLOBAL_CONCURRENCY": {
+      "default": 1,
+      "deprecate_after": null,
+      "description": "Global concurrent media generation job cap.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "MEDIA_GENERATION_MODEL": {
+      "default": "doubao-seedream-5-0-lite-260128",
+      "deprecate_after": null,
+      "description": "Dedicated image generation model name.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "MEDIA_GENERATION_POLL_INTERVAL_MS": {
+      "default": 150,
+      "deprecate_after": null,
+      "description": "Poll interval for waiting on generation job completion.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "MEDIA_GENERATION_PROVIDER": {
+      "default": "ark-seedream",
+      "deprecate_after": null,
+      "description": "Dedicated image generation provider identifier.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "MEDIA_GENERATION_PROVIDER_CONCURRENCY": {
+      "default": 1,
+      "deprecate_after": null,
+      "description": "Per-provider concurrent media generation job cap.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "MEDIA_GENERATION_RUNNING_TIMEOUT_MS": {
+      "default": 180000,
+      "deprecate_after": null,
+      "description": "Running job timeout before the worker reclaims and marks the job timed out.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "MEDIA_GENERATION_TIMEOUT_MS": {
+      "default": 30000,
+      "deprecate_after": null,
+      "description": "Timeout per image generation request in milliseconds.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "MEDIA_GENERATION_WORKER_INTERVAL_MS": {
+      "default": 5000,
+      "deprecate_after": null,
+      "description": "Background media generation worker scan interval.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "MEDIA_GENERATION_WORKER_STARTUP_DELAY_MS": {
+      "default": 2000,
+      "deprecate_after": null,
+      "description": "Startup delay before the background media generation worker first tick.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null

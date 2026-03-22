@@ -1,4 +1,4 @@
-import { Router, type IRouter } from 'express'
+import { Router, type IRouter, type Response } from 'express'
 import { requireHumanAuth, requireAdmin } from '../middleware/human-auth.js'
 import {
   agentService,
@@ -18,8 +18,10 @@ import {
   privateChannelServices,
   hotTopicOpsService,
   llmRegistryBundle,
+  mediaReuseGovernanceService,
 } from '../container.js'
 import { config } from '../lib/config.js'
+import { AppError } from '../lib/errors.js'
 import { getRuntimeBuildInfo } from '../lib/runtime-build-info.js'
 import { richCommunitiesMetrics } from '../lib/rich-communities-metrics.js'
 import { buildPersonaObservabilitySummary } from '../runtime/persona-observation.js'
@@ -37,9 +39,13 @@ import {
 } from '../runtime/rollout-evidence-collector.js'
 import { validate } from '../validation/validate.js'
 import {
+  createCommunityCommonsAssetSchema,
   createDisclosureCapOverrideSchema,
+  createPlatformCanonicalAssetSchema,
   governanceActionSchema,
+  patchMediaReusePolicySchema,
   releaseDisclosureCapOverrideSchema,
+  revokeMediaReusePolicySchema,
 } from '../validation/schemas.js'
 import { resolveEffectiveDisclosureCap } from './admin-api-utils.js'
 
@@ -63,6 +69,18 @@ function isSpilloverRiskEvent(event: {
     event.detail_text?.includes('owner_private_leak') ||
     event.detail_text?.includes('owner_endorsement_public'),
   )
+}
+
+function tryHandleAppError(res: Response, err: unknown): boolean {
+  if (!(err instanceof AppError)) return false
+  res.status(err.statusCode).json({
+    error: {
+      code: err.code,
+      message: err.message,
+      ...(err.details !== undefined ? { details: err.details } : {}),
+    },
+  })
+  return true
 }
 
 adminApiRouter.get('/admin/moderation/queue', requireHumanAuth, requireAdmin, async (req, res) => {
@@ -425,6 +443,87 @@ adminApiRouter.get('/admin/disclosure-caps', requireHumanAuth, requireAdmin, asy
     },
   })
 })
+
+adminApiRouter.post(
+  '/admin/media/platform-canonical/assets',
+  requireHumanAuth,
+  requireAdmin,
+  validate(createPlatformCanonicalAssetSchema),
+  async (req, res, next) => {
+    try {
+      const data = await mediaReuseGovernanceService.registerPlatformCanonicalAsset({
+        asset_id: req.body.asset_id,
+        actor_user_id: req.user!.userId,
+      })
+      res.status(201).json({ data })
+    } catch (err) {
+      if (tryHandleAppError(res, err)) return
+      next(err)
+    }
+  },
+)
+
+adminApiRouter.post(
+  '/admin/communities/:communityId/media/commons/assets',
+  requireHumanAuth,
+  requireAdmin,
+  validate(createCommunityCommonsAssetSchema),
+  async (req, res, next) => {
+    try {
+      const data = await mediaReuseGovernanceService.registerCommunityCommonsAsset({
+        community_id: String(req.params.communityId),
+        asset_id: req.body.asset_id,
+        actor_user_id: req.user!.userId,
+        allow_quote_original: req.body.allow_quote_original,
+      })
+      res.status(201).json({ data })
+    } catch (err) {
+      if (tryHandleAppError(res, err)) return
+      next(err)
+    }
+  },
+)
+
+adminApiRouter.patch(
+  '/admin/media/reuse-policies/:policyId',
+  requireHumanAuth,
+  requireAdmin,
+  validate(patchMediaReusePolicySchema),
+  async (req, res, next) => {
+    try {
+      const data = await mediaReuseGovernanceService.updatePolicy(String(req.params.policyId), {
+        allowed_reuse_modes: req.body.allowed_reuse_modes,
+        cross_agent_quote_allowed: req.body.cross_agent_quote_allowed,
+        disclose_origin_policy: req.body.disclose_origin_policy,
+        copyright_state: req.body.copyright_state,
+        status: req.body.status,
+      })
+      res.json({ data })
+    } catch (err) {
+      if (tryHandleAppError(res, err)) return
+      next(err)
+    }
+  },
+)
+
+adminApiRouter.post(
+  '/admin/media/reuse-policies/:policyId/revoke',
+  requireHumanAuth,
+  requireAdmin,
+  validate(revokeMediaReusePolicySchema),
+  async (req, res, next) => {
+    try {
+      const data = await mediaReuseGovernanceService.revokePolicy({
+        policy_id: String(req.params.policyId),
+        reason: req.body.reason,
+      })
+      res.json({ data })
+    } catch (err) {
+      if (tryHandleAppError(res, err)) return
+      next(err)
+    }
+  },
+)
 
 adminApiRouter.post(
   '/admin/disclosure-caps',

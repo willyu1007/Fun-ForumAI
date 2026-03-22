@@ -111,10 +111,13 @@ export class MediaWriteBridge {
       .filter((item) => !item.rejection_reason && item.asset_id)
       .sort((left, right) => right.selection_score - left.selection_score)
     const displayByAssetId = new Map(plan.display.attachments.map((item) => [item.asset_id, item]))
+    const linkedAssetIds = new Set<string>()
     let linked = false
 
     for (const selectedSource of selectedSources) {
       if (!selectedSource.asset_id) continue
+      const attachment = displayByAssetId.get(selectedSource.asset_id) ?? null
+      if (!attachment) continue
       const asset = await this.deps.mediaAssetRepo.findById(selectedSource.asset_id)
       if (!asset || asset.lifecycle_status !== 'active' || asset.visibility_policy === 'blocked') {
         continue
@@ -123,7 +126,6 @@ export class MediaWriteBridge {
       if (!snapshot) continue
 
       const sourceBinding = await this.resolveSourceBinding(asset.id, selectedSource.source_kind, plan.scene_ref.episode_id)
-      const attachment = displayByAssetId.get(asset.id) ?? null
       const existingBinding = (await this.deps.sceneMediaBindingRepo.findByScene('forum_post', input.scene_id))
         .find((item) => item.asset_id === asset.id) ?? null
       const binding = existingBinding ?? await this.deps.mediaBindingService.createForumPostBinding({
@@ -132,50 +134,103 @@ export class MediaWriteBridge {
         postId: input.scene_id,
         sourceBinding,
         createdById: input.created_by_id,
-        displayPolicy: attachment ? 'original_allowed' : 'runtime_only_no_display',
-        relationToScene: selectedSource.source_kind === 'owner_private_pool' && !attachment
-          ? 'derived_from_private'
-          : 'selected_for_post',
+        displayPolicy: 'original_allowed',
+        relationToScene: 'selected_for_post',
       })
 
-      if (attachment) {
-        const mediaUrl = resolveMediaAssetUrl(asset, this.deps.storage)
-        if (!mediaUrl) continue
-        const projections = await this.deps.mediaContextProjectionRepo.findByBindingId(binding.id)
-        const hasDisplayAttachment = projections.some(
-          (projection) =>
-            projection.projection_surface === 'public_display'
-            && projection.projection_kind === 'display_attachment',
-        )
-        if (!hasDisplayAttachment) {
-          await this.deps.mediaProjectionService.createDisplayAttachmentProjection({
-            binding,
-            asset,
-            snapshot,
-            mediaUrl,
-            altText: attachment.alt_text,
-            publicCaption: attachment.public_caption,
-          })
-        }
-
-        const hasPostMedia = this.deps.postMediaRepo.findByAssetId(asset.id)
-          .some((item) => item.post_id === input.scene_id)
-        if (!hasPostMedia) {
-          this.deps.postMediaRepo.create({
-            post_id: input.scene_id,
-            asset_id: asset.id,
-            media_url: mediaUrl,
-            mime_type: asset.mime_type,
-          })
-        }
-
-        if (asset.visibility_policy === 'private_only' && attachment.display_variant === 'original') {
-          await this.deps.mediaAssetRepo.update(asset.id, {
-            visibility_policy: 'public_original_allowed',
-          })
-        }
+      const mediaUrl = resolveMediaAssetUrl(asset, this.deps.storage)
+      if (!mediaUrl) continue
+      const projections = await this.deps.mediaContextProjectionRepo.findByBindingId(binding.id)
+      const hasDisplayAttachment = projections.some(
+        (projection) =>
+          projection.projection_surface === 'public_display'
+          && projection.projection_kind === 'display_attachment',
+      )
+      if (!hasDisplayAttachment) {
+        await this.deps.mediaProjectionService.createDisplayAttachmentProjection({
+          binding,
+          asset,
+          snapshot,
+          mediaUrl,
+          altText: attachment.alt_text,
+          publicCaption: attachment.public_caption,
+        })
       }
 
+      const hasPostMedia = this.deps.postMediaRepo.findByAssetId(asset.id)
+        .some((item) => item.post_id === input.scene_id)
+      if (!hasPostMedia) {
+        this.deps.postMediaRepo.create({
+          post_id: input.scene_id,
+          asset_id: asset.id,
+          media_url: mediaUrl,
+          mime_type: asset.mime_type,
+        })
+      }
+
+      if (asset.visibility_policy === 'private_only' && attachment.display_variant === 'original') {
+        await this.deps.mediaAssetRepo.update(asset.id, {
+          visibility_policy: 'public_original_allowed',
+        })
+      }
+
+      linkedAssetIds.add(asset.id)
+      linked = true
+    }
+
+    for (const attachment of plan.display.attachments) {
+      if (linkedAssetIds.has(attachment.asset_id)) continue
+      const asset = await this.deps.mediaAssetRepo.findById(attachment.asset_id)
+      if (!asset || asset.lifecycle_status !== 'active' || asset.visibility_policy === 'blocked') continue
+      const snapshot = await this.deps.mediaSemanticSnapshotRepo.findCurrentByAssetId(asset.id)
+      if (!snapshot) continue
+      const sourceBinding = await this.resolveSourceBinding(
+        asset.id,
+        attachment.display_variant === 'generated_derivative' ? 'generated_public' : 'self_public_archive',
+        plan.scene_ref.episode_id,
+      )
+      const existingBinding = (await this.deps.sceneMediaBindingRepo.findByScene('forum_post', input.scene_id))
+        .find((item) => item.asset_id === asset.id) ?? null
+      const binding = existingBinding ?? await this.deps.mediaBindingService.createForumPostBinding({
+        asset,
+        snapshot,
+        postId: input.scene_id,
+        sourceBinding,
+        createdById: input.created_by_id,
+        displayPolicy: attachment.display_variant === 'generated_derivative' ? 'derivative_only' : 'original_allowed',
+        relationToScene: attachment.display_variant === 'generated_derivative'
+          ? 'generated_for_scene'
+          : 'selected_for_post',
+      })
+      const mediaUrl = resolveMediaAssetUrl(asset, this.deps.storage)
+      if (!mediaUrl) continue
+      const projections = await this.deps.mediaContextProjectionRepo.findByBindingId(binding.id)
+      const hasDisplayAttachment = projections.some(
+        (projection) =>
+          projection.projection_surface === 'public_display'
+          && projection.projection_kind === 'display_attachment',
+      )
+      if (!hasDisplayAttachment) {
+        await this.deps.mediaProjectionService.createDisplayAttachmentProjection({
+          binding,
+          asset,
+          snapshot,
+          mediaUrl,
+          altText: attachment.alt_text,
+          publicCaption: attachment.public_caption,
+        })
+      }
+      const hasPostMedia = this.deps.postMediaRepo.findByAssetId(asset.id)
+        .some((item) => item.post_id === input.scene_id)
+      if (!hasPostMedia) {
+        this.deps.postMediaRepo.create({
+          post_id: input.scene_id,
+          asset_id: asset.id,
+          media_url: mediaUrl,
+          mime_type: asset.mime_type,
+        })
+      }
+      linkedAssetIds.add(asset.id)
       linked = true
     }
 

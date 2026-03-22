@@ -17,6 +17,7 @@ import type { PromptComposeAudit } from './types.js'
 import type { MediaProjectionService } from '../media/media-projection-service.js'
 import type { VisualDirectiveService } from '../media/visual-directive-service.js'
 import type { ImagePlannerService } from '../media/image-planner-service.js'
+import type { MediaGenerationService } from '../media/media-generation-service.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
@@ -45,6 +46,7 @@ export interface PostSchedulerDeps {
   mediaProjectionService?: MediaProjectionService | null
   visualDirectiveService?: VisualDirectiveService | null
   imagePlannerService?: ImagePlannerService | null
+  mediaGenerationService?: MediaGenerationService | null
   personaStateService?: PersonaStateService | null
   inferenceProfileService?: InferenceProfileService | null
   publicSceneSelectorService?: PublicSceneSelectorService | null
@@ -686,10 +688,17 @@ export class PostScheduler {
       community_id: input.community_id,
       payload: input.scenePayload,
     })
-    const plan = await this.deps.imagePlannerService.planScheduledPost({
+    const initialPlan = await this.deps.imagePlannerService.planScheduledPost({
       agent_id: input.agent_id,
       directive,
     })
+    const plan = initialPlan.status === 'pending_generation' && this.deps.mediaGenerationService
+      ? await this.deps.mediaGenerationService.ensurePlanReadyWithinBudget({
+          agent_id: input.agent_id,
+          plan: initialPlan,
+          wait_budget_ms: directive.budget.sync_generation_ms_budget,
+        })
+      : initialPlan
     const firstCard = plan.runtime.cards[0] ?? null
     const serialized = firstCard
       ? this.deps.mediaProjectionService.serializePublicCardForPrompt({
@@ -730,6 +739,8 @@ export class PostScheduler {
         planner_status: plan.status,
         planner_decision: plan.decision,
         planner_reason: plan.reason,
+        generation_status: plan.generation.status,
+        generation_job_id: plan.generation.job_id ?? null,
         runtime_card_ids: plan.runtime.cards.map((card) => card.card_id),
         public_media_prompt_audit: promptAudit,
         public_media_prompt_injection_status: firstCard

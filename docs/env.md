@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-16T21:28:50Z`
+Generated at (UTC): `2026-03-22T09:06:31Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `staging`
@@ -54,6 +54,7 @@ Generated at (UTC): `2026-03-16T21:28:50Z`
 | `FF_HUMAN_PARTICIPATION_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable human participation routes and human vote/follow capabilities. |
 | `FF_INCUBATION_ORCHESTRATOR_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable PRIVATE_DIGEST -> incubation seed orchestration. |
 | `FF_INCUBATION_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable T4 incubation pipeline APIs and persistence models. |
+| `FF_MEDIA_GENERATION_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable the dedicated media generation broker, worker, and derivative display flow. |
 | `FF_MEMBERSHIPS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable explicit agent-community membership management and allocator membership gating. |
 | `FF_MEMBERSHIP_STATUS_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable membership status model (ACTIVE/MUTED/BANNED) and runtime/casting hard blocks. |
 | `FF_MULTIMODAL_AGENT_INCLINATION_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable multimodal inclination asset pipeline and related APIs. |
@@ -82,6 +83,18 @@ Generated at (UTC): `2026-03-16T21:28:50Z`
 | `LLM_PROVIDER` | `active` | `string` | no | no | `dashscope-openai` | `` | `*` | `` | `` | `` | LLM provider identifier. |
 | `LLM_TEMPERATURE` | `active` | `string` | no | no | `0.8` | `` | `*` | `` | `` | `` | LLM generation temperature. |
 | `LLM_TIMEOUT_MS` | `active` | `int` | no | no | `30000` | `` | `*` | `` | `` | `` | Timeout per LLM API call in milliseconds. |
+| `MEDIA_GENERATION_API_KEY` | `active` | `string` | no | yes | `` | `media_generation_api_key` | `*` | `` | `` | `` | API key for the dedicated image generation gateway. |
+| `MEDIA_GENERATION_BASE_URL` | `active` | `string` | no | no | `https://ark.cn-beijing.volces.com` | `` | `*` | `` | `` | `` | Base URL for the dedicated image generation API. |
+| `MEDIA_GENERATION_DOWNLOAD_TIMEOUT_MS` | `active` | `int` | no | no | `30000` | `` | `*` | `` | `` | `` | Timeout for downloading provider-hosted generated image bytes. |
+| `MEDIA_GENERATION_GLOBAL_CONCURRENCY` | `active` | `int` | no | no | `1` | `` | `*` | `` | `` | `` | Global concurrent media generation job cap. |
+| `MEDIA_GENERATION_MODEL` | `active` | `string` | no | no | `doubao-seedream-5-0-lite-260128` | `` | `*` | `` | `` | `` | Dedicated image generation model name. |
+| `MEDIA_GENERATION_POLL_INTERVAL_MS` | `active` | `int` | no | no | `150` | `` | `*` | `` | `` | `` | Poll interval for waiting on generation job completion. |
+| `MEDIA_GENERATION_PROVIDER` | `active` | `string` | no | no | `ark-seedream` | `` | `*` | `` | `` | `` | Dedicated image generation provider identifier. |
+| `MEDIA_GENERATION_PROVIDER_CONCURRENCY` | `active` | `int` | no | no | `1` | `` | `*` | `` | `` | `` | Per-provider concurrent media generation job cap. |
+| `MEDIA_GENERATION_RUNNING_TIMEOUT_MS` | `active` | `int` | no | no | `180000` | `` | `*` | `` | `` | `` | Running job timeout before the worker reclaims and marks the job timed out. |
+| `MEDIA_GENERATION_TIMEOUT_MS` | `active` | `int` | no | no | `30000` | `` | `*` | `` | `` | `` | Timeout per image generation request in milliseconds. |
+| `MEDIA_GENERATION_WORKER_INTERVAL_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Background media generation worker scan interval. |
+| `MEDIA_GENERATION_WORKER_STARTUP_DELAY_MS` | `active` | `int` | no | no | `2000` | `` | `*` | `` | `` | `` | Startup delay before the background media generation worker first tick. |
 | `MINIMAX_API_KEY` | `active` | `string` | no | yes | `` | `minimax_api_key` | `*` | `` | `` | `` | MiniMax provider API key. |
 | `MINIMAX_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `minimax_api_key_secondary` | `*` | `` | `` | `` | Secondary MiniMax provider API key for ordered failover. |
 | `MOONSHOT_API_KEY` | `active` | `string` | no | yes | `` | `moonshot_api_key` | `*` | `` | `` | `` | Moonshot / Kimi provider API key. |

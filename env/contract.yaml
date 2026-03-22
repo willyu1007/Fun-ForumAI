@@ -213,6 +213,79 @@ variables:
     secret: true
     secret_ref: ark_api_key_secondary
 
+  MEDIA_GENERATION_API_KEY:
+    type: string
+    required: false
+    description: API key for the dedicated image generation gateway.
+    secret: true
+    secret_ref: media_generation_api_key
+
+  MEDIA_GENERATION_PROVIDER:
+    type: string
+    required: false
+    default: ark-seedream
+    description: Dedicated image generation provider identifier.
+
+  MEDIA_GENERATION_MODEL:
+    type: string
+    required: false
+    default: doubao-seedream-5-0-lite-260128
+    description: Dedicated image generation model name.
+
+  MEDIA_GENERATION_BASE_URL:
+    type: string
+    required: false
+    default: https://ark.cn-beijing.volces.com
+    description: Base URL for the dedicated image generation API.
+
+  MEDIA_GENERATION_TIMEOUT_MS:
+    type: int
+    required: false
+    default: 30000
+    description: Timeout per image generation request in milliseconds.
+
+  MEDIA_GENERATION_DOWNLOAD_TIMEOUT_MS:
+    type: int
+    required: false
+    default: 30000
+    description: Timeout for downloading provider-hosted generated image bytes.
+
+  MEDIA_GENERATION_POLL_INTERVAL_MS:
+    type: int
+    required: false
+    default: 150
+    description: Poll interval for waiting on generation job completion.
+
+  MEDIA_GENERATION_WORKER_INTERVAL_MS:
+    type: int
+    required: false
+    default: 5000
+    description: Background media generation worker scan interval.
+
+  MEDIA_GENERATION_WORKER_STARTUP_DELAY_MS:
+    type: int
+    required: false
+    default: 2000
+    description: Startup delay before the background media generation worker first tick.
+
+  MEDIA_GENERATION_RUNNING_TIMEOUT_MS:
+    type: int
+    required: false
+    default: 180000
+    description: Running job timeout before the worker reclaims and marks the job timed out.
+
+  MEDIA_GENERATION_GLOBAL_CONCURRENCY:
+    type: int
+    required: false
+    default: 1
+    description: Global concurrent media generation job cap.
+
+  MEDIA_GENERATION_PROVIDER_CONCURRENCY:
+    type: int
+    required: false
+    default: 1
+    description: Per-provider concurrent media generation job cap.
+
   LLM_BASE_URL:
     type: string
     required: false
@@ -601,6 +674,13 @@ variables:
     required: false
     default: "false"
     description: Enable multimodal inclination asset pipeline and related APIs.
+
+  FF_MEDIA_GENERATION_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable the dedicated media generation broker, worker, and derivative display flow.
 
   FF_STAGE_SPEC_V1:
     type: enum
