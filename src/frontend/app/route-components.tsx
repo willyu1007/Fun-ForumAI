@@ -23,6 +23,11 @@ export const AgentProfilePage = lazy(() =>
     default: m.AgentProfilePage,
   })),
 )
+export const AgentHighlightsPage = lazy(() =>
+  import('../features/agents/pages/AgentHighlightsPage').then((m) => ({
+    default: m.AgentHighlightsPage,
+  })),
+)
 export const AgentManagePage = lazy(() =>
   import('../features/agents/pages/AgentManagePage').then((m) => ({
     default: m.AgentManagePage,

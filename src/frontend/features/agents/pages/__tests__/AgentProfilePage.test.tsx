@@ -214,6 +214,17 @@ describe('AgentProfilePage', () => {
               summary: '它把观众抛出来的梗接住了。',
               occurred_at: '2026-03-10T00:00:00.000Z',
               importance_score: 0.8,
+              visual: {
+                asset_id: 'asset-1',
+                media_url: 'https://example.com/chronicle-1.jpg',
+                mime_type: 'image/jpeg',
+                width: 1600,
+                height: 900,
+                alt_text: '公开编年史缩略图',
+                public_caption: '从回梗现场截下来的缩略图',
+                slot: 0,
+                display_variant: 'original',
+              },
             },
           ],
         },
@@ -484,6 +495,9 @@ describe('AgentProfilePage', () => {
     expect(screen.getByText('登录后关注这个 Agent')).toBeTruthy()
     expect(screen.getByText('这个角色为什么值得追')).toBeTruthy()
     expect(screen.getByText('公开场合总能接住梗。')).toBeTruthy()
+    expect(screen.getByRole('img', { name: '公开编年史缩略图' }).getAttribute('src')).toBe(
+      'https://example.com/chronicle-1.jpg',
+    )
     expect(screen.queryByText('运行记录')).toBeNull()
     expect(useAgentHighlightsMock).toHaveBeenCalledWith('agent-1', true)
     expect(useAgentRunsMock).toHaveBeenCalledWith('agent-1', undefined, { enabled: false })

@@ -185,6 +185,8 @@ export function AgentProfilePage() {
   const stageProofRail = guidanceEnabled ? buildStageProofRail('achievements') : null
   const relationProofRail = guidanceEnabled ? buildStageProofRail('relations') : null
   const publicHighlights = highlightsData.data?.data
+  const topChronicle = publicHighlights?.top_chronicle[0] ?? null
+  const topChronicleVisual = topChronicle?.visual ?? null
   const shouldShowPublicProof =
     guidanceEnabled &&
     !isOwner &&
@@ -673,12 +675,27 @@ export function AgentProfilePage() {
                 {publicHighlights.tagline && (
                   <p className={"text-sm text-muted-foreground"}>{publicHighlights.tagline}</p>
                 )}
-                {publicHighlights.top_chronicle[0] && (
-                  <div className={"rounded-md border bg-background/80 p-3"}>
-                    <p className={"text-sm font-medium"}>{publicHighlights.top_chronicle[0].title}</p>
-                    <p className={"mt-1 text-xs text-muted-foreground"}>
-                      {publicHighlights.top_chronicle[0].summary}
-                    </p>
+                {topChronicle && (
+                  <div className={"overflow-hidden rounded-md border bg-background/80"}>
+                    {topChronicleVisual && (
+                      <img
+                        src={topChronicleVisual.media_url}
+                        alt={topChronicleVisual.alt_text ?? topChronicleVisual.public_caption ?? topChronicle.title}
+                        className={"aspect-[16/9] w-full object-cover"}
+                        loading="lazy"
+                      />
+                    )}
+                    <div className={"p-3"}>
+                      <p className={"text-sm font-medium"}>{topChronicle.title}</p>
+                      <p className={"mt-1 text-xs text-muted-foreground"}>
+                        {topChronicle.summary}
+                      </p>
+                      {agentId && (
+                        <Button variant="ghost" size="sm" asChild className={"mt-2 h-7 px-0 text-xs"}>
+                          <Link to={`/agents/${agentId}/highlights`}>查看公开高光</Link>
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 )}
               </CardContent>

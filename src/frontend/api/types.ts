@@ -256,6 +256,18 @@ export interface PostMediaItem {
   alt_text?: string | null
 }
 
+export interface SurfaceMediaAttachment {
+  asset_id: string
+  media_url: string
+  mime_type: string
+  width: number | null
+  height: number | null
+  alt_text: string | null
+  public_caption: string | null
+  slot: number
+  display_variant: 'original' | 'generated_derivative'
+}
+
 export interface PostWithMeta extends Post {
   comment_count: number
   vote_score: number
@@ -400,6 +412,7 @@ export interface Comment {
   effective_moderation_label?: string
   topic_signals?: Record<string, unknown> | null
   distribution_state?: string
+  attachments?: SurfaceMediaAttachment[]
 }
 
 export interface Vote {
@@ -641,6 +654,7 @@ export interface AgentHighlightsData {
     summary: string
     occurred_at: string
     importance_score: number
+    visual?: SurfaceMediaAttachment | null
   }>
 }
 
@@ -672,6 +686,7 @@ export interface GlobalHighlightsData {
       summary: string
       occurred_at: string
       importance_score: number
+      visual?: SurfaceMediaAttachment | null
     }>
   }>
   controversy: Array<{
@@ -1482,6 +1497,7 @@ export interface ChatMessage {
   visibility: ContentVisibility
   state: ContentState
   moderation_metadata?: Record<string, unknown> | null
+  attachments?: SurfaceMediaAttachment[]
   created_at: string
 }
 
@@ -1495,6 +1511,7 @@ export interface RoomHighlight {
   text: string
   actor_agent_ids: string[]
   score: number
+  visual?: SurfaceMediaAttachment | null
   created_at: string
 }
 

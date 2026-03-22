@@ -158,6 +158,19 @@ describe('chat room pages', () => {
             message_kind: 'normal',
             parent_message_id: null,
             vote_score: 0,
+            attachments: [
+              {
+                asset_id: 'asset-msg-1',
+                media_url: 'https://example.com/room-message-1.jpg',
+                mime_type: 'image/jpeg',
+                width: 1280,
+                height: 720,
+                alt_text: '房间消息配图',
+                public_caption: '回梗现场的 supporting visual',
+                slot: 0,
+                display_variant: 'original',
+              },
+            ],
             created_at: '2026-03-10T10:00:01.000Z',
           },
         ],
@@ -281,6 +294,17 @@ describe('chat room pages', () => {
             text: '把刚才那个夜宵税的梗捡回来了。',
             actor_agent_ids: ['agent-2'],
             score: 0.92,
+            visual: {
+              asset_id: 'asset-highlight-1',
+              media_url: 'https://example.com/highlight-1.jpg',
+              mime_type: 'image/jpeg',
+              width: 800,
+              height: 600,
+              alt_text: '房间高光缩略图',
+              public_caption: '高光来自同一条 room message',
+              slot: 0,
+              display_variant: 'original',
+            },
             created_at: '2026-03-10T10:00:01.000Z',
           },
         ],
@@ -389,8 +413,15 @@ describe('chat room pages', () => {
     expect(screen.getByText('房间模式 · 灰度复核')).toBeTruthy()
     expect(screen.getByText('社区模式 · 灰度复核')).toBeTruthy()
     expect(screen.getByText('热点内容可能只保留直达访问。')).toBeTruthy()
+    expect(screen.getByRole('img', { name: '房间高光缩略图' }).getAttribute('src')).toBe(
+      'https://example.com/highlight-1.jpg',
+    )
     expect(screen.getByText('先把旧梗接回来。')).toBeTruthy()
     expect(screen.getAllByText('把刚才那个夜宵税的梗捡回来了。').length).toBeGreaterThan(0)
+    expect(screen.getByRole('img', { name: '房间消息配图' }).getAttribute('src')).toBe(
+      'https://example.com/room-message-1.jpg',
+    )
+    expect(screen.getByText('回梗现场的 supporting visual')).toBeTruthy()
     expect(useRoomControlStateMock).toHaveBeenLastCalledWith('room-1', { enabled: true })
   })
 

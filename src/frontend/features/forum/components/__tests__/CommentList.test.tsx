@@ -130,4 +130,32 @@ describe('CommentList', () => {
     expect(screen.getByText('热点漂移命中，当前内容保留直达访问，但不会进入推荐流。')).toBeTruthy()
     expect(screen.getByText('识别域：生活方式 · 已命中漂移')).toBeTruthy()
   })
+
+  it('renders the first public attachment below the comment body', () => {
+    render(
+      <MemoryRouter>
+        <CommentList
+          comments={[{
+            ...buildComment('这条评论带了一张 supporting visual。'),
+            attachments: [{
+              asset_id: 'asset-1',
+              media_url: 'https://example.com/comment-1.jpg',
+              mime_type: 'image/jpeg',
+              width: 1280,
+              height: 720,
+              alt_text: '评论配图 alt',
+              public_caption: '评论配图 caption',
+              slot: 0,
+              display_variant: 'original',
+            }],
+          }]}
+        />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('img', { name: '评论配图 alt' }).getAttribute('src')).toBe(
+      'https://example.com/comment-1.jpg',
+    )
+    expect(screen.getByText('评论配图 caption')).toBeTruthy()
+  })
 })

@@ -44,6 +44,7 @@ export function MessageBubble({
       ? moderationMetadata.distribution_state
       : topicSignals?.distributionState ?? 'NORMAL'
   const topicCopy = describeTopicSignals(topicSignals, distributionState)
+  const attachment = message.attachments?.[0] ?? null
 
   useEffect(() => {
     setExpanded(!(isGray || isPending))
@@ -53,6 +54,21 @@ export function MessageBubble({
     return (
       <div className={"py-1 text-center text-xs text-muted-foreground"}>
         <RichTextLite text={message.body} mode="chat" className="space-y-1" />
+        {attachment && (
+          <figure className={"mx-auto mt-3 max-w-xl overflow-hidden rounded-lg border bg-background/80 text-left"}>
+            <img
+              src={attachment.media_url}
+              alt={attachment.alt_text ?? attachment.public_caption ?? '房间配图'}
+              className={"max-h-72 w-full object-cover"}
+              loading="lazy"
+            />
+            {attachment.public_caption && (
+              <figcaption className={"border-t px-3 py-2 text-[11px] text-muted-foreground"}>
+                {attachment.public_caption}
+              </figcaption>
+            )}
+          </figure>
+        )}
       </div>
     )
   }
@@ -132,11 +148,28 @@ export function MessageBubble({
           </div>
         )}
         {expanded && (
-          <RichTextLite
-            text={message.body}
-            mode="chat"
-            className={cn("mt-0.5 text-sm", isSkip && "italic text-muted-foreground")}
-          />
+          <>
+            <RichTextLite
+              text={message.body}
+              mode="chat"
+              className={cn("mt-0.5 text-sm", isSkip && "italic text-muted-foreground")}
+            />
+            {attachment && (
+              <figure className={"mt-3 overflow-hidden rounded-lg border bg-background/80"}>
+                <img
+                  src={attachment.media_url}
+                  alt={attachment.alt_text ?? attachment.public_caption ?? '房间配图'}
+                  className={"max-h-72 w-full rounded-lg object-cover"}
+                  loading="lazy"
+                />
+                {attachment.public_caption && (
+                  <figcaption className={"border-t px-3 py-2 text-[11px] text-muted-foreground"}>
+                    {attachment.public_caption}
+                  </figcaption>
+                )}
+              </figure>
+            )}
+          </>
         )}
         {topicCopy && (
           <div className={cn("rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground", "mt-2")}>

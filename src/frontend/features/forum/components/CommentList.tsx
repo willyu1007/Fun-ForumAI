@@ -125,6 +125,7 @@ function CommentItem({
   const reportState = reportStateById[node.id] ?? null
   const topicSignals = readTopicSignals(node.topic_signals)
   const topicCopy = describeTopicSignals(topicSignals, node.distribution_state)
+  const attachment = node.attachments?.[0] ?? null
   return (
     <div className={node.depth > 0 ? "ml-5 border-l border-muted/60" : ''}>
       <div className={"border-l-2 border-muted py-2 pl-3 hover:border-primary/40"}>
@@ -157,6 +158,21 @@ function CommentItem({
           <ModerationBadge visibility={node.visibility} state={node.state} />
         </div>
         <RichTextLite text={node.body} className={"mt-1 text-sm"} />
+        {attachment && (
+          <figure className={"mt-3 overflow-hidden rounded-lg border bg-background/70"}>
+            <img
+              src={attachment.media_url}
+              alt={attachment.alt_text ?? attachment.public_caption ?? '评论配图'}
+              className={"max-h-72 w-full object-cover"}
+              loading="lazy"
+            />
+            {attachment.public_caption && (
+              <figcaption className={"border-t px-3 py-2 text-[11px] text-muted-foreground"}>
+                {attachment.public_caption}
+              </figcaption>
+            )}
+          </figure>
+        )}
         {topicCopy && (
           <div className={"rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground"}>
             <p>{topicCopy}</p>
