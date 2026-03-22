@@ -60,20 +60,6 @@ export function getCommunityCategoryGlyph(category: CommunityCategory) {
   }
 }
 
-export function getCommunityBannerClassName(category: CommunityCategory) {
-  switch (category) {
-    case 'show':
-      return 'from-accent/28 via-primary/10 to-background'
-    case 'world':
-      return 'from-primary/30 via-accent/12 to-primary/5'
-    case 't4':
-      return 'from-accent/18 via-accent/8 to-background'
-    case 'theme':
-    default:
-      return 'from-primary/28 via-primary/10 to-background'
-  }
-}
-
 export function getCommunityAvatarToneClassName(category: CommunityCategory) {
   switch (category) {
     case 'show':
@@ -86,4 +72,74 @@ export function getCommunityAvatarToneClassName(category: CommunityCategory) {
     default:
       return 'bg-primary/10 text-primary'
   }
+}
+
+export interface BannerTheme {
+  type: 'preset' | 'custom_image'
+  /** CSS linear-gradient() for preset, or image URL for custom_image */
+  value: string
+  texture?: string
+}
+
+const NOISE_TEXTURE = `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.15'/%3E%3C/svg%3E")`
+
+export const PRESET_BANNERS: BannerTheme[] = [
+  {
+    type: 'preset',
+    value: 'linear-gradient(to right, #2dd4bf, #6366f1, #9333ea)',
+    texture: `url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0H0v20h20V0z' fill='none'/%3E%3Cpath d='M20 19.5H0v-1h20v1zM19.5 20V0h-1v20h1z' fill='rgba(255,255,255,0.15)'/%3E%3C/svg%3E")`,
+  },
+  {
+    type: 'preset',
+    value: 'linear-gradient(to right, #fb7185, #d946ef, #6366f1)',
+    texture: `url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='2' cy='2' r='2' fill='rgba(255,255,255,0.15)'/%3E%3C/svg%3E")`,
+  },
+  {
+    type: 'preset',
+    value: 'linear-gradient(to right, #67e8f9, #f9a8d4, #fde047)',
+    texture: `url("data:image/svg+xml,%3Csvg width='10' height='10' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M-1 11L11 -1M-1 1L1 -1M9 11L11 9' stroke='rgba(255,255,255,0.15)' stroke-width='2'/%3E%3C/svg%3E")`,
+  },
+  {
+    type: 'preset',
+    value: 'linear-gradient(to right, #0f172a, #1e1b4b, #0f172a)',
+    texture: `url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 0v20M0 10h20' stroke='rgba(255,255,255,0.15)' stroke-width='1'/%3E%3C/svg%3E")`,
+  },
+  {
+    type: 'preset',
+    value: 'linear-gradient(to right, #10b981, #0d9488, #0e7490)',
+    texture: `url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 10l5-5 5 5 5-5 5 5' fill='none' stroke='rgba(255,255,255,0.15)' stroke-width='2'/%3E%3C/svg%3E")`,
+  },
+  {
+    type: 'preset',
+    value: 'linear-gradient(to right, #2563eb, #4338ca, #3730a3)',
+    texture: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 200'%3E%3Ccircle cx='400' cy='250' r='200' fill='rgba(255,255,255,0.05)'/%3E%3Ccircle cx='400' cy='250' r='150' fill='rgba(255,255,255,0.05)'/%3E%3Ccircle cx='400' cy='250' r='100' fill='rgba(255,255,255,0.05)'/%3E%3C/svg%3E")`,
+  },
+  {
+    type: 'preset',
+    value: 'linear-gradient(to right, #6b21a8, #701a75, #881337)',
+    texture: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 200'%3E%3Cpolygon points='200,-50 50,300 350,300' fill='rgba(255,255,255,0.07)'/%3E%3Cpolygon points='600,-50 450,300 750,300' fill='rgba(255,255,255,0.07)'/%3E%3C/svg%3E")`,
+  },
+  {
+    type: 'preset',
+    value: 'linear-gradient(to right, #065f46, #134e4a, #042f2e)',
+    texture: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 200'%3E%3Cpolygon points='-100,250 150,80 400,250' fill='rgba(255,255,255,0.05)'/%3E%3Cpolygon points='250,250 500,40 850,250' fill='rgba(255,255,255,0.08)'/%3E%3C/svg%3E")`,
+  },
+  {
+    type: 'preset',
+    value: 'linear-gradient(to right, #f97316, #d97706, #b45309)',
+    texture: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 200'%3E%3Crect x='100' y='50' width='120' height='120' rx='24' fill='rgba(255,255,255,0.08)' transform='rotate(15 160 110)'/%3E%3Crect x='600' y='20' width='80' height='80' rx='16' fill='rgba(255,255,255,0.1)' transform='rotate(-10 640 60)'/%3E%3Ccircle cx='450' cy='150' r='50' fill='rgba(255,255,255,0.06)'/%3E%3C/svg%3E")`,
+  },
+]
+
+function hashString(str: string): number {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return Math.abs(hash)
+}
+
+export function getCommunityBannerTheme(community: Pick<Community, 'slug'>): BannerTheme {
+  const index = hashString(community.slug) % PRESET_BANNERS.length
+  return PRESET_BANNERS[index]
 }

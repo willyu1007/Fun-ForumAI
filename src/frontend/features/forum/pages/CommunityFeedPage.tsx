@@ -24,6 +24,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import type { ApiResponse, Community, PostWithMeta } from '@/api/types'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { SHOULD_RENDER_DEV_AUTH_TOOLBAR } from '@/shared/layout/dev-auth-toolbar'
@@ -31,8 +38,9 @@ import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redi
 import { cn } from '@/lib/utils'
 import { readFeedSortMode } from '@/shared/utils/feed-sort'
 import {
+  PRESET_BANNERS,
   getCommunityAvatarToneClassName,
-  getCommunityBannerClassName,
+  getCommunityBannerTheme,
   getCommunityCategoryGlyph,
   resolveCommunityCategory,
 } from '@/shared/utils/community-shell-meta'
@@ -162,11 +170,16 @@ function InviteAgentAction({ community }: { community: Community }) {
 
 function CommunityHeroBanner({ community }: { community: Community }) {
   const category = resolveCommunityCategory(community)
+  const bannerTheme = getCommunityBannerTheme(community)
   const [isFollowed, setIsFollowed] = useState(() => Boolean(readCommunityFollowState()[community.slug]))
-  const { isAuthenticated } = useAuth()
+  const [isBannerDialogOpen, setIsBannerDialogOpen] = useState(false)
+  const { isAuthenticated, user } = useAuth()
   const location = useLocation()
   const currentPath = locationToPath(location)
   const followTooltipLabel = isFollowed ? '取消关注该社区' : '关注该社区，接受最新消息'
+
+  // 权限判断：目前仅允许系统管理员，或者未来扩展为社区创建者
+  const canEditBanner = isAuthenticated && user?.role === 'admin'
 
   const handleToggleFollow = () => {
     setIsFollowed((current) => {
@@ -179,78 +192,147 @@ function CommunityHeroBanner({ community }: { community: Community }) {
   }
 
   return (
-    <section className="-mt-6 space-y-0" data-testid="community-hero-banner">
-      <div
-        className={`relative h-28 overflow-hidden rounded-[1.15rem] bg-gradient-to-r ${getCommunityBannerClassName(category)}`}
-      >
-        <div className="absolute inset-y-0 left-0 w-[44%] bg-gradient-to-r from-background/12 via-background/4 to-transparent" />
-        <div className="absolute inset-y-0 right-0 w-[48%] bg-gradient-to-l from-background/10 via-background/2 to-transparent" />
-        <div className="absolute left-8 top-5 h-14 w-28 rounded-full bg-background/20 blur-2xl" />
-        <div className="absolute bottom-[-2.35rem] left-8 size-[4.95rem] rounded-full bg-background" />
-      </div>
+    <>
+      <section className="-mt-6 space-y-0" data-testid="community-hero-banner">
+        <div className="relative h-28 overflow-hidden rounded-[0.5rem] bg-muted">
+          {/* 1. 背景层 */}
+          {bannerTheme.type === 'custom_image' ? (
+            <img src={bannerTheme.value} className="absolute inset-0 h-full w-full object-cover" alt="Community Banner" />
+          ) : (
+            <>
+              <div className="absolute inset-0" style={{ background: bannerTheme.value }} />
+              {bannerTheme.texture && (
+                <div className="absolute inset-0" style={{ backgroundImage: bannerTheme.texture }} />
+              )}
+            </>
+          )}
 
-      <div className="relative -mt-5 px-6 pb-1">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0 flex items-start gap-4">
-            <Avatar className="ml-4 -mt-6 size-[4.1rem] rounded-full border-[3px] border-background bg-background shadow-sm">
-              <AvatarFallback className={cn('text-2xl font-semibold', getCommunityAvatarToneClassName(category))}>
-                {getCommunityCategoryGlyph(category)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 pt-7">
-              <h1 className="break-words text-[1.48rem] font-semibold leading-[1] tracking-tight text-foreground sm:text-[1.72rem]">
-                {community.name}
-              </h1>
-            </div>
-          </div>
+          {/* 2. 遮罩层 (可选，用于稍微压暗背景以突出前景，如果需要的话可以启用) */}
+          {/* <div className="absolute inset-0 bg-black/5" /> */}
 
-          <TooltipProvider delayDuration={80}>
-            <div className="flex items-center gap-2 pl-[5.55rem] pt-7 lg:pl-0">
-            {isAuthenticated ? (
-              <CommunityHeaderActionTooltip label={followTooltipLabel}>
-                <button
-                  type="button"
-                  className={communityHeaderActionClassName(isFollowed ? 'accent' : 'primary')}
-                  aria-label={`${isFollowed ? '已关注' : '关注'}，${followTooltipLabel}`}
-                  onClick={handleToggleFollow}
-                >
-                  {isFollowed ? '已关注' : '关注'}
-                </button>
-              </CommunityHeaderActionTooltip>
-            ) : (
-              <CommunityHeaderActionTooltip label={followTooltipLabel}>
-                <Link
-                  className={communityHeaderActionClassName('primary')}
-                  aria-label={`关注，${followTooltipLabel}`}
-                  to="/login"
-                  state={buildAuthRedirectState(currentPath)}
-                >
-                  关注
-                </Link>
-              </CommunityHeaderActionTooltip>
-            )}
-            <InviteAgentAction community={community} />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className={communityHeaderActionClassName('neutral')}
-                  aria-label="社区更多操作"
-                >
-                  <MoreHorizontal className="size-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuLabel>更多操作</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem disabled>更多动作即将开放</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            </div>
-          </TooltipProvider>
+          {/* 3. 装饰层 (光晕) */}
+          <div className="absolute inset-y-0 left-0 w-[44%] bg-gradient-to-r from-background/12 via-background/4 to-transparent" />
+          <div className="absolute inset-y-0 right-0 w-[48%] bg-gradient-to-l from-background/10 via-background/2 to-transparent" />
+          <div className="absolute left-8 top-5 h-14 w-28 rounded-full bg-background/20 blur-2xl" />
+
+          {/* 4. 缺口层 */}
+          <div className="absolute bottom-[-2.6rem] left-6 size-[5.2rem] rounded-full bg-background" />
         </div>
-      </div>
-    </section>
+
+        <div className="relative -mt-5 px-6 pb-1">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex items-start gap-4">
+              <Avatar className="ml-[0.2rem] mt-[-1.15rem] size-[4.8rem] rounded-full bg-background shadow-sm">
+                <AvatarFallback className={cn('text-2xl font-semibold', getCommunityAvatarToneClassName(category))}>
+                  {getCommunityCategoryGlyph(category)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 pt-8">
+                <h1 className="break-words text-[1.48rem] font-semibold leading-[1] tracking-tight text-foreground sm:text-[1.72rem]">
+                  {community.name}
+                </h1>
+              </div>
+            </div>
+
+            <TooltipProvider delayDuration={80}>
+              <div className="flex items-center gap-2 pl-[5.55rem] pt-8 lg:pl-0">
+              {isAuthenticated ? (
+                <CommunityHeaderActionTooltip label={followTooltipLabel}>
+                  <button
+                    type="button"
+                    className={communityHeaderActionClassName(isFollowed ? 'accent' : 'primary')}
+                    aria-label={`${isFollowed ? '已关注' : '关注'}，${followTooltipLabel}`}
+                    onClick={handleToggleFollow}
+                  >
+                    {isFollowed ? '已关注' : '关注'}
+                  </button>
+                </CommunityHeaderActionTooltip>
+              ) : (
+                <CommunityHeaderActionTooltip label={followTooltipLabel}>
+                  <Link
+                    className={communityHeaderActionClassName('primary')}
+                    aria-label={`关注，${followTooltipLabel}`}
+                    to="/login"
+                    state={buildAuthRedirectState(currentPath)}
+                  >
+                    关注
+                  </Link>
+                </CommunityHeaderActionTooltip>
+              )}
+              <InviteAgentAction community={community} />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className={communityHeaderActionClassName('neutral')}
+                    aria-label="社区更多操作"
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuLabel>更多操作</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {canEditBanner && (
+                    <DropdownMenuItem onClick={() => setIsBannerDialogOpen(true)}>
+                      自定义背景
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem disabled>更多动作即将开放</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              </div>
+            </TooltipProvider>
+          </div>
+        </div>
+      </section>
+
+      <Dialog open={isBannerDialogOpen} onOpenChange={setIsBannerDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>自定义社区背景</DialogTitle>
+            <DialogDescription>
+              选择一个预设的主题作为社区的背景。未来将支持上传自定义图片。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4 sm:grid-cols-3">
+            {PRESET_BANNERS.map((preset, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className={cn(
+                  'group relative aspect-[21/9] overflow-hidden rounded-md border-2 transition-all hover:border-primary',
+                  bannerTheme === preset ? 'border-primary ring-2 ring-primary/20' : 'border-transparent'
+                )}
+                onClick={() => {
+                  // TODO: 这里未来应该调用 API 更新社区设置
+                  alert('保存设置功能开发中...')
+                }}
+              >
+                <div className="absolute inset-0" style={{ background: preset.value }} />
+                {preset.texture && (
+                  <div className="absolute inset-0" style={{ backgroundImage: preset.texture }} />
+                )}
+                {bannerTheme === preset && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                    <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground">
+                      当前使用
+                    </span>
+                  </div>
+                )}
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled
+              className="flex aspect-[21/9] items-center justify-center rounded-md border-2 border-dashed border-muted-foreground/25 bg-muted/50 text-sm text-muted-foreground transition-colors hover:bg-muted"
+            >
+              + 上传图片 (开发中)
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
