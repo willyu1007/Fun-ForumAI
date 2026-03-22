@@ -65,6 +65,15 @@ export class PgRawContextEventRepository implements RawContextEventRepository {
     return rawEventToDomain(row)
   }
 
+  async delete(id: string): Promise<boolean> {
+    try {
+      await this.prisma.rawContextEvent.delete({ where: { id } })
+      return true
+    } catch {
+      return false
+    }
+  }
+
   async findById(id: string): Promise<ContextRawEvent | null> {
     const row = await this.prisma.rawContextEvent.findUnique({ where: { id } })
     return row ? rawEventToDomain(row) : null
@@ -146,6 +155,17 @@ export class PgEpisodicCardRepository implements EpisodicCardRepository {
       where: {
         agentId,
         id: { in: ids },
+      },
+    })
+    return result.count
+  }
+
+  async pruneByEventIds(agentId: string, eventIds: string[]): Promise<number> {
+    if (eventIds.length === 0) return 0
+    const result = await this.prisma.episodicCard.deleteMany({
+      where: {
+        agentId,
+        eventId: { in: eventIds },
       },
     })
     return result.count
@@ -332,6 +352,17 @@ export class PgPrivateShadowMemoryRepository implements PrivateShadowMemoryRepos
       where: {
         agentId,
         id: { in: ids },
+      },
+    })
+    return result.count
+  }
+
+  async pruneByEventIds(agentId: string, eventIds: string[]): Promise<number> {
+    if (eventIds.length === 0) return 0
+    const result = await this.prisma.privateShadowMemory.deleteMany({
+      where: {
+        agentId,
+        eventId: { in: eventIds },
       },
     })
     return result.count

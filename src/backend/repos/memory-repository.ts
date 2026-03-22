@@ -10,6 +10,7 @@ import type {
 
 export interface MemoryRepository {
   createMemory(input: CreateAgentMemoryInput): Promise<AgentMemory>
+  deleteBySourceEventIds(agentId: string, sourceEventIds: string[]): Promise<number>
   findMemoryById(id: string): Promise<AgentMemory | null>
   listMemories(
     agentId: string,

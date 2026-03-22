@@ -36,6 +36,29 @@ export async function runTypedContextPipeline(input: {
   return { recorded, distilled, finalized }
 }
 
+export async function runPrivateMediaTypedContextPipeline(input: {
+  runtime: ContextMemoryRuntimeDeps | null | undefined
+  rawEvent: Parameters<ContextMemoryRuntimeDeps['journalService']['record']>[0]
+}): Promise<{
+  recorded: Awaited<ReturnType<ContextMemoryRuntimeDeps['journalService']['record']>>
+  distilled: SummaryDistillResult
+}> {
+  const runtime = input.runtime
+  if (!runtime) {
+    throw new Error('context_memory_runtime_missing')
+  }
+
+  const recorded = await runtime.journalService.record(input.rawEvent)
+  const extracted = await runtime.summaryOrchestrator.extract(recorded)
+  const distilled = await runtime.summaryOrchestrator.distill(recorded, extracted)
+  await persistPrivateMediaTypedContextState({
+    runtime,
+    distilled,
+  })
+
+  return { recorded, distilled }
+}
+
 export async function ingestTypedPublicObservation(input: {
   runtime: ContextMemoryRuntimeDeps | null | undefined
   memory: AgentMemory
@@ -101,6 +124,19 @@ export async function persistTypedContextState(input: {
   await runtime.activeTensionRepo.replaceForAgent(input.agentId, input.finalized.tensions)
   if (input.finalized.privateShadow) {
     await runtime.privateShadowRepo.upsert(input.finalized.privateShadow)
+  }
+}
+
+export async function persistPrivateMediaTypedContextState(input: {
+  runtime: ContextMemoryRuntimeDeps | null | undefined
+  distilled: SummaryDistillResult
+}): Promise<void> {
+  const runtime = input.runtime
+  if (!runtime) return
+
+  await Promise.all(input.distilled.episodicCards.map((card) => runtime.episodicCardRepo.upsert(card)))
+  if (input.distilled.privateShadow) {
+    await runtime.privateShadowRepo.upsert(input.distilled.privateShadow)
   }
 }
 

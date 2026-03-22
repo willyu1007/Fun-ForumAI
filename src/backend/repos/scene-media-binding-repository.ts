@@ -6,6 +6,7 @@ import type {
 
 export interface SceneMediaBindingRepository {
   create(input: CreateSceneMediaBindingInput): Promise<SceneMediaBinding>
+  deleteByIds(ids: string[]): Promise<number>
   findByAssetId(assetId: string): Promise<SceneMediaBinding[]>
   findByAssetIds(assetIds: string[]): Promise<SceneMediaBinding[]>
   findLatestByAssetAndSceneType(assetId: string, sceneType: MediaSceneType): Promise<SceneMediaBinding | null>
@@ -40,6 +41,18 @@ export class InMemorySceneMediaBindingRepository implements SceneMediaBindingRep
     }
     this.store.set(binding.id, binding)
     return binding
+  }
+
+  async deleteByIds(ids: string[]): Promise<number> {
+    const deleteIds = new Set(ids)
+    if (deleteIds.size === 0) return 0
+    let deleted = 0
+    for (const id of deleteIds) {
+      if (this.store.delete(id)) {
+        deleted += 1
+      }
+    }
+    return deleted
   }
 
   async findByAssetId(assetId: string): Promise<SceneMediaBinding[]> {

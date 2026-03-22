@@ -159,3 +159,57 @@ describe('MediaProjectionService public card serialization', () => {
     expect(serialized.text).not.toContain('ocr_snippets:')
   })
 })
+
+describe('MediaProjectionService private card serialization', () => {
+  it('serializes private runtime cards without leaking asset ids, urls, or raw owner text', () => {
+    const service = new MediaProjectionService({
+      mediaContextProjectionRepo: new InMemoryMediaContextProjectionRepository(),
+    })
+
+    const serialized = service.serializePrivateRuntimeCardForPrompt({
+      card: {
+        schema_version: 'private-media-runtime-card.v1',
+        card_id: 'private-card-1',
+        modality: 'image',
+        asset_ref: {
+          asset_id: 'asset-secret-1',
+          semantic_snapshot_id: 'snapshot-1',
+          projection_id: 'projection-1',
+        },
+        source: {
+          kind: 'private_message_upload',
+        },
+        relation: {
+          role: 'message_attachment',
+          scene_type: 'private_message',
+          scene_id: 'message-1',
+        },
+        private_summary: {
+          theme: 'coffee',
+          scene: 'tabletop coffee',
+          mood: 'warm',
+          salient_entities: ['coffee cup'],
+          discussion_points: ['桌面暖光'],
+          private_safe_caption: 'A warm tabletop coffee scene with a ceramic cup.',
+        },
+        memory_policy: {
+          source_type: 'PRIVATE_CHAT',
+          source_ref_type: 'private_message',
+          public_reuse_default: 'blocked',
+          public_safe_shadow_hint: '一张温暖的咖啡桌面照片。',
+          derived_public_allowed: false,
+          why_relevant_hint: 'Owner 刚在当前轮分享了这张图。',
+        },
+      },
+      max_chars: 360,
+      sensitive_terms: ['owner raw text'],
+    })
+
+    expect(serialized.text).toContain('role: message_attachment')
+    expect(serialized.text).toContain('private_safe_caption:')
+    expect(serialized.audit.contains_asset_id).toBe(false)
+    expect(serialized.audit.contains_url).toBe(false)
+    expect(serialized.audit.contains_owner_note).toBe(false)
+    expect(serialized.audit.contains_private_text).toBe(false)
+  })
+})

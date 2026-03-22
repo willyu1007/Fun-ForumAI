@@ -1786,6 +1786,30 @@ export type NotificationType =
   | 'GOVERNANCE'
   | 'AFTERSHOW_CALLOUT'
   | 'SYSTEM'
+export type PrivateAttachmentState = 'ready' | 'unavailable'
+export type PrivateAttachmentDisplayVariant = 'original' | 'placeholder'
+
+export interface PrivateAttachmentPlaceholder {
+  kind: 'asset_unavailable'
+  label: string
+}
+
+export interface PrivateMessageAttachment {
+  asset_id: string
+  display_variant: PrivateAttachmentDisplayVariant
+  display_url: string | null
+  placeholder: PrivateAttachmentPlaceholder | null
+  mime_type: string
+  alt_text: string | null
+  width: number | null
+  height: number | null
+  state: PrivateAttachmentState
+}
+
+export interface SendPrivateMessageInput {
+  content: string
+  attachment_asset_ids?: string[]
+}
 
 export interface PrivateSession {
   id: string
@@ -1805,6 +1829,7 @@ export interface PrivateMessage {
   session_id: string
   author_type: PrivateAuthorType
   content: string
+  attachments: PrivateMessageAttachment[]
   delivery_status?: 'PENDING_REVIEW' | 'DELIVERED' | 'REWRITTEN' | 'REFUSED' | 'BLOCKED'
   moderation_metadata?: Record<string, unknown> | null
   created_at: string

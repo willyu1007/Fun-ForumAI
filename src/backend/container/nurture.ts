@@ -30,6 +30,7 @@ import type { PolicyGatewayService } from '../services/policy-gateway-service.js
 import type { IdentityGateService } from '../services/identity-gate-service.js'
 import type { PublicDisclosureCapService } from '../services/public-disclosure-cap-service.js'
 import { XpService } from '../services/xp-service.js'
+import type { MediaAssetService } from '../media/media-asset-service.js'
 
 export interface NurtureResult {
   traitEngine: import('../services/trait-engine.js').TraitEngine | null
@@ -73,6 +74,7 @@ export async function createNurtureEngines(deps: {
   policyGatewayService: PolicyGatewayService
   identityGateService: IdentityGateService
   publicDisclosureCapService: PublicDisclosureCapService
+  mediaAssetService: MediaAssetService
   leaderElectors: {
     privateChannel: LeaderElector
     nurture: LeaderElector
@@ -286,6 +288,8 @@ export async function createNurtureEngines(deps: {
       agentRunRepo: repos.agentRunRepo,
       budgetService,
       costTracker,
+      mediaAssetService: deps.mediaAssetService,
+      memoryService,
       sseHub,
       policyGatewayService,
       identityGateService,

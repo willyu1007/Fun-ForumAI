@@ -128,6 +128,7 @@ export type MediaBindingRole =
 export type MediaRelationToScene =
   | 'uploaded_by_owner'
   | 'selected_for_post'
+  | 'attached_to_private_message'
   | 'quoted_public'
   | 'generated_for_scene'
   | 'derived_from_private'
@@ -450,6 +451,73 @@ export interface PublicMediaContextCard {
     confidence: number
     relevance_score: number
     model_version: string
+  }
+}
+
+export interface PrivateMediaRuntimeCard {
+  schema_version: 'private-media-runtime-card.v1'
+  card_id: string
+  modality: 'image'
+  asset_ref: {
+    asset_id: string
+    semantic_snapshot_id: string
+    projection_id: string
+  }
+  source: {
+    kind: MediaSourceKind
+  }
+  relation: {
+    role: 'message_attachment'
+    scene_type: 'private_message'
+    scene_id: string
+  }
+  private_summary: {
+    theme: string
+    scene: string
+    mood: string
+    salient_entities: string[]
+    discussion_points: string[]
+    private_safe_caption: string
+    ocr_snippets?: string[]
+  }
+  memory_policy: {
+    source_type: 'PRIVATE_CHAT'
+    source_ref_type: 'private_message'
+    public_reuse_default: 'blocked'
+    public_safe_shadow_hint: string
+    derived_public_allowed: false
+    why_relevant_hint: string
+  }
+}
+
+export interface PrivateMediaMemoryProjection {
+  schema_version: 'private-media-memory-projection.v1'
+  asset_id: string
+  semantic_snapshot_id: string
+  source_ref: {
+    agent_id: string
+    owner_user_id: string
+    session_id: string
+    scene_type: 'private_message'
+    scene_id: string
+  }
+  memory_summary: {
+    summary_text: string
+    topic_tags: string[]
+    key_facts: string[]
+    sentiment: string
+    importance_score: number
+  }
+  policy: {
+    visibility: 'private_only'
+    retrieval_scope: 'private_chat'
+    owner_note_embedded: false
+  }
+  handoff: {
+    public_reuse_default: 'blocked'
+    public_safe_shadow_hint: string
+    derived_public_allowed: false
+    why_relevant_hint: string
   }
 }
 

@@ -34,4 +34,23 @@ describe('Private channel message routes owner auth (service unavailable mode)',
     expect(ownerRes.status).toBe(200)
     expect(ownerRes.body.data).toEqual({ items: [], next_cursor: null })
   })
+
+  it('POST /v1/agents/:agentId/chat/sessions/:sessionId/attachments enforces owner-only before fallback', async () => {
+    expect(privateChannelServices).toBeNull()
+    const agentId = await createAgent(ownerToken, 'Private Attachment Auth Bot')
+
+    const nonOwnerRes = await request(app)
+      .post(`/v1/agents/${agentId}/chat/sessions/session-1/attachments`)
+      .set('Authorization', `Bearer ${otherToken}`)
+      .attach('file', Buffer.from('not-a-real-image'), 'test.png')
+    expect(nonOwnerRes.status).toBe(403)
+    expect(nonOwnerRes.body.error.code).toBe('FORBIDDEN')
+
+    const ownerRes = await request(app)
+      .post(`/v1/agents/${agentId}/chat/sessions/session-1/attachments`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .attach('file', Buffer.from('not-a-real-image'), 'test.png')
+    expect(ownerRes.status).toBe(503)
+    expect(ownerRes.body.error.code).toBe('DB_UNAVAILABLE')
+  })
 })

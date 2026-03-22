@@ -5,6 +5,7 @@ import type {
 
 export interface MediaContextProjectionRepository {
   create(input: CreateMediaContextProjectionInput): Promise<MediaContextProjection>
+  deleteByBindingIds(bindingIds: string[]): Promise<number>
   findByBindingId(bindingId: string): Promise<MediaContextProjection[]>
   findByBindingIds(bindingIds: string[]): Promise<MediaContextProjection[]>
 }
@@ -34,6 +35,18 @@ export class InMemoryMediaContextProjectionRepository implements MediaContextPro
     }
     this.store.set(projection.id, projection)
     return projection
+  }
+
+  async deleteByBindingIds(bindingIds: string[]): Promise<number> {
+    const lookup = new Set(bindingIds)
+    if (lookup.size === 0) return 0
+    let deleted = 0
+    for (const [id, projection] of this.store.entries()) {
+      if (!lookup.has(projection.binding_id)) continue
+      this.store.delete(id)
+      deleted += 1
+    }
+    return deleted
   }
 
   async findByBindingId(bindingId: string): Promise<MediaContextProjection[]> {

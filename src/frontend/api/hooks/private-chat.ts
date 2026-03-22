@@ -1,7 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../client'
 import { queryKeys } from '../query-keys'
-import type { ApiResponse, PrivateSession, PrivateMessage, PaginatedList, SendMessageResult } from '../types'
+import type {
+  ApiResponse,
+  PaginatedList,
+  PrivateMessage,
+  PrivateMessageAttachment,
+  PrivateSession,
+  SendMessageResult,
+  SendPrivateMessageInput,
+} from '../types'
 
 export function usePrivateSessions(agentId: string) {
   return useQuery({
@@ -38,12 +46,24 @@ export function useCreatePrivateSession(agentId: string) {
 export function useSendPrivateMessage(agentId: string, sessionId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (content: string) =>
+    mutationFn: (input: SendPrivateMessageInput) =>
       api
-        .post(`agents/${agentId}/chat/sessions/${sessionId}/messages`, { json: { content } })
+        .post(`agents/${agentId}/chat/sessions/${sessionId}/messages`, { json: input })
         .json<ApiResponse<SendMessageResult>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.privateMessages(agentId, sessionId) })
+    },
+  })
+}
+
+export function useUploadPrivateMessageAttachment(agentId: string, sessionId: string) {
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData()
+      formData.set('file', file)
+      return api
+        .post(`agents/${agentId}/chat/sessions/${sessionId}/attachments`, { body: formData })
+        .json<ApiResponse<PrivateMessageAttachment>>()
     },
   })
 }

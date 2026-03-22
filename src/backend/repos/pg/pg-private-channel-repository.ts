@@ -126,6 +126,15 @@ export class PgPrivateChannelRepository implements PrivateChannelRepository {
     return this.messageToDomain(row)
   }
 
+  async deleteMessage(id: string): Promise<boolean> {
+    try {
+      await this.prisma.privateMessage.delete({ where: { id } })
+      return true
+    } catch {
+      return false
+    }
+  }
+
   async listMessages(
     sessionId: string,
     opts: PaginationOpts,
@@ -171,6 +180,7 @@ export class PgPrivateChannelRepository implements PrivateChannelRepository {
       session_id: row.sessionId,
       author_type: row.authorType,
       content: row.content,
+      attachments: [],
       delivery_status: row.deliveryStatus,
       moderation_metadata:
         row.moderationMetadataJson

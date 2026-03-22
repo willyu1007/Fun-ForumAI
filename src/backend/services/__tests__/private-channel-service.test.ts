@@ -19,6 +19,16 @@ function buildSession(): PrivateSession {
   }
 }
 
+function buildMediaAssetServiceMock() {
+  return {
+    ingestPrivateMessageUpload: vi.fn(),
+    getPrivateAttachmentView: vi.fn(),
+    attachAssetToPrivateMessage: vi.fn(),
+    listPrivateMessageAttachmentViews: vi.fn(async () => new Map()),
+    rollbackPrivateMessageAttachmentArtifacts: vi.fn(),
+  }
+}
+
 describe('PrivateChannelService', () => {
   it('maps Prisma FK createSession failure to DEPENDENCY_NOT_READY', async () => {
     const channelRepo = {
@@ -54,6 +64,7 @@ describe('PrivateChannelService', () => {
       agentRunRepo: { create: vi.fn() } as never,
       budgetService: null,
       costTracker: null,
+      mediaAssetService: buildMediaAssetServiceMock() as never,
       sseHub: null,
     })
 
@@ -173,10 +184,11 @@ describe('PrivateChannelService', () => {
       agentRunRepo: { create: vi.fn() } as never,
       budgetService: null,
       costTracker: null,
+      mediaAssetService: buildMediaAssetServiceMock() as never,
       sseHub: null,
     })
 
-    const result = await service.sendMessage(session.id, 'user-1', ' 你好 ')
+    const result = await service.sendMessage(session.id, 'user-1', { content: ' 你好 ' })
     expect(result.agent_reply.content).toBe('你好呀')
     expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
       preferredModelId: 'qwen-flash-character',
@@ -276,11 +288,592 @@ describe('PrivateChannelService', () => {
       agentRunRepo: { create: vi.fn() } as never,
       budgetService: null,
       costTracker: null,
+      mediaAssetService: buildMediaAssetServiceMock() as never,
       sseHub: null,
     })
 
-    await expect(service.sendMessage(session.id, 'user-1', ' question ')).rejects.toThrow('compose failed')
+    await expect(service.sendMessage(session.id, 'user-1', { content: ' question ' })).rejects.toThrow('compose failed')
     expect(gatewayGenerate).not.toHaveBeenCalled()
+  })
+
+  it('injects current private media cards and writes immediate private media memory', async () => {
+    const session = buildSession()
+    const attachAssetToPrivateMessage = vi.fn(async () => ({
+      attachment: {
+        asset_id: 'asset-1',
+        display_variant: 'original',
+        display_url: 'https://cdn.test/private/asset-1.jpg',
+        placeholder: null,
+        mime_type: 'image/jpeg',
+        alt_text: '一张咖啡照片',
+        width: 1200,
+        height: 900,
+        state: 'ready',
+      },
+      binding: {
+        id: 'binding-1',
+      },
+      runtime_projection: {
+        id: 'projection-runtime-1',
+      },
+      runtime_card: {
+        private_summary: {
+          theme: 'coffee',
+          scene: 'tabletop coffee',
+          mood: 'warm',
+          salient_entities: ['coffee'],
+          discussion_points: ['咖啡杯'],
+        },
+      },
+      runtime_serialized_text: 'role: message_attachment\nprivate_safe_caption: warm tabletop coffee',
+      memory_projection: {
+        id: 'projection-memory-1',
+      },
+      memory_payload: {
+        asset_id: 'asset-1',
+        semantic_snapshot_id: 'snapshot-1',
+        source_ref: {
+          agent_id: 'agent-1',
+          owner_user_id: 'user-1',
+          session_id: 'session-1',
+          scene_type: 'private_message',
+          scene_id: 'msg-human',
+        },
+        memory_summary: {
+          summary_text: 'Owner shared a warm tabletop coffee photo.',
+          topic_tags: ['coffee', 'warm'],
+          key_facts: ['tabletop coffee'],
+          sentiment: 'warm',
+          importance_score: 0.72,
+        },
+        policy: {
+          visibility: 'private_only',
+          retrieval_scope: 'private_chat',
+          owner_note_embedded: false,
+        },
+        handoff: {
+          public_reuse_default: 'blocked',
+          public_safe_shadow_hint: '一张温暖的咖啡桌面照片。',
+          derived_public_allowed: false,
+          why_relevant_hint: 'Owner 刚分享了这张图。',
+        },
+      },
+    }))
+    const createPrivateMediaMemory = vi.fn(async () => ({
+      id: 'memory-1',
+    }))
+    const compose = vi.fn(async (input: {
+      conversationText: string
+      currentContextSources: Array<{ kind: string; text: string }>
+    }) => ({
+      persona: {
+        name: 'Agent One',
+        style: 'warm',
+        interests: ['coffee'],
+        language: 'zh-CN',
+      },
+      blocks: {
+        hard_control_block: 'hard',
+        compact_control_block: 'compact',
+        current_context_block: 'context',
+        memory_block: 'memory',
+        soft_expression_block: 'soft',
+      },
+      audit: {
+        version: 'v2',
+        scene: 'private_chat',
+        includedBlockIds: ['current_context_block'],
+        promptContract: 'compiled_blocks_v2',
+        tokenEstimates: { current_context_block: 12 },
+        lintWarnings: [],
+        trimReasons: [],
+      },
+      runtimeEnvelope: {
+        renderTierDecision: {
+          requestedTier: 'base',
+        },
+      },
+      capturedCurrentContextSources: input.currentContextSources,
+    }))
+    const channelRepo = {
+      findSessionById: vi.fn(async () => session),
+      createMessage: vi
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'msg-human',
+          session_id: session.id,
+          author_type: 'HUMAN',
+          content: '',
+          attachments: [],
+          created_at: new Date(),
+        })
+        .mockResolvedValueOnce({
+          id: 'msg-agent',
+          session_id: session.id,
+          author_type: 'AGENT',
+          content: '这张咖啡看起来很暖。',
+          attachments: [],
+          created_at: new Date(),
+        }),
+      listMessages: vi.fn(async () => ({
+        items: [
+          {
+            id: 'msg-agent-prev',
+            session_id: session.id,
+            author_type: 'AGENT',
+            content: '我们刚才聊过咖啡风味。',
+            attachments: [],
+            created_at: new Date(),
+          },
+          {
+            id: 'msg-human',
+            session_id: session.id,
+            author_type: 'HUMAN',
+            content: '',
+            attachments: [],
+            created_at: new Date(),
+          },
+        ],
+        next_cursor: null,
+      })),
+      countMessages: vi.fn(async () => 0),
+      createSession: vi.fn(),
+      listSessions: vi.fn(),
+      updateSessionStatus: vi.fn(),
+      updateDigestStatus: vi.fn(),
+      findTimedOutSessions: vi.fn(),
+    }
+    const gatewayGenerate = vi.fn(async () => ({
+      content: '这张咖啡看起来很暖。',
+      messages: [],
+      usage: { prompt_tokens: 18, completion_tokens: 7, total_tokens: 25 },
+      latencyMs: 10,
+      platformRetryCount: 0,
+      renderDecision: {
+        voiceLineId: 'qwen-social-v1',
+        tier: 'base',
+        profileId: 'profile-1',
+        providerId: 'dashscope-openai',
+        modelId: 'qwen-plus',
+        region: 'cn',
+        endpointId: 'default',
+        credentialId: 'cred-1',
+        fallbackLevel: 'none',
+        reasons: ['test'],
+        promptTemplateId: PROMPT_TEMPLATE_REFS.agentPrivateChatReply.id,
+        promptVersion: PROMPT_TEMPLATE_REFS.agentPrivateChatReply.version,
+      },
+      promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
+    }))
+
+    const service = new PrivateChannelService({
+      channelRepo: channelRepo as never,
+      memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({
+          id: 'agent-1',
+          owner_id: 'user-1',
+          display_name: 'Agent One',
+          model: 'qwen-flash',
+        })),
+        getLatestConfig: vi.fn(() => null),
+      } as never,
+      llmGateway: { generateVisibleText: gatewayGenerate } as never,
+      promptOrchestrator: {
+        isSceneEnabled: vi.fn(() => true),
+        compose,
+      } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      budgetService: null,
+      costTracker: null,
+      mediaAssetService: {
+        ...buildMediaAssetServiceMock(),
+        attachAssetToPrivateMessage,
+      } as never,
+      memoryService: {
+        createPrivateMediaMemory,
+      } as never,
+      sseHub: null,
+    })
+
+    const result = await service.sendMessage(session.id, 'user-1', {
+      content: '',
+      attachment_asset_ids: ['asset-1'],
+    })
+
+    expect(result.human_message.attachments).toHaveLength(1)
+    expect(result.human_message.attachments[0]?.asset_id).toBe('asset-1')
+    expect(attachAssetToPrivateMessage).toHaveBeenCalledWith(expect.objectContaining({
+      asset_id: 'asset-1',
+      session_id: 'session-1',
+      message_id: 'msg-human',
+    }))
+    expect(createPrivateMediaMemory).toHaveBeenCalledWith(expect.objectContaining({
+      source_projection_id: 'projection-memory-1',
+      message_id: 'msg-human',
+    }))
+    expect(compose).toHaveBeenCalledWith(expect.objectContaining({
+      conversationText: '我们刚才聊过咖啡风味。',
+      currentContextSources: expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'private_media_card',
+          text: 'role: message_attachment\nprivate_safe_caption: warm tabletop coffee',
+        }),
+      ]),
+    }))
+    const composeInput = compose.mock.calls.at(0)?.[0] as { conversationText: string } | undefined
+    expect(composeInput?.conversationText).not.toContain('warm tabletop coffee')
+  })
+
+  it('fails closed when private media memory service is unavailable for attachment messages', async () => {
+    const session = buildSession()
+    const channelRepo = {
+      findSessionById: vi.fn(async () => session),
+      createMessage: vi.fn(),
+      deleteMessage: vi.fn(async () => true),
+      listMessages: vi.fn(async () => ({
+        items: [],
+        next_cursor: null,
+      })),
+      countMessages: vi.fn(async () => 0),
+      createSession: vi.fn(),
+      listSessions: vi.fn(),
+      updateSessionStatus: vi.fn(),
+      updateDigestStatus: vi.fn(),
+      findTimedOutSessions: vi.fn(),
+    }
+    const gatewayGenerate = vi.fn()
+
+    const service = new PrivateChannelService({
+      channelRepo: channelRepo as never,
+      memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({
+          id: 'agent-1',
+          owner_id: 'user-1',
+          display_name: 'Agent One',
+          model: 'qwen-flash',
+        })),
+        getLatestConfig: vi.fn(() => null),
+      } as never,
+      llmGateway: { generateVisibleText: gatewayGenerate } as never,
+      promptOrchestrator: {
+        isSceneEnabled: vi.fn(() => true),
+        compose: vi.fn(),
+      } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      budgetService: null,
+      costTracker: null,
+      mediaAssetService: buildMediaAssetServiceMock() as never,
+      memoryService: null,
+      sseHub: null,
+    })
+
+    await expect(service.sendMessage(session.id, 'user-1', {
+      content: '',
+      attachment_asset_ids: ['asset-1'],
+    })).rejects.toMatchObject({
+      code: 'PRIVATE_MEDIA_MEMORY_UNAVAILABLE',
+      statusCode: 503,
+    })
+    expect(channelRepo.createMessage).not.toHaveBeenCalled()
+    expect(gatewayGenerate).not.toHaveBeenCalled()
+  })
+
+  it('stops the send pipeline when immediate private media memory write fails', async () => {
+    const session = buildSession()
+    const attachAssetToPrivateMessage = vi.fn(async () => ({
+      attachment: {
+        asset_id: 'asset-1',
+        display_variant: 'original',
+        display_url: 'https://cdn.test/private/asset-1.jpg',
+        placeholder: null,
+        mime_type: 'image/jpeg',
+        alt_text: '一张咖啡照片',
+        width: 1200,
+        height: 900,
+        state: 'ready',
+      },
+      binding: { id: 'binding-1' },
+      runtime_projection: { id: 'projection-runtime-1' },
+      runtime_card: {
+        private_summary: {
+          theme: 'coffee',
+          scene: 'tabletop coffee',
+          mood: 'warm',
+          salient_entities: ['coffee'],
+          discussion_points: ['咖啡杯'],
+        },
+      },
+      runtime_serialized_text: 'role: message_attachment\nprivate_safe_caption: warm tabletop coffee',
+      memory_projection: { id: 'projection-memory-1' },
+      memory_payload: {
+        asset_id: 'asset-1',
+        semantic_snapshot_id: 'snapshot-1',
+        source_ref: {
+          agent_id: 'agent-1',
+          owner_user_id: 'user-1',
+          session_id: 'session-1',
+          scene_type: 'private_message',
+          scene_id: 'msg-human',
+        },
+        memory_summary: {
+          summary_text: 'Owner shared a warm tabletop coffee photo.',
+          topic_tags: ['coffee', 'warm'],
+          key_facts: ['tabletop coffee'],
+          sentiment: 'warm',
+          importance_score: 0.72,
+        },
+        policy: {
+          visibility: 'private_only',
+          retrieval_scope: 'private_chat',
+          owner_note_embedded: false,
+        },
+        handoff: {
+          public_reuse_default: 'blocked',
+          public_safe_shadow_hint: '一张温暖的咖啡桌面照片。',
+          derived_public_allowed: false,
+          why_relevant_hint: 'Owner 刚分享了这张图。',
+        },
+      },
+    }))
+    const rollbackPrivateMessageAttachmentArtifacts = vi.fn(async () => undefined)
+    const deleteMessage = vi.fn(async () => true)
+    const cleanupPrivateMediaMemory = vi.fn(async () => undefined)
+    const channelRepo = {
+      findSessionById: vi.fn(async () => session),
+      createMessage: vi.fn(async () => ({
+        id: 'msg-human',
+        session_id: session.id,
+        author_type: 'HUMAN',
+        content: '',
+        attachments: [],
+        created_at: new Date(),
+      })),
+      deleteMessage,
+      listMessages: vi.fn(async () => ({
+        items: [],
+        next_cursor: null,
+      })),
+      countMessages: vi.fn(async () => 0),
+      createSession: vi.fn(),
+      listSessions: vi.fn(),
+      updateSessionStatus: vi.fn(),
+      updateDigestStatus: vi.fn(),
+      findTimedOutSessions: vi.fn(),
+    }
+    const gatewayGenerate = vi.fn()
+
+    const service = new PrivateChannelService({
+      channelRepo: channelRepo as never,
+      memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({
+          id: 'agent-1',
+          owner_id: 'user-1',
+          display_name: 'Agent One',
+          model: 'qwen-flash',
+        })),
+        getLatestConfig: vi.fn(() => null),
+      } as never,
+      llmGateway: { generateVisibleText: gatewayGenerate } as never,
+      promptOrchestrator: {
+        isSceneEnabled: vi.fn(() => true),
+        compose: vi.fn(),
+      } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      budgetService: null,
+      costTracker: null,
+      mediaAssetService: {
+        ...buildMediaAssetServiceMock(),
+        attachAssetToPrivateMessage,
+        rollbackPrivateMessageAttachmentArtifacts,
+      } as never,
+      memoryService: {
+        createPrivateMediaMemory: vi.fn(async () => {
+          throw new Error('typed write failed')
+        }),
+        cleanupPrivateMediaMemory,
+      } as never,
+      sseHub: null,
+    })
+
+    await expect(service.sendMessage(session.id, 'user-1', {
+      content: '',
+      attachment_asset_ids: ['asset-1'],
+    })).rejects.toMatchObject({
+      code: 'PRIVATE_MEDIA_MEMORY_WRITE_FAILED',
+      statusCode: 500,
+    })
+    expect(channelRepo.createMessage).toHaveBeenCalledTimes(1)
+    expect(cleanupPrivateMediaMemory).toHaveBeenCalledWith({
+      agent_id: 'agent-1',
+      message_id: 'msg-human',
+      asset_ids: ['asset-1'],
+    })
+    expect(rollbackPrivateMessageAttachmentArtifacts).toHaveBeenCalledWith('msg-human')
+    expect(deleteMessage).toHaveBeenCalledWith('msg-human')
+    expect(gatewayGenerate).not.toHaveBeenCalled()
+  })
+
+  it('rolls back attachment message state when agent reply generation fails', async () => {
+    const session = buildSession()
+    const rollbackPrivateMessageAttachmentArtifacts = vi.fn(async () => undefined)
+    const cleanupPrivateMediaMemory = vi.fn(async () => undefined)
+    const deleteMessage = vi.fn(async () => true)
+    const channelRepo = {
+      findSessionById: vi.fn(async () => session),
+      createMessage: vi.fn(async () => ({
+        id: 'msg-human',
+        session_id: session.id,
+        author_type: 'HUMAN',
+        content: '',
+        attachments: [],
+        created_at: new Date(),
+      })),
+      deleteMessage,
+      listMessages: vi.fn(async () => ({
+        items: [],
+        next_cursor: null,
+      })),
+      countMessages: vi.fn(async () => 0),
+      createSession: vi.fn(),
+      listSessions: vi.fn(),
+      updateSessionStatus: vi.fn(),
+      updateDigestStatus: vi.fn(),
+      findTimedOutSessions: vi.fn(),
+    }
+    const service = new PrivateChannelService({
+      channelRepo: channelRepo as never,
+      memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({
+          id: 'agent-1',
+          owner_id: 'user-1',
+          display_name: 'Agent One',
+          model: 'qwen-flash',
+        })),
+        getLatestConfig: vi.fn(() => null),
+      } as never,
+      llmGateway: {
+        generateVisibleText: vi.fn(async () => {
+          throw new Error('visible generation failed')
+        }),
+      } as never,
+      promptOrchestrator: {
+        isSceneEnabled: vi.fn(() => true),
+        compose: vi.fn(async () => ({
+          persona: {
+            name: 'Agent One',
+            style: 'warm',
+            interests: ['coffee'],
+            language: 'zh-CN',
+          },
+          blocks: {
+            hard_control_block: 'hard',
+            compact_control_block: 'compact',
+            current_context_block: 'context',
+            memory_block: 'memory',
+            soft_expression_block: 'soft',
+          },
+          audit: {
+            version: 'v2',
+            scene: 'private_chat',
+            includedBlockIds: ['current_context_block'],
+            promptContract: 'compiled_blocks_v2',
+            tokenEstimates: {},
+            lintWarnings: [],
+            trimReasons: [],
+          },
+        })),
+      } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      budgetService: null,
+      costTracker: null,
+      mediaAssetService: {
+        ...buildMediaAssetServiceMock(),
+        attachAssetToPrivateMessage: vi.fn(async () => ({
+          attachment: {
+            asset_id: 'asset-1',
+            display_variant: 'original',
+            display_url: 'https://cdn.test/private/asset-1.jpg',
+            placeholder: null,
+            mime_type: 'image/jpeg',
+            alt_text: '一张咖啡照片',
+            width: 1200,
+            height: 900,
+            state: 'ready',
+          },
+          binding: { id: 'binding-1' },
+          runtime_projection: { id: 'projection-runtime-1' },
+          runtime_card: {
+            private_summary: {
+              theme: 'coffee',
+              scene: 'tabletop coffee',
+              mood: 'warm',
+              salient_entities: ['coffee'],
+              discussion_points: ['咖啡杯'],
+            },
+          },
+          runtime_serialized_text: 'role: message_attachment\nprivate_safe_caption: warm tabletop coffee',
+          memory_projection: { id: 'projection-memory-1' },
+          memory_payload: {
+            asset_id: 'asset-1',
+            semantic_snapshot_id: 'snapshot-1',
+            source_ref: {
+              agent_id: 'agent-1',
+              owner_user_id: 'user-1',
+              session_id: 'session-1',
+              scene_type: 'private_message',
+              scene_id: 'msg-human',
+            },
+            memory_summary: {
+              summary_text: 'Owner shared a warm tabletop coffee photo.',
+              topic_tags: ['coffee', 'warm'],
+              key_facts: ['tabletop coffee'],
+              sentiment: 'warm',
+              importance_score: 0.72,
+            },
+            policy: {
+              visibility: 'private_only',
+              retrieval_scope: 'private_chat',
+              owner_note_embedded: false,
+            },
+            handoff: {
+              public_reuse_default: 'blocked',
+              public_safe_shadow_hint: '一张温暖的咖啡桌面照片。',
+              derived_public_allowed: false,
+              why_relevant_hint: 'Owner 刚分享了这张图。',
+            },
+          },
+        })),
+        rollbackPrivateMessageAttachmentArtifacts,
+      } as never,
+      memoryService: {
+        createPrivateMediaMemory: vi.fn(async () => ({
+          id: 'memory-1',
+        })),
+        cleanupPrivateMediaMemory,
+      } as never,
+      sseHub: null,
+    })
+
+    await expect(service.sendMessage(session.id, 'user-1', {
+      content: '',
+      attachment_asset_ids: ['asset-1'],
+    })).rejects.toThrow('visible generation failed')
+
+    expect(cleanupPrivateMediaMemory).toHaveBeenCalledWith({
+      agent_id: 'agent-1',
+      message_id: 'msg-human',
+      asset_ids: ['asset-1'],
+    })
+    expect(rollbackPrivateMessageAttachmentArtifacts).toHaveBeenCalledWith('msg-human')
+    expect(deleteMessage).toHaveBeenCalledWith('msg-human')
   })
 
   it('rejects message listing for a non-owner session reader', async () => {
@@ -314,6 +907,7 @@ describe('PrivateChannelService', () => {
       agentRunRepo: { create: vi.fn() } as never,
       budgetService: null,
       costTracker: null,
+      mediaAssetService: buildMediaAssetServiceMock() as never,
       sseHub: null,
     })
 

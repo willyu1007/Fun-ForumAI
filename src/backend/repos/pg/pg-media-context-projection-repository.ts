@@ -27,6 +27,14 @@ export class PgMediaContextProjectionRepository implements MediaContextProjectio
     return this.toDomain(row)
   }
 
+  async deleteByBindingIds(bindingIds: string[]): Promise<number> {
+    if (bindingIds.length === 0) return 0
+    const result = await this.prisma.mediaContextProjection.deleteMany({
+      where: { bindingId: { in: bindingIds } },
+    })
+    return result.count
+  }
+
   async findByBindingId(bindingId: string): Promise<MediaContextProjection[]> {
     const rows = await this.prisma.mediaContextProjection.findMany({
       where: { bindingId },

@@ -37,6 +37,17 @@ export class PgMemoryRepository implements MemoryRepository {
     return this.memoryToDomain(row)
   }
 
+  async deleteBySourceEventIds(agentId: string, sourceEventIds: string[]): Promise<number> {
+    if (sourceEventIds.length === 0) return 0
+    const result = await this.prisma.agentMemory.deleteMany({
+      where: {
+        agentId,
+        sourceEventId: { in: sourceEventIds },
+      },
+    })
+    return result.count
+  }
+
   async findMemoryById(id: string): Promise<AgentMemory | null> {
     const row = await this.prisma.agentMemory.findUnique({ where: { id } })
     return row ? this.memoryToDomain(row) : null

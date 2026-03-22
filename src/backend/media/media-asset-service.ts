@@ -4,8 +4,12 @@ import { isIP } from 'node:net'
 import type { LookupAddress } from 'node:dns'
 import type {
   MediaAsset,
+  MediaContextProjection,
   MediaSemanticSnapshot,
   MediaSemanticSummary,
+  PrivateMediaMemoryProjection,
+  PrivateMediaRuntimeCard,
+  PrivateMessageAttachment,
   SceneMediaBinding,
 } from '../repos/types.js'
 import type { MediaAssetRepository } from '../repos/media-asset-repository.js'
@@ -163,6 +167,215 @@ export class MediaAssetService {
       semantic,
       media_url: stored.url,
     })
+  }
+
+  async ingestPrivateMessageUpload(input: {
+    agent_id: string
+    owner_user_id: string
+    session_id: string
+    mime_type: string
+    bytes: Buffer
+  }): Promise<MediaAssetRecord> {
+    const normalizedMimeType = input.mime_type.toLowerCase()
+    this.assertMimeType(normalizedMimeType)
+    this.assertSize(input.bytes.byteLength)
+    this.assertImageSignature(normalizedMimeType, input.bytes)
+
+    const dimensions = this.readImageDimensions(normalizedMimeType, input.bytes)
+    const stored = await this.storeBytes({
+      agent_id: input.agent_id,
+      mime_type: normalizedMimeType,
+      bytes: input.bytes,
+    })
+    const semantic = await this.deps.mediaSemanticService.extract({
+      agentId: input.agent_id,
+      mimeType: normalizedMimeType,
+      sourceUrl: pickModelReachableMediaUrl(stored.url),
+      uploadBuffer: input.bytes,
+    })
+
+    const asset = await this.deps.mediaAssetRepo.create({
+      steward_agent_id: input.agent_id,
+      owner_user_id: input.owner_user_id,
+      source_kind: 'private_message_upload',
+      source_scene_type: 'private_session',
+      source_scene_id: input.session_id,
+      visibility_policy: 'private_only',
+      lifecycle_status: 'active',
+      storage_key: stored.key,
+      origin_url: null,
+      mime_type: normalizedMimeType,
+      file_size_bytes: input.bytes.byteLength,
+      width: dimensions.width,
+      height: dimensions.height,
+      sha256: createHash('sha256').update(input.bytes).digest('hex'),
+      phash: null,
+    })
+    const snapshot = await this.createCurrentSnapshot(asset.id, semantic)
+    return {
+      asset,
+      snapshot,
+      owner_note: null,
+      media_url: stored.url,
+      latest_post_id: null,
+      created_at: asset.created_at,
+    }
+  }
+
+  async attachAssetToPrivateMessage(input: {
+    asset_id: string
+    agent_id: string
+    owner_user_id: string
+    session_id: string
+    message_id: string
+    why_relevant_hint: string
+  }): Promise<{
+    attachment: PrivateMessageAttachment
+    binding: SceneMediaBinding
+    runtime_projection: MediaContextProjection
+    runtime_card: PrivateMediaRuntimeCard
+    runtime_serialized_text: string
+    memory_projection: MediaContextProjection
+    memory_payload: PrivateMediaMemoryProjection
+  }> {
+    const asset = await this.deps.mediaAssetRepo.findById(input.asset_id)
+    if (!asset) {
+      throw new ValidationError('attachment_asset_ids contains an unknown asset')
+    }
+    this.assertPrivateMessageAssetEligibility(asset, input)
+
+    const snapshot = await this.deps.mediaSemanticSnapshotRepo.findCurrentByAssetId(asset.id)
+    if (!snapshot) {
+      throw new ValidationError('attachment semantic snapshot is not ready')
+    }
+
+    const existingBinding = (await this.deps.sceneMediaBindingRepo.findByScene('private_message', input.message_id))
+      .find((binding) => binding.asset_id === asset.id) ?? null
+    const binding = existingBinding ?? await this.deps.mediaBindingService.createPrivateMessageBinding({
+      asset,
+      snapshot,
+      messageId: input.message_id,
+      createdById: input.owner_user_id,
+    })
+
+    const projections = await this.deps.mediaContextProjectionRepo.findByBindingId(binding.id)
+    const existingRuntimeProjection = projections.find(
+      (projection) =>
+        projection.projection_surface === 'private_runtime'
+        && projection.projection_kind === 'private_media_runtime_card'
+        && projection.schema_version === 'private-media-runtime-card.v1',
+    ) ?? null
+    const runtimeResult = existingRuntimeProjection
+      ? {
+          projection: existingRuntimeProjection,
+          card: existingRuntimeProjection.payload_json as unknown as PrivateMediaRuntimeCard,
+          serialized_text: this.deps.mediaProjectionService.serializePrivateRuntimeCardForPrompt({
+            card: existingRuntimeProjection.payload_json as unknown as PrivateMediaRuntimeCard,
+            max_chars: 900,
+          }).text,
+        }
+      : await this.deps.mediaProjectionService.createPrivateRuntimeProjection({
+          binding,
+          asset,
+          snapshot,
+          source_kind: asset.source_kind,
+          why_relevant_hint: input.why_relevant_hint,
+        }).then((result) => ({
+          projection: result.projection,
+          card: result.card,
+          serialized_text: result.serialized.text,
+        }))
+
+    const existingMemoryProjection = projections.find(
+      (projection) =>
+        projection.projection_surface === 'memory'
+        && projection.projection_kind === 'private_media_memory_projection'
+        && projection.schema_version === 'private-media-memory-projection.v1',
+    ) ?? null
+    const memoryResult = existingMemoryProjection
+      ? {
+          projection: existingMemoryProjection,
+          payload: existingMemoryProjection.payload_json as unknown as PrivateMediaMemoryProjection,
+        }
+      : await this.deps.mediaProjectionService.createPrivateMemoryProjection({
+          binding,
+          asset,
+          snapshot,
+          agent_id: input.agent_id,
+          owner_user_id: input.owner_user_id,
+          session_id: input.session_id,
+          why_relevant_hint: input.why_relevant_hint,
+        })
+
+    return {
+      attachment: this.buildPrivateAttachmentView({
+        asset,
+        snapshot,
+        runtimeCard: runtimeResult.card,
+      }),
+      binding,
+      runtime_projection: runtimeResult.projection,
+      runtime_card: runtimeResult.card,
+      runtime_serialized_text: runtimeResult.serialized_text,
+      memory_projection: memoryResult.projection,
+      memory_payload: memoryResult.payload,
+    }
+  }
+
+  async getPrivateAttachmentView(assetId: string): Promise<PrivateMessageAttachment | null> {
+    const asset = await this.deps.mediaAssetRepo.findById(assetId)
+    if (!asset) return null
+    const snapshot = await this.deps.mediaSemanticSnapshotRepo.findCurrentByAssetId(asset.id)
+    return this.buildPrivateAttachmentView({ asset, snapshot })
+  }
+
+  async listPrivateMessageAttachmentViews(messageIds: string[]): Promise<Map<string, PrivateMessageAttachment[]>> {
+    const result = new Map<string, PrivateMessageAttachment[]>()
+    if (messageIds.length === 0) return result
+
+    const bindings = await this.deps.sceneMediaBindingRepo.findByScenes('private_message', messageIds)
+    if (bindings.length === 0) return result
+
+    const assets = await this.deps.mediaAssetRepo.findByIds(bindings.map((binding) => binding.asset_id))
+    const assetById = new Map(assets.map((asset) => [asset.id, asset]))
+    const snapshots = await Promise.all(
+      assets.map(async (asset) => [asset.id, await this.deps.mediaSemanticSnapshotRepo.findCurrentByAssetId(asset.id)] as const),
+    )
+    const snapshotByAssetId = new Map(snapshots)
+    const projections = await this.deps.mediaContextProjectionRepo.findByBindingIds(bindings.map((binding) => binding.id))
+    const runtimeCardByBindingId = new Map<string, PrivateMediaRuntimeCard>()
+    for (const projection of projections) {
+      if (
+        projection.projection_surface === 'private_runtime'
+        && projection.projection_kind === 'private_media_runtime_card'
+        && projection.schema_version === 'private-media-runtime-card.v1'
+      ) {
+        runtimeCardByBindingId.set(projection.binding_id, projection.payload_json as unknown as PrivateMediaRuntimeCard)
+      }
+    }
+
+    for (const binding of bindings) {
+      const asset = assetById.get(binding.asset_id)
+      if (!asset) continue
+      const attachment = this.buildPrivateAttachmentView({
+        asset,
+        snapshot: snapshotByAssetId.get(asset.id) ?? null,
+        runtimeCard: runtimeCardByBindingId.get(binding.id),
+      })
+      const current = result.get(binding.scene_id) ?? []
+      current.push(attachment)
+      result.set(binding.scene_id, current)
+    }
+
+    return result
+  }
+
+  async rollbackPrivateMessageAttachmentArtifacts(messageId: string): Promise<void> {
+    const bindings = await this.deps.sceneMediaBindingRepo.findByScene('private_message', messageId)
+    if (bindings.length === 0) return
+    const bindingIds = bindings.map((binding) => binding.id)
+    await this.deps.mediaContextProjectionRepo.deleteByBindingIds(bindingIds)
+    await this.deps.sceneMediaBindingRepo.deleteByIds(bindingIds)
   }
 
   async getCurrentOwnerPoolState(agentId: string): Promise<OwnerPoolCurrentState> {
@@ -417,6 +630,41 @@ export class MediaAssetService {
     }
   }
 
+  private buildPrivateAttachmentView(input: {
+    asset: MediaAsset
+    snapshot: MediaSemanticSnapshot | null
+    runtimeCard?: PrivateMediaRuntimeCard | null
+  }): PrivateMessageAttachment {
+    const mediaUrl = resolveMediaAssetUrl(input.asset, this.deps.storage)
+    const summary = MediaAssetService.readSummaryOrFallback(input.snapshot, input.asset.mime_type)
+    const altText = trimCompact(
+      input.runtimeCard?.private_summary.private_safe_caption
+      ?? summary.public_safe_summary
+      ?? [summary.theme, summary.scene, summary.mood].filter(Boolean).join(', '),
+      180,
+    ) || '私聊图片附件'
+    const available = input.asset.lifecycle_status === 'active'
+      && input.asset.visibility_policy !== 'blocked'
+      && Boolean(mediaUrl)
+
+    return {
+      asset_id: input.asset.id,
+      display_variant: available ? 'original' : 'placeholder',
+      display_url: available ? mediaUrl : null,
+      placeholder: available
+        ? null
+        : {
+            kind: 'asset_unavailable',
+            label: '图片暂不可用',
+          },
+      mime_type: input.asset.mime_type,
+      alt_text: altText,
+      width: input.asset.width,
+      height: input.asset.height,
+      state: available ? 'ready' : 'unavailable',
+    }
+  }
+
   private async resolveProjectionMediaUrl(
     bindingId: string,
     projectionSurface: 'public_display' | 'retrieval',
@@ -428,6 +676,34 @@ export class MediaAssetService {
     )
     const mediaUrl = projection?.payload_json?.media_url
     return typeof mediaUrl === 'string' && mediaUrl.trim() ? mediaUrl : null
+  }
+
+  private assertPrivateMessageAssetEligibility(
+    asset: MediaAsset,
+    input: {
+      agent_id: string
+      owner_user_id: string
+      session_id: string
+    },
+  ): void {
+    if (asset.steward_agent_id !== input.agent_id || asset.owner_user_id !== input.owner_user_id) {
+      throw new ValidationError('attachment asset does not belong to this private chat')
+    }
+    if (asset.source_kind !== 'private_message_upload') {
+      throw new ValidationError('attachment asset must come from private chat upload staging')
+    }
+    if (asset.source_scene_type !== 'private_session') {
+      throw new ValidationError('attachment asset is missing private session provenance')
+    }
+    if (asset.source_scene_id !== input.session_id) {
+      throw new ValidationError('attachment asset is staged for a different private session')
+    }
+    if (asset.lifecycle_status !== 'active') {
+      throw new ValidationError('attachment asset is no longer active')
+    }
+    if (asset.visibility_policy !== 'private_only') {
+      throw new ValidationError('attachment asset is not private-only')
+    }
   }
 
   private async storeBytes(input: {
@@ -739,4 +1015,9 @@ export class MediaAssetService {
   static readSummaryOrFallback(snapshot: MediaSemanticSnapshot | null, mimeType: string): MediaSemanticSummary {
     return snapshot?.summary ?? buildFallbackMediaSemanticSummary(mimeType, 'legacy')
   }
+}
+
+function trimCompact(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text
+  return `${text.slice(0, Math.max(0, maxChars - 3)).trimEnd()}...`
 }

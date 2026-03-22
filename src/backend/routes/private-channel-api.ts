@@ -1,4 +1,5 @@
 import { Router, type IRouter } from 'express'
+import multer from 'multer'
 import { requireHumanAuth } from '../middleware/human-auth.js'
 import * as container from '../container.js'
 import { AppError, ValidationError } from '../lib/errors.js'
@@ -67,6 +68,10 @@ function collapseManagedSeedAgentDuplicates(agents: Agent[]): Agent[] {
 }
 
 export const privateChannelRouter: IRouter = Router()
+const privateAttachmentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+})
 
 async function assertAgentOwner(
   agentId: string,
@@ -225,27 +230,99 @@ privateChannelRouter.get('/agents/:agentId/chat/sessions', requireHumanAuth, asy
 // ─── Message endpoints ──────────────────────────────────────
 
 privateChannelRouter.post(
+  '/agents/:agentId/chat/sessions/:sessionId/attachments',
+  requireHumanAuth,
+  async (req, res, next) => {
+    try {
+      const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
+      if (!ownership.ok) {
+        res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+        return
+      }
+
+      const services = getServices()
+      if (!services) {
+        res.status(503).json({ error: { code: 'DB_UNAVAILABLE', message: 'Database not available' } })
+        return
+      }
+
+      privateAttachmentUpload.single('file')(req, res, async (err) => {
+        if (err) {
+          if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+            next(new ValidationError('media exceeds 10MB limit'))
+            return
+          }
+          next(new ValidationError('invalid upload payload'))
+          return
+        }
+
+        try {
+          if (!req.file || req.file.size <= 0) {
+            throw new ValidationError('file is required')
+          }
+
+          const attachment = await services.channelService.uploadAttachment({
+            agentId: String(req.params.agentId),
+            sessionId: String(req.params.sessionId),
+            humanUserId: req.user!.userId,
+            mimeType: req.file.mimetype,
+            bytes: req.file.buffer,
+          })
+          res.status(201).json({ data: attachment })
+        } catch (uploadErr) {
+          next(uploadErr)
+        }
+      })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+privateChannelRouter.post(
   '/agents/:agentId/chat/sessions/:sessionId/messages',
   requireHumanAuth,
   async (req, res) => {
-    const services = getServices()
-    if (!services) {
-      res.status(503).json({ error: { code: 'DB_UNAVAILABLE', message: 'Database not available' } })
+    const content = typeof req.body?.content === 'string' ? req.body.content : ''
+    const attachmentAssetIds = Array.isArray(req.body?.attachment_asset_ids)
+      ? req.body.attachment_asset_ids
+      : req.body?.attachment_asset_ids === undefined
+        ? undefined
+        : null
+    if (attachmentAssetIds === null || (Array.isArray(attachmentAssetIds) && attachmentAssetIds.some((item) => typeof item !== 'string'))) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'attachment_asset_ids must be a string array when provided' },
+      })
       return
     }
-
-    const content = req.body?.content
-    if (typeof content !== 'string' || !content.trim()) {
-      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'content is required' } })
+    if (!content.trim() && (!attachmentAssetIds || attachmentAssetIds.length === 0)) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'content or attachment_asset_ids is required' },
+      })
       return
     }
 
     try {
+      const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
+      if (!ownership.ok) {
+        res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+        return
+      }
+
+      const services = getServices()
+      if (!services) {
+        res.status(503).json({ error: { code: 'DB_UNAVAILABLE', message: 'Database not available' } })
+        return
+      }
+
       const beforeCount = await services.channelService.getMessageCount(String(req.params.sessionId))
       const result = await services.channelService.sendMessage(
         String(req.params.sessionId),
         req.user!.userId,
-        content,
+        {
+          content,
+          attachment_asset_ids: attachmentAssetIds ?? undefined,
+        },
       )
       if (beforeCount === 0) {
         await trackGuidanceEventFromRequest(

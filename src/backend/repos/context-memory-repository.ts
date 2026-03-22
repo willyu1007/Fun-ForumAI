@@ -20,6 +20,7 @@ import type {
 
 export interface RawContextEventRepository {
   upsert(input: UpsertContextRawEventInput): Promise<ContextRawEvent>
+  delete(id: string): Promise<boolean>
   findById(id: string): Promise<ContextRawEvent | null>
   listByAgent(
     agentId: string,
@@ -38,6 +39,7 @@ export interface EpisodicCardRepository {
     opts: PaginationOpts & { scene?: ContextMemoryScene },
   ): Promise<PaginatedResult<ContextEpisodicCard>>
   pruneByIds(agentId: string, ids: string[]): Promise<number>
+  pruneByEventIds(agentId: string, eventIds: string[]): Promise<number>
 }
 
 export interface ContextRelationStateRepository {
@@ -70,6 +72,7 @@ export interface PrivateShadowMemoryRepository {
   upsert(input: UpsertContextPrivateShadowMemoryInput): Promise<ContextPrivateShadowMemory>
   listByAgent(agentId: string, limit: number): Promise<ContextPrivateShadowMemory[]>
   pruneByIds(agentId: string, ids: string[]): Promise<number>
+  pruneByEventIds(agentId: string, eventIds: string[]): Promise<number>
 }
 
 let counter = 0
@@ -110,6 +113,10 @@ export class InMemoryRawContextEventRepository implements RawContextEventReposit
     }
     this.store.set(row.id, row)
     return row
+  }
+
+  async delete(id: string): Promise<boolean> {
+    return this.store.delete(id)
   }
 
   async findById(id: string): Promise<ContextRawEvent | null> {
@@ -173,6 +180,18 @@ export class InMemoryEpisodicCardRepository implements EpisodicCardRepository {
     let deleted = 0
     for (const [id, row] of this.store.entries()) {
       if (row.agent_id !== agentId || !deleteIds.has(id)) continue
+      this.store.delete(id)
+      deleted += 1
+    }
+    return deleted
+  }
+
+  async pruneByEventIds(agentId: string, eventIds: string[]): Promise<number> {
+    const lookup = new Set(eventIds)
+    if (lookup.size === 0) return 0
+    let deleted = 0
+    for (const [id, row] of this.store.entries()) {
+      if (row.agent_id !== agentId || !row.event_id || !lookup.has(row.event_id)) continue
       this.store.delete(id)
       deleted += 1
     }
@@ -314,6 +333,18 @@ export class InMemoryPrivateShadowMemoryRepository implements PrivateShadowMemor
     let deleted = 0
     for (const [id, row] of this.store.entries()) {
       if (row.agent_id !== agentId || !deleteIds.has(id)) continue
+      this.store.delete(id)
+      deleted += 1
+    }
+    return deleted
+  }
+
+  async pruneByEventIds(agentId: string, eventIds: string[]): Promise<number> {
+    const lookup = new Set(eventIds)
+    if (lookup.size === 0) return 0
+    let deleted = 0
+    for (const [id, row] of this.store.entries()) {
+      if (row.agent_id !== agentId || !row.event_id || !lookup.has(row.event_id)) continue
       this.store.delete(id)
       deleted += 1
     }

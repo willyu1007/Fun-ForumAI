@@ -52,6 +52,7 @@ const CURRENT_CONTEXT_LABELS: Record<string, string> = {
   community_context: '社区公开背景',
   scheduler_context: '调度上下文',
   owner_latest_input: 'Owner 最新输入',
+  private_media_card: '私聊图片语义卡',
   session_recent_turns: '最近私聊',
   room_recent_turns: '房间最近发言',
   room_program_context: '当前房间节目上下文',

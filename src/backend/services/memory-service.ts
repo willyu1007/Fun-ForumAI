@@ -9,6 +9,10 @@ import { getMemoriesForContext as getMemoriesForContextImpl } from './memory-ser
 import { generateDigest as generateDigestImpl } from './memory-service/digest-pipeline.js'
 import { decayAndForget as decayAndForgetImpl } from './memory-service/maintenance-runner.js'
 import {
+  cleanupPrivateMediaMemory as cleanupPrivateMediaMemoryImpl,
+  createPrivateMediaMemory as createPrivateMediaMemoryImpl,
+} from './memory-service/private-media.js'
+import {
   getPrivacySettings as getPrivacySettingsImpl,
   resolveEffectiveDisclosureLevel as resolveEffectiveDisclosureLevelImpl,
   updatePrivacySettings as updatePrivacySettingsImpl,
@@ -25,6 +29,7 @@ import type {
   MemoryForContext,
   MemoryServiceDeps,
   MemoryServiceState,
+  PrivateMediaMemoryInput,
   PublicObservationMemoryInput,
 } from './memory-service/types.js'
 
@@ -75,6 +80,18 @@ export class MemoryService {
 
   async createPublicObservationMemory(input: PublicObservationMemoryInput): Promise<AgentMemory> {
     return createPublicObservationMemoryImpl(this.deps, input)
+  }
+
+  async createPrivateMediaMemory(input: PrivateMediaMemoryInput): Promise<AgentMemory> {
+    return createPrivateMediaMemoryImpl(this.deps, input)
+  }
+
+  async cleanupPrivateMediaMemory(input: {
+    agent_id: string
+    message_id: string
+    asset_ids: string[]
+  }): Promise<void> {
+    return cleanupPrivateMediaMemoryImpl(this.deps, input)
   }
 
   async getPrivacySettings(agentId: string): Promise<AgentPrivacySettingsEntity> {

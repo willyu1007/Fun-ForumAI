@@ -71,4 +71,24 @@ export class MediaBindingService {
     }
     return this.deps.sceneMediaBindingRepo.create(payload)
   }
+
+  createPrivateMessageBinding(input: {
+    asset: MediaAsset
+    snapshot: MediaSemanticSnapshot
+    messageId: string
+    createdById: string
+  }): Promise<SceneMediaBinding> {
+    const payload: CreateSceneMediaBindingInput = {
+      scene_type: 'private_message',
+      scene_id: input.messageId,
+      asset_id: input.asset.id,
+      semantic_snapshot_id: input.snapshot.id,
+      binding_role: 'inline',
+      relation_to_scene: 'attached_to_private_message',
+      display_policy: 'original_allowed',
+      created_by_type: 'owner',
+      created_by_id: input.createdById,
+    }
+    return this.deps.sceneMediaBindingRepo.create(payload)
+  }
 }

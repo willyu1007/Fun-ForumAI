@@ -6,6 +6,30 @@ export type DigestStatus = 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | '
 export type PrivateAuthorType = 'HUMAN' | 'AGENT'
 export type MemorySource = 'PRIVATE_CHAT' | 'PUBLIC_OBSERVATION' | 'SYSTEM'
 export type NotificationType = 'AGENT_PROACTIVE' | 'AGENT_FIRST_POST' | 'GROWTH_MILESTONE' | 'GOVERNANCE' | 'AFTERSHOW_CALLOUT'
+export type PrivateAttachmentState = 'ready' | 'unavailable'
+export type PrivateAttachmentDisplayVariant = 'original' | 'placeholder'
+
+export interface PrivateAttachmentPlaceholder {
+  kind: 'asset_unavailable'
+  label: string
+}
+
+export interface PrivateMessageAttachment {
+  asset_id: string
+  display_variant: PrivateAttachmentDisplayVariant
+  display_url: string | null
+  placeholder: PrivateAttachmentPlaceholder | null
+  mime_type: string
+  alt_text: string | null
+  width: number | null
+  height: number | null
+  state: PrivateAttachmentState
+}
+
+export interface SendPrivateMessageInput {
+  content: string
+  attachment_asset_ids?: string[]
+}
 
 export interface PrivateSession {
   id: string
@@ -25,6 +49,7 @@ export interface PrivateMessage {
   session_id: string
   author_type: PrivateAuthorType
   content: string
+  attachments: PrivateMessageAttachment[]
   delivery_status: MessageDeliveryStatus
   moderation_metadata: Record<string, unknown> | null
   created_at: Date

@@ -13,6 +13,8 @@ import type { RenderTierDecisionResult } from '../runtime/persona-runtime-types.
 import type { PromptComposeAudit } from '../runtime/types.js'
 import type { PersonaStateService } from './persona-state-service.js'
 import type { InferenceProfileService } from './inference-profile-service.js'
+import type { MediaAssetService } from '../media/media-asset-service.js'
+import type { MemoryService } from './memory-service.js'
 import {
   attachPersonaObservation,
   buildPersonaObservation,
@@ -25,9 +27,11 @@ import { buildPromptBudgetSummary } from '../runtime/prompt-budget-summary.js'
 import type {
   PrivateSession,
   PrivateMessage,
+  PrivateMessageAttachment,
   PaginatedResult,
   PaginationOpts,
   PrivateSessionStatus,
+  SendPrivateMessageInput,
 } from '../repos/types.js'
 import { AppError, ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
@@ -35,6 +39,12 @@ import type { PolicyGatewayService } from './policy-gateway-service.js'
 import type { IdentityGateService } from './identity-gate-service.js'
 
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000
+
+interface CurrentPrivateMediaCardInput {
+  source_id: string
+  text: string
+  topic_hints: string[]
+}
 
 export interface PrivateChannelServiceDeps {
   channelRepo: PrivateChannelRepository
@@ -48,6 +58,8 @@ export interface PrivateChannelServiceDeps {
   agentRunRepo: AgentRunRepository
   budgetService: BudgetService | null
   costTracker: CostTracker | null
+  mediaAssetService: MediaAssetService
+  memoryService?: MemoryService | null
   sseHub?: SseHub | null
   policyGatewayService?: PolicyGatewayService | null
   identityGateService?: IdentityGateService | null
@@ -118,7 +130,7 @@ export class PrivateChannelService {
   async sendMessage(
     sessionId: string,
     humanUserId: string,
-    content: string,
+    input: SendPrivateMessageInput,
   ): Promise<{ human_message: PrivateMessage; agent_reply: PrivateMessage; token_cost: number }> {
     const session = await this.deps.channelRepo.findSessionById(sessionId)
     if (!session) throw new NotFoundError('PrivateSession', sessionId)
@@ -128,8 +140,13 @@ export class PrivateChannelService {
     if (session.status !== 'ACTIVE') {
       throw new ValidationError('Session is not active')
     }
-    if (!content.trim()) {
-      throw new ValidationError('Message content cannot be empty')
+    const normalizedContent = input.content.trim()
+    const attachmentAssetIds = normalizeAttachmentAssetIds(input.attachment_asset_ids)
+    if (!normalizedContent && attachmentAssetIds.length === 0) {
+      throw new ValidationError('Message content or attachment is required')
+    }
+    if (attachmentAssetIds.length > 0) {
+      this.requirePrivateMediaMemoryService()
     }
     if (this.deps.identityGateService) {
       await this.deps.identityGateService.assertVerified(humanUserId, 'private_message_send')
@@ -148,7 +165,7 @@ export class PrivateChannelService {
     const inboundPolicy = this.deps.policyGatewayService
       ? await this.deps.policyGatewayService.evaluate({
           channel: 'private_inbound',
-          text: content.trim(),
+          text: normalizedContent || '[owner shared image attachment]',
           author_agent_id: session.agent_id,
           user_id: humanUserId,
           target_type: 'private_session',
@@ -159,7 +176,7 @@ export class PrivateChannelService {
       : null
     const effectiveHumanContent = inboundPolicy?.action === 'block'
       ? '[blocked by policy]'
-      : inboundPolicy?.final_text ?? content.trim()
+      : inboundPolicy?.final_text ?? normalizedContent
 
     const humanMsg = await this.deps.channelRepo.createMessage({
       session_id: sessionId,
@@ -168,12 +185,16 @@ export class PrivateChannelService {
       delivery_status: inboundPolicy?.delivery_status ?? 'DELIVERED',
       moderation_metadata: inboundPolicy?.metadata ?? null,
     })
-    this.deps.sseHub?.broadcastToSession(sessionId, {
-      type: 'PRIVATE_MESSAGE_CREATED',
-      payload: { session_id: sessionId, message: humanMsg },
-    })
 
     if (inboundPolicy?.action === 'block') {
+      const blockedHumanMessage: PrivateMessage = {
+        ...humanMsg,
+        attachments: [],
+      }
+      this.deps.sseHub?.broadcastToSession(sessionId, {
+        type: 'PRIVATE_MESSAGE_CREATED',
+        payload: { session_id: sessionId, message: blockedHumanMessage },
+      })
       const refusal = await this.deps.channelRepo.createMessage({
         session_id: sessionId,
         author_type: 'AGENT',
@@ -186,101 +207,277 @@ export class PrivateChannelService {
         payload: { session_id: sessionId, message: refusal },
       })
       return {
-        human_message: humanMsg,
-        agent_reply: refusal,
+        human_message: blockedHumanMessage,
+        agent_reply: { ...refusal, attachments: [] },
         token_cost: 0,
       }
     }
 
-    const replyPlan = await this.buildRequestForReply(session, effectiveHumanContent)
-    const routing = await this.resolveVisibleRouting(
-      session.agent_id,
-      replyPlan.renderDecision?.requestedTier ?? 'base',
-    )
-    const startMs = Date.now()
-    const llmResponse = await this.deps.llmGateway.generateVisibleText({
-      intent: 'private_reply',
-      scene: 'private_chat',
-      agentId: session.agent_id,
-      homeVoiceLineId: routing.homeVoiceLineId,
-      preferredModelId: routing.preferredModelId,
-      promptRef: replyPlan.promptRef,
-      variables: replyPlan.variables,
-      budgetClass: 'visible_standard',
-      traceId: `private-chat:${session.id}:${humanMsg.id}`,
-      promptBudgetSummary: buildPromptBudgetSummary('private_chat', replyPlan.promptRef, replyPlan.promptAudit),
-      requestedTier: routing.requestedTier,
-      allowFallbackWithinLine: false,
-      allowCrossFamily: false,
-      temperature: 0.8,
-    })
-    const latencyMs = Date.now() - startMs
-    const identity = this.resolveObservationIdentity(session.agent_id)
-    const observation = buildPersonaObservation({
-      sourceCallsiteId: 'private-channel-reply',
-      scene: 'private_chat',
-      intent: 'private_reply',
-      visibility: 'visible',
-      coverageStatus: 'visible_complete',
-      personaSeedCode: identity?.persona_seed_code,
-      homeVoiceLineId: identity?.home_voice_line_id,
-      promptRef: replyPlan.promptRef,
-      requestedTier: llmResponse.renderDecision.tier,
-      resolvedTier: llmResponse.renderDecision.tier,
-      renderDecision: llmResponse.renderDecision,
-      usage: llmResponse.usage,
-      latencyMs,
-      parseSuccess: true,
-      promptAudit: replyPlan.promptAudit,
-      llmProviderId: llmResponse.renderDecision.providerId,
-      llmModelId: llmResponse.renderDecision.modelId,
-    })
-
-    const outboundPolicy = this.deps.policyGatewayService
-      ? await this.deps.policyGatewayService.evaluate({
-          channel: 'private_outbound',
-          text: llmResponse.content,
-          author_agent_id: session.agent_id,
-          user_id: humanUserId,
-          target_type: 'private_session',
-          target_id: session.id,
-          session_id: session.id,
-          scene: 'private_chat',
-        })
-      : null
-
-    const agentReply = await this.deps.channelRepo.createMessage({
-      session_id: sessionId,
-      author_type: 'AGENT',
-      content: outboundPolicy?.final_text ?? llmResponse.content,
-      delivery_status: outboundPolicy?.action === 'block'
-        ? 'REFUSED'
-        : outboundPolicy?.delivery_status ?? 'DELIVERED',
-      moderation_metadata: outboundPolicy?.metadata ?? null,
-    })
-    this.deps.sseHub?.broadcastToSession(sessionId, {
-      type: 'PRIVATE_MESSAGE_CREATED',
-      payload: { session_id: sessionId, message: agentReply },
-    })
-
-    if (replyPlan.renderDecision && this.deps.personaStateService) {
-      await this.deps.personaStateService.recordVisibleRender({
-        agentId: session.agent_id,
-        scene: 'private_chat',
-        renderDecision: replyPlan.renderDecision,
-        outputText: agentReply.content,
-      }).catch((err) => {
-        console.error('[PrivateChannel] persona runtime render record failed:', err)
+    try {
+      const attachmentContext = await this.prepareMessageAttachments({
+        session,
+        humanUserId,
+        messageId: humanMsg.id,
+        attachmentAssetIds,
       })
+      const enrichedHumanMessage: PrivateMessage = {
+        ...humanMsg,
+        attachments: attachmentContext.attachments,
+      }
+
+      const replyPlan = await this.buildRequestForReply(
+        session,
+        effectiveHumanContent,
+        attachmentContext.current_media_cards,
+      )
+      const routing = await this.resolveVisibleRouting(
+        session.agent_id,
+        replyPlan.renderDecision?.requestedTier ?? 'base',
+      )
+      const startMs = Date.now()
+      const llmResponse = await this.deps.llmGateway.generateVisibleText({
+        intent: 'private_reply',
+        scene: 'private_chat',
+        agentId: session.agent_id,
+        homeVoiceLineId: routing.homeVoiceLineId,
+        preferredModelId: routing.preferredModelId,
+        promptRef: replyPlan.promptRef,
+        variables: replyPlan.variables,
+        budgetClass: 'visible_standard',
+        traceId: `private-chat:${session.id}:${humanMsg.id}`,
+        promptBudgetSummary: buildPromptBudgetSummary('private_chat', replyPlan.promptRef, replyPlan.promptAudit),
+        requestedTier: routing.requestedTier,
+        allowFallbackWithinLine: false,
+        allowCrossFamily: false,
+        temperature: 0.8,
+      })
+      const latencyMs = Date.now() - startMs
+      const identity = this.resolveObservationIdentity(session.agent_id)
+      const observation = buildPersonaObservation({
+        sourceCallsiteId: 'private-channel-reply',
+        scene: 'private_chat',
+        intent: 'private_reply',
+        visibility: 'visible',
+        coverageStatus: 'visible_complete',
+        personaSeedCode: identity?.persona_seed_code,
+        homeVoiceLineId: identity?.home_voice_line_id,
+        promptRef: replyPlan.promptRef,
+        requestedTier: llmResponse.renderDecision.tier,
+        resolvedTier: llmResponse.renderDecision.tier,
+        renderDecision: llmResponse.renderDecision,
+        usage: llmResponse.usage,
+        latencyMs,
+        parseSuccess: true,
+        promptAudit: replyPlan.promptAudit,
+        llmProviderId: llmResponse.renderDecision.providerId,
+        llmModelId: llmResponse.renderDecision.modelId,
+      })
+
+      const outboundPolicy = this.deps.policyGatewayService
+        ? await this.deps.policyGatewayService.evaluate({
+            channel: 'private_outbound',
+            text: llmResponse.content,
+            author_agent_id: session.agent_id,
+            user_id: humanUserId,
+            target_type: 'private_session',
+            target_id: session.id,
+            session_id: session.id,
+            scene: 'private_chat',
+          })
+        : null
+
+      const agentReply = await this.deps.channelRepo.createMessage({
+        session_id: sessionId,
+        author_type: 'AGENT',
+        content: outboundPolicy?.final_text ?? llmResponse.content,
+        delivery_status: outboundPolicy?.action === 'block'
+          ? 'REFUSED'
+          : outboundPolicy?.delivery_status ?? 'DELIVERED',
+        moderation_metadata: outboundPolicy?.metadata ?? null,
+      })
+      this.deps.sseHub?.broadcastToSession(sessionId, {
+        type: 'PRIVATE_MESSAGE_CREATED',
+        payload: { session_id: sessionId, message: enrichedHumanMessage },
+      })
+      this.deps.sseHub?.broadcastToSession(sessionId, {
+        type: 'PRIVATE_MESSAGE_CREATED',
+        payload: { session_id: sessionId, message: agentReply },
+      })
+
+      if (replyPlan.renderDecision && this.deps.personaStateService) {
+        await this.deps.personaStateService.recordVisibleRender({
+          agentId: session.agent_id,
+          scene: 'private_chat',
+          renderDecision: replyPlan.renderDecision,
+          outputText: agentReply.content,
+        }).catch((err) => {
+          console.error('[PrivateChannel] persona runtime render record failed:', err)
+        })
+      }
+
+      this.recordAuditTrail(
+        session,
+        normalizedContent || attachmentContext.audit_input_text,
+        llmResponse,
+        latencyMs,
+        observation,
+      )
+
+      return {
+        human_message: enrichedHumanMessage,
+        agent_reply: { ...agentReply, attachments: [] },
+        token_cost: llmResponse.usage.total_tokens,
+      }
+    } catch (err) {
+      if (attachmentAssetIds.length > 0) {
+        await this.rollbackFailedAttachmentMessage({
+          agentId: session.agent_id,
+          messageId: humanMsg.id,
+          attachmentAssetIds,
+        })
+      }
+      throw err
+    }
+  }
+
+  async uploadAttachment(input: {
+    agentId: string
+    sessionId: string
+    humanUserId: string
+    mimeType: string
+    bytes: Buffer
+  }): Promise<PrivateMessageAttachment> {
+    const session = await this.deps.channelRepo.findSessionById(input.sessionId)
+    if (!session) throw new NotFoundError('PrivateSession', input.sessionId)
+    if (session.agent_id !== input.agentId) {
+      throw new ValidationError('Session does not belong to the target agent')
+    }
+    if (session.human_user_id !== input.humanUserId) {
+      throw new ForbiddenError('Not your session')
+    }
+    if (session.status !== 'ACTIVE') {
+      throw new ValidationError('Session is not active')
+    }
+    this.requirePrivateMediaMemoryService()
+    if (this.deps.identityGateService) {
+      await this.deps.identityGateService.assertVerified(input.humanUserId, 'private_message_send')
     }
 
-    this.recordAuditTrail(session, content.trim(), llmResponse, latencyMs, observation)
+    const agent = this.deps.agentService.getAgent(session.agent_id)
+    if (!agent) throw new NotFoundError('Agent', session.agent_id)
+
+    const record = await this.deps.mediaAssetService.ingestPrivateMessageUpload({
+      agent_id: session.agent_id,
+      owner_user_id: input.humanUserId,
+      session_id: session.id,
+      mime_type: input.mimeType,
+      bytes: input.bytes,
+    })
+    const attachment = await this.deps.mediaAssetService.getPrivateAttachmentView(record.asset.id)
+    if (!attachment) {
+      throw new AppError(500, 'Failed to build staged attachment view', 'PRIVATE_ATTACHMENT_STAGE_FAILED')
+    }
+    return attachment
+  }
+
+  private async prepareMessageAttachments(input: {
+    session: PrivateSession
+    humanUserId: string
+    messageId: string
+    attachmentAssetIds: string[]
+  }): Promise<{
+    attachments: PrivateMessageAttachment[]
+    current_media_cards: CurrentPrivateMediaCardInput[]
+    audit_input_text: string
+  }> {
+    if (input.attachmentAssetIds.length === 0) {
+      return {
+        attachments: [],
+        current_media_cards: [],
+        audit_input_text: '',
+      }
+    }
+
+    const memoryService = this.requirePrivateMediaMemoryService()
+    const attachments: PrivateMessageAttachment[] = []
+    const currentMediaCards: CurrentPrivateMediaCardInput[] = []
+    for (const assetId of input.attachmentAssetIds) {
+      const attached = await this.deps.mediaAssetService.attachAssetToPrivateMessage({
+        asset_id: assetId,
+        agent_id: input.session.agent_id,
+        owner_user_id: input.humanUserId,
+        session_id: input.session.id,
+        message_id: input.messageId,
+        why_relevant_hint: 'Owner 刚在当前轮私聊中分享了这张图片，可直接作为当前回复的视觉上下文。',
+      })
+      attachments.push(attached.attachment)
+      currentMediaCards.push({
+        source_id: attached.runtime_projection.id,
+        text: attached.runtime_serialized_text,
+        topic_hints: buildPrivateCardTopicHints(attached.runtime_card),
+      })
+
+      try {
+        await memoryService.createPrivateMediaMemory({
+          agent_id: input.session.agent_id,
+          owner_user_id: input.humanUserId,
+          session_id: input.session.id,
+          message_id: input.messageId,
+          projection: attached.memory_payload,
+          source_projection_id: attached.memory_projection.id,
+        })
+      } catch (err) {
+        console.error('[PrivateChannel] private media memory write failed:', err)
+        if (err instanceof AppError) {
+          throw err
+        }
+        throw new AppError(500, 'Failed to persist private media memory', 'PRIVATE_MEDIA_MEMORY_WRITE_FAILED')
+      }
+    }
 
     return {
-      human_message: humanMsg,
-      agent_reply: agentReply,
-      token_cost: llmResponse.usage.total_tokens,
+      attachments,
+      current_media_cards: currentMediaCards,
+      audit_input_text: currentMediaCards.map((item) => item.text).join('\n'),
     }
+  }
+
+  private async rollbackFailedAttachmentMessage(input: {
+    agentId: string
+    messageId: string
+    attachmentAssetIds: string[]
+  }): Promise<void> {
+    const cleanupErrors: unknown[] = []
+    const memoryCleanup = this.deps.memoryService?.cleanupPrivateMediaMemory?.({
+      agent_id: input.agentId,
+      message_id: input.messageId,
+      asset_ids: input.attachmentAssetIds,
+    })
+    if (memoryCleanup) {
+      await memoryCleanup.catch((err) => {
+        cleanupErrors.push(err)
+      })
+    }
+    await this.deps.mediaAssetService.rollbackPrivateMessageAttachmentArtifacts(input.messageId).catch((err) => {
+      cleanupErrors.push(err)
+    })
+    await this.deps.channelRepo.deleteMessage(input.messageId).catch((err) => {
+      cleanupErrors.push(err)
+    })
+    if (cleanupErrors.length > 0) {
+      console.error('[PrivateChannel] attachment rollback cleanup failed:', cleanupErrors)
+    }
+  }
+
+  private async hydrateMessageAttachments(messages: PrivateMessage[]): Promise<PrivateMessage[]> {
+    if (messages.length === 0) return messages
+    const attachmentMap = await this.deps.mediaAssetService.listPrivateMessageAttachmentViews(
+      messages.map((message) => message.id),
+    )
+    return messages.map((message) => ({
+      ...message,
+      attachments: attachmentMap.get(message.id) ?? message.attachments ?? [],
+    }))
   }
 
   private recordAuditTrail(
@@ -358,7 +555,11 @@ export class PrivateChannelService {
     if (session.human_user_id !== humanUserId) {
       throw new ForbiddenError('Not your session')
     }
-    return this.deps.channelRepo.listMessages(sessionId, opts)
+    const result = await this.deps.channelRepo.listMessages(sessionId, opts)
+    return {
+      ...result,
+      items: await this.hydrateMessageAttachments(result.items),
+    }
   }
 
   async checkTimeouts(): Promise<PrivateSession[]> {
@@ -380,6 +581,7 @@ export class PrivateChannelService {
   private async buildRequestForReply(
     session: PrivateSession,
     currentMessage: string,
+    currentMediaCards: CurrentPrivateMediaCardInput[],
   ): Promise<{
     promptRef: typeof PROMPT_TEMPLATE_REFS.agentPrivateChatReply
     variables: Record<string, string>
@@ -394,12 +596,13 @@ export class PrivateChannelService {
       )
     }
 
-    return this.buildRequestWithOrchestrator(session, currentMessage)
+    return this.buildRequestWithOrchestrator(session, currentMessage, currentMediaCards)
   }
 
   private async buildRequestWithOrchestrator(
     session: PrivateSession,
     currentMessage: string,
+    currentMediaCards: CurrentPrivateMediaCardInput[],
   ): Promise<{
     promptRef: typeof PROMPT_TEMPLATE_REFS.agentPrivateChatReply
     variables: Record<string, string>
@@ -407,11 +610,17 @@ export class PrivateChannelService {
     promptAudit: PromptComposeAudit | null
   }> {
     const history = await this.deps.channelRepo.listMessages(session.id, { limit: 20 })
-    const conversationText = [...history.items.map((item) => item.content), currentMessage].join(' ').trim()
-    const topicHints = currentMessage
-      .split(/[\s,，、；;：:。.!！?？]+/)
-      .filter((item) => item.length >= 2)
-      .slice(0, 10)
+    const historyText = history.items
+      .map((item) => item.content)
+      .filter((item) => item.trim().length > 0)
+      .join(' ')
+      .trim()
+    const conversationText = historyText || currentMessage.trim()
+    const topicHints = dedupeStrings([
+      ...extractTopicHints(currentMessage),
+      ...currentMediaCards.flatMap((item) => item.topic_hints),
+    ]).slice(0, 10)
+    const currentInputText = currentMessage.trim()
 
     const composed = await this.deps.promptOrchestrator!.compose({
       agentId: session.agent_id,
@@ -425,6 +634,12 @@ export class PrivateChannelService {
           priority: 'critical',
           source_id: `session:${session.id}:latest_owner_input`,
         },
+        ...currentMediaCards.map((item, index) => ({
+          kind: 'private_media_card',
+          text: item.text,
+          priority: 'high' as const,
+          source_id: item.source_id || `session:${session.id}:private_media_card:${index + 1}`,
+        })),
         {
           kind: 'session_recent_turns',
           text: history.items
@@ -440,12 +655,12 @@ export class PrivateChannelService {
           priority: 'medium',
           source_id: session.id,
         },
-      ],
+      ].filter((source) => source.text.trim().length > 0),
       requestEnvelope: {
         static_system_tokens: 180,
         route_wrapper_tokens: 90,
         tool_tokens: 0,
-        current_user_input_tokens: Math.max(1, Math.ceil(currentMessage.trim().length / 4)),
+        current_user_input_tokens: Math.max(1, Math.ceil(Math.max(1, currentInputText.trim().length) / 4)),
         output_reserve: 0,
         model_capability_ref: null,
       },
@@ -470,6 +685,13 @@ export class PrivateChannelService {
       renderDecision: composed.runtimeEnvelope?.renderTierDecision ?? null,
       promptAudit: composed.audit,
     }
+  }
+
+  private requirePrivateMediaMemoryService(): NonNullable<PrivateChannelServiceDeps['memoryService']> {
+    if (!this.deps.memoryService) {
+      throw new AppError(503, 'Private media memory pipeline is unavailable', 'PRIVATE_MEDIA_MEMORY_UNAVAILABLE')
+    }
+    return this.deps.memoryService
   }
 
   private async resolveVisibleRouting(agentId: string, requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier): Promise<{
@@ -515,4 +737,54 @@ function isPrismaForeignKeyError(err: unknown): boolean {
   }
   const maybeCode = (err as { code?: unknown }).code
   return typeof maybeCode === 'string' && maybeCode === 'P2003'
+}
+
+function normalizeAttachmentAssetIds(value: string[] | undefined): string[] {
+  if (!value) return []
+  const normalized = dedupeStrings(
+    value
+      .filter((item): item is string => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0),
+  )
+  if (normalized.length > 1) {
+    throw new ValidationError('Only one attachment is supported per private message')
+  }
+  return normalized
+}
+
+function extractTopicHints(text: string): string[] {
+  return text
+    .split(/[\s,，、；;：:。.!！?？]+/)
+    .map((item) => item.trim())
+    .filter((item) => item.length >= 2)
+}
+
+function buildPrivateCardTopicHints(card: {
+  private_summary: {
+    theme: string
+    scene: string
+    mood: string
+    salient_entities: string[]
+    discussion_points: string[]
+  }
+}): string[] {
+  return dedupeStrings([
+    card.private_summary.theme,
+    card.private_summary.scene,
+    card.private_summary.mood,
+    ...card.private_summary.salient_entities,
+    ...card.private_summary.discussion_points,
+  ]).slice(0, 8)
+}
+
+function dedupeStrings(values: string[]): string[] {
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (const value of values) {
+    if (!value || seen.has(value)) continue
+    seen.add(value)
+    result.push(value)
+  }
+  return result
 }

@@ -162,6 +162,7 @@ const nurture = await createNurtureEngines({
   policyGatewayService: core.policyGatewayService,
   identityGateService: core.identityGateService,
   publicDisclosureCapService: core.publicDisclosureCapService,
+  mediaAssetService: llm.mediaAssetService,
   leaderElectors: {
     privateChannel: infra.leaderElectors.privateChannel,
     nurture: infra.leaderElectors.nurture,

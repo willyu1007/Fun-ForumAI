@@ -26,6 +26,7 @@ import type { NurtureOrchestrator } from '../nurture-orchestrator.js'
 import type { RelationService } from '../relation-service.js'
 import type { StatsService } from '../stats-service.js'
 import type { XpService } from '../xp-service.js'
+import type { PrivateMediaMemoryProjection } from '../../repos/types.js'
 
 export interface ContextMemoryRuntimeDeps {
   journalService: ContextJournalService
@@ -115,6 +116,16 @@ export interface PublicObservationMemoryInput {
     evidence_refs?: string[]
     created_at?: Date
   }
+}
+
+export interface PrivateMediaMemoryInput {
+  agent_id: string
+  owner_user_id: string
+  session_id: string
+  message_id: string
+  projection: PrivateMediaMemoryProjection
+  source_projection_id?: string | null
+  created_at?: Date
 }
 
 export type { AgentMemory, AgentPrivacySettingsEntity, ContextMemoryScene, PaginatedResult }

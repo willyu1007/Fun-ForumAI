@@ -30,6 +30,14 @@ export class PgSceneMediaBindingRepository implements SceneMediaBindingRepositor
     return this.toDomain(row)
   }
 
+  async deleteByIds(ids: string[]): Promise<number> {
+    if (ids.length === 0) return 0
+    const result = await this.prisma.sceneMediaBinding.deleteMany({
+      where: { id: { in: ids } },
+    })
+    return result.count
+  }
+
   async findByAssetId(assetId: string): Promise<SceneMediaBinding[]> {
     const rows = await this.prisma.sceneMediaBinding.findMany({
       where: { assetId },

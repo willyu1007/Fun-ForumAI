@@ -8,6 +8,7 @@ import {
   usePrivateMessages,
   useCreatePrivateSession,
   useSendPrivateMessage,
+  useUploadPrivateMessageAttachment,
   useEndPrivateSession,
 } from '@/api/hooks'
 import { Button } from '@/components/ui/button'
@@ -18,7 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { relativeTime } from '@/shared/utils/relative-time'
-import type { PrivateSession, PrivateMessage } from '@/api/types'
+import type { PrivateMessage, PrivateMessageAttachment, PrivateSession, SendPrivateMessageInput } from '@/api/types'
 import { DEV_AUTH_TOOLBAR_SAFE_AREA_CLASS } from '@/shared/layout/dev-auth-toolbar'
 import { MessageInput } from '../components/MessageInput'
 import { SessionSidebar } from '../components/SessionSidebar'
@@ -212,6 +213,7 @@ function ChatThread({
   const { data: msgData, isLoading } = usePrivateMessages(agentId, sessionId)
   const createReport = useCreateReport()
   const sendMessage = useSendPrivateMessage(agentId, sessionId)
+  const uploadAttachment = useUploadPrivateMessageAttachment(agentId, sessionId)
   const endSession = useEndPrivateSession(agentId, sessionId)
   const guidanceInbox = useGuidanceInbox()
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -233,19 +235,15 @@ function ChatThread({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length])
-  const handleSend = async (content: string) => {
-    try {
-      await sendMessage.mutateAsync(content)
-    } catch {
-      // Mutation error is rendered in-page.
-    }
+  const handleSend = async (input: SendPrivateMessageInput) => {
+    await sendMessage.mutateAsync(input)
+  }
+  const handleUploadAttachment = async (file: File) => {
+    const result = await uploadAttachment.mutateAsync(file)
+    return result.data
   }
   const handleEnd = async () => {
-    try {
-      await endSession.mutateAsync()
-    } catch {
-      // Mutation error is rendered in-page.
-    }
+    await endSession.mutateAsync()
   }
   const handleReportSession = async () => {
     setSessionGovernanceMessage(null)
@@ -333,15 +331,20 @@ function ChatThread({
 
       <MessageInput
         onSend={handleSend}
+        onUploadAttachment={handleUploadAttachment}
         onEndSession={handleEnd}
-        disabled={sendMessage.isPending}
+        disabled={sendMessage.isPending || uploadAttachment.isPending}
         sessionEnded={sessionEnded}
         messageCount={messages.length}
       />
 
-      {(sendMessage.isError || endSession.isError) && (
+      {(sendMessage.isError || uploadAttachment.isError || endSession.isError) && (
         <div className={"border-t border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"}>
-          {sendMessage.isError ? sendMessage.error.message : endSession.error?.message}
+          {sendMessage.isError
+            ? sendMessage.error.message
+            : uploadAttachment.isError
+              ? uploadAttachment.error.message
+              : endSession.error?.message}
         </div>
       )}
 
@@ -370,6 +373,7 @@ function ChatThread({
 function MessageBubble({ message, agentName }: { message: PrivateMessage; agentName: string }) {
   const isHuman = message.author_type === 'HUMAN'
   const deliveryLabel = message.delivery_status ? DELIVERY_BADGE[message.delivery_status] : null
+  const attachments = message.attachments ?? []
   return (
     <div className={cn('flex gap-2 items-start', isHuman && 'flex-row-reverse')}>
       <Avatar className={"h-8 w-8 shrink-0"}>
@@ -389,7 +393,22 @@ function MessageBubble({ message, agentName }: { message: PrivateMessage; agentN
           isHuman ? "bg-primary text-primary-foreground" : "bg-muted",
         )}
       >
-        <p className={"text-sm whitespace-pre-wrap break-words"}>{message.content}</p>
+        {attachments.length > 0 && (
+          <div className="space-y-2">
+            {attachments.map((attachment) => (
+              <PrivateAttachmentPreview
+                key={attachment.asset_id}
+                attachment={attachment}
+                compactTone={isHuman ? 'human' : 'agent'}
+              />
+            ))}
+          </div>
+        )}
+        {message.content.trim().length > 0 && (
+          <p className={cn("text-sm whitespace-pre-wrap break-words", attachments.length > 0 && 'mt-2')}>
+            {message.content}
+          </p>
+        )}
         <div className={"mt-2 flex flex-wrap items-center gap-2"}>
           <span
             className={cn(
@@ -407,5 +426,41 @@ function MessageBubble({ message, agentName }: { message: PrivateMessage; agentN
         </div>
       </Card>
     </div>
+  )
+}
+
+function PrivateAttachmentPreview({
+  attachment,
+  compactTone,
+}: {
+  attachment: PrivateMessageAttachment
+  compactTone: 'human' | 'agent'
+}) {
+  const [failed, setFailed] = useState(false)
+  const showPlaceholder = attachment.state !== 'ready' || failed || !attachment.display_url
+
+  if (showPlaceholder) {
+    return (
+      <div
+        className={cn(
+          'flex min-h-28 w-full items-center justify-center rounded-lg border border-dashed px-4 py-6 text-center text-xs',
+          compactTone === 'human'
+            ? 'border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground'
+            : 'border-border bg-background text-muted-foreground',
+        )}
+      >
+        {attachment.placeholder?.label ?? '图片暂不可用'}
+      </div>
+    )
+  }
+
+  return (
+    <img
+      src={attachment.display_url}
+      alt={attachment.alt_text ?? '私聊图片附件'}
+      className="max-h-72 w-full rounded-lg object-cover"
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
   )
 }

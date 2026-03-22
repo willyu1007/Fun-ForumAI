@@ -29,6 +29,7 @@ export interface PrivateChannelRepository {
   findTimedOutSessions(timeoutMs: number): Promise<PrivateSession[]>
 
   createMessage(input: CreatePrivateMessageInput): Promise<PrivateMessage>
+  deleteMessage(id: string): Promise<boolean>
   listMessages(
     sessionId: string,
     opts: PaginationOpts,

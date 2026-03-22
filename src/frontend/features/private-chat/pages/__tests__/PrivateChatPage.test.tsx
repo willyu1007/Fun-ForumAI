@@ -11,6 +11,7 @@ import {
   usePrivateMessages,
   usePrivateSessions,
   useSendPrivateMessage,
+  useUploadPrivateMessageAttachment,
 } from '@/api/hooks'
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { usePrivateSessionSse } from '../../hooks/use-private-session-sse'
@@ -23,6 +24,7 @@ vi.mock('@/api/hooks', () => ({
   usePrivateMessages: vi.fn(),
   useCreatePrivateSession: vi.fn(),
   useSendPrivateMessage: vi.fn(),
+  useUploadPrivateMessageAttachment: vi.fn(),
   useEndPrivateSession: vi.fn(),
 }))
 
@@ -53,6 +55,7 @@ const usePrivateSessionsMock = vi.mocked(usePrivateSessions)
 const usePrivateMessagesMock = vi.mocked(usePrivateMessages)
 const useCreatePrivateSessionMock = vi.mocked(useCreatePrivateSession)
 const useSendPrivateMessageMock = vi.mocked(useSendPrivateMessage)
+const useUploadPrivateMessageAttachmentMock = vi.mocked(useUploadPrivateMessageAttachment)
 const useEndPrivateSessionMock = vi.mocked(useEndPrivateSession)
 const isGuidanceEnabledMock = vi.mocked(isGuidanceEnabled)
 const usePrivateSessionSseMock = vi.mocked(usePrivateSessionSse)
@@ -102,6 +105,7 @@ describe('PrivateChatPage', () => {
               session_id: 'session-1',
               author_type: 'AGENT',
               content: '想和你聊聊刚才那条动态。',
+              attachments: [],
               created_at: '2026-03-12T10:00:01.000Z',
             },
           ],
@@ -115,6 +119,11 @@ describe('PrivateChatPage', () => {
       isError: false,
     } as never)
     useSendPrivateMessageMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+    } as never)
+    useUploadPrivateMessageAttachmentMock.mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
       isError: false,
@@ -165,5 +174,48 @@ describe('PrivateChatPage', () => {
     })
 
     expect(await screen.findByText('私聊治理请求已提交，可在 Safety Center 查看处理进度。')).toBeTruthy()
+  })
+
+  it('renders private message attachments inside the chat thread', () => {
+    usePrivateMessagesMock.mockReturnValue({
+      data: {
+        data: {
+          items: [
+            {
+              id: 'message-attachment-1',
+              session_id: 'session-1',
+              author_type: 'HUMAN',
+              content: '看看这张图',
+              attachments: [
+                {
+                  asset_id: 'asset-1',
+                  display_variant: 'original',
+                  display_url: 'https://cdn.test/private/asset-1.jpg',
+                  placeholder: null,
+                  mime_type: 'image/jpeg',
+                  alt_text: '一张咖啡照片',
+                  width: 1200,
+                  height: 900,
+                  state: 'ready',
+                },
+              ],
+              created_at: '2026-03-12T10:00:01.000Z',
+            },
+          ],
+        },
+      },
+      isLoading: false,
+    } as never)
+
+    render(
+      <MemoryRouter initialEntries={['/agents/agent-1/chat']}>
+        <Routes>
+          <Route path="/agents/:agentId/chat" element={<PrivateChatPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByAltText('一张咖啡照片')).toBeTruthy()
+    expect(screen.getByText('看看这张图')).toBeTruthy()
   })
 })
