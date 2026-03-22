@@ -66,6 +66,18 @@ export class PgSceneMediaBindingRepository implements SceneMediaBindingRepositor
     return rows.map((row) => this.toDomain(row))
   }
 
+  async findByScenes(sceneType: MediaSceneType, sceneIds: string[]): Promise<SceneMediaBinding[]> {
+    if (sceneIds.length === 0) return []
+    const rows = await this.prisma.sceneMediaBinding.findMany({
+      where: {
+        sceneType,
+        sceneId: { in: sceneIds },
+      },
+      orderBy: [{ createdAt: 'desc' }],
+    })
+    return rows.map((row) => this.toDomain(row))
+  }
+
   private toDomain(row: PrismaSceneMediaBinding): SceneMediaBinding {
     return {
       id: row.id,

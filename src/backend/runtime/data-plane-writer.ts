@@ -2,11 +2,11 @@ import type { ForumWriteService } from '../services/forum-write-service.js'
 import type { ChatService } from '../services/chat-service.js'
 import type { AgentRunRepository } from '../repos/event-repository.js'
 import type { NurtureOrchestrator } from '../services/nurture-orchestrator.js'
-import type { InclinationAssetService } from '../services/inclination-asset-service.js'
 import type { WriteInstruction } from './types.js'
 import type { LlmTokenUsage } from '../llm/types.js'
 import type { ChatMessageKind } from '../repos/types.js'
 import type { PersonaObservationV1 } from './persona-observation.js'
+import type { MediaWriteBridge } from '../media/media-write-bridge.js'
 import {
   attachPersonaObservation,
   recordPersonaObservation,
@@ -18,7 +18,7 @@ export interface DataPlaneWriterDeps {
   chatService?: ChatService
   xpService?: { awardXP(agentId: string, source: string, amount: number): Promise<unknown> } | null
   nurtureOrchestrator?: NurtureOrchestrator | null
-  inclinationAssetService?: Pick<InclinationAssetService, 'attachPostMediaAndConsume'>
+  mediaWriteBridge?: Pick<MediaWriteBridge, 'applyImagePlanAfterPersist'>
 }
 
 export interface WriteResult {
@@ -48,6 +48,7 @@ export class DataPlaneWriter {
 
     try {
       let contentId: string
+      let imagePlanApplyError: string | null = null
 
       if (instruction.action === 'create_message') {
         if (!this.deps.chatService) {
@@ -82,14 +83,23 @@ export class DataPlaneWriter {
         })
         contentId = result.post.id
 
-        if (instruction.media_asset_id && this.deps.inclinationAssetService) {
-          try {
-            await this.deps.inclinationAssetService.attachPostMediaAndConsume({
-              asset_id: instruction.media_asset_id,
-              post_id: contentId,
-            })
-          } catch (mediaErr) {
-            console.error('[DataPlaneWriter] failed to attach post media:', mediaErr)
+        if (instruction.image_plan_id) {
+          if (!this.deps.mediaWriteBridge) {
+            imagePlanApplyError = 'MediaWriteBridge not configured'
+          } else {
+            try {
+              await this.deps.mediaWriteBridge.applyImagePlanAfterPersist({
+                image_plan_id: instruction.image_plan_id,
+                scene_type: 'forum_post',
+                scene_id: contentId,
+                created_by_id: agentId,
+              })
+            } catch (err) {
+              imagePlanApplyError = err instanceof Error ? err.message : 'apply_image_plan_failed'
+              console.error(
+                `[DataPlaneWriter] applyImagePlanAfterPersist failed for post ${contentId}: ${imagePlanApplyError}`,
+              )
+            }
           }
         }
       } else {
@@ -126,6 +136,18 @@ export class DataPlaneWriter {
               ...(instruction.audit_metadata
                 ? { audit_metadata: instruction.audit_metadata }
                 : {}),
+              ...(instruction.image_plan_id
+                ? {
+                    image_plan: {
+                      image_plan_id: instruction.image_plan_id,
+                      display_attachment_refs: instruction.display_attachment_refs ?? [],
+                      apply_after_persist_status: imagePlanApplyError ? 'failed' : 'linked',
+                      ...(imagePlanApplyError
+                        ? { apply_after_persist_error: imagePlanApplyError }
+                        : {}),
+                    },
+                  }
+                : {}),
             }, observation)
           : {
               content_id: contentId,
@@ -142,6 +164,18 @@ export class DataPlaneWriter {
                 : {}),
               ...(instruction.audit_metadata
                 ? { audit_metadata: instruction.audit_metadata }
+                : {}),
+              ...(instruction.image_plan_id
+                ? {
+                    image_plan: {
+                      image_plan_id: instruction.image_plan_id,
+                      display_attachment_refs: instruction.display_attachment_refs ?? [],
+                      apply_after_persist_status: imagePlanApplyError ? 'failed' : 'linked',
+                      ...(imagePlanApplyError
+                        ? { apply_after_persist_error: imagePlanApplyError }
+                        : {}),
+                    },
+                  }
                 : {}),
             },
         token_cost: usage.total_tokens,
@@ -220,9 +254,17 @@ export class DataPlaneWriter {
                   },
                 }
               : {}),
-            ...(input.instruction.audit_metadata
-              ? { audit_metadata: input.instruction.audit_metadata }
-              : {}),
+              ...(input.instruction.audit_metadata
+                ? { audit_metadata: input.instruction.audit_metadata }
+                : {}),
+              ...(input.instruction.image_plan_id
+                ? {
+                    image_plan: {
+                      image_plan_id: input.instruction.image_plan_id,
+                      display_attachment_refs: input.instruction.display_attachment_refs ?? [],
+                    },
+                  }
+                : {}),
           },
           failedObservation,
         ),

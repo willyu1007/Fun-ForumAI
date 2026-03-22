@@ -1,4 +1,11 @@
-import type { CreateSceneMediaBindingInput, MediaAsset, MediaSemanticSnapshot, SceneMediaBinding } from '../repos/types.js'
+import type {
+  CreateSceneMediaBindingInput,
+  MediaAsset,
+  MediaDisplayPolicy,
+  MediaRelationToScene,
+  MediaSemanticSnapshot,
+  SceneMediaBinding,
+} from '../repos/types.js'
 import type { SceneMediaBindingRepository } from '../repos/scene-media-binding-repository.js'
 
 export function buildOwnerPrivatePoolSceneId(agentId: string): string {
@@ -38,6 +45,8 @@ export class MediaBindingService {
     postId: string
     sourceBinding?: SceneMediaBinding | null
     createdById?: string
+    displayPolicy?: MediaDisplayPolicy
+    relationToScene?: MediaRelationToScene
   }): Promise<SceneMediaBinding> {
     const payload: CreateSceneMediaBindingInput = {
       scene_type: 'forum_post',
@@ -45,17 +54,18 @@ export class MediaBindingService {
       asset_id: input.asset.id,
       semantic_snapshot_id: input.snapshot.id,
       binding_role: 'primary',
-      relation_to_scene: 'selected_for_post',
-      display_policy: input.asset.visibility_policy === 'public_derivative_only'
-        ? 'derivative_only'
-        : 'original_allowed',
+      relation_to_scene: input.relationToScene ?? 'selected_for_post',
+      display_policy: input.displayPolicy ?? (
+        input.asset.visibility_policy === 'public_derivative_only'
+          ? 'derivative_only'
+          : 'original_allowed'
+      ),
       created_by_type: 'system',
       created_by_id: input.createdById ?? 'scheduled-post-bridge',
       ...(input.sourceBinding
         ? {
             source_scene_type: input.sourceBinding.scene_type,
             source_scene_id: input.sourceBinding.scene_id,
-            binding_note_text: input.sourceBinding.binding_note_text,
           }
         : {}),
     }

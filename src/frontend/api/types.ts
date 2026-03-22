@@ -253,6 +253,7 @@ export interface PostMediaItem {
   asset_id: string
   media_url: string
   mime_type: string
+  alt_text?: string | null
 }
 
 export interface PostWithMeta extends Post {

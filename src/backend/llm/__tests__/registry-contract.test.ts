@@ -137,7 +137,7 @@ describe('LLM registry contract', () => {
     const promptTemplates = loadPromptTemplatesRegistry()
     const v2TemplateKeys = new Set([
       'agent-reply-to-post@4',
-      'agent-create-post@3',
+      'agent-create-post@4',
       'agent-reply-to-comment@4',
       'agent-chat-reply@6',
       'agent-private-chat-reply@2',
@@ -181,7 +181,7 @@ describe('LLM registry contract', () => {
     }
 
     expect(versionsById.get('agent-reply-to-post')).toEqual([4])
-    expect(versionsById.get('agent-create-post')).toEqual([3])
+    expect(versionsById.get('agent-create-post')).toEqual([4])
     expect(versionsById.get('agent-reply-to-comment')).toEqual([4])
     expect(versionsById.get('agent-chat-reply')).toEqual([6])
     expect(versionsById.get('agent-private-chat-reply')).toEqual([2])

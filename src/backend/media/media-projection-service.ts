@@ -1,14 +1,32 @@
+import { randomUUID } from 'node:crypto'
 import type {
   MediaAsset,
   MediaContextProjection,
   MediaSemanticSummary,
   MediaSemanticSnapshot,
+  PublicMediaContextCard,
+  PublicScope,
   SceneMediaBinding,
+  VisualRole,
+  VisualSourceKind,
 } from '../repos/types.js'
 import type { MediaContextProjectionRepository } from '../repos/media-context-projection-repository.js'
 
 export interface MediaProjectionServiceDeps {
   mediaContextProjectionRepo: MediaContextProjectionRepository
+}
+
+export interface SerializedPublicMediaCard {
+  text: string
+  token_estimate: number
+  trimmed_fields: string[]
+  audit: {
+    omitted_sensitive_fields: string[]
+    contains_url: boolean
+    contains_asset_id: boolean
+    contains_owner_note: boolean
+    contains_private_text: boolean
+  }
 }
 
 function estimateTokens(value: string): number {
@@ -70,8 +88,10 @@ export class MediaProjectionService {
     asset: MediaAsset
     snapshot: MediaSemanticSnapshot
     mediaUrl: string
+    altText?: string
+    publicCaption?: string
   }): Promise<MediaContextProjection> {
-    const altText = input.snapshot.summary.public_safe_summary
+    const altText = input.altText ?? input.snapshot.summary.public_safe_summary
     return this.deps.mediaContextProjectionRepo.create({
       binding_id: input.binding.id,
       projection_surface: 'public_display',
@@ -84,9 +104,221 @@ export class MediaProjectionService {
         width: input.asset.width,
         height: input.asset.height,
         alt_text: altText,
+        public_caption: input.publicCaption ?? input.snapshot.summary.public_safe_summary,
       },
       token_estimate: estimateTokens(altText),
       preferred_display_variant: 'original',
     })
   }
+
+  async ensurePublicMediaCard(input: {
+    binding: SceneMediaBinding
+    asset: MediaAsset
+    snapshot: MediaSemanticSnapshot
+    source_kind: VisualSourceKind
+    derived_from_private: boolean
+    continuity_ref?: {
+      episode_id?: string | null
+      thread_post_id?: string | null
+    }
+    visual_role: VisualRole
+    prompt_weight: 'primary' | 'secondary' | 'accent'
+    mention_policy: PublicMediaContextCard['relation']['mention_policy']
+    why_now: string
+    public_scope: PublicScope
+    disclose_origin_policy: PublicMediaContextCard['governance']['disclose_origin_policy']
+    cross_agent_quote_allowed: boolean
+    original_display_allowed: boolean
+    derivative_display_allowed: boolean
+    preferred_variant: PublicMediaContextCard['display']['preferred_variant']
+    prohibited_reference_types: PublicMediaContextCard['governance']['prohibited_reference_types']
+    expires_at?: string | null
+    confidence: number
+    relevance_score: number
+  }): Promise<{ projection: MediaContextProjection; card: PublicMediaContextCard }> {
+    const projectionId = `media_projection_${randomUUID()}`
+    const cardId = `public_media_card_${randomUUID()}`
+    const card: PublicMediaContextCard = {
+      schema_version: 'public-media-context-card.v1',
+      card_id: cardId,
+      modality: 'image',
+      asset_ref: {
+        asset_id: input.asset.id,
+        semantic_snapshot_id: input.snapshot.id,
+        projection_id: projectionId,
+      },
+      source: {
+        kind: input.source_kind,
+        derived_from_private: input.derived_from_private,
+        ...(input.continuity_ref ? { continuity_ref: input.continuity_ref } : {}),
+      },
+      relation: {
+        visual_role: input.visual_role,
+        prompt_weight: input.prompt_weight,
+        mention_policy: input.mention_policy,
+        why_now: input.why_now,
+      },
+      public_summary: {
+        theme: input.snapshot.summary.theme,
+        scene: input.snapshot.summary.scene,
+        mood: input.snapshot.summary.mood,
+        salient_entities: input.snapshot.summary.salient_entities.slice(0, 5),
+        discussion_points: input.snapshot.summary.discussion_points.slice(0, 5),
+        public_safe_caption: trimCompact(input.snapshot.summary.public_safe_summary, 220),
+        alt_text: trimCompact(buildAltText(input.snapshot.summary), 180),
+        ...(input.snapshot.summary.ocr_snippets.length > 0
+          ? { ocr_snippets: input.snapshot.summary.ocr_snippets.slice(0, 3) }
+          : {}),
+      },
+      display: {
+        original_display_allowed: input.original_display_allowed,
+        derivative_display_allowed: input.derivative_display_allowed,
+        preferred_variant: input.preferred_variant,
+      },
+      governance: {
+        public_scope: input.public_scope,
+        disclose_origin_policy: input.disclose_origin_policy,
+        cross_agent_quote_allowed: input.cross_agent_quote_allowed,
+        prohibited_reference_types: input.prohibited_reference_types,
+        expires_at: input.expires_at ?? null,
+      },
+      audit: {
+        confidence: clamp(input.confidence, 0, 1),
+        relevance_score: clamp(input.relevance_score, 0, 1),
+        model_version: 't119-public-media-card.v1',
+      },
+    }
+    const serialized = this.serializePublicCardForPrompt({
+      card,
+      max_chars: 1_200,
+    })
+    const projection = await this.deps.mediaContextProjectionRepo.create({
+      id: projectionId,
+      binding_id: input.binding.id,
+      projection_surface: 'public_runtime',
+      projection_kind: 'public_media_context_card',
+      schema_version: card.schema_version,
+      payload_json: card as unknown as Record<string, unknown>,
+      token_estimate: serialized.token_estimate,
+      prompt_weight: input.prompt_weight,
+      mention_policy: input.mention_policy,
+      preferred_display_variant: input.preferred_variant,
+      expires_at: input.expires_at ? new Date(input.expires_at) : null,
+    })
+    return { projection, card }
+  }
+
+  serializePublicCardForPrompt(input: {
+    card: PublicMediaContextCard
+    max_chars: number
+    sensitive_terms?: string[]
+  }): SerializedPublicMediaCard {
+    const requiredLines = [
+      `visual_role: ${input.card.relation.visual_role}`,
+      `why_now: ${trimCompact(input.card.relation.why_now, 220)}`,
+      `theme/scene/mood: ${trimCompact(`${input.card.public_summary.theme} / ${input.card.public_summary.scene} / ${input.card.public_summary.mood}`, 220)}`,
+    ]
+    const protectedOptionalLines: Array<{ field: string; text: string }> = [
+      {
+        field: 'salient_entities',
+        text: input.card.public_summary.salient_entities.length > 0
+          ? `salient_entities: ${trimCompact(input.card.public_summary.salient_entities.join(', '), 180)}`
+          : '',
+      },
+      {
+        field: 'discussion_points',
+        text: input.card.public_summary.discussion_points.length > 0
+          ? `discussion_points: ${trimCompact(input.card.public_summary.discussion_points.join(' | '), 220)}`
+          : '',
+      },
+      {
+        field: 'governance',
+        text: buildGovernanceLine(input.card),
+      },
+    ].filter((item) => item.text.trim().length > 0)
+    const discardableOptionalLines: Array<{ field: string; text: string }> = [
+      {
+        field: 'public_safe_caption',
+        text: input.card.public_summary.public_safe_caption
+          ? `public_safe_caption: ${trimCompact(input.card.public_summary.public_safe_caption, 220)}`
+          : '',
+      },
+      {
+        field: 'ocr_snippets',
+        text: input.card.public_summary.ocr_snippets?.length
+          ? `ocr_snippets: ${input.card.public_summary.ocr_snippets.join(' | ')}`
+          : '',
+      },
+    ].filter((item) => item.text.trim().length > 0)
+
+    const kept = [...requiredLines]
+    const trimmedFields: string[] = []
+    let governanceDropped = false
+    for (const optional of protectedOptionalLines) {
+      const next = [...kept, optional.text].join('\n')
+      if (next.length > input.max_chars) {
+        trimmedFields.push(optional.field)
+        if (optional.field === 'governance') {
+          governanceDropped = true
+        }
+        continue
+      }
+      kept.push(optional.text)
+    }
+    if (!governanceDropped) {
+      for (const optional of discardableOptionalLines) {
+        const next = [...kept, optional.text].join('\n')
+        if (next.length > input.max_chars) {
+          trimmedFields.push(optional.field)
+          continue
+        }
+        kept.push(optional.text)
+      }
+    }
+
+    const text = kept.join('\n')
+    const sensitiveTerms = [
+      input.card.asset_ref.asset_id,
+      ...(input.sensitive_terms ?? []),
+    ].filter((item): item is string => typeof item === 'string' && item.length > 0)
+
+    return {
+      text,
+      token_estimate: estimateTokens(text),
+      trimmed_fields: trimmedFields,
+      audit: {
+        omitted_sensitive_fields: ['asset_id', 'asset_url', 'owner_note', 'raw_private_text'],
+        contains_url: /(https?:\/\/|s3:\/\/|\/uploads\/)/i.test(text),
+        contains_asset_id: text.includes(input.card.asset_ref.asset_id),
+        contains_owner_note: sensitiveTerms.slice(1).some((item) => text.includes(item)),
+        contains_private_text: sensitiveTerms.slice(1).some((item) => text.includes(item)),
+      },
+    }
+  }
+}
+
+function buildAltText(summary: MediaSemanticSummary): string {
+  if (summary.public_safe_summary.trim().length > 0) {
+    return summary.public_safe_summary.trim()
+  }
+  return [summary.theme, summary.scene, summary.mood].filter(Boolean).join(', ')
+}
+
+function buildGovernanceLine(card: PublicMediaContextCard): string {
+  const originRule = card.governance.disclose_origin_policy === 'never'
+    ? '不要解释素材来源'
+    : '只按公开可见线索描述'
+  const refRule = card.governance.prohibited_reference_types.length > 0
+    ? `禁止引用: ${card.governance.prohibited_reference_types.join(', ')}`
+    : '遵守公共治理边界'
+  return `governance: ${originRule}; ${refRule}`
+}
+
+function trimCompact(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text
+  return `${text.slice(0, Math.max(0, maxChars - 3)).trimEnd()}...`
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
 }

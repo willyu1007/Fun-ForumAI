@@ -8,6 +8,7 @@ export interface ForumSceneMetadataRepository {
   findByPostId(postId: string): Promise<ForumSceneMetadata | null>
   findByCommentId(commentId: string): Promise<ForumSceneMetadata | null>
   findLatestByCommunityId(communityId: string): Promise<ForumSceneMetadata | null>
+  listByEpisodeId(episodeId: string): Promise<ForumSceneMetadata[]>
   listByCommunityIdSince(communityId: string, since: Date): Promise<ForumSceneMetadata[]>
   deleteByTarget(input: { post_id?: string | null; comment_id?: string | null }): Promise<void>
 }
@@ -81,6 +82,12 @@ export class InMemoryForumSceneMetadataRepository implements ForumSceneMetadataR
       .filter((item) => item.community_id === communityId)
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
     return items[0] ?? null
+  }
+
+  async listByEpisodeId(episodeId: string): Promise<ForumSceneMetadata[]> {
+    return Array.from(this.store.values())
+      .filter((item) => item.episode_id === episodeId)
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
   }
 
   async listByCommunityIdSince(communityId: string, since: Date): Promise<ForumSceneMetadata[]> {

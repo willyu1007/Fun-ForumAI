@@ -520,6 +520,48 @@ model MediaContextProjection {
   @@map("media_context_projections")
 }
 
+model VisualDirectiveRecord {
+  id              String            @id @default(cuid())
+  schemaVersion   String            @default("visual-directive.v1") @map("schema_version")
+  sceneRef        Json              @map("scene_ref")
+  goal            Json
+  narrativeContext Json             @map("narrative_context")
+  sourcingPolicy  Json              @map("sourcing_policy")
+  guardrails      Json
+  budget          Json
+  audit           Json
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  imagePlans      ImagePlanRecord[]
+
+  @@index([createdAt])
+  @@map("visual_directives")
+}
+
+model ImagePlanRecord {
+  id              String                @id @default(cuid())
+  directiveId     String                @map("directive_id")
+  schemaVersion   String                @default("image-plan.v1") @map("schema_version")
+  sceneRef        Json                  @map("scene_ref")
+  status          String
+  decision        String
+  reason          String                @db.Text
+  runtime         Json
+  display         Json
+  generation      Json
+  selectedSources Json                  @map("selected_sources")
+  plannerAudit    Json                  @map("planner_audit")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+
+  directive       VisualDirectiveRecord @relation(fields: [directiveId], references: [id])
+
+  @@index([directiveId, createdAt])
+  @@index([status, createdAt])
+  @@map("image_plans")
+}
+
 model PostMedia {
   id        String   @id @default(cuid())
   postId    String   @map("post_id")

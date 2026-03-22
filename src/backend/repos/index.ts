@@ -274,6 +274,14 @@ export {
 } from './media-context-projection-repository.js'
 export { type PostMediaRepository, InMemoryPostMediaRepository } from './post-media-repository.js'
 export {
+  type VisualDirectiveRepository,
+  InMemoryVisualDirectiveRepository,
+} from './visual-directive-repository.js'
+export {
+  type ImagePlanRepository,
+  InMemoryImagePlanRepository,
+} from './image-plan-repository.js'
+export {
   type AgentRepository,
   type AgentConfigRepository,
   InMemoryAgentRepository,
@@ -392,6 +400,8 @@ export { PgMediaSemanticSnapshotRepository } from './pg/pg-media-semantic-snapsh
 export { PgSceneMediaBindingRepository } from './pg/pg-scene-media-binding-repository.js'
 export { PgMediaContextProjectionRepository } from './pg/pg-media-context-projection-repository.js'
 export { PgPostMediaRepository } from './pg/pg-post-media-repository.js'
+export { PgVisualDirectiveRepository } from './pg/pg-visual-directive-repository.js'
+export { PgImagePlanRepository } from './pg/pg-image-plan-repository.js'
 export { PgAgentRepository, PgAgentConfigRepository } from './pg/pg-agent-repository.js'
 export { PgCommunityRepository } from './pg/pg-community-repository.js'
 export { PgAgentCommunityMembershipRepository } from './pg/pg-agent-community-membership-repository.js'

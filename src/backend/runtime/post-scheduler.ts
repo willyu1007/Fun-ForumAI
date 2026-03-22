@@ -5,10 +5,7 @@ import type { AgentService } from '../services/agent-service.js'
 import type { ResponseParser } from './response-parser.js'
 import type { DataPlaneWriter } from './data-plane-writer.js'
 import type { AgentPersona } from './types.js'
-import type {
-  InclinationAssetService,
-  ScheduledMediaCandidate,
-} from '../services/inclination-asset-service.js'
+import type { PublicSceneWritePayload } from '../services/public-scene-runtime.js'
 import type { PromptOrchestrator } from './prompt-orchestrator.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { InferenceProfileService } from '../services/inference-profile-service.js'
@@ -17,6 +14,9 @@ import type { EventRepository, AgentRunRepository } from '../repos/event-reposit
 import type { AgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
 import type { PublicSceneSelectorService } from '../services/public-scene-selector-service.js'
 import type { PromptComposeAudit } from './types.js'
+import type { MediaProjectionService } from '../media/media-projection-service.js'
+import type { VisualDirectiveService } from '../media/visual-directive-service.js'
+import type { ImagePlannerService } from '../media/image-planner-service.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
@@ -41,8 +41,10 @@ export interface PostSchedulerDeps {
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
   membershipRepo?: Pick<AgentCommunityMembershipRepository, 'listActiveCommunityIdsByAgent'>
-  inclinationAssetService?: Pick<InclinationAssetService, 'listPendingAgentIds' | 'getPendingForAgent'>
   promptOrchestrator?: PromptOrchestrator | null
+  mediaProjectionService?: MediaProjectionService | null
+  visualDirectiveService?: VisualDirectiveService | null
+  imagePlannerService?: ImagePlannerService | null
   personaStateService?: PersonaStateService | null
   inferenceProfileService?: InferenceProfileService | null
   publicSceneSelectorService?: PublicSceneSelectorService | null
@@ -76,7 +78,24 @@ interface CommunityCandidate {
 interface SelectedAgent {
   id: string
   display_name: string
-  pending_asset: ScheduledMediaCandidate | null
+}
+
+interface ScheduledPostVisualPlan {
+  directive_id: string
+  image_plan_id: string
+  runtime_card_ids: string[]
+  current_context_source?: {
+    kind: 'public_media_card'
+    text: string
+    priority: 'high'
+    source_id: string
+  }
+  display_attachment_refs: Array<{
+    asset_id: string
+    slot: number
+    display_variant: 'original' | 'generated_derivative'
+  }>
+  planning_audit: Record<string, unknown>
 }
 
 /**
@@ -146,6 +165,7 @@ export class PostScheduler {
       const scenePayload = sceneSelection.kind === 'scene'
         ? sceneSelection.payload
         : null
+      let effectiveScenePayload = scenePayload
       const scheduledFallbackReason = sceneSelection.kind === 'skip'
         ? sceneSelection.reason
         : null
@@ -156,11 +176,46 @@ export class PostScheduler {
       }
       const promptRef = scenePayload
         ? PROMPT_TEMPLATE_REFS.agentCreatePostScene
-        : buildPromptTemplateRef('agent-create-post', 3)
+        : buildPromptTemplateRef('agent-create-post', 4)
 
       const persona = this.loadPersona(selected.id)
       const recentPosts = await this.getRecentPostsSummary(targetCommunity.id)
       const communityCatalog = this.toCommunityCatalog(eligibleCommunities)
+      let visualPlan: ScheduledPostVisualPlan | null = null
+      if (scenePayload) {
+        try {
+          visualPlan = await this.prepareVisualPlan({
+            agent_id: selected.id,
+            community_id: targetCommunity.id,
+            scenePayload,
+          })
+          if (visualPlan) {
+            effectiveScenePayload = {
+              ...scenePayload,
+              planning_audit: {
+                ...(scenePayload.planning_audit ?? {}),
+                ...visualPlan.planning_audit,
+              },
+              visual_ref: {
+                directive_id: visualPlan.directive_id,
+                image_plan_id: visualPlan.image_plan_id,
+                runtime_card_ids: visualPlan.runtime_card_ids,
+              },
+            }
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'visual_planning_failed'
+          console.error(`[PostScheduler] visual planning failed for agent=${selected.id}: ${message}`)
+          effectiveScenePayload = {
+            ...scenePayload,
+            planning_audit: {
+              ...(scenePayload.planning_audit ?? {}),
+              visual_planning_status: 'degraded',
+              visual_planning_error: message,
+            },
+          }
+        }
+      }
       const observationIdentity = this.resolveObservationIdentity(selected.id)
       let promptAudit: PromptComposeAudit | null = null
       let composedBlocks: {
@@ -184,8 +239,8 @@ export class PostScheduler {
       const composed = await this.deps.promptOrchestrator.compose({
         agentId: selected.id,
         scene: 'scheduled_post',
-        conversationText: scenePayload
-          ? `${recentPosts}\n${scenePayload.local_intent_block}`.trim()
+        conversationText: effectiveScenePayload
+          ? `${recentPosts}\n${effectiveScenePayload.local_intent_block}`.trim()
           : `${recentPosts}\n${communityCatalog}`.trim(),
         communityId: targetCommunity.id,
         topicHints: [targetCommunity.name, ...persona.interests].slice(0, 10),
@@ -202,16 +257,17 @@ export class PostScheduler {
             priority: 'medium',
             source_id: `scheduled:${selected.id}:community_catalog`,
           },
-          ...(scenePayload?.local_intent_block
+          ...(effectiveScenePayload?.local_intent_block
             ? [{
                 kind: 'local_intent' as const,
-                text: scenePayload.local_intent_block,
+                text: effectiveScenePayload.local_intent_block,
                 priority: 'high' as const,
                 source_id:
-                  scenePayload.scene_metadata.local_intent_id
-                  ?? scenePayload.scene_metadata.selection_id,
+                  effectiveScenePayload.scene_metadata.local_intent_id
+                  ?? effectiveScenePayload.scene_metadata.selection_id,
               }]
             : []),
+          ...(visualPlan?.current_context_source ? [visualPlan.current_context_source] : []),
         ],
         requestEnvelope: {
           static_system_tokens: 200,
@@ -266,13 +322,13 @@ export class PostScheduler {
           agent_id: selected.id,
           fallback_community_id: fallbackCommunity.id,
           target_community_id: targetCommunity.id,
-          ...(scenePayload
+          ...(effectiveScenePayload
             ? {
                 public_scene: {
-                  episode_id: scenePayload.scene_metadata.episode_id,
-                  selection_id: scenePayload.scene_metadata.selection_id,
-                  episode_plan_id: scenePayload.scene_metadata.episode_plan_id,
-                  local_intent_id: scenePayload.scene_metadata.local_intent_id,
+                  episode_id: effectiveScenePayload.scene_metadata.episode_id,
+                  selection_id: effectiveScenePayload.scene_metadata.selection_id,
+                  episode_plan_id: effectiveScenePayload.scene_metadata.episode_plan_id,
+                  local_intent_id: effectiveScenePayload.scene_metadata.local_intent_id,
                 },
               }
             : {}),
@@ -329,7 +385,7 @@ export class PostScheduler {
         text: llmResponse.content,
         fallbackCommunityId: targetCommunity.id,
         communities: eligibleCommunities,
-        lockedCommunityId: scenePayload ? targetCommunity.id : undefined,
+        lockedCommunityId: effectiveScenePayload ? targetCommunity.id : undefined,
       })
 
       if (!instruction) {
@@ -373,8 +429,8 @@ export class PostScheduler {
         }
       }
 
-      if (scenePayload) {
-        instruction.public_scene = scenePayload
+      if (effectiveScenePayload) {
+        instruction.public_scene = effectiveScenePayload
       }
       if (scheduledFallbackReason) {
         instruction.audit_metadata = {
@@ -383,11 +439,16 @@ export class PostScheduler {
           scheduled_post_scene_reason: scheduledFallbackReason,
         }
       }
-
-      if (selected.pending_asset && config.features.multimodalAgentInclinationV1) {
-        instruction.media_asset_id = selected.pending_asset.id
-        instruction.media_url = selected.pending_asset.media_url
-        instruction.media_mime_type = selected.pending_asset.mime_type
+      if (visualPlan) {
+        instruction.image_plan_id = visualPlan.image_plan_id
+        instruction.display_attachment_refs = visualPlan.display_attachment_refs
+        instruction.audit_metadata = {
+          ...(instruction.audit_metadata ?? {}),
+          visual_directive_id: visualPlan.directive_id,
+          image_plan_id: visualPlan.image_plan_id,
+          planner_status: visualPlan.planning_audit.planner_status,
+          planner_decision: visualPlan.planning_audit.planner_decision,
+        }
       }
 
       const writeResult = await this.deps.dataplaneWriter.write(
@@ -477,20 +538,16 @@ export class PostScheduler {
     const activeAgents = this.listEligibleAgents()
     if (activeAgents.length === 0) return null
 
-    if (config.features.multimodalAgentInclinationV1 && this.deps.inclinationAssetService) {
-      const pendingAgentIds = await this.deps.inclinationAssetService.listPendingAgentIds(100)
+    if (config.features.multimodalAgentInclinationV1 && this.deps.imagePlannerService?.listAgentIdsWithOwnerPrivatePoolCandidates) {
+      const prioritizedAgentIds = await this.deps.imagePlannerService.listAgentIdsWithOwnerPrivatePoolCandidates(100)
       const activeById = new Map(activeAgents.map((agent) => [agent.id, agent]))
-      const prioritized = pendingAgentIds
-        .map((id) => activeById.get(id))
-        .filter((item): item is NonNullable<typeof item> => item != null)
-
-      for (const selected of prioritized) {
-        const pendingAsset = await this.deps.inclinationAssetService.getPendingForAgent(selected.id)
-        if (!pendingAsset) continue
-        return {
-          id: selected.id,
-          display_name: selected.display_name,
-          pending_asset: pendingAsset,
+      for (const agentId of prioritizedAgentIds) {
+        const selected = activeById.get(agentId)
+        if (selected) {
+          return {
+            id: selected.id,
+            display_name: selected.display_name,
+          }
         }
       }
     }
@@ -499,7 +556,6 @@ export class PostScheduler {
     return {
       id: selected.id,
       display_name: selected.display_name,
-      pending_asset: null,
     }
   }
 
@@ -614,6 +670,72 @@ export class PostScheduler {
         feed.items.map((p) => `- **${p.title}**`).join('\n')
     } catch {
       return ''
+    }
+  }
+
+  private async prepareVisualPlan(input: {
+    agent_id: string
+    community_id: string
+    scenePayload: PublicSceneWritePayload
+  }): Promise<ScheduledPostVisualPlan | null> {
+    if (!this.deps.visualDirectiveService || !this.deps.imagePlannerService || !this.deps.mediaProjectionService) {
+      return null
+    }
+
+    const directive = await this.deps.visualDirectiveService.createScheduledPostDirective({
+      community_id: input.community_id,
+      payload: input.scenePayload,
+    })
+    const plan = await this.deps.imagePlannerService.planScheduledPost({
+      agent_id: input.agent_id,
+      directive,
+    })
+    const firstCard = plan.runtime.cards[0] ?? null
+    const serialized = firstCard
+      ? this.deps.mediaProjectionService.serializePublicCardForPrompt({
+          card: firstCard,
+          max_chars: 1_200,
+        })
+      : null
+    const promptAudit = serialized?.audit ?? null
+    const promptSafe = serialized
+      ? !serialized.audit.contains_url
+        && !serialized.audit.contains_asset_id
+        && !serialized.audit.contains_owner_note
+        && !serialized.audit.contains_private_text
+      : false
+
+    return {
+      directive_id: directive.id,
+      image_plan_id: plan.id,
+      runtime_card_ids: plan.runtime.cards.map((card) => card.card_id),
+      ...(firstCard && serialized && promptSafe
+        ? {
+            current_context_source: {
+              kind: 'public_media_card' as const,
+              text: serialized.text,
+              priority: 'high' as const,
+              source_id: firstCard.card_id,
+            },
+          }
+        : {}),
+      display_attachment_refs: plan.display.attachments.map((attachment) => ({
+        asset_id: attachment.asset_id,
+        slot: attachment.slot,
+        display_variant: attachment.display_variant,
+      })),
+      planning_audit: {
+        visual_directive_id: directive.id,
+        image_plan_id: plan.id,
+        planner_status: plan.status,
+        planner_decision: plan.decision,
+        planner_reason: plan.reason,
+        runtime_card_ids: plan.runtime.cards.map((card) => card.card_id),
+        public_media_prompt_audit: promptAudit,
+        public_media_prompt_injection_status: firstCard
+          ? (promptSafe ? 'accepted' : 'blocked_by_audit')
+          : 'not_requested',
+      },
     }
   }
 }

@@ -23,6 +23,10 @@ import type { PublicSceneSelectorService } from '../services/public-scene-select
 import type { ForumSceneContinuityService } from '../services/forum-scene-continuity-service.js'
 import type { XpService } from '../services/xp-service.js'
 import type { NurtureOrchestrator } from '../services/nurture-orchestrator.js'
+import type { MediaProjectionService } from '../media/media-projection-service.js'
+import type { MediaWriteBridge } from '../media/media-write-bridge.js'
+import type { VisualDirectiveService } from '../media/visual-directive-service.js'
+import type { ImagePlannerService } from '../media/image-planner-service.js'
 import type { AgentRunRepository } from '../repos/event-repository.js'
 import type { EventRepository } from '../repos/event-repository.js'
 import type { PostRepository } from '../repos/post-repository.js'
@@ -43,6 +47,10 @@ export function createRuntime(deps: {
   publicSceneSelectorService?: PublicSceneSelectorService | null
   forumSceneContinuityService?: ForumSceneContinuityService | null
   promptOrchestrator: PromptOrchestrator | null
+  mediaProjectionService: MediaProjectionService
+  mediaWriteBridge: MediaWriteBridge
+  visualDirectiveService: VisualDirectiveService
+  imagePlannerService: ImagePlannerService
   xpService: XpService | null
   nurtureOrchestrator: NurtureOrchestrator | null
   eventRepo: EventRepository
@@ -77,7 +85,7 @@ export function createRuntime(deps: {
     chatService: deps.chatService,
     xpService: deps.xpService,
     nurtureOrchestrator: deps.nurtureOrchestrator,
-    inclinationAssetService: deps.inclinationAssetService,
+    mediaWriteBridge: deps.mediaWriteBridge,
   })
 
   const agentExecutor = new AgentExecutor({
@@ -101,8 +109,10 @@ export function createRuntime(deps: {
       eventRepo: deps.eventRepo,
       agentRunRepo: deps.agentRunRepo,
       membershipRepo: deps.membershipRepo,
-      inclinationAssetService: deps.inclinationAssetService,
       promptOrchestrator: deps.promptOrchestrator,
+      mediaProjectionService: deps.mediaProjectionService,
+      visualDirectiveService: deps.visualDirectiveService,
+      imagePlannerService: deps.imagePlannerService,
       personaStateService: deps.personaStateService,
       inferenceProfileService: deps.inferenceProfileService,
       publicSceneSelectorService: deps.publicSceneSelectorService,

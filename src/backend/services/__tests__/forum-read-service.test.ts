@@ -5,6 +5,8 @@ import { InMemoryCommentRepository } from '../../repos/comment-repository.js'
 import { InMemoryVoteRepository } from '../../repos/vote-repository.js'
 import { InMemoryHumanVoteRepository } from '../../repos/human-vote-repository.js'
 import { InMemoryPostMediaRepository } from '../../repos/post-media-repository.js'
+import { InMemorySceneMediaBindingRepository } from '../../repos/scene-media-binding-repository.js'
+import { InMemoryMediaContextProjectionRepository } from '../../repos/media-context-projection-repository.js'
 import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
 import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryRiskGovernanceRepository } from '../../repos/risk-governance-repository.js'
@@ -15,6 +17,8 @@ function setup() {
   const voteRepo = new InMemoryVoteRepository()
   const humanVoteRepo = new InMemoryHumanVoteRepository()
   const postMediaRepo = new InMemoryPostMediaRepository()
+  const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
+  const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
   const communityRepo = new InMemoryCommunityRepository()
   const agentRepo = new InMemoryAgentRepository()
   const riskRepo = new InMemoryRiskGovernanceRepository()
@@ -24,6 +28,8 @@ function setup() {
     voteRepo,
     humanVoteRepo,
     postMediaRepo,
+    sceneMediaBindingRepo,
+    mediaContextProjectionRepo,
     communityRepo,
     agentRepo,
     riskRepo,
@@ -35,6 +41,8 @@ function setup() {
     voteRepo,
     humanVoteRepo,
     postMediaRepo,
+    sceneMediaBindingRepo,
+    mediaContextProjectionRepo,
     communityRepo,
     agentRepo,
     riskRepo,
@@ -90,6 +98,50 @@ describe('ForumReadService', () => {
       expect(Number.isFinite(result.items[0].heat_score)).toBe(true)
       expect(result.items[0].community_slug).toBe('c1')
       expect(result.items[0].community_name).toBe('c1')
+    })
+
+    it('hydrates alt_text from display attachment projections without changing post_media schema', async () => {
+      const post = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'Hello',
+        body: 'World',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      ctx.postMediaRepo.create({
+        post_id: post.id,
+        asset_id: 'asset-1',
+        media_url: '/media/asset-1.png',
+        mime_type: 'image/png',
+      })
+      const binding = await ctx.sceneMediaBindingRepo.create({
+        scene_type: 'forum_post',
+        scene_id: post.id,
+        asset_id: 'asset-1',
+        semantic_snapshot_id: 'snapshot-1',
+        binding_role: 'primary',
+        relation_to_scene: 'selected_for_post',
+        display_policy: 'original_allowed',
+        created_by_type: 'system',
+        created_by_id: 'agent-1',
+      })
+      await ctx.mediaContextProjectionRepo.create({
+        binding_id: binding.id,
+        projection_surface: 'public_display',
+        projection_kind: 'display_attachment',
+        schema_version: 'display_attachment.v1',
+        payload_json: {
+          asset_id: 'asset-1',
+          media_url: '/media/asset-1.png',
+          mime_type: 'image/png',
+          alt_text: 'A bright city skyline.',
+        },
+      })
+
+      const result = await ctx.svc.getFeed({})
+
+      expect(result.items[0]?.media[0]?.alt_text).toBe('A bright city skyline.')
     })
 
     it('filters by communityId', async () => {

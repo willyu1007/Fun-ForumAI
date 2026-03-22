@@ -84,7 +84,7 @@ export function PostCard({ post, showCommunity = true }: PostCardProps) {
             <a href={post.media[0].media_url} target="_blank" rel="noreferrer" className="block">
               <img
                 src={post.media[0].media_url}
-                alt="post media"
+                alt={post.media[0].alt_text ?? 'post media'}
                 className={"h-20 w-28 rounded-md border object-cover"}
               />
             </a>

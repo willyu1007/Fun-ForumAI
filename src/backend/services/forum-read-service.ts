@@ -4,6 +4,8 @@ import type {
   VoteRepository,
   HumanVoteRepository,
   PostMediaRepository,
+  SceneMediaBindingRepository,
+  MediaContextProjectionRepository,
   CommunityRepository,
   AgentRepository,
   Post,
@@ -22,6 +24,8 @@ export interface ForumReadServiceDeps {
   voteRepo: VoteRepository
   humanVoteRepo: HumanVoteRepository
   postMediaRepo: PostMediaRepository
+  sceneMediaBindingRepo: SceneMediaBindingRepository
+  mediaContextProjectionRepo: MediaContextProjectionRepository
   communityRepo: CommunityRepository
   agentRepo: AgentRepository
   achievementChronicleService?: AchievementChronicleService
@@ -32,6 +36,7 @@ export interface PostMediaSummary {
   asset_id: string
   media_url: string
   mime_type: string
+  alt_text?: string | null
 }
 
 export interface AuthorSummary {
@@ -259,6 +264,35 @@ export class ForumReadService {
     return { items: page, next_cursor }
   }
 
+  private async resolvePostMediaAltText(postIds: string[]): Promise<Record<string, Record<string, string | null>>> {
+    if (postIds.length === 0) return {}
+    const bindings = await this.deps.sceneMediaBindingRepo.findByScenes('forum_post', postIds)
+    if (bindings.length === 0) return {}
+    const projections = await this.deps.mediaContextProjectionRepo.findByBindingIds(bindings.map((binding) => binding.id))
+    const altByBindingId = new Map<string, string | null>()
+    for (const projection of projections) {
+      if (
+        projection.projection_surface !== 'public_display'
+        || projection.projection_kind !== 'display_attachment'
+        || altByBindingId.has(projection.binding_id)
+      ) {
+        continue
+      }
+      const altText = projection.payload_json.alt_text
+      altByBindingId.set(
+        projection.binding_id,
+        typeof altText === 'string' && altText.trim().length > 0 ? altText : null,
+      )
+    }
+
+    const altByPostId: Record<string, Record<string, string | null>> = {}
+    for (const binding of bindings) {
+      if (!altByPostId[binding.scene_id]) altByPostId[binding.scene_id] = {}
+      altByPostId[binding.scene_id]![binding.asset_id] = altByBindingId.get(binding.id) ?? null
+    }
+    return altByPostId
+  }
+
   private async toPostWithMeta(
     post: Post,
     nowMs: number,
@@ -332,6 +366,7 @@ export class ForumReadService {
     const nowMs = Date.now()
 
     const mediaByPost = this.deps.postMediaRepo.findByPostIds(result.items.map((post) => post.id))
+    const altTextByPost = await this.resolvePostMediaAltText(result.items.map((post) => post.id))
     const items: PostWithMeta[] = await Promise.all(
       result.items.map((post) => this.toPostWithMeta(
         post,
@@ -341,6 +376,7 @@ export class ForumReadService {
           asset_id: item.asset_id,
           media_url: item.media_url,
           mime_type: item.mime_type,
+          alt_text: altTextByPost[post.id]?.[item.asset_id] ?? null,
         })),
       )),
     )
@@ -374,10 +410,12 @@ export class ForumReadService {
     const post = await this.deps.postRepo.findById(postId)
     if (!post) throw new NotFoundError('Post', postId)
 
+    const altTextByPost = await this.resolvePostMediaAltText([post.id])
     const media = this.deps.postMediaRepo.findByPostId(post.id).map((item) => ({
       asset_id: item.asset_id,
       media_url: item.media_url,
       mime_type: item.mime_type,
+      alt_text: altTextByPost[post.id]?.[item.asset_id] ?? null,
     }))
 
     return this.toPostWithMeta(post, Date.now(), viewerUserId, media)

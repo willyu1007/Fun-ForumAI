@@ -71,6 +71,9 @@ const llm = createLlmServices({
   sceneMediaBindingRepo: repos.sceneMediaBindingRepo,
   mediaContextProjectionRepo: repos.mediaContextProjectionRepo,
   postMediaRepo: repos.postMediaRepo,
+  visualDirectiveRepo: repos.visualDirectiveRepo,
+  imagePlanRepo: repos.imagePlanRepo,
+  forumSceneMetadataRepo: repos.forumSceneMetadataRepo,
   eventRepo: repos.eventRepo,
   agentRunRepo: repos.agentRunRepo,
   usageLedgerRepo: pgUsageLedgerRepo,
@@ -269,6 +272,10 @@ const rt = createRuntime({
   publicSceneSelectorService: core.publicSceneSelectorService,
   forumSceneContinuityService: core.forumSceneContinuityService,
   promptOrchestrator: nurture.promptOrchestrator,
+  mediaProjectionService: llm.mediaProjectionService,
+  mediaWriteBridge: llm.mediaWriteBridge,
+  visualDirectiveService: llm.visualDirectiveService,
+  imagePlannerService: llm.imagePlannerService,
   xpService: nurture.xpService,
   nurtureOrchestrator: nurture.nurtureOrchestrator,
   eventRepo: repos.eventRepo,
@@ -381,6 +388,10 @@ export const usageLedger = llm.usageLedger
 export const usageLedgerRepo = llm.usageLedgerRepo
 export const promptEngine = llm.promptEngine
 export const inclinationAssetService = llm.inclinationAssetService
+export const mediaProjectionService = llm.mediaProjectionService
+export const mediaWriteBridge = llm.mediaWriteBridge
+export const visualDirectiveService = llm.visualDirectiveService
+export const imagePlannerService = llm.imagePlannerService
 
 export const achievementChronicleService = core.achievementChronicleService
 export const forumReadService = core.forumReadService

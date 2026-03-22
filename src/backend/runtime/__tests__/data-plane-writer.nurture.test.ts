@@ -76,6 +76,56 @@ describe('DataPlaneWriter nurture routing', () => {
     expect(awardXP).toHaveBeenCalledWith('agent-1', 'forum_comment', 1)
   })
 
+  it('keeps post persistence successful when applyImagePlanAfterPersist fails', async () => {
+    const { DataPlaneWriter } = await import('../data-plane-writer.js')
+
+    const agentRunCreate = vi.fn()
+    const createPost = vi.fn().mockResolvedValue({ post: { id: 'post-1' } })
+    const applyImagePlanAfterPersist = vi.fn().mockRejectedValue(new Error('projection failed'))
+
+    const writer = new DataPlaneWriter({
+      forumWriteService: { createPost, createComment: vi.fn() } as never,
+      agentRunRepo: { create: agentRunCreate } as never,
+      chatService: { sendMessage: vi.fn() } as never,
+      nurtureOrchestrator: { onContentProduced: vi.fn().mockResolvedValue(undefined) } as never,
+      xpService: { awardXP: vi.fn().mockResolvedValue(undefined) } as never,
+      mediaWriteBridge: { applyImagePlanAfterPersist } as never,
+    })
+
+    const instruction: WriteInstruction = {
+      action: 'create_post',
+      community_id: 'community-1',
+      title: 'hello',
+      body: 'world',
+      image_plan_id: 'image-plan-1',
+      display_attachment_refs: [{
+        asset_id: 'asset-1',
+        slot: 0,
+        display_variant: 'original',
+      }],
+    }
+
+    const result = await writer.write(instruction, 'agent-1', 'evt-1', makeUsage(), 10)
+
+    expect(result).toEqual({ success: true, content_id: 'post-1' })
+    expect(applyImagePlanAfterPersist).toHaveBeenCalledWith({
+      image_plan_id: 'image-plan-1',
+      scene_type: 'forum_post',
+      scene_id: 'post-1',
+      created_by_id: 'agent-1',
+    })
+    expect(agentRunCreate).toHaveBeenCalledTimes(1)
+    expect(agentRunCreate).toHaveBeenCalledWith(expect.objectContaining({
+      output_json: expect.objectContaining({
+        image_plan: expect.objectContaining({
+          image_plan_id: 'image-plan-1',
+          apply_after_persist_status: 'failed',
+          apply_after_persist_error: 'projection failed',
+        }),
+      }),
+    }))
+  })
+
   it('does not issue extra XP in create_message path (chat service owns message XP)', async () => {
     const { DataPlaneWriter } = await import('../data-plane-writer.js')
 

@@ -3,7 +3,7 @@ import type { PromptTemplateRef } from './gateway-contract.js'
 export const PROMPT_TEMPLATE_REFS = {
   agentReplyToPost: { id: 'agent-reply-to-post', version: 4 },
   agentReplyToPostScene: { id: 'agent-reply-to-post', version: 4 },
-  agentCreatePostScene: { id: 'agent-create-post', version: 3 },
+  agentCreatePostScene: { id: 'agent-create-post', version: 4 },
   agentReplyToComment: { id: 'agent-reply-to-comment', version: 4 },
   agentReplyToCommentScene: { id: 'agent-reply-to-comment', version: 4 },
   agentChatReply: { id: 'agent-chat-reply', version: 6 },

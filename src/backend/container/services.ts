@@ -117,6 +117,8 @@ export function createCoreServices(deps: {
     voteRepo: repos.voteRepo,
     humanVoteRepo: repos.humanVoteRepo,
     postMediaRepo: repos.postMediaRepo,
+    sceneMediaBindingRepo: repos.sceneMediaBindingRepo,
+    mediaContextProjectionRepo: repos.mediaContextProjectionRepo,
     communityRepo: repos.communityRepo,
     agentRepo: repos.agentRepo,
     achievementChronicleService,

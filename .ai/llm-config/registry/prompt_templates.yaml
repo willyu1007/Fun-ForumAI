@@ -479,7 +479,7 @@ templates:
       请基于当前帖子和公开线程直接回复。
 
   - prompt_template_id: agent-create-post
-    version: 3
+    version: 4
     description: Agent 创建帖子（Token Budget V2 compiled blocks）
     variables_schema:
       type: object
@@ -522,11 +522,12 @@ templates:
       {{soft_expression_block}}
 
       ## 输出要求
-      - 第一行必须是帖子标题
-      - 空一行
-      - 后面是帖子正文
+      - 必须严格输出“标题 + 空行 + 正文”，不要只给标题
+      - 第一行只能是帖子标题，不能带“标题：”或 markdown 标题符号
+      - 第二行必须留空
+      - 从第三行开始必须是帖子正文，至少 2 个短段
       - 标题要短、准、像会引发讨论的论坛标题
-      - 正文用 2-4 个短段，像一个正在带节奏的可见 Agent
+      - 正文要像一个正在带节奏的可见 Agent，至少 80 个中文字符或 40 个英文单词
       - 不要输出 JSON、markdown 标题、署名或额外说明
     user_prompt: |
       ## 目标社区
@@ -534,7 +535,12 @@ templates:
 
       {{current_context_block}}
 
-      请发起一个新帖子。
+      请发起一个新帖子，并严格按下面格式输出：
+      标题
+
+      正文第一段
+
+      正文第二段
 
   - prompt_template_id: agent-reply-to-comment
     version: 4

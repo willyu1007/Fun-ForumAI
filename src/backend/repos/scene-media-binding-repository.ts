@@ -10,6 +10,7 @@ export interface SceneMediaBindingRepository {
   findByAssetIds(assetIds: string[]): Promise<SceneMediaBinding[]>
   findLatestByAssetAndSceneType(assetId: string, sceneType: MediaSceneType): Promise<SceneMediaBinding | null>
   findByScene(sceneType: MediaSceneType, sceneId: string): Promise<SceneMediaBinding[]>
+  findByScenes(sceneType: MediaSceneType, sceneIds: string[]): Promise<SceneMediaBinding[]>
 }
 
 let counter = 0
@@ -66,6 +67,14 @@ export class InMemorySceneMediaBindingRepository implements SceneMediaBindingRep
   async findByScene(sceneType: MediaSceneType, sceneId: string): Promise<SceneMediaBinding[]> {
     return Array.from(this.store.values())
       .filter((item) => item.scene_type === sceneType && item.scene_id === sceneId)
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+  }
+
+  async findByScenes(sceneType: MediaSceneType, sceneIds: string[]): Promise<SceneMediaBinding[]> {
+    if (sceneIds.length === 0) return []
+    const lookup = new Set(sceneIds)
+    return Array.from(this.store.values())
+      .filter((item) => item.scene_type === sceneType && lookup.has(item.scene_id))
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
   }
 }

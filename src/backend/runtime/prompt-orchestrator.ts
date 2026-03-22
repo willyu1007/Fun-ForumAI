@@ -58,6 +58,7 @@ const CURRENT_CONTEXT_LABELS: Record<string, string> = {
   thread_or_scene_continuity: '场景连续性',
   trigger_context: '触发上下文',
   conversation_excerpt: '当前对话片段',
+  public_media_card: '公共图片语义卡',
 }
 
 const HARD_CONTROL_SOURCE_KINDS = new Set([

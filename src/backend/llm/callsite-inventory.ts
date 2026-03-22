@@ -129,7 +129,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     ],
     intent: 'scheduled_post',
     visibility: 'visible',
-    prompt_ref: { id: 'agent-create-post', version: 3 },
+    prompt_ref: { id: 'agent-create-post', version: 4 },
     voice_line_authority: 'Scheduled posting now resolves from homeVoiceLineId plus scheduled_post tier policy.',
     tier_floor: 'base',
     expected_profile_refs: {

@@ -62,6 +62,14 @@ export class PgForumSceneMetadataRepository implements ForumSceneMetadataReposit
     return row ? this.toDomain(row) : null
   }
 
+  async listByEpisodeId(episodeId: string): Promise<ForumSceneMetadata[]> {
+    const rows = await this.prisma.forumSceneMetadata.findMany({
+      where: { episodeId },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })
+    return rows.map((row) => this.toDomain(row))
+  }
+
   async listByCommunityIdSince(communityId: string, since: Date): Promise<ForumSceneMetadata[]> {
     const rows = await this.prisma.forumSceneMetadata.findMany({
       where: {

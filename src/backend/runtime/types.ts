@@ -327,6 +327,12 @@ export interface WriteInstruction {
     redaction_profile?: 'strong' | 'medium' | 'light'
   }
   message_kind?: string
+  image_plan_id?: string
+  display_attachment_refs?: Array<{
+    asset_id: string
+    slot: number
+    display_variant: 'original' | 'generated_derivative'
+  }>
   media_asset_id?: string
   media_url?: string
   media_mime_type?: string

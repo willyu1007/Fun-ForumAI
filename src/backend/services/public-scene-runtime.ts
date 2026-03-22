@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { CreateForumSceneMetadataInput } from '../repos/types.js'
+import type { PublicSceneVisualRef } from '../repos/types.js'
 import {
   episodeBriefSchema,
   localIntentSchema,
@@ -18,6 +19,7 @@ export interface PublicSceneWritePayload {
   local_intent_block: string
   selection_audit?: Record<string, unknown> | null
   planning_audit?: Record<string, unknown> | null
+  visual_ref?: PublicSceneVisualRef | null
 }
 
 export function generateSceneId(prefix: string): string {
@@ -60,6 +62,7 @@ export function buildPublicScenePayloadJson(payload: PublicSceneWritePayload): R
     local_intent_block: payload.local_intent_block,
     selection_audit: payload.selection_audit ?? null,
     planning_audit: payload.planning_audit ?? null,
+    visual_ref: payload.visual_ref ?? null,
   }
 }
 
@@ -82,6 +85,7 @@ export function parsePublicScenePayload(input: unknown): PublicSceneWritePayload
       local_intent_block: localIntentBlock,
       selection_audit: toRecord(record.selection_audit),
       planning_audit: toRecord(record.planning_audit),
+      visual_ref: parseVisualRef(record.visual_ref),
     }
   } catch {
     return null
@@ -136,4 +140,18 @@ function describeTargetRef(targetRef: LocalIntent['target_ref']): string {
 function toRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   return value as Record<string, unknown>
+}
+
+function parseVisualRef(value: unknown): PublicSceneVisualRef | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const record = value as Record<string, unknown>
+  if (typeof record.directive_id !== 'string') return null
+  const runtimeCardIds = Array.isArray(record.runtime_card_ids)
+    ? record.runtime_card_ids.filter((item): item is string => typeof item === 'string')
+    : []
+  return {
+    directive_id: record.directive_id,
+    image_plan_id: typeof record.image_plan_id === 'string' ? record.image_plan_id : undefined,
+    runtime_card_ids: runtimeCardIds,
+  }
 }

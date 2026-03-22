@@ -12,9 +12,11 @@ import { InclinationAssetService } from '../services/inclination-asset-service.j
 import {
   MediaAssetService,
   MediaBindingService,
+  ImagePlannerService,
   MediaProjectionService,
   MediaSemanticService,
   MediaWriteBridge,
+  VisualDirectiveService,
 } from '../media/index.js'
 import {
   LocalStorageAdapter,
@@ -30,6 +32,9 @@ import type { MediaSemanticSnapshotRepository } from '../repos/media-semantic-sn
 import type { SceneMediaBindingRepository } from '../repos/scene-media-binding-repository.js'
 import type { MediaContextProjectionRepository } from '../repos/media-context-projection-repository.js'
 import type { PostMediaRepository } from '../repos/post-media-repository.js'
+import type { VisualDirectiveRepository } from '../repos/visual-directive-repository.js'
+import type { ImagePlanRepository } from '../repos/image-plan-repository.js'
+import type { ForumSceneMetadataRepository } from '../repos/forum-scene-metadata-repository.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 
 export function createLlmServices(deps: {
@@ -40,6 +45,9 @@ export function createLlmServices(deps: {
   sceneMediaBindingRepo: SceneMediaBindingRepository
   mediaContextProjectionRepo: MediaContextProjectionRepository
   postMediaRepo: PostMediaRepository
+  visualDirectiveRepo: VisualDirectiveRepository
+  imagePlanRepo: ImagePlanRepository
+  forumSceneMetadataRepo: ForumSceneMetadataRepository
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
   usageLedgerRepo?: UsageLedgerRepository
@@ -109,12 +117,25 @@ export function createLlmServices(deps: {
   const mediaProjectionService = new MediaProjectionService({
     mediaContextProjectionRepo: deps.mediaContextProjectionRepo,
   })
+  const visualDirectiveService = new VisualDirectiveService({
+    visualDirectiveRepo: deps.visualDirectiveRepo,
+  })
+  const imagePlannerService = new ImagePlannerService({
+    imagePlanRepo: deps.imagePlanRepo,
+    mediaAssetRepo: deps.mediaAssetRepo,
+    mediaSemanticSnapshotRepo: deps.mediaSemanticSnapshotRepo,
+    sceneMediaBindingRepo: deps.sceneMediaBindingRepo,
+    forumSceneMetadataRepo: deps.forumSceneMetadataRepo,
+    mediaProjectionService,
+  })
   const mediaWriteBridge = new MediaWriteBridge({
     mediaAssetRepo: deps.mediaAssetRepo,
     mediaSemanticSnapshotRepo: deps.mediaSemanticSnapshotRepo,
     sceneMediaBindingRepo: deps.sceneMediaBindingRepo,
     mediaContextProjectionRepo: deps.mediaContextProjectionRepo,
     postMediaRepo: deps.postMediaRepo,
+    imagePlanRepo: deps.imagePlanRepo,
+    forumSceneMetadataRepo: deps.forumSceneMetadataRepo,
     storage: inclinationAssetStorage,
     mediaBindingService,
     mediaProjectionService,
@@ -146,6 +167,10 @@ export function createLlmServices(deps: {
     usageLedgerRepo: ledgerRepo,
     budgetGuard,
     mediaSemanticService,
+    mediaProjectionService,
+    mediaWriteBridge,
+    visualDirectiveService,
+    imagePlannerService,
     mediaAssetService,
     inclinationAssetService,
   }

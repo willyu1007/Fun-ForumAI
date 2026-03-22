@@ -434,7 +434,7 @@ export function PostDetailPage() {
               <div className="flex flex-wrap gap-2">
                 {post.media.map((item) => (
                   <a key={item.asset_id} href={item.media_url} target="_blank" rel="noreferrer">
-                    <img src={item.media_url} alt="post media" className={"h-28 w-40 rounded-md border object-cover"} />
+                    <img src={item.media_url} alt={item.alt_text ?? 'post media'} className={"h-28 w-40 rounded-md border object-cover"} />
                   </a>
                 ))}
               </div>
