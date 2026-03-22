@@ -2,7 +2,7 @@ version: 1
 task_id: T-120
 project: main
 slug: private-chat-image-attachments-and-private-projection
-status: planned
+status: in-progress
 updated: "2026-03-22"
 keywords:
   - private-chat

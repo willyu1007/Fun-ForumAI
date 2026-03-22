@@ -1,3 +1,38 @@
 # 05 Pitfalls
 
-- None yet. 实施后若出现 private/public 投影混用问题，再记录具体规避方式。
+- 2026-03-22: 不要为 T-120 新增 context-memory `source_type`
+  - Symptom: 想把“消息附件”单独建成新的 typed-context source type，容易把 T-120 变成 Prisma enum / schema 变更。
+  - Root cause: `RawContextEvent.sourceType` 当前是 Prisma enum；新增类型会扩大数据库和上下游 prompt/runtime 变更面。
+  - What was tried: 评估过新建 `private_media_attachment` source type。
+  - Fix/workaround: 继续复用 `private_session` source type，但把 `source_ref_id` 收敛到 `message_id`，并通过 `evidence_refs` 标明 `private_message`、`media_asset`、`media_projection`。
+  - Prevention note: T-120 只补 attachment-level event 粒度，不重做 context-memory source taxonomy；source taxonomy 变更应单开任务包处理。
+- 2026-03-22: 不要把 `private_media_card` 文本拼进 `conversationText`
+  - Symptom: agent prompt 看起来“能理解图片”，但 instruction matching、overlay、disclosure 等本来面向文本 transcript 的子系统会被图片卡文本污染。
+  - Root cause: `conversationText` 在 prompt/runtime 中不仅用于展示当前上下文，还会影响多处基于原始文本对话的判断。
+  - What was tried: 初版把 runtime card 的序列化文本直接并入 `conversationText`。
+  - Fix/workaround: 图片语义只走 `CurrentContextSource.kind='private_media_card'`；`conversationText` 与 `session_recent_turns` 保持 text-only。
+  - Prevention note: T-120 的双路径原则里，cognition 卡可以进 current-context，但不能伪装成 transcript。
+- 2026-03-22: 不要让 private attachment path 在 typed memory 失败时继续成功返回
+  - Symptom: 用户消息和图片已经入库，agent 也回复了，但这张图没有进入 immediate typed memory，导致“当前轮能看见，后续检索不到”。
+  - Root cause: send pipeline 初版把 `createPrivateMediaMemory(...)` 当成 best-effort side effect。
+  - What was tried: 在 attachment attach 后 catch error 并记录日志。
+  - Fix/workaround: attachment message 改成 fail-closed；`memoryService` 缺失或 typed write 失败都会中止 send pipeline。
+  - Prevention note: T-120 的合同不是“尽量写入 memory”，而是“发送成功后立即进入 private runtime 和 typed memory”。
+- 2026-03-22: 不要把 private image attachment 直接复用到通用 identity finalize 管道
+  - Symptom: 单条私聊图片附件本应只形成 visual memory，却可能顺带改写 owner relation / self model / tensions，导致 T-120 越界成 identity writeback。
+  - Root cause: `createPrivateMediaMemory(...)` 初版直接复用 `runTypedContextPipeline(...)`，该管道默认包含 `identityFinalizer.finalize(...)` 与 relation/self/tension persist。
+  - What was tried: 直接沿用现有 private digest typed-context 管道。
+  - Fix/workaround: 为私聊图片新增 `runPrivateMediaTypedContextPipeline(...)`，只保留 raw event、extract/distill、episodic cards、private shadow 与 `AgentMemory` 写入。
+  - Prevention note: T-120 负责“图片进入 runtime 和 memory”，不是“图片驱动人格/关系写回”；identity writeback 如需扩张，应单开任务包评审。
+- 2026-03-22: 不要在 attachment message 成功前提前广播 human message
+  - Symptom: 当前端收到 `PRIVATE_MESSAGE_CREATED` 后会立刻刷新消息列表；如果后续 attachment / reply 失败，UI 会短暂出现一条最终又不该存在的 human message。
+  - Root cause: send pipeline 初版在 agent reply 生成前就广播 enriched human message。
+  - What was tried: human message 在 attachment 处理完成后立刻 SSE 广播。
+  - Fix/workaround: attachment path 只有在 `runtime + immediate memory + agent reply` 全部成功后才广播 human / agent 两条消息；失败时转入 rollback。
+  - Prevention note: 对双消息返回的私聊 send API，SSE 广播时机必须与“对用户可见的成功边界”一致。
+- 2026-03-22: 手工 live smoke 会污染本地开发环境的长期记忆状态
+  - Symptom: 即使 smoke 只用于验证“图片进入 runtime 和 memory”，结束 session 后仍会在本地 DB 留下 `private_sessions`、typed-context 记录，且 session digest 可能继续写入 `context_relation_states` / `self_model_states`。
+  - Root cause: dev 环境的 live smoke 走的是完整私聊链路，不是隔离的临时事务；session end 会触发正常 digest/identity 管道。
+  - What was tried: 直接保留 smoke 产物用于后续人工复看。
+  - Fix/workaround: 收口前显式回收 smoke 生成的 session / message / media / typed-context / relation-self state 和上传文件。
+  - Prevention note: 以后做私聊 memory 的 live 验证，要么用隔离测试库，要么在 verification 结束后附带 cleanup 步骤，不要把 smoke 数据留在共享 dev 状态里。

@@ -2,3 +2,34 @@
 
 - 2026-03-22: 创建任务包，冻结 private chat 图片进入 runtime/memory 的最小 contract。
 - 2026-03-22: 明确 private note 和 image card 分离，不允许 raw owner note 嵌入图片卡。
+- 2026-03-22: 后端已落地 staged private attachment flow。
+  - `PrivateChannelService.uploadAttachment(...)` 新增 staged upload 入口。
+  - `sendMessage(sessionId, humanUserId, input)` 改为显式接收 `{ content, attachment_asset_ids }`。
+  - `MediaAssetService.ingestPrivateMessageUpload(...)` 与 `attachAssetToPrivateMessage(...)` 负责 staged asset 校验、private binding 和 projection 生成。
+- 2026-03-22: private projection 和 typed memory 已接线。
+  - `MediaBindingService.createPrivateMessageBinding(...)` 新增 `private_message` binding。
+  - `MediaProjectionService` 新增 `PrivateMediaRuntimeCard`、`PrivateMediaMemoryProjection` 与安全序列化逻辑。
+  - `MemoryService.createPrivateMediaMemory(...)` 新增消息附件粒度的 immediate typed-context write。
+- 2026-03-22: runtime prompt 接线已改成 attachment-aware。
+  - `CurrentContextSource.kind='private_media_card'` 已加入 prompt orchestrator label。
+  - `session_recent_turns` 仍保持 text-only，不把图片直接混入 transcript。
+- 2026-03-22: 根据代码审查补齐了 T-120 的 fail-closed 语义。
+  - attachment message 在 `memoryService` 缺失时会直接拒绝，而不是静默降级成“只有 runtime、没有 typed memory”。
+  - immediate private media memory write 失败时会中止 send pipeline，不再吞掉错误后继续生成 agent reply。
+- 2026-03-22: 修正了 private attachment 对 prompt runtime 的文本边界。
+  - `private_media_card` 继续通过 `CurrentContextSource` 注入。
+  - `conversationText` 改回 text-only，避免 instruction matching / overlay / disclosure 等依赖原始文本对话的子系统误把图片卡当 transcript。
+- 2026-03-22: Web 最小 UI contract 已落地。
+  - 新增私聊 attachment upload hook。
+  - composer 支持单图上传、预览、移除、失败重试。
+  - message bubble 支持附件展示与安全占位降级。
+- 2026-03-22: attachment send pipeline 已补成 attachment-scoped rollback。
+  - `sendMessage(...)` 对 attachment path 改为“human message 先持久化，但成功前不广播”；只有 `runtime + immediate memory + agent reply` 都完成后，才广播 human / agent 两条消息。
+  - `MediaAssetService.rollbackPrivateMessageAttachmentArtifacts(...)` 会清理 `private_message` binding 与对应 projection。
+  - `MemoryService.cleanupPrivateMediaMemory(...)` 会按 `ctxevent:private-media:${message_id}:${asset_id}` 清理 `agent_memories`、`raw_context_events`、`episodic_cards`、`private_shadow_memories`。
+- 2026-03-22: private media typed-context 已从通用 identity finalize 管道中剥离。
+  - `runPrivateMediaTypedContextPipeline(...)` 只保留 raw event、extract/distill、episodic cards、private shadow 和 `AgentMemory` 写入。
+  - private image attachment 不再顺带更新 relation state / self model / active tensions，避免 T-120 越界成 identity writeback 任务。
+- 2026-03-22: 做了一次收口清理，确认没有需要从 repo 删除的正式实现文件。
+  - 清除了 live smoke 期间写入本地开发环境的 `private_sessions` / `private_messages` / `media_assets` / typed-context 记录，以及对应上传文件。
+  - 额外移除了 stale pid 与本地构建输出，避免把运行残留误当成 T-120 交付物。

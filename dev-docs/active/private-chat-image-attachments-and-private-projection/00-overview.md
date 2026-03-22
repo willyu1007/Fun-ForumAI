@@ -1,10 +1,10 @@
 # 00 Overview — private-chat-image-attachments-and-private-projection (T-120)
 
 ## Status
-- State: planned
+- State: in-progress
 - Depends on: `T-117 visual-media-framework-v1-planning`, `T-118 visual-media-domain-foundation-and-v1-semantics-correction`
 - Enables: `T-121`, `T-123`, `T-124`
-- Next step: 为 private chat 定义附件 contract、private binding、runtime/memory projection。
+- Next step: 补更宽的 surface 回归与上线前 smoke，再决定归档。
 
 ## Goal
 把私聊图片纳入统一媒体链路，并让其进入 agent runtime 和 typed memory：
@@ -24,9 +24,9 @@
 - 私聊图会成为后续 public planner 的重要候选源，但必须经过 policy 过滤。
 
 ## Acceptance criteria (high level)
-- [ ] private chat send/read contract 支持 `attachment_asset_ids`。
-- [ ] 私聊图片进入统一资产域，并创建 `private_message` binding。
-- [ ] 最小版 `PrivateMediaRuntimeCard` 与 `PrivateMediaMemoryProjection` 被定义清楚。
-- [ ] `owner_note` 与图片卡分离注入。
-- [ ] 相同图片后续复用时不重复跑 vision，且默认不自动公开。
-- [ ] private chat Web 侧输入、发送和展示位的最小 UI contract 被定义清楚。
+- [x] private chat send/read contract 支持 `attachment_asset_ids`。
+- [x] 私聊图片进入统一资产域，并创建 `private_message` binding。
+- [x] 最小版 `PrivateMediaRuntimeCard` 与 `PrivateMediaMemoryProjection` 被定义清楚。
+- [x] `owner_note` 与图片卡分离注入。
+- [x] 相同图片后续复用时不重复跑 vision，且默认不自动公开。
+- [x] private chat Web 侧输入、发送和展示位的最小 UI contract 被定义清楚。

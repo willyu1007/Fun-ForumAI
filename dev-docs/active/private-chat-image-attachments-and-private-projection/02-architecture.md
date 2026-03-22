@@ -1,13 +1,15 @@
 # 02 Architecture — T-120
 
 ## Private Flow
-1. private message 发送时提交 `attachment_asset_ids`
-2. 资产进入 `MediaAssetService`
-3. 触发或复用已有 semantic snapshot
-4. 建立 `scene_media_bindings(kind='private_message')`
-5. 编译 `PrivateMediaRuntimeCard`
-6. 编译 `PrivateMediaMemoryProjection`
-7. runtime / memory 读取 projection，而非 raw asset
+1. `POST /agents/:agentId/chat/sessions/:sessionId/attachments` 先把图片写入统一媒体主域，`source_kind='private_message_upload'`，`source_scene_type='private_session'`。
+2. `POST /agents/:agentId/chat/sessions/:sessionId/messages` 提交 `{ content, attachment_asset_ids }`。
+3. `PrivateChannelService` 先创建 human message，再把 staged asset attach 到 `scene_media_bindings(scene_type='private_message', scene_id=message_id)`。
+4. `MediaProjectionService` 为每个 attachment 生成：
+   - `private_runtime / private_media_runtime_card`
+   - `memory / private_media_memory_projection`
+5. 当前轮 agent 回复通过 `CurrentContextSource.kind='private_media_card'` 注入序列化后的 runtime card。
+6. 同时触发 `MemoryService.createPrivateMediaMemory(...)`，把单个消息附件写成独立 private typed-context event。
+7. Web read model 从 `scene_media_bindings + media_context_projections + media_assets` 聚合出 `attachments[]`，显示面和 cognition 面共享同一资产 SoT。
 
 ## Private Contracts
 - `PrivateMediaRuntimeCard`
@@ -47,6 +49,7 @@
 - `public_reuse_default='blocked'`
 - 不自动公开、不自动生成 public display projection
 - 复用现有 semantic snapshot，避免重复多模态调用
+- per-message attachment 数组合同保留，但 T-120 首版强制最多 `1` 张图
 
 ## Private Chat UI Contract
 - composer 需要支持：

@@ -1142,7 +1142,7 @@ tasks:
     updated: 2026-03-22
   - id: T-120
     slug: private-chat-image-attachments-and-private-projection
-    status: planned
+    status: in-progress
     milestone_id: M-000
     feature_id: F-080
     requirement_ids:
