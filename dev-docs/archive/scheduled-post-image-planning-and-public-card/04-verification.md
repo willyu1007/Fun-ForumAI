@@ -1,0 +1,43 @@
+# 04 Verification
+
+- 2026-03-22
+  - Pass: `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
+  - Result: `T-119` 已注册到 `F-080 / R-081`，状态为 `planned`
+  - Pass: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: lint passed
+  - Pass: `pnpm prisma generate`
+  - Result: Prisma Client regenerated with `visual_directives` / `image_plans`
+  - Pass: `pnpm exec tsc --noEmit`
+  - Result: TypeScript compile passed
+  - Pass: `pnpm vitest run src/backend/runtime/__tests__/post-scheduler.test.ts src/backend/services/__tests__/forum-read-service.test.ts src/backend/media/__tests__/media-projection-service.test.ts src/backend/media/__tests__/visual-directive-service.test.ts src/backend/media/__tests__/image-planner-service.test.ts src/backend/runtime/__tests__/data-plane-writer.nurture.test.ts`
+  - Result: 32 tests passed
+  - Pass: `pnpm vitest run src/backend/routes/__tests__/e2e-multimodal.test.ts`
+  - Result: 5 tests passed
+  - Pass: `node .ai/scripts/ctl-db-ssot.mjs sync-to-context`
+  - Result: `docs/context/db/schema.json` refreshed
+  - Pass: `pnpm exec tsc --noEmit`
+  - Result: post-review compile passed
+  - Pass: `pnpm vitest run src/backend/runtime/__tests__/post-scheduler.test.ts src/backend/media/__tests__/image-planner-service.test.ts src/backend/media/__tests__/media-projection-service.test.ts src/backend/runtime/__tests__/data-plane-writer.nurture.test.ts`
+  - Result: 19 tests passed, covering prompt-audit blocking, cross-agent source filtering, governance-priority trimming, and attach-later non-blocking write semantics
+  - Pass: `pnpm vitest run src/backend/runtime/__tests__/post-scheduler.test.ts src/backend/services/__tests__/forum-read-service.test.ts src/backend/media/__tests__/media-projection-service.test.ts src/backend/media/__tests__/visual-directive-service.test.ts src/backend/media/__tests__/image-planner-service.test.ts src/backend/runtime/__tests__/data-plane-writer.nurture.test.ts`
+  - Result: 37 tests passed
+  - Pass: `pnpm vitest run src/backend/routes/__tests__/e2e-multimodal.test.ts`
+  - Result: 5 tests passed after review fixes
+  - Pass: `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
+  - Result: project registry / dashboard / feature-map / task-index refreshed with `T-119=in-progress`
+  - Pass: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: governance lint passed after doc status normalization
+  - Pass: `pnpm vitest run src/backend/services/__tests__/public-scene-catalog-service.test.ts src/backend/runtime/__tests__/response-parser.test.ts src/backend/runtime/__tests__/post-scheduler.test.ts src/backend/llm/__tests__/registry-contract.test.ts`
+  - Result: 23 tests passed, covering scene-catalog auto-rebuild, scheduled-post title-only recovery, and `agent-create-post@4` prompt contract switch
+  - Pass: `pnpm vitest run src/backend/services/__tests__/forum-read-service.test.ts src/backend/media/__tests__/image-planner-service.test.ts src/backend/media/__tests__/visual-directive-service.test.ts src/backend/media/__tests__/media-projection-service.test.ts src/backend/runtime/__tests__/data-plane-writer.nurture.test.ts`
+  - Result: 29 tests passed after parser/prompt hardening
+  - Pass: `pnpm vitest run src/backend/routes/__tests__/e2e-multimodal.test.ts`
+  - Result: 5 tests passed after scheduled-post prompt/parser hardening
+  - Pass: real HTTP E2E against isolated DB `llm_forum_t119_e2e_1774156681` on `http://localhost:4101`
+  - Result: created agent `c852c998-7a5e-424c-b083-f028e379e137`, uploaded owner-pool asset `cmn1bfg0z0007ogno3rbsjuwm`, triggered scheduled post `3c3e3260-fda9-4700-b0eb-c1c329bfc190`, and verified `visual_directives`, `image_plans`, `forum_scene_metadata.payload_json.visual_ref`, `scene_media_bindings`, `media_context_projections`, `post_media`, `media_assets.visibility_policy=public_original_allowed`, and `/v1/feed` `media[].alt_text` all closed correctly
+  - Pass: cleanup test artifacts
+  - Result: removed repo-local `.ai/.tmp/t119-owner-pool-32.png` and dropped isolated DB `llm_forum_t119_e2e_1774156681`
+  - Pass: `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
+  - Result: task bundle archived and project registry / dashboard / feature-map / task-index refreshed to `T-119=archived`
+  - Pass: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: governance lint passed after archive sync

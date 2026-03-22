@@ -2,7 +2,7 @@ version: 1
 task_id: T-119
 project: main
 slug: scheduled-post-image-planning-and-public-card
-status: planned
+status: archived
 updated: "2026-03-22"
 keywords:
   - scheduled-post

@@ -1,0 +1,22 @@
+# 05 Pitfalls
+
+- 2026-03-22: `applyImagePlanAfterPersist()` 不能跟帖子主写入共用失败语义。
+  - Symptom: 帖子正文已经成功落库，但挂图阶段抛错后，scheduler 仍把整次 `create_post` 当成失败，导致 quota 不消费但帖子实际上已存在。
+  - Root cause: `DataPlaneWriter.write()` 把 post-persist media attach 包在主写入的异常边界里，没有兑现 T-119 的 “text first, attach later” 语义。
+  - Fix: 把 `applyImagePlanAfterPersist()` 改为 best-effort，失败只记录到 agent run audit，不回滚/不否定正文落库成功。
+  - Prevention: 任何 post-persist projection / attachment 步骤都必须单独建失败语义，不能覆盖 primary write result。
+- 2026-03-22: public archive candidate 不能由所有 `forum_post` binding 直接推断。
+  - Symptom: 同 episode 的他人公开资产、以及 `runtime_only_no_display` 的 forum binding，都会被误当成 `same_episode_public` / `self_public_archive` 候选。
+  - Root cause: planner 直接扫描 `forum_post` binding，没有显式执行 source contract，也没有尊重 `allow_cross_agent_public=false`。
+  - Fix: `ImagePlannerService` 改为按 source kind 显式收集候选，并对 public archive 增加 `display_policy !== runtime_only_no_display` 和 cross-agent 过滤。
+  - Prevention: 后续 `T-121/T-123` 扩展 source/surface 时，必须先实现 source adapter，再接评分逻辑，不能依赖“binding 存在即等于可复用”。
+- 2026-03-22: scheduled root-post 不能假设 stage-template dist artifact 总是预先生成。
+  - Symptom: 干净 DB / 干净 workspace 下，`PostScheduler` 直接退回 `scene_catalog_unavailable`，T-119 主链永远走不到 `VisualDirective -> ImagePlan`。
+  - Root cause: `PublicSceneCatalogService` 硬依赖 `docs/stage-templates/dist/launch.json`，但服务启动时不会自动 export。
+  - Fix: 在缺少或读坏 dist artifact 时，服务自动从 `docs/stage-templates/source/manifest.yaml` 重建 `library.json` / `launch.json`。
+  - Prevention: 任何会挡住 runtime 主链的 generated artifact，都必须在运行时具备自举或显式 health-check 失败语义，不能默默退回 fallback。
+- 2026-03-22: scheduled-post 的 prompt contract 不能只靠“模型会听话”。
+  - Symptom: 真实 `qwen` 可见模型会输出只有标题的一行文本，导致 `parseAsScheduledPost()` 失败，图片主链在最后一跳被卡死。
+  - Root cause: `agent-create-post` 的可见 prompt 对格式约束不够硬，而 parser 也只接受 title/body 或非常窄的 JSON 形态。
+  - Fix: 将模板升级到 `agent-create-post@4`，明确要求 `标题 + 空行 + 至少两段正文`；同时为 scheduled-post parser 增加 code-fence / labeled output / nested JSON / title-only 兜底。
+  - Prevention: 任何 scheduled visible write 都必须有“真实 provider 下的格式脆弱性”回归样本，不能只靠 stub JSON e2e 判定通过。
