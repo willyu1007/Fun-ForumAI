@@ -1,11 +1,11 @@
 # 00 Overview — media-generation-broker-and-derivative-display (T-122)
 
 ## Status
-- State: planned
+- State: done
 - Depends on: `T-117 visual-media-framework-v1-planning`, `T-118 visual-media-domain-foundation-and-v1-semantics-correction`, `T-119 scheduled-post-image-planning-and-public-card`
 - Soft dependency: `T-121 public-media-reuse-and-revocation-policy`
 - Enables: `T-124`
-- Next step: 设计独立 generation gateway、job persistence、短同步尝试与回流链路。
+- Next step: 完成代码落地，等待合并/归档；生产 DB 迁移与 provider key 注入由部署窗口承接。
 
 ## Goal
 把文生图接入统一媒体主域，而不是旁路实现：
@@ -25,8 +25,8 @@
 - repo 当前没有真正的 app-side image job concurrency governor，本包需要补最小版本。
 
 ## Acceptance criteria (high level)
-- [ ] `MediaGenerationService` 和独立 `MediaGenerationGateway/Broker` 被定义清楚。
-- [ ] `media_generation_jobs` 的最小字段、状态机和回流责任被定义清楚。
-- [ ] 默认执行策略是短同步尝试，超时即降级，不阻塞主发帖链路。
-- [ ] 最小并发治理包含 global cap、provider cap、brief/recipe hash 去重。
-- [ ] generation 成功或失败都能优雅回流同一媒体主域。
+- [x] `MediaGenerationService` 和独立 `MediaGenerationGateway/Broker` 被定义清楚。
+- [x] `media_generation_jobs` 的最小字段、状态机和回流责任被定义清楚。
+- [x] 默认执行策略是短同步尝试，超时即降级，不阻塞主发帖链路。
+- [x] 最小并发治理包含 global cap、provider cap、brief/recipe hash 去重。
+- [x] generation 成功或失败都能优雅回流同一媒体主域。

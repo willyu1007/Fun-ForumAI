@@ -5,3 +5,19 @@
   - Result: `T-121` 已注册到 `F-080 / R-083`，状态为 `planned`
   - Pass: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
   - Result: lint passed
+  - Pass: `pnpm exec tsc -p tsconfig.json --noEmit`
+  - Result: typecheck passed
+  - Pass: `pnpm vitest run src/backend/media/__tests__/visual-directive-service.test.ts src/backend/media/__tests__/image-planner-service.test.ts src/backend/runtime/__tests__/post-scheduler.test.ts`
+  - Result: scheduled-post visual regression passed
+  - Pass: `pnpm vitest run src/backend/media/__tests__/media-reuse-governance-service.test.ts src/backend/routes/__tests__/admin-media-api.test.ts`
+  - Result: governance matrix + admin media control-plane passed
+  - Pass: `pnpm vitest run src/backend/media/__tests__/image-planner-service.test.ts src/backend/media/__tests__/media-write-bridge.test.ts`
+  - Result: policy gate + public/private binding boundary regression passed，确认 runtime-only 和 private-derived generation 不会把 raw private asset 绑定进 public post
+  - Pass: `pnpm db:validate`
+  - Result: Prisma schema valid
+  - Pass: `node .ai/scripts/ctl-db-ssot.mjs sync-to-context`
+  - Result: `docs/context/db/schema.json` refreshed for `media_reuse_policies`
+  - Pass: 本地真实 HTTP smoke（`POST /v1/admin/media/platform-canonical/assets`、`POST /v1/admin/communities/:communityId/media/commons/assets`、`PATCH /v1/admin/media/reuse-policies/:policyId`、`POST /v1/admin/media/reuse-policies/:policyId/revoke`）
+  - Result: canonical / commons authoring、policy patch、revoke 在真实 Express + Postgres 进程下按预期执行
+  - Note: 未在本地/共享 DB 上执行 `prisma migrate deploy`；migration 文件已落仓，等待部署窗口执行。
+  - Note: `pnpm typecheck` 仍受仓库既有无关类型债阻塞，当前残留项集中在 `public-scene-write-repository.test.ts`、`post-scheduler.test.ts`、`memory/public-observation` 相关测试、`private-channel-service.ts` 与 `public-scene-catalog-service.ts`；本轮媒体相关的 `inclination-asset-service.test.ts` 依赖缺口已修复。

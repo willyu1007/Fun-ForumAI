@@ -5,3 +5,19 @@
   - Result: `T-122` 已注册到 `F-080 / R-084`，状态为 `planned`
   - Pass: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
   - Result: lint passed
+  - Pass: `pnpm exec tsc -p tsconfig.json --noEmit`
+  - Result: typecheck passed
+  - Pass: `pnpm vitest run src/backend/media/__tests__/ark-seedream-gateway.test.ts src/backend/media/__tests__/media-generation-service.test.ts src/backend/runtime/__tests__/post-scheduler.test.ts`
+  - Result: gateway request contract、job dedupe、generated derivative backflow、post scheduler integration passed
+  - Pass: `pnpm vitest run src/backend/media/__tests__/image-planner-service.test.ts src/backend/media/__tests__/media-write-bridge.test.ts`
+  - Result: planner generation gate 与 generated-derivative public attach 边界回归通过
+  - Pass: `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py validate --root . --out .ai/.tmp/env-contractctl-t121-t122`
+  - Result: env contract validation passed
+  - Pass: `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py generate --root . --out .ai/.tmp/env-contractctl-t121-t122`
+  - Result: env example/context generation passed
+  - Pass: `pnpm exec tsx - <<'EOF' ... ArkSeedreamGateway.generate(...) ... EOF`
+  - Result: 使用真实 Doubao Seedream 5.0 Lite key 成功返回 provider-hosted image URL，确认仓库代码已能直连当前 Ark 图片生成入口
+  - Pass: `pnpm db:validate`
+  - Result: Prisma schema valid
+  - Note: 未在本地/共享 DB 上执行 `prisma migrate deploy`；migration 文件已落仓，等待部署窗口执行。
+  - Note: `pnpm typecheck` 仍受仓库既有无关类型债阻塞，当前残留项集中在 `public-scene-write-repository.test.ts`、`post-scheduler.test.ts`、`memory/public-observation` 相关测试、`private-channel-service.ts` 与 `public-scene-catalog-service.ts`；本轮媒体相关的 `inclination-asset-service.test.ts` 依赖缺口已修复。

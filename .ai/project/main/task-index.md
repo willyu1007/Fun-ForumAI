@@ -126,8 +126,8 @@ Project: `main`
 | T-118 visual-media-domain-foundation-and-v1-semantics-correction | in-progress | F-080 | dev-docs/active/visual-media-domain-foundation-and-v1-semantics-correction |
 | T-119 scheduled-post-image-planning-and-public-card | archived | F-080 | dev-docs/archive/scheduled-post-image-planning-and-public-card |
 | T-120 private-chat-image-attachments-and-private-projection | in-progress | F-080 | dev-docs/active/private-chat-image-attachments-and-private-projection |
-| T-121 public-media-reuse-and-revocation-policy | planned | F-080 | dev-docs/active/public-media-reuse-and-revocation-policy |
-| T-122 media-generation-broker-and-derivative-display | planned | F-080 | dev-docs/active/media-generation-broker-and-derivative-display |
+| T-121 public-media-reuse-and-revocation-policy | done | F-080 | dev-docs/active/public-media-reuse-and-revocation-policy |
+| T-122 media-generation-broker-and-derivative-display | done | F-080 | dev-docs/active/media-generation-broker-and-derivative-display |
 | T-123 multi-surface-media-expansion-and-shared-adapters | planned | F-080 | dev-docs/active/multi-surface-media-expansion-and-shared-adapters |
 | T-124 media-observability-lifecycle-and-rollout-control | planned | F-080 | dev-docs/active/media-observability-lifecycle-and-rollout-control |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-000 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |

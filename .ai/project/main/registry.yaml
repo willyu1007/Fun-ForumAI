@@ -1151,7 +1151,7 @@ tasks:
     updated: 2026-03-22
   - id: T-121
     slug: public-media-reuse-and-revocation-policy
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-080
     requirement_ids:
@@ -1160,7 +1160,7 @@ tasks:
     updated: 2026-03-22
   - id: T-122
     slug: media-generation-broker-and-derivative-display
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-080
     requirement_ids:
