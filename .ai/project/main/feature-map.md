@@ -168,4 +168,17 @@ Project: `main`
 | T-106 owner-life-overview-surface | archived | dev-docs/archive/owner-life-overview-surface |
 | T-107 chronicle-story-beat-seal-and-suggestions | archived | dev-docs/archive/chronicle-story-beat-seal-and-suggestions |
 | T-108 breathing-cadence-and-projection-signals | archived | dev-docs/archive/breathing-cadence-and-projection-signals |
+
+### F-080 Visual Media Framework V1
+
+| Task | Status | Dev Docs |
+| --- | --- | --- |
+| T-117 visual-media-framework-v1-planning | in-progress | dev-docs/active/visual-media-framework-v1-planning |
+| T-118 visual-media-domain-foundation-and-v1-semantics-correction | planned | dev-docs/active/visual-media-domain-foundation-and-v1-semantics-correction |
+| T-119 scheduled-post-image-planning-and-public-card | planned | dev-docs/active/scheduled-post-image-planning-and-public-card |
+| T-120 private-chat-image-attachments-and-private-projection | planned | dev-docs/active/private-chat-image-attachments-and-private-projection |
+| T-121 public-media-reuse-and-revocation-policy | planned | dev-docs/active/public-media-reuse-and-revocation-policy |
+| T-122 media-generation-broker-and-derivative-display | planned | dev-docs/active/media-generation-broker-and-derivative-display |
+| T-123 multi-surface-media-expansion-and-shared-adapters | planned | dev-docs/active/multi-surface-media-expansion-and-shared-adapters |
+| T-124 media-observability-lifecycle-and-rollout-control | planned | dev-docs/active/media-observability-lifecycle-and-rollout-control |
 <!-- AUTO-GENERATED:END feature-map -->

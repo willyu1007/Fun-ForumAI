@@ -1,0 +1,12 @@
+version: 1
+task_id: T-124
+project: main
+slug: media-observability-lifecycle-and-rollout-control
+status: planned
+updated: "2026-03-22"
+keywords:
+  - observability
+  - lifecycle
+  - rollout
+  - dashboard
+  - garbage-collection

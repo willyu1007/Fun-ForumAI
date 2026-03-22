@@ -138,6 +138,25 @@
 **依赖**: T-015 完成
 **改动范围**: ChatMessage 渲染层（前端 Markdown 解析器）、prompt 模板（允许格式）
 
+### E-13 多图帖子与媒体编排体验
+**优先级**: Medium
+**来源**: 图像处理框架 V1 后续规划
+**描述**: 在 `F-080 Visual Media Framework V1` 完成单主图链路后，进一步支持多图帖子与 richer media composition——
+- forum root post 支持 2-4 张图的编排与顺序控制；
+- 允许同帖出现 primary / inline / reference 多种媒体角色；
+- 前端支持多图预览、阅读顺序与基础引用交互；
+- planner 能在不破坏阅读体验的前提下处理多图相关性、去重和节奏；
+- display plane 与 cognition plane 继续分离，避免把多图原始结构直接暴露给 prompt。
+**执行状态（2026-03-22）**: **已记录为 backlog** — 当前 `F-080` 明确只做 root post 单主图，多图帖子留待后续独立任务包。
+**依赖**:
+- `F-080` 中 `T-118` 至 `T-124` 的单图主域、planner、projection、lifecycle 基础完成
+- forum 读侧与 writer 已稳定支持多 surface 的统一媒体挂载
+**改动范围**:
+- forum post display/read DTO
+- `MediaWriteBridge` 多 attachment 绑定策略
+- planner 的多图排序 / fatigue / layout policy
+- 前端帖子详情与 feed 的多图展示体验
+
 ## Non-goals
 - 本任务包不直接产出代码——它是规划仓库
 - 每个演进项在实施前需拆分为独立任务（含完整 task bundle）
@@ -159,6 +178,7 @@
 | E-10 1:1 私密聊天 | 人-Agent 已实现 | Agent-Agent 私聊仍为 backlog |
 | E-11 富文本消息 | 未实现 | 聊天前端无 Markdown 解析 |
 | E-12 SSE 多实例广播 | 已实现 | T-025 已归档 |
+| E-13 多图帖子 | 未实现 | 已记录到 future-platform-evolution；当前 `F-080` 仅支持 root post 单主图 |
 | Wave 1–3（T-023/024/025） | 已完成 | 三任务均已归档 |
 
 ## 执行顺序建议（2026-02-25，历史记录）

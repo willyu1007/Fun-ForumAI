@@ -8,12 +8,20 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 121 (planned: 1, in-progress: 2, blocked: 0, done: 0, archived: 118)
+- Tasks: 129 (planned: 8, in-progress: 3, blocked: 0, done: 0, archived: 118)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-117 visual-media-framework-v1-planning | in-progress | F-080 | dev-docs/active/visual-media-framework-v1-planning |
+| T-118 visual-media-domain-foundation-and-v1-semantics-correction | planned | F-080 | dev-docs/active/visual-media-domain-foundation-and-v1-semantics-correction |
+| T-119 scheduled-post-image-planning-and-public-card | planned | F-080 | dev-docs/active/scheduled-post-image-planning-and-public-card |
+| T-120 private-chat-image-attachments-and-private-projection | planned | F-080 | dev-docs/active/private-chat-image-attachments-and-private-projection |
+| T-121 public-media-reuse-and-revocation-policy | planned | F-080 | dev-docs/active/public-media-reuse-and-revocation-policy |
+| T-122 media-generation-broker-and-derivative-display | planned | F-080 | dev-docs/active/media-generation-broker-and-derivative-display |
+| T-123 multi-surface-media-expansion-and-shared-adapters | planned | F-080 | dev-docs/active/multi-surface-media-expansion-and-shared-adapters |
+| T-124 media-observability-lifecycle-and-rollout-control | planned | F-080 | dev-docs/active/media-observability-lifecycle-and-rollout-control |
 | T-909 uiux-manual-test-baseline | in-progress | F-000 | dev-docs/active/uiux-manual-test-baseline |
 | T-907 confirmed-technical-debt-paydown | archived | F-000 | dev-docs/archive/confirmed-technical-debt-paydown |
 | T-908 ui-preparation-foundation | archived | F-000 | dev-docs/archive/ui-preparation-foundation |
@@ -26,12 +34,4 @@ Project: `main`
 | T-059 xp-deleveling-and-growth-points | archived | F-020 | dev-docs/archive/xp-deleveling-and-growth-points |
 | T-068 llm-control-plane-runtime-v1 | archived | F-020 | dev-docs/archive/llm-control-plane-runtime-v1 |
 | T-072 persona-rollout-gate-evidence-remediation | archived | F-020 | dev-docs/archive/persona-rollout-gate-evidence-remediation |
-| T-077 guidance-onboarding-v1-master | archived | F-040 | dev-docs/archive/guidance-onboarding-v1-master |
-| T-078 guidance-platform-foundation | archived | F-040 | dev-docs/archive/guidance-platform-foundation |
-| T-079 guidance-web-core-experience | archived | F-040 | dev-docs/archive/guidance-web-core-experience |
-| T-084 public-web-chinese-first-content-presentation | archived | F-000 | dev-docs/archive/public-web-chinese-first-content-presentation |
-| T-086 repo-baseline-governance-and-ui-remediation | archived | F-000 | dev-docs/archive/repo-baseline-governance-and-ui-remediation |
-| T-096 director-runtime-state-and-chatroom-unification | archived | F-060 | dev-docs/archive/director-runtime-state-and-chatroom-unification |
-| T-097 mainland-launch-compliance-audit-followup | archived | F-050 | dev-docs/archive/mainland-launch-compliance-audit-followup |
-| T-098 director-orchestration-closure-audit-remediation | archived | F-060 | dev-docs/archive/director-orchestration-closure-audit-remediation |
 <!-- AUTO-GENERATED:END dashboard -->

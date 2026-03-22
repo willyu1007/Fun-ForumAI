@@ -58,6 +58,11 @@ features:
     status: in-progress
     description: "Owner-first life overview, story-beat chronicle read model, nurture suggestion lanes, and breathing cadence signals built on top of existing personality, guidance, and public-scene foundations."
     milestone_id: M-000
+  - id: F-080
+    title: "Visual Media Framework V1"
+    status: in-progress
+    description: "Unified image/media asset domain, dual display/cognition projections, public scene image planning, private media cognition, reuse governance, generation broker delivery, multi-surface expansion, and lifecycle/observability control."
+    milestone_id: M-000
 
 requirements:
   - id: R-010
@@ -184,6 +189,34 @@ requirements:
     title: "Breathing Cadence and Projection Signals"
     status: in-progress
     feature_id: F-070
+  - id: R-080
+    title: "Media Domain Foundation and V1 Semantics Correction"
+    status: planned
+    feature_id: F-080
+  - id: R-081
+    title: "Public Visual Planning and Prompt-Safe Projection"
+    status: planned
+    feature_id: F-080
+  - id: R-082
+    title: "Private Media Attachment and Memory Projection"
+    status: planned
+    feature_id: F-080
+  - id: R-083
+    title: "Public Media Reuse and Revocation Governance"
+    status: planned
+    feature_id: F-080
+  - id: R-084
+    title: "Media Generation Broker and Derivative Delivery"
+    status: planned
+    feature_id: F-080
+  - id: R-085
+    title: "Multi-Surface Media Expansion and Shared Surface Adapters"
+    status: planned
+    feature_id: F-080
+  - id: R-086
+    title: "Media Observability, Lifecycle, and Rollout Control"
+    status: planned
+    feature_id: F-080
 
 tasks:
   - id: T-003
@@ -1082,6 +1115,76 @@ tasks:
       - R-021
     dev_docs_path: dev-docs/archive/prompt-budget-v2-sensitive-scene-cutover
     updated: 2026-03-17
+  - id: T-117
+    slug: visual-media-framework-v1-planning
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-080
+    dev_docs_path: dev-docs/active/visual-media-framework-v1-planning
+    updated: 2026-03-22
+  - id: T-118
+    slug: visual-media-domain-foundation-and-v1-semantics-correction
+    status: planned
+    milestone_id: M-000
+    feature_id: F-080
+    requirement_ids:
+      - R-080
+    dev_docs_path: dev-docs/active/visual-media-domain-foundation-and-v1-semantics-correction
+    updated: 2026-03-22
+  - id: T-119
+    slug: scheduled-post-image-planning-and-public-card
+    status: planned
+    milestone_id: M-000
+    feature_id: F-080
+    requirement_ids:
+      - R-081
+    dev_docs_path: dev-docs/active/scheduled-post-image-planning-and-public-card
+    updated: 2026-03-22
+  - id: T-120
+    slug: private-chat-image-attachments-and-private-projection
+    status: planned
+    milestone_id: M-000
+    feature_id: F-080
+    requirement_ids:
+      - R-082
+    dev_docs_path: dev-docs/active/private-chat-image-attachments-and-private-projection
+    updated: 2026-03-22
+  - id: T-121
+    slug: public-media-reuse-and-revocation-policy
+    status: planned
+    milestone_id: M-000
+    feature_id: F-080
+    requirement_ids:
+      - R-083
+    dev_docs_path: dev-docs/active/public-media-reuse-and-revocation-policy
+    updated: 2026-03-22
+  - id: T-122
+    slug: media-generation-broker-and-derivative-display
+    status: planned
+    milestone_id: M-000
+    feature_id: F-080
+    requirement_ids:
+      - R-084
+    dev_docs_path: dev-docs/active/media-generation-broker-and-derivative-display
+    updated: 2026-03-22
+  - id: T-123
+    slug: multi-surface-media-expansion-and-shared-adapters
+    status: planned
+    milestone_id: M-000
+    feature_id: F-080
+    requirement_ids:
+      - R-085
+    dev_docs_path: dev-docs/active/multi-surface-media-expansion-and-shared-adapters
+    updated: 2026-03-22
+  - id: T-124
+    slug: media-observability-lifecycle-and-rollout-control
+    status: planned
+    milestone_id: M-000
+    feature_id: F-080
+    requirement_ids:
+      - R-086
+    dev_docs_path: dev-docs/active/media-observability-lifecycle-and-rollout-control
+    updated: 2026-03-22
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: in-progress

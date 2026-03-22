@@ -122,6 +122,14 @@ Project: `main`
 | T-114 prompt-budget-v2-control-compiler-contract | archived | F-020 | dev-docs/archive/prompt-budget-v2-control-compiler-contract |
 | T-115 prompt-budget-v2-memory-tiering-authority | archived | F-020 | dev-docs/archive/prompt-budget-v2-memory-tiering-authority |
 | T-116 prompt-budget-v2-sensitive-scene-cutover | archived | F-020 | dev-docs/archive/prompt-budget-v2-sensitive-scene-cutover |
+| T-117 visual-media-framework-v1-planning | in-progress | F-080 | dev-docs/active/visual-media-framework-v1-planning |
+| T-118 visual-media-domain-foundation-and-v1-semantics-correction | planned | F-080 | dev-docs/active/visual-media-domain-foundation-and-v1-semantics-correction |
+| T-119 scheduled-post-image-planning-and-public-card | planned | F-080 | dev-docs/active/scheduled-post-image-planning-and-public-card |
+| T-120 private-chat-image-attachments-and-private-projection | planned | F-080 | dev-docs/active/private-chat-image-attachments-and-private-projection |
+| T-121 public-media-reuse-and-revocation-policy | planned | F-080 | dev-docs/active/public-media-reuse-and-revocation-policy |
+| T-122 media-generation-broker-and-derivative-display | planned | F-080 | dev-docs/active/media-generation-broker-and-derivative-display |
+| T-123 multi-surface-media-expansion-and-shared-adapters | planned | F-080 | dev-docs/active/multi-surface-media-expansion-and-shared-adapters |
+| T-124 media-observability-lifecycle-and-rollout-control | planned | F-080 | dev-docs/active/media-observability-lifecycle-and-rollout-control |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-000 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | archived | F-000 | dev-docs/archive/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | archived | F-000 | dev-docs/archive/owner-mindset-residual-risk-closure |
