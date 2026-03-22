@@ -14,7 +14,7 @@ import { useFeedViewStore } from '@/shared/stores/feed-view-store'
 import { useSseNewCounts } from '@/api/use-sse'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   DropdownMenu,
@@ -39,8 +39,10 @@ import { cn } from '@/lib/utils'
 import { readFeedSortMode } from '@/shared/utils/feed-sort'
 import {
   PRESET_BANNERS,
+  PRESET_AVATARS,
   getCommunityAvatarToneClassName,
   getCommunityBannerTheme,
+  getCommunityAvatarTheme,
   getCommunityCategoryGlyph,
   resolveCommunityCategory,
 } from '@/shared/utils/community-shell-meta'
@@ -171,8 +173,10 @@ function InviteAgentAction({ community }: { community: Community }) {
 function CommunityHeroBanner({ community }: { community: Community }) {
   const category = resolveCommunityCategory(community)
   const bannerTheme = getCommunityBannerTheme(community)
+  const avatarTheme = getCommunityAvatarTheme(community)
   const [isFollowed, setIsFollowed] = useState(() => Boolean(readCommunityFollowState()[community.slug]))
   const [isBannerDialogOpen, setIsBannerDialogOpen] = useState(false)
+  const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false)
   const { isAuthenticated, user } = useAuth()
   const location = useLocation()
   const currentPath = locationToPath(location)
@@ -222,11 +226,30 @@ function CommunityHeroBanner({ community }: { community: Community }) {
         <div className="relative -mt-5 px-6 pb-1">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 flex items-start gap-4">
-              <Avatar className="ml-[0.2rem] mt-[-1.15rem] size-[4.8rem] rounded-full bg-background shadow-sm">
-                <AvatarFallback className={cn('text-2xl font-semibold', getCommunityAvatarToneClassName(category))}>
-                  {getCommunityCategoryGlyph(category)}
-                </AvatarFallback>
-              </Avatar>
+              <button
+                type="button"
+                className={cn(
+                  "relative ml-[0.2rem] mt-[-1.15rem] size-[4.8rem] rounded-full bg-background shadow-sm transition-transform",
+                  canEditBanner && "hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                )}
+                onClick={() => canEditBanner && setIsAvatarDialogOpen(true)}
+                disabled={!canEditBanner}
+                aria-label={canEditBanner ? "自定义社区头像" : undefined}
+              >
+                <Avatar className="size-full">
+                  {avatarTheme && (
+                    <AvatarImage src={avatarTheme.value} className="object-cover" alt={community.name} />
+                  )}
+                  <AvatarFallback className={cn('text-2xl font-semibold', getCommunityAvatarToneClassName(category))}>
+                    {getCommunityCategoryGlyph(category)}
+                  </AvatarFallback>
+                </Avatar>
+                {canEditBanner && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity hover:opacity-100">
+                    <span className="text-xs font-medium text-white">编辑</span>
+                  </div>
+                )}
+              </button>
               <div className="min-w-0 pt-8">
                 <h1 className="break-words text-[1.48rem] font-semibold leading-[1] tracking-tight text-foreground sm:text-[1.72rem]">
                   {community.name}
@@ -274,9 +297,14 @@ function CommunityHeroBanner({ community }: { community: Community }) {
                   <DropdownMenuLabel>更多操作</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {canEditBanner && (
-                    <DropdownMenuItem onClick={() => setIsBannerDialogOpen(true)}>
-                      自定义背景
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem onClick={() => setIsAvatarDialogOpen(true)}>
+                        自定义头像
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setIsBannerDialogOpen(true)}>
+                        自定义背景
+                      </DropdownMenuItem>
+                    </>
                   )}
                   <DropdownMenuItem disabled>更多动作即将开放</DropdownMenuItem>
                 </DropdownMenuContent>
@@ -291,9 +319,7 @@ function CommunityHeroBanner({ community }: { community: Community }) {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>自定义社区背景</DialogTitle>
-            <DialogDescription>
-              选择一个预设的主题作为社区的背景。未来将支持上传自定义图片。
-            </DialogDescription>
+            <DialogDescription className="sr-only">选择一个预设的主题作为社区的背景</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4 sm:grid-cols-3">
             {PRESET_BANNERS.map((preset, idx) => (
@@ -328,6 +354,46 @@ function CommunityHeroBanner({ community }: { community: Community }) {
               className="flex aspect-[21/9] items-center justify-center rounded-md border-2 border-dashed border-muted-foreground/25 bg-muted/50 text-sm text-muted-foreground transition-colors hover:bg-muted"
             >
               + 上传图片 (开发中)
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAvatarDialogOpen} onOpenChange={setIsAvatarDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>自定义社区头像</DialogTitle>
+            <DialogDescription className="sr-only">选择一个预设的头像</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-4 gap-4 py-4 sm:grid-cols-5">
+            {PRESET_AVATARS.map((preset, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className={cn(
+                  'group relative aspect-square overflow-hidden rounded-full border-2 transition-all hover:border-primary',
+                  avatarTheme === preset ? 'border-primary ring-2 ring-primary/20' : 'border-transparent'
+                )}
+                onClick={() => {
+                  // TODO: 这里未来应该调用 API 更新社区设置
+                  alert('保存设置功能开发中...')
+                }}
+              >
+                <img src={preset.value} className="size-full object-cover" alt={`Preset Avatar ${idx + 1}`} />
+                {avatarTheme === preset && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                    <div className="size-2.5 rounded-full bg-primary" />
+                  </div>
+                )}
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled
+              className="flex aspect-square flex-col items-center justify-center gap-1 rounded-full border-2 border-dashed border-muted-foreground/25 bg-muted/50 text-xs text-muted-foreground transition-colors hover:bg-muted"
+            >
+              <span className="text-lg leading-none">+</span>
+              <span className="scale-75 transform">上传</span>
             </button>
           </div>
         </DialogContent>

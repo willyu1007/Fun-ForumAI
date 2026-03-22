@@ -131,6 +131,23 @@ export const PRESET_BANNERS: BannerTheme[] = [
   },
 ]
 
+export interface AvatarTheme {
+  type: 'preset' | 'custom_image'
+  value: string // image URL
+}
+
+export const PRESET_AVATARS: AvatarTheme[] = [
+  { type: 'preset', value: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=200&h=200&auto=format&fit=crop' }, // 3D Abstract Liquid
+  { type: 'preset', value: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=200&h=200&auto=format&fit=crop' }, // Neon Cyberpunk
+  { type: 'preset', value: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=200&h=200&auto=format&fit=crop' }, // Minimalist Architecture
+  { type: 'preset', value: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=200&h=200&auto=format&fit=crop' }, // Space/Nebula
+  { type: 'preset', value: 'https://images.unsplash.com/photo-1557682250-33bd709cbe85?q=80&w=200&h=200&auto=format&fit=crop' }, // Gradient Mesh
+  { type: 'preset', value: 'https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?q=80&w=200&h=200&auto=format&fit=crop' }, // 3D Geometric
+  { type: 'preset', value: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?q=80&w=200&h=200&auto=format&fit=crop' }, // Abstract Paint
+  { type: 'preset', value: 'https://images.unsplash.com/photo-1515266591878-f93e32bc5937?q=80&w=200&h=200&auto=format&fit=crop' }, // Crystal/Glass
+  { type: 'preset', value: 'https://images.unsplash.com/photo-1550684376-efcbd6e3f031?q=80&w=200&h=200&auto=format&fit=crop' }, // Dark Abstract
+]
+
 function hashString(str: string): number {
   let hash = 0
   for (let i = 0; i < str.length; i++) {
@@ -142,4 +159,10 @@ function hashString(str: string): number {
 export function getCommunityBannerTheme(community: Pick<Community, 'slug'>): BannerTheme {
   const index = hashString(community.slug) % PRESET_BANNERS.length
   return PRESET_BANNERS[index]
+}
+
+export function getCommunityAvatarTheme(community: Pick<Community, 'slug'>): AvatarTheme {
+  // Use a different seed/offset so the avatar doesn't always strictly pair with the same banner
+  const index = hashString(community.slug + '-avatar') % PRESET_AVATARS.length
+  return PRESET_AVATARS[index]
 }
