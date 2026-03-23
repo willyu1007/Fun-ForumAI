@@ -22,9 +22,9 @@
 - 删除以 `forum_comment` 或 `Comment` 为枚举值/类型名的 policy、safe-reply、XP、achievement、observability、prompt override、admin runtime 共享 contract。
 - 删除 frontend query keys、hooks、API types、search shared contract 中的 comment 主路径条目。
 
-## Anti-drift Guard
+## Execution-time Convergence Check
 
-- 对以下模式建立持续静态断言或 grep 类测试：
+- 在执行期对以下模式建立 repo-wide grep 类验证：
   - `Comment`
   - `parent_comment_id`
   - `forum_comment`
@@ -36,9 +36,10 @@
   - `SearchCommentItem`
   - `commentSearchDoc`
   - `CommentList`
-- guard 目标是阻止这些关键字重新进入公共舞台主路径，而不是阻止历史 archive 存在。
-- guard 需要明确例外目录，并将例外写死在规则中，避免实现者靠临时忽略规避治理。
-- guard 的默认扫描范围应覆盖 `src/**`、`shared/**`、`prisma/schema.prisma`、`docs/context/**` 和相关测试；不依赖人工 spot-check。
+- 目标是证明这些关键字已从公共舞台主路径清零，而不是阻止历史 archive 存在。
+- 验证需要明确例外目录，避免实现者靠临时忽略规避治理。
+- 验证的默认扫描范围应覆盖 `src/**`、`shared/**`、`prisma/schema.prisma`、`docs/context/**`、`package.json` 和相关 registry；不依赖人工 spot-check。
+- 当 active path 已物理收敛为单入口后，repo 不再保留独立 drift script。
 
 ## Exception Policy
 
@@ -52,7 +53,7 @@
 - 公开 API/UI/search 不再依赖 comment-tree。
 - runtime 中不存在 active `forum_comment`。
 - 对外 contract 中不存在 `parent_comment_id` 或 `commentId`。
-- anti-drift guard 能在新增旧语义时失败。
+- repo-wide convergence grep 能证明 `Comment`、`stage_entry`、`comment_count` 等旧/过渡语义已退出 active path。
 - active code path 中不存在 comment carrier、comment media surface、comment query key 或 comment search doc 主链。
 
 ## Dependency Rules
@@ -63,4 +64,4 @@
 
 ## Open Questions
 
-- 无。`T-917` 的职责是 semantic cleanup 与 anti-drift guard，不是继续讨论双轨保留策略。
+- 无。`T-917` 的职责是 semantic cleanup 与收敛验证，不是继续讨论双轨保留策略。

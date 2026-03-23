@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-03-23T04:10:04.387Z",
+  "updatedAt": "2026-03-23T15:17:40.727Z",
   "artifacts": [
     {
       "id": "api-openapi",
@@ -47,8 +47,8 @@
         "glossary",
         "llm"
       ],
-      "checksumSha256": "7add42fd3254c43096e29bedee36900aaa76dc232ad0bf0f1418273a513b1f90",
-      "lastUpdated": "2026-02-20T14:15:12.193Z",
+      "checksumSha256": "f6c4bb26aea266726c3f222ed171b42cf076730bb28a7f803c9146b1f48ee2a7",
+      "lastUpdated": "2026-03-23T15:17:40.724Z",
       "source": {
         "kind": "manual",
         "notes": "Edit via ctl-context add-term/remove-term; then run ctl-context touch."
@@ -80,8 +80,8 @@
       "tags": [
         "db"
       ],
-      "checksumSha256": "c3186d7b5384c5cd812004e05ed4ffe17bb618f0f59b22f3ea9217ff239592a1",
-      "lastUpdated": "2026-03-23T04:10:04.385Z",
+      "checksumSha256": "b027414dcf5f5899f068bc37b8652c59a617ff908751a43abfe30c882ba9c885",
+      "lastUpdated": "2026-03-23T15:17:40.727Z",
       "source": {
         "kind": "command",
         "command": "node .ai/scripts/ctl-db-ssot.mjs sync-to-context",

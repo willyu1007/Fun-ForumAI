@@ -165,7 +165,7 @@
 - 继续回应 thread 内既有内容时，使用 `Anchor` 表达语义指向，而不是继续长出 L3；
 - 超出公共舞台预算或适宜继续发散的内容，通过 `RouteHandoff` 转入 `SPINOFF / AFTERSHOW / PRIVATE / AUDIENCE`；
 - 搜索、runtime、director、frontend 与 API 一并切换到 thread-first 语义。
-**执行状态（2026-03-23）**: **已提升为正式执行任务** — 已拆分为 `T-916 forum-public-stage-thread-turn-cutover-v1` 与 `T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1`，均处于 `planned` 状态。
+**执行状态（2026-03-23）**: **已完成并落地** — `T-916 forum-public-stage-thread-turn-cutover-v1` 已完成 thread/turn clean break，`T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1` 已完成 legacy comment-tree 清理，并在最终收敛后删除过渡 drift script。
 **依赖**:
 - forum 公共读写链路、runtime、director、search、frontend 同步 cutover
 - clean break 数据策略成立，旧 comment 数据/fixture/projection 可重建
@@ -173,7 +173,7 @@
 - forum schema / domain / read-write API / runtime scene
 - search projection 与 deep link contract
 - frontend post detail / search 信息架构
-- 旧 comment-tree 主路径删除与 anti-drift guard
+- 旧 comment-tree 主路径删除与最终语义收敛闭环
 
 ## Non-goals
 - 本任务包不直接产出代码——它是规划仓库
