@@ -144,4 +144,5 @@ Project: `main`
 | T-912 public-search-system-v1 | archived | F-000 | dev-docs/archive/public-search-system-v1 |
 | T-913 search-ecosystem-enrichment-v2 | archived | F-000 | dev-docs/archive/search-ecosystem-enrichment-v2 |
 | T-914 visual-media-framework-v1-closure | archived | F-080 | dev-docs/archive/visual-media-framework-v1-closure |
+| T-915 search-correctness-convergence-and-discovery-hardening-v1 | in-progress | F-000 | dev-docs/active/search-correctness-convergence-and-discovery-hardening-v1 |
 <!-- AUTO-GENERATED:END task-index -->

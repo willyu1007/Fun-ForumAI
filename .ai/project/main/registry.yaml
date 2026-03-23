@@ -1289,3 +1289,10 @@ tasks:
     feature_id: F-080
     dev_docs_path: dev-docs/archive/visual-media-framework-v1-closure
     updated: 2026-03-23
+  - id: T-915
+    slug: search-correctness-convergence-and-discovery-hardening-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/search-correctness-convergence-and-discovery-hardening-v1
+    updated: 2026-03-23

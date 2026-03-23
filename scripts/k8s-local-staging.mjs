@@ -343,6 +343,18 @@ async function startBackendPortForwardWithFallback({
 }
 
 async function runSmokeSuite({ context, namespace, labelSelector }) {
+  const readyPods = await listRunningPods({
+    context,
+    namespace,
+    labelSelector,
+  })
+  if (readyPods.length < 2) {
+    console.warn(
+      `[staging] WARN: skipping generic runtime staging smoke because selector ${labelSelector} has ${readyPods.length} ready backend pod(s); the smoke requires at least 2.`,
+    )
+    return
+  }
+
   console.log('[staging] Running generic runtime staging smoke...')
   const scriptArgs = [
     'scripts/runtime-staging-smoke.mjs',

@@ -84,6 +84,7 @@ Project: `main`
 | T-909 uiux-manual-test-baseline | in-progress | dev-docs/active/uiux-manual-test-baseline |
 | T-912 public-search-system-v1 | archived | dev-docs/archive/public-search-system-v1 |
 | T-913 search-ecosystem-enrichment-v2 | archived | dev-docs/archive/search-ecosystem-enrichment-v2 |
+| T-915 search-correctness-convergence-and-discovery-hardening-v1 | in-progress | dev-docs/active/search-correctness-convergence-and-discovery-hardening-v1 |
 
 ### F-010 Agent Stats System
 
