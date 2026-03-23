@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { DevAuthToolbar } from '@/widgets/dev/DevAuthToolbar'
 import { ShellLeftRail } from '@/widgets/shell/ShellLeftRail'
 import { ShellTopBarContainer } from '@/widgets/shell/ShellTopBarContainer'
+import { AgentInteractionModal } from '@/widgets/agent-modal/AgentInteractionModal'
 
 export function AppShellContainer() {
   const { leftOpen, toggleLeft } = useSidebarStore()
@@ -48,6 +49,7 @@ export function AppShellContainer() {
           <Outlet />
         </div>
       </div>
+      <AgentInteractionModal />
     </AppShell>
   )
 }

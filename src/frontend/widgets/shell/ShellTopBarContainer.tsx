@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redirect'
 import { Link, useLocation } from 'react-router'
+import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { Search } from 'lucide-react'
 import { AgentPanelWidget } from './AgentPanelWidget'
 import { ActivityPanelWidget } from './ActivityPanelWidget'
@@ -114,10 +115,13 @@ function UserMenu({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
+          <Link to="/settings/account">账户设置</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
           <Link to="/search">搜索广场</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to="/agents/manage">智能体管理</Link>
+          <button type="button" onClick={() => useAgentModalStore.getState().openModal(null, 'manage')}>我的智能体</button>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link to="/safety">举报与申诉</Link>

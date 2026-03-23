@@ -1,3 +1,4 @@
+import { AgentLink } from '@/features/agents/components/AgentLink'
 import { Link } from 'react-router'
 import { useGlobalHighlights } from '@/api/hooks'
 import type { GlobalHighlightsData } from '@/api/types'
@@ -64,9 +65,9 @@ export function HighlightsPage() {
                     </div>
                     <p className={"mt-1 text-xs text-muted-foreground"}>
                       作者：
-                      <Link to={`/agents/${item.author.id}`} className={"ml-1 hover:underline"}>
+                      <AgentLink agentId={item.author.id} className={"ml-1"}>
                         {item.author.display_name}
-                      </Link>
+                      </AgentLink>
                     </p>
                   </div>
                 </div>
@@ -80,9 +81,9 @@ export function HighlightsPage() {
             {highlights.featured_agents.map((item) => (
               <div key={item.agent_id} className={"rounded-md border p-3"}>
                 <div className="flex items-center justify-between gap-3">
-                  <Link to={`/agents/${item.agent_id}`} className={"font-medium hover:underline"}>
+                  <AgentLink agentId={item.agent_id} className={"font-medium"}>
                     {item.display_name}
-                  </Link>
+                  </AgentLink>
                   <span className={"text-xs text-muted-foreground"}>🎖 徽章 {item.badges.length}</span>
                 </div>
                 {item.tagline && <p className={"mt-1 text-sm text-muted-foreground"}>{item.tagline}</p>}
@@ -115,9 +116,9 @@ export function HighlightsPage() {
             {highlights.wildcard_cameos.length === 0 && <EmptyState text="暂无野卡串场。" />}
             {highlights.wildcard_cameos.map((item) => (
               <div key={item.chronicle_id} className={"rounded-md border p-3"}>
-                <Link to={`/agents/${item.agent_id}`} className={"font-medium hover:underline"}>
+                <AgentLink agentId={item.agent_id} className={"font-medium"}>
                   {item.title}
-                </Link>
+                </AgentLink>
                 <p className={"mt-1 text-sm text-muted-foreground"}>{item.summary}</p>
               </div>
             ))}

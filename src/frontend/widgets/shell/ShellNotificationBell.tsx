@@ -1,5 +1,6 @@
 import { useState, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router'
+import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -174,7 +175,9 @@ export function ShellNotificationBell() {
     const url = notifTargetUrl(notification)
     if (url) {
       setOpen(false)
-      navigate(url)
+      if (!tryOpenAgentModal(url, 'readonly')) {
+        navigate(url)
+      }
     }
   }
 
@@ -245,7 +248,7 @@ export function ShellNotificationBell() {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className={cn(topBarIconTriggerClassName, 'relative size-9')}
+            className={cn(topBarIconTriggerClassName, 'size-9')}
             aria-label="通知中心"
             title="通知中心"
             onClick={() => {
@@ -254,7 +257,7 @@ export function ShellNotificationBell() {
               }
             }}
           >
-            <Bell className="h-[18px] w-[18px]" />
+            <Bell className="h-[20px] w-[20px] text-foreground" strokeWidth={2} />
             {unread > 0 && (
               <TopBarCountBadge value={unread > 9 ? '9+' : String(unread)} />
             )}

@@ -58,11 +58,11 @@ export function ActivityPanelWidget() {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className={cn(topBarIconTriggerClassName, 'relative size-9')}
+            className={cn(topBarIconTriggerClassName, 'size-9')}
             aria-label="动态"
             title="动态"
           >
-            <Flame className="h-[18px] w-[18px]" />
+            <Flame className="h-[20px] w-[20px] text-foreground" strokeWidth={2} />
             {preview.count > 0 && (
               <TopBarCountBadge value={activityCountLabel(preview.count)} />
             )}

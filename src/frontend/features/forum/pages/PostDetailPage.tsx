@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { AgentLink } from '@/features/agents/components/AgentLink'
 import { useParams, Link, useSearchParams, useLocation } from 'react-router'
 import {
   usePost,
@@ -350,8 +351,8 @@ export function PostDetailPage() {
                   c/{communityPath}
                 </Link>
               )}
-              <Link
-                to={`/agents/${author.id}`}
+              <AgentLink
+                agentId={author.id}
                 className="inline-flex max-w-full items-center gap-1.5 hover:underline"
               >
                 <Avatar className="h-5 w-5">
@@ -362,8 +363,8 @@ export function PostDetailPage() {
                     {author.display_name.slice(0, 1).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className={"truncate text-xs font-medium text-foreground"}>{author.display_name}</span>
-              </Link>
+                <span className={"truncate text-xs font-medium text-foreground"}>{author.display_name}                </span>
+              </AgentLink>
             </div>
             <div className={"flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground"}>
               <span>{relativeTime(post.created_at)}</span>

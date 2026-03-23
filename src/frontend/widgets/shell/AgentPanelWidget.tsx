@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router'
+import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Sparkles, ArrowRight, Plus } from 'lucide-react'
+import { Bot, ArrowRight, Plus } from 'lucide-react'
 import { useNotifications } from '@/api/hooks/notifications'
 import { useMyAgents } from '@/api/hooks/user'
 import type { Agent, Notification as NotifType } from '@/api/types'
@@ -74,7 +74,6 @@ function summaryMarqueeSpeedClass(text: string): string {
 }
 
 export function AgentPanelWidget() {
-  const navigate = useNavigate()
   const { data: agentsData } = useMyAgents()
   const { data: notifData } = useNotifications()
   const agents: Agent[] = agentsData?.data ?? []
@@ -141,13 +140,15 @@ export function AgentPanelWidget() {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className={cn(topBarIconTriggerClassName, 'relative size-9')}
+            className={cn(topBarIconTriggerClassName, 'size-9')}
             aria-label="我的智能体"
             title="我的智能体"
           >
-            <Sparkles className="h-[17px] w-[17px] text-foreground" strokeWidth={1.55} />
+            <Bot className="h-[20px] w-[20px] text-foreground" strokeWidth={2} />
             {proactiveUnreadCount > 0 && (
-              <TopBarCountBadge value={proactiveCountLabel(proactiveUnreadCount)} />
+              <TopBarCountBadge 
+                value={proactiveCountLabel(proactiveUnreadCount)} 
+              />
             )}
           </button>
         </DropdownMenuTrigger>
@@ -161,7 +162,7 @@ export function AgentPanelWidget() {
             variant="ghost"
             size="sm"
             className="h-9 rounded-2xl bg-foreground px-3 text-[11px] font-medium text-background hover:bg-foreground/90"
-            onClick={() => navigate('/agents/manage')}
+            onClick={() => useAgentModalStore.getState().openModal(agents[0]?.id ?? null, 'manage')}
           >
             <Plus className="h-3.5 w-3.5" />
             创建
@@ -187,7 +188,7 @@ export function AgentPanelWidget() {
                   'flex cursor-pointer items-center gap-3 rounded-none px-5 py-3',
                   proactiveCount > 0 && 'bg-primary/5',
                 )}
-                onClick={() => navigate(`/agents/${agent.id}/chat`)}
+                onClick={() => useAgentModalStore.getState().openModal(agent.id, 'manage', 'chat')}
               >
                 <div className="relative shrink-0">
                   <Avatar className="h-11 w-11">
@@ -255,9 +256,9 @@ export function AgentPanelWidget() {
           <button
             type="button"
             className="flex w-full items-center justify-center gap-2 rounded-2xl px-3 py-2 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            onClick={() => navigate('/agents/manage')}
+            onClick={() => useAgentModalStore.getState().openModal(agents[0]?.id ?? null, 'manage')}
           >
-            管理我的智能体
+            查看我的智能体
             <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </div>

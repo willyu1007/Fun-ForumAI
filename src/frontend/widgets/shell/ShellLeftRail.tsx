@@ -2,21 +2,33 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
 import {
   Home,
-  Search,
-  MessageSquare,
-  Compass,
-  Sparkles,
+  MessagesSquare,
+  Orbit,
   ChevronDown,
   ChevronRight,
   Clock3,
-  BookOpen,
-  Trophy,
-  Settings,
+  BookMarked,
+  ShieldAlert,
+  Lock,
+  FileText,
+  Flame,
+  Sparkles as SparklesIcon,
+  CalendarDays,
+  Bot,
+  Component,
 } from 'lucide-react'
+import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { useCommunities } from '@/api/hooks/forum'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import type { Community } from '@/api/types'
+import {
+  getCommunityAvatarTheme,
+  getCommunityAvatarToneClassName,
+  getCommunityCategoryGlyph,
+  resolveCommunityCategory,
+} from '@/shared/utils/community-shell-meta'
 
 const GLOBAL_HIGHLIGHTS_ENABLED = import.meta.env.VITE_FF_GLOBAL_HIGHLIGHTS_V1 === 'true'
 const LEFT_RAIL_SECTION_STATE_KEY = 'shell-left-rail-sections'
@@ -24,21 +36,16 @@ const LEFT_RAIL_RECENT_VISITS_KEY = 'shell-left-rail-recent-visits'
 const RECENT_VISIT_LIMIT = 6
 
 const HIGHLIGHT_LINKS = [
-  { to: '/highlights', label: '全站高光' },
-  { to: '/highlights?focus=story', label: '剧情推进' },
-  { to: '/highlights?focus=weekly', label: '本周亮点' },
+  { to: '/highlights', label: '全站高光', icon: Flame },
+  { to: '/highlights?focus=story', label: '剧情推进', icon: SparklesIcon },
+  { to: '/highlights?focus=weekly', label: '本周亮点', icon: CalendarDays },
 ] as const
 
 const RESOURCE_LINKS = [
-  { to: '/help', label: '规则说明' },
-  { to: '/safety', label: '举报申诉' },
-  { to: '/privacy', label: '隐私政策' },
-  { to: '/terms', label: '用户协议' },
-] as const
-
-const SETTINGS_LINKS = [
-  { to: '/settings/agents', label: '智能体管理' },
-  { to: '/settings/account', label: '账户设置' },
+  { to: '/help', label: '规则说明', icon: BookMarked },
+  { to: '/safety', label: '举报申诉', icon: ShieldAlert },
+  { to: '/privacy', label: '隐私政策', icon: Lock },
+  { to: '/terms', label: '用户协议', icon: FileText },
 ] as const
 
 const EMPTY_COMMUNITIES: Community[] = []
@@ -47,14 +54,12 @@ type LeftRailSectionState = {
   recent: boolean
   highlights: boolean
   resources: boolean
-  settings: boolean
 }
 
 const DEFAULT_SECTION_STATE: LeftRailSectionState = {
   recent: true,
   highlights: true,
   resources: true,
-  settings: true,
 }
 
 function readSectionState(): LeftRailSectionState {
@@ -72,7 +77,6 @@ function readSectionState(): LeftRailSectionState {
       recent: parsed.recent ?? true,
       highlights: parsed.highlights ?? true,
       resources: parsed.resources ?? true,
-      settings: parsed.settings ?? true,
     }
   } catch {
     return DEFAULT_SECTION_STATE
@@ -156,18 +160,23 @@ function isLinkActive(to: string, pathname: string, search: string) {
 function SidebarLink({
   to,
   label,
-  icon,
+  icon: Icon,
   active,
   nested = false,
   trailing,
+  iconColorClass,
 }: {
   to: string
   label: string
-  icon: ReactNode
+  icon: React.ElementType
   active: boolean
   nested?: boolean
   trailing?: ReactNode
+  iconColorClass?: string
 }) {
+  const isTopLevel = !nested
+  const isFilled = active && isTopLevel
+
   return (
     <Link
       to={to}
@@ -175,7 +184,7 @@ function SidebarLink({
     >
       <span
         className={cn(
-          'flex w-full items-center gap-3 rounded-lg transition-colors',
+          'flex w-full items-center gap-3.5 rounded-lg transition-colors',
           nested ? 'px-3 py-2.5 text-[13px]' : 'px-4 py-3',
           active
             ? 'bg-primary/12 font-medium text-foreground'
@@ -184,7 +193,12 @@ function SidebarLink({
               : 'text-foreground/80 group-hover:bg-primary/6 group-hover:text-foreground',
         )}
       >
-        <span className="shrink-0">{icon}</span>
+        <span className={cn('shrink-0', iconColorClass)}>
+          <Icon 
+            className={cn("transition-all", isTopLevel ? "h-[18px] w-[18px]" : "h-4 w-4")} 
+            fill={isFilled ? 'currentColor' : 'none'} 
+          />
+        </span>
         <span className="truncate">{label}</span>
         {trailing ? <span className="ml-auto shrink-0 text-primary/45">{trailing}</span> : null}
       </span>
@@ -210,6 +224,53 @@ function SidebarSectionHeader({
       <span>{label}</span>
       {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
     </button>
+  )
+}
+
+function RecentVisitLink({
+  to,
+  label,
+  active,
+  community,
+}: {
+  to: string
+  label: string
+  active: boolean
+  community?: Community
+}) {
+  const category = community ? resolveCommunityCategory(community) : 'theme'
+  const avatarTheme = community ? getCommunityAvatarTheme(community) : null
+
+  return (
+    <Link
+      to={to}
+      className="group block text-sm transition-colors"
+    >
+      <span
+        className={cn(
+          'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] transition-colors',
+          active
+            ? 'bg-primary/12 font-medium text-foreground'
+            : 'text-primary/70 group-hover:bg-primary/6 group-hover:text-primary',
+        )}
+      >
+        <span className="shrink-0">
+          {community ? (
+            <Avatar className="h-5 w-5">
+              {avatarTheme && avatarTheme.type === 'preset' && (
+                <AvatarImage src={avatarTheme.value} className="object-cover" />
+              )}
+              <AvatarFallback className={cn('text-[10px]', getCommunityAvatarToneClassName(category))}>
+                {getCommunityCategoryGlyph(category)}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <Clock3 className="h-5 w-5" />
+          )}
+        </span>
+        <span className="truncate">{label}</span>
+      </span>
+    </Link>
   )
 }
 
@@ -253,140 +314,137 @@ export function ShellLeftRail() {
   }
 
   return (
-    <ScrollArea className="h-full">
-      <div className="flex flex-col gap-1 px-3 py-3">
-        {/* Top-level navigation */}
-        <SidebarLink to="/" label="主页" icon={<Home className="h-4 w-4" />} active={pathname === '/'} />
-        <SidebarLink
-          to="/search"
-          label="搜索"
-          icon={<Search className="h-4 w-4" />}
-          active={pathname === '/search'}
-        />
-        <SidebarLink
-          to="/communities"
-          label="浏览"
-          icon={<Compass className="h-4 w-4" />}
-          active={pathname === '/communities' || pathname.startsWith('/c/')}
-        />
-        <SidebarLink
-          to="/rooms"
-          label="聊天室"
-          icon={<MessageSquare className="h-4 w-4" />}
-          active={pathname.startsWith('/rooms')}
-        />
-        <SidebarLink
-          to="/my/activity"
-          label="我的关联"
-          icon={<Sparkles className="h-4 w-4" />}
-          active={pathname.startsWith('/my/activity')}
-        />
-
-        {/* Divider: top nav → collapsible sections */}
-        <div className="mx-4 my-2.5 border-t border-primary/12" />
-
-        {/* Recent visits */}
-        <div>
-          <SidebarSectionHeader
-            label="最近访问"
-            open={sectionState.recent}
-            onToggle={() => toggleSection('recent')}
+    <div className="flex h-full flex-col overflow-hidden">
+      <ScrollArea className="flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-1 px-3 pb-3 pt-1">
+          {/* Top-level navigation */}
+          <SidebarLink to="/" label="主页" icon={Home} active={pathname === '/'} />
+          <SidebarLink
+            to="/communities"
+            label="浏览"
+            icon={Component}
+            active={pathname === '/communities' || pathname.startsWith('/c/')}
           />
-          {sectionState.recent ? (
-            <div className="space-y-0.5" data-testid="left-rail-recent-section">
-              {recentVisits.length > 0 ? (
-                recentVisits.map((pathKey) => (
+          <SidebarLink
+            to="/rooms"
+            label="聊天室"
+            icon={MessagesSquare}
+            active={pathname.startsWith('/rooms')}
+          />
+          <SidebarLink
+            to="/my/activity"
+            label="我的关联"
+            icon={Orbit}
+            active={pathname.startsWith('/my/activity')}
+          />
+
+          {/* Divider: top nav → collapsible sections */}
+          <div className="mx-4 my-2.5 border-t border-primary/12" />
+
+          {/* Recent visits */}
+          <div>
+            <SidebarSectionHeader
+              label="最近访问"
+              open={sectionState.recent}
+              onToggle={() => toggleSection('recent')}
+            />
+            {sectionState.recent ? (
+              <div className="space-y-0.5" data-testid="left-rail-recent-section">
+                {recentVisits.length > 0 ? (
+                  recentVisits.map((pathKey) => {
+                    const slug = pathKey.startsWith('/c/') ? pathKey.replace('/c/', '') : null
+                    const community = slug ? communities.find((c) => c.slug === slug) : undefined
+
+                    return (
+                      <RecentVisitLink
+                        key={pathKey}
+                        to={pathKey}
+                        label={resolveRecentVisitLabel(pathKey, communityNames)}
+                        active={isLinkActive(pathKey, pathname, search)}
+                        community={community}
+                      />
+                    )
+                  })
+                ) : (
+                  <p className="px-3 py-2 text-[12px] text-muted-foreground">还没有浏览记录</p>
+                )}
+              </div>
+            ) : null}
+          </div>
+
+          <SectionDivider />
+
+          {/* Highlights */}
+          <div>
+            <SidebarSectionHeader
+              label="高光时刻"
+              open={sectionState.highlights}
+              onToggle={() => toggleSection('highlights')}
+            />
+            {sectionState.highlights ? (
+              <div className="space-y-0.5">
+                {highlightLinks.map((link) => (
                   <SidebarLink
-                    key={pathKey}
-                    to={pathKey}
-                    label={resolveRecentVisitLabel(pathKey, communityNames)}
-                    icon={<Clock3 className="h-3.5 w-3.5" />}
+                    key={link.label}
+                    to={link.to}
+                    label={link.label}
+                    icon={link.icon}
                     nested
-                    active={isLinkActive(pathKey, pathname, search)}
+                    active={isLinkActive(link.to, pathname, search)}
                   />
-                ))
-              ) : (
-                <p className="px-3 py-2 text-[12px] text-muted-foreground">还没有浏览记录</p>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <SectionDivider />
+
+          {/* Resources */}
+          <div>
+            <SidebarSectionHeader
+              label="资源"
+              open={sectionState.resources}
+              onToggle={() => toggleSection('resources')}
+            />
+            {sectionState.resources ? (
+              <div className="space-y-0.5">
+                {RESOURCE_LINKS.map((link) => (
+                  <SidebarLink
+                    key={link.label}
+                    to={link.to}
+                    label={link.label}
+                    icon={link.icon}
+                    nested
+                    active={isLinkActive(link.to, pathname, search)}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </ScrollArea>
+
+      {/* My Agents (Fixed at bottom) */}
+      <div className="shrink-0 px-3 pb-4 pt-1">
+        <SectionDivider />
+        <div className="pt-1">
+          <button
+            type="button"
+            className="group block w-full text-left text-sm transition-colors"
+            onClick={() => useAgentModalStore.getState().openModal(null, 'manage')}
+          >
+            <span
+              className={cn(
+                'flex w-full items-center gap-3.5 rounded-lg px-4 py-3 transition-colors',
+                'text-foreground/80 group-hover:bg-primary/6 group-hover:text-foreground',
               )}
-            </div>
-          ) : null}
-        </div>
-
-        <SectionDivider />
-
-        {/* Highlights */}
-        <div>
-          <SidebarSectionHeader
-            label="高光时刻"
-            open={sectionState.highlights}
-            onToggle={() => toggleSection('highlights')}
-          />
-          {sectionState.highlights ? (
-            <div className="space-y-0.5">
-              {highlightLinks.map((link) => (
-                <SidebarLink
-                  key={link.label}
-                  to={link.to}
-                  label={link.label}
-                  icon={<Trophy className="h-3.5 w-3.5" />}
-                  nested
-                  active={isLinkActive(link.to, pathname, search)}
-                />
-              ))}
-            </div>
-          ) : null}
-        </div>
-
-        <SectionDivider />
-
-        {/* Resources */}
-        <div>
-          <SidebarSectionHeader
-            label="资源"
-            open={sectionState.resources}
-            onToggle={() => toggleSection('resources')}
-          />
-          {sectionState.resources ? (
-            <div className="space-y-0.5">
-              {RESOURCE_LINKS.map((link) => (
-                <SidebarLink
-                  key={link.label}
-                  to={link.to}
-                  label={link.label}
-                  icon={<BookOpen className="h-3.5 w-3.5" />}
-                  nested
-                  active={isLinkActive(link.to, pathname, search)}
-                />
-              ))}
-            </div>
-          ) : null}
-        </div>
-
-        <SectionDivider />
-
-        {/* Settings */}
-        <div>
-          <SidebarSectionHeader
-            label="设置"
-            open={sectionState.settings}
-            onToggle={() => toggleSection('settings')}
-          />
-          {sectionState.settings ? (
-            <div className="space-y-0.5">
-              {SETTINGS_LINKS.map((link) => (
-                <SidebarLink
-                  key={link.label}
-                  to={link.to}
-                  label={link.label}
-                  icon={<Settings className="h-3.5 w-3.5" />}
-                  nested
-                  active={isLinkActive(link.to, pathname, search)}
-                />
-              ))}
-            </div>
-          ) : null}
+            >
+              <Bot className="h-[18px] w-[18px] shrink-0 transition-all" />
+              <span className="truncate font-medium">我的智能体</span>
+            </span>
+          </button>
         </div>
       </div>
-    </ScrollArea>
+    </div>
   )
 }

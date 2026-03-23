@@ -1,4 +1,5 @@
-import { Link } from 'react-router'
+import { useAgentModalStore, tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
+import { useNavigate } from 'react-router'
 import { useOwnerLifeOverview } from '@/api/hooks'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,6 +29,23 @@ function suggestionPriorityLabel(priority: 'now' | 'soon' | 'optional') {
     default:
       return '精修时'
   }
+}
+
+function ActionLink({ href, className, children }: { href: string; className?: string; children: React.ReactNode }) {
+  const navigate = useNavigate()
+  return (
+    <button
+      type="button"
+      className={className}
+      onClick={() => {
+        if (!tryOpenAgentModal(href, 'manage')) {
+          navigate(href)
+        }
+      }}
+    >
+      {children}
+    </button>
+  )
 }
 
 export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
@@ -243,14 +261,14 @@ export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
                 <p className="mt-1 text-xs text-muted-foreground">预计推进：{item.expected_progress}</p>
                 <div className="mt-2 flex flex-wrap gap-3">
                   {item.primary_action.href ? (
-                    <Link to={item.primary_action.href} className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+                    <ActionLink href={item.primary_action.href} className="text-sm font-medium text-primary underline-offset-4 hover:underline">
                       {item.primary_action.label}
-                    </Link>
+                    </ActionLink>
                   ) : null}
                   {item.secondary_action?.href ? (
-                    <Link to={item.secondary_action.href} className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+                    <ActionLink href={item.secondary_action.href} className="text-sm text-muted-foreground underline-offset-4 hover:underline">
                       {item.secondary_action.label}
-                    </Link>
+                    </ActionLink>
                   ) : null}
                 </div>
               </div>
@@ -264,12 +282,12 @@ export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
           <CardTitle>继续往下</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
-          <Link to={overview?.entry_points.chronicle.href ?? `/agents/${agentId}?tab=achievements`} className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+          <button type="button" onClick={() => useAgentModalStore.getState().setActiveTab('history')} className="text-sm font-medium text-primary underline-offset-4 hover:underline">
             {overview?.entry_points.chronicle.label ?? '查看编年史'}
-          </Link>
-          <Link to={overview?.entry_points.system.href ?? `/agents/${agentId}?tab=privacy`} className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+          </button>
+          <button type="button" onClick={() => useAgentModalStore.getState().setActiveTab('intro')} className="text-sm font-medium text-primary underline-offset-4 hover:underline">
             {overview?.entry_points.system.label ?? '进入系统面板'}
-          </Link>
+          </button>
         </CardContent>
       </Card>
     </div>

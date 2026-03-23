@@ -1,3 +1,4 @@
+import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
 import { Link } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,10 @@ export function GuidanceInlineRail({
     rail.cta.kind === 'button' && actionPending
       ? (rail.cta.pending_label ?? rail.cta.label)
       : rail.cta.label
+
+  const routeTarget = rail.cta.kind === 'route' ? rail.cta.target : null
+  const isAgentRoute = Boolean(routeTarget && routeTarget.startsWith('/agents/'))
+
   return (
     <Card className="border-warning/30 bg-warning/10">
       <CardHeader className="pb-2">
@@ -39,11 +44,20 @@ export function GuidanceInlineRail({
               {ctaLabel}
             </Link>
           </Button>
-        ) : (
-          <Button asChild size="sm">
-            <Link to={rail.cta.target}>{ctaLabel}</Link>
+        ) : isAgentRoute && routeTarget ? (
+          <Button
+            size="sm"
+            onClick={() => tryOpenAgentModal(routeTarget, 'manage')}
+          >
+            {ctaLabel}
           </Button>
-        )}
+        ) : routeTarget ? (
+          <Button asChild size="sm">
+            <Link to={routeTarget}>
+              {ctaLabel}
+            </Link>
+          </Button>
+        ) : null}
         {rail.footnote && <p className="text-xs leading-5 text-muted-foreground">{rail.footnote}</p>}
       </CardContent>
     </Card>

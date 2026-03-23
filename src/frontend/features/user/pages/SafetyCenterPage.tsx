@@ -1,3 +1,4 @@
+import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
 import { Link } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -439,9 +440,15 @@ function TicketRow({
           {STATUS_LABELS[status] ?? status}
         </Badge>
         {href && (
-          <Button size="sm" variant="outline" asChild>
-            <Link to={href}>查看目标</Link>
-          </Button>
+          href.startsWith('/agents/') ? (
+            <Button size="sm" variant="outline" onClick={() => tryOpenAgentModal(href, 'readonly')}>
+              查看目标
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" asChild>
+              <Link to={href}>查看目标</Link>
+            </Button>
+          )
         )}
       </div>
     </div>

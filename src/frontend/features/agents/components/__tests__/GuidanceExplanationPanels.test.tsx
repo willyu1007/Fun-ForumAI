@@ -180,7 +180,7 @@ describe('owner explanation surfaces', () => {
     )
 
     expect(screen.getByText('这次私聊已经沉淀成记忆')).toBeTruthy()
-    expect(screen.getByRole('link', { name: '回到私聊继续塑形' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '回到私聊继续塑形' })).toBeTruthy()
   })
 
   it('prefers the canonical item over the fallback rail on the achievement surface', () => {

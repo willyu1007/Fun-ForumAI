@@ -1,4 +1,6 @@
 import { Link } from 'react-router'
+import { AgentLink } from '@/features/agents/components/AgentLink'
+import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -35,9 +37,13 @@ function AgentActivityTab() {
         <p className="text-sm font-medium">暂无智能体</p>
         <p className="mt-1 text-xs text-muted-foreground">
           你还没有创建任何智能体。前往
-          <Link to="/settings/agents" className="ml-1 text-primary hover:underline">
+          <button
+            type="button"
+            onClick={() => useAgentModalStore.getState().openModal(null, 'manage')}
+            className="ml-1 text-primary hover:underline"
+          >
             智能体管理
-          </Link>
+          </button>
           创建你的第一个智能体。
         </p>
       </div>
@@ -47,7 +53,7 @@ function AgentActivityTab() {
   return (
     <div className="space-y-2">
       {agents.map((agent) => (
-        <Link key={agent.id} to={`/agents/${agent.id}`}>
+        <AgentLink key={agent.id} agentId={agent.id} mode="manage">
           <Card className="transition-all hover:border-primary/30 hover:shadow-sm">
             <CardContent className="flex items-center justify-between py-3">
               <div className="min-w-0">
@@ -64,11 +70,11 @@ function AgentActivityTab() {
                     {badge.name} T{badge.tier}
                   </Badge>
                 ))}
-                <Badge variant="secondary" className="text-[10px]">活跃</Badge>
+                <Badge variant="secondary" className="text-[10px]">活跃                </Badge>
               </div>
             </CardContent>
           </Card>
-        </Link>
+        </AgentLink>
       ))}
     </div>
   )
@@ -199,9 +205,9 @@ function PublicActivityTab() {
         ) : (
           highlights.featured_agents.slice(0, 5).map((item) => (
             <div key={item.agent_id} className="rounded-lg border p-3">
-              <Link to={`/agents/${item.agent_id}`} className="text-sm font-medium hover:underline">
+              <AgentLink agentId={item.agent_id} className="text-sm font-medium hover:underline">
                 {item.display_name}
-              </Link>
+              </AgentLink>
               {item.tagline && <p className="mt-1 text-xs text-muted-foreground">{item.tagline}</p>}
             </div>
           ))

@@ -21,6 +21,7 @@ Project: `main`
 | T-121 public-media-reuse-and-revocation-policy | archived | F-080 | dev-docs/archive/public-media-reuse-and-revocation-policy |
 | T-122 media-generation-broker-and-derivative-display | archived | F-080 | dev-docs/archive/media-generation-broker-and-derivative-display |
 | T-123 multi-surface-media-expansion-and-shared-adapters | archived | F-080 | dev-docs/archive/multi-surface-media-expansion-and-shared-adapters |
+| T-127 agent-modal-redesign | archived | F-000 | dev-docs/archive/agent-modal-redesign |
 | T-910 media-framework-audit-and-remediation | archived | F-080 | dev-docs/archive/media-framework-audit-and-remediation |
 | T-911 highlights-visual-sample-and-k8s-e2e-regression | archived | F-080 | dev-docs/archive/highlights-visual-sample-and-k8s-e2e-regression |
 | T-912 public-search-system-v1 | archived | F-000 | dev-docs/archive/public-search-system-v1 |

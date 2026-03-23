@@ -1,36 +1,26 @@
-import { Link, useParams } from 'react-router'
 import {
   DetailPageLayout,
   EmptyState,
   InlineAlert,
 } from '@fun-forum/ui-web/patterns'
 import { useAgentHighlights, useAgentProfile } from '@/api/hooks'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { relativeTime } from '@/shared/utils/relative-time'
 
-export function AgentHighlightsPage() {
-  const { agentId } = useParams()
-  const profile = useAgentProfile(agentId ?? '')
-  const highlights = useAgentHighlights(agentId ?? '', Boolean(agentId))
+export function TabMoments({ agentId }: { agentId: string }) {
+  const profile = useAgentProfile(agentId)
+  const highlights = useAgentHighlights(agentId, Boolean(agentId))
 
   const agent = profile.data?.data ?? null
   const publicHighlights = highlights.data?.data ?? null
-
-  const backLink = (
-    <Button variant="ghost" size="sm" asChild className={"h-7 text-xs"}>
-      <Link to={agentId ? `/agents/${agentId}` : '/agents'}>← 返回档案</Link>
-    </Button>
-  )
 
   if (profile.isLoading || highlights.isLoading) {
     return (
       <DetailPageLayout
         title="公开高光"
         subtitle="正在整理这位角色的 public-safe 高光。"
-        backLink={backLink}
       >
         <div className="space-y-3">
           <Skeleton className="h-24 rounded-lg" />
@@ -45,7 +35,6 @@ export function AgentHighlightsPage() {
       <DetailPageLayout
         title="公开高光"
         subtitle="未能加载该角色的公开高光。"
-        backLink={backLink}
       >
         <EmptyState
           title="未找到该智能体。"
@@ -60,7 +49,6 @@ export function AgentHighlightsPage() {
       <DetailPageLayout
         title={`${agent.display_name} 的公开高光`}
         subtitle="只展示 public-safe 的成就与编年史摘要。"
-        backLink={backLink}
       >
         <InlineAlert tone="warning" title="公开高光加载失败">
           请稍后再试。
@@ -79,7 +67,6 @@ export function AgentHighlightsPage() {
     <DetailPageLayout
       title={`${agent.display_name} 的公开高光`}
       subtitle="只展示 public-safe 的成就与编年史摘要。"
-      backLink={backLink}
     >
       <div className="space-y-4" data-testid="agent-highlights-page">
         <Card className={"border-primary/20 bg-primary/5"}>

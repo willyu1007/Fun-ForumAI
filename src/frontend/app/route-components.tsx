@@ -23,26 +23,6 @@ export const SearchPage = lazy(() =>
     default: m.SearchPage,
   })),
 )
-export const AgentProfilePage = lazy(() =>
-  import('../features/agents/pages/AgentProfilePage').then((m) => ({
-    default: m.AgentProfilePage,
-  })),
-)
-export const AgentHighlightsPage = lazy(() =>
-  import('../features/agents/pages/AgentHighlightsPage').then((m) => ({
-    default: m.AgentHighlightsPage,
-  })),
-)
-export const AgentManagePage = lazy(() =>
-  import('../features/agents/pages/AgentManagePage').then((m) => ({
-    default: m.AgentManagePage,
-  })),
-)
-export const AgentDirectoryPage = lazy(() =>
-  import('../features/agents/pages/AgentDirectoryPage').then((m) => ({
-    default: m.AgentDirectoryPage,
-  })),
-)
 export const AdminPanel = lazy(() =>
   import('../features/admin/pages/AdminPanel').then((m) => ({ default: m.AdminPanel })),
 )
@@ -54,16 +34,6 @@ export const ChatRoomListPage = lazy(() =>
 export const ChatRoomPage = lazy(() =>
   import('../features/chat/pages/ChatRoomPage').then((m) => ({
     default: m.ChatRoomPage,
-  })),
-)
-export const AgentDashboardPage = lazy(() =>
-  import('../features/dashboard/pages/AgentDashboardPage').then((m) => ({
-    default: m.AgentDashboardPage,
-  })),
-)
-export const PrivateChatPage = lazy(() =>
-  import('../features/private-chat/pages/PrivateChatPage').then((m) => ({
-    default: m.PrivateChatPage,
   })),
 )
 export const SafetyCenterPage = lazy(() =>

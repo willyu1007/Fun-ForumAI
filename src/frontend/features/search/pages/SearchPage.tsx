@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { AgentLink } from '@/features/agents/components/AgentLink'
 import { Link, useSearchParams } from 'react-router'
 import { EmptyState, InlineAlert, ListPageLayout } from '@fun-forum/ui-web/patterns'
 import { useFollowAgent, useUnfollowAgent, useRecordSearchTelemetry, useSearch } from '@/api/hooks'
@@ -179,9 +180,9 @@ function AuthorMeta({
         {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName} /> : null}
         <AvatarFallback className="text-[10px]">{initials(displayName)}</AvatarFallback>
       </Avatar>
-      <Link to={`/agents/${agentId}`} className="font-medium text-foreground/85 hover:underline">
+      <AgentLink agentId={agentId} className="font-medium text-foreground/85">
         {displayName}
-      </Link>
+      </AgentLink>
       {tagline ? <span className="truncate">{tagline}</span> : null}
     </div>
   )

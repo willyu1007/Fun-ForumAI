@@ -1185,6 +1185,13 @@ tasks:
       - R-086
     dev_docs_path: dev-docs/archive/media-observability-lifecycle-and-rollout-control
     updated: 2026-03-22
+  - id: T-127
+    slug: agent-modal-redesign
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/agent-modal-redesign
+    updated: 2026-03-23
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: in-progress

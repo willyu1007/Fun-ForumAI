@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams } from 'react-router'
+import { useAgentModalStore, tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
 import {
   useFeed,
   useGuidanceClientEvent,
@@ -164,20 +165,34 @@ function CompactGuidanceItem({ item }: { item: GuidanceItemCardView }) {
       <p className="mt-3 text-sm font-medium leading-5 text-foreground">{item.title}</p>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.body}</p>
       {item.cta && ctaTarget && ctaLabel ? (
-        <Button
-          asChild
-          variant="ghost"
-          size="sm"
-          className="mt-3 h-auto px-0 py-0 text-sm font-medium text-foreground hover:bg-transparent hover:text-foreground"
-        >
-          <Link
-            to={ctaTarget}
-            state={ctaState}
-            onClick={() => itemAction.mutate({ item_id: item.id, action: 'open' })}
+        ctaTarget.startsWith('/agents/') ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-3 h-auto px-0 py-0 text-sm font-medium text-foreground hover:bg-transparent hover:text-foreground"
+            onClick={() => {
+              itemAction.mutate({ item_id: item.id, action: 'open' })
+              tryOpenAgentModal(ctaTarget, 'manage')
+            }}
           >
             {ctaLabel} →
-          </Link>
-        </Button>
+          </Button>
+        ) : (
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="mt-3 h-auto px-0 py-0 text-sm font-medium text-foreground hover:bg-transparent hover:text-foreground"
+          >
+            <Link
+              to={ctaTarget}
+              state={ctaState}
+              onClick={() => itemAction.mutate({ item_id: item.id, action: 'open' })}
+            >
+              {ctaLabel} →
+            </Link>
+          </Button>
+        )
       ) : null}
     </div>
   )
@@ -187,6 +202,7 @@ function HomeFeedRail() {
   const guidanceEnabled = isGuidanceEnabled()
   const guidanceSummary = useGuidanceSummary()
   const guidanceEvent = useGuidanceClientEvent()
+  const navigate = useNavigate()
   const { isAuthenticated } = useAuth()
   const myAgents = useMyAgents(isAuthenticated)
   const recentPublicFeed = useFeed({ sort: 'new', limit: 50 })
@@ -275,17 +291,21 @@ function HomeFeedRail() {
                 </div>
                 <div className="space-y-2">
                   {dualEntry.cards.map((card) => (
-                    <Link
+                    <button
+                      type="button"
                       key={card.track}
-                      to={card.entry_cta.target}
-                      className="block rounded-lg bg-background/85 px-4 py-3 transition-colors hover:bg-background"
+                      className="block w-full rounded-lg bg-background/85 px-4 py-3 text-left transition-colors hover:bg-background"
                       onClick={() => {
-                        if (!card.entry_cta.event_name) return
-                        guidanceEvent.mutate({
-                          event_type: card.entry_cta.event_name,
-                          payload: card.entry_cta.payload,
-                          dedup_key: `dual-entry:${card.track.toLowerCase()}`,
-                        })
+                        if (card.entry_cta.event_name) {
+                          guidanceEvent.mutate({
+                            event_type: card.entry_cta.event_name,
+                            payload: card.entry_cta.payload,
+                            dedup_key: `dual-entry:${card.track.toLowerCase()}`,
+                          })
+                        }
+                        if (!tryOpenAgentModal(card.entry_cta.target, 'manage')) {
+                          navigate(card.entry_cta.target)
+                        }
                       }}
                     >
                       <div className="flex items-center justify-between gap-3">
@@ -300,7 +320,7 @@ function HomeFeedRail() {
                       <p className="mt-3 text-xs leading-5 text-muted-foreground">
                         {card.entry_cta.label} · {card.return_hook}
                       </p>
-                    </Link>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -323,25 +343,44 @@ function HomeFeedRail() {
                       </div>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.body}</p>
                       {item.cta ? (
-                        <Button
-                          asChild
-                          variant="ghost"
-                          size="sm"
-                          className="mt-3 h-auto px-0 py-0 text-sm font-medium text-foreground hover:bg-transparent hover:text-foreground"
-                        >
-                          <Link
-                            to={item.cta.target}
+                        item.cta.target.startsWith('/agents/') ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="mt-3 h-auto px-0 py-0 text-sm font-medium text-foreground hover:bg-transparent hover:text-foreground"
                             onClick={() => {
-                              if (!item.cta?.event_name) return
-                              guidanceEvent.mutate({
-                                event_type: item.cta.event_name,
-                                payload: item.cta.payload,
-                              })
+                              if (item.cta?.event_name) {
+                                guidanceEvent.mutate({
+                                  event_type: item.cta.event_name,
+                                  payload: item.cta.payload,
+                                })
+                              }
+                              tryOpenAgentModal(item.cta!.target, 'manage')
                             }}
                           >
                             {item.cta.label} →
-                          </Link>
-                        </Button>
+                          </Button>
+                        ) : (
+                          <Button
+                            asChild
+                            variant="ghost"
+                            size="sm"
+                            className="mt-3 h-auto px-0 py-0 text-sm font-medium text-foreground hover:bg-transparent hover:text-foreground"
+                          >
+                            <Link
+                              to={item.cta.target}
+                              onClick={() => {
+                                if (!item.cta?.event_name) return
+                                guidanceEvent.mutate({
+                                  event_type: item.cta.event_name,
+                                  payload: item.cta.payload,
+                                })
+                              }}
+                            >
+                              {item.cta.label} →
+                            </Link>
+                          </Button>
+                        )
                       ) : null}
                     </div>
                   ))}
@@ -444,13 +483,14 @@ function HomeFeedRail() {
 
       <section className="mt-2 shrink-0 rounded-xl bg-muted/20 px-3 py-2.5" data-testid="home-explore-shortcuts">
         <div className="flex items-center justify-start gap-3 whitespace-nowrap text-[11px] leading-5 text-muted-foreground">
-          <Link
-            to="/agents/manage"
+          <button
+            type="button"
+            onClick={() => useAgentModalStore.getState().openModal(null, 'manage')}
             className="transition-colors hover:text-foreground"
             aria-label="智能体管理"
           >
             智能体管理
-          </Link>
+          </button>
           <Link
             to="/safety"
             className="transition-colors hover:text-foreground"

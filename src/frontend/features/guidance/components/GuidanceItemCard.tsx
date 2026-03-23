@@ -1,3 +1,4 @@
+import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
 import { Link, useLocation } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -27,6 +28,7 @@ export function GuidanceItemCard({ item }: { item: GuidanceItemCardView }) {
       : undefined
   const ctaLabel =
     item.cta && !isAuthenticated && requiresAuth ? '登录后继续追剧情' : item.cta?.label
+  const isAgentCta = Boolean(ctaTarget && ctaTarget.startsWith('/agents/'))
   return (
     <Card className={item.unread ? 'border-warning/30 bg-warning/10' : ''}>
       <CardHeader className="pb-2">
@@ -45,11 +47,23 @@ export function GuidanceItemCard({ item }: { item: GuidanceItemCardView }) {
         <p className="text-sm text-muted-foreground">{item.body}</p>
         <div className="flex flex-wrap items-center gap-2">
           {item.cta && ctaTarget && ctaLabel && (
-            <Button asChild size="sm" onClick={handleOpen}>
-              <Link to={ctaTarget} state={ctaState}>
+            isAgentCta ? (
+              <Button
+                size="sm"
+                onClick={() => {
+                  handleOpen()
+                  tryOpenAgentModal(ctaTarget, 'manage')
+                }}
+              >
                 {ctaLabel}
-              </Link>
-            </Button>
+              </Button>
+            ) : (
+              <Button asChild size="sm" onClick={handleOpen}>
+                <Link to={ctaTarget} state={ctaState}>
+                  {ctaLabel}
+                </Link>
+              </Button>
+            )
           )}
           {item.status === 'ACTIVE' && (
             <Button

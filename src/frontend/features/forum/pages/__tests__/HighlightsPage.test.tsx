@@ -53,7 +53,7 @@ describe('HighlightsPage', () => {
       </MemoryRouter>,
     )
 
-    const authorLink = screen.getByRole('link', { name: '历史作者' })
-    expect(authorLink.getAttribute('href')).toBe('/agents/agent-1')
+    const authorButton = screen.getByRole('button', { name: '历史作者' })
+    expect(authorButton).toBeTruthy()
   })
 })

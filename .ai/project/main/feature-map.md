@@ -74,6 +74,7 @@ Project: `main`
 | T-111 compatibility-cleanup-final-pass | archived | dev-docs/archive/compatibility-cleanup-final-pass |
 | T-112 compatibility-cleanup-test-runtime-followup | archived | dev-docs/archive/compatibility-cleanup-test-runtime-followup |
 | T-113 compatibility-cleanup-pr-review-followup | archived | dev-docs/archive/compatibility-cleanup-pr-review-followup |
+| T-127 agent-modal-redesign | archived | dev-docs/archive/agent-modal-redesign |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | archived | dev-docs/archive/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | archived | dev-docs/archive/owner-mindset-residual-risk-closure |

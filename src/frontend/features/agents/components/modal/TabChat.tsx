@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, Link } from 'react-router'
+import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
+import { Link } from 'react-router'
 import {
   useAgentProfile,
   useCreateReport,
@@ -20,13 +21,12 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { relativeTime } from '@/shared/utils/relative-time'
 import type { PrivateMessage, PrivateMessageAttachment, PrivateSession, SendPrivateMessageInput } from '@/api/types'
-import { DEV_AUTH_TOOLBAR_SAFE_AREA_CLASS } from '@/shared/layout/dev-auth-toolbar'
-import { MessageInput } from '../components/MessageInput'
-import { SessionSidebar } from '../components/SessionSidebar'
-import { usePrivateSessionSse } from '../hooks/use-private-session-sse'
+import { MessageInput } from '@/features/private-chat/components/MessageInput'
+import { SessionSidebar } from '@/features/private-chat/components/SessionSidebar'
+import { usePrivateSessionSse } from '@/features/private-chat/hooks/use-private-session-sse'
 import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
-import { getPrivateDigestFallbackNotice } from '../digest-guidance'
+import { getPrivateDigestFallbackNotice } from '@/features/private-chat/digest-guidance'
 
 const DELIVERY_BADGE: Partial<Record<NonNullable<PrivateMessage['delivery_status']>, string>> = {
   REWRITTEN: '已降温',
@@ -35,15 +35,12 @@ const DELIVERY_BADGE: Partial<Record<NonNullable<PrivateMessage['delivery_status
   PENDING_REVIEW: '待复核',
 }
 
-export function PrivateChatPage() {
-  const { agentId } = useParams<{
-    agentId: string
-  }>()
+export function TabChat({ agentId }: { agentId: string }) {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [showSidebar, setShowSidebar] = useState(false)
-  const { data: agentData, isLoading: agentLoading } = useAgentProfile(agentId ?? '')
-  const { data: sessionsData, isLoading: sessionsLoading } = usePrivateSessions(agentId ?? '')
-  const createSession = useCreatePrivateSession(agentId ?? '')
+  const { data: agentData, isLoading: agentLoading } = useAgentProfile(agentId)
+  const { data: sessionsData, isLoading: sessionsLoading } = usePrivateSessions(agentId)
+  const createSession = useCreatePrivateSession(agentId)
   const agent = agentData?.data
   const sessionItems = sessionsData?.data?.items
   const sessions = useMemo(() => sessionItems ?? [], [sessionItems])
@@ -75,7 +72,7 @@ export function PrivateChatPage() {
     return <div className={"p-4 text-destructive"}>Agent 不存在</div>
   }
   return (
-    <div className={cn("mx-auto flex h-[calc(100vh-4rem)] max-w-5xl", DEV_AUTH_TOOLBAR_SAFE_AREA_CLASS)}>
+    <div className={cn("flex h-full w-full")}>
       {/* Session sidebar - desktop */}
       <div className={"hidden md:block w-64 border-r"}>
         <SessionSidebar
@@ -92,7 +89,6 @@ export function PrivateChatPage() {
       <div className="flex-1 flex flex-col min-w-0">
         <ChatHeader
           agentName={agent.display_name}
-          agentId={agent.id}
           activeSession={activeSession}
           sessionCount={sessions.length}
           onToggleSidebar={() => setShowSidebar(!showSidebar)}
@@ -153,7 +149,6 @@ export function PrivateChatPage() {
 }
 function ChatHeader({
   agentName,
-  agentId,
   activeSession,
   sessionCount,
   onToggleSidebar,
@@ -161,7 +156,6 @@ function ChatHeader({
   isCreating,
 }: {
   agentName: string
-  agentId: string
   activeSession: PrivateSession | null
   sessionCount: number
   onToggleSidebar: () => void
@@ -174,9 +168,9 @@ function ChatHeader({
         ☰
       </Button>
 
-      <Link to={`/agents/${agentId}`} className={"font-semibold hover:underline"}>
+      <button type="button" onClick={() => useAgentModalStore.getState().setActiveTab('intro')} className={"font-semibold hover:underline"}>
         {agentName}
-      </Link>
+      </button>
 
       {activeSession && (
         <Badge variant={activeSession.status === 'ACTIVE' ? 'default' : 'secondary'}>

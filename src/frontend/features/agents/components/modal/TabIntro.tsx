@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useParams, Link, useNavigate, useSearchParams, useLocation } from 'react-router'
+import { Link, useLocation } from 'react-router'
 import {
   DetailPageLayout,
   EmptyState,
@@ -9,6 +9,7 @@ import {
   type StatusTone,
 } from '@fun-forum/ui-web/patterns'
 import { api } from '@/api/client'
+import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import {
   useAgentProfile,
   useAgentRuns,
@@ -24,19 +25,17 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { RunHistoryTable } from '../components/RunHistoryTable'
-import XpBadge from '../components/XpBadge'
-import TraitPanel from '../components/TraitPanel'
-import CreditBadge from '../components/CreditBadge'
-import AchievementChroniclePanel from '../components/AchievementChroniclePanel'
-import { OwnerLifeOverviewPanel } from '../components/OwnerLifeOverviewPanel'
-import { StyleControlPanel } from '../components/StyleControlPanel'
-import { InstructionList } from '../components/InstructionList'
-import { PromptOverrideEditor } from '../components/PromptOverrideEditor'
-import { PrivacySettingsPanel } from '../components/PrivacySettingsPanel'
-import { RelationNetworkPanel } from '../components/RelationNetworkPanel'
-import { StatsPanel } from '../components/StatsPanel'
-import { AgentMediaPanel } from '../components/AgentMediaPanel'
+import { RunHistoryTable } from '../RunHistoryTable'
+import XpBadge from '../XpBadge'
+import TraitPanel from '../TraitPanel'
+import CreditBadge from '../CreditBadge'
+import { OwnerLifeOverviewPanel } from '../OwnerLifeOverviewPanel'
+import { StyleControlPanel } from '../StyleControlPanel'
+import { InstructionList } from '../InstructionList'
+import { PromptOverrideEditor } from '../PromptOverrideEditor'
+import { PrivacySettingsPanel } from '../PrivacySettingsPanel'
+import { StatsPanel } from '../StatsPanel'
+import { AgentMediaPanel } from '../AgentMediaPanel'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
@@ -44,7 +43,6 @@ import { GuidanceInlineRail } from '@/features/guidance/components/GuidanceInlin
 import {
   buildAgentSpectatorRail,
   buildPrivacyExplanationRail,
-  buildStageProofRail,
   findCanonicalGuidanceItemForAgent,
 } from '@/features/guidance/contextual-guidance'
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
@@ -69,43 +67,39 @@ const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_
 const MULTIMODAL_MEDIA_ENABLED = import.meta.env.VITE_FF_MULTIMODAL_AGENT_MEDIA_V1 === 'true'
 type TabId =
   | 'overview'
-  | 'achievements'
   | 'stats'
+  | 'privacy'
+  | 'runs'
   | 'style'
   | 'instructions'
   | 'multimodal'
-  | 'privacy'
-  | 'relations'
   | 'advanced'
-  | 'runs'
-export function AgentProfilePage() {
+export function TabIntro({ agentId }: { agentId: string }) {
   const qc = useQueryClient()
   const guidanceEnabled = isGuidanceEnabled()
-  const { agentId } = useParams()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const routerLocation = useLocation()
+  const { viewMode, setActiveTab } = useAgentModalStore()
   const [adminShadowError, setAdminShadowError] = useState<string | null>(null)
   const [showManagementDetails, setShowManagementDetails] = useState(false)
   const { isAuthenticated, user } = useAuth()
   const [tab, setTab] = useState<TabId>('overview')
-  const { data, isLoading, error } = useAgentProfile(agentId ?? '')
+  const { data, isLoading, error } = useAgentProfile(agentId)
   const agent = data?.data
-  const isOwner = !!user && !!agent && user.id === agent.owner_id
+  const isOwner = viewMode === 'manage' && !!user && !!agent && user.id === agent.owner_id
   const isAdmin = user?.role === 'admin'
   const canViewRuns = Boolean(
     agent && user && (user.role === 'admin' || user.id === agent.owner_id),
   )
   const shouldLoadPublicHighlights =
     guidanceEnabled && Boolean(agentId) && Boolean(agent) && !isOwner
-  const highlightsData = useAgentHighlights(agentId ?? '', shouldLoadPublicHighlights)
-  const { data: runsData, isLoading: runsLoading } = useAgentRuns(agentId ?? '', undefined, {
+  const highlightsData = useAgentHighlights(agentId, shouldLoadPublicHighlights)
+  const { data: runsData, isLoading: runsLoading } = useAgentRuns(agentId, undefined, {
     enabled: canViewRuns,
   })
-  const { data: xpRes, isLoading: xpLoading, error: xpError } = useAgentXp(agentId ?? '')
+  const { data: xpRes, isLoading: xpLoading, error: xpError } = useAgentXp(agentId)
   const guidanceSummary = useGuidanceSummary()
-  const follow = useFollowAgent(agentId ?? '')
-  const unfollow = useUnfollowAgent(agentId ?? '')
+  const follow = useFollowAgent(agentId)
+  const unfollow = useUnfollowAgent(agentId)
   const shadowActionMutation = useMutation({
     mutationFn: async (input: {
       action:
@@ -146,8 +140,8 @@ export function AgentProfilePage() {
         instructions: true,
         advanced: true,
       }
-  const currentPath = locationToPath(location)
-  const sourceSessionId = searchParams.get('source_session_id')
+  const currentPath = locationToPath(routerLocation)
+  const sourceSessionId = null
   const activeGuidanceItem =
     guidanceModules
       .filter(
@@ -160,8 +154,6 @@ export function AgentProfilePage() {
     guidanceEnabled && agentId
       ? findCanonicalGuidanceItemForAgent(guidanceData, agentId, { includeReceipt: false })
       : null
-  const stageGuidanceItem =
-    activeGuidanceItem?.id === contextualAgentItem?.id ? null : contextualAgentItem
   const privacyGuidanceItem =
     sourceSessionId && contextualAgentItem?.reason_code === 'WATCH_PUBLIC_EFFECT'
       ? contextualAgentItem
@@ -177,12 +169,10 @@ export function AgentProfilePage() {
       : null
   const privacyFallbackRail = guidanceEnabled
     ? buildPrivacyExplanationRail({
-        agentId: agentId ?? '',
+        agentId,
         sourceSessionId,
       })
     : null
-  const stageProofRail = guidanceEnabled ? buildStageProofRail('achievements') : null
-  const relationProofRail = guidanceEnabled ? buildStageProofRail('relations') : null
   const publicHighlights = highlightsData.data?.data
   const topChronicle = publicHighlights?.top_chronicle[0] ?? null
   const topChronicleVisual = topChronicle?.visual ?? null
@@ -200,10 +190,8 @@ export function AgentProfilePage() {
       label: string
     }> = [
       { id: 'overview', label: '概览' },
-      { id: 'achievements', label: isOwner ? '编年史' : '成就线' },
       ...(STATS_UI_ENABLED ? [{ id: 'stats' as const, label: 'Stats' }] : []),
       { id: 'privacy', label: '隐私' },
-      { id: 'relations', label: '关系网' },
       ...(canViewRuns ? [{ id: 'runs' as const, label: '运行记录' }] : []),
     ]
     if (!isOwner) return baseTabs
@@ -222,19 +210,6 @@ export function AgentProfilePage() {
       setTab('overview')
     }
   }, [tab, tabs])
-  useEffect(() => {
-    const requested = searchParams.get('tab')
-    if (!requested) return
-    if (tabs.some((item) => item.id === requested)) {
-      setTab(requested as TabId)
-    }
-  }, [searchParams, tabs])
-
-  const backLink = (
-    <Button variant="ghost" size="sm" asChild className={"h-7 text-xs"}>
-      <Link to="/">← 返回</Link>
-    </Button>
-  )
 
   if (isLoading) {
     return (
@@ -242,7 +217,6 @@ export function AgentProfilePage() {
         <DetailPageLayout
           title="智能体档案"
           subtitle="正在准备角色档案。"
-          backLink={backLink}
         >
           <div className="space-y-3">
             <Skeleton className="h-6 w-40" />
@@ -259,7 +233,6 @@ export function AgentProfilePage() {
         <DetailPageLayout
           title="智能体档案"
           subtitle="未能加载该角色的详情。"
-          backLink={backLink}
         >
           <div data-testid="agent-profile-error">
             <EmptyState
@@ -299,7 +272,7 @@ export function AgentProfilePage() {
     .join(' · ')
   const headerActions = (
     <div className="flex flex-wrap items-center gap-2">
-      <Button size="sm" variant="outline" onClick={() => navigate(`/agents/${agentId}/chat`)}>
+      <Button size="sm" variant="outline" onClick={() => setActiveTab('chat')}>
         {isOwner ? '带一段经历给她' : '私聊'}
       </Button>
       {HUMAN_PARTICIPATION_ENABLED && isAuthenticated ? (
@@ -328,9 +301,6 @@ export function AgentProfilePage() {
           type="button"
           onClick={() => {
             setTab(t.id as TabId)
-            const next = new URLSearchParams(searchParams)
-            next.set('tab', t.id)
-            setSearchParams(next, { replace: true })
           }}
           className={`${"whitespace-nowrap px-3 py-2 text-sm transition-colors"} ${
             tab === t.id
@@ -349,7 +319,6 @@ export function AgentProfilePage() {
       <DetailPageLayout
         title={safeAgent.display_name}
         subtitle={pageSubtitle}
-        backLink={backLink}
         headerActions={headerActions}
         tabs={tabsNav}
       >
@@ -691,7 +660,7 @@ export function AgentProfilePage() {
                       </p>
                       {agentId && (
                         <Button variant="ghost" size="sm" asChild className={"mt-2 h-7 px-0 text-xs"}>
-                          <Link to={`/agents/${agentId}/highlights`}>查看公开高光</Link>
+                          <button type="button" onClick={() => setActiveTab('moments')} className="text-primary hover:underline">查看公开高光</button>
                         </Button>
                       )}
                     </div>
@@ -724,16 +693,6 @@ export function AgentProfilePage() {
               </div>
             ))}
 
-          {tab === 'achievements' && (
-            <AchievementChroniclePanel
-              agentId={agentId!}
-              guidanceItem={stageGuidanceItem}
-              fallbackRail={stageProofRail}
-              showRelationNodes={isOwner}
-              ownerMode={isOwner}
-            />
-          )}
-
           {tab === 'stats' && <StatsPanel agentId={agentId!} />}
 
           {tab === 'style' && isOwner && <StyleControlPanel agentId={agentId!} />}
@@ -748,15 +707,6 @@ export function AgentProfilePage() {
               sourceSessionId={sourceSessionId}
               guidanceItem={privacyGuidanceItem}
               fallbackRail={privacyFallbackRail}
-            />
-          )}
-
-          {tab === 'relations' && (
-            <RelationNetworkPanel
-              agentId={agentId!}
-              guidanceItem={stageGuidanceItem}
-              fallbackRail={relationProofRail}
-              queriesEnabled={isOwner}
             />
           )}
 

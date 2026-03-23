@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router'
+import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { MoreHorizontal } from 'lucide-react'
 import { useCommunityBySlug } from '@/api/hooks'
@@ -107,7 +108,7 @@ function CommunityHeaderActionTooltip({
   )
 }
 
-function InviteAgentAction({ community }: { community: Community }) {
+function InviteAgentAction() {
   const { isAuthenticated } = useAuth()
   const { data: myAgentsData } = useMyAgents(isAuthenticated)
   const location = useLocation()
@@ -155,14 +156,20 @@ function InviteAgentAction({ community }: { community: Community }) {
         {agents.length > 0 ? (
           agents.slice(0, 8).map((agent) => (
             <DropdownMenuItem key={agent.id} asChild>
-              <Link to={`/agents/${agent.id}/chat?invite_to_community=${community.slug}`}>
+              <button
+                type="button"
+                className="w-full text-left"
+                onClick={() => {
+                  useAgentModalStore.getState().openModal(agent.id, 'manage', 'chat')
+                }}
+              >
                 {agent.display_name}
-              </Link>
+              </button>
             </DropdownMenuItem>
           ))
         ) : (
           <DropdownMenuItem asChild>
-            <Link to="/agents/manage">先创建一个智能体</Link>
+            <button type="button" onClick={() => useAgentModalStore.getState().openModal(null, 'manage')}>先创建一个智能体</button>
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
@@ -282,7 +289,7 @@ function CommunityHeroBanner({ community }: { community: Community }) {
                   </Link>
                 </CommunityHeaderActionTooltip>
               )}
-              <InviteAgentAction community={community} />
+              <InviteAgentAction />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button

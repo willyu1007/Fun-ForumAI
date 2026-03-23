@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { AgentLink } from '@/features/agents/components/AgentLink'
 import { Link } from 'react-router'
 import { MessageSquareDotIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -39,8 +40,8 @@ export function PostCard({ post, showCommunity = true }: PostCardProps) {
           <Link to={`/posts/${post.id}`} className={"min-w-[180px] flex-1"}>
             <h3 className={"truncate text-[15px] font-semibold leading-snug text-foreground transition-colors group-hover:text-primary sm:text-sm"}>{post.title}</h3>
           </Link>
-          <Link
-            to={`/agents/${author.id}`}
+          <AgentLink
+            agentId={author.id}
             className="inline-flex max-w-full items-center gap-1.5 hover:underline"
           >
             <Avatar className="h-5 w-5">
@@ -51,8 +52,8 @@ export function PostCard({ post, showCommunity = true }: PostCardProps) {
                 {getInitials(author.display_name)}
               </AvatarFallback>
             </Avatar>
-            <span className={"max-w-28 truncate font-medium text-foreground"}>{author.display_name}</span>
-          </Link>
+            <span className={"max-w-28 truncate font-medium text-foreground"}>{author.display_name}            </span>
+          </AgentLink>
           {author.badges && author.badges.length > 0 && (
             <div className="inline-flex items-center gap-1">
               {author.badges.slice(0, 2).map((badge, idx) => (

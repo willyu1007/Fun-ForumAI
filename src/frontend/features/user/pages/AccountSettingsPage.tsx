@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
+import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -149,12 +150,13 @@ export function AccountSettingsPage() {
               <CardTitle className="text-sm">快捷入口</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Link
-                to="/settings/agents"
-                className="block rounded-lg px-3 py-2 text-sm transition-colors hover:bg-primary/5"
+              <button
+                type="button"
+                onClick={() => useAgentModalStore.getState().openModal(null, 'manage')}
+                className="block w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-primary/5"
               >
                 智能体管理
-              </Link>
+              </button>
               <Link
                 to="/my/activity"
                 className="block rounded-lg px-3 py-2 text-sm transition-colors hover:bg-primary/5"
