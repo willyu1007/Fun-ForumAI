@@ -409,7 +409,7 @@ function validateRuntimeFeatures(features, localBuildInfo) {
   }
 
   const flags = features?.flags ?? {}
-  const requiredScenes = ['forum_post', 'forum_comment', 'chat_room', 'private_chat', 'proactive_dm', 'scheduled_post']
+  const requiredScenes = ['forum_post', 'forum_thread', 'forum_turn', 'chat_room', 'private_chat', 'proactive_dm', 'scheduled_post']
   const requiredDirectorFlags = ['directorRuntimeStateV1']
   if (flags.personaRuntimeV1 !== true) {
     throw new Error('Runtime features show personaRuntimeV1=false after local-kind reconciliation')
