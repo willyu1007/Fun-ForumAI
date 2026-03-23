@@ -3,9 +3,22 @@ import { InMemoryAgentCommunityMembershipRepository } from '../../repos/agent-co
 import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
-import { InMemoryCommentRepository } from '../../repos/comment-repository.js'
 import { InMemoryEventRepository } from '../../repos/event-repository.js'
+import { InMemoryPublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
+import { InMemoryPublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
 import { AgentCommunityMembershipService } from '../agent-community-membership-service.js'
+import { InMemoryPublicStageStore } from '../../test-support/public-stage-store.js'
+
+function createStageStore(postRepo: InMemoryPostRepository) {
+  const publicStageThreadRepo = new InMemoryPublicStageThreadRepository()
+  const publicStageTurnRepo = new InMemoryPublicStageTurnRepository()
+  const commentRepo = new InMemoryPublicStageStore({
+    threadRepo: publicStageThreadRepo,
+    turnRepo: publicStageTurnRepo,
+    postRepo,
+  })
+  return { publicStageThreadRepo, publicStageTurnRepo, commentRepo }
+}
 
 describe('AgentCommunityMembershipService', () => {
   it('patches add/remove memberships', async () => {
@@ -13,7 +26,7 @@ describe('AgentCommunityMembershipService', () => {
     const agentRepo = new InMemoryAgentRepository()
     const communityRepo = new InMemoryCommunityRepository()
     const postRepo = new InMemoryPostRepository()
-    const commentRepo = new InMemoryCommentRepository()
+    const { publicStageThreadRepo, publicStageTurnRepo } = createStageStore(postRepo)
 
     const agent = agentRepo.create({ owner_id: 'owner-1', display_name: 'Agent One' })
     const commA = communityRepo.create({ name: 'A', slug: 'a' })
@@ -24,7 +37,8 @@ describe('AgentCommunityMembershipService', () => {
       agentRepo,
       communityRepo,
       postRepo,
-      commentRepo,
+      publicStageThreadRepo,
+      publicStageTurnRepo,
       eventRepo: new InMemoryEventRepository(),
     })
 
@@ -57,7 +71,7 @@ describe('AgentCommunityMembershipService', () => {
     const agentRepo = new InMemoryAgentRepository()
     const communityRepo = new InMemoryCommunityRepository()
     const postRepo = new InMemoryPostRepository()
-    const commentRepo = new InMemoryCommentRepository()
+    const { publicStageThreadRepo, publicStageTurnRepo, commentRepo } = createStageStore(postRepo)
 
     const agent = agentRepo.create({ owner_id: 'owner-1', display_name: 'Agent Backfill' })
     const helper = agentRepo.create({ owner_id: 'owner-1', display_name: 'Helper' })
@@ -94,7 +108,8 @@ describe('AgentCommunityMembershipService', () => {
       agentRepo,
       communityRepo,
       postRepo,
-      commentRepo,
+      publicStageThreadRepo,
+      publicStageTurnRepo,
       eventRepo: new InMemoryEventRepository(),
     })
 
@@ -113,7 +128,7 @@ describe('AgentCommunityMembershipService', () => {
     const agentRepo = new InMemoryAgentRepository()
     const communityRepo = new InMemoryCommunityRepository()
     const postRepo = new InMemoryPostRepository()
-    const commentRepo = new InMemoryCommentRepository()
+    const { publicStageThreadRepo, publicStageTurnRepo } = createStageStore(postRepo)
 
     const agent = agentRepo.create({ owner_id: 'owner-1', display_name: 'Agent One' })
 
@@ -122,7 +137,8 @@ describe('AgentCommunityMembershipService', () => {
       agentRepo,
       communityRepo,
       postRepo,
-      commentRepo,
+      publicStageThreadRepo,
+      publicStageTurnRepo,
       eventRepo: new InMemoryEventRepository(),
     })
 
@@ -142,7 +158,7 @@ describe('AgentCommunityMembershipService', () => {
     const agentRepo = new InMemoryAgentRepository()
     const communityRepo = new InMemoryCommunityRepository()
     const postRepo = new InMemoryPostRepository()
-    const commentRepo = new InMemoryCommentRepository()
+    const { publicStageThreadRepo, publicStageTurnRepo } = createStageStore(postRepo)
 
     const agent = agentRepo.create({ owner_id: 'owner-1', display_name: 'Agent One' })
     const community = communityRepo.create({ name: 'Muted Community', slug: 'muted-community' })
@@ -166,7 +182,8 @@ describe('AgentCommunityMembershipService', () => {
       agentRepo,
       communityRepo,
       postRepo,
-      commentRepo,
+      publicStageThreadRepo,
+      publicStageTurnRepo,
       eventRepo: new InMemoryEventRepository(),
     })
 
@@ -186,7 +203,7 @@ describe('AgentCommunityMembershipService', () => {
     const agentRepo = new InMemoryAgentRepository()
     const communityRepo = new InMemoryCommunityRepository()
     const postRepo = new InMemoryPostRepository()
-    const commentRepo = new InMemoryCommentRepository()
+    const { publicStageThreadRepo, publicStageTurnRepo } = createStageStore(postRepo)
 
     const agent = agentRepo.create({ owner_id: 'owner-1', display_name: 'Agent Backfill' })
     const post = await postRepo.create({
@@ -218,14 +235,15 @@ describe('AgentCommunityMembershipService', () => {
       agentRepo,
       communityRepo,
       postRepo,
-      commentRepo,
+      publicStageThreadRepo,
+      publicStageTurnRepo,
       eventRepo: new InMemoryEventRepository(),
     })
 
     const result = await service.runDerivedBackfill({
       days: 30,
       min_posts: 1,
-      min_comment_count: 1,
+      min_thread_turn_count: 1,
     })
 
     expect(result.skipped_existing).toBeGreaterThanOrEqual(1)

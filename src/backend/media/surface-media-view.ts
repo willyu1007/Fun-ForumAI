@@ -133,7 +133,7 @@ export async function resolveSurfaceMediaAttachmentFromEvidence(
       if (attachment) return attachment
       continue
     }
-    if (item.kind === 'comment') {
+    if (item.kind === 'thread_turn') {
       const attachment = await findFirstAttachmentByScene(deps, 'forum_turn', item.ref_id)
       if (attachment) return attachment
       continue

@@ -1,11 +1,12 @@
 import type {
   AgentRepository,
-  CommentRepository,
   EventRepository,
   HumanFollowRepository,
   HumanVote,
   HumanVoteRepository,
   PostRepository,
+  PublicStageThreadRepository,
+  PublicStageTurnRepository,
   VoteRepository,
 } from '../repos/index.js'
 import { NotFoundError, ValidationError } from '../lib/errors.js'
@@ -15,7 +16,8 @@ export { HUMAN_VOTE_WEIGHT }
 
 export interface HumanParticipationServiceDeps {
   postRepo: PostRepository
-  commentRepo: CommentRepository
+  publicStageThreadRepo: PublicStageThreadRepository
+  publicStageTurnRepo: PublicStageTurnRepository
   voteRepo: VoteRepository
   humanVoteRepo: HumanVoteRepository
   humanFollowRepo: HumanFollowRepository
@@ -38,15 +40,15 @@ export class HumanParticipationService {
 
   async upsertHumanVote(input: {
     voter_user_id: string
-    target_type: 'POST' | 'COMMENT'
+    target_type: 'POST' | 'THREAD' | 'TURN'
     target_id: string
     direction: 'UP' | 'DOWN' | 'NEUTRAL'
   }): Promise<{ vote: HumanVote; summary: HumanVoteSummary }> {
     if (!input.voter_user_id) throw new ValidationError('voter_user_id is required')
     if (!input.target_id) throw new ValidationError('target_id is required')
 
-    if (input.target_type !== 'POST' && input.target_type !== 'COMMENT') {
-      throw new ValidationError('target_type must be POST or COMMENT')
+    if (input.target_type !== 'POST' && input.target_type !== 'THREAD' && input.target_type !== 'TURN') {
+      throw new ValidationError('target_type must be POST, THREAD, or TURN')
     }
 
     await this.assertTargetExists(input.target_type, input.target_id)
@@ -73,18 +75,20 @@ export class HumanParticipationService {
     return { vote, summary }
   }
 
-  async assertTargetExists(targetType: 'POST' | 'COMMENT', targetId: string): Promise<void> {
+  async assertTargetExists(targetType: 'POST' | 'THREAD' | 'TURN', targetId: string): Promise<void> {
     if (targetType === 'POST') {
       const post = await this.deps.postRepo.findById(targetId)
       if (!post) throw new NotFoundError('Post', targetId)
       return
     }
 
-    const comment = await this.deps.commentRepo.findById(targetId)
-    if (!comment) throw new NotFoundError('Comment', targetId)
+    const target = targetType === 'THREAD'
+      ? await this.deps.publicStageThreadRepo.findById(targetId)
+      : await this.deps.publicStageTurnRepo.findById(targetId)
+    if (!target) throw new NotFoundError(targetType === 'THREAD' ? 'Thread' : 'Turn', targetId)
   }
 
-  getVoteSummary(targetType: 'POST' | 'COMMENT', targetId: string): HumanVoteSummary {
+  getVoteSummary(targetType: 'POST' | 'THREAD' | 'TURN', targetId: string): HumanVoteSummary {
     const agent = this.deps.voteRepo.countByTarget(targetType, targetId)
     const human = this.deps.humanVoteRepo.countByTarget(targetType, targetId)
     const weighted = Number((agent.score + human.score * HUMAN_VOTE_WEIGHT).toFixed(2))
@@ -102,7 +106,7 @@ export class HumanParticipationService {
 
   getViewerVoteDirection(
     userId: string,
-    targetType: 'POST' | 'COMMENT',
+    targetType: 'POST' | 'THREAD' | 'TURN',
     targetId: string,
   ): 'UP' | 'DOWN' | 'NEUTRAL' | null {
     return this.deps.humanVoteRepo.findByVoterAndTarget(userId, targetType, targetId)?.direction ?? null

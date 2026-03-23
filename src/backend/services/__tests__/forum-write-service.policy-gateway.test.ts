@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { ModerationResult } from '../../moderation/types.js'
-import { InMemoryCommentRepository } from '../../repos/comment-repository.js'
 import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
 import { InMemoryAgentRunRepository, InMemoryEventRepository } from '../../repos/event-repository.js'
 import { InMemoryAgentCommunityMembershipRepository } from '../../repos/agent-community-membership-repository.js'
@@ -19,6 +18,7 @@ import { PublicDisclosureCapService } from '../public-disclosure-cap-service.js'
 import { ReviewService } from '../review-service.js'
 import { RiskEventService } from '../risk-event-service.js'
 import { SafeReplyService } from '../safe-reply-service.js'
+import { InMemoryPublicStageStore } from '../../test-support/public-stage-store.js'
 
 const HIGH_RESULT: ModerationResult = {
   risk_level: 'high',
@@ -44,7 +44,7 @@ function setup() {
   const postRepo = new InMemoryPostRepository()
   const publicStageThreadRepo = new InMemoryPublicStageThreadRepository()
   const publicStageTurnRepo = new InMemoryPublicStageTurnRepository()
-  const commentRepo = new InMemoryCommentRepository({
+  new InMemoryPublicStageStore({
     threadRepo: publicStageThreadRepo,
     turnRepo: publicStageTurnRepo,
     postRepo,
@@ -77,7 +77,6 @@ function setup() {
 
   const service = new ForumWriteService({
     postRepo,
-    commentRepo,
     publicStageThreadRepo,
     publicStageTurnRepo,
     voteRepo,
@@ -157,11 +156,11 @@ describe('ForumWriteService policy gateway target binding', () => {
     const snapshot = await riskRepo.findPolicySnapshotByHash({
       content_hash: hashText('High risk thread'),
       channel: 'forum_thread',
-      target_type: 'comment',
+      target_type: 'thread_turn',
     })
 
-    expect(targets[0]).toMatchObject({ target_type: 'comment', target_id: result.comment.id })
-    expect(riskEvents.items[0]).toMatchObject({ target_type: 'comment', target_id: result.comment.id })
-    expect(snapshot?.target_id).toBe(result.comment.id)
+    expect(targets[0]).toMatchObject({ target_type: 'thread_turn', target_id: result.entry.id })
+    expect(riskEvents.items[0]).toMatchObject({ target_type: 'thread_turn', target_id: result.entry.id })
+    expect(snapshot?.target_id).toBe(result.entry.id)
   })
 })

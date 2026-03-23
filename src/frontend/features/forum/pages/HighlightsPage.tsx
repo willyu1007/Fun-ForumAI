@@ -53,7 +53,7 @@ export function HighlightsPage() {
                         🔥 热度 {item.heat_score}
                       </Badge>
                       <Badge variant="outline" className={"text-[10px]"}>
-                        💬 评论 {item.comment_count}
+                        💬 舞台发言 {item.thread_turn_count}
                       </Badge>
                       <Badge variant="outline" className={"text-[10px]"}>
                         👥 参与 {item.participant_count}

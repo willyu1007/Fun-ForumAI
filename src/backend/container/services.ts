@@ -113,7 +113,8 @@ export function createCoreServices(deps: {
     reviewService,
     {
       postRepo: repos.postRepo,
-      commentRepo: repos.commentRepo,
+      publicStageThreadRepo: repos.publicStageThreadRepo,
+      publicStageTurnRepo: repos.publicStageTurnRepo,
       messageRepo: repos.messageRepo,
       agentRepo: repos.agentRepo,
     },
@@ -122,7 +123,6 @@ export function createCoreServices(deps: {
 
   const forumReadService = new ForumReadService({
     postRepo: repos.postRepo,
-    commentRepo: repos.commentRepo,
     publicStageThreadRepo: repos.publicStageThreadRepo,
     publicStageTurnRepo: repos.publicStageTurnRepo,
     voteRepo: repos.voteRepo,
@@ -199,7 +199,6 @@ export function createCoreServices(deps: {
 
   const forumWriteService = new ForumWriteService({
     postRepo: repos.postRepo,
-    commentRepo: repos.commentRepo,
     publicStageThreadRepo: repos.publicStageThreadRepo,
     publicStageTurnRepo: repos.publicStageTurnRepo,
     publicSceneWriteRepo: repos.publicSceneWriteRepo,
@@ -232,7 +231,8 @@ export function createCoreServices(deps: {
     agentRepo: repos.agentRepo,
     communityRepo: repos.communityRepo,
     postRepo: repos.postRepo,
-    commentRepo: repos.commentRepo,
+    publicStageThreadRepo: repos.publicStageThreadRepo,
+    publicStageTurnRepo: repos.publicStageTurnRepo,
     eventRepo: repos.eventRepo,
   })
 
@@ -240,7 +240,8 @@ export function createCoreServices(deps: {
     digestRepo: repos.communityCultureDigestRepo,
     communityRepo: repos.communityRepo,
     postRepo: repos.postRepo,
-    commentRepo: repos.commentRepo,
+    publicStageThreadRepo: repos.publicStageThreadRepo,
+    publicStageTurnRepo: repos.publicStageTurnRepo,
   })
 
   const statsService = new StatsService({
@@ -398,14 +399,16 @@ export function createCoreServices(deps: {
 
   const governanceAdapter = new GovernanceAdapter({
     postRepo: repos.postRepo,
-    commentRepo: repos.commentRepo,
+    publicStageThreadRepo: repos.publicStageThreadRepo,
+    publicStageTurnRepo: repos.publicStageTurnRepo,
     agentRepo: repos.agentRepo,
     messageRepo: repos.messageRepo,
     riskGovernanceRepo: repos.riskGovernanceRepo,
   })
   const hotTopicOpsService = new HotTopicOpsService({
     postRepo: repos.postRepo,
-    commentRepo: repos.commentRepo,
+    publicStageThreadRepo: repos.publicStageThreadRepo,
+    publicStageTurnRepo: repos.publicStageTurnRepo,
     messageRepo: repos.messageRepo,
     roomRepo: repos.roomRepo,
     riskRepo: repos.riskGovernanceRepo,
@@ -415,7 +418,8 @@ export function createCoreServices(deps: {
 
   const humanParticipationService = new HumanParticipationService({
     postRepo: repos.postRepo,
-    commentRepo: repos.commentRepo,
+    publicStageThreadRepo: repos.publicStageThreadRepo,
+    publicStageTurnRepo: repos.publicStageTurnRepo,
     voteRepo: repos.voteRepo,
     humanVoteRepo: repos.humanVoteRepo,
     humanFollowRepo: repos.humanFollowRepo,

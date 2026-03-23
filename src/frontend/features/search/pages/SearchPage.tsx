@@ -176,7 +176,7 @@ function PostResultCard({
               </Link>
               <span>
                 {' '}
-                · {item.comment_count} 条评论 · 热度 {item.heat_score} · 分数 {item.score.toFixed(2)}
+                · {item.thread_turn_count} 条舞台发言 · 热度 {item.heat_score} · 分数 {item.score.toFixed(2)}
               </span>
             </div>
           </div>

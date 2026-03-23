@@ -26,7 +26,7 @@ export interface HotTopicEvaluation {
   enforcement_reason: string
   sampled_review_required: boolean
   sampling_metrics: {
-    post_comment_count: number
+    post_thread_turn_count: number
     room_message_count_hour: number
     report_count_24h: number
   }
@@ -115,7 +115,7 @@ export class HotTopicPolicyService {
     context_tags?: string[]
     policy?: Partial<Pick<CommunityHotTopicPolicyV1, 'keyword_overrides' | 'sampling_thresholds'>> | null
     sampling_metrics?: {
-      post_comment_count?: number
+      post_thread_turn_count?: number
       room_message_count_hour?: number
       report_count_24h?: number
     }
@@ -124,12 +124,12 @@ export class HotTopicPolicyService {
     const grayOverrides = input.policy?.keyword_overrides?.gray ?? []
     const denyOverrides = input.policy?.keyword_overrides?.deny ?? []
     const thresholds = {
-      post_comment_count: input.policy?.sampling_thresholds?.post_comment_count ?? 20,
+      post_thread_turn_count: input.policy?.sampling_thresholds?.post_thread_turn_count ?? 20,
       room_message_count_hour: input.policy?.sampling_thresholds?.room_message_count_hour ?? 20,
       report_count_24h: input.policy?.sampling_thresholds?.report_count_24h ?? 3,
     }
     const samplingMetrics = {
-      post_comment_count: input.sampling_metrics?.post_comment_count ?? 0,
+      post_thread_turn_count: input.sampling_metrics?.post_thread_turn_count ?? 0,
       room_message_count_hour: input.sampling_metrics?.room_message_count_hour ?? 0,
       report_count_24h: input.sampling_metrics?.report_count_24h ?? 0,
     }
@@ -205,7 +205,7 @@ export class HotTopicPolicyService {
     const sampled_review_required = Boolean(
       hot_topic_flag
       && (
-        samplingMetrics.post_comment_count >= thresholds.post_comment_count
+        samplingMetrics.post_thread_turn_count >= thresholds.post_thread_turn_count
         || samplingMetrics.room_message_count_hour >= thresholds.room_message_count_hour
         || samplingMetrics.report_count_24h >= thresholds.report_count_24h
       ),

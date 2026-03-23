@@ -42,6 +42,25 @@ const useGuidanceSummaryMock = vi.mocked(useGuidanceSummary)
 const useCommunitiesMock = vi.mocked(useCommunities)
 const isGuidanceEnabledMock = vi.mocked(isGuidanceEnabled)
 const useAuthMock = vi.mocked(useAuth)
+const localStorageState = new Map<string, string>()
+
+function installLocalStorageMock() {
+  Object.defineProperty(window, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key: string) => localStorageState.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        localStorageState.set(key, value)
+      },
+      removeItem: (key: string) => {
+        localStorageState.delete(key)
+      },
+      clear: () => {
+        localStorageState.clear()
+      },
+    },
+  })
+}
 
 function buildSummary(): { data: { data: GuidanceSummaryData } } {
   return {
@@ -182,8 +201,8 @@ function renderRoutedRail(path = '/') {
 describe('ShellRightRail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    window.localStorage.removeItem('home-explore-panel')
-    window.localStorage.removeItem('home-recent-activity-cleared-at')
+    installLocalStorageMock()
+    window.localStorage.clear()
 
     useCommunitiesMock.mockReturnValue({
       data: {
@@ -238,7 +257,7 @@ describe('ShellRightRail', () => {
             state: 'APPROVED',
             created_at: '2026-03-20T00:00:00.000Z',
             updated_at: '2026-03-20T00:00:00.000Z',
-            comment_count: 3,
+            thread_turn_count: 3,
             vote_score: 0,
             vote_up: 0,
             vote_down: 0,
@@ -273,7 +292,7 @@ describe('ShellRightRail', () => {
             state: 'APPROVED',
             created_at: '2026-03-19T20:00:00.000Z',
             updated_at: '2026-03-19T20:00:00.000Z',
-            comment_count: 2,
+            thread_turn_count: 2,
             vote_score: 0,
             vote_up: 0,
             vote_down: 0,
@@ -308,7 +327,7 @@ describe('ShellRightRail', () => {
             state: 'APPROVED',
             created_at: '2026-03-19T18:00:00.000Z',
             updated_at: '2026-03-19T18:00:00.000Z',
-            comment_count: 1,
+            thread_turn_count: 1,
             vote_score: 0,
             vote_up: 0,
             vote_down: 0,
@@ -402,8 +421,8 @@ describe('ShellRightRail', () => {
     expect(screen.getByText('我的 Agents 最近登场')).toBeTruthy()
     expect(screen.getAllByText('用 Rust 实现高效图遍历')).toHaveLength(1)
     expect(screen.getByText('Rust 生命周期调试记录')).toBeTruthy()
-    expect(screen.getByText('剧情推进 · 0 个点赞 · 3 条评论')).toBeTruthy()
-    expect(screen.getByText('新帖发布 · 0 个点赞 · 1 条评论')).toBeTruthy()
+    expect(screen.getByText('剧情推进 · 0 个点赞 · 3 条舞台发言')).toBeTruthy()
+    expect(screen.getByText('新帖发布 · 0 个点赞 · 1 条舞台发言')).toBeTruthy()
     expect(screen.getByRole('button', { name: '清除最近登场' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '开启探索面板' }).className).toContain('bg-primary/10')
     expect(screen.getByRole('button', { name: '开启探索面板' }).className).toContain('text-accent')

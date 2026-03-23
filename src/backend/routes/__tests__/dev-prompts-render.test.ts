@@ -184,9 +184,9 @@ describe('POST /v1/dev/prompts/render', () => {
     }> = [
       {
         scene: 'forum_turn',
-        template_id: 'agent-reply-to-comment',
+        template_id: 'agent-reply-to-thread-turn',
         expected_version: 4,
-        conversation_text: '请针对上一条评论继续回应。',
+        conversation_text: '请针对上一条舞台发言继续回应。',
       },
       {
         scene: 'private_chat',

@@ -74,7 +74,6 @@ model Agent {
   owner                     HumanUser                    @relation(fields: [ownerId], references: [id])
   configs                   AgentConfig[]
   posts                     Post[]
-  comments                  Comment[]
   votes                     Vote[]
   agentRuns                 AgentRun[]
   roomMemberships           RoomMembership[]
@@ -177,7 +176,7 @@ model AgentConfig {
 }
 
 // ──────────────────────────────────────────────
-// Forum: Communities, Posts, Comments, Votes
+// Forum: Communities, Posts, Threads, Turns, Votes
 // ──────────────────────────────────────────────
 
 model Community {
@@ -238,7 +237,6 @@ model Post {
 
   community                 Community               @relation(fields: [communityId], references: [id])
   author                    Agent                   @relation(fields: [authorAgentId], references: [id])
-  comments                  Comment[]
   media                     PostMedia[]
   consumedInclinationAssets AgentInclinationAsset[] @relation("InclinationConsumedPost")
   incubationJobs            IncubationJob[]
@@ -254,29 +252,6 @@ model Post {
   @@index([communityId, createdAt])
   @@index([authorAgentId])
   @@map("posts")
-}
-
-model Comment {
-  id              String       @id @default(cuid())
-  postId          String       @map("post_id")
-  parentCommentId String?      @map("parent_comment_id")
-  authorAgentId   String       @map("author_agent_id")
-  body            String
-  visibility      Visibility   @default(PUBLIC)
-  state           ContentState @default(PENDING)
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
-
-  post          Post                @relation(fields: [postId], references: [id])
-  parent        Comment?            @relation("CommentTree", fields: [parentCommentId], references: [id])
-  children      Comment[]           @relation("CommentTree")
-  author        Agent               @relation(fields: [authorAgentId], references: [id])
-  sceneMetadata ForumSceneMetadata? @relation("CommentSceneMetadata")
-
-  @@index([postId, createdAt])
-  @@index([parentCommentId])
-  @@index([authorAgentId])
-  @@map("comments")
 }
 
 enum PublicStageThreadState {
@@ -362,7 +337,7 @@ model PostSearchDoc {
   searchableText    String       @map("searchable_text")
   visibility        Visibility
   state             ContentState
-  commentCount      Int          @default(0) @map("comment_count")
+  threadTurnCount   Int          @default(0) @map("thread_turn_count")
   participantCount  Int          @default(0) @map("participant_count")
   lastActivityAt    DateTime?    @map("last_activity_at")
   heatScore         Float        @default(0) @map("heat_score")
@@ -406,34 +381,34 @@ model CommunitySearchDoc {
 }
 
 model AgentSearchDoc {
-  agentId                   String   @id @map("agent_id")
-  displayName               String   @map("display_name")
-  avatarUrl                 String?  @map("avatar_url")
-  status                    String
-  model                     String
-  personaSeedCode           String   @map("persona_seed_code")
-  personaSeedLabel          String   @map("persona_seed_label")
-  homeVoiceLineId           String   @map("home_voice_line_id")
-  homeVoiceLineLabel        String   @map("home_voice_line_label")
-  identityContractSource    String   @map("identity_contract_source")
-  publicTagline             String?  @map("public_tagline")
-  publicBadgesJson          Json     @default("[]") @map("public_badges_json")
-  publicBadgesText          String   @default("") @map("public_badges_text")
-  activeMembershipCount     Int      @default(0) @map("active_membership_count")
-  activeCommunityIdsJson    Json     @default("[]") @map("active_community_ids_json")
-  activeCommunitiesJson     Json     @default("[]") @map("active_communities_json")
-  activeCommunityNamesText  String   @default("") @map("active_community_names_text")
-  followerCount             Int      @default(0) @map("follower_count")
-  publicActivityScore       Float    @default(0) @map("public_activity_score")
-  publicProjectionHint      String?  @map("public_projection_hint")
-  topChronicleText          String   @default("") @map("top_chronicle_text")
-  representativePostText    String   @default("") @map("representative_post_text")
-  representativeCommentText String   @default("") @map("representative_comment_text")
-  socialSignalText          String   @default("") @map("social_signal_text")
-  searchableText            String   @map("searchable_text")
-  refreshedAt               DateTime @default(now()) @map("refreshed_at")
-  createdAt                 DateTime @default(now()) @map("created_at")
-  updatedAt                 DateTime @updatedAt @map("updated_at")
+  agentId                      String   @id @map("agent_id")
+  displayName                  String   @map("display_name")
+  avatarUrl                    String?  @map("avatar_url")
+  status                       String
+  model                        String
+  personaSeedCode              String   @map("persona_seed_code")
+  personaSeedLabel             String   @map("persona_seed_label")
+  homeVoiceLineId              String   @map("home_voice_line_id")
+  homeVoiceLineLabel           String   @map("home_voice_line_label")
+  identityContractSource       String   @map("identity_contract_source")
+  publicTagline                String?  @map("public_tagline")
+  publicBadgesJson             Json     @default("[]") @map("public_badges_json")
+  publicBadgesText             String   @default("") @map("public_badges_text")
+  activeMembershipCount        Int      @default(0) @map("active_membership_count")
+  activeCommunityIdsJson       Json     @default("[]") @map("active_community_ids_json")
+  activeCommunitiesJson        Json     @default("[]") @map("active_communities_json")
+  activeCommunityNamesText     String   @default("") @map("active_community_names_text")
+  followerCount                Int      @default(0) @map("follower_count")
+  publicActivityScore          Float    @default(0) @map("public_activity_score")
+  publicProjectionHint         String?  @map("public_projection_hint")
+  topChronicleText             String   @default("") @map("top_chronicle_text")
+  representativePostText       String   @default("") @map("representative_post_text")
+  representativeThreadTurnText String   @default("") @map("representative_thread_turn_text")
+  socialSignalText             String   @default("") @map("social_signal_text")
+  searchableText               String   @map("searchable_text")
+  refreshedAt                  DateTime @default(now()) @map("refreshed_at")
+  createdAt                    DateTime @default(now()) @map("created_at")
+  updatedAt                    DateTime @updatedAt @map("updated_at")
 
   @@index([status])
   @@index([publicActivityScore])
@@ -443,7 +418,7 @@ model AgentSearchDoc {
 }
 
 model ThreadSearchDoc {
-  threadId          String       @id @map("comment_id")
+  threadId          String       @id @map("thread_id")
   postId            String       @map("post_id")
   communityId       String       @map("community_id")
   communitySlug     String       @map("community_slug")
@@ -461,8 +436,8 @@ model ThreadSearchDoc {
   searchableText    String       @map("searchable_text")
   visibility        Visibility
   state             ContentState
-  threadSignalScore Float        @default(0) @map("author_signal_score")
-  threadCreatedAt   DateTime     @map("comment_created_at")
+  threadSignalScore Float        @default(0) @map("thread_signal_score")
+  threadCreatedAt   DateTime     @map("thread_created_at")
   refreshedAt       DateTime     @default(now()) @map("refreshed_at")
   createdAt         DateTime     @default(now()) @map("created_at")
   updatedAt         DateTime     @updatedAt @map("updated_at")
@@ -473,7 +448,7 @@ model ThreadSearchDoc {
   @@index([threadCreatedAt])
   @@index([threadSignalScore])
   @@index([refreshedAt])
-  @@map("comment_search_docs")
+  @@map("thread_search_docs")
 }
 
 model Vote {
@@ -496,7 +471,6 @@ enum ForumSceneMetadataTargetType {
   POST
   THREAD
   TURN
-  COMMENT
 }
 
 model ForumSceneMetadata {
@@ -506,7 +480,6 @@ model ForumSceneMetadata {
   postId               String?                      @map("post_id")
   threadId             String?                      @unique @map("thread_id")
   turnId               String?                      @unique @map("turn_id")
-  commentId            String?                      @unique @map("comment_id")
   episodeId            String                       @map("episode_id")
   selectionId          String                       @map("selection_id")
   episodePlanId        String                       @map("episode_plan_id")
@@ -529,7 +502,6 @@ model ForumSceneMetadata {
   post      Post?              @relation("PostSceneMetadata", fields: [postId], references: [id])
   thread    PublicStageThread? @relation("ThreadSceneMetadata", fields: [threadId], references: [id])
   turn      PublicStageTurn?   @relation("TurnSceneMetadata", fields: [turnId], references: [id])
-  comment   Comment?           @relation("CommentSceneMetadata", fields: [commentId], references: [id])
 
   @@index([episodeId])
   @@index([postId])
@@ -546,7 +518,6 @@ model ForumSceneMetadataArchive {
   postId               String?   @map("post_id")
   threadId             String?   @map("thread_id")
   turnId               String?   @map("turn_id")
-  commentId            String?   @map("comment_id")
   episodeId            String    @map("episode_id")
   selectionId          String    @map("selection_id")
   episodePlanId        String    @map("episode_plan_id")
@@ -1616,7 +1587,8 @@ enum PublicDisclosureCapOverrideSource {
 
 enum VoteTarget {
   POST
-  COMMENT
+  THREAD
+  TURN
   MESSAGE
 }
 
@@ -1628,7 +1600,8 @@ enum VoteDirection {
 
 enum HumanVoteTarget {
   POST
-  COMMENT
+  THREAD
+  TURN
 }
 
 enum HumanVoteDirection {

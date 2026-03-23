@@ -3,9 +3,11 @@ import { InMemoryRelationRepository } from '../../repos/relation-repository.js'
 import { InMemoryAgentRepository, InMemoryAgentConfigRepository } from '../../repos/agent-repository.js'
 import { InMemoryAgentRunRepository } from '../../repos/event-repository.js'
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
-import { InMemoryCommentRepository } from '../../repos/comment-repository.js'
+import { InMemoryPublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
+import { InMemoryPublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
 import { AgentService } from '../agent-service.js'
 import { RelationService } from '../relation-service.js'
+import { InMemoryPublicStageStore } from '../../test-support/public-stage-store.js'
 
 function setup() {
   const agentRepo = new InMemoryAgentRepository()
@@ -175,7 +177,13 @@ describe('RelationService', () => {
     const runRepo = new InMemoryAgentRunRepository()
     const relationRepo = new InMemoryRelationRepository()
     const postRepo = new InMemoryPostRepository()
-    const commentRepo = new InMemoryCommentRepository()
+    const publicStageThreadRepo = new InMemoryPublicStageThreadRepository()
+    const publicStageTurnRepo = new InMemoryPublicStageTurnRepository()
+    const commentRepo = new InMemoryPublicStageStore({
+      threadRepo: publicStageThreadRepo,
+      turnRepo: publicStageTurnRepo,
+      postRepo,
+    })
 
     const postAuthor = agentRepo.create({ owner_id: 'u-post', display_name: 'Post Author' })
     const threadAuthor = agentRepo.create({ owner_id: 'u-thread', display_name: 'Thread Author' })
@@ -201,7 +209,8 @@ describe('RelationService', () => {
       agentRepo,
       agentService,
       postRepo,
-      commentRepo,
+      publicStageThreadRepo,
+      publicStageTurnRepo,
     })
 
     const post = await postRepo.create({
@@ -220,7 +229,7 @@ describe('RelationService', () => {
       state: 'APPROVED',
     })
 
-    await relationService.onForumCommentEvent({
+    await relationService.onForumStageEvent({
       id: 'evt-thread',
       event_type: 'THREAD_OPENED',
       plane: 'DATA',
@@ -235,10 +244,8 @@ describe('RelationService', () => {
       idempotency_key: null,
       created_at: new Date(),
       payload_json: {
-        comment_id: thread.id,
         post_id: post.id,
         author_agent_id: threadAuthor.id,
-        comment_kind: 'THREAD',
         thread_id: thread.id,
       },
     })
@@ -262,7 +269,13 @@ describe('RelationService', () => {
     const runRepo = new InMemoryAgentRunRepository()
     const relationRepo = new InMemoryRelationRepository()
     const postRepo = new InMemoryPostRepository()
-    const commentRepo = new InMemoryCommentRepository()
+    const publicStageThreadRepo = new InMemoryPublicStageThreadRepository()
+    const publicStageTurnRepo = new InMemoryPublicStageTurnRepository()
+    const commentRepo = new InMemoryPublicStageStore({
+      threadRepo: publicStageThreadRepo,
+      turnRepo: publicStageTurnRepo,
+      postRepo,
+    })
 
     const postAuthor = agentRepo.create({ owner_id: 'u-post', display_name: 'Post Author' })
     const threadAuthor = agentRepo.create({ owner_id: 'u-thread', display_name: 'Thread Author' })
@@ -287,7 +300,8 @@ describe('RelationService', () => {
       agentRepo,
       agentService,
       postRepo,
-      commentRepo,
+      publicStageThreadRepo,
+      publicStageTurnRepo,
     })
 
     const post = await postRepo.create({
@@ -307,7 +321,7 @@ describe('RelationService', () => {
     })
     const anchorTurn = await commentRepo.create({
       post_id: post.id,
-      parent_comment_id: thread.id,
+      parent_entry_id: thread.id,
       author_agent_id: anchorAuthor.id,
       body: 'Anchor turn',
       visibility: 'PUBLIC',
@@ -315,14 +329,14 @@ describe('RelationService', () => {
     })
     const replyTurn = await commentRepo.create({
       post_id: post.id,
-      parent_comment_id: anchorTurn.id,
+      parent_entry_id: anchorTurn.id,
       author_agent_id: turnAuthor.id,
       body: 'Reply turn',
       visibility: 'PUBLIC',
       state: 'APPROVED',
     })
 
-    await relationService.onForumCommentEvent({
+    await relationService.onForumStageEvent({
       id: 'evt-turn',
       event_type: 'THREAD_TURN_ADDED',
       plane: 'DATA',
@@ -337,11 +351,10 @@ describe('RelationService', () => {
       idempotency_key: null,
       created_at: new Date(),
       payload_json: {
-        comment_id: replyTurn.id,
         post_id: post.id,
         author_agent_id: turnAuthor.id,
-        comment_kind: 'TURN',
         thread_id: thread.id,
+        turn_id: replyTurn.id,
       },
     })
 

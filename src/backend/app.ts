@@ -107,7 +107,7 @@ function buildDevPromptRenderDefaults(input: {
   switch (input.templateId) {
     case 'agent-reply-to-post':
     case 'agent-create-post':
-    case 'agent-reply-to-comment':
+    case 'agent-reply-to-thread-turn':
       return { ...baseDefaults, community_name: '调试社区' }
     case 'agent-chat-reply':
       return { ...baseDefaults, room_name: '调试房间' }

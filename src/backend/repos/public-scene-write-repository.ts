@@ -1,18 +1,21 @@
 import type {
   AgentRun,
-  Comment,
   CreateAgentRunInput,
-  CreateCommentInput,
   CreateEventInput,
   CreateForumSceneMetadataInput,
   CreatePostInput,
+  CreatePublicStageThreadInput,
+  CreatePublicStageTurnInput,
   DomainEvent,
   Post,
+  PublicStageThread,
+  PublicStageTurn,
 } from './types.js'
-import type { CommentRepository } from './comment-repository.js'
 import type { AgentRunRepository, EventRepository } from './event-repository.js'
 import type { ForumSceneMetadataRepository } from './forum-scene-metadata-repository.js'
 import type { PostRepository } from './post-repository.js'
+import type { PublicStageThreadRepository } from './public-stage-thread-repository.js'
+import type { PublicStageTurnRepository } from './public-stage-turn-repository.js'
 
 export interface PublicSceneWriteRepository {
   createPost(input: {
@@ -21,18 +24,24 @@ export interface PublicSceneWriteRepository {
     event: CreateEventInput
     agent_run: CreateAgentRunInput
   }): Promise<{ post: Post; event: DomainEvent; agentRun: AgentRun }>
-  createComment(input: {
-    comment: CreateCommentInput
+  createThread(input: {
+    thread: CreatePublicStageThreadInput
     scene_metadata: CreateForumSceneMetadataInput
     event: CreateEventInput
-  }): Promise<{ comment: Comment; event: DomainEvent }>
+  }): Promise<{ thread: PublicStageThread; event: DomainEvent }>
+  createThreadTurn(input: {
+    turn: CreatePublicStageTurnInput
+    scene_metadata: CreateForumSceneMetadataInput
+    event: CreateEventInput
+  }): Promise<{ turn: PublicStageTurn; event: DomainEvent }>
 }
 
 export class InMemoryPublicSceneWriteRepository implements PublicSceneWriteRepository {
   constructor(
     private readonly deps: {
       postRepo: Pick<PostRepository, 'create' | 'delete'>
-      commentRepo: Pick<CommentRepository, 'create' | 'delete'>
+      publicStageThreadRepo: Pick<PublicStageThreadRepository, 'create' | 'delete'>
+      publicStageTurnRepo: Pick<PublicStageTurnRepository, 'create' | 'delete'>
       sceneMetadataRepo: ForumSceneMetadataRepository
       eventRepo: Pick<EventRepository, 'create'> & { delete(id: string): void }
       agentRunRepo: Pick<AgentRunRepository, 'create'> & { delete(id: string): void }
@@ -51,7 +60,6 @@ export class InMemoryPublicSceneWriteRepository implements PublicSceneWriteRepos
         ...input.scene_metadata,
         target_type: 'POST',
         post_id: post.id,
-        comment_id: null,
       })
       try {
         const event = this.deps.eventRepo.create(input.event)
@@ -75,35 +83,58 @@ export class InMemoryPublicSceneWriteRepository implements PublicSceneWriteRepos
     }
   }
 
-  async createComment(input: {
-    comment: CreateCommentInput
+  async createThread(input: {
+    thread: CreatePublicStageThreadInput
     scene_metadata: CreateForumSceneMetadataInput
     event: CreateEventInput
-  }): Promise<{ comment: Comment; event: DomainEvent }> {
-    const comment = await this.deps.commentRepo.create(input.comment)
+  }): Promise<{ thread: PublicStageThread; event: DomainEvent }> {
+    const thread = await this.deps.publicStageThreadRepo.create(input.thread)
     try {
       await this.deps.sceneMetadataRepo.create({
         ...input.scene_metadata,
-        target_type: comment.comment_kind === 'THREAD' ? 'THREAD' : 'TURN',
-        post_id: input.comment.post_id,
-        thread_id: comment.comment_kind === 'THREAD' ? comment.id : null,
-        turn_id: comment.comment_kind === 'TURN' ? comment.id : null,
-        comment_id: null,
+        target_type: 'THREAD',
+        post_id: input.thread.post_id,
+        thread_id: thread.id,
+        turn_id: null,
       })
       try {
         const event = this.deps.eventRepo.create(input.event)
-        return { comment, event }
+        return { thread, event }
       } catch (error) {
-        if (comment.comment_kind === 'THREAD') {
-          await this.deps.sceneMetadataRepo.deleteByTarget({ thread_id: comment.id })
-        } else {
-          await this.deps.sceneMetadataRepo.deleteByTarget({ turn_id: comment.id })
-        }
-        await this.deps.commentRepo.delete(comment.id)
+        await this.deps.sceneMetadataRepo.deleteByTarget({ thread_id: thread.id })
+        await this.deps.publicStageThreadRepo.delete(thread.id)
         throw error
       }
     } catch (error) {
-      await this.deps.commentRepo.delete(comment.id)
+      await this.deps.publicStageThreadRepo.delete(thread.id)
+      throw error
+    }
+  }
+
+  async createThreadTurn(input: {
+    turn: CreatePublicStageTurnInput
+    scene_metadata: CreateForumSceneMetadataInput
+    event: CreateEventInput
+  }): Promise<{ turn: PublicStageTurn; event: DomainEvent }> {
+    const turn = await this.deps.publicStageTurnRepo.create(input.turn)
+    try {
+      await this.deps.sceneMetadataRepo.create({
+        ...input.scene_metadata,
+        target_type: 'TURN',
+        post_id: input.turn.post_id,
+        thread_id: null,
+        turn_id: turn.id,
+      })
+      try {
+        const event = this.deps.eventRepo.create(input.event)
+        return { turn, event }
+      } catch (error) {
+        await this.deps.sceneMetadataRepo.deleteByTarget({ turn_id: turn.id })
+        await this.deps.publicStageTurnRepo.delete(turn.id)
+        throw error
+      }
+    } catch (error) {
+      await this.deps.publicStageTurnRepo.delete(turn.id)
       throw error
     }
   }

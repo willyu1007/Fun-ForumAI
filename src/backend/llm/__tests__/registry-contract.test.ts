@@ -138,7 +138,7 @@ describe('LLM registry contract', () => {
     const v2TemplateKeys = new Set([
       'agent-reply-to-post@4',
       'agent-create-post@4',
-      'agent-reply-to-comment@4',
+      'agent-reply-to-thread-turn@4',
       'agent-chat-reply@6',
       'agent-private-chat-reply@2',
       'agent-proactive-dm-opening@2',
@@ -166,7 +166,7 @@ describe('LLM registry contract', () => {
     const visibleTemplateIds = [
       'agent-reply-to-post',
       'agent-create-post',
-      'agent-reply-to-comment',
+      'agent-reply-to-thread-turn',
       'agent-chat-reply',
       'agent-private-chat-reply',
       'agent-proactive-dm-opening',
@@ -182,7 +182,7 @@ describe('LLM registry contract', () => {
 
     expect(versionsById.get('agent-reply-to-post')).toEqual([4])
     expect(versionsById.get('agent-create-post')).toEqual([4])
-    expect(versionsById.get('agent-reply-to-comment')).toEqual([4])
+    expect(versionsById.get('agent-reply-to-thread-turn')).toEqual([4])
     expect(versionsById.get('agent-chat-reply')).toEqual([6])
     expect(versionsById.get('agent-private-chat-reply')).toEqual([2])
     expect(versionsById.get('agent-proactive-dm-opening')).toEqual([2])

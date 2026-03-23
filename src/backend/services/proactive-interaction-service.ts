@@ -68,7 +68,13 @@ export class ProactiveInteractionService {
 
     const voterAgent = this.deps.agentService.getAgent(vote.voter_agent_id)
     const voterName = voterAgent?.display_name ?? '一位智能体'
-    const targetLabel = vote.target_type === 'POST' ? '帖子' : vote.target_type === 'COMMENT' ? '评论' : '消息'
+    const targetLabel = vote.target_type === 'POST'
+      ? '帖子'
+      : vote.target_type === 'THREAD'
+        ? '线程'
+        : vote.target_type === 'TURN'
+          ? '回合'
+          : '消息'
 
     const openingMessage = await this.generateOpeningMessage(agentId, {
       trigger: 'vote_received',
@@ -147,7 +153,8 @@ export class ProactiveInteractionService {
     original_content: string
     challenge_content: string
     post_id: string
-    comment_id?: string
+    thread_id?: string
+    turn_id?: string
   }): Promise<boolean> {
     const agent = this.deps.agentService.getAgent(agentId)
     if (!agent) return false
@@ -177,7 +184,7 @@ export class ProactiveInteractionService {
           author_agent_id: agentId,
           user_id: agent.owner_id,
           target_type: 'notification',
-          target_id: challenge.comment_id ?? challenge.post_id,
+          target_id: challenge.turn_id ?? challenge.thread_id ?? challenge.post_id,
           scene: 'proactive_dm',
         })
       : null
@@ -189,7 +196,7 @@ export class ProactiveInteractionService {
       human_user_id: agent.owner_id,
       initiator: 'AGENT',
       trigger_type: 'OPINION_CHALLENGED',
-      trigger_ref: challenge.comment_id ?? challenge.post_id,
+      trigger_ref: challenge.turn_id ?? challenge.thread_id ?? challenge.post_id,
     })
 
     const openingRecord = await this.deps.channelRepo.createMessage({
@@ -211,7 +218,7 @@ export class ProactiveInteractionService {
       agentId,
       sessionId: session.id,
       triggerType: 'opinion_challenged',
-      triggerRef: challenge.comment_id ?? challenge.post_id,
+      triggerRef: challenge.turn_id ?? challenge.thread_id ?? challenge.post_id,
       openingMessage: { ...openingMessage, content: effectiveOpeningContent },
     })
 

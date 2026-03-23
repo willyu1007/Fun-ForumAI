@@ -1,6 +1,5 @@
 import type {
   PostRepository,
-  CommentRepository,
   PublicStageThreadRepository,
   PublicStageTurnRepository,
   VoteRepository,
@@ -11,7 +10,7 @@ import type {
   CommunityRepository,
   AgentRepository,
   Post,
-  Comment,
+  PublicStageThreadTurn,
   Community,
   PaginatedResult,
   PublicStageThread,
@@ -21,6 +20,7 @@ import type {
 } from '../repos/index.js'
 import { NotFoundError } from '../lib/errors.js'
 import { config } from '../lib/config.js'
+import { listPublicStageThreadTurnsByPost } from '../lib/public-stage-thread-turn.js'
 import type { AchievementChronicleService } from './achievement-chronicle-service.js'
 import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
 import { listSurfaceMediaAttachmentViews } from '../media/surface-media-view.js'
@@ -28,7 +28,6 @@ import type { MediaObservabilityService } from '../media/media-observability-ser
 
 export interface ForumReadServiceDeps {
   postRepo: PostRepository
-  commentRepo: CommentRepository
   publicStageThreadRepo: PublicStageThreadRepository
   publicStageTurnRepo: PublicStageTurnRepository
   voteRepo: VoteRepository
@@ -59,7 +58,7 @@ export interface AuthorSummary {
 }
 
 export interface PostWithMeta extends Post {
-  comment_count: number
+  thread_turn_count: number
   vote_score: number
   vote_up: number
   vote_down: number
@@ -84,7 +83,7 @@ export interface PostWithMeta extends Post {
   distribution_state: string
 }
 
-export interface CommentWithAuthor extends Comment {
+export interface PublicStageThreadTurnWithAuthor extends PublicStageThreadTurn {
   author: AuthorSummary
   vote_score: number
   agent_vote_score: number
@@ -100,20 +99,6 @@ export interface CommentWithAuthor extends Comment {
   topic_signals: Record<string, unknown> | null
   distribution_state: string
   attachments: SurfaceMediaAttachmentView[]
-}
-
-export interface CommentThreadContext {
-  post_id: string
-  comments: CommentWithAuthor[]
-  ancestor_comments: CommentWithAuthor[]
-  sibling_window: {
-    before: CommentWithAuthor[]
-    after: CommentWithAuthor[]
-  }
-  child_preview: {
-    items: CommentWithAuthor[]
-    total_count: number
-  }
 }
 
 export interface PublicStageTurnAnchorPreview {
@@ -172,7 +157,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isPubliclyVisibleContent(
-  value: Pick<Post, 'visibility' | 'state'> | Pick<Comment, 'visibility' | 'state'>,
+  value: Pick<Post, 'visibility' | 'state'> | Pick<PublicStageThreadTurn, 'visibility' | 'state'>,
 ): boolean {
   return value.state === 'APPROVED' && (value.visibility === 'PUBLIC' || value.visibility === 'GRAY')
 }
@@ -204,7 +189,7 @@ export class ForumReadService {
     }
   }
 
-  private async resolveCommentTopicSignals(commentId: string): Promise<{
+  private async resolveThreadTurnTopicSignals(entryId: string): Promise<{
     topic_signals: Record<string, unknown> | null
     distribution_state: string
   }> {
@@ -215,8 +200,8 @@ export class ForumReadService {
       }
     }
     const events = await this.deps.riskRepo.listRiskEvents({
-      target_type: 'comment',
-      target_id: commentId,
+      target_type: 'thread_turn',
+      target_id: entryId,
       limit: 1,
       cursor: undefined,
     })
@@ -247,8 +232,8 @@ export class ForumReadService {
   }
 
   private buildEffectiveModerationLabel(
-    visibility: Post['visibility'] | Comment['visibility'],
-    state: Post['state'] | Comment['state'],
+    visibility: Post['visibility'] | PublicStageThreadTurn['visibility'],
+    state: Post['state'] | PublicStageThreadTurn['state'],
   ): string {
     if (state !== 'APPROVED') return state
     return visibility
@@ -293,28 +278,14 @@ export class ForumReadService {
     return { slug: community.slug, name: community.name }
   }
 
-  private async listAllVisibleComments(postId: string): Promise<Comment[]> {
-    const all: Comment[] = []
-    let cursor: string | undefined
-    let safety = 0
-
-    while (safety < 1000) {
-      safety += 1
-      const page = await this.deps.commentRepo.findByPost(postId, { cursor, limit: 200 })
-      all.push(...page.items)
-      if (!page.next_cursor || page.next_cursor === cursor) {
-        break
-      }
-      cursor = page.next_cursor
-    }
-
-    return all
+  private async listAllVisibleThreadTurns(postId: string): Promise<PublicStageThreadTurn[]> {
+    return listPublicStageThreadTurnsByPost(this.deps, postId)
   }
 
-  private async resolveCommentAttachmentViews(
+  private async resolveThreadTurnAttachmentViews(
     items: Array<{
       id: string
-      comment_kind: 'THREAD' | 'TURN'
+      entry_kind: 'THREAD' | 'TURN'
     }>,
   ): Promise<Map<string, SurfaceMediaAttachmentView[]>> {
     if (items.length === 0) {
@@ -326,10 +297,10 @@ export class ForumReadService {
       mediaContextProjectionRepo: this.deps.mediaContextProjectionRepo,
     }
     const threadIds = items
-      .filter((item) => item.comment_kind === 'THREAD')
+      .filter((item) => item.entry_kind === 'THREAD')
       .map((item) => item.id)
     const turnIds = items
-      .filter((item) => item.comment_kind === 'TURN')
+      .filter((item) => item.entry_kind === 'TURN')
       .map((item) => item.id)
 
     const [threadAttachments, turnAttachments] = await Promise.all([
@@ -353,21 +324,21 @@ export class ForumReadService {
 
   private calculateHeatScore(input: {
     voteScore: number
-    commentCount: number
+    threadTurnCount: number
     participantCount: number
     activityAt: Date
     nowMs: number
   }): number {
     const hoursSinceActivity = Math.max(0, (input.nowMs - input.activityAt.getTime()) / 3_600_000)
     const raw = input.voteScore * 8
-      + Math.log1p(input.commentCount) * 4
+      + Math.log1p(input.threadTurnCount) * 4
       + Math.log1p(input.participantCount) * 3
       + 16 / (hoursSinceActivity + 2)
     return Math.round(raw)
   }
 
   private getDetailedVoteSummary(
-    targetType: 'POST' | 'COMMENT',
+    targetType: 'POST' | 'THREAD' | 'TURN',
     targetId: string,
     viewerUserId?: string,
   ): {
@@ -515,22 +486,22 @@ export class ForumReadService {
     media: PostMediaSummary[] = [],
   ): Promise<PostWithMeta> {
     const votes = this.getDetailedVoteSummary('POST', post.id, viewerUserId)
-    const visibleComments = await this.listAllVisibleComments(post.id)
+    const visibleThreadTurns = await this.listAllVisibleThreadTurns(post.id)
     const participantIds = new Set<string>([post.author_agent_id])
-    for (const comment of visibleComments) {
-      participantIds.add(comment.author_agent_id)
+    for (const entry of visibleThreadTurns) {
+      participantIds.add(entry.author_agent_id)
     }
-    const lastReplyAt = visibleComments.length > 0
-      ? visibleComments[visibleComments.length - 1].created_at
+    const lastReplyAt = visibleThreadTurns.length > 0
+      ? visibleThreadTurns[visibleThreadTurns.length - 1].created_at
       : null
     const community = this.resolveCommunityMeta(post.community_id)
-    const commentCount = visibleComments.length
+    const threadTurnCount = visibleThreadTurns.length
     const activityAt = lastReplyAt ?? post.created_at
     const topicPresentation = this.readTopicSignals(post.moderation_metadata)
 
     return {
       ...post,
-      comment_count: commentCount,
+      thread_turn_count: threadTurnCount,
       vote_score: votes.weighted_score,
       vote_up: votes.agent.up,
       vote_down: votes.agent.down,
@@ -546,7 +517,7 @@ export class ForumReadService {
       last_reply_at: lastReplyAt,
       heat_score: this.calculateHeatScore({
         voteScore: votes.weighted_score,
-        commentCount,
+        threadTurnCount: threadTurnCount,
         participantCount: participantIds.size,
         activityAt,
         nowMs,
@@ -634,8 +605,8 @@ export class ForumReadService {
       attachmentMap: Map<string, SurfaceMediaAttachmentView[]>
     },
   ): Promise<PublicStageTurnWithAuthor> {
-    const votes = this.getDetailedVoteSummary('COMMENT', turn.id, opts.viewerUserId)
-    const topicPresentation = await this.resolveCommentTopicSignals(turn.id)
+    const votes = this.getDetailedVoteSummary('TURN', turn.id, opts.viewerUserId)
+    const topicPresentation = await this.resolveThreadTurnTopicSignals(turn.id)
     const anchorTurn = turn.anchor_turn_id ? opts.turnById.get(turn.anchor_turn_id) ?? null : null
     const anchorAuthor = anchorTurn
       ? await this.resolveAuthorCached(opts.authorCache, anchorTurn.author_agent_id)
@@ -678,8 +649,8 @@ export class ForumReadService {
       attachmentMap: Map<string, SurfaceMediaAttachmentView[]>
     },
   ): Promise<PublicStageThreadWithAuthor> {
-    const votes = this.getDetailedVoteSummary('COMMENT', thread.id, opts.viewerUserId)
-    const topicPresentation = await this.resolveCommentTopicSignals(thread.id)
+    const votes = this.getDetailedVoteSummary('THREAD', thread.id, opts.viewerUserId)
+    const topicPresentation = await this.resolveThreadTurnTopicSignals(thread.id)
     const visibleTurns = turns.filter((turn) => isPubliclyVisibleContent(turn))
     const turnViews = await Promise.all(
       visibleTurns.map((turn) =>
@@ -731,9 +702,9 @@ export class ForumReadService {
       limit,
     })
     const turns = await this.deps.publicStageTurnRepo.findByThreads(result.items.map((thread) => thread.id))
-    const attachmentMap = await this.resolveCommentAttachmentViews([
-      ...result.items.map((thread) => ({ id: thread.id, comment_kind: 'THREAD' as const })),
-      ...turns.map((turn) => ({ id: turn.id, comment_kind: 'TURN' as const })),
+    const attachmentMap = await this.resolveThreadTurnAttachmentViews([
+      ...result.items.map((thread) => ({ id: thread.id, entry_kind: 'THREAD' as const })),
+      ...turns.map((turn) => ({ id: turn.id, entry_kind: 'TURN' as const })),
     ])
     const turnsByThreadId = new Map<string, PublicStageTurn[]>()
     const turnById = new Map<string, PublicStageTurn>()
@@ -772,9 +743,9 @@ export class ForumReadService {
       limit: 500,
     })
     const turns = turnsPage.items
-    const attachmentMap = await this.resolveCommentAttachmentViews([
-      { id: thread.id, comment_kind: 'THREAD' as const },
-      ...turns.map((turn) => ({ id: turn.id, comment_kind: 'TURN' as const })),
+    const attachmentMap = await this.resolveThreadTurnAttachmentViews([
+      { id: thread.id, entry_kind: 'THREAD' as const },
+      ...turns.map((turn) => ({ id: turn.id, entry_kind: 'TURN' as const })),
     ])
     const turnById = new Map(turns.map((turn) => [turn.id, turn]))
     const authorCache = new Map<string, Promise<AuthorSummary>>()
@@ -787,144 +758,6 @@ export class ForumReadService {
     })
   }
 
-  async getComments(
-    postId: string,
-    opts: { cursor?: string; limit?: number },
-    viewerUserId?: string,
-  ): Promise<PaginatedResult<CommentWithAuthor>> {
-    const post = await this.deps.postRepo.findById(postId)
-    if (!post) throw new NotFoundError('Post', postId)
-    if (!isPubliclyVisibleContent(post)) throw new NotFoundError('Post', postId)
-
-    const limit = this.clampLimit(opts.limit, 20, 500)
-    const result = await this.deps.commentRepo.findByPost(postId, {
-      cursor: opts.cursor,
-      limit,
-    })
-    const attachmentMap = await this.resolveCommentAttachmentViews(
-      result.items.map((comment) => ({
-        id: comment.id,
-        comment_kind: comment.comment_kind,
-      })),
-    )
-
-    const items: CommentWithAuthor[] = await Promise.all(result.items.map(async (c) => {
-      const votes = this.getDetailedVoteSummary('COMMENT', c.id, viewerUserId)
-      const topicPresentation = await this.resolveCommentTopicSignals(c.id)
-      return {
-        ...c,
-        author: await this.resolveAuthor(c.author_agent_id),
-        vote_score: votes.weighted_score,
-        agent_vote_score: votes.agent.score,
-        agent_vote_up: votes.agent.up,
-        agent_vote_down: votes.agent.down,
-        human_vote_score: votes.human.score,
-        human_vote_up: votes.human.up,
-        human_vote_down: votes.human.down,
-        weighted_vote_score: votes.weighted_score,
-        viewer_human_vote_direction: votes.viewer_direction,
-        ai_label: 'AI生成',
-        effective_moderation_label: this.buildEffectiveModerationLabel(c.visibility, c.state),
-        topic_signals: topicPresentation.topic_signals,
-        distribution_state: topicPresentation.distribution_state,
-        attachments: attachmentMap.get(c.id) ?? [],
-      }
-    }))
-
-    return { items, next_cursor: result.next_cursor }
-  }
-
-  async getComment(commentId: string, viewerUserId?: string): Promise<CommentWithAuthor> {
-    const comment = await this.deps.commentRepo.findById(commentId)
-    if (!comment) throw new NotFoundError('Comment', commentId)
-    if (!isPubliclyVisibleContent(comment)) throw new NotFoundError('Comment', commentId)
-
-    const post = await this.deps.postRepo.findById(comment.post_id)
-    if (!post || !isPubliclyVisibleContent(post)) throw new NotFoundError('Comment', commentId)
-
-    const votes = this.getDetailedVoteSummary('COMMENT', comment.id, viewerUserId)
-    const topicPresentation = await this.resolveCommentTopicSignals(comment.id)
-    const attachmentMap = await this.resolveCommentAttachmentViews([
-      {
-        id: comment.id,
-        comment_kind: comment.comment_kind,
-      },
-    ])
-    return {
-      ...comment,
-      author: await this.resolveAuthor(comment.author_agent_id),
-      vote_score: votes.weighted_score,
-      agent_vote_score: votes.agent.score,
-      agent_vote_up: votes.agent.up,
-      agent_vote_down: votes.agent.down,
-      human_vote_score: votes.human.score,
-      human_vote_up: votes.human.up,
-      human_vote_down: votes.human.down,
-      weighted_vote_score: votes.weighted_score,
-      viewer_human_vote_direction: votes.viewer_direction,
-      ai_label: 'AI生成',
-      effective_moderation_label: this.buildEffectiveModerationLabel(comment.visibility, comment.state),
-      topic_signals: topicPresentation.topic_signals,
-      distribution_state: topicPresentation.distribution_state,
-      attachments: attachmentMap.get(comment.id) ?? [],
-    }
-  }
-
-  async getCommentThreadContext(
-    commentId: string,
-    viewerUserId?: string,
-  ): Promise<CommentThreadContext> {
-    const target = await this.getComment(commentId, viewerUserId)
-    const ancestors: CommentWithAuthor[] = []
-    const seen = new Set<string>([target.id])
-    let parentId = target.parent_comment_id
-
-    while (parentId) {
-      if (seen.has(parentId)) break
-      const parent = await this.getComment(parentId, viewerUserId)
-      ancestors.unshift(parent)
-      seen.add(parent.id)
-      parentId = parent.parent_comment_id
-    }
-
-    const allVisibleComments = await this.collectVisibleCommentsByPost(target.post_id, viewerUserId)
-    const siblingComments = allVisibleComments
-      .filter((comment) => comment.parent_comment_id === target.parent_comment_id)
-      .sort((a, b) => a.created_at.getTime() - b.created_at.getTime() || a.id.localeCompare(b.id))
-    const siblingIndex = siblingComments.findIndex((comment) => comment.id === target.id)
-    const siblingBefore = siblingIndex > 0
-      ? siblingComments.slice(Math.max(0, siblingIndex - 2), siblingIndex)
-      : []
-    const siblingAfter = siblingIndex >= 0
-      ? siblingComments.slice(siblingIndex + 1, siblingIndex + 3)
-      : []
-    const childComments = allVisibleComments
-      .filter((comment) => comment.parent_comment_id === target.id)
-      .sort((a, b) => a.created_at.getTime() - b.created_at.getTime() || a.id.localeCompare(b.id))
-    const childPreview = childComments.slice(0, 2)
-    const comments = this.mergeThreadContextComments([
-      ...ancestors,
-      ...siblingBefore,
-      target,
-      ...siblingAfter,
-      ...childPreview,
-    ])
-
-    return {
-      post_id: target.post_id,
-      comments,
-      ancestor_comments: ancestors,
-      sibling_window: {
-        before: siblingBefore,
-        after: siblingAfter,
-      },
-      child_preview: {
-        items: childPreview,
-        total_count: childComments.length,
-      },
-    }
-  }
-
   async getCommunities(opts: {
     cursor?: string
     limit?: number
@@ -934,7 +767,7 @@ export class ForumReadService {
   }
 
   getVoteSummary(
-    targetType: 'POST' | 'COMMENT' | 'MESSAGE',
+    targetType: 'POST' | 'THREAD' | 'TURN' | 'MESSAGE',
     targetId: string,
   ): { up: number; down: number; score: number; weighted_score: number; human_up: number; human_down: number; human_score: number } {
     if (targetType === 'MESSAGE') {
@@ -954,32 +787,4 @@ export class ForumReadService {
     }
   }
 
-  private async collectVisibleCommentsByPost(postId: string, viewerUserId?: string): Promise<CommentWithAuthor[]> {
-    const items: CommentWithAuthor[] = []
-    let cursor: string | undefined
-
-    while (true) {
-      const page = await this.deps.commentRepo.findByPost(postId, {
-        cursor,
-        limit: 500,
-      })
-      if (page.items.length === 0) break
-      for (const comment of page.items) {
-        items.push(await this.getComment(comment.id, viewerUserId))
-      }
-      if (!page.next_cursor || page.next_cursor === cursor) break
-      cursor = page.next_cursor
-    }
-
-    return items
-  }
-
-  private mergeThreadContextComments(comments: CommentWithAuthor[]): CommentWithAuthor[] {
-    const merged = new Map<string, CommentWithAuthor>()
-    for (const comment of comments) {
-      merged.set(comment.id, comment)
-    }
-    return Array.from(merged.values()).sort((a, b) =>
-      a.created_at.getTime() - b.created_at.getTime() || a.id.localeCompare(b.id))
-  }
 }

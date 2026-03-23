@@ -136,8 +136,8 @@ export function PostDetailPage() {
   const createAudienceMessage = useCreateAudienceMessage(postId ?? '')
   const createReport = useCreateReport()
   const createAppeal = useCreateAppeal()
-  const { newCommentCounts, clearNewComments } = useSseNewCounts()
-  const newCommentCount = (postId && newCommentCounts[postId]) || 0
+  const { newThreadTurnCounts, clearNewThreadTurns } = useSseNewCounts()
+  const newThreadTurnCount = (postId && newThreadTurnCounts[postId]) || 0
   const isAudienceAftershowEnabled = supportsAudienceAftershowWeb
   const audienceThreadMessages = audienceThreadData?.data?.messages
   const asideSeatItems = asideSeatsData?.data?.seats
@@ -164,7 +164,7 @@ export function PostDetailPage() {
     () => toAftershowContentV1(aftershow?.aftershow_summary?.content ?? null),
     [aftershow?.aftershow_summary?.content],
   )
-  const threads = threadsData?.data ?? []
+  const threads = useMemo(() => threadsData?.data ?? [], [threadsData?.data])
   const stageFocus = useMemo(() => {
     const findThreadForTurn = (turnId: string | null, items: PublicStageThreadData[]) => {
       if (!turnId) return null
@@ -268,7 +268,7 @@ export function PostDetailPage() {
       : null
   const author = post.author
   const communityPath = post.community_slug || post.community_id
-  const commentCount = post.comment_count
+  const threadTurnCount = post.thread_turn_count
   const isPostOwner = authorProfile.data?.data?.owner_id === user?.id
   const topicSignals = readTopicSignals(post.topic_signals)
   const topicTransparencyCopy = describeTopicSignals(topicSignals, post.distribution_state)
@@ -471,7 +471,7 @@ export function PostDetailPage() {
           )}
 
           <div className={"mt-4 flex items-center gap-4 border-t pt-3 text-xs text-muted-foreground"}>
-            <span className={"font-medium"}>💬 {commentCount} 条舞台发言</span>
+            <span className={"font-medium"}>💬 {threadTurnCount} 条舞台发言</span>
             <span>
               Agent 👍 {post.agent_vote_up} / 👎 {post.agent_vote_down}
             </span>
@@ -507,10 +507,10 @@ export function PostDetailPage() {
 
       <div className={"rounded-md border bg-card p-4"}>
         <NewContentBanner
-          count={newCommentCount}
+          count={newThreadTurnCount}
           label="条新舞台发言"
           onRefresh={() => {
-            if (postId) clearNewComments(postId)
+            if (postId) clearNewThreadTurns(postId)
           }}
           queryKey={['threads', postId]}
         />

@@ -150,7 +150,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
         searchableText: input.searchable_text,
         visibility: input.visibility,
         state: input.state,
-        commentCount: input.comment_count,
+        threadTurnCount: input.thread_turn_count,
         participantCount: input.participant_count,
         lastActivityAt: input.last_activity_at,
         heatScore: input.heat_score,
@@ -177,7 +177,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
         searchableText: input.searchable_text,
         visibility: input.visibility,
         state: input.state,
-        commentCount: input.comment_count,
+        threadTurnCount: input.thread_turn_count,
         participantCount: input.participant_count,
         lastActivityAt: input.last_activity_at,
         heatScore: input.heat_score,
@@ -348,7 +348,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
         publicProjectionHint: input.public_projection_hint,
         topChronicleText: input.top_chronicle_text,
         representativePostText: input.representative_post_text,
-        representativeCommentText: input.representative_comment_text,
+        representativeThreadTurnText: input.representative_thread_turn_text,
         socialSignalText: input.social_signal_text,
         searchableText: input.searchable_text,
         refreshedAt: new Date(),
@@ -375,7 +375,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
         publicProjectionHint: input.public_projection_hint,
         topChronicleText: input.top_chronicle_text,
         representativePostText: input.representative_post_text,
-        representativeCommentText: input.representative_comment_text,
+        representativeThreadTurnText: input.representative_thread_turn_text,
         socialSignalText: input.social_signal_text,
         searchableText: input.searchable_text,
         refreshedAt: new Date(),
@@ -491,7 +491,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
     const tokenGateClause = buildTokenGateClause('csd.searchable_text', normalized)
     const rows = await this.prisma.$queryRaw<CountRow[]>(Prisma.sql`
       SELECT COUNT(*)::int AS count
-      FROM comment_search_docs csd
+      FROM thread_search_docs csd
       INNER JOIN post_search_docs psd
         ON psd.post_id = csd.post_id
       WHERE csd.searchable_text ILIKE ${likePattern}
@@ -529,7 +529,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
       searchable_text: string
       visibility: PostSearchDoc['visibility']
       state: PostSearchDoc['state']
-      comment_count: number
+      thread_turn_count: number
       participant_count: number
       last_activity_at: Date | null
       heat_score: number
@@ -561,7 +561,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
           searchable_text,
           visibility,
           state,
-          comment_count,
+          thread_turn_count,
           participant_count,
           last_activity_at,
           heat_score,
@@ -586,7 +586,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
             + CASE WHEN title ILIKE ${likePattern} THEN 0.35 ELSE 0 END
             + CASE WHEN searchable_text ILIKE ${likePattern} THEN 0.12 ELSE 0 END
             + LEAST(heat_score / 160.0, 0.75)
-            + LEAST(comment_count / 40.0, 0.35)
+            + LEAST(thread_turn_count / 40.0, 0.35)
             + LEAST(participant_count / 20.0, 0.25)
             + LEAST(watchability_score / 3.0, 0.4)
             + CASE WHEN scene_phase IS NOT NULL THEN 0.05 ELSE 0 END
@@ -630,7 +630,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
       searchable_text: row.searchable_text,
       visibility: row.visibility,
       state: row.state,
-      comment_count: row.comment_count,
+      thread_turn_count: row.thread_turn_count,
       participant_count: row.participant_count,
       last_activity_at: row.last_activity_at,
       heat_score: row.heat_score,
@@ -753,7 +753,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
       public_projection_hint: string | null
       top_chronicle_text: string
       representative_post_text: string
-      representative_comment_text: string
+      representative_thread_turn_text: string
       social_signal_text: string
       searchable_text: string
       refreshed_at: Date
@@ -785,7 +785,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
           public_projection_hint,
           top_chronicle_text,
           representative_post_text,
-          representative_comment_text,
+          representative_thread_turn_text,
           social_signal_text,
           searchable_text,
           refreshed_at,
@@ -799,7 +799,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
               similarity(lower(COALESCE(public_projection_hint, '')), lower(${normalized})) * 1.08,
               similarity(lower(top_chronicle_text), lower(${normalized})) * 1.08,
               similarity(lower(representative_post_text), lower(${normalized})) * 1.02,
-              similarity(lower(representative_comment_text), lower(${normalized})) * 0.98,
+              similarity(lower(representative_thread_turn_text), lower(${normalized})) * 0.98,
               similarity(lower(social_signal_text), lower(${normalized})) * 0.94,
               similarity(lower(public_badges_text), lower(${normalized})) * 1.08,
               similarity(lower(active_community_names_text), lower(${normalized})) * 1.02,
@@ -851,7 +851,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
       public_projection_hint: row.public_projection_hint,
       top_chronicle_text: row.top_chronicle_text,
       representative_post_text: row.representative_post_text,
-      representative_comment_text: row.representative_comment_text,
+      representative_thread_turn_text: row.representative_thread_turn_text,
       social_signal_text: row.social_signal_text,
       searchable_text: row.searchable_text,
       refreshed_at: row.refreshed_at,
@@ -894,7 +894,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
     }>>(Prisma.sql`
       WITH ranked AS (
         SELECT
-          csd.comment_id AS thread_id,
+          csd.thread_id AS thread_id,
           csd.post_id,
           csd.community_id,
           csd.community_slug,
@@ -912,8 +912,8 @@ export class PgSearchDocRepository implements SearchDocRepository {
           csd.searchable_text,
           csd.visibility,
           csd.state,
-          csd.author_signal_score AS thread_signal_score,
-          csd.comment_created_at AS thread_created_at,
+          csd.thread_signal_score AS thread_signal_score,
+          csd.thread_created_at AS thread_created_at,
           csd.refreshed_at,
           csd.created_at,
           csd.updated_at,
@@ -932,13 +932,13 @@ export class PgSearchDocRepository implements SearchDocRepository {
             + CASE WHEN csd.searchable_text ILIKE ${likePattern} THEN 0.1 ELSE 0 END
             + LEAST(psd.heat_score / 160.0, 0.75)
             + LEAST(psd.watchability_score / 3.0, 0.2)
-            + LEAST(csd.author_signal_score / 20.0, 0.25)
+            + LEAST(csd.thread_signal_score / 20.0, 0.25)
             + CASE
-                WHEN csd.comment_created_at IS NULL THEN 0
-                ELSE GREATEST(0, 0.22 - (EXTRACT(EPOCH FROM (NOW() - csd.comment_created_at)) / 86400.0 / 45.0))
+                WHEN csd.thread_created_at IS NULL THEN 0
+                ELSE GREATEST(0, 0.22 - (EXTRACT(EPOCH FROM (NOW() - csd.thread_created_at)) / 86400.0 / 45.0))
               END
           )::numeric, 6)::double precision AS score
-        FROM comment_search_docs csd
+        FROM thread_search_docs csd
         INNER JOIN post_search_docs psd
           ON psd.post_id = csd.post_id
         WHERE csd.searchable_text ILIKE ${likePattern}
@@ -1003,7 +1003,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
     searchableText: string
     visibility: PostSearchDoc['visibility']
     state: PostSearchDoc['state']
-    commentCount: number
+    threadTurnCount: number
     participantCount: number
     lastActivityAt: Date | null
     heatScore: number
@@ -1033,7 +1033,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
       searchable_text: row.searchableText,
       visibility: row.visibility,
       state: row.state,
-      comment_count: row.commentCount,
+      thread_turn_count: row.threadTurnCount,
       participant_count: row.participantCount,
       last_activity_at: row.lastActivityAt,
       heat_score: row.heatScore,
@@ -1109,7 +1109,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
     publicProjectionHint: string | null
     topChronicleText: string
     representativePostText: string
-    representativeCommentText: string
+    representativeThreadTurnText: string
     socialSignalText: string
     searchableText: string
     refreshedAt: Date
@@ -1139,7 +1139,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
       public_projection_hint: row.publicProjectionHint,
       top_chronicle_text: row.topChronicleText,
       representative_post_text: row.representativePostText,
-      representative_comment_text: row.representativeCommentText,
+      representative_thread_turn_text: row.representativeThreadTurnText,
       social_signal_text: row.socialSignalText,
       searchable_text: row.searchableText,
       refreshed_at: row.refreshedAt,

@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 interface VoteColumnProps {
-  targetType: 'POST' | 'COMMENT'
+  targetType: 'POST' | 'THREAD' | 'TURN'
   targetId: string
   score: number
   compact?: boolean

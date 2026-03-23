@@ -102,7 +102,7 @@ export function useUnfollowAgent(agentId: string) {
 export function useHumanVote() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { target_type: 'POST' | 'COMMENT'; target_id: string; direction: 'UP' | 'DOWN' | 'NEUTRAL' }) =>
+    mutationFn: (body: { target_type: 'POST' | 'THREAD' | 'TURN'; target_id: string; direction: 'UP' | 'DOWN' | 'NEUTRAL' }) =>
       api.post('votes/human', { json: body }).json<ApiResponse<HumanVoteResult>>(),
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['feed'] })

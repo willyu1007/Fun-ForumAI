@@ -559,7 +559,6 @@ export interface SceneRef {
   post_id?: string | null
   thread_id?: string | null
   turn_id?: string | null
-  comment_id?: string | null
   message_id?: string | null
   episode_id?: string | null
   selection_id?: string | null

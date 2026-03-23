@@ -288,7 +288,8 @@ async function fetchForumReviewSample(prisma, episodeId) {
     select: {
       targetType: true,
       postId: true,
-      commentId: true,
+      threadId: true,
+      turnId: true,
       actorSurface: true,
       sceneTemplateId: true,
       sceneBindingId: true,
@@ -300,19 +301,26 @@ async function fetchForumReviewSample(prisma, episodeId) {
   if (metadata.length === 0) return null
 
   const postIds = [...new Set(metadata.flatMap((item) => item.postId ? [item.postId] : []))]
-  const commentIds = [...new Set(metadata.flatMap((item) => item.commentId ? [item.commentId] : []))]
+  const threadIds = [...new Set(metadata.flatMap((item) => item.threadId ? [item.threadId] : []))]
+  const turnIds = [...new Set(metadata.flatMap((item) => item.turnId ? [item.turnId] : []))]
   const communityIds = [...new Set(metadata.flatMap((item) => item.communityId ? [item.communityId] : []))]
 
-  const [posts, comments, communities] = await Promise.all([
+  const [posts, threads, turns, communities] = await Promise.all([
     postIds.length > 0
       ? prisma.post.findMany({
           where: { id: { in: postIds } },
           select: { id: true, title: true, body: true, authorAgentId: true, createdAt: true },
         })
       : [],
-    commentIds.length > 0
-      ? prisma.comment.findMany({
-          where: { id: { in: commentIds } },
+    threadIds.length > 0
+      ? prisma.publicStageThread.findMany({
+          where: { id: { in: threadIds } },
+          select: { id: true, body: true, authorAgentId: true, postId: true, createdAt: true },
+        })
+      : [],
+    turnIds.length > 0
+      ? prisma.publicStageTurn.findMany({
+          where: { id: { in: turnIds } },
           select: { id: true, body: true, authorAgentId: true, postId: true, createdAt: true },
         })
       : [],
@@ -325,7 +333,8 @@ async function fetchForumReviewSample(prisma, episodeId) {
   ])
 
   const postsById = new Map(posts.map((item) => [item.id, item]))
-  const commentsById = new Map(comments.map((item) => [item.id, item]))
+  const threadsById = new Map(threads.map((item) => [item.id, item]))
+  const turnsById = new Map(turns.map((item) => [item.id, item]))
   const communitiesById = new Map(communities.map((item) => [item.id, item]))
   const first = metadata[0]
 
@@ -347,12 +356,16 @@ async function fetchForumReviewSample(prisma, episodeId) {
         }
       }
 
-      const comment = item.commentId ? commentsById.get(item.commentId) : null
+      const entry = item.targetType === 'THREAD'
+        ? (item.threadId ? threadsById.get(item.threadId) : null)
+        : item.turnId
+          ? turnsById.get(item.turnId)
+          : null
       return {
         actor_surface: item.actorSurface,
         created_at: item.createdAt.toISOString(),
-        author_id: comment?.authorAgentId ?? 'unknown',
-        excerpt: clip(comment?.body ?? ''),
+        author_id: entry?.authorAgentId ?? 'unknown',
+        excerpt: clip(entry?.body ?? ''),
       }
     }),
   }
@@ -849,7 +862,8 @@ async function archiveForumBatch(prisma, cutoff, batchLimit, archiveBatchId, arc
         targetType: row.targetType,
         communityId: row.communityId,
         postId: row.postId,
-        commentId: row.commentId,
+        threadId: row.threadId,
+        turnId: row.turnId,
         episodeId: row.episodeId,
         selectionId: row.selectionId,
         episodePlanId: row.episodePlanId,

@@ -25,7 +25,7 @@ export interface ModerationInput {
   text: string
   author_agent_id: string
   community_id: string
-  content_type: 'post' | 'comment' | 'message'
+  content_type: 'post' | 'thread_turn' | 'message'
   /** Optional community-level threshold overrides */
   community_thresholds?: CommunityThresholds
 }
@@ -86,7 +86,7 @@ export type GovernanceActionType =
 
 export interface GovernanceAction {
   action: GovernanceActionType
-  target_type: 'post' | 'comment' | 'message' | 'agent' | 'private_session' | 'notification' | 'config_revision'
+  target_type: 'post' | 'thread_turn' | 'message' | 'agent' | 'private_session' | 'notification' | 'config_revision'
   target_id: string
   admin_user_id: string
   reason?: string

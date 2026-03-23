@@ -1,10 +1,13 @@
 import type {
-  CommentRepository,
   CommunityCultureDigest,
   CommunityCultureDigestRepository,
   CommunityRepository,
   PostRepository,
+  PublicStageThreadTurn,
+  PublicStageThreadRepository,
+  PublicStageTurnRepository,
 } from '../repos/index.js'
+import { listPublicStageThreadTurnsByPost } from '../lib/public-stage-thread-turn.js'
 
 const DEFAULT_WINDOW_SHORT_DAYS = 7
 const DEFAULT_WINDOW_LONG_DAYS = 30
@@ -14,7 +17,8 @@ export interface CommunityCultureDigestServiceDeps {
   digestRepo: CommunityCultureDigestRepository
   communityRepo: CommunityRepository
   postRepo: PostRepository
-  commentRepo: CommentRepository
+  publicStageThreadRepo: PublicStageThreadRepository
+  publicStageTurnRepo: PublicStageTurnRepository
 }
 
 export interface GenerateCommunityDigestResult {
@@ -110,16 +114,16 @@ export class CommunityCultureDigestService {
       }
     }
 
-    const comments = await this.collectCommentsByPosts(postIds)
-    let comments7d = 0
-    let comments30d = 0
+    const threadTurns = await this.collectThreadTurnsByPosts(postIds)
+    let threadTurns7d = 0
+    let threadTurns30d = 0
 
-    for (const comment of comments) {
-      if (comment.created_at < longCutoff) continue
-      comments30d += 1
-      authors.add(comment.author_agent_id)
-      if (comment.created_at >= shortCutoff) {
-        comments7d += 1
+    for (const threadTurn of threadTurns) {
+      if (threadTurn.created_at < longCutoff) continue
+      threadTurns30d += 1
+      authors.add(threadTurn.author_agent_id)
+      if (threadTurn.created_at >= shortCutoff) {
+        threadTurns7d += 1
       }
     }
 
@@ -128,7 +132,7 @@ export class CommunityCultureDigestService {
       .slice(0, 8)
       .map(([tag, weight]) => ({ tag, weight: Number(weight.toFixed(2)) }))
 
-    const cadence = this.resolveCadence(posts7d, comments7d)
+    const cadence = this.resolveCadence(posts7d, threadTurns7d)
 
     return {
       generated_at: now.toISOString(),
@@ -138,9 +142,9 @@ export class CommunityCultureDigestService {
       },
       activity: {
         posts_7d: posts7d,
-        comments_7d: comments7d,
+        thread_turns_7d: threadTurns7d,
         posts_30d: posts30d,
-        comments_30d: comments30d,
+        thread_turns_30d: threadTurns30d,
         active_authors_30d: authors.size,
       },
       dominant_tags: topTags,
@@ -157,8 +161,8 @@ export class CommunityCultureDigestService {
     return `近期节奏${input.cadence}，核心话题集中在：${tags.join('、')}。`
   }
 
-  private resolveCadence(posts7d: number, comments7d: number): 'high' | 'medium' | 'low' {
-    const score = posts7d * 2 + comments7d
+  private resolveCadence(posts7d: number, threadTurns7d: number): 'high' | 'medium' | 'low' {
+    const score = posts7d * 2 + threadTurns7d
     if (score >= 60) return 'high'
     if (score >= 20) return 'medium'
     return 'low'
@@ -198,20 +202,13 @@ export class CommunityCultureDigestService {
     return rows
   }
 
-  private async collectCommentsByPosts(postIds: Set<string>) {
+  private async collectThreadTurnsByPosts(postIds: Set<string>) {
     if (postIds.size === 0) return []
 
-    const rows: Awaited<ReturnType<CommentRepository['findByPostAll']>>['items'] = []
+    const rows: PublicStageThreadTurn[] = []
 
     for (const postId of postIds) {
-      let cursor: string | undefined
-      while (true) {
-        const page = await this.deps.commentRepo.findByPostAll(postId, { cursor, limit: 500 })
-        if (page.items.length === 0) break
-        rows.push(...page.items)
-        if (!page.next_cursor || page.next_cursor === cursor) break
-        cursor = page.next_cursor
-      }
+      rows.push(...await listPublicStageThreadTurnsByPost(this.deps, postId, { includeAll: true }))
     }
 
     return rows

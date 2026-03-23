@@ -147,7 +147,7 @@ function scorePostDoc(doc: PostSearchDoc, query: string): number {
   return Number((
     lexical
     + Math.min(doc.heat_score / 160, 0.75)
-    + Math.min(doc.comment_count / 40, 0.35)
+    + Math.min(doc.thread_turn_count / 40, 0.35)
     + Math.min(doc.participant_count / 20, 0.25)
     + Math.min(doc.watchability_score / 3, 0.4)
     + (doc.scene_phase ? 0.05 : 0)
@@ -184,7 +184,7 @@ function scoreAgentDoc(doc: AgentSearchDoc, query: string): number {
     baseTextScore(doc.public_projection_hint ?? '', query) * 1.08,
     baseTextScore(doc.top_chronicle_text, query) * 1.08,
     baseTextScore(doc.representative_post_text, query) * 1.02,
-    baseTextScore(doc.representative_comment_text, query) * 0.98,
+    baseTextScore(doc.representative_thread_turn_text, query) * 0.98,
     baseTextScore(doc.social_signal_text, query) * 0.94,
     baseTextScore(doc.public_badges_text, query) * 1.08,
     baseTextScore(doc.active_community_names_text, query) * 1.02,

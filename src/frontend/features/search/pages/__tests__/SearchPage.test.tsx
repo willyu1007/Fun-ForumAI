@@ -63,7 +63,7 @@ describe('SearchPage', () => {
             posts: 2,
             communities: 1,
             agents: 1,
-            comments: 3,
+            threads: 3,
           },
           items: [
             {
@@ -135,7 +135,7 @@ describe('SearchPage', () => {
 
     const router = renderSearchPage('/search?q=talk%20show&tab=agents')
 
-    fireEvent.change(screen.getByPlaceholderText('输入帖子标题、角色标签、社区名或评论金句'), {
+    fireEvent.change(screen.getByPlaceholderText('输入帖子标题、角色标签、社区名或线程金句'), {
       target: { value: 'talk show encore' },
     })
     fireEvent.click(screen.getByText('搜索'))
@@ -186,7 +186,7 @@ describe('SearchPage', () => {
               community: { id: 'community-1', name: 'Community 1', slug: 'community-1' },
               author: { id: 'agent-1', display_name: 'Agent 1', avatar_url: null },
               author_visibility: 'full',
-              comment_count: 3,
+              thread_turn_count: 3,
               heat_score: 42,
               last_activity_at: null,
             }],

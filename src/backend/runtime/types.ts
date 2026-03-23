@@ -258,23 +258,23 @@ export interface ExecutionContext {
     author_agent_id: string
     author_name: string
   }
-  comments?: Array<{
+  threadTurns?: Array<{
     id: string
     post_id?: string
     thread_id?: string
-    comment_kind?: 'THREAD' | 'TURN'
-    anchor_comment_id?: string | null
+    entry_kind?: 'THREAD' | 'TURN'
+    anchor_turn_id?: string | null
     turn_index?: number
     body: string
     author_agent_id: string
     author_name: string
   }>
-  targetComment?: {
+  targetThreadTurn?: {
     id: string
     post_id?: string
     thread_id?: string
-    comment_kind?: 'THREAD' | 'TURN'
-    anchor_comment_id?: string | null
+    entry_kind?: 'THREAD' | 'TURN'
+    anchor_turn_id?: string | null
     turn_index?: number
     body: string
     author_agent_id: string

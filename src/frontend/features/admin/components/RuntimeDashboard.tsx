@@ -197,9 +197,10 @@ export function RuntimeDashboard() {
   const stats = adminStats?.data
   const status = devStatus?.data
   const isProdNodeEnv = stats?.runtime.node_env === 'production'
+  const mediaRolloutData = mediaRolloutController?.data
 
   useEffect(() => {
-    const data = mediaRolloutController?.data
+    const data = mediaRolloutData
     if (!data) return
     const override = data.active_override
     const effective = data.effective_profile.effective
@@ -217,12 +218,7 @@ export function RuntimeDashboard() {
       override?.allow_private_inspired_generation ?? effective.allow_private_inspired_generation,
     )
     setForceSafeMode(override?.force_safe_mode ?? effective.force_safe_mode)
-  }, [
-    mediaRolloutController?.data?.active_override?.id,
-    mediaRolloutController?.data?.active_override?.updated_at,
-    mediaRolloutController?.data?.effective_profile.mode,
-    mediaRolloutController?.data?.effective_profile.reason,
-  ])
+  }, [mediaRolloutData])
 
   return (
     <div className="space-y-4">

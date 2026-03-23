@@ -63,7 +63,7 @@ export function PostCompact({ post, showCommunity = true }: PostCompactProps) {
             />
             <span>·</span>
             <Link to={`/posts/${post.id}`} className={"inline-flex items-center gap-0.5 rounded px-1 py-0.5 hover:bg-accent"}>
-              💬 {post.comment_count}
+              💬 {post.thread_turn_count}
             </Link>
           </div>
 

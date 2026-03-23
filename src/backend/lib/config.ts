@@ -186,7 +186,7 @@ export const config = {
   publicObservation: {
     forumCooldownMs: safeInt(env.PO_FORUM_COOLDOWN_MS, 6 * 3600_000),
     roomCooldownMs: safeInt(env.PO_ROOM_COOLDOWN_MS, 3 * 3600_000),
-    forumCommentThreshold: safeInt(env.PO_FORUM_COMMENT_THRESHOLD, 12),
+    forumThreadTurnThreshold: safeInt(env.PO_FORUM_THREAD_TURN_THRESHOLD, 12),
     forumParticipantThreshold: safeInt(env.PO_FORUM_PARTICIPANT_THRESHOLD, 4),
     forumHeatThreshold: safeInt(env.PO_FORUM_HEAT_THRESHOLD, 30),
     roomMessageThreshold: safeInt(env.PO_ROOM_MSG_THRESHOLD, 80),
@@ -234,7 +234,7 @@ export const config = {
     mediaObservabilityV1: env.FF_MEDIA_OBSERVABILITY_V1 === 'true',
     mediaRolloutControllerV1: env.FF_MEDIA_ROLLOUT_CONTROLLER_V1 === 'true',
     mediaLifecycleV1: env.FF_MEDIA_LIFECYCLE_V1 === 'true',
-    mediaForumCommentSurfaceV1: env.FF_MEDIA_FORUM_COMMENT_SURFACE_V1 !== 'false',
+    mediaForumThreadTurnSurfaceV1: env.FF_MEDIA_FORUM_THREAD_TURN_SURFACE_V1 !== 'false',
     mediaChatRoomSurfaceV1: env.FF_MEDIA_CHAT_ROOM_SURFACE_V1 !== 'false',
     mediaProactivePrivateSurfaceV1: env.FF_MEDIA_PROACTIVE_PRIVATE_SURFACE_V1 !== 'false',
     mediaHighlightsSurfaceV1: env.FF_MEDIA_HIGHLIGHTS_SURFACE_V1 !== 'false',

@@ -1,9 +1,10 @@
-import { describe, it, expect, vi } from 'vitest'
-import type { DomainEvent, Post, Comment } from '../../repos/types.js'
+import { describe, expect, it, vi } from 'vitest'
 import type { EventPayload } from '../../allocator/types.js'
 import type { PostRepository } from '../../repos/post-repository.js'
-import type { CommentRepository } from '../../repos/comment-repository.js'
-import type { RuntimeEventQueue, QueuedEventHandle } from '../event-queue.js'
+import type { PublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
+import type { PublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
+import type { DomainEvent, Post, PublicStageThread, PublicStageTurn } from '../../repos/types.js'
+import type { QueuedEventHandle, RuntimeEventQueue } from '../event-queue.js'
 import { EventBridge } from '../event-bridge.js'
 
 class TestQueue implements RuntimeEventQueue {
@@ -29,9 +30,7 @@ class TestQueue implements RuntimeEventQueue {
     this.items.length = 0
   }
 
-  async close(): Promise<void> {
-    // no-op for test queue
-  }
+  async close(): Promise<void> {}
 }
 
 function makePost(overrides: Partial<Post> = {}): Post {
@@ -52,17 +51,37 @@ function makePost(overrides: Partial<Post> = {}): Post {
   }
 }
 
-function makeComment(overrides: Partial<Comment> = {}): Comment {
+function makeThread(overrides: Partial<PublicStageThread> = {}): PublicStageThread {
   const now = new Date('2026-02-28T12:00:00.000Z')
   return {
-    id: 'comment-1',
+    id: 'thread-1',
     post_id: 'post-1',
-    parent_comment_id: null,
-    thread_id: null,
-    comment_kind: 'THREAD',
-    anchor_comment_id: null,
-    author_agent_id: 'agent-comment-author',
+    community_id: 'community-1',
+    author_agent_id: 'agent-thread-author',
     body: '我反对这个观点',
+    visibility: 'PUBLIC',
+    state: 'APPROVED',
+    thread_state: 'OPEN',
+    reply_budget: 6,
+    active_route: null,
+    created_at: now,
+    updated_at: now,
+    ...overrides,
+  }
+}
+
+function makeTurn(overrides: Partial<PublicStageTurn> = {}): PublicStageTurn {
+  const now = new Date('2026-02-28T12:05:00.000Z')
+  return {
+    id: 'turn-1',
+    thread_id: 'thread-1',
+    post_id: 'post-1',
+    author_agent_id: 'agent-turn-author',
+    turn_index: 1,
+    anchor_turn_id: null,
+    anchor_intent: null,
+    quoted_excerpt: null,
+    body: '补充一下，我仍然不同意',
     visibility: 'PUBLIC',
     state: 'APPROVED',
     created_at: now,
@@ -110,13 +129,16 @@ describe('EventBridge', () => {
     const postRepoStub = {
       findById: vi.fn(async (id: string) => (id === post.id ? post : null)),
     } as unknown as PostRepository
-    const commentRepoStub = {
-      findById: vi.fn(async () => null),
-      findByPostAll: vi.fn(async () => ({ items: [], next_cursor: null })),
-    } as unknown as CommentRepository
     const bridge = new EventBridge(queue, {
       postRepo: postRepoStub,
-      commentRepo: commentRepoStub,
+      publicStageThreadRepo: {
+        findById: vi.fn(async () => null),
+        findByPostAll: vi.fn(async () => ({ items: [], next_cursor: null })),
+      } as unknown as PublicStageThreadRepository,
+      publicStageTurnRepo: {
+        findById: vi.fn(async () => null),
+        findByThreads: vi.fn(async () => []),
+      } as unknown as PublicStageTurnRepository,
     })
 
     bridge.bridge(makeEvent('POST_CREATED', {
@@ -133,41 +155,57 @@ describe('EventBridge', () => {
     expect(payload.controversy_score).toBeGreaterThan(0)
   })
 
-  it('enriches THREAD_OPENED with comment_id, tags, participants and controversy_score', async () => {
+  it('enriches THREAD_OPENED with thread_id, tags, participants and controversy_score', async () => {
     const queue = new TestQueue()
     const post = makePost()
-    const targetComment = makeComment({ id: 'comment-target', body: '我不同意，而且这个观点很荒谬！！', author_agent_id: 'agent-target' })
-    const threadComments = [
-      makeComment({ id: 'c1', author_agent_id: 'agent-a' }),
-      makeComment({ id: 'c2', author_agent_id: 'agent-b' }),
-      makeComment({ id: 'c3', author_agent_id: 'agent-a' }),
-      makeComment({ id: 'c4', author_agent_id: 'agent-c' }),
+    const targetThread = makeThread({
+      id: 'thread-target',
+      body: '我不同意，而且这个观点很荒谬！！',
+      author_agent_id: 'agent-target',
+    })
+    const threadParticipants = [
+      makeThread({ id: 'thread-a', author_agent_id: 'agent-a' }),
+      makeTurn({ id: 'turn-b', thread_id: 'thread-a', author_agent_id: 'agent-b' }),
+      makeTurn({ id: 'turn-c', thread_id: 'thread-a', author_agent_id: 'agent-a' }),
+      makeThread({ id: 'thread-d', author_agent_id: 'agent-c' }),
     ]
     const postRepoStub = {
       findById: vi.fn(async () => post),
     } as unknown as PostRepository
-    const commentRepoStub = {
-      findById: vi.fn(async (id: string) => (id === targetComment.id ? targetComment : null)),
-      findByPostAll: vi.fn(async () => ({ items: threadComments, next_cursor: null })),
-    } as unknown as CommentRepository
+    const publicStageThreadRepoStub = {
+      findById: vi.fn(async (id: string) => (id === targetThread.id ? targetThread : null)),
+      findByPostAll: vi.fn(async () => ({
+        items: [
+          threadParticipants[0],
+          threadParticipants[3],
+        ].filter((item): item is PublicStageThread => 'thread_state' in item),
+        next_cursor: null,
+      })),
+    } as unknown as PublicStageThreadRepository
+    const publicStageTurnRepoStub = {
+      findById: vi.fn(async () => null),
+      findByThreads: vi.fn(async () =>
+        threadParticipants.filter((item): item is PublicStageTurn => 'turn_index' in item)),
+    } as unknown as PublicStageTurnRepository
 
     const bridge = new EventBridge(queue, {
       postRepo: postRepoStub,
-      commentRepo: commentRepoStub,
+      publicStageThreadRepo: publicStageThreadRepoStub,
+      publicStageTurnRepo: publicStageTurnRepoStub,
     })
 
     bridge.bridge(makeEvent('THREAD_OPENED', {
-      comment_id: targetComment.id,
+      thread_id: targetThread.id,
       post_id: post.id,
       community_id: post.community_id,
-      author_agent_id: targetComment.author_agent_id,
+      author_agent_id: targetThread.author_agent_id,
     }))
 
     await waitForQueueSize(queue, 1)
     const payload = queue.items[0]
-    expect(payload.comment_id).toBe('comment-target')
+    expect(payload.thread_id).toBe('thread-target')
     expect(payload.tags).toEqual(post.tags)
-    expect(payload.thread_participants).toEqual(['agent-a', 'agent-b', 'agent-c'])
+    expect(payload.thread_participants).toEqual(['agent-a', 'agent-c', 'agent-b'])
     expect(payload.controversy_score).toBeGreaterThan(0)
   })
 
@@ -177,19 +215,22 @@ describe('EventBridge', () => {
     const postRepoStub = {
       findById: vi.fn(async () => post),
     } as unknown as PostRepository
-    const commentRepoStub = {
-      findById: vi.fn(async () => null),
-      findByPostAll: vi.fn(async () => ({
-        items: [
-          makeComment({ id: 'c1', author_agent_id: 'agent-a' }),
-          makeComment({ id: 'c2', author_agent_id: 'agent-b' }),
-        ],
-        next_cursor: null,
-      })),
-    } as unknown as CommentRepository
     const bridge = new EventBridge(queue, {
       postRepo: postRepoStub,
-      commentRepo: commentRepoStub,
+      publicStageThreadRepo: {
+        findById: vi.fn(async () => null),
+        findByPostAll: vi.fn(async () => ({
+          items: [
+            makeThread({ id: 'thread-a', author_agent_id: 'agent-a' }),
+            makeThread({ id: 'thread-b', author_agent_id: 'agent-b' }),
+          ],
+          next_cursor: null,
+        })),
+      } as unknown as PublicStageThreadRepository,
+      publicStageTurnRepo: {
+        findById: vi.fn(async () => null),
+        findByThreads: vi.fn(async () => []),
+      } as unknown as PublicStageTurnRepository,
     })
 
     bridge.bridge(makeEvent('VOTE_CAST', {
@@ -219,14 +260,17 @@ describe('EventBridge', () => {
         throw new Error('db unavailable')
       }),
     } as unknown as PostRepository
-    const commentRepoStub = {
-      findById: vi.fn(async () => null),
-      findByPostAll: vi.fn(async () => ({ items: [], next_cursor: null })),
-    } as unknown as CommentRepository
 
     const bridge = new EventBridge(queue, {
       postRepo: postRepoStub,
-      commentRepo: commentRepoStub,
+      publicStageThreadRepo: {
+        findById: vi.fn(async () => null),
+        findByPostAll: vi.fn(async () => ({ items: [], next_cursor: null })),
+      } as unknown as PublicStageThreadRepository,
+      publicStageTurnRepo: {
+        findById: vi.fn(async () => null),
+        findByThreads: vi.fn(async () => []),
+      } as unknown as PublicStageTurnRepository,
     })
 
     bridge.bridge(makeEvent('POST_CREATED', {
@@ -241,7 +285,6 @@ describe('EventBridge', () => {
     expect(payload.community_id).toBe('community-fallback')
     expect(payload.author_agent_id).toBe('agent-fallback')
     expect(warnSpy).toHaveBeenCalled()
-
     warnSpy.mockRestore()
   })
 
@@ -249,10 +292,14 @@ describe('EventBridge', () => {
     const queue = new TestQueue()
     const bridge = new EventBridge(queue, {
       postRepo: { findById: vi.fn(async () => null) } as unknown as PostRepository,
-      commentRepo: {
+      publicStageThreadRepo: {
         findById: vi.fn(async () => null),
         findByPostAll: vi.fn(async () => ({ items: [], next_cursor: null })),
-      } as unknown as CommentRepository,
+      } as unknown as PublicStageThreadRepository,
+      publicStageTurnRepo: {
+        findById: vi.fn(async () => null),
+        findByThreads: vi.fn(async () => []),
+      } as unknown as PublicStageTurnRepository,
     })
 
     bridge.bridge(makeEvent('MESSAGE_CREATED', {
@@ -273,10 +320,14 @@ describe('EventBridge', () => {
     const queue = new TestQueue()
     const bridge = new EventBridge(queue, {
       postRepo: { findById: vi.fn(async () => null) } as unknown as PostRepository,
-      commentRepo: {
+      publicStageThreadRepo: {
         findById: vi.fn(async () => null),
         findByPostAll: vi.fn(async () => ({ items: [], next_cursor: null })),
-      } as unknown as CommentRepository,
+      } as unknown as PublicStageThreadRepository,
+      publicStageTurnRepo: {
+        findById: vi.fn(async () => null),
+        findByThreads: vi.fn(async () => []),
+      } as unknown as PublicStageTurnRepository,
     })
 
     bridge.bridge(makeEvent('HUMAN_VOTE_CAST', {
@@ -297,15 +348,17 @@ describe('EventBridge', () => {
     const queue = new TestQueue()
     const bridge = new EventBridge(queue, {
       postRepo: { findById: vi.fn(async () => null) } as unknown as PostRepository,
-      commentRepo: {
+      publicStageThreadRepo: {
         findById: vi.fn(async () => null),
         findByPostAll: vi.fn(async () => ({ items: [], next_cursor: null })),
-      } as unknown as CommentRepository,
+      } as unknown as PublicStageThreadRepository,
+      publicStageTurnRepo: {
+        findById: vi.fn(async () => null),
+        findByThreads: vi.fn(async () => []),
+      } as unknown as PublicStageTurnRepository,
     })
 
-    bridge.bridge(makeEvent('UNREGISTERED_EVENT', {
-      sample: 'value',
-    }))
+    bridge.bridge(makeEvent('UNREGISTERED_EVENT', { sample: 'value' }))
 
     await new Promise((resolve) => setTimeout(resolve, 20))
     expect(queue.items).toHaveLength(0)
@@ -316,10 +369,14 @@ describe('EventBridge', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const bridge = new EventBridge(queue, {
       postRepo: { findById: vi.fn(async () => null) } as unknown as PostRepository,
-      commentRepo: {
+      publicStageThreadRepo: {
         findById: vi.fn(async () => null),
         findByPostAll: vi.fn(async () => ({ items: [], next_cursor: null })),
-      } as unknown as CommentRepository,
+      } as unknown as PublicStageThreadRepository,
+      publicStageTurnRepo: {
+        findById: vi.fn(async () => null),
+        findByThreads: vi.fn(async () => []),
+      } as unknown as PublicStageTurnRepository,
     })
 
     bridge.bridge(makeEvent('POST_CREATED', {
@@ -334,45 +391,5 @@ describe('EventBridge', () => {
     expect(queue.items).toHaveLength(0)
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Plane mismatch'))
     warnSpy.mockRestore()
-  })
-
-  it('collects thread participants from only the first N pages (approximate)', async () => {
-    const queue = new TestQueue()
-    const post = makePost()
-    const targetComment = makeComment({ id: 'comment-target', post_id: post.id })
-    const postRepoStub = {
-      findById: vi.fn(async () => post),
-    } as unknown as PostRepository
-
-    const pageByCursor: Record<string, { items: Comment[]; next_cursor: string | null }> = {
-      '': { items: [makeComment({ id: 'c1', author_agent_id: 'agent-a' })], next_cursor: 'cursor-1' },
-      'cursor-1': { items: [makeComment({ id: 'c2', author_agent_id: 'agent-b' })], next_cursor: 'cursor-2' },
-      'cursor-2': { items: [makeComment({ id: 'c3', author_agent_id: 'agent-c' })], next_cursor: 'cursor-3' },
-      'cursor-3': { items: [makeComment({ id: 'c4', author_agent_id: 'agent-d' })], next_cursor: null },
-    }
-    const findByPostAll = vi.fn(async (_postId: string, opts: { cursor?: string; limit: number }) => {
-      return pageByCursor[opts.cursor ?? ''] ?? { items: [], next_cursor: null }
-    })
-    const commentRepoStub = {
-      findById: vi.fn(async (id: string) => (id === targetComment.id ? targetComment : null)),
-      findByPostAll,
-    } as unknown as CommentRepository
-
-    const bridge = new EventBridge(queue, {
-      postRepo: postRepoStub,
-      commentRepo: commentRepoStub,
-    })
-
-    bridge.bridge(makeEvent('THREAD_OPENED', {
-      comment_id: targetComment.id,
-      post_id: post.id,
-      community_id: post.community_id,
-      author_agent_id: targetComment.author_agent_id,
-    }))
-
-    await waitForQueueSize(queue, 1)
-    const payload = queue.items[0]
-    expect(findByPostAll).toHaveBeenCalledTimes(3)
-    expect(payload.thread_participants).toEqual(['agent-a', 'agent-b', 'agent-c'])
   })
 })

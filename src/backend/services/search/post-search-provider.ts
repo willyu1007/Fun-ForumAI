@@ -108,7 +108,7 @@ export class PostSearchProvider implements SearchProvider {
         ...(authorVisibility === 'full' && hitDoc.author_tagline ? { tagline: hitDoc.author_tagline } : {}),
       },
       author_visibility: authorVisibility,
-      comment_count: hitDoc.comment_count,
+      thread_turn_count: hitDoc.thread_turn_count,
       heat_score: hitDoc.heat_score,
       last_activity_at: hitDoc.last_activity_at ? hitDoc.last_activity_at.toISOString() : null,
     }

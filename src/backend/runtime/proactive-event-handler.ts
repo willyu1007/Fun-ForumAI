@@ -26,7 +26,7 @@ export class ProactiveEventHandler {
 
       case 'THREAD_OPENED':
       case 'THREAD_TURN_ADDED':
-        this.handleCommentCreated(event).catch((err) =>
+        this.handleThreadTurnCreated(event).catch((err) =>
           console.error(`[ProactiveEventHandler] ${event.event_type} handler failed:`, err),
         )
         break
@@ -62,7 +62,7 @@ export class ProactiveEventHandler {
     })
   }
 
-  private async handleCommentCreated(event: DomainEvent): Promise<void> {
+  private async handleThreadTurnCreated(event: DomainEvent): Promise<void> {
     const payload = event.payload_json
     const postId = payload.post_id as string
     const authorAgentId = payload.author_agent_id as string
@@ -72,16 +72,17 @@ export class ProactiveEventHandler {
       const post = await this.deps.forumReadService.getPost(postId)
 
       if (post.author_agent_id !== authorAgentId) {
-        const comment = await this.findLatestCommentByAgent(postId, authorAgentId)
-        if (comment) {
-          const isChallenge = this.detectChallenge(comment.body, post.body)
+        const threadTurn = await this.findLatestThreadTurnByAgent(postId, authorAgentId)
+        if (threadTurn) {
+          const isChallenge = this.detectChallenge(threadTurn.body, post.body)
           if (isChallenge) {
             await this.deps.proactiveService.onOpinionChallenged(post.author_agent_id, {
               challenger_agent_id: authorAgentId,
               original_content: post.body,
-              challenge_content: comment.body,
+              challenge_content: threadTurn.body,
               post_id: postId,
-              comment_id: comment.id,
+              thread_id: threadTurn.thread_id,
+              turn_id: threadTurn.turn_id,
             })
           }
         }
@@ -109,9 +110,9 @@ export class ProactiveEventHandler {
         const post = await this.deps.forumReadService.getPost(targetId)
         return post.author_agent_id
       }
-      if (targetType === 'COMMENT') {
-        const comment = await this.deps.forumReadService.getComment(targetId)
-        return comment.author_agent_id
+      if (targetType === 'THREAD' || targetType === 'TURN') {
+        const entry = await this.findThreadTurnById(targetId)
+        return entry?.entry_kind === targetType ? entry.author_agent_id : null
       }
     } catch {
       // not found
@@ -119,33 +120,86 @@ export class ProactiveEventHandler {
     return null
   }
 
-  private async findLatestCommentByAgent(
+  private async findLatestThreadTurnByAgent(
     postId: string,
     agentId: string,
-  ): Promise<{ id: string; body: string } | null> {
+  ): Promise<{ body: string; thread_id: string; turn_id: string | null } | null> {
     try {
-      const result = await this.deps.forumReadService.getComments(postId, { limit: 10 })
-      const comments = result.items.filter((c) => c.author?.id === agentId)
-      return comments.length > 0
-        ? { id: comments[comments.length - 1].id, body: comments[comments.length - 1].body }
+      const result = await this.deps.forumReadService.getThreads(postId, { limit: 80 })
+      const entries = result.items.flatMap((thread) => [
+        {
+          body: thread.body,
+          thread_id: thread.id,
+          turn_id: null,
+          author_agent_id: thread.author_agent_id,
+          created_at: thread.created_at,
+        },
+        ...thread.turns.map((turn) => ({
+          body: turn.body,
+          thread_id: turn.thread_id,
+          turn_id: turn.id,
+          author_agent_id: turn.author_agent_id,
+          created_at: turn.created_at,
+        })),
+      ])
+      const matches = entries
+        .filter((entry) => entry.author_agent_id === agentId)
+        .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
+      return matches.length > 0
+        ? {
+            body: matches[matches.length - 1].body,
+            thread_id: matches[matches.length - 1].thread_id,
+            turn_id: matches[matches.length - 1].turn_id,
+          }
         : null
     } catch {
       return null
     }
   }
 
+  private async findThreadTurnById(
+    targetId: string,
+  ): Promise<{ id: string; entry_kind: 'THREAD' | 'TURN'; author_agent_id: string } | null> {
+    try {
+      const thread = await this.deps.forumReadService.getThread(targetId)
+      return { id: thread.id, entry_kind: 'THREAD', author_agent_id: thread.author_agent_id }
+    } catch {
+      // fall through
+    }
+
+    try {
+      const posts = await this.deps.forumReadService.getFeed({ limit: 120 })
+      for (const post of posts.items) {
+        const threads = await this.deps.forumReadService.getThreads(post.id, { limit: 120 })
+        for (const thread of threads.items) {
+          if (thread.id === targetId) {
+            return { id: thread.id, entry_kind: 'THREAD', author_agent_id: thread.author_agent_id }
+          }
+          const turn = thread.turns.find((item) => item.id === targetId)
+          if (turn) {
+            return { id: turn.id, entry_kind: 'TURN', author_agent_id: turn.author_agent_id }
+          }
+        }
+      }
+    } catch {
+      return null
+    }
+
+    return null
+  }
+
   /**
    * Lightweight challenge detection via keyword heuristics.
-   * Checks if the comment text contains disagreement/questioning patterns.
+   * Checks if the stage entry text contains disagreement/questioning patterns.
    */
-  private detectChallenge(commentBody: string, _originalContent: string): boolean {
+  private detectChallenge(threadTurnBody: string, _originalContent: string): boolean {
     const challengePatterns = [
       '不同意', '不认同', '反对', '质疑', '但是', '然而',
       '不太对', '有问题', '值得商榷', '未必', '不一定',
       '恕我直言', '可能不对', '存疑', 'disagree', 'however',
       '不敢苟同', '有待考证', '过于', '太过', '忽略了',
     ]
-    const lower = commentBody.toLowerCase()
+    const lower = threadTurnBody.toLowerCase()
     return challengePatterns.some((p) => lower.includes(p))
   }
 }

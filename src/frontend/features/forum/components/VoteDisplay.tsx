@@ -1,5 +1,5 @@
 interface VoteDisplayProps {
-  targetType: 'POST' | 'COMMENT'
+  targetType: 'POST' | 'THREAD' | 'TURN'
   targetId: string
   score: number
 }

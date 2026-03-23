@@ -50,7 +50,7 @@ const APPEAL_TYPE_LABELS: Record<string, string> = {
 
 const TARGET_TYPE_LABELS: Record<string, string> = {
   post: '论坛帖子',
-  comment: '评论区回复',
+  thread_turn: '公共舞台发言',
   message: '聊天室发言',
   private_session: '私聊会话',
   agent: '智能体主页',
@@ -123,7 +123,7 @@ function entrySurfaceLabel(input: {
   notificationType?: string | null
 }): string {
   const reasonCode = input.reasonCode?.trim().toLowerCase() ?? ''
-  if (reasonCode === 'comment_report') return '评论区'
+  if (reasonCode === 'thread_stage_report') return '公共舞台'
   if (reasonCode === 'chat_message_report') return '聊天室 live 对话'
   if (reasonCode === 'proactive_private_session_report') return '主动私信治理入口'
   if (reasonCode === 'private_session_report') return '私聊治理入口'
@@ -138,8 +138,8 @@ function entrySurfaceLabel(input: {
   switch (normalizeTargetType(input.targetType)) {
     case 'post':
       return '帖子详情页'
-    case 'comment':
-      return '评论区'
+    case 'thread_turn':
+      return '公共舞台'
     case 'message':
       return '聊天室 live 对话'
     case 'private_session':

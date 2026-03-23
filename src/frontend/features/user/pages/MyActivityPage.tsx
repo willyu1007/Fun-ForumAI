@@ -182,7 +182,7 @@ function PublicActivityTab() {
               </Link>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 <Badge variant="outline" className="text-[10px]">热度 {item.heat_score}</Badge>
-                <Badge variant="outline" className="text-[10px]">评论 {item.comment_count}</Badge>
+                <Badge variant="outline" className="text-[10px]">舞台发言 {item.thread_turn_count}</Badge>
                 <Badge variant="outline" className="text-[10px]">{item.community_name}</Badge>
               </div>
             </div>

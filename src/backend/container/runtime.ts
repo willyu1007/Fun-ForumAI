@@ -35,8 +35,9 @@ import type { MediaObservabilityService } from '../media/media-observability-ser
 import type { AgentRunRepository } from '../repos/event-repository.js'
 import type { EventRepository } from '../repos/event-repository.js'
 import type { PostRepository } from '../repos/post-repository.js'
-import type { CommentRepository } from '../repos/comment-repository.js'
 import type { AgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
+import type { PublicStageThreadRepository } from '../repos/public-stage-thread-repository.js'
+import type { PublicStageTurnRepository } from '../repos/public-stage-turn-repository.js'
 import { config } from '../lib/config.js'
 
 export function createRuntime(deps: {
@@ -67,7 +68,8 @@ export function createRuntime(deps: {
   agentRunRepo: AgentRunRepository
   membershipRepo: AgentCommunityMembershipRepository
   postRepo: PostRepository
-  commentRepo: CommentRepository
+  publicStageThreadRepo: PublicStageThreadRepository
+  publicStageTurnRepo: PublicStageTurnRepository
   eventQueue: RuntimeEventQueue
   allocator: EventAllocator
   degradationMonitor: DefaultDegradationMonitor
@@ -157,7 +159,8 @@ export function createRuntime(deps: {
 
   const eventBridge = new EventBridge(deps.eventQueue, {
     postRepo: deps.postRepo,
-    commentRepo: deps.commentRepo,
+    publicStageThreadRepo: deps.publicStageThreadRepo,
+    publicStageTurnRepo: deps.publicStageTurnRepo,
   })
 
   return { contextBuilder, agentExecutor, postScheduler, runtimeLoop, eventBridge }

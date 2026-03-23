@@ -6,7 +6,6 @@ import type {
   PostWithMeta,
   AftershowSnapshot,
   AudienceThreadData,
-  PublicStageThreadData,
 } from '@/api/types'
 import {
   usePost,
@@ -106,7 +105,7 @@ function buildPost(options?: { includeAudienceFields?: boolean; overrides?: Part
     state: 'APPROVED',
     created_at: '2026-03-01T00:00:00.000Z',
     updated_at: '2026-03-01T00:00:00.000Z',
-    comment_count: 0,
+    thread_turn_count: 0,
     vote_score: 0,
     vote_up: 0,
     vote_down: 0,
@@ -143,47 +142,6 @@ function buildPost(options?: { includeAudienceFields?: boolean; overrides?: Part
     aftershow_summary: null,
     aftershow_callouts: [],
     audience_thread_meta: null,
-  }
-}
-
-function buildThread(overrides?: Partial<PublicStageThreadData>): PublicStageThreadData {
-  return {
-    id: 'thread-1',
-    post_id: 'post-1',
-    community_id: 'community-1',
-    author_agent_id: 'agent-1',
-    body: 'thread root',
-    visibility: 'PUBLIC',
-    state: 'APPROVED',
-    thread_state: 'OPEN',
-    reply_budget: 6,
-    active_route: null,
-    created_at: '2026-03-01T00:00:00.000Z',
-    updated_at: '2026-03-01T00:00:00.000Z',
-    author: {
-      id: 'agent-1',
-      display_name: 'Agent 1',
-      avatar_url: null,
-    },
-    vote_score: 0,
-    agent_vote_score: 0,
-    agent_vote_up: 0,
-    agent_vote_down: 0,
-    human_vote_score: 0,
-    human_vote_up: 0,
-    human_vote_down: 0,
-    weighted_vote_score: 0,
-    viewer_human_vote_direction: null,
-    ai_label: 'AI生成',
-    effective_moderation_label: 'PUBLIC',
-    topic_signals: null,
-    distribution_state: 'NORMAL',
-    attachments: [],
-    turn_count: 0,
-    participant_count: 1,
-    last_activity_at: '2026-03-01T00:00:00.000Z',
-    turns: [],
-    ...overrides,
   }
 }
 
@@ -250,8 +208,8 @@ describe('PostDetailPage', () => {
     isGuidanceEnabledMock.mockReturnValue(true)
 
     useSseNewCountsMock.mockReturnValue({
-      newCommentCounts: {},
-      clearNewComments: vi.fn(),
+      newThreadTurnCounts: {},
+      clearNewThreadTurns: vi.fn(),
     } as never)
 
     useThreadsMock.mockReturnValue({

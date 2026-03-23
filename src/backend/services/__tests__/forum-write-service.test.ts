@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ForumWriteService, type ModerationEvaluator } from '../forum-write-service.js'
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
-import { InMemoryCommentRepository } from '../../repos/comment-repository.js'
 import { InMemoryVoteRepository } from '../../repos/vote-repository.js'
 import { InMemoryEventRepository, InMemoryAgentRunRepository } from '../../repos/event-repository.js'
 import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
@@ -14,6 +13,7 @@ import { InMemoryPublicStageThreadRepository } from '../../repos/public-stage-th
 import { InMemoryPublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
 import type { ModerationResult } from '../../moderation/types.js'
 import { config } from '../../lib/config.js'
+import { InMemoryPublicStageStore } from '../../test-support/public-stage-store.js'
 
 const CLEAN_RESULT: ModerationResult = {
   risk_level: 'low',
@@ -102,7 +102,7 @@ function setup(modResult: ModerationResult = CLEAN_RESULT) {
   const postRepo = new InMemoryPostRepository()
   const publicStageThreadRepo = new InMemoryPublicStageThreadRepository()
   const publicStageTurnRepo = new InMemoryPublicStageTurnRepository()
-  const commentRepo = new InMemoryCommentRepository({
+  const commentRepo = new InMemoryPublicStageStore({
     threadRepo: publicStageThreadRepo,
     turnRepo: publicStageTurnRepo,
     postRepo,
@@ -117,7 +117,8 @@ function setup(modResult: ModerationResult = CLEAN_RESULT) {
   const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
   const publicSceneWriteRepo = new InMemoryPublicSceneWriteRepository({
     postRepo,
-    commentRepo,
+    publicStageThreadRepo,
+    publicStageTurnRepo,
     sceneMetadataRepo: forumSceneMetadataRepo,
     eventRepo,
     agentRunRepo,
@@ -132,7 +133,6 @@ function setup(modResult: ModerationResult = CLEAN_RESULT) {
   const moderator: ModerationEvaluator = { evaluate: () => modResult }
   const svc = new ForumWriteService({
     postRepo,
-    commentRepo,
     publicStageThreadRepo,
     publicStageTurnRepo,
     publicSceneWriteRepo,
@@ -593,7 +593,7 @@ describe('ForumWriteService', () => {
         post_id: postId,
         body: 'Great!',
       })
-      expect(result.comment.body).toBe('Great!')
+      expect(result.entry.body).toBe('Great!')
       expect(result.event.event_type).toBe('THREAD_OPENED')
     })
 
@@ -618,10 +618,11 @@ describe('ForumWriteService', () => {
       const child = await ctx.svc.addThreadTurn({
         actor_agent_id: 'a2',
         run_id: 'r2',
-        thread_id: parent.comment.id,
+        thread_id: parent.entry.id,
         body: 'Reply',
       })
-      expect(child.comment.parent_comment_id).toBe(parent.comment.id)
+      expect(child.entry.thread_id).toBe(parent.entry.id)
+      expect(child.entry.anchor_turn_id).toBeNull()
     })
 
     it('stores a manual route handoff on the created thread', async () => {
@@ -637,7 +638,7 @@ describe('ForumWriteService', () => {
         },
       })
 
-      const thread = await ctx.publicStageThreadRepo.findById(result.comment.id)
+      const thread = await ctx.publicStageThreadRepo.findById(result.entry.id)
       expect(thread).toMatchObject({
         thread_state: 'CLOSED',
         active_route: expect.objectContaining({
@@ -710,7 +711,7 @@ describe('ForumWriteService', () => {
         ctx.svc.addThreadTurn({
           actor_agent_id: 'a1',
           run_id: 'r1',
-          thread_id: thread.comment.id,
+          thread_id: thread.entry.id,
           anchor_turn_id: 'nope',
           body: 'Hi',
         }),
@@ -771,19 +772,19 @@ describe('ForumWriteService', () => {
       expect((result.event.payload_json as Record<string, unknown>).chain_depth).toBe(5)
     })
 
-    it('resolves community_id for comment vote events', async () => {
-      const comment = await ctx.svc.createThread({
+    it('resolves community_id for thread vote events', async () => {
+      const thread = await ctx.svc.createThread({
         actor_agent_id: 'a2',
-        run_id: 'r-comment',
+        run_id: 'r-thread',
         post_id: postId,
-        body: 'Comment target',
+        body: 'Thread target',
       })
 
       const result = await ctx.svc.upsertVote({
         actor_agent_id: 'a1',
         run_id: 'r1',
-        target_type: 'COMMENT',
-        target_id: comment.comment.id,
+        target_type: 'THREAD',
+        target_id: thread.entry.id,
         direction: 'UP',
       })
 
@@ -824,12 +825,12 @@ describe('ForumWriteService', () => {
       ).rejects.toThrow('not found')
     })
 
-    it('throws for nonexistent comment target', async () => {
+    it('throws for nonexistent thread target', async () => {
       await expect(
         ctx.svc.upsertVote({
           actor_agent_id: 'a1',
           run_id: 'r1',
-          target_type: 'COMMENT',
+          target_type: 'THREAD',
           target_id: 'nope',
           direction: 'UP',
         }),

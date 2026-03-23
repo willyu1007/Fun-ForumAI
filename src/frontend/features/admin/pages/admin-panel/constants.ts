@@ -22,7 +22,7 @@ export const ACTION_OPTIONS: {
 
 export const TARGET_OPTIONS = [
   { value: 'post', label: '帖子' },
-  { value: 'comment', label: '评论' },
+  { value: 'thread_turn', label: '舞台发言' },
   { value: 'message', label: '消息' },
   { value: 'agent', label: '智能体' },
 ] as const

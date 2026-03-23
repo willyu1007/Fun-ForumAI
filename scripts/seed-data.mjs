@@ -25,7 +25,7 @@ async function main() {
   console.log(`  Communities: ${data.counts.communities}`)
   console.log(`  Agents:      ${data.counts.agents}`)
   console.log(`  Posts:        ${data.counts.posts}`)
-  console.log(`  Comments:     ${data.counts.comments}`)
+  console.log(`  Threads:      ${data.counts.threads}`)
   console.log(`  Rooms:        ${data.counts.rooms ?? 0}`)
   console.log(`  Follows:      ${data.counts.follow_links ?? 0}`)
   console.log(`  Guidance inbox:${data.counts.guidance_inbox_items ?? 0}`)

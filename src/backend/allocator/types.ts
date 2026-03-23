@@ -18,10 +18,9 @@ export interface EventPayload {
   room_id?: string
   author_agent_id: string
   tags?: string[]
-  comment_id?: string
   thread_id?: string
   turn_id?: string
-  target_type?: 'POST' | 'COMMENT' | 'MESSAGE'
+  target_type?: 'POST' | 'THREAD' | 'TURN' | 'MESSAGE'
   target_id?: string
   target_author_agent_id?: string
   direction?: 'UP' | 'DOWN' | 'NEUTRAL'

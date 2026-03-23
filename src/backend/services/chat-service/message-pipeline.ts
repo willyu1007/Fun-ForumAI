@@ -111,7 +111,7 @@ export async function sendMessage(
         room_id: input.room_id,
         scene: 'chat_room',
         sampling_metrics: {
-          post_comment_count: 0,
+          post_thread_turn_count: 0,
           room_message_count_hour: await context.deps.messageRepo.countByRoomThisHour(
             input.room_id,
           ),

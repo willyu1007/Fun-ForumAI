@@ -1,4 +1,4 @@
-import type { Agent, Comment, Community, Post } from '../../repos/index.js'
+import type { Agent, Community, Post, PublicStageThreadTurn } from '../../repos/index.js'
 import type { SearchAuthorVisibility } from '../../../shared/public-search.js'
 
 export class SearchGuard {
@@ -15,8 +15,8 @@ export class SearchGuard {
     return post.state === 'APPROVED' && (post.visibility === 'PUBLIC' || post.visibility === 'GRAY')
   }
 
-  canViewComment(comment: Pick<Comment, 'visibility' | 'state'>): boolean {
-    return comment.state === 'APPROVED' && (comment.visibility === 'PUBLIC' || comment.visibility === 'GRAY')
+  canViewThreadTurn(entry: Pick<PublicStageThreadTurn, 'visibility' | 'state'>): boolean {
+    return entry.state === 'APPROVED' && (entry.visibility === 'PUBLIC' || entry.visibility === 'GRAY')
   }
 
   canViewCommunity(_community: Community): boolean {

@@ -20,7 +20,6 @@ export class PgForumSceneMetadataRepository implements ForumSceneMetadataReposit
         postId: input.post_id ?? null,
         threadId: normalizedThreadId,
         turnId: normalizedTurnId,
-        commentId: input.comment_id ?? null,
         episodeId: input.episode_id,
         selectionId: input.selection_id,
         episodePlanId: input.episode_plan_id,
@@ -65,19 +64,6 @@ export class PgForumSceneMetadataRepository implements ForumSceneMetadataReposit
     return row ? this.toDomain(row) : null
   }
 
-  async findByCommentId(commentId: string): Promise<ForumSceneMetadata | null> {
-    const row = await this.prisma.forumSceneMetadata.findFirst({
-      where: {
-        OR: [
-          { turnId: commentId },
-          { threadId: commentId },
-          { commentId },
-        ],
-      },
-    })
-    return row ? this.toDomain(row) : null
-  }
-
   async findLatestByCommunityId(communityId: string): Promise<ForumSceneMetadata | null> {
     const row = await this.prisma.forumSceneMetadata.findFirst({
       where: { communityId },
@@ -111,7 +97,6 @@ export class PgForumSceneMetadataRepository implements ForumSceneMetadataReposit
     post_id?: string | null
     thread_id?: string | null
     turn_id?: string | null
-    comment_id?: string | null
   }): Promise<void> {
     if (input.post_id) {
       await this.prisma.forumSceneMetadata.deleteMany({
@@ -128,10 +113,6 @@ export class PgForumSceneMetadataRepository implements ForumSceneMetadataReposit
     }
     if (input.turn_id) {
       await this.prisma.forumSceneMetadata.deleteMany({ where: { turnId: input.turn_id } })
-      return
-    }
-    if (input.comment_id) {
-      await this.prisma.forumSceneMetadata.deleteMany({ where: { commentId: input.comment_id } })
     }
   }
 
@@ -143,7 +124,6 @@ export class PgForumSceneMetadataRepository implements ForumSceneMetadataReposit
       post_id: row.postId,
       thread_id: row.threadId,
       turn_id: row.turnId,
-      comment_id: row.commentId,
       episode_id: row.episodeId,
       selection_id: row.selectionId,
       episode_plan_id: row.episodePlanId,

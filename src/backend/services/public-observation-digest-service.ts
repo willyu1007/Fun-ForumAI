@@ -55,11 +55,19 @@ export class PublicObservationDigestService {
 
     try {
       const post = await this.deps.forumReadService.getPost(postId)
-      const comments = await this.deps.forumReadService.getComments(postId, { limit: 120 })
+      const threads = await this.deps.forumReadService.getThreads(postId, { limit: 120 })
+      const stageBodies = threads.items.flatMap((thread) => [
+        thread.body,
+        ...thread.turns.map((turn) => turn.body),
+      ])
+      const threadTurnCount = threads.items.reduce(
+        (sum, thread) => sum + 1 + thread.turns.length,
+        0,
+      )
 
       const po = config.publicObservation
       const shouldDigest =
-        comments.items.length >= po.forumCommentThreshold ||
+        threadTurnCount >= po.forumThreadTurnThreshold ||
         post.participant_count >= po.forumParticipantThreshold ||
         post.heat_score >= po.forumHeatThreshold
 
@@ -69,7 +77,7 @@ export class PublicObservationDigestService {
       if (!await this.shouldProceedByEventDedup(agentId, 'forum', event.id)) return
       if (!await this.shouldProceedByCooldown(agentId, 'forum', postId, po.forumCooldownMs)) return
 
-      const transcript = this.buildForumTranscript(post.title, post.body, comments.items.map((comment) => comment.body))
+      const transcript = this.buildForumTranscript(post.title, post.body, stageBodies)
       const summary = await this.summarize('forum', transcript, agentId)
 
       if (!await this.shouldProceedByCooldown(agentId, 'forum', postId, po.forumCooldownMs)) return
@@ -243,11 +251,11 @@ export class PublicObservationDigestService {
     return true
   }
 
-  private buildForumTranscript(title: string, body: string, commentBodies: string[]): string {
+  private buildForumTranscript(title: string, body: string, threadTurnBodies: string[]): string {
     return [
       `标题: ${title}`,
       `正文: ${body}`,
-      ...commentBodies.slice(-30).map((comment, index) => `评论${index + 1}: ${comment}`),
+      ...threadTurnBodies.slice(-30).map((threadTurnBody, index) => `舞台发言${index + 1}: ${threadTurnBody}`),
     ].join('\n')
   }
 

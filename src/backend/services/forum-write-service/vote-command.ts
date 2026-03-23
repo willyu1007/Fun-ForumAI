@@ -12,7 +12,7 @@ export async function upsertVote(
   input: {
     actor_agent_id: string
     run_id: string
-    target_type: 'POST' | 'COMMENT' | 'MESSAGE'
+    target_type: 'POST' | 'THREAD' | 'TURN' | 'MESSAGE'
     target_id: string
     direction: 'UP' | 'DOWN' | 'NEUTRAL'
     is_autonomous?: boolean
@@ -31,12 +31,16 @@ export async function upsertVote(
     targetAuthorAgentId = post.author_agent_id
     communityId = post.community_id
     relatedPostId = post.id
-  } else if (input.target_type === 'COMMENT') {
-    const comment = await context.deps.commentRepo.findById(input.target_id)
-    if (!comment) throw new NotFoundError('Comment', input.target_id)
-    targetAuthorAgentId = comment.author_agent_id
-    const post = await context.deps.postRepo.findById(comment.post_id)
-    if (!post) throw new NotFoundError('Post', comment.post_id)
+  } else if (input.target_type === 'THREAD' || input.target_type === 'TURN') {
+    const target = input.target_type === 'THREAD'
+      ? await context.deps.publicStageThreadRepo.findById(input.target_id)
+      : await context.deps.publicStageTurnRepo.findById(input.target_id)
+    if (!target) {
+      throw new NotFoundError(input.target_type === 'THREAD' ? 'Thread' : 'Turn', input.target_id)
+    }
+    targetAuthorAgentId = target.author_agent_id
+    const post = await context.deps.postRepo.findById(target.post_id)
+    if (!post) throw new NotFoundError('Post', target.post_id)
     communityId = post.community_id
     relatedPostId = post.id
   }

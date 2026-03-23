@@ -4,7 +4,8 @@ import type { AgentRepository } from '../repos/agent-repository.js'
 import type { AgentService } from './agent-service.js'
 import type { TraitEngine } from './trait-engine.js'
 import type { PostRepository } from '../repos/post-repository.js'
-import type { CommentRepository } from '../repos/comment-repository.js'
+import type { PublicStageThreadRepository } from '../repos/public-stage-thread-repository.js'
+import type { PublicStageTurnRepository } from '../repos/public-stage-turn-repository.js'
 import type { RoomRepository } from '../repos/room-repository.js'
 import type { MessageRepository } from '../repos/message-repository.js'
 import type { StatsService } from './stats-service.js'
@@ -12,6 +13,7 @@ import { RelationEngine, type RelationPairStats } from './relation-engine.js'
 import { RelationMetrics } from './relation-metrics.js'
 import { config } from '../lib/config.js'
 import { LruMap } from '../lib/lru-map.js'
+import { findPublicStageThreadTurnById } from '../lib/public-stage-thread-turn.js'
 
 const DAYS_7_MS = 7 * 24 * 60 * 60 * 1000
 const ACTIVE_RELATION_STATES: RelationState[] = ['shadow', 'effective']
@@ -35,7 +37,8 @@ export interface RelationServiceDeps {
   agentService: AgentService
   traitEngine?: TraitEngine | null
   postRepo?: PostRepository
-  commentRepo?: CommentRepository
+  publicStageThreadRepo?: PublicStageThreadRepository
+  publicStageTurnRepo?: PublicStageTurnRepository
   roomRepo?: RoomRepository
   messageRepo?: MessageRepository
   statsService?: StatsService | null
@@ -134,77 +137,72 @@ export class RelationService {
     await this.evaluateAndPersist(input.from_agent_id, input.to_agent_id)
   }
 
-  async onForumCommentEvent(event: DomainEvent): Promise<void> {
-    if (!this.deps.postRepo || !this.deps.commentRepo) return
+  async onForumStageEvent(event: DomainEvent): Promise<void> {
+    if (!this.deps.postRepo || !this.deps.publicStageThreadRepo || !this.deps.publicStageTurnRepo) return
     const payload = event.payload_json
     if (event.event_type !== 'THREAD_OPENED' && event.event_type !== 'THREAD_TURN_ADDED') return
 
-    const commentId = event.event_type === 'THREAD_TURN_ADDED'
+    const entryId = event.event_type === 'THREAD_TURN_ADDED'
       ? typeof payload.turn_id === 'string'
         ? payload.turn_id
-        : typeof payload.comment_id === 'string'
-          ? payload.comment_id
-          : typeof payload.thread_id === 'string'
-            ? payload.thread_id
-            : ''
+        : typeof payload.thread_id === 'string'
+          ? payload.thread_id
+          : ''
       : typeof payload.thread_id === 'string'
         ? payload.thread_id
-        : typeof payload.comment_id === 'string'
-          ? payload.comment_id
-          : ''
+        : ''
     const postId = typeof payload.post_id === 'string' ? payload.post_id : ''
     const authorAgentId = typeof payload.author_agent_id === 'string' ? payload.author_agent_id : ''
-    if (!commentId || !postId || !authorAgentId) return
+    if (!entryId || !postId || !authorAgentId) return
 
-    const [post, comment] = await Promise.all([
+    const [post, entry] = await Promise.all([
       this.deps.postRepo.findById(postId),
-      this.deps.commentRepo.findById(commentId),
+      findPublicStageThreadTurnById(this.deps, entryId),
     ])
-    if (!post || !comment) return
+    if (!post || !entry) return
 
-    if (comment.comment_kind === 'THREAD' && post.author_agent_id !== authorAgentId) {
+    if (entry.entry_kind === 'THREAD' && post.author_agent_id !== authorAgentId) {
       await this.ingestSignal({
         from_agent_id: authorAgentId,
         to_agent_id: post.author_agent_id,
         event_type: 'forum_reply',
         source_type: 'forum_thread',
-        source_ref_id: commentId,
+        source_ref_id: entryId,
         idempotency_key: `forum:${event.id}:post:${authorAgentId}:${post.author_agent_id}`,
-        payload: { post_id: postId, thread_id: commentId, comment_id: commentId },
+        payload: { post_id: postId, thread_id: entryId },
       })
     }
 
-    if (comment.comment_kind === 'TURN' && comment.thread_id) {
-      const thread = await this.deps.commentRepo.findById(comment.thread_id)
+    if (entry.entry_kind === 'TURN' && entry.thread_id) {
+      const thread = await findPublicStageThreadTurnById(this.deps, entry.thread_id)
       if (thread && thread.author_agent_id !== authorAgentId) {
         await this.ingestSignal({
           from_agent_id: authorAgentId,
           to_agent_id: thread.author_agent_id,
           event_type: 'forum_reply',
           source_type: 'forum_turn',
-          source_ref_id: commentId,
+          source_ref_id: entryId,
           idempotency_key: `forum:${event.id}:thread:${authorAgentId}:${thread.author_agent_id}`,
-          payload: { post_id: postId, thread_id: thread.id, turn_id: commentId, comment_id: commentId },
+          payload: { post_id: postId, thread_id: thread.id, turn_id: entryId },
         })
       }
     }
 
-    if (comment.comment_kind === 'TURN' && comment.anchor_comment_id) {
-      const anchor = await this.deps.commentRepo.findById(comment.anchor_comment_id)
+    if (entry.entry_kind === 'TURN' && entry.anchor_turn_id) {
+      const anchor = await findPublicStageThreadTurnById(this.deps, entry.anchor_turn_id)
       if (anchor && anchor.author_agent_id !== authorAgentId) {
         await this.ingestSignal({
           from_agent_id: authorAgentId,
           to_agent_id: anchor.author_agent_id,
           event_type: 'reciprocal_reply',
           source_type: 'forum_turn',
-          source_ref_id: commentId,
+          source_ref_id: entryId,
           idempotency_key: `forum:${event.id}:anchor:${authorAgentId}:${anchor.author_agent_id}`,
           payload: {
             post_id: postId,
-            thread_id: comment.thread_id,
-            turn_id: commentId,
+            thread_id: entry.thread_id,
+            turn_id: entryId,
             anchor_turn_id: anchor.id,
-            comment_id: commentId,
           },
         })
       }
@@ -258,9 +256,9 @@ export class RelationService {
     if (targetType === 'POST' && this.deps.postRepo) {
       const post = await this.deps.postRepo.findById(targetId)
       targetAgentId = post?.author_agent_id ?? ''
-    } else if (targetType === 'COMMENT' && this.deps.commentRepo) {
-      const comment = await this.deps.commentRepo.findById(targetId)
-      targetAgentId = comment?.author_agent_id ?? ''
+    } else if ((targetType === 'THREAD' || targetType === 'TURN') && this.deps.publicStageThreadRepo && this.deps.publicStageTurnRepo) {
+      const entry = await findPublicStageThreadTurnById(this.deps, targetId)
+      targetAgentId = entry?.entry_kind === targetType ? entry.author_agent_id ?? '' : ''
     } else if (targetType === 'MESSAGE' && this.deps.messageRepo) {
       const message = await this.deps.messageRepo.findById(targetId)
       targetAgentId = message?.author_id ?? ''

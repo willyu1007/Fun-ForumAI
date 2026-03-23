@@ -72,7 +72,7 @@ export async function createPost(
         existing_moderation: modResult,
         prefer_rewrite: false,
         sampling_metrics: {
-          post_comment_count: 0,
+          post_thread_turn_count: 0,
           room_message_count_hour: 0,
           report_count_24h: 0,
         },

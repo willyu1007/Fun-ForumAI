@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
-import { InMemoryCommentRepository } from '../../repos/comment-repository.js'
+import { InMemoryPublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
+import { InMemoryPublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
 import { InMemoryVoteRepository } from '../../repos/vote-repository.js'
 import { InMemoryHumanVoteRepository } from '../../repos/human-vote-repository.js'
 import { InMemoryHumanFollowRepository } from '../../repos/human-follow-repository.js'
@@ -10,7 +11,8 @@ import { HumanParticipationService, HUMAN_VOTE_WEIGHT } from '../human-participa
 
 function createService() {
   const postRepo = new InMemoryPostRepository()
-  const commentRepo = new InMemoryCommentRepository()
+  const publicStageThreadRepo = new InMemoryPublicStageThreadRepository()
+  const publicStageTurnRepo = new InMemoryPublicStageTurnRepository()
   const voteRepo = new InMemoryVoteRepository()
   const humanVoteRepo = new InMemoryHumanVoteRepository()
   const humanFollowRepo = new InMemoryHumanFollowRepository()
@@ -19,7 +21,8 @@ function createService() {
 
   const service = new HumanParticipationService({
     postRepo,
-    commentRepo,
+    publicStageThreadRepo,
+    publicStageTurnRepo,
     voteRepo,
     humanVoteRepo,
     humanFollowRepo,
@@ -27,7 +30,7 @@ function createService() {
     eventRepo,
   })
 
-  return { service, postRepo, commentRepo, voteRepo, humanVoteRepo, humanFollowRepo, agentRepo, eventRepo }
+  return { service, postRepo, publicStageThreadRepo, publicStageTurnRepo, voteRepo, humanVoteRepo, humanFollowRepo, agentRepo, eventRepo }
 }
 
 describe('HumanParticipationService', () => {

@@ -5,17 +5,20 @@ import type {
   AgentRepository,
   CommunityRepository,
   PostRepository,
-  CommentRepository,
   EventRepository,
+  PublicStageThreadRepository,
+  PublicStageTurnRepository,
 } from '../repos/index.js'
 import { ForbiddenError, NotFoundError } from '../lib/errors.js'
+import { listPublicStageThreadTurnsByPost } from '../lib/public-stage-thread-turn.js'
 
 export interface AgentCommunityMembershipServiceDeps {
   membershipRepo: AgentCommunityMembershipRepository
   agentRepo: AgentRepository
   communityRepo: CommunityRepository
   postRepo: PostRepository
-  commentRepo: CommentRepository
+  publicStageThreadRepo: PublicStageThreadRepository
+  publicStageTurnRepo: PublicStageTurnRepository
   eventRepo: EventRepository
 }
 
@@ -220,15 +223,15 @@ export class AgentCommunityMembershipService {
   async runDerivedBackfill(input?: {
     days?: number
     min_posts?: number
-    min_comment_count?: number
+    min_thread_turn_count?: number
   }): Promise<BackfillMembershipsResult> {
     const days = input?.days ?? DEFAULT_BACKFILL_DAYS
     const minPosts = input?.min_posts ?? DEFAULT_POST_THRESHOLD
-    const minComments = input?.min_comment_count ?? DEFAULT_COMMENT_THRESHOLD
+    const minThreadTurns = input?.min_thread_turn_count ?? DEFAULT_COMMENT_THRESHOLD
 
     const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
     const postCounts = new Map<string, number>()
-    const commentCounts = new Map<string, number>()
+    const threadTurnCounts = new Map<string, number>()
 
     let cursor: string | undefined
     let processedPosts = 0
@@ -248,19 +251,11 @@ export class AgentCommunityMembershipService {
         const postKey = compositeKey(post.author_agent_id, post.community_id)
         postCounts.set(postKey, (postCounts.get(postKey) ?? 0) + 1)
 
-        let commentCursor: string | undefined
-        while (true) {
-          const comments = await this.deps.commentRepo.findByPostAll(post.id, { cursor: commentCursor, limit: 300 })
-          if (comments.items.length === 0) break
-
-          for (const comment of comments.items) {
-            if (comment.created_at < cutoff) continue
-            const commentKey = compositeKey(comment.author_agent_id, post.community_id)
-            commentCounts.set(commentKey, (commentCounts.get(commentKey) ?? 0) + 1)
-          }
-
-          if (!comments.next_cursor || comments.next_cursor === commentCursor) break
-          commentCursor = comments.next_cursor
+        const threadTurns = await listPublicStageThreadTurnsByPost(this.deps, post.id, { includeAll: true })
+        for (const threadTurn of threadTurns) {
+          if (threadTurn.created_at < cutoff) continue
+          const threadTurnKey = compositeKey(threadTurn.author_agent_id, post.community_id)
+          threadTurnCounts.set(threadTurnKey, (threadTurnCounts.get(threadTurnKey) ?? 0) + 1)
         }
       }
 
@@ -272,7 +267,7 @@ export class AgentCommunityMembershipService {
 
     const candidates = new Set<string>([
       ...postCounts.keys(),
-      ...commentCounts.keys(),
+      ...threadTurnCounts.keys(),
     ])
 
     let upserted = 0
@@ -284,8 +279,8 @@ export class AgentCommunityMembershipService {
       const [agentId, communityId] = parts
 
       const postCount = postCounts.get(key) ?? 0
-      const commentCount = commentCounts.get(key) ?? 0
-      if (postCount < minPosts && commentCount < minComments) {
+      const threadTurnCount = threadTurnCounts.get(key) ?? 0
+      if (postCount < minPosts && threadTurnCount < minThreadTurns) {
         continue
       }
 

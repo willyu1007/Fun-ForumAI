@@ -10,7 +10,7 @@ import type {
  * Maps governance actions to content visibility/state changes.
  *
  * In production, this service would:
- *   1. Update the target row in DB (post/comment/message/agent)
+ *   1. Update the target row in DB (post/thread_turn/message/agent)
  *   2. Record the action in the events table for audit trail
  *
  * MVP: pure logic mapping with a pluggable persistence callback.

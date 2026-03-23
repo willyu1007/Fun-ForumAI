@@ -24,7 +24,7 @@ describe('hot-topic-policy-config', () => {
           deny: ['戒严'],
         },
         sampling_thresholds: {
-          post_comment_count: 12,
+          post_thread_turn_count: 12,
           room_message_count_hour: 18,
           report_count_24h: 2,
         },
@@ -36,7 +36,7 @@ describe('hot-topic-policy-config', () => {
     expect(policy.keyword_overrides.gray).toEqual(['票务争议'])
     expect(policy.keyword_overrides.deny).toEqual(['戒严'])
     expect(policy.sampling_thresholds).toEqual({
-      post_comment_count: 12,
+      post_thread_turn_count: 12,
       room_message_count_hour: 18,
       report_count_24h: 2,
     })
@@ -56,7 +56,7 @@ describe('hot-topic-policy-config', () => {
         deny: [''],
       },
       sampling_thresholds: {
-        post_comment_count: -1,
+        post_thread_turn_count: -1,
         room_message_count_hour: 'bad',
         report_count_24h: 2,
       },
@@ -64,6 +64,6 @@ describe('hot-topic-policy-config', () => {
 
     expect(errors).toContain('hot_topic_policy_v1.keyword_overrides.gray must be a non-empty string array')
     expect(errors).toContain('hot_topic_policy_v1.keyword_overrides.deny must be a non-empty string array')
-    expect(errors).toContain('hot_topic_policy_v1.sampling_thresholds.post_comment_count must be a non-negative number')
+    expect(errors).toContain('hot_topic_policy_v1.sampling_thresholds.post_thread_turn_count must be a non-negative number')
   })
 })

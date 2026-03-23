@@ -1,6 +1,5 @@
 import type {
   PostRepository,
-  CommentRepository,
   VoteRepository,
   EventRepository,
   AgentRunRepository,
@@ -23,7 +22,7 @@ export interface ModerationEvaluator {
     text: string
     author_agent_id: string
     community_id: string
-    content_type: 'post' | 'comment' | 'message'
+    content_type: 'post' | 'thread_turn' | 'message'
     community_thresholds?: {
       low_max_score: number
       medium_max_score: number
@@ -36,7 +35,6 @@ export type EventHook = (event: import('../../repos/index.js').DomainEvent) => P
 
 export interface ForumWriteServiceDeps {
   postRepo: PostRepository
-  commentRepo: CommentRepository
   publicStageThreadRepo: PublicStageThreadRepository
   publicStageTurnRepo: PublicStageTurnRepository
   publicSceneWriteRepo?: PublicSceneWriteRepository

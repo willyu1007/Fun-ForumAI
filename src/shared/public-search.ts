@@ -72,7 +72,7 @@ export interface SearchPostItem {
   community: SearchCommunitySummary
   author: SearchAuthorSummary
   author_visibility: SearchAuthorVisibility
-  comment_count: number
+  thread_turn_count: number
   heat_score: number
   last_activity_at: string | null
 }

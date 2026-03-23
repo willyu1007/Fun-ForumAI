@@ -43,7 +43,7 @@ export interface PostSearchDoc {
   searchable_text: string
   visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
   state: 'PENDING' | 'APPROVED' | 'REJECTED'
-  comment_count: number
+  thread_turn_count: number
   participant_count: number
   last_activity_at: Date | null
   heat_score: number
@@ -103,7 +103,7 @@ export interface AgentSearchDoc {
   public_projection_hint: string | null
   top_chronicle_text: string
   representative_post_text: string
-  representative_comment_text: string
+  representative_thread_turn_text: string
   social_signal_text: string
   searchable_text: string
   refreshed_at: Date
@@ -137,14 +137,14 @@ export interface ThreadSearchDoc {
   updated_at: Date
 }
 
-export interface UpsertPostSearchDocInput
-  extends Omit<PostSearchDoc, 'refreshed_at' | 'created_at' | 'updated_at'> {}
+export type UpsertPostSearchDocInput =
+  Omit<PostSearchDoc, 'refreshed_at' | 'created_at' | 'updated_at'>
 
-export interface UpsertCommunitySearchDocInput
-  extends Omit<CommunitySearchDoc, 'refreshed_at' | 'created_at' | 'updated_at'> {}
+export type UpsertCommunitySearchDocInput =
+  Omit<CommunitySearchDoc, 'refreshed_at' | 'created_at' | 'updated_at'>
 
-export interface UpsertAgentSearchDocInput
-  extends Omit<AgentSearchDoc, 'refreshed_at' | 'created_at' | 'updated_at'> {}
+export type UpsertAgentSearchDocInput =
+  Omit<AgentSearchDoc, 'refreshed_at' | 'created_at' | 'updated_at'>
 
-export interface UpsertThreadSearchDocInput
-  extends Omit<ThreadSearchDoc, 'refreshed_at' | 'created_at' | 'updated_at'> {}
+export type UpsertThreadSearchDocInput =
+  Omit<ThreadSearchDoc, 'refreshed_at' | 'created_at' | 'updated_at'>

@@ -124,7 +124,7 @@ export function PostCard({ post, showCommunity = true }: PostCardProps) {
             initialDirection={post.viewer_human_vote_direction}
           />
           <Link to={`/posts/${post.id}`} className={"inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 transition-colors hover:bg-accent"}>
-            💬 {post.comment_count} 讨论
+            💬 {post.thread_turn_count} 条舞台发言
           </Link>
           <span className={"inline-flex items-center gap-1 px-0.5 py-0.5"}>综合分 {post.weighted_vote_score}</span>
           {post.tags.length > 0 && (

@@ -14,7 +14,7 @@ interface HighlightThreadItem {
   community_name: string
   title: string
   vote_score: number
-  comment_count: number
+  thread_turn_count: number
   participant_count: number
   heat_score: number
   last_reply_at: string | null
@@ -100,7 +100,7 @@ export class GlobalHighlightsService {
       community_name: item.community_name,
       title: item.title,
       vote_score: item.vote_score,
-      comment_count: item.comment_count,
+      thread_turn_count: item.thread_turn_count,
       participant_count: item.participant_count,
       heat_score: item.heat_score,
       last_reply_at: item.last_reply_at ? item.last_reply_at.toISOString() : null,

@@ -1,6 +1,6 @@
 export type {
   Post,
-  Comment,
+  PublicStageThreadTurn,
   PublicStageThread,
   PublicStageTurn,
   PublicStageThreadState,
@@ -87,7 +87,6 @@ export type {
   PaginatedResult,
   PaginationOpts,
   CreatePostInput,
-  CreateCommentInput,
   CreatePublicStageThreadInput,
   CreatePublicStageTurnInput,
   UpsertVoteInput,
@@ -257,7 +256,6 @@ export type {
 } from './types.js'
 
 export { type PostRepository, InMemoryPostRepository } from './post-repository.js'
-export { type CommentRepository, InMemoryCommentRepository } from './comment-repository.js'
 export {
   type PublicStageThreadRepository,
   InMemoryPublicStageThreadRepository,
@@ -423,7 +421,6 @@ export {
 } from './guidance-event-log-repository.js'
 
 export { PgPostRepository } from './pg/pg-post-repository.js'
-export { PgCommentRepository } from './pg/pg-comment-repository.js'
 export { PgVoteRepository } from './pg/pg-vote-repository.js'
 export { PgHumanVoteRepository } from './pg/pg-human-vote-repository.js'
 export { PgAgentPublicProjectionRepository } from './pg/pg-agent-public-projection-repository.js'

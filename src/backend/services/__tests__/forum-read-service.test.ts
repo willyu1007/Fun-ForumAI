@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ForumReadService } from '../forum-read-service.js'
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
-import { InMemoryCommentRepository } from '../../repos/comment-repository.js'
 import { InMemoryVoteRepository } from '../../repos/vote-repository.js'
 import { InMemoryHumanVoteRepository } from '../../repos/human-vote-repository.js'
 import { InMemoryPostMediaRepository } from '../../repos/post-media-repository.js'
@@ -10,11 +9,20 @@ import { InMemoryMediaContextProjectionRepository } from '../../repos/media-cont
 import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
 import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryRiskGovernanceRepository } from '../../repos/risk-governance-repository.js'
+import { InMemoryPublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
+import { InMemoryPublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
 import type { CreateMediaObservabilityEventInput, MediaObservabilityEvent } from '../../repos/types.js'
+import { InMemoryPublicStageStore } from '../../test-support/public-stage-store.js'
 
 function setup() {
   const postRepo = new InMemoryPostRepository()
-  const commentRepo = new InMemoryCommentRepository()
+  const publicStageThreadRepo = new InMemoryPublicStageThreadRepository()
+  const publicStageTurnRepo = new InMemoryPublicStageTurnRepository()
+  const commentRepo = new InMemoryPublicStageStore({
+    threadRepo: publicStageThreadRepo,
+    turnRepo: publicStageTurnRepo,
+    postRepo,
+  })
   const voteRepo = new InMemoryVoteRepository()
   const humanVoteRepo = new InMemoryHumanVoteRepository()
   const postMediaRepo = new InMemoryPostMediaRepository()
@@ -25,7 +33,8 @@ function setup() {
   const riskRepo = new InMemoryRiskGovernanceRepository()
   const svc = new ForumReadService({
     postRepo,
-    commentRepo,
+    publicStageThreadRepo,
+    publicStageTurnRepo,
     voteRepo,
     humanVoteRepo,
     postMediaRepo,
@@ -39,6 +48,8 @@ function setup() {
     svc,
     postRepo,
     commentRepo,
+    publicStageThreadRepo,
+    publicStageTurnRepo,
     voteRepo,
     humanVoteRepo,
     postMediaRepo,
@@ -54,7 +65,8 @@ function setupWithObservability(record: (input: CreateMediaObservabilityEventInp
   const base = setup()
   const svc = new ForumReadService({
     postRepo: base.postRepo,
-    commentRepo: base.commentRepo,
+    publicStageThreadRepo: base.publicStageThreadRepo,
+    publicStageTurnRepo: base.publicStageTurnRepo,
     voteRepo: base.voteRepo,
     humanVoteRepo: base.humanVoteRepo,
     postMediaRepo: base.postMediaRepo,
@@ -113,7 +125,7 @@ describe('ForumReadService', () => {
 
       const result = await ctx.svc.getFeed({})
       expect(result.items).toHaveLength(1)
-      expect(result.items[0].comment_count).toBe(1)
+      expect(result.items[0].thread_turn_count).toBe(1)
       expect(result.items[0].vote_score).toBe(1)
       expect(result.items[0].vote_up).toBe(1)
       expect(result.items[0].vote_down).toBe(0)
@@ -467,7 +479,7 @@ describe('ForumReadService', () => {
       })
       const result = await ctx.svc.getPost(post.id)
       expect(result.title).toBe('T')
-      expect(result.comment_count).toBe(0)
+      expect(result.thread_turn_count).toBe(0)
       expect(result.vote_score).toBe(0)
       expect(result.vote_up).toBe(0)
       expect(result.vote_down).toBe(0)
@@ -535,7 +547,7 @@ describe('ForumReadService', () => {
 
       const result = await ctx.svc.getPost(post.id)
 
-      expect(result.comment_count).toBe(2)
+      expect(result.thread_turn_count).toBe(2)
       expect(result.participant_count).toBe(3)
     })
 
@@ -566,210 +578,6 @@ describe('ForumReadService', () => {
         drift_detected: true,
       })
       expect(result.distribution_state).toBe('NO_RECOMMEND')
-    })
-  })
-
-  describe('getComments', () => {
-    it('returns comments for a post', async () => {
-      const post = await ctx.postRepo.create({
-        community_id: 'c1',
-        author_agent_id: 'a1',
-        title: 'T',
-        body: 'B',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-      })
-      await ctx.commentRepo.create({
-        post_id: post.id,
-        author_agent_id: 'a2',
-        body: 'C1',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-      })
-      const result = await ctx.svc.getComments(post.id, {})
-      expect(result.items).toHaveLength(1)
-    })
-
-    it('throws for unknown post', async () => {
-      await expect(ctx.svc.getComments('nope', {})).rejects.toThrow('not found')
-    })
-
-    it('rejects comments for a hidden post', async () => {
-      const post = await ctx.postRepo.create({
-        community_id: 'c1',
-        author_agent_id: 'a1',
-        title: 'T',
-        body: 'B',
-        visibility: 'QUARANTINE',
-        state: 'APPROVED',
-      })
-
-      await expect(ctx.svc.getComments(post.id, {})).rejects.toThrow('not found')
-    })
-
-    it('hydrates comment topic signals from the latest risk event payload', async () => {
-      const post = await ctx.postRepo.create({
-        community_id: 'c1',
-        author_agent_id: 'a1',
-        title: 'T',
-        body: 'B',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-      })
-      const comment = await ctx.commentRepo.create({
-        post_id: post.id,
-        author_agent_id: 'a2',
-        body: 'C1',
-        visibility: 'GRAY',
-        state: 'APPROVED',
-      })
-      await ctx.riskRepo.createRiskEvent({
-        channel: 'forum_thread',
-        event_type: 'policy_gateway_decision',
-        action: 'allow',
-        target_type: 'comment',
-        target_id: comment.id,
-        payload: {
-          topic_signals: {
-            hot_topic_flag: true,
-            topic_domain: 'SPORTS',
-            distribution_state: 'NO_RECOMMEND',
-          },
-          distribution_state: 'NO_RECOMMEND',
-        },
-      })
-
-      const result = await ctx.svc.getComments(post.id, {})
-
-      expect(result.items[0]?.topic_signals).toMatchObject({
-        hot_topic_flag: true,
-        topic_domain: 'SPORTS',
-      })
-      expect(result.items[0]?.distribution_state).toBe('NO_RECOMMEND')
-    })
-
-    it('does not expose shadow-mode topic signals to comment readers', async () => {
-      const post = await ctx.postRepo.create({
-        community_id: 'c1',
-        author_agent_id: 'a1',
-        title: 'T',
-        body: 'B',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-      })
-      const comment = await ctx.commentRepo.create({
-        post_id: post.id,
-        author_agent_id: 'a2',
-        body: 'C1',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-      })
-      await ctx.riskRepo.createRiskEvent({
-        channel: 'forum_thread',
-        event_type: 'policy_gateway_decision',
-        action: 'allow',
-        target_type: 'comment',
-        target_id: comment.id,
-        payload: {
-          shadowed: true,
-          topic_signals: {
-            hot_topic_flag: true,
-            topic_domain: 'SPORTS',
-            distribution_state: 'NO_RECOMMEND',
-            policy_shadowed: true,
-          },
-          distribution_state: 'NO_RECOMMEND',
-        },
-      })
-
-      const result = await ctx.svc.getComments(post.id, {})
-
-      expect(result.items[0]?.topic_signals).toBeNull()
-      expect(result.items[0]?.distribution_state).toBe('NORMAL')
-    })
-  })
-
-  describe('getComment', () => {
-    it('rejects hidden comments', async () => {
-      const post = await ctx.postRepo.create({
-        community_id: 'c1',
-        author_agent_id: 'a1',
-        title: 'T',
-        body: 'B',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-      })
-      const comment = await ctx.commentRepo.create({
-        post_id: post.id,
-        author_agent_id: 'a2',
-        body: 'hidden',
-        visibility: 'QUARANTINE',
-        state: 'APPROVED',
-      })
-
-      await expect(ctx.svc.getComment(comment.id)).rejects.toThrow('not found')
-    })
-
-    it('rejects comments whose parent post is not publicly visible', async () => {
-      const post = await ctx.postRepo.create({
-        community_id: 'c1',
-        author_agent_id: 'a1',
-        title: 'T',
-        body: 'B',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-      })
-      const comment = await ctx.commentRepo.create({
-        post_id: post.id,
-        author_agent_id: 'a2',
-        body: 'visible',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-      })
-      await ctx.postRepo.updateVisibility(post.id, 'QUARANTINE')
-
-      await expect(ctx.svc.getComment(comment.id)).rejects.toThrow('not found')
-    })
-  })
-
-  describe('getCommentThreadContext', () => {
-    it('returns the ancestor path from root to target', async () => {
-      const post = await ctx.postRepo.create({
-        community_id: 'c1',
-        author_agent_id: 'a1',
-        title: 'T',
-        body: 'B',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-      })
-      const root = await ctx.commentRepo.create({
-        post_id: post.id,
-        author_agent_id: 'a2',
-        body: 'root',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-      })
-      const child = await ctx.commentRepo.create({
-        post_id: post.id,
-        parent_comment_id: root.id,
-        author_agent_id: 'a3',
-        body: 'child',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-      })
-      const target = await ctx.commentRepo.create({
-        post_id: post.id,
-        parent_comment_id: child.id,
-        author_agent_id: 'a4',
-        body: 'target',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-      })
-
-      const result = await ctx.svc.getCommentThreadContext(target.id)
-
-      expect(result.post_id).toBe(post.id)
-      expect(result.comments.map((item) => item.id)).toEqual([root.id, child.id, target.id])
     })
   })
 

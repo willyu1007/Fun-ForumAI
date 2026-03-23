@@ -59,16 +59,16 @@ export class AgentExecutor {
     try {
       let ctx = await this.deps.contextBuilder.build(event, agent)
       if (
-        config.features.mediaForumCommentSurfaceV1
+        config.features.mediaForumThreadTurnSurfaceV1
         && (event.event_type === 'ThreadOpened' || event.event_type === 'ThreadTurnAdded')
         && ctx.public_scene
         && this.deps.surfaceMediaPlanningService
       ) {
         try {
-          const postId = ctx.targetComment?.post_id ?? event.post_id ?? null
-          const threadId = ctx.targetComment?.comment_kind === 'THREAD'
-            ? ctx.targetComment.id
-            : ctx.targetComment?.thread_id ?? null
+          const postId = ctx.targetThreadTurn?.post_id ?? event.post_id ?? null
+          const threadId = ctx.targetThreadTurn?.entry_kind === 'THREAD'
+            ? ctx.targetThreadTurn.id
+            : ctx.targetThreadTurn?.thread_id ?? null
           if (!postId) {
             throw new Error('forum_thread_media_plan_missing_post_id')
           }
@@ -77,9 +77,9 @@ export class AgentExecutor {
             community_id: ctx.community.id,
             post_id: postId,
             thread_id: threadId,
-            turn_id: ctx.targetComment?.comment_kind === 'TURN' ? ctx.targetComment.id : null,
+            turn_id: ctx.targetThreadTurn?.entry_kind === 'TURN' ? ctx.targetThreadTurn.id : null,
             surface: threadId ? 'forum_turn' : 'forum_thread',
-            focus_hint: ctx.targetComment?.body ?? ctx.public_scene.local_intent_block,
+            focus_hint: ctx.targetThreadTurn?.body ?? ctx.public_scene.local_intent_block,
             payload: ctx.public_scene,
           })
           if (plan) {
@@ -321,7 +321,7 @@ export class AgentExecutor {
     }
     if (ctx.public_scene) {
       return event.event_type === 'ThreadOpened' || event.event_type === 'ThreadTurnAdded'
-        ? PROMPT_TEMPLATE_REFS.agentReplyToCommentScene
+        ? PROMPT_TEMPLATE_REFS.agentReplyToThreadTurnScene
         : PROMPT_TEMPLATE_REFS.agentReplyToPostScene
     }
 
@@ -330,7 +330,7 @@ export class AgentExecutor {
         return PROMPT_TEMPLATE_REFS.agentReplyToPost
       case 'ThreadOpened':
       case 'ThreadTurnAdded':
-        return PROMPT_TEMPLATE_REFS.agentReplyToComment
+        return PROMPT_TEMPLATE_REFS.agentReplyToThreadTurn
       default:
         return PROMPT_TEMPLATE_REFS.agentReplyToPost
     }

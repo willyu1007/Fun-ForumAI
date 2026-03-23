@@ -50,7 +50,7 @@ function makeDomainEvent(input: {
 }
 
 function makeForumService(params: {
-  commentCount: number
+  threadTurnCount: number
   participantCount: number
   heatScore: number
   typedLatestImpl?: () => Promise<Date | null>
@@ -64,6 +64,16 @@ function makeForumService(params: {
   const getLatestTypedPublicObservationAt = vi.fn(() => (
     params.typedLatestImpl ? params.typedLatestImpl() : Promise.resolve(null)
   ))
+  const threadTurns = params.threadTurnCount <= 0
+    ? []
+    : [{
+        id: 'thread-1',
+        body: 'c1',
+        turns: Array.from({ length: Math.max(0, params.threadTurnCount - 1) }).map((_, i) => ({
+          id: `turn-${i + 1}`,
+          body: `c${i + 2}`,
+        })),
+      }]
 
   const service = new PublicObservationDigestService({
     llmGateway: { isConfigured: false } as never,
@@ -75,8 +85,8 @@ function makeForumService(params: {
         participant_count: params.participantCount,
         heat_score: params.heatScore,
       }),
-      getComments: vi.fn().mockResolvedValue({
-        items: Array.from({ length: params.commentCount }).map((_, i) => ({ body: `c${i + 1}` })),
+      getThreads: vi.fn().mockResolvedValue({
+        items: threadTurns,
         next_cursor: null,
       }),
     } as never,
@@ -145,9 +155,9 @@ describe('PublicObservationDigestService', () => {
     vi.restoreAllMocks()
   })
 
-  it('forum does not trigger when comment_count=11 and other thresholds are unmet', async () => {
+  it('forum does not trigger when thread_turn_count=11 and other thresholds are unmet', async () => {
     const { service, createPublicObservationMemory } = makeForumService({
-      commentCount: 11,
+      threadTurnCount: 11,
       participantCount: 3,
       heatScore: 29,
     })
@@ -161,9 +171,9 @@ describe('PublicObservationDigestService', () => {
     expect(createPublicObservationMemory).not.toHaveBeenCalled()
   })
 
-  it('forum triggers when comment_count=12', async () => {
+  it('forum triggers when thread_turn_count=12', async () => {
     const { service, createPublicObservationMemory } = makeForumService({
-      commentCount: 12,
+      threadTurnCount: 12,
       participantCount: 1,
       heatScore: 0,
     })
@@ -185,7 +195,7 @@ describe('PublicObservationDigestService', () => {
 
   it('forum triggers when participant_count=4', async () => {
     const { service, createPublicObservationMemory } = makeForumService({
-      commentCount: 0,
+      threadTurnCount: 0,
       participantCount: 4,
       heatScore: 0,
     })
@@ -223,8 +233,12 @@ describe('PublicObservationDigestService', () => {
           participant_count: 4,
           heat_score: 0,
         }),
-        getComments: vi.fn().mockResolvedValue({
-          items: [{ body: 'c1' }],
+        getThreads: vi.fn().mockResolvedValue({
+          items: [{
+            id: 'thread-1',
+            body: 'c1',
+            turns: [],
+          }],
           next_cursor: null,
         }),
       } as never,
@@ -252,7 +266,7 @@ describe('PublicObservationDigestService', () => {
 
   it('forum triggers when heat_score=30', async () => {
     const { service, createPublicObservationMemory } = makeForumService({
-      commentCount: 0,
+      threadTurnCount: 0,
       participantCount: 1,
       heatScore: 30,
     })
@@ -279,7 +293,7 @@ describe('PublicObservationDigestService', () => {
           participant_count: 4,
           heat_score: 0,
         }),
-        getComments: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
+        getThreads: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
       } as never,
       roomRepo: {} as never,
       messageRepo: {} as never,
@@ -354,7 +368,7 @@ describe('PublicObservationDigestService', () => {
     const now = new Date('2026-02-27T08:00:00.000Z')
     const lastCreatedAt = new Date(now.getTime() - 6 * 60 * 60 * 1000)
     const { service, createPublicObservationMemory } = makeForumService({
-      commentCount: 12,
+      threadTurnCount: 12,
       participantCount: 1,
       heatScore: 0,
       listMemoriesImpl: async (opts) => {
@@ -376,7 +390,7 @@ describe('PublicObservationDigestService', () => {
 
   it('skips duplicate replay when source_event_id already exists', async () => {
     const { service, createPublicObservationMemory } = makeForumService({
-      commentCount: 12,
+      threadTurnCount: 12,
       participantCount: 1,
       heatScore: 0,
       listMemoriesImpl: async (opts) => {
@@ -437,7 +451,7 @@ describe('PublicObservationDigestService', () => {
   it('rechecks cooldown before write to prevent TOCTOU duplicates', async () => {
     let typedCooldownReads = 0
     const { service, createPublicObservationMemory } = makeForumService({
-      commentCount: 12,
+      threadTurnCount: 12,
       participantCount: 1,
       heatScore: 0,
       typedLatestImpl: async () => {
@@ -463,7 +477,7 @@ describe('PublicObservationDigestService', () => {
 
   it('fails open when dedup/cooldown checks error (does not crash or block)', async () => {
     const { service, createPublicObservationMemory } = makeForumService({
-      commentCount: 12,
+      threadTurnCount: 12,
       participantCount: 1,
       heatScore: 0,
       listMemoriesImpl: async (_opts) => {

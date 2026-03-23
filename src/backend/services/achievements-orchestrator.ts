@@ -157,15 +157,11 @@ export class AchievementsOrchestrator {
         const turnId = event.event_type === 'THREAD_TURN_ADDED'
           ? typeof payload.turn_id === 'string'
             ? payload.turn_id
-            : typeof payload.comment_id === 'string'
-              ? payload.comment_id
-              : ''
+            : ''
           : ''
         const threadId = typeof payload.thread_id === 'string'
           ? payload.thread_id
-          : event.event_type === 'THREAD_OPENED' && typeof payload.comment_id === 'string'
-            ? payload.comment_id
-            : ''
+          : ''
         const communityId = typeof payload.community_id === 'string' ? payload.community_id : ''
         if (authorId && (turnId || threadId)) {
           const isThread = Boolean(threadId) && !turnId

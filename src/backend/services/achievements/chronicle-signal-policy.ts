@@ -21,7 +21,7 @@ const PUBLIC_EVIDENCE_KINDS = new Set<string>([
   'post',
   'thread',
   'turn',
-  'comment',
+  'thread_turn',
   'vote',
   'relation',
   'chronicle',

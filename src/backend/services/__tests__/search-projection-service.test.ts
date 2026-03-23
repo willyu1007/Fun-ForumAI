@@ -90,7 +90,7 @@ describe('SearchProjectionService', () => {
           tags: ['talk-show'],
           visibility: 'PUBLIC',
           state: 'APPROVED',
-          comment_count: 8,
+          thread_turn_count: 8,
           participant_count: 3,
           last_reply_at: new Date('2026-03-23T02:00:00.000Z'),
           created_at: new Date('2026-03-23T00:00:00.000Z'),
@@ -115,10 +115,15 @@ describe('SearchProjectionService', () => {
         }),
         findPublic: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
       } as never,
-      commentRepo: {
+      publicStageThreadRepo: {
         findById: vi.fn(),
-        findByPost: vi.fn(),
-        findByPostsSince: vi.fn(),
+        findByPostsSince: vi.fn().mockResolvedValue([]),
+        findPublicByAuthorAgent: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
+      } as never,
+      publicStageTurnRepo: {
+        findById: vi.fn(),
+        findByPostsSince: vi.fn().mockResolvedValue([]),
+        findPublicByAuthorAgent: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
       } as never,
       communityRepo: {
         findById: vi.fn().mockReturnValue(null),
@@ -147,7 +152,8 @@ describe('SearchProjectionService', () => {
           target_type: 'POST',
           community_id: 'community-1',
           post_id: 'post-1',
-          comment_id: null,
+          thread_id: null,
+          turn_id: null,
           episode_id: 'episode-1',
           selection_id: 'selection-1',
           episode_plan_id: 'plan-1',
@@ -283,33 +289,44 @@ describe('SearchProjectionService', () => {
             next_cursor: null,
           }),
       } as never,
-      commentRepo: {
+      publicStageThreadRepo: {
         findById: vi.fn(),
-        findByPost: vi.fn(),
         findByPostsSince: vi.fn().mockResolvedValue([
           {
-            id: 'comment-1',
+            id: 'thread-1',
             post_id: 'post-9',
-            parent_comment_id: null,
+            community_id: 'community-1',
             author_agent_id: 'agent-1',
             body: '代表性的评论金句，能把 talk show 的梗接回主线。',
             visibility: 'PUBLIC',
             state: 'APPROVED',
+            thread_state: 'OPEN',
+            reply_budget: 6,
+            active_route: null,
             created_at: new Date('2026-03-22T08:00:00.000Z'),
             updated_at: new Date('2026-03-22T08:00:00.000Z'),
           },
           {
-            id: 'comment-2',
+            id: 'thread-2',
             post_id: 'post-8',
-            parent_comment_id: null,
+            community_id: 'community-1',
             author_agent_id: 'agent-2',
             body: '其他 agent 的评论',
             visibility: 'PUBLIC',
             state: 'APPROVED',
+            thread_state: 'OPEN',
+            reply_budget: 6,
+            active_route: null,
             created_at: new Date('2026-03-22T09:00:00.000Z'),
             updated_at: new Date('2026-03-22T09:00:00.000Z'),
           },
         ]),
+        findPublicByAuthorAgent: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
+      } as never,
+      publicStageTurnRepo: {
+        findById: vi.fn(),
+        findByPostsSince: vi.fn().mockResolvedValue([]),
+        findPublicByAuthorAgent: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
       } as never,
       communityRepo: {
         findById: vi.fn().mockImplementation((communityId: string) => ({
@@ -395,6 +412,6 @@ describe('SearchProjectionService', () => {
       name: 'Community 1',
       slug: 'community-1',
     })
-    expect(doc?.representative_comment_text).toContain('代表性的评论金句')
+    expect(doc?.representative_thread_turn_text).toContain('代表性的评论金句')
   })
 })

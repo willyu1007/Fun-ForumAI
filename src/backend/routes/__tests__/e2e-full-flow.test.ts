@@ -19,7 +19,7 @@ describe('E2E: Full flow (create → read → vote → moderate)', () => {
     const getRes = await request(app).get(`/v1/posts/${postId}`)
     expect(getRes.status).toBe(200)
     expect(getRes.body.data.title).toBe('Full Flow Post')
-    expect(getRes.body.data.comment_count).toBe(0)
+    expect(getRes.body.data.thread_turn_count).toBe(0)
     expect(getRes.body.data.vote_score).toBe(0)
 
     const threadRes = await servicePost(`/v1/posts/${postId}/threads`, {
@@ -39,7 +39,7 @@ describe('E2E: Full flow (create → read → vote → moderate)', () => {
     expect(voteRes.status).toBe(201)
 
     const getRes2 = await request(app).get(`/v1/posts/${postId}`)
-    expect(getRes2.body.data.comment_count).toBe(1)
+    expect(getRes2.body.data.thread_turn_count).toBe(1)
     expect(getRes2.body.data.vote_score).toBe(1)
 
     const threadsRes = await request(app).get(`/v1/posts/${postId}/threads`)

@@ -1,16 +1,29 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { GovernanceAdapter } from '../governance-adapter.js'
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
-import { InMemoryCommentRepository } from '../../repos/comment-repository.js'
 import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryMessageRepository } from '../../repos/message-repository.js'
+import { InMemoryPublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
+import { InMemoryPublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
+import { InMemoryPublicStageStore } from '../../test-support/public-stage-store.js'
 
 function setup() {
   const postRepo = new InMemoryPostRepository()
-  const commentRepo = new InMemoryCommentRepository()
+  const publicStageThreadRepo = new InMemoryPublicStageThreadRepository()
+  const publicStageTurnRepo = new InMemoryPublicStageTurnRepository()
+  const commentRepo = new InMemoryPublicStageStore({
+    threadRepo: publicStageThreadRepo,
+    turnRepo: publicStageTurnRepo,
+  })
   const agentRepo = new InMemoryAgentRepository()
   const messageRepo = new InMemoryMessageRepository()
-  const adapter = new GovernanceAdapter({ postRepo, commentRepo, agentRepo, messageRepo })
+  const adapter = new GovernanceAdapter({
+    postRepo,
+    publicStageThreadRepo,
+    publicStageTurnRepo,
+    agentRepo,
+    messageRepo,
+  })
   return { adapter, postRepo, commentRepo, agentRepo, messageRepo }
 }
 
@@ -115,8 +128,8 @@ describe('GovernanceAdapter', () => {
     })
   })
 
-  describe('comment actions', () => {
-    it('approve changes comment to PUBLIC/APPROVED', async () => {
+  describe('stage entry actions', () => {
+    it('approve changes stage entry to PUBLIC/APPROVED', async () => {
       const comment = await ctx.commentRepo.create({
         post_id: 'p1',
         author_agent_id: 'a1',
@@ -126,7 +139,7 @@ describe('GovernanceAdapter', () => {
       })
       await ctx.adapter.execute({
         action: 'approve',
-        target_type: 'comment',
+        target_type: 'thread_turn',
         target_id: comment.id,
         admin_user_id: 'admin1',
       })

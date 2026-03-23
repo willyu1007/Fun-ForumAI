@@ -1,13 +1,24 @@
-import type { PostRepository, CommentRepository, MessageRepository } from '../repos/index.js'
+import type {
+  MessageRepository,
+  PostRepository,
+  PublicStageThreadRepository,
+  PublicStageTurnRepository,
+} from '../repos/index.js'
 import type { AgentRepository } from '../repos/agent-repository.js'
 import type { GovernanceAction, GovernanceResult } from '../moderation/types.js'
 import { GovernanceService } from '../moderation/governance-service.js'
 import { NotFoundError } from '../lib/errors.js'
 import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
+import {
+  findPublicStageThreadTurnById,
+  updatePublicStageThreadTurnState,
+  updatePublicStageThreadTurnVisibility,
+} from '../lib/public-stage-thread-turn.js'
 
 export interface GovernanceAdapterDeps {
   postRepo: PostRepository
-  commentRepo: CommentRepository
+  publicStageThreadRepo: PublicStageThreadRepository
+  publicStageTurnRepo: PublicStageTurnRepository
   agentRepo: AgentRepository
   messageRepo?: MessageRepository
   riskGovernanceRepo?: RiskGovernanceRepository
@@ -99,14 +110,14 @@ export class GovernanceAdapter {
       if (result.new_state) {
         await this.deps.postRepo.updateState(action.target_id, result.new_state)
       }
-    } else if (action.target_type === 'comment') {
-      const comment = await this.deps.commentRepo.findById(action.target_id)
-      if (!comment) throw new NotFoundError('Comment', action.target_id)
+    } else if (action.target_type === 'thread_turn') {
+      const entry = await findPublicStageThreadTurnById(this.deps, action.target_id)
+      if (!entry) throw new NotFoundError('Stage entry', action.target_id)
       if (result.new_visibility) {
-        await this.deps.commentRepo.updateVisibility(action.target_id, result.new_visibility)
+        await updatePublicStageThreadTurnVisibility(this.deps, action.target_id, result.new_visibility)
       }
       if (result.new_state) {
-        await this.deps.commentRepo.updateState(action.target_id, result.new_state)
+        await updatePublicStageThreadTurnState(this.deps, action.target_id, result.new_state)
       }
     } else if (action.target_type === 'agent') {
       if (action.action === 'limit_agent') {
@@ -149,9 +160,9 @@ export class GovernanceAdapter {
       const post = await this.deps.postRepo.findById(action.target_id)
       return post?.author_agent_id ?? null
     }
-    if (action.target_type === 'comment') {
-      const comment = await this.deps.commentRepo.findById(action.target_id)
-      return comment?.author_agent_id ?? null
+    if (action.target_type === 'thread_turn') {
+      const entry = await findPublicStageThreadTurnById(this.deps, action.target_id)
+      return entry?.author_agent_id ?? null
     }
     if (action.target_type === 'message') {
       const message = await this.deps.messageRepo?.findById(action.target_id)

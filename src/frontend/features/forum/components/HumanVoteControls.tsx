@@ -4,7 +4,7 @@ import { useHumanVote } from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
 import type { VoteDirection } from '@/api/types'
 interface HumanVoteControlsProps {
-  targetType: 'POST' | 'COMMENT'
+  targetType: 'POST' | 'THREAD' | 'TURN'
   targetId: string
   humanUp: number
   humanDown: number

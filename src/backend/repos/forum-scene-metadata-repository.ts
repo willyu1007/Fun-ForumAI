@@ -8,7 +8,6 @@ export interface ForumSceneMetadataRepository {
   findByPostId(postId: string): Promise<ForumSceneMetadata | null>
   findByThreadId(threadId: string): Promise<ForumSceneMetadata | null>
   findByTurnId(turnId: string): Promise<ForumSceneMetadata | null>
-  findByCommentId(commentId: string): Promise<ForumSceneMetadata | null>
   findLatestByCommunityId(communityId: string): Promise<ForumSceneMetadata | null>
   listByEpisodeId(episodeId: string): Promise<ForumSceneMetadata[]>
   listByCommunityIdSince(communityId: string, since: Date): Promise<ForumSceneMetadata[]>
@@ -16,7 +15,6 @@ export interface ForumSceneMetadataRepository {
     post_id?: string | null
     thread_id?: string | null
     turn_id?: string | null
-    comment_id?: string | null
   }): Promise<void>
 }
 
@@ -30,7 +28,6 @@ export class InMemoryForumSceneMetadataRepository implements ForumSceneMetadataR
   private readonly byPostId = new Map<string, string>()
   private readonly byThreadId = new Map<string, string>()
   private readonly byTurnId = new Map<string, string>()
-  private readonly byCommentId = new Map<string, string>()
 
   async create(input: CreateForumSceneMetadataInput): Promise<ForumSceneMetadata> {
     const now = new Date()
@@ -43,7 +40,6 @@ export class InMemoryForumSceneMetadataRepository implements ForumSceneMetadataR
       post_id: input.post_id ?? null,
       thread_id: normalizedThreadId,
       turn_id: normalizedTurnId,
-      comment_id: input.comment_id ?? null,
       episode_id: input.episode_id,
       selection_id: input.selection_id,
       episode_plan_id: input.episode_plan_id,
@@ -81,12 +77,6 @@ export class InMemoryForumSceneMetadataRepository implements ForumSceneMetadataR
       }
       this.byTurnId.set(entity.turn_id, entity.id)
     }
-    if (entity.comment_id) {
-      if (this.byCommentId.has(entity.comment_id)) {
-        throw new Error(`ForumSceneMetadata already exists for comment ${entity.comment_id}`)
-      }
-      this.byCommentId.set(entity.comment_id, entity.id)
-    }
 
     this.store.set(entity.id, entity)
     return entity
@@ -104,13 +94,6 @@ export class InMemoryForumSceneMetadataRepository implements ForumSceneMetadataR
 
   async findByTurnId(turnId: string): Promise<ForumSceneMetadata | null> {
     const id = this.byTurnId.get(turnId)
-    return id ? this.store.get(id) ?? null : null
-  }
-
-  async findByCommentId(commentId: string): Promise<ForumSceneMetadata | null> {
-    const id = this.byTurnId.get(commentId)
-      ?? this.byThreadId.get(commentId)
-      ?? this.byCommentId.get(commentId)
     return id ? this.store.get(id) ?? null : null
   }
 
@@ -137,7 +120,6 @@ export class InMemoryForumSceneMetadataRepository implements ForumSceneMetadataR
     post_id?: string | null
     thread_id?: string | null
     turn_id?: string | null
-    comment_id?: string | null
   }): Promise<void> {
     if (input.post_id) {
       const id = this.byPostId.get(input.post_id)
@@ -161,13 +143,6 @@ export class InMemoryForumSceneMetadataRepository implements ForumSceneMetadataR
       this.byTurnId.delete(input.turn_id)
       this.store.delete(id)
       return
-    }
-
-    if (input.comment_id) {
-      const id = this.byCommentId.get(input.comment_id)
-      if (!id) return
-      this.byCommentId.delete(input.comment_id)
-      this.store.delete(id)
     }
   }
 }

@@ -1,13 +1,15 @@
 import { NotFoundError, ValidationError } from '../lib/errors.js'
 import type {
-  CommentRepository,
   MessageRepository,
   PostRepository,
+  PublicStageThreadRepository,
+  PublicStageTurnRepository,
   RiskGovernanceRepository,
   RoomRepository,
 } from '../repos/index.js'
 import type { ChatService } from './chat-service.js'
 import type { ChatroomControlService } from './chatroom-control-service.js'
+import { listPublicStageThreadTurnsByPostsSince } from '../lib/public-stage-thread-turn.js'
 
 type HotTopicDistributionState = 'NORMAL' | 'NO_RECOMMEND' | 'BLOCKED'
 type HotTopicRestrictionState = 'NORMAL' | 'MANUAL_REVIEW_ONLY' | 'BLOCKED'
@@ -48,7 +50,8 @@ export interface HotTopicAlertsResult {
 
 interface HotTopicOpsServiceDeps {
   postRepo: PostRepository
-  commentRepo: CommentRepository
+  publicStageThreadRepo: PublicStageThreadRepository
+  publicStageTurnRepo: PublicStageTurnRepository
   messageRepo: MessageRepository
   roomRepo: RoomRepository
   riskRepo: RiskGovernanceRepository
@@ -296,11 +299,12 @@ export class HotTopicOpsService {
           ?? storedSignals?.distribution_state
           ?? 'NORMAL'
         const report_count_24h = await this.countRecentReportsByPost(post.id)
-        const approved_comment_count_last24h = (await this.deps.commentRepo.findByPostsSince(
+        const approved_thread_turn_count_last24h = (await listPublicStageThreadTurnsByPostsSince(
+          this.deps,
           [post.id],
           new Date(Date.now() - 24 * 60 * 60 * 1000),
-        )).filter((comment) => comment.state === 'APPROVED').length
-        const hot_score = approved_comment_count_last24h + report_count_24h * 5
+        )).filter((threadTurn) => threadTurn.state === 'APPROVED').length
+        const hot_score = approved_thread_turn_count_last24h + report_count_24h * 5
         const sampled_review_required =
           latestSignals?.sampled_review_required
           ?? storedSignals?.sampled_review_required
@@ -448,11 +452,12 @@ export class HotTopicOpsService {
       },
     })
 
-    const [riskEvents, caseMaps, report_count_24h, recentComments] = await Promise.all([
+    const [riskEvents, caseMaps, report_count_24h, recentThreadTurns] = await Promise.all([
       this.deps.riskRepo.listRiskEvents({ limit: 400, cursor: undefined }),
       this.listHotTopicCases(),
       this.countRecentReportsByPost(post.id),
-      this.deps.commentRepo.findByPostsSince(
+      listPublicStageThreadTurnsByPostsSince(
+        this.deps,
         [post.id],
         new Date(Date.now() - 24 * 60 * 60 * 1000),
       ),
@@ -468,8 +473,8 @@ export class HotTopicOpsService {
       ?? latestSignals?.distribution_state
       ?? storedSignals?.distribution_state
       ?? 'NORMAL'
-    const approved_comment_count_last24h = recentComments.filter((comment) => comment.state === 'APPROVED').length
-    const hot_score = approved_comment_count_last24h + report_count_24h * 5
+    const approved_thread_turn_count_last24h = recentThreadTurns.filter((threadTurn) => threadTurn.state === 'APPROVED').length
+    const hot_score = approved_thread_turn_count_last24h + report_count_24h * 5
     const sampled_review_required =
       latestSignals?.sampled_review_required
       ?? storedSignals?.sampled_review_required

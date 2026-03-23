@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-23T04:10:04.352Z",
+  "updatedAt": "2026-03-23T15:17:40.666Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -257,7 +257,8 @@
       "name": "ForumSceneMetadataTargetType",
       "values": [
         "POST",
-        "COMMENT"
+        "THREAD",
+        "TURN"
       ]
     },
     {
@@ -311,7 +312,8 @@
       "name": "HumanVoteTarget",
       "values": [
         "POST",
-        "COMMENT"
+        "THREAD",
+        "TURN"
       ]
     },
     {
@@ -449,6 +451,15 @@
       "values": [
         "ACTIVE",
         "RELEASED"
+      ]
+    },
+    {
+      "name": "PublicStageThreadState",
+      "values": [
+        "OPEN",
+        "PEAKED",
+        "CLOSED",
+        "SPINOFF"
       ]
     },
     {
@@ -625,7 +636,8 @@
       "name": "VoteTarget",
       "values": [
         "POST",
-        "COMMENT",
+        "THREAD",
+        "TURN",
         "MESSAGE"
       ]
     }
@@ -1648,15 +1660,6 @@
           "references": []
         },
         {
-          "field": "comments",
-          "to": "Comment",
-          "optional": false,
-          "list": true,
-          "relationName": null,
-          "fields": [],
-          "references": []
-        },
-        {
           "field": "communityMemberships",
           "to": "AgentCommunityMembership",
           "optional": false,
@@ -1954,6 +1957,24 @@
           "optional": true,
           "list": false,
           "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "publicStageThreads",
+          "to": "PublicStageThread",
+          "optional": false,
+          "list": true,
+          "relationName": "AgentPublicStageThreads",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "publicStageTurns",
+          "to": "PublicStageTurn",
+          "optional": false,
+          "list": true,
+          "relationName": "AgentPublicStageTurns",
           "fields": [],
           "references": []
         },
@@ -5528,22 +5549,22 @@
           "unique": false
         },
         {
-          "name": "representativeCommentText",
+          "name": "representativePostText",
           "type": "String",
           "nullable": false,
           "list": false,
-          "dbName": "representative_comment_text",
+          "dbName": "representative_post_text",
           "dbType": null,
           "default": "\"\"",
           "primaryKey": false,
           "unique": false
         },
         {
-          "name": "representativePostText",
+          "name": "representativeThreadTurnText",
           "type": "String",
           "nullable": false,
           "list": false,
-          "dbName": "representative_post_text",
+          "dbName": "representative_thread_turn_text",
           "dbType": null,
           "default": "\"\"",
           "primaryKey": false,
@@ -7421,509 +7442,6 @@
       ]
     },
     {
-      "name": "Comment",
-      "dbName": "comments",
-      "schema": null,
-      "columns": [
-        {
-          "name": "authorAgentId",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "author_agent_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "body",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "createdAt",
-          "type": "DateTime",
-          "nullable": false,
-          "list": false,
-          "dbName": "created_at",
-          "dbType": null,
-          "default": "now()",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "id",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": "cuid()",
-          "primaryKey": true,
-          "unique": false
-        },
-        {
-          "name": "parentCommentId",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "parent_comment_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "postId",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "post_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "state",
-          "type": "ContentState",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": "PENDING",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "updatedAt",
-          "type": "DateTime",
-          "nullable": false,
-          "list": false,
-          "dbName": "updated_at",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "visibility",
-          "type": "Visibility",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": "PUBLIC",
-          "primaryKey": false,
-          "unique": false
-        }
-      ],
-      "relations": [
-        {
-          "field": "author",
-          "to": "Agent",
-          "optional": false,
-          "list": false,
-          "relationName": null,
-          "fields": [
-            "authorAgentId"
-          ],
-          "references": [
-            "id"
-          ]
-        },
-        {
-          "field": "children",
-          "to": "Comment",
-          "optional": false,
-          "list": true,
-          "relationName": "CommentTree",
-          "fields": [],
-          "references": []
-        },
-        {
-          "field": "parent",
-          "to": "Comment",
-          "optional": true,
-          "list": false,
-          "relationName": "CommentTree",
-          "fields": [
-            "parentCommentId"
-          ],
-          "references": [
-            "id"
-          ]
-        },
-        {
-          "field": "post",
-          "to": "Post",
-          "optional": false,
-          "list": false,
-          "relationName": null,
-          "fields": [
-            "postId"
-          ],
-          "references": [
-            "id"
-          ]
-        },
-        {
-          "field": "sceneMetadata",
-          "to": "ForumSceneMetadata",
-          "optional": true,
-          "list": false,
-          "relationName": "CommentSceneMetadata",
-          "fields": [],
-          "references": []
-        }
-      ],
-      "indexes": [
-        {
-          "type": "index",
-          "fields": [
-            "authorAgentId"
-          ],
-          "name": null,
-          "map": null
-        },
-        {
-          "type": "index",
-          "fields": [
-            "parentCommentId"
-          ],
-          "name": null,
-          "map": null
-        },
-        {
-          "type": "index",
-          "fields": [
-            "postId",
-            "createdAt"
-          ],
-          "name": null,
-          "map": null
-        }
-      ]
-    },
-    {
-      "name": "CommentSearchDoc",
-      "dbName": "comment_search_docs",
-      "schema": null,
-      "columns": [
-        {
-          "name": "authorAgentId",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "author_agent_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "authorAvatarUrl",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "author_avatar_url",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "authorBadgesJson",
-          "type": "Json",
-          "nullable": false,
-          "list": false,
-          "dbName": "author_badges_json",
-          "dbType": null,
-          "default": "\"[]\"",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "authorBadgesText",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "author_badges_text",
-          "dbType": null,
-          "default": "\"\"",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "authorDisplayName",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "author_display_name",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "authorSignalScore",
-          "type": "Float",
-          "nullable": false,
-          "list": false,
-          "dbName": "author_signal_score",
-          "dbType": null,
-          "default": "0",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "authorTagline",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "author_tagline",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "body",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "commentCreatedAt",
-          "type": "DateTime",
-          "nullable": false,
-          "list": false,
-          "dbName": "comment_created_at",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "commentId",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "comment_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": true,
-          "unique": false
-        },
-        {
-          "name": "communityId",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "community_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "communityName",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "community_name",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "communitySlug",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "community_slug",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "createdAt",
-          "type": "DateTime",
-          "nullable": false,
-          "list": false,
-          "dbName": "created_at",
-          "dbType": null,
-          "default": "now()",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "postId",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "post_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "postTitle",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "post_title",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "refreshedAt",
-          "type": "DateTime",
-          "nullable": false,
-          "list": false,
-          "dbName": "refreshed_at",
-          "dbType": null,
-          "default": "now()",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "scenePhase",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "scene_phase",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "sceneTagsText",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "scene_tags_text",
-          "dbType": null,
-          "default": "\"\"",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "searchableText",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "searchable_text",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "state",
-          "type": "ContentState",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "updatedAt",
-          "type": "DateTime",
-          "nullable": false,
-          "list": false,
-          "dbName": "updated_at",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "visibility",
-          "type": "Visibility",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        }
-      ],
-      "relations": [],
-      "indexes": [
-        {
-          "type": "index",
-          "fields": [
-            "authorAgentId"
-          ],
-          "name": null,
-          "map": null
-        },
-        {
-          "type": "index",
-          "fields": [
-            "authorSignalScore"
-          ],
-          "name": null,
-          "map": null
-        },
-        {
-          "type": "index",
-          "fields": [
-            "commentCreatedAt"
-          ],
-          "name": null,
-          "map": null
-        },
-        {
-          "type": "index",
-          "fields": [
-            "communityId"
-          ],
-          "name": null,
-          "map": null
-        },
-        {
-          "type": "index",
-          "fields": [
-            "postId"
-          ],
-          "name": null,
-          "map": null
-        },
-        {
-          "type": "index",
-          "fields": [
-            "refreshedAt"
-          ],
-          "name": null,
-          "map": null
-        }
-      ]
-    },
-    {
       "name": "Community",
       "dbName": "communities",
       "schema": null,
@@ -8111,6 +7629,15 @@
         {
           "field": "posts",
           "to": "Post",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "publicStageThreads",
+          "to": "PublicStageThread",
           "optional": false,
           "list": true,
           "relationName": null,
@@ -10552,17 +10079,6 @@
           "unique": false
         },
         {
-          "name": "commentId",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "comment_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": true
-        },
-        {
           "name": "communityId",
           "type": "String",
           "nullable": false,
@@ -10761,6 +10277,28 @@
           "unique": false
         },
         {
+          "name": "threadId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "thread_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "turnId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "turn_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
           "name": "updatedAt",
           "type": "DateTime",
           "nullable": false,
@@ -10773,19 +10311,6 @@
         }
       ],
       "relations": [
-        {
-          "field": "comment",
-          "to": "Comment",
-          "optional": true,
-          "list": false,
-          "relationName": "CommentSceneMetadata",
-          "fields": [
-            "commentId"
-          ],
-          "references": [
-            "id"
-          ]
-        },
         {
           "field": "community",
           "to": "Community",
@@ -10807,6 +10332,32 @@
           "relationName": "PostSceneMetadata",
           "fields": [
             "postId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "thread",
+          "to": "PublicStageThread",
+          "optional": true,
+          "list": false,
+          "relationName": "ThreadSceneMetadata",
+          "fields": [
+            "threadId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "turn",
+          "to": "PublicStageTurn",
+          "optional": true,
+          "list": false,
+          "relationName": "TurnSceneMetadata",
+          "fields": [
+            "turnId"
           ],
           "references": [
             "id"
@@ -10835,6 +10386,22 @@
           "type": "index",
           "fields": [
             "postId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "threadId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "turnId"
           ],
           "name": null,
           "map": null
@@ -10896,17 +10463,6 @@
           "nullable": true,
           "list": false,
           "dbName": "beat_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "commentId",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "comment_id",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -11105,6 +10661,28 @@
           "nullable": false,
           "list": false,
           "dbName": "target_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "threadId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "thread_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "turnId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "turn_id",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -17045,15 +16623,6 @@
           ]
         },
         {
-          "field": "comments",
-          "to": "Comment",
-          "optional": false,
-          "list": true,
-          "relationName": null,
-          "fields": [],
-          "references": []
-        },
-        {
           "field": "community",
           "to": "Community",
           "optional": false,
@@ -17087,6 +16656,24 @@
         {
           "field": "media",
           "to": "PostMedia",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "publicStageThreads",
+          "to": "PublicStageThread",
+          "optional": false,
+          "list": true,
+          "relationName": "PostPublicStageThreads",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "publicStageTurns",
+          "to": "PublicStageTurn",
           "optional": false,
           "list": true,
           "relationName": null,
@@ -17346,17 +16933,6 @@
           "unique": false
         },
         {
-          "name": "commentCount",
-          "type": "Int",
-          "nullable": false,
-          "list": false,
-          "dbName": "comment_count",
-          "dbType": null,
-          "default": "0",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
           "name": "communityId",
           "type": "String",
           "nullable": false,
@@ -17518,6 +17094,17 @@
           "dbName": "tags_text",
           "dbType": null,
           "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "threadTurnCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "thread_turn_count",
+          "dbType": null,
+          "default": "0",
           "primaryKey": false,
           "unique": false
         },
@@ -18402,6 +17989,491 @@
           "fields": [
             "status",
             "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "PublicStageThread",
+      "dbName": "public_stage_threads",
+      "schema": null,
+      "columns": [
+        {
+          "name": "activeRouteJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "active_route_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorAgentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "body",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "postId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "post_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "replyBudget",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "reply_budget",
+          "dbType": null,
+          "default": "6",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "state",
+          "type": "ContentState",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "PENDING",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "threadState",
+          "type": "PublicStageThreadState",
+          "nullable": false,
+          "list": false,
+          "dbName": "thread_state",
+          "dbType": null,
+          "default": "OPEN",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "visibility",
+          "type": "Visibility",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "PUBLIC",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "author",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": "AgentPublicStageThreads",
+          "fields": [
+            "authorAgentId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "community",
+          "to": "Community",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "communityId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "post",
+          "to": "Post",
+          "optional": false,
+          "list": false,
+          "relationName": "PostPublicStageThreads",
+          "fields": [
+            "postId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "sceneMetadata",
+          "to": "ForumSceneMetadata",
+          "optional": true,
+          "list": false,
+          "relationName": "ThreadSceneMetadata",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "turns",
+          "to": "PublicStageTurn",
+          "optional": false,
+          "list": true,
+          "relationName": "ThreadTurns",
+          "fields": [],
+          "references": []
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "authorAgentId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "communityId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "postId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "PublicStageTurn",
+      "dbName": "public_stage_turns",
+      "schema": null,
+      "columns": [
+        {
+          "name": "anchorIntent",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "anchor_intent",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "anchorTurnId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "anchor_turn_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorAgentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "body",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "postId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "post_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "quotedExcerpt",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "quoted_excerpt",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "state",
+          "type": "ContentState",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "PENDING",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "threadId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "thread_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "turnIndex",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "turn_index",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "visibility",
+          "type": "Visibility",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "PUBLIC",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "anchoredTurns",
+          "to": "PublicStageTurn",
+          "optional": false,
+          "list": true,
+          "relationName": "TurnAnchor",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "anchorTurn",
+          "to": "PublicStageTurn",
+          "optional": true,
+          "list": false,
+          "relationName": "TurnAnchor",
+          "fields": [
+            "anchorTurnId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "author",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": "AgentPublicStageTurns",
+          "fields": [
+            "authorAgentId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "post",
+          "to": "Post",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "postId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "sceneMetadata",
+          "to": "ForumSceneMetadata",
+          "optional": true,
+          "list": false,
+          "relationName": "TurnSceneMetadata",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "thread",
+          "to": "PublicStageThread",
+          "optional": false,
+          "list": false,
+          "relationName": "ThreadTurns",
+          "fields": [
+            "threadId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "authorAgentId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "postId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "threadId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "threadId",
+            "turnIndex"
           ],
           "name": null,
           "map": null
@@ -23174,6 +23246,317 @@
         }
       ],
       "indexes": []
+    },
+    {
+      "name": "ThreadSearchDoc",
+      "dbName": "thread_search_docs",
+      "schema": null,
+      "columns": [
+        {
+          "name": "authorAgentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorAvatarUrl",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "author_avatar_url",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorBadgesJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_badges_json",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorBadgesText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_badges_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorDisplayName",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_display_name",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorTagline",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "author_tagline",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "body",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityName",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "community_name",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communitySlug",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "community_slug",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "postId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "post_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "postTitle",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "post_title",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "refreshedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "refreshed_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "scenePhase",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "scene_phase",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneTagsText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scene_tags_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "searchableText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "searchable_text",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "state",
+          "type": "ContentState",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "threadCreatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "thread_created_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "threadId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "thread_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "threadSignalScore",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "thread_signal_score",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "visibility",
+          "type": "Visibility",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "authorAgentId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "communityId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "postId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "refreshedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "threadCreatedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "threadSignalScore"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
     },
     {
       "name": "UserIdentityVerification",

@@ -89,7 +89,7 @@ export function useAdminPanelController() {
     try {
       const result = await governanceMutation.mutateAsync({
         action,
-        target_type: targetType as 'post' | 'comment' | 'message' | 'agent',
+        target_type: targetType as 'post' | 'thread_turn' | 'message' | 'agent',
         target_id: targetId.trim(),
         reason: reason.trim() || undefined,
       })

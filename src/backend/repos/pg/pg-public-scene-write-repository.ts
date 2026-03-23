@@ -2,17 +2,21 @@ import {
   Prisma,
   type Post as PrismaPost,
   type PrismaClient,
+  type PublicStageThread as PrismaPublicStageThread,
+  type PublicStageTurn as PrismaPublicStageTurn,
 } from '@prisma/client'
 import type {
   AgentRun,
-  Comment,
   CreateAgentRunInput,
-  CreateCommentInput,
   CreateEventInput,
   CreateForumSceneMetadataInput,
   CreatePostInput,
+  CreatePublicStageThreadInput,
+  CreatePublicStageTurnInput,
   DomainEvent,
   Post,
+  PublicStageThread,
+  PublicStageTurn,
 } from '../types.js'
 import type { PublicSceneWriteRepository } from '../public-scene-write-repository.js'
 import {
@@ -58,7 +62,6 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
           targetType: 'POST',
           communityId: input.scene_metadata.community_id,
           postId: postRow.id,
-          commentId: null,
           episodeId: input.scene_metadata.episode_id,
           selectionId: input.scene_metadata.selection_id,
           episodePlanId: input.scene_metadata.episode_plan_id,
@@ -126,62 +129,36 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
     }
   }
 
-  async createComment(input: {
-    comment: CreateCommentInput
+  async createThread(input: {
+    thread: CreatePublicStageThreadInput
     scene_metadata: CreateForumSceneMetadataInput
     event: CreateEventInput
-  }): Promise<{ comment: Comment; event: DomainEvent }> {
+  }): Promise<{ thread: PublicStageThread; event: DomainEvent }> {
     const result = await this.deps.prisma.$transaction(async (tx) => {
-      const parentThread = input.comment.parent_comment_id
-        ? await tx.publicStageThread.findUnique({ where: { id: input.comment.parent_comment_id } })
-        : null
-      const parentTurn = input.comment.parent_comment_id && !parentThread
-        ? await tx.publicStageTurn.findUnique({ where: { id: input.comment.parent_comment_id } })
-        : null
-
-      if (input.comment.parent_comment_id && !parentThread && !parentTurn) {
-        throw new Error(`Parent comment not found: ${input.comment.parent_comment_id}`)
-      }
-
-      const createdTarget = !input.comment.parent_comment_id
-        ? await tx.publicStageThread.create({
-            data: {
-              ...(input.comment.id ? { id: input.comment.id } : {}),
-              postId: input.comment.post_id,
-              communityId: input.scene_metadata.community_id,
-              authorAgentId: input.comment.author_agent_id,
-              body: input.comment.body,
-              visibility: input.comment.visibility,
-              state: input.comment.state,
-              threadState: 'OPEN',
-              replyBudget: 6,
-              activeRouteJson: Prisma.DbNull,
-            },
-          })
-        : await tx.publicStageTurn.create({
-            data: {
-              ...(input.comment.id ? { id: input.comment.id } : {}),
-              threadId: parentThread?.id ?? parentTurn!.threadId,
-              postId: input.comment.post_id,
-              authorAgentId: input.comment.author_agent_id,
-              turnIndex: await tx.publicStageTurn.count({
-                where: { threadId: parentThread?.id ?? parentTurn!.threadId },
-              }) + 1,
-              anchorTurnId: parentTurn?.id ?? null,
-              body: input.comment.body,
-              visibility: input.comment.visibility,
-              state: input.comment.state,
-            },
-          })
+      const threadRow = await tx.publicStageThread.create({
+        data: {
+          ...(input.thread.id ? { id: input.thread.id } : {}),
+          postId: input.thread.post_id,
+          communityId: input.thread.community_id,
+          authorAgentId: input.thread.author_agent_id,
+          body: input.thread.body,
+          visibility: input.thread.visibility,
+          state: input.thread.state,
+          threadState: input.thread.thread_state ?? 'OPEN',
+          replyBudget: input.thread.reply_budget ?? 6,
+          activeRouteJson: input.thread.active_route === null || input.thread.active_route === undefined
+            ? Prisma.DbNull
+            : (input.thread.active_route as Prisma.InputJsonValue),
+        },
+      })
 
       await tx.forumSceneMetadata.create({
         data: {
-          targetType: input.comment.parent_comment_id ? 'TURN' : 'THREAD',
+          targetType: 'THREAD',
           communityId: input.scene_metadata.community_id,
-          postId: input.comment.post_id,
-          threadId: input.comment.parent_comment_id ? null : createdTarget.id,
-          turnId: input.comment.parent_comment_id ? createdTarget.id : null,
-          commentId: null,
+          postId: input.thread.post_id,
+          threadId: threadRow.id,
+          turnId: null,
           episodeId: input.scene_metadata.episode_id,
           selectionId: input.scene_metadata.selection_id,
           episodePlanId: input.scene_metadata.episode_plan_id,
@@ -207,7 +184,7 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
           plane: toPrismaPlane(input.event.plane ?? 'DATA'),
           schemaVersion: input.event.schema_version ?? 'v1',
           communityId: input.event.community_id ?? input.scene_metadata.community_id,
-          postId: input.comment.post_id,
+          postId: input.thread.post_id,
           roomId: input.event.room_id ?? null,
           actorType: toPrismaActorType(input.event.actor_type ?? 'system'),
           actorId: input.event.actor_id ?? null,
@@ -218,36 +195,91 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
         },
       })
 
-      return { createdTarget, eventRow, parentId: input.comment.parent_comment_id ?? null }
+      return { threadRow, eventRow }
     })
 
     const event = PgEventRepository.toDomain(result.eventRow)
     this.deps.eventRepo.rememberPersisted(event)
 
     return {
-      comment: input.comment.parent_comment_id
-        ? toCompatTurnComment(result.createdTarget as unknown as {
-            id: string
-            threadId: string
-            postId: string
-            authorAgentId: string
-            anchorTurnId: string | null
-            body: string
-            visibility: Comment['visibility']
-            state: Comment['state']
-            createdAt: Date
-            updatedAt: Date
-          }, result.parentId)
-        : toCompatThreadComment(result.createdTarget as unknown as {
-            id: string
-            postId: string
-            authorAgentId: string
-            body: string
-            visibility: Comment['visibility']
-            state: Comment['state']
-            createdAt: Date
-            updatedAt: Date
-          }),
+      thread: this.toThread(result.threadRow),
+      event,
+    }
+  }
+
+  async createThreadTurn(input: {
+    turn: CreatePublicStageTurnInput
+    scene_metadata: CreateForumSceneMetadataInput
+    event: CreateEventInput
+  }): Promise<{ turn: PublicStageTurn; event: DomainEvent }> {
+    const result = await this.deps.prisma.$transaction(async (tx) => {
+      const turnRow = await tx.publicStageTurn.create({
+        data: {
+          ...(input.turn.id ? { id: input.turn.id } : {}),
+          threadId: input.turn.thread_id,
+          postId: input.turn.post_id,
+          authorAgentId: input.turn.author_agent_id,
+          turnIndex: input.turn.turn_index,
+          anchorTurnId: input.turn.anchor_turn_id ?? null,
+          anchorIntent: input.turn.anchor_intent ?? null,
+          quotedExcerpt: input.turn.quoted_excerpt ?? null,
+          body: input.turn.body,
+          visibility: input.turn.visibility,
+          state: input.turn.state,
+        },
+      })
+
+      await tx.forumSceneMetadata.create({
+        data: {
+          targetType: 'TURN',
+          communityId: input.scene_metadata.community_id,
+          postId: input.turn.post_id,
+          threadId: null,
+          turnId: turnRow.id,
+          episodeId: input.scene_metadata.episode_id,
+          selectionId: input.scene_metadata.selection_id,
+          episodePlanId: input.scene_metadata.episode_plan_id,
+          localIntentId: input.scene_metadata.local_intent_id,
+          directorSurface: input.scene_metadata.director_surface,
+          actorSurface: input.scene_metadata.actor_surface,
+          sceneTemplateId: input.scene_metadata.scene_template_id,
+          sceneTemplateVersion: input.scene_metadata.scene_template_version,
+          sceneBindingId: input.scene_metadata.scene_binding_id ?? null,
+          overlayId: input.scene_metadata.overlay_id ?? null,
+          beatId: input.scene_metadata.beat_id ?? null,
+          phase: input.scene_metadata.phase,
+          selectionMode: input.scene_metadata.selection_mode,
+          expiresAt: input.scene_metadata.expires_at ?? null,
+          payloadJson: input.scene_metadata.payload_json as Prisma.InputJsonValue,
+        },
+      })
+
+      const eventRow = await tx.event.create({
+        data: {
+          ...(input.event.id ? { id: input.event.id } : {}),
+          eventType: input.event.event_type,
+          plane: toPrismaPlane(input.event.plane ?? 'DATA'),
+          schemaVersion: input.event.schema_version ?? 'v1',
+          communityId: input.event.community_id ?? input.scene_metadata.community_id,
+          postId: input.turn.post_id,
+          roomId: input.event.room_id ?? null,
+          actorType: toPrismaActorType(input.event.actor_type ?? 'system'),
+          actorId: input.event.actor_id ?? null,
+          causeEventId: input.event.cause_event_id ?? null,
+          correlationId: input.event.correlation_id ?? null,
+          payloadJson: input.event.payload_json as Prisma.InputJsonValue,
+          idempotencyKey: input.event.idempotency_key ?? null,
+        },
+      })
+
+      return { turnRow, eventRow }
+    })
+
+    const event = PgEventRepository.toDomain(result.eventRow)
+    this.deps.eventRepo.rememberPersisted(event)
+
+    return {
+      turn: this.toTurn(result.turnRow),
       event,
     }
   }
@@ -269,58 +301,38 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
     }
   }
 
-}
-
-function toCompatThreadComment(row: {
-  id: string
-  postId: string
-  authorAgentId: string
-  body: string
-  visibility: Comment['visibility']
-  state: Comment['state']
-  createdAt: Date
-  updatedAt: Date
-}): Comment {
-  return {
-    id: row.id,
-    post_id: row.postId,
-    parent_comment_id: null,
-    thread_id: row.id,
-    comment_kind: 'THREAD',
-    anchor_comment_id: null,
-    author_agent_id: row.authorAgentId,
-    body: row.body,
-    visibility: row.visibility,
-    state: row.state,
-    created_at: row.createdAt,
-    updated_at: row.updatedAt,
+  private toThread(row: PrismaPublicStageThread): PublicStageThread {
+    return {
+      id: row.id,
+      post_id: row.postId,
+      community_id: row.communityId,
+      author_agent_id: row.authorAgentId,
+      body: row.body,
+      visibility: row.visibility,
+      state: row.state,
+      thread_state: row.threadState,
+      reply_budget: row.replyBudget,
+      active_route: (row.activeRouteJson as PublicStageThread['active_route']) ?? null,
+      created_at: row.createdAt,
+      updated_at: row.updatedAt,
+    }
   }
-}
 
-function toCompatTurnComment(row: {
-  id: string
-  threadId: string
-  postId: string
-  authorAgentId: string
-  anchorTurnId: string | null
-  body: string
-  visibility: Comment['visibility']
-  state: Comment['state']
-  createdAt: Date
-  updatedAt: Date
-}, parentId: string | null): Comment {
-  return {
-    id: row.id,
-    post_id: row.postId,
-    parent_comment_id: parentId ?? row.anchorTurnId ?? row.threadId,
-    thread_id: row.threadId,
-    comment_kind: 'TURN',
-    anchor_comment_id: row.anchorTurnId,
-    author_agent_id: row.authorAgentId,
-    body: row.body,
-    visibility: row.visibility,
-    state: row.state,
-    created_at: row.createdAt,
-    updated_at: row.updatedAt,
+  private toTurn(row: PrismaPublicStageTurn): PublicStageTurn {
+    return {
+      id: row.id,
+      thread_id: row.threadId,
+      post_id: row.postId,
+      author_agent_id: row.authorAgentId,
+      turn_index: row.turnIndex,
+      anchor_turn_id: row.anchorTurnId,
+      anchor_intent: row.anchorIntent,
+      quoted_excerpt: row.quotedExcerpt,
+      body: row.body,
+      visibility: row.visibility,
+      state: row.state,
+      created_at: row.createdAt,
+      updated_at: row.updatedAt,
+    }
   }
 }

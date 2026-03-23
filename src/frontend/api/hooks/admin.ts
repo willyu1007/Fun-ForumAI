@@ -159,7 +159,7 @@ export function useGovernanceAction() {
   return useMutation({
     mutationFn: (body: {
       action: GovernanceActionType
-      target_type: 'post' | 'comment' | 'message' | 'agent' | 'private_session' | 'notification' | 'config_revision'
+      target_type: 'post' | 'thread_turn' | 'message' | 'agent' | 'private_session' | 'notification' | 'config_revision'
       target_id: string
       reason?: string
     }) =>

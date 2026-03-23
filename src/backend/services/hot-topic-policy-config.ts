@@ -7,7 +7,7 @@ export interface CommunityHotTopicUserCopy {
   summary?: string
   community_banner?: string
   post_notice?: string
-  comment_notice?: string
+  thread_turn_notice?: string
   chat_notice?: string
   safety_notice?: string
 }
@@ -19,7 +19,7 @@ export interface CommunityHotTopicKeywordOverrides {
 }
 
 export interface CommunityHotTopicSamplingThresholds {
-  post_comment_count: number
+  post_thread_turn_count: number
   room_message_count_hour: number
   report_count_24h: number
 }
@@ -56,7 +56,7 @@ export const DEFAULT_COMMUNITY_HOT_TOPIC_POLICY_V1: CommunityHotTopicPolicyV1 = 
     deny: [],
   },
   sampling_thresholds: {
-    post_comment_count: 20,
+    post_thread_turn_count: 20,
     room_message_count_hour: 20,
     report_count_24h: 3,
   },
@@ -158,9 +158,9 @@ function normalizeSamplingThresholds(value: unknown): CommunityHotTopicSamplingT
     return { ...DEFAULT_COMMUNITY_HOT_TOPIC_POLICY_V1.sampling_thresholds }
   }
   return {
-    post_comment_count: normalizeSamplingThreshold(
-      record.post_comment_count,
-      DEFAULT_COMMUNITY_HOT_TOPIC_POLICY_V1.sampling_thresholds.post_comment_count,
+    post_thread_turn_count: normalizeSamplingThreshold(
+      record.post_thread_turn_count,
+      DEFAULT_COMMUNITY_HOT_TOPIC_POLICY_V1.sampling_thresholds.post_thread_turn_count,
     ),
     room_message_count_hour: normalizeSamplingThreshold(
       record.room_message_count_hour,
@@ -296,7 +296,7 @@ export function lintHotTopicPolicyV1(value: unknown): string[] {
     if (!thresholds) {
       errors.push('hot_topic_policy_v1.sampling_thresholds must be an object')
     } else {
-      for (const key of ['post_comment_count', 'room_message_count_hour', 'report_count_24h'] as const) {
+      for (const key of ['post_thread_turn_count', 'room_message_count_hour', 'report_count_24h'] as const) {
         if (thresholds[key] !== undefined
           && (typeof thresholds[key] !== 'number' || !Number.isFinite(thresholds[key]) || Number(thresholds[key]) < 0)) {
           errors.push(`hot_topic_policy_v1.sampling_thresholds.${key} must be a non-negative number`)

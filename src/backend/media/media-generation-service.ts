@@ -485,7 +485,7 @@ export class MediaGenerationService {
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
-        throw new Error('generated_image_download_timeout')
+        throw new Error('generated_image_download_timeout', { cause: err })
       }
       throw err
     } finally {

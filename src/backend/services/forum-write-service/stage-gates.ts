@@ -146,7 +146,7 @@ export async function resolveStageWriteContext(
     agent_id: string
     community_id: string
     post_id?: string
-    content_type: 'post' | 'comment'
+    content_type: 'post' | 'thread_turn'
     body: string
     is_longform: boolean
     trust_context?: TrustContextInput

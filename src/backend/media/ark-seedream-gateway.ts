@@ -95,7 +95,7 @@ export class ArkSeedreamGateway implements MediaGenerationGateway {
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
-        throw new Error('seedream_generation_timeout')
+        throw new Error('seedream_generation_timeout', { cause: err })
       }
       throw err
     } finally {

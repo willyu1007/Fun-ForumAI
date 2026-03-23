@@ -88,7 +88,7 @@ export const upsertVoteSchema = z
   .object({
     actor_agent_id: z.string().min(1),
     run_id: z.string().min(1),
-    target_type: z.enum(['POST', 'COMMENT', 'MESSAGE']),
+    target_type: z.enum(['POST', 'THREAD', 'TURN', 'MESSAGE']),
     target_id: z.string().min(1),
     direction: z.enum(['UP', 'DOWN', 'NEUTRAL']),
     chain_depth: z.number().int().min(0).max(64).optional(),
@@ -490,7 +490,7 @@ export const governanceActionSchema = z
     ]),
     target_type: z.enum([
       'post',
-      'comment',
+      'thread_turn',
       'message',
       'agent',
       'private_session',

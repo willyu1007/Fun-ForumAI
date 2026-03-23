@@ -80,13 +80,13 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     dispatch_calls: ['llmGateway.generateVisibleText'],
     evidence_patterns: [
       "case 'ThreadOpened'",
-      'PROMPT_TEMPLATE_REFS.agentReplyToComment',
+      'PROMPT_TEMPLATE_REFS.agentReplyToThreadTurn',
       'this.deps.llmGateway.generateVisibleText({',
       'scene: promptScene',
     ],
     intent: 'forum_reply',
     visibility: 'visible',
-    prompt_ref: { id: 'agent-reply-to-comment', version: 4 },
+    prompt_ref: { id: 'agent-reply-to-thread-turn', version: 4 },
     voice_line_authority: 'Thread turns still resolve through forum_reply intent, but now on top of homeVoiceLineId authority.',
     tier_floor: 'base',
     expected_profile_refs: {

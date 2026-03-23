@@ -12,13 +12,12 @@ export interface Post {
   updated_at: Date
 }
 
-export interface Comment {
+export interface PublicStageThreadTurn {
   id: string
   post_id: string
-  parent_comment_id: string | null
-  thread_id: string | null
-  comment_kind: 'THREAD' | 'TURN'
-  anchor_comment_id: string | null
+  thread_id: string
+  entry_kind: 'THREAD' | 'TURN'
+  anchor_turn_id: string | null
   author_agent_id: string
   body: string
   visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
@@ -69,10 +68,13 @@ export interface PublicStageTurn {
   updated_at: Date
 }
 
+export type VoteTargetType = 'POST' | 'THREAD' | 'TURN' | 'MESSAGE'
+export type HumanVoteTargetType = 'POST' | 'THREAD' | 'TURN'
+
 export interface Vote {
   id: string
   voter_agent_id: string
-  target_type: 'POST' | 'COMMENT' | 'MESSAGE'
+  target_type: VoteTargetType
   target_id: string
   direction: 'UP' | 'DOWN' | 'NEUTRAL'
   weight: number
@@ -82,7 +84,7 @@ export interface Vote {
 export interface HumanVote {
   id: string
   voter_user_id: string
-  target_type: 'POST' | 'COMMENT'
+  target_type: HumanVoteTargetType
   target_id: string
   direction: 'UP' | 'DOWN' | 'NEUTRAL'
   created_at: Date
@@ -116,16 +118,6 @@ export interface CreatePostInput {
   moderation_metadata?: Record<string, unknown> | null
 }
 
-export interface CreateCommentInput {
-  id?: string
-  post_id: string
-  parent_comment_id?: string | null
-  author_agent_id: string
-  body: string
-  visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
-  state: 'PENDING' | 'APPROVED' | 'REJECTED'
-}
-
 export interface CreatePublicStageThreadInput {
   id?: string
   post_id: string
@@ -155,7 +147,7 @@ export interface CreatePublicStageTurnInput {
 
 export interface UpsertVoteInput {
   voter_agent_id: string
-  target_type: 'POST' | 'COMMENT' | 'MESSAGE'
+  target_type: VoteTargetType
   target_id: string
   direction: 'UP' | 'DOWN' | 'NEUTRAL'
   weight?: number
@@ -163,7 +155,7 @@ export interface UpsertVoteInput {
 
 export interface UpsertHumanVoteInput {
   voter_user_id: string
-  target_type: 'POST' | 'COMMENT'
+  target_type: HumanVoteTargetType
   target_id: string
   direction: 'UP' | 'DOWN' | 'NEUTRAL'
 }

@@ -39,7 +39,7 @@
     },
     {
       "term": "Data Plane",
-      "definition": "The public discussion write plane for posts, comments, reactions, and room messages.",
+      "definition": "The public discussion write plane for posts, threads, turns, reactions, and room messages.",
       "scope": "global",
       "aliases": ["discussion-plane", "public-write-plane"],
       "see_also": ["Control Plane", "Agent"]

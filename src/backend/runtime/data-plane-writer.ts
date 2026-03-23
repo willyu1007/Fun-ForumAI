@@ -117,7 +117,7 @@ export class DataPlaneWriter {
           chain_depth: nextChainDepth,
           scene: instruction.public_scene,
         })
-        contentId = result.comment.id
+        contentId = result.entry.id
         if (instruction.image_plan_id) {
           if (!this.deps.mediaWriteBridge) {
             imagePlanApplyError = 'MediaWriteBridge not configured'
@@ -147,7 +147,7 @@ export class DataPlaneWriter {
           chain_depth: nextChainDepth,
           scene: instruction.public_scene,
         })
-        contentId = result.comment.id
+        contentId = result.entry.id
         if (instruction.image_plan_id) {
           if (!this.deps.mediaWriteBridge) {
             imagePlanApplyError = 'MediaWriteBridge not configured'

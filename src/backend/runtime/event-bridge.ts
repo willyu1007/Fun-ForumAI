@@ -1,10 +1,15 @@
 import type { EventPayload, DomainEventType } from '../allocator/types.js'
 import type { PostRepository } from '../repos/post-repository.js'
-import type { CommentRepository } from '../repos/comment-repository.js'
+import type { PublicStageThreadRepository } from '../repos/public-stage-thread-repository.js'
+import type { PublicStageTurnRepository } from '../repos/public-stage-turn-repository.js'
 import type { DomainEvent } from '../repos/types.js'
 import type { RuntimeEventQueue } from './event-queue.js'
 import { computeControversyScore } from './controversy-score.js'
 import { getEventRouteRule } from './event-routing-policy.js'
+import {
+  findPublicStageThreadTurnById,
+  listPublicStageThreadTurnsByPost,
+} from '../lib/public-stage-thread-turn.js'
 
 const THREAD_PARTICIPANTS_PAGE_SIZE = 200
 const THREAD_PARTICIPANTS_MAX_PAGES = 3
@@ -12,7 +17,8 @@ const THREAD_PARTICIPANTS_MAX_UNIQUE_AUTHORS = 50
 
 interface EventBridgeDeps {
   postRepo: PostRepository
-  commentRepo: CommentRepository
+  publicStageThreadRepo: PublicStageThreadRepository
+  publicStageTurnRepo: PublicStageTurnRepository
 }
 
 /**
@@ -103,11 +109,11 @@ export class EventBridge {
   }
 
   private async enrichThreadEvent(payload: EventPayload): Promise<EventPayload> {
-    const targetCommentId = payload.turn_id ?? payload.thread_id ?? payload.comment_id
-    const comment = targetCommentId
-      ? await this.deps.commentRepo.findById(targetCommentId)
+    const targetEntryId = payload.turn_id ?? payload.thread_id
+    const entry = targetEntryId
+      ? await findPublicStageThreadTurnById(this.deps, targetEntryId)
       : null
-    const postId = comment?.post_id ?? payload.post_id
+    const postId = entry?.post_id ?? payload.post_id
     if (!postId) return payload
 
     const [post, threadParticipants] = await Promise.all([
@@ -117,21 +123,20 @@ export class EventBridge {
 
     return {
       ...payload,
-      comment_id: comment?.id ?? payload.comment_id,
       thread_id:
-        comment?.comment_kind === 'THREAD'
-          ? comment.id
-          : comment?.thread_id ?? payload.thread_id,
+        entry?.entry_kind === 'THREAD'
+          ? entry.id
+          : entry?.thread_id ?? payload.thread_id,
       turn_id:
-        comment?.comment_kind === 'TURN'
-          ? comment.id
+        entry?.entry_kind === 'TURN'
+          ? entry.id
           : payload.turn_id,
       post_id: postId,
       community_id: post?.community_id ?? payload.community_id,
-      author_agent_id: comment?.author_agent_id ?? payload.author_agent_id,
+      author_agent_id: entry?.author_agent_id ?? payload.author_agent_id,
       tags: post?.tags ?? payload.tags,
       thread_participants: threadParticipants,
-      controversy_score: computeControversyScore(comment?.body ?? ''),
+      controversy_score: computeControversyScore(entry?.body ?? ''),
     }
   }
 
@@ -154,23 +159,23 @@ export class EventBridge {
       }
     }
 
-    if (payload.target_type === 'COMMENT') {
-      const comment = await this.deps.commentRepo.findById(payload.target_id)
-      if (!comment) return payload
+    if (payload.target_type === 'THREAD' || payload.target_type === 'TURN') {
+      const entry = await findPublicStageThreadTurnById(this.deps, payload.target_id)
+      if (!entry || entry.entry_kind !== payload.target_type) return payload
 
       const [post, threadParticipants] = await Promise.all([
-        this.deps.postRepo.findById(comment.post_id),
-        this.collectThreadParticipants(comment.post_id),
+        this.deps.postRepo.findById(entry.post_id),
+        this.collectThreadParticipants(entry.post_id),
       ])
 
       return {
         ...payload,
-        post_id: comment.post_id,
+        post_id: entry.post_id,
         community_id: post?.community_id ?? payload.community_id,
         tags: post?.tags ?? payload.tags,
-        target_author_agent_id: payload.target_author_agent_id ?? comment.author_agent_id,
+        target_author_agent_id: payload.target_author_agent_id ?? entry.author_agent_id,
         thread_participants: threadParticipants,
-        controversy_score: computeControversyScore(comment.body),
+        controversy_score: computeControversyScore(entry.body),
       }
     }
 
@@ -181,29 +186,16 @@ export class EventBridge {
   private async collectThreadParticipants(postId: string): Promise<string[]> {
     const participants: string[] = []
     const seen = new Set<string>()
-    let cursor: string | undefined
-    let scannedPages = 0
+    const threadTurns = await listPublicStageThreadTurnsByPost(this.deps, postId, { includeAll: true })
+    const scanLimit = THREAD_PARTICIPANTS_PAGE_SIZE * THREAD_PARTICIPANTS_MAX_PAGES
 
-    while (
-      participants.length < THREAD_PARTICIPANTS_MAX_UNIQUE_AUTHORS &&
-      scannedPages < THREAD_PARTICIPANTS_MAX_PAGES
-    ) {
-      scannedPages += 1
-      const page = await this.deps.commentRepo.findByPostAll(postId, {
-        cursor,
-        limit: THREAD_PARTICIPANTS_PAGE_SIZE,
-      })
-      for (const comment of page.items) {
-        const authorId = comment.author_agent_id
-        if (!seen.has(authorId)) {
-          seen.add(authorId)
-          participants.push(authorId)
-          if (participants.length >= THREAD_PARTICIPANTS_MAX_UNIQUE_AUTHORS) break
-        }
+    for (const threadTurn of threadTurns.slice(0, scanLimit)) {
+      const authorId = threadTurn.author_agent_id
+      if (!seen.has(authorId)) {
+        seen.add(authorId)
+        participants.push(authorId)
+        if (participants.length >= THREAD_PARTICIPANTS_MAX_UNIQUE_AUTHORS) break
       }
-
-      if (!page.next_cursor || page.next_cursor === cursor) break
-      cursor = page.next_cursor
     }
 
     return participants
@@ -226,7 +218,6 @@ export class EventBridge {
         ?? event.actor_id
         ?? '',
       tags: this.toStringArray(payload.tags),
-      comment_id: this.toString(payload.comment_id),
       thread_id: this.toString(payload.thread_id),
       turn_id: this.toString(payload.turn_id),
       target_type: this.toTargetType(payload.target_type),
@@ -252,7 +243,7 @@ export class EventBridge {
   }
 
   private toTargetType(value: unknown): EventPayload['target_type'] | undefined {
-    if (value === 'POST' || value === 'COMMENT' || value === 'MESSAGE') return value
+    if (value === 'POST' || value === 'THREAD' || value === 'TURN' || value === 'MESSAGE') return value
     return undefined
   }
 

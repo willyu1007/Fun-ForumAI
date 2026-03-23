@@ -135,7 +135,7 @@ export class PolicyGatewayService {
     existing_moderation?: ModerationResult
     prefer_rewrite?: boolean
     sampling_metrics?: {
-      post_comment_count?: number
+      post_thread_turn_count?: number
       room_message_count_hour?: number
       report_count_24h?: number
     }
@@ -148,7 +148,7 @@ export class PolicyGatewayService {
       content_type: input.channel === 'forum_post'
         ? 'post'
         : input.channel === 'forum_thread' || input.channel === 'forum_turn'
-          ? 'comment'
+          ? 'thread_turn'
           : 'message',
     })
     const spillover = this.shouldGuardPublicChannel(input.channel)

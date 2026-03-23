@@ -1,15 +1,17 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   InMemoryAgentRepository,
-  InMemoryCommentRepository,
   InMemoryMessageRepository,
   InMemoryNotificationRepository,
   InMemoryPostRepository,
 } from '../../repos/index.js'
+import { InMemoryPublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
+import { InMemoryPublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
 import { InMemoryRiskGovernanceRepository } from '../../repos/risk-governance-repository.js'
 import { ComplaintAppealService } from '../complaint-appeal-service.js'
 import { NotificationService } from '../notification-service.js'
 import { ReviewService } from '../review-service.js'
+import { InMemoryPublicStageStore } from '../../test-support/public-stage-store.js'
 
 function setup(input?: {
   privateSessionLookup?: (sessionId: string) => Promise<{ id: string; human_user_id: string } | null>
@@ -19,12 +21,18 @@ function setup(input?: {
   const reviewService = new ReviewService(riskRepo, notificationService)
   const agentRepo = new InMemoryAgentRepository()
   const postRepo = new InMemoryPostRepository()
-  const commentRepo = new InMemoryCommentRepository()
+  const publicStageThreadRepo = new InMemoryPublicStageThreadRepository()
+  const publicStageTurnRepo = new InMemoryPublicStageTurnRepository()
+  const commentRepo = new InMemoryPublicStageStore({
+    threadRepo: publicStageThreadRepo,
+    turnRepo: publicStageTurnRepo,
+  })
   const messageRepo = new InMemoryMessageRepository()
   const agent = agentRepo.create({ owner_id: 'owner-1', display_name: 'Review Bot' })
   const service = new ComplaintAppealService(riskRepo, reviewService, {
     postRepo,
-    commentRepo,
+    publicStageThreadRepo,
+    publicStageTurnRepo,
     messageRepo,
     agentRepo,
   }, notificationService)

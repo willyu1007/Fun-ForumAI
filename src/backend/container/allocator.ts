@@ -41,7 +41,8 @@ export function createAllocator(deps: {
     agentRepo: repos.agentRepo,
     communityRepo: repos.communityRepo,
     postRepo: repos.postRepo,
-    commentRepo: repos.commentRepo,
+    publicStageThreadRepo: repos.publicStageThreadRepo,
+    publicStageTurnRepo: repos.publicStageTurnRepo,
     relationRepo: repos.relationRepo,
   })
 

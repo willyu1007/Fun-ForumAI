@@ -4,13 +4,14 @@ import type {
   AgentCommunityMembershipRepository,
   AudienceRepository,
   ChronicleRepository,
-  CommentRepository,
   CommunityRepository,
   DomainEvent,
   ForumSceneMetadata,
   ForumSceneMetadataRepository,
   HumanFollowRepository,
   PostRepository,
+  PublicStageThreadRepository,
+  PublicStageTurnRepository,
   SearchBadge,
   SearchDocRepository,
 } from '../repos/index.js'
@@ -24,6 +25,11 @@ import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import { parsePublicScenePayload } from './public-scene-runtime.js'
 import { SearchGuard } from './search/search-guard.js'
 import type { SearchAuthorVisibility } from '../../shared/public-search.js'
+import {
+  findPublicStageThreadTurnById,
+  listPublicStageThreadTurnsByAuthor,
+  listPublicStageThreadTurnsByPostsSince,
+} from '../lib/public-stage-thread-turn.js'
 
 function normalizeTextPart(value: string | null | undefined): string {
   return (value ?? '').trim()
@@ -66,12 +72,12 @@ function readCommunityActivity(digestJson: Record<string, unknown> | null): {
   }
   const record = activity as Record<string, unknown>
   const posts7d = typeof record.posts_7d === 'number' ? record.posts_7d : 0
-  const comments7d = typeof record.comments_7d === 'number' ? record.comments_7d : 0
+  const threadTurns7d = typeof record.thread_turns_7d === 'number' ? record.thread_turns_7d : 0
   const posts30d = typeof record.posts_30d === 'number' ? record.posts_30d : 0
-  const comments30d = typeof record.comments_30d === 'number' ? record.comments_30d : 0
+  const threadTurns30d = typeof record.thread_turns_30d === 'number' ? record.thread_turns_30d : 0
   return {
-    activity_7d: posts7d + comments7d,
-    activity_30d: posts30d + comments30d,
+    activity_7d: posts7d + threadTurns7d,
+    activity_30d: posts30d + threadTurns30d,
   }
 }
 
@@ -128,7 +134,8 @@ export interface SearchProjectionServiceDeps {
   }
   forumReadService: ForumReadService
   postRepo: PostRepository
-  commentRepo: CommentRepository
+  publicStageThreadRepo: PublicStageThreadRepository
+  publicStageTurnRepo: PublicStageTurnRepository
   communityRepo: CommunityRepository
   agentRepo: AgentRepository
   agentConfigRepo: AgentConfigRepository
@@ -179,8 +186,8 @@ export interface SearchReadModelHealth {
 }
 
 export class SearchProjectionService {
-  private static readonly REPRESENTATIVE_COMMENT_LOOKBACK_DAYS = 90
-  private static readonly REPRESENTATIVE_COMMENT_POST_SCAN_LIMIT = 200
+  private static readonly REPRESENTATIVE_THREAD_TURN_LOOKBACK_DAYS = 90
+  private static readonly REPRESENTATIVE_THREAD_TURN_POST_SCAN_LIMIT = 200
   private static readonly AGENT_RECONCILE_PAGE_LIMIT = 500
   private static readonly HEALTH_POST_EXISTENCE_LIMIT = 1
   private readonly recentReconciles: SearchReconcileSummary[] = []
@@ -215,7 +222,7 @@ export class SearchProjectionService {
     const authorBadgesText = formatBadgeText(projectedAuthor.badges)
     const watchabilityScore = Number((
       Math.min(postMeta.heat_score / 120, 1.4)
-      + Math.min(postMeta.comment_count / 35, 0.45)
+      + Math.min(postMeta.thread_turn_count / 35, 0.45)
       + Math.min(aftershowSignals.audience_message_count / 20, 0.25)
       + Math.min(aftershowSignals.callout_count / 6, 0.2)
       + (sceneFields.scene_tags_text ? 0.12 : 0)
@@ -255,7 +262,7 @@ export class SearchProjectionService {
       ]),
       visibility: postMeta.visibility,
       state: postMeta.state,
-      comment_count: postMeta.comment_count,
+      thread_turn_count: postMeta.thread_turn_count,
       participant_count: postMeta.participant_count,
       last_activity_at: postMeta.last_reply_at ?? postMeta.created_at,
       heat_score: postMeta.heat_score,
@@ -265,8 +272,8 @@ export class SearchProjectionService {
   }
 
   async refreshThread(threadId: string): Promise<void> {
-    const thread = await this.deps.commentRepo.findById(threadId)
-    if (!thread || thread.comment_kind !== 'THREAD' || !this.deps.guard.canViewComment(thread)) {
+    const thread = await this.deps.publicStageThreadRepo.findById(threadId)
+    if (!thread || !this.deps.guard.canViewThreadTurn(thread)) {
       await this.deps.searchDocRepo.deleteThreadDoc(threadId)
       this.invalidateCountsCache()
       return
@@ -430,13 +437,13 @@ export class SearchProjectionService {
       slug: community.slug,
     }))
     const followerCount = this.deps.humanFollowRepo.listFollowerUserIds(agentId).length
-    const [publicPostCount, publicChronicleCount, representativePost, representativeCommentText] = await Promise.all([
+    const [publicPostCount, publicChronicleCount, representativePost, representativeThreadTurnText] = await Promise.all([
       this.countPublicPostsByAgent(agentId),
       this.deps.chronicleRepo.countByAgent(agentId, {
         visibility: ['PUBLIC'],
       }),
       this.readLatestPublicPostByAgent(agentId),
-      this.readLatestPublicCommentByAgent(agentId),
+      this.readLatestPublicStageThreadTurnByAgent(agentId),
     ])
     const topChronicleText = highlights.top_chronicle
       .map((entry) => joinSearchParts([
@@ -490,7 +497,7 @@ export class SearchProjectionService {
       public_projection_hint: projection?.public_projection_hint ?? null,
       top_chronicle_text: topChronicleText,
       representative_post_text: representativePostText,
-      representative_comment_text: representativeCommentText,
+      representative_thread_turn_text: representativeThreadTurnText,
       social_signal_text: socialSignalText,
       searchable_text: joinSearchParts([
         agent.display_name,
@@ -502,27 +509,27 @@ export class SearchProjectionService {
         projection?.public_projection_hint,
         topChronicleText,
         representativePostText,
-        representativeCommentText,
+        representativeThreadTurnText,
         socialSignalText,
       ]),
     })
     this.invalidateCountsCache()
   }
 
-  async refreshVoteTarget(targetType: 'POST' | 'COMMENT', targetId: string): Promise<void> {
+  async refreshVoteTarget(targetType: 'POST' | 'THREAD' | 'TURN', targetId: string): Promise<void> {
     if (targetType === 'POST') {
       await this.refreshPost(targetId)
       return
     }
 
-    const comment = await this.deps.commentRepo.findById(targetId)
-    if (comment?.comment_kind === 'THREAD') {
-      await this.refreshThread(comment.id)
-    } else if (comment?.thread_id) {
-      await this.refreshThread(comment.thread_id)
+    const entry = await findPublicStageThreadTurnById(this.deps, targetId)
+    if (entry?.entry_kind === 'THREAD') {
+      await this.refreshThread(entry.id)
+    } else if (entry?.thread_id) {
+      await this.refreshThread(entry.thread_id)
     }
-    if (comment) {
-      await this.refreshPost(comment.post_id)
+    if (entry) {
+      await this.refreshPost(entry.post_id)
     }
   }
 
@@ -559,7 +566,7 @@ export class SearchProjectionService {
     if (event.event_type === 'VOTE_CAST' || event.event_type === 'AGENT_VOTE_CAST') {
       const targetType = typeof payload.target_type === 'string' ? payload.target_type : null
       const targetId = typeof payload.target_id === 'string' ? payload.target_id : null
-      if ((targetType === 'POST' || targetType === 'COMMENT') && targetId) {
+      if ((targetType === 'POST' || targetType === 'THREAD' || targetType === 'TURN') && targetId) {
         await this.refreshVoteTarget(targetType, targetId)
       }
       return
@@ -786,17 +793,17 @@ export class SearchProjectionService {
     return page.items[0] ?? null
   }
 
-  private async readLatestPublicCommentByAgent(agentId: string): Promise<string> {
+  private async readLatestPublicStageThreadTurnByAgent(agentId: string): Promise<string> {
     const postIds = await this.collectRecentPublicPostIds(
-      SearchProjectionService.REPRESENTATIVE_COMMENT_POST_SCAN_LIMIT,
+      SearchProjectionService.REPRESENTATIVE_THREAD_TURN_POST_SCAN_LIMIT,
     )
     if (postIds.length === 0) return ''
 
-    const since = new Date(Date.now() - SearchProjectionService.REPRESENTATIVE_COMMENT_LOOKBACK_DAYS * 24 * 60 * 60 * 1000)
-    const comments = await this.deps.commentRepo.findByPostsSince(postIds, since)
-    const latest = comments
-      .filter((comment) => comment.author_agent_id === agentId)
-      .filter((comment) => this.deps.guard.canViewComment(comment))
+    const since = new Date(Date.now() - SearchProjectionService.REPRESENTATIVE_THREAD_TURN_LOOKBACK_DAYS * 24 * 60 * 60 * 1000)
+    const threadTurns = await listPublicStageThreadTurnsByPostsSince(this.deps, postIds, since)
+    const latest = threadTurns
+      .filter((threadTurn) => threadTurn.author_agent_id === agentId)
+      .filter((threadTurn) => this.deps.guard.canViewThreadTurn(threadTurn))
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime() || b.id.localeCompare(a.id))[0]
 
     return latest ? truncateText(latest.body, 160) : ''
@@ -909,9 +916,9 @@ export class SearchProjectionService {
 
   private async collectVisibleThreadsByPosts(postIds: string[]) {
     if (postIds.length === 0) return []
-    const comments = await this.deps.commentRepo.findByPostsSince(postIds, new Date(0))
-    return comments.filter((comment) =>
-      comment.comment_kind === 'THREAD' && this.deps.guard.canViewComment(comment))
+    const threadTurns = await listPublicStageThreadTurnsByPostsSince(this.deps, postIds, new Date(0))
+    return threadTurns.filter((threadTurn) =>
+      threadTurn.entry_kind === 'THREAD' && this.deps.guard.canViewThreadTurn(threadTurn))
   }
 
   private async collectPublicPostsByAgent(agentId: string): Promise<Array<{ id: string; community_id: string }>> {
@@ -935,21 +942,11 @@ export class SearchProjectionService {
 
   private async collectVisibleThreadIdsByAgent(agentId: string): Promise<Array<{ id: string; post_id: string }>> {
     const items = new Map<string, { id: string; post_id: string }>()
-    let cursor: string | undefined
-
-    while (true) {
-      const page = await this.deps.commentRepo.findPublicByAuthorAgent(agentId, {
-        cursor,
-        limit: SearchProjectionService.AGENT_RECONCILE_PAGE_LIMIT,
-      })
-      if (page.items.length === 0) break
-      for (const comment of page.items) {
-        const threadId = comment.comment_kind === 'THREAD' ? comment.id : comment.thread_id
-        if (!threadId) continue
-        items.set(threadId, { id: threadId, post_id: comment.post_id })
-      }
-      if (!page.next_cursor || page.next_cursor === cursor) break
-      cursor = page.next_cursor
+    const threadTurns = await listPublicStageThreadTurnsByAuthor(this.deps, agentId)
+    for (const threadTurn of threadTurns) {
+      const threadId = threadTurn.entry_kind === 'THREAD' ? threadTurn.id : threadTurn.thread_id
+      if (!threadId) continue
+      items.set(threadId, { id: threadId, post_id: threadTurn.post_id })
     }
 
     return Array.from(items.values())

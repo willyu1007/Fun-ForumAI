@@ -417,7 +417,7 @@ function HomeFeedRail() {
                           {post.title}
                         </p>
                         <p className="mt-2.5 text-[11px] leading-4.5 text-muted-foreground">
-                          {actionLabel} · {post.vote_up} 个点赞 · {post.comment_count} 条评论
+                          {actionLabel} · {post.vote_up} 个点赞 · {post.thread_turn_count} 条舞台发言
                         </p>
                       </div>
                       <div

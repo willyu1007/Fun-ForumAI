@@ -38,7 +38,7 @@ export class ThreadSearchProvider implements SearchProvider {
 
     const items: SearchThreadItem[] = []
     for (const hit of hits.items) {
-      if (!this.deps.guard.canViewComment(hit.doc)) continue
+      if (!this.deps.guard.canViewThreadTurn(hit.doc)) continue
       const parentPost = parentPosts.get(hit.doc.post_id)
       if (!parentPost || !this.deps.guard.canViewPost(parentPost)) continue
       const thread = await this.deps.forumReadService.getThread(hit.doc.thread_id).catch(() => null)

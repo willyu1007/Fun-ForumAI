@@ -49,7 +49,7 @@ const MEMORY_TIER_ORDER: PromptMemoryTier[] = [
 const CURRENT_CONTEXT_LABELS: Record<string, string> = {
   post_body: '当前帖子',
   thread_excerpt: '公开线程',
-  target_comment: '目标评论',
+  target_thread_turn: '目标舞台发言',
   community_context: '社区公开背景',
   scheduler_context: '调度上下文',
   owner_latest_input: 'Owner 最新输入',
@@ -974,7 +974,7 @@ export class PromptOrchestrator {
       `topics:${(input.topicHints ?? []).join('|')}`,
       `sources:${JSON.stringify(input.currentContextSources ?? [])}`,
       `request:${JSON.stringify(input.requestEnvelope ?? {})}`,
-      `target:${input.targetCommentId ?? ''}`,
+      `target:${input.targetThreadTurnId ?? ''}`,
       `room_joined:${input.roomMemberState?.joined_at?.toISOString?.() ?? ''}`,
       `room_spoke:${input.roomMemberState?.last_spoke_at?.toISOString?.() ?? ''}`,
       `rule:${input.sceneRule ?? ''}`,

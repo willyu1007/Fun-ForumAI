@@ -34,6 +34,7 @@ import { SearchService } from '../services/search-service.js'
 import { SearchProjectionService } from '../services/search-projection-service.js'
 import { SearchCountsCache } from '../services/search/search-counts-cache.js'
 import { SearchTelemetryService } from '../services/search/search-telemetry-service.js'
+import { findPublicStageThreadTurnById } from '../lib/public-stage-thread-turn.js'
 
 function extractOwnerStylePins(configJson: Record<string, unknown>): Record<string, unknown> {
   const identity = configJson.identity
@@ -118,7 +119,8 @@ export const searchProjectionService = new SearchProjectionService({
   countsCache: searchCountsCache,
   forumReadService: core.forumReadService,
   postRepo: repos.postRepo,
-  commentRepo: repos.commentRepo,
+  publicStageThreadRepo: repos.publicStageThreadRepo,
+  publicStageTurnRepo: repos.publicStageTurnRepo,
   communityRepo: repos.communityRepo,
   agentRepo: repos.agentRepo,
   agentConfigRepo: repos.agentConfigRepo,
@@ -201,15 +203,18 @@ core.governanceAdapter.setExecutedHook(async ({ action }) => {
     await searchProjectionService.refreshPost(action.target_id)
     return
   }
-  if (action.target_type === 'comment') {
-    const comment = await repos.commentRepo.findById(action.target_id)
-    if (comment?.comment_kind === 'THREAD') {
-      await searchProjectionService.refreshThread(comment.id)
-    } else if (comment?.thread_id) {
-      await searchProjectionService.refreshThread(comment.thread_id)
+  if (action.target_type === 'thread_turn') {
+    const entry = await findPublicStageThreadTurnById({
+      publicStageThreadRepo: repos.publicStageThreadRepo,
+      publicStageTurnRepo: repos.publicStageTurnRepo,
+    }, action.target_id)
+    if (entry?.entry_kind === 'THREAD') {
+      await searchProjectionService.refreshThread(entry.id)
+    } else if (entry?.thread_id) {
+      await searchProjectionService.refreshThread(entry.thread_id)
     }
-    if (comment) {
-      await searchProjectionService.refreshPost(comment.post_id)
+    if (entry) {
+      await searchProjectionService.refreshPost(entry.post_id)
     }
     return
   }
@@ -423,7 +428,8 @@ const rt = createRuntime({
   agentRunRepo: repos.agentRunRepo,
   membershipRepo: repos.agentCommunityMembershipRepo,
   postRepo: repos.postRepo,
-  commentRepo: repos.commentRepo,
+  publicStageThreadRepo: repos.publicStageThreadRepo,
+  publicStageTurnRepo: repos.publicStageTurnRepo,
   eventQueue: infra.eventQueue,
   allocator: alloc.allocator,
   degradationMonitor: alloc.degradationMonitor,
@@ -486,7 +492,7 @@ core.forumWriteService.setEventHook(async (event) => {
     nurture.relationService
     && (event.event_type === 'THREAD_OPENED' || event.event_type === 'THREAD_TURN_ADDED')
   ) {
-    nurture.relationService.onForumCommentEvent(event).catch((err) => {
+    nurture.relationService.onForumStageEvent(event).catch((err) => {
       console.error('[Container] Relation forum signal failed:', err)
     })
   }

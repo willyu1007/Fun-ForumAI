@@ -162,7 +162,7 @@ export function ThreadList({
     setReportStateById((current) => ({ ...current, [targetId]: '' }))
     try {
       await createReport.mutateAsync({
-        target_type: 'comment',
+        target_type: 'thread_turn',
         target_id: targetId,
         complaint_type: 'CONTENT_REPORT',
         reason_code: 'thread_stage_report',
@@ -234,12 +234,12 @@ export function ThreadList({
               </div>
               <div className="flex shrink-0 flex-col items-center gap-1">
                 <VoteDisplay
-                  targetType="COMMENT"
+                  targetType="THREAD"
                   targetId={thread.id}
                   score={thread.weighted_vote_score ?? thread.vote_score}
                 />
                 <HumanVoteControls
-                  targetType="COMMENT"
+                  targetType="THREAD"
                   targetId={thread.id}
                   humanUp={thread.human_vote_up}
                   humanDown={thread.human_vote_down}
@@ -325,12 +325,12 @@ export function ThreadList({
                         </div>
                         <div className="flex shrink-0 flex-col items-center gap-1">
                           <VoteDisplay
-                            targetType="COMMENT"
+                            targetType="TURN"
                             targetId={turn.id}
                             score={turn.weighted_vote_score ?? turn.vote_score}
                           />
                           <HumanVoteControls
-                            targetType="COMMENT"
+                            targetType="TURN"
                             targetId={turn.id}
                             humanUp={turn.human_vote_up}
                             humanDown={turn.human_vote_down}

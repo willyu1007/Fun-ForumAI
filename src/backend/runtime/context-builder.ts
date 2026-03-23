@@ -46,7 +46,7 @@ export class ContextBuilder {
 
     if (event.post_id) {
       ctx.post = await this.loadPost(event.post_id)
-      ctx.comments = await this.loadComments(event.post_id, event.thread_id)
+      ctx.threadTurns = await this.loadThreadTurns(event.post_id, event.thread_id)
       const targetThreadId = event.thread_id
       if (targetThreadId) {
         ctx.threadMeta = await this.loadThreadMeta(targetThreadId)
@@ -59,12 +59,12 @@ export class ContextBuilder {
       }
     }
 
-    if ((event.event_type === 'ThreadOpened' || event.event_type === 'ThreadTurnAdded') && ctx.comments?.length) {
+    if ((event.event_type === 'ThreadOpened' || event.event_type === 'ThreadTurnAdded') && ctx.threadTurns?.length) {
       const targetId = event.turn_id ?? event.thread_id
       if (targetId) {
-        ctx.targetComment = ctx.comments.find((c) => c.id === targetId)
+        ctx.targetThreadTurn = ctx.threadTurns.find((entry) => entry.id === targetId)
       } else {
-        ctx.targetComment = ctx.comments[ctx.comments.length - 1]
+        ctx.targetThreadTurn = ctx.threadTurns[ctx.threadTurns.length - 1]
       }
     }
 
@@ -77,11 +77,11 @@ export class ContextBuilder {
         || event.event_type === 'ThreadTurnAdded'
       )
     ) {
-      const targetThreadAuthorAgentId = ctx.targetComment?.comment_kind === 'THREAD'
-        ? ctx.targetComment.author_agent_id
+      const targetThreadAuthorAgentId = ctx.targetThreadTurn?.entry_kind === 'THREAD'
+        ? ctx.targetThreadTurn.author_agent_id
         : undefined
-      const targetTurnAuthorAgentId = ctx.targetComment?.comment_kind === 'TURN'
-        ? ctx.targetComment.author_agent_id
+      const targetTurnAuthorAgentId = ctx.targetThreadTurn?.entry_kind === 'TURN'
+        ? ctx.targetThreadTurn.author_agent_id
         : undefined
       const continuity = await this.deps.forumSceneContinuityService.resolve({
         event,
@@ -139,7 +139,7 @@ export class ContextBuilder {
       ? 'chat_room'
       : ctx.chatContext
       ? 'chat_room'
-      : ctx.targetComment
+      : ctx.targetThreadTurn
         ? 'forum_thread'
         : 'forum_post'
     ctx.promptScene = scene
@@ -164,7 +164,7 @@ export class ContextBuilder {
       topicHints,
       currentContextSources: this.buildCurrentContextSources(ctx, scene),
       requestEnvelope: this.buildRequestEnvelope(scene, {
-        currentUserText: ctx.targetComment?.body,
+        currentUserText: ctx.targetThreadTurn?.body,
       }),
       communityHardRule,
       communitySoftCulture,
@@ -180,7 +180,7 @@ export class ContextBuilder {
         ? `你正在聊天室「${ctx.chatContext.room_name}」中继续群聊`
         : ctx.event.event_type === 'NewMessageCreated'
           ? '你正在聊天室中继续群聊'
-        : ctx.targetComment
+        : ctx.targetThreadTurn
           ? '你正在公共 thread 中继续推进当前回合'
           : '你正在论坛帖子下参与公开讨论',
       shortTermState: ctx.chatContext
@@ -188,16 +188,16 @@ export class ContextBuilder {
         : ctx.event.event_type === 'NewMessageCreated'
           ? 'recent_messages=0'
         : ctx.threadMeta
-          ? `thread_turns=${Math.max((ctx.comments?.length ?? 1) - 1, 0)};thread_state=${ctx.threadMeta.thread_state};reply_budget_remaining=${ctx.threadMeta.reply_budget_remaining}`
-        : ctx.comments
-          ? `thread_turns=${Math.max(ctx.comments.length - 1, 0)}`
+          ? `thread_turns=${Math.max((ctx.threadTurns?.length ?? 1) - 1, 0)};thread_state=${ctx.threadMeta.thread_state};reply_budget_remaining=${ctx.threadMeta.reply_budget_remaining}`
+        : ctx.threadTurns
+          ? `thread_turns=${Math.max(ctx.threadTurns.length - 1, 0)}`
           : '',
-      threadComments: ctx.comments?.map((c) => ({
-        id: c.id,
-        author_agent_id: c.author_agent_id,
-        body: c.body,
+      threadTurns: ctx.threadTurns?.map((entry) => ({
+        id: entry.id,
+        author_agent_id: entry.author_agent_id,
+        body: entry.body,
       })),
-      targetCommentId: ctx.targetComment?.id,
+      targetThreadTurnId: ctx.targetThreadTurn?.id,
     })
     ctx.persona = composed.persona
     ctx.blocks = composed.blocks
@@ -210,9 +210,9 @@ export class ContextBuilder {
     if (ctx.chatContext?.recent_messages?.length) {
       return ctx.chatContext.recent_messages.map((m) => m.body).join(' ')
     }
-    if (ctx.targetComment) {
-      const thread = ctx.comments?.map((c) => c.body).join(' ') ?? ''
-      return `${thread} ${ctx.targetComment.body}`.trim()
+    if (ctx.targetThreadTurn) {
+      const thread = ctx.threadTurns?.map((entry) => entry.body).join(' ') ?? ''
+      return `${thread} ${ctx.targetThreadTurn.body}`.trim()
     }
     if (ctx.post) {
       return `${ctx.post.title} ${ctx.post.body}`.trim()
@@ -275,14 +275,14 @@ export class ContextBuilder {
     }
   }
 
-  private async loadComments(postId: string, threadId?: string): Promise<ExecutionContext['comments']> {
+  private async loadThreadTurns(postId: string, threadId?: string): Promise<ExecutionContext['threadTurns']> {
     try {
       if (threadId) {
         const thread = await this.deps.forumReadService.getThread(threadId)
-        return this.flattenThreadComments([thread])
+        return this.flattenThreadTurns([thread])
       }
       const result = await this.deps.forumReadService.getThreads(postId, { limit: 20 })
-      return this.flattenThreadComments(result.items)
+      return this.flattenThreadTurns(result.items)
     } catch {
       return []
     }
@@ -308,16 +308,16 @@ export class ContextBuilder {
     }
   }
 
-  private flattenThreadComments(
+  private flattenThreadTurns(
     threads: Array<Awaited<ReturnType<ForumReadService['getThread']>>>,
-  ): ExecutionContext['comments'] {
+  ): ExecutionContext['threadTurns'] {
     return threads.flatMap((thread) => {
       const root = {
         id: thread.id,
         post_id: thread.post_id,
         thread_id: thread.id,
-        comment_kind: 'THREAD' as const,
-        anchor_comment_id: null,
+        entry_kind: 'THREAD' as const,
+        anchor_turn_id: null,
         body: thread.body,
         author_agent_id: thread.author_agent_id,
         author_name: thread.author.display_name,
@@ -326,8 +326,8 @@ export class ContextBuilder {
         id: turn.id,
         post_id: turn.post_id,
         thread_id: turn.thread_id,
-        comment_kind: 'TURN' as const,
-        anchor_comment_id: turn.anchor_turn_id ?? thread.id,
+        entry_kind: 'TURN' as const,
+        anchor_turn_id: turn.anchor_turn_id ?? thread.id,
         turn_index: turn.turn_index,
         body: turn.body,
         author_agent_id: turn.author_agent_id,
@@ -371,12 +371,12 @@ export class ContextBuilder {
       }
     }
 
-    if (ctx.targetComment) {
-      const commentWords = ctx.targetComment.body
+    if (ctx.targetThreadTurn) {
+      const entryWords = ctx.targetThreadTurn.body
         .split(/[\s,，、；;：:。.!！?？]+/)
         .filter((w) => w.length >= 2)
         .slice(0, 3)
-      hints.push(...commentWords)
+      hints.push(...entryWords)
     }
 
     return [...new Set(hints)].slice(0, 10)
@@ -395,23 +395,23 @@ export class ContextBuilder {
         source_id: ctx.post.id,
       })
     }
-    if (ctx.comments?.length) {
+    if (ctx.threadTurns?.length) {
       sources.push({
         kind: 'thread_excerpt',
-        text: ctx.comments
+        text: ctx.threadTurns
           .slice(-6)
-          .map((comment) => `${comment.author_name}：${comment.body}`)
+          .map((entry) => `${entry.author_name}：${entry.body}`)
           .join('\n'),
         priority: scene === 'forum_thread' ? 'high' : 'medium',
         source_id: ctx.post?.id,
       })
     }
-    if (ctx.targetComment) {
+    if (ctx.targetThreadTurn) {
       sources.push({
-        kind: 'target_comment',
-        text: `${ctx.targetComment.author_name}：${ctx.targetComment.body}`,
+        kind: 'target_thread_turn',
+        text: `${ctx.targetThreadTurn.author_name}：${ctx.targetThreadTurn.body}`,
         priority: 'critical',
-        source_id: ctx.targetComment.id,
+        source_id: ctx.targetThreadTurn.id,
       })
     }
     if (ctx.community.description) {

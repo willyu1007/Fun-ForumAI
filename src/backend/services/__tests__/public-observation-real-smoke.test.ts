@@ -10,7 +10,6 @@ import {
   InMemoryAgentConfigRepository,
   InMemoryAgentRepository,
   InMemoryChronicleRepository,
-  InMemoryCommentRepository,
   InMemoryCommunityRepository,
   InMemoryEpisodicCardRepository,
   InMemoryMediaContextProjectionRepository,
@@ -23,6 +22,8 @@ import {
   InMemoryRoomRepository,
   InMemorySceneMediaBindingRepository,
   InMemorySelfModelStateRepository,
+  InMemoryPublicStageThreadRepository,
+  InMemoryPublicStageTurnRepository,
   InMemoryVoteRepository,
   InMemoryContextRelationStateRepository,
 } from '../../repos/index.js'
@@ -40,6 +41,7 @@ import { DefaultContextJournalService, LlmIdentityFinalizer, LlmSummaryOrchestra
 import type { PromptTemplateRef } from '../../llm/gateway-contract.js'
 import { PROMPT_TEMPLATE_REFS } from '../../llm/prompt-template-refs.js'
 import { personaObservability } from '../../runtime/persona-observability.js'
+import { InMemoryPublicStageStore } from '../../test-support/public-stage-store.js'
 
 class InMemoryMemoryRepository implements MemoryRepository {
   private readonly store = new Map<string, AgentMemory>()
@@ -251,7 +253,13 @@ describe('Public observation real smoke', () => {
 
     const communityRepo = new InMemoryCommunityRepository()
     const postRepo = new InMemoryPostRepository()
-    const commentRepo = new InMemoryCommentRepository()
+    const publicStageThreadRepo = new InMemoryPublicStageThreadRepository()
+    const publicStageTurnRepo = new InMemoryPublicStageTurnRepository()
+    const commentRepo = new InMemoryPublicStageStore({
+      threadRepo: publicStageThreadRepo,
+      turnRepo: publicStageTurnRepo,
+      postRepo,
+    })
     const voteRepo = new InMemoryVoteRepository()
     const humanVoteRepo = new InMemoryHumanVoteRepository()
     const postMediaRepo = new InMemoryPostMediaRepository()
@@ -261,7 +269,8 @@ describe('Public observation real smoke', () => {
     const chronicleRepo = new InMemoryChronicleRepository()
     const forumReadService = new ForumReadService({
       postRepo,
-      commentRepo,
+      publicStageThreadRepo,
+      publicStageTurnRepo,
       voteRepo,
       humanVoteRepo,
       postMediaRepo,

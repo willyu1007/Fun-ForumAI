@@ -117,9 +117,12 @@ export class TraitEngine {
     if (!this.prisma) return false
     switch (code) {
       case 'helpful': {
-        const commentCount = await this.prisma.comment.count({ where: { authorAgentId: agentId } })
-        const msgCount = await this.prisma.roomMessage.count({ where: { authorAgentId: agentId } })
-        return (commentCount + msgCount) >= 50
+        const [threadCount, turnCount, msgCount] = await Promise.all([
+          this.prisma.publicStageThread.count({ where: { authorAgentId: agentId } }),
+          this.prisma.publicStageTurn.count({ where: { authorAgentId: agentId } }),
+          this.prisma.roomMessage.count({ where: { authorAgentId: agentId } }),
+        ])
+        return (threadCount + turnCount + msgCount) >= 50
       }
       case 'hyperactive': {
         const since = new Date(); since.setDate(since.getDate() - 7)
@@ -129,13 +132,18 @@ export class TraitEngine {
         return count >= 30
       }
       case 'controversial': {
-        const rejectedPosts = await this.prisma.post.count({
-          where: { authorAgentId: agentId, state: { in: ['REJECTED'] } },
-        })
-        const rejectedComments = await this.prisma.comment.count({
-          where: { authorAgentId: agentId, state: { in: ['REJECTED'] } },
-        })
-        return (rejectedPosts + rejectedComments) >= 5
+        const [rejectedPosts, rejectedThreads, rejectedTurns] = await Promise.all([
+          this.prisma.post.count({
+            where: { authorAgentId: agentId, state: { in: ['REJECTED'] } },
+          }),
+          this.prisma.publicStageThread.count({
+            where: { authorAgentId: agentId, state: { in: ['REJECTED'] } },
+          }),
+          this.prisma.publicStageTurn.count({
+            where: { authorAgentId: agentId, state: { in: ['REJECTED'] } },
+          }),
+        ])
+        return (rejectedPosts + rejectedThreads + rejectedTurns) >= 5
       }
       case 'slow_starter':
       {
@@ -180,14 +188,27 @@ export class TraitEngine {
         return count >= 30
       }
       case 'debater': {
-        const comments = await this.prisma.comment.findMany({
-          where: { authorAgentId: agentId },
-          select: { id: true },
-        })
-        if (comments.length < 30) return false
-        const commentIds = comments.map((c) => c.id)
+        const [threads, turns] = await Promise.all([
+          this.prisma.publicStageThread.findMany({
+            where: { authorAgentId: agentId },
+            select: { id: true },
+          }),
+          this.prisma.publicStageTurn.findMany({
+            where: { authorAgentId: agentId },
+            select: { id: true },
+          }),
+        ])
+        if (threads.length + turns.length < 30) return false
+        const threadIds = threads.map((thread) => thread.id)
+        const turnIds = turns.map((turn) => turn.id)
         const upvotes = await this.prisma.vote.count({
-          where: { targetType: 'COMMENT', direction: 'UP', targetId: { in: commentIds } },
+          where: {
+            direction: 'UP',
+            OR: [
+              ...(threadIds.length ? [{ targetType: 'THREAD' as const, targetId: { in: threadIds } }] : []),
+              ...(turnIds.length ? [{ targetType: 'TURN' as const, targetId: { in: turnIds } }] : []),
+            ],
+          },
         })
         return upvotes >= 20
       }
@@ -195,42 +216,49 @@ export class TraitEngine {
         const since = new Date()
         since.setDate(since.getDate() - 30)
 
-        const [postCount, commentCount, msgCount] = await Promise.all([
+        const [postCount, threadCount, turnCount, msgCount] = await Promise.all([
           this.prisma.post.count({ where: { authorAgentId: agentId, createdAt: { gte: since } } }),
-          this.prisma.comment.count({ where: { authorAgentId: agentId, createdAt: { gte: since } } }),
+          this.prisma.publicStageThread.count({ where: { authorAgentId: agentId, createdAt: { gte: since } } }),
+          this.prisma.publicStageTurn.count({ where: { authorAgentId: agentId, createdAt: { gte: since } } }),
           this.prisma.roomMessage.count({ where: { authorAgentId: agentId, createdAt: { gte: since } } }),
         ])
 
-        const total = postCount + commentCount + msgCount
+        const total = postCount + threadCount + turnCount + msgCount
         if (total < 40) return false
 
-        const [rejectedPosts, rejectedComments, rejectedMessages] = await Promise.all([
+        const [rejectedPosts, rejectedThreads, rejectedTurns, rejectedMessages] = await Promise.all([
           this.prisma.post.count({
             where: { authorAgentId: agentId, createdAt: { gte: since }, state: { in: ['REJECTED'] } },
           }),
-          this.prisma.comment.count({
+          this.prisma.publicStageThread.count({
+            where: { authorAgentId: agentId, createdAt: { gte: since }, state: { in: ['REJECTED'] } },
+          }),
+          this.prisma.publicStageTurn.count({
             where: { authorAgentId: agentId, createdAt: { gte: since }, state: { in: ['REJECTED'] } },
           }),
           this.prisma.roomMessage.count({
             where: { authorAgentId: agentId, createdAt: { gte: since }, state: { in: ['REJECTED'] } },
           }),
         ])
-        const rejected = rejectedPosts + rejectedComments + rejectedMessages
+        const rejected = rejectedPosts + rejectedThreads + rejectedTurns + rejectedMessages
         const rejectionRate = rejected / Math.max(total, 1)
         if (rejectionRate > 0.05) return false
 
-        const [posts, comments, messages] = await Promise.all([
+        const [posts, threads, turns, messages] = await Promise.all([
           this.prisma.post.findMany({ where: { authorAgentId: agentId, createdAt: { gte: since } }, select: { id: true } }),
-          this.prisma.comment.findMany({ where: { authorAgentId: agentId, createdAt: { gte: since } }, select: { id: true } }),
+          this.prisma.publicStageThread.findMany({ where: { authorAgentId: agentId, createdAt: { gte: since } }, select: { id: true } }),
+          this.prisma.publicStageTurn.findMany({ where: { authorAgentId: agentId, createdAt: { gte: since } }, select: { id: true } }),
           this.prisma.roomMessage.findMany({ where: { authorAgentId: agentId, createdAt: { gte: since } }, select: { id: true } }),
         ])
 
         const postIds = posts.map((p) => p.id)
-        const commentIds = comments.map((c) => c.id)
+        const threadIds = threads.map((thread) => thread.id)
+        const turnIds = turns.map((turn) => turn.id)
         const messageIds = messages.map((m) => m.id)
         const voteTargets: Prisma.VoteWhereInput[] = [
           ...(postIds.length ? [{ targetType: 'POST' as const, targetId: { in: postIds } }] : []),
-          ...(commentIds.length ? [{ targetType: 'COMMENT' as const, targetId: { in: commentIds } }] : []),
+          ...(threadIds.length ? [{ targetType: 'THREAD' as const, targetId: { in: threadIds } }] : []),
+          ...(turnIds.length ? [{ targetType: 'TURN' as const, targetId: { in: turnIds } }] : []),
           ...(messageIds.length ? [{ targetType: 'MESSAGE' as const, targetId: { in: messageIds } }] : []),
         ]
         if (voteTargets.length === 0) return false

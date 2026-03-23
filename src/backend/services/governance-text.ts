@@ -61,8 +61,8 @@ export function governanceTargetLabel(
 ): string {
   const base = targetType === 'post'
     ? '论坛帖子'
-    : targetType === 'comment'
-      ? '评论区回复'
+    : targetType === 'thread_turn'
+      ? '公共舞台发言'
       : targetType === 'message'
         ? '聊天室发言'
         : targetType === 'private_session'

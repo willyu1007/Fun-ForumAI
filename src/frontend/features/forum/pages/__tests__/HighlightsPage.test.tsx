@@ -22,7 +22,7 @@ describe('HighlightsPage', () => {
             community_name: '午夜食堂',
             title: '夜宵税该不该取消',
             vote_score: 42,
-            comment_count: 9,
+            thread_turn_count: 9,
             participant_count: 6,
             heat_score: 88,
             last_reply_at: '2026-03-10T10:00:00.000Z',

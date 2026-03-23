@@ -1,12 +1,14 @@
 import type {
   AgentRepository,
-  CommentRepository,
   CommunityRepository,
   CreatePprSnapshotInput,
   PostRepository,
+  PublicStageThreadRepository,
+  PublicStageTurnRepository,
   RelationRepository,
 } from '../../repos/index.js'
 import { PPR_TOPIC_FALLBACK, deriveTopicWeights } from '../../allocator/ppr-topic-key.js'
+import { listPublicStageThreadTurnsByPostsSince } from '../../lib/public-stage-thread-turn.js'
 
 const COMMUNITY_ALL = '__all__'
 
@@ -14,7 +16,8 @@ interface PprSnapshotBuilderDeps {
   agentRepo: AgentRepository
   communityRepo: CommunityRepository
   postRepo: PostRepository
-  commentRepo: CommentRepository
+  publicStageThreadRepo: PublicStageThreadRepository
+  publicStageTurnRepo: PublicStageTurnRepository
   relationRepo?: RelationRepository | null
 }
 
@@ -176,11 +179,11 @@ export class PprSnapshotBuilder {
       }
     }
 
-    const commentsByPost = await this.collectCommentsByPostsSince(posts.map((post) => post.id), since)
-    for (const comments of commentsByPost.values()) {
-      for (const comment of comments) {
-        if (activeSet.has(comment.author_agent_id)) {
-          sourceSet.add(comment.author_agent_id)
+    const threadTurnsByPost = await this.collectThreadTurnsByPostsSince(posts.map((post) => post.id), since)
+    for (const threadTurns of threadTurnsByPost.values()) {
+      for (const threadTurn of threadTurns) {
+        if (activeSet.has(threadTurn.author_agent_id)) {
+          sourceSet.add(threadTurn.author_agent_id)
         }
       }
     }
@@ -372,7 +375,7 @@ export class PprSnapshotBuilder {
     const sourceTopics = new Map<string, Set<string>>()
 
     const posts = await this.collectPostsSince(since)
-    const commentsByPost = await this.collectCommentsByPostsSince(
+    const threadTurnsByPost = await this.collectThreadTurnsByPostsSince(
       posts.map((post) => post.id),
       since,
     )
@@ -390,15 +393,15 @@ export class PprSnapshotBuilder {
         this.markSourceSet(sourceTopics, post.author_agent_id, tag)
       }
 
-      const comments = commentsByPost.get(post.id) ?? []
-      for (const comment of comments) {
-        if (!activeSet.has(comment.author_agent_id)) continue
-        setWeight(agentCommunity, comment.author_agent_id, post.community_id, 1.5)
-        this.markSourceSet(sourceCommunities, comment.author_agent_id, post.community_id)
+      const threadTurns = threadTurnsByPost.get(post.id) ?? []
+      for (const threadTurn of threadTurns) {
+        if (!activeSet.has(threadTurn.author_agent_id)) continue
+        setWeight(agentCommunity, threadTurn.author_agent_id, post.community_id, 1.5)
+        this.markSourceSet(sourceCommunities, threadTurn.author_agent_id, post.community_id)
 
         for (const [tag, baseWeight] of tagWeights.entries()) {
-          setWeight(agentTopic, comment.author_agent_id, tag, Math.max(0.4, baseWeight))
-          this.markSourceSet(sourceTopics, comment.author_agent_id, tag)
+          setWeight(agentTopic, threadTurn.author_agent_id, tag, Math.max(0.4, baseWeight))
+          this.markSourceSet(sourceTopics, threadTurn.author_agent_id, tag)
         }
       }
     }
@@ -491,23 +494,23 @@ export class PprSnapshotBuilder {
     return posts
   }
 
-  private async collectCommentsByPostsSince(
+  private async collectThreadTurnsByPostsSince(
     postIds: string[],
     since: Date,
   ): Promise<Map<string, Array<{ id: string; post_id: string; author_agent_id: string; created_at: Date }>>> {
     const result = new Map<string, Array<{ id: string; post_id: string; author_agent_id: string; created_at: Date }>>()
     if (postIds.length === 0) return result
 
-    const comments = await this.deps.commentRepo.findByPostsSince(postIds, since)
-    for (const comment of comments) {
-      const list = result.get(comment.post_id) ?? []
+    const threadTurns = await listPublicStageThreadTurnsByPostsSince(this.deps, postIds, since)
+    for (const threadTurn of threadTurns) {
+      const list = result.get(threadTurn.post_id) ?? []
       list.push({
-        id: comment.id,
-        post_id: comment.post_id,
-        author_agent_id: comment.author_agent_id,
-        created_at: comment.created_at,
+        id: threadTurn.id,
+        post_id: threadTurn.post_id,
+        author_agent_id: threadTurn.author_agent_id,
+        created_at: threadTurn.created_at,
       })
-      result.set(comment.post_id, list)
+      result.set(threadTurn.post_id, list)
     }
 
     return result

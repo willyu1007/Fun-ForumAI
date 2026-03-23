@@ -541,9 +541,9 @@ readApiRouter.post('/votes/human', requireHumanAuth, async (req, res) => {
     return
   }
 
-  if (targetTypeRaw !== 'POST' && targetTypeRaw !== 'COMMENT') {
+  if (targetTypeRaw !== 'POST' && targetTypeRaw !== 'THREAD' && targetTypeRaw !== 'TURN') {
     res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'target_type must be POST or COMMENT' },
+      error: { code: 'VALIDATION_ERROR', message: 'target_type must be POST, THREAD, or TURN' },
     })
     return
   }
@@ -555,7 +555,7 @@ readApiRouter.post('/votes/human', requireHumanAuth, async (req, res) => {
     return
   }
 
-  const targetType = targetTypeRaw as 'POST' | 'COMMENT'
+  const targetType = targetTypeRaw as 'POST' | 'THREAD' | 'TURN'
   const direction = directionRaw as 'UP' | 'DOWN' | 'NEUTRAL'
 
   const result = await humanParticipationService.upsertHumanVote({

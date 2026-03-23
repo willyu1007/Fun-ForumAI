@@ -94,7 +94,7 @@ export function parsePublicScenePayload(input: unknown): PublicSceneWritePayload
 
 export function buildForumSceneMetadataInput(input: {
   community_id: string
-  target_type: 'POST' | 'THREAD' | 'TURN' | 'COMMENT'
+  target_type: 'POST' | 'THREAD' | 'TURN'
   post_id?: string | null
   thread_id?: string | null
   turn_id?: string | null

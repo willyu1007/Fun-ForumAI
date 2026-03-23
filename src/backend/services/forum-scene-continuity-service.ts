@@ -185,7 +185,6 @@ export class ForumSceneContinuityService {
 
     const postEvent = [...events].reverse().find((event) =>
       String((event.payload_json as Record<string, unknown>).post_id ?? '') === postId
-      && !('comment_id' in (event.payload_json as Record<string, unknown>))
       && !('thread_id' in (event.payload_json as Record<string, unknown>))
       && !('turn_id' in (event.payload_json as Record<string, unknown>))
       && (event.payload_json as Record<string, unknown>).public_scene)

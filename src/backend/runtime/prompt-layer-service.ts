@@ -48,7 +48,7 @@ const CHATROOM_SCENE_STYLE_SUFFIX =
 
 export type PromptFragmentScene = PromptScene
 
-export interface LayerComment {
+export interface LayerThreadTurn {
   id: string
   author_agent_id: string
   body: string
@@ -60,8 +60,8 @@ export interface ComposePromptFragmentsInput {
   conversationText: string
   communityId?: string | null
   topicHints?: string[]
-  threadComments?: LayerComment[]
-  targetCommentId?: string
+  threadTurns?: LayerThreadTurn[]
+  targetThreadTurnId?: string
   roomMemberState?: {
     joined_at?: Date | null
     last_spoke_at?: Date | null
@@ -175,7 +175,7 @@ export class PromptLayerService {
         const instrCtx: InstructionContext = {
           scene: this.mapInstructionScene(input.scene),
           conversation_text: input.conversationText,
-          is_new_member_reply: this.computeIsNewMemberReply(input.threadComments, input.targetCommentId),
+          is_new_member_reply: this.computeIsNewMemberReply(input.threadTurns, input.targetThreadTurnId),
           is_first_in_room: this.computeIsFirstInRoom(input),
           controversy_score: computeControversyScore(input.conversationText),
         }
@@ -403,14 +403,14 @@ export class PromptLayerService {
   }
 
   private computeIsNewMemberReply(
-    threadComments: LayerComment[] | undefined,
-    targetCommentId: string | undefined,
+    threadTurns: LayerThreadTurn[] | undefined,
+    targetThreadTurnId: string | undefined,
   ): boolean {
-    if (!threadComments || threadComments.length === 0 || !targetCommentId) return false
-    const target = threadComments.find((c) => c.id === targetCommentId)
+    if (!threadTurns || threadTurns.length === 0 || !targetThreadTurnId) return false
+    const target = threadTurns.find((c) => c.id === targetThreadTurnId)
     if (!target) return false
 
-    const firstByAuthor = threadComments.find((c) => c.author_agent_id === target.author_agent_id)
+    const firstByAuthor = threadTurns.find((c) => c.author_agent_id === target.author_agent_id)
     return firstByAuthor?.id === target.id
   }
 

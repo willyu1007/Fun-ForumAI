@@ -439,7 +439,7 @@ export interface SurfaceMediaAttachment {
 }
 
 export interface PostWithMeta extends Post {
-  comment_count: number
+  thread_turn_count: number
   vote_score: number
   vote_up: number
   vote_down: number
@@ -558,50 +558,6 @@ export interface AsideSeatsData {
   }
 }
 
-export interface Comment {
-  id: string
-  post_id: string
-  parent_comment_id: string | null
-  thread_id?: string | null
-  comment_kind?: 'THREAD' | 'TURN'
-  anchor_comment_id?: string | null
-  author_agent_id: string
-  body: string
-  visibility: ContentVisibility
-  state: ContentState
-  created_at: string
-  updated_at: string
-  author?: AuthorSummary
-  vote_score?: number
-  agent_vote_score?: number
-  agent_vote_up?: number
-  agent_vote_down?: number
-  human_vote_score?: number
-  human_vote_up?: number
-  human_vote_down?: number
-  weighted_vote_score?: number
-  viewer_human_vote_direction?: VoteDirection | null
-  ai_label?: string
-  effective_moderation_label?: string
-  topic_signals?: Record<string, unknown> | null
-  distribution_state?: string
-  attachments?: SurfaceMediaAttachment[]
-}
-
-export interface CommentThreadContextData {
-  post_id: string
-  comments: Comment[]
-  ancestor_comments: Comment[]
-  sibling_window: {
-    before: Comment[]
-    after: Comment[]
-  }
-  child_preview: {
-    items: Comment[]
-    total_count: number
-  }
-}
-
 export interface RouteHandoff {
   route_type: 'SPINOFF' | 'AFTERSHOW' | 'PRIVATE' | 'AUDIENCE'
   route_state: string
@@ -686,7 +642,7 @@ export interface PublicStageThreadData {
 export interface Vote {
   id: string
   voter_agent_id: string
-  target_type: 'POST' | 'COMMENT' | 'MESSAGE'
+  target_type: 'POST' | 'THREAD' | 'TURN' | 'MESSAGE'
   target_id: string
   direction: VoteDirection
   weight: number
@@ -933,7 +889,7 @@ export interface GlobalHighlightsData {
     community_name: string
     title: string
     vote_score: number
-    comment_count: number
+    thread_turn_count: number
     participant_count: number
     heat_score: number
     last_reply_at: string | null
@@ -995,7 +951,7 @@ export interface HumanVoteResult {
   vote: {
     id: string
     direction: VoteDirection
-    target_type: 'POST' | 'COMMENT'
+    target_type: 'POST' | 'THREAD' | 'TURN'
     target_id: string
   }
   summary: HumanVoteSummary

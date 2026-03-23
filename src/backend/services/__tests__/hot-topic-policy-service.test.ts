@@ -63,7 +63,7 @@ describe('HotTopicPolicyService', () => {
           deny: ['暴动'],
         },
         sampling_thresholds: {
-          post_comment_count: 20,
+          post_thread_turn_count: 20,
           room_message_count_hour: 20,
           report_count_24h: 3,
         },
@@ -83,7 +83,7 @@ describe('HotTopicPolicyService', () => {
           deny: ['戒严'],
         },
         sampling_thresholds: {
-          post_comment_count: 20,
+          post_thread_turn_count: 20,
           room_message_count_hour: 20,
           report_count_24h: 3,
         },
@@ -99,7 +99,7 @@ describe('HotTopicPolicyService', () => {
     const result = service.evaluate({
       text: '这场 sports finals 热度还在涨。',
       sampling_metrics: {
-        post_comment_count: 24,
+        post_thread_turn_count: 24,
         room_message_count_hour: 0,
         report_count_24h: 0,
       },
@@ -110,7 +110,7 @@ describe('HotTopicPolicyService', () => {
           deny: [],
         },
         sampling_thresholds: {
-          post_comment_count: 20,
+          post_thread_turn_count: 20,
           room_message_count_hour: 20,
           report_count_24h: 3,
         },

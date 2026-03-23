@@ -902,7 +902,6 @@ function isSameThreadPublicBinding(
   const currentSceneId = directive.scene_ref.post_id
     ?? directive.scene_ref.turn_id
     ?? directive.scene_ref.thread_id
-    ?? directive.scene_ref.comment_id
     ?? directive.scene_ref.message_id
     ?? null
   return !(binding.scene_type === directive.scene_ref.actor_surface && currentSceneId && binding.scene_id === currentSceneId)

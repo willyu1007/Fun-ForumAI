@@ -2,11 +2,12 @@ import type {
   AgentRepository,
   AppealRequesterType,
   AppealType,
-  CommentRepository,
   ComplaintType,
   GovernanceAttachment,
   MessageRepository,
   PostRepository,
+  PublicStageThreadRepository,
+  PublicStageTurnRepository,
   ReviewQueue,
 } from '../repos/index.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
@@ -14,6 +15,7 @@ import type { RiskGovernanceRepository } from '../repos/risk-governance-reposito
 import type { PrivateSession } from '../repos/types/private-channel.js'
 import type { ReviewService } from './review-service.js'
 import type { NotificationService } from './notification-service.js'
+import { findPublicStageThreadTurnById } from '../lib/public-stage-thread-turn.js'
 import {
   appealAudienceLabel,
   complaintAudienceLabel,
@@ -24,7 +26,7 @@ import {
 
 const REPORTABLE_TARGET_TYPES = new Set([
   'post',
-  'comment',
+  'thread_turn',
   'message',
   'private_session',
   'agent',
@@ -54,11 +56,12 @@ const APPEAL_REQUESTER_TYPES = new Set<AppealRequesterType>([
   'OPERATOR',
 ])
 
-type ReportableTargetType = 'post' | 'comment' | 'message' | 'private_session' | 'agent' | 'config_revision'
+type ReportableTargetType = 'post' | 'thread_turn' | 'message' | 'private_session' | 'agent' | 'config_revision'
 
 export interface ComplaintAppealServiceDeps {
   postRepo: PostRepository
-  commentRepo: CommentRepository
+  publicStageThreadRepo: PublicStageThreadRepository
+  publicStageTurnRepo: PublicStageTurnRepository
   messageRepo: MessageRepository
   agentRepo: AgentRepository
 }
@@ -100,7 +103,7 @@ export class ComplaintAppealService {
   private normalizeTargetType(targetType: string): ReportableTargetType {
     const normalized = targetType.trim().toLowerCase()
     if (!REPORTABLE_TARGET_TYPES.has(normalized)) {
-      throw new ValidationError('target_type must be one of: post, comment, message, private_session, agent, config_revision')
+      throw new ValidationError('target_type must be one of: post, thread_turn, message, private_session, agent, config_revision')
     }
     return normalized as ReportableTargetType
   }
@@ -221,7 +224,7 @@ export class ComplaintAppealService {
     if (governanceEntryLabel) return governanceEntryLabel
 
     const normalized = reasonCode.trim().toLowerCase()
-    if (normalized === 'comment_report') return '评论区'
+    if (normalized === 'thread_stage_report') return '公共舞台'
     if (normalized === 'chat_message_report') return '聊天室 live 对话'
     if (normalized === 'privacy_request') return '隐私请求入口'
     if (normalized === 'deletion_request') return '删除请求入口'
@@ -231,8 +234,8 @@ export class ComplaintAppealService {
 
     return targetType === 'post'
       ? '帖子详情页'
-      : targetType === 'comment'
-        ? '评论区'
+      : targetType === 'thread_turn'
+        ? '公共舞台'
         : targetType === 'message'
           ? '聊天室 live 对话'
           : targetType === 'private_session'
@@ -245,8 +248,8 @@ export class ComplaintAppealService {
   private appealSurfaceLabel(targetType: ReportableTargetType): string {
     return targetType === 'post'
       ? '帖子详情页'
-      : targetType === 'comment'
-        ? '评论区'
+      : targetType === 'thread_turn'
+        ? '公共舞台'
         : targetType === 'message'
           ? '聊天室 live 对话'
           : targetType === 'private_session'
@@ -305,9 +308,9 @@ export class ComplaintAppealService {
       if (!post) throw new NotFoundError('Post', targetId)
       return
     }
-    if (targetType === 'comment') {
-      const comment = await this.deps.commentRepo.findById(targetId)
-      if (!comment) throw new NotFoundError('Comment', targetId)
+    if (targetType === 'thread_turn') {
+      const entry = await findPublicStageThreadTurnById(this.deps, targetId)
+      if (!entry) throw new NotFoundError('Stage entry', targetId)
       return
     }
     if (targetType === 'message') {

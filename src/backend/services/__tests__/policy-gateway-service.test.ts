@@ -518,7 +518,7 @@ describe('PolicyGatewayService', () => {
           scene_modes: {},
           user_copy: {},
           sampling_thresholds: {
-            post_comment_count: 20,
+            post_thread_turn_count: 20,
             room_message_count_hour: 20,
             report_count_24h: 3,
           },
@@ -534,7 +534,7 @@ describe('PolicyGatewayService', () => {
       target_type: 'post',
       target_id: 'post-hot-3',
       sampling_metrics: {
-        post_comment_count: 26,
+        post_thread_turn_count: 26,
         room_message_count_hour: 0,
         report_count_24h: 0,
       },

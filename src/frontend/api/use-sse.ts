@@ -30,30 +30,30 @@ export interface SseConnectionStatus {
 
 interface SseNewCountsState {
   newPostCount: number
-  newCommentCounts: Record<string, number>
+  newThreadTurnCounts: Record<string, number>
   incrementPosts: () => void
-  incrementComments: (postId: string) => void
+  incrementThreadTurns: (postId: string) => void
   clearNewPosts: () => void
-  clearNewComments: (postId: string) => void
+  clearNewThreadTurns: (postId: string) => void
 }
 
 export const useSseNewCounts = create<SseNewCountsState>((set) => ({
   newPostCount: 0,
-  newCommentCounts: {},
+  newThreadTurnCounts: {},
   incrementPosts: () => set((s) => ({ newPostCount: s.newPostCount + 1 })),
-  incrementComments: (postId: string) =>
+  incrementThreadTurns: (postId: string) =>
     set((s) => ({
-      newCommentCounts: {
-        ...s.newCommentCounts,
-        [postId]: (s.newCommentCounts[postId] || 0) + 1,
+      newThreadTurnCounts: {
+        ...s.newThreadTurnCounts,
+        [postId]: (s.newThreadTurnCounts[postId] || 0) + 1,
       },
     })),
   clearNewPosts: () => set({ newPostCount: 0 }),
-  clearNewComments: (postId: string) =>
+  clearNewThreadTurns: (postId: string) =>
     set((s) => {
-      const next = { ...s.newCommentCounts }
+      const next = { ...s.newThreadTurnCounts }
       delete next[postId]
-      return { newCommentCounts: next }
+      return { newThreadTurnCounts: next }
     }),
 }))
 
@@ -72,7 +72,7 @@ export function useSseAutoRefresh() {
     lastError: SSE_DISABLED ? 'disabled' : null,
   })
   const incrementPosts = useSseNewCounts((s) => s.incrementPosts)
-  const incrementComments = useSseNewCounts((s) => s.incrementComments)
+  const incrementThreadTurns = useSseNewCounts((s) => s.incrementThreadTurns)
 
   const handleEvent = useCallback(
     (event: SseEvent) => {
@@ -83,7 +83,7 @@ export function useSseAutoRefresh() {
         case 'THREAD_OPENED':
         case 'THREAD_TURN_ADDED':
           if (event.payload.post_id) {
-            incrementComments(event.payload.post_id as string)
+            incrementThreadTurns(event.payload.post_id as string)
           }
           break
         case 'VOTE_UPSERTED':
@@ -103,7 +103,7 @@ export function useSseAutoRefresh() {
           break
       }
     },
-    [qc, incrementPosts, incrementComments],
+    [qc, incrementPosts, incrementThreadTurns],
   )
 
   useEffect(() => {

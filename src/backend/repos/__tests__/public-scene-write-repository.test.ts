@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { InMemoryCommentRepository } from '../comment-repository.js'
 import {
   InMemoryAgentRunRepository,
   InMemoryEventRepository,
@@ -10,6 +9,8 @@ import {
 } from '../forum-scene-metadata-repository.js'
 import { InMemoryPostRepository } from '../post-repository.js'
 import { InMemoryPublicSceneWriteRepository } from '../public-scene-write-repository.js'
+import { InMemoryPublicStageThreadRepository } from '../public-stage-thread-repository.js'
+import { InMemoryPublicStageTurnRepository } from '../public-stage-turn-repository.js'
 import type { AgentRunRepository, EventRepository } from '../event-repository.js'
 
 class FailingSceneMetadataRepository implements ForumSceneMetadataRepository {
@@ -113,7 +114,8 @@ describe('InMemoryPublicSceneWriteRepository', () => {
     const agentRunRepo = new InMemoryAgentRunRepository()
     const repo = new InMemoryPublicSceneWriteRepository({
       postRepo,
-      commentRepo: new InMemoryCommentRepository(),
+      publicStageThreadRepo: new InMemoryPublicStageThreadRepository(),
+      publicStageTurnRepo: new InMemoryPublicStageTurnRepository(),
       sceneMetadataRepo: new FailingSceneMetadataRepository(),
       eventRepo,
       agentRunRepo,
@@ -146,7 +148,8 @@ describe('InMemoryPublicSceneWriteRepository', () => {
     const eventRepo = new InMemoryEventRepository()
     const repo = new InMemoryPublicSceneWriteRepository({
       postRepo,
-      commentRepo: new InMemoryCommentRepository(),
+      publicStageThreadRepo: new InMemoryPublicStageThreadRepository(),
+      publicStageTurnRepo: new InMemoryPublicStageTurnRepository(),
       sceneMetadataRepo,
       eventRepo,
       agentRunRepo: new FailingAgentRunRepository(),
@@ -173,30 +176,34 @@ describe('InMemoryPublicSceneWriteRepository', () => {
     expect(eventRepo.findByPostId('post-1')).toHaveLength(0)
   })
 
-  it('rolls back comment writes without deleting the root-post sidecar', async () => {
-    const commentRepo = new InMemoryCommentRepository()
+  it('rolls back thread writes without deleting the root-post sidecar', async () => {
+    const publicStageThreadRepo = new InMemoryPublicStageThreadRepository()
+    const publicStageTurnRepo = new InMemoryPublicStageTurnRepository()
     const sceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
     const rootPayload = { scene_metadata: { episode_id: 'root-episode' } }
     await sceneMetadataRepo.create({
       ...baseSceneMetadata,
       target_type: 'POST',
       post_id: 'post-1',
-      comment_id: null,
+      thread_id: null,
+      turn_id: null,
       payload_json: rootPayload,
     })
 
     const repo = new InMemoryPublicSceneWriteRepository({
       postRepo: new InMemoryPostRepository(),
-      commentRepo,
+      publicStageThreadRepo,
+      publicStageTurnRepo,
       sceneMetadataRepo,
       eventRepo: new FailingEventRepository(),
       agentRunRepo: new InMemoryAgentRunRepository(),
     })
 
-    await expect(repo.createComment({
-      comment: {
-        id: 'comment-1',
+    await expect(repo.createThread({
+      thread: {
+        id: 'thread-1',
         post_id: 'post-1',
+        community_id: 'community-1',
         author_agent_id: 'agent-1',
         body: 'Body',
         visibility: 'PUBLIC',
@@ -209,15 +216,15 @@ describe('InMemoryPublicSceneWriteRepository', () => {
       },
       event: {
         ...baseEvent,
-        id: 'evt-comment-1',
+        id: 'evt-thread-1',
         event_type: 'THREAD_OPENED',
-        payload_json: { comment_id: 'comment-1', thread_id: 'comment-1', post_id: 'post-1' },
+        payload_json: { thread_id: 'thread-1', post_id: 'post-1' },
       },
     })).rejects.toThrow('event write failed')
 
-    const comments = await commentRepo.findByPostAll('post-1', { limit: 10 })
-    expect(comments.items).toHaveLength(0)
-    expect(await sceneMetadataRepo.findByCommentId('comment-1')).toBeNull()
+    const threads = await publicStageThreadRepo.findByPostAll('post-1', { limit: 10 })
+    expect(threads.items).toHaveLength(0)
+    expect(await sceneMetadataRepo.findByThreadId('thread-1')).toBeNull()
     expect(await sceneMetadataRepo.findByPostId('post-1')).toMatchObject({
       payload_json: rootPayload,
     })

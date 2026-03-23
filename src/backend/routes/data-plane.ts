@@ -31,7 +31,7 @@ dataPlaneRouter.post('/posts/:postId/threads', requireServiceIdentity, validate(
     ...req.body,
     post_id: req.params.postId,
   })
-  const thread = await forumReadService.getThread(result.comment.id)
+  const thread = await forumReadService.getThread(result.entry.id)
   res.status(201).json({
     data: thread,
     meta: {
@@ -50,7 +50,7 @@ dataPlaneRouter.post('/threads/:threadId/turns', requireServiceIdentity, validat
     thread_id: req.params.threadId,
   })
   const thread = await forumReadService.getThread(req.params.threadId)
-  const turn = thread.turns.find((item) => item.id === result.comment.id)
+  const turn = thread.turns.find((item) => item.id === result.entry.id)
   res.status(201).json({
     data: turn ?? null,
     meta: {

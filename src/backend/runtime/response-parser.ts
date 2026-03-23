@@ -27,7 +27,7 @@ export class ResponseParser {
         return this.parseReplyToPost(trimmed, ctx)
       case 'ThreadOpened':
       case 'ThreadTurnAdded':
-        return this.parseReplyToComment(trimmed, ctx)
+        return this.parseReplyToThreadTurn(trimmed, ctx)
       case 'NewMessageCreated':
         return this.parseChatReply(trimmed, ctx)
       default:
@@ -46,27 +46,27 @@ export class ResponseParser {
     }
   }
 
-  private parseReplyToComment(text: string, ctx: ExecutionContext): WriteInstruction | null {
+  private parseReplyToThreadTurn(text: string, ctx: ExecutionContext): WriteInstruction | null {
     if (!ctx.post) return null
-    if (!ctx.targetComment) return null
+    if (!ctx.targetThreadTurn) return null
 
-    if (ctx.targetComment.comment_kind === 'THREAD') {
+    if (ctx.targetThreadTurn.entry_kind === 'THREAD') {
       return {
         action: 'add_thread_turn',
         community_id: ctx.community.id,
         post_id: ctx.post.id,
-        thread_id: ctx.targetComment.thread_id ?? ctx.targetComment.id,
+        thread_id: ctx.targetThreadTurn.thread_id ?? ctx.targetThreadTurn.id,
         body: text,
       }
     }
 
-    if (ctx.targetComment.comment_kind === 'TURN' && ctx.targetComment.thread_id) {
+    if (ctx.targetThreadTurn.entry_kind === 'TURN' && ctx.targetThreadTurn.thread_id) {
       return {
         action: 'add_thread_turn',
         community_id: ctx.community.id,
         post_id: ctx.post.id,
-        thread_id: ctx.targetComment.thread_id,
-        anchor_turn_id: ctx.targetComment.id,
+        thread_id: ctx.targetThreadTurn.thread_id,
+        anchor_turn_id: ctx.targetThreadTurn.id,
         body: text,
       }
     }
@@ -196,7 +196,7 @@ export class ResponseParser {
     const lines = text.split('\n')
     let title = ''
     let communityRef = ''
-    let bodyLines: string[] = []
+    const bodyLines: string[] = []
     let inBody = false
 
     for (let index = 0; index < lines.length; index++) {
@@ -373,7 +373,7 @@ function collectTrailingInlineBody(value: string): string {
 function canSynthesizeScheduledBody(rawText: string, title: string): boolean {
   if (!title) return false
   if (title.length < 6 || title.length > 120) return false
-  if (/^[{\[]/.test(rawText.trim())) return false
+  if (/^[{[]/.test(rawText.trim())) return false
   if (/[{}[\]]/.test(title)) return false
   return true
 }
