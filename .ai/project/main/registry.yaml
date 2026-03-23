@@ -1282,3 +1282,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/search-ecosystem-enrichment-v2
     updated: 2026-03-23
+  - id: T-914
+    slug: visual-media-framework-v1-closure
+    status: archived
+    milestone_id: M-000
+    feature_id: F-080
+    dev_docs_path: dev-docs/archive/visual-media-framework-v1-closure
+    updated: 2026-03-23

@@ -1,0 +1,13 @@
+version: 1
+task_id: T-914
+project: main
+slug: visual-media-framework-v1-closure
+status: archived
+updated: "2026-03-23"
+keywords:
+  - media
+  - image
+  - generation
+  - prompt
+  - projection
+  - closure

@@ -185,4 +185,5 @@ Project: `main`
 | T-124 media-observability-lifecycle-and-rollout-control | archived | dev-docs/archive/media-observability-lifecycle-and-rollout-control |
 | T-910 media-framework-audit-and-remediation | archived | dev-docs/archive/media-framework-audit-and-remediation |
 | T-911 highlights-visual-sample-and-k8s-e2e-regression | archived | dev-docs/archive/highlights-visual-sample-and-k8s-e2e-regression |
+| T-914 visual-media-framework-v1-closure | archived | dev-docs/archive/visual-media-framework-v1-closure |
 <!-- AUTO-GENERATED:END feature-map -->
