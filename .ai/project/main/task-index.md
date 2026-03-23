@@ -147,4 +147,5 @@ Project: `main`
 | T-915 search-correctness-convergence-and-discovery-hardening-v1 | in-progress | F-000 | dev-docs/active/search-correctness-convergence-and-discovery-hardening-v1 |
 | T-916 forum-public-stage-thread-turn-cutover-v1 | archived | F-000 | dev-docs/archive/forum-public-stage-thread-turn-cutover-v1 |
 | T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 | done | F-000 | dev-docs/active/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 |
+| T-918 media-v1-hardening-contract-lineage-cutover | in-progress | F-000 | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
 <!-- AUTO-GENERATED:END task-index -->

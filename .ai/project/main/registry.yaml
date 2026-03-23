@@ -1310,3 +1310,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1
     updated: 2026-03-23
+  - id: T-918
+    slug: media-v1-hardening-contract-lineage-cutover
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/media-v1-hardening-contract-lineage-cutover
+    updated: 2026-03-24

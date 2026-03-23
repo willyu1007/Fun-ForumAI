@@ -8,12 +8,13 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 137 (planned: 1, in-progress: 3, blocked: 0, done: 1, archived: 132)
+- Tasks: 138 (planned: 1, in-progress: 4, blocked: 0, done: 1, archived: 132)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-918 media-v1-hardening-contract-lineage-cutover | in-progress | F-000 | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
 | T-117 visual-media-framework-v1-planning | archived | F-080 | dev-docs/archive/visual-media-framework-v1-planning |
 | T-118 visual-media-domain-foundation-and-v1-semantics-correction | archived | F-080 | dev-docs/archive/visual-media-domain-foundation-and-v1-semantics-correction |
 | T-120 private-chat-image-attachments-and-private-projection | archived | F-080 | dev-docs/archive/private-chat-image-attachments-and-private-projection |
@@ -33,5 +34,4 @@ Project: `main`
 | T-909 uiux-manual-test-baseline | in-progress | F-000 | dev-docs/active/uiux-manual-test-baseline |
 | T-907 confirmed-technical-debt-paydown | archived | F-000 | dev-docs/archive/confirmed-technical-debt-paydown |
 | T-908 ui-preparation-foundation | archived | F-000 | dev-docs/archive/ui-preparation-foundation |
-| T-024 pg-repository-consistency-hardening | archived | F-000 | dev-docs/archive/pg-repository-consistency-hardening |
 <!-- AUTO-GENERATED:END dashboard -->
