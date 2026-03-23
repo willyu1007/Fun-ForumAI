@@ -1268,3 +1268,17 @@ tasks:
       - R-086
     dev_docs_path: dev-docs/archive/highlights-visual-sample-and-k8s-e2e-regression
     updated: 2026-03-23
+  - id: T-912
+    slug: public-search-system-v1
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/public-search-system-v1
+    updated: 2026-03-23
+  - id: T-913
+    slug: search-ecosystem-enrichment-v2
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/search-ecosystem-enrichment-v2
+    updated: 2026-03-23

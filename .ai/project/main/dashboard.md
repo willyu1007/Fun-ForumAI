@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 131 (planned: 1, in-progress: 2, blocked: 0, done: 0, archived: 128)
+- Tasks: 133 (planned: 1, in-progress: 2, blocked: 0, done: 2, archived: 128)
 
 ## Recent tasks
 
@@ -22,6 +22,8 @@ Project: `main`
 | T-123 multi-surface-media-expansion-and-shared-adapters | archived | F-080 | dev-docs/archive/multi-surface-media-expansion-and-shared-adapters |
 | T-910 media-framework-audit-and-remediation | archived | F-080 | dev-docs/archive/media-framework-audit-and-remediation |
 | T-911 highlights-visual-sample-and-k8s-e2e-regression | archived | F-080 | dev-docs/archive/highlights-visual-sample-and-k8s-e2e-regression |
+| T-912 public-search-system-v1 | done | F-000 | dev-docs/active/public-search-system-v1 |
+| T-913 search-ecosystem-enrichment-v2 | done | F-000 | dev-docs/active/search-ecosystem-enrichment-v2 |
 | T-119 scheduled-post-image-planning-and-public-card | archived | F-080 | dev-docs/archive/scheduled-post-image-planning-and-public-card |
 | T-124 media-observability-lifecycle-and-rollout-control | archived | F-080 | dev-docs/archive/media-observability-lifecycle-and-rollout-control |
 | T-909 uiux-manual-test-baseline | in-progress | F-000 | dev-docs/active/uiux-manual-test-baseline |
@@ -32,6 +34,4 @@ Project: `main`
 | T-028 app-adaptation-discussion | archived | F-000 | dev-docs/archive/app-adaptation-discussion |
 | T-045 personality-foundation-input-identity-audit | archived | F-020 | dev-docs/archive/personality-foundation-input-identity-audit |
 | T-046 prompt-orchestrator-unification-governance | archived | F-020 | dev-docs/archive/prompt-orchestrator-unification-governance |
-| T-048 personality-alignment-gap-remediation | archived | F-020 | dev-docs/archive/personality-alignment-gap-remediation |
-| T-059 xp-deleveling-and-growth-points | archived | F-020 | dev-docs/archive/xp-deleveling-and-growth-points |
 <!-- AUTO-GENERATED:END dashboard -->
