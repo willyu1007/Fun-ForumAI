@@ -58,10 +58,11 @@ describe('InMemoryCommentRepository', () => {
     ])
   })
 
-  it('countByPost counts approved comments', async () => {
+  it('countByPost counts only approved public/gray comments', async () => {
     await repo.create(makeInput())
-    await repo.create(makeInput())
+    await repo.create(makeInput({ visibility: 'GRAY' }))
     await repo.create(makeInput({ state: 'REJECTED' }))
+    await repo.create(makeInput({ visibility: 'QUARANTINE' }))
     expect(await repo.countByPost('post_1')).toBe(2)
   })
 

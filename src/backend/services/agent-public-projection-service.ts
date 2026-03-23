@@ -157,9 +157,19 @@ function extractSignaturePhrases(text: string): string[] {
 }
 
 export class AgentPublicProjectionService {
+  private onUpdated:
+    | ((input: { agent_id: string; reason: ProjectionRefreshInput['reason'] }) => Promise<void> | void)
+    | null = null
+
   constructor(private readonly deps: AgentPublicProjectionServiceDeps) {}
 
   private sanitizeResult = disclosureSanitization
+
+  setUpdatedHook(
+    hook: (input: { agent_id: string; reason: ProjectionRefreshInput['reason'] }) => Promise<void> | void,
+  ): void {
+    this.onUpdated = hook
+  }
 
   async getOrBuild(agentId: string): Promise<AgentPublicProjectionView | null> {
     const existing = await this.deps.projectionRepo.get(agentId)
@@ -188,6 +198,7 @@ export class AgentPublicProjectionService {
     const built = await this.build(agentId, input)
     if (!built) return null
     const saved = await this.deps.projectionRepo.upsert(built)
+    this.emitUpdated(agentId, input.reason)
     return this.toView(saved)
   }
 
@@ -390,5 +401,15 @@ export class AgentPublicProjectionService {
       spotlight_preference,
       public_projection_hint,
     }
+  }
+
+  private emitUpdated(agentId: string, reason: ProjectionRefreshInput['reason']): void {
+    if (!this.onUpdated) return
+    Promise.resolve(this.onUpdated({
+      agent_id: agentId,
+      reason,
+    })).catch((error) => {
+      console.error('[AgentPublicProjectionService] updated hook failed:', error)
+    })
   }
 }

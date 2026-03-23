@@ -25,6 +25,15 @@ import {
 } from '../guidance/index.js'
 import { handleGuidanceDigestHook, handleGuidanceForumFanout } from '../guidance/feature-gates.js'
 import { OwnerLifeOverviewService } from '../services/owner-life-overview-service.js'
+import { SearchGuard } from '../services/search/search-guard.js'
+import { PostSearchProvider } from '../services/search/post-search-provider.js'
+import { CommunitySearchProvider } from '../services/search/community-search-provider.js'
+import { AgentSearchProvider } from '../services/search/agent-search-provider.js'
+import { CommentSearchProvider } from '../services/search/comment-search-provider.js'
+import { SearchService } from '../services/search-service.js'
+import { SearchProjectionService } from '../services/search-projection-service.js'
+import { SearchCountsCache } from '../services/search/search-counts-cache.js'
+import { SearchTelemetryService } from '../services/search/search-telemetry-service.js'
 
 function extractOwnerStylePins(configJson: Record<string, unknown>): Record<string, unknown> {
   const identity = configJson.identity
@@ -98,6 +107,60 @@ const core = createCoreServices({
   conversationClockLeaderElector: infra.leaderElectors.conversationClock,
 })
 
+const searchGuard = new SearchGuard()
+export const searchCountsCache = new SearchCountsCache()
+export const searchTelemetryService = new SearchTelemetryService()
+export const searchProjectionService = new SearchProjectionService({
+  searchDocRepo: repos.searchDocRepo,
+  forumReadService: core.forumReadService,
+  postRepo: repos.postRepo,
+  commentRepo: repos.commentRepo,
+  communityRepo: repos.communityRepo,
+  agentRepo: repos.agentRepo,
+  agentConfigRepo: repos.agentConfigRepo,
+  humanFollowRepo: repos.humanFollowRepo,
+  membershipRepo: repos.agentCommunityMembershipRepo,
+  chronicleRepo: repos.chronicleRepo,
+  forumSceneMetadataRepo: repos.forumSceneMetadataRepo,
+  audienceRepo: repos.audienceRepo,
+  achievementChronicleService: core.achievementChronicleService,
+  communityCultureDigestService: core.communityCultureDigestService,
+  agentPublicProjectionService: core.agentPublicProjectionService,
+  aftershowService: core.aftershowService,
+  guard: searchGuard,
+})
+
+const postsSearchProvider = new PostSearchProvider({
+  searchDocRepo: repos.searchDocRepo,
+  guard: searchGuard,
+})
+
+const communitiesSearchProvider = new CommunitySearchProvider({
+  searchDocRepo: repos.searchDocRepo,
+})
+
+const agentsSearchProvider = new AgentSearchProvider({
+  searchDocRepo: repos.searchDocRepo,
+})
+
+const commentsSearchProvider = new CommentSearchProvider({
+  searchDocRepo: repos.searchDocRepo,
+  guard: searchGuard,
+})
+
+export const searchService = new SearchService({
+  postsProvider: postsSearchProvider,
+  communitiesProvider: communitiesSearchProvider,
+  agentsProvider: agentsSearchProvider,
+  commentsProvider: commentsSearchProvider,
+  humanParticipationService: core.humanParticipationService,
+  countsCache: searchCountsCache,
+  telemetry: searchTelemetryService,
+})
+
+core.agentPublicProjectionService.setUpdatedHook((input) =>
+  searchProjectionService.refreshAgent(input.agent_id))
+
 llm.mediaObservabilityService.attachGovernanceDeps({
   riskGovernanceRepo: repos.riskGovernanceRepo,
   publicDisclosureCapService: core.publicDisclosureCapService,
@@ -113,12 +176,30 @@ core.achievementChronicleService.setRecordHook((input) => {
 core.agentService.setConfigUpdatedHook((input) => {
   const beforePins = extractOwnerStylePins(input.before_config)
   const afterPins = extractOwnerStylePins(input.after_config)
-  if (JSON.stringify(beforePins) === JSON.stringify(afterPins)) {
+  if (JSON.stringify(beforePins) !== JSON.stringify(afterPins)) {
+    return core.agentPublicProjectionService
+      .refresh(input.agent_id, { reason: 'owner_style_pin' })
+      .then(() => undefined)
+  }
+  return searchProjectionService.refreshAgent(input.agent_id)
+})
+
+core.governanceAdapter.setExecutedHook(async ({ action }) => {
+  if (action.target_type === 'post') {
+    await searchProjectionService.refreshPost(action.target_id)
     return
   }
-  return core.agentPublicProjectionService
-    .refresh(input.agent_id, { reason: 'owner_style_pin' })
-    .then(() => undefined)
+  if (action.target_type === 'comment') {
+    const comment = await repos.commentRepo.findById(action.target_id)
+    await searchProjectionService.refreshComment(action.target_id)
+    if (comment) {
+      await searchProjectionService.refreshPost(comment.post_id)
+    }
+    return
+  }
+  if (action.target_type === 'agent') {
+    await searchProjectionService.refreshAgent(action.target_id)
+  }
 })
 
 const communityConfigScheduler = new CommunityConfigScheduler(
@@ -332,7 +413,9 @@ const rt = createRuntime({
 })
 
 // ─── 8. Event Hook Wiring ───────────────────────────────────
-core.forumWriteService.setEventHook((event) => {
+core.forumWriteService.setEventHook(async (event) => {
+  await searchProjectionService.handleForumEvent(event)
+
   rt.eventBridge.bridge(event)
 
   if (core.achievementsOrchestrator) {
@@ -418,6 +501,7 @@ export const roomRepo = repos.roomRepo
 export const eventRepo = repos.eventRepo
 export const agentRunRepo = repos.agentRunRepo
 export const riskGovernanceRepo = repos.riskGovernanceRepo
+export const searchDocRepo = repos.searchDocRepo
 
 export const sseHub = infra.sseHub
 export const eventQueue = infra.eventQueue

@@ -1,6 +1,11 @@
 import { Router, type IRouter } from 'express'
 import { requireHumanAuth } from '../middleware/human-auth.js'
-import { agentService, humanParticipationService, agentCommunityMembershipService } from '../container.js'
+import {
+  agentService,
+  humanParticipationService,
+  agentCommunityMembershipService,
+  searchProjectionService,
+} from '../container.js'
 import { config } from '../lib/config.js'
 import { ForbiddenError } from '../lib/errors.js'
 import { validate } from '../validation/validate.js'
@@ -23,6 +28,7 @@ agentSocialRouter.post('/agents/:agentId/follow', requireHumanAuth, async (req, 
   }
 
   const result = await humanParticipationService.followAgent(req.user!.userId, String(req.params.agentId))
+  await searchProjectionService.refreshAgent(String(req.params.agentId))
   await trackGuidanceEventFromRequest(
     req,
     res,
@@ -43,6 +49,7 @@ agentSocialRouter.delete('/agents/:agentId/follow', requireHumanAuth, async (req
   }
 
   const result = await humanParticipationService.unfollowAgent(req.user!.userId, String(req.params.agentId))
+  await searchProjectionService.refreshAgent(String(req.params.agentId))
   res.json({ data: result })
 })
 
@@ -73,6 +80,12 @@ agentSocialRouter.patch(
       role: req.body.role,
       actor_user_id: actor.userId,
     })
+    await searchProjectionService.refreshAgent(agentId)
+    await Promise.all(
+      result.updated.added
+        .concat(result.updated.removed)
+        .map((communityId: string) => searchProjectionService.refreshCommunity(communityId)),
+    )
     res.json({ data: result })
   },
 )
@@ -106,6 +119,8 @@ agentSocialRouter.patch(
       actor_user_id: actor.userId,
       actor_role: actor.role,
     })
+    await searchProjectionService.refreshAgent(agentId)
+    await searchProjectionService.refreshCommunity(communityId)
 
     res.json({ data })
   },

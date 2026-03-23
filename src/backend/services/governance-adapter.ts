@@ -39,7 +39,15 @@ export class GovernanceAdapter {
       target_agent_id: string
     }) => Promise<void> | void,
   ): void {
-    this.deps.onExecuted = hook
+    if (!this.deps.onExecuted) {
+      this.deps.onExecuted = hook
+      return
+    }
+    const existing = this.deps.onExecuted
+    this.deps.onExecuted = async (input) => {
+      await existing(input)
+      await hook(input)
+    }
   }
 
   async execute(action: GovernanceAction): Promise<GovernanceResult> {
@@ -67,7 +75,7 @@ export class GovernanceAdapter {
     if (result.success && this.deps.onExecuted) {
       const targetAgentId = await this.resolveTargetAgentId(action)
       if (targetAgentId) {
-        Promise.resolve(this.deps.onExecuted({
+        await Promise.resolve(this.deps.onExecuted({
           action,
           result,
           target_agent_id: targetAgentId,

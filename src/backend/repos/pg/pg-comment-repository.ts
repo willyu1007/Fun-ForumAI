@@ -80,7 +80,11 @@ export class PgCommentRepository implements CommentRepository {
 
   async countByPost(postId: string): Promise<number> {
     return this.prisma.comment.count({
-      where: { postId, state: 'APPROVED' },
+      where: {
+        postId,
+        state: 'APPROVED',
+        visibility: { in: ['PUBLIC', 'GRAY'] },
+      },
     })
   }
 

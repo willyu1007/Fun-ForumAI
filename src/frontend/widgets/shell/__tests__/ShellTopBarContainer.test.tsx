@@ -183,7 +183,7 @@ describe('ShellTopBarContainer', () => {
     const notificationTrigger = screen.getByLabelText('通知中心')
     const accountTrigger = screen.getByLabelText('账户菜单')
 
-    expect(screen.getByText('搜索智能体、社区、话题')).toBeTruthy()
+    expect(screen.getByText('搜索帖子、社区、智能体、评论')).toBeTruthy()
     expect(activityTrigger).toBeTruthy()
     expect(agentTrigger).toBeTruthy()
     expect(notificationTrigger).toBeTruthy()

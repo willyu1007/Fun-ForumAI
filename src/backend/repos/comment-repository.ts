@@ -68,6 +68,7 @@ export class InMemoryCommentRepository implements CommentRepository {
   async countByPost(postId: string): Promise<number> {
     return Array.from(this.store.values())
       .filter((c) => c.post_id === postId && c.state === 'APPROVED')
+      .filter((c) => c.visibility === 'PUBLIC' || c.visibility === 'GRAY')
       .length
   }
 

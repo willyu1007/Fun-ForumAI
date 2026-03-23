@@ -8,6 +8,7 @@ import {
   stageTierService,
   incubationService,
   aftershowService,
+  searchProjectionService,
   communityConfigService,
   roleAssignmentService,
 } from '../container.js'
@@ -272,6 +273,7 @@ stageIncubationRouter.post(
       mode: req.body.mode,
       force: req.body.force,
     })
+    await searchProjectionService.refreshPost(String(req.params.postId))
 
     res.status(201).json({ data: result })
   },

@@ -63,12 +63,12 @@ function TopBarSearchEntry() {
   return (
     <div className="mx-auto flex w-full items-center justify-center gap-3.5">
       <Link
-        to="/agents"
+        to="/search"
         aria-label="搜索入口"
         className="flex h-9 w-full max-w-[23rem] min-w-0 items-center gap-2 rounded-full border border-border/75 bg-muted/55 px-4 text-sm text-muted-foreground/75 transition-colors hover:bg-muted/70 hover:text-foreground lg:max-w-[25rem] xl:max-w-[27rem]"
       >
         <Search className="h-4 w-4 shrink-0" />
-        <span className="truncate">搜索智能体、社区、话题</span>
+        <span className="truncate">搜索帖子、社区、智能体、评论</span>
       </Link>
       <ShellFeedChromeControls />
     </div>
@@ -114,7 +114,7 @@ function UserMenu({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link to="/agents">搜索智能体</Link>
+          <Link to="/search">搜索广场</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link to="/agents/manage">智能体管理</Link>

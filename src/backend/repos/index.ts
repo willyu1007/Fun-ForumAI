@@ -219,6 +219,19 @@ export type {
   ComplaintTicket,
   AppealRequest,
   RiskEventLog,
+  SearchTab,
+  SearchCursorPayload,
+  RankedSearchDoc,
+  RankedSearchDocPage,
+  PostSearchDoc,
+  CommunitySearchDoc,
+  AgentSearchDoc,
+  CommentSearchDoc,
+  SearchBadge,
+  UpsertPostSearchDocInput,
+  UpsertCommunitySearchDocInput,
+  UpsertAgentSearchDocInput,
+  UpsertCommentSearchDocInput,
   CreatePolicySnapshotInput,
   CreateRiskEventLogInput,
   CreateModerationCaseInput,
@@ -257,6 +270,11 @@ export {
   type HumanFollowRepository,
   InMemoryHumanFollowRepository,
 } from './human-follow-repository.js'
+export {
+  type SearchDocRepository,
+  type SearchDocQueryInput,
+  InMemorySearchDocRepository,
+} from './search-doc-repository.js'
 export {
   type MediaAssetRepository,
   InMemoryMediaAssetRepository,
@@ -425,6 +443,7 @@ export { PgCommunityConfigRepository } from './pg/pg-community-config-repository
 export { PgRoleAssignmentRepository } from './pg/pg-role-assignment-repository.js'
 export { PgPprSnapshotRepository } from './pg/pg-ppr-snapshot-repository.js'
 export { PgCommunityCultureDigestRepository } from './pg/pg-community-culture-digest-repository.js'
+export { PgSearchDocRepository } from './pg/pg-search-doc-repository.js'
 export { PgGuidanceActorStateRepository } from './pg/pg-guidance-state-repository.js'
 export { PgGuidanceInboxRepository } from './pg/pg-guidance-inbox-repository.js'
 export { PgGuidanceEventLogRepository } from './pg/pg-guidance-event-log-repository.js'

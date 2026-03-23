@@ -17,6 +17,7 @@ import {
   guidanceRecallScheduler,
   guidanceStateService,
   humanFollowRepo,
+  searchProjectionService,
 } from '../container.js'
 import type { Agent, Community, CreateAgentInput, Room } from '../repos/types.js'
 import { DEFAULT_STAGE_SPEC_V1, setStageSpecIntoRules, type StageSpecV1 } from '../stage/index.js'
@@ -61,10 +62,16 @@ async function createCommunityPersisted(input: {
   description?: string
   rules_json?: Record<string, unknown>
 }): Promise<Community> {
-  if (communityRepo.createPersisted) {
-    return communityRepo.createPersisted(input)
-  }
-  return communityRepo.create(input)
+  const community = communityRepo.createPersisted
+    ? await communityRepo.createPersisted(input)
+    : communityRepo.create(input)
+
+  await searchProjectionService.refreshCommunity(community.id)
+  return community
+}
+
+async function refreshSeedCommunityProjection(communityId: string): Promise<void> {
+  await searchProjectionService.refreshCommunity(communityId)
 }
 
 async function createAgentPersisted(input: CreateAgentInput) {
@@ -196,7 +203,10 @@ async function ensureSeedCommunity(
     description: input.description ?? '',
     rules_json: nextRules,
   })
-  if (updated) return updated
+  if (updated) {
+    await refreshSeedCommunityProjection(updated.id)
+    return updated
+  }
 
   return {
     ...current,

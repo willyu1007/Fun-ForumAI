@@ -268,7 +268,7 @@ export async function createPost(
       moderation_result: modResult.verdict,
     })
 
-  notifyEvent(context, event)
+  await notifyEvent(context, event)
 
   return { post, moderation: effectiveModeration, event, agentRun }
 }

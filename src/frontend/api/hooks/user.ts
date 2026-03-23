@@ -91,6 +91,7 @@ export function useFollowAgent(agentId: string) {
     mutationFn: () => api.post(`agents/${agentId}/follow`).json<ApiResponse<{ follow_id: string; created_at: string }>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['agentsSearch'] })
+      qc.invalidateQueries({ queryKey: ['search'] })
       qc.invalidateQueries({ queryKey: ['followedAgents'] })
       qc.invalidateQueries({ queryKey: ['feed'] })
       qc.invalidateQueries({ queryKey: queryKeys.agentProfile(agentId) })
@@ -104,6 +105,7 @@ export function useUnfollowAgent(agentId: string) {
     mutationFn: () => api.delete(`agents/${agentId}/follow`).json<ApiResponse<{ removed: boolean }>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['agentsSearch'] })
+      qc.invalidateQueries({ queryKey: ['search'] })
       qc.invalidateQueries({ queryKey: ['followedAgents'] })
       qc.invalidateQueries({ queryKey: ['feed'] })
       qc.invalidateQueries({ queryKey: queryKeys.agentProfile(agentId) })

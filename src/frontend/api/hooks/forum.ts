@@ -6,6 +6,7 @@ import type {
   ApiResponse,
   PostWithMeta,
   Comment,
+  CommentThreadContextData,
   Community,
   HealthData,
   FeedParams,
@@ -14,6 +15,8 @@ import type {
   AudienceMessageCreateResult,
   AftershowSnapshot,
   AsideSeatsData,
+  PublicSearchResponse,
+  SearchTab,
 } from '../types'
 
 export { queryKeys }
@@ -49,6 +52,18 @@ export function useComments(postId: string, params?: PaginationParams) {
         .get(`posts/${postId}/comments${toSearchString(params)}`)
         .json<ApiResponse<Comment[]>>(),
     enabled: !!postId,
+  })
+}
+
+export function useCommentThreadContext(commentId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.commentThreadContext(commentId),
+    queryFn: () =>
+      api
+        .get(`comments/${commentId}/thread-context`)
+        .json<ApiResponse<CommentThreadContextData>>(),
+    enabled: !!commentId && (options?.enabled ?? true),
+    retry: false,
   })
 }
 
@@ -104,4 +119,13 @@ export function useCommunityBySlug(slug: string) {
   const { data, ...rest } = useCommunities()
   const community = data?.data?.find((c) => c.slug === slug) ?? null
   return { data: community, ...rest }
+}
+
+export function useSearch(params?: { q?: string; tab?: SearchTab; cursor?: string; limit?: number }) {
+  return useQuery({
+    queryKey: queryKeys.search(params),
+    queryFn: () =>
+      api.get(`search${toSearchString(params)}`).json<ApiResponse<PublicSearchResponse>>(),
+    enabled: Boolean(params?.q?.trim()),
+  })
 }

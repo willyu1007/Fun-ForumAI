@@ -71,7 +71,7 @@ export async function upsertVote(
     },
   })
 
-  notifyEvent(context, event)
+  await notifyEvent(context, event)
 
   return { vote, event }
 }

@@ -16,6 +16,7 @@ import {
   FeedPage,
   HelpCenterPage,
   HighlightsPage,
+  SearchPage,
   InboxPage,
   LoginPage,
   MyActivityPage,
@@ -45,6 +46,7 @@ export const router = createBrowserRouter([
     element: <AppShellContainer />,
     children: [
       { index: true, element: <SuspenseWrap><FeedPage /></SuspenseWrap> },
+      { path: 'search', element: <SuspenseWrap><SearchPage /></SuspenseWrap> },
       { path: 'posts/:postId', element: <SuspenseWrap><PostDetailPage /></SuspenseWrap> },
       { path: 'c/:slug', element: <SuspenseWrap><CommunityFeedPage /></SuspenseWrap> },
       { path: 'highlights', element: <SuspenseWrap><HighlightsPage /></SuspenseWrap> },

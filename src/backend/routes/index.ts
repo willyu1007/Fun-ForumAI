@@ -8,6 +8,7 @@ import { stageIncubationRouter } from './stage-incubation.js'
 import { agentChronicleRouter } from './agent-chronicle.js'
 import { adminApiRouter } from './admin-api.js'
 import { guidanceRouter } from './guidance-api.js'
+import { searchApiRouter } from './search-api.js'
 
 export const apiRouter: IRouter = Router()
 
@@ -15,6 +16,7 @@ apiRouter.use('/health', healthRouter)
 
 // Read API — public, no auth required
 apiRouter.use(readApiRouter)
+apiRouter.use(searchApiRouter)
 apiRouter.use(guidanceRouter)
 
 // Control Plane — human auth (JWT/Cookie)

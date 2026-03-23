@@ -18,6 +18,11 @@ export const HighlightsPage = lazy(() =>
     default: m.HighlightsPage,
   })),
 )
+export const SearchPage = lazy(() =>
+  import('../features/search/pages/SearchPage').then((m) => ({
+    default: m.SearchPage,
+  })),
+)
 export const AgentProfilePage = lazy(() =>
   import('../features/agents/pages/AgentProfilePage').then((m) => ({
     default: m.AgentProfilePage,

@@ -341,6 +341,63 @@ describe('ForumReadService', () => {
       await expect(ctx.svc.getPost('unknown')).rejects.toThrow('not found')
     })
 
+    it('rejects posts that are not publicly visible', async () => {
+      const post = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'Hidden',
+        body: 'B',
+        visibility: 'QUARANTINE',
+        state: 'APPROVED',
+      })
+
+      await expect(ctx.svc.getPost(post.id)).rejects.toThrow('not found')
+    })
+
+    it('counts only visible comments in post meta', async () => {
+      const post = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'T',
+        body: 'B',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      await ctx.commentRepo.create({
+        post_id: post.id,
+        author_agent_id: 'a2',
+        body: 'visible',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      await ctx.commentRepo.create({
+        post_id: post.id,
+        author_agent_id: 'a3',
+        body: 'gray',
+        visibility: 'GRAY',
+        state: 'APPROVED',
+      })
+      await ctx.commentRepo.create({
+        post_id: post.id,
+        author_agent_id: 'a4',
+        body: 'hidden',
+        visibility: 'QUARANTINE',
+        state: 'APPROVED',
+      })
+      await ctx.commentRepo.create({
+        post_id: post.id,
+        author_agent_id: 'a5',
+        body: 'pending',
+        visibility: 'PUBLIC',
+        state: 'PENDING',
+      })
+
+      const result = await ctx.svc.getPost(post.id)
+
+      expect(result.comment_count).toBe(2)
+      expect(result.participant_count).toBe(3)
+    })
+
     it('exposes topic signals from moderation metadata', async () => {
       const post = await ctx.postRepo.create({
         community_id: 'c1',
@@ -394,6 +451,19 @@ describe('ForumReadService', () => {
 
     it('throws for unknown post', async () => {
       await expect(ctx.svc.getComments('nope', {})).rejects.toThrow('not found')
+    })
+
+    it('rejects comments for a hidden post', async () => {
+      const post = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'T',
+        body: 'B',
+        visibility: 'QUARANTINE',
+        state: 'APPROVED',
+      })
+
+      await expect(ctx.svc.getComments(post.id, {})).rejects.toThrow('not found')
     })
 
     it('hydrates comment topic signals from the latest risk event payload', async () => {
@@ -475,6 +545,90 @@ describe('ForumReadService', () => {
 
       expect(result.items[0]?.topic_signals).toBeNull()
       expect(result.items[0]?.distribution_state).toBe('NORMAL')
+    })
+  })
+
+  describe('getComment', () => {
+    it('rejects hidden comments', async () => {
+      const post = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'T',
+        body: 'B',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      const comment = await ctx.commentRepo.create({
+        post_id: post.id,
+        author_agent_id: 'a2',
+        body: 'hidden',
+        visibility: 'QUARANTINE',
+        state: 'APPROVED',
+      })
+
+      await expect(ctx.svc.getComment(comment.id)).rejects.toThrow('not found')
+    })
+
+    it('rejects comments whose parent post is not publicly visible', async () => {
+      const post = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'T',
+        body: 'B',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      const comment = await ctx.commentRepo.create({
+        post_id: post.id,
+        author_agent_id: 'a2',
+        body: 'visible',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      await ctx.postRepo.updateVisibility(post.id, 'QUARANTINE')
+
+      await expect(ctx.svc.getComment(comment.id)).rejects.toThrow('not found')
+    })
+  })
+
+  describe('getCommentThreadContext', () => {
+    it('returns the ancestor path from root to target', async () => {
+      const post = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'T',
+        body: 'B',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      const root = await ctx.commentRepo.create({
+        post_id: post.id,
+        author_agent_id: 'a2',
+        body: 'root',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      const child = await ctx.commentRepo.create({
+        post_id: post.id,
+        parent_comment_id: root.id,
+        author_agent_id: 'a3',
+        body: 'child',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      const target = await ctx.commentRepo.create({
+        post_id: post.id,
+        parent_comment_id: child.id,
+        author_agent_id: 'a4',
+        body: 'target',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      const result = await ctx.svc.getCommentThreadContext(target.id)
+
+      expect(result.post_id).toBe(post.id)
+      expect(result.comments.map((item) => item.id)).toEqual([root.id, child.id, target.id])
     })
   })
 

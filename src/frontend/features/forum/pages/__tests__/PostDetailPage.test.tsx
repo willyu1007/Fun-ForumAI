@@ -6,6 +6,7 @@ import type { PostWithMeta, AftershowSnapshot, AudienceThreadData } from '@/api/
 import {
   usePost,
   useComments,
+  useCommentThreadContext,
   useAudienceThread,
   useCreateAudienceMessage,
   useCreateAppeal,
@@ -24,6 +25,7 @@ import { useAuth } from '@/shared/hooks/use-auth'
 vi.mock('@/api/hooks', () => ({
   usePost: vi.fn(),
   useComments: vi.fn(),
+  useCommentThreadContext: vi.fn(),
   useAudienceThread: vi.fn(),
   useCreateAudienceMessage: vi.fn(),
   useCreateReport: vi.fn(),
@@ -56,8 +58,10 @@ vi.mock('../../components/VoteColumn', () => ({
   VoteColumn: () => <div data-testid="vote-column" />,
 }))
 
+const commentListMock = vi.fn((_props: unknown) => <div data-testid="comment-list" />)
+
 vi.mock('../../components/CommentList', () => ({
-  CommentList: () => <div data-testid="comment-list" />,
+  CommentList: (props: unknown) => commentListMock(props),
 }))
 
 vi.mock('../../components/NewContentBanner', () => ({
@@ -70,6 +74,7 @@ vi.mock('../../components/HumanVoteControls', () => ({
 
 const usePostMock = vi.mocked(usePost)
 const useCommentsMock = vi.mocked(useComments)
+const useCommentThreadContextMock = vi.mocked(useCommentThreadContext)
 const useAudienceThreadMock = vi.mocked(useAudienceThread)
 const useCreateAudienceMessageMock = vi.mocked(useCreateAudienceMessage)
 const useCreateReportMock = vi.mocked(useCreateReport)
@@ -86,7 +91,7 @@ const useAuthMock = vi.mocked(useAuth)
 
 const scrollIntoViewMock = vi.fn()
 
-function buildPost(options?: { includeAudienceFields?: boolean }): PostWithMeta {
+function buildPost(options?: { includeAudienceFields?: boolean; overrides?: Partial<PostWithMeta> }): PostWithMeta {
   const includeAudienceFields = options?.includeAudienceFields ?? true
   const base: PostWithMeta = {
     id: 'post-1',
@@ -124,6 +129,7 @@ function buildPost(options?: { includeAudienceFields?: boolean }): PostWithMeta 
     media: [],
     topic_signals: null,
     distribution_state: 'NORMAL',
+    ...options?.overrides,
   }
 
   if (!includeAudienceFields) {
@@ -208,6 +214,14 @@ describe('PostDetailPage', () => {
     useCommentsMock.mockReturnValue({
       data: { data: [] },
       isLoading: false,
+    } as never)
+    useCommentThreadContextMock.mockReturnValue({
+      data: {
+        data: {
+          post_id: 'post-1',
+          comments: [],
+        },
+      },
     } as never)
 
     useAudienceThreadMock.mockReturnValue({
@@ -427,6 +441,123 @@ describe('PostDetailPage', () => {
     await waitFor(() => {
       expect(focusedCard?.className).toContain('border-success/30')
     })
+  })
+
+  it('requests a larger comment page when opened from a search comment deep link', () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderPage('/posts/post-1?commentId=comment-42')
+
+    expect(useCommentsMock).toHaveBeenCalledWith('post-1', { limit: 500 })
+    expect(useCommentThreadContextMock).toHaveBeenCalledWith('comment-42', { enabled: true })
+  })
+
+  it('merges thread-context comments into the rendered comment list', () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true, overrides: { comment_count: 2 } }) },
+      isLoading: false,
+      error: null,
+    } as never)
+    useCommentsMock.mockReturnValue({
+      data: {
+        data: [{
+          id: 'comment-root',
+          post_id: 'post-1',
+          parent_comment_id: null,
+          author_agent_id: 'agent-1',
+          body: 'root',
+          visibility: 'PUBLIC',
+          state: 'APPROVED',
+          created_at: '2026-03-01T00:00:00.000Z',
+          updated_at: '2026-03-01T00:00:00.000Z',
+        }],
+      },
+      isLoading: false,
+    } as never)
+    useCommentThreadContextMock.mockReturnValue({
+      data: {
+        data: {
+          post_id: 'post-1',
+          comments: [{
+            id: 'comment-target',
+            post_id: 'post-1',
+            parent_comment_id: 'comment-root',
+            author_agent_id: 'agent-2',
+            body: 'target',
+            visibility: 'PUBLIC',
+            state: 'APPROVED',
+            created_at: '2026-03-01T00:01:00.000Z',
+            updated_at: '2026-03-01T00:01:00.000Z',
+          }],
+        },
+      },
+    } as never)
+
+    renderPage('/posts/post-1?commentId=comment-target')
+
+    const lastCall = commentListMock.mock.calls[commentListMock.mock.calls.length - 1]
+    const props = lastCall?.[0] as {
+      comments: Array<{ id: string }>
+      targetCommentId: string | null
+    }
+
+    expect(props.targetCommentId).toBe('comment-target')
+    expect(props.comments.map((item) => item.id)).toEqual(['comment-root', 'comment-target'])
+  })
+
+  it('ignores thread-context payloads from a different post id', () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+    useCommentsMock.mockReturnValue({
+      data: {
+        data: [{
+          id: 'comment-root',
+          post_id: 'post-1',
+          parent_comment_id: null,
+          author_agent_id: 'agent-1',
+          body: 'root',
+          visibility: 'PUBLIC',
+          state: 'APPROVED',
+          created_at: '2026-03-01T00:00:00.000Z',
+          updated_at: '2026-03-01T00:00:00.000Z',
+        }],
+      },
+      isLoading: false,
+    } as never)
+    useCommentThreadContextMock.mockReturnValue({
+      data: {
+        data: {
+          post_id: 'post-2',
+          comments: [{
+            id: 'comment-other-post',
+            post_id: 'post-2',
+            parent_comment_id: null,
+            author_agent_id: 'agent-2',
+            body: 'other post',
+            visibility: 'PUBLIC',
+            state: 'APPROVED',
+            created_at: '2026-03-01T00:01:00.000Z',
+            updated_at: '2026-03-01T00:01:00.000Z',
+          }],
+        },
+      },
+    } as never)
+
+    renderPage('/posts/post-1?commentId=comment-other-post')
+
+    const lastCall = commentListMock.mock.calls[commentListMock.mock.calls.length - 1]
+    const props = lastCall?.[0] as {
+      comments: Array<{ id: string }>
+    }
+
+    expect(props.comments.map((item) => item.id)).toEqual(['comment-root'])
   })
 
   it('shows a login rail for anonymous spectators when no canonical post item exists', () => {

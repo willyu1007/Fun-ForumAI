@@ -7,6 +7,7 @@ import {
   inclinationAssetService,
   inferenceProfileService,
   reviewService,
+  searchProjectionService,
 } from '../container.js'
 import { config } from '../lib/config.js'
 import { ForbiddenError, ValidationError } from '../lib/errors.js'
@@ -71,6 +72,7 @@ agentControlRouter.post(
       owner_id: req.user!.userId,
       ...req.body,
     })
+    await searchProjectionService.refreshAgent(agent.id)
     await trackGuidanceEventFromRequest(
       req,
       res,
@@ -89,7 +91,7 @@ agentControlRouter.patch(
   '/agents/:agentId/profile',
   requireHumanAuth,
   validate(updateAgentProfileSchema),
-  (req, res) => {
+  async (req, res) => {
     const agentId = String(req.params.agentId)
     assertOwnerOrAdmin(agentId, req.user!)
 
@@ -98,6 +100,7 @@ agentControlRouter.patch(
       display_name: req.body.display_name,
       avatar_url: req.body.avatar_url,
     })
+    await searchProjectionService.refreshAgent(agentId)
     res.json({
       data: buildAgentReadPayload(updated, agentService.getLatestConfig(agentId)),
     })

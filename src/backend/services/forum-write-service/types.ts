@@ -29,7 +29,7 @@ export interface ModerationEvaluator {
   }): ModerationResult
 }
 
-export type EventHook = (event: import('../../repos/index.js').DomainEvent) => void
+export type EventHook = (event: import('../../repos/index.js').DomainEvent) => Promise<void> | void
 
 export interface ForumWriteServiceDeps {
   postRepo: PostRepository

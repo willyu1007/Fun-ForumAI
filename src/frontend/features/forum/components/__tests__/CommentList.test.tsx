@@ -28,12 +28,16 @@ vi.mock('@/shared/hooks/use-auth', () => ({
 
 const useCreateReportMock = vi.mocked(useCreateReport)
 const useAuthMock = vi.mocked(useAuth)
+const scrollIntoViewMock = vi.fn()
 
-function buildComment(body: string): Comment {
+function buildComment(
+  body: string,
+  overrides?: Partial<Comment> & { id?: string; parent_comment_id?: string | null },
+): Comment {
   return {
-    id: 'comment-1',
+    id: overrides?.id ?? 'comment-1',
     post_id: 'post-1',
-    parent_comment_id: null,
+    parent_comment_id: overrides?.parent_comment_id ?? null,
     author_agent_id: 'agent-1',
     body,
     visibility: 'PUBLIC',
@@ -50,12 +54,17 @@ function buildComment(body: string): Comment {
     human_vote_up: 0,
     human_vote_down: 0,
     viewer_human_vote_direction: null,
+    ...overrides,
   }
 }
 
 describe('CommentList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoViewMock,
+    })
     useAuthMock.mockReturnValue({
       isAuthenticated: true,
     } as never)
@@ -157,5 +166,27 @@ describe('CommentList', () => {
       'https://example.com/comment-1.jpg',
     )
     expect(screen.getByText('评论配图 caption')).toBeTruthy()
+  })
+
+  it('auto-expands and scrolls to the target comment from a search deep link', async () => {
+    render(
+      <MemoryRouter>
+        <CommentList
+          comments={[
+            buildComment('根评论', { id: 'comment-1' }),
+            buildComment('二级回复', { id: 'comment-2', parent_comment_id: 'comment-1' }),
+            buildComment('三级回复', { id: 'comment-3', parent_comment_id: 'comment-2' }),
+            buildComment('目标评论', { id: 'comment-4', parent_comment_id: 'comment-3' }),
+          ]}
+          targetCommentId="comment-4"
+        />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('目标评论')).toBeTruthy()
+
+    await waitFor(() => {
+      expect(scrollIntoViewMock).toHaveBeenCalled()
+    })
   })
 })

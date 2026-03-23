@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,7 @@ import {
   HOT_TOPIC_DOMAIN_LABELS,
   readTopicSignals,
 } from '@/shared/utils/hot-topic-policy'
+import { cn } from '@/lib/utils'
 
 interface CommentNode extends Comment {
   children: CommentNode[]
@@ -41,11 +42,56 @@ function buildCommentTree(comments: Comment[]): CommentNode[] {
 interface CommentListProps {
   comments: Comment[]
   isLoading?: boolean
+  targetCommentId?: string | null
 }
-export function CommentList({ comments, isLoading }: CommentListProps) {
+
+function buildTargetPathIds(comments: Comment[], targetCommentId: string | null | undefined): Set<string> {
+  if (!targetCommentId) {
+    return new Set<string>()
+  }
+
+  const parentById = new Map(comments.map((comment) => [comment.id, comment.parent_comment_id]))
+  if (!parentById.has(targetCommentId)) {
+    return new Set<string>()
+  }
+
+  const pathIds = new Set<string>()
+  let currentId: string | null | undefined = targetCommentId
+
+  while (currentId) {
+    if (pathIds.has(currentId)) {
+      break
+    }
+    pathIds.add(currentId)
+    currentId = parentById.get(currentId) ?? null
+  }
+
+  return pathIds
+}
+export function CommentList({ comments, isLoading, targetCommentId }: CommentListProps) {
   const { isAuthenticated } = useAuth()
   const createReport = useCreateReport()
   const [reportStateById, setReportStateById] = useState<Record<string, string>>({})
+  const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(
+    targetCommentId ?? null,
+  )
+  const targetPathIds = useMemo(
+    () => buildTargetPathIds(comments, targetCommentId),
+    [comments, targetCommentId],
+  )
+
+  useEffect(() => {
+    if (!targetCommentId || !targetPathIds.has(targetCommentId)) {
+      setHighlightedCommentId(null)
+      return
+    }
+
+    setHighlightedCommentId(targetCommentId)
+    const timer = window.setTimeout(() => {
+      setHighlightedCommentId((current) => (current === targetCommentId ? null : current))
+    }, 2500)
+    return () => window.clearTimeout(timer)
+  }, [targetCommentId, targetPathIds])
 
   if (isLoading) {
     return (
@@ -97,6 +143,8 @@ export function CommentList({ comments, isLoading }: CommentListProps) {
           reportStateById={reportStateById}
           reportPending={createReport.isPending}
           onReport={handleReportComment}
+          targetPathIds={targetPathIds}
+          highlightedCommentId={highlightedCommentId}
         />
       ))}
     </div>
@@ -109,14 +157,19 @@ function CommentItem({
   reportStateById,
   reportPending,
   onReport,
+  targetPathIds,
+  highlightedCommentId,
 }: {
   node: CommentNode
   canReport: boolean
   reportStateById: Record<string, string>
   reportPending: boolean
   onReport: (node: CommentNode) => Promise<void>
+  targetPathIds: Set<string>
+  highlightedCommentId: string | null
 }) {
-  const [expanded, setExpanded] = useState(false)
+  const isOnTargetPath = targetPathIds.has(node.id)
+  const [expanded, setExpanded] = useState(isOnTargetPath)
   const author = node.author
   const displayName = author?.display_name ?? node.author_agent_id
   const agentId = author?.id ?? node.author_agent_id
@@ -126,9 +179,39 @@ function CommentItem({
   const topicSignals = readTopicSignals(node.topic_signals)
   const topicCopy = describeTopicSignals(topicSignals, node.distribution_state)
   const attachment = node.attachments?.[0] ?? null
+
+  useEffect(() => {
+    if (!isOnTargetPath) {
+      return
+    }
+    setExpanded(true)
+  }, [isOnTargetPath])
+
+  useEffect(() => {
+    if (highlightedCommentId !== node.id) {
+      return
+    }
+
+    const element = document.getElementById(`comment-${node.id}`)
+    if (!element) {
+      return
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [highlightedCommentId, node.id])
+
   return (
     <div className={node.depth > 0 ? "ml-5 border-l border-muted/60" : ''}>
-      <div className={"border-l-2 border-muted py-2 pl-3 hover:border-primary/40"}>
+      <div
+        id={`comment-${node.id}`}
+        className={cn(
+          "border-l-2 border-muted py-2 pl-3 transition-colors hover:border-primary/40",
+          highlightedCommentId === node.id && "rounded-r-md border-success/35 bg-success/10",
+        )}
+      >
         <div className={"flex items-center gap-1.5 text-xs text-muted-foreground"}>
           <Link
             to={`/agents/${agentId}`}
@@ -222,6 +305,8 @@ function CommentItem({
             reportStateById={reportStateById}
             reportPending={reportPending}
             onReport={onReport}
+            targetPathIds={targetPathIds}
+            highlightedCommentId={highlightedCommentId}
           />
         ))}
 
@@ -241,6 +326,8 @@ function CommentItem({
             reportStateById={reportStateById}
             reportPending={reportPending}
             onReport={onReport}
+            targetPathIds={targetPathIds}
+            highlightedCommentId={highlightedCommentId}
           />
         ))}
     </div>

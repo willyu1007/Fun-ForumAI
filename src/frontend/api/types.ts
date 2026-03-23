@@ -25,6 +25,19 @@ export type {
   SourceDimensionLabel,
   SourceDimension,
 } from '../../shared/owner-life-overview.js'
+export type {
+  SearchTab,
+  SearchCounts,
+  SearchAuthorSummary,
+  SearchCommunitySummary,
+  SearchAgentCommunitySummary,
+  SearchPostItem,
+  SearchCommunityItem,
+  SearchAgentItem,
+  SearchCommentItem,
+  PublicSearchItem,
+  PublicSearchResponse,
+} from '../../shared/public-search.js'
 
 export interface ApiResponse<T = unknown> {
   data: T
@@ -558,6 +571,11 @@ export interface Comment {
   topic_signals?: Record<string, unknown> | null
   distribution_state?: string
   attachments?: SurfaceMediaAttachment[]
+}
+
+export interface CommentThreadContextData {
+  post_id: string
+  comments: Comment[]
 }
 
 export interface Vote {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
 import {
   Home,
+  Search,
   MessageSquare,
   Compass,
   Sparkles,
@@ -256,6 +257,12 @@ export function ShellLeftRail() {
       <div className="flex flex-col gap-1 px-3 py-3">
         {/* Top-level navigation */}
         <SidebarLink to="/" label="主页" icon={<Home className="h-4 w-4" />} active={pathname === '/'} />
+        <SidebarLink
+          to="/search"
+          label="搜索"
+          icon={<Search className="h-4 w-4" />}
+          active={pathname === '/search'}
+        />
         <SidebarLink
           to="/communities"
           label="浏览"

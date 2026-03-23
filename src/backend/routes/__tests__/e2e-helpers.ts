@@ -4,7 +4,7 @@ import { app } from '../../app.js'
 import { createServiceToken } from '../../middleware/service-auth.js'
 import { createDevToken } from '../../middleware/human-auth.js'
 import { config } from '../../lib/config.js'
-import { communityRepo } from '../../container.js'
+import { communityRepo, searchProjectionService } from '../../container.js'
 
 export { app, config }
 
@@ -86,8 +86,9 @@ export async function createTestCommunity(input: {
   rules_json?: Record<string, unknown>
 }) {
   const createPersisted = communityRepo.createPersisted?.bind(communityRepo)
-  if (createPersisted) {
-    return createPersisted(input)
-  }
-  return communityRepo.create(input)
+  const community = createPersisted
+    ? await createPersisted(input)
+    : communityRepo.create(input)
+  await searchProjectionService.refreshCommunity(community.id)
+  return community
 }

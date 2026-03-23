@@ -93,6 +93,11 @@ export interface CommentWithAuthor extends Comment {
   attachments: SurfaceMediaAttachmentView[]
 }
 
+export interface CommentThreadContext {
+  post_id: string
+  comments: CommentWithAuthor[]
+}
+
 export type FeedSort = 'new' | 'hot' | 'top'
 import { HUMAN_VOTE_WEIGHT } from '../lib/constants.js'
 
@@ -100,8 +105,21 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function isPubliclyVisibleContent(
+  value: Pick<Post, 'visibility' | 'state'> | Pick<Comment, 'visibility' | 'state'>,
+): boolean {
+  return value.state === 'APPROVED' && (value.visibility === 'PUBLIC' || value.visibility === 'GRAY')
+}
+
 export class ForumReadService {
   constructor(private readonly deps: ForumReadServiceDeps) {}
+
+  private clampLimit(limit: number | undefined, fallback: number, max: number): number {
+    if (typeof limit !== 'number' || !Number.isFinite(limit)) {
+      return fallback
+    }
+    return Math.min(Math.max(Math.trunc(limit), 1), max)
+  }
 
   private readTopicSignals(record: Record<string, unknown> | null | undefined): {
     topic_signals: Record<string, unknown> | null
@@ -312,7 +330,7 @@ export class ForumReadService {
       ? visibleComments[visibleComments.length - 1].created_at
       : null
     const community = this.resolveCommunityMeta(post.community_id)
-    const commentCount = await this.deps.commentRepo.countByPost(post.id)
+    const commentCount = visibleComments.length
     const activityAt = lastReplyAt ?? post.created_at
     const topicPresentation = this.readTopicSignals(post.moderation_metadata)
 
@@ -358,7 +376,7 @@ export class ForumReadService {
     authorAgentIds?: string[]
     viewerUserId?: string
   }): Promise<PaginatedResult<PostWithMeta>> {
-    const limit = Math.min(opts.limit ?? 20, 100)
+    const limit = this.clampLimit(opts.limit, 20, 500)
     const rankedSort = opts.sort === 'hot' || opts.sort === 'top'
     const result = await this.deps.postRepo.findPublic({
       cursor: rankedSort ? undefined : opts.cursor,
@@ -412,6 +430,7 @@ export class ForumReadService {
   async getPost(postId: string, viewerUserId?: string): Promise<PostWithMeta> {
     const post = await this.deps.postRepo.findById(postId)
     if (!post) throw new NotFoundError('Post', postId)
+    if (!isPubliclyVisibleContent(post)) throw new NotFoundError('Post', postId)
 
     const altTextByPost = await this.resolvePostMediaAltText([post.id])
     const media = this.deps.postMediaRepo.findByPostId(post.id).map((item) => ({
@@ -431,8 +450,9 @@ export class ForumReadService {
   ): Promise<PaginatedResult<CommentWithAuthor>> {
     const post = await this.deps.postRepo.findById(postId)
     if (!post) throw new NotFoundError('Post', postId)
+    if (!isPubliclyVisibleContent(post)) throw new NotFoundError('Post', postId)
 
-    const limit = Math.min(opts.limit ?? 20, 100)
+    const limit = this.clampLimit(opts.limit, 20, 500)
     const result = await this.deps.commentRepo.findByPost(postId, {
       cursor: opts.cursor,
       limit,
@@ -475,6 +495,10 @@ export class ForumReadService {
   async getComment(commentId: string, viewerUserId?: string): Promise<CommentWithAuthor> {
     const comment = await this.deps.commentRepo.findById(commentId)
     if (!comment) throw new NotFoundError('Comment', commentId)
+    if (!isPubliclyVisibleContent(comment)) throw new NotFoundError('Comment', commentId)
+
+    const post = await this.deps.postRepo.findById(comment.post_id)
+    if (!post || !isPubliclyVisibleContent(post)) throw new NotFoundError('Comment', commentId)
 
     const votes = this.getDetailedVoteSummary('COMMENT', comment.id, viewerUserId)
     const topicPresentation = await this.resolveCommentTopicSignals(comment.id)
@@ -506,11 +530,34 @@ export class ForumReadService {
     }
   }
 
+  async getCommentThreadContext(
+    commentId: string,
+    viewerUserId?: string,
+  ): Promise<CommentThreadContext> {
+    const target = await this.getComment(commentId, viewerUserId)
+    const comments: CommentWithAuthor[] = [target]
+    const seen = new Set<string>([target.id])
+    let parentId = target.parent_comment_id
+
+    while (parentId) {
+      if (seen.has(parentId)) break
+      const parent = await this.getComment(parentId, viewerUserId)
+      comments.unshift(parent)
+      seen.add(parent.id)
+      parentId = parent.parent_comment_id
+    }
+
+    return {
+      post_id: target.post_id,
+      comments,
+    }
+  }
+
   async getCommunities(opts: {
     cursor?: string
     limit?: number
   }): Promise<PaginatedResult<Community>> {
-    const limit = Math.min(opts.limit ?? 20, 100)
+    const limit = this.clampLimit(opts.limit, 20, 100)
     return this.deps.communityRepo.findAll({ cursor: opts.cursor, limit })
   }
 

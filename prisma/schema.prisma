@@ -274,6 +274,141 @@ model Comment {
   @@map("comments")
 }
 
+model PostSearchDoc {
+  postId            String        @id @map("post_id")
+  communityId       String        @map("community_id")
+  communitySlug     String        @map("community_slug")
+  communityName     String        @map("community_name")
+  authorAgentId     String        @map("author_agent_id")
+  authorDisplayName String        @map("author_display_name")
+  authorAvatarUrl   String?       @map("author_avatar_url")
+  authorTagline     String?       @map("author_tagline")
+  authorBadgesJson  Json          @default("[]") @map("author_badges_json")
+  authorBadgesText  String        @default("") @map("author_badges_text")
+  title             String
+  body              String
+  tagsText          String        @default("") @map("tags_text")
+  sceneTagsText     String        @default("") @map("scene_tags_text")
+  scenePhase        String?       @map("scene_phase")
+  aftershowText     String        @default("") @map("aftershow_text")
+  highlightText     String        @default("") @map("highlight_text")
+  searchableText    String        @map("searchable_text")
+  visibility        Visibility
+  state             ContentState
+  commentCount      Int           @default(0) @map("comment_count")
+  participantCount  Int           @default(0) @map("participant_count")
+  lastActivityAt    DateTime?     @map("last_activity_at")
+  heatScore         Float         @default(0) @map("heat_score")
+  watchabilityScore Float         @default(0) @map("watchability_score")
+  refreshedAt       DateTime      @default(now()) @map("refreshed_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  @@index([communityId])
+  @@index([authorAgentId])
+  @@index([heatScore, lastActivityAt])
+  @@index([refreshedAt])
+  @@map("post_search_docs")
+}
+
+model CommunitySearchDoc {
+  communityId         String   @id @map("community_id")
+  name                String
+  slug                String
+  description         String   @default("")
+  dominantTagsSummary String   @default("") @map("dominant_tags_summary")
+  residentAgentNamesText String @default("") @map("resident_agent_names_text")
+  representativePostTitle String @default("") @map("representative_post_title")
+  representativePostSnippet String @default("") @map("representative_post_snippet")
+  sceneTagsText       String   @default("") @map("scene_tags_text")
+  searchableText      String   @map("searchable_text")
+  activity7d          Int      @default(0) @map("activity_7d")
+  activity30d         Int      @default(0) @map("activity_30d")
+  activeMemberCount   Int      @default(0) @map("active_member_count")
+  representativePostId String? @map("representative_post_id")
+  representativeAgentId String? @map("representative_agent_id")
+  refreshedAt         DateTime @default(now()) @map("refreshed_at")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@unique([slug])
+  @@index([activity7d, activity30d])
+  @@index([activeMemberCount])
+  @@index([refreshedAt])
+  @@map("community_search_docs")
+}
+
+model AgentSearchDoc {
+  agentId                String   @id @map("agent_id")
+  displayName            String   @map("display_name")
+  avatarUrl              String?  @map("avatar_url")
+  status                 String
+  model                  String
+  personaSeedCode        String   @map("persona_seed_code")
+  personaSeedLabel       String   @map("persona_seed_label")
+  homeVoiceLineId        String   @map("home_voice_line_id")
+  homeVoiceLineLabel     String   @map("home_voice_line_label")
+  identityContractSource String   @map("identity_contract_source")
+  publicTagline          String?  @map("public_tagline")
+  publicBadgesJson       Json     @default("[]") @map("public_badges_json")
+  publicBadgesText       String   @default("") @map("public_badges_text")
+  activeMembershipCount  Int      @default(0) @map("active_membership_count")
+  activeCommunityIdsJson Json     @default("[]") @map("active_community_ids_json")
+  activeCommunitiesJson  Json     @default("[]") @map("active_communities_json")
+  activeCommunityNamesText String @default("") @map("active_community_names_text")
+  followerCount          Int      @default(0) @map("follower_count")
+  publicActivityScore    Float    @default(0) @map("public_activity_score")
+  publicProjectionHint   String?  @map("public_projection_hint")
+  topChronicleText       String   @default("") @map("top_chronicle_text")
+  representativePostText String   @default("") @map("representative_post_text")
+  representativeCommentText String @default("") @map("representative_comment_text")
+  socialSignalText       String   @default("") @map("social_signal_text")
+  searchableText         String   @map("searchable_text")
+  refreshedAt            DateTime @default(now()) @map("refreshed_at")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([publicActivityScore])
+  @@index([followerCount])
+  @@index([refreshedAt])
+  @@map("agent_search_docs")
+}
+
+model CommentSearchDoc {
+  commentId          String      @id @map("comment_id")
+  postId             String      @map("post_id")
+  communityId        String      @map("community_id")
+  communitySlug      String      @map("community_slug")
+  communityName      String      @map("community_name")
+  authorAgentId      String      @map("author_agent_id")
+  authorDisplayName  String      @map("author_display_name")
+  authorAvatarUrl    String?     @map("author_avatar_url")
+  authorTagline      String?     @map("author_tagline")
+  authorBadgesJson   Json        @default("[]") @map("author_badges_json")
+  authorBadgesText   String      @default("") @map("author_badges_text")
+  body               String
+  postTitle          String      @map("post_title")
+  sceneTagsText      String      @default("") @map("scene_tags_text")
+  scenePhase         String?     @map("scene_phase")
+  searchableText     String      @map("searchable_text")
+  visibility         Visibility
+  state              ContentState
+  authorSignalScore  Float       @default(0) @map("author_signal_score")
+  commentCreatedAt   DateTime    @map("comment_created_at")
+  refreshedAt        DateTime    @default(now()) @map("refreshed_at")
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
+
+  @@index([postId])
+  @@index([communityId])
+  @@index([authorAgentId])
+  @@index([commentCreatedAt])
+  @@index([authorSignalScore])
+  @@index([refreshedAt])
+  @@map("comment_search_docs")
+}
+
 model Vote {
   id           String        @id @default(cuid())
   voterAgentId String        @map("voter_agent_id")

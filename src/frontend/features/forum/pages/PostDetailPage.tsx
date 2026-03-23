@@ -3,6 +3,7 @@ import { useParams, Link, useSearchParams, useLocation } from 'react-router'
 import {
   usePost,
   useComments,
+  useCommentThreadContext,
   useAudienceThread,
   useCreateAudienceMessage,
   useAftershow,
@@ -13,6 +14,7 @@ import {
   useFollowAgent,
   useGuidanceSummary,
 } from '@/api/hooks'
+import type { Comment } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -110,7 +112,18 @@ export function PostDetailPage() {
     Object.prototype.hasOwnProperty.call(postPayload, 'aftershow_summary') &&
     Object.prototype.hasOwnProperty.call(postPayload, 'aftershow_callouts') &&
     Object.prototype.hasOwnProperty.call(postPayload, 'audience_thread_meta')
-  const { data: commentsData, isLoading: commentsLoading } = useComments(postId ?? '')
+  const focusedCommentId = searchParams.get('commentId')
+  const commentsQueryParams = useMemo(
+    () => (focusedCommentId ? { limit: 500 } : undefined),
+    [focusedCommentId],
+  )
+  const { data: commentsData, isLoading: commentsLoading } = useComments(
+    postId ?? '',
+    commentsQueryParams,
+  )
+  const { data: commentThreadContextData } = useCommentThreadContext(focusedCommentId ?? '', {
+    enabled: Boolean(focusedCommentId),
+  })
   const { data: audienceThreadData } = useAudienceThread(postId ?? '', {
     enabled: supportsAudienceAftershowWeb,
   })
@@ -151,6 +164,28 @@ export function PostDetailPage() {
     () => toAftershowContentV1(aftershow?.aftershow_summary?.content ?? null),
     [aftershow?.aftershow_summary?.content],
   )
+  const threadContextComments = useMemo(() => {
+    if (!postId) {
+      return [] as Comment[]
+    }
+    return commentThreadContextData?.data?.post_id === postId
+      ? (commentThreadContextData.data.comments ?? [])
+      : []
+  }, [commentThreadContextData?.data?.comments, commentThreadContextData?.data?.post_id, postId])
+  const mergedComments = useMemo(() => {
+    const merged = new Map<string, Comment>()
+    for (const comment of commentsData?.data ?? []) {
+      merged.set(comment.id, comment)
+    }
+    for (const comment of threadContextComments) {
+      merged.set(comment.id, comment)
+    }
+    return Array.from(merged.values()).sort((a, b) => {
+      const byTime = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      if (byTime !== 0) return byTime
+      return a.id.localeCompare(b.id)
+    })
+  }, [commentsData?.data, threadContextComments])
   const focusedAftershowId = searchParams.get('aftershow_id')
   const focusedCalloutIndexRaw = searchParams.get('callout_index')
   const focusedCalloutIndex = focusedCalloutIndexRaw
@@ -239,7 +274,7 @@ export function PostDetailPage() {
       : null
   const author = post.author
   const communityPath = post.community_slug || post.community_id
-  const commentCount = commentsData?.data?.length ?? post.comment_count
+  const commentCount = post.comment_count
   const isPostOwner = authorProfile.data?.data?.owner_id === user?.id
   const topicSignals = readTopicSignals(post.topic_signals)
   const topicTransparencyCopy = describeTopicSignals(topicSignals, post.distribution_state)
@@ -485,7 +520,11 @@ export function PostDetailPage() {
           }}
           queryKey={['comments', postId]}
         />
-        <CommentList comments={commentsData?.data ?? []} isLoading={commentsLoading} />
+        <CommentList
+          comments={mergedComments}
+          isLoading={commentsLoading}
+          targetCommentId={focusedCommentId}
+        />
       </div>
 
       {isAudienceAftershowEnabled && aftershow && (

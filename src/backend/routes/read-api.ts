@@ -13,6 +13,7 @@ import {
   communityRepo,
   complaintAppealService,
   inferenceProfileService,
+  searchProjectionService,
 } from '../container.js'
 import { config } from '../lib/config.js'
 import { ValidationError } from '../lib/errors.js'
@@ -247,15 +248,31 @@ readApiRouter.get('/posts/:postId', async (req, res) => {
 readApiRouter.get('/posts/:postId/comments', async (req, res) => {
   const user = tryAuthenticateHuman(req)
   const { cursor, limit } = req.query as Record<string, string | undefined>
+  const parsedLimit = limit ? parseInt(limit, 10) : undefined
+  if (parsedLimit !== undefined && (isNaN(parsedLimit) || parsedLimit < 1)) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'Invalid limit parameter' },
+    })
+    return
+  }
   const result = await forumReadService.getComments(
     req.params.postId,
     {
       cursor,
-      limit: limit ? parseInt(limit, 10) : undefined,
+      limit: parsedLimit,
     },
     user?.userId,
   )
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
+})
+
+readApiRouter.get('/comments/:commentId/thread-context', async (req, res) => {
+  const user = tryAuthenticateHuman(req)
+  const data = await forumReadService.getCommentThreadContext(
+    req.params.commentId,
+    user?.userId,
+  )
+  res.json({ data })
 })
 
 readApiRouter.post('/reports', requireHumanAuth, async (req, res) => {
@@ -374,6 +391,7 @@ readApiRouter.post(
       actor_user_id: req.user!.userId,
       body,
     })
+    await searchProjectionService.refreshPost(String(req.params.postId))
 
     res.status(201).json({ data: result })
   },
@@ -579,6 +597,7 @@ readApiRouter.post('/votes/human', requireHumanAuth, async (req, res) => {
     target_id: targetId,
     direction,
   })
+  await searchProjectionService.refreshVoteTarget(targetType, targetId)
 
   res.status(201).json({
     data: {

@@ -1,11 +1,50 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import { app, config, servicePost, userToken, adminToken, setupFeatureFlagGuard, createTestCommunity } from './e2e-helpers.js'
-import { roleAssignmentService, eventRepo } from '../../container.js'
+import {
+  app,
+  config,
+  servicePost,
+  userToken,
+  adminToken,
+  setupFeatureFlagGuard,
+  createTestCommunity,
+} from './e2e-helpers.js'
+import { roleAssignmentService, eventRepo, searchDocRepo } from '../../container.js'
 
 setupFeatureFlagGuard()
 
+function buildUniqueSearchToken(): string {
+  return `zz${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`
+}
+
 describe('E2E: Read API (public)', () => {
+  it('GET /v1/search returns an empty payload for a blank query', async () => {
+    const res = await request(app).get('/v1/search')
+
+    expect(res.status).toBe(200)
+    expect(res.body.data).toMatchObject({
+      query: '',
+      normalized_query: '',
+      current_tab: 'posts',
+      counts: {
+        posts: 0,
+        communities: 0,
+        agents: 0,
+        comments: 0,
+      },
+      items: [],
+      cursor: null,
+    })
+  })
+
+  it('GET /v1/search falls back to posts for invalid tab values', async () => {
+    const res = await request(app).get('/v1/search?q=test&tab=all')
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.current_tab).toBe('posts')
+    expect(res.body.data.query).toBe('test')
+  })
+
   it('GET /v1/feed returns empty feed', async () => {
     const res = await request(app).get('/v1/feed')
     expect(res.status).toBe(200)
@@ -98,6 +137,214 @@ describe('E2E: Read API (public)', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR')
   })
 
+  it('GET /v1/posts/:postId/comments?limit=abc returns 400 validation error', async () => {
+    const community = await createTestCommunity({
+      name: 'Comment Validation Community',
+      slug: `comment-validation-${Date.now()}`,
+    })
+    const agentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Comment Validation Agent' })
+    expect(agentRes.status).toBe(201)
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: agentRes.body.data.id,
+      run_id: `run-comment-limit-${Date.now()}`,
+      community_id: community.id,
+      title: 'Comment validation target',
+      body: 'Target body',
+    })
+    expect(postRes.status).toBe(201)
+
+    const res = await request(app).get(`/v1/posts/${postRes.body.data.id}/comments?limit=abc`)
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('VALIDATION_ERROR')
+  })
+
+  it('GET /v1/search returns exact counts and typed results across public objects', async () => {
+    await searchDocRepo.clearAllDocs()
+    const searchToken = buildUniqueSearchToken()
+    const community = await createTestCommunity({
+      name: `Community ${searchToken}`,
+      slug: `community-${searchToken}`,
+      description: searchToken,
+    })
+    const agentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: `Agent ${searchToken}` })
+    expect(agentRes.status).toBe(201)
+    const agentId = agentRes.body.data.id as string
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: agentId,
+      run_id: `run-search-${Date.now()}`,
+      community_id: community.id,
+      title: `Post ${searchToken}`,
+      body: `Body ${searchToken}`,
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    const commentRes = await servicePost('/v1/comments', {
+      actor_agent_id: agentId,
+      run_id: `run-search-comment-${Date.now()}`,
+      post_id: postId,
+      body: `Comment ${searchToken}`,
+    })
+    expect(commentRes.status).toBe(201)
+    const commentId = commentRes.body.data.id as string
+
+    const postsRes = await request(app)
+      .get('/v1/search')
+      .query({ q: `  ${searchToken}  ` })
+    expect(postsRes.status).toBe(200)
+    expect(postsRes.body.data.normalized_query).toBe(searchToken)
+    expect(postsRes.body.data.counts).toEqual({
+      posts: 1,
+      communities: 1,
+      agents: 1,
+      comments: 1,
+    })
+    expect(postsRes.body.data.items).toHaveLength(1)
+    expect(postsRes.body.data.items[0]).toMatchObject({
+      type: 'post',
+      id: postId,
+      href: `/posts/${postId}`,
+    })
+
+    const communitiesRes = await request(app)
+      .get('/v1/search')
+      .query({ q: searchToken, tab: 'communities' })
+    expect(communitiesRes.status).toBe(200)
+    expect(communitiesRes.body.data.items[0]).toMatchObject({
+      type: 'community',
+      id: community.id,
+      href: `/c/${community.slug}`,
+    })
+
+    const agentsRes = await request(app).get('/v1/search').query({ q: searchToken, tab: 'agents' })
+    expect(agentsRes.status).toBe(200)
+    expect(agentsRes.body.data.items[0]).toMatchObject({
+      type: 'agent',
+      id: agentId,
+      href: `/agents/${agentId}`,
+    })
+
+    const commentsRes = await request(app)
+      .get('/v1/search')
+      .query({ q: searchToken, tab: 'comments' })
+    expect(commentsRes.status).toBe(200)
+    expect(commentsRes.body.data.items[0]).toMatchObject({
+      type: 'comment',
+      id: commentId,
+      href: `/posts/${postId}?commentId=${commentId}`,
+      post_id: postId,
+    })
+  })
+
+  it('GET /v1/search paginates post results with an opaque cursor', async () => {
+    await searchDocRepo.clearAllDocs()
+    const searchToken = buildUniqueSearchToken()
+    const community = await createTestCommunity({
+      name: `Cursor ${searchToken}`,
+      slug: `cursor-${searchToken}`,
+    })
+    const agentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: `Cursor Agent ${searchToken}` })
+    expect(agentRes.status).toBe(201)
+    const agentId = agentRes.body.data.id as string
+
+    const firstPostRes = await servicePost('/v1/posts', {
+      actor_agent_id: agentId,
+      run_id: `run-cursor-a-${Date.now()}`,
+      community_id: community.id,
+      title: `Cursor title ${searchToken}`,
+      body: `Cursor body ${searchToken}`,
+    })
+    expect(firstPostRes.status).toBe(201)
+
+    const secondPostRes = await servicePost('/v1/posts', {
+      actor_agent_id: agentId,
+      run_id: `run-cursor-b-${Date.now()}`,
+      community_id: community.id,
+      title: `Cursor title ${searchToken}`,
+      body: `Cursor body ${searchToken}`,
+    })
+    expect(secondPostRes.status).toBe(201)
+
+    const firstPage = await request(app)
+      .get('/v1/search')
+      .query({ q: searchToken, tab: 'posts', limit: 1 })
+    expect(firstPage.status).toBe(200)
+    expect(firstPage.body.data.counts.posts).toBe(2)
+    expect(firstPage.body.data.items).toHaveLength(1)
+    expect(typeof firstPage.body.data.cursor).toBe('string')
+    expect(firstPage.body.data.cursor).not.toBe(firstPage.body.data.items[0].id)
+
+    const secondPage = await request(app)
+      .get('/v1/search')
+      .query({ q: searchToken, tab: 'posts', limit: 1, cursor: firstPage.body.data.cursor })
+    expect(secondPage.status).toBe(200)
+    expect(secondPage.body.data.items).toHaveLength(1)
+    expect(secondPage.body.data.items[0].id).not.toBe(firstPage.body.data.items[0].id)
+  })
+
+  it('GET /v1/comments/:commentId/thread-context returns the visible ancestor chain', async () => {
+    const community = await createTestCommunity({
+      name: 'Thread Context Community',
+      slug: `thread-context-${Date.now()}`,
+    })
+    const agentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Thread Context Agent' })
+    expect(agentRes.status).toBe(201)
+    const agentId = agentRes.body.data.id as string
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: agentId,
+      run_id: `run-thread-context-post-${Date.now()}`,
+      community_id: community.id,
+      title: 'Thread context post',
+      body: 'Root body',
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    const rootCommentRes = await servicePost('/v1/comments', {
+      actor_agent_id: agentId,
+      run_id: `run-thread-context-root-${Date.now()}`,
+      post_id: postId,
+      body: 'root comment',
+    })
+    expect(rootCommentRes.status).toBe(201)
+    const rootCommentId = rootCommentRes.body.data.id as string
+
+    const childCommentRes = await servicePost('/v1/comments', {
+      actor_agent_id: agentId,
+      run_id: `run-thread-context-child-${Date.now()}`,
+      post_id: postId,
+      parent_comment_id: rootCommentId,
+      body: 'child comment',
+    })
+    expect(childCommentRes.status).toBe(201)
+
+    const res = await request(app).get(
+      `/v1/comments/${childCommentRes.body.data.id as string}/thread-context`,
+    )
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.post_id).toBe(postId)
+    expect(res.body.data.comments.map((item: { id: string }) => item.id)).toEqual([
+      rootCommentId,
+      childCommentRes.body.data.id,
+    ])
+  })
+
   it('POST /v1/votes/human rejects MESSAGE target_type', async () => {
     const res = await request(app)
       .post('/v1/votes/human')
@@ -187,8 +434,12 @@ describe('E2E: Read API (public)', () => {
 
     expect(listRes.status).toBe(200)
     expect(Array.isArray(listRes.body.data)).toBe(true)
-    expect(listRes.body.data.some((item: { target_id: string; complaint_type: string }) =>
-      item.target_id === postId && item.complaint_type === 'CONTENT_REPORT')).toBe(true)
+    expect(
+      listRes.body.data.some(
+        (item: { target_id: string; complaint_type: string }) =>
+          item.target_id === postId && item.complaint_type === 'CONTENT_REPORT',
+      ),
+    ).toBe(true)
   })
 
   it('POST /v1/appeals and GET /v1/appeals create and list appeal requests for the current user', async () => {
@@ -235,8 +486,14 @@ describe('E2E: Read API (public)', () => {
 
     expect(listRes.status).toBe(200)
     expect(Array.isArray(listRes.body.data)).toBe(true)
-    expect(listRes.body.data.some((item: { target_id: string; requester_type: string; appeal_type: string }) =>
-      item.target_id === postId && item.requester_type === 'OWNER' && item.appeal_type === 'CONTENT_APPEAL')).toBe(true)
+    expect(
+      listRes.body.data.some(
+        (item: { target_id: string; requester_type: string; appeal_type: string }) =>
+          item.target_id === postId &&
+          item.requester_type === 'OWNER' &&
+          item.appeal_type === 'CONTENT_APPEAL',
+      ),
+    ).toBe(true)
   })
 
   it('POST /v1/reports rejects unsupported target types and missing targets', async () => {
@@ -264,19 +521,17 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('GET /v1/agents supports public search', async () => {
-    await request(app)
-      .post('/v1/agents')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send({
-        display_name: 'Searchable Agent',
-        persona_seed_code: 'comedian',
-      })
+    await request(app).post('/v1/agents').set('Authorization', `Bearer ${userToken}`).send({
+      display_name: 'Searchable Agent',
+      persona_seed_code: 'comedian',
+    })
 
     const res = await request(app).get('/v1/agents?q=searchable')
     expect(res.status).toBe(200)
     expect(Array.isArray(res.body.data)).toBe(true)
-    const target = (res.body.data as Array<Record<string, unknown>>)
-      .find((item) => item.display_name === 'Searchable Agent')
+    const target = (res.body.data as Array<Record<string, unknown>>).find(
+      (item) => item.display_name === 'Searchable Agent',
+    )
     expect(target).toBeTruthy()
     expect(target?.persona_seed_code).toBe('comedian')
     expect(target?.home_voice_line_id).toBe('qwen-social-v1')
@@ -388,7 +643,9 @@ describe('E2E: Read API (public)', () => {
       expect(readRes.body.data.aftershow_summary).toBeTruthy()
       expect(Array.isArray(readRes.body.data.aftershow_callouts)).toBe(true)
       if (readRes.body.data.aftershow_callouts.length > 0) {
-        expect(readRes.body.data.aftershow_callouts[0].deep_link).toContain(`/posts/${postId}?aftershow_id=`)
+        expect(readRes.body.data.aftershow_callouts[0].deep_link).toContain(
+          `/posts/${postId}?aftershow_id=`,
+        )
       }
     } finally {
       featureFlags.audienceZoneV1 = originalAudienceZone
@@ -575,7 +832,9 @@ describe('E2E: Read API (public)', () => {
 
       const beforeExpireRes = await request(app).get(`/v1/posts/${postId}/aside-seats`)
       expect(beforeExpireRes.status).toBe(200)
-      expect(beforeExpireRes.body.data.seats.some((item: { id: string }) => item.id === assignmentId)).toBe(true)
+      expect(
+        beforeExpireRes.body.data.seats.some((item: { id: string }) => item.id === assignmentId),
+      ).toBe(true)
 
       const expirationNow = new Date(Date.now() + 10_000)
       const processed = await roleAssignmentService.processDueExpirations({
@@ -586,7 +845,9 @@ describe('E2E: Read API (public)', () => {
 
       const afterExpireRes = await request(app).get(`/v1/posts/${postId}/aside-seats`)
       expect(afterExpireRes.status).toBe(200)
-      expect(afterExpireRes.body.data.seats.some((item: { id: string }) => item.id === assignmentId)).toBe(false)
+      expect(
+        afterExpireRes.body.data.seats.some((item: { id: string }) => item.id === assignmentId),
+      ).toBe(false)
 
       const assignmentProbeRes = await request(app)
         .patch(`/v1/communities/${community.id}/role-assignments/${assignmentId}`)
@@ -596,13 +857,19 @@ describe('E2E: Read API (public)', () => {
       expect(assignmentProbeRes.body.data.status).toBe('EXPIRED')
 
       const eventMapHost = eventRepo as unknown as {
-        store?: Map<string, { event_type: string; correlation_id: string | null; actor_id: string | null }>
-        cache?: Map<string, { event_type: string; correlation_id: string | null; actor_id: string | null }>
+        store?: Map<
+          string,
+          { event_type: string; correlation_id: string | null; actor_id: string | null }
+        >
+        cache?: Map<
+          string,
+          { event_type: string; correlation_id: string | null; actor_id: string | null }
+        >
       }
       const eventMap = eventMapHost.store ?? eventMapHost.cache ?? new Map()
-      const expiredEvent = Array.from(eventMap.values()).find((evt) =>
-        evt.event_type === 'ROLE_EXPIRED'
-        && evt.correlation_id === assignmentId)
+      const expiredEvent = Array.from(eventMap.values()).find(
+        (evt) => evt.event_type === 'ROLE_EXPIRED' && evt.correlation_id === assignmentId,
+      )
       expect(expiredEvent).toBeTruthy()
       expect(expiredEvent?.actor_id).toBe('role-expiry-scheduler')
     } finally {

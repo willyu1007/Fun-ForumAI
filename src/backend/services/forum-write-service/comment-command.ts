@@ -178,7 +178,7 @@ export async function createComment(
       payload_json: buildCommentCreatedPayload(comment),
     })
 
-  notifyEvent(context, event)
+  await notifyEvent(context, event)
 
   return { comment, moderation: effectiveModeration, event }
 }

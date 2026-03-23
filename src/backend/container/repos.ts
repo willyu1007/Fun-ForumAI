@@ -3,6 +3,7 @@ import { InMemoryCommentRepository } from '../repos/comment-repository.js'
 import { InMemoryVoteRepository } from '../repos/vote-repository.js'
 import { InMemoryHumanVoteRepository } from '../repos/human-vote-repository.js'
 import { InMemoryHumanFollowRepository } from '../repos/human-follow-repository.js'
+import { InMemorySearchDocRepository } from '../repos/search-doc-repository.js'
 import { InMemoryMediaAssetRepository } from '../repos/media-asset-repository.js'
 import { InMemoryMediaSemanticSnapshotRepository } from '../repos/media-semantic-snapshot-repository.js'
 import { InMemorySceneMediaBindingRepository } from '../repos/scene-media-binding-repository.js'
@@ -51,6 +52,7 @@ import type { CommentRepository } from '../repos/comment-repository.js'
 import type { VoteRepository } from '../repos/vote-repository.js'
 import type { HumanVoteRepository } from '../repos/human-vote-repository.js'
 import type { HumanFollowRepository } from '../repos/human-follow-repository.js'
+import type { SearchDocRepository } from '../repos/search-doc-repository.js'
 import type { MediaAssetRepository } from '../repos/media-asset-repository.js'
 import type { MediaSemanticSnapshotRepository } from '../repos/media-semantic-snapshot-repository.js'
 import type { SceneMediaBindingRepository } from '../repos/scene-media-binding-repository.js'
@@ -101,6 +103,7 @@ export interface Repositories {
   voteRepo: VoteRepository
   humanVoteRepo: HumanVoteRepository
   humanFollowRepo: HumanFollowRepository
+  searchDocRepo: SearchDocRepository
   mediaAssetRepo: MediaAssetRepository
   mediaSemanticSnapshotRepo: MediaSemanticSnapshotRepository
   sceneMediaBindingRepo: SceneMediaBindingRepository
@@ -165,6 +168,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgVoteRepository } = await import('../repos/pg/pg-vote-repository.js')
     const { PgHumanVoteRepository } = await import('../repos/pg/pg-human-vote-repository.js')
     const { PgHumanFollowRepository } = await import('../repos/pg/pg-human-follow-repository.js')
+    const { PgSearchDocRepository } = await import('../repos/pg/pg-search-doc-repository.js')
     const { PgMediaAssetRepository } = await import('../repos/pg/pg-media-asset-repository.js')
     const { PgMediaSemanticSnapshotRepository } = await import('../repos/pg/pg-media-semantic-snapshot-repository.js')
     const { PgSceneMediaBindingRepository } = await import('../repos/pg/pg-scene-media-binding-repository.js')
@@ -214,6 +218,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const vr = new PgVoteRepository(prisma)
     const hvr = new PgHumanVoteRepository(prisma)
     const hfr = new PgHumanFollowRepository(prisma)
+    const searchDocRepo = new PgSearchDocRepository(prisma)
     const mar = new PgMediaAssetRepository(prisma)
     const msr = new PgMediaSemanticSnapshotRepository(prisma)
     const sbr = new PgSceneMediaBindingRepository(prisma)
@@ -271,7 +276,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     return {
       repos: {
         postRepo: pr, commentRepo: cr, voteRepo: vr, humanVoteRepo: hvr,
-        humanFollowRepo: hfr, mediaAssetRepo: mar,
+        humanFollowRepo: hfr, searchDocRepo, mediaAssetRepo: mar,
         mediaSemanticSnapshotRepo: msr, sceneMediaBindingRepo: sbr,
         mediaContextProjectionRepo: mpr, postMediaRepo: pmr,
         visualDirectiveRepo: vdr, imagePlanRepo: ipr,
@@ -311,6 +316,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       voteRepo: new InMemoryVoteRepository(),
       humanVoteRepo: new InMemoryHumanVoteRepository(),
       humanFollowRepo: new InMemoryHumanFollowRepository(),
+      searchDocRepo: new InMemorySearchDocRepository(),
       mediaAssetRepo: new InMemoryMediaAssetRepository(),
       mediaSemanticSnapshotRepo: new InMemoryMediaSemanticSnapshotRepository(),
       sceneMediaBindingRepo: new InMemorySceneMediaBindingRepository(),
