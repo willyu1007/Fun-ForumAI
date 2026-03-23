@@ -82,8 +82,8 @@ Project: `main`
 | T-907 confirmed-technical-debt-paydown | archived | dev-docs/archive/confirmed-technical-debt-paydown |
 | T-908 ui-preparation-foundation | archived | dev-docs/archive/ui-preparation-foundation |
 | T-909 uiux-manual-test-baseline | in-progress | dev-docs/active/uiux-manual-test-baseline |
-| T-912 public-search-system-v1 | done | dev-docs/active/public-search-system-v1 |
-| T-913 search-ecosystem-enrichment-v2 | done | dev-docs/active/search-ecosystem-enrichment-v2 |
+| T-912 public-search-system-v1 | archived | dev-docs/archive/public-search-system-v1 |
+| T-913 search-ecosystem-enrichment-v2 | archived | dev-docs/archive/search-ecosystem-enrichment-v2 |
 
 ### F-010 Agent Stats System
 

@@ -1,42 +1,9 @@
 # 04 Verification — chatroom-ux-audit-remediation
 
-- 2026-03-11 | `pnpm typecheck` | pass
-- 2026-03-11 | `pnpm vitest run src/frontend/features/chat/pages/__tests__/ChatRoomPages.test.tsx src/frontend/features/chat/hooks/__tests__/use-chat-room-sse.test.tsx src/backend/routes/__tests__/chat-watchability-api.test.ts src/backend/routes/__tests__/chatroom-control-api.test.ts src/backend/services/__tests__/room-cue-planner.test.ts src/backend/services/__tests__/room-program-engine.test.ts src/backend/services/__tests__/room-program-projector.test.ts src/backend/services/__tests__/room-ecology-service.test.ts src/backend/services/__tests__/chat-service.watchability.test.ts src/backend/services/__tests__/chat-service.room-moves.test.ts src/backend/services/__tests__/chat-service.nurture.test.ts` | pass
-- 2026-03-11 | 浏览器 smoke（`/rooms`） | fail：创建聊天室提交不存在的 `created_by_agent_id`
-- 2026-03-11 | 本地 backend 启动日志 | fail：`LlmClient` 仍提示 `api_key is not set`
-- 2026-03-11 | 浏览器 smoke（`/rooms/:roomId`） | fail：历史消息作者展示退化为 UUID 片段
-- 2026-03-11 | `pnpm vitest run src/backend/runtime/__tests__/chat-output-sanitizer.test.ts src/backend/llm/__tests__/prompt-engine.test.ts src/backend/services/__tests__/chat-service.watchability.test.ts src/backend/services/__tests__/chatroom-runtime-context-builder.test.ts src/backend/services/__tests__/conversation-clock.test.ts src/backend/services/__tests__/room-projector.test.ts src/backend/repos/__tests__/pg-room-watchability-repository.test.ts src/frontend/features/chat/pages/__tests__/ChatRoomPages.test.tsx` | pass
-- 2026-03-11 | 本地 backend 真实运行（`pnpm dev:backend` + DashScope `qwen-flash-character`） | pass：聊天室生成链路实际调用外部模型，未再出现 `api_key is not set`
-- 2026-03-11 | 浏览器 smoke（`/rooms` 建房） | pass：dialog 使用真实 owner agent 建房成功，room id=`cmml4klve001wnxnohe0o4vwp`
-- 2026-03-11 | API smoke（`GET /v1/rooms/cmml4klve001wnxnohe0o4vwp/cast`） | pass：cast 返回真实 display name / role，无 Pg advisory lock 错误
-- 2026-03-11 | API smoke（`GET /v1/rooms/cmml4klve001wnxnohe0o4vwp/messages?limit=100`） | pass：历史脏消息中的 `[展开]`、UUID 退化、动作括号已在 read side 清洗；最新消息不再含控制标记
-- 2026-03-11 | API smoke（`GET /v1/rooms/cmml4klve001wnxnohe0o4vwp/highlights?limit=4`） | pass：最新高光不再包含论坛引用壳、动作括号或 `[!]`
-- 2026-03-11 | API smoke（`GET /v1/rooms/cmml4klve001wnxnohe0o4vwp/live-snapshot`） | pass：`live_hook` / `recap_short` / `continuity_summary` / `canonization_note` 已展示清洗后的可读文本
-- 2026-03-11 | 浏览器 smoke（`/rooms/cmml4klve001wnxnohe0o4vwp`） | pass：页面顶部 watchability 区、消息流与高光流均未观察到 UUID、控制标记、论坛引用体或动作括号
-- 2026-03-11 | Owner cue smoke（`POST /v1/rooms/cmml4klve001wnxnohe0o4vwp/program/cues`） | pass：手动 cue 成功选人并驱动后续消息生成，修复后的 `agent-chat-reply` 模板变量契约在真实运行态成立
-- 2026-03-11 | `pnpm vitest run src/backend/runtime/__tests__/chat-output-sanitizer.test.ts src/backend/services/__tests__/room-program-engine.test.ts src/backend/services/__tests__/conversation-clock.test.ts` | pass
-- 2026-03-11 | `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/llm_forum pnpm db:migrate:status` | fail：kind Postgres 缺少 4 个未应用迁移（`20260310073000_t073_chatroom_watchability_foundation`、`20260310113000_t074_chatroom_program_engine_highlights`、`20260310153000_t075_chatroom_persona_projection_and_ecology`、`20260310190000_t078_guidance_foundation`）
-- 2026-03-11 | `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/llm_forum pnpm db:migrate:deploy` | pass：local-kind 集群数据库补齐上述 4 个迁移
-- 2026-03-11 | `pnpm -s k8s:staging:local -- --k8s-context kind-funforum --k8s-namespace funforum --skip-db-migrate` | pass：kind backend 最终 rollout 到双副本 Ready；运行时 fingerprint 验证通过
-- 2026-03-11 | `pnpm -s smoke:t023-t025:k8s -- --k8s-context kind-funforum --k8s-namespace funforum` | pass：T-023 / T-024 / T-025 全绿
-- 2026-03-11 | kind 聊天室最小链路 smoke（建房 `cmml66rn3000k0mnm8r5a5i9d` -> `/cast` -> `/program/cues` -> 等待消息） | fail（修复前）：手动 cue 落成 `PLANNED` 但 40s 内无人接球，定位到 `RoomProgramEngine` 未消费已有 `PLANNED` cue
-- 2026-03-11 | kind 聊天室最小链路 smoke（建房 `cmml6b6gt07r40mk5fv4tbh2b` -> `/program/cues`） | pass（修复后）：约 30s 后连续生成 2 条真实 agent 消息
-- 2026-03-11 | kind 聊天室定向并发压测 v1（3 房间 / 45s / 并发轮询 `messages/live-snapshot/cast/highlights/control-state` + SSE + 2 次 owner cue） | mixed：2/3 房间产生 >=2 条回复；1 个房间失败原因为测试数据中 guest agent 已达到 `max 3 rooms`
-- 2026-03-11 | kind 聊天室定向并发压测 v2（过滤为低占用 agent 后重跑，3 房间 / 45s） | pass with note：3/3 房间均有真实回复，2/3 房间在 45s 内产生 2 条回复；读接口延迟大致为 messages p50≈23-26ms / p95≈37-59ms，control-state p50≈50-52ms / p95≈79-100ms；每房间 SSE 均收到 `ROOM_BEAT_CHANGED` / `ROOM_CONTROL_STATE_UPDATED`，其中 2 个房间收到 2 次 `MESSAGE_CREATED`
-- 2026-03-11 | kind 历史脏消息 read-side 回查（`GET /v1/rooms/cmml6gvp61fkf0mk5effi4qzf/messages?limit=20`） | pass：此前出现的 `苏格拉底-7B：`、`（双眸紧盯着屏幕）`、`[笑]` 等壳已在读侧清洗
-- 2026-03-12 | `pnpm -s exec tsc -b --pretty false` | pass
-- 2026-03-12 | `pnpm -s vitest run src/backend/runtime/__tests__/chat-output-sanitizer.test.ts src/backend/services/__tests__/room-program-engine.test.ts src/backend/services/__tests__/conversation-clock.test.ts src/frontend/features/chat/pages/__tests__/ChatRoomPages.test.tsx src/frontend/features/chat/hooks/__tests__/use-chat-room-sse.test.tsx src/backend/routes/__tests__/chat-watchability-api.test.ts src/backend/routes/__tests__/chatroom-control-api.test.ts` | pass
-- 2026-03-12 | `pnpm db:local:migrate` | fail with note：本地库提示已有 migration 历史被修改，要求 reset；未做 destructive reset，转而使用 `pnpm db:migrate:status` 确认当前 schema 已与 repo 同步
-- 2026-03-12 | `pnpm db:migrate:status` | pass：local Pg schema up to date，可继续执行浏览器 smoke
-- 2026-03-12 | `pnpm dev:backend` | pass：`.env.local` 在依赖初始化前生效，未再出现 bootstrap `api_key is not set`
-- 2026-03-12 | `pnpm dev:frontend -- --host 127.0.0.1` | pass：frontend 起在 `http://localhost:3002`
-- 2026-03-12 | 浏览器 smoke（`DevAuthToolbar -> 用户 -> 填充测试数据`） | pass：seed 返回 `4 communities / 5 agents / 5 posts / 10 comments`
-- 2026-03-12 | 浏览器 smoke（`/rooms` 建房，room=`cmmmnx1b407z7gtnoc3p1wxdx`） | pass：owner agent 下拉展示真实 agent；`POST /v1/rooms` 提交真实 `created_by_agent_id=cd4c319d-b4f7-4d92-91e8-5ab1d321e8cf`
-- 2026-03-12 | 本地房间 live smoke（`/rooms/cmmmnx1b407z7gtnoc3p1wxdx`） | pass：watchability、消息流、高光流、live snapshot 中未出现 UUID、控制标记、论坛引用壳或动作括号
-- 2026-03-12 | 本地 owner cue smoke（room=`cmmmnx1b407z7gtnoc3p1wxdx`） | pass：manual cue 从 `PLANNED` 进入 `EXECUTED`，生成 2 条可读消息和可读 highlights
-- 2026-03-12 | `pnpm -s vitest run src/backend/services/__tests__/conversation-clock.test.ts src/backend/services/__tests__/room-program-engine.test.ts src/backend/routes/__tests__/chatroom-control-api.test.ts` | pass
-- 2026-03-12 | `pnpm -s k8s:staging:local -- --k8s-context kind-funforum --k8s-namespace funforum --backend-local-port 4110` | pass：kind backend 重建并 rollout 到双副本 Ready
-- 2026-03-12 | `pnpm -s smoke:t023-t025:k8s -- --k8s-context kind-funforum --k8s-namespace funforum` | pass：T-023 / T-024 / T-025 全绿
-- 2026-03-12 | kind 聊天室 3 房间并发 smoke v3（room=`cmmmo4t541fqe0mjqwqqntr8o`、`cmmmo4t671fqn0mjq1rvj2n0s`、`cmmmo4t711fqw0mjqq97ls3tc`） | fail：`ROOM_BEAT_CHANGED` / `ROOM_CONTROL_STATE_UPDATED` 可见，但 3/3 房间 cue 长时间停在 `PLANNED`；定位为 leader pod 未接管新房间 timer
-- 2026-03-12 | kind 聊天室 3 房间并发 smoke v4（room=`cmmmodwzv1g8r0mizb98gu4n7`、`cmmmodx131g900mizje4ib8t4`、`cmmmodx1y1g990mizptvd6rjv`） | fail：leader pod 已开始 tick，但日志出现 `Agent with id ... not found`；定位为 Pg agent/config startup cache 在多 pod 间漂移
-- 2026-03-12 | kind 聊天室 3 房间并发 smoke v5（room=`cmmmonolz1gnv0mhmiu1opwld`、`cmmmonos71go40mhm7ugfeqcg`、`cmmmonphr1god0mhmkl8vzc6m` 的后续 closeout rerun） | pass：3/3 房间 cue 均为 `EXECUTED`，每房间都有 >=1 条消息、>=1 条 highlight，且 SSE 均包含 `ROOM_BEAT_CHANGED` / `ROOM_CONTROL_STATE_UPDATED`
+## Key Checks
+- `pnpm typecheck` — pass
+- `pnpm vitest run src/frontend/features/chat/pages/__tests__/ChatRoomPages.test.tsx src/frontend/features/chat/hooks/__te…` — pass
+- `pnpm vitest run src/backend/runtime/__tests__/chat-output-sanitizer.test.ts src/backend/llm/__tests__/prompt-engine.tes…` — pass
+- `pnpm dev:backend` — pass
+- `pnpm vitest run src/backend/runtime/__tests__/chat-output-sanitizer.test.ts src/backend/services/__tests__/room-program…` — pass
+- `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/llm_forum pnpm db:migrate:status` — fail

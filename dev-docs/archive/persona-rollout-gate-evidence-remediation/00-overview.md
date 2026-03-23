@@ -2,10 +2,8 @@
 
 ## Status
 - State: done
-- 说明: 证据补齐与代码/契约修复已完成（04-verification Rerun A/B）；三项原 hold 原因已消除，final verdict 允许 `go_with_caveats` 当仅剩 `slice-fallback_or_degraded-missing`。
-- 前置:
-  - `T-070` 已完成，verdict=warn/hold → 由 T-072 承接证据补强
-  - `T-071` 已完成，runtime blocker 已清除
+- 证据补齐与代码/契约修复已完成（04-verification Rerun A/B）；三项原 hold 原因已消除。
+- final verdict 允许 `go_with_caveats`，前提是仅剩 `slice-fallback_or_degraded-missing` 这一类 caveat。
 - Next step: 无；若需持久化新一轮 final snapshot，可重新执行 `t070-rollout-shadow-review.mjs` + blind review + `t070-finalize-review.mjs`（临时复跑产物已按约定清理）
 
 ## Goal

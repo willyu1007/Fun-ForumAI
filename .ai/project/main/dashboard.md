@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 134 (planned: 1, in-progress: 2, blocked: 0, done: 2, archived: 129)
+- Tasks: 134 (planned: 1, in-progress: 2, blocked: 0, done: 0, archived: 131)
 
 ## Recent tasks
 
@@ -22,8 +22,8 @@ Project: `main`
 | T-123 multi-surface-media-expansion-and-shared-adapters | archived | F-080 | dev-docs/archive/multi-surface-media-expansion-and-shared-adapters |
 | T-910 media-framework-audit-and-remediation | archived | F-080 | dev-docs/archive/media-framework-audit-and-remediation |
 | T-911 highlights-visual-sample-and-k8s-e2e-regression | archived | F-080 | dev-docs/archive/highlights-visual-sample-and-k8s-e2e-regression |
-| T-912 public-search-system-v1 | done | F-000 | dev-docs/active/public-search-system-v1 |
-| T-913 search-ecosystem-enrichment-v2 | done | F-000 | dev-docs/active/search-ecosystem-enrichment-v2 |
+| T-912 public-search-system-v1 | archived | F-000 | dev-docs/archive/public-search-system-v1 |
+| T-913 search-ecosystem-enrichment-v2 | archived | F-000 | dev-docs/archive/search-ecosystem-enrichment-v2 |
 | T-914 visual-media-framework-v1-closure | archived | F-080 | dev-docs/archive/visual-media-framework-v1-closure |
 | T-119 scheduled-post-image-planning-and-public-card | archived | F-080 | dev-docs/archive/scheduled-post-image-planning-and-public-card |
 | T-124 media-observability-lifecycle-and-rollout-control | archived | F-080 | dev-docs/archive/media-observability-lifecycle-and-rollout-control |

@@ -45,7 +45,7 @@ Options:
   --backend-label <selector>      Backend pod label selector (default: app.kubernetes.io/name=backend)
   --backend-local-port <port>     Local port for temporary backend port-forward (default: 4100)
   --backend-port <port>           Backend container port (default: 4000)
-  --run-smoke                     Optional: run T-023~T-025 smoke suite after rollout
+  --run-smoke                     Optional: run generic runtime staging smoke after rollout
   --help
 
 Examples:
@@ -342,14 +342,18 @@ async function startBackendPortForwardWithFallback({
   throw lastError ?? new Error(`Unable to establish backend port-forward after ${maxAttempts} attempts`)
 }
 
-async function runSmokeSuite({ context, namespace }) {
-  console.log('[staging] Running T-023~T-025 K8s smoke suite...')
+async function runSmokeSuite({ context, namespace, labelSelector }) {
+  console.log('[staging] Running generic runtime staging smoke...')
   const scriptArgs = [
-    'scripts/t023-t025-k8s-smoke-suite.mjs',
+    'scripts/runtime-staging-smoke.mjs',
+    '--discover-nodes-k8s',
     '--k8s-context',
     String(context),
     '--k8s-namespace',
     String(namespace),
+    '--k8s-label-selector',
+    String(labelSelector),
+    '--dev-auth',
   ]
   const { stdout, stderr } = await runCommandCapture('node', scriptArgs)
   if (stdout.trim()) process.stdout.write(stdout)
@@ -636,6 +640,7 @@ async function main() {
     await runSmokeSuite({
       context: args.k8sContext,
       namespace: args.k8sNamespace,
+      labelSelector: args.backendLabel,
     })
   }
 

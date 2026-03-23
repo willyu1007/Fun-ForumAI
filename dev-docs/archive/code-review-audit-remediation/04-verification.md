@@ -1,45 +1,12 @@
 # 04 Verification
 
-- 2026-03-16 | task bundle created | pass
-- 2026-03-16 | `pnpm exec vitest run src/backend/app.test.ts src/backend/lib/config.test.ts src/backend/routes/__tests__/dev-prompts-render.test.ts src/frontend/api/__tests__/client.test.ts src/frontend/api/__tests__/use-sse.test.tsx src/frontend/features/chat/hooks/__tests__/use-chat-room-sse.test.tsx src/frontend/features/private-chat/hooks/__tests__/use-private-session-sse.test.tsx src/frontend/shared/utils/__tests__/dev-token.test.ts` | pass
-- 2026-03-16 | `pnpm exec vitest run src/backend/routes/__tests__/auth-api.test.ts src/backend/services/__tests__/agent-community-membership-service.test.ts` | pass
-- 2026-03-16 | `pnpm eslint src/backend/lib/config.ts src/backend/routes/auth-api.ts src/backend/middleware/human-auth.ts src/backend/routes/dev-seed.ts src/backend/services/room-lifecycle.ts src/backend/services/conversation-clock.ts src/backend/container/index.ts src/backend/app.ts src/backend/server.ts src/backend/lib/config.test.ts src/backend/app.test.ts src/backend/routes/__tests__/dev-prompts-render.test.ts src/frontend/api/client.ts src/frontend/api/use-sse.ts src/frontend/features/private-chat/hooks/use-private-session-sse.ts src/frontend/features/chat/hooks/use-chat-room-sse.ts src/frontend/shared/utils/dev-token.ts src/frontend/api/__tests__/client.test.ts src/frontend/api/__tests__/use-sse.test.tsx src/frontend/features/chat/hooks/__tests__/use-chat-room-sse.test.tsx src/frontend/features/private-chat/hooks/__tests__/use-private-session-sse.test.tsx src/frontend/shared/utils/__tests__/dev-token.test.ts` | pass
-- 2026-03-16 | `pnpm typecheck` | pass
-- 2026-03-16 | `node .ai/scripts/ctl-project-governance.mjs lint --check --project main` | pass
-- 2026-03-16 | `pnpm lint` | pass
-- 2026-03-16 | `pnpm test` | pass
-- 2026-03-16 | `pnpm build` | pass
-- 2026-03-16 | `pnpm db:validate` | pass
-- 2026-03-16 | `pnpm mobile:typecheck` | pass
-- 2026-03-16 | `pnpm mobile:test` | pass
-- 2026-03-16 | `pnpm mobile:config:check` | pass
-- 2026-03-16 | `pnpm mobile:smoke:validate` | pass
-- 2026-03-16 | `pnpm verify:launch:ci` | pass
-- 2026-03-16 | `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py validate --root . --out dev-docs/active/code-review-audit-remediation/artifacts/env/runtime-enabled-contract-sync/03-validation-log.md` | pass
-- 2026-03-16 | `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py generate --root . --out dev-docs/active/code-review-audit-remediation/artifacts/env/runtime-enabled-contract-sync/04-context-refresh.md` | pass
-- 2026-03-16 | `pnpm test` (after production-boundary hardening) | pass
-- 2026-03-16 | `pnpm verify:launch:ci` (after production-boundary hardening) | pass
-- 2026-03-17 | `pnpm eslint src/backend/routes/__tests__/e2e-agents-control-plane.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts src/backend/routes/__tests__/e2e-incubation-control-plane.test.ts src/backend/routes/__tests__/e2e-community-config-control-plane.test.ts src/backend/routes/__tests__/e2e-role-assignment-control-plane.test.ts src/backend/routes/__tests__/e2e-inference-profile-control-plane.test.ts` | pass
-- 2026-03-17 | `pnpm exec vitest run src/backend/routes/__tests__/e2e-agents-control-plane.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts src/backend/routes/__tests__/e2e-incubation-control-plane.test.ts src/backend/routes/__tests__/e2e-community-config-control-plane.test.ts src/backend/routes/__tests__/e2e-role-assignment-control-plane.test.ts src/backend/routes/__tests__/e2e-inference-profile-control-plane.test.ts` | pass
-- 2026-03-17 | `pnpm eslint scripts/e2e-pg-isolated.mjs` | pass
-- 2026-03-17 | `rg -n "e2e-control-plane\\.test" package.json pnpm-workspace.yaml scripts .github src .ai --glob '!dev-docs/**'` | pass (no active-code references remain)
-- 2026-03-17 | `pnpm verify:launch:ci` | pass (`18/18` checks passed after the control-plane e2e split)
-- 2026-03-17 | `rg -n "hydrateRepositories\\(|warmPersistenceState\\(" scripts src --glob '!dev-docs/**'` | pass (active code/scripts now use `warmPersistenceState()` only)
-- 2026-03-17 | `pnpm eslint scripts/t048-staging-evidence.mjs src/backend/routes/stage-incubation.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts` | pass
-- 2026-03-17 | `pnpm exec vitest run src/backend/routes/__tests__/e2e-governance-control-plane.test.ts` | pass
-- 2026-03-17 | `pnpm verify:launch:ci` | fail (`P0-05 Test suite` transient failure; no stable repro from the output snippet alone)
-- 2026-03-17 | `pnpm test` | pass (`204` files, `1015` tests)
-- 2026-03-17 | `pnpm verify:launch:ci` | pass (`18/18` checks passed after the follow-up fixes and rerun)
-- 2026-03-17 | `pnpm exec vitest run src/backend/lib/public-error-message.test.ts src/backend/repos/pg/cursor-pagination.test.ts src/backend/app.test.ts src/backend/lib/config.test.ts src/frontend/api/__tests__/client.test.ts src/frontend/api/__tests__/use-sse.test.tsx src/frontend/features/private-chat/hooks/__tests__/use-private-session-sse.test.tsx` | pass
-- 2026-03-17 | `pnpm eslint src/backend/lib/public-error-message.ts src/backend/lib/public-error-message.test.ts src/backend/middleware/error-handler.ts src/backend/routes/chat-api.ts src/backend/routes/notification-api.ts src/backend/routes/private-channel-api.ts src/backend/routes/agent-dashboard-api.ts src/backend/routes/sse.ts src/backend/services/agent-community-membership-service.ts src/backend/app.test.ts src/backend/repos/pg/cursor-pagination.ts src/backend/repos/pg/cursor-pagination.test.ts src/backend/repos/pg/pg-post-repository.ts src/backend/repos/pg/pg-comment-repository.ts src/backend/repos/pg/pg-message-repository.ts src/backend/repos/pg/pg-room-repository.ts src/backend/repos/pg/pg-room-watchability-repository.ts src/backend/repos/pg/pg-risk-governance-repository.ts` | pass
-- 2026-03-17 | `rg -n "PersistenceSync|hasAnyActiveMemberships\\(" src/backend scripts . -g '!node_modules/**' -g '!dev-docs/**'` | pass (no active-code references remain)
-- 2026-03-17 | `rg -n "message: err\\.message|err instanceof Error \\? err\\.message|message = err instanceof Error \\? err\\.message" src/backend/routes src/backend/middleware src/backend/app.ts -g '!**/__tests__/**'` | pass-with-notes (remaining hits are intentional `AppError` pass-throughs and dev-only handlers)
-- 2026-03-17 | `pnpm typecheck` | fail (unrelated existing baseline errors in `src/backend/context-memory/__tests__/memory-pack.test.ts`, `src/backend/llm/__tests__/credential-broker.test.ts`, `src/backend/llm/llm-gateway.ts`, and `src/backend/llm/registry-loader.ts`)
-- 2026-03-17 | `pnpm test` | fail-transient (`src/backend/routes/__tests__/admin-moderation-api.test.ts` hit the default 5s timeout once during full-suite load)
-- 2026-03-17 | `pnpm exec vitest run src/backend/routes/__tests__/admin-moderation-api.test.ts` | pass (isolated rerun completed in `43ms`, indicating the full-suite failure was transient rather than a stable regression)
-- 2026-03-17 | `pnpm exec vitest run src/backend/context-memory/__tests__/memory-pack.test.ts src/backend/llm/__tests__/credential-broker.test.ts` | pass
-- 2026-03-17 | `pnpm typecheck` | pass
-- 2026-03-17 | `pnpm test` | pass (`206` files, `1037` tests)
-- 2026-03-17 | `pnpm lint` | pass
-- 2026-03-17 | `pnpm build` | pass
-- 2026-03-17 | `pnpm verify:launch:ci` | pass (`18/18` checks passed)
+## Key Checks
+- `pnpm exec vitest run src/backend/app.test.ts src/backend/lib/config.test.ts src/backend/routes/__tests__/dev-prompts-re…` — pass
+- `pnpm exec vitest run src/backend/routes/__tests__/auth-api.test.ts src/backend/services/__tests__/agent-community-membe…` — pass
+- `pnpm eslint src/backend/lib/config.ts src/backend/routes/auth-api.ts src/backend/middleware/human-auth.ts src/backend/r…` — pass
+- `pnpm typecheck` — pass
+- `node .ai/scripts/ctl-project-governance.mjs lint --check --project main` — pass
+- `pnpm lint` — pass
+
+## Coverage
+- 2026-03-17 | `pnpm typecheck` | fail (unrelated existing baseline errors in `src/backend/context-memory/__tests__/memor…

@@ -15,21 +15,9 @@
 - 不要求真机覆盖。
 - 不引入 Detox。
 
-## Dependency
-- `T-060 expo-development-build-foundation` 必须先达到 green baseline。
-
-## Acceptance criteria
-- [x] Maestro flows 已存在且可本地执行。
-- [x] smoke fixture provisioning 已就绪。
-- [x] iOS simulator smoke 通过。
-- [x] Android emulator smoke 通过。
-- [x] CI 能在无设备环境下验证 Maestro 资产与脚本结构。
-
-## Delivery note
-- 当前实现锁定为 `local/dev`：
-  - fixture 使用 `run-id` 隔离；
-  - smoke 命令不做自动 cleanup；
-  - backend 必须由操作者先启动。
-- staging 前置要求：
-  - 必须补 `cleanup / isolated-db` 方案；
-  - 必须明确 smoke fixture 的保留期和清理责任。
+## Outcome Snapshot
+- Maestro flows 已存在且可本地执行。
+- smoke fixture provisioning 已就绪。
+- iOS simulator smoke 通过。
+- Android emulator smoke 通过。
+- CI 能在无设备环境下验证 Maestro 资产与脚本结构。

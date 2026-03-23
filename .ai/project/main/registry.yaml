@@ -1270,17 +1270,17 @@ tasks:
     updated: 2026-03-23
   - id: T-912
     slug: public-search-system-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/public-search-system-v1
+    dev_docs_path: dev-docs/archive/public-search-system-v1
     updated: 2026-03-23
   - id: T-913
     slug: search-ecosystem-enrichment-v2
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/search-ecosystem-enrichment-v2
+    dev_docs_path: dev-docs/archive/search-ecosystem-enrichment-v2
     updated: 2026-03-23
   - id: T-914
     slug: visual-media-framework-v1-closure

@@ -1,49 +1,9 @@
 # 04 Verification
 
-- 2026-03-22
-  - Pass: `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
-  - Result: `T-120` 已注册到 `F-080 / R-082`，状态为 `planned`
-  - Pass: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
-  - Result: lint passed
-  - Pass: `pnpm exec tsc --noEmit --pretty false`
-  - Result: 类型检查通过，private chat / media / memory / frontend 合同改动未引入 TS 错误
-  - Pass: `pnpm exec vitest run src/backend/services/__tests__/private-channel-service.test.ts src/backend/media/__tests__/media-projection-service.test.ts src/backend/routes/__tests__/private-channel-message-auth.test.ts src/frontend/features/private-chat/pages/__tests__/PrivateChatPage.test.tsx`
-  - Result: 4 个测试文件、13 个测试全部通过；覆盖 private card serialization、sendMessage attachment wiring、route owner auth fallback、page attachment render
-  - Pass: `pnpm exec vitest run src/frontend/api/hooks/__tests__/private-chat.test.tsx`
-  - Result: private chat hooks 回归通过
-  - Pass: `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
-  - Result: task metadata 与 `.ai/project/main/*` 已更新到 `in-progress`
-  - Pass: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
-  - Result: governance lint passed
-- 2026-03-22
-  - Pass: `pnpm exec tsc --noEmit --pretty false`
-  - Result: attachment fail-closed 与 prompt text-boundary 修复后，类型检查继续通过
-  - Pass: `pnpm exec vitest run src/backend/services/__tests__/private-channel-service.test.ts`
-  - Result: 7 个测试全部通过；新增覆盖 attachment message 在 `memoryService` 缺失时 fail-closed、typed memory write 失败时中止 send，以及 `conversationText` 不混入图片卡文本
-  - Pass: `pnpm exec vitest run src/backend/routes/__tests__/private-channel-message-auth.test.ts src/backend/media/__tests__/media-projection-service.test.ts src/frontend/features/private-chat/pages/__tests__/PrivateChatPage.test.tsx src/frontend/api/hooks/__tests__/private-chat.test.tsx`
-  - Result: 4 个测试文件、9 个测试通过；确认 attachment route 预检重排没有破坏 owner auth fallback、frontend 与 media serialization 回归继续稳定
-- 2026-03-22
-  - Pass: `pnpm exec tsc --noEmit --pretty false`
-  - Result: attachment rollback 与 private-media typed-context 收敛后，类型检查继续通过
-  - Pass: `pnpm exec vitest run src/backend/services/__tests__/private-channel-service.test.ts src/backend/services/__tests__/memory-service.private-media.test.ts src/backend/media/__tests__/media-projection-service.test.ts src/backend/routes/__tests__/private-channel-message-auth.test.ts src/frontend/features/private-chat/pages/__tests__/PrivateChatPage.test.tsx src/frontend/api/hooks/__tests__/private-chat.test.tsx`
-  - Result: 6 个测试文件、19 个测试通过；新增覆盖 attachment failure rollback、visible reply failure rollback、private media cleanup，以及“不要把图片 attachment 误接进 identity finalize / relation/self/tension state”。
-  - Pass: live API smoke on `http://localhost:4000`
-  - Result: owner 上传 `src/frontend/assets/logo.png` 到私聊后，agent 能在同轮 reply 中基于图片描述“蓝橙交织的连续环状 logo”；结束当前 session 后重新创建新 session，agent 仍能仅凭 memory 回忆“是一张蓝橙交织的环状 logo 图片”。
-  - Pass: live failure injection on `POST /v1/agents/:agentId/chat/sessions/:sessionId/messages`
-  - Result: 发送 `{ attachment_asset_ids: ['asset-does-not-exist'] }` 返回 `400 VALIDATION_ERROR`，前后 `GET .../messages?limit=100` 的消息数量保持不变，证明 attachment failure 不再留下孤儿 human message。
-- 2026-03-22
-  - Pass: targeted cleanup of live smoke artifacts in local dev environment
-  - Result: 已删除本轮验证创建的 2 个 `private_sessions`、6 个 `private_messages`、1 个 `media_asset`、对应 binding / projection / semantic snapshot / typed-context / relation-self state，以及本地上传文件。
-  - Pass: local artifact sweep
-  - Result: 已移除 stale pid 与本地构建输出；同时确认当前 T-120 工作树里没有额外的无效或废弃源码文件需要从 repo 删除。
-- 2026-03-22
-  - Pass: cleanup post-check on local dev DB and filesystem
-  - Result: 针对本轮 smoke 的 `private_sessions` / `private_messages` / `media_assets` / `raw_context_events` 计数均为 `0`，对应上传文件和本地构建输出均已删除。
-  - Pass: `pnpm exec tsc --noEmit --pretty false`
-  - Result: cleanup 后类型检查继续通过。
-  - Pass: `pnpm exec vitest run src/backend/services/__tests__/private-channel-service.test.ts src/backend/services/__tests__/memory-service.private-media.test.ts src/backend/media/__tests__/media-projection-service.test.ts src/backend/routes/__tests__/private-channel-message-auth.test.ts src/frontend/features/private-chat/pages/__tests__/PrivateChatPage.test.tsx src/frontend/api/hooks/__tests__/private-chat.test.tsx`
-  - Result: 6 个测试文件、19 个测试继续通过。
-  - Pass: `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
-  - Result: project hub 已按最新任务文档重新同步。
-  - Pass: `node .ai/scripts/ctl-project-governance.mjs lint --check --project main` and `git diff --check`
-  - Result: governance lint 与 diff hygiene 均通过。
+## Key Checks
+- `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog` — Pass
+- `node .ai/scripts/ctl-project-governance.mjs lint --check --project main` — Pass
+- `pnpm exec tsc --noEmit --pretty false` — Pass
+- `pnpm exec vitest run src/backend/services/__tests__/private-channel-service.test.ts src/backend/media/__tests__/media-p…` — Pass
+- `pnpm exec vitest run src/frontend/api/hooks/__tests__/private-chat.test.tsx` — Pass
+- `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main` — Pass

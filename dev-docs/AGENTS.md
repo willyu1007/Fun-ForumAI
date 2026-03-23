@@ -105,3 +105,11 @@ When task status changes to "done" and all verification passes:
 1. Move `dev-docs/active/<task-slug>/` to `dev-docs/archive/<task-slug>/`
 2. This is handled by `update-dev-docs-for-handoff` when status=done
 
+Archived tasks should remain summary-first:
+- Keep `.ai-task.yaml`, `00-overview.md`, `04-verification.md`, `05-pitfalls.md`, and rare task-specific files with unique operational or acceptance value.
+- Archived `04-verification.md` should keep only the highest-signal commands, outcomes, and coverage areas.
+- Remove `01-plan.md`, `02-architecture.md`, `03-implementation-notes.md`, and `roadmap.md` once a task is archived.
+
+Archive goal:
+- optimize for fast historical recall instead of full execution replay
+- ensure future LLM reads land on goal, outcome, verification, and lessons first

@@ -141,7 +141,7 @@ Project: `main`
 | T-909 uiux-manual-test-baseline | in-progress | F-000 | dev-docs/active/uiux-manual-test-baseline |
 | T-910 media-framework-audit-and-remediation | archived | F-080 | dev-docs/archive/media-framework-audit-and-remediation |
 | T-911 highlights-visual-sample-and-k8s-e2e-regression | archived | F-080 | dev-docs/archive/highlights-visual-sample-and-k8s-e2e-regression |
-| T-912 public-search-system-v1 | done | F-000 | dev-docs/active/public-search-system-v1 |
-| T-913 search-ecosystem-enrichment-v2 | done | F-000 | dev-docs/active/search-ecosystem-enrichment-v2 |
+| T-912 public-search-system-v1 | archived | F-000 | dev-docs/archive/public-search-system-v1 |
+| T-913 search-ecosystem-enrichment-v2 | archived | F-000 | dev-docs/archive/search-ecosystem-enrichment-v2 |
 | T-914 visual-media-framework-v1-closure | archived | F-080 | dev-docs/archive/visual-media-framework-v1-closure |
 <!-- AUTO-GENERATED:END task-index -->

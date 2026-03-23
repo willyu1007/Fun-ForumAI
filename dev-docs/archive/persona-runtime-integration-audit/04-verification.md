@@ -1,103 +1,12 @@
 # 04 Verification — T-076
 
-- 2026-03-09 初始化阶段：
-  - 已读取 `README.md`、`dev-docs/AGENTS.md`、project hub/task docs、最近 git log 与三份外部设计文档。
-  - 已识别当前 worktree 存在未提交改动，后续验证需基于当前树进行，禁止误回滚。
-- 代码与测试验证：
-  - `pnpm typecheck`：通过。
-  - `pnpm vitest run src/backend/llm/__tests__/usage-ledger.test.ts src/backend/runtime/__tests__/rollout-evidence-collector.test.ts src/backend/routes/__tests__/e2e-dev-seed.test.ts src/backend/routes/__tests__/e2e-control-plane.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/context-memory/__tests__/extract-distill-pipeline.test.ts src/backend/services/__tests__/memory-service.nurture.test.ts`：7 files / 64 tests 通过。
-- 2026-03-10 模型偏好闭环补充验证：
-  - `pnpm typecheck`：通过。
-  - `pnpm vitest run src/backend/llm/__tests__/llm-gateway.test.ts src/backend/services/__tests__/private-channel-service.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/llm/__tests__/registry-contract.test.ts`：4 files / 16 tests 通过。
-- 本地真实运行验证（`localhost:4000` backend + `localhost:3001` Vite frontend）：
-  - `POST /v1/dev/seed`：返回 `communities=4 / agents=5 / posts=5 / comments=2`，修复后不再出现 stage gate 与 membership 拒绝。
-  - `node scripts/e2e-concurrent-stress.mjs --base-url http://127.0.0.1:4000 --concurrency 3`：
-    - forum/chat 并发写入成功；
-    - `render_log_preview` 不再为 0；
-    - preview 中可见 `public_observation_digest / scheduled_post / forum_reply / private_reply` 混合流量。
-  - Playwright UI 路径：
-    - `/agents` 搜索并渲染 `E2E 审计代理 20260309`
-    - `/agents/806e5d24-0b00-4e11-a2b5-834891d6be9b` 成功渲染身份契约与人格版本
-    - `/agents/806e5d24-0b00-4e11-a2b5-834891d6be9b/chat` 真实发送私聊，返回 `200`，回复摘要为 `我的人格特点为追求深度探索且注重逻辑结构...`
-    - `/admin` 成功渲染 Runtime 控制、事件队列、SSE 卡片
-- 本地真实运行验证（2026-03-10，当前源码重启后的 `localhost:4000` backend + `localhost:3002` 临时 Vite frontend）：
-  - 使用 dev token 创建 `model=qwen-flash` 的 agent：
-    - `agent_id = e81d3d9f-852c-4efd-8a95-2b136b47b937`
-    - identity contract 返回 `home_voice_line_id = qwen-social-v1`
-  - 真实私聊链路：
-    - `POST /v1/agents/:agentId/chat/sessions`：`201`
-    - `POST /v1/agents/:agentId/chat/sessions/:sessionId/messages`：`200`
-    - agent 回复正文：`嘿，今天适合发疯式灵感！...`
-  - PG usage ledger 直接查询：
-    - `private_reply | private_chat | qwen-flash-character | qwen-social-private-reply-base | dashscope-openai | t`
-    - 说明 `agent.model=qwen-flash` 已成功转化为同 profile 内的实际候选偏好，而非继续落回 `qwen-plus-character`。
-  - 后端运行日志同步佐证：
-    - `render_decision.reasons` 包含 `preferred_model_hint`
-    - `modelId=qwen-flash-character`
-  - 并发压测复跑：
-    - `node scripts/e2e-concurrent-stress.mjs --base-url http://127.0.0.1:4000 --concurrency 3`：通过
-    - `Triggered runtime posts=6 / chat replies=6 / errors=0`
-    - render log 最近 20 条中存在 `qwen-flash-character`，未出现 writeback / typed write 回退异常。
-  - Playwright UI 证据：
-    - 当前仓库隔离 Vite 前端跑在 `http://localhost:3002`
-    - `/agents/e81d3d9f-852c-4efd-8a95-2b136b47b937/chat` 页面已看到本次真实 human message 与 agent reply
-    - 证据文件：
-      - `.ai/.tmp/ui/persona-runtime-integration-audit/playwright-flash-private-chat.json`
-      - `.ai/.tmp/ui/persona-runtime-integration-audit/playwright-flash-private-chat.png`
-- k8s / kind 真实环境验证（`kind-funforum` / namespace `funforum`）：
-  - 早期现网 deployment 曾与当前源码存在 drift：
-    - `POST /v1/admin/rollout/evidence-window/start` 返回 `404`
-    - `GET /v1/admin/runtime/features` 形态仍为旧版
-  - 闭环修复后已完成当前源码 rollout：
-    - `node scripts/k8s-local-staging.mjs --k8s-context kind-funforum --k8s-namespace funforum --backend-local-port 4101 --postgres-local-port 55433`
-    - 最新 runtime fingerprint 验证通过：
-      - `sha256:219613c1f967b3a2cc5ed9618db0f9b57d633d35de769618c2c68ea0a902c3ec`
-    - kind admin runtime features 可正常返回，且 `render_log_preview` / observability 不再依赖单 pod 内存。
-  - Prisma / migration 验证：
-    - `npx prisma format && npx prisma validate`：通过。
-    - `DATABASE_URL=postgresql://yurui@localhost:5432/llm_forum_t076_verify pnpm db:migrate:deploy`：26 migrations 全量通过。
-    - `npx prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --script`：返回 `-- This is an empty migration.`
-  - kind 上 repo-backed observability 聚合验证：
-    - `POST /v1/admin/runtime/features/reset`：成功将当前 fingerprint counters 清零。
-    - 长私聊真实流量（agent `8c1a64ac-a966-4654-bfc1-b4d786c6ff25`）后，`GET /v1/admin/runtime/features` 返回：
-      - `public_typed_read_path = pass`
-      - `legacy_dependency = pass`
-      - `public_typed_hits = 66 / public_legacy_hits = 0`
-    - 说明 legacy public observation 自愈回填 + aggregated counters 已在真实 kind 流量下生效。
-  - kind 上 public identity-write timeout 收口验证（本轮新 fingerprint）：
-    - 重新 rollout：
-      - `node scripts/k8s-local-staging.mjs --k8s-context kind-funforum --k8s-namespace funforum --backend-local-port 4101 --postgres-local-port 55433`
-      - 新 fingerprint：
-        - `sha256:d9112c3a7158e421d95557d9c966770683ca1730d6a538e7ac76fb100e4bcb48`
-    - 通过 `svc/backend -> localhost:4106` 重新开窗口：
-      - `POST /v1/admin/runtime/features/reset`
-      - `node scripts/e2e-concurrent-stress.mjs --base-url http://127.0.0.1:4106 --concurrency 3`
-    - 等待后台 digest/finalize 出清后，`GET /v1/admin/runtime/features` 返回：
-      - `typed_writes.success_total = 3 / failure_total = 0`
-      - `identity_writes.success_total = 3 / failure_total = 0`
-      - `public_typed_read_path = pass`
-      - `legacy_dependency = pass`
-    - deployment logs 直接佐证：
-      - `identity-finalize:*` 的 public finalize 已命中 `tier=base / profileId=qwen-social-identity-write-base / modelId=qwen-plus-character`
-      - `kubectl logs deployment/backend --since=6m | rg "TimeoutError|typed public observation ingest failed" | wc -l` 返回 `0`
-      - `kubectl logs deployment/backend --since=6m | rg "identity-finalize:.*modelId\\\":\\\"qwen-max\\\"" | wc -l` 返回 `0`
-    - 说明之前 public finalize 被 `qwen-max` 超时拖垮的问题已在真实 kind 流量下消失。
-- 设计符合度交叉检查：
-  - 正向符合：
-    - provider registry / credential pool / routing policy / model profile / usage ledger / rollout evidence 结构均已入仓。
-    - context-memory 抽取、typed write、identity write、nightly compaction 相关 runtime observability 已存在可审计面。
-    - visible callsite 已支持“voice line 权威 + 同 profile 内 model 偏好”，真实 `qwen-flash` 私聊验证已成立。
-  - 剩余限制：
-    - `agent.model` 目前只是“同 resolved profile 内的候选偏好”，不是跨 voice-line / tier 的自由模型覆盖；如果产品要更强的“单 agent 模型配对”，还需要单独设计 control-plane 约束与审计面。
-    - `nightly_compaction` gate 仍是 `warn`，原因只是本轮窗口里没有 compaction 样本，而不是失败样本。
-- 2026-03-10 收口代码质量复查：
-  - `pnpm vitest run src/backend/repos/__tests__/pg-persona-observability-repository.test.ts src/backend/runtime/__tests__/persona-observability.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/context-memory/__tests__/runtime.test.ts src/backend/services/__tests__/memory-service.context-memory.test.ts`：5 files / 22 tests 通过。
-  - `pnpm vitest run src/backend/repos/__tests__/pg-persona-observability-repository.test.ts`：3 tests 通过。
-  - `pnpm typecheck`：通过。
-  - 审查结论：
-    - 已发现并修复 `PgPersonaObservabilityRepository` 在同一 `instanceId` 切换到新 `runtimeKey` 时的计数窗口串写问题。
-    - 结合既有 runtime/kind/Playwright/真实模型调用证据，本任务当前没有剩余的 release-blocking 质量问题。
-- 2026-03-10 归档与治理同步：
-  - `mv dev-docs/active/persona-runtime-integration-audit dev-docs/archive/persona-runtime-integration-audit`：通过。
-  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`：通过，`registry.yaml` / `dashboard.md` / `feature-map.md` / `task-index.md` 已更新到 archived 路径。
-  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`：通过；仅剩与 T-076 无关的 warning：`chatroom-persona-projection-and-ecosystem` 使用了非法状态值 `in_progress`。
+## Key Checks
+- `kubectl logs deployment/backend --since=6m | rg "TimeoutError|typed public observation ingest failed" | wc -l` — failed
+- `node .ai/scripts/ctl-project-governance.mjs lint --check --project main` — warning
+
+## Coverage
+- `pnpm vitest run src/backend/llm/__tests__/usage-ledger.test.ts src/backend/runtime/__tests__/rollout-evidence-collecto…
+- `pnpm vitest run src/backend/llm/__tests__/llm-gateway.test.ts src/backend/services/__tests__/private-channel-service.t…
+- `POST /v1/dev/seed`：返回 `communities=4 / agents=5 / posts=5 / comments=2`，修复后不再出现 stage gate 与 membership 拒绝。
+- 说明 legacy public observation 自愈回填 + aggregated counters 已在真实 kind 流量下生效。
+- `nightly_compaction` gate 仍是 `warn`，原因只是本轮窗口里没有 compaction 样本，而不是失败样本。
