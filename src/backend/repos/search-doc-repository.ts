@@ -1,14 +1,14 @@
 import type {
   AgentSearchDoc,
-  CommentSearchDoc,
   CommunitySearchDoc,
   PostSearchDoc,
   RankedSearchDocPage,
   SearchCursorPayload,
   UpsertAgentSearchDocInput,
-  UpsertCommentSearchDocInput,
   UpsertCommunitySearchDocInput,
   UpsertPostSearchDocInput,
+  ThreadSearchDoc,
+  UpsertThreadSearchDocInput,
 } from './types.js'
 
 export interface SearchDocQueryInput {
@@ -21,7 +21,7 @@ export interface SearchDocStats {
   posts: number
   communities: number
   agents: number
-  comments: number
+  threads: number
 }
 
 export interface SearchDocRepository {
@@ -47,10 +47,10 @@ export interface SearchDocRepository {
   searchAgentDocs(input: SearchDocQueryInput): Promise<RankedSearchDocPage<AgentSearchDoc>>
   countAgentDocs(query: string): Promise<number>
 
-  upsertCommentDoc(input: UpsertCommentSearchDocInput): Promise<CommentSearchDoc>
-  deleteCommentDoc(commentId: string): Promise<void>
-  searchCommentDocs(input: SearchDocQueryInput): Promise<RankedSearchDocPage<CommentSearchDoc>>
-  countCommentDocs(query: string): Promise<number>
+  upsertThreadDoc(input: UpsertThreadSearchDocInput): Promise<ThreadSearchDoc>
+  deleteThreadDoc(threadId: string): Promise<void>
+  searchThreadDocs(input: SearchDocQueryInput): Promise<RankedSearchDocPage<ThreadSearchDoc>>
+  countThreadDocs(query: string): Promise<number>
 }
 
 function normalizeText(value: string | null | undefined): string {
@@ -200,7 +200,7 @@ function scoreAgentDoc(doc: AgentSearchDoc, query: string): number {
   ).toFixed(6))
 }
 
-function scoreCommentDoc(doc: CommentSearchDoc, query: string, parentPostHeat: number): number {
+function scoreThreadDoc(doc: ThreadSearchDoc, query: string, parentPostHeat: number): number {
   const lexical = Math.max(
     baseTextScore(doc.body, query) * 1.2,
     baseTextScore(doc.post_title, query) * 1.08,
@@ -214,7 +214,7 @@ function scoreCommentDoc(doc: CommentSearchDoc, query: string, parentPostHeat: n
   return Number((
     lexical
     + Math.min(parentPostHeat / 160, 0.75)
-    + Math.min(doc.author_signal_score / 20, 0.25)
+    + Math.min(doc.thread_signal_score / 20, 0.25)
   ).toFixed(6))
 }
 
@@ -222,13 +222,13 @@ export class InMemorySearchDocRepository implements SearchDocRepository {
   private readonly posts = new Map<string, PostSearchDoc>()
   private readonly communities = new Map<string, CommunitySearchDoc>()
   private readonly agents = new Map<string, AgentSearchDoc>()
-  private readonly comments = new Map<string, CommentSearchDoc>()
+  private readonly threads = new Map<string, ThreadSearchDoc>()
 
   async clearAllDocs(): Promise<void> {
     this.posts.clear()
     this.communities.clear()
     this.agents.clear()
-    this.comments.clear()
+    this.threads.clear()
   }
 
   async getStats(): Promise<SearchDocStats> {
@@ -236,7 +236,7 @@ export class InMemorySearchDocRepository implements SearchDocRepository {
       posts: this.posts.size,
       communities: this.communities.size,
       agents: this.agents.size,
-      comments: this.comments.size,
+      threads: this.threads.size,
     }
   }
 
@@ -377,38 +377,38 @@ export class InMemorySearchDocRepository implements SearchDocRepository {
       .length
   }
 
-  async upsertCommentDoc(input: UpsertCommentSearchDocInput): Promise<CommentSearchDoc> {
+  async upsertThreadDoc(input: UpsertThreadSearchDocInput): Promise<ThreadSearchDoc> {
     const now = new Date()
-    const next: CommentSearchDoc = {
+    const next: ThreadSearchDoc = {
       ...input,
       refreshed_at: now,
-      created_at: this.comments.get(input.comment_id)?.created_at ?? now,
+      created_at: this.threads.get(input.thread_id)?.created_at ?? now,
       updated_at: now,
     }
-    this.comments.set(input.comment_id, next)
+    this.threads.set(input.thread_id, next)
     return next
   }
 
-  async deleteCommentDoc(commentId: string): Promise<void> {
-    this.comments.delete(commentId)
+  async deleteThreadDoc(threadId: string): Promise<void> {
+    this.threads.delete(threadId)
   }
 
-  async searchCommentDocs(input: SearchDocQueryInput): Promise<RankedSearchDocPage<CommentSearchDoc>> {
+  async searchThreadDocs(input: SearchDocQueryInput): Promise<RankedSearchDocPage<ThreadSearchDoc>> {
     const query = normalizeText(input.query)
-    const rows = Array.from(this.comments.values())
+    const rows = Array.from(this.threads.values())
       .filter((doc) => hasCandidateMatch(doc.searchable_text, query))
       .map((doc) => ({
-        id: doc.comment_id,
+        id: doc.thread_id,
         doc,
-        score: scoreCommentDoc(doc, query, this.posts.get(doc.post_id)?.heat_score ?? 0),
+        score: scoreThreadDoc(doc, query, this.posts.get(doc.post_id)?.heat_score ?? 0),
       }))
       .sort(sortRankedRows)
     return buildRankedPage(rows, input.cursor, input.limit)
   }
 
-  async countCommentDocs(query: string): Promise<number> {
+  async countThreadDocs(query: string): Promise<number> {
     const normalizedQuery = normalizeText(query)
-    return Array.from(this.comments.values())
+    return Array.from(this.threads.values())
       .filter((doc) => hasCandidateMatch(doc.searchable_text, normalizedQuery))
       .length
   }

@@ -117,7 +117,8 @@ export interface CreateMediaSemanticSnapshotInput {
 
 export type MediaSceneType =
   | 'forum_post'
-  | 'forum_comment'
+  | 'forum_thread'
+  | 'forum_turn'
   | 'chat_room_message'
   | 'private_message'
   | 'achievement_card'
@@ -134,7 +135,8 @@ export type MediaBindingRole =
 export type MediaRelationToScene =
   | 'uploaded_by_owner'
   | 'selected_for_post'
-  | 'selected_for_comment'
+  | 'selected_for_thread'
+  | 'selected_for_turn'
   | 'attached_to_chat_room_message'
   | 'attached_to_private_message'
   | 'referenced_by_achievement'
@@ -224,7 +226,8 @@ export type DirectorSurface =
 
 export type ActorSurface =
   | 'forum_post'
-  | 'forum_comment'
+  | 'forum_thread'
+  | 'forum_turn'
   | 'chat_room_message'
   | 'private_message'
 
@@ -423,7 +426,8 @@ export type MediaObservabilitySeverity =
 
 export type MediaObservabilitySurface =
   | 'root_post'
-  | 'forum_comment'
+  | 'forum_thread'
+  | 'forum_turn'
   | 'chat_room_message'
   | 'private_message'
   | 'highlights'
@@ -553,6 +557,8 @@ export interface SceneRef {
   community_id?: string | null
   room_id?: string | null
   post_id?: string | null
+  thread_id?: string | null
+  turn_id?: string | null
   comment_id?: string | null
   message_id?: string | null
   episode_id?: string | null

@@ -239,7 +239,11 @@ export class GuidanceOrchestrator {
   }
 
   async handleForumEvent(event: DomainEvent): Promise<void> {
-    if (event.event_type !== 'POST_CREATED' && event.event_type !== 'COMMENT_CREATED') return
+    if (
+      event.event_type !== 'POST_CREATED'
+      && event.event_type !== 'THREAD_OPENED'
+      && event.event_type !== 'THREAD_TURN_ADDED'
+    ) return
     const payload = event.payload_json as Record<string, unknown>
     const authorAgentId = typeof payload.author_agent_id === 'string' ? payload.author_agent_id : null
     const postId = typeof payload.post_id === 'string'

@@ -31,7 +31,8 @@ let cachedModelCapabilitiesByKey: Map<string, ModelCapabilityEntry> | null = nul
 
 const CACHEABLE_SCENES = new Set<PromptScene>([
   'forum_post',
-  'forum_comment',
+  'forum_thread',
+  'forum_turn',
   'chat_room',
   'scheduled_post',
 ])

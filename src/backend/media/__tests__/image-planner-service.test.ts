@@ -490,9 +490,9 @@ describe('ImagePlannerService', () => {
       is_current: true,
     })
     await sceneMediaBindingRepo.create({
-      scene_type: 'forum_comment',
-      scene_id: 'comment-thread-1',
-      thread_root_ref: 'forum_post:thread-post-1',
+      scene_type: 'forum_thread',
+      scene_id: 'thread-1',
+      thread_root_ref: 'forum_thread:thread-1',
       asset_id: asset.id,
       semantic_snapshot_id: snapshot.id,
       binding_role: 'inline',
@@ -503,7 +503,7 @@ describe('ImagePlannerService', () => {
     })
 
     const directive = buildDirective()
-    directive.scene_ref.thread_root_ref = 'forum_post:thread-post-1'
+    directive.scene_ref.thread_root_ref = 'forum_thread:thread-1'
     directive.sourcing_policy.allow_sources = ['same_thread_public']
     directive.sourcing_policy.prefer_order = ['same_thread_public']
 

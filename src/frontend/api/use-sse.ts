@@ -80,7 +80,8 @@ export function useSseAutoRefresh() {
         case 'POST_CREATED':
           incrementPosts()
           break
-        case 'COMMENT_CREATED':
+        case 'THREAD_OPENED':
+        case 'THREAD_TURN_ADDED':
           if (event.payload.post_id) {
             incrementComments(event.payload.post_id as string)
           }

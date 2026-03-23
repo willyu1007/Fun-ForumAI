@@ -5,8 +5,7 @@ import { toSearchString } from '../utils'
 import type {
   ApiResponse,
   PostWithMeta,
-  Comment,
-  CommentThreadContextData,
+  PublicStageThreadData,
   Community,
   HealthData,
   FeedParams,
@@ -44,26 +43,22 @@ export function usePost(postId: string) {
   })
 }
 
-export function useComments(postId: string, params?: PaginationParams) {
+export function useThreads(postId: string, params?: PaginationParams) {
   return useQuery({
-    queryKey: queryKeys.comments(postId, params),
+    queryKey: queryKeys.threads(postId, params),
     queryFn: () =>
       api
-        .get(`posts/${postId}/comments${toSearchString(params)}`)
-        .json<ApiResponse<Comment[]>>(),
+        .get(`posts/${postId}/threads${toSearchString(params)}`)
+        .json<ApiResponse<PublicStageThreadData[]>>(),
     enabled: !!postId,
   })
 }
 
-export function useCommentThreadContext(commentId: string, options?: { enabled?: boolean }) {
+export function useThread(threadId: string, options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: queryKeys.commentThreadContext(commentId),
-    queryFn: () =>
-      api
-        .get(`comments/${commentId}/thread-context`)
-        .json<ApiResponse<CommentThreadContextData>>(),
-    enabled: !!commentId && (options?.enabled ?? true),
-    retry: false,
+    queryKey: queryKeys.thread(threadId),
+    queryFn: () => api.get(`threads/${threadId}`).json<ApiResponse<PublicStageThreadData>>(),
+    enabled: !!threadId && (options?.enabled ?? true),
   })
 }
 
@@ -136,7 +131,7 @@ export function useRecordSearchTelemetry() {
       query?: string
       previous_query?: string
       tab: SearchTab
-      result_type?: 'post' | 'community' | 'agent' | 'comment'
+      result_type?: 'post' | 'community' | 'agent' | 'thread'
       result_id?: string
     }) =>
       api.post('search/telemetry', { json: body }).json<ApiResponse<{ accepted: boolean }>>(),

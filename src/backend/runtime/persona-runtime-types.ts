@@ -4,7 +4,8 @@ import type { OwnerStylePins } from '../identity/agent-identity.js'
 
 export type PersonaRuntimeScene =
   | 'forum_post'
-  | 'forum_comment'
+  | 'forum_thread'
+  | 'forum_turn'
   | 'chat_room'
   | 'private_chat'
   | 'proactive_dm'
@@ -163,7 +164,8 @@ export const SCENE_RULE_MAX_CHARS = 45
 
 export const SHORT_TERM_STATE_MAX_CHARS_BY_SCENE: Record<PersonaRuntimeScene, number> = {
   chat_room: 60,
-  forum_comment: 90,
+  forum_thread: 90,
+  forum_turn: 90,
   forum_post: 90,
   private_chat: 120,
   proactive_dm: 120,

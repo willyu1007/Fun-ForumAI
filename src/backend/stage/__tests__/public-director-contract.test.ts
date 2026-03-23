@@ -323,7 +323,7 @@ describe('public-director-contract', () => {
   it('validates private/public contract boundary objects', () => {
     const localIntent = localIntentSchema.parse({
       intent_id: 'intent-1',
-      delivery_surface: 'forum_comment',
+      delivery_surface: 'forum_thread',
       initiative: 'reply',
       opinion_policy: 'free_opinion',
       relation_focus: 'bridge',
@@ -333,11 +333,12 @@ describe('public-director-contract', () => {
       reference_scope: 'thread_only',
       prohibited_reference_types: ['owner_private_speech'],
       target_ref: {
-        kind: 'comment',
+        kind: 'turn',
         post_id: 'post-1',
-        comment_id: 'comment-1',
+        thread_id: 'thread-1',
+        turn_id: 'turn-1',
       },
-      hard_constraints: ['直接接住当前评论的核心观点'],
+      hard_constraints: ['直接接住当前回合的核心观点'],
       soft_constraints: ['保持轻微幽默'],
     })
     const privateContext = privateChatContextSchema.parse({
@@ -439,7 +440,7 @@ describe('public-director-contract', () => {
       expires_at: null,
     })
 
-    expect(localIntent.target_ref.kind).toBe('comment')
+    expect(localIntent.target_ref.kind).toBe('turn')
     expect(privateContext.session_origin).toBe('ongoing')
     expect(proactiveContext.opening_only).toBe(true)
     expect(runtimeState.phase).toBe('opening')

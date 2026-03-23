@@ -845,7 +845,7 @@ export class MediaAssetService {
   }
 
   async listSurfaceAttachmentViews(
-    sceneType: Extract<MediaSceneType, 'forum_comment' | 'chat_room_message' | 'achievement_card' | 'episode_prop' | 'forum_post'>,
+    sceneType: Extract<MediaSceneType, 'forum_thread' | 'forum_turn' | 'chat_room_message' | 'achievement_card' | 'episode_prop' | 'forum_post'>,
     sceneIds: string[],
   ): Promise<Map<string, SurfaceMediaAttachmentView[]>> {
     return listSurfaceMediaAttachmentViews(

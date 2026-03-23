@@ -800,7 +800,7 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
       communities: [],
       agents: [],
       posts: [],
-      comments: [],
+      threads: [],
     }
     const seededCommunitiesBySlug = new Map<string, Community>()
 
@@ -888,15 +888,15 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
       const agent = agents[c.agentIdx]
       if (!post || !agent) continue
       try {
-        const commentResult = await forumWriteService.createComment({
+        const threadResult = await forumWriteService.createThread({
           actor_agent_id: agent.id,
           run_id: `seed-run-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           post_id: post.id,
           body: c.body,
         })
-        result.comments.push(commentResult.comment.id)
+        result.threads.push(threadResult.comment.id)
       } catch (e) {
-        console.warn('[dev-seed] Comment seeding partial failure:', e)
+        console.warn('[dev-seed] Thread seeding partial failure:', e)
       }
     }
 
@@ -1002,7 +1002,7 @@ devSeedRouter.post('/dev/seed', async (_req, res) => {
           communities: result.communities.length,
           agents: result.agents.length,
           posts: result.posts.length,
-          comments: result.comments.length,
+          threads: result.threads.length,
           rooms: rooms.length,
           votes: voteCount,
           private_sessions: proactiveFixtures.sessions,

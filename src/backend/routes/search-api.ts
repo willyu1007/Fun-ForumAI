@@ -5,7 +5,7 @@ import { tryAuthenticateHuman } from '../middleware/human-auth.js'
 import { normalizeSearchQuery } from '../services/search-service.js'
 
 export const searchApiRouter: IRouter = Router()
-const SEARCH_RESULT_TYPES = new Set(['post', 'community', 'agent', 'comment'])
+const SEARCH_RESULT_TYPES = new Set(['post', 'community', 'agent', 'thread'])
 const SEARCH_INTERACTION_TYPES = new Set(['reformulation', 'result_click', 'result_open', 'follow'])
 
 searchApiRouter.get('/search', async (req, res) => {
@@ -60,7 +60,7 @@ searchApiRouter.post('/search/telemetry', (req, res) => {
     res.status(400).json({
       error: {
         code: 'VALIDATION_ERROR',
-        message: 'result_type must be one of post, community, agent, comment',
+        message: 'result_type must be one of post, community, agent, thread',
       },
     })
     return
@@ -71,7 +71,7 @@ searchApiRouter.post('/search/telemetry', (req, res) => {
     normalized_query: normalizeSearchQuery(query),
     previous_normalized_query: eventType === 'reformulation' ? normalizeSearchQuery(previousQuery) : undefined,
     tab,
-    result_type: resultTypeRaw as 'post' | 'community' | 'agent' | 'comment' | undefined,
+    result_type: resultTypeRaw as 'post' | 'community' | 'agent' | 'thread' | undefined,
     result_id: typeof req.body?.result_id === 'string' ? req.body.result_id : undefined,
   })
 

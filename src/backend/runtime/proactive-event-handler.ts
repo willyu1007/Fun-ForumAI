@@ -24,9 +24,10 @@ export class ProactiveEventHandler {
         )
         break
 
-      case 'COMMENT_CREATED':
+      case 'THREAD_OPENED':
+      case 'THREAD_TURN_ADDED':
         this.handleCommentCreated(event).catch((err) =>
-          console.error('[ProactiveEventHandler] COMMENT_CREATED handler failed:', err),
+          console.error(`[ProactiveEventHandler] ${event.event_type} handler failed:`, err),
         )
         break
 

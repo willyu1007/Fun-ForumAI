@@ -2,11 +2,15 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PostDetailPage } from '../PostDetailPage'
-import type { PostWithMeta, AftershowSnapshot, AudienceThreadData } from '@/api/types'
+import type {
+  PostWithMeta,
+  AftershowSnapshot,
+  AudienceThreadData,
+  PublicStageThreadData,
+} from '@/api/types'
 import {
   usePost,
-  useComments,
-  useCommentThreadContext,
+  useThreads,
   useAudienceThread,
   useCreateAudienceMessage,
   useCreateAppeal,
@@ -24,8 +28,7 @@ import { useAuth } from '@/shared/hooks/use-auth'
 
 vi.mock('@/api/hooks', () => ({
   usePost: vi.fn(),
-  useComments: vi.fn(),
-  useCommentThreadContext: vi.fn(),
+  useThreads: vi.fn(),
   useAudienceThread: vi.fn(),
   useCreateAudienceMessage: vi.fn(),
   useCreateReport: vi.fn(),
@@ -60,8 +63,8 @@ vi.mock('../../components/VoteColumn', () => ({
 
 const commentListMock = vi.fn((_props: unknown) => <div data-testid="comment-list" />)
 
-vi.mock('../../components/CommentList', () => ({
-  CommentList: (props: unknown) => commentListMock(props),
+vi.mock('../../components/ThreadList', () => ({
+  ThreadList: (props: unknown) => commentListMock(props),
 }))
 
 vi.mock('../../components/NewContentBanner', () => ({
@@ -73,8 +76,7 @@ vi.mock('../../components/HumanVoteControls', () => ({
 }))
 
 const usePostMock = vi.mocked(usePost)
-const useCommentsMock = vi.mocked(useComments)
-const useCommentThreadContextMock = vi.mocked(useCommentThreadContext)
+const useThreadsMock = vi.mocked(useThreads)
 const useAudienceThreadMock = vi.mocked(useAudienceThread)
 const useCreateAudienceMessageMock = vi.mocked(useCreateAudienceMessage)
 const useCreateReportMock = vi.mocked(useCreateReport)
@@ -141,6 +143,47 @@ function buildPost(options?: { includeAudienceFields?: boolean; overrides?: Part
     aftershow_summary: null,
     aftershow_callouts: [],
     audience_thread_meta: null,
+  }
+}
+
+function buildThread(overrides?: Partial<PublicStageThreadData>): PublicStageThreadData {
+  return {
+    id: 'thread-1',
+    post_id: 'post-1',
+    community_id: 'community-1',
+    author_agent_id: 'agent-1',
+    body: 'thread root',
+    visibility: 'PUBLIC',
+    state: 'APPROVED',
+    thread_state: 'OPEN',
+    reply_budget: 6,
+    active_route: null,
+    created_at: '2026-03-01T00:00:00.000Z',
+    updated_at: '2026-03-01T00:00:00.000Z',
+    author: {
+      id: 'agent-1',
+      display_name: 'Agent 1',
+      avatar_url: null,
+    },
+    vote_score: 0,
+    agent_vote_score: 0,
+    agent_vote_up: 0,
+    agent_vote_down: 0,
+    human_vote_score: 0,
+    human_vote_up: 0,
+    human_vote_down: 0,
+    weighted_vote_score: 0,
+    viewer_human_vote_direction: null,
+    ai_label: 'AI生成',
+    effective_moderation_label: 'PUBLIC',
+    topic_signals: null,
+    distribution_state: 'NORMAL',
+    attachments: [],
+    turn_count: 0,
+    participant_count: 1,
+    last_activity_at: '2026-03-01T00:00:00.000Z',
+    turns: [],
+    ...overrides,
   }
 }
 
@@ -211,17 +254,9 @@ describe('PostDetailPage', () => {
       clearNewComments: vi.fn(),
     } as never)
 
-    useCommentsMock.mockReturnValue({
+    useThreadsMock.mockReturnValue({
       data: { data: [] },
       isLoading: false,
-    } as never)
-    useCommentThreadContextMock.mockReturnValue({
-      data: {
-        data: {
-          post_id: 'post-1',
-          comments: [],
-        },
-      },
     } as never)
 
     useAudienceThreadMock.mockReturnValue({
@@ -443,121 +478,16 @@ describe('PostDetailPage', () => {
     })
   })
 
-  it('requests a larger comment page when opened from a search comment deep link', () => {
+  it('requests a larger thread page when opened from a deep link', () => {
     usePostMock.mockReturnValue({
       data: { data: buildPost({ includeAudienceFields: true }) },
       isLoading: false,
       error: null,
     } as never)
 
-    renderPage('/posts/post-1?commentId=comment-42')
+    renderPage('/posts/post-1?turnId=turn-42')
 
-    expect(useCommentsMock).toHaveBeenCalledWith('post-1', { limit: 500 })
-    expect(useCommentThreadContextMock).toHaveBeenCalledWith('comment-42', { enabled: true })
-  })
-
-  it('merges thread-context comments into the rendered comment list', () => {
-    usePostMock.mockReturnValue({
-      data: { data: buildPost({ includeAudienceFields: true, overrides: { comment_count: 2 } }) },
-      isLoading: false,
-      error: null,
-    } as never)
-    useCommentsMock.mockReturnValue({
-      data: {
-        data: [{
-          id: 'comment-root',
-          post_id: 'post-1',
-          parent_comment_id: null,
-          author_agent_id: 'agent-1',
-          body: 'root',
-          visibility: 'PUBLIC',
-          state: 'APPROVED',
-          created_at: '2026-03-01T00:00:00.000Z',
-          updated_at: '2026-03-01T00:00:00.000Z',
-        }],
-      },
-      isLoading: false,
-    } as never)
-    useCommentThreadContextMock.mockReturnValue({
-      data: {
-        data: {
-          post_id: 'post-1',
-          comments: [{
-            id: 'comment-target',
-            post_id: 'post-1',
-            parent_comment_id: 'comment-root',
-            author_agent_id: 'agent-2',
-            body: 'target',
-            visibility: 'PUBLIC',
-            state: 'APPROVED',
-            created_at: '2026-03-01T00:01:00.000Z',
-            updated_at: '2026-03-01T00:01:00.000Z',
-          }],
-        },
-      },
-    } as never)
-
-    renderPage('/posts/post-1?commentId=comment-target')
-
-    const lastCall = commentListMock.mock.calls[commentListMock.mock.calls.length - 1]
-    const props = lastCall?.[0] as {
-      comments: Array<{ id: string }>
-      targetCommentId: string | null
-    }
-
-    expect(props.targetCommentId).toBe('comment-target')
-    expect(props.comments.map((item) => item.id)).toEqual(['comment-root', 'comment-target'])
-  })
-
-  it('ignores thread-context payloads from a different post id', () => {
-    usePostMock.mockReturnValue({
-      data: { data: buildPost({ includeAudienceFields: true }) },
-      isLoading: false,
-      error: null,
-    } as never)
-    useCommentsMock.mockReturnValue({
-      data: {
-        data: [{
-          id: 'comment-root',
-          post_id: 'post-1',
-          parent_comment_id: null,
-          author_agent_id: 'agent-1',
-          body: 'root',
-          visibility: 'PUBLIC',
-          state: 'APPROVED',
-          created_at: '2026-03-01T00:00:00.000Z',
-          updated_at: '2026-03-01T00:00:00.000Z',
-        }],
-      },
-      isLoading: false,
-    } as never)
-    useCommentThreadContextMock.mockReturnValue({
-      data: {
-        data: {
-          post_id: 'post-2',
-          comments: [{
-            id: 'comment-other-post',
-            post_id: 'post-2',
-            parent_comment_id: null,
-            author_agent_id: 'agent-2',
-            body: 'other post',
-            visibility: 'PUBLIC',
-            state: 'APPROVED',
-            created_at: '2026-03-01T00:01:00.000Z',
-            updated_at: '2026-03-01T00:01:00.000Z',
-          }],
-        },
-      },
-    } as never)
-
-    renderPage('/posts/post-1?commentId=comment-other-post')
-
-    const lastCall = commentListMock.mock.calls[commentListMock.mock.calls.length - 1]
-    const props = lastCall?.[0] as {
-      comments: Array<{ id: string }>
-    }
-
-    expect(props.comments.map((item) => item.id)).toEqual(['comment-root'])
+    expect(useThreadsMock).toHaveBeenCalledWith('post-1', { limit: 500 })
   })
 
   it('shows a login rail for anonymous spectators when no canonical post item exists', () => {

@@ -132,7 +132,7 @@ describe('[Phase 3] Causal chain truncation', () => {
       ...DEFAULT_ALLOCATOR_CONFIG,
       cooldownSeconds: 0,
       maxChainDepth: 5,
-      eventBaseQuota: { ...DEFAULT_ALLOCATOR_CONFIG.eventBaseQuota, NewCommentCreated: 2 },
+      eventBaseQuota: { ...DEFAULT_ALLOCATOR_CONFIG.eventBaseQuota, ThreadTurnAdded: 2 },
     }
     const { queue, consumer } = buildStack(agents, cfg)
 
@@ -297,7 +297,7 @@ describe('[Phase 3] Full pipeline chain simulation', () => {
       eventBaseQuota: {
         ...DEFAULT_ALLOCATOR_CONFIG.eventBaseQuota,
         NewPostCreated: 3,
-        NewCommentCreated: 2,
+        ThreadTurnAdded: 2,
       },
     }
     const { queue, consumer } = buildStack(agents, cfg)

@@ -28,7 +28,7 @@ function makeObservationDeps() {
 
 function makeDomainEvent(input: {
   id: string
-  event_type: 'POST_CREATED' | 'COMMENT_CREATED'
+  event_type: 'POST_CREATED' | 'THREAD_OPENED' | 'THREAD_TURN_ADDED'
   payload_json: Record<string, unknown>
 }) {
   return {
@@ -192,7 +192,7 @@ describe('PublicObservationDigestService', () => {
 
     await service.onForumEvent(makeDomainEvent({
       id: 'evt-3',
-      event_type: 'COMMENT_CREATED',
+      event_type: 'THREAD_TURN_ADDED',
       payload_json: { post_id: 'p1', author_agent_id: 'a1' },
     }))
 

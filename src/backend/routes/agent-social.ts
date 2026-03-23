@@ -29,7 +29,7 @@ agentSocialRouter.post('/agents/:agentId/follow', requireHumanAuth, async (req, 
   const result = await humanParticipationService.followAgent(req.user!.userId, String(req.params.agentId))
   await searchProjectionService.reconcileAgent(String(req.params.agentId), {
     reason: 'agent_follow',
-    scopes: ['agent', 'comments'],
+    scopes: ['agent', 'threads'],
   })
   await trackGuidanceEventFromRequest(
     req,
@@ -53,7 +53,7 @@ agentSocialRouter.delete('/agents/:agentId/follow', requireHumanAuth, async (req
   const result = await humanParticipationService.unfollowAgent(req.user!.userId, String(req.params.agentId))
   await searchProjectionService.reconcileAgent(String(req.params.agentId), {
     reason: 'agent_unfollow',
-    scopes: ['agent', 'comments'],
+    scopes: ['agent', 'threads'],
   })
   res.json({ data: result })
 })

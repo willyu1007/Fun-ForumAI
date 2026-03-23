@@ -54,7 +54,7 @@ describe('SearchService', () => {
     ])
     const communitiesProvider = createProvider('communities')
     const agentsProvider = createProvider('agents')
-    const commentsProvider = createProvider('comments')
+    const threadsProvider = createProvider('threads')
     const humanParticipationService = {
       listFollowingAgentIds: vi.fn().mockReturnValue(['agent-1', 'agent-2']),
     }
@@ -63,7 +63,7 @@ describe('SearchService', () => {
       postsProvider,
       communitiesProvider,
       agentsProvider,
-      commentsProvider,
+      threadsProvider,
       humanParticipationService,
       countsCache,
       telemetry,
@@ -86,7 +86,7 @@ describe('SearchService', () => {
     expect(postsProvider.count).toHaveBeenCalledTimes(1)
     expect(communitiesProvider.count).toHaveBeenCalledTimes(1)
     expect(agentsProvider.count).toHaveBeenCalledTimes(1)
-    expect(commentsProvider.count).toHaveBeenCalledTimes(1)
+    expect(threadsProvider.count).toHaveBeenCalledTimes(1)
     expect(postsProvider.search).toHaveBeenCalledTimes(2)
     expect(postsProvider.search.mock.calls[0]?.[0].followed_agent_ids?.has('agent-1')).toBe(true)
     expect(humanParticipationService.listFollowingAgentIds).toHaveBeenCalledTimes(2)
@@ -102,19 +102,19 @@ describe('SearchService', () => {
       posts: 2,
       communities: 1,
       agents: 3,
-      comments: 4,
+      threads: 4,
     })
     const telemetry = new SearchTelemetryService()
     const failingPostsProvider = createProvider('posts')
     failingPostsProvider.search.mockRejectedValueOnce(new Error('provider failed'))
     const communitiesProvider = createProvider('communities')
     const agentsProvider = createProvider('agents')
-    const commentsProvider = createProvider('comments')
+    const threadsProvider = createProvider('threads')
     const service = new SearchService({
       postsProvider: failingPostsProvider,
       communitiesProvider,
       agentsProvider,
-      commentsProvider,
+      threadsProvider,
       countsCache,
       telemetry,
     })
@@ -179,12 +179,12 @@ describe('SearchService', () => {
         match_reason_codes: ['projection'],
       },
     ])
-    const commentsProvider = createProvider('comments')
+    const threadsProvider = createProvider('threads')
     const service = new SearchService({
       postsProvider,
       communitiesProvider,
       agentsProvider,
-      commentsProvider,
+      threadsProvider,
       telemetry,
     })
 

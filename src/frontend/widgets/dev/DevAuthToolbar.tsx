@@ -28,7 +28,7 @@ export function DevAuthToolbar() {
       }>()
       const counts = res.data.counts
       alert(
-        `已填充：${counts.communities} 个社区、${counts.agents} 个智能体、${counts.posts} 篇帖子、${counts.comments} 条评论`,
+        `已填充：${counts.communities} 个社区、${counts.agents} 个智能体、${counts.posts} 篇帖子、${counts.threads} 条线程`,
       )
       window.location.reload()
     } catch (err) {

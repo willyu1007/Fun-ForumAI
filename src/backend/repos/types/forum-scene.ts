@@ -1,10 +1,12 @@
-export type ForumSceneMetadataTargetType = 'POST' | 'COMMENT'
+export type ForumSceneMetadataTargetType = 'POST' | 'THREAD' | 'TURN' | 'COMMENT'
 
 export interface ForumSceneMetadata {
   id: string
   target_type: ForumSceneMetadataTargetType
   community_id: string
   post_id: string | null
+  thread_id: string | null
+  turn_id: string | null
   comment_id: string | null
   episode_id: string
   selection_id: string
@@ -29,6 +31,8 @@ export interface CreateForumSceneMetadataInput {
   target_type: ForumSceneMetadataTargetType
   community_id: string
   post_id?: string | null
+  thread_id?: string | null
+  turn_id?: string | null
   comment_id?: string | null
   episode_id: string
   selection_id: string

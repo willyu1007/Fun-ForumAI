@@ -3,7 +3,8 @@ import type { MessageDeliveryStatus } from '../repos/types.js'
 
 export type SafeReplyScene =
   | 'forum_post'
-  | 'forum_comment'
+  | 'forum_thread'
+  | 'forum_turn'
   | 'chat_room'
   | 'private_inbound'
   | 'private_outbound'

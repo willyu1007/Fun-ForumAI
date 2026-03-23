@@ -189,6 +189,319 @@ describe('ContextBuilder prompt routing', () => {
     })
   })
 
+  it('loads only the target thread capsule for ThreadTurnAdded and records thread state metadata', async () => {
+    const getThread = vi.fn(async () => ({
+      id: 'thread-1',
+      post_id: 'post-1',
+      community_id: 'community-1',
+      author_agent_id: 'agent-2',
+      body: 'Thread root',
+      visibility: 'PUBLIC',
+      state: 'APPROVED',
+      thread_state: 'PEAKED',
+      reply_budget: 6,
+      active_route: {
+        route_type: 'AFTERSHOW',
+        route_state: 'SUGGESTED',
+        reason_code: 'THREAD_NEAR_BUDGET_LIMIT',
+        handoff_label: '接近峰值，准备收口。',
+        handoff_payload: null,
+        cta: { label: '查看 Aftershow', target: '/posts/post-1#aftershow-panel' },
+      },
+      created_at: new Date('2026-03-01T00:00:00.000Z'),
+      updated_at: new Date('2026-03-01T00:00:00.000Z'),
+      author: {
+        id: 'agent-2',
+        display_name: 'Other Bot',
+        avatar_url: null,
+      },
+      vote_score: 0,
+      agent_vote_score: 0,
+      agent_vote_up: 0,
+      agent_vote_down: 0,
+      human_vote_score: 0,
+      human_vote_up: 0,
+      human_vote_down: 0,
+      weighted_vote_score: 0,
+      viewer_human_vote_direction: null,
+      ai_label: 'AI生成',
+      effective_moderation_label: 'PUBLIC',
+      topic_signals: null,
+      distribution_state: 'NORMAL',
+      attachments: [],
+      turn_count: 2,
+      participant_count: 2,
+      last_activity_at: new Date('2026-03-01T00:02:00.000Z'),
+      turns: [
+        {
+          id: 'turn-1',
+          thread_id: 'thread-1',
+          post_id: 'post-1',
+          author_agent_id: 'agent-3',
+          turn_index: 1,
+          anchor_turn_id: null,
+          anchor_intent: null,
+          quoted_excerpt: null,
+          body: 'Turn one',
+          visibility: 'PUBLIC',
+          state: 'APPROVED',
+          created_at: new Date('2026-03-01T00:01:00.000Z'),
+          updated_at: new Date('2026-03-01T00:01:00.000Z'),
+          author: { id: 'agent-3', display_name: 'Turn One', avatar_url: null },
+          vote_score: 0,
+          agent_vote_score: 0,
+          agent_vote_up: 0,
+          agent_vote_down: 0,
+          human_vote_score: 0,
+          human_vote_up: 0,
+          human_vote_down: 0,
+          weighted_vote_score: 0,
+          viewer_human_vote_direction: null,
+          ai_label: 'AI生成',
+          effective_moderation_label: 'PUBLIC',
+          topic_signals: null,
+          distribution_state: 'NORMAL',
+          attachments: [],
+          anchor_preview: null,
+        },
+        {
+          id: 'turn-2',
+          thread_id: 'thread-1',
+          post_id: 'post-1',
+          author_agent_id: 'agent-4',
+          turn_index: 2,
+          anchor_turn_id: 'turn-1',
+          anchor_intent: null,
+          quoted_excerpt: null,
+          body: 'Turn two',
+          visibility: 'PUBLIC',
+          state: 'APPROVED',
+          created_at: new Date('2026-03-01T00:02:00.000Z'),
+          updated_at: new Date('2026-03-01T00:02:00.000Z'),
+          author: { id: 'agent-4', display_name: 'Turn Two', avatar_url: null },
+          vote_score: 0,
+          agent_vote_score: 0,
+          agent_vote_up: 0,
+          agent_vote_down: 0,
+          human_vote_score: 0,
+          human_vote_up: 0,
+          human_vote_down: 0,
+          weighted_vote_score: 0,
+          viewer_human_vote_direction: null,
+          ai_label: 'AI生成',
+          effective_moderation_label: 'PUBLIC',
+          topic_signals: null,
+          distribution_state: 'NORMAL',
+          attachments: [],
+          anchor_preview: null,
+        },
+      ],
+    }))
+    const getThreads = vi.fn(async () => ({
+      items: [],
+      next_cursor: null,
+    }))
+
+    const builder = new ContextBuilder({
+      forumReadService: {
+        getCommunities: vi.fn(async () => ({
+          items: [{
+            id: 'community-1',
+            name: '社区',
+            description: '',
+            rules_json: null,
+          }],
+        })),
+        getPost: vi.fn(async () => ({
+          id: 'post-1',
+          title: '帖子标题',
+          body: '帖子正文',
+          author_agent_id: 'agent-2',
+          author: { id: 'agent-2', display_name: 'Other Bot', avatar_url: null },
+        })),
+        getThread,
+        getThreads,
+      } as unknown as ContextBuilderDeps['forumReadService'],
+      agentService: {
+        getAgent: vi.fn(() => ({ display_name: 'Layer Bot' })),
+        getLatestConfig: vi.fn(() => null),
+      } as unknown as ContextBuilderDeps['agentService'],
+    })
+
+    const ctx = await builder.build(
+      {
+        event_id: 'evt-thread-1',
+        event_type: 'ThreadTurnAdded',
+        idempotency_key: 'idem-thread-1',
+        chain_depth: 1,
+        community_id: 'community-1',
+        post_id: 'post-1',
+        thread_id: 'thread-1',
+        turn_id: 'turn-2',
+        comment_id: 'turn-2',
+        author_agent_id: 'agent-4',
+        created_at: new Date().toISOString(),
+      },
+      {
+        agent_id: 'agent-1',
+        score: 1,
+        priority: 1,
+      },
+    )
+
+    expect(getThread).toHaveBeenCalledWith('thread-1')
+    expect(getThreads).not.toHaveBeenCalled()
+    expect(ctx.threadMeta).toEqual({
+      thread_id: 'thread-1',
+      thread_state: 'PEAKED',
+      reply_budget: 6,
+      reply_budget_remaining: 4,
+      active_route: {
+        route_type: 'AFTERSHOW',
+        route_state: 'SUGGESTED',
+      },
+    })
+    expect(ctx.comments?.map((item) => item.id)).toEqual(['thread-1', 'turn-1', 'turn-2'])
+    expect(ctx.targetComment?.id).toBe('turn-2')
+  })
+
+  it('skips forum thread followup when the target thread is already closed', async () => {
+    const getThread = vi.fn(async () => ({
+      id: 'thread-closed',
+      post_id: 'post-1',
+      community_id: 'community-1',
+      author_agent_id: 'agent-2',
+      body: 'Closed thread root',
+      visibility: 'PUBLIC',
+      state: 'APPROVED',
+      thread_state: 'CLOSED',
+      reply_budget: 3,
+      active_route: {
+        route_type: 'PRIVATE',
+        route_state: 'READY',
+        reason_code: 'PRIVATE_HANDOFF_REQUIRED',
+        handoff_label: '转入私聊。',
+        handoff_payload: null,
+        cta: { label: '转入私聊', target: '/agents/agent-2/chat' },
+      },
+      created_at: new Date('2026-03-01T00:00:00.000Z'),
+      updated_at: new Date('2026-03-01T00:00:00.000Z'),
+      author: {
+        id: 'agent-2',
+        display_name: 'Other Bot',
+        avatar_url: null,
+      },
+      vote_score: 0,
+      agent_vote_score: 0,
+      agent_vote_up: 0,
+      agent_vote_down: 0,
+      human_vote_score: 0,
+      human_vote_up: 0,
+      human_vote_down: 0,
+      weighted_vote_score: 0,
+      viewer_human_vote_direction: null,
+      ai_label: 'AI生成',
+      effective_moderation_label: 'PUBLIC',
+      topic_signals: null,
+      distribution_state: 'NORMAL',
+      attachments: [],
+      turn_count: 3,
+      participant_count: 2,
+      last_activity_at: new Date('2026-03-01T00:03:00.000Z'),
+      turns: [
+        {
+          id: 'turn-3',
+          thread_id: 'thread-closed',
+          post_id: 'post-1',
+          author_agent_id: 'agent-4',
+          turn_index: 3,
+          anchor_turn_id: 'turn-2',
+          anchor_intent: null,
+          quoted_excerpt: null,
+          body: 'Closing turn',
+          visibility: 'PUBLIC',
+          state: 'APPROVED',
+          created_at: new Date('2026-03-01T00:03:00.000Z'),
+          updated_at: new Date('2026-03-01T00:03:00.000Z'),
+          author: { id: 'agent-4', display_name: 'Turn Three', avatar_url: null },
+          vote_score: 0,
+          agent_vote_score: 0,
+          agent_vote_up: 0,
+          agent_vote_down: 0,
+          human_vote_score: 0,
+          human_vote_up: 0,
+          human_vote_down: 0,
+          weighted_vote_score: 0,
+          viewer_human_vote_direction: null,
+          ai_label: 'AI生成',
+          effective_moderation_label: 'PUBLIC',
+          topic_signals: null,
+          distribution_state: 'NORMAL',
+          attachments: [],
+          anchor_preview: null,
+        },
+      ],
+    }))
+    const continuityResolve = vi.fn()
+
+    const builder = new ContextBuilder({
+      forumReadService: {
+        getCommunities: vi.fn(async () => ({
+          items: [{
+            id: 'community-1',
+            name: '社区',
+            description: '',
+            rules_json: null,
+          }],
+        })),
+        getPost: vi.fn(async () => ({
+          id: 'post-1',
+          title: '帖子标题',
+          body: '帖子正文',
+          author_agent_id: 'agent-2',
+          author: { id: 'agent-2', display_name: 'Other Bot', avatar_url: null },
+        })),
+        getThread,
+        getThreads: vi.fn(async () => ({
+          items: [],
+          next_cursor: null,
+        })),
+      } as unknown as ContextBuilderDeps['forumReadService'],
+      agentService: {
+        getAgent: vi.fn(() => ({ display_name: 'Layer Bot' })),
+        getLatestConfig: vi.fn(() => null),
+      } as unknown as ContextBuilderDeps['agentService'],
+      forumSceneContinuityService: {
+        resolve: continuityResolve,
+      } as unknown as ContextBuilderDeps['forumSceneContinuityService'],
+    })
+
+    const ctx = await builder.build(
+      {
+        event_id: 'evt-thread-closed',
+        event_type: 'ThreadTurnAdded',
+        idempotency_key: 'idem-thread-closed',
+        chain_depth: 2,
+        community_id: 'community-1',
+        post_id: 'post-1',
+        thread_id: 'thread-closed',
+        turn_id: 'turn-3',
+        comment_id: 'turn-3',
+        author_agent_id: 'agent-4',
+        created_at: new Date().toISOString(),
+      },
+      {
+        agent_id: 'agent-1',
+        score: 1,
+        priority: 1,
+      },
+    )
+
+    expect(getThread).toHaveBeenCalledWith('thread-closed')
+    expect(ctx.skip_reason).toBe('thread_closed_no_followup')
+    expect(continuityResolve).not.toHaveBeenCalled()
+  })
+
   it('throws when PromptOrchestrator is absent', async () => {
     const builder = new ContextBuilder({
       forumReadService: {} as unknown as ContextBuilderDeps['forumReadService'],

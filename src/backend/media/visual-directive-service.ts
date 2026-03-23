@@ -16,6 +16,7 @@ import {
   buildChatProgramEventThreadRootRef,
   buildChatRoomMessageThreadRootRef,
   buildForumPostThreadRootRef,
+  buildForumThreadThreadRootRef,
 } from './media-contract-utils.js'
 
 const SCHEDULED_POST_ALLOW_SOURCES: VisualSourceKind[] = [
@@ -42,7 +43,7 @@ const SCHEDULED_POST_PREFER_ORDER: VisualSourceKind[] = [
   'platform_canonical',
 ]
 
-const COMMENT_ALLOW_SOURCES: VisualSourceKind[] = [
+const THREAD_ALLOW_SOURCES: VisualSourceKind[] = [
   'same_thread_public',
   'same_episode_public',
   'self_public_archive',
@@ -160,21 +161,27 @@ export class VisualDirectiveService {
     })
   }
 
-  async createForumCommentDirective(input: {
+  async createForumThreadDirective(input: {
     community_id: string
     post_id: string
+    thread_id: string | null
+    turn_id?: string | null
+    surface: 'forum_thread' | 'forum_turn'
     focus_hint: string
     payload: PublicSceneWritePayload
   }): Promise<PersistedVisualDirective> {
     const { payload } = input
-    const visualRole = deriveForumCommentVisualRole(payload)
+    const visualRole = deriveForumThreadVisualRole(payload)
+    const threadRootRef = input.thread_id ? buildForumThreadThreadRootRef(input.thread_id) : buildForumPostThreadRootRef(input.post_id)
     const sceneRef: SceneRef = {
       request_id: payload.scene_metadata.selection_id,
       director_surface: payload.scene_metadata.director_surface,
-      actor_surface: 'forum_comment',
-      thread_root_ref: buildForumPostThreadRootRef(input.post_id),
+      actor_surface: input.surface,
+      thread_root_ref: threadRootRef,
       community_id: input.community_id,
       post_id: input.post_id,
+      thread_id: input.thread_id,
+      turn_id: input.turn_id ?? null,
       episode_id: payload.scene_metadata.episode_id,
       selection_id: payload.scene_metadata.selection_id,
       episode_plan_id: payload.scene_metadata.episode_plan_id,
@@ -213,8 +220,8 @@ export class VisualDirectiveService {
         aspect_ratio_hint: '1:1',
       },
       sourcing_policy: {
-        allow_sources: [...COMMENT_ALLOW_SOURCES],
-        prefer_order: [...COMMENT_ALLOW_SOURCES],
+        allow_sources: [...THREAD_ALLOW_SOURCES],
+        prefer_order: [...THREAD_ALLOW_SOURCES],
         allow_private_runtime_projection: true,
         allow_private_inspired_generation: false,
         allow_cross_agent_public: false,
@@ -237,7 +244,7 @@ export class VisualDirectiveService {
       },
       audit: {
         director_reason: [
-          `forum_comment:${visualRole}`,
+          `${input.surface}:${visualRole}`,
           payload.local_intent.initiative,
           payload.episode_brief.scene_goal.viewer_goal,
         ].join(' | '),
@@ -377,8 +384,7 @@ function deriveHumanGoal(payload: PublicSceneWritePayload): PersistedVisualDirec
   return 'engagement'
 }
 
-function deriveForumCommentVisualRole(payload: PublicSceneWritePayload): VisualRole {
-  if (payload.local_intent.target_ref.kind === 'comment') return 'callback_prop'
+function deriveForumThreadVisualRole(payload: PublicSceneWritePayload): VisualRole {
   if (payload.local_intent.tone_hint === 'witty') return 'joke_payload'
   return 'reaction_image'
 }

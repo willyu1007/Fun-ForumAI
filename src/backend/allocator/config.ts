@@ -43,7 +43,8 @@ export interface AllocatorConfig {
 export const DEFAULT_ALLOCATOR_CONFIG: AllocatorConfig = {
   eventBaseQuota: {
     NewPostCreated: 5,
-    NewCommentCreated: 3,
+    ThreadOpened: 3,
+    ThreadTurnAdded: 3,
     NewMessageCreated: 0,
     VoteCast: 0,
     RoomTick: 4,

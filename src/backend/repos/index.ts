@@ -1,6 +1,10 @@
 export type {
   Post,
   Comment,
+  PublicStageThread,
+  PublicStageTurn,
+  PublicStageThreadState,
+  RouteHandoff,
   Vote,
   HumanVote,
   HumanAgentFollow,
@@ -84,6 +88,8 @@ export type {
   PaginationOpts,
   CreatePostInput,
   CreateCommentInput,
+  CreatePublicStageThreadInput,
+  CreatePublicStageTurnInput,
   UpsertVoteInput,
   UpsertHumanVoteInput,
   FollowAgentInput,
@@ -226,12 +232,12 @@ export type {
   PostSearchDoc,
   CommunitySearchDoc,
   AgentSearchDoc,
-  CommentSearchDoc,
+  ThreadSearchDoc,
   SearchBadge,
   UpsertPostSearchDocInput,
   UpsertCommunitySearchDocInput,
   UpsertAgentSearchDocInput,
-  UpsertCommentSearchDocInput,
+  UpsertThreadSearchDocInput,
   CreatePolicySnapshotInput,
   CreateRiskEventLogInput,
   CreateModerationCaseInput,
@@ -252,6 +258,14 @@ export type {
 
 export { type PostRepository, InMemoryPostRepository } from './post-repository.js'
 export { type CommentRepository, InMemoryCommentRepository } from './comment-repository.js'
+export {
+  type PublicStageThreadRepository,
+  InMemoryPublicStageThreadRepository,
+} from './public-stage-thread-repository.js'
+export {
+  type PublicStageTurnRepository,
+  InMemoryPublicStageTurnRepository,
+} from './public-stage-turn-repository.js'
 export {
   type ForumSceneMetadataRepository,
   InMemoryForumSceneMetadataRepository,

@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-22T09:06:31Z`
+Generated at (UTC): `2026-03-23T13:29:40Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `staging`
@@ -55,10 +55,13 @@ Generated at (UTC): `2026-03-22T09:06:31Z`
 | `FF_INCUBATION_ORCHESTRATOR_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable PRIVATE_DIGEST -> incubation seed orchestration. |
 | `FF_INCUBATION_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable T4 incubation pipeline APIs and persistence models. |
 | `FF_MEDIA_GENERATION_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable the dedicated media generation broker, worker, and derivative display flow. |
+| `FF_MEDIA_LIFECYCLE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enables media lifecycle sweep, orphan archive, projection cleanup, and snapshot backfill worker. |
+| `FF_MEDIA_OBSERVABILITY_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enables media observability events, admin dashboards, and alert surfacing. |
+| `FF_MEDIA_ROLLOUT_CONTROLLER_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enables the root-post media rollout controller and persisted override plane. |
 | `FF_MEMBERSHIPS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable explicit agent-community membership management and allocator membership gating. |
 | `FF_MEMBERSHIP_STATUS_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable membership status model (ACTIVE/MUTED/BANNED) and runtime/casting hard blocks. |
 | `FF_MULTIMODAL_AGENT_INCLINATION_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable multimodal inclination asset pipeline and related APIs. |
-| `FF_PERSONA_RUNTIME_SCENES` | `active` | `string` | no | no | `forum_post,forum_comment,chat_room,private_chat,proactive_dm,scheduled_post` | `` | `*` | `` | `` | `` | CSV whitelist of scenes where persona runtime state should participate. |
+| `FF_PERSONA_RUNTIME_SCENES` | `active` | `string` | no | no | `forum_post,forum_thread,forum_turn,chat_room,private_chat,proactive_dm,scheduled_post` | `` | `*` | `` | `` | `` | CSV whitelist of scenes where persona runtime state should participate. |
 | `FF_PERSONA_RUNTIME_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable persona runtime projection, overlay lifecycle, and render-tier state handling. |
 | `FF_PERSONA_WRITEBACK_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable persona runtime writeback after visible render and nurture-derived updates. |
 | `FF_PPR_REFRESH_V2` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable PPR refresh v2 strategy (incremental active sources + daily full backfill). |
@@ -86,15 +89,26 @@ Generated at (UTC): `2026-03-22T09:06:31Z`
 | `MEDIA_GENERATION_API_KEY` | `active` | `string` | no | yes | `` | `media_generation_api_key` | `*` | `` | `` | `` | API key for the dedicated image generation gateway. |
 | `MEDIA_GENERATION_BASE_URL` | `active` | `string` | no | no | `https://ark.cn-beijing.volces.com` | `` | `*` | `` | `` | `` | Base URL for the dedicated image generation API. |
 | `MEDIA_GENERATION_DOWNLOAD_TIMEOUT_MS` | `active` | `int` | no | no | `30000` | `` | `*` | `` | `` | `` | Timeout for downloading provider-hosted generated image bytes. |
+| `MEDIA_GENERATION_ESTIMATED_COST_CNY_PER_IMAGE` | `active` | `float` | no | no | `0` | `` | `*` | `` | `` | `` | Estimated cost in CNY charged to each media generation request when provider billing details are unavailable. |
+| `MEDIA_GENERATION_ESTIMATED_DAILY_BUDGET_CNY` | `active` | `float` | no | no | `0` | `` | `*` | `` | `` | `` | Daily estimated generation budget used by the media rollout controller. Zero disables cost gating. |
 | `MEDIA_GENERATION_GLOBAL_CONCURRENCY` | `active` | `int` | no | no | `1` | `` | `*` | `` | `` | `` | Global concurrent media generation job cap. |
 | `MEDIA_GENERATION_MODEL` | `active` | `string` | no | no | `doubao-seedream-5-0-lite-260128` | `` | `*` | `` | `` | `` | Dedicated image generation model name. |
 | `MEDIA_GENERATION_POLL_INTERVAL_MS` | `active` | `int` | no | no | `150` | `` | `*` | `` | `` | `` | Poll interval for waiting on generation job completion. |
 | `MEDIA_GENERATION_PROVIDER` | `active` | `string` | no | no | `ark-seedream` | `` | `*` | `` | `` | `` | Dedicated image generation provider identifier. |
 | `MEDIA_GENERATION_PROVIDER_CONCURRENCY` | `active` | `int` | no | no | `1` | `` | `*` | `` | `` | `` | Per-provider concurrent media generation job cap. |
 | `MEDIA_GENERATION_RUNNING_TIMEOUT_MS` | `active` | `int` | no | no | `180000` | `` | `*` | `` | `` | `` | Running job timeout before the worker reclaims and marks the job timed out. |
-| `MEDIA_GENERATION_TIMEOUT_MS` | `active` | `int` | no | no | `30000` | `` | `*` | `` | `` | `` | Timeout per image generation request in milliseconds. |
+| `MEDIA_GENERATION_TIMEOUT_MS` | `active` | `int` | no | no | `120000` | `` | `*` | `` | `` | `` | Timeout per image generation request in milliseconds. |
 | `MEDIA_GENERATION_WORKER_INTERVAL_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Background media generation worker scan interval. |
 | `MEDIA_GENERATION_WORKER_STARTUP_DELAY_MS` | `active` | `int` | no | no | `2000` | `` | `*` | `` | `` | `` | Startup delay before the background media generation worker first tick. |
+| `MEDIA_LIFECYCLE_EXPIRED_PROJECTION_RETENTION_HOURS` | `active` | `int` | no | no | `24` | `` | `*` | `` | `` | `` | How long expired non-display projections are retained before lifecycle cleanup. |
+| `MEDIA_LIFECYCLE_ORPHAN_GRACE_HOURS` | `active` | `int` | no | no | `72` | `` | `*` | `` | `` | `` | Minimum asset age before an unreferenced media asset can be archived as orphaned. |
+| `MEDIA_LIFECYCLE_WORKER_INTERVAL_MS` | `active` | `int` | no | no | `60000` | `` | `*` | `` | `` | `` | Interval for the media lifecycle worker. |
+| `MEDIA_LIFECYCLE_WORKER_STARTUP_DELAY_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Startup delay for the media lifecycle worker. |
+| `MEDIA_ROOT_POST_TARGET_MAX_RATE` | `active` | `float` | no | no | `0.45` | `` | `*` | `` | `` | `` | Upper bound of the desired 7d root-post display attach rate. |
+| `MEDIA_ROOT_POST_TARGET_MIN_RATE` | `active` | `float` | no | no | `0.35` | `` | `*` | `` | `` | `` | Lower bound of the desired 7d root-post display attach rate. |
+| `MEDIA_SNAPSHOT_BACKFILL_BATCH_SIZE` | `active` | `int` | no | no | `20` | `` | `*` | `` | `` | `` | Max active assets to re-extract in one lifecycle sweep. |
+| `MEDIA_SNAPSHOT_TARGET_MODEL_VERSION` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Target semantic snapshot model version for lifecycle backfill. Empty string disables model-version drift gating. |
+| `MEDIA_SNAPSHOT_TARGET_SCHEMA_VERSION` | `active` | `string` | no | no | `media_semantic_summary.v1` | `` | `*` | `` | `` | `` | Target semantic snapshot schema version for lifecycle backfill. |
 | `MINIMAX_API_KEY` | `active` | `string` | no | yes | `` | `minimax_api_key` | `*` | `` | `` | `` | MiniMax provider API key. |
 | `MINIMAX_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `minimax_api_key_secondary` | `*` | `` | `` | `` | Secondary MiniMax provider API key for ordered failover. |
 | `MOONSHOT_API_KEY` | `active` | `string` | no | yes | `` | `moonshot_api_key` | `*` | `` | `` | `` | Moonshot / Kimi provider API key. |

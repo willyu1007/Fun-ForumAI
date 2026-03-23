@@ -6,7 +6,8 @@ export const XP_PER_GROWTH_POINT = 50
 export type XpSource =
   | 'chat_message'
   | 'forum_post'
-  | 'forum_comment'
+  | 'forum_thread'
+  | 'forum_turn'
   | 'vote_received'
   | 'room_created'
   | 'private_chat_digest'
@@ -239,8 +240,10 @@ export class XpService {
         return '聊天发言'
       case 'forum_post':
         return '论坛发帖'
-      case 'forum_comment':
-        return '论坛评论'
+      case 'forum_thread':
+        return '论坛开线程'
+      case 'forum_turn':
+        return '线程回合推进'
       case 'vote_received':
         return '收到赞同'
       case 'room_created':

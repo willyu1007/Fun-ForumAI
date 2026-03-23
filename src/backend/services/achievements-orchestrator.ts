@@ -25,7 +25,8 @@ export interface AchievementSignal {
 
 interface MetricSnapshot {
   posts: number
-  comments: number
+  threads: number
+  turns: number
   votes_received: number
   private_digests: number
   effective_relations: number
@@ -97,7 +98,9 @@ function signalImportanceSignals(
       return { F: 0.58, S: 0.56, R: 0.5, D: visibilityWeight, O: 0.35, N: 0.5, C: 0.6 }
     case 'forum_post':
       return { F: 0.56, S: 0.54, R: 0.46, D: visibilityWeight, O: 0.32, N: 0.45, C: 0.52 }
-    case 'forum_comment':
+    case 'forum_thread':
+      return { F: 0.54, S: 0.52, R: 0.44, D: visibilityWeight, O: 0.32, N: 0.42, C: 0.5 }
+    case 'forum_turn':
       return { F: 0.52, S: 0.5, R: 0.42, D: visibilityWeight, O: 0.3, N: 0.4, C: 0.48 }
     case 'vote_received':
       return { F: 0.5, S: 0.48, R: 0.4, D: visibilityWeight, O: 0.28, N: 0.36, C: 0.44, spamPenalty: 0.05 }
@@ -116,7 +119,8 @@ export class AchievementsOrchestrator {
   private static readonly METRIC_CACHE_TTL_MS = 60_000
   private static readonly METRIC_SIGNAL_KINDS: AchievementSignalKind[] = [
     'forum_post',
-    'forum_comment',
+    'forum_thread',
+    'forum_turn',
     'vote_received',
     'private_digest',
     'relation_change',
@@ -148,18 +152,37 @@ export class AchievementsOrchestrator {
             },
           })
         }
-      } else if (event.event_type === 'COMMENT_CREATED') {
+      } else if (event.event_type === 'THREAD_OPENED' || event.event_type === 'THREAD_TURN_ADDED') {
         const authorId = typeof payload.author_agent_id === 'string' ? payload.author_agent_id : ''
-        const commentId = typeof payload.comment_id === 'string' ? payload.comment_id : ''
+        const turnId = event.event_type === 'THREAD_TURN_ADDED'
+          ? typeof payload.turn_id === 'string'
+            ? payload.turn_id
+            : typeof payload.comment_id === 'string'
+              ? payload.comment_id
+              : ''
+          : ''
+        const threadId = typeof payload.thread_id === 'string'
+          ? payload.thread_id
+          : event.event_type === 'THREAD_OPENED' && typeof payload.comment_id === 'string'
+            ? payload.comment_id
+            : ''
         const communityId = typeof payload.community_id === 'string' ? payload.community_id : ''
-        if (authorId && commentId) {
+        if (authorId && (turnId || threadId)) {
+          const isThread = Boolean(threadId) && !turnId
+          const contentId = turnId || threadId
           await this.processSignal({
-            kind: 'forum_comment',
+            kind: isThread ? 'forum_thread' : 'forum_turn',
             agent_id: authorId,
-            dedup_key: `comment:${commentId}`,
-            evidence: [{ kind: 'comment', ref_id: commentId }],
+            dedup_key: isThread ? `thread:${contentId}` : `turn:${contentId}`,
+            evidence: [
+              {
+                kind: isThread ? 'thread' : 'turn',
+                ref_id: contentId,
+              },
+            ],
             metadata: {
               event_id: event.id,
+              ...(threadId ? { thread_id: threadId } : {}),
               ...(communityId ? { community_id: communityId } : {}),
             },
           })
@@ -544,7 +567,8 @@ export class AchievementsOrchestrator {
 
     const snapshot: MetricSnapshot = {
       posts: signalSummary.signal_counts.forum_post ?? 0,
-      comments: signalSummary.signal_counts.forum_comment ?? 0,
+      threads: signalSummary.signal_counts.forum_thread ?? 0,
+      turns: signalSummary.signal_counts.forum_turn ?? 0,
       votes_received: signalSummary.signal_counts.vote_received ?? 0,
       private_digests: signalSummary.signal_counts.private_digest ?? 0,
       effective_relations: effectiveRelations,
@@ -591,7 +615,12 @@ export class AchievementsOrchestrator {
     const peerAgentId = this.getMetaString(metadata, 'peer_agent_id')
       ?? this.getMetaString(metadata, 'to_agent_id')
 
-    if (signal.kind === 'forum_post' || signal.kind === 'forum_comment' || signal.kind === 'vote_received') {
+    if (
+      signal.kind === 'forum_post'
+      || signal.kind === 'forum_thread'
+      || signal.kind === 'forum_turn'
+      || signal.kind === 'vote_received'
+    ) {
       return {
         scope: 'community',
         scope_key: communityId || GLOBAL_SCOPE_KEY,

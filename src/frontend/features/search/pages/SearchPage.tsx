@@ -6,9 +6,9 @@ import type {
   PublicSearchItem,
   SearchAgentItem,
   SearchAuthorVisibility,
-  SearchCommentItem,
   SearchCommunityItem,
   SearchPostItem,
+  SearchThreadItem,
   SearchTab,
 } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -18,7 +18,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-const SEARCH_TABS: SearchTab[] = ['posts', 'communities', 'agents', 'comments']
+const SEARCH_TABS: SearchTab[] = ['posts', 'communities', 'agents', 'threads']
 
 function readTab(value: string | null): SearchTab {
   return SEARCH_TABS.includes((value ?? '') as SearchTab) ? (value as SearchTab) : 'posts'
@@ -54,7 +54,7 @@ function SearchResultCard({
   if (item.type === 'agent') {
     return <AgentResultCard item={item} onResultOpen={onResultOpen} />
   }
-  return <CommentResultCard item={item} onResultOpen={onResultOpen} />
+  return <ThreadResultCard item={item} onResultOpen={onResultOpen} />
 }
 
 function MatchReasons({ reasons }: { reasons: string[] }) {
@@ -93,7 +93,7 @@ function SearchRecoveryActions({
               ? '社区'
               : tab === 'agents'
                 ? '智能体'
-                : '评论'}
+                : '线程'}
         </Button>
       ))}
     </div>
@@ -321,12 +321,12 @@ function AgentResultCard({
   )
 }
 
-function CommentResultCard({
+function ThreadResultCard({
   item,
   onResultOpen,
 }: {
-  item: SearchCommentItem
-  onResultOpen: (item: SearchCommentItem) => void
+  item: SearchThreadItem
+  onResultOpen: (item: SearchThreadItem) => void
 }) {
   return (
     <Card>
@@ -344,9 +344,10 @@ function CommentResultCard({
               {item.community.name}
             </Link>
             <span> · 帖子热度 {item.parent_post_heat_score}</span>
+            <span> · 回合 {item.turn_count}</span>
             <span> · 分数 {item.score.toFixed(2)}</span>
-            {formatSearchTime(item.created_at) ? (
-              <span> · {formatSearchTime(item.created_at)}</span>
+            {formatSearchTime(item.last_activity_at ?? item.created_at) ? (
+              <span> · {formatSearchTime(item.last_activity_at ?? item.created_at)}</span>
             ) : null}
           </div>
         </div>
@@ -456,7 +457,7 @@ export function SearchPage() {
               <Input
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                placeholder="输入帖子标题、角色标签、社区名或评论金句"
+                placeholder="输入帖子标题、角色标签、社区名或线程金句"
                 className="sm:flex-1"
               />
               <Button type="submit" size="sm">
@@ -477,8 +478,8 @@ export function SearchPage() {
                 <TabsTrigger value="agents">
                   智能体 {payload ? `(${payload.counts.agents})` : ''}
                 </TabsTrigger>
-                <TabsTrigger value="comments">
-                  评论 {payload ? `(${payload.counts.comments})` : ''}
+                <TabsTrigger value="threads">
+                  线程 {payload ? `(${payload.counts.threads})` : ''}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -490,7 +491,7 @@ export function SearchPage() {
             <>
               <EmptyState
                 title="从公域入口开始"
-                description="先从精选内容与建议查询词切入，再逐步缩小到帖子、社区、智能体或评论。"
+                description="先从精选内容与建议查询词切入，再逐步缩小到帖子、社区、智能体或线程。"
                 actions={
                   <SearchRecoveryActions
                     currentTab={currentTab}

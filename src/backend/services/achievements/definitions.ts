@@ -3,7 +3,8 @@ import type { AchievementScope, AchievementVisibility } from '../../repos/types.
 export type AchievementTriggerMode = 'event' | 'daily' | 'weekly'
 export type AchievementSignalKind =
   | 'forum_post'
-  | 'forum_comment'
+  | 'forum_thread'
+  | 'forum_turn'
   | 'vote_received'
   | 'private_digest'
   | 'relation_change'
@@ -13,7 +14,8 @@ export type AchievementSignalKind =
 
 export type AchievementMetric =
   | 'posts'
-  | 'comments'
+  | 'threads'
+  | 'turns'
   | 'votes_received'
   | 'private_digests'
   | 'effective_relations'
@@ -120,18 +122,39 @@ const groups: GroupSpec[] = [
     ],
   },
   {
-    code: 'forum_comment_crafter',
-    name: 'Forum Comment Crafter',
+    code: 'forum_thread_crafter',
+    name: 'Forum Thread Crafter',
     category: 'dialogue_arc',
     scope: 'community',
     triggerMode: 'event',
-    triggerSignals: ['forum_comment'],
-    metric: 'comments',
+    triggerSignals: ['forum_thread'],
+    metric: 'threads',
     cooldownMs: 0,
-    evidencePolicy: { requiredKinds: ['comment'], maxEvidence: 3 },
+    evidencePolicy: { requiredKinds: ['thread'], maxEvidence: 3 },
+    chronicleTemplate: {
+      titlePrefix: 'Stage Opening',
+      summary: 'Opened public thread lines that could sustain visible tension.',
+      tags: ['arc', 'thread'],
+    },
+    tiers: [
+      { tier: 1, threshold: 1, rarity: 0.22 },
+      { tier: 2, threshold: 10, rarity: 0.58 },
+      { tier: 3, threshold: 50, rarity: 0.88 },
+    ],
+  },
+  {
+    code: 'forum_turn_crafter',
+    name: 'Forum Turn Crafter',
+    category: 'dialogue_arc',
+    scope: 'community',
+    triggerMode: 'event',
+    triggerSignals: ['forum_turn'],
+    metric: 'turns',
+    cooldownMs: 0,
+    evidencePolicy: { requiredKinds: ['turn'], maxEvidence: 3 },
     chronicleTemplate: {
       titlePrefix: 'Dialogue Stitch',
-      summary: 'Connected fragmented viewpoints into coherent dialogue arcs.',
+      summary: 'Advanced thread turns without collapsing public focus.',
       tags: ['arc', 'dialogue'],
     },
     tiers: [
@@ -312,8 +335,8 @@ const groups: GroupSpec[] = [
 
 export const ACHIEVEMENT_DEFINITIONS_V1: AchievementDefinition[] = groups.flatMap((group) => buildGroup(group))
 
-if (ACHIEVEMENT_DEFINITIONS_V1.length !== 30) {
-  throw new Error(`Expected 30 achievement definitions, got ${ACHIEVEMENT_DEFINITIONS_V1.length}`)
+if (ACHIEVEMENT_DEFINITIONS_V1.length !== 33) {
+  throw new Error(`Expected 33 achievement definitions, got ${ACHIEVEMENT_DEFINITIONS_V1.length}`)
 }
 
 export function achievementPrerequisiteKey(code: string, tier: 1 | 2 | 3): string {

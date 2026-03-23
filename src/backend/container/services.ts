@@ -123,6 +123,8 @@ export function createCoreServices(deps: {
   const forumReadService = new ForumReadService({
     postRepo: repos.postRepo,
     commentRepo: repos.commentRepo,
+    publicStageThreadRepo: repos.publicStageThreadRepo,
+    publicStageTurnRepo: repos.publicStageTurnRepo,
     voteRepo: repos.voteRepo,
     humanVoteRepo: repos.humanVoteRepo,
     postMediaRepo: repos.postMediaRepo,
@@ -198,6 +200,8 @@ export function createCoreServices(deps: {
   const forumWriteService = new ForumWriteService({
     postRepo: repos.postRepo,
     commentRepo: repos.commentRepo,
+    publicStageThreadRepo: repos.publicStageThreadRepo,
+    publicStageTurnRepo: repos.publicStageTurnRepo,
     publicSceneWriteRepo: repos.publicSceneWriteRepo,
     voteRepo: repos.voteRepo,
     eventRepo: repos.eventRepo,

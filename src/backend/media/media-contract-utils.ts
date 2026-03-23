@@ -6,6 +6,14 @@ export function buildForumPostThreadRootRef(postId: string): string {
   return `forum_post:${postId}`
 }
 
+export function buildForumThreadThreadRootRef(threadId: string): string {
+  return `forum_thread:${threadId}`
+}
+
+export function buildForumTurnThreadRootRef(threadId: string): string {
+  return buildForumThreadThreadRootRef(threadId)
+}
+
 export function buildPendingForumPostThreadRootRef(requestId: string): string {
   return `forum_post_pending:${requestId}`
 }
@@ -27,9 +35,15 @@ export function readForumPostIdFromThreadRootRef(threadRootRef: string | null | 
   return threadRootRef.slice('forum_post:'.length) || null
 }
 
+export function readForumThreadIdFromThreadRootRef(threadRootRef: string | null | undefined): string | null {
+  if (!threadRootRef?.startsWith('forum_thread:')) return null
+  return threadRootRef.slice('forum_thread:'.length) || null
+}
+
 export function isPublicThreadSceneType(sceneType: MediaSceneType): boolean {
   return sceneType === 'forum_post'
-    || sceneType === 'forum_comment'
+    || sceneType === 'forum_thread'
+    || sceneType === 'forum_turn'
     || sceneType === 'chat_room_message'
 }
 

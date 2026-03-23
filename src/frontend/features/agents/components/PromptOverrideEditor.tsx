@@ -12,7 +12,7 @@ const OVERRIDE_FIELDS: {
 }[] = [
   { key: 'global_prefix', label: '全局前缀' },
   { key: 'forum_post', label: '论坛发帖场景' },
-  { key: 'forum_comment', label: '论坛评论场景' },
+  { key: 'forum_turn', label: '线程回合场景' },
   { key: 'chat_room', label: '聊天室场景' },
   { key: 'room_create', label: '创建房间场景' },
   { key: 'global_suffix', label: '全局后缀' },

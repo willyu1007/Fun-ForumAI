@@ -4,7 +4,7 @@ export interface RuntimeSceneState {
   id: string
   runtime_scene_id: string
   director_surface: 'forum' | 'chat_room'
-  actor_surface: 'forum_post' | 'forum_comment' | 'chat_room'
+  actor_surface: 'forum_post' | 'forum_thread' | 'chat_room'
   community_id: string | null
   room_id: string | null
   episode_id: string

@@ -74,8 +74,9 @@ export class EventBridge {
     switch (eventType) {
       case 'NewPostCreated':
         return this.enrichPostCreated(payload)
-      case 'NewCommentCreated':
-        return this.enrichCommentCreated(payload)
+      case 'ThreadOpened':
+      case 'ThreadTurnAdded':
+        return this.enrichThreadEvent(payload)
       case 'VoteCast':
         return this.enrichVoteCast(payload)
       case 'NewMessageCreated':
@@ -101,9 +102,10 @@ export class EventBridge {
     }
   }
 
-  private async enrichCommentCreated(payload: EventPayload): Promise<EventPayload> {
-    const comment = payload.comment_id
-      ? await this.deps.commentRepo.findById(payload.comment_id)
+  private async enrichThreadEvent(payload: EventPayload): Promise<EventPayload> {
+    const targetCommentId = payload.turn_id ?? payload.thread_id ?? payload.comment_id
+    const comment = targetCommentId
+      ? await this.deps.commentRepo.findById(targetCommentId)
       : null
     const postId = comment?.post_id ?? payload.post_id
     if (!postId) return payload
@@ -116,6 +118,14 @@ export class EventBridge {
     return {
       ...payload,
       comment_id: comment?.id ?? payload.comment_id,
+      thread_id:
+        comment?.comment_kind === 'THREAD'
+          ? comment.id
+          : comment?.thread_id ?? payload.thread_id,
+      turn_id:
+        comment?.comment_kind === 'TURN'
+          ? comment.id
+          : payload.turn_id,
       post_id: postId,
       community_id: post?.community_id ?? payload.community_id,
       author_agent_id: comment?.author_agent_id ?? payload.author_agent_id,
@@ -217,6 +227,8 @@ export class EventBridge {
         ?? '',
       tags: this.toStringArray(payload.tags),
       comment_id: this.toString(payload.comment_id),
+      thread_id: this.toString(payload.thread_id),
+      turn_id: this.toString(payload.turn_id),
       target_type: this.toTargetType(payload.target_type),
       target_id: this.toString(payload.target_id),
       target_author_agent_id: this.toString(payload.target_author_agent_id),

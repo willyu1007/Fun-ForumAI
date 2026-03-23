@@ -624,7 +624,7 @@ describe('ForumReadService', () => {
         state: 'APPROVED',
       })
       await ctx.riskRepo.createRiskEvent({
-        channel: 'forum_comment',
+        channel: 'forum_thread',
         event_type: 'policy_gateway_decision',
         action: 'allow',
         target_type: 'comment',
@@ -665,7 +665,7 @@ describe('ForumReadService', () => {
         state: 'APPROVED',
       })
       await ctx.riskRepo.createRiskEvent({
-        channel: 'forum_comment',
+        channel: 'forum_thread',
         event_type: 'policy_gateway_decision',
         action: 'allow',
         target_type: 'comment',

@@ -84,15 +84,21 @@ export class InMemoryPublicSceneWriteRepository implements PublicSceneWriteRepos
     try {
       await this.deps.sceneMetadataRepo.create({
         ...input.scene_metadata,
-        target_type: 'COMMENT',
+        target_type: comment.comment_kind === 'THREAD' ? 'THREAD' : 'TURN',
         post_id: input.comment.post_id,
-        comment_id: comment.id,
+        thread_id: comment.comment_kind === 'THREAD' ? comment.id : null,
+        turn_id: comment.comment_kind === 'TURN' ? comment.id : null,
+        comment_id: null,
       })
       try {
         const event = this.deps.eventRepo.create(input.event)
         return { comment, event }
       } catch (error) {
-        await this.deps.sceneMetadataRepo.deleteByTarget({ comment_id: comment.id })
+        if (comment.comment_kind === 'THREAD') {
+          await this.deps.sceneMetadataRepo.deleteByTarget({ thread_id: comment.id })
+        } else {
+          await this.deps.sceneMetadataRepo.deleteByTarget({ turn_id: comment.id })
+        }
         await this.deps.commentRepo.delete(comment.id)
         throw error
       }

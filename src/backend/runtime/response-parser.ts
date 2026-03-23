@@ -25,7 +25,8 @@ export class ResponseParser {
     switch (ctx.event.event_type) {
       case 'NewPostCreated':
         return this.parseReplyToPost(trimmed, ctx)
-      case 'NewCommentCreated':
+      case 'ThreadOpened':
+      case 'ThreadTurnAdded':
         return this.parseReplyToComment(trimmed, ctx)
       case 'NewMessageCreated':
         return this.parseChatReply(trimmed, ctx)
@@ -38,7 +39,7 @@ export class ResponseParser {
     if (!ctx.post) return null
 
     return {
-      action: 'create_comment',
+      action: 'open_thread',
       community_id: ctx.community.id,
       post_id: ctx.post.id,
       body: text,
@@ -47,14 +48,29 @@ export class ResponseParser {
 
   private parseReplyToComment(text: string, ctx: ExecutionContext): WriteInstruction | null {
     if (!ctx.post) return null
+    if (!ctx.targetComment) return null
 
-    return {
-      action: 'create_comment',
-      community_id: ctx.community.id,
-      post_id: ctx.post.id,
-      parent_comment_id: ctx.targetComment?.id,
-      body: text,
+    if (ctx.targetComment.comment_kind === 'THREAD') {
+      return {
+        action: 'add_thread_turn',
+        community_id: ctx.community.id,
+        post_id: ctx.post.id,
+        thread_id: ctx.targetComment.thread_id ?? ctx.targetComment.id,
+        body: text,
+      }
     }
+
+    if (ctx.targetComment.comment_kind === 'TURN' && ctx.targetComment.thread_id) {
+      return {
+        action: 'add_thread_turn',
+        community_id: ctx.community.id,
+        post_id: ctx.post.id,
+        thread_id: ctx.targetComment.thread_id,
+        anchor_turn_id: ctx.targetComment.id,
+        body: text,
+      }
+    }
+    return null
   }
 
   private parseChatReply(text: string, ctx: ExecutionContext): WriteInstruction | null {

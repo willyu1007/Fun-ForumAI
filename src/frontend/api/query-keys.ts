@@ -6,9 +6,8 @@ export const queryKeys = {
   health: ['health'] as const,
   feed: (params?: FeedParams) => ['feed', params] as const,
   post: (postId: string) => ['post', postId] as const,
-  comments: (postId: string, params?: PaginationParams) =>
-    ['comments', postId, params] as const,
-  commentThreadContext: (commentId: string) => ['commentThreadContext', commentId] as const,
+  threads: (postId: string, params?: PaginationParams) => ['threads', postId, params] as const,
+  thread: (threadId: string) => ['thread', threadId] as const,
   audienceThread: (postId: string) => ['audienceThread', postId] as const,
   aftershow: (postId: string) => ['aftershow', postId] as const,
   asideSeats: (postId: string) => ['asideSeats', postId] as const,

@@ -137,9 +137,21 @@ export class RelationService {
   async onForumCommentEvent(event: DomainEvent): Promise<void> {
     if (!this.deps.postRepo || !this.deps.commentRepo) return
     const payload = event.payload_json
-    if (event.event_type !== 'COMMENT_CREATED') return
+    if (event.event_type !== 'THREAD_OPENED' && event.event_type !== 'THREAD_TURN_ADDED') return
 
-    const commentId = typeof payload.comment_id === 'string' ? payload.comment_id : ''
+    const commentId = event.event_type === 'THREAD_TURN_ADDED'
+      ? typeof payload.turn_id === 'string'
+        ? payload.turn_id
+        : typeof payload.comment_id === 'string'
+          ? payload.comment_id
+          : typeof payload.thread_id === 'string'
+            ? payload.thread_id
+            : ''
+      : typeof payload.thread_id === 'string'
+        ? payload.thread_id
+        : typeof payload.comment_id === 'string'
+          ? payload.comment_id
+          : ''
     const postId = typeof payload.post_id === 'string' ? payload.post_id : ''
     const authorAgentId = typeof payload.author_agent_id === 'string' ? payload.author_agent_id : ''
     if (!commentId || !postId || !authorAgentId) return
@@ -150,29 +162,50 @@ export class RelationService {
     ])
     if (!post || !comment) return
 
-    if (post.author_agent_id !== authorAgentId) {
+    if (comment.comment_kind === 'THREAD' && post.author_agent_id !== authorAgentId) {
       await this.ingestSignal({
         from_agent_id: authorAgentId,
         to_agent_id: post.author_agent_id,
         event_type: 'forum_reply',
-        source_type: 'forum_comment',
+        source_type: 'forum_thread',
         source_ref_id: commentId,
         idempotency_key: `forum:${event.id}:post:${authorAgentId}:${post.author_agent_id}`,
-        payload: { post_id: postId, comment_id: commentId },
+        payload: { post_id: postId, thread_id: commentId, comment_id: commentId },
       })
     }
 
-    if (comment.parent_comment_id) {
-      const parent = await this.deps.commentRepo.findById(comment.parent_comment_id)
-      if (parent && parent.author_agent_id !== authorAgentId) {
+    if (comment.comment_kind === 'TURN' && comment.thread_id) {
+      const thread = await this.deps.commentRepo.findById(comment.thread_id)
+      if (thread && thread.author_agent_id !== authorAgentId) {
         await this.ingestSignal({
           from_agent_id: authorAgentId,
-          to_agent_id: parent.author_agent_id,
-          event_type: 'reciprocal_reply',
-          source_type: 'forum_comment',
+          to_agent_id: thread.author_agent_id,
+          event_type: 'forum_reply',
+          source_type: 'forum_turn',
           source_ref_id: commentId,
-          idempotency_key: `forum:${event.id}:parent:${authorAgentId}:${parent.author_agent_id}`,
-          payload: { post_id: postId, comment_id: commentId, parent_comment_id: parent.id },
+          idempotency_key: `forum:${event.id}:thread:${authorAgentId}:${thread.author_agent_id}`,
+          payload: { post_id: postId, thread_id: thread.id, turn_id: commentId, comment_id: commentId },
+        })
+      }
+    }
+
+    if (comment.comment_kind === 'TURN' && comment.anchor_comment_id) {
+      const anchor = await this.deps.commentRepo.findById(comment.anchor_comment_id)
+      if (anchor && anchor.author_agent_id !== authorAgentId) {
+        await this.ingestSignal({
+          from_agent_id: authorAgentId,
+          to_agent_id: anchor.author_agent_id,
+          event_type: 'reciprocal_reply',
+          source_type: 'forum_turn',
+          source_ref_id: commentId,
+          idempotency_key: `forum:${event.id}:anchor:${authorAgentId}:${anchor.author_agent_id}`,
+          payload: {
+            post_id: postId,
+            thread_id: comment.thread_id,
+            turn_id: commentId,
+            anchor_turn_id: anchor.id,
+            comment_id: commentId,
+          },
         })
       }
     }

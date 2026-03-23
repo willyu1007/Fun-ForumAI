@@ -19,6 +19,8 @@ const ALWAYS_OWNER_ONLY = new Set<AchievementSignalKind>([
 
 const PUBLIC_EVIDENCE_KINDS = new Set<string>([
   'post',
+  'thread',
+  'turn',
   'comment',
   'vote',
   'relation',

@@ -7,7 +7,7 @@ export const PERSONA_T070_BLOCKING_CALLSITES = [
 
 export const PERSONA_T070_OPPORTUNISTIC_CALLSITES = [
   'agent-executor-forum-post',
-  'agent-executor-forum-comment',
+  'agent-executor-forum-thread',
   'conversation-clock-chat-reply',
   'proactive-orchestrated-opening',
 ] as const

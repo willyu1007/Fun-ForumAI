@@ -57,9 +57,9 @@ describe('deriveFollowUpEvents', () => {
     expect(followUps[0].post_id).toBe('p-y')
   })
 
-  it('defaults follow-up type to NewCommentCreated', () => {
+  it('defaults follow-up type to ThreadTurnAdded', () => {
     const followUps = deriveFollowUpEvents(makeEvent(), makeAllocation(['a1']))
-    expect(followUps[0].event_type).toBe('NewCommentCreated')
+    expect(followUps[0].event_type).toBe('ThreadTurnAdded')
   })
 
   it('allows custom follow-up event type', () => {

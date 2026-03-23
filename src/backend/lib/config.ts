@@ -2,6 +2,15 @@ const env = process.env
 
 const DEFAULT_JWT_SECRET = 'dev-jwt-secret-change-in-production'
 const DEFAULT_SERVICE_AUTH_SECRET = 'dev-service-secret-change-in-production'
+const DEFAULT_PERSONA_RUNTIME_SCENES = [
+  'forum_post',
+  'forum_thread',
+  'forum_turn',
+  'chat_room',
+  'private_chat',
+  'proactive_dm',
+  'scheduled_post',
+] as const
 
 function safeInt(raw: string | undefined, fallback: number): number {
   if (!raw) return fallback
@@ -204,7 +213,7 @@ export const config = {
     promptAuditV1: env.FF_PROMPT_AUDIT_V1 === 'true',
     directorRuntimeStateV1: env.FF_DIRECTOR_RUNTIME_STATE_V1 === 'true',
     personaRuntimeV1: env.FF_PERSONA_RUNTIME_V1 === 'true',
-    personaRuntimeScenes: (env.FF_PERSONA_RUNTIME_SCENES || '')
+    personaRuntimeScenes: (env.FF_PERSONA_RUNTIME_SCENES || DEFAULT_PERSONA_RUNTIME_SCENES.join(','))
       .split(',')
       .map((item) => item.trim())
       .filter((item) => item.length > 0),

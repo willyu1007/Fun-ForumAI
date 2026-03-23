@@ -18,6 +18,11 @@ import {
   buildPrivateDerivedPublicPoolSceneId,
   buildSelfPublicArchivePoolSceneId,
 } from './media-reuse-governance-service.js'
+import {
+  buildForumPostThreadRootRef,
+  buildForumThreadThreadRootRef,
+  readForumThreadIdFromThreadRootRef,
+} from './media-contract-utils.js'
 import { resolveMediaAssetUrl } from './media-url.js'
 
 export interface MediaWriteBridgeDeps {
@@ -110,7 +115,7 @@ export class MediaWriteBridge {
 
   async applyImagePlanAfterPersist(input: {
     image_plan_id: string
-    scene_type: 'forum_post' | 'forum_comment' | 'chat_room_message'
+    scene_type: 'forum_post' | 'forum_thread' | 'forum_turn' | 'chat_room_message'
     scene_id: string
     created_by_id?: string
   }): Promise<{ linked: boolean }> {
@@ -236,8 +241,10 @@ export class MediaWriteBridge {
 
     const surface = input.scene_type === 'forum_post'
       ? 'root_post'
-      : input.scene_type === 'forum_comment'
-        ? 'forum_comment'
+      : input.scene_type === 'forum_thread'
+        ? 'forum_thread'
+        : input.scene_type === 'forum_turn'
+          ? 'forum_turn'
         : 'chat_room_message'
     if (linked) {
       await this.deps.mediaObservabilityService?.record({
@@ -363,7 +370,7 @@ export class MediaWriteBridge {
   }
 
   private async createSceneBinding(input: {
-    scene_type: 'forum_post' | 'forum_comment' | 'chat_room_message'
+    scene_type: 'forum_post' | 'forum_thread' | 'forum_turn' | 'chat_room_message'
     scene_id: string
     asset: Parameters<MediaBindingService['createForumPostBinding']>[0]['asset']
     snapshot: Parameters<MediaBindingService['createForumPostBinding']>[0]['snapshot']
@@ -385,11 +392,25 @@ export class MediaWriteBridge {
         threadRootRef: input.thread_root_ref,
       })
     }
-    if (input.scene_type === 'forum_comment') {
-      return this.deps.mediaBindingService.createForumCommentBinding({
+    if (input.scene_type === 'forum_thread') {
+      return this.deps.mediaBindingService.createForumThreadBinding({
         asset: input.asset,
         snapshot: input.snapshot,
-        commentId: input.scene_id,
+        threadId: input.scene_id,
+        sourceBinding: input.sourceBinding,
+        createdById: input.created_by_id,
+        displayPolicy: input.display_policy,
+        relationToScene: input.relation_to_scene,
+        threadRootRef: input.thread_root_ref,
+      })
+    }
+    if (input.scene_type === 'forum_turn') {
+      const threadId = readForumThreadIdFromThreadRootRef(input.thread_root_ref) ?? input.scene_id
+      return this.deps.mediaBindingService.createForumTurnBinding({
+        asset: input.asset,
+        snapshot: input.snapshot,
+        turnId: input.scene_id,
+        threadId,
         sourceBinding: input.sourceBinding,
         createdById: input.created_by_id,
         displayPolicy: input.display_policy,
@@ -412,15 +433,21 @@ export class MediaWriteBridge {
   private resolveThreadRootRef(
     plan: PersistedImagePlan,
     input: {
-      scene_type: 'forum_post' | 'forum_comment' | 'chat_room_message'
+      scene_type: 'forum_post' | 'forum_thread' | 'forum_turn' | 'chat_room_message'
       scene_id: string
     },
   ): string | null {
     if (input.scene_type === 'forum_post') {
-      return `forum_post:${input.scene_id}`
+      return buildForumPostThreadRootRef(input.scene_id)
+    }
+    if (input.scene_type === 'forum_thread') {
+      return buildForumThreadThreadRootRef(input.scene_id)
     }
     if (plan.scene_ref.thread_root_ref?.trim()) {
       return plan.scene_ref.thread_root_ref
+    }
+    if (input.scene_type === 'forum_turn' && typeof plan.scene_ref.thread_id === 'string' && plan.scene_ref.thread_id.trim()) {
+      return buildForumThreadThreadRootRef(plan.scene_ref.thread_id)
     }
     if (input.scene_type === 'chat_room_message') {
       return `room_message:${input.scene_id}`
@@ -429,7 +456,7 @@ export class MediaWriteBridge {
   }
 
   private ensurePostMediaLink(
-    sceneType: 'forum_post' | 'forum_comment' | 'chat_room_message',
+    sceneType: 'forum_post' | 'forum_thread' | 'forum_turn' | 'chat_room_message',
     sceneId: string,
     assetId: string,
     mediaUrl: string,
@@ -448,11 +475,16 @@ export class MediaWriteBridge {
   }
 
   private resolveAttachmentBindingContract(
-    sceneType: 'forum_post' | 'forum_comment' | 'chat_room_message',
+    sceneType: 'forum_post' | 'forum_thread' | 'forum_turn' | 'chat_room_message',
     displayVariant: 'original' | 'generated_derivative',
   ): {
     display_policy: 'original_allowed' | 'derivative_only'
-    relation_to_scene: 'selected_for_post' | 'selected_for_comment' | 'attached_to_chat_room_message' | 'generated_for_scene'
+    relation_to_scene:
+      | 'selected_for_post'
+      | 'selected_for_thread'
+      | 'selected_for_turn'
+      | 'attached_to_chat_room_message'
+      | 'generated_for_scene'
   } {
     if (displayVariant === 'generated_derivative') {
       return {
@@ -466,10 +498,16 @@ export class MediaWriteBridge {
         relation_to_scene: 'selected_for_post',
       }
     }
-    if (sceneType === 'forum_comment') {
+    if (sceneType === 'forum_thread') {
       return {
         display_policy: 'original_allowed',
-        relation_to_scene: 'selected_for_comment',
+        relation_to_scene: 'selected_for_thread',
+      }
+    }
+    if (sceneType === 'forum_turn') {
+      return {
+        display_policy: 'original_allowed',
+        relation_to_scene: 'selected_for_turn',
       }
     }
     return {

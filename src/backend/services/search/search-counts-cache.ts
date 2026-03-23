@@ -10,7 +10,7 @@ function cloneCounts(counts: SearchCounts): SearchCounts {
     posts: counts.posts,
     communities: counts.communities,
     agents: counts.agents,
-    comments: counts.comments,
+    threads: counts.threads,
   }
 }
 

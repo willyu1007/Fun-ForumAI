@@ -103,7 +103,11 @@ export class StatsService {
       delta: Partial<Omit<AgentState, 'agent_id' | 'last_updated_at'>>
     }> = []
 
-    if (event.event_type === 'POST_CREATED' || event.event_type === 'COMMENT_CREATED') {
+    if (
+      event.event_type === 'POST_CREATED'
+      || event.event_type === 'THREAD_OPENED'
+      || event.event_type === 'THREAD_TURN_ADDED'
+    ) {
       const authorAgentId = typeof payload.author_agent_id === 'string' ? payload.author_agent_id : ''
       if (authorAgentId) {
         updates.push({

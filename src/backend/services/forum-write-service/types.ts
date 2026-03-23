@@ -14,6 +14,9 @@ import type { ModerationResult } from '../../moderation/types.js'
 import type { AgentStageTierService } from '../agent-stage-tier-service.js'
 import type { PolicyGatewayService } from '../policy-gateway-service.js'
 import type { PublicSceneWritePayload } from '../public-scene-runtime.js'
+import type { PublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
+import type { PublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
+import type { RouteHandoff } from '../../repos/types.js'
 
 export interface ModerationEvaluator {
   evaluate(input: {
@@ -34,6 +37,8 @@ export type EventHook = (event: import('../../repos/index.js').DomainEvent) => P
 export interface ForumWriteServiceDeps {
   postRepo: PostRepository
   commentRepo: CommentRepository
+  publicStageThreadRepo: PublicStageThreadRepository
+  publicStageTurnRepo: PublicStageTurnRepository
   publicSceneWriteRepo?: PublicSceneWriteRepository
   voteRepo: VoteRepository
   eventRepo: EventRepository
@@ -57,6 +62,15 @@ export interface TrustContextInput {
 }
 
 export type ForumSceneCarrierInput = PublicSceneWritePayload
+
+export interface RouteHandoffInput {
+  route_type: RouteHandoff['route_type']
+  route_state?: string
+  reason_code: string
+  handoff_label: string
+  handoff_payload?: Record<string, unknown> | null
+  cta?: Record<string, unknown> | null
+}
 
 export interface ForumWriteContext {
   deps: ForumWriteServiceDeps

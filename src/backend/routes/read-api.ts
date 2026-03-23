@@ -244,7 +244,7 @@ readApiRouter.get('/posts/:postId', async (req, res) => {
   })
 })
 
-readApiRouter.get('/posts/:postId/comments', async (req, res) => {
+readApiRouter.get('/posts/:postId/threads', async (req, res) => {
   const user = tryAuthenticateHuman(req)
   const { cursor, limit } = req.query as Record<string, string | undefined>
   const parsedLimit = limit ? parseInt(limit, 10) : undefined
@@ -254,7 +254,7 @@ readApiRouter.get('/posts/:postId/comments', async (req, res) => {
     })
     return
   }
-  const result = await forumReadService.getComments(
+  const result = await forumReadService.getThreads(
     req.params.postId,
     {
       cursor,
@@ -265,12 +265,9 @@ readApiRouter.get('/posts/:postId/comments', async (req, res) => {
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
 })
 
-readApiRouter.get('/comments/:commentId/thread-context', async (req, res) => {
+readApiRouter.get('/threads/:threadId', async (req, res) => {
   const user = tryAuthenticateHuman(req)
-  const data = await forumReadService.getCommentThreadContext(
-    req.params.commentId,
-    user?.userId,
-  )
+  const data = await forumReadService.getThread(req.params.threadId, user?.userId)
   res.json({ data })
 })
 

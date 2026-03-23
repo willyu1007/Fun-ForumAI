@@ -8,7 +8,11 @@ import type {
   SceneMediaBinding,
 } from '../repos/types.js'
 import type { SceneMediaBindingRepository } from '../repos/scene-media-binding-repository.js'
-import { buildForumPostThreadRootRef } from './media-contract-utils.js'
+import {
+  buildForumPostThreadRootRef,
+  buildForumThreadThreadRootRef,
+  buildForumTurnThreadRootRef,
+} from './media-contract-utils.js'
 
 export function buildOwnerPrivatePoolSceneId(agentId: string): string {
   return `owner_private_pool:${agentId}`
@@ -106,10 +110,10 @@ export class MediaBindingService {
     })
   }
 
-  createForumCommentBinding(input: {
+  createForumThreadBinding(input: {
     asset: MediaAsset
     snapshot: MediaSemanticSnapshot
-    commentId: string
+    threadId: string
     sourceBinding?: SceneMediaBinding | null
     createdById?: string
     createdByType?: CreateSceneMediaBindingInput['created_by_type']
@@ -120,12 +124,39 @@ export class MediaBindingService {
     return this.bindToScene({
       asset: input.asset,
       snapshot: input.snapshot,
-      sceneType: 'forum_comment',
-      sceneId: input.commentId,
+      sceneType: 'forum_thread',
+      sceneId: input.threadId,
       bindingRole: 'inline',
-      relationToScene: input.relationToScene ?? 'selected_for_comment',
+      relationToScene: input.relationToScene ?? 'selected_for_thread',
       displayPolicy: input.displayPolicy ?? 'original_allowed',
-      threadRootRef: input.threadRootRef ?? null,
+      threadRootRef: input.threadRootRef ?? buildForumThreadThreadRootRef(input.threadId),
+      createdByType: input.createdByType ?? 'system',
+      createdById: input.createdById ?? 'surface-media-bridge',
+      sourceBinding: input.sourceBinding,
+    })
+  }
+
+  createForumTurnBinding(input: {
+    asset: MediaAsset
+    snapshot: MediaSemanticSnapshot
+    turnId: string
+    threadId: string
+    sourceBinding?: SceneMediaBinding | null
+    createdById?: string
+    createdByType?: CreateSceneMediaBindingInput['created_by_type']
+    displayPolicy?: MediaDisplayPolicy
+    relationToScene?: MediaRelationToScene
+    threadRootRef?: string | null
+  }): Promise<SceneMediaBinding> {
+    return this.bindToScene({
+      asset: input.asset,
+      snapshot: input.snapshot,
+      sceneType: 'forum_turn',
+      sceneId: input.turnId,
+      bindingRole: 'inline',
+      relationToScene: input.relationToScene ?? 'selected_for_turn',
+      displayPolicy: input.displayPolicy ?? 'original_allowed',
+      threadRootRef: input.threadRootRef ?? buildForumTurnThreadRootRef(input.threadId),
       createdByType: input.createdByType ?? 'system',
       createdById: input.createdById ?? 'surface-media-bridge',
       sourceBinding: input.sourceBinding,

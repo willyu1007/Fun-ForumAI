@@ -48,7 +48,7 @@ interface ExistingEpisodeMetadata {
   expires_at: string | null
 }
 
-type SelectorEntryKind = 'scheduled_post' | 'forum_post_seed' | 'forum_comment_followup'
+type SelectorEntryKind = 'scheduled_post' | 'forum_post_seed' | 'forum_thread_followup'
 type SelectorMode = 'pool_guided' | 'pool_strict' | 'autonomous_anchored'
 type SelectorHardFilterReason =
   | 'surface_mismatch'
@@ -185,12 +185,14 @@ export class PublicSceneSelectorService {
     }
   }
 
-  async selectForumCommentFollowup(input: {
+  async selectForumThreadFollowup(input: {
     community_id: string
     post_id: string
-    comment_id?: string
+    thread_id?: string
+    turn_id?: string
     post_author_agent_id?: string
-    target_comment_author_agent_id?: string
+    target_thread_author_agent_id?: string
+    target_turn_author_agent_id?: string
     existing_scene_metadata: ExistingEpisodeMetadata
   }): Promise<
     | {
@@ -221,25 +223,11 @@ export class PublicSceneSelectorService {
     const phase = input.existing_scene_metadata.phase === 'aftershow'
       ? 'closure'
       : input.existing_scene_metadata.phase
-    const targetRef = input.comment_id
-      ? {
-          kind: 'comment' as const,
-          post_id: input.post_id,
-          comment_id: input.comment_id,
-          ...(input.target_comment_author_agent_id
-            ? { agent_id: input.target_comment_author_agent_id }
-            : {}),
-        }
-      : input.post_author_agent_id
-        ? {
-            kind: 'agent' as const,
-            agent_id: input.post_author_agent_id,
-          }
-        : { kind: 'none' as const }
+    const targetRef = buildThreadFollowupTargetRef(input)
     const episodeBrief: EpisodeBrief = {
       episode_id: input.existing_scene_metadata.episode_id,
       director_surface: input.existing_scene_metadata.director_surface,
-      actor_surface: 'forum_comment',
+      actor_surface: 'forum_thread',
       template_id: template.template_id,
       template_version: template.template_version,
       binding_id: input.existing_scene_metadata.scene_binding_id ?? undefined,
@@ -269,7 +257,7 @@ export class PublicSceneSelectorService {
 
     const localIntent: LocalIntent = {
       intent_id: localIntentId,
-      delivery_surface: 'forum_comment',
+      delivery_surface: 'forum_thread',
       initiative: phase === 'closure' ? 'close' : 'reply',
       opinion_policy: 'free_opinion',
       relation_focus: deriveRelationFocus(template),
@@ -293,7 +281,7 @@ export class PublicSceneSelectorService {
 
     const sceneMetadata: SceneMetadata = {
       director_surface: input.existing_scene_metadata.director_surface,
-      actor_surface: 'forum_comment',
+      actor_surface: 'forum_thread',
       scene_template_id: template.template_id,
       scene_template_version: template.template_version,
       scene_binding_id: input.existing_scene_metadata.scene_binding_id,
@@ -312,7 +300,7 @@ export class PublicSceneSelectorService {
     const selectionAudit = {
       selection_id: selectionId,
       request_id: selectionId,
-      entry_kind: 'forum_comment_followup',
+      entry_kind: 'forum_thread_followup',
       selector_mode: input.existing_scene_metadata.selection_mode,
       episode_strategy: 'continue_episode',
       hard_filter_reasons: [],
@@ -339,13 +327,15 @@ export class PublicSceneSelectorService {
     }
     const planningAudit = {
       request_id: selectionId,
-      entry_kind: 'forum_comment_followup',
+      entry_kind: 'forum_thread_followup',
       episode_strategy: 'continue_episode',
       episode_id: input.existing_scene_metadata.episode_id,
       selection_id: selectionId,
       episode_plan_id: episodePlanId,
       local_intent_id: localIntentId,
       target_community_id: input.community_id,
+      target_thread_id: input.thread_id ?? null,
+      target_turn_id: input.turn_id ?? null,
       phase,
     }
 
@@ -718,6 +708,44 @@ function deriveRelationFocus(template: StageTemplateV2): LocalIntent['relation_f
   if (objectives.includes('ally')) return 'ally'
   if (objectives.includes('challenge')) return 'challenge'
   return 'none'
+}
+
+function buildThreadFollowupTargetRef(input: {
+  post_id: string
+  thread_id?: string
+  turn_id?: string
+  post_author_agent_id?: string
+  target_thread_author_agent_id?: string
+  target_turn_author_agent_id?: string
+}): LocalIntent['target_ref'] {
+  if (input.turn_id && input.thread_id) {
+    return {
+      kind: 'turn',
+      post_id: input.post_id,
+      thread_id: input.thread_id,
+      turn_id: input.turn_id,
+      ...(input.target_turn_author_agent_id
+        ? { agent_id: input.target_turn_author_agent_id }
+        : {}),
+    }
+  }
+  if (input.thread_id) {
+    return {
+      kind: 'thread',
+      post_id: input.post_id,
+      thread_id: input.thread_id,
+      ...(input.target_thread_author_agent_id
+        ? { agent_id: input.target_thread_author_agent_id }
+        : {}),
+    }
+  }
+  if (input.post_author_agent_id) {
+    return {
+      kind: 'agent',
+      agent_id: input.post_author_agent_id,
+    }
+  }
+  return { kind: 'none' }
 }
 
 function isTemplateLaunchable(status: StageTemplateV2['lifecycle_status']): boolean {

@@ -52,7 +52,7 @@ describe('director history shared helpers', () => {
         totalCount: 2,
         source: 'selector_fallback',
         selectionMode: 'autonomous_anchored',
-        actorSurface: 'forum_comment',
+        actorSurface: 'forum_thread',
       },
     ])
 

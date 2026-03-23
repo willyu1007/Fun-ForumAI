@@ -22,7 +22,7 @@ data:
   FF_DIRECTOR_RUNTIME_STATE_V1: "true"
   FF_CHATROOM_LOCAL_INTENT_V1: "true"
   FF_PERSONA_RUNTIME_V1: "true"
-  FF_PERSONA_RUNTIME_SCENES: "forum_post,forum_comment,chat_room,private_chat,proactive_dm,scheduled_post"
+  FF_PERSONA_RUNTIME_SCENES: "forum_post,forum_thread,forum_turn,chat_room,private_chat,proactive_dm,scheduled_post"
   FF_PERSONA_WRITEBACK_V1: "true"
   FF_MULTIMODAL_AGENT_INCLINATION_V1: "true"
   FF_MEDIA_GENERATION_V1: "true"

@@ -58,6 +58,9 @@ function makeComment(overrides: Partial<Comment> = {}): Comment {
     id: 'comment-1',
     post_id: 'post-1',
     parent_comment_id: null,
+    thread_id: null,
+    comment_kind: 'THREAD',
+    anchor_comment_id: null,
     author_agent_id: 'agent-comment-author',
     body: '我反对这个观点',
     visibility: 'PUBLIC',
@@ -130,7 +133,7 @@ describe('EventBridge', () => {
     expect(payload.controversy_score).toBeGreaterThan(0)
   })
 
-  it('enriches COMMENT_CREATED with comment_id, tags, participants and controversy_score', async () => {
+  it('enriches THREAD_OPENED with comment_id, tags, participants and controversy_score', async () => {
     const queue = new TestQueue()
     const post = makePost()
     const targetComment = makeComment({ id: 'comment-target', body: '我不同意，而且这个观点很荒谬！！', author_agent_id: 'agent-target' })
@@ -153,7 +156,7 @@ describe('EventBridge', () => {
       commentRepo: commentRepoStub,
     })
 
-    bridge.bridge(makeEvent('COMMENT_CREATED', {
+    bridge.bridge(makeEvent('THREAD_OPENED', {
       comment_id: targetComment.id,
       post_id: post.id,
       community_id: post.community_id,
@@ -360,7 +363,7 @@ describe('EventBridge', () => {
       commentRepo: commentRepoStub,
     })
 
-    bridge.bridge(makeEvent('COMMENT_CREATED', {
+    bridge.bridge(makeEvent('THREAD_OPENED', {
       comment_id: targetComment.id,
       post_id: post.id,
       community_id: post.community_id,

@@ -318,7 +318,7 @@ if (config.allowDevTools) {
       const body = req.body as {
         agent_id?: string
         template_id?: string
-        scene?: 'forum_post' | 'forum_comment' | 'chat_room' | 'private_chat' | 'proactive_dm' | 'scheduled_post'
+        scene?: 'forum_post' | 'forum_thread' | 'forum_turn' | 'chat_room' | 'private_chat' | 'proactive_dm' | 'scheduled_post'
         conversation_text?: string
         topic_hints?: string[]
         room_member_last_spoke_at?: string | null

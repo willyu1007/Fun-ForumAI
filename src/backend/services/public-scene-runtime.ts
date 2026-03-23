@@ -94,16 +94,18 @@ export function parsePublicScenePayload(input: unknown): PublicSceneWritePayload
 
 export function buildForumSceneMetadataInput(input: {
   community_id: string
-  target_type: 'POST' | 'COMMENT'
+  target_type: 'POST' | 'THREAD' | 'TURN' | 'COMMENT'
   post_id?: string | null
-  comment_id?: string | null
+  thread_id?: string | null
+  turn_id?: string | null
   payload: PublicSceneWritePayload
 }): CreateForumSceneMetadataInput {
   return {
     target_type: input.target_type,
     community_id: input.community_id,
     post_id: input.post_id ?? null,
-    comment_id: input.comment_id ?? null,
+    thread_id: input.thread_id ?? null,
+    turn_id: input.turn_id ?? null,
     episode_id: input.payload.scene_metadata.episode_id,
     selection_id: input.payload.scene_metadata.selection_id,
     episode_plan_id: input.payload.scene_metadata.episode_plan_id,
@@ -128,8 +130,10 @@ function describeTargetRef(targetRef: LocalIntent['target_ref']): string {
   switch (targetRef.kind) {
     case 'agent':
       return `agent:${targetRef.agent_id}`
-    case 'comment':
-      return `comment:${targetRef.post_id}/${targetRef.comment_id}`
+    case 'thread':
+      return `thread:${targetRef.post_id}/${targetRef.thread_id}`
+    case 'turn':
+      return `turn:${targetRef.post_id}/${targetRef.thread_id}/${targetRef.turn_id}`
     case 'message':
       return `message:${targetRef.message_id}`
     default:

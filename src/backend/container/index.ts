@@ -29,7 +29,7 @@ import { SearchGuard } from '../services/search/search-guard.js'
 import { PostSearchProvider } from '../services/search/post-search-provider.js'
 import { CommunitySearchProvider } from '../services/search/community-search-provider.js'
 import { AgentSearchProvider } from '../services/search/agent-search-provider.js'
-import { CommentSearchProvider } from '../services/search/comment-search-provider.js'
+import { ThreadSearchProvider } from '../services/search/thread-search-provider.js'
 import { SearchService } from '../services/search-service.js'
 import { SearchProjectionService } from '../services/search-projection-service.js'
 import { SearchCountsCache } from '../services/search/search-counts-cache.js'
@@ -149,9 +149,10 @@ const agentsSearchProvider = new AgentSearchProvider({
   guard: searchGuard,
 })
 
-const commentsSearchProvider = new CommentSearchProvider({
+const threadsSearchProvider = new ThreadSearchProvider({
   searchDocRepo: repos.searchDocRepo,
   agentRepo: repos.agentRepo,
+  forumReadService: core.forumReadService,
   guard: searchGuard,
 })
 
@@ -159,7 +160,7 @@ export const searchService = new SearchService({
   postsProvider: postsSearchProvider,
   communitiesProvider: communitiesSearchProvider,
   agentsProvider: agentsSearchProvider,
-  commentsProvider: commentsSearchProvider,
+  threadsProvider: threadsSearchProvider,
   humanParticipationService: core.humanParticipationService,
   countsCache: searchCountsCache,
   telemetry: searchTelemetryService,
@@ -179,7 +180,7 @@ core.achievementChronicleService.setRecordHook((input) => {
     .refresh(input.agent_id, { reason: 'chronicle' })
     .then(() => searchProjectionService.reconcileAgent(input.agent_id, {
       reason: 'chronicle_public_highlight',
-      scopes: ['agent', 'posts', 'comments'],
+      scopes: ['agent', 'posts', 'threads'],
     }))
     .then(() => undefined)
 })
@@ -202,7 +203,11 @@ core.governanceAdapter.setExecutedHook(async ({ action }) => {
   }
   if (action.target_type === 'comment') {
     const comment = await repos.commentRepo.findById(action.target_id)
-    await searchProjectionService.refreshComment(action.target_id)
+    if (comment?.comment_kind === 'THREAD') {
+      await searchProjectionService.refreshThread(comment.id)
+    } else if (comment?.thread_id) {
+      await searchProjectionService.refreshThread(comment.thread_id)
+    }
     if (comment) {
       await searchProjectionService.refreshPost(comment.post_id)
     }
@@ -211,7 +216,7 @@ core.governanceAdapter.setExecutedHook(async ({ action }) => {
   if (action.target_type === 'agent') {
     await searchProjectionService.reconcileAgent(action.target_id, {
       reason: 'governance_agent',
-      scopes: ['agent', 'posts', 'comments', 'communities'],
+      scopes: ['agent', 'posts', 'threads', 'communities'],
     })
   }
 })
@@ -477,7 +482,10 @@ core.forumWriteService.setEventHook(async (event) => {
       }
     }
   }
-  if (nurture.relationService && event.event_type === 'COMMENT_CREATED') {
+  if (
+    nurture.relationService
+    && (event.event_type === 'THREAD_OPENED' || event.event_type === 'THREAD_TURN_ADDED')
+  ) {
     nurture.relationService.onForumCommentEvent(event).catch((err) => {
       console.error('[Container] Relation forum signal failed:', err)
     })

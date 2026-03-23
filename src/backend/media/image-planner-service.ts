@@ -900,6 +900,8 @@ function isSameThreadPublicBinding(
     return false
   }
   const currentSceneId = directive.scene_ref.post_id
+    ?? directive.scene_ref.turn_id
+    ?? directive.scene_ref.thread_id
     ?? directive.scene_ref.comment_id
     ?? directive.scene_ref.message_id
     ?? null

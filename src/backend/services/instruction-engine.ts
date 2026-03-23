@@ -1,7 +1,7 @@
 import type { PrismaClient } from '@prisma/client'
 
 export interface InstructionContext {
-  scene: 'chat_room' | 'forum_post' | 'forum_comment'
+  scene: 'chat_room' | 'forum_post' | 'forum_thread' | 'forum_turn'
   conversation_text: string
   is_new_member_reply: boolean
   is_first_in_room: boolean

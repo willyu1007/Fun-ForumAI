@@ -18,12 +18,13 @@ describe('DataPlaneWriter nurture routing', () => {
     const { DataPlaneWriter } = await import('../data-plane-writer.js')
 
     const createPost = vi.fn().mockResolvedValue({ post: { id: 'post-1' } })
-    const createComment = vi.fn()
+    const createThread = vi.fn()
+    const addThreadTurn = vi.fn()
     const onContentProduced = vi.fn().mockResolvedValue(undefined)
     const awardXP = vi.fn().mockResolvedValue(undefined)
 
     const writer = new DataPlaneWriter({
-      forumWriteService: { createPost, createComment } as never,
+      forumWriteService: { createPost, createThread, addThreadTurn } as never,
       agentRunRepo: { create: vi.fn() } as never,
       chatService: { sendMessage: vi.fn() } as never,
       nurtureOrchestrator: { onContentProduced } as never,
@@ -50,19 +51,19 @@ describe('DataPlaneWriter nurture routing', () => {
   it('falls back to growth engine when nurture orchestrator is unavailable', async () => {
     const { DataPlaneWriter } = await import('../data-plane-writer.js')
 
-    const createComment = vi.fn().mockResolvedValue({ comment: { id: 'comment-1' } })
+    const createThread = vi.fn().mockResolvedValue({ comment: { id: 'thread-1' } })
     const onContentProduced = vi.fn().mockResolvedValue(undefined)
     const awardXP = vi.fn().mockResolvedValue(undefined)
 
     const writer = new DataPlaneWriter({
-      forumWriteService: { createPost: vi.fn(), createComment } as never,
+      forumWriteService: { createPost: vi.fn(), createThread, addThreadTurn: vi.fn() } as never,
       agentRunRepo: { create: vi.fn() } as never,
       chatService: { sendMessage: vi.fn() } as never,
       xpService: { awardXP } as never,
     })
 
     const instruction: WriteInstruction = {
-      action: 'create_comment',
+      action: 'open_thread',
       community_id: 'community-1',
       post_id: 'post-1',
       body: 'reply',
@@ -70,10 +71,10 @@ describe('DataPlaneWriter nurture routing', () => {
 
     const result = await writer.write(instruction, 'agent-1', 'evt-1', makeUsage(), 10, 2)
 
-    expect(result).toEqual({ success: true, content_id: 'comment-1' })
-    expect(createComment).toHaveBeenCalledWith(expect.objectContaining({ chain_depth: 3 }))
+    expect(result).toEqual({ success: true, content_id: 'thread-1' })
+    expect(createThread).toHaveBeenCalledWith(expect.objectContaining({ chain_depth: 3 }))
     expect(onContentProduced).not.toHaveBeenCalled()
-    expect(awardXP).toHaveBeenCalledWith('agent-1', 'forum_comment', 1)
+    expect(awardXP).toHaveBeenCalledWith('agent-1', 'forum_thread', 1)
   })
 
   it('keeps post persistence successful when applyImagePlanAfterPersist fails', async () => {
@@ -84,7 +85,7 @@ describe('DataPlaneWriter nurture routing', () => {
     const applyImagePlanAfterPersist = vi.fn().mockRejectedValue(new Error('projection failed'))
 
     const writer = new DataPlaneWriter({
-      forumWriteService: { createPost, createComment: vi.fn() } as never,
+      forumWriteService: { createPost, createThread: vi.fn(), addThreadTurn: vi.fn() } as never,
       agentRunRepo: { create: agentRunCreate } as never,
       chatService: { sendMessage: vi.fn() } as never,
       nurtureOrchestrator: { onContentProduced: vi.fn().mockResolvedValue(undefined) } as never,
@@ -141,7 +142,7 @@ describe('DataPlaneWriter nurture routing', () => {
     const awardXP = vi.fn().mockResolvedValue(undefined)
 
     const writer = new DataPlaneWriter({
-      forumWriteService: { createPost: vi.fn(), createComment: vi.fn() } as never,
+      forumWriteService: { createPost: vi.fn(), createThread: vi.fn(), addThreadTurn: vi.fn() } as never,
       agentRunRepo: { create: vi.fn() } as never,
       chatService: { sendMessage } as never,
       nurtureOrchestrator: { onContentProduced } as never,
@@ -172,7 +173,7 @@ describe('DataPlaneWriter nurture routing', () => {
     const createPost = vi.fn().mockRejectedValue(new Error('db down'))
 
     const writer = new DataPlaneWriter({
-      forumWriteService: { createPost, createComment: vi.fn() } as never,
+      forumWriteService: { createPost, createThread: vi.fn(), addThreadTurn: vi.fn() } as never,
       agentRunRepo: { create: agentRunCreate } as never,
       chatService: { sendMessage: vi.fn() } as never,
       nurtureOrchestrator: { onContentProduced: vi.fn() } as never,

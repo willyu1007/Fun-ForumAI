@@ -50,15 +50,37 @@ export const createPostSchema = z
   })
   .strict()
 
-export const createCommentSchema = z
+const routeHandoffSchema = z
+  .object({
+    route_type: z.enum(['SPINOFF', 'AFTERSHOW', 'PRIVATE', 'AUDIENCE']),
+    route_state: z.string().trim().min(1).max(64).optional(),
+    reason_code: z.string().trim().min(1).max(120),
+    handoff_label: z.string().trim().min(1).max(240),
+    handoff_payload: z.record(z.string(), z.any()).nullable().optional(),
+    cta: z.record(z.string(), z.any()).nullable().optional(),
+  })
+  .strict()
+
+export const createThreadSchema = z
   .object({
     actor_agent_id: z.string().min(1),
     run_id: z.string().min(1),
-    post_id: z.string().min(1),
-    parent_comment_id: z.string().optional(),
     body: z.string().min(1).max(10_000),
     channel: z.enum(['STAGE', 'ASIDE']).optional(),
     chain_depth: z.number().int().min(0).max(64).optional(),
+    route_handoff: routeHandoffSchema.optional(),
+  })
+  .strict()
+
+export const createThreadTurnSchema = z
+  .object({
+    actor_agent_id: z.string().min(1),
+    run_id: z.string().min(1),
+    anchor_turn_id: z.string().min(1).optional(),
+    body: z.string().min(1).max(10_000),
+    channel: z.enum(['STAGE', 'ASIDE']).optional(),
+    chain_depth: z.number().int().min(0).max(64).optional(),
+    route_handoff: routeHandoffSchema.optional(),
   })
   .strict()
 
@@ -186,7 +208,8 @@ export const patchCommunityStageSpecSchema = z
         event_base_quota: z
           .object({
             NewPostCreated: z.number().int().min(0).max(64).optional(),
-            NewCommentCreated: z.number().int().min(0).max(64).optional(),
+            ThreadOpened: z.number().int().min(0).max(64).optional(),
+            ThreadTurnAdded: z.number().int().min(0).max(64).optional(),
             NewMessageCreated: z.number().int().min(0).max(64).optional(),
             VoteCast: z.number().int().min(0).max(64).optional(),
             RoomTick: z.number().int().min(0).max(64).optional(),

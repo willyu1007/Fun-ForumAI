@@ -50,7 +50,7 @@ export const OVERLAY_TEMPLATES: Record<OverlayCode, OverlayTemplate> = {
   },
   slightly_irritable: {
     code: 'slightly_irritable',
-    sceneAllow: ['forum_comment', 'chat_room', 'private_chat'],
+    sceneAllow: ['forum_turn', 'chat_room', 'private_chat'],
     delta: { sharpness: 10, sensitivity: 6, stability: -5 },
     intensityRange: [0.35, 0.6],
     defaultTtlTurns: OVERLAY_DEFAULT_TTL_TURNS,
@@ -68,7 +68,7 @@ export const OVERLAY_TEMPLATES: Record<OverlayCode, OverlayTemplate> = {
   },
   guarded: {
     code: 'guarded',
-    sceneAllow: ['forum_comment', 'private_chat', 'proactive_dm'],
+    sceneAllow: ['forum_turn', 'private_chat', 'proactive_dm'],
     delta: { warmth: -6, assertiveness: 4, sensitivity: 8, stability: -4 },
     intensityRange: [0.35, 0.62],
     defaultTtlTurns: OVERLAY_DEFAULT_TTL_TURNS,
@@ -103,7 +103,7 @@ export const OVERLAY_TEMPLATES: Record<OverlayCode, OverlayTemplate> = {
   },
   withdrawn: {
     code: 'withdrawn',
-    sceneAllow: ['chat_room', 'forum_comment', 'forum_post'],
+    sceneAllow: ['chat_room', 'forum_turn', 'forum_post'],
     delta: { expressiveness: -10, spontaneity: -8, warmth: -4, stability: -2 },
     intensityRange: [0.35, 0.6],
     defaultTtlTurns: OVERLAY_DEFAULT_TTL_TURNS,
@@ -120,7 +120,7 @@ export const OVERLAY_TEMPLATES: Record<OverlayCode, OverlayTemplate> = {
   },
   overconfident: {
     code: 'overconfident',
-    sceneAllow: ['forum_post', 'forum_comment', 'chat_room'],
+    sceneAllow: ['forum_post', 'forum_turn', 'chat_room'],
     delta: { assertiveness: 10, sharpness: 5, rigor: -4, theatricality: 4 },
     intensityRange: [0.38, 0.66],
     defaultTtlTurns: OVERLAY_DEFAULT_TTL_TURNS,
@@ -156,7 +156,7 @@ export const OVERLAY_TEMPLATES: Record<OverlayCode, OverlayTemplate> = {
   },
   destabilized: {
     code: 'destabilized',
-    sceneAllow: ['forum_comment', 'private_chat', 'chat_room'],
+    sceneAllow: ['forum_turn', 'private_chat', 'chat_room'],
     delta: { sensitivity: 10, stability: -12, sharpness: 4, expressiveness: 4 },
     intensityRange: [0.42, 0.75],
     defaultTtlTurns: OVERLAY_DEFAULT_TTL_TURNS,
@@ -356,12 +356,12 @@ function buildCandidates(
     candidates.push({ code: 'playful', weight: clamp((vector.theatricality + vector.spontaneity + novelty * 40) / 180, 0, 1), causeType: 'novelty' })
   }
 
-  if (scene === 'chat_room' || scene === 'forum_comment' || scene === 'forum_post') {
+  if (scene === 'chat_room' || scene === 'forum_thread' || scene === 'forum_turn' || scene === 'forum_post') {
     candidates.push({ code: 'withdrawn', weight: clamp((100 - vector.expressiveness + negativity * 35) / 150, 0, 1), causeType: 'ignored' })
     candidates.push({ code: 'overconfident', weight: clamp((vector.assertiveness + vector.sharpness + positivity * 25) / 170, 0, 1), causeType: 'achievement' })
   }
 
-  if (scene === 'forum_comment' || scene === 'chat_room' || scene === 'private_chat') {
+  if (scene === 'forum_thread' || scene === 'forum_turn' || scene === 'chat_room' || scene === 'private_chat') {
     candidates.push({ code: 'slightly_irritable', weight: clamp((vector.sharpness + tension * 40 + negativity * 35) / 180, 0, 1), causeType: 'public_conflict' })
     candidates.push({ code: 'guarded', weight: clamp((vector.sensitivity + negativity * 40 + (100 - vector.stability)) / 190, 0, 1), causeType: 'ignored' })
     candidates.push({ code: 'destabilized', weight: clamp((tension * 55 + negativity * 40 + (100 - vector.stability)) / 195, 0, 1), causeType: 'public_conflict' })
@@ -461,7 +461,8 @@ function lerp(min: number, max: number, amount: number): number {
 
 const SCENE_PRESSURE: Record<PersonaRuntimeScene, number> = {
   forum_post: 0.28,
-  forum_comment: 0.32,
+  forum_thread: 0.32,
+  forum_turn: 0.32,
   chat_room: 0.2,
   private_chat: 0.18,
   proactive_dm: 0.16,

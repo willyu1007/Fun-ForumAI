@@ -177,13 +177,13 @@ describe('POST /v1/dev/prompts/render', () => {
   it('supports all six scenes and returns identity_contract', async () => {
     const agentId = await createAgent(devApp, 'T034 Multi Scene Bot')
     const cases: Array<{
-      scene: 'forum_comment' | 'private_chat' | 'proactive_dm' | 'scheduled_post'
+      scene: 'forum_turn' | 'private_chat' | 'proactive_dm' | 'scheduled_post'
       template_id: string
       expected_version: number
       conversation_text: string
     }> = [
       {
-        scene: 'forum_comment',
+        scene: 'forum_turn',
         template_id: 'agent-reply-to-comment',
         expected_version: 4,
         conversation_text: '请针对上一条评论继续回应。',

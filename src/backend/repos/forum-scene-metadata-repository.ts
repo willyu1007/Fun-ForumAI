@@ -6,11 +6,18 @@ import type {
 export interface ForumSceneMetadataRepository {
   create(input: CreateForumSceneMetadataInput): Promise<ForumSceneMetadata>
   findByPostId(postId: string): Promise<ForumSceneMetadata | null>
+  findByThreadId(threadId: string): Promise<ForumSceneMetadata | null>
+  findByTurnId(turnId: string): Promise<ForumSceneMetadata | null>
   findByCommentId(commentId: string): Promise<ForumSceneMetadata | null>
   findLatestByCommunityId(communityId: string): Promise<ForumSceneMetadata | null>
   listByEpisodeId(episodeId: string): Promise<ForumSceneMetadata[]>
   listByCommunityIdSince(communityId: string, since: Date): Promise<ForumSceneMetadata[]>
-  deleteByTarget(input: { post_id?: string | null; comment_id?: string | null }): Promise<void>
+  deleteByTarget(input: {
+    post_id?: string | null
+    thread_id?: string | null
+    turn_id?: string | null
+    comment_id?: string | null
+  }): Promise<void>
 }
 
 let counter = 0
@@ -21,15 +28,21 @@ function cuid(): string {
 export class InMemoryForumSceneMetadataRepository implements ForumSceneMetadataRepository {
   private readonly store = new Map<string, ForumSceneMetadata>()
   private readonly byPostId = new Map<string, string>()
+  private readonly byThreadId = new Map<string, string>()
+  private readonly byTurnId = new Map<string, string>()
   private readonly byCommentId = new Map<string, string>()
 
   async create(input: CreateForumSceneMetadataInput): Promise<ForumSceneMetadata> {
     const now = new Date()
+    const normalizedThreadId = input.target_type === 'THREAD' ? input.thread_id ?? null : null
+    const normalizedTurnId = input.target_type === 'TURN' ? input.turn_id ?? null : null
     const entity: ForumSceneMetadata = {
       id: cuid(),
       target_type: input.target_type,
       community_id: input.community_id,
       post_id: input.post_id ?? null,
+      thread_id: normalizedThreadId,
+      turn_id: normalizedTurnId,
       comment_id: input.comment_id ?? null,
       episode_id: input.episode_id,
       selection_id: input.selection_id,
@@ -56,6 +69,18 @@ export class InMemoryForumSceneMetadataRepository implements ForumSceneMetadataR
       }
       this.byPostId.set(entity.post_id, entity.id)
     }
+    if (entity.target_type === 'THREAD' && entity.thread_id) {
+      if (this.byThreadId.has(entity.thread_id)) {
+        throw new Error(`ForumSceneMetadata already exists for thread ${entity.thread_id}`)
+      }
+      this.byThreadId.set(entity.thread_id, entity.id)
+    }
+    if (entity.target_type === 'TURN' && entity.turn_id) {
+      if (this.byTurnId.has(entity.turn_id)) {
+        throw new Error(`ForumSceneMetadata already exists for turn ${entity.turn_id}`)
+      }
+      this.byTurnId.set(entity.turn_id, entity.id)
+    }
     if (entity.comment_id) {
       if (this.byCommentId.has(entity.comment_id)) {
         throw new Error(`ForumSceneMetadata already exists for comment ${entity.comment_id}`)
@@ -72,8 +97,20 @@ export class InMemoryForumSceneMetadataRepository implements ForumSceneMetadataR
     return id ? this.store.get(id) ?? null : null
   }
 
+  async findByThreadId(threadId: string): Promise<ForumSceneMetadata | null> {
+    const id = this.byThreadId.get(threadId)
+    return id ? this.store.get(id) ?? null : null
+  }
+
+  async findByTurnId(turnId: string): Promise<ForumSceneMetadata | null> {
+    const id = this.byTurnId.get(turnId)
+    return id ? this.store.get(id) ?? null : null
+  }
+
   async findByCommentId(commentId: string): Promise<ForumSceneMetadata | null> {
-    const id = this.byCommentId.get(commentId)
+    const id = this.byTurnId.get(commentId)
+      ?? this.byThreadId.get(commentId)
+      ?? this.byCommentId.get(commentId)
     return id ? this.store.get(id) ?? null : null
   }
 
@@ -96,11 +133,32 @@ export class InMemoryForumSceneMetadataRepository implements ForumSceneMetadataR
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
   }
 
-  async deleteByTarget(input: { post_id?: string | null; comment_id?: string | null }): Promise<void> {
+  async deleteByTarget(input: {
+    post_id?: string | null
+    thread_id?: string | null
+    turn_id?: string | null
+    comment_id?: string | null
+  }): Promise<void> {
     if (input.post_id) {
       const id = this.byPostId.get(input.post_id)
       if (!id) return
       this.byPostId.delete(input.post_id)
+      this.store.delete(id)
+      return
+    }
+
+    if (input.thread_id) {
+      const id = this.byThreadId.get(input.thread_id)
+      if (!id) return
+      this.byThreadId.delete(input.thread_id)
+      this.store.delete(id)
+      return
+    }
+
+    if (input.turn_id) {
+      const id = this.byTurnId.get(input.turn_id)
+      if (!id) return
+      this.byTurnId.delete(input.turn_id)
       this.store.delete(id)
       return
     }

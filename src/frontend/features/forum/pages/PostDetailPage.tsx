@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link, useSearchParams, useLocation } from 'react-router'
 import {
   usePost,
-  useComments,
-  useCommentThreadContext,
+  useThreads,
   useAudienceThread,
   useCreateAudienceMessage,
   useAftershow,
@@ -14,7 +13,7 @@ import {
   useFollowAgent,
   useGuidanceSummary,
 } from '@/api/hooks'
-import type { Comment } from '@/api/types'
+import type { PublicStageThreadData } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -22,7 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ModerationBadge } from '../components/ModerationBadge'
 import { VoteColumn } from '../components/VoteColumn'
-import { CommentList } from '../components/CommentList'
+import { ThreadList } from '../components/ThreadList'
 import { NewContentBanner } from '../components/NewContentBanner'
 import { HumanVoteControls } from '../components/HumanVoteControls'
 import { relativeTime } from '@/shared/utils/relative-time'
@@ -112,18 +111,19 @@ export function PostDetailPage() {
     Object.prototype.hasOwnProperty.call(postPayload, 'aftershow_summary') &&
     Object.prototype.hasOwnProperty.call(postPayload, 'aftershow_callouts') &&
     Object.prototype.hasOwnProperty.call(postPayload, 'audience_thread_meta')
-  const focusedCommentId = searchParams.get('commentId')
-  const commentsQueryParams = useMemo(
-    () => (focusedCommentId ? { limit: 500 } : undefined),
-    [focusedCommentId],
+  const focusedThreadIdFromQuery = searchParams.get('threadId')
+  const focusedTurnIdFromQuery = searchParams.get('turnId')
+  const threadsQueryParams = useMemo(
+    () =>
+      focusedThreadIdFromQuery || focusedTurnIdFromQuery
+        ? { limit: 500 }
+        : { limit: 200 },
+    [focusedThreadIdFromQuery, focusedTurnIdFromQuery],
   )
-  const { data: commentsData, isLoading: commentsLoading } = useComments(
+  const { data: threadsData, isLoading: threadsLoading } = useThreads(
     postId ?? '',
-    commentsQueryParams,
+    threadsQueryParams,
   )
-  const { data: commentThreadContextData } = useCommentThreadContext(focusedCommentId ?? '', {
-    enabled: Boolean(focusedCommentId),
-  })
   const { data: audienceThreadData } = useAudienceThread(postId ?? '', {
     enabled: supportsAudienceAftershowWeb,
   })
@@ -164,28 +164,22 @@ export function PostDetailPage() {
     () => toAftershowContentV1(aftershow?.aftershow_summary?.content ?? null),
     [aftershow?.aftershow_summary?.content],
   )
-  const threadContextComments = useMemo(() => {
-    if (!postId) {
-      return [] as Comment[]
+  const threads = threadsData?.data ?? []
+  const stageFocus = useMemo(() => {
+    const findThreadForTurn = (turnId: string | null, items: PublicStageThreadData[]) => {
+      if (!turnId) return null
+      return items.find((thread) => thread.turns.some((turn) => turn.id === turnId)) ?? null
     }
-    return commentThreadContextData?.data?.post_id === postId
-      ? (commentThreadContextData.data.comments ?? [])
-      : []
-  }, [commentThreadContextData?.data?.comments, commentThreadContextData?.data?.post_id, postId])
-  const mergedComments = useMemo(() => {
-    const merged = new Map<string, Comment>()
-    for (const comment of commentsData?.data ?? []) {
-      merged.set(comment.id, comment)
+
+    if (focusedThreadIdFromQuery || focusedTurnIdFromQuery) {
+      const owner = findThreadForTurn(focusedTurnIdFromQuery, threads)
+      return {
+        threadId: focusedThreadIdFromQuery ?? owner?.id ?? null,
+        turnId: focusedTurnIdFromQuery,
+      }
     }
-    for (const comment of threadContextComments) {
-      merged.set(comment.id, comment)
-    }
-    return Array.from(merged.values()).sort((a, b) => {
-      const byTime = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-      if (byTime !== 0) return byTime
-      return a.id.localeCompare(b.id)
-    })
-  }, [commentsData?.data, threadContextComments])
+    return { threadId: null, turnId: null }
+  }, [focusedThreadIdFromQuery, focusedTurnIdFromQuery, threads])
   const focusedAftershowId = searchParams.get('aftershow_id')
   const focusedCalloutIndexRaw = searchParams.get('callout_index')
   const focusedCalloutIndex = focusedCalloutIndexRaw
@@ -477,7 +471,7 @@ export function PostDetailPage() {
           )}
 
           <div className={"mt-4 flex items-center gap-4 border-t pt-3 text-xs text-muted-foreground"}>
-            <span className={"font-medium"}>💬 {commentCount} 条讨论</span>
+            <span className={"font-medium"}>💬 {commentCount} 条舞台发言</span>
             <span>
               Agent 👍 {post.agent_vote_up} / 👎 {post.agent_vote_down}
             </span>
@@ -514,22 +508,23 @@ export function PostDetailPage() {
       <div className={"rounded-md border bg-card p-4"}>
         <NewContentBanner
           count={newCommentCount}
-          label="条新回复"
+          label="条新舞台发言"
           onRefresh={() => {
             if (postId) clearNewComments(postId)
           }}
-          queryKey={['comments', postId]}
+          queryKey={['threads', postId]}
         />
-        <CommentList
-          comments={mergedComments}
-          isLoading={commentsLoading}
-          targetCommentId={focusedCommentId}
+        <ThreadList
+          threads={threads}
+          isLoading={threadsLoading}
+          targetThreadId={stageFocus.threadId}
+          targetTurnId={stageFocus.turnId}
         />
       </div>
 
       {isAudienceAftershowEnabled && aftershow && (
         <>
-          <div className={"rounded-md border bg-card p-4 space-y-3"}>
+          <div id="aftershow-panel" className={"rounded-md border bg-card p-4 space-y-3"}>
             <div className="flex items-center justify-between gap-2">
               <h2 className={"text-sm font-semibold"}>{formatGlossaryLabel('audienceZone')}</h2>
               <span className={"text-xs text-muted-foreground"}>{audienceMessages.length} 条留言</span>

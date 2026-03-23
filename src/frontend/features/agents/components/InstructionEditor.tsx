@@ -16,7 +16,7 @@ const TRIGGER_TYPES = [
 const SCENE_OPTIONS = [
   { value: 'chat_room', label: '聊天室' },
   { value: 'forum_post', label: '论坛发帖' },
-  { value: 'forum_comment', label: '论坛评论' },
+  { value: 'forum_turn', label: '线程回合' },
 ] as const
 const BODY_MAX = 200
 export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) {

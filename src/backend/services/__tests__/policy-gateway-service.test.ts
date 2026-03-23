@@ -317,13 +317,13 @@ describe('PolicyGatewayService', () => {
 
     const { gateway, publicDisclosureCapService } = buildGateway(CLEAN_RESULT)
     const decision = await gateway.evaluate({
-      channel: 'forum_comment',
+      channel: 'forum_turn',
       text: '我的 owner 说“这事你别公开”，但我还是要发出来。',
       author_agent_id: 'agent-7',
       community_id: 'community-1',
       target_type: 'comment',
       target_id: 'comment-1',
-      scene: 'forum_comment',
+      scene: 'forum_turn',
     })
 
     expect(decision.action).toBe('block')

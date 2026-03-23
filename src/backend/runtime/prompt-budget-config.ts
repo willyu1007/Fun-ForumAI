@@ -28,8 +28,28 @@ export const PROMPT_SCENE_BUDGET_CONFIGS: Record<PromptScene, PromptSceneBudgetC
       default_memory_tier: 'full',
     },
   },
-  forum_comment: {
-    scene: 'forum_comment',
+  forum_thread: {
+    scene: 'forum_thread',
+    request_budget: {
+      reference_input: 8_000,
+      soft_total_ratio: 1.25,
+      hard_total_ratio: 1.45,
+      output_reserve: 800,
+    },
+    buckets: {
+      hard_control: { guaranteed: 9, preferred: 11, max: 14 },
+      compact_control: { guaranteed: 12, preferred: 15, max: 20 },
+      current_context: { guaranteed: 35, preferred: 42, max: 52 },
+      memory: { guaranteed: 12, preferred: 20, max: 30 },
+      soft_expression: { guaranteed: 5, preferred: 8, max: 12 },
+    },
+    compiler_policy: {
+      ...DEFAULT_COMPILER_POLICY,
+      default_memory_tier: 'compact',
+    },
+  },
+  forum_turn: {
+    scene: 'forum_turn',
     request_budget: {
       reference_input: 8_000,
       soft_total_ratio: 1.25,

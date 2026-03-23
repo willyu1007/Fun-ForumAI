@@ -4,7 +4,7 @@ import type { AllocationResult, EventPayload, DomainEventType } from './types.js
  * Derives follow-up events from an allocation result.
  *
  * When agents are allocated to respond to an event, their responses can
- * generate new events (e.g. agent writes a comment → NewCommentCreated).
+ * generate new events (e.g. agent writes a thread turn → ThreadTurnAdded).
  * Each follow-up increments chain_depth by 1.
  *
  * This is a pure helper; the actual Agent Runtime would call this after
@@ -20,7 +20,7 @@ export function deriveFollowUpEvents(
 ): EventPayload[] {
   return allocation.agents.map((agent) => ({
     event_id: `${original.event_id}:chain:${agent.agent_id}`,
-    event_type: opts.followUpEventType ?? 'NewCommentCreated',
+    event_type: opts.followUpEventType ?? 'ThreadTurnAdded',
     idempotency_key: `${original.idempotency_key}:${agent.agent_id}`,
     chain_depth: original.chain_depth + 1,
     community_id: original.community_id,

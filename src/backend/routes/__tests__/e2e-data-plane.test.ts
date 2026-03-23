@@ -41,7 +41,7 @@ describe('E2E: Data Plane (service auth + write)', () => {
     expect(res.status).toBe(401)
   })
 
-  it('POST /v1/comments creates a comment on an existing post', async () => {
+  it('POST /v1/posts/:postId/threads creates a thread on an existing post', async () => {
     const postBody = {
       actor_agent_id: 'agent-e2e-2',
       run_id: 'run-e2e-2',
@@ -53,27 +53,118 @@ describe('E2E: Data Plane (service auth + write)', () => {
     expect(postRes.status).toBe(201)
     const postId = postRes.body.data.id
 
-    const commentBody = {
+    const threadBody = {
       actor_agent_id: 'agent-e2e-3',
       run_id: 'run-e2e-3',
-      post_id: postId,
       body: 'Nice post!',
     }
-    const commentRes = await servicePost('/v1/comments', commentBody)
-    expect(commentRes.status).toBe(201)
-    expect(commentRes.body.data.post_id).toBe(postId)
-    expect(commentRes.body.meta.moderation).toHaveProperty('verdict')
+    const threadRes = await servicePost(`/v1/posts/${postId}/threads`, threadBody)
+    expect(threadRes.status).toBe(201)
+    expect(threadRes.body.data.post_id).toBe(postId)
+    expect(threadRes.body.meta.moderation).toHaveProperty('verdict')
   })
 
-  it('POST /v1/comments on nonexistent post → 404', async () => {
+  it('POST /v1/posts/:postId/threads on nonexistent post → 404', async () => {
     const body = {
       actor_agent_id: 'agent-1',
       run_id: 'run-1',
-      post_id: 'nonexistent-post',
       body: 'Hello',
     }
-    const res = await servicePost('/v1/comments', body)
+    const res = await servicePost('/v1/posts/nonexistent-post/threads', body)
     expect(res.status).toBe(404)
+  })
+
+  it('POST /v1/posts/:postId/threads creates a public stage thread', async () => {
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: 'agent-thread-root',
+      run_id: 'run-thread-root-post',
+      community_id: 'c1',
+      title: 'Thread target post',
+      body: 'Body for thread creation.',
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    const threadRes = await servicePost(`/v1/posts/${postId}/threads`, {
+      actor_agent_id: 'agent-thread-author',
+      run_id: 'run-thread-root',
+      body: 'Opening stance for the public stage.',
+    })
+    expect(threadRes.status).toBe(201)
+    expect(threadRes.body.data.post_id).toBe(postId)
+    expect(threadRes.body.data.thread_state).toBe('OPEN')
+    expect(threadRes.body.data.turns).toEqual([])
+    expect(threadRes.body.meta.moderation).toHaveProperty('verdict')
+  })
+
+  it('POST /v1/posts/:postId/threads accepts a route handoff seed', async () => {
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: 'agent-thread-route-post',
+      run_id: 'run-thread-route-post',
+      community_id: 'c1',
+      title: 'Thread route target post',
+      body: 'Body for route seed.',
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    const threadRes = await servicePost(`/v1/posts/${postId}/threads`, {
+      actor_agent_id: 'agent-thread-route-author',
+      run_id: 'run-thread-route',
+      body: '这个线程更适合转入私聊。',
+      route_handoff: {
+        route_type: 'PRIVATE',
+        reason_code: 'PRIVATE_HANDOFF_REQUIRED',
+        handoff_label: '该线程适合转入私聊继续。',
+      },
+    })
+    expect(threadRes.status).toBe(201)
+    expect(threadRes.body.data.thread_state).toBe('CLOSED')
+    expect(threadRes.body.data.active_route).toMatchObject({
+      route_type: 'PRIVATE',
+      route_state: 'READY',
+      reason_code: 'PRIVATE_HANDOFF_REQUIRED',
+    })
+  })
+
+  it('POST /v1/threads/:threadId/turns adds a flat turn with optional anchor', async () => {
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: 'agent-turn-post',
+      run_id: 'run-turn-post',
+      community_id: 'c1',
+      title: 'Turn target post',
+      body: 'Body for turn creation.',
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    const threadRes = await servicePost(`/v1/posts/${postId}/threads`, {
+      actor_agent_id: 'agent-turn-root',
+      run_id: 'run-turn-root',
+      body: 'Root stance.',
+    })
+    expect(threadRes.status).toBe(201)
+    const threadId = threadRes.body.data.id as string
+
+    const firstTurnRes = await servicePost(`/v1/threads/${threadId}/turns`, {
+      actor_agent_id: 'agent-turn-1',
+      run_id: 'run-turn-1',
+      body: 'First flat turn.',
+    })
+    expect(firstTurnRes.status).toBe(201)
+    expect(firstTurnRes.body.data.thread_id).toBe(threadId)
+    expect(firstTurnRes.body.data.turn_index).toBe(1)
+
+    const secondTurnRes = await servicePost(`/v1/threads/${threadId}/turns`, {
+      actor_agent_id: 'agent-turn-2',
+      run_id: 'run-turn-2',
+      anchor_turn_id: firstTurnRes.body.data.id,
+      body: 'Anchored follow-up turn.',
+    })
+    expect(secondTurnRes.status).toBe(201)
+    expect(secondTurnRes.body.data.thread_id).toBe(threadId)
+    expect(secondTurnRes.body.data.anchor_turn_id).toBe(firstTurnRes.body.data.id)
+    expect(secondTurnRes.body.data.turn_index).toBe(2)
   })
 
   it('POST /v1/votes creates a vote on an existing post', async () => {

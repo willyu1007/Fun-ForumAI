@@ -1,7 +1,6 @@
 import { Prisma, type PrismaClient } from '@prisma/client'
 import type {
   AgentSearchDoc,
-  CommentSearchDoc,
   CommunitySearchDoc,
   PostSearchDoc,
   RankedSearchDocPage,
@@ -9,9 +8,10 @@ import type {
   SearchCommunityRef,
   SearchCursorPayload,
   UpsertAgentSearchDocInput,
-  UpsertCommentSearchDocInput,
   UpsertCommunitySearchDocInput,
   UpsertPostSearchDocInput,
+  ThreadSearchDoc,
+  UpsertThreadSearchDocInput,
 } from '../types.js'
 import {
   buildSearchTokenGate,
@@ -109,7 +109,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
 
   async clearAllDocs(): Promise<void> {
     await this.prisma.$transaction([
-      this.prisma.commentSearchDoc.deleteMany(),
+      this.prisma.threadSearchDoc.deleteMany(),
       this.prisma.postSearchDoc.deleteMany(),
       this.prisma.agentSearchDoc.deleteMany(),
       this.prisma.communitySearchDoc.deleteMany(),
@@ -117,13 +117,13 @@ export class PgSearchDocRepository implements SearchDocRepository {
   }
 
   async getStats(): Promise<SearchDocStats> {
-    const [posts, communities, agents, comments] = await Promise.all([
+    const [posts, communities, agents, threads] = await Promise.all([
       this.prisma.postSearchDoc.count(),
       this.prisma.communitySearchDoc.count(),
       this.prisma.agentSearchDoc.count(),
-      this.prisma.commentSearchDoc.count(),
+      this.prisma.threadSearchDoc.count(),
     ])
-    return { posts, communities, agents, comments }
+    return { posts, communities, agents, threads }
   }
 
   async upsertPostDoc(input: UpsertPostSearchDocInput): Promise<PostSearchDoc> {
@@ -423,11 +423,11 @@ export class PgSearchDocRepository implements SearchDocRepository {
     return normalizeCount(rows[0]?.count)
   }
 
-  async upsertCommentDoc(input: UpsertCommentSearchDocInput): Promise<CommentSearchDoc> {
-    const row = await this.prisma.commentSearchDoc.upsert({
-      where: { commentId: input.comment_id },
+  async upsertThreadDoc(input: UpsertThreadSearchDocInput): Promise<ThreadSearchDoc> {
+    const row = await this.prisma.threadSearchDoc.upsert({
+      where: { threadId: input.thread_id },
       create: {
-        commentId: input.comment_id,
+        threadId: input.thread_id,
         postId: input.post_id,
         communityId: input.community_id,
         communitySlug: input.community_slug,
@@ -445,8 +445,8 @@ export class PgSearchDocRepository implements SearchDocRepository {
         searchableText: input.searchable_text,
         visibility: input.visibility,
         state: input.state,
-        authorSignalScore: input.author_signal_score,
-        commentCreatedAt: input.comment_created_at,
+        threadSignalScore: input.thread_signal_score,
+        threadCreatedAt: input.thread_created_at,
         refreshedAt: new Date(),
       },
       update: {
@@ -467,24 +467,24 @@ export class PgSearchDocRepository implements SearchDocRepository {
         searchableText: input.searchable_text,
         visibility: input.visibility,
         state: input.state,
-        authorSignalScore: input.author_signal_score,
-        commentCreatedAt: input.comment_created_at,
+        threadSignalScore: input.thread_signal_score,
+        threadCreatedAt: input.thread_created_at,
         refreshedAt: new Date(),
       },
     })
-    return this.toCommentDoc(row)
+    return this.toThreadDoc(row)
   }
 
-  async deleteCommentDoc(commentId: string): Promise<void> {
-    await this.prisma.commentSearchDoc.deleteMany({ where: { commentId } })
+  async deleteThreadDoc(threadId: string): Promise<void> {
+    await this.prisma.threadSearchDoc.deleteMany({ where: { threadId } })
   }
 
-  async searchCommentDocs(input: SearchDocQueryInput): Promise<RankedSearchDocPage<CommentSearchDoc>> {
-    const rows = await this.queryCommentDocs(input)
-    return toRankedPage(rows, input.limit, (row) => row.comment_id)
+  async searchThreadDocs(input: SearchDocQueryInput): Promise<RankedSearchDocPage<ThreadSearchDoc>> {
+    const rows = await this.queryThreadDocs(input)
+    return toRankedPage(rows, input.limit, (row) => row.thread_id)
   }
 
-  async countCommentDocs(query: string): Promise<number> {
+  async countThreadDocs(query: string): Promise<number> {
     const normalized = query.trim()
     if (!normalized) return 0
     const likePattern = `%${normalized}%`
@@ -861,13 +861,13 @@ export class PgSearchDocRepository implements SearchDocRepository {
     }))
   }
 
-  private async queryCommentDocs(input: SearchDocQueryInput): Promise<Array<CommentSearchDoc & { score: number }>> {
+  private async queryThreadDocs(input: SearchDocQueryInput): Promise<Array<ThreadSearchDoc & { score: number }>> {
     const normalized = input.query.trim()
     if (!normalized) return []
     const likePattern = `%${normalized}%`
     const tokenGateClause = buildTokenGateClause('csd.searchable_text', normalized)
     const rows = await this.prisma.$queryRaw<Array<{
-      comment_id: string
+      thread_id: string
       post_id: string
       community_id: string
       community_slug: string
@@ -883,10 +883,10 @@ export class PgSearchDocRepository implements SearchDocRepository {
       scene_tags_text: string
       scene_phase: string | null
       searchable_text: string
-      visibility: CommentSearchDoc['visibility']
-      state: CommentSearchDoc['state']
-      author_signal_score: number
-      comment_created_at: Date
+      visibility: ThreadSearchDoc['visibility']
+      state: ThreadSearchDoc['state']
+      thread_signal_score: number
+      thread_created_at: Date
       refreshed_at: Date
       created_at: Date
       updated_at: Date
@@ -894,7 +894,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
     }>>(Prisma.sql`
       WITH ranked AS (
         SELECT
-          csd.comment_id,
+          csd.comment_id AS thread_id,
           csd.post_id,
           csd.community_id,
           csd.community_slug,
@@ -912,8 +912,8 @@ export class PgSearchDocRepository implements SearchDocRepository {
           csd.searchable_text,
           csd.visibility,
           csd.state,
-          csd.author_signal_score,
-          csd.comment_created_at,
+          csd.author_signal_score AS thread_signal_score,
+          csd.comment_created_at AS thread_created_at,
           csd.refreshed_at,
           csd.created_at,
           csd.updated_at,
@@ -950,12 +950,12 @@ export class PgSearchDocRepository implements SearchDocRepository {
       SELECT *
       FROM ranked
       WHERE score > 0.01
-      ${buildCursorFilter(input.cursor, 'comment_id')}
-      ORDER BY score DESC, comment_id ASC
+      ${buildCursorFilter(input.cursor, 'thread_id')}
+      ORDER BY score DESC, thread_id ASC
       LIMIT ${input.limit + 1}
     `)
     return rows.map((row) => ({
-      comment_id: row.comment_id,
+      thread_id: row.thread_id,
       post_id: row.post_id,
       community_id: row.community_id,
       community_slug: row.community_slug,
@@ -973,8 +973,8 @@ export class PgSearchDocRepository implements SearchDocRepository {
       searchable_text: row.searchable_text,
       visibility: row.visibility,
       state: row.state,
-      author_signal_score: row.author_signal_score,
-      comment_created_at: row.comment_created_at,
+      thread_signal_score: row.thread_signal_score,
+      thread_created_at: row.thread_created_at,
       refreshed_at: row.refreshed_at,
       created_at: row.created_at,
       updated_at: row.updated_at,
@@ -1148,8 +1148,8 @@ export class PgSearchDocRepository implements SearchDocRepository {
     }
   }
 
-  private toCommentDoc(row: {
-    commentId: string
+  private toThreadDoc(row: {
+    threadId: string
     postId: string
     communityId: string
     communitySlug: string
@@ -1165,16 +1165,16 @@ export class PgSearchDocRepository implements SearchDocRepository {
     sceneTagsText: string
     scenePhase: string | null
     searchableText: string
-    visibility: CommentSearchDoc['visibility']
-    state: CommentSearchDoc['state']
-    authorSignalScore: number
-    commentCreatedAt: Date
+    visibility: ThreadSearchDoc['visibility']
+    state: ThreadSearchDoc['state']
+    threadSignalScore: number
+    threadCreatedAt: Date
     refreshedAt: Date
     createdAt: Date
     updatedAt: Date
-  }): CommentSearchDoc {
+  }): ThreadSearchDoc {
     return {
-      comment_id: row.commentId,
+      thread_id: row.threadId,
       post_id: row.postId,
       community_id: row.communityId,
       community_slug: row.communitySlug,
@@ -1192,8 +1192,8 @@ export class PgSearchDocRepository implements SearchDocRepository {
       searchable_text: row.searchableText,
       visibility: row.visibility,
       state: row.state,
-      author_signal_score: row.authorSignalScore,
-      comment_created_at: row.commentCreatedAt,
+      thread_signal_score: row.threadSignalScore,
+      thread_created_at: row.threadCreatedAt,
       refreshed_at: row.refreshedAt,
       created_at: row.createdAt,
       updated_at: row.updatedAt,

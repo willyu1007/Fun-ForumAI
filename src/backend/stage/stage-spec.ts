@@ -27,13 +27,15 @@ const stageAllocatorSchema = z.object({
   max_tokens_per_day: z.number().int().min(100).max(10_000_000).default(100_000),
   event_base_quota: z.object({
     NewPostCreated: z.number().int().min(0).max(64).default(5),
-    NewCommentCreated: z.number().int().min(0).max(64).default(3),
+    ThreadOpened: z.number().int().min(0).max(64).default(3),
+    ThreadTurnAdded: z.number().int().min(0).max(64).default(3),
     NewMessageCreated: z.number().int().min(0).max(64).default(0),
     VoteCast: z.number().int().min(0).max(64).default(0),
     RoomTick: z.number().int().min(0).max(64).default(4),
   }).strict().default({
     NewPostCreated: 5,
-    NewCommentCreated: 3,
+    ThreadOpened: 3,
+    ThreadTurnAdded: 3,
     NewMessageCreated: 0,
     VoteCast: 0,
     RoomTick: 4,
@@ -61,7 +63,8 @@ const stageAllocatorSchema = z.object({
   max_tokens_per_day: 100_000,
   event_base_quota: {
     NewPostCreated: 5,
-    NewCommentCreated: 3,
+    ThreadOpened: 3,
+    ThreadTurnAdded: 3,
     NewMessageCreated: 0,
     VoteCast: 0,
     RoomTick: 4,
@@ -280,7 +283,8 @@ export const AVAILABILITY_FALLBACK_STAGE_SPEC_V1: StageSpecV1 = stageSpecV1Schem
     max_tokens_per_day: 100_000,
     event_base_quota: {
       NewPostCreated: 5,
-      NewCommentCreated: 3,
+      ThreadOpened: 3,
+      ThreadTurnAdded: 3,
       NewMessageCreated: 0,
       VoteCast: 0,
       RoomTick: 4,

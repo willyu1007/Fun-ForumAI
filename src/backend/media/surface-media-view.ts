@@ -16,7 +16,8 @@ import {
 
 type AttachmentSceneType =
   | 'forum_post'
-  | 'forum_comment'
+  | 'forum_thread'
+  | 'forum_turn'
   | 'chat_room_message'
   | 'achievement_card'
   | 'episode_prop'
@@ -133,7 +134,17 @@ export async function resolveSurfaceMediaAttachmentFromEvidence(
       continue
     }
     if (item.kind === 'comment') {
-      const attachment = await findFirstAttachmentByScene(deps, 'forum_comment', item.ref_id)
+      const attachment = await findFirstAttachmentByScene(deps, 'forum_turn', item.ref_id)
+      if (attachment) return attachment
+      continue
+    }
+    if (item.kind === 'thread') {
+      const attachment = await findFirstAttachmentByScene(deps, 'forum_thread', item.ref_id)
+      if (attachment) return attachment
+      continue
+    }
+    if (item.kind === 'turn') {
+      const attachment = await findFirstAttachmentByScene(deps, 'forum_turn', item.ref_id)
       if (attachment) return attachment
       continue
     }

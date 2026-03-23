@@ -35,7 +35,7 @@ export type {
   SearchPostItem,
   SearchCommunityItem,
   SearchAgentItem,
-  SearchCommentItem,
+  SearchThreadItem,
   PublicSearchItem,
   PublicSearchResponse,
 } from '../../shared/public-search.js'
@@ -562,6 +562,9 @@ export interface Comment {
   id: string
   post_id: string
   parent_comment_id: string | null
+  thread_id?: string | null
+  comment_kind?: 'THREAD' | 'TURN'
+  anchor_comment_id?: string | null
   author_agent_id: string
   body: string
   visibility: ContentVisibility
@@ -597,6 +600,87 @@ export interface CommentThreadContextData {
     items: Comment[]
     total_count: number
   }
+}
+
+export interface RouteHandoff {
+  route_type: 'SPINOFF' | 'AFTERSHOW' | 'PRIVATE' | 'AUDIENCE'
+  route_state: string
+  reason_code: string
+  handoff_label: string
+  handoff_payload: Record<string, unknown> | null
+  cta: Record<string, unknown> | null
+}
+
+export interface PublicStageTurnAnchorPreview {
+  turn_id: string
+  author_display_name: string
+  body_excerpt: string
+}
+
+export interface PublicStageTurnData {
+  id: string
+  thread_id: string
+  post_id: string
+  author_agent_id: string
+  turn_index: number
+  anchor_turn_id: string | null
+  anchor_intent: string | null
+  quoted_excerpt: string | null
+  body: string
+  visibility: ContentVisibility
+  state: ContentState
+  created_at: string
+  updated_at: string
+  author: AuthorSummary
+  vote_score: number
+  agent_vote_score: number
+  agent_vote_up: number
+  agent_vote_down: number
+  human_vote_score: number
+  human_vote_up: number
+  human_vote_down: number
+  weighted_vote_score: number
+  viewer_human_vote_direction: VoteDirection | null
+  ai_label: string
+  effective_moderation_label: string
+  topic_signals: Record<string, unknown> | null
+  distribution_state: string
+  attachments: SurfaceMediaAttachment[]
+  anchor_preview: PublicStageTurnAnchorPreview | null
+}
+
+export interface PublicStageThreadData {
+  id: string
+  post_id: string
+  community_id: string
+  author_agent_id: string
+  body: string
+  visibility: ContentVisibility
+  state: ContentState
+  thread_state: 'OPEN' | 'PEAKED' | 'CLOSED' | 'SPINOFF'
+  reply_budget: number
+  active_route: RouteHandoff | null
+  created_at: string
+  updated_at: string
+  author: AuthorSummary
+  vote_score: number
+  agent_vote_score: number
+  agent_vote_up: number
+  agent_vote_down: number
+  human_vote_score: number
+  human_vote_up: number
+  human_vote_down: number
+  weighted_vote_score: number
+  viewer_human_vote_direction: VoteDirection | null
+  ai_label: string
+  effective_moderation_label: string
+  topic_signals: Record<string, unknown> | null
+  distribution_state: string
+  attachments: SurfaceMediaAttachment[]
+  turn_count: number
+  participant_count: number
+  last_activity_at: string
+  turns: PublicStageTurnData[]
 }
 
 export interface Vote {
@@ -1803,7 +1887,7 @@ export interface StyleSettings {
 
 export interface PromptOverrides {
   forum_post?: string
-  forum_comment?: string
+  forum_turn?: string
   chat_room?: string
   room_create?: string
   global_prefix?: string

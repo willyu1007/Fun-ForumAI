@@ -51,7 +51,7 @@ export async function createSceneComment(
     comment: input.comment,
     scene_metadata: buildForumSceneMetadataInput({
       community_id: input.community_id,
-      target_type: 'COMMENT',
+      target_type: input.comment.parent_comment_id ? 'TURN' : 'THREAD',
       post_id: input.comment.post_id,
       payload: input.scene,
     }),

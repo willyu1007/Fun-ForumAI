@@ -23,7 +23,7 @@ data:
   FF_COMMUNITY_DIGEST_V1: "true"
   FF_RUNTIME_FEATURES_V1: "true"
   FF_PERSONA_RUNTIME_V1: "true"
-  FF_PERSONA_RUNTIME_SCENES: "forum_post,forum_comment,chat_room,private_chat,proactive_dm,scheduled_post"
+  FF_PERSONA_RUNTIME_SCENES: "forum_post,forum_thread,forum_turn,chat_room,private_chat,proactive_dm,scheduled_post"
   FF_PERSONA_WRITEBACK_V1: "true"
   FF_STAGE_SPEC_V1: "false"
   FF_STAGE_TIER_V1: "false"

@@ -21,6 +21,14 @@ class FailingSceneMetadataRepository implements ForumSceneMetadataRepository {
     return null
   }
 
+  async findByThreadId(): Promise<null> {
+    return null
+  }
+
+  async findByTurnId(): Promise<null> {
+    return null
+  }
+
   async findByCommentId(): Promise<null> {
     return null
   }
@@ -196,14 +204,14 @@ describe('InMemoryPublicSceneWriteRepository', () => {
       },
       scene_metadata: {
         ...baseSceneMetadata,
-        target_type: 'COMMENT',
-        actor_surface: 'forum_comment',
+        target_type: 'THREAD',
+        actor_surface: 'forum_thread',
       },
       event: {
         ...baseEvent,
         id: 'evt-comment-1',
-        event_type: 'COMMENT_CREATED',
-        payload_json: { comment_id: 'comment-1', post_id: 'post-1' },
+        event_type: 'THREAD_OPENED',
+        payload_json: { comment_id: 'comment-1', thread_id: 'comment-1', post_id: 'post-1' },
       },
     })).rejects.toThrow('event write failed')
 

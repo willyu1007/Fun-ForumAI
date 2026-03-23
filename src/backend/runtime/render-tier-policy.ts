@@ -33,7 +33,8 @@ function intentFloor(scene: RenderTierDecisionInputs['scene'], reasons: string[]
     case 'chat_room':
       reasons.push('intent_floor_chat_room_lite')
       return 'lite'
-    case 'forum_comment':
+    case 'forum_thread':
+    case 'forum_turn':
     case 'forum_post':
     case 'private_chat':
     case 'proactive_dm':

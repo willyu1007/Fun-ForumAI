@@ -266,7 +266,7 @@ describe('AchievementsOrchestrator', () => {
       summary: '另一条全局公共 chronicle，用于满足 cross-scene 指标。',
       importance_score: 0.91,
       evidence: [{ kind: 'cross_scene', ref_id: 'cross-scene-1' }],
-      tags: ['signal:forum_comment'],
+      tags: ['signal:forum_turn'],
       meta: { scope: 'global', scope_key: '__global__' },
       occurred_at: now,
     })

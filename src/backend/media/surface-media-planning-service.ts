@@ -34,16 +34,22 @@ export interface SurfaceMediaPlanningServiceDeps {
 export class SurfaceMediaPlanningService {
   constructor(private readonly deps: SurfaceMediaPlanningServiceDeps) {}
 
-  async prepareForumCommentPlan(input: {
+  async prepareForumThreadPlan(input: {
     agent_id: string
     community_id: string
     post_id: string
+    thread_id: string | null
+    turn_id?: string | null
+    surface: 'forum_thread' | 'forum_turn'
     focus_hint: string
     payload: PublicSceneWritePayload
   }): Promise<PreparedSurfaceVisualPlan | null> {
-    const directive = await this.deps.visualDirectiveService.createForumCommentDirective({
+    const directive = await this.deps.visualDirectiveService.createForumThreadDirective({
       community_id: input.community_id,
       post_id: input.post_id,
+      thread_id: input.thread_id,
+      turn_id: input.turn_id ?? null,
+      surface: input.surface,
       focus_hint: input.focus_hint,
       payload: input.payload,
     })

@@ -1,6 +1,5 @@
 import {
   Prisma,
-  type Comment as PrismaComment,
   type Post as PrismaPost,
   type PrismaClient,
 } from '@prisma/client'
@@ -133,24 +132,56 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
     event: CreateEventInput
   }): Promise<{ comment: Comment; event: DomainEvent }> {
     const result = await this.deps.prisma.$transaction(async (tx) => {
-      const commentRow = await tx.comment.create({
-        data: {
-          ...(input.comment.id ? { id: input.comment.id } : {}),
-          postId: input.comment.post_id,
-          parentCommentId: input.comment.parent_comment_id ?? null,
-          authorAgentId: input.comment.author_agent_id,
-          body: input.comment.body,
-          visibility: input.comment.visibility,
-          state: input.comment.state,
-        },
-      })
+      const parentThread = input.comment.parent_comment_id
+        ? await tx.publicStageThread.findUnique({ where: { id: input.comment.parent_comment_id } })
+        : null
+      const parentTurn = input.comment.parent_comment_id && !parentThread
+        ? await tx.publicStageTurn.findUnique({ where: { id: input.comment.parent_comment_id } })
+        : null
+
+      if (input.comment.parent_comment_id && !parentThread && !parentTurn) {
+        throw new Error(`Parent comment not found: ${input.comment.parent_comment_id}`)
+      }
+
+      const createdTarget = !input.comment.parent_comment_id
+        ? await tx.publicStageThread.create({
+            data: {
+              ...(input.comment.id ? { id: input.comment.id } : {}),
+              postId: input.comment.post_id,
+              communityId: input.scene_metadata.community_id,
+              authorAgentId: input.comment.author_agent_id,
+              body: input.comment.body,
+              visibility: input.comment.visibility,
+              state: input.comment.state,
+              threadState: 'OPEN',
+              replyBudget: 6,
+              activeRouteJson: Prisma.DbNull,
+            },
+          })
+        : await tx.publicStageTurn.create({
+            data: {
+              ...(input.comment.id ? { id: input.comment.id } : {}),
+              threadId: parentThread?.id ?? parentTurn!.threadId,
+              postId: input.comment.post_id,
+              authorAgentId: input.comment.author_agent_id,
+              turnIndex: await tx.publicStageTurn.count({
+                where: { threadId: parentThread?.id ?? parentTurn!.threadId },
+              }) + 1,
+              anchorTurnId: parentTurn?.id ?? null,
+              body: input.comment.body,
+              visibility: input.comment.visibility,
+              state: input.comment.state,
+            },
+          })
 
       await tx.forumSceneMetadata.create({
         data: {
-          targetType: 'COMMENT',
+          targetType: input.comment.parent_comment_id ? 'TURN' : 'THREAD',
           communityId: input.scene_metadata.community_id,
           postId: input.comment.post_id,
-          commentId: commentRow.id,
+          threadId: input.comment.parent_comment_id ? null : createdTarget.id,
+          turnId: input.comment.parent_comment_id ? createdTarget.id : null,
+          commentId: null,
           episodeId: input.scene_metadata.episode_id,
           selectionId: input.scene_metadata.selection_id,
           episodePlanId: input.scene_metadata.episode_plan_id,
@@ -187,14 +218,36 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
         },
       })
 
-      return { commentRow, eventRow }
+      return { createdTarget, eventRow, parentId: input.comment.parent_comment_id ?? null }
     })
 
     const event = PgEventRepository.toDomain(result.eventRow)
     this.deps.eventRepo.rememberPersisted(event)
 
     return {
-      comment: this.toComment(result.commentRow),
+      comment: input.comment.parent_comment_id
+        ? toCompatTurnComment(result.createdTarget as unknown as {
+            id: string
+            threadId: string
+            postId: string
+            authorAgentId: string
+            anchorTurnId: string | null
+            body: string
+            visibility: Comment['visibility']
+            state: Comment['state']
+            createdAt: Date
+            updatedAt: Date
+          }, result.parentId)
+        : toCompatThreadComment(result.createdTarget as unknown as {
+            id: string
+            postId: string
+            authorAgentId: string
+            body: string
+            visibility: Comment['visibility']
+            state: Comment['state']
+            createdAt: Date
+            updatedAt: Date
+          }),
       event,
     }
   }
@@ -216,17 +269,58 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
     }
   }
 
-  private toComment(row: PrismaComment): Comment {
-    return {
-      id: row.id,
-      post_id: row.postId,
-      parent_comment_id: row.parentCommentId,
-      author_agent_id: row.authorAgentId,
-      body: row.body,
-      visibility: row.visibility,
-      state: row.state,
-      created_at: row.createdAt,
-      updated_at: row.updatedAt,
-    }
+}
+
+function toCompatThreadComment(row: {
+  id: string
+  postId: string
+  authorAgentId: string
+  body: string
+  visibility: Comment['visibility']
+  state: Comment['state']
+  createdAt: Date
+  updatedAt: Date
+}): Comment {
+  return {
+    id: row.id,
+    post_id: row.postId,
+    parent_comment_id: null,
+    thread_id: row.id,
+    comment_kind: 'THREAD',
+    anchor_comment_id: null,
+    author_agent_id: row.authorAgentId,
+    body: row.body,
+    visibility: row.visibility,
+    state: row.state,
+    created_at: row.createdAt,
+    updated_at: row.updatedAt,
+  }
+}
+
+function toCompatTurnComment(row: {
+  id: string
+  threadId: string
+  postId: string
+  authorAgentId: string
+  anchorTurnId: string | null
+  body: string
+  visibility: Comment['visibility']
+  state: Comment['state']
+  createdAt: Date
+  updatedAt: Date
+}, parentId: string | null): Comment {
+  return {
+    id: row.id,
+    post_id: row.postId,
+    parent_comment_id: parentId ?? row.anchorTurnId ?? row.threadId,
+    thread_id: row.threadId,
+    comment_kind: 'TURN',
+    anchor_comment_id: row.anchorTurnId,
+    author_agent_id: row.authorAgentId,
+    body: row.body,
+    visibility: row.visibility,
+    state: row.state,
+    created_at: row.createdAt,
+    updated_at: row.updatedAt,
   }
 }

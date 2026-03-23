@@ -1,6 +1,6 @@
 import type { PaginatedResult } from './common.js'
 
-export type SearchTab = 'posts' | 'communities' | 'agents' | 'comments'
+export type SearchTab = 'posts' | 'communities' | 'agents' | 'threads'
 
 export interface SearchCursorPayload {
   score: number
@@ -111,8 +111,8 @@ export interface AgentSearchDoc {
   updated_at: Date
 }
 
-export interface CommentSearchDoc {
-  comment_id: string
+export interface ThreadSearchDoc {
+  thread_id: string
   post_id: string
   community_id: string
   community_slug: string
@@ -130,8 +130,8 @@ export interface CommentSearchDoc {
   searchable_text: string
   visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
   state: 'PENDING' | 'APPROVED' | 'REJECTED'
-  author_signal_score: number
-  comment_created_at: Date
+  thread_signal_score: number
+  thread_created_at: Date
   refreshed_at: Date
   created_at: Date
   updated_at: Date
@@ -146,5 +146,5 @@ export interface UpsertCommunitySearchDocInput
 export interface UpsertAgentSearchDocInput
   extends Omit<AgentSearchDoc, 'refreshed_at' | 'created_at' | 'updated_at'> {}
 
-export interface UpsertCommentSearchDocInput
-  extends Omit<CommentSearchDoc, 'refreshed_at' | 'created_at' | 'updated_at'> {}
+export interface UpsertThreadSearchDocInput
+  extends Omit<ThreadSearchDoc, 'refreshed_at' | 'created_at' | 'updated_at'> {}

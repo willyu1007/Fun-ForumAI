@@ -30,7 +30,7 @@ describe('E2E: Read API (public)', () => {
         posts: 0,
         communities: 0,
         agents: 0,
-        comments: 0,
+        threads: 0,
       },
       items: [],
       cursor: null,
@@ -117,10 +117,9 @@ describe('E2E: Read API (public)', () => {
       expect(postRes.status).toBe(201)
       const postId = postRes.body.data.id as string
 
-      const commentRes = await servicePost('/v1/comments', {
+      const commentRes = await servicePost(`/v1/posts/${postId}/threads`, {
         actor_agent_id: commenterRes.body.data.id,
         run_id: 'run-highlights-2',
-        post_id: postId,
         body: 'interesting thread',
       })
       expect(commentRes.status).toBe(201)
@@ -143,7 +142,7 @@ describe('E2E: Read API (public)', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR')
   })
 
-  it('GET /v1/posts/:postId/comments?limit=abc returns 400 validation error', async () => {
+  it('GET /v1/posts/:postId/threads?limit=abc returns 400 validation error', async () => {
     const community = await createTestCommunity({
       name: 'Comment Validation Community',
       slug: `comment-validation-${Date.now()}`,
@@ -163,9 +162,169 @@ describe('E2E: Read API (public)', () => {
     })
     expect(postRes.status).toBe(201)
 
-    const res = await request(app).get(`/v1/posts/${postRes.body.data.id}/comments?limit=abc`)
+    const res = await request(app).get(`/v1/posts/${postRes.body.data.id}/threads?limit=abc`)
     expect(res.status).toBe(400)
     expect(res.body.error.code).toBe('VALIDATION_ERROR')
+  })
+
+  it('GET /v1/posts/:postId/threads and GET /v1/threads/:threadId return thread-first public stage payloads', async () => {
+    const community = await createTestCommunity({
+      name: 'Thread Read Community',
+      slug: `thread-read-${Date.now()}`,
+    })
+    const rootAuthorRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Thread Root Author' })
+    expect(rootAuthorRes.status).toBe(201)
+    const turnAuthorRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Thread Turn Author' })
+    expect(turnAuthorRes.status).toBe(201)
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: rootAuthorRes.body.data.id,
+      run_id: `run-thread-read-post-${Date.now()}`,
+      community_id: community.id,
+      title: 'Thread read target',
+      body: 'Post body for thread read.',
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    const threadRes = await servicePost(`/v1/posts/${postId}/threads`, {
+      actor_agent_id: rootAuthorRes.body.data.id,
+      run_id: `run-thread-read-root-${Date.now()}`,
+      body: 'Opening stage stance.',
+    })
+    expect(threadRes.status).toBe(201)
+    const threadId = threadRes.body.data.id as string
+
+    const turnRes = await servicePost(`/v1/threads/${threadId}/turns`, {
+      actor_agent_id: turnAuthorRes.body.data.id,
+      run_id: `run-thread-read-turn-${Date.now()}`,
+      body: 'First stage turn.',
+    })
+    expect(turnRes.status).toBe(201)
+    const turnId = turnRes.body.data.id as string
+
+    const listRes = await request(app).get(`/v1/posts/${postId}/threads`)
+    expect(listRes.status).toBe(200)
+    expect(listRes.body.data).toHaveLength(1)
+    expect(listRes.body.data[0]).toMatchObject({
+      id: threadId,
+      post_id: postId,
+      thread_state: 'OPEN',
+      turn_count: 1,
+    })
+    expect(listRes.body.data[0].turns[0]).toMatchObject({
+      id: turnId,
+      thread_id: threadId,
+      turn_index: 1,
+    })
+
+    const detailRes = await request(app).get(`/v1/threads/${threadId}`)
+    expect(detailRes.status).toBe(200)
+    expect(detailRes.body.data).toMatchObject({
+      id: threadId,
+      post_id: postId,
+      turn_count: 1,
+    })
+    expect(detailRes.body.data.turns[0]).toMatchObject({
+      id: turnId,
+      thread_id: threadId,
+      body: 'First stage turn.',
+    })
+  })
+
+  it('GET /v1/posts/:postId/threads exposes all route handoff variants with CTA payloads', async () => {
+    const community = await createTestCommunity({
+      name: 'Route Handoff Community',
+      slug: `route-handoff-${Date.now()}`,
+    })
+    const authorRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Route Thread Author' })
+    expect(authorRes.status).toBe(201)
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: authorRes.body.data.id,
+      run_id: `run-route-post-${Date.now()}`,
+      community_id: community.id,
+      title: 'Route target post',
+      body: 'Post body for route handoff coverage.',
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    const routes = [
+      {
+        route_type: 'SPINOFF',
+        reason_code: 'TOPIC_DRIFT_CONFIRMED',
+        handoff_label: '话题已经偏离主轴，建议转为衍生线。',
+      },
+      {
+        route_type: 'AFTERSHOW',
+        reason_code: 'THREAD_REPLY_BUDGET_EXHAUSTED',
+        handoff_label: '主舞台交锋已满，转入 Aftershow 收束。',
+      },
+      {
+        route_type: 'PRIVATE',
+        reason_code: 'PRIVATE_HANDOFF_REQUIRED',
+        handoff_label: '这条线更适合私聊继续。',
+      },
+      {
+        route_type: 'AUDIENCE',
+        reason_code: 'AUDIENCE_PROMPT_REQUESTED',
+        handoff_label: '把补充意见交给观众席。',
+      },
+    ] as const
+
+    for (const route of routes) {
+      const threadRes = await servicePost(`/v1/posts/${postId}/threads`, {
+        actor_agent_id: authorRes.body.data.id,
+        run_id: `run-route-${route.route_type}-${Date.now()}`,
+        body: `Route seed ${route.route_type}`,
+        route_handoff: route,
+      })
+      expect(threadRes.status).toBe(201)
+    }
+
+    const threadsRes = await request(app).get(`/v1/posts/${postId}/threads`)
+    expect(threadsRes.status).toBe(200)
+    expect(threadsRes.body.data).toHaveLength(4)
+
+    const routeMap = new Map(
+      threadsRes.body.data.map((thread: { active_route: { route_type: string; cta: Record<string, unknown> | null } }) => [
+        thread.active_route.route_type,
+        thread.active_route,
+      ]),
+    )
+    expect([...routeMap.keys()].sort()).toEqual(['AFTERSHOW', 'AUDIENCE', 'PRIVATE', 'SPINOFF'])
+    expect(routeMap.get('AFTERSHOW')).toMatchObject({
+      route_state: 'READY',
+      cta: expect.objectContaining({
+        label: expect.any(String),
+        target: expect.stringContaining('/posts/'),
+      }),
+    })
+    expect(routeMap.get('AUDIENCE')).toMatchObject({
+      cta: expect.objectContaining({
+        target: expect.stringContaining('#audience-message-input'),
+      }),
+    })
+    expect(routeMap.get('PRIVATE')).toMatchObject({
+      cta: expect.objectContaining({
+        target: expect.stringContaining('/chat'),
+      }),
+    })
+    expect(routeMap.get('SPINOFF')).toMatchObject({
+      cta: expect.objectContaining({
+        target: expect.stringContaining('route=spinoff'),
+      }),
+    })
   })
 
   it('GET /v1/search returns exact counts and typed results across public objects', async () => {
@@ -194,14 +353,21 @@ describe('E2E: Read API (public)', () => {
     expect(postRes.status).toBe(201)
     const postId = postRes.body.data.id as string
 
-    const commentRes = await servicePost('/v1/comments', {
+    const threadRes = await servicePost(`/v1/posts/${postId}/threads`, {
       actor_agent_id: agentId,
       run_id: `run-search-comment-${Date.now()}`,
-      post_id: postId,
       body: `Comment ${searchToken}`,
     })
-    expect(commentRes.status).toBe(201)
-    const commentId = commentRes.body.data.id as string
+    expect(threadRes.status).toBe(201)
+    const threadId = threadRes.body.data.id as string
+
+    const turnRes = await servicePost(`/v1/threads/${threadId}/turns`, {
+      actor_agent_id: agentId,
+      run_id: `run-search-turn-${Date.now()}`,
+      body: `Turn ${searchToken}`,
+    })
+    expect(turnRes.status).toBe(201)
+    const turnId = turnRes.body.data.id as string
 
     const postsRes = await request(app)
       .get('/v1/search')
@@ -212,7 +378,7 @@ describe('E2E: Read API (public)', () => {
       posts: 1,
       communities: 1,
       agents: 1,
-      comments: 1,
+      threads: 1,
     })
     expect(postsRes.body.data.items).toHaveLength(1)
     expect(postsRes.body.data.items[0]).toMatchObject({
@@ -239,15 +405,16 @@ describe('E2E: Read API (public)', () => {
       href: `/agents/${agentId}`,
     })
 
-    const commentsRes = await request(app)
+    const threadsRes = await request(app)
       .get('/v1/search')
-      .query({ q: searchToken, tab: 'comments' })
-    expect(commentsRes.status).toBe(200)
-    expect(commentsRes.body.data.items[0]).toMatchObject({
-      type: 'comment',
-      id: commentId,
-      href: `/posts/${postId}?commentId=${commentId}`,
+      .query({ q: searchToken, tab: 'threads' })
+    expect(threadsRes.status).toBe(200)
+    expect(threadsRes.body.data.items[0]).toMatchObject({
+      type: 'thread',
+      id: threadId,
+      href: `/posts/${postId}?threadId=${threadId}&turnId=${turnId}`,
       post_id: postId,
+      matched_turn_id: turnId,
     })
   })
 
@@ -337,117 +504,6 @@ describe('E2E: Read API (public)', () => {
     expect(secondPage.status).toBe(200)
     expect(secondPage.body.data.items).toHaveLength(1)
     expect(secondPage.body.data.items[0].id).not.toBe(firstPage.body.data.items[0].id)
-  })
-
-  it('GET /v1/comments/:commentId/thread-context returns ancestors plus nearby context windows', async () => {
-    const community = await createTestCommunity({
-      name: 'Thread Context Community',
-      slug: `thread-context-${Date.now()}`,
-    })
-    const agentRes = await request(app)
-      .post('/v1/agents')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send({ display_name: 'Thread Context Agent' })
-    expect(agentRes.status).toBe(201)
-    const agentId = agentRes.body.data.id as string
-
-    const postRes = await servicePost('/v1/posts', {
-      actor_agent_id: agentId,
-      run_id: `run-thread-context-post-${Date.now()}`,
-      community_id: community.id,
-      title: 'Thread context post',
-      body: 'Root body',
-    })
-    expect(postRes.status).toBe(201)
-    const postId = postRes.body.data.id as string
-
-    const rootCommentRes = await servicePost('/v1/comments', {
-      actor_agent_id: agentId,
-      run_id: `run-thread-context-root-${Date.now()}`,
-      post_id: postId,
-      body: 'root comment',
-    })
-    expect(rootCommentRes.status).toBe(201)
-    const rootCommentId = rootCommentRes.body.data.id as string
-
-    const siblingBeforeRes = await servicePost('/v1/comments', {
-      actor_agent_id: agentId,
-      run_id: `run-thread-context-sibling-before-${Date.now()}`,
-      post_id: postId,
-      parent_comment_id: rootCommentId,
-      body: 'sibling before',
-    })
-    expect(siblingBeforeRes.status).toBe(201)
-    const siblingBeforeId = siblingBeforeRes.body.data.id as string
-
-    const childCommentRes = await servicePost('/v1/comments', {
-      actor_agent_id: agentId,
-      run_id: `run-thread-context-child-${Date.now()}`,
-      post_id: postId,
-      parent_comment_id: rootCommentId,
-      body: 'child comment',
-    })
-    expect(childCommentRes.status).toBe(201)
-    const targetCommentId = childCommentRes.body.data.id as string
-
-    const siblingAfterRes = await servicePost('/v1/comments', {
-      actor_agent_id: agentId,
-      run_id: `run-thread-context-sibling-after-${Date.now()}`,
-      post_id: postId,
-      parent_comment_id: rootCommentId,
-      body: 'sibling after',
-    })
-    expect(siblingAfterRes.status).toBe(201)
-    const siblingAfterId = siblingAfterRes.body.data.id as string
-
-    const childPreviewOneRes = await servicePost('/v1/comments', {
-      actor_agent_id: agentId,
-      run_id: `run-thread-context-child-preview-1-${Date.now()}`,
-      post_id: postId,
-      parent_comment_id: targetCommentId,
-      body: 'grandchild one',
-    })
-    expect(childPreviewOneRes.status).toBe(201)
-    const grandchildOneId = childPreviewOneRes.body.data.id as string
-
-    const childPreviewTwoRes = await servicePost('/v1/comments', {
-      actor_agent_id: agentId,
-      run_id: `run-thread-context-child-preview-2-${Date.now()}`,
-      post_id: postId,
-      parent_comment_id: targetCommentId,
-      body: 'grandchild two',
-    })
-    expect(childPreviewTwoRes.status).toBe(201)
-    const grandchildTwoId = childPreviewTwoRes.body.data.id as string
-
-    const res = await request(app).get(
-      `/v1/comments/${targetCommentId}/thread-context`,
-    )
-
-    expect(res.status).toBe(200)
-    expect(res.body.data.post_id).toBe(postId)
-    expect(res.body.data.ancestor_comments.map((item: { id: string }) => item.id)).toEqual([
-      rootCommentId,
-    ])
-    expect(res.body.data.sibling_window.before.map((item: { id: string }) => item.id)).toEqual([
-      siblingBeforeId,
-    ])
-    expect(res.body.data.sibling_window.after.map((item: { id: string }) => item.id)).toEqual([
-      siblingAfterId,
-    ])
-    expect(res.body.data.child_preview.items.map((item: { id: string }) => item.id)).toEqual([
-      grandchildOneId,
-      grandchildTwoId,
-    ])
-    expect(res.body.data.child_preview.total_count).toBe(2)
-    expect(res.body.data.comments.map((item: { id: string }) => item.id)).toEqual([
-      rootCommentId,
-      siblingBeforeId,
-      targetCommentId,
-      siblingAfterId,
-      grandchildOneId,
-      grandchildTwoId,
-    ])
   })
 
   it('POST /v1/votes/human rejects MESSAGE target_type', async () => {

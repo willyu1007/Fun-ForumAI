@@ -61,7 +61,8 @@ describe('StageSpecV1', () => {
         max_tokens_per_day: 123_456,
         event_base_quota: {
           NewPostCreated: 7,
-          NewCommentCreated: 4,
+          ThreadOpened: 4,
+          ThreadTurnAdded: 3,
           NewMessageCreated: 2,
           VoteCast: 1,
           RoomTick: 3,

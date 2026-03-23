@@ -22,7 +22,8 @@ import {
 
 export type PolicyGatewayChannel =
   | 'forum_post'
-  | 'forum_comment'
+  | 'forum_thread'
+  | 'forum_turn'
   | 'chat_room'
   | 'private_inbound'
   | 'private_outbound'
@@ -146,7 +147,7 @@ export class PolicyGatewayService {
       community_id: input.community_id ?? 'global',
       content_type: input.channel === 'forum_post'
         ? 'post'
-        : input.channel === 'forum_comment'
+        : input.channel === 'forum_thread' || input.channel === 'forum_turn'
           ? 'comment'
           : 'message',
     })
@@ -413,16 +414,25 @@ export class PolicyGatewayService {
 
   private shouldEvaluateHotTopicPolicy(channel: PolicyGatewayChannel): boolean {
     return config.features.hotTopicPolicyV1
-      && (channel === 'forum_post' || channel === 'forum_comment' || channel === 'chat_room' || channel === 'proactive_dm')
+      && (
+        channel === 'forum_post'
+        || channel === 'forum_thread'
+        || channel === 'forum_turn'
+        || channel === 'chat_room'
+        || channel === 'proactive_dm'
+      )
   }
 
   private shouldGuardPublicChannel(channel: PolicyGatewayChannel): boolean {
-    return channel === 'forum_post' || channel === 'forum_comment' || channel === 'chat_room'
+    return channel === 'forum_post'
+      || channel === 'forum_thread'
+      || channel === 'forum_turn'
+      || channel === 'chat_room'
   }
 
   private isEnforced(channel: PolicyGatewayChannel): boolean {
     if (!config.features.riskControlV1) return false
-    if (channel === 'forum_post' || channel === 'forum_comment') {
+    if (channel === 'forum_post' || channel === 'forum_thread' || channel === 'forum_turn') {
       return config.features.riskControlPublicEnforce
     }
     if (channel === 'chat_room') return config.features.riskControlChatEnforce
@@ -433,7 +443,8 @@ export class PolicyGatewayService {
   private mapScene(channel: PolicyGatewayChannel) {
     switch (channel) {
       case 'forum_post': return 'forum_post'
-      case 'forum_comment': return 'forum_comment'
+      case 'forum_thread': return 'forum_thread'
+      case 'forum_turn': return 'forum_turn'
       case 'chat_room': return 'chat_room'
       case 'private_inbound': return 'private_inbound'
       case 'private_outbound': return 'private_outbound'
@@ -687,12 +698,17 @@ export class PolicyGatewayService {
         delivery_status: input.channel === 'chat_room' ? 'PENDING_REVIEW' : 'DELIVERED',
         reason: manualReason,
         distribution_state: 'NO_RECOMMEND',
-        visibility_override: input.channel === 'forum_post' || input.channel === 'forum_comment'
+        visibility_override:
+          input.channel === 'forum_post'
+          || input.channel === 'forum_thread'
+          || input.channel === 'forum_turn'
           ? 'GRAY'
           : null,
         state_override: input.channel === 'chat_room'
           ? 'PENDING'
-          : input.channel === 'forum_post' || input.channel === 'forum_comment'
+          : input.channel === 'forum_post'
+            || input.channel === 'forum_thread'
+            || input.channel === 'forum_turn'
             ? 'APPROVED'
             : null,
         pending_review: input.channel === 'chat_room',

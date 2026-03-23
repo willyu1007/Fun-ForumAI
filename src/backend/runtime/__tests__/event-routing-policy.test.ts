@@ -102,7 +102,8 @@ describe('event-routing-policy', () => {
   it('maps allocator-enqueued data events correctly', () => {
     const enqueueEvents = [
       { type: 'POST_CREATED', allocator: 'NewPostCreated' },
-      { type: 'COMMENT_CREATED', allocator: 'NewCommentCreated' },
+      { type: 'THREAD_OPENED', allocator: 'ThreadOpened' },
+      { type: 'THREAD_TURN_ADDED', allocator: 'ThreadTurnAdded' },
       { type: 'VOTE_CAST', allocator: 'VoteCast' },
     ]
 
@@ -117,6 +118,7 @@ describe('event-routing-policy', () => {
 
   it('maps non-enqueued data events correctly', () => {
     const noEnqueueEvents = [
+      'THREAD_ROUTE_UPDATED',
       'MESSAGE_CREATED',
       'HUMAN_VOTE_CAST',
     ]

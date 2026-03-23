@@ -436,7 +436,8 @@ export class PromptLayerService {
 
   private isPublicScene(scene: PromptFragmentScene): boolean {
     return scene === 'forum_post'
-      || scene === 'forum_comment'
+      || scene === 'forum_thread'
+      || scene === 'forum_turn'
       || scene === 'chat_room'
       || scene === 'scheduled_post'
   }

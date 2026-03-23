@@ -5,7 +5,7 @@
     "prod",
     "staging"
   ],
-  "generated_at_utc": "2026-03-22T09:06:31Z",
+  "generated_at_utc": "2026-03-23T13:29:40Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "APP_ENV": {
@@ -756,6 +756,57 @@
       "state": "active",
       "type": "enum"
     },
+    "FF_MEDIA_LIFECYCLE_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enables media lifecycle sweep, orphan archive, projection cleanup, and snapshot backfill worker.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_MEDIA_OBSERVABILITY_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enables media observability events, admin dashboards, and alert surfacing.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_MEDIA_ROLLOUT_CONTROLLER_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enables the root-post media rollout controller and persisted override plane.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
     "FF_MEMBERSHIPS_V1": {
       "default": "true",
       "deprecate_after": null,
@@ -808,7 +859,7 @@
       "type": "enum"
     },
     "FF_PERSONA_RUNTIME_SCENES": {
-      "default": "forum_post,forum_comment,chat_room,private_chat,proactive_dm,scheduled_post",
+      "default": "forum_post,forum_thread,forum_turn,chat_room,private_chat,proactive_dm,scheduled_post",
       "deprecate_after": null,
       "description": "CSV whitelist of scenes where persona runtime state should participate.",
       "legacy": {
@@ -1283,6 +1334,40 @@
       "state": "active",
       "type": "int"
     },
+    "MEDIA_GENERATION_ESTIMATED_COST_CNY_PER_IMAGE": {
+      "default": 0,
+      "deprecate_after": null,
+      "description": "Estimated cost in CNY charged to each media generation request when provider billing details are unavailable.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "float"
+    },
+    "MEDIA_GENERATION_ESTIMATED_DAILY_BUDGET_CNY": {
+      "default": 0,
+      "deprecate_after": null,
+      "description": "Daily estimated generation budget used by the media rollout controller. Zero disables cost gating.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "float"
+    },
     "MEDIA_GENERATION_GLOBAL_CONCURRENCY": {
       "default": 1,
       "deprecate_after": null,
@@ -1435,6 +1520,159 @@
       "secret_ref": null,
       "state": "active",
       "type": "int"
+    },
+    "MEDIA_LIFECYCLE_EXPIRED_PROJECTION_RETENTION_HOURS": {
+      "default": 24,
+      "deprecate_after": null,
+      "description": "How long expired non-display projections are retained before lifecycle cleanup.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "MEDIA_LIFECYCLE_ORPHAN_GRACE_HOURS": {
+      "default": 72,
+      "deprecate_after": null,
+      "description": "Minimum asset age before an unreferenced media asset can be archived as orphaned.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "MEDIA_LIFECYCLE_WORKER_INTERVAL_MS": {
+      "default": 60000,
+      "deprecate_after": null,
+      "description": "Interval for the media lifecycle worker.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "MEDIA_LIFECYCLE_WORKER_STARTUP_DELAY_MS": {
+      "default": 5000,
+      "deprecate_after": null,
+      "description": "Startup delay for the media lifecycle worker.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "MEDIA_ROOT_POST_TARGET_MAX_RATE": {
+      "default": 0.45,
+      "deprecate_after": null,
+      "description": "Upper bound of the desired 7d root-post display attach rate.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "float"
+    },
+    "MEDIA_ROOT_POST_TARGET_MIN_RATE": {
+      "default": 0.35,
+      "deprecate_after": null,
+      "description": "Lower bound of the desired 7d root-post display attach rate.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "float"
+    },
+    "MEDIA_SNAPSHOT_BACKFILL_BATCH_SIZE": {
+      "default": 20,
+      "deprecate_after": null,
+      "description": "Max active assets to re-extract in one lifecycle sweep.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "MEDIA_SNAPSHOT_TARGET_MODEL_VERSION": {
+      "default": "",
+      "deprecate_after": null,
+      "description": "Target semantic snapshot model version for lifecycle backfill. Empty string disables model-version drift gating.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "MEDIA_SNAPSHOT_TARGET_SCHEMA_VERSION": {
+      "default": "media_semantic_summary.v1",
+      "deprecate_after": null,
+      "description": "Target semantic snapshot schema version for lifecycle backfill.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
     },
     "MINIMAX_API_KEY": {
       "default": null,

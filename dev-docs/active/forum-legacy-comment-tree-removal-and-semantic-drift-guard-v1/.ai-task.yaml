@@ -1,0 +1,13 @@
+version: 1
+task_id: T-917
+project: main
+slug: forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1
+status: planned
+updated: "2026-03-23"
+keywords:
+  - forum
+  - legacy-removal
+  - semantic-drift
+  - guardrail
+  - thread
+  - turn

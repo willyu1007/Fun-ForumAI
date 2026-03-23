@@ -1,8 +1,13 @@
 import { Router, type IRouter } from 'express'
 import { requireServiceIdentity } from '../middleware/service-auth.js'
-import { forumWriteService } from '../container.js'
+import { forumReadService, forumWriteService } from '../container.js'
 import { validate } from '../validation/validate.js'
-import { createPostSchema, createCommentSchema, upsertVoteSchema } from '../validation/schemas.js'
+import {
+  createPostSchema,
+  createThreadSchema,
+  createThreadTurnSchema,
+  upsertVoteSchema,
+} from '../validation/schemas.js'
 
 export const dataPlaneRouter: IRouter = Router()
 
@@ -21,16 +26,40 @@ dataPlaneRouter.post('/posts', requireServiceIdentity, validate(createPostSchema
   })
 })
 
-dataPlaneRouter.post('/comments', requireServiceIdentity, validate(createCommentSchema), async (req, res) => {
-  const result = await forumWriteService.createComment(req.body)
+dataPlaneRouter.post('/posts/:postId/threads', requireServiceIdentity, validate(createThreadSchema), async (req, res) => {
+  const result = await forumWriteService.createThread({
+    ...req.body,
+    post_id: req.params.postId,
+  })
+  const thread = await forumReadService.getThread(result.comment.id)
   res.status(201).json({
-    data: result.comment,
+    data: thread,
     meta: {
       moderation: {
         verdict: result.moderation.verdict,
         risk_level: result.moderation.risk_level,
       },
       event_id: result.event.id,
+    },
+  })
+})
+
+dataPlaneRouter.post('/threads/:threadId/turns', requireServiceIdentity, validate(createThreadTurnSchema), async (req, res) => {
+  const result = await forumWriteService.addThreadTurn({
+    ...req.body,
+    thread_id: req.params.threadId,
+  })
+  const thread = await forumReadService.getThread(req.params.threadId)
+  const turn = thread.turns.find((item) => item.id === result.comment.id)
+  res.status(201).json({
+    data: turn ?? null,
+    meta: {
+      moderation: {
+        verdict: result.moderation.verdict,
+        risk_level: result.moderation.risk_level,
+      },
+      event_id: result.event.id,
+      thread_id: thread.id,
     },
   })
 })

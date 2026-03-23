@@ -2,7 +2,7 @@ import type { ZodType } from 'zod'
 import type { StageSpecV1 } from './stage-spec.js'
 
 export type DirectorSurface = 'forum' | 'chat_room' | 'scheduled_post'
-export type ActorSurface = 'forum_post' | 'forum_comment' | 'chat_room'
+export type ActorSurface = 'forum_post' | 'forum_thread' | 'chat_room'
 export type PrivateSurface = 'private_chat' | 'proactive_dm'
 
 export interface StageTemplateDirector {
@@ -351,7 +351,8 @@ export interface EpisodeBrief {
 export type LocalIntentTargetRef =
   | { kind: 'none' }
   | { kind: 'agent'; agent_id: string }
-  | { kind: 'comment'; post_id: string; comment_id: string; agent_id?: string }
+  | { kind: 'thread'; post_id: string; thread_id: string; agent_id?: string }
+  | { kind: 'turn'; post_id: string; thread_id: string; turn_id: string; agent_id?: string }
   | { kind: 'message'; message_id: string; agent_id?: string }
 
 export interface LocalIntent {

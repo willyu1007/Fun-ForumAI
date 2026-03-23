@@ -60,19 +60,25 @@ export class AgentExecutor {
       let ctx = await this.deps.contextBuilder.build(event, agent)
       if (
         config.features.mediaForumCommentSurfaceV1
-        && event.event_type === 'NewCommentCreated'
+        && (event.event_type === 'ThreadOpened' || event.event_type === 'ThreadTurnAdded')
         && ctx.public_scene
         && this.deps.surfaceMediaPlanningService
       ) {
         try {
           const postId = ctx.targetComment?.post_id ?? event.post_id ?? null
+          const threadId = ctx.targetComment?.comment_kind === 'THREAD'
+            ? ctx.targetComment.id
+            : ctx.targetComment?.thread_id ?? null
           if (!postId) {
-            throw new Error('forum_comment_media_plan_missing_post_id')
+            throw new Error('forum_thread_media_plan_missing_post_id')
           }
-          const plan = await this.deps.surfaceMediaPlanningService.prepareForumCommentPlan({
+          const plan = await this.deps.surfaceMediaPlanningService.prepareForumThreadPlan({
             agent_id: agent.agent_id,
             community_id: ctx.community.id,
             post_id: postId,
+            thread_id: threadId,
+            turn_id: ctx.targetComment?.comment_kind === 'TURN' ? ctx.targetComment.id : null,
+            surface: threadId ? 'forum_turn' : 'forum_thread',
             focus_hint: ctx.targetComment?.body ?? ctx.public_scene.local_intent_block,
             payload: ctx.public_scene,
           })
@@ -86,7 +92,7 @@ export class AgentExecutor {
           }
         } catch (error) {
           console.error(
-            `[AgentExecutor] forum comment media planning failed for agent ${agent.agent_id}:`,
+            `[AgentExecutor] forum thread media planning failed for agent ${agent.agent_id}:`,
             error,
           )
         }
@@ -188,8 +194,8 @@ export class AgentExecutor {
       const observation = buildPersonaObservation({
         sourceCallsiteId: promptScene === 'chat_room'
           ? 'agent-executor-chat-room'
-          : event.event_type === 'NewCommentCreated'
-            ? 'agent-executor-forum-comment'
+          : promptScene === 'forum_thread'
+            ? 'agent-executor-forum-thread'
             : 'agent-executor-forum-post',
         scene: promptScene,
         intent: promptIntent,
@@ -314,7 +320,7 @@ export class AgentExecutor {
       return PROMPT_TEMPLATE_REFS.agentChatReplyScene
     }
     if (ctx.public_scene) {
-      return event.event_type === 'NewCommentCreated'
+      return event.event_type === 'ThreadOpened' || event.event_type === 'ThreadTurnAdded'
         ? PROMPT_TEMPLATE_REFS.agentReplyToCommentScene
         : PROMPT_TEMPLATE_REFS.agentReplyToPostScene
     }
@@ -322,7 +328,8 @@ export class AgentExecutor {
     switch (event.event_type) {
       case 'NewPostCreated':
         return PROMPT_TEMPLATE_REFS.agentReplyToPost
-      case 'NewCommentCreated':
+      case 'ThreadOpened':
+      case 'ThreadTurnAdded':
         return PROMPT_TEMPLATE_REFS.agentReplyToComment
       default:
         return PROMPT_TEMPLATE_REFS.agentReplyToPost
@@ -332,17 +339,19 @@ export class AgentExecutor {
   private pickScene(
     event: EventPayload,
     ctx: ExecutionContext,
-  ): 'forum_post' | 'forum_comment' | 'chat_room' {
+  ): 'forum_post' | 'forum_thread' | 'chat_room' {
     if (event.event_type === 'NewMessageCreated' || ctx.chatContext) {
       return 'chat_room'
     }
-    return event.event_type === 'NewCommentCreated' ? 'forum_comment' : 'forum_post'
+    return event.event_type === 'ThreadOpened' || event.event_type === 'ThreadTurnAdded'
+      ? 'forum_thread'
+      : 'forum_post'
   }
 
   private buildVariables(
     ctx: ExecutionContext,
     personaSeedCode: import('../../shared/agent-persona-catalog.js').PersonaSeedCode,
-    scene: 'forum_post' | 'forum_comment' | 'chat_room',
+    scene: 'forum_post' | 'forum_thread' | 'chat_room',
   ): Record<string, string> {
     return {
       persona_name: ctx.persona.name,

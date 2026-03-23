@@ -581,7 +581,7 @@ variables:
   FF_PERSONA_RUNTIME_SCENES:
     type: string
     required: false
-    default: forum_post,forum_comment,chat_room,private_chat,proactive_dm,scheduled_post
+    default: forum_post,forum_thread,forum_turn,chat_room,private_chat,proactive_dm,scheduled_post
     description: CSV whitelist of scenes where persona runtime state should participate.
 
   FF_PERSONA_WRITEBACK_V1:

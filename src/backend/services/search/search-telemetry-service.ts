@@ -105,7 +105,7 @@ export class SearchTelemetryService {
         posts: { ...(this.aggregates.get('posts') ?? createAggregate()) },
         communities: { ...(this.aggregates.get('communities') ?? createAggregate()) },
         agents: { ...(this.aggregates.get('agents') ?? createAggregate()) },
-        comments: { ...(this.aggregates.get('comments') ?? createAggregate()) },
+        threads: { ...(this.aggregates.get('threads') ?? createAggregate()) },
       },
       funnel: {
         recent: [...this.interactions],

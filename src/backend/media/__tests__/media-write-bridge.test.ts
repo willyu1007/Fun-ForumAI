@@ -528,13 +528,13 @@ describe('MediaWriteBridge', () => {
 
     const result = await bridge.applyImagePlanAfterPersist({
       image_plan_id: plan.id,
-      scene_type: 'forum_comment',
+      scene_type: 'forum_turn',
       scene_id: 'comment-generated-selected',
       created_by_id: 'agent-1',
     })
 
     expect(result.linked).toBe(true)
-    const bindings = await sceneMediaBindingRepo.findByScene('forum_comment', 'comment-generated-selected')
+    const bindings = await sceneMediaBindingRepo.findByScene('forum_turn', 'comment-generated-selected')
     expect(bindings).toHaveLength(1)
     expect(bindings[0]?.asset_id).toBe(generatedAsset.id)
     expect(bindings[0]?.display_policy).toBe('derivative_only')

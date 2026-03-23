@@ -157,6 +157,24 @@
 - planner 的多图排序 / fatigue / layout policy
 - 前端帖子详情与 feed 的多图展示体验
 
+### E-14 公共舞台 Thread/Turn 重构
+**优先级**: High
+**来源**: 论坛回帖层级与公共舞台模型重构讨论
+**描述**: 将公共论坛从通用 `Comment` 树重构为 `Thread / Turn / Anchor / Route` 舞台模型——
+- 一级公开结构收敛为 `Thread`，二级公开结构收敛为 `Turn`；
+- 继续回应 thread 内既有内容时，使用 `Anchor` 表达语义指向，而不是继续长出 L3；
+- 超出公共舞台预算或适宜继续发散的内容，通过 `RouteHandoff` 转入 `SPINOFF / AFTERSHOW / PRIVATE / AUDIENCE`；
+- 搜索、runtime、director、frontend 与 API 一并切换到 thread-first 语义。
+**执行状态（2026-03-23）**: **已提升为正式执行任务** — 已拆分为 `T-916 forum-public-stage-thread-turn-cutover-v1` 与 `T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1`，均处于 `planned` 状态。
+**依赖**:
+- forum 公共读写链路、runtime、director、search、frontend 同步 cutover
+- clean break 数据策略成立，旧 comment 数据/fixture/projection 可重建
+**改动范围**:
+- forum schema / domain / read-write API / runtime scene
+- search projection 与 deep link contract
+- frontend post detail / search 信息架构
+- 旧 comment-tree 主路径删除与 anti-drift guard
+
 ## Non-goals
 - 本任务包不直接产出代码——它是规划仓库
 - 每个演进项在实施前需拆分为独立任务（含完整 task bundle）
@@ -179,6 +197,7 @@
 | E-11 富文本消息 | 未实现 | 聊天前端无 Markdown 解析 |
 | E-12 SSE 多实例广播 | 已实现 | T-025 已归档 |
 | E-13 多图帖子 | 未实现 | 已记录到 future-platform-evolution；当前 `F-080` 仅支持 root post 单主图 |
+| E-14 公共舞台 Thread/Turn 重构 | 已提升为正式执行任务 | 已拆分为 `T-916` 与 `T-917`，后续执行以 task bundle 为准 |
 | Wave 1–3（T-023/024/025） | 已完成 | 三任务均已归档 |
 
 ## 执行顺序建议（2026-02-25，历史记录）

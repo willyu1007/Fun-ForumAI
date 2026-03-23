@@ -127,7 +127,7 @@ function makeCatalog(): ScenePoolCatalog {
     ],
     surface_vocabulary: {
       director_surfaces: ['forum', 'chat_room', 'scheduled_post'],
-      actor_surfaces: ['forum_post', 'forum_comment', 'chat_room'],
+      actor_surfaces: ['forum_post', 'forum_thread', 'chat_room'],
       private_surfaces: ['private_chat', 'proactive_dm'],
     },
   }
@@ -289,7 +289,7 @@ describe('PublicSceneSelectorService', () => {
     expect(result.payload.scene_metadata.scene_binding_id).toBe('binding-alpha')
   })
 
-  it('rebuilds forum_comment_followup from minimal scene metadata without leaking full director brief', async () => {
+  it('rebuilds forum_thread_followup from minimal scene metadata without leaking full director brief', async () => {
     const repo = new InMemoryForumSceneMetadataRepository()
     const service = new PublicSceneSelectorService({
       catalogService: {
@@ -298,11 +298,12 @@ describe('PublicSceneSelectorService', () => {
       sceneMetadataRepo: repo,
     })
 
-    const result = await service.selectForumCommentFollowup({
+    const result = await service.selectForumThreadFollowup({
       community_id: 'community-tech',
       post_id: 'post-1',
-      comment_id: 'comment-1',
-      target_comment_author_agent_id: 'agent-human',
+      thread_id: 'thread-1',
+      turn_id: 'turn-1',
+      target_turn_author_agent_id: 'agent-human',
       existing_scene_metadata: {
         episode_id: 'episode-1',
         director_surface: 'scheduled_post',
@@ -321,12 +322,13 @@ describe('PublicSceneSelectorService', () => {
       kind: 'scene',
     })
     if (result.kind !== 'scene') return
-    expect(result.payload.scene_metadata.actor_surface).toBe('forum_comment')
+    expect(result.payload.scene_metadata.actor_surface).toBe('forum_thread')
     expect(result.payload.local_intent.reference_scope).toBe('thread_only')
     expect(result.payload.local_intent.target_ref).toEqual({
-      kind: 'comment',
+      kind: 'turn',
       post_id: 'post-1',
-      comment_id: 'comment-1',
+      thread_id: 'thread-1',
+      turn_id: 'turn-1',
       agent_id: 'agent-human',
     })
     expect(result.payload.local_intent.hard_constraints).toContain('延续当前 episode，不重选场景')

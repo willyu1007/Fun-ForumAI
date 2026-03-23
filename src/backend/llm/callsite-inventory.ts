@@ -43,6 +43,9 @@ export const LLM_DIRECT_CALL_GUARD_COUNTS: Record<
   'src/backend/app.ts': {
     'promptEngine.render': 1,
   },
+  'src/backend/media/media-semantic-service.ts': {
+    'promptEngine.render': 1,
+  },
 }
 
 export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
@@ -71,12 +74,12 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     migration_blocker: 'Migrated to gateway envelope; keep this inventory entry to prevent regressions.',
   },
   {
-    source_id: 'agent-executor-forum-comment',
+    source_id: 'agent-executor-forum-thread',
     source_file: 'src/backend/runtime/agent-executor.ts',
-    scene: 'forum_comment',
+    scene: 'forum_thread',
     dispatch_calls: ['llmGateway.generateVisibleText'],
     evidence_patterns: [
-      "case 'NewCommentCreated'",
+      "case 'ThreadOpened'",
       'PROMPT_TEMPLATE_REFS.agentReplyToComment',
       'this.deps.llmGateway.generateVisibleText({',
       'scene: promptScene',
@@ -84,7 +87,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     intent: 'forum_reply',
     visibility: 'visible',
     prompt_ref: { id: 'agent-reply-to-comment', version: 4 },
-    voice_line_authority: 'Comment replies still resolve through forum_reply intent, but now on top of homeVoiceLineId authority.',
+    voice_line_authority: 'Thread turns still resolve through forum_reply intent, but now on top of homeVoiceLineId authority.',
     tier_floor: 'base',
     expected_profile_refs: {
       'qwen-social-v1': 'qwen-social-forum-reply-base',

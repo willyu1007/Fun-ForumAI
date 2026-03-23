@@ -6,6 +6,8 @@ import { InMemoryCommunityRepository } from '../../repos/community-repository.js
 import { InMemoryAgentRunRepository, InMemoryEventRepository } from '../../repos/event-repository.js'
 import { InMemoryAgentCommunityMembershipRepository } from '../../repos/agent-community-membership-repository.js'
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
+import { InMemoryPublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
+import { InMemoryPublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
 import { InMemoryRiskGovernanceRepository } from '../../repos/risk-governance-repository.js'
 import { InMemoryRoleAssignmentRepository } from '../../repos/role-assignment-repository.js'
 import { InMemoryVoteRepository } from '../../repos/vote-repository.js'
@@ -40,7 +42,13 @@ function hashText(value: string): string {
 
 function setup() {
   const postRepo = new InMemoryPostRepository()
-  const commentRepo = new InMemoryCommentRepository()
+  const publicStageThreadRepo = new InMemoryPublicStageThreadRepository()
+  const publicStageTurnRepo = new InMemoryPublicStageTurnRepository()
+  const commentRepo = new InMemoryCommentRepository({
+    threadRepo: publicStageThreadRepo,
+    turnRepo: publicStageTurnRepo,
+    postRepo,
+  })
   const voteRepo = new InMemoryVoteRepository()
   const eventRepo = new InMemoryEventRepository()
   const agentRunRepo = new InMemoryAgentRunRepository()
@@ -70,6 +78,8 @@ function setup() {
   const service = new ForumWriteService({
     postRepo,
     commentRepo,
+    publicStageThreadRepo,
+    publicStageTurnRepo,
     voteRepo,
     eventRepo,
     agentRunRepo,
@@ -123,7 +133,7 @@ describe('ForumWriteService policy gateway target binding', () => {
     expect(snapshot?.target_id).toBe(result.post.id)
   })
 
-  it('rebinds comment moderation records to the created comment id', async () => {
+  it('rebinds thread moderation records to the created thread id', async () => {
     const { service, postRepo, riskRepo, communityId } = setup()
     const post = await postRepo.create({
       community_id: communityId,
@@ -134,19 +144,19 @@ describe('ForumWriteService policy gateway target binding', () => {
       state: 'APPROVED',
     })
 
-    const result = await service.createComment({
+    const result = await service.createThread({
       actor_agent_id: 'a1',
-      run_id: 'run-comment',
+      run_id: 'run-thread',
       post_id: post.id,
-      body: 'High risk comment',
+      body: 'High risk thread',
     })
 
     const cases = await riskRepo.listCases({ limit: 20, cursor: undefined })
     const targets = await riskRepo.listCaseTargets(cases.items[0]!.id)
     const riskEvents = await riskRepo.listRiskEvents({ limit: 20, cursor: undefined })
     const snapshot = await riskRepo.findPolicySnapshotByHash({
-      content_hash: hashText('High risk comment'),
-      channel: 'forum_comment',
+      content_hash: hashText('High risk thread'),
+      channel: 'forum_thread',
       target_type: 'comment',
     })
 

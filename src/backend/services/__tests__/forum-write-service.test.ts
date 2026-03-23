@@ -10,6 +10,8 @@ import { InMemoryIncubationRepository } from '../../repos/incubation-repository.
 import { InMemoryRoleAssignmentRepository } from '../../repos/role-assignment-repository.js'
 import { InMemoryForumSceneMetadataRepository } from '../../repos/forum-scene-metadata-repository.js'
 import { InMemoryPublicSceneWriteRepository } from '../../repos/public-scene-write-repository.js'
+import { InMemoryPublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
+import { InMemoryPublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
 import type { ModerationResult } from '../../moderation/types.js'
 import { config } from '../../lib/config.js'
 
@@ -98,7 +100,13 @@ function buildStrictT4StageSpec() {
 
 function setup(modResult: ModerationResult = CLEAN_RESULT) {
   const postRepo = new InMemoryPostRepository()
-  const commentRepo = new InMemoryCommentRepository()
+  const publicStageThreadRepo = new InMemoryPublicStageThreadRepository()
+  const publicStageTurnRepo = new InMemoryPublicStageTurnRepository()
+  const commentRepo = new InMemoryCommentRepository({
+    threadRepo: publicStageThreadRepo,
+    turnRepo: publicStageTurnRepo,
+    postRepo,
+  })
   const voteRepo = new InMemoryVoteRepository()
   const eventRepo = new InMemoryEventRepository()
   const agentRunRepo = new InMemoryAgentRunRepository()
@@ -125,6 +133,8 @@ function setup(modResult: ModerationResult = CLEAN_RESULT) {
   const svc = new ForumWriteService({
     postRepo,
     commentRepo,
+    publicStageThreadRepo,
+    publicStageTurnRepo,
     publicSceneWriteRepo,
     voteRepo,
     eventRepo,
@@ -139,6 +149,8 @@ function setup(modResult: ModerationResult = CLEAN_RESULT) {
     svc,
     postRepo,
     commentRepo,
+    publicStageThreadRepo,
+    publicStageTurnRepo,
     voteRepo,
     eventRepo,
     agentRunRepo,
@@ -557,7 +569,7 @@ describe('ForumWriteService', () => {
     })
   })
 
-  describe('createComment', () => {
+  describe('thread/turn writes', () => {
     let ctx: ReturnType<typeof setup>
     let postId: string
 
@@ -574,19 +586,19 @@ describe('ForumWriteService', () => {
       postId = post.id
     })
 
-    it('creates a comment on an existing post', async () => {
-      const result = await ctx.svc.createComment({
+    it('creates a thread on an existing post', async () => {
+      const result = await ctx.svc.createThread({
         actor_agent_id: 'a1',
         run_id: 'r1',
         post_id: postId,
         body: 'Great!',
       })
       expect(result.comment.body).toBe('Great!')
-      expect(result.event.event_type).toBe('COMMENT_CREATED')
+      expect(result.event.event_type).toBe('THREAD_OPENED')
     })
 
     it('records chain_depth in comment event payload', async () => {
-      const result = await ctx.svc.createComment({
+      const result = await ctx.svc.createThread({
         actor_agent_id: 'a1',
         run_id: 'r-chain',
         post_id: postId,
@@ -596,26 +608,89 @@ describe('ForumWriteService', () => {
       expect((result.event.payload_json as Record<string, unknown>).chain_depth).toBe(4)
     })
 
-    it('supports nested comments', async () => {
-      const parent = await ctx.svc.createComment({
+    it('creates a thread turn under an existing thread', async () => {
+      const parent = await ctx.svc.createThread({
         actor_agent_id: 'a1',
         run_id: 'r1',
         post_id: postId,
         body: 'Parent',
       })
-      const child = await ctx.svc.createComment({
+      const child = await ctx.svc.addThreadTurn({
         actor_agent_id: 'a2',
         run_id: 'r2',
-        post_id: postId,
-        parent_comment_id: parent.comment.id,
+        thread_id: parent.comment.id,
         body: 'Reply',
       })
       expect(child.comment.parent_comment_id).toBe(parent.comment.id)
     })
 
+    it('stores a manual route handoff on the created thread', async () => {
+      const result = await ctx.svc.createThread({
+        actor_agent_id: 'a1',
+        run_id: 'r-route-thread',
+        post_id: postId,
+        body: '这个话题更适合私下聊。',
+        route_handoff: {
+          route_type: 'PRIVATE',
+          reason_code: 'PRIVATE_HANDOFF_REQUIRED',
+          handoff_label: '该话题适合转入私聊继续。',
+        },
+      })
+
+      const thread = await ctx.publicStageThreadRepo.findById(result.comment.id)
+      expect(thread).toMatchObject({
+        thread_state: 'CLOSED',
+        active_route: expect.objectContaining({
+          route_type: 'PRIVATE',
+          route_state: 'READY',
+          reason_code: 'PRIVATE_HANDOFF_REQUIRED',
+        }),
+      })
+    })
+
+    it('closes a thread with an aftershow handoff when the reply budget is exhausted', async () => {
+      await ctx.publicStageThreadRepo.create({
+        id: 'thread-budget-1',
+        post_id: postId,
+        community_id: ctx.communityId,
+        author_agent_id: 'a0',
+        body: 'Budget thread',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+        reply_budget: 1,
+      })
+
+      const turn = await ctx.svc.addThreadTurn({
+        actor_agent_id: 'a1',
+        run_id: 'r-route-budget',
+        thread_id: 'thread-budget-1',
+        body: '最后一轮收口。',
+      })
+
+      expect(turn.event.event_type).toBe('THREAD_TURN_ADDED')
+      const thread = await ctx.publicStageThreadRepo.findById('thread-budget-1')
+      expect(thread).toMatchObject({
+        thread_state: 'CLOSED',
+        active_route: expect.objectContaining({
+          route_type: 'AFTERSHOW',
+          route_state: 'READY',
+          reason_code: 'THREAD_REPLY_BUDGET_EXHAUSTED',
+        }),
+      })
+
+      await expect(
+        ctx.svc.addThreadTurn({
+          actor_agent_id: 'a2',
+          run_id: 'r-route-budget-overflow',
+          thread_id: 'thread-budget-1',
+          body: '这条不应该再被接受。',
+        }),
+      ).rejects.toThrow('closed')
+    })
+
     it('throws for nonexistent post', async () => {
       await expect(
-        ctx.svc.createComment({
+        ctx.svc.createThread({
           actor_agent_id: 'a1',
           run_id: 'r1',
           post_id: 'nope',
@@ -624,13 +699,19 @@ describe('ForumWriteService', () => {
       ).rejects.toThrow('not found')
     })
 
-    it('throws for nonexistent parent comment', async () => {
+    it('throws for nonexistent anchor turn', async () => {
+      const thread = await ctx.svc.createThread({
+        actor_agent_id: 'a1',
+        run_id: 'r1-thread',
+        post_id: postId,
+        body: 'Parent',
+      })
       await expect(
-        ctx.svc.createComment({
+        ctx.svc.addThreadTurn({
           actor_agent_id: 'a1',
           run_id: 'r1',
-          post_id: postId,
-          parent_comment_id: 'nope',
+          thread_id: thread.comment.id,
+          anchor_turn_id: 'nope',
           body: 'Hi',
         }),
       ).rejects.toThrow('not found')
@@ -638,7 +719,7 @@ describe('ForumWriteService', () => {
 
     it('throws on empty body', async () => {
       await expect(
-        ctx.svc.createComment({
+        ctx.svc.createThread({
           actor_agent_id: 'a1',
           run_id: 'r1',
           post_id: postId,
@@ -691,7 +772,7 @@ describe('ForumWriteService', () => {
     })
 
     it('resolves community_id for comment vote events', async () => {
-      const comment = await ctx.svc.createComment({
+      const comment = await ctx.svc.createThread({
         actor_agent_id: 'a2',
         run_id: 'r-comment',
         post_id: postId,

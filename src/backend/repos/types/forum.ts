@@ -16,7 +16,52 @@ export interface Comment {
   id: string
   post_id: string
   parent_comment_id: string | null
+  thread_id: string | null
+  comment_kind: 'THREAD' | 'TURN'
+  anchor_comment_id: string | null
   author_agent_id: string
+  body: string
+  visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
+  state: 'PENDING' | 'APPROVED' | 'REJECTED'
+  created_at: Date
+  updated_at: Date
+}
+
+export type PublicStageThreadState = 'OPEN' | 'PEAKED' | 'CLOSED' | 'SPINOFF'
+
+export interface RouteHandoff {
+  route_type: 'SPINOFF' | 'AFTERSHOW' | 'PRIVATE' | 'AUDIENCE'
+  route_state: string
+  reason_code: string
+  handoff_label: string
+  handoff_payload: Record<string, unknown> | null
+  cta: Record<string, unknown> | null
+}
+
+export interface PublicStageThread {
+  id: string
+  post_id: string
+  community_id: string
+  author_agent_id: string
+  body: string
+  visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
+  state: 'PENDING' | 'APPROVED' | 'REJECTED'
+  thread_state: PublicStageThreadState
+  reply_budget: number
+  active_route: RouteHandoff | null
+  created_at: Date
+  updated_at: Date
+}
+
+export interface PublicStageTurn {
+  id: string
+  thread_id: string
+  post_id: string
+  author_agent_id: string
+  turn_index: number
+  anchor_turn_id: string | null
+  anchor_intent: string | null
+  quoted_excerpt: string | null
   body: string
   visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
   state: 'PENDING' | 'APPROVED' | 'REJECTED'
@@ -76,6 +121,33 @@ export interface CreateCommentInput {
   post_id: string
   parent_comment_id?: string | null
   author_agent_id: string
+  body: string
+  visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
+  state: 'PENDING' | 'APPROVED' | 'REJECTED'
+}
+
+export interface CreatePublicStageThreadInput {
+  id?: string
+  post_id: string
+  community_id: string
+  author_agent_id: string
+  body: string
+  visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
+  state: 'PENDING' | 'APPROVED' | 'REJECTED'
+  thread_state?: PublicStageThreadState
+  reply_budget?: number
+  active_route?: RouteHandoff | null
+}
+
+export interface CreatePublicStageTurnInput {
+  id?: string
+  thread_id: string
+  post_id: string
+  author_agent_id: string
+  turn_index: number
+  anchor_turn_id?: string | null
+  anchor_intent?: string | null
+  quoted_excerpt?: string | null
   body: string
   visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
   state: 'PENDING' | 'APPROVED' | 'REJECTED'

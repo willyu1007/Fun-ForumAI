@@ -82,7 +82,8 @@ export function resolveMediaObservabilitySurface(input: {
   if (input.actor_surface === 'forum_post' && input.director_surface === 'scheduled_post') {
     return 'root_post'
   }
-  if (input.actor_surface === 'forum_comment') return 'forum_comment'
+  if (input.actor_surface === 'forum_thread') return 'forum_thread'
+  if (input.actor_surface === 'forum_turn') return 'forum_turn'
   if (input.actor_surface === 'chat_room_message') return 'chat_room_message'
   if (input.actor_surface === 'private_message') return 'private_message'
   return 'planner'

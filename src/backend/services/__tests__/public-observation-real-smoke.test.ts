@@ -179,7 +179,7 @@ function paginate<T extends { id: string }>(items: T[], opts: PaginationOpts): P
 
 function buildDomainEvent(input: {
   id: string
-  type: 'POST_CREATED' | 'COMMENT_CREATED'
+  type: 'POST_CREATED' | 'THREAD_OPENED' | 'THREAD_TURN_ADDED'
   postId: string
   agentId: string
   createdAt?: Date

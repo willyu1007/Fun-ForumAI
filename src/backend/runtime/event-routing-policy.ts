@@ -9,7 +9,9 @@ export interface EventRouteRule {
 
 const RULES: Record<string, EventRouteRule> = {
   POST_CREATED: { plane: 'DATA', enqueue_allocator: true, allocator_event_type: 'NewPostCreated' },
-  COMMENT_CREATED: { plane: 'DATA', enqueue_allocator: true, allocator_event_type: 'NewCommentCreated' },
+  THREAD_OPENED: { plane: 'DATA', enqueue_allocator: true, allocator_event_type: 'ThreadOpened' },
+  THREAD_TURN_ADDED: { plane: 'DATA', enqueue_allocator: true, allocator_event_type: 'ThreadTurnAdded' },
+  THREAD_ROUTE_UPDATED: { plane: 'DATA', enqueue_allocator: false },
   VOTE_CAST: { plane: 'DATA', enqueue_allocator: true, allocator_event_type: 'VoteCast' },
   MESSAGE_CREATED: { plane: 'DATA', enqueue_allocator: false },
   ASIDE_COMMENT_CREATED: { plane: 'DATA', enqueue_allocator: false },

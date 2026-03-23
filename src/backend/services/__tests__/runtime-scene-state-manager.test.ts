@@ -93,7 +93,7 @@ function buildHarness() {
           }],
           surface_vocabulary: {
             director_surfaces: ['forum', 'scheduled_post', 'chat_room'],
-            actor_surfaces: ['forum_post', 'forum_comment', 'chat_room'],
+            actor_surfaces: ['forum_post', 'forum_thread', 'chat_room'],
             private_surfaces: ['private_chat', 'proactive_dm'],
           },
         }),

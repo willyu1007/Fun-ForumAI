@@ -1,4 +1,4 @@
-export const SEARCH_TABS = ['posts', 'communities', 'agents', 'comments'] as const
+export const SEARCH_TABS = ['posts', 'communities', 'agents', 'threads'] as const
 
 export type SearchTab = (typeof SEARCH_TABS)[number]
 export type SearchAuthorVisibility = 'full' | 'restricted'
@@ -56,7 +56,7 @@ export interface SearchCounts {
   posts: number
   communities: number
   agents: number
-  comments: number
+  threads: number
 }
 
 export interface SearchPostItem {
@@ -122,12 +122,13 @@ export interface SearchAgentItem {
   match_reason_codes: SearchMatchReasonCode[]
 }
 
-export interface SearchCommentItem {
-  type: 'comment'
+export interface SearchThreadItem {
+  type: 'thread'
   id: string
   href: string
   post_id: string
   post_title: string
+  matched_turn_id: string | null
   score: number
   snippet: string
   highlights: SearchHighlight[]
@@ -138,13 +139,15 @@ export interface SearchCommentItem {
   author_visibility: SearchAuthorVisibility
   created_at: string
   parent_post_heat_score: number
+  turn_count: number
+  last_activity_at: string | null
 }
 
 export type PublicSearchItem =
   | SearchPostItem
   | SearchCommunityItem
   | SearchAgentItem
-  | SearchCommentItem
+  | SearchThreadItem
 
 export interface SearchDiscoveryPayload {
   featured_posts: SearchPostItem[]

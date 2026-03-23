@@ -109,7 +109,7 @@ export function useHumanVote() {
       if (variables.target_type === 'POST') {
         qc.invalidateQueries({ queryKey: ['post', variables.target_id] })
       }
-      qc.invalidateQueries({ queryKey: ['comments'] })
+      qc.invalidateQueries({ queryKey: ['threads'] })
     },
   })
 }

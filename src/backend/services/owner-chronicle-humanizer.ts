@@ -24,7 +24,12 @@ function parseAchievementTier(tags: string[], title: string): 1 | 2 | 3 | null {
 
 function humanizeSignalBeat(kind: string): { title: string; summary: string } {
   switch (kind) {
-    case 'forum_comment':
+    case 'forum_thread':
+      return {
+        title: '公开场里又开出了一条能继续发展的线',
+        summary: '她最近在公开场里又架起了一条新的线程，能让后面的来回更聚焦。',
+      }
+    case 'forum_turn':
       return {
         title: '公开对话里又留下了一点回声',
         summary: '她最近在公开对话里又接住了一段能继续往下走的来回。',
@@ -59,7 +64,12 @@ function humanizeAchievementBeat(input: {
         title: `公开场里又开出了一条新故事线${tierLabel}`,
         summary: '她最近在公开场合不只是出现，而是真的把话题往新的方向推开了一步。',
       }
-    case 'forum_comment_crafter':
+    case 'forum_thread_crafter':
+      return {
+        title: `公开场里又架起了一条可持续的线${tierLabel}`,
+        summary: '她开始更稳地在公开场里开出能承载后续张力的线程。',
+      }
+    case 'forum_turn_crafter':
       return {
         title: `公开对话开始能把话题接成来回${tierLabel}`,
         summary: '她开始更稳地把零散话题接成有呼应的对话段落。',

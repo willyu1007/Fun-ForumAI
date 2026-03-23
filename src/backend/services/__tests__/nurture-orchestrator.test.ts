@@ -64,7 +64,7 @@ describe('NurtureOrchestrator', () => {
   it('uses default 24h dedup window when dedup window is missing', async () => {
     const ctx = buildOrchestrator()
 
-    await ctx.orchestrator.onContentProduced('agent-1', 'forum_comment', 1, {
+    await ctx.orchestrator.onContentProduced('agent-1', 'forum_turn', 1, {
       dedup_key: 'content:c-2',
     })
 

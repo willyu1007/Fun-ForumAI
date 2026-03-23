@@ -9,7 +9,7 @@ export interface SearchServiceDeps {
   postsProvider: SearchProvider
   communitiesProvider: SearchProvider
   agentsProvider: SearchProvider
-  commentsProvider: SearchProvider
+  threadsProvider: SearchProvider
   humanParticipationService?: Pick<HumanParticipationService, 'listFollowingAgentIds'>
   countsCache?: SearchCountsCache
   telemetry?: SearchTelemetryService
@@ -38,7 +38,7 @@ export class SearchService {
       posts: deps.postsProvider,
       communities: deps.communitiesProvider,
       agents: deps.agentsProvider,
-      comments: deps.commentsProvider,
+      threads: deps.threadsProvider,
     }
     this.countsCache = deps.countsCache ?? new SearchCountsCache()
     this.telemetry = deps.telemetry ?? new SearchTelemetryService()
@@ -70,7 +70,7 @@ export class SearchService {
           posts: 0,
           communities: 0,
           agents: 0,
-          comments: 0,
+          threads: 0,
         },
         items: [],
         discovery,
@@ -138,13 +138,13 @@ export class SearchService {
       this.providers.posts.count(normalizedQuery),
       this.providers.communities.count(normalizedQuery),
       this.providers.agents.count(normalizedQuery),
-      this.providers.comments.count(normalizedQuery),
+      this.providers.threads.count(normalizedQuery),
     ])
     return {
       posts: counts[0],
       communities: counts[1],
       agents: counts[2],
-      comments: counts[3],
+      threads: counts[3],
     }
   }
 

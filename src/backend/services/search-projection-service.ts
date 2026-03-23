@@ -144,7 +144,7 @@ export interface SearchProjectionServiceDeps {
   guard: SearchGuard
 }
 
-export type SearchReconcileScope = 'agent' | 'posts' | 'comments' | 'communities'
+export type SearchReconcileScope = 'agent' | 'posts' | 'threads' | 'communities'
 
 export interface SearchReconcileSummary {
   scope: 'all' | 'agent'
@@ -153,7 +153,7 @@ export interface SearchReconcileSummary {
   reason: string
   refreshed: {
     posts: number
-    comments: number
+    threads: number
     communities: number
     agents: number
   }
@@ -165,7 +165,7 @@ export interface SearchReadModelHealth {
   checked_at: string
   docs: {
     posts: number
-    comments: number
+    threads: number
     communities: number
     agents: number
   }
@@ -264,43 +264,43 @@ export class SearchProjectionService {
     this.invalidateCountsCache()
   }
 
-  async refreshComment(commentId: string): Promise<void> {
-    const comment = await this.deps.commentRepo.findById(commentId)
-    if (!comment || !this.deps.guard.canViewComment(comment)) {
-      await this.deps.searchDocRepo.deleteCommentDoc(commentId)
+  async refreshThread(threadId: string): Promise<void> {
+    const thread = await this.deps.commentRepo.findById(threadId)
+    if (!thread || thread.comment_kind !== 'THREAD' || !this.deps.guard.canViewComment(thread)) {
+      await this.deps.searchDocRepo.deleteThreadDoc(threadId)
       this.invalidateCountsCache()
       return
     }
 
-    const post = await this.deps.postRepo.findById(comment.post_id)
+    const post = await this.deps.postRepo.findById(thread.post_id)
     if (!post || !this.deps.guard.canViewPost(post)) {
-      await this.deps.searchDocRepo.deleteCommentDoc(commentId)
+      await this.deps.searchDocRepo.deleteThreadDoc(threadId)
       this.invalidateCountsCache()
       return
     }
 
-    const [commentMeta, community, scene] = await Promise.all([
-      this.deps.forumReadService.getComment(commentId),
+    const [threadMeta, community, scene] = await Promise.all([
+      this.deps.forumReadService.getThread(threadId),
       Promise.resolve(this.deps.communityRepo.findById(post.community_id)),
-      this.deps.forumSceneMetadataRepo.findByCommentId(commentId),
+      this.deps.forumSceneMetadataRepo.findByThreadId(threadId),
     ])
-    const followerCount = this.deps.humanFollowRepo.listFollowerUserIds(comment.author_agent_id).length
-    const authorId = commentMeta.author?.id ?? commentMeta.author_agent_id
+    const followerCount = this.deps.humanFollowRepo.listFollowerUserIds(thread.author_agent_id).length
+    const authorId = threadMeta.author.id
     const projectedAuthor = this.buildProjectedAuthor(authorId, {
-      display_name: commentMeta.author?.display_name ?? comment.author_agent_id,
-      avatar_url: commentMeta.author?.avatar_url ?? null,
-      tagline: commentMeta.author?.tagline ?? null,
-      badges: commentMeta.author?.badges ?? [],
+      display_name: threadMeta.author.display_name,
+      avatar_url: threadMeta.author.avatar_url,
+      tagline: threadMeta.author.tagline ?? null,
+      badges: threadMeta.author.badges ?? [],
     })
     const authorBadgesText = formatBadgeText(projectedAuthor.badges)
     const sceneFields = readSceneSearchFields(scene)
-    const authorSignalScore = projectedAuthor.visibility === 'full'
-      ? Number((followerCount + projectedAuthor.badges.length * 2).toFixed(2))
+    const threadSignalScore = projectedAuthor.visibility === 'full'
+      ? Number((followerCount + projectedAuthor.badges.length * 2 + threadMeta.turn_count + threadMeta.participant_count).toFixed(2))
       : 0
 
-    await this.deps.searchDocRepo.upsertCommentDoc({
-      comment_id: commentMeta.id,
-      post_id: commentMeta.post_id,
+    await this.deps.searchDocRepo.upsertThreadDoc({
+      thread_id: threadMeta.id,
+      post_id: threadMeta.post_id,
       community_id: post.community_id,
       community_slug: community?.slug ?? post.community_id,
       community_name: community?.name ?? post.community_id,
@@ -310,12 +310,14 @@ export class SearchProjectionService {
       author_tagline: projectedAuthor.tagline,
       author_badges: projectedAuthor.badges,
       author_badges_text: authorBadgesText,
-      body: commentMeta.body,
+      body: threadMeta.body,
       post_title: post.title,
       scene_tags_text: sceneFields.scene_tags_text,
       scene_phase: sceneFields.scene_phase,
       searchable_text: joinSearchParts([
-        commentMeta.body,
+        threadMeta.body,
+        threadMeta.turns.map((turn) => turn.body).join(' '),
+        threadMeta.turns.map((turn) => turn.author.display_name).join(' '),
         post.title,
         community?.name,
         community?.slug,
@@ -324,10 +326,10 @@ export class SearchProjectionService {
         authorBadgesText,
         sceneFields.scene_tags_text,
       ]),
-      visibility: commentMeta.visibility,
-      state: commentMeta.state,
-      author_signal_score: authorSignalScore,
-      comment_created_at: commentMeta.created_at,
+      visibility: threadMeta.visibility,
+      state: threadMeta.state,
+      thread_signal_score: threadSignalScore,
+      thread_created_at: threadMeta.created_at,
     })
     this.invalidateCountsCache()
   }
@@ -514,7 +516,11 @@ export class SearchProjectionService {
     }
 
     const comment = await this.deps.commentRepo.findById(targetId)
-    await this.refreshComment(targetId)
+    if (comment?.comment_kind === 'THREAD') {
+      await this.refreshThread(comment.id)
+    } else if (comment?.thread_id) {
+      await this.refreshThread(comment.thread_id)
+    }
     if (comment) {
       await this.refreshPost(comment.post_id)
     }
@@ -533,12 +539,17 @@ export class SearchProjectionService {
       return
     }
 
-    if (event.event_type === 'COMMENT_CREATED' || event.event_type === 'ASIDE_COMMENT_CREATED') {
-      const commentId = typeof payload.comment_id === 'string' ? payload.comment_id : null
+    if (
+      event.event_type === 'THREAD_OPENED'
+      || event.event_type === 'THREAD_TURN_ADDED'
+      || event.event_type === 'THREAD_ROUTE_UPDATED'
+      || event.event_type === 'ASIDE_COMMENT_CREATED'
+    ) {
+      const threadId = typeof payload.thread_id === 'string' ? payload.thread_id : null
       const postId = typeof payload.post_id === 'string' ? payload.post_id : null
       const communityId = typeof payload.community_id === 'string' ? payload.community_id : null
       const authorAgentId = typeof payload.author_agent_id === 'string' ? payload.author_agent_id : null
-      if (commentId) await this.refreshComment(commentId)
+      if (threadId) await this.refreshThread(threadId)
       if (postId) await this.refreshPost(postId)
       if (communityId) await this.refreshCommunity(communityId)
       if (authorAgentId) await this.refreshAgent(authorAgentId)
@@ -571,7 +582,7 @@ export class SearchProjectionService {
 
   async rebuildAll(): Promise<{
     posts: number
-    comments: number
+    threads: number
     communities: number
     agents: number
   }> {
@@ -581,7 +592,7 @@ export class SearchProjectionService {
 
     return {
       posts: summary.refreshed.posts,
-      comments: summary.refreshed.comments,
+      threads: summary.refreshed.threads,
       communities: summary.refreshed.communities,
       agents: summary.refreshed.agents,
     }
@@ -596,7 +607,7 @@ export class SearchProjectionService {
     const communities = this.collectAllCommunities()
     const agents = this.collectAllAgents()
     const posts = await this.collectAllPublicPosts()
-    const comments = await this.collectVisibleCommentsByPosts(posts.map((post) => post.id))
+    const threads = await this.collectVisibleThreadsByPosts(posts.map((post) => post.id))
 
     if (!dryRun) {
       for (const community of communities) {
@@ -608,8 +619,8 @@ export class SearchProjectionService {
       for (const post of posts) {
         await this.refreshPost(post.id)
       }
-      for (const comment of comments) {
-        await this.refreshComment(comment.id)
+      for (const thread of threads) {
+        await this.refreshThread(thread.id)
       }
     }
 
@@ -620,7 +631,7 @@ export class SearchProjectionService {
       reason: options?.reason ?? 'manual',
       refreshed: {
         posts: posts.length,
-        comments: comments.length,
+        threads: threads.length,
         communities: communities.length,
         agents: agents.length,
       },
@@ -636,12 +647,12 @@ export class SearchProjectionService {
   }): Promise<SearchReconcileSummary> {
     const startedAt = new Date()
     const dryRun = options?.dry_run ?? false
-    const scopes = new Set<SearchReconcileScope>(options?.scopes ?? ['agent', 'posts', 'comments', 'communities'])
+    const scopes = new Set<SearchReconcileScope>(options?.scopes ?? ['agent', 'posts', 'threads', 'communities'])
     const publicPosts = scopes.has('posts') || scopes.has('communities')
       ? await this.collectPublicPostsByAgent(agentId)
       : []
-    const publicComments = scopes.has('comments')
-      ? await this.collectVisibleCommentsByAgent(agentId)
+    const publicThreads = scopes.has('threads')
+      ? await this.collectVisibleThreadIdsByAgent(agentId)
       : []
     const communityIds = scopes.has('communities')
       ? this.collectAgentRelatedCommunityIds(agentId, publicPosts)
@@ -656,9 +667,9 @@ export class SearchProjectionService {
           await this.refreshPost(post.id)
         }
       }
-      if (scopes.has('comments')) {
-        for (const comment of publicComments) {
-          await this.refreshComment(comment.id)
+      if (scopes.has('threads')) {
+        for (const thread of publicThreads) {
+          await this.refreshThread(thread.id)
         }
       }
       if (scopes.has('communities')) {
@@ -675,7 +686,7 @@ export class SearchProjectionService {
       reason: options?.reason ?? 'manual',
       refreshed: {
         posts: scopes.has('posts') ? publicPosts.length : 0,
-        comments: scopes.has('comments') ? publicComments.length : 0,
+        threads: scopes.has('threads') ? publicThreads.length : 0,
         communities: scopes.has('communities') ? communityIds.size : 0,
         agents: scopes.has('agent') ? 1 : 0,
       },
@@ -695,6 +706,9 @@ export class SearchProjectionService {
     const warnings: string[] = []
     if (publicPosts.items.length > 0 && docs.posts === 0) {
       warnings.push('public posts exist but post_search_docs is empty')
+    }
+    if (publicPosts.items.length > 0 && docs.threads === 0) {
+      warnings.push('public threads exist but thread_search_docs is empty')
     }
     if (agents.items.length > 0 && docs.agents === 0) {
       warnings.push('agents exist but agent_search_docs is empty')
@@ -893,10 +907,11 @@ export class SearchProjectionService {
     return this.deps.guard.canViewAgent(agent) ? agentId : null
   }
 
-  private async collectVisibleCommentsByPosts(postIds: string[]) {
+  private async collectVisibleThreadsByPosts(postIds: string[]) {
     if (postIds.length === 0) return []
     const comments = await this.deps.commentRepo.findByPostsSince(postIds, new Date(0))
-    return comments.filter((comment) => this.deps.guard.canViewComment(comment))
+    return comments.filter((comment) =>
+      comment.comment_kind === 'THREAD' && this.deps.guard.canViewComment(comment))
   }
 
   private async collectPublicPostsByAgent(agentId: string): Promise<Array<{ id: string; community_id: string }>> {
@@ -918,8 +933,8 @@ export class SearchProjectionService {
     return items
   }
 
-  private async collectVisibleCommentsByAgent(agentId: string): Promise<Array<{ id: string; post_id: string }>> {
-    const items: Array<{ id: string; post_id: string }> = []
+  private async collectVisibleThreadIdsByAgent(agentId: string): Promise<Array<{ id: string; post_id: string }>> {
+    const items = new Map<string, { id: string; post_id: string }>()
     let cursor: string | undefined
 
     while (true) {
@@ -928,12 +943,16 @@ export class SearchProjectionService {
         limit: SearchProjectionService.AGENT_RECONCILE_PAGE_LIMIT,
       })
       if (page.items.length === 0) break
-      items.push(...page.items.map((comment) => ({ id: comment.id, post_id: comment.post_id })))
+      for (const comment of page.items) {
+        const threadId = comment.comment_kind === 'THREAD' ? comment.id : comment.thread_id
+        if (!threadId) continue
+        items.set(threadId, { id: threadId, post_id: comment.post_id })
+      }
       if (!page.next_cursor || page.next_cursor === cursor) break
       cursor = page.next_cursor
     }
 
-    return items
+    return Array.from(items.values())
   }
 
   private collectAgentRelatedCommunityIds(

@@ -2,7 +2,8 @@
 
 export type DomainEventType =
   | 'NewPostCreated'
-  | 'NewCommentCreated'
+  | 'ThreadOpened'
+  | 'ThreadTurnAdded'
   | 'NewMessageCreated'
   | 'VoteCast'
   | 'RoomTick'
@@ -18,6 +19,8 @@ export interface EventPayload {
   author_agent_id: string
   tags?: string[]
   comment_id?: string
+  thread_id?: string
+  turn_id?: string
   target_type?: 'POST' | 'COMMENT' | 'MESSAGE'
   target_id?: string
   target_author_agent_id?: string

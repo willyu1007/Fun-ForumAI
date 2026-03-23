@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const DIRECTOR_SURFACES = ['forum', 'chat_room', 'scheduled_post']
-export const ACTOR_SURFACES = ['forum_post', 'forum_comment', 'chat_room']
+export const ACTOR_SURFACES = ['forum_post', 'forum_thread', 'chat_room']
 export const PRIVATE_SURFACES = ['private_chat', 'proactive_dm']
 
 const WEEK_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
@@ -436,9 +436,16 @@ const localIntentTargetRefSchema = z.discriminatedUnion('kind', [
     agent_id: z.string().min(1),
   }).strict(),
   z.object({
-    kind: z.literal('comment'),
+    kind: z.literal('thread'),
     post_id: z.string().min(1),
-    comment_id: z.string().min(1),
+    thread_id: z.string().min(1),
+    agent_id: z.string().min(1).optional(),
+  }).strict(),
+  z.object({
+    kind: z.literal('turn'),
+    post_id: z.string().min(1),
+    thread_id: z.string().min(1),
+    turn_id: z.string().min(1),
     agent_id: z.string().min(1).optional(),
   }).strict(),
   z.object({

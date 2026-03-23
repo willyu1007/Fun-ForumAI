@@ -1,5 +1,7 @@
 import { InMemoryPostRepository } from '../repos/post-repository.js'
 import { InMemoryCommentRepository } from '../repos/comment-repository.js'
+import { InMemoryPublicStageThreadRepository } from '../repos/public-stage-thread-repository.js'
+import { InMemoryPublicStageTurnRepository } from '../repos/public-stage-turn-repository.js'
 import { InMemoryVoteRepository } from '../repos/vote-repository.js'
 import { InMemoryHumanVoteRepository } from '../repos/human-vote-repository.js'
 import { InMemoryHumanFollowRepository } from '../repos/human-follow-repository.js'
@@ -49,6 +51,8 @@ import { InMemoryRiskGovernanceRepository } from '../repos/risk-governance-repos
 
 import type { PostRepository } from '../repos/post-repository.js'
 import type { CommentRepository } from '../repos/comment-repository.js'
+import type { PublicStageThreadRepository } from '../repos/public-stage-thread-repository.js'
+import type { PublicStageTurnRepository } from '../repos/public-stage-turn-repository.js'
 import type { VoteRepository } from '../repos/vote-repository.js'
 import type { HumanVoteRepository } from '../repos/human-vote-repository.js'
 import type { HumanFollowRepository } from '../repos/human-follow-repository.js'
@@ -100,6 +104,8 @@ import type { RiskGovernanceRepository } from '../repos/risk-governance-reposito
 export interface Repositories {
   postRepo: PostRepository
   commentRepo: CommentRepository
+  publicStageThreadRepo: PublicStageThreadRepository
+  publicStageTurnRepo: PublicStageTurnRepository
   voteRepo: VoteRepository
   humanVoteRepo: HumanVoteRepository
   humanFollowRepo: HumanFollowRepository
@@ -165,6 +171,8 @@ export async function createRepositories(usePrisma: boolean): Promise<{
 
     const { PgPostRepository } = await import('../repos/pg/pg-post-repository.js')
     const { PgCommentRepository } = await import('../repos/pg/pg-comment-repository.js')
+    const { PgPublicStageThreadRepository } = await import('../repos/pg/pg-public-stage-thread-repository.js')
+    const { PgPublicStageTurnRepository } = await import('../repos/pg/pg-public-stage-turn-repository.js')
     const { PgVoteRepository } = await import('../repos/pg/pg-vote-repository.js')
     const { PgHumanVoteRepository } = await import('../repos/pg/pg-human-vote-repository.js')
     const { PgHumanFollowRepository } = await import('../repos/pg/pg-human-follow-repository.js')
@@ -214,6 +222,8 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgPublicSceneWriteRepository } = await import('../repos/pg/pg-public-scene-write-repository.js')
 
     const pr = new PgPostRepository(prisma)
+    const publicStageThreadRepo = new PgPublicStageThreadRepository(prisma)
+    const publicStageTurnRepo = new PgPublicStageTurnRepository(prisma)
     const cr = new PgCommentRepository(prisma)
     const vr = new PgVoteRepository(prisma)
     const hvr = new PgHumanVoteRepository(prisma)
@@ -269,13 +279,13 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     })
 
     hydratables.push(
-      pr, cr, vr, hvr, hfr, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, forumSceneMetadataRepo, runtimeSceneStateRepo, rr, rwr, appr, mr,
+      pr, cr, publicStageThreadRepo, publicStageTurnRepo, vr, hvr, hfr, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, forumSceneMetadataRepo, runtimeSceneStateRepo, rr, rwr, appr, mr,
       sr, achar, chr, ppr, stageTier, roleAssignmentRepo, psr,
     )
 
     return {
       repos: {
-        postRepo: pr, commentRepo: cr, voteRepo: vr, humanVoteRepo: hvr,
+        postRepo: pr, commentRepo: cr, publicStageThreadRepo, publicStageTurnRepo, voteRepo: vr, humanVoteRepo: hvr,
         humanFollowRepo: hfr, searchDocRepo, mediaAssetRepo: mar,
         mediaSemanticSnapshotRepo: msr, sceneMediaBindingRepo: sbr,
         mediaContextProjectionRepo: mpr, postMediaRepo: pmr,
@@ -303,7 +313,13 @@ export async function createRepositories(usePrisma: boolean): Promise<{
   }
 
   const postRepo = new InMemoryPostRepository()
-  const commentRepo = new InMemoryCommentRepository()
+  const publicStageThreadRepo = new InMemoryPublicStageThreadRepository()
+  const publicStageTurnRepo = new InMemoryPublicStageTurnRepository()
+  const commentRepo = new InMemoryCommentRepository({
+    threadRepo: publicStageThreadRepo,
+    turnRepo: publicStageTurnRepo,
+    postRepo,
+  })
   const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
   const runtimeSceneStateRepo = new InMemoryRuntimeSceneStateRepository()
   const eventRepo = new InMemoryEventRepository()
@@ -313,6 +329,8 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     repos: {
       postRepo,
       commentRepo,
+      publicStageThreadRepo,
+      publicStageTurnRepo,
       voteRepo: new InMemoryVoteRepository(),
       humanVoteRepo: new InMemoryHumanVoteRepository(),
       humanFollowRepo: new InMemoryHumanFollowRepository(),

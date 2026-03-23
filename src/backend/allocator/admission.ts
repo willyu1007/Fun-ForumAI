@@ -3,7 +3,8 @@ import type { AllocatorConfig } from './config.js'
 
 const VALID_EVENT_TYPES = new Set([
   'NewPostCreated',
-  'NewCommentCreated',
+  'ThreadOpened',
+  'ThreadTurnAdded',
   'VoteCast',
   'RoomTick',
 ])

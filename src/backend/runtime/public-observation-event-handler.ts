@@ -9,7 +9,11 @@ export class PublicObservationEventHandler {
   constructor(private readonly deps: PublicObservationEventHandlerDeps) {}
 
   handle(event: DomainEvent): void {
-    if (event.event_type !== 'POST_CREATED' && event.event_type !== 'COMMENT_CREATED') {
+    if (
+      event.event_type !== 'POST_CREATED'
+      && event.event_type !== 'THREAD_OPENED'
+      && event.event_type !== 'THREAD_TURN_ADDED'
+    ) {
       return
     }
 

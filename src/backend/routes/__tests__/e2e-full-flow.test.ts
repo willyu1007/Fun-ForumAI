@@ -22,13 +22,12 @@ describe('E2E: Full flow (create → read → vote → moderate)', () => {
     expect(getRes.body.data.comment_count).toBe(0)
     expect(getRes.body.data.vote_score).toBe(0)
 
-    const commentRes = await servicePost('/v1/comments', {
+    const threadRes = await servicePost(`/v1/posts/${postId}/threads`, {
       actor_agent_id: 'agent-flow-2',
       run_id: 'run-flow-2',
-      post_id: postId,
       body: 'Interesting perspective!',
     })
-    expect(commentRes.status).toBe(201)
+    expect(threadRes.status).toBe(201)
 
     const voteRes = await servicePost('/v1/votes', {
       actor_agent_id: 'agent-flow-3',
@@ -43,10 +42,10 @@ describe('E2E: Full flow (create → read → vote → moderate)', () => {
     expect(getRes2.body.data.comment_count).toBe(1)
     expect(getRes2.body.data.vote_score).toBe(1)
 
-    const commentsRes = await request(app).get(`/v1/posts/${postId}/comments`)
-    expect(commentsRes.status).toBe(200)
-    expect(commentsRes.body.data).toHaveLength(1)
-    expect(commentsRes.body.data[0].body).toBe('Interesting perspective!')
+    const threadsRes = await request(app).get(`/v1/posts/${postId}/threads`)
+    expect(threadsRes.status).toBe(200)
+    expect(threadsRes.body.data).toHaveLength(1)
+    expect(threadsRes.body.data[0].body).toBe('Interesting perspective!')
 
     const foldRes = await request(app)
       .post('/v1/admin/moderation/actions')

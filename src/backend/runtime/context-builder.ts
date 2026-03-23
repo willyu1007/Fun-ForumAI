@@ -46,11 +46,21 @@ export class ContextBuilder {
 
     if (event.post_id) {
       ctx.post = await this.loadPost(event.post_id)
-      ctx.comments = await this.loadComments(event.post_id)
+      ctx.comments = await this.loadComments(event.post_id, event.thread_id)
+      const targetThreadId = event.thread_id
+      if (targetThreadId) {
+        ctx.threadMeta = await this.loadThreadMeta(targetThreadId)
+        if (
+          (event.event_type === 'ThreadOpened' || event.event_type === 'ThreadTurnAdded')
+          && (ctx.threadMeta?.thread_state === 'CLOSED' || ctx.threadMeta?.thread_state === 'SPINOFF')
+        ) {
+          ctx.skip_reason = `thread_${ctx.threadMeta.thread_state.toLowerCase()}_no_followup`
+        }
+      }
     }
 
-    if (event.event_type === 'NewCommentCreated' && ctx.comments?.length) {
-      const targetId = event.comment_id
+    if ((event.event_type === 'ThreadOpened' || event.event_type === 'ThreadTurnAdded') && ctx.comments?.length) {
+      const targetId = event.turn_id ?? event.thread_id
       if (targetId) {
         ctx.targetComment = ctx.comments.find((c) => c.id === targetId)
       } else {
@@ -59,13 +69,25 @@ export class ContextBuilder {
     }
 
     if (
-      this.deps.forumSceneContinuityService
-      && (event.event_type === 'NewPostCreated' || event.event_type === 'NewCommentCreated')
+      !ctx.skip_reason
+      && this.deps.forumSceneContinuityService
+      && (
+        event.event_type === 'NewPostCreated'
+        || event.event_type === 'ThreadOpened'
+        || event.event_type === 'ThreadTurnAdded'
+      )
     ) {
+      const targetThreadAuthorAgentId = ctx.targetComment?.comment_kind === 'THREAD'
+        ? ctx.targetComment.author_agent_id
+        : undefined
+      const targetTurnAuthorAgentId = ctx.targetComment?.comment_kind === 'TURN'
+        ? ctx.targetComment.author_agent_id
+        : undefined
       const continuity = await this.deps.forumSceneContinuityService.resolve({
         event,
         post_author_agent_id: ctx.post?.author_agent_id,
-        target_comment_author_agent_id: ctx.targetComment?.author_agent_id,
+        target_thread_author_agent_id: targetThreadAuthorAgentId,
+        target_turn_author_agent_id: targetTurnAuthorAgentId,
       })
       if (continuity?.kind === 'skip') {
         ctx.skip_reason = continuity.reason
@@ -118,7 +140,7 @@ export class ContextBuilder {
       : ctx.chatContext
       ? 'chat_room'
       : ctx.targetComment
-        ? 'forum_comment'
+        ? 'forum_thread'
         : 'forum_post'
     ctx.promptScene = scene
     const conversationText = this.composeConversationText(ctx)
@@ -159,14 +181,16 @@ export class ContextBuilder {
         : ctx.event.event_type === 'NewMessageCreated'
           ? '你正在聊天室中继续群聊'
         : ctx.targetComment
-          ? '你正在论坛评论线程中回复具体观点'
+          ? '你正在公共 thread 中继续推进当前回合'
           : '你正在论坛帖子下参与公开讨论',
       shortTermState: ctx.chatContext
         ? `recent_messages=${ctx.chatContext.recent_messages.length}`
         : ctx.event.event_type === 'NewMessageCreated'
           ? 'recent_messages=0'
+        : ctx.threadMeta
+          ? `thread_turns=${Math.max((ctx.comments?.length ?? 1) - 1, 0)};thread_state=${ctx.threadMeta.thread_state};reply_budget_remaining=${ctx.threadMeta.reply_budget_remaining}`
         : ctx.comments
-          ? `thread_comments=${ctx.comments.length}`
+          ? `thread_turns=${Math.max(ctx.comments.length - 1, 0)}`
           : '',
       threadComments: ctx.comments?.map((c) => ({
         id: c.id,
@@ -251,18 +275,66 @@ export class ContextBuilder {
     }
   }
 
-  private async loadComments(postId: string): Promise<ExecutionContext['comments']> {
+  private async loadComments(postId: string, threadId?: string): Promise<ExecutionContext['comments']> {
     try {
-      const result = await this.deps.forumReadService.getComments(postId, { limit: 20 })
-      return result.items.map((c) => ({
-        id: c.id,
-        body: c.body,
-        author_agent_id: c.author_agent_id,
-        author_name: this.getAgentName(c.author_agent_id),
-      }))
+      if (threadId) {
+        const thread = await this.deps.forumReadService.getThread(threadId)
+        return this.flattenThreadComments([thread])
+      }
+      const result = await this.deps.forumReadService.getThreads(postId, { limit: 20 })
+      return this.flattenThreadComments(result.items)
     } catch {
       return []
     }
+  }
+
+  private async loadThreadMeta(threadId: string): Promise<ExecutionContext['threadMeta'] | undefined> {
+    try {
+      const thread = await this.deps.forumReadService.getThread(threadId)
+      return {
+        thread_id: thread.id,
+        thread_state: thread.thread_state,
+        reply_budget: thread.reply_budget,
+        reply_budget_remaining: Math.max(thread.reply_budget - thread.turn_count, 0),
+        active_route: thread.active_route
+          ? {
+              route_type: thread.active_route.route_type,
+              route_state: thread.active_route.route_state,
+            }
+          : null,
+      }
+    } catch {
+      return undefined
+    }
+  }
+
+  private flattenThreadComments(
+    threads: Array<Awaited<ReturnType<ForumReadService['getThread']>>>,
+  ): ExecutionContext['comments'] {
+    return threads.flatMap((thread) => {
+      const root = {
+        id: thread.id,
+        post_id: thread.post_id,
+        thread_id: thread.id,
+        comment_kind: 'THREAD' as const,
+        anchor_comment_id: null,
+        body: thread.body,
+        author_agent_id: thread.author_agent_id,
+        author_name: thread.author.display_name,
+      }
+      const turns = thread.turns.map((turn) => ({
+        id: turn.id,
+        post_id: turn.post_id,
+        thread_id: turn.thread_id,
+        comment_kind: 'TURN' as const,
+        anchor_comment_id: turn.anchor_turn_id ?? thread.id,
+        turn_index: turn.turn_index,
+        body: turn.body,
+        author_agent_id: turn.author_agent_id,
+        author_name: turn.author.display_name,
+      }))
+      return [root, ...turns]
+    })
   }
 
   private getAgentName(agentId: string): string {
@@ -330,7 +402,7 @@ export class ContextBuilder {
           .slice(-6)
           .map((comment) => `${comment.author_name}：${comment.body}`)
           .join('\n'),
-        priority: scene === 'forum_comment' ? 'high' : 'medium',
+        priority: scene === 'forum_thread' ? 'high' : 'medium',
         source_id: ctx.post?.id,
       })
     }
@@ -421,7 +493,7 @@ export class ContextBuilder {
       : 0
     return {
       static_system_tokens: 180,
-      route_wrapper_tokens: scene === 'forum_comment' ? 120 : 100,
+      route_wrapper_tokens: scene === 'forum_thread' ? 120 : 100,
       tool_tokens: 0,
       current_user_input_tokens: currentUserInputTokens,
       output_reserve: 0,

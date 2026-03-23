@@ -108,12 +108,11 @@ export class DataPlaneWriter {
             }
           }
         }
-      } else {
-        const result = await this.deps.forumWriteService.createComment({
+      } else if (instruction.action === 'open_thread') {
+        const result = await this.deps.forumWriteService.createThread({
           actor_agent_id: agentId,
           run_id: runId,
           post_id: instruction.post_id!,
-          parent_comment_id: instruction.parent_comment_id,
           body: instruction.body,
           chain_depth: nextChainDepth,
           scene: instruction.public_scene,
@@ -126,18 +125,58 @@ export class DataPlaneWriter {
             try {
               await this.deps.mediaWriteBridge.applyImagePlanAfterPersist({
                 image_plan_id: instruction.image_plan_id,
-                scene_type: 'forum_comment',
+                scene_type: 'forum_thread',
                 scene_id: contentId,
                 created_by_id: agentId,
               })
             } catch (err) {
               imagePlanApplyError = err instanceof Error ? err.message : 'apply_image_plan_failed'
               console.error(
-                `[DataPlaneWriter] applyImagePlanAfterPersist failed for comment ${contentId}: ${imagePlanApplyError}`,
+                `[DataPlaneWriter] applyImagePlanAfterPersist failed for thread ${contentId}: ${imagePlanApplyError}`,
               )
             }
           }
         }
+      } else if (instruction.action === 'add_thread_turn') {
+        const result = await this.deps.forumWriteService.addThreadTurn({
+          actor_agent_id: agentId,
+          run_id: runId,
+          thread_id: instruction.thread_id!,
+          anchor_turn_id: instruction.anchor_turn_id,
+          body: instruction.body,
+          chain_depth: nextChainDepth,
+          scene: instruction.public_scene,
+        })
+        contentId = result.comment.id
+        if (instruction.image_plan_id) {
+          if (!this.deps.mediaWriteBridge) {
+            imagePlanApplyError = 'MediaWriteBridge not configured'
+          } else {
+            try {
+              await this.deps.mediaWriteBridge.applyImagePlanAfterPersist({
+                image_plan_id: instruction.image_plan_id,
+                scene_type: 'forum_turn',
+                scene_id: contentId,
+                created_by_id: agentId,
+              })
+            } catch (err) {
+              imagePlanApplyError = err instanceof Error ? err.message : 'apply_image_plan_failed'
+              console.error(
+                `[DataPlaneWriter] applyImagePlanAfterPersist failed for turn ${contentId}: ${imagePlanApplyError}`,
+              )
+            }
+          }
+        }
+      } else {
+        return this.recordFailedWrite({
+          instruction,
+          agentId,
+          triggerEventId,
+          usage,
+          latencyMs,
+          observation,
+          error: `Unsupported write action: ${instruction.action}`,
+        })
       }
 
       this.deps.agentRunRepo.create({
@@ -211,7 +250,13 @@ export class DataPlaneWriter {
       }
 
       if (instruction.action !== 'create_message') {
-        const xpSource = instruction.action === 'create_post' ? 'forum_post' : 'forum_comment'
+        const xpSource = instruction.action === 'create_post'
+          ? 'forum_post'
+          : instruction.action === 'open_thread'
+            ? 'forum_thread'
+            : instruction.action === 'add_thread_turn'
+              ? 'forum_turn'
+              : 'forum_post'
 
         if (this.deps.nurtureOrchestrator) {
           this.deps.nurtureOrchestrator.onContentProduced(agentId, xpSource, 1, {

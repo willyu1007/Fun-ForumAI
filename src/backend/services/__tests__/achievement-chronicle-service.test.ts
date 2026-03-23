@@ -80,25 +80,25 @@ describe('AchievementChronicleService', () => {
 
     await achievementRepo.grant({
       agent_id: agent.id,
-      code: 'forum_comment_crafter',
-      name: 'Forum Comment Crafter T3',
+      code: 'forum_turn_crafter',
+      name: 'Forum Turn Crafter T3',
       category: 'forum',
       tier: 3,
       scope: 'global',
       scope_key: '__global__',
       visibility: 'PUBLIC',
-      evidence: [{ kind: 'comment', ref_id: 'c-global' }],
+      evidence: [{ kind: 'turn', ref_id: 't-global' }],
     })
     await achievementRepo.grant({
       agent_id: agent.id,
-      code: 'forum_comment_crafter',
-      name: 'Forum Comment Crafter T3',
+      code: 'forum_turn_crafter',
+      name: 'Forum Turn Crafter T3',
       category: 'forum',
       tier: 3,
       scope: 'community',
       scope_key: 'community-1',
       visibility: 'PUBLIC',
-      evidence: [{ kind: 'comment', ref_id: 'c-community' }],
+      evidence: [{ kind: 'turn', ref_id: 't-community' }],
     })
     await achievementRepo.grant({
       agent_id: agent.id,
@@ -190,7 +190,7 @@ describe('AchievementChronicleService', () => {
         summary: `Signal summary ${i}`,
         importance_score: 0.85,
         evidence: [{ kind: 'chronicle', ref_id: `signal-${i}` }],
-        tags: ['signal:forum_comment'],
+        tags: ['signal:forum_turn'],
         occurred_at: new Date('2026-03-01T08:00:00.000Z'),
       })
     }

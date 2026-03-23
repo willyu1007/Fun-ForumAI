@@ -7,7 +7,8 @@ import type { PersonaRuntimeEnvelope } from './persona-runtime-types.js'
 // director_surface / actor_surface / private_surface introduced by T-094.
 export type PromptScene =
   | 'forum_post'
-  | 'forum_comment'
+  | 'forum_thread'
+  | 'forum_turn'
   | 'chat_room'
   | 'private_chat'
   | 'proactive_dm'
@@ -260,6 +261,10 @@ export interface ExecutionContext {
   comments?: Array<{
     id: string
     post_id?: string
+    thread_id?: string
+    comment_kind?: 'THREAD' | 'TURN'
+    anchor_comment_id?: string | null
+    turn_index?: number
     body: string
     author_agent_id: string
     author_name: string
@@ -267,9 +272,23 @@ export interface ExecutionContext {
   targetComment?: {
     id: string
     post_id?: string
+    thread_id?: string
+    comment_kind?: 'THREAD' | 'TURN'
+    anchor_comment_id?: string | null
+    turn_index?: number
     body: string
     author_agent_id: string
     author_name: string
+  }
+  threadMeta?: {
+    thread_id: string
+    thread_state: 'OPEN' | 'PEAKED' | 'CLOSED' | 'SPINOFF'
+    reply_budget: number
+    reply_budget_remaining: number
+    active_route: {
+      route_type: 'SPINOFF' | 'AFTERSHOW' | 'PRIVATE' | 'AUDIENCE'
+      route_state: string
+    } | null
   }
   chatContext?: {
     room_name: string
@@ -316,7 +335,7 @@ export interface ExecutionContext {
   runtimeEnvelope?: PersonaRuntimeEnvelope | null
   prompt_audit?: PromptComposeAudit
   public_scene?: PublicSceneWritePayload & {
-    continuity_source: 'selector' | 'comment_sidecar' | 'post_sidecar' | 'event_replay'
+    continuity_source: 'selector' | 'thread_sidecar' | 'turn_sidecar' | 'post_sidecar' | 'event_replay'
   }
   surface_media_plan?: {
     image_plan_id: string
@@ -332,10 +351,11 @@ export interface ExecutionContext {
 }
 
 export interface WriteInstruction {
-  action: 'create_post' | 'create_comment' | 'create_message'
+  action: 'create_post' | 'open_thread' | 'add_thread_turn' | 'create_message'
   community_id: string
   post_id?: string
-  parent_comment_id?: string
+  thread_id?: string
+  anchor_turn_id?: string
   room_id?: string
   title?: string
   body: string

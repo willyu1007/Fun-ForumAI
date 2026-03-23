@@ -59,8 +59,8 @@ function buildPayload(
     },
     local_intent: {
       intent_id: overrides.local_intent_id ?? 'intent-1',
-      delivery_surface: overrides.actor_surface === 'forum_comment' ? 'forum_comment' : 'forum_post',
-      initiative: overrides.actor_surface === 'forum_comment' ? 'reply' : 'open_topic',
+      delivery_surface: overrides.actor_surface === 'forum_thread' ? 'forum_thread' : 'forum_post',
+      initiative: overrides.actor_surface === 'forum_thread' ? 'reply' : 'open_topic',
       opinion_policy: 'free_opinion',
       relation_focus: 'none',
       tone_hint: 'neutral',
@@ -81,12 +81,14 @@ function buildPayload(
 function buildAllocatorEvent() {
   return {
     event_id: 'evt-1',
-    event_type: 'NewCommentCreated' as const,
+    event_type: 'ThreadTurnAdded' as const,
     idempotency_key: 'evt-1',
     chain_depth: 0,
     community_id: 'community-1',
     post_id: 'post-1',
     comment_id: 'comment-human-1',
+    thread_id: 'thread-human-1',
+    turn_id: 'turn-human-1',
     author_agent_id: 'human-1',
     created_at: '2026-03-13T00:00:00.000Z',
   }
@@ -180,7 +182,7 @@ function makeCatalog(): ScenePoolCatalog {
     ],
     surface_vocabulary: {
       director_surfaces: ['forum', 'chat_room', 'scheduled_post'],
-      actor_surfaces: ['forum_post', 'forum_comment', 'chat_room'],
+      actor_surfaces: ['forum_post', 'forum_thread', 'chat_room'],
       private_surfaces: ['private_chat', 'proactive_dm'],
     },
   }
@@ -195,6 +197,8 @@ async function createPostSidecar(
     target_type: 'POST',
     community_id: 'community-1',
     post_id: 'post-1',
+    thread_id: null,
+    turn_id: null,
     comment_id: null,
     episode_id: scene.scene_metadata?.episode_id ?? 'episode-1',
     selection_id: scene.scene_metadata?.selection_id ?? 'selection-1',
@@ -215,6 +219,94 @@ async function createPostSidecar(
 }
 
 describe('ForumSceneContinuityService', () => {
+  it('prefers turn sidecar over thread and post continuity carriers', async () => {
+    const sceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const eventRepo = new InMemoryEventRepository()
+    const threadPayload = buildPayload({
+      actor_surface: 'forum_thread',
+      local_intent_id: 'intent-thread',
+    })
+    const turnPayload = buildPayload({
+      actor_surface: 'forum_thread',
+      local_intent_id: 'intent-turn',
+      phase: 'pivot',
+    })
+
+    await createPostSidecar(sceneMetadataRepo, buildPayload())
+    await sceneMetadataRepo.create({
+      target_type: 'THREAD',
+      community_id: 'community-1',
+      post_id: 'post-1',
+      thread_id: 'thread-human-1',
+      turn_id: null,
+      comment_id: null,
+      episode_id: threadPayload.scene_metadata.episode_id,
+      selection_id: threadPayload.scene_metadata.selection_id,
+      episode_plan_id: threadPayload.scene_metadata.episode_plan_id,
+      local_intent_id: threadPayload.scene_metadata.local_intent_id,
+      director_surface: threadPayload.scene_metadata.director_surface,
+      actor_surface: threadPayload.scene_metadata.actor_surface,
+      scene_template_id: threadPayload.scene_metadata.scene_template_id,
+      scene_template_version: threadPayload.scene_metadata.scene_template_version,
+      scene_binding_id: threadPayload.scene_metadata.scene_binding_id,
+      overlay_id: threadPayload.scene_metadata.overlay_id,
+      beat_id: threadPayload.scene_metadata.beat_id,
+      phase: threadPayload.scene_metadata.phase,
+      selection_mode: threadPayload.scene_metadata.selection_mode,
+      expires_at: new Date(threadPayload.scene_metadata.expires_at!),
+      payload_json: buildPublicScenePayloadJson(threadPayload),
+    })
+    await sceneMetadataRepo.create({
+      target_type: 'TURN',
+      community_id: 'community-1',
+      post_id: 'post-1',
+      thread_id: 'thread-human-1',
+      turn_id: 'turn-human-1',
+      comment_id: null,
+      episode_id: turnPayload.scene_metadata.episode_id,
+      selection_id: turnPayload.scene_metadata.selection_id,
+      episode_plan_id: turnPayload.scene_metadata.episode_plan_id,
+      local_intent_id: turnPayload.scene_metadata.local_intent_id,
+      director_surface: turnPayload.scene_metadata.director_surface,
+      actor_surface: turnPayload.scene_metadata.actor_surface,
+      scene_template_id: turnPayload.scene_metadata.scene_template_id,
+      scene_template_version: turnPayload.scene_metadata.scene_template_version,
+      scene_binding_id: turnPayload.scene_metadata.scene_binding_id,
+      overlay_id: turnPayload.scene_metadata.overlay_id,
+      beat_id: turnPayload.scene_metadata.beat_id,
+      phase: turnPayload.scene_metadata.phase,
+      selection_mode: turnPayload.scene_metadata.selection_mode,
+      expires_at: new Date(turnPayload.scene_metadata.expires_at!),
+      payload_json: buildPublicScenePayloadJson(turnPayload),
+    })
+
+    const service = new ForumSceneContinuityService({
+      sceneMetadataRepo,
+      eventRepo,
+    })
+
+    const result = await service.resolve({
+      event: buildAllocatorEvent(),
+      post_author_agent_id: 'agent-1',
+      target_thread_author_agent_id: 'agent-thread',
+      target_turn_author_agent_id: 'human-1',
+    })
+
+    expect(result).toMatchObject({
+      kind: 'continue',
+      source: 'turn_sidecar',
+    })
+    if (result?.kind !== 'continue') return
+    expect(result.payload.scene_metadata.phase).toBe('pivot')
+    expect(result.payload.local_intent.target_ref).toEqual({
+      kind: 'turn',
+      post_id: 'post-1',
+      thread_id: 'thread-human-1',
+      turn_id: 'turn-human-1',
+      agent_id: 'human-1',
+    })
+  })
+
   it('prefers post sidecar before event replay and carries episode continuity into replies', async () => {
     const sceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
     const eventRepo = new InMemoryEventRepository()
@@ -228,7 +320,8 @@ describe('ForumSceneContinuityService', () => {
     const result = await service.resolve({
       event: buildAllocatorEvent(),
       post_author_agent_id: 'agent-1',
-      target_comment_author_agent_id: 'human-1',
+      target_thread_author_agent_id: 'agent-thread',
+      target_turn_author_agent_id: 'human-1',
     })
 
     expect(result).toMatchObject({
@@ -237,23 +330,26 @@ describe('ForumSceneContinuityService', () => {
     })
     if (result?.kind !== 'continue') return
     expect(result.payload.scene_metadata.episode_id).toBe('episode-1')
-    expect(result.payload.scene_metadata.actor_surface).toBe('forum_comment')
+    expect(result.payload.scene_metadata.actor_surface).toBe('forum_thread')
     expect(result.payload.local_intent.target_ref).toEqual({
-      kind: 'comment',
+      kind: 'turn',
       post_id: 'post-1',
-      comment_id: 'comment-human-1',
+      thread_id: 'thread-human-1',
+      turn_id: 'turn-human-1',
       agent_id: 'human-1',
     })
   })
 
-  it('repairs malformed comment sidecar by falling back to the post sidecar', async () => {
+  it('repairs malformed turn sidecar by falling back to the post sidecar', async () => {
     const sceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
     const eventRepo = new InMemoryEventRepository()
     const payload = buildPayload()
     await sceneMetadataRepo.create({
-      target_type: 'COMMENT',
+      target_type: 'TURN',
       community_id: 'community-1',
       post_id: 'post-1',
+      thread_id: 'thread-human-1',
+      turn_id: 'turn-human-1',
       comment_id: 'comment-human-1',
       episode_id: payload.scene_metadata.episode_id,
       selection_id: payload.scene_metadata.selection_id,
@@ -281,7 +377,8 @@ describe('ForumSceneContinuityService', () => {
     const result = await service.resolve({
       event: buildAllocatorEvent(),
       post_author_agent_id: 'agent-1',
-      target_comment_author_agent_id: 'human-1',
+      target_thread_author_agent_id: 'agent-thread',
+      target_turn_author_agent_id: 'human-1',
     })
 
     expect(result).toMatchObject({
@@ -309,7 +406,8 @@ describe('ForumSceneContinuityService', () => {
     const result = await service.resolve({
       event: buildAllocatorEvent(),
       post_author_agent_id: 'agent-1',
-      target_comment_author_agent_id: 'human-1',
+      target_thread_author_agent_id: 'agent-thread',
+      target_turn_author_agent_id: 'human-1',
     })
 
     expect(result).toMatchObject({
@@ -321,17 +419,17 @@ describe('ForumSceneContinuityService', () => {
     expect(result.payload.local_intent.hard_constraints).toContain('延续当前 episode，不重选场景')
   })
 
-  it('replays from the root post event instead of a later comment event when sidecars are missing', async () => {
+  it('replays from the root post event instead of an unrelated later thread event when sidecars are missing', async () => {
     const sceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
     const eventRepo = new InMemoryEventRepository()
     const postPayload = buildPayload({
       phase: 'opening',
       local_intent_id: 'intent-post',
     })
-    const laterCommentPayload = buildPayload({
-      actor_surface: 'forum_comment',
+    const laterThreadPayload = buildPayload({
+      actor_surface: 'forum_thread',
       phase: 'pivot',
-      local_intent_id: 'intent-comment',
+      local_intent_id: 'intent-thread',
     })
 
     eventRepo.create({
@@ -349,7 +447,7 @@ describe('ForumSceneContinuityService', () => {
       },
     })
     eventRepo.create({
-      event_type: 'COMMENT_CREATED',
+      event_type: 'THREAD_TURN_ADDED',
       plane: 'DATA',
       schema_version: 'v1',
       community_id: 'community-1',
@@ -359,8 +457,10 @@ describe('ForumSceneContinuityService', () => {
       correlation_id: 'post:post-1',
       payload_json: {
         comment_id: 'comment-agent-1',
+        thread_id: 'thread-agent-1',
+        turn_id: 'turn-agent-1',
         post_id: 'post-1',
-        public_scene: buildPublicScenePayloadJson(laterCommentPayload),
+        public_scene: buildPublicScenePayloadJson(laterThreadPayload),
       },
     })
 
@@ -372,7 +472,8 @@ describe('ForumSceneContinuityService', () => {
     const result = await service.resolve({
       event: buildAllocatorEvent(),
       post_author_agent_id: 'agent-1',
-      target_comment_author_agent_id: 'human-1',
+      target_thread_author_agent_id: 'agent-thread',
+      target_turn_author_agent_id: 'human-1',
     })
 
     expect(result).toMatchObject({
@@ -411,7 +512,8 @@ describe('ForumSceneContinuityService', () => {
     const result = await service.resolve({
       event: buildAllocatorEvent(),
       post_author_agent_id: 'agent-1',
-      target_comment_author_agent_id: 'human-1',
+      target_thread_author_agent_id: 'agent-thread',
+      target_turn_author_agent_id: 'human-1',
     })
 
     expect(result).toEqual({

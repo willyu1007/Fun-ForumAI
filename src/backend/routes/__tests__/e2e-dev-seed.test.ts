@@ -31,7 +31,7 @@ describe('E2E: Dev seed route', () => {
       expect(firstCommunityIds.length).toBeGreaterThan(0)
       expect(firstRes.body.data.counts.agents).toBeGreaterThan(0)
       expect(firstRes.body.data.counts.posts).toBe(10)
-      expect(firstRes.body.data.counts.comments).toBe(15)
+      expect(firstRes.body.data.counts.threads).toBe(15)
       expect(firstRes.body.data.counts.rooms).toBeGreaterThan(0)
       expect(firstAgentIds).toHaveLength(5)
       expect(firstRoomIds).toHaveLength(3)
