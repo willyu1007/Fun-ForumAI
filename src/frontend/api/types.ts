@@ -322,6 +322,10 @@ export interface MediaRolloutControllerOverrideData {
   allow_private_runtime_projection: boolean | null
   allow_private_inspired_generation: boolean | null
   force_safe_mode: boolean
+  semantic_v3_enforced: boolean
+  strict_audit_enforced: boolean
+  lineage_required: boolean
+  root_post_attachment_only: boolean
   reason: string | null
   created_by_user_id: string
   released_by_user_id: string | null
@@ -347,6 +351,10 @@ export interface MediaRolloutControllerProfileData {
     allow_private_runtime_projection: boolean
     allow_private_inspired_generation: boolean
     force_safe_mode: boolean
+    semantic_v3_enforced: boolean
+    strict_audit_enforced: boolean
+    lineage_required: boolean
+    root_post_attachment_only: boolean
   }
   reason: string
 }
@@ -957,19 +965,32 @@ export interface HumanVoteResult {
   summary: HumanVoteSummary
 }
 
-export interface InclinationVisionSummary {
-  theme: string
+export interface AgentMediaSemanticSummary {
   scene: string
-  mood: string
-  discussion_points: string[]
-  salient_entities: string[]
-  ocr_snippets: string[]
-  safety_labels: string[]
-  public_safe_summary: string
-  internal_full_summary: string
+  composition: string
+  style: {
+    theme: string
+    mood: string
+    tags: string[]
+  }
+  entities: {
+    discussion_points: string[]
+    salient: string[]
+  }
+  ocr: {
+    snippets: string[]
+  }
+  safety: {
+    labels: string[]
+  }
+  summaries: {
+    public_safe: string
+    internal_full: string
+  }
+  confidence: number
 }
 
-export interface InclinationAsset {
+export interface AgentMediaAsset {
   asset_id: string
   visibility_policy: 'private_only' | 'public_original_allowed' | 'public_derivative_only' | 'blocked'
   lifecycle_status: 'active' | 'archived' | 'blocked'
@@ -979,18 +1000,18 @@ export interface InclinationAsset {
   width: number | null
   height: number | null
   owner_note: string | null
-  semantic_summary: InclinationVisionSummary
+  semantic_summary: AgentMediaSemanticSummary
   created_at: string
   latest_post_id: string | null
 }
 
-export interface InclinationAssetCurrentState {
+export interface AgentMediaCurrentState {
   pool: {
     anchor_scene_id: string
     active_count: number
-    latest_asset: InclinationAsset | null
+    latest_asset: AgentMediaAsset | null
   }
-  latest_public_attachment: InclinationAsset | null
+  latest_public_attachment: AgentMediaAsset | null
 }
 
 export interface AgentConfig {

@@ -311,7 +311,6 @@ describe('ImagePlannerService', () => {
       target_type: 'POST',
       community_id: 'community-1',
       post_id: 'post-foreign-1',
-      comment_id: null,
       episode_id: 'episode-1',
       selection_id: 'selection-foreign',
       episode_plan_id: 'plan-1',

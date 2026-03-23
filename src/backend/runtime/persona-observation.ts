@@ -27,7 +27,7 @@ import type { PromptComposeAudit, PromptScene } from './types.js'
 import { runtimeFeatureMetrics } from './runtime-feature-metrics.js'
 
 export type PersonaObservationVersion = 'persona-observation-v1'
-export type PersonaObservationScene = PromptScene | 'background_hidden' | 'inclination_asset'
+export type PersonaObservationScene = PromptScene | 'background_hidden' | 'media_asset'
 export type PersonaObservationCoverageStatus =
   | 'visible_complete'
   | 'visible_partial'

@@ -16,6 +16,7 @@ import { InMemoryMediaReusePolicyRepository } from '../repos/media-reuse-policy-
 import { InMemoryMediaGenerationJobRepository } from '../repos/media-generation-job-repository.js'
 import { InMemoryMediaObservabilityEventRepository } from '../repos/media-observability-event-repository.js'
 import { InMemoryMediaRolloutControllerOverrideRepository } from '../repos/media-rollout-controller-override-repository.js'
+import { InMemoryMediaLineageEdgeRepository } from '../repos/media-lineage-edge-repository.js'
 import { InMemoryAgentRepository, InMemoryAgentConfigRepository } from '../repos/agent-repository.js'
 import { InMemoryAgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
 import { InMemoryAgentSignalLogRepository } from '../repos/agent-signal-log-repository.js'
@@ -66,6 +67,7 @@ import type { MediaReusePolicyRepository } from '../repos/media-reuse-policy-rep
 import type { MediaGenerationJobRepository } from '../repos/media-generation-job-repository.js'
 import type { MediaObservabilityEventRepository } from '../repos/media-observability-event-repository.js'
 import type { MediaRolloutControllerOverrideRepository } from '../repos/media-rollout-controller-override-repository.js'
+import type { MediaLineageEdgeRepository } from '../repos/media-lineage-edge-repository.js'
 import type { AgentRepository, AgentConfigRepository } from '../repos/agent-repository.js'
 import type { AgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
 import type { AgentSignalLogRepository } from '../repos/agent-signal-log-repository.js'
@@ -118,6 +120,7 @@ export interface Repositories {
   mediaGenerationJobRepo: MediaGenerationJobRepository
   mediaObservabilityEventRepo: MediaObservabilityEventRepository
   mediaRolloutControllerOverrideRepo: MediaRolloutControllerOverrideRepository
+  mediaLineageEdgeRepo: MediaLineageEdgeRepository
   agentRepo: AgentRepository
   agentConfigRepo: AgentConfigRepository
   agentCommunityMembershipRepo: AgentCommunityMembershipRepository
@@ -184,6 +187,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgMediaGenerationJobRepository } = await import('../repos/pg/pg-media-generation-job-repository.js')
     const { PgMediaObservabilityEventRepository } = await import('../repos/pg/pg-media-observability-event-repository.js')
     const { PgMediaRolloutControllerOverrideRepository } = await import('../repos/pg/pg-media-rollout-controller-override-repository.js')
+    const { PgMediaLineageEdgeRepository } = await import('../repos/pg/pg-media-lineage-edge-repository.js')
     const { PgAgentRepository, PgAgentConfigRepository } = await import('../repos/pg/pg-agent-repository.js')
     const { PgAgentCommunityMembershipRepository } = await import('../repos/pg/pg-agent-community-membership-repository.js')
     const { PgAgentSignalLogRepository } = await import('../repos/pg/pg-agent-signal-log-repository.js')
@@ -235,6 +239,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const mgjr = new PgMediaGenerationJobRepository(prisma)
     const moer = new PgMediaObservabilityEventRepository(prisma)
     const mrcor = new PgMediaRolloutControllerOverrideRepository(prisma)
+    const mler = new PgMediaLineageEdgeRepository(prisma)
     const ar = new PgAgentRepository(prisma)
     const acr = new PgAgentConfigRepository(prisma)
     const amr = new PgAgentCommunityMembershipRepository(prisma)
@@ -288,6 +293,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
         mediaReusePolicyRepo: mrpr, mediaGenerationJobRepo: mgjr,
         mediaObservabilityEventRepo: moer,
         mediaRolloutControllerOverrideRepo: mrcor,
+        mediaLineageEdgeRepo: mler,
         agentRepo: ar, agentConfigRepo: acr, agentCommunityMembershipRepo: amr,
         agentSignalLogRepo: aslr, communityRepo: cmr, communityCultureDigestRepo: cdr,
         eventRepo: er, agentRunRepo: arr, forumSceneMetadataRepo, runtimeSceneStateRepo, publicSceneWriteRepo,
@@ -335,6 +341,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       mediaGenerationJobRepo: new InMemoryMediaGenerationJobRepository(),
       mediaObservabilityEventRepo: new InMemoryMediaObservabilityEventRepository(),
       mediaRolloutControllerOverrideRepo: new InMemoryMediaRolloutControllerOverrideRepository(),
+      mediaLineageEdgeRepo: new InMemoryMediaLineageEdgeRepository(),
       agentRepo: new InMemoryAgentRepository(),
       agentConfigRepo: new InMemoryAgentConfigRepository(),
       agentCommunityMembershipRepo: new InMemoryAgentCommunityMembershipRepository(),

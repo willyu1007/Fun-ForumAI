@@ -116,6 +116,10 @@ export function usePatchAdminMediaRolloutController() {
       allow_private_runtime_projection?: boolean | null
       allow_private_inspired_generation?: boolean | null
       force_safe_mode?: boolean
+      semantic_v3_enforced?: boolean | null
+      strict_audit_enforced?: boolean | null
+      lineage_required?: boolean | null
+      root_post_attachment_only?: boolean | null
       reason?: string | null
     }) =>
       api.patch('admin/media/rollout-controller', {

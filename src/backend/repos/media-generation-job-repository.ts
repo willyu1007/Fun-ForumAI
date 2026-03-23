@@ -3,6 +3,10 @@ import type {
   MediaGenerationJob,
   MediaGenerationJobStatus,
 } from './types.js'
+import {
+  buildLegacyGenerationSpec,
+  compileMediaGenerationSpec,
+} from '../media/media-generation-compiler.js'
 
 export interface UpdateMediaGenerationJobPatch {
   status?: MediaGenerationJobStatus
@@ -10,6 +14,8 @@ export interface UpdateMediaGenerationJobPatch {
   output_asset_id?: string | null
   error_code?: string | null
   error_message?: string | null
+  audit_decision?: MediaGenerationJob['audit_decision']
+  provider_request_summary?: MediaGenerationJob['provider_request_summary']
   started_at?: Date | null
   finished_at?: Date | null
 }
@@ -48,11 +54,35 @@ function isTimedOut(job: MediaGenerationJob, now: Date, timeoutMs: number): bool
   return now.getTime() - job.started_at.getTime() >= timeoutMs
 }
 
+function resolveGenerationArtifacts(input: CreateMediaGenerationJobInput): Pick<
+  MediaGenerationJob,
+  'prompt_brief' | 'generation_spec' | 'compiled_prompt' | 'audit_decision' | 'provider_request_summary'
+> {
+  const generationSpec = input.generation_spec ?? buildLegacyGenerationSpec({
+    prompt_brief: input.prompt_brief ?? null,
+    input_mode: input.input_mode,
+    aspect_ratio_hint: input.aspect_ratio_hint ?? null,
+    based_on_projection_ids: input.based_on_projection_ids,
+  })
+  const compiledPrompt = input.compiled_prompt ?? compileMediaGenerationSpec({
+    spec: generationSpec,
+    style_hint: input.style_hint ?? null,
+  })
+  return {
+    prompt_brief: input.prompt_brief ?? compiledPrompt.rendered_prompt,
+    generation_spec: generationSpec,
+    compiled_prompt: compiledPrompt,
+    audit_decision: input.audit_decision ?? null,
+    provider_request_summary: input.provider_request_summary ?? null,
+  }
+}
+
 export class InMemoryMediaGenerationJobRepository implements MediaGenerationJobRepository {
   private readonly store = new Map<string, MediaGenerationJob>()
 
   async create(input: CreateMediaGenerationJobInput): Promise<MediaGenerationJob> {
     const now = new Date()
+    const artifacts = resolveGenerationArtifacts(input)
     const entity: MediaGenerationJob = {
       id: input.id ?? cuid(),
       agent_id: input.agent_id,
@@ -61,7 +91,11 @@ export class InMemoryMediaGenerationJobRepository implements MediaGenerationJobR
       provider: input.provider,
       model_name: input.model_name,
       request_fingerprint: input.request_fingerprint,
-      prompt_brief: input.prompt_brief,
+      prompt_brief: artifacts.prompt_brief,
+      generation_spec: artifacts.generation_spec,
+      compiled_prompt: artifacts.compiled_prompt,
+      audit_decision: artifacts.audit_decision,
+      provider_request_summary: artifacts.provider_request_summary,
       style_hint: input.style_hint ?? null,
       input_mode: input.input_mode ?? 'reference',
       aspect_ratio_hint: input.aspect_ratio_hint ?? null,
@@ -116,6 +150,8 @@ export class InMemoryMediaGenerationJobRepository implements MediaGenerationJobR
     if (patch.output_asset_id !== undefined) current.output_asset_id = patch.output_asset_id
     if (patch.error_code !== undefined) current.error_code = patch.error_code
     if (patch.error_message !== undefined) current.error_message = patch.error_message
+    if (patch.audit_decision !== undefined) current.audit_decision = patch.audit_decision
+    if (patch.provider_request_summary !== undefined) current.provider_request_summary = patch.provider_request_summary
     if (patch.started_at !== undefined) current.started_at = patch.started_at
     if (patch.finished_at !== undefined) current.finished_at = patch.finished_at
     current.updated_at = new Date()

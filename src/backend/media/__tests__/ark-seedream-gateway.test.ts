@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { config } from '../../lib/config.js'
 import { ArkSeedreamGateway } from '../ark-seedream-gateway.js'
+import { compileMediaGenerationSpec } from '../media-generation-compiler.js'
 
 describe('ArkSeedreamGateway', () => {
   const originalMediaGeneration = { ...config.mediaGeneration }
@@ -47,10 +48,24 @@ describe('ArkSeedreamGateway', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const gateway = new ArkSeedreamGateway()
-    const result = await gateway.generate({
-      prompt_brief: 'scene=city skyline',
+    const compiledPrompt = compileMediaGenerationSpec({
+      spec: {
+        intent: 'reference_derive',
+        subject_anchors: ['city skyline'],
+        scene_constraints: ['city skyline'],
+        style_constraints: ['cinematic'],
+        negative_constraints: [],
+        source_projections: ['projection-1'],
+        output_policy: {
+          aspect_ratio_hint: '16:9',
+          public_safe_only: true,
+          derivative_display_only: true,
+        },
+      },
       style_hint: 'cinematic',
-      aspect_ratio_hint: '16:9',
+    })
+    const result = await gateway.generate({
+      compiled_prompt: compiledPrompt,
       trace_id: 'trace-1',
     })
 
@@ -74,8 +89,8 @@ describe('ArkSeedreamGateway', () => {
       stream: false,
       sequential_image_generation: 'disabled',
     })
-    expect(body.prompt).toContain('scene=city skyline')
-    expect(body.prompt).toContain('style_hint=cinematic')
+    expect(body.prompt).toContain('scene_constraints: city skyline')
+    expect(body.prompt).toContain('style_hint: cinematic')
 
     expect(result).toEqual({
       image_url: 'https://cdn.example.com/generated.png',

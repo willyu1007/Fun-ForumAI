@@ -1,10 +1,10 @@
-import { Router, type IRouter } from 'express'
+import { Router, type IRouter, type Request, type Response } from 'express'
 import multer from 'multer'
 import { requireHumanAuth } from '../middleware/human-auth.js'
 import {
   agentConfigLintService,
   agentService,
-  inclinationAssetService,
+  mediaAssetControlService,
   inferenceProfileService,
   reviewService,
   searchProjectionService,
@@ -26,11 +26,12 @@ import {
 
 export const agentControlRouter: IRouter = Router()
 
-const inclinationUpload = multer({
+const mediaUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024, files: 1 },
 })
 
+const AGENT_MEDIA_DISABLED_MESSAGE = 'Multimodal agent media is disabled by feature flag.'
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
@@ -60,6 +61,20 @@ function assertOwnerOrAdmin(
   if (!isAllowed) {
     throw new ForbiddenError('Only owner or admin can access this agent control surface')
   }
+}
+
+async function ensureAgentMediaRouteEnabled(_req: Request, res: Response): Promise<boolean> {
+  if (!config.features.multimodalAgentMediaV1) {
+    res.status(403).json({
+      error: {
+        code: 'FORBIDDEN',
+        message: AGENT_MEDIA_DISABLED_MESSAGE,
+      },
+    })
+    return false
+  }
+
+  return true
 }
 
 agentControlRouter.post(
@@ -204,18 +219,10 @@ agentControlRouter.patch(
 )
 
 agentControlRouter.post(
-  '/agents/:agentId/inclination-asset/url',
+  '/agents/:agentId/media/url',
   requireHumanAuth,
   async (req, res) => {
-    if (!config.features.multimodalAgentInclinationV1) {
-      res.status(403).json({
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Multimodal agent inclination is disabled by feature flag.',
-        },
-      })
-      return
-    }
+    if (!(await ensureAgentMediaRouteEnabled(req, res))) return
 
     const source_url = String(req.body?.source_url ?? '').trim()
     const owner_note = typeof req.body?.owner_note === 'string' ? req.body.owner_note : undefined
@@ -223,7 +230,7 @@ agentControlRouter.post(
       throw new ValidationError('source_url is required')
     }
 
-    const data = await inclinationAssetService.createFromUrl({
+    const data = await mediaAssetControlService.createFromUrl({
       agent_id: String(req.params.agentId),
       owner_user_id: req.user!.userId,
       source_url,
@@ -235,20 +242,12 @@ agentControlRouter.post(
 )
 
 agentControlRouter.post(
-  '/agents/:agentId/inclination-asset/upload',
+  '/agents/:agentId/media/upload',
   requireHumanAuth,
   async (req, res, next) => {
-    if (!config.features.multimodalAgentInclinationV1) {
-      res.status(403).json({
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Multimodal agent inclination is disabled by feature flag.',
-        },
-      })
-      return
-    }
+    if (!(await ensureAgentMediaRouteEnabled(req, res))) return
 
-    inclinationUpload.single('file')(req, res, async (err) => {
+    mediaUpload.single('file')(req, res, async (err) => {
       if (err) {
         if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
           next(new ValidationError('media exceeds 10MB limit'))
@@ -266,7 +265,7 @@ agentControlRouter.post(
         const ownerNoteRaw = (req.body as Record<string, unknown> | undefined)?.owner_note
         const owner_note = typeof ownerNoteRaw === 'string' ? ownerNoteRaw : undefined
 
-        const data = await inclinationAssetService.createFromUpload({
+        const data = await mediaAssetControlService.createFromUpload({
           agent_id: String(req.params.agentId),
           owner_user_id: req.user!.userId,
           owner_note,
@@ -284,55 +283,31 @@ agentControlRouter.post(
 )
 
 agentControlRouter.get(
-  '/agents/:agentId/inclination-asset/current',
+  '/agents/:agentId/media/current',
   requireHumanAuth,
   async (req, res) => {
-    if (!config.features.multimodalAgentInclinationV1) {
-      res.status(403).json({
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Multimodal agent inclination is disabled by feature flag.',
-        },
-      })
-      return
-    }
-    const data = await inclinationAssetService.getCurrent(String(req.params.agentId), req.user!.userId)
+    if (!(await ensureAgentMediaRouteEnabled(req, res))) return
+    const data = await mediaAssetControlService.getCurrent(String(req.params.agentId), req.user!.userId)
     res.json({ data })
   },
 )
 
 agentControlRouter.delete(
-  '/agents/:agentId/inclination-asset/current',
+  '/agents/:agentId/media/current',
   requireHumanAuth,
   async (req, res) => {
-    if (!config.features.multimodalAgentInclinationV1) {
-      res.status(403).json({
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Multimodal agent inclination is disabled by feature flag.',
-        },
-      })
-      return
-    }
-    const data = await inclinationAssetService.cancelCurrent(String(req.params.agentId), req.user!.userId)
+    if (!(await ensureAgentMediaRouteEnabled(req, res))) return
+    const data = await mediaAssetControlService.cancelCurrent(String(req.params.agentId), req.user!.userId)
     res.json({ data })
   },
 )
 
 agentControlRouter.post(
-  '/agents/:agentId/inclination-asset/:assetId/promote',
+  '/agents/:agentId/media/:assetId/promote',
   requireHumanAuth,
   async (req, res) => {
-    if (!config.features.multimodalAgentInclinationV1) {
-      res.status(403).json({
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Multimodal agent inclination is disabled by feature flag.',
-        },
-      })
-      return
-    }
-    const data = await inclinationAssetService.promoteAsset({
+    if (!(await ensureAgentMediaRouteEnabled(req, res))) return
+    const data = await mediaAssetControlService.promoteAsset({
       agent_id: String(req.params.agentId),
       owner_user_id: req.user!.userId,
       asset_id: String(req.params.assetId),
@@ -342,19 +317,11 @@ agentControlRouter.post(
 )
 
 agentControlRouter.post(
-  '/agents/:agentId/inclination-asset/:assetId/demote',
+  '/agents/:agentId/media/:assetId/demote',
   requireHumanAuth,
   async (req, res) => {
-    if (!config.features.multimodalAgentInclinationV1) {
-      res.status(403).json({
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Multimodal agent inclination is disabled by feature flag.',
-        },
-      })
-      return
-    }
-    const data = await inclinationAssetService.demoteAsset({
+    if (!(await ensureAgentMediaRouteEnabled(req, res))) return
+    const data = await mediaAssetControlService.demoteAsset({
       agent_id: String(req.params.agentId),
       owner_user_id: req.user!.userId,
       asset_id: String(req.params.assetId),

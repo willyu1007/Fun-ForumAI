@@ -4,7 +4,7 @@ import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js
 import { MediaAssetService, type ScheduledMediaCandidate } from '../media/media-asset-service.js'
 import type { MediaReuseGovernanceService } from '../media/media-reuse-governance-service.js'
 
-export interface InclinationAssetView {
+export interface MediaAssetControlView {
   asset_id: string
   visibility_policy: MediaVisibilityPolicy
   lifecycle_status: MediaLifecycleStatus
@@ -19,18 +19,18 @@ export interface InclinationAssetView {
   latest_post_id: string | null
 }
 
-export interface InclinationAssetCurrentState {
+export interface AgentMediaCurrentState {
   pool: {
     anchor_scene_id: string
     active_count: number
-    latest_asset: InclinationAssetView | null
+    latest_asset: MediaAssetControlView | null
   }
-  latest_public_attachment: InclinationAssetView | null
+  latest_public_attachment: MediaAssetControlView | null
 }
 
 export { ScheduledMediaCandidate }
 
-export class InclinationAssetService {
+export class MediaAssetControlService {
   constructor(
     private readonly deps: {
       agentRepo: AgentRepository
@@ -44,7 +44,7 @@ export class InclinationAssetService {
     owner_user_id: string
     source_url: string
     owner_note?: string
-  }): Promise<InclinationAssetView> {
+  }): Promise<MediaAssetControlView> {
     this.assertOwner(input.agent_id, input.owner_user_id)
     const record = await this.deps.mediaAssetService.ingestOwnerUrl({
       agent_id: input.agent_id,
@@ -62,7 +62,7 @@ export class InclinationAssetService {
     original_name?: string
     mime_type: string
     bytes: Buffer
-  }): Promise<InclinationAssetView> {
+  }): Promise<MediaAssetControlView> {
     this.assertOwner(input.agent_id, input.owner_user_id)
     const record = await this.deps.mediaAssetService.ingestOwnerUpload({
       agent_id: input.agent_id,
@@ -74,7 +74,7 @@ export class InclinationAssetService {
     return this.toView(record)
   }
 
-  async getCurrent(agentId: string, ownerUserId: string): Promise<InclinationAssetCurrentState> {
+  async getCurrent(agentId: string, ownerUserId: string): Promise<AgentMediaCurrentState> {
     this.assertOwner(agentId, ownerUserId)
     const state = await this.deps.mediaAssetService.getCurrentOwnerPoolState(agentId)
     return {
@@ -99,7 +99,7 @@ export class InclinationAssetService {
     agent_id: string
     owner_user_id: string
     asset_id: string
-  }): Promise<InclinationAssetView> {
+  }): Promise<MediaAssetControlView> {
     this.assertOwner(input.agent_id, input.owner_user_id)
     const promoted = await this.deps.mediaReuseGovernanceService.promotePrivateOriginalToSelfPublicArchive({
       asset_id: input.asset_id,
@@ -127,7 +127,7 @@ export class InclinationAssetService {
     agent_id: string
     owner_user_id: string
     asset_id: string
-  }): Promise<InclinationAssetView> {
+  }): Promise<MediaAssetControlView> {
     this.assertOwner(input.agent_id, input.owner_user_id)
     const demoted = await this.deps.mediaReuseGovernanceService.demoteSelfPublicArchiveAsset({
       asset_id: input.asset_id,
@@ -178,7 +178,7 @@ export class InclinationAssetService {
     return this.deps.mediaAssetService.getStoredMediaByKey(storageKey)
   }
 
-  private toView(record: Awaited<ReturnType<MediaAssetService['ingestOwnerUpload']>>): InclinationAssetView {
+  private toView(record: Awaited<ReturnType<MediaAssetService['ingestOwnerUpload']>>): MediaAssetControlView {
     return {
       asset_id: record.asset.id,
       visibility_policy: record.asset.visibility_policy,

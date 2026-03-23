@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-23T15:17:40.666Z",
+  "updatedAt": "2026-03-23T23:05:46.268Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -14031,11 +14031,33 @@
           "unique": false
         },
         {
+          "name": "auditDecision",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "audit_decision",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "basedOnProjectionIds",
           "type": "Json",
           "nullable": false,
           "list": false,
           "dbName": "based_on_projection_ids",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "compiledPrompt",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "compiled_prompt",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -14080,6 +14102,17 @@
           "nullable": true,
           "list": false,
           "dbName": "finished_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "generationSpec",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "generation_spec",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -14143,7 +14176,7 @@
         {
           "name": "promptBrief",
           "type": "String",
-          "nullable": false,
+          "nullable": true,
           "list": false,
           "dbName": "prompt_brief",
           "dbType": "Text",
@@ -14157,6 +14190,17 @@
           "nullable": false,
           "list": false,
           "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "providerRequestSummary",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "provider_request_summary",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -14297,6 +14341,133 @@
           "type": "index",
           "fields": [
             "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "MediaLineageEdge",
+      "dbName": "media_lineage_edges",
+      "schema": null,
+      "columns": [
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "edgeKind",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "edge_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "fromNodeId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "from_node_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "fromNodeType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "from_node_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "metadataJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "metadata_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "toNodeId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "to_node_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "toNodeType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "to_node_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "edgeKind",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "fromNodeType",
+            "fromNodeId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "toNodeType",
+            "toNodeId",
             "createdAt"
           ],
           "name": null,
@@ -14848,6 +15019,17 @@
           "unique": false
         },
         {
+          "name": "lineageRequired",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "lineage_required",
+          "dbType": null,
+          "default": "true",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "mode",
           "type": "String",
           "nullable": false,
@@ -14903,6 +15085,28 @@
           "unique": false
         },
         {
+          "name": "rootPostAttachmentOnly",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "root_post_attachment_only",
+          "dbType": null,
+          "default": "true",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "semanticV3Enforced",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "semantic_v3_enforced",
+          "dbType": null,
+          "default": "true",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "status",
           "type": "String",
           "nullable": false,
@@ -14910,6 +15114,17 @@
           "dbName": null,
           "dbType": null,
           "default": "\"active\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "strictAuditEnforced",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "strict_audit_enforced",
+          "dbType": null,
+          "default": "true",
           "primaryKey": false,
           "unique": false
         },

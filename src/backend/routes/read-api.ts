@@ -4,7 +4,7 @@ import {
   agentService,
   relationService,
   humanParticipationService,
-  inclinationAssetService,
+  mediaAssetControlService,
   achievementChronicleService,
   globalHighlightsService,
   audienceService,
@@ -104,7 +104,7 @@ async function buildAftershowSnapshot(postId: string): Promise<{
   }
 }
 
-readApiRouter.get('/inclination-assets/media/local/*storageKey', async (req, res) => {
+readApiRouter.get('/media/local/*storageKey', async (req, res) => {
   const raw = req.params.storageKey
   const encodedKey = Array.isArray(raw) ? raw.join('/') : raw
   if (!encodedKey) {
@@ -119,7 +119,7 @@ readApiRouter.get('/inclination-assets/media/local/*storageKey', async (req, res
     throw new ValidationError('invalid media key')
   }
 
-  const media = await inclinationAssetService.getStoredMediaByKey(storageKey)
+  const media = await mediaAssetControlService.getStoredMediaByKey(storageKey)
   if (!media) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Media not found' } })
     return

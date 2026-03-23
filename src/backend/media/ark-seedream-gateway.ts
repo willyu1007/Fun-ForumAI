@@ -19,11 +19,7 @@ function resolveImageSize(aspectRatioHint: AspectRatioHint | null | undefined): 
 }
 
 function buildPrompt(input: MediaGenerationGatewayInput): string {
-  const lines = [
-    input.prompt_brief.trim(),
-    input.style_hint ? `style_hint=${input.style_hint.trim()}` : null,
-  ]
-  return lines.filter((item): item is string => typeof item === 'string' && item.length > 0).join('\n')
+  return input.compiled_prompt.rendered_prompt.trim()
 }
 
 function resolveGenerationEndpoint(baseUrl: string): string {
@@ -66,7 +62,7 @@ export class ArkSeedreamGateway implements MediaGenerationGateway {
           body: JSON.stringify({
             model: this.modelName,
             prompt: buildPrompt(input),
-            size: resolveImageSize(input.aspect_ratio_hint),
+            size: resolveImageSize(input.compiled_prompt.aspect_ratio_hint),
             n: 1,
             response_format: 'url',
             stream: false,

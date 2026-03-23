@@ -19,7 +19,7 @@ setupFeatureFlagGuard()
 describe('Admin media API', () => {
   it('registers canonical and commons assets, patches policies, and revokes them', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
-    featureFlags.multimodalAgentInclinationV1 = true
+    featureFlags.multimodalAgentMediaV1 = true
 
     const community = await createTestCommunity({
       name: 'Admin Media Community',
@@ -33,7 +33,7 @@ describe('Admin media API', () => {
     const agentId = createAgentRes.body.data.id as string
 
     const uploadRes = await request(app)
-      .post(`/v1/agents/${agentId}/inclination-asset/upload`)
+      .post(`/v1/agents/${agentId}/media/upload`)
       .set('Authorization', `Bearer ${userToken}`)
       .field('owner_note', '开放给后续公共治理复用')
       .attach('file', VALID_PNG_BUFFER, {

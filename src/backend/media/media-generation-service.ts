@@ -6,9 +6,15 @@ import type { MediaSemanticSnapshotRepository } from '../repos/media-semantic-sn
 import type { MediaProjectionService } from './media-projection-service.js'
 import type { MediaAssetService } from './media-asset-service.js'
 import type { MediaReuseGovernanceService } from './media-reuse-governance-service.js'
+import type { MediaLineageService } from './media-lineage-service.js'
+import type { MediaRolloutControllerService } from './media-rollout-controller-service.js'
 import type {
+  CompiledMediaPrompt,
   MediaAsset,
+  MediaAuditDecision,
+  MediaContextProjection,
   MediaGenerationJob,
+  MediaGenerationSpec,
   MediaSemanticSnapshot,
   PersistedImagePlan,
   PublicMediaContextCard,
@@ -16,6 +22,11 @@ import type {
 import type { MediaGenerationGateway } from './media-generation-gateway.js'
 import type { MediaObservabilityService } from './media-observability-service.js'
 import { resolveMediaObservabilitySurface } from './media-observability-service.js'
+import { MEDIA_SEMANTIC_SCHEMA_VERSION } from './media-contract-utils.js'
+import {
+  buildLegacyGenerationSpec,
+  compileMediaGenerationSpec,
+} from './media-generation-compiler.js'
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -52,6 +63,20 @@ export interface MediaGenerationServiceDeps {
   mediaProjectionService: MediaProjectionService
   gateway: MediaGenerationGateway
   mediaObservabilityService?: Pick<MediaObservabilityService, 'record' | 'getEstimatedGenerationCostCny'> | null
+  mediaLineageService?: MediaLineageService | null
+  mediaRolloutControllerService?: Pick<MediaRolloutControllerService, 'getEffectiveProfile'> | null
+}
+
+interface MediaGenerationHardeningSettings {
+  semantic_v3_enforced: boolean
+  strict_audit_enforced: boolean
+  lineage_required: boolean
+}
+
+const DEFAULT_MEDIA_GENERATION_HARDENING_SETTINGS: MediaGenerationHardeningSettings = {
+  semantic_v3_enforced: false,
+  strict_audit_enforced: false,
+  lineage_required: false,
 }
 
 export class MediaGenerationService {
@@ -105,11 +130,38 @@ export class MediaGenerationService {
       return { plan: input.plan, job: null }
     }
     const fingerprint = input.plan.generation.request_fingerprint?.trim()
-    const promptBrief = input.plan.generation.prompt_brief?.trim()
     const basedOnProjectionIds = input.plan.generation.based_on_projection_ids ?? []
     const inputMode = input.plan.generation.input_mode ?? 'reference'
-    if (!fingerprint || !promptBrief || (inputMode === 'reference' && basedOnProjectionIds.length === 0)) {
-      return { plan: input.plan, job: null }
+    const generationSpec = resolveGenerationSpec(input.plan)
+    const compiledPrompt = resolveCompiledPrompt(input.plan, generationSpec)
+    const promptBrief = compiledPrompt.rendered_prompt.trim()
+    let auditDecision = input.plan.generation.audit_decision ?? buildDefaultAllowAuditDecision()
+    const hardening = await this.resolveHardeningSettings()
+    const hardeningBlockReasons = await this.collectHardeningBlockReasonCodes({
+      plan: input.plan,
+      input_mode: inputMode,
+      based_on_projection_ids: basedOnProjectionIds,
+      hardening,
+    })
+    if (hardeningBlockReasons.length > 0) {
+      auditDecision = buildBlockedAuditDecision(auditDecision, hardeningBlockReasons)
+    }
+    if (
+      !fingerprint
+      || !promptBrief
+      || auditDecision.decision === 'block'
+      || (inputMode === 'reference' && basedOnProjectionIds.length === 0)
+    ) {
+      if (auditDecision.decision !== 'block') {
+        return { plan: input.plan, job: null }
+      }
+      const cancelledPlan = await this.cancelPlanGeneration({
+        plan: input.plan,
+        audit_decision: auditDecision,
+        generation_spec: generationSpec,
+        compiled_prompt: compiledPrompt,
+      })
+      return { plan: cancelledPlan, job: null }
     }
 
     const existing = await this.deps.mediaGenerationJobRepo.findByFingerprint(fingerprint)
@@ -121,12 +173,45 @@ export class MediaGenerationService {
       model_name: this.deps.gateway.modelName,
       request_fingerprint: fingerprint,
       prompt_brief: promptBrief,
+      generation_spec: generationSpec,
+      compiled_prompt: compiledPrompt,
+      audit_decision: auditDecision,
+      provider_request_summary: {
+        compiled_prompt_schema: compiledPrompt.schema_version,
+        template_id: compiledPrompt.template_id,
+        rendered_length: compiledPrompt.rendered_prompt.length,
+      },
       style_hint: null,
       input_mode: inputMode,
       aspect_ratio_hint: input.plan.generation.aspect_ratio_hint ?? input.plan.display.attachments[0]?.aspect_ratio_hint ?? null,
       based_on_projection_ids: basedOnProjectionIds,
       attempt_count: 0,
     })
+    if (!existing) {
+      await this.deps.mediaLineageService?.recordEdges([
+        {
+          from_node_type: 'image_plan',
+          from_node_id: input.plan.id,
+          to_node_type: 'generation_job',
+          to_node_id: job.id,
+          edge_kind: 'plan_scheduled_generation_job',
+          metadata_json: {
+            input_mode: inputMode,
+            provider: job.provider,
+          },
+        },
+        ...basedOnProjectionIds.map((projectionId) => ({
+          from_node_type: 'projection' as const,
+          from_node_id: projectionId,
+          to_node_type: 'generation_job' as const,
+          to_node_id: job.id,
+          edge_kind: 'generation_job_based_on_projection',
+          metadata_json: {
+            input_mode: inputMode,
+          },
+        })),
+      ])
+    }
 
     const updated = await this.deps.imagePlanRepo.update(input.plan.id, {
       generation: {
@@ -140,6 +225,9 @@ export class MediaGenerationService {
         attempt_count: job.attempt_count,
         output_asset_id: job.output_asset_id ?? undefined,
         error_code: job.error_code,
+        audit_decision: job.audit_decision,
+        spec: job.generation_spec,
+        compiled_prompt: job.compiled_prompt,
       },
     })
     if (job.status === 'queued') {
@@ -198,6 +286,25 @@ export class MediaGenerationService {
     const projections = job.input_mode === 'reference'
       ? await this.deps.mediaContextProjectionRepo.findByIds(job.based_on_projection_ids)
       : []
+    const hardening = await this.resolveHardeningSettings()
+    const hardeningBlockReasons = await this.collectJobHardeningBlockReasonCodes({
+      job,
+      projections,
+      hardening,
+    })
+    if (hardeningBlockReasons.length > 0) {
+      const blockedAuditDecision = buildBlockedAuditDecision(job.audit_decision, hardeningBlockReasons)
+      const blocked = await this.deps.mediaGenerationJobRepo.update(job.id, {
+        status: 'cancelled',
+        audit_decision: blockedAuditDecision,
+        error_code: 'audit_blocked',
+        error_message: blockedAuditDecision.reason_codes.join(', ') || 'generation audit blocked',
+        finished_at: new Date(),
+      })
+      await this.syncLinkedPlansWithJob(blocked ?? job)
+      await this.recordJobEvent(blocked ?? job, 'generation_cancelled')
+      return blocked ?? job
+    }
     if (
       job.input_mode === 'reference'
       && (projections.length !== job.based_on_projection_ids.length
@@ -213,15 +320,24 @@ export class MediaGenerationService {
       await this.recordJobEvent(cancelled ?? job, 'generation_cancelled')
       return cancelled ?? job
     }
+    if (job.audit_decision?.decision === 'block') {
+      const blocked = await this.deps.mediaGenerationJobRepo.update(job.id, {
+        status: 'cancelled',
+        error_code: 'audit_blocked',
+        error_message: job.audit_decision.reason_codes.join(', ') || 'generation audit blocked',
+        finished_at: new Date(),
+      })
+      await this.syncLinkedPlansWithJob(blocked ?? job)
+      await this.recordJobEvent(blocked ?? job, 'generation_cancelled')
+      return blocked ?? job
+    }
 
     try {
       const primaryPlan = job.plan_id
         ? await this.deps.imagePlanRepo.findById(job.plan_id)
         : null
       const result = await this.deps.gateway.generate({
-        prompt_brief: job.prompt_brief,
-        style_hint: job.style_hint,
-        aspect_ratio_hint: job.aspect_ratio_hint,
+        compiled_prompt: job.compiled_prompt,
         trace_id: `media-generation:${job.id}`,
       })
       const downloaded = await this.downloadProviderImage(result.image_url)
@@ -279,6 +395,13 @@ export class MediaGenerationService {
           prohibited_reference_types: ['owner_private_speech', 'private_memory', 'hidden_director_goal'],
           confidence: 0.8,
           relevance_score: 0.8,
+          audit_context: {
+            surface: 'public_runtime',
+            sensitive_terms: [],
+            policy_mode: 'strict',
+            visibility_scope: 'public',
+            actor_role: 'system',
+          },
         })
       }
 
@@ -287,8 +410,37 @@ export class MediaGenerationService {
         output_asset_id: generated.asset.id,
         error_code: shouldBlock ? 'policy_revoked' : null,
         error_message: shouldBlock ? 'source projection expired after provider execution' : null,
+        provider_request_summary: {
+          ...(job.provider_request_summary ?? {}),
+          provider_image_url: result.image_url,
+          mime_type: result.mime_type ?? downloaded.mime_type,
+        },
         finished_at: new Date(),
       })
+      if (!shouldBlock) {
+        await this.deps.mediaLineageService?.recordEdges([
+          {
+            from_node_type: 'generation_job',
+            from_node_id: job.id,
+            to_node_type: 'asset',
+            to_node_id: generated.asset.id,
+            edge_kind: 'generation_job_produced_asset',
+            metadata_json: {
+              visibility_policy: generated.asset.visibility_policy,
+            },
+          },
+          {
+            from_node_type: 'asset',
+            from_node_id: generated.asset.id,
+            to_node_type: 'semantic_snapshot',
+            to_node_id: generated.snapshot.id,
+            edge_kind: 'generated_asset_described_by_snapshot',
+            metadata_json: {
+              schema_version: generated.snapshot.schema_version,
+            },
+          },
+        ])
+      }
       await this.syncLinkedPlansWithJob(finished ?? job)
       await this.recordJobEvent(
         finished ?? job,
@@ -492,6 +644,149 @@ export class MediaGenerationService {
       clearTimeout(timer)
     }
   }
+
+  private async resolveHardeningSettings(): Promise<MediaGenerationHardeningSettings> {
+    if (!this.deps.mediaRolloutControllerService) {
+      return DEFAULT_MEDIA_GENERATION_HARDENING_SETTINGS
+    }
+    try {
+      const profile = await this.deps.mediaRolloutControllerService.getEffectiveProfile()
+      return {
+        semantic_v3_enforced: profile.effective.semantic_v3_enforced,
+        strict_audit_enforced: profile.effective.strict_audit_enforced,
+        lineage_required: profile.effective.lineage_required,
+      }
+    } catch {
+      return DEFAULT_MEDIA_GENERATION_HARDENING_SETTINGS
+    }
+  }
+
+  private async collectHardeningBlockReasonCodes(input: {
+    plan: PersistedImagePlan
+    input_mode: 'reference' | 'scratch'
+    based_on_projection_ids: string[]
+    hardening: MediaGenerationHardeningSettings
+  }): Promise<string[]> {
+    const reasons: string[] = []
+    if (input.hardening.strict_audit_enforced && !input.plan.generation.audit_context) {
+      reasons.push('missing_audit_context')
+    }
+    if (input.input_mode !== 'reference') {
+      return uniqueReasonCodes(reasons)
+    }
+
+    const projections = input.based_on_projection_ids.length > 0
+      ? await this.deps.mediaContextProjectionRepo.findByIds(input.based_on_projection_ids)
+      : []
+    return uniqueReasonCodes([
+      ...reasons,
+      ...(await this.collectProjectionHardeningBlockReasonCodes({
+        input_mode: input.input_mode,
+        based_on_projection_ids: input.based_on_projection_ids,
+        projections,
+        hardening: input.hardening,
+      })),
+    ])
+  }
+
+  private async collectJobHardeningBlockReasonCodes(input: {
+    job: MediaGenerationJob
+    projections: MediaContextProjection[]
+    hardening: MediaGenerationHardeningSettings
+  }): Promise<string[]> {
+    const reasons: string[] = []
+    if (input.hardening.strict_audit_enforced && !input.job.audit_decision) {
+      reasons.push('missing_audit_decision')
+    }
+    if (input.hardening.strict_audit_enforced && input.job.input_mode === 'reference' && input.projections.length === 0) {
+      reasons.push('missing_source_projections')
+    }
+    return uniqueReasonCodes([
+      ...reasons,
+      ...(await this.collectProjectionHardeningBlockReasonCodes({
+        input_mode: input.job.input_mode,
+        based_on_projection_ids: input.job.based_on_projection_ids,
+        projections: input.projections,
+        hardening: input.hardening,
+      })),
+    ])
+  }
+
+  private async collectProjectionHardeningBlockReasonCodes(input: {
+    input_mode: 'reference' | 'scratch'
+    based_on_projection_ids: string[]
+    projections: MediaContextProjection[]
+    hardening: MediaGenerationHardeningSettings
+  }): Promise<string[]> {
+    if (input.input_mode !== 'reference') return []
+
+    const reasons: string[] = []
+    if (input.hardening.lineage_required) {
+      if (input.based_on_projection_ids.length === 0) {
+        reasons.push('missing_source_projections')
+      }
+      if (input.projections.length !== input.based_on_projection_ids.length) {
+        reasons.push('source_projection_missing')
+      }
+      if (this.deps.mediaLineageService && input.projections.length > 0) {
+        const lineageChecks = await Promise.all(
+          input.projections.map((projection) =>
+            this.deps.mediaLineageService!.hasLineage('projection', projection.id)),
+        )
+        if (lineageChecks.some((hasLineage) => !hasLineage)) {
+          reasons.push('lineage_incomplete')
+        }
+      }
+    }
+
+    if (!input.hardening.semantic_v3_enforced) {
+      return uniqueReasonCodes(reasons)
+    }
+    const assetIds = uniqueAssetIdsFromProjections(input.projections)
+    if (input.projections.length > 0 && assetIds.length === 0) {
+      reasons.push('semantic_source_unresolved')
+      return uniqueReasonCodes(reasons)
+    }
+    if (assetIds.length === 0) {
+      return uniqueReasonCodes(reasons)
+    }
+    const snapshots = await Promise.all(
+      assetIds.map((assetId) => this.deps.mediaSemanticSnapshotRepo.findCurrentByAssetId(assetId)),
+    )
+    if (snapshots.some((snapshot) => !snapshot || snapshot.schema_version !== MEDIA_SEMANTIC_SCHEMA_VERSION)) {
+      reasons.push('semantic_schema_not_v3')
+    }
+    return uniqueReasonCodes(reasons)
+  }
+
+  private async cancelPlanGeneration(input: {
+    plan: PersistedImagePlan
+    audit_decision: MediaAuditDecision
+    generation_spec: MediaGenerationSpec
+    compiled_prompt: CompiledMediaPrompt
+  }): Promise<PersistedImagePlan> {
+    const updated = await this.deps.imagePlanRepo.update(input.plan.id, {
+      generation: {
+        ...input.plan.generation,
+        status: 'cancelled',
+        audit_decision: input.audit_decision,
+        spec: input.generation_spec,
+        compiled_prompt: input.compiled_prompt,
+        error_code: 'audit_blocked',
+      },
+    })
+    return updated ?? {
+      ...input.plan,
+      generation: {
+        ...input.plan.generation,
+        status: 'cancelled',
+        audit_decision: input.audit_decision,
+        spec: input.generation_spec,
+        compiled_prompt: input.compiled_prompt,
+        error_code: 'audit_blocked',
+      },
+    }
+  }
 }
 
 function resolveGeneratedOutputSourceKind(
@@ -575,4 +870,71 @@ function buildGeneratedOutputRuntimeCard(
 
 function uniquePlans(plans: PersistedImagePlan[]): PersistedImagePlan[] {
   return Array.from(new Map(plans.map((plan) => [plan.id, plan])).values())
+}
+
+function resolveGenerationSpec(plan: PersistedImagePlan): MediaGenerationSpec {
+  return plan.generation.spec ?? buildLegacyGenerationSpec({
+    prompt_brief: plan.generation.prompt_brief ?? null,
+    input_mode: plan.generation.input_mode ?? 'reference',
+    aspect_ratio_hint: plan.generation.aspect_ratio_hint ?? null,
+    based_on_projection_ids: plan.generation.based_on_projection_ids ?? [],
+  })
+}
+
+function resolveCompiledPrompt(
+  plan: PersistedImagePlan,
+  spec: MediaGenerationSpec,
+): CompiledMediaPrompt {
+  return plan.generation.compiled_prompt ?? compileMediaGenerationSpec({
+    spec,
+    style_hint: null,
+  })
+}
+
+function buildDefaultAllowAuditDecision(): MediaAuditDecision {
+  return {
+    decision: 'allow',
+    reason_codes: ['legacy_generation_job_default_allow'],
+    redacted_terms: [],
+  }
+}
+
+function buildBlockedAuditDecision(
+  existing: MediaAuditDecision | null | undefined,
+  reasonCodes: string[],
+): MediaAuditDecision {
+  return {
+    decision: 'block',
+    reason_codes: uniqueReasonCodes([
+      ...(existing?.reason_codes ?? []),
+      ...reasonCodes,
+    ]),
+    redacted_terms: [...(existing?.redacted_terms ?? [])],
+  }
+}
+
+function uniqueReasonCodes(reasonCodes: string[]): string[] {
+  return [...new Set(reasonCodes.filter((reason) => reason.trim().length > 0))]
+}
+
+function uniqueAssetIdsFromProjections(projections: MediaContextProjection[]): string[] {
+  const assetIds = new Set<string>()
+  for (const projection of projections) {
+    const payload = projection.payload_json as Record<string, unknown> | null
+    if (!payload || typeof payload !== 'object') continue
+    const directAssetId = typeof payload.asset_id === 'string' ? payload.asset_id : null
+    if (directAssetId) {
+      assetIds.add(directAssetId)
+    }
+    const assetRef = payload.asset_ref
+    if (assetRef && typeof assetRef === 'object' && !Array.isArray(assetRef)) {
+      const assetRefId = typeof (assetRef as Record<string, unknown>).asset_id === 'string'
+        ? (assetRef as Record<string, unknown>).asset_id as string
+        : null
+      if (assetRefId) {
+        assetIds.add(assetRefId)
+      }
+    }
+  }
+  return [...assetIds]
 }

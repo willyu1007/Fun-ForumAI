@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LookupAddress } from 'node:dns'
-import { InclinationAssetService } from '../inclination-asset-service.js'
+import { MediaAssetControlService } from '../media-asset-control-service.js'
 import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryMediaAssetRepository } from '../../repos/media-asset-repository.js'
 import { InMemoryMediaSemanticSnapshotRepository } from '../../repos/media-semantic-snapshot-repository.js'
@@ -43,25 +43,25 @@ function createService() {
   const ownerUserId = 'owner-1'
   const agent = agentRepo.create({
     owner_id: ownerUserId,
-    display_name: 'Inclination Agent',
+    display_name: 'Media Agent',
   })
 
   const storage = {
     backend: 'local' as const,
     putObject: vi.fn(async ({ key, data, contentType }: { key: string; data: Buffer; contentType: string }) => ({
       key,
-      url: `/v1/inclination-assets/media/local/${encodeURIComponent(key)}`,
+      url: `/v1/media/local/${encodeURIComponent(key)}`,
       contentType,
       size: data.byteLength,
     })),
     getObject: vi.fn(async () => null),
     deleteObject: vi.fn(async () => {}),
-    publicUrl: vi.fn((key: string) => `/v1/inclination-assets/media/local/${encodeURIComponent(key)}`),
+    publicUrl: vi.fn((key: string) => `/v1/media/local/${encodeURIComponent(key)}`),
   }
 
   const mediaSemanticService = {
     extract: vi.fn(async () => ({
-      schema_version: 'media_semantic_summary.v1',
+      schema_version: 'media_semantic_summary.v3',
       model_provider: 'test',
       model_name: 'test-model',
       model_version: 'test-model',
@@ -120,7 +120,7 @@ function createService() {
     mediaWriteBridge,
   })
 
-  const service = new InclinationAssetService({
+  const service = new MediaAssetControlService({
     agentRepo,
     mediaAssetService,
     mediaReuseGovernanceService,
@@ -136,7 +136,7 @@ function createService() {
   }
 }
 
-describe('InclinationAssetService', () => {
+describe('MediaAssetControlService', () => {
   const originalFetch = globalThis.fetch
 
   beforeEach(() => {

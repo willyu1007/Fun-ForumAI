@@ -8,6 +8,10 @@ import type {
   MediaGenerationJobRepository,
   UpdateMediaGenerationJobPatch,
 } from '../media-generation-job-repository.js'
+import {
+  buildLegacyGenerationSpec,
+  compileMediaGenerationSpec,
+} from '../../media/media-generation-compiler.js'
 
 function includesAnyProjection(
   value: unknown,
@@ -17,10 +21,32 @@ function includesAnyProjection(
   return value.some((item) => typeof item === 'string' && projectionIds.has(item))
 }
 
+function isStoredGenerationSpec(value: unknown): value is MediaGenerationJob['generation_spec'] {
+  return typeof value === 'object'
+    && value !== null
+    && typeof (value as { intent?: unknown }).intent === 'string'
+}
+
+function isStoredCompiledPrompt(value: unknown): value is MediaGenerationJob['compiled_prompt'] {
+  return typeof value === 'object'
+    && value !== null
+    && typeof (value as { rendered_prompt?: unknown }).rendered_prompt === 'string'
+}
+
 export class PgMediaGenerationJobRepository implements MediaGenerationJobRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   async create(input: CreateMediaGenerationJobInput): Promise<MediaGenerationJob> {
+    const generationSpec = input.generation_spec ?? buildLegacyGenerationSpec({
+      prompt_brief: input.prompt_brief ?? null,
+      input_mode: input.input_mode,
+      aspect_ratio_hint: input.aspect_ratio_hint ?? null,
+      based_on_projection_ids: input.based_on_projection_ids,
+    })
+    const compiledPrompt = input.compiled_prompt ?? compileMediaGenerationSpec({
+      spec: generationSpec,
+      style_hint: input.style_hint ?? null,
+    })
     const row = await this.prisma.mediaGenerationJobRecord.create({
       data: {
         ...(input.id ? { id: input.id } : {}),
@@ -30,7 +56,11 @@ export class PgMediaGenerationJobRepository implements MediaGenerationJobReposit
         provider: input.provider,
         modelName: input.model_name,
         requestFingerprint: input.request_fingerprint,
-        promptBrief: input.prompt_brief,
+        promptBrief: input.prompt_brief ?? compiledPrompt.rendered_prompt,
+        generationSpec: generationSpec as unknown as Prisma.InputJsonValue,
+        compiledPrompt: compiledPrompt as unknown as Prisma.InputJsonValue,
+        auditDecision: (input.audit_decision ?? null) as unknown as Prisma.InputJsonValue,
+        providerRequestSummary: (input.provider_request_summary ?? null) as unknown as Prisma.InputJsonValue,
         styleHint: input.style_hint ?? null,
         inputMode: input.input_mode ?? 'reference',
         aspectRatioHint: input.aspect_ratio_hint ?? null,
@@ -110,6 +140,12 @@ export class PgMediaGenerationJobRepository implements MediaGenerationJobReposit
         ...(patch.output_asset_id !== undefined ? { outputAssetId: patch.output_asset_id } : {}),
         ...(patch.error_code !== undefined ? { errorCode: patch.error_code } : {}),
         ...(patch.error_message !== undefined ? { errorMessage: patch.error_message } : {}),
+        ...(patch.audit_decision !== undefined
+          ? { auditDecision: patch.audit_decision as unknown as Prisma.InputJsonValue }
+          : {}),
+        ...(patch.provider_request_summary !== undefined
+          ? { providerRequestSummary: patch.provider_request_summary as unknown as Prisma.InputJsonValue }
+          : {}),
         ...(patch.started_at !== undefined ? { startedAt: patch.started_at } : {}),
         ...(patch.finished_at !== undefined ? { finishedAt: patch.finished_at } : {}),
       },
@@ -212,6 +248,12 @@ export class PgMediaGenerationJobRepository implements MediaGenerationJobReposit
   }
 
   private toDomain(row: PrismaMediaGenerationJobRecord): MediaGenerationJob {
+    const fallbackSpec = buildLegacyGenerationSpec({
+      prompt_brief: row.promptBrief,
+      input_mode: row.inputMode as MediaGenerationJob['input_mode'],
+      aspect_ratio_hint: row.aspectRatioHint as MediaGenerationJob['aspect_ratio_hint'],
+      based_on_projection_ids: row.basedOnProjectionIds as MediaGenerationJob['based_on_projection_ids'],
+    })
     return {
       id: row.id,
       agent_id: row.agentId,
@@ -221,6 +263,17 @@ export class PgMediaGenerationJobRepository implements MediaGenerationJobReposit
       model_name: row.modelName,
       request_fingerprint: row.requestFingerprint,
       prompt_brief: row.promptBrief,
+      generation_spec: isStoredGenerationSpec(row.generationSpec)
+        ? row.generationSpec
+        : fallbackSpec,
+      compiled_prompt: isStoredCompiledPrompt(row.compiledPrompt)
+        ? row.compiledPrompt
+        : compileMediaGenerationSpec({
+          spec: fallbackSpec,
+          style_hint: row.styleHint,
+        }),
+      audit_decision: row.auditDecision as MediaGenerationJob['audit_decision'],
+      provider_request_summary: row.providerRequestSummary as MediaGenerationJob['provider_request_summary'],
       style_hint: row.styleHint,
       input_mode: row.inputMode as MediaGenerationJob['input_mode'],
       aspect_ratio_hint: row.aspectRatioHint as MediaGenerationJob['aspect_ratio_hint'],

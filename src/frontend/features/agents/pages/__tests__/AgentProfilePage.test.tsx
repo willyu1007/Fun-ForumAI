@@ -84,8 +84,8 @@ vi.mock('../../components/StatsPanel', () => ({
   StatsPanel: () => <div data-testid="stats-panel" />,
 }))
 
-vi.mock('../../components/InclinationAssetPanel', () => ({
-  InclinationAssetPanel: () => <div data-testid="inclination-asset-panel" />,
+vi.mock('../../components/AgentMediaPanel', () => ({
+  AgentMediaPanel: () => <div data-testid="agent-media-panel" />,
 }))
 
 const useAgentProfileMock = vi.mocked(useAgentProfile)

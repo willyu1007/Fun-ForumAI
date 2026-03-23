@@ -18,7 +18,7 @@ export const PROMPT_TEMPLATE_REFS = {
   internalPublicObservationSummaryExtract: { id: 'internal-public-observation-summary-extract', version: 1 },
   internalPublicObservationSummaryDistill: { id: 'internal-public-observation-summary-distill', version: 1 },
   internalPublicObservationIdentityFinalize: { id: 'internal-public-observation-identity-finalize', version: 1 },
-  internalVisionSummary: { id: 'internal-vision-summary', version: 2 },
+  internalVisionSummary: { id: 'internal-vision-summary', version: 3 },
 } as const satisfies Record<string, PromptTemplateRef>
 
 const CURRENT_VISIBLE_PROMPT_REFS_BY_TEMPLATE_ID: Readonly<Record<string, PromptTemplateRef>> = {

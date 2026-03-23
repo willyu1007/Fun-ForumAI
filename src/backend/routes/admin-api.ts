@@ -22,6 +22,7 @@ import {
   mediaObservabilityService,
   mediaRolloutControllerService,
   mediaLifecycleService,
+  mediaLineageService,
   searchTelemetryService,
   searchProjectionService,
 } from '../container.js'
@@ -55,6 +56,7 @@ import {
   revokeMediaReusePolicySchema,
 } from '../validation/schemas.js'
 import { resolveEffectiveDisclosureCap } from './admin-api-utils.js'
+import type { MediaLineageNodeType } from '../repos/types.js'
 
 export const adminApiRouter: IRouter = Router()
 
@@ -616,6 +618,10 @@ adminApiRouter.patch(
         allow_private_runtime_projection: req.body.allow_private_runtime_projection ?? null,
         allow_private_inspired_generation: req.body.allow_private_inspired_generation ?? null,
         force_safe_mode: req.body.force_safe_mode ?? false,
+        semantic_v3_enforced: req.body.semantic_v3_enforced ?? null,
+        strict_audit_enforced: req.body.strict_audit_enforced ?? null,
+        lineage_required: req.body.lineage_required ?? null,
+        root_post_attachment_only: req.body.root_post_attachment_only ?? null,
         reason: req.body.reason ?? null,
         created_by_user_id: req.user!.userId,
       })
@@ -624,6 +630,38 @@ adminApiRouter.patch(
       if (tryHandleAppError(res, err)) return
       next(err)
     }
+  },
+)
+
+const MEDIA_LINEAGE_NODE_TYPES: MediaLineageNodeType[] = [
+  'asset',
+  'semantic_snapshot',
+  'binding',
+  'projection',
+  'image_plan',
+  'generation_job',
+  'post_media_attachment',
+]
+
+adminApiRouter.get(
+  '/admin/media/lineage/:nodeType/:nodeId',
+  requireHumanAuth,
+  requireAdmin,
+  async (req, res) => {
+    const nodeType = String(req.params.nodeType) as MediaLineageNodeType
+    const nodeId = String(req.params.nodeId)
+    const depth = typeof req.query.depth === 'string' ? Number.parseInt(req.query.depth, 10) : 3
+    if (!MEDIA_LINEAGE_NODE_TYPES.includes(nodeType)) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: `nodeType must be one of: ${MEDIA_LINEAGE_NODE_TYPES.join(', ')}`,
+        },
+      })
+      return
+    }
+    const trace = await mediaLineageService.traceNode(nodeType, nodeId, depth)
+    res.json({ data: trace })
   },
 )
 

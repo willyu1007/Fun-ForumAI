@@ -774,26 +774,30 @@ model MediaReusePolicyRecord {
 }
 
 model MediaGenerationJobRecord {
-  id                   String    @id @default(cuid())
-  agentId              String    @map("agent_id")
-  planId               String?   @map("plan_id")
-  status               String    @default("queued")
-  provider             String
-  modelName            String    @map("model_name")
-  requestFingerprint   String    @unique @map("request_fingerprint")
-  promptBrief          String    @map("prompt_brief") @db.Text
-  styleHint            String?   @map("style_hint")
-  inputMode            String    @default("reference") @map("input_mode")
-  aspectRatioHint      String?   @map("aspect_ratio_hint")
-  basedOnProjectionIds Json      @map("based_on_projection_ids")
-  attemptCount         Int       @default(0) @map("attempt_count")
-  outputAssetId        String?   @map("output_asset_id")
-  errorCode            String?   @map("error_code")
-  errorMessage         String?   @map("error_message") @db.Text
-  startedAt            DateTime? @map("started_at")
-  finishedAt           DateTime? @map("finished_at")
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
+  id                     String    @id @default(cuid())
+  agentId                String    @map("agent_id")
+  planId                 String?   @map("plan_id")
+  status                 String    @default("queued")
+  provider               String
+  modelName              String    @map("model_name")
+  requestFingerprint     String    @unique @map("request_fingerprint")
+  promptBrief            String?   @map("prompt_brief") @db.Text
+  generationSpec         Json      @map("generation_spec")
+  compiledPrompt         Json      @map("compiled_prompt")
+  auditDecision          Json?     @map("audit_decision")
+  providerRequestSummary Json?     @map("provider_request_summary")
+  styleHint              String?   @map("style_hint")
+  inputMode              String    @default("reference") @map("input_mode")
+  aspectRatioHint        String?   @map("aspect_ratio_hint")
+  basedOnProjectionIds   Json      @map("based_on_projection_ids")
+  attemptCount           Int       @default(0) @map("attempt_count")
+  outputAssetId          String?   @map("output_asset_id")
+  errorCode              String?   @map("error_code")
+  errorMessage           String?   @map("error_message") @db.Text
+  startedAt              DateTime? @map("started_at")
+  finishedAt             DateTime? @map("finished_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
 
   plan        ImagePlanRecord? @relation(fields: [planId], references: [id])
   outputAsset MediaAsset?      @relation("GeneratedJobOutputAsset", fields: [outputAssetId], references: [id])
@@ -863,6 +867,10 @@ model MediaRolloutControllerOverride {
   allowPrivateRuntimeProjection  Boolean?  @map("allow_private_runtime_projection")
   allowPrivateInspiredGeneration Boolean?  @map("allow_private_inspired_generation")
   forceSafeMode                  Boolean   @default(false) @map("force_safe_mode")
+  semanticV3Enforced             Boolean   @default(true) @map("semantic_v3_enforced")
+  strictAuditEnforced            Boolean   @default(true) @map("strict_audit_enforced")
+  lineageRequired                Boolean   @default(true) @map("lineage_required")
+  rootPostAttachmentOnly         Boolean   @default(true) @map("root_post_attachment_only")
   reason                         String?   @db.Text
   createdByUserId                String    @map("created_by_user_id")
   releasedByUserId               String?   @map("released_by_user_id")
@@ -874,6 +882,22 @@ model MediaRolloutControllerOverride {
   @@index([status, createdAt])
   @@index([mode, createdAt])
   @@map("media_rollout_controller_overrides")
+}
+
+model MediaLineageEdge {
+  id           String   @id @default(cuid())
+  fromNodeType String   @map("from_node_type")
+  fromNodeId   String   @map("from_node_id")
+  toNodeType   String   @map("to_node_type")
+  toNodeId     String   @map("to_node_id")
+  edgeKind     String   @map("edge_kind")
+  metadataJson Json?    @map("metadata_json")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([fromNodeType, fromNodeId, createdAt])
+  @@index([toNodeType, toNodeId, createdAt])
+  @@index([edgeKind, createdAt])
+  @@map("media_lineage_edges")
 }
 
 model AgentAchievement {

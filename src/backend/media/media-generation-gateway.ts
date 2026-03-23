@@ -1,9 +1,7 @@
-import type { AspectRatioHint } from '../repos/types.js'
+import type { CompiledMediaPrompt } from '../repos/types.js'
 
 export interface MediaGenerationGatewayInput {
-  prompt_brief: string
-  style_hint?: string | null
-  aspect_ratio_hint?: AspectRatioHint | null
+  compiled_prompt: CompiledMediaPrompt
   trace_id: string
 }
 

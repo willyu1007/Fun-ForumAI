@@ -6,12 +6,17 @@ import type { ImagePlanRepository } from '../repos/image-plan-repository.js'
 import type { MediaContextProjectionRepository } from '../repos/media-context-projection-repository.js'
 import type { MediaProjectionService } from './media-projection-service.js'
 import type { MediaReuseGovernanceService } from './media-reuse-governance-service.js'
+import type { MediaLineageService } from './media-lineage-service.js'
 import type {
   AspectRatioHint,
+  CompiledMediaPrompt,
   ImageDecision,
   ImagePlanSource,
+  MediaAuditContext,
+  MediaAuditDecision,
   MediaAsset,
   MediaContextProjection,
+  MediaGenerationSpec,
   MediaReuseMode,
   MediaSemanticSnapshot,
   PersistedImagePlan,
@@ -24,6 +29,7 @@ import type {
   SceneMediaBinding,
   VisualSourceKind,
 } from '../repos/types.js'
+import { compileMediaGenerationSpec } from './media-generation-compiler.js'
 import {
   buildCommunityCommonsPoolSceneId,
   buildPlatformCanonicalPoolSceneId,
@@ -87,6 +93,7 @@ export interface ImagePlannerServiceDeps {
   forumSceneMetadataRepo: ForumSceneMetadataRepository
   mediaProjectionService: MediaProjectionService
   mediaReuseGovernanceService: MediaReuseGovernanceService
+  mediaLineageService?: MediaLineageService | null
 }
 
 export class ImagePlannerService {
@@ -211,7 +218,7 @@ export class ImagePlannerService {
         cardResult.card,
         'original',
       )
-      return this.deps.imagePlanRepo.create({
+      return this.createPlanWithLineage({
         directive_id: input.directive.id,
         scene_ref: input.directive.scene_ref,
         status: 'ready',
@@ -275,14 +282,29 @@ export class ImagePlannerService {
         disclose_origin_policy: defaultDisclosePolicy(deriveCandidate.candidate.source_kind),
         score: deriveCandidate.score,
       })
-      const promptBrief = buildGenerationPromptBrief({
+      const baseSpec = buildGenerationSpec({
         directive: input.directive,
         candidate: deriveCandidate.candidate,
         card: cardResult.card,
       })
+      const spec: MediaGenerationSpec = {
+        ...baseSpec,
+        source_projections: [cardResult.projection.id],
+      }
+      const compiledPrompt = compileMediaGenerationSpec({
+        spec,
+        style_hint: input.directive.narrative_context.style_hint ?? null,
+      })
+      const auditContext = buildPlannerAuditContext('generation', {
+        sensitive_terms: deriveCandidate.candidate.source_kind === 'owner_private_pool'
+          || deriveCandidate.candidate.source_kind === 'private_runtime_projection'
+          ? [deriveCandidate.candidate.summary.public_safe_caption]
+          : [],
+      })
+      const auditDecision = buildAllowAuditDecision()
       const requestFingerprint = buildGenerationFingerprint({
         agent_id: input.agent_id,
-        prompt_brief: promptBrief,
+        compiled_prompt: compiledPrompt,
         aspect_ratio_hint: input.directive.narrative_context.aspect_ratio_hint ?? null,
         input_mode: 'reference',
         projection_id: cardResult.projection.id,
@@ -292,7 +314,7 @@ export class ImagePlannerService {
         ? 'generate_from_private_projection'
         : 'generate_from_public_reference'
 
-      return this.deps.imagePlanRepo.create({
+      return this.createPlanWithLineage({
         directive_id: input.directive.id,
         scene_ref: input.directive.scene_ref,
         status: 'pending_generation',
@@ -316,7 +338,11 @@ export class ImagePlannerService {
           request_fingerprint: requestFingerprint,
           aspect_ratio_hint: input.directive.narrative_context.aspect_ratio_hint ?? null,
           based_on_projection_ids: [cardResult.projection.id],
-          prompt_brief: promptBrief,
+          prompt_brief: compiledPrompt.rendered_prompt,
+          audit_context: auditContext,
+          audit_decision: auditDecision,
+          spec,
+          compiled_prompt: compiledPrompt,
           attempt_count: 0,
         },
         selected_sources: ranked.map((item) =>
@@ -374,7 +400,7 @@ export class ImagePlannerService {
       const decision: ImageDecision = input.referenceCandidate.candidate.source_kind === 'private_runtime_projection'
         ? 'reuse_private_projection_runtime_only'
         : 'reuse_public_projection'
-      return this.deps.imagePlanRepo.create({
+      return this.createPlanWithLineage({
         directive_id: input.directive.id,
         scene_ref: input.directive.scene_ref,
         status: 'degraded',
@@ -416,7 +442,7 @@ export class ImagePlannerService {
     }
 
     const best = input.ranked[0] ?? null
-    return this.deps.imagePlanRepo.create({
+    return this.createPlanWithLineage({
       directive_id: input.directive.id,
       scene_ref: input.directive.scene_ref,
       status: 'degraded',
@@ -697,17 +723,23 @@ export class ImagePlannerService {
     ranked: EvaluatedCandidate[]
     directive: PersistedVisualDirective
   }): Promise<PersistedImagePlan> {
-    const promptBrief = buildScratchGenerationPromptBrief({
+    const spec = buildScratchGenerationSpec({
       directive: input.directive,
     })
+    const compiledPrompt = compileMediaGenerationSpec({
+      spec,
+      style_hint: input.directive.narrative_context.style_hint ?? null,
+    })
+    const auditContext = buildPlannerAuditContext('generation')
+    const auditDecision = buildAllowAuditDecision()
     const requestFingerprint = buildGenerationFingerprint({
       agent_id: input.agent_id,
-      prompt_brief: promptBrief,
+      compiled_prompt: compiledPrompt,
       aspect_ratio_hint: input.directive.narrative_context.aspect_ratio_hint ?? null,
       input_mode: 'scratch',
     })
 
-    return this.deps.imagePlanRepo.create({
+    return this.createPlanWithLineage({
       directive_id: input.directive.id,
       scene_ref: input.directive.scene_ref,
       status: 'pending_generation',
@@ -731,7 +763,11 @@ export class ImagePlannerService {
         request_fingerprint: requestFingerprint,
         aspect_ratio_hint: input.directive.narrative_context.aspect_ratio_hint ?? null,
         based_on_projection_ids: [],
-        prompt_brief: promptBrief,
+        prompt_brief: compiledPrompt.rendered_prompt,
+        audit_context: auditContext,
+        audit_decision: auditDecision,
+        spec,
+        compiled_prompt: compiledPrompt,
         attempt_count: 0,
       },
       selected_sources: input.ranked.map((item) =>
@@ -849,7 +885,77 @@ export class ImagePlannerService {
       prohibited_reference_types: ['owner_private_speech', 'private_memory', 'hidden_director_goal'],
       confidence: clamp(input.score.total / 6, 0, 1),
       relevance_score: clamp(input.score.relevance, 0, 1),
+      audit_context: {
+        surface: 'public_runtime',
+        sensitive_terms: [],
+        policy_mode: 'strict',
+        visibility_scope: 'public',
+        actor_role: 'agent',
+      },
     })
+  }
+
+  private async createPlanWithLineage(
+    input: Parameters<ImagePlanRepository['create']>[0],
+  ): Promise<PersistedImagePlan> {
+    const plan = await this.deps.imagePlanRepo.create(input)
+    const selected = plan.selected_sources.filter((source) => !source.rejection_reason)
+    await this.deps.mediaLineageService?.recordEdges([
+      ...selected.flatMap((source) => ([
+        ...(source.asset_id
+          ? [{
+              from_node_type: 'asset' as const,
+              from_node_id: source.asset_id,
+              to_node_type: 'image_plan' as const,
+              to_node_id: plan.id,
+              edge_kind: 'source_selected_for_plan',
+              metadata_json: {
+                source_kind: source.source_kind,
+                reuse_mode: source.reuse_mode ?? null,
+                selection_reason: source.selection_reason ?? null,
+              },
+            }]
+          : []),
+        ...(source.binding_id
+          ? [{
+              from_node_type: 'binding' as const,
+              from_node_id: source.binding_id,
+              to_node_type: 'image_plan' as const,
+              to_node_id: plan.id,
+              edge_kind: 'binding_selected_for_plan',
+              metadata_json: {
+                source_kind: source.source_kind,
+                reuse_mode: source.reuse_mode ?? null,
+              },
+            }]
+          : []),
+        ...(source.projection_id
+          ? [{
+              from_node_type: 'projection' as const,
+              from_node_id: source.projection_id,
+              to_node_type: 'image_plan' as const,
+              to_node_id: plan.id,
+              edge_kind: 'projection_selected_for_plan',
+              metadata_json: {
+                source_kind: source.source_kind,
+                reuse_mode: source.reuse_mode ?? null,
+              },
+            }]
+          : []),
+      ])),
+      ...(plan.generation.based_on_projection_ids ?? []).map((projectionId) => ({
+        from_node_type: 'projection' as const,
+        from_node_id: projectionId,
+        to_node_type: 'image_plan' as const,
+        to_node_id: plan.id,
+        edge_kind: 'plan_generation_based_on_projection',
+        metadata_json: {
+          generation_mode: plan.generation.mode,
+          input_mode: plan.generation.input_mode ?? null,
+        },
+      })),
+    ])
+    return plan
   }
 }
 
@@ -1167,9 +1273,13 @@ function toSelectedSource(
   return {
     source_kind: evaluated.candidate.source_kind,
     asset_id: evaluated.candidate.asset?.id,
+    binding_id: evaluated.candidate.binding?.id,
     semantic_snapshot_id: evaluated.candidate.snapshot?.id,
     projection_id: input.projection_id ?? evaluated.candidate.projection?.id,
     card_id: input.card_id,
+    selection_reason: input.selected
+      ? `selected_${evaluated.candidate.source_kind}`
+      : input.rejection_reason,
     reuse_mode: input.reuse_mode,
     policy_ref: evaluated.policy_ref,
     policy_reason: evaluated.policy_reason,
@@ -1179,70 +1289,81 @@ function toSelectedSource(
   }
 }
 
-function buildGenerationPromptBrief(input: {
+function buildGenerationSpec(input: {
   directive: PersistedVisualDirective
   candidate: PlannerCandidate
   card: PublicMediaContextCard
-}): string {
-  const lines = [
-    `visual_role=${input.directive.goal.visual_role}`,
-    `human_goal=${input.directive.goal.human_goal}`,
-    `hook=${input.directive.narrative_context.hook}`,
-    `objective=${input.directive.narrative_context.objective}`,
-    `tone=${input.directive.narrative_context.tone_hint}`,
-    `theme=${input.card.public_summary.theme}`,
-    `scene=${input.card.public_summary.scene}`,
-    `mood=${input.card.public_summary.mood}`,
-    `caption=${input.card.public_summary.public_safe_caption}`,
-    input.card.public_summary.salient_entities.length > 0
-      ? `salient_entities=${input.card.public_summary.salient_entities.join(', ')}`
-      : null,
-    input.card.public_summary.discussion_points.length > 0
-      ? `discussion_points=${input.card.public_summary.discussion_points.join(' | ')}`
-      : null,
-    input.directive.narrative_context.style_hint
-      ? `style_hint=${input.directive.narrative_context.style_hint}`
-      : null,
-    input.directive.narrative_context.aspect_ratio_hint
-      ? `aspect_ratio=${input.directive.narrative_context.aspect_ratio_hint}`
-      : null,
-    input.candidate.source_kind === 'owner_private_pool' || input.candidate.source_kind === 'private_runtime_projection'
-      ? 'privacy_guard=derive_public_safe_scene_only'
-      : null,
-  ]
-  return lines.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).join('\n')
+}): MediaGenerationSpec {
+  return {
+    intent: 'reference_derive',
+    subject_anchors: [
+      input.directive.goal.visual_role,
+      input.directive.goal.human_goal,
+      input.directive.narrative_context.hook,
+      input.card.public_summary.theme,
+      ...input.card.public_summary.salient_entities.slice(0, 4),
+    ].filter((item) => item.trim().length > 0),
+    scene_constraints: [
+      input.directive.narrative_context.objective,
+      input.card.public_summary.scene,
+      input.card.public_summary.public_safe_caption,
+      ...input.card.public_summary.discussion_points.slice(0, 4),
+    ].filter((item) => item.trim().length > 0),
+    style_constraints: [
+      input.directive.narrative_context.tone_hint,
+      input.card.public_summary.mood,
+      input.directive.narrative_context.style_hint ?? null,
+    ].filter((item): item is string => typeof item === 'string' && item.trim().length > 0),
+    negative_constraints: [
+      input.candidate.source_kind === 'owner_private_pool' || input.candidate.source_kind === 'private_runtime_projection'
+        ? 'Only derive from public-safe visible cues. Do not reveal or infer private origin details.'
+        : null,
+      ...(input.directive.narrative_context.forbidden_elements ?? []),
+    ].filter((item): item is string => typeof item === 'string' && item.trim().length > 0),
+    source_projections: [],
+    output_policy: {
+      aspect_ratio_hint: input.directive.narrative_context.aspect_ratio_hint ?? null,
+      public_safe_only: true,
+      derivative_display_only: true,
+    },
+  }
 }
 
-function buildScratchGenerationPromptBrief(input: {
+function buildScratchGenerationSpec(input: {
   directive: PersistedVisualDirective
-}): string {
-  const lines = [
-    `visual_role=${input.directive.goal.visual_role}`,
-    `human_goal=${input.directive.goal.human_goal}`,
-    `hook=${input.directive.narrative_context.hook}`,
-    `objective=${input.directive.narrative_context.objective}`,
-    `tone=${input.directive.narrative_context.tone_hint}`,
-    `semantic_query=${input.directive.narrative_context.semantic_query}`,
-    input.directive.narrative_context.required_elements?.length
-      ? `required_elements=${input.directive.narrative_context.required_elements.join(', ')}`
-      : null,
-    input.directive.narrative_context.forbidden_elements?.length
-      ? `forbidden_elements=${input.directive.narrative_context.forbidden_elements.join(', ')}`
-      : null,
-    input.directive.narrative_context.style_hint
-      ? `style_hint=${input.directive.narrative_context.style_hint}`
-      : null,
-    input.directive.narrative_context.aspect_ratio_hint
-      ? `aspect_ratio=${input.directive.narrative_context.aspect_ratio_hint}`
-      : null,
-    'privacy_guard=public_only_no_private_origin_reference',
-  ]
-  return lines.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).join('\n')
+}): MediaGenerationSpec {
+  return {
+    intent: 'scratch_scene',
+    subject_anchors: [
+      input.directive.goal.visual_role,
+      input.directive.goal.human_goal,
+      input.directive.narrative_context.hook,
+    ].filter((item) => item.trim().length > 0),
+    scene_constraints: [
+      input.directive.narrative_context.objective,
+      input.directive.narrative_context.semantic_query,
+      ...(input.directive.narrative_context.required_elements ?? []),
+    ].filter((item) => item.trim().length > 0),
+    style_constraints: [
+      input.directive.narrative_context.tone_hint,
+      input.directive.narrative_context.style_hint ?? null,
+    ].filter((item): item is string => typeof item === 'string' && item.trim().length > 0),
+    negative_constraints: [
+      'Public-only composition. No private-origin references.',
+      ...(input.directive.narrative_context.forbidden_elements ?? []),
+    ].filter((item) => item.trim().length > 0),
+    source_projections: [],
+    output_policy: {
+      aspect_ratio_hint: input.directive.narrative_context.aspect_ratio_hint ?? null,
+      public_safe_only: true,
+      derivative_display_only: false,
+    },
+  }
 }
 
 function buildGenerationFingerprint(input: {
   agent_id: string
-  prompt_brief: string
+  compiled_prompt: CompiledMediaPrompt
   aspect_ratio_hint: AspectRatioHint | null
   input_mode: 'reference' | 'scratch'
   projection_id?: string
@@ -1252,8 +1373,31 @@ function buildGenerationFingerprint(input: {
     input.input_mode,
     input.aspect_ratio_hint ?? '4:5',
     input.projection_id ?? 'scratch',
-    input.prompt_brief.trim(),
+    input.compiled_prompt.rendered_prompt.trim(),
   ].join('|')
+}
+
+function buildPlannerAuditContext(
+  surface: MediaAuditContext['surface'],
+  input?: {
+    sensitive_terms?: string[]
+  },
+): MediaAuditContext {
+  return {
+    surface,
+    sensitive_terms: [...(input?.sensitive_terms ?? [])],
+    policy_mode: 'strict',
+    visibility_scope: 'public',
+    actor_role: 'agent',
+  }
+}
+
+function buildAllowAuditDecision(reason = 'planner_public_safe_generation_spec'): MediaAuditDecision {
+  return {
+    decision: 'allow',
+    reason_codes: [reason],
+    redacted_terms: [],
+  }
 }
 
 function zeroScoreBreakdown(): PlannerScoreBreakdown {

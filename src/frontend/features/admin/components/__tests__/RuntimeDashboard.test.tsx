@@ -192,6 +192,10 @@ describe('MediaOpsCard', () => {
               allow_private_runtime_projection: true,
               allow_private_inspired_generation: true,
               force_safe_mode: false,
+              semantic_v3_enforced: true,
+              strict_audit_enforced: true,
+              lineage_required: true,
+              root_post_attachment_only: true,
             },
             reason: 'within_target_band',
           },
@@ -250,6 +254,10 @@ describe('MediaOpsCard', () => {
             allow_private_runtime_projection: true,
             allow_private_inspired_generation: true,
             force_safe_mode: false,
+            semantic_v3_enforced: true,
+            strict_audit_enforced: true,
+            lineage_required: true,
+            root_post_attachment_only: true,
           },
           reason: 'within_target_band',
         }}
@@ -274,6 +282,14 @@ describe('MediaOpsCard', () => {
         onAllowPrivateInspiredChange={() => {}}
         forceSafeMode={false}
         onForceSafeModeChange={() => {}}
+        semanticV3Enforced
+        onSemanticV3EnforcedChange={() => {}}
+        strictAuditEnforced
+        onStrictAuditEnforcedChange={() => {}}
+        lineageRequired
+        onLineageRequiredChange={() => {}}
+        rootPostAttachmentOnly
+        onRootPostAttachmentOnlyChange={() => {}}
         applyPending={false}
         releasePending={false}
         lifecyclePending={false}

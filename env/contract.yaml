@@ -668,12 +668,12 @@ variables:
     default: "true"
     description: Enable human participation routes and human vote/follow capabilities.
 
-  FF_MULTIMODAL_AGENT_INCLINATION_V1:
+  FF_MULTIMODAL_AGENT_MEDIA_V1:
     type: enum
     enum: ["true", "false"]
     required: false
     default: "false"
-    description: Enable multimodal inclination asset pipeline and related APIs.
+    description: Enable the primary multimodal media pipeline and /media/* APIs.
 
   FF_MEDIA_GENERATION_V1:
     type: enum

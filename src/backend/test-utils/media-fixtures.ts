@@ -1,23 +1,58 @@
 import type { MediaSemanticSummary, SceneMediaBinding } from '../repos/types.js'
+import { normalizeStoredSemanticSummary } from '../media/media-contract-utils.js'
 
 export function buildMediaSemanticSummary(
   overrides: Partial<MediaSemanticSummary> = {},
 ): MediaSemanticSummary {
-  return {
-    theme: 'visual discussion material',
-    scene: 'static visual scene',
-    mood: 'neutral',
-    confidence: 0.8,
-    composition: 'single-scene composition',
-    style_tags: [],
-    discussion_points: ['Describe the visible cue.'],
-    salient_entities: [],
-    ocr_snippets: [],
-    safety_labels: [],
-    public_safe_summary: 'A visual media asset that can support public discussion.',
-    internal_full_summary: 'A visual media asset available for media reasoning.',
-    ...overrides,
-  }
+  const {
+    scene,
+    composition,
+    style,
+    entities,
+    ocr,
+    safety,
+    summaries,
+    confidence,
+    theme,
+    mood,
+    style_tags,
+    discussion_points,
+    salient_entities,
+    ocr_snippets,
+    safety_labels,
+    public_safe_summary,
+    internal_full_summary,
+  } = overrides
+  return normalizeStoredSemanticSummary({
+    scene: scene ?? 'static visual scene',
+    composition: composition ?? 'single-scene composition',
+    style: {
+      theme: style?.theme ?? theme ?? 'visual discussion material',
+      mood: style?.mood ?? mood ?? 'neutral',
+      tags: style?.tags ?? style_tags ?? [],
+    },
+    entities: {
+      discussion_points: entities?.discussion_points ?? discussion_points ?? ['Describe the visible cue.'],
+      salient: entities?.salient ?? salient_entities ?? [],
+    },
+    ocr: {
+      snippets: ocr?.snippets ?? ocr_snippets ?? [],
+    },
+    safety: {
+      labels: safety?.labels ?? safety_labels ?? [],
+    },
+    summaries: {
+      public_safe:
+        summaries?.public_safe
+        ?? public_safe_summary
+        ?? 'A visual media asset that can support public discussion.',
+      internal_full:
+        summaries?.internal_full
+        ?? internal_full_summary
+        ?? 'A visual media asset available for media reasoning.',
+    },
+    confidence: confidence ?? 0.8,
+  })
 }
 
 export function buildSceneMediaBinding(

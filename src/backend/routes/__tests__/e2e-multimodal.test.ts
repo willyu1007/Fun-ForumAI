@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import request from 'supertest'
-import { app, config, userToken, user2Token, VALID_PNG_BUFFER, setupFeatureFlagGuard } from './e2e-helpers.js'
+import {
+  app,
+  config,
+  userToken,
+  user2Token,
+  VALID_PNG_BUFFER,
+  setupFeatureFlagGuard,
+} from './e2e-helpers.js'
 import { llmClient, llmGateway, postScheduler } from '../../container.js'
 
 setupFeatureFlagGuard()
@@ -86,16 +93,19 @@ function buildScheduledPostSelection(community: ScheduledPostEligibleCommunity) 
   }
 }
 
-describe('E2E: Multimodal inclination + owner-only growth controls', () => {
+describe('E2E: Multimodal media + owner-only growth controls', () => {
   const featureFlags = config.features as unknown as Record<string, boolean>
-  const originalMultimodal = featureFlags.multimodalAgentInclinationV1
+  const originalMultimodal = featureFlags.multimodalAgentMediaV1
+  const originalRolloutController = featureFlags.mediaRolloutControllerV1
 
   beforeAll(() => {
-    featureFlags.multimodalAgentInclinationV1 = true
+    featureFlags.multimodalAgentMediaV1 = true
+    featureFlags.mediaRolloutControllerV1 = true
   })
 
   afterAll(() => {
-    featureFlags.multimodalAgentInclinationV1 = originalMultimodal
+    featureFlags.multimodalAgentMediaV1 = originalMultimodal
+    featureFlags.mediaRolloutControllerV1 = originalRolloutController
   })
 
   it('upload/current/delete and local media read work for owner', async () => {
@@ -106,7 +116,7 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
     const agentId = createAgentRes.body.data.id
 
     const uploadRes = await request(app)
-      .post(`/v1/agents/${agentId}/inclination-asset/upload`)
+      .post(`/v1/agents/${agentId}/media/upload`)
       .set('Authorization', `Bearer ${userToken}`)
       .field('owner_note', '偏轻松吐槽')
       .attach('file', VALID_PNG_BUFFER, {
@@ -123,13 +133,13 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
     expect(String(mediaRes.headers['content-type'])).toContain('image/png')
 
     const currentRes = await request(app)
-      .get(`/v1/agents/${agentId}/inclination-asset/current`)
+      .get(`/v1/agents/${agentId}/media/current`)
       .set('Authorization', `Bearer ${userToken}`)
     expect(currentRes.status).toBe(200)
     expect(currentRes.body.data.pool.latest_asset).toBeTruthy()
 
     const deleteRes = await request(app)
-      .delete(`/v1/agents/${agentId}/inclination-asset/current`)
+      .delete(`/v1/agents/${agentId}/media/current`)
       .set('Authorization', `Bearer ${userToken}`)
     expect(deleteRes.status).toBe(200)
     expect(deleteRes.body.data.removed).toBe(true)
@@ -143,7 +153,7 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
     const agentId = createAgentRes.body.data.id
 
     const res = await request(app)
-      .post(`/v1/agents/${agentId}/inclination-asset/url`)
+      .post(`/v1/agents/${agentId}/media/url`)
       .set('Authorization', `Bearer ${userToken}`)
       .send({ source_url: 'http://example.com/unsafe.png' })
     expect(res.status).toBe(400)
@@ -158,7 +168,7 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
     const agentId = createAgentRes.body.data.id
 
     const uploadRes = await request(app)
-      .post(`/v1/agents/${agentId}/inclination-asset/upload`)
+      .post(`/v1/agents/${agentId}/media/upload`)
       .set('Authorization', `Bearer ${userToken}`)
       .attach('file', Buffer.from([0x89, 0x50, 0x4e, 0x47]), {
         filename: 'broken.png',
@@ -168,7 +178,7 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
     expect(uploadRes.body.error.code).toBe('VALIDATION_ERROR')
   })
 
-  it('supports owner promote and demote for inclination assets', async () => {
+  it('supports owner promote and demote for media assets', async () => {
     const createAgentRes = await request(app)
       .post('/v1/agents')
       .set('Authorization', `Bearer ${userToken}`)
@@ -176,7 +186,7 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
     const agentId = createAgentRes.body.data.id
 
     const uploadRes = await request(app)
-      .post(`/v1/agents/${agentId}/inclination-asset/upload`)
+      .post(`/v1/agents/${agentId}/media/upload`)
       .set('Authorization', `Bearer ${userToken}`)
       .attach('file', VALID_PNG_BUFFER, {
         filename: 'promote-demote.png',
@@ -186,29 +196,29 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
 
     const assetId = uploadRes.body.data.asset_id
     const promoteRes = await request(app)
-      .post(`/v1/agents/${agentId}/inclination-asset/${assetId}/promote`)
+      .post(`/v1/agents/${agentId}/media/${assetId}/promote`)
       .set('Authorization', `Bearer ${userToken}`)
     expect(promoteRes.status).toBe(200)
     expect(promoteRes.body.data.visibility_policy).toBe('public_original_allowed')
 
     const demoteRes = await request(app)
-      .post(`/v1/agents/${agentId}/inclination-asset/${assetId}/demote`)
+      .post(`/v1/agents/${agentId}/media/${assetId}/demote`)
       .set('Authorization', `Bearer ${userToken}`)
     expect(demoteRes.status).toBe(200)
     expect(demoteRes.body.data.visibility_policy).toBe('private_only')
   })
 
-  it('blocks non-owner for inclination endpoints and style/instructions/prompt-overrides', async () => {
+  it('blocks non-owner for media endpoints and style/instructions/prompt-overrides', async () => {
     const createAgentRes = await request(app)
       .post('/v1/agents')
       .set('Authorization', `Bearer ${userToken}`)
       .send({ display_name: 'Owner-locked Agent' })
     const agentId = createAgentRes.body.data.id
 
-    const inclinationRes = await request(app)
-      .get(`/v1/agents/${agentId}/inclination-asset/current`)
+    const mediaRes = await request(app)
+      .get(`/v1/agents/${agentId}/media/current`)
       .set('Authorization', `Bearer ${user2Token}`)
-    expect(inclinationRes.status).toBe(403)
+    expect(mediaRes.status).toBe(403)
 
     const styleRes = await request(app)
       .get(`/v1/agents/${agentId}/style`)
@@ -224,6 +234,32 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
       .get(`/v1/agents/${agentId}/prompt-overrides`)
       .set('Authorization', `Bearer ${user2Token}`)
     expect(promptOverridesRes.status).toBe(403)
+  })
+
+  it('removes legacy write routes after the media cutover', async () => {
+    const createAgentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Media Route Agent' })
+    const agentId = createAgentRes.body.data.id
+
+    const legacyMissingRes = await request(app)
+      .post(`/v1/agents/${agentId}/inclination-asset/upload`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .attach('file', VALID_PNG_BUFFER, {
+        filename: 'legacy-route.png',
+        contentType: 'image/png',
+      })
+    expect(legacyMissingRes.status).toBe(404)
+
+    const mediaRes = await request(app)
+      .post(`/v1/agents/${agentId}/media/upload`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .attach('file', VALID_PNG_BUFFER, {
+        filename: 'media-route.png',
+        contentType: 'image/png',
+      })
+    expect(mediaRes.status).toBe(201)
   })
 
   it('bridges the latest eligible owner-pool asset onto the next scheduled post and writes post media', async () => {
@@ -358,17 +394,17 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
       expect(membershipRes.status).toBe(200)
 
       const uploadRes = await request(app)
-        .post(`/v1/agents/${agentId}/inclination-asset/upload`)
+        .post(`/v1/agents/${agentId}/media/upload`)
         .set('Authorization', `Bearer ${userToken}`)
         .field('owner_note', '优先讨论表情包背后的情绪')
         .attach('file', VALID_PNG_BUFFER, {
-          filename: 'inclination.png',
+          filename: 'media.png',
           contentType: 'image/png',
         })
       expect(uploadRes.status).toBe(201)
       const assetId = uploadRes.body.data.asset_id as string
       const promoteRes = await request(app)
-        .post(`/v1/agents/${agentId}/inclination-asset/${assetId}/promote`)
+        .post(`/v1/agents/${agentId}/media/${assetId}/promote`)
         .set('Authorization', `Bearer ${userToken}`)
       expect(promoteRes.status).toBe(200)
 
@@ -386,7 +422,7 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
       expect(postRes.body.data.media[0].asset_id).toBe(assetId)
 
       const currentRes = await request(app)
-        .get(`/v1/agents/${agentId}/inclination-asset/current`)
+        .get(`/v1/agents/${agentId}/media/current`)
         .set('Authorization', `Bearer ${userToken}`)
       expect(currentRes.status).toBe(200)
       expect(currentRes.body.data.pool.latest_asset.asset_id).toBe(assetId)

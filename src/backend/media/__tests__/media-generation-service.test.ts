@@ -17,6 +17,22 @@ import {
   buildSceneMediaBinding,
 } from '../../test-utils/media-fixtures.js'
 
+function buildHardeningControllerStub(input?: {
+  semantic_v3_enforced?: boolean
+  strict_audit_enforced?: boolean
+  lineage_required?: boolean
+}) {
+  return {
+    getEffectiveProfile: vi.fn(async () => ({
+      effective: {
+        semantic_v3_enforced: input?.semantic_v3_enforced ?? true,
+        strict_audit_enforced: input?.strict_audit_enforced ?? true,
+        lineage_required: input?.lineage_required ?? true,
+      },
+    })),
+  } as never
+}
+
 function buildPlanCard(projectionId: string): PublicMediaContextCard {
   return {
     schema_version: 'public-media-context-card.v1',
@@ -278,6 +294,92 @@ describe('MediaGenerationService', () => {
     expect(scheduled.job?.based_on_projection_ids).toEqual([])
     expect(scheduled.job?.aspect_ratio_hint).toBe('1:1')
     expect(scheduled.plan.generation.job_id).toBe(scheduled.job?.id)
+  })
+
+  it('cancels generation scheduling when hardening flags detect audit, lineage, and semantic drift', async () => {
+    const imagePlanRepo = new InMemoryImagePlanRepository()
+    const mediaGenerationJobRepo = new InMemoryMediaGenerationJobRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const projection = await mediaContextProjectionRepo.create({
+      id: 'projection-hardening-1',
+      binding_id: 'binding-hardening-1',
+      projection_surface: 'planner',
+      projection_kind: 'public_reuse_handoff',
+      schema_version: 'public-reuse-handoff.v1',
+      payload_json: {
+        asset_ref: {
+          asset_id: 'asset-hardening-1',
+        },
+      },
+    })
+    const basePlan = await buildPendingGenerationPlan(imagePlanRepo, {
+      planId: 'image-plan-hardening-1',
+      projectionId: projection.id,
+      fingerprint: 'fp-hardening-1',
+    })
+    const plan = (await imagePlanRepo.update(basePlan.id, {
+      generation: {
+        ...basePlan.generation,
+        audit_context: undefined,
+      },
+    }))!
+    const service = new MediaGenerationService({
+      imagePlanRepo,
+      mediaGenerationJobRepo,
+      mediaContextProjectionRepo,
+      mediaSemanticSnapshotRepo: {
+        findCurrentByAssetId: vi.fn(async (_assetId: string): Promise<MediaSemanticSnapshot | null> => ({
+          id: 'snapshot-hardening-1',
+          asset_id: 'asset-hardening-1',
+          snapshot_kind: 'visual_core',
+          schema_version: 'media_semantic_summary.v2',
+          model_provider: 'test',
+          model_name: 'test',
+          model_version: '1',
+          summary: buildMediaSemanticSummary({
+            theme: 'travel',
+            scene: 'city skyline',
+            mood: 'bright',
+            discussion_points: ['城市氛围'],
+            salient_entities: ['city'],
+            public_safe_summary: 'A bright city skyline.',
+            internal_full_summary: 'A bright city skyline.',
+          }),
+          extraction_status: 'completed',
+          quality_grade: 'rich',
+          is_current: true,
+          created_at: new Date(),
+        })),
+      },
+      mediaAssetService: {} as never,
+      mediaReuseGovernanceService: {} as never,
+      mediaProjectionService: {} as never,
+      gateway: {
+        providerId: 'ark-seedream',
+        modelName: 'doubao-seedream-5-0-lite-260128',
+        isConfigured: false,
+        generate: vi.fn(),
+      },
+      mediaLineageService: {
+        hasLineage: vi.fn(async () => false),
+      } as never,
+      mediaRolloutControllerService: buildHardeningControllerStub(),
+    })
+
+    const scheduled = await service.ensureJobForPlan({
+      agent_id: 'agent-1',
+      plan,
+    })
+
+    expect(scheduled.job).toBeNull()
+    expect(scheduled.plan.generation.status).toBe('cancelled')
+    expect(scheduled.plan.generation.error_code).toBe('audit_blocked')
+    expect(scheduled.plan.generation.audit_decision?.decision).toBe('block')
+    expect(scheduled.plan.generation.audit_decision?.reason_codes).toEqual(expect.arrayContaining([
+      'missing_audit_context',
+      'lineage_incomplete',
+      'semantic_schema_not_v3',
+    ]))
   })
 
   it('processes a queued job, ingests the derivative, and upgrades the plan to ready', async () => {

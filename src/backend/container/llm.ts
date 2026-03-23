@@ -8,12 +8,13 @@ import { UsageLedgerWriter, InMemoryUsageLedgerRepository } from '../llm/usage-l
 import type { UsageLedgerRepository } from '../llm/usage-ledger.js'
 import { createDefaultBudgetChecker } from '../llm/default-budget-checker.js'
 import { BudgetGuard } from '../llm/budget-guard.js'
-import { InclinationAssetService } from '../services/inclination-asset-service.js'
+import { MediaAssetControlService } from '../services/media-asset-control-service.js'
 import {
   ArkSeedreamGateway,
   MediaAssetService,
   MediaBindingService,
   MediaGenerationService,
+  MediaLineageService,
   MediaLifecycleService,
   MediaObservabilityService,
   MediaRolloutControllerService,
@@ -45,6 +46,7 @@ import type { MediaReusePolicyRepository } from '../repos/media-reuse-policy-rep
 import type { MediaGenerationJobRepository } from '../repos/media-generation-job-repository.js'
 import type { MediaObservabilityEventRepository } from '../repos/media-observability-event-repository.js'
 import type { MediaRolloutControllerOverrideRepository } from '../repos/media-rollout-controller-override-repository.js'
+import type { MediaLineageEdgeRepository } from '../repos/media-lineage-edge-repository.js'
 import type { ForumSceneMetadataRepository } from '../repos/forum-scene-metadata-repository.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { MessageRepository } from '../repos/message-repository.js'
@@ -63,6 +65,7 @@ export function createLlmServices(deps: {
   mediaGenerationJobRepo: MediaGenerationJobRepository
   mediaObservabilityEventRepo: MediaObservabilityEventRepository
   mediaRolloutControllerOverrideRepo: MediaRolloutControllerOverrideRepository
+  mediaLineageEdgeRepo: MediaLineageEdgeRepository
   forumSceneMetadataRepo: ForumSceneMetadataRepository
   messageRepo: MessageRepository
   eventRepo: EventRepository
@@ -105,19 +108,19 @@ export function createLlmServices(deps: {
     budgetGuard,
   })
 
-  const inclinationAssetStorage: StorageAdapter =
-    config.inclinationAssets.storageBackend === 's3' && config.inclinationAssets.s3.bucket
+  const mediaAssetStorage: StorageAdapter =
+    config.mediaAssets.storageBackend === 's3' && config.mediaAssets.s3.bucket
       ? new S3StorageAdapter({
-          bucket: config.inclinationAssets.s3.bucket,
-          region: config.inclinationAssets.s3.region,
-          endpoint: config.inclinationAssets.s3.endpoint || undefined,
-          forcePathStyle: config.inclinationAssets.s3.forcePathStyle,
-          accessKeyId: config.inclinationAssets.s3.accessKeyId || undefined,
-          secretAccessKey: config.inclinationAssets.s3.secretAccessKey || undefined,
-          publicBaseUrl: config.inclinationAssets.publicBaseUrl || undefined,
+          bucket: config.mediaAssets.s3.bucket,
+          region: config.mediaAssets.s3.region,
+          endpoint: config.mediaAssets.s3.endpoint || undefined,
+          forcePathStyle: config.mediaAssets.s3.forcePathStyle,
+          accessKeyId: config.mediaAssets.s3.accessKeyId || undefined,
+          secretAccessKey: config.mediaAssets.s3.secretAccessKey || undefined,
+          publicBaseUrl: config.mediaAssets.publicBaseUrl || undefined,
         })
       : new LocalStorageAdapter({
-          baseDir: config.inclinationAssets.localDir,
+          baseDir: config.mediaAssets.localDir,
         })
 
   const mediaSemanticService = new MediaSemanticService({
@@ -129,8 +132,12 @@ export function createLlmServices(deps: {
     agentRunRepo: deps.agentRunRepo,
     preferredModelId: resolvePreferredMultimodalModelId(config.llm.model),
   })
+  const mediaLineageService = new MediaLineageService({
+    mediaLineageEdgeRepo: deps.mediaLineageEdgeRepo,
+  })
   const mediaBindingService = new MediaBindingService({
     sceneMediaBindingRepo: deps.sceneMediaBindingRepo,
+    mediaLineageService,
   })
   const mediaObservabilityService = new MediaObservabilityService({
     mediaObservabilityEventRepo: deps.mediaObservabilityEventRepo,
@@ -141,6 +148,7 @@ export function createLlmServices(deps: {
   })
   const mediaProjectionService = new MediaProjectionService({
     mediaContextProjectionRepo: deps.mediaContextProjectionRepo,
+    mediaLineageService,
   })
   const visualDirectiveService = new VisualDirectiveService({
     visualDirectiveRepo: deps.visualDirectiveRepo,
@@ -166,6 +174,7 @@ export function createLlmServices(deps: {
     forumSceneMetadataRepo: deps.forumSceneMetadataRepo,
     mediaProjectionService,
     mediaReuseGovernanceService,
+    mediaLineageService,
   })
   const mediaWriteBridge = new MediaWriteBridge({
     mediaAssetRepo: deps.mediaAssetRepo,
@@ -175,23 +184,25 @@ export function createLlmServices(deps: {
     postMediaRepo: deps.postMediaRepo,
     imagePlanRepo: deps.imagePlanRepo,
     forumSceneMetadataRepo: deps.forumSceneMetadataRepo,
-    storage: inclinationAssetStorage,
+    storage: mediaAssetStorage,
     mediaBindingService,
     mediaProjectionService,
     mediaReuseGovernanceService,
     mediaObservabilityService,
+    mediaLineageService,
   })
   const mediaAssetService = new MediaAssetService({
     mediaAssetRepo: deps.mediaAssetRepo,
     mediaSemanticSnapshotRepo: deps.mediaSemanticSnapshotRepo,
     sceneMediaBindingRepo: deps.sceneMediaBindingRepo,
     mediaContextProjectionRepo: deps.mediaContextProjectionRepo,
-    storage: inclinationAssetStorage,
+    storage: mediaAssetStorage,
     mediaSemanticService,
     mediaBindingService,
     mediaProjectionService,
     mediaWriteBridge,
     mediaObservabilityService,
+    mediaLineageService,
   })
   const mediaGenerationGateway = new ArkSeedreamGateway()
   const mediaGenerationService = new MediaGenerationService({
@@ -204,12 +215,15 @@ export function createLlmServices(deps: {
     mediaProjectionService,
     gateway: mediaGenerationGateway,
     mediaObservabilityService,
+    mediaLineageService,
+    mediaRolloutControllerService,
   })
   const surfaceMediaPlanningService = new SurfaceMediaPlanningService({
     visualDirectiveService,
     imagePlannerService,
     mediaProjectionService,
     mediaObservabilityService,
+    mediaRolloutControllerService,
   })
   const mediaLifecycleService = new MediaLifecycleService({
     mediaAssetRepo: deps.mediaAssetRepo,
@@ -220,7 +234,7 @@ export function createLlmServices(deps: {
     mediaSemanticSnapshotRepo: deps.mediaSemanticSnapshotRepo,
     mediaAssetService,
   })
-  const inclinationAssetService = new InclinationAssetService({
+  const mediaAssetControlService = new MediaAssetControlService({
     agentRepo: deps.agentRepo,
     mediaAssetService,
     mediaReuseGovernanceService,
@@ -240,6 +254,7 @@ export function createLlmServices(deps: {
     mediaProjectionService,
     mediaObservabilityService,
     mediaRolloutControllerService,
+    mediaLineageService,
     mediaWriteBridge,
     visualDirectiveService,
     imagePlannerService,
@@ -249,6 +264,6 @@ export function createLlmServices(deps: {
     surfaceMediaPlanningService,
     mediaLifecycleService,
     mediaAssetService,
-    inclinationAssetService,
+    mediaAssetControlService,
   }
 }

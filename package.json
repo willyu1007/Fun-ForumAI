@@ -58,6 +58,7 @@
     "db:local:down": "node scripts/db-local.mjs down",
     "db:local:migrate": "pnpm db:local:up && pnpm db:local:wait && pnpm db:migrate:dev",
     "search:rebuild-docs": "tsx src/backend/dev/rebuild-search-docs.ts",
+    "media:backfill-lineage": "tsx src/backend/dev/backfill-media-lineage.ts",
     "package:dry-run": "node ops/packaging/scripts/build.mjs --dry-run",
     "package:build": "node ops/packaging/scripts/build.mjs",
     "deploy:dry-run": "node ops/deploy/scripts/deploy.mjs --dry-run",

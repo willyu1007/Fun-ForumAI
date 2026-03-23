@@ -72,6 +72,20 @@ requireNonDefaultSecret({
   modeLabel: secretRequirementLabel,
 })
 
+const mediaAssetsConfig = {
+  storageBackend: env.INCLINATION_ASSET_STORAGE_BACKEND === 's3' ? 's3' : 'local',
+  localDir: env.MEDIA_LOCAL_DIR || env.INCLINATION_ASSET_LOCAL_DIR || 'var/inclination-assets',
+  publicBaseUrl: env.INCLINATION_ASSET_PUBLIC_BASE_URL || '',
+  s3: {
+    bucket: env.INCLINATION_ASSET_S3_BUCKET || '',
+    region: env.INCLINATION_ASSET_S3_REGION || 'us-east-1',
+    endpoint: env.INCLINATION_ASSET_S3_ENDPOINT || '',
+    forcePathStyle: env.INCLINATION_ASSET_S3_FORCE_PATH_STYLE === 'true',
+    accessKeyId: env.INCLINATION_ASSET_S3_ACCESS_KEY_ID || '',
+    secretAccessKey: env.INCLINATION_ASSET_S3_SECRET_ACCESS_KEY || '',
+  },
+}
+
 export const config = {
   port: safeInt(env.PORT, 4000),
   nodeEnv,
@@ -135,23 +149,11 @@ export const config = {
     orphanGraceHours: safeInt(env.MEDIA_LIFECYCLE_ORPHAN_GRACE_HOURS, 72),
     expiredProjectionRetentionHours: safeInt(env.MEDIA_LIFECYCLE_EXPIRED_PROJECTION_RETENTION_HOURS, 24),
     snapshotTargetSchemaVersion:
-      env.MEDIA_SNAPSHOT_TARGET_SCHEMA_VERSION || 'media_semantic_summary.v2',
+      env.MEDIA_SNAPSHOT_TARGET_SCHEMA_VERSION || 'media_semantic_summary.v3',
     snapshotTargetModelVersion: env.MEDIA_SNAPSHOT_TARGET_MODEL_VERSION || '',
     snapshotBackfillBatchSize: safeInt(env.MEDIA_SNAPSHOT_BACKFILL_BATCH_SIZE, 20),
   },
-  inclinationAssets: {
-    storageBackend: env.INCLINATION_ASSET_STORAGE_BACKEND === 's3' ? 's3' : 'local',
-    localDir: env.INCLINATION_ASSET_LOCAL_DIR || 'var/inclination-assets',
-    publicBaseUrl: env.INCLINATION_ASSET_PUBLIC_BASE_URL || '',
-    s3: {
-      bucket: env.INCLINATION_ASSET_S3_BUCKET || '',
-      region: env.INCLINATION_ASSET_S3_REGION || 'us-east-1',
-      endpoint: env.INCLINATION_ASSET_S3_ENDPOINT || '',
-      forcePathStyle: env.INCLINATION_ASSET_S3_FORCE_PATH_STYLE === 'true',
-      accessKeyId: env.INCLINATION_ASSET_S3_ACCESS_KEY_ID || '',
-      secretAccessKey: env.INCLINATION_ASSET_S3_SECRET_ACCESS_KEY || '',
-    },
-  },
+  mediaAssets: mediaAssetsConfig,
   runtime: {
     enabled: env.RUNTIME_ENABLED === 'true',
     intervalMs: safeInt(env.RUNTIME_INTERVAL_MS, 5000),
@@ -229,7 +231,7 @@ export const config = {
     agentStatsVotePolicy: env.FF_AGENT_STATS_VOTE_POLICY === 'true',
     agentStatsUi: env.FF_AGENT_STATS_UI === 'true',
     humanParticipationV1: env.FF_HUMAN_PARTICIPATION_V1 !== 'false',
-    multimodalAgentInclinationV1: env.FF_MULTIMODAL_AGENT_INCLINATION_V1 === 'true',
+    multimodalAgentMediaV1: env.FF_MULTIMODAL_AGENT_MEDIA_V1 === 'true',
     mediaGenerationV1: env.FF_MEDIA_GENERATION_V1 === 'true',
     mediaObservabilityV1: env.FF_MEDIA_OBSERVABILITY_V1 === 'true',
     mediaRolloutControllerV1: env.FF_MEDIA_ROLLOUT_CONTROLLER_V1 === 'true',

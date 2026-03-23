@@ -8,6 +8,7 @@ import type {
   SceneMediaBinding,
 } from '../repos/types.js'
 import type { SceneMediaBindingRepository } from '../repos/scene-media-binding-repository.js'
+import type { MediaLineageService } from './media-lineage-service.js'
 import {
   buildForumPostThreadRootRef,
   buildForumThreadThreadRootRef,
@@ -20,12 +21,13 @@ export function buildOwnerPrivatePoolSceneId(agentId: string): string {
 
 export interface MediaBindingServiceDeps {
   sceneMediaBindingRepo: SceneMediaBindingRepository
+  mediaLineageService?: MediaLineageService | null
 }
 
 export class MediaBindingService {
   constructor(private readonly deps: MediaBindingServiceDeps) {}
 
-  bindToScene(input: {
+  async bindToScene(input: {
     asset: MediaAsset
     snapshot: MediaSemanticSnapshot
     sceneType: MediaSceneType
@@ -58,7 +60,46 @@ export class MediaBindingService {
           }
         : {}),
     }
-    return this.deps.sceneMediaBindingRepo.create(payload)
+    const binding = await this.deps.sceneMediaBindingRepo.create(payload)
+    await this.deps.mediaLineageService?.recordEdges([
+      {
+        from_node_type: 'asset',
+        from_node_id: input.asset.id,
+        to_node_type: 'binding',
+        to_node_id: binding.id,
+        edge_kind: 'asset_bound_to_scene',
+        metadata_json: {
+          scene_type: binding.scene_type,
+          scene_id: binding.scene_id,
+          binding_role: binding.binding_role,
+        },
+      },
+      {
+        from_node_type: 'semantic_snapshot',
+        from_node_id: input.snapshot.id,
+        to_node_type: 'binding',
+        to_node_id: binding.id,
+        edge_kind: 'snapshot_bound_to_scene',
+        metadata_json: {
+          scene_type: binding.scene_type,
+          scene_id: binding.scene_id,
+        },
+      },
+      ...(input.sourceBinding
+        ? [{
+            from_node_type: 'binding' as const,
+            from_node_id: input.sourceBinding.id,
+            to_node_type: 'binding' as const,
+            to_node_id: binding.id,
+            edge_kind: 'binding_derived_binding',
+            metadata_json: {
+              source_scene_type: input.sourceBinding.scene_type,
+              source_scene_id: input.sourceBinding.scene_id,
+            },
+          }]
+        : []),
+    ])
+    return binding
   }
 
   createOwnerPoolAnchor(input: {

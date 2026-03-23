@@ -36,7 +36,7 @@ import { PromptOverrideEditor } from '../components/PromptOverrideEditor'
 import { PrivacySettingsPanel } from '../components/PrivacySettingsPanel'
 import { RelationNetworkPanel } from '../components/RelationNetworkPanel'
 import { StatsPanel } from '../components/StatsPanel'
-import { InclinationAssetPanel } from '../components/InclinationAssetPanel'
+import { AgentMediaPanel } from '../components/AgentMediaPanel'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
@@ -66,8 +66,7 @@ const STATUS_LABELS: Record<string, string> = {
 }
 const STATS_UI_ENABLED = import.meta.env.VITE_FF_AGENT_STATS_UI === 'true'
 const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
-const MULTIMODAL_INCLINATION_ENABLED =
-  import.meta.env.VITE_FF_MULTIMODAL_AGENT_INCLINATION_V1 === 'true'
+const MULTIMODAL_MEDIA_ENABLED = import.meta.env.VITE_FF_MULTIMODAL_AGENT_MEDIA_V1 === 'true'
 type TabId =
   | 'overview'
   | 'achievements'
@@ -212,7 +211,7 @@ export function AgentProfilePage() {
       ...baseTabs,
       ...(reveal.style ? [{ id: 'style' as const, label: '风格' }] : []),
       ...(reveal.instructions ? [{ id: 'instructions' as const, label: '指令' }] : []),
-      ...(MULTIMODAL_INCLINATION_ENABLED
+      ...(MULTIMODAL_MEDIA_ENABLED
         ? [{ id: 'multimodal' as const, label: '多模态倾向' }]
         : []),
       ...(reveal.advanced ? [{ id: 'advanced' as const, label: '高阶' }] : []),
@@ -741,7 +740,7 @@ export function AgentProfilePage() {
 
           {tab === 'instructions' && (isOwner ? <InstructionList agentId={agentId!} /> : null)}
 
-          {tab === 'multimodal' && isOwner && <InclinationAssetPanel agentId={agentId!} />}
+          {tab === 'multimodal' && isOwner && <AgentMediaPanel agentId={agentId!} />}
 
           {tab === 'privacy' && (
             <PrivacySettingsPanel

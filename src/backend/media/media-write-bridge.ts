@@ -11,6 +11,7 @@ import { MediaBindingService, buildOwnerPrivatePoolSceneId } from './media-bindi
 import { MediaProjectionService } from './media-projection-service.js'
 import type { MediaObservabilityService } from './media-observability-service.js'
 import type { MediaReuseGovernanceService } from './media-reuse-governance-service.js'
+import type { MediaLineageService } from './media-lineage-service.js'
 import {
   buildCommunityCommonsPoolSceneId,
   buildGeneratedPublicPoolSceneId,
@@ -38,6 +39,7 @@ export interface MediaWriteBridgeDeps {
   mediaProjectionService: MediaProjectionService
   mediaReuseGovernanceService: Pick<MediaReuseGovernanceService, 'canQuoteOriginalAssetForSource'>
   mediaObservabilityService?: Pick<MediaObservabilityService, 'record'> | null
+  mediaLineageService?: MediaLineageService | null
 }
 
 export class MediaWriteBridge {
@@ -160,6 +162,18 @@ export class MediaWriteBridge {
         relation_to_scene: bindingContract.relation_to_scene,
         thread_root_ref: this.resolveThreadRootRef(plan, input),
       })
+      await this.deps.mediaLineageService?.recordEdge({
+        from_node_type: 'image_plan',
+        from_node_id: plan.id,
+        to_node_type: 'binding',
+        to_node_id: binding.id,
+        edge_kind: 'plan_applied_binding',
+        metadata_json: {
+          scene_type: input.scene_type,
+          scene_id: input.scene_id,
+          display_variant: attachment.display_variant,
+        },
+      })
 
       const mediaUrl = resolveMediaAssetUrl(asset, this.deps.storage)
       if (!mediaUrl) continue
@@ -213,6 +227,18 @@ export class MediaWriteBridge {
         display_policy: bindingContract.display_policy,
         relation_to_scene: bindingContract.relation_to_scene,
         thread_root_ref: this.resolveThreadRootRef(plan, input),
+      })
+      await this.deps.mediaLineageService?.recordEdge({
+        from_node_type: 'image_plan',
+        from_node_id: plan.id,
+        to_node_type: 'binding',
+        to_node_id: binding.id,
+        edge_kind: 'plan_applied_binding',
+        metadata_json: {
+          scene_type: input.scene_type,
+          scene_id: input.scene_id,
+          display_variant: attachment.display_variant,
+        },
       })
       const mediaUrl = resolveMediaAssetUrl(asset, this.deps.storage)
       if (!mediaUrl) continue
@@ -466,11 +492,22 @@ export class MediaWriteBridge {
     const hasPostMedia = this.deps.postMediaRepo.findByAssetId(assetId)
       .some((item) => item.post_id === sceneId)
     if (hasPostMedia) return
-    this.deps.postMediaRepo.create({
+    const link = this.deps.postMediaRepo.create({
       post_id: sceneId,
       asset_id: assetId,
       media_url: mediaUrl,
       mime_type: mimeType,
+    })
+    void this.deps.mediaLineageService?.recordEdge({
+      from_node_type: 'asset',
+      from_node_id: assetId,
+      to_node_type: 'post_media_attachment',
+      to_node_id: link.id,
+      edge_kind: 'asset_attached_to_post_media',
+      metadata_json: {
+        post_id: sceneId,
+        mime_type: mimeType,
+      },
     })
   }
 

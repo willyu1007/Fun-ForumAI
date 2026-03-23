@@ -544,7 +544,7 @@ export class PostScheduler {
     const activeAgents = this.listEligibleAgents()
     if (activeAgents.length === 0) return null
 
-    if (config.features.multimodalAgentInclinationV1 && this.deps.imagePlannerService?.listAgentIdsWithOwnerPrivatePoolCandidates) {
+    if (config.features.multimodalAgentMediaV1 && this.deps.imagePlannerService?.listAgentIdsWithOwnerPrivatePoolCandidates) {
       const prioritizedAgentIds = await this.deps.imagePlannerService.listAgentIdsWithOwnerPrivatePoolCandidates(100)
       const activeById = new Map(activeAgents.map((agent) => [agent.id, agent]))
       for (const agentId of prioritizedAgentIds) {
@@ -724,11 +724,26 @@ export class PostScheduler {
       ? this.deps.mediaProjectionService.serializePublicCardForPrompt({
           card: firstCard,
           max_chars: 1_200,
+          audit_context: {
+            surface: 'public_runtime',
+            sensitive_terms: [],
+            policy_mode: 'strict',
+            visibility_scope: 'public',
+            actor_role: 'agent',
+          },
+          enforcement: controllerProfile
+            ? {
+                semantic_v3_enforced: controllerProfile.effective.semantic_v3_enforced,
+                strict_audit_enforced: controllerProfile.effective.strict_audit_enforced,
+                lineage_required: controllerProfile.effective.lineage_required,
+              }
+            : undefined,
         })
       : null
     const promptAudit = serialized?.audit ?? null
     const promptSafe = serialized
-      ? !serialized.audit.contains_url
+      ? serialized.decision.decision !== 'block'
+        && !serialized.audit.contains_url
         && !serialized.audit.contains_asset_id
         && !serialized.audit.contains_owner_note
         && !serialized.audit.contains_private_text
@@ -775,6 +790,7 @@ export class PostScheduler {
         payload_json: {
           blocked_fields: blockedFields,
           derived_from_private: firstCard.source.derived_from_private,
+          reason_codes: serialized?.decision.reason_codes ?? [],
         },
       })
       if (firstCard.source.derived_from_private && blockedFields.length > 0) {

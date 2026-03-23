@@ -31,6 +31,7 @@ import {
 } from './media-projection-service.js'
 import { MediaWriteBridge } from './media-write-bridge.js'
 import type { MediaObservabilityService } from './media-observability-service.js'
+import type { MediaLineageService } from './media-lineage-service.js'
 import { listSurfaceMediaAttachmentViews } from './surface-media-view.js'
 import { pickModelReachableMediaUrl, resolveMediaAssetUrl } from './media-url.js'
 import {
@@ -96,6 +97,7 @@ export interface MediaAssetServiceDeps {
   mediaProjectionService: MediaProjectionService
   mediaWriteBridge: MediaWriteBridge
   mediaObservabilityService?: Pick<MediaObservabilityService, 'record'> | null
+  mediaLineageService?: MediaLineageService | null
 }
 
 interface DownloadedRemoteMedia {
@@ -130,6 +132,8 @@ export class MediaAssetService {
       mimeType: normalizedMimeType,
       sourceUrl: pickModelReachableMediaUrl(stored.url),
       uploadBuffer: input.bytes,
+      width: dimensions.width,
+      height: dimensions.height,
     })
 
     return this.createOwnerPoolRecord({
@@ -169,6 +173,8 @@ export class MediaAssetService {
       mimeType: downloaded.mime_type,
       sourceUrl: pickModelReachableMediaUrl(stored.url, downloaded.source_url),
       uploadBuffer: downloaded.bytes,
+      width: dimensions.width,
+      height: dimensions.height,
     })
 
     return this.createOwnerPoolRecord({
@@ -213,6 +219,8 @@ export class MediaAssetService {
       mimeType: normalizedMimeType,
       sourceUrl: pickModelReachableMediaUrl(stored.url),
       uploadBuffer: input.bytes,
+      width: dimensions.width,
+      height: dimensions.height,
     })
 
     const asset = await this.deps.mediaAssetRepo.create({
@@ -330,6 +338,8 @@ export class MediaAssetService {
       mimeType: normalizedMimeType,
       sourceUrl: pickModelReachableMediaUrl(stored.url),
       uploadBuffer: input.bytes,
+      width: dimensions.width,
+      height: dimensions.height,
     })
     const asset = await this.deps.mediaAssetRepo.create({
       steward_agent_id: input.agent_id,
@@ -582,6 +592,13 @@ export class MediaAssetService {
       const serialized = this.deps.mediaProjectionService.serializePublicCardForPrompt({
         card: refreshedCard,
         max_chars: 1_200,
+        audit_context: {
+          surface: 'public_runtime',
+          sensitive_terms: [],
+          policy_mode: 'strict',
+          visibility_scope: 'public',
+          actor_role: 'agent',
+        },
       })
       await this.deps.mediaContextProjectionRepo.update(projection.id, {
         schema_version: refreshedCard.schema_version,
@@ -641,6 +658,13 @@ export class MediaAssetService {
       const serialized = this.deps.mediaProjectionService.serializePrivateRuntimeCardForPrompt({
         card: refreshedCard,
         max_chars: 900,
+        audit_context: {
+          surface: 'private_runtime',
+          sensitive_terms: [],
+          policy_mode: 'strict',
+          visibility_scope: 'private',
+          actor_role: 'agent',
+        },
       })
       await this.deps.mediaContextProjectionRepo.update(projection.id, {
         schema_version: refreshedCard.schema_version,
@@ -1117,6 +1141,18 @@ export class MediaAssetService {
       quality_grade: input.semantic.quality_grade,
       is_current: true,
     })
+    await this.deps.mediaLineageService?.recordEdge({
+      from_node_type: 'asset',
+      from_node_id: input.asset.id,
+      to_node_type: 'semantic_snapshot',
+      to_node_id: snapshot.id,
+      edge_kind: 'asset_described_by_snapshot',
+      metadata_json: {
+        schema_version: snapshot.schema_version,
+        extraction_status: snapshot.extraction_status,
+        surface: input.surface,
+      },
+    })
     await this.deps.mediaObservabilityService?.record({
       event_type: input.semantic.extraction_status === 'completed'
         ? 'semantic_snapshot_created'
@@ -1272,6 +1308,13 @@ export class MediaAssetService {
           serialized_text: this.deps.mediaProjectionService.serializePrivateRuntimeCardForPrompt({
             card: existingRuntimeProjection.payload_json as unknown as PrivateMediaRuntimeCard,
             max_chars: 900,
+            audit_context: {
+              surface: 'private_runtime',
+              sensitive_terms: [],
+              policy_mode: 'strict',
+              visibility_scope: 'private',
+              actor_role: 'agent',
+            },
           }).text,
         }
       : await this.deps.mediaProjectionService.createPrivateRuntimeProjection({

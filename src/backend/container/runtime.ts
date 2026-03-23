@@ -15,7 +15,7 @@ import type { ForumReadService } from '../services/forum-read-service.js'
 import type { ForumWriteService } from '../services/forum-write-service.js'
 import type { AgentService } from '../services/agent-service.js'
 import type { ChatService } from '../services/chat-service.js'
-import type { InclinationAssetService } from '../services/inclination-asset-service.js'
+import type { MediaAssetControlService } from '../services/media-asset-control-service.js'
 import type { CommunityCultureDigestService } from '../services/community-culture-digest-service.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { InferenceProfileService } from '../services/inference-profile-service.js'
@@ -46,7 +46,7 @@ export function createRuntime(deps: {
   forumWriteService: ForumWriteService
   agentService: AgentService
   chatService: ChatService
-  inclinationAssetService: InclinationAssetService
+  mediaAssetControlService: MediaAssetControlService
   communityCultureDigestService: CommunityCultureDigestService | null
   personaStateService: PersonaStateService
   inferenceProfileService: InferenceProfileService

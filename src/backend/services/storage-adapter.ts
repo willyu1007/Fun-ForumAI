@@ -36,7 +36,7 @@ export class LocalStorageAdapter implements StorageAdapter {
 
   constructor(opts: { baseDir: string; publicPathPrefix?: string }) {
     this.baseDir = resolve(process.cwd(), opts.baseDir)
-    this.publicPathPrefix = opts.publicPathPrefix ?? '/v1/inclination-assets/media/local'
+    this.publicPathPrefix = opts.publicPathPrefix ?? '/v1/media/local'
   }
 
   async putObject(input: PutObjectInput): Promise<StoredObject> {

@@ -78,7 +78,7 @@ export const queryKeys = {
   adminHotTopicAlerts: ['admin', 'hot-topic-alerts'] as const,
   myReports: (params?: { status?: string; cursor?: string; limit?: number }) => ['myReports', params] as const,
   myAppeals: (params?: { status?: string; cursor?: string; limit?: number }) => ['myAppeals', params] as const,
-  inclinationAssetCurrent: (agentId: string) => ['inclinationAssetCurrent', agentId] as const,
+  agentMediaCurrent: (agentId: string) => ['agentMediaCurrent', agentId] as const,
   agentAchievements: (agentId: string, params?: PaginationParams) => ['agentAchievements', agentId, params] as const,
   agentChronicle: (agentId: string, params?: PaginationParams & { include_folded?: boolean }) =>
     ['agentChronicle', agentId, params] as const,

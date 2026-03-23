@@ -1,4 +1,5 @@
 export { MediaSemanticService, buildFallbackMediaSemanticSummary } from './media-semantic-service.js'
+export { MediaLineageService } from './media-lineage-service.js'
 export { MediaBindingService, buildOwnerPrivatePoolSceneId } from './media-binding-service.js'
 export { MediaProjectionService, buildRetrievalCaptionText } from './media-projection-service.js'
 export { MediaWriteBridge } from './media-write-bridge.js'
@@ -14,6 +15,7 @@ export {
 export { type MediaGenerationGateway } from './media-generation-gateway.js'
 export { ArkSeedreamGateway } from './ark-seedream-gateway.js'
 export { MediaGenerationService } from './media-generation-service.js'
+export { compileMediaGenerationSpec, buildLegacyGenerationSpec } from './media-generation-compiler.js'
 export { SurfaceMediaPlanningService } from './surface-media-planning-service.js'
 export {
   MediaObservabilityService,

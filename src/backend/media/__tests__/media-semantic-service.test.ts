@@ -170,4 +170,32 @@ describe('MediaSemanticService', () => {
     expect(result.summary.scene).toBe('static visual scene')
     expect(result.summary.public_safe_summary).toBe('The image is entirely red with no discernible content.')
   })
+
+  it('skips the vision model and falls back immediately when dimensions are below provider minimums', async () => {
+    const generateHiddenArtifact = vi.fn()
+
+    const service = new MediaSemanticService({
+      llmGateway: {
+        isConfigured: true,
+        generateHiddenArtifact,
+      } as never,
+      promptEngine,
+      agentRepo: {} as never,
+      agentConfigRepo: {} as never,
+      eventRepo: {} as never,
+      agentRunRepo: {} as never,
+      preferredModelId: 'qwen-vl-plus',
+    })
+
+    const result = await service.extract({
+      mimeType: 'image/png',
+      uploadBuffer: Buffer.from([1, 2, 3]),
+      width: 1,
+      height: 1,
+    })
+
+    expect(generateHiddenArtifact).not.toHaveBeenCalled()
+    expect(result.extraction_status).toBe('fallback')
+    expect(result.summary.scene).toBe('static visual scene')
+  })
 })

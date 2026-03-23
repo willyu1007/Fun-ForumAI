@@ -4,6 +4,22 @@ import type { PublicMediaContextCard } from '../../repos/types.js'
 import { buildRetrievalCaptionText, MediaProjectionService } from '../media-projection-service.js'
 import { buildMediaSemanticSummary } from '../../test-utils/media-fixtures.js'
 
+const PUBLIC_AUDIT_CONTEXT = {
+  surface: 'public_runtime',
+  sensitive_terms: ['owner-note-secret'],
+  policy_mode: 'strict',
+  visibility_scope: 'public',
+  actor_role: 'agent',
+} as const
+
+const PRIVATE_AUDIT_CONTEXT = {
+  surface: 'private_runtime',
+  sensitive_terms: ['owner raw text'],
+  policy_mode: 'strict',
+  visibility_scope: 'private',
+  actor_role: 'agent',
+} as const
+
 describe('buildRetrievalCaptionText', () => {
   it('includes discussion points so backfilled and live retrieval captions stay aligned', () => {
     const text = buildRetrievalCaptionText({
@@ -82,11 +98,13 @@ describe('MediaProjectionService public card serialization', () => {
     const first = service.serializePublicCardForPrompt({
       card,
       max_chars: 500,
+      audit_context: PUBLIC_AUDIT_CONTEXT,
       sensitive_terms: ['owner-note-secret'],
     })
     const second = service.serializePublicCardForPrompt({
       card,
       max_chars: 500,
+      audit_context: PUBLIC_AUDIT_CONTEXT,
       sensitive_terms: ['owner-note-secret'],
     })
 
@@ -152,11 +170,144 @@ describe('MediaProjectionService public card serialization', () => {
         },
       } satisfies PublicMediaContextCard,
       max_chars: 260,
+      audit_context: PUBLIC_AUDIT_CONTEXT,
     })
 
     expect(serialized.text).toContain('governance:')
     expect(serialized.text).not.toContain('public_safe_caption:')
     expect(serialized.text).not.toContain('ocr_snippets:')
+  })
+
+  it('blocks prompt serialization when semantic_v3 enforcement sees a legacy schema version', () => {
+    const service = new MediaProjectionService({
+      mediaContextProjectionRepo: new InMemoryMediaContextProjectionRepository(),
+    })
+
+    const serialized = service.serializePublicCardForPrompt({
+      card: {
+        schema_version: 'public-media-context-card.v1',
+        card_id: 'card-legacy',
+        modality: 'image',
+        asset_ref: {
+          asset_id: 'asset-legacy-1',
+          semantic_snapshot_id: 'snapshot-legacy-1',
+          projection_id: 'projection-legacy-1',
+        },
+        source: {
+          kind: 'owner_private_pool',
+          derived_from_private: true,
+        },
+        relation: {
+          visual_role: 'scene_establishing',
+          prompt_weight: 'primary',
+          mention_policy: 'explicit_describe',
+          why_now: 'legacy schema check',
+        },
+        public_summary: {
+          theme: 'travel',
+          scene: 'city skyline',
+          mood: 'bright',
+          salient_entities: ['city'],
+          discussion_points: ['城市氛围'],
+          public_safe_caption: 'A bright city skyline.',
+          alt_text: 'A bright city skyline.',
+        },
+        display: {
+          original_display_allowed: true,
+          derivative_display_allowed: true,
+          preferred_variant: 'original',
+        },
+        governance: {
+          public_scope: 'community_public',
+          disclose_origin_policy: 'never',
+          cross_agent_quote_allowed: false,
+          prohibited_reference_types: ['owner_private_speech', 'private_memory', 'hidden_director_goal'],
+          expires_at: null,
+        },
+        audit: {
+          confidence: 0.9,
+          relevance_score: 0.9,
+          model_version: 'test',
+        },
+      } satisfies PublicMediaContextCard,
+      max_chars: 500,
+      audit_context: PUBLIC_AUDIT_CONTEXT,
+      summary_schema_version: 'media_semantic_summary.v2',
+      enforcement: {
+        semantic_v3_enforced: true,
+        strict_audit_enforced: true,
+        lineage_required: true,
+      },
+    })
+
+    expect(serialized.text).toBe('')
+    expect(serialized.token_estimate).toBe(0)
+    expect(serialized.decision.decision).toBe('block')
+    expect(serialized.decision.reason_codes).toContain('semantic_schema_not_v3')
+  })
+
+  it('allows prompt serialization to proceed when strict audit enforcement is disabled', () => {
+    const service = new MediaProjectionService({
+      mediaContextProjectionRepo: new InMemoryMediaContextProjectionRepository(),
+    })
+
+    const serialized = service.serializePublicCardForPrompt({
+      card: {
+        schema_version: 'public-media-context-card.v1',
+        card_id: 'card-relaxed',
+        modality: 'image',
+        asset_ref: {
+          asset_id: 'asset-relaxed-1',
+          semantic_snapshot_id: 'snapshot-relaxed-1',
+          projection_id: 'projection-relaxed-1',
+        },
+        source: {
+          kind: 'owner_private_pool',
+          derived_from_private: false,
+        },
+        relation: {
+          visual_role: 'scene_establishing',
+          prompt_weight: 'primary',
+          mention_policy: 'explicit_describe',
+          why_now: 'relaxed audit check',
+        },
+        public_summary: {
+          theme: 'travel',
+          scene: 'city skyline',
+          mood: 'bright',
+          salient_entities: ['city'],
+          discussion_points: ['城市氛围'],
+          public_safe_caption: 'A bright city skyline.',
+          alt_text: 'A bright city skyline.',
+        },
+        display: {
+          original_display_allowed: true,
+          derivative_display_allowed: true,
+          preferred_variant: 'original',
+        },
+        governance: {
+          public_scope: 'community_public',
+          disclose_origin_policy: 'public_only',
+          cross_agent_quote_allowed: false,
+          prohibited_reference_types: ['owner_private_speech', 'private_memory', 'hidden_director_goal'],
+          expires_at: null,
+        },
+        audit: {
+          confidence: 0.9,
+          relevance_score: 0.9,
+          model_version: 'test',
+        },
+      } satisfies PublicMediaContextCard,
+      max_chars: 500,
+      enforcement: {
+        semantic_v3_enforced: false,
+        strict_audit_enforced: false,
+        lineage_required: false,
+      },
+    })
+
+    expect(serialized.text).toContain('visual_role: scene_establishing')
+    expect(serialized.decision.decision).toBe('allow')
   })
 })
 
@@ -202,6 +353,7 @@ describe('MediaProjectionService private card serialization', () => {
         },
       },
       max_chars: 360,
+      audit_context: PRIVATE_AUDIT_CONTEXT,
       sensitive_terms: ['owner raw text'],
     })
 

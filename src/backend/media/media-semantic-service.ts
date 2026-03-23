@@ -15,6 +15,7 @@ import {
 import {
   MEDIA_SEMANTIC_SCHEMA_VERSION,
   normalizeSemanticSummary,
+  normalizeStoredSemanticSummary,
 } from './media-contract-utils.js'
 
 export interface BuildMediaSemanticInput {
@@ -22,6 +23,8 @@ export interface BuildMediaSemanticInput {
   mimeType: string
   sourceUrl?: string | null
   uploadBuffer?: Buffer | null
+  width?: number | null
+  height?: number | null
 }
 
 export interface MediaSemanticExtraction {
@@ -44,6 +47,8 @@ export interface MediaSemanticServiceDeps {
   preferredModelId?: string
 }
 
+const MIN_VISION_DIMENSION_PX = 11
+
 function sanitizeString(value: unknown, maxLength: number): string {
   if (typeof value !== 'string') return ''
   return value.trim().slice(0, maxLength)
@@ -64,24 +69,34 @@ export function buildFallbackMediaSemanticSummary(
 ): MediaSemanticSummary {
   const scene = mimeType === 'image/gif' ? 'looping visual scene' : 'static visual scene'
   const theme = scope === 'legacy' ? 'legacy imported media asset' : 'visual discussion material'
-  return {
-    theme,
+  return normalizeStoredSemanticSummary({
     scene,
-    mood: 'neutral',
-    confidence: 0.25,
     composition: 'single-scene composition',
-    style_tags: [],
-    discussion_points: [
-      'Describe the most obvious visual cue before making any claim.',
-      'Use the image as a discussion seed instead of assuming hidden intent.',
-      'Keep follow-up questions grounded in what is actually visible.',
-    ],
-    salient_entities: [],
-    ocr_snippets: [],
-    safety_labels: [],
-    public_safe_summary: `A ${scene} that can support discussion without exposing private context.`,
-    internal_full_summary: `Fallback semantic summary for ${mimeType}.`,
-  }
+    style: {
+      theme,
+      mood: 'neutral',
+      tags: [],
+    },
+    entities: {
+      discussion_points: [
+        'Describe the most obvious visual cue before making any claim.',
+        'Use the image as a discussion seed instead of assuming hidden intent.',
+        'Keep follow-up questions grounded in what is actually visible.',
+      ],
+      salient: [],
+    },
+    ocr: {
+      snippets: [],
+    },
+    safety: {
+      labels: [],
+    },
+    summaries: {
+      public_safe: `A ${scene} that can support discussion without exposing private context.`,
+      internal_full: `Fallback semantic summary for ${mimeType}.`,
+    },
+    confidence: 0.25,
+  })
 }
 
 export class MediaSemanticService {
@@ -95,6 +110,30 @@ export class MediaSemanticService {
     let llmModelId = 'fallback'
     let parseSuccess = false
     let error: string | undefined
+
+    if (isBelowVisionModelMinDimension(input)) {
+      const summary = buildFallbackMediaSemanticSummary(input.mimeType)
+      if (input.agentId) {
+        this.recordSemanticRun({
+          agentId: input.agentId,
+          mimeType: input.mimeType,
+          parseSuccess: false,
+          llmProviderId,
+          llmModelId,
+          summary,
+          error: 'vision_dimensions_below_min',
+        })
+      }
+      return {
+        schema_version: MEDIA_SEMANTIC_SCHEMA_VERSION,
+        model_provider: llmProviderId,
+        model_name: llmModelId,
+        model_version: llmModelId,
+        extraction_status: 'fallback',
+        quality_grade: 'fallback',
+        summary,
+      }
+    }
 
     if (this.deps.llmGateway.isConfigured) {
       const imageUrls = this.resolveImageUrls(input)
@@ -201,20 +240,41 @@ export class MediaSemanticService {
     try {
       const parsed = JSON.parse(content.slice(first, last + 1)) as Record<string, unknown>
       const fallback = buildFallbackMediaSemanticSummary(mimeType)
-      const discussionPoints = sanitizeStringArray(parsed.discussion_points, 6, 180)
-      const publicSafeSummary = sanitizeString(parsed.public_safe_summary, 400)
-      const internalFullSummary = sanitizeString(parsed.internal_full_summary, 700)
-      const theme = sanitizeString(parsed.theme, 160)
+      const style = parsed.style && typeof parsed.style === 'object' ? parsed.style as Record<string, unknown> : null
+      const entities = parsed.entities && typeof parsed.entities === 'object'
+        ? parsed.entities as Record<string, unknown>
+        : null
+      const ocr = parsed.ocr && typeof parsed.ocr === 'object' ? parsed.ocr as Record<string, unknown> : null
+      const safety = parsed.safety && typeof parsed.safety === 'object'
+        ? parsed.safety as Record<string, unknown>
+        : null
+      const summaries = parsed.summaries && typeof parsed.summaries === 'object'
+        ? parsed.summaries as Record<string, unknown>
+        : null
+      const discussionPoints = sanitizeStringArray(
+        entities?.discussion_points ?? parsed.discussion_points,
+        6,
+        180,
+      )
+      const publicSafeSummary = sanitizeString(
+        summaries?.public_safe ?? parsed.public_safe_summary,
+        400,
+      )
+      const internalFullSummary = sanitizeString(
+        summaries?.internal_full ?? parsed.internal_full_summary,
+        700,
+      )
+      const theme = sanitizeString(style?.theme ?? parsed.theme, 160)
       const scene = sanitizeString(parsed.scene, 180)
-      const mood = sanitizeString(parsed.mood, 120)
+      const mood = sanitizeString(style?.mood ?? parsed.mood, 120)
       const confidence = typeof parsed.confidence === 'number' && Number.isFinite(parsed.confidence)
         ? Math.min(1, Math.max(0, parsed.confidence))
         : fallback.confidence
       const composition = sanitizeString(parsed.composition, 180)
-      const styleTags = sanitizeStringArray(parsed.style_tags, 8, 60)
-      const salientEntities = sanitizeStringArray(parsed.salient_entities, 10, 120)
-      const ocrSnippets = sanitizeStringArray(parsed.ocr_snippets, 10, 200)
-      const safetyLabels = sanitizeStringArray(parsed.safety_labels, 10, 120)
+      const styleTags = sanitizeStringArray(style?.tags ?? parsed.style_tags, 8, 60)
+      const salientEntities = sanitizeStringArray(entities?.salient ?? parsed.salient_entities, 10, 120)
+      const ocrSnippets = sanitizeStringArray(ocr?.snippets ?? parsed.ocr_snippets, 10, 200)
+      const safetyLabels = sanitizeStringArray(safety?.labels ?? parsed.safety_labels, 10, 120)
 
       const hasStructuredSignal = Boolean(
         theme
@@ -231,22 +291,30 @@ export class MediaSemanticService {
         return null
       }
 
-      return {
-        ...normalizeSemanticSummary({
+      return normalizeSemanticSummary({
+        scene: scene || fallback.scene,
+        composition: composition || fallback.composition,
+        style: {
           theme: theme || fallback.theme,
-          scene: scene || fallback.scene,
           mood: mood || fallback.mood,
-          confidence,
-          composition: composition || fallback.composition,
-          style_tags: styleTags,
+          tags: styleTags,
+        },
+        entities: {
           discussion_points: discussionPoints.length > 0 ? discussionPoints : fallback.discussion_points,
-          salient_entities: salientEntities,
-          ocr_snippets: ocrSnippets,
-          safety_labels: safetyLabels,
-          public_safe_summary: publicSafeSummary || internalFullSummary || fallback.public_safe_summary,
-          internal_full_summary: internalFullSummary || publicSafeSummary || fallback.internal_full_summary,
-        }, fallback),
-      }
+          salient: salientEntities,
+        },
+        ocr: {
+          snippets: ocrSnippets,
+        },
+        safety: {
+          labels: safetyLabels,
+        },
+        summaries: {
+          public_safe: publicSafeSummary || internalFullSummary || fallback.public_safe_summary,
+          internal_full: internalFullSummary || publicSafeSummary || fallback.internal_full_summary,
+        },
+        confidence,
+      }, fallback)
     } catch {
       return null
     }
@@ -346,4 +414,16 @@ export class MediaSemanticService {
       console.error('[MediaSemanticService] AgentRun record failed:', err)
     }
   }
+}
+
+function isBelowVisionModelMinDimension(input: BuildMediaSemanticInput): boolean {
+  return (
+    typeof input.width === 'number'
+    && Number.isFinite(input.width)
+    && input.width < MIN_VISION_DIMENSION_PX
+  ) || (
+    typeof input.height === 'number'
+    && Number.isFinite(input.height)
+    && input.height < MIN_VISION_DIMENSION_PX
+  )
 }

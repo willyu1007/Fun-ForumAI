@@ -9,6 +9,7 @@ import type { MediaProjectionService } from './media-projection-service.js'
 import type { ImagePlannerService } from './image-planner-service.js'
 import type { VisualDirectiveService } from './visual-directive-service.js'
 import type { MediaObservabilityService } from './media-observability-service.js'
+import type { MediaRolloutControllerService } from './media-rollout-controller-service.js'
 import { resolveMediaObservabilitySurface } from './media-observability-service.js'
 
 export interface PreparedSurfaceVisualPlan {
@@ -29,6 +30,7 @@ export interface SurfaceMediaPlanningServiceDeps {
   imagePlannerService: ImagePlannerService
   mediaProjectionService: MediaProjectionService
   mediaObservabilityService?: Pick<MediaObservabilityService, 'record' | 'recordCriticalPrivateLeak'> | null
+  mediaRolloutControllerService?: Pick<MediaRolloutControllerService, 'getEffectiveProfile'> | null
 }
 
 export class SurfaceMediaPlanningService {
@@ -102,16 +104,34 @@ export class SurfaceMediaPlanningService {
       actor_surface: input.directive.scene_ref.actor_surface,
       director_surface: input.directive.scene_ref.director_surface,
     })
+    const hardening = await this.deps.mediaRolloutControllerService?.getEffectiveProfile()
+      .then((profile) => profile.effective)
+      .catch(() => null)
     const firstCard = plan.runtime.cards[0] ?? null
     const serialized = firstCard
       ? this.deps.mediaProjectionService.serializePublicCardForPrompt({
           card: firstCard,
           max_chars: 900,
+          audit_context: {
+            surface: 'public_runtime',
+            sensitive_terms: [],
+            policy_mode: 'strict',
+            visibility_scope: 'public',
+            actor_role: 'agent',
+          },
+          enforcement: hardening
+            ? {
+                semantic_v3_enforced: hardening.semantic_v3_enforced,
+                strict_audit_enforced: hardening.strict_audit_enforced,
+                lineage_required: hardening.lineage_required,
+              }
+            : undefined,
         })
       : null
     const promptAudit = serialized?.audit ?? null
     const promptSafe = serialized
-      ? !serialized.audit.contains_url
+      ? serialized.decision.decision !== 'block'
+        && !serialized.audit.contains_url
         && !serialized.audit.contains_asset_id
         && !serialized.audit.contains_owner_note
         && !serialized.audit.contains_private_text
@@ -157,6 +177,7 @@ export class SurfaceMediaPlanningService {
         payload_json: {
           blocked_fields: blockedFields,
           derived_from_private: firstCard.source.derived_from_private,
+          reason_codes: serialized?.decision.reason_codes ?? [],
         },
       })
       if (firstCard.source.derived_from_private && blockedFields.length > 0) {

@@ -25,6 +25,7 @@ import type { AchievementChronicleService } from './achievement-chronicle-servic
 import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
 import { listSurfaceMediaAttachmentViews } from '../media/surface-media-view.js'
 import type { MediaObservabilityService } from '../media/media-observability-service.js'
+import type { MediaRolloutControllerService } from '../media/media-rollout-controller-service.js'
 
 export interface ForumReadServiceDeps {
   postRepo: PostRepository
@@ -40,6 +41,7 @@ export interface ForumReadServiceDeps {
   achievementChronicleService?: AchievementChronicleService
   riskRepo?: RiskGovernanceRepository
   mediaObservabilityService?: Pick<MediaObservabilityService, 'record'> | null
+  mediaRolloutControllerService?: Pick<MediaRolloutControllerService, 'getEffectiveProfile'> | null
 }
 
 export interface PostMediaSummary {
@@ -441,6 +443,10 @@ export class ForumReadService {
 
   private async resolvePostMediaViews(postIds: string[]): Promise<Record<string, PostMediaSummary[]>> {
     if (postIds.length === 0) return {}
+    const rootPostAttachmentOnly = this.deps.mediaRolloutControllerService
+      ? (await this.deps.mediaRolloutControllerService.getEffectiveProfile())
+        .effective.root_post_attachment_only
+      : true
     const attachmentMap = await listSurfaceMediaAttachmentViews(
       {
         sceneMediaBindingRepo: this.deps.sceneMediaBindingRepo,
@@ -466,7 +472,9 @@ export class ForumReadService {
         mime_type: item.mime_type,
         alt_text: legacyAltTextByPost[postId]?.[item.asset_id] ?? null,
       }))
-      mediaByPost[postId] = attachmentMedia.length > 0 ? attachmentMedia : legacyMedia
+      mediaByPost[postId] = attachmentMedia.length > 0 || rootPostAttachmentOnly
+        ? attachmentMedia
+        : legacyMedia
       if (attachmentMedia.length > 0 || legacyMedia.length > 0) {
         this.recordRootPostReadModelParityAsync({
           post_id: postId,

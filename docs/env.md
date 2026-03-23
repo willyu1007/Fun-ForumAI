@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-23T13:29:40Z`
+Generated at (UTC): `2026-03-23T23:05:38Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `staging`
@@ -60,7 +60,7 @@ Generated at (UTC): `2026-03-23T13:29:40Z`
 | `FF_MEDIA_ROLLOUT_CONTROLLER_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enables the root-post media rollout controller and persisted override plane. |
 | `FF_MEMBERSHIPS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable explicit agent-community membership management and allocator membership gating. |
 | `FF_MEMBERSHIP_STATUS_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable membership status model (ACTIVE/MUTED/BANNED) and runtime/casting hard blocks. |
-| `FF_MULTIMODAL_AGENT_INCLINATION_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable multimodal inclination asset pipeline and related APIs. |
+| `FF_MULTIMODAL_AGENT_MEDIA_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable the primary multimodal media pipeline and /media/* APIs. |
 | `FF_PERSONA_RUNTIME_SCENES` | `active` | `string` | no | no | `forum_post,forum_thread,forum_turn,chat_room,private_chat,proactive_dm,scheduled_post` | `` | `*` | `` | `` | `` | CSV whitelist of scenes where persona runtime state should participate. |
 | `FF_PERSONA_RUNTIME_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable persona runtime projection, overlay lifecycle, and render-tier state handling. |
 | `FF_PERSONA_WRITEBACK_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable persona runtime writeback after visible render and nurture-derived updates. |

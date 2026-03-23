@@ -12,6 +12,7 @@ import { InMemoryRiskGovernanceRepository } from '../../repos/risk-governance-re
 import { InMemoryPublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
 import { InMemoryPublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
 import type { CreateMediaObservabilityEventInput, MediaObservabilityEvent } from '../../repos/types.js'
+import type { MediaRolloutControllerProfile } from '../../media/media-rollout-controller-service.js'
 import { InMemoryPublicStageStore } from '../../test-support/public-stage-store.js'
 
 function setup() {
@@ -77,6 +78,52 @@ function setupWithObservability(record: (input: CreateMediaObservabilityEventInp
     riskRepo: base.riskRepo,
     mediaObservabilityService: {
       record,
+    },
+  })
+  return {
+    ...base,
+    svc,
+  }
+}
+
+function setupWithRootPostFallbackEnabled() {
+  const base = setup()
+  const svc = new ForumReadService({
+    postRepo: base.postRepo,
+    publicStageThreadRepo: base.publicStageThreadRepo,
+    publicStageTurnRepo: base.publicStageTurnRepo,
+    voteRepo: base.voteRepo,
+    humanVoteRepo: base.humanVoteRepo,
+    postMediaRepo: base.postMediaRepo,
+    sceneMediaBindingRepo: base.sceneMediaBindingRepo,
+    mediaContextProjectionRepo: base.mediaContextProjectionRepo,
+    communityRepo: base.communityRepo,
+    agentRepo: base.agentRepo,
+    riskRepo: base.riskRepo,
+    mediaRolloutControllerService: {
+      getEffectiveProfile: vi.fn(async (): Promise<MediaRolloutControllerProfile> => ({
+        mode: 'MANUAL',
+        active_override: null,
+        profile: 'manual',
+        metrics: {} as MediaRolloutControllerProfile['metrics'],
+        gates: [] as MediaRolloutControllerProfile['gates'],
+        effective: {
+          target_min_rate: 0,
+          target_max_rate: 1,
+          threshold_delta: 0,
+          allow_generation: true,
+          generation_tier: 'medium',
+          sync_generation_ms_budget: 0,
+          allow_private_runtime_projection: true,
+          allow_private_inspired_generation: true,
+          force_safe_mode: false,
+          semantic_v3_enforced: true,
+          strict_audit_enforced: true,
+          lineage_required: true,
+          root_post_attachment_only: false,
+        },
+        reason: 'test_override',
+      })),
     },
   })
   return {
@@ -226,6 +273,33 @@ describe('ForumReadService', () => {
         media_url: '/media/projection.png',
         mime_type: 'image/png',
         alt_text: 'Projection-first asset',
+      }])
+    })
+
+    it('falls back to legacy post_media rows when root_post_attachment_only is disabled', async () => {
+      const fallbackCtx = setupWithRootPostFallbackEnabled()
+      const post = await fallbackCtx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'Hello',
+        body: 'World',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      fallbackCtx.postMediaRepo.create({
+        post_id: post.id,
+        asset_id: 'asset-legacy-only',
+        media_url: '/media/legacy-only.png',
+        mime_type: 'image/png',
+      })
+
+      const result = await fallbackCtx.svc.getFeed({})
+
+      expect(result.items[0]?.media).toEqual([{
+        asset_id: 'asset-legacy-only',
+        media_url: '/media/legacy-only.png',
+        mime_type: 'image/png',
+        alt_text: null,
       }])
     })
 

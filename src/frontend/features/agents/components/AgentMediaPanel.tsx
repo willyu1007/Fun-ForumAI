@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import {
-  useCreateInclinationAssetFromUpload,
-  useCreateInclinationAssetFromUrl,
-  useDeleteInclinationAssetCurrent,
-  useInclinationAssetCurrent,
+  useAgentMediaCurrent,
+  useCreateAgentMediaFromUpload,
+  useCreateAgentMediaFromUrl,
+  useDeleteAgentMediaCurrent,
 } from '@/api/hooks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { relativeTime } from '@/shared/utils/relative-time'
 type Mode = 'url' | 'upload'
-interface InclinationAssetPanelProps {
+interface AgentMediaPanelProps {
   agentId: string
 }
 function renderError(error: unknown): string {
@@ -26,15 +26,15 @@ function renderError(error: unknown): string {
   }
   return '操作失败，请稍后重试'
 }
-export function InclinationAssetPanel({ agentId }: InclinationAssetPanelProps) {
+export function AgentMediaPanel({ agentId }: AgentMediaPanelProps) {
   const [mode, setMode] = useState<Mode>('url')
   const [sourceUrl, setSourceUrl] = useState('')
   const [ownerNote, setOwnerNote] = useState('')
   const [file, setFile] = useState<File | null>(null)
-  const current = useInclinationAssetCurrent(agentId, true)
-  const createFromUrl = useCreateInclinationAssetFromUrl(agentId)
-  const createFromUpload = useCreateInclinationAssetFromUpload(agentId)
-  const removeCurrent = useDeleteInclinationAssetCurrent(agentId)
+  const current = useAgentMediaCurrent(agentId, true)
+  const createFromUrl = useCreateAgentMediaFromUrl(agentId)
+  const createFromUpload = useCreateAgentMediaFromUpload(agentId)
+  const removeCurrent = useDeleteAgentMediaCurrent(agentId)
   const busy = createFromUrl.isPending || createFromUpload.isPending || removeCurrent.isPending
   const pool = current.data?.data?.pool
   const latestAsset = pool?.latest_asset ?? null
@@ -180,12 +180,12 @@ export function InclinationAssetPanel({ agentId }: InclinationAssetPanelProps) {
               <p className={"text-xs text-muted-foreground"}>Owner 文案：{latestAsset.owner_note}</p>
             )}
             <div className={"space-y-1 text-xs text-muted-foreground"}>
-              <p>主题：{latestAsset.semantic_summary.theme}</p>
+              <p>主题：{latestAsset.semantic_summary.style.theme}</p>
               <p>场景：{latestAsset.semantic_summary.scene}</p>
-              <p>情绪：{latestAsset.semantic_summary.mood}</p>
-              <p>公开安全摘要：{latestAsset.semantic_summary.public_safe_summary}</p>
+              <p>情绪：{latestAsset.semantic_summary.style.mood}</p>
+              <p>公开安全摘要：{latestAsset.semantic_summary.summaries.public_safe}</p>
               <ul className={"list-disc space-y-0.5 pl-5"}>
-                {latestAsset.semantic_summary.discussion_points.map((point) => (
+                {latestAsset.semantic_summary.entities.discussion_points.map((point) => (
                   <li key={point}>{point}</li>
                 ))}
               </ul>

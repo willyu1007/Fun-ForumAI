@@ -31,19 +31,48 @@ export type MediaQualityGrade =
   | 'legacy_imported_partial'
   | 'fallback'
 
-export interface MediaSemanticSummary {
+export interface MediaSemanticStyleSummary {
   theme: string
-  scene: string
   mood: string
-  confidence: number
-  composition: string
-  style_tags: string[]
+  tags: string[]
+}
+
+export interface MediaSemanticEntitySummary {
+  salient: string[]
   discussion_points: string[]
-  salient_entities: string[]
-  ocr_snippets: string[]
-  safety_labels: string[]
-  public_safe_summary: string
-  internal_full_summary: string
+}
+
+export interface MediaSemanticOcrSummary {
+  snippets: string[]
+}
+
+export interface MediaSemanticSafetySummary {
+  labels: string[]
+}
+
+export interface MediaSemanticTextSummaries {
+  public_safe: string
+  internal_full: string
+}
+
+export interface MediaSemanticSummary {
+  scene: string
+  composition: string
+  style: MediaSemanticStyleSummary
+  entities: MediaSemanticEntitySummary
+  ocr: MediaSemanticOcrSummary
+  safety: MediaSemanticSafetySummary
+  summaries: MediaSemanticTextSummaries
+  confidence: number
+  readonly theme: string
+  readonly mood: string
+  readonly style_tags: string[]
+  readonly discussion_points: string[]
+  readonly salient_entities: string[]
+  readonly ocr_snippets: string[]
+  readonly safety_labels: string[]
+  readonly public_safe_summary: string
+  readonly internal_full_summary: string
 }
 
 export interface MediaAsset {
@@ -375,6 +404,56 @@ export type MediaGenerationInputMode =
   | 'reference'
   | 'scratch'
 
+export interface MediaAuditContext {
+  surface:
+    | 'public_display'
+    | 'public_runtime'
+    | 'private_runtime'
+    | 'memory'
+    | 'retrieval'
+    | 'planner'
+    | 'generation'
+  sensitive_terms: readonly string[]
+  policy_mode: 'strict' | 'soft'
+  visibility_scope: 'public' | 'private' | 'internal'
+  actor_role: 'owner' | 'agent' | 'system'
+}
+
+export interface MediaAuditDecision {
+  decision: 'allow' | 'redact' | 'block'
+  reason_codes: string[]
+  redacted_terms: string[]
+}
+
+export interface MediaGenerationSpec {
+  intent: 'reference_derive' | 'scratch_scene'
+  subject_anchors: string[]
+  scene_constraints: string[]
+  style_constraints: string[]
+  negative_constraints: string[]
+  source_projections: string[]
+  output_policy: {
+    aspect_ratio_hint: AspectRatioHint | null
+    public_safe_only: boolean
+    derivative_display_only: boolean
+  }
+}
+
+export interface CompiledMediaPrompt {
+  schema_version: 'compiled-media-prompt.v1'
+  template_id: 'media-generation-compiler'
+  rendered_prompt: string
+  sections: {
+    intent: string
+    subject: string[]
+    scene: string[]
+    style: string[]
+    negative: string[]
+  }
+  style_hint: string | null
+  aspect_ratio_hint: AspectRatioHint | null
+}
+
 export interface MediaGenerationJob {
   id: string
   agent_id: string
@@ -383,7 +462,11 @@ export interface MediaGenerationJob {
   provider: string
   model_name: string
   request_fingerprint: string
-  prompt_brief: string
+  prompt_brief: string | null
+  generation_spec: MediaGenerationSpec
+  compiled_prompt: CompiledMediaPrompt
+  audit_decision: MediaAuditDecision | null
+  provider_request_summary: Record<string, unknown> | null
   style_hint: string | null
   input_mode: MediaGenerationInputMode
   aspect_ratio_hint: AspectRatioHint | null
@@ -406,7 +489,11 @@ export interface CreateMediaGenerationJobInput {
   provider: string
   model_name: string
   request_fingerprint: string
-  prompt_brief: string
+  prompt_brief?: string | null
+  generation_spec?: MediaGenerationSpec
+  compiled_prompt?: CompiledMediaPrompt
+  audit_decision?: MediaAuditDecision | null
+  provider_request_summary?: Record<string, unknown> | null
   style_hint?: string | null
   input_mode?: MediaGenerationInputMode
   aspect_ratio_hint?: AspectRatioHint | null
@@ -520,6 +607,10 @@ export interface MediaRolloutControllerOverride {
   allow_private_runtime_projection: boolean | null
   allow_private_inspired_generation: boolean | null
   force_safe_mode: boolean
+  semantic_v3_enforced: boolean
+  strict_audit_enforced: boolean
+  lineage_required: boolean
+  root_post_attachment_only: boolean
   reason: string | null
   created_by_user_id: string
   released_by_user_id: string | null
@@ -542,6 +633,10 @@ export interface CreateMediaRolloutControllerOverrideInput {
   allow_private_runtime_projection?: boolean | null
   allow_private_inspired_generation?: boolean | null
   force_safe_mode?: boolean
+  semantic_v3_enforced?: boolean
+  strict_audit_enforced?: boolean
+  lineage_required?: boolean
+  root_post_attachment_only?: boolean
   reason?: string | null
   created_by_user_id: string
   released_by_user_id?: string | null
@@ -868,9 +963,11 @@ export interface PlannerScoreBreakdown {
 export interface ImagePlanSource {
   source_kind: VisualSourceKind
   asset_id?: string
+  binding_id?: string
   semantic_snapshot_id?: string
   projection_id?: string
   card_id?: string
+  selection_reason?: string | null
   reuse_mode?: MediaReuseMode | null
   policy_ref?: {
     policy_id: string
@@ -918,7 +1015,11 @@ export interface ImagePlan {
     request_fingerprint?: string
     aspect_ratio_hint?: AspectRatioHint | null
     based_on_projection_ids?: string[]
-    prompt_brief?: string
+    prompt_brief?: string | null
+    audit_context?: MediaAuditContext
+    audit_decision?: MediaAuditDecision | null
+    spec?: MediaGenerationSpec
+    compiled_prompt?: CompiledMediaPrompt
     attempt_count?: number
     output_asset_id?: string
     error_code?: string | null
@@ -996,4 +1097,34 @@ export interface CreateMediaContextProjectionInput {
   mention_policy?: string | null
   preferred_display_variant?: string | null
   expires_at?: Date | null
+}
+
+export type MediaLineageNodeType =
+  | 'asset'
+  | 'semantic_snapshot'
+  | 'binding'
+  | 'projection'
+  | 'image_plan'
+  | 'generation_job'
+  | 'post_media_attachment'
+
+export interface MediaLineageEdge {
+  id: string
+  from_node_type: MediaLineageNodeType
+  from_node_id: string
+  to_node_type: MediaLineageNodeType
+  to_node_id: string
+  edge_kind: string
+  metadata_json: Record<string, unknown> | null
+  created_at: Date
+}
+
+export interface CreateMediaLineageEdgeInput {
+  id?: string
+  from_node_type: MediaLineageNodeType
+  from_node_id: string
+  to_node_type: MediaLineageNodeType
+  to_node_id: string
+  edge_kind: string
+  metadata_json?: Record<string, unknown> | null
 }

@@ -15,9 +15,15 @@ import type {
   VisualSourceKind,
 } from '../repos/types.js'
 import type { MediaContextProjectionRepository } from '../repos/media-context-projection-repository.js'
+import type { MediaLineageService } from './media-lineage-service.js'
+import {
+  evaluateMediaAudit,
+  type MediaAuditEnforcement,
+} from './media-audit.js'
 
 export interface MediaProjectionServiceDeps {
   mediaContextProjectionRepo: MediaContextProjectionRepository
+  mediaLineageService?: MediaLineageService | null
 }
 
 export interface SerializedPublicMediaCard {
@@ -31,6 +37,7 @@ export interface SerializedPublicMediaCard {
     contains_owner_note: boolean
     contains_private_text: boolean
   }
+  decision: import('../repos/types.js').MediaAuditDecision
 }
 
 export interface SerializedPrivateMediaCard {
@@ -44,10 +51,31 @@ export interface SerializedPrivateMediaCard {
     contains_owner_note: boolean
     contains_private_text: boolean
   }
+  decision: import('../repos/types.js').MediaAuditDecision
 }
 
 function estimateTokens(value: string): number {
   return Math.max(1, Math.ceil(value.length / 4))
+}
+
+function buildDefaultPublicAuditContext(): import('../repos/types.js').MediaAuditContext {
+  return {
+    surface: 'public_runtime',
+    sensitive_terms: [],
+    policy_mode: 'strict',
+    visibility_scope: 'public',
+    actor_role: 'agent',
+  }
+}
+
+function buildDefaultPrivateAuditContext(): import('../repos/types.js').MediaAuditContext {
+  return {
+    surface: 'private_runtime',
+    sensitive_terms: [],
+    policy_mode: 'strict',
+    visibility_scope: 'private',
+    actor_role: 'agent',
+  }
 }
 
 export function buildRetrievalCaptionText(input: {
@@ -69,7 +97,7 @@ export function buildRetrievalCaptionText(input: {
 export class MediaProjectionService {
   constructor(private readonly deps: MediaProjectionServiceDeps) {}
 
-  createRetrievalCaptionProjection(input: {
+  async createRetrievalCaptionProjection(input: {
     binding: SceneMediaBinding
     asset: MediaAsset
     snapshot: MediaSemanticSnapshot
@@ -81,7 +109,7 @@ export class MediaProjectionService {
       ownerNote: input.ownerNote,
     })
 
-    return this.deps.mediaContextProjectionRepo.create({
+    const projection = await this.deps.mediaContextProjectionRepo.create({
       binding_id: input.binding.id,
       projection_surface: 'retrieval',
       projection_kind: 'retrieval_caption',
@@ -98,9 +126,11 @@ export class MediaProjectionService {
       prompt_weight: 'primary',
       mention_policy: 'owner_private_pool_only',
     })
+    await this.recordProjectionLineage(input.binding.id, projection)
+    return projection
   }
 
-  createDisplayAttachmentProjection(input: {
+  async createDisplayAttachmentProjection(input: {
     binding: SceneMediaBinding
     asset: MediaAsset
     snapshot: MediaSemanticSnapshot
@@ -111,7 +141,7 @@ export class MediaProjectionService {
     displayVariant?: 'original' | 'generated_derivative'
   }): Promise<MediaContextProjection> {
     const altText = input.altText ?? input.snapshot.summary.public_safe_summary
-    return this.deps.mediaContextProjectionRepo.create({
+    const projection = await this.deps.mediaContextProjectionRepo.create({
       binding_id: input.binding.id,
       projection_surface: 'public_display',
       projection_kind: 'display_attachment',
@@ -130,6 +160,8 @@ export class MediaProjectionService {
       token_estimate: estimateTokens(altText),
       preferred_display_variant: 'original',
     })
+    await this.recordProjectionLineage(input.binding.id, projection)
+    return projection
   }
 
   async ensurePublicMediaCard(input: {
@@ -156,6 +188,8 @@ export class MediaProjectionService {
     expires_at?: string | null
     confidence: number
     relevance_score: number
+    audit_context?: import('../repos/types.js').MediaAuditContext
+    enforcement?: MediaAuditEnforcement
   }): Promise<{ projection: MediaContextProjection; card: PublicMediaContextCard }> {
     const projectionId = `media_projection_${randomUUID()}`
     const cardId = `public_media_card_${randomUUID()}`
@@ -212,6 +246,9 @@ export class MediaProjectionService {
     const serialized = this.serializePublicCardForPrompt({
       card,
       max_chars: 1_200,
+      audit_context: input.audit_context ?? buildDefaultPublicAuditContext(),
+      summary_schema_version: input.snapshot.schema_version,
+      enforcement: input.enforcement,
     })
     const projection = await this.deps.mediaContextProjectionRepo.create({
       id: projectionId,
@@ -226,6 +263,7 @@ export class MediaProjectionService {
       preferred_display_variant: input.preferred_variant,
       expires_at: input.expires_at ? new Date(input.expires_at) : null,
     })
+    await this.recordProjectionLineage(input.binding.id, projection)
     return { projection, card }
   }
 
@@ -235,6 +273,8 @@ export class MediaProjectionService {
     snapshot: MediaSemanticSnapshot
     source_kind: MediaSourceKind
     why_relevant_hint: string
+    audit_context?: import('../repos/types.js').MediaAuditContext
+    enforcement?: MediaAuditEnforcement
   }): Promise<{
     projection: MediaContextProjection
     card: PrivateMediaRuntimeCard
@@ -282,6 +322,9 @@ export class MediaProjectionService {
     const serialized = this.serializePrivateRuntimeCardForPrompt({
       card,
       max_chars: 900,
+      audit_context: input.audit_context ?? buildDefaultPrivateAuditContext(),
+      summary_schema_version: input.snapshot.schema_version,
+      enforcement: input.enforcement,
     })
     const projection = await this.deps.mediaContextProjectionRepo.create({
       id: projectionId,
@@ -295,6 +338,7 @@ export class MediaProjectionService {
       mention_policy: 'silent_influence',
       preferred_display_variant: 'original',
     })
+    await this.recordProjectionLineage(input.binding.id, projection)
     return { projection, card, serialized }
   }
 
@@ -366,6 +410,7 @@ export class MediaProjectionService {
       mention_policy: 'allude',
       preferred_display_variant: 'none',
     })
+    await this.recordProjectionLineage(input.binding.id, projection)
     return { projection, handoff }
   }
 
@@ -401,13 +446,17 @@ export class MediaProjectionService {
       mention_policy: 'silent_influence',
       preferred_display_variant: 'none',
     })
+    await this.recordProjectionLineage(input.binding.id, projection)
     return { projection, payload }
   }
 
   serializePublicCardForPrompt(input: {
     card: PublicMediaContextCard
     max_chars: number
+    audit_context?: import('../repos/types.js').MediaAuditContext
     sensitive_terms?: string[]
+    summary_schema_version?: string | null
+    enforcement?: MediaAuditEnforcement
   }): SerializedPublicMediaCard {
     const requiredLines = [
       `visual_role: ${input.card.relation.visual_role}`,
@@ -477,25 +526,39 @@ export class MediaProjectionService {
       input.card.asset_ref.asset_id,
       ...(input.sensitive_terms ?? []),
     ].filter((item): item is string => typeof item === 'string' && item.length > 0)
+    const evaluated = evaluateMediaAudit({
+      text,
+      audit_context: input.audit_context ?? null,
+      lineage_complete: Boolean(input.card.asset_ref.asset_id && input.card.asset_ref.projection_id),
+      source_explainable: true,
+      policy_match: true,
+      asset_id: input.card.asset_ref.asset_id,
+      summary_schema_version: input.summary_schema_version ?? null,
+      enforcement: input.enforcement ?? null,
+    })
 
     return {
-      text,
-      token_estimate: estimateTokens(text),
+      text: evaluated.text,
+      token_estimate: evaluated.decision.decision === 'block' ? 0 : estimateTokens(evaluated.text),
       trimmed_fields: trimmedFields,
       audit: {
         omitted_sensitive_fields: ['asset_id', 'asset_url', 'owner_note', 'raw_private_text'],
-        contains_url: /(https?:\/\/|s3:\/\/|\/uploads\/)/i.test(text),
-        contains_asset_id: text.includes(input.card.asset_ref.asset_id),
-        contains_owner_note: sensitiveTerms.slice(1).some((item) => text.includes(item)),
-        contains_private_text: sensitiveTerms.slice(1).some((item) => text.includes(item)),
+        contains_url: /(https?:\/\/|s3:\/\/|\/uploads\/)/i.test(evaluated.text),
+        contains_asset_id: evaluated.text.includes(input.card.asset_ref.asset_id),
+        contains_owner_note: sensitiveTerms.slice(1).some((item) => evaluated.text.includes(item)),
+        contains_private_text: sensitiveTerms.slice(1).some((item) => evaluated.text.includes(item)),
       },
+      decision: evaluated.decision,
     }
   }
 
   serializePrivateRuntimeCardForPrompt(input: {
     card: PrivateMediaRuntimeCard
     max_chars: number
+    audit_context?: import('../repos/types.js').MediaAuditContext
     sensitive_terms?: string[]
+    summary_schema_version?: string | null
+    enforcement?: MediaAuditEnforcement
   }): SerializedPrivateMediaCard {
     const requiredLines = [
       `role: ${input.card.relation.role}`,
@@ -559,19 +622,48 @@ export class MediaProjectionService {
       input.card.asset_ref.asset_id,
       ...(input.sensitive_terms ?? []),
     ].filter((item): item is string => typeof item === 'string' && item.length > 0)
+    const evaluated = evaluateMediaAudit({
+      text,
+      audit_context: input.audit_context ?? null,
+      lineage_complete: Boolean(input.card.asset_ref.asset_id && input.card.asset_ref.projection_id),
+      source_explainable: true,
+      policy_match: true,
+      asset_id: input.card.asset_ref.asset_id,
+      summary_schema_version: input.summary_schema_version ?? null,
+      enforcement: input.enforcement ?? null,
+    })
 
     return {
-      text,
-      token_estimate: estimateTokens(text),
+      text: evaluated.text,
+      token_estimate: evaluated.decision.decision === 'block' ? 0 : estimateTokens(evaluated.text),
       trimmed_fields: trimmedFields,
       audit: {
         omitted_sensitive_fields: ['asset_id', 'asset_url', 'owner_note', 'raw_private_text'],
-        contains_url: /(https?:\/\/|s3:\/\/|\/uploads\/)/i.test(text),
-        contains_asset_id: text.includes(input.card.asset_ref.asset_id),
-        contains_owner_note: sensitiveTerms.slice(1).some((item) => text.includes(item)),
-        contains_private_text: sensitiveTerms.slice(1).some((item) => text.includes(item)),
+        contains_url: /(https?:\/\/|s3:\/\/|\/uploads\/)/i.test(evaluated.text),
+        contains_asset_id: evaluated.text.includes(input.card.asset_ref.asset_id),
+        contains_owner_note: sensitiveTerms.slice(1).some((item) => evaluated.text.includes(item)),
+        contains_private_text: sensitiveTerms.slice(1).some((item) => evaluated.text.includes(item)),
       },
+      decision: evaluated.decision,
     }
+  }
+
+  private async recordProjectionLineage(
+    bindingId: string,
+    projection: MediaContextProjection,
+  ): Promise<void> {
+    await this.deps.mediaLineageService?.recordEdge({
+      from_node_type: 'binding',
+      from_node_id: bindingId,
+      to_node_type: 'projection',
+      to_node_id: projection.id,
+      edge_kind: 'binding_projected',
+      metadata_json: {
+        projection_surface: projection.projection_surface,
+        projection_kind: projection.projection_kind,
+        schema_version: projection.schema_version,
+      },
+    })
   }
 }
 

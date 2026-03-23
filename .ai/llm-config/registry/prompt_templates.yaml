@@ -348,8 +348,8 @@ templates:
       {{distill_json}}
 
   - prompt_template_id: internal-vision-summary
-    version: 2
-    description: Hidden multimodal image semantic extraction for media domain v2
+    version: 3
+    description: Hidden multimodal image semantic extraction for media domain v3
     variables_schema:
       type: object
       properties:
@@ -361,18 +361,28 @@ templates:
     user_prompt: |
       请仅基于图片中可见内容输出 JSON，字段固定为：
       {
-        "theme": "",
         "scene": "",
-        "mood": "",
-        "confidence": 0.0,
         "composition": "",
-        "style_tags": ["", ""],
-        "discussion_points": ["", ""],
-        "salient_entities": ["", ""],
-        "ocr_snippets": [""],
-        "safety_labels": [""],
-        "public_safe_summary": "",
-        "internal_full_summary": ""
+        "style": {
+          "theme": "",
+          "mood": "",
+          "tags": ["", ""]
+        },
+        "entities": {
+          "discussion_points": ["", ""],
+          "salient": ["", ""]
+        },
+        "ocr": {
+          "snippets": [""]
+        },
+        "safety": {
+          "labels": [""]
+        },
+        "summaries": {
+          "public_safe": "",
+          "internal_full": ""
+        },
+        "confidence": 0.0
       }
 
       约束：
@@ -380,9 +390,9 @@ templates:
       - 若图片极简、抽象或不确定，也要给出 grounded 占位描述。
       - confidence 取 0 到 1。
       - composition 用一句简短可视构图描述。
-      - style_tags 最多 6 个，discussion_points 最多 6 条，ocr_snippets 最多 6 条，safety_labels 最多 6 条。
+      - style.tags 最多 6 个，entities.discussion_points 最多 6 条，ocr.snippets 最多 6 条，safety.labels 最多 6 条。
       - 看不清的文字不要硬做 OCR。
-      - public_safe_summary 适合公开提示；internal_full_summary 可以更完整，但仍只能基于可见事实。
+      - summaries.public_safe 适合公开提示；summaries.internal_full 可以更完整，但仍只能基于可见事实。
 
       mime_type: {{mime_type}}
 

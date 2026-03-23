@@ -22,6 +22,10 @@ export interface MediaRolloutEffectiveSettings {
   allow_private_runtime_projection: boolean
   allow_private_inspired_generation: boolean
   force_safe_mode: boolean
+  semantic_v3_enforced: boolean
+  strict_audit_enforced: boolean
+  lineage_required: boolean
+  root_post_attachment_only: boolean
 }
 
 export interface MediaRolloutControllerProfile {
@@ -53,6 +57,10 @@ function buildSteadySettings(): MediaRolloutEffectiveSettings {
     allow_private_runtime_projection: true,
     allow_private_inspired_generation: true,
     force_safe_mode: false,
+    semantic_v3_enforced: true,
+    strict_audit_enforced: true,
+    lineage_required: true,
+    root_post_attachment_only: true,
   }
 }
 
@@ -80,6 +88,10 @@ function applySafeModeIfRequested(
     sync_generation_ms_budget: 0,
     allow_private_runtime_projection: false,
     allow_private_inspired_generation: false,
+    semantic_v3_enforced: settings.semantic_v3_enforced,
+    strict_audit_enforced: settings.strict_audit_enforced,
+    lineage_required: settings.lineage_required,
+    root_post_attachment_only: settings.root_post_attachment_only,
   }
 }
 
@@ -151,6 +163,10 @@ export class MediaRolloutControllerService {
             activeOverride.allow_private_inspired_generation
             ?? steady.allow_private_inspired_generation,
           force_safe_mode: activeOverride.force_safe_mode,
+          semantic_v3_enforced: activeOverride.semantic_v3_enforced,
+          strict_audit_enforced: activeOverride.strict_audit_enforced,
+          lineage_required: activeOverride.lineage_required,
+          root_post_attachment_only: activeOverride.root_post_attachment_only,
         }),
         reason: activeOverride.reason ?? 'manual_override',
       }
@@ -256,6 +272,10 @@ export class MediaRolloutControllerService {
     allow_private_runtime_projection?: boolean | null
     allow_private_inspired_generation?: boolean | null
     force_safe_mode?: boolean
+    semantic_v3_enforced?: boolean | null
+    strict_audit_enforced?: boolean | null
+    lineage_required?: boolean | null
+    root_post_attachment_only?: boolean | null
     reason?: string | null
     created_by_user_id: string
   }): Promise<MediaRolloutControllerOverride> {
@@ -271,6 +291,10 @@ export class MediaRolloutControllerService {
         allow_private_runtime_projection: input.allow_private_runtime_projection ?? null,
         allow_private_inspired_generation: input.allow_private_inspired_generation ?? null,
         force_safe_mode: input.force_safe_mode ?? false,
+        semantic_v3_enforced: input.semantic_v3_enforced ?? true,
+        strict_audit_enforced: input.strict_audit_enforced ?? true,
+        lineage_required: input.lineage_required ?? true,
+        root_post_attachment_only: input.root_post_attachment_only ?? true,
         reason: input.reason ?? null,
         created_by_user_id: input.created_by_user_id,
       },

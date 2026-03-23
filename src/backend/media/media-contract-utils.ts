@@ -1,6 +1,6 @@
 import type { MediaAsset, MediaSceneType, MediaSemanticSummary, SceneRef } from '../repos/types.js'
 
-export const MEDIA_SEMANTIC_SCHEMA_VERSION = 'media_semantic_summary.v2'
+export const MEDIA_SEMANTIC_SCHEMA_VERSION = 'media_semantic_summary.v3'
 
 export function buildForumPostThreadRootRef(postId: string): string {
   return `forum_post:${postId}`
@@ -57,6 +57,83 @@ function readFallbackString(value: unknown, fallback: string): string {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback
 }
 
+function readStringArray(value: unknown, maxItems: number): string[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, maxItems)
+}
+
+function readRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
+function withLegacySemanticAccessors(input: {
+  scene: string
+  composition: string
+  style: MediaSemanticSummary['style']
+  entities: MediaSemanticSummary['entities']
+  ocr: MediaSemanticSummary['ocr']
+  safety: MediaSemanticSummary['safety']
+  summaries: MediaSemanticSummary['summaries']
+  confidence: number
+}): MediaSemanticSummary {
+  const summary = {
+    scene: input.scene,
+    composition: input.composition,
+    style: input.style,
+    entities: input.entities,
+    ocr: input.ocr,
+    safety: input.safety,
+    summaries: input.summaries,
+    confidence: input.confidence,
+  } as MediaSemanticSummary
+
+  Object.defineProperties(summary, {
+    theme: {
+      enumerable: false,
+      get: () => summary.style.theme,
+    },
+    mood: {
+      enumerable: false,
+      get: () => summary.style.mood,
+    },
+    style_tags: {
+      enumerable: false,
+      get: () => summary.style.tags,
+    },
+    discussion_points: {
+      enumerable: false,
+      get: () => summary.entities.discussion_points,
+    },
+    salient_entities: {
+      enumerable: false,
+      get: () => summary.entities.salient,
+    },
+    ocr_snippets: {
+      enumerable: false,
+      get: () => summary.ocr.snippets,
+    },
+    safety_labels: {
+      enumerable: false,
+      get: () => summary.safety.labels,
+    },
+    public_safe_summary: {
+      enumerable: false,
+      get: () => summary.summaries.public_safe,
+    },
+    internal_full_summary: {
+      enumerable: false,
+      get: () => summary.summaries.internal_full,
+    },
+  })
+
+  return summary
+}
+
 export function buildSemanticSummaryFallback(
   summary: Partial<MediaSemanticSummary> | null | undefined,
 ): Pick<MediaSemanticSummary, 'theme' | 'scene' | 'mood' | 'public_safe_summary' | 'internal_full_summary'> {
@@ -79,66 +156,51 @@ export function normalizeSemanticSummary(
   summary: Partial<MediaSemanticSummary> | null | undefined,
   fallback: Pick<MediaSemanticSummary, 'theme' | 'scene' | 'mood' | 'public_safe_summary' | 'internal_full_summary'>,
 ): MediaSemanticSummary {
-  return {
-    theme: typeof summary?.theme === 'string' && summary.theme.trim().length > 0
-      ? summary.theme.trim()
-      : fallback.theme,
+  const style = readRecord(summary?.style)
+  const entities = readRecord(summary?.entities)
+  const ocr = readRecord(summary?.ocr)
+  const safety = readRecord(summary?.safety)
+  const summaries = readRecord(summary?.summaries)
+
+  return withLegacySemanticAccessors({
     scene: typeof summary?.scene === 'string' && summary.scene.trim().length > 0
       ? summary.scene.trim()
       : fallback.scene,
-    mood: typeof summary?.mood === 'string' && summary.mood.trim().length > 0
-      ? summary.mood.trim()
-      : fallback.mood,
-    confidence: typeof summary?.confidence === 'number' && Number.isFinite(summary.confidence)
-      ? Math.min(1, Math.max(0, summary.confidence))
-      : 0.4,
     composition: typeof summary?.composition === 'string' && summary.composition.trim().length > 0
       ? summary.composition.trim()
       : 'single-scene composition',
-    style_tags: Array.isArray(summary?.style_tags)
-      ? summary.style_tags
-        .filter((item): item is string => typeof item === 'string')
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .slice(0, 8)
-      : [],
-    discussion_points: Array.isArray(summary?.discussion_points)
-      ? summary.discussion_points
-        .filter((item): item is string => typeof item === 'string')
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .slice(0, 6)
-      : [],
-    salient_entities: Array.isArray(summary?.salient_entities)
-      ? summary.salient_entities
-        .filter((item): item is string => typeof item === 'string')
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .slice(0, 10)
-      : [],
-    ocr_snippets: Array.isArray(summary?.ocr_snippets)
-      ? summary.ocr_snippets
-        .filter((item): item is string => typeof item === 'string')
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .slice(0, 6)
-      : [],
-    safety_labels: Array.isArray(summary?.safety_labels)
-      ? summary.safety_labels
-        .filter((item): item is string => typeof item === 'string')
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .slice(0, 6)
-      : [],
-    public_safe_summary:
-      typeof summary?.public_safe_summary === 'string' && summary.public_safe_summary.trim().length > 0
-        ? summary.public_safe_summary.trim()
-        : fallback.public_safe_summary,
-    internal_full_summary:
-      typeof summary?.internal_full_summary === 'string' && summary.internal_full_summary.trim().length > 0
-        ? summary.internal_full_summary.trim()
-        : fallback.internal_full_summary,
-  }
+    style: {
+      theme: readFallbackString(style?.theme ?? summary?.theme, fallback.theme),
+      mood: readFallbackString(style?.mood ?? summary?.mood, fallback.mood),
+      tags: readStringArray(style?.tags ?? summary?.style_tags, 8),
+    },
+    entities: {
+      salient: readStringArray(entities?.salient ?? summary?.salient_entities, 10),
+      discussion_points: readStringArray(
+        entities?.discussion_points ?? summary?.discussion_points,
+        6,
+      ),
+    },
+    ocr: {
+      snippets: readStringArray(ocr?.snippets ?? summary?.ocr_snippets, 6),
+    },
+    safety: {
+      labels: readStringArray(safety?.labels ?? summary?.safety_labels, 6),
+    },
+    summaries: {
+      public_safe: readFallbackString(
+        summaries?.public_safe ?? summary?.public_safe_summary,
+        fallback.public_safe_summary,
+      ),
+      internal_full: readFallbackString(
+        summaries?.internal_full ?? summary?.internal_full_summary,
+        fallback.internal_full_summary,
+      ),
+    },
+    confidence: typeof summary?.confidence === 'number' && Number.isFinite(summary.confidence)
+      ? Math.min(1, Math.max(0, summary.confidence))
+      : 0.4,
+  })
 }
 
 export function normalizeStoredSemanticSummary(

@@ -89,6 +89,7 @@ const llm = createLlmServices({
   mediaGenerationJobRepo: repos.mediaGenerationJobRepo,
   mediaObservabilityEventRepo: repos.mediaObservabilityEventRepo,
   mediaRolloutControllerOverrideRepo: repos.mediaRolloutControllerOverrideRepo,
+  mediaLineageEdgeRepo: repos.mediaLineageEdgeRepo,
   forumSceneMetadataRepo: repos.forumSceneMetadataRepo,
   messageRepo: repos.messageRepo,
   eventRepo: repos.eventRepo,
@@ -106,6 +107,7 @@ const core = createCoreServices({
   surfaceMediaPlanningService: llm.surfaceMediaPlanningService,
   visibleModelPin: config.llm.visibleModelPin,
   mediaObservabilityService: llm.mediaObservabilityService,
+  mediaRolloutControllerService: llm.mediaRolloutControllerService,
   usageLedgerRepo: llm.usageLedgerRepo,
   roomLifecycleLeaderElector: infra.leaderElectors.roomLifecycle,
   conversationClockLeaderElector: infra.leaderElectors.conversationClock,
@@ -406,7 +408,7 @@ const rt = createRuntime({
   forumWriteService: core.forumWriteService,
   agentService: core.agentService,
   chatService: core.chatService,
-  inclinationAssetService: llm.inclinationAssetService,
+  mediaAssetControlService: llm.mediaAssetControlService,
   communityCultureDigestService: core.communityCultureDigestService,
   personaStateService: core.personaStateService,
   inferenceProfileService: core.inferenceProfileService,
@@ -540,7 +542,7 @@ export const llmRegistryBundle = llm.registryBundle
 export const usageLedger = llm.usageLedger
 export const usageLedgerRepo = llm.usageLedgerRepo
 export const promptEngine = llm.promptEngine
-export const inclinationAssetService = llm.inclinationAssetService
+export const mediaAssetControlService = llm.mediaAssetControlService
 export const mediaProjectionService = llm.mediaProjectionService
 export const mediaWriteBridge = llm.mediaWriteBridge
 export const visualDirectiveService = llm.visualDirectiveService
@@ -551,6 +553,7 @@ export const mediaGenerationService = llm.mediaGenerationService
 export const mediaObservabilityService = llm.mediaObservabilityService
 export const mediaRolloutControllerService = llm.mediaRolloutControllerService
 export const mediaLifecycleService = llm.mediaLifecycleService
+export const mediaLineageService = llm.mediaLineageService
 
 export const achievementChronicleService = core.achievementChronicleService
 export const forumReadService = core.forumReadService

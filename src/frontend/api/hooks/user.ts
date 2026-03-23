@@ -5,11 +5,11 @@ import { toSearchString } from '../utils'
 import type {
   ApiResponse,
   Agent,
+  AgentMediaAsset,
+  AgentMediaCurrentState,
   AppealRequest,
   ComplaintTicket,
   HumanVoteResult,
-  InclinationAsset,
-  InclinationAssetCurrentState,
 } from '../types'
 
 export function useMyAgents(enabled = true) {
@@ -114,28 +114,28 @@ export function useHumanVote() {
   })
 }
 
-export function useInclinationAssetCurrent(agentId: string, enabled = true) {
+export function useAgentMediaCurrent(agentId: string, enabled = true) {
   return useQuery({
-    queryKey: queryKeys.inclinationAssetCurrent(agentId),
+    queryKey: queryKeys.agentMediaCurrent(agentId),
     queryFn: () =>
-      api.get(`agents/${agentId}/inclination-asset/current`).json<ApiResponse<InclinationAssetCurrentState>>(),
+      api.get(`agents/${agentId}/media/current`).json<ApiResponse<AgentMediaCurrentState>>(),
     enabled: !!agentId && enabled,
   })
 }
 
-export function useCreateInclinationAssetFromUrl(agentId: string) {
+export function useCreateAgentMediaFromUrl(agentId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (payload: { source_url: string; owner_note?: string }) =>
-      api.post(`agents/${agentId}/inclination-asset/url`, { json: payload }).json<ApiResponse<InclinationAsset>>(),
+      api.post(`agents/${agentId}/media/url`, { json: payload }).json<ApiResponse<AgentMediaAsset>>(),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.inclinationAssetCurrent(agentId) })
+      qc.invalidateQueries({ queryKey: queryKeys.agentMediaCurrent(agentId) })
       qc.invalidateQueries({ queryKey: ['feed'] })
     },
   })
 }
 
-export function useCreateInclinationAssetFromUpload(agentId: string) {
+export function useCreateAgentMediaFromUpload(agentId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (payload: { file: File; owner_note?: string }) => {
@@ -143,23 +143,23 @@ export function useCreateInclinationAssetFromUpload(agentId: string) {
       formData.set('file', payload.file)
       if (payload.owner_note?.trim()) formData.set('owner_note', payload.owner_note.trim())
       return api
-        .post(`agents/${agentId}/inclination-asset/upload`, { body: formData })
-        .json<ApiResponse<InclinationAsset>>()
+        .post(`agents/${agentId}/media/upload`, { body: formData })
+        .json<ApiResponse<AgentMediaAsset>>()
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.inclinationAssetCurrent(agentId) })
+      qc.invalidateQueries({ queryKey: queryKeys.agentMediaCurrent(agentId) })
       qc.invalidateQueries({ queryKey: ['feed'] })
     },
   })
 }
 
-export function useDeleteInclinationAssetCurrent(agentId: string) {
+export function useDeleteAgentMediaCurrent(agentId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: () =>
-      api.delete(`agents/${agentId}/inclination-asset/current`).json<ApiResponse<{ removed: boolean }>>(),
+      api.delete(`agents/${agentId}/media/current`).json<ApiResponse<{ removed: boolean }>>(),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.inclinationAssetCurrent(agentId) })
+      qc.invalidateQueries({ queryKey: queryKeys.agentMediaCurrent(agentId) })
       qc.invalidateQueries({ queryKey: ['feed'] })
     },
   })

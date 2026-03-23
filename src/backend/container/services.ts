@@ -53,6 +53,7 @@ import { NotificationService } from '../services/notification-service.js'
 import { HotTopicOpsService } from '../services/hot-topic-ops-service.js'
 import { ForumSceneContinuityService } from '../services/forum-scene-continuity-service.js'
 import type { MediaWriteBridge } from '../media/media-write-bridge.js'
+import type { MediaRolloutControllerService } from '../media/media-rollout-controller-service.js'
 import type { SurfaceMediaPlanningService } from '../media/surface-media-planning-service.js'
 import type { ModerationService } from '../moderation/moderation-service.js'
 import type { SseHub } from '../sse/hub.js'
@@ -71,6 +72,7 @@ export function createCoreServices(deps: {
   surfaceMediaPlanningService: SurfaceMediaPlanningService
   visibleModelPin?: string | null
   mediaObservabilityService?: MediaObservabilityService | null
+  mediaRolloutControllerService?: MediaRolloutControllerService | null
   usageLedgerRepo?: UsageLedgerRepository | null
   roomLifecycleLeaderElector: LeaderElector
   conversationClockLeaderElector: LeaderElector
@@ -135,6 +137,7 @@ export function createCoreServices(deps: {
     achievementChronicleService,
     riskRepo: repos.riskGovernanceRepo,
     mediaObservabilityService: deps.mediaObservabilityService ?? null,
+    mediaRolloutControllerService: deps.mediaRolloutControllerService ?? null,
   })
 
   const publicSceneCatalogService = new PublicSceneCatalogService()
