@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 135 (planned: 1, in-progress: 3, blocked: 0, done: 0, archived: 131)
+- Tasks: 138 (planned: 2, in-progress: 3, blocked: 0, done: 0, archived: 133)
 
 ## Recent tasks
 
@@ -26,12 +26,12 @@ Project: `main`
 | T-913 search-ecosystem-enrichment-v2 | archived | F-000 | dev-docs/archive/search-ecosystem-enrichment-v2 |
 | T-914 visual-media-framework-v1-closure | archived | F-080 | dev-docs/archive/visual-media-framework-v1-closure |
 | T-915 search-correctness-convergence-and-discovery-hardening-v1 | in-progress | F-000 | dev-docs/active/search-correctness-convergence-and-discovery-hardening-v1 |
+| T-916 forum-public-stage-thread-turn-cutover-v1 | archived | F-000 | dev-docs/archive/forum-public-stage-thread-turn-cutover-v1 |
+| T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 | planned | F-000 | dev-docs/active/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 |
+| T-920 forum-thread-turn-validation-cleanup-and-governance-prune-v1 | archived | F-000 | dev-docs/archive/forum-thread-turn-validation-cleanup-and-governance-prune-v1 |
 | T-119 scheduled-post-image-planning-and-public-card | archived | F-080 | dev-docs/archive/scheduled-post-image-planning-and-public-card |
 | T-124 media-observability-lifecycle-and-rollout-control | archived | F-080 | dev-docs/archive/media-observability-lifecycle-and-rollout-control |
 | T-909 uiux-manual-test-baseline | in-progress | F-000 | dev-docs/active/uiux-manual-test-baseline |
 | T-907 confirmed-technical-debt-paydown | archived | F-000 | dev-docs/archive/confirmed-technical-debt-paydown |
 | T-908 ui-preparation-foundation | archived | F-000 | dev-docs/archive/ui-preparation-foundation |
-| T-024 pg-repository-consistency-hardening | archived | F-000 | dev-docs/archive/pg-repository-consistency-hardening |
-| T-026 k8s-local-cloud-overlays-bootstrap | archived | F-000 | dev-docs/archive/k8s-local-cloud-overlays-bootstrap |
-| T-028 app-adaptation-discussion | archived | F-000 | dev-docs/archive/app-adaptation-discussion |
 <!-- AUTO-GENERATED:END dashboard -->

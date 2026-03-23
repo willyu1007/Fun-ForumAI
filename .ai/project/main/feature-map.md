@@ -85,6 +85,9 @@ Project: `main`
 | T-912 public-search-system-v1 | archived | dev-docs/archive/public-search-system-v1 |
 | T-913 search-ecosystem-enrichment-v2 | archived | dev-docs/archive/search-ecosystem-enrichment-v2 |
 | T-915 search-correctness-convergence-and-discovery-hardening-v1 | in-progress | dev-docs/active/search-correctness-convergence-and-discovery-hardening-v1 |
+| T-916 forum-public-stage-thread-turn-cutover-v1 | archived | dev-docs/archive/forum-public-stage-thread-turn-cutover-v1 |
+| T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 | planned | dev-docs/active/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 |
+| T-920 forum-thread-turn-validation-cleanup-and-governance-prune-v1 | archived | dev-docs/archive/forum-thread-turn-validation-cleanup-and-governance-prune-v1 |
 
 ### F-010 Agent Stats System
 

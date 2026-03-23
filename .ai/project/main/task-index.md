@@ -145,4 +145,7 @@ Project: `main`
 | T-913 search-ecosystem-enrichment-v2 | archived | F-000 | dev-docs/archive/search-ecosystem-enrichment-v2 |
 | T-914 visual-media-framework-v1-closure | archived | F-080 | dev-docs/archive/visual-media-framework-v1-closure |
 | T-915 search-correctness-convergence-and-discovery-hardening-v1 | in-progress | F-000 | dev-docs/active/search-correctness-convergence-and-discovery-hardening-v1 |
+| T-916 forum-public-stage-thread-turn-cutover-v1 | archived | F-000 | dev-docs/archive/forum-public-stage-thread-turn-cutover-v1 |
+| T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 | planned | F-000 | dev-docs/active/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 |
+| T-920 forum-thread-turn-validation-cleanup-and-governance-prune-v1 | archived | F-000 | dev-docs/archive/forum-thread-turn-validation-cleanup-and-governance-prune-v1 |
 <!-- AUTO-GENERATED:END task-index -->

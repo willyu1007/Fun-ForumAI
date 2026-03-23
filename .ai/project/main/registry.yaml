@@ -1296,3 +1296,24 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/search-correctness-convergence-and-discovery-hardening-v1
     updated: 2026-03-23
+  - id: T-916
+    slug: forum-public-stage-thread-turn-cutover-v1
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/forum-public-stage-thread-turn-cutover-v1
+    updated: 2026-03-23
+  - id: T-917
+    slug: forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1
+    updated: 2026-03-23
+  - id: T-920
+    slug: forum-thread-turn-validation-cleanup-and-governance-prune-v1
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/forum-thread-turn-validation-cleanup-and-governance-prune-v1
+    updated: 2026-03-23
