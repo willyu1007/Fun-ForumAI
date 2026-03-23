@@ -1,5 +1,3 @@
-import 'dotenv/config'
-
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -24,14 +22,28 @@ export const REVIEW_RUBRIC = [
 ]
 
 export async function loadLocalEnv() {
+  const envPath = resolve(ROOT, '.env.local')
   try {
-    await access(resolve(ROOT, '.env.local'), constants.F_OK)
+    await access(envPath, constants.F_OK)
   } catch {
     return
   }
-
-  const { config: dotenvConfig } = await import('dotenv')
-  dotenvConfig({ path: resolve(ROOT, '.env.local') })
+  const raw = await readFile(envPath, 'utf8')
+  for (const line of raw.split(/\r?\n/)) {
+    const normalized = line.trim()
+    if (!normalized || normalized.startsWith('#')) continue
+    const separatorIndex = normalized.indexOf('=')
+    if (separatorIndex <= 0) continue
+    const key = normalized.slice(0, separatorIndex).trim()
+    if (!key || Object.prototype.hasOwnProperty.call(process.env, key)) continue
+    const rawValue = normalized.slice(separatorIndex + 1).trim()
+    const unquoted = rawValue.startsWith('"') && rawValue.endsWith('"')
+      ? rawValue.slice(1, -1)
+      : rawValue.startsWith("'") && rawValue.endsWith("'")
+        ? rawValue.slice(1, -1)
+        : rawValue
+    process.env[key] = unquoted
+  }
 }
 
 export function nowRunId() {

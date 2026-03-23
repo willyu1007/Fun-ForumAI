@@ -12,6 +12,7 @@ import { ImagePlannerService } from '../image-planner-service.js'
 import { MediaBindingService, buildOwnerPrivatePoolSceneId } from '../media-binding-service.js'
 import { MediaReuseGovernanceService } from '../media-reuse-governance-service.js'
 import type { PersistedVisualDirective } from '../../repos/types.js'
+import { buildMediaSemanticSummary } from '../../test-utils/media-fixtures.js'
 
 function buildDirective(): PersistedVisualDirective {
   return {
@@ -106,17 +107,15 @@ async function seedPrivateRuntimeProjectionCandidate(input: {
     model_provider: 'test',
     model_name: 'test',
     model_version: '1',
-    summary: {
+    summary: buildMediaSemanticSummary({
       theme: 'coffee',
       scene: 'tabletop',
       mood: 'warm',
       discussion_points: ['桌面暖光'],
       salient_entities: ['coffee cup'],
-      ocr_snippets: [],
-      safety_labels: [],
       public_safe_summary: 'A warm tabletop coffee scene.',
       internal_full_summary: 'private-photo-detail',
-    },
+    }),
     extraction_status: 'completed',
     quality_grade: 'rich',
     is_current: true,
@@ -144,7 +143,7 @@ async function seedPrivateRuntimeProjectionCandidate(input: {
 }
 
 describe('ImagePlannerService', () => {
-  it('selects owner_private_pool and keeps owner note out of runtime cards', async () => {
+  it('downgrades owner_private_pool usage to runtime-only and keeps owner note out of runtime cards', async () => {
     const imagePlanRepo = new InMemoryImagePlanRepository()
     const mediaAssetRepo = new InMemoryMediaAssetRepository()
     const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
@@ -195,17 +194,15 @@ describe('ImagePlannerService', () => {
       model_provider: 'test',
       model_name: 'test',
       model_version: '1',
-      summary: {
+      summary: buildMediaSemanticSummary({
         theme: 'travel',
         scene: 'city skyline',
         mood: 'bright',
         discussion_points: ['城市氛围'],
         salient_entities: ['city'],
-        ocr_snippets: [],
-        safety_labels: [],
         public_safe_summary: 'A bright city skyline.',
         internal_full_summary: 'owner-note-secret should stay private',
-      },
+      }),
       extraction_status: 'completed',
       quality_grade: 'rich',
       is_current: true,
@@ -228,10 +225,8 @@ describe('ImagePlannerService', () => {
       directive: buildDirective(),
     })
 
-    expect(plan.status).toBe('ready')
-    expect(plan.decision).toBe('reuse_public_original')
-    expect(plan.display.attachments).toHaveLength(1)
-    expect(plan.display.attachments[0]?.display_variant).toBe('original')
+    expect(plan.status).toBe('degraded')
+    expect(plan.display.attachments).toHaveLength(0)
     expect(plan.runtime.cards).toHaveLength(1)
     expect(plan.runtime.cards[0]?.source.kind).toBe('owner_private_pool')
     expect(JSON.stringify(plan.runtime.cards[0])).not.toContain('owner-note-secret')
@@ -288,17 +283,15 @@ describe('ImagePlannerService', () => {
       model_provider: 'test',
       model_name: 'test',
       model_version: '1',
-      summary: {
+      summary: buildMediaSemanticSummary({
         theme: 'travel',
         scene: 'bridge',
         mood: 'calm',
         discussion_points: ['延续上一条公开帖子'],
         salient_entities: ['bridge'],
-        ocr_snippets: [],
-        safety_labels: [],
         public_safe_summary: 'A calm bridge scene.',
         internal_full_summary: 'foreign-asset-private-detail',
-      },
+      }),
       extraction_status: 'completed',
       quality_grade: 'rich',
       is_current: true,
@@ -397,17 +390,15 @@ describe('ImagePlannerService', () => {
       model_provider: 'test',
       model_name: 'test',
       model_version: '1',
-      summary: {
+      summary: buildMediaSemanticSummary({
         theme: 'study',
         scene: 'desk',
         mood: 'quiet',
         discussion_points: ['只用于 runtime'],
         salient_entities: ['desk'],
-        ocr_snippets: [],
-        safety_labels: [],
         public_safe_summary: 'A quiet desk.',
         internal_full_summary: 'runtime-only-private-detail',
-      },
+      }),
       extraction_status: 'completed',
       quality_grade: 'rich',
       is_current: true,
@@ -432,6 +423,236 @@ describe('ImagePlannerService', () => {
     expect(plan.status).toBe('degraded')
     expect(plan.decision).toBe('none')
     expect(plan.selected_sources).toHaveLength(0)
+  })
+
+  it('reuses same_thread_public assets across agents when thread_root_ref matches', async () => {
+    const imagePlanRepo = new InMemoryImagePlanRepository()
+    const mediaAssetRepo = new InMemoryMediaAssetRepository()
+    const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
+    const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
+    const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const mediaProjectionService = new MediaProjectionService({
+      mediaContextProjectionRepo,
+    })
+    const mediaReuseGovernanceService = new MediaReuseGovernanceService({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      mediaReusePolicyRepo: new InMemoryMediaReusePolicyRepository(),
+      mediaGenerationJobRepo: new InMemoryMediaGenerationJobRepository(),
+      imagePlanRepo,
+      mediaBindingService: new MediaBindingService({
+        sceneMediaBindingRepo,
+      }),
+    })
+    const service = new ImagePlannerService({
+      imagePlanRepo,
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      forumSceneMetadataRepo,
+      mediaProjectionService,
+      mediaReuseGovernanceService,
+    })
+
+    const asset = await mediaAssetRepo.create({
+      id: 'asset-thread-public-1',
+      steward_agent_id: 'agent-2',
+      owner_user_id: 'owner-2',
+      source_kind: 'owner_console_upload',
+      visibility_policy: 'public_original_allowed',
+      lifecycle_status: 'active',
+      mime_type: 'image/png',
+      file_size_bytes: 2048,
+      sha256: 'sha-thread-public-1',
+    })
+    const snapshot = await mediaSemanticSnapshotRepo.create({
+      asset_id: asset.id,
+      snapshot_kind: 'visual_core',
+      schema_version: 'visual_core.v1',
+      model_provider: 'test',
+      model_name: 'test',
+      model_version: '1',
+      summary: buildMediaSemanticSummary({
+        theme: 'travel',
+        scene: 'river walk',
+        mood: 'calm',
+        discussion_points: ['延续同一 thread 的视觉线索'],
+        salient_entities: ['river'],
+        public_safe_summary: 'A calm river walk scene.',
+        internal_full_summary: 'A calm river walk scene.',
+      }),
+      extraction_status: 'completed',
+      quality_grade: 'rich',
+      is_current: true,
+    })
+    await sceneMediaBindingRepo.create({
+      scene_type: 'forum_comment',
+      scene_id: 'comment-thread-1',
+      thread_root_ref: 'forum_post:thread-post-1',
+      asset_id: asset.id,
+      semantic_snapshot_id: snapshot.id,
+      binding_role: 'inline',
+      relation_to_scene: 'quoted_public',
+      display_policy: 'original_allowed',
+      created_by_type: 'agent',
+      created_by_id: 'agent-2',
+    })
+
+    const directive = buildDirective()
+    directive.scene_ref.thread_root_ref = 'forum_post:thread-post-1'
+    directive.sourcing_policy.allow_sources = ['same_thread_public']
+    directive.sourcing_policy.prefer_order = ['same_thread_public']
+
+    const plan = await service.planScheduledPost({
+      agent_id: 'agent-1',
+      directive,
+    })
+
+    expect(plan.status).toBe('ready')
+    expect(plan.display.attachments).toHaveLength(1)
+    expect(plan.selected_sources[0]?.source_kind).toBe('same_thread_public')
+  })
+
+  it('only prioritizes owner-pool agents whose assets are explicitly public-original eligible', async () => {
+    const imagePlanRepo = new InMemoryImagePlanRepository()
+    const mediaAssetRepo = new InMemoryMediaAssetRepository()
+    const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
+    const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
+    const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const mediaProjectionService = new MediaProjectionService({
+      mediaContextProjectionRepo,
+    })
+    const mediaReuseGovernanceService = new MediaReuseGovernanceService({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      mediaReusePolicyRepo: new InMemoryMediaReusePolicyRepository(),
+      mediaGenerationJobRepo: new InMemoryMediaGenerationJobRepository(),
+      imagePlanRepo,
+      mediaBindingService: new MediaBindingService({
+        sceneMediaBindingRepo,
+      }),
+    })
+    const service = new ImagePlannerService({
+      imagePlanRepo,
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      forumSceneMetadataRepo,
+      mediaProjectionService,
+      mediaReuseGovernanceService,
+    })
+
+    const publicAsset = await mediaAssetRepo.create({
+      id: 'asset-owner-pool-public',
+      steward_agent_id: 'agent-public',
+      owner_user_id: 'owner-public',
+      source_kind: 'owner_console_upload',
+      visibility_policy: 'public_original_allowed',
+      lifecycle_status: 'active',
+      mime_type: 'image/png',
+      file_size_bytes: 1024,
+      sha256: 'sha-owner-pool-public',
+    })
+    const privateAsset = await mediaAssetRepo.create({
+      id: 'asset-owner-pool-private',
+      steward_agent_id: 'agent-private',
+      owner_user_id: 'owner-private',
+      source_kind: 'owner_console_upload',
+      visibility_policy: 'private_only',
+      lifecycle_status: 'active',
+      mime_type: 'image/png',
+      file_size_bytes: 1024,
+      sha256: 'sha-owner-pool-private',
+    })
+    await sceneMediaBindingRepo.create({
+      scene_type: 'memory_card',
+      scene_id: buildOwnerPrivatePoolSceneId('agent-public'),
+      asset_id: publicAsset.id,
+      semantic_snapshot_id: 'snapshot-owner-pool-public',
+      binding_role: 'memory',
+      relation_to_scene: 'uploaded_by_owner',
+      display_policy: 'runtime_only_no_display',
+      created_by_type: 'owner',
+      created_by_id: 'owner-public',
+    })
+    await sceneMediaBindingRepo.create({
+      scene_type: 'memory_card',
+      scene_id: buildOwnerPrivatePoolSceneId('agent-private'),
+      asset_id: privateAsset.id,
+      semantic_snapshot_id: 'snapshot-owner-pool-private',
+      binding_role: 'memory',
+      relation_to_scene: 'uploaded_by_owner',
+      display_policy: 'runtime_only_no_display',
+      created_by_type: 'owner',
+      created_by_id: 'owner-private',
+    })
+
+    const prioritized = await service.listAgentIdsWithOwnerPrivatePoolCandidates(10)
+
+    expect(prioritized).toEqual(['agent-public'])
+  })
+
+  it('creates scratch generation plans when no candidate qualifies and generation is enabled', async () => {
+    const imagePlanRepo = new InMemoryImagePlanRepository()
+    const mediaAssetRepo = new InMemoryMediaAssetRepository()
+    const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
+    const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
+    const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const mediaProjectionService = new MediaProjectionService({
+      mediaContextProjectionRepo,
+    })
+    const mediaReuseGovernanceService = new MediaReuseGovernanceService({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      mediaReusePolicyRepo: new InMemoryMediaReusePolicyRepository(),
+      mediaGenerationJobRepo: new InMemoryMediaGenerationJobRepository(),
+      imagePlanRepo,
+      mediaBindingService: new MediaBindingService({
+        sceneMediaBindingRepo,
+      }),
+    })
+    const service = new ImagePlannerService({
+      imagePlanRepo,
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      forumSceneMetadataRepo,
+      mediaProjectionService,
+      mediaReuseGovernanceService,
+    })
+
+    const directive = buildDirective()
+    directive.goal.need_image = 'required'
+    directive.sourcing_policy.allow_sources = []
+    directive.sourcing_policy.prefer_order = []
+    directive.sourcing_policy.allow_generation = true
+    directive.budget.generation_tier = 'medium'
+    directive.budget.max_generation_attempts = 2
+    directive.budget.sync_generation_ms_budget = 2200
+    directive.budget.async_generation_allowed = true
+
+    const plan = await service.planScheduledPost({
+      agent_id: 'agent-1',
+      directive,
+    })
+
+    expect(plan.status).toBe('pending_generation')
+    expect(plan.decision).toBe('generate_from_scratch')
+    expect(plan.generation.input_mode).toBe('scratch')
+    expect(plan.generation.based_on_projection_ids).toEqual([])
+    expect(plan.generation.aspect_ratio_hint).toBe('4:5')
   })
 
   it('falls back to runtime-only when async generation is disabled and no sync budget is available', async () => {

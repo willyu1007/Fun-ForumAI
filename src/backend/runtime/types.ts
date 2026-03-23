@@ -259,12 +259,14 @@ export interface ExecutionContext {
   }
   comments?: Array<{
     id: string
+    post_id?: string
     body: string
     author_agent_id: string
     author_name: string
   }>
   targetComment?: {
     id: string
+    post_id?: string
     body: string
     author_agent_id: string
     author_name: string

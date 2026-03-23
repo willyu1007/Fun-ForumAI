@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ForumReadService } from '../forum-read-service.js'
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
 import { InMemoryCommentRepository } from '../../repos/comment-repository.js'
@@ -10,6 +10,7 @@ import { InMemoryMediaContextProjectionRepository } from '../../repos/media-cont
 import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
 import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryRiskGovernanceRepository } from '../../repos/risk-governance-repository.js'
+import type { CreateMediaObservabilityEventInput, MediaObservabilityEvent } from '../../repos/types.js'
 
 function setup() {
   const postRepo = new InMemoryPostRepository()
@@ -46,6 +47,29 @@ function setup() {
     communityRepo,
     agentRepo,
     riskRepo,
+  }
+}
+
+function setupWithObservability(record: (input: CreateMediaObservabilityEventInput) => Promise<MediaObservabilityEvent>) {
+  const base = setup()
+  const svc = new ForumReadService({
+    postRepo: base.postRepo,
+    commentRepo: base.commentRepo,
+    voteRepo: base.voteRepo,
+    humanVoteRepo: base.humanVoteRepo,
+    postMediaRepo: base.postMediaRepo,
+    sceneMediaBindingRepo: base.sceneMediaBindingRepo,
+    mediaContextProjectionRepo: base.mediaContextProjectionRepo,
+    communityRepo: base.communityRepo,
+    agentRepo: base.agentRepo,
+    riskRepo: base.riskRepo,
+    mediaObservabilityService: {
+      record,
+    },
+  })
+  return {
+    ...base,
+    svc,
   }
 }
 
@@ -142,6 +166,123 @@ describe('ForumReadService', () => {
       const result = await ctx.svc.getFeed({})
 
       expect(result.items[0]?.media[0]?.alt_text).toBe('A bright city skyline.')
+    })
+
+    it('prefers attachment/projection media over legacy post_media rows for root posts', async () => {
+      const post = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'Hello',
+        body: 'World',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      ctx.postMediaRepo.create({
+        post_id: post.id,
+        asset_id: 'asset-legacy',
+        media_url: '/media/legacy.png',
+        mime_type: 'image/png',
+      })
+      const binding = await ctx.sceneMediaBindingRepo.create({
+        scene_type: 'forum_post',
+        scene_id: post.id,
+        asset_id: 'asset-projection',
+        semantic_snapshot_id: 'snapshot-projection',
+        binding_role: 'primary',
+        relation_to_scene: 'selected_for_post',
+        display_policy: 'original_allowed',
+        created_by_type: 'system',
+        created_by_id: 'agent-1',
+      })
+      await ctx.mediaContextProjectionRepo.create({
+        binding_id: binding.id,
+        projection_surface: 'public_display',
+        projection_kind: 'display_attachment',
+        schema_version: 'display_attachment.v1',
+        payload_json: {
+          asset_id: 'asset-projection',
+          media_url: '/media/projection.png',
+          mime_type: 'image/png',
+          alt_text: 'Projection-first asset',
+        },
+      })
+
+      const result = await ctx.svc.getFeed({})
+
+      expect(result.items[0]?.media).toEqual([{
+        asset_id: 'asset-projection',
+        media_url: '/media/projection.png',
+        mime_type: 'image/png',
+        alt_text: 'Projection-first asset',
+      }])
+    })
+
+    it('does not block feed reads on parity mismatch observability writes', async () => {
+      let resolveRecord: ((value: MediaObservabilityEvent) => void) | undefined
+      const recordMock = vi.fn((_: CreateMediaObservabilityEventInput) => new Promise<MediaObservabilityEvent>((resolve) => {
+        resolveRecord = resolve
+      }))
+      const ctx = setupWithObservability(recordMock)
+      const post = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: 'a1',
+        title: 'Hello',
+        body: 'World',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      ctx.postMediaRepo.create({
+        post_id: post.id,
+        asset_id: 'asset-legacy',
+        media_url: '/media/legacy.png',
+        mime_type: 'image/png',
+      })
+      const binding = await ctx.sceneMediaBindingRepo.create({
+        scene_type: 'forum_post',
+        scene_id: post.id,
+        asset_id: 'asset-projection',
+        semantic_snapshot_id: 'snapshot-projection',
+        binding_role: 'primary',
+        relation_to_scene: 'selected_for_post',
+        display_policy: 'original_allowed',
+        created_by_type: 'system',
+        created_by_id: 'agent-1',
+      })
+      await ctx.mediaContextProjectionRepo.create({
+        binding_id: binding.id,
+        projection_surface: 'public_display',
+        projection_kind: 'display_attachment',
+        schema_version: 'display_attachment.v1',
+        payload_json: {
+          asset_id: 'asset-projection',
+          media_url: '/media/projection.png',
+          mime_type: 'image/png',
+          alt_text: 'Projection-first asset',
+        },
+      })
+
+      const race = await Promise.race([
+        ctx.svc.getFeed({}).then((result) => ({ kind: 'resolved' as const, result })),
+        new Promise<{ kind: 'timeout' }>((resolve) => setTimeout(() => resolve({ kind: 'timeout' }), 20)),
+      ])
+
+      expect(race.kind).toBe('resolved')
+      expect(recordMock).toHaveBeenCalledTimes(1)
+      resolveRecord?.({
+        id: 'obs-1',
+        event_type: 'root_post_read_model_parity_mismatch',
+        surface: 'root_post',
+        severity: 'warn',
+        agent_id: null,
+        community_id: null,
+        image_plan_id: null,
+        generation_job_id: null,
+        asset_id: null,
+        source_kind: null,
+        metric_value: null,
+        payload_json: null,
+        created_at: new Date(),
+      })
     })
 
     it('filters by communityId', async () => {

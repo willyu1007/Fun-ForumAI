@@ -29,8 +29,15 @@ import {
   buildPlatformCanonicalPoolSceneId,
   buildGeneratedPublicPoolSceneId,
   buildPrivateDerivedPublicPoolSceneId,
+  buildSelfPublicArchivePoolSceneId,
 } from './media-reuse-governance-service.js'
 import { buildOwnerPrivatePoolSceneId } from './media-binding-service.js'
+import {
+  isPrivateOriginAsset,
+  readForumPostIdFromThreadRootRef,
+} from './media-contract-utils.js'
+
+const MAX_SAME_THREAD_PUBLIC_BINDINGS = 48
 
 interface CandidateSummary {
   theme: string
@@ -53,6 +60,7 @@ interface PlannerCandidate {
   continuity_ref?: {
     episode_id?: string | null
     thread_post_id?: string | null
+    thread_root_ref?: string | null
   }
 }
 
@@ -104,7 +112,7 @@ export class ImagePlannerService {
       const bindings = await this.deps.sceneMediaBindingRepo.findByAssetIds(assets.map((item) => item.id))
       const ownerSceneId = buildOwnerPrivatePoolSceneId(agentId)
       const hasOwnerPoolCandidate = assets.some((asset) =>
-        asset.visibility_policy !== 'blocked'
+        asset.visibility_policy === 'public_original_allowed'
         && bindings.some((binding) =>
           binding.asset_id === asset.id
           && binding.scene_type === 'memory_card'
@@ -248,6 +256,7 @@ export class ImagePlannerService {
       && input.directive.budget.generation_tier !== 'none'
       && input.directive.budget.max_generation_attempts > 0
       && (input.directive.budget.sync_generation_ms_budget > 0 || input.directive.budget.async_generation_allowed)
+      && input.directive.guardrails.safe_mode !== true
     if (deriveCandidate && allowGeneration) {
       const deriveFromPrivate = isPrivateGenerationSource(deriveCandidate.candidate.source_kind)
       if (deriveFromPrivate && !input.directive.sourcing_policy.allow_private_inspired_generation) {
@@ -275,6 +284,7 @@ export class ImagePlannerService {
         agent_id: input.agent_id,
         prompt_brief: promptBrief,
         aspect_ratio_hint: input.directive.narrative_context.aspect_ratio_hint ?? null,
+        input_mode: 'reference',
         projection_id: cardResult.projection.id,
       })
       const decision: ImageDecision = deriveCandidate.candidate.source_kind === 'owner_private_pool'
@@ -299,10 +309,12 @@ export class ImagePlannerService {
         },
         generation: {
           mode: input.directive.budget.sync_generation_ms_budget > 0 ? 'sync' : 'async',
+          input_mode: 'reference',
           status: 'not_requested',
           provider: undefined,
           model_ref: undefined,
           request_fingerprint: requestFingerprint,
+          aspect_ratio_hint: input.directive.narrative_context.aspect_ratio_hint ?? null,
           based_on_projection_ids: [cardResult.projection.id],
           prompt_brief: promptBrief,
           attempt_count: 0,
@@ -326,6 +338,14 @@ export class ImagePlannerService {
           score_breakdown: deriveCandidate.score,
           fallback_action: 'runtime_only_no_display',
         },
+      })
+    }
+
+    if (allowGeneration && shouldUseScratchGeneration(input.directive, ranked, thresholds)) {
+      return this.planScratchGeneration({
+        agent_id: input.agent_id,
+        ranked,
+        directive: input.directive,
       })
     }
 
@@ -440,6 +460,7 @@ export class ImagePlannerService {
     const assetById = new Map<string, MediaAsset | null>(ownAssets.map((asset) => [asset.id, asset]))
     const snapshotByAssetId = new Map<string, MediaSemanticSnapshot | null>()
     const candidates: PlannerCandidate[] = []
+    const safeMode = directive.guardrails.safe_mode === true
 
     const getAsset = async (assetId: string): Promise<MediaAsset | null> => {
       if (assetById.has(assetId)) {
@@ -467,13 +488,18 @@ export class ImagePlannerService {
       const asset = await getAsset(input.binding.asset_id)
       const snapshot = asset ? await getSnapshot(asset.id) : null
       if (!asset || !snapshot || asset.visibility_policy === 'blocked') return
+      if (shouldBlockCandidateForDirective({
+        directive,
+        source_kind: input.source_kind,
+        asset,
+      })) return
       candidates.push({
         source_kind: input.source_kind,
         asset,
         snapshot,
         binding: input.binding,
         projection: null,
-        continuity_ref: input.continuity_ref,
+        continuity_ref: input.continuity_ref ?? buildContinuityRef(input.binding),
         summary: {
           theme: snapshot.summary.theme,
           scene: snapshot.summary.scene,
@@ -504,8 +530,17 @@ export class ImagePlannerService {
       switch (sourceKind) {
         case 'self_public_archive': {
           const publicBindingsByAsset = new Map<string, SceneMediaBinding>()
+          const archivePoolBindings = await this.deps.sceneMediaBindingRepo.findByScene(
+            'media_pool',
+            buildSelfPublicArchivePoolSceneId(agentId),
+          )
+          for (const binding of archivePoolBindings) {
+            if (!publicBindingsByAsset.has(binding.asset_id)) {
+              publicBindingsByAsset.set(binding.asset_id, binding)
+            }
+          }
           for (const binding of ownBindings) {
-            if (!isPublicArchiveBinding(binding)) continue
+            if (!isLegacySelfPublicArchiveBinding(binding)) continue
             if (!publicBindingsByAsset.has(binding.asset_id)) {
               publicBindingsByAsset.set(binding.asset_id, binding)
             }
@@ -519,6 +554,7 @@ export class ImagePlannerService {
           break
         }
         case 'owner_private_pool': {
+          if (safeMode) break
           const ownerSceneId = buildOwnerPrivatePoolSceneId(agentId)
           for (const binding of ownBindings) {
             if (binding.scene_type !== 'memory_card' || binding.scene_id !== ownerSceneId) continue
@@ -539,7 +575,7 @@ export class ImagePlannerService {
           ))
           const episodeBindings = await this.deps.sceneMediaBindingRepo.findByScenes('forum_post', episodePostIds)
           for (const binding of episodeBindings) {
-            if (!isPublicArchiveBinding(binding)) continue
+            if (!isLegacySelfPublicArchiveBinding(binding)) continue
             const asset = await getAsset(binding.asset_id)
             if (!asset || asset.visibility_policy === 'blocked') continue
             if (!directive.sourcing_policy.allow_cross_agent_public && asset.steward_agent_id !== agentId) continue
@@ -553,7 +589,8 @@ export class ImagePlannerService {
               projection: null,
               continuity_ref: {
                 episode_id: directive.scene_ref.episode_id,
-                thread_post_id: binding.scene_id,
+                thread_post_id: readForumPostIdFromThreadRootRef(binding.thread_root_ref) ?? binding.scene_id,
+                thread_root_ref: binding.thread_root_ref,
               },
               summary: {
                 theme: snapshot.summary.theme,
@@ -583,6 +620,7 @@ export class ImagePlannerService {
           await addPoolCandidates([buildGeneratedPublicPoolSceneId(agentId)], 'generated_public')
           break
         case 'private_runtime_projection': {
+          if (!directive.sourcing_policy.allow_private_runtime_projection || safeMode) break
           const privateBindings = ownBindings.filter((binding) => binding.scene_type === 'private_message')
           const projections = await this.deps.mediaContextProjectionRepo.findByBindingIds(
             privateBindings.map((binding) => binding.id),
@@ -599,6 +637,13 @@ export class ImagePlannerService {
             const asset = payload.asset_ref.asset_id
               ? await getAsset(payload.asset_ref.asset_id)
               : null
+            if (asset && shouldBlockCandidateForDirective({
+              directive,
+              source_kind: 'private_runtime_projection',
+              asset,
+            })) {
+              continue
+            }
             candidates.push({
               source_kind: 'private_runtime_projection',
               asset,
@@ -606,6 +651,7 @@ export class ImagePlannerService {
               binding,
               projection,
               why_relevant_hint: payload.relation.why_relevant_hint,
+              continuity_ref: binding ? buildContinuityRef(binding) : undefined,
               summary: {
                 theme: payload.public_summary.theme,
                 scene: payload.public_summary.scene,
@@ -619,15 +665,87 @@ export class ImagePlannerService {
           }
           break
         }
-        case 'same_thread_public':
+        case 'same_thread_public': {
+          if (!directive.scene_ref.thread_root_ref) break
+          const threadBindings = await this.deps.sceneMediaBindingRepo.findByThreadRootRef(
+            directive.scene_ref.thread_root_ref,
+            {
+              limit: MAX_SAME_THREAD_PUBLIC_BINDINGS,
+            },
+          )
+          for (const binding of threadBindings) {
+            if (!isSameThreadPublicBinding(binding, directive)) continue
+            await addAssetCandidate({
+              source_kind: 'same_thread_public',
+              binding,
+            })
+          }
           break
+        }
         case 'private_derived_public':
+          if (safeMode) break
           await addPoolCandidates([buildPrivateDerivedPublicPoolSceneId(agentId)], 'private_derived_public')
           break
       }
     }
 
     return dedupeCandidates(candidates)
+  }
+
+  private async planScratchGeneration(input: {
+    agent_id: string
+    ranked: EvaluatedCandidate[]
+    directive: PersistedVisualDirective
+  }): Promise<PersistedImagePlan> {
+    const promptBrief = buildScratchGenerationPromptBrief({
+      directive: input.directive,
+    })
+    const requestFingerprint = buildGenerationFingerprint({
+      agent_id: input.agent_id,
+      prompt_brief: promptBrief,
+      aspect_ratio_hint: input.directive.narrative_context.aspect_ratio_hint ?? null,
+      input_mode: 'scratch',
+    })
+
+    return this.deps.imagePlanRepo.create({
+      directive_id: input.directive.id,
+      scene_ref: input.directive.scene_ref,
+      status: 'pending_generation',
+      decision: 'generate_from_scratch',
+      reason: 'no_candidate_meets_generation_threshold',
+      runtime: {
+        enabled: false,
+        influence_level: input.directive.goal.runtime_influence,
+        cards: [],
+      },
+      display: {
+        enabled: false,
+        attachments: [],
+      },
+      generation: {
+        mode: input.directive.budget.sync_generation_ms_budget > 0 ? 'sync' : 'async',
+        input_mode: 'scratch',
+        status: 'not_requested',
+        provider: undefined,
+        model_ref: undefined,
+        request_fingerprint: requestFingerprint,
+        aspect_ratio_hint: input.directive.narrative_context.aspect_ratio_hint ?? null,
+        based_on_projection_ids: [],
+        prompt_brief: promptBrief,
+        attempt_count: 0,
+      },
+      selected_sources: input.ranked.map((item) =>
+        toSelectedSource(item, {
+          selected: false,
+          reuse_mode: item.allowed_reuse_modes[0] ?? null,
+          rejection_reason: item.rejection_reason ?? 'ranked_below_generation_threshold',
+        })),
+      planner_audit: {
+        evaluated_candidates: input.ranked.length,
+        score_breakdown: input.ranked[0]?.score ?? zeroScoreBreakdown(),
+        fallback_action: 'runtime_only_no_display',
+      },
+    })
   }
 
   private async buildRuntimeCard(input: {
@@ -712,8 +830,7 @@ export class ImagePlannerService {
       asset,
       snapshot,
       source_kind: input.candidate.source_kind,
-      derived_from_private: input.candidate.source_kind === 'owner_private_pool'
-        || input.candidate.source_kind === 'private_derived_public',
+      derived_from_private: isPrivateOriginCandidate(input.candidate),
       continuity_ref: input.candidate.continuity_ref,
       visual_role: input.directive.goal.visual_role,
       prompt_weight: promptWeight,
@@ -766,9 +883,67 @@ function resolveSelectionThresholds(
   }
 }
 
-function isPublicArchiveBinding(binding: SceneMediaBinding): boolean {
+function isLegacySelfPublicArchiveBinding(binding: SceneMediaBinding): boolean {
   return binding.scene_type === 'forum_post'
     && binding.display_policy !== 'runtime_only_no_display'
+}
+
+function isSameThreadPublicBinding(
+  binding: SceneMediaBinding,
+  directive: PersistedVisualDirective,
+): boolean {
+  if (!binding.thread_root_ref || binding.thread_root_ref !== directive.scene_ref.thread_root_ref) {
+    return false
+  }
+  if (binding.display_policy === 'runtime_only_no_display') return false
+  if (binding.scene_type === 'private_message' || binding.scene_type === 'memory_card' || binding.scene_type === 'media_pool') {
+    return false
+  }
+  const currentSceneId = directive.scene_ref.post_id
+    ?? directive.scene_ref.comment_id
+    ?? directive.scene_ref.message_id
+    ?? null
+  return !(binding.scene_type === directive.scene_ref.actor_surface && currentSceneId && binding.scene_id === currentSceneId)
+}
+
+function buildContinuityRef(binding: SceneMediaBinding): PlannerCandidate['continuity_ref'] {
+  return {
+    thread_post_id: readForumPostIdFromThreadRootRef(binding.thread_root_ref),
+    thread_root_ref: binding.thread_root_ref,
+  }
+}
+
+function shouldBlockCandidateForDirective(input: {
+  directive: PersistedVisualDirective
+  source_kind: VisualSourceKind
+  asset: MediaAsset
+}): boolean {
+  if (input.directive.guardrails.safe_mode === true) {
+    if (
+      input.source_kind === 'owner_private_pool'
+      || input.source_kind === 'private_runtime_projection'
+      || input.source_kind === 'private_derived_public'
+    ) {
+      return true
+    }
+    if (isPrivateOriginAsset(input.asset)) {
+      return true
+    }
+  }
+  if (
+    input.source_kind === 'private_runtime_projection'
+    && !input.directive.sourcing_policy.allow_private_runtime_projection
+  ) {
+    return true
+  }
+  return false
+}
+
+function isPrivateOriginCandidate(candidate: PlannerCandidate): boolean {
+  return candidate.source_kind === 'owner_private_pool'
+    || candidate.source_kind === 'private_runtime_projection'
+    || candidate.source_kind === 'private_derived_public'
+    || (candidate.asset ? isPrivateOriginAsset(candidate.asset) : false)
 }
 
 function isPrivateGenerationSource(sourceKind: VisualSourceKind): boolean {
@@ -806,6 +981,8 @@ function scoreCandidate(
   const relevance = clamp(0.45 + overlapRatio(relevanceSignals), 0, 1)
   const continuity = candidate.source_kind === 'same_episode_public'
     ? 1
+    : candidate.source_kind === 'same_thread_public'
+      ? 1
     : candidate.source_kind === 'self_public_archive'
       ? 0.8
       : candidate.source_kind === 'owner_private_pool'
@@ -877,6 +1054,23 @@ function overlapRatio(signals: string[]): number {
 function sourcePriority(directive: PersistedVisualDirective, sourceKind: VisualSourceKind): number {
   const idx = directive.sourcing_policy.prefer_order.indexOf(sourceKind)
   return idx >= 0 ? idx : directive.sourcing_policy.prefer_order.length
+}
+
+function shouldUseScratchGeneration(
+  directive: PersistedVisualDirective,
+  ranked: EvaluatedCandidate[],
+  thresholds: ReturnType<typeof resolveSelectionThresholds>,
+): boolean {
+  if (directive.guardrails.safe_mode === true) return false
+  if (directive.goal.need_image === 'avoid') return false
+  if (ranked.length === 0) return true
+  return !ranked.some((item) =>
+    !item.rejection_reason
+    && (
+      (item.allowed_reuse_modes.includes('quote_original') && item.score.total >= thresholds.quote_original)
+      || (item.allowed_reuse_modes.includes('derive_new') && item.score.total >= thresholds.derive_new)
+      || (item.allowed_reuse_modes.includes('reference_only') && item.score.total >= thresholds.reference_only)
+    ))
 }
 
 function buildWhyNow(
@@ -1018,16 +1212,45 @@ function buildGenerationPromptBrief(input: {
   return lines.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).join('\n')
 }
 
+function buildScratchGenerationPromptBrief(input: {
+  directive: PersistedVisualDirective
+}): string {
+  const lines = [
+    `visual_role=${input.directive.goal.visual_role}`,
+    `human_goal=${input.directive.goal.human_goal}`,
+    `hook=${input.directive.narrative_context.hook}`,
+    `objective=${input.directive.narrative_context.objective}`,
+    `tone=${input.directive.narrative_context.tone_hint}`,
+    `semantic_query=${input.directive.narrative_context.semantic_query}`,
+    input.directive.narrative_context.required_elements?.length
+      ? `required_elements=${input.directive.narrative_context.required_elements.join(', ')}`
+      : null,
+    input.directive.narrative_context.forbidden_elements?.length
+      ? `forbidden_elements=${input.directive.narrative_context.forbidden_elements.join(', ')}`
+      : null,
+    input.directive.narrative_context.style_hint
+      ? `style_hint=${input.directive.narrative_context.style_hint}`
+      : null,
+    input.directive.narrative_context.aspect_ratio_hint
+      ? `aspect_ratio=${input.directive.narrative_context.aspect_ratio_hint}`
+      : null,
+    'privacy_guard=public_only_no_private_origin_reference',
+  ]
+  return lines.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).join('\n')
+}
+
 function buildGenerationFingerprint(input: {
   agent_id: string
   prompt_brief: string
   aspect_ratio_hint: AspectRatioHint | null
-  projection_id: string
+  input_mode: 'reference' | 'scratch'
+  projection_id?: string
 }): string {
   return [
     input.agent_id,
+    input.input_mode,
     input.aspect_ratio_hint ?? '4:5',
-    input.projection_id,
+    input.projection_id ?? 'scratch',
     input.prompt_brief.trim(),
   ].join('|')
 }

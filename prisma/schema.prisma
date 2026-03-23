@@ -614,6 +614,7 @@ model SceneMediaBinding {
   id                 String   @id @default(cuid())
   sceneType          String   @map("scene_type")
   sceneId            String   @map("scene_id")
+  threadRootRef      String?  @map("thread_root_ref")
   assetId            String   @map("asset_id")
   semanticSnapshotId String   @map("semantic_snapshot_id")
   sourceSceneType    String?  @map("source_scene_type")
@@ -631,6 +632,7 @@ model SceneMediaBinding {
   contextProjections MediaContextProjection[]
 
   @@index([sceneType, sceneId, createdAt])
+  @@index([threadRootRef, createdAt])
   @@index([assetId, sceneType, createdAt])
   @@index([semanticSnapshotId, createdAt])
   @@map("scene_media_bindings")
@@ -733,6 +735,7 @@ model MediaGenerationJobRecord {
   requestFingerprint  String    @unique @map("request_fingerprint")
   promptBrief         String    @db.Text @map("prompt_brief")
   styleHint           String?   @map("style_hint")
+  inputMode           String    @default("reference") @map("input_mode")
   aspectRatioHint     String?   @map("aspect_ratio_hint")
   basedOnProjectionIds Json     @map("based_on_projection_ids")
   attemptCount        Int       @default(0) @map("attempt_count")
@@ -750,6 +753,7 @@ model MediaGenerationJobRecord {
   @@index([agentId, createdAt])
   @@index([planId, createdAt])
   @@index([status, createdAt])
+  @@index([inputMode, status, createdAt])
   @@index([provider, status, createdAt])
   @@index([startedAt])
   @@map("media_generation_jobs")

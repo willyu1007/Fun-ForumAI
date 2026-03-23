@@ -12,6 +12,10 @@ import type {
   PublicMediaContextCard,
   SceneMediaBinding,
 } from '../../repos/types.js'
+import {
+  buildMediaSemanticSummary,
+  buildSceneMediaBinding,
+} from '../../test-utils/media-fixtures.js'
 
 function buildPlanCard(projectionId: string): PublicMediaContextCard {
   return {
@@ -99,8 +103,10 @@ function buildPendingGenerationPlan(
     },
     generation: {
       mode: 'sync',
+      input_mode: 'reference',
       status: 'not_requested',
       request_fingerprint: input.fingerprint ?? 'fp-1',
+      aspect_ratio_hint: '4:5',
       based_on_projection_ids: [input.projectionId],
       prompt_brief: 'scene=city skyline',
       attempt_count: 0,
@@ -158,6 +164,9 @@ describe('MediaGenerationService', () => {
       imagePlanRepo,
       mediaGenerationJobRepo,
       mediaContextProjectionRepo,
+      mediaSemanticSnapshotRepo: {
+        findCurrentByAssetId: vi.fn(async () => null),
+      },
       mediaAssetService: {} as never,
       mediaReuseGovernanceService: {} as never,
       mediaProjectionService: {} as never,
@@ -181,6 +190,94 @@ describe('MediaGenerationService', () => {
     expect(first.job?.id).toBeTruthy()
     expect(second.job?.id).toBe(first.job?.id)
     expect(second.plan.generation.job_id).toBe(first.job?.id)
+  })
+
+  it('creates scratch generation jobs without source projections', async () => {
+    const imagePlanRepo = new InMemoryImagePlanRepository()
+    const mediaGenerationJobRepo = new InMemoryMediaGenerationJobRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const plan = await imagePlanRepo.create({
+      id: 'image-plan-scratch-1',
+      directive_id: 'directive-scratch-1',
+      scene_ref: {
+        request_id: 'selection-scratch-1',
+        director_surface: 'scheduled_post',
+        actor_surface: 'forum_post',
+        community_id: 'community-1',
+        episode_id: 'episode-1',
+        selection_id: 'selection-scratch-1',
+        episode_plan_id: 'plan-1',
+        local_intent_id: 'intent-scratch-1',
+        phase: 'opening',
+        selection_mode: 'pool_guided',
+      },
+      status: 'pending_generation',
+      decision: 'generate_from_scratch',
+      reason: 'no_candidate_meets_generation_threshold',
+      runtime: {
+        enabled: false,
+        influence_level: 'medium',
+        cards: [],
+      },
+      display: {
+        enabled: false,
+        attachments: [],
+      },
+      generation: {
+        mode: 'sync',
+        input_mode: 'scratch',
+        status: 'not_requested',
+        request_fingerprint: 'fp-scratch-1',
+        aspect_ratio_hint: '1:1',
+        based_on_projection_ids: [],
+        prompt_brief: 'scene=moonlit beach',
+        attempt_count: 0,
+      },
+      selected_sources: [],
+      planner_audit: {
+        evaluated_candidates: 0,
+        score_breakdown: {
+          relevance: 0,
+          continuity: 0,
+          novelty: 0,
+          privacy_safety: 0,
+          display_fitness: 0,
+          cost_fitness: 0,
+          fatigue_penalty: 0,
+          repeat_penalty: 0,
+          risk_penalty: 0,
+          total: 0,
+        },
+        fallback_action: 'runtime_only_no_display',
+      },
+    })
+    const service = new MediaGenerationService({
+      imagePlanRepo,
+      mediaGenerationJobRepo,
+      mediaContextProjectionRepo,
+      mediaSemanticSnapshotRepo: {
+        findCurrentByAssetId: vi.fn(async () => null),
+      },
+      mediaAssetService: {} as never,
+      mediaReuseGovernanceService: {} as never,
+      mediaProjectionService: {} as never,
+      gateway: {
+        providerId: 'ark-seedream',
+        modelName: 'doubao-seedream-5-0-lite-260128',
+        isConfigured: false,
+        generate: vi.fn(),
+      },
+    })
+
+    const scheduled = await service.ensureJobForPlan({
+      agent_id: 'agent-1',
+      plan,
+    })
+
+    expect(scheduled.job?.input_mode).toBe('scratch')
+    expect(scheduled.job?.based_on_projection_ids).toEqual([])
+    expect(scheduled.job?.aspect_ratio_hint).toBe('1:1')
+    expect(scheduled.plan.generation.job_id).toBe(scheduled.job?.id)
   })
 
   it('processes a queued job, ingests the derivative, and upgrades the plan to ready', async () => {
@@ -252,38 +349,30 @@ describe('MediaGenerationService', () => {
       model_provider: 'test',
       model_name: 'test',
       model_version: '1',
-      summary: {
+      summary: buildMediaSemanticSummary({
         theme: 'travel',
         scene: 'city skyline',
         mood: 'bright',
         discussion_points: ['城市氛围'],
         salient_entities: ['city'],
-        ocr_snippets: [],
-        safety_labels: [],
         public_safe_summary: 'A bright city skyline.',
         internal_full_summary: 'A bright city skyline.',
-      },
+      }),
       extraction_status: 'completed',
       quality_grade: 'rich',
       is_current: true,
       created_at: new Date(),
     }
-    const generatedBinding: SceneMediaBinding = {
+    const generatedBinding: SceneMediaBinding = buildSceneMediaBinding({
       id: 'binding-generated-1',
       scene_type: 'media_pool',
       scene_id: 'private_derived_public:agent-1',
       asset_id: generatedAsset.id,
       semantic_snapshot_id: generatedSnapshot.id,
-      source_scene_type: null,
-      source_scene_id: null,
       binding_role: 'reference',
       relation_to_scene: 'generated_for_scene',
-      binding_note_text: null,
-      display_policy: 'original_allowed',
-      created_by_type: 'system',
       created_by_id: 'media-generation-service',
-      created_at: new Date(),
-    }
+    })
     const displayProjection: MediaContextProjection = {
       id: 'projection-display-1',
       binding_id: generatedBinding.id,
@@ -360,6 +449,11 @@ describe('MediaGenerationService', () => {
       imagePlanRepo,
       mediaGenerationJobRepo,
       mediaContextProjectionRepo,
+      mediaSemanticSnapshotRepo: {
+        findCurrentByAssetId: vi.fn(async (assetId: string) => (
+          assetId === generatedAsset.id ? generatedSnapshot : null
+        )),
+      },
       mediaAssetService: {
         ingestGeneratedDerivative,
         getAssetById: vi.fn(async () => generatedAsset),
@@ -435,6 +529,9 @@ describe('MediaGenerationService', () => {
       imagePlanRepo,
       mediaGenerationJobRepo,
       mediaContextProjectionRepo,
+      mediaSemanticSnapshotRepo: {
+        findCurrentByAssetId: vi.fn(async () => null),
+      },
       mediaAssetService: {} as never,
       mediaReuseGovernanceService: {} as never,
       mediaProjectionService: {} as never,
@@ -485,38 +582,30 @@ describe('MediaGenerationService', () => {
       model_provider: 'test',
       model_name: 'test',
       model_version: '1',
-      summary: {
+      summary: buildMediaSemanticSummary({
         theme: 'travel',
         scene: 'city skyline',
         mood: 'bright',
         discussion_points: ['城市氛围'],
         salient_entities: ['city'],
-        ocr_snippets: [],
-        safety_labels: [],
         public_safe_summary: 'A bright city skyline.',
         internal_full_summary: 'A bright city skyline.',
-      },
+      }),
       extraction_status: 'completed',
       quality_grade: 'rich',
       is_current: true,
       created_at: new Date(),
     }
-    const generatedBinding: SceneMediaBinding = {
+    const generatedBinding: SceneMediaBinding = buildSceneMediaBinding({
       id: 'binding-generated-dedup-1',
       scene_type: 'media_pool',
       scene_id: 'generated_public:agent-1',
       asset_id: generatedAsset.id,
       semantic_snapshot_id: generatedSnapshot.id,
-      source_scene_type: null,
-      source_scene_id: null,
       binding_role: 'reference',
       relation_to_scene: 'generated_for_scene',
-      binding_note_text: null,
-      display_policy: 'original_allowed',
-      created_by_type: 'system',
       created_by_id: 'media-generation-service',
-      created_at: new Date(),
-    }
+    })
     const displayProjection: MediaContextProjection = {
       id: 'projection-display-dedup-1',
       binding_id: generatedBinding.id,
@@ -545,6 +634,11 @@ describe('MediaGenerationService', () => {
       imagePlanRepo,
       mediaGenerationJobRepo,
       mediaContextProjectionRepo,
+      mediaSemanticSnapshotRepo: {
+        findCurrentByAssetId: vi.fn(async (assetId: string) => (
+          assetId === generatedAsset.id ? generatedSnapshot : null
+        )),
+      },
       mediaAssetService: {
         ingestGeneratedDerivative: vi.fn(async () => ({
           asset: generatedAsset,
@@ -686,6 +780,9 @@ describe('MediaGenerationService', () => {
       imagePlanRepo,
       mediaGenerationJobRepo,
       mediaContextProjectionRepo,
+      mediaSemanticSnapshotRepo: {
+        findCurrentByAssetId: vi.fn(async () => null),
+      },
       mediaAssetService: {} as never,
       mediaReuseGovernanceService: {} as never,
       mediaProjectionService: {} as never,

@@ -46,6 +46,10 @@ export class PgChronicleRepository implements ChronicleRepository {
   async hydrate(): Promise<void> {}
 
   async create(input: CreateChronicleEntryInput): Promise<ChronicleEntry> {
+    if (input.dedup_key) {
+      const existing = await this.findByDedupKey(input.agent_id, input.dedup_key)
+      if (existing) return existing
+    }
     try {
       const row = await this.prisma.chronicleEntry.create({
         data: {

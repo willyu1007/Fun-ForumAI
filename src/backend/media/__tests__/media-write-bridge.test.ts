@@ -6,10 +6,14 @@ import { InMemorySceneMediaBindingRepository } from '../../repos/scene-media-bin
 import { InMemoryMediaContextProjectionRepository } from '../../repos/media-context-projection-repository.js'
 import { InMemoryPostMediaRepository } from '../../repos/post-media-repository.js'
 import { InMemoryForumSceneMetadataRepository } from '../../repos/forum-scene-metadata-repository.js'
+import { InMemoryMediaReusePolicyRepository } from '../../repos/media-reuse-policy-repository.js'
+import { InMemoryMediaGenerationJobRepository } from '../../repos/media-generation-job-repository.js'
 import type { StorageAdapter } from '../../services/storage-adapter.js'
 import { MediaBindingService } from '../media-binding-service.js'
 import { MediaProjectionService } from '../media-projection-service.js'
+import { MediaReuseGovernanceService } from '../media-reuse-governance-service.js'
 import { MediaWriteBridge } from '../media-write-bridge.js'
+import { buildMediaSemanticSummary } from '../../test-utils/media-fixtures.js'
 
 function createStorageStub(): StorageAdapter {
   return {
@@ -30,17 +34,35 @@ function createStorageStub(): StorageAdapter {
 }
 
 function buildSummary(summary: string) {
-  return {
+  return buildMediaSemanticSummary({
     theme: 'test-theme',
     scene: 'test-scene',
     mood: 'neutral',
     discussion_points: [summary],
     salient_entities: ['entity-1'],
-    ocr_snippets: [],
-    safety_labels: [],
     public_safe_summary: summary,
     internal_full_summary: summary,
-  }
+  })
+}
+
+function createGovernanceService(input: {
+  imagePlanRepo: InMemoryImagePlanRepository
+  mediaAssetRepo: InMemoryMediaAssetRepository
+  mediaSemanticSnapshotRepo: InMemoryMediaSemanticSnapshotRepository
+  sceneMediaBindingRepo: InMemorySceneMediaBindingRepository
+  mediaContextProjectionRepo: InMemoryMediaContextProjectionRepository
+  mediaBindingService: MediaBindingService
+}) {
+  return new MediaReuseGovernanceService({
+    mediaAssetRepo: input.mediaAssetRepo,
+    mediaSemanticSnapshotRepo: input.mediaSemanticSnapshotRepo,
+    sceneMediaBindingRepo: input.sceneMediaBindingRepo,
+    mediaContextProjectionRepo: input.mediaContextProjectionRepo,
+    mediaReusePolicyRepo: new InMemoryMediaReusePolicyRepository(),
+    mediaGenerationJobRepo: new InMemoryMediaGenerationJobRepository(),
+    imagePlanRepo: input.imagePlanRepo,
+    mediaBindingService: input.mediaBindingService,
+  })
 }
 
 describe('MediaWriteBridge', () => {
@@ -54,6 +76,14 @@ describe('MediaWriteBridge', () => {
     const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
     const mediaBindingService = new MediaBindingService({ sceneMediaBindingRepo })
     const mediaProjectionService = new MediaProjectionService({ mediaContextProjectionRepo })
+    const mediaReuseGovernanceService = createGovernanceService({
+      imagePlanRepo,
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      mediaBindingService,
+    })
     const bridge = new MediaWriteBridge({
       mediaAssetRepo,
       mediaSemanticSnapshotRepo,
@@ -65,6 +95,7 @@ describe('MediaWriteBridge', () => {
       storage: createStorageStub(),
       mediaBindingService,
       mediaProjectionService,
+      mediaReuseGovernanceService,
     })
 
     const privateAsset = await mediaAssetRepo.create({
@@ -185,6 +216,14 @@ describe('MediaWriteBridge', () => {
     const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
     const mediaBindingService = new MediaBindingService({ sceneMediaBindingRepo })
     const mediaProjectionService = new MediaProjectionService({ mediaContextProjectionRepo })
+    const mediaReuseGovernanceService = createGovernanceService({
+      imagePlanRepo,
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      mediaBindingService,
+    })
     const bridge = new MediaWriteBridge({
       mediaAssetRepo,
       mediaSemanticSnapshotRepo,
@@ -196,6 +235,7 @@ describe('MediaWriteBridge', () => {
       storage: createStorageStub(),
       mediaBindingService,
       mediaProjectionService,
+      mediaReuseGovernanceService,
     })
 
     const privateAsset = await mediaAssetRepo.create({
@@ -363,6 +403,14 @@ describe('MediaWriteBridge', () => {
     const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
     const mediaBindingService = new MediaBindingService({ sceneMediaBindingRepo })
     const mediaProjectionService = new MediaProjectionService({ mediaContextProjectionRepo })
+    const mediaReuseGovernanceService = createGovernanceService({
+      imagePlanRepo,
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      mediaBindingService,
+    })
     const bridge = new MediaWriteBridge({
       mediaAssetRepo,
       mediaSemanticSnapshotRepo,
@@ -374,6 +422,7 @@ describe('MediaWriteBridge', () => {
       storage: createStorageStub(),
       mediaBindingService,
       mediaProjectionService,
+      mediaReuseGovernanceService,
     })
 
     const generatedAsset = await mediaAssetRepo.create({
@@ -490,5 +539,91 @@ describe('MediaWriteBridge', () => {
     expect(bindings[0]?.asset_id).toBe(generatedAsset.id)
     expect(bindings[0]?.display_policy).toBe('derivative_only')
     expect(bindings[0]?.relation_to_scene).toBe('generated_for_scene')
+  })
+
+  it('requires quote_original eligibility before directly attaching promoted assets onto public posts', async () => {
+    const imagePlanRepo = new InMemoryImagePlanRepository()
+    const mediaAssetRepo = new InMemoryMediaAssetRepository()
+    const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
+    const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const postMediaRepo = new InMemoryPostMediaRepository()
+    const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const mediaBindingService = new MediaBindingService({ sceneMediaBindingRepo })
+    const mediaProjectionService = new MediaProjectionService({ mediaContextProjectionRepo })
+    const mediaReuseGovernanceService = createGovernanceService({
+      imagePlanRepo,
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      mediaBindingService,
+    })
+    const bridge = new MediaWriteBridge({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      postMediaRepo,
+      imagePlanRepo,
+      forumSceneMetadataRepo,
+      storage: createStorageStub(),
+      mediaBindingService,
+      mediaProjectionService,
+      mediaReuseGovernanceService,
+    })
+
+    const asset = await mediaAssetRepo.create({
+      id: 'asset-direct-url-import',
+      steward_agent_id: 'agent-1',
+      owner_user_id: 'owner-1',
+      source_kind: 'url_import',
+      visibility_policy: 'public_original_allowed',
+      lifecycle_status: 'active',
+      storage_key: 'imports/url-import.png',
+      origin_url: 'https://example.com/image.png',
+      mime_type: 'image/png',
+      file_size_bytes: 1024,
+      sha256: 'sha-direct-url-import',
+    })
+    const snapshot = await mediaSemanticSnapshotRepo.create({
+      asset_id: asset.id,
+      snapshot_kind: 'visual_core',
+      schema_version: 'visual_core.v1',
+      model_provider: 'test',
+      model_name: 'test',
+      model_version: '1',
+      summary: buildSummary('url import'),
+      extraction_status: 'completed',
+      quality_grade: 'rich',
+      is_current: true,
+    })
+    await sceneMediaBindingRepo.create({
+      scene_type: 'memory_card',
+      scene_id: 'owner_private_pool:agent-1',
+      asset_id: asset.id,
+      semantic_snapshot_id: snapshot.id,
+      binding_role: 'memory',
+      relation_to_scene: 'uploaded_by_owner',
+      display_policy: 'runtime_only_no_display',
+      created_by_type: 'owner',
+      created_by_id: 'owner-1',
+    })
+    await mediaReuseGovernanceService.promotePrivateOriginalToSelfPublicArchive({
+      asset_id: asset.id,
+      agent_id: 'agent-1',
+      owner_user_id: 'owner-1',
+      actor_user_id: 'owner-1',
+    })
+
+    const result = await bridge.attachAssetToPost({
+      asset_id: asset.id,
+      post_id: 'post-direct-url-import',
+      created_by_id: 'agent-1',
+    })
+
+    expect(result.linked).toBe(false)
+    expect(await sceneMediaBindingRepo.findByScene('forum_post', 'post-direct-url-import')).toEqual([])
+    expect(postMediaRepo.findByPostId('post-direct-url-import')).toEqual([])
   })
 })

@@ -7,6 +7,7 @@ import { InMemoryMediaSemanticSnapshotRepository } from '../../repos/media-seman
 import { InMemoryPostMediaRepository } from '../../repos/post-media-repository.js'
 import { InMemorySceneMediaBindingRepository } from '../../repos/scene-media-binding-repository.js'
 import { MediaLifecycleService } from '../media-lifecycle-service.js'
+import { buildMediaSemanticSummary } from '../../test-utils/media-fixtures.js'
 
 describe('MediaLifecycleService', () => {
   const originalLifecycle = { ...config.mediaLifecycle }
@@ -92,17 +93,15 @@ describe('MediaLifecycleService', () => {
       model_provider: 'test',
       model_name: 'test',
       model_version: '1',
-      summary: {
+      summary: buildMediaSemanticSummary({
         theme: 'old',
         scene: 'old',
         mood: 'old',
         discussion_points: [],
         salient_entities: [],
-        ocr_snippets: [],
-        safety_labels: [],
         public_safe_summary: 'old',
         internal_full_summary: 'old',
-      },
+      }),
       extraction_status: 'completed',
       quality_grade: 'rich',
       is_current: true,
@@ -130,17 +129,15 @@ describe('MediaLifecycleService', () => {
       model_provider: 'test',
       model_name: 'test',
       model_version: '1',
-      summary: {
+      summary: buildMediaSemanticSummary({
         theme: 'generated-old',
         scene: 'generated-old',
         mood: 'generated-old',
         discussion_points: [],
         salient_entities: [],
-        ocr_snippets: [],
-        safety_labels: [],
         public_safe_summary: 'generated-old',
         internal_full_summary: 'generated-old',
-      },
+      }),
       extraction_status: 'completed',
       quality_grade: 'rich',
       is_current: true,
@@ -237,17 +234,15 @@ describe('MediaLifecycleService', () => {
         model_provider: 'test',
         model_name: 'test',
         model_version: '1',
-        summary: {
+        summary: buildMediaSemanticSummary({
           theme: 'ok',
           scene: 'ok',
           mood: 'ok',
           discussion_points: [],
           salient_entities: [],
-          ocr_snippets: [],
-          safety_labels: [],
           public_safe_summary: 'ok',
           internal_full_summary: 'ok',
-        },
+        }),
         extraction_status: 'completed',
         quality_grade: 'rich',
         is_current: true,

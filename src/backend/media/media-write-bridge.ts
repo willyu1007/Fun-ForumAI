@@ -6,10 +6,18 @@ import type { PostMediaRepository } from '../repos/post-media-repository.js'
 import type { ImagePlanRepository } from '../repos/image-plan-repository.js'
 import type { ForumSceneMetadataRepository } from '../repos/forum-scene-metadata-repository.js'
 import type { StorageAdapter } from '../services/storage-adapter.js'
-import type { SceneMediaBinding } from '../repos/types.js'
+import type { MediaAsset, PersistedImagePlan, SceneMediaBinding, VisualSourceKind } from '../repos/types.js'
 import { MediaBindingService, buildOwnerPrivatePoolSceneId } from './media-binding-service.js'
 import { MediaProjectionService } from './media-projection-service.js'
 import type { MediaObservabilityService } from './media-observability-service.js'
+import type { MediaReuseGovernanceService } from './media-reuse-governance-service.js'
+import {
+  buildCommunityCommonsPoolSceneId,
+  buildGeneratedPublicPoolSceneId,
+  buildPlatformCanonicalPoolSceneId,
+  buildPrivateDerivedPublicPoolSceneId,
+  buildSelfPublicArchivePoolSceneId,
+} from './media-reuse-governance-service.js'
 import { resolveMediaAssetUrl } from './media-url.js'
 
 export interface MediaWriteBridgeDeps {
@@ -23,6 +31,7 @@ export interface MediaWriteBridgeDeps {
   storage: StorageAdapter
   mediaBindingService: MediaBindingService
   mediaProjectionService: MediaProjectionService
+  mediaReuseGovernanceService: Pick<MediaReuseGovernanceService, 'canQuoteOriginalAssetForSource'>
   mediaObservabilityService?: Pick<MediaObservabilityService, 'record'> | null
 }
 
@@ -36,6 +45,9 @@ export class MediaWriteBridge {
   }): Promise<{ linked: boolean }> {
     const asset = await this.deps.mediaAssetRepo.findById(input.asset_id)
     if (!asset || asset.lifecycle_status !== 'active' || asset.visibility_policy === 'blocked') {
+      return { linked: false }
+    }
+    if (asset.visibility_policy === 'private_only') {
       return { linked: false }
     }
 
@@ -54,12 +66,16 @@ export class MediaWriteBridge {
       (binding) => binding.scene_type === 'forum_post' && binding.scene_id === input.post_id,
     ) ?? null
     const ownerPoolBinding = this.findOwnerPoolBinding(bindings, asset.steward_agent_id)
+    const directAttachSource = await this.resolveDirectAttachSource(asset, bindings)
+    if (!existingPostBinding && !directAttachSource) {
+      return { linked: false }
+    }
 
     const postBinding = existingPostBinding ?? await this.deps.mediaBindingService.createForumPostBinding({
       asset,
       snapshot,
       postId: input.post_id,
-      sourceBinding: ownerPoolBinding,
+      sourceBinding: directAttachSource?.binding ?? ownerPoolBinding,
       createdById: input.created_by_id,
     })
 
@@ -86,12 +102,6 @@ export class MediaWriteBridge {
         asset_id: asset.id,
         media_url: mediaUrl,
         mime_type: asset.mime_type,
-      })
-    }
-
-    if (asset.visibility_policy === 'private_only') {
-      await this.deps.mediaAssetRepo.update(asset.id, {
-        visibility_policy: 'public_original_allowed',
       })
     }
 
@@ -124,6 +134,9 @@ export class MediaWriteBridge {
       if (!asset || asset.lifecycle_status !== 'active' || asset.visibility_policy === 'blocked') {
         continue
       }
+      if (attachment.display_variant === 'original' && asset.visibility_policy === 'private_only') {
+        continue
+      }
       const snapshot = await this.deps.mediaSemanticSnapshotRepo.findCurrentByAssetId(asset.id)
       if (!snapshot) continue
 
@@ -140,6 +153,7 @@ export class MediaWriteBridge {
         created_by_id: input.created_by_id,
         display_policy: bindingContract.display_policy,
         relation_to_scene: bindingContract.relation_to_scene,
+        thread_root_ref: this.resolveThreadRootRef(plan, input),
       })
 
       const mediaUrl = resolveMediaAssetUrl(asset, this.deps.storage)
@@ -165,12 +179,6 @@ export class MediaWriteBridge {
 
       this.ensurePostMediaLink(input.scene_type, input.scene_id, asset.id, mediaUrl, asset.mime_type)
 
-      if (asset.visibility_policy === 'private_only' && attachment.display_variant === 'original') {
-        await this.deps.mediaAssetRepo.update(asset.id, {
-          visibility_policy: 'public_original_allowed',
-        })
-      }
-
       linkedAssetIds.add(asset.id)
       linked = true
     }
@@ -179,6 +187,7 @@ export class MediaWriteBridge {
       if (linkedAssetIds.has(attachment.asset_id)) continue
       const asset = await this.deps.mediaAssetRepo.findById(attachment.asset_id)
       if (!asset || asset.lifecycle_status !== 'active' || asset.visibility_policy === 'blocked') continue
+      if (attachment.display_variant === 'original' && asset.visibility_policy === 'private_only') continue
       const snapshot = await this.deps.mediaSemanticSnapshotRepo.findCurrentByAssetId(asset.id)
       if (!snapshot) continue
       const sourceBinding = await this.resolveSourceBinding(
@@ -198,6 +207,7 @@ export class MediaWriteBridge {
         created_by_id: input.created_by_id,
         display_policy: bindingContract.display_policy,
         relation_to_scene: bindingContract.relation_to_scene,
+        thread_root_ref: this.resolveThreadRootRef(plan, input),
       })
       const mediaUrl = resolveMediaAssetUrl(asset, this.deps.storage)
       if (!mediaUrl) continue
@@ -269,6 +279,89 @@ export class MediaWriteBridge {
     ) ?? null
   }
 
+  private async resolveDirectAttachSource(
+    asset: MediaAsset,
+    bindings: SceneMediaBinding[],
+  ): Promise<{
+    source_kind: VisualSourceKind
+    binding: SceneMediaBinding
+  } | null> {
+    const source = this.findDirectAttachSourceBinding(asset, bindings)
+    if (!source) return null
+    const allowance = await this.deps.mediaReuseGovernanceService.canQuoteOriginalAssetForSource({
+      asset,
+      source_kind: source.source_kind,
+      agent_id: asset.steward_agent_id ?? 'unknown-agent',
+      binding_display_policy: source.binding.display_policy,
+    })
+    if (!allowance.allowed) {
+      return null
+    }
+    return source
+  }
+
+  private findDirectAttachSourceBinding(
+    asset: MediaAsset,
+    bindings: SceneMediaBinding[],
+  ): {
+    source_kind: VisualSourceKind
+    binding: SceneMediaBinding
+  } | null {
+    const mediaPoolBindings = bindings.filter((binding) => binding.scene_type === 'media_pool')
+    const stewardAgentId = asset.steward_agent_id
+    const candidates: Array<{
+      source_kind: VisualSourceKind
+      scene_id: string
+    }> = [
+      ...(stewardAgentId
+        ? [
+            {
+              source_kind: 'self_public_archive' as const,
+              scene_id: buildSelfPublicArchivePoolSceneId(stewardAgentId),
+            },
+            {
+              source_kind: 'generated_public' as const,
+              scene_id: buildGeneratedPublicPoolSceneId(stewardAgentId),
+            },
+            {
+              source_kind: 'private_derived_public' as const,
+              scene_id: buildPrivateDerivedPublicPoolSceneId(stewardAgentId),
+            },
+          ]
+        : []),
+      {
+        source_kind: 'platform_canonical' as const,
+        scene_id: buildPlatformCanonicalPoolSceneId(),
+      },
+    ]
+
+    for (const candidate of candidates) {
+      const binding = mediaPoolBindings.find((item) => item.scene_id === candidate.scene_id) ?? null
+      if (binding) {
+        return {
+          source_kind: candidate.source_kind,
+          binding,
+        }
+      }
+    }
+
+    const communityBinding = mediaPoolBindings.find((binding) => binding.scene_id.startsWith('community_commons:')) ?? null
+    if (communityBinding) {
+      const communityId = communityBinding.scene_id.slice('community_commons:'.length)
+      return communityId
+        ? {
+            source_kind: 'community_commons',
+            binding: {
+              ...communityBinding,
+              scene_id: buildCommunityCommonsPoolSceneId(communityId),
+            },
+          }
+        : null
+    }
+
+    return null
+  }
+
   private async createSceneBinding(input: {
     scene_type: 'forum_post' | 'forum_comment' | 'chat_room_message'
     scene_id: string
@@ -278,6 +371,7 @@ export class MediaWriteBridge {
     created_by_id?: string
     display_policy: Parameters<MediaBindingService['createForumPostBinding']>[0]['displayPolicy']
     relation_to_scene: Parameters<MediaBindingService['createForumPostBinding']>[0]['relationToScene']
+    thread_root_ref: string | null
   }): Promise<SceneMediaBinding> {
     if (input.scene_type === 'forum_post') {
       return this.deps.mediaBindingService.createForumPostBinding({
@@ -288,6 +382,7 @@ export class MediaWriteBridge {
         createdById: input.created_by_id,
         displayPolicy: input.display_policy,
         relationToScene: input.relation_to_scene,
+        threadRootRef: input.thread_root_ref,
       })
     }
     if (input.scene_type === 'forum_comment') {
@@ -299,6 +394,7 @@ export class MediaWriteBridge {
         createdById: input.created_by_id,
         displayPolicy: input.display_policy,
         relationToScene: input.relation_to_scene,
+        threadRootRef: input.thread_root_ref,
       })
     }
     return this.deps.mediaBindingService.createChatRoomMessageBinding({
@@ -309,7 +405,27 @@ export class MediaWriteBridge {
       createdById: input.created_by_id,
       displayPolicy: input.display_policy,
       relationToScene: input.relation_to_scene,
+      threadRootRef: input.thread_root_ref,
     })
+  }
+
+  private resolveThreadRootRef(
+    plan: PersistedImagePlan,
+    input: {
+      scene_type: 'forum_post' | 'forum_comment' | 'chat_room_message'
+      scene_id: string
+    },
+  ): string | null {
+    if (input.scene_type === 'forum_post') {
+      return `forum_post:${input.scene_id}`
+    }
+    if (plan.scene_ref.thread_root_ref?.trim()) {
+      return plan.scene_ref.thread_root_ref
+    }
+    if (input.scene_type === 'chat_room_message') {
+      return `room_message:${input.scene_id}`
+    }
+    return null
   }
 
   private ensurePostMediaLink(

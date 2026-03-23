@@ -2,6 +2,7 @@ import type {
   CreateMediaSemanticSnapshotInput,
   MediaSemanticSnapshot,
 } from './types.js'
+import { normalizeStoredSemanticSummary } from '../media/media-contract-utils.js'
 
 export interface MediaSemanticSnapshotRepository {
   create(input: CreateMediaSemanticSnapshotInput): Promise<MediaSemanticSnapshot>
@@ -28,7 +29,7 @@ export class InMemoryMediaSemanticSnapshotRepository implements MediaSemanticSna
       model_provider: input.model_provider,
       model_name: input.model_name,
       model_version: input.model_version,
-      summary: input.summary,
+      summary: normalizeStoredSemanticSummary(input.summary),
       extraction_status: input.extraction_status,
       quality_grade: input.quality_grade,
       is_current: input.is_current ?? true,

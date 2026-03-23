@@ -168,6 +168,36 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
     expect(uploadRes.body.error.code).toBe('VALIDATION_ERROR')
   })
 
+  it('supports owner promote and demote for inclination assets', async () => {
+    const createAgentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Promote Demote Agent' })
+    const agentId = createAgentRes.body.data.id
+
+    const uploadRes = await request(app)
+      .post(`/v1/agents/${agentId}/inclination-asset/upload`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .attach('file', VALID_PNG_BUFFER, {
+        filename: 'promote-demote.png',
+        contentType: 'image/png',
+      })
+    expect(uploadRes.status).toBe(201)
+
+    const assetId = uploadRes.body.data.asset_id
+    const promoteRes = await request(app)
+      .post(`/v1/agents/${agentId}/inclination-asset/${assetId}/promote`)
+      .set('Authorization', `Bearer ${userToken}`)
+    expect(promoteRes.status).toBe(200)
+    expect(promoteRes.body.data.visibility_policy).toBe('public_original_allowed')
+
+    const demoteRes = await request(app)
+      .post(`/v1/agents/${agentId}/inclination-asset/${assetId}/demote`)
+      .set('Authorization', `Bearer ${userToken}`)
+    expect(demoteRes.status).toBe(200)
+    expect(demoteRes.body.data.visibility_policy).toBe('private_only')
+  })
+
   it('blocks non-owner for inclination endpoints and style/instructions/prompt-overrides', async () => {
     const createAgentRes = await request(app)
       .post('/v1/agents')
@@ -337,6 +367,10 @@ describe('E2E: Multimodal inclination + owner-only growth controls', () => {
         })
       expect(uploadRes.status).toBe(201)
       const assetId = uploadRes.body.data.asset_id as string
+      const promoteRes = await request(app)
+        .post(`/v1/agents/${agentId}/inclination-asset/${assetId}/promote`)
+        .set('Authorization', `Bearer ${userToken}`)
+      expect(promoteRes.status).toBe(200)
 
       const runtimePostRes = await request(app).post('/v1/dev/runtime/post').send()
       expect(runtimePostRes.status).toBe(200)

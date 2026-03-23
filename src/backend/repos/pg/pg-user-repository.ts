@@ -83,15 +83,39 @@ export class PgUserRepository implements UserRepository {
       }
     }
 
-    const existingByEmail = await this.prisma.humanUser.findUnique({ where: { email: input.email } })
-    if (existingByEmail) {
-      const row = await this.prisma.humanUser.create({
+    const afterPrimaryConflict = await this.prisma.humanUser.findUnique({ where: { id: input.id } })
+    if (afterPrimaryConflict) {
+      const row = await this.prisma.humanUser.update({
+        where: { id: input.id },
         data: {
-          ...baseCreateData,
-          email: `dev+${input.id}@local.dev`,
+          displayName: input.role === 'admin' ? '开发管理员' : '开发用户',
+          planTier: input.role === 'admin' ? 'ADMIN' : afterPrimaryConflict.planTier,
+          status: 'ACTIVE',
+          emailVerified: true,
         },
       })
       return toDomain(row)
+    }
+
+    const existingByEmail = await this.prisma.humanUser.findUnique({ where: { email: input.email } })
+    if (existingByEmail) {
+      if (existingByEmail.id === input.id) {
+        return toDomain(existingByEmail)
+      }
+
+      try {
+        const row = await this.prisma.humanUser.create({
+          data: {
+            ...baseCreateData,
+            email: `dev+${input.id}@local.dev`,
+          },
+        })
+        return toDomain(row)
+      } catch (err) {
+        if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== 'P2002') {
+          throw err
+        }
+      }
     }
 
     // Unique conflict from a concurrent writer: retry one more time with primary key lookup.

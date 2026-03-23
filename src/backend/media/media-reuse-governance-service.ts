@@ -9,6 +9,7 @@ import type {
   MediaAsset,
   MediaContextProjection,
   MediaCopyrightState,
+  MediaDisplayPolicy,
   MediaReuseMode,
   MediaReusePolicy,
   MediaReusePolicySubjectType,
@@ -16,9 +17,10 @@ import type {
   SceneMediaBinding,
   VisualSourceKind,
 } from '../repos/types.js'
-import { NotFoundError, ValidationError } from '../lib/errors.js'
+import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
 import { MediaBindingService } from './media-binding-service.js'
 import type { MediaObservabilityService } from './media-observability-service.js'
+import { isPrivateOriginAsset } from './media-contract-utils.js'
 
 export interface MediaReuseGovernanceServiceDeps {
   mediaAssetRepo: MediaAssetRepository
@@ -39,12 +41,22 @@ export interface MediaReuseEvaluation {
   rejection_reason: string | null
 }
 
+export interface QuoteOriginalAssetAllowance {
+  policy: MediaReusePolicy | null
+  allowed: boolean
+  reason: string
+}
+
 export function buildPlatformCanonicalPoolSceneId(): string {
   return 'platform_canonical:global'
 }
 
 export function buildCommunityCommonsPoolSceneId(communityId: string): string {
   return `community_commons:${communityId}`
+}
+
+export function buildSelfPublicArchivePoolSceneId(agentId: string): string {
+  return `self_public_archive:${agentId}`
 }
 
 export function buildGeneratedPublicPoolSceneId(agentId: string): string {
@@ -65,6 +77,10 @@ function isProjectionActive(projection: MediaContextProjection, now = new Date()
 
 function dedupeModes(modes: MediaReuseMode[]): MediaReuseMode[] {
   return Array.from(new Set(modes))
+}
+
+function sameModes(left: MediaReuseMode[], right: MediaReuseMode[]): boolean {
+  return left.length === right.length && left.every((mode, index) => mode === right[index])
 }
 
 function defaultCopyrightStateForAsset(asset: MediaAsset): MediaCopyrightState {
@@ -103,6 +119,7 @@ function defaultModesForSource(input: {
 }): MediaReuseMode[] {
   switch (input.source_kind) {
     case 'owner_private_pool':
+      return ['derive_new', 'reference_only']
     case 'self_public_archive':
     case 'same_episode_public':
     case 'platform_canonical':
@@ -127,11 +144,76 @@ function defaultModesForSource(input: {
 function defaultCrossAgentQuoteAllowed(sourceKind: VisualSourceKind, allowQuoteOriginal?: boolean): boolean {
   if (sourceKind === 'platform_canonical') return true
   if (sourceKind === 'community_commons') return Boolean(allowQuoteOriginal)
+  if (sourceKind === 'same_thread_public') return true
   return false
 }
 
 export class MediaReuseGovernanceService {
   constructor(private readonly deps: MediaReuseGovernanceServiceDeps) {}
+
+  async canQuoteOriginalAssetForSource(input: {
+    asset: MediaAsset
+    source_kind: VisualSourceKind
+    agent_id: string
+    binding_display_policy?: MediaDisplayPolicy | null
+  }): Promise<QuoteOriginalAssetAllowance> {
+    const policy = await this.deps.mediaReusePolicyRepo.findBySubject(
+      'asset',
+      input.asset.id,
+      input.source_kind,
+    )
+    if (!policy) {
+      return {
+        policy: null,
+        allowed: false,
+        reason: 'policy_missing',
+      }
+    }
+    if (policy.status !== 'active') {
+      return {
+        policy,
+        allowed: false,
+        reason: `policy_${policy.status}`,
+      }
+    }
+    if (!policy.allowed_reuse_modes.includes('quote_original')) {
+      return {
+        policy,
+        allowed: false,
+        reason: 'quote_original_not_allowed',
+      }
+    }
+    if (input.binding_display_policy && input.binding_display_policy !== 'original_allowed') {
+      return {
+        policy,
+        allowed: false,
+        reason: `binding_${input.binding_display_policy}`,
+      }
+    }
+    if (input.asset.lifecycle_status !== 'active' || input.asset.visibility_policy !== 'public_original_allowed') {
+      return {
+        policy,
+        allowed: false,
+        reason: 'asset_not_publicly_attachable',
+      }
+    }
+    if (
+      input.asset.steward_agent_id
+      && input.asset.steward_agent_id !== input.agent_id
+      && !policy.cross_agent_quote_allowed
+    ) {
+      return {
+        policy,
+        allowed: false,
+        reason: 'cross_agent_quote_not_allowed',
+      }
+    }
+    return {
+      policy,
+      allowed: true,
+      reason: 'quote_original_allowed',
+    }
+  }
 
   async ensureAssetPolicy(input: {
     source_kind: VisualSourceKind
@@ -144,33 +226,43 @@ export class MediaReuseGovernanceService {
       input.asset.id,
       input.source_kind,
     )
-    const policy = existing ?? await this.deps.mediaReusePolicyRepo.create({
+    const desiredModes = defaultModesForSource(input)
+    const desiredCrossAgentQuoteAllowed = defaultCrossAgentQuoteAllowed(
+      input.source_kind,
+      input.allow_quote_original,
+    )
+    const created = existing ?? await this.deps.mediaReusePolicyRepo.create({
       subject_type: 'asset',
       subject_id: input.asset.id,
       source_kind: input.source_kind,
       community_id: input.community_id ?? null,
       steward_agent_id: input.asset.steward_agent_id ?? null,
-      allowed_reuse_modes: defaultModesForSource(input),
-      cross_agent_quote_allowed: defaultCrossAgentQuoteAllowed(
-        input.source_kind,
-        input.allow_quote_original,
-      ),
+      allowed_reuse_modes: desiredModes,
+      cross_agent_quote_allowed: desiredCrossAgentQuoteAllowed,
       disclose_origin_policy: defaultDiscloseOriginPolicy(input.source_kind),
       copyright_state: defaultCopyrightStateForAsset(input.asset),
       status: input.asset.lifecycle_status === 'blocked' ? 'blocked' : 'active',
     })
     if (existing) {
+      const shouldUpdateModes = !sameModes(existing.allowed_reuse_modes, desiredModes)
+      const shouldUpdateCrossAgent = existing.cross_agent_quote_allowed !== desiredCrossAgentQuoteAllowed
+      if (shouldUpdateModes || shouldUpdateCrossAgent) {
+        return (await this.deps.mediaReusePolicyRepo.update(existing.id, {
+          ...(shouldUpdateModes ? { allowed_reuse_modes: desiredModes } : {}),
+          ...(shouldUpdateCrossAgent ? { cross_agent_quote_allowed: desiredCrossAgentQuoteAllowed } : {}),
+        })) ?? existing
+      }
       return existing
     }
     if (
       input.asset.source_kind === 'url_import'
-      && policy.allowed_reuse_modes.includes('quote_original')
+      && created.allowed_reuse_modes.includes('quote_original')
     ) {
-      return (await this.deps.mediaReusePolicyRepo.update(policy.id, {
-        allowed_reuse_modes: policy.allowed_reuse_modes.filter((mode) => mode !== 'quote_original'),
-      })) ?? policy
+      return (await this.deps.mediaReusePolicyRepo.update(created.id, {
+        allowed_reuse_modes: created.allowed_reuse_modes.filter((mode) => mode !== 'quote_original'),
+      })) ?? created
     }
-    return policy
+    return created
   }
 
   async ensureProjectionPolicy(input: {
@@ -325,10 +417,7 @@ export class MediaReuseGovernanceService {
       if (input.source_kind === 'owner_private_pool' && asset.steward_agent_id !== currentAgentId) {
         allowedModes = allowedModes.filter((mode) => mode !== 'quote_original')
       }
-      if (
-        binding?.display_policy === 'runtime_only_no_display'
-        && input.source_kind !== 'owner_private_pool'
-      ) {
+      if (binding?.display_policy === 'runtime_only_no_display') {
         allowedModes = allowedModes.filter((mode) => mode !== 'quote_original')
       }
     }
@@ -397,6 +486,20 @@ export class MediaReuseGovernanceService {
       community_id: input.community_id,
       actor_user_id: input.actor_user_id,
       allow_quote_original: input.allow_quote_original,
+    })
+  }
+
+  async registerSelfPublicArchiveAsset(input: {
+    asset_id: string
+    agent_id: string
+    actor_user_id: string
+  }): Promise<{ binding: SceneMediaBinding; policy: MediaReusePolicy }> {
+    return this.registerPoolAsset({
+      asset_id: input.asset_id,
+      pool_id: buildSelfPublicArchivePoolSceneId(input.agent_id),
+      source_kind: 'self_public_archive',
+      actor_user_id: input.actor_user_id,
+      allow_private_original_registration: true,
     })
   }
 
@@ -485,6 +588,121 @@ export class MediaReuseGovernanceService {
     }
   }
 
+  async promotePrivateOriginalToSelfPublicArchive(input: {
+    asset_id: string
+    agent_id: string
+    owner_user_id: string
+    actor_user_id: string
+  }): Promise<{ asset: MediaAsset; binding: SceneMediaBinding; policy: MediaReusePolicy }> {
+    const asset = await this.deps.mediaAssetRepo.findById(input.asset_id)
+    if (!asset) throw new NotFoundError('MediaAsset', input.asset_id)
+    if (asset.steward_agent_id !== input.agent_id || asset.owner_user_id !== input.owner_user_id) {
+      throw new ForbiddenError('Only the owning user can promote this media asset')
+    }
+    if (asset.lifecycle_status !== 'active' || asset.visibility_policy === 'blocked') {
+      throw new ValidationError('asset is not eligible for promote')
+    }
+    const updated = asset.visibility_policy === 'public_original_allowed'
+      ? asset
+      : (await this.deps.mediaAssetRepo.update(asset.id, {
+          visibility_policy: 'public_original_allowed',
+        })) ?? asset
+    const registered = await this.registerSelfPublicArchiveAsset({
+      asset_id: updated.id,
+      agent_id: input.agent_id,
+      actor_user_id: input.actor_user_id,
+    })
+    await this.deps.mediaObservabilityService?.record({
+      event_type: 'asset_promoted_to_public_archive',
+      surface: 'governance',
+      agent_id: input.agent_id,
+      asset_id: updated.id,
+      source_kind: 'self_public_archive',
+      payload_json: {
+        owner_user_id: input.owner_user_id,
+        original_source_kind: asset.source_kind,
+      },
+    })
+    return {
+      asset: updated,
+      binding: registered.binding,
+      policy: registered.policy,
+    }
+  }
+
+  async demoteSelfPublicArchiveAsset(input: {
+    asset_id: string
+    agent_id: string
+    owner_user_id: string
+    actor_user_id: string
+  }): Promise<{
+    asset: MediaAsset
+    policy: MediaReusePolicy | null
+    binding_removed: boolean
+    visibility_reverted: boolean
+  }> {
+    const asset = await this.deps.mediaAssetRepo.findById(input.asset_id)
+    if (!asset) throw new NotFoundError('MediaAsset', input.asset_id)
+    if (asset.steward_agent_id !== input.agent_id || asset.owner_user_id !== input.owner_user_id) {
+      throw new ForbiddenError('Only the owning user can demote this media asset')
+    }
+
+    const policy = await this.deps.mediaReusePolicyRepo.findBySubject(
+      'asset',
+      asset.id,
+      'self_public_archive',
+    )
+    const revokedPolicy = policy && policy.status !== 'revoked'
+      ? await this.updatePolicy(policy.id, {
+          status: 'revoked',
+          revoked_at: new Date(),
+          revoked_reason: 'owner_demoted_from_public_archive',
+        })
+      : policy
+
+    const archivePoolId = buildSelfPublicArchivePoolSceneId(input.agent_id)
+    const archiveBindings = (await this.deps.sceneMediaBindingRepo.findByScene('media_pool', archivePoolId))
+      .filter((binding) => binding.asset_id === asset.id)
+    if (archiveBindings.length > 0) {
+      await this.deps.sceneMediaBindingRepo.deleteByIds(archiveBindings.map((binding) => binding.id))
+    }
+
+    const remainingBindings = (await this.deps.sceneMediaBindingRepo.findByAssetId(asset.id))
+      .filter((binding) => !archiveBindings.some((archiveBinding) => archiveBinding.id === binding.id))
+    const hasRemainingPublicUsage = remainingBindings.some((binding) =>
+      binding.scene_type !== 'memory_card' && binding.scene_type !== 'private_message',
+    )
+    const visibilityReverted = isPrivateOriginAsset(asset)
+      && !hasRemainingPublicUsage
+      && asset.visibility_policy === 'public_original_allowed'
+    const updatedAsset = visibilityReverted
+      ? (await this.deps.mediaAssetRepo.update(asset.id, {
+          visibility_policy: 'private_only',
+        })) ?? asset
+      : asset
+
+    await this.deps.mediaObservabilityService?.record({
+      event_type: 'asset_demoted_from_public_archive',
+      surface: 'governance',
+      agent_id: input.agent_id,
+      asset_id: asset.id,
+      source_kind: 'self_public_archive',
+      payload_json: {
+        actor_user_id: input.actor_user_id,
+        owner_user_id: input.owner_user_id,
+        binding_removed: archiveBindings.length > 0,
+        visibility_reverted: visibilityReverted,
+      },
+    })
+
+    return {
+      asset: updatedAsset,
+      policy: revokedPolicy ?? null,
+      binding_removed: archiveBindings.length > 0,
+      visibility_reverted: visibilityReverted,
+    }
+  }
+
   private async registerPoolAsset(input: {
     asset_id: string
     pool_id: string
@@ -492,10 +710,11 @@ export class MediaReuseGovernanceService {
     actor_user_id: string
     community_id?: string | null
     allow_quote_original?: boolean
+    allow_private_original_registration?: boolean
   }): Promise<{ binding: SceneMediaBinding; policy: MediaReusePolicy }> {
     const asset = await this.deps.mediaAssetRepo.findById(input.asset_id)
     if (!asset) throw new NotFoundError('MediaAsset', input.asset_id)
-    if (asset.source_kind === 'private_message_upload') {
+    if (asset.source_kind === 'private_message_upload' && !input.allow_private_original_registration) {
       throw new ValidationError('private_message_upload assets cannot be registered into public pools')
     }
     if (asset.lifecycle_status !== 'active' || asset.visibility_policy === 'blocked') {

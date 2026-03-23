@@ -348,22 +348,42 @@ templates:
       {{distill_json}}
 
   - prompt_template_id: internal-vision-summary
-    version: 1
-    description: Hidden multimodal image summary for inclination assets
+    version: 2
+    description: Hidden multimodal image semantic extraction for media domain v2
     variables_schema:
       type: object
       properties:
-        owner_note: { type: string }
         mime_type: { type: string }
       required:
         - mime_type
     system_prompt: |
-      你是一个图像内容摘要助手。只输出 JSON。
+      你是媒体语义提取助手。你只能输出严格 JSON，不要输出 markdown，不要输出额外解释。
     user_prompt: |
-      请基于图片内容给出结构化摘要，字段固定为：
-      {"theme":"", "scene":"", "mood":"", "discussion_points":["","",""]}
-      要求：discussion_points 给 3-5 条短句；保持中性，不捏造细节。
-      owner_note: {{owner_note}}
+      请仅基于图片中可见内容输出 JSON，字段固定为：
+      {
+        "theme": "",
+        "scene": "",
+        "mood": "",
+        "confidence": 0.0,
+        "composition": "",
+        "style_tags": ["", ""],
+        "discussion_points": ["", ""],
+        "salient_entities": ["", ""],
+        "ocr_snippets": [""],
+        "safety_labels": [""],
+        "public_safe_summary": "",
+        "internal_full_summary": ""
+      }
+
+      约束：
+      - 必须保持中性，不能猜测 owner 意图、关系隐喻或不可见背景。
+      - 若图片极简、抽象或不确定，也要给出 grounded 占位描述。
+      - confidence 取 0 到 1。
+      - composition 用一句简短可视构图描述。
+      - style_tags 最多 6 个，discussion_points 最多 6 条，ocr_snippets 最多 6 条，safety_labels 最多 6 条。
+      - 看不清的文字不要硬做 OCR。
+      - public_safe_summary 适合公开提示；internal_full_summary 可以更完整，但仍只能基于可见事实。
+
       mime_type: {{mime_type}}
 
   - prompt_template_id: internal-proactive-dm-opening-legacy

@@ -33,11 +33,14 @@ RUN pnpm db:generate
 COPY --from=builder /app/dist/frontend ./dist/frontend
 COPY src/backend ./src/backend
 COPY src/shared ./src/shared
+COPY scripts/director-history-maintenance.mjs ./scripts/director-history-maintenance.mjs
+COPY scripts/lib ./scripts/lib
 COPY .ai/llm-config ./.ai/llm-config
 COPY env/secrets ./env/secrets
 COPY docs/project/policy.yaml ./docs/project/policy.yaml
 COPY docs/stage-templates/source ./docs/stage-templates/source
 COPY --from=builder /app/docs/stage-templates/dist ./docs/stage-templates/dist
+RUN mkdir -p /app/var/inclination-assets && chown -R node:node /app/var
 
 USER node
 EXPOSE 4000

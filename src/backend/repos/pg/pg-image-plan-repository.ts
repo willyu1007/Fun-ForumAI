@@ -8,7 +8,9 @@ import type { ImagePlanRepository, UpdateImagePlanPatch } from '../image-plan-re
 function defaultGeneration(): PersistedImagePlan['generation'] {
   return {
     mode: 'none',
+    input_mode: 'reference',
     status: 'not_requested',
+    aspect_ratio_hint: null,
   }
 }
 

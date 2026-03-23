@@ -16,7 +16,7 @@ import { PersonaStateService } from '../persona-state-service.js'
 import { ReviewService } from '../review-service.js'
 import { StatsService } from '../stats-service.js'
 
-async function createContext(opts: { growthPointsTotal?: number } = {}) {
+async function createContext(opts: { growthPointsTotal?: number; visibleModelPin?: string | null } = {}) {
   personaObservability.reset()
   const agentRepo = new InMemoryAgentRepository()
   const agentConfigRepo = new InMemoryAgentConfigRepository()
@@ -54,6 +54,7 @@ async function createContext(opts: { growthPointsTotal?: number } = {}) {
     statsRepo,
     personaStateService,
     personaStateRepo,
+    visibleModelPin: opts.visibleModelPin ?? null,
     usageLedgerRepo,
     reviewService,
     xpService: {
@@ -234,6 +235,19 @@ describe('InferenceProfileService', () => {
     expect(unlocked.manualVoiceLineLock).toBe(false)
     expect(unlocked.migrationState).toBe('shadow')
     expect(unlocked.blockedReason).toBeNull()
+  })
+
+  it('prefers the environment-level visible model pin when resolving visible routes', async () => {
+    const { agent, service } = await createContext({
+      visibleModelPin: 'qwen-flash-character',
+    })
+
+    const route = await service.resolveVisibleRoute({
+      agentId: agent.id,
+      requestedTier: 'base',
+    })
+
+    expect(route.preferredModelId).toBe('qwen-flash-character')
   })
 
   it('creates and collects shadow review evidence before allowing rare reanchor', async () => {

@@ -33,6 +33,10 @@ import { MediaWriteBridge } from './media-write-bridge.js'
 import type { MediaObservabilityService } from './media-observability-service.js'
 import { listSurfaceMediaAttachmentViews } from './surface-media-view.js'
 import { pickModelReachableMediaUrl, resolveMediaAssetUrl } from './media-url.js'
+import {
+  buildPrivateSessionThreadRootRef,
+  normalizeStoredSemanticSummary,
+} from './media-contract-utils.js'
 
 const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
@@ -893,11 +897,17 @@ export class MediaAssetService {
         })
       : null
 
+    let latestPublicAttachment: MediaAssetRecord | null = null
     const latestPublicBinding = bindings
       .filter((binding) => binding.scene_type === 'forum_post')
-      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())[0] ?? null
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+      .find((binding) => {
+        const asset = assets.find((item) => item.id === binding.asset_id) ?? null
+        return asset?.lifecycle_status === 'active'
+          && asset.visibility_policy !== 'blocked'
+          && asset.visibility_policy !== 'private_only'
+      }) ?? null
 
-    let latestPublicAttachment: MediaAssetRecord | null = null
     if (latestPublicBinding) {
       const latestPublicAsset = assets.find((asset) => asset.id === latestPublicBinding.asset_id) ?? null
       const projectionMediaUrl = await this.resolveProjectionMediaUrl(
@@ -965,7 +975,7 @@ export class MediaAssetService {
 
     for (const asset of assets) {
       const mediaUrl = resolveMediaAssetUrl(asset, this.deps.storage)
-      if (!mediaUrl || asset.visibility_policy === 'blocked') continue
+      if (!mediaUrl || asset.visibility_policy !== 'public_original_allowed') continue
       const assetBindings = bindings.filter((binding) => binding.asset_id === asset.id)
       const inOwnerPool = assetBindings.some(
         (binding) => binding.scene_type === 'memory_card' && binding.scene_id === ownerSceneId,
@@ -1016,6 +1026,16 @@ export class MediaAssetService {
 
   async getAssetById(assetId: string): Promise<MediaAsset | null> {
     return this.deps.mediaAssetRepo.findById(assetId)
+  }
+
+  async getCurrentSemanticSnapshot(assetId: string): Promise<MediaSemanticSnapshot | null> {
+    return this.deps.mediaSemanticSnapshotRepo.findCurrentByAssetId(assetId)
+  }
+
+  async getResolvedMediaUrl(assetId: string): Promise<string | null> {
+    const asset = await this.deps.mediaAssetRepo.findById(assetId)
+    if (!asset) return null
+    return resolveMediaAssetUrl(asset, this.deps.storage)
   }
 
   private async createOwnerPoolRecord(input: {
@@ -1235,6 +1255,7 @@ export class MediaAssetService {
       messageId: input.message_id,
       createdById: input.created_by_id,
       createdByType: input.created_by_type,
+      threadRootRef: buildPrivateSessionThreadRootRef(input.session_id),
     })
 
     const projections = await this.deps.mediaContextProjectionRepo.findByBindingId(binding.id)
@@ -1697,7 +1718,10 @@ export class MediaAssetService {
   }
 
   static readSummaryOrFallback(snapshot: MediaSemanticSnapshot | null, mimeType: string): MediaSemanticSummary {
-    return snapshot?.summary ?? buildFallbackMediaSemanticSummary(mimeType, 'legacy')
+    if (!snapshot) {
+      return buildFallbackMediaSemanticSummary(mimeType, 'legacy')
+    }
+    return normalizeStoredSemanticSummary(snapshot.summary)
   }
 }
 

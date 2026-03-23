@@ -1,4 +1,5 @@
 import type { VisualDirectiveRepository } from '../repos/visual-directive-repository.js'
+import type { MessageRepository } from '../repos/message-repository.js'
 import type {
   CreateVisualDirectiveInput,
   LocalMemoryScope,
@@ -11,6 +12,11 @@ import type {
 import type { PublicSceneWritePayload } from '../services/public-scene-runtime.js'
 import type { ChatMessageKind } from '../repos/types.js'
 import type { ProgramMessageMetadata } from '../services/conversation-clock/types.js'
+import {
+  buildChatProgramEventThreadRootRef,
+  buildChatRoomMessageThreadRootRef,
+  buildForumPostThreadRootRef,
+} from './media-contract-utils.js'
 
 const SCHEDULED_POST_ALLOW_SOURCES: VisualSourceKind[] = [
   'self_public_archive',
@@ -59,6 +65,7 @@ const CHAT_ROOM_ALLOW_SOURCES: VisualSourceKind[] = [
 
 export interface VisualDirectiveServiceDeps {
   visualDirectiveRepo: VisualDirectiveRepository
+  messageRepo?: Pick<MessageRepository, 'findById'> | null
 }
 
 export class VisualDirectiveService {
@@ -80,6 +87,7 @@ export class VisualDirectiveService {
       request_id: payload.scene_metadata.selection_id,
       director_surface: payload.scene_metadata.director_surface,
       actor_surface: 'forum_post',
+      thread_root_ref: null,
       community_id: input.community_id,
       episode_id: payload.scene_metadata.episode_id,
       selection_id: payload.scene_metadata.selection_id,
@@ -154,6 +162,7 @@ export class VisualDirectiveService {
 
   async createForumCommentDirective(input: {
     community_id: string
+    post_id: string
     focus_hint: string
     payload: PublicSceneWritePayload
   }): Promise<PersistedVisualDirective> {
@@ -163,7 +172,9 @@ export class VisualDirectiveService {
       request_id: payload.scene_metadata.selection_id,
       director_surface: payload.scene_metadata.director_surface,
       actor_surface: 'forum_comment',
+      thread_root_ref: buildForumPostThreadRootRef(input.post_id),
       community_id: input.community_id,
+      post_id: input.post_id,
       episode_id: payload.scene_metadata.episode_id,
       selection_id: payload.scene_metadata.selection_id,
       episode_plan_id: payload.scene_metadata.episode_plan_id,
@@ -241,18 +252,25 @@ export class VisualDirectiveService {
     room_name: string
     room_description: string
     community_id?: string | null
+    parent_message_id?: string | null
     semantic_hint: string
     message_kind?: ChatMessageKind | null
     live_hook?: string | null
     unresolved_question?: string | null
     metadata?: ProgramMessageMetadata | null
   }): Promise<PersistedVisualDirective> {
+    const threadRootRef = await this.resolveChatThreadRootRef({
+      parent_message_id: input.parent_message_id ?? null,
+      program_event_id: input.metadata?.program_event_id ?? null,
+    })
     const sceneRef: SceneRef = {
       request_id: `${input.room_id}:${input.metadata?.program_event_id ?? 'free-chat'}`,
       director_surface: 'chat_room',
       actor_surface: 'chat_room_message',
+      thread_root_ref: threadRootRef,
       community_id: input.community_id ?? null,
       episode_id: input.metadata?.episode_id ?? null,
+      room_id: input.room_id,
       selection_id: `${input.room_id}:${input.metadata?.beat_id ?? 'latest'}`,
       episode_plan_id: input.metadata?.program_event_id ?? null,
       local_intent_id: `${input.room_id}:${input.message_kind ?? 'normal'}`,
@@ -323,6 +341,32 @@ export class VisualDirectiveService {
         soft_constraints: [input.live_hook, input.unresolved_question].filter((item): item is string => Boolean(item)),
       },
     })
+  }
+
+  private async resolveChatThreadRootRef(input: {
+    parent_message_id: string | null
+    program_event_id: string | null
+  }): Promise<string | null> {
+    if (input.parent_message_id) {
+      const rootMessageId = await this.resolveRootMessageId(input.parent_message_id)
+      return buildChatRoomMessageThreadRootRef(rootMessageId)
+    }
+    if (input.program_event_id) {
+      return buildChatProgramEventThreadRootRef(input.program_event_id)
+    }
+    return null
+  }
+
+  private async resolveRootMessageId(messageId: string): Promise<string> {
+    let currentId = messageId
+    let depth = 0
+    while (depth < 32 && this.deps.messageRepo) {
+      depth += 1
+      const current = await this.deps.messageRepo.findById(currentId)
+      if (!current?.parent_message_id) break
+      currentId = current.parent_message_id
+    }
+    return currentId
   }
 }
 

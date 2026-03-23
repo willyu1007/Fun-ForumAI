@@ -20,6 +20,7 @@ export interface InferenceProfileServiceDeps {
   statsRepo: StatsRepository
   personaStateService: PersonaStateService
   personaStateRepo: PersonaStateRepository
+  visibleModelPin?: string | null
   usageLedgerRepo?: UsageLedgerRepository | null
   reviewService?: ReviewService | null
   xpService?: XpService | null

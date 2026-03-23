@@ -8,6 +8,7 @@ import type {
   SceneMediaBinding,
 } from '../repos/types.js'
 import type { SceneMediaBindingRepository } from '../repos/scene-media-binding-repository.js'
+import { buildForumPostThreadRootRef } from './media-contract-utils.js'
 
 export function buildOwnerPrivatePoolSceneId(agentId: string): string {
   return `owner_private_pool:${agentId}`
@@ -30,12 +31,14 @@ export class MediaBindingService {
     bindingRole: CreateSceneMediaBindingInput['binding_role']
     relationToScene: MediaRelationToScene
     displayPolicy: MediaDisplayPolicy
+    threadRootRef?: string | null
     sourceBinding?: SceneMediaBinding | null
     bindingNoteText?: string | null
   }): Promise<SceneMediaBinding> {
     const payload: CreateSceneMediaBindingInput = {
       scene_type: input.sceneType,
       scene_id: input.sceneId,
+      thread_root_ref: input.threadRootRef ?? null,
       asset_id: input.asset.id,
       semantic_snapshot_id: input.snapshot.id,
       binding_role: input.bindingRole,
@@ -82,6 +85,7 @@ export class MediaBindingService {
     createdById?: string
     displayPolicy?: MediaDisplayPolicy
     relationToScene?: MediaRelationToScene
+    threadRootRef?: string | null
   }): Promise<SceneMediaBinding> {
     return this.bindToScene({
       asset: input.asset,
@@ -95,6 +99,7 @@ export class MediaBindingService {
           ? 'derivative_only'
           : 'original_allowed'
       ),
+      threadRootRef: input.threadRootRef ?? buildForumPostThreadRootRef(input.postId),
       createdByType: 'system',
       createdById: input.createdById ?? 'scheduled-post-bridge',
       sourceBinding: input.sourceBinding,
@@ -110,6 +115,7 @@ export class MediaBindingService {
     createdByType?: CreateSceneMediaBindingInput['created_by_type']
     displayPolicy?: MediaDisplayPolicy
     relationToScene?: MediaRelationToScene
+    threadRootRef?: string | null
   }): Promise<SceneMediaBinding> {
     return this.bindToScene({
       asset: input.asset,
@@ -119,6 +125,7 @@ export class MediaBindingService {
       bindingRole: 'inline',
       relationToScene: input.relationToScene ?? 'selected_for_comment',
       displayPolicy: input.displayPolicy ?? 'original_allowed',
+      threadRootRef: input.threadRootRef ?? null,
       createdByType: input.createdByType ?? 'system',
       createdById: input.createdById ?? 'surface-media-bridge',
       sourceBinding: input.sourceBinding,
@@ -134,6 +141,7 @@ export class MediaBindingService {
     createdByType?: CreateSceneMediaBindingInput['created_by_type']
     displayPolicy?: MediaDisplayPolicy
     relationToScene?: MediaRelationToScene
+    threadRootRef?: string | null
   }): Promise<SceneMediaBinding> {
     return this.bindToScene({
       asset: input.asset,
@@ -143,6 +151,7 @@ export class MediaBindingService {
       bindingRole: 'inline',
       relationToScene: input.relationToScene ?? 'attached_to_chat_room_message',
       displayPolicy: input.displayPolicy ?? 'original_allowed',
+      threadRootRef: input.threadRootRef ?? null,
       createdByType: input.createdByType ?? 'system',
       createdById: input.createdById ?? 'surface-media-bridge',
       sourceBinding: input.sourceBinding,
@@ -155,6 +164,7 @@ export class MediaBindingService {
     messageId: string
     createdById: string
     createdByType?: CreateSceneMediaBindingInput['created_by_type']
+    threadRootRef?: string | null
   }): Promise<SceneMediaBinding> {
     return this.bindToScene({
       asset: input.asset,
@@ -164,6 +174,7 @@ export class MediaBindingService {
       bindingRole: 'inline',
       relationToScene: 'attached_to_private_message',
       displayPolicy: 'original_allowed',
+      threadRootRef: input.threadRootRef ?? null,
       createdByType: input.createdByType ?? 'owner',
       createdById: input.createdById,
     })
@@ -177,6 +188,7 @@ export class MediaBindingService {
     createdById: string
     createdByType?: CreateSceneMediaBindingInput['created_by_type']
     displayPolicy?: MediaDisplayPolicy
+    threadRootRef?: string | null
   }): Promise<SceneMediaBinding> {
     return this.bindToScene({
       asset: input.asset,
@@ -186,6 +198,7 @@ export class MediaBindingService {
       bindingRole: 'reference',
       relationToScene: 'referenced_by_achievement',
       displayPolicy: input.displayPolicy ?? 'original_allowed',
+      threadRootRef: input.threadRootRef ?? null,
       createdByType: input.createdByType ?? 'system',
       createdById: input.createdById,
       sourceBinding: input.sourceBinding,
@@ -200,6 +213,7 @@ export class MediaBindingService {
     createdById: string
     createdByType?: CreateSceneMediaBindingInput['created_by_type']
     displayPolicy?: MediaDisplayPolicy
+    threadRootRef?: string | null
   }): Promise<SceneMediaBinding> {
     return this.bindToScene({
       asset: input.asset,
@@ -209,6 +223,7 @@ export class MediaBindingService {
       bindingRole: 'reference',
       relationToScene: 'referenced_by_episode_prop',
       displayPolicy: input.displayPolicy ?? 'original_allowed',
+      threadRootRef: input.threadRootRef ?? null,
       createdByType: input.createdByType ?? 'system',
       createdById: input.createdById,
       sourceBinding: input.sourceBinding,
@@ -225,6 +240,7 @@ export class MediaBindingService {
     createdById: string
     createdByType?: CreateSceneMediaBindingInput['created_by_type']
     bindingRole?: CreateSceneMediaBindingInput['binding_role']
+    threadRootRef?: string | null
   }): Promise<SceneMediaBinding> {
     return this.bindToScene({
       asset: input.asset,
@@ -234,6 +250,7 @@ export class MediaBindingService {
       bindingRole: input.bindingRole ?? 'reference',
       relationToScene: input.relationToScene ?? 'quoted_public',
       displayPolicy: input.displayPolicy ?? 'original_allowed',
+      threadRootRef: input.threadRootRef ?? null,
       createdByType: input.createdByType ?? 'system',
       createdById: input.createdById,
       sourceBinding: input.sourceBinding,

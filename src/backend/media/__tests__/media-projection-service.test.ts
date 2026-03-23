@@ -2,21 +2,20 @@ import { describe, expect, it } from 'vitest'
 import { InMemoryMediaContextProjectionRepository } from '../../repos/media-context-projection-repository.js'
 import type { PublicMediaContextCard } from '../../repos/types.js'
 import { buildRetrievalCaptionText, MediaProjectionService } from '../media-projection-service.js'
+import { buildMediaSemanticSummary } from '../../test-utils/media-fixtures.js'
 
 describe('buildRetrievalCaptionText', () => {
   it('includes discussion points so backfilled and live retrieval captions stay aligned', () => {
     const text = buildRetrievalCaptionText({
-      summary: {
+      summary: buildMediaSemanticSummary({
         theme: 'minimalist',
         scene: 'solid color background',
         mood: 'neutral',
         discussion_points: ['颜色心理', '极简设计'],
         salient_entities: [],
-        ocr_snippets: [],
-        safety_labels: [],
         public_safe_summary: 'A minimalist solid-color image.',
         internal_full_summary: 'A minimalist solid-color image used for discussion.',
-      },
+      }),
       ownerNote: 'owner-note',
     })
 

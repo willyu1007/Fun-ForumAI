@@ -2,12 +2,16 @@ import { config } from '../lib/config.js'
 import type { ImagePlanRepository } from '../repos/image-plan-repository.js'
 import type { MediaGenerationJobRepository } from '../repos/media-generation-job-repository.js'
 import type { MediaContextProjectionRepository } from '../repos/media-context-projection-repository.js'
+import type { MediaSemanticSnapshotRepository } from '../repos/media-semantic-snapshot-repository.js'
 import type { MediaProjectionService } from './media-projection-service.js'
 import type { MediaAssetService } from './media-asset-service.js'
 import type { MediaReuseGovernanceService } from './media-reuse-governance-service.js'
 import type {
+  MediaAsset,
   MediaGenerationJob,
+  MediaSemanticSnapshot,
   PersistedImagePlan,
+  PublicMediaContextCard,
 } from '../repos/types.js'
 import type { MediaGenerationGateway } from './media-generation-gateway.js'
 import type { MediaObservabilityService } from './media-observability-service.js'
@@ -42,6 +46,7 @@ export interface MediaGenerationServiceDeps {
   imagePlanRepo: ImagePlanRepository
   mediaGenerationJobRepo: MediaGenerationJobRepository
   mediaContextProjectionRepo: MediaContextProjectionRepository
+  mediaSemanticSnapshotRepo: Pick<MediaSemanticSnapshotRepository, 'findCurrentByAssetId'>
   mediaAssetService: MediaAssetService
   mediaReuseGovernanceService: MediaReuseGovernanceService
   mediaProjectionService: MediaProjectionService
@@ -102,7 +107,8 @@ export class MediaGenerationService {
     const fingerprint = input.plan.generation.request_fingerprint?.trim()
     const promptBrief = input.plan.generation.prompt_brief?.trim()
     const basedOnProjectionIds = input.plan.generation.based_on_projection_ids ?? []
-    if (!fingerprint || !promptBrief || basedOnProjectionIds.length === 0) {
+    const inputMode = input.plan.generation.input_mode ?? 'reference'
+    if (!fingerprint || !promptBrief || (inputMode === 'reference' && basedOnProjectionIds.length === 0)) {
       return { plan: input.plan, job: null }
     }
 
@@ -116,7 +122,8 @@ export class MediaGenerationService {
       request_fingerprint: fingerprint,
       prompt_brief: promptBrief,
       style_hint: null,
-      aspect_ratio_hint: input.plan.display.attachments[0]?.aspect_ratio_hint ?? null,
+      input_mode: inputMode,
+      aspect_ratio_hint: input.plan.generation.aspect_ratio_hint ?? input.plan.display.attachments[0]?.aspect_ratio_hint ?? null,
       based_on_projection_ids: basedOnProjectionIds,
       attempt_count: 0,
     })
@@ -128,6 +135,8 @@ export class MediaGenerationService {
         status: job.status,
         provider: job.provider,
         model_ref: job.model_name,
+        input_mode: job.input_mode,
+        aspect_ratio_hint: job.aspect_ratio_hint,
         attempt_count: job.attempt_count,
         output_asset_id: job.output_asset_id ?? undefined,
         error_code: job.error_code,
@@ -151,6 +160,7 @@ export class MediaGenerationService {
           provider: job.provider,
           model_name: job.model_name,
           mode: input.plan.generation.mode,
+          input_mode: job.input_mode,
         },
       })
     }
@@ -185,8 +195,14 @@ export class MediaGenerationService {
     if (!job) return null
     await this.syncLinkedPlansWithJob(job)
 
-    const projections = await this.deps.mediaContextProjectionRepo.findByIds(job.based_on_projection_ids)
-    if (projections.length !== job.based_on_projection_ids.length || projections.some((projection) => !isProjectionActive(projection))) {
+    const projections = job.input_mode === 'reference'
+      ? await this.deps.mediaContextProjectionRepo.findByIds(job.based_on_projection_ids)
+      : []
+    if (
+      job.input_mode === 'reference'
+      && (projections.length !== job.based_on_projection_ids.length
+        || projections.some((projection) => !isProjectionActive(projection)))
+    ) {
       const cancelled = await this.deps.mediaGenerationJobRepo.update(job.id, {
         status: 'cancelled',
         error_code: 'policy_revoked',
@@ -209,8 +225,11 @@ export class MediaGenerationService {
         trace_id: `media-generation:${job.id}`,
       })
       const downloaded = await this.downloadProviderImage(result.image_url)
-      const projectionsAfterRun = await this.deps.mediaContextProjectionRepo.findByIds(job.based_on_projection_ids)
-      const shouldBlock = projectionsAfterRun.some((projection) => !isProjectionActive(projection))
+      const projectionsAfterRun = job.input_mode === 'reference'
+        ? await this.deps.mediaContextProjectionRepo.findByIds(job.based_on_projection_ids)
+        : []
+      const shouldBlock = job.input_mode === 'reference'
+        && projectionsAfterRun.some((projection) => !isProjectionActive(projection))
       const generated = await this.deps.mediaAssetService.ingestGeneratedDerivative({
         agent_id: job.agent_id,
         plan_id: job.plan_id,
@@ -340,6 +359,7 @@ export class MediaGenerationService {
         provider: job.provider,
         model_name: job.model_name,
         error_code: job.error_code,
+        input_mode: job.input_mode,
       },
     })
   }
@@ -353,6 +373,8 @@ export class MediaGenerationService {
           status: job.status,
           provider: job.provider,
           model_ref: job.model_name,
+          input_mode: job.input_mode,
+          aspect_ratio_hint: job.aspect_ratio_hint,
           attempt_count: job.attempt_count,
           output_asset_id: job.output_asset_id ?? undefined,
           error_code: job.error_code,
@@ -363,8 +385,13 @@ export class MediaGenerationService {
 
     if (job.status === 'succeeded' && job.output_asset_id) {
       const asset = await this.deps.mediaAssetService.getAssetById(job.output_asset_id)
-      const card = plan.runtime.cards[0] ?? null
-      const attachment = card
+      const snapshot = asset
+        ? await this.deps.mediaSemanticSnapshotRepo.findCurrentByAssetId(job.output_asset_id)
+        : null
+      const rewrittenCard = asset && snapshot
+        ? buildGeneratedOutputRuntimeCard(plan, asset, snapshot)
+        : plan.runtime.cards[0] ?? null
+      const attachment = rewrittenCard
         ? {
             slot: 0,
             binding_role: 'primary' as const,
@@ -372,15 +399,20 @@ export class MediaGenerationService {
             mime_type: asset?.mime_type ?? 'image/png',
             display_variant: 'generated_derivative' as const,
             derived_from_asset_id: plan.selected_sources[0]?.asset_id ?? null,
-            aspect_ratio_hint: plan.display.attachments[0]?.aspect_ratio_hint ?? undefined,
-            public_caption: card.public_summary.public_safe_caption,
-            alt_text: card.public_summary.alt_text,
+            aspect_ratio_hint: plan.generation.aspect_ratio_hint ?? plan.display.attachments[0]?.aspect_ratio_hint ?? undefined,
+            public_caption: rewrittenCard.public_summary.public_safe_caption,
+            alt_text: rewrittenCard.public_summary.alt_text,
             attach_after_persist: true,
           }
         : null
       await this.deps.imagePlanRepo.update(plan.id, {
         status: 'ready',
         reason: 'generation_succeeded',
+        runtime: {
+          enabled: rewrittenCard !== null,
+          influence_level: plan.runtime.influence_level,
+          cards: rewrittenCard ? [rewrittenCard] : [],
+        },
         display: {
           enabled: attachment !== null,
           attachments: attachment ? [attachment] : [],
@@ -391,11 +423,27 @@ export class MediaGenerationService {
           status: 'succeeded',
           provider: job.provider,
           model_ref: job.model_name,
+          input_mode: job.input_mode,
+          aspect_ratio_hint: job.aspect_ratio_hint,
           attempt_count: job.attempt_count,
           output_asset_id: job.output_asset_id,
           error_code: null,
         },
       })
+      if (rewrittenCard && snapshot) {
+        await this.deps.mediaObservabilityService?.record({
+          event_type: 'generation_output_rewritten',
+          surface: resolveMediaObservabilitySurface(plan.scene_ref),
+          agent_id: job.agent_id,
+          image_plan_id: plan.id,
+          generation_job_id: job.id,
+          asset_id: job.output_asset_id,
+          payload_json: {
+            card_source_kind: rewrittenCard.source.kind,
+            summary_source: snapshot.schema_version,
+          },
+        })
+      }
       return
     }
 
@@ -409,6 +457,8 @@ export class MediaGenerationService {
           status: job.status,
           provider: job.provider,
           model_ref: job.model_name,
+          input_mode: job.input_mode,
+          aspect_ratio_hint: job.aspect_ratio_hint,
           attempt_count: job.attempt_count,
           output_asset_id: job.output_asset_id ?? undefined,
           error_code: job.error_code,
@@ -447,14 +497,80 @@ export class MediaGenerationService {
 function resolveGeneratedOutputSourceKind(
   plan: PersistedImagePlan | null,
 ): 'generated_public' | 'private_derived_public' {
+  const runtimeDerivedFromPrivate = plan?.runtime.cards.some((card) => card.source.derived_from_private) ?? false
   const runtimeSourceKinds = plan?.runtime.cards.map((card) => card.source.kind) ?? []
   const selectedSourceKinds = plan?.selected_sources.map((source) => source.source_kind) ?? []
-  const hasPrivateOrigin = [...runtimeSourceKinds, ...selectedSourceKinds].some((sourceKind) =>
+  const hasPrivateOrigin = runtimeDerivedFromPrivate || [...runtimeSourceKinds, ...selectedSourceKinds].some((sourceKind) =>
     sourceKind === 'owner_private_pool'
     || sourceKind === 'private_runtime_projection'
     || sourceKind === 'private_derived_public',
   )
   return hasPrivateOrigin ? 'private_derived_public' : 'generated_public'
+}
+
+function buildGeneratedOutputRuntimeCard(
+  plan: PersistedImagePlan,
+  asset: MediaAsset,
+  snapshot: MediaSemanticSnapshot,
+): PublicMediaContextCard {
+  const previousCard = plan.runtime.cards[0] ?? null
+  const sourceKind = resolveGeneratedOutputSourceKind(plan)
+  const derivedFromPrivate = sourceKind === 'private_derived_public'
+  return {
+    schema_version: 'public-media-context-card.v1',
+    card_id: previousCard?.card_id ?? `generated-output:${asset.id}`,
+    modality: 'image',
+    asset_ref: {
+      asset_id: asset.id,
+      semantic_snapshot_id: snapshot.id,
+      projection_id: previousCard?.asset_ref.projection_id ?? `generated-output:${asset.id}`,
+    },
+    source: {
+      kind: sourceKind,
+      derived_from_private: derivedFromPrivate,
+      continuity_ref: previousCard?.source.continuity_ref ?? (
+        plan.scene_ref.thread_root_ref
+          ? { thread_root_ref: plan.scene_ref.thread_root_ref }
+          : undefined
+      ),
+    },
+    relation: {
+      visual_role: previousCard?.relation.visual_role ?? 'illustration',
+      prompt_weight: previousCard?.relation.prompt_weight ?? 'secondary',
+      mention_policy: previousCard?.relation.mention_policy ?? 'allude',
+      why_now: previousCard?.relation.why_now ?? '由生成结果为当前场景补足视觉锚点。',
+    },
+    public_summary: {
+      theme: snapshot.summary.theme,
+      scene: snapshot.summary.scene,
+      mood: snapshot.summary.mood,
+      salient_entities: snapshot.summary.salient_entities.slice(0, 5),
+      discussion_points: snapshot.summary.discussion_points.slice(0, 5),
+      public_safe_caption: snapshot.summary.public_safe_summary,
+      alt_text: snapshot.summary.public_safe_summary,
+      ...(snapshot.summary.ocr_snippets.length > 0
+        ? { ocr_snippets: snapshot.summary.ocr_snippets.slice(0, 3) }
+        : {}),
+    },
+    display: {
+      original_display_allowed: false,
+      derivative_display_allowed: true,
+      preferred_variant: 'derivative',
+    },
+    governance: {
+      public_scope: previousCard?.governance.public_scope ?? 'community_public',
+      disclose_origin_policy: derivedFromPrivate ? 'never' : 'public_only',
+      cross_agent_quote_allowed: false,
+      prohibited_reference_types: previousCard?.governance.prohibited_reference_types
+        ?? ['owner_private_speech', 'private_memory', 'hidden_director_goal'],
+      expires_at: previousCard?.governance.expires_at ?? null,
+    },
+    audit: {
+      confidence: snapshot.summary.confidence,
+      relevance_score: previousCard?.audit.relevance_score ?? 0.8,
+      model_version: snapshot.model_version,
+    },
+  }
 }
 
 function uniquePlans(plans: PersistedImagePlan[]): PersistedImagePlan[] {

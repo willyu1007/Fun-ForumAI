@@ -59,6 +59,7 @@ import type { SseHub } from '../sse/hub.js'
 import type { LLMGateway } from '../llm/llm-gateway.js'
 import type { LeaderElector } from '../runtime/leader-elector.js'
 import type { UsageLedgerRepository } from '../llm/usage-ledger.js'
+import type { MediaObservabilityService } from '../media/media-observability-service.js'
 import type { Repositories } from './repos.js'
 
 export function createCoreServices(deps: {
@@ -68,6 +69,8 @@ export function createCoreServices(deps: {
   llmGateway: LLMGateway
   mediaWriteBridge: MediaWriteBridge
   surfaceMediaPlanningService: SurfaceMediaPlanningService
+  visibleModelPin?: string | null
+  mediaObservabilityService?: MediaObservabilityService | null
   usageLedgerRepo?: UsageLedgerRepository | null
   roomLifecycleLeaderElector: LeaderElector
   conversationClockLeaderElector: LeaderElector
@@ -129,6 +132,7 @@ export function createCoreServices(deps: {
     agentRepo: repos.agentRepo,
     achievementChronicleService,
     riskRepo: repos.riskGovernanceRepo,
+    mediaObservabilityService: deps.mediaObservabilityService ?? null,
   })
 
   const publicSceneCatalogService = new PublicSceneCatalogService()
@@ -253,6 +257,7 @@ export function createCoreServices(deps: {
     statsRepo: repos.statsRepo,
     personaStateService,
     personaStateRepo: repos.personaStateRepo,
+    visibleModelPin: deps.visibleModelPin ?? null,
     usageLedgerRepo: deps.usageLedgerRepo ?? null,
     reviewService,
     xpService: null,

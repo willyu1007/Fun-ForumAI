@@ -65,9 +65,14 @@ export class AgentExecutor {
         && this.deps.surfaceMediaPlanningService
       ) {
         try {
+          const postId = ctx.targetComment?.post_id ?? event.post_id ?? null
+          if (!postId) {
+            throw new Error('forum_comment_media_plan_missing_post_id')
+          }
           const plan = await this.deps.surfaceMediaPlanningService.prepareForumCommentPlan({
             agent_id: agent.agent_id,
             community_id: ctx.community.id,
+            post_id: postId,
             focus_hint: ctx.targetComment?.body ?? ctx.public_scene.local_intent_block,
             payload: ctx.public_scene,
           })
@@ -104,6 +109,7 @@ export class AgentExecutor {
             room_name: ctx.chatContext.room_name,
             room_description: ctx.chatContext.room_description ?? '',
             community_id: ctx.community.id,
+            parent_message_id: event.target_type === 'MESSAGE' ? event.target_id ?? null : null,
             semantic_hint: semanticHint,
             message_kind: 'normal',
             live_hook: ctx.chat_prompt_variables?.live_hook || ctx.chatContext.program?.live_hook,

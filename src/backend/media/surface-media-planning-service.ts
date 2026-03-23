@@ -37,11 +37,13 @@ export class SurfaceMediaPlanningService {
   async prepareForumCommentPlan(input: {
     agent_id: string
     community_id: string
+    post_id: string
     focus_hint: string
     payload: PublicSceneWritePayload
   }): Promise<PreparedSurfaceVisualPlan | null> {
     const directive = await this.deps.visualDirectiveService.createForumCommentDirective({
       community_id: input.community_id,
+      post_id: input.post_id,
       focus_hint: input.focus_hint,
       payload: input.payload,
     })
@@ -57,6 +59,7 @@ export class SurfaceMediaPlanningService {
     room_name: string
     room_description: string
     community_id?: string | null
+    parent_message_id?: string | null
     semantic_hint: string
     message_kind?: ChatMessageKind | null
     live_hook?: string | null
@@ -68,6 +71,7 @@ export class SurfaceMediaPlanningService {
       room_name: input.room_name,
       room_description: input.room_description,
       community_id: input.community_id ?? null,
+      parent_message_id: input.parent_message_id ?? null,
       semantic_hint: input.semantic_hint,
       message_kind: input.message_kind ?? null,
       live_hook: input.live_hook ?? null,

@@ -93,6 +93,7 @@ export const config = {
   llm: {
     provider: env.LLM_PROVIDER || 'dashscope-openai',
     model: env.LLM_MODEL || 'qwen-plus-character',
+    visibleModelPin: env.LLM_VISIBLE_MODEL_PIN?.trim() || null,
     baseUrl: env.LLM_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     maxTokens: safeInt(env.LLM_MAX_TOKENS, 512),
     temperature: safeFloat(env.LLM_TEMPERATURE, 0.8),
@@ -125,7 +126,7 @@ export const config = {
     orphanGraceHours: safeInt(env.MEDIA_LIFECYCLE_ORPHAN_GRACE_HOURS, 72),
     expiredProjectionRetentionHours: safeInt(env.MEDIA_LIFECYCLE_EXPIRED_PROJECTION_RETENTION_HOURS, 24),
     snapshotTargetSchemaVersion:
-      env.MEDIA_SNAPSHOT_TARGET_SCHEMA_VERSION || 'media_semantic_summary.v1',
+      env.MEDIA_SNAPSHOT_TARGET_SCHEMA_VERSION || 'media_semantic_summary.v2',
     snapshotTargetModelVersion: env.MEDIA_SNAPSHOT_TARGET_MODEL_VERSION || '',
     snapshotBackfillBatchSize: safeInt(env.MEDIA_SNAPSHOT_BACKFILL_BATCH_SIZE, 20),
   },

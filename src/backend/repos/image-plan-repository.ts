@@ -29,7 +29,9 @@ function cuid(): string {
 function defaultGeneration(): PersistedImagePlan['generation'] {
   return {
     mode: 'none',
+    input_mode: 'reference',
     status: 'not_requested',
+    aspect_ratio_hint: null,
   }
 }
 

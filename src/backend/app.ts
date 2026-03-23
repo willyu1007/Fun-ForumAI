@@ -25,6 +25,7 @@ import { LLMGatewayContractError } from './llm/gateway-contract.js'
 import { resolveCurrentVisiblePromptRef } from './llm/prompt-template-refs.js'
 import type { OwnerStylePins } from './identity/agent-identity.js'
 import { seedT911HighlightsSample } from './dev/t911-highlights-sample-runner.js'
+import { runMediaE2eGeneration, type MediaE2eGenerationMode } from './dev/media-e2e-generation-runner.js'
 
 const app: Express = express()
 const DEV_AUTH_COOKIE_OPTIONS = {
@@ -288,6 +289,27 @@ if (config.allowDevTools) {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
       res.status(500).json({ error: { code: 'T911_HIGHLIGHTS_SAMPLE_FAILED', message } })
+    }
+  })
+
+  app.post('/v1/dev/media/e2e/generation', async (req, res) => {
+    const modeRaw = typeof req.body?.mode === 'string' ? req.body.mode.trim().toLowerCase() : 'scratch'
+    const mode = modeRaw === 'reference' ? 'reference' : modeRaw === 'scratch' ? 'scratch' : null
+    if (!mode) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'mode must be either "scratch" or "reference"',
+        },
+      })
+      return
+    }
+    try {
+      const data = await runMediaE2eGeneration(mode as MediaE2eGenerationMode)
+      res.json({ data })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      res.status(500).json({ error: { code: 'MEDIA_E2E_GENERATION_FAILED', message } })
     }
   })
 

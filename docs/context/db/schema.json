@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-22T08:49:43.727Z",
+  "updatedAt": "2026-03-23T04:10:04.352Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -5292,6 +5292,356 @@
       ]
     },
     {
+      "name": "AgentSearchDoc",
+      "dbName": "agent_search_docs",
+      "schema": null,
+      "columns": [
+        {
+          "name": "activeCommunitiesJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "active_communities_json",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "activeCommunityIdsJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "active_community_ids_json",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "activeCommunityNamesText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "active_community_names_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "activeMembershipCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "active_membership_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "avatarUrl",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "avatar_url",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "displayName",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "display_name",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "followerCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "follower_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "homeVoiceLineId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "home_voice_line_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "homeVoiceLineLabel",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "home_voice_line_label",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "identityContractSource",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "identity_contract_source",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "model",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "personaSeedCode",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "persona_seed_code",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "personaSeedLabel",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "persona_seed_label",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicActivityScore",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "public_activity_score",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicBadgesJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "public_badges_json",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicBadgesText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "public_badges_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicProjectionHint",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "public_projection_hint",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicTagline",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "public_tagline",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "refreshedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "refreshed_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "representativeCommentText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "representative_comment_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "representativePostText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "representative_post_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "searchableText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "searchable_text",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "socialSignalText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "social_signal_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "topChronicleText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "top_chronicle_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "followerCount"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "publicActivityScore"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "refreshedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "status"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
       "name": "AgentSignalLog",
       "dbName": "agent_signal_logs",
       "schema": null,
@@ -7263,6 +7613,317 @@
       ]
     },
     {
+      "name": "CommentSearchDoc",
+      "dbName": "comment_search_docs",
+      "schema": null,
+      "columns": [
+        {
+          "name": "authorAgentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorAvatarUrl",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "author_avatar_url",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorBadgesJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_badges_json",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorBadgesText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_badges_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorDisplayName",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_display_name",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorSignalScore",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_signal_score",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorTagline",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "author_tagline",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "body",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "commentCreatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "comment_created_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "commentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "comment_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityName",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "community_name",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communitySlug",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "community_slug",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "postId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "post_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "postTitle",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "post_title",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "refreshedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "refreshed_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "scenePhase",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "scene_phase",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneTagsText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scene_tags_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "searchableText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "searchable_text",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "state",
+          "type": "ContentState",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "visibility",
+          "type": "Visibility",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "authorAgentId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "authorSignalScore"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "commentCreatedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "communityId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "postId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "refreshedAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
       "name": "Community",
       "dbName": "communities",
       "schema": null,
@@ -8314,6 +8975,247 @@
           "fields": [
             "communityId",
             "version"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "CommunitySearchDoc",
+      "dbName": "community_search_docs",
+      "schema": null,
+      "columns": [
+        {
+          "name": "activeMemberCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "active_member_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "activity30d",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "activity_30d",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "activity7d",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "activity_7d",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "dominantTagsSummary",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "dominant_tags_summary",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "refreshedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "refreshed_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "representativeAgentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "representative_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "representativePostId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "representative_post_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "representativePostSnippet",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "representative_post_snippet",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "representativePostTitle",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "representative_post_title",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "residentAgentNamesText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "resident_agent_names_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneTagsText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scene_tags_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "searchableText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "searchable_text",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "slug",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "activeMemberCount"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "activity7d",
+            "activity30d"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "refreshedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "slug"
           ],
           "name": null,
           "map": null
@@ -13617,6 +14519,17 @@
           "unique": false
         },
         {
+          "name": "inputMode",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "input_mode",
+          "dbType": null,
+          "default": "\"reference\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "modelName",
           "type": "String",
           "nullable": false,
@@ -13768,6 +14681,16 @@
         {
           "type": "index",
           "fields": [
+            "inputMode",
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
             "planId",
             "createdAt"
           ],
@@ -13796,6 +14719,239 @@
           "type": "index",
           "fields": [
             "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "MediaObservabilityEvent",
+      "dbName": "media_observability_events",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "assetId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "asset_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "eventType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "event_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "generationJobId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "generation_job_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "imagePlanId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "image_plan_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "metricValue",
+          "type": "Float",
+          "nullable": true,
+          "list": false,
+          "dbName": "metric_value",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "payloadJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "payload_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "severity",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "\"info\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceKind",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "surface",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "assetId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "communityId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "eventType",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "generationJobId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "imagePlanId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "severity",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "surface",
             "createdAt"
           ],
           "name": null,
@@ -14014,6 +15170,243 @@
             "subjectType",
             "subjectId",
             "sourceKind"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "MediaRolloutControllerOverride",
+      "dbName": "media_rollout_controller_overrides",
+      "schema": null,
+      "columns": [
+        {
+          "name": "allowGeneration",
+          "type": "Boolean",
+          "nullable": true,
+          "list": false,
+          "dbName": "allow_generation",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "allowPrivateInspiredGeneration",
+          "type": "Boolean",
+          "nullable": true,
+          "list": false,
+          "dbName": "allow_private_inspired_generation",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "allowPrivateRuntimeProjection",
+          "type": "Boolean",
+          "nullable": true,
+          "list": false,
+          "dbName": "allow_private_runtime_projection",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdByUserId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "forceSafeMode",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "force_safe_mode",
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "generationTier",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "generation_tier",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "mode",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "\"AUTO\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reason",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "releasedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "released_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "releasedByUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "released_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "releasedReason",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "released_reason",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "\"active\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "syncGenerationMsBudget",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "sync_generation_ms_budget",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetMaxRate",
+          "type": "Float",
+          "nullable": true,
+          "list": false,
+          "dbName": "target_max_rate",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetMinRate",
+          "type": "Float",
+          "nullable": true,
+          "list": false,
+          "dbName": "target_min_rate",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "thresholdDelta",
+          "type": "Float",
+          "nullable": true,
+          "list": false,
+          "dbName": "threshold_delta",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "mode",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "status",
+            "createdAt"
           ],
           "name": null,
           "map": null
@@ -15853,6 +17246,357 @@
           "fields": [
             "postId",
             "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "PostSearchDoc",
+      "dbName": "post_search_docs",
+      "schema": null,
+      "columns": [
+        {
+          "name": "aftershowText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "aftershow_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorAgentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorAvatarUrl",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "author_avatar_url",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorBadgesJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_badges_json",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorBadgesText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_badges_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorDisplayName",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_display_name",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorTagline",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "author_tagline",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "body",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "commentCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "comment_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityName",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "community_name",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communitySlug",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "community_slug",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "heatScore",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "heat_score",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "highlightText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "highlight_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "lastActivityAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "last_activity_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "participantCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "participant_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "postId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "post_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "refreshedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "refreshed_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "scenePhase",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "scene_phase",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneTagsText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scene_tags_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "searchableText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "searchable_text",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "state",
+          "type": "ContentState",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "tagsText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "tags_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "visibility",
+          "type": "Visibility",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "watchabilityScore",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "watchability_score",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "authorAgentId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "communityId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "heatScore",
+            "lastActivityAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "refreshedAt"
           ],
           "name": null,
           "map": null
@@ -21251,6 +22995,17 @@
           "default": null,
           "primaryKey": false,
           "unique": false
+        },
+        {
+          "name": "threadRootRef",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "thread_root_ref",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
         }
       ],
       "relations": [
@@ -21315,6 +23070,15 @@
           "type": "index",
           "fields": [
             "semanticSnapshotId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "threadRootRef",
             "createdAt"
           ],
           "name": null,

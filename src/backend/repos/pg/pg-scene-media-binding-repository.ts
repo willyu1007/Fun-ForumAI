@@ -15,6 +15,7 @@ export class PgSceneMediaBindingRepository implements SceneMediaBindingRepositor
         ...(input.id ? { id: input.id } : {}),
         sceneType: input.scene_type,
         sceneId: input.scene_id,
+        threadRootRef: input.thread_root_ref ?? null,
         assetId: input.asset_id,
         semanticSnapshotId: input.semantic_snapshot_id,
         sourceSceneType: input.source_scene_type ?? null,
@@ -51,6 +52,22 @@ export class PgSceneMediaBindingRepository implements SceneMediaBindingRepositor
     const rows = await this.prisma.sceneMediaBinding.findMany({
       where: { assetId: { in: assetIds } },
       orderBy: [{ createdAt: 'desc' }],
+    })
+    return rows.map((row) => this.toDomain(row))
+  }
+
+  async findByThreadRootRef(
+    threadRootRef: string,
+    options?: {
+      limit?: number
+    },
+  ): Promise<SceneMediaBinding[]> {
+    const rows = await this.prisma.sceneMediaBinding.findMany({
+      where: { threadRootRef },
+      orderBy: [{ createdAt: 'desc' }],
+      ...(typeof options?.limit === 'number' && options.limit > 0
+        ? { take: options.limit }
+        : {}),
     })
     return rows.map((row) => this.toDomain(row))
   }
@@ -107,6 +124,7 @@ export class PgSceneMediaBindingRepository implements SceneMediaBindingRepositor
       id: row.id,
       scene_type: row.sceneType as SceneMediaBinding['scene_type'],
       scene_id: row.sceneId,
+      thread_root_ref: row.threadRootRef,
       asset_id: row.assetId,
       semantic_snapshot_id: row.semanticSnapshotId,
       source_scene_type: row.sourceSceneType,

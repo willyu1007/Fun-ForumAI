@@ -36,6 +36,8 @@ Options:
   --dockerfile <path>             Dockerfile used for the backend image build (default: ops/packaging/services/llm-forum.Dockerfile)
   --build-context <path>          Docker build context (default: .)
   --skip-image-refresh            Skip local docker build + kind load (explicit stale-image opt-out)
+  --skip-image-build              Skip local docker build but still allow kind image load
+  --skip-kind-load                Skip kind image load after selecting/building the image
   --kind-cluster-name <name>      Kind cluster name when loading image (default: funforum)
   --create-kind-if-missing        Optional: auto-create kind cluster when context is missing
   --skip-db-migrate               Optional: skip "pnpm db:migrate:deploy" against in-cluster Postgres
@@ -157,22 +159,53 @@ async function maybeRefreshImage({
   buildContext,
   clusterName,
   skipImageRefresh,
+  skipImageBuild,
+  skipKindLoad,
 }) {
   if (skipImageRefresh) {
     console.warn(`[staging] WARN: skip-image-refresh=true; reusing existing image ${imageTag}`)
     return
   }
-  await ensureCommandExists('docker')
-  console.log(`[staging] Building backend image: ${imageTag}`)
-  await runCommandCapture('docker', [
-    'build',
-    '-f',
-    String(dockerfile),
-    '-t',
-    String(imageTag),
-    String(buildContext),
-  ])
+  if (!skipImageBuild) {
+    await ensureCommandExists('docker')
+    console.log(`[staging] Building backend image: ${imageTag}`)
+    await runCommandCapture('docker', [
+      'build',
+      '-f',
+      String(dockerfile),
+      '-t',
+      String(imageTag),
+      String(buildContext),
+    ])
+  } else {
+    console.warn(`[staging] WARN: skip-image-build=true; reusing local docker image ${imageTag}`)
+  }
+
+  if (skipKindLoad) {
+    console.warn(`[staging] WARN: skip-kind-load=true; cluster will reuse whatever image is already cached for ${imageTag}`)
+    return
+  }
+
   await maybeKindLoadImage(imageTag, clusterName)
+}
+
+async function waitForDeploymentRollout({
+  context,
+  namespace,
+  deployment,
+  timeoutSeconds = 180,
+}) {
+  await runCommandCapture(
+    'kubectl',
+    kubectlArgs(context, [
+      'rollout',
+      'status',
+      `deploy/${String(deployment)}`,
+      '-n',
+      String(namespace),
+      `--timeout=${Number(timeoutSeconds)}s`,
+    ]),
+  )
 }
 
 async function startServicePortForward({
@@ -394,6 +427,8 @@ async function main() {
     dockerfile: 'ops/packaging/services/llm-forum.Dockerfile',
     buildContext: '.',
     skipImageRefresh: false,
+    skipImageBuild: false,
+    skipKindLoad: false,
     kindClusterName: 'funforum',
     createKindIfMissing: false,
     skipDbMigrate: false,
@@ -457,10 +492,24 @@ async function main() {
     buildContext: buildContextPath,
     clusterName: args.kindClusterName,
     skipImageRefresh: Boolean(args.skipImageRefresh),
+    skipImageBuild: Boolean(args.skipImageBuild),
+    skipKindLoad: Boolean(args.skipKindLoad),
   })
 
   console.log(`[staging] Applying overlay: ${overlayPath}`)
   await runCommandCapture('kubectl', kubectlArgs(args.k8sContext, ['apply', '-k', overlayPath]))
+
+  console.log('[staging] Waiting for postgres and redis rollouts...')
+  await waitForDeploymentRollout({
+    context: args.k8sContext,
+    namespace: args.k8sNamespace,
+    deployment: 'postgres',
+  })
+  await waitForDeploymentRollout({
+    context: args.k8sContext,
+    namespace: args.k8sNamespace,
+    deployment: 'redis',
+  })
 
   if (!args.skipDbMigrate) {
     console.log('[staging] Running database migrations (pnpm db:migrate:deploy)...')

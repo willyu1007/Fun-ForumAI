@@ -35,6 +35,9 @@ export interface MediaSemanticSummary {
   theme: string
   scene: string
   mood: string
+  confidence: number
+  composition: string
+  style_tags: string[]
   discussion_points: string[]
   salient_entities: string[]
   ocr_snippets: string[]
@@ -166,6 +169,7 @@ export interface SceneMediaBinding {
   id: string
   scene_type: MediaSceneType
   scene_id: string
+  thread_root_ref: string | null
   asset_id: string
   semantic_snapshot_id: string
   source_scene_type: string | null
@@ -183,6 +187,7 @@ export interface CreateSceneMediaBindingInput {
   id?: string
   scene_type: MediaSceneType
   scene_id: string
+  thread_root_ref?: string | null
   asset_id: string
   semantic_snapshot_id: string
   source_scene_type?: string | null
@@ -363,6 +368,10 @@ export type MediaGenerationJobStatus =
   | 'timed_out'
   | 'cancelled'
 
+export type MediaGenerationInputMode =
+  | 'reference'
+  | 'scratch'
+
 export interface MediaGenerationJob {
   id: string
   agent_id: string
@@ -373,6 +382,7 @@ export interface MediaGenerationJob {
   request_fingerprint: string
   prompt_brief: string
   style_hint: string | null
+  input_mode: MediaGenerationInputMode
   aspect_ratio_hint: AspectRatioHint | null
   based_on_projection_ids: string[]
   attempt_count: number
@@ -395,6 +405,7 @@ export interface CreateMediaGenerationJobInput {
   request_fingerprint: string
   prompt_brief: string
   style_hint?: string | null
+  input_mode?: MediaGenerationInputMode
   aspect_ratio_hint?: AspectRatioHint | null
   based_on_projection_ids: string[]
   attempt_count?: number
@@ -438,11 +449,15 @@ export type MediaObservabilityEventType =
   | 'generation_timed_out'
   | 'generation_cancelled'
   | 'generation_sync_degraded'
+  | 'generation_output_rewritten'
   | 'display_attach_failed'
   | 'projection_recompiled'
   | 'public_prompt_audit_blocked'
   | 'policy_candidate_blocked'
   | 'policy_revoked'
+  | 'asset_promoted_to_public_archive'
+  | 'asset_demoted_from_public_archive'
+  | 'root_post_read_model_parity_mismatch'
   | 'private_origin_projection_used'
   | 'private_leak_blocked'
   | 'runtime_only_downgraded'
@@ -534,6 +549,7 @@ export interface SceneRef {
   request_id: string
   director_surface: DirectorSurface
   actor_surface: ActorSurface
+  thread_root_ref?: string | null
   community_id?: string | null
   room_id?: string | null
   post_id?: string | null
@@ -592,6 +608,7 @@ export interface VisualDirective {
   }
   guardrails: {
     privacy_mode: LocalPrivacyMode
+    safe_mode?: boolean
     memory_scope: LocalMemoryScope
     reference_scope: LocalReferenceScope
     display_policy: DisplayPolicy
@@ -668,6 +685,7 @@ export interface PublicMediaContextCard {
     continuity_ref?: {
       episode_id?: string | null
       thread_post_id?: string | null
+      thread_root_ref?: string | null
     }
   }
   relation: {
@@ -880,6 +898,7 @@ export interface ImagePlan {
   }
   generation?: {
     mode: 'none' | 'sync' | 'async'
+    input_mode?: MediaGenerationInputMode
     status:
       | 'not_requested'
       | 'queued'
@@ -892,6 +911,7 @@ export interface ImagePlan {
     provider?: string
     model_ref?: string
     request_fingerprint?: string
+    aspect_ratio_hint?: AspectRatioHint | null
     based_on_projection_ids?: string[]
     prompt_brief?: string
     attempt_count?: number

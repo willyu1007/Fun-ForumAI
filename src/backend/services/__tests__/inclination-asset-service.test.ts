@@ -9,11 +9,15 @@ import { InMemoryMediaContextProjectionRepository } from '../../repos/media-cont
 import { InMemoryPostMediaRepository } from '../../repos/post-media-repository.js'
 import { InMemoryImagePlanRepository } from '../../repos/image-plan-repository.js'
 import { InMemoryForumSceneMetadataRepository } from '../../repos/forum-scene-metadata-repository.js'
+import { InMemoryMediaReusePolicyRepository } from '../../repos/media-reuse-policy-repository.js'
+import { InMemoryMediaGenerationJobRepository } from '../../repos/media-generation-job-repository.js'
 import { MediaAssetService } from '../../media/media-asset-service.js'
 import { MediaBindingService } from '../../media/media-binding-service.js'
 import { MediaProjectionService } from '../../media/media-projection-service.js'
+import { MediaReuseGovernanceService } from '../../media/media-reuse-governance-service.js'
 import { MediaWriteBridge } from '../../media/media-write-bridge.js'
 import type { MediaSemanticService } from '../../media/media-semantic-service.js'
+import { buildMediaSemanticSummary } from '../../test-utils/media-fixtures.js'
 
 const { lookupMock } = vi.hoisted(() => ({
   lookupMock: vi.fn(),
@@ -63,17 +67,15 @@ function createService() {
       model_version: 'test-model',
       extraction_status: 'completed' as const,
       quality_grade: 'rich' as const,
-      summary: {
+      summary: buildMediaSemanticSummary({
         theme: 'theme',
         scene: 'scene',
         mood: 'mood',
         discussion_points: ['point-1', 'point-2', 'point-3'],
         salient_entities: ['entity-1'],
-        ocr_snippets: [],
-        safety_labels: [],
         public_safe_summary: 'safe summary',
         internal_full_summary: 'full summary',
-      },
+      }),
     })),
   }
 
@@ -82,6 +84,16 @@ function createService() {
   })
   const mediaProjectionService = new MediaProjectionService({
     mediaContextProjectionRepo,
+  })
+  const mediaReuseGovernanceService = new MediaReuseGovernanceService({
+    mediaAssetRepo,
+    mediaSemanticSnapshotRepo,
+    sceneMediaBindingRepo,
+    mediaContextProjectionRepo,
+    mediaReusePolicyRepo: new InMemoryMediaReusePolicyRepository(),
+    mediaGenerationJobRepo: new InMemoryMediaGenerationJobRepository(),
+    imagePlanRepo,
+    mediaBindingService,
   })
   const mediaWriteBridge = new MediaWriteBridge({
     mediaAssetRepo,
@@ -94,6 +106,7 @@ function createService() {
     storage,
     mediaBindingService,
     mediaProjectionService,
+    mediaReuseGovernanceService,
   })
   const mediaAssetService = new MediaAssetService({
     mediaAssetRepo,
@@ -110,6 +123,7 @@ function createService() {
   const service = new InclinationAssetService({
     agentRepo,
     mediaAssetService,
+    mediaReuseGovernanceService,
   })
 
   return {
@@ -118,6 +132,7 @@ function createService() {
     agent,
     mediaAssetService,
     mediaAssetRepo,
+    mediaReuseGovernanceService,
   }
 }
 
@@ -289,7 +304,17 @@ describe('InclinationAssetService', () => {
     }
 
     const oldestCandidateId = createdIds[0]!
+    await service.promoteAsset({
+      agent_id: agent.id,
+      owner_user_id: ownerUserId,
+      asset_id: oldestCandidateId,
+    })
     for (const assetId of createdIds.slice(1).reverse()) {
+      await service.promoteAsset({
+        agent_id: agent.id,
+        owner_user_id: ownerUserId,
+        asset_id: assetId,
+      })
       await mediaAssetService.attachAssetToForumPost({
         asset_id: assetId,
         post_id: `post-${assetId}`,
@@ -316,6 +341,11 @@ describe('InclinationAssetService', () => {
     expect(asset).toBeTruthy()
     if (!asset) return
     asset.created_at = new Date('2026-01-01T00:00:00.000Z')
+    await service.promoteAsset({
+      agent_id: agent.id,
+      owner_user_id: ownerUserId,
+      asset_id: asset.id,
+    })
 
     await new Promise((resolve) => setTimeout(resolve, 20))
     await mediaAssetService.attachAssetToForumPost({
@@ -351,5 +381,39 @@ describe('InclinationAssetService', () => {
     })
 
     expect(result.linked).toBe(false)
+  })
+
+  it('supports owner promote and demote round trips without leaving the asset publicly attachable', async () => {
+    const { service, ownerUserId, agent, mediaAssetService } = createService()
+    const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    const bytes = Buffer.concat([pngSignature, Buffer.alloc(128)])
+
+    const created = await service.createFromUpload({
+      agent_id: agent.id,
+      owner_user_id: ownerUserId,
+      mime_type: 'image/png',
+      bytes,
+      owner_note: 'round-trip',
+    })
+
+    const promoted = await service.promoteAsset({
+      agent_id: agent.id,
+      owner_user_id: ownerUserId,
+      asset_id: created.asset_id,
+    })
+    expect(promoted.visibility_policy).toBe('public_original_allowed')
+
+    const demoted = await service.demoteAsset({
+      agent_id: agent.id,
+      owner_user_id: ownerUserId,
+      asset_id: created.asset_id,
+    })
+    expect(demoted.visibility_policy).toBe('private_only')
+
+    const attachResult = await mediaAssetService.attachAssetToForumPost({
+      asset_id: created.asset_id,
+      post_id: 'post-after-demote',
+    })
+    expect(attachResult.linked).toBe(false)
   })
 })

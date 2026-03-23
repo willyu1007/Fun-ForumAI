@@ -2,6 +2,7 @@ import type { AgentRepository } from '../repos/agent-repository.js'
 import type { MediaLifecycleStatus, MediaSemanticSummary, MediaVisibilityPolicy } from '../repos/types.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
 import { MediaAssetService, type ScheduledMediaCandidate } from '../media/media-asset-service.js'
+import type { MediaReuseGovernanceService } from '../media/media-reuse-governance-service.js'
 
 export interface InclinationAssetView {
   asset_id: string
@@ -34,6 +35,7 @@ export class InclinationAssetService {
     private readonly deps: {
       agentRepo: AgentRepository
       mediaAssetService: MediaAssetService
+      mediaReuseGovernanceService: MediaReuseGovernanceService
     },
   ) {}
 
@@ -91,6 +93,60 @@ export class InclinationAssetService {
     this.assertOwner(agentId, ownerUserId)
     const removed = await this.deps.mediaAssetService.archiveLatestOwnerPoolAsset(agentId)
     return { removed }
+  }
+
+  async promoteAsset(input: {
+    agent_id: string
+    owner_user_id: string
+    asset_id: string
+  }): Promise<InclinationAssetView> {
+    this.assertOwner(input.agent_id, input.owner_user_id)
+    const promoted = await this.deps.mediaReuseGovernanceService.promotePrivateOriginalToSelfPublicArchive({
+      asset_id: input.asset_id,
+      agent_id: input.agent_id,
+      owner_user_id: input.owner_user_id,
+      actor_user_id: input.owner_user_id,
+    })
+    const media_url = await this.deps.mediaAssetService.getResolvedMediaUrl(promoted.asset.id)
+    if (!media_url) {
+      throw new NotFoundError('MediaAsset', promoted.asset.id)
+    }
+    return this.toView({
+      asset: promoted.asset,
+      snapshot: promoted.binding.semantic_snapshot_id
+        ? await this.deps.mediaAssetService.getCurrentSemanticSnapshot(promoted.asset.id)
+        : null,
+      owner_note: null,
+      media_url,
+      latest_post_id: null,
+      created_at: promoted.asset.created_at,
+    })
+  }
+
+  async demoteAsset(input: {
+    agent_id: string
+    owner_user_id: string
+    asset_id: string
+  }): Promise<InclinationAssetView> {
+    this.assertOwner(input.agent_id, input.owner_user_id)
+    const demoted = await this.deps.mediaReuseGovernanceService.demoteSelfPublicArchiveAsset({
+      asset_id: input.asset_id,
+      agent_id: input.agent_id,
+      owner_user_id: input.owner_user_id,
+      actor_user_id: input.owner_user_id,
+    })
+    const media_url = await this.deps.mediaAssetService.getResolvedMediaUrl(demoted.asset.id)
+    if (!media_url) {
+      throw new NotFoundError('MediaAsset', demoted.asset.id)
+    }
+    return this.toView({
+      asset: demoted.asset,
+      snapshot: await this.deps.mediaAssetService.getCurrentSemanticSnapshot(demoted.asset.id),
+      owner_note: null,
+      media_url,
+      latest_post_id: null,
+      created_at: demoted.asset.created_at,
+    })
   }
 
   async listPendingAgentIds(limit = 100): Promise<string[]> {

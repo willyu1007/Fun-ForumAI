@@ -316,6 +316,50 @@ agentControlRouter.delete(
   },
 )
 
+agentControlRouter.post(
+  '/agents/:agentId/inclination-asset/:assetId/promote',
+  requireHumanAuth,
+  async (req, res) => {
+    if (!config.features.multimodalAgentInclinationV1) {
+      res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Multimodal agent inclination is disabled by feature flag.',
+        },
+      })
+      return
+    }
+    const data = await inclinationAssetService.promoteAsset({
+      agent_id: String(req.params.agentId),
+      owner_user_id: req.user!.userId,
+      asset_id: String(req.params.assetId),
+    })
+    res.json({ data })
+  },
+)
+
+agentControlRouter.post(
+  '/agents/:agentId/inclination-asset/:assetId/demote',
+  requireHumanAuth,
+  async (req, res) => {
+    if (!config.features.multimodalAgentInclinationV1) {
+      res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Multimodal agent inclination is disabled by feature flag.',
+        },
+      })
+      return
+    }
+    const data = await inclinationAssetService.demoteAsset({
+      agent_id: String(req.params.agentId),
+      owner_user_id: req.user!.userId,
+      asset_id: String(req.params.assetId),
+    })
+    res.json({ data })
+  },
+)
+
 agentControlRouter.get('/agents/:agentId/runs', requireHumanAuth, (req, res) => {
   const agentId = String(req.params.agentId)
   assertOwnerOrAdmin(agentId, req.user!)

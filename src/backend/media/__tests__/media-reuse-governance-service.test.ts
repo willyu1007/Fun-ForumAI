@@ -9,6 +9,7 @@ import { InMemoryImagePlanRepository } from '../../repos/image-plan-repository.j
 import { MediaBindingService } from '../media-binding-service.js'
 import { MediaReuseGovernanceService } from '../media-reuse-governance-service.js'
 import type { PersistedVisualDirective } from '../../repos/types.js'
+import { buildMediaSemanticSummary } from '../../test-utils/media-fixtures.js'
 
 function buildDirective(): PersistedVisualDirective {
   return {
@@ -102,6 +103,8 @@ function createService() {
   return {
     service,
     mediaAssetRepo,
+    mediaSemanticSnapshotRepo,
+    mediaReusePolicyRepo,
     sceneMediaBindingRepo,
     mediaContextProjectionRepo,
     mediaGenerationJobRepo,
@@ -110,7 +113,7 @@ function createService() {
 }
 
 describe('MediaReuseGovernanceService', () => {
-  it('allows same-agent owner_private_pool originals when the binding is public-compatible', async () => {
+  it('keeps owner_private_pool originals runtime-only even when evaluated by the owning agent', async () => {
     const { service, mediaAssetRepo, sceneMediaBindingRepo } = createService()
     const asset = await mediaAssetRepo.create({
       id: 'asset-owner-1',
@@ -145,7 +148,7 @@ describe('MediaReuseGovernanceService', () => {
     })
 
     expect(result.rejection_reason).toBeNull()
-    expect(result.allowed_reuse_modes).toContain('quote_original')
+    expect(result.allowed_reuse_modes).toEqual(['derive_new', 'reference_only'])
   })
 
   it('keeps source-specific policies isolated for the same asset subject', async () => {
@@ -556,5 +559,75 @@ describe('MediaReuseGovernanceService', () => {
       asset_id: asset.id,
       actor_user_id: 'admin-1',
     })).rejects.toThrow('private_message_upload assets cannot be registered into public pools')
+  })
+
+  it('demotes self_public_archive assets by revoking the pool policy and restoring private visibility when unused', async () => {
+    const { service, mediaAssetRepo, mediaReusePolicyRepo, mediaSemanticSnapshotRepo, sceneMediaBindingRepo } = createService()
+    const asset = await mediaAssetRepo.create({
+      id: 'asset-demote-1',
+      steward_agent_id: 'agent-1',
+      owner_user_id: 'owner-1',
+      source_kind: 'owner_console_upload',
+      visibility_policy: 'private_only',
+      lifecycle_status: 'active',
+      mime_type: 'image/png',
+      file_size_bytes: 1024,
+      sha256: 'sha-demote-1',
+    })
+    await sceneMediaBindingRepo.create({
+      scene_type: 'memory_card',
+      scene_id: 'owner_private_pool:agent-1',
+      asset_id: asset.id,
+      semantic_snapshot_id: 'snapshot-demote-1',
+      binding_role: 'memory',
+      relation_to_scene: 'uploaded_by_owner',
+      display_policy: 'runtime_only_no_display',
+      created_by_type: 'owner',
+      created_by_id: 'owner-1',
+    })
+    await mediaSemanticSnapshotRepo.create({
+      asset_id: asset.id,
+      snapshot_kind: 'visual_core',
+      schema_version: 'visual_core.v1',
+      model_provider: 'test',
+      model_name: 'test',
+      model_version: '1',
+      summary: buildMediaSemanticSummary({
+        theme: 'owner',
+        scene: 'demo',
+        mood: 'neutral',
+        discussion_points: ['demote flow'],
+        salient_entities: ['asset'],
+        public_safe_summary: 'Owner uploaded media.',
+        internal_full_summary: 'Owner uploaded media.',
+      }),
+      extraction_status: 'completed',
+      quality_grade: 'rich',
+      is_current: true,
+    })
+
+    await service.promotePrivateOriginalToSelfPublicArchive({
+      asset_id: asset.id,
+      agent_id: 'agent-1',
+      owner_user_id: 'owner-1',
+      actor_user_id: 'owner-1',
+    })
+
+    const demoted = await service.demoteSelfPublicArchiveAsset({
+      asset_id: asset.id,
+      agent_id: 'agent-1',
+      owner_user_id: 'owner-1',
+      actor_user_id: 'owner-1',
+    })
+
+    const updatedAsset = await mediaAssetRepo.findById(asset.id)
+    const updatedPolicy = await mediaReusePolicyRepo.findBySubject('asset', asset.id, 'self_public_archive')
+    const archiveBindings = await sceneMediaBindingRepo.findByScene('media_pool', 'self_public_archive:agent-1')
+
+    expect(demoted.binding_removed).toBe(true)
+    expect(demoted.visibility_reverted).toBe(true)
+    expect(updatedAsset?.visibility_policy).toBe('private_only')
+    expect(updatedPolicy?.status).toBe('revoked')
+    expect(archiveBindings).toEqual([])
   })
 })

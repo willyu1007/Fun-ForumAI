@@ -19,6 +19,7 @@ import { config } from '../lib/config.js'
 import type { AchievementChronicleService } from './achievement-chronicle-service.js'
 import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
 import { listSurfaceMediaAttachmentViews } from '../media/surface-media-view.js'
+import type { MediaObservabilityService } from '../media/media-observability-service.js'
 
 export interface ForumReadServiceDeps {
   postRepo: PostRepository
@@ -32,6 +33,7 @@ export interface ForumReadServiceDeps {
   agentRepo: AgentRepository
   achievementChronicleService?: AchievementChronicleService
   riskRepo?: RiskGovernanceRepository
+  mediaObservabilityService?: Pick<MediaObservabilityService, 'record'> | null
 }
 
 export interface PostMediaSummary {
@@ -285,7 +287,7 @@ export class ForumReadService {
     return { items: page, next_cursor }
   }
 
-  private async resolvePostMediaAltText(postIds: string[]): Promise<Record<string, Record<string, string | null>>> {
+  private async resolveLegacyPostMediaAltText(postIds: string[]): Promise<Record<string, Record<string, string | null>>> {
     if (postIds.length === 0) return {}
     const bindings = await this.deps.sceneMediaBindingRepo.findByScenes('forum_post', postIds)
     if (bindings.length === 0) return {}
@@ -312,6 +314,83 @@ export class ForumReadService {
       altByPostId[binding.scene_id]![binding.asset_id] = altByBindingId.get(binding.id) ?? null
     }
     return altByPostId
+  }
+
+  private async recordRootPostReadModelParity(input: {
+    post_id: string
+    attachment_media: PostMediaSummary[]
+    legacy_media: PostMediaSummary[]
+  }): Promise<void> {
+    if (!this.deps.mediaObservabilityService) return
+    const attachmentSignature = input.attachment_media.map((item) =>
+      `${item.asset_id}|${item.media_url}|${item.mime_type}`,
+    )
+    const legacySignature = input.legacy_media.map((item) =>
+      `${item.asset_id}|${item.media_url}|${item.mime_type}`,
+    )
+    if (attachmentSignature.join('||') === legacySignature.join('||')) {
+      return
+    }
+    await this.deps.mediaObservabilityService.record({
+      event_type: 'root_post_read_model_parity_mismatch',
+      surface: 'root_post',
+      severity: 'warn',
+      payload_json: {
+        post_id: input.post_id,
+        attachment_asset_ids: input.attachment_media.map((item) => item.asset_id),
+        legacy_asset_ids: input.legacy_media.map((item) => item.asset_id),
+        attachment_count: input.attachment_media.length,
+        legacy_count: input.legacy_media.length,
+      },
+    })
+  }
+
+  private recordRootPostReadModelParityAsync(input: {
+    post_id: string
+    attachment_media: PostMediaSummary[]
+    legacy_media: PostMediaSummary[]
+  }): void {
+    void this.recordRootPostReadModelParity(input).catch(() => {})
+  }
+
+  private async resolvePostMediaViews(postIds: string[]): Promise<Record<string, PostMediaSummary[]>> {
+    if (postIds.length === 0) return {}
+    const attachmentMap = await listSurfaceMediaAttachmentViews(
+      {
+        sceneMediaBindingRepo: this.deps.sceneMediaBindingRepo,
+        mediaContextProjectionRepo: this.deps.mediaContextProjectionRepo,
+      },
+      'forum_post',
+      postIds,
+    )
+    const legacyMediaByPost = this.deps.postMediaRepo.findByPostIds(postIds)
+    const legacyAltTextByPost = await this.resolveLegacyPostMediaAltText(postIds)
+    const mediaByPost: Record<string, PostMediaSummary[]> = {}
+
+    for (const postId of postIds) {
+      const attachmentMedia = (attachmentMap.get(postId) ?? []).map((item) => ({
+        asset_id: item.asset_id,
+        media_url: item.media_url,
+        mime_type: item.mime_type,
+        alt_text: item.alt_text,
+      }))
+      const legacyMedia = (legacyMediaByPost[postId] ?? []).map((item) => ({
+        asset_id: item.asset_id,
+        media_url: item.media_url,
+        mime_type: item.mime_type,
+        alt_text: legacyAltTextByPost[postId]?.[item.asset_id] ?? null,
+      }))
+      mediaByPost[postId] = attachmentMedia.length > 0 ? attachmentMedia : legacyMedia
+      if (attachmentMedia.length > 0 || legacyMedia.length > 0) {
+        this.recordRootPostReadModelParityAsync({
+          post_id: postId,
+          attachment_media: attachmentMedia,
+          legacy_media: legacyMedia,
+        })
+      }
+    }
+
+    return mediaByPost
   }
 
   private async toPostWithMeta(
@@ -386,19 +465,13 @@ export class ForumReadService {
     })
     const nowMs = Date.now()
 
-    const mediaByPost = this.deps.postMediaRepo.findByPostIds(result.items.map((post) => post.id))
-    const altTextByPost = await this.resolvePostMediaAltText(result.items.map((post) => post.id))
+    const mediaByPost = await this.resolvePostMediaViews(result.items.map((post) => post.id))
     const items: PostWithMeta[] = await Promise.all(
       result.items.map((post) => this.toPostWithMeta(
         post,
         nowMs,
         opts.viewerUserId,
-        (mediaByPost[post.id] ?? []).map((item) => ({
-          asset_id: item.asset_id,
-          media_url: item.media_url,
-          mime_type: item.mime_type,
-          alt_text: altTextByPost[post.id]?.[item.asset_id] ?? null,
-        })),
+        mediaByPost[post.id] ?? [],
       )),
     )
     const rankedItems = opts.sort === 'hot' || opts.sort === 'top'
@@ -432,13 +505,7 @@ export class ForumReadService {
     if (!post) throw new NotFoundError('Post', postId)
     if (!isPubliclyVisibleContent(post)) throw new NotFoundError('Post', postId)
 
-    const altTextByPost = await this.resolvePostMediaAltText([post.id])
-    const media = this.deps.postMediaRepo.findByPostId(post.id).map((item) => ({
-      asset_id: item.asset_id,
-      media_url: item.media_url,
-      mime_type: item.mime_type,
-      alt_text: altTextByPost[post.id]?.[item.asset_id] ?? null,
-    }))
+    const media = (await this.resolvePostMediaViews([post.id]))[post.id] ?? []
 
     return this.toPostWithMeta(post, Date.now(), viewerUserId, media)
   }

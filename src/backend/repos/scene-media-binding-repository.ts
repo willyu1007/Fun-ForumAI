@@ -9,6 +9,12 @@ export interface SceneMediaBindingRepository {
   deleteByIds(ids: string[]): Promise<number>
   findByAssetId(assetId: string): Promise<SceneMediaBinding[]>
   findByAssetIds(assetIds: string[]): Promise<SceneMediaBinding[]>
+  findByThreadRootRef(
+    threadRootRef: string,
+    options?: {
+      limit?: number
+    },
+  ): Promise<SceneMediaBinding[]>
   findLatestByAssetAndSceneType(assetId: string, sceneType: MediaSceneType): Promise<SceneMediaBinding | null>
   findByScene(sceneType: MediaSceneType, sceneId: string): Promise<SceneMediaBinding[]>
   findByScenes(sceneType: MediaSceneType, sceneIds: string[]): Promise<SceneMediaBinding[]>
@@ -28,6 +34,7 @@ export class InMemorySceneMediaBindingRepository implements SceneMediaBindingRep
       id: input.id ?? cuid(),
       scene_type: input.scene_type,
       scene_id: input.scene_id,
+      thread_root_ref: input.thread_root_ref ?? null,
       asset_id: input.asset_id,
       semantic_snapshot_id: input.semantic_snapshot_id,
       source_scene_type: input.source_scene_type ?? null,
@@ -67,6 +74,20 @@ export class InMemorySceneMediaBindingRepository implements SceneMediaBindingRep
     return Array.from(this.store.values())
       .filter((item) => lookup.has(item.asset_id))
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+  }
+
+  async findByThreadRootRef(
+    threadRootRef: string,
+    options?: {
+      limit?: number
+    },
+  ): Promise<SceneMediaBinding[]> {
+    const sorted = Array.from(this.store.values())
+      .filter((item) => item.thread_root_ref === threadRootRef)
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+    return typeof options?.limit === 'number' && options.limit > 0
+      ? sorted.slice(0, options.limit)
+      : sorted
   }
 
   async findLatestByAssetAndSceneType(

@@ -12,6 +12,7 @@ import type { StorageAdapter } from '../../services/storage-adapter.js'
 import { MediaAssetService } from '../media-asset-service.js'
 import { buildOwnerPrivatePoolSceneId, MediaBindingService } from '../media-binding-service.js'
 import { MediaProjectionService } from '../media-projection-service.js'
+import { buildMediaSemanticSummary } from '../../test-utils/media-fixtures.js'
 
 function createStorageStub(
   objects: Record<string, { data: Buffer; contentType: string }> = {},
@@ -40,17 +41,16 @@ function createStorageStub(
 }
 
 function buildSummary(publicSummary: string, internalSummary = publicSummary) {
-  return {
+  return buildMediaSemanticSummary({
     theme: `${publicSummary}-theme`,
     scene: `${publicSummary}-scene`,
     mood: 'neutral',
     discussion_points: [`${publicSummary}-discussion`],
     salient_entities: [`${publicSummary}-entity`],
     ocr_snippets: [`${publicSummary}-ocr`],
-    safety_labels: [],
     public_safe_summary: publicSummary,
     internal_full_summary: internalSummary,
-  }
+  })
 }
 
 describe('MediaAssetService', () => {

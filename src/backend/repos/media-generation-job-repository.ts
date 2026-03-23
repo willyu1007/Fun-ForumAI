@@ -63,6 +63,7 @@ export class InMemoryMediaGenerationJobRepository implements MediaGenerationJobR
       request_fingerprint: input.request_fingerprint,
       prompt_brief: input.prompt_brief,
       style_hint: input.style_hint ?? null,
+      input_mode: input.input_mode ?? 'reference',
       aspect_ratio_hint: input.aspect_ratio_hint ?? null,
       based_on_projection_ids: [...input.based_on_projection_ids],
       attempt_count: input.attempt_count ?? 0,

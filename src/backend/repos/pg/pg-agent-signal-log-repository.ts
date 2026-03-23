@@ -19,6 +19,10 @@ export class PgAgentSignalLogRepository implements AgentSignalLogRepository {
   async hydrate(): Promise<void> {}
 
   async create(input: CreateAgentSignalLogInput): Promise<AgentSignalLog> {
+    if (input.dedup_key) {
+      const existing = await this.findByDedupKey(input.agent_id, input.dedup_key)
+      if (existing) return existing
+    }
     try {
       const row = await this.prisma.agentSignalLog.create({
         data: {

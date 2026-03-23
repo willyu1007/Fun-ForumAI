@@ -47,6 +47,7 @@ import type { MediaObservabilityEventRepository } from '../repos/media-observabi
 import type { MediaRolloutControllerOverrideRepository } from '../repos/media-rollout-controller-override-repository.js'
 import type { ForumSceneMetadataRepository } from '../repos/forum-scene-metadata-repository.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
+import type { MessageRepository } from '../repos/message-repository.js'
 
 export function createLlmServices(deps: {
   agentRepo: AgentRepository
@@ -63,6 +64,7 @@ export function createLlmServices(deps: {
   mediaObservabilityEventRepo: MediaObservabilityEventRepository
   mediaRolloutControllerOverrideRepo: MediaRolloutControllerOverrideRepository
   forumSceneMetadataRepo: ForumSceneMetadataRepository
+  messageRepo: MessageRepository
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
   usageLedgerRepo?: UsageLedgerRepository
@@ -120,6 +122,7 @@ export function createLlmServices(deps: {
 
   const mediaSemanticService = new MediaSemanticService({
     llmGateway,
+    promptEngine,
     agentRepo: deps.agentRepo,
     agentConfigRepo: deps.agentConfigRepo,
     eventRepo: deps.eventRepo,
@@ -141,6 +144,7 @@ export function createLlmServices(deps: {
   })
   const visualDirectiveService = new VisualDirectiveService({
     visualDirectiveRepo: deps.visualDirectiveRepo,
+    messageRepo: deps.messageRepo,
   })
   const mediaReuseGovernanceService = new MediaReuseGovernanceService({
     mediaAssetRepo: deps.mediaAssetRepo,
@@ -174,6 +178,7 @@ export function createLlmServices(deps: {
     storage: inclinationAssetStorage,
     mediaBindingService,
     mediaProjectionService,
+    mediaReuseGovernanceService,
     mediaObservabilityService,
   })
   const mediaAssetService = new MediaAssetService({
@@ -193,6 +198,7 @@ export function createLlmServices(deps: {
     imagePlanRepo: deps.imagePlanRepo,
     mediaGenerationJobRepo: deps.mediaGenerationJobRepo,
     mediaContextProjectionRepo: deps.mediaContextProjectionRepo,
+    mediaSemanticSnapshotRepo: deps.mediaSemanticSnapshotRepo,
     mediaAssetService,
     mediaReuseGovernanceService,
     mediaProjectionService,
@@ -217,6 +223,7 @@ export function createLlmServices(deps: {
   const inclinationAssetService = new InclinationAssetService({
     agentRepo: deps.agentRepo,
     mediaAssetService,
+    mediaReuseGovernanceService,
   })
 
   return {

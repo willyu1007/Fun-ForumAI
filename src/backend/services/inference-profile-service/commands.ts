@@ -28,6 +28,7 @@ export async function resolveInferenceVisibleRoute(
     requestedTierFloor: compiled.snapshot.requestedTierFloor,
     homeVoiceLineId,
     agentModel: agent.model,
+    envVisibleModelPin: deps.visibleModelPin ?? null,
     visibleModelPin: compiled.profile.visibleModelPin,
     profile: compiled.profile,
     snapshot: compiled.snapshot,

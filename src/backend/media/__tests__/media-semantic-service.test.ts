@@ -20,14 +20,21 @@ function buildGatewayResponse(content: string) {
       fallbackLevel: 'none',
       reasons: [],
       promptTemplateId: 'internal-vision-summary',
-      promptVersion: 1,
+      promptVersion: 2,
     },
-    promptRef: { id: 'internal-vision-summary', version: 1 },
+    promptRef: { id: 'internal-vision-summary', version: 2 },
     warnings: [],
   }
 }
 
 describe('MediaSemanticService', () => {
+  const promptEngine = {
+    render: vi.fn(() => [
+      { role: 'system', content: 'system prompt' },
+      { role: 'user', content: 'user prompt' },
+    ]),
+  } as never
+
   it('passes the preferred gateway model id into hidden semantic extraction', async () => {
     const generateHiddenArtifact = vi.fn(async () => buildGatewayResponse(JSON.stringify({
       theme: 'theme',
@@ -46,6 +53,7 @@ describe('MediaSemanticService', () => {
         isConfigured: true,
         generateHiddenArtifact,
       } as never,
+      promptEngine,
       agentRepo: {} as never,
       agentConfigRepo: {} as never,
       eventRepo: {} as never,
@@ -81,6 +89,7 @@ describe('MediaSemanticService', () => {
         isConfigured: true,
         generateHiddenArtifact,
       } as never,
+      promptEngine,
       agentRepo: {} as never,
       agentConfigRepo: {} as never,
       eventRepo: {} as never,
@@ -142,6 +151,7 @@ describe('MediaSemanticService', () => {
         isConfigured: true,
         generateHiddenArtifact,
       } as never,
+      promptEngine,
       agentRepo: {} as never,
       agentConfigRepo: {} as never,
       eventRepo: {} as never,

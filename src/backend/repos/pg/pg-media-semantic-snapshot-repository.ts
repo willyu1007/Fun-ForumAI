@@ -4,6 +4,7 @@ import type {
   MediaSemanticSnapshot,
 } from '../types.js'
 import type { MediaSemanticSnapshotRepository } from '../media-semantic-snapshot-repository.js'
+import { normalizeStoredSemanticSummary } from '../../media/media-contract-utils.js'
 
 export class PgMediaSemanticSnapshotRepository implements MediaSemanticSnapshotRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -19,7 +20,7 @@ export class PgMediaSemanticSnapshotRepository implements MediaSemanticSnapshotR
       modelProvider: input.model_provider,
       modelName: input.model_name,
       modelVersion: input.model_version,
-      summaryJson: input.summary as unknown as Prisma.InputJsonValue,
+      summaryJson: normalizeStoredSemanticSummary(input.summary) as unknown as Prisma.InputJsonValue,
       extractionStatus: input.extraction_status,
       qualityGrade: input.quality_grade,
       isCurrent: input.is_current ?? true,
@@ -85,7 +86,7 @@ export class PgMediaSemanticSnapshotRepository implements MediaSemanticSnapshotR
       model_provider: row.modelProvider,
       model_name: row.modelName,
       model_version: row.modelVersion,
-      summary: row.summaryJson as unknown as MediaSemanticSnapshot['summary'],
+      summary: normalizeStoredSemanticSummary(row.summaryJson as unknown as MediaSemanticSnapshot['summary']),
       extraction_status: row.extractionStatus as MediaSemanticSnapshot['extraction_status'],
       quality_grade: row.qualityGrade as MediaSemanticSnapshot['quality_grade'],
       is_current: row.isCurrent,

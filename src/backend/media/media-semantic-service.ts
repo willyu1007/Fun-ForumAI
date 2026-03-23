@@ -1,4 +1,6 @@
 import type { LLMGateway } from '../llm/llm-gateway.js'
+import type { PromptEngine } from '../llm/prompt-engine.js'
+import type { LlmMessage } from '../llm/types.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import type { AgentRepository, AgentConfigRepository } from '../repos/agent-repository.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
@@ -10,6 +12,10 @@ import {
   buildPersonaObservation,
   recordPersonaObservation,
 } from '../runtime/persona-observation.js'
+import {
+  MEDIA_SEMANTIC_SCHEMA_VERSION,
+  normalizeSemanticSummary,
+} from './media-contract-utils.js'
 
 export interface BuildMediaSemanticInput {
   agentId?: string
@@ -30,14 +36,13 @@ export interface MediaSemanticExtraction {
 
 export interface MediaSemanticServiceDeps {
   llmGateway: LLMGateway
+  promptEngine: PromptEngine
   agentRepo: AgentRepository
   agentConfigRepo: AgentConfigRepository
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
   preferredModelId?: string
 }
-
-const MEDIA_SEMANTIC_SCHEMA_VERSION = 'media_semantic_summary.v1'
 
 function sanitizeString(value: unknown, maxLength: number): string {
   if (typeof value !== 'string') return ''
@@ -63,6 +68,9 @@ export function buildFallbackMediaSemanticSummary(
     theme,
     scene,
     mood: 'neutral',
+    confidence: 0.25,
+    composition: 'single-scene composition',
+    style_tags: [],
     discussion_points: [
       'Describe the most obvious visual cue before making any claim.',
       'Use the image as a discussion seed instead of assuming hidden intent.',
@@ -104,30 +112,7 @@ export class MediaSemanticService {
             variables: {
               mime_type: input.mimeType,
             },
-            promptMessages: [
-              {
-                role: 'system',
-                content: [
-                  { type: 'text', text: 'You are an image semantic extraction assistant. Output JSON only.' },
-                ],
-              },
-              {
-                role: 'user',
-                content: [
-                  {
-                    type: 'text',
-                    text: [
-                      'Return strict JSON with fields:',
-                      '{"theme":"","scene":"","mood":"","discussion_points":[""],"salient_entities":[""],"ocr_snippets":[""],"safety_labels":[""],"public_safe_summary":"","internal_full_summary":""}',
-                      'Never leave required string fields empty. If the image is minimal, abstract, or uncertain, use grounded placeholders such as "minimal single-color image", "simple abstract visual", and "neutral".',
-                      'Keep it grounded in visible evidence, do not use owner intent, do not invent OCR when text is unreadable.',
-                      `mime_type: ${input.mimeType}`,
-                    ].join('\n'),
-                  },
-                  { type: 'image_url', image_url: { url: imageUrl } },
-                ],
-              },
-            ],
+            promptMessages: this.buildPromptMessages(imageUrl, input.mimeType),
             budgetClass: 'hidden_multimodal',
             traceId: `media-semantic:${Date.now()}`,
             requestedTier: 'base',
@@ -222,6 +207,11 @@ export class MediaSemanticService {
       const theme = sanitizeString(parsed.theme, 160)
       const scene = sanitizeString(parsed.scene, 180)
       const mood = sanitizeString(parsed.mood, 120)
+      const confidence = typeof parsed.confidence === 'number' && Number.isFinite(parsed.confidence)
+        ? Math.min(1, Math.max(0, parsed.confidence))
+        : fallback.confidence
+      const composition = sanitizeString(parsed.composition, 180)
+      const styleTags = sanitizeStringArray(parsed.style_tags, 8, 60)
       const salientEntities = sanitizeStringArray(parsed.salient_entities, 10, 120)
       const ocrSnippets = sanitizeStringArray(parsed.ocr_snippets, 10, 200)
       const safetyLabels = sanitizeStringArray(parsed.safety_labels, 10, 120)
@@ -242,20 +232,49 @@ export class MediaSemanticService {
       }
 
       return {
-        theme: theme || fallback.theme,
-        scene: scene || fallback.scene,
-        mood: mood || fallback.mood,
-        discussion_points: discussionPoints.length > 0 ? discussionPoints : fallback.discussion_points,
-        salient_entities: salientEntities,
-        ocr_snippets: ocrSnippets,
-        safety_labels: safetyLabels,
-        public_safe_summary: publicSafeSummary || internalFullSummary || fallback.public_safe_summary,
-        internal_full_summary:
-          internalFullSummary || publicSafeSummary || fallback.internal_full_summary,
+        ...normalizeSemanticSummary({
+          theme: theme || fallback.theme,
+          scene: scene || fallback.scene,
+          mood: mood || fallback.mood,
+          confidence,
+          composition: composition || fallback.composition,
+          style_tags: styleTags,
+          discussion_points: discussionPoints.length > 0 ? discussionPoints : fallback.discussion_points,
+          salient_entities: salientEntities,
+          ocr_snippets: ocrSnippets,
+          safety_labels: safetyLabels,
+          public_safe_summary: publicSafeSummary || internalFullSummary || fallback.public_safe_summary,
+          internal_full_summary: internalFullSummary || publicSafeSummary || fallback.internal_full_summary,
+        }, fallback),
       }
     } catch {
       return null
     }
+  }
+
+  private buildPromptMessages(imageUrl: string, mimeType: string): LlmMessage[] {
+    const promptRef = PROMPT_TEMPLATE_REFS.internalVisionSummary
+    const rendered = this.deps.promptEngine.render(promptRef, {
+      mime_type: mimeType,
+    })
+    return rendered.map((message, index) => {
+      if (index !== rendered.length - 1 || message.role !== 'user') {
+        return message
+      }
+      const text = typeof message.content === 'string'
+        ? message.content
+        : message.content
+          .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
+          .map((part) => part.text)
+          .join('\n')
+      return {
+        role: 'user',
+        content: [
+          { type: 'text', text },
+          { type: 'image_url', image_url: { url: imageUrl } },
+        ],
+      }
+    })
   }
 
   private recordSemanticRun(input: {
@@ -283,7 +302,7 @@ export class MediaSemanticService {
       personaSeedCode: resolved.summary.persona_seed_code,
       homeVoiceLineId: resolved.summary.home_voice_line_id,
       routingVoiceLineId: 'deepseek-director-v1',
-      promptRef: { id: 'internal-vision-summary', version: 1 },
+      promptRef: PROMPT_TEMPLATE_REFS.internalVisionSummary,
       requestedTier: 'base',
       resolvedTier: 'base',
       usage: input.usage,
