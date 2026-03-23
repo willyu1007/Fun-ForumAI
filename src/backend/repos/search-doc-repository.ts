@@ -17,22 +17,33 @@ export interface SearchDocQueryInput {
   limit: number
 }
 
+export interface SearchDocStats {
+  posts: number
+  communities: number
+  agents: number
+  comments: number
+}
+
 export interface SearchDocRepository {
   clearAllDocs(): Promise<void>
+  getStats(): Promise<SearchDocStats>
 
   upsertPostDoc(input: UpsertPostSearchDocInput): Promise<PostSearchDoc>
   deletePostDoc(postId: string): Promise<void>
   getPostDocsByIds(postIds: string[]): Promise<Map<string, PostSearchDoc>>
+  listTopPostDocs(limit: number): Promise<PostSearchDoc[]>
   searchPostDocs(input: SearchDocQueryInput): Promise<RankedSearchDocPage<PostSearchDoc>>
   countPostDocs(query: string): Promise<number>
 
   upsertCommunityDoc(input: UpsertCommunitySearchDocInput): Promise<CommunitySearchDoc>
   deleteCommunityDoc(communityId: string): Promise<void>
+  listTopCommunityDocs(limit: number): Promise<CommunitySearchDoc[]>
   searchCommunityDocs(input: SearchDocQueryInput): Promise<RankedSearchDocPage<CommunitySearchDoc>>
   countCommunityDocs(query: string): Promise<number>
 
   upsertAgentDoc(input: UpsertAgentSearchDocInput): Promise<AgentSearchDoc>
   deleteAgentDoc(agentId: string): Promise<void>
+  listTopAgentDocs(limit: number): Promise<AgentSearchDoc[]>
   searchAgentDocs(input: SearchDocQueryInput): Promise<RankedSearchDocPage<AgentSearchDoc>>
   countAgentDocs(query: string): Promise<number>
 
@@ -44,6 +55,29 @@ export interface SearchDocRepository {
 
 function normalizeText(value: string | null | undefined): string {
   return (value ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+export interface SearchTokenGate {
+  tokens: string[]
+  required_matches: number
+}
+
+export function buildSearchTokenGate(query: string): SearchTokenGate | null {
+  const tokens = Array.from(new Set(
+    normalizeText(query)
+      .split(' ')
+      .map((token) => token.trim())
+      .filter((token) => token.length >= 3),
+  )).slice(0, 6)
+
+  if (tokens.length <= 1) {
+    return null
+  }
+
+  return {
+    tokens,
+    required_matches: Math.min(2, tokens.length),
+  }
 }
 
 function buildRankedPage<TDoc>(
@@ -74,7 +108,19 @@ function baseTextScore(text: string, query: string): number {
 }
 
 function hasCandidateMatch(text: string, query: string): boolean {
-  return baseTextScore(text, query) >= 0.18 || normalizeText(text).includes(query)
+  const normalizedText = normalizeText(text)
+  if (!normalizedText || !query) return false
+  if (normalizedText.includes(query)) return true
+
+  const tokenGate = buildSearchTokenGate(query)
+  if (tokenGate) {
+    const matchedTokens = tokenGate.tokens.filter((token) => normalizedText.includes(token)).length
+    if (matchedTokens < tokenGate.required_matches) {
+      return false
+    }
+  }
+
+  return baseTextScore(text, query) >= 0.18
 }
 
 function sortRankedRows<TDoc>(
@@ -185,6 +231,15 @@ export class InMemorySearchDocRepository implements SearchDocRepository {
     this.comments.clear()
   }
 
+  async getStats(): Promise<SearchDocStats> {
+    return {
+      posts: this.posts.size,
+      communities: this.communities.size,
+      agents: this.agents.size,
+      comments: this.comments.size,
+    }
+  }
+
   async upsertPostDoc(input: UpsertPostSearchDocInput): Promise<PostSearchDoc> {
     const now = new Date()
     const next: PostSearchDoc = {
@@ -210,6 +265,16 @@ export class InMemorySearchDocRepository implements SearchDocRepository {
       }
     }
     return map
+  }
+
+  async listTopPostDocs(limit: number): Promise<PostSearchDoc[]> {
+    return Array.from(this.posts.values())
+      .sort((a, b) =>
+        b.watchability_score - a.watchability_score
+        || b.heat_score - a.heat_score
+        || (b.last_activity_at?.getTime() ?? 0) - (a.last_activity_at?.getTime() ?? 0)
+        || a.post_id.localeCompare(b.post_id))
+      .slice(0, limit)
   }
 
   async searchPostDocs(input: SearchDocQueryInput): Promise<RankedSearchDocPage<PostSearchDoc>> {
@@ -244,6 +309,16 @@ export class InMemorySearchDocRepository implements SearchDocRepository {
     this.communities.delete(communityId)
   }
 
+  async listTopCommunityDocs(limit: number): Promise<CommunitySearchDoc[]> {
+    return Array.from(this.communities.values())
+      .sort((a, b) =>
+        b.activity_7d - a.activity_7d
+        || b.activity_30d - a.activity_30d
+        || b.active_member_count - a.active_member_count
+        || a.community_id.localeCompare(b.community_id))
+      .slice(0, limit)
+  }
+
   async searchCommunityDocs(input: SearchDocQueryInput): Promise<RankedSearchDocPage<CommunitySearchDoc>> {
     const query = normalizeText(input.query)
     const rows = Array.from(this.communities.values())
@@ -274,6 +349,16 @@ export class InMemorySearchDocRepository implements SearchDocRepository {
 
   async deleteAgentDoc(agentId: string): Promise<void> {
     this.agents.delete(agentId)
+  }
+
+  async listTopAgentDocs(limit: number): Promise<AgentSearchDoc[]> {
+    return Array.from(this.agents.values())
+      .sort((a, b) =>
+        b.public_activity_score - a.public_activity_score
+        || b.follower_count - a.follower_count
+        || b.active_membership_count - a.active_membership_count
+        || a.agent_id.localeCompare(b.agent_id))
+      .slice(0, limit)
   }
 
   async searchAgentDocs(input: SearchDocQueryInput): Promise<RankedSearchDocPage<AgentSearchDoc>> {

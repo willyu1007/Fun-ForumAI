@@ -115,6 +115,7 @@ export const searchCountsCache = new SearchCountsCache()
 export const searchTelemetryService = new SearchTelemetryService()
 export const searchProjectionService = new SearchProjectionService({
   searchDocRepo: repos.searchDocRepo,
+  countsCache: searchCountsCache,
   forumReadService: core.forumReadService,
   postRepo: repos.postRepo,
   commentRepo: repos.commentRepo,
@@ -135,6 +136,7 @@ export const searchProjectionService = new SearchProjectionService({
 
 const postsSearchProvider = new PostSearchProvider({
   searchDocRepo: repos.searchDocRepo,
+  agentRepo: repos.agentRepo,
   guard: searchGuard,
 })
 
@@ -144,10 +146,12 @@ const communitiesSearchProvider = new CommunitySearchProvider({
 
 const agentsSearchProvider = new AgentSearchProvider({
   searchDocRepo: repos.searchDocRepo,
+  guard: searchGuard,
 })
 
 const commentsSearchProvider = new CommentSearchProvider({
   searchDocRepo: repos.searchDocRepo,
+  agentRepo: repos.agentRepo,
   guard: searchGuard,
 })
 
@@ -173,6 +177,10 @@ core.achievementChronicleService.setRecordHook((input) => {
   if (input.visibility !== 'PUBLIC') return
   return core.agentPublicProjectionService
     .refresh(input.agent_id, { reason: 'chronicle' })
+    .then(() => searchProjectionService.reconcileAgent(input.agent_id, {
+      reason: 'chronicle_public_highlight',
+      scopes: ['agent', 'posts', 'comments'],
+    }))
     .then(() => undefined)
 })
 
@@ -201,7 +209,10 @@ core.governanceAdapter.setExecutedHook(async ({ action }) => {
     return
   }
   if (action.target_type === 'agent') {
-    await searchProjectionService.refreshAgent(action.target_id)
+    await searchProjectionService.reconcileAgent(action.target_id, {
+      reason: 'governance_agent',
+      scopes: ['agent', 'posts', 'comments', 'communities'],
+    })
   }
 })
 

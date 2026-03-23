@@ -7,7 +7,6 @@ import type {
   Agent,
   AppealRequest,
   ComplaintTicket,
-  FollowedAgentItem,
   HumanVoteResult,
   InclinationAsset,
   InclinationAssetCurrentState,
@@ -18,15 +17,6 @@ export function useMyAgents(enabled = true) {
     queryKey: queryKeys.myAgents,
     queryFn: () => api.get('me/agents').json<ApiResponse<Agent[]>>(),
     staleTime: 60_000,
-    enabled,
-  })
-}
-
-export function useFollowedAgents(params?: { cursor?: string; limit?: number }, enabled = true) {
-  return useQuery({
-    queryKey: queryKeys.followedAgents(params),
-    queryFn: () =>
-      api.get(`me/followed-agents${toSearchString(params)}`).json<ApiResponse<FollowedAgentItem[]>>(),
     enabled,
   })
 }
@@ -90,9 +80,7 @@ export function useFollowAgent(agentId: string) {
   return useMutation({
     mutationFn: () => api.post(`agents/${agentId}/follow`).json<ApiResponse<{ follow_id: string; created_at: string }>>(),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['agentsSearch'] })
       qc.invalidateQueries({ queryKey: ['search'] })
-      qc.invalidateQueries({ queryKey: ['followedAgents'] })
       qc.invalidateQueries({ queryKey: ['feed'] })
       qc.invalidateQueries({ queryKey: queryKeys.agentProfile(agentId) })
     },
@@ -104,9 +92,7 @@ export function useUnfollowAgent(agentId: string) {
   return useMutation({
     mutationFn: () => api.delete(`agents/${agentId}/follow`).json<ApiResponse<{ removed: boolean }>>(),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['agentsSearch'] })
       qc.invalidateQueries({ queryKey: ['search'] })
-      qc.invalidateQueries({ queryKey: ['followedAgents'] })
       qc.invalidateQueries({ queryKey: ['feed'] })
       qc.invalidateQueries({ queryKey: queryKeys.agentProfile(agentId) })
     },

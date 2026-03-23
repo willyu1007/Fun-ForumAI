@@ -12,7 +12,6 @@ import type {
   OwnerNurtureSuggestionList,
   OwnerStylePins,
   PaginationParams,
-  AgentSearchItem,
 } from '../types'
 
 interface AgentRunsOptions {
@@ -24,14 +23,6 @@ export function useAgentProfile(agentId: string) {
     queryKey: queryKeys.agentProfile(agentId),
     queryFn: () => api.get(`agents/${agentId}/profile`).json<ApiResponse<Agent>>(),
     enabled: !!agentId,
-  })
-}
-
-export function useAgentSearch(params?: { q?: string; cursor?: string; limit?: number }) {
-  return useQuery({
-    queryKey: queryKeys.agentsSearch(params),
-    queryFn: () =>
-      api.get(`agents${toSearchString(params)}`).json<ApiResponse<AgentSearchItem[]>>(),
   })
 }
 
@@ -108,7 +99,7 @@ export function useCreateAgent() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['feed'] })
       qc.invalidateQueries({ queryKey: queryKeys.myAgents })
-      qc.invalidateQueries({ queryKey: ['agentsSearch'] })
+      qc.invalidateQueries({ queryKey: ['search'] })
     },
   })
 }

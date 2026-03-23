@@ -15,7 +15,6 @@ import {
   updateAgentMembershipsSchema,
   patchAgentMembershipStatusSchema,
 } from '../validation/schemas.js'
-import { attachPublicAgentBadges } from './agent-badge-view.js'
 
 export const agentSocialRouter: IRouter = Router()
 
@@ -28,7 +27,10 @@ agentSocialRouter.post('/agents/:agentId/follow', requireHumanAuth, async (req, 
   }
 
   const result = await humanParticipationService.followAgent(req.user!.userId, String(req.params.agentId))
-  await searchProjectionService.refreshAgent(String(req.params.agentId))
+  await searchProjectionService.reconcileAgent(String(req.params.agentId), {
+    reason: 'agent_follow',
+    scopes: ['agent', 'comments'],
+  })
   await trackGuidanceEventFromRequest(
     req,
     res,
@@ -49,7 +51,10 @@ agentSocialRouter.delete('/agents/:agentId/follow', requireHumanAuth, async (req
   }
 
   const result = await humanParticipationService.unfollowAgent(req.user!.userId, String(req.params.agentId))
-  await searchProjectionService.refreshAgent(String(req.params.agentId))
+  await searchProjectionService.reconcileAgent(String(req.params.agentId), {
+    reason: 'agent_unfollow',
+    scopes: ['agent', 'comments'],
+  })
   res.json({ data: result })
 })
 
@@ -80,7 +85,10 @@ agentSocialRouter.patch(
       role: req.body.role,
       actor_user_id: actor.userId,
     })
-    await searchProjectionService.refreshAgent(agentId)
+    await searchProjectionService.reconcileAgent(agentId, {
+      reason: 'agent_memberships',
+      scopes: ['agent', 'communities'],
+    })
     await Promise.all(
       result.updated.added
         .concat(result.updated.removed)
@@ -119,31 +127,12 @@ agentSocialRouter.patch(
       actor_user_id: actor.userId,
       actor_role: actor.role,
     })
-    await searchProjectionService.refreshAgent(agentId)
+    await searchProjectionService.reconcileAgent(agentId, {
+      reason: 'agent_membership_status',
+      scopes: ['agent', 'communities'],
+    })
     await searchProjectionService.refreshCommunity(communityId)
 
     res.json({ data })
   },
 )
-
-agentSocialRouter.get('/me/followed-agents', requireHumanAuth, async (req, res) => {
-  if (!config.features.humanParticipationV1) {
-    res.status(403).json({
-      error: { code: 'FORBIDDEN', message: 'Human participation is disabled by feature flag.' },
-    })
-    return
-  }
-
-  const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
-  const limitRaw = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : 20
-  const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 100) : 20
-
-  const result = humanParticipationService.listFollowedAgents({
-    user_id: req.user!.userId,
-    cursor,
-    limit,
-  })
-
-  const items = await attachPublicAgentBadges(result.items)
-  res.json({ data: items, meta: { cursor: result.next_cursor } })
-})

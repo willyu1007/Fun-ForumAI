@@ -98,6 +98,15 @@ export interface CommentWithAuthor extends Comment {
 export interface CommentThreadContext {
   post_id: string
   comments: CommentWithAuthor[]
+  ancestor_comments: CommentWithAuthor[]
+  sibling_window: {
+    before: CommentWithAuthor[]
+    after: CommentWithAuthor[]
+  }
+  child_preview: {
+    items: CommentWithAuthor[]
+    total_count: number
+  }
 }
 
 export type FeedSort = 'new' | 'hot' | 'top'
@@ -602,21 +611,53 @@ export class ForumReadService {
     viewerUserId?: string,
   ): Promise<CommentThreadContext> {
     const target = await this.getComment(commentId, viewerUserId)
-    const comments: CommentWithAuthor[] = [target]
+    const ancestors: CommentWithAuthor[] = []
     const seen = new Set<string>([target.id])
     let parentId = target.parent_comment_id
 
     while (parentId) {
       if (seen.has(parentId)) break
       const parent = await this.getComment(parentId, viewerUserId)
-      comments.unshift(parent)
+      ancestors.unshift(parent)
       seen.add(parent.id)
       parentId = parent.parent_comment_id
     }
 
+    const allVisibleComments = await this.collectVisibleCommentsByPost(target.post_id, viewerUserId)
+    const siblingComments = allVisibleComments
+      .filter((comment) => comment.parent_comment_id === target.parent_comment_id)
+      .sort((a, b) => a.created_at.getTime() - b.created_at.getTime() || a.id.localeCompare(b.id))
+    const siblingIndex = siblingComments.findIndex((comment) => comment.id === target.id)
+    const siblingBefore = siblingIndex > 0
+      ? siblingComments.slice(Math.max(0, siblingIndex - 2), siblingIndex)
+      : []
+    const siblingAfter = siblingIndex >= 0
+      ? siblingComments.slice(siblingIndex + 1, siblingIndex + 3)
+      : []
+    const childComments = allVisibleComments
+      .filter((comment) => comment.parent_comment_id === target.id)
+      .sort((a, b) => a.created_at.getTime() - b.created_at.getTime() || a.id.localeCompare(b.id))
+    const childPreview = childComments.slice(0, 2)
+    const comments = this.mergeThreadContextComments([
+      ...ancestors,
+      ...siblingBefore,
+      target,
+      ...siblingAfter,
+      ...childPreview,
+    ])
+
     return {
       post_id: target.post_id,
       comments,
+      ancestor_comments: ancestors,
+      sibling_window: {
+        before: siblingBefore,
+        after: siblingAfter,
+      },
+      child_preview: {
+        items: childPreview,
+        total_count: childComments.length,
+      },
     }
   }
 
@@ -647,5 +688,34 @@ export class ForumReadService {
       human_down: human.down,
       human_score: human.score,
     }
+  }
+
+  private async collectVisibleCommentsByPost(postId: string, viewerUserId?: string): Promise<CommentWithAuthor[]> {
+    const items: CommentWithAuthor[] = []
+    let cursor: string | undefined
+
+    while (true) {
+      const page = await this.deps.commentRepo.findByPost(postId, {
+        cursor,
+        limit: 500,
+      })
+      if (page.items.length === 0) break
+      for (const comment of page.items) {
+        items.push(await this.getComment(comment.id, viewerUserId))
+      }
+      if (!page.next_cursor || page.next_cursor === cursor) break
+      cursor = page.next_cursor
+    }
+
+    return items
+  }
+
+  private mergeThreadContextComments(comments: CommentWithAuthor[]): CommentWithAuthor[] {
+    const merged = new Map<string, CommentWithAuthor>()
+    for (const comment of comments) {
+      merged.set(comment.id, comment)
+    }
+    return Array.from(merged.values()).sort((a, b) =>
+      a.created_at.getTime() - b.created_at.getTime() || a.id.localeCompare(b.id))
   }
 }

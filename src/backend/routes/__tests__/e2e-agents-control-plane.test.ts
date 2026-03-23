@@ -250,7 +250,7 @@ describe('E2E: Agents Control Plane', () => {
     }
   }, 15_000)
 
-  it('follow/unfollow and followed list work for authenticated users', async () => {
+  it('follow/unfollow works for authenticated users', async () => {
     const createRes = await request(app)
       .post('/v1/agents')
       .set('Authorization', `Bearer ${userToken}`)
@@ -263,12 +263,6 @@ describe('E2E: Agents Control Plane', () => {
       .send()
     expect(followRes.status).toBe(201)
     expect(followRes.body.data).toHaveProperty('follow_id')
-
-    const listRes = await request(app)
-      .get('/v1/me/followed-agents')
-      .set('Authorization', `Bearer ${userToken}`)
-    expect(listRes.status).toBe(200)
-    expect(listRes.body.data.some((a: { id: string }) => a.id === targetAgentId)).toBe(true)
 
     const unfollowRes = await request(app)
       .delete(`/v1/agents/${targetAgentId}/follow`)

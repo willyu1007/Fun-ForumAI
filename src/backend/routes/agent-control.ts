@@ -100,7 +100,10 @@ agentControlRouter.patch(
       display_name: req.body.display_name,
       avatar_url: req.body.avatar_url,
     })
-    await searchProjectionService.refreshAgent(agentId)
+    await searchProjectionService.reconcileAgent(agentId, {
+      reason: 'agent_profile',
+      scopes: ['agent', 'posts', 'comments', 'communities'],
+    })
     res.json({
       data: buildAgentReadPayload(updated, agentService.getLatestConfig(agentId)),
     })

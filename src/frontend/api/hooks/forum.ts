@@ -126,6 +126,19 @@ export function useSearch(params?: { q?: string; tab?: SearchTab; cursor?: strin
     queryKey: queryKeys.search(params),
     queryFn: () =>
       api.get(`search${toSearchString(params)}`).json<ApiResponse<PublicSearchResponse>>(),
-    enabled: Boolean(params?.q?.trim()),
+  })
+}
+
+export function useRecordSearchTelemetry() {
+  return useMutation({
+    mutationFn: (body: {
+      event_type: 'reformulation' | 'result_click' | 'result_open' | 'follow'
+      query?: string
+      previous_query?: string
+      tab: SearchTab
+      result_type?: 'post' | 'community' | 'agent' | 'comment'
+      result_id?: string
+    }) =>
+      api.post('search/telemetry', { json: body }).json<ApiResponse<{ accepted: boolean }>>(),
   })
 }

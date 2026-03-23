@@ -1,20 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { HumanAgentFollow as PrismaHumanAgentFollow, PrismaClient } from '@prisma/client'
-import type { FollowAgentInput, HumanAgentFollow, PaginationOpts, PaginatedResult } from '../types.js'
+import type { FollowAgentInput, HumanAgentFollow } from '../types.js'
 import type { HumanFollowRepository } from '../human-follow-repository.js'
-
-function paginate<T extends { id: string }>(items: T[], opts: PaginationOpts): PaginatedResult<T> {
-  let start = 0
-  if (opts.cursor) {
-    const idx = items.findIndex((item) => item.id === opts.cursor)
-    start = idx >= 0 ? idx + 1 : 0
-  }
-  const page = items.slice(start, start + opts.limit)
-  const next_cursor = page.length === opts.limit && start + opts.limit < items.length
-    ? page[page.length - 1].id
-    : null
-  return { items: page, next_cursor }
-}
 
 export class PgHumanFollowRepository implements HumanFollowRepository {
   private cache = new Map<string, HumanAgentFollow>()
@@ -110,14 +97,6 @@ export class PgHumanFollowRepository implements HumanFollowRepository {
       .filter((item) => item.agent_id === agentId)
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
       .map((item) => item.user_id)
-  }
-
-  listByUser(userId: string, opts: PaginationOpts): PaginatedResult<HumanAgentFollow> {
-    const rows = Array.from(this.cache.values())
-      .filter((item) => item.user_id === userId)
-      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
-
-    return paginate(rows, opts)
   }
 
   private compositeKey(userId: string, agentId: string): string {

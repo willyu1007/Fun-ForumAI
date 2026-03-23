@@ -1,7 +1,5 @@
 import type {
-  Agent,
   AgentRepository,
-  AgentConfigRepository,
   CommentRepository,
   EventRepository,
   HumanFollowRepository,
@@ -12,7 +10,6 @@ import type {
 } from '../repos/index.js'
 import { NotFoundError, ValidationError } from '../lib/errors.js'
 import { HUMAN_VOTE_WEIGHT } from '../lib/constants.js'
-import { resolveAgentIdentity } from '../identity/agent-identity.js'
 
 export { HUMAN_VOTE_WEIGHT }
 
@@ -23,7 +20,6 @@ export interface HumanParticipationServiceDeps {
   humanVoteRepo: HumanVoteRepository
   humanFollowRepo: HumanFollowRepository
   agentRepo: AgentRepository
-  agentConfigRepo: AgentConfigRepository
   eventRepo: EventRepository
 }
 
@@ -35,40 +31,6 @@ export interface HumanVoteSummary {
   human_down: number
   human_score: number
   weighted_score: number
-}
-
-export interface SearchAgentsResult {
-  items: Array<{
-    id: string
-    display_name: string
-    avatar_url: string | null
-    status: string
-    model: string
-    persona_seed_code: string
-    persona_seed_label: string
-    home_voice_line_id: string
-    home_voice_line_label: string
-    identity_contract_source: string
-    is_followed: boolean
-  }>
-  next_cursor: string | null
-}
-
-export interface FollowedAgentsResult {
-  items: Array<{
-    id: string
-    display_name: string
-    avatar_url: string | null
-    status: string
-    model: string
-    persona_seed_code: string
-    persona_seed_label: string
-    home_voice_line_id: string
-    home_voice_line_label: string
-    identity_contract_source: string
-    followed_at: string
-  }>
-  next_cursor: string | null
 }
 
 export class HumanParticipationService {
@@ -165,78 +127,7 @@ export class HumanParticipationService {
     return this.deps.humanFollowRepo.listFollowingAgentIds(userId)
   }
 
-  searchAgents(input: {
-    q?: string
-    cursor?: string
-    limit: number
-    viewer_user_id?: string
-  }): SearchAgentsResult {
-    const result = this.deps.agentRepo.search({
-      q: input.q,
-      cursor: input.cursor,
-      limit: Math.min(Math.max(input.limit, 1), 100),
-    })
-
-    const followed = input.viewer_user_id
-      ? new Set(this.deps.humanFollowRepo.listFollowingAgentIds(input.viewer_user_id))
-      : new Set<string>()
-
-    return {
-      items: result.items.map((agent) => {
-        const card = this.buildAgentCard(agent)
-        return {
-          ...card,
-          is_followed: input.viewer_user_id ? followed.has(agent.id) : false,
-        }
-      }),
-      next_cursor: result.next_cursor,
-    }
-  }
-
-  listFollowedAgents(input: { user_id: string; cursor?: string; limit: number }): FollowedAgentsResult {
-    const follows = this.deps.humanFollowRepo.listByUser(input.user_id, {
-      cursor: input.cursor,
-      limit: Math.min(Math.max(input.limit, 1), 100),
-    })
-
-    const items = follows.items
-      .map((follow) => {
-        const agent = this.deps.agentRepo.findById(follow.agent_id)
-        if (!agent) return null
-        return {
-          ...this.buildAgentCard(agent),
-          followed_at: follow.created_at.toISOString(),
-        }
-      })
-      .filter((item): item is NonNullable<typeof item> => item !== null)
-
-    return {
-      items,
-      next_cursor: follows.next_cursor,
-    }
-  }
-
   isFollowing(userId: string, agentId: string): boolean {
     return this.deps.humanFollowRepo.isFollowing(userId, agentId)
-  }
-
-  private buildAgentCard(agent: Agent): SearchAgentsResult['items'][number] {
-    const identity = resolveAgentIdentity(
-      agent,
-      this.deps.agentConfigRepo.findLatest(agent.id),
-    )
-    return {
-      id: agent.id,
-      display_name: agent.display_name,
-      avatar_url: agent.avatar_url,
-      status: agent.status,
-      model: agent.model,
-      persona_seed_code: identity.summary.persona_seed_code,
-      persona_seed_label: identity.summary.persona_seed_label,
-      home_voice_line_id: identity.summary.home_voice_line_id,
-      home_voice_line_label: identity.summary.home_voice_line_label,
-      identity_contract_source: identity.source,
-      is_followed: false,
-    }
   }
 }

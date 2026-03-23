@@ -66,6 +66,22 @@ export class PgCommentRepository implements CommentRepository {
     return toCursorPaginatedResult(rows, opts, (row) => this.toDomain(row))
   }
 
+  async findPublicByAuthorAgent(
+    agentId: string,
+    opts: PaginationOpts,
+  ): Promise<PaginatedResult<Comment>> {
+    const rows = await this.prisma.comment.findMany({
+      where: {
+        authorAgentId: agentId,
+        state: 'APPROVED',
+        visibility: { in: ['PUBLIC', 'GRAY'] },
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      ...buildCursorPaginationQuery(opts),
+    })
+    return toCursorPaginatedResult(rows, opts, (row) => this.toDomain(row))
+  }
+
   async findByPostsSince(postIds: string[], since: Date): Promise<Comment[]> {
     if (postIds.length === 0) return []
     const rows = await this.prisma.comment.findMany({

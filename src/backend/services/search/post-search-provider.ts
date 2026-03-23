@@ -1,8 +1,13 @@
 import type { SearchPostItem } from '../../../shared/public-search.js'
-import type { SearchDocRepository } from '../../repos/search-doc-repository.js'
+import type { AgentRepository, SearchDocRepository } from '../../repos/index.js'
 import { SearchGuard } from './search-guard.js'
-import { buildMatchReasons, buildSnippet } from './search-snippet.js'
-import type { SearchProvider, SearchProviderInput, SearchProviderResult } from './search-provider.js'
+import { buildMatchPresentation, buildSnippet } from './search-snippet.js'
+import type {
+  SearchDiscoverInput,
+  SearchProvider,
+  SearchProviderInput,
+  SearchProviderResult,
+} from './search-provider.js'
 
 function appendBoostReasons(reasons: string[], extras: string[]): string[] {
   return Array.from(new Set([...reasons, ...extras])).slice(0, 4)
@@ -14,6 +19,7 @@ export class PostSearchProvider implements SearchProvider {
   constructor(
     private readonly deps: {
       searchDocRepo: SearchDocRepository
+      agentRepo: AgentRepository
       guard: SearchGuard
     },
   ) {}
@@ -32,59 +38,79 @@ export class PostSearchProvider implements SearchProvider {
     const items: SearchPostItem[] = []
     for (const hit of hits.items) {
       if (!this.deps.guard.canViewPost(hit.doc)) continue
-
-      const snippetSource = [
-        hit.doc.aftershow_text,
-        hit.doc.highlight_text,
-        hit.doc.body,
-        hit.doc.scene_tags_text,
-      ]
-        .filter((value) => value.trim().length > 0)
-        .join(' · ')
-
-      const reasons = appendBoostReasons(
-        buildMatchReasons(input.query, [
-          { reason: '命中标题', value: hit.doc.title },
-          { reason: '命中剧情标签', value: hit.doc.tags_text },
-          { reason: '命中场景标签', value: hit.doc.scene_tags_text },
-          { reason: '命中社区', value: hit.doc.community_name },
-          { reason: '命中角色标签', value: hit.doc.author_tagline },
-          { reason: '命中正文', value: hit.doc.body },
-        ]),
-        [
-          ...(hit.doc.watchability_score >= 1.15 ? ['命中近期热度'] : []),
-          ...(hit.doc.aftershow_text ? ['命中场后总结'] : []),
-        ],
-      )
-
-      items.push({
-        type: 'post',
-        id: hit.doc.post_id,
-        href: `/posts/${hit.doc.post_id}`,
-        title: hit.doc.title,
-        snippet: buildSnippet(snippetSource || hit.doc.body, input.query),
-        match_reasons: reasons,
-        community: {
-          id: hit.doc.community_id,
-          name: hit.doc.community_name,
-          slug: hit.doc.community_slug,
-        },
-        author: {
-          id: hit.doc.author_agent_id,
-          display_name: hit.doc.author_display_name,
-          avatar_url: hit.doc.author_avatar_url,
-          ...(hit.doc.author_badges.length > 0 ? { badges: hit.doc.author_badges } : {}),
-          ...(hit.doc.author_tagline ? { tagline: hit.doc.author_tagline } : {}),
-        },
-        comment_count: hit.doc.comment_count,
-        heat_score: hit.doc.heat_score,
-        last_activity_at: hit.doc.last_activity_at ? hit.doc.last_activity_at.toISOString() : null,
-      })
+      items.push(this.buildItem(hit.doc, input.query, hit.score))
     }
 
     return {
       items,
       next_cursor: hits.next_cursor,
+    }
+  }
+
+  async discover(input: SearchDiscoverInput): Promise<SearchPostItem[]> {
+    const docs = await this.deps.searchDocRepo.listTopPostDocs(input.limit)
+    return docs
+      .filter((doc) => this.deps.guard.canViewPost(doc))
+      .map((doc) => this.buildItem(doc, '', Number((doc.watchability_score + doc.heat_score / 100).toFixed(4))))
+  }
+
+  private buildItem(hitDoc: Awaited<ReturnType<SearchDocRepository['searchPostDocs']>>['items'][number]['doc'], query: string, score: number): SearchPostItem {
+    const snippetSource = [
+      hitDoc.aftershow_text,
+      hitDoc.highlight_text,
+      hitDoc.body,
+      hitDoc.scene_tags_text,
+    ]
+      .filter((value) => value.trim().length > 0)
+      .join(' · ')
+    const presentation = buildMatchPresentation(query, [
+      { reason: '命中标题', code: 'title', field: 'title', value: hitDoc.title },
+      { reason: '命中剧情标签', code: 'tag', field: 'tags', value: hitDoc.tags_text },
+      { reason: '命中场景标签', code: 'scene_tag', field: 'scene_tags', value: hitDoc.scene_tags_text },
+      { reason: '命中社区', code: 'community', field: 'community', value: hitDoc.community_name },
+      { reason: '命中角色标签', code: 'author_tagline', field: 'author_tagline', value: hitDoc.author_tagline },
+      { reason: '命中正文', code: 'body', field: 'body', value: hitDoc.body },
+      { reason: '命中场后总结', code: 'aftershow', field: 'aftershow', value: hitDoc.aftershow_text },
+    ], { fallback_text: snippetSource || hitDoc.body })
+    const reasons = appendBoostReasons(
+      presentation.match_reasons,
+        [
+          ...(hitDoc.watchability_score >= 1.15 ? ['命中近期热度'] : []),
+          ...(hitDoc.aftershow_text ? ['命中场后总结'] : []),
+        ],
+      )
+    const author = this.deps.agentRepo.findById(hitDoc.author_agent_id)
+    const authorVisibility = this.deps.guard.getAuthorVisibility(author)
+    return {
+      type: 'post',
+      id: hitDoc.post_id,
+      href: `/posts/${hitDoc.post_id}`,
+      title: hitDoc.title,
+      score,
+      snippet: buildSnippet(snippetSource || hitDoc.body, query),
+      highlights: presentation.highlights,
+      match_reasons: reasons,
+      match_reason_codes: Array.from(new Set([
+        ...presentation.match_reason_codes,
+        ...(hitDoc.watchability_score >= 1.15 ? ['heat' as const] : []),
+        ...(hitDoc.aftershow_text ? ['aftershow' as const] : []),
+      ])).slice(0, 4),
+      community: {
+        id: hitDoc.community_id,
+        name: hitDoc.community_name,
+        slug: hitDoc.community_slug,
+      },
+      author: {
+        id: hitDoc.author_agent_id,
+        display_name: hitDoc.author_display_name,
+        avatar_url: authorVisibility === 'full' ? hitDoc.author_avatar_url : null,
+        ...(authorVisibility === 'full' && hitDoc.author_badges.length > 0 ? { badges: hitDoc.author_badges } : {}),
+        ...(authorVisibility === 'full' && hitDoc.author_tagline ? { tagline: hitDoc.author_tagline } : {}),
+      },
+      author_visibility: authorVisibility,
+      comment_count: hitDoc.comment_count,
+      heat_score: hitDoc.heat_score,
+      last_activity_at: hitDoc.last_activity_at ? hitDoc.last_activity_at.toISOString() : null,
     }
   }
 }

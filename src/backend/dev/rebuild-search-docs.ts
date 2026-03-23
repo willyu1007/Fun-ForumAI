@@ -6,7 +6,11 @@ async function main() {
   console.log('[search-docs] rebuild complete', result)
 }
 
-main().catch((error) => {
-  console.error('[search-docs] rebuild failed', error)
-  process.exitCode = 1
-})
+main()
+  .then(() => {
+    process.exit(0)
+  })
+  .catch((error) => {
+    console.error('[search-docs] rebuild failed', error)
+    process.exit(1)
+  })

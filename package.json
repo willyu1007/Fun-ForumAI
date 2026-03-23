@@ -88,7 +88,8 @@
     "ui:contract:check": "node scripts/ui/check-contract-codegen-drift.mjs",
     "ui:drift:check": "node scripts/ui/check-generated-clean.mjs",
     "ui:packages:build": "node scripts/ui/build-package-dists.mjs",
-    "ui:packages:check": "node scripts/ui/check-package-typecheck.mjs"
+    "ui:packages:check": "node scripts/ui/check-package-typecheck.mjs",
+    "search:reconcile-docs": "tsx src/backend/dev/reconcile-search-docs.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

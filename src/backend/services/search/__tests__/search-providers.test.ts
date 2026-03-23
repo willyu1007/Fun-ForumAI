@@ -3,6 +3,7 @@ import type { SearchDocRepository } from '../../../repos/search-doc-repository.j
 import { SearchGuard } from '../search-guard.js'
 import { CommentSearchProvider } from '../comment-search-provider.js'
 import { AgentSearchProvider } from '../agent-search-provider.js'
+import { PostSearchProvider } from '../post-search-provider.js'
 
 describe('search providers', () => {
   it('CommentSearchProvider batches parent post lookups once per page', async () => {
@@ -105,6 +106,12 @@ describe('search providers', () => {
 
     const provider = new CommentSearchProvider({
       searchDocRepo,
+      agentRepo: {
+        findById: vi.fn().mockImplementation((agentId: string) => ({
+          id: agentId,
+          status: 'ACTIVE',
+        })),
+      } as never,
       guard: new SearchGuard(),
     })
 
@@ -161,13 +168,49 @@ describe('search providers', () => {
             },
             score: 1.4,
           },
+          {
+            doc: {
+              agent_id: 'agent-2',
+              display_name: 'Hidden Agent',
+              avatar_url: null,
+              status: 'LIMITED',
+              model: 'gpt-5',
+              persona_seed_code: 'seed',
+              persona_seed_label: '隐藏人格',
+              home_voice_line_id: 'voice-2',
+              home_voice_line_label: '受限',
+              identity_contract_source: 'contract',
+              public_tagline: '不应该被发现',
+              public_badges: [],
+              public_badges_text: '',
+              active_membership_count: 1,
+              active_community_ids: ['community-1'],
+              active_communities: [{ id: 'community-1', name: 'Community 1', slug: 'community-1' }],
+              active_community_names_text: 'Community 1',
+              follower_count: 1,
+              public_activity_score: 1.5,
+              public_projection_hint: 'hidden',
+              top_chronicle_text: '',
+              representative_post_text: '',
+              representative_comment_text: '',
+              social_signal_text: '',
+              searchable_text: 'Hidden Agent',
+              refreshed_at: new Date(),
+              created_at: new Date(),
+              updated_at: new Date(),
+            },
+            score: 1.1,
+          },
         ],
         next_cursor: null,
       }),
       countAgentDocs: vi.fn().mockResolvedValue(1),
     } as unknown as SearchDocRepository
 
-    const provider = new AgentSearchProvider({ searchDocRepo })
+    const provider = new AgentSearchProvider({
+      searchDocRepo,
+      guard: new SearchGuard(),
+    })
     const result = await provider.search({
       query: 'talk show',
       limit: 20,
@@ -178,6 +221,77 @@ describe('search providers', () => {
       type: 'agent',
       id: 'agent-1',
       is_followed: true,
+    })
+    expect(result.items).toHaveLength(1)
+  })
+
+  it('PostSearchProvider fails closed for missing authors while keeping public content searchable', async () => {
+    const searchDocRepo = {
+      searchPostDocs: vi.fn().mockResolvedValue({
+        items: [
+          {
+            doc: {
+              post_id: 'post-1',
+              community_id: 'community-1',
+              community_slug: 'community-1',
+              community_name: 'Community 1',
+              author_agent_id: 'agent-1',
+              author_display_name: 'Restricted Agent',
+              author_avatar_url: 'https://example.com/avatar.png',
+              author_tagline: '不应透出',
+              author_badges: [{ code: 'host', name: '主持', tier: 2 }],
+              author_badges_text: '主持',
+              title: 'late night set',
+              body: 'talk show body',
+              tags_text: 'talk-show',
+              scene_tags_text: 'late-night',
+              scene_phase: 'opening',
+              aftershow_text: 'aftershow',
+              highlight_text: 'highlight',
+              searchable_text: 'late night set talk show body',
+              visibility: 'PUBLIC',
+              state: 'APPROVED',
+              comment_count: 2,
+              participant_count: 2,
+              last_activity_at: new Date('2026-03-23T00:00:00.000Z'),
+              heat_score: 52,
+              watchability_score: 1.2,
+              refreshed_at: new Date(),
+              created_at: new Date(),
+              updated_at: new Date(),
+            },
+            score: 1.5,
+          },
+        ],
+        next_cursor: null,
+      }),
+      countPostDocs: vi.fn().mockResolvedValue(1),
+    } as unknown as SearchDocRepository
+
+    const provider = new PostSearchProvider({
+      searchDocRepo,
+      agentRepo: {
+        findById: vi.fn().mockReturnValue(null),
+      } as never,
+      guard: new SearchGuard(),
+    })
+
+    const result = await provider.search({
+      query: 'late night',
+      limit: 20,
+    })
+
+    expect(result.items).toHaveLength(1)
+    const first = result.items[0]
+    expect(first?.type).toBe('post')
+    if (!first || first.type !== 'post') {
+      throw new Error('expected post item')
+    }
+    expect(first.author_visibility).toBe('restricted')
+    expect(first.author).toEqual({
+      id: 'agent-1',
+      display_name: 'Restricted Agent',
+      avatar_url: null,
     })
   })
 })

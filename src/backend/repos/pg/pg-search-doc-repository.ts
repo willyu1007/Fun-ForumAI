@@ -13,7 +13,12 @@ import type {
   UpsertCommunitySearchDocInput,
   UpsertPostSearchDocInput,
 } from '../types.js'
-import type { SearchDocQueryInput, SearchDocRepository } from '../search-doc-repository.js'
+import {
+  buildSearchTokenGate,
+  type SearchDocQueryInput,
+  type SearchDocRepository,
+  type SearchDocStats,
+} from '../search-doc-repository.js'
 
 const SEARCH_THRESHOLD = 0.06
 
@@ -82,6 +87,21 @@ function toRankedPage<TDoc extends object>(
   }
 }
 
+function buildTokenGateClause(column: string, normalizedQuery: string): Prisma.Sql {
+  const tokenGate = buildSearchTokenGate(normalizedQuery)
+  if (!tokenGate) {
+    return Prisma.empty
+  }
+
+  const matchExpressions = tokenGate.tokens.map((token) =>
+    Prisma.sql`CASE WHEN lower(${Prisma.raw(column)}) LIKE ${`%${token}%`} THEN 1 ELSE 0 END`,
+  )
+
+  return Prisma.sql`
+    AND ((${Prisma.join(matchExpressions, ' + ')}) >= ${tokenGate.required_matches})
+  `
+}
+
 export class PgSearchDocRepository implements SearchDocRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -94,6 +114,16 @@ export class PgSearchDocRepository implements SearchDocRepository {
       this.prisma.agentSearchDoc.deleteMany(),
       this.prisma.communitySearchDoc.deleteMany(),
     ])
+  }
+
+  async getStats(): Promise<SearchDocStats> {
+    const [posts, communities, agents, comments] = await Promise.all([
+      this.prisma.postSearchDoc.count(),
+      this.prisma.communitySearchDoc.count(),
+      this.prisma.agentSearchDoc.count(),
+      this.prisma.commentSearchDoc.count(),
+    ])
+    return { posts, communities, agents, comments }
   }
 
   async upsertPostDoc(input: UpsertPostSearchDocInput): Promise<PostSearchDoc> {
@@ -174,6 +204,19 @@ export class PgSearchDocRepository implements SearchDocRepository {
     return new Map(rows.map((row) => [row.postId, this.toPostDoc(row)]))
   }
 
+  async listTopPostDocs(limit: number): Promise<PostSearchDoc[]> {
+    const rows = await this.prisma.postSearchDoc.findMany({
+      orderBy: [
+        { watchabilityScore: 'desc' },
+        { heatScore: 'desc' },
+        { lastActivityAt: 'desc' },
+        { postId: 'asc' },
+      ],
+      take: limit,
+    })
+    return rows.map((row) => this.toPostDoc(row))
+  }
+
   async searchPostDocs(input: SearchDocQueryInput): Promise<RankedSearchDocPage<PostSearchDoc>> {
     const rows = await this.queryPostDocs(input)
     return toRankedPage(rows, input.limit, (row) => row.post_id)
@@ -183,11 +226,15 @@ export class PgSearchDocRepository implements SearchDocRepository {
     const normalized = query.trim()
     if (!normalized) return 0
     const likePattern = `%${normalized}%`
+    const tokenGateClause = buildTokenGateClause('searchable_text', normalized)
     const rows = await this.prisma.$queryRaw<CountRow[]>(Prisma.sql`
       SELECT COUNT(*)::int AS count
       FROM post_search_docs
       WHERE searchable_text ILIKE ${likePattern}
-        OR similarity(lower(searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
+        OR (
+          similarity(lower(searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
+          ${tokenGateClause}
+        )
     `)
     return normalizeCount(rows[0]?.count)
   }
@@ -238,6 +285,19 @@ export class PgSearchDocRepository implements SearchDocRepository {
     await this.prisma.communitySearchDoc.deleteMany({ where: { communityId } })
   }
 
+  async listTopCommunityDocs(limit: number): Promise<CommunitySearchDoc[]> {
+    const rows = await this.prisma.communitySearchDoc.findMany({
+      orderBy: [
+        { activity7d: 'desc' },
+        { activity30d: 'desc' },
+        { activeMemberCount: 'desc' },
+        { communityId: 'asc' },
+      ],
+      take: limit,
+    })
+    return rows.map((row) => this.toCommunityDoc(row))
+  }
+
   async searchCommunityDocs(
     input: SearchDocQueryInput,
   ): Promise<RankedSearchDocPage<CommunitySearchDoc>> {
@@ -249,11 +309,15 @@ export class PgSearchDocRepository implements SearchDocRepository {
     const normalized = query.trim()
     if (!normalized) return 0
     const likePattern = `%${normalized}%`
+    const tokenGateClause = buildTokenGateClause('searchable_text', normalized)
     const rows = await this.prisma.$queryRaw<CountRow[]>(Prisma.sql`
       SELECT COUNT(*)::int AS count
       FROM community_search_docs
       WHERE searchable_text ILIKE ${likePattern}
-        OR similarity(lower(searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
+        OR (
+          similarity(lower(searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
+          ${tokenGateClause}
+        )
     `)
     return normalizeCount(rows[0]?.count)
   }
@@ -324,6 +388,19 @@ export class PgSearchDocRepository implements SearchDocRepository {
     await this.prisma.agentSearchDoc.deleteMany({ where: { agentId } })
   }
 
+  async listTopAgentDocs(limit: number): Promise<AgentSearchDoc[]> {
+    const rows = await this.prisma.agentSearchDoc.findMany({
+      orderBy: [
+        { publicActivityScore: 'desc' },
+        { followerCount: 'desc' },
+        { activeMembershipCount: 'desc' },
+        { agentId: 'asc' },
+      ],
+      take: limit,
+    })
+    return rows.map((row) => this.toAgentDoc(row))
+  }
+
   async searchAgentDocs(input: SearchDocQueryInput): Promise<RankedSearchDocPage<AgentSearchDoc>> {
     const rows = await this.queryAgentDocs(input)
     return toRankedPage(rows, input.limit, (row) => row.agent_id)
@@ -333,11 +410,15 @@ export class PgSearchDocRepository implements SearchDocRepository {
     const normalized = query.trim()
     if (!normalized) return 0
     const likePattern = `%${normalized}%`
+    const tokenGateClause = buildTokenGateClause('searchable_text', normalized)
     const rows = await this.prisma.$queryRaw<CountRow[]>(Prisma.sql`
       SELECT COUNT(*)::int AS count
       FROM agent_search_docs
       WHERE searchable_text ILIKE ${likePattern}
-        OR similarity(lower(searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
+        OR (
+          similarity(lower(searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
+          ${tokenGateClause}
+        )
     `)
     return normalizeCount(rows[0]?.count)
   }
@@ -407,13 +488,17 @@ export class PgSearchDocRepository implements SearchDocRepository {
     const normalized = query.trim()
     if (!normalized) return 0
     const likePattern = `%${normalized}%`
+    const tokenGateClause = buildTokenGateClause('csd.searchable_text', normalized)
     const rows = await this.prisma.$queryRaw<CountRow[]>(Prisma.sql`
       SELECT COUNT(*)::int AS count
       FROM comment_search_docs csd
       INNER JOIN post_search_docs psd
         ON psd.post_id = csd.post_id
       WHERE csd.searchable_text ILIKE ${likePattern}
-        OR similarity(lower(csd.searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
+        OR (
+          similarity(lower(csd.searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
+          ${tokenGateClause}
+        )
     `)
     return normalizeCount(rows[0]?.count)
   }
@@ -422,6 +507,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
     const normalized = input.query.trim()
     if (!normalized) return []
     const likePattern = `%${normalized}%`
+    const tokenGateClause = buildTokenGateClause('searchable_text', normalized)
     const rows = await this.prisma.$queryRaw<Array<{
       post_id: string
       community_id: string
@@ -511,7 +597,10 @@ export class PgSearchDocRepository implements SearchDocRepository {
           )::numeric, 6)::double precision AS score
         FROM post_search_docs
         WHERE searchable_text ILIKE ${likePattern}
-          OR similarity(lower(searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
+          OR (
+            similarity(lower(searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
+            ${tokenGateClause}
+          )
       )
       SELECT *
       FROM ranked
@@ -557,6 +646,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
     const normalized = input.query.trim()
     if (!normalized) return []
     const likePattern = `%${normalized}%`
+    const tokenGateClause = buildTokenGateClause('searchable_text', normalized)
     const rows = await this.prisma.$queryRaw<Array<{
       community_id: string
       name: string
@@ -620,7 +710,10 @@ export class PgSearchDocRepository implements SearchDocRepository {
           )::numeric, 6)::double precision AS score
         FROM community_search_docs
         WHERE searchable_text ILIKE ${likePattern}
-          OR similarity(lower(searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
+          OR (
+            similarity(lower(searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
+            ${tokenGateClause}
+          )
       )
       SELECT *
       FROM ranked
@@ -636,6 +729,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
     const normalized = input.query.trim()
     if (!normalized) return []
     const likePattern = `%${normalized}%`
+    const tokenGateClause = buildTokenGateClause('searchable_text', normalized)
     const rows = await this.prisma.$queryRaw<Array<{
       agent_id: string
       display_name: string
@@ -722,7 +816,10 @@ export class PgSearchDocRepository implements SearchDocRepository {
           )::numeric, 6)::double precision AS score
         FROM agent_search_docs
         WHERE searchable_text ILIKE ${likePattern}
-          OR similarity(lower(searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
+          OR (
+            similarity(lower(searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
+            ${tokenGateClause}
+          )
       )
       SELECT *
       FROM ranked
@@ -768,6 +865,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
     const normalized = input.query.trim()
     if (!normalized) return []
     const likePattern = `%${normalized}%`
+    const tokenGateClause = buildTokenGateClause('csd.searchable_text', normalized)
     const rows = await this.prisma.$queryRaw<Array<{
       comment_id: string
       post_id: string
@@ -844,7 +942,10 @@ export class PgSearchDocRepository implements SearchDocRepository {
         INNER JOIN post_search_docs psd
           ON psd.post_id = csd.post_id
         WHERE csd.searchable_text ILIKE ${likePattern}
-          OR similarity(lower(csd.searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
+          OR (
+            similarity(lower(csd.searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
+            ${tokenGateClause}
+          )
       )
       SELECT *
       FROM ranked

@@ -5,6 +5,7 @@ export interface CommentRepository {
   findById(id: string): Promise<Comment | null>
   findByPost(postId: string, opts: PaginationOpts): Promise<PaginatedResult<Comment>>
   findByPostAll(postId: string, opts: PaginationOpts): Promise<PaginatedResult<Comment>>
+  findPublicByAuthorAgent(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<Comment>>
   findByPostsSince(postIds: string[], since: Date): Promise<Comment[]>
   countByPost(postId: string): Promise<number>
   delete(id: string): Promise<void>
@@ -53,6 +54,14 @@ export class InMemoryCommentRepository implements CommentRepository {
     const items = Array.from(this.store.values())
       .filter((c) => c.post_id === postId)
       .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
+    return paginate(items, opts)
+  }
+
+  async findPublicByAuthorAgent(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<Comment>> {
+    const items = Array.from(this.store.values())
+      .filter((c) => c.author_agent_id === agentId && c.state === 'APPROVED')
+      .filter((c) => c.visibility === 'PUBLIC' || c.visibility === 'GRAY')
+      .sort((a, b) => a.created_at.getTime() - b.created_at.getTime() || a.id.localeCompare(b.id))
     return paginate(items, opts)
   }
 

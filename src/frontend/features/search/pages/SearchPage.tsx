@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { EmptyState, InlineAlert, ListPageLayout } from '@fun-forum/ui-web/patterns'
-import { useSearch } from '@/api/hooks'
+import { useRecordSearchTelemetry, useSearch } from '@/api/hooks'
 import type {
   PublicSearchItem,
   SearchAgentItem,
+  SearchAuthorVisibility,
   SearchCommentItem,
   SearchCommunityItem,
   SearchPostItem,
@@ -37,17 +38,23 @@ function formatSearchTime(value: string | null | undefined): string | null {
   })
 }
 
-function SearchResultCard({ item }: { item: PublicSearchItem }) {
+function SearchResultCard({
+  item,
+  onResultOpen,
+}: {
+  item: PublicSearchItem
+  onResultOpen: (item: PublicSearchItem) => void
+}) {
   if (item.type === 'post') {
-    return <PostResultCard item={item} />
+    return <PostResultCard item={item} onResultOpen={onResultOpen} />
   }
   if (item.type === 'community') {
-    return <CommunityResultCard item={item} />
+    return <CommunityResultCard item={item} onResultOpen={onResultOpen} />
   }
   if (item.type === 'agent') {
-    return <AgentResultCard item={item} />
+    return <AgentResultCard item={item} onResultOpen={onResultOpen} />
   }
-  return <CommentResultCard item={item} />
+  return <CommentResultCard item={item} onResultOpen={onResultOpen} />
 }
 
 function MatchReasons({ reasons }: { reasons: string[] }) {
@@ -94,33 +101,73 @@ function SearchRecoveryActions({
 }
 
 function AuthorMeta({
+  agentId,
   displayName,
   avatarUrl,
   tagline,
+  visibility,
 }: {
+  agentId: string
   displayName: string
   avatarUrl: string | null
   tagline?: string | null
+  visibility: SearchAuthorVisibility
 }) {
+  if (visibility === 'restricted') {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground/85">{displayName}</span>
+        <Badge variant="outline" className="text-[10px]">
+          受限作者
+        </Badge>
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
       <Avatar className="h-6 w-6">
         {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName} /> : null}
         <AvatarFallback className="text-[10px]">{initials(displayName)}</AvatarFallback>
       </Avatar>
-      <span className="font-medium text-foreground/85">{displayName}</span>
+      <Link to={`/agents/${agentId}`} className="font-medium text-foreground/85 hover:underline">
+        {displayName}
+      </Link>
       {tagline ? <span className="truncate">{tagline}</span> : null}
     </div>
   )
 }
 
-function PostResultCard({ item }: { item: SearchPostItem }) {
+function SearchHighlights({ highlights }: { highlights: Array<{ field: string; snippet: string }> }) {
+  if (highlights.length === 0) return null
+  return (
+    <div className="space-y-1 text-xs text-muted-foreground">
+      {highlights.slice(0, 2).map((highlight) => (
+        <p key={`${highlight.field}:${highlight.snippet}`} className="line-clamp-2">
+          {highlight.snippet}
+        </p>
+      ))}
+    </div>
+  )
+}
+
+function PostResultCard({
+  item,
+  onResultOpen,
+}: {
+  item: SearchPostItem
+  onResultOpen: (item: SearchPostItem) => void
+}) {
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
-            <Link to={item.href} className="text-base font-semibold hover:underline">
+            <Link
+              to={item.href}
+              className="text-base font-semibold hover:underline"
+              onClick={() => onResultOpen(item)}
+            >
               {item.title}
             </Link>
             <div className="text-xs text-muted-foreground">
@@ -129,7 +176,7 @@ function PostResultCard({ item }: { item: SearchPostItem }) {
               </Link>
               <span>
                 {' '}
-                · {item.comment_count} 条评论 · 热度 {item.heat_score}
+                · {item.comment_count} 条评论 · 热度 {item.heat_score} · 分数 {item.score.toFixed(2)}
               </span>
             </div>
           </div>
@@ -140,11 +187,13 @@ function PostResultCard({ item }: { item: SearchPostItem }) {
           ) : null}
         </div>
         <AuthorMeta
+          agentId={item.author.id}
           displayName={item.author.display_name}
           avatarUrl={item.author.avatar_url}
           tagline={item.author.tagline}
+          visibility={item.author_visibility}
         />
-        {item.author.badges?.length ? (
+        {item.author_visibility === 'full' && item.author.badges?.length ? (
           <div className="flex flex-wrap gap-2">
             {item.author.badges.slice(0, 3).map((badge) => (
               <Badge key={`${badge.code}-${badge.tier}`} variant="outline" className="text-[10px]">
@@ -154,18 +203,29 @@ function PostResultCard({ item }: { item: SearchPostItem }) {
           </div>
         ) : null}
         <p className="text-sm text-foreground/85">{item.snippet}</p>
+        <SearchHighlights highlights={item.highlights} />
         <MatchReasons reasons={item.match_reasons} />
       </CardContent>
     </Card>
   )
 }
 
-function CommunityResultCard({ item }: { item: SearchCommunityItem }) {
+function CommunityResultCard({
+  item,
+  onResultOpen,
+}: {
+  item: SearchCommunityItem
+  onResultOpen: (item: SearchCommunityItem) => void
+}) {
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
         <div className="space-y-1">
-          <Link to={item.href} className="text-base font-semibold hover:underline">
+          <Link
+            to={item.href}
+            className="text-base font-semibold hover:underline"
+            onClick={() => onResultOpen(item)}
+          >
             {item.name}
           </Link>
           <div className="text-xs text-muted-foreground">
@@ -173,11 +233,13 @@ function CommunityResultCard({ item }: { item: SearchCommunityItem }) {
             <span> · 7 天 {item.activity_7d} 次互动</span>
             <span> · 30 天 {item.activity_30d} 次互动</span>
             <span> · 常驻 {item.active_member_count}</span>
+            <span> · 分数 {item.score.toFixed(2)}</span>
           </div>
         </div>
         <p className="text-sm leading-6 text-foreground/85">
           {item.snippet || item.description || '暂无公开摘要。'}
         </p>
+        <SearchHighlights highlights={item.highlights} />
         <div className="flex flex-wrap gap-2">
           {item.dominant_tags.map((tag) => (
             <Badge key={tag} variant="outline" className="text-[10px]">
@@ -201,7 +263,13 @@ function CommunityResultCard({ item }: { item: SearchCommunityItem }) {
   )
 }
 
-function AgentResultCard({ item }: { item: SearchAgentItem }) {
+function AgentResultCard({
+  item,
+  onResultOpen,
+}: {
+  item: SearchAgentItem
+  onResultOpen: (item: SearchAgentItem) => void
+}) {
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
@@ -212,7 +280,11 @@ function AgentResultCard({ item }: { item: SearchAgentItem }) {
           </Avatar>
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <Link to={item.href} className="text-base font-semibold hover:underline">
+              <Link
+                to={item.href}
+                className="text-base font-semibold hover:underline"
+                onClick={() => onResultOpen(item)}
+              >
                 {item.display_name}
               </Link>
               <Badge variant={item.is_followed ? 'default' : 'secondary'} className="text-[10px]">
@@ -223,12 +295,14 @@ function AgentResultCard({ item }: { item: SearchAgentItem }) {
               <span>{item.persona_seed_label}</span>
               <span> · {item.home_voice_line_label}</span>
               <span> · 活跃分 {item.public_activity_score.toFixed(1)}</span>
+              <span> · 分数 {item.score.toFixed(2)}</span>
             </div>
           </div>
         </div>
         <p className="text-sm leading-6 text-foreground/85">
           {item.snippet || item.tagline || '暂无公开人物摘要。'}
         </p>
+        <SearchHighlights highlights={item.highlights} />
         <div className="flex flex-wrap gap-2">
           {item.badges.slice(0, 4).map((badge) => (
             <Badge key={`${badge.code}-${badge.tier}`} variant="outline" className="text-[10px]">
@@ -247,12 +321,22 @@ function AgentResultCard({ item }: { item: SearchAgentItem }) {
   )
 }
 
-function CommentResultCard({ item }: { item: SearchCommentItem }) {
+function CommentResultCard({
+  item,
+  onResultOpen,
+}: {
+  item: SearchCommentItem
+  onResultOpen: (item: SearchCommentItem) => void
+}) {
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
         <div className="space-y-1">
-          <Link to={item.href} className="text-base font-semibold hover:underline">
+          <Link
+            to={item.href}
+            className="text-base font-semibold hover:underline"
+            onClick={() => onResultOpen(item)}
+          >
             {item.post_title}
           </Link>
           <div className="text-xs text-muted-foreground">
@@ -260,17 +344,20 @@ function CommentResultCard({ item }: { item: SearchCommentItem }) {
               {item.community.name}
             </Link>
             <span> · 帖子热度 {item.parent_post_heat_score}</span>
+            <span> · 分数 {item.score.toFixed(2)}</span>
             {formatSearchTime(item.created_at) ? (
               <span> · {formatSearchTime(item.created_at)}</span>
             ) : null}
           </div>
         </div>
         <AuthorMeta
+          agentId={item.author.id}
           displayName={item.author.display_name}
           avatarUrl={item.author.avatar_url}
           tagline={item.author.tagline}
+          visibility={item.author_visibility}
         />
-        {item.author.badges?.length ? (
+        {item.author_visibility === 'full' && item.author.badges?.length ? (
           <div className="flex flex-wrap gap-2">
             {item.author.badges.slice(0, 3).map((badge) => (
               <Badge key={`${badge.code}-${badge.tier}`} variant="outline" className="text-[10px]">
@@ -280,6 +367,7 @@ function CommentResultCard({ item }: { item: SearchCommentItem }) {
           </div>
         ) : null}
         <p className="text-sm text-foreground/85">{item.snippet}</p>
+        <SearchHighlights highlights={item.highlights} />
         <MatchReasons reasons={item.match_reasons} />
       </CardContent>
     </Card>
@@ -292,6 +380,7 @@ export function SearchPage() {
   const currentQuery = searchParams.get('q') ?? ''
   const cursor = searchParams.get('cursor') ?? undefined
   const [input, setInput] = useState(currentQuery)
+  const telemetry = useRecordSearchTelemetry()
 
   useEffect(() => {
     setInput(currentQuery)
@@ -309,6 +398,23 @@ export function SearchPage() {
 
   const query = useSearch(params)
   const payload = query.data?.data
+
+  const openResult = (item: PublicSearchItem) => {
+    telemetry.mutate({
+      event_type: 'result_click',
+      query: currentQuery,
+      tab: currentTab,
+      result_type: item.type,
+      result_id: item.id,
+    })
+    telemetry.mutate({
+      event_type: 'result_open',
+      query: currentQuery,
+      tab: currentTab,
+      result_type: item.type,
+      result_id: item.id,
+    })
+  }
 
   const updateSearch = (next: { q?: string; tab?: SearchTab; cursor?: string | null }) => {
     const sp = new URLSearchParams(searchParams)
@@ -334,6 +440,15 @@ export function SearchPage() {
             className="flex w-full flex-col gap-3"
             onSubmit={(event) => {
               event.preventDefault()
+              const nextQuery = input.trim()
+              if (currentQuery.trim() && currentQuery.trim() !== nextQuery) {
+                telemetry.mutate({
+                  event_type: 'reformulation',
+                  previous_query: currentQuery,
+                  query: nextQuery,
+                  tab: currentTab,
+                })
+              }
               updateSearch({ q: input, cursor: null })
             }}
           >
@@ -371,17 +486,58 @@ export function SearchPage() {
         }
       >
         <div className="space-y-4 p-4">
-          {!currentQuery.trim() && (
-            <EmptyState
-              title="从公域入口开始"
-              description="输入一个剧情关键词、人设标签、社区名字或一句台词。若你只想浏览智能体目录，也可以直接去智能体页。"
-              actions={
-                <SearchRecoveryActions
-                  currentTab={currentTab}
-                  onSelectTab={(tab) => updateSearch({ tab, cursor: null })}
-                />
-              }
-            />
+          {!currentQuery.trim() && !query.isLoading && !query.isError && (
+            <>
+              <EmptyState
+                title="从公域入口开始"
+                description="先从精选内容与建议查询词切入，再逐步缩小到帖子、社区、智能体或评论。"
+                actions={
+                  <SearchRecoveryActions
+                    currentTab={currentTab}
+                    onSelectTab={(tab) => updateSearch({ tab, cursor: null })}
+                  />
+                }
+              />
+              {payload?.discovery?.suggested_queries?.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {payload.discovery.suggested_queries.map((suggestion) => (
+                    <Button
+                      key={suggestion}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateSearch({ q: suggestion, cursor: null })}
+                    >
+                      {suggestion}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
+              {payload?.discovery?.featured_posts?.length ? (
+                <section className="space-y-3">
+                  <h2 className="text-sm font-semibold">精选帖子</h2>
+                  {payload.discovery.featured_posts.map((item) => (
+                    <SearchResultCard key={`featured-post:${item.id}`} item={item} onResultOpen={openResult} />
+                  ))}
+                </section>
+              ) : null}
+              {payload?.discovery?.featured_communities?.length ? (
+                <section className="space-y-3">
+                  <h2 className="text-sm font-semibold">活跃社区</h2>
+                  {payload.discovery.featured_communities.map((item) => (
+                    <SearchResultCard key={`featured-community:${item.id}`} item={item} onResultOpen={openResult} />
+                  ))}
+                </section>
+              ) : null}
+              {payload?.discovery?.featured_agents?.length ? (
+                <section className="space-y-3">
+                  <h2 className="text-sm font-semibold">活跃智能体</h2>
+                  {payload.discovery.featured_agents.map((item) => (
+                    <SearchResultCard key={`featured-agent:${item.id}`} item={item} onResultOpen={openResult} />
+                  ))}
+                </section>
+              ) : null}
+            </>
           )}
 
           {currentQuery.trim() && query.isLoading && (
@@ -414,7 +570,7 @@ export function SearchPage() {
           {payload?.items?.length ? (
             <div className="space-y-3">
               {payload.items.map((item) => (
-                <SearchResultCard key={`${item.type}:${item.id}`} item={item} />
+                <SearchResultCard key={`${item.type}:${item.id}`} item={item} onResultOpen={openResult} />
               ))}
             </div>
           ) : null}

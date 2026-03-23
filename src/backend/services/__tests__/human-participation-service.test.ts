@@ -4,7 +4,7 @@ import { InMemoryCommentRepository } from '../../repos/comment-repository.js'
 import { InMemoryVoteRepository } from '../../repos/vote-repository.js'
 import { InMemoryHumanVoteRepository } from '../../repos/human-vote-repository.js'
 import { InMemoryHumanFollowRepository } from '../../repos/human-follow-repository.js'
-import { InMemoryAgentConfigRepository, InMemoryAgentRepository } from '../../repos/agent-repository.js'
+import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryEventRepository } from '../../repos/event-repository.js'
 import { HumanParticipationService, HUMAN_VOTE_WEIGHT } from '../human-participation-service.js'
 
@@ -15,7 +15,6 @@ function createService() {
   const humanVoteRepo = new InMemoryHumanVoteRepository()
   const humanFollowRepo = new InMemoryHumanFollowRepository()
   const agentRepo = new InMemoryAgentRepository()
-  const agentConfigRepo = new InMemoryAgentConfigRepository()
   const eventRepo = new InMemoryEventRepository()
 
   const service = new HumanParticipationService({
@@ -25,11 +24,10 @@ function createService() {
     humanVoteRepo,
     humanFollowRepo,
     agentRepo,
-    agentConfigRepo,
     eventRepo,
   })
 
-  return { service, postRepo, commentRepo, voteRepo, humanVoteRepo, humanFollowRepo, agentRepo, agentConfigRepo, eventRepo }
+  return { service, postRepo, commentRepo, voteRepo, humanVoteRepo, humanFollowRepo, agentRepo, eventRepo }
 }
 
 describe('HumanParticipationService', () => {
@@ -199,51 +197,6 @@ describe('HumanParticipationService', () => {
 
     it('throws NotFoundError when agent does not exist', async () => {
       await expect(ctx.service.followAgent('user1', 'nonexistent')).rejects.toThrow('Agent')
-    })
-  })
-
-  describe('searchAgents', () => {
-    it('returns agents with is_followed flag for authenticated viewer', async () => {
-      const a1 = ctx.agentRepo.create({ owner_id: 'u1', display_name: 'Alpha' })
-      ctx.agentRepo.create({ owner_id: 'u2', display_name: 'Beta' })
-      await ctx.humanFollowRepo.follow({ user_id: 'viewer1', agent_id: a1.id })
-
-      const result = ctx.service.searchAgents({
-        limit: 10,
-        viewer_user_id: 'viewer1',
-      })
-
-      expect(result.items.length).toBe(2)
-      const alpha = result.items.find((item) => item.display_name === 'Alpha')
-      const beta = result.items.find((item) => item.display_name === 'Beta')
-      expect(alpha?.is_followed).toBe(true)
-      expect(beta?.is_followed).toBe(false)
-      expect(alpha?.persona_seed_code).toBe('scholar')
-      expect(alpha?.home_voice_line_id).toBe('qwen-social-v1')
-      expect(alpha?.identity_contract_source).toBe('contract_v1')
-    })
-
-    it('clamps limit between 1 and 100', () => {
-      ctx.agentRepo.create({ owner_id: 'u1', display_name: 'A' })
-      const result = ctx.service.searchAgents({ limit: 999 })
-      expect(result.items.length).toBeLessThanOrEqual(100)
-    })
-  })
-
-  describe('listFollowedAgents', () => {
-    it('returns followed agents with pagination', async () => {
-      const a1 = ctx.agentRepo.create({ owner_id: 'u1', display_name: 'A1' })
-      const a2 = ctx.agentRepo.create({ owner_id: 'u2', display_name: 'A2' })
-      await ctx.humanFollowRepo.follow({ user_id: 'viewer1', agent_id: a1.id })
-      await ctx.humanFollowRepo.follow({ user_id: 'viewer1', agent_id: a2.id })
-
-      const result = ctx.service.listFollowedAgents({
-        user_id: 'viewer1',
-        limit: 1,
-      })
-
-      expect(result.items.length).toBe(1)
-      expect(result.next_cursor).toBeTruthy()
     })
   })
 })

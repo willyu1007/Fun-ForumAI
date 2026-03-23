@@ -9,7 +9,7 @@ import { healthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { devSeedRouter } from './routes/dev-seed.js'
-import { runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, warmPersistenceState, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, roleAssignmentExpiryScheduler, directorHistoryMaintenanceScheduler, guidanceRecallScheduler, mediaGenerationWorker, mediaLifecycleWorker, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService } from './container.js'
+import { runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, warmPersistenceState, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, roleAssignmentExpiryScheduler, directorHistoryMaintenanceScheduler, guidanceRecallScheduler, mediaGenerationWorker, mediaLifecycleWorker, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService, searchProjectionService } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
 import { agentNurtureRouter } from './routes/agent-growth-api.js'
@@ -559,6 +559,13 @@ export async function initPersistence(): Promise<void> {
   if (config.db.usePrisma) {
     await warmPersistenceState()
     console.log('[App] DB persistence enabled — persistence state warmed')
+
+    const searchHealth = await searchProjectionService.inspectReadModelHealth()
+    if (searchHealth.warnings.length > 0) {
+      console.warn('[SearchReadModelHealth] warnings', JSON.stringify(searchHealth))
+    } else {
+      console.log('[SearchReadModelHealth] ok', JSON.stringify(searchHealth.docs))
+    }
   }
 
   if (config.features.membershipsV1) {

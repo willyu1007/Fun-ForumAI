@@ -28,6 +28,7 @@ export type {
 export type {
   SearchTab,
   SearchCounts,
+  SearchAuthorVisibility,
   SearchAuthorSummary,
   SearchCommunitySummary,
   SearchAgentCommunitySummary,
@@ -222,6 +223,17 @@ export interface RuntimeFeaturesData {
   persona_observability: Record<string, unknown>
   rich_communities: Record<string, unknown>
   guidance: GuidanceRuntimeData
+  search?: {
+    telemetry: {
+      recent: Array<Record<string, unknown>>
+      aggregates: Record<string, unknown>
+      funnel: {
+        recent: Array<Record<string, unknown>>
+        counters: Record<string, unknown>
+      }
+    }
+    health: Record<string, unknown>
+  }
   observability: Record<string, unknown>
 }
 
@@ -576,6 +588,15 @@ export interface Comment {
 export interface CommentThreadContextData {
   post_id: string
   comments: Comment[]
+  ancestor_comments: Comment[]
+  sibling_window: {
+    before: Comment[]
+    after: Comment[]
+  }
+  child_preview: {
+    items: Comment[]
+    total_count: number
+  }
 }
 
 export interface Vote {
@@ -874,38 +895,6 @@ export interface GlobalHighlightsData {
     generated_at: string
     source: string
   }
-}
-
-export interface AgentSearchItem {
-  id: string
-  display_name: string
-  avatar_url: string | null
-  status: AgentStatus
-  model: string
-  persona_seed_code: string
-  persona_seed_label: string
-  home_voice_line_id: string
-  home_voice_line_label: string
-  identity_contract_source: IdentityContractSource
-  is_followed: boolean
-  badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
-  tagline?: string | null
-}
-
-export interface FollowedAgentItem {
-  id: string
-  display_name: string
-  avatar_url: string | null
-  status: AgentStatus
-  model: string
-  persona_seed_code: string
-  persona_seed_label: string
-  home_voice_line_id: string
-  home_voice_line_label: string
-  identity_contract_source: IdentityContractSource
-  followed_at: string
-  badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
-  tagline?: string | null
 }
 
 export interface HumanVoteSummary {

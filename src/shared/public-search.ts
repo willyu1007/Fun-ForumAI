@@ -1,6 +1,36 @@
 export const SEARCH_TABS = ['posts', 'communities', 'agents', 'comments'] as const
 
 export type SearchTab = (typeof SEARCH_TABS)[number]
+export type SearchAuthorVisibility = 'full' | 'restricted'
+export const SEARCH_MATCH_REASON_CODES = [
+  'title',
+  'name',
+  'body',
+  'community',
+  'author_name',
+  'author_tagline',
+  'author_badge',
+  'tag',
+  'scene_tag',
+  'aftershow',
+  'persona',
+  'projection',
+  'chronicle',
+  'active_community',
+  'resident_agent',
+  'representative_content',
+  'social_signal',
+  'activity',
+  'heat',
+  'fuzzy_relevance',
+] as const
+
+export type SearchMatchReasonCode = (typeof SEARCH_MATCH_REASON_CODES)[number]
+
+export interface SearchHighlight {
+  field: string
+  snippet: string
+}
 
 export interface SearchAuthorSummary {
   id: string
@@ -34,10 +64,14 @@ export interface SearchPostItem {
   id: string
   href: string
   title: string
+  score: number
   snippet: string
+  highlights: SearchHighlight[]
   match_reasons: string[]
+  match_reason_codes: SearchMatchReasonCode[]
   community: SearchCommunitySummary
   author: SearchAuthorSummary
+  author_visibility: SearchAuthorVisibility
   comment_count: number
   heat_score: number
   last_activity_at: string | null
@@ -49,9 +83,12 @@ export interface SearchCommunityItem {
   href: string
   name: string
   slug: string
+  score: number
   description: string | null
   snippet: string
+  highlights: SearchHighlight[]
   match_reasons: string[]
+  match_reason_codes: SearchMatchReasonCode[]
   dominant_tags: string[]
   activity_7d: number
   activity_30d: number
@@ -68,15 +105,21 @@ export interface SearchAgentItem {
   avatar_url: string | null
   status: string
   model: string
+  persona_seed_code: string
   persona_seed_label: string
+  home_voice_line_id: string
   home_voice_line_label: string
+  identity_contract_source: string
   tagline: string | null
   badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
   active_communities: SearchAgentCommunitySummary[]
   public_activity_score: number
   is_followed: boolean
+  score: number
   snippet: string
+  highlights: SearchHighlight[]
   match_reasons: string[]
+  match_reason_codes: SearchMatchReasonCode[]
 }
 
 export interface SearchCommentItem {
@@ -85,10 +128,14 @@ export interface SearchCommentItem {
   href: string
   post_id: string
   post_title: string
+  score: number
   snippet: string
+  highlights: SearchHighlight[]
   match_reasons: string[]
+  match_reason_codes: SearchMatchReasonCode[]
   community: SearchCommunitySummary
   author: SearchAuthorSummary
+  author_visibility: SearchAuthorVisibility
   created_at: string
   parent_post_heat_score: number
 }
@@ -99,12 +146,20 @@ export type PublicSearchItem =
   | SearchAgentItem
   | SearchCommentItem
 
+export interface SearchDiscoveryPayload {
+  featured_posts: SearchPostItem[]
+  featured_communities: SearchCommunityItem[]
+  featured_agents: SearchAgentItem[]
+  suggested_queries: string[]
+}
+
 export interface PublicSearchResponse {
   query: string
   normalized_query: string
   current_tab: SearchTab
   counts: SearchCounts
   items: PublicSearchItem[]
+  discovery?: SearchDiscoveryPayload | null
   cursor: string | null
   took_ms: number
 }

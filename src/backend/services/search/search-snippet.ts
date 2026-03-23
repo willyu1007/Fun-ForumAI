@@ -1,11 +1,39 @@
+import type { SearchHighlight, SearchMatchReasonCode } from '../../../shared/public-search.js'
+
 interface MatchField {
   label?: string
   reason?: string
+  code: SearchMatchReasonCode
+  field?: string
   value: string | null | undefined
 }
 
+const MIN_FIELD_REASON_STRENGTH = 0.5
+
 function normalizeWhitespace(value: string): string {
   return value.trim().replace(/\s+/g, ' ')
+}
+
+function normalizeMatchValue(value: string): string {
+  return normalizeWhitespace(value).toLowerCase()
+}
+
+function estimateMatchStrength(normalizedValue: string, normalizedQuery: string): number {
+  if (!normalizedValue || !normalizedQuery) return 0
+  if (normalizedValue.includes(normalizedQuery)) return 1
+
+  const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean)
+  if (queryTokens.length > 1) {
+    const tokenHits = queryTokens.filter((token) => normalizedValue.includes(token)).length
+    if (tokenHits > 0) {
+      return Number((tokenHits / queryTokens.length).toFixed(4))
+    }
+  }
+
+  const uniqueChars = Array.from(new Set(Array.from(normalizedQuery).filter((char) => char.trim().length > 0)))
+  if (uniqueChars.length === 0) return 0
+  const charHits = uniqueChars.filter((char) => normalizedValue.includes(char)).length
+  return Number((charHits / uniqueChars.length).toFixed(4))
 }
 
 export function buildSnippet(
@@ -33,16 +61,60 @@ export function buildSnippet(
   return `${prefix}${normalizedText.slice(start, end)}${suffix}`
 }
 
-export function buildMatchReasons(query: string, fields: MatchField[]): string[] {
-  if (!query) return []
-  const normalizedQuery = query.toLowerCase()
-  const reasons = fields
-    .filter((field) => typeof field.value === 'string' && field.value.trim().length > 0)
-    .filter((field) => field.value!.toLowerCase().includes(normalizedQuery))
-    .map((field) => field.reason ?? `${field.label ?? '文本'}命中`)
-
-  if (reasons.length > 0) {
-    return Array.from(new Set(reasons)).slice(0, 3)
+export function buildMatchPresentation(
+  query: string,
+  fields: MatchField[],
+  options?: { fallback_text?: string | null | undefined },
+): {
+  match_reasons: string[]
+  match_reason_codes: SearchMatchReasonCode[]
+  highlights: SearchHighlight[]
+} {
+  if (!query) {
+    return {
+      match_reasons: [],
+      match_reason_codes: [],
+      highlights: [],
+    }
   }
-  return ['文本相关']
+
+  const normalizedQuery = normalizeMatchValue(query)
+  const candidates = fields
+    .filter((field) => typeof field.value === 'string' && field.value.trim().length > 0)
+    .map((field) => {
+      const normalizedValue = normalizeMatchValue(field.value!)
+      const strength = estimateMatchStrength(normalizedValue, normalizedQuery)
+      const direct = normalizedValue.includes(normalizedQuery)
+      return {
+        ...field,
+        direct,
+        strength,
+      }
+    })
+    .filter((field) => field.direct || field.strength >= MIN_FIELD_REASON_STRENGTH)
+    .sort((a, b) => Number(b.direct) - Number(a.direct) || b.strength - a.strength || (a.field ?? a.code).localeCompare(b.field ?? b.code))
+
+  if (candidates.length === 0) {
+    return {
+      match_reasons: ['文本相关'],
+      match_reason_codes: ['fuzzy_relevance'],
+      highlights: options?.fallback_text
+        ? [{ field: 'text', snippet: buildSnippet(options.fallback_text, query) }]
+        : [],
+    }
+  }
+
+  const selected = candidates.slice(0, 3)
+  return {
+    match_reasons: Array.from(new Set(selected.map((field) => field.reason ?? `${field.label ?? '文本'}命中`))).slice(0, 3),
+    match_reason_codes: Array.from(new Set(selected.map((field) => field.code))).slice(0, 3),
+    highlights: selected.map((field) => ({
+      field: field.field ?? field.code,
+      snippet: buildSnippet(field.value, query),
+    })),
+  }
+}
+
+export function buildMatchReasons(query: string, fields: MatchField[]): string[] {
+  return buildMatchPresentation(query, fields).match_reasons
 }

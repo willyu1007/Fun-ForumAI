@@ -1,4 +1,4 @@
-import { SEARCH_TABS, type PublicSearchResponse, type SearchCounts, type SearchTab } from '../../shared/public-search.js'
+import { SEARCH_TABS, type PublicSearchItem, type PublicSearchResponse, type SearchCounts, type SearchDiscoveryPayload, type SearchTab } from '../../shared/public-search.js'
 import type { HumanParticipationService } from './human-participation-service.js'
 import { SearchCountsCache } from './search/search-counts-cache.js'
 import { decodeSearchCursor, encodeSearchCursor } from './search/search-cursor.js'
@@ -52,8 +52,16 @@ export class SearchService {
       ? (input.tab ?? 'posts') as SearchTab
       : 'posts'
     const limit = Math.min(Math.max(input.limit ?? 20, 1), 50)
+    const followedAgentIds = input.viewer_user_id && this.humanParticipationService
+      ? new Set(this.humanParticipationService.listFollowingAgentIds(input.viewer_user_id))
+      : undefined
 
     if (!normalizedQuery) {
+      const discovery = await this.buildDiscovery({
+        limit: Math.min(limit, 6),
+        viewer_user_id: input.viewer_user_id,
+        followed_agent_ids: followedAgentIds,
+      })
       return {
         query: input.query ?? '',
         normalized_query: normalizedQuery,
@@ -65,6 +73,7 @@ export class SearchService {
           comments: 0,
         },
         items: [],
+        discovery,
         cursor: null,
         took_ms: Date.now() - startedAt,
       }
@@ -75,9 +84,6 @@ export class SearchService {
     const countsCacheHit = cachedCounts !== null
 
     try {
-      const followedAgentIds = input.viewer_user_id && this.humanParticipationService
-        ? new Set(this.humanParticipationService.listFollowingAgentIds(input.viewer_user_id))
-        : undefined
       const [counts, page] = await Promise.all([
         cachedCounts ? Promise.resolve(cachedCounts) : this.buildCounts(normalizedQuery),
         provider.search({
@@ -99,6 +105,7 @@ export class SearchService {
         current_tab: currentTab,
         counts,
         items: page.items,
+        discovery: null,
         cursor: encodeSearchCursor(page.next_cursor),
         took_ms: Date.now() - startedAt,
       }
@@ -139,5 +146,47 @@ export class SearchService {
       agents: counts[2],
       comments: counts[3],
     }
+  }
+
+  private async buildDiscovery(input: {
+    limit: number
+    viewer_user_id?: string
+    followed_agent_ids?: ReadonlySet<string>
+  }): Promise<SearchDiscoveryPayload> {
+    const [featuredPosts, featuredCommunities, featuredAgents] = await Promise.all([
+      this.providers.posts.discover?.(input) ?? Promise.resolve([]),
+      this.providers.communities.discover?.(input) ?? Promise.resolve([]),
+      this.providers.agents.discover?.(input) ?? Promise.resolve([]),
+    ])
+    return {
+      featured_posts: featuredPosts as SearchDiscoveryPayload['featured_posts'],
+      featured_communities: featuredCommunities as SearchDiscoveryPayload['featured_communities'],
+      featured_agents: featuredAgents as SearchDiscoveryPayload['featured_agents'],
+      suggested_queries: this.buildSuggestedQueries([
+        ...featuredPosts,
+        ...featuredCommunities,
+        ...featuredAgents,
+      ]),
+    }
+  }
+
+  private buildSuggestedQueries(items: PublicSearchItem[]): string[] {
+    const suggestions = new Set<string>()
+    for (const item of items) {
+      if (item.type === 'post') {
+        if (item.title.trim()) suggestions.add(item.title.trim())
+        if (item.community.name.trim()) suggestions.add(item.community.name.trim())
+      } else if (item.type === 'community') {
+        if (item.name.trim()) suggestions.add(item.name.trim())
+        for (const tag of item.dominant_tags.slice(0, 2)) {
+          if (tag.trim()) suggestions.add(tag.trim())
+        }
+      } else if (item.type === 'agent') {
+        if (item.display_name.trim()) suggestions.add(item.display_name.trim())
+        if (item.persona_seed_label.trim()) suggestions.add(item.persona_seed_label.trim())
+      }
+      if (suggestions.size >= 6) break
+    }
+    return Array.from(suggestions).slice(0, 6)
   }
 }

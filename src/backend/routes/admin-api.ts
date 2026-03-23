@@ -22,6 +22,8 @@ import {
   mediaObservabilityService,
   mediaRolloutControllerService,
   mediaLifecycleService,
+  searchTelemetryService,
+  searchProjectionService,
 } from '../container.js'
 import { config } from '../lib/config.js'
 import { AppError } from '../lib/errors.js'
@@ -874,6 +876,8 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
   const richCounters = richCommunitiesMetrics.snapshot()
   const observability = await personaObservability.snapshotAggregated()
   const guidance = await guidanceObservabilityService.snapshot()
+  const search = searchTelemetryService.snapshot()
+  const searchHealth = await searchProjectionService.inspectReadModelHealth()
   const recentLedgerEntries = await usageLedgerRepo.listRecent(200)
   const build = getRuntimeBuildInfo()
   const providerAdmission = summarizeProviderAdmission(llmRegistryBundle)
@@ -903,6 +907,10 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
           guidance_recall_v1: config.features.guidanceRecallV1,
         },
         ...guidance,
+      },
+      search: {
+        telemetry: search,
+        health: searchHealth,
       },
       observability: {
         ...observability,

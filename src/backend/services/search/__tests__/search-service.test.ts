@@ -8,7 +8,12 @@ import type { SearchProvider } from '../search-provider.js'
 function createProvider(
   tab: SearchProvider['tab'],
   items: PublicSearchItem[] = [],
-): SearchProvider & { count: ReturnType<typeof vi.fn>; search: ReturnType<typeof vi.fn> } {
+  discoveryItems: PublicSearchItem[] = [],
+): SearchProvider & {
+  count: ReturnType<typeof vi.fn>
+  search: ReturnType<typeof vi.fn>
+  discover: ReturnType<typeof vi.fn>
+} {
   return {
     tab,
     count: vi.fn().mockResolvedValue(2),
@@ -16,6 +21,7 @@ function createProvider(
       items,
       next_cursor: null,
     }),
+    discover: vi.fn().mockResolvedValue(discoveryItems),
   }
 }
 
@@ -33,10 +39,14 @@ describe('SearchService', () => {
         id: 'post-1',
         href: '/posts/post-1',
         title: 'alpha',
+        score: 1.2,
         snippet: 'alpha snippet',
+        highlights: [{ field: 'title', snippet: 'alpha snippet' }],
         match_reasons: ['命中标题'],
+        match_reason_codes: ['title'],
         community: { id: 'community-1', name: 'Community 1', slug: 'community-1' },
         author: { id: 'agent-1', display_name: 'Agent 1', avatar_url: null },
+        author_visibility: 'full',
         comment_count: 3,
         heat_score: 42,
         last_activity_at: null,
@@ -119,5 +129,80 @@ describe('SearchService', () => {
       counts_cache_hit: true,
       tab: 'posts',
     })
+  })
+
+  it('returns discovery payload for blank queries without hitting counts', async () => {
+    const telemetry = new SearchTelemetryService()
+    const postsProvider = createProvider('posts', [], [
+      {
+        type: 'post',
+        id: 'post-1',
+        href: '/posts/post-1',
+        title: 'Late Night Alpha',
+        score: 2.1,
+        snippet: 'aftershow snippet',
+        highlights: [{ field: 'aftershow', snippet: 'aftershow snippet' }],
+        match_reasons: ['命中场后总结'],
+        match_reason_codes: ['aftershow'],
+        community: { id: 'community-1', name: 'Community 1', slug: 'community-1' },
+        author: { id: 'agent-1', display_name: 'Agent 1', avatar_url: null },
+        author_visibility: 'full',
+        comment_count: 4,
+        heat_score: 88,
+        last_activity_at: null,
+      },
+    ])
+    const communitiesProvider = createProvider('communities')
+    const agentsProvider = createProvider('agents', [], [
+      {
+        type: 'agent',
+        id: 'agent-1',
+        href: '/agents/agent-1',
+        display_name: 'Agent 1',
+        avatar_url: null,
+        status: 'ACTIVE',
+        model: 'gpt-5',
+        persona_seed_code: 'comedian',
+        persona_seed_label: '毒舌主持',
+        home_voice_line_id: 'voice-1',
+        home_voice_line_label: '总能接住梗',
+        identity_contract_source: 'seed',
+        tagline: '更适合 talk show',
+        badges: [],
+        active_communities: [],
+        public_activity_score: 4.5,
+        is_followed: true,
+        score: 1.8,
+        snippet: '更适合 talk show',
+        highlights: [{ field: 'projection', snippet: '更适合 talk show' }],
+        match_reasons: ['命中公域投射'],
+        match_reason_codes: ['projection'],
+      },
+    ])
+    const commentsProvider = createProvider('comments')
+    const service = new SearchService({
+      postsProvider,
+      communitiesProvider,
+      agentsProvider,
+      commentsProvider,
+      telemetry,
+    })
+
+    const result = await service.search({
+      query: '   ',
+      tab: 'agents',
+    })
+
+    expect(result.items).toEqual([])
+    expect(result.discovery).toMatchObject({
+      featured_posts: [{ id: 'post-1' }],
+      featured_communities: [],
+      featured_agents: [{ id: 'agent-1' }],
+      suggested_queries: ['Late Night Alpha', 'Community 1', 'Agent 1', '毒舌主持'],
+    })
+    expect(postsProvider.discover).toHaveBeenCalledTimes(1)
+    expect(agentsProvider.discover).toHaveBeenCalledTimes(1)
+    expect(postsProvider.count).not.toHaveBeenCalled()
+    expect(telemetry.snapshot().recent).toHaveLength(0)
   })
 })

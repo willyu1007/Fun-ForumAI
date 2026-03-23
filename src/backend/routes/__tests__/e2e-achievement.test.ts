@@ -105,17 +105,17 @@ describe('E2E: Achievement Chronicle V1', () => {
     expect(typeof feedItem?.author.tagline === 'string' || feedItem?.author.tagline === undefined).toBe(true)
 
     const searchRes = await waitFor(
-      () => request(app).get('/v1/agents').query({ q: 'Highlights Agent' }),
+      () => request(app).get('/v1/search').query({ q: 'Highlights Agent', tab: 'agents' }),
       {
         pass: (res) => {
-          if (res.status !== 200 || !Array.isArray(res.body?.data)) return false
-          const target = (res.body.data as Array<{ id: string; badges?: unknown[] }>)
+          if (res.status !== 200 || !Array.isArray(res.body?.data?.items)) return false
+          const target = (res.body.data.items as Array<{ id: string; badges?: unknown[] }>)
             .find((item) => item.id === agentId)
           return Boolean(target?.badges?.length)
         },
       },
     )
-    const searchItem = (searchRes.body.data as Array<{
+    const searchItem = (searchRes.body.data.items as Array<{
       id: string
       badges?: Array<{ code: string }>
       persona_seed_label?: string

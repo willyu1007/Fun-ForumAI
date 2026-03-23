@@ -1,9 +1,12 @@
 import { Router, type IRouter } from 'express'
 import { SEARCH_TABS, type SearchTab } from '../../shared/public-search.js'
-import { searchService } from '../container.js'
+import { searchService, searchTelemetryService } from '../container.js'
 import { tryAuthenticateHuman } from '../middleware/human-auth.js'
+import { normalizeSearchQuery } from '../services/search-service.js'
 
 export const searchApiRouter: IRouter = Router()
+const SEARCH_RESULT_TYPES = new Set(['post', 'community', 'agent', 'comment'])
+const SEARCH_INTERACTION_TYPES = new Set(['reformulation', 'result_click', 'result_open', 'follow'])
 
 searchApiRouter.get('/search', async (req, res) => {
   const user = tryAuthenticateHuman(req)
@@ -32,4 +35,45 @@ searchApiRouter.get('/search', async (req, res) => {
   })
 
   res.json({ data })
+})
+
+searchApiRouter.post('/search/telemetry', (req, res) => {
+  const eventType = typeof req.body?.event_type === 'string' ? req.body.event_type : ''
+  const tabRaw = typeof req.body?.tab === 'string' ? req.body.tab : 'posts'
+  const resultTypeRaw = typeof req.body?.result_type === 'string' ? req.body.result_type : undefined
+  const query = typeof req.body?.query === 'string' ? req.body.query : ''
+  const previousQuery =
+    typeof req.body?.previous_query === 'string' ? req.body.previous_query : ''
+
+  if (!SEARCH_INTERACTION_TYPES.has(eventType)) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'event_type must be one of reformulation, result_click, result_open, follow',
+      },
+    })
+    return
+  }
+
+  const tab = SEARCH_TABS.includes(tabRaw as SearchTab) ? (tabRaw as SearchTab) : 'posts'
+  if (resultTypeRaw && !SEARCH_RESULT_TYPES.has(resultTypeRaw)) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'result_type must be one of post, community, agent, comment',
+      },
+    })
+    return
+  }
+
+  searchTelemetryService.recordInteraction({
+    event_type: eventType as 'reformulation' | 'result_click' | 'result_open' | 'follow',
+    normalized_query: normalizeSearchQuery(query),
+    previous_normalized_query: eventType === 'reformulation' ? normalizeSearchQuery(previousQuery) : undefined,
+    tab,
+    result_type: resultTypeRaw as 'post' | 'community' | 'agent' | 'comment' | undefined,
+    result_id: typeof req.body?.result_id === 'string' ? req.body.result_id : undefined,
+  })
+
+  res.status(202).json({ data: { accepted: true } })
 })

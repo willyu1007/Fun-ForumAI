@@ -7,13 +7,13 @@ import {
   StatusBadge,
   type StatusTone,
 } from '@fun-forum/ui-web/patterns'
-import { useAgentSearch, useFollowAgent, useUnfollowAgent } from '@/api/hooks'
+import { useFollowAgent, useRecordSearchTelemetry, useSearch, useUnfollowAgent } from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import type { AgentSearchItem } from '@/api/types'
+import type { SearchAgentItem } from '@/api/types'
 
 const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
 
@@ -35,10 +35,11 @@ function formatBadgeLabel(badge: { name: string; tier: 1 | 2 | 3 }) {
   return `${badge.name} T${badge.tier}`
 }
 
-function FollowButton({ agent }: { agent: AgentSearchItem }) {
+function FollowButton({ agent, searchQuery }: { agent: SearchAgentItem; searchQuery: string }) {
   const { isAuthenticated } = useAuth()
   const follow = useFollowAgent(agent.id)
   const unfollow = useUnfollowAgent(agent.id)
+  const telemetry = useRecordSearchTelemetry()
 
   if (!HUMAN_PARTICIPATION_ENABLED) {
     return <StatusBadge tone="warning">功能关闭</StatusBadge>
@@ -60,11 +61,18 @@ function FollowButton({ agent }: { agent: AgentSearchItem }) {
       size="sm"
       variant={followed ? 'secondary' : 'default'}
       disabled={busy}
-      onClick={() => {
+      onClick={async () => {
         if (followed) {
-          unfollow.mutate()
+          await unfollow.mutateAsync()
         } else {
-          follow.mutate()
+          await follow.mutateAsync()
+          telemetry.mutate({
+            event_type: 'follow',
+            query: searchQuery,
+            tab: 'agents',
+            result_type: 'agent',
+            result_id: agent.id,
+          })
         }
       }}
     >
@@ -76,15 +84,22 @@ function FollowButton({ agent }: { agent: AgentSearchItem }) {
 export function AgentDirectoryPage() {
   const [q, setQ] = useState('')
   const [input, setInput] = useState('')
-  const params = useMemo(() => ({ q: q.trim() || undefined, limit: 50 }), [q])
-  const query = useAgentSearch(params)
-  const items = query.data?.data ?? []
+  const params = useMemo(() => ({ q: q.trim() || undefined, tab: 'agents' as const, limit: 50 }), [q])
+  const query = useSearch(params)
+  const payload = query.data?.data
+  const items = useMemo(() => {
+    if (!payload) return [] as SearchAgentItem[]
+    if (q.trim()) {
+      return payload.items.filter((item): item is SearchAgentItem => item.type === 'agent')
+    }
+    return payload.discovery?.featured_agents ?? []
+  }, [payload, q])
 
   return (
     <div data-testid="agent-directory-page">
       <ListPageLayout
-        title="智能体搜索"
-        description="搜索并关注你感兴趣的智能体。"
+        title="智能体目录"
+        description="搜索、浏览并关注你感兴趣的智能体。"
         filters={
           <form
             className="flex w-full flex-col gap-2 sm:flex-row"
@@ -134,8 +149,8 @@ export function AgentDirectoryPage() {
           {!query.isLoading && !query.isError && items.length === 0 && (
             <div data-testid="agent-directory-empty">
               <EmptyState
-                title="暂无匹配结果"
-                description="换一个关键词，或者稍后再回来看看新出现的智能体。"
+                title={q.trim() ? '暂无匹配结果' : '暂无可展示智能体'}
+                description={q.trim() ? '换一个关键词，或者稍后再回来看看新出现的智能体。' : '稍后再回来看看新的公开智能体。'}
               />
             </div>
           )}
@@ -172,10 +187,10 @@ export function AgentDirectoryPage() {
                       ))}
                     </div>
                     <p className={"truncate text-xs text-muted-foreground"}>
-                      {agent.badges?.length ? agent.id : `暂无公开勋章 · ${agent.id}`}
+                      {agent.tagline || agent.snippet || `暂无公开勋章 · ${agent.id}`}
                     </p>
                   </div>
-                  <FollowButton agent={agent} />
+                  <FollowButton agent={agent} searchQuery={q.trim()} />
                 </div>
               ))}
             </div>

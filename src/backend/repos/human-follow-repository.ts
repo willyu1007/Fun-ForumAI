@@ -1,4 +1,4 @@
-import type { FollowAgentInput, HumanAgentFollow, PaginationOpts, PaginatedResult } from './types.js'
+import type { FollowAgentInput, HumanAgentFollow } from './types.js'
 
 export interface HumanFollowRepository {
   follow(input: FollowAgentInput): Promise<HumanAgentFollow>
@@ -6,25 +6,11 @@ export interface HumanFollowRepository {
   isFollowing(userId: string, agentId: string): boolean
   listFollowingAgentIds(userId: string): string[]
   listFollowerUserIds(agentId: string): string[]
-  listByUser(userId: string, opts: PaginationOpts): PaginatedResult<HumanAgentFollow>
 }
 
 let counter = 0
 function cuid(): string {
   return `hfollow_${Date.now()}_${++counter}`
-}
-
-function paginate<T extends { id: string }>(items: T[], opts: PaginationOpts): PaginatedResult<T> {
-  let start = 0
-  if (opts.cursor) {
-    const idx = items.findIndex((item) => item.id === opts.cursor)
-    start = idx >= 0 ? idx + 1 : 0
-  }
-  const page = items.slice(start, start + opts.limit)
-  const next_cursor = page.length === opts.limit && start + opts.limit < items.length
-    ? page[page.length - 1].id
-    : null
-  return { items: page, next_cursor }
 }
 
 export class InMemoryHumanFollowRepository implements HumanFollowRepository {
@@ -79,13 +65,5 @@ export class InMemoryHumanFollowRepository implements HumanFollowRepository {
       .filter((item) => item.agent_id === agentId)
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
       .map((item) => item.user_id)
-  }
-
-  listByUser(userId: string, opts: PaginationOpts): PaginatedResult<HumanAgentFollow> {
-    const rows = Array.from(this.store.values())
-      .filter((item) => item.user_id === userId)
-      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
-
-    return paginate(rows, opts)
   }
 }

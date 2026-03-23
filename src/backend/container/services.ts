@@ -416,7 +416,6 @@ export function createCoreServices(deps: {
     humanVoteRepo: repos.humanVoteRepo,
     humanFollowRepo: repos.humanFollowRepo,
     agentRepo: repos.agentRepo,
-    agentConfigRepo: repos.agentConfigRepo,
     eventRepo: repos.eventRepo,
   })
 

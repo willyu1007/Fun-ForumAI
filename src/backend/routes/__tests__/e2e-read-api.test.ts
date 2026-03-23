@@ -9,7 +9,7 @@ import {
   setupFeatureFlagGuard,
   createTestCommunity,
 } from './e2e-helpers.js'
-import { roleAssignmentService, eventRepo, searchDocRepo } from '../../container.js'
+import { roleAssignmentService, eventRepo, searchCountsCache, searchDocRepo } from '../../container.js'
 
 setupFeatureFlagGuard()
 
@@ -18,7 +18,7 @@ function buildUniqueSearchToken(): string {
 }
 
 describe('E2E: Read API (public)', () => {
-  it('GET /v1/search returns an empty payload for a blank query', async () => {
+  it('GET /v1/search returns discovery scaffolding for a blank query', async () => {
     const res = await request(app).get('/v1/search')
 
     expect(res.status).toBe(200)
@@ -34,6 +34,12 @@ describe('E2E: Read API (public)', () => {
       },
       items: [],
       cursor: null,
+      discovery: {
+        suggested_queries: expect.any(Array),
+        featured_posts: expect.any(Array),
+        featured_communities: expect.any(Array),
+        featured_agents: expect.any(Array),
+      },
     })
   })
 
@@ -164,6 +170,7 @@ describe('E2E: Read API (public)', () => {
 
   it('GET /v1/search returns exact counts and typed results across public objects', async () => {
     await searchDocRepo.clearAllDocs()
+    searchCountsCache.clear()
     const searchToken = buildUniqueSearchToken()
     const community = await createTestCommunity({
       name: `Community ${searchToken}`,
@@ -244,6 +251,45 @@ describe('E2E: Read API (public)', () => {
     })
   })
 
+  it('GET /v1/search invalidates cached counts after agent discoverability changes', async () => {
+    await searchDocRepo.clearAllDocs()
+    searchCountsCache.clear()
+    const searchToken = buildUniqueSearchToken()
+
+    const agentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: `Cache ${searchToken}` })
+    expect(agentRes.status).toBe(201)
+    const agentId = agentRes.body.data.id as string
+
+    const beforeLimit = await request(app)
+      .get('/v1/search')
+      .query({ q: searchToken, tab: 'agents' })
+    expect(beforeLimit.status).toBe(200)
+    expect(beforeLimit.body.data.counts.agents).toBe(1)
+    expect(beforeLimit.body.data.items).toHaveLength(1)
+    expect(beforeLimit.body.data.items[0].id).toBe(agentId)
+
+    const limitRes = await request(app)
+      .post('/v1/admin/moderation/actions')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        action: 'limit_agent',
+        target_type: 'agent',
+        target_id: agentId,
+        reason: 'cache invalidation coverage',
+      })
+    expect(limitRes.status).toBe(200)
+
+    const afterLimit = await request(app)
+      .get('/v1/search')
+      .query({ q: searchToken, tab: 'agents' })
+    expect(afterLimit.status).toBe(200)
+    expect(afterLimit.body.data.counts.agents).toBe(0)
+    expect(afterLimit.body.data.items).toEqual([])
+  })
+
   it('GET /v1/search paginates post results with an opaque cursor', async () => {
     await searchDocRepo.clearAllDocs()
     const searchToken = buildUniqueSearchToken()
@@ -293,7 +339,7 @@ describe('E2E: Read API (public)', () => {
     expect(secondPage.body.data.items[0].id).not.toBe(firstPage.body.data.items[0].id)
   })
 
-  it('GET /v1/comments/:commentId/thread-context returns the visible ancestor chain', async () => {
+  it('GET /v1/comments/:commentId/thread-context returns ancestors plus nearby context windows', async () => {
     const community = await createTestCommunity({
       name: 'Thread Context Community',
       slug: `thread-context-${Date.now()}`,
@@ -324,6 +370,16 @@ describe('E2E: Read API (public)', () => {
     expect(rootCommentRes.status).toBe(201)
     const rootCommentId = rootCommentRes.body.data.id as string
 
+    const siblingBeforeRes = await servicePost('/v1/comments', {
+      actor_agent_id: agentId,
+      run_id: `run-thread-context-sibling-before-${Date.now()}`,
+      post_id: postId,
+      parent_comment_id: rootCommentId,
+      body: 'sibling before',
+    })
+    expect(siblingBeforeRes.status).toBe(201)
+    const siblingBeforeId = siblingBeforeRes.body.data.id as string
+
     const childCommentRes = await servicePost('/v1/comments', {
       actor_agent_id: agentId,
       run_id: `run-thread-context-child-${Date.now()}`,
@@ -332,16 +388,65 @@ describe('E2E: Read API (public)', () => {
       body: 'child comment',
     })
     expect(childCommentRes.status).toBe(201)
+    const targetCommentId = childCommentRes.body.data.id as string
+
+    const siblingAfterRes = await servicePost('/v1/comments', {
+      actor_agent_id: agentId,
+      run_id: `run-thread-context-sibling-after-${Date.now()}`,
+      post_id: postId,
+      parent_comment_id: rootCommentId,
+      body: 'sibling after',
+    })
+    expect(siblingAfterRes.status).toBe(201)
+    const siblingAfterId = siblingAfterRes.body.data.id as string
+
+    const childPreviewOneRes = await servicePost('/v1/comments', {
+      actor_agent_id: agentId,
+      run_id: `run-thread-context-child-preview-1-${Date.now()}`,
+      post_id: postId,
+      parent_comment_id: targetCommentId,
+      body: 'grandchild one',
+    })
+    expect(childPreviewOneRes.status).toBe(201)
+    const grandchildOneId = childPreviewOneRes.body.data.id as string
+
+    const childPreviewTwoRes = await servicePost('/v1/comments', {
+      actor_agent_id: agentId,
+      run_id: `run-thread-context-child-preview-2-${Date.now()}`,
+      post_id: postId,
+      parent_comment_id: targetCommentId,
+      body: 'grandchild two',
+    })
+    expect(childPreviewTwoRes.status).toBe(201)
+    const grandchildTwoId = childPreviewTwoRes.body.data.id as string
 
     const res = await request(app).get(
-      `/v1/comments/${childCommentRes.body.data.id as string}/thread-context`,
+      `/v1/comments/${targetCommentId}/thread-context`,
     )
 
     expect(res.status).toBe(200)
     expect(res.body.data.post_id).toBe(postId)
+    expect(res.body.data.ancestor_comments.map((item: { id: string }) => item.id)).toEqual([
+      rootCommentId,
+    ])
+    expect(res.body.data.sibling_window.before.map((item: { id: string }) => item.id)).toEqual([
+      siblingBeforeId,
+    ])
+    expect(res.body.data.sibling_window.after.map((item: { id: string }) => item.id)).toEqual([
+      siblingAfterId,
+    ])
+    expect(res.body.data.child_preview.items.map((item: { id: string }) => item.id)).toEqual([
+      grandchildOneId,
+      grandchildTwoId,
+    ])
+    expect(res.body.data.child_preview.total_count).toBe(2)
     expect(res.body.data.comments.map((item: { id: string }) => item.id)).toEqual([
       rootCommentId,
-      childCommentRes.body.data.id,
+      siblingBeforeId,
+      targetCommentId,
+      siblingAfterId,
+      grandchildOneId,
+      grandchildTwoId,
     ])
   })
 
@@ -520,21 +625,26 @@ describe('E2E: Read API (public)', () => {
     expect(missingTarget.body.error.code).toBe('NOT_FOUND')
   })
 
-  it('GET /v1/agents supports public search', async () => {
+  it('GET /v1/search?tab=agents supports public agent search', async () => {
     await request(app).post('/v1/agents').set('Authorization', `Bearer ${userToken}`).send({
       display_name: 'Searchable Agent',
       persona_seed_code: 'comedian',
     })
 
-    const res = await request(app).get('/v1/agents?q=searchable')
+    const res = await request(app).get('/v1/search').query({ q: 'searchable', tab: 'agents' })
     expect(res.status).toBe(200)
-    expect(Array.isArray(res.body.data)).toBe(true)
-    const target = (res.body.data as Array<Record<string, unknown>>).find(
+    expect(Array.isArray(res.body.data.items)).toBe(true)
+    const target = (res.body.data.items as Array<Record<string, unknown>>).find(
       (item) => item.display_name === 'Searchable Agent',
     )
     expect(target).toBeTruthy()
     expect(target?.persona_seed_code).toBe('comedian')
     expect(target?.home_voice_line_id).toBe('qwen-social-v1')
+  })
+
+  it('GET /v1/agents is no longer a public listing or search endpoint', async () => {
+    const res = await request(app).get('/v1/agents?q=searchable')
+    expect(res.status).toBe(404)
   })
 
   it('GET /v1/feed?following_only=true requires auth', async () => {
