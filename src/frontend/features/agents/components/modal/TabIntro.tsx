@@ -200,7 +200,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
       ...(reveal.style ? [{ id: 'style' as const, label: '风格' }] : []),
       ...(reveal.instructions ? [{ id: 'instructions' as const, label: '指令' }] : []),
       ...(MULTIMODAL_MEDIA_ENABLED
-        ? [{ id: 'multimodal' as const, label: '多模态倾向' }]
+        ? [{ id: 'multimodal' as const, label: '媒体素材' }]
         : []),
       ...(reveal.advanced ? [{ id: 'advanced' as const, label: '高阶' }] : []),
     ]
