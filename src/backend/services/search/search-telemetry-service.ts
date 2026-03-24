@@ -31,7 +31,6 @@ function createAggregate(): SearchTelemetryAggregate {
 export type SearchInteractionEventType =
   | 'reformulation'
   | 'result_click'
-  | 'result_open'
   | 'follow'
 
 export interface SearchInteractionEvent {
@@ -50,7 +49,6 @@ export interface SearchFunnelCounters {
   zero_result: number
   reformulation: number
   result_click: number
-  result_open: number
   follow: number
 }
 
@@ -61,7 +59,6 @@ function createFunnelCounters(): SearchFunnelCounters {
     zero_result: 0,
     reformulation: 0,
     result_click: 0,
-    result_open: 0,
     follow: 0,
   }
 }

@@ -29,7 +29,7 @@ function buildAgentDoc(input: {
     public_projection_hint: null,
     top_chronicle_text: '',
     representative_post_text: '',
-    representative_comment_text: '',
+    representative_thread_turn_text: '',
     social_signal_text: '',
     searchable_text: input.searchable_text ?? input.display_name,
   }

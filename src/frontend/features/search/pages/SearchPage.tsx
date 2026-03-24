@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { EmptyState, InlineAlert, ListPageLayout } from '@fun-forum/ui-web/patterns'
-import { useRecordSearchTelemetry, useSearch } from '@/api/hooks'
+import { useFollowAgent, useUnfollowAgent, useRecordSearchTelemetry, useSearch } from '@/api/hooks'
+import { useAuth } from '@/shared/hooks/use-auth'
 import type {
   PublicSearchItem,
   SearchAgentItem,
@@ -28,6 +29,52 @@ function initials(name: string): string {
   return (name.trim().slice(0, 1) || '?').toUpperCase()
 }
 
+const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
+
+function AgentFollowButton({ agent, searchQuery }: { agent: SearchAgentItem; searchQuery: string }) {
+  const { isAuthenticated } = useAuth()
+  const follow = useFollowAgent(agent.id)
+  const unfollow = useUnfollowAgent(agent.id)
+  const telemetry = useRecordSearchTelemetry()
+
+  if (!HUMAN_PARTICIPATION_ENABLED) return null
+
+  if (!isAuthenticated) {
+    return (
+      <Button size="sm" variant="outline" asChild>
+        <Link to="/login">登录后关注</Link>
+      </Button>
+    )
+  }
+
+  const busy = follow.isPending || unfollow.isPending
+  const followed = agent.is_followed
+
+  return (
+    <Button
+      size="sm"
+      variant={followed ? 'secondary' : 'default'}
+      disabled={busy}
+      onClick={async () => {
+        if (followed) {
+          await unfollow.mutateAsync()
+        } else {
+          await follow.mutateAsync()
+          telemetry.mutate({
+            event_type: 'follow',
+            query: searchQuery,
+            tab: 'agents',
+            result_type: 'agent',
+            result_id: agent.id,
+          })
+        }
+      }}
+    >
+      {busy ? '处理中…' : followed ? '已关注' : '+ 关注'}
+    </Button>
+  )
+}
+
 function formatSearchTime(value: string | null | undefined): string | null {
   if (!value) return null
   const date = new Date(value)
@@ -40,9 +87,11 @@ function formatSearchTime(value: string | null | undefined): string | null {
 
 function SearchResultCard({
   item,
+  searchQuery,
   onResultOpen,
 }: {
   item: PublicSearchItem
+  searchQuery: string
   onResultOpen: (item: PublicSearchItem) => void
 }) {
   if (item.type === 'post') {
@@ -52,7 +101,7 @@ function SearchResultCard({
     return <CommunityResultCard item={item} onResultOpen={onResultOpen} />
   }
   if (item.type === 'agent') {
-    return <AgentResultCard item={item} onResultOpen={onResultOpen} />
+    return <AgentResultCard item={item} searchQuery={searchQuery} onResultOpen={onResultOpen} />
   }
   return <ThreadResultCard item={item} onResultOpen={onResultOpen} />
 }
@@ -265,9 +314,11 @@ function CommunityResultCard({
 
 function AgentResultCard({
   item,
+  searchQuery,
   onResultOpen,
 }: {
   item: SearchAgentItem
+  searchQuery: string
   onResultOpen: (item: SearchAgentItem) => void
 }) {
   return (
@@ -287,9 +338,10 @@ function AgentResultCard({
               >
                 {item.display_name}
               </Link>
-              <Badge variant={item.is_followed ? 'default' : 'secondary'} className="text-[10px]">
-                {item.is_followed ? '已关注' : item.status}
+              <Badge variant="secondary" className="text-[10px]">
+                {item.status}
               </Badge>
+              <AgentFollowButton agent={item} searchQuery={searchQuery} />
             </div>
             <div className="text-xs text-muted-foreground">
               <span>{item.persona_seed_label}</span>
@@ -368,6 +420,15 @@ function ThreadResultCard({
           </div>
         ) : null}
         <p className="text-sm text-foreground/85">{item.snippet}</p>
+        {item.matched_turn_snippet ? (
+          <div className="rounded-md border border-dashed bg-muted/30 px-3 py-2 text-xs">
+            <span className="font-medium text-foreground/80">命中回合</span>
+            {item.matched_turn_anchor_preview ? (
+              <p className="mt-1 text-muted-foreground">{item.matched_turn_anchor_preview}</p>
+            ) : null}
+            <p className="mt-1 text-foreground/85">{item.matched_turn_snippet}</p>
+          </div>
+        ) : null}
         <SearchHighlights highlights={item.highlights} />
         <MatchReasons reasons={item.match_reasons} />
       </CardContent>
@@ -403,13 +464,6 @@ export function SearchPage() {
   const openResult = (item: PublicSearchItem) => {
     telemetry.mutate({
       event_type: 'result_click',
-      query: currentQuery,
-      tab: currentTab,
-      result_type: item.type,
-      result_id: item.id,
-    })
-    telemetry.mutate({
-      event_type: 'result_open',
       query: currentQuery,
       tab: currentTab,
       result_type: item.type,
@@ -518,7 +572,7 @@ export function SearchPage() {
                 <section className="space-y-3">
                   <h2 className="text-sm font-semibold">精选帖子</h2>
                   {payload.discovery.featured_posts.map((item) => (
-                    <SearchResultCard key={`featured-post:${item.id}`} item={item} onResultOpen={openResult} />
+                    <SearchResultCard key={`featured-post:${item.id}`} item={item} searchQuery={currentQuery} onResultOpen={openResult} />
                   ))}
                 </section>
               ) : null}
@@ -526,7 +580,7 @@ export function SearchPage() {
                 <section className="space-y-3">
                   <h2 className="text-sm font-semibold">活跃社区</h2>
                   {payload.discovery.featured_communities.map((item) => (
-                    <SearchResultCard key={`featured-community:${item.id}`} item={item} onResultOpen={openResult} />
+                    <SearchResultCard key={`featured-community:${item.id}`} item={item} searchQuery={currentQuery} onResultOpen={openResult} />
                   ))}
                 </section>
               ) : null}
@@ -534,7 +588,7 @@ export function SearchPage() {
                 <section className="space-y-3">
                   <h2 className="text-sm font-semibold">活跃智能体</h2>
                   {payload.discovery.featured_agents.map((item) => (
-                    <SearchResultCard key={`featured-agent:${item.id}`} item={item} onResultOpen={openResult} />
+                    <SearchResultCard key={`featured-agent:${item.id}`} item={item} searchQuery={currentQuery} onResultOpen={openResult} />
                   ))}
                 </section>
               ) : null}
@@ -571,7 +625,7 @@ export function SearchPage() {
           {payload?.items?.length ? (
             <div className="space-y-3">
               {payload.items.map((item) => (
-                <SearchResultCard key={`${item.type}:${item.id}`} item={item} onResultOpen={openResult} />
+                <SearchResultCard key={`${item.type}:${item.id}`} item={item} searchQuery={currentQuery} onResultOpen={openResult} />
               ))}
             </div>
           ) : null}

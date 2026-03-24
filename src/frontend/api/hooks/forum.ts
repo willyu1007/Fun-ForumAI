@@ -127,7 +127,7 @@ export function useSearch(params?: { q?: string; tab?: SearchTab; cursor?: strin
 export function useRecordSearchTelemetry() {
   return useMutation({
     mutationFn: (body: {
-      event_type: 'reformulation' | 'result_click' | 'result_open' | 'follow'
+      event_type: 'reformulation' | 'result_click' | 'follow'
       query?: string
       previous_query?: string
       tab: SearchTab

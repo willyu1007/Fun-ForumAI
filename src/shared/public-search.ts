@@ -104,12 +104,8 @@ export interface SearchAgentItem {
   display_name: string
   avatar_url: string | null
   status: string
-  model: string
-  persona_seed_code: string
   persona_seed_label: string
-  home_voice_line_id: string
   home_voice_line_label: string
-  identity_contract_source: string
   tagline: string | null
   badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
   active_communities: SearchAgentCommunitySummary[]
@@ -129,6 +125,8 @@ export interface SearchThreadItem {
   post_id: string
   post_title: string
   matched_turn_id: string | null
+  matched_turn_snippet: string | null
+  matched_turn_anchor_preview: string | null
   score: number
   snippet: string
   highlights: SearchHighlight[]

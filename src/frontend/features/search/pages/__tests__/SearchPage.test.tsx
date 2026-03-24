@@ -7,6 +7,12 @@ import { SearchPage } from '../SearchPage'
 vi.mock('@/api/hooks', () => ({
   useSearch: vi.fn(),
   useRecordSearchTelemetry: vi.fn(),
+  useFollowAgent: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
+  useUnfollowAgent: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
+}))
+
+vi.mock('@/shared/hooks/use-auth', () => ({
+  useAuth: vi.fn(() => ({ isAuthenticated: true })),
 }))
 
 const useSearchMock = vi.mocked(useSearch)
@@ -73,12 +79,8 @@ describe('SearchPage', () => {
               display_name: 'Agent 1',
               avatar_url: null,
               status: 'ACTIVE',
-              model: 'gpt-5',
-              persona_seed_code: 'comedian',
               persona_seed_label: '毒舌主持',
-              home_voice_line_id: 'qwen-social-v1',
               home_voice_line_label: '总能接住梗',
-              identity_contract_source: 'seed',
               tagline: '会把火花抬高半格',
               badges: [{ code: 'host', name: '主持', tier: 2 }],
               active_communities: [{ id: 'community-1', name: 'Community 1', slug: 'community-1' }],
@@ -107,6 +109,7 @@ describe('SearchPage', () => {
     expect(screen.getByText('Community 1')).toBeTruthy()
     expect(screen.getByText('更适合 TALK_SHOW · 常站 HOST · 在 talk show 里接住爆梗')).toBeTruthy()
     expect(screen.getByText('命中公域投射')).toBeTruthy()
+    expect(screen.getByText('ACTIVE')).toBeTruthy()
     expect(screen.getByText('已关注')).toBeTruthy()
   })
 
@@ -121,7 +124,7 @@ describe('SearchPage', () => {
             posts: 2,
             communities: 1,
             agents: 1,
-            comments: 3,
+            threads: 3,
           },
           items: [],
           discovery: null,
@@ -168,7 +171,7 @@ describe('SearchPage', () => {
             posts: 0,
             communities: 0,
             agents: 0,
-            comments: 0,
+            threads: 0,
           },
           items: [],
           discovery: {

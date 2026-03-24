@@ -45,6 +45,13 @@ export class ThreadSearchProvider implements SearchProvider {
       if (!thread) continue
 
       const matchedTurn = resolveMatchedTurn(thread, input.query)
+      const matchedTurnSnippet = matchedTurn ? buildSnippet(matchedTurn.body, input.query) : null
+      const matchedTurnData = matchedTurn
+        ? thread.turns.find((turn) => turn.id === matchedTurn.id)
+        : null
+      const anchorPreview = matchedTurnData?.anchor_preview
+        ? `回应 @${matchedTurnData.anchor_preview.author_display_name}: ${matchedTurnData.anchor_preview.body_excerpt}`
+        : null
       const snippetSource = [
         matchedTurn?.body ?? hit.doc.body,
         hit.doc.body,
@@ -81,6 +88,8 @@ export class ThreadSearchProvider implements SearchProvider {
         post_id: hit.doc.post_id,
         post_title: hit.doc.post_title,
         matched_turn_id: matchedTurn?.id ?? null,
+        matched_turn_snippet: matchedTurnSnippet,
+        matched_turn_anchor_preview: anchorPreview,
         score: hit.score,
         snippet: buildSnippet(snippetSource, input.query),
         highlights: presentation.highlights,

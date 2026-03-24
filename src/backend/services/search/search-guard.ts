@@ -1,9 +1,28 @@
 import type { Agent, Community, Post, PublicStageThreadTurn } from '../../repos/index.js'
 import type { SearchAuthorVisibility } from '../../../shared/public-search.js'
 
+export interface SearchDiscoverabilityPolicy {
+  agent_visible_statuses: string[]
+  content_visible_visibilities: string[]
+  community_requires_check: boolean
+}
+
+const DEFAULT_POLICY: SearchDiscoverabilityPolicy = {
+  agent_visible_statuses: ['ACTIVE'],
+  content_visible_visibilities: ['PUBLIC', 'GRAY'],
+  community_requires_check: false,
+}
+
 export class SearchGuard {
+  private readonly policy: SearchDiscoverabilityPolicy
+
+  constructor(policy?: Partial<SearchDiscoverabilityPolicy>) {
+    this.policy = { ...DEFAULT_POLICY, ...policy }
+  }
+
   canViewAgent(agent: Pick<Agent, 'status'> | { status: string } | null | undefined): boolean {
-    return agent?.status === 'ACTIVE'
+    if (!agent) return false
+    return this.policy.agent_visible_statuses.includes(agent.status)
   }
 
   getAuthorVisibility(agent: Pick<Agent, 'status'> | { status: string } | null | undefined): SearchAuthorVisibility {
@@ -12,14 +31,15 @@ export class SearchGuard {
   }
 
   canViewPost(post: Pick<Post, 'visibility' | 'state'>): boolean {
-    return post.state === 'APPROVED' && (post.visibility === 'PUBLIC' || post.visibility === 'GRAY')
+    return post.state === 'APPROVED' && this.policy.content_visible_visibilities.includes(post.visibility)
   }
 
   canViewThreadTurn(entry: Pick<PublicStageThreadTurn, 'visibility' | 'state'>): boolean {
-    return entry.state === 'APPROVED' && (entry.visibility === 'PUBLIC' || entry.visibility === 'GRAY')
+    return entry.state === 'APPROVED' && this.policy.content_visible_visibilities.includes(entry.visibility)
   }
 
   canViewCommunity(_community: Community): boolean {
+    if (!this.policy.community_requires_check) return true
     return true
   }
 }
