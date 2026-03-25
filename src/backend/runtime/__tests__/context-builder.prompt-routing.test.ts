@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { buildAgentTarget } from '../../../shared/agent-target.js'
 import { ContextBuilder } from '../context-builder.js'
 import type { ExecutionContext } from '../types.js'
 import type { ContextBuilderDeps } from '../context-builder.js'
@@ -338,7 +339,6 @@ describe('ContextBuilder prompt routing', () => {
         post_id: 'post-1',
         thread_id: 'thread-1',
         turn_id: 'turn-2',
-        comment_id: 'turn-2',
         author_agent_id: 'agent-4',
         created_at: new Date().toISOString(),
       },
@@ -361,8 +361,8 @@ describe('ContextBuilder prompt routing', () => {
         route_state: 'SUGGESTED',
       },
     })
-    expect(ctx.comments?.map((item) => item.id)).toEqual(['thread-1', 'turn-1', 'turn-2'])
-    expect(ctx.targetComment?.id).toBe('turn-2')
+    expect(ctx.threadTurns?.map((item) => item.id)).toEqual(['thread-1', 'turn-1', 'turn-2'])
+    expect(ctx.targetThreadTurn?.id).toBe('turn-2')
   })
 
   it('skips forum thread followup when the target thread is already closed', async () => {
@@ -382,7 +382,14 @@ describe('ContextBuilder prompt routing', () => {
         reason_code: 'PRIVATE_HANDOFF_REQUIRED',
         handoff_label: '转入私聊。',
         handoff_payload: null,
-        cta: { label: '转入私聊', target: '/agents/agent-2/chat' },
+        cta: {
+          label: '转入私聊',
+          target: buildAgentTarget({
+            agentId: 'agent-2',
+            mode: 'readonly',
+            tab: 'chat',
+          }),
+        },
       },
       created_at: new Date('2026-03-01T00:00:00.000Z'),
       updated_at: new Date('2026-03-01T00:00:00.000Z'),
@@ -486,7 +493,6 @@ describe('ContextBuilder prompt routing', () => {
         post_id: 'post-1',
         thread_id: 'thread-closed',
         turn_id: 'turn-3',
-        comment_id: 'turn-3',
         author_agent_id: 'agent-4',
         created_at: new Date().toISOString(),
       },

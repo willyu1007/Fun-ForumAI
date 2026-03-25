@@ -22,7 +22,7 @@ function makeVoteEvent(payload: Record<string, unknown>): DomainEvent {
 }
 
 describe('ProactiveEventHandler', () => {
-  it('uses payload target_author_agent_id for COMMENT vote and triggers proactive hook', async () => {
+  it('uses payload target_author_agent_id for TURN vote and triggers proactive hook', async () => {
     const onVoteReceived = vi.fn(async () => true)
     const handler = new ProactiveEventHandler({
       proactiveService: {
@@ -30,16 +30,17 @@ describe('ProactiveEventHandler', () => {
       } as never,
       forumReadService: {
         getPost: vi.fn(),
-        getComment: vi.fn(),
-        getComments: vi.fn(),
+        getThread: vi.fn(),
+        getFeed: vi.fn(),
+        getThreads: vi.fn(),
       } as never,
       agentService: {} as never,
     })
 
     handler.handle(makeVoteEvent({
       direction: 'UP',
-      target_type: 'COMMENT',
-      target_id: 'comment-1',
+      target_type: 'TURN',
+      target_id: 'turn-1',
       voter_agent_id: 'agent-voter',
       target_author_agent_id: 'agent-target',
     }))
@@ -48,19 +49,33 @@ describe('ProactiveEventHandler', () => {
     expect(onVoteReceived).toHaveBeenCalledWith(
       'agent-target',
       expect.objectContaining({
-        target_type: 'COMMENT',
-        target_id: 'comment-1',
+        target_type: 'TURN',
+        target_id: 'turn-1',
       }),
     )
   })
 
-  it('falls back to comment lookup for COMMENT vote when payload target author is missing', async () => {
+  it('falls back to thread lookup for THREAD vote when payload target author is missing', async () => {
     const onVoteReceived = vi.fn(async () => true)
-    const getComment = vi.fn(async () => ({
-      id: 'comment-2',
+    const getThread = vi.fn(async () => ({
+      id: 'thread-2',
       post_id: 'post-1',
       author_agent_id: 'agent-comment-owner',
       body: 'content',
+      community_id: 'community-1',
+      visibility: 'PUBLIC',
+      state: 'APPROVED',
+      thread_state: 'OPEN',
+      reply_budget: 3,
+      active_route: null,
+      ai_label: 'AI生成',
+      effective_moderation_label: 'PUBLIC',
+      topic_signals: null,
+      distribution_state: 'NORMAL',
+      attachments: [],
+      turn_count: 0,
+      participant_count: 1,
+      last_activity_at: new Date(),
       author: { id: 'agent-comment-owner', display_name: 'Owner', avatar_url: null },
       vote_score: 0,
       agent_vote_score: 0,
@@ -71,11 +86,9 @@ describe('ProactiveEventHandler', () => {
       human_vote_down: 0,
       weighted_vote_score: 0,
       viewer_human_vote_direction: null,
-      visibility: 'PUBLIC',
-      state: 'APPROVED',
       created_at: new Date(),
       updated_at: new Date(),
-      parent_comment_id: null,
+      turns: [],
     }))
 
     const handler = new ProactiveEventHandler({
@@ -84,25 +97,26 @@ describe('ProactiveEventHandler', () => {
       } as never,
       forumReadService: {
         getPost: vi.fn(),
-        getComment,
-        getComments: vi.fn(),
+        getThread,
+        getFeed: vi.fn(),
+        getThreads: vi.fn(),
       } as never,
       agentService: {} as never,
     })
 
     handler.handle(makeVoteEvent({
       direction: 'UP',
-      target_type: 'COMMENT',
-      target_id: 'comment-2',
+      target_type: 'THREAD',
+      target_id: 'thread-2',
       voter_agent_id: 'agent-voter',
     }))
 
     await new Promise((resolve) => setTimeout(resolve, 10))
-    expect(getComment).toHaveBeenCalledWith('comment-2')
+    expect(getThread).toHaveBeenCalledWith('thread-2')
     expect(onVoteReceived).toHaveBeenCalledWith(
       'agent-comment-owner',
       expect.objectContaining({
-        target_type: 'COMMENT',
+        target_type: 'THREAD',
       }),
     )
   })

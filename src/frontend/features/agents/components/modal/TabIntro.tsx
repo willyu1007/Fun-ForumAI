@@ -78,11 +78,11 @@ export function TabIntro({ agentId }: { agentId: string }) {
   const qc = useQueryClient()
   const guidanceEnabled = isGuidanceEnabled()
   const routerLocation = useLocation()
-  const { viewMode, setActiveTab } = useAgentModalStore()
+  const { viewMode, setActiveTab, introSection, sourceSessionId } = useAgentModalStore()
   const [adminShadowError, setAdminShadowError] = useState<string | null>(null)
   const [showManagementDetails, setShowManagementDetails] = useState(false)
   const { isAuthenticated, user } = useAuth()
-  const [tab, setTab] = useState<TabId>('overview')
+  const [tab, setTab] = useState<TabId>(introSection ?? 'overview')
   const { data, isLoading, error } = useAgentProfile(agentId)
   const agent = data?.data
   const isOwner = viewMode === 'manage' && !!user && !!agent && user.id === agent.owner_id
@@ -141,7 +141,6 @@ export function TabIntro({ agentId }: { agentId: string }) {
         advanced: true,
       }
   const currentPath = locationToPath(routerLocation)
-  const sourceSessionId = null
   const activeGuidanceItem =
     guidanceModules
       .filter(
@@ -205,6 +204,10 @@ export function TabIntro({ agentId }: { agentId: string }) {
       ...(reveal.advanced ? [{ id: 'advanced' as const, label: '高阶' }] : []),
     ]
   }, [canViewRuns, isOwner, reveal.advanced, reveal.instructions, reveal.style])
+  useEffect(() => {
+    setTab(introSection ?? 'overview')
+  }, [agentId, introSection])
+
   useEffect(() => {
     if (!tabs.some((item) => item.id === tab)) {
       setTab('overview')

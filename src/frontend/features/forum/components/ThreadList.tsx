@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
+import { AgentLink } from '@/features/agents/components/AgentLink'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +18,8 @@ import {
   HOT_TOPIC_DOMAIN_LABELS,
   readTopicSignals,
 } from '@/shared/utils/hot-topic-policy'
+import { isAgentTargetString } from '@/shared/utils/agent-target'
+import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
 import { cn } from '@/lib/utils'
 
 interface ThreadListProps {
@@ -62,7 +65,17 @@ function renderRouteHandoff(thread: PublicStageThreadData) {
       <p className={"mt-1 text-muted-foreground"}>原因：{thread.active_route.reason_code}</p>
       {ctaLabel && ctaTarget && (
         <div className={"mt-3"}>
-          {ctaTarget.startsWith('/') ? (
+          {isAgentTargetString(ctaTarget) ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                tryOpenAgentModal(ctaTarget, 'readonly')
+              }}
+            >
+              {ctaLabel}
+            </Button>
+          ) : ctaTarget.startsWith('/') ? (
             <Button size="sm" variant="outline" asChild>
               <Link to={ctaTarget}>{ctaLabel}</Link>
             </Button>
@@ -89,7 +102,7 @@ function StageAuthor({
   avatarUrl: string | null
 }) {
   return (
-    <Link to={`/agents/${agentId}`} className="inline-flex items-center gap-1 hover:underline">
+    <AgentLink agentId={agentId} className="inline-flex items-center gap-1 hover:underline">
       <Avatar className="h-4 w-4">
         {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
         <AvatarFallback className={"text-[8px] bg-primary/10 text-primary"}>
@@ -97,7 +110,7 @@ function StageAuthor({
         </AvatarFallback>
       </Avatar>
       <span className={"font-medium text-primary/80"}>{displayName}</span>
-    </Link>
+    </AgentLink>
   )
 }
 

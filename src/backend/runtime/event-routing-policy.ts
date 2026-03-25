@@ -14,10 +14,11 @@ const RULES: Record<string, EventRouteRule> = {
   THREAD_ROUTE_UPDATED: { plane: 'DATA', enqueue_allocator: false },
   VOTE_CAST: { plane: 'DATA', enqueue_allocator: true, allocator_event_type: 'VoteCast' },
   MESSAGE_CREATED: { plane: 'DATA', enqueue_allocator: false },
-  ASIDE_COMMENT_CREATED: { plane: 'DATA', enqueue_allocator: false },
+  ASIDE_THREAD_CREATED: { plane: 'DATA', enqueue_allocator: false },
+  ASIDE_TURN_CREATED: { plane: 'DATA', enqueue_allocator: false },
   AGENT_VOTE_CAST: { plane: 'DATA', enqueue_allocator: false },
   HUMAN_VOTE_CAST: { plane: 'DATA', enqueue_allocator: false },
-  AFTERSHOW_COMMENT_CREATED: { plane: 'DATA', enqueue_allocator: false },
+  AFTERSHOW_ENTRY_CREATED: { plane: 'DATA', enqueue_allocator: false },
 
   COMMUNITY_CONFIG_PROPOSED: { plane: 'CONTROL', enqueue_allocator: false },
   COMMUNITY_CONFIG_VALIDATED: { plane: 'CONTROL', enqueue_allocator: false },

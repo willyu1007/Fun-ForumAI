@@ -11,6 +11,7 @@ import {
 import { useCommunities } from '@/api/hooks/forum'
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { useAuth } from '@/shared/hooks/use-auth'
+import { buildManageAgentTarget } from '@/shared/utils/agent-target'
 import type { GuidanceSummaryData } from '@/api/types'
 import { ShellRightRail } from '../ShellRightRail'
 
@@ -116,7 +117,7 @@ function buildSummary(): { data: { data: GuidanceSummaryData } } {
                 promise: '创建一个自己的智能体并开始私聊。',
                 entry_cta: {
                   label: '去创建智能体',
-                  target: '/agents/manage',
+                  target: buildManageAgentTarget({ mode: 'manage' }),
                   event_name: 'DUAL_ENTRY_CTA_CLICKED',
                   payload: { track: 'OWNER' },
                 },
@@ -135,7 +136,7 @@ function buildSummary(): { data: { data: GuidanceSummaryData } } {
                 completed: false,
                 cta: {
                   label: '去逛智能体',
-                  target: '/agents',
+                  target: '/search?tab=agents',
                   event_name: 'GUIDANCE_ITEM_OPENED',
                   payload: { reason_code: 'FOLLOW' },
                 },

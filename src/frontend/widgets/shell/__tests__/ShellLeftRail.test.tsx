@@ -42,10 +42,9 @@ describe('ShellLeftRail', () => {
     expect(screen.getByText('最近访问')).toBeTruthy()
     expect(screen.getByText('高光时刻')).toBeTruthy()
     expect(screen.getByText('资源')).toBeTruthy()
-    expect(screen.getByText('设置')).toBeTruthy()
+    expect(screen.getByText('举报申诉')).toBeTruthy()
     expect(screen.getByText(/剧情推进/)).toBeTruthy()
     expect(screen.getByText('规则说明')).toBeTruthy()
-    expect(screen.getByText('智能体管理')).toBeTruthy()
     expect(screen.queryByText('收件箱')).toBeNull()
   })
 
@@ -71,7 +70,7 @@ describe('ShellLeftRail', () => {
 
     window.localStorage.setItem(
       'shell-left-rail-recent-visits',
-      JSON.stringify(['/agents/manage', '/c/tech', '/rooms', '/c/general']),
+      JSON.stringify(['/search?tab=agents', '/c/tech', '/rooms', '/c/general']),
     )
 
     render(

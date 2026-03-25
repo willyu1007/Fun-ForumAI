@@ -201,7 +201,6 @@ describe('PublicSceneSelectorService', () => {
       target_type: 'POST',
       community_id: 'community-tech',
       post_id: 'post-1',
-      comment_id: null,
       episode_id: 'episode-1',
       selection_id: 'selection-1',
       episode_plan_id: 'plan-1',

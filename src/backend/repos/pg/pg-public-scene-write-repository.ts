@@ -26,6 +26,10 @@ import {
   toPrismaPlane,
 } from './pg-event-repository.js'
 
+function toPrismaJsonValue(value: unknown): Prisma.InputJsonValue {
+  return value as unknown as Prisma.InputJsonValue
+}
+
 export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository {
   constructor(
     private readonly deps: {
@@ -76,7 +80,7 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
           phase: input.scene_metadata.phase,
           selectionMode: input.scene_metadata.selection_mode,
           expiresAt: input.scene_metadata.expires_at ?? null,
-          payloadJson: input.scene_metadata.payload_json as Prisma.InputJsonValue,
+          payloadJson: toPrismaJsonValue(input.scene_metadata.payload_json),
         },
       })
 
@@ -148,7 +152,7 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
           replyBudget: input.thread.reply_budget ?? 6,
           activeRouteJson: input.thread.active_route === null || input.thread.active_route === undefined
             ? Prisma.DbNull
-            : (input.thread.active_route as Prisma.InputJsonValue),
+            : toPrismaJsonValue(input.thread.active_route),
         },
       })
 
@@ -173,7 +177,7 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
           phase: input.scene_metadata.phase,
           selectionMode: input.scene_metadata.selection_mode,
           expiresAt: input.scene_metadata.expires_at ?? null,
-          payloadJson: input.scene_metadata.payload_json as Prisma.InputJsonValue,
+          payloadJson: toPrismaJsonValue(input.scene_metadata.payload_json),
         },
       })
 

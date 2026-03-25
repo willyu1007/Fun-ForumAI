@@ -82,7 +82,7 @@ export class ProactiveEventHandler {
               challenge_content: threadTurn.body,
               post_id: postId,
               thread_id: threadTurn.thread_id,
-              turn_id: threadTurn.turn_id,
+              turn_id: threadTurn.turn_id ?? undefined,
             })
           }
         }

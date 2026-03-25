@@ -90,12 +90,12 @@ describe('PromptLayerService', () => {
       scene: 'chat_room',
       conversationText: '我不同意这个结论！！you must rethink this',
       topicHints: ['AI'],
-      threadComments: [
+      threadTurns: [
         { id: 'c1', author_agent_id: 'newcomer', body: '你好' },
         { id: 'c2', author_agent_id: 'old', body: '欢迎' },
         { id: 'c3', author_agent_id: 'newcomer', body: '谢谢' },
       ],
-      targetCommentId: 'c1',
+      targetThreadTurnId: 'c1',
       roomMemberState: { last_spoke_at: null },
     })
 

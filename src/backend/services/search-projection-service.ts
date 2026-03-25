@@ -550,7 +550,8 @@ export class SearchProjectionService {
       event.event_type === 'THREAD_OPENED'
       || event.event_type === 'THREAD_TURN_ADDED'
       || event.event_type === 'THREAD_ROUTE_UPDATED'
-      || event.event_type === 'ASIDE_COMMENT_CREATED'
+      || event.event_type === 'ASIDE_THREAD_CREATED'
+      || event.event_type === 'ASIDE_TURN_CREATED'
     ) {
       const threadId = typeof payload.thread_id === 'string' ? payload.thread_id : null
       const postId = typeof payload.post_id === 'string' ? payload.post_id : null
@@ -574,7 +575,7 @@ export class SearchProjectionService {
 
     if (
       event.event_type === 'AFTERSHOW_PUBLISHED'
-      || event.event_type === 'AFTERSHOW_COMMENT_CREATED'
+      || event.event_type === 'AFTERSHOW_ENTRY_CREATED'
       || event.event_type === 'AFTERSHOW_CALLOUTS_EXTRACTED'
     ) {
       const postId = typeof payload.post_id === 'string' ? payload.post_id : event.post_id ?? null

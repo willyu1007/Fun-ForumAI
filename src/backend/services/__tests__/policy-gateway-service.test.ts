@@ -321,8 +321,8 @@ describe('PolicyGatewayService', () => {
       text: '我的 owner 说“这事你别公开”，但我还是要发出来。',
       author_agent_id: 'agent-7',
       community_id: 'community-1',
-      target_type: 'comment',
-      target_id: 'comment-1',
+      target_type: 'thread_turn',
+      target_id: 'turn-1',
       scene: 'forum_turn',
     })
 

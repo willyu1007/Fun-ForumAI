@@ -1,6 +1,7 @@
 import { useState, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router'
-import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
+import { openAppTarget } from '@/shared/utils/agent-target'
+import { buildAgentTarget } from '../../../shared/agent-target.js'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -98,13 +99,20 @@ function notifTargetUrl(notification: {
     return query ? `/posts/${postId}?${query}` : `/posts/${postId}`
   }
   if (notification.type === 'AGENT_PROACTIVE') {
-    return `/agents/${notification.target_id}/chat`
+    return buildAgentTarget({
+      agentId: notification.target_id,
+      mode: 'manage',
+      tab: 'chat',
+    })
   }
   if (normalizedTargetType === 'POST') {
     return `/posts/${notification.target_id}`
   }
   if (normalizedTargetType === 'AGENT') {
-    return `/agents/${notification.target_id}`
+    return buildAgentTarget({
+      agentId: notification.target_id,
+      mode: 'readonly',
+    })
   }
   return null
 }
@@ -175,9 +183,7 @@ export function ShellNotificationBell() {
     const url = notifTargetUrl(notification)
     if (url) {
       setOpen(false)
-      if (!tryOpenAgentModal(url, 'readonly')) {
-        navigate(url)
-      }
+      openAppTarget(navigate, url, 'readonly')
     }
   }
 
@@ -204,7 +210,7 @@ export function ShellNotificationBell() {
     }
     if (item.cta?.target) {
       setOpen(false)
-      navigate(item.cta.target)
+      openAppTarget(navigate, item.cta.target, 'manage')
     }
   }
 

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { buildAgentTarget } from '../../../shared/agent-target.js'
 import { InMemoryAgentRepository, InMemoryAgentConfigRepository } from '../../repos/agent-repository.js'
 import { InMemoryAgentRunRepository, InMemoryEventRepository } from '../../repos/event-repository.js'
 import { InMemoryAchievementRepository } from '../../repos/achievement-repository.js'
@@ -6,6 +7,8 @@ import { InMemoryChronicleRepository } from '../../repos/chronicle-repository.js
 import { InMemoryAgentPublicProjectionRepository } from '../../repos/agent-public-projection-repository.js'
 import { InMemoryAgentCommunityMembershipRepository } from '../../repos/agent-community-membership-repository.js'
 import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
+import { InMemoryPublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
+import { InMemoryPublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
 import { InMemoryRoomRepository } from '../../repos/room-repository.js'
 import { AgentService } from '../agent-service.js'
 import { AchievementChronicleService } from '../achievement-chronicle-service.js'
@@ -41,6 +44,8 @@ describe('OwnerLifeOverviewService', () => {
     const projectionRepo = new InMemoryAgentPublicProjectionRepository()
     const membershipRepo = new InMemoryAgentCommunityMembershipRepository()
     const communityRepo = new InMemoryCommunityRepository()
+    const publicStageThreadRepo = new InMemoryPublicStageThreadRepository()
+    const publicStageTurnRepo = new InMemoryPublicStageTurnRepository()
     const roomRepo = new InMemoryRoomRepository()
     const eventRepo = new InMemoryEventRepository()
     const statsRepo = new InMemoryStatsRepository()
@@ -73,7 +78,8 @@ describe('OwnerLifeOverviewService', () => {
       agentRepo,
       communityRepo,
       postRepo: { findPublic: async () => ({ items: [], next_cursor: null }) } as never,
-      commentRepo: { findByPostAll: async () => ({ items: [], next_cursor: null }) } as never,
+      publicStageThreadRepo,
+      publicStageTurnRepo,
       eventRepo,
     })
 
@@ -298,7 +304,11 @@ describe('OwnerLifeOverviewService', () => {
         label: '再带一点经历给她',
       },
     })
-    expect(overview.entry_points.chronicle.href).toBe(`/agents/${agent.id}?tab=achievements`)
+    expect(overview.entry_points.chronicle.href).toBe(buildAgentTarget({
+      agentId: agent.id,
+      mode: 'manage',
+      tab: 'history',
+    }))
     expect(overview.meta.degraded).toBe(false)
     expect(overview.owner_projection.latest_session?.session_id).toBe('session-1')
     expect(JSON.stringify(overview)).not.toContain('secret phrase')

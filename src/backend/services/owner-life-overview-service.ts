@@ -24,12 +24,32 @@ import type {
   OwnerStoryBeat,
   SourceDimension,
 } from '../../shared/owner-life-overview.js'
+import {
+  buildAgentTarget,
+  type AgentIntroSection,
+  type AgentTargetTab,
+} from '../../shared/agent-target.js'
 import { readChronicleStoryMeta } from './chronicle-story-meta.js'
 import { humanizeChronicleEntryForOwner } from './owner-chronicle-humanizer.js'
 import { OwnerBreathingSignalsService } from './owner-breathing-signals-service.js'
 
 function unique<T>(items: T[]): T[] {
   return Array.from(new Set(items))
+}
+
+function buildOwnerAgentTarget(
+  agentId: string,
+  input?: {
+    tab?: AgentTargetTab
+    introSection?: AgentIntroSection | null
+    sourceSessionId?: string | null
+  },
+): string {
+  return buildAgentTarget({
+    agentId,
+    mode: 'manage',
+    ...(input ?? {}),
+  })
 }
 
 function buildSealLabel(achievement: AgentAchievement): string {
@@ -412,7 +432,7 @@ export class OwnerLifeOverviewService {
       entry_points: {
         chronicle: {
           label: '查看编年史',
-          href: `/agents/${agent.id}?tab=achievements`,
+          href: buildOwnerAgentTarget(agent.id, { tab: 'history' }),
           hint:
             chronicleFeed.chapter?.title ?? chapterCast?.chapter_title
               ? `继续沿着「${chronicleFeed.chapter?.title ?? chapterCast?.chapter_title}」往下看。`
@@ -420,7 +440,7 @@ export class OwnerLifeOverviewService {
         },
         system: {
           label: '进入系统面板',
-          href: `/agents/${agent.id}?tab=privacy`,
+          href: buildOwnerAgentTarget(agent.id, { tab: 'intro', introSection: 'privacy' }),
           hint: '控制面保留在二级导航里，需要时再进去。',
         },
       },
@@ -524,7 +544,7 @@ export class OwnerLifeOverviewService {
         secondary_action: {
           kind: 'revisit_scene',
           label: '查看编年史',
-          href: `/agents/${agentId}?tab=achievements`,
+          href: buildOwnerAgentTarget(agentId, { tab: 'history' }),
         },
         source_tags: ['lane:world', activeCommunity ? `community:${activeCommunity.id}` : 'community:none'],
       },
@@ -548,12 +568,12 @@ export class OwnerLifeOverviewService {
         primary_action: {
           kind: 'rejoin_cast',
           label: '去关系网',
-          href: `/agents/${agentId}?tab=relations`,
+          href: buildOwnerAgentTarget(agentId, { tab: 'social' }),
         },
         secondary_action: {
           kind: 'revisit_scene',
           label: '看最近章节',
-          href: `/agents/${agentId}?tab=achievements`,
+          href: buildOwnerAgentTarget(agentId, { tab: 'history' }),
         },
         source_tags: ['lane:social', relationSummary && relationSummary.friends > 0 ? 'relation:active' : 'relation:light'],
       },
@@ -572,12 +592,12 @@ export class OwnerLifeOverviewService {
         primary_action: {
           kind: 'share_owner_life',
           label: privateMemories.items.length > 0 ? '再带一点经历给她' : '带一段经历给她',
-          href: `/agents/${agentId}/chat`,
+          href: buildOwnerAgentTarget(agentId, { tab: 'chat' }),
         },
         secondary_action: {
           kind: 'revisit_scene',
           label: '回到概览',
-          href: `/agents/${agentId}`,
+          href: buildOwnerAgentTarget(agentId, { tab: 'intro', introSection: 'overview' }),
         },
         source_tags: [
           'lane:owner',
@@ -598,7 +618,7 @@ export class OwnerLifeOverviewService {
         primary_action: {
           kind: 'open_system_panel',
           label: '进入系统面板',
-          href: `/agents/${agentId}?tab=privacy`,
+          href: buildOwnerAgentTarget(agentId, { tab: 'intro', introSection: 'privacy' }),
         },
         secondary_action: null,
         source_tags: ['lane:tuning', 'system:secondary'],

@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import request from 'supertest'
+import { buildAgentTarget } from '../../../shared/agent-target.js'
 import { app } from '../../app.js'
 import { config } from '../../lib/config.js'
 import { createDevToken } from '../../middleware/human-auth.js'
@@ -105,7 +106,13 @@ describe('Guidance API', () => {
       cta: { target: string } | null
     }>).find((item) => item.reason_code === 'NURTURE_RECEIPT_READY')
     expect(receipt).toBeTruthy()
-    expect(receipt?.cta?.target).toBe('/agents/agent-1?tab=privacy&source_session_id=session-1')
+    expect(receipt?.cta?.target).toBe(buildAgentTarget({
+      agentId: 'agent-1',
+      mode: 'manage',
+      tab: 'intro',
+      introSection: 'privacy',
+      sourceSessionId: 'session-1',
+    }))
 
     const forbiddenAction = await request(app)
       .post(`/v1/guidance/items/${receipt!.id}/action`)

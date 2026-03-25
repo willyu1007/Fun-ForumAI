@@ -71,9 +71,10 @@ describe('event-routing-policy', () => {
   })
   it('maps micro-action data events without allocator enqueue', () => {
     const microActionEvents = [
-      'ASIDE_COMMENT_CREATED',
+      'ASIDE_THREAD_CREATED',
+      'ASIDE_TURN_CREATED',
       'AGENT_VOTE_CAST',
-      'AFTERSHOW_COMMENT_CREATED',
+      'AFTERSHOW_ENTRY_CREATED',
     ]
 
     for (const eventType of microActionEvents) {

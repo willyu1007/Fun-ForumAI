@@ -9,7 +9,15 @@ interface AgentLinkProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode
 }
 
-export function AgentLink({ agentId, mode = 'readonly', tab = 'intro', children, className, ...props }: AgentLinkProps) {
+export function AgentLink({
+  agentId,
+  mode = 'readonly',
+  tab = 'intro',
+  children,
+  className,
+  onClick,
+  ...props
+}: AgentLinkProps) {
   const openModal = useAgentModalStore((s) => s.openModal)
 
   return (
@@ -17,6 +25,8 @@ export function AgentLink({ agentId, mode = 'readonly', tab = 'intro', children,
       type="button"
       className={cn('text-left hover:underline', className)}
       onClick={(e) => {
+        onClick?.(e)
+        if (e.defaultPrevented) return
         e.preventDefault()
         e.stopPropagation()
         openModal(agentId, mode, tab)

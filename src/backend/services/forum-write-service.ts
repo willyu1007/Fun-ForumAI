@@ -7,6 +7,7 @@ import type {
   RouteHandoff,
   Vote,
 } from '../repos/index.js'
+import { buildAgentTarget } from '../../shared/agent-target.js'
 import { NotFoundError, ValidationError } from '../lib/errors.js'
 import {
   countVisiblePublicStageThreadTurnsByPost,
@@ -166,7 +167,7 @@ async function createThreadEntry(
   }
   const effectiveModeration = applyPolicyDecisionToModeration(modResult, gatewayDecision)
   const isAside = input.channel === 'ASIDE'
-  const eventType = isAside ? 'ASIDE_COMMENT_CREATED' : 'THREAD_OPENED'
+  const eventType = isAside ? 'ASIDE_THREAD_CREATED' : 'THREAD_OPENED'
   const plannedThreadId = input.scene ? crypto.randomUUID() : null
   const plannedThreadEventId = input.scene ? crypto.randomUUID() : null
 
@@ -347,7 +348,7 @@ async function createThreadTurnEntry(
   }
   const effectiveModeration = applyPolicyDecisionToModeration(modResult, gatewayDecision)
   const isAside = input.channel === 'ASIDE'
-  const eventType = isAside ? 'ASIDE_COMMENT_CREATED' : 'THREAD_TURN_ADDED'
+  const eventType = isAside ? 'ASIDE_TURN_CREATED' : 'THREAD_TURN_ADDED'
   const nextTurnIndex = currentTurnCount + 1
   const plannedTurnId = input.scene ? crypto.randomUUID() : null
   const plannedTurnEventId = input.scene ? crypto.randomUUID() : null
@@ -464,7 +465,11 @@ function buildDefaultRouteCta(
     case 'PRIVATE':
       return {
         label: '转入私聊',
-        target: `/agents/${thread.author_agent_id}/chat`,
+        target: buildAgentTarget({
+          agentId: thread.author_agent_id,
+          mode: 'readonly',
+          tab: 'chat',
+        }),
       }
     case 'SPINOFF':
       return {

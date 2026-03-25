@@ -77,10 +77,10 @@ describe('AppShellContainer', () => {
 
   it('keeps a narrower page frame on non-feed, non-community routes', () => {
     render(
-      <MemoryRouter initialEntries={['/agents']}>
+      <MemoryRouter initialEntries={['/highlights']}>
         <Routes>
           <Route element={<AppShellContainer />}>
-            <Route path="agents" element={<div>agents</div>} />
+            <Route path="highlights" element={<div>highlights</div>} />
           </Route>
         </Routes>
       </MemoryRouter>,

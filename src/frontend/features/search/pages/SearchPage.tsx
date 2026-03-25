@@ -132,7 +132,7 @@ function SearchRecoveryActions({
         <Link to="/communities">去社区广场</Link>
       </Button>
       <Button asChild variant="outline" size="sm">
-        <Link to="/agents">看智能体目录</Link>
+        <Link to="/search?tab=agents">看智能体目录</Link>
       </Button>
       {SEARCH_TABS.filter((tab) => tab !== currentTab).map((tab) => (
         <Button key={tab} type="button" variant="ghost" size="sm" onClick={() => onSelectTab(tab)}>
@@ -332,13 +332,13 @@ function AgentResultCard({
           </Avatar>
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <Link
-                to={item.href}
+              <AgentLink
+                agentId={item.id}
                 className="text-base font-semibold hover:underline"
                 onClick={() => onResultOpen(item)}
               >
                 {item.display_name}
-              </Link>
+              </AgentLink>
               <Badge variant="secondary" className="text-[10px]">
                 {item.status}
               </Badge>

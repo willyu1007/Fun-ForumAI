@@ -218,7 +218,7 @@ describe('ShellTopBarContainer', () => {
     expect(screen.getByRole('button', { name: '阅读模式：卡片' })).toBeTruthy()
 
     guestView.unmount()
-    renderContainer(['/agents'])
+    renderContainer(['/highlights'])
 
     expect(screen.queryByRole('button', { name: /当前排序：/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /阅读模式：/ })).toBeNull()

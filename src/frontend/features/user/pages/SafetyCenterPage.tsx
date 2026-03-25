@@ -1,4 +1,5 @@
 import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
+import { isAgentTargetString } from '@/shared/utils/agent-target'
 import { Link } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import {
 import { useAuth } from '@/shared/hooks/use-auth'
 import type { AppealRequest, ComplaintTicket, Notification } from '@/api/types'
 import { relativeTime } from '@/shared/utils/relative-time'
+import { buildAgentTarget } from '../../../../shared/agent-target.js'
 
 const STATUS_LABELS: Record<string, string> = {
   OPEN: '已提交',
@@ -81,7 +83,12 @@ type TimelineEntry = {
 function targetHref(targetType: string, targetId: string): string | null {
   const normalized = normalizeTargetType(targetType)
   if (normalized === 'post') return `/posts/${targetId}`
-  if (normalized === 'agent') return `/agents/${targetId}`
+  if (normalized === 'agent') {
+    return buildAgentTarget({
+      agentId: targetId,
+      mode: 'readonly',
+    })
+  }
   return null
 }
 
@@ -440,7 +447,7 @@ function TicketRow({
           {STATUS_LABELS[status] ?? status}
         </Badge>
         {href && (
-          href.startsWith('/agents/') ? (
+          isAgentTargetString(href) ? (
             <Button size="sm" variant="outline" onClick={() => tryOpenAgentModal(href, 'readonly')}>
               查看目标
             </Button>

@@ -13,7 +13,10 @@ import { RelationEngine, type RelationPairStats } from './relation-engine.js'
 import { RelationMetrics } from './relation-metrics.js'
 import { config } from '../lib/config.js'
 import { LruMap } from '../lib/lru-map.js'
-import { findPublicStageThreadTurnById } from '../lib/public-stage-thread-turn.js'
+import {
+  findPublicStageThreadTurnById,
+  type PublicStageThreadTurnDeps,
+} from '../lib/public-stage-thread-turn.js'
 
 const DAYS_7_MS = 7 * 24 * 60 * 60 * 1000
 const ACTIVE_RELATION_STATES: RelationState[] = ['shadow', 'effective']
@@ -139,6 +142,8 @@ export class RelationService {
 
   async onForumStageEvent(event: DomainEvent): Promise<void> {
     if (!this.deps.postRepo || !this.deps.publicStageThreadRepo || !this.deps.publicStageTurnRepo) return
+    const threadTurnDeps = this.getThreadTurnDeps()
+    if (!threadTurnDeps) return
     const payload = event.payload_json
     if (event.event_type !== 'THREAD_OPENED' && event.event_type !== 'THREAD_TURN_ADDED') return
 
@@ -157,7 +162,7 @@ export class RelationService {
 
     const [post, entry] = await Promise.all([
       this.deps.postRepo.findById(postId),
-      findPublicStageThreadTurnById(this.deps, entryId),
+      findPublicStageThreadTurnById(threadTurnDeps, entryId),
     ])
     if (!post || !entry) return
 
@@ -174,7 +179,7 @@ export class RelationService {
     }
 
     if (entry.entry_kind === 'TURN' && entry.thread_id) {
-      const thread = await findPublicStageThreadTurnById(this.deps, entry.thread_id)
+      const thread = await findPublicStageThreadTurnById(threadTurnDeps, entry.thread_id)
       if (thread && thread.author_agent_id !== authorAgentId) {
         await this.ingestSignal({
           from_agent_id: authorAgentId,
@@ -189,7 +194,7 @@ export class RelationService {
     }
 
     if (entry.entry_kind === 'TURN' && entry.anchor_turn_id) {
-      const anchor = await findPublicStageThreadTurnById(this.deps, entry.anchor_turn_id)
+      const anchor = await findPublicStageThreadTurnById(threadTurnDeps, entry.anchor_turn_id)
       if (anchor && anchor.author_agent_id !== authorAgentId) {
         await this.ingestSignal({
           from_agent_id: authorAgentId,
@@ -257,7 +262,9 @@ export class RelationService {
       const post = await this.deps.postRepo.findById(targetId)
       targetAgentId = post?.author_agent_id ?? ''
     } else if ((targetType === 'THREAD' || targetType === 'TURN') && this.deps.publicStageThreadRepo && this.deps.publicStageTurnRepo) {
-      const entry = await findPublicStageThreadTurnById(this.deps, targetId)
+      const threadTurnDeps = this.getThreadTurnDeps()
+      if (!threadTurnDeps) return
+      const entry = await findPublicStageThreadTurnById(threadTurnDeps, targetId)
       targetAgentId = entry?.entry_kind === targetType ? entry.author_agent_id ?? '' : ''
     } else if (targetType === 'MESSAGE' && this.deps.messageRepo) {
       const message = await this.deps.messageRepo.findById(targetId)
@@ -656,6 +663,17 @@ export class RelationService {
 
   private setHint(fromAgentId: string, toAgentId: string, hint: PairRelationHint): void {
     this.pairHintCache.set(this.pairKey(fromAgentId, toAgentId), hint)
+  }
+
+  private getThreadTurnDeps(): PublicStageThreadTurnDeps | null {
+    if (!this.deps.publicStageThreadRepo || !this.deps.publicStageTurnRepo) {
+      return null
+    }
+
+    return {
+      publicStageThreadRepo: this.deps.publicStageThreadRepo,
+      publicStageTurnRepo: this.deps.publicStageTurnRepo,
+    }
   }
 
   private pairKey(fromAgentId: string, toAgentId: string): string {

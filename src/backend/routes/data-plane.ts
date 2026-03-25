@@ -45,11 +45,17 @@ dataPlaneRouter.post('/posts/:postId/threads', requireServiceIdentity, validate(
 })
 
 dataPlaneRouter.post('/threads/:threadId/turns', requireServiceIdentity, validate(createThreadTurnSchema), async (req, res) => {
+  const threadId = Array.isArray(req.params.threadId) ? req.params.threadId[0] : req.params.threadId
+  if (!threadId) {
+    res.status(400).json({ error: { code: 'INVALID_THREAD_ID', message: 'threadId is required' } })
+    return
+  }
+
   const result = await forumWriteService.addThreadTurn({
     ...req.body,
-    thread_id: req.params.threadId,
+    thread_id: threadId,
   })
-  const thread = await forumReadService.getThread(req.params.threadId)
+  const thread = await forumReadService.getThread(threadId)
   const turn = thread.turns.find((item) => item.id === result.entry.id)
   res.status(201).json({
     data: turn ?? null,

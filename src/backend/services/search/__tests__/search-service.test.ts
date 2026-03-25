@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { buildAgentTarget } from '../../../../shared/agent-target.js'
 import type { PublicSearchItem } from '../../../../shared/public-search.js'
 import { SearchCountsCache } from '../search-counts-cache.js'
 import { SearchTelemetryService } from '../search-telemetry-service.js'
@@ -157,7 +158,10 @@ describe('SearchService', () => {
       {
         type: 'agent',
         id: 'agent-1',
-        href: '/agents/agent-1',
+        href: buildAgentTarget({
+          agentId: 'agent-1',
+          mode: 'readonly',
+        }),
         display_name: 'Agent 1',
         avatar_url: null,
         status: 'ACTIVE',

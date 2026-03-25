@@ -1,9 +1,9 @@
-import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { buildAuthRedirectState } from '@/shared/utils/auth-redirect'
+import { isAgentTargetString, openAppTarget } from '@/shared/utils/agent-target'
 import type { GuidanceInlineRail as GuidanceInlineRailModel } from '../contextual-guidance'
 export function GuidanceInlineRail({
   rail,
@@ -14,13 +14,14 @@ export function GuidanceInlineRail({
   onAction?: () => void
   actionPending?: boolean
 }) {
+  const navigate = useNavigate()
   const ctaLabel =
     rail.cta.kind === 'button' && actionPending
       ? (rail.cta.pending_label ?? rail.cta.label)
       : rail.cta.label
 
   const routeTarget = rail.cta.kind === 'route' ? rail.cta.target : null
-  const isAgentRoute = Boolean(routeTarget && routeTarget.startsWith('/agents/'))
+  const isAgentRoute = Boolean(routeTarget && isAgentTargetString(routeTarget))
 
   return (
     <Card className="border-warning/30 bg-warning/10">
@@ -47,7 +48,7 @@ export function GuidanceInlineRail({
         ) : isAgentRoute && routeTarget ? (
           <Button
             size="sm"
-            onClick={() => tryOpenAgentModal(routeTarget, 'manage')}
+            onClick={() => openAppTarget(navigate, routeTarget, 'manage')}
           >
             {ctaLabel}
           </Button>

@@ -1,5 +1,5 @@
-import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
-import { Link, useLocation } from 'react-router'
+import { isAgentTargetString, openAppTarget } from '@/shared/utils/agent-target'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,6 +13,7 @@ import {
   locationToPath,
 } from '@/shared/utils/auth-redirect'
 export function GuidanceItemCard({ item }: { item: GuidanceItemCardView }) {
+  const navigate = useNavigate()
   const itemAction = useGuidanceItemAction()
   const { isAuthenticated } = useAuth()
   const location = useLocation()
@@ -28,7 +29,7 @@ export function GuidanceItemCard({ item }: { item: GuidanceItemCardView }) {
       : undefined
   const ctaLabel =
     item.cta && !isAuthenticated && requiresAuth ? '登录后继续追剧情' : item.cta?.label
-  const isAgentCta = Boolean(ctaTarget && ctaTarget.startsWith('/agents/'))
+  const isAgentCta = Boolean(ctaTarget && isAgentTargetString(ctaTarget))
   return (
     <Card className={item.unread ? 'border-warning/30 bg-warning/10' : ''}>
       <CardHeader className="pb-2">
@@ -52,7 +53,7 @@ export function GuidanceItemCard({ item }: { item: GuidanceItemCardView }) {
                 size="sm"
                 onClick={() => {
                   handleOpen()
-                  tryOpenAgentModal(ctaTarget, 'manage')
+                  openAppTarget(navigate, ctaTarget, 'manage')
                 }}
               >
                 {ctaLabel}

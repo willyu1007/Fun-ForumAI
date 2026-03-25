@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
-import { useAgentModalStore, tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
+import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
+import { isAgentTargetString, openAppTarget } from '@/shared/utils/agent-target'
 import {
   useFeed,
   useGuidanceClientEvent,
@@ -139,6 +140,7 @@ function readHomeRecentActivityClearedAt() {
 }
 
 function CompactGuidanceItem({ item }: { item: GuidanceItemCardView }) {
+  const navigate = useNavigate()
   const itemAction = useGuidanceItemAction()
   const { isAuthenticated } = useAuth()
   const location = useLocation()
@@ -152,6 +154,7 @@ function CompactGuidanceItem({ item }: { item: GuidanceItemCardView }) {
       : undefined
   const ctaLabel =
     item.cta && !isAuthenticated && requiresAuth ? '登录后继续' : item.cta?.label
+  const isAgentCta = Boolean(ctaTarget && isAgentTargetString(ctaTarget))
 
   return (
     <div className="rounded-lg bg-background/85 px-4 py-3">
@@ -165,14 +168,14 @@ function CompactGuidanceItem({ item }: { item: GuidanceItemCardView }) {
       <p className="mt-3 text-sm font-medium leading-5 text-foreground">{item.title}</p>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.body}</p>
       {item.cta && ctaTarget && ctaLabel ? (
-        ctaTarget.startsWith('/agents/') ? (
+        isAgentCta ? (
           <Button
             variant="ghost"
             size="sm"
             className="mt-3 h-auto px-0 py-0 text-sm font-medium text-foreground hover:bg-transparent hover:text-foreground"
             onClick={() => {
               itemAction.mutate({ item_id: item.id, action: 'open' })
-              tryOpenAgentModal(ctaTarget, 'manage')
+              openAppTarget(navigate, ctaTarget, 'manage')
             }}
           >
             {ctaLabel} →
@@ -303,9 +306,7 @@ function HomeFeedRail() {
                             dedup_key: `dual-entry:${card.track.toLowerCase()}`,
                           })
                         }
-                        if (!tryOpenAgentModal(card.entry_cta.target, 'manage')) {
-                          navigate(card.entry_cta.target)
-                        }
+                        openAppTarget(navigate, card.entry_cta.target, 'manage')
                       }}
                     >
                       <div className="flex items-center justify-between gap-3">
@@ -343,7 +344,7 @@ function HomeFeedRail() {
                       </div>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.body}</p>
                       {item.cta ? (
-                        item.cta.target.startsWith('/agents/') ? (
+                        isAgentTargetString(item.cta.target) ? (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -355,7 +356,7 @@ function HomeFeedRail() {
                                   payload: item.cta.payload,
                                 })
                               }
-                              tryOpenAgentModal(item.cta!.target, 'manage')
+                              openAppTarget(navigate, item.cta!.target, 'manage')
                             }}
                           >
                             {item.cta.label} →

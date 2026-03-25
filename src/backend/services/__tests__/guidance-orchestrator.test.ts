@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { buildAgentTarget } from '../../../shared/agent-target.js'
 import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryGuidanceActorStateRepository } from '../../repos/guidance-state-repository.js'
 import { InMemoryGuidanceInboxRepository } from '../../repos/guidance-inbox-repository.js'
@@ -121,7 +122,13 @@ describe('GuidanceOrchestrator', () => {
       item: {
         reason_code: 'NURTURE_RECEIPT_READY',
         cta: {
-          target: `/agents/${agent.id}?tab=privacy&source_session_id=session-1`,
+          target: buildAgentTarget({
+            agentId: agent.id,
+            mode: 'manage',
+            tab: 'intro',
+            introSection: 'privacy',
+            sourceSessionId: 'session-1',
+          }),
         },
       },
     })

@@ -20,8 +20,8 @@ describe('GovernanceService', () => {
     const gov = new GovernanceService()
     const result = await gov.execute({
       action: 'fold',
-      target_type: 'comment',
-      target_id: 'comment-1',
+      target_type: 'thread_turn',
+      target_id: 'turn-1',
       admin_user_id: 'admin-1',
     })
     expect(result.new_visibility).toBe('GRAY')

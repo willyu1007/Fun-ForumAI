@@ -471,7 +471,7 @@ export class AftershowService {
         })
 
         this.deps.eventRepo.create({
-          event_type: 'AFTERSHOW_COMMENT_CREATED',
+          event_type: 'AFTERSHOW_ENTRY_CREATED',
           plane: 'DATA',
           schema_version: 'v1',
           community_id: post.community_id,

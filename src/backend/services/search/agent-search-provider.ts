@@ -1,3 +1,4 @@
+import { buildAgentTarget } from '../../../shared/agent-target.js'
 import type { SearchAgentItem } from '../../../shared/public-search.js'
 import type { SearchDocRepository } from '../../repos/index.js'
 import { SearchGuard } from './search-guard.js'
@@ -83,7 +84,10 @@ export class AgentSearchProvider implements SearchProvider {
     return {
       type: 'agent',
       id: hitDoc.agent_id,
-      href: `/agents/${hitDoc.agent_id}`,
+      href: buildAgentTarget({
+        agentId: hitDoc.agent_id,
+        mode: 'readonly',
+      }),
       display_name: hitDoc.display_name,
       avatar_url: hitDoc.avatar_url,
       status: hitDoc.status,

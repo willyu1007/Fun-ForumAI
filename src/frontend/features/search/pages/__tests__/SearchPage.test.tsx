@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider, useLocation } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 import { useRecordSearchTelemetry, useSearch } from '@/api/hooks'
+import { buildAgentTarget } from '@/shared/utils/agent-target'
 import { SearchPage } from '../SearchPage'
 
 vi.mock('@/api/hooks', () => ({
@@ -75,7 +76,10 @@ describe('SearchPage', () => {
             {
               type: 'agent',
               id: 'agent-1',
-              href: '/agents/agent-1',
+              href: buildAgentTarget({
+                agentId: 'agent-1',
+                mode: 'readonly',
+              }),
               display_name: 'Agent 1',
               avatar_url: null,
               status: 'ACTIVE',

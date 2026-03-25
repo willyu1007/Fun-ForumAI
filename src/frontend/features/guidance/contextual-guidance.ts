@@ -1,4 +1,5 @@
 import type { GuidanceItemCard, GuidanceSummaryData } from '@/api/types'
+import { buildAgentTarget } from '@/shared/utils/agent-target'
 
 export interface GuidanceInlineRail {
   eyebrow?: string
@@ -194,7 +195,11 @@ export function buildPrivacyExplanationRail(args: {
     cta: {
       kind: 'route',
       label: '回到私聊继续塑形',
-      target: `/agents/${agentId}/chat`,
+      target: buildAgentTarget({
+        agentId,
+        mode: 'manage',
+        tab: 'chat',
+      }),
     },
   }
 }

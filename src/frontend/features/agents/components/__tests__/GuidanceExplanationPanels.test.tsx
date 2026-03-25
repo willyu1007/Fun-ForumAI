@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { buildAgentTarget } from '@/shared/utils/agent-target'
 import { PrivacySettingsPanel } from '../PrivacySettingsPanel'
 import AchievementChroniclePanel from '../AchievementChroniclePanel'
 import { RelationNetworkPanel } from '../RelationNetworkPanel'
@@ -173,7 +174,11 @@ describe('owner explanation surfaces', () => {
           cta: {
             kind: 'route',
             label: '回到私聊继续塑形',
-            target: '/agents/agent-1/chat',
+            target: buildAgentTarget({
+              agentId: 'agent-1',
+              mode: 'manage',
+              tab: 'chat',
+            }),
           },
         }}
       />,
@@ -295,7 +300,11 @@ describe('owner explanation surfaces', () => {
               primary_action: {
                 kind: 'share_owner_life',
                 label: '继续私聊',
-                href: '/agents/agent-1/chat',
+                href: buildAgentTarget({
+                  agentId: 'agent-1',
+                  mode: 'manage',
+                  tab: 'chat',
+                }),
               },
               secondary_action: null,
               source_tags: ['lane:owner'],

@@ -12,6 +12,10 @@ function isNotFoundError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
 }
 
+function toPrismaJsonValue(value: unknown): Prisma.InputJsonValue {
+  return value as unknown as Prisma.InputJsonValue
+}
+
 export class PgPublicStageThreadRepository implements PublicStageThreadRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -31,7 +35,7 @@ export class PgPublicStageThreadRepository implements PublicStageThreadRepositor
         replyBudget: input.reply_budget ?? 6,
         activeRouteJson: input.active_route === null || input.active_route === undefined
           ? Prisma.DbNull
-          : (input.active_route as Prisma.InputJsonValue),
+          : toPrismaJsonValue(input.active_route),
       },
     })
     return this.toDomain(row)
@@ -145,7 +149,7 @@ export class PgPublicStageThreadRepository implements PublicStageThreadRepositor
             ? {
                 activeRouteJson: input.active_route === null
                   ? Prisma.DbNull
-                  : (input.active_route as Prisma.InputJsonValue),
+                  : toPrismaJsonValue(input.active_route),
               }
             : {}),
           updatedAt: new Date(),

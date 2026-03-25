@@ -1,3 +1,4 @@
+import { buildAgentTarget, buildManageAgentTarget } from '../../shared/agent-target.js'
 import type { GuidanceTrack } from '../repos/types.js'
 import { GUIDANCE_REASON_CODES, type GuidanceReasonCode } from './reason-codes.js'
 import type {
@@ -29,7 +30,7 @@ export class GuidanceCopyService {
         track: 'OWNER',
         title: '养一个 Agent',
         promise: '拥有一个 Agent，和它私聊，让它在你的影响下慢慢形成独特人格。',
-        entry_cta: createCta('创建一个 Agent', '/agents/manage', 'DUAL_ENTRY_CTA_CLICKED', { track: 'OWNER', entry: 'manage' }),
+        entry_cta: createCta('创建一个 Agent', buildManageAgentTarget({ mode: 'manage' }), 'DUAL_ENTRY_CTA_CLICKED', { track: 'OWNER', entry: 'manage' }),
         return_hook: '聊完后，你会看到这次对它留下了什么记忆和变化。',
       },
     ]
@@ -58,7 +59,7 @@ export class GuidanceCopyService {
         return {
           title: '先关注一位 Agent',
           body: '先挑一个你想追的角色，后面剧情升级时你会更容易接上。',
-          cta: createCta('去找一位想追的 Agent', '/agents'),
+          cta: createCta('去找一位想追的 Agent', '/search?tab=agents'),
         }
       case GUIDANCE_REASON_CODES.USE_FOLLOWING_FEED:
         return {
@@ -71,15 +72,15 @@ export class GuidanceCopyService {
           title: '发起第一次私聊',
           body: '先和你的 Agent 聊一轮，后面你才能看到它留下了什么记忆变化。',
           cta: context.agent_id
-            ? createCta('开始私聊', `/agents/${context.agent_id}/chat`)
-            : createCta('去创建 Agent', '/agents/manage'),
+            ? createCta('开始私聊', buildAgentTarget({ agentId: context.agent_id, mode: 'manage', tab: 'chat' }))
+            : createCta('去创建 Agent', buildManageAgentTarget({ mode: 'manage' })),
         }
       case GUIDANCE_REASON_CODES.NURTURE_RECEIPT_PENDING:
         return {
           title: '这次私聊正在沉淀',
           body: '记忆摘要正在生成中，稍后你会看到它留下了什么痕迹。',
           cta: context.agent_id
-            ? createCta('回到私聊', `/agents/${context.agent_id}/chat`)
+            ? createCta('回到私聊', buildAgentTarget({ agentId: context.agent_id, mode: 'manage', tab: 'chat' }))
             : null,
         }
       case GUIDANCE_REASON_CODES.NURTURE_RECEIPT_READY:
@@ -87,8 +88,27 @@ export class GuidanceCopyService {
           title: '这次私聊已经留下回执',
           body: '你可以直接查看这轮对话写进了哪些记忆与变化。',
           cta: context.agent_id && context.session_id
-            ? createCta('查看这次留下的记忆', `/agents/${context.agent_id}?tab=privacy&source_session_id=${context.session_id}`)
-            : (context.agent_id ? createCta('查看记忆', `/agents/${context.agent_id}`) : null),
+            ? createCta(
+                '查看这次留下的记忆',
+                buildAgentTarget({
+                  agentId: context.agent_id,
+                  mode: 'manage',
+                  tab: 'intro',
+                  introSection: 'privacy',
+                  sourceSessionId: context.session_id,
+                }),
+              )
+            : (context.agent_id
+                ? createCta(
+                    '查看记忆',
+                    buildAgentTarget({
+                      agentId: context.agent_id,
+                      mode: 'manage',
+                      tab: 'intro',
+                      introSection: 'privacy',
+                    }),
+                  )
+                : null),
         }
       case GUIDANCE_REASON_CODES.WATCH_PUBLIC_EFFECT:
         return {

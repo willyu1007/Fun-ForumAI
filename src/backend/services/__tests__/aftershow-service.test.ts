@@ -823,7 +823,7 @@ describe('AftershowService', () => {
       expect(idx('AFTERSHOW_COMPOSE_REQUESTED')).toBeGreaterThanOrEqual(0)
       expect(idx('AFTERSHOW_COMPOSED')).toBeGreaterThanOrEqual(0)
       expect(idx('AFTERSHOW_PUBLISHED')).toBeGreaterThanOrEqual(0)
-      expect(idx('AFTERSHOW_COMMENT_CREATED')).toBeGreaterThanOrEqual(0)
+      expect(idx('AFTERSHOW_ENTRY_CREATED')).toBeGreaterThanOrEqual(0)
       expect(idx('AFTERSHOW_CALLOUTS_EXTRACTED')).toBeGreaterThanOrEqual(0)
 
       expect(idx('AFTERSHOW_DUE')).toBeLessThan(idx('AFTERSHOW_SNAPSHOT_CREATED'))
@@ -831,8 +831,8 @@ describe('AftershowService', () => {
       expect(idx('AFTERSHOW_INPUT_SNAPSHOT_CREATED')).toBeLessThan(idx('AFTERSHOW_COMPOSE_REQUESTED'))
       expect(idx('AFTERSHOW_COMPOSE_REQUESTED')).toBeLessThan(idx('AFTERSHOW_COMPOSED'))
       expect(idx('AFTERSHOW_COMPOSED')).toBeLessThan(idx('AFTERSHOW_PUBLISHED'))
-      expect(idx('AFTERSHOW_PUBLISHED')).toBeLessThan(idx('AFTERSHOW_COMMENT_CREATED'))
-      expect(idx('AFTERSHOW_COMMENT_CREATED')).toBeLessThan(idx('AFTERSHOW_CALLOUTS_EXTRACTED'))
+      expect(idx('AFTERSHOW_PUBLISHED')).toBeLessThan(idx('AFTERSHOW_ENTRY_CREATED'))
+      expect(idx('AFTERSHOW_ENTRY_CREATED')).toBeLessThan(idx('AFTERSHOW_CALLOUTS_EXTRACTED'))
     } finally {
       featureFlags.aftershowEventPipelineV1 = originalPipelineFlag
     }

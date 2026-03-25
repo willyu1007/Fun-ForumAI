@@ -1,14 +1,30 @@
 import { create } from 'zustand'
+import {
+  parseAgentTarget,
+  type AgentIntroSection,
+  type AgentTargetMode,
+  type AgentTargetTab,
+} from '../../../shared/agent-target.js'
 
-export type AgentModalTab = 'intro' | 'chat' | 'moments' | 'history' | 'social'
+export type AgentModalTab = AgentTargetTab
 
 export interface AgentModalState {
   isOpen: boolean
   activeAgentId: string | null
-  viewMode: 'manage' | 'readonly'
+  viewMode: AgentTargetMode
   activeTab: AgentModalTab
+  introSection: AgentIntroSection | null
+  sourceSessionId: string | null
 
-  openModal: (agentId: string | null, mode: 'manage' | 'readonly', tab?: AgentModalTab) => void
+  openModal: (
+    agentId: string | null,
+    mode: AgentTargetMode,
+    tab?: AgentModalTab,
+    opts?: {
+      introSection?: AgentIntroSection | null
+      sourceSessionId?: string | null
+    },
+  ) => void
   closeModal: () => void
   setActiveTab: (tab: AgentModalTab) => void
   setActiveAgent: (agentId: string | null) => void
@@ -19,13 +35,17 @@ export const useAgentModalStore = create<AgentModalState>((set) => ({
   activeAgentId: null,
   viewMode: 'readonly',
   activeTab: 'intro',
+  introSection: null,
+  sourceSessionId: null,
 
-  openModal: (agentId, mode, tab = 'intro') =>
+  openModal: (agentId, mode, tab = 'intro', opts) =>
     set({
       isOpen: true,
       activeAgentId: agentId,
       viewMode: mode,
       activeTab: tab,
+      introSection: opts?.introSection ?? null,
+      sourceSessionId: opts?.sourceSessionId ?? null,
     }),
 
   closeModal: () =>
@@ -45,27 +65,29 @@ export const useAgentModalStore = create<AgentModalState>((set) => ({
     }),
 }))
 
-const AGENT_PATH_RE = /^\/agents\/([^/]+)(?:\/(\w+))?/
-
-function parseAgentUrl(url: string): { agentId: string; tab: AgentModalTab } | null {
-  const match = AGENT_PATH_RE.exec(url)
-  if (!match) return null
-  const agentId = match[1]
-  const segment = match[2]
-  const tab: AgentModalTab = segment === 'chat' ? 'chat' : 'intro'
-  return { agentId, tab }
-}
-
 /**
  * If `url` points to an agent route, open the modal and return `true`.
  * Otherwise return `false` so the caller can fall back to normal navigation.
  */
 export function tryOpenAgentModal(
   url: string,
-  mode: 'manage' | 'readonly' = 'readonly',
+  mode: AgentTargetMode = 'readonly',
 ): boolean {
-  const parsed = parseAgentUrl(url)
+  const parsed = parseAgentTarget(url)
   if (!parsed) return false
-  useAgentModalStore.getState().openModal(parsed.agentId, mode, parsed.tab)
+  if (parsed.kind === 'manage') {
+    useAgentModalStore.getState().openModal(null, parsed.mode ?? mode, 'intro')
+    return true
+  }
+
+  useAgentModalStore.getState().openModal(
+    parsed.agentId,
+    parsed.mode ?? mode,
+    parsed.tab ?? 'intro',
+    {
+      introSection: parsed.introSection ?? null,
+      sourceSessionId: parsed.sourceSessionId ?? null,
+    },
+  )
   return true
 }
