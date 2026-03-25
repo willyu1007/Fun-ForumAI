@@ -129,6 +129,11 @@ export async function installApiMocks(
           unread_count: (common.notifications ?? []).filter((item) => !item.read).length,
         }),
     },
+    {
+      method: 'GET',
+      match: '/feed',
+      handle: ({ route }) => fulfillOk(route, [], { meta: { cursor: null } }),
+    },
   ]
 
   await page.route('**/v1/**', async (route) => {

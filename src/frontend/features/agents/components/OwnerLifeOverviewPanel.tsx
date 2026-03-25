@@ -31,12 +31,24 @@ function suggestionPriorityLabel(priority: 'now' | 'soon' | 'optional') {
   }
 }
 
-function ActionLink({ href, className, children }: { href: string; className?: string; children: React.ReactNode }) {
+function ActionLink({
+  href,
+  tone,
+  children,
+}: {
+  href: string
+  tone: 'primary' | 'muted'
+  children: React.ReactNode
+}) {
   const navigate = useNavigate()
   return (
     <button
       type="button"
-      className={className}
+      className={
+        tone === 'primary'
+          ? 'text-sm font-medium text-primary underline-offset-4 hover:underline'
+          : 'text-sm text-muted-foreground underline-offset-4 hover:underline'
+      }
       onClick={() => {
         if (!tryOpenAgentModal(href, 'manage')) {
           navigate(href)
@@ -261,12 +273,12 @@ export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
                 <p className="mt-1 text-xs text-muted-foreground">预计推进：{item.expected_progress}</p>
                 <div className="mt-2 flex flex-wrap gap-3">
                   {item.primary_action.href ? (
-                    <ActionLink href={item.primary_action.href} className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+                    <ActionLink href={item.primary_action.href} tone="primary">
                       {item.primary_action.label}
                     </ActionLink>
                   ) : null}
                   {item.secondary_action?.href ? (
-                    <ActionLink href={item.secondary_action.href} className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+                    <ActionLink href={item.secondary_action.href} tone="muted">
                       {item.secondary_action.label}
                     </ActionLink>
                   ) : null}

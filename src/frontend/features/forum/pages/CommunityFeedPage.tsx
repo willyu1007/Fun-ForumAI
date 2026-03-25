@@ -206,27 +206,11 @@ function CommunityHeroBanner({ community }: { community: Community }) {
     <>
       <section className="-mt-6 space-y-0" data-testid="community-hero-banner">
         <div className="relative h-28 overflow-hidden rounded-[0.5rem] bg-muted">
-          {/* 1. 背景层 */}
-          {bannerTheme.type === 'custom_image' ? (
-            <img src={bannerTheme.value} className="absolute inset-0 h-full w-full object-cover" alt="Community Banner" />
-          ) : (
-            <>
-              <div className="absolute inset-0" style={{ background: bannerTheme.value }} />
-              {bannerTheme.texture && (
-                <div className="absolute inset-0" style={{ backgroundImage: bannerTheme.texture }} />
-              )}
-            </>
-          )}
-
-          {/* 2. 遮罩层 (可选，用于稍微压暗背景以突出前景，如果需要的话可以启用) */}
-          {/* <div className="absolute inset-0 bg-black/5" /> */}
-
-          {/* 3. 装饰层 (光晕) */}
+          <img src={bannerTheme.value} className="absolute inset-0 h-full w-full object-cover" alt="Community Banner" />
           <div className="absolute inset-y-0 left-0 w-[44%] bg-gradient-to-r from-background/12 via-background/4 to-transparent" />
           <div className="absolute inset-y-0 right-0 w-[48%] bg-gradient-to-l from-background/10 via-background/2 to-transparent" />
           <div className="absolute left-8 top-5 h-14 w-28 rounded-full bg-background/20 blur-2xl" />
 
-          {/* 4. 缺口层 */}
           <div className="absolute bottom-[-2.6rem] left-6 size-[5.2rem] rounded-full bg-background" />
         </div>
 
@@ -252,8 +236,8 @@ function CommunityHeroBanner({ community }: { community: Community }) {
                   </AvatarFallback>
                 </Avatar>
                 {canEditBanner && (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity hover:opacity-100">
-                    <span className="text-xs font-medium text-white">编辑</span>
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-foreground/40 opacity-0 transition-opacity hover:opacity-100">
+                    <span className="text-xs font-medium text-background">编辑</span>
                   </div>
                 )}
               </button>
@@ -342,12 +326,9 @@ function CommunityHeroBanner({ community }: { community: Community }) {
                   alert('保存设置功能开发中...')
                 }}
               >
-                <div className="absolute inset-0" style={{ background: preset.value }} />
-                {preset.texture && (
-                  <div className="absolute inset-0" style={{ backgroundImage: preset.texture }} />
-                )}
+                <img src={preset.value} className="absolute inset-0 h-full w-full object-cover" alt={`Preset Banner ${idx + 1}`} />
                 {bannerTheme === preset && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                  <div className="absolute inset-0 flex items-center justify-center bg-foreground/20">
                     <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground">
                       当前使用
                     </span>
@@ -388,7 +369,7 @@ function CommunityHeroBanner({ community }: { community: Community }) {
               >
                 <img src={preset.value} className="size-full object-cover" alt={`Preset Avatar ${idx + 1}`} />
                 {avatarTheme === preset && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                  <div className="absolute inset-0 flex items-center justify-center bg-foreground/20">
                     <div className="size-2.5 rounded-full bg-primary" />
                   </div>
                 )}

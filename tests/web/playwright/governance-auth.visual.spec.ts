@@ -292,7 +292,7 @@ test.describe('Governance and auth visual regression', () => {
     const authMeResponse = waitForApiResponse(page, 'GET', '/auth/me')
     await page.goto('/login')
     await authMeResponse
-    await expect(page.getByRole('link', { name: /AI Talkshow/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: /AI TALKSHOW/i })).toBeVisible()
     await expect(page.getByRole('tab', { name: '邮箱登录' })).toBeVisible()
     await expectPageSnapshot(page, 'auth-login-default-state.png')
   })

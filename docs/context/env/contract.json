@@ -5,7 +5,7 @@
     "prod",
     "staging"
   ],
-  "generated_at_utc": "2026-03-23T23:05:38Z",
+  "generated_at_utc": "2026-03-25T02:52:54Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "APP_ENV": {
@@ -1589,6 +1589,40 @@
       "state": "active",
       "type": "int"
     },
+    "MEDIA_LOCAL_DIR": {
+      "default": "var/media-assets",
+      "deprecate_after": null,
+      "description": "Local filesystem directory for persisted media assets when using local storage.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "MEDIA_PUBLIC_BASE_URL": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Public base URL prefix for media assets served from object or local storage.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
     "MEDIA_ROOT_POST_TARGET_MAX_RATE": {
       "default": 0.45,
       "deprecate_after": null,
@@ -1622,6 +1656,108 @@
       "secret_ref": null,
       "state": "active",
       "type": "float"
+    },
+    "MEDIA_S3_ACCESS_KEY_ID": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Access key id for media asset S3 storage.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "media_s3_access_key_id",
+      "state": "active",
+      "type": "string"
+    },
+    "MEDIA_S3_BUCKET": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "S3 bucket for persisted media assets.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "MEDIA_S3_ENDPOINT": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Optional custom S3-compatible endpoint for media asset storage.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "MEDIA_S3_FORCE_PATH_STYLE": {
+      "default": false,
+      "deprecate_after": null,
+      "description": "Whether media asset S3 access should force path-style URLs.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "bool"
+    },
+    "MEDIA_S3_REGION": {
+      "default": "us-east-1",
+      "deprecate_after": null,
+      "description": "S3 region for persisted media assets.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "MEDIA_S3_SECRET_ACCESS_KEY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Secret access key for media asset S3 storage.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "media_s3_secret_access_key",
+      "state": "active",
+      "type": "string"
     },
     "MEDIA_SNAPSHOT_BACKFILL_BATCH_SIZE": {
       "default": 20,
@@ -1673,6 +1809,23 @@
       "secret_ref": null,
       "state": "active",
       "type": "string"
+    },
+    "MEDIA_STORAGE_BACKEND": {
+      "default": "local",
+      "deprecate_after": null,
+      "description": "Storage backend for persisted media assets.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
     },
     "MINIMAX_API_KEY": {
       "default": null,

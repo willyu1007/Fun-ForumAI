@@ -75,57 +75,46 @@ export function getCommunityAvatarToneClassName(category: CommunityCategory) {
 }
 
 export interface BannerTheme {
-  type: 'preset' | 'custom_image'
-  /** CSS linear-gradient() for preset, or image URL for custom_image */
+  type: 'custom_image'
   value: string
-  texture?: string
 }
 
 export const PRESET_BANNERS: BannerTheme[] = [
   {
-    type: 'preset',
-    value: 'linear-gradient(to right, #2dd4bf, #6366f1, #9333ea)',
-    texture: `url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0H0v20h20V0z' fill='none'/%3E%3Cpath d='M20 19.5H0v-1h20v1zM19.5 20V0h-1v20h1z' fill='rgba(255,255,255,0.15)'/%3E%3C/svg%3E")`,
+    type: 'custom_image',
+    value: '/community-banners/aurora-thread.svg',
   },
   {
-    type: 'preset',
-    value: 'linear-gradient(to right, #fb7185, #d946ef, #6366f1)',
-    texture: `url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='2' cy='2' r='2' fill='rgba(255,255,255,0.15)'/%3E%3C/svg%3E")`,
+    type: 'custom_image',
+    value: '/community-banners/lantern-stage.svg',
   },
   {
-    type: 'preset',
-    value: 'linear-gradient(to right, #67e8f9, #f9a8d4, #fde047)',
-    texture: `url("data:image/svg+xml,%3Csvg width='10' height='10' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M-1 11L11 -1M-1 1L1 -1M9 11L11 9' stroke='rgba(255,255,255,0.15)' stroke-width='2'/%3E%3C/svg%3E")`,
+    type: 'custom_image',
+    value: '/community-banners/soft-grid.svg',
   },
   {
-    type: 'preset',
-    value: 'linear-gradient(to right, #0f172a, #1e1b4b, #0f172a)',
-    texture: `url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 0v20M0 10h20' stroke='rgba(255,255,255,0.15)' stroke-width='1'/%3E%3C/svg%3E")`,
+    type: 'custom_image',
+    value: '/community-banners/midnight-arc.svg',
   },
   {
-    type: 'preset',
-    value: 'linear-gradient(to right, #10b981, #0d9488, #0e7490)',
-    texture: `url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 10l5-5 5 5 5-5 5 5' fill='none' stroke='rgba(255,255,255,0.15)' stroke-width='2'/%3E%3C/svg%3E")`,
+    type: 'custom_image',
+    value: '/community-banners/sea-glow.svg',
   },
   {
-    type: 'preset',
-    value: 'linear-gradient(to right, #2563eb, #4338ca, #3730a3)',
-    texture: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 200'%3E%3Ccircle cx='400' cy='250' r='200' fill='rgba(255,255,255,0.05)'/%3E%3Ccircle cx='400' cy='250' r='150' fill='rgba(255,255,255,0.05)'/%3E%3Ccircle cx='400' cy='250' r='100' fill='rgba(255,255,255,0.05)'/%3E%3C/svg%3E")`,
+    type: 'custom_image',
+    value: '/community-banners/blue-depth.svg',
   },
   {
-    type: 'preset',
-    value: 'linear-gradient(to right, #6b21a8, #701a75, #881337)',
-    texture: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 200'%3E%3Cpolygon points='200,-50 50,300 350,300' fill='rgba(255,255,255,0.07)'/%3E%3Cpolygon points='600,-50 450,300 750,300' fill='rgba(255,255,255,0.07)'/%3E%3C/svg%3E")`,
+    type: 'custom_image',
+    value: '/community-banners/plum-wave.svg',
   },
   {
-    type: 'preset',
-    value: 'linear-gradient(to right, #065f46, #134e4a, #042f2e)',
-    texture: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 200'%3E%3Cpolygon points='-100,250 150,80 400,250' fill='rgba(255,255,255,0.05)'/%3E%3Cpolygon points='250,250 500,40 850,250' fill='rgba(255,255,255,0.08)'/%3E%3C/svg%3E")`,
+    type: 'custom_image',
+    value: '/community-banners/forest-ribbon.svg',
   },
   {
-    type: 'preset',
-    value: 'linear-gradient(to right, #f97316, #d97706, #b45309)',
-    texture: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 200'%3E%3Crect x='100' y='50' width='120' height='120' rx='24' fill='rgba(255,255,255,0.08)' transform='rotate(15 160 110)'/%3E%3Crect x='600' y='20' width='80' height='80' rx='16' fill='rgba(255,255,255,0.1)' transform='rotate(-10 640 60)'/%3E%3Ccircle cx='450' cy='150' r='50' fill='rgba(255,255,255,0.06)'/%3E%3C/svg%3E")`,
+    type: 'custom_image',
+    value: '/community-banners/ember-scene.svg',
   },
 ]
 
@@ -135,15 +124,15 @@ export interface AvatarTheme {
 }
 
 export const PRESET_AVATARS: AvatarTheme[] = [
-  { type: 'preset', value: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=200&h=200&auto=format&fit=crop' }, // 3D Abstract Liquid
-  { type: 'preset', value: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=200&h=200&auto=format&fit=crop' }, // Neon Cyberpunk
-  { type: 'preset', value: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=200&h=200&auto=format&fit=crop' }, // Minimalist Architecture
-  { type: 'preset', value: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=200&h=200&auto=format&fit=crop' }, // Space/Nebula
-  { type: 'preset', value: 'https://images.unsplash.com/photo-1557682250-33bd709cbe85?q=80&w=200&h=200&auto=format&fit=crop' }, // Gradient Mesh
-  { type: 'preset', value: 'https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?q=80&w=200&h=200&auto=format&fit=crop' }, // 3D Geometric
-  { type: 'preset', value: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?q=80&w=200&h=200&auto=format&fit=crop' }, // Abstract Paint
-  { type: 'preset', value: 'https://images.unsplash.com/photo-1515266591878-f93e32bc5937?q=80&w=200&h=200&auto=format&fit=crop' }, // Crystal/Glass
-  { type: 'preset', value: 'https://images.unsplash.com/photo-1550684376-efcbd6e3f031?q=80&w=200&h=200&auto=format&fit=crop' }, // Dark Abstract
+  { type: 'preset', value: '/community-avatars/aurora-orb.svg' },
+  { type: 'preset', value: '/community-avatars/lantern-echo.svg' },
+  { type: 'preset', value: '/community-avatars/soft-grid.svg' },
+  { type: 'preset', value: '/community-avatars/midnight-node.svg' },
+  { type: 'preset', value: '/community-avatars/sea-ring.svg' },
+  { type: 'preset', value: '/community-avatars/blue-core.svg' },
+  { type: 'preset', value: '/community-avatars/plum-disc.svg' },
+  { type: 'preset', value: '/community-avatars/forest-spark.svg' },
+  { type: 'preset', value: '/community-avatars/ember-orbit.svg' },
 ]
 
 function hashString(str: string): number {

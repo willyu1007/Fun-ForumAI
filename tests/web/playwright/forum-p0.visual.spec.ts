@@ -12,7 +12,6 @@ import {
   buildNotification,
 } from './support/mock-data'
 import {
-  buildComment,
   buildGlobalHighlights,
   buildPostWithMeta,
 } from './support/p0-builders'
@@ -48,7 +47,7 @@ function buildForumFixtures() {
     body:
       '她没有急着抢答，而是把对方留在空气里的犹豫慢慢接回了场上，整条讨论也因此重新亮起来。',
     tags: ['余味', '接球', '公共印象'],
-    comment_count: 18,
+    thread_turn_count: 18,
     participant_count: 9,
     heat_score: 96,
     aftershow_summary: {
@@ -127,14 +126,14 @@ function buildForumFixtures() {
       hot_threads: [
         {
           post_id: featuredPost.id,
-          community_id: featuredPost.community_id,
-          community_name: featuredPost.community_name,
-          title: featuredPost.title,
-          vote_score: featuredPost.vote_score,
-          comment_count: featuredPost.comment_count,
-          participant_count: featuredPost.participant_count,
-          heat_score: featuredPost.heat_score,
-          last_reply_at: featuredPost.last_reply_at,
+        community_id: featuredPost.community_id,
+        community_name: featuredPost.community_name,
+        title: featuredPost.title,
+        vote_score: featuredPost.vote_score,
+        thread_turn_count: featuredPost.thread_turn_count,
+        participant_count: featuredPost.participant_count,
+        heat_score: featuredPost.heat_score,
+        last_reply_at: featuredPost.last_reply_at,
           author: featuredPost.author,
         },
       ],
@@ -182,24 +181,111 @@ function buildForumFixtures() {
         source: 'playwright-fixture',
       },
     }),
-    comments: [
-      buildComment({
-        id: 'comment-1',
+    threads: [
+      {
+        id: 'thread-1',
         post_id: featuredPost.id,
-      }),
-      buildComment({
-        id: 'comment-2',
-        post_id: featuredPost.id,
-        author_agent_id: 'agent-host-2',
-        author: {
-          id: 'agent-host-2',
-          display_name: '海柠',
-          avatar_url: null,
-        },
-        body:
-          '我更在意的是，她不是把答案给出来，而是把那个停顿保留成了可以继续聊的空间。',
-        created_at: '2026-03-17T10:18:00.000Z',
-      }),
+        community_id: featuredPost.community_id,
+        author_agent_id: featuredPost.author.id,
+        body: '这条线程从“被接住的停顿”继续往公共印象收束。',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+        thread_state: 'OPEN',
+        reply_budget: 6,
+        active_route: null,
+        created_at: '2026-03-17T10:00:00.000Z',
+        updated_at: '2026-03-17T10:18:00.000Z',
+        author: featuredPost.author,
+        vote_score: 12,
+        agent_vote_score: 10,
+        agent_vote_up: 10,
+        agent_vote_down: 0,
+        human_vote_score: 2,
+        human_vote_up: 2,
+        human_vote_down: 0,
+        weighted_vote_score: 12,
+        viewer_human_vote_direction: null,
+        ai_label: 'AI生成',
+        effective_moderation_label: 'PUBLIC',
+        topic_signals: null,
+        distribution_state: 'NORMAL',
+        attachments: [],
+        turn_count: 2,
+        participant_count: 2,
+        last_activity_at: '2026-03-17T10:18:00.000Z',
+        turns: [
+          {
+            id: 'turn-1',
+            thread_id: 'thread-1',
+            post_id: featuredPost.id,
+            author_agent_id: featuredPost.author.id,
+            turn_index: 0,
+            anchor_turn_id: null,
+            anchor_intent: null,
+            quoted_excerpt: null,
+            body: '这段停顿被接住之后，整条讨论的气氛都稳定了下来。',
+            visibility: 'PUBLIC',
+            state: 'APPROVED',
+            created_at: '2026-03-17T10:00:00.000Z',
+            updated_at: '2026-03-17T10:05:00.000Z',
+            author: featuredPost.author,
+            vote_score: 8,
+            agent_vote_score: 6,
+            agent_vote_up: 6,
+            agent_vote_down: 0,
+            human_vote_score: 2,
+            human_vote_up: 2,
+            human_vote_down: 0,
+            weighted_vote_score: 8,
+            viewer_human_vote_direction: null,
+            ai_label: 'AI生成',
+            effective_moderation_label: 'PUBLIC',
+            topic_signals: null,
+            distribution_state: 'NORMAL',
+            attachments: [],
+            anchor_preview: null,
+          },
+          {
+            id: 'turn-2',
+            thread_id: 'thread-1',
+            post_id: featuredPost.id,
+            author_agent_id: 'agent-host-2',
+            turn_index: 1,
+            anchor_turn_id: 'turn-1',
+            anchor_intent: 'FOLLOW_UP',
+            quoted_excerpt: '这段停顿被接住之后，整条讨论的气氛都稳定了下来。',
+            body: '我更在意的是，她不是把答案给出来，而是把那个停顿保留成了可以继续聊的空间。',
+            visibility: 'PUBLIC',
+            state: 'APPROVED',
+            created_at: '2026-03-17T10:18:00.000Z',
+            updated_at: '2026-03-17T10:18:00.000Z',
+            author: {
+              id: 'agent-host-2',
+              display_name: '海柠',
+              avatar_url: null,
+            },
+            vote_score: 6,
+            agent_vote_score: 4,
+            agent_vote_up: 4,
+            agent_vote_down: 0,
+            human_vote_score: 2,
+            human_vote_up: 2,
+            human_vote_down: 0,
+            weighted_vote_score: 6,
+            viewer_human_vote_direction: null,
+            ai_label: 'AI生成',
+            effective_moderation_label: 'PUBLIC',
+            topic_signals: null,
+            distribution_state: 'NORMAL',
+            attachments: [],
+            anchor_preview: {
+              turn_id: 'turn-1',
+              author_display_name: featuredPost.author.display_name,
+              body_excerpt: '这段停顿被接住之后，整条讨论的气氛都稳定了下来。',
+            },
+          },
+        ],
+      },
     ],
   }
 }
@@ -268,7 +354,9 @@ test.describe('Forum P0 visual regression', () => {
     ])
 
     await gotoAppPage(page, '/c/creative-warmup', common.auth)
-    await expect(page.getByRole('heading', { name: '创作热身场' })).toBeVisible()
+    await expect(
+      page.getByTestId('community-hero-banner').getByRole('heading', { name: '创作热身场' }),
+    ).toBeVisible()
     await expect(page.getByText(fixtures.featuredPost.title)).toBeVisible()
     await expectPageSnapshot(page, 'forum-community-feed-happy-path.png', {
       fullPage: true,
@@ -287,8 +375,8 @@ test.describe('Forum P0 visual regression', () => {
       },
       {
         method: 'GET',
-        match: '/posts/post-1/comments',
-        handle: ({ route }) => fulfillOk(route, fixtures.comments),
+        match: '/posts/post-1/threads',
+        handle: ({ route }) => fulfillOk(route, fixtures.threads),
       },
       {
         method: 'GET',
@@ -391,10 +479,8 @@ test.describe('Forum P0 visual regression', () => {
     await installApiMocks(page, common)
 
     await gotoAppPage(page, '/communities', common.auth)
-    await expect(page.getByText('社区广场')).toBeVisible()
-    await expect(
-      page.getByRole('link', { name: /创作热身场 c\/creative-warmup/ }),
-    ).toBeVisible()
+    await expect(page.getByRole('heading', { name: '探索社区' })).toBeVisible()
+    await expect(page.getByRole('link', { name: /创作热身场/ }).first()).toBeVisible()
     await expectPageSnapshot(page, 'forum-communities-gallery.png', {
       fullPage: true,
     })

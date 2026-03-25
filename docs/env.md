@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-23T23:05:38Z`
+Generated at (UTC): `2026-03-25T02:52:54Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `staging`
@@ -104,11 +104,20 @@ Generated at (UTC): `2026-03-23T23:05:38Z`
 | `MEDIA_LIFECYCLE_ORPHAN_GRACE_HOURS` | `active` | `int` | no | no | `72` | `` | `*` | `` | `` | `` | Minimum asset age before an unreferenced media asset can be archived as orphaned. |
 | `MEDIA_LIFECYCLE_WORKER_INTERVAL_MS` | `active` | `int` | no | no | `60000` | `` | `*` | `` | `` | `` | Interval for the media lifecycle worker. |
 | `MEDIA_LIFECYCLE_WORKER_STARTUP_DELAY_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Startup delay for the media lifecycle worker. |
+| `MEDIA_LOCAL_DIR` | `active` | `string` | no | no | `var/media-assets` | `` | `*` | `` | `` | `` | Local filesystem directory for persisted media assets when using local storage. |
+| `MEDIA_PUBLIC_BASE_URL` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Public base URL prefix for media assets served from object or local storage. |
 | `MEDIA_ROOT_POST_TARGET_MAX_RATE` | `active` | `float` | no | no | `0.45` | `` | `*` | `` | `` | `` | Upper bound of the desired 7d root-post display attach rate. |
 | `MEDIA_ROOT_POST_TARGET_MIN_RATE` | `active` | `float` | no | no | `0.35` | `` | `*` | `` | `` | `` | Lower bound of the desired 7d root-post display attach rate. |
+| `MEDIA_S3_ACCESS_KEY_ID` | `active` | `string` | no | yes | `` | `media_s3_access_key_id` | `*` | `` | `` | `` | Access key id for media asset S3 storage. |
+| `MEDIA_S3_BUCKET` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | S3 bucket for persisted media assets. |
+| `MEDIA_S3_ENDPOINT` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Optional custom S3-compatible endpoint for media asset storage. |
+| `MEDIA_S3_FORCE_PATH_STYLE` | `active` | `bool` | no | no | `False` | `` | `*` | `` | `` | `` | Whether media asset S3 access should force path-style URLs. |
+| `MEDIA_S3_REGION` | `active` | `string` | no | no | `us-east-1` | `` | `*` | `` | `` | `` | S3 region for persisted media assets. |
+| `MEDIA_S3_SECRET_ACCESS_KEY` | `active` | `string` | no | yes | `` | `media_s3_secret_access_key` | `*` | `` | `` | `` | Secret access key for media asset S3 storage. |
 | `MEDIA_SNAPSHOT_BACKFILL_BATCH_SIZE` | `active` | `int` | no | no | `20` | `` | `*` | `` | `` | `` | Max active assets to re-extract in one lifecycle sweep. |
 | `MEDIA_SNAPSHOT_TARGET_MODEL_VERSION` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Target semantic snapshot model version for lifecycle backfill. Empty string disables model-version drift gating. |
 | `MEDIA_SNAPSHOT_TARGET_SCHEMA_VERSION` | `active` | `string` | no | no | `media_semantic_summary.v1` | `` | `*` | `` | `` | `` | Target semantic snapshot schema version for lifecycle backfill. |
+| `MEDIA_STORAGE_BACKEND` | `active` | `enum` | no | no | `local` | `` | `*` | `` | `` | `` | Storage backend for persisted media assets. |
 | `MINIMAX_API_KEY` | `active` | `string` | no | yes | `` | `minimax_api_key` | `*` | `` | `` | `` | MiniMax provider API key. |
 | `MINIMAX_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `minimax_api_key_secondary` | `*` | `` | `` | `` | Secondary MiniMax provider API key for ordered failover. |
 | `MOONSHOT_API_KEY` | `active` | `string` | no | yes | `` | `moonshot_api_key` | `*` | `` | `` | `` | Moonshot / Kimi provider API key. |

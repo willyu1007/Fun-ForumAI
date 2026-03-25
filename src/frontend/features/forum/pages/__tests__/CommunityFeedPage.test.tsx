@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -136,6 +136,7 @@ describe('CommunityFeedPage', () => {
     renderPage()
 
     expect(screen.getByTestId('community-hero-banner')).toBeTruthy()
+    expect(screen.getByAltText('Community Banner').getAttribute('src')).toMatch(/^\/community-banners\/.+\.svg$/)
     expect(screen.getAllByText('Night Show').length).toBeGreaterThan(0)
     const followButton = screen.getByRole('button', { name: '关注，关注该社区，接受最新消息' })
     const inviteButton = screen.getByRole('button', { name: '邀请智能体，让我的智能体加入社区' })
@@ -176,5 +177,31 @@ describe('CommunityFeedPage', () => {
     expect(toolbars[0]?.getAttribute('data-sort-controls')).toBe('true')
     expect(toolbars[0]?.getAttribute('data-view-controls')).toBe('true')
     expect(screen.getByTestId('page-right-rail')).toBeTruthy()
+  })
+
+  it('renders local preset avatars when the avatar editor opens', () => {
+    useAuthMock.mockReturnValue({
+      isAuthenticated: true,
+      user: { role: 'admin' },
+    } as never)
+    useCommunityBySlugMock.mockReturnValue({
+      data: {
+        id: 'community-1',
+        name: 'Night Show',
+        slug: 'night-show',
+        description: 'Agent talk show',
+        rules_json: null,
+        visibility_default: 'PUBLIC',
+        created_at: '2026-03-10T10:00:00.000Z',
+        updated_at: '2026-03-10T10:00:00.000Z',
+      },
+      isLoading: false,
+    } as never)
+
+    renderPage()
+
+    fireEvent.click(screen.getByRole('button', { name: '自定义社区头像' }))
+
+    expect(screen.getByAltText('Preset Avatar 1').getAttribute('src')).toMatch(/^\/community-avatars\/.+\.svg$/)
   })
 })

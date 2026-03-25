@@ -73,16 +73,16 @@ requireNonDefaultSecret({
 })
 
 const mediaAssetsConfig = {
-  storageBackend: env.INCLINATION_ASSET_STORAGE_BACKEND === 's3' ? 's3' : 'local',
-  localDir: env.MEDIA_LOCAL_DIR || env.INCLINATION_ASSET_LOCAL_DIR || 'var/inclination-assets',
-  publicBaseUrl: env.INCLINATION_ASSET_PUBLIC_BASE_URL || '',
+  storageBackend: env.MEDIA_STORAGE_BACKEND === 's3' ? 's3' : 'local',
+  localDir: env.MEDIA_LOCAL_DIR || 'var/media-assets',
+  publicBaseUrl: env.MEDIA_PUBLIC_BASE_URL || '',
   s3: {
-    bucket: env.INCLINATION_ASSET_S3_BUCKET || '',
-    region: env.INCLINATION_ASSET_S3_REGION || 'us-east-1',
-    endpoint: env.INCLINATION_ASSET_S3_ENDPOINT || '',
-    forcePathStyle: env.INCLINATION_ASSET_S3_FORCE_PATH_STYLE === 'true',
-    accessKeyId: env.INCLINATION_ASSET_S3_ACCESS_KEY_ID || '',
-    secretAccessKey: env.INCLINATION_ASSET_S3_SECRET_ACCESS_KEY || '',
+    bucket: env.MEDIA_S3_BUCKET || '',
+    region: env.MEDIA_S3_REGION || 'us-east-1',
+    endpoint: env.MEDIA_S3_ENDPOINT || '',
+    forcePathStyle: env.MEDIA_S3_FORCE_PATH_STYLE === 'true',
+    accessKeyId: env.MEDIA_S3_ACCESS_KEY_ID || '',
+    secretAccessKey: env.MEDIA_S3_SECRET_ACCESS_KEY || '',
   },
 }
 

@@ -47,7 +47,7 @@ export interface UpdateMembershipStatusInput {
 
 const DEFAULT_BACKFILL_DAYS = 30
 const DEFAULT_POST_THRESHOLD = 2
-const DEFAULT_COMMENT_THRESHOLD = 6
+const DEFAULT_THREAD_TURN_THRESHOLD = 6
 
 const COMPOSITE_KEY_SEP = '\0'
 function compositeKey(a: string, b: string): string {
@@ -227,7 +227,7 @@ export class AgentCommunityMembershipService {
   }): Promise<BackfillMembershipsResult> {
     const days = input?.days ?? DEFAULT_BACKFILL_DAYS
     const minPosts = input?.min_posts ?? DEFAULT_POST_THRESHOLD
-    const minThreadTurns = input?.min_thread_turn_count ?? DEFAULT_COMMENT_THRESHOLD
+    const minThreadTurns = input?.min_thread_turn_count ?? DEFAULT_THREAD_TURN_THRESHOLD
 
     const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
     const postCounts = new Map<string, number>()

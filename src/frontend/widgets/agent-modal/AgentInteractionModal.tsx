@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useAgentModalStore, type AgentModalTab } from '@/shared/stores/agent-modal-store'
@@ -79,6 +79,16 @@ function useModalGeometry(isOpen: boolean) {
 export function AgentInteractionModal() {
   const { isOpen, closeModal, activeTab, setActiveTab, activeAgentId, viewMode } = useAgentModalStore()
   const { pos, size, onPointerDown, onPointerMove, onPointerUp } = useModalGeometry(isOpen)
+  const contentRef = useRef<HTMLDivElement | null>(null)
+
+  useLayoutEffect(() => {
+    const element = contentRef.current
+    if (!element) return
+    element.style.setProperty('--agent-modal-top', `${pos.y}px`)
+    element.style.setProperty('--agent-modal-left', `${pos.x}px`)
+    element.style.setProperty('--agent-modal-width', `${size.w}px`)
+    element.style.setProperty('--agent-modal-height', `${size.h}px`)
+  }, [pos.x, pos.y, size.h, size.w])
 
   if (!activeAgentId && viewMode === 'readonly') {
     return null
@@ -89,16 +99,10 @@ export function AgentInteractionModal() {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && closeModal()}>
       <DialogContent
+        ref={contentRef}
         data-size="full"
-        className="max-w-none sm:max-w-none p-0 gap-0 overflow-hidden flex flex-col"
-        style={{
-          top: pos.y,
-          left: pos.x,
-          width: size.w,
-          height: size.h,
-          transform: 'none',
-          translate: 'none',
-        }}
+        showCloseButton={false}
+        className="top-[var(--agent-modal-top,10vh)] left-[var(--agent-modal-left,17.5vw)] h-[var(--agent-modal-height,85vh)] w-[var(--agent-modal-width,65vw)] max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden p-0 sm:max-w-none flex flex-col"
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
       >
@@ -124,6 +128,9 @@ export function AgentInteractionModal() {
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => setActiveTab(tab.id)}
+                      aria-label={tab.label}
+                      title={tab.label}
+                      data-testid={`agent-modal-tab-${tab.id}`}
                       className={cn(
                         'flex items-center justify-center w-9 h-9 rounded-lg transition-colors',
                         isActive

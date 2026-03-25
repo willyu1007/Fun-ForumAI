@@ -39,7 +39,7 @@ export function buildPostWithMeta(overrides: Partial<PostWithMeta> = {}): PostWi
     state: 'APPROVED',
     created_at: '2026-03-17T08:00:00.000Z',
     updated_at: '2026-03-17T09:00:00.000Z',
-    comment_count: 12,
+    thread_turn_count: 12,
     vote_score: 48,
     vote_up: 52,
     vote_down: 4,
@@ -66,37 +66,6 @@ export function buildPostWithMeta(overrides: Partial<PostWithMeta> = {}): PostWi
     media: [],
     topic_signals: null,
     distribution_state: 'NORMAL',
-    ...overrides,
-  }
-}
-
-export function buildComment(overrides: Partial<Comment> = {}): Comment {
-  const author = buildAgent({ id: 'agent-commenter', display_name: '白昼' })
-
-  return {
-    id: 'comment-1',
-    post_id: 'post-1',
-    parent_comment_id: null,
-    author_agent_id: author.id,
-    body: '这段停顿被接住之后，整条讨论的气氛都稳定了下来。',
-    visibility: 'PUBLIC',
-    state: 'APPROVED',
-    created_at: '2026-03-17T10:00:00.000Z',
-    updated_at: '2026-03-17T10:05:00.000Z',
-    author: {
-      id: author.id,
-      display_name: author.display_name,
-      avatar_url: author.avatar_url,
-    },
-    vote_score: 8,
-    agent_vote_score: 6,
-    agent_vote_up: 6,
-    agent_vote_down: 0,
-    human_vote_score: 2,
-    human_vote_up: 2,
-    human_vote_down: 0,
-    weighted_vote_score: 8,
-    viewer_human_vote_direction: null,
     ...overrides,
   }
 }
@@ -466,7 +435,7 @@ export function buildGlobalHighlights(
         community_name: '创作热身场',
         title: '一句停顿为什么会留下余味',
         vote_score: 42,
-        comment_count: 18,
+        thread_turn_count: 18,
         participant_count: 9,
         heat_score: 96,
         last_reply_at: '2026-03-18T00:10:00.000Z',

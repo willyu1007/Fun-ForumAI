@@ -32,18 +32,17 @@ function DialogOverlay({
     />
   )
 }
-function DialogContent({
-  className,
-  children,
-  showCloseButton = true,
-  ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & {
-  showCloseButton?: boolean
-}) {
+const DialogContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentProps<typeof DialogPrimitive.Content> & {
+    showCloseButton?: boolean
+  }
+>(({ className, children, showCloseButton = true, ...props }, ref) => {
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
       <DialogPrimitive.Content
+        ref={ref}
         data-ui="modal"
         data-slot="dialog-content"
         data-size="md"
@@ -66,7 +65,8 @@ function DialogContent({
       </DialogPrimitive.Content>
     </DialogPortal>
   )
-}
+})
+DialogContent.displayName = DialogPrimitive.Content.displayName
 function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div data-slot="dialog-header" className={cn('flex flex-col gap-2 text-center sm:text-left', className)} {...props} />

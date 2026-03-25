@@ -2,7 +2,7 @@
 
 ## Status
 
-- State: implemented_verified_pending_db_apply
+- State: blocked
 - Depends on: `T-910 media-framework-audit-and-remediation`, `T-914 visual-media-framework-v1-closure`
 - Next step: 在明确目标环境后执行 Prisma migration / lineage backfill，并把 rollout override / lineage trace 放到 staging 做一次带数据验证。
 

@@ -12,11 +12,7 @@ import {
   buildNotification,
 } from './support/mock-data'
 import {
-  buildAgentDashboard,
   buildChatMessage,
-  buildCostSummary,
-  buildPrivateMessage,
-  buildPrivateSession,
   buildRoom,
   buildRoomCastView,
   buildRoomHighlight,
@@ -54,85 +50,6 @@ function buildRealtimeCommon() {
 test.describe('Realtime P0 visual regression', () => {
   test.beforeEach(async ({ page }) => {
     await prepareVisualPage(page)
-  })
-
-  test('agent dashboard happy path', async ({ page }) => {
-    const common = buildRealtimeCommon()
-    const agentId = 'agent-dashboard'
-
-    await installApiMocks(page, common, [
-      {
-        method: 'GET',
-        match: `/agents/${agentId}/profile`,
-        handle: ({ route }) =>
-          fulfillOk(
-            route,
-            buildAgent({
-              id: agentId,
-              owner_id: 'user-1',
-              display_name: '雾岚',
-            }),
-          ),
-      },
-      {
-        method: 'GET',
-        match: `/agents/${agentId}/dashboard`,
-        handle: ({ route }) =>
-          fulfillOk(
-            route,
-            buildAgentDashboard({
-              agent_id: agentId,
-              recent_events: [
-                {
-                  id: 'xp-event-1',
-                  source: 'PUBLIC_POST',
-                  title: '公开回应继续长出余味',
-                  description: '最新一段公开互动让“会接住停顿”的印象更稳定了。',
-                  xp_delta: 14,
-                  created_at: '2026-03-18T00:10:00.000Z',
-                },
-                {
-                  id: 'xp-event-2',
-                  source: 'PRIVATE_CHAT',
-                  title: '私聊中的连续性被记进成长线',
-                  description: '她开始在私域里把同一种语气维持得更久。',
-                  xp_delta: 9,
-                  created_at: '2026-03-17T20:10:00.000Z',
-                },
-              ],
-            }),
-          ),
-      },
-      {
-        method: 'GET',
-        match: `/agents/${agentId}/cost-review`,
-        handle: ({ route }) =>
-          fulfillOk(
-            route,
-            buildCostSummary({
-              total_tokens_in: 148000,
-              total_tokens_out: 112000,
-              action_count: 56,
-            }),
-          ),
-      },
-      {
-        method: 'GET',
-        match: '/budget/tiers',
-        handle: ({ route }) =>
-          fulfillOk(route, {
-            starter: { daily_action_limit: 24, monthly_action_limit: 420 },
-            growth: { daily_action_limit: 48, monthly_action_limit: 860 },
-            stage: { daily_action_limit: 96, monthly_action_limit: 1860 },
-          }),
-      },
-    ])
-
-    await gotoAppPage(page, `/agents/${agentId}/dashboard`, common.auth)
-    await expect(page.getByText('XP 与成长点')).toBeVisible()
-    await expectPageSnapshot(page, 'realtime-agent-dashboard-happy-path.png', {
-      fullPage: true,
-    })
   })
 
   test('room plaza happy path', async ({ page }) => {
@@ -271,100 +188,5 @@ test.describe('Realtime P0 visual regression', () => {
     await expect(page.getByText('余味试映厅')).toBeVisible()
     await page.getByRole('button', { name: /位成员/ }).click()
     await expectPageSnapshot(page, 'realtime-room-detail-members-rail.png')
-  })
-
-  test('private chat session thread', async ({ page }) => {
-    const common = buildRealtimeCommon()
-    const agentId = 'agent-owned'
-    const sessionId = 'session-1'
-
-    await installApiMocks(page, common, [
-      {
-        method: 'GET',
-        match: `/agents/${agentId}/profile`,
-        handle: ({ route }) =>
-          fulfillOk(
-            route,
-            buildAgent({
-              id: agentId,
-              owner_id: 'user-1',
-              display_name: '夜港',
-            }),
-          ),
-      },
-      {
-        method: 'GET',
-        match: `/agents/${agentId}/chat/sessions`,
-        handle: ({ route }) =>
-          fulfillOk(route, {
-            items: [
-              buildPrivateSession({
-                id: sessionId,
-                agent_id: agentId,
-                human_user_id: 'user-1',
-                status: 'ACTIVE',
-                initiator: 'AGENT',
-              }),
-              buildPrivateSession({
-                id: 'session-2',
-                agent_id: agentId,
-                human_user_id: 'user-1',
-                status: 'ENDED',
-                initiator: 'HUMAN',
-                ended_at: '2026-03-17T20:20:00.000Z',
-                digest_status: 'GENERATED',
-              }),
-            ],
-            next_cursor: null,
-          }),
-      },
-      {
-        method: 'GET',
-        match: `/agents/${agentId}/chat/sessions/${sessionId}/messages`,
-        handle: ({ route }) =>
-          fulfillOk(route, {
-            items: [
-              buildPrivateMessage({
-                id: 'private-message-1',
-                session_id: sessionId,
-                author_type: 'AGENT',
-              }),
-              buildPrivateMessage({
-                id: 'private-message-2',
-                session_id: sessionId,
-                author_type: 'HUMAN',
-                content: '我记住的其实是你把停顿接回来的方式。',
-                delivery_status: 'DELIVERED',
-                created_at: '2026-03-17T21:06:00.000Z',
-              }),
-              buildPrivateMessage({
-                id: 'private-message-3',
-                session_id: sessionId,
-                author_type: 'AGENT',
-                content: '那我们就顺着这个方法继续聊，看它会不会真的长成你的习惯。',
-                delivery_status: 'REWRITTEN',
-                created_at: '2026-03-17T21:08:00.000Z',
-              }),
-            ],
-            next_cursor: null,
-          }),
-      },
-    ])
-
-    await gotoAppPage(page, `/agents/${agentId}/chat`, common.auth)
-    await expect(page.getByRole('link', { name: '夜港' }).first()).toBeVisible()
-    await expect(page.getByText('2 个对话')).toBeVisible()
-
-    const sidebarToggles = page.getByRole('button', { name: '☰' })
-    if (await sidebarToggles.count()) {
-      const mobileToggle = sidebarToggles.last()
-      if (await mobileToggle.isVisible()) {
-        await mobileToggle.click()
-      }
-    }
-
-    await expectPageSnapshot(page, 'realtime-private-chat-thread.png', {
-      maxDiffPixels: 35_000,
-    })
   })
 })

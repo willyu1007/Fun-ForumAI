@@ -10,6 +10,7 @@ import {
   createTestCommunity,
 } from './e2e-helpers.js'
 import { roleAssignmentService, eventRepo, searchCountsCache, searchDocRepo } from '../../container.js'
+import { buildAgentTarget } from '../../../shared/agent-target.js'
 
 setupFeatureFlagGuard()
 
@@ -317,7 +318,11 @@ describe('E2E: Read API (public)', () => {
     })
     expect(routeMap.get('PRIVATE')).toMatchObject({
       cta: expect.objectContaining({
-        target: expect.stringContaining('/chat'),
+        target: buildAgentTarget({
+          agentId: authorRes.body.data.id as string,
+          mode: 'readonly',
+          tab: 'chat',
+        }),
       }),
     })
     expect(routeMap.get('SPINOFF')).toMatchObject({
@@ -402,7 +407,10 @@ describe('E2E: Read API (public)', () => {
     expect(agentsRes.body.data.items[0]).toMatchObject({
       type: 'agent',
       id: agentId,
-      href: `/agents/${agentId}`,
+      href: buildAgentTarget({
+        agentId,
+        mode: 'readonly',
+      }),
     })
 
     const threadsRes = await request(app)
@@ -694,8 +702,12 @@ describe('E2E: Read API (public)', () => {
       (item) => item.display_name === 'Searchable Agent',
     )
     expect(target).toBeTruthy()
-    expect(target?.persona_seed_code).toBe('comedian')
-    expect(target?.home_voice_line_id).toBe('qwen-social-v1')
+    expect(target?.persona_seed_label).toBeTruthy()
+    expect(target?.home_voice_line_label).toBeTruthy()
+    expect(target?.href).toBe(buildAgentTarget({
+      agentId: target?.id as string,
+      mode: 'readonly',
+    }))
   })
 
   it('GET /v1/agents is no longer a public listing or search endpoint', async () => {

@@ -33,7 +33,7 @@ model HumanUser {
   notifications          Notification[]
   humanVotes             HumanVote[]
   follows                HumanAgentFollow[]
-  inclinationAssets      AgentInclinationAsset[]   @relation("InclinationAssetOwner")
+  legacyMediaAssets      LegacyAgentMediaAsset[]   @relation("LegacyMediaAssetOwner")
   ownedMediaAssets       MediaAsset[]              @relation("MediaAssetOwner")
   audienceMessages       AudienceMessage[]         @relation("AudienceMessageAuthor")
   aftershowCallouts      AftershowCallout[]        @relation("AftershowCalloutUser")
@@ -114,7 +114,7 @@ model Agent {
   outgoingRelationEvents    AgentRelationEvent[]         @relation("RelationEventFromAgent")
   incomingRelationEvents    AgentRelationEvent[]         @relation("RelationEventToAgent")
   humanFollowers            HumanAgentFollow[]
-  inclinationAssets         AgentInclinationAsset[]
+  legacyMediaAssets         LegacyAgentMediaAsset[]
   achievements              AgentAchievement[]
   chronicleEntries          ChronicleEntry[]
   outgoingPprSnapshots      PprSnapshot[]                @relation("PprSourceAgent")
@@ -238,7 +238,7 @@ model Post {
   community                 Community               @relation(fields: [communityId], references: [id])
   author                    Agent                   @relation(fields: [authorAgentId], references: [id])
   media                     PostMedia[]
-  consumedInclinationAssets AgentInclinationAsset[] @relation("InclinationConsumedPost")
+  consumedLegacyMediaAssets LegacyAgentMediaAsset[] @relation("LegacyMediaConsumedPost")
   incubationJobs            IncubationJob[]
   audienceThread            AudienceThread?
   audienceSummaries         AudienceSummary[]
@@ -575,11 +575,11 @@ model HumanAgentFollow {
   @@map("human_agent_follows")
 }
 
-model AgentInclinationAsset {
+model LegacyAgentMediaAsset {
   id                String                 @id @default(cuid())
   agentId           String                 @map("agent_id")
   ownerUserId       String                 @map("owner_user_id")
-  sourceType        InclinationSourceType  @map("source_type")
+  sourceType        LegacyMediaSourceType  @map("source_type")
   originUrl         String?                @map("origin_url")
   storageKey        String?                @map("storage_key")
   mediaUrl          String                 @map("media_url")
@@ -587,14 +587,14 @@ model AgentInclinationAsset {
   fileSizeBytes     Int                    @map("file_size_bytes")
   ownerNote         String?                @map("owner_note")
   visionSummaryJson Json                   @map("vision_summary_json")
-  status            InclinationAssetStatus @default(PENDING)
+  status            LegacyMediaAssetStatus @default(PENDING)
   consumedPostId    String?                @map("consumed_post_id")
   consumedAt        DateTime?              @map("consumed_at")
   createdAt         DateTime               @default(now()) @map("created_at")
 
   agent        Agent     @relation(fields: [agentId], references: [id])
-  owner        HumanUser @relation("InclinationAssetOwner", fields: [ownerUserId], references: [id])
-  consumedPost Post?     @relation("InclinationConsumedPost", fields: [consumedPostId], references: [id])
+  owner        HumanUser @relation("LegacyMediaAssetOwner", fields: [ownerUserId], references: [id])
+  consumedPost Post?     @relation("LegacyMediaConsumedPost", fields: [consumedPostId], references: [id])
 
   @@index([agentId, status, createdAt])
   @@index([ownerUserId, createdAt])
@@ -1634,17 +1634,21 @@ enum HumanVoteDirection {
   NEUTRAL
 }
 
-enum InclinationSourceType {
+enum LegacyMediaSourceType {
   URL
   UPLOAD
+
+  @@map("InclinationSourceType")
 }
 
-enum InclinationAssetStatus {
+enum LegacyMediaAssetStatus {
   PENDING
   CONSUMED
   CANCELLED
   REPLACED
   FAILED
+
+  @@map("InclinationAssetStatus")
 }
 
 enum EventPlane {

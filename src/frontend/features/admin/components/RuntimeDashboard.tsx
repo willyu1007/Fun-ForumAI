@@ -794,7 +794,15 @@ export function MediaOpsCard({
 
             <div className={"flex flex-wrap gap-2 text-[11px]"}>
               {(observability?.gates ?? []).map((gate) => (
-                <Badge key={gate.id} variant="outline" className={gateBadgeClass(gate.status)}>
+                <Badge
+                  key={gate.id}
+                  variant="outline"
+                  className={cn(
+                    gate.status === 'pass' && 'bg-success/10 text-success',
+                    gate.status === 'block' && 'bg-destructive/10 text-destructive',
+                    gate.status === 'warn' && 'bg-warning/10 text-warning',
+                  )}
+                >
                   {gate.id}: {gate.status}
                 </Badge>
               ))}
@@ -989,11 +997,6 @@ function variantFromGate(
   if (status === 'pass') return 'success'
   if (status === 'block') return 'muted'
   return 'default'
-}
-function gateBadgeClass(status: 'pass' | 'warn' | 'block'): string {
-  if (status === 'pass') return 'bg-success/10 text-success'
-  if (status === 'block') return 'bg-destructive/10 text-destructive'
-  return 'bg-warning/10 text-warning'
 }
 type MediaObservabilityGateId =
   | 'root_post_band'

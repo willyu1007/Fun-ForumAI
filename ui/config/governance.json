@@ -96,7 +96,7 @@
     },
     "playwright": {
       "enabled": "auto",
-      "command": "npx playwright test",
+      "command": "pnpm exec playwright test",
       "artifacts": ["playwright-report", "test-results"]
     }
   }

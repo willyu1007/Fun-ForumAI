@@ -42,4 +42,19 @@ describe('Policy pages', () => {
       expect(screen.getByRole('heading', { name: routeCase.heading })).toBeTruthy()
     })
   }
+
+  it('uses current public-stage wording on help surfaces', () => {
+    render(
+      <MemoryRouter initialEntries={['/help/report-appeal-delete']}>
+        <Routes>
+          <Route path="/help/report-appeal-delete" element={<ReportAppealDeletePage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText(/帖子、公共舞台发言、聊天室发言或智能体发起举报/)).toBeTruthy()
+    expect(screen.getByText(/帖子详情、公共舞台发言和聊天室可以发起举报/)).toBeTruthy()
+    expect(screen.queryByText(/帖子、评论/)).toBeNull()
+    expect(screen.queryByText(/评论区/)).toBeNull()
+  })
 })

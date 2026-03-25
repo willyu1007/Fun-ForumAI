@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-23T23:05:46.268Z",
+  "updatedAt": "2026-03-25T02:52:36.661Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -333,23 +333,6 @@
       ]
     },
     {
-      "name": "InclinationAssetStatus",
-      "values": [
-        "PENDING",
-        "CONSUMED",
-        "CANCELLED",
-        "REPLACED",
-        "FAILED"
-      ]
-    },
-    {
-      "name": "InclinationSourceType",
-      "values": [
-        "URL",
-        "UPLOAD"
-      ]
-    },
-    {
       "name": "IncubationGrantStatus",
       "values": [
         "ACTIVE",
@@ -365,6 +348,23 @@
         "REJECTED",
         "QUARANTINED",
         "EXPIRED"
+      ]
+    },
+    {
+      "name": "LegacyMediaAssetStatus",
+      "values": [
+        "PENDING",
+        "CONSUMED",
+        "CANCELLED",
+        "REPLACED",
+        "FAILED"
+      ]
+    },
+    {
+      "name": "LegacyMediaSourceType",
+      "values": [
+        "URL",
+        "UPLOAD"
       ]
     },
     {
@@ -1750,15 +1750,6 @@
           "references": []
         },
         {
-          "field": "inclinationAssets",
-          "to": "AgentInclinationAsset",
-          "optional": false,
-          "list": true,
-          "relationName": null,
-          "fields": [],
-          "references": []
-        },
-        {
           "field": "incomingPprSnapshots",
           "to": "PprSnapshot",
           "optional": false,
@@ -1833,6 +1824,15 @@
         {
           "field": "legacyGrowthEventArchives",
           "to": "LegacyGrowthEventArchive",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "legacyMediaAssets",
+          "to": "LegacyAgentMediaAsset",
           "optional": false,
           "list": true,
           "relationName": null,
@@ -3130,248 +3130,6 @@
         }
       ],
       "indexes": []
-    },
-    {
-      "name": "AgentInclinationAsset",
-      "dbName": "agent_inclination_assets",
-      "schema": null,
-      "columns": [
-        {
-          "name": "agentId",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "agent_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "consumedAt",
-          "type": "DateTime",
-          "nullable": true,
-          "list": false,
-          "dbName": "consumed_at",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "consumedPostId",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "consumed_post_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "createdAt",
-          "type": "DateTime",
-          "nullable": false,
-          "list": false,
-          "dbName": "created_at",
-          "dbType": null,
-          "default": "now()",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "fileSizeBytes",
-          "type": "Int",
-          "nullable": false,
-          "list": false,
-          "dbName": "file_size_bytes",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "id",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": "cuid()",
-          "primaryKey": true,
-          "unique": false
-        },
-        {
-          "name": "mediaUrl",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "media_url",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "mimeType",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "mime_type",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "originUrl",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "origin_url",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "ownerNote",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "owner_note",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "ownerUserId",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "owner_user_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "sourceType",
-          "type": "InclinationSourceType",
-          "nullable": false,
-          "list": false,
-          "dbName": "source_type",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "status",
-          "type": "InclinationAssetStatus",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": "PENDING",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "storageKey",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "storage_key",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "visionSummaryJson",
-          "type": "Json",
-          "nullable": false,
-          "list": false,
-          "dbName": "vision_summary_json",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        }
-      ],
-      "relations": [
-        {
-          "field": "agent",
-          "to": "Agent",
-          "optional": false,
-          "list": false,
-          "relationName": null,
-          "fields": [
-            "agentId"
-          ],
-          "references": [
-            "id"
-          ]
-        },
-        {
-          "field": "consumedPost",
-          "to": "Post",
-          "optional": true,
-          "list": false,
-          "relationName": "InclinationConsumedPost",
-          "fields": [
-            "consumedPostId"
-          ],
-          "references": [
-            "id"
-          ]
-        },
-        {
-          "field": "owner",
-          "to": "HumanUser",
-          "optional": false,
-          "list": false,
-          "relationName": "InclinationAssetOwner",
-          "fields": [
-            "ownerUserId"
-          ],
-          "references": [
-            "id"
-          ]
-        }
-      ],
-      "indexes": [
-        {
-          "type": "index",
-          "fields": [
-            "agentId",
-            "status",
-            "createdAt"
-          ],
-          "name": null,
-          "map": null
-        },
-        {
-          "type": "index",
-          "fields": [
-            "consumedPostId"
-          ],
-          "name": null,
-          "map": null
-        },
-        {
-          "type": "index",
-          "fields": [
-            "ownerUserId",
-            "createdAt"
-          ],
-          "name": null,
-          "map": null
-        }
-      ]
     },
     {
       "name": "AgentInferenceProfile",
@@ -11801,15 +11559,6 @@
           "references": []
         },
         {
-          "field": "inclinationAssets",
-          "to": "AgentInclinationAsset",
-          "optional": false,
-          "list": true,
-          "relationName": "InclinationAssetOwner",
-          "fields": [],
-          "references": []
-        },
-        {
           "field": "incubationEvents",
           "to": "IncubationEvent",
           "optional": false,
@@ -11824,6 +11573,15 @@
           "optional": false,
           "list": true,
           "relationName": "IncubationReviewerUser",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "legacyMediaAssets",
+          "to": "LegacyAgentMediaAsset",
+          "optional": false,
+          "list": true,
+          "relationName": "LegacyMediaAssetOwner",
           "fields": [],
           "references": []
         },
@@ -13040,6 +12798,248 @@
           "type": "index",
           "fields": [
             "jobId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "LegacyAgentMediaAsset",
+      "dbName": "agent_inclination_assets",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "consumedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "consumed_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "consumedPostId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "consumed_post_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "fileSizeBytes",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "file_size_bytes",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "mediaUrl",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "media_url",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "mimeType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "mime_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "originUrl",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "origin_url",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "ownerNote",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "owner_note",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "ownerUserId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "owner_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceType",
+          "type": "LegacyMediaSourceType",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "LegacyMediaAssetStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "PENDING",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "storageKey",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "storage_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "visionSummaryJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "vision_summary_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "consumedPost",
+          "to": "Post",
+          "optional": true,
+          "list": false,
+          "relationName": "LegacyMediaConsumedPost",
+          "fields": [
+            "consumedPostId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "owner",
+          "to": "HumanUser",
+          "optional": false,
+          "list": false,
+          "relationName": "LegacyMediaAssetOwner",
+          "fields": [
+            "ownerUserId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "consumedPostId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "ownerUserId",
             "createdAt"
           ],
           "name": null,
@@ -16851,11 +16851,11 @@
           ]
         },
         {
-          "field": "consumedInclinationAssets",
-          "to": "AgentInclinationAsset",
+          "field": "consumedLegacyMediaAssets",
+          "to": "LegacyAgentMediaAsset",
           "optional": false,
           "list": true,
-          "relationName": "InclinationConsumedPost",
+          "relationName": "LegacyMediaConsumedPost",
           "fields": [],
           "references": []
         },

@@ -92,6 +92,22 @@ function targetHref(targetType: string, targetId: string): string | null {
   return null
 }
 
+function TargetActionButton({ href }: { href: string }) {
+  if (isAgentTargetString(href)) {
+    return (
+      <Button size="sm" variant="outline" onClick={() => tryOpenAgentModal(href, 'readonly')}>
+        查看目标
+      </Button>
+    )
+  }
+
+  return (
+    <Button size="sm" variant="outline" asChild>
+      <Link to={href}>查看目标</Link>
+    </Button>
+  )
+}
+
 function readString(record: Record<string, unknown> | null | undefined, key: string): string | null {
   const value = record?.[key]
   return typeof value === 'string' && value.trim().length > 0 ? value : null
@@ -446,17 +462,7 @@ function TicketRow({
         >
           {STATUS_LABELS[status] ?? status}
         </Badge>
-        {href && (
-          isAgentTargetString(href) ? (
-            <Button size="sm" variant="outline" onClick={() => tryOpenAgentModal(href, 'readonly')}>
-              查看目标
-            </Button>
-          ) : (
-            <Button size="sm" variant="outline" asChild>
-              <Link to={href}>查看目标</Link>
-            </Button>
-          )
-        )}
+        {href ? <TargetActionButton href={href} /> : null}
       </div>
     </div>
   )
@@ -575,11 +581,7 @@ function TimelineCard({
                 <p className={"text-[10px] text-muted-foreground"}>{entry.body}</p>
                 <p className={"text-[10px] mt-1 block"}>{relativeTime(entry.created_at)}</p>
               </div>
-              {entry.href && (
-                <Button size="sm" variant="outline" asChild>
-                  <Link to={entry.href}>查看目标</Link>
-                </Button>
-              )}
+              {entry.href ? <TargetActionButton href={entry.href} /> : null}
             </div>
           </div>
         ))}
@@ -660,7 +662,7 @@ export function SafetyCenterPage() {
       </div>
 
       <div className={"rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground"}>
-        当前受理入口已覆盖帖子、评论、聊天室发言，以及 Owner 私聊会话、主动私信的治理申请。
+        当前受理入口已覆盖帖子、公共舞台发言、聊天室发言，以及 Owner 私聊会话、主动私信的治理申请。
         流程会按“已提交 → 建 case → 进入审核/复核 → 重开或结案”逐步回写到这里。
         私聊与主动私信仍默认受实名门槛约束。
         {' '}

@@ -2,8 +2,8 @@ version: 1
 task_id: T-918
 project: main
 slug: media-v1-hardening-contract-lineage-cutover
-status: in-progress
-updated: "2026-03-24"
+status: blocked
+updated: "2026-03-25"
 keywords:
   - media
   - semantics

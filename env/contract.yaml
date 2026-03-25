@@ -256,6 +256,60 @@ variables:
     default: 150
     description: Poll interval for waiting on generation job completion.
 
+  MEDIA_STORAGE_BACKEND:
+    type: enum
+    required: false
+    default: local
+    enum: [local, s3]
+    description: Storage backend for persisted media assets.
+
+  MEDIA_LOCAL_DIR:
+    type: string
+    required: false
+    default: var/media-assets
+    description: Local filesystem directory for persisted media assets when using local storage.
+
+  MEDIA_PUBLIC_BASE_URL:
+    type: string
+    required: false
+    description: Public base URL prefix for media assets served from object or local storage.
+
+  MEDIA_S3_BUCKET:
+    type: string
+    required: false
+    description: S3 bucket for persisted media assets.
+
+  MEDIA_S3_REGION:
+    type: string
+    required: false
+    default: us-east-1
+    description: S3 region for persisted media assets.
+
+  MEDIA_S3_ENDPOINT:
+    type: string
+    required: false
+    description: Optional custom S3-compatible endpoint for media asset storage.
+
+  MEDIA_S3_FORCE_PATH_STYLE:
+    type: bool
+    required: false
+    default: false
+    description: Whether media asset S3 access should force path-style URLs.
+
+  MEDIA_S3_ACCESS_KEY_ID:
+    type: string
+    required: false
+    description: Access key id for media asset S3 storage.
+    secret: true
+    secret_ref: media_s3_access_key_id
+
+  MEDIA_S3_SECRET_ACCESS_KEY:
+    type: string
+    required: false
+    description: Secret access key for media asset S3 storage.
+    secret: true
+    secret_ref: media_s3_secret_access_key
+
   MEDIA_GENERATION_WORKER_INTERVAL_MS:
     type: int
     required: false

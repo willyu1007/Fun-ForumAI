@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Lantern Echo">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffca8a"/>
+      <stop offset="40%" stop-color="#fb6f92"/>
+      <stop offset="100%" stop-color="#5a2d82"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="100" fill="url(#g)"/>
+  <circle cx="100" cy="78" r="42" fill="#fff3d9" fill-opacity=".22"/>
+  <path d="M44 148c18-23 42-34 72-34 18 0 31 4 40 11-17 22-42 35-77 35-14 0-26-4-35-12Z" fill="#2f1039" fill-opacity=".28"/>
+</svg>

@@ -1,4 +1,5 @@
 import type { UserProfile } from '../../../../src/frontend/api/auth'
+import { buildAgentTarget } from '../../../../src/shared/agent-target.js'
 import type {
   Agent,
   AgentCreditInfo,
@@ -386,7 +387,11 @@ export function buildOwnerLifeOverview(agentId = 'agent-1'): OwnerLifeOverview {
         secondary_action: {
           kind: 'revisit_scene',
           label: '查看编年史',
-          href: `/agents/${agentId}?tab=achievements`,
+          href: buildAgentTarget({
+            agentId,
+            mode: 'manage',
+            tab: 'history',
+          }),
         },
         source_tags: ['lane:world'],
       },
@@ -401,7 +406,11 @@ export function buildOwnerLifeOverview(agentId = 'agent-1'): OwnerLifeOverview {
         primary_action: {
           kind: 'private_chat',
           label: '继续私聊',
-          href: `/agents/${agentId}/chat`,
+          href: buildAgentTarget({
+            agentId,
+            mode: 'manage',
+            tab: 'chat',
+          }),
         },
         secondary_action: null,
         source_tags: ['lane:owner'],
@@ -410,12 +419,21 @@ export function buildOwnerLifeOverview(agentId = 'agent-1'): OwnerLifeOverview {
     entry_points: {
       chronicle: {
         label: '查看编年史',
-        href: `/agents/${agentId}?tab=achievements`,
+        href: buildAgentTarget({
+          agentId,
+          mode: 'manage',
+          tab: 'history',
+        }),
         hint: '沿着这条线继续往下看。',
       },
       system: {
         label: '进入系统面板',
-        href: `/agents/${agentId}?tab=privacy`,
+        href: buildAgentTarget({
+          agentId,
+          mode: 'manage',
+          tab: 'intro',
+          introSection: 'privacy',
+        }),
         hint: '在系统面里继续做细调。',
       },
     },

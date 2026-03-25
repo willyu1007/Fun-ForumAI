@@ -10,6 +10,8 @@ import {
   useNotifications,
 } from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
+import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
+import { buildAgentTarget } from '../../../../../shared/agent-target.js'
 
 vi.mock('@/api/hooks', () => ({
   useMyReports: vi.fn(),
@@ -22,11 +24,16 @@ vi.mock('@/shared/hooks/use-auth', () => ({
   useAuth: vi.fn(),
 }))
 
+vi.mock('@/shared/stores/agent-modal-store', () => ({
+  tryOpenAgentModal: vi.fn(),
+}))
+
 const useMyReportsMock = vi.mocked(useMyReports)
 const useMyAppealsMock = vi.mocked(useMyAppeals)
 const useNotificationsMock = vi.mocked(useNotifications)
 const useMarkAllNotificationsReadMock = vi.mocked(useMarkAllNotificationsRead)
 const useAuthMock = vi.mocked(useAuth)
+const tryOpenAgentModalMock = vi.mocked(tryOpenAgentModal)
 
 function renderPage() {
   return render(
@@ -41,6 +48,7 @@ function renderPage() {
 describe('SafetyCenterPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    tryOpenAgentModalMock.mockReturnValue(true)
   })
 
   it('renders timeline entries from reports, appeals, and governance notifications', () => {
@@ -137,7 +145,7 @@ describe('SafetyCenterPage', () => {
     expect(screen.getByText('已提交隐私请求')).toBeTruthy()
     expect(screen.getByText('已提交账号限制申诉')).toBeTruthy()
     expect(screen.getByText('2 条未读治理更新')).toBeTruthy()
-    expect(screen.getByText(/当前受理入口已覆盖帖子、评论、聊天室发言，以及 Owner 私聊会话、主动私信的治理申请/)).toBeTruthy()
+    expect(screen.getByText(/当前受理入口已覆盖帖子、公共舞台发言、聊天室发言，以及 Owner 私聊会话、主动私信的治理申请/)).toBeTruthy()
     expect(screen.getByText(/热点内容如果发生话题漂移/)).toBeTruthy()
     expect(screen.getByRole('link', { name: '查看完整流程说明' }).getAttribute('href')).toBe('/help/report-appeal-delete')
     expect(screen.getByRole('link', { name: '查看热点规则' }).getAttribute('href')).toBe('/help/hot-topic-rules')
@@ -203,5 +211,71 @@ describe('SafetyCenterPage', () => {
     expect(screen.getAllByText('治理申请').length).toBeGreaterThan(0)
     expect(screen.queryByText(/HARASSMENT_REPORT/)).toBeNull()
     expect(screen.queryByText(/private_session_report/)).toBeNull()
+  })
+
+  it('opens agent targets through the modal handler in both timeline and ticket lists', () => {
+    const appeal: AppealRequest = {
+      id: 'appeal-agent-1',
+      requester_user_id: 'user-1',
+      requester_type: 'USER',
+      target_type: 'agent',
+      target_id: 'agent-1',
+      appeal_type: 'ACCOUNT_LIMIT_APPEAL',
+      linked_case_id: 'case-agent-1',
+      linked_complaint_ticket_id: null,
+      reason: 'please restore access',
+      status: 'LINKED',
+      result: {
+        linked_case_id: 'case-agent-1',
+      },
+      created_at: '2026-03-11T08:00:00.000Z',
+      updated_at: '2026-03-11T09:00:00.000Z',
+    }
+
+    useAuthMock.mockReturnValue({
+      isAuthenticated: true,
+    } as never)
+    useMyReportsMock.mockReturnValue({
+      data: { data: [] },
+      isLoading: false,
+    } as never)
+    useMyAppealsMock.mockReturnValue({
+      data: { data: [appeal] },
+      isLoading: false,
+    } as never)
+    useNotificationsMock.mockReturnValue({
+      data: {
+        data: {
+          items: [],
+          next_cursor: null,
+          unread_count: 0,
+        },
+      },
+      isLoading: false,
+    } as never)
+    useMarkAllNotificationsReadMock.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as never)
+
+    renderPage()
+
+    expect(screen.queryByRole('link', { name: '查看目标' })).toBeNull()
+
+    const openButtons = screen.getAllByRole('button', { name: '查看目标' })
+    expect(openButtons).toHaveLength(2)
+
+    for (const button of openButtons) {
+      fireEvent.click(button)
+    }
+
+    expect(tryOpenAgentModalMock).toHaveBeenCalledTimes(2)
+    expect(tryOpenAgentModalMock).toHaveBeenCalledWith(
+      buildAgentTarget({
+        agentId: 'agent-1',
+        mode: 'readonly',
+      }),
+      'readonly',
+    )
   })
 })

@@ -77,7 +77,7 @@ export default defineConfig({
       VITE_FF_GUIDANCE_BELL_V1: 'false',
       VITE_FF_GLOBAL_HIGHLIGHTS_V1: 'true',
       VITE_FF_AGENT_STATS_UI: 'false',
-      VITE_FF_MULTIMODAL_AGENT_INCLINATION_V1: 'false',
+      VITE_FF_MULTIMODAL_AGENT_MEDIA_V1: 'false',
       VITE_FF_HUMAN_PARTICIPATION_V1: 'true',
     },
   },
