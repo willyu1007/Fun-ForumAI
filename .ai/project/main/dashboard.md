@@ -8,12 +8,13 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 139 (planned: 1, in-progress: 4, blocked: 0, done: 1, archived: 133)
+- Tasks: 140 (planned: 1, in-progress: 5, blocked: 0, done: 1, archived: 133)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-920 backend-typecheck-baseline-repair-v1 | in-progress | F-000 | dev-docs/active/backend-typecheck-baseline-repair-v1 |
 | T-918 media-v1-hardening-contract-lineage-cutover | in-progress | F-000 | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
 | T-117 visual-media-framework-v1-planning | archived | F-080 | dev-docs/archive/visual-media-framework-v1-planning |
 | T-118 visual-media-domain-foundation-and-v1-semantics-correction | archived | F-080 | dev-docs/archive/visual-media-domain-foundation-and-v1-semantics-correction |
@@ -33,5 +34,4 @@ Project: `main`
 | T-119 scheduled-post-image-planning-and-public-card | archived | F-080 | dev-docs/archive/scheduled-post-image-planning-and-public-card |
 | T-124 media-observability-lifecycle-and-rollout-control | archived | F-080 | dev-docs/archive/media-observability-lifecycle-and-rollout-control |
 | T-909 uiux-manual-test-baseline | in-progress | F-000 | dev-docs/active/uiux-manual-test-baseline |
-| T-907 confirmed-technical-debt-paydown | archived | F-000 | dev-docs/archive/confirmed-technical-debt-paydown |
 <!-- AUTO-GENERATED:END dashboard -->

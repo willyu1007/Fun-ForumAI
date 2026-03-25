@@ -89,6 +89,7 @@ Project: `main`
 | T-916 forum-public-stage-thread-turn-cutover-v1 | archived | dev-docs/archive/forum-public-stage-thread-turn-cutover-v1 |
 | T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 | done | dev-docs/active/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 |
 | T-918 media-v1-hardening-contract-lineage-cutover | in-progress | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
+| T-920 backend-typecheck-baseline-repair-v1 | in-progress | dev-docs/active/backend-typecheck-baseline-repair-v1 |
 
 ### F-010 Agent Stats System
 
