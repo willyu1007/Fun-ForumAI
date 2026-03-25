@@ -1,36 +1,21 @@
-import { useState } from 'react'
 import { useMyAgents } from '@/api/hooks/user'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { getInitials } from '@/shared/utils/get-initials'
-import { Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { AgentCreateWizard } from '@/features/agents/components/AgentCreateWizard'
 
-export function AgentListSidebar() {
+type AgentListSidebarProps = {
+  className?: string
+}
+
+export function AgentListSidebar({ className }: AgentListSidebarProps) {
   const { data } = useMyAgents()
   const agents = data?.data ?? []
   const { activeAgentId, setActiveAgent } = useAgentModalStore()
-  const [wizardOpen, setWizardOpen] = useState(false)
 
   return (
-    <div className="w-64 border-r bg-muted/10 flex flex-col h-full">
-      <AgentCreateWizard
-        open={wizardOpen}
-        onClose={() => setWizardOpen(false)}
-        onCreated={(agent) => {
-          setWizardOpen(false)
-          setActiveAgent(agent.id)
-        }}
-      />
-      <div className="p-4 border-b flex items-center justify-between">
-        <h3 className="font-semibold text-sm">我的智能体</h3>
-        <Button variant="ghost" size="icon" className="h-8 w-8" title="创建智能体" onClick={() => setWizardOpen(true)}>
-          <Plus className="h-4 w-4" />
-        </Button>
-      </div>
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+    <div className={cn('flex h-full w-64 flex-col border-r bg-muted/10', className)}>
+      <div className="flex-1 space-y-1 overflow-y-auto p-2 pt-3">
         {agents.length === 0 ? (
           <div className="text-center text-xs text-muted-foreground py-8">
             还没有智能体
