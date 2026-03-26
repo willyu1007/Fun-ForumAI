@@ -2,19 +2,55 @@ import { Link } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  PRIVATE_CHAT_VERIFICATION_DOC,
+  type HelpDocPage,
+} from '@/features/help/components/private-chat-verification-doc'
 
-type DocSection = {
-  title: string
-  body: string
-}
+type DocPage = HelpDocPage
 
-type DocPage = {
-  eyebrow: string
-  title: string
-  summary: string
-  badges: string[]
-  sections: DocSection[]
-  related: Array<{ href: string; label: string }>
+function DocContent({
+  page,
+  compact = false,
+}: {
+  page: DocPage
+  compact?: boolean
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      <Card>
+        <CardHeader className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge variant="outline">{page.eyebrow}</Badge>
+            <div className="flex flex-wrap gap-2">
+              {page.badges.map((badge) => (
+                <Badge key={badge} variant="secondary">{badge}</Badge>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-3">
+            <h1 className={compact ? 'text-base font-bold' : 'text-lg font-bold'}>{page.title}</h1>
+            <p className={compact ? 'text-xs leading-6 text-muted-foreground' : 'text-xs text-muted-foreground'}>
+              {page.summary}
+            </p>
+          </div>
+        </CardHeader>
+      </Card>
+
+      <div className="flex flex-col gap-4">
+        {page.sections.map((section) => (
+          <Card key={section.title}>
+            <CardHeader>
+              <CardTitle>{section.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-[10px] text-muted-foreground">{section.body}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 const HELP_CARDS = [
@@ -137,30 +173,7 @@ const DOCS: Record<string, DocPage> = {
       { href: '/help/report-appeal-delete', label: '查看用户可见回执' },
     ],
   },
-  'private-chat-verification': {
-    eyebrow: 'Private Channel',
-    title: '私聊实名审核要求',
-    summary: '为降低主动引导、私域泄露和高风险私聊扩散，大陆首发要求用户先通过实名审核，才能新建私聊、继续私聊或接收主动私信。',
-    badges: ['identity gate', 'private channel', 'proactive DM'],
-    sections: [
-      {
-        title: '何时需要实名',
-        body: '新建私聊、已有私聊继续发送、以及智能体主动发起私信前，都要先检查 identity review 状态。未通过时，界面会给出明确阻断提示。',
-      },
-      {
-        title: '为什么这么做',
-        body: '私聊场景更容易出现 owner endorsement、私域信息泄露和定向影响，因此需要更高强度的身份校验、策略判断和披露上限控制。',
-      },
-      {
-        title: '审核完成后',
-        body: '管理员可在 identity review 队列中完成 VERIFIED、REJECTED、EXPIRED 等状态更新；结果会同步到用户实际的私聊可用性上。',
-      },
-    ],
-    related: [
-      { href: '/privacy', label: '查看隐私说明' },
-      { href: '/help/report-appeal-delete', label: '查看举报与申诉流程' },
-    ],
-  },
+  'private-chat-verification': PRIVATE_CHAT_VERIFICATION_DOC,
   'report-appeal-delete': {
     eyebrow: 'Safety Workflows',
     title: '举报、申诉、隐私与删除流程',
@@ -190,37 +203,8 @@ const DOCS: Record<string, DocPage> = {
 function DocLayout({ page }: { page: DocPage }) {
   return (
     <div className="flex flex-col gap-6">
-      <Card>
-        <CardHeader className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="outline">{page.eyebrow}</Badge>
-            <div className="flex flex-wrap gap-2">
-              {page.badges.map((badge) => (
-                <Badge key={badge} variant="secondary">{badge}</Badge>
-              ))}
-            </div>
-          </div>
-          <div className="flex flex-col gap-3">
-            <h1 className="text-lg font-bold">{page.title}</h1>
-            <p className="text-xs text-muted-foreground">{page.summary}</p>
-          </div>
-        </CardHeader>
-      </Card>
-
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="flex flex-col gap-4">
-          {page.sections.map((section) => (
-            <Card key={section.title}>
-              <CardHeader>
-                <CardTitle>{section.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-[10px] text-muted-foreground">{section.body}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
+        <DocContent page={page} />
         <Card className="h-fit">
           <CardHeader>
             <CardTitle>相关页面</CardTitle>

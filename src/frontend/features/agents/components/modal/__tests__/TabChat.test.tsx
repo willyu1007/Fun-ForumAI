@@ -14,6 +14,11 @@ const useCreatePrivateSessionMock = vi.fn()
 const useSendPrivateMessageMock = vi.fn()
 const useUploadPrivateMessageAttachmentMock = vi.fn()
 const useEndPrivateSessionMock = vi.fn()
+const messageInputToolbarState = {
+  disabled: false,
+  hasAttachment: false,
+  ending: false,
+}
 
 vi.mock('@/api/hooks', () => ({
   useAgentProfile: (agentId: string) => useAgentProfileMock(agentId),
@@ -52,10 +57,10 @@ vi.mock('@/features/private-chat/components/MessageInput', () => ({
         openFilePicker: vi.fn(),
         captureScreenshot: vi.fn(),
         insertText: vi.fn(),
-        disabled: false,
-        hasAttachment: false,
+        disabled: messageInputToolbarState.disabled,
+        hasAttachment: messageInputToolbarState.hasAttachment,
         onEndSession: vi.fn(),
-        ending: false,
+        ending: messageInputToolbarState.ending,
       })}
     </div>
   ),
@@ -167,6 +172,9 @@ function renderWithRouter(ui: ReactNode) {
 describe('TabChat timeline layout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    messageInputToolbarState.disabled = false
+    messageInputToolbarState.hasAttachment = false
+    messageInputToolbarState.ending = false
     ;(HTMLElement.prototype as { scrollIntoView?: (arg?: unknown) => void }).scrollIntoView = vi.fn()
 
     useCreateReportMock.mockReturnValue({
@@ -317,6 +325,26 @@ describe('TabChat timeline layout', () => {
     expect(screen.queryByTestId('composer-history-trigger')).toBeNull()
   })
 
+  it('keeps upload and screenshot hover copy available when an attachment already exists', async () => {
+    messageInputToolbarState.hasAttachment = true
+
+    renderWithRouter(<TabChat agentId="agent-2" />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('composer-attachment-trigger')).toBeTruthy()
+    })
+
+    const attachmentTrigger = screen.getByTestId('composer-attachment-trigger')
+    const screenshotTrigger = screen.getByTestId('composer-screenshot-trigger')
+
+    expect(attachmentTrigger.getAttribute('title')).toBe('当前一次只能附一张图片，先移除现有图片后再上传。')
+    expect(attachmentTrigger.getAttribute('aria-disabled')).toBe('true')
+    expect(attachmentTrigger.className).toContain('opacity-70')
+    expect(screenshotTrigger.getAttribute('title')).toBe('当前一次只能附一张图片，先移除现有图片后再截图。')
+    expect(screenshotTrigger.getAttribute('aria-disabled')).toBe('true')
+    expect(screenshotTrigger.className).toContain('opacity-70')
+  })
+
   it('opens the inline search without showing the old empty-state helper copy', async () => {
     renderWithRouter(<TabChat agentId="agent-2" />)
 
@@ -328,6 +356,22 @@ describe('TabChat timeline layout', () => {
 
     expect(screen.getByPlaceholderText('搜索这段聊天')).toBeTruthy()
     expect(screen.queryByText('输入关键词')).toBeNull()
+  })
+
+  it('opens private chat rules inside the modal instead of navigating away', async () => {
+    renderWithRouter(<TabChat agentId="agent-2" />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('composer-more-trigger')).toBeTruthy()
+    })
+
+    expect(screen.getByTestId('private-chat-rules-panel').className).toContain('pointer-events-none')
+
+    fireEvent.click(screen.getByRole('button', { name: '查看私聊规则' }))
+
+    expect(screen.getByTestId('private-chat-rules-panel').className).toContain('pointer-events-auto')
+    expect(screen.getByText('私聊实名审核要求')).toBeTruthy()
+    expect(screen.getByTestId('composer-more-trigger').getAttribute('title')).toBeNull()
   })
 
   it('keeps composing against the active session even when that fresh session has no visible messages yet', async () => {

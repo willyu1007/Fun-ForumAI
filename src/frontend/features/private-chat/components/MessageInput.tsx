@@ -1,12 +1,22 @@
-import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react'
-import { Button } from '@/components/ui/button'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ClipboardEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react'
+import { AlertCircle, LoaderCircle, X } from 'lucide-react'
 import type { PrivateMessageAttachment, SendPrivateMessageInput } from '@/api/types'
+import { cn } from '@/lib/utils'
 
 interface MessageInputProps {
   onSend: (input: SendPrivateMessageInput) => Promise<void>
   onUploadAttachment: (file: File) => Promise<PrivateMessageAttachment>
   onCaptureScreenshot?: () => Promise<File | null>
   onEndSession: () => Promise<void>
+  draftStorageKey?: string
   disabled?: boolean
   sessionEnded?: boolean
   toolbar?: (context: {
@@ -33,6 +43,7 @@ export function MessageInput({
   onUploadAttachment,
   onCaptureScreenshot,
   onEndSession,
+  draftStorageKey,
   disabled,
   sessionEnded,
   toolbar,
@@ -53,7 +64,26 @@ export function MessageInput({
     }
   }, [attachment?.preview_url])
 
-  const canSend = Boolean(text.trim() || attachment?.uploaded) && !attachment?.uploading && !disabled
+  useEffect(() => {
+    if (typeof window === 'undefined' || !draftStorageKey) return
+
+    const savedDraft = window.localStorage.getItem(draftStorageKey)
+    setText(savedDraft ?? '')
+  }, [draftStorageKey])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !draftStorageKey) return
+
+    if (text) {
+      window.localStorage.setItem(draftStorageKey, text)
+      return
+    }
+
+    window.localStorage.removeItem(draftStorageKey)
+  }, [draftStorageKey, text])
+
+  const inputDisabled = Boolean(disabled)
+  const canSend = Boolean(text.trim() || attachment?.uploaded) && !attachment?.uploading && !inputDisabled
 
   const uploadAttachment = async (file: File) => {
     const previewUrl = URL.createObjectURL(file)
@@ -88,7 +118,7 @@ export function MessageInput({
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
-    if (!file || disabled) return
+    if (!file || inputDisabled) return
     if (attachment?.preview_url) {
       URL.revokeObjectURL(attachment.preview_url)
     }
@@ -96,7 +126,7 @@ export function MessageInput({
   }
 
   const handleRetryUpload = async () => {
-    if (!attachment || disabled) return
+    if (!attachment || inputDisabled) return
     await uploadAttachment(attachment.file)
   }
 
@@ -130,13 +160,35 @@ export function MessageInput({
   }
 
   const handleCaptureScreenshot = async () => {
-    if (!onCaptureScreenshot || disabled) return
+    if (!onCaptureScreenshot || inputDisabled) return
     const file = await onCaptureScreenshot()
     if (!file) return
     if (attachment?.preview_url) {
       URL.revokeObjectURL(attachment.preview_url)
     }
     await uploadAttachment(file)
+  }
+
+  const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    if (inputDisabled) return
+
+    const imageItem = Array.from(event.clipboardData.items).find(
+      (item) => item.kind === 'file' && item.type.startsWith('image/'),
+    )
+
+    if (!imageItem) return
+
+    const file = imageItem.getAsFile()
+    if (!file) return
+
+    if (attachment) {
+      event.preventDefault()
+      return
+    }
+
+    event.preventDefault()
+
+    void uploadAttachment(file)
   }
 
   const handleSend = async () => {
@@ -186,48 +238,16 @@ export function MessageInput({
           }}
         />
 
-        {attachment && (
-          <div className="mb-2 border-b border-border/60 pb-2">
-            <div className="flex items-start gap-3">
-              <img
-                src={attachment.preview_url}
-                alt={attachment.uploaded?.alt_text ?? attachment.file.name}
-                className="h-20 w-20 rounded-lg object-cover"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{attachment.file.name}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {attachment.uploading
-                    ? '上传中...'
-                    : attachment.error
-                      ? attachment.error
-                      : '图片已经准备好了，发送后会出现在这段聊天里。'}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {attachment.error && (
-                    <Button size="sm" variant="outline" onClick={() => void handleRetryUpload()} disabled={disabled}>
-                      重试上传
-                    </Button>
-                  )}
-                  <Button size="sm" variant="ghost" onClick={handleRemoveAttachment} disabled={attachment.uploading || disabled}>
-                    移除图片
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="flex h-32 min-h-32 flex-col">
+        <div className="flex flex-col pl-2.5">
           {toolbar && (
-            <div className="mb-1 flex min-h-7 items-center">
+            <div className="mb-1 flex min-h-7 items-center" data-testid="composer-toolbar-row">
               {toolbar({
                 openFilePicker: () => fileInputRef.current?.click(),
                 captureScreenshot: () => {
                   void handleCaptureScreenshot()
                 },
                 insertText: insertTextAtCursor,
-                disabled: Boolean(disabled),
+                disabled: inputDisabled,
                 hasAttachment: Boolean(attachment),
                 onEndSession: () => {
                   void handleEnd()
@@ -236,18 +256,70 @@ export function MessageInput({
               })}
             </div>
           )}
-          <textarea
-            id={messageInputId}
-            name="private_chat_message"
-            ref={textareaRef}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="发个消息…"
-            className={"h-full min-h-0 w-full appearance-none resize-none overflow-y-auto border-0 rounded-none bg-transparent pl-2.5 pr-0 py-0 text-sm leading-6 text-foreground shadow-none outline-none ring-0 placeholder:text-muted-foreground/80 focus:border-0 focus:shadow-none focus:outline-none focus:ring-0 focus-visible:border-0 focus-visible:shadow-none focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50"}
-            disabled={disabled}
-            rows={4}
-          />
+          {attachment && (
+            <div className="mb-1 ml-1.5 flex items-center" data-testid="composer-attachment-row">
+              <div
+                data-testid="composer-attachment-frame"
+                className={cn(
+                  'group relative overflow-hidden rounded-md border border-border/70 bg-muted/20 p-1',
+                  attachment.error && 'ring-1 ring-destructive/50',
+                )}
+              >
+                <img
+                  src={attachment.preview_url}
+                  alt={attachment.uploaded?.alt_text ?? attachment.file.name}
+                  className="h-14 w-14 rounded-sm object-cover"
+                />
+                <button
+                  type="button"
+                  aria-label="移除图片"
+                  title="移除图片"
+                  onClick={handleRemoveAttachment}
+                  disabled={attachment.uploading || disabled}
+                  className={cn(
+                    'absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition-opacity',
+                    'group-hover:opacity-100 group-focus-within:opacity-100',
+                    (attachment.uploading || disabled) && 'pointer-events-none',
+                  )}
+                >
+                  <X className="size-3" />
+                </button>
+                {attachment.uploading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-foreground/12">
+                    <LoaderCircle className="size-4 animate-spin text-foreground" />
+                  </div>
+                )}
+                {attachment.error && !attachment.uploading && (
+                  <button
+                    type="button"
+                    aria-label="重试上传"
+                    title={attachment.error}
+                    onClick={() => void handleRetryUpload()}
+                    disabled={disabled}
+                    className="absolute right-1 bottom-1 flex h-5 w-5 items-center justify-center rounded-full bg-background/90 text-destructive transition-opacity hover:text-destructive focus-visible:outline-none"
+                  >
+                    <AlertCircle className="size-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+          <div className="ml-1.5 flex h-32 min-h-32 flex-col">
+            <textarea
+              id={messageInputId}
+              name="private_chat_message"
+              ref={textareaRef}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onPaste={handlePaste}
+              onKeyDown={handleKeyDown}
+              placeholder="发个消息…"
+              data-testid="private-chat-composer-textarea"
+              className={"h-full min-h-0 w-full appearance-none resize-none overflow-y-auto border-0 rounded-none bg-transparent pl-0 pr-0 py-0 text-sm leading-6 text-foreground shadow-none outline-none ring-0 placeholder:text-muted-foreground/80 focus:border-0 focus:shadow-none focus:outline-none focus:ring-0 focus-visible:border-0 focus-visible:shadow-none focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50"}
+              disabled={inputDisabled}
+              rows={4}
+            />
+          </div>
         </div>
       </div>
     </div>

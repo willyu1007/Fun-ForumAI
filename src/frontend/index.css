@@ -65,6 +65,14 @@
   body {
     @apply bg-background text-foreground font-sans;
   }
+
+  html:has(body[data-scroll-locked]) {
+    scrollbar-gutter: stable;
+  }
+
+  body[data-scroll-locked] {
+    margin-right: 0 !important;
+  }
 }
 
 @layer utilities {
@@ -100,4 +108,3 @@
     animation-duration: 18s;
   }
 }
-

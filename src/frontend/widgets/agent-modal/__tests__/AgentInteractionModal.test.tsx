@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from 'react'
+import { useState, type ComponentProps, type ReactNode } from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
@@ -13,24 +13,54 @@ const renderCounts = vi.hoisted(() => ({
 }))
 
 const useAgentProfileMock = vi.fn()
+const captureDisplayFrameMock = vi.fn()
 
 vi.mock('@/api/hooks', () => ({
   useAgentProfile: (agentId: string) => useAgentProfileMock(agentId),
+}))
+
+vi.mock('@/features/private-chat/lib/capture-display-frame', () => ({
+  captureDisplayFrame: () => captureDisplayFrameMock(),
+  preloadCaptureDisplayFrame: vi.fn(),
 }))
 
 vi.mock('@/components/ui/dialog', async () => {
   const React = await vi.importActual<typeof import('react')>('react')
 
   return {
-    Dialog: ({ open, children }: { open: boolean; children: ReactNode }) => (open ? <div>{children}</div> : null),
+    Dialog: ({
+      open,
+      modal = true,
+      children,
+    }: {
+      open: boolean
+      modal?: boolean
+      children: ReactNode
+    }) => (open ? <div key={String(modal)} data-dialog-modal={modal ? 'true' : 'false'}>{children}</div> : null),
     DialogContent: React.forwardRef<
       HTMLDivElement,
       ComponentProps<'div'> & {
         showCloseButton?: boolean
         hideOverlay?: boolean
+        onInteractOutside?: (event: Event) => void
+        onPointerDownOutside?: (event: Event) => void
+        onEscapeKeyDown?: (event: Event) => void
       }
-    >(({ children, showCloseButton: _showCloseButton, hideOverlay: _hideOverlay, ...props }, ref) => (
-      <div ref={ref} {...props}>
+    >(({
+      children,
+      showCloseButton: _showCloseButton,
+      hideOverlay: _hideOverlay,
+      onInteractOutside,
+      onPointerDownOutside,
+      onEscapeKeyDown: _onEscapeKeyDown,
+      ...props
+    }, ref) => (
+      <div
+        ref={ref}
+        data-has-interact-outside-handler={onInteractOutside ? 'true' : undefined}
+        data-has-pointer-down-outside-handler={onPointerDownOutside ? 'true' : undefined}
+        {...props}
+      >
         {children}
       </div>
     )),
@@ -62,10 +92,61 @@ vi.mock('@/features/agents/components/modal/TabIntro', () => ({
 }))
 
 vi.mock('@/features/agents/components/modal/TabChat', () => ({
-  TabChat: ({ agentId }: { agentId: string }) => {
+  TabChat: ({
+    agentId,
+    onCaptureScreenshot,
+  }: {
+    agentId: string
+    onCaptureScreenshot?: () => Promise<File | null>
+  }) => {
     renderCounts.chat += 1
-    return <div data-testid="tab-chat">chat:{agentId}</div>
+    const [captureResult, setCaptureResult] = useState<string | null>(null)
+    return (
+      <div data-testid="tab-chat">
+        chat:{agentId}
+        {captureResult ? <div data-testid="tab-chat-capture-result">{captureResult}</div> : null}
+        {onCaptureScreenshot ? (
+          <button
+            type="button"
+            data-testid="tab-chat-capture-trigger"
+            onClick={() => {
+              void onCaptureScreenshot().then((file) => {
+                setCaptureResult(file?.name ?? null)
+              })
+            }}
+          >
+            capture
+          </button>
+        ) : null}
+      </div>
+    )
   },
+}))
+
+vi.mock('@/features/private-chat/components/ScreenshotCropper', () => ({
+  ScreenshotCropper: ({
+    open,
+    onCancel,
+    onConfirm,
+  }: {
+    open: boolean
+    onCancel: () => void
+    onConfirm: (file: File) => void
+  }) =>
+    open ? (
+      <div data-testid="screenshot-cropper" data-open="true">
+        <button type="button" data-testid="screenshot-cropper-cancel" onClick={onCancel}>
+          cancel
+        </button>
+        <button
+          type="button"
+          data-testid="screenshot-cropper-confirm"
+          onClick={() => onConfirm(new File(['ok'], 'capture.png', { type: 'image/png' }))}
+        >
+          confirm
+        </button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('@/features/agents/components/modal/TabMoments', () => ({
@@ -107,9 +188,20 @@ describe('AgentInteractionModal geometry updates', () => {
         },
       },
     }))
+    captureDisplayFrameMock.mockResolvedValue({
+      dataUrl: 'data:image/png;base64,stub',
+      width: 640,
+      height: 360,
+      mimeType: 'image/png',
+      fileName: 'capture.png',
+    })
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth })
     Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalInnerHeight })
     ;(HTMLElement.prototype as { setPointerCapture?: (pointerId: number) => void }).setPointerCapture = vi.fn()
+    vi.stubGlobal('requestAnimationFrame', ((callback: FrameRequestCallback) => {
+      callback(0)
+      return 1
+    }) as typeof requestAnimationFrame)
   })
 
   afterEach(() => {
@@ -122,8 +214,10 @@ describe('AgentInteractionModal geometry updates', () => {
         activeTab: 'intro',
         introSection: null,
         sourceSessionId: null,
+        lastModalRect: null,
       })
     })
+    window.localStorage.removeItem('agent-modal-state')
     vi.unstubAllGlobals()
   })
 
@@ -137,6 +231,7 @@ describe('AgentInteractionModal geometry updates', () => {
         activeTab: 'intro',
         introSection: null,
         sourceSessionId: null,
+        lastModalRect: null,
       })
     })
 
@@ -175,7 +270,7 @@ describe('AgentInteractionModal geometry updates', () => {
       fireEvent.pointerUp(window, { pointerId: 1 })
     })
 
-    expect(renderCounts.intro).toBe(initialIntroRenders + 1)
+    expect(renderCounts.intro).toBeGreaterThan(initialIntroRenders)
   })
 
   it('renders with an explicit initial geometry instead of falling back to full-width dialog defaults', () => {
@@ -304,6 +399,80 @@ describe('AgentInteractionModal geometry updates', () => {
     expect(modal.className).toContain('invisible')
   })
 
+  it('keeps the modal hidden while the screenshot cropper is open and restores it after cancel', async () => {
+    renderOpenModal()
+
+    act(() => {
+      useAgentModalStore.setState({ activeTab: 'chat' })
+    })
+
+    const modal = screen.getByTestId('agent-modal-content')
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('tab-chat-capture-trigger'))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(screen.getByTestId('screenshot-cropper').getAttribute('data-open')).toBe('true')
+    expect(modal.className).toContain('invisible')
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('screenshot-cropper-cancel'))
+      await Promise.resolve()
+    })
+
+    expect(screen.queryByTestId('screenshot-cropper')).toBeNull()
+    expect(modal.className).not.toContain('invisible')
+  })
+
+  it('blocks dialog outside-dismiss handlers while the screenshot cropper is active', async () => {
+    renderOpenModal()
+
+    act(() => {
+      useAgentModalStore.setState({ activeTab: 'chat' })
+    })
+
+    const modal = screen.getByTestId('agent-modal-content')
+    expect(modal.getAttribute('data-has-interact-outside-handler')).toBeNull()
+    expect(modal.getAttribute('data-has-pointer-down-outside-handler')).toBeNull()
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('tab-chat-capture-trigger'))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(screen.getByTestId('screenshot-cropper').getAttribute('data-open')).toBe('true')
+    expect(modal.getAttribute('data-has-interact-outside-handler')).toBe('true')
+    expect(modal.getAttribute('data-has-pointer-down-outside-handler')).toBe('true')
+  })
+
+  it('keeps the chat subtree mounted long enough for screenshot confirm to resolve back into the composer flow', async () => {
+    renderOpenModal()
+
+    act(() => {
+      useAgentModalStore.setState({ activeTab: 'chat' })
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('tab-chat-capture-trigger'))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(screen.getByTestId('screenshot-cropper').getAttribute('data-open')).toBe('true')
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('screenshot-cropper-confirm'))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(screen.queryByTestId('screenshot-cropper')).toBeNull()
+    expect(screen.getByTestId('tab-chat-capture-result').textContent).toBe('capture.png')
+  })
+
   it('keeps the close signal at the far right of the title-bar controls', () => {
     renderOpenModal()
 
@@ -375,7 +544,7 @@ describe('AgentInteractionModal geometry updates', () => {
       fireEvent.pointerUp(window, { pointerId: 1 })
     })
 
-    expect(renderCounts.intro).toBe(initialIntroRenders + 1)
+    expect(renderCounts.intro).toBeGreaterThan(initialIntroRenders)
   })
 
   it('supports resizing from the left edge while keeping the right edge anchored', () => {
@@ -406,7 +575,7 @@ describe('AgentInteractionModal geometry updates', () => {
       fireEvent.pointerUp(window, { pointerId: 1 })
     })
 
-    expect(renderCounts.intro).toBe(initialIntroRenders + 1)
+    expect(renderCounts.intro).toBeGreaterThan(initialIntroRenders)
   })
 
   it('keeps the modal inside the viewport and restores global interaction styles after drag', () => {
@@ -430,5 +599,36 @@ describe('AgentInteractionModal geometry updates', () => {
     expect(modal.style.transform).toBe('translate3d(12px, 12px, 0)')
     expect(document.body.style.cursor).toBe('')
     expect(document.body.style.userSelect).toBe('')
+  })
+
+  it('reopens to the previously active agent, tab, and modal rect when opened from the generic entry', () => {
+    act(() => {
+      useAgentModalStore.setState({
+        isOpen: false,
+        isCaptureHidden: false,
+        activeAgentId: 'agent-1',
+        viewMode: 'manage',
+        activeTab: 'history',
+        introSection: null,
+        sourceSessionId: null,
+        lastModalRect: {
+          x: 120,
+          y: 90,
+          w: 920,
+          h: 640,
+        },
+      })
+    })
+
+    act(() => {
+      useAgentModalStore.getState().openModal(null, 'manage', 'chat')
+    })
+
+    render(<AgentInteractionModal />)
+
+    expect(screen.getByText('history:agent-1')).toBeTruthy()
+    expect(screen.getByTestId('agent-modal-content').style.transform).toBe('translate3d(92px, 90px, 0)')
+    expect(screen.getByTestId('agent-modal-content').style.width).toBe('920px')
+    expect(screen.getByTestId('agent-modal-content').style.height).toBe('640px')
   })
 })

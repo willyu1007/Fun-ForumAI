@@ -2,7 +2,11 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useAgentProfile } from '@/api/hooks'
-import { useAgentModalStore, type AgentModalTab } from '@/shared/stores/agent-modal-store'
+import {
+  useAgentModalStore,
+  type AgentModalRect,
+  type AgentModalTab,
+} from '@/shared/stores/agent-modal-store'
 import { Button } from '@/components/ui/button'
 import {
   User,
@@ -23,6 +27,11 @@ import { TabMoments } from '@/features/agents/components/modal/TabMoments'
 import { TabHistory } from '@/features/agents/components/modal/TabHistory'
 import { TabSocial } from '@/features/agents/components/modal/TabSocial'
 import { AgentCreateWizard } from '@/features/agents/components/AgentCreateWizard'
+import { ScreenshotCropper, type ScreenshotDraft } from '@/features/private-chat/components/ScreenshotCropper'
+import {
+  captureDisplayFrame,
+  preloadCaptureDisplayFrame,
+} from '@/features/private-chat/lib/capture-display-frame'
 
 const TABS: { id: AgentModalTab; icon: React.ElementType; label: string }[] = [
   { id: 'intro', icon: User, label: '介绍与管理' },
@@ -39,7 +48,7 @@ const MAX_W = 1440
 const VIEWPORT_MARGIN = 12
 
 type InteractMode = null | 'drag' | 'resize-se' | 'resize-e' | 'resize-s' | 'resize-w'
-type ModalRect = { x: number; y: number; w: number; h: number }
+type ModalRect = AgentModalRect
 
 function centeredRect() {
   const vw = typeof window !== 'undefined' ? window.innerWidth : 1280
@@ -53,6 +62,11 @@ function applyRectStyles(element: HTMLDivElement, rect: ModalRect) {
   element.style.transform = `translate3d(${rect.x}px, ${rect.y}px, 0)`
   element.style.width = `${rect.w}px`
   element.style.height = `${rect.h}px`
+}
+
+function clearDomSelection() {
+  if (typeof window === 'undefined') return
+  window.getSelection()?.removeAllRanges()
 }
 
 function getViewportRect() {
@@ -121,6 +135,21 @@ function getDefaultSizedRect(currentRect: ModalRect, viewMode: 'manage' | 'reado
   )
 }
 
+function waitForPaint(frames = 2) {
+  return new Promise<void>((resolve) => {
+    const step = (remaining: number) => {
+      if (remaining <= 0) {
+        resolve()
+        return
+      }
+
+      window.requestAnimationFrame(() => step(remaining - 1))
+    }
+
+    step(frames)
+  })
+}
+
 function clampWestResize(
   originRect: ModalRect,
   dx: number,
@@ -157,9 +186,11 @@ function useModalGeometry(
   isOpen: boolean,
   viewMode: 'manage' | 'readonly',
   contentRef: React.RefObject<HTMLDivElement | null>,
+  persistedRect: ModalRect | null,
+  setPersistedRect: (rect: ModalRect) => void,
 ) {
   const [committedRect, setCommittedRect] = useState<ModalRect>(() =>
-    getDefaultRect(viewMode),
+    persistedRect ? clampRectToViewport(persistedRect, viewMode) : getDefaultRect(viewMode),
   )
   const rectRef = useRef<ModalRect>(committedRect)
   const mode = useRef<InteractMode>(null)
@@ -183,11 +214,11 @@ function useModalGeometry(
 
   useLayoutEffect(() => {
     if (!isOpen) return
-    const rect = getDefaultRect(viewMode)
+    const rect = persistedRect ? clampRectToViewport(persistedRect, viewMode) : getDefaultRect(viewMode)
     rectRef.current = rect
     setCommittedRect(rect)
     flushRect()
-  }, [flushRect, isOpen, viewMode])
+  }, [flushRect, isOpen, persistedRect, viewMode])
 
   const onPointerMove = useCallback((event: PointerEvent) => {
     const currentMode = mode.current
@@ -222,13 +253,14 @@ function useModalGeometry(
   const onPointerUp = useCallback(() => {
     if (mode.current) {
       setCommittedRect(rectRef.current)
+      setPersistedRect(rectRef.current)
     }
     mode.current = null
 
     if (typeof document === 'undefined') return
     document.body.style.cursor = previousCursorRef.current
     document.body.style.userSelect = previousUserSelectRef.current
-  }, [])
+  }, [setPersistedRect])
 
   useEffect(() => {
     if (!isOpen || typeof window === 'undefined') return
@@ -268,32 +300,49 @@ function useModalGeometry(
   }, [])
 
   const restoreDefaultSize = useCallback(() => {
-    updateRect(getDefaultSizedRect(rectRef.current, viewMode), true)
-  }, [updateRect, viewMode])
+    const nextRect = getDefaultSizedRect(rectRef.current, viewMode)
+    updateRect(nextRect, true)
+    setPersistedRect(nextRect)
+  }, [setPersistedRect, updateRect, viewMode])
 
   const centerCurrent = useCallback(() => {
-    updateRect(getCenteredRect(rectRef.current, viewMode), true)
-  }, [updateRect, viewMode])
+    const nextRect = getCenteredRect(rectRef.current, viewMode)
+    updateRect(nextRect, true)
+    setPersistedRect(nextRect)
+  }, [setPersistedRect, updateRect, viewMode])
 
   return { onPointerDown, rect: committedRect, restoreDefaultSize, centerCurrent, flushRect }
 }
 
 export function AgentInteractionModal() {
-  const {
-    isOpen,
-    isCaptureHidden,
-    closeModal,
-    activeTab,
-    setActiveTab,
-    activeAgentId,
-    setActiveAgent,
-    viewMode,
-  } = useAgentModalStore()
+  const isOpen = useAgentModalStore((state) => state.isOpen)
+  const isCaptureHidden = useAgentModalStore((state) => state.isCaptureHidden)
+  const closeModal = useAgentModalStore((state) => state.closeModal)
+  const hideForCapture = useAgentModalStore((state) => state.hideForCapture)
+  const showAfterCapture = useAgentModalStore((state) => state.showAfterCapture)
+  const activeTab = useAgentModalStore((state) => state.activeTab)
+  const setActiveTab = useAgentModalStore((state) => state.setActiveTab)
+  const activeAgentId = useAgentModalStore((state) => state.activeAgentId)
+  const setActiveAgent = useAgentModalStore((state) => state.setActiveAgent)
+  const viewMode = useAgentModalStore((state) => state.viewMode)
+  const setLastModalRect = useAgentModalStore((state) => state.setLastModalRect)
+  const lastModalRect = useAgentModalStore.getState().lastModalRect
   const contentRef = useRef<HTMLDivElement | null>(null)
+  const screenshotResolverRef = useRef<((file: File | null) => void) | null>(null)
   const [wizardOpen, setWizardOpen] = useState(false)
-  const { onPointerDown, restoreDefaultSize, centerCurrent, flushRect } = useModalGeometry(isOpen, viewMode, contentRef)
+  const [screenshotDraft, setScreenshotDraft] = useState<ScreenshotDraft | null>(null)
+  const [screenshotErrorMessage, setScreenshotErrorMessage] = useState<string | null>(null)
+  const { onPointerDown, restoreDefaultSize, centerCurrent, flushRect } = useModalGeometry(
+    isOpen,
+    viewMode,
+    contentRef,
+    lastModalRect,
+    setLastModalRect,
+  )
   const { data: activeAgentData } = useAgentProfile(activeAgentId ?? '')
   const headerAgentName = activeAgentData?.data?.display_name ?? ''
+  const isCropperActive = Boolean(screenshotDraft)
+  const shouldBlockDialogDismiss = isCaptureHidden || isCropperActive
 
   const setContentNode = useCallback((node: HTMLDivElement | null) => {
     contentRef.current = node
@@ -309,8 +358,57 @@ export function AgentInteractionModal() {
   useEffect(() => {
     if (!isOpen) {
       setWizardOpen(false)
+      screenshotResolverRef.current?.(null)
+      screenshotResolverRef.current = null
+      setScreenshotDraft(null)
+      setScreenshotErrorMessage(null)
     }
   }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) return
+    preloadCaptureDisplayFrame()
+  }, [isOpen])
+
+  useEffect(() => {
+    return () => {
+      screenshotResolverRef.current?.(null)
+      screenshotResolverRef.current = null
+      showAfterCapture()
+    }
+  }, [showAfterCapture])
+
+  const handleCaptureScreenshot = useCallback(async () => {
+    setScreenshotErrorMessage(null)
+    clearDomSelection()
+    hideForCapture()
+
+    try {
+      await waitForPaint(1)
+      const draft = await captureDisplayFrame()
+      if (!draft) {
+        showAfterCapture()
+        return null
+      }
+
+      return await new Promise<File | null>((resolve) => {
+        screenshotResolverRef.current = resolve
+        setScreenshotDraft(draft)
+      })
+    } catch (error) {
+      setScreenshotErrorMessage(error instanceof Error ? error.message : '截图失败，请稍后再试。')
+      showAfterCapture()
+      return null
+    }
+  }, [hideForCapture, showAfterCapture])
+
+  const resolveScreenshotDraft = useCallback((file: File | null) => {
+    clearDomSelection()
+    screenshotResolverRef.current?.(file)
+    screenshotResolverRef.current = null
+    setScreenshotDraft(null)
+    showAfterCapture()
+  }, [showAfterCapture])
 
   if (!activeAgentId && viewMode === 'readonly') {
     return null
@@ -319,7 +417,8 @@ export function AgentInteractionModal() {
   const showSidebar = viewMode === 'manage'
 
   return (
-    <Dialog open={isOpen} modal={!isCaptureHidden} onOpenChange={(open) => !open && handleModalClose()}>
+    <>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleModalClose()}>
       <AgentCreateWizard
         open={wizardOpen}
         onClose={() => setWizardOpen(false)}
@@ -334,6 +433,9 @@ export function AgentInteractionModal() {
         data-testid="agent-modal-content"
         showCloseButton={false}
         hideOverlay={isCaptureHidden}
+        onInteractOutside={shouldBlockDialogDismiss ? (event) => event.preventDefault() : undefined}
+        onPointerDownOutside={shouldBlockDialogDismiss ? (event) => event.preventDefault() : undefined}
+        onEscapeKeyDown={shouldBlockDialogDismiss ? (event) => event.preventDefault() : undefined}
         className={cn(
           "top-0 left-0 h-auto w-auto max-w-none translate-x-0 translate-y-0 animate-none gap-0 overflow-hidden p-0 transition-none sm:max-w-none flex flex-col will-change-transform",
           isCaptureHidden && "pointer-events-none invisible opacity-0",
@@ -468,7 +570,11 @@ export function AgentInteractionModal() {
                 )}
                 {activeTab === 'chat' && (
                   <div className="flex-1 overflow-hidden">
-                    <TabChat agentId={activeAgentId} />
+                    <TabChat
+                      agentId={activeAgentId}
+                      onCaptureScreenshot={handleCaptureScreenshot}
+                      captureErrorMessage={screenshotErrorMessage}
+                    />
                   </div>
                 )}
                 {activeTab === 'moments' && (
@@ -514,5 +620,12 @@ export function AgentInteractionModal() {
         />
       </DialogContent>
     </Dialog>
+      <ScreenshotCropper
+        draft={screenshotDraft}
+        open={Boolean(screenshotDraft)}
+        onCancel={() => resolveScreenshotDraft(null)}
+        onConfirm={(file) => resolveScreenshotDraft(file)}
+      />
+    </>
   )
 }

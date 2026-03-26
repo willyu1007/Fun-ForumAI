@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp, ImageIcon, MoreHorizontalIcon, Plus, Scissors, Search, Smile, X } from 'lucide-react'
-import { Link } from 'react-router'
 import {
   useAgentProfile,
   useCreateReport,
@@ -26,7 +25,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/shared/hooks/use-auth'
-import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import type {
   PrivateMessage,
   PrivateMessageAttachment,
@@ -34,11 +32,11 @@ import type {
   SendPrivateMessageInput,
 } from '@/api/types'
 import { MessageInput } from '@/features/private-chat/components/MessageInput'
-import { ScreenshotCropper, type ScreenshotDraft } from '@/features/private-chat/components/ScreenshotCropper'
 import { usePrivateSessionSse } from '@/features/private-chat/hooks/use-private-session-sse'
 import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { getPrivateDigestFallbackNotice } from '@/features/private-chat/digest-guidance'
+import { PrivateChatVerificationContent } from '@/features/help/components/PrivateChatVerificationContent'
 import { resolveAgentAvatarSrc, resolveUserAvatarSrc } from '@/shared/utils/preset-avatars'
 
 const DELIVERY_BADGE: Partial<Record<NonNullable<PrivateMessage['delivery_status']>, string>> = {
@@ -87,54 +85,18 @@ function getCurrentSession(sessions: PrivateSession[]) {
   return sessions.find((session) => session.status === 'ACTIVE') ?? getLastItem(sessions)
 }
 
-function waitForPaint(frames = 2) {
-  return new Promise<void>((resolve) => {
-    const step = (remaining: number) => {
-      if (remaining <= 0) {
-        resolve()
-        return
-      }
-
-      window.requestAnimationFrame(() => step(remaining - 1))
-    }
-
-    step(frames)
-  })
-}
-
-async function captureDisplayFrame(): Promise<ScreenshotDraft | null> {
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
-    throw new Error('当前环境不支持页面截图。')
-  }
-
-  const html2canvas = (await import('html2canvas')).default
-  const canvas = await html2canvas(document.body, {
-    backgroundColor: null,
-    logging: false,
-    useCORS: true,
-    scale: Math.min(window.devicePixelRatio || 1, 2),
-    x: window.scrollX,
-    y: window.scrollY,
-    width: window.innerWidth,
-    height: window.innerHeight,
-    scrollX: -window.scrollX,
-    scrollY: -window.scrollY,
-    windowWidth: document.documentElement.scrollWidth,
-    windowHeight: document.documentElement.scrollHeight,
-  })
-
-  return {
-    dataUrl: canvas.toDataURL('image/png'),
-    width: canvas.width,
-    height: canvas.height,
-    mimeType: 'image/png',
-    fileName: `forum-screenshot-${Date.now()}.png`,
-  }
-}
-
-export function TabChat({ agentId }: { agentId: string }) {
+export function TabChat({
+  agentId,
+  onCaptureScreenshot,
+  captureErrorMessage,
+}: {
+  agentId: string
+  onCaptureScreenshot?: () => Promise<File | null>
+  captureErrorMessage?: string | null
+}) {
   const [focusedSessionId, setFocusedSessionId] = useState<string | null>(null)
   const [sessionGovernanceMessage, setSessionGovernanceMessage] = useState<string | null>(null)
+  const [rulesOpen, setRulesOpen] = useState(false)
   const sessionAnchorRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const { data: agentData, isLoading: agentLoading } = useAgentProfile(agentId)
   const resolvedAgentAvatarSrc = agentData?.data ? resolveAgentAvatarSrc(agentData.data) : null
@@ -167,6 +129,10 @@ export function TabChat({ agentId }: { agentId: string }) {
   useEffect(() => {
     setSessionGovernanceMessage(null)
   }, [agentId, currentSession?.id])
+
+  useEffect(() => {
+    setRulesOpen(false)
+  }, [agentId])
 
   useEffect(() => {
     if (!resolvedVisibleFocusSessionId) return
@@ -220,7 +186,7 @@ export function TabChat({ agentId }: { agentId: string }) {
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full overflow-hidden" data-testid="private-chat-root">
+    <div className="relative flex h-full min-h-0 w-full overflow-hidden" data-testid="private-chat-root">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" data-testid="private-chat-main-area">
         {currentSession ? (
           <ChatTimeline
@@ -243,6 +209,9 @@ export function TabChat({ agentId }: { agentId: string }) {
             sessionGovernanceMessage={sessionGovernanceMessage}
             sessionAnchorRefs={sessionAnchorRefs}
             agentAvatarSrc={resolvedAgentAvatarSrc}
+            onCaptureScreenshot={onCaptureScreenshot}
+            captureErrorMessage={captureErrorMessage ?? null}
+            onOpenRules={() => setRulesOpen(true)}
           />
         ) : (
           <ChatEmptyState
@@ -250,9 +219,11 @@ export function TabChat({ agentId }: { agentId: string }) {
             onNewSession={handleNewSession}
             isCreating={createSession.isPending}
             errorMessage={createSession.isError ? createSession.error.message : null}
+            onOpenRules={() => setRulesOpen(true)}
           />
         )}
       </div>
+      <PrivateChatRulesPanel open={rulesOpen} onClose={() => setRulesOpen(false)} />
     </div>
   )
 }
@@ -273,6 +244,9 @@ function ChatTimeline({
   sessionGovernanceMessage,
   sessionAnchorRefs,
   agentAvatarSrc,
+  onCaptureScreenshot,
+  captureErrorMessage,
+  onOpenRules,
 }: {
   agentId: string
   agentName: string
@@ -289,9 +263,10 @@ function ChatTimeline({
   sessionGovernanceMessage: string | null
   sessionAnchorRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>
   agentAvatarSrc: string | null
+  onCaptureScreenshot?: () => Promise<File | null>
+  captureErrorMessage: string | null
+  onOpenRules: () => void
 }) {
-  const hideForCapture = useAgentModalStore((state) => state.hideForCapture)
-  const showAfterCapture = useAgentModalStore((state) => state.showAfterCapture)
   const { user } = useAuth()
   const guidanceEnabled = isGuidanceEnabled()
   const currentSessionId = currentSession?.id ?? ''
@@ -303,12 +278,9 @@ function ChatTimeline({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const screenshotResolverRef = useRef<((file: File | null) => void) | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeSearchResultIndex, setActiveSearchResultIndex] = useState(0)
-  const [screenshotDraft, setScreenshotDraft] = useState<ScreenshotDraft | null>(null)
-  const [screenshotError, setScreenshotError] = useState<string | null>(null)
   const currentUserAvatarSrc = user ? resolveUserAvatarSrc(user) : null
   const totalMessageCount = timelineItems.reduce(
     (sum, item) => sum + item.messages.length,
@@ -365,14 +337,6 @@ function ChatTimeline({
     messageRefs.current[activeSearchMessageId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, [activeSearchMessageId])
 
-  useEffect(() => {
-    return () => {
-      screenshotResolverRef.current?.(null)
-      screenshotResolverRef.current = null
-      showAfterCapture()
-    }
-  }, [showAfterCapture])
-
   const handleSend = async (input: SendPrivateMessageInput) => {
     await sendMessage.mutateAsync(input)
   }
@@ -384,30 +348,6 @@ function ChatTimeline({
 
   const handleEnd = async () => {
     await endSession.mutateAsync()
-  }
-
-  const handleCaptureScreenshot = async () => {
-    setScreenshotError(null)
-    hideForCapture()
-
-    try {
-      await waitForPaint(2)
-      const draft = await captureDisplayFrame()
-      if (!draft) return null
-
-      showAfterCapture()
-      await waitForPaint(1)
-
-      return await new Promise<File | null>((resolve) => {
-        screenshotResolverRef.current = resolve
-        setScreenshotDraft(draft)
-      })
-    } catch (error) {
-      setScreenshotError(error instanceof Error ? error.message : '截图失败，请稍后再试。')
-      return null
-    } finally {
-      showAfterCapture()
-    }
   }
 
   const handleCloseSearch = () => {
@@ -423,12 +363,6 @@ function ChatTimeline({
       if (nextIndex >= searchMatches.length) return 0
       return nextIndex
     })
-  }
-
-  const resolveScreenshotDraft = (file: File | null) => {
-    screenshotResolverRef.current?.(file)
-    screenshotResolverRef.current = null
-    setScreenshotDraft(null)
   }
 
   if (timelineLoading) {
@@ -529,9 +463,10 @@ function ChatTimeline({
         <MessageInput
           onSend={handleSend}
           onUploadAttachment={handleUploadAttachment}
-          onCaptureScreenshot={handleCaptureScreenshot}
+          onCaptureScreenshot={onCaptureScreenshot}
           onEndSession={handleEnd}
-          disabled={sendMessage.isPending || uploadAttachment.isPending}
+          draftStorageKey={`private-chat-draft:${agentId}:${currentSessionId}`}
+          disabled={sendMessage.isPending}
           sessionEnded={false}
           toolbar={({
             openFilePicker,
@@ -548,17 +483,21 @@ function ChatTimeline({
                   <EmojiMenu onSelectEmoji={insertText} disabled={disabled} />
                   <ToolbarIconButton
                     label="上传图片"
+                    blockedLabel="当前一次只能附一张图片，先移除现有图片后再上传。"
                     dataTestId="composer-attachment-trigger"
                     onClick={openFilePicker}
-                    disabled={hasAttachment || disabled}
+                    disabled={disabled}
+                    blocked={hasAttachment}
                   >
                     <ImageIcon className="size-3.5" />
                   </ToolbarIconButton>
                   <ToolbarIconButton
                     label="截图"
+                    blockedLabel="当前一次只能附一张图片，先移除现有图片后再截图。"
                     dataTestId="composer-screenshot-trigger"
                     onClick={captureScreenshot}
-                    disabled={hasAttachment || disabled}
+                    disabled={disabled}
+                    blocked={hasAttachment}
                   >
                     <Scissors className="size-3.5" />
                   </ToolbarIconButton>
@@ -590,6 +529,7 @@ function ChatTimeline({
                     onReportSession={onReportSession}
                     onEndSession={onEndSession}
                     ending={ending}
+                    onOpenRules={onOpenRules}
                   />
                 </div>
               </div>
@@ -600,7 +540,7 @@ function ChatTimeline({
         <EndedSessionFooter onNewSession={onNewSession} isCreating={isCreatingSession} />
       )}
 
-      {(sendMessage.isError || uploadAttachment.isError || endSession.isError || screenshotError) && (
+      {(sendMessage.isError || uploadAttachment.isError || endSession.isError || captureErrorMessage) && (
         <div className={"border-t border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"}>
           {sendMessage.isError
             ? sendMessage.error.message
@@ -608,16 +548,9 @@ function ChatTimeline({
               ? uploadAttachment.error.message
               : endSession.isError
                 ? endSession.error?.message
-                : screenshotError}
+                : captureErrorMessage}
         </div>
       )}
-
-      <ScreenshotCropper
-        draft={screenshotDraft}
-        open={Boolean(screenshotDraft)}
-        onCancel={() => resolveScreenshotDraft(null)}
-        onConfirm={(file) => resolveScreenshotDraft(file)}
-      />
     </div>
   )
 }
@@ -751,36 +684,40 @@ function ComposerMoreMenu({
   onReportSession,
   onEndSession,
   ending,
+  onOpenRules,
 }: {
   canReport: boolean
   isReporting: boolean
   onReportSession: () => void
   onEndSession: () => void
   ending: boolean
+  onOpenRules: () => void
 }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+
   return (
-    <DropdownMenu>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="更多操作"
-              title="更多操作"
-              data-testid="composer-more-trigger"
-              className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:bg-transparent hover:text-foreground focus-visible:ring-0"
-            >
-              <MoreHorizontalIcon className="size-3.5" />
-            </Button>
-          </DropdownMenuTrigger>
-        </TooltipTrigger>
-        <TooltipContent side="top" sideOffset={6}>更多操作</TooltipContent>
-      </Tooltip>
+    <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="更多操作"
+          data-testid="composer-more-trigger"
+          className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:bg-transparent hover:text-foreground focus-visible:ring-0"
+        >
+          <MoreHorizontalIcon className="size-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top" className="w-44">
-        <DropdownMenuItem asChild>
-          <Link to="/help/private-chat-verification">查看私聊规则</Link>
+        <DropdownMenuItem
+          onSelect={(event) => {
+            event.preventDefault()
+            setMenuOpen(false)
+            onOpenRules()
+          }}
+        >
+          查看私聊规则
         </DropdownMenuItem>
         <DropdownMenuItem
           disabled={!canReport || isReporting}
@@ -808,18 +745,24 @@ function ComposerMoreMenu({
 function ToolbarIconButton({
   children,
   label,
+  blockedLabel,
   dataTestId,
   onClick,
   disabled,
+  blocked,
   active,
 }: {
   children: React.ReactNode
   label: string
+  blockedLabel?: string
   dataTestId?: string
   onClick?: () => void
   disabled?: boolean
+  blocked?: boolean
   active?: boolean
 }) {
+  const currentLabel = blocked ? blockedLabel ?? label : label
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -827,21 +770,26 @@ function ToolbarIconButton({
           type="button"
           variant="ghost"
           size="icon"
-          aria-label={label}
-          title={label}
+          aria-label={currentLabel}
+          aria-disabled={blocked ? true : undefined}
+          title={currentLabel}
           data-testid={dataTestId}
           className={cn(
             "h-8 w-8 rounded-lg p-0 hover:bg-transparent focus-visible:ring-0",
-            active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+            active
+              ? "text-foreground"
+              : blocked
+                ? "cursor-not-allowed text-muted-foreground/30 opacity-70"
+                : "text-muted-foreground hover:text-foreground",
           )}
-          onClick={onClick}
+          onClick={blocked ? undefined : onClick}
           disabled={disabled}
         >
           {children}
         </Button>
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={6}>
-        {label}
+        {currentLabel}
       </TooltipContent>
     </Tooltip>
   )
@@ -852,11 +800,13 @@ function ChatEmptyState({
   onNewSession,
   isCreating,
   errorMessage,
+  onOpenRules,
 }: {
   agentName: string
   onNewSession: () => void
   isCreating: boolean
   errorMessage: string | null
+  onOpenRules: () => void
 }) {
   return (
     <div className={"flex flex-1 items-center justify-center px-5 py-10 text-center"} data-testid="private-chat-empty-state">
@@ -870,8 +820,8 @@ function ChatEmptyState({
           <Button className={"rounded-full px-5"} onClick={onNewSession} disabled={isCreating}>
             {isCreating ? '正在打开…' : '开始聊天'}
           </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/help/private-chat-verification">查看私聊规则</Link>
+          <Button variant="ghost" size="sm" onClick={onOpenRules}>
+            查看私聊规则
           </Button>
         </div>
       </div>
@@ -944,6 +894,52 @@ function EndedSessionFooter({
   )
 }
 
+function PrivateChatRulesPanel({
+  open,
+  onClose,
+}: {
+  open: boolean
+  onClose: () => void
+}) {
+  return (
+    <div
+      data-testid="private-chat-rules-panel"
+      className={cn(
+        'absolute inset-0 z-20 flex justify-end bg-background/16 backdrop-blur-[1px] transition-opacity duration-200',
+        open ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
+      )}
+    >
+      <div
+        className={cn(
+          'flex h-full w-full max-w-xl flex-col border-l bg-background shadow-2xl transition-transform duration-200',
+          open ? 'translate-x-0' : 'translate-x-full',
+        )}
+      >
+        <div className="flex items-center justify-between border-b px-5 py-4">
+          <div>
+            <div className="text-sm font-semibold text-foreground">私聊规则</div>
+            <div className="text-xs text-muted-foreground">不离开当前聊天窗口，直接查看私聊实名与治理说明。</div>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="关闭私聊规则"
+            title="关闭私聊规则"
+            onClick={onClose}
+            className="h-8 w-8 rounded-lg"
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          <PrivateChatVerificationContent compact />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function MessageBubble({
   message,
   agentName,
@@ -986,8 +982,8 @@ function MessageBubble({
         className={cn(
           "max-w-[80%] px-3 py-2 md:max-w-[70%]",
           isHuman
-            ? "rounded-md bg-[color:color-mix(in_oklab,var(--color-primary)_58%,black_28%)] text-primary-foreground"
-            : "rounded-md bg-muted/55 text-foreground",
+            ? "rounded-md bg-muted/65 text-foreground"
+            : "rounded-md bg-[color:color-mix(in_oklab,var(--color-primary)_62%,black_24%)] text-primary-foreground",
           searchMatched && "ring-1 ring-primary/15",
           searchActive && "ring-2 ring-primary/35",
         )}
@@ -1037,8 +1033,8 @@ function PrivateAttachmentPreview({
         className={cn(
           'flex min-h-28 w-full items-center justify-center rounded-lg border border-dashed px-4 py-6 text-center text-xs',
           compactTone === 'human'
-            ? 'border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground'
-            : 'border-border bg-background text-muted-foreground',
+            ? 'border-border bg-background text-foreground'
+            : 'border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground',
         )}
       >
         {attachment.placeholder?.label ?? '图片暂不可用'}
