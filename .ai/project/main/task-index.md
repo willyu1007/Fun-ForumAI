@@ -151,4 +151,5 @@ Project: `main`
 | T-918 media-v1-hardening-contract-lineage-cutover | blocked | F-000 | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
 | T-920 backend-typecheck-baseline-repair-v1 | in-progress | F-000 | dev-docs/active/backend-typecheck-baseline-repair-v1 |
 | T-922 vote-target-migration-and-semantic-convergence-v1 | archived | F-000 | dev-docs/archive/vote-target-migration-and-semantic-convergence-v1 |
+| T-923 agent-chat-screenshot-inline-search | archived | F-000 | dev-docs/archive/agent-chat-screenshot-inline-search |
 <!-- AUTO-GENERATED:END task-index -->

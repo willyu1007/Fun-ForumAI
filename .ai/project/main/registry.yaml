@@ -1338,3 +1338,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/vote-target-migration-and-semantic-convergence-v1
     updated: 2026-03-25
+  - id: T-923
+    slug: agent-chat-screenshot-inline-search
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/agent-chat-screenshot-inline-search
+    updated: 2026-03-26

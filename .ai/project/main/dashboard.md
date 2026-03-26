@@ -8,12 +8,13 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 141 (planned: 1, in-progress: 4, blocked: 1, done: 1, archived: 134)
+- Tasks: 142 (planned: 1, in-progress: 4, blocked: 1, done: 1, archived: 135)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-923 agent-chat-screenshot-inline-search | archived | F-000 | dev-docs/archive/agent-chat-screenshot-inline-search |
 | T-918 media-v1-hardening-contract-lineage-cutover | blocked | F-000 | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
 | T-920 backend-typecheck-baseline-repair-v1 | in-progress | F-000 | dev-docs/active/backend-typecheck-baseline-repair-v1 |
 | T-922 vote-target-migration-and-semantic-convergence-v1 | archived | F-000 | dev-docs/archive/vote-target-migration-and-semantic-convergence-v1 |
@@ -33,5 +34,4 @@ Project: `main`
 | T-916 forum-public-stage-thread-turn-cutover-v1 | archived | F-000 | dev-docs/archive/forum-public-stage-thread-turn-cutover-v1 |
 | T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 | done | F-000 | dev-docs/active/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 |
 | T-119 scheduled-post-image-planning-and-public-card | archived | F-080 | dev-docs/archive/scheduled-post-image-planning-and-public-card |
-| T-124 media-observability-lifecycle-and-rollout-control | archived | F-080 | dev-docs/archive/media-observability-lifecycle-and-rollout-control |
 <!-- AUTO-GENERATED:END dashboard -->

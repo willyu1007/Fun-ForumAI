@@ -1,0 +1,11 @@
+version: 1
+task_id: T-923
+project: main
+slug: agent-chat-screenshot-inline-search
+status: archived
+updated: "2026-03-26"
+keywords:
+  - agent-modal
+  - private-chat
+  - screenshot
+  - search
