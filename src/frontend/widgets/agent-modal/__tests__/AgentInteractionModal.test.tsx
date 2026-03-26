@@ -12,6 +12,12 @@ const renderCounts = vi.hoisted(() => ({
   social: 0,
 }))
 
+const useAgentProfileMock = vi.fn()
+
+vi.mock('@/api/hooks', () => ({
+  useAgentProfile: (agentId: string) => useAgentProfileMock(agentId),
+}))
+
 vi.mock('@/components/ui/dialog', async () => {
   const React = await vi.importActual<typeof import('react')>('react')
 
@@ -21,8 +27,9 @@ vi.mock('@/components/ui/dialog', async () => {
       HTMLDivElement,
       ComponentProps<'div'> & {
         showCloseButton?: boolean
+        hideOverlay?: boolean
       }
-    >(({ children, showCloseButton: _showCloseButton, ...props }, ref) => (
+    >(({ children, showCloseButton: _showCloseButton, hideOverlay: _hideOverlay, ...props }, ref) => (
       <div ref={ref} {...props}>
         {children}
       </div>
@@ -92,6 +99,14 @@ describe('AgentInteractionModal geometry updates', () => {
     renderCounts.moments = 0
     renderCounts.history = 0
     renderCounts.social = 0
+    useAgentProfileMock.mockImplementation((agentId: string) => ({
+      data: {
+        data: {
+          id: agentId,
+          display_name: agentId === 'agent-1' ? '合规助手' : '智能体',
+        },
+      },
+    }))
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth })
     Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalInnerHeight })
     ;(HTMLElement.prototype as { setPointerCapture?: (pointerId: number) => void }).setPointerCapture = vi.fn()
@@ -101,6 +116,7 @@ describe('AgentInteractionModal geometry updates', () => {
     act(() => {
       useAgentModalStore.setState({
         isOpen: false,
+        isCaptureHidden: false,
         activeAgentId: null,
         viewMode: 'readonly',
         activeTab: 'intro',
@@ -115,6 +131,7 @@ describe('AgentInteractionModal geometry updates', () => {
     act(() => {
       useAgentModalStore.setState({
         isOpen: true,
+        isCaptureHidden: false,
         activeAgentId: 'agent-1',
         viewMode: 'manage',
         activeTab: 'intro',
@@ -130,6 +147,7 @@ describe('AgentInteractionModal geometry updates', () => {
     act(() => {
       useAgentModalStore.setState({
         isOpen: true,
+        isCaptureHidden: false,
       })
     })
   }
@@ -178,7 +196,7 @@ describe('AgentInteractionModal geometry updates', () => {
     expect(modal.style.width).toBe('832px')
   })
 
-  it('restores the modal to its default centered size from the title-bar shortcut', () => {
+  it('restores the modal to the default size without changing its anchored position', () => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1600 })
     Object.defineProperty(window, 'innerHeight', { configurable: true, value: 1000 })
 
@@ -186,6 +204,7 @@ describe('AgentInteractionModal geometry updates', () => {
 
     const modal = screen.getByTestId('agent-modal-content')
     const resizeHandle = screen.getByTestId('agent-modal-resize-se-handle')
+    const dragHandle = screen.getByTestId('agent-modal-drag-handle')
 
     act(() => {
       fireEvent.pointerDown(resizeHandle, { pointerId: 1, clientX: 400, clientY: 320 })
@@ -194,10 +213,16 @@ describe('AgentInteractionModal geometry updates', () => {
     })
 
     act(() => {
+      fireEvent.pointerDown(dragHandle, { pointerId: 2, clientX: 320, clientY: 160 })
+      fireEvent.pointerMove(window, { pointerId: 2, clientX: 420, clientY: 160 })
+      fireEvent.pointerUp(window, { pointerId: 2 })
+    })
+
+    act(() => {
       fireEvent.click(screen.getByTestId('agent-modal-restore-button'))
     })
 
-    expect(modal.style.transform).toBe('translate3d(280px, 75px, 0)')
+    expect(modal.style.transform).toBe('translate3d(380px, 28px, 0)')
     expect(modal.style.width).toBe('1040px')
     expect(modal.style.height).toBe('850px')
   })
@@ -226,6 +251,37 @@ describe('AgentInteractionModal geometry updates', () => {
     expect(modal.style.height).toBe('850px')
   })
 
+  it('keeps the restored default size inside the viewport when the window was shrunk near the right edge', () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1600 })
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 1000 })
+
+    renderOpenModal()
+
+    const modal = screen.getByTestId('agent-modal-content')
+    const eastHandle = screen.getByTestId('agent-modal-resize-e-handle')
+    const dragHandle = screen.getByTestId('agent-modal-drag-handle')
+
+    act(() => {
+      fireEvent.pointerDown(eastHandle, { pointerId: 1, clientX: 1320, clientY: 220 })
+      fireEvent.pointerMove(window, { pointerId: 1, clientX: 1112, clientY: 220 })
+      fireEvent.pointerUp(window, { pointerId: 1 })
+    })
+
+    act(() => {
+      fireEvent.pointerDown(dragHandle, { pointerId: 2, clientX: 500, clientY: 140 })
+      fireEvent.pointerMove(window, { pointerId: 2, clientX: 1000, clientY: 140 })
+      fireEvent.pointerUp(window, { pointerId: 2 })
+    })
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('agent-modal-restore-button'))
+    })
+
+    expect(modal.style.transform).toBe('translate3d(548px, 75px, 0)')
+    expect(modal.style.width).toBe('1040px')
+    expect(modal.style.height).toBe('850px')
+  })
+
   it('closes the modal from the title-bar shortcut', () => {
     renderOpenModal()
 
@@ -234,6 +290,31 @@ describe('AgentInteractionModal geometry updates', () => {
     })
 
     expect(screen.queryByTestId('agent-modal-content')).toBeNull()
+  })
+
+  it('keeps the modal mounted but visually hidden during capture mode', () => {
+    renderOpenModal()
+
+    act(() => {
+      useAgentModalStore.getState().hideForCapture()
+    })
+
+    const modal = screen.getByTestId('agent-modal-content')
+    expect(modal.className).toContain('pointer-events-none')
+    expect(modal.className).toContain('invisible')
+  })
+
+  it('keeps the close signal at the far right of the title-bar controls', () => {
+    renderOpenModal()
+
+    const centerButton = screen.getByTestId('agent-modal-center-button')
+    const restoreButton = screen.getByTestId('agent-modal-restore-button')
+    const closeButton = screen.getByTestId('agent-modal-close-button')
+    const controls = closeButton.parentElement
+
+    expect(controls?.firstElementChild).toBe(centerButton)
+    expect(centerButton.nextElementSibling).toBe(restoreButton)
+    expect(controls?.lastElementChild).toBe(closeButton)
   })
 
   it('resets the create wizard when the parent modal closes and reopens', () => {

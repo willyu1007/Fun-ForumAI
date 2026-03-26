@@ -22,7 +22,7 @@ import {
 import { queryKeys } from '@/api/query-keys'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { RunHistoryTable } from '../RunHistoryTable'
@@ -48,6 +48,8 @@ import {
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import type { GuidanceItemModule } from '@/api/types'
 import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redirect'
+import { PresetAvatarDialog } from '@/shared/components/PresetAvatarDialog'
+import { AGENT_AVATAR_PRESETS, resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 
 const STATUS_TONES: Record<string, StatusTone> = {
   ACTIVE: 'success',
@@ -81,6 +83,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
   const { viewMode, setActiveTab, introSection, sourceSessionId } = useAgentModalStore()
   const [adminShadowError, setAdminShadowError] = useState<string | null>(null)
   const [showManagementDetails, setShowManagementDetails] = useState(false)
+  const [avatarDialogOpen, setAvatarDialogOpen] = useState(false)
   const { isAuthenticated, user } = useAuth()
   const [tab, setTab] = useState<TabId>(introSection ?? 'overview')
   const { data, isLoading, error } = useAgentProfile(agentId)
@@ -330,6 +333,11 @@ export function TabIntro({ agentId }: { agentId: string }) {
             <CardHeader className={"pb-3"}>
               <div className="flex items-center gap-3">
                 <Avatar className={"h-12 w-12 border-2 border-primary/20"}>
+                  <AvatarImage
+                    src={resolveAgentAvatarSrc(safeAgent)}
+                    alt={safeAgent.display_name}
+                    className="object-cover"
+                  />
                   <AvatarFallback className={"bg-primary/10 font-semibold text-primary"}>
                     {initials}
                   </AvatarFallback>
@@ -347,6 +355,17 @@ export function TabIntro({ agentId }: { agentId: string }) {
                       <Badge variant="outline">{safeAgent.home_voice_line_label}</Badge>
                     )}
                   </div>
+                  {(isOwner || isAdmin) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="mt-1 h-auto px-0 text-xs text-muted-foreground hover:bg-transparent hover:text-foreground"
+                      onClick={() => setAvatarDialogOpen(true)}
+                    >
+                      设置头像
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardHeader>
@@ -721,6 +740,19 @@ export function TabIntro({ agentId }: { agentId: string }) {
             </section>
           )}
         </div>
+
+        {(isOwner || isAdmin) && (
+          <PresetAvatarDialog
+            open={avatarDialogOpen}
+            onOpenChange={setAvatarDialogOpen}
+            title="设置智能体头像"
+            description="先开放预设头像浏览和上传占位。保存到智能体资料的接口后续再接。"
+            currentLabel={safeAgent.display_name}
+            fallbackLabel={initials}
+            previewSrc={resolveAgentAvatarSrc(safeAgent)}
+            presets={AGENT_AVATAR_PRESETS}
+          />
+        )}
       </DetailPageLayout>
     </div>
   )

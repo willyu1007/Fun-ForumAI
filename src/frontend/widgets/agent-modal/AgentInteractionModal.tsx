@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useAgentProfile } from '@/api/hooks'
 import { useAgentModalStore, type AgentModalTab } from '@/shared/stores/agent-modal-store'
 import { Button } from '@/components/ui/button'
 import {
@@ -9,7 +10,6 @@ import {
   History,
   Users,
   Activity,
-  GripVertical,
   LocateFixed,
   Plus,
   Square,
@@ -104,6 +104,18 @@ function getCenteredRect(currentRect: ModalRect, viewMode: 'manage' | 'readonly'
       ...currentRect,
       x: Math.round((vw - currentRect.w) / 2),
       y: Math.round((vh - currentRect.h) / 2),
+    },
+    viewMode,
+  )
+}
+
+function getDefaultSizedRect(currentRect: ModalRect, viewMode: 'manage' | 'readonly') {
+  const defaultRect = getDefaultRect(viewMode)
+  return clampRectToViewport(
+    {
+      ...currentRect,
+      w: defaultRect.w,
+      h: defaultRect.h,
     },
     viewMode,
   )
@@ -255,22 +267,39 @@ function useModalGeometry(
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }, [])
 
-  const restoreDefault = useCallback(() => {
-    updateRect(getDefaultRect(viewMode), true)
+  const restoreDefaultSize = useCallback(() => {
+    updateRect(getDefaultSizedRect(rectRef.current, viewMode), true)
   }, [updateRect, viewMode])
 
   const centerCurrent = useCallback(() => {
     updateRect(getCenteredRect(rectRef.current, viewMode), true)
   }, [updateRect, viewMode])
 
-  return { onPointerDown, rect: committedRect, restoreDefault, centerCurrent }
+  return { onPointerDown, rect: committedRect, restoreDefaultSize, centerCurrent, flushRect }
 }
 
 export function AgentInteractionModal() {
-  const { isOpen, closeModal, activeTab, setActiveTab, activeAgentId, setActiveAgent, viewMode } = useAgentModalStore()
+  const {
+    isOpen,
+    isCaptureHidden,
+    closeModal,
+    activeTab,
+    setActiveTab,
+    activeAgentId,
+    setActiveAgent,
+    viewMode,
+  } = useAgentModalStore()
   const contentRef = useRef<HTMLDivElement | null>(null)
   const [wizardOpen, setWizardOpen] = useState(false)
-  const { onPointerDown, rect, restoreDefault, centerCurrent } = useModalGeometry(isOpen, viewMode, contentRef)
+  const { onPointerDown, restoreDefaultSize, centerCurrent, flushRect } = useModalGeometry(isOpen, viewMode, contentRef)
+  const { data: activeAgentData } = useAgentProfile(activeAgentId ?? '')
+  const headerAgentName = activeAgentData?.data?.display_name ?? ''
+
+  const setContentNode = useCallback((node: HTMLDivElement | null) => {
+    contentRef.current = node
+    if (!node) return
+    flushRect()
+  }, [flushRect])
 
   const handleModalClose = useCallback(() => {
     setWizardOpen(false)
@@ -290,7 +319,7 @@ export function AgentInteractionModal() {
   const showSidebar = viewMode === 'manage'
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleModalClose()}>
+    <Dialog open={isOpen} modal={!isCaptureHidden} onOpenChange={(open) => !open && handleModalClose()}>
       <AgentCreateWizard
         open={wizardOpen}
         onClose={() => setWizardOpen(false)}
@@ -300,18 +329,15 @@ export function AgentInteractionModal() {
         }}
       />
       <DialogContent
-        ref={contentRef}
+        ref={setContentNode}
         data-size="full"
         data-testid="agent-modal-content"
         showCloseButton={false}
-        style={{
-          animation: 'none',
-          transition: 'none',
-          transform: `translate3d(${rect.x}px, ${rect.y}px, 0)`,
-          width: `${rect.w}px`,
-          height: `${rect.h}px`,
-        }}
-        className="top-0 left-0 w-auto h-auto translate-x-0 translate-y-0 max-w-none gap-0 overflow-hidden p-0 sm:max-w-none flex flex-col will-change-transform"
+        hideOverlay={isCaptureHidden}
+        className={cn(
+          "top-0 left-0 h-auto w-auto max-w-none translate-x-0 translate-y-0 animate-none gap-0 overflow-hidden p-0 transition-none sm:max-w-none flex flex-col will-change-transform",
+          isCaptureHidden && "pointer-events-none invisible opacity-0",
+        )}
       >
         <DialogTitle className="sr-only">Agent Interaction</DialogTitle>
 
@@ -342,34 +368,16 @@ export function AgentInteractionModal() {
             </div>
           )}
 
-          <div className="relative flex-1 bg-background/75 backdrop-blur-xl">
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <GripVertical className="h-4 w-4 rotate-90 text-muted-foreground/50" />
+          <div className="flex flex-1 items-center bg-background/75 pl-5 pr-4 backdrop-blur-xl">
+            <div className="min-w-0 flex-1">
+              {headerAgentName && (
+                <div className="truncate text-sm font-semibold text-foreground">
+                  {headerAgentName}
+                </div>
+              )}
             </div>
 
-            <div className="absolute inset-y-0 right-4 z-20 flex items-center gap-2">
-              <button
-                type="button"
-                aria-label="关闭弹窗"
-                title="关闭弹窗"
-                data-testid="agent-modal-close-button"
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={handleModalClose}
-                className="group flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-400/90 text-rose-950 transition-transform hover:scale-105 hover:bg-rose-500"
-              >
-                <X className="h-[8px] w-[8px] opacity-0 transition-opacity group-hover:opacity-75" strokeWidth={2.5} />
-              </button>
-              <button
-                type="button"
-                aria-label="恢复默认尺寸"
-                title="恢复默认尺寸"
-                data-testid="agent-modal-restore-button"
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={restoreDefault}
-                className="group flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-400/90 text-amber-950 transition-transform hover:scale-105 hover:bg-amber-500"
-              >
-                <Square className="h-[7px] w-[7px] opacity-0 transition-opacity group-hover:opacity-70" strokeWidth={2.5} />
-              </button>
+            <div className="z-20 flex items-center gap-2">
               <button
                 type="button"
                 aria-label="视觉居中"
@@ -377,9 +385,31 @@ export function AgentInteractionModal() {
                 data-testid="agent-modal-center-button"
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={centerCurrent}
-                className="group flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-400/90 text-emerald-950 transition-transform hover:scale-105 hover:bg-emerald-500"
+                className="group flex h-3.5 w-3.5 items-center justify-center rounded-full bg-success text-success-foreground transition-transform hover:scale-105 hover:bg-success/90"
               >
                 <LocateFixed className="h-[8px] w-[8px] opacity-0 transition-opacity group-hover:opacity-75" strokeWidth={2.25} />
+              </button>
+              <button
+                type="button"
+                aria-label="恢复默认尺寸"
+                title="恢复默认尺寸"
+                data-testid="agent-modal-restore-button"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={restoreDefaultSize}
+                className="group flex h-3.5 w-3.5 items-center justify-center rounded-full bg-warning text-warning-foreground transition-transform hover:scale-105 hover:bg-warning/90"
+              >
+                <Square className="h-[7px] w-[7px] opacity-0 transition-opacity group-hover:opacity-70" strokeWidth={2.5} />
+              </button>
+              <button
+                type="button"
+                aria-label="关闭弹窗"
+                title="关闭弹窗"
+                data-testid="agent-modal-close-button"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={handleModalClose}
+                className="group flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-destructive-foreground transition-transform hover:scale-105 hover:bg-destructive/90"
+              >
+                <X className="h-[8px] w-[8px] opacity-0 transition-opacity group-hover:opacity-75" strokeWidth={2.5} />
               </button>
             </div>
           </div>

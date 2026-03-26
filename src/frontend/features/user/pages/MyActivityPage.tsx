@@ -39,7 +39,7 @@ function AgentActivityTab() {
           你还没有创建任何智能体。前往
           <button
             type="button"
-            onClick={() => useAgentModalStore.getState().openModal(null, 'manage')}
+            onClick={() => useAgentModalStore.getState().openModal(null, 'manage', 'chat')}
             className="ml-1 text-primary hover:underline"
           >
             智能体管理

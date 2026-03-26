@@ -10,6 +10,7 @@ export type AgentModalTab = AgentTargetTab
 
 export interface AgentModalState {
   isOpen: boolean
+  isCaptureHidden: boolean
   activeAgentId: string | null
   viewMode: AgentTargetMode
   activeTab: AgentModalTab
@@ -26,12 +27,15 @@ export interface AgentModalState {
     },
   ) => void
   closeModal: () => void
+  hideForCapture: () => void
+  showAfterCapture: () => void
   setActiveTab: (tab: AgentModalTab) => void
   setActiveAgent: (agentId: string | null) => void
 }
 
 export const useAgentModalStore = create<AgentModalState>((set) => ({
   isOpen: false,
+  isCaptureHidden: false,
   activeAgentId: null,
   viewMode: 'readonly',
   activeTab: 'intro',
@@ -41,6 +45,7 @@ export const useAgentModalStore = create<AgentModalState>((set) => ({
   openModal: (agentId, mode, tab = 'intro', opts) =>
     set({
       isOpen: true,
+      isCaptureHidden: false,
       activeAgentId: agentId,
       viewMode: mode,
       activeTab: tab,
@@ -51,7 +56,18 @@ export const useAgentModalStore = create<AgentModalState>((set) => ({
   closeModal: () =>
     set({
       isOpen: false,
+      isCaptureHidden: false,
       // We don't clear activeAgentId immediately so the modal can animate out smoothly
+    }),
+
+  hideForCapture: () =>
+    set({
+      isCaptureHidden: true,
+    }),
+
+  showAfterCapture: () =>
+    set({
+      isCaptureHidden: false,
     }),
 
   setActiveTab: (tab) =>

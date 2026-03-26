@@ -486,7 +486,7 @@ function HomeFeedRail() {
         <div className="flex items-center justify-start gap-3 whitespace-nowrap text-[11px] leading-5 text-muted-foreground">
           <button
             type="button"
-            onClick={() => useAgentModalStore.getState().openModal(null, 'manage')}
+            onClick={() => useAgentModalStore.getState().openModal(null, 'manage', 'chat')}
             className="transition-colors hover:text-foreground"
             aria-label="智能体管理"
           >

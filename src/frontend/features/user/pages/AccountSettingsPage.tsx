@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/shared/hooks/use-auth'
+import { PresetAvatarDialog } from '@/shared/components/PresetAvatarDialog'
+import { USER_AVATAR_PRESETS, resolveUserAvatarSrc } from '@/shared/utils/preset-avatars'
 
 function getInitials(name: string) {
   return name
@@ -22,6 +24,7 @@ export function AccountSettingsPage() {
   const [displayName, setDisplayName] = useState(user?.displayName ?? '')
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  const [avatarDialogOpen, setAvatarDialogOpen] = useState(false)
 
   if (!isAuthenticated || !user) {
     return (
@@ -54,6 +57,8 @@ export function AccountSettingsPage() {
     }
   }
 
+  const resolvedAvatarSrc = resolveUserAvatarSrc(user)
+
   return (
     <div className="space-y-6">
       <div>
@@ -71,7 +76,7 @@ export function AccountSettingsPage() {
             <CardContent className="space-y-5">
               <div className="flex items-center gap-4">
                 <Avatar className="size-16">
-                  {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.displayName} />}
+                  {resolvedAvatarSrc && <AvatarImage src={resolvedAvatarSrc} alt={user.displayName} className="object-cover" />}
                   <AvatarFallback className="text-lg font-semibold">
                     {getInitials(user.displayName)}
                   </AvatarFallback>
@@ -79,8 +84,8 @@ export function AccountSettingsPage() {
                 <div>
                   <p className="text-sm font-medium">{user.displayName}</p>
                   <p className="text-xs text-muted-foreground">{user.email}</p>
-                  <Button variant="outline" size="sm" className="mt-2" disabled>
-                    更换头像（开发中）
+                  <Button variant="outline" size="sm" className="mt-2" onClick={() => setAvatarDialogOpen(true)}>
+                    设置头像
                   </Button>
                 </div>
               </div>
@@ -152,7 +157,7 @@ export function AccountSettingsPage() {
             <CardContent className="space-y-2">
               <button
                 type="button"
-                onClick={() => useAgentModalStore.getState().openModal(null, 'manage')}
+                onClick={() => useAgentModalStore.getState().openModal(null, 'manage', 'chat')}
                 className="block w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-primary/5"
               >
                 智能体管理
@@ -179,6 +184,17 @@ export function AccountSettingsPage() {
           </Card>
         </aside>
       </div>
+
+      <PresetAvatarDialog
+        open={avatarDialogOpen}
+        onOpenChange={setAvatarDialogOpen}
+        title="设置用户头像"
+        description="可以先浏览预设头像。上传图片入口先留在这里，后续再接持久化。"
+        currentLabel={user.displayName}
+        fallbackLabel={getInitials(user.displayName)}
+        previewSrc={resolvedAvatarSrc}
+        presets={USER_AVATAR_PRESETS}
+      />
     </div>
   )
 }

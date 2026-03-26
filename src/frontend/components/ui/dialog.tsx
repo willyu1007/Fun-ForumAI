@@ -36,11 +36,12 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentProps<typeof DialogPrimitive.Content> & {
     showCloseButton?: boolean
+    hideOverlay?: boolean
   }
->(({ className, children, showCloseButton = true, ...props }, ref) => {
+>(({ className, children, showCloseButton = true, hideOverlay = false, ...props }, ref) => {
   return (
     <DialogPortal data-slot="dialog-portal">
-      <DialogOverlay />
+      <DialogOverlay className={hideOverlay ? 'pointer-events-none opacity-0' : undefined} />
       <DialogPrimitive.Content
         ref={ref}
         data-ui="modal"

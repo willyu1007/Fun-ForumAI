@@ -1,8 +1,9 @@
 import { useMyAgents } from '@/api/hooks/user'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { getInitials } from '@/shared/utils/get-initials'
+import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 
 type AgentListSidebarProps = {
   className?: string
@@ -33,6 +34,11 @@ export function AgentListSidebar({ className }: AgentListSidebarProps) {
               )}
             >
               <Avatar className="h-10 w-10 shrink-0">
+                <AvatarImage
+                  src={resolveAgentAvatarSrc(agent)}
+                  alt={agent.display_name}
+                  className="object-cover"
+                />
                 <AvatarFallback className={cn(
                   'text-xs font-medium',
                   activeAgentId === agent.id ? 'bg-primary/20 text-primary' : 'bg-muted'

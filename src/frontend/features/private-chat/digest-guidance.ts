@@ -14,7 +14,7 @@ export function getPrivateDigestThresholdHint(messageCount: number): string | nu
     return null
   }
 
-  return `当前共 ${messageCount} 条消息；至少聊到 ${PRIVATE_DIGEST_MIN_MESSAGES} 条后再结束，才会留下可查看的私聊回执。`
+  return `现在已经聊了 ${messageCount} 条；至少到 ${PRIVATE_DIGEST_MIN_MESSAGES} 条再结束，这段聊天才会留下可查看的整理摘要。`
 }
 
 export function getPrivateDigestFallbackNotice(input: {
@@ -24,22 +24,22 @@ export function getPrivateDigestFallbackNotice(input: {
   if (input.digestStatus === 'FAILED') {
     return {
       tone: 'danger',
-      title: '这次私聊的回执生成失败了',
-      body: '摘要生成没有完成。稍后再回来看看，或者重新开一轮私聊。',
+      title: '这段聊天暂时还没整理好',
+      body: '摘要整理没有完成。稍后再回来看看，或者重新开一段新的聊天。',
     }
   }
 
   if (input.digestStatus === 'SKIPPED' || input.messageCount < PRIVATE_DIGEST_MIN_MESSAGES) {
     return {
       tone: 'warning',
-      title: '这次私聊还没聊到能留下回执',
-      body: `这轮对话目前只有 ${input.messageCount} 条消息，未达到留下回执的门槛（至少 ${PRIVATE_DIGEST_MIN_MESSAGES} 条），所以这次结束后不会生成记忆摘要。`,
+      title: '这段聊天还不够长，暂时不会留下摘要',
+      body: `这轮对话目前只有 ${input.messageCount} 条消息，还没到留下摘要的门槛（至少 ${PRIVATE_DIGEST_MIN_MESSAGES} 条）。`,
     }
   }
 
   return {
     tone: 'muted',
-    title: '这次私聊正在沉淀',
-    body: '记忆摘要正在生成中，稍后你会看到它留下了什么痕迹。',
+    title: '这段聊天正在整理中',
+    body: '过一会儿再回来，你会看到这段聊天留下的摘要。',
   }
 }

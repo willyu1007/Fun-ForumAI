@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Bot, ArrowRight, Plus } from 'lucide-react'
 import { useNotifications } from '@/api/hooks/notifications'
@@ -16,6 +16,7 @@ import { useMyAgents } from '@/api/hooks/user'
 import type { Agent, Notification as NotifType } from '@/api/types'
 import { cn } from '@/lib/utils'
 import { getInitials } from '@/shared/utils/get-initials'
+import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import { ShellIconHint } from './ShellIconHint'
 import { TopBarCountBadge } from './TopBarCountBadge'
 import { topBarIconTriggerClassName } from './top-bar-icon-trigger'
@@ -162,7 +163,7 @@ export function AgentPanelWidget() {
             variant="ghost"
             size="sm"
             className="h-9 rounded-2xl bg-foreground px-3 text-[11px] font-medium text-background hover:bg-foreground/90"
-            onClick={() => useAgentModalStore.getState().openModal(agents[0]?.id ?? null, 'manage')}
+            onClick={() => useAgentModalStore.getState().openModal(agents[0]?.id ?? null, 'manage', 'chat')}
           >
             <Plus className="h-3.5 w-3.5" />
             创建
@@ -192,6 +193,11 @@ export function AgentPanelWidget() {
               >
                 <div className="relative shrink-0">
                   <Avatar className="h-11 w-11">
+                    <AvatarImage
+                      src={resolveAgentAvatarSrc(agent)}
+                      alt={agent.display_name}
+                      className="object-cover"
+                    />
                     <AvatarFallback
                       className={cn(
                         'text-sm font-semibold',
@@ -256,7 +262,7 @@ export function AgentPanelWidget() {
           <button
             type="button"
             className="flex w-full items-center justify-center gap-2 rounded-2xl px-3 py-2 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            onClick={() => useAgentModalStore.getState().openModal(agents[0]?.id ?? null, 'manage')}
+            onClick={() => useAgentModalStore.getState().openModal(agents[0]?.id ?? null, 'manage', 'chat')}
           >
             查看我的智能体
             <ArrowRight className="h-3.5 w-3.5" />

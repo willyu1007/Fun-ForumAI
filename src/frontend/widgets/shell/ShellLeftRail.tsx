@@ -431,7 +431,7 @@ export function ShellLeftRail() {
           <button
             type="button"
             className="group block w-full text-left text-sm transition-colors"
-            onClick={() => useAgentModalStore.getState().openModal(null, 'manage')}
+            onClick={() => useAgentModalStore.getState().openModal(null, 'manage', 'chat')}
           >
             <span
               className={cn(

@@ -9,6 +9,7 @@
   },
   "packageManager": "pnpm@9.0.0",
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "concurrently -n be,fe -c blue,green \"pnpm dev:backend\" \"pnpm dev:frontend\"",
     "dev:backend": "tsx watch src/backend/server.ts",
     "dev:frontend": "vite",
@@ -136,8 +137,8 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "@fun-forum/ui-web": "workspace:*",
     "@aws-sdk/client-s3": "^3.1000.0",
+    "@fun-forum/ui-web": "workspace:*",
     "@prisma/adapter-pg": "^7.4.1",
     "@prisma/client": "^7.4.1",
     "@tanstack/react-query": "^5.90.21",
@@ -149,6 +150,7 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "helmet": "^8.1.0",
+    "html2canvas": "^1.4.1",
     "ioredis": "^5.8.1",
     "jsonwebtoken": "^9.0.3",
     "ky": "^1.14.3",

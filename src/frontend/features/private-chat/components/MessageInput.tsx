@@ -1,16 +1,23 @@
-import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import type { PrivateMessageAttachment, SendPrivateMessageInput } from '@/api/types'
-import { getPrivateDigestThresholdHint } from '../digest-guidance'
 
 interface MessageInputProps {
   onSend: (input: SendPrivateMessageInput) => Promise<void>
   onUploadAttachment: (file: File) => Promise<PrivateMessageAttachment>
+  onCaptureScreenshot?: () => Promise<File | null>
   onEndSession: () => Promise<void>
   disabled?: boolean
   sessionEnded?: boolean
-  messageCount?: number
+  toolbar?: (context: {
+    openFilePicker: () => void
+    captureScreenshot: () => void
+    insertText: (value: string) => void
+    disabled: boolean
+    hasAttachment: boolean
+    onEndSession: () => void
+    ending: boolean
+  }) => ReactNode
 }
 
 interface ComposerAttachmentState {
@@ -24,10 +31,11 @@ interface ComposerAttachmentState {
 export function MessageInput({
   onSend,
   onUploadAttachment,
+  onCaptureScreenshot,
   onEndSession,
   disabled,
   sessionEnded,
-  messageCount = 0,
+  toolbar,
 }: MessageInputProps) {
   const messageInputId = 'private-chat-message-input'
   const fileInputId = 'private-chat-attachment-input'
@@ -36,7 +44,6 @@ export function MessageInput({
   const [attachment, setAttachment] = useState<ComposerAttachmentState | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const digestHint = sessionEnded ? null : getPrivateDigestThresholdHint(messageCount)
 
   useEffect(() => {
     return () => {
@@ -103,6 +110,35 @@ export function MessageInput({
     }
   }
 
+  const insertTextAtCursor = (value: string) => {
+    const textarea = textareaRef.current
+    if (!textarea) {
+      setText((previous) => `${previous}${value}`)
+      return
+    }
+
+    const selectionStart = textarea.selectionStart ?? text.length
+    const selectionEnd = textarea.selectionEnd ?? text.length
+    const nextValue = `${text.slice(0, selectionStart)}${value}${text.slice(selectionEnd)}`
+    setText(nextValue)
+
+    requestAnimationFrame(() => {
+      textarea.focus()
+      const nextCaret = selectionStart + value.length
+      textarea.setSelectionRange(nextCaret, nextCaret)
+    })
+  }
+
+  const handleCaptureScreenshot = async () => {
+    if (!onCaptureScreenshot || disabled) return
+    const file = await onCaptureScreenshot()
+    if (!file) return
+    if (attachment?.preview_url) {
+      URL.revokeObjectURL(attachment.preview_url)
+    }
+    await uploadAttachment(file)
+  }
+
   const handleSend = async () => {
     if (!canSend) return
     await onSend({
@@ -136,8 +172,8 @@ export function MessageInput({
   if (sessionEnded) return null
 
   return (
-    <div className={"border-t bg-background px-4 py-3"}>
-      <div className={"mx-auto max-w-2xl"}>
+    <div className={"border-t bg-background px-4 py-2"}>
+      <div className={"mx-auto max-w-3xl"}>
         <input
           id={fileInputId}
           name="private_chat_attachment"
@@ -151,7 +187,7 @@ export function MessageInput({
         />
 
         {attachment && (
-          <div className="mb-3 rounded-xl border bg-muted/30 p-3">
+          <div className="mb-2 border-b border-border/60 pb-2">
             <div className="flex items-start gap-3">
               <img
                 src={attachment.preview_url}
@@ -165,7 +201,7 @@ export function MessageInput({
                     ? '上传中...'
                     : attachment.error
                       ? attachment.error
-                      : '图片已就绪，发送后会进入当前私聊与后续 private memory。'}
+                      : '图片已经准备好了，发送后会出现在这段聊天里。'}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {attachment.error && (
@@ -182,50 +218,37 @@ export function MessageInput({
           </div>
         )}
 
-        <div className="flex gap-2">
-          <div className="flex-1 space-y-2">
-            <Textarea
-              id={messageInputId}
-              name="private_chat_message"
-              ref={textareaRef}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"
-              className={"min-h-[44px] max-h-32 resize-none"}
-              disabled={disabled}
-              rows={1}
-            />
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={Boolean(attachment) || disabled}
-              >
-                添加图片
-              </Button>
+        <div className="flex h-32 min-h-32 flex-col">
+          {toolbar && (
+            <div className="mb-1 flex min-h-7 items-center">
+              {toolbar({
+                openFilePicker: () => fileInputRef.current?.click(),
+                captureScreenshot: () => {
+                  void handleCaptureScreenshot()
+                },
+                insertText: insertTextAtCursor,
+                disabled: Boolean(disabled),
+                hasAttachment: Boolean(attachment),
+                onEndSession: () => {
+                  void handleEnd()
+                },
+                ending,
+              })}
             </div>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <Button onClick={() => void handleSend()} disabled={!canSend} size="sm">
-              发送
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={"text-xs text-muted-foreground"}
-              onClick={() => void handleEnd()}
-              disabled={ending || disabled}
-            >
-              结束
-            </Button>
-          </div>
+          )}
+          <textarea
+            id={messageInputId}
+            name="private_chat_message"
+            ref={textareaRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="发个消息…"
+            className={"h-full min-h-0 w-full appearance-none resize-none overflow-y-auto border-0 rounded-none bg-transparent pl-2.5 pr-0 py-0 text-sm leading-6 text-foreground shadow-none outline-none ring-0 placeholder:text-muted-foreground/80 focus:border-0 focus:shadow-none focus:outline-none focus:ring-0 focus-visible:border-0 focus-visible:shadow-none focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50"}
+            disabled={disabled}
+            rows={4}
+          />
         </div>
-
-        {digestHint && <p className={"mt-2 text-xs text-muted-foreground"}>{digestHint}</p>}
       </div>
     </div>
   )

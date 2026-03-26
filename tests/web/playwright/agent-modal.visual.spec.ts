@@ -453,7 +453,7 @@ test.describe('Agent modal visual regression', () => {
     await expectPageSnapshot(page, 'agent-modal-manage-owner-intro.png')
 
     await page.getByTestId('agent-modal-tab-chat').click()
-    await expect(page.getByText('还没有对话')).toBeVisible()
+    await expect(page.getByTestId('private-chat-empty-state')).toBeVisible()
     await expectPageSnapshot(page, 'agent-modal-manage-chat-empty.png')
 
     await page.getByTestId('agent-modal-tab-moments').click()

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../client'
 import { queryKeys } from '../query-keys'
 import type {
@@ -11,6 +11,11 @@ import type {
   SendPrivateMessageInput,
 } from '../types'
 
+export interface PrivateMessageTimelineChunk {
+  session: PrivateSession
+  messages: PrivateMessage[]
+}
+
 export function usePrivateSessions(agentId: string) {
   return useQuery({
     queryKey: queryKeys.privateSessions(agentId),
@@ -20,16 +25,32 @@ export function usePrivateSessions(agentId: string) {
   })
 }
 
-export function usePrivateMessages(agentId: string, sessionId: string) {
-  return useQuery({
-    queryKey: queryKeys.privateMessages(agentId, sessionId),
-    queryFn: () =>
-      api
-        .get(`agents/${agentId}/chat/sessions/${sessionId}/messages?limit=100`)
-        .json<ApiResponse<PaginatedList<PrivateMessage>>>(),
-    enabled: !!agentId && !!sessionId,
-    refetchInterval: 0,
+export function usePrivateMessageTimeline(agentId: string, sessions: PrivateSession[]) {
+  const results = useQueries({
+    queries: sessions.map((session) => ({
+      queryKey: queryKeys.privateMessages(agentId, session.id),
+      queryFn: () =>
+        api
+          .get(`agents/${agentId}/chat/sessions/${session.id}/messages?limit=100`)
+          .json<ApiResponse<PaginatedList<PrivateMessage>>>(),
+      enabled: !!agentId && !!session.id,
+      refetchInterval: 0,
+    })),
   })
+
+  const items: PrivateMessageTimelineChunk[] = sessions.map((session, index) => ({
+    session,
+    messages: results[index]?.data?.data?.items ?? [],
+  }))
+
+  const firstError = results.find((result) => result.isError)?.error
+
+  return {
+    items,
+    isLoading: sessions.length > 0 && results.some((result) => result.isLoading),
+    isError: Boolean(firstError),
+    error: firstError instanceof Error ? firstError : null,
+  }
 }
 
 export function useCreatePrivateSession(agentId: string) {

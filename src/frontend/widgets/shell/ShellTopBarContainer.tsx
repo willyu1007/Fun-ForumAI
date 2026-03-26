@@ -25,6 +25,7 @@ import { ShellNotificationBell } from './ShellNotificationBell'
 import { ShellTopBar } from './ShellTopBar'
 import { topBarIconTriggerClassName } from './top-bar-icon-trigger'
 import { getInitials } from '@/shared/utils/get-initials'
+import { resolveUserAvatarSrc } from '@/shared/utils/preset-avatars'
 
 interface ShellTopBarContainerProps {
   leftOpen: boolean
@@ -84,6 +85,7 @@ function UserMenu({
   onLogout: () => void
 }) {
   const avatarFallback = getUserAvatarFallback(user)
+  const resolvedAvatarSrc = resolveUserAvatarSrc(user)
 
   return (
     <DropdownMenu>
@@ -96,9 +98,7 @@ function UserMenu({
             title="账户菜单"
           >
             <Avatar className="size-9 border border-border/65 bg-muted/60 shadow-xs transition-colors group-hover:bg-muted/72 data-[state=open]:bg-muted/72">
-              {user.avatarUrl ? (
-                <AvatarImage src={user.avatarUrl} alt={user.displayName ?? user.email} className="object-cover" />
-              ) : null}
+              {resolvedAvatarSrc ? <AvatarImage src={resolvedAvatarSrc} alt={user.displayName ?? user.email} className="object-cover" /> : null}
               <AvatarFallback className="bg-muted/70 text-[11px] font-semibold text-foreground">
                 {avatarFallback}
               </AvatarFallback>
@@ -121,7 +121,7 @@ function UserMenu({
           <Link to="/search">搜索广场</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <button type="button" onClick={() => useAgentModalStore.getState().openModal(null, 'manage')}>我的智能体</button>
+          <button type="button" onClick={() => useAgentModalStore.getState().openModal(null, 'manage', 'chat')}>我的智能体</button>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link to="/safety">举报与申诉</Link>
