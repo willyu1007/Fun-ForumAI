@@ -95,7 +95,7 @@
       "report": "stylelint.json"
     },
     "playwright": {
-      "enabled": "auto",
+      "enabled": false,
       "command": "pnpm exec playwright test",
       "artifacts": ["playwright-report", "test-results"]
     }

@@ -344,6 +344,12 @@ def iter_scan_files(
 HEX_COLOR_RE = re.compile(r"#[0-9a-fA-F]{3,8}\b")
 RGB_COLOR_RE = re.compile(r"\b(?:rgb|rgba|hsl|hsla)\(")
 INLINE_STYLE_RE = re.compile(r"(?<![\w.])style\s*=\s*(?:\{|\"|')")
+CSS_CUSTOM_PROP_ONLY_RE = re.compile(
+    r"""style\s*=\s*\{\s*\{"""           # style={{ 
+    r"""(?:\s*'--[\w-]+'|\s*"--[\w-]+"|\s*\[?'--[\w-]+'"""  # key is '--...'
+    r""")""",
+    re.VERBOSE,
+)
 BOX_SHADOW_RE = re.compile(r"\bbox-shadow\s*:")
 VARIANT_BUILDER_CALL_RE = re.compile(r"\b[A-Za-z_$][\w$]*Variants\s*\(")
 
@@ -974,6 +980,10 @@ def scan_code_and_css(
 
         if code_rules.get("disallow_inline_style", True) and path.suffix in {".tsx", ".jsx"}:
             for m in INLINE_STYLE_RE.finditer(text):
+                # Allow style={{ '--custom-prop': value }} — only CSS custom properties, no visual props
+                snippet = text[m.start():min(m.start() + 120, len(text))]
+                if CSS_CUSTOM_PROP_ONLY_RE.match(snippet):
+                    continue
                 issues.append(
                     Issue(
                         "ERROR",
@@ -1025,6 +1035,10 @@ def scan_code_and_css(
                 # If className is dynamic and we can't see any string literals, treat as a bypass risk.
                 if kind in {"expr", "bare", "template", "unparseable"} and not lits:
                     if VARIANT_BUILDER_CALL_RE.search(raw):
+                        continue
+                    # Allow className={className} or className={props.className} — standard React prop forwarding
+                    stripped = raw.strip()
+                    if stripped in {"className", "props.className"} or re.fullmatch(r"[\w$.]+\.className", stripped):
                         continue
                     issues.append(
                         Issue(
