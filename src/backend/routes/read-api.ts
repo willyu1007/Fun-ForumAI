@@ -1,4 +1,5 @@
 import { Router, type IRouter } from 'express'
+import multer from 'multer'
 import {
   forumReadService,
   agentService,
@@ -12,6 +13,7 @@ import {
   roleAssignmentService,
   communityRepo,
   complaintAppealService,
+  feedbackService,
   inferenceProfileService,
   searchProjectionService,
 } from '../container.js'
@@ -21,12 +23,21 @@ import { requireHumanAuth, tryAuthenticateHuman } from '../middleware/human-auth
 import { buildEmptyGlobalHighlightsPayload } from '../services/global-highlights-service.js'
 import { resolveStageSpecFromRules } from '../stage/index.js'
 import { validate } from '../validation/validate.js'
-import { createAudienceMessageSchema } from '../validation/schemas.js'
+import {
+  createAudienceMessageSchema,
+  createFeedbackSchema,
+  feedbackCategorySchema,
+  feedbackStatusSchema,
+} from '../validation/schemas.js'
 import { buildAgentReadPayload } from '../identity/agent-identity.js'
 import { guidanceOrchestrator } from '../container.js'
 import { trackGuidanceEventFromRequest } from '../guidance/http.js'
 
 export const readApiRouter: IRouter = Router()
+const feedbackUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 3 },
+})
 
 function isAttachmentInput(item: unknown): item is { ref: string; type: string } {
   if (!item || typeof item !== 'object' || Array.isArray(item)) return false
@@ -269,6 +280,124 @@ readApiRouter.get('/threads/:threadId', async (req, res) => {
   const user = tryAuthenticateHuman(req)
   const data = await forumReadService.getThread(req.params.threadId, user?.userId)
   res.json({ data })
+})
+
+readApiRouter.post('/feedback', requireHumanAuth, async (req, res, next) => {
+  feedbackUpload.fields([
+    { name: 'attachments', maxCount: 3 },
+    { name: 'attachments[]', maxCount: 3 },
+  ])(req, res, async (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        next(new ValidationError('media exceeds 10MB limit'))
+        return
+      }
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_COUNT') {
+        next(new ValidationError('attachments exceed 3 file limit'))
+        return
+      }
+      next(new ValidationError('invalid upload payload'))
+      return
+    }
+
+    try {
+      const parsed = createFeedbackSchema.parse(req.body)
+      const filesByField = req.files && !Array.isArray(req.files) ? req.files : {}
+      const files = [
+        ...(filesByField.attachments ?? []),
+        ...(filesByField['attachments[]'] ?? []),
+      ]
+      const result = await feedbackService.create({
+        created_by_user_id: req.user!.userId,
+        category: parsed.category,
+        title: parsed.title,
+        body: parsed.body,
+        entry_surface: parsed.entry_surface ?? null,
+        source_route: parsed.source_route ?? null,
+        attachments: files.map((file) => ({
+          mime_type: file.mimetype,
+          bytes: file.buffer,
+          original_name: file.originalname,
+        })),
+      })
+      res.status(201).json({ data: result })
+    } catch (uploadErr) {
+      next(uploadErr)
+    }
+  })
+})
+
+readApiRouter.get('/feedback', requireHumanAuth, async (req, res, next) => {
+  try {
+    const status = parseFeedbackStatusQuery(req.query.status)
+    const category = parseFeedbackCategoryQuery(req.query.category)
+    const source_route = typeof req.query.source_route === 'string'
+      ? req.query.source_route
+      : undefined
+    const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
+    const limitRaw = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : 20
+    const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 50) : 20
+    const result = await feedbackService.listForUser(req.user!.userId, {
+      status,
+      category,
+      source_route,
+      cursor,
+      limit,
+    })
+    res.json({ data: result.items, meta: { cursor: result.next_cursor } })
+  } catch (err) {
+    next(err)
+  }
+})
+
+function parseFeedbackStatusQuery(value: unknown) {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  const parsed = feedbackStatusSchema.safeParse(value)
+  if (!parsed.success) {
+    throw new ValidationError('invalid feedback status')
+  }
+  return parsed.data
+}
+
+function parseFeedbackCategoryQuery(value: unknown) {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  const parsed = feedbackCategorySchema.safeParse(value)
+  if (!parsed.success) {
+    throw new ValidationError('invalid feedback category')
+  }
+  return parsed.data
+}
+
+readApiRouter.get('/feedback/attachments/:attachmentId', requireHumanAuth, async (req, res, next) => {
+  try {
+    const attachment = await feedbackService.getAttachmentForActor({
+      attachment_id: String(req.params.attachmentId),
+      actor_user_id: req.user!.userId,
+      actor_role: req.user!.role,
+    })
+    res.setHeader('Content-Type', attachment.attachment.mime_type)
+    res.setHeader('Content-Length', String(attachment.data.byteLength))
+    res.setHeader('Cache-Control', 'private, max-age=3600')
+    res.send(attachment.data)
+  } catch (err) {
+    next(err)
+  }
+})
+
+readApiRouter.get('/feedback/:feedbackId', requireHumanAuth, async (req, res, next) => {
+  try {
+    const detail = await feedbackService.getDetailForUser(
+      req.user!.userId,
+      String(req.params.feedbackId),
+    )
+    res.json({ data: detail })
+  } catch (err) {
+    next(err)
+  }
 })
 
 readApiRouter.post('/reports', requireHumanAuth, async (req, res) => {

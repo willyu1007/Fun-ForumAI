@@ -43,6 +43,7 @@ import { InMemoryAftershowArtifactRepository } from '../repos/aftershow-artifact
 import { InMemoryCommunityConfigRepository } from '../repos/community-config-repository.js'
 import { InMemoryRoleAssignmentRepository } from '../repos/role-assignment-repository.js'
 import { InMemoryNotificationRepository } from '../repos/notification-repository.js'
+import { InMemoryFeedbackRepository } from '../repos/feedback-repository.js'
 import { InMemoryUserRepository } from '../repos/user-repository.js'
 import { InMemoryGuidanceActorStateRepository } from '../repos/guidance-state-repository.js'
 import { InMemoryGuidanceInboxRepository } from '../repos/guidance-inbox-repository.js'
@@ -95,6 +96,7 @@ import type { AftershowArtifactRepository } from '../repos/aftershow-artifact-re
 import type { CommunityConfigRepository } from '../repos/community-config-repository.js'
 import type { RoleAssignmentRepository } from '../repos/role-assignment-repository.js'
 import type { NotificationRepository } from '../repos/notification-repository.js'
+import type { FeedbackRepository } from '../repos/feedback-repository.js'
 import type { UserRepository } from '../repos/user-repository.js'
 import type { GuidanceActorStateRepository } from '../repos/guidance-state-repository.js'
 import type { GuidanceInboxRepository } from '../repos/guidance-inbox-repository.js'
@@ -151,6 +153,7 @@ export interface Repositories {
   communityConfigRepo: CommunityConfigRepository
   roleAssignmentRepo: RoleAssignmentRepository
   notificationRepo: NotificationRepository | null
+  feedbackRepo: FeedbackRepository
   guidanceActorStateRepo: GuidanceActorStateRepository
   guidanceInboxRepo: GuidanceInboxRepository
   guidanceEventLogRepo: GuidanceEventLogRepository
@@ -215,6 +218,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgCommunityConfigRepository } = await import('../repos/pg/pg-community-config-repository.js')
     const { PgRoleAssignmentRepository } = await import('../repos/pg/pg-role-assignment-repository.js')
     const { PgNotificationRepository } = await import('../repos/pg/pg-notification-repository.js')
+    const { PgFeedbackRepository } = await import('../repos/pg/pg-feedback-repository.js')
     const { PgGuidanceActorStateRepository } = await import('../repos/pg/pg-guidance-state-repository.js')
     const { PgGuidanceInboxRepository } = await import('../repos/pg/pg-guidance-inbox-repository.js')
     const { PgGuidanceEventLogRepository } = await import('../repos/pg/pg-guidance-event-log-repository.js')
@@ -268,6 +272,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const communityConfigRepo = new PgCommunityConfigRepository(prisma)
     const roleAssignmentRepo = new PgRoleAssignmentRepository(prisma)
     const notificationRepo = new PgNotificationRepository(prisma)
+    const feedbackRepo = new PgFeedbackRepository(prisma)
     const guidanceActorStateRepo = new PgGuidanceActorStateRepository(prisma)
     const guidanceInboxRepo = new PgGuidanceInboxRepository(prisma)
     const guidanceEventLogRepo = new PgGuidanceEventLogRepository(prisma)
@@ -304,6 +309,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
         incubationRepo: incRepo, audienceRepo: audRepo, aftershowRunRepo: aftershowRepo,
         aftershowArtifactRepo, communityConfigRepo, roleAssignmentRepo,
         notificationRepo,
+        feedbackRepo,
         guidanceActorStateRepo,
         guidanceInboxRepo,
         guidanceEventLogRepo,
@@ -379,6 +385,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       communityConfigRepo: new InMemoryCommunityConfigRepository(),
       roleAssignmentRepo: new InMemoryRoleAssignmentRepository(),
       notificationRepo: new InMemoryNotificationRepository(),
+      feedbackRepo: new InMemoryFeedbackRepository(),
       guidanceActorStateRepo: new InMemoryGuidanceActorStateRepository(),
       guidanceInboxRepo: new InMemoryGuidanceInboxRepository(),
       guidanceEventLogRepo: new InMemoryGuidanceEventLogRepository(),

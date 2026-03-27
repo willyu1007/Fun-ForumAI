@@ -27,23 +27,26 @@ model HumanUser {
   updatedAt     DateTime   @updatedAt @map("updated_at")
 
   agents                 Agent[]
-  agentConfigs           AgentConfig[]             @relation("ConfigUpdatedBy")
+  agentConfigs           AgentConfig[]                @relation("ConfigUpdatedBy")
   privateSessions        PrivateSession[]
-  privacyUpdates         AgentPrivacySettings[]    @relation("PrivacyUpdatedBy")
+  privacyUpdates         AgentPrivacySettings[]       @relation("PrivacyUpdatedBy")
   notifications          Notification[]
   humanVotes             HumanVote[]
   follows                HumanAgentFollow[]
-  legacyMediaAssets      LegacyAgentMediaAsset[]   @relation("LegacyMediaAssetOwner")
-  ownedMediaAssets       MediaAsset[]              @relation("MediaAssetOwner")
-  audienceMessages       AudienceMessage[]         @relation("AudienceMessageAuthor")
-  aftershowCallouts      AftershowCallout[]        @relation("AftershowCalloutUser")
-  incubationGrants       IncubationGrant[]         @relation("IncubationReviewerUser")
-  incubationEvents       IncubationEvent[]         @relation("IncubationActorUser")
-  configVersions         CommunityConfigVersion[]  @relation("CommunityConfigVersionCreatedBy")
-  configPatchProposals   CommunityConfigPatch[]    @relation("CommunityConfigPatchProposedBy")
-  configPatchValidations CommunityConfigPatch[]    @relation("CommunityConfigPatchValidatedBy")
-  configPatchApprovals   CommunityConfigPatch[]    @relation("CommunityConfigPatchApprovedBy")
-  configApprovalEvents   CommunityConfigApproval[] @relation("CommunityConfigApprovalActor")
+  inclinationAssets      AgentInclinationAsset[]      @relation("InclinationAssetOwner")
+  ownedMediaAssets       MediaAsset[]                 @relation("MediaAssetOwner")
+  audienceMessages       AudienceMessage[]            @relation("AudienceMessageAuthor")
+  aftershowCallouts      AftershowCallout[]           @relation("AftershowCalloutUser")
+  incubationGrants       IncubationGrant[]            @relation("IncubationReviewerUser")
+  incubationEvents       IncubationEvent[]            @relation("IncubationActorUser")
+  configVersions         CommunityConfigVersion[]     @relation("CommunityConfigVersionCreatedBy")
+  configPatchProposals   CommunityConfigPatch[]       @relation("CommunityConfigPatchProposedBy")
+  configPatchValidations CommunityConfigPatch[]       @relation("CommunityConfigPatchValidatedBy")
+  configPatchApprovals   CommunityConfigPatch[]       @relation("CommunityConfigPatchApprovedBy")
+  configApprovalEvents   CommunityConfigApproval[]    @relation("CommunityConfigApprovalActor")
+  createdFeedbackTickets FeedbackTicket[]             @relation("FeedbackTicketCreatedBy")
+  updatedFeedbackTickets FeedbackTicket[]             @relation("FeedbackTicketUpdatedBy")
+  feedbackHistoryEntries FeedbackTicketHistoryEntry[] @relation("FeedbackHistoryActor")
 
   @@map("human_users")
 }
@@ -3005,6 +3008,67 @@ model GuidanceEventLog {
 // Notifications
 // ──────────────────────────────────────────────
 
+model FeedbackTicket {
+  id                   String           @id @default(cuid())
+  createdByUserId      String           @map("created_by_user_id")
+  category             FeedbackCategory
+  title                String
+  body                 String           @db.Text
+  entrySurface         String?          @map("entry_surface")
+  sourceRoute          String?          @map("source_route")
+  status               FeedbackStatus   @default(RECEIVED)
+  publicResolutionNote String?          @map("public_resolution_note") @db.Text
+  internalNote         String?          @map("internal_note") @db.Text
+  updatedByUserId      String?          @map("updated_by_user_id")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+
+  createdByUser  HumanUser                    @relation("FeedbackTicketCreatedBy", fields: [createdByUserId], references: [id])
+  updatedByUser  HumanUser?                   @relation("FeedbackTicketUpdatedBy", fields: [updatedByUserId], references: [id])
+  attachments    FeedbackAttachment[]
+  historyEntries FeedbackTicketHistoryEntry[]
+
+  @@index([createdByUserId, status, createdAt])
+  @@index([status, updatedAt])
+  @@index([category, updatedAt])
+  @@map("feedback_tickets")
+}
+
+model FeedbackAttachment {
+  id               String   @id @default(cuid())
+  feedbackTicketId String   @map("feedback_ticket_id")
+  storageKey       String   @map("storage_key")
+  mimeType         String   @map("mime_type")
+  fileSizeBytes    Int      @map("file_size_bytes")
+  width            Int?
+  height           Int?
+  blobData         Bytes    @map("blob_data")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  ticket FeedbackTicket @relation(fields: [feedbackTicketId], references: [id], onDelete: Cascade)
+
+  @@index([feedbackTicketId, createdAt])
+  @@map("feedback_attachments")
+}
+
+model FeedbackTicketHistoryEntry {
+  id               String                    @id @default(cuid())
+  feedbackTicketId String                    @map("feedback_ticket_id")
+  actorUserId      String?                   @map("actor_user_id")
+  visibility       FeedbackHistoryVisibility
+  eventType        FeedbackHistoryEventType  @map("event_type")
+  fromStatus       FeedbackStatus?           @map("from_status")
+  toStatus         FeedbackStatus?           @map("to_status")
+  message          String?                   @db.Text
+  createdAt        DateTime                  @default(now()) @map("created_at")
+
+  ticket    FeedbackTicket @relation(fields: [feedbackTicketId], references: [id], onDelete: Cascade)
+  actorUser HumanUser?     @relation("FeedbackHistoryActor", fields: [actorUserId], references: [id])
+
+  @@index([feedbackTicketId, visibility, createdAt])
+  @@map("feedback_ticket_history_entries")
+}
+
 model Notification {
   id         String           @id @default(cuid())
   userId     String           @map("user_id")
@@ -3028,6 +3092,33 @@ enum NotificationType {
   GROWTH_MILESTONE
   GOVERNANCE
   AFTERSHOW_CALLOUT
+  FEEDBACK
+}
+
+enum FeedbackCategory {
+  PRODUCT_SUGGESTION
+  BUG_REPORT
+  UX_ISSUE
+  OTHER
+}
+
+enum FeedbackStatus {
+  RECEIVED
+  UNDER_REVIEW
+  PLANNED
+  CLOSED
+}
+
+enum FeedbackHistoryVisibility {
+  USER
+  ADMIN_ONLY
+}
+
+enum FeedbackHistoryEventType {
+  SUBMITTED
+  STATUS_CHANGED
+  PUBLIC_NOTE_UPDATED
+  INTERNAL_NOTE_UPDATED
 }
 
 model UserIdentityVerification {

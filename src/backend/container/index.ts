@@ -591,6 +591,7 @@ export const riskEventService = core.riskEventService
 export const identityGateService = core.identityGateService
 export const policyGatewayService = core.policyGatewayService
 export const complaintAppealService = core.complaintAppealService
+export const feedbackService = core.feedbackService
 export const agentConfigLintService = core.agentConfigLintService
 export const humanParticipationService = core.humanParticipationService
 export const achievementsOrchestrator = core.achievementsOrchestrator

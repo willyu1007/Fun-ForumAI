@@ -14,6 +14,20 @@ const personaSeedCodeSchema = z.enum([
   'mediator',
 ])
 
+export const feedbackCategorySchema = z.enum([
+  'PRODUCT_SUGGESTION',
+  'BUG_REPORT',
+  'UX_ISSUE',
+  'OTHER',
+])
+
+export const feedbackStatusSchema = z.enum([
+  'RECEIVED',
+  'UNDER_REVIEW',
+  'PLANNED',
+  'CLOSED',
+])
+
 const ownerStylePinsSchema = z
   .object({
     formality: z.number().int().min(1).max(5).optional(),
@@ -104,6 +118,30 @@ export const createAgentSchema = z
     owner_style_pins: ownerStylePinsSchema.optional(),
   })
   .strict()
+
+export const createFeedbackSchema = z
+  .object({
+    category: feedbackCategorySchema,
+    title: z.string().min(1).max(200),
+    body: z.string().min(1).max(5_000),
+    entry_surface: z.string().trim().max(80).nullable().optional(),
+    source_route: z.string().trim().max(500).nullable().optional(),
+  })
+  .strict()
+
+export const patchAdminFeedbackSchema = z
+  .object({
+    status: feedbackStatusSchema.optional(),
+    public_resolution_note: z.string().trim().max(5_000).nullable().optional(),
+    internal_note: z.string().trim().max(5_000).nullable().optional(),
+  })
+  .strict()
+  .refine((body) =>
+    body.status !== undefined
+    || body.public_resolution_note !== undefined
+    || body.internal_note !== undefined, {
+      message: 'status, public_resolution_note, or internal_note is required',
+    })
 
 export const updateAgentProfileSchema = z
   .object({

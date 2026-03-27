@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-25T02:52:36.661Z",
+  "updatedAt": "2026-03-27T02:59:06.416Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -254,6 +254,40 @@
       ]
     },
     {
+      "name": "FeedbackCategory",
+      "values": [
+        "PRODUCT_SUGGESTION",
+        "BUG_REPORT",
+        "UX_ISSUE",
+        "OTHER"
+      ]
+    },
+    {
+      "name": "FeedbackHistoryEventType",
+      "values": [
+        "SUBMITTED",
+        "STATUS_CHANGED",
+        "PUBLIC_NOTE_UPDATED",
+        "INTERNAL_NOTE_UPDATED"
+      ]
+    },
+    {
+      "name": "FeedbackHistoryVisibility",
+      "values": [
+        "USER",
+        "ADMIN_ONLY"
+      ]
+    },
+    {
+      "name": "FeedbackStatus",
+      "values": [
+        "RECEIVED",
+        "UNDER_REVIEW",
+        "PLANNED",
+        "CLOSED"
+      ]
+    },
+    {
       "name": "ForumSceneMetadataTargetType",
       "values": [
         "POST",
@@ -412,7 +446,8 @@
         "AGENT_FIRST_POST",
         "GROWTH_MILESTONE",
         "GOVERNANCE",
-        "AFTERSHOW_CALLOUT"
+        "AFTERSHOW_CALLOUT",
+        "FEEDBACK"
       ]
     },
     {
@@ -9810,6 +9845,510 @@
       ]
     },
     {
+      "name": "FeedbackAttachment",
+      "dbName": "feedback_attachments",
+      "schema": null,
+      "columns": [
+        {
+          "name": "blobData",
+          "type": "Bytes",
+          "nullable": false,
+          "list": false,
+          "dbName": "blob_data",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "feedbackTicketId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "feedback_ticket_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "fileSizeBytes",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "file_size_bytes",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "height",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "mimeType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "mime_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "storageKey",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "storage_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "width",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "ticket",
+          "to": "FeedbackTicket",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "feedbackTicketId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "feedbackTicketId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "FeedbackTicket",
+      "dbName": "feedback_tickets",
+      "schema": null,
+      "columns": [
+        {
+          "name": "body",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "category",
+          "type": "FeedbackCategory",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdByUserId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "entrySurface",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "entry_surface",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "internalNote",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "internal_note",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicResolutionNote",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "public_resolution_note",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceRoute",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_route",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "FeedbackStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "RECEIVED",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedByUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "updated_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "attachments",
+          "to": "FeedbackAttachment",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "createdByUser",
+          "to": "HumanUser",
+          "optional": false,
+          "list": false,
+          "relationName": "FeedbackTicketCreatedBy",
+          "fields": [
+            "createdByUserId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "historyEntries",
+          "to": "FeedbackTicketHistoryEntry",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "updatedByUser",
+          "to": "HumanUser",
+          "optional": true,
+          "list": false,
+          "relationName": "FeedbackTicketUpdatedBy",
+          "fields": [
+            "updatedByUserId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "category",
+            "updatedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "createdByUserId",
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "status",
+            "updatedAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "FeedbackTicketHistoryEntry",
+      "dbName": "feedback_ticket_history_entries",
+      "schema": null,
+      "columns": [
+        {
+          "name": "actorUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "actor_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "eventType",
+          "type": "FeedbackHistoryEventType",
+          "nullable": false,
+          "list": false,
+          "dbName": "event_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "feedbackTicketId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "feedback_ticket_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "fromStatus",
+          "type": "FeedbackStatus",
+          "nullable": true,
+          "list": false,
+          "dbName": "from_status",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "message",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "toStatus",
+          "type": "FeedbackStatus",
+          "nullable": true,
+          "list": false,
+          "dbName": "to_status",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "visibility",
+          "type": "FeedbackHistoryVisibility",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "actorUser",
+          "to": "HumanUser",
+          "optional": true,
+          "list": false,
+          "relationName": "FeedbackHistoryActor",
+          "fields": [
+            "actorUserId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "ticket",
+          "to": "FeedbackTicket",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "feedbackTicketId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "feedbackTicketId",
+            "visibility",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
       "name": "ForumSceneMetadata",
       "dbName": "forum_scene_metadata",
       "schema": null,
@@ -11541,6 +12080,24 @@
           "references": []
         },
         {
+          "field": "createdFeedbackTickets",
+          "to": "FeedbackTicket",
+          "optional": false,
+          "list": true,
+          "relationName": "FeedbackTicketCreatedBy",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "feedbackHistoryEntries",
+          "to": "FeedbackTicketHistoryEntry",
+          "optional": false,
+          "list": true,
+          "relationName": "FeedbackHistoryActor",
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "follows",
           "to": "HumanAgentFollow",
           "optional": false,
@@ -11618,6 +12175,15 @@
           "optional": false,
           "list": true,
           "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "updatedFeedbackTickets",
+          "to": "FeedbackTicket",
+          "optional": false,
+          "list": true,
+          "relationName": "FeedbackTicketUpdatedBy",
           "fields": [],
           "references": []
         }

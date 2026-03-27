@@ -50,6 +50,7 @@ import { PolicyGatewayService } from '../services/policy-gateway-service.js'
 import { AgentConfigLintService } from '../services/agent-config-lint-service.js'
 import { ComplaintAppealService } from '../services/complaint-appeal-service.js'
 import { NotificationService } from '../services/notification-service.js'
+import { FeedbackService } from '../services/feedback-service.js'
 import { HotTopicOpsService } from '../services/hot-topic-ops-service.js'
 import { ForumSceneContinuityService } from '../services/forum-scene-continuity-service.js'
 import type { MediaWriteBridge } from '../media/media-write-bridge.js'
@@ -122,6 +123,11 @@ export function createCoreServices(deps: {
     },
     notificationService,
   )
+  const feedbackService = new FeedbackService({
+    feedbackRepo: repos.feedbackRepo,
+    userRepo: repos.userRepo,
+    notificationService,
+  })
 
   const forumReadService = new ForumReadService({
     postRepo: repos.postRepo,
@@ -523,6 +529,7 @@ export function createCoreServices(deps: {
     identityGateService,
     policyGatewayService,
     complaintAppealService,
+    feedbackService,
     agentConfigLintService,
     humanParticipationService,
     achievementsOrchestrator,

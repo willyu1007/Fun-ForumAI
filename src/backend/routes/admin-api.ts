@@ -17,6 +17,7 @@ import {
   publicDisclosureCapService,
   privateChannelServices,
   hotTopicOpsService,
+  feedbackService,
   llmRegistryBundle,
   mediaReuseGovernanceService,
   mediaObservabilityService,
@@ -27,7 +28,7 @@ import {
   searchProjectionService,
 } from '../container.js'
 import { config } from '../lib/config.js'
-import { AppError } from '../lib/errors.js'
+import { AppError, ValidationError } from '../lib/errors.js'
 import { getRuntimeBuildInfo } from '../lib/runtime-build-info.js'
 import { richCommunitiesMetrics } from '../lib/rich-communities-metrics.js'
 import { buildPersonaObservabilitySummary } from '../runtime/persona-observation.js'
@@ -48,8 +49,11 @@ import {
   createCommunityCommonsAssetSchema,
   createDisclosureCapOverrideSchema,
   createPlatformCanonicalAssetSchema,
+  feedbackCategorySchema,
+  feedbackStatusSchema,
   governanceActionSchema,
   patchMediaRolloutControllerSchema,
+  patchAdminFeedbackSchema,
   patchMediaReusePolicySchema,
   releaseMediaRolloutControllerOverrideSchema,
   releaseDisclosureCapOverrideSchema,
@@ -283,6 +287,84 @@ adminApiRouter.post(
     res.json({ data: updated })
   },
 )
+
+adminApiRouter.get('/admin/feedback', requireHumanAuth, requireAdmin, async (req, res) => {
+  try {
+    const status = parseFeedbackStatusQuery(req.query.status)
+    const category = parseFeedbackCategoryQuery(req.query.category)
+    const source_route = typeof req.query.source_route === 'string'
+      ? req.query.source_route
+      : undefined
+    const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
+    const limitRaw = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : 20
+    const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 50) : 20
+    const result = await feedbackService.listForAdmin({
+      status,
+      category,
+      source_route,
+      cursor,
+      limit,
+    })
+    res.json({ data: result.items, meta: { cursor: result.next_cursor } })
+  } catch (err) {
+    if (tryHandleAppError(res, err)) return
+    throw err
+  }
+})
+
+adminApiRouter.get('/admin/feedback/:feedbackId', requireHumanAuth, requireAdmin, async (req, res) => {
+  try {
+    const detail = await feedbackService.getDetailForAdmin(String(req.params.feedbackId))
+    res.json({ data: detail })
+  } catch (err) {
+    if (tryHandleAppError(res, err)) return
+    throw err
+  }
+})
+
+adminApiRouter.patch(
+  '/admin/feedback/:feedbackId',
+  requireHumanAuth,
+  requireAdmin,
+  validate(patchAdminFeedbackSchema),
+  async (req, res) => {
+    try {
+      const detail = await feedbackService.updateByAdmin({
+        id: String(req.params.feedbackId),
+        actor_user_id: req.user!.userId,
+        status: req.body.status,
+        public_resolution_note: req.body.public_resolution_note,
+        internal_note: req.body.internal_note,
+      })
+      res.json({ data: detail })
+    } catch (err) {
+      if (tryHandleAppError(res, err)) return
+      throw err
+    }
+  },
+)
+
+function parseFeedbackStatusQuery(value: unknown) {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  const parsed = feedbackStatusSchema.safeParse(value)
+  if (!parsed.success) {
+    throw new ValidationError('invalid feedback status')
+  }
+  return parsed.data
+}
+
+function parseFeedbackCategoryQuery(value: unknown) {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  const parsed = feedbackCategorySchema.safeParse(value)
+  if (!parsed.success) {
+    throw new ValidationError('invalid feedback category')
+  }
+  return parsed.data
+}
 
 adminApiRouter.get('/admin/identity-reviews', requireHumanAuth, requireAdmin, async (req, res) => {
   const status = typeof req.query.status === 'string' ? req.query.status : undefined
