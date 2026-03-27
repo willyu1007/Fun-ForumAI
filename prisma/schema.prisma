@@ -33,7 +33,7 @@ model HumanUser {
   notifications          Notification[]
   humanVotes             HumanVote[]
   follows                HumanAgentFollow[]
-  inclinationAssets      AgentInclinationAsset[]      @relation("InclinationAssetOwner")
+  legacyMediaAssets      LegacyAgentMediaAsset[]      @relation("LegacyMediaAssetOwner")
   ownedMediaAssets       MediaAsset[]                 @relation("MediaAssetOwner")
   audienceMessages       AudienceMessage[]            @relation("AudienceMessageAuthor")
   aftershowCallouts      AftershowCallout[]           @relation("AftershowCalloutUser")

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-27T02:59:06.416Z",
+  "updatedAt": "2026-03-27T04:30:54.025Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -1550,7 +1550,7 @@
           "dbType": null,
           "default": null,
           "primaryKey": false,
-          "unique": false
+          "unique": true
         },
         {
           "name": "id",

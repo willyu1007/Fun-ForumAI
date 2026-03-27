@@ -9,6 +9,7 @@ import {
   CommunitiesPage,
   CommunityFeedPage,
   FeedPage,
+  FeedbackPage,
   HelpCenterPage,
   HighlightsPage,
   SearchPage,
