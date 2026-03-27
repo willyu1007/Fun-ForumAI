@@ -3,10 +3,12 @@ export type RichTextLiteBlock =
   | { type: 'list'; style: 'unordered' | 'ordered'; items: string[] }
   | { type: 'quote'; lines: string[] }
   | { type: 'code_block'; language: string | null; code: string }
+  | { type: 'math_block'; expression: string }
   | { type: 'divider' }
 
 const BLANK_LINE_RE = /^\s*$/
 const DIVIDER_RE = /^\s*(?:---|\*\*\*)\s*$/
+const MATH_FENCE_RE = /^\s*\$\$\s*$/
 const CODE_FENCE_RE = /^\s*```([\w-]+)?\s*$/
 const QUOTE_LINE_RE = /^\s*>\s?(.*)$/
 const UNORDERED_LIST_RE = /^\s*[-*•·]\s+(.*)$/
@@ -26,6 +28,20 @@ export function parseRichTextLite(input: string): RichTextLiteBlock[] {
 
     if (BLANK_LINE_RE.test(line)) {
       index += 1
+      continue
+    }
+
+    if (MATH_FENCE_RE.test(line)) {
+      const mathLines: string[] = []
+      index += 1
+      while (index < lines.length && !MATH_FENCE_RE.test(lines[index] ?? '')) {
+        mathLines.push(lines[index] ?? '')
+        index += 1
+      }
+      if (index < lines.length && MATH_FENCE_RE.test(lines[index] ?? '')) {
+        index += 1
+      }
+      blocks.push({ type: 'math_block', expression: mathLines.join('\n').trim() })
       continue
     }
 
@@ -78,6 +94,7 @@ export function parseRichTextLite(input: string): RichTextLiteBlock[] {
       if (
         BLANK_LINE_RE.test(currentLine)
         || DIVIDER_RE.test(currentLine)
+        || MATH_FENCE_RE.test(currentLine)
         || CODE_FENCE_RE.test(currentLine)
         || QUOTE_LINE_RE.test(currentLine)
         || UNORDERED_LIST_RE.test(currentLine)
@@ -120,6 +137,8 @@ export function toPlainText(block: RichTextLiteBlock): string {
       return block.lines.map((line) => `> ${line}`).join('\n')
     case 'code_block':
       return block.code
+    case 'math_block':
+      return block.expression
     case 'divider':
       return ''
   }
@@ -135,6 +154,8 @@ function toPreviewText(block: RichTextLiteBlock): string {
       return block.lines[0] ? `> ${block.lines[0]}` : ''
     case 'code_block':
       return block.code
+    case 'math_block':
+      return block.expression
     case 'divider':
       return ''
   }
