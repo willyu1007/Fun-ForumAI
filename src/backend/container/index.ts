@@ -11,6 +11,7 @@ import { DirectorHistoryMaintenanceScheduler } from '../runtime/director-history
 import { MediaGenerationWorker } from '../runtime/media-generation-worker.js'
 import { MediaLifecycleWorker } from '../runtime/media-lifecycle-worker.js'
 import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry-scheduler.js'
+import { AgentBioRefreshScheduler } from '../runtime/agent-bio-refresh-scheduler.js'
 import { getRuntimeBuildInfo } from '../lib/runtime-build-info.js'
 import { personaObservability } from '../runtime/persona-observability.js'
 import { NotFoundError } from '../lib/errors.js'
@@ -134,6 +135,7 @@ export const searchProjectionService = new SearchProjectionService({
   achievementChronicleService: core.achievementChronicleService,
   communityCultureDigestService: core.communityCultureDigestService,
   agentPublicProjectionService: core.agentPublicProjectionService,
+  agentBioService: core.agentBioRefreshService,
   aftershowService: core.aftershowService,
   guard: searchGuard,
 })
@@ -170,8 +172,25 @@ export const searchService = new SearchService({
   telemetry: searchTelemetryService,
 })
 
-core.agentPublicProjectionService.setUpdatedHook((input) =>
-  searchProjectionService.refreshAgent(input.agent_id))
+core.agentBioRefreshService.setUpdatedHook(async (input) => {
+  if (input.refresh_kind === 'minor_presence') {
+    return
+  }
+  await searchProjectionService.reconcileAgent(input.agent_id, {
+    reason: `agent_bio_${input.reason}`,
+    scopes: input.reason.startsWith('projection_')
+      ? ['posts', 'threads']
+      : ['agent', 'posts', 'threads'],
+  })
+})
+
+core.agentPublicProjectionService.setUpdatedHook(async (input) => {
+  await core.agentBioRefreshService.refresh(input.agent_id, {
+    refresh_kind: 'major',
+    reason: `projection_${input.reason}`,
+  })
+  await searchProjectionService.refreshAgent(input.agent_id)
+})
 
 llm.mediaObservabilityService.attachGovernanceDeps({
   riskGovernanceRepo: repos.riskGovernanceRepo,
@@ -179,7 +198,14 @@ llm.mediaObservabilityService.attachGovernanceDeps({
 })
 
 core.achievementChronicleService.setRecordHook((input) => {
-  if (input.visibility !== 'PUBLIC') return
+  if (input.visibility !== 'PUBLIC') {
+    return core.agentBioRefreshService
+      .refresh(input.agent_id, {
+        refresh_kind: 'major',
+        reason: 'owner_chronicle',
+      })
+      .then(() => undefined)
+  }
   return core.agentPublicProjectionService
     .refresh(input.agent_id, { reason: 'chronicle' })
     .then(() => searchProjectionService.reconcileAgent(input.agent_id, {
@@ -197,7 +223,15 @@ core.agentService.setConfigUpdatedHook((input) => {
       .refresh(input.agent_id, { reason: 'owner_style_pin' })
       .then(() => undefined)
   }
-  return searchProjectionService.refreshAgent(input.agent_id)
+  return core.agentBioRefreshService
+    .refresh(input.agent_id, {
+      refresh_kind: 'major',
+      reason: 'identity_config',
+    })
+    .then((result) => {
+      if (result?.updated) return
+      return searchProjectionService.refreshAgent(input.agent_id)
+    })
 })
 
 core.governanceAdapter.setExecutedHook(async ({ action }) => {
@@ -252,6 +286,13 @@ const roleAssignmentExpiryScheduler = new RoleAssignmentExpiryScheduler(
     intervalMs: config.runtime.roleAssignmentExpiryIntervalMs,
     startupDelayMs: config.runtime.roleAssignmentExpiryStartupDelayMs,
     batchLimit: config.runtime.roleAssignmentExpiryBatchLimit,
+  },
+)
+
+const agentBioRefreshScheduler = new AgentBioRefreshScheduler(
+  {
+    service: core.agentBioRefreshService,
+    leaderElector: infra.leaderElectors.agentBioRefreshScheduler,
   },
 )
 
@@ -312,6 +353,10 @@ const nurture = await createNurtureEngines({
     achievements: infra.leaderElectors.achievements,
     cultureDigest: infra.leaderElectors.cultureDigest,
   },
+})
+
+core.agentBioWorldviewService.attachRuntimeDeps({
+  memoryService: nurture.privateChannelServices?.memoryService ?? null,
 })
 
 if (nurture.privateChannelServices) {
@@ -526,6 +571,8 @@ export const voteRepo = repos.voteRepo
 export const humanVoteRepo = repos.humanVoteRepo
 export const humanFollowRepo = repos.humanFollowRepo
 export const postMediaRepo = repos.postMediaRepo
+export const sceneMediaBindingRepo = repos.sceneMediaBindingRepo
+export const mediaContextProjectionRepo = repos.mediaContextProjectionRepo
 export const communityRepo = repos.communityRepo
 export const roomRepo = repos.roomRepo
 export const eventRepo = repos.eventRepo
@@ -573,6 +620,9 @@ export const statsService = core.statsService
 export const personaStateService = core.personaStateService
 export const inferenceProfileService = core.inferenceProfileService
 export const agentPublicProjectionService = core.agentPublicProjectionService
+export const agentBioWorldviewService = core.agentBioWorldviewService
+export const agentBioRenderService = core.agentBioRenderService
+export const agentBioRefreshService = core.agentBioRefreshService
 export const chatService = core.chatService
 export const roomDiscoveryService = core.roomDiscoveryService
 export const roomEcologyService = core.roomEcologyService
@@ -611,8 +661,9 @@ export const achievementsScheduler = nurture.achievementsScheduler
 export const cultureDigestScheduler = nurture.cultureDigestScheduler
 export const privateChannelServices = nurture.privateChannelServices
 export const privateChannelScheduler = nurture.privateChannelScheduler
-export { 
+export {
   communityConfigScheduler,
+  agentBioRefreshScheduler,
   roleAssignmentExpiryScheduler,
   directorHistoryMaintenanceScheduler,
   mediaGenerationWorker,
