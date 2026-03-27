@@ -33,6 +33,8 @@ export class AgentSearchProvider implements SearchProvider {
       query: input.query,
       cursor: input.cursor,
       limit: input.limit,
+      sort: input.sort,
+      since: input.since,
     })
 
     const items: SearchAgentItem[] = hits.items

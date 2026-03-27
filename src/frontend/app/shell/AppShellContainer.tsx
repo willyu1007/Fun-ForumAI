@@ -13,7 +13,7 @@ export function AppShellContainer() {
   const { leftOpen, toggleLeft } = useSidebarStore()
   const { view } = useFeedViewStore()
   const { pathname } = useLocation()
-  const usePageSidebarLayout = pathname === '/' || pathname.startsWith('/c/')
+  const usePageSidebarLayout = pathname === '/' || pathname.startsWith('/c/') || pathname === '/search'
   const stretchCompactFeedLayout = usePageSidebarLayout && view === 'compact' && !leftOpen
 
   return (

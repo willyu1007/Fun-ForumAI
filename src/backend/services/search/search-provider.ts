@@ -1,10 +1,12 @@
-import type { PublicSearchItem, SearchTab } from '../../../shared/public-search.js'
+import type { PublicSearchItem, SearchSort, SearchTab } from '../../../shared/public-search.js'
 import type { SearchCursorPayload } from '../../repos/types.js'
 
 export interface SearchProviderInput {
   query: string
   cursor?: SearchCursorPayload
   limit: number
+  sort?: SearchSort
+  since?: Date
   viewer_user_id?: string
   followed_agent_ids?: ReadonlySet<string>
 }

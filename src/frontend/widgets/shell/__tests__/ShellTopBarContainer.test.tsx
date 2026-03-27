@@ -39,6 +39,8 @@ vi.mock('@/api/hooks/guidance', () => ({
 
 vi.mock('@/api/hooks/forum', () => ({
   useFeed: vi.fn(),
+  useSearch: vi.fn(() => ({ data: undefined, isLoading: false, isError: false })),
+  useRecordSearchTelemetry: vi.fn(() => ({ mutate: vi.fn() })),
 }))
 
 vi.mock('@/api/hooks/notifications', () => ({

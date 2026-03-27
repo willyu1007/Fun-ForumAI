@@ -1,6 +1,12 @@
 export const SEARCH_TABS = ['posts', 'communities', 'agents', 'threads'] as const
 
 export type SearchTab = (typeof SEARCH_TABS)[number]
+
+export const SEARCH_SORTS = ['relevance', 'new', 'hot'] as const
+export type SearchSort = (typeof SEARCH_SORTS)[number]
+
+export const SEARCH_TIME_RANGES = ['all', 'hour', 'day', 'week', 'month', 'year'] as const
+export type SearchTimeRange = (typeof SEARCH_TIME_RANGES)[number]
 export type SearchAuthorVisibility = 'full' | 'restricted'
 export const SEARCH_MATCH_REASON_CODES = [
   'title',

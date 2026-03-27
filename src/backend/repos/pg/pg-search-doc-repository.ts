@@ -102,6 +102,26 @@ function buildTokenGateClause(column: string, normalizedQuery: string): Prisma.S
   `
 }
 
+function buildSinceFilter(since: Date | undefined, column: string): Prisma.Sql {
+  if (!since) return Prisma.empty
+  return Prisma.sql`AND ${Prisma.raw(column)} >= ${since}`
+}
+
+function buildSortOrder(
+  sort: string | undefined,
+  idColumn: string,
+  columns: { new_col: string; hot_col: string },
+): Prisma.Sql {
+  switch (sort) {
+    case 'new':
+      return Prisma.raw(`ORDER BY ${columns.new_col} DESC NULLS LAST, ${idColumn} ASC`)
+    case 'hot':
+      return Prisma.raw(`ORDER BY ${columns.hot_col} DESC, ${idColumn} ASC`)
+    default:
+      return Prisma.raw(`ORDER BY score DESC, ${idColumn} ASC`)
+  }
+}
+
 export class PgSearchDocRepository implements SearchDocRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -596,17 +616,18 @@ export class PgSearchDocRepository implements SearchDocRepository {
               END
           )::numeric, 6)::double precision AS score
         FROM post_search_docs
-        WHERE searchable_text ILIKE ${likePattern}
+        WHERE (searchable_text ILIKE ${likePattern}
           OR (
             similarity(lower(searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
             ${tokenGateClause}
-          )
+          ))
+        ${buildSinceFilter(input.since, 'last_activity_at')}
       )
       SELECT *
       FROM ranked
       WHERE score > 0.01
       ${buildCursorFilter(input.cursor, 'post_id')}
-      ORDER BY score DESC, post_id ASC
+      ${buildSortOrder(input.sort, 'post_id', { new_col: 'last_activity_at', hot_col: 'heat_score' })}
       LIMIT ${input.limit + 1}
     `)
     return rows.map((row) => ({
@@ -709,17 +730,18 @@ export class PgSearchDocRepository implements SearchDocRepository {
             + CASE WHEN representative_agent_id IS NOT NULL THEN 0.08 ELSE 0 END
           )::numeric, 6)::double precision AS score
         FROM community_search_docs
-        WHERE searchable_text ILIKE ${likePattern}
+        WHERE (searchable_text ILIKE ${likePattern}
           OR (
             similarity(lower(searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
             ${tokenGateClause}
-          )
+          ))
+        ${buildSinceFilter(input.since, 'created_at')}
       )
       SELECT *
       FROM ranked
       WHERE score > 0.01
       ${buildCursorFilter(input.cursor, 'community_id')}
-      ORDER BY score DESC, community_id ASC
+      ${buildSortOrder(input.sort, 'community_id', { new_col: 'created_at', hot_col: 'activity_7d' })}
       LIMIT ${input.limit + 1}
     `)
     return rows
@@ -815,17 +837,18 @@ export class PgSearchDocRepository implements SearchDocRepository {
             + CASE WHEN status = 'ACTIVE' THEN 0.08 ELSE 0 END
           )::numeric, 6)::double precision AS score
         FROM agent_search_docs
-        WHERE searchable_text ILIKE ${likePattern}
+        WHERE (searchable_text ILIKE ${likePattern}
           OR (
             similarity(lower(searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
             ${tokenGateClause}
-          )
+          ))
+        ${buildSinceFilter(input.since, 'created_at')}
       )
       SELECT *
       FROM ranked
       WHERE score > 0.01
       ${buildCursorFilter(input.cursor, 'agent_id')}
-      ORDER BY score DESC, agent_id ASC
+      ${buildSortOrder(input.sort, 'agent_id', { new_col: 'created_at', hot_col: 'public_activity_score' })}
       LIMIT ${input.limit + 1}
     `)
     return rows.map((row) => ({
@@ -941,17 +964,18 @@ export class PgSearchDocRepository implements SearchDocRepository {
         FROM thread_search_docs csd
         INNER JOIN post_search_docs psd
           ON psd.post_id = csd.post_id
-        WHERE csd.searchable_text ILIKE ${likePattern}
+        WHERE (csd.searchable_text ILIKE ${likePattern}
           OR (
             similarity(lower(csd.searchable_text), lower(${normalized})) >= ${SEARCH_THRESHOLD}
             ${tokenGateClause}
-          )
+          ))
+        ${buildSinceFilter(input.since, 'csd.thread_created_at')}
       )
       SELECT *
       FROM ranked
       WHERE score > 0.01
       ${buildCursorFilter(input.cursor, 'thread_id')}
-      ORDER BY score DESC, thread_id ASC
+      ${buildSortOrder(input.sort, 'thread_id', { new_col: 'thread_created_at', hot_col: 'score' })}
       LIMIT ${input.limit + 1}
     `)
     return rows.map((row) => ({

@@ -15,11 +15,10 @@ import { useAuth } from '@/shared/hooks/use-auth'
 import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redirect'
 import { Link, useLocation } from 'react-router'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
-import { Search } from 'lucide-react'
 import { AgentPanelWidget } from './AgentPanelWidget'
 import { ActivityPanelWidget } from './ActivityPanelWidget'
-import { ShellFeedChromeControls } from './ShellFeedChromeControls'
 import { ShellIconHint } from './ShellIconHint'
+import { TopBarSearch } from './TopBarSearch'
 import { ShellLeftRail } from './ShellLeftRail'
 import { ShellNotificationBell } from './ShellNotificationBell'
 import { ShellTopBar } from './ShellTopBar'
@@ -61,21 +60,6 @@ function ShellMobileMenu() {
   )
 }
 
-function TopBarSearchEntry() {
-  return (
-    <div className="mx-auto flex w-full items-center justify-center gap-3.5">
-      <Link
-        to="/search"
-        aria-label="搜索入口"
-        className="flex h-9 w-full max-w-[23rem] min-w-0 items-center gap-2 rounded-full border border-border/75 bg-muted/55 px-4 text-sm text-muted-foreground/75 transition-colors hover:bg-muted/70 hover:text-foreground lg:max-w-[25rem] xl:max-w-[27rem]"
-      >
-        <Search className="h-4 w-4 shrink-0" />
-        <span className="truncate">搜索帖子、社区、智能体、评论</span>
-      </Link>
-      <ShellFeedChromeControls />
-    </div>
-  )
-}
 
 function UserMenu({
   user,
@@ -190,7 +174,7 @@ export function ShellTopBarContainer({
       leftOpen={leftOpen}
       onToggleLeft={onToggleLeft}
       mobileMenuTrigger={<ShellMobileMenu />}
-      navigation={<TopBarSearchEntry />}
+      navigation={<TopBarSearch />}
       primaryActions={primaryActions}
       accountArea={accountArea}
     />

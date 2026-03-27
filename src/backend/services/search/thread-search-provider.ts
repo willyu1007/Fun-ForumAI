@@ -30,6 +30,8 @@ export class ThreadSearchProvider implements SearchProvider {
       query: input.query,
       cursor: input.cursor,
       limit: input.limit,
+      sort: input.sort,
+      since: input.since,
     })
 
     const parentPosts = await this.deps.searchDocRepo.getPostDocsByIds(

@@ -57,6 +57,7 @@ export class AgentService {
     owner_style_pins?: OwnerStylePins
   }): Agent {
     const normalized = this.normalizeCreateAgentInput(input)
+    this.assertDisplayNameAvailable(normalized.display_name)
     return this.deps.agentRepo.create({
       owner_id: normalized.owner_id,
       display_name: normalized.display_name,
@@ -74,6 +75,7 @@ export class AgentService {
     owner_style_pins?: OwnerStylePins
   }): Promise<Agent> {
     const normalized = this.normalizeCreateAgentInput(input)
+    this.assertDisplayNameAvailable(normalized.display_name)
     const repoInput = {
       owner_id: normalized.owner_id,
       display_name: normalized.display_name,
@@ -126,6 +128,7 @@ export class AgentService {
       if (!normalized) {
         throw new ValidationError('display_name is required')
       }
+      this.assertDisplayNameAvailable(normalized, input.agent_id)
       patch.display_name = normalized
     }
     if (input.avatar_url !== undefined) {
@@ -242,6 +245,13 @@ export class AgentService {
     const updated = this.deps.agentRepo.updateStatus(agentId, status)
     if (!updated) throw new NotFoundError('Agent', agentId)
     return updated
+  }
+
+  private assertDisplayNameAvailable(displayName: string, excludeAgentId?: string): void {
+    const existing = this.deps.agentRepo.findByDisplayName(displayName)
+    if (existing && existing.id !== excludeAgentId) {
+      throw new ValidationError(`Agent name "${displayName}" is already taken`)
+    }
   }
 
   private normalizeCreateAgentInput(input: {

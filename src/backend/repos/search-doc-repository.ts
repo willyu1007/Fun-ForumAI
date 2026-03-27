@@ -15,6 +15,8 @@ export interface SearchDocQueryInput {
   query: string
   cursor?: SearchCursorPayload
   limit: number
+  sort?: 'relevance' | 'new' | 'hot'
+  since?: Date
 }
 
 export interface SearchDocStats {
@@ -281,8 +283,13 @@ export class InMemorySearchDocRepository implements SearchDocRepository {
     const query = normalizeText(input.query)
     const rows = Array.from(this.posts.values())
       .filter((doc) => hasCandidateMatch(doc.searchable_text, query))
+      .filter((doc) => !input.since || (doc.last_activity_at && doc.last_activity_at >= input.since))
       .map((doc) => ({ id: doc.post_id, doc, score: scorePostDoc(doc, query) }))
-      .sort(sortRankedRows)
+      .sort(input.sort === 'new'
+        ? (a, b) => (b.doc.last_activity_at?.getTime() ?? 0) - (a.doc.last_activity_at?.getTime() ?? 0) || a.id.localeCompare(b.id)
+        : input.sort === 'hot'
+          ? (a, b) => b.doc.heat_score - a.doc.heat_score || a.id.localeCompare(b.id)
+          : sortRankedRows)
     return buildRankedPage(rows, input.cursor, input.limit)
   }
 
@@ -323,8 +330,13 @@ export class InMemorySearchDocRepository implements SearchDocRepository {
     const query = normalizeText(input.query)
     const rows = Array.from(this.communities.values())
       .filter((doc) => hasCandidateMatch(doc.searchable_text, query))
+      .filter((doc) => !input.since || doc.created_at >= input.since)
       .map((doc) => ({ id: doc.community_id, doc, score: scoreCommunityDoc(doc, query) }))
-      .sort(sortRankedRows)
+      .sort(input.sort === 'new'
+        ? (a, b) => b.doc.created_at.getTime() - a.doc.created_at.getTime() || a.id.localeCompare(b.id)
+        : input.sort === 'hot'
+          ? (a, b) => b.doc.activity_7d - a.doc.activity_7d || a.id.localeCompare(b.id)
+          : sortRankedRows)
     return buildRankedPage(rows, input.cursor, input.limit)
   }
 
@@ -365,8 +377,13 @@ export class InMemorySearchDocRepository implements SearchDocRepository {
     const query = normalizeText(input.query)
     const rows = Array.from(this.agents.values())
       .filter((doc) => hasCandidateMatch(doc.searchable_text, query))
+      .filter((doc) => !input.since || doc.created_at >= input.since)
       .map((doc) => ({ id: doc.agent_id, doc, score: scoreAgentDoc(doc, query) }))
-      .sort(sortRankedRows)
+      .sort(input.sort === 'new'
+        ? (a, b) => b.doc.created_at.getTime() - a.doc.created_at.getTime() || a.id.localeCompare(b.id)
+        : input.sort === 'hot'
+          ? (a, b) => b.doc.public_activity_score - a.doc.public_activity_score || a.id.localeCompare(b.id)
+          : sortRankedRows)
     return buildRankedPage(rows, input.cursor, input.limit)
   }
 
@@ -397,12 +414,15 @@ export class InMemorySearchDocRepository implements SearchDocRepository {
     const query = normalizeText(input.query)
     const rows = Array.from(this.threads.values())
       .filter((doc) => hasCandidateMatch(doc.searchable_text, query))
+      .filter((doc) => !input.since || doc.thread_created_at >= input.since)
       .map((doc) => ({
         id: doc.thread_id,
         doc,
         score: scoreThreadDoc(doc, query, this.posts.get(doc.post_id)?.heat_score ?? 0),
       }))
-      .sort(sortRankedRows)
+      .sort(input.sort === 'new'
+        ? (a, b) => b.doc.thread_created_at.getTime() - a.doc.thread_created_at.getTime() || a.id.localeCompare(b.id)
+        : sortRankedRows)
     return buildRankedPage(rows, input.cursor, input.limit)
   }
 

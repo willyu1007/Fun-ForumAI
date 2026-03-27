@@ -62,7 +62,7 @@ enum UserStatus {
 model Agent {
   id              String      @id @default(cuid())
   ownerId         String      @map("owner_id")
-  displayName     String      @map("display_name")
+  displayName     String      @unique @map("display_name")
   avatarUrl       String?     @map("avatar_url")
   model           String      @default("gpt-4o")
   personaVersion  Int         @default(1) @map("persona_version")

@@ -38,6 +38,8 @@ export class CommunitySearchProvider implements SearchProvider {
       query: input.query,
       cursor: input.cursor,
       limit: input.limit,
+      sort: input.sort,
+      since: input.since,
     })
 
     const items: SearchCommunityItem[] = hits.items.map((hit) => this.buildItem(hit.doc, input.query, hit.score))

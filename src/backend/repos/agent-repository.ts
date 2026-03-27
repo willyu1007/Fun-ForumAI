@@ -13,6 +13,7 @@ export interface AgentRepository {
   deletePersisted?(id: string): Promise<void>
   refreshPersisted?(): Promise<void>
   findById(id: string): Agent | null
+  findByDisplayName(displayName: string): Agent | null
   findByOwner(ownerId: string): Agent[]
   findActive(opts: PaginationOpts): PaginatedResult<Agent>
   search(opts: PaginationOpts & { q?: string }): PaginatedResult<Agent>
@@ -76,6 +77,14 @@ export class InMemoryAgentRepository implements AgentRepository {
 
   findById(id: string): Agent | null {
     return this.store.get(id) ?? null
+  }
+
+  findByDisplayName(displayName: string): Agent | null {
+    const lower = displayName.toLowerCase()
+    for (const agent of this.store.values()) {
+      if (agent.display_name.toLowerCase() === lower) return agent
+    }
+    return null
   }
 
   findByOwner(ownerId: string): Agent[] {

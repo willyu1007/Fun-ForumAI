@@ -141,6 +141,14 @@ export class PgAgentRepository implements AgentRepository {
     return this.cache.get(id) ?? null
   }
 
+  findByDisplayName(displayName: string): Agent | null {
+    const lower = displayName.toLowerCase()
+    for (const agent of this.cache.values()) {
+      if (agent.display_name.toLowerCase() === lower) return agent
+    }
+    return null
+  }
+
   findByOwner(ownerId: string): Agent[] {
     return Array.from(this.cache.values())
       .filter((a) => a.owner_id === ownerId)

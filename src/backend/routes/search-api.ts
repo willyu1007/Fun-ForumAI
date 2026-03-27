@@ -1,5 +1,5 @@
 import { Router, type IRouter } from 'express'
-import { SEARCH_TABS, type SearchTab } from '../../shared/public-search.js'
+import { SEARCH_SORTS, SEARCH_TABS, SEARCH_TIME_RANGES, type SearchSort, type SearchTab, type SearchTimeRange } from '../../shared/public-search.js'
 import { searchService, searchTelemetryService } from '../container.js'
 import { tryAuthenticateHuman } from '../middleware/human-auth.js'
 import { normalizeSearchQuery } from '../services/search-service.js'
@@ -15,6 +15,10 @@ searchApiRouter.get('/search', async (req, res) => {
   const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
   const limitRaw = typeof req.query.limit === 'string' ? Number.parseInt(req.query.limit, 10) : 20
   const tab = SEARCH_TABS.includes(tabRaw as SearchTab) ? (tabRaw as SearchTab) : 'posts'
+  const sortRaw = typeof req.query.sort === 'string' ? req.query.sort : 'relevance'
+  const sort: SearchSort = SEARCH_SORTS.includes(sortRaw as SearchSort) ? (sortRaw as SearchSort) : 'relevance'
+  const timeRangeRaw = typeof req.query.time_range === 'string' ? req.query.time_range : 'all'
+  const time_range: SearchTimeRange = SEARCH_TIME_RANGES.includes(timeRangeRaw as SearchTimeRange) ? (timeRangeRaw as SearchTimeRange) : 'all'
 
   if (!Number.isFinite(limitRaw) || limitRaw < 1) {
     res.status(400).json({
@@ -31,6 +35,8 @@ searchApiRouter.get('/search', async (req, res) => {
     tab,
     cursor,
     limit: limitRaw,
+    sort,
+    time_range,
     viewer_user_id: user?.userId,
   })
 

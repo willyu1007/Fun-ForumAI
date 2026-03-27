@@ -1,13 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { AgentLink } from '@/features/agents/components/AgentLink'
-import { Link, useSearchParams } from 'react-router'
-import { EmptyState, InlineAlert, ListPageLayout } from '@fun-forum/ui-web/patterns'
+import { Link, useSearchParams, useNavigate } from 'react-router'
 import { useFollowAgent, useUnfollowAgent, useRecordSearchTelemetry, useSearch } from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
 import type {
   PublicSearchItem,
   SearchAgentItem,
-  SearchAuthorVisibility,
   SearchCommunityItem,
   SearchPostItem,
   SearchThreadItem,
@@ -16,11 +14,25 @@ import type {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ArrowRight } from 'lucide-react'
+import {
+  getCommunityAvatarTheme,
+  getCommunityAvatarToneClassName,
+  getCommunityCategoryGlyph,
+  resolveCommunityCategory,
+} from '@/shared/utils/community-shell-meta'
+import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
+import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
+import { AgentPreviewPopover } from '../components/AgentPreviewPopover'
 
 const SEARCH_TABS: SearchTab[] = ['posts', 'communities', 'agents', 'threads']
+const TAB_LABELS: Record<SearchTab, string> = {
+  posts: '帖子',
+  communities: '社区',
+  agents: '智能体',
+  threads: '线程',
+}
 
 function readTab(value: string | null): SearchTab {
   return SEARCH_TABS.includes((value ?? '') as SearchTab) ? (value as SearchTab) : 'posts'
@@ -30,7 +42,129 @@ function initials(name: string): string {
   return (name.trim().slice(0, 1) || '?').toUpperCase()
 }
 
+function formatRelativeTime(value: string | null | undefined): string | null {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  const diffMs = Date.now() - date.getTime()
+  if (diffMs < 0) return '刚刚'
+  const minutes = Math.floor(diffMs / 60_000)
+  if (minutes < 1) return '刚刚'
+  if (minutes < 60) return `${minutes} 分钟前`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} 小时前`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days} 天前`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months} 个月前`
+  const years = Math.floor(months / 12)
+  return `${years} 年前`
+}
+
 const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
+
+/* ─── Result rows (flat, no card borders) ─── */
+
+function PostResultRow({
+  item,
+  onOpen,
+}: {
+  item: SearchPostItem
+  onOpen: (item: SearchPostItem) => void
+}) {
+  const navigate = useNavigate()
+  const time = formatRelativeTime(item.last_activity_at)
+  const avatarSrc = resolveAgentAvatarSrc({
+    id: item.author.id,
+    display_name: item.author.display_name,
+    avatar_url: item.author.avatar_url,
+  })
+
+  return (
+    <article
+      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.04] dark:hover:bg-primary/[0.07]"
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
+        onOpen(item)
+        navigate(item.href)
+      }}
+    >
+      <div className="flex items-center gap-x-2 text-xs text-muted-foreground">
+        <AgentPreviewPopover author={item.author}>
+          <Avatar className="h-7 w-7">
+            <AvatarImage src={avatarSrc} alt={item.author.display_name} className="object-cover" />
+            <AvatarFallback className="bg-primary/10 text-[10px] text-primary">{initials(item.author.display_name)}</AvatarFallback>
+          </Avatar>
+          <span className="font-medium text-foreground/80 hover:underline">{item.author.display_name}</span>
+        </AgentPreviewPopover>
+        {time && (
+          <>
+            <span>·</span>
+            <span>{time}</span>
+          </>
+        )}
+      </div>
+
+      <h3 className="mt-2.5 text-base font-semibold leading-snug text-foreground">
+        {item.title}
+      </h3>
+
+      {item.snippet && (
+        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-foreground/70">
+          {item.snippet}
+        </p>
+      )}
+
+      <div className="mt-2.5 flex items-center gap-x-3 text-xs text-muted-foreground">
+        <span>{item.thread_turn_count} 条发言</span>
+        {item.heat_score > 0 && <span>🔥 {item.heat_score}</span>}
+      </div>
+    </article>
+  )
+}
+
+function CommunityResultRow({
+  item,
+  onOpen,
+}: {
+  item: SearchCommunityItem
+  onOpen: (item: SearchCommunityItem) => void
+}) {
+  const navigate = useNavigate()
+  return (
+    <article
+      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.04] dark:hover:bg-primary/[0.07]"
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
+        onOpen(item)
+        navigate(item.href)
+      }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <span className="text-base font-semibold leading-snug text-foreground">
+            {item.name}
+          </span>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            c/{item.slug} · {item.active_member_count} 常驻成员
+          </p>
+        </div>
+      </div>
+      <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-foreground/75">
+        {item.snippet || item.description || '暂无简介'}
+      </p>
+      {item.dominant_tags.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {item.dominant_tags.slice(0, 5).map((tag) => (
+            <Badge key={tag} variant="outline" className="text-[10px]">
+              {tag}
+            </Badge>
+          ))}
+        </div>
+      )}
+    </article>
+  )
+}
 
 function AgentFollowButton({ agent, searchQuery }: { agent: SearchAgentItem; searchQuery: string }) {
   const { isAuthenticated } = useAuth()
@@ -42,8 +176,8 @@ function AgentFollowButton({ agent, searchQuery }: { agent: SearchAgentItem; sea
 
   if (!isAuthenticated) {
     return (
-      <Button size="sm" variant="outline" asChild>
-        <Link to="/login">登录后关注</Link>
+      <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
+        <Link to="/login">关注</Link>
       </Button>
     )
   }
@@ -55,8 +189,10 @@ function AgentFollowButton({ agent, searchQuery }: { agent: SearchAgentItem; sea
     <Button
       size="sm"
       variant={followed ? 'secondary' : 'default'}
+      className="h-7 text-xs"
       disabled={busy}
-      onClick={async () => {
+      onClick={async (e) => {
+        e.stopPropagation()
         if (followed) {
           await unfollow.mutateAsync()
         } else {
@@ -71,383 +207,320 @@ function AgentFollowButton({ agent, searchQuery }: { agent: SearchAgentItem; sea
         }
       }}
     >
-      {busy ? '处理中…' : followed ? '已关注' : '+ 关注'}
+      {busy ? '…' : followed ? '已关注' : '+ 关注'}
     </Button>
   )
 }
 
-function formatSearchTime(value: string | null | undefined): string | null {
-  if (!value) return null
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return null
-  return date.toLocaleDateString('zh-CN', {
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
-function SearchResultCard({
+function AgentResultRow({
   item,
   searchQuery,
-  onResultOpen,
-}: {
-  item: PublicSearchItem
-  searchQuery: string
-  onResultOpen: (item: PublicSearchItem) => void
-}) {
-  if (item.type === 'post') {
-    return <PostResultCard item={item} onResultOpen={onResultOpen} />
-  }
-  if (item.type === 'community') {
-    return <CommunityResultCard item={item} onResultOpen={onResultOpen} />
-  }
-  if (item.type === 'agent') {
-    return <AgentResultCard item={item} searchQuery={searchQuery} onResultOpen={onResultOpen} />
-  }
-  return <ThreadResultCard item={item} onResultOpen={onResultOpen} />
-}
-
-function MatchReasons({ reasons }: { reasons: string[] }) {
-  return (
-    <div className="mt-2 flex flex-wrap gap-2">
-      {reasons.slice(0, 4).map((reason, index) => (
-        <Badge key={reason} variant={index === 0 ? 'secondary' : 'outline'} className="text-[10px]">
-          {reason}
-        </Badge>
-      ))}
-    </div>
-  )
-}
-
-function SearchRecoveryActions({
-  currentTab,
-  onSelectTab,
-}: {
-  currentTab: SearchTab
-  onSelectTab: (tab: SearchTab) => void
-}) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      <Button asChild variant="outline" size="sm">
-        <Link to="/communities">去社区广场</Link>
-      </Button>
-      <Button asChild variant="outline" size="sm">
-        <Link to="/search?tab=agents">看智能体目录</Link>
-      </Button>
-      {SEARCH_TABS.filter((tab) => tab !== currentTab).map((tab) => (
-        <Button key={tab} type="button" variant="ghost" size="sm" onClick={() => onSelectTab(tab)}>
-          切到
-          {tab === 'posts'
-            ? '帖子'
-            : tab === 'communities'
-              ? '社区'
-              : tab === 'agents'
-                ? '智能体'
-                : '线程'}
-        </Button>
-      ))}
-    </div>
-  )
-}
-
-function AuthorMeta({
-  agentId,
-  displayName,
-  avatarUrl,
-  tagline,
-  visibility,
-}: {
-  agentId: string
-  displayName: string
-  avatarUrl: string | null
-  tagline?: string | null
-  visibility: SearchAuthorVisibility
-}) {
-  if (visibility === 'restricted') {
-    return (
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span className="font-medium text-foreground/85">{displayName}</span>
-        <Badge variant="outline" className="text-[10px]">
-          受限作者
-        </Badge>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      <Avatar className="h-6 w-6">
-        {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName} /> : null}
-        <AvatarFallback className="text-[10px]">{initials(displayName)}</AvatarFallback>
-      </Avatar>
-      <AgentLink agentId={agentId} className="font-medium text-foreground/85">
-        {displayName}
-      </AgentLink>
-      {tagline ? <span className="truncate">{tagline}</span> : null}
-    </div>
-  )
-}
-
-function SearchHighlights({ highlights }: { highlights: Array<{ field: string; snippet: string }> }) {
-  if (highlights.length === 0) return null
-  return (
-    <div className="space-y-1 text-xs text-muted-foreground">
-      {highlights.slice(0, 2).map((highlight) => (
-        <p key={`${highlight.field}:${highlight.snippet}`} className="line-clamp-2">
-          {highlight.snippet}
-        </p>
-      ))}
-    </div>
-  )
-}
-
-function PostResultCard({
-  item,
-  onResultOpen,
-}: {
-  item: SearchPostItem
-  onResultOpen: (item: SearchPostItem) => void
-}) {
-  return (
-    <Card>
-      <CardContent className="space-y-3 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 space-y-1">
-            <Link
-              to={item.href}
-              className="text-base font-semibold hover:underline"
-              onClick={() => onResultOpen(item)}
-            >
-              {item.title}
-            </Link>
-            <div className="text-xs text-muted-foreground">
-              <Link to={`/c/${item.community.slug}`} className="hover:underline">
-                {item.community.name}
-              </Link>
-              <span>
-                {' '}
-                · {item.thread_turn_count} 条舞台发言 · 热度 {item.heat_score} · 分数 {item.score.toFixed(2)}
-              </span>
-            </div>
-          </div>
-          {item.last_activity_at ? (
-            <Badge variant="secondary" className="shrink-0 text-[10px]">
-              {formatSearchTime(item.last_activity_at) ?? '活跃中'}
-            </Badge>
-          ) : null}
-        </div>
-        <AuthorMeta
-          agentId={item.author.id}
-          displayName={item.author.display_name}
-          avatarUrl={item.author.avatar_url}
-          tagline={item.author.tagline}
-          visibility={item.author_visibility}
-        />
-        {item.author_visibility === 'full' && item.author.badges?.length ? (
-          <div className="flex flex-wrap gap-2">
-            {item.author.badges.slice(0, 3).map((badge) => (
-              <Badge key={`${badge.code}-${badge.tier}`} variant="outline" className="text-[10px]">
-                {badge.name} T{badge.tier}
-              </Badge>
-            ))}
-          </div>
-        ) : null}
-        <p className="text-sm text-foreground/85">{item.snippet}</p>
-        <SearchHighlights highlights={item.highlights} />
-        <MatchReasons reasons={item.match_reasons} />
-      </CardContent>
-    </Card>
-  )
-}
-
-function CommunityResultCard({
-  item,
-  onResultOpen,
-}: {
-  item: SearchCommunityItem
-  onResultOpen: (item: SearchCommunityItem) => void
-}) {
-  return (
-    <Card>
-      <CardContent className="space-y-3 p-4">
-        <div className="space-y-1">
-          <Link
-            to={item.href}
-            className="text-base font-semibold hover:underline"
-            onClick={() => onResultOpen(item)}
-          >
-            {item.name}
-          </Link>
-          <div className="text-xs text-muted-foreground">
-            <span>c/{item.slug}</span>
-            <span> · 7 天 {item.activity_7d} 次互动</span>
-            <span> · 30 天 {item.activity_30d} 次互动</span>
-            <span> · 常驻 {item.active_member_count}</span>
-            <span> · 分数 {item.score.toFixed(2)}</span>
-          </div>
-        </div>
-        <p className="text-sm leading-6 text-foreground/85">
-          {item.snippet || item.description || '暂无公开摘要。'}
-        </p>
-        <SearchHighlights highlights={item.highlights} />
-        <div className="flex flex-wrap gap-2">
-          {item.dominant_tags.map((tag) => (
-            <Badge key={tag} variant="outline" className="text-[10px]">
-              {tag}
-            </Badge>
-          ))}
-          {item.representative_post_id ? (
-            <Badge variant="secondary" className="text-[10px]">
-              有代表热帖
-            </Badge>
-          ) : null}
-          {item.representative_agent_id ? (
-            <Badge variant="secondary" className="text-[10px]">
-              常驻角色活跃
-            </Badge>
-          ) : null}
-        </div>
-        <MatchReasons reasons={item.match_reasons} />
-      </CardContent>
-    </Card>
-  )
-}
-
-function AgentResultCard({
-  item,
-  searchQuery,
-  onResultOpen,
+  onOpen,
 }: {
   item: SearchAgentItem
   searchQuery: string
-  onResultOpen: (item: SearchAgentItem) => void
+  onOpen: (item: SearchAgentItem) => void
 }) {
+  const agentAvatarSrc = resolveAgentAvatarSrc({
+    id: item.id,
+    display_name: item.display_name,
+    avatar_url: item.avatar_url,
+  })
+
   return (
-    <Card>
-      <CardContent className="space-y-3 p-4">
-        <div className="flex items-start gap-3">
-          <Avatar className="h-10 w-10">
-            {item.avatar_url ? <AvatarImage src={item.avatar_url} alt={item.display_name} /> : null}
-            <AvatarFallback>{initials(item.display_name)}</AvatarFallback>
+    <article
+      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.04] dark:hover:bg-primary/[0.07]"
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
+        onOpen(item)
+        useAgentModalStore.getState().openModal(item.id, 'readonly', 'intro')
+      }}
+    >
+      <div className="flex items-start gap-3">
+        <AgentLink agentId={item.id} onClick={() => onOpen(item)}>
+          <Avatar className="h-10 w-10 shrink-0">
+            <AvatarImage src={agentAvatarSrc} alt={item.display_name} className="object-cover" />
+            <AvatarFallback className="bg-primary/10 text-sm text-primary">{initials(item.display_name)}</AvatarFallback>
           </Avatar>
-          <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <AgentLink
-                agentId={item.id}
-                className="text-base font-semibold hover:underline"
-                onClick={() => onResultOpen(item)}
-              >
-                {item.display_name}
-              </AgentLink>
-              <Badge variant="secondary" className="text-[10px]">
-                {item.status}
-              </Badge>
-              <AgentFollowButton agent={item} searchQuery={searchQuery} />
-            </div>
-            <div className="text-xs text-muted-foreground">
-              <span>{item.persona_seed_label}</span>
-              <span> · {item.home_voice_line_label}</span>
-              <span> · 活跃分 {item.public_activity_score.toFixed(1)}</span>
-              <span> · 分数 {item.score.toFixed(2)}</span>
-            </div>
+        </AgentLink>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <AgentLink
+              agentId={item.id}
+              className="text-base font-semibold leading-snug text-foreground hover:underline"
+              onClick={() => onOpen(item)}
+            >
+              {item.display_name}
+            </AgentLink>
+            <AgentFollowButton agent={item} searchQuery={searchQuery} />
           </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {item.tagline || item.persona_seed_label}
+          </p>
         </div>
-        <p className="text-sm leading-6 text-foreground/85">
-          {item.snippet || item.tagline || '暂无公开人物摘要。'}
-        </p>
-        <SearchHighlights highlights={item.highlights} />
-        <div className="flex flex-wrap gap-2">
-          {item.badges.slice(0, 4).map((badge) => (
-            <Badge key={`${badge.code}-${badge.tier}`} variant="outline" className="text-[10px]">
-              {badge.name} T{badge.tier}
-            </Badge>
-          ))}
-          {item.active_communities.slice(0, 3).map((community) => (
-            <Badge key={community.id} variant="secondary" className="text-[10px]">
-              {community.name}
+      </div>
+      {item.active_communities.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {item.active_communities.slice(0, 4).map((c) => (
+            <Badge key={c.id} variant="secondary" className="text-[10px]">
+              {c.name}
             </Badge>
           ))}
         </div>
-        <MatchReasons reasons={item.match_reasons} />
-      </CardContent>
-    </Card>
+      )}
+    </article>
   )
 }
 
-function ThreadResultCard({
+function ThreadResultRow({
   item,
-  onResultOpen,
+  onOpen,
 }: {
   item: SearchThreadItem
-  onResultOpen: (item: SearchThreadItem) => void
+  onOpen: (item: SearchThreadItem) => void
 }) {
+  const navigate = useNavigate()
+  const time = formatRelativeTime(item.last_activity_at ?? item.created_at)
+  const avatarSrc = resolveAgentAvatarSrc({
+    id: item.author.id,
+    display_name: item.author.display_name,
+    avatar_url: item.author.avatar_url,
+  })
+
   return (
-    <Card>
-      <CardContent className="space-y-3 p-4">
-        <div className="space-y-1">
-          <Link
-            to={item.href}
-            className="text-base font-semibold hover:underline"
-            onClick={() => onResultOpen(item)}
-          >
-            {item.post_title}
-          </Link>
-          <div className="text-xs text-muted-foreground">
-            <Link to={`/c/${item.community.slug}`} className="hover:underline">
-              {item.community.name}
-            </Link>
-            <span> · 帖子热度 {item.parent_post_heat_score}</span>
-            <span> · 回合 {item.turn_count}</span>
-            <span> · 分数 {item.score.toFixed(2)}</span>
-            {formatSearchTime(item.last_activity_at ?? item.created_at) ? (
-              <span> · {formatSearchTime(item.last_activity_at ?? item.created_at)}</span>
-            ) : null}
-          </div>
+    <article
+      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.04] dark:hover:bg-primary/[0.07]"
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
+        onOpen(item)
+        navigate(item.href)
+      }}
+    >
+      <div className="flex items-center gap-x-2 text-xs text-muted-foreground">
+        <AgentPreviewPopover author={item.author}>
+          <Avatar className="h-7 w-7">
+            <AvatarImage src={avatarSrc} alt={item.author.display_name} className="object-cover" />
+            <AvatarFallback className="bg-primary/10 text-[10px] text-primary">{initials(item.author.display_name)}</AvatarFallback>
+          </Avatar>
+          <span className="font-medium text-foreground/80 hover:underline">{item.author.display_name}</span>
+        </AgentPreviewPopover>
+        {time && (
+          <>
+            <span>·</span>
+            <span>{time}</span>
+          </>
+        )}
+      </div>
+
+      <h3 className="mt-2.5 text-base font-semibold leading-snug text-foreground">
+        {item.post_title}
+      </h3>
+
+      {item.snippet && (
+        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-foreground/70">
+          {item.snippet}
+        </p>
+      )}
+      {item.matched_turn_snippet && (
+        <div className="mt-2 rounded-lg bg-muted/40 px-3 py-2 text-xs leading-relaxed text-foreground/80">
+          <span className="font-medium text-foreground/90">命中回合：</span>
+          {item.matched_turn_snippet}
         </div>
-        <AuthorMeta
-          agentId={item.author.id}
-          displayName={item.author.display_name}
-          avatarUrl={item.author.avatar_url}
-          tagline={item.author.tagline}
-          visibility={item.author_visibility}
-        />
-        {item.author_visibility === 'full' && item.author.badges?.length ? (
-          <div className="flex flex-wrap gap-2">
-            {item.author.badges.slice(0, 3).map((badge) => (
-              <Badge key={`${badge.code}-${badge.tier}`} variant="outline" className="text-[10px]">
-                {badge.name} T{badge.tier}
-              </Badge>
-            ))}
-          </div>
-        ) : null}
-        <p className="text-sm text-foreground/85">{item.snippet}</p>
-        {item.matched_turn_snippet ? (
-          <div className="rounded-md border border-dashed bg-muted/30 px-3 py-2 text-xs">
-            <span className="font-medium text-foreground/80">命中回合</span>
-            {item.matched_turn_anchor_preview ? (
-              <p className="mt-1 text-muted-foreground">{item.matched_turn_anchor_preview}</p>
-            ) : null}
-            <p className="mt-1 text-foreground/85">{item.matched_turn_snippet}</p>
-          </div>
-        ) : null}
-        <SearchHighlights highlights={item.highlights} />
-        <MatchReasons reasons={item.match_reasons} />
-      </CardContent>
-    </Card>
+      )}
+      <div className="mt-2.5 flex items-center gap-x-3 text-xs text-muted-foreground">
+        <span>{item.turn_count} 回合</span>
+      </div>
+    </article>
   )
 }
+
+function SearchResultRow({
+  item,
+  searchQuery,
+  onOpen,
+}: {
+  item: PublicSearchItem
+  searchQuery: string
+  onOpen: (item: PublicSearchItem) => void
+}) {
+  switch (item.type) {
+    case 'post':
+      return <PostResultRow item={item} onOpen={onOpen} />
+    case 'community':
+      return <CommunityResultRow item={item} onOpen={onOpen} />
+    case 'agent':
+      return <AgentResultRow item={item} searchQuery={searchQuery} onOpen={onOpen} />
+    case 'thread':
+      return <ThreadResultRow item={item} onOpen={onOpen} />
+  }
+}
+
+/* ─── Right sidebar: communities (posts tab only) ─── */
+
+const SIDEBAR_COMMUNITY_MAX = 4
+
+function CommunitySidebar({ query, sort, timeRange, onViewAll }: { query: string; sort?: string; timeRange?: string; onViewAll: () => void }) {
+  const result = useSearch(query ? { q: query, tab: 'communities', limit: SIDEBAR_COMMUNITY_MAX + 1, sort, time_range: timeRange } : undefined)
+  const items = result.data?.data?.items ?? []
+  const communityItems = items.filter((i): i is SearchCommunityItem => i.type === 'community')
+  const displayItems = communityItems.slice(0, SIDEBAR_COMMUNITY_MAX)
+  const hasMore = communityItems.length > SIDEBAR_COMMUNITY_MAX
+
+  if (!query || displayItems.length === 0) return null
+
+  return (
+    <div className="sticky top-[68px] px-5 py-4">
+      <h3 className="mb-6 text-sm font-medium text-foreground">社区</h3>
+      <div className="space-y-4 pl-4">
+        {displayItems.map((item) => {
+          const avatarTheme = getCommunityAvatarTheme({ slug: item.slug })
+          const category = resolveCommunityCategory({ slug: item.slug, name: item.name, description: item.description })
+          return (
+            <Link
+              key={item.id}
+              to={item.href}
+              className="flex items-start gap-5"
+            >
+              <Avatar className="h-10 w-10 shrink-0">
+                <AvatarImage src={avatarTheme.value} alt={item.name} />
+                <AvatarFallback className={`text-sm font-semibold ${getCommunityAvatarToneClassName(category)}`}>
+                  {getCommunityCategoryGlyph(category)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-foreground">{item.name}</p>
+                <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                  {item.description || `c/${item.slug}`}
+                </p>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {item.active_member_count} 成员 · {item.activity_7d} 周活跃
+                </p>
+              </div>
+            </Link>
+          )
+        })}
+      </div>
+      {hasMore && (
+        <button
+          type="button"
+          onClick={onViewAll}
+          className="mt-5 pl-4 text-sm font-medium text-primary hover:underline"
+        >
+          查看更多社区
+        </button>
+      )}
+    </div>
+  )
+}
+
+/* ─── Discovery (empty query) ─── */
+
+function DiscoverySection({
+  discovery,
+  onSearch,
+}: {
+  discovery: NonNullable<ReturnType<typeof useSearch>['data']>['data']['discovery']
+  onSearch: (q: string) => void
+}) {
+  if (!discovery) return null
+
+  return (
+    <div className="space-y-6">
+      {discovery.suggested_queries?.length ? (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold text-foreground">热门搜索</h2>
+          <div className="flex flex-wrap gap-2">
+            {discovery.suggested_queries.map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => onSearch(q)}
+                className="rounded-full border bg-muted/50 px-3.5 py-1.5 text-sm text-foreground transition-colors hover:bg-muted hover:shadow-sm"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {discovery.featured_posts?.length ? (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold text-foreground">精选帖子</h2>
+          <div className="space-y-2">
+            {discovery.featured_posts.slice(0, 4).map((item) => (
+              <Link
+                key={item.id}
+                to={item.href}
+                className="flex items-center justify-between gap-3 rounded-lg border px-4 py-2.5 text-sm transition-colors hover:bg-muted/30"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-foreground">{item.title}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {item.community.name} · {item.thread_turn_count} 条发言
+                  </p>
+                </div>
+                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {discovery.featured_agents?.length ? (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold text-foreground">活跃智能体</h2>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {discovery.featured_agents.slice(0, 8).map((agent) => (
+              <AgentLink
+                key={agent.id}
+                agentId={agent.id}
+                className="flex w-20 shrink-0 flex-col items-center gap-1.5 rounded-lg p-2 text-center transition-colors hover:bg-muted/40"
+              >
+                <Avatar className="h-12 w-12">
+                  {agent.avatar_url ? <AvatarImage src={agent.avatar_url} alt={agent.display_name} /> : null}
+                  <AvatarFallback>{initials(agent.display_name)}</AvatarFallback>
+                </Avatar>
+                <span className="w-full truncate text-xs font-medium text-foreground">{agent.display_name}</span>
+              </AgentLink>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {discovery.featured_communities?.length ? (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold text-foreground">活跃社区</h2>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {discovery.featured_communities.slice(0, 4).map((item) => (
+              <Link
+                key={item.id}
+                to={item.href}
+                className="rounded-lg border px-4 py-2.5 text-sm transition-colors hover:bg-muted/30"
+              >
+                <p className="font-medium text-foreground">{item.name}</p>
+                <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                  {item.description || `c/${item.slug}`} · {item.active_member_count} 成员
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </div>
+  )
+}
+
+/* ─── Main Page ─── */
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const currentTab = readTab(searchParams.get('tab'))
   const currentQuery = searchParams.get('q') ?? ''
   const cursor = searchParams.get('cursor') ?? undefined
-  const [input, setInput] = useState(currentQuery)
+  const currentSort = searchParams.get('sort') ?? undefined
+  const currentTimeRange = searchParams.get('time_range') ?? undefined
   const telemetry = useRecordSearchTelemetry()
-
-  useEffect(() => {
-    setInput(currentQuery)
-  }, [currentQuery])
 
   const params = useMemo(
     () => ({
@@ -455,12 +528,15 @@ export function SearchPage() {
       tab: currentTab,
       cursor,
       limit: 20,
+      sort: currentSort,
+      time_range: currentTimeRange,
     }),
-    [currentQuery, currentTab, cursor],
+    [currentQuery, currentTab, cursor, currentSort, currentTimeRange],
   )
 
   const query = useSearch(params)
   const payload = query.data?.data
+  const isFetchingNewTab = query.isPlaceholderData
 
   const openResult = (item: PublicSearchItem) => {
     telemetry.mutate({
@@ -486,160 +562,131 @@ export function SearchPage() {
     setSearchParams(sp)
   }
 
+  const showSidebar = currentTab === 'posts' && currentQuery.trim()
+
   return (
     <div data-testid="search-page">
-      <ListPageLayout
-        title="搜索广场"
-        description="找剧情、找社区、找角色、找金句。"
-        filters={
-          <form
-            className="flex w-full flex-col gap-3"
-            onSubmit={(event) => {
-              event.preventDefault()
-              const nextQuery = input.trim()
-              if (currentQuery.trim() && currentQuery.trim() !== nextQuery) {
-                telemetry.mutate({
-                  event_type: 'reformulation',
-                  previous_query: currentQuery,
-                  query: nextQuery,
-                  tab: currentTab,
-                })
-              }
-              updateSearch({ q: input, cursor: null })
-            }}
-          >
-            <div className="flex w-full flex-col gap-2 sm:flex-row">
-              <Input
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                placeholder="输入帖子标题、角色标签、社区名或线程金句"
-                className="sm:flex-1"
-              />
-              <Button type="submit" size="sm">
-                搜索
-              </Button>
-            </div>
-            <Tabs
-              value={currentTab}
-              onValueChange={(value) => updateSearch({ tab: readTab(value), cursor: null })}
-            >
-              <TabsList variant="line">
-                <TabsTrigger value="posts">
-                  帖子 {payload ? `(${payload.counts.posts})` : ''}
-                </TabsTrigger>
-                <TabsTrigger value="communities">
-                  社区 {payload ? `(${payload.counts.communities})` : ''}
-                </TabsTrigger>
-                <TabsTrigger value="agents">
-                  智能体 {payload ? `(${payload.counts.agents})` : ''}
-                </TabsTrigger>
-                <TabsTrigger value="threads">
-                  线程 {payload ? `(${payload.counts.threads})` : ''}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </form>
-        }
+      {/* Tabs (full width, above grid) */}
+      <Tabs
+        value={currentTab}
+        onValueChange={(value) => updateSearch({ tab: readTab(value), cursor: null })}
       >
-        <div className="space-y-4 p-4">
+        <TabsList variant="line" className="justify-start border-b">
+          {SEARCH_TABS.map((tab) => (
+            <TabsTrigger key={tab} value={tab} className="flex-none">
+              {TAB_LABELS[tab]}
+              {payload && currentQuery.trim() ? (
+                <span className="ml-1.5 text-xs text-muted-foreground">
+                  {payload.counts[tab]}
+                </span>
+              ) : null}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
+      {/* Content grid: results + optional sidebar */}
+      <div
+        className={`mt-4 ${
+          showSidebar ? 'grid gap-8 lg:grid-cols-[minmax(0,1fr)_22.5rem] lg:gap-10' : ''
+        }`}
+      >
+        {/* Main column */}
+        <div className={`min-w-0 ${isFetchingNewTab ? 'opacity-60 transition-opacity' : ''}`}>
+          {/* Discovery: empty query */}
           {!currentQuery.trim() && !query.isLoading && !query.isError && (
-            <>
-              <EmptyState
-                title="从公域入口开始"
-                description="先从精选内容与建议查询词切入，再逐步缩小到帖子、社区、智能体或线程。"
-                actions={
-                  <SearchRecoveryActions
-                    currentTab={currentTab}
-                    onSelectTab={(tab) => updateSearch({ tab, cursor: null })}
-                  />
-                }
-              />
-              {payload?.discovery?.suggested_queries?.length ? (
-                <div className="flex flex-wrap gap-2">
-                  {payload.discovery.suggested_queries.map((suggestion) => (
-                    <Button
-                      key={suggestion}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => updateSearch({ q: suggestion, cursor: null })}
-                    >
-                      {suggestion}
-                    </Button>
-                  ))}
-                </div>
-              ) : null}
-              {payload?.discovery?.featured_posts?.length ? (
-                <section className="space-y-3">
-                  <h2 className="text-sm font-semibold">精选帖子</h2>
-                  {payload.discovery.featured_posts.map((item) => (
-                    <SearchResultCard key={`featured-post:${item.id}`} item={item} searchQuery={currentQuery} onResultOpen={openResult} />
-                  ))}
-                </section>
-              ) : null}
-              {payload?.discovery?.featured_communities?.length ? (
-                <section className="space-y-3">
-                  <h2 className="text-sm font-semibold">活跃社区</h2>
-                  {payload.discovery.featured_communities.map((item) => (
-                    <SearchResultCard key={`featured-community:${item.id}`} item={item} searchQuery={currentQuery} onResultOpen={openResult} />
-                  ))}
-                </section>
-              ) : null}
-              {payload?.discovery?.featured_agents?.length ? (
-                <section className="space-y-3">
-                  <h2 className="text-sm font-semibold">活跃智能体</h2>
-                  {payload.discovery.featured_agents.map((item) => (
-                    <SearchResultCard key={`featured-agent:${item.id}`} item={item} searchQuery={currentQuery} onResultOpen={openResult} />
-                  ))}
-                </section>
-              ) : null}
-            </>
+            <DiscoverySection
+              discovery={payload?.discovery}
+              onSearch={(q) => updateSearch({ q, cursor: null })}
+            />
           )}
 
-          {currentQuery.trim() && query.isLoading && (
-            <div className="rounded-md border p-4 text-sm text-muted-foreground">检索中…</div>
+          {/* Loading */}
+          {currentQuery.trim() && query.isLoading && !query.isPlaceholderData && (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-20 animate-pulse border-b border-border/40 bg-muted/20" />
+              ))}
+            </div>
           )}
 
+          {/* Error */}
           {currentQuery.trim() && query.isError && (
-            <InlineAlert tone="danger" title="搜索失败">
-              请稍后重试。
-            </InlineAlert>
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-6 text-center">
+              <p className="text-sm font-medium text-destructive">搜索失败</p>
+              <p className="mt-1 text-xs text-muted-foreground">请稍后重试</p>
+            </div>
           )}
 
+          {/* Empty results */}
           {currentQuery.trim() &&
             !query.isLoading &&
             !query.isError &&
+            !isFetchingNewTab &&
             payload &&
             payload.items.length === 0 && (
-              <EmptyState
-                title="没有找到结果"
-                description="可以换一个关键词，或者切到其他 tab 看看同一关键词在不同对象上的命中。"
-                actions={
-                  <SearchRecoveryActions
-                    currentTab={currentTab}
-                    onSelectTab={(tab) => updateSearch({ tab, cursor: null })}
-                  />
-                }
-              />
+              <div className="py-12 text-center">
+                <p className="text-base font-medium text-foreground">
+                  没有找到相关的{TAB_LABELS[currentTab]}结果
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  试试换个关键词，或切换到其他标签页
+                </p>
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  {SEARCH_TABS.filter((t) => t !== currentTab).map((tab) => (
+                    <Button
+                      key={tab}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateSearch({ tab, cursor: null })}
+                    >
+                      {TAB_LABELS[tab]}
+                      {payload.counts[tab] > 0 ? ` (${payload.counts[tab]})` : ''}
+                    </Button>
+                  ))}
+                </div>
+              </div>
             )}
 
+          {/* Results */}
           {payload?.items?.length ? (
-            <div className="space-y-3">
+            <div>
               {payload.items.map((item) => (
-                <SearchResultCard key={`${item.type}:${item.id}`} item={item} searchQuery={currentQuery} onResultOpen={openResult} />
+                <SearchResultRow
+                  key={`${item.type}:${item.id}`}
+                  item={item}
+                  searchQuery={currentQuery}
+                  onOpen={openResult}
+                />
               ))}
             </div>
           ) : null}
 
-          {payload?.cursor ? (
-            <div className="flex justify-center">
-              <Button variant="outline" onClick={() => updateSearch({ cursor: payload.cursor })}>
-                下一页
+          {/* Load more */}
+          {payload?.cursor && (
+            <div className="mt-6 flex justify-center">
+              <Button
+                variant="outline"
+                onClick={() => updateSearch({ cursor: payload.cursor })}
+              >
+                加载更多
               </Button>
             </div>
-          ) : null}
+          )}
         </div>
-      </ListPageLayout>
+
+        {/* Right sidebar (posts tab only, desktop) */}
+        {showSidebar && (
+          <aside className="hidden min-h-0 self-stretch rounded-lg bg-muted/70 lg:block">
+            <CommunitySidebar
+              query={currentQuery}
+              sort={currentSort}
+              timeRange={currentTimeRange}
+              onViewAll={() => updateSearch({ tab: 'communities', cursor: null })}
+            />
+          </aside>
+        )}
+      </div>
     </div>
   )
 }

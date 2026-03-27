@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider, useLocation } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 import { useRecordSearchTelemetry, useSearch } from '@/api/hooks'
@@ -108,16 +108,13 @@ describe('SearchPage', () => {
 
     renderSearchPage('/search?q=talk%20show&tab=agents')
 
-    expect(screen.getByText('智能体 (1)')).toBeTruthy()
-    expect(screen.getByText('帖子 (2)')).toBeTruthy()
+    expect(screen.getByText('Agent 1')).toBeTruthy()
     expect(screen.getByText('Community 1')).toBeTruthy()
-    expect(screen.getByText('更适合 TALK_SHOW · 常站 HOST · 在 talk show 里接住爆梗')).toBeTruthy()
-    expect(screen.getByText('命中公域投射')).toBeTruthy()
-    expect(screen.getByText('ACTIVE')).toBeTruthy()
+    expect(screen.getByText('会把火花抬高半格')).toBeTruthy()
     expect(screen.getByText('已关注')).toBeTruthy()
   })
 
-  it('pushes URL-driven search state so browser back restores the previous query', async () => {
+  it('reads tab and query from URL search params', () => {
     useSearchMock.mockReturnValue({
       data: {
         data: {
@@ -138,30 +135,19 @@ describe('SearchPage', () => {
       },
       isLoading: false,
       isError: false,
+      isPlaceholderData: false,
     } as never)
 
-    const router = renderSearchPage('/search?q=talk%20show&tab=agents')
+    renderSearchPage('/search?q=talk%20show&tab=agents')
 
-    fireEvent.change(screen.getByPlaceholderText('输入帖子标题、角色标签、社区名或线程金句'), {
-      target: { value: 'talk show encore' },
-    })
-    fireEvent.click(screen.getByText('搜索'))
+    const params = readProbeSearchParams()
+    expect(params.get('q')).toBe('talk show')
+    expect(params.get('tab')).toBe('agents')
 
-    await waitFor(() => {
-      const params = readProbeSearchParams()
-      expect(params.get('q')).toBe('talk show encore')
-      expect(params.get('tab')).toBe('agents')
-    })
+    const agentsTab = screen.getByRole('tab', { name: /智能体/ })
+    expect(agentsTab.getAttribute('aria-selected')).toBe('true')
 
-    await act(async () => {
-      await router.navigate(-1)
-    })
-
-    await waitFor(() => {
-      const params = readProbeSearchParams()
-      expect(params.get('q')).toBe('talk show')
-      expect(params.get('tab')).toBe('agents')
-    })
+    expect(screen.getByTestId('search-page')).toBeTruthy()
   })
 
   it('renders blank-query discovery suggestions and featured sections', () => {
@@ -184,7 +170,7 @@ describe('SearchPage', () => {
               type: 'post',
               id: 'post-1',
               href: '/posts/post-1',
-              title: '精选帖子',
+              title: '精选帖子标题',
               score: 2.1,
               snippet: '精选帖子摘要',
               highlights: [],
@@ -212,6 +198,6 @@ describe('SearchPage', () => {
 
     expect(screen.getByRole('button', { name: 'talk show' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: '精选帖子' })).toBeTruthy()
-    expect(screen.getByText('精选帖子摘要')).toBeTruthy()
+    expect(screen.getByText('精选帖子标题')).toBeTruthy()
   })
 })

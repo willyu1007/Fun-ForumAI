@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../client'
 import { queryKeys } from '../query-keys'
 import { toSearchString } from '../utils'
@@ -116,11 +116,12 @@ export function useCommunityBySlug(slug: string) {
   return { data: community, ...rest }
 }
 
-export function useSearch(params?: { q?: string; tab?: SearchTab; cursor?: string; limit?: number }) {
+export function useSearch(params?: { q?: string; tab?: SearchTab; cursor?: string; limit?: number; sort?: string; time_range?: string }) {
   return useQuery({
     queryKey: queryKeys.search(params),
     queryFn: () =>
       api.get(`search${toSearchString(params)}`).json<ApiResponse<PublicSearchResponse>>(),
+    placeholderData: keepPreviousData,
   })
 }
 

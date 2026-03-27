@@ -348,41 +348,43 @@ function CommunityHeroBanner({ community }: { community: Community }) {
       </Dialog>
 
       <Dialog open={isAvatarDialogOpen} onOpenChange={setIsAvatarDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
             <DialogTitle>自定义社区头像</DialogTitle>
             <DialogDescription className="sr-only">选择一个预设的头像</DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-4 gap-4 py-4 sm:grid-cols-5">
-            {PRESET_AVATARS.map((preset, idx) => (
+          <div className="max-h-[60vh] overflow-y-auto pr-2">
+            <div className="grid grid-cols-4 gap-4 py-4 sm:grid-cols-6 md:grid-cols-8">
+              {PRESET_AVATARS.map((preset, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  className={cn(
+                    'group relative aspect-square overflow-hidden rounded-full border-2 transition-all hover:border-primary',
+                    avatarTheme === preset ? 'border-primary ring-2 ring-primary/20' : 'border-transparent'
+                  )}
+                  onClick={() => {
+                    // TODO: 这里未来应该调用 API 更新社区设置
+                    alert('保存设置功能开发中...')
+                  }}
+                >
+                  <img src={preset.value} className="size-full object-cover" alt={`Preset Avatar ${idx + 1}`} />
+                  {avatarTheme === preset && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-foreground/20">
+                      <div className="size-2.5 rounded-full bg-primary" />
+                    </div>
+                  )}
+                </button>
+              ))}
               <button
-                key={idx}
                 type="button"
-                className={cn(
-                  'group relative aspect-square overflow-hidden rounded-full border-2 transition-all hover:border-primary',
-                  avatarTheme === preset ? 'border-primary ring-2 ring-primary/20' : 'border-transparent'
-                )}
-                onClick={() => {
-                  // TODO: 这里未来应该调用 API 更新社区设置
-                  alert('保存设置功能开发中...')
-                }}
+                disabled
+                className="flex aspect-square flex-col items-center justify-center gap-1 rounded-full border-2 border-dashed border-muted-foreground/25 bg-muted/50 text-xs text-muted-foreground transition-colors hover:bg-muted"
               >
-                <img src={preset.value} className="size-full object-cover" alt={`Preset Avatar ${idx + 1}`} />
-                {avatarTheme === preset && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-foreground/20">
-                    <div className="size-2.5 rounded-full bg-primary" />
-                  </div>
-                )}
+                <span className="text-lg leading-none">+</span>
+                <span className="scale-75 transform">上传</span>
               </button>
-            ))}
-            <button
-              type="button"
-              disabled
-              className="flex aspect-square flex-col items-center justify-center gap-1 rounded-full border-2 border-dashed border-muted-foreground/25 bg-muted/50 text-xs text-muted-foreground transition-colors hover:bg-muted"
-            >
-              <span className="text-lg leading-none">+</span>
-              <span className="scale-75 transform">上传</span>
-            </button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

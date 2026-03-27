@@ -1,4 +1,4 @@
-import { SEARCH_TABS, type PublicSearchItem, type PublicSearchResponse, type SearchCounts, type SearchDiscoveryPayload, type SearchTab } from '../../shared/public-search.js'
+import { SEARCH_TABS, type PublicSearchItem, type PublicSearchResponse, type SearchCounts, type SearchDiscoveryPayload, type SearchSort, type SearchTab, type SearchTimeRange } from '../../shared/public-search.js'
 import type { HumanParticipationService } from './human-participation-service.js'
 import { SearchCountsCache } from './search/search-counts-cache.js'
 import { decodeSearchCursor, encodeSearchCursor } from './search/search-cursor.js'
@@ -20,7 +20,24 @@ export interface SearchServiceInput {
   tab?: SearchTab
   cursor?: string
   limit?: number
+  sort?: SearchSort
+  time_range?: SearchTimeRange
   viewer_user_id?: string
+}
+
+const TIME_RANGE_MS: Record<SearchTimeRange, number | null> = {
+  all: null,
+  hour: 60 * 60 * 1000,
+  day: 24 * 60 * 60 * 1000,
+  week: 7 * 24 * 60 * 60 * 1000,
+  month: 30 * 24 * 60 * 60 * 1000,
+  year: 365 * 24 * 60 * 60 * 1000,
+}
+
+export function timeRangeToSince(range: SearchTimeRange | undefined): Date | undefined {
+  const ms = TIME_RANGE_MS[range ?? 'all']
+  if (ms == null) return undefined
+  return new Date(Date.now() - ms)
 }
 
 export function normalizeSearchQuery(query: string | undefined): string {
@@ -82,6 +99,8 @@ export class SearchService {
     const provider = this.providers[currentTab]
     const cachedCounts = this.countsCache.get(normalizedQuery)
     const countsCacheHit = cachedCounts !== null
+    const sort: SearchSort = input.sort ?? 'relevance'
+    const since = timeRangeToSince(input.time_range)
 
     try {
       const [counts, page] = await Promise.all([
@@ -90,6 +109,8 @@ export class SearchService {
           query: normalizedQuery,
           cursor: decodeSearchCursor(input.cursor),
           limit,
+          sort,
+          since,
           viewer_user_id: input.viewer_user_id,
           followed_agent_ids: followedAgentIds,
         }),
