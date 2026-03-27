@@ -75,9 +75,8 @@ function buildSuggestions(items: Array<{ type: string; [k: string]: unknown }>, 
 
 export function TopBarSearch() {
   const location = useLocation()
-  const urlQuery = location.pathname === '/search'
-    ? new URLSearchParams(location.search).get('q') ?? ''
-    : ''
+  const urlQuery =
+    location.pathname === '/search' ? new URLSearchParams(location.search).get('q') ?? '' : ''
 
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -95,14 +94,20 @@ export function TopBarSearch() {
     if (open) setRecentList(readRecent())
   }, [open])
 
+  const discoveryResult = useSearch(
+    undefined,
+    { enabled: open && !debouncedQuery },
+  )
   const searchResult = useSearch(
     debouncedQuery ? { q: debouncedQuery, tab: 'posts', limit: 10 } : undefined,
+    { enabled: open && Boolean(debouncedQuery) },
   )
   const communitySearchResult = useSearch(
     debouncedQuery ? { q: debouncedQuery, tab: 'communities', limit: 3 } : undefined,
+    { enabled: open && Boolean(debouncedQuery) },
   )
   const allItems = searchResult.data?.data?.items ?? []
-  const discovery = searchResult.data?.data?.discovery
+  const discovery = discoveryResult.data?.data?.discovery
 
   const suggestions = debouncedQuery ? buildSuggestions(allItems, 4) : []
   const communityItems: SearchCommunityItem[] = debouncedQuery

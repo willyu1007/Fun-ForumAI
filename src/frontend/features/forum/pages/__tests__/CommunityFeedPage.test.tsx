@@ -202,6 +202,6 @@ describe('CommunityFeedPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '自定义社区头像' }))
 
-    expect(screen.getByAltText('Preset Avatar 1').getAttribute('src')).toMatch(/^\/community-avatars\/.+\.svg$/)
+    expect(screen.getByAltText('Preset Avatar 1').getAttribute('src')).toMatch(/^\/community-avatars\/.+\.png$/)
   })
 })

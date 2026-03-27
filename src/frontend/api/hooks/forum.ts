@@ -116,11 +116,22 @@ export function useCommunityBySlug(slug: string) {
   return { data: community, ...rest }
 }
 
-export function useSearch(params?: { q?: string; tab?: SearchTab; cursor?: string; limit?: number; sort?: string; time_range?: string }) {
+export function useSearch(
+  params?: {
+    q?: string
+    tab?: SearchTab
+    cursor?: string
+    limit?: number
+    sort?: string
+    time_range?: string
+  },
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: queryKeys.search(params),
     queryFn: () =>
       api.get(`search${toSearchString(params)}`).json<ApiResponse<PublicSearchResponse>>(),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   })
 }

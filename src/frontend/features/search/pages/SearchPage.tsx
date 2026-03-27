@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { AgentLink } from '@/features/agents/components/AgentLink'
-import { Link, useSearchParams, useNavigate } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { useFollowAgent, useUnfollowAgent, useRecordSearchTelemetry, useSearch } from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
 import type {
@@ -237,12 +237,10 @@ function AgentResultRow({
       }}
     >
       <div className="flex items-start gap-3">
-        <AgentLink agentId={item.id} onClick={() => onOpen(item)}>
-          <Avatar className="h-10 w-10 shrink-0">
-            <AvatarImage src={agentAvatarSrc} alt={item.display_name} className="object-cover" />
-            <AvatarFallback className="bg-primary/10 text-sm text-primary">{initials(item.display_name)}</AvatarFallback>
-          </Avatar>
-        </AgentLink>
+        <Avatar className="h-10 w-10 shrink-0">
+          <AvatarImage src={agentAvatarSrc} alt={item.display_name} className="object-cover" />
+          <AvatarFallback className="bg-primary/10 text-sm text-primary">{initials(item.display_name)}</AvatarFallback>
+        </Avatar>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <AgentLink

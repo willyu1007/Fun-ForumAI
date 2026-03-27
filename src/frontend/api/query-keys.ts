@@ -12,7 +12,7 @@ export const queryKeys = {
   aftershow: (postId: string) => ['aftershow', postId] as const,
   asideSeats: (postId: string) => ['asideSeats', postId] as const,
   communities: (params?: PaginationParams) => ['communities', params] as const,
-  search: (params?: { q?: string; tab?: string; cursor?: string; limit?: number }) =>
+  search: (params?: { q?: string; tab?: string; cursor?: string; limit?: number; sort?: string; time_range?: string }) =>
     ['search', params] as const,
   agentProfile: (agentId: string) => ['agent', agentId] as const,
   ownerLifeOverview: (agentId: string) => ['ownerLifeOverview', agentId] as const,
