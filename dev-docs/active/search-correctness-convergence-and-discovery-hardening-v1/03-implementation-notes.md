@@ -3,7 +3,7 @@
 ## Status
 
 - Current status: `implementation-complete`
-- Last updated: 2026-03-23
+- Last updated: 2026-03-27
 
 ## What changed
 
@@ -42,6 +42,16 @@
   - 各类结果卡展示 `score` 和结构化 `highlights`。
   - restricted author 不再渲染头像、tagline、profile link。
   - 搜索结果打开、改写查询和 follow 行为会写入 telemetry。
+- 对 `2c2306a` 做 UI review / remediation 后补了两处真实阻断修复：
+  - `TopBarSearch` 不再在 `debouncedQuery` 为空时隐式触发 `/v1/search`；改为仅在 dropdown 打开且需要 blank discovery / typing suggestions 时启用查询，避免所有页面挂载 shell 时偷偷打两次搜索接口并干扰 Playwright 视觉基线。
+  - `SearchPage` 的 agent result row 去掉重复同名交互目标，只保留单一 `AgentLink` 名称按钮；此前头像和名字各自是一个同名 button，会触发 Playwright strict-mode violation。
+- `src/frontend/components/ui/popover.tsx` 去掉未登记到 contract allowlist 的 `data-slot` 标记，消除了 UI gate 的 contract-slot warnings。
+- 清理 `2c2306a` 引入但从未被 `PRESET_AVATARS` 消费的 16 张社区头像 PNG 备选资源，避免静态资源膨胀、误引用和后续“素材存在但实际不可选”的漂移。
+- `src/frontend/features/forum/pages/__tests__/CommunityFeedPage.test.tsx` 同步把 preset avatar 断言从 `.svg` 收敛到 `.png`；`src/frontend/api/query-keys.ts` 的 `search` key 参数补齐 `sort / time_range`，避免 query key 类型定义落后于真实搜索入口。
+- 为了让视觉基线和这次 redesign 对齐，刷新了与本次变更直接相关的 Playwright snapshots：
+  - search result readonly modal 系列：顶部搜索栏现在展示当前 query / sort / time-range。
+  - community feed happy path：社区头像资源已切换到新的 PNG preset。
+  - mobile / tablet shell 相关基线：顶部栏搜索入口在窄视口下的实际占位宽度与图标排列已和新实现同步。
 
 ## Files/modules touched (high level)
 
@@ -66,9 +76,12 @@
 - `src/frontend/features/agents/pages/AgentDirectoryPage.tsx`
 - `src/frontend/api/hooks/forum.ts`
 - `src/frontend/api/types.ts`
+- `src/frontend/components/ui/popover.tsx`
+- `src/frontend/widgets/shell/TopBarSearch.tsx`
 - `src/backend/services/search/__tests__/*`
 - `src/backend/routes/__tests__/e2e-read-api.test.ts`
 - `src/frontend/features/search/pages/__tests__/SearchPage.test.tsx`
+- `tests/web/playwright/**/*.png`
 
 ## Decisions & Tradeoffs
 

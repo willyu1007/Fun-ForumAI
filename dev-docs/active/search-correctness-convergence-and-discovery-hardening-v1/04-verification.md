@@ -56,6 +56,39 @@
   - Result: passed；kind overlay 完整重建并完成 runtime fingerprint parity。
 - `pnpm k8s:staging:local -- --k8s-context kind-funforum --skip-image-refresh --run-smoke`
   - Result: passed with warning；单副本 local-kind overlay 现在会显式跳过依赖双节点的 generic runtime smoke，不再误报失败。
+- `pnpm test -- src/frontend/features/search/pages/__tests__/SearchPage.test.tsx src/frontend/widgets/shell/__tests__/ShellTopBarContainer.test.tsx`
+  - Result: passed。
+  - Evidence:
+    - `SearchPage.test.tsx`: 3 tests passed。
+    - `ShellTopBarContainer.test.tsx`: 10 tests passed。
+    - Total in targeted suite: 13 tests passed。
+- `pnpm exec playwright test tests/web/playwright/agent-modal.visual.spec.ts --project=desktop-light`
+  - Result: initially failed on visual diff only；after code fix, strict-mode blocker消失，只剩 search redesign 带来的预期基线差异。
+- `pnpm exec playwright test tests/web/playwright/governance-auth.visual.spec.ts --project=desktop-light`
+  - Result: passed；证明 `TopBarSearch` 空查询隐式请求问题修复后，governance 页面不再出现异步未收敛的假红。
+- `pnpm exec playwright test tests/web/playwright/forum-p0.visual.spec.ts --project=desktop-light`
+  - Result: passed except `community feed happy path` 的预期 avatar asset diff；确认差异来自 commit 自己切换到 PNG preset。
+- `pnpm exec playwright test tests/web/playwright/realtime-p0.visual.spec.ts --project=desktop-light`
+  - Result: passed。
+- `pnpm exec playwright test tests/web/playwright/agent-modal.visual.spec.ts -g 'search result' --update-snapshots`
+  - Result: passed；已刷新 desktop / tablet / mobile, light / dark 的 readonly modal 基线。
+- `pnpm exec playwright test tests/web/playwright/forum-p0.visual.spec.ts -g 'community feed happy path' --update-snapshots`
+  - Result: passed；已刷新 community avatar PNG preset 对应的基线。
+- `pnpm exec playwright test --update-snapshots`
+  - Result: passed；剩余 mobile / tablet shell-level 基线已与新顶部搜索入口对齐，96 tests passed。
+- `rg -n "comm-avatar-(01-pixel-knight|02-cyber-hacker|03-mecha-pilot|04-tabletop-wizard|05-vaporwave-statue|06-lofi-chill|07-magical-anime|08-goth-vampire|09-skater|10-hiphop-dj|11-pop-idol|12-fitness-chad|13-cafe-barista|14-nature-druid|15-bookworm|16-graffiti-artist)" -S .`
+  - Result: no matches；确认删除的 16 张社区头像资源在 repo 中已无引用。
+- `pnpm test -- src/frontend/features/forum/pages/__tests__/CommunityFeedPage.test.tsx src/frontend/features/search/pages/__tests__/SearchPage.test.tsx src/frontend/widgets/shell/__tests__/ShellTopBarContainer.test.tsx`
+  - Result: passed。
+  - Evidence:
+    - `CommunityFeedPage.test.tsx`: 3 tests passed。
+    - `SearchPage.test.tsx`: 3 tests passed。
+    - `ShellTopBarContainer.test.tsx`: 10 tests passed。
+    - Total in targeted suite: 16 tests passed。
+- `python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py run --mode full`
+  - Result:
+    - First rerun failed only because Playwright still引用旧基线；Errors 1 / Warnings 0。
+    - Final rerun passed；latest run id `20260327T002407Z-67237`，Errors 0 / Warnings 0，`eslint=PASS`，`playwright=PASS (96 tests)`。
 
 ## Real k8s / runtime validation
 

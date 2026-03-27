@@ -4,7 +4,7 @@
 
 - State: in-progress
 - Depends on: `T-912 public-search-system-v1`, `T-913 search-ecosystem-enrichment-v2`
-- Next step: 等待用户验收并按 rollout 说明在部署后执行 reconcile 与 runtime 巡检。
+- Next step: 主干清理与 UI gate 收口已完成；按 rollout 说明在部署后执行 `reconcile` 与 runtime 巡检即可。
 
 ## Goal
 
